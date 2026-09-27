@@ -1,15 +1,9 @@
-// render.test.mjs — what render() put in the SVG, read back off the DOM.
+// What render() put in the SVG, read back off the DOM after a state is
+// driven, held against the chart the client laid and Go's rung answer. What a
+// mark should read is asked of the shipped nodeClass and nodeFlags.
 //
-// Every claim here is about the DRAWING: the marks, ribbons, attributes, words
-// and handlers the page holds after a state is driven, held against the chart
-// the client laid and against Go's rung answer for which ids a column accounts
-// for. It re-derives no figure Go emitted -- no cent sum, no membership -- and
-// holds no copy of a function of app.js: what a mark should read is asked of
-// the shipped nodeClass and nodeFlags and compared with what the mark reads.
-//
-// The tests in the first block drive a handful of states per published column
-// at two column budgets and read six things off each; the second block is the
-// drill's own rendering claims, over the same pinned page.
+// The first block drives a handful of states per published column at two
+// column budgets; the second is the drill's own rendering claims.
 
 import { describe, test, before } from "node:test";
 import assert from "node:assert/strict";
@@ -33,8 +27,7 @@ const keyOf = (path) => (path.length ? path.join(" > ") : "(the overview)");
 
 /**
  * A failure list as a detail line: the count whole and the list cut, so one
- * deleted `.attr()` line -- wrong on every mark of every state -- does not
- * bury the other arms' output.
+ * arm wrong on every mark does not bury the others.
  * @param {string[]} found
  */
 const firstOf = (found) =>
@@ -42,11 +35,8 @@ const firstOf = (found) =>
   (found.length > 3 ? `\n      ... and ${found.length - 3} more` : "");
 
 /**
- * The marks the client drew, read off the SVG.
- *
- * THE ONE DOM READER, and every arm goes through it: blinding it must take
- * the whole file red on its counters, which is what stops any arm passing
- * with nothing compared.
+ * The marks the client drew. THE ONE DOM READER: blinding it takes the whole
+ * file red on its counters.
  * @param {Element} chart
  */
 const marksIn = (chart) => [...chart.querySelectorAll("g.node")];
@@ -99,11 +89,8 @@ function answeredIDs(rung, app) {
   }
   for (const m of rung.marks || []) {
     ids.set(m.id, -1);
-    // A RESIDUAL'S LEAVING ENDPOINTS stand at the step's last declared tier
-    // (export.ResidualOf), and are answered on the mark rather than in a
-    // column; the shipped rule (leavingLegDrawn) says whether this budget's
-    // columns draw them, so they are read here as ids of a column that is
-    // off screen exactly when that rule says the leg is dropped.
+    // A residual's leaving endpoints are answered on the mark, and read here
+    // as ids of a column off screen exactly when leavingLegDrawn drops the leg.
     if (m.role !== "residual") continue;
     for (const e of m.ends || []) {
       if (!ids.has(e)) ids.set(e, app.leavingLegDrawn(step, app.activeTiers()) ? step.tiers[step.tiers.length - 1] : -2);
@@ -116,10 +103,9 @@ function answeredIDs(rung, app) {
 const widest = (rung) => Math.max(...rung.draws.map((d) => d.ids.length + (d.carried || []).length));
 
 /**
- * The rungs driven in one column, chosen by what each exercises: the
- * overview, the first depth-1 rung, the rung holding the widest column (where
- * a fold engages if anywhere), the first with a residual, the first with a
- * gap, and the deepest. Selected off the artifact in its own order.
+ * The rungs driven in one column: the overview, the first depth-1 rung, the
+ * widest column's, the first with a residual, the first with a gap, and the
+ * deepest.
  * @param {any[]} rungs
  * @returns {string[][]}
  */
@@ -162,10 +148,8 @@ function rungsOf(stem) {
 }
 
 /**
- * Puts the app on the chart one path names, from the overview, expanding on
- * the way in and not at the end: a node an outer chart's cap folded away
- * cannot be clicked until that column is expanded, and the state measured is
- * the chart as a reader is first shown it, fold and all.
+ * Puts the app on the chart one path names, expanding on the way in (a folded
+ * node cannot be clicked) and not at the end, so the state is fold and all.
  */
 async function goTo(app, path) {
   app.drillUp(0);
@@ -238,9 +222,8 @@ async function drive(year) {
           `${marks.length} mark(s), which is not a chart that drew`);
       }
 
-      // (a) every node reaches a mark: three sets and not two. The DOM
-      // against the graph the client laid says every node it decided on got
-      // drawn; the graph against Go's answer says the decision was Go's.
+      // (a) every node reaches a mark: DOM against the laid graph, and the
+      // laid graph against Go's answer.
       const drawn = marks.map((m) => m.__data__.id);
       const laid = app.projection.nodes.map((n) => n.id);
       const missing = laid.filter((id) => !drawn.includes(id));
@@ -322,9 +305,8 @@ async function drive(year) {
         const w = rect ? Number(rect.getAttribute("width")) : 0;
         const h = rect ? Number(rect.getAttribute("height")) : 0;
         if (!(w > 0) || !(h > 0)) bad.push(`rect ${w}x${h}`);
-        // THE WORDS ARE READ OFF THE TSPANS and not off the functions that
-        // compose them: comparing d.label against d.label would pass on a
-        // label render() never wrote.
+        // Read off the tspans, not the composing functions, or d.label would
+        // be compared with itself.
         if (!tspans.includes(d.label)) bad.push(`no tspan reading ${JSON.stringify(d.label)}`);
         const amount = "  " + shortDollars(app.markCents(d));
         if (!tspans.includes(amount)) bad.push(`no tspan reading ${JSON.stringify(amount)}`);
@@ -346,8 +328,7 @@ async function drive(year) {
         const note = (what) => wrong.gestures.push(`${where}: ${id} ${what}`);
         seen.gestures++; fire(subject, "click", { timeStamp: 1000 });
         if (app.isolated !== id) note(`does not isolate on a click (isolated is ${JSON.stringify(app.isolated)})`);
-        // The dimming is what the isolation does for a reader who can see the
-        // page; stated as invariants rather than by recomputing the predicate.
+        // The dimming, stated as invariants rather than recomputing the predicate.
         const lit = ribbonsIn(chart).filter((p) => p.__data__.source.id === id || p.__data__.target.id === id);
         const dimmedRibbons = ribbonsIn(chart).filter((p) => p.classList.contains("dim"));
         const dimmedMarks = marksIn(chart).filter((m) => m.classList.contains("dim"));
@@ -380,9 +361,7 @@ async function drive(year) {
         }
 
         if (opener) {
-          // FOCUS ON A MARK IS THE STATE A READER IS IN. A drill replaces the
-          // chart, so the element focus was on is gone and restoreFocus has
-          // to put it somewhere real.
+          // A drill replaces the chart, so restoreFocus must land focus somewhere real.
           subject.focus();
           seen.gestures++; fire(subject, "dblclick", { timeStamp: 10000 });
           await settle();
@@ -606,10 +585,8 @@ describe("the drill's drawing", () => {
   });
 
   test("no share on any view claims 100% of a column that has more than one mark", async (t) => {
-    // AND THE CASE NO PINNED VIEW REACHES: a column that IS divided where
-    // toFixed(1) would round to 100. One printed link of the pinned column
-    // is scaled up a millionfold, so its source is all but the whole of its
-    // column, and the share is read off the mark the page then draws.
+    // The case no pinned view reaches: a column divided where toFixed(1)
+    // would round to 100, by scaling one printed link a millionfold.
     const doc = columnFixture(YEARS[0].fixture);
     const l = doc.schedules.sankey.links.find((x) => doc.nodes[x.from].tier === 0 && x.kind === "external");
     l.value_cents = l.value_cents * 1000000;
@@ -723,9 +700,8 @@ describe("the drill's drawing", () => {
       const { app, document } = await bootedApp({ checkedStem: YEARS[0].stem });
       const chart = document.getElementById("chart");
       await opened(app, ...open);
-      // A DRAWN MARK AND NOT THE CENTRE: a carried mark's anchor is the chart
-      // above's, and the opened node is alone in its column, so its share is
-      // suppressed by construction.
+      // A drawn mark, not the centre: the opened node is alone in its column,
+      // so its share is suppressed by construction.
       const centre = open.length ? open[open.length - 1] : "";
       const marked = marksIn(chart).find((m) =>
         !m.__data__.carried_from && m.__data__.id !== centre && app.caveatsFor(m.__data__.id).length > 0);
@@ -764,8 +740,7 @@ describe("the drill's drawing", () => {
       const withCaveat = carried.filter((m) => app.caveatsFor(m.__data__.id).length > 0);
       const ids = withCaveat.map((m) => m.__data__.id).sort();
       const hrefsIn = () => [...detail.querySelectorAll("a")].map((a) => a.getAttribute("href") || "");
-      // THE PANEL, NOT caveatHref: driving pin() and reading the rendered
-      // panel is what a reader gets, and the only route red on the caller.
+      // The rendered panel, not caveatHref: the only route red on the caller.
       const panelFor = (id) => {
         const m = marksIn(chart).find((x) => x.__data__.id === id);
         assert.ok(m, `${id} is not drawn`);
@@ -886,12 +861,9 @@ describe("the drill's drawing", () => {
       assert.notEqual(agg.rationale, "");
       assert.notEqual(agg.source_note, "");
       assert.equal(agg.label, `${count} smaller ${word}`);
-      // AT TWO OR MORE: a column of cap + 1 once folded ONE printed fund
-      // into a mark labelled "1 smaller funds".
+      // At two or more: a tail of one printed fund labelled "1 smaller funds" is the defect.
       assert.ok(count >= 2, agg.label);
-      // AND ITS NOTE SAYS WHAT IT CARRIES, at the figure the chart draws it
-      // at: the tail is not an inferred flow and gets no line in the inferred
-      // list, so this note is where its figure is written (fisc-hrfd).
+      // Its note carries its figure, since the tail gets no inferred-list line (fisc-hrfd).
       const value = app.layOut(app.projection).nodes.find((n) => n.id === agg.id).value;
       assert.ok(value > 0);
       assert.ok(agg.source_note.includes("together " + dollars(value)), `${agg.source_note} does not carry ${dollars(value)}`);
@@ -927,9 +899,8 @@ describe("the drill's drawing", () => {
 
     test(`${year.label}: a caveat about a folded row marks the tail while it stands for it, and the row itself once it is drawn`, async (t) => {
       const worst = worstOf(rungsOf(year.stem));
-      // Which row the cap folds is the client's answer, so it is read off a
-      // plain page first and the caveat is then planted on a copy of the
-      // pinned column naming that row.
+      // Which row the cap folds is the client's answer: read off a plain page,
+      // then a caveat naming that row is planted on a copy of the column.
       const plain = await bootedApp({ checkedStem: year.stem });
       await opened(plain.app, worst);
       const foldedTail = plain.app.projection.nodes.find((n) => plain.app.isAggregate(n.id));
@@ -1011,9 +982,8 @@ describe("a gap mark", () => {
   }
 });
 
-// Arms the committed columns never reach, driven over a clone of a pinned
-// column with one stated change, or a bare call where the arm is a pure
-// function. fisc-7477 measured them undriven.
+// Arms the committed columns never reach (fisc-7477), driven over a clone of
+// a pinned column with one stated change, or a bare call.
 describe("arms no committed column reaches", () => {
   const newest = YEARS[YEARS.length - 1];
   test("a derived flow between two published nodes is listed as inferred on its own, with both ends named", async (t) => {
@@ -1080,8 +1050,7 @@ describe("arms no committed column reaches", () => {
     t.diagnostic(`${marks} marks drawn, ${ids.length} ids asked, all with no caveat`);
     assert.ok(marks > 0);
     assert.ok(ids.every((id) => app.caveatsFor(id).length === 0));
-    // The guard on a source with no caveats list at all, which scheduleOf's
-    // default keeps off the served path.
+    // The guard on a source with no caveats list at all.
     app.projection.metadata.caveats = undefined;
     assert.deepEqual(app.caveatsFor(ids[0]), []);
   });
@@ -1096,10 +1065,8 @@ describe("arms no committed column reaches", () => {
 });
 
 // A class the client sets that no rule styles is a silent no-op, and a rule
-// no page wears is dead ink; neither shows on any other check (fisc-a0fv).
-// Rules come from the injected stylesheet as jsdom parsed it, worn classes
-// off every element the page holds across the states the client can reach,
-// and the classes the other pages' templates set are theirs, not the client's.
+// no page wears is dead ink (fisc-a0fv). The other templates' classes are
+// theirs, not the client's.
 describe("the classes the client sets and the rules the stylesheet carries", () => {
   /** Set by the client, styled by nothing, on purpose: hooks the tests and the gestures key on. */
   const HOOKS = {
@@ -1185,10 +1152,8 @@ describe("the classes the client sets and the rules the stylesheet carries", () 
   });
 });
 
-// The words on the page are the packager's: every sentence the client
-// composes is a wording template in the config that say() fills, so a
-// reworded config is followed on the page and no copy of the words survives
-// in app.js (fisc-xixn, fisc-jdsb).
+// Every sentence the client composes is a config wording template that say()
+// fills, so a reworded config is followed on the page.
 describe("the wording is the packager's", () => {
   test("say fills a placeholder with the value, and a {name:one|many} with the value and the word its count picks", async () => {
     const config = structuredClone(pageFixture().config);

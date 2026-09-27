@@ -1,11 +1,5 @@
 // lifecycle.test.mjs — what happens while a year is IN FLIGHT: the fetch, the
-// switch token, and what main() does with each answer. Every test here boots
-// the real page over Go's pinned artifacts and drives the year control with
-// the event a browser fires.
-//
-// NOT HERE: the column budget (columns.test.mjs) and what a drawn year SAYS
-// (year.test.mjs). A served document is never assembled by hand: a malformed
-// one is a structuredClone of a pinned column with one stated key changed.
+// switch token, and what main() does with each answer.
 
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
@@ -227,11 +221,8 @@ describe("a switch that fails", () => {
   });
 
   test("a malformed year document never leaves the words and the chart on different years", async (t) => {
-    // Each fixture is the pinned second column with one key removed or broken
-    // in its spine schedule. Every one is `required` in
-    // schema/column.schema.json, so no file this export wrote lacks it; what
-    // is asserted is that whatever the fault, the page is never left reading
-    // one year's words over another year's chart.
+    // Whatever the fault, the page is never left reading one year's words
+    // over another year's chart.
     const DOC = "livermore-budget-fy2026-2027";
     const fixtures = [
       { key: "schedules.sankey.sources", mutate: (c) => { delete c.schedules.sankey.sources; } },
@@ -282,7 +273,7 @@ describe("a switch that fails", () => {
     assert.deepEqual(refused, ["links[].fact_ids", "links[].locators[].pages", "links[].locators"]);
     // The sources are first read at the pin, so a column lacking them draws.
     // Accepted: the client adds no shape check for a file the export cannot
-    // write (fisc-wodu), and the pin is where the absence is met.
+    // write, and the pin is where the absence is met.
     assert.deepEqual(drewAnyway, ["schedules.sankey.sources", "sources[].pages"]);
   });
 });
@@ -403,8 +394,8 @@ describe("a gesture that throws", () => {
 });
 
 describe("refusals nothing drove", () => {
-  // Each is a branch of app.js no other test reaches (fisc-rx1d), fired by a
-  // one-key change to the served bytes.
+  // Each is a branch of app.js no other test reaches, fired by a one-key
+  // change to the served bytes.
   test("a column served 404 is refused in words and the page stays whole", async (t) => {
     // The newest year's column: `null` in the plan is a 404.
     const { app, document, config } = await loadApp({ plan: { "fy2027-adopted.json": null } });

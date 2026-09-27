@@ -1,12 +1,6 @@
-// testlib.mjs — the one helper the client's tests share.
-//
-// It installs a browser (jsdom over the page Go pins), loads the vendored d3
-// into it, and imports the SHIPPED site/app.js afresh for each test. Nothing
-// here parses Go source or assembles an artifact Go already writes: the page,
-// the columns and the rung answer are read out of testdata/, where Go tests
-// hold each byte for byte to what `fisc export` serves.
-//
-// NOT DISCOVERED BY `node --test`: only *.test.mjs is. Import it.
+// The client tests' shared harness: jsdom over the page Go pins, the vendored
+// d3, and the SHIPPED site/app.js imported afresh per test. Every artifact is
+// read from testdata/, never assembled here.
 
 import { JSDOM } from "jsdom";
 import { readFileSync } from "node:fs";
@@ -28,11 +22,8 @@ let d3Loaded = false;
 /**
  * Loads the vendored d3 bundles into THIS realm, once per process.
  *
- * runInThisContext AND NOT require: the bundles are UMD, and under require
- * they take the CommonJS branch and ask for d3-array, which is not installed
- * and is not meant to be. Run as scripts they take the browser branch and set
- * globalThis.d3, which is what app.js reads. One realm, so a value d3 builds
- * is deep-equal to one a test writes.
+ * runInThisContext AND NOT require: under require the UMD bundles take the
+ * CommonJS branch and ask for d3-array, which is not installed.
  */
 export function loadD3() {
   if (d3Loaded) return;
@@ -46,11 +37,8 @@ export function loadD3() {
 }
 
 /**
- * The served page and the config it carries, from testdata/index.golden.html.
- *
- * THE CONFIG IS CUT OUT OF THE PAGE rather than pinned on its own, so there is
- * one copy of it: what a reader's browser evaluates is what a test hands the
- * module.
+ * The served page and the config cut out of it, from
+ * testdata/index.golden.html, so there is one copy of the config.
  */
 export function pageFixture() {
   const html = readFileSync(join(repoRoot, "testdata", "index.golden.html"), "utf8");
@@ -79,14 +67,9 @@ export function goldenGraph() {
 }
 
 /**
- * A matchMedia that answers from a viewport width and an OS theme, and fires
- * its change listeners when an answer crosses.
- *
- * jsdom has no matchMedia, and app.js guards every use with a typeof check, so
- * without this the column control and the theme follow would run in no test.
- * IT REFUSES A QUERY IT WAS NEVER TAUGHT rather than answering false: a stub
- * that answers a question it does not understand does not fail, it stops
- * testing.
+ * A matchMedia answering from a viewport width and an OS theme, firing its
+ * change listeners when an answer crosses. It THROWS on a query it was never
+ * taught: answering false would silently stop testing.
  */
 function mediaStub(width, osDark) {
   const OS_DARK = "(prefers-color-scheme: dark)";
@@ -124,9 +107,8 @@ function mediaStub(width, osDark) {
 }
 
 /**
- * Installs a browser over one page: jsdom's window and document become the
- * globals app.js reads, the shipped stylesheet is injected so custom
- * properties resolve, and matchMedia is the stub above.
+ * Installs jsdom over one page as the globals app.js reads, with the shipped
+ * stylesheet injected so custom properties resolve.
  *
  * THE URL MATTERS: an opaque origin makes localStorage throw.
  */
@@ -149,19 +131,13 @@ export function installBrowser({ html, storage, viewport = 1000, osDark = false 
 }
 
 /**
- * A fetch whose answers a test plans, one entry per path.
+ * A fetch whose answers a test plans, one entry per path: `{doc}`; `null` for
+ * a 404; `{status, ok: false}`; `{hang: true}`; `{reject}`; `{settle}` to be
+ * handed resolve/reject; `{doc, badBody: true}` for an unparseable 200. The
+ * pinned columns and rung answer are planned by default.
  *
- * An entry is `{doc}` to resolve with; `null` for a 404; `{status, ok: false}`
- * for another refusal; `{hang: true}` to never settle; `{reject}` to fail;
- * `{settle}` to be handed the resolve/reject pair, which is how a test places
- * a fetch outcome after a later event; `{doc, badBody: true}` for a 200 whose
- * body will not parse. The two pinned columns and the rung answer are planned
- * by default and an entry in `plan` wins over them.
- *
- * THE STAMP IS FILLED IN AND NEVER OVERWRITTEN: app.js refuses an artifact
- * whose generated_by disagrees with the page's exported_by, so a planned body
- * gets the page's stamp unless the test planted its own -- which a test about
- * that refusal does.
+ * A body without generated_by gets the page's stamp; one a test planted is
+ * never overwritten.
  */
 export function plannedFetch(plan, stamp) {
   const asked = [];
@@ -211,18 +187,12 @@ export async function settle() {
 let loads = 0;
 
 /**
- * A fresh page: the browser installed, the globals planted, the shipped
- * app.js imported anew.
+ * A fresh page with the shipped app.js imported anew.
  *
- * A NEW MODULE INSTANCE PER CALL, by a cache-busting query on the import URL,
- * because app.js reads FISC_CONFIG and d3 at import and keeps its state in
- * module-level bindings. Nothing runs at import; call `app.boot()` and then
- * `settle()` to have the page draw, or call its functions directly.
- *
- * Defaults are the pinned page's: its config, both its columns and the rung
- * answer planned, the newest year checked. `checkedStem` moves the radio the
- * way a restored form state would. `config: null` hands the module no config
- * at all.
+ * A NEW MODULE INSTANCE PER CALL, by a cache-busting query, because app.js
+ * reads FISC_CONFIG and d3 at import and keeps module-level state.
+ * `checkedStem` moves the radio as a restored form would; `config: null`
+ * hands the module no config.
  */
 export async function loadApp(o = {}) {
   loadD3();
@@ -258,13 +228,11 @@ export function topOf(app) {
 }
 
 /**
- * Opens nodes in turn through the real entry point and waits for each
- * repaint, throwing by name where one does not open.
+ * Opens nodes in turn through drillDown, throwing by name where one does not
+ * open.
  *
- * THE RETURN VALUE IS CHECKED AS WELL AS THE STACK: drillDown swallows its own
- * throw and leaves the stack as it was, so a truthiness test on the stack
- * passes from the second node onward and a test would measure the chart that
- * was already there.
+ * THE RETURN VALUE IS CHECKED AS WELL AS THE STACK: drillDown swallows its
+ * throw and leaves the stack as it was.
  */
 export async function opened(app, ...ids) {
   for (const id of ids) {
@@ -277,12 +245,9 @@ export async function opened(app, ...ids) {
 }
 
 /**
- * Opens every folded tail on the chart on screen until none is left, the way
- * the breadcrumb's gesture does, and returns how many columns it opened.
- *
- * NOT A LOOP OVER TODAY'S TIERS: expanding one column can leave another
- * foldable column drawn where the first was hiding it. The bound turns a fold
- * that re-engages into a named failure rather than a hang.
+ * Opens every folded tail until none is left and returns how many columns it
+ * opened. Not a loop over today's tiers: expanding one column can expose
+ * another. The bound turns a re-engaging fold into a failure, not a hang.
  */
 export function expandAll(app) {
   for (let done = 0; done < 32; done++) {
@@ -294,10 +259,9 @@ export function expandAll(app) {
 }
 
 /**
- * Walks every view the chart offers, at every depth, reopening from the
- * overview for each so a rung never reuses the chart a sibling was opened
- * from. `visit(path, depth)` runs with the view on screen. Returns how many
- * were visited and the first refusal's message, or "".
+ * Walks every view the chart offers at every depth, reopening from the
+ * overview for each. Returns how many were visited and the first refusal's
+ * message, or "".
  */
 export async function everyOffer(app, visit, maxDepth = 8) {
   let visited = 0;
@@ -333,10 +297,8 @@ export function refusals(document) {
 }
 
 /**
- * Checks one year's radio and fires the change a browser would: on the input,
- * bubbling to the #year-toggle fieldset wireYears listens on. Dispatched on
- * the fieldset itself, e.target is the fieldset, which has no value, and the
- * handler returns without switching.
+ * Checks one year's radio and fires change ON THE INPUT, bubbling: dispatched
+ * on the fieldset, e.target has no value and the handler does nothing.
  */
 export function clickYear(document, stem) {
   const group = document.getElementById("year-toggle");
@@ -351,11 +313,8 @@ export function clickYear(document, stem) {
 }
 
 /**
- * Fires one event on a drawn element the way a browser would.
- *
- * THE TIMESTAMP IS PLANTED, because the activation guard compares a click's
- * timeStamp against the key that may have synthesised it, and jsdom stamps
- * every event with the clock.
+ * Fires one event on a drawn element. `timeStamp` is plantable because the
+ * activation guard compares it and jsdom stamps events with the clock.
  */
 export function fire(element, type, extra = {}) {
   const { timeStamp, ...init } = extra;
@@ -367,10 +326,8 @@ export function fire(element, type, extra = {}) {
 }
 
 /**
- * Collects what a DOM listener throws. jsdom reports a listener's exception
- * to window's error event rather than to the dispatcher, so without this a
- * gesture that throws past its guard is invisible to the test that fired it
- * and "did not throw" is vacuous.
+ * Collects what a DOM listener throws: jsdom reports it to window's error
+ * event, not the dispatcher, so without this "did not throw" is vacuous.
  */
 export function listenerErrors(window) {
   const errors = [];
@@ -381,11 +338,7 @@ export function listenerErrors(window) {
   return errors;
 }
 
-/**
- * Records every keydown listener the page attaches to the document, so a test
- * can count the Escape handler the way it counts theme followers. Install
- * before boot.
- */
+/** Records every keydown listener attached to the document. Install before boot. */
 export function keydownListeners(document) {
   const attached = [];
   const original = document.addEventListener.bind(document);
@@ -401,10 +354,7 @@ const compactDollars = new Intl.NumberFormat("en-US", {
   style: "currency", currency: "USD", notation: "compact", maximumFractionDigits: 1,
 });
 
-/**
- * Cents as the page should print them, formatted HERE and not by app.js, so an
- * expectation built with it cannot move with the formatter it checks.
- */
+/** Cents as the page should print them, formatted here so an expectation cannot move with app.js's formatter. */
 export function dollars(cents) {
   return (cents < 0 ? "−" : "") + wholeDollars.format(Math.abs(cents) / 100);
 }

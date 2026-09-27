@@ -2,14 +2,8 @@
 // that every rung Go answers draws the columns and the ids it answers, and the
 // shape, flank, words and carried document of each window the shipped steps
 // declare, opened through the real gesture path over the pinned artifacts.
-//
-// What it deliberately does not test: gesture sequences (Enter, Space, double
-// click, Escape, focus restoration), which have their own suite; anything a
-// figure of the answer or of a document could be re-derived from -- a cent sum,
-// a balance, a residual set, a gap -- which is Go's to vet and `fisc verify`'s
-// to hold; and any sentence that exists only in app.js. Words asserted here are
-// read from CONFIG (a step's description, back and projection) or from the
-// document on screen (a node's label, a ribbon's contra note).
+// Words asserted here are read from CONFIG or from the document on screen,
+// never from app.js.
 
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
@@ -770,7 +764,7 @@ describe("the refusal a drill can still meet", () => {
 
   // THE GESTURES ASK drillable FIRST, so a reader meets these two only when
   // the chart changed under the gesture; the page's own callers meet them by
-  // name. Each is a FAILED that used to say nothing (fisc-51qf).
+  // name.
   for (const [what, id, names] of [
     ["an id the chart does not draw", "fund/999", "fund/999"],
     ["a drawn mark no step opens", "fund-balance/draw", "Fund Balance Draw"],

@@ -5,18 +5,9 @@
 // the chart it was made on, a kept flank that nothing opens, and where focus
 // lands after a keyboard drill has replaced the element it was on.
 //
-// Every gesture is DISPATCHED: a real MouseEvent or KeyboardEvent, through
-// testlib's `fire`, on a drawn mark in #chart, a breadcrumb button or the
-// document, with a planted timeStamp because the activation guard compares a
-// click's stamp against the key that may have synthesised it. Outcomes are
-// read off `app.drilled`, `app.isolated`, `app.pinned`, `document.activeElement`
-// and the DOM.
-//
-// NOT HERE: what one gesture does on one mark (render.test.mjs holds that, on
-// every chosen state), the drill walk and each rung's ids (drill.test.mjs),
-// and any figure a chart draws -- a ribbon or mark count is printed as a
-// diagnostic and never asserted. No wording only app.js spells is pinned: a
-// control's words are checked against the `back` the step declares.
+// Every gesture is a dispatched event with a planted timeStamp, because the
+// activation guard compares a click's stamp against the key that may have
+// synthesised it.
 
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
@@ -51,7 +42,6 @@ const INERT = "dept/patrol";
 /**
  * A page booted and switched to `stem`. The page opens on the newest year, so
  * every other year is reached the way a reader reaches it, through the control.
- * (A private copy of drill.test.mjs's helper of the same name.)
  */
 async function onYear(stem, o = {}) {
   const loaded = await bootedApp(o);
@@ -98,10 +88,7 @@ async function keyOpen(app, document, id, at) {
   assert.equal(topOf(app), id, `Enter on ${id} left the chart on ${topOf(app) || "the overview"}`);
 }
 
-/**
- * The page's words about the chart on screen, read off the real DOM.
- * (A private copy of drill.test.mjs's helper of the same name.)
- */
+/** The page's words about the chart on screen, read off the real DOM. */
 function words(app, document) {
   const text = (id) => {
     const e = document.getElementById(id);

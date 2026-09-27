@@ -1,11 +1,6 @@
-// year.test.mjs — the FY2026/FY2027 toggle.
-//
-// The packager builds every year's words in Go and the client only chooses
-// between them, so the one thing worth testing above all others is that the
-// client reads the fields the packager writes: a wrong field name renders an
-// empty tile and throws nothing. Go pins its half of that contract
-// (TestTheSchemaStatesWhatThePageConfigCarries); this pins the client's, over
-// the pinned page and the pinned columns.
+// year.test.mjs — the year toggle: that the client reads the fields the
+// packager writes, since a wrong field name renders an empty tile and throws
+// nothing.
 
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
@@ -441,7 +436,7 @@ describe("a year switch and an open drill", () => {
   });
 });
 
-// fisc-7477: the arm a single-view export reaches, where there is no
+// The arm a single-view export reaches, where there is no
 // caveats.html for a caveat to link into.
 describe("a caveat with no page to link to", () => {
   test("a caveat without an href is painted as plain text and not as an anchor into a file never written", async (t) => {

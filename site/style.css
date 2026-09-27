@@ -278,13 +278,8 @@ button[aria-pressed="true"] {
   border-color: var(--rule);
 }
 
-/* FOCUS HAS ITS OWN TOKEN AND IS NOT THE TEXT COLOUR. --ink-1 is #ffffff in
-   both dark blocks, so every focus indicator on the page was pure white -- and
-   a white rectangle appearing under the pointer reads as "clicking put a border
-   on this" rather than as focus, which is what it was reported as. --focus is
-   --ink-2's value, which already carries a measured contrast ratio against the
-   plane, and having a name of its own means the next change to a text colour
-   does not move it. */
+/* FOCUS HAS ITS OWN TOKEN AND IS NOT THE TEXT COLOUR: a pure-white ring reads
+   as a border the click put there. It takes --ink-2's measured value. */
 :focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
@@ -567,11 +562,8 @@ button[aria-pressed="true"] {
 
 /* ---------- column control ---------- */
 
-/* THE YEAR TOGGLE'S SHAPE AND NOT ITS MECHANISM. A pill holding its controls,
-   because it sits beside that group and reads as its peer -- but a pair of
-   steppers rather than a segmented control, because a count is not a choice
-   from a list of peers: it has an order and a next value, which is what a +
-   and a - say and what a row of numbers would not. */
+/* The year toggle's pill, holding steppers: a count has a next value, which a
+   row of peers would not say. */
 .column-control {
   display: flex;
   align-items: center;
@@ -591,20 +583,10 @@ button[aria-pressed="true"] {
   line-height: 1;
 }
 
-/* DISABLED IS THE SHIPPED STATE HERE TOO, and it is also the state at either
-   bound for the whole of a reader's visit -- three columns with the minus
-   dimmed is what most windows show. Say it visually, as the year group does.
-
-   THE OPACITY DOES NOT INVALIDATE A MEASURED RATIO, which is worth stating
-   because dimming the year group's FIELDSET did. WCAG 1.4.3 exempts an
-   inactive user interface component, and nothing here is a state indicator:
-   the number between the buttons is at full strength, and it is the number and
-   not the buttons that says what the chart is drawn at.
-
-   IT ALSO TAKES THE HOVER BACK, at (0,2,1) against `button:hover`'s (0,1,1).
-   Without that a disabled stepper lights up under the pointer exactly like a
-   live one -- the defect the year group's hover rule was narrowed to fix, one
-   control over. */
+/* THE OPACITY INVALIDATES NO MEASURED RATIO: WCAG 1.4.3 exempts an inactive
+   component, and the count between the buttons stays at full strength.
+   (0,2,1) beats `button:hover`'s (0,1,1), so a disabled stepper does not light
+   up under the pointer. */
 .column-control button:disabled {
   opacity: 0.55;
   background: none;
@@ -614,41 +596,20 @@ button[aria-pressed="true"] {
 #column-count {
   font-size: 13px;
   color: var(--ink-2);
-  /* Wide enough for the widest count this page can show, so stepping does not
-     shuffle the buttons under the pointer that is stepping. */
+  /* Wide enough for the widest count, so stepping does not move the buttons. */
   min-width: 78px;
   text-align: center;
 }
 
-/* THE CHART IS NOT PROSE AND WILL NOT TAKE THE PROSE CONTAINER'S WIDTH. main is
-   1180px because that is what the page's text, tiles and tables sit in, and the
-   chart is the one element on it whose width is a measurement: app.js lays a
-   window out at chartWidth(columns), and an <svg> with a viewBox inside a
-   1180px box draws that whole picture smaller -- every label shrunk on exactly
-   the wide viewport that was the reason to draw another column.
-   Asking for more columns and getting less chart is the defect (fisc-5e2b).
+/* THE CHART BREAKS OUT OF main's 1180px AND NOTHING ELSE DOES: a viewBox inside
+   a narrower box shrinks every label on the wide viewport that was the reason
+   to draw another column. The negative margin centres the wider box on main;
+   where the viewport is narrow, min() collapses both to the room there is.
 
-   SO THE FIGURE BREAKS OUT OF THE MEASURE AND NOTHING ELSE DOES. The 50% is
-   half of main, so the negative margin centres a box wider than its container
-   on that container; where the viewport is too narrow to want one, the min()
-   collapses the width to the room there is and the margin with it to zero, so
-   the small-viewport rules below meet a .chart-wrap the same width as the
-   prose.
-
-   THE CAP IS NOT A NUMBER IN THIS FILE. app.js sets --chart-max on :root from
-   chartWidth() over the widest step the packager declared, so the ceiling is
-   derived from Go's own declarations rather than typed here and typed again
-   there -- which is what it was, in four places, one of which had to be found
-   whenever another moved. The 100% fallback is the no-script state: #chart
-   ships with a title and a description and no marks, so there is no chart for a
-   cap to bound.
-
-   --chart-cushion IS RECORDED HERE AND IN app.js, WHICH IS TWO PARTIES AND NOT
-   TWO SPELLINGS: this file subtracts it from 100vw, app.js adds it to a chart
-   width to compose the media query at which that chart fits, and
-   the client's layout test reads both and refuses a disagreement. It is the
-   40px of body padding plus a 16px cushion for a classic scrollbar, which 100vw
-   counts and the reader's window does not. */
+   The cap is app.js's --chart-max, from chartWidth() over the declared steps;
+   100% is the no-script state. --chart-cushion must equal app.js's
+   CHART_CUSHION (40px body padding plus 16px for a classic scrollbar); no test
+   holds the two together. */
 .chart-wrap {
   position: relative;
   --chart-cushion: 56px;
@@ -691,11 +652,8 @@ svg.sankey tspan.flag {
   fill: var(--muted);
 }
 
-/* WHERE A MARK CAME FROM, not a second name for it. The qualifier is the line
-   labelQualifiers gives a mark whose label another mark in the same column also
-   carries -- "Patrol" above "Wages & Benefits" -- and it is drawn muted at the
-   label's own size: subordinate to the words it disambiguates, and still the
-   size the label fit was measured at. */
+/* labelQualifiers' line on a label its column repeats: muted, at the label's
+   own size, which the label fit was measured at. */
 svg.sankey tspan.qualifier {
   fill: var(--muted);
 }
@@ -711,26 +669,15 @@ svg.sankey .link.derived {
   stroke-dasharray: 5 4;
 }
 
-/* A contra ribbon — a line pp.127-140 print as a reduction of its category,
-   ERAF and the RPTTF Reduction under Property Taxes — takes --critical for the
-   series table's reason: the sign on every figure is the first signal and the
-   hue the second, never the only one. The class is set by linkClass in app.js
-   and this rule wins over the stroke attribute paint() writes. */
+/* A contra ribbon, printed as a reduction of its category. The sign on the
+   figure is the first signal and this hue the second. Wins over the stroke
+   attribute paint() writes. */
 svg.sankey .link.contra {
   stroke: var(--critical);
 }
 
-/* A partition ribbon — one printed table read along a second axis rather than
-   money the schedule prints as moving that way, which is what app.js's
-   PARTITION_NOTE says in words on every mark that shows it.
-
-   TWO CHANNELS, AND THE OPACITY IS THE ONE THAT MATTERS. A partition ribbon is
-   PUBLISHED, so it keeps the full link opacity a printed flow has; a derived
-   one is faded to --link-opacity-derived. The dash is the secondary signal and
-   is deliberately a dot against the derived rule's long dash, so the two do not
-   read as the same qualification at ribbon scale. Both are the second signal
-   and neither is the only one — the tooltip, the panel, the flow table and the
-   screen-reader label each carry the sentence. */
+/* A partition ribbon is PUBLISHED, so it keeps full link opacity; its dot is
+   distinct from the derived rule's long dash. PARTITION_NOTE carries the words. */
 svg.sankey .link.partition {
   stroke-dasharray: 1 4;
 }
@@ -756,37 +703,17 @@ svg.sankey .node.derived rect {
   stroke-dasharray: 4 3;
 }
 
-/* THE ISOLATED MARK IS MARKED, AND NOT ONLY BY DIMMING EVERYTHING ELSE. A
-   click isolates a node and applyEmphasis drops every unrelated mark to
-   .dim, which is a large change where the node has many neighbours and no
-   visible change where it has one -- and none at all to the node itself, so
-   a reader clicking the already-isolated node to release it had nothing on
-   it to say it was held. aria-pressed is the state (applyEmphasis keeps it),
-   and this is its paint: the mark's own outline in the text colour, which is
-   the one stroke on the chart that says "chosen" rather than "derived"
-   (dashed, --ink-2) or "focused" (--focus).
-
-   BEFORE THE FOCUS RULE, at equal specificity, so a mark that is both
-   isolated and focused shows focus; AFTER .node.derived rect, so an isolated
-   derived mark keeps its dash and takes this stroke. */
+/* The isolated mark's own paint: dimming the rest shows nothing where a node
+   has one neighbour. BEFORE THE FOCUS RULE at equal specificity, so focus wins;
+   AFTER .node.derived rect, so a derived mark keeps its dash. */
 svg.sankey .node[aria-pressed="true"] rect {
   stroke: var(--ink-1);
   stroke-width: 2.5;
 }
 
-/* THE FOCUS RING GOES ON THE MARK, NOT ON THE GROUP'S BOUNDING BOX. render()
-   makes the <g> focusable, and that <g> holds the rect AND its label, which
-   labelPlacement anchors up to LABEL_GUTTER away; an SVG outline follows the
-   union of those, so the global :focus-visible rule paints a wide box floating
-   out into the gutter -- nothing like the mark that was clicked, and drawn
-   outside the SVG too because svg.sankey is `overflow: visible`. It arrives on
-   a pointer click as readily as on Tab, because restoreFocus moves focus
-   programmatically after every drill.
-
-   IT MUST FOLLOW .node.derived rect. The two selectors have equal specificity,
-   so source order is the whole of what decides -- and the dasharray that rule
-   sets has to be reset here, or a focused derived mark draws its indicator
-   dashed and reads as a different kind of mark. */
+/* THE FOCUS RING GOES ON THE RECT, NOT ON THE <g>: the group's outline spans
+   the label too and floats into the gutter. IT MUST FOLLOW .node.derived rect
+   (equal specificity) so its dasharray reset wins. */
 svg.sankey .node:focus-visible {
   outline: none;
 }
@@ -797,27 +724,10 @@ svg.sankey .node:focus-visible rect {
   stroke-dasharray: none;
 }
 
-/* A RIBBON KEEPS THE BOX AND LOSES THE OFFSET, which is a weaker fix on
-   purpose. A <path> carries one stroke and that stroke IS the data -- paint()
-   writes linkColor, .link.contra overrides it, and the dash patterns are a
-   published distinction (.derived 5 4, .partition 1 4) -- so a focus indicator
-   cannot reuse stroke or dash without colliding with something the chart is
-   saying. A ribbon's bounding box is at least roughly the ribbon, unlike a
-   node's, so dropping the 2px offset is enough to stop it reading as a border
-   around empty space. If it still reads wrong it wants a drawn focus echo
-   rather than a second guess here. */
+/* A GLOW, NOT AN OUTLINE OR A STROKE: a <path>'s outline is the whole bezier's
+   bounding box, and its stroke and dash already carry the data. drop-shadow
+   traces the ribbon's own shape. */
 svg.sankey .link:focus-visible {
-  /* NO OUTLINE AT ALL, where this dropped the offset and kept the box. A
-     <path>'s bounding box is the whole bezier's rectangle, so the global rule
-     drew a large box around mostly empty space -- the original complaint, and
-     the thing the comment above predicted would need "a drawn focus echo
-     rather than a second guess here". This is that echo.
-
-     A GLOW AND NOT A STROKE, because stroke is the ribbon: d3-sankey draws a
-     link AS a stroke whose width is its value, and stroke-dasharray is already
-     carrying the derived and partition distinctions. drop-shadow is the one
-     channel left that traces the ribbon's own shape rather than its bounding
-     box, and it collides with nothing the chart is saying. */
   outline: none;
   stroke-opacity: 1;
   filter: drop-shadow(0 0 2px var(--focus)) drop-shadow(0 0 2px var(--focus));
@@ -831,20 +741,8 @@ svg.sankey .node.contra tspan.value {
   fill: var(--critical);
 }
 
-/* The disclosure band: the region a category's arriving ribbons hang into when
-   its mark is drawn at the figure the city publishes rather than at the sum of
-   what arrives. contraBand in app.js decides which marks have one and how tall
-   it is; this says only what it looks like.
-
-   OUTLINED AND NOT FILLED, and that is the whole design. A filled block would
-   paint OVER the two reduction ribbons it exists to mark off -- nodes render
-   after links -- so the reader would lose the very thing the band is pointing
-   at. What is wanted is an accountant's bracket: the mark's face is the
-   published figure, and below it is ruled off the money that cancels.
-
-   --critical is the contra hue the ribbons and the mark's own value already
-   take, so the band reads as part of the same statement rather than as a
-   fourth thing on the chart. */
+/* contraBand's disclosure band. OUTLINED AND NOT FILLED: nodes render after
+   links, so a fill would hide the reduction ribbons it marks off. */
 svg.sankey .contra-band {
   fill: none;
   stroke: var(--critical);
@@ -856,13 +754,8 @@ svg.sankey .node.dim {
   opacity: 0.3;
 }
 
-/* EVERY NODE KEEPS THE POINTER, which is a measurement and not an oversight. A
-   single click follows one node's money whatever the node is, so there is no
-   mark here whose cursor would be more truthful for not being a pointer --
-   moving it onto .node.opens would take it off every mark that does not open,
-   which a click still does something to. Which marks ALSO open is carried by
-   the `opens` marker in the label's flag tspan, where it costs no hue, survives
-   forced-colors and greyscale, and is read aloud. */
+/* EVERY NODE KEEPS THE POINTER: a single click does something on every node.
+   Which marks also open is the flag tspan's `opens` marker. */
 svg.sankey .node {
   cursor: pointer;
 }
@@ -1016,9 +909,8 @@ svg.sankey .node {
    do the right thing, so a `color: inherit` here would be a duplicate of that
    rule pretending to be a decision. Only the hover state is stated.
 
-   SCOPED TO .caveats li, WHICH IS index.html -- the one chart page, whose
-   caveats ARE links. The lists this rule does not reach are trends.html's and
-   history.html's, each a <section class="caveats"> of plain <li>s. */
+   SCOPED TO .caveats li, index.html's linked caveats; trends.html's and
+   history.html's are plain <li>s in a <section class="caveats">. */
 .caveats li a:hover,
 .caveats li a:focus {
   color: var(--ink-1);
@@ -1142,10 +1034,8 @@ details > summary {
   font-weight: 600;
 }
 
-/* The one way back out of an expanded column, and it sits here because the mark
-   that was expanded is the mark expanding removes -- there is nothing left on
-   the chart to gesture at. Dashed, as every inferred mark on this page is: what
-   it undoes is our grouping and not a figure the city printed. */
+/* The way back out of an expanded column, since expanding removes the mark.
+   Dashed: it undoes our grouping, not a printed figure. */
 .crumb-expanded {
   cursor: pointer;
   font: inherit;
@@ -1230,8 +1120,7 @@ details > summary {
    WHAT IS DELIBERATELY NOT HERE, because these are figures rather than prose
    and clamping them would be the defect this rule is meant to fix: main and
    .page-head keep 1180px, .figures keeps its auto-fit grid, and .card,
-   .table-scroll and table keep the full container -- .chart-wrap takes MORE
-   than the container, for the reason written on its own rule. A chart or a
+   .table-scroll and table keep the full container; .chart-wrap takes more. A chart or a
    seven-column table narrowed to a reading measure is unreadable in a
    different way.
 
@@ -1341,8 +1230,7 @@ noscript p {
 /* Forced-colors: hue is gone, so identity falls back to the direct labels and
    the table view, and the derived/published distinction falls back to GrayText
    plus the dash pattern, which forced-colors preserves. A partition ribbon is
-   published and keeps CanvasText, told from a derived one by colour and by its
-   dot pattern against that rule's long dash. */
+   published and keeps CanvasText. */
 @media (forced-colors: active) {
   svg.sankey .link {
     stroke-opacity: 1;

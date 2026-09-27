@@ -19,7 +19,7 @@ import (
 	"io/fs"
 )
 
-// assets is the site source tree: the page template, the client script, the
+// assets is the site source tree: the page templates, the client script, the
 // stylesheet, the vendored d3 bundles with their licences, and the zero-byte
 // .nojekyll that stops GitHub Pages running the output through Jekyll.
 //

@@ -1,9 +1,5 @@
 // columns.test.mjs — the column budget: what the viewport gives, what the
 // reader chooses, what the control describes, and what a widened step draws.
-//
-// The fold is the client's fitting step (AGENTS.md, "Go vets, JavaScript
-// renders"): DrillStep.Widen says which columns a fourth buys and the client
-// decides, from the viewport and the reader's choice, whether to draw it.
 
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
@@ -104,8 +100,8 @@ describe("the column control describes the chart on screen", () => {
   });
   test("a chart with one width offers no step, and says the width it has", async (t) => {
     const quiet = [];
-    // THE REVENUE CATEGORY, NOT THE FUND GROUP: the fund-group step widens
-    // (fisc-84y5), so its window has a second width and is the other test's.
+    // THE REVENUE CATEGORY, NOT THE FUND GROUP: the fund-group step widens, so
+    // its window has a second width and is the other test's.
     for (const path of [[], ["revenue/taxes/property"]]) {
       const { app, document } = await bootedApp({ checkedStem: "sankey", viewport: 2000 });
       await opened(app, ...path);
@@ -323,7 +319,7 @@ describe("a widened step", () => {
     }
     return answer;
   }
-  // THE FUND-GROUP STEP SHIPS WIDENED TO TIER 4 (fisc-84y5), so these two
+  // THE FUND-GROUP STEP SHIPS WIDENED TO TIER 4, so these two
   // drive the pinned config and Go's own answer rather than a synthetic pair.
   test("a widened column the document leaves empty is dropped, and the chart is re-laid at the columns it has", async (t) => {
     const worst = "fund-group/special-revenue";
@@ -463,13 +459,8 @@ describe("a widened step", () => {
     });
   }
 
-  // A CHILD WHOSE TIERS ARE A STRICT SUBSET OF ITS WIDENED PARENT'S IS DRAWN.
-  // export.validateSteps refuses a step whose tiers EQUAL its parent's and
-  // accepts a subset (fisc-ke1f); this is the client's half of that decision,
-  // over the one pair that makes one: the fund-group step widened to the
-  // whole fund-flows chain, under which the fund step's {2,3,4,5} is a subset
-  // of the {0,2,3,4,5} on screen. The fund window is a narrower chart of one
-  // fund and not a redraw, at every budget.
+  // A CHILD WHOSE TIERS ARE A STRICT SUBSET OF ITS WIDENED PARENT'S IS DRAWN,
+  // as a narrower chart of one fund and not a redraw, at every budget.
   test("a step whose tiers are a strict subset of its widened parent's opens at every budget", async (t) => {
     const path = ["fund-group/general", "fund/100"];
     const seen = [];
@@ -489,7 +480,7 @@ describe("a widened step", () => {
   });
 });
 
-// fisc-7477: the storage arm, which some privacy modes reach by throwing on
+// The storage arm, which some privacy modes reach by throwing on
 // the read rather than answering null.
 describe("a storage the browser refuses", () => {
   test("a localStorage that throws on read is a saved count of none", async () => {

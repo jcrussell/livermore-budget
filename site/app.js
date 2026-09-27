@@ -2,31 +2,13 @@
 /**
  * fisc — the published page's client script.
  *
- * A browser-native ES module with JSDoc types. There is no bundler and no npm
- * in the deploy path: this file is served exactly as it is committed, beside
- * the vendored d3 bundles, and the page template boots it by importing
- * [boot]. Every top-level binding is exported so the tests under site/ can
- * import the shipped file rather than a copy of it; nothing runs at import.
+ * Served exactly as committed; the page template boots it by importing [boot].
+ * Every top-level binding is exported so the tests import the shipped file,
+ * and nothing runs at import. Nothing runs tsc: `@ts-check` is for an editor.
  *
- * NOTHING IN THIS TREE RUNS tsc, and the `@ts-check` above is for an editor
- * and for whoever cares to run one locally. The types are a convention, not
- * a gate: no Makefile target and no CI step reach them.
- *
- * The division of labour with the Go side is deliberate. `window.FISC_CONFIG`
- * carries the metadata the page needs before it has fetched anything — the
- * fiscal year, the headline totals, the caveats, where the source documents
- * live — and it carries the projection's own metadata block verbatim, so the
- * page and the JSON cannot disagree about a figure. Everything bulky (nodes,
- * links, fact ids) is fetched as one file per published column, so a reader can
- * curl the provenance file on its own.
- *
- * NOTHING HERE RE-CHECKS THE SHAPE OF EITHER. Go validates every artifact
- * against schema/ before writing it — the config against page.schema.json, a
- * column against column.schema.json, the rung answer against rungs.schema.json
- * — so a key check on arrival would be a second implementation of a check that
- * already ran against the bytes. What this file still refuses is the two
- * questions no schema can answer: a 200 carrying an error page, and a file
- * cached from before the last deploy.
+ * Go validates every artifact against schema/ before writing it, so nothing
+ * here re-checks a shape. What this file refuses is what no schema can answer:
+ * a 200 carrying an error page, and a file cached from before the last deploy.
  */
 
 /* global d3 */
@@ -42,11 +24,8 @@
  * @property {boolean} derived
  * @property {string} rationale
  * @property {string} source_note
- * @property {string[]} [folds] the ids a synthetic aggregate stands for.
- *   PRESENT ONLY ON capColumn'S AGGREGATE and on no node any document
- *   publishes: the cap folds a column's tail by VALUE, which nothing in the
- *   parent chain records, so caveatsFor cannot reach those ids by walking. It
- *   is optional because every real node lacks it.
+ * @property {string[]} [folds] the ids a synthetic aggregate stands for; only
+ *   on capColumn's aggregate, whose members no parent chain records.
  * @property {number} [in_cents] a residual's or a gap's figure, as Go answered it
  * @property {number} [out_cents]
  * @property {FiscSource[]} [locators] a gap's citations, as Go answered them
@@ -62,20 +41,11 @@
  * @property {string[]} fact_ids
  * @property {FiscSource[]} locators
  * @property {boolean} derived
- * @property {string} [contra]  the words for a link the schedule printed as a
- *   reduction, e.g. "printed as a reduction of Property Taxes". THE
- *   DOCUMENT'S, like partition: the words name the category the schedule
- *   prints the row under, and the fold blanks a line's parent before the chart
- *   is drawn, so a page composing them would name a category the reader is not
- *   looking at. column.schema.json carries it only on a link the document
- *   prints negative, which is why it is optional here. markContra draws those
- *   at their magnitude and leaves the sentence to say what the sign meant.
+ * @property {string} [contra]  the document's words for a link the schedule
+ *   prints as a reduction; present only on such a link.
  * @property {boolean} [partition]  the ribbon divides one printed table along
- *   a second axis rather than following money the schedule prints as moving
- *   that way. THE PROJECTION'S, unlike contra: the client cannot tell a
- *   cross-tab from a chain by looking at a graph, and a page that guessed
- *   would be deciding what a published table means. PARTITION_NOTE carries the
- *   words, in one place, for every mark that shows them.
+ *   a second axis rather than following money; the projection's call, since
+ *   the client cannot tell a cross-tab from a chain.
  */
 
 /**
@@ -100,13 +70,8 @@
  */
 
 /**
- * One thing the document cannot show.
- *
- * IT WAS A BARE STRING until the caveats got a page of their own. `text` is
- * that string, unchanged; `summary` is the line a page shows in its place, and
- * `id` is the anchor it links to. `applies_to` names the nodes the caveat is
- * about, and is EMPTY for a caveat about the schedule rather than about any
- * mark -- empty means document-wide, not "not filled in".
+ * One thing the document cannot show. An empty `applies_to` means
+ * document-wide, not "not filled in".
  * @typedef {Object} FiscCaveat
  * @property {string} id
  * @property {string} summary
@@ -115,15 +80,9 @@
  */
 
 /**
- * A caveat as the PAGE shows it: a line, and somewhere to go for the rest.
- *
- * NO `text`, on purpose. The client renders summaries and links to the caveats
- * page; a client that had the paragraph in hand would eventually print it, and
- * printing it under the chart is the thing this page stopped doing.
- *
- * `href` IS EMPTY WHEN THE SITE HAS NO CAVEATS PAGE -- a single-view export
- * writes index.html and nothing else -- and the renderer falls back to plain
- * text rather than shipping a link that 404s.
+ * A caveat as the page shows it: a summary and a link, deliberately no `text`.
+ * `href` is empty when the site has no caveats page, and the renderer falls
+ * back to plain text.
  * @typedef {Object} FiscCaveatRef
  * @property {string} id
  * @property {string} summary
@@ -148,8 +107,7 @@
  */
 
 /**
- * One published fiscal year, with every word that belongs to it. The packager
- * builds these in Go for all of them; the client only chooses.
+ * One published fiscal year, with every word that belongs to it.
  * @typedef {Object} FiscYear
  * @property {number} year
  * @property {string} label
@@ -161,20 +119,16 @@
  * @property {FiscFigure[]} figures
  * @property {FiscCaveatRef[]} caveats
  * @property {{facts:number, nodes:number, links:number}} counts
- * @property {FiscStepDoc[]} [steps]  what this year's rungs draw, one per
- *   declared step, resolved for this year by the packager
+ * @property {FiscStepDoc[]} [steps]  one per declared step, resolved for this year
  * @property {string} chart_title
  */
 
 /**
- * What one rung's document discloses for one year, verbatim from
- * export.stepView. It names no file: a step's document is the year's column
- * and the schedule key the step declares, and neither is per-step.
- *
+ * What one rung's document discloses for one year.
  * @typedef {Object} FiscStepDoc
  * @property {FiscCaveatRef[]} caveats
  * @property {string[]} [opens]  node ids this year's document decomposes under
- *   the step; absent means it declares no such set and every node is offered
+ *   the step; absent means every node is offered
  */
 
 /**
@@ -188,16 +142,13 @@
  * @property {number[]} [render_tiers]
  * @property {FiscDrillStep[]} [steps]
  * @property {string} [root]
- * @property {string} [rungs]  where Go's answer for every rung this page opens
- *   is served; absent means nobody answers this page's rungs
- * @property {Record<string, string>} wording  every sentence this file
- *   composes, as templates say() fills
+ * @property {string} [rungs]  where Go's answer for this page's rungs is
+ *   served; absent means none is
+ * @property {Record<string, string>} wording  templates say() fills
  */
 
 /**
- * Go's answer for every rung the drill walks: what `fisc export` writes and
- * this page reads rather than deriving.
- *
+ * Go's answer for every rung the drill walks.
  * @typedef {Object} FiscRungs
  * @property {number} schema_version
  * @property {FiscRungColumn[]} columns
@@ -215,29 +166,14 @@
  * @typedef {Object} FiscRung
  * @property {string[]} path  the nodes opened, outermost first
  * @property {string} step  the key of the step that opened the last node
- * @property {FiscDrawnTier[]} draws  every column the window draws, in the
- *   order it draws them
- * @property {FiscDrawnMark[]} [marks]  the marks the client adds to the window
- *   that no document prints, sorted by id; omitted where the rung has none
+ * @property {FiscDrawnTier[]} draws  every column the window draws, in order
+ * @property {FiscDrawnMark[]} [marks]  marks no document prints, sorted by id
  */
 
 /**
- * One column of one rung: every node it holds, unfolded. How many of them a
- * viewport leaves room for is this page's own (capColumn).
- *
- * `ids` is written even when empty, so a column answered with nothing is told
- * apart from a column not answered at all; `carried` is omitted when empty,
- * so a reader that compared undefined would refuse every column with no mark
- * beside its parts.
- * One mark the client draws on a rung that no page prints: the residual
- * carryResidual stands beside the opened node's parts and the gap markGap
- * states. Which mark exists, the column it stands in and the cents that arrive
- * at it and leave it are Go's; the words are this page's, because they are
- * built from labels and citations the walk does not decode.
- *
- * `ends` is a residual's alone -- the endpoints of the chart above whose
- * flows it carries, sorted -- and a gap has exactly one of `in_cents` and
- * `out_cents`, which is the side the short one stands on.
+ * A mark no page prints: a residual or a gap. Which, where and its cents are
+ * Go's; the words are this page's. `ends` is a residual's alone, and a gap has
+ * exactly one of `in_cents` and `out_cents`.
  * @typedef {Object} FiscDrawnMark
  * @property {string} id
  * @property {string} role  residual or gap
@@ -248,13 +184,9 @@
  */
 
 /**
- * One column of one rung: every node it holds, unfolded. How many of them a
- * viewport leaves room for is this page's own (capColumn).
- *
- * `ids` is written even when empty, so a column answered with nothing is told
- * apart from a column not answered at all; `carried` is omitted when empty,
- * so a reader that compared undefined would refuse every column with no mark
- * beside its parts.
+ * One column of one rung, unfolded; capping it to the viewport is capColumn's.
+ * `ids` is written even when empty, so "answered with nothing" differs from
+ * "not answered"; `carried` is omitted when empty.
  * @typedef {Object} FiscDrawnTier
  * @property {number} tier
  * @property {string} role  centre, flank or outward
@@ -265,48 +197,35 @@
 /**
  * @typedef {Object} FiscTierCap
  * @property {number} tier
- * @property {number} cap  how many nodes the tier may hold before its tail is
- *   folded into one aggregate; see capColumn for why a cap is needed at all.
- * @property {string} [tail]  the plural noun this tier's tail is counted in;
- *   absent, the step's own
+ * @property {number} cap  how many nodes the tier holds before its tail folds
+ * @property {string} [tail]  the plural noun the tail is counted in; absent,
+ *   the step's own
  */
 
 /**
- * One step of the tree the packager ships, verbatim from export.DrillStep.
- *
+ * One step of the drill tree, verbatim from export.DrillStep.
  * @typedef {Object} FiscDrillStep
- * @property {string} key  what other steps name this one by
- * @property {string[]} after  the keys of the steps whose charts this one
- *   opens from, carrying "" for the view's own chart
- * @property {string} [side]  which end of a link the opened node is: absent
- *   for the end links point at, "source" for the end they come from
- * @property {string} [role]  which nodes at `from` open, by node.role; absent
- *   opens every node at the tier
- * @property {number} from  the tier whose nodes open, in the chart on screen
- *   before they do
- * @property {string} [projection]  the schedule this step draws, selected out
- *   of the year's own column; absent means the same document as the step
- *   before it
- * @property {number[]} tiers  the tier set drawn once one has
- * @property {number[]} [keep]  the flank of the chart on screen that stays
- *   drawn beside the opened node; absent means the step keeps none
- * @property {number[]} [widen]  the tiers a fourth column buys, in the order
- *   they are added
- * @property {string} [noun]  what one mark of the opened tier is called, for
- *   the words the page composes about it
- * @property {FiscTierCap[]} [caps]  per tier; a tier with none is drawn whole
- * @property {string} back  what the breadcrumb's return control says
- * @property {string} tail  the plural noun a capped aggregate is counted in
- * @property {string} description  the chart's long description once a node
- *   has opened on this step, in the packager's words
- * @property {Record<string,string>} [residual]  the endpoints of the chart
- *   this step opens FROM whose flow the document it draws does not
- *   decompose, id to reason -- the check's declaration as the packager
- *   shipped it; absent on a step that switches no document
- * @property {Record<string,string>} [gaps]  the nodes this step OPENS whose
- *   total the document it draws does not reach, id to the declared reason the
- *   two documents print one cell at two figures; absent on a step that makes
- *   no claim that its opened nodes balance
+ * @property {string} key
+ * @property {string[]} after  the steps this one opens from; "" is the view's
+ *   own chart
+ * @property {string} [side]  absent for the end links point at, "source" for
+ *   the end they come from
+ * @property {string} [role]  which nodes at `from` open; absent opens all
+ * @property {number} from  the tier whose nodes open
+ * @property {string} [projection]  the schedule this step draws; absent means
+ *   the previous step's
+ * @property {number[]} tiers
+ * @property {number[]} [keep]  the flank that stays drawn beside the opened node
+ * @property {number[]} [widen]  the tiers a fourth column buys, in order
+ * @property {string} [noun]
+ * @property {FiscTierCap[]} [caps]  a tier with none is drawn whole
+ * @property {string} back
+ * @property {string} tail
+ * @property {string} description
+ * @property {Record<string,string>} [residual]  endpoints whose flow the drawn
+ *   document does not decompose, id to reason
+ * @property {Record<string,string>} [gaps]  opened nodes whose total the drawn
+ *   document does not reach, id to reason
  */
 
 /**
@@ -319,11 +238,8 @@
  */
 
 /**
- * A node after d3-sankey has laid it out. d3 mutates the objects it is given,
- * so this extends FiscNode rather than replacing it.
- * layer is the COLUMN d3-sankey put the node in, which is not depth: depth is
- * the longest path to the node, and layer is what the align function returned
- * after clamping. columnShare totals a column and needs the second.
+ * A node after d3-sankey has laid it out (d3 mutates what it is given).
+ * layer is the column d3 put it in, which is not depth; columnShare needs layer.
  * @typedef {FiscNode & {x0:number, x1:number, y0:number, y1:number, value:number,
  *   sourceLinks:LaidLink[], targetLinks:LaidLink[], depth:number,
  *   layer:number}} LaidNode
@@ -342,88 +258,31 @@ export const D3 = /** @type {any} */ (/** @type {any} */ (globalThis).d3);
 export const CONFIG = /** @type {any} */ (globalThis).FISC_CONFIG;
 
 /**
- * The projection schema this client draws.
- *
- * This is the third copy of one constant — project.SchemaVersion stamps the
- * document, export.SchemaVersion gates the packager, and this gates the
- * browser — and it is the copy nothing compiles against, so it is the one that
- * would drift silently. A test in internal/export reads this file and pins the
- * literal below to the producer's constant; if you change it here, change it
- * there, and expect that test to say so if you do not.
- *
- * The gate matters because a schema bump changes what the graph MEANS rather
- * than what it is spelled like. A version-2 document read by this code would
- * draw a chart that is WRONG, not one that fails, and a wrong chart of public
- * money is the single outcome this project exists to avoid. So it refuses.
+ * The projection schema this client draws. A test in internal/export pins
+ * this literal to the producer's constant. A newer schema would draw a wrong
+ * chart rather than fail, so the page refuses it.
  */
 export const SCHEMA_VERSION = 1;
 
 /**
- * The node tiers this page draws, coarsest first; empty draws the document as
- * it stands.
- *
- * THIS IS PER-VIEW CONFIGURATION AND MUST NEVER BECOME A CONSTANT IN THIS FILE.
- * The spine and the drill-down are drawn by the same script from documents with
- * different hierarchies: the spine publishes tiers 0, 2 and 5 and is drawn
- * whole, while the drill-down publishes 0, 2, 3, 4 and 5 and is drawn at 0/2/4.
- *
- * Applying one page's set to the other document REFUSES rather than corrupts,
- * and the distinction is worth stating because the first version of this
- * comment got it wrong: {0,2,4} over the spine does not quietly fold its
- * expenditure column away, it throws, because every spine node is parentless
- * and a tier-5 node has no drawn ancestor to fold to. That is the better of the
- * two failures and it is still a broken page, which is what makes the tier set
- * something a view declares rather than something this file assumes.
- *
- * Absent, the fold is skipped entirely rather than run with a set covering
- * every tier, so a page that does not opt in is laid out by exactly the code
- * that laid it out before the fold existed.
- *
- * ABSENT AND NOT EMPTY IS THE ONLY DISTINCTION READ HERE. That it is a list of
- * integers when present is schema/page.schema.json's, checked against the bytes
- * the export wrote.
+ * The node tiers this page draws, coarsest first. Per view and never a
+ * constant here: the spine and the drill-down have different hierarchies, and
+ * one's set over the other throws. Absent skips the fold entirely.
  * @type {number[]}
  */
 export const RENDER_TIERS = (CONFIG && CONFIG.render_tiers) || [];
 
 /**
- * How this page drills: the steps the packager declared, empty for a page
- * that opens nothing.
- *
- * PER VIEW AND NEVER A CONSTANT HERE, for render_tiers' reason: the spine and
- * the two fund-flows pages are drawn by the same script from different
- * hierarchies, and a page that declares nothing keeps the isolate-on-click
- * behaviour it has always had.
- *
- * A TREE, READ BY KEY. Each step names the charts it opens from -- `after`,
- * a list carrying "" for the view's own -- and the tier its nodes are at, so
- * two steps can open from one chart: the spine's fund groups and its revenue
- * categories open into different views of the same document, and a depth
- * cannot tell them apart. Several entries are one chart reachable from
- * several, which is the other direction and the same list. stepFor is the one
- * reader of that rule.
- *
- * READ AND NOT VETTED. The packager validates the tree -- keys unique, every
- * entry naming an earlier step, at most one step per (after, from, role)
- * (export.validateSteps) -- and schema/page.schema.json holds the emitted
- * bytes to the shape, closed, so a step missing a key is a page `fisc export`
- * refuses to write. A filter here would be a second implementation of that,
- * and a worse one: it DROPS what it does not recognise, so the reader gets a
- * chart whose nodes will not open and no banner saying why.
- *
+ * The steps this page drills through, read by key; empty opens nothing.
+ * Not filtered here: the packager validates the tree and a filter would drop
+ * a step silently, leaving nodes that will not open and no banner.
  * @type {FiscDrillStep[]}
  */
 export const STEPS = (CONFIG && CONFIG.steps) || [];
 
 /**
- * One sentence of the page's wording, filled in.
- *
- * THE WORDS ARE THE PACKAGER'S AND THE NUMBERS THE CHART'S. `{name}` is the
- * variable's value; `{name:one|many}` is the value followed by the singular
- * or the plural word, by whether the value is 1. A placeholder the caller
- * does not fill is left as written, so a template that asks for more than
- * the chart knows reads as one on the page rather than as a blank.
- *
+ * One sentence of the page's wording, filled in. `{name:one|many}` appends the
+ * singular or plural word; an unfilled placeholder is left as written.
  * @param {string} key
  * @param {Record<string, string | number>} [vars]
  * @returns {string}
@@ -446,42 +305,11 @@ export function openedKey() {
 }
 
 /**
- * The step this node of the chart on screen opens into, or null when it opens
- * nothing.
+ * The step this node of the chart on screen opens into, or null.
  *
- * THREE MATCHES AND NOT A DEPTH. The step opens from the chart on screen
- * (`after` CONTAINS the rung's key), from this node's tier (`from`), and --
- * when it names one -- from nodes in this role. Depth alone answered while the
- * steps were a line; on the spine two steps open from depth 0, one per tier.
- *
- * THE FIRST MATCH IS MEMBERSHIP AND NOT EQUALITY, which is what lets one chart
- * be reached from several: a step listing two keys is one view the reader can
- * arrive at by either route, and it opens the same way whichever they took.
- *
- * THE ROLE IS THE PACKAGER'S GATE, MATCHED AND NOT INFERRED. transfers/in and
- * fund-balance/draw sit at tier 0 beside the ten revenue categories, and
- * pp.127-140 print nothing beneath either; a step declaring `role:
- * "revenue_source"` opens the categories and leaves the endpoints as the
- * flow's ends. Deriving the same answer from an id prefix or from what the
- * step document happens to carry would be this file deciding what a tier
- * means, which paintBreadcrumb's comment refuses.
- *
- * AND A FOURTH MATCH THAT IS A LOOKUP RATHER THAN A RULE: whether the year's
- * own document for that step decomposes THIS NODE. A role says what a node is,
- * which is the right question for a flow endpoint and the wrong one for a fund
- * -- Budget Book pp.85-125 name no row for 6 of the 61 funds the drill-down
- * draws in FY2025-26, and nothing about fund/511 distinguishes it from
- * fund/512. The packager reads the set off each year's document
- * (export.openableNodes) so this file decides nothing: a step that ships no
- * `opens` declares no such set and every node at its tier opens, which is what
- * the transfers step and every step before this one did.
- *
- * IT IS HERE AND NOT IN drillDown, because the affordance is the thing at
- * stake. The click already fails closed -- filterLinks refuses a node its
- * document does not carry, in words -- and what that produces is a mark drawn
- * with the triangle, announced as openable, that banners when a reader
- * activates it. Measured before this clause existed, over both committed
- * columns: drillDown(fund/511) failed and left the chart on fund-group/capital.
+ * Four matches, not a depth: `after` contains the rung's key, `from` is the
+ * node's tier, `role` (when named) is the node's, and the year's document
+ * decomposes this node. The role is matched, never inferred from an id.
  *
  * @param {{id?: string, tier: number, role?: string}} node
  * @returns {FiscDrillStep | null}
@@ -499,19 +327,9 @@ export function stepFor(node) {
 }
 
 /**
- * Whether the year's document for `step` draws anything under `id`.
- *
- * TRUE WHEN NOTHING SAYS OTHERWISE, and the asymmetry is deliberate. The
- * packager omits `opens` from a step that declares no set, and refuses to ship
- * an EMPTY one -- a window whose document decomposes nothing at its opened tier
- * is a rung no reader could reach, and export.stepDocuments reports it by name
- * rather than writing `[]` here for this function to read as "nothing opens".
- * So a missing key has exactly one meaning and this can default open.
- *
- * A NODE WITH NO ID IS OPEN FOR THE SAME REASON. stepFor is asked about a
- * `{tier, role}` shape by callers that have no node in hand, and answering
- * "closed" to those would close a rung on a question that was never asked.
- *
+ * Whether the year's document for `step` draws anything under `id`. True when
+ * nothing says otherwise: the packager refuses to ship an empty `opens`, so an
+ * absent one means "no set declared". A node with no id is open too.
  * @param {FiscDrillStep} step
  * @param {string | undefined} id
  * @returns {boolean}
@@ -539,73 +357,34 @@ export const RIBBON_GAP = 2;
 export const CHART_HEIGHT = 820;
 
 /**
- * Room reserved either side of the plot for node labels, in px. Sized from
- * the widest label this data produces — "Fund Balance Contribution  $12.8M ◇"
- * — because a label that does not fit must not be clipped,
- * and there is nowhere else for a sankey node's name to go.
- *
- * IT DOES NOT GROW WITH THE COLUMN COUNT. A gutter is what a label anchored
- * OUTWARD runs into, and labelPlacement anchors outward on the two end columns
- * alone: every interior label is centred above its own rect. So two gutters
- * serve a chart of any width, and adding one per column would buy room for
- * labels no column asks for.
+ * Room either side of the plot for node labels, in px. Only the two end
+ * columns anchor labels outward, so it does not grow with the column count.
  */
 export const LABEL_GUTTER = 250;
 
 /**
- * The clear horizontal run between one column's rects and the next's, in px:
- * what a ribbon crosses.
- *
- * IT IS THE BAND AND NOT THE PITCH, which is what makes it the constant to
- * hold fixed as columns are added. d3-sankey spreads its columns over the
- * extent at (width - NODE_WIDTH)/(columns - 1), so a chart sized by chartWidth
- * below gives every band exactly this many px whatever the count.
- *
- * 319 BECAUSE THREE COLUMNS MUST COME TO 1180 EXACTLY. That was the chart's
- * fixed design width while three columns was the only shape, and every figure
- * layout.test.mjs pins -- the crossings, the overlapped value, every label's
- * clearance -- is of a chart laid out at it. A band chosen for its own sake
- * would move all of them at once and none of them for a reason.
+ * The clear run between one column's rects and the next's, in px. Held fixed
+ * as columns are added; 319 makes chartWidth(3) main's 1180px.
  */
 export const BAND = 319;
 
 /**
- * How wide a chart of `n` columns is laid out, in px.
- *
- * The chart is laid out at a fixed size and scaled by the viewBox, rather than
- * re-laid-out at the container's width. A sankey's labels do not reflow: at
- * 700px the three columns and their labels collide, and the only honest fixes
- * are a horizontal scrollbar or a fixed design width that shrinks as a whole.
- * This is the second, and a fourth column makes the design width a function of
- * the count rather than a constant.
- *
- * THE DRAWING SCALES, THE CONTAINER DOES NOT. The viewBox is what fits this
- * width into whatever room style.css gives the <svg>, so a wider chart in the
- * same container is the same picture drawn smaller. That is why the column
- * budget is asked of the viewport (COLUMN_QUERIES) rather than taken whenever
- * a step offers one.
- *
+ * How wide a chart of `n` columns is laid out, in px. Labels do not reflow, so
+ * the chart is laid out at a fixed width and scaled by the viewBox; the column
+ * budget is asked of the viewport (COLUMN_QUERIES) for that reason.
  * @param {number} n
  * @returns {number}
  */
 export function chartWidth(n) {
-  // A CHART HAS A COLUMN. d3-sankey divides by (columns - 1) and a count of 0
-  // or 1 has no band at all; clamping here keeps the width finite rather than
-  // letting a degenerate tier set reach the extent.
+  // d3-sankey divides by (columns - 1); clamp so the width stays finite.
   const columns = Math.max(1, n);
   return 2 * LABEL_GUTTER + BAND * (columns - 1) + NODE_WIDTH * columns;
 }
 
 /**
- * The px `100vw` counts that the reader's window does not: the body's own
- * padding plus room for a classic scrollbar.
- *
- * RECORDED HERE AND IN style.css, WHICH IS TWO PARTIES AND NOT TWO SPELLINGS.
- * The stylesheet subtracts it from 100vw and this file adds it to a chart width
- * to ask at what viewport that chart fits; the client's layout test reads both
- * and refuses a disagreement, the way `fisc verify` cross-checks a hash
- * tools/extract.py computed independently. One side reading the other would be
- * a lookup, and a lookup cannot disagree.
+ * The px `100vw` counts that the window does not: body padding plus a classic
+ * scrollbar. style.css records it independently as --chart-cushion; no test
+ * holds the two together.
  */
 export const CHART_CUSHION = 56;
 
@@ -632,14 +411,8 @@ export function fmtShort(cents) {
 }
 
 /**
- * A figure with its sign, for a mark whose figure the schedule prints as a
- * reduction.
- *
- * THE MINUS IS THE FIRST SIGNAL AND THE COLOUR THE SECOND, for the reason the
- * series table gives its contra rows a minus rather than the city's
- * parentheses: screen readers do not announce parentheses at default settings
- * and would read the figure aloud as positive, and a hue is never the only
- * signal on this site. U+2212 rather than a hyphen, so it reads as a sign.
+ * A figure with its sign. A minus rather than parentheses, because screen
+ * readers do not announce parentheses; U+2212 so it reads as a sign.
  * @param {number} cents
  * @returns {string}
  */
@@ -663,15 +436,8 @@ export function el(id) {
 }
 
 /**
- * The element with this id, or null if the template did not render one.
- *
- * el() THROWS on a missing id, deliberately: most of this file addresses
- * elements the template always renders, and a silent null there would surface
- * as a blank region rather than as the broken template it is. But some elements
- * are conditional -- the year toggle exists only when more than one year is
- * published -- and for those `if (!el(id))` is not a guard at all, it is an
- * exception one line earlier. Reaching for el() there took the whole chart down
- * on a single-year build.
+ * The element with this id, or null. For conditional elements such as the
+ * year toggle: el() throws, so `if (!el(id))` is no guard.
  * @param {string} id
  * @returns {HTMLElement | null}
  */
@@ -688,15 +454,8 @@ export function cssVar(name) {
 }
 
 /**
- * The fund groups the column on screen draws, in the order Go laid them out.
- *
- * NOT A CONSTANT IN THIS FILE, because the set is open. data/funds.yaml
- * declares seven fund types and fy2024-actual publishes all seven, so any list
- * held here would be a closed set over an open one. internal/export's
- * fundGroupsOf orders whatever the column holds and puts a group its sequence
- * does not name last, so a type the registry grows arrives here in a
- * determined place rather than nowhere.
- *
+ * The fund groups the column on screen draws, in Go's order. The set is open,
+ * so it is never a constant here.
  * @returns {{id: string, slug: string}[]}
  */
 export function fundGroups() {
@@ -704,17 +463,8 @@ export function fundGroups() {
 }
 
 /**
- * A fund group's place in the drawn order.
- *
- * ONE RULE FOR TWO CALLERS, which is the whole of what it is for. nodeRank and
- * buildLegend both order by this and have to agree on every group; two
- * spellings once put one group last in the legend and first in the fund
- * column on the same chart. fisc-zojk.
- *
- * EVERY GROUP HAS A PLACE, and there is no fallback for one that does not:
- * the order is built from the column's own node table, and the export holds
- * every fund-group node to a place in it.
- *
+ * A fund group's place in the drawn order; nodeRank and buildLegend must agree
+ * on it.
  * @param {string} id
  * @returns {number}
  */
@@ -727,44 +477,21 @@ export function fundGroupPlace(id) {
  * @returns {boolean}
  */
 export function isFundGroup(node) {
-  // THE ROLE AND NOT THE ID. internal/project/sankey.go declares the role
-  // vocabulary as the thing that says what a node is for "without the client
-  // parsing its id", and this read `id.startsWith("fund-group/")` against it.
-  // schema/column.schema.json states the enum, so the value is held to one
-  // list rather than to a prefix two languages spell.
+  // The role, not an id prefix: column.schema.json holds the role to an enum.
   return node.role === "fund_group";
 }
 
 /**
- * The fund group a node belongs to, walking node.parent until it reaches one.
- *
- * THE SPINE HAS NO HIERARCHY AND THIS IS WHY THE WALK IS SAFE THERE. Every one
- * of testdata/sankey.golden.json's nodes carries parent: "", so the loop
- * exits on its first test and every node answers for itself exactly as
- * isFundGroup did. The drill-down is the first document with parents to walk:
- * a fund's group is its parent, and a department's is its fund's.
- *
- * Returns "" for a node with no fund group above it -- tier 0 revenue sources
- * on both documents, and any node whose chain runs out. The callers all treat
- * "" as "no categorical slot", which is what --muted means.
+ * The fund group a node belongs to, walking node.parent; "" for none, which
+ * callers draw as --muted.
  * @param {FiscNode | LaidNode} node
  * @returns {string}
  */
 export function fundGroupOf(node) {
-  // STARTED FROM THE HIERARCHY, NOT FROM THE COPY IT WAS HANDED. layOut passes
-  // a LAID node -- a shallow copy of a FOLDED node -- whose parent foldDocument
-  // sets to "" when the ancestor it folded to was filtered away. That is right
-  // for the folded document, whose well-formedness is about nodes it carries,
-  // and it stops this walk dead: `if (!at.parent) return ""` on the first hop.
-  //
-  // Measured before the fix: every fund and every division on every opened
-  // view resolved to "", so each rendered entirely in --muted. groupIndex
-  // prefers the FETCHED document, so what is walked here is where the node
-  // really sits.
+  // Start from groupIndex, not the laid copy: the fold blanks a node's parent
+  // when its ancestor is filtered away, which would stop the walk on hop one.
   let at = groupIndex.get(node.id) || node;
-  // Bounded by the hierarchy's depth; the guard is against a parent cycle in a
-  // malformed document, which node-hierarchy-well-formed rejects Go-side but
-  // this file cannot assume it ran.
+  // Bounded against a parent cycle in a malformed document.
   for (let hops = 0; hops < 8; hops++) {
     if (isFundGroup(at)) return at.id;
     if (!at.parent) return "";
@@ -776,16 +503,8 @@ export function fundGroupOf(node) {
 }
 
 /**
- * The hue a link wears is its fund group's, inherited through node.parent when
- * neither end IS one. Colour follows the entity, never the value or the rank.
- *
- * A link with a fund group at one end takes it. Otherwise both ends are inside
- * one group's subtree -- the drill-down's department-to-object links are the
- * case, all of them under fund/100 -- and the group they share is the honest
- * answer. Ends in two different groups cannot happen: a link between subtrees
- * would have to cross a fund group boundary, and the fold puts a fund-group
- * node at that boundary. If it ever does, "" falls through to --muted, which
- * says "no single fund group" rather than picking one of the two.
+ * A link's hue: the fund group at either end, else the group both ends share,
+ * else "" (--muted) rather than picking one of two.
  * @param {LaidLink} link
  * @returns {string}
  */
@@ -808,18 +527,8 @@ export function nodeColor(node) {
 }
 
 /**
- * The custom property holding a fund group's hue, or --muted.
- *
- * Spelled once because nodeColor and the legend swatch must agree, or the
- * legend names a mark by a colour the chart does not draw it in.
- *
- * COMPOSED FROM THE SLUG THE COLUMN SHIPS, not from a map in this file and not
- * by cutting the id up here. site/style.css declares one custom property per
- * fund type and that is where a hue belongs; the palette's CAPACITY is this
- * side's limit, so a group style.css has no hue for resolves to "" and takes
- * --muted -- which is what a seventh fund group draws today, by construction
- * rather than by a missing entry in a literal.
- *
+ * The custom property holding a fund group's hue, or --muted when style.css
+ * has none for its slug. Shared so the legend swatch matches the chart.
  * @param {string} id
  * @returns {string}
  */
@@ -831,60 +540,23 @@ export function fundColorVar(id) {
 }
 
 /**
- * Sort key inside a column: where in the fund column this node's money sits.
- *
- * A fund group is simply its own place in the drawn order. Everything else takes
- * the value-weighted mean position of the fund groups it touches, so a node
- * comes to rest opposite the funds it actually feeds or draws on. That is the
- * barycentre heuristic, and it is roughly what d3 would compute for itself if
- * this file were not overriding it -- which it has to, because supplying a
- * .nodeSort() at all is what pins the fund column to the palette's order, and
- * d3's own pass would reorder it.
- *
- * Sorting on this is worth most of what the chart's legibility was losing:
- * laid out under node with the vendored d3 and restacked, this ordering
- * crosses fewer ribbons and overlaps less ribbon than a sort by size, the
- * input order or d3's own pass. The layout tests under site/ measure the
- * orderings still in the tree on every run, print the figures, and pin this
- * one.
- *
- * An exact search -- one-sided crossing minimisation is solvable for columns
- * this small -- crosses fewer still, but spends more overlap doing it, so the
- * two are points on a frontier rather than a right and a wrong answer. A rule
- * that reads the data is worth more here than the crossings it leaves: it
- * needs no re-derivation when a category is added or the fiscal year rolls
- * over. That search does not live in the tree, so nothing re-checks it.
- *
- * Ties are real and wanted. Three revenue categories touch only the General
- * Fund, so all three score exactly its index and fall to the caller's tie-break
- * on value, which stacks them beside their fund largest first.
- *
- * ON THE DRILL-DOWN THE TIES ARE THE RULE RATHER THAN THE EXCEPTION, and that
- * is a property of the document, not a defect here. All 23 department nodes
- * carry parent: "fund/100", so every one of them scores the General Fund's
- * index exactly and the whole column falls through to size-descending. Said
- * plainly because the bead this landed under (fisc-5miz.3) expected the
- * inheritance to give that column an order, and it does not: there is only one
- * fund group above it to inherit from.
+ * Sort key inside a column. A fund group is its own place; anything else is
+ * the value-weighted mean place of the fund groups it touches (a barycentre).
+ * Supplying a nodeSort is what pins the fund column to the palette's order.
+ * The layout tests under site/ measure the alternatives and pin this one.
+ * Ties fall to the caller's tie-break on value.
  * @param {LaidNode} node
  * @returns {number}
  */
 export function nodeRank(node) {
-  // THE SHARED PLACE RULE AND NOT indexOf. A group the column carries and the
-  // packager's sequence does not name scored -1 here and sorted to the TOP of
-  // the fund column, ahead of internal-service, while buildLegend put the same
-  // group last. fundGroupPlace is the one answer both now read.
   if (isFundGroup(node)) return fundGroupPlace(node.id);
 
   let weight = 0;
   let place = 0;
   for (const l of node.sourceLinks.concat(node.targetLinks)) {
     const other = l.source === node ? l.target : l.source;
-    // The neighbour's fund GROUP, not the neighbour: on the spine every link
-    // has a fund-group end and this is the end itself, so the figures below are
-    // unchanged. On the drill-down the ends are funds and departments, and
-    // without the walk every one of them scores -1 and the column degenerates
-    // to the size ordering measured as the worst of the four.
+    // The neighbour's fund group, not the neighbour: on the drill-down the
+    // ends are funds and departments.
     const group = fundGroupOf(other);
     // A node in no fund group is ignored rather than counted as position zero.
     if (!group) continue;
@@ -898,27 +570,12 @@ export function nodeRank(node) {
 }
 
 /**
- * Citations for a set of source documents: the city's PDF opened at the page,
- * and the committed extraction of that page's text.
+ * Citations for a set of source documents: the city's PDF at the page, the
+ * committed page text, and the fact-store shard for the page.
  *
- * page_text_base is normally a RELATIVE path into this site: `fisc export`
- * copies the cited pages' committed text into the output tree, so a reader
- * checking provenance loads it from the same origin as the page and needs no
- * third party to be up. Do not assume a scheme, and do not compose it with
- * `new URL(base)` — the browser resolves it against the document for us.
- *
- * When the export was told to cite a remote instead (--source-browse-url), the
- * base is an absolute URL into a browsable copy of the repository: github.com's
- * blob view and never raw.githubusercontent.com. Not for LFS reasons —
- * data/extracted/ is ordinary git and the raw host would serve it fine — but
- * because the blob view is the one a reader can use: the file with line
- * numbers, its history, and the rest of the document beside it. The artifacts
- * are .txt precisely so that view shows them verbatim; markdown would be
- * rendered and the runs of spaces that ARE the printed column grid would
- * collapse.
- *
- * The PDFs are the LFS half of the repository, which is why a PDF citation
- * goes to the city's own URL with #page=N rather than to GitHub at all.
+ * page_text_base is usually relative: do not assume a scheme or compose it
+ * with `new URL(base)`. When absolute it points at a blob view, never
+ * raw.githubusercontent.com.
  * @param {FiscSource[]} sources
  * @returns {{label:string, href:string}[]}
  */
@@ -936,11 +593,6 @@ export function citations(sources) {
         const padded = String(page).padStart(4, "0");
         out.push({ label: "extracted p" + page, href: doc.page_text_base + "p" + padded + ".txt" });
       }
-      // The third shape, and the one a link's own locators resolve through:
-      // the fact-store shard holding every record read off this page. Same
-      // zero-pad rule as the text file, which is why this lives here rather
-      // than in a sibling function -- one place spells the client's half of a
-      // citation.
       if (doc.records_base) {
         const padded = String(page).padStart(4, "0");
         out.push({ label: "records p" + page, href: doc.records_base + "p" + padded + ".jsonl" });
@@ -987,87 +639,36 @@ export let projection = null;
 /** Node id whose flows are isolated, or "" for all of them. */
 export let isolated = "";
 /**
- * One opened node: which it is, the document its chart is shaped FROM, and the
- * step that opened it.
- *
- * THE DOCUMENT IS ON THE RUNG AND NOT LOOKED UP, because two rungs can draw two
- * documents: a step that names a projection opens a node of one file into a
- * chart of another. Everything that has to know which file is on screen --
- * the counts line, the hue walk, the caveats, the citations -- asks the rung
- * rather than the page.
+ * One opened node. The document is on the rung, not looked up, because a step
+ * that names a projection opens a node of one file into a chart of another.
  * @typedef {Object} Rung
  * @property {string} id  the node opened
- * @property {FiscProjection} doc  the document this rung's chart is shaped from,
- *   unfolded
+ * @property {FiscProjection} doc  the document this rung's chart is shaped
+ *   from, unfolded
  * @property {FiscDrillStep} step  the step that opened it
- * @property {FiscProjection} chart  the chart that was ON SCREEN when this rung
- *   was opened: shaped, capped, folded and carried, as the reader saw it.
- *
- *   RECORDED RATHER THAN RECOMPUTED, because a window's kept flank is a filter
- *   of it and a rung is reshaped long after the click -- Escape pops back to a
- *   rung whose parent chart is no longer on screen, and shapeFor would have
- *   nothing to filter. It is the chart, not the file: docAt() answers for the
- *   file one depth up, and the flank the reader came from is the one they were
- *   looking at, capped tail, residual and all.
- * @property {Set<number>} [expanded]  the tiers of THIS rung's chart the reader
- *   has opened out, drawn at every mark they hold rather than at the step's cap.
- *
- *   ON THE RUNG AND NOT ON THE PAGE, because the stack is the path and an
- *   expansion is a property of one chart on it. Tier 3 is capped in the
- *   fund-group window and drawn whole in the fund window, and a page-level set
- *   would carry "show me all of them" from the first into the second, out of a
- *   pop, and into the next fiscal year -- whose column is not the same column.
- *
- *   IT IS CARRIED THROUGH A DRILL BY CONSTRUCTION, because `chart` above is
- *   recorded rather than recomputed: a window opened from an expanded chart
- *   keeps the flank as the reader saw it, expansion and all, with no code here.
- *   LATENT on the committed corpus -- measured, every kept flank the shipped
- *   steps declare is a single-node column or the spine's ten categories, so no
- *   flank has ever carried a capped tail -- and latent is how it ships.
- * @property {number[]} [dropped]  the widened tiers this rung's document left
- *   empty, so activeTiers stops asking for them.
- *
- *   IT OUTLIVES THE BUDGET THAT REVEALED IT, and that is right rather than
- *   convenient: "this document draws nothing at that tier" is a property of the
- *   document, so a reader who widens the page later is not shown a column that
- *   was empty when it was last asked for. A narrower budget drops it anyway.
+ * @property {FiscProjection} chart  the chart on screen when this rung was
+ *   opened, as the reader saw it. Recorded, not recomputed: a pop reshapes a
+ *   rung whose parent chart is gone.
+ * @property {Set<number>} [expanded]  the tiers of this rung's chart drawn
+ *   whole rather than capped. Per rung, so it does not leak into a pop, the
+ *   next window or the next year.
+ * @property {number[]} [dropped]  widened tiers this rung's document left
+ *   empty, so activeTiers stops asking for them; kept after the budget changes.
  */
 
 /**
  * The nodes the chart is opened into, outermost first; empty on the overview.
- *
- * A STACK, BECAUSE A PATH THROUGH THE TREE IS STILL A LINE. Each rung records
- * the step that opened it, the next step is the one naming that step's key
- * (stepFor), and the breadcrumb shows one rung per step taken. Two steps can
- * open from one chart, and one reader can still only take one of them at a
- * time, so what is on screen is always a path even though what is declared
- * is not.
  * @type {Rung[]}
  */
 export let drilled = [];
 /**
- * The fewest columns any chart this page draws is laid out in: a window's kept
- * flank, the node the reader opened and what it opens into.
- *
- * A FLOOR AND NOT A DEFAULT. export.validateSteps holds a window to exactly
- * these three plus one per widening, so a budget under it would drop a column
- * that is not optional and leave the centre against a wall.
+ * The fewest columns a window is laid out in: kept flank, opened node and what
+ * it opens into. A floor, not a default.
  */
 export const NARROW_COLUMNS = 3;
 /**
- * The most columns any step this page declares can ask for.
- *
- * DERIVED FROM GO'S OWN DECLARATIONS, WHICH IS WHY NO CEILING IS WRITTEN DOWN.
- * A step's `tiers` is every column it can draw and `widen` says which of them a
- * narrow client does without, so the longest `tiers` on the page IS the widest
- * chart it could ever be asked for. Declaring a ceiling beside that was one
- * number in four places -- here, a media query, the stylesheet's cap and
- * layout.test.mjs's expected geometry -- and raising it meant finding all four.
- *
- * IT IS THE DEMAND AND NOT THE ROOM. COLUMN_QUERIES answers the room, one
- * threshold per column it could offer, so a reader gets the smaller of the two
- * without either being compared to the other. A page declaring no step offers
- * the floor, because its chart is drawn at RENDER_TIERS whatever the budget.
+ * The most columns any step this page declares can ask for: the longest
+ * `tiers`. COLUMN_QUERIES answers the room; the reader gets the smaller.
  */
 export const OFFERED_COLUMNS = STEPS.reduce(
   (most, s) => Math.max(most, (s.tiers || []).length),
@@ -1075,28 +676,9 @@ export const OFFERED_COLUMNS = STEPS.reduce(
 );
 
 /**
- * The viewport widths that buy a column beyond the floor, and what each buys.
- *
- * EACH THRESHOLD IS chartWidth(n) PLUS THE STYLESHEET'S OWN CUSHION, computed
- * rather than typed, because the threshold has to be the width at which the nth
- * column FITS: --chart-room is calc(100vw - CHART_CUSHION) below its cap, so at
- * a viewport 13px short a four-column chart is drawn at 99% of the width it was
- * laid out at. A threshold typed as a round number puts the reader one column
- * narrower than they asked for, and a threshold typed as the right number is
- * arithmetic done once, by hand, that nothing re-does when a constant moves.
- *
- * ASKED THROUGH matchMedia AND NOT THROUGH resize, because a query is the
- * question being asked -- "is there room for another column" is a threshold,
- * not a stream of widths -- and because matchMedia is already feature-checked
- * here for the OS theme and already observable to a check.
- *
- * ONE-DIRECTIONAL, AND THE FLOOR IS NARROW_COLUMNS. A wide viewport can ADD a
- * column; a narrow one cannot take the page below three, because three is what
- * a window IS -- windowFor refuses fewer -- and because chartWidth is a fixed
- * design width scaled by the viewBox, so narrowing the window shrinks the
- * picture rather than reflowing it (see chartWidth). Nothing here reads a
- * viewport as a reason to draw FEWER columns than the floor.
- *
+ * The viewport widths that buy a column beyond the floor. Each threshold is
+ * chartWidth(n) plus CHART_CUSHION, computed so it is the width at which the
+ * nth column fits. Only ever adds columns; never below NARROW_COLUMNS.
  * @type {{query: string, columns: number}[]}
  */
 export const COLUMN_QUERIES = (() => {
@@ -1108,60 +690,30 @@ export const COLUMN_QUERIES = (() => {
 })();
 
 /**
- * The widest chart this page can be asked to draw, in px: what style.css caps
- * .chart-wrap at, through the --chart-max it is handed.
- *
- * SET BY THIS FILE RATHER THAN DECLARED IN THE STYLESHEET, because the chart's
- * geometry is this file's and a number in the stylesheet would be a second
- * spelling of it. There is no cost to a reader with JavaScript off: #chart
- * ships with a <title> and a <desc> and no marks, so without this script there
- * is no chart for a cap to bound, which is what the page's <noscript> says.
+ * The widest chart this page can be asked to draw, in px, handed to style.css
+ * as --chart-max so the stylesheet holds no second spelling of it.
  */
 export const CHART_MAX = chartWidth(OFFERED_COLUMNS);
 
 /**
- * How many columns the chart may draw, which is what decides whether a step's
- * widened columns are asked for (activeTiers).
- *
- * A MODULE-LEVEL let, AND THAT IS NOT THE THING RENDER_TIERS FORBIDS. That
- * comment refuses a constant because a tier set is WHICH TIERS A DOCUMENT IS
- * DRAWN AT -- a property of a hierarchy, which only a view can declare, and
- * which applied to the wrong document refuses or corrupts. A budget is a
- * property of the READER'S WINDOW and it never names a tier: every tier drawn
- * is still one the step declared, and the budget only chooses how many of them
- * to take (activeTiers). So it is per-reader rather than per-view, and there is
- * no document it could be wrong about.
- *
- * SEEDED BEFORE THE FIRST FETCH AND MOVED ONLY THROUGH setColumnBudget.
- * wireColumns owns both.
+ * How many columns the chart may draw (activeTiers). Per reader, not per view:
+ * it never names a tier, only how many of a step's declared tiers to take.
+ * Moved only through setColumnBudget.
  */
 export let columnBudget = NARROW_COLUMNS;
 
 /**
  * The column count the reader asked for, or null when they have not asked.
  *
- * THE READER OUTRANKS THE VIEWPORT UNTIL THEY HAND IT BACK. While this is set,
- * a media query firing changes nothing -- otherwise a reader who stepped down
- * to three would be silently returned to four by rotating a tablet. Stepping
- * back to the count the viewport itself would give clears it, which is the only
- * way back to following the window and is why this is a separate value rather
- * than being read off columnBudget: the two are equal in exactly the state
- * where the reader has NOT chosen.
+ * While set, a media query firing changes nothing. Separate from columnBudget
+ * because the two are equal exactly when the reader has NOT chosen.
  */
 export let columnOverride = null;
 
 /**
- * Sets how many columns the chart may draw, and says whether that moved.
- *
- * THE CALLER REDRAWS, THIS DOES NOT. A budget change is a relayout of whatever
- * is on screen, and the two callers that will want one -- a media query firing
- * and a reader's override -- differ in what else they repaint; a redraw from
- * inside here would also fire during the opening paint, before there is a
- * document to lay out.
- *
- * CLAMPED RATHER THAN REFUSED, because the caller is a media query and not a
- * declaration: a viewport with room for two columns is a real state, and a
- * chart of two columns is not.
+ * Sets how many columns the chart may draw, and says whether that moved. The
+ * caller redraws. Clamped rather than refused, because the caller is a media
+ * query.
  *
  * @param {number} n
  * @returns {boolean} whether the budget changed
@@ -1174,44 +726,20 @@ export function setColumnBudget(n) {
 }
 
 /**
- * The year's document as fetched, before any fold: what the overview is shaped
- * from, and what the first step opens a node of.
- *
- * A DRILL RESHAPES FROM THE FILE, not from what is on screen. Folding a folded
- * document would ask for tier 3 in a document whose tier 3 has already been
- * collapsed into tier 2 -- the nodes are gone, and the fold would throw or, if
- * it did not, draw the overview again with a breadcrumb over it.
- *
- * ONE DOCUMENT PER DEPTH, and this is depth 0's. A rung carries its own, which
- * is this one for a step that names no projection and a fetched file for a
- * step that does; docAt reads them as one sequence.
+ * The year's document as fetched, before any fold. A drill reshapes from this,
+ * never from the folded document on screen, whose deeper tiers are gone.
  * @type {FiscProjection | null}
  */
 export let fetched = null;
 /**
- * The column document the year on screen was fetched from: one file per
- * (fiscal year, basis), carrying every schedule that column prints.
- *
- * A DRILL SELECTS OUT OF THIS AND FETCHES NOTHING. stepDocument reads the
- * schedule a step names straight out of it, so the year a rung's figures are
- * of is carried by the file rather than resolved by this script.
- *
- * DECLARED, because it was not: `column = loaded` in showYear was the only
- * mention, which creates a property of the global object in sloppy mode and
- * throws in strict mode or in a module. The file is served as a classic
- * script today, so it worked -- and would stop working the moment anything
- * wrapped it.
+ * The column document the year on screen was fetched from, one per (fiscal
+ * year, basis). A drill selects schedules out of it and fetches nothing.
  * @type {any}
  */
 export let column = null;
 /**
- * The drill's own gesture token, bumped by every push and pop of the stack.
- *
- * A DRILL THAT FETCHES CAN BE OVERTAKEN, by a second click while its file is in
- * flight or by a pop of the rung it was opened from, and a drill that lands
- * after either would push onto a stack that is no longer the one it was opened
- * against. Compared after the await, beside the year token: a year switch
- * mid-drill bumps that one, and the drill stands down for it too.
+ * The drill's gesture token, bumped by every push and pop, so a drill whose
+ * fetch was overtaken stands down after the await.
  */
 export let opening = 0;
 /**
@@ -1220,51 +748,31 @@ export let opening = 0;
  */
 export let shownYear = null;
 /**
- * The chart description the page shipped, so returning from a drill can restore
- * it. Captured on first paint rather than read from the config, because it is
- * the TEMPLATE's string -- the packager sends the subject to the client and the
- * description only into the markup.
+ * The chart description the page shipped, captured on first paint because it
+ * is the template's string and not in the config.
  * @type {string}
  */
 export let baseDescription = "";
 /**
  * The pointer to the flow table, lifted off the shipped description so a drill
- * can keep it.
- *
- * WHY IT HAS TO SURVIVE: the flow table ships inside a closed <details>, which
- * is out of the accessibility tree until it is opened, so this sentence is the
- * only route to it a reader who cannot see the page has. Replacing the whole
- * <desc> on a drill dropped it.
- *
- * TAKEN BY POSITION, NOT BY ITS WORDS. Matching the sentence here would be a
- * second copy of wording the template owns, and the two would drift the first
- * time either was edited. The template puts it last, and
- * TestAClosedFlowTableIsNotDescribedAsListedBelow pins the sentence itself.
+ * keeps it: the table sits in a closed <details>, out of the accessibility
+ * tree, and this sentence is a screen reader's only route to it. Taken by
+ * position (the template puts it last), not by its words.
  * @type {string}
  */
 export let tablePointer = "";
 /**
- * The nodes as laid out, so columnShare can total the column a mark is in.
- *
- * SEPARATE FROM projection, which holds the FOLDED document and carries no
- * geometry: which column a node is in is d3-sankey's answer, not the file's,
- * and two nodes of one tier can land in one column while a tier the page skips
- * lands in none.
+ * The nodes as laid out, so columnShare can total a mark's column. Separate
+ * from projection because columns are d3-sankey's answer, not the file's.
  * @type {LaidNode[]}
  */
 export let laidNodes = [];
 /** @type {LaidNode | LaidLink | null} */
 export let pinned = null;
 /**
- * How long after one activation of a node a later event on the same node is
- * taken to be part of that same activation, in milliseconds.
- *
- * ONE WINDOW FOR TWO ECHOES, because they are the same problem twice. Assistive
- * tech may synthesise a click from the Enter or Space it has just delivered,
- * and a pointer always delivers two clicks before the dblclick they compose
- * into. In both cases a later event belongs to an activation already handled,
- * and in both cases the only thing telling it from a real second activation is
- * how soon it arrived on the same node.
+ * How soon, in ms, a later event on the same node counts as part of one
+ * activation: the click assistive tech synthesises from Enter/Space, and the
+ * two clicks a pointer delivers before their dblclick.
  */
 export const ACTIVATION_WINDOW = 500;
 
@@ -1276,33 +784,18 @@ export const ACTIVATION_WINDOW = 500;
 export let keyActivation = { id: "", at: -Infinity };
 
 /**
- * The node a click last isolated, when, and what had been isolated before it,
- * so that the double click a pair of clicks composes into can put that back.
- *
- * THE CLICK IS NOT DEBOUNCED, AND THIS IS WHAT THAT COSTS. A mark carrying both
- * handlers delivers click, click, dblclick. Waiting the window out before
- * acting on the first would put ACTIVATION_WINDOW of lag on every isolate, on
- * every node, to serve a gesture most readers never make -- so the clicks act
- * at once and the dblclick puts back what they changed. That is keyActivation's
- * shape with the replaced state carried along beside the timestamp.
- *
- * `was` IS RECORDED ONCE PER WINDOW AND NOT ONCE PER CLICK. The second click of
- * a pair arrives with the first click's isolation already applied, so
- * refreshing `was` on it would record the state the gesture itself produced and
- * faithfully restore that.
+ * The node a click last isolated, when, and what was isolated before, so the
+ * dblclick a pair of clicks composes into can put that back. Clicks are not
+ * debounced. `was` is recorded once per window, not per click, or the second
+ * click would record the state the first produced.
  * @type {{id:string, at:number, was:string}}
  */
 export let clickIsolate = { id: "", at: -Infinity, was: "" };
 
 /**
- * Every node of the document being laid out, by id, so fundGroupOf can walk
- * node.parent upward.
- *
- * LAYOUT STATE, NOT PAGE STATE. layOut assigns it before anything that can
- * throw, from the document it was handed and nothing else, so it never
- * describes a document other than the one the chart was last laid out from.
- * That is what lets it survive into paint(), which recolours the existing
- * ribbons on a theme change without laying anything out again.
+ * Every node of the document last laid out, by id, so fundGroupOf can walk
+ * node.parent. Layout state: paint() reads it on a theme change without
+ * laying out again.
  * @type {Map<string, FiscNode>}
  */
 export let groupIndex = new Map();
@@ -1312,14 +805,9 @@ export let groupIndex = new Map();
  * ------------------------------------------------------------------ */
 
 /**
- * Rebuild a set of doc\u001fpage keys as the FiscSource[] the packager
- * publishes: documents ascending, pages ascending within each, each once.
- *
- * The shape is not incidental. citations() is the client's whole URL
- * vocabulary and it reads metadata.sources and a link's locators with the same
- * code, so a fold that produced a differently-ordered list would make the same
- * page render as a different citation depending on whether the reader was
- * looking at the spine or the drill-down.
+ * Rebuild doc\u001fpage keys as FiscSource[] in the packager's order:
+ * documents ascending, pages ascending within each, each once. Any other order
+ * would render one page as a different citation on the spine and in a drill.
  * @param {Set<string>|undefined} keys
  * @returns {FiscSource[]}
  */
@@ -1341,15 +829,9 @@ export function regroupLocators(keys) {
 }
 
 /**
- * The tier a node folds to under a tier set, or "" when it has no drawn
- * ancestor.
- *
- * THE NON-THROWING HALF OF foldDocument'S FIRST LOOP. The fold refuses a node it
- * cannot place, because there the tier set is meant to describe the whole
- * document and a node outside it is a fault. filterLinks asks the same question
- * for the opposite purpose: which links are IN this rung's scope at all, where
- * an unplaceable end is an ordinary answer rather than an error.
- *
+ * The id a node folds to under a tier set, or "" when it has no drawn
+ * ancestor. The non-throwing half of foldDocument's first loop: to filterLinks
+ * an unplaceable end is an ordinary answer, not a fault.
  * @param {Map<string,FiscNode>} byID
  * @param {FiscNode} n
  * @param {Set<number>} drawn
@@ -1366,37 +848,17 @@ export function foldTarget(byID, n, drawn) {
 }
 
 /**
- * The filter every rung uses: the ribbons of `doc` between the nodes Go says
- * this window's columns hold.
+ * The filter every rung uses: a ribbon of `doc` is drawn when both ends fold
+ * to nodes Go's answer names AND it runs forward in the answer's column order.
+ * Membership alone admits cycles: a fund window's flank parents a department's
+ * rows under the fund, so department -> row folds to department -> fund, which
+ * d3-sankey refuses as a circular link.
  *
- * ONE FILTER AND NO SIDE TO READ. A pair of them once differed in which END of
- * a link had to be inside the opened node -- a window's kept half and its fresh
- * half want opposite things, and the step's `side` declaration said which --
- * which was a membership derived here from the documents. Go answers that
- * membership now, once per rung, on whichever side the step declares
- * (AGENTS.md, "Go vets, JavaScript renders"): a ribbon is drawn when BOTH of
- * its ends fold to nodes the answer names, and which of them is the near one
- * stopped being this page's question.
+ * An end that folds to nothing is passed through; placing it is scoped()'s
+ * question.
  *
- * AND FORWARD IN THE ANSWER'S OWN COLUMN ORDER, which is the half of the rule
- * that the two side-keyed filters used to carry. Membership alone is not
- * enough, measured: the chart a fund's window leaves on screen parents a
- * department's expenditure rows under the FUND, so the ribbon from the opened
- * department to one of its rows folds to department -> fund -- both ends
- * answered, the flank's column on the right of the centre's, and a cycle
- * d3-sankey refuses with "circular link". A window's money runs from its first
- * column to its last, whichever end the kept flank is at (windowFor), so the
- * column a ribbon leaves must come before the one it arrives in.
- *
- * AN END THAT FOLDS TO NOTHING IS PASSED THROUGH rather than dropped here, and
- * that is deliberate: scoped() is what tells a tier this page draws no column
- * for from a parent chain that is broken, and it can only do so on a link this
- * predicate did not drop first. Dropping them here restores fisc-ng17's
- * silent wrong figure.
- *
- * @param {Map<string, number>} held  every id the answer names at the columns
- *   this chart draws -- its parts and the marks carried beside them alike --
- *   against the position of the column it names them at
+ * @param {Map<string, number>} held  every id the answer names at the drawn
+ *   columns, against the position of the column it names it at
  * @returns {(src: FiscNode, dst: FiscNode, byID: Map<string,FiscNode>, drawn: Set<number>) => boolean}
  */
 export function heldBy(held) {
@@ -1412,14 +874,9 @@ export function heldBy(held) {
 }
 
 /**
- * The filter every chart is shaped by: the links `holds` admits whose ends this
- * tier set can place, and the nodes those links need.
- *
- * IT REFUSES NOTHING. That the id is a node of the document and that something
- * flows for it at these tiers are Go's to hold at the write: the id is the
- * centre of a rung the walk drew over this same document, a step's opened
- * tier is validated against the chart it opens from, and the walk answers no
- * rung it did not draw. This renders the answer.
+ * The links `holds` admits whose ends this tier set can place, and the nodes
+ * those links need. Refuses nothing: that the id exists and something flows
+ * for it is Go's to hold at the write.
  *
  * @param {FiscProjection} doc
  * @param {string} id
@@ -1439,10 +896,8 @@ export function filterLinks(doc, id, tiers, holds) {
     return placeable(src) && placeable(dst);
   });
 
-  // Only the nodes those links touch, and their ancestors up to the drawn
-  // tiers. Handing foldDocument a node it cannot place would make it refuse the
-  // document, and the nodes it cannot place here are precisely the ones this
-  // drill is not about.
+  // Only the nodes those links touch, up to the drawn tiers: any other node
+  // would make foldDocument refuse the document.
   const keep = new Set();
   for (const l of links) {
     for (const end of [l.source, l.target]) {
@@ -1461,25 +916,9 @@ export function filterLinks(doc, id, tiers, holds) {
 }
 
 /**
- * Whether a link end has a column in this tier set, or a throw when the
- * question cannot honestly be answered "no".
- *
- * A DROPPED END AND A BROKEN CHAIN LOOKED THE SAME. The filters drop a link
- * whose end folds to nothing, and the comment above calls that "a statement
- * the view made when it declared its tiers" -- true of a tier the view left
- * out, and false of a node whose parent chain is broken, which foldTarget also
- * answers "" for. Measured (fisc-ng17): with revenue-line/taxes/property/eraf's
- * parent blanked, the opened General Fund drew Property Taxes at $79,318,762
- * against p127's $64,143,762, because ERAF is a contra row and dropping it
- * removed a negative -- with identical node and link counts and no banner.
- * foldDocument would have refused the node, but a rung filters first and the
- * fold never saw it.
- *
- * A BROKEN PARENT CHAIN IS GO'S TO REFUSE, at the write and not at the draw:
- * node-hierarchy-well-formed holds every node's parent to a node of the same
- * document at a coarser tier. So a node with no drawn
- * ancestor is simply not placed here, and the links naming it go the way a
- * tier no node of which can be placed always has.
+ * Whether a link end has a column in this tier set. A broken parent chain is
+ * Go's to refuse at the write (node-hierarchy-well-formed), so a node with no
+ * drawn ancestor is simply not placed.
  *
  * @param {FiscProjection} doc
  * @param {number[]} tiers
@@ -1517,12 +956,8 @@ export function withinNode(doc, id) {
 
 /**
  * The document the chart at one depth is shaped from: the year's at depth 0,
- * and the rung's own below that.
- *
- * WHY DEPTH AND NOT RUNG: a rung's label lives in the document it was opened
- * FROM, which is the chart one depth up -- the node a reader clicked is gone
- * from the chart it opened into, and across a document switch it may not exist
- * there at all. paintBreadcrumb asks for depth k's document to name rung k.
+ * the rung's own below. By depth because rung k's label lives in the document
+ * one depth up, where the clicked node still exists (paintBreadcrumb).
  * @param {number} depth
  * @returns {FiscProjection | null}
  */
@@ -1539,9 +974,7 @@ export function drawnDoc() {
 }
 
 /**
- * Where Go's rung answer is served, or "" on a page nobody answers the rungs
- * of. export.RungsPath, through the config, so the file the site writes and
- * the URL the page asks for are one string.
+ * Where Go's rung answer is served, or "" on a page nobody answers the rungs of.
  */
 export const RUNGS_PATH = CONFIG && typeof CONFIG.rungs === "string" ? CONFIG.rungs : "";
 
@@ -1565,30 +998,12 @@ export function rungKey(stem, path) {
 }
 
 /**
- * Go's answer for the rung on screen, or a refusal in the sentence every other
- * shaping fault uses.
+ * Go's answer for the rung on screen; throws when it answers no such path,
+ * rather than drawing a chart filtered to nothing.
  *
- * FAIL CLOSED, BECAUSE THIS IS AN INPUT AND NO LONGER A GATE. main() once
- * fetched this file, vetted it and dereferenced nothing in it, so a page could
- * refuse to draw over an answer it never read and draw happily over a wrong
- * one (fisc-2sow). Every column this page draws below the overview is read out
- * of it now, so a path it does not answer is a chart this page cannot shape --
- * and says so, rather than drawing one filtered to nothing.
- *
- * THE STEM IS THE YEAR'S AND NOT THE DOCUMENT'S NAME. A column of the answer
- * is one published year, keyed by CONFIG.years[].stem -- which is what the
- * packager names a column of the artifact and what the year control switches
- * on. A fetched document's own `projection` field is the PROJECTION's name and
- * is the same string in every year: both spine files declare "sankey", so a
- * key taken from there answers every year out of the first year's column. Its
- * memberships mostly coincide and its figures do not, which is how that was
- * found -- the residual beside FY2026-27's General Fund came to one figure
- * against an answer stating FY2025-26's.
- *
- * THE STEP IS NOT CHECKED, because it cannot differ: the page's steps and the
- * rung answer's are written from one declaration by one export, and a copy of
- * either from another build is the case generated_by refuses before any rung
- * is looked up.
+ * Keyed by the YEAR's stem, not the document's `projection` field, which is
+ * the same string in every year and would answer every year out of the first
+ * year's column.
  *
  * @returns {FiscRung}
  */
@@ -1605,24 +1020,10 @@ export function answeredRung() {
 }
 
 /**
- * Every id the answer names at one set of columns: the opened node's own parts
- * and the marks carried beside them alike, because both are drawn.
- *
- * ASKED PER HALF AND NOT PER RUNG. A window is two charts shaped from two
- * documents and spliced on the centre (windowFor), and each half is filtered
- * to the columns it draws -- so a kept flank's ids must not admit a ribbon
- * into the fresh half's column, which is a ribbon neither document draws.
- *
- * COLUMNS THE BUDGET DROPPED ARE NOT ASKED FOR. The answer holds every column
- * the step declares, unfolded and unnarrowed; `tiers` is what this viewport is
- * laying out (activeTiers), so a widened column a narrow reader does without
- * contributes no ids and its ribbons are dropped as they were before.
- *
- * THE COLUMN'S POSITION COMES WITH IT, and `draws` is where it comes from: Go
- * answers a rung's columns in the order the step draws them -- which is not
- * ascending tier order, since a revenue category's are {1,0,2} -- so the
- * position of an id in this map is the column its mark stands in. heldBy needs
- * it to tell a ribbon of this window from one running backwards through it.
+ * Every id the answer names at one set of columns, parts and carried marks
+ * alike, against the position of its column. Asked per half of a window, so a
+ * kept flank's ids admit no ribbon into the fresh half. Positions follow
+ * `draws`, the step's column order, which is not tier order.
  *
  * @param {FiscRung} answer
  * @param {number[]} tiers
@@ -1643,27 +1044,11 @@ export function heldFor(answer, tiers) {
 }
 
 /**
- * The tier set the document on screen was shaped by.
- *
- * ONE READER FOR EVERY DECLARATION. Everything downstream of the shaping -- the
- * column alignment, and anything else that has to know which tier is which
- * column -- needs the set the document was actually folded to, and that is
- * RENDER_TIERS on an overview and the opening step's tiers on a rung. Asking
- * for RENDER_TIERS directly is right in exactly one of those states, which is
- * how the drill first shipped a chart that could not be laid out at all: a
- * wrong answer here is not a wrong-looking chart, it is a throw inside
- * d3-sankey's ordering pass.
- *
- * TRIMMED TO THE COLUMN BUDGET, WHICH IS WHERE A WIDENED COLUMN IS DROPPED. A
- * step's `widen` names columns of its own `tiers` that a narrow client does
- * without, in the order they go, so trimming is a filter over the set the step
- * declares and never an addition to it -- and dropping from the END of that
- * order is what makes a narrowed window a narrower window rather than a hole.
- * A step declaring no widening is returned whole at any budget.
- *
- * AND THE COLUMNS THE RUNG ITSELF DROPPED, which is a different question with
- * the same answer: a widened tier the drawn document left empty is not a
- * column, whatever the budget (dropEmptyColumns).
+ * The tier set the document on screen was shaped by: RENDER_TIERS on an
+ * overview, the opening step's tiers on a rung, less the widened columns the
+ * budget drops (from the END of `widen`, so a narrowed window has no hole) and
+ * the columns the rung dropped as empty (dropEmptyColumns). A wrong answer
+ * here throws inside d3-sankey's ordering pass.
  *
  * @returns {number[]}
  */
@@ -1674,10 +1059,8 @@ export function activeTiers(budget) {
   const tiers = rung.step.tiers;
   const widen = rung.step.widen || [];
   const drop = new Set(rung.dropped || []);
-  // THE COUNT IS RE-ASKED AFTER EVERY DROP, not computed once: a tier the rung
-  // already dropped as empty is an entry of this same order, and subtracting a
-  // fixed shortfall would "drop" it a second time and leave the window a column
-  // over budget.
+  // Re-asked after every drop: a tier already dropped as empty is an entry of
+  // this same order, and a fixed shortfall would drop it twice.
   for (let k = widen.length - 1; k >= 0 && tiers.length - drop.size > at; k--) {
     drop.add(widen[k]);
   }
@@ -1685,12 +1068,9 @@ export function activeTiers(budget) {
 }
 
 /**
- * How many columns wide the chart on screen is laid out.
- *
- * A CHART THAT DECLARES NO COLUMN ORDER IS LAID OUT NARROW. Its columns are
- * d3's own inference from topology (alignFor), which is not known until after
- * the layout the width is an input to -- and NARROW_COLUMNS is the width every
- * such chart was drawn at before a step could ask for a fourth column.
+ * How many columns wide the chart on screen is laid out. A chart declaring no
+ * column order is laid out at NARROW_COLUMNS: d3 infers its columns only after
+ * the layout the width feeds.
  *
  * @param {number} [budget] the width to ask about; the current one by default
  * @returns {number}
@@ -1700,106 +1080,31 @@ export function drawnColumns(budget) {
 }
 
 /**
- * Writes the flow count.
+ * Writes the flow count: the marks drawn, not the rows the file holds, and the
+ * facts those ribbons cite against the drawn document's own total -- both
+ * stated, so the gap the chart cannot show stays visible.
  *
- * THE FLOW COUNT IS A CLAIM ABOUT THE CHART, so it counts the marks that were
- * drawn rather than the rows the file holds. On a page drawn whole the two are
- * the same number and this is the packager's figure verbatim. On a chart that
- * folds or opens a node they are not: the General Fund's window draws a
- * fraction of the links and nodes fund-flows.json holds, and printing the
- * file's figures there would have the page miscount what the reader can see.
+ * A window's carried ribbons cite another document and are counted apart,
+ * partitioned by the stem a carried mark records rather than by the flag: the
+ * fund and division windows keep a flank of the document they draw.
  *
- * THE FACT TOTAL IS THE DRAWN DOCUMENT'S, and the word "drawn" is what two
- * documents add to the rule. "The document's" was one number while a page had
- * one file; a step that names a projection opens a node of one file into a
- * chart of another, and shownYear.counts.facts is the first file's total. Read
- * at depth 1 it would print "from 33 of the document's 120 facts" over a chart
- * of fund flows -- weighing one document's ribbons against another's file. So
- * the total comes from the document the chart was shaped from: the year's own
- * figure, which the packager stamped from that document, while the year's
- * document is the one drawn, and the drawn document's own metadata.counts
- * below that. Folding cites nothing away is NOT why the total holds; it is true
- * only at tiers {0,2,4}, where the fund-to-division link that survives carries
- * the same facts as the object rows folding into it, and no step declares that
- * set. Measured over testdata/fund-flows.golden.json: folded at {0,2,4} the
- * drawn ribbons cite all 233 of the facts the file's own ribbons cite, and
- * folded at the fund-group step's {0,2,3} they cite 184 -- the other 49 sit
- * behind what that chart draws.
- *
- * The number is still the document's ON A PAGE SHOWING THE WHOLE DOCUMENT,
- * because THE GAP IS THE POINT -- the claim project.Counts.Facts is built on:
- * "the gap between Facts and Links is the part of the schedule the chart cannot
- * show, and stating both is what makes it visible". Replacing it with a count
- * of the facts actually cited would close that gap and quietly stop saying so;
- * on the spine, where 120 facts sit behind 58 flows because 50 are printed
- * zeros and 12 are stocks, it would delete the sentence's whole subject.
- *
- * AN OPENED NODE IS NOT THAT PAGE. Drilled into one of six fund groups, the
- * document's 280 facts are not what the reader is being shown the gap to --
- * "21 flows between 13 nodes, from 280 facts" invites them to weigh a sixth of
- * a chart against the whole file, which is not a gap that means anything. So a
- * drilled chart counts the facts its own ribbons cite, and the sentence gains
- * the words that say which of the two it is doing.
- *
- * A DOCUMENT THAT CARRIES NO metadata.counts IS COUNTED BY ITS RIBBONS ALONE,
- * rather than dereferenced: this runs mid-repaint, after the breadcrumb and the
- * chart name, and a throw here is the split page fisc-bsg is about. Every
- * document `fisc export` writes carries the block; the guard is for a file that
- * is not one of those.
- *
- * A WINDOW DRAWS TWO DOCUMENTS AND THE SENTENCE REPORTS THEM APART, each
- * against its own total. A kept flank's ribbons come off the chart above, so
- * their facts are that document's; counted into the drawn document's share they
- * state one document's figure as a fraction of another's, which on a window is
- * a body of ribbons rather than a footnote -- twelve of the thirteen the
- * General Fund's window draws. The partition is by the STEM a
- * carried mark records and not by the flag: the fund and division windows keep
- * a flank of the same document they draw, whose facts ARE the drawn document's.
- * Measured through drillDown over every view the page opens, both published
- * columns: partitioning by stem gives the same two numbers, view for view, as
- * partitioning the drawn ribbons' fact ids by membership of the drawn
- * document's own -- which is what the client's tests assert, from the
- * committed goldens rather than from this function.
- *
- * SEPARATE FROM paintYearWords BECAUSE A DRILL CHANGES IT TOO. It was inline
- * there while a year switch was the only thing that could change what is drawn;
- * opening a fund group changes it just as completely, and a counts line left
- * describing the overview under a drilled chart is the same false statement one
- * gesture over.
+ * A document with no metadata.counts is counted by its ribbons alone rather
+ * than dereferenced: a throw here, mid-repaint, splits the page (fisc-bsg).
  */
 export function paintCounts() {
   const counts = maybeEl("counts-line");
   if (!counts || !shownYear) return;
   const links = projection ? projection.links.length : shownYear.counts.links;
   const nodes = projection ? projection.nodes.length : shownYear.counts.nodes;
-  // PLURALS ARE THE WORDING'S, because a drilled division can draw one ribbon:
-  // Fire Administration and General Services each spend on a single object
-  // category, so opening either once read "1 flows between 2 nodes".
-  // BOTH NUMBERS, ALWAYS, and the gap between them stated rather than implied.
-  //
-  // This printed the document's fact total on every undrilled page, justified
-  // by "a page showing the whole document" -- a condition that is false of any
-  // chart that filters or folds before it draws: a rung of the chain reads
-  // "N flows between M nodes" over ribbons citing a fraction of the facts. Naming one
-  // number and meaning the other is the failure; naming one when there are
-  // two is what lets it happen.
-  //
-  // Saying both keeps what project.Counts.Facts is built on -- "the gap between
-  // Facts and Links is the part of the schedule the chart cannot show, and
-  // stating both is what makes it visible" -- and makes it visible on a page
-  // that draws a slice as well as on one that draws the lot. The spine reads
-  // "N flows between M nodes, from N of the document's F facts", where the
-  // facts it does not draw are the printed zeros and the stocks.
+  // PLURALS ARE THE WORDING'S: a drilled division can draw one ribbon.
   let text = say("counts", { links, nodes, facts: shownYear.counts.facts });
   if (projection) {
     const doc = drawnDoc();
     const drawnStem = doc ? doc.projection : "";
     const byID = new Map(projection.nodes.map((n) => [n.id, n]));
-    // THE STEM OF A MARK THIS DOCUMENT HAS NEVER HEARD OF, and "" for one it
-    // has. A window's kept flank is carried in the sense carried_from records
-    // whichever document it came from, so the flag alone cannot tell the fund
-    // window's flank -- fund-flows kept on a fund-flows chart -- from the
-    // object category's, which is the spine's.
+    // The stem of a mark this document has never heard of, "" for one it has:
+    // carried_from alone cannot tell the fund window's own-document flank from
+    // the object category's, which is the spine's.
     const guestOf = (/** @type {string} */ id) => {
       const n = byID.get(id);
       const of = n && n.carried_from ? n.carried_from : "";
@@ -1811,9 +1116,7 @@ export function paintCounts() {
     const stems = new Set();
     let carried = 0;
     for (const l of projection.links) {
-      // A CARRIED FLOW CITES THE CHART ABOVE, NOT THIS DOCUMENT. Its facts are
-      // the other document's, and counting them here would report one
-      // document's facts as a share of another's total.
+      // A carried flow cites the chart above, not this document.
       const of = guestOf(l.source) || guestOf(l.target);
       if (of || isResidual(l.source) || isResidual(l.target)) {
         carried++;
@@ -1833,17 +1136,12 @@ export function paintCounts() {
         ? say("counts", { links, nodes, facts: cited.size })
         : say("counts_partial", { links, nodes, cited: cited.size, facts: total });
     } else {
-      // THE RIBBONS ARE SPLIT BEFORE EITHER FACT COUNT IS GIVEN, so neither
-      // number is left attached to the whole chart. "14 flows ..., from 29 of
-      // the document's 73 facts" reads as a claim about all 14 while it is one
-      // about 9 of them, which is the same sentence the carried ones were
-      // wrongly inside.
+      // Split before either fact count is given, so neither number is attached
+      // to the whole chart.
       text = say("counts_carried", { links, nodes, own: projection.links.length - carried,
         cited: cited.size, facts: total, carried });
-      // NAMED ONLY WHERE ONE DOCUMENT IS NAMEABLE. carriedSource resolves a
-      // stem against the stack; two stems, or a document with no counts block,
-      // leave the clause as the count of ribbons alone rather than weigh the
-      // carried facts against a total that is not theirs.
+      // Named only where one document with a counts block is nameable;
+      // otherwise the clause is the count of ribbons alone.
       const src = stems.size === 1 ? carriedSource(Array.from(stems)[0]) : null;
       const theirs = src ? factsIn(src, 0) : 0;
       if (theirs) text += say("counts_carried_from", { above: above.size, theirs });
@@ -1853,28 +1151,9 @@ export function paintCounts() {
 }
 
 /**
- * Whether activating this node opens it.
- *
- * A NODE OPENS WHEN A STEP OPENS FROM IT, and that is stepFor's four matches:
- * the chart on screen, the node's tier, its role where the step names one,
- * and whether the step's document decomposes it (stepDecomposes). All three of the spine's drawn columns hold something that opens, into
- * two documents: a fund group into its funds, a revenue category into the lines
- * pp.127-140 print under it with the fund groups it reaches kept beside them,
- * and an object category into the divisions pp.85-125 give it. The categories
- * were excluded here while the document carried nothing beneath them -- the
- * offer would have promised a decomposition no page printed -- and since it
- * carries the line tier the
- * exclusion is by role and not by tier: transfers/in and fund-balance/draw
- * share tier 0 with the categories, are the flow's ends rather than
- * containers of it, and the step's role leaves them closed.
- *
- * An aggregate is excluded by name -- it can sit at a step's `from` tier now
- * that caps are per tier -- and would have nothing to open into anyway, being
- * several documents' worth of small funds rather than one thing. So are the
- * residual node and the endpoints carried with it: an endpoint that leaves
- * the group is placed at the last drawn tier, which is exactly where the
- * next step opens from, and it is a flow's end rather than a container of
- * anything.
+ * Whether activating this node opens it: a step opens from it (stepFor), and
+ * it is neither an aggregate, which has no one node to open into, nor a
+ * carried mark, which is a flow's end rather than a container.
  *
  * @param {{id: string, tier: number, role?: string}} d
  * @returns {boolean}
@@ -1884,23 +1163,10 @@ export function drillable(d) {
 }
 
 /**
- * Whether a mark is a folded tail this chart can draw out into the marks it
- * stands for.
- *
- * EXPANDING IS NOT OPENING, AND THIS IS NOT drillable's CLAUSE RELAXED.
- * drillable excludes an aggregate for a reason that has not changed: it stands
- * for several documents' worth of small rows and there is no node to open it
- * INTO. What a reader may do to it is draw the column it was folded out of at
- * full length, which is a redraw of the chart they are on rather than a rung.
- * So the two predicates are disjoint by construction and nothing has to order
- * them.
- *
- * BY THE CAP THIS RUNG DECLARES, NOT BY THE PREFIX ALONE. An aggregate can also
- * arrive on a chart inside a kept flank, folded by the cap of the chart above;
- * this rung's `expanded` set does not reach it, so offering the gesture there
- * would be an affordance that redraws the same chart. Latent on the committed
- * corpus, whose kept flanks are single-node columns, and latent is how it would
- * ship.
+ * Whether a mark is a folded tail this rung can draw out at full length: a
+ * redraw of the chart the reader is on, not a rung, so disjoint from
+ * drillable. By the cap THIS rung declares, not the prefix alone, since an
+ * aggregate in a kept flank was folded by the chart above.
  *
  * @param {{id: string, tier: number}} d
  * @returns {boolean}
@@ -1913,13 +1179,8 @@ export function expandable(d) {
 }
 
 /**
- * The tiers of the chart on screen the reader has drawn out, in the order the
- * chart lays its columns out in.
- *
- * IN COLUMN ORDER BECAUSE THE BREADCRUMB SHOWS ONE CHIP PER TIER and two of
- * them in an order nothing decides would swap between redraws of the same
- * chart. activeTiers is the same list openableColumns names columns off.
- * @returns {number[]}
+ * The tiers of the chart on screen the reader has drawn out, in column order
+ * so the breadcrumb's chips do not swap between redraws.
  */
 export function expandedTiers() {
   const rung = drilled.length ? drilled[drilled.length - 1] : null;
@@ -1928,13 +1189,9 @@ export function expandedTiers() {
 }
 
 /**
- * Whether focus is inside the chart or its breadcrumb, asked while the element
- * it is on still exists.
- *
- * IN THE CHART, not merely "not the body". Escape pressed from the flow
- * table's <summary> or from the footer while drilled would otherwise yank
- * focus into the chart -- which is the outcome restoreFocus's own comment
- * calls a defect, produced by the test that was supposed to prevent it.
+ * Whether focus is in the chart or its breadcrumb, asked while its element
+ * still exists. Not merely "not the body": Escape from the flow table or the
+ * footer must not pull focus into the chart.
  * @returns {boolean}
  */
 export function focusInChart() {
@@ -1946,28 +1203,13 @@ export function focusInChart() {
 }
 
 /**
- * The year's entry for the rung a step opens: the file it draws and the
- * caveat refs its marks link to, or null when the year on screen was packaged
- * with none.
- *
- * READ OFF THE YEAR, NEVER JOINED HERE. What a step draws is per fiscal year,
- * and the year carries it: this reads the entry for the year on screen for the
- * step being opened, and refuses when there is none rather than describe a
- * rung the year was never told about.
- *
- * BY THE STEP'S PLACE IN THE DECLARATION, NOT BY DEPTH. The packager writes
- * one entry per declared step in declaration order (export.stepDocuments),
- * and two steps open from depth 0 on the spine, so the depth names two
- * entries and the step names one.
+ * The year's entry for a step -- the caveat refs its marks link to -- or null
+ * when the year on screen was packaged with none. Indexed by the step's place
+ * in the declaration, not by depth: two steps open from depth 0.
  * @param {FiscDrillStep} step
  * @returns {FiscStepDoc | null}
  */
 export function stepDocFor(step) {
-  // BOTH LISTS ARE READ, NEITHER IS VETTED. `years[].steps` and `steps` are
-  // optional in schema/page.schema.json and arrays of a stated shape where they
-  // appear, held against the bytes encodeConfig wrote; absent is the only state
-  // this has to tell apart, and `|| []` is what tells it. STEPS rather than
-  // CONFIG.steps so the page has one spelling of the declaration.
   const steps = (shownYear && shownYear.steps) || [];
   const at = STEPS.indexOf(step);
   const entry = at >= 0 ? steps[at] : undefined;
@@ -1975,16 +1217,9 @@ export function stepDocFor(step) {
 }
 
 /**
- * The document a step draws: a schedule selected out of the column the year on
- * screen was fetched from, or the document the step opened from where it names
- * no schedule of its own. Null when the column carries no such schedule, with
- * the reader told unless `superseded` says nobody is waiting.
- *
- * NOTHING IS FETCHED AND NOTHING IS VETTED HERE. The column arrived in one
- * request and was refused or accepted whole by loadColumn; a schedule inside an
- * accepted column is one Go's schema already passed. `superseded` still matters
- * because a drill can be overtaken by a year switch between the click and this
- * call.
+ * The document a step draws: a schedule selected out of the year's column, or
+ * the document it opened from where it names none. Null when the column
+ * carries no such schedule (the reader is told) or the drill was superseded.
  * @param {FiscDrillStep} step
  * @param {FiscProjection} from  the document of the chart the step opens from
  * @param {() => boolean} superseded
@@ -2000,35 +1235,17 @@ export async function stepDocument(step, from, superseded) {
  * Replaces the stack with `next` and repaints everything the shape decides,
  * or leaves the page exactly as it was and tells the reader why.
  *
- * IT RESHAPES FROM THE RUNG'S FILE and repaints the same set showYear repaints
- * on a year switch, for the same reason: the legend, the flow table, the
- * inferred list and the counts line are all statements about what the reader
- * is looking at, and a drill changes what that is as completely as a year does.
- *
- * SHAPE AND LAY OUT BEFORE MUTATING ANYTHING, which is showYear's contract
- * (fisc-bsg) and was not the drill's. layOut ran LAST here, inside the render
- * call, after the counts line, the breadcrumb, the legend, the inferred list
- * and the table had all been rewritten -- so a throw from it left the page
- * describing a chart it had not drawn: counts reading "0 flows between 0
- * nodes", an empty table, and a breadcrumb naming the node the reader had
- * opened, over the previous chart. Everything that can throw is in the two
- * lines inside the try, and both run while the page is still wholly the one
- * the reader was looking at. THE STACK IS SWAPPED FIRST because shapeFor and
- * layOut read it, and swapped back on a throw: the restore is of the whole
- * stack, not of one id.
- *
- * THE PIN AND THE ISOLATION ARE CLEARED, because both hold a node id and a
- * drill can remove the node they name -- opening a fund group deletes the group
- * itself from the drawn set. showYear clears them for exactly this reason on a
- * year switch; this is the same hazard one gesture over.
+ * Everything that can throw -- shape, lay-out, table rows -- runs in the try
+ * while the page is still the reader's. The stack is swapped first because
+ * shapeFor and layOut read it, and restored whole on a throw. Pin and
+ * isolation are cleared because a drill can remove the node they name.
  *
  * @param {Rung[]} next
  * @param {string} [refused] the banner's opening words when the redraw is refused
  * @returns {boolean} whether the new depth is on screen
  */
 export function redrawStack(next, refused = "That could not be opened") {
-  // ASKED BEFORE ANYTHING IS REPAINTED. The element focus is on is one the
-  // repaint below removes, so after it there is nothing left to ask about.
+  // Asked before the repaint removes the element focus is on.
   const hadFocus = focusInChart();
   const was = drilled;
   // THE RUNG THIS REDRAW CLOSES, if it closes one: the mark that opened it is
@@ -2044,25 +1261,17 @@ export function redrawStack(next, refused = "That could not be opened") {
     const doc = drawnDoc();
     if (!doc) throw new Error("no document to open");
     drawn = shapeFor(doc);
-    // RESHAPED AND NOT JUST RE-LAID, so the chart drawn at three columns is the
-    // chart three columns would have drawn: the fold, the caps and the
-    // placeability test all take the tier set, and a document shaped at four
-    // columns and laid out at three would be a fourth shape nothing else
-    // produces. It terminates because each pass adds at least one entry of a
-    // finite `widen` list to the rung's dropped set and never removes one.
+    // Reshaped, not just re-laid: the fold, caps and placeability all take the
+    // tier set. Terminates: each pass adds an entry of the finite `widen` list
+    // to the dropped set and never removes one.
     while (dropEmptyColumns(drawn)) drawn = shapeFor(doc);
     laid = layOut(drawn);
-    // WITH THE SHAPE AND THE LAY-OUT, not with the repaint. Building a row
-    // reads every link's fact ids and locators, which is the last place in a
-    // draw that can throw on a document; inside the try it is a refusal with
-    // the chart left as it was, and after the repaint it was a half-written
-    // table under the other year's heading.
+    // Inside the try: building a row is the last step of a draw that can
+    // throw on a document.
     rows = tableRows(drawn);
   } catch (e) {
-    // BACK TO WHERE THE READER WAS, not to a blank page. shapeFor throws on a
-    // document its tier set cannot describe, which is a fault in this view's
-    // declaration rather than in the reader's click, and leaving the chart
-    // drawn as it was is the only outcome that does not punish them for it.
+    // Back to where the reader was: a throw here is a fault in the view's
+    // declaration, not in the reader's click.
     drilled = was;
     laidNodes = laidWas;
     groupIndex = groupsWas;
@@ -2078,10 +1287,7 @@ export function redrawStack(next, refused = "That could not be opened") {
   paintBreadcrumb();
   paintChartName();
   paintCounts();
-  // WITH THE REST OF THE CHROME, because the count and the steppers describe
-  // the chart on screen and a drill changes it. They were repainted only when
-  // the BUDGET moved, so opening a rung that draws a different number of
-  // columns left both describing the chart the reader had just left.
+  // The count and steppers describe the chart on screen, which a drill changes.
   syncColumns();
   buildLegend();
   paintChartHint();
@@ -2095,19 +1301,9 @@ export function redrawStack(next, refused = "That could not be opened") {
 /**
  * Opens one node of the chart on screen, one rung deeper.
  *
- * ASYNC BECAUSE THE FIRST RUNG OF A DOCUMENT-SWITCHING CHAIN FETCHES, and that
- * gives every guard in loadColumn a caller that is a click. The await sits
- * between the fetch and the repaint and nothing is mutated before it; after it
- * the gesture asks whether it has been overtaken -- by a later drill, a pop, or
- * a year switch -- and stands down rather than push a rung onto a stack that is
- * no longer the one it was opened against. A year switch mid-drill would
- * otherwise draw the year the reader left.
- *
- * IT ASKS TWICE, ABOUT DIFFERENT THINGS. The tokens catch a gesture that
- * STARTED after this one; the document identity catches a year switch that was
- * already in flight when this one started, which no token can see because the
- * bump happened first. Both orderings end in a chart whose parts come from two
- * fiscal years, so neither check is redundant.
+ * After the await it stands down if overtaken: the tokens catch a gesture
+ * that started later, the document identity a year switch already in flight
+ * when this one started.
  *
  * @param {string} id
  * @returns {Promise<string>} DREW, SUPERSEDED or FAILED
@@ -2115,18 +1311,9 @@ export function redrawStack(next, refused = "That could not be opened") {
 export async function drillDown(id) {
   const depth = drilled.length;
   const from = docAt(depth);
-  // THE NODE THE READER ACTIVATED, OFF THE CHART THEY ACTIVATED IT ON. Which
-  // step opens it is a question about that node -- its tier and its role --
-  // and not about the depth; the argument is unchanged and only the document
-  // it is asked of moves. It has to be the chart, because a window's kept
-  // flank is drawn from the chart above and its nodes need not exist in the
-  // rung's file at all.
-  //
-  // EVERY REFUSAL HERE IS SAID. The gestures ask drillable before they call
-  // this, so a reader meets these only when the chart changed under the
-  // gesture; the page's own callers meet them by name. A FAILED that no
-  // banner explains is the one outcome a reader cannot tell from a page that
-  // did nothing, and openNode's catch sees a throw, never a return.
+  // The node comes off the chart the reader activated it on: a kept flank's
+  // nodes need not exist in the rung's file. Every refusal is said, because an
+  // unexplained FAILED looks like a page that did nothing.
   const chart = projection;
   if (!chart || !from) {
     fail("That could not be opened: there is no chart on screen to open it from.");
@@ -2146,15 +1333,9 @@ export async function drillDown(id) {
   const token = switching;
   const overtaken = () => mine !== opening || token !== switching;
   const doc = await stepDocument(step, from, overtaken);
-  // THE TOKEN CANNOT SEE A SWITCH THAT WAS ALREADY IN FLIGHT. `switching` is
-  // bumped when showYear STARTS, so a drill begun while a year fetch is
-  // outstanding captures the already-bumped value and compares equal when the
-  // new spine lands. The stack then rebuilds from `from`, the document the
-  // reader clicked on, under the new year's title: measured, an FY2026-27
-  // title and residual over FY2025-26 fund figures, in one chart.
-  //
-  // ASKING ABOUT THE DOCUMENT ANSWERS BOTH ORDERINGS, because it is the thing
-  // the gesture was actually opened against rather than a count of gestures.
+  // `switching` is bumped when showYear STARTS, so a drill begun during a year
+  // fetch compares equal when the new spine lands; asking whether the document
+  // it was opened against is still at this depth catches that ordering.
   if (overtaken() || docAt(depth) !== from) return SUPERSEDED;
   if (!doc) return FAILED;
   return redrawStack(drilled.concat([{ id: id, doc: doc, step: step, chart: chart }]))
@@ -2162,11 +1343,8 @@ export async function drillDown(id) {
 }
 
 /**
- * Closes rungs until `depth` remain: 0 is the overview.
- *
- * SYNCHRONOUS, because every document a shallower rung needs is already on the
- * stack. It bumps the drill token so a drill in flight from a rung being closed
- * stands down instead of landing on the shorter stack.
+ * Closes rungs until `depth` remain: 0 is the overview. Bumps the drill token
+ * so a drill in flight from a closed rung stands down.
  * @param {number} depth
  */
 export function drillUp(depth) {
@@ -2176,12 +1354,8 @@ export function drillUp(depth) {
 }
 
 /**
- * What a click or a key does to a node that opens: drills, and banners a
- * rejection rather than losing it.
- *
- * The rejection path is the last resort, as wireYears' is. drillDown catches
- * the throws it knows -- the fetch, the shape, the layout -- so what reaches
- * here is a repaint that threw, and a click handler has nowhere else to put it.
+ * What a click or key does to a node that opens: drills, and banners whatever
+ * drillDown did not catch itself.
  * @param {string} id
  */
 export function openNode(id) {
@@ -2189,17 +1363,9 @@ export function openNode(id) {
 }
 
 /**
- * Draws the column a folded tail was cut out of at every mark it holds.
- *
- * NO FETCH AND NO RUNG. The marks are already in the rung's own document --
- * capColumn discarded them on the way to the screen, not on the way off the
- * wire -- so this is the chart the reader is on, reshaped. The breadcrumb does
- * not move, because nothing has been opened.
- *
- * A REPLACED RUNG AND NOT A MUTATED ONE. redrawStack restores the whole stack
- * when the reshape throws, and a set mutated in place would survive that
- * restore -- leaving the reader on the chart they had, over a rung that says it
- * is expanded and would redraw expanded at the next repaint.
+ * Draws the column a folded tail was cut out of at every mark it holds: the
+ * rung reshaped, with no fetch and no new rung. Replaced rather than mutated,
+ * so redrawStack's restore on a throw undoes it.
  *
  * @param {{tier: number}} d
  */
@@ -2213,12 +1379,9 @@ export function expandTier(d) {
 }
 
 /**
- * Folds an expanded column back into its tail: what the breadcrumb's chip does.
- *
- * THE ONLY WAY BACK, AND THAT IS WHY IT IS A CONTROL RATHER THAN A GESTURE. The
- * mark a reader expanded is the one mark expanding removes, so there is nothing
- * left on the chart to double click; and Escape already means "pop one rung",
- * which is unambiguous only while nothing else is stacked.
+ * Folds an expanded column back into its tail: the breadcrumb chip's action.
+ * A control rather than a gesture because expanding removed the mark a reader
+ * would click, and Escape already means "pop one rung".
  * @param {number} tier
  */
 export function collapseTier(tier) {
@@ -2232,39 +1395,11 @@ export function collapseTier(tier) {
 }
 
 /**
- * One click on a node: it follows that node's money, whether or not the node
- * also opens.
+ * Runs a reader's gesture and turns anything it throws into a refusal banner.
  *
- * NAMED RATHER THAN INLINE IN render(), so a test reaches the gesture by name
- * rather than only through a drawn mark.
- *
- * THE ECHO GUARD IS ON THE ACTIVATION AND NOT ON THE DEVICE: a click on the
- * node a key has just activated is that key's own click, synthesised by
- * assistive tech that would otherwise undo what the key did. Every other click
- * still isolates, including one synthesised by tech that sent no key at all.
- * @param {LaidNode} d
- * @param {number} at the event's timestamp
- */
-/**
- * Runs a reader's gesture and turns anything it throws into a refusal they can
- * read.
- *
- * A DOM LISTENER IS THE ONE PLACE A THROW REACHES NOBODY. drillDown has had a
- * .catch since openNode, and showYear has one; a click handler had neither, so
- * a gesture that threw went to the console and left the page mid-render -- the
- * detail panel half-built, with the amount and the chips written and the
- * Sources block never reached, and no banner, because fail() is only called by
- * code that knows it failed.
- *
- * MEASURED, and it is why this is a guard rather than a fix to one function: a
- * schedule served with no `sources` DRAWS -- nothing on the draw path reads
- * them -- and then the first node a reader pins throws out of citations(). The
- * page looked fine until they touched it.
- *
- * IT DOES NOT VALIDATE ANYTHING. What shape a served document must have is
- * schema/column.schema.json's claim, held against the bytes Go writes; a
- * second copy of it here is the thing the boundary forbids. This only decides
- * where the failure LANDS.
+ * A DOM LISTENER IS THE ONE PLACE A THROW REACHES NOBODY: without this a throw
+ * leaves the page mid-render with no banner. It validates nothing; it only
+ * decides where the failure lands.
  *
  * @template T
  * @param {string} gesture  what the reader did, for the sentence
@@ -2282,6 +1417,15 @@ export function guarded(gesture, run) {
   }
 }
 
+/**
+ * One click on a node: it follows that node's money, whether or not it opens.
+ *
+ * THE ECHO GUARD IS ON THE ACTIVATION AND NOT ON THE DEVICE: a click on the
+ * node a key has just activated is that key's own click, synthesised by
+ * assistive tech, and would otherwise undo what the key did.
+ * @param {LaidNode} d
+ * @param {number} at the event's timestamp
+ */
 export function clickNode(d, at) {
   pin(d);
   if (d.id === keyActivation.id && at - keyActivation.at < ACTIVATION_WINDOW) return;
@@ -2294,15 +1438,8 @@ export function clickNode(d, at) {
  * A double click on a node: it opens the node, having first put back whatever
  * the two clicks underneath it isolated.
  *
- * THE RESTORE IS OBSERVABLE ON A NODE THAT DOES NOT OPEN, and that is where it
- * earns its place. On one that does, redrawStack clears the isolation anyway --
- * an id from the chart being replaced need not exist on the chart replacing it
- * -- so there the restore buys only the frame: the emphasis the reader sees
- * last before the redraw is their own, rather than a flash of the node they
- * happen to be double clicking.
- *
  * THE RECORD IS SPENT WHETHER OR NOT ANYTHING OPENED, so a later double click
- * on the same node cannot restore a state two gestures old.
+ * cannot restore a state two gestures old.
  * @param {LaidNode} d
  * @param {number} at the event's timestamp
  */
@@ -2319,18 +1456,9 @@ export function doubleClickNode(d, at) {
  * Enter or Space on a node: Enter opens a node that opens, and Space follows
  * the money.
  *
- * SPACE IS THE COST OF THE SPLIT AND IS ANNOUNCED RATHER THAN HIDDEN. A
- * role="button" conventionally activates on Space, and here Space is the one
- * key that never opens. nodeDescription says so on the mark, paintChartHint
- * says so on the page, and aria-keyshortcuts carries both keys -- because the
- * convention this departs from is one a reader is entitled to rely on until
- * told otherwise.
- *
- * ENTER FALLS BACK TO THE ISOLATE ON A NODE THAT DOES NOT OPEN, rather than
- * doing nothing. A role="button" with a dead Enter is worse than one whose
- * Enter and Space agree, and on those marks they always did: 319 of the 343
- * nodes the chain's views draw open into nothing, and their aria-pressed
- * toggle is the only thing an activation there could mean.
+ * SPACE NEVER OPENS, against the role="button" convention, so nodeDescription,
+ * paintChartHint and aria-keyshortcuts all announce it. Enter falls back to
+ * the isolate on a node that does not open, so no button has a dead Enter.
  * @param {LaidNode} d
  * @param {string} key
  * @param {number} at the event's timestamp
@@ -2344,9 +1472,6 @@ export function keyNode(d, key, at) {
     openNode(d.id);
     return;
   }
-  // THE SAME KEY FOR THE SAME KIND OF THING. Enter is "show me what is inside
-  // this mark" on both, and which of the two it does is the mark's business
-  // rather than a second keystroke's; Space still follows the money on either.
   if (key === "Enter" && expandable(d)) {
     expandTier(d);
     return;
@@ -2355,35 +1480,15 @@ export function keyNode(d, key, at) {
 }
 
 /**
- * Puts focus somewhere real after a drill has replaced the chart.
+ * Puts focus somewhere real after a drill has replaced the focused element.
  *
- * A KEYBOARD DRILL DESTROYS THE ELEMENT THAT WAS FOCUSED. The node a reader
- * tabbed to and pressed Enter on is exactly the node opening removes, and
- * paintBreadcrumb's replaceChildren does the same to the button on the way back
- * -- so focus fell to <body> in both directions, on a page whose own lede says
- * "tab to one and press Enter". A reader would have to tab in from the top of
- * the document again after every gesture the page invites.
+ * ONLY IF FOCUS WAS ALREADY IN THE CHART, and the caller must say so: by the
+ * time this runs the repaint has detached the focused element, so
+ * document.activeElement no longer knows.
  *
- * IT MOVES FOCUS ONLY IF IT WAS ALREADY IN THE CHART, because stealing it from
- * a reader who clicked with a mouse, or who is somewhere else on the page
- * entirely, would be its own defect.
- *
- * THE CALLER DECIDES THAT, AND HAS TO. This read document.activeElement itself,
- * and read it AFTER paintBreadcrumb and render had already detached the focused
- * element -- so it early-returned in exactly the two directions it was written
- * for and fired only in the case its own comment says must not happen. The
- * question has to be asked while the answer still exists.
- *
- * BACK ONTO THE MARK THE READER LEFT, on the way up, at every depth. Popping
- * a rung returns to a chart on which the node that was opened is drawn again,
- * and a reader who arrived at it by keyboard is put back on it -- not on the
- * first mark in document order, which was a ring on a mark nobody chose, and
- * not on a return control, which undoes a different rung from the one just
- * closed. Where that mark is not drawn (folded into a tail), the innermost
- * return control is the fallback below the overview and the first mark on
- * it. Down a rung, the opened node is gone from the chart and the rung's own
- * return control is the one element on the page that undoes what was just
- * done.
+ * Up a rung, focus returns to the mark the reader opened; where that mark is
+ * folded away, to the innermost return control, then the first mark. Down a
+ * rung, to the rung's own return control.
  *
  * @param {boolean} hadFocus whether focus was inside the chart before the
  *   repaint that just replaced it.
@@ -2392,11 +1497,8 @@ export function keyNode(d, key, at) {
  */
 export function restoreFocus(hadFocus, popped = "") {
   if (!hadFocus) return;
-  // WITHOUT PINNING. A mark's focus handler shows its tooltip and pins it,
-  // which is right when the reader tabbed onto it and wrong when this put them
-  // back: a pop would open the panel of the mark just left, and the next
-  // Escape would spend itself clearing that pin instead of closing the next
-  // rung. The handlers ask `restoring` and leave a restored focus unpinned.
+  // WITHOUT PINNING: otherwise the next Escape spends itself clearing that pin
+  // instead of closing the next rung. The focus handlers ask `restoring`.
   restoring = true;
   try {
     restoreFocusTo(popped);
@@ -2413,26 +1515,16 @@ let restoring = false;
  * @param {string} popped
  */
 function restoreFocusTo(popped) {
-  // focus() IS ON HTMLElement AND SVGElement, NOT ON Element, so the runtime
-  // test stays and the cast is what tells tsc --checkJs the same thing. The
-  // test is not redundant with the cast: the SVG marks are <g> elements, which
-  // are not obliged to have it.
+  // focus() is on HTMLElement and SVGElement, not Element; the SVG <g> marks
+  // are not obliged to have it, so the runtime test stays.
   const focus = (/** @type {Element | null} */ target) => {
     const el = /** @type {any} */ (target);
     if (!el || typeof el.focus !== "function") return false;
     el.focus();
     return true;
   };
-  // THE INNERMOST RUNG'S CONTROL, NOT THE FIRST CHILD. Under N rungs the bar
-  // holds N return controls, and children[0] is the outermost -- the way back
-  // to the overview -- which is not where a reader two rungs deep came from.
-  // The last control is the one that closes the rung just opened.
-  //
-  // ASKED FOR BY CLASS AND NOT BY TAG, because the bar holds a second kind of
-  // button: one chip per expanded column, which undoes an expansion rather than
-  // a rung. Under "the last button" a keyboard drill onto a chart whose column
-  // the reader had expanded landed focus on the chip -- the one control in the
-  // bar that does not go back.
+  // THE INNERMOST RUNG'S CONTROL, asked for by class: the bar also holds
+  // expansion chips, which do not go back.
   const chart = maybeEl("chart");
   const left = popped && chart
     ? D3.select(chart).selectAll("g.node").filter(/** @param {LaidNode} d */ (d) => d.id === popped).node()
@@ -2448,21 +1540,13 @@ function restoreFocusTo(popped) {
 }
 
 /**
- * Names the chart for a screen reader, for the state it is actually in.
+ * Names the chart for a screen reader, for the rung it is actually on.
  *
- * A DRILL CHANGES WHAT THE CHART IS OF as completely as a year switch changes
- * which document it is, and nothing rewrote these two elements on one. After
- * opening a fund group the chart still announced its opening state and
- * described "six fund groups" that were no longer drawn -- only to the readers
- * who cannot see the marks disagree.
- *
- * IT APPENDS RATHER THAN REPLACES the name, so the page's own words survive:
- * the subject is the view's, built in Go, and this says which part of it is on
- * screen. Returning to the overview puts both back.
+ * IT APPENDS TO the served name rather than replacing it; the overview puts
+ * both back.
  */
 export function paintChartName() {
-  // EVERY RUNG, OUTERMOST FIRST, so a reader two deep hears the whole path:
-  // "opened into General Fund, then Patrol". One rung reads as it always did.
+  // Every rung, outermost first: "opened into General Fund, then Patrol".
   const trail = trailOfRungs().join(", then ");
   const title = maybeEl("chart-title");
   if (title && shownYear && shownYear.chart_title) {
@@ -2476,18 +1560,9 @@ export function paintChartName() {
     baseDescription = desc.textContent;
     tablePointer = lastSentence(baseDescription);
   }
-  // THE TABLE POINTER CLOSES EVERY DEPTH'S DESCRIPTION, not only the first
-  // rung's: it is captured once from the served sentence and the closed flow
-  // table is out of the accessibility tree, so this sentence is the only route
-  // to it a reader who cannot see the page has, however deep they are.
-  //
-  // THE STEP'S OWN WORDS SAY WHAT THE COLUMNS ARE. A sentence composed here
-  // read "<node> on the left, and what it is made of on the right", which is
-  // false of the first rung of the shipped chain: opening a fund group draws
-  // revenue categories on the left and the group's funds beside them, and the
-  // group itself is gone from the chart. The packager ships a description per
-  // step, in the caller's words, and this file adds only what it owns -- the
-  // rung's name, the way back and the table pointer.
+  // THE TABLE POINTER CLOSES EVERY DEPTH'S DESCRIPTION: the closed flow table
+  // is out of the accessibility tree, so this sentence is the only route to it.
+  // What the columns are is the step's own description, from Go.
   if (drilled.length) {
     const step = drilled[drilled.length - 1].step;
     const said = step && typeof step.description === "string" && step.description
@@ -2503,77 +1578,36 @@ export function paintChartName() {
  * The last sentence of a server-rendered description, with the template's own
  * line wrapping collapsed.
  *
- * Returns "" for a description of one sentence, which is what a step's own
- * Description with no template suffix after it would be -- appending nothing
- * beats appending half of the chart's own sentence.
+ * Returns "" for a description of one sentence.
  *
  * @param {string} s
  * @returns {string}
  */
 export function lastSentence(s) {
-  // ANY TERMINATOR, not just a period: export.View accepts ".", "!" and "?" as
-  // the close of a caller's description, and splitting on ". " alone let the
-  // other two run into the template's sentence.
-  //
-  // AN UNTERMINATED DESCRIPTION CANNOT REACH HERE. The packager refuses one --
-  // see export.View.validateSteps' endsASentence arm over DrillStep.Description,
-  // which exists because every fixture in this repo happened to end in a period
-  // and hid the case.
+  // ANY TERMINATOR: Go accepts ".", "!" and "?" to close a description, and
+  // refuses an unterminated one.
   const parts = String(s).replace(/\s+/g, " ").trim().split(/[.!?]\s+/);
   return parts.length < 2 ? "" : parts[parts.length - 1].trim();
 }
 
 /**
- * Says what a click does, for the state the chart is actually in.
+ * Says what a click does, for the chart on screen.
  *
- * THE INSTRUCTION GOES FALSE THE MOMENT A READER FOLLOWS IT. On a chain the
- * question is whether a step exists BELOW this depth, not whether one is open:
- * "nothing here opens further" was true of every opened view while the drill
- * was one hop, and is false of depth 1 on a two-step chain. The page went on
- * saying "click a node in the right-hand column to open it" over a chart
- * where nothing opened, and the swatch sentence was worse: conditional on the
- * OPENING state's legend, and buildLegend draws no swatches in any opened view.
- *
- * THE COLUMN IS READ OFF THE CHART, NOT ASSUMED. This said "right-hand column"
- * unconditionally, which held while every declared step opened the finest tier
- * its chart drew and stopped holding on the spine, whose fund groups are its
- * MIDDLE column. openableColumns names every column that holds a node which
- * opens -- all three on the spine, whose revenue categories and object
- * categories open as well as its fund groups.
- *
- * AND WHETHER ANYTHING OPENS IS ASKED OF THE DRAWN NODES, not of the chain: a
- * step exists below depth 1 for every fund group, and only the General Fund
- * draws a node at its `from` tier -- the other five groups' charts end at their
- * funds. Telling a reader to click a column that is not there is the same
- * defect as telling them to click one that does not open.
- *
- * Server-rendered for the opening state, so it survives with JavaScript off --
- * where it is also true, because without a script nothing can be opened at all.
+ * WHETHER ANYTHING OPENS, AND IN WHICH COLUMN, IS ASKED OF THE DRAWN NODES,
+ * not of the declared chain: a step can exist below this depth with no node
+ * on screen at its `from` tier.
  */
 export function paintChartHint() {
   const hint = maybeEl("chart-hint");
   if (!hint || !STEPS.length) return;
   const anyOpens = Boolean(projection) && projection.nodes.some(drillable);
   const column = anyOpens ? joinOr(openableColumns()) : "";
-  // THE COLUMN IS DROPPED FROM THE SENTENCE RATHER THAN LEFT BLANK IN IT. A
-  // chart whose columns nobody declared has no left and no right to name
-  // (openableColumns), and "Click a node in the  column" is worse than the
-  // shorter true sentence. internal/export refuses the view that would produce
-  // it; a config handed to this file has still said it.
+  // An undeclared column order has no left or right to name: drop the clause.
   const where = column ? say("in_column", { columns: column }) : "";
-  // THE ISOLATE IS NAMED ON EVERY VIEW, including one where nothing opens. It
-  // is the gesture every node of every chart has, and the sentence that used to
-  // stop at "nothing here opens further" left a reader on those charts told
-  // only what they could not do.
-  //
-  // AND SPACE IS NAMED BECAUSE IT IS THE SURPRISE. A role="button" activates on
-  // Space by convention and here Space never opens; a reader is entitled to
-  // that convention until the page says otherwise, so the page says otherwise.
+  // The isolate is named on every view, and Space with it, because Space
+  // never opens against the role="button" convention.
   const follows = " " + say("follow");
-  // THE FOLDED TAIL IS NAMED ONLY WHERE THERE IS ONE, and it is a sentence of
-  // its own rather than a clause inside the opening one: on five of the nine
-  // views that draw a tail, the tail is the ONLY thing the chart offers, and
-  // "nothing here opens further" was the whole of what those readers were told.
+  // A sentence of its own: the tail can be the only thing a chart offers.
   const tails = Boolean(projection) && projection.nodes.some(expandable);
   const expands = tails ? " " + say("expand") : "";
   if (drilled.length) {
@@ -2587,34 +1621,12 @@ export function paintChartHint() {
 }
 
 /**
- * Which columns of the chart on screen hold a node that opens -- "left-hand",
- * "middle", "right-hand", left to right, and "second" and "third" between the
- * edges of a wider chart -- or none when nothing here opens.
+ * Which columns of the chart on screen hold a node that opens, named left to
+ * right, or none when nothing here opens.
  *
- * IN THE DECLARED ORDER AND NOT IN TIER ORDER. layOut aligns a node on
- * indexOf(tier) in the set the document was shaped by (alignFor), so THAT list
- * is the columns left to right; a sort by tier number agrees with it only
- * while the declaration happens to ascend. A window's need not -- {2,5,4}
- * draws fund groups, the object category they pay for, then the divisions
- * spending it -- and sorted, this would name the middle column "right-hand"
- * and send a reader to click the wrong one.
- *
- * NARROWED TO THE TIERS THE CHART ACTUALLY DRAWS, because a declared column
- * can come out empty and telling a reader to click a column that is not there
- * is the same defect as telling them to click one that does not open. Measured
- * over every view the page opens, both published columns: none of them comes
- * out short, so the narrowing changes no sentence on the committed corpus. It
- * stays because a tier set is a DECLARATION and a document need not fill it --
- * the drill opens into a schedule that decomposes one fund of sixty-one -- and
- * a hint naming a column nothing is drawn in is the same defect one step on.
- * Two columns have no middle; a chart drawn whole
- * declares no order at all and is named nothing here, which is the same answer
- * as "nothing opens" and reaches the reader as paintChartHint's other
- * sentence.
- *
- * ASKED OF THE DRAWN NODES, NOT OF THE STEPS: a step opens from a tier, and
- * which of that tier's nodes open is drillable's answer -- on the spine's
- * left-hand column three of thirteen do not.
+ * IN THE DECLARED ORDER AND NOT IN TIER ORDER: layOut aligns on the declared
+ * set, and a window's ({2,5,4}) does not ascend. Narrowed to the tiers the
+ * chart actually draws, because a declaration need not be filled.
  * @returns {string[]}
  */
 export function openableColumns() {
@@ -2636,13 +1648,7 @@ export function openableColumns() {
 }
 
 /**
- * A list of phrases as English: "a", "a or b", "a, b or c".
- *
- * A join ON " or " READS AS A CHOICE OF TWO HOWEVER MANY THERE ARE. Three
- * openable columns came out "the left-hand or middle or right-hand column",
- * which is not a sentence anyone writes, and the spine reaches three the day
- * its right-hand column opens. No serial comma: the last separator is the
- * conjunction alone.
+ * A list of phrases as English: "a", "a or b", "a, b or c" (no serial comma).
  * @param {string[]} parts
  * @returns {string}
  */
@@ -2658,12 +1664,8 @@ export function buildLegendCount() {
 }
 
 /**
- * Draws the trail back out of a drill.
- *
- * THE ONLY WAY BACK THAT IS ALWAYS VISIBLE. Escape also pops -- see main() --
- * but a reader who arrived by clicking has no reason to expect a keystroke, and
- * the node they clicked is no longer on the chart to click again: opening a
- * fund group removes the group. Without this the drill is a trapdoor.
+ * Draws the trail back out of a drill: the only way back that is always
+ * visible, since opening can remove the node that was clicked.
  */
 export function paintBreadcrumb() {
   const bar = maybeEl("breadcrumb");
@@ -2674,14 +1676,8 @@ export function paintBreadcrumb() {
     return;
   }
   bar.removeAttribute("hidden");
-  // ONE RETURN CONTROL PER RUNG, EACH CLOSING TO ITS OWN DEPTH. Rung k's
-  // control says what the chart k deep is -- the step's `back` -- and pops the
-  // stack to k rungs, so a reader two deep can return one rung or two.
-  //
-  // THE WORDS ARE THE VIEW'S, not derived from the tier number. A first draft
-  // read `from === 2 ? "fund groups" : "divisions"`, which is a mapping this
-  // file has no way to keep true: a third page drilling from a third tier
-  // would get "divisions" and nobody would find out from a test.
+  // One return control per rung, popping to its own depth, in the step's own
+  // `back` words rather than any mapping from tier number.
   const controls = drilled.map((rung, k) => {
     const back = h("button", "crumb-back");
     back.textContent = say("back_control", { back: rung.step.back });
@@ -2690,44 +1686,26 @@ export function paintBreadcrumb() {
     return back;
   });
   const here = h("span", "crumb-here", labelOfRung(drilled.length - 1));
-  // ONE CHIP PER EXPANDED COLUMN, AND IT IS THE ONLY WAY BACK. Expanding
-  // removes the mark that was expanded, so unlike every other state this page
-  // holds there is nothing on the chart left to gesture at; and the chart's own
-  // words cannot say it, because "the N smaller funds" is not a thing the reader asked for
-  // until they asked for it.
-  //
-  // THE COUNT IS READ OFF THE CHART ON SCREEN rather than remembered from the
-  // tail's label. The tail said how many it hid; the chip says how many are
-  // drawn, which is the claim a reader can check by counting marks.
+  // One chip per expanded column, the only way to fold it back. Its count is
+  // what is drawn, read off the chart, not what the tail said it hid.
   const chips = expandedTiers().map((tier) => {
     const n = columnSize(tier);
     const chip = h("button", "crumb-expanded",
       "showing all " + n + " " + tailNoun(tier) + " ×");
     chip.setAttribute("type", "button");
-    // THE GLYPH IS NOT THE LABEL. A screen reader reads "×" as "times" or as
-    // nothing at all, and a control whose accessible name is "showing all 32
-    // funds" does not say that pressing it stops showing them.
+    // THE GLYPH IS NOT THE LABEL: a screen reader reads "×" as "times".
     chip.setAttribute("aria-label",
       "Showing all " + n + " " + tailNoun(tier) + "; fold the smallest back into one mark");
     chip.addEventListener("click", () => collapseTier(tier));
     return chip;
   });
-  // THE CHIPS COME AFTER THE TRAIL, WHICH restoreFocus HAD TO BE TOLD ABOUT.
-  // It took the LAST <button> in this bar as the way back from the rung just
-  // opened; a chip is a button in this bar, so a keyboard drill onto a chart
-  // whose column was already expanded would have put focus on "fold these back"
-  // instead. It asks for the return control by class now.
+  // Chips are buttons too, which is why restoreFocus asks by class.
   bar.replaceChildren(...controls, here, ...chips);
 }
 
 /**
- * How many marks of its own a drawn column holds.
- *
- * THE COLUMN'S OWN, NOT EVERY MARK AT THAT TIER. A residual, a gap and the
- * endpoints carried with them are placed at a drawn tier and are not parts of
- * the opened node -- isCarried is the page's one reader of that -- and a kept
- * flank's marks are the chart above's. Counting them would put a number in the
- * breadcrumb a reader counting marks in the column disagrees with.
+ * How many marks of its own a drawn column holds: not the carried residual,
+ * gap or kept flank placed at that tier.
  * @param {number} tier
  * @returns {number}
  */
@@ -2738,12 +1716,8 @@ export function columnSize(tier) {
 }
 
 /**
- * What this rung's step calls the rows of one capped column.
- *
- * THE CAP'S WORD WHERE IT HAS ONE, which is capColumn's rule reached from the
- * other side: one step caps two columns under two nouns, and a chip that said
- * "funds" over the categories would be the tier-number-to-word mapping
- * paintBreadcrumb refuses one function up.
+ * What this rung's step calls the rows of one capped column: the cap's own
+ * word where it has one, since one step can cap two columns under two nouns.
  * @param {number} tier
  * @returns {string}
  */
@@ -2756,22 +1730,8 @@ export function tailNoun(tier) {
 
 /**
  * The printed label of the node rung k opened, from the document it was opened
- * FROM.
- *
- * THE WORDS ARE THE CHART THE READER CLICKED ON'S, and that is the rule rather
- * than a consequence of the node going away. A one-sided step does remove it:
- * opening a fund group filters the group itself out of the drawn set, so there
- * is nothing there to read. A window does not -- its centre IS the node that
- * was clicked, drawn in the middle column -- and the answer has to be the same
- * either way, because the same breadcrumb names both. windowFor takes the
- * centre's record off the chart on screen for this reason, so the mark and the
- * crumb agree by construction; this reads the file that chart was shaped from
- * rather than depending on that.
- *
- * AND NOT THE RUNG'S OWN DOCUMENT: across a document switch the node was
- * clicked in the chart one depth up, and that chart's file is the one that
- * prints its label. Both documents may carry the id and print different words
- * for it, which is what the client's tests relabel their fixtures to catch.
+ * FROM, not the rung's own: across a document switch both may carry the id
+ * under different words, and the reader clicked the first.
  * @param {number} k
  * @returns {string}
  */
@@ -2786,22 +1746,8 @@ export function labelOfRung(k) {
 /**
  * The rungs' names, outermost first, with any two that read alike told apart.
  *
- * THE COLLISION IS THE CITY'S AND NOT THIS PAGE'S. Budget Book p66 prints
- * "General Fund" as a fund-group column header and p255 prints it as fund 100's
- * name, so a reader two rungs into that group is told "opened into General
- * Fund, then General Fund" and nothing says which is which. Neither label can
- * be changed: both are the words the city printed over the box, and this
- * projection's rule is that pp.66-67's words win.
- *
- * SO THE TRAIL IS WHERE IT IS RESOLVED, and with the step's declared noun --
- * `tier === 2 ? "fund group" : "fund"` is the construct paintBreadcrumb's
- * comment refuses, one function further out. EVERY member of a colliding set is
- * qualified rather than all but the last: "General Fund (fund group), then
- * General Fund" leaves the second one still asking which General Fund it is.
- *
- * A rung whose step declares no noun is drawn unqualified. The packager refuses
- * one (validateSteps), and inventing a word here to cover a config that got
- * past it would be this file naming the tiers after all.
+ * THE COLLISION IS THE CITY'S: the printed labels cannot change, so every
+ * member of a colliding set is qualified with its step's declared noun.
  * @returns {string[]}
  */
 export function trailOfRungs() {
@@ -2816,52 +1762,23 @@ export function trailOfRungs() {
 /**
  * The document as this page draws it: the overview, or one node opened.
  *
- * THE RESIDUAL AND THE CONTRA MARKING COME LAST AND IN THAT ORDER, whichever
- * shape the rung took; everything before them is sideOf's, once for a chart
- * with a side and twice for a window.
- *
  * @param {FiscProjection} doc
  * @returns {FiscProjection}
  */
 export function shapeFor(doc) {
   const rung = drilled.length ? drilled[drilled.length - 1] : null;
   if (!rung) {
-    // THE OVERVIEW IS THE DOCUMENT FOLDED AND FILTERED TO NOTHING. A view could
-    // once declare a root and draw one node's subtree, which made an overview a
-    // page permanently opened into that node; the declaration went with the
-    // template that was its only reader, so every chart this page draws
-    // undrilled is its whole document at the view's render tiers.
     return markContra(foldDocument(doc));
   }
   const step = rung.step;
-  // WHICH NODES EACH COLUMN HOLDS IS READ AND NOT DERIVED, which is this
-  // function's whole shape below the overview: Go walked the documents on the
-  // side the step declares and answered every rung once (AGENTS.md, "Go vets,
-  // JavaScript renders"), and what is left here is the fitting -- the cap, the
-  // fold, the splice and the marks.
+  // WHICH NODES EACH COLUMN HOLDS IS GO'S ANSWER; this only fits it.
   const answer = answeredRung();
-  // A WINDOW OR A SIDE, AND THE STEP SAYS WHICH. A step that keeps a flank
-  // draws two half-charts spliced on the node the reader clicked; one that
-  // keeps none draws a single filtered chart at the columns it declares.
   const drawn = (step.keep && step.keep.length)
     ? windowFor(rung.chart, doc, rung, answer)
     : sideOf(doc, rung, activeTiers(), heldFor(answer, activeTiers()));
-  // LAST, AFTER THE CAP AND THE FOLD, because neither may touch it: the cap
-  // ranks the group's own parts and the residual is not one of them, and the
-  // fold merges by folded ends and these ends are the chart above's.
-  //
-  // AND THE CONTRA MARKING AFTER THAT, because it is about what the fold LEFT
-  // negative: {1,0,2} is the one tier set that draws a category's printed lines
-  // at all, and two of them are reductions; every other view reaches the
-  // category as one net cell, where nothing is negative.
-  //
-  // AND THE GAP LAST OF THE THREE THAT ADD MARKS, because it is a statement
-  // about the whole drawn chart: what the opened node takes in against what it
-  // sends out, once everything that is going to stand beside it does. Only
-  // markContra follows, and it reclassifies ribbons rather than moving a cent.
-  // THE MARKS ARE READ OFF THE ANSWER AND APPLIED IN shapeFor'S OWN ORDER,
-  // which is the order Go answered them in: the residual over the whole
-  // spliced window and the gap over the chart the residual left.
+  // THE MARKS COME AFTER THE CAP AND THE FOLD, which must not touch them, and
+  // in the order Go answered them: residual, then gap over what the residual
+  // left, then markContra over what the fold left negative.
   const marks = answer.marks || [];
   const residual = marks.find((m) => m.role === "residual");
   const gap = marks.find((m) => m.role === "gap");
@@ -2874,23 +1791,9 @@ export function shapeFor(doc) {
  * Drops a widened column the drawn document left empty, so the chart is laid
  * out at the columns it has.
  *
- * A COLUMN BUDGET IS A REQUEST AND NOT A SHAPE. d3-sankey takes its column
- * count from TOPOLOGY -- the deepest node -- and clamps the aligner into it, so
- * a tier set naming a column nothing is drawn in does not draw a narrower chart:
- * it draws the columns it has, spread across an extent sized for one more, with
- * every band wider than the one the label rule was measured against. Asking the
- * drawn document instead is what openableColumns already does one sentence over,
- * for the same reason: a declaration is not a promise the document fills it.
- *
- * DROPPED AND NOT REFUSED. Five of the six fund groups have no tier-4 node at
- * all -- pp.167-170 decompose the General Fund and no other -- so a widened
- * window that refused an empty column would turn those five into a banner, and
- * a reader with a wide screen would be shown less than a reader with a narrow
- * one. The narrower chart is exactly the one the narrow budget draws.
- *
- * ONLY A WIDENED COLUMN. The flank, the centre and the first column of the
- * decomposition are what the step promised; an empty one of those is a fault in
- * the view or the document, and sideOf's own guards say so by name.
+ * d3-sankey takes its column count from topology, so an empty declared column
+ * would stretch the others rather than narrow the chart. DROPPED AND NOT
+ * REFUSED, and only a widened column: the step promised the others.
  *
  * @param {FiscProjection} drawn
  * @returns {boolean} whether anything was dropped
@@ -2910,24 +1813,9 @@ export function dropEmptyColumns(drawn) {
  * One filtered, capped and folded chart of a node: a whole rung on a step that
  * keeps no flank, and one half of a window on a step that does.
  *
- * THE CAPS ARE THE STEP'S AND THE TIERS ARE THE CALLER'S, which is the whole
- * reason this takes both. A window's two halves are two documents, and folding
- * them together would hand foldDocument two parent chains at once -- the
- * invariant carryResidual already preserves by copying links rather than
- * merging documents. Each half is shaped whole and on its own, and the splice
- * happens after.
- *
- * THE ORDER IS filter, cap, fold, AND IT IS NOT INTERCHANGEABLE.
- *
- *   - filter first, because the cap ranks a column by size and the sizes that
- *     matter are the ones inside the node being opened. Capping the citywide
- *     column and then filtering would keep the eight biggest funds in the CITY
- *     and show a group most of whose funds had already been discarded.
- *   - cap before fold, because the cap produces several ribbons from one source
- *     to the aggregate and the fold is what merges them -- summing the values
- *     and unioning the fact ids and locators. Capping afterwards would leave
- *     parallel ribbons between one pair of nodes, and an aggregate that cited a
- *     strict subset of the pages its figure was read from.
+ * THE ORDER IS filter, cap, fold, AND IT IS NOT INTERCHANGEABLE: the cap must
+ * rank sizes inside the opened node, and the fold is what merges the cap's
+ * parallel ribbons and unions their citations.
  *
  * @param {FiscProjection} doc
  * @param {Rung} rung
@@ -2940,58 +1828,27 @@ export function sideOf(doc, rung, tiers, held) {
   const step = rung.step;
   let shaped = filterLinks(doc, rung.id, tiers, heldBy(held));
   const inside = withinNode(doc, rung.id);
-  // EVERY CAP THE STEP DECLARES FOR THESE COLUMNS, IN THE DECLARED ORDER.
-  // Folding a coarse node removes its descendants (capColumn's orphaned()),
-  // which changes which fine nodes are left to rank; capping the fine tier
-  // first would rank divisions of a fund about to be folded away. The order is
-  // the tier order this chart draws in, not the caps' declaration order, for
-  // the same reason the cap is looked up by the tier it names.
+  // CAPS RUN IN THE TIER ORDER THIS CHART DRAWS: folding a coarse node
+  // removes descendants a finer cap would otherwise rank.
   //
   // THE TAIL'S PARENT IS THE OPENED NODE ONLY WHEN THE WHOLE COLUMN IS INSIDE
-  // IT, and that is asked of the document rather than assumed. A fund group's
-  // funds and a category's lines are inside the node that opened them, and
-  // the tail inherits its hue through it; an object category's divisions are
-  // read off a schedule with no fund axis at all, and a tail parented to the
-  // category would claim a place in a hierarchy they are not in. It gets "",
-  // which is --muted, which is what "no single fund group" looks like
-  // everywhere else on this page.
+  // IT, asked of the document; otherwise "" (--muted).
   /** @type {Map<number, string>} */
   const parentOf = new Map();
   for (const tier of tiers) {
     const cap = (step.caps || []).find((c) => c.tier === tier);
-    // AN EXPANDED TIER IS SKIPPED HERE AND NOWHERE ELSE, which is what keeps
-    // the filter/cap/fold order above intact: the column is still filtered to
-    // what is inside the opened node and still folded to the tiers this chart
-    // draws, and the only stage it misses is the one the reader asked it to.
+    // An expanded tier skips the cap and only the cap.
     if (!cap || (rung.expanded && rung.expanded.has(tier))) continue;
     const column = shaped.nodes.filter((n) => n.tier === tier);
     const parent = column.every((n) => inside.has(n.id)) ? rung.id : "";
     parentOf.set(tier, parent);
-    // THE NOUN IS THE CAP'S WHERE IT NAMES ONE, and the step's otherwise: the
-    // fund-group step caps its funds under its own noun and its divisions under
-    // the cap's, and one word cannot count both tails.
     shaped = capColumn(shaped, tier, cap.cap, parent, cap.tail || step.tail);
   }
   const drawn = foldDocument(shaped, tiers);
 
-  // EVERY AGGREGATE'S PARENT IS PUT BACK AFTER THE FOLD, and it has to be here
-  // rather than in capColumn. capColumn runs first and parents the aggregate
-  // as the loop above decided, which is true; foldDocument then re-points every
-  // retained node's parent at its folded ancestor and blanks the ones whose
-  // ancestor is not in the document -- which the opened node never is, since
-  // opening it is what filtered it away. So the aggregate came out of the fold
-  // parentless and drew in --muted among its coloured siblings.
-  //
-  // AT THE CURRENT RUNG, NOT THE FIRST: two rungs deep the folded tail is
-  // inside the node opened last, and parenting it at the outer rung would be a
-  // claim about the hierarchy the walk cannot confirm.
-  //
-  // It is restored rather than exempted from the fold, because the fold's rule
-  // is about the document's own well-formedness and this is a claim about the
-  // FILE's hierarchy, which is what fundGroupOf walks.
-  //
-  // AND ITS NOTE IS FINISHED WITH THE FIGURE IT IS DRAWN AT, which only the
-  // folded document knows: see tailFigure.
+  // EVERY AGGREGATE'S PARENT IS PUT BACK AFTER THE FOLD, which blanks it
+  // because the opened node was filtered away. Its note is finished here with
+  // the figure only the folded document knows.
   return Object.assign({}, drawn, {
     nodes: drawn.nodes.map((n) => (isAggregate(n.id)
       ? Object.assign({}, n, {
@@ -3007,14 +1864,8 @@ export function sideOf(doc, rung, tiers, held) {
  * what arrives and what leaves, each ribbon at its magnitude as markContra
  * draws a reduction.
  *
- * READ OFF THE FOLDED DOCUMENT AND NOT OFF capColumn'S OUTPUT, because
- * foldDocument merges by source, target and kind -- so a reduction netted
- * against an addition of the same kind is one ribbon, and one of another kind
- * is two -- re-points ribbons whose far end sits in a tier not drawn, and
- * drops those that fold into a loop; and a second cap can re-point ribbons
- * the first tail already held. A sum over published summands whose membership
- * the fold decided (fisc-lwh5); the inferred list counts inferred flows and a
- * tail's are printed, so its note is the one place this figure is written.
+ * READ OFF THE FOLDED DOCUMENT, because the fold nets, re-points and drops
+ * ribbons capColumn produced.
  *
  * @param {FiscProjection} doc a folded document
  * @param {string} id the tail's id
@@ -3035,48 +1886,13 @@ export function tailFigure(doc, id) {
  * side, the step document's decomposition on the other, and that node between
  * them.
  *
- * THREE COLUMNS IS THE NARROWEST SHAPE AND NOT THE ONLY ONE. The flank is as
- * many columns as the step keeps and the decomposition as many as it draws, so
- * the centre is at index keep.length from the kept end whatever those are. The
- * two ends are read the way export.validateSteps reads them -- the kept flank
- * is Tiers' first keep.length columns REVERSED, because Keep is nearest-centre
- * first, or its last keep.length in order -- so a declaration that passes the
- * packager and a chart drawn here cannot disagree about which side is which.
+ * TWO DOCUMENTS, SO TWO HALVES, spliced on the centre: folding them together
+ * would hand foldDocument two parent chains. Which side is which is the role
+ * Go's answer gives each column.
  *
- * TWO DOCUMENTS, SO TWO CALLS. The kept flank is a filter of the chart on
- * screen and the fresh half a filter of the step's document, and folding them
- * together would hand foldDocument two parent chains at once -- the invariant
- * carryResidual preserves by copying links rather than merging documents. So
- * they are separate charts, spliced on the centre.
- *
- * NEITHER CALL PICKS A SIDE ANY MORE. Each half used to be keyed on which END
- * of a link had to be inside the clicked node, which was a membership derived
- * from the documents; each is now asked for the ids Go answers at its own
- * columns (heldFor), and the direction falls out of the column order they are
- * answered in (heldBy).
- *
- * EACH HALF IS ASKED FOR THE COLUMNS IT DRAWS, CENTRE INCLUDED, so the two
- * overlap in exactly one column and the splice has something to splice on.
- *
- * WHICH SIDE IS WHICH IS READ OFF THE ANSWER. Go's draws name every column of
- * the rung with its role -- flank, centre, outward -- in the order the step
- * draws them, and validateSteps has already refused a step whose flank is not
- * at one end of the chart it opens from. The kept half is the flank and the
- * centre; the fresh half is the centre and what it opens into.
- *
- * THE KEPT FLANK COMES OFF THE CHART ON SCREEN, NOT OFF A FILE, and that is
- * not an optimisation. Its nodes need not exist in the step's document at all:
- * a departmentwide document has no fund axis, so every fund group in that
- * window's flank would be a node drillDown could not find and the click would
- * return FAILED in silence. Filtering the chart on screen removes that by
- * construction and lets the kept flank carry a capped tail or a residual it
- * already drew.
- *
- * THE CENTRE'S RECORD IS THE ON-SCREEN CHART'S, so the mark names the node in
- * the words the reader clicked -- which is the rule paintBreadcrumb follows one
- * function over, reached from the other side. It is NOT marked carried: a
- * carried mark is one the drawn document has never heard of, and the centre is
- * the node that document decomposes.
+ * THE KEPT FLANK COMES OFF THE CHART ON SCREEN, NOT OFF A FILE: its nodes need
+ * not exist in the step's document at all. The centre's record is the
+ * on-screen chart's too, and is not marked carried.
  *
  * @param {FiscProjection | null} onScreen the drawn chart the rung was opened from
  * @param {FiscProjection} stepDoc the document the step draws
@@ -3085,26 +1901,18 @@ export function tailFigure(doc, id) {
  * @returns {FiscProjection}
  */
 export function windowFor(onScreen, stepDoc, rung, answer) {
-  // THE COLUMNS ON SCREEN AND NOT THE COLUMNS DECLARED. A step may offer more
-  // than the budget draws, and a half shaped at a column the chart does not lay
-  // out would splice in nodes with nowhere to be.
+  // The columns on screen, not the columns declared.
   const tiers = activeTiers();
   const roleOf = new Map(answer.draws.map((d) => [d.tier, d.role]));
-  // THE CENTRE IS IN BOTH HALVES, and each half gets the columns on its own
-  // side of it: the flank plus the centre off the chart above, the centre plus
-  // everything the step opens it into off the step's document. Each half is
-  // filtered to the ids Go answers AT ITS OWN COLUMNS, which is what keeps the
-  // splice a splice: the centre is the only column both halves hold, so a
-  // ribbon of one cannot land in a column of the other.
+  // THE CENTRE IS THE ONLY COLUMN BOTH HALVES HOLD, so a ribbon of one cannot
+  // land in a column of the other.
   const keptTiers = tiers.filter((t) => roleOf.get(t) !== "outward");
   const freshTiers = tiers.filter((t) => roleOf.get(t) !== "flank");
   const kept = sideOf(onScreen, rung, keptTiers, heldFor(answer, keptTiers));
   const fresh = sideOf(stepDoc, rung, freshTiers, heldFor(answer, freshTiers));
 
-  // carried_from IS SET WHERE IT IS ABSENT AND NEVER CLEARED. A flank node
-  // that was already carried onto the chart above -- a residual's endpoint --
-  // keeps the stem it came from, because that is the document its figure and
-  // its caveats are of, however many rungs it is passed down.
+  // carried_from IS SET WHERE ABSENT AND NEVER CLEARED: a node keeps the stem
+  // whose figure and caveats it carries, however many rungs down.
   const stem = onScreen.projection || "";
   /** @type {Set<string>} */
   const have = new Set();
@@ -3121,9 +1929,7 @@ export function windowFor(onScreen, stepDoc, rung, answer) {
     have.add(n.id);
     nodes.push(n);
   }
-  // THE SPLICED DOCUMENT IS THE STEP DOCUMENT'S, which is what makes its
-  // projection name, its metadata and its caveats the drawn chart's: the kept
-  // flank is a guest on it, and says so on every node it brought.
+  // The spliced document is the step document's; the kept flank is a guest.
   return Object.assign({}, fresh, {
     nodes: nodes,
     links: kept.links.concat(fresh.links),
@@ -3132,12 +1938,8 @@ export function windowFor(onScreen, stepDoc, rung, answer) {
 
 /**
  * Whether a residual's leaving leg is drawn at these columns: Go stands a
- * leaving endpoint at the step's last declared tier (export.ResidualOf), so
- * the leg is drawn exactly when that column is.
- *
- * ONE READER FOR THE RULE, because carryResidual draws by it and the client's
- * tests read Go's answer by it; a second spelling of the rule in a test is a
- * copy that stays green when this one moves.
+ * leaving endpoint at the step's last declared tier. The tests read Go's
+ * answer by this too, so the rule has one spelling.
  *
  * @param {FiscStep} step
  * @param {number[]} tiers the columns the chart draws
@@ -3151,21 +1953,9 @@ export function leavingLegDrawn(step, tiers) {
  * The region a mark's arriving ribbons hang into, for a mark printed net of
  * reductions drawn forward, and null for every other mark.
  *
- * WHY THERE IS ANYTHING TO DRAW. A category's positive lines alone come to the
- * published figure PLUS the reductions, so a box whose height is that figure is
- * a box the arriving stack must exceed -- by twice the reductions, which is
- * arithmetic on the widths and no stacking order changes, so a band of ribbon
- * ends below the face of the mark it arrives at.
- *
- * SO THE CHOICE IS WHICH MISMATCH A READER SEES, not whether there is one:
- * a box inflated to the gross, a figure no page prints, or a box that is the
- * published figure with the excess drawn and named. This is the second, and
- * without it every surface would have to disclose the hang in words -- which
- * puts the unprinted figure back on the page.
- *
- * IT IS PIXELS AND CARRIES NO CENTS. The band is computed from drawn widths and
- * has no label, because the amount it stands for is already on the mark's own
- * note, once, under the site's diamond.
+ * The box is the published net figure, so the gross arriving stack overhangs
+ * it; drawing the overhang avoids a box sized to a figure no page prints. It
+ * is pixels and carries no cents.
  *
  * @param {LaidNode} d
  * @returns {{y:number, height:number} | null}
@@ -3174,39 +1964,17 @@ export function contraBand(d) {
   if (!d.targetLinks.some((l) => l.contra)) return null;
   const arriving = d.targetLinks.reduce((sum, l) => sum + l.width, 0);
   const excess = arriving - (d.y1 - d.y0);
-  // HALF A PIXEL AND NOT ZERO: a node whose reductions round to nothing would
-  // otherwise draw a hairline band that means nothing a reader can see.
+  // Half a pixel, not zero: no hairline band for reductions that round away.
   return excess > 0.5 ? { y: d.y1, height: excess } : null;
 }
 
 /**
  * Draws a node at the figure Go named for it, where Go named one.
  *
- * WHY A MARK'S FIGURE IS NOT THE LAYOUT'S TO DECIDE. d3-sankey sizes a node at
- * the larger of what enters and what leaves it, which is the published figure
- * wherever every ribbon is positive -- and is not, on a category a schedule
- * prints a REDUCTION under. markContra draws those forward at their magnitude,
- * because a ribbon cannot carry a minus sign, so the arriving ribbons come to
- * the figure plus twice the reductions.
- *
- * On Property Taxes the ribbons arriving are the additions plus the
- * reductions, and the figure the overview labels that node one click earlier
- * is the net the schedule prints. No page prints the gross.
- *
- * SETTING IT AT THE VALUE AND NOT AT THE SURFACES is why the label tspan, the
- * tooltip, the detail panel, nodeDescription, both "printed by the city" chips
- * and columnShare need no rule of their own: each reads the mark's figure, and
- * there is now one figure to read.
- *
- * THE RULE HERE IS TOTAL AND GO'S IS NOT: draw a node at the amount named, and
- * let the layout size every node it does not name. Which nodes need one is a
- * reading of the documents (AGENTS.md, "Go vets, JavaScript renders"), and
- * rung.Amounts is where Go says so.
- *
- * A NON-POSITIVE AMOUNT NEVER ARRIVES. d3-sankey's vertical scale for a column
- * is a min over that column's sums, so one node fixed at zero or below would
- * rescale every mark beside it in silence; schema/rungs.schema.json bounds
- * every amount above zero and the export refuses an answer outside it.
+ * d3-sankey would size a category printed net of reductions at the gross its
+ * forward-drawn ribbons add to, a figure no page prints. Setting the value
+ * here means every surface reads one figure. Go's schema bounds every amount
+ * above zero; one at or below zero would rescale its whole column silently.
  *
  * @param {FiscProjection} drawn
  * @param {Record<string, number> | undefined} amounts
@@ -3225,35 +1993,12 @@ export function markAmounts(drawn, amounts) {
  * Draws every ribbon the schedule prints as a reduction forward, at its
  * magnitude, carrying the sentence the document put on it.
  *
- * A RIBBON IS NEVER REVERSED. A reduction pointed backwards gives its line a
- * depth one past the mark it reduces, and the vendored d3-sankey sizes its
- * column count from the deepest node: the view comes out with one column more
- * than its step declares and the last of them empty, and its layering pass
- * throws on the hole -- "Cannot read properties of undefined (reading 'sort')",
- * the same failure layOut's comment records for a misaligned tier set. So the
- * ribbon runs the way every other ribbon runs, and what makes it a reduction is
- * said three ways: the class render() gives it, the sign every figure carries,
- * and the sentence on the mark.
+ * A RIBBON IS NEVER REVERSED: a backward ribbon adds a column d3-sankey's
+ * layering pass throws on. The contra words are the document's, from Go.
  *
- * THE WORDS ARE THE DOCUMENT'S AND ARE NOT COMPOSED HERE. contra arrives on the
- * link (scheduleOf), because the words name the category the SCHEDULE prints
- * the row under and the fold has already blanked a line's parent by the time
- * this runs -- a sentence built from what is left would name a category the
- * reader is not looking at. contra-links-name-their-schedule holds the wire
- * end.
- *
- * WHAT IS DECIDED HERE IS ABOUT THE DRAWN CHART AND NOTHING ELSE, which is why
- * these two arms are the client's. foldDocument merges ribbons by SUMMING them,
- * so a fold can carry a pair across zero in either direction:
- *
- *   - a merged ribbon that came out negative where no summand was printed as a
- *     reduction is a reduction of the drawing and not of any schedule, and is
- *     named for what it is rather than for a category it is not;
- *   - a merged ribbon that came out positive while a summand WAS printed as a
- *     reduction must lose the sentence, which is now false of the total drawn.
- *
- * Both are latent on the committed columns -- no fold in either published
- * budget crosses zero -- and are refused rather than left to the day one does.
+ * The two arms here are about the drawn chart only: a fold sums ribbons, so a
+ * merged ribbon can go negative with no printed reduction (named for what it
+ * is) or positive despite one (loses the sentence).
  *
  * @param {FiscProjection} drawn  shaped and folded
  * @returns {FiscProjection} drawn itself when nothing in it is negative
@@ -3286,11 +2031,8 @@ export function isContraNode(d) {
 
 /**
  * Whether every ribbon on a laid node is a partition one, so the mark's whole
- * figure is a cross-tab total rather than money that moved through it.
- *
- * ALL OR NOTHING, AS isContraNode IS. A node with one partition ribbon among
- * flows is a node whose sentence would be true of part of it, and a label that
- * qualified the whole mark would be wrong about the rest.
+ * figure is a cross-tab total rather than money that moved through it. All or
+ * nothing, as isContraNode is.
  * @param {LaidNode} d
  * @returns {boolean}
  */
@@ -3302,10 +2044,7 @@ export function isPartitionNode(d) {
 /**
  * The figure a laid mark prints: negative for a contra ribbon and for a line
  * whose every ribbon is one, Go's larger side for a residual, and d3's value
- * otherwise.
- *
- * A RESIDUAL'S IS GO'S AT EVERY WIDTH: a budget that holds its leaving legs
- * back draws a shorter mark, and the figure stays the one answered.
+ * otherwise. A residual's stays Go's even where the width holds legs back.
  * @param {LaidLink | LaidNode} d
  * @returns {number}
  */
@@ -3334,10 +2073,6 @@ export function residualFlows(d) {
  * How much of a mark's figure is printed as reductions, for a node with contra
  * ribbons among others, and "" for every other node -- a contra line's own
  * mark included, whose figure is the reduction and is already signed.
- *
- * THE DIAMOND TRAVELS WITH THIS SENTENCE: the figure is the city's, the
- * sentence is ours.
- *
  * @param {LaidNode} d
  * @returns {string}
  */
@@ -3353,20 +2088,9 @@ export function contraNote(d) {
 }
 
 /**
- * What a partition ribbon is, in the one place the words for it live.
- *
- * EVERY MARK THAT SHOWS IT SHOWS THE SAME SENTENCE -- the tooltip, the detail
- * panel, the flow table and the screen-reader label -- because four spellings
- * of one claim about the documents is four things to keep true. contra's words
- * come off the link because they name that row's own parent; this claim is the
- * same wherever it appears.
- *
- * THE DIRECTION DRAWN IS NOT A DIRECTION THE CITY PRINTED. Budget Book
- * pp.85-125 print one matrix of cells, divisions down and object categories
- * across; a chart can read it either way round and neither reading is money
- * moving. Drawing it forward and saying so is markContra's precedent: a ribbon
- * is never reversed, and what the shape means is carried in a class and a
- * sentence.
+ * What a partition ribbon is: the one sentence every mark showing it uses.
+ * The direction drawn is not one the city printed; the ribbon is never
+ * reversed, and the class and this sentence carry what it means.
  */
 export const PARTITION_NOTE = "a cross-tab: one printed table read along a second axis, " +
   "not money moving in the direction drawn";
@@ -3382,26 +2106,9 @@ export function linkClass(d) {
 }
 
 /**
- * The classes a node is drawn with.
- *
- * `opens` IS AN AFFORDANCE AND NOT A RESTATEMENT OF THE DOCUMENT. The other two
- * say what a mark IS -- an inference, a reduction of the category it is printed
- * under -- and are read off the node. This one says what the reader may do to
- * it, which is why it is drillable's answer: whether a mark opens depends on
- * the view's declared steps and on the chart it is drawn on, not on any field
- * the packager wrote.
- *
- * `expands` IS THE SAME KIND OF CLAIM ABOUT THE OTHER GESTURE, and it is
- * expandable's answer for expandable's reason. A folded tail is the other mark
- * a reader expects something to happen on, and it is rare: a small share of
- * the views either year opens draw one, and the drill tests print how many.
- * What happens is a redraw of the column
- * it was cut out of rather than a rung.
- *
- * THE TWO ARE DISJOINT AND THE CLASS DOES NOT ENFORCE THAT. drillable refuses
- * an aggregate by name and expandable requires one, so no mark can carry both;
- * that is a property of the two predicates, asserted where they are measured,
- * rather than a precedence written here.
+ * The classes a node is drawn with. `opens` and `expands` are affordances,
+ * answered by drillable and expandable rather than read off the node; the two
+ * predicates are disjoint, which the class does not enforce.
  * @param {LaidNode} d
  * @returns {string}
  */
@@ -3411,34 +2118,11 @@ export function nodeClass(d) {
 }
 
 /**
- * The markers one node's label carries in its flag tspan.
- *
- * GLYPHS AND NOT WORDS: the label is already at the edge of its gutter. Each is
- * spelled out somewhere a reader can reach -- the diamond by the legend, the
- * tooltip and the derived list, the triangle by nodeDescription and by the
- * chart hint.
- *
- * THE FLAG TSPAN IS THE ONLY CHANNEL LEFT. Hue is spoken for by the palette's
- * contrast rule, the dashed rect by `derived`, --critical by `contra`, and a
- * dash pattern by the two a ribbon already carries. A glyph in the label
- * survives forced-colors and greyscale, costs no hue, and is read aloud.
- *
- * THEY COMPOSE, because nothing stops a node being an inference that also
- * opens. They draw in that order with nothing between them, so a pair costs
- * the label two glyph widths -- which is the width the client's layout test
- * fits it against, by calling this rather than by spelling it a second time.
- *
- * ONE PAIR IS REAL AND THE OTHER IS LATENT, and the difference is worth
- * stating. A folded tail is ALWAYS an inference -- capColumn writes derived on
- * it because the city printed no line called "N smaller funds" -- so every
- * mark that expands carries the diamond beside the plus, on every view that
- * draws one. The diamond-and-triangle pair is the one no committed
- * document produces, and a rule written only for the marks that exist would be
- * a rule the first derived openable node breaks silently, in the label's own
- * gutter.
- *
- * NO MARK CARRIES THREE. Nothing can, because drillable and expandable are
- * disjoint; the gutter was measured against two.
+ * The glyphs one node's label carries in its flag tspan: glyphs, not words,
+ * because the label is at the edge of its gutter, and a glyph survives
+ * forced-colors and greyscale. They compose, so a pair costs two glyph widths,
+ * which the layout test fits by calling this; drillable and expandable are
+ * disjoint, so no mark carries three.
  * @param {LaidNode} d
  * @returns {string}
  */
@@ -3450,23 +2134,12 @@ export function nodeFlags(d) {
 
 /**
  * The prefix every capped tail's id carries.
- *
- * NOT A FIGURE THE CITY PRINTED, and the label says so in words rather than
- * relying on this comment: it reads "N smaller funds", which is a count of rows
- * and not a line item. The amount on its ribbons is a sum of printed figures,
- * exactly as every folded ribbon's is.
  */
 export const AGGREGATE_PREFIX = "aggregate/tail/";
 
 /**
- * The id of the node one tier's capped tail is folded into.
- *
- * PER TIER, BECAUSE A STEP CAN CAP TWO. One id for every fold put two
- * aggregates in one document the moment both a step's caps engaged -- two
- * nodes with one id, which d3-sankey keys by id and the fold merges by id, so
- * the second tail's ribbons landed on the first tail's node. Latent on the
- * committed corpus, where the division column never exceeds its cap while the
- * fund column does, and latent is how it ships.
+ * The id of the node one tier's capped tail is folded into. Per tier, because
+ * a step can cap two columns and d3-sankey and the fold both key by id.
  * @param {number} tier
  * @returns {string}
  */
@@ -3485,10 +2158,6 @@ export function isAggregate(id) {
 
 /**
  * The prefix the residual node's id carries, followed by the opened node's id.
- *
- * PER OPENED NODE, as the aggregate's is per tier: one rung draws one
- * residual, beside the node it opened, and naming it after that node is what
- * keeps two rungs' residuals from ever sharing an id in one document.
  */
 export const RESIDUAL_PREFIX = "residual/";
 
@@ -3511,13 +2180,8 @@ export function isResidual(id) {
 }
 
 /**
- * The prefix a gap node's id carries, followed by the opened node's id.
- *
- * ITS OWN PREFIX AND NOT THE RESIDUAL'S, because the two marks make different
- * claims and a check counting one must not find the other: a residual is money
- * the chart above prints that the drawn document carries no row for, copied
- * across with its citations, and a gap is one cell two schedules print at two
- * figures, which no page prints at all. markGap says which is which.
+ * The prefix a gap node's id carries, followed by the opened node's id. Not
+ * the residual's: a residual is carried, a gap is derived.
  */
 export const GAP_PREFIX = "gap/";
 
@@ -3535,15 +2199,9 @@ export function isGap(id) {
  * with the residual: a mark the rung on screen added beside the opened node's
  * parts, which is not one of them and opens into nothing.
  *
- * THE GATE IS THE RESIDUAL'S DECLARED ENDPOINTS, NOT THE carried_from FLAG,
- * and the difference is the window feature itself. A window's kept flank is
- * carried onto the rung in exactly the sense that field records -- its figures
- * and its caveats are the chart above's -- and it MUST open: a fund group kept
- * beside a revenue category is the node the reader slides on to next. What
- * closes a mark here is the step's own residual declaration, which names the
- * endpoints whose money this chart cannot decompose, plus the residual node
- * itself. Widening this to "anything carried" is the one-line simplification
- * that would draw the window and refuse every click in it.
+ * KEYED ON THE STEP'S DECLARED RESIDUAL ENDPOINTS, NOT carried_from: a
+ * window's kept flank is carried too and must still open. Widening this to
+ * "anything carried" would refuse every click in a window.
  * @param {string} id
  * @returns {boolean}
  */
@@ -3559,74 +2217,11 @@ export function isCarried(id) {
  * prints for the opened node and the document it draws does not decompose,
  * copied verbatim onto one derived node beside the node's parts.
  *
- * THE DRILL PUTS ONE DOCUMENT INSIDE THE OTHER, AND THE TOTALS DO NOT MATCH.
- * The spine prints a fund group's inflow and outflow whole; the fund-level
- * schedule prints the same money by fund and by division and carries no row
- * for a fund-balance draw, a reserve increase or a transfer out. Drawn as is,
- * the opened General Fund shows less flowing out of a group than the chart
- * above said it takes in, and nothing tells the
- * reader why. The difference is the RESIDUAL: money the city printed at group
- * grain and nowhere finer. WHICH endpoints those are is Go's answer and not
- * this page's -- check.ResidualNodes declares them and the step ships the set
- * here -- and the figures each reason quotes are cells fisc verify holds to
- * the printed pages: the fund-level cuts carry no fund-balance row and no
- * transfer out, and the general group's transfer in is a declared exception of
- * cuts-tie-along-the-lattice. This page is what makes the difference visible.
- *
- * CARRIED, NOT COMPUTED. Every link added here is a link of the chart above
- * with its value_cents, fact_ids, locators, kind and derived flag untouched --
- * only the group end is re-pointed, onto the residual node. Those links are
- * already covered by link-values-tie-to-facts and
- * link-locators-match-their-facts, so the figure on screen is a published one
- * with its provenance intact. Nothing here sums, subtracts or allocates, and
- * the client's tests hold each carried link byte-equal to its original.
- *
- * NOT RE-POINTED ONTO A FUND. Capital has 11 funds and internal-service 5,
- * and pp.127-140 do not say which one a draw belongs to; attributing it would
- * invent an allocation. So the residual sits BESIDE the funds, parented to
- * the group, and the rule is the same for general, whose group has one fund:
- * its transfers out and reserve increase leave beside fund/100 rather than
- * through it. Conservative, never wrong, and free of a branch for the
- * one-fund case that nothing published would justify.
- *
- * WHICH ENDPOINTS, WHICH COLUMN AND WHAT FIGURE ARE GO'S ANSWER, and this
- * file reads them off the rung's mark rather than working them out. A
- * residual's cents is a DIFFERENCE between two documents, which is not a sum
- * over published summands and so is not covered by the licence that lets this
- * page add up a folded ribbon (fisc-lwh5): export.ResidualOf computes it, and
- * the walk writes the mark's ends, its tier and its two figures into the rung
- * answer. What is left here is the drawing -- which ribbons of the chart above
- * are re-pointed onto the mark, where its endpoints stand, and the words.
- *
- * THE REASONS ARE STILL THE STEP'S. step.residual is check.ResidualNodes() as
- * the packager shipped it, ids to reasons, and each reason is carried into the
- * node's rationale so the reader is told why a flow has no fund in the words
- * the check declares it in.
- *
- * THE IMBALANCE IS THE POINT. The node's inflow and outflow differ by
- * construction -- general's is a small figure in and a large one out --
- * and d3-sankey sizes a node at the larger of the two, so the difference
- * shows on the mark rather than being balanced away.
- *
- * WHY A CLIENT-SIDE DERIVED NODE IS RIGHT HERE, because the next reader will
- * ask. The capped tail is the precedent: derived: true, a rationale, a source
- * note, checked by the client's tests and not by derived-nodes-justified. This is a
- * weaker claim than that one, because the aggregate SUMS and this COPIES.
- * The derived-node rule binds projections, and this page is neither a
- * projection nor a scenario; and the residual is a statement about the PAIR
- * of documents, which neither document can hold -- the page is the only place
- * both exist at once. Putting it in the fund-flows projection is refused on
- * its own grounds: it would put all-funds-gross and revenue-by-fund in one
- * scope set, where a detail row and its spine row land on one cell key and
- * the graph gains a second link between the same pair -- which
- * checkDistinctLinks refuses at build -- and it would read as capital being
- * decomposed and silently drop the only-the-General-Fund caveat.
- *
- * A GROUP WITH NOTHING TO CARRY DRAWS NOTHING, and says so by being answered
- * no mark: three groups' transfers in are decomposed whole and they draw no
- * fund-balance row, so the walk writes no residual for them and nothing is
- * added here. A residual node with no links would be the aggregate-of-nothing
- * one tier up.
+ * CARRIED, NOT COMPUTED: every link added is a link of the chart above with
+ * only its group end re-pointed, so its figure and provenance are untouched.
+ * The endpoints, the column and the figures are Go's (export.ResidualOf) and
+ * are read off the mark; this draws them. The node's inflow and outflow
+ * differ by construction, and d3-sankey shows that on the mark.
  *
  * @param {FiscProjection} drawn  the rung's document, shaped and folded
  * @param {FiscProjection | null} from  the document of the chart the rung was
@@ -3640,25 +2235,18 @@ export function carryResidual(drawn, from, rung, mark) {
   const step = rung.step;
   if (!mark || !from) return drawn;
   const opened = rung.id;
-  // THE ID IS GO'S, under the prefix this page keys isResidual on; that the
-  // two prefixes are one string is held on the Go side, against this file.
   const id = mark.id;
   /** @type {FiscLink[]} */
   const links = [];
   /**
-   * The chart's own copy of each link re-pointed below, dropped as it is: a
-   * window keeps a flank of the chart above, so the links this re-points are
-   * ALREADY DRAWN, pointing at the opened node. Copying the file's instead
-   * would leave both -- run, not predicted: transfers/in left tier 0 at
-   * 960,800 against the 480,400 p0067 prints for it, and the opened group
-   * stood 1,514,554 taller than the ribbons under it with nothing saying so.
+   * The chart's own copy of each link re-pointed below, dropped: a window's
+   * flank already draws them, and keeping both would double-count.
    * @type {Set<FiscLink>}
    */
   const spliced = new Set();
   /**
    * One endpoint's links off the chart above: this rung's own where it draws
-   * them, and the FILE's where it does not, which is every step that keeps no
-   * flank. The two cannot both be taken.
+   * them, else the file's. Never both.
    * @param {(l: FiscLink) => boolean} want
    * @returns {FiscLink[]}
    */
@@ -3668,28 +2256,14 @@ export function carryResidual(drawn, from, rung, mark) {
   };
   /** @type {Map<string, boolean>} endpoint id to whether its flow arrives */
   const ends = new Map();
-  // A LEAVING FLOW GOES WITH THE COLUMN ITS ENDPOINT STANDS IN. Go answers a
-  // leaving endpoint at the step's last declared tier (export.ResidualOf), and
-  // the rung is answered once, unfolded; a budget that does not buy that
-  // column -- a widened one, or one the document left empty -- draws no
-  // column for the endpoint to stand in. Placing it in the last column the
-  // chart HAS put it beside the mark it flows out of, a ribbon of no length
-  // inside one column, measured on the General Fund's window at three
-  // columns. So the leg is drawn where its column is, and dropped where its
-  // column was, which is what heldFor does with every other ribbon of a
-  // column the budget dropped.
+  // A LEAVING LEG IS DROPPED WHERE THE BUDGET DROPS ITS COLUMN, as heldFor
+  // drops every other ribbon of that column; placed in the last column the
+  // chart has, it would draw a ribbon of no length.
   const leaves = leavingLegDrawn(step, activeTiers());
-  // THE LEAVING FLOWS THIS WIDTH HOLDS BACK, counted and not inferred from
-  // the mark's endpoints: a mark with no leaving flow (a fund group whose
-  // residual only draws on its balance) has nothing held back at any width,
-  // and its note must not say otherwise.
+  // Counted, not inferred from the endpoints: a mark with no leaving flow
+  // holds nothing back and its note must not say otherwise.
   let withheld = 0;
-  // THE ENDPOINTS ARE GO'S, IN GO'S ORDER, which is sorted -- so the rationale
-  // reads the same on every build without this file sorting anything. Both
-  // directions are looked for: which side of the opened node an endpoint's
-  // flow is on is what the drawn chart says. The mark's size is Go's
-  // difference across the two documents (export.ResidualOf), and the ribbons
-  // carried onto it are the published flows that difference was taken over.
+  // Go's order, which is sorted, so the rationale is stable across builds.
   for (const e of mark.ends || []) {
     for (const l of above((l) => l.source === e && l.target === opened)) {
       links.push(Object.assign({}, l, { target: id }));
@@ -3707,23 +2281,10 @@ export function carryResidual(drawn, from, rung, mark) {
     }
   }
 
-  // THE ENDPOINTS COME WITH THEIR LINKS, placed at the first drawn tier when
-  // the flow arrives and the last when it leaves. Their own tiers are the
-  // chart above's columns, which the step's tier set need not contain, and a
-  // tier layOut's align cannot place is clamped to the first column, the
-  // shape d3-sankey dies on.
-  //
-  // DRAWN AND NOT DECLARED, WHICH IS THE WHOLE OF THE SENTENCE ABOVE. A step
-  // whose `widen` the budget does not buy draws fewer columns than it declares,
-  // and the declared set's last entry is then a tier this chart has no column
-  // for -- so an outgoing endpoint placed there is clamped to the FIRST column
-  // and its ribbon runs backwards across the chart. The two lists are equal on
-  // a step that declares no widening, which is why reading the wrong one is
-  // invisible until one does.
-  //
-  // FILTERED IN THE STEP'S OWN ORDER, because Tiers is a column order and not a
-  // sorted set: the revenue-category step declares {1,0,2}, so "the last drawn
-  // tier" is the last of that order the chart kept, not the highest number.
+  // ENDPOINTS STAND AT THE FIRST DRAWN TIER WHEN THEIR FLOW ARRIVES AND THE
+  // LAST WHEN IT LEAVES -- drawn, not declared: an undrawn declared tier is
+  // clamped to the first column and the ribbon runs backwards. Filtered in the
+  // step's own order, which is a column order and not a sorted set.
   const tiers = step.tiers.filter((t) => drawn.nodes.some((n) => n.tier === t));
   const have = new Set(drawn.nodes.map((n) => n.id));
   const fromByID = new Map(from.nodes.map((n) => [n.id, n]));
@@ -3734,27 +2295,13 @@ export function carryResidual(drawn, from, rung, mark) {
     if (!node || have.has(e)) continue;
     added.push(Object.assign({}, node, {
       tier: arrives ? tiers[0] : tiers[tiers.length - 1], parent: "",
-      // THAT THIS MARK IS NOT OF THE DRAWN DOCUMENT. Its caveats, and the
-      // anchors for them, belong to the chart it was carried from, and
-      // caveatsFor and caveatHref branch on this. Without it a figure lost the
-      // qualification its own document attaches to it the moment it was
-      // carried -- transfers/in and transfers/out carry transfer-legs-unpaired
-      // on the spine and arrived here unmarked. fisc-bccu.
-      //
-      // THE STEM IS READ, NOT ONLY RECORDED. carriedSource resolves it
-      // against the documents on the stack, which is what a window needs:
-      // every window carries a flank, so a carried mark can sit two rungs
-      // down with a chart above it that is not the spine, and a lookup fixed
-      // at depth 0 would resolve its caveats and its source list to the wrong
-      // document.
+      // Its caveats belong to the chart it was carried from; caveatsFor,
+      // caveatHref and carriedSource resolve this stem against the stack.
       carried_from: from.projection || "",
     }));
   }
 
-  // THE COLUMN IT STANDS IN IS GO'S TOO. export.ResidualOf places it at the
-  // shallowest declared tier of any node inside the opened one, read off the
-  // step's own document -- a reading of a file this page has not got, since
-  // the chart it holds is folded and filtered.
+  // Go's: read off the step's unfolded document, which this page has not got.
   const tier = mark.tier;
 
   /** @type {Map<string, Set<number>>} */
@@ -3775,10 +2322,6 @@ export function carryResidual(drawn, from, rung, mark) {
 
   const node = {
     id: id,
-    // THE LABEL AND THE RATIONALE ARE THE DOCUMENT'S AND ARRIVE ON THE MARK.
-    // Both are claims about what the schedule this chart is drawn from does
-    // not split, and the grain they name is the step's declaration rather
-    // than a word this file once hard-coded.
     label: mark.label,
     tier: tier,
     parent: opened,
@@ -3788,17 +2331,10 @@ export function carryResidual(drawn, from, rung, mark) {
     in_cents: mark.in_cents || 0,
     out_cents: mark.out_cents || 0,
     rationale: mark.rationale,
-    // THE NOTE IS THIS PAGE'S, AND IT IS THE ONE PIECE OF MARK PROSE THAT IS.
-    // It renders the citations of the ribbons actually carried onto this mark,
-    // and neither export.Graph nor the rungs walk decodes a locator, so Go
-    // cannot name the pages without a second decode and the document titles
-    // the page config carries. fisc-tihl. Go ships "" here and the schema
-    // states that a residual's source_note may be empty.
+    // THE ONE PIECE OF MARK PROSE THAT IS THIS PAGE'S: it cites the ribbons
+    // carried at this width, which Go cannot know. Go ships "" (fisc-tihl).
     source_note: "Carried, not computed: " + links.length + " flow" + (links.length === 1 ? "" : "s") +
       " of the chart above with figures and citations unchanged \u2014 " + where + "." +
-      // THE MARK IS THE SAME AT EVERY WIDTH AND THE DRAWING IS NOT: Go's
-      // rationale names every endpoint the documents give the mark, and this
-      // note says which of its flows the columns on screen hold back.
       (withheld ? " " + (withheld === 1 ? "The flow" : "The " + withheld + " flows") + " leaving it " +
         (withheld === 1 ? "is" : "are") + " drawn where there is room for a further column." : ""),
   };
@@ -3813,46 +2349,12 @@ export function carryResidual(drawn, from, rung, mark) {
  * sends into the opened node and what the document this rung draws breaks that
  * node into.
  *
- * ABSORBED IS THE FAILURE THIS EXISTS TO REFUSE. d3-sankey sizes a node at the
- * larger of what enters and what leaves, so a centre taking slightly more from
- * the chart above than it sends into its parts draws at the larger figure,
- * with the difference as node height and no ribbon against it. Nothing on the
- * page says so, and a reader who does not measure the marks sees a chart that
- * balances. That cell is FY2026-27 services-and-supplies, p0067 against Budget
- * Book pp.85-125, and it is the one the site actually draws.
- *
- * NOT carryResidual, AND THE LINE BETWEEN THEM IS carried VERSUS derived. That
- * function copies published links of the chart above onto a node beside the
- * parts, figures and citations untouched; nothing in it sums, subtracts or
- * allocates. A gap has no link to copy -- both documents draw the cell, at
- * figures that differ -- so the only mark that can state it is a derived one,
- * whose value is the difference and whose words are the packager's declaration.
- *
- * WHICH NODE HAS ONE, WHERE IT STANDS AND WHAT IT IS WORTH ARE GO'S ANSWER.
- * export.GapOf makes the declaration's claim have teeth at build time -- a
- * shortfall on a node the step names no reason for fails the export, which is
- * pkg/cmd/export's TestRungsRefuseADriftTheStepDoesNotDeclare -- and the walk
- * writes the mark's tier and its one figure onto the rung.
- *
- * A STEP DECLARING NO GAP AT ALL IS LEFT ALONE -- an opened fund group is
- * deliberately unbalanced and says so on its residual, and a rule that
- * demanded balance everywhere would refuse it. Nothing here sums the chart:
- * the figure and the side are read off the answered mark, and a chart that
- * has drifted from the one it was answered against is a fault the page cannot
- * see (fisc-ikp0).
- *
- * THE AMOUNT IS NOT DECLARED AND CANNOT BE: a gap is per fiscal column and a
- * step is declared once for every year, so only the REASON rides on it.
- *
- * THE FIGURE IS GO'S. export.GapOf takes the signed difference between what
- * the chart above sends into the opened node and what its own schedule draws
- * out of it, and the answer's in_cents or out_cents is that figure with its
- * side. This stands the mark on the side the answer says and sums nothing.
- *
- * IT CARRIES NO kind. A kind says which boundary the money crosses, and the
- * difference between two schedules crosses nothing either of them printed;
- * `derived` is the claim this mark can make, and it makes it in the class, the
- * tooltip, the flow table and "What we inferred".
+ * Without it d3-sankey absorbs the difference into node height with no ribbon
+ * against it, and the chart looks balanced. A gap has no published link to
+ * copy, so unlike carryResidual's mark this one is derived. Its node, tier,
+ * figure and side are Go's (export.GapOf); this sums nothing. A drift from
+ * the chart it was answered against is invisible here (fisc-ikp0). It carries
+ * no kind: the difference crosses no printed boundary.
  *
  * @param {FiscProjection} drawn  the rung's chart, shaped, folded and spliced
  * @param {Rung} rung
@@ -3866,21 +2368,14 @@ export function markGap(drawn, rung, mark) {
   if (!gaps || typeof gaps !== "object") return drawn;
   const opened = rung.id;
   if (!mark) return drawn;
-  // THE SIGN IS THE SIDE THE MARK STANDS ON, which is how one answered figure
-  // says both which way the shortfall runs and how big it is: too little
-  // leaving arrives AT the mark, too little arriving leaves it. The id is
-  // Go's, under the prefix isGap keys on, for carryResidual's reason.
+  // THE SIDE THE ANSWER'S FIGURE IS ON IS THE SIDE THE MARK STANDS ON: too
+  // little leaving arrives at the mark, too little arriving leaves it.
   const id = mark.id;
   const node = {
     id: id,
-    // ALL THREE ARE THE DOCUMENT'S. A gap's every sentence is about two
-    // schedules disagreeing and by how much, which is nothing this page can
-    // see; Go has both totals and the declared reason, and its note is the
-    // one that says where the checking stops.
     label: mark.label,
     tier: mark.tier,
-    // PARENTLESS, WHICH DRAWS IT --muted, and that is the claim: it belongs to
-    // neither document's hierarchy.
+    // Parentless, so drawn --muted: it belongs to neither document.
     parent: "",
     constraint_tier: "",
     role: "gap",
@@ -3903,31 +2398,10 @@ export function markGap(drawn, rung, mark) {
 /**
  * Folds all but the largest `cap` nodes of one tier into a single node.
  *
- * WHY A CAP IS NEEDED AT ALL, and it is the half of fisc-ppkq that bead got
- * wrong. It says "rescaling is what makes special-revenue's funds legible".
- * Measured on the window this page draws, FY2025-26's fund group at {0,2,3},
- * laid out with the shipped d3 at this file's own constants: drawn out whole,
- * special-revenue puts several of its ribbons under one pixel, because the
- * concentration is WITHIN the group -- its largest fund is a large share of
- * the column and its smallest a vanishing one. Rescaling cannot fix a
- * distribution.
- *
- * At the step's cap the same window draws no ribbon under a pixel, and the
- * capital group's sub-pixel ribbons go too. The fold tests under site/
- * measure both windows and print the figures.
- *
- * IT IS THE SAME OPERATION AS THE FOLD, which is what makes it citable: values
- * sum, fact ids and locators union, so the aggregate ribbon cites every page
- * its figure was read from. What it is not is a node of the document's own
- * hierarchy, so it carries no parent and inherits no hue.
- *
- * WHICH NODES A FOLD KEEPS IS THIS PAGE'S TO DECIDE, because folding is
- * fitting to a viewport no packager can see. What MAY fold is Go's and
- * arrives declared: DrillStep.Caps names the tier, the cap and the tail's
- * noun, and sideOf spends that permission column by column. What stays here
- * besides the ranking is everything about the RIBBONS: re-pointing them at
- * the tail, dropping a folded node's descendants and the links that named
- * them, and the merge foldDocument then does.
+ * A cap, not a rescale: the concentration is within a column, and the fold
+ * tests measure the sub-pixel ribbons it removes. Values sum and fact ids and
+ * locators union, as in the fold, so the aggregate stays citable. What MAY
+ * fold is Go's (DrillStep.Caps); which nodes it keeps is this page's.
  *
  * @param {FiscProjection} doc
  * @param {number} tier
@@ -3939,33 +2413,13 @@ export function markGap(drawn, rung, mark) {
  */
 export function capColumn(doc, tier, cap, opened, noun) {
   const atTier = doc.nodes.filter((n) => n.tier === tier);
-  // AN AGGREGATE OF ONE IS WORSE THAN NO AGGREGATE. This engaged at cap + 1, so
-  // a column of 9 against a cap of 8 folded a single fund into a node labelled
-  // "1 smaller funds" -- one figure the city printed, erased from the chart,
-  // the table and the tooltip, relabelled ungrammatically, and listed under
-  // "What we inferred" as though the grouping of one thing were an inference.
-  // fund-group/enterprise has exactly 9, so this was shipping.
-  //
-  // The threshold is cap + 1 rather than cap, which means a column of exactly
-  // cap + 1 is drawn WHOLE: one more mark than the cap asks for is a better
-  // answer than one fewer plus a box saying "1 smaller".
+  // AN AGGREGATE OF ONE IS WORSE THAN NO AGGREGATE, so a column of cap + 1 is
+  // drawn whole.
   if (atTier.length <= cap + 1) return doc;
 
-  // RANKED BY THE LARGER OF INFLOW AND OUTFLOW, which is d3-sankey's own node
-  // value and the height the reader sees. Inflow alone ranked every column
-  // this page capped until a category opened into its lines: a line is the
-  // SOURCE of everything it carries and takes in nothing, so under inflow
-  // every line tied at zero and the tail was whichever eight sorted last by
-  // id. On the columns capped before -- funds and divisions -- the two agree,
-  // because a fund's outflow never exceeds its inflow and a division's equals
-  // it, and the client's tests pin every opened view at the figures it
-  // had under inflow.
-  //
-  // BY MAGNITUDE, because a contra row is a printed line as large as its
-  // figure. Ranked signed, ERAF at -$15,175,000 is the smallest line in
-  // Property Taxes and the tail folds a reduction in with the additions it is
-  // labelled "smaller" than; ranked by magnitude it is the second largest,
-  // which is what p127 prints.
+  // RANKED BY THE LARGER OF INFLOW AND OUTFLOW, d3-sankey's node value: a
+  // line takes in nothing, so inflow alone ties every line at zero. By
+  // magnitude, because a contra row is a printed line as large as its figure.
   /** @type {Map<string, number>} */
   const inflow = new Map();
   /** @type {Map<string, number>} */
@@ -3975,57 +2429,27 @@ export function capColumn(doc, tier, cap, opened, noun) {
     outflow.set(l.source, (outflow.get(l.source) || 0) + Math.abs(l.value_cents));
   }
   const size = (/** @type {string} */ id) => Math.max(inflow.get(id) || 0, outflow.get(id) || 0);
-  // Ties broken by id, so the set kept is the same on every build of the same
-  // document. A cap that reordered under an unstable sort would move which
-  // funds a reader sees between two identical exports.
+  // Ties broken by id, so the kept set is stable across builds.
   const ranked = atTier.slice().sort((a, b) =>
     size(b.id) - size(a.id) || (a.id < b.id ? -1 : 1));
   const kept = new Set(ranked.slice(0, cap).map((n) => n.id));
   const folded = ranked.slice(cap);
 
-  // THE NOUN IS THE VIEW'S. It read `tier === 3 ? "funds" : "categories"`,
-  // which is the same tier-number-to-word mapping paintBreadcrumb refuses two
-  // functions below, written by the same hand in the same commit.
-  // Pluralised even though the threshold above now guarantees at least two,
-  // because the two rules are in different functions and only one of them is
-  // about grammar. paintCounts learned the same lesson one function away.
+  // The noun is the view's. Pluralised though the threshold guarantees two,
+  // because only this rule is about grammar.
   const word = noun || "items";
   const label = folded.length + " smaller " +
     (folded.length === 1 ? word.replace(/s$/, "") : word);
-  // derived: true, AND IT IS THE INVARIANT RATHER THAN A FLAG. The city printed
-  // no line item called "24 smaller funds"; this node is ours, and shipping it
-  // as printed made the page state the opposite in four places at once -- a
-  // solid rather than dashed mark, a "printed by the city" chip in the tooltip
-  // and the detail panel, an aria-label ending "printed by the city", and an
-  // absence from "What we inferred", which is the list that exists to be
-  // complete. The screen-reader path is the one that stated it most plainly.
-  //
-  // Its VALUE is still every cent a printed figure, summed exactly as the fold
-  // sums a merged ribbon. What is inferred is the GROUPING, and that is what
-  // the rationale says.
+  // derived: true IS THE INVARIANT: the city printed no line called "N
+  // smaller funds". Every cent inside is printed; the grouping is inferred.
   const aggregate = {
     id: aggregateID(tier), label: label, tier: tier,
-    // PARENTED AS THE CALLER DECIDED: at the node being opened when every
-    // item folded into it is inside that node, which is what gives the mark
-    // its group's hue instead of --muted -- it was "" and drew grey among
-    // coloured siblings -- and "" where the column spans fund groups, which
-    // shapeFor asks of the document.
     parent: opened,
     constraint_tier: "",
-    // A ROLE, because an empty one renders as a bordered empty .chip in both
-    // the tooltip and the detail panel: a box with nothing in it, beside chips
-    // that say something.
+    // An empty role renders as an empty .chip.
     role: "aggregate",
-    // THE IDS IT SWALLOWED, so a caveat about one of them still reaches the
-    // mark that now stands for it. caveatsFor walks the tier hierarchy, which
-    // covers foldDocument's fold and NOT this one -- the tail is folded by
-    // value, not by ancestry, so nothing in the parent chain records it.
-    // IT RECORDS THE DESCENDANTS TOO, not only the tail. orphaned() below
-    // removes anything parented beneath a folded node, and recording only the
-    // tail left a caveat naming one of those descendants losing its badge for
-    // the same reason the tail nodes would have. Latent today, since the one
-    // caveat naming nodes names fund groups and fund/100, none of which is ever
-    // in a tail; latent is how it would ship.
+    // THE IDS IT SWALLOWED, descendants included, so caveatsFor still reaches
+    // them: the tail is folded by value, which no parent chain records.
     folds: [],
     derived: true,
     rationale: "Our grouping, not a line the city printed: the " + folded.length +
@@ -4037,12 +2461,8 @@ export function capColumn(doc, tier, cap, opened, noun) {
   const tail = new Set(folded.map((n) => n.id));
   const remap = (/** @type {string} */ id) => (tail.has(id) ? aggregateID(tier) : id);
 
-  // A FOLDED NODE'S DESCENDANTS GO WITH IT. Removing a tail node while leaving
-  // anything parented to it produces a document whose child names a parent it
-  // does not carry, and foldDocument then refuses the whole drill -- so the
-  // reader gets a banner on a click that worked a moment ago. Latent today,
-  // because fund/100 is the only tier-3 node with children and it is never in
-  // any tail, and left latent is exactly how it would ship.
+  // A FOLDED NODE'S DESCENDANTS GO WITH IT, or foldDocument refuses a child
+  // naming a parent the document does not carry.
   const byID = new Map(doc.nodes.map((n) => [n.id, n]));
   const orphaned = (/** @type {{parent: string}} */ n) => {
     let up = n.parent;
@@ -4054,30 +2474,21 @@ export function capColumn(doc, tier, cap, opened, noun) {
     return false;
   };
 
-  // FILLED HERE AND NOT AT THE LITERAL, because orphaned() is declared below it
-  // -- a const in the temporal dead zone, which throws rather than reading as
-  // undefined. Both halves of what the aggregate swallowed are known by this
-  // point: the tail itself, and everything parented beneath it.
+  // Filled here, not at the literal: orphaned() is a const declared below it.
   const dropped = doc.nodes.filter(orphaned).map((n) => n.id);
   aggregate.folds = folded.map((n) => n.id).concat(dropped);
 
   const nodes = doc.nodes
     .filter((n) => (n.tier !== tier || kept.has(n.id)) && !orphaned(n))
     .concat([aggregate]);
-  // AND THE LINKS THAT NAMED THEM GO TOO. Dropping the descendants without
-  // dropping their links leaves foldDocument refusing "link aggregate/tail ->
-  // dept/x names a node the document does not carry" -- which is the outcome
-  // the filter above was added to prevent, reached one field over. Both halves
-  // are latent on the shipped corpus, and latent is the state the comment above
-  // claims not to leave things in.
+  // And the links that named them, for the same refusal.
   const present = new Set(nodes.map((n) => n.id));
   const links = doc.links
     .map((l) => Object.assign({}, l, { source: remap(l.source), target: remap(l.target) }))
     .filter((l) => present.has(l.source) && present.has(l.target));
 
-  // THE FIGURE IS NOT HERE: the note is finished after foldDocument, by
-  // tailFigure, because the fold merges and re-points these ribbons and a
-  // later cap can re-point them again.
+  // THE FIGURE IS NOT HERE: tailFigure finishes the note after the fold and
+  // any later cap have re-pointed these ribbons.
   aggregate.source_note = "The " + folded.length + " smallest of " + atTier.length +
     " by value, at this page's cap of " + cap;
 
@@ -4085,39 +2496,17 @@ export function capColumn(doc, tier, cap, opened, noun) {
 }
 
 /**
- * Folds a document to the tiers this page draws.
+ * Folds a document to the tiers this page draws: each node to its nearest
+ * drawn ancestor, links merged on the folded pair and kind with values summed
+ * and fact ids unioned. A link folding onto one node is dropped; the link
+ * that survives carries the same money and facts.
  *
- * WHY A DOCUMENT IS FOLDED AT ALL, because it is the whole reason the
- * drill-down has a page. fund-flows.json's fund column is the schedule's 61
- * funds. d3-sankey shrinks nodePadding to fit and then divides what is left
- * among the values, and what is left is nothing: every node height and every
- * link width comes out at exactly zero. Nor is that a padding problem. At
- * zero padding most funds are still sub-pixel, because the General Fund alone
- * is half the column; the smallest fund reaches one pixel only on a canvas
- * many screens tall. The column cannot be drawn, at any height, and folding
- * it to its six fund groups is what makes the document renderable.
- *
- * THE RULE. Each node folds to its nearest ancestor whose tier this page draws,
- * following node.parent. Links fold with their ends and merge on the folded
- * pair and the kind, summing values and unioning fact ids. A link whose ends
- * fold to the SAME node is dropped: it was a flow inside what is now one box. That is the
- * drill-down's department-to-object links, which fold to fund/100 -> fund/100 --
- * docs/general-fund-drilldown-contract.md warns about exactly this shape -- and
- * dropping them cites nothing away, because the fund-to-department link that
- * survives carries the same money AND the same facts, over every cell including
- * the printed zeros. That is what facts_cited_twice counts.
- *
- * IT FAILS CLOSED ON A NODE IT CANNOT PLACE. A node with no drawn ancestor
- * means the tier set does not describe this document, and the two ways of
- * carrying on are both worse than stopping: drop it and the page silently loses
- * a column, keep it and it has no column to be drawn in. The throw reaches
- * showYear's caller and paints a banner over a page that is still internally
- * consistent, which is the same contract layOut has.
+ * FAILS CLOSED on a node with no drawn ancestor: dropping it loses a column
+ * silently, keeping it leaves it nowhere to draw.
  *
  * @param {FiscProjection} doc
- * @param {number[]} [tiers] the tier set to fold to, defaulting to the page's own
- *   RENDER_TIERS. A drill passes its own: the tier set a page OPENS ON and the
- *   one it opens INTO are two declarations, not one.
+ * @param {number[]} [tiers] the tier set to fold to, defaulting to
+ *   RENDER_TIERS; a drill passes its own.
  * @returns {FiscProjection} doc itself when the tier set draws every tier.
  */
 export function foldDocument(doc, tiers) {
@@ -4142,12 +2531,8 @@ export function foldDocument(doc, tiers) {
   const merged = new Map();
   /** @type {Map<string, Set<string>>} */
   const cited = new Map();
-  // Locators fold with their ends exactly as fact_ids do, keyed doc\u001fpage so
-  // two legs read off ONE page collapse to one locator -- something the
-  // fact-id union cannot show, because two facts on one page are two ids.
-  // Without this a merged ribbon would carry the FIRST leg's locators, copied
-  // by the Object.assign below, and cite a strict subset of the pages its
-  // figure was read from.
+  // Locators union as fact_ids do, keyed doc\u001fpage; without this a merged
+  // ribbon cites only its first leg's pages.
   /** @type {Map<string, Set<string>>} */
   const located = new Map();
   /** @param {FiscSource[]} ss @returns {string[]} */
@@ -4159,44 +2544,26 @@ export function foldDocument(doc, tiers) {
     return out;
   };
   for (const l of doc.links) {
-    // BOTH ENDS ARE NODES OF THE DOCUMENT, because a column's links index its
-    // own node table and the export holds every index to it.
     const source = foldsTo.get(l.source);
     const target = foldsTo.get(l.target);
     if (source === target) continue;
     // ONE RIBBON PER KIND BETWEEN A FOLDED PAIR, so a ribbon's kind is true of
-    // all of it. Keying the merge on the pair alone would draw an internal
-    // service charge and money crossing the city's boundary as one ribbon.
-    // Measured over every view the page opens, on both published columns:
-    // exactly two drawn pairs carry both kinds, the Intergovernmental line's
-    // rollup into its category and Use of Money and Property's -- the 2 of
-    // pp.127-140's 93 rows that reach the five Internal Service Funds as an
-    // internal service charge and the rest of the city as external revenue.
-    // fund-flows publishes each as two (1,0) links, so this branch is what
-    // keeps them two ribbons rather than what makes them two, and the tooltip
-    // and the table name each for what it is.
+    // all of it.
     const key = source + "\u001f" + target + "\u001f" + l.kind;
     const at = merged.get(key);
     const ids = cited.get(key);
     if (!at || !ids) {
       merged.set(key, Object.assign({}, l, { source: source, target: target }));
-      // ITERATED AND NOT WRAPPED, here and in locatorKeys: new Set(undefined)
-      // is an empty set, which would default an absent fact_ids to none and
-      // draw a ribbon citing nothing. Both keys are required of every link by
-      // schema/column.schema.json, so the loop throwing on a file that lacks
-      // one is the draw failing, which is what scheduleOf promises.
+      // ITERATED, NOT new Set(l.fact_ids): that would turn an absent fact_ids
+      // into a ribbon citing nothing instead of a throw.
       const first = new Set();
       for (const id of l.fact_ids) first.add(id);
       cited.set(key, first);
       located.set(key, new Set(locatorKeys(l.locators)));
       continue;
     }
-    // A PRINTED LEG AND AN INFERRED ONE NEVER MEET HERE. Published is not
-    // derived, and OR-ing the flag would list a figure the city printed most
-    // of under "what we inferred"; so the export refuses a cap under which two
-    // members of a tier would fold ribbons of different provenance onto one
-    // far end, and the merged ribbon's flag is the first leg's and true of all
-    // of it.
+    // A PRINTED LEG AND AN INFERRED ONE NEVER MEET HERE -- the export refuses
+    // such a cap -- so the first leg's derived flag is true of all of it.
     at.value_cents += l.value_cents;
     // A transfer id names one leg of one transfer and cannot survive a merge.
     if (at.transfer_id !== l.transfer_id) at.transfer_id = "";
@@ -4208,46 +2575,24 @@ export function foldDocument(doc, tiers) {
   const links = Array.from(merged.entries())
     .map(([key, l]) => Object.assign(l, {
       fact_ids: Array.from(cited.get(key) || []).sort(),
-      // Rebuilt into the SAME shape internal/project publishes -- documents
-      // ascending, pages ascending within each -- so a folded link and an
-      // unfolded one are indistinguishable to citations().
+      // The shape Go publishes, so citations() cannot tell a folded link.
       locators: regroupLocators(located.get(key)),
     }))
     .sort((a, b) => (a.source < b.source ? -1 : a.source > b.source ? 1
       : a.target < b.target ? -1 : a.target > b.target ? 1
       : a.kind < b.kind ? -1 : a.kind > b.kind ? 1 : 0));
 
-  // A node the folded links do not touch is not drawable: d3-sankey gives a
-  // zero-degree node depth 0 and value 0, so it lands in the first column as a
-  // labelled rectangle of no height. The unfolded drill-down carries six of
-  // them -- the fund groups exist to carry the hierarchy, not a flow -- and
-  // after the fold every one of them is touched, so on the documents this
-  // project publishes today the filter removes nothing. It is here because
-  // "every node is drawable" is a property of the fold, not of the data.
+  // An untouched node is not drawable: d3-sankey lands it in the first column
+  // at zero height.
   const touched = new Set();
   for (const l of links) {
     touched.add(l.source);
     touched.add(l.target);
   }
-  // A RETAINED NODE'S parent IS RE-POINTED AT ITS OWN FOLDED ANCESTOR, because
-  // a folded document has to be as well-formed as the one it came from. Left
-  // alone, dept/administrative-services still claims parent "fund/100" -- a
-  // node the fold just removed -- and every reader of the hierarchy silently
-  // gets nothing: fundGroupOf's walk stops at the first unresolvable parent, so
-  // the inheritance this same change added to linkColor and nodeRank would be
-  // dead on the one document it was added for. This is the client-side twin of
-  // node-hierarchy-well-formed, which asserts Go-side that every parent
-  // resolves within its own document.
-  //
-  // A node whose parent folded INTO IT has no parent left to name, and says so.
-  //
-  // THE WALK CONTINUES PAST AN ANCESTOR THE FILTER DROPPED, which is the whole
-  // reason this is a loop rather than one lookup. A fund group with no flows of
-  // its own is removed above while a node beneath it survives -- a division
-  // whose fund group takes in nothing but which is itself paid by another
-  // group -- and re-pointing at it would leave the folded document naming a
-  // node it does not carry, which is exactly the dead-inheritance failure this
-  // re-pointing exists to prevent.
+  // A RETAINED NODE'S parent IS RE-POINTED AT ITS FOLDED ANCESTOR, so every
+  // parent resolves in the folded document; "" where its parent folded into
+  // it. A loop, because the walk continues past an ancestor the filter above
+  // dropped.
   const nodes = doc.nodes.filter((n) => touched.has(n.id)).map((n) => {
     let up = n.parent ? foldsTo.get(n.parent) : "";
     for (let hops = 0; up && up !== n.id && !touched.has(up); hops++) {
@@ -4263,20 +2608,8 @@ export function foldDocument(doc, tiers) {
 /**
  * Re-stacks each node's ribbons in the order of the ends they run to.
  *
- * d3-sankey does this itself, but too early to be right. Its relaxation loop
- * sorts a node's links by where the other end sits and then moves nodes again,
- * and the last move is never followed by another sort, so a node can be left
- * handing its ribbons out in an order its neighbours no longer sit in. The
- * result is a pair of ribbons that cross immediately at the node face, for no
- * reason in the data. The layout tests under site/ count them before this
- * function runs, and count the crossings they cost. It deliberately does not
- * re-count the pairs afterwards: this
- * function sorts by the same key that count is derived from, so zero after is a
- * tautology and would assert nothing. Redoing the sort against the final
- * positions is the whole fix.
- *
- * Widths are not touched, only the order they are stacked in, so each node's
- * ribbons still fill exactly its own height.
+ * d3-sankey sorts before its last relaxation move, so ribbons can cross at the
+ * node face for no reason in the data. Widths are untouched.
  * @param {{nodes:LaidNode[], links:LaidLink[]}} graph
  */
 export function restackLinks(graph) {
@@ -4287,11 +2620,8 @@ export function restackLinks(graph) {
 
   for (const node of graph.nodes) {
     node.sourceLinks.sort(byOtherEnd((l) => l.target));
-    // CONTRA LAST ON THE ARRIVING SIDE, so the reductions stack at the bottom
-    // and fall inside the band rather than being cut through by the face of a
-    // mark that is shorter than they are. It is a tiebreak and not a reorder:
-    // every other ribbon keeps the order its other end gives it, which is the
-    // property nodeRank's crossing count rests on.
+    // CONTRA LAST ON THE ARRIVING SIDE, so reductions stack inside the band.
+    // A tiebreak, not a reorder: nodeRank's crossing count rests on that.
     node.targetLinks.sort((a, b) =>
       Number(Boolean(a.contra)) - Number(Boolean(b.contra)) ||
       byOtherEnd((l) => l.source)(a, b));
@@ -4314,35 +2644,10 @@ export function restackLinks(graph) {
  * Which column d3-sankey puts a node in: the position of its tier in the
  * declared order, or d3's own justify when nothing was declared.
  *
- * A DECLARED ORDER IS A CLAIM ABOUT POSITION AND sankeyJustify IS NOT. Justify
- * derives the columns from topology and puts a link-less sink in the LAST one,
- * which is right for a document drawn whole and wrong the moment tiers can be
- * skipped: a node terminating early is shoved across the chart to sit among
- * nodes it shares nothing with. It is also what leaves "the column to the left
- * of this one" with no answer, which is why a view that opens a node has to
- * declare its columns -- internal/export's View.RenderTiers refuses one that
- * does not.
- *
- * THE SPINE'S OWN FIGURES DO NOT MOVE WHEN IT DECLARES ITS ORDER, and that is
- * measured rather than argued: the client's layout test lays the committed
- * goldens out through this function, so the crossing and overlap figures below
- * are the ones the page draws under whatever the page declares. Both aligners
- * were run over both published spine columns and agreed to the digit, because
- * the spine's tier 0 is pure source and its tier 5 pure sink and justify's own
- * rule puts a link-less sink where indexOf puts tier 5.
- *
- * THE ORDER MAY BE NON-MONOTONIC, and a window is why: {2,5,4} draws fund
- * groups, then the object category they pay for, then the divisions that spend
- * it, and indexOf says so where a sort by tier number would not.
- *
- * THE TIER SET IS THE CALLER'S, not the page's, and that distinction exists
- * because a page can open a node. A drilled document is folded to its step's
- * tiers -- {0,2,3} on a fund group's window against the page's {0,2,5} -- so
- * aligning on the page's set gives every tier-3 fund indexOf === -1, which d3
- * clamps to column 0. Measured: that leaves the layer array with a hole and
- * d3-sankey dies inside its own ordering pass with "Cannot read properties of
- * undefined (reading 'sort')" -- a blank chart under a banner, on the first
- * click of a feature whose whole point is the click.
+ * Justify puts a link-less sink in the last column, wrong once tiers can be
+ * skipped. The order may be non-monotonic, so it is indexOf, not a sort. The
+ * tier set is the caller's: aligning a drilled document on the page's set
+ * gives indexOf -1, and d3-sankey dies in its ordering pass.
  *
  * @param {number[]} tiers
  * @returns {(d: LaidNode) => number}
@@ -4356,48 +2661,17 @@ export function alignFor(tiers) {
 /**
  * Lays a document out, touching nothing on the page.
  *
- * IT IS SEPARATE FROM render() SO THAT A DOCUMENT WHICH WILL NOT DRAW CANNOT
- * LEAVE THE PAGE SHOWING TWO FISCAL YEARS AT ONCE. Everything in the draw that
- * can throw is here: d3-sankey rejects a link naming a node the document does
- * not carry, and restackLinks walks what it returns. While this ran inside
- * render() -- after paintYearWords, buildLegend and buildTable had already
- * repainted -- a throw left the new year's tiles, caveats, lede and <title>
- * over the OLD year's chart, with a citation link pointing at the year that was
- * not drawn (fisc-bsg).
- *
- * So showYear lays out FIRST, while the page is still wholly the previous year,
- * and only then repaints. A throw here propagates out of showYear to the change
- * handler's .catch, which paints a banner over a page that is still internally
- * consistent. Re-ordering the repaint alone would not have done it: a throw
- * after buildLegend leaves the page split the other way.
+ * SEPARATE FROM render() SO A DOCUMENT THAT WILL NOT DRAW CANNOT LEAVE TWO
+ * FISCAL YEARS ON THE PAGE: everything that can throw is here, and showYear
+ * calls it before repainting anything (fisc-bsg).
  *
  * @param {FiscProjection} doc
  */
 export function layOut(doc) {
-  // Assigned from the document being laid out, before anything that can throw,
-  // so fundGroupOf never walks a parent chain belonging to another document.
-  // BUILT FROM THE FETCHED DOCUMENT AS WELL AS THE DRAWN ONE, because a colour
-  // is a property of where a node sits in the real hierarchy and not of what
-  // this page happens to draw. Built from the drawn nodes alone, every opened
-  // view rendered in --muted: filterLinks keeps only what the drawn tiers
-  // need, so a fund's fund-group ancestor is absent and fundGroupOf's walk
-  // stops at the first parent it cannot resolve. Measured before the fix:
-  // fundGroupOf returned "" for every node on all six opened fund groups.
-  //
-  // THE FETCHED HIERARCHY WINS, and the drawn nodes only fill ids it does not
-  // have. foldDocument RE-POINTS a retained node's parent at its folded
-  // ancestor and sets it to "" when that ancestor was filtered away -- which is
-  // right for the folded document, whose own well-formedness is about nodes it
-  // carries, and useless for a colour, which is about where the node really
-  // sits. Taking the drawn parent leaves the walk stopping at the first "".
-  // The aggregate is the node the drawn set contributes: the file has never
-  // heard of it.
-  //
-  // THE FETCHED HIERARCHY IS THE DRAWN DOCUMENT'S, NOT THE YEAR'S. A rung can
-  // be shaped from a different file than depth 0, and merging the year's
-  // document over it would resolve the hue walk against the other document's
-  // parents -- the failure fundGroupOf's comment records as every mark in
-  // --muted, reached from the other side.
+  // THE HUE INDEX: the drawn nodes, overwritten by the unfolded document this
+  // rung was shaped from, because a colour is where a node really sits and
+  // the fold re-points parents. The drawn set contributes only what the file
+  // lacks, such as the aggregate. Assigned before anything can throw.
   const previous = groupIndex;
   groupIndex = new Map(doc.nodes.map((n) => [n.id, n]));
   const source = drawnDoc();
@@ -4410,14 +2684,10 @@ export function layOut(doc) {
     .nodeWidth(NODE_WIDTH)
     .nodePadding(NODE_PADDING)
     .nodeAlign(alignFor(activeTiers()))
-    // Supplying this switches d3's own ordering pass off, which is what makes
-    // the fund column's colour adjacency a property of the page rather than of
-    // the library. nodeRank puts the crossing count back.
+    // Supplying this switches d3's own ordering pass off.
     .nodeSort(/** @param {LaidNode} a @param {LaidNode} b */ (a, b) =>
       nodeRank(a) - nodeRank(b) || b.value - a.value)
-    // THE EXTENT IS SIZED FROM THE COLUMNS THIS CHART DRAWS, and render() reads
-    // the same count for the viewBox: a drawing laid out at one width inside a
-    // viewBox of another is the whole chart stretched or squeezed.
+    // The same column count render() sizes the viewBox from.
     .extent([[LABEL_GUTTER, 12],
       [chartWidth(drawnColumns()) - LABEL_GUTTER, CHART_HEIGHT - 12]]);
 
@@ -4431,17 +2701,13 @@ export function layOut(doc) {
       links: doc.links.map((l) => Object.assign({}, l, { value: l.value_cents })),
     });
   } catch (e) {
-    // THE INDEX GOES BACK WITH THE THROW. It has to be assigned before the
-    // sankey runs, because nodeRank walks it from inside d3's sort -- and a
-    // document that will not lay out must not leave it describing that
-    // document, or paint() on the next theme change recolours the chart still
-    // on screen against a hierarchy it was never drawn from.
+    // THE INDEX GOES BACK WITH THE THROW, or the next paint() recolours the
+    // chart on screen against a document it was not drawn from.
     groupIndex = previous;
     throw e;
   }
   restackLinks(graph);
-  // Held for columnShare, which needs the LAID nodes: a share is of the column
-  // d3-sankey put a mark in, and only this graph knows which that is.
+  // For columnShare: only the laid graph knows a mark's column.
   laidNodes = graph.nodes;
   return graph;
 }
@@ -4449,44 +2715,25 @@ export function layOut(doc) {
 /**
  * The column a node was drawn in, as an index into the declared order.
  *
- * NOT d.depth, WHICH IS THE LONGEST PATH TO THE NODE and answers a different
- * question. The two agree on a chart every path through which is the same
- * length -- the spine's is -- which is why labelling keyed on depth for as long
- * as the spine was the only chart. Measured on the committed corpus: the
- * fund-group window {0,2,3} draws one node in column 2 whose depth is 1,
- * because no ribbon reaches it from column 1.
- *
- * NOT d3's d.layer EITHER: layer is the clamped output of the aligner this same
- * declaration is handed to, so reading it back is a second source of one fact.
- * The exception is a view that declares no column order at all, where
- * sankeyJustify chose the columns and d.layer is the only record of what it
- * chose.
+ * NOT d.depth, the longest path to the node, which differs wherever no ribbon
+ * reaches a node from the column before it. Not d.layer either, except in a
+ * view that declares no column order, where sankeyJustify chose the columns.
  *
  * @param {LaidNode} d
  * @returns {number}
  */
 export function columnOf(d) {
   const tiers = activeTiers();
-  // d3 clamps an aligner's answer into the drawn range, so a node whose tier
-  // the view does not declare is drawn in column 0 and is labelled as one.
+  // d3 clamps an undeclared tier into column 0, so it is labelled as one.
   return tiers.length ? Math.max(0, tiers.indexOf(d.tier)) : d.layer;
 }
 
 /**
- * Where a node's label goes: the side it is anchored on, and the point it is
- * anchored at.
+ * Where a node's label goes: the side it is anchored on, and the point.
  *
- * A LABEL MAY RUN OUTWARD ONLY INTO A GUTTER. The extent reserves LABEL_GUTTER
- * px outside the first and last columns and nothing at all between columns, so
- * the first column's label reads leftward out of the chart and the last
- * column's rightward. An interior column has neither gutter: a label anchored
- * to the right of its rect claims the band the next column's ribbons arrive
- * through, and the further right that column sits the less of that band is
- * left. Centred over its own rect it claims half as much on each side, in the
- * NODE_PADDING gap above the rect rather than across the middle of it.
- *
- * AN INTERIOR COLUMN IS NOT A FUTURE SHAPE. Three columns have one already:
- * the spine's fund groups, and the centre of every window a step opens.
+ * A LABEL MAY RUN OUTWARD ONLY INTO A GUTTER, and only the first and last
+ * columns have one. An interior label is centred above its rect, in the
+ * NODE_PADDING gap, rather than across the ribbons the next column receives.
  *
  * @param {LaidNode} d
  * @param {number} last the largest column index this chart drew
@@ -4497,36 +2744,18 @@ export function labelPlacement(d, last) {
   const middle = (d.y0 + d.y1) / 2;
   if (col === 0) return { anchor: "end", x: d.x0 - 10, y: middle, dy: "0.35em" };
   if (col >= last) return { anchor: "start", x: d.x1 + 10, y: middle, dy: "0.35em" };
-  // NO dy ON THE INTERIOR PLACEMENT: the baseline is already where the text
-  // belongs, 5px clear of the rect's top edge, and a half-em shift down would
-  // drop the glyphs onto the rect the label names.
+  // No dy: a half-em shift down would drop the glyphs onto the rect.
   return { anchor: "middle", x: (d.x0 + d.x1) / 2, y: d.y0 - 5, dy: null };
 }
 
 /**
- * The qualifier each mark needs to be told from the ones drawn beside it: its
- * parent's label, on every mark whose own label another mark in the same column
- * also carries, and nothing at all anywhere else.
+ * Each mark's parent label, on every mark whose label another mark in the same
+ * column also carries; nothing elsewhere.
  *
- * AN AMBIGUITY IS A PROPERTY OF THE COLUMN AND NOT OF THE NODE, which is why
- * this is here and not in the document. fund-flows names a tier-5 cell by its
- * object category and carries the division in `parent`. In a division's own
- * window that is the right label -- the division is the mark to its left and
- * the breadcrumb says it -- and in the fund window, whose fourth column draws
- * the largest cells of eight different divisions, it draws six marks reading
- * "Wages & Benefits". The pair does not fit on one line either way: measured by
- * the layout tests under site/, "Fire Administration — Services & Supplies"
- * wants more than the gutter is wide, so the qualifier is a line of its own
- * and is spent only where a reader could not otherwise tell two marks apart.
- *
- * THE PARENT IS LOOKED UP IN THE DOCUMENT, NOT IN THE LAID GRAPH. A window
- * draws the tiers its step declares, so a mark's parent is routinely not on
- * screen -- and the qualifier is the word for where the mark came from, which
- * is a fact about the document rather than about what is drawn.
- *
- * A DUPLICATE WHOSE PARENT IS UNNAMEABLE GETS "" AND STAYS AMBIGUOUS. There is
- * no such mark on the committed corpus; the label check names one if it appears
- * rather than this inventing a word for it.
+ * AN AMBIGUITY IS A PROPERTY OF THE COLUMN, NOT THE NODE, so it is decided here
+ * rather than in the document. The parent is looked up in the document, not the
+ * laid graph, because a window routinely does not draw it. A duplicate whose
+ * parent is unnameable gets "" and stays ambiguous rather than invented.
  *
  * @param {LaidNode[]} nodes
  * @returns {Map<string, string>}
@@ -4556,22 +2785,11 @@ export function labelQualifiers(nodes) {
 
 /**
  * The dy each of a qualified label's two lines is drawn at, relative to the
- * line before it.
+ * line before it. The qualifier goes above: an outward pair straddles the
+ * rect's middle; an interior label has nowhere below to go, so the qualifier
+ * is lifted a whole line and the label stays put.
  *
- * THE QUALIFIER GOES ABOVE THE LABEL IN BOTH PLACEMENTS, and the two differ in
- * what that costs. An outward label is anchored on its rect's middle, so the
- * pair straddles the middle and the block stays centred on the mark it names.
- * An interior one is already sitting in the NODE_PADDING gap above its rect,
- * with nowhere below to go, so the qualifier is lifted a whole line further and
- * the label line does not move.
- *
- * THE INTERIOR BRANCH IS REASONED AND NOT MEASURED. No column but the last
- * repeats a label on the committed corpus -- measured over all six goldens, the
- * only duplicates anywhere are fund-flows' 44 tier-5 cells, and tier 5 is drawn
- * last in every window that reaches it -- so nothing draws this branch and no
- * check can see it. fisc-xhqt carries the measurement and what would retire it;
- * the vertical arm of the client's layout test is what would name an interior
- * pair if a real document ever drew one.
+ * NO COMMITTED VIEW DRAWS THE INTERIOR BRANCH, so no check sees it; fisc-xhqt.
  *
  * @param {string} anchor
  * @returns {{qualifier: string, label: string}}
@@ -4583,9 +2801,8 @@ export function labelLineShift(anchor) {
 }
 
 /**
- * Draws a laid-out graph. Pass the result of layOut(); omitted, it lays the
- * current projection out itself, which is the non-atomic path and is only for
- * a caller that has nothing else on the page to keep consistent.
+ * Draws a laid-out graph. Omitting `laid` lays the projection out here, which
+ * is non-atomic with anything else on the page.
  * @param {{nodes:LaidNode[], links:LaidLink[]}} [laid]
  */
 export function render(laid) {
@@ -4595,8 +2812,7 @@ export function render(laid) {
   const width = chartWidth(drawnColumns());
   const height = CHART_HEIGHT;
 
-  // No width or height attributes: the viewBox plus width:100% in the
-  // stylesheet is what makes the drawing scale with its container.
+  // No width or height attributes: the viewBox makes the drawing scale.
   svg.attr("viewBox", "0 0 " + width + " " + height);
   svg.selectAll("g").remove();
 
@@ -4608,8 +2824,7 @@ export function render(laid) {
     .join("path")
     .attr("class", /** @param {LaidLink} d */ (d) => linkClass(d))
     .attr("d", D3.sankeyLinkHorizontal())
-    // The 2px surface gap is the separator between stacked ribbons; a stroke
-    // drawn around each one would be data-weight ink doing white's job.
+    // The surface gap, not a stroke, separates stacked ribbons.
     .attr("stroke-width", /** @param {LaidLink} d */ (d) => Math.max(1, d.width - RIBBON_GAP))
     .attr("tabindex", 0)
     .attr("role", "button")
@@ -4627,80 +2842,35 @@ export function render(laid) {
     .attr("class", /** @param {LaidNode} d */ (d) => nodeClass(d))
     .attr("tabindex", 0)
     .attr("role", "button")
-    // aria-pressed ON EVERY NODE, BECAUSE EVERY NODE IS A TOGGLE. It is the
-    // isolation, and the legend announces its copy of it the same way;
-    // applyEmphasis keeps this in step. A node that opens is no exception: its
-    // single click and its Space isolate exactly as every other node's do.
-    // OPENING IS NOT THE TOGGLE and must never be announced as one -- it
-    // replaces the chart and takes the node with it, so there is no pressed
-    // state to return to. What a node opens into is announced by the label.
+    // aria-pressed is the isolation, on every node. OPENING IS NOT THE TOGGLE
+    // and must never be announced as one: it replaces the chart, leaving no
+    // pressed state to return to. The label announces what a node opens into.
     .attr("aria-pressed", "false")
     .attr("aria-label", /** @param {LaidNode} d */ (d) => nodeDescription(d))
-    // BOTH KEYS ON EVERY NODE, because both activate every node. Which of them
-    // opens is nodeDescription's sentence: aria-keyshortcuts is a list of keys
-    // and has no slot for what a key means, so it can only fail to mention one.
+    // Both keys activate every node; which one opens is nodeDescription's to say.
     .attr("aria-keyshortcuts", "Enter Space")
     .on("pointerenter", /** @param {PointerEvent} e @param {LaidNode} d */ (e, d) => showTip(e, d))
     .on("pointermove", /** @param {PointerEvent} e @param {LaidNode} d */ (e, d) => showTip(e, d))
     .on("pointerleave", hideTip)
     .on("focus", /** @param {FocusEvent} e @param {LaidNode} d */ (e, d) => guarded("show this mark", () => { if (restoring) return; showTip(e, d); pin(d); }))
     .on("blur", hideTip)
-    // Activating a node isolates its flows, the same toggle the legend does
-    // for a fund group. Layout gets this chart's crossings down so far and
-    // no further -- the rest are structural in a graph this dense -- so the way
-    // through them is to take one flow out at a time.
+    // TWO GESTURES, ONE MEANING EACH: a single click and Space isolate on every
+    // node; a double click and Enter open the nodes that open.
     //
-    // Both paths are here because neither covers everyone. An SVG
-    // g[role=button] does not synthesise a click from Enter the way a real
-    // button does, so click alone leaves the toggle mouse-only. Screen
-    // readers vary: some pass the key through and synthesise nothing, some
-    // synthesise a click and swallow the key, and some do both -- and that
-    // last case would fire the toggle twice and land back where it started,
-    // for exactly the readers the keydown was added for.
-    //
-    // Hence the guard, which is on the activation and not on the input
-    // device: a click on the node a key just activated is that key's own
-    // click. Every other click still toggles, including one synthesised by
-    // assistive tech that sent no key at all.
-    //
-    // Focus itself must not isolate. Tabbing the columns would strobe the
-    // whole chart, which is also why a held key is ignored.
-    //
-    // A SECOND MEANING ON ONE ACTIVATION OF ONE ELEMENT IS A NEW INTERACTION
-    // CONTRACT AND NOT A REUSE, which is fisc-ppkq's third objection and still
-    // holds. What has changed is the answer to it: the contract is now TWO
-    // gestures rather than one. A single click and Space isolate, on every node
-    // of every view; a double click and Enter open the nodes that open. Neither
-    // gesture carries two meanings, and no view has to choose.
-    //
-    // AN OPENED CHART IS WORTH ISOLATING ON, which is what makes two gestures
-    // necessary rather than merely possible. A WINDOW is three columns at its
-    // narrowest, and the drill tests walk the tree and print the tally: all
-    // but one of the views either year opens draw three columns at the page's
-    // own budget, and one of them draws four at a four-column budget.
-    //
-    // THE ONE THAT IS NOT A WINDOW DRAWS TWO, and it is a step that keeps no
-    // flank: transfers/in draws the opened node's parts alone, tiers 2 and 3,
-    // which is a filter. Isolating there still dims, because two columns still
-    // have ribbons between them -- what it does not have is a middle column.
-    //
-    // AND THE ISOLATE IS THE GESTURE MOST MARKS HAVE. Of the marks those views
-    // draw, a small minority opens; the drill tests print the tally. Putting
-    // the drill on the single click would give that minority of an opened
-    // chart's marks one meaning and the rest another, on the same mark shape,
-    // told apart only by trying one.
+    // Both click and keydown, because an SVG g[role=button] synthesises no click
+    // from Enter, and some screen readers send both -- which would toggle twice.
+    // So the guard is on the activation: a click on the node a key just
+    // activated is that key's own click. Focus must not isolate, and a held key
+    // is ignored, or tabbing would strobe the chart.
     .on("click", /** @param {MouseEvent} e @param {LaidNode} d */ (e, d) => {
       guarded("pin this mark", () => {
         e.stopPropagation();
         clickNode(d, e.timeStamp);
       });
     })
-    // THE DOUBLE CLICK IS WIRED ON EVERY NODE AND NOT ONLY ON ONE THAT OPENS.
-    // A reader who double clicks a mark that does not open has still made two
-    // clicks, and those two have already toggled the isolation on and off
-    // again; without this the gesture would silently discard whatever was
-    // isolated before it. preventDefault is for the text selection a double
-    // click otherwise leaves across the label.
+    // ON EVERY NODE, not only one that opens: its two clicks have already
+    // toggled the isolation twice, and this restores what was isolated before.
+    // preventDefault stops the double click selecting the label.
     .on("dblclick", /** @param {MouseEvent} e @param {LaidNode} d */ (e, d) => {
       guarded("open this mark", () => {
         e.stopPropagation();
@@ -4722,14 +2892,8 @@ export function render(laid) {
     .attr("height", /** @param {LaidNode} d */ (d) => Math.max(2, d.y1 - d.y0))
     .attr("rx", 2);
 
-  // THE BAND, ON EVERY MARK AND DISPLAYED ON THE ONES THAT HANG. It is appended
-  // to every g.node rather than to a filtered selection because the shipped
-  // d3 selection this file uses has no filter(), and a second pass keyed on id
-  // would be a second place the set is decided.
-  //
-  // pointer-events NONE, because it is not the mark: a click landing on it
-  // would pin a node whose face the reader is not over, and a hover would
-  // tooltip a figure the band does not carry.
+  // On every mark, displayed on the ones that hang: the vendored d3 selection
+  // has no filter(). pointer-events none, because the band is not the mark.
   node.append("rect")
     .attr("class", "contra-band")
     .attr("display", /** @param {LaidNode} d */ (d) => (contraBand(d) ? null : "none"))
@@ -4739,9 +2903,8 @@ export function render(laid) {
     .attr("height", /** @param {LaidNode} d */ (d) => (contraBand(d) || { height: 0 }).height)
     .attr("pointer-events", "none");
 
-  // Every node is directly labelled. That is the relief the palette's
-  // contrast check requires, and it is why the chart still reads for someone
-  // who cannot separate two of the hues.
+  // Every node is directly labelled: the relief the palette's contrast check
+  // requires.
   const lastColumn = Math.max(...graph.nodes.map(columnOf));
   const qualified = labelQualifiers(graph.nodes);
   /** @param {LaidNode} d */
@@ -4753,10 +2916,8 @@ export function render(laid) {
     .attr("x", /** @param {LaidNode} d */ (d) => labelPlacement(d, lastColumn).x)
     .attr("text-anchor", /** @param {LaidNode} d */ (d) => labelPlacement(d, lastColumn).anchor);
 
-  // AN UNQUALIFIED LABEL DRAWS EXACTLY WHAT IT DREW BEFORE. The qualifier tspan
-  // is empty on those marks and carries neither an x nor a dy, so it starts no
-  // line and shifts nothing; only a mark a reader could confuse with another
-  // pays the second line.
+  // On an unqualified mark the qualifier tspan is empty with no x or dy, so it
+  // starts no line.
   label.append("tspan")
     .attr("class", "qualifier")
     .attr("x", /** @param {LaidNode} d */ (d) =>
@@ -4801,12 +2962,8 @@ export function paint() {
 /**
  * Isolates one node's flows, or clears the isolation for "".
  *
- * Every path into this state goes through here -- the legend, a click on a
- * node, Escape -- because the legend's pressed button and the dimming are two
- * renderings of the same one variable, and the two drift apart the moment
- * either is set on its own. Isolating a fund group by clicking its node has to
- * light its legend button; isolating a revenue node has to clear whichever
- * button was lit.
+ * Every path into this state goes through here, so the legend's pressed button
+ * and the dimming cannot drift apart.
  * @param {string} id
  */
 export function setIsolated(id) {
@@ -4840,19 +2997,11 @@ export function applyEmphasis() {
  * ------------------------------------------------------------------ */
 
 /**
- * Whether a ribbon is a printed figure re-pointed onto a mark of ours.
+ * A ribbon's provenance phrase.
  *
- * THE FIGURE AND THE FLOW HAVE DIFFERENT PROVENANCE HERE, and only on this
- * shape. carryResidual takes a flow the chart above prints -- Transfers In to
- * the General Fund group, $480,400, cited to p66 -- and re-points it at the
- * residual, a node no page prints. The cents and the citation are the city's;
- * the ribbon's far end is ours, and no schedule prints money moving to "Not
- * split by fund here".
- *
- * SO "printed by the city" IS WRONG ON IT, flatly, and that is what a reader
- * was told: AGENTS.md, "Published and derived are different things". It is not
- * "inferred by us" either -- nothing about the figure is inferred -- which is
- * why this is a third phrase rather than a reclassification of the link.
+ * A PRINTED FIGURE RE-POINTED ONTO A MARK OF OURS GETS A THIRD PHRASE: the
+ * cents and citation are the city's but the far end is not, so neither
+ * "printed by the city" nor "inferred by us" is true of it.
  *
  * @param {boolean} derived  the ribbon's own flag
  * @param {boolean} ontoOurs  whether either end is a mark we drew
@@ -4863,17 +3012,10 @@ export function provenanceOf(derived, ontoOurs) {
   return ontoOurs ? CARRIED_NOTE : "printed by the city";
 }
 
-/**
- * What a printed figure re-pointed onto a derived mark is, in the one place
- * the words for it live -- PARTITION_NOTE's pattern, and for its reason: four
- * spellings of one claim about provenance is four things to keep true.
- */
+/** What a printed figure re-pointed onto a derived mark is: the only spelling. */
 export const CARRIED_NOTE = "figure printed by the city, re-pointed onto a mark of ours";
 
-/**
- * The short form of the same claim, for a chip. The diamond is the site's mark
- * for "this part is ours", and what is ours here is the re-pointing.
- */
+/** CARRIED_NOTE's short form, for a chip. */
 export const CARRIED_CHIP = "\u25c7 re-pointed by us";
 
 /**
@@ -4894,20 +3036,9 @@ export function linkDescription(d) {
  * @returns {string}
  */
 export function nodeDescription(d) {
-  // WHAT EACH GESTURE DOES, for a reader who cannot see which marks carry the
-  // triangle. Every node says it, because every node has two gestures now and a
-  // mark that named neither would leave a keyboard reader to discover the
-  // difference by pressing keys and watching a chart they cannot watch.
-  //
-  // THE SENTENCE NAMES SPACE ON A NODE THAT OPENS AND NOT ON ONE THAT DOES NOT,
-  // which is not an inconsistency: on a mark that opens, Space is the key that
-  // does the OTHER thing, and that is the whole of what has to be learned. On a
-  // mark that does not, every activation means the same thing and there is no
-  // split to announce.
-  // AND WHAT THE FOLDED TAIL'S GESTURE DOES, in the words the chip that undoes
-  // it uses. "Opens into its parts" would be the wrong sentence on a mark that
-  // opens nothing: what the reader gets is this column drawn at every mark it
-  // holds, on the chart they are already on.
+  // WHAT EACH GESTURE DOES, for a reader who cannot see the triangle. Space is
+  // named only where it differs from Enter; the folded tail's sentence uses the
+  // words of the chip that undoes it, since it opens nothing.
   const what = drillable(d)
     ? ", opens into its parts on a double click or Enter; a single click or Space follows " +
       "this money"
@@ -4916,10 +3047,7 @@ export function nodeDescription(d) {
         "follows this money"
       : ", follow this money";
   const note = contraNote(d);
-  // THE CROSS-TAB SENTENCE REACHES A READER WHO CANNOT SEE THE RIBBONS. The
-  // class on the ribbon and the chip in the tooltip both need eyes; a mark
-  // whose every flow is a partition announces the same qualification here, in
-  // the words the chips stand for.
+  // The cross-tab qualification, for a reader who cannot see the ribbons.
   const flows = residualFlows(d);
   return d.label + (flows ? ", " + flows : ", total " + fmtSigned(markCents(d))) +
     (d.derived ? ", inferred by us" : ", printed by the city") +
@@ -4930,35 +3058,11 @@ export function nodeDescription(d) {
 /**
  * Where a caveat's full text is, or "" when this site has no caveats page.
  *
- * COMPOSED FROM THE DRAWN DOCUMENT'S OWN SUMMARIES rather than from the id,
- * because the anchor is per (document, caveat) -- one id carries different
- * text in different documents -- and the packager is the only party that
- * knows which stem the document on screen came from. Looking the id up in
- * what the page was handed is exact; rebuilding the fragment here would be a
- * second speller of a rule internal/export owns.
- *
- * THE DRAWN DOCUMENT'S REFS, NOT THE YEAR'S. caveatsFor reads the drawn
- * document's metadata.caveats, and at a rung over a switched document the
- * year's refs are the spine's -- so every caveat on a depth-1 mark resolved
- * to "" here, which is indistinguishable from a site with no caveats page,
- * and the panel rendered the summary with no link (fisc-ko1j.13). The year's
- * entry for the rung carries that document's refs; this reads them.
- *
- * EXCEPT FOR A CARRIED MARK, WHOSE CAVEAT CAME FROM THE CHART ABOVE. The step
- * document declares nothing about a mark it does not carry, so resolving a
- * carried mark's caveat against the rung lands back on fisc-ko1j.13's symptom
- * by the other route: a summary with no link. `carried` is the caller's,
- * because the id here is a CAVEAT's and the question is about the NODE the
- * caveat was read off -- one caveat can mark a carried node and a drawn one on
- * the same chart. fisc-bccu.
- *
- * THE STEM PICKS THE DEPTH AND THE DEPTH PICKS THE REFS. A mark carried from
- * the spine takes the year's anchors and one carried from a fund-flows chart
- * takes that step's, which is a difference only a chain deeper than one hop
- * can have -- and every window has one, since a window keeps a flank of
- * whatever it opened from. A stem no document on the stack carries gets NO
- * anchor rather than the year's: a summary without a link is a visible loss,
- * and a link into the wrong document's caveats page is not.
+ * LOOKED UP IN THE REFS GO HANDED THE PAGE, never rebuilt from the id: the
+ * anchor is per (document, caveat). The refs are the drawn document's -- the
+ * step's below depth 0 -- except for a carried mark, whose caveat is the
+ * document it was carried from. A stem no document on the stack carries gets
+ * no anchor: a missing link is visible, a link to the wrong document is not.
  *
  * @param {string} id
  * @param {string} [carried]  the projection stem the mark this caveat was read
@@ -4979,35 +3083,22 @@ export function caveatHref(id, carried) {
 /**
  * The caveats that are about one drawn mark.
  *
- * RESOLVED THROUGH THE HIERARCHY, because applies_to names ids in the FILE and
- * a drawn node is often a fold of several of them. A caveat about
- * fund-group/internal-service should mark that group on the spine, where it is
- * drawn -- and on a page that folds its funds into it, where the id the caveat
- * names is a node the reader can see. So a caveat applies to a drawn node when
- * one of its targets IS that node or has it as an ancestor.
- *
- * THIS IS THE FOLD HAZARD fisc-yj4w.8 WAS FILED FOR, and it is the reason the
- * badge is not a map lookup: matching ids directly would leave the mark silent
- * on every page that folds, which is a test that passes whether the caveat
- * applies or the resolution is broken.
+ * RESOLVED THROUGH THE HIERARCHY, not by id: a caveat applies to a drawn node
+ * when one of its targets is that node or has it as an ancestor, since a drawn
+ * node is often a fold of several ids.
  *
  * @param {string} id
  * @returns {FiscCaveat[]}
  */
 export function caveatsFor(id) {
   if (!projection) return [];
-  // A CARRIED MARK IS OF THE CHART ABOVE, AND SO ARE ITS CAVEATS. carryResidual
-  // copies the spine's endpoints onto the rung; the rung's own document has
-  // never heard of them, so filtering its caveats returns nothing however the
-  // walk below resolves. fisc-bccu.
+  // A carried mark's caveats are the document it was carried from.
   const carried = projection.nodes.find((n) => n.id === id && n.carried_from);
   const source = carried ? carriedSource(carried.carried_from) : projection;
   if (!source || !source.metadata || !Array.isArray(source.metadata.caveats)) {
     return [];
   }
-  // THE AGGREGATE STANDS FOR THE IDS IT SWALLOWED. capColumn folds by VALUE,
-  // not by ancestry, so the walk below cannot see that relationship -- the
-  // node it folded has no parent pointing at the aggregate and never will.
+  // The aggregate folds by value, not ancestry, so the walk cannot reach its ids.
   const drawnNode = projection.nodes.find((n) => n.id === id);
   const swallowed = drawnNode && Array.isArray(drawnNode.folds) ? drawnNode.folds : [];
   const reaches = (/** @type {string} */ target) => {
@@ -5025,12 +3116,7 @@ export function caveatsFor(id) {
 
 /**
  * Where on the stack the document named by a projection stem sits, or -1.
- *
- * DEEPEST FIRST, because a carried mark came from the chart immediately above
- * it and a chain may draw one document at several depths. The answer is a
- * DEPTH and not a document because the two things resolved from it live in
- * different places: the document itself is docAt's, and the caveat anchors for
- * it are the year's at depth 0 and the step's below that.
+ * Deepest first: a chain may draw one document at several depths.
  *
  * @param {string} stem
  * @returns {number}
@@ -5044,18 +3130,9 @@ export function depthOfDocument(stem) {
 }
 
 /**
- * The document a carried mark came from, resolved BY THE STEM IT RECORDS.
- *
- * NOT docAt(0), AND NOT drilled[0].doc EITHER. The first is the spine, which is
- * the chart above only while nothing below depth 1 carries anything; the second
- * is the step document, which is the chart the mark was carried ONTO. Every
- * window keeps a flank of the chart it opens from, so a carried mark two rungs
- * down came from a fund-flows chart and not from the spine, and a caveat or a
- * source list resolved at depth 0 would be another document's.
- *
- * NULL RATHER THAN A GUESS when no document on the stack carries that stem: a
- * mark losing its caveats is visible, and a mark wearing the wrong document's
- * is not.
+ * The document a carried mark came from, resolved by the stem it records --
+ * not the spine, since a mark two rungs down was carried from the rung above.
+ * Null rather than a guess when no document on the stack carries that stem.
  *
  * @param {string} stem
  * @returns {FiscProjection | null}
@@ -5068,12 +3145,8 @@ export function carriedSource(stem) {
 /**
  * The share one mark is of the money in its column, as a percentage.
  *
- * IT IS ARITHMETIC AND SAYS SO. Every figure this site publishes is one the
- * city printed; a share is not, and the word "of" carries that -- "8.4% of this
- * column" is self-evidently a ratio rather than a line item, in a way that a
- * bare "8.4%" beside a dollar figure would not be. It is computed from the
- * DRAWN values, a residual's included: its label states Go's figures, but at a
- * width that holds its leaving legs back its drawn height is less.
+ * IT IS ARITHMETIC AND SAYS SO: no page prints it. Computed from the DRAWN
+ * values, a residual's included.
  *
  * @param {LaidNode} d
  * @returns {string}
@@ -5088,26 +3161,13 @@ export function columnShare(d) {
       siblings++;
     }
   }
-  // NO SHARE OF A COLUMN OF ONE. An opened division's left column is that
-  // division alone, so this printed "our 100.0% of this column" on the rung's
-  // headline mark -- a derived chip carrying a figure that is 100% by
-  // construction rather than by measurement. A share says how a column divides,
-  // and an undivided one has nothing to say.
+  // No share of a column of one: it is 100% by construction.
   if (!total || siblings < 2) return "";
   const pct = (100 * d.value) / total;
-  // A CEILING AS WELL AS A FLOOR. toFixed(1) rounds, so a mark that is 99.9943%
-  // of a divided column renders "100.0" -- the exact chip the siblings guard
-  // above exists to prevent, reached by arithmetic instead of by topology.
-  // Reproduced on committed data: fund-flows-2024-actual, revenue opened on
-  // debt-service, where transfers/in is that share of a two-node column.
-  //
-  // ">99.9" AND "<0.1" ARE BOTH HONEST and "100.0" is not: the first two say a
-  // figure is outside what one decimal can carry, and the third asserts a whole
-  // that the presence of a sibling denies.
+  // A CEILING AS WELL AS A FLOOR: toFixed(1) would round a divided column's
+  // largest share to "100.0", a whole its sibling denies.
   const shown = pct < 0.1 ? "<0.1" : pct > 99.9 ? ">99.9" : pct.toFixed(1);
-  // "◇" AND "our" BOTH, because the chip is small and a reader skims it. The
-  // diamond is this site's mark for an inference everywhere else; the word is
-  // what survives being read aloud.
+  // "our" is what survives the diamond being read aloud.
   return "\u25c7 our " + shown + "% of this column";
 }
 
@@ -5130,8 +3190,6 @@ export function showTip(event, d) {
   const asLink = isLink(d);
   const color = asLink ? linkColor(/** @type {LaidLink} */ (d)) : nodeColor(/** @type {LaidNode} */ (d));
 
-  // Values lead, labels follow: here the reader already knows what they are
-  // pointing at and wants the number.
   tip.append(h("div", "tip-value", fmtSigned(markCents(d))));
 
   const label = h("div", "tip-label");
@@ -5161,9 +3219,7 @@ export function showTip(event, d) {
       meta.append(h("span", "chip partition", "cross-tab"));
     }
     tip.append(meta);
-    // THE SENTENCE, NOT ONLY THE CHIP: "reduction" says what kind of row this
-    // is, and the words say what it reduces. "cross-tab" is the same shape one
-    // claim over.
+    // The chip says what kind of row; the sentence says what it reduces.
     if (l.contra) tip.append(h("div", "tip-meta", l.contra));
     if (l.partition) tip.append(h("div", "tip-meta", PARTITION_NOTE));
     tip.append(h("div", "facts", l.fact_ids.join(" ")));
@@ -5179,16 +3235,10 @@ export function showTip(event, d) {
     const share = columnShare(n);
     if (share) {
       meta.append(document.createTextNode(" "));
-      // chip derived, LIKE EVERY OTHER FIGURE ON THIS SITE THAT WE COMPUTED. It
-      // sat in a plain .chip beside "printed by the city", which is the one
-      // adjacency this project's whole premise is about. A share is arithmetic
-      // over two printed figures and is not itself printed anywhere.
+      // chip derived: a share is computed, never printed.
       meta.append(h("span", "chip derived", share));
     }
-    // A CAVEAT ABOUT THIS MARK, SAID AT THE MARK. The caveats page carries all
-    // of them and every page links to it, which is right for the ones about a
-    // schedule -- and wrong for the ones about a single node, which a reader
-    // meets while looking at that node and not while reading a list.
+    // A caveat about this mark, said at the mark.
     const cavs = caveatsFor(n.id);
     if (cavs.length) {
       meta.append(document.createTextNode(" "));
@@ -5229,8 +3279,8 @@ export function hideTip() {
 }
 
 /**
- * Pins a flow or node into the detail panel, which is where the provenance
- * links live: a tooltip you cannot click is no place for a citation.
+ * Pins a flow or node into the detail panel, where the citations are
+ * clickable.
  * @param {LaidLink | LaidNode} d
  */
 export function pin(d) {
@@ -5259,8 +3309,7 @@ export function pin(d) {
     panel.append(chips);
     if (l.contra) panel.append(h("p", "why", l.contra));
     if (l.partition) panel.append(h("p", "why", PARTITION_NOTE));
-    // A DERIVED RIBBON WITH NO FACT OF ITS OWN says what it is in its derived
-    // end's words, which are Go's.
+    // A derived ribbon with no fact of its own speaks in its derived end's words.
     const end = l.source.derived ? l.source : l.target;
     if (l.fact_ids.length) panel.append(h("div", "facts", "Facts: " + l.fact_ids.join(" ")));
     else if (l.derived && end.source_note) panel.append(h("p", "subtle", end.source_note));
@@ -5278,11 +3327,6 @@ export function pin(d) {
     if (n.source_note) panel.append(h("p", "subtle", n.source_note));
     const note = contraNote(n);
     if (note) panel.append(h("p", "why", note));
-    // THE CAVEAT IN FULL IS ONE CLICK AWAY, and the summary is here. The
-    // tooltip can only afford the line; this panel is where a reader has asked
-    // for the detail, so it is where the link belongs. The href is the same
-    // anchor every caveat summary on the page uses -- composed by the packager
-    // per (document, caveat), so it lands on THIS year's copy of the sentence.
     for (const c of caveatsFor(n.id)) {
       const why = h("p", "why");
       why.append(document.createTextNode("\u26a0 " + c.summary + " "));
@@ -5292,38 +3336,14 @@ export function pin(d) {
     }
   }
 
-  // THE CITATIONS ARE THE MARK'S OWN WHEN THE MARK HAS ANY, and the whole
-  // document's otherwise.
-  //
-  // A LINK cites its locators: the pages its own facts were read from. Before
-  // this, pinning any mark rendered the same list -- on the drill-down that is
-  // the schedule's whole page list, identical for every ribbon, which
-  // tells a reader where the CHART came from and nothing about the flow they
-  // clicked.
-  //
-  // A NODE keeps the document's, and that asymmetry is stated rather than left
-  // to be noticed: a node is an aggregation point and cites no facts, so there
-  // is nothing narrower to show.
-  //
-  // BUT "THE DOCUMENT'S" MEANS THE ONE THE MARK IS OF. A carried endpoint and
-  // the residual beside it are of the chart above, so falling back to the drawn
-  // document sent a reader to pp.127-140 for a figure printed on p.66 -- and
-  // the residual's own source_note names p.66 two lines higher, so the panel
-  // contradicted itself. Measured before this: 54 anchors, none of them p.66,
-  // on every carried mark in both columns. Same seam as the caveats, and for
-  // the same reason. fisc-bccu's sibling, found by pass two of /code-review.
-  //
-  // The label stays "Sources:" and not "Records:" -- citations() emits PDF,
-  // extracted-text AND records anchors, so naming it for the last would name a
-  // third of the row.
+  // THE CITATIONS ARE THE MARK'S OWN WHEN IT HAS ANY: a link's locators, else
+  // the sources of the document the mark is OF -- for a carried mark or the
+  // residual, the chart above, not the drawn one.
   const prov = h("div", "prov");
   prov.append(h("span", "subtle", "Sources:"));
   const mark = asLink ? null : /** @type {LaidNode} */ (d);
-  // A CARRIED MARK RECORDS ITS STEM AND THE RESIDUAL DOES NOT. The residual is
-  // ours rather than any document's -- carryResidual builds it here -- and the
-  // chart its copied links came from is by construction the one the rung was
-  // opened from, so that is where it is asked for. Both fall back to the drawn
-  // document rather than to nothing.
+  // The residual records no stem; its links came from the chart the rung was
+  // opened from.
   const of = mark && mark.carried_from ? carriedSource(mark.carried_from)
     : mark && isResidual(mark.id) ? docAt(drilled.length - 1)
       : null;
@@ -5344,29 +3364,16 @@ export function pin(d) {
  * Draws one swatch per fund group on the chart, each a toggle for that group's
  * isolation.
  *
- * EMPTY ON EVERY OPENED VIEW, BY RULE AND NOT BY ACCIDENT, and the rule is the
- * only thing holding it: a window keeps a whole flank of the chart it was
- * opened from, and the revenue category's window keeps the fund-group column
- * itself.
- *
- * THE DECISION RESTS ON WHAT A SWATCH IS, not on what an opened view draws. A
- * swatch is a toggle on a NODE id: setIsolated dims whatever is not adjacent to
- * that node. Where an opened view carries no fund-group node there is nothing
- * for a swatch to toggle, and where a window keeps that column there is one
- * swatch per mark in it, each dimming everything the reader opened the node to
- * see. A legend that meant a group rather than a node needs emphasis resolved
- * through fundGroupOf, which is a second emphasis model and is filed as
- * fisc-0jy9; that a category's funds carry nothing saying which group each is
- * in is fisc-b4a6.
+ * EMPTY ON EVERY OPENED VIEW, BY RULE: a swatch toggles a NODE id, and on an
+ * opened view that would dim what the reader opened the node to see. A legend
+ * meaning a group rather than a node is fisc-0jy9.
  */
 export function buildLegend() {
   if (!projection) return;
   const legend = el("legend");
   legend.replaceChildren();
   if (drilled.length) return;
-  // THE DOCUMENT'S GROUPS, IN THE ORDER GO SHIPPED, not a palette in this file
-  // filtered by the document. A group the packager's sequence does not name
-  // sorts last and takes --muted, which is what nodeColor gives it.
+  // The document's groups in Go's order; an unnamed one sorts last.
   const groups = projection.nodes.filter(isFundGroup).slice()
     .sort((a, b) => fundGroupPlace(a.id) - fundGroupPlace(b.id) ||
       (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
@@ -5388,15 +3395,9 @@ export function buildLegend() {
  * Which derived node an inferred flow is listed under, or "" for one whose
  * endpoints are both printed.
  *
- * ONE ENTRY PER FLOW, WHICH IS THE DEFECT THIS EXISTS TO FIX. The list was
- * built per node from every derived link touching it, so a flow with a derived
- * node at BOTH ends was listed once under each and a reader met the same
- * figure twice in one list, as though the chart inferred two of them.
- *
- * THE MARK IT ARRIVES AT WINS, and the tie-break is not arbitrary: an inferred
- * flow is evidence about the mark that RECEIVES it -- the residual carrying
- * what a schedule does not break down -- and listing it under the endpoint it
- * left says the least about why it exists.
+ * ONE ENTRY PER FLOW, so a flow with a derived node at both ends is not listed
+ * twice. The mark it arrives at wins: an inferred flow is evidence about the
+ * mark that receives it.
  *
  * @param {FiscLink} l
  * @returns {string}
@@ -5425,22 +3426,15 @@ export function buildDerivedList() {
     const flows = links.filter((l) => homeOf(l) === n.id);
     if (flows.length) {
       const total = flows.reduce((sum, l) => sum + l.value_cents, 0);
-      // "INFERRED", BECAUSE THE LINE ABOVE IT COUNTS A DIFFERENT SET. A
-      // residual's own note says how many ribbons it CARRIES -- printed flows
-      // re-pointed onto it, figures and citations unchanged -- and this counts
-      // the ones that are INFERRED. On the General Fund in FY2025-26 those are
-      // 2 and 1, two lines apart, and an unqualified "1 flow" under a
-      // "2 flows" reads as a correction of it rather than as another set.
+      // "inferred": a residual's own note counts the flows it CARRIES, a
+      // different set, and an unqualified count would read as correcting it.
       li.append(h("div", "subtle",
         flows.length + " inferred flow" + (flows.length === 1 ? "" : "s") + " totalling " + fmt(total) + ": " +
         flows.map((l) => (labels.get(l.source) || l.source) + " → " + (labels.get(l.target) || l.target)).join("; ")));
     }
     list.append(li);
   }
-  // A link can be derived while both its endpoints are published, so the
-  // orphans have to be listed too or the page would claim nothing was inferred
-  // while drawing an inferred flow. Every derived link touching a derived node
-  // is already accounted for above.
+  // A link can be derived while both its endpoints are printed.
   const orphans = links.filter((l) => homeOf(l) === "");
   for (const l of orphans) {
     const li = document.createElement("li");
@@ -5460,16 +3454,11 @@ export function tableRows(doc) {
   const out = [];
   if (!doc) return out;
   const labels = new Map(doc.nodes.map((n) => [n.id, n.label]));
-  // THE TABLE READS ITS LINKS OFF THE DOCUMENT and not off the laid graph, so
-  // an endpoint is an id here where the tooltip has the node. Same claim, one
-  // lookup further away.
   const ours = new Set(doc.nodes.filter((n) => n.derived).map((n) => n.id));
 
   for (const l of doc.links) {
     const tr = document.createElement("tr");
-    // A CONTRA ROW READS AS THE SCHEDULE PRINTED IT: a signed figure, and in
-    // place of "printed" the words for what it reduces, so the table says the
-    // same thing the tooltip and the ribbon do.
+    // A contra row reads as printed: signed, with the words for what it reduces.
     if (l.contra) tr.className = "contra";
     tr.append(h("td", "", labels.get(l.source) || l.source));
     tr.append(h("td", "", labels.get(l.target) || l.target));
@@ -5480,13 +3469,7 @@ export function tableRows(doc) {
         : l.partition ? PARTITION_NOTE
           : ours.has(l.source) || ours.has(l.target) ? CARRIED_CHIP : "printed"));
     tr.append(h("td", "ids", l.fact_ids.join(" ")));
-    // PER ROW, not per document. The column header says "Source" and until
-    // this it printed the same 36 anchors on all 52 drill-down rows -- a
-    // Source column that is the same for every row is a lie by repetition.
-    // Now it is the pages that row's own figure was read from: 237 anchors
-    // over the whole table, each about the row it sits in. The links read
-    // projection.links, which is the FOLDED document (see showYear), so the
-    // fold's locator union is what makes these complete.
+    // PER ROW, not per document: the pages this row's own figure was read from.
     const td = h("td", "");
     for (const c of citations(l.locators)) {
       td.append(link(c.label, c.href));
@@ -5501,17 +3484,8 @@ export function tableRows(doc) {
 /**
  * Writes rows tableRows already built, in one swap.
  *
- * SEPARATE FROM BUILDING THEM, AND THAT SEPARATION IS THE WHOLE POINT. This
- * was one function that emptied the <tbody> and then appended row by row, and
- * it is the LAST step of showYear's repaint -- so a document that threw part
- * way through left a half-built table under a heading for the other year,
- * which is fisc-bsg reached one function past the fix for it. The old answer
- * was a gate refusing such a document before the repaint; the gate has gone,
- * because Go validates every column against schema/column.schema.json before
- * writing it and the client re-checking was a second implementation. So the
- * page has to be safe against a throw instead of guarded from one: tableRows
- * runs beside shapeFor and layOut, before a word is written, and this only
- * ever swaps a finished list in.
+ * Kept apart from building them so a throw while building leaves the old table
+ * whole rather than half-built under another year's heading (fisc-bsg).
  */
 export function buildTable(rows) {
   const body = el("flow-table").querySelector("tbody");
@@ -5524,12 +3498,8 @@ export function buildTable(rows) {
  * ------------------------------------------------------------------ */
 
 /**
- * Whether the page is currently dark: the stamped theme wins, and the OS
- * setting decides when there is none.
- *
- * matchMedia is feature-checked rather than assumed. It is missing in some
- * embedded and headless renderers, and a theme toggle is no reason for the
- * chart not to draw.
+ * Whether the page is dark: the stamped theme wins, then the OS setting.
+ * matchMedia is missing in some headless renderers, hence the check.
  * @returns {boolean}
  */
 export function prefersDark() {
@@ -5542,17 +3512,8 @@ export function prefersDark() {
 
 /**
  * Brings the theme button's label and aria-pressed back into agreement with the
- * page, and it is a file-scope function rather than a closure inside wireTheme
- * for one reason: the OS-theme listener in main() has to be able to call it.
- *
- * WHILE IT WAS A CLOSURE THE BUTTON INVERTED UNDER AN OS SWITCH. A reader with
- * nothing in localStorage opens in light: prefersDark() is false, so the button
- * reads "Dark mode" with aria-pressed="false". The OS switches to dark at
- * sunset; the stylesheet's prefers-color-scheme rule darkens the page and
- * paint() re-reads the palette -- but the listener was wired to paint alone, so
- * the button still announces aria-pressed="false" on a dark page, and because
- * prefersDark() now returns true, clicking the control labelled "Dark mode"
- * makes the page LIGHT.
+ * page. File-scope so main()'s OS-theme listener can call it too; without that
+ * an OS switch leaves the button announcing the opposite of what it does.
  */
 export function syncTheme() {
   const button = maybeEl("theme-toggle");
@@ -5578,12 +3539,8 @@ export function wireTheme() {
 }
 
 /**
- * How many columns the reader's window has room for, which is never fewer than
- * the floor.
- *
- * matchMedia is feature-checked for prefersDark()'s reason and answered the
- * same way when it is missing: a page that cannot ask about the viewport draws
- * the narrow chart, which is a chart, rather than declining to draw one.
+ * How many columns the reader's window has room for, never fewer than the
+ * floor; without matchMedia, the floor.
  * @returns {number}
  */
 export function viewportColumns() {
@@ -5598,14 +3555,9 @@ export function viewportColumns() {
 /**
  * The reader's saved choice, or null when there is none this build can honour.
  *
- * A SAVED VALUE OUT OF RANGE IS NOT CLAMPED, IT IS DISCARDED. A 5 left in
- * storage by a build whose ceiling was higher is not a choice between the
- * options this one offers, and clamping it to 4 would put the page in the
- * overridden state -- deaf to the viewport -- on behalf of a reader who never
- * asked for 4.
- *
- * localStorage throws rather than returning null in some privacy modes, which
- * is why this is wrapped; wireTheme's setItem is wrapped for the same reason.
+ * An out-of-range value is discarded, not clamped: clamping would deafen the
+ * page to the viewport on behalf of a reader who never chose that width.
+ * localStorage throws in some privacy modes.
  * @returns {number | null}
  */
 export function savedColumns() {
@@ -5621,13 +3573,8 @@ export function savedColumns() {
 }
 
 /**
- * Brings the +/- control back into agreement with the budget.
- *
- * DISABLED AT THE BOUNDS IS HOW THE FLOOR IS DISCOVERABLE. Three is not a
- * number this page can explain in the header, and a minus that visibly cannot
- * be pressed says it without a sentence. The attribute is set rather than the
- * property, so it is the same thing the template ships and the same thing
- * wireYears removes.
+ * Brings the +/- control back into agreement with the budget. Disabled at the
+ * bounds is how the floor is discoverable.
  */
 export function syncColumns() {
   const count = maybeEl("column-count");
@@ -5638,9 +3585,8 @@ export function syncColumns() {
     if (atBound) button.setAttribute("disabled", "");
     else button.removeAttribute("disabled");
   };
-  // WOULD IT MOVE THIS CHART, not would it move the budget. Only a step
-  // declaring a `widen` has a second width, so elsewhere the budget rises and
-  // nothing is drawn differently; a stepper with nothing to do is disabled.
+  // Would it move THIS CHART, not the budget: only a step declaring `widen`
+  // has a second width.
   const moves = (/** @type {number} */ delta) => {
     const want = Math.min(OFFERED_COLUMNS, Math.max(NARROW_COLUMNS, columnBudget + delta));
     return want !== columnBudget && drawnColumns(want) !== drawnColumns();
@@ -5658,18 +3604,9 @@ export function syncColumns() {
 /**
  * Puts the wanted budget into effect and repaints the chart if that moved it.
  *
- * THE REPAINT IS redrawStack(drilled) AND NOTHING ELSE. The rung's document and
- * the chart it was opened from are both already recorded, so the same stack
- * reshaped at the new budget is the whole of the work: no rung is popped, no
- * file is fetched a second time, and redrawStack shapes and lays out before it
- * mutates a single element (fisc-bsg), so a budget that will not lay out leaves
- * the reader on the chart they were already looking at rather than under
- * another chart's controls.
- *
- * IT ASKS drawnColumns AND NOT columnBudget WHETHER TO REDRAW. The two are
- * different questions: the overview is drawn at RENDER_TIERS whatever the
- * budget, so raising it there changes no column and a redraw would only clear
- * the reader's pin and their isolation for nothing.
+ * It asks drawnColumns, not columnBudget, whether to redraw: the overview is
+ * drawn at RENDER_TIERS whatever the budget, and a needless redraw clears the
+ * reader's pin and isolation.
  *
  * @param {boolean} redraw false during boot, where there is no document yet
  * @returns {boolean} false when the redraw was refused
@@ -5690,21 +3627,15 @@ export function applyColumns(redraw) {
 }
 
 /**
- * Takes the reader's step, records it as theirs, and repaints.
- *
- * RECORDING IT IS WHAT MAKES IT SURVIVE THE NEXT MEDIA CHANGE. Setting the
- * budget alone leaves columnOverride null, and the first query to fire after
- * that -- a rotation, a window drag across the threshold -- silently returns
- * the page to the viewport's answer over the reader's.
+ * Takes the reader's step, records it as theirs so the next media change does
+ * not undo it, and repaints.
  *
  * @param {number} delta
  */
 export function stepColumns(delta) {
   const want = Math.min(OFFERED_COLUMNS, Math.max(NARROW_COLUMNS, columnBudget + delta));
   if (want === columnBudget) return;
-  // BACK TO THE VIEWPORT'S OWN ANSWER IS A RELEASE, NOT A CHOICE. It is the
-  // reader's way of handing the decision back, and without it the first press
-  // of either button would deafen the page to the window for good.
+  // Stepping back to the viewport's own answer releases the override.
   const released = want === viewportColumns();
   const override = columnOverride;
   columnOverride = released ? null : want;
@@ -5720,26 +3651,14 @@ export function stepColumns(delta) {
 }
 
 /**
- * Wires the column control and the queries that move it when the reader has
- * expressed no preference.
+ * Wires the column control and the viewport queries that move it.
  *
- * IT SETS THE BUDGET AND DOES NOT DRAW. main() calls this before the first
- * fetch, for wireYears' reason -- every affordance is live for the whole of the
- * opening fetch -- and at that point there is no document to lay out: a redraw
- * here would reach redrawStack's "no document to open" and banner a refusal at
- * a reader who has done nothing. The opening draw reads columnBudget like any
- * other.
- *
- * The buttons ship disabled, as the year group does and for the same reason,
- * and enabling them is this function's enhancement; syncColumns immediately
- * re-disables whichever one is at its bound.
+ * It sets the budget and does not draw: main() calls it before the first
+ * fetch, when a redraw would banner "no document to open" at a reader who has
+ * done nothing.
  */
 export function wireColumns() {
-  // THE CAP THE STYLESHEET APPLIES IS HANDED TO IT HERE, on :root as syncTheme
-  // hands it the theme, because custom properties inherit and .chart-wrap
-  // carries no id to reach. style.css's --chart-room takes the smaller of this
-  // and the room the window actually has; without this it falls back to 100%,
-  // which is the no-script state where there is no chart to bound anyway.
+  // style.css's --chart-room reads this; unset, it falls back to 100%.
   document.documentElement.style.setProperty("--chart-max", CHART_MAX + "px");
   columnOverride = savedColumns();
   const fewer = maybeEl("column-fewer");
@@ -5770,14 +3689,8 @@ export function resetDetail() {
 }
 
 /**
- * Refuses to draw, visibly.
- *
- * The provenance panel alone is not enough: it sits below the chart, and a
- * reader who never scrolls past an empty diagram would read the blank space as
- * "still loading" rather than as "this page declined to render". So the message
- * also goes into a banner at the top of the content, with role="alert" so it is
- * announced rather than merely present. A console line would be worse still —
- * it is invisible to everyone the page is for.
+ * Refuses to draw, visibly: in the panel and in a role="alert" banner at the
+ * top, since the panel sits below a chart a reader may never scroll past.
  *
  * @param {string} message
  */
@@ -5790,8 +3703,7 @@ export function fail(message) {
   if (content) {
     const banner = h("div", "refusal", message);
     banner.setAttribute("role", "alert");
-    // Replace rather than stack: two refusals in one visit are one story, and
-    // a second bar under the first reads as two separate faults.
+    // Replace rather than stack.
     const existing = content.querySelector(".refusal");
     if (existing) existing.remove();
     content.prepend(banner);
@@ -5799,13 +3711,8 @@ export function fail(message) {
 }
 
 /**
- * Removes the refusal banner, if one is showing.
- *
- * fail() was terminal when it was written -- the page gave up and the banner
- * stayed for the visit -- so nothing ever needed to take one down. A year switch
- * can recover from a failed one, and a stale role="alert" sitting above a chart
- * that did draw is the page asserting something untrue about what the reader is
- * looking at.
+ * Removes the refusal banner, if one is showing, so a year switch that
+ * recovers does not leave a stale alert above a chart that drew.
  */
 export function clearRefusal() {
   const content = document.querySelector("main");
@@ -5817,16 +3724,9 @@ export function clearRefusal() {
 
 
 /**
- * One schedule of a column document, in the shape the rest of this file reads.
- *
- * The column carries ONE node table and references it by index, which is what
- * de-duplicates the marks its schedules share. Nothing downstream of here
- * knows that: a schedule arrives as {nodes, links, metadata} with ids on both
- * ends of every link, exactly as a per-projection document did.
- *
- * ABSENT IS FILLED IN, NOT LEFT UNDEFINED. The column omits an empty string and
- * a false boolean; every reader here expects the key to be present, which the
- * sankey contract has always required.
+ * One schedule of a column document, with the shared node table's indices
+ * resolved to ids and the keys the column omits (empty strings, false
+ * booleans) filled in.
  *
  * @param {any} column
  * @param {string} key the schedule to read -- a step's `projection`
@@ -5837,11 +3737,7 @@ export function scheduleOf(column, key) {
   if (!sched) return null;
   const table = Array.isArray(column.nodes) ? column.nodes : [];
 
-  // A SCHEDULE THAT IS PRESENT AND MALFORMED IS NOT SPECIAL-CASED. The map
-  // below throws and the last-resort catch says the chart failed to draw,
-  // which lands before showYear writes a word, so the page stays wholly the
-  // year it was on. What a reader does not get is a sentence naming the key,
-  // for a file this export cannot have written.
+  // A malformed schedule throws below, before showYear writes a word.
 
   const nodes = sched.nodes.map((n) => {
     const base = table[n.node] || {};
@@ -5859,18 +3755,10 @@ export function scheduleOf(column, key) {
       source: from.id, target: to.id,
       value_cents: l.value_cents, kind: l.kind,
       transfer_id: l.transfer_id || "",
-      // NOT DEFAULTED. Both are required of every link by
-      // schema/column.schema.json, so a column this export wrote has them;
-      // filling them in here would invent a provenance the document does not
-      // carry, which is worse than a chart that does not draw.
+      // Not defaulted: a default would invent provenance.
       fact_ids: l.fact_ids, locators: l.locators,
       derived: Boolean(l.derived), partition: Boolean(l.partition),
-      // DEFAULTED, WHERE fact_ids AND locators ARE NOT, and the asymmetry is
-      // the schema's: column.schema.json carries contra only on a link the
-      // document prints negative, so an absent one is the positive case and
-      // not a missing field. Reading it here is the whole of what makes the
-      // words the document's -- without this line Go's sentence never reaches
-      // the page and every other half of the change is dead.
+      // Defaulted: the schema carries contra only on a link printed negative.
       contra: l.contra || "",
     };
   });
@@ -5900,15 +3788,9 @@ export function scheduleOf(column, key) {
  */
 export function isDocument(doc, what) {
   if (doc && typeof doc === "object") return true;
-  // FIRST OF THE TWO GATES AND NOT SECOND, because the other dereferences the
-  // body to read its generated_by and a 200 whose body is `null` is a real
-  // answer from a server -- an error page served with a success status. Read
-  // in the other order the reader gets "TypeError: Cannot read properties of
-  // null" for what is a routine deployment fault.
-  //
-  // IT IS NOT A SHAPE CHECK, which is why it survives where eight of those did
-  // not: what a server ANSWERED is not something schema/column.schema.json can
-  // express, because the file Go wrote is not what arrived.
+  // A 200 whose body is `null` is a real server answer; this runs before
+  // anything dereferences the body. Not a shape check: no schema reaches what
+  // a server answered.
   fail(
     "This page will not draw " + what + ": the file is not a document at all. " +
     "It is most likely an error page served with a success status. Nothing on " +
@@ -5923,19 +3805,10 @@ export function isDocument(doc, what) {
  * why -- unless `superseded` says nobody is waiting, in which case nothing is
  * painted and null is returned without a word.
  *
- * ONE FETCH PER YEAR AND NONE PER STEP. Every guard here -- the HTTP status,
- * the body that will not parse, isDocument, and the build stamp -- runs once
- * for the column, and a drill selects a schedule out of what it accepted.
- * `superseded` IS CONSULTED BEFORE EVERY BANNER: without that, a reader who switched away
- * while a fetch was failing got the file:// remediation banner -- role="alert"
- * -- pasted over a year that drew correctly, the page asserting something
- * untrue about what is on screen.
- *
- * BOTH AWAITS ARE INSIDE THE TRY. response.json() used to sit outside it, so a
- * 200 with a truncated or malformed body rejected out of this function entirely
- * -- into main()'s .catch on the opening path, and into nothing at all from the
- * year control, which is a page half-repainted between two years with no
- * banner.
+ * One fetch per year; a drill selects a schedule out of what it accepted.
+ * `superseded` is consulted before every banner, so a failure the reader has
+ * switched away from never alerts over a year that drew. Both awaits are
+ * inside the try, so a malformed body is refused here rather than rejecting.
  *
  * @param {string} path
  * @param {() => boolean} superseded
@@ -5953,15 +3826,8 @@ export async function loadColumn(path, superseded) {
     doc = /** @type {FiscProjection} */ (await response.json());
   } catch (e) {
     if (superseded()) return null;
-    // For a rejected fetch the overwhelmingly likely cause is file:// -- Chrome
-    // blocks fetch from a file: origin, so the page loads and the chart never
-    // arrives. Say the fix rather than the error. A body that will not parse is
-    // a different fault and gets its own sentence, because "serve it over HTTP"
-    // is useless advice to someone already doing that.
-    // `e.name` and not `e instanceof SyntaxError`: instanceof compares against
-    // THIS realm's constructor, and an error thrown by a response body parsed
-    // in another one is not an instance of it. In a browser the two realms are
-    // the same and both work, which is what makes the difference invisible.
+    // A rejected fetch is most likely file://, so say the fix. `e.name`, not
+    // instanceof: a body parsed in another realm fails instanceof.
     fail(e && e.name === "SyntaxError"
       ? "Could not read " + path + ": the file is not valid JSON, so it is " +
         "truncated or was not the document this page expected."
@@ -5971,30 +3837,10 @@ export async function loadColumn(path, superseded) {
     return null;
   }
   if (superseded()) return null;
-  // A 200 CARRYING `null` OR AN ERROR PAGE IS NOT A SHAPE FAULT, and it is the
-  // one thing no schema Go validates can reach: it is about what a server
-  // answered, not about what the export wrote. It runs first because the
-  // comparison below dereferences the body.
   if (!isDocument(doc, path)) return null;
-  // ONE CHECK, AND IT IS THE ONLY ONE THIS SIDE CAN MAKE THAT GO CANNOT.
-  //
-  // encodeColumn validates every column against schema/column.schema.json and
-  // refuses to write one that fails, so no file this export produced can be
-  // the wrong shape. Re-checking the keys here was a second implementation of
-  // that, kept in step by hand and by nothing else -- and the list had grown
-  // to eight arms under a doc comment that said a client re-validating the
-  // contract "would be a second implementation of fisc verify".
-  //
-  // What Go cannot see is which COPY the browser has. The site publishes no
-  // cache-busting, so a reader can hold a pre-deploy column beside a
-  // post-deploy app.js, and every key that gate ever gained reached a reader
-  // that way first. The stamp is version, short commit and date
-  // (internal/build), so any deploy from another commit fails this where a
-  // schema_version comparison fires only when someone remembers to bump it.
-  //
-  // BEFORE ANY REPAINT, which is what keeps fisc-bsg closed. showYear shapes
-  // and lays out before it writes a word, so a fault caught here leaves the
-  // page wholly the year it was already on.
+  // The one check Go cannot make: which COPY the browser holds. The site has
+  // no cache-busting, and the stamp names the commit, so a column from any
+  // other deploy fails here, before any repaint (fisc-bsg).
   if (doc.generated_by !== CONFIG.exported_by) {
     fail("This page will not draw " + path + ": the page was packaged by " +
       CONFIG.exported_by + " and this file by " + (doc.generated_by || "an unstated build") +
@@ -6008,10 +3854,6 @@ export async function loadColumn(path, superseded) {
 
 /**
  * One schedule of the column on screen, vetted as it is first selected.
- *
- * PER SCHEDULE AND NOT PER FILE. A column arrives in one fetch, so a single
- * check over it would vet the spine and let a malformed department-funding
- * block through to the click that first needs it.
  *
  * @param {any} col
  * @param {string} key
@@ -6029,17 +3871,8 @@ export function selectSchedule(col, key) {
 
 
 /**
- * Fetches Go's rung answer and indexes it, or refuses in words.
- *
- * ITS OWN FETCH AND NOT loadColumn's, because the two refuse in different
- * words: this file is what the page opens a NODE with, so a reader who cannot
- * have it is told nothing will open rather than that nothing will draw. The
- * gates themselves are now the same two, which is what makes keeping them
- * apart a matter of the sentence rather than of the vetting.
- *
- * NO SUPERSEDED CALLBACK, because nothing can overtake it: it is fetched once
- * on the page-load path, before the first year is drawn, and it answers every
- * year. A year switch does not refetch it.
+ * Fetches Go's rung answer and indexes it, or refuses in words. Fetched once,
+ * before the first year draws, so nothing can supersede it.
  *
  * @param {string} path
  * @returns {Promise<Map<string, FiscRung> | null>}
@@ -6055,10 +3888,7 @@ export async function loadRungs(path) {
     }
     doc = await response.json();
   } catch (e) {
-    // The two sentences loadColumn tells apart, told apart here for the same
-    // reason: "serve it over HTTP" is useless advice to someone already doing
-    // that, and `e.name` rather than instanceof because an error thrown parsing
-    // a response body need not come from this realm's constructor.
+    // As loadColumn: `e.name`, not instanceof.
     fail(e && e.name === "SyntaxError"
       ? "Could not read " + path + ": the file is not valid JSON, so it is truncated " +
         "or was not the answer this page expected."
@@ -6068,11 +3898,7 @@ export async function loadRungs(path) {
     return null;
   }
   if (!isDocument(doc, path)) return null;
-  // ONE CHECK, loadColumn's, for loadColumn's reason. encodeRungs refuses an
-  // answer that does not match schema/rungs.schema.json, so no answer this
-  // export wrote can be the wrong shape; what it cannot see is a copy the
-  // browser kept from an earlier deploy, which is every key this gate ever
-  // gained reaching a reader for the first time.
+  // loadColumn's one check, for loadColumn's reason.
   if (doc.generated_by !== CONFIG.exported_by) {
     fail("This page will not open anything: the page was packaged by " +
       CONFIG.exported_by + " and " + path + " by " +
@@ -6090,51 +3916,35 @@ export async function loadRungs(path) {
 }
 
 /**
- * What one showYear attempt came to.
- *
- * THREE OUTCOMES AND NOT A BOOLEAN, because "did not draw" was two different
- * facts wearing one answer and the caller could not tell them apart. SUPERSEDED
- * means a later switch took over and this attempt stood down, which is a normal
- * thing that happens whenever a reader clicks twice; FAILED means the year could
- * not be shown and the reader has been told. Reporting `false` for both is what
- * let a superseded opening fetch read as a page that had given up (fisc-8cg).
+ * What one showYear attempt came to. SUPERSEDED (a later switch took over) is
+ * not FAILED (the reader has been told), and a boolean conflated them.
  */
 export const DREW = "drew";
 export const SUPERSEDED = "superseded";
 export const FAILED = "failed";
 
+/** The latest switch token; an attempt holding an older one stands down. */
+export let switching = 0;
+
 /**
- * Fetches and draws one published year.
- *
- * Everything the page says in WORDS comes from CONFIG.years, which the packager
- * built in Go for every year. This function composes no figure and no caveat of
- * its own: doing so would put the prose in two languages and let a tile disagree
- * with the chart beneath it about the same schedule.
+ * Fetches and draws one published year. Every word comes from CONFIG.years;
+ * this composes no figure or caveat of its own.
  *
  * @param {FiscYear} year
  * @returns {Promise<string>} DREW, SUPERSEDED or FAILED
  */
-export let switching = 0;
-
 export async function showYear(year) {
-  // A switch token, because two switches can be in flight at once: a reader who
-  // clicks twice gets two fetches, and without this the SLOWER one wins and the
-  // page draws a year the control does not show. Compared after every await,
-  // inside loadColumn and once more here.
+  // Without the token, the slower of two in-flight fetches wins.
   const token = ++switching;
   const superseded = () => token !== switching;
   const loaded = await loadColumn(year.path, superseded);
   if (superseded()) return SUPERSEDED;
   if (!loaded) return FAILED;
 
-  // THE SPINE IS ONE SCHEDULE OF THE COLUMN, named by CONFIG.primary. Every
-  // other schedule is selected by the step that opens into it, never fetched.
   const doc = selectSchedule(loaded, CONFIG.primary);
   if (!doc) return FAILED;
 
-  // SWAPPED BECAUSE shapeFor READS THEM, and swapped back on a throw so the
-  // page is still wholly the year it was on. The stack goes with the year: a
-  // rung opened in one year may name a node the other does not carry.
+  // Swapped because shapeFor reads them; swapped back on a throw.
   const was = { column, fetched, drilled, laidNodes, groupIndex };
   column = loaded;
   fetched = doc;
@@ -6151,22 +3961,11 @@ export async function showYear(year) {
     throw e;
   }
 
-  // THE FOLDED DOCUMENT IS THE ONE THE PAGE DESCRIBES, not the one it fetched.
-  // The legend, the flow table, the inferred list, the tooltips and the detail
-  // panel all read this, and every one of them is a statement about what the
-  // reader is looking at. Pointing them at the unfolded document would put a
-  // 175-row table beside a 52-ribbon chart. Nothing is lost by it: the fold
-  // unions the fact ids it merges, so the table still names every fact behind
-  // every ribbon, and the footer still links the unfolded file it came from.
+  // The folded document is the one the page describes; the fold unions the
+  // fact ids it merges, so nothing is lost.
   projection = drawn;
-  // A refusal from an earlier attempt is about a year no longer on screen, and
-  // fail() only ever added banners because it used to be the end of the story.
-  // Now that a switch can recover, a stale role="alert" left above a correct
-  // chart is a false statement the page keeps making.
   clearRefusal();
-  // A pin and an isolation belong to the year they were made in: a fund group
-  // selected in FY2026 may not carry the same flows in FY2027, and a provenance
-  // panel left on screen would cite fact ids from a document no longer drawn.
+  // A pin and an isolation belong to the year they were made in.
   pinned = null;
   isolated = "";
   resetDetail();
@@ -6189,18 +3988,8 @@ export async function showYear(year) {
  * chart's accessible name and description (through paintChartName), the
  * footer's basis and its data-file citation, and the document title.
  *
- * THE LIST IS EXHAUSTIVE ON PURPOSE. It read "the tiles, the caveats, the lede
- * and the flow count" while the function wrote four more, and a doc comment
- * that undercounts its own writes is how the next per-year string gets added to
- * the template and forgotten here -- which is the fisc-kwq / fisc-yi4 / fisc-iyt
- * defect three times over. If you add a write, add it above.
- *
- * The page already carries the opening year's, rendered server-side so the
- * headline survives with JavaScript off. This swaps them for another year's,
- * and every string it writes was built by the packager -- except the counts
- * line, whose shape depends on what is drawn, so paintCounts composes it from
- * the packager's counts and the client's tests pin its undrilled wording
- * to the template's own sentence.
+ * The list is exhaustive: add any new per-year write to it. Every string is
+ * the packager's except the counts line, which paintCounts composes.
  * @param {FiscYear} year
  */
 export function paintYearWords(year) {
@@ -6212,14 +4001,8 @@ export function paintYearWords(year) {
     return el;
   };
 
-  // TWO CONTAINERS, EACH OWNED WHOLE. The hero sits above the chart and the
-  // rest of the tile row inside a closed disclosure below it, so one
-  // replaceChildren over #figures would paint the headline into the collapsed
-  // panel and leave the tile above the chart reading the year the reader left.
-  //
-  // maybeEl for both: only index.html.tmpl renders them, deliberately. A page
-  // drawing one grain of one document must publish no total, so the pages that
-  // are not the spine have neither element to paint into.
+  // maybeEl: only index.html.tmpl renders these, since a page drawing one
+  // grain of one document must publish no total.
   const hero = maybeEl("hero");
   if (hero) hero.replaceChildren(tile(year.hero));
 
@@ -6227,16 +4010,8 @@ export function paintYearWords(year) {
   if (figures) figures.replaceChildren(...year.figures.map(tile));
 
   const caveats = maybeEl("caveats");
-  // THE SUMMARY, WRAPPED IN ITS LINK -- and the link is what makes showing a
-  // summary honest rather than a truncation. The paragraph still exists, on a
-  // page of its own, and c.href names THIS year's copy of it: a caveat id can
-  // carry different text in different documents, so a href built once for the
-  // opening year would send a reader who switched to FY2026-27 to FY2025-26's
-  // sentence. The packager composes it per year for that reason.
-  //
-  // NO LINK WHEN THERE IS NO PAGE. A single-view export has no caveats.html,
-  // and an anchor into a file that was never written is worse than a plain
-  // line: it looks like there is more to read.
+  // c.href is per year: one caveat id can carry different text in different
+  // documents. Empty when the export wrote no caveats page.
   if (caveats) {
     caveats.replaceChildren(...year.caveats.map((c) => {
       const li = h("li");
@@ -6249,11 +4024,7 @@ export function paintYearWords(year) {
     }));
   }
 
-  // THE CAVEAT COUNT IS PER-YEAR, and it is in a <summary> the reader uses to
-  // decide whether to open the list at all. FY2025-26 carries four and
-  // FY2026-27 five, so a count painted once says "4 reasons" over a list of
-  // five -- a disclosure that under-reports itself, which is worse than no
-  // count. maybeEl and not el: only index.html.tmpl renders this id.
+  // The caveat count is per year.
   const caveatCount = maybeEl("caveats-count");
   if (caveatCount) caveatCount.textContent = String(year.caveats.length);
 
@@ -6263,32 +4034,15 @@ export function paintYearWords(year) {
   shownYear = year;
   paintCounts();
 
-  // THE CHART'S ACCESSIBLE NAME IS BUILT IN GO, like every other string this
-  // function writes, and sankeyTitle is where. A name composed here from a
-  // literal is right for one chart and wrong for every other, so a drill-down
-  // and the spine would announce themselves identically to a screen reader.
-  // Same defect as fisc-rn0.
-  // DELEGATED, so a year switch and a drill cannot write this element
-  // differently. paintChartName also restores the <desc>, which paintYearWords
-  // never touched and which a drill rewrites.
+  // Shared with the drill, so the two cannot name the chart differently.
   paintChartName();
 
-  // The footer's "Scope X, basis Y" sentence is a claim about the document ON
-  // SCREEN -- the comment beside it in the template says so in as many words --
-  // and the basis half is per-year. Left unpainted, a reader who switches to a
-  // year published on another basis gets a lede reading "FY 2026-27 proposed"
-  // and a footer three screens down still reading "basis adopted": one page
-  // stating two different things about one document. The scope half is NOT
-  // repainted and must not be; see the template comment for why.
+  // The footer's basis is per year; its scope is not repainted (see the
+  // template).
   const basis = maybeEl("page-basis");
   if (basis) basis.textContent = year.basis;
 
-  // The footer's "drawn from" link names a file that IS year-specific --
-  // data/sankey.json and data/sankey-2027.json are different documents -- so it
-  // has to follow the switch. Left alone it cited the opening year's file for a
-  // chart drawn from another one, which is a provenance link that disagrees with
-  // the figures beside it: the exact defect the citations exist to prevent,
-  // reached through the toggle rather than through the packager.
+  // The footer's "drawn from" link names a year-specific file.
   for (const el of document.querySelectorAll("[data-year-path]")) {
     const a = el.querySelector("a");
     if (a) {
@@ -6297,41 +4051,13 @@ export function paintYearWords(year) {
     }
   }
 
-  // BUILT IN GO, like every other string here. This composed the title from a
-  // literal copied out of buildSankeyPage's fallback -- the one write in this
-  // function the packager had not made -- and it did it unconditionally, so a
-  // View that configured its own Title had it replaced during the opening
-  // showYear, before the reader touched anything.
   document.title = year.title;
 }
 
 /**
- * The year the CONTROL is showing, which is not always the first one.
- *
- * index.html.tmpl hard-codes `checked` on years[0] and the radios carry no
- * autocomplete="off", so Chrome and Firefox both RESTORE the reader's own
- * selection across a soft reload (F5) and across a Back navigation. main() used
- * to open on years[0] unconditionally, so: select FY 2026-27, follow a nav link,
- * press Back -- the toggle comes back reading FY 2026-27 while the lede, the
- * tiles, the chart, the <title>, the footer basis and the data-year-path
- * citation are all FY 2025-26. No change event fires on a restore, so it never
- * self-corrects.
- *
- * index.html.tmpl's own comment calls that state worse than no control at all,
- * and it is right: the styling agrees with the wrong year too.
- *
- * OPENING ON THE RESTORED YEAR RATHER THAN FORCING THE RADIO BACK. Both close
- * the gap. This one does what the reader expects -- their selection survived
- * the navigation, so honour it -- where forcing years[0] would silently discard
- * it and look like the page ignoring a click.
- *
- * It walks the fieldset's children and reads the checked property, rather than
- * asking querySelector for the checked input. That needs no selector engine.
- * THE FALLBACK IS THE LAST YEAR AND NOT THE FIRST: CONFIG.years is oldest
- * first, so the budget in force is its last entry. No key on the wire says
- * which; the order does, and the packager marks the same one `checked`.
- *
- * It reads the radio first regardless: a restored selection is the reader's.
+ * The year the CONTROL is showing. Browsers restore a radio selection across
+ * reload and Back without firing change, so the page opens on the restored
+ * year. The fallback is the newest: CONFIG.years is oldest first.
  *
  * @param {FiscYear[]} years
  * @returns {FiscYear} always one of `years`; the newest when nothing is checked
@@ -6342,9 +4068,7 @@ export function checkedYear(years) {
     for (const input of group.children) {
       if (!input.checked) continue;
       const year = years.find((y) => y.stem === input.value);
-      // A checked radio naming a stem this config does not publish is a stale
-      // restore -- the page was rebuilt with different years since. Fall
-      // through to the newest year rather than draw nothing.
+      // A stem this config does not publish is a stale restore.
       if (year) return year;
     }
   }
@@ -6352,21 +4076,14 @@ export function checkedYear(years) {
 }
 
 /**
- * Wires the year radio group.
- *
- * The control is rendered server-side, so this only adds the behaviour. A year
- * that fails to load shows the refusal and moves the radio back to the year
- * still on screen.
- *
- * IT DOES NOT ASSUME THE CONTROL SHOWS THE FIRST YEAR, which main() is where
- * that matters -- see checkedYear.
+ * Wires the server-rendered year radio group. A year that fails to load moves
+ * the radio back to the year still on screen.
  * @param {FiscYear[]} years
  */
 export function wireYears(years) {
   const group = maybeEl("year-toggle");
   if (!group || years.length < 2) return;
-  // The template ships it disabled, because without this file the control
-  // cannot do anything. Enabling it here is the enhancement.
+  // The template ships it disabled for the no-script page.
   group.removeAttribute("disabled");
   group.addEventListener("change", (e) => {
     const target = /** @type {HTMLInputElement} */ (e.target);
@@ -6388,18 +4105,8 @@ export function wireYears(years) {
 export async function main() {
   wireTheme();
   wireColumns();
-  // THE ONE VERSION GATE THAT SURVIVED, and it is about a different pair from
-  // the ones that went. The document gates compared a FETCHED file against a
-  // constant; those are gone because Go validates every artifact against
-  // schema/ before writing it, and the copy question is answered by comparing
-  // generated_by with exported_by. This compares THIS SCRIPT against the page
-  // it was served in -- and app.js is a separately cached file with no stamp
-  // of its own, so there is no pair of strings to compare and a constant is
-  // the only handshake available.
-  //
-  // Before the fetch, not after: FISC_CONFIG carries the projection's own
-  // metadata block, and the headline the page has already rendered from it
-  // server-side is read under the same contract as the graph.
+  // This script against the page it was served in: app.js is cached
+  // separately and carries no stamp, so a constant is the only handshake.
   if (CONFIG.schema_version !== SCHEMA_VERSION) {
     fail("This page will not draw: it was packaged for schema_version " +
       CONFIG.schema_version + " and this script renders schema_version " +
@@ -6419,98 +4126,45 @@ export async function main() {
   }
   wireYears(years);
 
-  // EVERYTHING THE PAGE WIRES IS WIRED BEFORE THE FIRST FETCH, and that ordering
-  // is the fix rather than a tidy-up (fisc-8cg).
-  //
-  // These two used to sit AFTER `if (!await showYear(years[0])) return;`, so any
-  // outcome but success cost the reader both of them for the rest of the visit.
-  // Two routes reached that, and the second is why widening showYear's return
-  // value was not enough on its own:
-  //
-  //   - SUPERSEDED. wireYears enables the control above, before this await, so
-  //     the toggle is live for the whole of the opening fetch. A reader who
-  //     clicks during it bumps the switch token, the opening attempt stands
-  //     down, and main() returned -- while the clicked year drew from its own
-  //     showYear, leaving a page that looks entirely healthy.
-  //   - FAILED, then recovered. clearRefusal exists precisely because "a year
-  //     switch can recover from a failed one": the opening fetch is refused,
-  //     main() returns, the reader clicks the other year, it succeeds and takes
-  //     the banner down. Same healthy-looking page, same two dead affordances,
-  //     reached through the outcome a three-state return leaves alone.
-  //
-  // Neither listener depends on a chart existing. paint() re-reads the palette
-  // over whatever marks are on screen, which before the first draw is none, and
-  // the Escape handler clears state that is already clear. So there is nothing
-  // to sequence and no reason to wait.
+  // Wired before the first fetch (fisc-8cg): a superseded or failed opening
+  // year can still be followed by one that draws, and it needs these.
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
-      // ESCAPE UNDOES ONE THING, AND THE INNERMOST ONE FIRST. A pin or an
-      // isolation is a selection inside the chart; an opened node is the chart.
-      // Doing both on one press meant a reader dismissing a provenance panel
-      // also lost the group they had opened -- and the comment beside it
-      // claimed the opposite, which is how it got written. Two presses close
-      // both, in the order a reader made them.
-      // AN OPENED NODE IS CLOSED ONLY WHEN THERE IS NOTHING INSIDE IT TO
-      // CLEAR, AND ONE RUNG AT A TIME. drillUp repaints everything and clears
-      // the pin and the isolation itself, so this branch does nothing else;
-      // two rungs deep, one press closes the inner rung and leaves the outer,
-      // which is the order the reader opened them in.
+      // Escape undoes one thing, innermost first: a pin or isolation, then one
+      // rung. drillUp clears the pin and isolation itself.
       if (!pinned && !isolated && drilled.length) {
         drillUp(drilled.length - 1);
         return;
       }
       hideTip();
       pinned = null;
-      // The panel is the pin made visible, so clearing one without the other
-      // leaves provenance on screen for a flow that is no longer selected.
       resetDetail();
       setIsolated("");
     }
   });
   if (typeof window.matchMedia === "function") {
-    // Following the OS mid-visit means re-reading the palette, because the
-    // hues are custom properties and d3 wrote the resolved values onto the
-    // marks -- AND re-syncing the button, because prefersDark() has just
-    // changed its answer underneath it. Wiring paint alone left the control
-    // announcing the opposite of the page it sits on; see syncTheme.
+    // d3 wrote resolved hues onto the marks, so an OS switch re-paints; and
+    // prefersDark() has changed underneath the button.
     window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
       syncTheme();
       paint();
     });
   }
 
-  // BEFORE THE FIRST DRAW AND AFTER EVERYTHING IS WIRED. Which nodes each
-  // column of an opened chart holds is Go's answer and not this page's
-  // (heldFor), so a page that cannot read this file can draw no rung -- the
-  // early return below gates on something every drill dereferences rather than
-  // on a file nothing reads. Fetching first means a failure is a banner over a
-  // page that has drawn NOTHING, rather than a click that dies at a reader who
-  // has been looking at a chart.
-  // The wiring above still happens either way, for fisc-8cg's reason: an
-  // affordance disabled by a failed fetch stays disabled for the visit.
+  // Before the first draw: every drill dereferences it, so a failure banners
+  // over an empty page rather than killing a later click.
   if (RUNGS_PATH) {
     rungAnswers = await loadRungs(RUNGS_PATH);
     if (!rungAnswers) return;
   }
 
-  // Last, and its outcome is deliberately not acted on. showYear has already
-  // told the reader if it failed, and nothing is left for main() to do or to
-  // skip. Keeping the await means an opening failure still reaches main()'s
-  // .catch if it ever throws rather than returning FAILED.
-  //
-  // checkedYear, not years[0]: the browser may have restored a selection the
-  // server-rendered page knows nothing about.
+  // The outcome is deliberately ignored: showYear has told the reader.
   await showYear(checkedYear(years));
 }
 
 /**
- * Boots the page: [main], with its last-resort catch turned into a refusal
- * the reader can read.
- *
- * THE TEMPLATE CALLS THIS AND NOTHING RUNS AT IMPORT. A test imports this
- * module to reach its functions and boots the page only when the test is
- * about the page, so the two are separate exports rather than one file-scope
- * call.
+ * Boots the page: [main], with its last-resort catch turned into a refusal.
+ * The template calls this; nothing runs at import.
  */
 export function boot() {
   return main().catch((e) => fail("The chart failed to draw: " + String(e)));

@@ -47,10 +47,7 @@
       The <span id="lede-year">{{.FiscalYearLabel}} {{.Basis}}</span> budget, all funds, gross — read out of the city's
       published schedule and traced back to it. Figures the city printed are drawn solid;
       the two things we inferred are drawn dashed and labelled.
-      {{- /* EMPTY UNTIL THE VIEW DECLARES STEPS. app.js's paintChartHint owns
-             the words and says nothing on a page with no chain; the element
-             is here so the two chart templates put the hint in the same place
-             and the client reaches for one id on both. */}}
+      {{- /* Empty until the view declares steps; paintChartHint owns the words. */}}
       <span id="chart-hint"></span>
     </p>
   </div>
@@ -75,11 +72,8 @@
              documents, and keying on the year gave both radios the same id, so
              every <label for=...> pointed at whichever parsed first and clicking
              one year's label selected the other. */}}
-      {{- /* CHECKED IS THE OPENING YEAR, NOT THE FIRST ONE LISTED. The list is
-             oldest first, because that is how a control over time reads; the
-             one already selected is the newest, because that is the budget in
-             force. Both are the packager's, and the tiles rendered above come
-             from the same year this marks. */}}
+      {{- /* CHECKED IS THE OPENING YEAR, NOT THE FIRST ONE LISTED: the list
+             is oldest first, and the tiles above are the year checked. */}}
       {{- range $y := .Years}}
       <input type="radio" name="fisc-year" id="year-{{$y.Stem}}" value="{{$y.Stem}}"
              {{if eq $y.Stem $.Opens}}checked{{end}}>
@@ -87,20 +81,10 @@
       {{- end}}
     </fieldset>
     {{- end}}
-    {{- /* THE COLUMN CONTROL, AND IT SHIPS DISABLED for the year group's
-           reason one control over. How many columns the chart draws is
-           entirely a client decision -- app.js lays the chart out and these
-           buttons only move the budget it is laid out at -- so with JavaScript
-           off pressing one would change nothing, and a control that lies is
-           worse than one that is absent. app.js enables them and immediately
-           re-disables whichever one is at its bound, which is how the floor of
-           three columns is discoverable without a sentence explaining it.
-
-           THE COUNT IS THE LIVE REGION, rather than a visible count beside a
-           hidden one. The words a screen reader should hear are the words on
-           screen, and two elements saying the same thing are two things to
-           keep in step. It ships empty because app.js owns the number: with
-           JavaScript off there is no chart for it to be a count OF. */}}
+    {{- /* SHIPS DISABLED AND EMPTY: the column count is the client's, so
+           with JavaScript off these buttons would change nothing. app.js
+           enables them and re-disables whichever is at its bound. The count
+           is itself the live region, so there is one element to keep true. */}}
     <div class="column-control" role="group" aria-label="Chart columns">
       <button type="button" id="column-fewer" aria-label="Fewer columns" disabled>&minus;</button>
       <span id="column-count" aria-live="polite"></span>
@@ -138,13 +122,8 @@
     <span><span class="key published" aria-hidden="true"></span> printed by the city</span>
     <span><span class="key derived" aria-hidden="true"></span> ◇ our inference (dashed)</span>
   </div>
-  {{- /* SHIPPED EMPTY AND hidden, filled by app.js, on a page that declares
-         no steps as much as on one that does. It cannot be rendered
-         server-side because its trail is where the reader has walked to and
-         the server knows only the opening state; unconditional here because
-         the spine is the page a chain is declared on and the element has to
-         be there before the declaration is. Hidden, it is not a control that
-         lies. */}}
+  {{- /* Shipped empty and hidden on every page: the trail is where the reader
+         has walked, which the server cannot know. */}}
   <nav class="breadcrumb" id="breadcrumb" aria-label="Chart depth" hidden></nav>
   <div class="chart-wrap">
     <!-- role="group", not "img": an img is a leaf, and the marks inside carry
@@ -199,11 +178,8 @@
 </p>
 <p class="lede subtle">
   Hover, tap or tab to a flow for its amount, fact ids and sources.
-  {{- /* THE GESTURE IS THE SAME ON EVERY NODE AND THE OFFER IS NOT. A single
-         click follows one node's money whatever the node is; a double click
-         opens the nodes a view declares a step from, and which column those
-         sit in is app.js's answer, painted into #chart-hint from the chart on
-         screen. This sentence says only what is true of every node. */}}
+  {{- /* Says only what is true of every node; which nodes open is
+         #chart-hint's, from the chart on screen. */}}
   {{if .Drill}}Double click a node that opens to see its parts; a single click on any node, or
   on a fund swatch, follows only that money. Escape closes an opened node, or puts the rest
   back.{{else}}Click a node or a fund swatch to follow only that money; Escape puts the
@@ -311,10 +287,8 @@
   </ul>
 </details>
 
-{{- /* #counts-line MOVED INTO THE SUMMARY and did not change what it says.
-       app.js reaches it by id and the tests under site/ read its textContent,
-       none of which cares where it sits; a reader deciding whether to open the
-       table is exactly who the sentence was written for. */}}
+{{- /* #counts-line sits in the summary, for the reader deciding whether to
+       open the table; app.js and the tests reach it by id. */}}
 <details class="apparatus" id="table-view">
   <summary>
     <h2>Every flow, as a table</h2>
@@ -405,10 +379,8 @@
 <script src="vendor/d3.min.js"></script>
 <script src="vendor/d3-sankey.min.js"></script>
 <script>window.FISC_CONFIG = {{.ConfigJSON}};</script>
-<!-- app.js IS A MODULE AND THE THREE ABOVE ARE NOT. A module script is
-     deferred, so it runs after the classic scripts that set window.d3 and
-     window.FISC_CONFIG have executed in order; and importing it runs nothing,
-     so boot() is called here rather than at app.js's file scope. -->
+<!-- A module is deferred, so it runs after the classic scripts above; importing
+     app.js runs nothing, so boot() is called here. -->
 <script type="module">import { boot } from "./app.js"; boot();</script>
 </body>
 </html>

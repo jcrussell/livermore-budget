@@ -1,16 +1,9 @@
-// layout.test.mjs — what the client's layout does over the columns Go pins:
-// ribbon crossings and overlap under each node ordering, restackLinks, where a
-// label is anchored and how much room it has, the four-column window, the
-// contra band, and the two stylesheet rules jsdom cannot evaluate.
+// The client's layout over the columns Go pins: ribbon crossings under each
+// node ordering, restackLinks, label anchoring and room, the four-column
+// window, the contra band, and two stylesheet rules jsdom cannot evaluate.
 //
-// EVERY TEST DIAGNOSES WHAT IT MEASURED, PASS OR FAIL, and a figure asserted
-// here is the evidence for a decision the page made (AGENTS.md, "Before you
-// quote a number"). A test asserting without a diagnostic has dropped a pin.
-//
-// EVERY NUMBER HERE IS MEASURED POST-RESTACK, because that is the chart a
-// reader sees; pre-restack figures appear only where a test is about what
-// restackLinks itself does. Nothing here re-derives a figure Go emitted, holds
-// a copy of a function, or reads source text.
+// Every number is measured post-restack, which is the chart a reader sees.
+// Every test diagnoses what it measured, pass or fail.
 
 import { before, describe, test } from "node:test";
 import assert from "node:assert/strict";
@@ -19,20 +12,10 @@ import { bootedApp, goldenGraph, pageFixture, stylesheet, opened, expandAll, eve
   settle } from "./testlib.mjs";
 
 /**
- * Lays the golden graph out exactly as layOut() does, under a given node sort
- * and a given aligner.
+ * Lays the golden graph out as layOut() does, under a given node sort.
  *
- * The constants come out of app.js rather than being repeated here: a chart laid
- * out at a different width has different crossings, so a copy carried here would
- * drift into checking a chart the page does not draw.
- *
- * THE ALIGNER COMES OFF THE PAGE FOR THAT SAME REASON. app.js hands a graph to
- * d3's sankeyJustify only while no tier set is declared and aligns on the
- * declared order otherwise (alignFor), and the pinned page declares one. A
- * literal `.nodeAlign(sankeyJustify)` would measure an aligner the page does not
- * use and would be green because the two happen to agree. The default is the
- * page's; a caller passes one only to compare the two, which is what makes that
- * agreement a measurement rather than an assumption.
+ * The constants and the aligner come off the page: a copy here would measure a
+ * chart the page does not draw. `align` is passed only to compare aligners.
  */
 function layout(app, nodeSort, align) {
   const doc = goldenGraph();
@@ -65,12 +48,8 @@ function samePlaces(a, b) {
 /**
  * The links of each band: a band is one pair of adjacent columns.
  *
- * FAILS CLOSED ON A LINK THAT SPANS MORE THAN ONE COLUMN. Every link in this
- * graph joins adjacent columns today, and the crossing count below is only
- * correct while that holds: a ribbon that skipped a column would pass OVER the
- * ribbons in the column it skipped, and comparing it only against links of the
- * same span would miss every one of those crossings and report a smaller,
- * confident, wrong number.
+ * FAILS CLOSED ON A LINK SPANNING MORE THAN ONE COLUMN: it would pass over
+ * ribbons nothing compares it against, and tangle() would undercount.
  */
 function bands(graph) {
   const out = new Map();
@@ -89,12 +68,9 @@ function bands(graph) {
 }
 
 /**
- * Crossings and the ribbon value they overlap.
- *
- * Two ribbons in a band cross when the order of their left ends and the order of
- * their right ends disagree — a sign flip. Only same-band pairs can cross,
- * because a ribbon does not leave its band. Overlap is charged at the narrower
- * of the two, which is the most either can hide of the other.
+ * Crossings and the ribbon value they overlap: two same-band ribbons cross when
+ * their left-end and right-end orders disagree. Overlap is charged at the
+ * narrower of the two.
  */
 function tangle(graph) {
   let crossings = 0;
@@ -113,13 +89,7 @@ function tangle(graph) {
   return { crossings, dollars: cents / 100 };
 }
 
-/**
- * Pairs of a node's ribbons stacked in an order its neighbours no longer sit in.
- *
- * This is the defect restackLinks() exists to remove, counted the way its doc
- * comment counts it: d3 sorts a node's links by where the other end sits, then
- * moves nodes again and never re-sorts.
- */
+/** Pairs of a node's ribbons stacked in an order its neighbours no longer sit in. */
 function staleStacked(graph) {
   let pairs = 0;
   for (const node of graph.nodes) {
@@ -149,10 +119,8 @@ function extentOverflow(graph) {
   return worst;
 }
 
-// The figures nodeRank was chosen on, and the alternatives it was chosen
-// against. Every one is PINNED, not bounded: a `>` comparison would let the
-// alternatives drift while the check stayed green, which is the exact defect
-// this file exists to remove.
+// The figures nodeRank was chosen on. PINNED, not bounded: a `>` would let
+// the alternatives drift while the check stayed green.
 const CLAIMED = {
   crossings: 195,
   overlapDollars: 457434169,
@@ -169,12 +137,9 @@ const ALTERNATIVES = {
 
 const usd = (n) => "$" + Math.round(n).toLocaleString();
 
-// THE ADVANCE A LABEL IS MEASURED AT, and an over-estimate on purpose. The
-// stylesheet sets `system-ui`, which is a different face on every platform, so
-// no test can know the true advance -- 0.6em is wider than mixed-case English
-// sets in any of the usual system faces, so a label this says fits fits
-// everywhere, and the direction it can be wrong in is refusing a label that
-// would have fitted.
+// THE ADVANCE A LABEL IS MEASURED AT, an over-estimate on purpose: `system-ui`
+// differs per platform, so 0.6em is wider than any usual face sets, and the
+// error runs toward refusing a label that would have fitted.
 const ADVANCE_EM = 0.6;
 const LABEL_PX = 12;
 const VALUE_PX = 11;
@@ -182,44 +147,25 @@ const VALUE_PX = 11;
 /**
  * How wide the three tspans of one node's label draw.
  *
- * THE WORDS COME OFF THE PAGE. markCents, fmtShortSigned and nodeFlags are the
- * same three functions render() hands the value and flag tspans, so this
- * measures the string a reader sees rather than one this file spelled for
- * itself -- and the flag tspan is counted, because a marked node's label is
- * characters longer than its neighbours' and that is exactly the case a fit
- * check is about.
- *
- * THE MARKERS ARE ASKED FOR AND NOT SPELLED HERE, which is the whole of why
- * nodeFlags is called. A copy of its rule would measure the markers this file
- * knew about, so a marker added to the page would leave every label below
- * measured a glyph narrower than it draws -- silently, and in the one direction
- * these deliberate over-estimates are chosen NOT to be wrong in.
+ * THE WORDS COME OFF THE PAGE: markCents, fmtShortSigned and nodeFlags are what
+ * render() draws. A copy of nodeFlags' markers here would under-measure every
+ * label the day a marker is added.
  */
 function labelWidth(app, d, qualifier) {
   const value = "  " + app.fmtShortSigned(app.markCents(d)) + app.nodeFlags(d);
   const label = d.label.length * LABEL_PX * ADVANCE_EM + value.length * VALUE_PX * ADVANCE_EM;
-  // THE WIDEST LINE IS THE BOX, not the sum. A qualified mark draws its
-  // parent's name on a line of its own above the label, so the two do not add
-  // up -- which is the whole reason the qualifier is a second line and not a
-  // longer first one: the pair on one line wants 348px of a 250px gutter.
+  // THE WIDEST LINE IS THE BOX, not the sum: a qualifier draws on its own line.
   return Math.max(label, (qualifier || "").length * LABEL_PX * ADVANCE_EM);
 }
 
-// THE INK ONE LINE CLAIMS ABOVE AND BELOW ITS BASELINE, over-estimated on
-// purpose the way ADVANCE_EM is: they sum to the full 12px font size, where a
-// real face's cap height and descender leave some of it unused. So a gap this
-// file calls clear is clear everywhere, and the direction it can be wrong in is
-// refusing a pair of labels that would have missed each other.
+// THE INK ONE LINE CLAIMS ABOVE AND BELOW ITS BASELINE, over-estimated like
+// ADVANCE_EM: they sum to the full 12px font size.
 const ASCENT_PX = 9;
 const DESCENT_PX = 3;
 
 /**
- * The vertical run one mark's label draws over: one line where the mark needs
- * no qualifier, and the qualifier's line plus the label's where it does.
- *
- * THE SHIFTS COME OFF THE PAGE. labelLineShift is what render() hands the two
- * tspans, so this measures where the lines are drawn rather than where this
- * file would have put them.
+ * The vertical run one mark's label draws over, one line or two. The shifts
+ * come off the page's labelLineShift.
  */
 function labelBlock(app, place, qualifier) {
   const em = (v) => (v ? parseFloat(v) * LABEL_PX : 0);
@@ -247,15 +193,11 @@ function columnsOf(app, graph) {
 }
 
 /**
- * The x-range a column's labels may claim.
+ * The x-range a column's labels may claim: half the band on either side, and
+ * the gutter out to the edge for the outermost two.
  *
- * EACH COLUMN OWNS HALF THE BAND ON EITHER SIDE OF IT, and the two outermost
- * own the gutter out to the edge of the chart. The half is the line worth
- * drawing because past it a label is nearer the next column's marks than its
- * own, and because the next column's labels are coming the other way.
- *
- * THIS IS NOT READ OFF labelPlacement, which is the point: the rule says where
- * a label goes and this says what room exists, so the two can disagree.
+ * NOT READ OFF labelPlacement: this says what room exists, so the two can
+ * disagree.
  */
 function roomFor(app, columns, col) {
   const last = Math.max(...columns.keys());
@@ -264,9 +206,7 @@ function roomFor(app, columns, col) {
   const after = columns.get(col + 1);
   return {
     from: col === 0 || !before ? 0 : (before.x1 + me.x0) / 2,
-    // THE CHART'S OWN RIGHT EDGE, AT ITS OWN COLUMN COUNT. A window of four
-    // columns is laid out wider than one of three, and the last column's label
-    // runs into the gutter that width put there.
+    // The chart's own right edge, at its own column count.
     to: col >= last || !after
       ? app.chartWidth(app.drawnColumns()) : (me.x1 + after.x0) / 2,
   };
@@ -274,16 +214,12 @@ function roomFor(app, columns, col) {
 
 /**
  * Every label of a laid graph, boxed where app.js puts it, against its room.
- *
- * MEASURED WITH THE VIEW ON SCREEN: columnOf and nodeFlags read the drill
- * state, so a fit taken after the chart moved on measures the wrong chart.
+ * MEASURED WITH THE VIEW ON SCREEN: columnOf and nodeFlags read the drill state.
  */
 function labelFit(app, graph) {
   const columns = columnsOf(app, graph);
   const last = Math.max(...columns.keys());
-  // THE WORDS THE PAGE WOULD DRAW, from the page's own rule. A fit measured
-  // from d.label alone measures the document; what a reader sees is the
-  // document plus whatever labelQualifiers adds to tell two marks apart.
+  // The words the page would draw, qualifier included.
   const qualifiers = app.labelQualifiers(graph.nodes);
   return graph.nodes.map((n) => {
     const place = app.labelPlacement(n, last);
@@ -301,14 +237,7 @@ function labelFit(app, graph) {
 
 /**
  * Every pair of marks a reader would see the same words on: same column, same
- * drawn label, qualifier and all.
- *
- * THE DEFECT STATED AS A PROPERTY. fund-flows labels a tier-5 cell by its object
- * category and carries the division in `parent`, so the fund window's fourth
- * column drew six marks reading "Wages & Benefits" and a reader could tell them
- * apart only by following a ribbon back (fisc-og1n). Two marks a reader cannot
- * tell apart is the thing, at any tier and in any window, so this asks it of
- * the words rather than of the tier.
+ * drawn label, qualifier and all. Asked of the words rather than of a tier.
  */
 function sameWords(fits) {
   const seen = new Map();
@@ -341,33 +270,19 @@ function tightestStack(fits) {
 /**
  * The widest the stylesheet lets the chart figure draw, in px.
  *
- * A DECLARATION, NOT A RENDERING: nothing here parses CSS, so this reads
- * .chart-wrap's allowance as text and can say only what style.css says.
+ * Nothing here parses CSS: this reads which PROPERTY .chart-wrap's cap comes
+ * through, and the px is the value app.js hands that property. It pins the
+ * declaration's shape, so an equivalent clamp() goes red -- the safe direction.
  *
- * THE CAP IS NOT A NUMBER IN THE STYLESHEET, so what this reads is which
- * PROPERTY the cap comes through, and the px comes from the value app.js hands
- * that property. The pair is two files that nothing else compares, and a
- * disagreement is a wiring mistake rather than a number somebody forgot to
- * raise in one of four places.
- *
- * IT PINS THE SHAPE OF THE DECLARATION AND NOT ONLY ITS NUMBER. An equivalent
- * rule written with clamp() would go red here; that is the cost of reading a
- * stylesheet with a regex, and the direction it fails in is the safe one.
- *
- * ONLY A RULE WHOSE WHOLE SELECTOR IS .chart-wrap COUNTS, and it refuses two
- * of them. `.card:fullscreen .chart-wrap {` contains `.chart-wrap {` as a
- * substring, so a first-match read of the text answers from whichever rule
- * comes first in the file; and a second .chart-wrap rule under an @media block
- * is a cap this file cannot say applies at which width. Either is a refusal
- * by name rather than a number.
+ * ONLY A RULE WHOSE WHOLE SELECTOR IS .chart-wrap COUNTS, and two of them is a
+ * refusal: `.card:fullscreen .chart-wrap {` contains `.chart-wrap {`, and a
+ * second rule under @media is a cap this cannot place.
  *
  * @param {string} css
  * @param {number | null} handed the px app.js set --chart-max to, or null
  */
 function chartAllowance(css, handed) {
-  // A RULE BOUNDARY BEFORE THE SELECTOR: the start of the text, a brace or
-  // the end of a comment. A descendant or compound selector puts a space, a
-  // combinator or a colon there instead and does not match.
+  // A rule boundary before the selector: start of text, a brace, or a comment end.
   const rules = [...css.matchAll(/(?:^|[{}]|\*\/)\s*\.chart-wrap\s*\{([^}]*)\}/g)];
   if (rules.length === 0) return { px: null, why: "style.css declares no .chart-wrap rule" };
   const capped = rules.filter((r) => /--chart-room:/.test(r[1]));
@@ -385,29 +300,22 @@ function chartAllowance(css, handed) {
   if (handed === null) {
     return { px: null, why: "app.js set no --chart-max, so the stylesheet's cap falls back to 100%" };
   }
-  // THE CUSHION IS READ OFF ITS OWN DECLARATION AND NOT OUT OF THE min(), since
-  // the second operand is a var() too. Both are in this rule, so a cushion
-  // declared nowhere is still caught.
+  // The cushion is read off its own declaration: the min()'s second operand is a var() too.
   const cushion = /--chart-cushion:\s*(\d+)px/.exec(rule[1]);
   if (!/calc\(100vw\s*-\s*var\(--chart-cushion\)\)/.test(rule[1])) {
     return { px: null, why: ".chart-wrap does not take its sub-cap width from 100vw less --chart-cushion" };
   }
   return {
     px: handed,
-    // WHAT THE CAP COSTS BELOW ITSELF, which is the other half of the same
-    // declaration and the half COLUMN_QUERIES has to agree with. Below the cap
-    // the chart gets 100vw minus this, so the viewport at which a chart of n
-    // columns FITS is chartWidth(n) + cushion -- not a round number, and a
-    // breakpoint picked for looking like one puts the reader one column
-    // narrower than they asked for (fisc-5e2b).
+    // Below the cap the chart gets 100vw minus this, so n columns fit at
+    // chartWidth(n) + cushion, which COLUMN_QUERIES has to agree with.
     cushion: cushion ? Number(cushion[1]) : null,
     why: "",
   };
 }
 
-// THE ONE QUERY GRAMMAR THIS FILE CAN READ A BREAKPOINT OUT OF. An entry of
-// COLUMN_QUERIES it does not match is a named failure below, carrying the
-// query, rather than a throw out of a hook (fisc-bxal).
+// The one query grammar this file reads a breakpoint out of; any other entry
+// of COLUMN_QUERIES is a named failure.
 const MIN_WIDTH_PX = /\(min-width:\s*(\d+)px\)/;
 
 /**
@@ -432,14 +340,9 @@ function tightest(fits) {
 }
 
 /**
- * The page as shipped, booted on its first published column.
- *
- * AND IT DRAWS BEFORE ANYTHING IS MEASURED. nodeRank orders the fund column by
- * the place the COLUMN gives each group, so an app that laid a document out
- * without fetching one is an app ordering by a list it was never served --
- * every group ties and the column degenerates to size-descending, which is one
- * of the alternatives measured below and would be reported as nodeRank's own
- * number.
+ * The page as shipped, booted on its first published column. It DRAWS BEFORE
+ * ANYTHING IS MEASURED: unfetched, nodeRank's fund order ties everywhere and
+ * degenerates to size-descending, one of the alternatives measured below.
  */
 function spineApp() {
   return bootedApp({ checkedStem: "sankey" });
@@ -487,10 +390,8 @@ describe("the spine's layout, against the figures nodeRank was chosen on", () =>
     assert.equal(before_.stale, CLAIMED.stalePairs, detail);
   });
 
-  // NOT "after.stale === 0", which is a tautology: staleStacked re-derives
-  // the same comparator restackLinks just sorted by, so it cannot fail.
-  // What is independent is the CROSSINGS those pairs cost, counted by a
-  // different function against ribbon endpoints rather than node order.
+  // Not "after.stale === 0", a tautology: staleStacked uses restackLinks'
+  // comparator. The crossings removed are counted independently.
   test("removing those 14 pairs removes exactly 14 crossings", (t) => {
     const detail = `${before_.tangle.crossings} crossings before restacking, ` +
       `${after_.tangle.crossings} after: ` +
@@ -520,14 +421,8 @@ describe("the spine's layout, against the figures nodeRank was chosen on", () =>
       [], detail);
   });
 
-  // THE MEASUREMENT THAT LET THE SPINE DECLARE A COLUMN ORDER AT ALL. Every
-  // figure above is measured under the declared order, and the reason the
-  // figures are the same under sankeyJustify is structural rather than lucky
-  // -- tier 0 is pure source, tier 5 pure sink, and justify's own rule puts a
-  // link-less sink in the last column, which is where indexOf puts tier 5.
-  // This says so where it can go red: the day the spine grows a tier, or
-  // declares its columns in an order topology disagrees with, this fails and
-  // the figures above are a new measurement rather than the old one.
+  // The spine's figures hold under sankeyJustify structurally, not by luck:
+  // tier 0 is pure source, tier 5 pure sink. This goes red the day that stops.
   test("the spine lays out identically under its declared column order and under d3's justify", (t) => {
     const detail = app.RENDER_TIERS.length
       ? `every node and ribbon in the same place under nodeAlign indexOf ` +
@@ -542,12 +437,8 @@ describe("the spine's layout, against the figures nodeRank was chosen on", () =>
   test("the fund column is pinned to the order the column shipped", (t) => {
     const drawn = graph.nodes.filter(app.isFundGroup)
       .sort((a, b) => a.y0 - b.y0).map((n) => n.id);
-    // THE SERVED LIST FILTERED BY WHAT IS DRAWN, and the filter is what
-    // makes this an equality rather than a subset test: every group the
-    // chart lays out has to appear, in the served order, with nothing
-    // between them. A group the packager's sequence does not name is at
-    // the END of that list, so this fails if the page draws it anywhere
-    // else -- which is the direction an indexOf that answers -1 breaks in.
+    // The served list filtered by what is drawn, so this is an equality:
+    // a group the sequence does not name sorts last, and must draw last.
     const served = app.fundGroups().map((g) => g.id);
     const detail = `fund groups run top to bottom in the order the column shipped ` +
       `[${drawn.join(", ")}], which is what supplying .nodeSort() at all is for`;
@@ -580,55 +471,27 @@ function bandWidth(laid) {
 const OBJECT_WINDOW = "expenditure/wages-and-benefits";
 const FUND_GROUP_WINDOW = "fund-group/general";
 
-// Nodes of the fund-group window whose declared column is not d3's longest path
-// to them, and the one that is. MEASURED, and the evidence that columnOf and
-// d.depth are different questions on a chart the site already draws: the
-// residual has no ribbon reaching it from the middle column, so its longest
-// path is one while the view declares it third.
+// Nodes of the fund-group window whose declared column is not d3's longest
+// path to them: the residual has no ribbon from the middle column.
 const DEPTH_DISAGREES = ["residual/fund-group/general"];
 
-// The four-column chart the band and geometry tests run over: the fund window
-// one rung inside the General Fund group, which the page's step from tier 3
-// widens by tier 5. Its bands are [the group into the fund | the fund into its
-// 23 divisions | those divisions into the object cells the tier-5 cap leaves],
-// measured over the committed FY 2025-26 capture.
+// The four-column chart the band and geometry tests run over, measured over
+// the committed FY 2025-26 capture.
 const WIDE_PATH = ["fund-group/general", "fund/100"];
 
-// And the division opened out of it, which is the window where the SHORT label
-// is the right one: Patrol's two cells, with Patrol beside them and in the
-// breadcrumb. Patrol because it is the largest division of the fund window's
-// fourth column and draws both of its cells.
+// A division's own window, where the SHORT label is the right one.
 const DIVISION_WINDOW = "dept/patrol";
 const WIDE_BANDS = { keys: "0:1 1:2 2:3", sizes: "1/23/30" };
 
-// The one width this file pins, and it is the THREE-column one: every figure
-// here was measured at 1180px, and BAND is 319 precisely so that three columns
-// come to it, so a band chosen for its own sake would move all of them at once.
-//
-// NO WIDER WIDTH IS PINNED HERE, AND NONE MAY BE. chartWidth(n) is a function
-// of this width's own constants, so a wider one written down is a copy of
-// something already derivable -- and the page's ceiling, its media queries and
-// the stylesheet's cap are all that same function. The test below asks what a
-// window was laid out at against chartWidth(its own column count), which is
-// the claim wanted and holds at any count.
+// The one width this file pins, the THREE-column one every figure was
+// measured at. No wider width may be pinned: chartWidth(n) derives them.
 const NARROW_DESIGN_WIDTH = 1180;
 
 /**
- * The bands of a four-column chart.
- *
- * WHY THE BAND COUNT IS THE THING TO CHECK. Everything this file measures --
- * the crossings, the value they overlap, the room a label has -- is counted
- * BAND BY BAND, and bands() refuses a ribbon that spans more than one column
- * because a skipping ribbon passes over marks nothing would compare it against.
- * A fourth column is the first shape in this tree with three of them, and it is
- * also the first that could have produced a hole: d3-sankey takes its column
- * count from topology, so a widened tier the document could not fill would draw
- * three columns' worth of ribbons over four columns' worth of extent.
- *
- * IT ASSERTS bands() RAN, and not only that it did not throw. The two are
- * different: a chart drawing no links at all would raise nothing and count
- * nothing. So the sizes are summed against the graph's own link count and the
- * columns against its own deepest node.
+ * The bands of a four-column chart: every measurement here is counted band by
+ * band, and a widened tier the document could not fill would leave a hole.
+ * Sizes are summed against the graph's own link count, so a chart with no
+ * links at all fails rather than counting nothing.
  */
 describe("the four-column window", () => {
   let app, laid, columns, keys, sizes, counted, threw;
@@ -654,28 +517,17 @@ describe("the four-column window", () => {
       threw = String((e && e.message) || e);
     }
     fits = labelFit(app, laid);
-    // AND THE WINDOW ONE RUNG FURTHER IN, which is where the other half of the
-    // labelling decision is measured: a division's own window draws that
-    // division's two cells side by side, so labelling a cell by its division --
-    // the short label that would have fitted the fourth column -- draws "Patrol"
-    // twice. Both windows have to come out unambiguous or neither rule is right.
+    // A division's own window: labelling cells by division would draw "Patrol" twice.
     app.drillUp(0);
     await settle();
     await opened(app, ...WIDE_PATH, DIVISION_WINDOW);
     innerFits = labelFit(app, app.layOut(app.projection));
     ambiguous = sameWords(fits).concat(sameWords(innerFits));
     stack = tightestStack(fits);
-    // THE PX IS app.js's OWN CONSTANT, because the stylesheet carries none:
-    // wireColumns hands --chart-max the value of CHART_MAX, and what this reads
-    // off the stylesheet is that the cap comes through that property at all.
+    // The px is app.js's CHART_MAX; the stylesheet carries none.
     allowance = chartAllowance(stylesheet(), app.CHART_MAX);
-    // What each responsive threshold actually buys the chart, at the threshold.
-    // Math.min with the cap because a query above it is bounded by the cap, which
-    // is the test above's subject rather than this one's.
-    //
-    // A QUERY THIS FILE CANNOT READ IS SET ASIDE AND NAMED, not dereferenced:
-    // a throw here cancels every test of this suite, and the reason would be in
-    // a stack rather than in the report.
+    // Capped by the cap. A query this file cannot read is set aside and
+    // named: a throw here would cancel the whole suite.
     unreadable = [];
     queryRoom = [];
     for (const q of app.COLUMN_QUERIES || []) {
@@ -693,11 +545,8 @@ describe("the four-column window", () => {
     }
   });
 
-  // THE GUTTER DECISION, MEASURED. LABEL_GUTTER does not grow with the
-  // column count because only the two end columns anchor outward; the two
-  // interior ones are centred over their own rects, in the NODE_PADDING gap
-  // above them. This is what says a fourth column did not take a gutter
-  // with it.
+  // LABEL_GUTTER does not grow with the column count: only the end columns
+  // anchor outward.
   test("every label in the four-column window has room where it was anchored", (t) => {
     const detail = fits.length === 0
       ? "the window drew no nodes, so nothing here measured a label at all"
@@ -746,12 +595,7 @@ describe("the four-column window", () => {
     }, detail);
   });
 
-  // THE DEFECT AS A PROPERTY OF WHAT IS DRAWN. Not "tier 5 carries its
-  // division": that is one fix's shape, and two of them were refused by
-  // measurement before this one was written. What a reader needs is that no
-  // two marks standing in one column say the same thing, which is asked of
-  // the words here and is false under either of the two labels the document
-  // could have carried on its own.
+  // Asked of the words, not of the tier: no two marks in one column read the same.
   test("no column of the fund window or of a division's own draws two marks a reader would read the same", (t) => {
     const detail = ambiguous.length === 0
       ? `${fits.length} marks over ${new Set(fits.map((f) => f.col)).size} columns and ` +
@@ -764,14 +608,7 @@ describe("the four-column window", () => {
       { ambiguous: [], outer: true, inner: true }, detail);
   });
 
-  // WHAT THE SECOND LINE COSTS, AND IT IS PAID IN THE ONE DIRECTION THE
-  // GUTTER CANNOT HELP WITH. A qualified label is two lines tall where its
-  // neighbours are one, and the fourth column stacks nine of them; the
-  // test is that the block still misses the block below it. MEASURED, and
-  // the figure is the argument for the shape: the tightest pair here clears
-  // by more than the tightest pair of SINGLE-line labels in the same
-  // window's third column, so the qualifier costs a reader nothing the
-  // chart was not already spending.
+  // A qualified label is two lines tall; its block must still miss the one below.
   test("a qualifier's second line still clears the label stacked below it", (t) => {
     const detail = stack
       ? `tightest stack in the four-column window is column ${stack.col}, ` +
@@ -782,18 +619,9 @@ describe("the four-column window", () => {
     assert.ok(stack.gap >= 0, detail);
   });
 
-  // THE CONTAINER AGAINST THE DRAWING, which is the pair nothing else in
-  // the tree compares. The chart is an <svg> with a viewBox, so a container
-  // narrower than the width app.js lays the chart out at does not clip it
-  // and does not reflow it -- it draws the same picture smaller, and a
-  // reader who asks for a fourth column gets a fifth less chart (fisc-5e2b).
-  // AN EQUALITY, NOT A FLOOR: the cap is derived from the same declarations
-  // the ceiling is, so slack IS the defect -- it means one of them was
-  // computed from something else.
-  //
-  // OFFERED_COLUMNS IS READ RATHER THAN SPELLED: asking about a number would
-  // leave the ceiling moving without this test noticing, which is the whole
-  // failure this test is for.
+  // THE CONTAINER AGAINST THE DRAWING: a viewBox'd <svg> in a narrower
+  // container draws smaller, not clipped. AN EQUALITY, NOT A FLOOR: both are
+  // derived from the same declarations, so slack is the defect.
   test("the stylesheet lets the widest chart app.js will draw draw at the width it lays it out at", (t) => {
     const detail = allowance.px === null
       ? allowance.why
@@ -811,9 +639,7 @@ describe("the four-column window", () => {
       { px: app.chartWidth(app.OFFERED_COLUMNS), cushion: app.CHART_CUSHION }, detail);
   });
 
-  // THE REFUSAL BY NAME. A max-width, a range, an orientation or a resolution
-  // query is a breakpoint this file has no way to derive a viewport from, and
-  // the test below would measure the list with that entry silently missing.
+  // A query this file cannot derive a viewport from is refused by name.
   test("every viewport query the page declares is a min-width in px this file can read", (t) => {
     const detail = unreadable.length === 0
       ? `${queryRoom.length} column quer${queryRoom.length === 1 ? "y" : "ies"} read, ` +
@@ -824,18 +650,9 @@ describe("the four-column window", () => {
     assert.deepEqual(unreadable, [], detail);
   });
 
-  // THE BREAKPOINTS AGAINST THE SAME DECLARATION, WHICH IS THE OTHER WAY
-  // THE PAIR CAN DISAGREE. The test above says the CAP is wide enough for
-  // the ceiling; this one says every viewport at which the page ADDS a
-  // column has room for that column at the width it will be laid out at.
-  // A query threshold of 1500px passes the test above untouched and still
-  // hands a reader a four-column chart drawn at 95% of itself, because
-  // below the cap the room is 100vw minus the cushion. Re-derived from the
-  // two shipped files rather than pinned as a number here.
-  //
-  // EVERY ENTRY, not the widest: a list is the shape of the responsive
-  // rule, and the list is composed rather than typed, so this test is what
-  // says the composition is right at every column it offers.
+  // Every viewport at which the page ADDS a column has room for it: below the
+  // cap the room is 100vw minus the cushion, so a threshold can pass the cap
+  // test and still shrink the chart. Every entry, not the widest.
   test("every viewport the page adds a column at has room for that column", (t) => {
     const detail = allowance.cushion === null
       ? `.chart-wrap's --chart-room declares no calc(100vw - Npx) arm, so there is nothing to ` +
@@ -853,18 +670,9 @@ describe("the four-column window", () => {
 });
 
 /**
- * Where a drawn label actually sits, read off the mark render() appended.
- *
- * THE TESTS BELOW MEASURE labelPlacement AND THIS MEASURES ITS USE, which is
- * the difference between a rule being right and a chart drawing it. The <text>
- * is reached by walking a mark's own children rather than by a selector, and by
- * its class attribute rather than className, which on an SVG element is an
- * SVGAnimatedString and not a string.
- *
- * x, y AND text-anchor ARE COMPARED AS THE STRINGS THE PAGE WROTE, and dy as
- * the ABSENCE d3 leaves when labelPlacement answers null -- an interior column
- * takes no half-em shift, and an attribute set to "null" would be a different
- * drawing from one not set at all.
+ * Where a drawn label actually sits, read off the mark render() appended, so
+ * this measures labelPlacement's USE. `class` is read as an attribute because
+ * an SVG className is not a string; a null dy must be ABSENT, not "null".
  *
  * @param {any} app a page with a chart already drawn
  * @param {Document} document the page it drew on
@@ -903,17 +711,9 @@ function drawnPlacement(app, document, laid) {
 }
 
 /**
- * Where every label lands, on the spine and inside a window.
- *
- * WHY A WINDOW AND NOT THE SPINE ALONE. Every path through the spine is the
- * same length, so d3's depth and the column the view declares agree on all 25
- * of its nodes and a rule keyed on either reads the same. A check written there
- * cannot tell the two apart and would be green because the gate fired rather
- * than because the rule is right. The windows are where they come apart.
- *
- * THE SPINE IS MEASURED ON THE PAGE AS SHIPPED, where four of its marks open:
- * a drillable node's label carries the open marker and is not the width of an
- * inert one (fisc-clbw).
+ * Where every label lands, on the spine and inside a window. On the spine
+ * d3's depth and the declared column agree everywhere, so only a window can
+ * tell the two rules apart.
  */
 describe("where a label is anchored, on the windows that can tell the rules apart", () => {
   let inWindow, middle, crowded, disagree, groupLaid, drawn;
@@ -928,10 +728,8 @@ describe("where a label is anchored, on the windows that can tell the rules apar
     await opened(app, OBJECT_WINDOW);
     const objectLaid = app.layOut(app.projection);
     inWindow = labelFit(app, objectLaid);
-    // READ OFF THE OBJECT-CATEGORY WINDOW, because it is the chart the test
-    // above measures and it has an INTERIOR column: on the spine every
-    // placement rule agrees, so a comparison there would be green whichever
-    // rule drew it.
+    // The object-category window has an interior column; on the spine every
+    // placement rule agrees.
     drawn = drawnPlacement(app, document, objectLaid);
     app.drillUp(0);
     await settle();
@@ -940,11 +738,8 @@ describe("where a label is anchored, on the windows that can tell the rules apar
     disagree = groupLaid.nodes.filter((n) => app.columnOf(n) !== n.depth).map((n) => n.id);
   });
 
-  // THE MUTATION THIS TEST IS FOR: change labelPlacement's interior branch
-  // back to anchoring outward, and the window's middle column runs past the
-  // midline and this goes red naming the node. It does NOT see render()
-  // reverted to `d.depth === 0`, because it reads labelPlacement and not
-  // the page; that is the test below.
+  // Mutation: anchor labelPlacement's interior branch outward and this goes
+  // red naming the node.
   test("every label in the object-category window is anchored on a side it has room on", (t) => {
     const detail = inWindow.length === 0
       ? "the window drew no nodes, so nothing here measured a label at all"
@@ -959,12 +754,7 @@ describe("where a label is anchored, on the windows that can tell the rules apar
     }, { columns: 3, tight: [], drewNothing: false }, detail);
   });
 
-  // The same shape as "nodeRank beats every one of them": the rule is
-  // asserted AND the alternative it was chosen over is measured, so the day
-  // the alternative starts fitting this says so instead of staying quiet.
-  // THE COUNT IS PRINTED AND NOT PINNED: the claim is that anchoring outward
-  // does not fit, and how many of the column's labels it fails on is what a
-  // marker or a relabel moves without touching the claim.
+  // The alternative is measured too; its count is printed, not pinned.
   test("the spine's middle column is centred because anchoring it outward does not fit", (t) => {
     const detail = `${middle.length} middle labels anchored ` +
       `${[...new Set(middle.map((f) => f.place.anchor))].join("/")}, tightest ` +
@@ -979,11 +769,8 @@ describe("where a label is anchored, on the windows that can tell the rules apar
     }, { drewNoMiddle: false, anchors: ["middle"], tight: [], outwardFits: false }, detail);
   });
 
-  // THE MUTATION THIS TEST IS FOR: revert render()'s four label .attr lines
-  // to `d.depth === 0 ? ... : ...` and leave labelPlacement untouched, and
-  // this goes red naming every interior mark. Every other test in this file
-  // stays green under it, including the two above -- they read
-  // labelPlacement, which that mutation does not touch.
+  // Mutation: revert render()'s label .attr lines to `d.depth === 0 ? ...`
+  // and this alone goes red, naming every interior mark.
   test("every label is drawn where labelPlacement puts it", (t) => {
     const detail = drawn.marks === 0
       ? "the window drew no marks, so nothing here read a placement off the page at all"
@@ -1006,22 +793,9 @@ describe("where a label is anchored, on the windows that can tell the rules apar
 });
 
 /**
- * The marks whose words run past the room they have, over every view the drill
- * opens -- named, and not counted.
- *
- * WHICH VIEWS ARE MEASURED IS NOT A CHOICE THIS FILE MAKES. The suites above
- * measure windows a caller picked, and a step added anywhere leaves them
- * measuring the shape somebody chose last time; everyOffer re-opens from the
- * overview at every rung and reads its children off drillable on the DRAWN
- * chart, so a column this file never heard of arrives on its own. How many
- * views that is gets printed, not pinned here.
- *
- * THE SET AND NOT ITS SIZE. Nothing in a number says which mark joined or
- * left. Each id below is a mark whose label is wider than the 240px it has at
- * ADVANCE_EM, which is deliberately wider than any system face sets -- so this
- * is an upper bound on a real defect rather than a count of it, and fisc-rl4j's
- * browser walk is what settles which of them a rendered face actually
- * overflows.
+ * The marks whose words run past their room, over every view everyOffer
+ * opens -- named, not counted. An upper bound at ADVANCE_EM; fisc-rl4j's
+ * browser walk settles which a rendered face actually overflows.
  */
 const OVER_GUTTER = {
   "FY 2025-26": [
@@ -1041,9 +815,8 @@ const OVER_GUTTER = {
     "revenue-line/taxes/sales/prop-172-public-sfty-augmnt",
     "revenue-line/use-of-money-and-property/multi-service-center-rentals",
   ],
-  // gap/expenditure/services-and-supplies is the declared 250,000 shortfall
-  // p0067 prints in FY2026-27 and not in FY2025-26, and it is the widest label
-  // the tree draws anywhere.
+  // gap/expenditure/services-and-supplies is p0067's FY2026-27 shortfall,
+  // the widest label drawn anywhere.
   "FY 2026-27": [
     "department/innovation-and-economic-development",
     "dept/administrative-services", "dept/community-development-admin",
@@ -1064,18 +837,12 @@ const OVER_GUTTER = {
   ],
 };
 
-/**
- * Every view the drill tree opens, in each of the page's two years, measured
- * for the two things a label may do to another and the one thing it may do to
- * the chart's edge.
- */
+/** Every view the drill opens, in each of the page's years, measured for label collisions and overflow. */
 for (const label of Object.keys(OVER_GUTTER)) {
   describe(`${label}: every view the drill opens, measured for what a label does to its neighbours`, () => {
     let app, walk, views, over, overlapped, alike, ids, want;
     before(async () => {
-      // THE YEAR IS THE PAGE'S, found by the label this file names, so a year
-      // the page no longer ships is a named failure rather than a walk over
-      // whichever radio was checked.
+      // Found by label, so a year the page no longer ships fails by name.
       const year = pageFixture().config.years.find((y) => y.label === label);
       if (!year) throw new Error(`the pinned page ships no year labelled ${JSON.stringify(label)}`);
       ({ app } = await bootedApp({ checkedStem: year.stem }));
@@ -1101,9 +868,7 @@ for (const label of Object.keys(OVER_GUTTER)) {
         `${overlapped.length ? overlapped[0] : "no two labels touch"}; ` +
         `${alike.length ? alike[0] : "no two marks draw the same words"}`;
       t.diagnostic(detail);
-      // THE RULE, AND IT HAS NO LITERAL. Zero is the only value either of these
-      // may take, on any view, whatever the tree grows -- unlike the gutter
-      // below, which states a cost the chart's width makes real.
+      // Zero is the only value either may take, on any view.
       assert.deepEqual({ refused: walk.refused, walkedNothing: views === 0, overlapped, alike },
         { refused: "", walkedNothing: false, overlapped: [], alike: [] }, detail);
     });
@@ -1124,24 +889,10 @@ for (const label of Object.keys(OVER_GUTTER)) {
 const WORST_GROUP = "fund-group/special-revenue";
 
 /**
- * The pins the expanded column has to hold.
- *
- * PINNED AND NOT BOUNDED, for this file's reason, and two of these are figures
- * rather than floors. The stack gap is what one line of label has to itself:
- * 12px is what a line claims (ASCENT_PX + DESCENT_PX), so 2.1px is the air
- * over 32 marks, stated so that a rule change halving it is visible here rather
- * than staying green until it crosses. `over` is the other: twelve of the
- * column's labels are wider than the 250px gutter under this file's
- * deliberately pessimistic 0.6em advance, and that is the cost of the gesture
- * stated as a number rather than asserted away. The worst, fund/221, is 55.8px
- * past the gutter, three value-width characters of which are the open marker
- * every fund pp.85-125 print a funding row for draws beside its figure.
- *
- * THE VERTICAL ANSWER IS THE GOOD ONE AND THE HORIZONTAL ANSWER IS NOT. No two
- * labels touch and no two draw the same words; twelve run past the gutter, the
- * worst by 56px of a 306px estimate. WHICH OF THOSE TWELVE ACTUALLY OVERFLOWS IS
- * A BROWSER QUESTION -- ADVANCE_EM is chosen to be wider than any system face
- * sets -- and the walk in fisc-rl4j is where it is settled. fisc-mvrt.
+ * The pins the expanded column has to hold. PINNED AND NOT BOUNDED: the stack
+ * gap is the air over the expanded column, and `over` states what the gesture
+ * costs the gutter under this file's pessimistic advance rather than asserting
+ * it away. Which of those actually overflow is fisc-rl4j's browser question.
  */
 const EXPANDED = { marks: 41, column: 32, stack: "2.1px", over: 12,
   worst: "fund/221", worstBy: "-55.8px" };
@@ -1187,10 +938,8 @@ describe("a column drawn out to every mark it holds", () => {
   });
 });
 
-// The category window is the one chart on the site whose mark is SHORTER than
-// the ribbons arriving at it, and the band is what makes that legible rather
-// than broken. Measured over the committed FY 2025-26 capture at this file's
-// one pinned width.
+// The one mark on the site SHORTER than the ribbons arriving at it; the band
+// is what makes that legible.
 const CONTRA_WINDOW = "revenue/taxes/property";
 const CONTRA_BAND = { box: 459.35, arriving: 684.00, excess: 224.65 };
 
@@ -1216,10 +965,8 @@ describe("a mark drawn at the figure the city publishes, and the band its ribbon
     assert.ok(Math.abs(box - centre.value * ky) < 1e-9,
       `box ${box} is not value x ky (${centre.value * ky})`);
 
-    // AND THE EXCESS IS EXACTLY TWICE THE REDUCTIONS, because each is drawn
-    // forward at its magnitude where the schedule subtracts it. This is the
-    // arithmetic that makes the band unavoidable in one direction or the
-    // other, and it is asserted rather than described.
+    // The excess is exactly twice the reductions: each is drawn forward at its
+    // magnitude where the schedule subtracts it.
     assert.ok(Math.abs((arriving - box) - 2 * reductions) < 1e-9,
       `the stack exceeds the box by ${arriving - box}, want 2 x ${reductions}`);
 
@@ -1252,15 +999,8 @@ describe("a mark drawn at the figure the city publishes, and the band its ribbon
   });
 
   test("the band's class is one the stylesheet paints, and it is painted unfilled", (t) => {
-    // A BAND WHOSE RULE DOES NOT MATCH IS NOT AN INVISIBLE BAND, which is why
-    // this is here and not filed as tidiness. An SVG rect with no fill declared
-    // paints SOLID BLACK, so a renamed class or a dropped rule puts an opaque
-    // block over the reduction ribbons the band exists to reveal -- the worst
-    // reading of this chart there is, arrived at by a one-word typo, and
-    // nothing in this tree parses CSS (fisc-6at).
-    //
-    // THE CLASS IS READ OFF THE DRAWN BAND: the centre mark's rect that is
-    // displayed and is not the mark's own face.
+    // An SVG rect with no fill paints SOLID BLACK, so a renamed class would
+    // cover the ribbons the band reveals. The class is read off the drawn band.
     const mark = [...document.querySelectorAll("#chart g.node")]
       .find((m) => m.__data__ && m.__data__.id === CONTRA_WINDOW);
     assert.ok(mark, `the chart draws no mark for ${CONTRA_WINDOW}`);
@@ -1287,9 +1027,7 @@ describe("a mark drawn at the figure the city publishes, and the band its ribbon
     assert.ok(firstContra > lastPlain,
       `a reduction stacks at ${firstContra}, before a printed line at ${lastPlain}`);
 
-    // AND THEY LAND WHERE THE BAND IS. Contra-last is only worth asserting if
-    // it puts them in the region the band rules off; the ordering alone would
-    // pass on a chart drawn with no band at all.
+    // And they land inside the band: the ordering alone would pass with no band.
     const band = app.contraBand(centre);
     const strays = arriving.filter((l) => l.contra)
       .filter((l) => l.y1 - l.width / 2 < band.y - 1e-9);
@@ -1299,17 +1037,11 @@ describe("a mark drawn at the figure the city publishes, and the band its ribbon
   });
 });
 
-// Nothing in this tree renders or parses CSS, and the one Go assertion about
-// the stylesheet matches selector strings and never reads a colour -- which is
-// how var(--ink-1) could sit on every focus indicator as #ffffff in both dark
-// blocks while every gate stayed green. fisc-6at names the cheap partial:
-// extract rule blocks by their selector string and compare one property.
+// Nothing in this tree renders CSS, so rule blocks are extracted by selector
+// string and one property compared (fisc-6at).
 describe("the focus indicator is painted as focus and not as text", () => {
   let css;
-  // COMMENTS ARE STRIPPED FIRST: the ribbon's own rule EXPLAINS why it avoids
-  // stroke-dasharray, so a test asserting the rule does not mention it fails
-  // on the prose saying so. A property check that a comment can satisfy -- or
-  // break -- is checking the wrong text.
+  // Comments are stripped first, so prose about a property cannot satisfy or break the check.
   before(() => { css = stylesheet().replace(/\/\*[\s\S]*?\*\//g, ""); });
 
   /** The declarations of one rule, by exact selector. */
@@ -1332,9 +1064,7 @@ describe("the focus indicator is painted as focus and not as text", () => {
         `${sel} still paints itself with the text colour, which is #ffffff in dark`);
     }
 
-    // AND THE TOKEN IS DECLARED WHEREVER --ink-1 IS, or a palette falls back to
-    // an unset custom property and the indicator disappears entirely -- worse
-    // than the white box, and invisible to a check that only reads the rules.
+    // AND --focus IS DECLARED WHEREVER --ink-1 IS, or a palette drops the indicator.
     const palettes = (css.match(/--ink-1:\s*#[0-9a-f]{6}/gi) || []).length;
     const focuses = (css.match(/--focus:\s*#[0-9a-f]{6}/gi) || []).length;
     assert.equal(focuses, palettes,
@@ -1356,9 +1086,7 @@ describe("the focus indicator is painted as focus and not as text", () => {
     assert.match(rule, /stroke:\s*var\(--[a-z0-9-]+\)/, "the isolated mark's stroke is not a palette token");
     assert.doesNotMatch(rule, /var\(--focus\)/, "the isolated mark is painted as focus, so a reader cannot tell held from focused");
     assert.doesNotMatch(rule, /stroke-dasharray/, "the rule resets the dash, so an isolated derived mark stops reading as derived");
-    // AT EQUAL SPECIFICITY SOURCE ORDER DECIDES, so the isolation rule has to
-    // sit after the derived rule (to take its stroke) and before the focus rule
-    // (to yield to it).
+    // At equal specificity source order decides: after derived, before focus.
     const at = (sel) => css.indexOf(sel + " {");
     assert.ok(at("svg.sankey .node.derived rect") < at(pressed), "the isolation rule precedes the derived rule, which would override it");
     assert.ok(at(pressed) < at("svg.sankey .node:focus-visible rect"), "the isolation rule follows the focus rule, which it would override");
@@ -1367,9 +1095,7 @@ describe("the focus indicator is painted as focus and not as text", () => {
 
   test("a ribbon gets a drawn echo and not a box around its bounding rectangle", (t) => {
     const rule = ruleFor("svg.sankey .link:focus-visible");
-    // A <path>'s bounding box is the whole bezier's rectangle, so ANY outline
-    // on a ribbon is a box around mostly empty space. Dropping the offset was
-    // not enough and is what shipped.
+    // A <path>'s outline boxes its whole bezier, so the echo is a drop-shadow.
     assert.match(rule, /outline:\s*none/,
       "a focused ribbon still takes the global outline, whose box is its whole bezier");
     assert.match(rule, /drop-shadow\([^)]*var\(--focus\)/,

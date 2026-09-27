@@ -1,11 +1,6 @@
 // fold.test.mjs — the client's fold: capColumn and foldDocument, and the
-// claim that the drill-down could not be drawn without them.
-//
-// The fold is the client's fitting step (AGENTS.md, "Go vets, JavaScript
-// renders"): Go declares what MAY fold and the client decides how much fits.
-// So what is tested here is the client's own function over Go's pinned
-// documents and over a miniature that carries every shape the fold has a
-// clause for. Nothing here compares a figure to Go's answer.
+// claim that the drill-down could not be drawn without them. Nothing here
+// compares a figure to Go's answer.
 
 import { before, describe, test } from "node:test";
 import assert from "node:assert/strict";
@@ -138,9 +133,8 @@ describe("the tail's note carries the figure the tail is drawn at", () => {
     assert.equal(app.tailFigure(folded, tail.id), 4000);
   });
 
-  // THE PAGE'S OWN CAPPING FINISHES THE NOTE AFTER THE FOLD: before it the
-  // tail's three ribbons are $60, -$30 and $10 apart, $100 by magnitude, and
-  // only the merge makes them the one $40 ribbon the chart draws.
+  // THE PAGE'S OWN CAPPING FINISHES THE NOTE AFTER THE FOLD: only the merge
+  // makes the tail's three ribbons the one ribbon the chart draws.
   test("the page's capping writes the figure the fold leaves, not the one before it", async (t) => {
     const app = await drawing(DRAWN);
     const doc = lines();
@@ -154,8 +148,7 @@ describe("the tail's note carries the figure the tail is drawn at", () => {
   });
 
   // A REDUCTION OF ANOTHER KIND IS NOT NETTED, because foldDocument merges by
-  // kind as well as ends: $60 external and -$30 internal to one category are
-  // two ribbons, drawn at $90 together.
+  // kind as well as ends.
   test("a reduction of another kind is drawn beside the addition, not netted against it", async (t) => {
     const app = await drawing(DRAWN);
     const doc = lines();
@@ -300,9 +293,8 @@ describe("foldDocument's clauses, on the miniature", () => {
     assert.throws(() => drill.foldDocument(orphan), (e) => /stray/.test(e.message) && /tier 9/.test(e.message));
   });
   // Whether a printed leg and an inferred one may meet in one merge is Go's
-  // question, refused at the export by validateSteps (the views test named for
-  // a cap under which a printed flow and an inferred one would merge). The
-  // fold does not ask it again: the merged ribbon's flag is the first leg's.
+  // question; the fold does not ask it again: the merged ribbon's flag is the
+  // first leg's.
   test("a merged ribbon keeps the first leg's provenance flag and sums every leg", () => {
     const mixed = miniature();
     mixed.links.push({ source: "revenue/tax", target: "fund/101", value_cents: 7, kind: "external", transfer_id: "", fact_ids: ["y"], locators: [{ doc_id: "d", pages: [1] }], derived: true });
@@ -412,7 +404,7 @@ describe("the cap is what makes a fund group's column drawable", () => {
   });
 });
 
-// fisc-7477: the parent-chain arm node-hierarchy-well-formed keeps off every
+// The parent-chain arm node-hierarchy-well-formed keeps off every
 // column the export writes.
 describe("a parent the document does not carry", () => {
   test("a node whose parent chain breaks belongs to no fund group", async () => {
