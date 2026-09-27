@@ -2,14 +2,14 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://jcrussell.github.io/livermore-budget/schema/projection.schema.json",
   "title": "fisc graph projection",
-  "description": "One document internal/project builds as a graph: the citywide spine and the schedules drawn beside it. A Go-to-Go contract: internal/export decodes it without importing internal/project, so the two are otherwise coupled by json tags alone.",
+  "description": "One document internal/project builds as a graph: the citywide spine and the schedules drawn beside it. internal/export decodes it without importing internal/project, so this schema is what couples them.",
   "type": "object",
   "required": ["schema_version", "projection", "metadata", "nodes", "links"],
   "additionalProperties": false,
   "properties": {
     "schema_version": { "const": 1 },
     "projection": {
-      "description": "A DECLARED SET AND NOT AN OPEN ONE: internal/project names each of these in a constant that pkg/cmd/export's step declarations read, so the enum is what makes those copies one claim.",
+      "description": "A declared set, not an open one: each value is an internal/project constant the export's steps name.",
       "enum": ["sankey", "fund-flows", "department-spending", "department-funding", "transfers-by-fund"]
     },
     "metadata": {
@@ -33,7 +33,7 @@
           "items": { "$ref": "https://jcrussell.github.io/livermore-budget/schema/locator.schema.json" }
         },
         "headline": {
-          "description": "The spine's own figures; no other document carries the block. A declared set, not an open map: internal/check reconciles against these names.",
+          "description": "The spine's own figures, which internal/check reconciles against by name; no other document carries the block.",
           "type": "object",
           "required": ["all_funds_gross_revenue_cents", "all_funds_gross_expenditure_cents", "external_revenue_cents", "external_expenditure_cents", "internal_transfer_in_cents", "internal_transfer_out_cents", "naive_expenditure_cents", "transfer_residual_cents"],
           "additionalProperties": false,
@@ -49,7 +49,7 @@
           }
         },
         "counts": {
-          "description": "How much of the corpus this document accounts for. facts minus facts_cited is the part of the schedule the chart cannot show -- zero-valued cells and stock rows -- and stating both is what makes that gap a quantity a check can assert.",
+          "description": "How much of the corpus this document accounts for. facts minus facts_cited is what the chart cannot show: zero-valued cells and stock rows.",
           "type": "object",
           "required": ["facts", "facts_cited", "nodes", "links"],
           "additionalProperties": false,
@@ -114,7 +114,7 @@
           "source": { "type": "string", "minLength": 1 },
           "target": { "type": "string", "minLength": 1 },
           "value_cents": {
-            "description": "Integer cents as the document printed it, signed: a contra row -- a reduction the schedule prints in parentheses -- arrives negative.",
+            "description": "Integer cents as printed, signed: a contra row, printed in parentheses, arrives negative.",
             "type": "integer"
           },
           "kind": { "enum": ["external", "internal_transfer", "internal_service", "fund_balance"] },
@@ -162,7 +162,7 @@
       "then": { "properties": { "metadata": { "properties": { "sources": { "minItems": 1 } } } } }
     },
     {
-      "description": "THE HEADLINE IS THE SPINE'S ALONE. Its keys are all_funds_gross_* and naive_expenditure_cents, which are claims about the citywide totals and mean nothing on a schedule drawn over part of the city.",
+      "description": "THE HEADLINE IS THE SPINE'S ALONE: its keys are citywide totals and mean nothing on a schedule drawn over part of the city.",
       "if": { "properties": { "projection": { "const": "sankey" } }, "required": ["projection"] },
       "then": { "properties": { "metadata": { "required": ["headline"] } } },
       "else": { "properties": { "metadata": { "not": { "required": ["headline"] } } } }

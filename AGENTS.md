@@ -456,8 +456,9 @@ rather than inferring from the code.
 - Data goes to `Out`, everything else to `ErrOut` (`byob-iostreams.3`).
 - `CGO_ENABLED=0`, pure Go, assets via `go:embed` (`byob-release.8`).
 - Stdlib first (`byob-release.10`). This tree's direct dependencies are cobra,
-  go-cmp and `go.yaml.in/yaml/v3` — the last decided by `fisc-j8f` — and anything
-  else needs its own decision bead in the same change. **byob's blessed set is
+  go-cmp, `go.yaml.in/yaml/v3` (decided by `fisc-j8f`) and
+  `github.com/google/jsonschema-go` (decided by `fisc-9ao4`), and anything else
+  needs its own decision bead in the same change. **byob's blessed set is
   not this tree's.** It also names modernc sqlite and goreleaser, which this
   project does not use and which are not pre-approved here.
 
@@ -501,7 +502,6 @@ rather than inferring from the code.
 - **`app.js` quotes no measured figure about itself.** A figure that is evidence
   for a decision lives in the test that asserts it, printed with `t.diagnostic`
   so a reader of the run sees the measurement.
-- `fisc-7477` lists the paths of `app.js` no test drives.
 
 Why, measured: [`docs/review-loop-evidence.md`](docs/review-loop-evidence.md).
 

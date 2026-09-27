@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://jcrussell.github.io/livermore-budget/schema/series.schema.json",
   "title": "fisc series projection",
-  "description": "One document internal/project builds as a series per printed row rather than as a graph. Served as itself, so this schema holds bytes a reader fetches.",
+  "description": "One document internal/project builds as a series per printed row rather than as a graph. Served as itself.",
   "type": "object",
   "required": ["schema_version", "projection", "metadata", "series"],
   "additionalProperties": false,
@@ -12,7 +12,7 @@
       "enum": ["revenue-trends", "fund-balances", "changes-in-fund-balances"]
     },
     "metadata": {
-      "description": "The envelope and no more: no fiscal_year, fiscal_year_label, basis or headline, because a document of several columns and bases has no singular one. `columns` carries them.",
+      "description": "The envelope only: no fiscal_year, fiscal_year_label, basis or headline, since a document of several columns has no singular one; `columns` carries them.",
       "type": "object",
       "required": ["generated_by", "scope", "currency", "units", "columns", "sources", "counts", "caveats"],
       "additionalProperties": false,
@@ -33,7 +33,7 @@
               "fiscal_year_label": { "type": "string", "minLength": 1 },
               "basis": { "enum": ["actual", "revised", "adopted", "projected", "audited"] },
               "comparable_group": {
-                "description": "Which columns may be read against each other. A basis is not a comparability claim on its own -- the ACFR's ten audited years are one group and the budget book's actual, revised and adopted columns are three.",
+                "description": "Which columns may be read against each other. A basis is not a comparability claim on its own: the budget book's actual, revised and adopted columns are three groups.",
                 "type": "string",
                 "minLength": 1
               }
@@ -46,7 +46,7 @@
           "items": { "$ref": "https://jcrussell.github.io/livermore-budget/schema/locator.schema.json" }
         },
         "counts": {
-          "description": "NO facts_cited HERE. Every point IS a fact, so the gap the graph documents state between facts and facts_cited has nothing to be a gap between.",
+          "description": "NO facts_cited HERE: every point is a fact.",
           "type": "object",
           "required": ["facts", "series", "points"],
           "additionalProperties": false,
@@ -89,7 +89,7 @@
             "type": "array",
             "minItems": 1,
             "items": {
-              "description": "ONE POINT IS ONE FACT, carrying the provenance the fact carries: which page, which byte, which token. That is what lets a reader of this file check a figure without holding the fact store as well.",
+              "description": "ONE POINT IS ONE FACT, carrying its page, byte offset and token, so a reader can check a figure without the fact store.",
               "type": "object",
               "required": [
                 "fiscal_year", "basis", "amount_cents", "fact_id",

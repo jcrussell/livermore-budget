@@ -13,12 +13,10 @@ new extraction, no new mapping.
 
 ## Where it goes
 
-`<output>/data/revenue-trends.json`. Same layout, same relative paths, same `extracted/<doc-id>/pages/pNNNN.txt` provenance tree
-(`export.PageTextDir`), which for this document is fourteen pages rather than
-the spine's two.
-
-It ships under a name of its own rather than inside a column, and that follows
-from the same fact the next paragraph turns into a rule: a document stating no
+`<output>/data/revenue-trends.json`. Same layout, same relative paths, same
+`extracted/<doc-id>/pages/pNNNN.txt` provenance tree (`export.PageTextDir`),
+which for this document is fourteen pages rather than the spine's two. It ships
+under a name of its own rather than inside a column: a document stating no
 fiscal year and no basis names no column to be a schedule of.
 
 **The stem carries no fiscal year, and that is a rule rather than a spelling.**
@@ -236,13 +234,11 @@ that leaves them to be rediscovered is a document that reads as wrong. The two
 $1 rounding cells and the $500 are on the page and in this contract, which is
 where a reader who gets that far will look.
 
-**A fourth caveat is about neither.** `the-revenue-schedule-is-published-twice`
+**One more caveat is about neither.** `the-revenue-schedule-is-published-twice`
 is carried by this document and by every `fund-flows` document, because the site
 publishes pp.127-140 in two places: a chart of one adopted column at a time, and
-these tables of all four. That asymmetry is what makes both honest — a row found
-in both is one printed figure shown once in each, never a second measurement —
-and the sentence is shared rather than written twice, so the two pages cannot be
-found disagreeing about it.
+these tables of all four. A row found in both is one printed figure shown once
+in each, and the sentence is shared rather than written twice.
 
 **One fund group is not on the spine at all.** `permanent` carries a single
 series — fund 470, *Transfers In*, 19,533 in FY2023-24 and zero in the other

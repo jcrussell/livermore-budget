@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://jcrussell.github.io/livermore-budget/schema/locator.schema.json",
   "title": "fisc source locator",
-  "description": "WHICH pages a figure was read from. A locator is content-independent and is never a fact id: a fact id hashes the rule, so a rule split moves every id on a page, while (doc_id, page) cannot move. See AGENTS.md, \"Provenance invariants\".",
+  "description": "WHICH pages a figure was read from. Content-independent and never a fact id: a fact id hashes the rule, so a rule split moves it, while (doc_id, page) cannot move.",
   "type": "object",
   "required": ["doc_id", "pages"],
   "additionalProperties": false,

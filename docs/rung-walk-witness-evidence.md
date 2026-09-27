@@ -1,29 +1,29 @@
 # What still witnesses the rung walk once the client stops deriving it
 
 > Evidence for AGENTS.md, "Prove it can fail" and for AGENTS.md, "Go vets,
-> JavaScript renders". This file states no rule. It is one measurement, taken
-> once, of what a battery of mutations against Go's rung walk is caught by after
-> the client's membership check stops being a second party — with
-> seven of its rows re-run, in two later rounds, as the Go-side guards they
-> asked for landed. Every row is now CAUGHT or INERT.
+> JavaScript renders". This file states no rule. It is one measurement of what a
+> battery of mutations against Go's rung walk is caught by once the client's
+> membership check is not a second party, with seven rows re-run in two later
+> rounds against the Go-side guards they asked for.
 
 ## The question
 
-`fisc-phtp.2`'s remaining work moves the window walk to Go: `site/app.js` reads
-`draws[].ids` out of the rung answer instead of deriving membership for itself.
-`rungs.mjs` compares the client's derivation against Go's; when there is no
-client derivation left, that arm compares the artifact against itself.
+`site/app.js` reads `draws[].ids` out of the rung answer rather than deriving
+membership for itself (`fisc-phtp.2`). At the measured commit the client's
+check module `rungs.mjs` compared the client's derivation against Go's; with no
+client derivation, that arm compares the artifact against itself.
 
-So: after the client's derivation is gone, what still witnesses that Go's walk
-is RIGHT rather than merely STABLE?
+So: with no client derivation, what witnesses that Go's walk is RIGHT rather
+than merely STABLE?
 
 ## The method
 
-Taken on `e13-sankey-merge` at `e577338`.
+Taken on `e13-sankey-merge` at `e577338`, whose client checks were the
+`tools/jscheck` modules named below.
 
 1. The client's suite was run from an untracked copy of its runner importing
    the other seven modules and not `rungs.mjs`, which is how the suite behaves
-   once that arm goes vacuous. `chart.mjs` stayed live. Blinded and unmutated,
+   with that arm vacuous. `chart.mjs` stayed live. Blinded and unmutated,
    that suite is green.
 2. Each mutation was applied to `pkg/cmd/export/rungs.go` or
    `internal/export/reach.go`, and **`testdata/rungs.json` was regenerated from
@@ -106,7 +106,7 @@ ones the step declares. None of them holds **which** declared tier, **how many**
 of the declared endpoints, or **what figure**. A one-cent perturbation of a
 residual's amount is the mutation that matters, because a residual's cents is
 the one figure on this artifact that a reader is shown and that `fisc verify`
-does not reach — which is `fisc-4lsx`'s subject, now with a number against it.
+does not reach — which is `fisc-4lsx`'s subject.
 
 Three were closed by reading the documents, four by recomputing the answer; the
 two sections below are those two rounds.
@@ -167,7 +167,7 @@ All four go red under it, each with the artifact regenerated from the mutated
 walk, and in this round `go test ./...` was run: the replay is the **only** test
 in the tree that reddens for any of them.
 
-Two things the round turned up that the brief did not have:
+Two findings of that round:
 
 - **The first spelling of 11b was inert.** Moving a mark one column *outward* —
   to the next entry of `DrillStep.Tiers` — left `testdata/rungs.json`
@@ -190,24 +190,21 @@ wrong, which is `internal/export`'s.
 
 ## Two results that were not what the question assumed
 
-**`chart.mjs` is a second party about drawing, not about membership.** The brief
-for this measurement assumed `chart.mjs` carries the weight once `rungs.mjs`'s
-arm goes. It does, for everything it was built for: that a node laid out reaches
+**`chart.mjs` is a second party about drawing, not about membership.** It
+carries the weight for everything it was built for: that a node laid out reaches
 a mark, that a mark carries the attributes and the words its rules say, that a
 gesture does what the page says it does, that a state drew a chart rather than a
 refusal. But its arms (a) and (f) compare the DOM against `answeredIDs(answer)`,
-and `answer` is the artifact. Today that is a genuine comparison because the
-client's own filter produced the DOM — which is exactly why (f) went red on
-mutation 9c, saying the client *drew* an id Go accounts for nowhere. Once the
-client draws the column Go hands it, both sides of that comparison come from one
-file. **The membership arms of `chart.mjs` are equivalence arms too, and they
-retire with `rungs.mjs`'s.** What survives in `chart.mjs` is every arm about the
-drawing.
+and `answer` is the artifact. At the measured commit that was a genuine
+comparison because the client's own filter produced the DOM — which is why (f)
+went red on mutation 9c. When the client draws the column Go hands it, both
+sides of that comparison come from one file: **the membership arms of
+`chart.mjs` are equivalence arms too.** Its arms about the drawing are not.
 
-So after the move, the artifact's membership has no second party across the
-language boundary, and by the owner's ruling of 2026-09-20 it is not owed one:
-Go owns the correctness of what it emits and JavaScript is tested to render it
-without errors. What holds it is all Go — `TestTheRungArtifactIsWhatGoComputes`'s
+So the artifact's membership has no second party across the language boundary,
+and by the owner's ruling of 2026-09-20 it is not owed one: Go owns the
+correctness of what it emits and JavaScript is tested to render it without
+errors. What holds it is all Go — `TestTheRungArtifactIsWhatGoComputes`'s
 structural and membership guards, the replay in
 `TestTheRungArtifactIsWhatTheReachPrimitivesAnswer`, and `internal/export`'s
 unit tests over hand-written graphs.
@@ -219,11 +216,10 @@ fixtures go red. Nothing wrong ships at any of those values, so this is not a
 defect; it is a bound no committed document exercises, recorded so that a future
 change to it is known not to be covered by the corpus.
 
-## What the eleven catches are, and are not
+## What the catches are, and are not
 
-Six of the eleven are CAUGHT-CLOSED: the walk refused to answer rather than
-answering wrongly. That is the good half of this measurement, and it is worth
-naming what those refusals have in common. Every one of them is a place where
+Six are CAUGHT-CLOSED: the walk refused to answer rather than answering
+wrongly. Every one of them is a place where
 two readings of the same documents have to agree —
 `export.Openable` against `ReachOf`, the fresh half against the kept half, a
 ribbon's ends against the spliced window, a fold's ancestors against its drawn
@@ -232,9 +228,8 @@ perturbs *how the walk reads* trips one of them almost every time.
 
 The seven green ones were all perturbations of **what the walk writes down**,
 applied after every one of those cross-checks had run, and nothing downstream of
-the write disagreed with them. Three are now disagreed with by the documents and
-the declarations, and the four that needed a figure read by the answer
-recomputed beside them.
+the write disagreed with them. Three are caught by the documents and the
+declarations, and four by the answer recomputed beside them.
 
 ## What is still not witnessed, costed
 
@@ -254,8 +249,7 @@ process cannot witness a wrong answer; a reconciliation against printed totals
 can.
 
 Its cost is that its subject is a file that exists only after export, which no
-check in `internal/check` has today. That is the decision `fisc-4lsx` carries,
-and this measurement is what it was waiting for.
+check in `internal/check` has. That is the decision `fisc-4lsx` carries.
 
 Mutation 14 wanted something cheaper and different, and has it: a
 parent-to-child completeness invariant on the artifact, the mirror of the

@@ -23,18 +23,16 @@ corpus grows one.
 ## One schema, two readers, one dependency
 
 Go validates fully, with `github.com/google/jsonschema-go`. `tools/extract.py`
-checks what it wrote against the same `required` arrays. The client reads no
+checks what it wrote against a subset of the same file: required keys, JSON
+types and enums. The client reads no
 schema at all: it draws what Go validated before writing, and refuses only a
 200 carrying an error page and a copy from another build.
 
 Only Go takes the dependency. The extractor runs where PyPI is unreachable, so
 a JSON Schema *implementation* there is out — but reading the committed file and
-checking required keys and types is thirty lines of standard library, and it is
-the schema being read rather than restated. A required-key list copied into it
+checking that subset needs only the standard library, and it is the schema being
+read rather than restated. A required-key list copied into it
 would be the second spelling the schema exists to remove.
-
-Hand-rolling the Go validator was the first plan and was rejected: it is the
-second implementation of a standard thing.
 
 ## Shape is checked before semantics
 
@@ -97,12 +95,12 @@ and `schema_version` is the guard that matters. A schema closing that object
 would refuse a manifest the Go reader accepts, which is a contract disagreeing
 with itself.
 
-## Every artifact has one now, and they are not one schema
+## Every artifact has one, and they are not one schema
 
 `internal/project` builds documents of two shapes, and one schema for both would
 state the union of two things and refuse neither.
 
-`projection.schema.json` holds the five graph documents. They share an envelope
+`projection.schema.json` holds the graph documents. They share an envelope
 and differ three ways, all of which it states and none of which a fenced example
 could: only `sankey` carries a `headline`, only `fund-flows` states `scopes`
 rather than `scope`, and the `counts` block has three optional members. The
@@ -110,7 +108,7 @@ scope pair is a `oneOf` -- exactly one of the two, never both -- because
 `Envelope.Scope` is singular by design and a document built over two schedules
 must not write one of them into a singular key.
 
-`series.schema.json` holds the three built as a series per printed row. Those
+`series.schema.json` holds the documents built as a series per printed row. Those
 are the only projections a reader fetches as themselves, so it is holding served
 bytes rather than bytes passed between packages.
 
@@ -122,8 +120,8 @@ the figure is absent, nothing is red. `internal/project` is held to the schemas
 by equality and `internal/export` by containment, because a decoder may read a
 subset and may not read a name no document carries.
 
-Two things the schemas refused on the day they landed, both of which had been
-true of the tree and stated nowhere: a series' `fund` is null rather than zero
+Two things the schemas state that were true of the tree and stated nowhere: a
+series' `fund` is null rather than zero
 where the row sits under no numbered fund, and no fund is numbered 0; and a
 projection with nodes must cite a source, while an empty one may cite none.
 
@@ -138,6 +136,4 @@ What *is* shared was measured rather than assumed: across every published
 column, two schedules naming one mark never disagree about `id`, `label`,
 `tier`, `role` or `derived`, and do disagree about `parent` 156 times and
 `constraint_tier`, `rationale` and `source_note` 64 each. A node's identity is
-shared; where it hangs belongs to the schedule that draws it. The first emitter
-put `parent` in the shared table and refused its own output on `fy2024-actual`,
-which is how this was found.
+shared; where it hangs belongs to the schedule that draws it.

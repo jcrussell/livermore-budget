@@ -126,14 +126,11 @@ Determinism: nodes sorted by `(tier, id)`, links by `(source, target, kind)`,
 `fact_ids` ascending, `locators` by `doc_id` with `pages` ascending inside each
 and every page once. Two builds of the same facts are byte-identical.
 
-**The kind is in that order because a pair may carry one ribbon per kind**, which
-is the client's own fold rule and what a rollup of one printed row into its
-category needs: a row reaching the five Internal Service Funds takes its money as
-an internal service charge and the rest of the city's as external revenue, and
-one ribbon for both would publish the first as money crossing the city's
-boundary. Two links of the SAME kind on one pair is still a cell key that lost an
-axis and is still refused. The sort is not stable, so a pair with two kinds and
-no tie-break would come out in whichever order the sort happened to leave it.
+**A pair may carry one ribbon per kind**: a revenue row reaching the five
+Internal Service Funds takes its money as an internal service charge and the rest
+of the city's as external revenue, and one ribbon for both would publish the
+first as money crossing the city's boundary. Two links of the SAME kind on one
+pair is a cell key that lost an axis and is refused.
 
 ### A link cites its facts twice, and the two citations are not redundant
 
@@ -176,11 +173,9 @@ departmentwide cross-tab is the only document that sets it: Budget Book
 pp.85-125 print one matrix, divisions down and object categories across, and a
 chart can read it either way round without either reading being money moving.
 
-It is **the projection's flag and not the client's**, which is why it is on the
-wire at all. Nothing in a graph distinguishes a cross-tab from a chain by
-looking, so a page that guessed would be deciding what a published table means.
-`site/app.js` carries the words in one constant, `PARTITION_NOTE`, for every
-mark that shows them.
+It is **the projection's flag and not the client's**: nothing in a graph
+distinguishes a cross-tab from a chain by looking. `site/app.js` carries the
+words in one constant, `PARTITION_NOTE`.
 
 `node-tiers-are-declared` reads it as the **second** exception to "a link runs
 from a coarser tier to a finer one", beside a revenue line rolled up into its own
@@ -188,11 +183,8 @@ category. A partition link may descend — the cross-tab's run `expenditure/<obj
 (tier 5) into `dept/<division>` (tier 4) — and a descending link that is neither
 a rollup nor a declared partition is still refused by name.
 
-It is the second additive key, and it was **re-decided rather than waved through
-on `locators`' precedent**: `schema_version` stays at 1 for the same reason, the
-project being pre-release, and the key is present and `false` on every link of
-every document so that no diff between two releases reads as a structural
-change.
+`schema_version` stays at 1, the project being pre-release, and the key is
+present and `false` on every link of every document.
 
 ## Tiers and node ids
 
@@ -217,29 +209,19 @@ Plus the flow endpoints that are not part of that hierarchy: `transfers/in`
 print the General Fund by DIVISION and pp.85-125's funding schedule prints one
 block per DEPARTMENT. Five slugs are in both populations — `city-council`,
 `city-manager`, `city-attorney`, `general-services`, `administrative-services` —
-each naming a department and the sole division beneath it, and inventing five
-names the city does not print is the defect this project exists to refuse. An id
-form is read by cutting at the FIRST slash, so one prefix over both tiers would
-make `dept/city-council` mean the department in one document and the division in
-another. That is the same collision `revenue-line/` was given its own prefix to
-avoid. The alternative considered and rejected was `dept/department/<slug>`,
-which reads as a deeper id under the division form and which `declaredTier` would
-resolve to tier 4 by the wrong rule — the prefix would be `dept`, and the reason
-it is right would be invisible.
+each naming a department and the sole division beneath it, and the city prints
+no other name for either. An id form is read by cutting at the FIRST slash, so
+one prefix over both would make `dept/city-council` mean the department in one
+document and the division in another.
 
 **`transfer-from/` and `transfer-to/` are ENDS of a movement and not the funds
 themselves**, which is why they are id forms rather than a second use of
 `fund/<number>`. Budget Book p76 prints money moving between the city's own
 funds, so the natural link is `fund/<a>` to `fund/<b>` — tier 3 to tier 3, which
 the ordering rule refuses and which `d3-sankey` cannot lay out, both ends taking
-the same column index. Neither escape works either: a rollup would claim the
-payer folds into the receiver, and `partition: true` would claim p76 is one table
-read along a second axis when it is money moving. Two rejected alternatives are
-worth naming, because both look cheaper. `fund-group/<payer type>` to
-`fund/<receiver>` needs no new vocabulary at all and throws away the payer's
-identity, which is the entire content of the page. A third same-tier exception
-repeals the left-to-right invariant for every document and still does not draw,
-since `indexOf` gives both ends one column.
+the same column index. A rollup would claim the payer folds into the receiver,
+and `partition: true` would claim p76 is one table read along a second axis when
+it is money moving.
 
 They take the spine's own tiers for the same end of the chart — a payer's end at
 2 with the fund groups, a receiver's at 5 with the object categories — so a link
@@ -253,23 +235,16 @@ that exactly where the endpoint draws no flow of its own: on the spine the same
 id is the source of the city's transfer inflow, and a node parented to it there
 is still refused.
 
-**Tier 1 is a printed row, and it was empty rather than free.** Earlier revisions
-gave tier 1 as a `constraint/<tier>` node between the revenue source and the fund
-group. It could not be one, and the refutation is arithmetic rather than taste: a
-constraint tier is a property of a **fund**, and the fund groups do not partition
-along it. Counting `data/funds.yaml` by `type` x `constraint_tier`, `capital`
+**Tier 1 is a printed row, not a constraint layer.** A constraint tier is a
+property of a **fund**, and the fund groups do not partition along it. Counting `data/funds.yaml` by `type` x `constraint_tier`, `capital`
 holds 3 committed funds and 43 restricted-by-law; `special-revenue` holds 37
 restricted-by-law, 2 unknown and 1 committed. So `fund-group/<type>.parent =
-constraint/<tier>` had no single answer, and a layer whose parent edge is
+constraint/<tier>` has no single answer, and a layer whose parent edge is
 undefined is not a layer. The constraint tier rides as the `constraint_tier`
 **field** on a tier-3 node instead — see below.
 
 A `revenue-line/` node's parent edge **is** defined: the category the row is
-printed under, one string, on every line. That is the whole difference. The
-number was left unassigned rather than renumbering, because tiers 2-5 are
-published in `node.tier` and shifting them would silently change the meaning of
-every document already written — so tier 1 was there to be filled by the first
-layer that could define its own parent.
+printed under, one string, on every line.
 
 **`revenue-line/` is a prefix of its own and not a deeper `revenue/` id.** An id
 form is read by cutting at the **first** slash, and a category slug may itself
@@ -293,10 +268,9 @@ neither a fund nor a department axis.
 
 **All three of the spine's drawn columns open, and every rung but one is a
 WINDOW** — the node the reader clicked in the middle, with three columns the
-narrowest such window and the one a narrow viewport is shown; a step may declare
-more, and what each rung draws at what width is stated in
-`docs/general-fund-drilldown-contract.md`. `index.html`
-declares a tree of steps in `views()`, not a chain: the six tier-2 fund groups
+narrowest such window; what each rung draws at what width is stated in
+`docs/general-fund-drilldown-contract.md`. The steps form a tree, not a chain:
+the six tier-2 fund groups
 open into `fund-flows` for the same fiscal year, keeping this document's own
 revenue categories on the left and drawing the group's funds on the right; the
 ten tier-0 revenue categories open into a window of the same document — the
@@ -311,23 +285,18 @@ rungs deep.
 a flow END rather than a container on the spine, so it has no parts to put a
 window around; the step keeps no flank and draws `transfers-by-fund`'s two
 columns alone — the funds that pay each transfer on the left, the funds that
-receive them on the right. A kept flank has to be ADJACENT to the opened tier in
-the chart on screen, and the column beside tier 0 in `{0, 2, 5}` is tier 2, which
-is the tier this rung's own left-hand column draws; keeping it would name one
-tier at two columns. It is also the only rung that opens a SOURCE: `transfers/in`
-has nothing pointing at it, so the end that opened is the end its links come
-from, and `DrillStep.Side` says so rather than letting a client infer it from the
-tier numbers.
+receive them on the right; the only flank it could keep is tier 2, which its own
+left-hand column already draws. It is also the only rung that opens a SOURCE, and
+`DrillStep.Side` says so rather than letting a client infer it from the tier
+numbers.
 
 The remaining tier-0 node and the three tier-5 nodes that are flow ENDS rather
 than containers do not open, and the `Role` on each step is what closes them. The
 sixty funds pp.167-170 do not decompose are closed to the DIVISION step by a
 `Role` in the same way and opened by a step of their own into pp.85-125's
-departments; which of them that step can open is not a role question at all, and
-is read off each year's document as `steps[].opens`. What those rungs draw, how
-the year is joined, and why openability had to be derived rather than declared,
-are stated in `docs/general-fund-drilldown-contract.md`.
-Depth 0 is this document drawn whole, unchanged by any of it.
+departments; which of them that step can open is read off each year's document
+as `steps[].opens`, stated in `docs/general-fund-drilldown-contract.md`. Depth 0
+is this document drawn whole.
 
 Those counts are per TIER and include the flow endpoints, which is why they are
 larger than the id-form counts a reader might tally from the table above: tier 0
@@ -471,22 +440,14 @@ reconciling the chart against p66 will find three rows unaccounted for, so
 ## The transfer residual
 
 Transfers out ($59,612,734) exceed transfers in ($21,525,997) by $38,086,737.
-Two separate facts sit behind that sentence and an earlier draft of this section
-ran them together.
 
-`transfer_id` is `""` on every link, and **mapping p76 does not fix that on its
-own**. `fact.Fact` carries no field that could hold a pairing and
-`internal/project/sankey.go` writes the empty string unconditionally, so
-`fisc-1wr.1`'s "every transfer_id has two equal legs" check is **vacuous** — it
-must report as such, not as a pass. Retiring it needs a projection that selects
-p76's scope *and* a `Link.TransferID` derived from the two legs' shared
-`(doc_id, page, offset)`. That is `fisc-9gh`, not `fisc-5gk.3`, and an earlier
-draft of this paragraph said otherwise.
+`transfer_id` is `""` on every spine link. Only `transfers-by-fund` draws each
+end of a p76 movement as its own link, and there the two legs share a
+`transfer_id` derived from their shared `(doc_id, page, offset)`.
 
-The residual is not waiting on that mapping either, and mapping p76 will not
-close it. p76's own grand total *is* the transfers-in side, to the cent: each of
-its destination sections equals the matching `TRANSFER IN:` cell on pp.66-67,
-and the General Fund's out-flows equal `TRANSFER OUT:`.
+p76's own grand total *is* the transfers-in side, to the cent: each of its
+destination sections equals the matching `TRANSFER IN:` cell on pp.66-67, and
+the General Fund's out-flows equal `TRANSFER OUT:`.
 
 **The difference is a column the city prints.** pp.72-75 are the same
 sources-and-uses schedule carrying a `Transfers Out to CIP` heading, which
@@ -499,57 +460,45 @@ p0075.txt:58   Transfers Out $21,624,633   Transfers Out to CIP $50,762,251
 
 $21,525,997 is p76's grand total to the cent, and $38,086,737 is
 `headline.transfer_residual_cents` to the cent. The residual is therefore not a
-discrepancy at all — it is transfers to capital projects, itemised under a
-heading, on a schedule this project has not yet mapped.
+discrepancy at all — it is transfers to capital projects, printed under their
+own heading.
 
 | transfers out to CIP, FY2026 | | source |
 |---|---|---|
-| Capital Funds | 28,373,590 | derived |
-| Enterprise Funds | 9,353,147 | derived |
-| Special Revenue Funds | 320,000 | derived |
-| Internal Service Funds | 40,000 | `p0073.txt:53` |
-| **total** | **38,086,737** | `p0073.txt:58` |
+| Capital Funds | 28,373,590 | `p0199.txt:13` |
+| Enterprise Funds | 9,353,147 | `p0199.txt:14` |
+| Special Revenue Funds | 320,000 | `p0199.txt:10` |
+| Internal Service Funds | 40,000 | `p0073.txt:53`, `p0199.txt:17` |
+| **total** | **38,086,737** | `p0073.txt:58`, `p0199.txt:21` |
 
-Read those rows as *`TRANSFER OUT:` for the group, minus the transfers p76 shows
-that group **paying*** — attributed by the payer named in each row label, not by
+**pp.72-75 print to-CIP per major fund and one aggregate line for all non-major
+funds** — $28,693,590 in FY2026 (`p0073.txt:56`) — so they cannot split Capital
+from Special Revenue. pp.198-209 print the column per fund and per fund type:
+FY2026's summary is p199 above, FY2027's is p205 (Capital 35,830,251,
+`p0205.txt:13`; Special Revenue 100,000, `p0205.txt:10`; together p75's
+non-major 35,930,251, `p0075.txt:56`).
+
+Each row also equals the group's `TRANSFER OUT:` less the transfers p76 shows
+that group **paying** — attributed by the payer named in each row label, not by
 `out − in` per group. The General Fund's $10,037,797 is itemised in full and
-contributes zero. Capital pays $211,150 of its $28,584,740, so nearly all of it
-is to-CIP: Traffic Impact Fee (510), County Measure D (550) and State − Gas Tax
-(560) are `type: capital` in `data/funds.yaml`, and p76 lists all three as
-payers. An earlier version of this table said Capital pays nothing p76 lists and
-put its whole `TRANSFER OUT:` in the residual, with the $211,150 landing on
-Special Revenue instead. That was wrong in both rows.
+contributes zero. Capital pays $211,150 of its $28,584,740: Traffic Impact Fee
+(510), County Measure D (550) and State − Gas Tax (560) are `type: capital` in
+`data/funds.yaml`, and p76 lists all three as payers.
 
-**Only the total and the Internal Service row above are printed figures.**
-pp.72-75 give to-CIP per major fund and then a single aggregate line for all
-non-major funds — $28,693,590 in FY2026 (`p0073.txt:56`) — so the split between
-Capital and Special Revenue is derived by difference from p67 rather than read.
-That is the reason to state the pair rather than the split, and it is *not*
-because the split is impossible: an earlier draft claimed FY2026-27 would need a
-negative to-CIP of −$117,485, which came from reading p76's $1,018,035 of
-non-major sources as special-revenue sources alone. Both years divide cleanly
-(FY2027: Capital 35,830,251 + Special Revenue 100,000 = 35,930,251,
-`p0075.txt:56`).
-
-Those four rows are pinned twice over. `TestP76SourcesDecomposeTheResidualByFundType`
-resolves every payer through `registry.FundByLabel` and asserts
-`spine_TRANSFER_OUT == p76_paid + to_CIP` for all six groups in both budget
-years; `cuts-tie-along-the-lattice`'s `transfers-detail` comparison makes the
-same claim over the published facts, with the to-CIP figures declared as the six
-`p76-lists-no-transfer-to-the-cip-*` entries of `structure.BudgetBookExceptions`.
-Neither pin is `TestP76AccountsForTheInSideAndNoneOfTheResidual`, which asserts
-only that Capital and Internal Service together do not exceed the whole residual
--- a bound loose enough that the wrong figures satisfied it. Still open is `fisc-4ac`:
-tying the declared constants to `headline.transfer_residual_cents` in both
-projected years, which is the one direction neither test covers.
+`TestP76SourcesDecomposeTheResidualByFundType` resolves every payer through
+`registry.FundByLabel` and asserts `spine_TRANSFER_OUT == p76_paid + to_CIP` for
+all six groups in both budget years; `cuts-tie-along-the-lattice`'s
+`transfers-detail` comparison makes the same claim over the published facts,
+with the to-CIP figures declared as the six `p76-lists-no-transfer-to-the-cip-*`
+entries of `structure.BudgetBookExceptions`. Those entries hold Capital and
+Special Revenue together against p73's non-major aggregate rather than against
+p199's split.
 
 `fisc-1wr.4` asks for a residual node. This contract states the residual as
 `headline.transfer_residual_cents` instead, and has `verify` assert it equals
 out minus in. A synthetic link into `transfers/in` or out of `transfers/out`
 would unbalance that node, and splitting the $59.6M into matched and unmatched
-portions would publish a division the city never printed. What goes stale the
-day p76 lands is the prose above about the schedule being unmapped, not this
-figure.
+portions would publish a division the city never printed.
 
 ## The contested total
 

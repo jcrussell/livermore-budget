@@ -28,8 +28,8 @@ standing for two claims is why this cannot be a check. `fisc-xbd4`.
 subject counts. The counts move with every page that gets mapped, and pinning
 them here would make this a test of the mapping's size."*
 `TestEveryDeclarationCarriesItsReasonAndItsBead` says *"The count is
-deliberately NOT pinned."* Both refuse a count that comment phrases and printed strings elsewhere
-in the same packages go on to state anyway. `fisc-pm8f`.
+deliberately NOT pinned."* Both refuse a count that comment phrases and printed
+strings elsewhere in the same packages go on to state anyway. `fisc-pm8f`.
 
 ## The gate line's own count is the trap
 

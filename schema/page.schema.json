@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://jcrussell.github.io/livermore-budget/schema/page.schema.json",
   "title": "fisc page config",
-  "description": "window.FISC_CONFIG: what site/app.js has before it has fetched anything, rendered into the page's own <script>. Every object here is closed, so a field added to one of these structs is refused at the export rather than shipped to a client that ignores it.",
+  "description": "window.FISC_CONFIG: what site/app.js has before it fetches anything, rendered into the page's own <script>. Every object is closed, so an unknown field is refused at the export.",
   "type": "object",
   "required": [
     "schema_version",
@@ -16,14 +16,14 @@
   "additionalProperties": false,
   "properties": {
     "schema_version": {
-      "description": "The projection's own version, which site/app.js compares against its SCHEMA_VERSION constant before it draws. Not a const: this encoder passes the projection's number through.",
+      "description": "The projection's own version, which site/app.js compares against its SCHEMA_VERSION before it draws.",
       "type": "integer",
       "minimum": 1
     },
     "exported_by": {
       "type": "string",
       "minLength": 1,
-      "description": "The export that wrote this page. Every artifact it links carries the same string as generated_by, and the client refuses a pair that disagree -- which is the only thing that catches a column cached from before the last deploy."
+      "description": "The export that wrote this page. Every artifact it links carries the same string as generated_by, and the client refuses a pair that disagree."
     },
     "primary": {
       "type": "string",
@@ -31,14 +31,14 @@
       "description": "The projection this page is of."
     },
     "metadata": {
-      "description": "The primary projection's metadata block, verbatim. HELD AS AN OPAQUE OBJECT because it is another package's document passed straight through; internal/project owns its shape and this side must not state a second version of it.",
+      "description": "The primary projection's metadata block, verbatim and opaque here: projection.schema.json states its shape.",
       "type": "object"
     },
     "years": {
       "type": "array",
       "minItems": 1,
       "items": {
-        "description": "One published year with the words that belong to it, built by the packager so the client never composes a figure or a caveat itself.",
+        "description": "One published year with its words, built by the packager so the client never composes a figure or a caveat.",
         "type": "object",
         "required": [
           "year",
@@ -56,7 +56,7 @@
         "additionalProperties": false,
         "properties": {
           "year": {
-            "description": "A FLOOR WOULD BE A NUMBER NOTHING MEASURED. Which fiscal years exist is data/sources.yaml's and the registry's; this contract says the key is an integer and leaves the range to the party that can check it.",
+            "description": "An integer with no floor: which fiscal years exist is data/sources.yaml's to say.",
             "type": "integer"
           },
           "label": {
@@ -80,7 +80,7 @@
             "type": "string"
           },
           "hero": {
-            "description": "One headline figure, already formatted. THE WORDS ARE THE PACKAGER'S: the client never composes a figure, which is what keeps the server-rendered tile and the one a year switch paints from disagreeing.",
+            "description": "One headline figure, already formatted by the packager, so the server-rendered tile and the one a year switch paints cannot disagree.",
             "type": "object",
             "required": [
               "label",
@@ -108,7 +108,7 @@
           "figures": {
             "type": "array",
             "items": {
-              "description": "One headline figure, already formatted. THE WORDS ARE THE PACKAGER'S: the client never composes a figure, which is what keeps the server-rendered tile and the one a year switch paints from disagreeing.",
+              "description": "One headline figure, already formatted by the packager, so the server-rendered tile and the one a year switch paints cannot disagree.",
               "type": "object",
               "required": [
                 "label",
@@ -137,7 +137,7 @@
           "caveats": {
             "type": "array",
             "items": {
-              "description": "What a chart page is given about a caveat: the line it shows and the link to the paragraph. NO `text`, deliberately -- the paragraph lives on the caveats page, and a key here would put it back within a template's reach.",
+              "description": "What a chart page is given about a caveat: its line and the link to its paragraph. NO `text`: the paragraph lives on the caveats page.",
               "type": "object",
               "required": [
                 "id",
@@ -196,7 +196,7 @@
                 "caveats": {
                   "type": "array",
                   "items": {
-                    "description": "What a chart page is given about a caveat: the line it shows and the link to the paragraph. NO `text`, deliberately -- the paragraph lives on the caveats page, and a key here would put it back within a template's reach.",
+                    "description": "What a chart page is given about a caveat: its line and the link to its paragraph. NO `text`: the paragraph lives on the caveats page.",
                     "type": "object",
                     "required": [
                       "id",
@@ -219,7 +219,7 @@
                   }
                 },
                 "opens": {
-                  "description": "Node ids this year's document decomposes under the step. ABSENT IS NOT EMPTY: absent means the step declares no such set and every node at the tier is offered, where [] means it decomposes none.",
+                  "description": "Node ids this year's document decomposes under the step. ABSENT IS NOT EMPTY: absent offers every node at the tier; [] opens none.",
                   "type": "array",
                   "items": {
                     "type": "string",
@@ -236,7 +236,7 @@
       }
     },
     "docs": {
-      "description": "Cited documents by doc_id. KEYED BY DATA AND SO NOT ENUMERATED: which documents a page cites is the corpus's, and naming them here would make this contract a copy of it.",
+      "description": "Cited documents by doc_id, keyed by data and not enumerated: which documents a page cites is the corpus's to say.",
       "type": "object",
       "additionalProperties": {
         "description": "Where one cited document's provenance is served from. Every provenance URL on the site is built out of these three bases.",
@@ -263,17 +263,17 @@
           },
           "page_text_base": {
             "type": "string",
-            "description": "Directory holding the committed page text; the client appends pNNNN.txt. RELATIVE OR ABSOLUTE, unlike records_base beside it: it goes absolute under --source-browse-url, so the client must not assume a scheme."
+            "description": "Directory holding the committed page text; the client appends pNNNN.txt. Absolute under --source-browse-url, so the client must not assume a scheme."
           },
           "records_base": {
             "type": "string",
-            "description": "Directory holding this document's fact-store shards; the client appends pNNNN.jsonl. ALWAYS SITE-RELATIVE. \"\" means the caller published no records for this document and the client renders no records link -- absent, not a base pointing nowhere."
+            "description": "Directory holding this document's fact-store shards; the client appends pNNNN.jsonl. Always site-relative; \"\" means no records were published and no records link renders."
           }
         }
       }
     },
     "render_tiers": {
-      "description": "The node tiers the page draws, left to right. OMITTED AND NOT [] WHEN ABSENT, which app.js relies on: a page that declares nothing hands its graph to d3's own aligner, and an empty list would be a second spelling of that state.",
+      "description": "The node tiers the page draws, left to right. OMITTED, NEVER [], WHEN ABSENT: app.js then hands the graph to d3's own aligner.",
       "type": "array",
       "minItems": 1,
       "items": {
@@ -282,7 +282,7 @@
       }
     },
     "steps": {
-      "description": "How the page opens a node. OMITTED AND NOT [] WHEN ABSENT, for render_tiers' reason: app.js reads an absent key as \"this page isolates on a click\".",
+      "description": "How the page opens a node. OMITTED, NEVER [], WHEN ABSENT: app.js then isolates on a click.",
       "type": "array",
       "minItems": 1,
       "items": {
@@ -357,7 +357,7 @@
           "caps": {
             "type": "array",
             "items": {
-              "description": "How many marks one tier draws before the rest fold into a tail. THE PERMISSION AND NOT THE FOLD: which members a fold then hides is the client's, because folding is fitting to a viewport Go cannot see.",
+              "description": "How many marks one tier draws before the rest fold into a tail. THE PERMISSION, NOT THE FOLD: which members fold is the client's.",
               "type": "object",
               "required": [
                 "tier",
@@ -417,7 +417,7 @@
     "rungs": {
       "type": "string",
       "minLength": 1,
-      "description": "Where Go's answer for every rung this page opens is served. OMITTED MEANS NOBODY ANSWERS THIS PAGE'S RUNGS -- a page whose steps the walk never reached must not be handed another page's."
+      "description": "Where Go's answer for every rung this page opens is served. Omitted when nothing answers this page's rungs, so it is never handed another page's."
     },
     "wording": {
       "description": "Every sentence app.js composes about the chart on screen, as templates it fills. `{name}` is a variable's value and `{name:one|many}` is the value followed by the singular or the plural word, by whether the value is 1.",

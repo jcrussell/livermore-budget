@@ -80,19 +80,17 @@ tidy: ## Tidy go.mod/go.sum
 #
 # THE SECOND ARM READS THE COMMITTED BEAD EXPORT, and unlike the third it is a
 # full gate: .beads/issues.jsonl is a tracked file, so it needs no bd, no Dolt
-# server and no network, exactly as beadrefs does not. It runs before the memory
-# arm so that the two real gates report together and the advisory one is last.
+# server and no network, exactly as beadrefs does not.
 #
 # ITS PHRASE LIST IS NOT THE GO ARM'S and must not be made so. `Found by
-# /code-review` is refused in source and ASKED FOR in a commit message, and in a
-# bead it is provenance of a finding rather than a claim about the past: 109 of
-# the 680 issues carry it. The list also cannot take a bare past-tense verb,
-# because a bead naming its own requirement -- "the guard this bead asked for is
-# now paid for" -- is a true sentence six beads make. See tools/beadcheck.
+# /code-review` is refused in source, and in a bead it is provenance of a
+# finding rather than a claim about the past. The list also cannot take a bare
+# past-tense verb, because a bead naming its own requirement -- "the guard this
+# bead asked for is now paid for" -- is a true sentence. See tools/beadcheck.
 #
 # THE THIRD ARM READS THE MEMORIES, which bd prime injects into every session.
 # Same rule, worse placed: a memory's erratum arrives in context whether or not
-# anyone opens the file it is about. It is a second arm on this target rather
+# anyone opens the file it is about. It is an arm on this target rather
 # than a target of its own so that pre-commit gains no new step. The two print
 # DIFFERENT messages, because the remedies differ: a source comment is edited in
 # the file and its history stays in git, a memory is edited with bd remember and
@@ -115,8 +113,8 @@ tidy: ## Tidy go.mod/go.sum
 # artifact. So a green memory arm is evidence only that the memories were
 # readable and clean on THIS machine, and a skip is not evidence of anything.
 #
-# The Go arm has no such limit -- it reads committed source -- and CI runs this
-# target for it. Between them the target is a real gate over the tree and an
+# The Go and bead arms have no such limit -- they read committed files -- and CI
+# runs this target for them. So the target is a real gate over the tree and an
 # advisory check over the database.
 .PHONY: narration
 narration: ## Refuse review credits and errata in Go sources, beads and memories
@@ -158,7 +156,7 @@ narration: ## Refuse review credits and errata in Go sources, beads and memories
 # BOTH PREFIXES ARE CHECKED. A byob id names reference material and AGENTS.md
 # says never to claim or close one -- but that is a rule about what an agent may
 # DO to a bead, not about whether a citation of one should resolve. They are
-# rows of the same export, and AGENTS.md's Go section cites eleven of them.
+# rows of the same export, and AGENTS.md's Go section cites them.
 .PHONY: beadrefs
 beadrefs: ## Refuse bead ids that name no bead, in prose and in comments
 	@go run ./tools/beadrefs .beads/issues.jsonl \
@@ -192,18 +190,9 @@ beadrefs: ## Refuse bead ids that name no bead, in prose and in comments
 # both are pointers at nothing wearing different clothes. The boundary each of
 # those arms declares for itself is in the tool's package comment.
 #
-# AND A SOURCE PATH THAT RESOLVES TO NO FILE, which is the arm the other three
-# left a hole under: nothing refused a citation of a FILE that did not exist,
-# and that is the gap four of one session's five prose defects fell through.
-# The rule is deliberately narrower than "every path resolves" -- internal/,
-# pkg/, cmd/ and tools/ only, .go and .mjs only -- because data/ and dist/ are
-# build output cited by a spelling that is not their path, and a bare testdata/
-# path is package-relative by Go convention. srcPathPattern's comment carries
-# the measurement and the false-positive classes.
-#
-# THE USUAL FIX IS TO DROP THE PATH, not to correct it, so this gate's
-# population shrinks rather than grows: a comment names a symbol and does not
-# say where the symbol lives.
+# AND A SOURCE PATH THAT RESOLVES TO NO FILE, under internal/, pkg/, cmd/ and
+# tools/ only; srcPathPattern says why only those. The usual fix is to drop the
+# path: a comment names a symbol and does not say where the symbol lives.
 .PHONY: doccheck
 doccheck: ## Refuse dead citations, malformed citations, and dead docs/ and source paths
 	@go run ./tools/doccheck AGENTS.md \

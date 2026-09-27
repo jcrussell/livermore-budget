@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://jcrussell.github.io/livermore-budget/schema/column.schema.json",
   "title": "fisc published column",
-  "description": "Everything the chart needs for one published column of the city's budget. Keyed by column, (fiscal_year, basis), and not by year: one basis per year is today's corpus, not a guarantee.",
+  "description": "Everything the chart needs for one published column of the city's budget, keyed by (fiscal_year, basis) rather than by year.",
   "type": "object",
   "required": [
     "schema_version",
@@ -76,7 +76,7 @@
             "minimum": 0
           },
           "role": {
-            "description": "What this node is for, so a client never has to parse its id. The declared set, not the observed one: a role no published column carries today is still valid.",
+            "description": "What this node is for, so a client never parses its id. The declared set, not the observed one.",
             "type": "string",
             "enum": [
               "department",
@@ -131,7 +131,7 @@
       }
     },
     "fund_groups": {
-      "description": "The fund groups this column draws, in the order the page lays the fund column out. An ordered list, not a closed set: data/funds.yaml can grow a fund type without this file.",
+      "description": "The fund groups this column draws, in the order the page lays the fund column out. Ordered, not closed: data/funds.yaml can add a fund type.",
       "type": "array",
       "items": {
         "type": "object",
@@ -147,7 +147,7 @@
             "minLength": 1
           },
           "slug": {
-            "description": "The fund type, which site/style.css binds a hue to. Shipped rather than cut out of the id by the client, for the reason `role` exists: a client that parses an id is a second implementation of a vocabulary this side owns.",
+            "description": "The fund type, which site/style.css binds a hue to. Shipped so the client never parses it out of the id.",
             "type": "string",
             "minLength": 1
           }
@@ -155,7 +155,7 @@
       }
     },
     "schedules": {
-      "description": "ONE ENTRY PER PRINTED SCHEDULE, AND THEY ARE NOT MERGED. Each is a different published schedule with its own provenance; folding their links into one graph would silently reconcile the cells this project keeps visibly unreconciled.",
+      "description": "ONE ENTRY PER PRINTED SCHEDULE, NOT MERGED: each keeps its own provenance, and cells two schedules print differently stay unreconciled.",
       "type": "object",
       "minProperties": 1,
       "propertyNames": {
@@ -370,7 +370,7 @@
               },
               "allOf": [
                 {
-                  "description": "A derived node says why it exists and what it was read from. fisc verify refuses one without both; so does this, where the schedule that draws it states them.",
+                  "description": "A derived node says why it exists and what it was read from.",
                   "if": {
                     "required": [
                       "rationale"
@@ -402,7 +402,7 @@
             }
           },
           "scopes": {
-            "description": "The fact-store scopes this schedule draws. An array because fund-flows spans two: revenue-by-fund and expenditure-by-department.",
+            "description": "The fact-store scopes this schedule draws; fund-flows spans two.",
             "type": "array",
             "minItems": 1,
             "items": {

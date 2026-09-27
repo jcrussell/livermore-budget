@@ -96,8 +96,7 @@ holds the store to it on every `fisc verify`.
 - **Nothing guards a whole column filed under the wrong year.** Both pages
   print bare-year headers, which the parser's geometry guard refuses
   (`fisc-wiyg`), and a column shifted whole would still tie to its own printed
-  total. This is the schedules' open exposure, carried here from the
-  declarations that used to sit in `internal/check`.
+  total. This is the schedules' open exposure.
 
 ## p41, the General Fund summary, and why no document draws it
 
@@ -106,9 +105,8 @@ Expenditures and Changes in Fund Balances, is mapped at scope
 `acfr-general-fund-summary`: 20 FY2024-25 figures at the millions grain, where
 the pp.167-169 schedules print dollars. It is a cut of the hierarchy
 (`structure.ACFRCuts`, at the spine's own grain) and no published document
-selects it. This section carries the declaration that used to say so in
-`internal/check`, with the argument for it; a check that a cut is drawn by
-some document or declared undrawn is `fisc-a5ii`.
+selects it. A check that a cut is drawn by some document or declared undrawn
+is `fisc-a5ii`.
 
 **What the page prints.** Four blocks, three of them mapped whole: ten revenue
 rows tying to the printed Total Revenues of 157.20 exactly; two transfer legs,
@@ -122,8 +120,7 @@ decimals, so the least significant printed digit is $10,000.
 **It is undrawn because it is a different year on a different basis**, not
 because it restates money some other scope already publishes. The Budget Book
 spine is FY2026 and FY2027 adopted; this is FY2025 audited, and the spine
-prints no audited column. That is now a refusal by declaration rather than a
-measurement: the two cuts sit at one level and share no basis, so
+prints no audited column. That is a refusal by declaration: the two cuts sit at one level and share no basis, so
 `peers-overlap-only-by-declared-identity` refuses the pair by name on every
 run, and a view holding both would be refused by `structure.NewView`. The
 history pages draw ten years of the two statistical-section scopes -- a

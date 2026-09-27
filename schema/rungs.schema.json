@@ -15,7 +15,7 @@
       "const": 5
     },
     "generated_by": {
-      "description": "The export that wrote this answer. The page carries the same string as exported_by, and the client refuses a pair that disagree: they are separate files with no cache-busting between them, so a reader can hold one from before the last deploy.",
+      "description": "The export that wrote this answer. The page carries the same string as exported_by, and the client refuses a pair that disagree, since nothing cache-busts one file against the other.",
       "type": "string",
       "minLength": 1
     },
@@ -83,7 +83,7 @@
                         ]
                       },
                       "ids": {
-                        "description": "Written even when empty, so a column the document draws nothing at can be told from a column that was not answered. A reader that accepted the absence would read the first as the second.",
+                        "description": "Written even when empty, so a column the document draws nothing at is distinct from one not answered.",
                         "type": "array",
                         "items": {
                           "type": "string",
@@ -151,7 +151,7 @@
                         "minLength": 1
                       },
                       "rationale": {
-                        "description": "Why the mark exists, in the words the step declares. A claim about what the documents do and do not decompose, so it is composed here and not in the client.",
+                        "description": "Why the mark exists, in the words the step declares; composed here, not in the client.",
                         "type": "string",
                         "minLength": 1
                       },

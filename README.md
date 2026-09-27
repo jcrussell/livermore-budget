@@ -23,10 +23,7 @@ the point.
 | FY 2024-25 Annual Comprehensive Financial Report | 195 | all | **3** (pp. 41, 167–168, in part) |
 
 Those pages carry nine schedules, each of which reconciles against something the
-city itself printed. **No fact count is given here**, for the reason the gate
-line's is not: it is a count of this repository's own contents, it moves with
-every coverage commit, and `./bin/fisc verify` states the current one off the
-run you just did.
+city itself printed:
 
 | schedule | what it is | fiscal years |
 |---|---|---|
@@ -69,10 +66,9 @@ document's caveats in full — the other pages show each as one line and link
 here, so a reader meets the chart before the apparatus rather than scrolling
 past 254 words of it.
 
-One schedule is mapped and checked but **drawn by no projection**: ACFR p.41.
-Its facts are in the store, carry their provenance and are held by the same
-checks as every other; nothing on the site shows them. The CIP is extracted and
-entirely unmapped. See `bd ready`.
+One schedule is mapped and checked but **drawn by no chart**: ACFR p.41. Its
+facts appear only in `provenance.html`. The CIP is extracted and entirely
+unmapped. See `bd ready`.
 
 ## Build and look at it
 
@@ -128,9 +124,8 @@ dist/                              static site: d3-sankey, no bundler, no build 
 
 Four invariants hold throughout and most of the code exists to enforce them:
 amounts are integer cents, absent is not zero, ambiguity fails closed, and
-published is not derived. They are stated once, in `AGENTS.md` under
-"Provenance invariants", with what each costs and what refuses a breach — a
-second wording here is a second thing to keep true.
+published is not derived. They are stated in
+AGENTS.md, "Provenance invariants".
 
 ## Sources
 

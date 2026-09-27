@@ -45,20 +45,16 @@
 # `derived: true` with a `rationale` and a `source_note`. Entries without
 # `derived` are a mechanical transform of a printed string and nothing more.
 #
-# THE SLUG RULE IS STATED AND DELIBERATELY NOT ENFORCED. A loader that refused
-# slug != transform(document_term) would make an entry's identity depend on
-# its content, which is what choosing authored slugs over a slugified
-# row_label refused: a re-typeset row must stay the same node, changed, and
-# not become a different node. Identity is the slug; the printed string is
-# what `document_term` and `aliases` carry, and both say where to look.
+# THE SLUG RULE IS STATED, NOT ENFORCED: identity must not depend on content,
+# so a re-typeset row stays the same node. The printed string is what
+# `document_term` and `aliases` carry.
 #
 # HIERARCHY: one grammar at any depth, and three groupings that are ours
 # ----------------------------------------------------------------------
 # A nested slug's parent is the slug minus its last segment, and `parent:`
 # must say so: internal/registry refuses `taxes/property/eraf` with any
-# parent but `taxes/property`. Depth is unbounded. A cycle cannot be spelled,
-# because a parent slug is a strict prefix of its child's and so strictly
-# shorter.
+# parent but `taxes/property`. Depth is unbounded; a cycle cannot be spelled,
+# because a parent slug is a strict prefix of its child's.
 #
 # The Budget Book prints NO "Total Taxes", "Total Transfers", or "Total Fund
 # Balance" row anywhere (verified by grep over all 268 extracted pages). That
@@ -73,51 +69,32 @@
 # sibling rows sharing a head noun — taxes (three rows on p66), transfers
 # (in/out), fund balance (beginning/change/ending).
 #
-# Being a parent does not make an entry a grouping. pp.66-67 print
-# `taxes/property` and p127 prints "Total Property Taxes" over its detail
-# rows, so it is assignable, a rule writes it, AND it has children. Whether
-# a rule may write a slug is `assignable:` alone; nothing reads it off the
-# tree's shape, and no validator checks that a parent is unassignable.
+# Being a parent does not make an entry a grouping: `taxes/property` is
+# printed (pp.66-67, and p127's "Total Property Taxes"), assignable, AND has
+# children. Whether a rule may write a slug is `assignable:` alone.
 #
 # REVENUE LINES: a slug names a printed row, it does not classify it
 # ------------------------------------------------------------------
-# pp.127-140 print each fund's revenue as rows under the ten categories, and
-# every distinct printed row of kind revenue has an entry below, nested under
-# its category: `parent:` is the category a rule classifies the row as,
-# `document_term` is the row label verbatim, `pages` is where it is printed.
-# A rule's `label:` already names each of these rows, so an entry invents no
-# classification the city does not make — what it adds is an identity the
-# fact store lacks. A fact carries only `row_label`, free text off the page,
-# and a chart cannot draw a row as a node with nothing content-independent to
-# name it by.
+# Every distinct row of kind revenue that pp.127-140 print has an entry
+# below, nested under the category a rule classifies it as: `document_term`
+# is the row label verbatim, `pages` is where it is printed. The entry gives
+# a fact's free-text `row_label` a content-independent identity a chart can
+# draw as a node; it invents no classification.
 #
-# Two spellings of one row drifting apart is refused rather than feared.
-# fact-revenue-lines-resolve, on every `fisc verify`, requires every fact of
-# scope revenue-by-fund and kind revenue to resolve its (category, row_label)
-# to EXACTLY ONE entry here by `document_term` or alias, and every entry to
-# be printed by at least one such fact. A re-typeset row is therefore
-# declared as an alias, with its pages, on the entry it re-spells; the old
-# spelling does not survive unprinted and the new one does not survive
-# unresolved. internal/registry's page test reads each `document_term` off
-# its pages, and internal/check's mapping test reads each off the rule file,
-# so an entry is checked against three things that did not generate it.
+# fact-revenue-lines-resolve requires every revenue-by-fund fact of kind
+# revenue to resolve its (category, row_label) to EXACTLY ONE entry by
+# `document_term` or alias, and every entry to be printed by at least one
+# such fact. So a re-typeset row is declared as an alias, with its pages, on
+# the entry it re-spells. The entries were generated from facts/facts.jsonl,
+# so each `document_term` is also read off its pages and off the rule file.
 #
-# Nine of these rows are the category's own name, in the narrower column
-# pp.131-140 use inside each non-General fund ("Intergovernmental", "Use of
-# Money & Prop", "ContributionsOutSrce", ...). They are rows the city prints
-# and get an entry like any other. The same spelling is also an alias on the
-# category, which is a different claim about the same string: that the
-# category is printed under that name there.
+# Some rows are the category's own name, in the narrower column pp.131-140
+# use inside each non-General fund ("Intergovernmental", "Use of Money &
+# Prop", ...). They get an entry like any other; the same spelling is also an
+# alias on the category, claiming the category is printed under that name.
 #
-# The "Transfers In" row those pages print is not a revenue line. Its kind is
-# transfer_in and its category is transfers/in, and the check reads kind
-# revenue only.
-#
-# The line entries were generated from facts/facts.jsonl, one per distinct
-# (category, row_label) of that scope and kind, in printed order within each
-# category; the generating command is in the commit that added them. A
-# generated entry is still a claim about a page and carries a `#@cite` of the
-# printed line, as every other entry does.
+# The "Transfers In" row those pages print is kind transfer_in, not a
+# revenue line.
 #
 # WHAT IS NOT IN THIS FILE
 # ------------------------
@@ -1377,9 +1354,8 @@ categories:
   # the division slug would file a three-division figure under one
   # division -- and fact-departments-resolve would PASS on it, because
   # the strings coincide. Three rows classified correctly and two
-  # silently wrong is worse than none, so none carry it. That is a
-  # property of THIS page's grain and does not move with the
-  # funding-source block below, which now carries one.
+  # silently wrong is worse than none, so none carry it. That is this
+  # page's grain; the funding-source block below carries one.
   # ==================================================================
 
   #@cite p0041 (ACFR) "General Government:   18.45   16.00" over its five
@@ -1414,14 +1390,7 @@ categories:
   # `public-works` are already slugs in data/departments.yaml -- the first a
   # division, the other two DEPARTMENTS -- and the registry refuses one string
   # on both axes, because a fact's row_path joins them on a "/".
-  #
-  # The two department collisions were harmless until pp.85-125's funding-source
-  # rows began naming a department, which put a department slug into row_path
-  # for the first time. The suffix moved on this side rather than in
-  # departments.yaml because a department slug there is a mechanical transform
-  # of a printed ALL-CAPS heading and that file derives nothing, while a suffix
-  # here names the axis the entry classifies -- which is what `library-function`
-  # already did.
+  # The suffix is on this side because data/departments.yaml derives nothing.
 
   #@cite p0168 (ACFR) "Fire   17,593,133   18,160,089"
   - slug: fire
@@ -1523,16 +1492,9 @@ categories:
   # category at all, because pp. 85-125 do not print one beside it. The
   # row's own label is the fund, and `fund:` is where that goes.
   #
-  # AND THE FACTS NOW CARRY `department:`, WHICH THEY DID NOT.
-  # fact-departments-resolve used to resolve that field against a DIVISION
-  # alone, and six of data/departments.yaml's eleven departments are not
-  # division slugs -- library-department,
-  # innovation-and-economic-development, police-department,
-  # community-development, public-works, fire-department -- so typing the
-  # department here reddened six of the eleven rules. The check now resolves
-  # against either tier and reports the two separately, which is fisc-xudn's
-  # option (a), and the 78 rows carry it: 536 facts resolve as a division and
-  # 264 as a department, measured off the run that landed it.
+  # AND THE FACTS CARRY `department:`, naming a DEPARTMENT where the object
+  # block above and pp.167-170 name a division; fact-departments-resolve
+  # accepts either tier and reports the two separately.
   #
   # THE GUARD IS netCells, WHICH REFUSES A FACT CARRYING A DEPARTMENT, so a
   # funding-source rule mis-scoped to `all-funds-gross` fails when the

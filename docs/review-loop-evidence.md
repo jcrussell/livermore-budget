@@ -156,9 +156,9 @@ caught while implementing, not by any review pass.
 What the passes found instead was code shipped without its guard: `bd0a098`
 added 492 lines of `site/app.js` and 86 lines of the client's tests, **none of
 them covering the drill it had just written**, and the drill's whole check module
-was written *inside* the review passes (added at `a3fe8e8`). Across the session's sixteen review-fix
-commits `drill.mjs` took **633** insertions against `app.js`'s 503 — the largest
-single sink of fix churn there was.
+was written *inside* the review passes (added at `a3fe8e8`). Across the
+session's sixteen review-fix commits `drill.mjs` took **633** insertions against
+`app.js`'s 503 — the largest single sink of fix churn there was.
 
 Worse, checks written under review pressure to close the previous pass's finding
 were the weakest in the lane: a drill guard that measured the chart already on

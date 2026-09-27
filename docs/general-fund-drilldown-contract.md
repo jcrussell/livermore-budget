@@ -68,32 +68,28 @@ shape to the spine's. **No key is added to either type**, which is why one
 is what the version versions, and this document renames no key and coins no new
 one.
 
-Three things about the shape are not obvious and are load-bearing.
+What follows about the shape is not obvious and is load-bearing.
 
 **A revenue category is reached only through its lines.** Every revenue link
 leaves a tier-1 node, so `revenue/taxes/property` is the source of nothing; it is
 emitted because the hierarchy needs it, the way the fund groups are. A client
 folding the lines to a coarser tier finds the box to put them in, and that fold
-reproduces the links this document published before the line tier existed — same
-values, same fact ids, same locators, same order
-(`TestTheLineTierFoldsToTheCategoryLinks`).
+reproduces the category-grain links — same values, same fact ids, same locators,
+same order (`TestTheLineTierFoldsToTheCategoryLinks`).
 
 **A line is rolled back up into its category, once per kind.** The rollup is a
 `(1,0)` link whose value is the sum of that printed row's own cells and whose
 citation is exactly those cells — *not* the dashes among them, which earn no link
 on this side of the document and stay in `counts.facts_uncited`. It is published
-rather than left to the client for the reason the middle link is, one rung
-earlier: a category is the source of every other link it touches, so a chart that
-puts it *between* its lines and the funds has nothing flowing into it and draws
-it at zero.
+because a category is the source of every other link it touches, so a chart that
+puts it *between* its lines and the funds would otherwise draw it at zero.
 
 **Per kind**, because one printed row reaches the five Internal Service Funds as
 an internal service charge and the rest of the city as external revenue — 2 of
 the 93 lines in both adopted columns — and one ribbon carrying both would publish
-an internal service charge as money crossing the city's boundary. Two links on
-one pair is what `checkDistinctLinks` and the client's own fold allow exactly
-when the kinds differ, which is why `links` are ordered by `(source, target,
-kind)` and not by the pair alone.
+an internal service charge as money crossing the city's boundary.
+`checkDistinctLinks` and the client's fold allow two links on one pair exactly
+when the kinds differ.
 
 **The rollup is drawn in a category's own window and nowhere else.** That
 window is the chart it was published for: `{1,0,2}` puts the category between the
@@ -101,27 +97,23 @@ lines printed under it and the fund groups it reaches, and the rollups are its
 whole left half. Every other tier set drops them, each for its own reason: where
 tier 1 folds to tier 0 both ends fold to the category and a link whose ends fold
 together is dropped, and at `{2,5,4}`, `{2,3,4}` and `{3,4,5}` neither end has a
-column. The client's tests assert both halves over every view the page
-opens rather than leaving it to the per-view pins, which cannot tell a rollup
-that was dropped from one that was never published.
+column. The client's tests assert both halves over every view the page opens.
 
 **A fund is rolled up under its group the same way, once per kind.** The `(2,3)`
 link runs from `fund-group/<type>` to `fund/<n>`, carries that fund's whole
 inflow — every cell including a transfer's, unlike the `(1,0)` rollup, because a
 fund takes its transfers in exactly as it takes its taxes — and cites every cell
-behind it. Its reason is the `(1,0)` rollup's one tier further down: the
-categories reach the FUNDS directly at `(0,3)`, so a chart putting a fund group
-between them and its own funds has nothing entering or leaving the group and
-draws it at zero. That chart is the `{0,2,3}` window the spine's middle column
+behind it. The categories reach the FUNDS directly at `(0,3)`, so without it a
+chart putting a fund group between them and its own funds draws the group at
+zero. That chart is the `{0,2,3}` window the spine's middle column
 opens into, and the rollups are its whole right half. Measured over both adopted
 columns, each group's rollups sum to within the declared residual of the cell
 pp.66-67 print for it, and to the cent for the three groups that carry no
 residual.
 
 **A contra row is a negative link on its own line.** pp.127-140 print ERAF and
-RPTTF Reduction in parentheses inside the Property Taxes subtotal, and while the
-category was the node they netted inside its cell. Now that the row is the node,
-the negative rides on the line's own link: any other placement — a reversed
+RPTTF Reduction in parentheses inside the Property Taxes subtotal, and the
+negative rides on the line's own link: any other placement — a reversed
 positive link, a sign-decomposed endpoint — folds to a flow the category grain
 never had. Measured on the committed store, the negative links are two per
 adopted column, both into `fund/100` under `taxes/property`, plus
@@ -204,8 +196,7 @@ FACTS behind more than one link, so a row behind three counts once.
 FY2025-26: `280 = 233 + 47`, with 228 cited twice, over 238 nodes and 412 links.
 `fund-flows-counts-reconcile` re-derives all six from the published links. The
 228 is 44 expenditure rows plus the 184 revenue rows that earned a flow; the 47
-that print a dash are in neither, which is what keeps `facts_uncited` where the
-line tier left it.
+that print a dash are in neither.
 
 **The 47 uncited facts are the 47 revenue rows that print a dash**, exactly,
 because the cell a zero is tested at is the printed ROW. Drawn at category grain
@@ -287,23 +278,21 @@ carry.
   eleven departments, and the $13,222,668 difference is transfers out plus the
   change in working capital, printed on pp.66-67 and not carried here. There is
   **no invented sink node** — the caveat says so instead.
-- **What the fund groups other than the General Fund spend, BY OBJECT CATEGORY.**
-  pp.167-170 decompose that fund alone, and at that grain the money is not
-  missing but the schedule is not published. What IS published for every fund is
-  pp.85-125's Department Funding Sources — which departments each fund pays for
-  — and `department-funding` draws it, which is what the fund column of this
-  document opens into for every fund but 100. pp.72-75 give a per-fund expenses
-  column and are the schedule a wider key would be for.
+- **What the funds other than the General Fund spend, by division.** pp.167-170
+  decompose that fund alone. Every fund's object rows are printed on pp.172-183
+  and every fund's expenses on pp.198-209, neither by division, and this
+  document carries neither. pp.85-125's Department Funding Sources — which
+  departments each fund pays for — is drawn by `department-funding`, which is
+  what the fund column of this document opens into for every fund but 100.
 
   **No count is given here on purpose.** It is not six and it is not fixed: the
   published columns carry six fund groups, of which five stop short, except
   FY2023-24, which carries a seventh — permanent — and stops six. The caveat in
-  each document computes its own, and this is the third place that literal was
-  found, after the caveat itself and a page lede.
+  each document computes its own.
 - **Transfers between funds.** p76's legs are scope `transfers-by-fund`, which
   this document does not select because the two overlap `revenue-by-fund` on
   `transfer_in`. They have a document of their own, `transfers-by-fund`, which
-  the spine's Transfers In opens into (fisc-9gh, 0835e29).
+  the spine's Transfers In opens into.
 
 ## Drawing it: the fold
 
@@ -351,13 +340,11 @@ So the client folds. The rule, in full:
   `{0,2,4}` set the page then drew: 52 folded rows carried 79 locators, at most
   5 on any one row.
 
-  This is what makes the flow table's `Source` column true. It used to print
-  the document's own 18 pages identically on every row — 1,872 anchors saying
-  nothing about the row they sat in — and became 237, each naming the pages that
-  row's figure came from. Those figures are kept as the measurement that
-  justified the union; the chain's rungs, which now draw this document, fold
-  it differently and carry their own row counts, which
-  the client's tests pin.
+  This is what makes the flow table's `Source` column true. Without it, at that
+  set, every row printed the document's own 18 pages — 1,872 anchors saying
+  nothing about the row they sat in; with it, 237, each naming the pages that
+  row's figure came from. The chain's rungs fold differently and the client's
+  tests pin their own row counts.
 - **A link whose ends fold to the same node is dropped.** It was a flow inside
   what is now one box. This is the tier-4-to-5 case warned about above, and it
   **cites nothing away**: the fund-to-department link that survives carries the
@@ -379,28 +366,22 @@ So the client folds. The rule, in full:
 
 ### One page draws it: the spine opens into it
 
-**`drilldown.html` drew tiers 0, 2 and 4 whole, and no view draws that set
-now.** It became two pages split where the money changes hands, and those
-became the rungs of one chain under `index.html`, the site's one chart page
-(`fisc-ko1j`, owner decisions of 2026-09-08). The chain is declared once, in
-`views()`, and the client's tests spell none of it a second time. Nothing here
-is held by a Go test — that test pins `views()` against a literal in the *test
-file* and reads nothing in the client's tests, which is how both a reworded
-description (`fisc-vsu8`) and a changed cap went green on both sides at once:
+No view draws this document whole. It is drawn as rungs opened from
+`index.html`, the site's one chart page, declared once in `views()`; the
+client's tests spell none of it a second time.
 
 Every rung of that chain is a WINDOW: the node the reader clicked in the middle,
 one flank kept off the chart they clicked it on, and its own decomposition on
-the other side. **Three columns is the narrowest such window and the
-one most readers are shown** — the client's column budget starts at 3, and a
-window at least `chartWidth(4)` plus the stylesheet's cushion wide buys a fourth
-that the reader may also step back down to. The tier sets in the table below are
-what a narrow reader sees.
+the other side. **Three columns is the narrowest such window** — the client's column budget
+starts at 3, and a window at least `chartWidth(4)` plus the stylesheet's cushion
+wide buys a fourth. The tier sets in the table below are what a narrow reader
+sees.
 
 A step may declare more columns than that budget draws: `widen` names the
 columns of its own `tiers` a narrower client does without, in the order it drops
-them, and they sit at the end away from the kept flank. The fund step is the one
-that does — `{2,3,4,5}` widening by `{5}`, drawn as `{2,3,4}` at three columns
-and as all four where there is room — so its row below states both. A widened
+them, and they sit at the end away from the kept flank. The fund-group step
+widens `{0,2,3,4}` by `{4}` and the fund step `{2,3,4,5}` by `{5}`, so their
+rows below state both. A widened
 column the document leaves empty is dropped and the chart re-laid at the columns
 it has, rather than refused: five of the six fund groups have no tier-4 node,
 and a wide screen must not show a reader less than a narrow one.
@@ -408,15 +389,16 @@ and a wide screen must not show a reader less than a narrow one.
 | depth | document | draws | opening a node draws | caps |
 |---|---|---|---|---|
 | 0 | `sankey` | the spine, whole | a fund group (tier 2); or a revenue category (tier 0); or an object category (tier 5) | — |
-| 1 | `fund-flows` | `{0,2,3}` keeping tier 0 of the chart above: the spine's own revenue categories on the left, the opened group in the middle, its funds on the right, with the money pp.127-140 split by no fund carried past the centre onto one derived mark beside them | a fund (tier 3) — the General Fund into its divisions, every other fund pp.85-125 name into its departments | tier 3 at 8 |
+| 1 | `fund-flows` | `{0,2,3}` keeping tier 0 of the chart above: the spine's own revenue categories on the left, the opened group in the middle, its funds on the right, with the money pp.127-140 split by no fund carried past the centre onto one derived mark beside them — widening to `{0,2,3,4}`, the General Fund's divisions, where there is room for a fourth column | a fund (tier 3) — the General Fund into its divisions, every other fund pp.85-125 name into its departments | tier 3 at 8; tier 4 at 24 (divisions) |
 | 2 | `fund-flows` | `{2,3,4}` keeping tier 2: the group, the opened fund, the divisions that spend it — widening to `{2,3,4,5}`, their object-category cells, where there is room for a fourth column | a division (tier 4) | tier 4 at 24; tier 5 at 8 (categories) |
 | 3 | `fund-flows` | `{3,4,5}` keeping tier 3: the fund, the opened division, its object categories | nothing | tier 5 at 8 |
 | 2 | `department-funding` | `{2,3,4}` keeping tier 2: the group, the opened fund, the departments pp.85-125 print it paying for | nothing | — |
 | 1 | `fund-flows` | `{1,0,2}` keeping tier 2: the lines pp.127-140 print under the opened category on the left, the category itself in the middle, and the spine's own fund groups for it on the right; a line printed as a reduction draws as a contra ribbon at its magnitude, into the centre | nothing | tier 1 at 8 (lines) |
+| 1 | `department-spending` | `{2,5,4}` keeping tier 2: the fund groups that fund the opened object category, the category, and the divisions pp.85-125 print spending it | nothing | tier 4 at 8 (divisions) |
+| 1 | `transfers-by-fund` | `{2,3}`, no flank: the funds p76 prints paying each transfer on the left, the funds receiving them on the right | nothing | — |
 
-The steps are a tree and not a chain: three open from the spine's chart, told
-apart by the tier they open from and, for the two that share a tier with a flow
-end, by the node's role.
+The steps are a tree and not a chain: four open from the spine's chart, told
+apart by the tier they open from and, where two share a tier, by the node's role.
 The client walks it by key (`after` names the step whose chart a step opens
 from) and never by depth.
 
@@ -424,8 +406,8 @@ from) and never by depth.
 column's share of the CENTRE — the spine's cell for one revenue category into a
 fund group, not the group's own inflow — so a step opening one of those marks
 would draw a node taking one figure in and sending its whole decomposition out.
-Measured over both adopted columns while the fund-group step still named the
-revenue-category window among its parents: the Contributions & Outsourced window
+Measured over both adopted columns with the revenue-category window declared
+among the fund-group step's parents: the Contributions & Outsourced window
 keeps `fund-group/general` at 76,360 and opening it drew 157,873,470 leaving —
 157,797,110 of node height with no ribbon under it. `export.validateSteps`
 refuses that declaration by name.
@@ -446,25 +428,15 @@ declared once for every year the view lists. So `export.openableNodes` computes,
 per year and per window step, the node ids at its `from` that the document it
 draws decomposes, and ships them as `steps[].opens`. `site/app.js`'s `stepFor`
 takes that as a fourth match beside the key, the tier and the role; a step with
-no `opens` declares no set and every node at its tier opens, which is what every
-step before this one did. Measured without it, over both committed columns:
+no `opens` declares no set and every node at its tier opens. Measured without it:
 `drillDown(fund/511)` failed and left the chart on `fund-group/capital`, over a
 mark drawn with the open affordance.
-
-Measured through the whole tree, and the two columns no longer agree: 6 fund
-groups, 10 revenue categories, 4 object categories and `transfers/in` open at
-depth 1; 31 funds and 29 funds at depth 2 in FY2025-26 and FY2026-27
-respectively, plus `fund/100`; and its 23 divisions at depth 3 — **76 opened
-views in FY2025-26 and 74 in FY2026-27**, where before this step both columns
-opened 45. The figures in the three paragraphs `fisc-iize` names are still those
-of the `{0,3,4}` chain and are not re-measured here.
 
 **The step document is the spine year's, joined on column.** A spine stem
 opens into the `fund-flows` stem carrying the same fiscal year on the same
 basis: `sankey` into `fund-flows`, `sankey-2027` into `fund-flows-2027`. The
-join is on `Columns`, not on the order `project.PublishedDocuments` declares
-— which puts the bare `fund-flows` stem third among its four — and the packager
-resolves it per year into the page's config, beside that document's own caveat
+join is on `Columns`, not on the order `project.PublishedDocuments` declares,
+and the packager resolves it per year into the page's config, beside that document's own caveat
 links, so the client joins nothing. `fund-flows-2024-actual` and
 `fund-flows-2025-revised` have no spine year to be opened from, because
 pp.66-67 print no actual and no revised column; they stay declared in
@@ -480,15 +452,9 @@ chart. Filtering to the opened node is what leaves a set the fold can place.
 the sentence keeps apart.** At `{0,2,4}` the fold cites nothing away; a rung
 filtered to one node cannot, and a window also draws a flank of the chart it was
 opened from, whose ribbons cite that document and not this one. So the counts
-line partitions the ribbons before it gives either fact count. Measured,
-FY2025-26: the General Fund at depth 1 reads "13 flows between 15 nodes: 1
-citing 86 of the document's 280 facts, and 12 carried unchanged from the chart
-above, citing 12 of its 120 facts". Twelve of the thirteen are the spine's — ten
-the kept flank of revenue categories, and two its own endpoints re-pointed onto
-the residual, which adds one derived node and no ribbon of its own.
-The drill tests under `site/` hold every opened view's drawn nodes and ribbons
-to the ids Go's rung answer names for it; the sentence's figures are the
-packager's.
+line partitions the ribbons before it gives either fact count. The drill tests
+under `site/` hold every opened view's drawn nodes and ribbons to the ids Go's
+rung answer names for it.
 
 ### Opening a node: filter, cap, fold
 
@@ -506,9 +472,9 @@ group — `fund/200` alone is 34.9% of it and the smallest two are 0.034%.
 Rescaling cannot fix a distribution.
 
 **So a drill also caps its fine column.** Above the step's `TierCap.Cap` for
-that tier, the tail by value folds into one aggregate. At cap 8 special revenue draws 2 sub-pixel
-ribbons instead of 22, and capital 1 instead of 4. The cap is inert at depth 2,
-where the widest division spends on two object categories.
+that tier, the tail by value folds into one aggregate. At cap 8 special revenue
+draws 2 sub-pixel ribbons instead of 22, and capital 1 instead of 4. The cap is
+inert at depth 3, where the widest division spends on two object categories.
 
 **The aggregate node is `derived: true`**, with a rationale and a source note.
 Its *value* is every cent a printed figure, summed exactly as the fold sums a
@@ -530,9 +496,9 @@ divisions — rather than a sample.
 **Tier 5 is not a one-constant alternative.** Drawing `{0,2,4,5}` puts 29 of the
 44 object nodes under one pixel (smallest 0.030px), and that column's labels are
 23× "Services & Supplies" and 21× "Wages & Benefits". The object grain is not
-*hidden* by the fold; it is unrenderable at this canvas, and offering it needs a
-view that rescales to one division rather than a fourth column — which is what
-the second step is. Measured over all 23 divisions, the smallest ribbon in any
+*hidden* by the fold; it is unrenderable at this canvas, and offering it whole
+needs a view that rescales to one division, which the division step is; the fund
+step's fourth column shows it only capped. Measured over all 23 divisions, the smallest ribbon in any
 opened view is 51.38px, at Patrol; the drill tests under `site/` print the
 smallest ribbon of every view they open.
 
@@ -544,8 +510,7 @@ so neither can grow unnoticed. The chain's rungs are better on this and not
 free of it, and neither count is the same in both years: the General Fund at
 depth 1 draws 2 sub-pixel ribbons of 37 in FY2025-26 and 3 of 37 in FY2026-27,
 and special revenue, capped, 2 of 22 and then 1 of 22. The fold tests under
-`site/` print both counts per column, which is the only reason the difference
-is visible.
+`site/` print both counts per column.
 
 **The page describes the folded document, not the fetched one.** The legend, the
 flow table, the inferred list and the flow count are all statements about what
@@ -563,30 +528,18 @@ config carries. The committed `testdata/rungs.json` is pinned to the bytes the
 export serves, so a fixture and a served file cannot be two answers.
 
 **The shape lives in [`schema/rungs.schema.json`](../schema/rungs.schema.json)**,
-not here. It used to be a fenced block in this section, which made three
-spellings of one record — the emitted structs, the block, and a reader's memory
-— and only the first two could ever be compared. The schema is compared against
-the emitted BYTES: `encodeRungs` refuses an answer that does not match it, the
-way `encodeColumn` refuses a column. `TestTheSchemaStatesWhatTheRungAnswerCarries`
+not here. The schema is compared against the emitted BYTES: `encodeRungs`
+refuses an answer that does not match it, the way `encodeColumn` refuses a
+column. `TestTheSchemaStatesWhatTheRungAnswerCarries`
 holds the schema's property set to the structs' JSON tags in both directions, so
 a field added to the artifact with no line in the schema is red, and so is a
 schema bumped without the packager's constant moving.
-
-What a schema cannot say is why the record has the shape it does, and that is
-what the rest of this section is for.
 
 **`ids` is written even when empty, and that is the load-bearing one.** A flank
 whose only mark is carried answers with nothing, and a column the document draws
 nothing at is still a column the step declares; both have to be told from "not
 answered" by a reader of the file. A client that accepted the absence would read
 the first as the second and draw a column Go says holds nothing.
-
-**A column says what it HOLDS, not what would fit.** No cap has been applied to
-these ids. `DrillStep.Caps` declares which columns may fold and `DrillStep.Widen`
-which a fourth column buys; both ship in `CONFIG.steps` and the fitting happens
-in the client, because folding is fitting to a viewport Go cannot see. A fold Go
-pre-computed would also hide the rungs under it from the walk that answers them
-(`fisc-qics`).
 
 **`generated_by` is not part of the answer, it is part of the delivery.** The
 page carries the same string as `exported_by`, and `site/app.js` refuses a pair
@@ -606,9 +559,7 @@ because each file is valid on its own.
   the step opens the node into. `ids` is every node the document draws at that
   tier as the opened node's own parts, sorted; `carried` is every node drawn
   there that is not counted as one of them — a node the document marks derived,
-  or one the step's residual declaration names. `ids` is written **even when
-  empty**, so a column answered with nothing can be told from a column that was
-  not answered at all.
+  or one the step's residual declaration names.
 - `marks` is what the client adds to the window that no page prints: the
   residual that stands beside the opened node's parts, and the gap between what
   the chart above sends into the opened node and what the drawn document breaks
@@ -630,7 +581,8 @@ to be contradicted against.
   tier, unfolded, and how much of it a reader's viewport has room for is decided
   by `capColumn` in `site/app.js`. An answer pre-folded to a cap would be Go
   fitting a screen it cannot see (AGENTS.md, "Go vets, JavaScript renders"),
-  and it would also hide from this walk every rung under every id it dropped.
+  and it would also hide from this walk every rung under every id it dropped
+  (`fisc-qics`).
 - **No candidates count.** How many nodes a column holds is the length of its own
   `ids`. A second spelling of it is a number the two sides can disagree about in
   silence.

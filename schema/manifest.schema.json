@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://jcrussell.github.io/livermore-budget/schema/manifest.schema.json",
   "title": "fisc extraction manifest",
-  "description": "data/extracted/<doc_id>/manifest.json. THE ONE CONTRACT IN THIS TREE BETWEEN TWO LANGUAGES: tools/extract.py writes it and internal/corpus reads it. Neither imports the other and neither shares a type, so this file is where they agree.",
+  "description": "data/extracted/<doc_id>/manifest.json, written by tools/extract.py and read by internal/corpus. They share no type, so this file is where they agree.",
   "type": "object",
   "required": [
     "schema_version", "doc_id", "source_file", "source_sha256", "source_bytes",
@@ -11,13 +11,13 @@
   ],
   "properties": {
     "schema_version": {
-      "description": "Pinned on both sides. A reader on the wrong version parses this file happily and then reports every page as \"no such page\", which is a documented NORMAL result -- so the version is what has to fail, loudly.",
+      "description": "Pinned on both sides. A reader on the wrong version would report every page as \"no such page\", a normal result, so the version is what fails.",
       "const": 2
     },
     "doc_id": { "type": "string", "minLength": 1 },
     "source_file": { "type": "string", "pattern": "^data/pdf/.+\\.pdf$" },
     "source_sha256": {
-      "description": "Computed by extract.py, which deliberately does NOT read data/sources.yaml: fisc verify cross-checks it against the registry, and two parties recording it independently is what makes that a real check.",
+      "description": "Computed by extract.py, which does NOT read data/sources.yaml; fisc verify cross-checks the two.",
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
     },
@@ -27,7 +27,7 @@
     "page_count": { "type": "integer", "minimum": 1 },
     "blank_page_count": { "type": "integer", "minimum": 0 },
     "warnings": {
-      "description": "Every distinct line poppler wrote to stderr. NOT failures: poppler has no structured error channel and exits 0 for a damaged xref and an unread metadata key alike. An empty errors array is not a promise that every page came out whole.",
+      "description": "Every distinct line poppler wrote to stderr. NOT failures: poppler exits 0 for a damaged xref and an unread metadata key alike, so an empty errors array does not promise every page came out whole.",
       "type": "array",
       "items": {
         "type": "object",
@@ -62,7 +62,7 @@
       }
     },
     "artifacts": {
-      "description": "Two substrates per page, both needed: pages/pNNNN.txt is pdftotext -layout, carrying the printed column grid in runs of spaces, and geometry/pNNNN.json is -bbox word boxes. THE KEY GRAMMAR IS PART OF THE CONTRACT -- a reader resolves a page by computing this path.",
+      "description": "pages/pNNNN.txt is pdftotext -layout, the column grid in runs of spaces; geometry/pNNNN.json is -bbox word boxes. THE KEY GRAMMAR IS PART OF THE CONTRACT: a reader resolves a page by computing this path.",
       "type": "object",
       "propertyNames": { "pattern": "^(pages/p[0-9]{4}\\.txt|geometry/p[0-9]{4}\\.json)$" },
       "additionalProperties": {
