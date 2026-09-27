@@ -533,13 +533,16 @@ func TestRowFundsCatchesABareLabelTwinTheGateDoesNot(t *testing.T) {
 func TestTheFundNumberArmHoldsBothEndsOfAP222Row(t *testing.T) {
 	for _, tc := range []struct {
 		name   string
+		label  string
 		mutate func(*mapping.Row)
 		want   string
 	}{
-		{"the receiving fund", func(r *mapping.Row) { r.Fund = 813 }, "the fund which receives is 813"},
-		{"the transferring fund", func(r *mapping.Row) { r.Counterpart.Fund = 510 }, "the fund which pays is 510"},
+		{"the receiving fund", "811", func(r *mapping.Row) { r.Fund = 813 }, "the fund which receives is 813"},
+		{"the transferring fund", "811", func(r *mapping.Row) { r.Counterpart.Fund = 510 }, "the fund which pays is 510"},
 		// A transfer read as revenue: the page still numbers its payer.
-		{"the counterpart dropped", func(r *mapping.Row) { r.Counterpart = nil }, "declares no counterpart"},
+		{"the counterpart dropped", "811", func(r *mapping.Row) { r.Counterpart = nil }, "declares no counterpart"},
+		// A grant row declaring no fund at all is read, not skipped.
+		{"a grant row's fund dropped", "816", func(r *mapping.Row) { r.Fund = 0 }, "the fund which receives is 0"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
@@ -551,7 +554,7 @@ func TestTheFundNumberArmHoldsBothEndsOfAP222Row(t *testing.T) {
 				for i := range f.Rules {
 					for j := range f.Rules[i].Rows {
 						row := &f.Rules[i].Rows[j]
-						if f.Rules[i].ID == "p222-cip-funding-sources" && row.Label == "811" {
+						if f.Rules[i].ID == "p222-cip-funding-sources" && row.Label == tc.label {
 							tc.mutate(row)
 							hit++
 						}
@@ -832,5 +835,18 @@ func TestAVerbPhrasedLabelUnderTheDeclarationIsRefused(t *testing.T) {
 	if got.Subjects != before.Subjects {
 		t.Errorf("the declaration moved the subject count from %d to %d; these rows "+
 			"are read by the anchor arm and by it alone", before.Subjects, got.Subjects)
+	}
+}
+
+// TestTheRowFundsSummaryStatesNoZeroClause: a corpus whose only fund-declaring
+// rule prints fund numbers reports that arm alone.
+func TestTheRowFundsSummaryStatesNoZeroClause(t *testing.T) {
+	if got := heldLines(62, 0, 62); strings.Contains(got, "0 row anchors") ||
+		!strings.HasPrefix(got, "62 printed fund numbers") {
+		t.Errorf("heldLines(62, 0, 62) = %q", got)
+	}
+	if got := heldLines(180, 78, 62); !strings.Contains(got, "118 row anchors") ||
+		!strings.Contains(got, "; and 62 printed fund numbers") {
+		t.Errorf("heldLines(180, 78, 62) = %q", got)
 	}
 }

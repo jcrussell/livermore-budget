@@ -119,7 +119,8 @@ func (*cutsTieAlongTheLattice) Run(_ context.Context, s *Subject) (Result, error
 			outside = append(outside, c.Name)
 		}
 	}
-	for _, f := range structure.ValidateOutside(s.Facts, cuts) {
+	refuted := structure.ValidateOutside(s.Facts, cuts)
+	for _, f := range refuted {
 		findings = append(findings, finding("outside", "%s", f))
 	}
 
@@ -226,7 +227,7 @@ func (*cutsTieAlongTheLattice) Run(_ context.Context, s *Subject) (Result, error
 	if bySplit > 0 {
 		summary += fmt.Sprintf(". %d pair(s) held only by a split", bySplit)
 	}
-	if len(outside) > 0 {
+	if len(outside) > 0 && len(refuted) == 0 {
 		summary += fmt.Sprintf(". %s outside the reference, its funds carried by no other cut, and compared with none",
 			joinComma(outside))
 	}

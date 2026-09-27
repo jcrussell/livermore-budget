@@ -145,6 +145,9 @@ func TestASplitIsRefusedWhenItsSidesCannotBearIt(t *testing.T) {
 		{"a side outside the reference", func(s *structure.Split) {
 			s.Parts = []string{s.Parts[0], "cip-funds"}
 		}, "outside the reference"},
+		{"a side with a fund-group footprint", func(s *structure.Split) {
+			s.Parts = []string{s.Parts[0], "general-fund-departments"}
+		}, "covers fund groups"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			s := splitNamed(t, transferOutSplit)

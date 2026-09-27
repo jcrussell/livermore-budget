@@ -1294,8 +1294,7 @@ func transferCaveat(h Headline, col Column, links []Link, cip cipTransfers) Cave
 				"Transfers out (%s) %s transfers in (%s), and the %s difference is not an "+
 					"unexplained gap: it is what the operating funds transfer to the Capital "+
 					"Improvement Program, which Budget Book p222 lists fund by fund and whose "+
-					"funds are not on this chart. The Transfers Out mark opens into p76's "+
-					"transfers and p222's together.%s",
+					"funds are not on this chart.%s",
 				dollars(out), verb, dollars(in), dollars(residual), stated),
 			AppliesTo: targets,
 		}

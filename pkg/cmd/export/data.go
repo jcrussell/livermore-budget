@@ -726,7 +726,7 @@ func views(built result) []export.View {
 	// payers' funds are on the left and each receiver's end on the right, every
 	// one of them folded into transfers/out. Role transfer_out partitions tier 5
 	// with object-category's object_category. No gap: the legs sum to the
-	// spine's figure. Both columns are capped, for some thirty receivers.
+	// spine's figure. Both columns are capped.
 	if opensInto(export.PrimaryProjection, project.TransfersOutProjection, projections) {
 		spine.Steps = append(spine.Steps, []export.DrillStep{
 			{

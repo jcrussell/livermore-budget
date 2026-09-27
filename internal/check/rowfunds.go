@@ -151,7 +151,9 @@ func (*rowFundsMatchTheirAnchors) Run(_ context.Context, s *Subject) (Result, er
 				if row.Counterpart != nil {
 					far = row.Counterpart.Fund
 				}
-				if near == 0 && far == 0 {
+				// A fund-number rule declares every row's label a fund, so a row
+				// declaring none is read, not skipped.
+				if near == 0 && far == 0 && !ru.RowLabelsAreFundNumbers {
 					continue
 				}
 
@@ -168,7 +170,11 @@ func (*rowFundsMatchTheirAnchors) Run(_ context.Context, s *Subject) (Result, er
 						want    int
 						end     string
 					}{{row.Label, near, "receives"}}
-					tail, _, _ := strings.Cut(row.LabelTail, " ")
+					// Split as the resolver's findFields splits it.
+					tail := ""
+					if f := strings.Fields(row.LabelTail); len(f) > 0 {
+						tail = f[0]
+					}
 					if far != 0 {
 						ends = append(ends, struct {
 							printed string
@@ -419,7 +425,7 @@ func (*rowFundsMatchTheirAnchors) Run(_ context.Context, s *Subject) (Result, er
 		// false for the bare-label rows the moment they became subjects. A verb
 		// phrase carries direction and this check reads it; a bare fund name
 		// carries none and it must not claim to.
-		held:     heldLine(subjects-numbered, bare) + numberedClause(numbered) + unanchoredNote,
+		held:     heldLines(subjects, bare, numbered) + unanchoredNote,
 		nothing:  nothing,
 		findings: findings,
 	}.result(), nil
@@ -460,14 +466,18 @@ func heldLine(subjects, bare int) string {
 	}
 }
 
-// numberedClause states the fund-number arm's claim, or nothing where no rule
-// declares row_labels_are_fund_numbers.
-func numberedClause(numbered int) string {
-	if numbered == 0 {
-		return ""
+// heldLines is heldLine with the fund-number arm's claim beside it, each
+// clause omitted where its arm resolved nothing.
+func heldLines(subjects, bare, numbered int) string {
+	numberedClause := fmt.Sprintf("%d printed fund numbers under row_labels_are_fund_numbers, "+
+		"each the fund its row declares at the end whose column prints it", numbered)
+	switch {
+	case numbered == 0:
+		return heldLine(subjects, bare)
+	case subjects == numbered:
+		return numberedClause
 	}
-	return fmt.Sprintf("; and %d printed fund numbers under row_labels_are_fund_numbers, each "+
-		"the fund its row declares at the end whose column prints it", numbered)
+	return heldLine(subjects-numbered, bare) + "; and " + numberedClause
 }
 
 // anchorHasVerbPhrase reports whether a printed anchor opens with one of the

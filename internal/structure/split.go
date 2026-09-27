@@ -91,6 +91,10 @@ func ValidateSplits(cuts []Cut, splits []Split) error {
 			if c.Outside != "" {
 				return fmt.Errorf("split %q: %q is outside the reference and is compared with no cut", s.Name, c.Name)
 			}
+			if len(c.FundGroups) > 0 {
+				return fmt.Errorf("split %q: %q covers fund groups %v only, and a split sums every side over every group",
+					s.Name, c.Name, c.FundGroups)
+			}
 			if c.Level != s.At && !Refines(c.Level, s.At) {
 				return fmt.Errorf("split %q: %q is at %q, which does not refine %q", s.Name, c.Name, c.Level, s.At)
 			}

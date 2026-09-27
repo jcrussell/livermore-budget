@@ -935,8 +935,8 @@ func (*nodeHierarchyWellFormed) Run(_ context.Context, s *Subject) (Result, erro
 		subjects: parented,
 		unit:     "parented nodes",
 		held: fmt.Sprintf("%d parented nodes across %d document(s) with a hierarchy, each "+
-			"resolving to a node of its own document at a strictly coarser tier, none its "+
-			"own ancestor and none folding into a flow endpoint its own document draws a "+
+			"resolving to a node of its own document at a strictly coarser tier or into a "+
+			"container endpoint at its own, none its own ancestor and none folding into a flow endpoint its own document draws a "+
 			"flow at; %d fold into an endpoint drawn as a container", parented, docs, endpointParents),
 		nothing: "no node carries a parent, so no document publishes a hierarchy to be " +
 			"well-formed",
