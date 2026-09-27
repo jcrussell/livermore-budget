@@ -4,9 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jcrussell/livermore-budget/internal/mapping"
-
 	"github.com/jcrussell/livermore-budget/internal/corpus"
+	"github.com/jcrussell/livermore-budget/internal/mapping"
 )
 
 // TestFundNameInReadsBothPrintedShapes pins the two forms this corpus prints and
@@ -396,5 +395,15 @@ func TestAWrappedTotalIsClaimedUnderItsWholeLabel(t *testing.T) {
 	headOnly := map[string]map[claimKey]bool{docID: {{page: 175, label: "Total County Meas BB-"}: true}}
 	if got := unclaimedFundTotals(spaced, pages, headOnly); len(got) != 1 {
 		t.Errorf("findings = %v, want the total unclaimed: the head alone names no total", got)
+	}
+	// Where the head is itself a name of the same fund -- the registry prints
+	// fund 300 as "Open Space" and "Open Space Acquisition & Mgmt" -- a claim of
+	// the head is still not a claim of the wrapped total.
+	aliased := &Subject{Vocabulary: s.Vocabulary, Docs: map[string]*corpus.Doc{docID: inlinePagesDoc(t, docID,
+		map[int]string{181: "      Total Open Space                 $55,295         $1,000\n      Acquisition & Mgmt\n"})}}
+	sameFund := map[string]map[claimKey]bool{docID: {{page: 181, label: "Total Open Space"}: true}}
+	held := unclaimedFundTotals(aliased, map[string]map[int]bool{docID: {181: true}}, sameFund)
+	if len(held) != 1 || !strings.Contains(held[0].Detail, "fund 300") {
+		t.Errorf("findings = %v, want fund 300's wrapped total unclaimed: its head alone is claimed", held)
 	}
 }
