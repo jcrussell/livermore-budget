@@ -384,3 +384,27 @@ func TestTheAntichainIsOverMoneyBothCutsPrintAndNotOverLevelsAlone(t *testing.T)
 		t.Fatalf("NewView over the spine beside the departments = %v, want refused: their kinds meet", err)
 	}
 }
+
+// TestDisjointFootprintsAreSummableAndTheGeneralFundIsNot is what lets
+// fund-flows draw pp.172-183 beside pp.167-170: fund-expenditures refines
+// nothing general-fund-departments prints because their fund groups are
+// disjoint, while p172's General Fund, which pp.167-170 decompose, is refused.
+func TestDisjointFootprintsAreSummableAndTheGeneralFundIsNot(t *testing.T) {
+	identities := structure.BudgetBookIdentities()
+	gd := allCutNamed(t, "general-fund-departments")
+	fe, gc := allCutNamed(t, "fund-expenditures"), allCutNamed(t, "general-fund-by-category")
+	if !structure.Refines(gd.Level, fe.Level) {
+		t.Fatalf("%s no longer refines %s; this pair no longer witnesses the footprint", gd.Level, fe.Level)
+	}
+	if slices.Contains(fe.FundGroups, "general") || len(fe.FundGroups) == 0 {
+		t.Fatalf("fund-expenditures' footprint is %v; it must name the groups and leave out general", fe.FundGroups)
+	}
+	if _, err := structure.NewView("drill", []structure.Cut{gd, fe}, identities, nil); err != nil {
+		t.Errorf("NewView over the divisions beside every other fund's objects = %v, want admitted", err)
+	}
+	if _, err := structure.NewView("twice", []structure.Cut{gd, gc}, identities, nil); err == nil ||
+		!strings.Contains(err.Error(), "not an antichain") {
+		t.Errorf("NewView over the divisions beside p172's General Fund = %v, want refused: "+
+			"the same money at two grains", err)
+	}
+}

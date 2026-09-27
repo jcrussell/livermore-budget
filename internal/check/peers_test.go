@@ -33,7 +33,7 @@ func TestTheCommittedPeersOverlapOnlyByDeclaredIdentity(t *testing.T) {
 		`revenue-detail + transfers-detail at fund-by-category: 22 shared cell(s), 22 under identity "a-transfer-in-is-printed-at-both-ends" carrying $42183495.00 on each side`,
 		"acfr-general-fund-summary + acfr-fund-balances/general at fund-group-by-category: 0 shared cell(s)",
 		"acfr-changes-in-fund-balances + acfr-fund-balances/other-governmental at category: 0 shared cell(s)",
-		"8 pair(s) at one level refused: spine/acfr-general-fund-summary, spine/acfr-fund-balances/general, revenue-detail/cip-transfers-out, revenue-detail/fund-expenditures, transfers-detail/fund-expenditures, cip-transfers-out/cip-funds, cip-transfers-out/fund-expenditures, cip-funds/fund-expenditures",
+		"13 pair(s) at one level refused: spine/acfr-general-fund-summary, spine/acfr-fund-balances/general, revenue-detail/cip-transfers-out, revenue-detail/general-fund-by-category, revenue-detail/fund-expenditures, transfers-detail/general-fund-by-category, transfers-detail/fund-expenditures, cip-transfers-out/cip-funds, cip-transfers-out/general-fund-by-category, cip-transfers-out/fund-expenditures, cip-funds/general-fund-by-category, cip-funds/fund-expenditures, general-fund-by-category/fund-expenditures",
 	} {
 		if !strings.Contains(res.Summary, want) {
 			t.Errorf("summary does not say %q", want)

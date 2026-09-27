@@ -26,15 +26,17 @@ func TestTheCommittedCutsTieAlongTheLattice(t *testing.T) {
 		t.Fatalf("status = %s, findings:\n  %v", res.Status, res.Findings)
 	}
 	for _, want := range []string{
-		"10 comparison(s) of 13 cut(s)",
+		"11 comparison(s) of 14 cut(s)",
 		"departmentwide ~ funding-sources at department: 39 cells over FY2024 actual, FY2025 revised, FY2026 adopted, FY2027 adopted",
 		"general-fund-departments ~ funding-sources at department: 42 cells over FY2024 actual, FY2025 revised, FY2026 adopted, FY2027 adopted",
 		"revenue-detail -> spine at fund-group-by-category",
 		"transfers-detail -> spine at fund-group-by-category",
 		"general-fund-departments -> spine at fund-group-by-category",
-		// pp.172-183 meet the spine in its two columns and pp.167-170 in all four.
-		"fund-expenditures -> spine at fund-group-by-category: 49 cells over FY2026 adopted, FY2027 adopted, 10 one-sided at zero, 1 held apart",
-		"general-fund-departments -> fund-expenditures at fund-by-category: 15 cells over FY2024 actual, FY2025 revised, FY2026 adopted, FY2027 adopted, 0 one-sided at zero, 1 held apart",
+		// pp.172-183 meet the spine in its two columns, and p172's General Fund
+		// meets pp.167-170 in all four.
+		"general-fund-by-category -> spine at fund-group-by-category: 8 cells over FY2026 adopted, FY2027 adopted, 0 one-sided at zero",
+		"fund-expenditures -> spine at fund-group-by-category: 41 cells over FY2026 adopted, FY2027 adopted, 10 one-sided at zero, 1 held apart",
+		"general-fund-departments -> general-fund-by-category at fund-by-category: 15 cells over FY2024 actual, FY2025 revised, FY2026 adopted, FY2027 adopted, 0 one-sided at zero, 1 held apart",
 		"departmentwide ~ spine at category",
 		"funding-sources ~ spine at fund-group",
 		// The split takes transfers out, so p76 meets the spine on transfers in.
@@ -42,9 +44,9 @@ func TestTheCommittedCutsTieAlongTheLattice(t *testing.T) {
 		"transfers-detail + cip-transfers-out -> spine at fund-group: 12 cells over FY2026 adopted, FY2027 adopted, 2 one-sided at zero",
 		"1 pair(s) held only by a split",
 		"cip-funds outside the reference, its funds carried by no other cut, and compared with none",
-		// 78 pairs of 13 cuts: 7 compared, 12 with the outside cut, 1 held
+		// 91 pairs of 14 cuts: 8 compared, 13 with the outside cut, 1 held
 		// only by the split, 2 held by a declared tie, and these.
-		"56 pair(s) no comparison or tie relates",
+		"67 pair(s) no comparison or tie relates",
 	} {
 		if !strings.Contains(res.Summary, want) {
 			t.Errorf("summary does not say %q", want)

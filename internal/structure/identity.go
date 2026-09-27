@@ -234,8 +234,9 @@ type View struct {
 // NewView refuses a set that is not summable: a cut named twice, an identity
 // joining two of its cuts with no reading, a reading for an identity joining
 // none, or two cuts one of which decomposes the other. The antichain is over
-// kinds both print, not levels alone: revenue by fund and expenditure by
-// fund, department and object are summable together.
+// money both print, not levels alone: revenue by fund and expenditure by
+// fund, department and object are summable together, and so are two cuts
+// whose declared fund groups are disjoint.
 func NewView(name string, cuts []Cut, identities []Identity, readings map[string]string) (View, error) {
 	names := map[string]Cut{}
 	for _, c := range cuts {
@@ -246,7 +247,7 @@ func NewView(name string, cuts []Cut, identities []Identity, readings map[string
 	}
 	for i, a := range cuts {
 		for _, b := range cuts[i+1:] {
-			if !kindsMeet(a, b) {
+			if !kindsMeet(a, b) || !footprintsMeet(a, b) {
 				continue
 			}
 			fine, coarse := a, b
@@ -344,6 +345,20 @@ func ViewOf(name string, scopes []string, readings map[string]string) (View, err
 }
 
 func kindsMeet(a, b Cut) bool { return len(sharedKinds(a, b)) > 0 }
+
+// footprintsMeet is false only when both cuts declare fund groups and share
+// none. An empty footprint is every group, so it meets anything.
+func footprintsMeet(a, b Cut) bool {
+	if len(a.FundGroups) == 0 || len(b.FundGroups) == 0 {
+		return true
+	}
+	for _, g := range a.FundGroups {
+		if contains(b.FundGroups, g) {
+			return true
+		}
+	}
+	return false
+}
 
 func sharedKinds(a, b Cut) []mapping.Kind {
 	var out []mapping.Kind

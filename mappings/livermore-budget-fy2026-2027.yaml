@@ -4865,16 +4865,18 @@ rules:
   # CITYWIDE EXPENDITURES BY FUND AND OBJECT, Budget Book pp.172-183
   # (fisc-5gk.7). One rule per fund, rows only where the page prints them.
   #
-  # The General Fund rule is the same money as pp.167-170's divisions, in its
-  # own scope so that no view sums the two; the cut containment is what holds
-  # them equal.
+  # The General Fund rule is the same money as pp.167-170's divisions, so it is
+  # its own scope, general-fund-by-category: a view drawing the divisions can
+  # take every other fund from expenditure-by-fund without counting the General
+  # Fund twice, and the cut containment holds the two General Fund schedules
+  # equal.
   # ==========================================================================
 
   # --------------------------------------------------------------------------
   - id: fund-exp-general-fund
     kind: expenditure
     basis: adopted
-    scope: expenditure-by-fund
+    scope: general-fund-by-category
     grain: fund-by-category
     units: dollars
     total_row: "Total General Fund"

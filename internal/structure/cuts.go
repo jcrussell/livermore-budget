@@ -67,14 +67,25 @@ func BudgetBookCuts() []Cut {
 			Bases:          budgetBookDetail,
 		},
 		{
-			// pp.172-183, expenditure by fund and object for every operating
-			// fund. Its General Fund is pp.167-170's money, which this cut's
-			// containment of general-fund-departments holds equal.
-			Name:  "fund-expenditures",
-			Scope: "expenditure-by-fund",
-			Level: LevelFundByCategory,
-			Kinds: []mapping.Kind{mapping.KindExpenditure},
-			Bases: budgetBookDetail,
+			// p172, the General Fund's expenditure by object: pp.167-170's
+			// money a grain coarser, held equal by their containment.
+			Name:       "general-fund-by-category",
+			Scope:      "general-fund-by-category",
+			Level:      LevelFundByCategory,
+			Kinds:      []mapping.Kind{mapping.KindExpenditure},
+			FundGroups: []string{"general"},
+			Bases:      budgetBookDetail,
+		},
+		{
+			// pp.173-183, expenditure by fund and object for every other
+			// operating fund. The footprint is what lets fund-flows draw it
+			// beside general-fund-departments.
+			Name:       "fund-expenditures",
+			Scope:      "expenditure-by-fund",
+			Level:      LevelFundByCategory,
+			Kinds:      []mapping.Kind{mapping.KindExpenditure},
+			FundGroups: []string{"enterprise", "capital", "debt-service", "permanent", "special-revenue", "internal-service"},
+			Bases:      budgetBookDetail,
 		},
 		{
 			// pp.85-125, expenditure by department and object across every
@@ -270,7 +281,7 @@ func BudgetBookExceptions() []Exception {
 		},
 		{
 			Name: "general-fund-departments-rounds-services-and-supplies-2024",
-			Cut:  "general-fund-departments", Against: "fund-expenditures", At: LevelFundByCategory,
+			Cut:  "general-fund-departments", Against: "general-fund-by-category", At: LevelFundByCategory,
 			Cells: []Pin{{Year: 2024, Basis: "actual",
 				Coords: map[Axis]string{AxisFundGroup: "general", AxisFund: "100", AxisCategory: "services-and-supplies"},
 				Cut:    present(5445217000), Against: present(5445217100)}},
