@@ -162,7 +162,7 @@ func (*ruleFundsMatchTheirHeadings) Run(_ context.Context, s *Subject) (Result, 
 			// readable, so a mapping error would surface as a fund-registry
 			// finding.
 			for j := range ru.Parts {
-				set(claimed, f.DocID, ru.Parts[j].Page, ru.TotalRow)
+				set(claimed, f.DocID, ru.Parts[j].Page, ru.WrappedTotalLabel())
 			}
 
 			fund, mixed := declaredFund(ru)
@@ -352,12 +352,19 @@ func unclaimedFundTotals(s *Subject, pages map[string]map[int]bool,
 					continue
 				}
 				entry, err := s.Vocabulary.FundByLabel(name)
-				// A total wrapping onto the next line names its fund only
-				// rejoined, as a rule's total_row_tail does.
-				if err != nil && i+1 < len(lines) {
-					if tail := strings.TrimSpace(lines[i+1]); tail != "" {
-						if joined, ok := fundNameIn(mapping.JoinWrapped(label, tail)); ok {
-							entry, err = s.Vocabulary.FundByLabel(joined)
+				// A total wrapping onto the next line names its fund rejoined,
+				// as a rule's total_row_tail does, and the rejoined name wins
+				// where it is one: "Total Water" over "Replacement" is 642,
+				// not the 640 its head alone names.
+				if i+1 < len(lines) {
+					// A fragment is words with no column gap; a line with one is a
+					// row of its own, figures and all.
+					if tail := strings.TrimSpace(lines[i+1]); tail != "" && !strings.Contains(tail, "  ") {
+						whole := mapping.JoinWrapped(label, tail)
+						if joined, ok := fundNameIn(whole); ok {
+							if e, jerr := s.Vocabulary.FundByLabel(joined); jerr == nil {
+								entry, err, label = e, nil, whole
+							}
 						}
 					}
 				}

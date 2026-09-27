@@ -3644,8 +3644,10 @@ export function nextBudget(delta) {
 export function stepColumns(delta) {
   const want = nextBudget(delta);
   if (want === null) return;
-  // Stepping back to what the viewport's own answer draws releases the override.
-  const released = drawnColumns(want) === drawnColumns(viewportColumns());
+  // Stepping back to the viewport's own budget releases the override. The
+  // budget and not what this chart draws: a four-column chart draws the same
+  // at four and five, and the reader's four still matters on a wider one.
+  const released = want === viewportColumns();
   const override = columnOverride;
   columnOverride = released ? null : want;
   // A REFUSED STEP IS NOT THE READER'S CHOICE: kept, it would fail on every visit.

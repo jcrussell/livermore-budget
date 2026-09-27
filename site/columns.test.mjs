@@ -37,7 +37,7 @@ describe("the viewport, the reader and the stored choice", () => {
     await settle();
     const released = app.columnOverride;
     const cleared = window.localStorage.getItem("fisc-columns");
-    t.diagnostic(`a 2000px window opens the fund window at ${openedAt} columns with (more/fewer) disabled ${atCeiling}; one press of the minus gives ${chosen}, stored as ${JSON.stringify(saved)}, with disabled ${atFloor}; narrowing to 800px leaves ${narrowed} and widening back leaves ${held}; stepping back up clears the override to ${released} and the key to ${JSON.stringify(cleared)}`);
+    t.diagnostic(`a 2000px window opens the fund window at ${openedAt} columns with (more/fewer) disabled ${atCeiling}; one press of the minus gives ${chosen}, stored as ${JSON.stringify(saved)}, with disabled ${atFloor}; narrowing to 800px leaves ${narrowed} and widening back leaves ${held}; stepping back up sets the override to ${released} and the key to ${JSON.stringify(cleared)}`);
     assert.equal(openedAt, 5);
     assert.equal(atCeiling, "true/false");
     assert.equal(chosen, 3);
@@ -45,8 +45,10 @@ describe("the viewport, the reader and the stored choice", () => {
     assert.equal(atFloor, "false/true");
     assert.equal(narrowed, 3);
     assert.equal(held, 3);
-    assert.equal(released, null);
-    assert.equal(cleared, null);
+    // Four draws this chart whole, but it is not the viewport's budget, so the
+    // reader's choice is kept for the five-column windows (fisc-bjud).
+    assert.equal(released, 4);
+    assert.equal(cleared, "4");
   });
   test("the page hands the stylesheet the width its widest chart is laid out at", async (t) => {
     const { app, document } = await bootedApp();

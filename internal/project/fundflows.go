@@ -141,7 +141,7 @@ type FundFlowsMetadata struct {
 //	          |  one link per netted (department, category) cell
 //	tier 5  expenditure/<division>/<object>   parent = dept/<division>
 //	tier 5  expenditure/fund/<n>/<object>     parent = fund/<n>, one link per
-//	          netted (fund, category) cell of pp.172-183, from the fund itself
+//	          netted (fund, category) cell of pp.173-183, from the fund itself
 //
 // MIXED GRAIN IS UNAVOIDABLE: pp.167-170 are General Fund only, so every other
 // fund reaches its object categories with no division between (fisc-gkv).
@@ -431,7 +431,7 @@ func (f *fundFlows) Document(facts []fact.Fact, o Options) (*FundFlowsDocument, 
 		})
 	}
 
-	// Tier 3 -> 5, one link per pp.172-183 cell, from the fund itself.
+	// Tier 3 -> 5, one link per pp.173-183 cell, from the fund itself.
 	for _, k := range sortedFundExpKeys(byFund) {
 		c := byFund[k]
 		if c.cents == 0 {
@@ -554,9 +554,13 @@ func fundFlowsCaveats(twice int, nodes []Node) []Caveat {
 			Summary: "Only the General Fund opens into divisions; every other fund's spending " +
 				"goes straight to its object categories.",
 			Text: "Budget Book pp.167-170 break the General Fund down by division and then by " +
-				"object category. pp.172-183 print every other fund by object category alone, " +
+				"object category. pp.173-183 print every other fund by object category alone, " +
 				"with no division, so their spending is drawn from the fund straight to its " +
-				"categories and the division column holds the General Fund's alone.",
+				"categories and the division column holds the General Fund's alone. The " +
+				"revenue and spending schedules are read side by side and do not balance " +
+				"fund by fund: a fund pp.127-140 print revenue for and pp.173-183 print no " +
+				"spending for is drawn with money arriving and none leaving, and one that " +
+				"spends with no printed revenue with money leaving and none arriving.",
 			// The groups drawn without divisions, and fund/100, the exception.
 			AppliesTo: append(sortedSet(direct), prefixFund+strconv.Itoa(generalFund)),
 		})
@@ -566,7 +570,7 @@ func fundFlowsCaveats(twice int, nodes []Node) []Caveat {
 			ID: "some-funds-show-no-spending",
 			// The count is the document's: columns differ in which groups stop.
 			Summary: fmt.Sprintf("The %s money ends at their funds.", plural(len(stopped), "fund group")),
-			Text: fmt.Sprintf("Budget Book pp.167-170 and pp.172-183 print no spending in this "+
+			Text: fmt.Sprintf("Budget Book pp.167-170 and pp.173-183 print no spending in this "+
 				"column for the %s funds, so their money is drawn into the fund and no further.",
 				plural(len(stopped), "fund group")),
 			AppliesTo: stopped,
@@ -585,7 +589,7 @@ func plural(n int, noun string) string {
 
 // spendingSides is the fund groups this document draws spending for:
 // divided, a division beneath one of its funds (pp.167-170), and direct, an
-// object category hung from one of its funds itself (pp.172-183).
+// object category hung from one of its funds itself (pp.173-183).
 //
 // The caveats' counts and their marks all come from here, so they agree.
 func spendingSides(nodes []Node) (divided, direct map[string]bool) {
@@ -659,7 +663,7 @@ type expKey struct {
 	category string
 }
 
-// fundExpKey addresses an expenditure cell of pp.172-183: what a fund other
+// fundExpKey addresses an expenditure cell of pp.173-183: what a fund other
 // than the General Fund spends, by object.
 type fundExpKey struct {
 	fundGroup string
@@ -758,7 +762,7 @@ func (f *fundFlows) netFundFlows(facts []fact.Fact) (map[revKey]*cellSum, map[ex
 			if fa.Category == "" || fa.Fund == nil || fa.FundGroup == "" {
 				return nil, nil, nil, cmdutil.WithHint(
 					fmt.Errorf("fund-flows: fact %s names no category, fund or fund group", fa.ID),
-					"pp.172-183 draw a fund into its object categories, so a fact missing "+
+					"pp.173-183 draw a fund into its object categories, so a fact missing "+
 						"either end has no link to be")
 			}
 			add(byFund, fundExpKey{fundGroup: fa.FundGroup, fund: *fa.Fund, category: fa.Category}, fa)
@@ -894,7 +898,7 @@ func (*fundFlows) objectEndpoint(division, category string) endpoint {
 		tier: tierObjectCategory, role: roleObjectCategory}
 }
 
-// fundObjectEndpoint is a tier-5 node of pp.172-183, under the fund that
+// fundObjectEndpoint is a tier-5 node of pp.173-183, under the fund that
 // spends it: ReachOf draws a node only beneath the one opened, so a bare
 // expenditure/<object> shared by every fund would reach no group's window.
 func fundObjectEndpoint(fund int, category string) endpoint {

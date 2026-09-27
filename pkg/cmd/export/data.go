@@ -541,7 +541,7 @@ func views(built result) []export.View {
 				// and the object categories they spend on. Only the General Fund fills tier
 				// 4 (pp.167-170), so other groups' rungs answer it with no ids and the
 				// client drops the column (fisc-84y5); every group fills tier 5, the General
-				// Fund through its divisions and every other fund from pp.172-183.
+				// Fund through its divisions and every other fund from pp.173-183.
 				Tiers: []int{0, 2, 3, 4, 5},
 				Widen: []int{4, 5},
 				// Special-revenue's 31-32 funds fold to 8 with no sub-pixel ribbon; uncapped,
@@ -579,7 +579,7 @@ func views(built result) []export.View {
 					"there is room for more columns, the General Fund's divisions " +
 					"from pp.167-170 are drawn beyond its funds, and beyond them the " +
 					"object categories each fund spends on: the General Fund's through " +
-					"its divisions, every other fund's straight from pp.172-183, which " +
+					"its divisions, every other fund's straight from pp.173-183, which " +
 					"print no division.",
 			},
 			{

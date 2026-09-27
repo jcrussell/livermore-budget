@@ -1413,7 +1413,7 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 				"Where there is room for more columns, the General Fund's divisions " +
 				"from pp.167-170 are drawn beyond its funds, and beyond them the " +
 				"object categories each fund spends on: the General Fund's through " +
-				"its divisions, every other fund's straight from pp.172-183, which " +
+				"its divisions, every other fund's straight from pp.173-183, which " +
 				"print no division.",
 		},
 		{

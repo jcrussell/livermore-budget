@@ -238,9 +238,11 @@ func TestAWrappedTotalNamesItsFundWithItsTail(t *testing.T) {
 	if !found {
 		t.Fatalf("no rule %s in the committed mappings", id)
 	}
+	// Two findings, one per clause: the rule is anchored to nothing, and the
+	// whole printed total is claimed by nothing.
 	res = resultFor(t, runOne(t, s, &ruleFundsMatchTheirHeadings{}), "rule-funds-match-their-headings")
-	if len(res.Findings) != 1 || res.Findings[0].Subject != id {
-		t.Fatalf("findings = %v, want exactly %s's", res.Findings, id)
+	if len(res.Findings) != 2 || res.Findings[0].Subject != id || !strings.Contains(res.Findings[1].Subject, "p175") {
+		t.Fatalf("findings = %v, want %s's and p175's", res.Findings, id)
 	}
 	if want := `"Total County Meas BB-"`; !strings.Contains(res.Findings[0].Detail, want) {
 		t.Errorf("finding does not quote the truncated label %s: %v", want, res.Findings[0])
@@ -276,5 +278,32 @@ func TestAWrappedTotalNobodyMapsIsReported(t *testing.T) {
 	f := res.Findings[0]
 	if !strings.Contains(f.Subject, "p181") || !strings.Contains(f.Detail, "fund 300") {
 		t.Errorf("finding %v does not name p181 and fund 300", f)
+	}
+}
+
+// TestAWrappedTotalWhoseHeadIsAFundNamesTheWholeFund prints "Total Water"
+// with the figures and "Replacement" beneath: the head alone names fund 640,
+// the whole line 642. A 640 rule's claim must not silence the 642 section.
+func TestAWrappedTotalWhoseHeadIsAFundNamesTheWholeFund(t *testing.T) {
+	const docID = "livermore-budget-fy2026-2027"
+	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	inline := &Subject{
+		Vocabulary: s.Vocabulary,
+		Docs: map[string]*corpus.Doc{docID: inlinePagesDoc(t, docID, map[int]string{
+			174: "      Total Water                  $1,000         $2,000\n      Replacement\n",
+		})},
+	}
+	pages := map[string]map[int]bool{docID: {174: true}}
+	claimed := map[string]map[claimKey]bool{docID: {{page: 174, label: "Total Water"}: true}}
+	got := unclaimedFundTotals(inline, pages, claimed)
+	if len(got) != 1 || !strings.Contains(got[0].Detail, "fund 642") {
+		t.Fatalf("findings = %v, want the unclaimed Water Replacement total", got)
+	}
+	claimed[docID][claimKey{page: 174, label: "Total Water Replacement"}] = true
+	if got := unclaimedFundTotals(inline, pages, claimed); len(got) != 0 {
+		t.Errorf("findings = %v, want none once the whole label is claimed", got)
 	}
 }

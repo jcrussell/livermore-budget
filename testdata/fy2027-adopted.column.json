@@ -6002,7 +6002,7 @@
     {
      "id": "only-the-general-fund-has-divisions",
      "summary": "Only the General Fund opens into divisions; every other fund's spending goes straight to its object categories.",
-     "text": "Budget Book pp.167-170 break the General Fund down by division and then by object category. pp.172-183 print every other fund by object category alone, with no division, so their spending is drawn from the fund straight to its categories and the division column holds the General Fund's alone.",
+     "text": "Budget Book pp.167-170 break the General Fund down by division and then by object category. pp.173-183 print every other fund by object category alone, with no division, so their spending is drawn from the fund straight to its categories and the division column holds the General Fund's alone. The revenue and spending schedules are read side by side and do not balance fund by fund: a fund pp.127-140 print revenue for and pp.173-183 print no spending for is drawn with money arriving and none leaving, and one that spends with no printed revenue with money leaving and none arriving.",
      "applies_to": [
       "fund-group/capital",
       "fund-group/debt-service",

@@ -408,3 +408,22 @@ func TestDisjointFootprintsAreSummableAndTheGeneralFundIsNot(t *testing.T) {
 			"the same money at two grains", err)
 	}
 }
+
+// TestAFactOutsideItsCutsFootprintIsInNoCut is what makes a declared footprint
+// more than a promise: a pp.173-183 fact filed under the General Fund is
+// admitted by no cut, and coverage reports it, rather than fund-flows summing
+// it beside pp.167-170 while NewView trusts the declaration.
+func TestAFactOutsideItsCutsFootprintIsInNoCut(t *testing.T) {
+	facts := committedFacts(t)
+	i := slices.IndexFunc(facts, func(f fact.Fact) bool { return f.Scope == "expenditure-by-fund" })
+	if i < 0 {
+		t.Fatal("no expenditure-by-fund fact in the committed store")
+	}
+	stray := facts[i]
+	hundred := 100
+	stray.FundGroup, stray.Fund = "general", &hundred
+	findings, _ := structure.Covered([]fact.Fact{stray}, structure.AllCuts(), structure.BudgetBookResidue())
+	if len(findings) == 0 || !strings.Contains(strings.Join(findings, "\n"), "admitted by no cut") {
+		t.Fatalf("findings = %v, want the stray fact admitted by no cut", findings)
+	}
+}

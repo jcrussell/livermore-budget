@@ -98,7 +98,7 @@ type drawnTier struct {
 	Carried []string `json:"carried,omitempty"`
 	// Needs is, for each id of this column whose every ribbon leads into a
 	// widened column, the widened tier it is drawn with: a viewport that drops
-	// that column leaves the id no ribbon to be drawn by. pp.172-183 print
+	// that column leaves the id no ribbon to be drawn by. pp.173-183 print
 	// spending for funds pp.127-140 print no revenue for, so in a group's
 	// window such a fund reaches only the object categories.
 	Needs map[string]int `json:"needs,omitempty"`
