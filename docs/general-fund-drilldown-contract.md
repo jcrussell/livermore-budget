@@ -146,21 +146,12 @@ at each adjacent tier pair it can be drawn at.
 
 ## `metadata`
 
-Key order, frozen and pinned by `TestTheFundFlowsMetadataKeyOrderMatchesTheContract`:
+The block is every graph document's, in the key order
+`TestTheGraphMetadataKeyOrderIsFrozen` pins; this document is the one that
+lists three `scopes`, and it carries no `headline`.
 
-```
-generated_by, scopes, currency, units,
-fiscal_year, fiscal_year_label, basis, sources, counts, caveats
-```
-
-`scopes` is a **list**, and it is the only key that differs from the envelope the
-spine and the trends document carry. A document of two schedules writing
-`scopes[0]` into a singular `scope` would publish one schedule as the whole of
-it; `TestTheMultiScopeEnvelopeIsTheEnvelopeWithOneKeyPluralised` pins that this
-is the *only* difference, so a reader who knows where `generated_by` and `units`
-sit in one document finds them in the other.
-
-Two scopes may sit in one document only because they are **disjoint by kind**:
+Three scopes may sit in one document only because they are **disjoint by kind**
+or by footprint:
 pp.127-140 publish revenue and `transfer_in`, pp.167-170 publish expenditure, and
 every cell key carries kind. `peers-overlap-only-by-declared-identity` asserts
 it, fails closed on any undeclared overlap, and holds a pair that restates the
@@ -170,21 +161,11 @@ overlap by $21,045,597 of FY2026 `transfer_in`, under
 
 ## `counts`
 
-**This is not the spine's `counts` block and its `facts_cited` does not mean the
-same thing.**
-
-```
-facts, facts_cited, facts_uncited, facts_cited_twice, nodes, links
-```
-
-The identity is
-
-```
-facts = facts_cited + facts_uncited
-```
-
-with no stock term, because neither schedule prints a stock row. It is stated as
-*uncited* rather than *in a zero cell* because those are not the same set here:
+The block and its identity, `facts = facts_cited + facts_uncited`, are every
+graph document's; what is particular to this one is that `facts_cited_twice`
+is not zero. An uncited fact here is a printed zero, since neither schedule
+prints a stock row. It is stated as *uncited* rather than *in a zero cell*
+because those are not the same set here:
 an expenditure fact whose own object cell nets to zero is **still carried** by
 the fund-to-department link that sums the division, since that link's value and
 its citation are both taken over every cell including the zero ones. Counting
@@ -201,7 +182,7 @@ over.** Fold within one tier pair; never across the whole graph. The count is of
 FACTS behind more than one link, so a row behind three counts once.
 
 FY2025-26: `280 = 233 + 47`, with 228 cited twice, over 238 nodes and 412 links.
-`fund-flows-counts-reconcile` re-derives all six from the published links. The
+`counts-reconcile` re-derives all six from the published links. The
 228 is 44 expenditure rows plus the 184 revenue rows that earned a flow; the 47
 that print a dash are in neither.
 

@@ -23,39 +23,6 @@ const DepartmentSpendingScope = "departmentwide-expenditures"
 // DepartmentSpendingScopes is the schedule set, as [Options.Scopes] holds it.
 func DepartmentSpendingScopes() []string { return []string{DepartmentSpendingScope} }
 
-// departmentSpendingCounts is how much of the corpus this document accounts for.
-//
-// Every printed cell is one link, so there is no facts_cited_twice.
-// facts = facts_cited + facts_uncited, every uncited fact a printed zero.
-type departmentSpendingCounts struct {
-	Facts        int `json:"facts"`
-	FactsCited   int `json:"facts_cited"`
-	FactsUncited int `json:"facts_uncited"`
-	Nodes        int `json:"nodes"`
-	Links        int `json:"links"`
-}
-
-// departmentSpendingMetadata is this document's metadata block, of one
-// schedule and one column.
-type departmentSpendingMetadata struct {
-	Envelope
-	FiscalYear      int                      `json:"fiscal_year"`
-	FiscalYearLabel string                   `json:"fiscal_year_label"`
-	Basis           string                   `json:"basis"`
-	Sources         []Source                 `json:"sources"`
-	Counts          departmentSpendingCounts `json:"counts"`
-	Caveats         []Caveat                 `json:"caveats"`
-}
-
-// DepartmentSpendingDocument is the whole published file.
-type DepartmentSpendingDocument struct {
-	SchemaVersion int                        `json:"schema_version"`
-	Projection    string                     `json:"projection"`
-	Metadata      departmentSpendingMetadata `json:"metadata"`
-	Nodes         []Node                     `json:"nodes"`
-	Links         []Link                     `json:"links"`
-}
-
 // departmentSpending draws Budget Book pp.85-125's Expenditures by Category
 // block: which divisions spend the city's money under each object category,
 // citywide and across every fund.
@@ -87,24 +54,7 @@ func (*departmentSpending) Name() string { return DepartmentSpendingProjection }
 // Slices is one Options per column the schedule carries: all four printed
 // columns, not only the two the spine publishes.
 func (*departmentSpending) Slices(facts []fact.Fact, version string) []Options {
-	seen := map[Column]bool{}
-	for i := range facts {
-		if facts[i].Scope == DepartmentSpendingScope {
-			seen[Column{FiscalYear: facts[i].FiscalYear, Basis: facts[i].Basis}] = true
-		}
-	}
-	cols := make([]Column, 0, len(seen))
-	for c := range seen {
-		cols = append(cols, c)
-	}
-	sortColumns(cols)
-	out := make([]Options, 0, len(cols))
-	for _, c := range cols {
-		out = append(out, Options{
-			Columns: []Column{c}, Scopes: DepartmentSpendingScopes(), Version: version,
-		})
-	}
-	return out
+	return columnsCarrying(facts, DepartmentSpendingScopes(), DepartmentSpendingScopes(), nil, version)
 }
 
 // Build is [Projection]'s entry point.
@@ -118,7 +68,7 @@ func (d *departmentSpending) Build(facts []fact.Fact, o Options) ([]byte, error)
 
 // Document builds the cross-tab and returns it, so `fisc verify` reads the same
 // structure `fisc export` writes rather than re-parsing the JSON.
-func (d *departmentSpending) Document(facts []fact.Fact, o Options) (*DepartmentSpendingDocument, error) {
+func (d *departmentSpending) Document(facts []fact.Fact, o Options) (*Document, error) {
 	if err := o.validate(); err != nil {
 		return nil, fmt.Errorf("department-spending options: %w", err)
 	}
@@ -144,15 +94,10 @@ func (d *departmentSpending) Document(facts []fact.Fact, o Options) (*Department
 
 	nodes := map[string]Node{}
 	links := make([]Link, 0, len(cells))
-	cited := map[string]bool{}
-	zero := map[string]bool{}
 	for _, k := range sortedSpendKeys(cells) {
 		c := cells[k]
 		if c.cents == 0 {
 			// A printed dash is a fact and is not a flow.
-			for _, id := range c.factIDs {
-				zero[id] = true
-			}
 			continue
 		}
 		src, srcErr := spendingObjectEndpoint(k)
@@ -168,9 +113,6 @@ func (d *departmentSpending) Document(facts []fact.Fact, o Options) (*Department
 		}
 		d.addNode(nodes, src)
 		d.addNode(nodes, dst)
-		for _, id := range c.factIDs {
-			cited[id] = true
-		}
 		links = append(links, Link{
 			Source: src.id, Target: dst.id, ValueCents: c.cents,
 			Kind: spendingLinkKind(k.kind), FactIDs: c.factIDs,
@@ -186,23 +128,9 @@ func (d *departmentSpending) Document(facts []fact.Fact, o Options) (*Department
 	}
 	out := sortedNodes(nodes)
 
-	// Every uncited fact must be a printed zero; anything else is money
-	// dropped in silence.
-	uncited := 0
-	for i := range selected {
-		id := selected[i].ID
-		if cited[id] {
-			continue
-		}
-		uncited++
-		if !zero[id] {
-			return nil, cmdutil.WithHint(
-				fmt.Errorf("department-spending: fact %s is carried by no link and is not a "+
-					"printed zero", id),
-				"facts = facts_cited + facts_uncited is this document's published identity, "+
-					"and a fact reaching no link for another reason is a division's spending "+
-					"dropped in silence")
-		}
+	c, uncited := tally(selected, links, len(out))
+	if err := refuseUncited(d.Name(), uncited, nil); err != nil {
+		return nil, err
 	}
 
 	cavs := departmentSpendingCaveats()
@@ -210,28 +138,20 @@ func (d *departmentSpending) Document(facts []fact.Fact, o Options) (*Department
 		return nil, fmt.Errorf("%s: %w", col, err)
 	}
 
-	return &DepartmentSpendingDocument{
+	return &Document{
 		SchemaVersion: SchemaVersion,
 		Projection:    d.Name(),
-		Metadata: departmentSpendingMetadata{
-			Envelope: Envelope{
-				GeneratedBy: o.Version,
-				Scope:       DepartmentSpendingScope,
-				Currency:    "USD",
-				Units:       "cents",
-			},
+		Metadata: Metadata{
+			GeneratedBy:     o.Version,
 			FiscalYear:      col.FiscalYear,
 			FiscalYearLabel: fiscalYearLabel(col.FiscalYear),
 			Basis:           string(col.Basis),
+			Scopes:          DepartmentSpendingScopes(),
+			Currency:        "USD",
+			Units:           "cents",
 			Sources:         sourcesOf(selected),
-			Counts: departmentSpendingCounts{
-				Facts:        len(selected),
-				FactsCited:   len(cited),
-				FactsUncited: uncited,
-				Nodes:        len(out),
-				Links:        len(links),
-			},
-			Caveats: cavs,
+			Counts:          c,
+			Caveats:         cavs,
 		},
 		Nodes: out,
 		Links: links,

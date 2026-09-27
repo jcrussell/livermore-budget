@@ -72,7 +72,6 @@ type ColumnTier struct {
 
 // ColumnSched is one printed schedule of a column.
 type ColumnSched struct {
-	// An array because fund-flows spans two scopes.
 	Scopes   []string          `json:"scopes"`
 	Headline json.RawMessage   `json:"headline,omitempty"`
 	Counts   json.RawMessage   `json:"counts,omitempty"`
@@ -128,7 +127,6 @@ type decoded struct {
 		FiscalYear      int             `json:"fiscal_year"`
 		FiscalYearLabel string          `json:"fiscal_year_label"`
 		Basis           string          `json:"basis"`
-		Scope           string          `json:"scope"`
 		Scopes          []string        `json:"scopes"`
 		GeneratedBy     string          `json:"generated_by"`
 		Headline        json.RawMessage `json:"headline"`
@@ -278,7 +276,7 @@ func ColumnsOf(projections map[string][]byte, generatedBy string) (map[string]Co
 		}
 		col.Schedules[schedule] = ColumnSched{
 			Nodes:    drawn,
-			Scopes:   scopesOf(d),
+			Scopes:   d.Metadata.Scopes,
 			Headline: d.Metadata.Headline,
 			Counts:   d.Metadata.Counts,
 			Caveats:  d.Metadata.Caveats,
@@ -307,17 +305,6 @@ var yearSuffix = regexp.MustCompile(`-(\d{4})(-actual|-revised)?$`)
 // inverts project.PublishedStem and nothing holds the two together (fisc-9akl).
 func scheduleKey(stem string) string {
 	return yearSuffix.ReplaceAllString(stem, "")
-}
-
-// scopesOf normalises the two spellings the published documents use.
-func scopesOf(d decoded) []string {
-	if len(d.Metadata.Scopes) > 0 {
-		return d.Metadata.Scopes
-	}
-	if d.Metadata.Scope != "" {
-		return []string{d.Metadata.Scope}
-	}
-	return nil
 }
 
 // tiersOf is the reader's left-to-right: every tier the column draws a node at,

@@ -7,48 +7,122 @@ import (
 	"sort"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
+	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 	"github.com/jcrussell/livermore-budget/schema"
 )
 
-// This file holds the parts of a published document that are NOT the Sankey's.
+// Document is every graph this package publishes: the citywide spine and the
+// schedules drawn beside it, one type whatever the schedule.
 //
-// Source, Counts and the encoder below were declared in sankey.go, beside the
-// only projection that existed. They are here because the next projection needs
-// them and inheriting them from a graph would be the wrong relationship: a
-// document that cites pages and accounts for facts is every projection, and a
-// document with nodes and links is one of them.
-//
-// WHAT DELIBERATELY DID NOT MOVE, because it is not shared and pretending
-// otherwise would cost more than it saves:
-//
-//   - Metadata carries FiscalYear, FiscalYearLabel and Basis, all singular, and
-//     a Headline. A trends document spans four fiscal years and four bases, so
-//     it can fill none of them; hoisting Metadata would hand every future
-//     document a fiscal_year it has to leave wrong or blank. Absent is not zero
-//     here either.
-//   - Headline's keys are all_funds_gross_revenue_cents and
-//     naive_expenditure_cents. They are the spine's, and they mean nothing
-//     anywhere else.
-//
-// This move changes no bytes. encoding/json emits a struct's fields in
-// declaration order, and which FILE a type is declared in is not part of that,
-// so testdata/sankey.golden.json is the proof the extraction was faithful --
-// internal/project/sankey_test.go compares it with bytes.Equal.
+// Field order is the JSON key order -- encoding/json emits struct fields in
+// declaration order -- and schema/projection.schema.json holds the shape.
+type Document struct {
+	SchemaVersion int      `json:"schema_version"`
+	Projection    string   `json:"projection"`
+	Metadata      Metadata `json:"metadata"`
+	Nodes         []Node   `json:"nodes"`
+	Links         []Link   `json:"links"`
+}
 
-// counts is how much of the corpus this document accounts for.
-type counts struct {
+// Metadata is what a reader needs to know which slice of the budget the graph
+// below it covers, and what it deliberately leaves out.
+type Metadata struct {
+	// GeneratedBy is build.Get().String(), so a reader can tell which binary
+	// wrote the file.
+	GeneratedBy string `json:"generated_by"`
+	FiscalYear  int    `json:"fiscal_year"`
+	// FiscalYearLabel is the city's own way of writing the year: FY2026 is
+	// "FY 2025-26" on every page of the budget book, and a chart captioned
+	// "2026" would not match anything the reader is holding.
+	FiscalYearLabel string `json:"fiscal_year_label"`
+	Basis           string `json:"basis"`
+	// Scopes is the schedule set the facts came from, in the order the
+	// projection declares it. A list on every document, one entry long on
+	// most: a document of two schedules writing the first into a singular
+	// key would publish one schedule as the whole of it.
+	Scopes []string `json:"scopes"`
+	// Currency and Units are stated rather than assumed. Money is an integer
+	// count of cents everywhere in this project, and a document that does not
+	// say so is one a reader has to guess about.
+	Currency string   `json:"currency"`
+	Units    string   `json:"units"`
+	Sources  []Source `json:"sources"`
+	// Headline is the spine's alone and is the one key a document may omit:
+	// its figures are citywide totals over a single-grain view, and a
+	// document holding the same money at two grains has no total to name.
+	// Eight zeros in its place would be absent-is-not-zero at document level.
+	Headline *Headline `json:"headline,omitempty"`
+	Counts   Counts    `json:"counts"`
+	// Caveats are the things this chart cannot show, in the chart's own file.
+	// A caveat that lives only in a design document is a caveat nobody reads.
+	Caveats []Caveat `json:"caveats"`
+}
+
+// Counts is how much of the corpus a document accounts for, and the identity
+// every document publishes is facts = facts_cited + facts_uncited.
+type Counts struct {
 	// Facts is how many facts matched the options, which is NOT how many links
-	// were drawn: stocks get no link, and neither do zero-valued cells. The
-	// gap between Facts and Links is the part of the schedule the chart cannot
-	// show, and stating both is what makes it visible.
+	// were drawn: a zero-valued cell earns no link, and neither does a stock
+	// row.
 	Facts int `json:"facts"`
-	// FactsCited is how many of those facts a link actually carries. Facts
-	// minus FactsCited is exactly the zero-valued cells plus the stock rows,
-	// which makes the gap a quantity a check can assert rather than a
-	// discrepancy a reader has to explain to themselves.
+	// FactsCited is how many DISTINCT facts some link carries.
 	FactsCited int `json:"facts_cited"`
-	Nodes      int `json:"nodes"`
-	Links      int `json:"links"`
+	// FactsUncited is the facts no link carries: a printed zero, or on the
+	// spine a stock row. uncited-facts-are-printed-zeros holds that to the
+	// store; every builder refuses anything else at build.
+	FactsUncited int `json:"facts_uncited"`
+	// FactsCitedTwice is how many distinct facts are behind MORE THAN ONE
+	// link. Zero on a document whose links partition its facts; on the
+	// drill-down, where both sides carry a summing link above the cell, it
+	// warns that summing every link's value_cents double-counts.
+	FactsCitedTwice int `json:"facts_cited_twice"`
+	Nodes           int `json:"nodes"`
+	Links           int `json:"links"`
+}
+
+// tally is how the links account for the selected facts: the counts a
+// document publishes, and the facts no link carries, in selection order, for
+// the builder to hold to its own rule about what may go uncited.
+func tally(selected []fact.Fact, links []Link, nodes int) (Counts, []*fact.Fact) {
+	times := map[string]int{}
+	for _, l := range links {
+		for _, id := range l.FactIDs {
+			times[id]++
+		}
+	}
+	c := Counts{Facts: len(selected), Nodes: nodes, Links: len(links)}
+	var uncited []*fact.Fact
+	for i := range selected {
+		switch n := times[selected[i].ID]; {
+		case n == 0:
+			c.FactsUncited++
+			uncited = append(uncited, &selected[i])
+		case n > 1:
+			c.FactsCited++
+			c.FactsCitedTwice++
+		default:
+			c.FactsCited++
+		}
+	}
+	return c, uncited
+}
+
+// refuseUncited is the build-time half of uncited-facts-are-printed-zeros:
+// a fact no link carries is a printed zero, or the document has dropped money
+// in silence and its own counts cannot show it. allow names the one other
+// shape a builder admits, or is nil.
+func refuseUncited(name string, uncited []*fact.Fact, allow func(*fact.Fact) bool) error {
+	for _, f := range uncited {
+		if f.AmountCents == 0 || (allow != nil && allow(f)) {
+			continue
+		}
+		return cmdutil.WithHint(
+			fmt.Errorf("%s: fact %s is carried by no link and is not a printed zero", name, f.ID),
+			"facts = facts_cited + facts_uncited is every document's published identity "+
+				"and every uncited fact is a cell the city printed as nothing; a fact reaching "+
+				"no link for another reason is money dropped in silence")
+	}
+	return nil
 }
 
 // Source is one document the facts came from, with the pages actually read.
@@ -257,21 +331,9 @@ func marshal(v any, name string) ([]byte, error) {
 	return b.Bytes(), nil
 }
 
-// Envelope is what every document of this project carries, and it is the
-// leading block of a non-spine document's metadata.
-//
-// THE SANKEY DOES NOT EMBED IT, and the reason is bytes rather than taste.
-// encoding/json emits fields in declaration order, and Metadata's order is
-// generated_by, fiscal_year, fiscal_year_label, basis, scope, currency, units,
-// sources, headline, counts, caveats -- the shared fields are INTERLEAVED with
-// the spine's own. Embedding this type there would move scope, currency and
-// units up beside generated_by and change testdata/sankey.golden.json, which is
-// the frozen contract. So the two structs share field names without sharing a
-// declaration, which is fisc-2u4's option (a), and
-// TestSharedMetadataTagsHaveNotDrifted is what couples them instead.
-//
-// It is a type rather than four repeated fields because the next document after
-// the trends should not have to re-derive which four are common.
+// Envelope is the leading block of a series document's metadata: the trends
+// and the two ACFR histories, each of one schedule. A graph's block is
+// [Metadata], which spells the same four keys with scopes as a list.
 type Envelope struct {
 	// GeneratedBy is build.Get().String(), so a reader can tell which binary
 	// wrote the file.
@@ -286,15 +348,10 @@ type Envelope struct {
 	Units    string `json:"units"`
 }
 
-// envelope fills the block from the options a document was built under.
-//
-// IT RETURNS AN ERROR BECAUSE Scope IS SINGULAR AND [Options.Scopes] IS NOT.
-// Envelope.Scope's own doc comment says every document carrying one is of
-// exactly one schedule, and that stays true -- but the options handed here can
-// now name two, and writing Scopes[0] into a singular key would publish one
-// schedule as the whole of a document built over both. A multi-schedule
-// document needs a metadata block that says so; it does not get to borrow this
-// one and lose half the claim on the way.
+// envelope fills the block from the options a series document was built
+// under. Scope is singular and [Options.Scopes] is not: writing Scopes[0] into
+// it would publish one schedule as the whole of a document built over two, so
+// a set of any other size is refused.
 func envelope(o Options) (Envelope, error) {
 	scope, err := o.onlyScope()
 	if err != nil {

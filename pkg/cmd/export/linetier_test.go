@@ -154,7 +154,7 @@ func TestEveryRevenueLineIsParentedToItsPrintedCategory(t *testing.T) {
 }
 
 // builtFundFlows is every fund-flows column `fisc export` writes, by stem.
-func builtFundFlows(t *testing.T) map[string]*project.FundFlowsDocument {
+func builtFundFlows(t *testing.T) map[string]*project.Document {
 	t.Helper()
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {
@@ -164,9 +164,9 @@ func builtFundFlows(t *testing.T) map[string]*project.FundFlowsDocument {
 	if err != nil {
 		t.Fatalf("buildProjections: %v", err)
 	}
-	out := map[string]*project.FundFlowsDocument{}
+	out := map[string]*project.Document{}
 	for stem, raw := range built {
-		var doc project.FundFlowsDocument
+		var doc project.Document
 		if err := json.Unmarshal(raw, &doc); err != nil {
 			t.Fatalf("decode %s: %v", stem, err)
 		}
@@ -180,7 +180,7 @@ func builtFundFlows(t *testing.T) map[string]*project.FundFlowsDocument {
 // foldTo folds each link's ends to their nearest ancestor at a drawn tier,
 // merging on the folded pair and dropping a link folded inside one box. It
 // returns the links it could not place so the caller can name them.
-func foldTo(doc *project.FundFlowsDocument, tiers ...int) ([]project.Link, []project.Link, error) {
+func foldTo(doc *project.Document, tiers ...int) ([]project.Link, []project.Link, error) {
 	drawn := map[int]bool{}
 	for _, t := range tiers {
 		drawn[t] = true

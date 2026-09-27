@@ -116,86 +116,26 @@ type Vocabulary interface {
 var _ Vocabulary = (*registry.Registry)(nil)
 
 // graphBuilder is a projection whose document is a GRAPH, and which hands back
-// the graph rather than its bytes.
+// the document rather than its bytes, so verify checks the structure without
+// parsing back the JSON it is trying to validate.
 //
-// internal/project's Sankey.Graph is exported for exactly this, so verify can
-// check the structure without parsing back the JSON it is trying to validate.
-//
-// NOT EVERY PROJECTION IS ONE. This interface used to be a requirement: a
-// projection that did not satisfy it made [Load] return an error, so registering
-// the first non-graph projection would have made `fisc verify` exit non-zero
-// HAVING PRINTED NO REPORT — every finding in the run lost, which is the failure
-// [ProjectionFailure] exists to have stopped happening. A trends document is a
-// set of series and has no nodes and no links; it is not defective for that.
-//
-// So the graph checks now ask for [Subject.Graphs] and the rest read
-// Projection.Options. What is still refused is a projection that exposes NO
-// checkable structure at all — see buildProjections.
+// NOT EVERY PROJECTION IS ONE. A trends document is a set of series with no
+// nodes and no links, and it is not defective for that; [trendsBuilder] is
+// its shape. A projection satisfying neither still builds and still reports
+// -- refusing it made Load return an error and `fisc verify` exit non-zero
+// having printed no report -- and documentsAreChecked fails it, because a
+// document no structural check reads can be wrong on the published site while
+// verify prints all-green.
 type graphBuilder interface {
 	Name() string
-	Graph(facts []fact.Fact, o project.Options) (*project.Graph, error)
+	Document(facts []fact.Fact, o project.Options) (*project.Document, error)
 }
 
 // trendsBuilder is a projection whose document is a set of SERIES, and which
-// hands back the document rather than its bytes.
-//
-// It is graphBuilder for the second document shape, declared for the same
-// reason and satisfied by internal/project's Trends.Document: verify checks the
-// structure without parsing back the JSON it is trying to validate.
-//
-// A projection satisfying NEITHER interface still builds and still reports --
-// that is the whole of what fisc-744 changed -- but documentsAreChecked fails
-// it, because a document no structural check reads is a document that can be
-// wrong on the published site while verify prints all-green.
+// hands back the document rather than its bytes, for graphBuilder's reason.
 type trendsBuilder interface {
 	Name() string
 	Document(facts []fact.Fact, o project.Options) (*project.TrendsDocument, error)
-}
-
-// fundFlowsBuilder is a projection whose document is a graph WITHOUT a headline.
-//
-// IT IS A THIRD INTERFACE RATHER THAN A THIRD IMPLEMENTATION OF graphBuilder,
-// and the reason is not the missing key. project.Graph.Metadata is the spine's
-// concrete Metadata type, whose headline block is required, so a drill-down
-// returning *project.Graph would have to publish eight zeros -- absent-is-not-
-// zero at document level, and the false green fisc-xau measured: a revenue-side
-// drill-down has transfers IN and none out, so transfer_residual_cents would
-// publish -21,045,597 and headline-transfer-residual would report it correct,
-// the figure being the sum of the facts and the facts being one leg.
-//
-// The STRUCTURAL checks do not care which of the two shapes they are given --
-// both carry nodes and links -- and read [Subject.Linked] instead. The three
-// headline checks stay on [Subject.Graphs], which is the set that publishes one.
-type fundFlowsBuilder interface {
-	Name() string
-	Document(facts []fact.Fact, o project.Options) (*project.FundFlowsDocument, error)
-}
-
-// departmentSpendingBuilder is a projection whose document is the departmentwide
-// cross-tab.
-//
-// Not fundFlowsBuilder, though both are nodes and links with no headline:
-// sharing the type would hand fund-flows-counts-reconcile a document with no
-// second grain to count facts_cited_twice over.
-type departmentSpendingBuilder interface {
-	Name() string
-	Document(facts []fact.Fact, o project.Options) (*project.DepartmentSpendingDocument, error)
-}
-
-// departmentFundingBuilder is a projection whose document is pp.85-125's
-// funding-source graph: the same pages as the cross-tab, read at another grain,
-// and apart from it for departmentSpendingBuilder's reason.
-type departmentFundingBuilder interface {
-	Name() string
-	Document(facts []fact.Fact, o project.Options) (*project.DepartmentFundingDocument, error)
-}
-
-// transfersByFundBuilder is a projection whose document is p76's transfer
-// network, apart for departmentSpendingBuilder's reason: its links come in
-// pairs, one per end of a movement, so every count off it means twice as much.
-type transfersByFundBuilder interface {
-	Name() string
-	Document(facts []fact.Fact, o project.Options) (*project.TransfersByFundDocument, error)
 }
 
 // projection is one built graph, with the options it was built under.
@@ -208,46 +148,29 @@ type projection struct {
 	Name    string
 	Options project.Options
 	// Graph is the built graph, or nil for a projection whose document is not
-	// one. Read it through [Subject.Graphs] rather than dereferencing it: a
-	// check that means "every graph" and writes "every projection" is one
-	// non-graph projection away from a nil panic inside a report.
-	Graph *project.Graph
-	// Trends is the built trends document, or nil for a projection that is not
-	// one. Read it through [Subject.TrendDocuments], for Graph's reason.
+	// one. Read it through [Subject.linkedDocuments] rather than dereferencing
+	// it: a check that means "every graph" and writes "every projection" is
+	// one non-graph projection away from a nil panic inside a report.
 	//
 	// EXACTLY ONE document field IS NON-NIL on a healthy projection, and
 	// [documentsAreChecked] is what asserts it: a projection carrying none is
 	// a document no structural check reads, which is the state that lets a wrong
 	// document ship under an all-green verify.
+	Graph *project.Document
+	// Trends is the built trends document, or nil for a projection that is not
+	// one. Read it through [Subject.trendDocuments], for Graph's reason.
 	Trends *project.TrendsDocument
-	// FundFlows is the built drill-down, or nil. Read it through
-	// [Subject.LinkedDocuments] for the structural checks, and through
-	// [Subject.FundFlowsDocuments] for the ones that are of this shape alone.
-	FundFlows *project.FundFlowsDocument
-	// DepartmentSpending is the built cross-tab, or nil.
-	DepartmentSpending *project.DepartmentSpendingDocument
-	// DepartmentFunding is the built funding-source graph, or nil.
-	DepartmentFunding *project.DepartmentFundingDocument
-	// TransfersByFund is the built transfer network, or nil.
-	TransfersByFund *project.TransfersByFundDocument
 }
 
-// linked is one document's nodes and links, whatever shape carried them.
+// linked is one graph document's nodes and links.
 //
 // THE STRUCTURAL CHECKS ARE ABOUT A GRAPH AND NOT ABOUT A HEADLINE. Acyclicity,
 // tier ordering, a link's value against its citation, a parent that resolves --
-// every one of those claims is true of any document made of nodes and links, and
-// none of them reads Metadata at all. Written against [Subject.Graphs], which is
-// the set of documents that publish a HEADLINE, all six would have skipped the
-// first headline-less document entirely while documents-are-checked reported it
-// as a shape no check reads.
-//
-// WHAT STAYS ON Graphs IS THE THREE HEADLINE CHECKS, and that narrowing has a
-// STRUCTURAL predicate rather than a value test: a document is in that set
-// because its TYPE publishes a headline, never because the figures in one happen
-// to be non-zero. A value test would go green over a spine whose headline had
-// been zeroed, which publishedProjectionBuilt's doc comment calls worse than no
-// coverage at all.
+// every one of those claims is true of any document made of nodes and links.
+// The three headline checks read [Subject.graphs], the documents whose
+// metadata publishes one, and that narrowing has a STRUCTURAL predicate rather
+// than a value test: a document is in that set because it carries the block,
+// never because the figures in one happen to be non-zero.
 type linked struct {
 	projection
 	Nodes []project.Node
@@ -372,61 +295,37 @@ type Subject struct {
 	Published []project.PublishedDocument
 }
 
-// graphs is every projection that produced a graph, which is what the
-// structural checks are about.
-//
-// It exists so that a check meaning "every graph" cannot be written as "every
-// projection" and be one non-graph projection away from dereferencing nil
-// inside a report. Ranging over this instead is the whole discipline.
-//
-// A projection with no graph is NOT skipped coverage: it is a document of a
-// different shape, checked by whatever check is about that shape. What would be
-// a gap is a projection no check reads at all, and that is what
-// projectionsBuild and documents-are-checked are for.
+// graphs is every projection whose document publishes a headline: the
+// citywide spine, one per published column. The three headline checks read
+// it; everything structural reads [Subject.linkedDocuments].
 func (s *Subject) graphs() []projection {
 	out := make([]projection, 0, len(s.Projections))
 	for _, p := range s.Projections {
-		if p.Graph != nil {
+		if p.Graph != nil && p.Graph.Metadata.Headline != nil {
 			out = append(out, p)
 		}
 	}
 	return out
 }
 
-// linkedDocuments is every projection carrying nodes and links, whatever
-// document shape carried them, in the order they were built.
-//
-// This is what the STRUCTURAL checks read. See [Linked] for why they cannot read
-// [Subject.Graphs] and why the headline checks still do.
+// linkedDocuments is every projection carrying nodes and links, in the order
+// they were built.
 func (s *Subject) linkedDocuments() []linked {
 	out := make([]linked, 0, len(s.Projections))
 	for _, p := range s.Projections {
-		switch {
-		case p.Graph != nil:
+		if p.Graph != nil {
 			out = append(out, linked{projection: p, Nodes: p.Graph.Nodes, Links: p.Graph.Links})
-		case p.FundFlows != nil:
-			out = append(out, linked{projection: p,
-				Nodes: p.FundFlows.Nodes, Links: p.FundFlows.Links})
-		case p.DepartmentSpending != nil:
-			out = append(out, linked{projection: p,
-				Nodes: p.DepartmentSpending.Nodes, Links: p.DepartmentSpending.Links})
-		case p.DepartmentFunding != nil:
-			out = append(out, linked{projection: p,
-				Nodes: p.DepartmentFunding.Nodes, Links: p.DepartmentFunding.Links})
-		case p.TransfersByFund != nil:
-			out = append(out, linked{projection: p,
-				Nodes: p.TransfersByFund.Nodes, Links: p.TransfersByFund.Links})
 		}
 	}
 	return out
 }
 
-// fundFlowsDocuments is every projection that built a drill-down, for the checks
-// that are of that shape alone.
-func (s *Subject) fundFlowsDocuments() []projection {
+// documentsNamed is every built graph of one projection, for a check that is
+// of that schedule's shape alone.
+func (s *Subject) documentsNamed(name string) []projection {
 	out := make([]projection, 0, len(s.Projections))
 	for _, p := range s.Projections {
-		if p.FundFlows != nil {
+		if p.Graph != nil && p.Name == name {
 			out = append(out, p)
 		}
 	}
@@ -843,27 +742,15 @@ func buildProjections(ps []project.Projection, facts []fact.Fact, version string
 		// with a report around it rather than a dead run.
 		g, isGraph := p.(graphBuilder)
 		t, isTrends := p.(trendsBuilder)
-		ff, isFundFlows := p.(fundFlowsBuilder)
-		ds, isSpending := p.(departmentSpendingBuilder)
-		df, isFunding := p.(departmentFundingBuilder)
-		tr, isTransfers := p.(transfersByFundBuilder)
 
 		for _, o := range want {
 			built := projection{Name: p.Name(), Options: o}
 			var err error
 			switch {
 			case isGraph:
-				built.Graph, err = g.Graph(facts, o)
+				built.Graph, err = g.Document(facts, o)
 			case isTrends:
 				built.Trends, err = t.Document(facts, o)
-			case isFundFlows:
-				built.FundFlows, err = ff.Document(facts, o)
-			case isSpending:
-				built.DepartmentSpending, err = ds.Document(facts, o)
-			case isFunding:
-				built.DepartmentFunding, err = df.Document(facts, o)
-			case isTransfers:
-				built.TransfersByFund, err = tr.Document(facts, o)
 			}
 			if err != nil {
 				// Recorded, not returned: see ProjectionFailure. The loop goes

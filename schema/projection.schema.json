@@ -15,7 +15,7 @@
     "metadata": {
       "type": "object",
       "required": [
-        "generated_by", "fiscal_year", "fiscal_year_label", "basis",
+        "generated_by", "fiscal_year", "fiscal_year_label", "basis", "scopes",
         "currency", "units", "sources", "counts", "caveats"
       ],
       "additionalProperties": false,
@@ -24,8 +24,10 @@
         "fiscal_year": { "type": "integer", "minimum": 1900 },
         "fiscal_year_label": { "type": "string", "minLength": 1 },
         "basis": { "enum": ["actual", "revised", "adopted", "projected"] },
-        "scope": { "type": "string", "minLength": 1 },
-        "scopes": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+        "scopes": {
+          "description": "The schedule set the facts came from, in the projection's own order; one entry on most documents, three on fund-flows.",
+          "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 }
+        },
         "currency": { "const": "USD" },
         "units": { "const": "cents" },
         "sources": {
@@ -49,16 +51,15 @@
           }
         },
         "counts": {
-          "description": "How much of the corpus this document accounts for. facts minus facts_cited is what the chart cannot show: zero-valued cells and stock rows.",
+          "description": "How much of the corpus this document accounts for: facts = facts_cited + facts_uncited on every document, and facts_cited_twice is the overlap where a fact is behind more than one link.",
           "type": "object",
-          "required": ["facts", "facts_cited", "nodes", "links"],
+          "required": ["facts", "facts_cited", "facts_uncited", "facts_cited_twice", "nodes", "links"],
           "additionalProperties": false,
           "properties": {
             "facts": { "type": "integer", "minimum": 0 },
             "facts_cited": { "type": "integer", "minimum": 0 },
-            "facts_cited_twice": { "type": "integer", "minimum": 0 },
             "facts_uncited": { "type": "integer", "minimum": 0 },
-            "transfers": { "type": "integer", "minimum": 0 },
+            "facts_cited_twice": { "type": "integer", "minimum": 0 },
             "nodes": { "type": "integer", "minimum": 0 },
             "links": { "type": "integer", "minimum": 0 }
           }
@@ -67,16 +68,7 @@
           "type": "array",
           "items": { "$ref": "https://jcrussell.github.io/livermore-budget/schema/caveat.schema.json" }
         }
-      },
-      "allOf": [
-        {
-          "description": "One schedule or several: `scope` or `scopes`, never both.",
-          "oneOf": [
-            { "required": ["scope"], "not": { "required": ["scopes"] } },
-            { "required": ["scopes"], "not": { "required": ["scope"] } }
-          ]
-        }
-      ]
+      }
     },
     "nodes": {
       "description": "Empty is a document, not an error: a projection over facts that select nothing publishes an empty graph. What is refused is a null.",

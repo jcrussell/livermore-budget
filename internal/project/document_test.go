@@ -3,6 +3,7 @@ package project
 import (
 	"encoding/json"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -19,7 +20,7 @@ func jsonTags(t *testing.T, v any) []string {
 			out = append(out, jsonTags(t, reflect.New(f.Type).Elem().Interface())...)
 			continue
 		}
-		tag := f.Tag.Get("json")
+		tag, _, _ := strings.Cut(f.Tag.Get("json"), ",")
 		if tag == "" {
 			t.Fatalf("%s.%s carries no json tag", rt.Name(), f.Name)
 		}
@@ -103,72 +104,46 @@ func TestValidateCaveatsRefusesEveryShapeThatWouldRender(t *testing.T) {
 	}
 }
 
-// TestSharedMetadataTagsHaveNotDrifted is what couples the two metadata structs,
-// because nothing else does.
-//
-// fisc-2u4 chose to let Metadata and TrendsMetadata share field names WITHOUT
-// sharing a declaration, and the reason is bytes: encoding/json emits fields in
-// declaration order, Metadata's shared fields are interleaved with the spine's
-// own (generated_by, fiscal_year, fiscal_year_label, basis, scope, currency,
-// units, ...), so embedding Envelope there would reorder the keys and change
-// testdata/sankey.golden.json.
-//
-// The cost of that choice is exactly this: two structs that must agree and no
-// compiler that makes them. A renamed key on one side would publish two
-// different names for one concept across two documents on one site, and every
-// test in this package would still pass.
-func TestSharedMetadataTagsHaveNotDrifted(t *testing.T) {
-	spine := jsonTags(t, metadata{})
-	trends := jsonTags(t, trendsMetadata{})
-
-	have := func(tags []string, want string) bool {
-		for _, tag := range tags {
-			if tag == want {
-				return true
-			}
-		}
-		return false
-	}
-	// Every key Envelope declares must appear under BOTH metadata blocks, spelled
-	// the same. That is the whole of the shared contract; the rest of each struct
-	// is its own document's business.
+// TestTheEnvelopeAndTheGraphMetadataSpellTheirSharedKeysOnce couples the
+// series documents' [Envelope] to the graphs' [Metadata]: the two share four
+// keys without sharing a declaration, so a key renamed on one side would
+// publish two names for one concept across two documents on one site. The one
+// intended difference is scope, singular on a series document and a list on a
+// graph.
+func TestTheEnvelopeAndTheGraphMetadataSpellTheirSharedKeysOnce(t *testing.T) {
+	graph := jsonTags(t, Metadata{})
 	for _, tag := range jsonTags(t, Envelope{}) {
-		if !have(spine, tag) {
-			t.Errorf("Envelope publishes %q and the spine's Metadata does not", tag)
+		want := tag
+		if tag == "scope" {
+			want = "scopes"
 		}
-		if !have(trends, tag) {
-			t.Errorf("Envelope publishes %q and TrendsMetadata does not", tag)
+		if !slices.Contains(graph, want) {
+			t.Errorf("Envelope publishes %q and Metadata does not publish %q", tag, want)
 		}
 	}
-	// counts is shared only in its FIRST key, and that is deliberate: facts means
-	// the same thing in both documents and must be spelled the same, while
-	// facts_cited is the spine's alone because only there is it a different
-	// number from facts. See TrendCounts.
-	if got, want := jsonTags(t, trendCounts{})[0], jsonTags(t, counts{})[0]; got != want {
-		t.Errorf("TrendCounts leads with %q and Counts with %q; the two documents would "+
+	// counts is shared only in its FIRST key: facts means the same thing in
+	// both documents and must be spelled the same, while facts_cited is a
+	// graph's alone because only there is it a different number from facts.
+	if got, want := jsonTags(t, trendCounts{})[0], jsonTags(t, Counts{})[0]; got != want {
+		t.Errorf("trendCounts leads with %q and Counts with %q; the two documents would "+
 			"report the same quantity under different names", got, want)
-	}
-	for _, tag := range jsonTags(t, trendCounts{}) {
-		if tag == "facts_cited" {
-			t.Error("TrendCounts publishes facts_cited, which equals facts and points here; " +
-				"three names for one number is a key for a concept the code does not compute")
-		}
 	}
 }
 
-// TestTheSpineMetadataKeyOrderIsFrozen is the other half: the reason Metadata
-// does not embed Envelope is that its key order is published, so that order is
-// asserted rather than left to whoever next edits the struct.
-//
-// testdata/sankey.golden.json is compared byte for byte elsewhere and would
-// catch a reorder too. This catches it with a message that says WHAT moved.
-func TestTheSpineMetadataKeyOrderIsFrozen(t *testing.T) {
+// TestTheGraphMetadataKeyOrderIsFrozen pins the published key order of every
+// graph document's metadata and counts. The goldens compare bytes and would
+// catch a reorder too; this catches it with a message that says WHAT moved.
+func TestTheGraphMetadataKeyOrderIsFrozen(t *testing.T) {
 	want := []string{
-		"generated_by", "fiscal_year", "fiscal_year_label", "basis", "scope",
+		"generated_by", "fiscal_year", "fiscal_year_label", "basis", "scopes",
 		"currency", "units", "sources", "headline", "counts", "caveats",
 	}
-	if got := jsonTags(t, metadata{}); !reflect.DeepEqual(got, want) {
+	if got := jsonTags(t, Metadata{}); !reflect.DeepEqual(got, want) {
 		t.Errorf("metadata key order (-want +got):\n%v\n%v", want, got)
+	}
+	counts := []string{"facts", "facts_cited", "facts_uncited", "facts_cited_twice", "nodes", "links"}
+	if got := jsonTags(t, Counts{}); !reflect.DeepEqual(got, counts) {
+		t.Errorf("counts key order (-want +got):\n%v\n%v", counts, got)
 	}
 }
 
@@ -200,68 +175,5 @@ func TestEncodeLeavesHTMLAlone(t *testing.T) {
 	var back map[string]string
 	if err := json.Unmarshal(got, &back); err != nil {
 		t.Fatalf("the encoder produced undecodable JSON: %v", err)
-	}
-}
-
-// TestTheFundFlowsMetadataKeyOrderMatchesTheContract pins
-// docs/general-fund-drilldown-contract.md against the code.
-//
-// A THIRD DOCUMENT NEEDS A THIRD TEST, and that is not obvious from the two
-// above it. TestSharedMetadataTagsHaveNotDrifted compares exactly two types and
-// asserts only that every Envelope tag APPEARS in both; key ORDER is pinned per
-// type, here and in the two tests above, and a new shape inherits neither.
-func TestTheFundFlowsMetadataKeyOrderMatchesTheContract(t *testing.T) {
-	want := []string{
-		"generated_by", "scopes", "currency", "units",
-		"fiscal_year", "fiscal_year_label", "basis", "sources", "counts", "caveats",
-	}
-	if got := jsonTags(t, FundFlowsMetadata{}); !reflect.DeepEqual(got, want) {
-		t.Errorf("metadata key order (-want +got):\n%v\n%v", want, got)
-	}
-}
-
-// TestTheMultiScopeEnvelopeIsTheEnvelopeWithOneKeyPluralised is what keeps the
-// sibling from drifting into a second, differently-shaped preamble.
-//
-// MultiScopeEnvelope exists because Envelope.Scope is one string and a document
-// of two schedules cannot write Scopes[0] into it without publishing one
-// schedule as the whole of it. That is a reason to change ONE key, and the test
-// says so: the other three are identical, in the same positions, so a reader who
-// knows where generated_by and units are in one document finds them in the other.
-func TestTheMultiScopeEnvelopeIsTheEnvelopeWithOneKeyPluralised(t *testing.T) {
-	single := jsonTags(t, Envelope{})
-	multi := jsonTags(t, MultiScopeEnvelope{})
-	if len(single) != len(multi) {
-		t.Fatalf("the two envelopes have %d and %d keys; they differ by one key's TYPE, "+
-			"not by their contents:\n%v\n%v", len(single), len(multi), single, multi)
-	}
-	for i := range single {
-		switch {
-		case single[i] == "scope" && multi[i] == "scopes":
-			// The one intended difference.
-		case single[i] != multi[i]:
-			t.Errorf("key %d is %q in Envelope and %q in MultiScopeEnvelope; only scope "+
-				"may differ, and only by becoming plural", i, single[i], multi[i])
-		}
-	}
-}
-
-// TestTheFundFlowsCountsPublishTheirOwnIdentity pins the shape of a count block
-// that deliberately is NOT Counts.
-//
-// The spine's identity assumes each fact is behind at most one link and that
-// some rows are stocks. Neither holds here, so borrowing Counts would publish a
-// facts_cited a reader would subtract from facts and get the wrong answer.
-func TestTheFundFlowsCountsPublishTheirOwnIdentity(t *testing.T) {
-	want := []string{"facts", "facts_cited", "facts_uncited", "facts_cited_twice",
-		"nodes", "links"}
-	if got := jsonTags(t, FundFlowsCounts{}); !reflect.DeepEqual(got, want) {
-		t.Errorf("counts key order (-want +got):\n%v\n%v", want, got)
-	}
-	// It must NOT be mistakable for the spine's block, whose facts_cited means
-	// something else.
-	if reflect.DeepEqual(jsonTags(t, FundFlowsCounts{}), jsonTags(t, counts{})) {
-		t.Error("the two count blocks have the same keys; a reader would apply the spine's " +
-			"identity to a document that does not hold it")
 	}
 }

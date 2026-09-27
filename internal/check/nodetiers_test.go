@@ -29,7 +29,7 @@ func runNodeTiers(t *testing.T, s *Subject) Result {
 
 // nodeIndex is the position of a node with the given id prefix, so a test can
 // damage one without hard-coding which of the fixture's nodes it is.
-func nodeIndex(t *testing.T, g *project.Graph, prefix string) int {
+func nodeIndex(t *testing.T, g *project.Document, prefix string) int {
 	t.Helper()
 	for i, n := range g.Nodes {
 		if strings.HasPrefix(n.ID, prefix) {
@@ -55,14 +55,14 @@ func TestNodeTiersAreDeclaredIsFailable(t *testing.T) {
 
 	cases := []struct {
 		name   string
-		damage func(t *testing.T, g *project.Graph)
+		damage func(t *testing.T, g *project.Document)
 		want   string
 	}{
 		{
 			// The case the check exists for: the id says one layer and the
 			// field says another.
 			name: "a node at the wrong tier for its id form",
-			damage: func(t *testing.T, g *project.Graph) {
+			damage: func(t *testing.T, g *project.Document) {
 				g.Nodes[nodeIndex(t, g, "fund-group/")].Tier = 3
 			},
 			want: "declares tier 2",
@@ -70,7 +70,7 @@ func TestNodeTiersAreDeclaredIsFailable(t *testing.T) {
 		{
 			// docs/sankey-contract.md: "Do not coin new ones."
 			name: "a coined id form",
-			damage: func(t *testing.T, g *project.Graph) {
+			damage: func(t *testing.T, g *project.Document) {
 				g.Nodes[nodeIndex(t, g, "revenue/")].ID = "programme/police"
 			},
 			want: "no id form the contract declares",
@@ -78,7 +78,7 @@ func TestNodeTiersAreDeclaredIsFailable(t *testing.T) {
 		{
 			// A line left at its parent's tier: only the tier moves.
 			name: "a revenue line at its category's tier",
-			damage: func(t *testing.T, g *project.Graph) {
+			damage: func(t *testing.T, g *project.Document) {
 				i := nodeIndex(t, g, "revenue/")
 				was := g.Nodes[i].ID
 				now := "revenue-line/" + strings.TrimPrefix(was, "revenue/") + "/eraf"
@@ -95,7 +95,7 @@ func TestNodeTiersAreDeclaredIsFailable(t *testing.T) {
 			// A backward ribbon. d3 will draw it, which is why no rendering
 			// test would catch it either.
 			name: "a link running from a finer tier to a coarser one",
-			damage: func(t *testing.T, g *project.Graph) {
+			damage: func(t *testing.T, g *project.Document) {
 				g.Links[0].Source, g.Links[0].Target = g.Links[0].Target, g.Links[0].Source
 			},
 			want: "coarser tier to a finer one",
@@ -107,7 +107,7 @@ func TestNodeTiersAreDeclaredIsFailable(t *testing.T) {
 			// linkValuesTieToFacts never reads Graph.Nodes. So a typo'd
 			// endpoint passed every check in the tree.
 			name: "a link naming a node the graph does not carry",
-			damage: func(t *testing.T, g *project.Graph) {
+			damage: func(t *testing.T, g *project.Document) {
 				g.Links[0].Target = "fund-group/genrl"
 			},
 			want: "not a node of this graph",
@@ -115,7 +115,7 @@ func TestNodeTiersAreDeclaredIsFailable(t *testing.T) {
 		{
 			// A flag on one link of a flow diagram.
 			name: "a partition declared on one link of a document that draws flows",
-			damage: func(t *testing.T, g *project.Graph) {
+			damage: func(t *testing.T, g *project.Document) {
 				g.Links[0].Partition = true
 			},
 			want: "declares a partition on 1 of its",
@@ -123,7 +123,7 @@ func TestNodeTiersAreDeclaredIsFailable(t *testing.T) {
 		{
 			// The flag on every link, across more than one pair of tiers.
 			name: "a partition declared on every link of a document spanning more than one pair of tiers",
-			damage: func(t *testing.T, g *project.Graph) {
+			damage: func(t *testing.T, g *project.Document) {
 				for i := range g.Links {
 					g.Links[i].Partition = true
 				}
@@ -224,7 +224,7 @@ func TestAPartitionIsTheOTHERDescendingLinkAllowed(t *testing.T) {
 		t.Helper()
 		col := project.Column{FiscalYear: testYear, Basis: project.PublishedBasis}
 		// Both ends parentless, as the committed cross-tab publishes.
-		doc := &project.DepartmentSpendingDocument{
+		doc := &project.Document{
 			Nodes: []project.Node{
 				{ID: "expenditure/wages-and-benefits", Tier: 5, Role: "object_category"},
 				{ID: "expenditure/services-and-supplies", Tier: 5, Role: "object_category"},
@@ -243,7 +243,7 @@ func TestAPartitionIsTheOTHERDescendingLinkAllowed(t *testing.T) {
 			Name: project.DepartmentSpendingProjection,
 			Options: project.Options{Columns: []project.Column{col},
 				Scopes: project.DepartmentSpendingScopes(), Version: testVersion},
-			DepartmentSpending: doc,
+			Graph: doc,
 		}}}
 	}
 

@@ -130,7 +130,7 @@ func TestRevenueDetailDoesNotEnterTheSpine(t *testing.T) {
 func TestRevenueDetailAtSpineScopeIsRefusedByTheKey(t *testing.T) {
 	all := append(spineFacts(t, testYear), revenueDetailFacts(t, testScope)...)
 
-	_, err := (&sankey{Labels: goldenLabels}).Graph(all, testOptions())
+	_, err := (&sankey{Labels: goldenLabels}).Document(all, testOptions())
 	if err == nil {
 		t.Fatal("Graph accepted fund-bearing facts at the spine's scope; the fund has left the cell key")
 	}

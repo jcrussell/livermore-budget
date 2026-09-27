@@ -100,9 +100,9 @@ therefore works arithmetically without a special case.
 
 `schema_version`, `projection`, and within `metadata` — `generated_by`, `scope`,
 `currency`, `units`, `sources`, `counts`, `caveats` — are the **envelope**: what
-any document of this project carries. `internal/project/document.go` already
-holds the shared half (`Source`, `Counts`, `encode`) and already records why
-`Metadata` and `Headline` did not move with them.
+any document of this project carries. `internal/project/document.go` holds it
+as `Envelope`, the series documents' leading block; a graph's block is
+`Metadata`, which spells the same keys with `scopes` as a list.
 
 Four things the Sankey's metadata carries are **absent here, deliberately**:
 
@@ -115,15 +115,12 @@ Absent is not zero ([`AGENTS.md`](../AGENTS.md)): a trends document is not
 defective for lacking a fiscal year, so it must not publish `"fiscal_year": 0`
 or `"basis": ""` to keep a shape it is not of. Consumers key on `projection`.
 
-**The two metadata structs share field names but are not embedded**, and the
-byte constraint is why. `encoding/json` emits fields in declaration order, and
-the Sankey's order is `generated_by, fiscal_year, fiscal_year_label, basis,
-scope, currency, units, sources, headline, counts, caveats` — the shared fields
-are *interleaved* with the private ones, so hoisting them into an embedded
-`Envelope` would reorder the Sankey's keys and change
-`testdata/sankey.golden.json`. That is `fisc-2u4`'s option (a), taken for a
-measured reason rather than a stylistic one. A test asserts the shared JSON tags
-have not drifted apart, since nothing else couples them.
+**The two metadata structs share field names but are not embedded**: a
+graph's shared keys are *interleaved* with its own (`generated_by, fiscal_year,
+fiscal_year_label, basis, scopes, currency, units, sources, headline, counts,
+caveats`), so no embedding could produce both orders.
+`TestTheEnvelopeAndTheGraphMetadataSpellTheirSharedKeysOnce` asserts the shared
+JSON tags have not drifted apart, since nothing else couples them.
 
 ## series_id
 

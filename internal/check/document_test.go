@@ -64,16 +64,22 @@ func TestANonGraphProjectionDoesNotKillTheRun(t *testing.T) {
 	}
 }
 
-// TestGraphsExcludesWhatHasNoGraph is the other half: the checks that mean
-// "every graph" must not be reachable by a projection that has none.
-func TestGraphsExcludesWhatHasNoGraph(t *testing.T) {
+// TestGraphsExcludesWhatHasNoHeadline is the other half: the headline checks
+// read the documents that publish one, and the structural checks every graph,
+// so a projection with no document reaches neither.
+func TestGraphsExcludesWhatHasNoHeadline(t *testing.T) {
 	s := &Subject{Projections: []projection{
-		{Name: "sankey", Graph: &project.Graph{}},
+		{Name: "sankey", Graph: &project.Document{Metadata: project.Metadata{Headline: &project.Headline{}}}},
+		{Name: "fund-flows", Graph: &project.Document{}},
 		{Name: "series-only"},
 	}}
 	got := s.graphs()
 	if len(got) != 1 || got[0].Name != "sankey" {
-		t.Fatalf("Graphs() = %v, want the one projection carrying a graph", got)
+		t.Fatalf("graphs() = %v, want the one projection publishing a headline", got)
+	}
+	linked := s.linkedDocuments()
+	if len(linked) != 2 || linked[0].Name != "sankey" || linked[1].Name != "fund-flows" {
+		t.Fatalf("linkedDocuments() = %v, want both graphs and not the series", linked)
 	}
 }
 
@@ -82,7 +88,7 @@ func TestGraphsExcludesWhatHasNoGraph(t *testing.T) {
 // published quietly.
 func TestAnUncheckedDocumentIsReported(t *testing.T) {
 	s := &Subject{Projections: []projection{
-		{Name: "sankey", Graph: &project.Graph{}},
+		{Name: "sankey", Graph: &project.Document{}},
 		{Name: "series-only"},
 	}}
 	res, err := (&documentsAreChecked{}).Run(t.Context(), s)
@@ -191,7 +197,7 @@ func TestAPublishedYearNothingBuiltIsReported(t *testing.T) {
 		Published: spineDocuments(2026, 2027),
 		Projections: []projection{{
 			Name:  project.PublishedProjection,
-			Graph: &project.Graph{},
+			Graph: &project.Document{},
 			Options: project.Options{
 				Columns: []project.Column{{FiscalYear: 2026, Basis: project.PublishedBasis}},
 				Scopes:  []string{project.PublishedScope},
@@ -314,7 +320,7 @@ func TestAnUnreadProjectionIsInItsOwnDenominator(t *testing.T) {
 func TestADeclaredDocumentDoesNotHideAnExaminedOne(t *testing.T) {
 	withUncheckedDocuments(t, map[string]string{"blob": "no checks yet (bead id goes here)"})
 	s := &Subject{Projections: []projection{
-		{Name: "sankey", Graph: &project.Graph{}},
+		{Name: "sankey", Graph: &project.Document{}},
 		{Name: "blob"},
 	}}
 
@@ -342,7 +348,7 @@ func TestADeclaredDocumentDoesNotHideAnExaminedOne(t *testing.T) {
 func TestAStaleUncheckedDocumentDeclarationIsCaught(t *testing.T) {
 	t.Run("no projection of that name", func(t *testing.T) {
 		withUncheckedDocuments(t, map[string]string{"gone": "removed or typo'd"})
-		s := &Subject{Projections: []projection{{Name: "sankey", Graph: &project.Graph{}}}}
+		s := &Subject{Projections: []projection{{Name: "sankey", Graph: &project.Document{}}}}
 
 		res, err := (&documentsAreChecked{}).Run(t.Context(), s)
 		if err != nil {

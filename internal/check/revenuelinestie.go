@@ -69,7 +69,7 @@ func (*revenueLinesTieToTheirCategories) Description() string {
 func (c *revenueLinesTieToTheirCategories) Run(_ context.Context, s *Subject) (Result, error) {
 	// Vacuous on no drill-down document, which published-projection-built
 	// refuses; a drill-down with no links is red here, not vacuous.
-	docs := s.fundFlowsDocuments()
+	docs := s.documentsNamed(project.FundFlowsProjection)
 	if len(docs) == 0 {
 		return Result{
 			Status: StatusVacuous,
@@ -84,7 +84,7 @@ func (c *revenueLinesTieToTheirCategories) Run(_ context.Context, s *Subject) (R
 	lines, drawn := 0, 0
 
 	for _, p := range docs {
-		doc := p.FundFlows
+		doc := p.Graph
 		byID := make(map[string]project.Node, len(doc.Nodes))
 		for _, n := range doc.Nodes {
 			byID[n.ID] = n

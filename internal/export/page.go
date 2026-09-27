@@ -129,15 +129,14 @@ type documentSources struct {
 // JavaScript.
 //
 // IT IS THE SPINE'S AND NOT EVERY DOCUMENT'S, which is what the split in
-// decodeSankey is about: fiscal_year_label, basis and headline are singular or
-// spine-specific, and a trends document carries none of them and is not
-// defective for that (internal/project/document.go says so in writing).
+// decodeSankey is about: headline is the spine's alone, and a trends document
+// carries neither it nor a fiscal year and is not defective for that.
 type projectionMetadata struct {
 	GeneratedBy     string       `json:"generated_by"`
 	FiscalYear      int          `json:"fiscal_year"`
 	FiscalYearLabel string       `json:"fiscal_year_label"`
 	Basis           string       `json:"basis"`
-	Scope           string       `json:"scope"`
+	Scopes          []string     `json:"scopes"`
 	Currency        string       `json:"currency"`
 	Units           string       `json:"units"`
 	Sources         []sourceMeta `json:"sources"`
@@ -149,6 +148,10 @@ type projectionMetadata struct {
 	} `json:"counts"`
 	Caveats []caveatMeta `json:"caveats"`
 }
+
+// Scope is the schedule set as the footer prints it: the scopes joined, in
+// the document's own order.
+func (m projectionMetadata) Scope() string { return strings.Join(m.Scopes, ", ") }
 
 // caveatMeta is a decoded caveat.
 //
@@ -1256,11 +1259,11 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		// The footer's "Scope X, basis Y. Projection: Z." is rendered from the
 		// opening year; basis travels per year in yearView, and scope and
 		// builder fail closed here instead of being repainted.
-		if m.Scope != meta.Scope {
+		if m.Scope() != meta.Scope() {
 			return pageData{}, fmt.Errorf(
 				"view %q opens on %q with scope %q but its year stem %q has scope %q; "+
 					"one page cannot state two scopes, and its lede's wording is not per-year",
-				v.Path, v.Projection, meta.Scope, stem, m.Scope)
+				v.Path, v.Projection, meta.Scope(), stem, m.Scope())
 		}
 		if m.GeneratedBy != meta.GeneratedBy {
 			return pageData{}, fmt.Errorf(
@@ -1325,7 +1328,7 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			ExportedBy:   o.GeneratedBy,
 			Projections:  projectionRefs(o, ix),
 			DataPath:     open.Path,
-			Scope:        meta.Scope,
+			Scope:        meta.Scope(),
 			Caveats:      open.Caveats,
 			CaveatsPath:  caveatsPath,
 		},

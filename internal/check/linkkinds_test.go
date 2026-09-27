@@ -24,26 +24,26 @@ func TestLinkKindsMatchTheirFactsIsFailable(t *testing.T) {
 
 	cases := []struct {
 		name   string
-		damage func(t *testing.T, g *project.Graph)
+		damage func(t *testing.T, g *project.Document)
 		want   string
 	}{
 		{
 			name: "a transfer link published as external",
-			damage: func(t *testing.T, g *project.Graph) {
+			damage: func(t *testing.T, g *project.Document) {
 				linkWithPrefix(t, g, "transfers/").Kind = project.KindExternal
 			},
 			want: "crosses no boundary",
 		},
 		{
 			name: "a fund-balance link published as external",
-			damage: func(t *testing.T, g *project.Graph) {
+			damage: func(t *testing.T, g *project.Document) {
 				linkWithPrefix(t, g, project.NodeFundBalanceDraw).Kind = project.KindExternal
 			},
 			want: "fund-balance row",
 		},
 		{
 			name: "a kind outside the contract's closed set",
-			damage: func(t *testing.T, g *project.Graph) {
+			damage: func(t *testing.T, g *project.Document) {
 				g.Links[0].Kind = "grant"
 			},
 			want: "not one of",
@@ -89,7 +89,7 @@ func TestAnExternalLinkIsNotAssertedToBeExternal(t *testing.T) {
 // linkWithPrefix is the first link whose source starts with prefix, which is
 // what a test damaging "some transfer link" needs; linkFrom takes an exact
 // node id and is the right tool when the test names one.
-func linkWithPrefix(t *testing.T, g *project.Graph, prefix string) *project.Link {
+func linkWithPrefix(t *testing.T, g *project.Document, prefix string) *project.Link {
 	t.Helper()
 	for i := range g.Links {
 		if strings.HasPrefix(g.Links[i].Source, prefix) {

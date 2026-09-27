@@ -3087,6 +3087,7 @@
     "facts": 78,
     "facts_cited": 70,
     "facts_uncited": 8,
+    "facts_cited_twice": 0,
     "nodes": 75,
     "links": 70
    },
@@ -4797,6 +4798,7 @@
     "facts": 73,
     "facts_cited": 65,
     "facts_uncited": 8,
+    "facts_cited_twice": 0,
     "nodes": 33,
     "links": 65
    },
@@ -16449,6 +16451,8 @@
    "counts": {
     "facts": 120,
     "facts_cited": 58,
+    "facts_uncited": 62,
+    "facts_cited_twice": 0,
     "nodes": 25,
     "links": 58
    },
@@ -17575,7 +17579,7 @@
     "facts": 44,
     "facts_cited": 26,
     "facts_uncited": 18,
-    "transfers": 13,
+    "facts_cited_twice": 0,
     "nodes": 34,
     "links": 26
    },
@@ -17583,7 +17587,7 @@
     {
      "id": "one-figure-is-two-ribbons",
      "summary": "Every printed transfer is drawn twice, once from each end; summing every ribbon here comes to twice what the city transfers.",
-     "text": "Budget Book p76 names both ends of every movement it prints, and this document publishes both: a receiving leg from the payer's end into the fund that gets the money, and a paying leg out of the fund that sends it. The two carry the same transfer_id and the same value, because one printed figure is the evidence for both directions. So metadata.counts states the number of MOVEMENTS as well as the number of links, and a reader adding every value_cents in this file gets twice p76's grand total: $21,525,997 in FY 2025-26 and $21,624,633 in FY 2026-27.",
+     "text": "Budget Book p76 names both ends of every movement it prints, and this document publishes both: a receiving leg from the payer's end into the fund that gets the money, and a paying leg out of the fund that sends it. The two carry the same transfer_id and the same value, because one printed figure is the evidence for both directions. So the number of MOVEMENTS is half metadata.counts.links, and a reader adding every value_cents in this file gets twice p76's grand total: $21,525,997 in FY 2025-26 and $21,624,633 in FY 2026-27.",
      "applies_to": []
     },
     {
@@ -18205,7 +18209,7 @@
     "facts": 96,
     "facts_cited": 72,
     "facts_uncited": 24,
-    "transfers": 36,
+    "facts_cited_twice": 0,
     "nodes": 108,
     "links": 72
    },

@@ -2038,7 +2038,7 @@ func TestACallersOwnTitleSurvivesEveryYear(t *testing.T) {
 // to refuse it, not to build a repaint and a test that can never go red.
 func TestAYearStemOnAnotherScopeIsRefused(t *testing.T) {
 	_, err := twoYearSankey(t, export.View{}, func(meta map[string]any) {
-		meta["scope"] = "revenue-by-fund"
+		meta["scopes"] = []string{"revenue-by-fund"}
 	})
 	if err == nil {
 		t.Fatal("a year stem on another scope was exported; the page would state " +

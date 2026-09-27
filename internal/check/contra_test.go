@@ -22,7 +22,7 @@ func TestContraLinksNameTheirScheduleIsFailable(t *testing.T) {
 	// sentence this document's own hierarchy puts on it. It installs a
 	// hierarchy, which the fixture spine lacks; without one every reduction
 	// takes the orphan sentence and the tree comparison is never posed.
-	reduce := func(t *testing.T, g *project.Graph) (*project.Link, string) {
+	reduce := func(t *testing.T, g *project.Document) (*project.Link, string) {
 		t.Helper()
 		if len(g.Links) == 0 {
 			t.Fatal("the fixture graph draws no link; this test cannot pose its question")

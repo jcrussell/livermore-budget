@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -30,7 +31,26 @@ func TestSankeyReproducesGoldenFile(t *testing.T) {
 		t.Fatalf("read golden: %v", err)
 	}
 
-	var want Graph
+	// Bytes first, so a golden that no longer decodes still gets its rebuilt
+	// copy written before the decode below stops the test.
+	gotBytes, err := (&sankey{Labels: goldenLabels}).Build(withCIPLeg(t, spineFacts(t, testYear)), testOptions())
+	if err != nil {
+		t.Fatalf("Build: %v", err)
+	}
+	if !bytes.Equal(gotBytes, wantBytes) {
+		rebuilt := filepath.Join("..", "..", "bin", "sankey.golden-rebuilt.json")
+		if werr := os.MkdirAll(filepath.Dir(rebuilt), 0o750); werr != nil {
+			t.Fatal(werr)
+		}
+		if werr := os.WriteFile(rebuilt, gotBytes, 0o600); werr != nil {
+			t.Fatal(werr)
+		}
+		t.Errorf("encoded bytes differ from %s (got %d bytes, want %d); regenerate with "+
+			"`cp -f bin/sankey.golden-rebuilt.json testdata/sankey.golden.json` and read the diff",
+			goldenPath, len(gotBytes), len(wantBytes))
+	}
+
+	var want Document
 	dec := json.NewDecoder(bytes.NewReader(wantBytes))
 	// A key in the golden file this package has no field for is a contract we
 	// are not implementing, not a key to skip.
@@ -42,15 +62,6 @@ func TestSankeyReproducesGoldenFile(t *testing.T) {
 	got := buildGraph(t, withCIPLeg(t, spineFacts(t, testYear)), testOptions())
 	if diff := cmp.Diff(want, *got); diff != "" {
 		t.Errorf("graph mismatch (-want +got):\n%s", diff)
-	}
-
-	gotBytes, err := (&sankey{Labels: goldenLabels}).Build(withCIPLeg(t, spineFacts(t, testYear)), testOptions())
-	if err != nil {
-		t.Fatalf("Build: %v", err)
-	}
-	if !bytes.Equal(gotBytes, wantBytes) {
-		t.Errorf("encoded bytes differ from %s (got %d bytes, want %d)",
-			goldenPath, len(gotBytes), len(wantBytes))
 	}
 }
 
@@ -466,7 +477,7 @@ func TestLabelFallback(t *testing.T) {
 
 	// No registry: the nodes in builtinLabels keep their words, and a category
 	// falls back to its slug.
-	graph, err := (&sankey{}).Graph(spine(t), testOptions())
+	graph, err := (&sankey{}).Document(spine(t), testOptions())
 	if err != nil {
 		t.Fatalf("Graph: %v", err)
 	}
@@ -492,7 +503,7 @@ func TestLabelFallback(t *testing.T) {
 	// node must be the words on the page this projection read, while a
 	// taxonomy label names a category that may span several schedules. See
 	// (*Sankey).label.
-	graph, err = withLabels.Graph(spine(t), testOptions())
+	graph, err = withLabels.Document(spine(t), testOptions())
 	if err != nil {
 		t.Fatalf("Graph: %v", err)
 	}
@@ -550,7 +561,7 @@ func TestGraphRejects(t *testing.T) {
 				label: "Property Taxes", group: "general", cents: 100})
 			c.mutate(&fs[0])
 
-			_, err := (&sankey{}).Graph(fs, testOptions())
+			_, err := (&sankey{}).Document(fs, testOptions())
 			if err == nil {
 				t.Fatalf("got no error, want one containing %q", c.want)
 			}
@@ -565,7 +576,7 @@ func TestGraphRejects(t *testing.T) {
 // an unvalidated projection of year zero is an empty document, not an error,
 // and an empty document is the failure that ships.
 func TestGraphRejectsBadOptions(t *testing.T) {
-	_, err := (&sankey{}).Graph(spineFacts(t, testYear), Options{})
+	_, err := (&sankey{}).Document(spineFacts(t, testYear), Options{})
 	if err == nil {
 		t.Fatal("got no error, want one")
 	}
@@ -589,7 +600,7 @@ func TestGraphRefusesAForeignSchedule(t *testing.T) {
 	o := testOptions()
 	o.Scopes = []string{TrendsScope}
 
-	_, err := (&sankey{}).Graph(spineFacts(t, testYear), o)
+	_, err := (&sankey{}).Document(spineFacts(t, testYear), o)
 	if err == nil {
 		t.Fatal("got no error, want one")
 	}
@@ -793,14 +804,14 @@ func TestTheTransferCaveatMarksTheLegsTheGraphDRAWS(t *testing.T) {
 }
 
 // hasCaveat reports whether any caveat mentions a word.
-func hasCaveat(g *Graph, substr string) bool {
+func hasCaveat(g *Document, substr string) bool {
 	return strings.Contains(caveatText(g), substr)
 }
 
 // caveatText joins the caveats' TEXT, which is the field that used to be the
 // whole caveat. Summaries are deliberately not searched: a substring assertion
 // that matched either would pass on a document whose text had been emptied.
-func caveatText(g *Graph) string {
+func caveatText(g *Document) string {
 	texts := make([]string, 0, len(g.Metadata.Caveats))
 	for _, c := range g.Metadata.Caveats {
 		texts = append(texts, c.Text)
@@ -953,7 +964,7 @@ func TestTheHeadlineIsANamedCut(t *testing.T) {
 		InternalTransferInCents:       2_152_599_700,
 		InternalTransferOutCents:      5_961_273_400,
 	}
-	got := g.Metadata.Headline
+	got := *g.Metadata.Headline
 	got.ExternalRevenueCents, got.ExternalExpenditureCents = 0, 0
 	got.NaiveExpenditureCents, got.TransferResidualCents = 0, 0
 	if diff := cmp.Diff(want, got); diff != "" {

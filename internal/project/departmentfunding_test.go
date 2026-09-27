@@ -99,7 +99,7 @@ func fundingOptions() Options {
 	}
 }
 
-func buildFunding(t *testing.T, facts []fact.Fact) *DepartmentFundingDocument {
+func buildFunding(t *testing.T, facts []fact.Fact) *Document {
 	t.Helper()
 	doc, err := (&departmentFunding{Labels: fundingLabels()}).Document(facts, fundingOptions())
 	if err != nil {

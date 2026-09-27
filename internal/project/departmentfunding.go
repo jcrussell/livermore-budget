@@ -23,39 +23,6 @@ const DepartmentFundingScope = "department-funding-sources"
 // DepartmentFundingScopes is the schedule set, as [Options.Scopes] holds it.
 func DepartmentFundingScopes() []string { return []string{DepartmentFundingScope} }
 
-// departmentFundingCounts is how much of the corpus this document accounts for.
-//
-// Every printed cell is one link, so there is no facts_cited_twice.
-// facts = facts_cited + facts_uncited, every uncited fact a printed zero.
-type departmentFundingCounts struct {
-	Facts        int `json:"facts"`
-	FactsCited   int `json:"facts_cited"`
-	FactsUncited int `json:"facts_uncited"`
-	Nodes        int `json:"nodes"`
-	Links        int `json:"links"`
-}
-
-// departmentFundingMetadata is this document's metadata block, of one
-// schedule and one column.
-type departmentFundingMetadata struct {
-	Envelope
-	FiscalYear      int                     `json:"fiscal_year"`
-	FiscalYearLabel string                  `json:"fiscal_year_label"`
-	Basis           string                  `json:"basis"`
-	Sources         []Source                `json:"sources"`
-	Counts          departmentFundingCounts `json:"counts"`
-	Caveats         []Caveat                `json:"caveats"`
-}
-
-// DepartmentFundingDocument is the whole published file.
-type DepartmentFundingDocument struct {
-	SchemaVersion int                       `json:"schema_version"`
-	Projection    string                    `json:"projection"`
-	Metadata      departmentFundingMetadata `json:"metadata"`
-	Nodes         []Node                    `json:"nodes"`
-	Links         []Link                    `json:"links"`
-}
-
 // departmentFunding draws Budget Book pp.85-125's Department Funding Sources
 // block: which funds pay for each of the city's eleven departments.
 //
@@ -89,24 +56,7 @@ func (*departmentFunding) Name() string { return DepartmentFundingProjection }
 // columns. The two historical ones tie to nothing on the spine, which prints
 // no actual or revised column; a caveat says so.
 func (*departmentFunding) Slices(facts []fact.Fact, version string) []Options {
-	seen := map[Column]bool{}
-	for i := range facts {
-		if facts[i].Scope == DepartmentFundingScope {
-			seen[Column{FiscalYear: facts[i].FiscalYear, Basis: facts[i].Basis}] = true
-		}
-	}
-	cols := make([]Column, 0, len(seen))
-	for c := range seen {
-		cols = append(cols, c)
-	}
-	sortColumns(cols)
-	out := make([]Options, 0, len(cols))
-	for _, c := range cols {
-		out = append(out, Options{
-			Columns: []Column{c}, Scopes: DepartmentFundingScopes(), Version: version,
-		})
-	}
-	return out
+	return columnsCarrying(facts, DepartmentFundingScopes(), DepartmentFundingScopes(), nil, version)
 }
 
 // Build is [Projection]'s entry point.
@@ -120,7 +70,7 @@ func (d *departmentFunding) Build(facts []fact.Fact, o Options) ([]byte, error) 
 
 // Document builds the graph and returns it, so `fisc verify` reads the same
 // structure `fisc export` writes rather than re-parsing the JSON.
-func (d *departmentFunding) Document(facts []fact.Fact, o Options) (*DepartmentFundingDocument, error) {
+func (d *departmentFunding) Document(facts []fact.Fact, o Options) (*Document, error) {
 	if err := o.validate(); err != nil {
 		return nil, fmt.Errorf("department-funding options: %w", err)
 	}
@@ -146,15 +96,10 @@ func (d *departmentFunding) Document(facts []fact.Fact, o Options) (*DepartmentF
 
 	nodes := map[string]Node{}
 	links := make([]Link, 0, len(cells))
-	cited := map[string]bool{}
-	zero := map[string]bool{}
 	for _, k := range sortedFundingKeys(cells) {
 		c := cells[k]
 		if c.cents == 0 {
 			// A printed dash is a fact and is not a flow.
-			for _, id := range c.factIDs {
-				zero[id] = true
-			}
 			continue
 		}
 		src, srcErr := d.fundEndpoint(k.fund)
@@ -171,9 +116,6 @@ func (d *departmentFunding) Document(facts []fact.Fact, o Options) (*DepartmentF
 		}
 		d.addNode(nodes, src)
 		d.addNode(nodes, dst)
-		for _, id := range c.factIDs {
-			cited[id] = true
-		}
 		links = append(links, Link{
 			Source: src.id, Target: dst.id, ValueCents: c.cents,
 			// These rows print the fund, so the paying fund group can answer
@@ -192,23 +134,9 @@ func (d *departmentFunding) Document(facts []fact.Fact, o Options) (*DepartmentF
 	}
 	out := sortedNodes(nodes)
 
-	// Every uncited fact must be a printed zero; anything else is money
-	// dropped in silence.
-	uncited := 0
-	for i := range selected {
-		id := selected[i].ID
-		if cited[id] {
-			continue
-		}
-		uncited++
-		if !zero[id] {
-			return nil, cmdutil.WithHint(
-				fmt.Errorf("department-funding: fact %s is carried by no link and is not a "+
-					"printed zero", id),
-				"facts = facts_cited + facts_uncited is this document's published identity, "+
-					"and a fact reaching no link for another reason is a fund's contribution "+
-					"to a department dropped in silence")
-		}
+	c, uncited := tally(selected, links, len(out))
+	if err := refuseUncited(d.Name(), uncited, nil); err != nil {
+		return nil, err
 	}
 
 	cavs := departmentFundingCaveats()
@@ -216,28 +144,20 @@ func (d *departmentFunding) Document(facts []fact.Fact, o Options) (*DepartmentF
 		return nil, fmt.Errorf("%s: %w", col, err)
 	}
 
-	return &DepartmentFundingDocument{
+	return &Document{
 		SchemaVersion: SchemaVersion,
 		Projection:    d.Name(),
-		Metadata: departmentFundingMetadata{
-			Envelope: Envelope{
-				GeneratedBy: o.Version,
-				Scope:       DepartmentFundingScope,
-				Currency:    "USD",
-				Units:       "cents",
-			},
+		Metadata: Metadata{
+			GeneratedBy:     o.Version,
 			FiscalYear:      col.FiscalYear,
 			FiscalYearLabel: fiscalYearLabel(col.FiscalYear),
 			Basis:           string(col.Basis),
+			Scopes:          DepartmentFundingScopes(),
+			Currency:        "USD",
+			Units:           "cents",
 			Sources:         sourcesOf(selected),
-			Counts: departmentFundingCounts{
-				Facts:        len(selected),
-				FactsCited:   len(cited),
-				FactsUncited: uncited,
-				Nodes:        len(out),
-				Links:        len(links),
-			},
-			Caveats: cavs,
+			Counts:          c,
+			Caveats:         cavs,
 		},
 		Nodes: out,
 		Links: links,

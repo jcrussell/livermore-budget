@@ -19,7 +19,8 @@
 // Every key is present on every object, in declaration order — no omitempty,
 // no null — the same discipline as [fact.Fact] and for the same reason: a key
 // that vanishes when it is empty makes a diff between two releases read as a
-// structural change. Absent strings are "", absent slices are [].
+// structural change. Absent strings are "", absent slices are []. The one key
+// a document may omit is [Metadata.Headline], for the reason on that field.
 //
 // Money is an integer count of cents, never a float and never a string.
 // amount.Cents is deliberately not marshalled: it has a String method and
@@ -180,74 +181,16 @@ func PublishedDocuments() []PublishedDocument {
 		Columns:    TrendsColumns(),
 	})
 
-	// THE DRILL-DOWN PUBLISHES ALL FOUR COLUMNS, not just the two adopted years
-	// the spine prints. Two reasons, and the second is the load-bearing one.
-	//
-	// It is the only document that draws pp.167-170 at all, so drawing two of
-	// its four columns would publish half a schedule with nothing on the site or
-	// in the fact store saying which half was left.
-	//
-	// And the historical columns are worth drawing on their own account: a
-	// reader asking where a fund's money came from in FY2024 is asking the
-	// question this document exists to answer, and the spine printing no actual
-	// column is a fact about pp.66-67 rather than about pp.127-140.
-	declared := fundFlowsSlices()
-	for _, o := range declared {
-		out = append(out, PublishedDocument{
-			Projection: FundFlowsProjection,
-			Stem:       stemOrPanic(FundFlowsProjection, o, declared),
-			Scopes:     FundFlowsScopes(),
-			Columns:    slices.Clone(o.Columns),
-		})
-	}
-
-	// The cross-tab publishes all four columns: it is the only document that
-	// draws pp.85-125's upper block. `fisc export`'s unviewedDocuments declares
-	// the ones no chart reaches.
-	spending := departmentSpendingSlices()
-	for _, o := range spending {
-		out = append(out, PublishedDocument{
-			Projection: DepartmentSpendingProjection,
-			Stem:       stemOrPanic(DepartmentSpendingProjection, o, spending),
-			Scopes:     DepartmentSpendingScopes(),
-			Columns:    slices.Clone(o.Columns),
-		})
-	}
-
-	// The funding sources publish all four columns, for the same reason, one
-	// block down the same pages.
-	funding := departmentFundingSlices()
-	for _, o := range funding {
-		out = append(out, PublishedDocument{
-			Projection: DepartmentFundingProjection,
-			Stem:       stemOrPanic(DepartmentFundingProjection, o, funding),
-			Scopes:     DepartmentFundingScopes(),
-			Columns:    slices.Clone(o.Columns),
-		})
-	}
-
-	// The transfer network publishes the two adopted columns, all the corpus
-	// carries: the rules skip p76's historical columns, which miss its own
-	// printed grand total by millions.
-	transfers := transfersByFundSlices()
-	for _, o := range transfers {
-		out = append(out, PublishedDocument{
-			Projection: TransfersByFundProjection,
-			Stem:       stemOrPanic(TransfersByFundProjection, o, transfers),
-			Scopes:     TransfersByFundScopes(),
-			Columns:    slices.Clone(o.Columns),
-		})
-	}
-
-	// The transfers-out network publishes the columns p76 and p222 both print.
-	out76 := transfersOutSlices()
-	for _, o := range out76 {
-		out = append(out, PublishedDocument{
-			Projection: TransfersOutProjection,
-			Stem:       stemOrPanic(TransfersOutProjection, o, out76),
-			Scopes:     TransfersOutScopes(),
-			Columns:    slices.Clone(o.Columns),
-		})
+	for _, g := range publishedGraphs()[1:] {
+		declared := g.options()
+		for _, o := range declared {
+			out = append(out, PublishedDocument{
+				Projection: g.projection,
+				Stem:       stemOrPanic(g.projection, o, declared),
+				Scopes:     slices.Clone(g.scopes),
+				Columns:    slices.Clone(o.Columns),
+			})
+		}
 	}
 
 	// The two ACFR ten-year schedules, one document each: two row axes, two
@@ -268,88 +211,106 @@ func PublishedDocuments() []PublishedDocument {
 	return out
 }
 
-// fundFlowsSlices is every document the drill-down publishes, as
-// [FundFlows.Slices] would declare them over a corpus that carries both its
-// schedules across the four printed columns.
+// publishedGraph is one graph projection's published declaration: the
+// schedule set it draws, the kinds it selects out of them, and every column
+// the site publishes it over.
 //
-// Stated rather than read off the facts, for [PublishedDocuments]' reason.
-func fundFlowsSlices() []Options {
-	cols := []Column{
+// Stated rather than read off the facts, for [PublishedDocuments]' reason: a
+// declaration that consulted the store could not report that the store stopped
+// covering it.
+type publishedGraph struct {
+	projection string
+	scopes     []string
+	kinds      []mapping.Kind
+	columns    []Column
+}
+
+// options is one Options per published column, as the projection's Slices
+// would declare them over a corpus carrying every one.
+func (g publishedGraph) options() []Options {
+	out := make([]Options, 0, len(g.columns))
+	for _, c := range g.columns {
+		out = append(out, Options{Columns: []Column{c}, Scopes: slices.Clone(g.scopes), Kinds: slices.Clone(g.kinds)})
+	}
+	return out
+}
+
+// publishedGraphs is every graph the site publishes, the spine first. The
+// detail schedules publish all four printed columns: each is the only document
+// drawing its pages, and two of four would be half a schedule with nothing
+// saying which half. p76 prints four and its rules skip the two historical
+// ones, which miss the page's own grand total by millions; p222 prints its
+// revised column beside no p76 column.
+func publishedGraphs() []publishedGraph {
+	return []publishedGraph{
+		{projection: PublishedProjection, scopes: []string{PublishedScope}, columns: adoptedColumns()},
+		{projection: FundFlowsProjection, scopes: FundFlowsScopes(), columns: budgetBookDetailColumns()},
+		{projection: DepartmentSpendingProjection, scopes: DepartmentSpendingScopes(), columns: budgetBookDetailColumns()},
+		{projection: DepartmentFundingProjection, scopes: DepartmentFundingScopes(), columns: budgetBookDetailColumns()},
+		{projection: TransfersByFundProjection, scopes: TransfersByFundScopes(), columns: adoptedColumns()},
+		{projection: TransfersOutProjection, scopes: TransfersOutScopes(), kinds: transferKinds, columns: adoptedColumns()},
+	}
+}
+
+// adoptedColumns are the two columns pp.66-67 and p76 print, oldest first.
+func adoptedColumns() []Column {
+	out := make([]Column, 0, len(PublishedFiscalYears()))
+	for _, y := range PublishedFiscalYears() {
+		out = append(out, Column{FiscalYear: y, Basis: PublishedBasis})
+	}
+	return out
+}
+
+// budgetBookDetailColumns are the four columns the Budget Book's detail
+// schedules print, oldest first.
+func budgetBookDetailColumns() []Column {
+	return []Column{
 		{FiscalYear: 2024, Basis: mapping.BasisActual},
 		{FiscalYear: 2025, Basis: mapping.BasisRevised},
 		{FiscalYear: 2026, Basis: mapping.BasisAdopted},
 		{FiscalYear: 2027, Basis: mapping.BasisAdopted},
 	}
-	out := make([]Options, 0, len(cols))
-	for _, c := range cols {
-		out = append(out, Options{Columns: []Column{c}, Scopes: FundFlowsScopes()})
-	}
-	return out
 }
 
-// departmentSpendingSlices is every document the cross-tab publishes, as
-// [departmentSpending.Slices] would declare them over a corpus carrying
-// pp.85-125's upper block across the four printed columns.
+// columnsCarrying is the Slices rule every graph projection answers with: one
+// single-column Options per (fiscal year, basis) in which EVERY required scope
+// carries a fact of the selected kinds, oldest first.
 //
-// Stated rather than read off the facts, for [PublishedDocuments]' reason.
-func departmentSpendingSlices() []Options {
-	cols := []Column{
-		{FiscalYear: 2024, Basis: mapping.BasisActual},
-		{FiscalYear: 2025, Basis: mapping.BasisRevised},
-		{FiscalYear: 2026, Basis: mapping.BasisAdopted},
-		{FiscalYear: 2027, Basis: mapping.BasisAdopted},
+// The years are read off the facts rather than hard-coded, so mapping a
+// revised column or a third budget year puts that document under verify's
+// checks without anyone remembering to add it here. ONE OPTIONS PER COLUMN:
+// every fiscal year the city publishes lives in the same facts.jsonl, and a
+// graph built over two of them doubles every figure while still balancing.
+func columnsCarrying(facts []fact.Fact, required, scopes []string, kinds []mapping.Kind, version string) []Options {
+	sel := Options{Scopes: required, Kinds: kinds}
+	seen := map[Column]map[string]bool{}
+	for i := range facts {
+		f := &facts[i]
+		if !sel.HasScope(f.Scope) || !sel.HasKind(f.Kind) {
+			continue
+		}
+		c := Column{FiscalYear: f.FiscalYear, Basis: f.Basis}
+		if seen[c] == nil {
+			seen[c] = map[string]bool{}
+		}
+		seen[c][f.Scope] = true
 	}
+	var cols []Column
+	for c, have := range seen {
+		every := true
+		for _, sc := range required {
+			every = every && have[sc]
+		}
+		if every {
+			cols = append(cols, c)
+		}
+	}
+	sortColumns(cols)
 	out := make([]Options, 0, len(cols))
 	for _, c := range cols {
-		out = append(out, Options{Columns: []Column{c}, Scopes: DepartmentSpendingScopes()})
-	}
-	return out
-}
-
-// departmentFundingSlices is every document the funding sources publish, as
-// [departmentFunding.Slices] would declare them over a corpus carrying
-// pp.85-125's lower block across the four printed columns.
-//
-// Stated rather than read off the facts, for [PublishedDocuments]' reason.
-func departmentFundingSlices() []Options {
-	cols := []Column{
-		{FiscalYear: 2024, Basis: mapping.BasisActual},
-		{FiscalYear: 2025, Basis: mapping.BasisRevised},
-		{FiscalYear: 2026, Basis: mapping.BasisAdopted},
-		{FiscalYear: 2027, Basis: mapping.BasisAdopted},
-	}
-	out := make([]Options, 0, len(cols))
-	for _, c := range cols {
-		out = append(out, Options{Columns: []Column{c}, Scopes: DepartmentFundingScopes()})
-	}
-	return out
-}
-
-// transfersByFundSlices is every document the transfer network publishes, as
-// [transfersByFund.Slices] would declare them over a corpus carrying p76's two
-// adopted columns.
-//
-// Stated rather than read off the facts, for [PublishedDocuments]' reason.
-func transfersByFundSlices() []Options {
-	cols := []Column{
-		{FiscalYear: 2026, Basis: mapping.BasisAdopted},
-		{FiscalYear: 2027, Basis: mapping.BasisAdopted},
-	}
-	out := make([]Options, 0, len(cols))
-	for _, c := range cols {
-		out = append(out, Options{Columns: []Column{c}, Scopes: TransfersByFundScopes()})
-	}
-	return out
-}
-
-// transfersOutSlices is every document the transfers-out network publishes:
-// p76's two adopted columns, which p222 prints beside its revised one.
-//
-// Stated rather than read off the facts, for [PublishedDocuments]' reason.
-func transfersOutSlices() []Options {
-	out := transfersByFundSlices()
-	for i := range out {
-		out[i].Scopes = TransfersOutScopes()
+		out = append(out, Options{
+			Columns: []Column{c}, Scopes: slices.Clone(scopes), Kinds: slices.Clone(kinds), Version: version,
+		})
 	}
 	return out
 }
@@ -417,17 +378,12 @@ func sameScopes(a, b []string) bool {
 	return slices.Equal(x, y)
 }
 
-// spineSlices is every document the spine publishes, as [Sankey.Slices] would
+// spineSlices is every document the spine publishes, as [sankey.Slices] would
 // declare them over a corpus that covers the published years. It is what
 // [PublishedDocuments] hands [Stem], so the declaration names its files by the
 // same rule and over the same list `fisc export` will.
 func spineSlices() []Options {
-	years := PublishedFiscalYears()
-	out := make([]Options, 0, len(years))
-	for _, y := range years {
-		out = append(out, spineOptions(y))
-	}
-	return out
+	return publishedGraphs()[0].options()
 }
 
 // stemOrPanic is [Stem] where the arguments are this package's own literals and
@@ -653,7 +609,7 @@ func (o Options) validate() error {
 // onlyScope is the one schedule a single-schedule document is of, and the
 // refusal of any other shape.
 //
-// IT EXISTS SO THE REFUSAL IS WRITTEN ONCE. Sankey.Graph, Trends.Document and
+// IT EXISTS SO THE REFUSAL IS WRITTEN ONCE. sankey.Document, Trends.Document and
 // envelope() each need "this document is of exactly one scope, and here it is",
 // and while [Options.Scopes] was a string all three spelled it as a field read
 // with no refusal at all -- correct only because the type could not hold a

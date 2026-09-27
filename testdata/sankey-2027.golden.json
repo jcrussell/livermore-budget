@@ -6,7 +6,9 @@
     "fiscal_year": 2027,
     "fiscal_year_label": "FY 2026-27",
     "basis": "adopted",
-    "scope": "all-funds-gross",
+    "scopes": [
+      "all-funds-gross"
+    ],
     "currency": "USD",
     "units": "cents",
     "sources": [
@@ -31,6 +33,8 @@
     "counts": {
       "facts": 120,
       "facts_cited": 58,
+      "facts_uncited": 62,
+      "facts_cited_twice": 0,
       "nodes": 25,
       "links": 58
     },

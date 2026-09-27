@@ -111,7 +111,7 @@ func fundFlowsFacts() []fact.Fact {
 	}
 }
 
-func buildFundFlows(t *testing.T, facts []fact.Fact, l labels) *FundFlowsDocument {
+func buildFundFlows(t *testing.T, facts []fact.Fact, l labels) *Document {
 	t.Helper()
 	doc, err := (&fundFlows{Labels: l}).Document(facts, fundFlowsOptions())
 	if err != nil {

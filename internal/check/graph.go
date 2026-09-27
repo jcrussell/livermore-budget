@@ -381,25 +381,17 @@ func describeSources(ss []project.Source) string {
 	return strings.Join(parts, "; ")
 }
 
-// countsReconcile asserts the published counts account for every fact.
+// countsReconcile re-derives every count a graph document publishes from the
+// document's own links and the facts its options select, never from a second
+// run of the producer, so a wrong citation changes the answer.
 //
-// internal/project publishes counts.facts and counts.facts_cited so the gap
-// between them is a quantity rather than a discrepancy a reader has to explain
-// to themselves. This check is what makes it a quantity: the difference is
-// exactly the facts of the stock rows plus the facts of the cells that net to
-// zero, and nothing else.
-//
-// The five terms are not equally strong evidence and should not be read as
-// though they were. counts.facts against a fresh selection from the fact store
-// catches a selector dropped from the projection's filter, and the stock-plus-zero
-// identity catches the projection drawing a link for a balance or dropping a cell
-// that is not zero: both apply a rule of this package's own. counts.facts_cited,
-// counts.nodes and counts.links are compared against re-derivations of the same
-// in-process structure the projection counted — sankey.go sets nodes and links from
-// the very map and slice this recounts — so they cannot fail on today's code at
-// all. They are a ratchet: they fail the day internal/project's shape and its own
-// counts stop agreeing, which is worth two lines, and they are evidence about the
-// code rather than about any figure.
+// The identity every document publishes is facts = facts_cited + facts_uncited,
+// and it holds whatever an uncited fact is worth; that an uncited fact is a
+// printed zero or a stock row is uncited-facts-are-printed-zeros'. counts.facts
+// against a fresh selection from the store catches a selector dropped from the
+// projection's filter; facts_cited and facts_cited_twice against the union of
+// every link's fact_ids catch a citation the document dropped or counted twice;
+// nodes and links against the arrays are a ratchet, and labelled as one.
 type countsReconcile struct{}
 
 var _ Check = (*countsReconcile)(nil)
@@ -408,65 +400,82 @@ func (*countsReconcile) ID() string { return "counts-reconcile" }
 func (*countsReconcile) Tier() int  { return 1 }
 func (*countsReconcile) Full() bool { return false }
 func (*countsReconcile) Description() string {
-	return "counts.facts equals counts.facts_cited plus the stock rows plus the zero-valued " +
-		"cells, and every count is a re-derivation of the graph and the facts it was built from"
+	return "every graph document's counts -- facts, facts_cited, facts_uncited, " +
+		"facts_cited_twice, nodes and links -- re-derived from its own links and the facts " +
+		"it was built from, and facts = facts_cited + facts_uncited"
 }
 
-// Run re-derives every quantity rather than reading it off the metadata, which is
-// the only way the identity means anything at all — but see the type's comment for
-// which of the five terms that makes into evidence about the corpus and which are
-// only evidence about the code.
 func (*countsReconcile) Run(_ context.Context, s *Subject) (Result, error) {
 	var findings []Finding
 	var summaries []string
 
-	for _, p := range s.graphs() {
-		selected := factsFor(s.Facts, p.Options)
-		stock, zero := 0, 0
-		for _, c := range netCells(selected) {
-			switch {
-			case c.stock:
-				stock += c.facts
-			case c.cents == 0:
-				zero += c.facts
+	for _, p := range s.linkedDocuments() {
+		c := p.Graph.Metadata.Counts
+		slice := factsFor(s.Facts, p.Options)
+		times := map[string]int{}
+		for _, l := range p.Links {
+			for _, id := range l.FactIDs {
+				times[id]++
 			}
 		}
-		counts := p.Graph.Metadata.Counts
-		cited := citedFacts(p.Graph.Links)
-
-		if counts.Facts != len(selected) {
-			findings = append(findings, finding(p.String(),
-				"counts.facts is %d but %d facts match its fiscal year, basis and scope",
-				counts.Facts, len(selected)))
+		cited, twice := 0, 0
+		for _, n := range times {
+			cited++
+			if n > 1 {
+				twice++
+			}
 		}
-		if counts.FactsCited != cited {
-			findings = append(findings, finding(p.String(),
-				"counts.facts_cited is %d but the links cite %d distinct facts",
-				counts.FactsCited, cited))
+		uncited := 0
+		for i := range slice {
+			if times[slice[i].ID] == 0 {
+				uncited++
+			}
 		}
-		if got := cited + stock + zero; counts.Facts != got {
-			findings = append(findings, finding(p.String(),
-				"counts.facts is %d but %d facts are cited, %d belong to stock rows and %d to "+
-					"cells that net to zero, which accounts for %d",
-				counts.Facts, cited, stock, zero, got))
+		for _, cmp := range []struct {
+			what      string
+			got, want int
+			why       string
+		}{
+			{"counts.facts", c.Facts, len(slice),
+				"the document says it drew a different slice than the one it was built over"},
+			{"counts.facts_cited", c.FactsCited, cited,
+				"a citation the document dropped, or one it counted twice: this is the " +
+					"number of DISTINCT facts some link names"},
+			{"counts.facts_uncited", c.FactsUncited, uncited,
+				"a fact that reached no link, and the document disagrees about how many"},
+			{"counts.facts_cited_twice", c.FactsCitedTwice, twice,
+				"the facts behind more than one link: on the drill-down a revenue row " +
+					"behind both its flow into a fund and its line's rollup, or an " +
+					"expenditure row behind both a division's object rows and the " +
+					"fund-to-division link that totals them"},
+			{"counts.nodes", c.Nodes, len(p.Nodes), "a ratchet on the arrays as published"},
+			{"counts.links", c.Links, len(p.Links), "a ratchet on the arrays as published"},
+		} {
+			if cmp.got != cmp.want {
+				findings = append(findings, finding(p.String(),
+					"%s is %d and re-derives to %d: %s", cmp.what, cmp.got, cmp.want, cmp.why))
+			}
 		}
-		if counts.Nodes != len(p.Graph.Nodes) {
+		// THE IDENTITY, asserted against the document's OWN numbers rather than
+		// the re-derived ones: whether each is right is the arms above; this is
+		// whether they are consistent with each other, which is what the
+		// document publishes as a claim.
+		if c.FactsCited+c.FactsUncited != c.Facts {
 			findings = append(findings, finding(p.String(),
-				"counts.nodes is %d but the graph has %d", counts.Nodes, len(p.Graph.Nodes)))
+				"counts.facts is %d and facts_cited + facts_uncited is %d + %d = %d; the "+
+					"document's published identity is that every fact is either behind a "+
+					"link or uncited, and the two numbers it publishes do not add up to the third",
+				c.Facts, c.FactsCited, c.FactsUncited, c.FactsCited+c.FactsUncited))
 		}
-		if counts.Links != len(p.Graph.Links) {
-			findings = append(findings, finding(p.String(),
-				"counts.links is %d but the graph has %d", counts.Links, len(p.Graph.Links)))
-		}
-		summaries = append(summaries, fmt.Sprintf("%s (%d = %d cited + %d stock + %d zero-valued)",
-			p, counts.Facts, cited, stock, zero))
+		summaries = append(summaries, fmt.Sprintf("%s (%d = %d cited + %d uncited, %d cited twice)",
+			p, c.Facts, c.FactsCited, c.FactsUncited, c.FactsCitedTwice))
 	}
 
 	return conclusion{
-		subjects: len(s.graphs()),
-		unit:     "projections",
+		subjects: len(summaries),
+		unit:     "graph documents",
 		held:     strings.Join(summaries, "; "),
-		nothing:  "no projection was built, so there are no counts to reconcile",
+		nothing:  "no projection built a graph, so there are no counts to reconcile",
 		findings: findings,
 	}.result(), nil
 }
@@ -750,9 +759,12 @@ func (*transferLegsPair) Run(_ context.Context, s *Subject) (Result, error) {
 		for _, n := range p.Nodes {
 			role[n.ID] = n.Role
 		}
+		// The two transfer networks draw every link as a leg, so one there with
+		// no transfer_id is half a movement the pairing would otherwise skip.
+		paired := p.Name == project.TransfersByFundProjection || p.Name == project.TransfersOutProjection
 		for _, l := range p.Links {
 			if l.TransferID == "" {
-				if p.TransfersByFund != nil {
+				if paired {
 					findings = append(findings, finding(p.String(),
 						"%s -> %s carries no transfer_id, and every link of this document is a leg", l.Source, l.Target))
 				}
@@ -1054,22 +1066,9 @@ func (*constraintTierVocabulary) Run(_ context.Context, s *Subject) (Result, err
 		if !tiered[p.String()] {
 			continue
 		}
-		// EVERY SHAPE THAT CARRIES CAVEATS, not just the drill-down. Reading
-		// only FundFlowsDocuments here while the node arms above read every
-		// linked document is a fail-open: project.Graph.Metadata has a Caveats
-		// field too, so the day the spine carried a constraint tier its nodes
-		// would be checked and its document would not, and the requirement that
-		// exists so "a reader of this file alone" is not misled would pass in
-		// silence over the one file most readers fetch.
-		var caveats []project.Caveat
-		switch {
-		case p.FundFlows != nil:
-			caveats = p.FundFlows.Metadata.Caveats
-		case p.Graph != nil:
-			caveats = p.Graph.Metadata.Caveats
-		case p.DepartmentFunding != nil:
-			caveats = p.DepartmentFunding.Metadata.Caveats
-		}
+		// Every graph carries the same metadata block, so the document that
+		// tiers a node is the document whose caveats are read.
+		caveats := p.Graph.Metadata.Caveats
 		// TWO FINDINGS, NOT ONE, now that a caveat has an id as well as a
 		// sentence. A caveat is looked up by ID and then its TEXT is compared,
 		// and the pair is the whole point:
@@ -1148,57 +1147,6 @@ func factsFor(facts []fact.Fact, o project.Options) []fact.Fact {
 	return out
 }
 
-// The netting below — cell, cellKey and netCells — is a second implementation of
-// internal/project's own cell netting (its cellKey, cell and netCells).
-// That is deliberate and it is what the counts identity rests on: this package has
-// to know which cells the projection SHOULD have drawn a link for in order to say
-// whether the ones it did draw account for every fact. Asking the projection would
-// be asking the thing under test.
-//
-// It fails closed in the direction that matters. If the projection changes how it
-// groups or nets cells, the stock and zero counts derived here stop accounting for
-// counts.facts and the check FAILS; it does not quietly agree. What it cannot do is
-// witness an amount, because both sides read the same amount_cents —
-// fact-token-reparses is the check that does.
-//
-// cell is one printed cell of a schedule as the projection nets it: a row's
-// classification crossed with a column's fund group.
-type cell struct {
-	cents int64
-	facts int
-	// stock is true for the two rows that are balances rather than flows. They
-	// are classified before the value is looked at, because internal/project
-	// drops them before it drops zero-valued cells and a zero stock row must not
-	// be counted twice.
-	stock bool
-}
-
-type cellKey struct {
-	kind      mapping.Kind
-	category  string
-	fundGroup string
-	fund      string
-}
-
-// netCells sums the facts of each printed cell, the way the projection does:
-// contra rows arrive already negative and net into their parent, so a cell's
-// value is the sum of its facts and not the sum of their magnitudes.
-func netCells(facts []fact.Fact) map[cellKey]*cell {
-	cells := map[cellKey]*cell{}
-	for _, f := range facts {
-		k := cellKey{kind: f.Kind, category: f.Category, fundGroup: f.FundGroup, fund: fact.FundString(f.Fund)}
-		c := cells[k]
-		if c == nil {
-			c = &cell{stock: f.Kind == mapping.KindFundBalance &&
-				(f.Category == categoryFundBalanceBeginning || f.Category == categoryFundBalanceEnding)}
-			cells[k] = c
-		}
-		c.cents += f.AmountCents
-		c.facts++
-	}
-	return cells
-}
-
 // factIndex keys facts by id, which is unique by construction and proved so by
 // the fact-ids-unique check.
 func factIndex(facts []fact.Fact) map[string]fact.Fact {
@@ -1207,22 +1155,4 @@ func factIndex(facts []fact.Fact) map[string]fact.Fact {
 		out[f.ID] = f
 	}
 	return out
-}
-
-// citedFacts counts the distinct facts a set of links carries, which is what
-// counts.facts_cited claims to be.
-//
-// It is the same algorithm as internal/project's citedFacts, applied to the same
-// links, so comparing the two cannot fail on today's code: it is the ratchet half
-// of counts-reconcile, and it is only honest to say so. It earns its place by
-// failing the day the projection's own count and its own links disagree — a fact
-// cited by two links, say, which counts.facts_cited is documented to count once.
-func citedFacts(links []project.Link) int {
-	seen := map[string]struct{}{}
-	for _, l := range links {
-		for _, id := range l.FactIDs {
-			seen[id] = struct{}{}
-		}
-	}
-	return len(seen)
 }

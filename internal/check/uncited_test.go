@@ -33,19 +33,18 @@ func scheduleSubject() *Subject {
 	options := func(scopes []string) project.Options {
 		return project.Options{Columns: []project.Column{col}, Scopes: scopes, Version: testVersion}
 	}
+	doc := func(cited string) *project.Document {
+		return &project.Document{Nodes: nodes, Links: link(cited),
+			Metadata: project.Metadata{Counts: project.Counts{
+				Facts: 2, FactsCited: 1, FactsUncited: 1, Nodes: 2, Links: 1}}}
+	}
 	return &Subject{
 		Facts: facts,
 		Projections: []projection{
-			{Name: project.FundFlowsProjection, Options: options(project.FundFlowsScopes()),
-				FundFlows: &project.FundFlowsDocument{Nodes: nodes, Links: link("ff-a"),
-					Metadata: project.FundFlowsMetadata{Counts: project.FundFlowsCounts{
-						Facts: 2, FactsCited: 1, FactsUncited: 1, Nodes: 2, Links: 1}}}},
-			{Name: project.DepartmentSpendingProjection, Options: options(project.DepartmentSpendingScopes()),
-				DepartmentSpending: &project.DepartmentSpendingDocument{Nodes: nodes, Links: link("ds-a")}},
-			{Name: project.DepartmentFundingProjection, Options: options(project.DepartmentFundingScopes()),
-				DepartmentFunding: &project.DepartmentFundingDocument{Nodes: nodes, Links: link("df-a")}},
-			{Name: project.TransfersByFundProjection, Options: options(project.TransfersByFundScopes()),
-				TransfersByFund: &project.TransfersByFundDocument{Nodes: nodes, Links: link("tb-a")}},
+			{Name: project.FundFlowsProjection, Options: options(project.FundFlowsScopes()), Graph: doc("ff-a")},
+			{Name: project.DepartmentSpendingProjection, Options: options(project.DepartmentSpendingScopes()), Graph: doc("ds-a")},
+			{Name: project.DepartmentFundingProjection, Options: options(project.DepartmentFundingScopes()), Graph: doc("df-a")},
+			{Name: project.TransfersByFundProjection, Options: options(project.TransfersByFundScopes()), Graph: doc("tb-a")},
 		},
 	}
 }
@@ -94,27 +93,52 @@ func TestUncitedFactsArePrintedZerosIsFailable(t *testing.T) {
 			s.Facts[i].AmountCents = 500
 		}
 	}
-	res, err = (&fundFlowsCountsReconcile{}).Run(t.Context(), s)
+	res, err = (&countsReconcile{}).Run(t.Context(), s)
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
 	if res.Status != StatusPass {
-		t.Errorf("fund-flows-counts-reconcile is %s on a non-zero uncited fact, want pass -- "+
+		t.Errorf("counts-reconcile is %s on a non-zero uncited fact, want pass -- "+
 			"if it can see this, the check under test is a second spelling: %v",
 			res.Status, res.Findings)
 	}
 }
 
-// TestUncitedFactsArePrintedZerosSkipsTheSpine: the spine's fund balance rows
-// are stocks behind no link, not zeros.
-func TestUncitedFactsArePrintedZerosSkipsTheSpine(t *testing.T) {
+// TestUncitedFactsArePrintedZerosAllowsTheSpinesStocks: the spine's beginning
+// and ending working capital rows are balances behind no link, and are the one
+// non-zero fact allowed uncited; a stock row re-classified as a flow is not.
+func TestUncitedFactsArePrintedZerosAllowsTheSpinesStocks(t *testing.T) {
 	s := testSubject(t)
 	res, err := (&uncitedFactsArePrintedZeros{}).Run(t.Context(), s)
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
-	if res.Status != StatusVacuous {
-		t.Errorf("over the spine-only fixture the check is %s, want vacuous: %s",
+	if res.Status != StatusPass || res.Subjects == 0 {
+		t.Fatalf("over the spine fixture the check is %s over %d, want pass over its stocks "+
+			"and zero cells: %s", res.Status, res.Subjects, res.Summary)
+	}
+	if !strings.Contains(res.Summary, "stock") {
+		t.Errorf("the summary does not say a stock row may go uncited: %s", res.Summary)
+	}
+	// A stock row filed under a flow category is money the spine dropped.
+	s = testSubject(t)
+	moved := false
+	for i := range s.Facts {
+		if s.Facts[i].Category == categoryFundBalanceBeginning && s.Facts[i].AmountCents != 0 {
+			s.Facts[i].Category = "fund-balance/change"
+			moved = true
+			break
+		}
+	}
+	if !moved {
+		t.Fatal("the fixture carries no non-zero beginning balance to re-classify")
+	}
+	res, err = (&uncitedFactsArePrintedZeros{}).Run(t.Context(), s)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if res.Status != StatusFail {
+		t.Errorf("a non-zero fact that is neither a stock nor cited passes as %s: %s",
 			res.Status, res.Summary)
 	}
 }

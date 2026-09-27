@@ -95,7 +95,7 @@ func (t *Trends) Slices(facts []fact.Fact, version string) []Options {
 
 // TrendsDocument is the whole published file. It is exported so a check can
 // examine the structure without parsing back the JSON it is validating, exactly
-// as Sankey.Graph is.
+// as sankey.Document is.
 type TrendsDocument struct {
 	SchemaVersion int            `json:"schema_version"`
 	Projection    string         `json:"projection"`
@@ -220,7 +220,7 @@ func (t *Trends) Build(facts []fact.Fact, o Options) ([]byte, error) {
 
 // Document builds the document without encoding it, so `fisc verify` can check
 // it without parsing back the JSON it is trying to validate. It is Trends's
-// Sankey.Graph.
+// sankey.Document.
 func (t *Trends) Document(facts []fact.Fact, o Options) (*TrendsDocument, error) {
 	return t.spec().document(facts, o)
 }

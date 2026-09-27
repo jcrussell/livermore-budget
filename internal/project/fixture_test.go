@@ -283,9 +283,9 @@ var goldenLabels = stubLabels{
 }
 
 // buildGraph builds with the golden labels and fails the test on error.
-func buildGraph(t *testing.T, fs []fact.Fact, o Options) *Graph {
+func buildGraph(t *testing.T, fs []fact.Fact, o Options) *Document {
 	t.Helper()
-	g, err := (&sankey{Labels: goldenLabels}).Graph(fs, o)
+	g, err := (&sankey{Labels: goldenLabels}).Document(fs, o)
 	if err != nil {
 		t.Fatalf("Graph: %v", err)
 	}
@@ -293,7 +293,7 @@ func buildGraph(t *testing.T, fs []fact.Fact, o Options) *Graph {
 }
 
 // linkBetween returns the one link from source to target, or fails.
-func linkBetween(t *testing.T, g *Graph, source, target string) Link {
+func linkBetween(t *testing.T, g *Document, source, target string) Link {
 	t.Helper()
 	for _, l := range g.Links {
 		if l.Source == source && l.Target == target {
@@ -305,7 +305,7 @@ func linkBetween(t *testing.T, g *Graph, source, target string) Link {
 }
 
 // hasLink reports whether any link joins the two nodes.
-func hasLink(g *Graph, source, target string) bool {
+func hasLink(g *Document, source, target string) bool {
 	for _, l := range g.Links {
 		if l.Source == source && l.Target == target {
 			return true
@@ -315,7 +315,7 @@ func hasLink(g *Graph, source, target string) bool {
 }
 
 // nodeByID returns the node with an id, or fails.
-func nodeByID(t *testing.T, g *Graph, id string) Node {
+func nodeByID(t *testing.T, g *Document, id string) Node {
 	t.Helper()
 	for _, n := range g.Nodes {
 		if n.ID == id {

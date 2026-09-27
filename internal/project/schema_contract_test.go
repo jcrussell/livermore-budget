@@ -17,8 +17,7 @@ import (
 // name a document can carry is a property there, and nothing is a property there
 // a document cannot carry.
 //
-// Equality, not containment: these structs ARE the document. It is the union
-// across the graph documents, which share one schema.
+// Equality, not containment: these structs ARE the document.
 func TestTheSchemasStateWhatTheProjectionsCarry(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
@@ -26,12 +25,9 @@ func TestTheSchemasStateWhatTheProjectionsCarry(t *testing.T) {
 		emitted []any
 	}{
 		{
-			name:   "graph projections",
-			schema: schema.Projection,
-			emitted: []any{
-				Graph{}, FundFlowsDocument{}, DepartmentSpendingDocument{},
-				DepartmentFundingDocument{}, TransfersByFundDocument{},
-			},
+			name:    "graph projections",
+			schema:  schema.Projection,
+			emitted: []any{Document{}},
 		},
 		{
 			name:    "series projections",
@@ -99,7 +95,8 @@ func TestTheSchemaHoldsASignToItsSentence(t *testing.T) {
 					"generated_by": "t", "currency": "USD", "units": "cents",
 					"scopes": []string{"revenue-by-fund"}, "sources": loc,
 					"counts": map[string]any{
-						"facts": 1, "facts_cited": 1, "nodes": 0, "links": 1,
+						"facts": 1, "facts_cited": 1, "facts_uncited": 0, "facts_cited_twice": 0,
+						"nodes": 0, "links": 1,
 					},
 					"caveats": []any{},
 				},

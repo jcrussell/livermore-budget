@@ -3,15 +3,15 @@
   "projection": "transfers-out",
   "metadata": {
     "generated_by": "testdata/transfers-out.golden.json (captured from fisc export; see testdata/README.md)",
+    "fiscal_year": 2026,
+    "fiscal_year_label": "FY 2025-26",
+    "basis": "adopted",
     "scopes": [
       "transfers-by-fund",
       "cip-funding-sources"
     ],
     "currency": "USD",
     "units": "cents",
-    "fiscal_year": 2026,
-    "fiscal_year_label": "FY 2025-26",
-    "basis": "adopted",
     "sources": [
       {
         "doc_id": "livermore-budget-fy2026-2027",
@@ -25,7 +25,7 @@
       "facts": 96,
       "facts_cited": 72,
       "facts_uncited": 24,
-      "transfers": 36,
+      "facts_cited_twice": 0,
       "nodes": 108,
       "links": 72
     },

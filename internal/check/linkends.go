@@ -101,7 +101,7 @@ func (*linkEndsMatchTheirFacts) Run(_ context.Context, s *Subject) (Result, erro
 				}
 			}
 			e := linkEnd{link: l, facts: facts, vocab: s.Vocabulary, tiers: tiers,
-				divisionExpenditure: p.FundFlows != nil}
+				divisionExpenditure: p.Name == project.FundFlowsProjection}
 			for _, j := range legs[l.TransferID] {
 				if j != i {
 					e.others = append(e.others, p.Links[j])

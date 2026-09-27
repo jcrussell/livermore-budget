@@ -60,7 +60,7 @@
  * @property {number} fiscal_year
  * @property {string} fiscal_year_label
  * @property {string} basis
- * @property {string} scope
+ * @property {string[]} scopes
  * @property {string} currency
  * @property {string} units
  * @property {FiscSource[]} sources
@@ -3782,7 +3782,7 @@ export function scheduleOf(column, key) {
       generated_by: column.generated_by || "",
       fiscal_year: col.fiscal_year, fiscal_year_label: col.label,
       basis: col.basis,
-      scope: (sched.scopes || []).join(", "),
+      scopes: sched.scopes,
       currency: "USD", units: "cents",
       sources: sched.sources,
       headline: sched.headline || {},

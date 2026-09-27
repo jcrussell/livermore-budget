@@ -82,12 +82,10 @@ func TestFixtureVerdicts(t *testing.T) {
 		"node-tiers-are-declared": "pass over 9",
 		// The drill-down's three checks are vacuous over the miniature spine,
 		// which carries neither of the schedules it draws.
-		"fund-flows-counts-reconcile": "vacuous over 0",
 		// And the two over the schedule documents likewise: the fixture builds
 		// none of the four, so there is no count to re-derive and no uncited
 		// fact to value.
-		"schedule-counts-reconcile":       "vacuous over 0",
-		"uncited-facts-are-printed-zeros": "vacuous over 0",
+		"uncited-facts-are-printed-zeros": "pass over 5",
 		// No drill-down, no line node. Not declared vacuous: the committed
 		// corpus gives it a subject (TestTheCommittedCorpusVacuitySplit).
 		"revenue-lines-tie-to-their-categories": "vacuous over 0",
@@ -133,7 +131,7 @@ func TestFixtureVerdicts(t *testing.T) {
 	if diff := cmp.Diff(want, statuses(rep)); diff != "" {
 		t.Errorf("verdicts mismatch (-want +got):\n%s", diff)
 	}
-	if got := (counts{Pass: 25, Vacuous: 24, Skipped: 1}); got != rep.Counts {
+	if got := (counts{Pass: 26, Vacuous: 21, Skipped: 1}); got != rep.Counts {
 		t.Errorf("counts = %+v, want %+v", rep.Counts, got)
 	}
 	// The counts are pinned as numbers above rather than spelled in words here,
@@ -155,8 +153,8 @@ func TestVacuousFailsOnlyUnderStrict(t *testing.T) {
 	lenient := Run(t.Context(), s, All(), ReportOptions{})
 	strict := Run(t.Context(), s, All(), ReportOptions{Strict: true})
 
-	if lenient.Counts.Vacuous != 24 {
-		t.Fatalf("vacuous count = %d, want 24", lenient.Counts.Vacuous)
+	if lenient.Counts.Vacuous != 21 {
+		t.Fatalf("vacuous count = %d, want 21", lenient.Counts.Vacuous)
 	}
 	if lenient.Failed() {
 		t.Error("a run with vacuous checks failed without --strict")
@@ -918,17 +916,17 @@ func TestDerivedNodeNeedsItsProvenance(t *testing.T) {
 func TestCountsMustAccountForEveryFact(t *testing.T) {
 	tests := []struct {
 		name   string
-		tamper func(*project.Graph)
+		tamper func(*project.Document)
 		want   string
 	}{
-		{"facts", func(g *project.Graph) { g.Metadata.Counts.Facts++ }, "counts.facts is 13"},
-		{"cited", func(g *project.Graph) { g.Metadata.Counts.FactsCited++ }, "counts.facts_cited is 8"},
-		{"a stock row grew a link", func(g *project.Graph) {
+		{"facts", func(g *project.Document) { g.Metadata.Counts.Facts++ }, "counts.facts is 13"},
+		{"cited", func(g *project.Document) { g.Metadata.Counts.FactsCited++ }, "counts.facts_cited is 8"},
+		{"a stock row grew a link", func(g *project.Document) {
 			g.Links[0].FactIDs = append(g.Links[0].FactIDs, stockFactID(g))
 			g.Metadata.Counts.FactsCited++
-		}, "accounts for 13"},
-		{"nodes", func(g *project.Graph) { g.Metadata.Counts.Nodes = 99 }, "counts.nodes is 99"},
-		{"links", func(g *project.Graph) { g.Metadata.Counts.Links = 99 }, "counts.links is 99"},
+		}, "8 + 5 = 13"},
+		{"nodes", func(g *project.Document) { g.Metadata.Counts.Nodes = 99 }, "counts.nodes is 99"},
+		{"links", func(g *project.Document) { g.Metadata.Counts.Links = 99 }, "counts.links is 99"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -950,7 +948,7 @@ func TestCountsMustAccountForEveryFact(t *testing.T) {
 // value of publishing both counts is that a reader can see where the gap went.
 func TestCountsReconcileNamesTheArithmetic(t *testing.T) {
 	res := resultFor(t, runChecks(t, testSubject(t)), "counts-reconcile")
-	if want := "(12 = 7 cited + 4 stock + 1 zero-valued)"; !strings.Contains(res.Summary, want) {
+	if want := "(12 = 7 cited + 5 uncited, 0 cited twice)"; !strings.Contains(res.Summary, want) {
 		t.Errorf("summary %q does not contain %q", res.Summary, want)
 	}
 }
@@ -980,7 +978,7 @@ func TestTransferHeadlineIsTheFacts(t *testing.T) {
 // one; the day they agree, the page is illustrating nothing.
 func TestNaiveExpenditureMustStayWrong(t *testing.T) {
 	s := testSubject(t)
-	h := &s.Projections[0].Graph.Metadata.Headline
+	h := s.Projections[0].Graph.Metadata.Headline
 	if h.NaiveExpenditureCents != h.AllFundsGrossExpenditureCents+h.InternalTransferOutCents {
 		t.Fatalf("the fixture's naive figure is not gross plus transfers out: %+v", h)
 	}
@@ -1236,7 +1234,7 @@ func TestNodeHierarchyWellFormedIsFailable(t *testing.T) {
 
 // tierNode is the id of some node at the given tier, so the cases above damage
 // the fixture's shape rather than a node id spelled into the test.
-func tierNode(t *testing.T, g *project.Graph, tier int) string {
+func tierNode(t *testing.T, g *project.Document, tier int) string {
 	t.Helper()
 	for _, n := range g.Nodes {
 		if n.Tier == tier {
@@ -1380,7 +1378,7 @@ func cellsSubject(t *testing.T, cells []testCell) *Subject {
 
 // nodePointer returns a pointer to the node with an id, so a test can tamper
 // with it.
-func nodePointer(t *testing.T, g *project.Graph, id string) *project.Node {
+func nodePointer(t *testing.T, g *project.Document, id string) *project.Node {
 	t.Helper()
 	for i := range g.Nodes {
 		if g.Nodes[i].ID == id {
@@ -1392,7 +1390,7 @@ func nodePointer(t *testing.T, g *project.Graph, id string) *project.Node {
 }
 
 // linkFrom returns a pointer to the one link leaving a node.
-func linkFrom(t *testing.T, g *project.Graph, source string) *project.Link {
+func linkFrom(t *testing.T, g *project.Document, source string) *project.Link {
 	t.Helper()
 	for i := range g.Links {
 		if g.Links[i].Source == source {
@@ -1404,7 +1402,7 @@ func linkFrom(t *testing.T, g *project.Graph, source string) *project.Link {
 }
 
 // stockFactID is the id of a fact no link cites: one of the two stock rows.
-func stockFactID(g *project.Graph) string {
+func stockFactID(g *project.Document) string {
 	cited := map[string]bool{}
 	for _, l := range g.Links {
 		for _, id := range l.FactIDs {
@@ -1483,7 +1481,7 @@ func TestEveryHeadlineFigureIsTiedToTheFacts(t *testing.T) {
 	} {
 		t.Run(tt.key, func(t *testing.T) {
 			s := testSubject(t, testFacts(internalServiceCells...)...)
-			tt.shift(&s.Projections[0].Graph.Metadata.Headline)
+			tt.shift(s.Projections[0].Graph.Metadata.Headline)
 			res := resultFor(t, runChecks(t, s), "headline-ties-to-facts")
 
 			if res.Status != StatusFail {
@@ -1572,7 +1570,7 @@ func TestALinkCitingNothingInTheStoreIsADifferentProblem(t *testing.T) {
 }
 
 // hasLinkKind reports whether any link is of kind k.
-func hasLinkKind(g *project.Graph, k project.LinkKind) bool {
+func hasLinkKind(g *project.Document, k project.LinkKind) bool {
 	for _, l := range g.Links {
 		if l.Kind == k {
 			return true
@@ -1642,7 +1640,7 @@ func TestProjectionsBuildIsNeverVacuousWithARefusalRecorded(t *testing.T) {
 func TestProjectionsBuildCountsSlicesNotProjections(t *testing.T) {
 	s := &Subject{Projections: []projection{{
 		Name:  "trends",
-		Graph: &project.Graph{},
+		Graph: &project.Document{},
 		Options: project.Options{
 			Columns: []project.Column{
 				{FiscalYear: 2024, Basis: "actual"},
@@ -1893,9 +1891,9 @@ func TestAnEndpointCarryingNoFlowMayBeAParent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load the committed corpus: %v", err)
 	}
-	var doc *project.TransfersByFundDocument
+	var doc *project.Document
 	for i := range s.Projections {
-		if d := s.Projections[i].TransfersByFund; d != nil {
+		if d := s.Projections[i].Graph; d != nil && s.Projections[i].Name == project.TransfersByFundProjection {
 			doc = d
 			break
 		}

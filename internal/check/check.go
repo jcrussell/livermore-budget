@@ -207,8 +207,6 @@ func All() []Check {
 		&linkKindsMatchTheirFacts{},
 		&contraLinksNameTheirSchedule{},
 		&countsReconcile{},
-		&fundFlowsCountsReconcile{},
-		&scheduleCountsReconcile{},
 		&uncitedFactsArePrintedZeros{},
 		&revenueLinesTieToTheirCategories{},
 		&headlineTiesToFacts{},

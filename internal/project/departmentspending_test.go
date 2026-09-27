@@ -1,6 +1,7 @@
 package project
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -80,7 +81,7 @@ func spendingOptions() Options {
 	}
 }
 
-func buildSpending(t *testing.T, facts []fact.Fact) *DepartmentSpendingDocument {
+func buildSpending(t *testing.T, facts []fact.Fact) *Document {
 	t.Helper()
 	doc, err := (&departmentSpending{Labels: spendingLabels()}).Document(facts, spendingOptions())
 	if err != nil {
@@ -160,8 +161,8 @@ func TestTheCrossTabCountsEveryFactOnceOrAsAPrintedZero(t *testing.T) {
 		t.Errorf("counts.nodes/links = %d/%d, arrays are %d/%d", c.Nodes, c.Links,
 			len(doc.Nodes), len(doc.Links))
 	}
-	if doc.Metadata.Scope != DepartmentSpendingScope {
-		t.Errorf("metadata.scope = %q, want %q", doc.Metadata.Scope, DepartmentSpendingScope)
+	if !slices.Equal(doc.Metadata.Scopes, DepartmentSpendingScopes()) {
+		t.Errorf("metadata.scopes = %q, want %q", doc.Metadata.Scopes, DepartmentSpendingScopes())
 	}
 }
 

@@ -60,7 +60,7 @@ func (sp seriesSpec) document(facts []fact.Fact, o Options) (*TrendsDocument, er
 	if err := o.validate(); err != nil {
 		return nil, fmt.Errorf("%s options: %w", sp.name, err)
 	}
-	// Two refusals for the reason Sankey.Graph gives: how many schedules and
+	// Two refusals for the reason sankey.Document gives: how many schedules and
 	// which schedule are different mistakes.
 	scope, err := o.onlyScope()
 	if err != nil {

@@ -238,7 +238,7 @@ func TestASingleGrainDocumentRefusesTwoScopes(t *testing.T) {
 
 	so := testOptions()
 	so.Scopes = both
-	if _, err := (&sankey{}).Graph(spineFacts(t, testYear), so); err == nil {
+	if _, err := (&sankey{}).Document(spineFacts(t, testYear), so); err == nil {
 		t.Error("Sankey.Graph over the spine and its decomposition = nil error, want a refusal")
 	} else {
 		for _, want := range []string{"not an antichain", `"revenue-detail"`, `"spine"`, "counts that money twice"} {
@@ -249,7 +249,7 @@ func TestASingleGrainDocumentRefusesTwoScopes(t *testing.T) {
 	}
 
 	so.Scopes = []string{TrendsScope, "expenditure-by-department"}
-	if _, err := (&sankey{}).Graph(spineFacts(t, testYear), so); err == nil {
+	if _, err := (&sankey{}).Document(spineFacts(t, testYear), so); err == nil {
 		t.Error("Sankey.Graph over two summable schedules = nil error, want a refusal")
 	} else if !strings.Contains(err.Error(), "one schedule") {
 		t.Errorf("Sankey.Graph = %q, want it to say the document is of one schedule", err)

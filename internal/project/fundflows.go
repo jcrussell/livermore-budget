@@ -63,61 +63,6 @@ func ConstraintTierCaveat() Caveat {
 // disclosure and a drifted one are different findings.
 const ConstraintTierCaveatID = "constraint-tier-is-our-reading"
 
-// MultiScopeEnvelope is [Envelope] for a document of more than one schedule.
-//
-// A sibling rather than a widening of Envelope, so single-schedule documents
-// keep `scope` as one string; the other three keys match Envelope's, in order.
-type MultiScopeEnvelope struct {
-	GeneratedBy string   `json:"generated_by"`
-	Scopes      []string `json:"scopes"`
-	Currency    string   `json:"currency"`
-	Units       string   `json:"units"`
-}
-
-// FundFlowsCounts is how much of the corpus this document accounts for.
-//
-// It is not [Counts]: here a fact can be behind more than one link, so the
-// overlap is published as a number.
-type FundFlowsCounts struct {
-	// Facts is every fact matching the columns and either scope.
-	Facts int `json:"facts"`
-	// FactsCited is how many DISTINCT facts some link carries.
-	FactsCited int `json:"facts_cited"`
-	// FactsUncited is the facts no link carries, every one in a cell that netted
-	// to zero. Facts = FactsCited + FactsUncited. It is "uncited" rather than "in
-	// a zero cell" because a zero object cell is still cited by the
-	// fund-to-department link that sums its division.
-	FactsUncited int `json:"facts_uncited"`
-	// FactsCitedTwice is how many distinct facts are behind MORE THAN ONE link
-	// (a set, not a tally). It warns that summing every link's value_cents
-	// double-counts; folding within one tier pair does not.
-	FactsCitedTwice int `json:"facts_cited_twice"`
-	Nodes           int `json:"nodes"`
-	Links           int `json:"links"`
-}
-
-// FundFlowsDocument is the whole published file.
-type FundFlowsDocument struct {
-	SchemaVersion int               `json:"schema_version"`
-	Projection    string            `json:"projection"`
-	Metadata      FundFlowsMetadata `json:"metadata"`
-	Nodes         []Node            `json:"nodes"`
-	Links         []Link            `json:"links"`
-}
-
-// FundFlowsMetadata is the document's own block.
-//
-// It is of one column, and deliberately carries no headline (see fundFlows).
-type FundFlowsMetadata struct {
-	MultiScopeEnvelope
-	FiscalYear      int             `json:"fiscal_year"`
-	FiscalYearLabel string          `json:"fiscal_year_label"`
-	Basis           string          `json:"basis"`
-	Sources         []Source        `json:"sources"`
-	Counts          FundFlowsCounts `json:"counts"`
-	Caveats         []Caveat        `json:"caveats"`
-}
-
 // fundFlows draws the General Fund drill-down: where a fund's revenue comes from
 // and, for the General Fund, what it is spent on.
 //
@@ -169,34 +114,8 @@ func (*fundFlows) Name() string { return FundFlowsProjection }
 // fund but the General Fund ending at itself, which some-funds-show-no-spending
 // discloses.
 func (*fundFlows) Slices(facts []fact.Fact, version string) []Options {
-	type col = Column
-	seen := map[string]map[col]bool{
-		ScopeRevenueByFund:           {},
-		scopeExpenditureByDepartment: {},
-	}
-	for i := range facts {
-		c := facts[i].Scope
-		if m, ok := seen[c]; ok {
-			m[col{FiscalYear: facts[i].FiscalYear, Basis: facts[i].Basis}] = true
-		}
-	}
-	cols := make([]col, 0, len(seen[ScopeRevenueByFund]))
-	for c := range seen[ScopeRevenueByFund] {
-		if seen[scopeExpenditureByDepartment][c] {
-			cols = append(cols, c)
-		}
-	}
-	sort.Slice(cols, func(i, j int) bool {
-		if cols[i].FiscalYear != cols[j].FiscalYear {
-			return cols[i].FiscalYear < cols[j].FiscalYear
-		}
-		return cols[i].Basis < cols[j].Basis
-	})
-	out := make([]Options, 0, len(cols))
-	for _, c := range cols {
-		out = append(out, Options{Columns: []Column{c}, Scopes: FundFlowsScopes(), Version: version})
-	}
-	return out
+	return columnsCarrying(facts, []string{ScopeRevenueByFund, scopeExpenditureByDepartment},
+		FundFlowsScopes(), nil, version)
 }
 
 // Build is [Projection]'s entry point.
@@ -210,7 +129,7 @@ func (f *fundFlows) Build(facts []fact.Fact, o Options) ([]byte, error) {
 
 // Document builds the drill-down and returns it, so `fisc verify` reads the
 // same structure `fisc export` writes rather than re-parsing the JSON.
-func (f *fundFlows) Document(facts []fact.Fact, o Options) (*FundFlowsDocument, error) {
+func (f *fundFlows) Document(facts []fact.Fact, o Options) (*Document, error) {
 	if err := o.validate(); err != nil {
 		return nil, fmt.Errorf("fund-flows options: %w", err)
 	}
@@ -243,9 +162,6 @@ func (f *fundFlows) Document(facts []fact.Fact, o Options) (*FundFlowsDocument, 
 
 	nodes := map[string]Node{}
 	var links []Link
-	cited := map[string]bool{}
-	zero := map[string]bool{}
-	twice := map[string]bool{}
 
 	// Tier 0 -> 3, one link per revenue cell; tier 1 -> 0, one link per
 	// (line, kind) carrying that line's own sum; and tier 2 -> 3, one link per
@@ -264,16 +180,10 @@ func (f *fundFlows) Document(facts []fact.Fact, o Options) (*FundFlowsDocument, 
 		}
 		if c.cents == 0 {
 			// The facts survive; a printed dash is a fact and not a flow.
-			for _, id := range c.factIDs {
-				zero[id] = true
-			}
 			continue
 		}
 		f.addFundFlowNode(nodes, src)
 		f.addFundFlowNode(nodes, dst)
-		for _, id := range c.factIDs {
-			cited[id] = true
-		}
 		kind := revenueLinkKind(k)
 		links = append(links, Link{
 			Source: src.id, Target: dst.id, ValueCents: c.cents,
@@ -318,12 +228,6 @@ func (f *fundFlows) Document(facts []fact.Fact, o Options) (*FundFlowsDocument, 
 		}
 		sort.Strings(r.factIDs)
 		f.addFundFlowNode(nodes, r.src)
-		for _, id := range r.factIDs {
-			if cited[id] {
-				twice[id] = true
-			}
-			cited[id] = true
-		}
 		links = append(links, Link{
 			Source: r.src.id, Target: r.src.parent, ValueCents: r.cents,
 			Kind: k.kind, FactIDs: r.factIDs,
@@ -354,12 +258,6 @@ func (f *fundFlows) Document(facts []fact.Fact, o Options) (*FundFlowsDocument, 
 				"the tier-2 link that lets a group be drawn between the categories and "+
 					"its funds runs from that group, so a fund with none has no source end")
 		}
-		for _, id := range r.factIDs {
-			if cited[id] {
-				twice[id] = true
-			}
-			cited[id] = true
-		}
 		links = append(links, Link{
 			Source: group, Target: dst.id, ValueCents: r.cents,
 			Kind: k.kind, FactIDs: r.factIDs,
@@ -384,9 +282,6 @@ func (f *fundFlows) Document(facts []fact.Fact, o Options) (*FundFlowsDocument, 
 		d.locs.merge(&c.locs)
 
 		if c.cents == 0 {
-			for _, id := range c.factIDs {
-				zero[id] = true
-			}
 			continue
 		}
 		src, divErr := f.divisionEndpoint(k.division)
@@ -396,9 +291,6 @@ func (f *fundFlows) Document(facts []fact.Fact, o Options) (*FundFlowsDocument, 
 		dst := f.objectEndpoint(k.division, k.category)
 		f.addFundFlowNode(nodes, src)
 		f.addFundFlowNode(nodes, dst)
-		for _, id := range c.factIDs {
-			cited[id] = true
-		}
 		links = append(links, Link{
 			Source: src.id, Target: dst.id, ValueCents: c.cents,
 			Kind: KindExternal, FactIDs: c.factIDs,
@@ -422,12 +314,6 @@ func (f *fundFlows) Document(facts []fact.Fact, o Options) (*FundFlowsDocument, 
 		}
 		f.addFundFlowNode(nodes, fundNode)
 		f.addFundFlowNode(nodes, dst)
-		for _, id := range d.factIDs {
-			if cited[id] {
-				twice[id] = true
-			}
-			cited[id] = true
-		}
 		links = append(links, Link{
 			Source: fundNode.id, Target: dst.id, ValueCents: d.cents,
 			Kind: KindExternal, FactIDs: d.factIDs,
@@ -439,9 +325,6 @@ func (f *fundFlows) Document(facts []fact.Fact, o Options) (*FundFlowsDocument, 
 	for _, k := range sortedFundExpKeys(byFund) {
 		c := byFund[k]
 		if c.cents == 0 {
-			for _, id := range c.factIDs {
-				zero[id] = true
-			}
 			continue
 		}
 		src, srcErr := f.fundEndpoint(k.fund)
@@ -451,9 +334,6 @@ func (f *fundFlows) Document(facts []fact.Fact, o Options) (*FundFlowsDocument, 
 		dst := fundObjectEndpoint(k.fund, k.category)
 		f.addFundFlowNode(nodes, src)
 		f.addFundFlowNode(nodes, dst)
-		for _, id := range c.factIDs {
-			cited[id] = true
-		}
 		links = append(links, Link{
 			Source: src.id, Target: dst.id, ValueCents: c.cents,
 			Kind: boundaryKind(k.fundGroup), FactIDs: c.factIDs,
@@ -474,55 +354,32 @@ func (f *fundFlows) Document(facts []fact.Fact, o Options) (*FundFlowsDocument, 
 	}
 	out := sortedNodes(nodes)
 
-	// Every uncited fact must be a printed zero; anything else is money
-	// dropped in silence.
-	uncited := 0
-	for i := range selected {
-		id := selected[i].ID
-		if cited[id] {
-			continue
-		}
-		uncited++
-		if !zero[id] {
-			return nil, cmdutil.WithHint(
-				fmt.Errorf("fund-flows: fact %s is carried by no link and is not a printed "+
-					"zero", id),
-				"facts = facts_cited + facts_uncited is this document's published identity "+
-					"and every uncited fact is a cell that netted to zero; a fact reaching "+
-					"no link for another reason is money dropped in silence")
-		}
+	c, uncited := tally(selected, links, len(out))
+	if err := refuseUncited(f.Name(), uncited, nil); err != nil {
+		return nil, err
 	}
 
 	// Validated against this document's own nodes: an AppliesTo naming a
 	// node it does not carry marks nothing.
-	cavs := fundFlowsCaveats(len(twice), out)
+	cavs := fundFlowsCaveats(c.FactsCitedTwice, out)
 	if err := validateCaveats(cavs, nodeIDs(out)); err != nil {
 		return nil, fmt.Errorf("%s: %w", col, err)
 	}
 
-	return &FundFlowsDocument{
+	return &Document{
 		SchemaVersion: SchemaVersion,
 		Projection:    f.Name(),
-		Metadata: FundFlowsMetadata{
-			MultiScopeEnvelope: MultiScopeEnvelope{
-				GeneratedBy: o.Version,
-				Scopes:      FundFlowsScopes(),
-				Currency:    "USD",
-				Units:       "cents",
-			},
+		Metadata: Metadata{
+			GeneratedBy:     o.Version,
 			FiscalYear:      col.FiscalYear,
 			FiscalYearLabel: fiscalYearLabel(col.FiscalYear),
 			Basis:           string(col.Basis),
+			Scopes:          FundFlowsScopes(),
+			Currency:        "USD",
+			Units:           "cents",
 			Sources:         sourcesOf(selected),
-			Counts: FundFlowsCounts{
-				Facts:           len(selected),
-				FactsCited:      len(cited),
-				FactsUncited:    uncited,
-				FactsCitedTwice: len(twice),
-				Nodes:           len(out),
-				Links:           len(links),
-			},
-			Caveats: cavs,
+			Counts:          c,
+			Caveats:         cavs,
 		},
 		Nodes: out,
 		Links: links,

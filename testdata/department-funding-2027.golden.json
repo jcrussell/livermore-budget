@@ -3,12 +3,14 @@
   "projection": "department-funding",
   "metadata": {
     "generated_by": "testdata/department-funding-2027.golden.json (captured from fisc export; see testdata/README.md)",
-    "scope": "department-funding-sources",
-    "currency": "USD",
-    "units": "cents",
     "fiscal_year": 2027,
     "fiscal_year_label": "FY 2026-27",
     "basis": "adopted",
+    "scopes": [
+      "department-funding-sources"
+    ],
+    "currency": "USD",
+    "units": "cents",
     "sources": [
       {
         "doc_id": "livermore-budget-fy2026-2027",
@@ -34,6 +36,7 @@
       "facts": 78,
       "facts_cited": 67,
       "facts_uncited": 11,
+      "facts_cited_twice": 0,
       "nodes": 72,
       "links": 67
     },

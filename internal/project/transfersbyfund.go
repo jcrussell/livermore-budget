@@ -39,45 +39,6 @@ func TransfersOutScopes() []string { return []string{TransfersByFundScope, CIPFu
 // CIP funds' grants and a balance draw, which are not transfers.
 var transferKinds = []mapping.Kind{mapping.KindTransferIn, mapping.KindTransferOut}
 
-// transfersByFundCounts is how much of the corpus this document accounts for.
-// Each leg is its own link citing one fact, so facts_cited is every fact of a
-// non-zero row. transfers is links/2: summing every link comes to twice p76's
-// grand total.
-type transfersByFundCounts struct {
-	Facts        int `json:"facts"`
-	FactsCited   int `json:"facts_cited"`
-	FactsUncited int `json:"facts_uncited"`
-	Transfers    int `json:"transfers"`
-	Nodes        int `json:"nodes"`
-	Links        int `json:"links"`
-}
-
-// transfersByFundMetadata is this document's metadata block, of one printed
-// column. Its envelope is spelled out so a network of two schedules can say
-// `scopes` where p76's says `scope`, in Envelope's key order.
-type transfersByFundMetadata struct {
-	GeneratedBy     string                `json:"generated_by"`
-	Scope           string                `json:"scope,omitempty"`
-	Scopes          []string              `json:"scopes,omitempty"`
-	Currency        string                `json:"currency"`
-	Units           string                `json:"units"`
-	FiscalYear      int                   `json:"fiscal_year"`
-	FiscalYearLabel string                `json:"fiscal_year_label"`
-	Basis           string                `json:"basis"`
-	Sources         []Source              `json:"sources"`
-	Counts          transfersByFundCounts `json:"counts"`
-	Caveats         []Caveat              `json:"caveats"`
-}
-
-// TransfersByFundDocument is the whole published file.
-type TransfersByFundDocument struct {
-	SchemaVersion int                     `json:"schema_version"`
-	Projection    string                  `json:"projection"`
-	Metadata      transfersByFundMetadata `json:"metadata"`
-	Nodes         []Node                  `json:"nodes"`
-	Links         []Link                  `json:"links"`
-}
-
 // transfersByFund draws Budget Book p76, Summary of Transfers: which fund pays
 // each transfer the city makes and which fund receives it.
 //
@@ -151,37 +112,7 @@ func (t *transfersByFund) kinds() []mapping.Kind {
 // the page's own grand total by millions; p222's FY2024-25 revised column has
 // no p76 column beside it, so the transfers-out network has none either.
 func (t *transfersByFund) Slices(facts []fact.Fact, version string) []Options {
-	sel := Options{Scopes: t.scopes(), Kinds: t.kinds()}
-	seen := map[Column]map[string]bool{}
-	for i := range facts {
-		f := &facts[i]
-		if !sel.HasScope(f.Scope) || !sel.HasKind(f.Kind) {
-			continue
-		}
-		c := Column{FiscalYear: f.FiscalYear, Basis: f.Basis}
-		if seen[c] == nil {
-			seen[c] = map[string]bool{}
-		}
-		seen[c][f.Scope] = true
-	}
-	var cols []Column
-	for c, scopes := range seen {
-		every := true
-		for _, sc := range t.scopes() {
-			every = every && scopes[sc]
-		}
-		if every {
-			cols = append(cols, c)
-		}
-	}
-	sortColumns(cols)
-	out := make([]Options, 0, len(cols))
-	for _, c := range cols {
-		out = append(out, Options{
-			Columns: []Column{c}, Scopes: t.scopes(), Kinds: t.kinds(), Version: version,
-		})
-	}
-	return out
+	return columnsCarrying(facts, t.scopes(), t.scopes(), t.kinds(), version)
 }
 
 // Build is [Projection]'s entry point.
@@ -195,7 +126,7 @@ func (t *transfersByFund) Build(facts []fact.Fact, o Options) ([]byte, error) {
 
 // Document builds the transfer network and returns it, so `fisc verify` reads
 // the same structure `fisc export` writes rather than re-parsing the JSON.
-func (t *transfersByFund) Document(facts []fact.Fact, o Options) (*TransfersByFundDocument, error) {
+func (t *transfersByFund) Document(facts []fact.Fact, o Options) (*Document, error) {
 	if err := o.validate(); err != nil {
 		return nil, fmt.Errorf("transfers-by-fund options: %w", err)
 	}
@@ -222,22 +153,16 @@ func (t *transfersByFund) Document(facts []fact.Fact, o Options) (*TransfersByFu
 
 	nodes := map[string]Node{}
 	links := make([]Link, 0, 2*len(rows))
-	cited := map[string]bool{}
-	zero := map[string]bool{}
-	transfers := 0
 	for _, k := range sortedTransferKeys(rows) {
 		r := rows[k]
 		if r.in.AmountCents == 0 {
 			// A printed dash is a fact and is not a flow.
-			zero[r.in.ID] = true
-			zero[r.out.ID] = true
 			continue
 		}
 		payer, receiver, err := r.endpoints()
 		if err != nil {
 			return nil, err
 		}
-		transfers++
 		if t.Out {
 			payer.from.parent = ""
 			receiver.to.parent = nodeTransfersOut
@@ -249,8 +174,6 @@ func (t *transfersByFund) Document(facts []fact.Fact, o Options) (*TransfersByFu
 		t.addNode(nodes, payer.fund)
 		t.addNode(nodes, receiver.fund)
 		t.addNode(nodes, receiver.to)
-		cited[r.in.ID] = true
-		cited[r.out.ID] = true
 		id := transferID(k)
 		// The receiving leg cites the receiving fact; its payer is read off
 		// the counterpart, which shares the same printed figure.
@@ -272,22 +195,9 @@ func (t *transfersByFund) Document(facts []fact.Fact, o Options) (*TransfersByFu
 	}
 	out := sortedNodes(nodes)
 
-	// Every uncited fact must be a printed zero; anything else is a dropped
-	// transfer.
-	uncited := 0
-	for i := range selected {
-		id := selected[i].ID
-		if cited[id] {
-			continue
-		}
-		uncited++
-		if !zero[id] {
-			return nil, cmdutil.WithHint(
-				fmt.Errorf("transfers-by-fund: fact %s is carried by no link and is not a "+
-					"printed zero", id),
-				"every leg of a printed figure is its own link here, so a leg reaching no "+
-					"link is one end of a movement dropped in silence")
-		}
+	c, uncited := tally(selected, links, len(out))
+	if err := refuseUncited(t.Name(), uncited, nil); err != nil {
+		return nil, err
 	}
 
 	cavs := transfersByFundCaveats()
@@ -298,35 +208,20 @@ func (t *transfersByFund) Document(facts []fact.Fact, o Options) (*TransfersByFu
 		return nil, fmt.Errorf("%s: %w", col, err)
 	}
 
-	var scope string
-	var scopes []string
-	if t.Out {
-		scopes = TransfersOutScopes()
-	} else {
-		scope = TransfersByFundScope
-	}
-	return &TransfersByFundDocument{
+	return &Document{
 		SchemaVersion: SchemaVersion,
 		Projection:    t.Name(),
-		Metadata: transfersByFundMetadata{
+		Metadata: Metadata{
 			GeneratedBy:     o.Version,
-			Scope:           scope,
-			Scopes:          scopes,
-			Currency:        "USD",
-			Units:           "cents",
 			FiscalYear:      col.FiscalYear,
 			FiscalYearLabel: fiscalYearLabel(col.FiscalYear),
 			Basis:           string(col.Basis),
+			Scopes:          t.scopes(),
+			Currency:        "USD",
+			Units:           "cents",
 			Sources:         sourcesOf(selected),
-			Counts: transfersByFundCounts{
-				Facts:        len(selected),
-				FactsCited:   len(cited),
-				FactsUncited: uncited,
-				Transfers:    transfers,
-				Nodes:        len(out),
-				Links:        len(links),
-			},
-			Caveats: cavs,
+			Counts:          c,
+			Caveats:         cavs,
 		},
 		Nodes: out,
 		Links: links,
@@ -564,10 +459,10 @@ func transfersByFundCaveats() []Caveat {
 				"document publishes both: a receiving leg from the payer's end into the " +
 				"fund that gets the money, and a paying leg out of the fund that sends it. " +
 				"The two carry the same transfer_id and the same value, because one " +
-				"printed figure is the evidence for both directions. So metadata.counts " +
-				"states the number of MOVEMENTS as well as the number of links, and a " +
-				"reader adding every value_cents in this file gets twice p76's grand " +
-				"total: $21,525,997 in FY 2025-26 and $21,624,633 in FY 2026-27.",
+				"printed figure is the evidence for both directions. So the number of " +
+				"MOVEMENTS is half metadata.counts.links, and a reader adding every " +
+				"value_cents in this file gets twice p76's grand total: $21,525,997 in " +
+				"FY 2025-26 and $21,624,633 in FY 2026-27.",
 			AppliesTo: []string{},
 		},
 		{

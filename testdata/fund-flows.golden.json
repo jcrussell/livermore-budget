@@ -3,6 +3,9 @@
   "projection": "fund-flows",
   "metadata": {
     "generated_by": "testdata/fund-flows.golden.json (captured from fisc export; see testdata/README.md)",
+    "fiscal_year": 2026,
+    "fiscal_year_label": "FY 2025-26",
+    "basis": "adopted",
     "scopes": [
       "revenue-by-fund",
       "expenditure-by-department",
@@ -10,9 +13,6 @@
     ],
     "currency": "USD",
     "units": "cents",
-    "fiscal_year": 2026,
-    "fiscal_year_label": "FY 2025-26",
-    "basis": "adopted",
     "sources": [
       {
         "doc_id": "livermore-budget-fy2026-2027",

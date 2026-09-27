@@ -96,7 +96,7 @@ func lineTieSubject(t *testing.T) *Subject {
 		return projection{
 			Name:    project.FundFlowsProjection,
 			Options: project.Options{Columns: []project.Column{col}, Scopes: project.FundFlowsScopes()},
-			FundFlows: &project.FundFlowsDocument{
+			Graph: &project.Document{
 				Nodes: slices.Clone(nodes), Links: slices.Clone(links),
 			},
 		}
@@ -147,7 +147,7 @@ func generalTransferInException(t *testing.T, year int) structure.Exception {
 // row must not silently re-aim a mutation at a different node.
 func lineNode(t *testing.T, s *Subject, id string) *project.Node {
 	t.Helper()
-	nodes := s.Projections[0].FundFlows.Nodes
+	nodes := s.Projections[0].Graph.Nodes
 	for i := range nodes {
 		if nodes[i].ID == id {
 			return &nodes[i]
@@ -160,7 +160,7 @@ func lineNode(t *testing.T, s *Subject, id string) *project.Node {
 // lineLink is the first drill-down's link between these two ends.
 func lineLink(t *testing.T, s *Subject, source, target string) *project.Link {
 	t.Helper()
-	links := s.Projections[0].FundFlows.Links
+	links := s.Projections[0].Graph.Links
 	for i := range links {
 		if links[i].Source == source && links[i].Target == target {
 			return &links[i]
@@ -257,7 +257,7 @@ func TestRevenueLinesTieIsFailable(t *testing.T) {
 			// Arm one is untouched: the money still lands in the right cell.
 			name: "the category node removed from the document",
 			damage: func(_ *testing.T, s *Subject) {
-				d := s.Projections[0].FundFlows
+				d := s.Projections[0].Graph
 				d.Nodes = slices.DeleteFunc(slices.Clone(d.Nodes), func(n project.Node) bool {
 					return n.ID == "revenue/taxes/property"
 				})
@@ -342,7 +342,7 @@ func TestRevenueLinesTieIsFailable(t *testing.T) {
 			// The exemption must not outlive its claim about the document.
 			name: "the exempted cell drawn after all",
 			damage: func(_ *testing.T, s *Subject) {
-				d := s.Projections[0].FundFlows
+				d := s.Projections[0].Graph
 				d.Links = append(slices.Clone(d.Links),
 					project.Link{Source: transfersInNode, Target: "fund/100", ValueCents: 10_000})
 			},

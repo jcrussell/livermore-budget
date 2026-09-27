@@ -100,13 +100,12 @@ with itself.
 `internal/project` builds documents of two shapes, and one schema for both would
 state the union of two things and refuse neither.
 
-`projection.schema.json` holds the graph documents. They share an envelope
-and differ three ways, all of which it states and none of which a fenced example
-could: only `sankey` carries a `headline`, only `fund-flows` states `scopes`
-rather than `scope`, and the `counts` block has three optional members. The
-scope pair is a `oneOf` -- exactly one of the two, never both -- because
-`Envelope.Scope` is singular by design and a document built over two schedules
-must not write one of them into a singular key.
+`projection.schema.json` holds the graph documents: one `metadata` block with
+`scopes` a list on every document and one `counts` block with one identity,
+`facts = facts_cited + facts_uncited`, on every document. They differ in one
+way, which it states and a fenced example could not: only `sankey` carries a
+`headline`, because a headline is a total over a single-grain view and a
+document holding the same money at two grains has none to name.
 
 `series.schema.json` holds the documents built as a series per printed row. Those
 are the only projections a reader fetches as themselves, so it is holding served

@@ -271,40 +271,6 @@ var builtinLabels = map[string]string{
 	"fund-balance/reserve-increase": "Addition to Reserves",
 }
 
-// Graph is one sankey.json document.
-//
-// Field order is the JSON key order — encoding/json emits struct fields in
-// declaration order — and that order is part of the frozen contract, not an
-// accident of how this struct grew.
-type Graph struct {
-	SchemaVersion int      `json:"schema_version"`
-	Projection    string   `json:"projection"`
-	Metadata      metadata `json:"metadata"`
-	Nodes         []Node   `json:"nodes"`
-	Links         []Link   `json:"links"`
-}
-
-// metadata is everything a reader needs to know what slice of the budget the
-// graph below it covers, and what it deliberately leaves out.
-type metadata struct {
-	GeneratedBy string `json:"generated_by"`
-	FiscalYear  int    `json:"fiscal_year"`
-	// FiscalYearLabel is the city's own way of writing the year: FY2026 is
-	// "FY 2025-26" on every page of the budget book, and a chart captioned
-	// "2026" would not match anything the reader is holding.
-	FiscalYearLabel string   `json:"fiscal_year_label"`
-	Basis           string   `json:"basis"`
-	Scope           string   `json:"scope"`
-	Currency        string   `json:"currency"`
-	Units           string   `json:"units"`
-	Sources         []Source `json:"sources"`
-	Headline        Headline `json:"headline"`
-	Counts          counts   `json:"counts"`
-	// Caveats are the things this chart cannot show, in the chart's own file.
-	// A caveat that lives only in a design document is a caveat nobody reads.
-	Caveats []Caveat `json:"caveats"`
-}
-
 // Headline is the set of figures a reader quotes without reading the chart.
 //
 // Both a gross and an external number are published for revenue and for
@@ -431,68 +397,17 @@ func (*sankey) Name() string { return "sankey" }
 
 // Slices is one graph per (fiscal year, basis) the spine schedule carries.
 //
-// The years are read off the facts rather than hard-coded, so mapping a revised
-// column or a third budget year puts that graph under verify's checks without
-// anyone remembering to add it here.
-//
-// THAT SENTENCE WAS FALSE UNTIL fisc-rmx and is worth the note, because it is
-// the kind of claim a reader acts on. This method keys on (fiscal year, BASIS)
-// and the file stem was a function of the fiscal year ALONE, so mapping a
-// revised column beside the adopted one declared two slices, computed one stem
-// for both, and `fisc export` refused the entire run -- no file written,
-// including the ones that were fine. [Stem] reads the whole column list now, so
-// the two agree and the claim holds again.
-//
-// ONE SLICE PER YEAR, NOT ONE SLICE FOR ALL OF THEM, and that is the whole
-// content of this method: every fiscal year the city publishes lives in the same
-// facts.jsonl, and a graph built over two of them doubles every figure while
-// still balancing perfectly. No internal consistency check can catch that,
-// because two years of a balanced schedule are also balanced. See [Options].
-//
 // The scope is fixed rather than derived. It selects the SCHEDULE, and the
 // schedule is what makes this projection a Sankey of the citywide spine rather
 // than of whatever else the store happens to carry: a department-by-category
 // page is a different scope and its rows would be added on top of the spine's.
 func (*sankey) Slices(facts []fact.Fact, version string) []Options {
-	type key struct {
-		year  int
-		basis mapping.Basis
-	}
-	seen := map[key]bool{}
-	for _, f := range facts {
-		if f.Scope == PublishedScope {
-			seen[key{f.FiscalYear, f.Basis}] = true
-		}
-	}
-	keys := make([]key, 0, len(seen))
-	for k := range seen {
-		keys = append(keys, k)
-	}
-	sort.Slice(keys, func(i, j int) bool {
-		if keys[i].year != keys[j].year {
-			return keys[i].year < keys[j].year
-		}
-		return keys[i].basis < keys[j].basis
-	})
-
-	// ONE OPTIONS PER COLUMN, each carrying a single column. That is this
-	// projection's answer to "what is a document of", and it is the opposite
-	// of the trends projection's: a Sankey of two budgets is not a chart of
-	// anything, so two columns are two documents, not one with two columns.
-	out := make([]Options, 0, len(keys))
-	for _, k := range keys {
-		out = append(out, Options{
-			Columns: []Column{{FiscalYear: k.year, Basis: k.basis}},
-			Scopes:  []string{PublishedScope},
-			Version: version,
-		})
-	}
-	return out
+	return columnsCarrying(facts, []string{PublishedScope}, []string{PublishedScope}, nil, version)
 }
 
 // Build renders the graph as canonical JSON.
 func (s *sankey) Build(facts []fact.Fact, o Options) ([]byte, error) {
-	g, err := s.Graph(facts, o)
+	g, err := s.Document(facts, o)
 	if err != nil {
 		return nil, err
 	}
@@ -519,13 +434,13 @@ type cell struct {
 	locs    locatorSet
 }
 
-// Graph builds the graph without encoding it, so fisc verify can check the
+// Document builds the graph without encoding it, so fisc verify can check the
 // structure without parsing back the JSON it is trying to validate.
 //
 // The switch below is the row-to-slug table of docs/sankey-contract.md written
 // out as code, one case per printed row family, and it is kept in one function
 // so that correspondence stays visible.
-func (s *sankey) Graph(facts []fact.Fact, o Options) (*Graph, error) {
+func (s *sankey) Document(facts []fact.Fact, o Options) (*Document, error) {
 	if err := o.validate(); err != nil {
 		return nil, fmt.Errorf("sankey options: %w", err)
 	}
@@ -683,30 +598,39 @@ func (s *sankey) Graph(facts []fact.Fact, o Options) (*Graph, error) {
 		return nil, fmt.Errorf("%s: %w", col, err)
 	}
 
-	return &Graph{
+	// A stock row is the one non-zero fact this schedule leaves uncited:
+	// beginning and ending working capital are balances and earn no link.
+	c, uncited := tally(selected, links, len(drawn))
+	if err := refuseUncited(s.Name(), uncited, isStock); err != nil {
+		return nil, err
+	}
+
+	return &Document{
 		SchemaVersion: SchemaVersion,
 		Projection:    s.Name(),
-		Metadata: metadata{
+		Metadata: Metadata{
 			GeneratedBy:     o.Version,
 			FiscalYear:      col.FiscalYear,
 			FiscalYearLabel: fiscalYearLabel(col.FiscalYear),
 			Basis:           string(col.Basis),
-			Scope:           scope,
+			Scopes:          []string{scope},
 			Currency:        "USD",
 			Units:           "cents",
 			Sources:         sourcesOf(selected),
-			Headline:        h,
-			Counts: counts{
-				Facts:      len(selected),
-				FactsCited: citedFacts(links),
-				Nodes:      len(nodes),
-				Links:      len(links),
-			},
-			Caveats: cavs,
+			Headline:        &h,
+			Counts:          c,
+			Caveats:         cavs,
 		},
 		Nodes: drawn,
 		Links: links,
 	}, nil
+}
+
+// isStock is whether a fact is one of the two balance rows pp.66-67 print,
+// which are recorded and drawn as no flow.
+func isStock(f *fact.Fact) bool {
+	return f.Kind == mapping.KindFundBalance &&
+		(f.Category == categoryFundBalanceBeginning || f.Category == categoryFundBalanceEnding)
 }
 
 // headlineOver sums the four published totals over the facts a view admits,
@@ -1335,17 +1259,4 @@ func transferCaveat(h Headline, col Column, links []Link, cip cipTransfers) Cave
 // the reader to look for a precision the source does not have.
 func dollars(cents int64) string {
 	return strings.TrimSuffix(amount.Cents(cents).String(), ".00")
-}
-
-// citedFacts counts the distinct facts the links carry. A fact can be cited by
-// only one link here, but counting distinctly rather than summing lengths keeps
-// the figure honest if aggregation ever puts one fact behind two links.
-func citedFacts(links []Link) int {
-	seen := make(map[string]struct{})
-	for _, l := range links {
-		for _, id := range l.FactIDs {
-			seen[id] = struct{}{}
-		}
-	}
-	return len(seen)
 }

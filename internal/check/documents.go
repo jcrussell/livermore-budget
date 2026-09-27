@@ -195,30 +195,19 @@ func (*documentsAreChecked) Run(_ context.Context, s *Subject) (Result, error) {
 // behind it is a claim a reader can falsify by grepping for the names.
 func documentShape(p projection) string {
 	switch {
+	case p.Graph != nil && p.Graph.Metadata.Headline != nil:
+		// Every check over Subject.linkedDocuments, plus the three headline
+		// checks: headline-ties-to-facts, headline-transfer-residual and
+		// headline-naive-expenditure.
+		return "graph with a headline"
 	case p.Graph != nil:
-		// graph.go: acyclic, link values tie to facts, headline ties to facts,
-		// counts reconcile, aggregation invariance, and the rest.
+		// Every check over Subject.linkedDocuments: graph-acyclic,
+		// node-tiers-are-declared, link-values-tie-to-facts, counts-reconcile,
+		// uncited-facts-are-printed-zeros, transfer-legs-pair and the rest.
 		return "graph"
 	case p.Trends != nil:
 		// trend-points-tie-to-facts and trend-series-are-complete.
 		return "series"
-	case p.FundFlows != nil:
-		// Every check over Subject.linkedDocuments, plus
-		// fund-flows-counts-reconcile; not the headline ones, since this shape
-		// publishes no headline.
-		return "linked graph, no headline"
-	case p.DepartmentSpending != nil:
-		// Every check over Subject.linkedDocuments, plus
-		// schedule-counts-reconcile.
-		return "cross-tab, no headline"
-	case p.DepartmentFunding != nil:
-		// As the cross-tab, and named apart from it: two readings of the same
-		// pages.
-		return "funding graph, no headline"
-	case p.TransfersByFund != nil:
-		// Every check over Subject.linkedDocuments, plus transfer-legs-pair
-		// and schedule-counts-reconcile.
-		return "paired legs, no headline"
 	default:
 		return ""
 	}

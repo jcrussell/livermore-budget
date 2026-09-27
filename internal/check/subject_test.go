@@ -250,8 +250,6 @@ func TestTheCommittedCorpusVacuitySplit(t *testing.T) {
 		"fact-kind-matches-category":              StatusPass,
 		"node-tiers-are-declared":                 StatusPass,
 		"link-kinds-match-their-facts":            StatusPass,
-		"fund-flows-counts-reconcile":             StatusPass,
-		"schedule-counts-reconcile":               StatusPass,
 		"uncited-facts-are-printed-zeros":         StatusPass,
 		"revenue-lines-tie-to-their-categories":   StatusPass,
 		"projections-build":                       StatusPass,
@@ -430,7 +428,7 @@ func TestProjectionsCoverEveryYearTheFactsCarry(t *testing.T) {
 // only shape that catches what the in-memory mutations cannot: they change an
 // INPUT and assert a check fails.
 //
-// Every other failure test here mutates a *project.Graph in memory. Those prove the
+// Every other failure test here mutates a *project.Document in memory. Those prove the
 // logic, but Load is the only production path to a graph and it always derives one
 // from the fact store, so no repository can be in the state they describe — and a
 // suite made only of those reads as proof of failability while five checks were
@@ -957,7 +955,7 @@ func TestContestedTotalsAreStillContested(t *testing.T) {
 
 	// One graph per published (fiscal year, basis) of the spine, keyed so a
 	// missing column is reported as a missing column rather than as a zero sum.
-	graphs := map[project.Column]*project.Graph{}
+	graphs := map[project.Column]*project.Document{}
 	for _, p := range s.graphs() {
 		for _, c := range p.Options.Columns {
 			graphs[c] = p.Graph
