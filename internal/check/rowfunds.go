@@ -165,22 +165,14 @@ func (*rowFundsMatchTheirAnchors) Run(_ context.Context, s *Subject) (Result, er
 				// end the row declares and the page does not number is a
 				// finding, never a skip.
 				if ru.RowLabelsAreFundNumbers {
-					ends := []struct {
-						printed string
-						want    int
-						end     string
-					}{{row.Label, near, "receives"}}
+					ends := []numberedEnd{{row.Label, near, "receives"}}
 					// Split as the resolver's findFields splits it.
 					tail := ""
 					if f := strings.Fields(row.LabelTail); len(f) > 0 {
 						tail = f[0]
 					}
 					if far != 0 {
-						ends = append(ends, struct {
-							printed string
-							want    int
-							end     string
-						}{tail, far, "pays"})
+						ends = append(ends, numberedEnd{tail, far, "pays"})
 					} else if _, err := strconv.Atoi(tail); err == nil {
 						// The page numbers a paying fund and the row declares none:
 						// a transfer read as something else.
@@ -464,6 +456,14 @@ func heldLine(subjects, bare int) string {
 			"fund name under row_labels_name_funds, each the fund its row declares -- a "+
 			"bare label names no direction, so none is checked", subjects, phrased, bare)
 	}
+}
+
+// numberedEnd is one end of a row the fund-number arm reads: the number the
+// page prints, the fund the row declares there, and which end it is.
+type numberedEnd struct {
+	printed string
+	want    int
+	end     string
 }
 
 // heldLines is heldLine with the fund-number arm's claim beside it, each

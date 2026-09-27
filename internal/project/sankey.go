@@ -1258,7 +1258,7 @@ func transferCaveat(h Headline, col Column, links []Link, cip cipTransfers) Cave
 	targets := transferEndpoints(links)
 
 	if out == in {
-		// No residual, so no printed column to name.
+		// No residual, so nothing for p222 to account for.
 		return Caveat{
 			ID: id,
 			Summary: fmt.Sprintf(
@@ -1271,8 +1271,8 @@ func transferCaveat(h Headline, col Column, links []Link, cip cipTransfers) Cave
 		}
 	}
 	verb := "exceed"
-	// signed is out - in: the printed column is transfers OUT, so only an
-	// outflow surplus may match it.
+	// signed is out - in: p222's legs are transfers OUT, so only an outflow
+	// surplus may match them.
 	signed := out - in
 	residual := signed
 	if residual < 0 {
@@ -1296,6 +1296,23 @@ func transferCaveat(h Headline, col Column, links []Link, cip cipTransfers) Cave
 					"Improvement Program, which Budget Book p222 lists fund by fund and whose "+
 					"funds are not on this chart.%s",
 				dollars(out), verb, dollars(in), dollars(residual), stated),
+			AppliesTo: targets,
+		}
+	}
+	// p222 is mapped for this column and does not account for the difference:
+	// that is this project's schedules disagreeing, and the caveat says so.
+	if cip.Printed {
+		return Caveat{
+			ID: id,
+			Summary: fmt.Sprintf(
+				"No link pairs a transfer's two legs; transfers out %s transfers in by %s, which Budget Book p222's transfers to the Capital Improvement Program do not account for.",
+				verb, dollars(residual)),
+			Text: unpaired + fmt.Sprintf(
+				"Transfers out (%s) %s transfers in (%s) by %s, and the transfers to the "+
+					"Capital Improvement Program that Budget Book p222 lists total %s in this "+
+					"column. The two do not reconcile here, so the difference is not "+
+					"explained.%s",
+				dollars(out), verb, dollars(in), dollars(residual), dollars(cip.Cents), stated),
 			AppliesTo: targets,
 		}
 	}

@@ -398,7 +398,7 @@ and a wide screen must not show a reader less than a narrow one.
 | 1 | `transfers-by-fund` | `{2,3}`, no flank: the funds p76 prints paying each transfer on the left, the funds receiving them on the right | nothing | — |
 | 1 | `transfers-out` | `{3,5}`, no flank: the funds p76 and p222 print paying each transfer out on the left, the operating and CIP funds receiving them on the right | nothing | tier 3 at 10; tier 5 at 10 (funds) |
 
-The steps are a tree and not a chain: five open from the spine's chart, told
+The steps are a tree and not a chain: several open from the spine's chart, told
 apart by the tier they open from and, where two share a tier, by the node's role.
 The client walks it by key (`after` names the step whose chart a step opens
 from) and never by depth.

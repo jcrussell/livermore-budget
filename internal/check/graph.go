@@ -808,6 +808,10 @@ func describeLegs(legs []project.Link) string {
 	return strings.Join(out, ", ")
 }
 
+// sameTierContainers is the one container that holds nodes at its own tier,
+// and the id form it holds: transfers-out's receivers' ends.
+var sameTierContainers = map[string]string{"transfers/out": "transfer-to/"}
+
 // nodeHierarchyWellFormed asserts the tier hierarchy a document publishes can
 // actually be folded: every parent resolves, the hierarchy runs coarse to fine,
 // and no node is its own ancestor.
@@ -848,9 +852,10 @@ func describeLegs(legs []project.Link) string {
 //
 // An endpoint touching no link is a container, and folding into it is
 // ordinary: transfers-by-fund draws transfers/in that way. Give it one link and
-// every child is a finding. A container may hold nodes at its own tier:
-// transfers-out parents every receiver's end to transfers/out, and both are
-// tier 5, where the spine draws the endpoint the reader opens.
+// every child is a finding. One container may hold nodes at its own tier, the
+// ones sameTierContainers names: transfers-out parents every receiver's end to
+// transfers/out, and both are tier 5, where the spine draws the endpoint the
+// reader opens.
 //
 // SUBJECTS ARE THE PARENTED NODES, so this stays honestly vacuous over a
 // document with no hierarchy — the spine — and goes live over the first one that
@@ -898,7 +903,7 @@ func (*nodeHierarchyWellFormed) Run(_ context.Context, s *Subject) (Result, erro
 						"money it carries leaves the picture", n.ID, n.Parent))
 				continue
 			}
-			container := false
+			sameTier := false
 			if _, isEndpoint := endpointTiers[n.Parent]; isEndpoint {
 				if flowing[n.Parent] {
 					findings = append(findings, finding(p.String(),
@@ -910,9 +915,10 @@ func (*nodeHierarchyWellFormed) Run(_ context.Context, s *Subject) (Result, erro
 					continue
 				}
 				endpointParents++
-				container = true
+				form, ok := sameTierContainers[n.Parent]
+				sameTier = ok && strings.HasPrefix(n.ID, form)
 			}
-			if parent.Tier > n.Tier || (parent.Tier == n.Tier && !container) {
+			if parent.Tier > n.Tier || (parent.Tier == n.Tier && !sameTier) {
 				findings = append(findings, finding(p.String(),
 					"node %q is at tier %d and its parent %q is at tier %d. A parent is "+
 						"strictly coarser than its child, or the fold runs the wrong way "+

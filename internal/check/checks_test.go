@@ -1178,6 +1178,23 @@ func TestNodeHierarchyWellFormedIsFailable(t *testing.T) {
 			want: "strictly coarser",
 		},
 		{
+			// A container endpoint other than transfers/out may not hold a node
+			// at its own tier.
+			name: "a node at its container's own tier under an endpoint that holds none",
+			damage: func(t *testing.T, s *Subject) {
+				g := s.Projections[0].Graph
+				g.Nodes = append(g.Nodes, project.Node{ID: "fund-balance/reserve-increase", Tier: 5})
+				for _, n := range g.Nodes {
+					if _, end := endpointTiers[n.ID]; n.Tier == 5 && !end {
+						nodePointer(t, g, n.ID).Parent = "fund-balance/reserve-increase"
+						return
+					}
+				}
+				t.Fatal("the fixture has no ordinary tier-5 node")
+			},
+			want: "strictly coarser",
+		},
+		{
 			// Node.Parent is one string, so a cycle needs two nodes -- which is
 			// exactly why the old doc comment's "double-parented node" could
 			// never have been the thing this caught.

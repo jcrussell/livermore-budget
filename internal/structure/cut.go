@@ -152,7 +152,8 @@ type Cut struct {
 	// a placeholder.
 	Placeholders []Axis
 	// Outside is why the pages put this cut's money outside the reference's
-	// totals, or empty. Such a cut is compared against no other cut, and
+	// totals, or empty. The lattice compares such a cut with no other (the
+	// peers check still pairs it at its own level), and
 	// ValidateOutside holds the claim to the store: every fact carries a fund,
 	// and no fund it carries is carried by a fact of any other cut.
 	Outside string

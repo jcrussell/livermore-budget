@@ -702,7 +702,8 @@ func TestTransferCaveatNamesThePrintedColumn(t *testing.T) {
 // legs in the same column sum to it, with the sign of an outflow.
 func TestTransferCaveatNamesTheCIPOnlyWhenP222IsTheResidual(t *testing.T) {
 	col := Column{FiscalYear: testYear, Basis: testBasis}
-	const cip = "transfers to the Capital Improvement Program"
+	// The claiming summary, which only a residual equal to p222's legs earns.
+	const cip = ", the transfers to the Capital Improvement Program."
 	real := Headline{InternalTransferInCents: 2152599700, InternalTransferOutCents: 5961273400}
 	printed := cipTransfers{Cents: 3808673700, Printed: true}
 
@@ -723,6 +724,12 @@ func TestTransferCaveatNamesTheCIPOnlyWhenP222IsTheResidual(t *testing.T) {
 		if got := transferCaveat(tc.h, col, nil, tc.cip).Summary; strings.Contains(got, cip) {
 			t.Errorf("%s: the caveat named the CIP:\n%s", tc.name, got)
 		}
+	}
+	// p222 mapped and not tying is this project's disagreement, never the city's.
+	off := transferCaveat(real, col, nil, cipTransfers{Cents: 3808673600, Printed: true})
+	if strings.Contains(off.Text, "the city's rather than this project's") ||
+		!strings.Contains(off.Text, "do not reconcile") {
+		t.Errorf("p222's legs a dollar off:\n%s", off.Text)
 	}
 }
 
