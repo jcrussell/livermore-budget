@@ -3,7 +3,6 @@ package check
 import (
 	"context"
 	"fmt"
-	"slices"
 	"sort"
 	"strings"
 
@@ -342,23 +341,16 @@ func unclaimedFundTotals(s *Subject, pages map[string]map[int]bool,
 				entry, err := s.Vocabulary.FundByLabel(name)
 				// A `Total <fund>` wrapping onto the next line names its fund
 				// rejoined, as a rule's total_row_tail does, and the rejoined
-				// name wins where it is one: "Total Water" over "Replacement"
-				// is 642, not the 640 its head alone names, and a claim of the
-				// head is then a claim of another fund. Where both name one
-				// fund -- 300 is printed "Open Space" and "Open Space
-				// Acquisition & Mgmt" -- either label claims it. The trailing
-				// shape ends its name before " Total", so no tail can change it.
-				labels := []string{label}
+				// label is the printed one: "Total Water" over "Replacement" is
+				// 642, and a rule claiming "Total Water" claims 640, not it.
+				// The trailing shape ends its name before " Total", so no tail
+				// can change it.
 				if strings.HasPrefix(label, "Total ") && i+1 < len(lines) {
-					if tail := strings.Join(strings.Fields(lines[i+1]), " "); tail != "" && !isFigureRow(lines[i+1]) {
+					if tail := strings.TrimSpace(lines[i+1]); tail != "" && !isFigureRow(tail) {
 						whole := mapping.JoinWrapped(label, tail)
 						if joined, ok := fundNameIn(whole); ok {
 							if e, jerr := s.Vocabulary.FundByLabel(joined); jerr == nil {
-								if err != nil || e.Number != entry.Number {
-									labels = nil
-								}
-								entry, err = e, nil
-								labels = append(labels, whole)
+								entry, err, label = e, nil, whole
 							}
 						}
 					}
@@ -369,16 +361,13 @@ func unclaimedFundTotals(s *Subject, pages map[string]map[int]bool,
 					// not by a list in this file.
 					continue
 				}
-				// Claimed under the label AS PRINTED, head or rejoined, which is
-				// what a rule's WrappedTotalLabel holds. Rebuilding "Total "+name
-				// would only ever match the leading shape and would report a
-				// claimed trailing one as unclaimed.
-				if slices.ContainsFunc(labels, func(l string) bool {
-					return claimed[docID][claimKey{page: n, label: l}]
-				}) {
+				// Claimed under the label AS PRINTED, rejoined where it wraps,
+				// which is what a rule's WrappedTotalLabel holds. Rebuilding
+				// "Total "+name would only ever match the leading shape and would
+				// report a claimed trailing one as unclaimed.
+				if claimed[docID][claimKey{page: n, label: label}] {
 					continue
 				}
-				label = labels[len(labels)-1]
 				findings = append(findings, finding(fmt.Sprintf("%s p%d", docID, n),
 					"the page prints %q, which is fund %d (%s), and no rule or rollup "+
 						"declares that total. A fund section nobody mapped is invisible to "+

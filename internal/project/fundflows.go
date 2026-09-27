@@ -770,10 +770,14 @@ func (f *fundFlows) netFundFlows(facts []fact.Fact) (map[revKey]*cellSum, map[ex
 			}
 			// The node's group is the registry's; a fact filed under another
 			// would draw a link of the wrong kind under the right group.
-			if _, err := f.fundEndpoint(*fa.Fund); err != nil {
-				return nil, nil, nil, err
+			t, ok := f.Labels.FundType(*fa.Fund)
+			if !ok {
+				return nil, nil, nil, cmdutil.WithHint(
+					fmt.Errorf("fund-flows: fact %s names fund %d, which data/funds.yaml does not list", fa.ID, *fa.Fund),
+					"a fund node's parent is its type, so a fund the registry does not list "+
+						"cannot be placed in the hierarchy")
 			}
-			if t, _ := f.Labels.FundType(*fa.Fund); t != fa.FundGroup {
+			if t != fa.FundGroup {
 				return nil, nil, nil, fmt.Errorf("fund-flows: fact %s files fund %d under %q and "+
 					"data/funds.yaml puts it in %q", fa.ID, *fa.Fund, fa.FundGroup, t)
 			}

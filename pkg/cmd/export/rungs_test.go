@@ -629,8 +629,9 @@ func replayRung(s export.DrillStep, drawing, screen, from export.Graph, ck expor
 		draws = append(draws, drawnTier{Tier: t, Role: role, IDs: own, Carried: lent})
 	}
 	// Needs, keeping the widened columns from the front: an outward id first
-	// reached once Widen[k] is kept needs Widen[k]. reaches[k] keeps Widen[:k].
-	reaches := make([]export.Reach, len(s.Widen)+1)
+	// reached once Widen[k] is kept needs Widen[k]. reaches[k] keeps Widen[:k],
+	// and fresh keeps them all, so an id in none of them needs the last.
+	reaches := make([]export.Reach, len(s.Widen))
 	for k := range reaches {
 		narrow := slices.DeleteFunc(slices.Clone(half), func(t int) bool { return slices.Contains(s.Widen[k:], t) })
 		r, rerr := export.ReachOf(drawing, opened, nearIsSource, narrow)
@@ -640,20 +641,21 @@ func replayRung(s export.DrillStep, drawing, screen, from export.Graph, ck expor
 		reaches[k] = r
 	}
 	for i := range draws {
-		if draws[i].Role != roleOutward || slices.Contains(s.Widen, draws[i].Tier) {
+		if len(s.Widen) == 0 || draws[i].Role != roleOutward || slices.Contains(s.Widen, draws[i].Tier) {
 			continue
 		}
 		for _, id := range slices.Concat(draws[i].IDs, draws[i].Carried) {
 			k := slices.IndexFunc(reaches, func(r export.Reach) bool { return slices.Contains(r.At[draws[i].Tier], id) })
-			switch {
-			case k < 0:
-				return nil, nil, export.Graph{}, fmt.Errorf("%s is drawn at tier %d and reached at no budget", id, draws[i].Tier)
-			case k > 0:
-				if draws[i].Needs == nil {
-					draws[i].Needs = map[string]int{}
-				}
-				draws[i].Needs[id] = s.Widen[k-1]
+			if k == 0 {
+				continue
 			}
+			if k < 0 {
+				k = len(s.Widen)
+			}
+			if draws[i].Needs == nil {
+				draws[i].Needs = map[string]int{}
+			}
+			draws[i].Needs[id] = s.Widen[k-1]
 		}
 	}
 	// Residual then gap, shapeFor's order; a residual only across a document switch.

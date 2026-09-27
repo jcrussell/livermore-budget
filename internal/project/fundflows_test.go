@@ -511,7 +511,7 @@ func TestFundFlowsRefusesWhatItCannotPlace(t *testing.T) {
 			facts: []fact.Fact{
 				fundFlowsFact(scopeExpenditureByFund, mapping.KindExpenditure, "wages-and-benefits", "", "capital", fact.FundNumber(999), 1, "z"),
 			},
-			want: "fund 999 is in no data/funds.yaml entry",
+			want: "names fund 999, which data/funds.yaml does not list",
 		},
 		{
 			// The tier-5 id carries the DIVISION and not the fund, so two funds
