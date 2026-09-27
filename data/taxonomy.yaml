@@ -1564,7 +1564,7 @@ categories:
     document_term: "Transfers In"
     parent: transfers
     kinds: [transfer_in]
-    pages: [68, 70, 72, 74, 131, 132, 134, 136, 138, 139, 140]
+    pages: [68, 70, 72, 74, 131, 132, 134, 136, 138, 139, 140, 222]
     aliases:
       #@cite p0066 "TRANSFER IN:" — the spine's singular, all-caps, colon form
       - term: "TRANSFER IN:"
@@ -1625,7 +1625,7 @@ categories:
     document_term: "Transfers Out to CIP"
     parent: transfers
     kinds: [transfer_out]
-    pages: [69, 71, 73, 75]
+    pages: [69, 71, 73, 75, 222]
     note: >-
       A SIBLING of transfers/out, not a subset of it, despite the name. On
       pp. 69/71/73/75 the two are separate columns that both add into Total

@@ -480,8 +480,8 @@ func (*factTransferOrientationIsDeclared) Run(_ context.Context, s *Subject) (Re
 					"tell it from money flowing the other way",
 				f.DocID, f.Page, f.Token, f.RowLabel, f.Kind, f.AmountCents, f.Sign, mapping.SignNetted))
 		// > 0 and not >= 0: a netted row's `-` cells publish a zero, and zero
-		// runs with every direction. 64 of the store's 178 transfer facts are
-		// zero, so >= would redden a correctly declared multi-column row.
+		// runs with every direction, so >= would redden a correctly declared
+		// multi-column row.
 		case f.AmountCents > 0 && f.Sign == mapping.SignNetted:
 			findings = append(findings, finding(f.ID,
 				"%s p%d prints %q for row %q as %d cents, which already runs with its kind %s, "+

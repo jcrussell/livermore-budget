@@ -78,9 +78,10 @@ func (*projectionsBuild) Run(_ context.Context, s *Subject) (Result, error) {
 	}.result(), nil
 }
 
-// sliceKey identifies one projection slice. It is the triple selectFacts
-// filters on (internal/project), so a fact and the projection that would have
-// drawn it are compared on the same three fields rather than on two of them.
+// sliceKey identifies one projection slice by year, basis and scope. selectFacts
+// (internal/project) also filters on Options.Kinds, so a key covered here does
+// not mean every fact at that address is drawn: transfers-out selects p222's
+// transfers and not the grants beside them (fisc-jyjn).
 type sliceKey struct {
 	year  int
 	basis mapping.Basis
