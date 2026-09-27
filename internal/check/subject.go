@@ -50,12 +50,9 @@ const (
 // published triple was built at all, which no amount of shared spelling can.
 const spineScope = project.PublishedScope
 
-// The scope strings the detail schedules are mapped at, spelled here for
-// spineScope's reason: the hazard is a scope string internal/check and
-// mappings/ spell differently, and a string only ever compared and never
-// written is exactly where a typo survives. structure.BudgetBookCuts declares
-// each as a cut's Scope, and TestScopeConstantsNameDeclaredCuts holds these to
-// those rather than leaving two spellings to agree by luck.
+// The scope strings the detail schedules are mapped at. A string only ever
+// compared is where a typo survives; TestScopeConstantsNameDeclaredCuts holds
+// these to structure.BudgetBookCuts.
 const (
 	// revenueDetailScope is Budget Book pp.127-140, revenue and transfers in
 	// per fund.
@@ -77,10 +74,8 @@ type Vocabulary interface {
 	// tells those two cases apart: "you named a rollup" and "you typo'd a slug"
 	// need different fixes.
 	Category(slug string) (registry.Category, bool)
-	// Categories is every taxonomy entry, ordered by slug. A check that could
-	// only look a slug up could never say what the registry declares that no
-	// fact prints, and an entry's children are not a field on it: the lines
-	// nested under a category are found by reading the whole file.
+	// Categories is every taxonomy entry, ordered by slug. An entry's children
+	// are not a field on it; they are found by reading them all.
 	Categories() []registry.Category
 	// FundGroup reports whether name is a fund type data/funds.yaml uses.
 	FundGroup(name string) bool
@@ -100,15 +95,9 @@ type Vocabulary interface {
 	// Department reports whether slug is a department data/departments.yaml
 	// lists — the ALL-CAPS tier above [Vocabulary.Division].
 	//
-	// The `department` field holds EITHER tier, which is the document's doing
-	// rather than a relaxation: pp.167-170 and pp.85-125's upper block print a
-	// division per row, and pp.85-125's Department Funding Sources block prints
-	// one schedule PER DEPARTMENT with no division on it. Six of the eleven
-	// departments are not division slugs, so a check that resolved only
-	// divisions could not accept that schedule's natural axis at all.
-	//
-	// It is a predicate and not an accessor because the registry's department
-	// type is unexported; what this package needs is whether the fact joins.
+	// A fact's `department` holds EITHER tier because the documents do:
+	// pp.85-125's Department Funding Sources block prints one schedule per
+	// department with no division on it.
 	Department(slug string) bool
 	// Funds is every fund the registry lists. The checks read it to learn the
 	// constraint tiers the file actually uses, rather than carrying a second
@@ -185,43 +174,25 @@ type fundFlowsBuilder interface {
 // departmentSpendingBuilder is a projection whose document is the departmentwide
 // cross-tab.
 //
-// A FOURTH INTERFACE AND NOT A SECOND USE OF fundFlowsBuilder, and the reason is
-// what the shape means rather than what it holds. Both are nodes and links with
-// no headline, so the STRUCTURAL checks read them identically through
-// [Subject.LinkedDocuments] -- and the checks that are of the drill-down's shape
-// ALONE would then be handed this one: fund-flows-counts-reconcile would
-// re-derive facts_cited_twice on a document that has no second grain. Sharing
-// the type would make that check report on a document it was not written
-// about.
+// Not fundFlowsBuilder, though both are nodes and links with no headline:
+// sharing the type would hand fund-flows-counts-reconcile a document with no
+// second grain to count facts_cited_twice over.
 type departmentSpendingBuilder interface {
 	Name() string
 	Document(facts []fact.Fact, o project.Options) (*project.DepartmentSpendingDocument, error)
 }
 
 // departmentFundingBuilder is a projection whose document is pp.85-125's
-// funding-source graph.
-//
-// A SIXTH INTERFACE FOR departmentSpendingBuilder's REASON, and the near miss
-// here is the sharpest of the five. This document and the cross-tab are of the
-// SAME ELEVEN PAGES and both are nodes and links with no headline, so sharing a
-// type would be easy to argue for and wrong: they are two readings of one
-// figure at two grains, and the checks that are of the drill-down's shape would
-// then be handed a document built from the other block of the same pages.
+// funding-source graph: the same pages as the cross-tab, read at another grain,
+// and apart from it for departmentSpendingBuilder's reason.
 type departmentFundingBuilder interface {
 	Name() string
 	Document(facts []fact.Fact, o project.Options) (*project.DepartmentFundingDocument, error)
 }
 
 // transfersByFundBuilder is a projection whose document is p76's transfer
-// network.
-//
-// A FIFTH INTERFACE FOR departmentSpendingBuilder's REASON, and the case here
-// is sharper than that one's. This document is the only one in the project
-// whose links come in PAIRS -- two per printed figure, one for each end of a
-// movement -- so every count taken off it is twice what a document of cells
-// would mean by the same number. fund-flows-counts-reconcile re-derives
-// facts_cited_twice; handed this shape, it would report on a document it was
-// not written about.
+// network, apart for departmentSpendingBuilder's reason: its links come in
+// pairs, one per end of a movement, so every count off it means twice as much.
 type transfersByFundBuilder interface {
 	Name() string
 	Document(facts []fact.Fact, o project.Options) (*project.TransfersByFundDocument, error)
@@ -244,31 +215,20 @@ type projection struct {
 	// Trends is the built trends document, or nil for a projection that is not
 	// one. Read it through [Subject.TrendDocuments], for Graph's reason.
 	//
-	// EXACTLY ONE OF Graph AND Trends IS NON-NIL on a healthy projection, and
-	// [documentsAreChecked] is what asserts it: a projection carrying neither is
+	// EXACTLY ONE document field IS NON-NIL on a healthy projection, and
+	// [documentsAreChecked] is what asserts it: a projection carrying none is
 	// a document no structural check reads, which is the state that lets a wrong
 	// document ship under an all-green verify.
 	Trends *project.TrendsDocument
 	// FundFlows is the built drill-down, or nil. Read it through
 	// [Subject.LinkedDocuments] for the structural checks, and through
 	// [Subject.FundFlowsDocuments] for the ones that are of this shape alone.
-	//
-	// EXACTLY ONE OF THE FOUR IS NON-NIL on a healthy projection.
 	FundFlows *project.FundFlowsDocument
-	// DepartmentSpending is the built cross-tab, or nil. Read it through
-	// [Subject.LinkedDocuments] for the structural checks; no check is of this
-	// shape alone, because cuts-tie-along-the-lattice reads the FACTS and is
-	// what this scope's arithmetic rests on.
+	// DepartmentSpending is the built cross-tab, or nil.
 	DepartmentSpending *project.DepartmentSpendingDocument
-	// DepartmentFunding is the built funding-source graph, or nil. Read it
-	// through [Subject.LinkedDocuments] for the structural checks; no check is
-	// of this shape alone, because cuts-tie-along-the-lattice reads the FACTS
-	// and is what this scope's arithmetic rests on.
+	// DepartmentFunding is the built funding-source graph, or nil.
 	DepartmentFunding *project.DepartmentFundingDocument
-	// TransfersByFund is the built transfer network, or nil. Read it through
-	// [Subject.LinkedDocuments] for the structural checks; no check is of this
-	// shape alone, because cuts-tie-along-the-lattice reads the FACTS and is
-	// what this scope's arithmetic rests on.
+	// TransfersByFund is the built transfer network, or nil.
 	TransfersByFund *project.TransfersByFundDocument
 }
 

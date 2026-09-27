@@ -3,7 +3,6 @@ package check
 import (
 	"context"
 	"fmt"
-	"maps"
 	"regexp"
 	"slices"
 	"strings"
@@ -235,11 +234,8 @@ var departmentSlug = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
 //   - no department collides with a data/taxonomy.yaml category slug, which is
 //     the near miss the taxonomy warns about.
 //
-// THE FIRST CLAIM SPANS TWO TIERS. The field holds a division on pp.167-170 and
-// on pp.85-125's upper block, and a DEPARTMENT on pp.85-125's Department Funding
-// Sources block, whose schedule is printed per department with no division on
-// it. Which tier a schedule's facts must resolve at is its cut's DepartmentTier,
-// held by cuts-tie-along-the-lattice; this check cannot tell the two apart.
+// THE FIRST CLAIM SPANS TWO TIERS, and this check cannot tell which a schedule
+// needs: that is its cut's DepartmentTier, held by cuts-tie-along-the-lattice.
 //
 // THE LAST TWO ARE NOW BELT AND BRACES, and they stay. The registry refuses a
 // slug that is a category slug on both tiers, so a resolving department cannot
@@ -321,8 +317,7 @@ func (*factDepartmentsResolve) Run(_ context.Context, s *Subject) (Result, error
 		subjects: subjects,
 		unit:     "departments",
 		held: fmt.Sprintf("%d facts name one of %d slugs, each a division or a department "+
-			"%s lists: %s", subjects, len(departments),
-			departmentsFile, joinComma(slices.Sorted(maps.Keys(departments)))),
+			"%s lists", subjects, len(departments), departmentsFile),
 		nothing: "no fact carries a department: the citywide spine crosses category against " +
 			"fund group and has no department axis (pp.167-170 are fisc-5gk.2)",
 		findings: findings,
@@ -332,13 +327,9 @@ func (*factDepartmentsResolve) Run(_ context.Context, s *Subject) (Result, error
 // factFundsResolve asserts every fund number a fact carries is a fund
 // data/funds.yaml lists.
 //
-// A fact with no fund is not a subject: the citywide spine's columns are fund
-// GROUPS and pp.66-67 print no per-fund column, so its facts carry null there
-// and there is nothing to resolve. A fact carrying 0 IS a subject, and is
-// refused before the registry is asked: no fund is numbered 0, and 0 was the
-// spelling of absence this store retired, so one reaching the file is either a
-// misread column or the sentinel back -- and the sentinel put a fund-group
-// total and a printed dash at one address.
+// A fact with no fund (null) is not a subject. A fact carrying 0 is, and is
+// refused before the registry is asked: no fund is numbered 0, and 0 as "no
+// fund" would put a fund-group total and a printed dash at one address.
 type factFundsResolve struct{}
 
 var _ Check = (*factFundsResolve)(nil)
@@ -366,9 +357,7 @@ func (*factFundsResolve) Run(_ context.Context, s *Subject) (Result, error) {
 		fund := *f.Fund
 		if fund == 0 {
 			findings = append(findings, finding(f.ID,
-				"%s p%d %q: fund 0 names no fund. An absent fund is null; 0 is the retired "+
-					"no-fund sentinel, under which a figure with no fund axis and a row whose "+
-					"fund resolved to nothing shared one address",
+				"%s p%d %q: fund 0 names no fund; an absent fund is null",
 				f.DocID, f.Page, f.RowLabel))
 			continue
 		}

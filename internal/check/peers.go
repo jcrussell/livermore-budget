@@ -10,26 +10,12 @@ import (
 
 // peersOverlapOnlyByDeclaredIdentity asserts that where two cuts at one level
 // print the same cell, a declared identity says so and the two readings agree.
+// cuts-tie-along-the-lattice refuses peers by design, and a total over both
+// would count every shared cell twice with every downstream check agreeing.
 //
-// THIS IS THE MEASURED HALF, AND CONTAINMENT IS BLIND EXACTLY HERE. Two cuts
-// at one level are peers: neither decomposes the other, so
-// cuts-tie-along-the-lattice refuses the pair by design, and a total over
-// both would count every shared cell twice while every check downstream
-// re-summed the same facts and agreed. Measured over the committed store,
-// pp.127-140 and p76 share the fund-level transfers in -- one movement printed
-// at the receiving fund and at the paying end -- and nothing else in
-// internal/structure sees it.
-//
-// FOUR ARMS. A shared cell no identity covers is a finding. A shared cell
-// under an identity whose amounts differ is a finding: the pages disagree on
-// a figure the identity says is one. A non-zero cell under an identity that
-// one side prints and the other does not is a finding unless an exception
-// declares the absence. A declared identity that no shared cell bears out is
-// refused, because an exemption over a cell nobody prints exempts nothing.
-//
-// WHAT A VIEW DOES WITH IT is decided at construction, not here: a cut set
-// holding both readings is refused by structure.NewView unless it names which
-// reading it takes.
+// A shared cell no identity covers, a shared cell whose readings differ, a
+// non-zero cell one side of an identity omits without an exception, and an
+// identity no shared cell bears out are each a finding.
 type peersOverlapOnlyByDeclaredIdentity struct{}
 
 var _ Check = (*peersOverlapOnlyByDeclaredIdentity)(nil)
@@ -88,7 +74,7 @@ func (*peersOverlapOnlyByDeclaredIdentity) Run(_ context.Context, s *Subject) (R
 			}
 			o, err := structure.Peers(s.Facts, a, b, identities, exceptions)
 			if err != nil {
-				refused = append(refused, err.Error())
+				refused = append(refused, a.Name+"/"+b.Name)
 				continue
 			}
 			pairs++
@@ -108,17 +94,15 @@ func (*peersOverlapOnlyByDeclaredIdentity) Run(_ context.Context, s *Subject) (R
 			clause := fmt.Sprintf("%s + %s at %s: %d shared cell(s)", a.Name, b.Name, o.At, len(o.Shared))
 			for _, id := range identities {
 				if n := byIdentity[id.Name]; n > 0 {
-					clause += fmt.Sprintf(", %d under identity %q carrying %s on each side (%s)",
-						n, id.Name, structure.Cents(cents[id.Name]), id.Reason)
+					clause += fmt.Sprintf(", %d under identity %q carrying %s on each side",
+						n, id.Name, structure.Cents(cents[id.Name]))
 				}
 			}
 			clauses = append(clauses, clause)
 		}
 	}
 
-	// AN IDENTITY BETWEEN TWO CUTS THAT WERE NEVER COMPARED is not borne out
-	// and not refused by Peers, so it is refused here: a renamed cut or a
-	// refused pair would otherwise leave the declaration inert.
+	// An identity between two cuts never compared is inert, and refused here.
 	for _, id := range identities {
 		if borne[id.Name] || isEmpty[id.A] || isEmpty[id.B] {
 			continue
@@ -137,11 +121,9 @@ func (*peersOverlapOnlyByDeclaredIdentity) Run(_ context.Context, s *Subject) (R
 		}
 	}
 
-	// EVERY DOCUMENT THAT SUMS IS A VIEW, and the view is constructed here
-	// from the scope set the projection declared, so a set that would
-	// traverse both readings of one figure, or hold a cut beside one that
-	// decomposes it, is a finding whether or not the projection's own code
-	// noticed. Series documents publish no total and are not views.
+	// Every document that sums is constructed as a view from its declared
+	// scope set, so one holding both readings of a figure is a finding here.
+	// Series documents publish no total and are not views.
 	views := 0
 	seen := map[string]bool{}
 	for _, p := range s.Projections {
@@ -163,8 +145,7 @@ func (*peersOverlapOnlyByDeclaredIdentity) Run(_ context.Context, s *Subject) (R
 		"document scope set(s) each construct as a view",
 		subjects, pairs, strings.Join(clauses, "; "), views)
 	if len(refused) > 0 {
-		summary += fmt.Sprintf(". %d pair(s) at one level are not comparisons and were refused by "+
-			"name: %s", len(refused), strings.Join(refused, "; "))
+		summary += fmt.Sprintf(". %d pair(s) at one level refused: %s", len(refused), joinComma(refused))
 	}
 	return conclusion{
 		subjects: subjects,

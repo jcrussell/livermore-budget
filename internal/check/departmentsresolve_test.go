@@ -26,12 +26,9 @@ func runDepartments(t *testing.T, facts ...fact.Fact) Result {
 	return res
 }
 
-// TestDepartmentsResolveAcceptsEitherTier is the widening itself. pp.85-125's
-// Department Funding Sources block is printed per DEPARTMENT and six of the
-// eleven departments are not division slugs, so a check resolving only
-// divisions could not accept that schedule's own axis. `police-department` in
-// the fixture is such a department: a slug in departments.yaml that names no
-// division.
+// TestDepartmentsResolveAcceptsEitherTier: pp.85-125's Department Funding
+// Sources block is printed per department, and `police-department` in the
+// fixture is a department that names no division.
 func TestDepartmentsResolveAcceptsEitherTier(t *testing.T) {
 	res := runDepartments(t,
 		departmentFact("f1", "patrol"),
@@ -44,30 +41,24 @@ func TestDepartmentsResolveAcceptsEitherTier(t *testing.T) {
 	}
 }
 
-// TestDepartmentsResolveArmsAreEachReachable is the guard on the widening being
-// a widening rather than a hole. The arms are ordered and one of them continues,
-// so a relaxation can make a later arm unreachable without any test going red.
+// TestDepartmentsResolveArmsAreEachReachable: the arms are ordered and one
+// continues, so a relaxation can make a later arm unreachable.
 func TestDepartmentsResolveArmsAreEachReachable(t *testing.T) {
 	for _, tc := range []struct {
 		name       string
 		department string
 		want       string
 	}{{
-		// Not a slug at all. Reported as shape, which is the more specific
-		// diagnosis, and the resolution arm is skipped so one fact gets one fix.
+		// Not a slug: reported as shape only.
 		name: "shape", department: "police_dept",
 		want: `department "police_dept" is not a slug`,
 	}, {
-		// Well formed and in neither tier. This is the arm the widening
-		// rewrote, and it must still be able to fire.
+		// Well formed and in neither tier.
 		name: "resolution", department: "patrolx",
 		want: `department "patrolx" is neither a division nor a department`,
 	}, {
-		// The category axis, which the two tiers must stay disjoint from
-		// because row_path joins them on a "/". This one fires TOGETHER with
-		// the resolution arm rather than instead of it -- the collision arm
-		// does not continue -- and that is the honest report: the slug is both
-		// on the wrong axis and in neither tier.
+		// A category slug (row_path joins the axes on "/"): fires together
+		// with the resolution arm, since the collision arm does not continue.
 		name: "category collision", department: "wages-and-benefits",
 		want: `department "wages-and-benefits" is also a`,
 	}} {

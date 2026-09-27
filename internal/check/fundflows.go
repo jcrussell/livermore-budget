@@ -32,11 +32,8 @@ import (
 //   - facts against the slice: a document that quietly narrowed what it drew.
 //   - facts_cited against the distinct union of every link's fact_ids: a
 //     citation the document dropped.
-//   - the identity facts = cited + uncited: that the two numbers the document
-//     publishes add up to the third. It does NOT witness what an uncited fact
-//     is worth -- uncited is defined as reached-no-link, so the identity holds
-//     whatever those facts carry -- and uncited-facts-are-printed-zeros is the
-//     check that does.
+//   - the identity facts = cited + uncited, which holds whatever an uncited
+//     fact carries; uncited-facts-are-printed-zeros is what checks its worth.
 //   - facts_cited_twice: the overlap between the two grains, published as a
 //     number because `links` is NOT a partition of `facts_cited` in this
 //     document and the spine's shape would lead a reader to assume it is.

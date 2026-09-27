@@ -8,23 +8,10 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 )
 
-// TWO CUTS AT ONE LEVEL ARE PEERS, and a cell both produce is one figure read
-// twice. pp.127-140 print a fund's transfers in at the RECEIVING fund and p76
-// prints the same movements at the PAYING end: same money, same amount, two
-// readings with two provenance chains. Neither decomposes the other, so the
-// containment comparison refuses the pair, and a total over both would count
-// the movement twice while every check downstream re-summed the same facts
-// and agreed.
-//
-// AN IDENTITY IS A NEW RELATION AND NOT A ROW IN refinements. An equal-axes
-// edge would pass validateLattice, because notSubset is non-strict, but
-// declaring it both ways round trips the cycle check; the lattice stays
-// directional and the identity is declared at the INSTANCE level, between two
-// named cuts, for the kinds it covers.
-
 // An Identity says that two cuts at one level print the same figures for the
 // kinds it names: a cell both produce is one movement read from two ends, and
-// the two readings must agree to the cent.
+// the two readings must agree to the cent. It is declared between two named
+// cuts rather than as a lattice edge, which would be a cycle.
 type Identity struct {
 	Name string
 	// A and B are the cut names, in either order.
@@ -41,10 +28,8 @@ func (id Identity) covers(a, b string, k mapping.Kind) bool {
 	return joins && containsKind(id.Kinds, k)
 }
 
-// ValidateIdentities holds a set of identities to a set of cuts: both cuts
-// exist and differ, sit at one level, and each print every kind the identity
-// names. It reads declarations alone; whether the store bears an identity
-// out is Peers' business.
+// ValidateIdentities holds a set of identities to a set of cuts. It reads
+// declarations alone; the store is Peers'.
 func ValidateIdentities(cuts []Cut, identities []Identity) error {
 	byName := map[string]Cut{}
 	for _, c := range cuts {
@@ -105,30 +90,14 @@ type Overlap struct {
 	At   Level
 	// Shared is every cell both cuts produced, in a stable order.
 	Shared []Shared
-	// Findings is one line per overlap no identity covers, per covered cell
-	// whose readings differ, per undeclared one-sided cell under an identity,
-	// and per identity this pair bears out nowhere.
+	// Findings is one line per cell or identity at fault.
 	Findings []string
 }
 
-// Peers compares two cuts at one level and reports every cell both produce.
-//
-// THREE ARMS, AND THE THIRD IS THE ONE AN EXEMPTION WOULD LACK. A shared cell
-// no identity covers is a finding: two schedules printing one address is a
-// doubling waiting for a total to select both. A shared cell under a declared
-// identity whose amounts differ is a finding: the identity says they are one
-// figure, and the pages disagree. And a declared identity producing NO shared
-// cell is refused, for the reason an exemption for a cell nobody prints
-// exempts nothing -- the declaration has stopped describing the corpus.
-//
-// PER KIND, because a key carries no kind and an identity covers kinds.
-// pp.127-140 and p76 share transfers-in cells and nothing else; an overlap of
-// another kind at the same address would be one the identity does not cover.
-//
-// A NON-ZERO CELL ONE PEER PRINTS AND THE OTHER DOES NOT, of a kind an identity
-// covers and in a column both print, is a finding too: the identity says each
-// prints the figure. Unless a declared exception pins the missing side absent
-// at that cell's coarsening -- pp.127-130 print no General Fund transfer in.
+// Peers compares two cuts at one level, kind by kind, and reports every cell
+// both produce. Findings: a shared cell no identity covers; a covered cell
+// whose readings differ; a covered non-zero cell only one side prints, unless
+// an exception pins the other absent; and an identity no cell bears out.
 func Peers(facts []fact.Fact, a, b Cut, identities []Identity, exceptions []Exception) (Overlap, error) {
 	if a.Level != b.Level {
 		return Overlap{}, fmt.Errorf("peers %q (%s) and %q (%s): not at one level", a.Name, a.Level, b.Name, b.Level)
@@ -254,12 +223,6 @@ func absenceDeclared(facts []fact.Fact, present, missing Cut, r restriction, key
 // A View is a set of cuts a total may be taken over: an antichain of the
 // lattice, and where two of its cuts are joined by an identity, a declaration
 // of which reading the total takes.
-//
-// A CUT SET THAT WOULD TRAVERSE BOTH READINGS IS REFUSED, not summed once by a
-// preference table and not counted once silently. A total that is not the
-// sum of its parts with no arithmetic on any page witnessing the collapse is
-// what this refuses; the view says which reading it takes and the other's
-// cells of the identity's kinds are left out, by name.
 type View struct {
 	Name string
 	Cuts []Cut
@@ -268,19 +231,11 @@ type View struct {
 	Readings map[string]string
 }
 
-// NewView refuses a set that is not summable: two cuts one of which
-// decomposes the other over money both print, a cut named twice, or an
-// identity joining two of its cuts with no reading declared. A reading naming
-// an identity that joins no two cuts of the view is refused too, because it
-// would excuse a traversal that is not happening.
-//
-// THE ANTICHAIN IS OVER MONEY BOTH CUTS PRINT, not over levels alone. pp.127-140
-// by fund and pp.167-170 by fund, department and object are one above the
-// other in the lattice, and a document following a dollar from source to
-// spend holds both; they are summable together because one prints revenue and
-// the other expenditure, and no fact is in both. What is refused is a pair one
-// of which decomposes the other where their kinds meet -- the spine beside any
-// detail schedule.
+// NewView refuses a set that is not summable: a cut named twice, an identity
+// joining two of its cuts with no reading, a reading for an identity joining
+// none, or two cuts one of which decomposes the other. The antichain is over
+// kinds both print, not levels alone: revenue by fund and expenditure by
+// fund, department and object are summable together.
 func NewView(name string, cuts []Cut, identities []Identity, readings map[string]string) (View, error) {
 	names := map[string]Cut{}
 	for _, c := range cuts {
@@ -358,8 +313,7 @@ func (v View) Admits(f *fact.Fact, identities []Identity) bool {
 	return false
 }
 
-// CutsOf is every declared cut whose scope is one of those named: one per
-// scope, and two for the scope that prints two grains.
+// CutsOf is every declared cut whose scope is one of those named.
 func CutsOf(scopes []string) []Cut {
 	var out []Cut
 	for _, c := range AllCuts() {
@@ -370,10 +324,8 @@ func CutsOf(scopes []string) []Cut {
 	return out
 }
 
-// ViewOf is the view a document's scope set names, over the declared cuts
-// and identities, refused the way NewView refuses. A scope no cut selects is
-// refused too: a document over money the structure does not describe is not
-// a view of it.
+// ViewOf is the view a document's scope set names, refused as NewView refuses
+// and also when a scope has no cut.
 func ViewOf(name string, scopes []string, readings map[string]string) (View, error) {
 	cuts := CutsOf(scopes)
 	for _, sc := range scopes {

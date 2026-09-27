@@ -10,12 +10,7 @@ import (
 )
 
 // Key is one cell two cuts must agree on: a column, plus a value for each axis
-// of the level they are compared at.
-//
-// THE AXES ARE THE MEET'S AND NOT EITHER INPUT'S. A comparison keyed on the
-// finer cut's axes finds no counterpart on the coarser side; keyed on the
-// coarser cut's own axes it can still name an axis the other side does not
-// carry. Only the meet is a set of coordinates both sides state.
+// of the meet -- not of either input, which the other side may not carry.
 type Key struct {
 	Year  int
 	Basis string
@@ -32,29 +27,16 @@ func (k Key) String() string {
 func (k Key) Column() string { return fmt.Sprintf("FY%d %s", k.Year, k.Basis) }
 
 // Sum is one side of a comparison: a total, and whether the cut said anything
-// about the key at all.
-//
-// Present is separate from a zero total because they are different claims. "The
-// schedule prints this cell and it is zero" ties against a zero on the other
-// side; "the schedule has no such cell" is a rule that was dropped.
+// about the key at all. A printed zero and no such cell are different claims.
 type Sum struct {
 	Cents   int64
 	Present bool
 }
 
-// project sums a cut's facts into the cells of a level, inside a restriction
-// that applies to BOTH sides of a comparison.
-//
-// THE RESTRICTION IS THE PAIR'S, NOT THE CUT'S. A cut's own footprint says what
-// its pages cover; what a comparison may look at is the INTERSECTION of the two
-// footprints, applied to each side. Applying it only to the narrower cut leaves
-// every cell the wider one covers alone on its side of the union, and the
-// comparison reports a schedule that never claimed to print them as having
-// dropped them.
-//
-// A KEY IS NOT UNIQUE WITHIN A CUT, and summing is what makes it one cell. p76
-// prints two transfers into Stormwater in one column, from the General Fund and
-// from Wastewater, and the fund's transfer in is their sum.
+// project sums a cut's facts into the cells of a level, inside the pair's
+// restriction -- applied to both sides, or the wider cut's extra cells would
+// read as dropped by the narrower. A key is not unique within a cut: p76
+// prints two transfers into Stormwater in one column.
 func project(facts []fact.Fact, c Cut, at Level, r restriction) (map[Key]Sum, error) {
 	axes := Axes(at)
 	if axes == nil {
@@ -86,13 +68,9 @@ func KeyOf(f *fact.Fact, at Level) Key {
 	return Key{Year: f.FiscalYear, Basis: string(f.Basis), Level: at, Coords: joinCoords(axes, coords)}
 }
 
-// coordOf reads one axis off a fact.
-//
-// AN ABSENT COORDINATE IS SPELLED, NOT BLANK. A fund the pages do not name --
-// p76's LAVWMA row, which is a joint powers authority and no City fund -- must
-// not share a cell with a fund that happens to sort first, and must not read as
-// the same thing as a level that carries no fund axis at all. The two are
-// different claims and the second is said by the LEVEL, not by this value.
+// coordOf reads one axis off a fact. An absent coordinate is spelled, so
+// p76's LAVWMA row, which names no City fund, is not read as a level with no
+// fund axis.
 func coordOf(f *fact.Fact, a Axis) string {
 	switch a {
 	case AxisFundGroup:
@@ -144,8 +122,7 @@ const (
 	// fine side must sum to the coarse side's own cells.
 	Containment Relation = "containment"
 	// Agreement is two cuts neither of which decomposes the other, compared
-	// at the grain both decompose. pp.85-125 by department and pp.66-67 by
-	// fund group are both decompositions of citywide expenditure by object.
+	// at the grain both decompose.
 	Agreement Relation = "agreement"
 )
 
@@ -172,10 +149,7 @@ type Comparison struct {
 	Cells []Cell
 	// Subjects is the number of cells compared.
 	Subjects int
-	// OneSided is how many of those only one cut produced. They tie when the
-	// other side is zero, which is a real agreement -- the spine prints a dash
-	// where a detail schedule prints no row -- and a reader cannot recover the
-	// count from the total, so it is reported rather than folded in.
+	// OneSided is how many of those only one cut produced.
 	OneSided int
 	// Columns is the (year, basis) set the comparison covered.
 	Columns []string
@@ -229,36 +203,10 @@ func (r restriction) admits(f *fact.Fact) bool {
 }
 
 // restrict is the slice of the store a pair may be compared over at a level.
-//
-// THREE WAYS A PAIR IS NOT A COMPARISON, each refused by name rather than
-// compared to an empty or a partial answer:
-//
-// THE KINDS DO NOT MEET. pp.167-170 print expenditure and pp.127-140 print
-// revenue. There is no money both describe, so every cell would be one-sided
-// and the comparison would report a schedule as having dropped rows it never
-// had.
-//
-// A FOOTPRINT CANNOT BE APPLIED TO A CUT WITH NO FUND GROUP AXIS. pp.167-170
-// are of the General Fund; pp.85-125 span every fund and print no fund axis
-// anywhere. So there is no way to ask pp.85-125 for their General Fund part,
-// and a comparison of the whole against the part would report the difference
-// as a defect. The spine can answer that question -- it carries the fund group
-// -- which is why pp.167-170 reconcile there and not here.
-//
-// NO COLUMN BOTH PRINT. The ACFR prints audited figures and the Budget Book
-// prints adopted ones, so pp.127-140 by fund and p41's General Fund summary
-// are a lattice containment with no column in common, and comparing them
-// would report every one of p41's cells as a rule the finer schedule dropped.
-// A pair sharing no basis is not a comparison and is refused by name.
-//
-// THE DEPARTMENT AXIS IS TWO VOCABULARIES. pp.167-170 and pp.85-125's upper
-// block name DIVISIONS; pp.171-176 name DEPARTMENTS, one tier up. Compared at a
-// level carrying the department axis the two sides share no key, and the
-// comparison reports every division as a cell the department schedule dropped.
-// Measured over the committed store at the one pair that reaches this arm,
-// pp.167-170 against pp.171-176 at fund-by-department: 104 of 116 cells
-// disagree, on a schedule pair whose money is the same. Folding divisions into
-// their departments would make the pair comparable and is not done here.
+// A pair is refused by name, never compared to a partial answer, when the
+// kinds do not meet, when a fund-group footprint meets a cut with no fund
+// group axis, when no column is printed by both, or when the two name the
+// department axis at different tiers (HoldTie folds those).
 func restrict(a, b Cut, at Level) (restriction, error) {
 	var r restriction
 	for _, k := range a.Kinds {
@@ -325,19 +273,9 @@ func hasAxis(l Level, a Axis) bool {
 }
 
 // Compare relates two cuts the way the lattice says they stand, and refuses a
-// pair it cannot relate.
-//
-// A PAIR AT ONE LEVEL IS NOT THIS FUNCTION'S. Two cuts at one level are peers,
-// and whether they agree on the cells they share is a different question with
-// a different failure mode; see Peers.
-//
-// A PAIR THAT MEETS STRICTLY BELOW BOTH IS COMPARED AT THE MEET, and only when
-// one side is the reference. pp.85-125 by department and pp.66-67 by fund group
-// both decompose citywide expenditure by object, and the object category is
-// where they must agree. Which side decides the columns is the question a
-// containment answers by direction and an agreement cannot, so the cut declared
-// as the reference decides, and a pair with no reference in it is refused
-// rather than compared on an intersection either side could shrink.
+// pair it cannot relate. Peers are Peers'. A pair meeting strictly below both
+// is compared at the meet only when one side is the reference, which decides
+// the columns; otherwise either side could shrink an intersection.
 func Compare(facts []fact.Fact, a, b Cut) (Comparison, error) {
 	switch {
 	case a.Level == b.Level:
@@ -363,17 +301,9 @@ func Compare(facts []fact.Fact, a, b Cut) (Comparison, error) {
 		a.Name, a.Level, b.Name, b.Level)
 }
 
-// Contain compares a finer cut against a coarser one at the level they meet.
-//
-// THE COARSE SIDE DECIDES THE COLUMNS. A coarse column with no fine column
-// behind it is a gap in the mapping, which this check exists to find; a fine
-// column with no coarse column is a gap in the documents -- pp.66-67 print no
-// actual or revised column -- and is not this comparison's business. An
-// intersection would let the fine side opt out of a column by dropping it.
-//
-// THE UNION OF KEYS, NOT THE FINE SIDE'S. Iterating only what the fine cut
-// produced makes a dropped rule invisible: delete a block and its cells vanish
-// from that side entirely, so the loop compares nothing and reports clean.
+// Contain compares a finer cut against a coarser one at the level they meet,
+// over the union of keys in the coarse side's columns. An intersection of
+// columns, or the fine side's keys alone, would let a dropped rule opt out.
 func Contain(facts []fact.Fact, fine, coarse Cut) (Comparison, error) {
 	at, err := Meet(fine.Level, coarse.Level)
 	if err != nil {
@@ -516,8 +446,7 @@ func cents(c int64) string {
 // Cents renders an amount the way a finding does.
 func Cents(c int64) string { return cents(c) }
 
-// unionKeys is every key either side produced, in a stable order so two runs
-// report the same findings in the same sequence.
+// unionKeys is every key either side produced, in a stable order.
 func unionKeys(a, b map[Key]Sum) []Key {
 	keys := make([]Key, 0, len(a)+len(b))
 	for k := range a {

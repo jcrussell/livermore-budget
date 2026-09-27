@@ -63,10 +63,8 @@ func TestTheGeneralFundTransferInLegIsNotDoubled(t *testing.T) {
 		}
 	}
 
-	// BOTH BUDGET YEARS, TOGETHER. structure.BudgetBookExceptions declares that
-	// hand-off one exception per budget year, each pinning both sides of its own
-	// cell, so a scope covering FY2026 alone leaves FY2027's pin naming a cell
-	// the detail does not carry.
+	// BOTH BUDGET YEARS, TOGETHER: the hand-off is one exception per year, so
+	// FY2026 alone leaves FY2027's pin naming a cell the detail does not carry.
 	if p76 := scopes["transfers-by-fund"]; p76 != 88 {
 		t.Errorf("the transfers-by-fund scope holds %d facts, want 88 "+
 			"(22 printed rows x 2 budget years x 2 legs)", p76)

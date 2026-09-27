@@ -37,9 +37,8 @@ func TestEveryDeclarationNamesACheckThatExists(t *testing.T) {
 	}
 }
 
-// TestEveryDeclarationCarriesItsReasonAndItsBead holds every declaration to one
-// standard: a declaration whose reason is thin is a declaration nobody re-reads,
-// and re-reading is the whole mechanism.
+// TestEveryDeclarationCarriesItsReasonAndItsBead: a declaration whose reason is
+// thin is a declaration nobody re-reads, and re-reading is the whole mechanism.
 //
 // The count is deliberately NOT pinned. Pinning it would make every wave that
 // retires a check edit a number in a test, which is bookkeeping rather than
@@ -256,15 +255,9 @@ func TestADeclarationSurvivesACheckThatReachedNoVerdict(t *testing.T) {
 	}
 }
 
-// withDeclaredVacancy declares one vacancy for the duration of a test.
-//
-// A CASE ABOUT THE DECLARATION MECHANISM MUST NOT BORROW A LIVE DECLARATION,
-// withUnprojectedScope's argument one map over, and here it is sharper: the
-// tree now declares NO vacancy at all, so the two cases below picked the
-// lowest id of an empty map and drove the whole mechanism through "". They
-// were green only while some check in this repository had nothing to look at,
-// which is a state the backlog exists to end -- the tests that watch the
-// mechanism would have retired with the last thing it excused.
+// withDeclaredVacancy declares one vacancy for the duration of a test. A case
+// about the mechanism must not borrow a live declaration: it would retire with
+// the last thing the tree excuses.
 func withDeclaredVacancy(t *testing.T, id string, v vacancy) {
 	t.Helper()
 	prev := declaredVacuous
@@ -283,16 +276,12 @@ func withDeclaredVacancy(t *testing.T, id string, v vacancy) {
 func testVacancy(t *testing.T) (string, vacancy) {
 	t.Helper()
 	const id = "transfer-legs-pair"
-	// THE BEAD IS DELIBERATELY NOT A fisc- ID. `make beadrefs` reads every
-	// tracked file and refuses an id naming no bead, on the ground that a
-	// pointer to nothing reads as though the work is tracked -- and a fixture
-	// bead points at nothing by construction. What the two cases below need of
-	// this field is only that StaleReason repeats it, so a string that could
-	// not be mistaken for a real id serves better than one that could.
+	// Not a fisc- id: `make beadrefs` refuses one naming no bead, and the
+	// cases need only that StaleReason repeats it.
 	v := vacancy{
 		bead: "the-bead-this-fixture-stands-in-for",
 		reason: "a fixture declaration, installed by the test that drives this mechanism " +
-			"rather than borrowed from the tree, which declares no vacancy of its own",
+			"rather than borrowed from the tree",
 	}
 	withDeclaredVacancy(t, id, v)
 	return id, v

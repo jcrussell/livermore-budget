@@ -88,10 +88,8 @@ func TestFixtureVerdicts(t *testing.T) {
 		// fact to value.
 		"schedule-counts-reconcile":       "vacuous over 0",
 		"uncited-facts-are-printed-zeros": "vacuous over 0",
-		// The line tier is a property of the drill-down, so with no drill-down
-		// there is no line node and no flow into a fund. Its vacancy is NOT
-		// declared, and must not become so: over the committed corpus it has
-		// 130 cells and 374 line nodes (TestTheCommittedCorpusVacuitySplit).
+		// No drill-down, no line node. Not declared vacuous: the committed
+		// corpus gives it a subject (TestTheCommittedCorpusVacuitySplit).
 		"revenue-lines-tie-to-their-categories": "vacuous over 0",
 		"derived-nodes-justified":               "pass over 2",
 		"link-locators-match-their-facts":       "pass over 7",
@@ -687,10 +685,8 @@ func TestDepartmentsAreCheckedForWhatIsCheckable(t *testing.T) {
 
 // TestFundNumbersResolveAgainstTheRegistry covers the join key a fact's fund is:
 // it has to resolve in data/funds.yaml and has to agree with the fund group
-// beside it. The 0 row is the retired no-fund sentinel: an absent fund is null,
-// and a 0 reaching the store is refused by name before the registry is asked,
-// because under 0 a figure with no fund axis and a row whose fund resolved to
-// nothing shared one address.
+// beside it. An absent fund is null, so a 0 is refused before the registry is
+// asked.
 func TestFundNumbersResolveAgainstTheRegistry(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -702,7 +698,7 @@ func TestFundNumbersResolveAgainstTheRegistry(t *testing.T) {
 		{"a listed fund", 100, "general", StatusPass, ""},
 		{"a fund the registry does not list", 999, "general", StatusFail, "not in data/funds.yaml"},
 		{"a listed fund under the wrong group", 100, "enterprise", StatusFail, `is type "general"`},
-		{"the retired no-fund sentinel", 0, "general", StatusFail, "fund 0 names no fund"},
+		{"fund 0", 0, "general", StatusFail, "fund 0 names no fund"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1104,11 +1100,8 @@ func TestTransferLegsPairSeesALegWithNoID(t *testing.T) {
 // TestNodeHierarchyWellFormedIsFailable damages a hierarchy four ways, one per
 // claim.
 //
-// THE CHECK IS STRUCTURAL RATHER THAN ARITHMETIC, and an arithmetic version
-// could not fail: a fold maps each link to exactly one folded link, so the sum
-// is invariant under relabelling whatever node.parent says. The inter-document
-// comparison is discharged per cell and at zero tolerance by
-// cuts-tie-along-the-lattice.
+// THE CHECK IS STRUCTURAL: a fold's sum is invariant under relabelling whatever
+// node.parent says, so an arithmetic version could not fail.
 //
 // The fixture's spine carries no hierarchy, so each case builds one, which is
 // also what proves the check is not merely counting nothing.
@@ -1852,20 +1845,12 @@ func TestRuleFundsMatchTheirHeadings(t *testing.T) {
 }
 
 // TestAnEndpointCarryingNoFlowMayBeAParent covers node-hierarchy-well-formed's
-// one exception, over the document it exists for, and the mutation that closes
-// it again.
-//
-// THE FIXTURE CANNOT WITNESS THIS, which is why the subject is the committed
-// corpus rather than testSubject. That fixture is a miniature of one spine year
-// and builds no transfers-by-fund document at all, so a case added to
-// TestNodeHierarchyWellFormedIsFailable's table would be green because the shape
-// never arrived -- a test passing because the gate fired earlier, which is a
-// different guarantee from one passing because the defect was prevented.
+// one exception, and the mutation that closes it. The subject is the committed
+// corpus because testSubject builds no transfers-by-fund document, and a case
+// there would be green because the shape never arrived.
 func TestAnEndpointCarryingNoFlowMayBeAParent(t *testing.T) {
 	const id = "node-hierarchy-well-formed"
-	// Spelled rather than imported, endpointTiers' own rule at the same place:
-	// this is a second reading of the id the projection writes, and taking it
-	// from the producer would make the two agree by construction.
+	// Spelled rather than imported, so the two cannot agree by construction.
 	const endpoint = "transfers/in"
 
 	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
@@ -1884,10 +1869,7 @@ func TestAnEndpointCarryingNoFlowMayBeAParent(t *testing.T) {
 			"would assert the exception over a shape that is not there")
 	}
 
-	// THE TWO HALVES OF THE EXCEPTION, ASSERTED SEPARATELY, because either one
-	// alone is satisfied by a document this check would have passed anyway: a
-	// document folding nothing into the endpoint, or one whose endpoint is
-	// absent. Both have to hold for the arm below to be the thing under test.
+	// Both halves of the exception, or the arm below is not what is under test.
 	folded := 0
 	for _, n := range doc.Nodes {
 		if n.Parent == endpoint {
@@ -1909,10 +1891,7 @@ func TestAnEndpointCarryingNoFlowMayBeAParent(t *testing.T) {
 			res.Status, findingDetails(res))
 	}
 
-	// THE MUTATION. One link at the endpoint and the same fold is refused
-	// again, once per node that takes it. The link is not otherwise well formed
-	// and does not need to be -- this arm reads the ENDS of the links a document
-	// draws and nothing else.
+	// THE MUTATION: one link at the endpoint, and each folded node is refused.
 	doc.Links = append(doc.Links, project.Link{
 		Source: endpoint, Target: doc.Nodes[0].ID, Kind: project.KindInternalTransfer,
 	})

@@ -47,7 +47,7 @@ func countedSubject() *Subject {
 }
 
 // TestScheduleCountsReconcileIsFailable damages each published count of each
-// of the three shapes in turn, the way fund-flows-counts-reconcile's test does.
+// of the three shapes in turn.
 func TestScheduleCountsReconcileIsFailable(t *testing.T) {
 	c := &scheduleCountsReconcile{}
 
@@ -84,8 +84,7 @@ func TestScheduleCountsReconcileIsFailable(t *testing.T) {
 			s.Projections[3].TransfersByFund.Metadata.Counts.Transfers = 7
 		}, "counts.transfers is 7 and re-derives to 0"},
 		{
-			// The case that matters most: a citation the document dropped,
-			// with the link's value untouched.
+			// A citation dropped with the link's value untouched.
 			name: "a dropped citation",
 			damage: func(s *Subject) {
 				s.Projections[3].TransfersByFund.Links[0].FactIDs = nil
@@ -93,14 +92,12 @@ func TestScheduleCountsReconcileIsFailable(t *testing.T) {
 			want: "counts.facts_cited is 1 and re-derives to 0",
 		},
 		{
-			// Facts says 3 and cited + uncited still says 2, so the facts
-			// comparison and the identity both fire; the identity's is the
-			// message about the claim.
+			// The facts comparison and the identity both fire.
 			name: "the identity against the document's own two numbers",
 			damage: func(s *Subject) {
 				s.Projections[1].DepartmentSpending.Metadata.Counts.Facts = 3
 			},
-			want: "do not add up to the third",
+			want: "counts.facts is 3 and facts_cited + facts_uncited is",
 		},
 	}
 	for _, tc := range cases {
@@ -121,9 +118,8 @@ func TestScheduleCountsReconcileIsFailable(t *testing.T) {
 	}
 }
 
-// TestScheduleCountsReconcileReadsThreeShapes pins which documents the check
-// is of: fund-flows has a counts check of its own and the spine has
-// counts-reconcile, so a subject carrying only those two is vacuous here.
+// TestScheduleCountsReconcileReadsThreeShapes: over a fund-flows document
+// alone, which has a counts check of its own, the check is vacuous.
 func TestScheduleCountsReconcileReadsThreeShapes(t *testing.T) {
 	s := countedSubject()
 	s.Projections = s.Projections[:1]

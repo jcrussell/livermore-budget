@@ -274,14 +274,7 @@ func TestTheCommittedCorpusVacuitySplit(t *testing.T) {
 		"headline-ties-to-facts":                  StatusPass,
 		"headline-transfer-residual":              StatusPass,
 		"headline-naive-expenditure":              StatusPass,
-		// NONE OF THE FIVE fisc-0ux ENUMERATED IS VACUOUS OVER THIS CORPUS, and
-		// transfer-legs-pair was the last of them. It reads LINKS, and what it
-		// needed was a document drawing each end of a printed movement as its
-		// own link: the spine nets p76's rows into fund-group cells before a
-		// pairing could attach to anything, and the drill-down cannot select
-		// that scope, because it and revenue-by-fund both publish transfer_in
-		// and one document holding both would double it. transfers-by-fund is
-		// that document, and declaredVacuous is empty as a result.
+		// Its subject is transfers-by-fund's legs.
 		"transfer-legs-pair":               StatusPass,
 		"node-hierarchy-well-formed":       StatusPass,
 		"constraint-tier-vocabulary":       StatusPass,
@@ -554,12 +547,9 @@ func TestAMovedOffsetFails(t *testing.T) {
 	}
 }
 
-// A negative offset is caught by the schema before fact-offset-points-at-token
-// sees it, so it is asserted here rather than as a case of the test below.
-//
-// That check keeps its remaining-length subtraction: the naive
-// offset+len(token) > len(text) wraps negative at MaxInt64 and panics a line
-// later, which is a hazard about a LARGE offset and still driven below.
+// TestANegativeOffsetIsRefusedBeforeTheChecksRun: the schema refuses a
+// negative offset before fact-offset-points-at-token sees it. That check's
+// remaining-length subtraction guards a LARGE offset, still driven below.
 func TestANegativeOffsetIsRefusedBeforeTheChecksRun(t *testing.T) {
 	root := repoWithoutPDFs(t)
 	mutateFacts(t, root, func(facts []fact.Fact) []fact.Fact {
@@ -612,17 +602,10 @@ func TestAnOffsetPastTheEndOfThePageFails(t *testing.T) {
 	}
 }
 
-// TestFactsMovedOutOfEveryProjectionFail is the second blocker review found, and it
-// is the more dangerous of the two because it is a one-word edit to a rule file.
-// Twenty facts in a scope no cut reads are not failed by the graph checks -- they
-// are invisible to them -- and before anything read the whole store this exact
-// mutation took over half the city's revenue out of the published chart while
-// every check passed.
-//
-// THE ARM THAT SEES IT IS structure.Covered, run by cuts-tie-along-the-lattice:
-// every fact is admitted by exactly one cut or by a declared residue, and a
-// fact in neither is named. The scope the facts were moved to is one no cut
-// reads, so each is reported by id.
+// TestFactsMovedOutOfEveryProjectionFail: a one-word scope edit in a rule file
+// takes facts out of every graph, invisibly to the graph checks.
+// cuts-tie-along-the-lattice's coverage arm names each fact in no cut and no
+// declared residue.
 func TestFactsMovedOutOfEveryProjectionFail(t *testing.T) {
 	root := repoWithoutPDFs(t)
 	const otherScope = "all-funds-gross-detail"
@@ -737,22 +720,10 @@ func TestTheYearTheSitePublishesMustBeBuilt(t *testing.T) {
 // TestARetargetedScopeUnbuildsThePublishedTrendsDocument is fisc-w7d's own
 // trigger, run against the real corpus.
 //
-// THE MUTATION IS A RETARGET AND NOT A DELETION, and the difference is what
-// makes this evidence. Deleting the revenue-by-fund facts leaves
-// cuts-tie-along-the-lattice's coverage arm nothing to report, so "the run
-// reddens about a document rather than about 924 facts" would be satisfied by
-// there being no facts —
-// true of the fixed and the unfixed check alike. Renaming the scope is what the
-// bead describes ("a scope typo in a mapping rule does it"): the facts survive,
-// no projection is of them, Trends.Slices returns nil, and the old check went on
-// passing over the spine while the trends document silently stopped existing.
-//
-// The run is legitimately red more than once here -- 924 facts land in no cut
-// and no residue excuses them, which is cuts-tie-along-the-lattice's coverage
-// arm doing its job -- so this asserts on published-projection-built's own
-// result rather than on rep.Failed(). Non-strict, because under --strict the
-// two trend checks go newly undeclared-vacuous and add more reasons to the same
-// run.
+// THE MUTATION IS A RETARGET AND NOT A DELETION: the facts survive, no
+// projection is of them, and Trends.Slices returns nil. The run is also red on
+// cuts-tie-along-the-lattice's coverage arm, so this asserts on
+// published-projection-built's own result rather than on rep.Failed().
 func TestARetargetedScopeUnbuildsThePublishedTrendsDocument(t *testing.T) {
 	root := repoWithoutPDFs(t)
 	moved := 0
@@ -1020,19 +991,9 @@ func TestContestedTotalsAreStillContested(t *testing.T) {
 // TestContestedTotalsAgreeWithTheirCheckException is the cross-check that stops
 // the caveat's two figures being an unguarded second copy.
 //
-// internal/project declares Published and Elsewhere so it can write a sentence.
-// structure.BudgetBookExceptions declares the SAME PAIR as the by-fund-group
-// exception's two pins, and cuts-tie-along-the-lattice verifies BOTH against
-// the corpus on every run -- the funding-sources sum against the Cut pin and
-// the spine sum against the Against pin. So the exception's copy is
-// corpus-verified and the projection's was not.
-//
-// Tying them together is what makes the caveat's figures as good as the
-// exception's: re-read the detail pages, update the pin, and this goes red
-// rather than leaving the site publishing a stale "other schedules make it"
-// figure and a wrong difference with every other gate green. It also means the
-// sibling declarations cannot drift into disagreeing about which cell is
-// contested.
+// structure.BudgetBookExceptions declares the same pair as an exception's two
+// pins, which cuts-tie-along-the-lattice verifies against the corpus on every
+// run; tying the caveat's figures to them makes those corpus-verified too.
 func TestContestedTotalsAgreeWithTheirCheckException(t *testing.T) {
 	for _, c := range project.ContestedTotals() {
 		var found bool

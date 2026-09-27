@@ -5,23 +5,8 @@ import (
 	"sort"
 )
 
-// AN EXCEPTION IS NOT A TOLERANCE, and the difference is what makes it
-// checkable. A tolerance bounds a difference and is satisfied by any figure
-// inside the bound, so a mapping that loses a fund and a page that prints a
-// wrong total look the same to it. An exception pins BOTH SIDES of one cell to
-// the figure each schedule prints, names the printed figure the two differ by,
-// and holds that one cell apart. It fails when either side moves, when the
-// pinned sides stop differing by the printed residual, when the cell it names
-// stops existing, and when it names a cell that ties -- an exemption for a cell
-// nobody prints exempts nothing, and is a false claim that outlives the scope
-// it was to retire.
-
 // A Pin is one cell of an exception: where it is, and what each side says.
-//
-// Present is carried the way Sum carries it. "pp.127-140 print no General Fund
-// transfer in" is a claim that the schedule has NO SUCH CELL, and it is a
-// different claim from a printed zero; an exception declaring the first is
-// refused the day the schedule prints the row.
+// A side with no such cell is a different claim from a printed zero.
 type Pin struct {
 	Year  int
 	Basis string
@@ -32,34 +17,29 @@ type Pin struct {
 }
 
 // An Exception holds one or more cells of one comparison apart from the tie,
-// with every figure it rests on declared.
+// with every figure it rests on declared. It is not a tolerance: it pins both
+// sides, and fails when either moves, when the cell stops existing, or when
+// the cell ties.
 type Exception struct {
 	// Name is how another exception grounds itself in this one.
 	Name string
 	// Cut and Against name the comparison's two cuts, in Compare's order:
 	// Against is the side whose columns decided what was compared.
 	Cut, Against string
-	// At is the level the pair meets at. Declared rather than derived so that
-	// a lattice change moving the meet refuses the exception instead of
-	// re-addressing it.
+	// At is the level the pair meets at, declared so that a lattice change
+	// moving the meet refuses the exception instead of re-addressing it.
 	At Level
-	// Cells are the cells held apart. One exception covers several only where
-	// the pages print a single figure for their sum -- pp.72-75 print one
-	// to-CIP aggregate for every non-major fund.
+	// Cells are the cells held apart; several only where the pages print a
+	// single figure for their sum.
 	Cells []Pin
-	// Residual is what Against carries over Cut across the cells, in cents,
-	// and it is a figure a page prints or the difference of two figures on one
-	// page. It is declared beside the pins rather than derived from them so
-	// the pins are held to the page and not to each other.
+	// Residual is what Against carries over Cut across the cells, in cents: a
+	// printed figure, or the difference of two on one page. Declared, not
+	// derived from the pins, so the pins are held to the page.
 	Residual int64
-	// Printed says where the residual, or both pinned sides, are printed. It
-	// is a claim about the pages, published in the summary on every run.
+	// Printed says where the residual, or both pinned sides, are printed.
 	Printed string
-	// SameResidualAs names an exception whose Residual this one's must equal.
-	// It is for a cell neither of whose figures is printed: pp.85-125 by
-	// object land p0067's error on services-and-supplies, and the only thing
-	// that grounds the sum they come to is that it differs from the spine by
-	// exactly what the fund-group cut, whose figures ARE printed, holds apart.
+	// SameResidualAs names an exception whose Residual this one's must equal,
+	// grounding a cell neither of whose figures is printed.
 	SameResidualAs string
 	// Reason is why the schedules differ, about the document and not the
 	// pipeline.
@@ -84,11 +64,8 @@ func (e Exception) pinned() int64 {
 	return d
 }
 
-// ValidateExceptions refuses a declaration that could not hold anything apart:
-// a cell whose two sides do not differ, pins that do not sum to the residual, a
-// zero residual, a grounding that names no exception or a different figure, an
-// undeclared level, or a name used twice. It reads the declarations alone; what
-// the store says is Reconcile's business.
+// ValidateExceptions refuses a declaration that could not hold anything apart.
+// It reads the declarations alone; the store is Reconcile's.
 func ValidateExceptions(exceptions []Exception) error {
 	byName := map[string]Exception{}
 	for _, e := range exceptions {
@@ -153,9 +130,7 @@ type Reconciled struct {
 	// Consulted names every exception declared on this pair, fired or refused,
 	// so a caller can tell an inert declaration from one this pair settled.
 	Consulted []string
-	// Subjects is the cells compared and not held apart. An excused cell was
-	// neither compared nor agreed at zero, so counting it would overstate what
-	// the tie covers.
+	// Subjects is the cells compared and not held apart.
 	Subjects int
 	// AgreeAtZero is how many of those Subjects only one cut produced and
 	// that tie, the other side being zero.
@@ -166,13 +141,8 @@ type Reconciled struct {
 }
 
 // Reconcile applies the exceptions declared for a comparison's pair to it.
-//
-// EVERY DECLARED EXCEPTION MUST FIRE. An entry naming a cell the comparison
-// did not produce, or one that ties, is inert while the summary reports it as
-// a live reconciliation; both are findings rather than notes because a reader
-// of the summary could not tell. A cell in a column the reference no longer
-// publishes is the same finding: the declaration has stopped describing the
-// corpus, whichever side changed.
+// Every one must fire: naming a cell the comparison did not produce, or one
+// that ties, is a finding.
 func Reconcile(c Comparison, exceptions []Exception) Reconciled {
 	out := Reconciled{Comparison: c}
 	byKey := map[Key]Cell{}

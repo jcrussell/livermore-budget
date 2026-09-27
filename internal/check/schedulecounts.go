@@ -5,8 +5,7 @@ import (
 	"fmt"
 )
 
-// publishedCounts is what one of the three newer schedule documents says
-// about itself, read off whichever counts struct its shape publishes.
+// publishedCounts is the counts a schedule document publishes about itself.
 type publishedCounts struct {
 	facts, cited, uncited, nodes, links int
 	// transfers is p76's printed movements, links/2, and hasTransfers says
@@ -16,9 +15,8 @@ type publishedCounts struct {
 }
 
 // countedDocuments is every built department-spending, department-funding and
-// transfers-by-fund document with the counts it publishes. It is the shape
-// scheduleCountsReconcile reads; fund-flows has a counts check of its own
-// because its identity carries an overlap term the others do not.
+// transfers-by-fund document with the counts it publishes. fund-flows has its
+// own counts check: its identity carries an overlap term.
 func (s *Subject) countedDocuments() []struct {
 	linked
 	counts publishedCounts
@@ -57,19 +55,10 @@ func (s *Subject) countedDocuments() []struct {
 }
 
 // scheduleCountsReconcile re-derives every count department-spending,
-// department-funding and transfers-by-fund publish.
-//
-// IT IS fund-flows-counts-reconcile FOR THE OTHER THREE SCHEDULE DOCUMENTS.
-// Each publishes facts, facts_cited, facts_uncited, nodes and links, and
-// transfers-by-fund publishes transfers besides; without this, nothing outside
-// the producer reads any of them. The derivation is the same one that check
-// makes: every number from the PUBLISHED LINKS and the facts the document's
-// options select, never from a second run of the producer's netting, so a
-// citation the projection got wrong changes the answer here.
-//
-// WHAT IT DOES NOT SAY. That an uncited fact is worth nothing is
-// uncited-facts-are-printed-zeros' claim; this one says the counts are the
-// counts.
+// department-funding and transfers-by-fund publish from the published links and
+// the facts the options select, never from a second run of the producer, so a
+// wrong citation changes the answer. That an uncited fact is worth nothing is
+// uncited-facts-are-printed-zeros'.
 type scheduleCountsReconcile struct{}
 
 var _ Check = (*scheduleCountsReconcile)(nil)
@@ -85,7 +74,7 @@ func (*scheduleCountsReconcile) Description() string {
 
 func (*scheduleCountsReconcile) Run(_ context.Context, s *Subject) (Result, error) {
 	var findings []Finding
-	var summaries []string
+	documents := 0
 
 	for _, d := range s.countedDocuments() {
 		c := d.counts
@@ -111,8 +100,7 @@ func (*scheduleCountsReconcile) Run(_ context.Context, s *Subject) (Result, erro
 			{"counts.facts", c.facts, len(slice),
 				"the document says it drew a different slice than the one it was built over"},
 			{"counts.facts_cited", c.cited, len(cited),
-				"a citation the document dropped, or one it counted twice: this is the " +
-					"number of DISTINCT facts some link names"},
+				"a citation dropped or counted twice; this is the distinct facts some link names"},
 			{"counts.facts_uncited", c.uncited, uncited,
 				"a fact that reached no link, and the document disagrees about how many"},
 			{"counts.nodes", c.nodes, len(d.Nodes), "a ratchet on the arrays as published"},
@@ -124,8 +112,7 @@ func (*scheduleCountsReconcile) Run(_ context.Context, s *Subject) (Result, erro
 				got, want int
 				why       string
 			}{"counts.transfers", c.transfers, len(d.Links) / 2,
-				"p76 draws each printed movement as two legs, so the movements are links/2, " +
-					"and this is the figure a reader needs to not double the schedule"})
+				"p76 draws each printed movement as two legs, so the movements are links/2"})
 		}
 		for _, cmp := range cmps {
 			if cmp.got != cmp.want {
@@ -135,19 +122,17 @@ func (*scheduleCountsReconcile) Run(_ context.Context, s *Subject) (Result, erro
 		}
 		if c.cited+c.uncited != c.facts {
 			findings = append(findings, finding(d.String(),
-				"counts.facts is %d and facts_cited + facts_uncited is %d + %d = %d. This "+
-					"document's published identity is that every fact is either behind a "+
-					"link or uncited, and the two numbers it publishes do not add up to the third",
+				"counts.facts is %d and facts_cited + facts_uncited is %d + %d = %d",
 				c.facts, c.cited, c.uncited, c.cited+c.uncited))
 		}
-		summaries = append(summaries, fmt.Sprintf("%s (%d = %d cited + %d uncited)",
-			d.String(), c.facts, c.cited, c.uncited))
+		documents++
 	}
 
 	return conclusion{
-		subjects: len(summaries),
+		subjects: documents,
 		unit:     "schedule documents",
-		held:     joinSemicolon(summaries),
+		held: fmt.Sprintf("%d schedule document(s), every published count re-derived from its "+
+			"links and facts", documents),
 		nothing:  "no projection built a department-spending, department-funding or transfers-by-fund document, so no counts of those shapes have been read",
 		findings: findings,
 	}.result(), nil

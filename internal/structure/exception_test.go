@@ -52,21 +52,9 @@ func exceptionNamed(t *testing.T, name string) structure.Exception {
 	return structure.Exception{}
 }
 
-// TestTheDeclaredExceptionsAreTheWholeResidual is the honest half of the
-// reproduction, by name rather than by count: every cell of every Budget Book
-// comparison that does not tie is held apart by a declared exception, and
-// every declared exception holds a cell apart.
-//
-// REVENUE. pp.127-140 print no General Fund transfer in. p76 does, so the spine
-// has a cell the revenue schedule never had. Two cells, one per published
-// column.
-//
-// TRANSFERS. pp.66-67's TRANSFER OUT includes transfers to CIP that p76 does
-// not list; pp.72-75 print them. Eight cells over six exceptions, because the
-// non-major aggregate is printed once for two groups.
-//
-// p0067. The 250,000 the Internal Service column is high by, on the fund-group
-// axis where both figures are printed and on the object axis where neither is.
+// TestTheDeclaredExceptionsAreTheWholeResidual pins, by name, that every
+// Budget Book cell that does not tie is held apart by a declared exception,
+// and every declared exception holds a cell apart.
 func TestTheDeclaredExceptionsAreTheWholeResidual(t *testing.T) {
 	facts := committedFacts(t)
 	exceptions := structure.BudgetBookExceptions()
@@ -141,11 +129,9 @@ func TestTheDeclaredExceptionsAreTheWholeResidual(t *testing.T) {
 	}
 }
 
-// TestTheAgreementAtTheMeetReproducesTheTwoAxisReconciliations is the arithmetic
-// fisc-av0w rests on, produced by the generic comparison: pp.85-125 by object
-// and pp.171-176 by fund each agree with the spine everywhere but the one cell
-// p0067 prints wrong, and the two cells differ from the spine by the same
-// 250,000.
+// TestTheAgreementAtTheMeetReproducesTheTwoAxisReconciliations: pp.85-125 by
+// object and pp.171-176 by fund each agree with the spine everywhere but the
+// one cell p0067 prints wrong, by the same 250,000 (fisc-av0w).
 func TestTheAgreementAtTheMeetReproducesTheTwoAxisReconciliations(t *testing.T) {
 	facts := committedFacts(t)
 	for _, c := range []struct {
@@ -193,10 +179,8 @@ func TestTheAgreementAtTheMeetReproducesTheTwoAxisReconciliations(t *testing.T) 
 	}
 }
 
-// TestAnExceptionGoesRed is the mutation for the exception channel. Each arm
-// removes one guarantee and reads what Reconcile then says; an arm that stayed
-// green would be a way a declaration could excuse a figure it does not
-// describe.
+// TestAnExceptionGoesRed removes one guarantee of the exception channel per
+// arm and reads what Reconcile then says.
 func TestAnExceptionGoesRed(t *testing.T) {
 	facts := committedFacts(t)
 
@@ -292,10 +276,8 @@ func TestAnExceptionGoesRed(t *testing.T) {
 	})
 }
 
-// TestAPairIsComparedOnlyWhereTheLatticeSaysHow pins the refusals the six
-// cuts produce, each a claim about the documents rather than a gap: the
-// division/department vocabulary split on the one pair that reaches it, and
-// the pair with no reference in it.
+// TestAPairIsComparedOnlyWhereTheLatticeSaysHow pins the division/department
+// vocabulary refusal and the refusal of a pair with no reference in it.
 func TestAPairIsComparedOnlyWhereTheLatticeSaysHow(t *testing.T) {
 	facts := committedFacts(t)
 
@@ -305,8 +287,7 @@ func TestAPairIsComparedOnlyWhereTheLatticeSaysHow(t *testing.T) {
 			!strings.Contains(err.Error(), `"department" tier`) {
 			t.Fatalf("Compare = %v, want the tier mismatch refused by name", err)
 		}
-		// THE MUTATION: declare both at one tier and the comparison runs and
-		// reports what the vocabulary split looks like as arithmetic.
+		// The mutation: declared at one tier, the split shows as arithmetic.
 		fine := cutNamed(t, "general-fund-departments")
 		fine.DepartmentTier = "department"
 		got, err := structure.Compare(facts, fine, cutNamed(t, "funding-sources"))
@@ -365,10 +346,8 @@ func TestAPairIsComparedOnlyWhereTheLatticeSaysHow(t *testing.T) {
 		}
 	})
 
-	// THE PLACEHOLDER DECLARATION IS MEASURED AGAINST THE STORE'S VOCABULARY.
-	// Both mutations leave the derived level, the placeholder drop and the
-	// declared level exactly as they are, so a validation that only asked
-	// Drop(derived) == Level accepted both.
+	// Both mutations leave Drop(derived) == Level true, so only the
+	// vocabulary arm can refuse them.
 	t.Run("a placeholder axis carrying a second value is refused", func(t *testing.T) {
 		byRule, err := structure.LevelOfRule(facts, committedFiles(t))
 		if err != nil {

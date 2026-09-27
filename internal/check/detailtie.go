@@ -10,25 +10,16 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 )
 
-// This file is the machinery revenue-lines-tie-to-their-categories sums the
-// spine side of its arm 1 with: a cell keyed on (column, fund group, category),
-// summed inside a kind restriction, and compared as a union so a dropped row is
-// a one-sided failure and not an empty comparison.
-//
-// IT HAS ONE CONSUMER. cuts-tie-along-the-lattice compares facts to facts
-// through internal/structure and carries each schedule's exceptions as
-// structure.BudgetBookExceptions, so what is left here is a document-to-facts
-// comparison; re-pointing it at structure.KeyOf retires this file (fisc-6714).
+// The spine-side sums revenue-lines-tie-to-their-categories compares against:
+// cells keyed on (column, fund group, category) inside a kind restriction,
+// compared as a union so a dropped row fails one-sided rather than vanishing.
+// Re-pointing it at structure.KeyOf retires this file (fisc-6714).
 
 // detailRestriction is the slice of the fact store one comparison reads: the
 // kinds the schedule prints.
 //
-// IT IS A FILTER AND NOT A KEY. detailKey carries the fund group regardless, so
-// a schedule spanning every group -- pp.127-140 does -- is compared group by
-// group and never on a sum that happens to match. Without the kind half a
-// revenue schedule's keys meet the spine's expenditure and fund-balance cells
-// and the comparison fails at a quarter of a billion dollars before reaching
-// anything it is about.
+// IT IS A FILTER AND NOT A KEY: detailKey carries the fund group regardless,
+// so a schedule spanning every group is compared group by group.
 type detailRestriction struct {
 	// Kinds are the fact kinds the schedule prints. Required: a restriction
 	// admitting every kind compares a detail schedule against the whole spine.
@@ -52,9 +43,7 @@ type cellSum struct {
 	present bool
 }
 
-// detailKey is one cell both sides must agree on: the spine's own grain,
-// (fund group, category) inside a column, which is the meet every fund-level
-// document is compared at.
+// detailKey is one cell both sides must agree on, at the spine's own grain.
 type detailKey struct {
 	year      int
 	basis     mapping.Basis

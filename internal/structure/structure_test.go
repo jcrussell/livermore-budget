@@ -13,8 +13,7 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/structure"
 )
 
-// committedFacts reads the fact store this repository publishes. Nothing here
-// runs the extractor, opens a PDF or reaches the network.
+// committedFacts reads the fact store this repository publishes.
 func committedFacts(t *testing.T) []fact.Fact {
 	t.Helper()
 	root, err := filepath.Abs(filepath.Join("..", ".."))
@@ -33,8 +32,7 @@ func committedFacts(t *testing.T) []fact.Fact {
 	return facts
 }
 
-// committedFiles reads every rule file under mappings/, which is where each
-// rule declares its grain.
+// committedFiles reads every rule file under mappings/.
 func committedFiles(t *testing.T) []*mapping.File {
 	t.Helper()
 	root, err := filepath.Abs(filepath.Join("..", ".."))
@@ -63,17 +61,9 @@ func ruleDeclaring(t *testing.T, files []*mapping.File, level structure.Level) *
 	return nil
 }
 
-// TestADeclaredGrainIsHeldToTheFactsThatBearItOut is the whole reason the
-// declaration is worth having: `grain:` says what the page is printed at, and
-// the axes the rule's facts populate say the same thing from the store's side,
-// so the two are compared rule by rule and every way they can disagree is
-// refused with the rule named. A declaration nothing compares would be the
-// shape Rule.PrintedDecimals' doc comment calls the one a declaration here must
-// not have.
-//
-// Each arm mutates the committed declarations in memory and reads the refusal
-// off LevelOfRule, so the arm that goes red for a wrong `grain:` in
-// mappings/*.yaml is this one, run over the real store.
+// TestADeclaredGrainIsHeldToTheFactsThatBearItOut mutates the committed
+// `grain:` declarations in memory, one way per arm, and reads the refusal off
+// LevelOfRule with the rule named.
 func TestADeclaredGrainIsHeldToTheFactsThatBearItOut(t *testing.T) {
 	facts := committedFacts(t)
 
@@ -163,10 +153,8 @@ func TestMeetIsTheGrainTwoCutsAgreeAt(t *testing.T) {
 	}
 }
 
-// TestALevelDoesNotRefineItself is the arm that keeps two peers out of the
-// containment comparison. Two cuts at one level state figures about the same
-// money at the same grain; whether they AGREE is a different question with a
-// different failure mode, and Contain must not answer it.
+// TestALevelDoesNotRefineItself keeps two peers out of the containment
+// comparison.
 func TestALevelDoesNotRefineItself(t *testing.T) {
 	for _, l := range structure.Levels() {
 		if structure.Refines(l, l) {
@@ -175,13 +163,9 @@ func TestALevelDoesNotRefineItself(t *testing.T) {
 	}
 }
 
-// TestEveryRuleInTheStoreSitsAtADeclaredLevel is the claim that makes the
-// lattice a description of these documents rather than a hopeful model: every
-// rule that produced a fact populates an axis union the lattice names.
-//
-// It also pins the split the store's ONE two-grain scope forces. The ACFR's
-// fund-balance schedule prints the General Fund with its group named and the
-// other governmental funds aggregated, so `scope` cannot carry the grain.
+// TestEveryRuleInTheStoreSitsAtADeclaredLevel: every rule that produced a
+// fact populates an axis union the lattice names, and the ACFR fund-balance
+// scope's two grains stay two.
 func TestEveryRuleInTheStoreSitsAtADeclaredLevel(t *testing.T) {
 	facts := committedFacts(t)
 	byRule, err := structure.LevelOfRule(facts, committedFiles(t))
@@ -209,7 +193,7 @@ func TestEveryRuleInTheStoreSitsAtADeclaredLevel(t *testing.T) {
 }
 
 // TestEveryDeclaredCutSitsAtTheLevelItDeclares checks each Cut against the
-// store instead of trusting it, and holds the placeholder rule to its reason.
+// store.
 func TestEveryDeclaredCutSitsAtTheLevelItDeclares(t *testing.T) {
 	facts := committedFacts(t)
 	byRule, err := structure.LevelOfRule(facts, committedFiles(t))
@@ -233,15 +217,8 @@ func TestEveryDeclaredCutSitsAtTheLevelItDeclares(t *testing.T) {
 	}
 }
 
-// TestTheGeneralFundDepartmentsDecomposeTheSpine is the reproduction that
-// matters: one generic comparison, driven off the lattice, produces the
-// arithmetic a hand-written key and a hand-written restriction would have to
-// produce one schedule at a time.
-//
-// EIGHT CELLS AND NONE ONE-SIDED. pp.167-170 are the General Fund's four object
-// categories over two published columns, and every one has a spine cell facing
-// it. A one-sided cell here would be a category one schedule prints and the
-// other does not.
+// TestTheGeneralFundDepartmentsDecomposeTheSpine: pp.167-170's four object
+// categories over the spine's two columns, each facing a spine cell.
 func TestTheGeneralFundDepartmentsDecomposeTheSpine(t *testing.T) {
 	facts := committedFacts(t)
 	fine, coarse := cutNamed(t, "general-fund-departments"), cutNamed(t, "spine")
@@ -261,8 +238,7 @@ func TestTheGeneralFundDepartmentsDecomposeTheSpine(t *testing.T) {
 }
 
 // TestAnExcusedCellIsNotCountedAsAgreeingAtZero holds AgreeAtZero to the
-// cells Reconcile compared: a one-sided cell an exception holds apart neither
-// ties nor was compared.
+// cells Reconcile compared.
 func TestAnExcusedCellIsNotCountedAsAgreeingAtZero(t *testing.T) {
 	facts := committedFacts(t)
 	for _, name := range []string{"revenue-detail", "transfers-detail"} {
@@ -288,9 +264,8 @@ func TestAnExcusedCellIsNotCountedAsAgreeingAtZero(t *testing.T) {
 	}
 }
 
-// TestARefusedPairIsNamedRatherThanCompared is the arm that keeps this from
-// reporting a clean comparison of two things that do not compare. Each case is
-// a pair the lattice offers and the documents do not support.
+// TestARefusedPairIsNamedRatherThanCompared: each case is a pair the lattice
+// offers and the documents do not support.
 func TestARefusedPairIsNamedRatherThanCompared(t *testing.T) {
 	facts := committedFacts(t)
 	for _, c := range []struct{ name, fine, coarse, want string }{
@@ -336,12 +311,8 @@ func contains(haystack, needle string) bool {
 	})()
 }
 
-// TestTheCutsAgreeOnWhatTheDocumentsPrint is the arithmetic the whole design
-// rests on: the same money, summed over different antichains of one hierarchy,
-// comes to the same figure. If these ever disagree, the scopes are not cuts of
-// one structure and the lattice is a fiction.
-//
-// Every figure is FY2026 adopted, read from the committed store.
+// TestTheCutsAgreeOnWhatTheDocumentsPrint: the same FY2026 adopted money,
+// summed over different antichains of one hierarchy, comes to the same figure.
 func TestTheCutsAgreeOnWhatTheDocumentsPrint(t *testing.T) {
 	facts := committedFacts(t)
 	sum := func(scope string, kinds ...string) int64 {
@@ -367,9 +338,7 @@ func TestTheCutsAgreeOnWhatTheDocumentsPrint(t *testing.T) {
 		t.Errorf("revenue under the fund-group cut and the fund cut (-want +got):\n%s", diff)
 	}
 
-	// AND PER FUND GROUP, because two totals agreeing is a much weaker claim
-	// than six pairs agreeing: an error that moves money between groups nets
-	// out of the total and survives it.
+	// And per fund group: money moved between groups nets out of the total.
 	groups := map[string][2]int64{}
 	for i := range facts {
 		f := &facts[i]
@@ -411,9 +380,8 @@ func TestTheCutsAgreeOnWhatTheDocumentsPrint(t *testing.T) {
 	}
 }
 
-// TestTheComparisonGoesRed is the mutation. Each case reproduces a real
-// guarantee by removing it and naming what the comparison then says; a case
-// that stayed green would be a guarantee this check does not actually hold.
+// TestTheComparisonGoesRed removes one guarantee per case and names what the
+// comparison then says.
 func TestTheComparisonGoesRed(t *testing.T) {
 	facts := committedFacts(t)
 	spine := cutNamed(t, "spine")
@@ -433,10 +401,8 @@ func TestTheComparisonGoesRed(t *testing.T) {
 	})
 
 	t.Run("a cut whose level stops refining the spine is refused, not compared", func(t *testing.T) {
-		// The mutation the whole grain argument is about: put pp.127-140 at the
-		// spine's own grain and the two stop being coarse and fine. They are
-		// then peers, whose agreement is a different question with a different
-		// failure mode, and Contain must decline rather than tie.
+		// pp.127-140 at the spine's own grain are peers, and Contain must
+		// decline rather than tie.
 		fine := cutNamed(t, "revenue-detail")
 		fine.Level = structure.LevelFundGroupByCategory
 		if _, err := structure.Contain(facts, fine, spine); err == nil {

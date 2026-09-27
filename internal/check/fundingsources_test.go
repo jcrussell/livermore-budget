@@ -321,15 +321,9 @@ func TestEveryFundingSourceFactMatchesThePrintedRow(t *testing.T) {
 		// through data/funds.yaml to exactly one fund, so the number a rule
 		// types is checkable against the line it was typed for.
 		//
-		// THIS IS NOT THE ONLY THING ASSERTING IT, and the difference is the
-		// whole of fisc-90fp. These assertions alone make the 640 -> 641 swap red
-		// under `go test` while `fisc verify` reports zero failures, which puts
-		// the guarantee in one lane's test rather than in the gate. The eleven rules now declare row_labels_name_funds and
-		// row-funds-match-their-anchors makes the same comparison, in the gate,
-		// for any schedule that opts in. This stays because it is the fact-side
-		// statement of it: it reads f.RowLabel off the published record, where
-		// the check reads mapping.Row, and a defect between the row and the fact
-		// would show here and not there.
+		// row-funds-match-their-anchors makes the same comparison in the gate
+		// over mapping.Row; this is the fact-side statement, over f.RowLabel,
+		// so a defect between the row and the fact shows here.
 		entry, err := s.Vocabulary.FundByLabel(f.RowLabel)
 		if err != nil {
 			t.Errorf("%s: %q resolves to no fund: %v", f.ID, f.RowLabel, err)
@@ -453,21 +447,10 @@ func TestP0067IsTheOutlierAndFivePagesDisagree(t *testing.T) {
 	}
 }
 
-// TestTheScopeIsWhatStopsTheDoubling is the measured form of the argument the
-// rule file makes in words, and it is what the cut model refuses at the grain
-// rather than at the sum.
-//
-// Re-scoping these rules to all-funds-gross is a one-word edit in the YAML. What
-// it produces is not an error: internal/project's netCells has no refusal for a
-// fact carrying a fund the way it does for one carrying a department, so the
-// facts flow into the spine's own cells and the city's expenditure doubles.
-// The cut check is what sees it, and it sees it BEFORE any cell is summed: the
-// spine cut declares fund-group-by-category, the moved facts put a second
-// grain under its scope, and structure.ValidateCuts refuses the cut by name as
-// selecting facts at no single level. Measured off the same run, the cells the
-// comparison would then have reported are named too: the moved facts land on
-// the spine under their own placeholder category and every real cut is
-// one-sided against it.
+// TestTheScopeIsWhatStopsTheDoubling: re-scoping these rules to
+// all-funds-gross is a one-word YAML edit that doubles the city's expenditure
+// without an error. structure.ValidateCuts refuses it before any cell is
+// summed: the moved facts put a second grain under the spine cut's scope.
 func TestTheScopeIsWhatStopsTheDoubling(t *testing.T) {
 	base, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
 	if err != nil {

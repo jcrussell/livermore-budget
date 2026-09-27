@@ -350,18 +350,9 @@ func TestRowFundsIsVacuousWithoutAPerRowSchedule(t *testing.T) {
 	}
 }
 
-// TestRowFundsCatchesASameGroupEndSwap is the direction half, and it exists
-// because the argument for NOT checking direction was measured and found false.
-//
-// The first version of this check asserted only that each anchor's fund was one
-// of the two the row declared, on the reasoning that swapping a row's ends moves
-// money between the in and out sides of a fund group and
-// cuts-tie-along-the-lattice reddens on it. That holds only when the two
-// ends are in DIFFERENT groups. "Transfer From Water  to Water Replacement" is
-// 640 and 642, both enterprise: swap them and the payer and payee are genuinely
-// inverted in the published facts while every group sum is unchanged and
-// `fisc verify` reports zero failures. "Transfer From Wastewater  to
-// Stormwater" (620/610) is the same shape.
+// TestRowFundsCatchesASameGroupEndSwap is the direction half: swapping the ends
+// of "Transfer From Water  to Water Replacement" (640/642, both enterprise)
+// moves no group sum, so cuts-tie-along-the-lattice cannot see it.
 func TestRowFundsCatchesASameGroupEndSwap(t *testing.T) {
 	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
 	if err != nil {
@@ -483,19 +474,11 @@ func TestRowFundsCatchesABareLabelTwinTheGateDoesNot(t *testing.T) {
 	// rather than merely detectable. Both of the checks that catch the OTHER two
 	// twin-swap shapes report PASS over the same swap.
 	//
-	// THE FACTS HAVE TO BE MUTATED TOO, and the first version of this did not do
-	// it. factFundsResolve and cutsTieAlongTheLattice read s.Facts;
-	// everything above reads s.Files. Mutating only the rules left both of them
-	// looking at an unmutated store, so they passed because they never saw the
-	// swap -- green because the gate fired, in a block whose own comment says it
-	// exists to avoid exactly that. Measured when it was found: retyping all 21
-	// funding-public-works rows to a nonexistent fund 99999 still left both
-	// PASS.
-	//
+	// THE FACTS HAVE TO BE MUTATED TOO: factFundsResolve and
+	// cutsTieAlongTheLattice read s.Facts, everything above reads s.Files, and
+	// with only the rules mutated both pass without ever seeing the swap.
 	// Editing the facts in place is what `fisc build` would emit from the
-	// mutated rule: the fund number moves and nothing else does, because 640 and
-	// 641 are both enterprise so the fund_group is unchanged and no group sum
-	// moves. That is the property under test, stated as data rather than argued.
+	// mutated rule: 640 and 641 are both enterprise, so no group sum moves.
 	swappedFacts := 0
 	for i := range s.Facts {
 		f := &s.Facts[i]

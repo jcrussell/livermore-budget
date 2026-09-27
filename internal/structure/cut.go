@@ -9,22 +9,9 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 )
 
-// A RULE READS ONE TABLE AT ONE GRAIN, and says which in mappings/*.yaml as
-// its `grain:`. The declaration is what the lattice reads; the derivation below
-// is what makes it worth reading. Measured over the committed store: of the
-// rules that produce facts, every one populates a single axis union, so the
-// two can be compared rule by rule and a declaration the facts do not bear out
-// is refused rather than trusted.
-//
-// THE UNION IS OVER THE RULE'S FACTS, NOT PER FACT, and the difference is the
-// whole point. p76-transfers-in-enterprise sets a fund on 22 of its 24 facts
-// and omits it on the LAVWMA rows, which name a joint powers authority and no
-// City fund. Read per fact those two look like a coarser grain; read as a union
-// they are what they are -- an absent VALUE on an axis the rule carries.
-// Conflating the two would put a $13.2M fund-group total and a printed dash at
-// one address.
-
-// ruleAxes is the axis union one rule's facts populate.
+// ruleAxes is the axis union each rule's facts populate. It is a union over
+// the rule and not per fact: p76's LAVWMA rows name no City fund, and read per
+// fact they would look like a coarser grain rather than an absent value.
 func ruleAxes(facts []fact.Fact) map[string]map[Axis]bool {
 	out := map[string]map[Axis]bool{}
 	for i := range facts {
@@ -50,22 +37,11 @@ func ruleAxes(facts []fact.Fact) map[string]map[Axis]bool {
 	return out
 }
 
-// LevelOfRule is each fact-publishing rule's declared grain, checked against
-// the axes its facts populate.
-//
-// OVER THE WHOLE STORE AND EVERY RULE FILE, because four things are refused and
-// a subset of either would hide one: a grain naming no declared level; a rule
-// publishing facts with no grain declared; a declared grain the facts
-// contradict, named with both levels; and a grain declared on a rule the store
-// carries no fact for, which nothing could check. The parser refuses the last
-// two shapes it can see -- a missing grain on a publishing rule and a grain on
-// a rule whose every row or column is skipped -- and this is where the rest
-// is settled, against the facts rather than the YAML.
-//
-// A RULE WHOSE AXIS UNION MATCHES NO DECLARED LEVEL IS AN ERROR, never a
-// nearest match. A grain the lattice cannot name is a schedule nothing can
-// compare, and silently rounding it to a neighbour would compare it against
-// money it does not decompose.
+// LevelOfRule is each fact-publishing rule's declared `grain:`, checked
+// against the axes its facts populate. It needs the whole store and every rule
+// file: a grain on a rule with no facts, and facts from a rule with no grain,
+// are both refused. An axis union matching no declared level is an error,
+// never a nearest match.
 func LevelOfRule(facts []fact.Fact, files []*mapping.File) (map[string]Level, error) {
 	declared := map[string]Level{}
 	for _, f := range files {
@@ -139,70 +115,46 @@ func axisKey(axes []Axis) string {
 }
 
 // A Cut is one slice of the store that can be summed without double counting:
-// a set of facts all at one level, inside a declared footprint.
-//
-// THE FOOTPRINT IS DECLARED AND NOT MEASURED, and that is the one thing here
-// that must not be derived. A footprint read off the facts shrinks with them,
-// so a schedule that loses a fund group loses it from its own footprint too and
-// the cells it stopped printing are never looked at -- the dropped-rule case
-// reported green. The footprint is a claim about the PAGES.
+// a set of facts all at one level, inside a footprint declared as a claim
+// about the pages. A footprint read off the facts would shrink with them and
+// hide a dropped rule.
 type Cut struct {
-	// Name identifies the cut in a finding. It is the scope for a scope drawn
-	// at one level, and the scope plus a qualifier where one scope prints two
-	// grains -- the ACFR's fund-balance schedule prints the General Fund with
-	// its group named and the other governmental funds aggregated.
+	// Name identifies the cut in a finding: the scope, qualified where one
+	// scope prints two grains.
 	Name string
 	// Scope is the fact scope this cut selects.
 	Scope string
-	// Level is the grain every fact of this cut is at. It is checked against
-	// LevelOfRule rather than trusted.
+	// Level is the grain every fact of this cut is at, checked against
+	// LevelOfRule.
 	Level Level
 	// Kinds are the fact kinds the pages print. Required: a cut admitting every
 	// kind compares a revenue schedule against fund balances.
 	Kinds []mapping.Kind
-	// FundGroups pins the cut to the groups its pages cover. Empty means all
-	// six, which is a claim about the pages and not a default.
+	// FundGroups pins the cut to the groups its pages cover. Empty means all.
 	FundGroups []string
-	// DepartmentTier says which tier of data/departments.yaml the pages name
-	// on the department axis: "division" or "department". Required on a cut
-	// whose level carries that axis, because the two tiers are two
-	// vocabularies and a comparison across them shares no key.
+	// DepartmentTier is the tier of data/departments.yaml the pages name on
+	// the department axis, "division" or "department"; required where the
+	// level carries that axis, since the two tiers share no key.
 	DepartmentTier string
-	// Reference marks the cut whose columns every agreement is held to. It is
-	// the spine, pp.66-67: the citywide control totals, printed for exactly
-	// the columns the city adopted. At most one cut may carry it.
+	// Reference marks the cut whose columns every agreement is held to: the
+	// spine, pp.66-67. At most one cut carries it.
 	Reference bool
-	// Bases are the column bases the pages print. Required, and a claim about
-	// the pages: the ACFR prints audited figures and the Budget Book prints
-	// adopted ones, so a lattice containment between the two -- pp.127-140 by
-	// fund decompose p41's General Fund summary by axes -- has no column both
-	// print, and is refused rather than reported as every cell dropped.
+	// Bases are the column bases the pages print. Required: an ACFR cut and a
+	// Budget Book cut can be a lattice containment with no column both print.
 	Bases []mapping.Basis
 	// Rules selects the rules this cut reads, for a scope whose pages print
-	// two grains: ACFR p167 prints the General Fund with its group named and
-	// the other governmental funds aggregated, in one scope, and each is a
-	// cut. Empty means every rule of the scope.
+	// two grains. Empty means every rule of the scope.
 	Rules []string
 	// Placeholders are axes whose field the facts populate and whose pages
-	// carry no such axis, each with the reason it is not one.
-	//
-	// A DEGENERATE AXIS IS NOT AUTOMATICALLY A PLACEHOLDER, and the two are
-	// told apart by VOCABULARY rather than by cardinality. pp.167-170 carry
-	// exactly one fund group, `general`, and that is a footprint: `general` is
-	// one of the six values five other schedules also use, and the axis is real
-	// wherever the pages could have named another. pp.171-176 carry exactly one
-	// category, `department-funding-sources`, which is the scope's own name and
-	// appears nowhere else in the store: nothing is being selected, the field
-	// is standing in for an axis the pages do not have. Read as an axis it
-	// makes a comparison against the spine's four object categories share no
-	// key at all. ValidateCuts holds the declaration to both halves of that:
-	// one value over the cut's facts, carried by no other scope.
+	// carry no such axis. A single-valued axis is a placeholder only if no
+	// other scope carries its value: pp.167-170's one fund group `general` is
+	// a footprint, pp.171-176's one category `department-funding-sources` is
+	// a placeholder.
 	Placeholders []Axis
 }
 
 // DerivedLevel is the level this cut's facts put it at, before its declared
-// placeholders are removed. It exists so a declaration can be checked against
-// the store rather than trusted.
+// placeholders are removed.
 func (c Cut) DerivedLevel(byRule map[string]Level, facts []fact.Fact) (Level, bool) {
 	var got Level
 	for i := range facts {
@@ -267,21 +219,13 @@ func containsKind(haystack []mapping.Kind, needle mapping.Kind) bool {
 	return false
 }
 
-// ValidateCuts holds a set of cuts to the store and to each other: every cut
-// sits at the level its facts put it at once its placeholders are dropped,
-// every cut at a level with a department axis says which tier it names, no two
-// cuts share a name, and at most one is the reference.
+// ValidateCuts holds a set of cuts to the store and to each other: level,
+// department tier, bases, kinds and placeholders against the facts, unique
+// names, at most one reference.
 //
-// A CUT NO FACT FALLS IN IS RETURNED, NOT REFUSED, unless it selects by rule.
-// A declared level over zero facts is a claim nothing can check, and a cut
-// that lost its every rule would sit in a comparison as a side that prints
-// nothing -- so the caller gets the names and decides, because a fixture that
-// maps one schedule is not a corpus that lost five. A cut naming a RULE is
-// different: the rule is a claim about the store, and one no fact carries is
-// refused before the cut can be returned as empty. Measured: with
-// acfr-p0167-general-fund-balances deleted from its mapping and its facts
-// from the store, the cut naming it was returned as empty, and a caller
-// deciding emptiness by scope instead counted it as compared.
+// A cut no fact falls in is returned, not refused -- a fixture that maps one
+// schedule is not a corpus that lost five -- unless it names a Rule, which is
+// a claim about the store and is refused when no fact carries it.
 func ValidateCuts(facts []fact.Fact, byRule map[string]Level, cuts []Cut) (empty []string, err error) {
 	names := map[string]bool{}
 	references := 0
@@ -337,10 +281,8 @@ func ValidateCuts(facts []fact.Fact, byRule map[string]Level, cuts []Cut) (empty
 			}
 			return nil, fmt.Errorf("cut %q selects facts at no single level", c.Name)
 		}
-		// THE DECLARED BASES ARE HELD TO THE STORE FROM BOTH SIDES. A basis the
-		// facts carry and the cut does not declare is a column the comparison
-		// would silently leave out; a declared basis no fact carries is a claim
-		// nothing bears out. Both are refused by name.
+		// Bases are held from both sides: an undeclared one would be left out
+		// silently, and a declared one no fact carries is unfounded.
 		type column struct {
 			year  int
 			basis mapping.Basis
@@ -387,12 +329,7 @@ func ValidateCuts(facts []fact.Fact, byRule map[string]Level, cuts []Cut) (empty
 			return nil, fmt.Errorf("cut %q declares level %q and its facts put it at %q (placeholders %v dropped from %q)",
 				c.Name, c.Level, want, c.Placeholders, derived)
 		}
-		// A PLACEHOLDER IS TOLD FROM A FOOTPRINT BY VOCABULARY, and that is
-		// measured rather than trusted: the axis carries one value over the
-		// cut's facts, and no fact of any other scope carries that value. A
-		// second value is an axis the pages do have; a value another schedule
-		// selects by is a footprint, and dropping it would sum away money the
-		// comparison should key on.
+		// A placeholder carries one value, and no other scope carries it.
 		for _, a := range c.Placeholders {
 			values := map[string]bool{}
 			for i := range facts {
@@ -436,9 +373,8 @@ func joinSorted(values map[string]bool) string {
 	return strings.Join(out, ", ")
 }
 
-// EmptyCuts is the cuts no fact falls in, by the admission rule ValidateCuts
-// early-outs on. It is for a caller that has no rule files to run ValidateCuts
-// with and still has to know which cuts to leave out of a comparison.
+// EmptyCuts is the cuts no fact falls in, for a caller with no rule files to
+// run ValidateCuts with.
 func EmptyCuts(facts []fact.Fact, cuts []Cut) []string {
 	var empty []string
 	for _, c := range cuts {

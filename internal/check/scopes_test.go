@@ -7,9 +7,7 @@ import (
 )
 
 // TestScopeConstantsNameDeclaredCuts holds this package's scope and cut-name
-// constants to internal/structure's declarations, so the two spellings cannot
-// drift: a check comparing facts by scope string and a cut admitting facts by
-// the same string must mean the same schedule.
+// constants to internal/structure's declarations.
 func TestScopeConstantsNameDeclaredCuts(t *testing.T) {
 	byName := map[string]structure.Cut{}
 	for _, c := range structure.AllCuts() {

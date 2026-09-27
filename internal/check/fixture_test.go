@@ -333,9 +333,8 @@ func testVocabulary(t *testing.T) *registry.Registry {
 }
 
 // vocabularyWithDepartments is testVocabulary with departments.yaml supplied by
-// the caller, for a test whose subject is the department axis itself. It still
-// goes through Load, so a fixture that the real file's rules would refuse fails
-// here rather than standing in for one.
+// the caller. It still goes through Load, so a fixture the real file's rules
+// would refuse fails here.
 func vocabularyWithDepartments(t *testing.T, departments string) *registry.Registry {
 	t.Helper()
 	reg, err := registry.Load(fstest.MapFS{

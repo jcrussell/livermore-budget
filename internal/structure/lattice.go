@@ -1,19 +1,11 @@
 // Package structure reads the fact store as one containment hierarchy rather
 // than as a set of unrelated schedules.
 //
-// A FIGURE'S GRAIN IS WHICH AXES IT IS A TOTAL OVER, and until it is stated a
-// total cannot be checked. pp.66-67 print revenue per fund group; pp.127-140
-// print the same revenue per fund. Summing both is a doubling, and summing
-// either alone is right -- so "the total" is a question about a set of cells,
-// not about the store. A [Level] names one such set, and [Refines] says which
-// level decomposes which.
-//
-// THE LEVEL SET AND ITS EDGES ARE DECLARED, NOT INFERRED FROM AXIS INCLUSION.
-// Two levels can share an axis set and mean different things, and a refinement
-// that holds arithmetically need not hold in the documents -- pp.167-170
-// decompose General Fund expenditure by department, which is a refinement, and
-// the ACFR's fund-balance roll-forward shares axes with it and is not. An
-// undeclared edge is refused rather than assumed.
+// A figure's grain is which axes it is a total over: pp.66-67 print revenue
+// per fund group and pp.127-140 the same revenue per fund, so summing both
+// doubles it. A [Level] names a grain and [Refines] says which decomposes
+// which. Levels and edges are declared, not inferred from axis inclusion: two
+// levels can share an axis set and mean different things.
 package structure
 
 import (
@@ -21,17 +13,11 @@ import (
 	"sort"
 )
 
-// Axis is one coordinate a published figure can be a total over.
-//
-// The four here are the coordinate axes of [fact.Fact]. Kind, basis and fiscal
-// year are not axes: they select which facts are comparable at all, and a cut
-// spanning two of them would be comparing different money rather than the same
-// money at a different grain.
+// Axis is one coordinate a published figure can be a total over. Kind, basis
+// and fiscal year are not axes: they select which facts are comparable at all.
 type Axis string
 
-// The four coordinate axes of a published figure, named as [fact.Fact] names
-// them so a level's axis set can be read against a record without a second
-// vocabulary to keep in step.
+// The coordinate axes, spelled as [fact.Fact]'s JSON keys.
 const (
 	AxisFundGroup  Axis = "fund_group"
 	AxisFund       Axis = "fund"
@@ -67,9 +53,6 @@ const (
 )
 
 // levelAxes is every declared level and the axes it totals over.
-//
-// A LEVEL IS ITS AXES PLUS ITS NAME, and the name is load-bearing: see the
-// package comment on why two levels may share an axis set.
 var levelAxes = map[Level][]Axis{
 	LevelCategory:                   {AxisCategory},
 	LevelFundGroup:                  {AxisFundGroup},
@@ -81,12 +64,8 @@ var levelAxes = map[Level][]Axis{
 	LevelFundByDepartmentByCategory: {AxisFundGroup, AxisFund, AxisDepartment, AxisCategory},
 }
 
-// refinements are the declared parent edges: refinements[fine] are the levels
-// fine decomposes.
-//
-// EDGES ARE DECLARED ONE WAY AND READ TRANSITIVELY. Declaring only the
-// immediate parent keeps the table short enough to check by eye against the
-// documents; [Refines] closes it.
+// refinements are the declared immediate parent edges: refinements[fine] are
+// the levels fine decomposes. [Refines] closes them transitively.
 var refinements = map[Level][]Level{
 	LevelFundGroupByCategory:        {LevelFundGroup, LevelCategory},
 	LevelFundByCategory:             {LevelFundGroupByCategory},
@@ -105,9 +84,8 @@ func Levels() []Level {
 	return out
 }
 
-// Axes are the axes a level totals over, in a stable order. It returns nil for
-// a level this package does not declare, which callers must treat as an error
-// rather than as a level with no axes.
+// Axes are the axes a level totals over, in a stable order, or nil for an
+// undeclared level -- which callers must treat as an error, not as no axes.
 func Axes(l Level) []Axis {
 	axes, ok := levelAxes[l]
 	if !ok {
@@ -125,12 +103,9 @@ func Declared(l Level) bool {
 	return ok
 }
 
-// Refines says whether fine decomposes coarse: whether coarse is reachable
-// from fine by declared parent edges.
-//
-// A LEVEL DOES NOT REFINE ITSELF. Two cuts at one level are peers, and the
-// containment comparison is between a coarse cut and a strictly finer one --
-// so an equal pair must fall out of the comparison rather than tie trivially.
+// Refines says whether coarse is reachable from fine by declared parent edges.
+// A level does not refine itself: two cuts at one level are peers, and must
+// not tie trivially.
 func Refines(fine, coarse Level) bool {
 	if fine == coarse || !Declared(fine) || !Declared(coarse) {
 		return false
@@ -153,9 +128,8 @@ func Refines(fine, coarse Level) bool {
 	return false
 }
 
-// validateLattice refuses a table that cannot be read: an edge naming an
-// undeclared level, a cycle, or a parent whose axes are not a subset of its
-// child's. It runs from an init so a malformed table cannot reach a check.
+// validateLattice refuses an edge naming an undeclared level, a cycle, or a
+// parent whose axes are not a subset of its child's.
 func validateLattice() error {
 	for fine, ups := range refinements {
 		if !Declared(fine) {
@@ -165,10 +139,8 @@ func validateLattice() error {
 			if !Declared(coarse) {
 				return fmt.Errorf("level %q refines %q, which is not a declared level", fine, coarse)
 			}
-			// A PARENT'S AXES ARE A SUBSET OF ITS CHILD'S. The edge is
-			// declared, but an edge whose direction contradicts the axes is a
-			// typo rather than a judgement, and summing along it would total a
-			// coordinate the coarse level does not carry.
+			// An edge whose direction contradicts the axes is a typo, not a
+			// judgement.
 			if missing := notSubset(levelAxes[coarse], levelAxes[fine]); missing != "" {
 				return fmt.Errorf("level %q refines %q, but %q carries axis %q and %q does not",
 					fine, coarse, coarse, missing, fine)
@@ -220,20 +192,10 @@ func ancestors(l Level) map[Level]bool {
 	return out
 }
 
-// Meet is the finest level both a and b decompose: the grain at which two cuts
-// state figures about the same money and can be compared cell by cell.
-//
-// IT IS NOT ALWAYS ONE OF THE TWO. pp.66-67 carry a fund group and an object
-// category; pp.85-125 carry a department and an object category and no fund
-// axis at all. Neither decomposes the other, and the level they agree at is the
-// object category alone -- which is where departmentwide expenditure reconciles
-// to the spine, and where a comparison keyed on either input's own axes would
-// have found no shared key.
-//
-// AMBIGUITY IS REFUSED RATHER THAN BROKEN BY ORDER. Two common ancestors
-// neither of which refines the other mean the lattice does not say which grain
-// the pair agrees at, and picking one would publish a comparison whose subject
-// depends on map iteration.
+// Meet is the finest level both a and b decompose, the grain at which two cuts
+// can be compared cell by cell. It need not be either: pp.66-67 and pp.85-125
+// meet at category alone. Two finest common ancestors are refused rather than
+// broken by map order.
 func Meet(a, b Level) (Level, error) {
 	if !Declared(a) || !Declared(b) {
 		return "", fmt.Errorf("meet of %q and %q: at least one is not a declared level", a, b)
@@ -268,13 +230,9 @@ func Meet(a, b Level) (Level, error) {
 	return best[0], nil
 }
 
-// Drop is the level whose axes are l's without a, or "" when the lattice names
-// no such level.
-//
-// It exists for a cut that declares a placeholder: the store puts the cut at
-// one level and the pages put it a level coarser, and the difference has to be
-// resolved against the declared level set rather than by subtracting axes into
-// a level nothing names.
+// Drop is the level whose axes are l's without a, or "" when no declared level
+// has them: a cut's placeholder axis is resolved against the declared levels,
+// never into a level nothing names.
 func Drop(l Level, a Axis) Level {
 	want := map[Axis]bool{}
 	for _, have := range levelAxes[l] {

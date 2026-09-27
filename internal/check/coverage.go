@@ -113,35 +113,11 @@ func keysOf(o project.Options) []sliceKey {
 // publishedProjectionBuilt asserts EVERY document the site publishes was built,
 // over every column it publishes it over.
 //
-// Every graph check reads Subject.Projections, so a projection that was not built
-// is not a failure anywhere: it is silence. If the fact store no longer carries
-// facts for a published slice, export publishes a chart of nothing while verify
-// reports on whatever other slices happen to exist.
-//
-// IT ITERATES THE PUBLISHED DOCUMENTS RATHER THAN PINNING ONE. It began pinned to
-// a single triple, which could not see FY2027; it then iterated the published
-// YEARS, which could not see a second DOCUMENT. revenue-trends is that document:
-// its own scope, four columns, no year at all, published since 2026-08-25 and
-// guarded by nothing until this check learned to read
-// project.PublishedDocuments. A check that covers less than the site publishes is
-// worse than one that covers nothing, because it reports a number that looks like
-// coverage.
-//
-// WHAT THE OLD SHAPE LET THROUGH, and why the columns are checked one at a time.
-// Trends.Slices returns nil when the store carries no revenue-by-fund fact -- a
-// scope typo in a mapping rule does it -- and then: projections-build counts what
-// was ASKED FOR and sees nothing missing; documents-are-checked passes over what
-// remains; trend-points-tie-to-facts and trend-series-are-complete both go
-// VACUOUS, which fails only under --strict and is silenced outright by adding a
-// declaration; and nothing reddens about the missing document at all.
-// Per-column is the same argument one
-// level down: a document that lost FY2023-24 builds fine, every series is
-// complete over the three columns that remain, and trend-series-are-complete
-// passes green over 231 subjects while counts.facts falls from 924 to 693
-// (fisc-7dt).
-//
-// This is the check that closes the divergence a shared declaration cannot: the
-// two commands reading one list says nothing about whether the facts are there.
+// A projection that was not built fails nowhere else: Trends.Slices returns
+// nil when the store carries no revenue-by-fund fact, projections-build counts
+// only what was asked for, and the trend checks go vacuous. Columns are checked
+// one at a time for the same reason: a trends document that lost FY2023-24
+// builds, and every series is complete over the columns that remain (fisc-7dt).
 type publishedProjectionBuilt struct{}
 
 var _ Check = (*publishedProjectionBuilt)(nil)
@@ -154,27 +130,13 @@ func (*publishedProjectionBuilt) Description() string {
 		"publishes it over, and is among the projections these checks were run over"
 }
 
-// Run has one subject per published document.
-//
-// It used to have exactly one and to say so — "there is no state of the corpus
-// in which this check has nothing to look at, which is why it is not routed
-// through conclusion". Both halves stopped being true when the published set
-// became a list: a repository publishing nothing has nothing here to look at,
-// and that state is what the nothing: string below is for.
+// Run has one subject per published document; a repository publishing nothing
+// has nothing here to look at.
 func (*publishedProjectionBuilt) Run(_ context.Context, s *Subject) (Result, error) {
 	// Every SLICE built, grouped by the projection and scope that built it. A
-	// published document must be covered by ONE of them.
-	//
-	// IT USED TO BE THE UNION OF THEM, and that is fisc-b8o. The union was
-	// justified as not caring what shape a document is -- the spine publishes
-	// one document per year and builds one Options per year, the trends publish
-	// one document over four columns built as one Options -- but the shape is
-	// exactly what decides whether the published FILE exists. Measured: a
-	// four-column document is satisfied by four single-column slices, and
-	// `fisc export` then writes four files of which the one at the declared
-	// stem covers a quarter of what it declares. Verify green, site wrong. One
-	// document is one file is one slice, and today every published document is
-	// covered by exactly one.
+	// published document must be covered by ONE of them, not their union: a
+	// four-column document is otherwise satisfied by four single-column
+	// slices while the file at its stem covers a quarter of it (fisc-b8o).
 	//
 	// It is keyed on the projection NAME, and that is not belt-and-braces.
 	// Since each projection is built over the slices it declares

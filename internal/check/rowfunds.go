@@ -18,17 +18,10 @@ import (
 // read, and the whole value here is that both are reading the same printed
 // words. Budget Book p76 phrases its rows "Transfer From <payer>  to <payee>".
 //
-// THE side FIELD IS WHAT MAKES THIS A DIRECTION CHECK and not just a membership
-// one. An earlier version asserted only that each anchor's fund was one of the
-// two the row declared, on the argument that swapping a row's ends moves money
-// between the in and out sides of a fund group and
-// cuts-tie-along-the-lattice's transfers-detail comparison reddens on that.
-// THAT ARGUMENT IS ONLY TRUE
-// WHEN THE TWO ENDS ARE IN DIFFERENT GROUPS. Measured: swapping the ends of
-// "Transfer From Water  to Water Replacement" -- 640 and 642, both enterprise
-// -- rebuilds cleanly and every check stays green with the payer and payee
-// genuinely inverted. "Transfer From Wastewater  to Stormwater" is the same
-// shape. The page says which is which, so the check reads it.
+// far IS WHAT MAKES THIS A DIRECTION CHECK. A swap of a row's ends moves no
+// group sum when both ends are in one group: swapping "Transfer From Water  to
+// Water Replacement" (640/642, both enterprise) rebuilds with every other check
+// green.
 //
 // An anchor that resolves to nothing after stripping is NOT a defect. Most rows
 // in this corpus carry a category label, not a fund name.

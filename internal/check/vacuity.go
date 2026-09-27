@@ -7,28 +7,14 @@ import (
 
 // A VACUOUS CHECK IS DECLARED OR --strict FAILS ON IT.
 //
-// `fisc verify --strict` fails on Counts.Vacuous > 0, which sounds like a
-// milestone the mapping work reaches and is not. Traced against the code, all
-// three of the checks that report vacuous today are blocked behind the node
-// tier hierarchy (fisc-gxa.2) and the owner decision under it (fisc-l25) --
-// including transfer-legs-pair, which reads LINKS: the spine's rows name no
-// fund, so a projection of p76's scope under the spine's contract nets 22
-// transfer legs into 9 fund-group cells and the pairing is gone before a
-// transfer_id could attach to anything. No amount
-// of coverage work reaches --strict. Only a declaration does, and without one
-// ci.yml stays as it is for the whole of the backlog while fisc-1wr.4's own
-// warning -- that a permanently red gate gets commented out -- starts applying
-// to the flag itself.
+// `fisc verify --strict` fails on Counts.Vacuous > 0, and a check blocked on
+// work no mapping lane reaches would hold that gate red until it was commented
+// out. A declaration is loud, carries its reason and the bead that retires it,
+// and FAILS WHEN IT GOES STALE -- the shape of uncheckedDocuments,
+// mapping.StatedTotalDeltas and mapping.Part.OmittedRows.
 //
-// So this is the shape the repository already uses elsewhere: uncheckedDocuments,
-// mapping.StatedTotalDeltas and mapping.Part.OmittedRows. A declaration that is
-// loud, that carries its reason, and THAT FAILS WHEN IT GOES STALE.
-//
-// WHAT IT IS NOT. It does not promote a vacuous check to passing and it does
-// not weaken any check. A declared check is still reported VACUOUS, still
-// counted in Counts.Vacuous, and still printed with the reason it has nothing
-// to look at. The declaration says only that a human has looked at it and named
-// the work that retires it.
+// It weakens nothing: a declared check is still reported VACUOUS, still counted
+// in Counts.Vacuous, and still printed with its reason.
 type vacancy struct {
 	// reason is why the check has nothing to look at, said about the CORPUS or
 	// the code rather than about our intentions. It is printed verbatim on

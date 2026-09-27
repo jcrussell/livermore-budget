@@ -9,12 +9,9 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/structure"
 )
 
-// TestSpendingGapsIsTheSameDeclarationTheCheckReads is the seam the drill step
-// reads, held against the declaration it is derived from: every cell of every
-// exception the departmentwide cut declares against the spine reaches the
-// exported map under the node id its category is drawn at, licensed in its own
-// column at the difference of its two pinned figures, with its reason -- and
-// nothing else does.
+// TestSpendingGapsIsTheSameDeclarationTheCheckReads: every cell of every
+// departmentwide-against-spine exception reaches the map under its node id and
+// column at the difference of its pins, with its reason, and nothing else does.
 func TestSpendingGapsIsTheSameDeclarationTheCheckReads(t *testing.T) {
 	got := SpendingGaps()
 	if len(got) == 0 {

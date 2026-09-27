@@ -76,12 +76,7 @@ func TestNodeTiersAreDeclaredIsFailable(t *testing.T) {
 			want: "no id form the contract declares",
 		},
 		{
-			// A LINE LEFT AT ITS PARENT'S TIER, which is the tier-1 form's own
-			// failure mode and the one that reads as nothing at all: the node
-			// has the right id, the right parent and the right facts, and the
-			// client draws it in its category's column rather than beside it.
-			// Renaming the node carries its links with it, so the only claim
-			// that moves is the tier.
+			// A line left at its parent's tier: only the tier moves.
 			name: "a revenue line at its category's tier",
 			damage: func(t *testing.T, g *project.Graph) {
 				i := nodeIndex(t, g, "revenue/")
@@ -118,10 +113,7 @@ func TestNodeTiersAreDeclaredIsFailable(t *testing.T) {
 			want: "not a node of this graph",
 		},
 		{
-			// A FLAG ON ONE LINK OF A FLOW DIAGRAM. Before the document-level
-			// arm this was green whichever way the link ran: the flag exempted
-			// the link from the ordering claim and nothing asked whether the
-			// document was a matrix at all.
+			// A flag on one link of a flow diagram.
 			name: "a partition declared on one link of a document that draws flows",
 			damage: func(t *testing.T, g *project.Graph) {
 				g.Links[0].Partition = true
@@ -129,9 +121,7 @@ func TestNodeTiersAreDeclaredIsFailable(t *testing.T) {
 			want: "declares a partition on 1 of its",
 		},
 		{
-			// THE FLAG ON EVERY LINK, so the mixing arm has nothing to say,
-			// and the links still run between more than one pair of tiers,
-			// which no single printed matrix does.
+			// The flag on every link, across more than one pair of tiers.
 			name: "a partition declared on every link of a document spanning more than one pair of tiers",
 			damage: func(t *testing.T, g *project.Graph) {
 				for i := range g.Links {
@@ -164,24 +154,14 @@ func TestNodeTiersAreDeclaredIsFailable(t *testing.T) {
 }
 
 // TestARollupIsTheOnlyDescendingLinkAllowed is the exemption and its edge, in
-// one test because either alone is a different check.
-//
-// THE DRILL-DOWN ADDS EACH PRINTED ROW BACK INTO THE CATEGORY IT IS PRINTED
-// UNDER, which is a tier-1 node pointing at a tier-0 one. It is the edge the
-// client already folds along, so it draws no backward ribbon in any view: a
-// column order is a view's own declaration and the two ends land in whichever
-// order that declaration puts them. What must stay refused is every OTHER
-// descending link, and the difference between the two is one comparison -- so a
-// test that only proved the exemption would pass on a check that had stopped
-// looking at direction at all.
+// one test: proving the exemption alone would pass a check that had stopped
+// looking at direction.
 func TestARollupIsTheOnlyDescendingLinkAllowed(t *testing.T) {
 	rolled := func(t *testing.T, target string) *Subject {
 		t.Helper()
 		s := tieredSubject(t)
 		g := s.graphs()[0].Graph
 		category := g.Nodes[nodeIndex(t, g, "revenue/")].ID
-		// The id form is `revenue-line/` and the slug it carries is the
-		// category's own, which is what declaredTier reads it as tier 1 by.
 		line := project.Node{ID: "revenue-line/" + strings.TrimPrefix(category, "revenue/") +
 			"/eraf", Tier: 1, Parent: category}
 		g.Nodes = append(g.Nodes, line)
@@ -198,9 +178,7 @@ func TestARollupIsTheOnlyDescendingLinkAllowed(t *testing.T) {
 			res.Status, res.Findings)
 	}
 
-	// THE SAME LINK ONE NODE OVER. transfers/in is tier 0 and is nobody's
-	// parent, so this is a descending link that folds into nothing -- and it
-	// is the shape a mis-pointed rollup would have.
+	// A mis-pointed rollup: transfers/in is tier 0 and nobody's parent.
 	res := runNodeTiers(t, rolled(t, "transfers/in"))
 	if res.Status != StatusFail {
 		t.Fatalf("a line pointing at a tier-0 node that is not its parent is %s, want FAIL",
@@ -217,8 +195,8 @@ func TestARollupIsTheOnlyDescendingLinkAllowed(t *testing.T) {
 			res.Findings)
 	}
 
-	// A PARENT -> CHILD LINK REVERSED is child -> own parent too, and the
-	// client drops it silently, so only a revenue line may roll up.
+	// A reversed parent -> child link is child -> own parent too; only a
+	// revenue line may roll up.
 	for _, rev := range []struct{ parent, child project.Node }{
 		{project.Node{ID: "fund-group/capital", Tier: 2}, project.Node{ID: "fund/510", Tier: 3}},
 		{project.Node{ID: "dept/police-patrol", Tier: 4},
@@ -237,32 +215,15 @@ func TestARollupIsTheOnlyDescendingLinkAllowed(t *testing.T) {
 	}
 }
 
-// TestAPartitionIsTheOTHERDescendingLinkAllowed is the second exemption and the
-// proof that it is narrow, which is the whole reason it is one test.
-//
-// THE CROSS-TAB DRAWS expenditure/<object> -> dept/<division>: tier 5 into tier
-// 4, descending, and the target is not the source's parent -- both ends are
-// parentless, because pp.85-125 print no fund axis for either to hang from. So
-// the rollup exemption cannot cover it and a second one is needed. What makes
-// that principled rather than a repeal is that it turns on a DECLARATION the
-// projection published: Link.Partition says this ribbon is one printed matrix
-// read along its second axis, so neither end is upstream of the other.
-//
-// THE NARROWNESS IS THE ASSERTION. The same link with the flag cleared -- one
-// bool, nothing else moved -- must still be refused BY NAME, or the exemption
-// has become "any descending link between two parentless nodes", which is most
-// of them.
-//
-// THE CROSS-TAB IS A DOCUMENT OF ITS OWN, not a link planted in the spine's
-// fixture: the flag is the document's claim about every link it draws, and a
-// partition link inside a flow diagram is exactly the shape the document-level
-// arm refuses (TestNodeTiersAreDeclaredIsFailable).
+// TestAPartitionIsTheOTHERDescendingLinkAllowed is the second exemption and
+// its narrowness: the cross-tab's expenditure/<object> -> dept/<division>
+// descends between parentless nodes and passes only on the flag, so the same
+// link with the flag cleared must be refused by name.
 func TestAPartitionIsTheOTHERDescendingLinkAllowed(t *testing.T) {
 	crossTab := func(t *testing.T, partition bool) *Subject {
 		t.Helper()
 		col := project.Column{FiscalYear: testYear, Basis: project.PublishedBasis}
-		// Both ends parentless and neither the other's parent, which is what
-		// the committed cross-tab publishes.
+		// Both ends parentless, as the committed cross-tab publishes.
 		doc := &project.DepartmentSpendingDocument{
 			Nodes: []project.Node{
 				{ID: "expenditure/wages-and-benefits", Tier: 5, Role: "object_category"},
@@ -322,9 +283,7 @@ func TestAFundNodeNamesAFundNumber(t *testing.T) {
 			t.Errorf("declaredTier(%q) = not a declared form, want tier 3", id)
 		}
 	}
-	// fund/0 is refused with the non-numbers: no fund is numbered 0. A fact
-	// with no fund publishes null and fact.ColumnPath writes no segment for
-	// one, so `fund/0` is `fund/general` wearing a number.
+	// fund/0 is refused with the non-numbers: no fund is numbered 0.
 	for _, id := range []string{"fund/0", "fund/general", "fund/", "fund", "revenue/", "dept"} {
 		if tier, ok := declaredTier(id); ok {
 			t.Errorf("declaredTier(%q) = %d, true; want it refused", id, tier)

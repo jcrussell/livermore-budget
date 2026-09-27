@@ -23,10 +23,9 @@ func allCutNamed(t *testing.T, name string) structure.Cut {
 	return structure.Cut{}
 }
 
-// TestEveryScopeInTheStoreIsACut is what makes AllCuts a description of the
-// store rather than a list: every scope the store carries is selected by at
-// least one cut, every fact is admitted by exactly one, and every cut sits at
-// the level it declares.
+// TestEveryScopeInTheStoreIsACut: every scope the store carries is selected by
+// a cut, every fact is admitted by exactly one, and every cut sits at the
+// level it declares.
 func TestEveryScopeInTheStoreIsACut(t *testing.T) {
 	facts := committedFacts(t)
 	byRule, err := structure.LevelOfRule(facts, committedFiles(t))
@@ -59,11 +58,7 @@ func TestEveryScopeInTheStoreIsACut(t *testing.T) {
 			t.Errorf("cut %q selects scope %q, which the store does not carry", c.Name, c.Scope)
 		}
 	}
-	// EXACTLY ONE CUT PER FACT, OR A DECLARED RESIDUE. Two cuts admitting one
-	// fact would put it in two sides of a comparison, or twice in a view; no
-	// cut admitting it would leave it out of both with nothing saying so.
-	// Measured: pp.85-125's one Transfers Out row is the whole residue, four
-	// facts over four columns.
+	// Exactly one cut per fact, or a declared residue.
 	findings, uncovered := structure.Covered(facts, cuts, structure.BudgetBookResidue())
 	if len(findings) != 0 {
 		t.Errorf("coverage:\n  %s", strings.Join(findings, "\n  "))
@@ -88,10 +83,8 @@ func TestEveryScopeInTheStoreIsACut(t *testing.T) {
 	})
 }
 
-// TestThePeersSharingCellsAreOneMovementReadFromTwoEnds is fisc-n6yq's
-// measurement reproduced by the generic comparison: pp.127-140 and p76 share
-// 22 cells over the two adopted columns, every one a transfer in, 42,183,495.00
-// on each side, and one declared identity covers them all.
+// TestThePeersSharingCellsAreOneMovementReadFromTwoEnds: pp.127-140 and p76
+// share only transfer-in cells, equal on each side, all under one identity.
 func TestThePeersSharingCellsAreOneMovementReadFromTwoEnds(t *testing.T) {
 	facts := committedFacts(t)
 	o, err := structure.Peers(facts, allCutNamed(t, "revenue-detail"), allCutNamed(t, "transfers-detail"),
@@ -121,8 +114,7 @@ func TestThePeersSharingCellsAreOneMovementReadFromTwoEnds(t *testing.T) {
 	}
 }
 
-// TestAPeerOverlapGoesRed is the mutation for the identity edge, each arm run
-// in memory against the committed store.
+// TestAPeerOverlapGoesRed is the mutation for the identity edge.
 func TestAPeerOverlapGoesRed(t *testing.T) {
 	facts := committedFacts(t)
 	rd, td := allCutNamed(t, "revenue-detail"), allCutNamed(t, "transfers-detail")
@@ -188,9 +180,8 @@ func TestAPeerOverlapGoesRed(t *testing.T) {
 		}
 	})
 
-	// THE PIN MUST NAME THE MISSING SIDE AND SAY IT IS ABSENT. Each plant
-	// rewrites the two General Fund exceptions to excuse the cell from the
-	// wrong side, or to call the missing side present, and must not excuse.
+	// Each plant pins the wrong side, or calls the missing side present, and
+	// must not excuse.
 	t.Run("an exception excuses an absence only on the side it pins absent", func(t *testing.T) {
 		var gf []structure.Exception
 		for _, e := range structure.BudgetBookExceptions() {
@@ -264,11 +255,8 @@ func TestAPeerOverlapGoesRed(t *testing.T) {
 	})
 
 	t.Run("the spine put at the detail's level collides with p76 on the rows that name no fund", func(t *testing.T) {
-		// fisc-c4ip (d), first step: with the spine at fund-by-category it is
-		// a peer of p76, and the only thing separating a spine cell from a
-		// detail cell is the fund coordinate. p76's two LAVWMA rows carry no
-		// fund, so they land on the spine's fund-less address and the check
-		// names them -- which is fisc-n6yq's re-measured pair, reproduced.
+		// With the spine at fund-by-category, p76's fund-less LAVWMA rows land
+		// on the spine's address and are named.
 		spine := allCutNamed(t, "spine")
 		spine.Level = structure.LevelFundByCategory
 		o, err := structure.Peers(facts, spine, td, identities, structure.BudgetBookExceptions())
@@ -286,10 +274,9 @@ func TestAPeerOverlapGoesRed(t *testing.T) {
 	})
 }
 
-// TestAViewThatWouldTraverseBothReadingsIsRefused is fisc-n6yq's acceptance
-// (b): a cut set holding both readings of one figure is refused at
-// construction unless it says which it takes, and once it does, the declined
-// reading's cells are left out by name.
+// TestAViewThatWouldTraverseBothReadingsIsRefused: a cut set holding both
+// readings of one figure is refused unless it says which it takes, and then
+// the declined reading's cells are left out.
 func TestAViewThatWouldTraverseBothReadingsIsRefused(t *testing.T) {
 	facts := committedFacts(t)
 	rd, td := allCutNamed(t, "revenue-detail"), allCutNamed(t, "transfers-detail")
@@ -322,8 +309,7 @@ func TestAViewThatWouldTraverseBothReadingsIsRefused(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewView with a reading: %v", err)
 	}
-	// COUNTED ONCE, BY NAME. The view's transfers in are pp.127-140's; p76's
-	// receiving legs are declined and its paying legs stay.
+	// The view's transfers in are pp.127-140's; p76's paying legs stay.
 	var in, out int64
 	declined := 0
 	for i := range facts {
@@ -357,18 +343,10 @@ func TestAViewThatWouldTraverseBothReadingsIsRefused(t *testing.T) {
 	}
 }
 
-// TestTheAntichainIsOverMoneyBothCutsPrintAndNotOverLevelsAlone pins the case
-// on which a level-only antichain test and the one NewView enforces disagree.
-// pp.127-140 by fund and pp.167-170 by fund, department and object are one
-// above the other in the lattice, so a level-only test refuses the pair; they
-// are summable because one prints revenue and the other expenditure, and no
-// fact is in both.
-//
-// THE FIRST TWO ASSERTIONS ARE THE GUARD, not scene-setting. If the levels
-// ever stop being comparable, or the kinds ever start meeting, the admission
-// below would be green because the pair had become uninteresting rather than
-// because NewView tests kinds -- and the two are indistinguishable by exit
-// code.
+// TestTheAntichainIsOverMoneyBothCutsPrintAndNotOverLevelsAlone: pp.127-140
+// and pp.167-170 are one above the other in the lattice and summable, because
+// their kinds do not meet. The first two assertions are the guard: without
+// them the admission could be green because the pair became uninteresting.
 func TestTheAntichainIsOverMoneyBothCutsPrintAndNotOverLevelsAlone(t *testing.T) {
 	facts := committedFacts(t)
 	identities := structure.BudgetBookIdentities()
@@ -387,8 +365,7 @@ func TestTheAntichainIsOverMoneyBothCutsPrintAndNotOverLevelsAlone(t *testing.T)
 	if err != nil {
 		t.Fatalf("NewView over revenue beside expenditure = %v, want admitted: the levels are comparable but the kinds do not meet", err)
 	}
-	// AND IT ADMITS BOTH SIDES. A view that took neither cut's facts would
-	// satisfy the line above while meaning nothing.
+	// And it admits both sides.
 	seen := map[string]int{}
 	for i := range facts {
 		if f := &facts[i]; v.Admits(f, identities) {
@@ -400,8 +377,7 @@ func TestTheAntichainIsOverMoneyBothCutsPrintAndNotOverLevelsAlone(t *testing.T)
 			seen[rd.Scope], rd.Scope, seen[gd.Scope], gd.Scope)
 	}
 
-	// THE OTHER HALF, so the level test is not what was deleted: the same cut
-	// beside one whose kinds it meets is still refused.
+	// The same cut beside one whose kinds it meets is still refused.
 	spine := allCutNamed(t, "spine")
 	if _, err := structure.NewView("spine-and-drill", []structure.Cut{spine, gd}, identities, nil); err == nil ||
 		!strings.Contains(err.Error(), "not an antichain") {

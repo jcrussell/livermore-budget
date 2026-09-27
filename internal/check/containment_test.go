@@ -13,12 +13,9 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/structure"
 )
 
-// TestTheCommittedCutsTieAlongTheLattice pins what the one lattice-driven
-// comparison covers over the committed corpus, BY NAME: which pairs are
-// compared, at which grain, and which are refused with which reason. A
-// mutation that turns a comparison into a refusal -- a kind dropped from a cut,
-// a tier changed -- leaves the check green with one comparison fewer, and this
-// is the arm that sees it.
+// TestTheCommittedCutsTieAlongTheLattice pins, by name, which pairs the
+// committed corpus compares and at which grain, and why the others are refused:
+// a comparison turned into a refusal leaves the check green with one fewer.
 func TestTheCommittedCutsTieAlongTheLattice(t *testing.T) {
 	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
 	if err != nil {
@@ -38,17 +35,9 @@ func TestTheCommittedCutsTieAlongTheLattice(t *testing.T) {
 		"departmentwide ~ spine at category",
 		"funding-sources ~ spine at fund-group",
 		// Excused cells are neither compared nor agreeing at zero.
-		"transfers-detail -> spine at fund-group-by-category: 18 cells over FY2026 adopted, FY2027 adopted, 8 one-sided and agreeing at zero",
-		// The refusals, each a claim about the documents.
-		`"revenue-detail" against "transfers-detail": both are at "fund-by-category"`,
-		`"general-fund-departments" names departments at the "division" tier and "funding-sources" at the "department" tier`,
-		`"departmentwide" is at "department-by-category", which carries no fund group axis`,
-		"no money is described by both",
-		"neither is the reference",
-		"share no common coarsening",
-		// The ACFR against the Budget Book: a lattice containment with no
-		// column in common, refused by the declared bases.
-		`"revenue-detail" prints [actual revised adopted] columns and "acfr-general-fund-summary" prints [audited]; there is no column both print`,
+		"transfers-detail -> spine at fund-group-by-category: 18 cells over FY2026 adopted, FY2027 adopted, 8 one-sided at zero, 6 held apart",
+		// 40 pairs Compare refuses, less the two a declared tie holds.
+		"38 pair(s) no comparison or tie relates",
 	} {
 		if !strings.Contains(res.Summary, want) {
 			t.Errorf("summary does not say %q", want)
@@ -59,11 +48,31 @@ func TestTheCommittedCutsTieAlongTheLattice(t *testing.T) {
 			t.Errorf("summary says %q over the committed corpus", absent)
 		}
 	}
+
+	cut := map[string]structure.Cut{}
+	for _, c := range structure.AllCuts() {
+		cut[c.Name] = c
+	}
+	for _, tc := range []struct{ a, b, want string }{
+		{"revenue-detail", "transfers-detail", `both are at "fund-by-category"`},
+		{"general-fund-departments", "funding-sources", `"general-fund-departments" names departments at the "division" tier and "funding-sources" at the "department" tier`},
+		{"general-fund-departments", "departmentwide", `"departmentwide" is at "department-by-category", which carries no fund group axis`},
+		{"general-fund-departments", "transfers-detail", "no money is described by both"},
+		{"revenue-detail", "departmentwide", "neither is the reference"},
+		{"funding-sources", "acfr-changes-in-fund-balances", "share no common coarsening"},
+		// The ACFR against the Budget Book: a lattice containment with no
+		// column in common, refused by the declared bases.
+		{"revenue-detail", "acfr-general-fund-summary", `"revenue-detail" prints [actual revised adopted] columns and "acfr-general-fund-summary" prints [audited]; there is no column both print`},
+	} {
+		_, err := structure.Compare(s.Facts, cut[tc.a], cut[tc.b])
+		if err == nil || !strings.Contains(err.Error(), tc.want) {
+			t.Errorf("Compare(%s, %s) = %v, want %q", tc.a, tc.b, err, tc.want)
+		}
+	}
 }
 
-// TestTheCutsCheckGoesRed runs the mutations through the registered check
-// rather than through the package, so what is proven is the line fisc verify
-// prints.
+// TestTheCutsCheckGoesRed runs the mutations through the registered check, so
+// what is proven is the line fisc verify prints.
 func TestTheCutsCheckGoesRed(t *testing.T) {
 	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
 	if err != nil {
@@ -137,11 +146,7 @@ func TestTheCutsCheckGoesRed(t *testing.T) {
 			}
 		}
 		res := run(t, kept)
-		// A cut with no fact is skipped rather than compared as a side that
-		// prints nothing, for the fixture's sake. What makes that safe over
-		// the committed corpus is the grain arm: every one of the schedule's
-		// rules still declares a grain, and a grain over zero facts is refused
-		// by name before any pair is compared.
+		// The empty cut is skipped, and the grain arm refuses its rules by name.
 		if diff := cmp.Diff(StatusFail, res.Status); diff != "" {
 			t.Fatalf("status (-want +got):\n%s", diff)
 		}
@@ -150,9 +155,7 @@ func TestTheCutsCheckGoesRed(t *testing.T) {
 			!strings.Contains(res.Findings[0].Detail, "no fact") {
 			t.Errorf("want exactly the grain arm's refusal naming a dw- rule, got:\n  %v", res.Findings)
 		}
-		// And the p0067 exception on that axis is not refused: its cut was
-		// never compared, so it was never consulted, and the check says
-		// nothing about it rather than something false.
+		// An exception on the empty cut was never consulted, and is not refused.
 		for _, f := range res.Findings {
 			if strings.Contains(f.Detail, "by-object") {
 				t.Errorf("an exception on an empty cut was reported: %s", f.Detail)
@@ -160,13 +163,9 @@ func TestTheCutsCheckGoesRed(t *testing.T) {
 		}
 	})
 
-	// THE GRAIN ARM CANNOT SEE A RULE THAT LEFT THE MAPPING. The case above
-	// keeps the rules and drops the facts; this one drops both, which is what
-	// a mapping edit that deletes a rule leaves behind, and the only thing
-	// left to notice is the cut still naming the rule. The cut shares its
-	// scope with a sibling that still has facts, so emptiness judged by scope
-	// says it is populated and hands it to every pair as a side printing
-	// nothing.
+	// A rule deleted with its facts is invisible to the grain arm; only the cut
+	// still naming it is left, and its scope's sibling still has facts, so
+	// emptiness judged by scope would call it populated.
 	t.Run("a cut naming a rule that left the mapping with its facts is refused, not counted as compared", func(t *testing.T) {
 		const rule = "acfr-p0167-general-fund-balances"
 		kept := make([]fact.Fact, 0, len(facts))
@@ -196,12 +195,7 @@ func TestTheCutsCheckGoesRed(t *testing.T) {
 		if diff := cmp.Diff(StatusFail, res.Status); diff != "" {
 			t.Fatalf("status (-want +got):\n%s", diff)
 		}
-		// EXACTLY ONE FINDING, and it is the cut's own: the sibling cut and
-		// every pair are untouched, the coverage arm has no fact of the rule
-		// left to find uncovered, and the grain arm has no rule left to see.
-		// So with this refusal absent the check is green and its summary
-		// counts the cut among those compared, which is the measured state
-		// this case exists to keep red.
+		// Exactly one finding: with the cuts arm absent the check is green.
 		if len(res.Findings) != 1 || res.Findings[0].Subject != "cuts" ||
 			!strings.Contains(res.Findings[0].Detail, `"acfr-fund-balances/general" selects rule "`+rule+`"`) ||
 			!strings.Contains(res.Findings[0].Detail, "produces no fact") {
@@ -216,8 +210,8 @@ func runOne(t *testing.T, s *Subject, c Check) *Report {
 	return Run(t.Context(), s, []Check{c}, ReportOptions{GeneratedBy: testVersion})
 }
 
-// TestTheCutsCheckHoldsTheStoreToEveryCut plants what the check's arms beyond
-// the comparison exist for, each through the registered check.
+// TestTheCutsCheckHoldsTheStoreToEveryCut plants what each arm beyond the
+// comparison exists for.
 func TestTheCutsCheckHoldsTheStoreToEveryCut(t *testing.T) {
 	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
 	if err != nil {

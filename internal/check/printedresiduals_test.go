@@ -9,23 +9,12 @@ import (
 )
 
 // TestEveryExceptionResidualIsPrintedWhereItSaysItIs holds each exception's
-// Printed claim to the page line it cites.
-//
-// AN EXCEPTION IS A CLAIM ABOUT THE PAGES, and cuts-tie-along-the-lattice can
-// only hold it to the FACTS: it re-sums both sides from the store the pins were
-// read from, so a residual typed from memory rather than from a page would
-// agree with itself on every run. This is the arm that reads the page. The
-// rows are typed off data/extracted by hand, one per printed figure an
-// exception rests on, and the residual each exception declares is recomputed
-// from those figures the way its Printed string says: verbatim where one line
-// prints it, as the difference of two lines on one page for enterprise, and as
-// the difference of two pages' figures for the fund-group entry. The by-object
+// Printed claim to the page line it cites and recomputes its residual from
+// those figures. cuts-tie-along-the-lattice holds exceptions only to the facts,
+// so a residual typed from memory would agree with itself there. The by-object
 // entry prints on no page and is held by
-// TestDepartmentwideExceptionFiguresAreNotPrintedAndTheirDifferenceIs instead.
-//
-// EVERY EXCEPTION IS EITHER IN THE TABLE OR GROUNDED IN ONE THAT IS. An
-// exception this test does not know is a finding, so a new one cannot land with
-// a Printed claim nothing reads.
+// TestDepartmentwideExceptionFiguresAreNotPrintedAndTheirDifferenceIs. An
+// exception this test does not know is a failure.
 func TestEveryExceptionResidualIsPrintedWhereItSaysItIs(t *testing.T) {
 	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
 	if err != nil {

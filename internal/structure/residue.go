@@ -8,15 +8,8 @@ import (
 )
 
 // A Residue is a set of facts no cut admits, declared with the reason the
-// pages put it outside every decomposition.
-//
-// EVERY FACT IS IN EXACTLY ONE CUT OR IN A DECLARED RESIDUE, and a fact in
-// neither is a finding. A cut's kinds are a claim about the pages, and a page
-// can print a row that decomposes nothing: pp.85-125 print one Transfers Out
-// row, under Maintenance, that is no part of pp.66-67's TRANSFER OUT. Left out
-// of the cut by kind it would be in no comparison and no view and nothing
-// would say so; declared here, it is named on every run and refused the day
-// it stops matching a fact.
+// pages put it outside every decomposition. Every fact is in exactly one cut
+// or one residue, and a residue matching no fact is refused.
 type Residue struct {
 	Scope  string
 	Rule   string
@@ -28,7 +21,7 @@ func (r Residue) matches(f *fact.Fact) bool {
 	return f.Scope == r.Scope && f.RuleID == r.Rule && f.Kind == r.Kind
 }
 
-// BudgetBookResidue is the whole list, and it is one entry long.
+// BudgetBookResidue is every declared residue.
 func BudgetBookResidue() []Residue {
 	return []Residue{{
 		Scope: "departmentwide-expenditures",
@@ -79,10 +72,7 @@ func Covered(facts []fact.Fact, cuts []Cut, residue []Residue) (findings []strin
 			uncovered++
 		}
 	}
-	// A RESIDUE ON A SCOPE THE STORE DOES NOT CARRY IS NOT STALE. A fixture that
-	// never mapped pp.85-125 is not a corpus whose residue stopped matching;
-	// the arm is live wherever the scope has facts, which over the committed
-	// store is everywhere.
+	// A residue on a scope the store does not carry -- a fixture -- is not stale.
 	scopes := map[string]bool{}
 	for i := range facts {
 		scopes[facts[i].Scope] = true

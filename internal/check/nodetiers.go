@@ -17,29 +17,10 @@ import (
 // whose prefix is not here is a coined id form, which the contract forbids in as
 // many words ("Do not coin new ones").
 //
-// TIER 1 IS A LINE AND WAS NEVER A CONSTRAINT TIER. The contract once gave it as
-// a `constraint/<tier>` node between the revenue source and the fund group, and
-// that layer could not exist: a constraint tier is a property of a FUND and the
-// fund groups do not partition along it (data/funds.yaml has capital = 3
-// committed + 43 restricted-by-law), so its parent edge had no single answer.
-// A `revenue-line/` node's does -- the category the row is printed under -- which
-// is the whole difference between an empty number and a layer.
-//
-// `revenue-line/` IS A SEPARATE PREFIX FROM `revenue/` BECAUSE OF THIS TABLE'S
-// OWN KEY. declaredTier cuts an id at its FIRST slash, and a category slug is
-// already one or two segments (`revenue/taxes/property` is tier 0), so a line
-// nested under `revenue/` would be read as its own parent's form.
-//
-// `transfer-from/` AND `transfer-to/` ARE FORMS AND NOT ENDPOINTS, which is why
-// they are here and not in endpointTiers beside `transfers/in`. That table is
-// keyed by NAME because it holds five nodes; these two are one node per fund
-// and could not be enumerated. They are the two ends of a printed movement
-// rather than the funds themselves -- Budget Book p76 prints money moving
-// between the city's own funds, and `fund/<a>` to `fund/<b>` runs tier 3 to
-// tier 3, which the ordering claim below refuses and d3-sankey cannot lay out
-// with both ends taking one column index. Their tiers are the spine's own for
-// the same end of the chart: a payer's end at 2 with the fund groups, a
-// receiver's at 5 with the object categories.
+// `revenue-line/` is its own prefix because declaredTier cuts at the first
+// slash and a category slug already has one or two segments. `transfer-from/`
+// and `transfer-to/` are the two ends of a p76 movement, one node per fund:
+// fund to fund would run tier 3 to tier 3, which d3-sankey cannot lay out.
 var hierarchyTiers = map[string]int{
 	"revenue":       0,
 	"revenue-line":  1,
@@ -47,14 +28,9 @@ var hierarchyTiers = map[string]int{
 	"transfer-from": 2,
 	"fund":          3,
 	"dept":          4,
-	// `department/` IS A SEPARATE FORM FROM `dept/`, AT THE SAME TIER, and the
-	// table's own key is why. `dept/` holds pp.167-170's divisions and
-	// `department/` holds pp.85-125's ALL-CAPS departments; data/departments.yaml
-	// keeps those as two namespaces because the pages do, and five slugs are in
-	// both -- city-council, city-manager, city-attorney, general-services and
-	// administrative-services. declaredTier cuts an id at its FIRST slash, so
-	// one prefix over both tiers would make `dept/city-council` mean the
-	// department in one document and the division in another.
+	// `department/` (pp.85-125's departments) is a separate form from `dept/`
+	// (pp.167-170's divisions) because five slugs, city-council among them,
+	// are in both namespaces.
 	"department":  4,
 	"expenditure": 5,
 	"transfer-to": 5,
@@ -109,33 +85,11 @@ var endpointTiers = map[string]int{
 // render as a flow running against every other flow on the page, which is a
 // picture that reads as a defect in the data rather than in the layout.
 //
-// TWO EXCEPTIONS, EACH NARROW BY CONSTRUCTION, AND NEITHER IS A TOLERANCE. A
-// column order is a declaration a view makes and need not be ascending -- a
-// window puts the clicked node in the middle -- so a ribbon runs backwards only
-// in a view that drew it backwards. What has to be established per link is that
-// the link is not a FLOW at all, and there are exactly two ways to establish it:
-//
-//   - A ROLLUP. A `revenue-line/` node into its own `revenue/` parent, the
-//     edge the client already folds along. No other tier pair rolls up: the
-//     client drops a fund -> fund-group link silently.
-//   - A DECLARED PARTITION. [project.Link.Partition] says the projection read
-//     one printed matrix along its second axis, so neither end is upstream of
-//     the other and the direction drawn is the chart's choice. It is the
-//     PROJECTION's claim and is on the wire: nothing in a graph distinguishes a
-//     cross-tab from a chain by looking, so a check that inferred it would be
-//     inferring what a published table means.
-//
-// THE PARTITION CLAIM IS HELD TO THE DOCUMENT THAT MAKES IT, because a flag a
-// link sets on itself is otherwise an exemption nothing verifies. A cross-tab
-// is one printed matrix or it is not: a document declaring a partition on any
-// link declares it on every link, since a matrix has no cell that is a flow;
-// and its links run between ONE pair of tiers, the matrix's two axes. A
-// document mixing the two, or partitioning across three tiers, is refused,
-// which is what keeps the flag a claim rather than a way past the ordering.
-//
-// ANY OTHER DESCENDING LINK IS STILL REFUSED, which is what keeps these
-// exceptions rather than a repeal: a fund-to-revenue-category link is neither a
-// fold nor a cross-tab, and there is no column order that makes it forward.
+// A descending link is refused unless it is not a flow: a `revenue-line/` node
+// rolled up into its own `revenue/` parent, or a [project.Link.Partition] --
+// the projection's claim that it read one printed matrix along its second
+// axis. A document declares a partition on every link or none, and along one
+// pair of tiers, so the flag cannot exempt a single flow.
 type nodeTiersAreDeclared struct{}
 
 var _ Check = (*nodeTiersAreDeclared)(nil)
@@ -146,8 +100,7 @@ func (*nodeTiersAreDeclared) Full() bool { return false }
 func (*nodeTiersAreDeclared) Description() string {
 	return "every node's tier is the one docs/sankey-contract.md's table gives for its id " +
 		"form, and every link runs from a coarser tier to a finer one unless it is a revenue " +
-		"line rolled up into its own category or a declared partition, which a document declares on " +
-		"every link or none and along one pair of tiers"
+		"line rolled up into its category or a document-wide partition along one pair of tiers"
 }
 
 func (*nodeTiersAreDeclared) Run(_ context.Context, s *Subject) (Result, error) {
@@ -165,10 +118,7 @@ func (*nodeTiersAreDeclared) Run(_ context.Context, s *Subject) (Result, error) 
 			tierOf[n.ID] = n.Tier
 			parentOf[n.ID] = n.Parent
 
-			// ONE FINDING PER NODE. A node whose form is undeclared has no
-			// tier to be compared against, so the arms are ordered rather than
-			// independent: reporting both would give one defect two findings
-			// that read as two separate ones.
+			// One finding per node: an undeclared form has no tier to compare.
 			want, ok := declaredTier(n.ID)
 			switch {
 			case !ok:
@@ -192,18 +142,8 @@ func (*nodeTiersAreDeclared) Run(_ context.Context, s *Subject) (Result, error) 
 			links++
 			src, sok := tierOf[l.Source]
 			dst, dok := tierOf[l.Target]
-			// A LINK NAMING A NODE THE GRAPH DOES NOT CARRY IS REPORTED HERE,
-			// because nothing else in this package reports it. An earlier
-			// version of this comment handed the case to graph-acyclic and
-			// link-values-tie-to-facts and both refuse it: findCycle only looks
-			// for cycles, and a dangling target is a leaf rather than a cycle;
-			// linkValuesTieToFacts never reads Graph.Nodes at all. So a typo'd
-			// endpoint passed every check in the tree, and the client would
-			// draw a ribbon into a box that does not exist.
-			//
-			// It belongs here rather than in a check of its own: this is the
-			// only place that has already indexed the nodes by id, and a tier
-			// comparison cannot be made without resolving both ends anyway.
+			// A dangling end is reported only here: graph-acyclic sees a leaf,
+			// and link-values-tie-to-facts never reads the nodes.
 			if !sok || !dok {
 				missing := l.Target
 				if !sok {
@@ -249,14 +189,11 @@ func (*nodeTiersAreDeclared) Run(_ context.Context, s *Subject) (Result, error) 
 			}
 		}
 
-		// THE DOCUMENT'S CLAIM, held after its links have each been read.
+		// The partition is the document's claim, held across its links.
 		if partitioned > 0 && plain > 0 {
 			findings = append(findings, finding(p.String(),
 				"this document declares a partition on %d of its %d links and none on the "+
-					"other %d. A partition says the document is one printed matrix read along "+
-					"its second axis, and a matrix has no cell that is a flow; a document that "+
-					"draws both is neither, and a flag set on one link of a flow diagram is an "+
-					"exemption from the tier ordering that nothing holds",
+					"other %d; one printed matrix has no cell that is a flow",
 				partitioned, partitioned+plain, plain))
 		}
 		if len(axes) > 1 {
@@ -276,13 +213,9 @@ func (*nodeTiersAreDeclared) Run(_ context.Context, s *Subject) (Result, error) 
 	return conclusion{
 		subjects: nodes,
 		unit:     "nodes",
-		held: fmt.Sprintf("%d nodes over %d graph document(s), each at the tier its id form "+
-			"declares, and %d links each running from a coarser tier to a finer one or, for "+
-			"%d of them, from a revenue line into its category and, for %d, along the "+
-			"second axis of one printed table; the declared forms are %s, plus %d flow "+
-			"endpoints named individually",
-			nodes, len(s.linkedDocuments()), links, rollups, partitions, describeForms(),
-			len(endpointTiers)),
+		held: fmt.Sprintf("%d nodes over %d graph document(s), each at its id form's tier; %d "+
+			"links, each coarser to finer or one of %d rollups and %d partitions",
+			nodes, len(s.linkedDocuments()), links, rollups, partitions),
 		nothing:  "no projection carries a node, so no tier has been read",
 		findings: findings,
 	}.result(), nil
@@ -315,12 +248,7 @@ func declaredTier(id string) (int, bool) {
 	// one. Checked here rather than left to the reader because `fund/general`
 	// would otherwise pass as a tier-3 node while naming no fund at all, one
 	// hyphen away from the real `fund-group/general`.
-	//
-	// ZERO IS REFUSED WITH THE NON-NUMBERS, because no fund is numbered 0: a
-	// fact with no fund publishes null, and the mapping side, which still
-	// spells its absence 0 (fisc-12jt), never writes the segment at all --
-	// fact.ColumnPath omits it. `fund/0` is therefore the same defect as
-	// `fund/general` wearing a number.
+	// No fund is numbered 0, so `fund/0` is refused with them.
 	if prefix == "fund" {
 		n, err := strconv.Atoi(rest)
 		if err != nil || n == 0 {
@@ -328,14 +256,4 @@ func declaredTier(id string) (int, bool) {
 		}
 	}
 	return t, true
-}
-
-// describeForms lists the hierarchy prefixes and their tiers, for the summary.
-func describeForms() string {
-	out := make([]string, 0, len(hierarchyTiers))
-	for prefix, tier := range hierarchyTiers {
-		out = append(out, fmt.Sprintf("%s/ = %d", prefix, tier))
-	}
-	sort.Strings(out)
-	return strings.Join(out, ", ")
 }

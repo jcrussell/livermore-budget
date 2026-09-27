@@ -2,18 +2,8 @@ package structure
 
 import "github.com/jcrussell/livermore-budget/internal/mapping"
 
-// BudgetBookCuts are the Budget Book's schedules as cuts of one hierarchy.
-//
-// EACH IS A CLAIM ABOUT THE PAGES. The level says which axes the schedule
-// totals over; the kinds and fund groups say which money it covers. Both are
-// declared rather than measured, because a footprint read off the facts shrinks
-// with them: a schedule that stops printing a fund group would drop that group
-// from its own footprint, and the cells it stopped printing would never be
-// looked at.
-//
-// WHAT THIS REPLACES is one file per pair -- each with its own restriction,
-// its own key type and its own copy of the comparison. The comparison is
-// Contain and the pairs fall out of the lattice.
+// BudgetBookCuts are the Budget Book's schedules as cuts of one hierarchy,
+// each a claim about its pages.
 func BudgetBookCuts() []Cut {
 	// The detail schedules print an actual, a revised and two adopted columns;
 	// pp.66-67 and p76 print the two adopted columns only.
@@ -47,9 +37,7 @@ func BudgetBookCuts() []Cut {
 		},
 		{
 			// pp.167-170, General Fund expenditure by department and object.
-			// The single fund group is a footprint and not a placeholder: the
-			// pages are of the General Fund, and `general` is a value five
-			// other schedules also use.
+			// `general` is a footprint, not a placeholder.
 			Name:           "general-fund-departments",
 			Scope:          "expenditure-by-department",
 			Level:          LevelFundByDepartmentByCategory,
@@ -70,10 +58,7 @@ func BudgetBookCuts() []Cut {
 		},
 		{
 			// pp.171-176, which department's money comes from which fund. The
-			// category field carries the scope's own name on every row; see
-			// Cut.Placeholders for why that is not an axis. The rows name
-			// DEPARTMENTS where every other schedule with the axis names
-			// divisions: data/departments.yaml, "TWO TIERS".
+			// rows name departments where the other schedules name divisions.
 			Name:           "funding-sources",
 			Scope:          "department-funding-sources",
 			Level:          LevelFundByDepartment,
@@ -91,18 +76,9 @@ var everyKind = []mapping.Kind{
 	mapping.KindTransferIn, mapping.KindTransferOut, mapping.KindFundBalance,
 }
 
-// ACFRCuts are the ACFR's schedules as cuts of the same hierarchy.
-//
-// EVERY COLUMN IS AUDITED, and that is what keeps them apart from the Budget
-// Book by declaration rather than by luck. p41's General Fund summary sits at
-// the spine's own level and pp.127-140 by fund decompose that level, so the
-// lattice offers a containment between two documents with no column in
-// common; the declared bases refuse it by name.
-//
-// ONE SCOPE PRINTS TWO GRAINS AND IS TWO CUTS. p167 prints the General Fund's
-// fund balance components with the fund group named, and every other
-// governmental fund's aggregated with no group at all -- a coarser grain under
-// one scope -- so each rule is its own cut, selected by rule id.
+// ACFRCuts are the ACFR's schedules as cuts of the same hierarchy. Their
+// audited bases are what keep them from comparing against the Budget Book, and
+// p167's one scope prints two grains, so it is two cuts selected by rule.
 func ACFRCuts() []Cut {
 	audited := []mapping.Basis{mapping.BasisAudited}
 	return []Cut{
@@ -147,23 +123,13 @@ func ACFRCuts() []Cut {
 	}
 }
 
-// AllCuts is every declared cut, Budget Book and ACFR: one cut per scope, and
-// two for the scope that prints two grains. Measured against the store by
-// TestEveryScopeInTheStoreIsACut.
+// AllCuts is every declared cut, Budget Book and ACFR.
 func AllCuts() []Cut {
 	return append(BudgetBookCuts(), ACFRCuts()...)
 }
 
 // BudgetBookIdentities are the same-figure relations between the Budget Book's
-// peers, and there is one.
-//
-// pp.127-140 print each fund's Transfers In inside that fund's block, at the
-// RECEIVING end; p76 prints every transfer with both its legs, and its
-// receiving leg is the same movement at the same fund. Measured over the
-// committed store: 22 shared cells over the two adopted columns, 42,183,495.00
-// on each side, identical to the cent. Both readings stay, each with its own
-// locator chain, because p76 is the citation a reader clicking a transfer OUT
-// lands on and pp.127-140 is the one a reader of a fund's revenue lands on;
+// peers. Both readings of a transfer in stay, each with its own locator chain;
 // the identity is what lets a view take one and not the other by name.
 func BudgetBookIdentities() []Identity {
 	return []Identity{{
@@ -177,10 +143,7 @@ func BudgetBookIdentities() []Identity {
 }
 
 // BudgetBookTies are the Budget Book's same-money relations the lattice cannot
-// reach, held in every column both sides print. pp.85-125 print each
-// department's Total Department Expenditures and Total Department Funding
-// Sources as one figure, and each department's General Fund funding row is the
-// department's total on pp.167-170.
+// reach, held in every column both sides print.
 func BudgetBookTies() []Tie {
 	return []Tie{
 		{Name: "a-department-spends-what-funds-it", A: "departmentwide", B: "funding-sources", At: LevelDepartment},
@@ -196,56 +159,12 @@ func init() {
 }
 
 // BudgetBookExceptions are the cells of the Budget Book's comparisons that do
-// not tie, each pinned on both sides to what its schedule prints and to the
-// printed figure the two differ by.
+// not tie, each pinned on both sides and to the printed figure the two differ
+// by. None is a tolerance; each carries its own argument in Reason and Printed.
 //
-// THREE ARGUMENTS, TEN CELLS, AND NONE IS A TOLERANCE. Every other cell of
-// every comparison ties to the cent.
-//
-// WHAT GENERALISES IS THE ARITHMETIC AND NOT THE ARGUMENT. The comparison is
-// one function over every pair of cuts; what is worth reading about each
-// schedule is the argument for ITS cells -- which rows the pages do not print,
-// which figure they print instead and where -- and that is carried here, one
-// exception at a time, rather than in a check per schedule.
-//
-// pp.127-130 PRINT NO GENERAL FUND TRANSFER IN. p130's `Total General Fund` is
-// a revenue total, not a sources total, so the spine's General Fund TRANSFER IN
-// -- p0066.txt:24, 480,400 and 486,735 -- has no counterpart in the revenue
-// schedule. It is not unaccounted for: p76 prints the same movement and
-// transfers-detail carries it, which is the peer overlap the identity check
-// witnesses. Two cells, one per published column.
-//
-// pp.66-67's TRANSFER OUT INCLUDES TRANSFERS TO THE CIP THAT p76 DOES NOT LIST;
-// its grand total is the transfers-in side. pp.72-75 print the to-CIP figures
-// under a heading of their own, per major fund and as ONE aggregate for every
-// non-major fund, and those printed figures are the residuals here. Every one
-// is read off the page: internal-service and the non-major aggregate verbatim
-// (p0073.txt:53 and :56, p0075.txt:53 and :56); enterprise as the difference
-// of two figures on one page (:55 Total Major Funds less :53), because
-// general and Low Income Housing pay no transfer out in either budget year and
-// the major list is otherwise the four enterprises and Internal Service. The
-// non-major aggregate is one exception over two cells rather than two
-// exceptions, because splitting 28,693,590 between capital and special-revenue
-// would be a figure derived by difference from p67 while the pair is what the
-// page prints. What that gives up: money moved between those two groups is
-// invisible here. general and debt-service pay a printed "-" to the CIP and
-// tie without an exception. Eight cells over six exceptions.
-//
-// p0067's INTERNAL SERVICE COLUMN IS WRONG BY 250,000 AND THE CORPUS PUBLISHES
-// IT AS PRINTED. Its Services & Supplies prints 16,796,010 (p0067.txt:31) and
-// the five internal service funds' own rows on pp.172-183 sum to 250,000 less;
-// five schedules print the group's FY2026-27 expenditure as 26,294,515
-// (p0183.txt:64, p0075.txt:53, p0205, p0209, and p0061 as 26,906,515 with the
-// 612,000 to-CIP added) and only p0067 prints 26,544,515 (p0067.txt:34).
-// fisc-av0w decided the store keeps p0067's figure, because 16,546,010 is
-// printed on no page and a corrected fact would be a computed one. The
-// discrepancy is held apart on two axes: pp.171-176 by paying fund land it on
-// the internal-service GROUP, where both figures are printed; pp.85-125 by
-// object land it on SERVICES AND SUPPLIES, where neither sum is a figure any
-// page prints, and that entry is grounded in the first by SameResidualAs.
-// Neither axis could locate the cell alone; together they put it at
-// internal-service x services-and-supplies x FY2026-27, which is where
-// pp.172-183 put it from a third direction.
+// p0067's 250,000 is held apart on two axes, fund group and object, because
+// fisc-av0w keeps p0067's figure as printed and neither axis locates the cell
+// alone.
 func BudgetBookExceptions() []Exception {
 	general := map[Axis]string{AxisFundGroup: "general", AxisCategory: "transfers/in"}
 	out := func(group string) map[Axis]string {

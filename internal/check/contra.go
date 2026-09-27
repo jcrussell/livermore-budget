@@ -7,29 +7,14 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/project"
 )
 
-// contraLinksNameTheirSchedule asserts that a link's sign and the sentence
-// beside it agree, in both directions, and that the sentence names this link's
-// own source's parent.
-//
-// THE CHART DRAWS A REDUCTION FORWARD, AT ITS MAGNITUDE. Nothing in a ribbon's
-// geometry can carry a minus sign, so what makes a reduction legible as one is
-// the sentence -- and a negative figure that arrived without it would be drawn
-// as an addition of the same size, with no surface saying otherwise. That is
-// why the empty half is a finding and not a default.
-//
-// THE CONVERSE HALF IS THE ONE THAT CATCHES A FIX GONE WRONG: a positive link
-// carrying the sentence asserts a reduction the schedule does not print, and it
-// reads exactly like a correct one on the page.
-//
-// WHAT THIS CANNOT WITNESS, said plainly because the check would otherwise be
-// read as stronger than it is. It does not assert that Property Taxes is what
-// Budget Book p127 prints ERAF under: no fact carries a marker that would
-// distinguish a reduction's category from its line's, so the honest claim is
-// the one the document's own hierarchy can make. What it does assert is that
-// the sentence was composed from THIS document's nodes -- the defect it is
-// really guarding is a sentence composed downstream from a folded chart, where
-// a line's parent has been blanked and the words would name a category the
-// reader is not looking at, or nothing at all.
+// contraLinksNameTheirSchedule asserts that a link is negative exactly when it
+// carries a reduction sentence, and that the sentence names this document's own
+// parent of the link's source. The chart draws a reduction forward at its
+// magnitude, so without the sentence it reads as an addition; a positive link
+// with one asserts a subtraction no page makes. It cannot witness that the
+// named category is the one the page prints the row under -- no fact carries
+// that -- only that the sentence was composed from this document's tree and
+// not a folded chart's.
 type contraLinksNameTheirSchedule struct{}
 
 var _ Check = (*contraLinksNameTheirSchedule)(nil)
@@ -42,10 +27,8 @@ func (*contraLinksNameTheirSchedule) Description() string {
 		"of, in the words the page shows beside it; no other link names one"
 }
 
-// contraPrefix and contraOrphan are the two sentences a reduction can carry.
-// They are spelled here rather than read from the projection for the reason
-// this package spells every vocabulary it checks: a check reading its answer
-// from the thing under test asserts nothing.
+// contraPrefix and contraOrphan are the two sentences a reduction can carry,
+// spelled here rather than read from the projection under test.
 const (
 	contraPrefix = "printed as a reduction of "
 	contraOrphan = "printed rows netting to a reduction"

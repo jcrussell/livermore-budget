@@ -10,26 +10,11 @@ import (
 // uncitedFactsArePrintedZeros asserts that every fact a schedule document was
 // built over and cites on no link is a figure the city printed as zero.
 //
-// THE COUNTS IDENTITY CANNOT SEE THIS, AND THIS IS THE ARM THAT DOES. Each of
-// the four schedule documents -- fund-flows, department-spending,
-// department-funding and transfers-by-fund -- publishes facts = facts_cited +
-// facts_uncited, and its counts check re-derives those numbers from the links.
-// But uncited is DEFINED as reached-no-link, so the identity holds by
-// construction whatever an uncited fact is worth. What refuses a dropped
-// non-zero fact at build time is each producer's own loop, reached through
-// projections-build: the package that dropped the fact deciding that it did
-// not. This is the second reading, from outside internal/project: the facts
-// the document's options select, less the ids its links cite, each held to
-// amount_cents 0.
-//
-// PER FACT AND NOT PER CELL, which is stricter than the producers. They
-// classify by the cell a fact nets into, so two facts cancelling to zero pass
-// there and are found here; fisc-gszi is that difference on the producers'
-// side.
-//
-// THE SPINE IS NOT READ HERE. Its identity carries a stock term -- a fund
-// balance row is a fact and is not a flow -- and counts-reconcile is the check
-// of that shape.
+// facts = facts_cited + facts_uncited holds by construction whatever an uncited
+// fact is worth, so the counts checks cannot see a dropped non-zero fact; this
+// reads it from outside internal/project. Per fact, not per cell: two facts
+// cancelling to zero pass the producers and fail here (fisc-gszi). The spine
+// is not read: its fund balance rows are stocks behind no link.
 type uncitedFactsArePrintedZeros struct{}
 
 var _ Check = (*uncitedFactsArePrintedZeros)(nil)
@@ -38,8 +23,7 @@ func (*uncitedFactsArePrintedZeros) ID() string { return "uncited-facts-are-prin
 func (*uncitedFactsArePrintedZeros) Tier() int  { return 1 }
 func (*uncitedFactsArePrintedZeros) Full() bool { return false }
 func (*uncitedFactsArePrintedZeros) Description() string {
-	return "every fact a schedule document was built over and cites on no link is a printed " +
-		"zero, read off the facts and the links rather than off the producer that dropped it"
+	return "every fact a schedule document was built over and cites on no link is a printed zero"
 }
 
 func (*uncitedFactsArePrintedZeros) Run(_ context.Context, s *Subject) (Result, error) {

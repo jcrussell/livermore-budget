@@ -18,8 +18,7 @@ import (
 // against figures typed out of pp.66-67.
 //
 // The second guards the one exception structure.BudgetBookExceptions declares
-// on these pages, which is the part a reader has to take on trust and which the
-// first review pass over this lane found overstated.
+// on these pages, which is the part a reader has to take on trust.
 
 // departmentwidePages are the ELEVEN pages that carry an Expenditures by
 // Category block, in printed order. Fourteen pages print the DEPARTMENTWIDE
@@ -206,20 +205,10 @@ func TestThePrintedDepartmentwideRowsSumToTheSpineByObjectCategory(t *testing.T)
 	}
 }
 
-// NEITHER FIGURE IN THE BY-OBJECT EXCEPTION IS PRINTED, and this is what says
-// so rather than leaving it to a comment.
-//
-// The first review pass over this lane found the exception's doc claiming both
-// were "read off a page rather than either being derived", copied from the
-// by-fund-group entry where it is true. It is not true here: this corpus
-// prints no citywide object-category total. That claim reached a string
-// `fisc verify` publishes on every run, which is the published-versus-derived
-// invariant broken in published text.
-//
-// So the entry is grounded on its DIFFERENCE instead, and both halves of that
-// arrangement are asserted here: the figures are absent from the extracted
-// pages, and the entry is grounded (SameResidualAs) in an exception whose
-// figures ARE present and which holds the same residual apart.
+// NEITHER FIGURE IN THE BY-OBJECT EXCEPTION IS PRINTED: this corpus prints no
+// citywide object-category total. Both halves are asserted: the figures are
+// absent from the extracted pages, and the entry is grounded (SameResidualAs)
+// in an exception whose figures ARE printed and hold the same residual apart.
 func TestDepartmentwideExceptionFiguresAreNotPrintedAndTheirDifferenceIs(t *testing.T) {
 	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
 	if err != nil {
@@ -311,9 +300,7 @@ func TestDepartmentwideExceptionFiguresAreNotPrintedAndTheirDifferenceIs(t *test
 
 	// EXACT RATHER THAN A FLOOR, and computed from the documents rather than
 	// typed: two figures per pinned cell over every page of every document
-	// loaded. A floor would let a scan that stopped early pass, and a typed page
-	// count would go stale the day a document is added -- which is the same
-	// defect as the hardcoded 268 this replaces.
+	// loaded. A floor would let a scan that stopped early pass.
 	want := 0
 	for _, id := range docIDs {
 		want += s.Docs[id].PageCount()

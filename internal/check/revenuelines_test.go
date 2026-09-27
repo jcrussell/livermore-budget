@@ -12,10 +12,8 @@ import (
 )
 
 // linesTaxonomyYAML is the fixture taxonomy with two lines under
-// charges-for-services, one of them re-spelled by an alias, and no line under
-// taxes/property. The fixture's own taxes/property has a parent and is NOT a
-// line, because `taxes` is a rollup: that is what keeps TestFixtureVerdicts
-// vacuous over the fixture and is the definition under test here.
+// charges-for-services, one re-spelled by an alias. taxes/property is not a
+// line, because `taxes` is a rollup.
 const linesTaxonomyYAML = testTaxonomyYAML + `  - slug: charges-for-services/plan-check-fees
     label: Plan Check Fees
     document_term: Plan Check Fees
@@ -41,8 +39,7 @@ type revenueRow struct {
 }
 
 // revenueLinesSubject is the fixture facts with the first len(rows) rewritten
-// as revenue-by-fund rows, over a taxonomy of the caller's choosing. The check
-// reads Facts and Vocabulary and nothing else, so nothing else is built.
+// as revenue-by-fund rows, over a taxonomy of the caller's choosing.
 func revenueLinesSubject(t *testing.T, taxonomy string, rows ...revenueRow) *Subject {
 	t.Helper()
 	reg, err := registry.Load(fstest.MapFS{
@@ -70,10 +67,7 @@ func revenue(category, label string) revenueRow {
 	return revenueRow{mapping.KindRevenue, category, label}
 }
 
-// TestRevenueRowsAndLinesAreOneSet is the check's own table: both arms, the
-// ambiguity case, and the case the fixture could otherwise hide — a fact whose
-// category is itself a line, which fact-vocabulary passes because a line is
-// assignable.
+// TestRevenueRowsAndLinesAreOneSet is the check's own table.
 func TestRevenueRowsAndLinesAreOneSet(t *testing.T) {
 	plan := revenue("charges-for-services", "Plan Check Fees")
 	library := revenue("charges-for-services", "Library Fees")
@@ -105,9 +99,8 @@ func TestRevenueRowsAndLinesAreOneSet(t *testing.T) {
 			rows: []revenueRow{plan}, status: StatusFail, subjects: 3,
 			want: []string{`line "charges-for-services/library-fees" is printed by no fact`},
 		}, {
-			// Byte for byte, in both arms at once: the mis-cased row resolves to
-			// nothing AND the line it was meant for goes unprinted. One drift,
-			// two findings, and neither arm alone would have named both halves.
+			// One drift, both arms: the row resolves to nothing and its line
+			// goes unprinted.
 			name: "a row spelled differently from its line", taxonomy: linesTaxonomyYAML,
 			rows:   []revenueRow{revenue("charges-for-services", "Plan check fees"), library},
 			status: StatusFail, subjects: 4,
@@ -116,9 +109,7 @@ func TestRevenueRowsAndLinesAreOneSet(t *testing.T) {
 				`line "charges-for-services/plan-check-fees" is printed by no fact`,
 			},
 		}, {
-			// A rule that classified the row AS the line. A line has no lines
-			// under it, so the row resolves to nothing; and the line, reached by
-			// no fact through its parent, is unprinted.
+			// A rule that classified the row as the line.
 			name: "a row whose category is itself a line", taxonomy: linesTaxonomyYAML,
 			rows:   []revenueRow{revenue("charges-for-services/plan-check-fees", "Plan Check Fees"), library},
 			status: StatusFail, subjects: 4,
@@ -127,10 +118,9 @@ func TestRevenueRowsAndLinesAreOneSet(t *testing.T) {
 				`line "charges-for-services/plan-check-fees" is printed by no fact`,
 			},
 		}, {
-			// registry.Load refuses one category listing a term twice, and
-			// deliberately not two categories sharing one -- fund-balance/beginning
-			// and fund-balance/ending both print "Fund Balance / Working Capital".
-			// So two SIBLING lines can both claim a row, and only this arm says so.
+			// registry.Load allows two categories one term (fund-balance/beginning
+			// and /ending both print "Fund Balance / Working Capital"), so only
+			// this arm refuses two sibling lines claiming a row.
 			name: "a row resolving to two lines",
 			taxonomy: linesTaxonomyYAML + `  - slug: charges-for-services/plan-check
     label: Plan Check
@@ -145,8 +135,7 @@ func TestRevenueRowsAndLinesAreOneSet(t *testing.T) {
 			want: []string{`"Plan Check Fees": resolves to 2 lines under "charges-for-services", ` +
 				`charges-for-services/plan-check, charges-for-services/plan-check-fees`},
 		}, {
-			// The second arm fires with no row at all: declared lines and no
-			// facts is a failure, not a vacuous result.
+			// Declared lines and no facts is a failure, not vacuous.
 			name: "lines declared and no row printed", taxonomy: linesTaxonomyYAML,
 			rows: nil, status: StatusFail, subjects: 2,
 			want: []string{
@@ -154,8 +143,7 @@ func TestRevenueRowsAndLinesAreOneSet(t *testing.T) {
 				`line "charges-for-services/plan-check-fees" is printed by no fact`,
 			},
 		}, {
-			// Neither the spine's revenue nor pp.131-140's Transfers In is a
-			// subject: the scope and the kind are both required.
+			// Scope and kind are both required.
 			name: "rows outside the scope or kind are not subjects", taxonomy: testTaxonomyYAML,
 			rows:   []revenueRow{{mapping.KindTransferIn, "transfers/in", "Transfers In"}},
 			status: StatusVacuous, subjects: 0,
@@ -186,10 +174,8 @@ func TestRevenueRowsAndLinesAreOneSet(t *testing.T) {
 			if tt.summary != "" && !strings.Contains(res.Summary, tt.summary) {
 				t.Errorf("summary %q does not contain %q", res.Summary, tt.summary)
 			}
-			// The fixture is not hiding the guard behind an earlier gate: every
-			// category these rows carry is assignable, so fact-vocabulary is
-			// green over the same subject and this check is the only one that
-			// reports.
+			// fact-vocabulary is green over the same subject, so no earlier
+			// gate hides this one.
 			voc, err := (&factVocabulary{}).Run(t.Context(), s)
 			if err != nil {
 				t.Fatalf("fact-vocabulary: %v", err)
@@ -202,19 +188,12 @@ func TestRevenueRowsAndLinesAreOneSet(t *testing.T) {
 	}
 }
 
-// TestEveryRevenueLineIsARowOfTheMapping is the witness between the registry
-// and the RULE FILE, at go test time and before any fact exists: every line
-// data/taxonomy.yaml declares is a row of a revenue-by-fund rule of kind
-// revenue, spelled as one of the line's printed terms, and every such row
-// resolves to exactly one line. It is the same claim fact-revenue-lines-resolve
-// makes against the fact store, made against the thing that produced the fact
-// store, so a row a rule declares that no page yields a fact for is caught
-// here and nowhere else.
+// TestEveryRevenueLineIsARowOfTheMapping makes fact-revenue-lines-resolve's
+// claim against the rule file rather than the fact store, so a rule row no
+// page yields a fact for is caught here.
 //
-// Mutation: move one entry to a sibling category -- taxes/property/eraf to
-// taxes/other/eraf, parent and slug together, since the loader refuses the
-// parent moving alone -- and this fails twice, naming the line no rule row
-// carries and the rule row no line resolves.
+// Mutation: move taxes/property/eraf to taxes/other/eraf; this fails twice,
+// naming the line no rule row carries and the rule row no line resolves.
 func TestEveryRevenueLineIsARowOfTheMapping(t *testing.T) {
 	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
 	if err != nil {
@@ -269,11 +248,8 @@ func TestEveryRevenueLineIsARowOfTheMapping(t *testing.T) {
 		}
 	}
 
-	// A count against the documents, not against the registry: pp.127-140
-	// print 101 distinct (category, row) pairs of kind revenue, measured off
-	// facts/facts.jsonl on 2026-09-12 as the distinct (category, row_label) of
-	// scope revenue-by-fund and kind revenue. Both sides are pinned to it so
-	// that a deleted line and a deleted rule row cannot cancel out.
+	// pp.127-140 print 101 distinct (category, row) revenue pairs. Both sides
+	// are pinned so a deleted line and a deleted rule row cannot cancel out.
 	if got := len(rows); got != 101 {
 		t.Errorf("the rule files carry %d distinct revenue rows of scope %s, want 101; "+
 			"the pin is a count against pp.127-140 and means nothing if the schedule changed",
@@ -284,11 +260,9 @@ func TestEveryRevenueLineIsARowOfTheMapping(t *testing.T) {
 	}
 }
 
-// TestRevenueLinesAreDistinctFromRollupChildren pins the definition the two
-// witnesses and the check share, over the committed registry: a line is a child
-// of an ASSIGNABLE category, so the children of `taxes`, `transfers` and
-// `fund-balance` are categories, and nothing here treats one as a row. The
-// three sets are told apart by the flag and never by depth.
+// TestRevenueLinesAreDistinctFromRollupChildren pins over the committed
+// registry that a line is a child of an assignable category, told apart by the
+// flag and never by depth.
 func TestRevenueLinesAreDistinctFromRollupChildren(t *testing.T) {
 	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
 	if err != nil {
@@ -317,10 +291,7 @@ func TestRevenueLinesAreDistinctFromRollupChildren(t *testing.T) {
 	if len(lines) == 0 {
 		t.Fatal("the committed registry declares no revenue line")
 	}
-	// A line's parent is a category a rule writes, so every line is at least
-	// two segments deep and its parent is the slug minus the last segment --
-	// which is the loader's grammar, restated here against the committed file
-	// because the definition above leans on it.
+	// Every line's parent is its slug minus the last segment.
 	for _, slug := range lines {
 		c, _ := s.Vocabulary.Category(slug)
 		if want := slug[:strings.LastIndexByte(slug, '/')]; c.Parent != want {

@@ -12,18 +12,14 @@ import (
 // declaredVacuous, for the same reason and with the same danger. A projection
 // that produces no graph is not checked by anything in graph.go, and a document
 // nobody checks is a document that can be wrong on the published site while
-// `fisc verify` prints all-green. Before this map, such a projection could not
-// be registered at all -- Load returned an error and the whole run died -- which
-// stopped the wrong thing in the wrong way: it protected the corpus by refusing
-// to report on it.
+// `fisc verify` prints all-green.
 //
 // AN ENTRY HERE IS A PROMISE THAT SOMEONE IS COMING BACK. Adding one is how a
 // new document shape lands before its checks do; leaving one is how a document
 // stays unchecked forever. staleDocumentDeclarations is the branch that refuses
 // the second, by failing an entry that no longer names a built projection.
 //
-// It is empty today, and that is the state to keep it in: every projection the
-// registry returns produces a graph, and every graph is checked.
+// It is empty, and that is the state to keep it in.
 var uncheckedDocuments = map[string]string{}
 
 // documentsAreChecked asserts every built projection is one some check reads.
@@ -207,34 +203,21 @@ func documentShape(p projection) string {
 		// trend-points-tie-to-facts and trend-series-are-complete.
 		return "series"
 	case p.FundFlows != nil:
-		// The six structural checks that read Subject.Linked: graph-acyclic,
-		// node-tiers-are-declared, derived-nodes-justified,
-		// link-values-tie-to-facts, node-hierarchy-well-formed and
-		// constraint-tier-vocabulary; plus fund-flows-counts-reconcile and
-		// uncited-facts-are-printed-zeros. NOT the three headline ones, which
-		// is the whole point of the shape: this document publishes no headline.
+		// Every check over Subject.linkedDocuments, plus
+		// fund-flows-counts-reconcile; not the headline ones, since this shape
+		// publishes no headline.
 		return "linked graph, no headline"
 	case p.DepartmentSpending != nil:
-		// The same six structural checks that read Subject.Linked, plus
-		// schedule-counts-reconcile and uncited-facts-are-printed-zeros. The
-		// arithmetic this document rests on is cuts-tie-along-the-lattice,
-		// which reads the FACTS and needs no graph.
+		// Every check over Subject.linkedDocuments, plus
+		// schedule-counts-reconcile.
 		return "cross-tab, no headline"
 	case p.DepartmentFunding != nil:
-		// The same six structural checks that read Subject.Linked, plus
-		// schedule-counts-reconcile and uncited-facts-are-printed-zeros. The
-		// arithmetic this document rests on is cuts-tie-along-the-lattice,
-		// which reads the FACTS and needs no graph; the shape is named apart
-		// from the cross-tab's because they are two readings of the same
-		// eleven pages.
+		// As the cross-tab, and named apart from it: two readings of the same
+		// pages.
 		return "funding graph, no headline"
 	case p.TransfersByFund != nil:
-		// The same six structural checks that read Subject.Linked, plus
-		// transfer-legs-pair, which is the only check in the tree that reads
-		// Link.TransferID and had no subject at all until this shape existed,
-		// plus schedule-counts-reconcile and uncited-facts-are-printed-zeros.
-		// The arithmetic this document rests on is cuts-tie-along-the-lattice,
-		// which reads the FACTS and is therefore not named here.
+		// Every check over Subject.linkedDocuments, plus transfer-legs-pair
+		// and schedule-counts-reconcile.
 		return "paired legs, no headline"
 	default:
 		return ""

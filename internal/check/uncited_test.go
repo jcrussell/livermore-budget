@@ -10,10 +10,8 @@ import (
 )
 
 // scheduleSubject is one document of each of the four schedule shapes, each
-// built over two facts of its own scope: one behind a link and one uncited
-// printed zero. It is assembled by hand rather than through the producers,
-// because every producer refuses a non-zero uncited fact at build time and a
-// test that went through one would be green because the gate fired earlier.
+// over one cited fact and one uncited printed zero. Hand-assembled, because
+// every producer refuses a non-zero uncited fact and would fire first.
 func scheduleSubject() *Subject {
 	col := project.Column{FiscalYear: 2026, Basis: mapping.BasisAdopted}
 	mk := func(id, scope string, cents int64) fact.Fact {
@@ -53,12 +51,7 @@ func scheduleSubject() *Subject {
 }
 
 // TestUncitedFactsArePrintedZerosIsFailable plants one non-zero uncited fact
-// in each of the four shapes in turn.
-//
-// EACH CASE IS ONE THE COUNTS CHECKS CANNOT SEE: the document's facts,
-// facts_cited and facts_uncited are all still right, because uncited is
-// counted and not valued. The only thing that has moved is what the dropped
-// fact is worth.
+// in each of the four shapes in turn; every count stays right.
 func TestUncitedFactsArePrintedZerosIsFailable(t *testing.T) {
 	c := &uncitedFactsArePrintedZeros{}
 
@@ -94,10 +87,7 @@ func TestUncitedFactsArePrintedZerosIsFailable(t *testing.T) {
 		})
 	}
 
-	// THE COUNTS CHECK IS GREEN ON THE SAME DAMAGE, which is the claim this
-	// check exists for: the drill-down's facts, facts_cited and facts_uncited
-	// all still re-derive, because the dropped fact is still uncited and
-	// uncited is a count.
+	// The counts check is green on the same damage.
 	s := scheduleSubject()
 	for i := range s.Facts {
 		if s.Facts[i].ID == "ff-z" {
@@ -115,9 +105,8 @@ func TestUncitedFactsArePrintedZerosIsFailable(t *testing.T) {
 	}
 }
 
-// TestUncitedFactsArePrintedZerosSkipsTheSpine pins that the spine is not read:
-// its fund balance rows are facts behind no link and are stocks, not zeros,
-// and counts-reconcile is the check of that identity.
+// TestUncitedFactsArePrintedZerosSkipsTheSpine: the spine's fund balance rows
+// are stocks behind no link, not zeros.
 func TestUncitedFactsArePrintedZerosSkipsTheSpine(t *testing.T) {
 	s := testSubject(t)
 	res, err := (&uncitedFactsArePrintedZeros{}).Run(t.Context(), s)

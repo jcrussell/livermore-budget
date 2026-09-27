@@ -15,14 +15,9 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/structure"
 )
 
-// lineTieTaxonomyYAML puts a line under taxes/property as well as under
-// charges-for-services.
-//
-// TWO CATEGORIES WITH LINES IN ONE FUND GROUP IS THE WHOLE POINT of the shape.
-// Re-pointing a line onto its neighbour is the classification error this check
-// exists for, and with only one category carrying a line the mutation would land
-// on a cell the spine does not publish at all — which fails for the wrong
-// reason, and would pass a check that compared nothing but totals.
+// lineTieTaxonomyYAML puts lines under two categories of one fund group, so
+// re-pointing a line onto its neighbour lands on a cell the spine publishes
+// rather than failing for the wrong reason.
 const lineTieTaxonomyYAML = linesTaxonomyYAML + `  - slug: taxes/property/current-secured
     label: Current Year - Secured
     document_term: Current Year - Secured
@@ -53,19 +48,9 @@ const (
 )
 
 // lineTieSubject is that spine and a drill-down that decomposes it, plus a
-// second drill-down of a column the spine does not publish.
-//
-// THE UNPAIRED COLUMN IS NOT DECORATION. The committed corpus has two of them —
-// pp.127-140 and pp.167-170 print four columns and pp.66-67 print two — so the
-// document's own lines are examined in a slice no spine cell is compared for,
-// and this fixture would hide that if it carried the paired column alone.
-//
-// THE CONTRA ROW IS NOT DECORATION EITHER. pp.127-140 print ERAF and RPTTF
-// Reduction in parentheses under Property Taxes, and the committed document draws
-// two negative links per adopted column, both into fund/100 under taxes/property.
-// The General Fund property tax cell below ties ONLY if the negative is summed in
-// with its sign: dropping it, or taking its absolute value, leaves the cell
-// $200.00 and $400.00 out respectively.
+// second drill-down of a column the spine does not publish, as the corpus has.
+// The ERAF contra row makes General Fund property tax tie only if the negative
+// is summed with its sign.
 //
 //	general      revenue taxes/property        100,000  120,000 secured + (20,000) ERAF
 //	             revenue charges-for-services   40,000  drawn as one line into fund/100
@@ -201,19 +186,11 @@ func TestRevenueLinesTieOverTheFixture(t *testing.T) {
 		// exempted General Fund transfer in — and six line nodes, three in each
 		// document.
 		Subjects: 11,
-		Summary: "5 cells over 1 (fiscal year, basis) pair(s) the spine publishes, each the " +
-			"sum of the drill-down's 10 flows into funds equal to the spine's own figure to " +
-			"the cent, with every fund's group read from data/funds.yaml rather than from " +
-			"the document; 1 of those cells are a spine cell printed as zero that no link " +
-			"is drawn for, which ties by construction and not by two figures agreeing; and " +
-			"6 revenue-line nodes, each parented to the category data/taxonomy.yaml " +
-			"declares it under; 1 further cell(s) are declared exceptions and are NOT among " +
-			"the 5; 1 further pair(s) the drill-down publishes have no spine column and are " +
-			"not reconciled: FY2024 actual; FY2026 adopted general transfers/in is drawn " +
-			"by no link and is held apart: " + generalTransferInException(t, 2026).Reason +
-			". It is the same declaration cuts-tie-along-the-lattice holds the " +
-			"revenue-detail cut apart from the spine with (fisc-5gk.3.1); $100.00 is " +
-			"published by the spine and reaches this chart through nothing",
+		Summary: "5 cells over 1 (fiscal year, basis) pair(s), summed from 10 flows into " +
+			"funds, 1 of them a printed zero no link is drawn for; 6 revenue-line nodes " +
+			"under their data/taxonomy.yaml category; 1 cell(s) held apart, not among the 5: " +
+			generalTransferInException(t, 2026).Name + " (FY2026 adopted general transfers/in, " +
+			"$100.00); 1 pair(s) with no spine column: FY2024 actual",
 	}
 	got := verdict{res.Status, res.Subjects, res.Summary}
 	if diff := cmp.Diff(want, got); diff != "" {
@@ -221,10 +198,8 @@ func TestRevenueLinesTieOverTheFixture(t *testing.T) {
 	}
 }
 
-// TestRevenueLinesTieIsFailable is the mutation table, and the first row is the
-// one that matters: it is green under every other check in this package, which
-// is the measurement fisc-ko1j.10's notes record and the reason this check is
-// not a sharpening of node-hierarchy-well-formed.
+// TestRevenueLinesTieIsFailable is the mutation table. The first row is green
+// under every other check in this package.
 func TestRevenueLinesTieIsFailable(t *testing.T) {
 	cases := []struct {
 		name         string
@@ -251,10 +226,8 @@ func TestRevenueLinesTieIsFailable(t *testing.T) {
 			},
 		},
 		{
-			// What node-hierarchy-well-formed cannot see, because an unparented
-			// node is not one of its subjects. The money lands in a cell whose
-			// category is the empty string, so it is reported twice and never
-			// dropped.
+			// Invisible to node-hierarchy-well-formed; the money lands in a
+			// cell whose category is empty.
 			name:       "a line's parent blanked",
 			damage:     func(t *testing.T, s *Subject) { lineNode(t, s, securedLine).Parent = "" },
 			wantStatus: StatusFail, wantSubjects: 12,
@@ -281,10 +254,7 @@ func TestRevenueLinesTieIsFailable(t *testing.T) {
 			},
 		},
 		{
-			// The parent is the one the taxonomy declares and the document does
-			// not carry a node for it, which is the fold with nothing at the
-			// end of it. Arm one is untouched: the money still lands in the
-			// right cell.
+			// Arm one is untouched: the money still lands in the right cell.
 			name: "the category node removed from the document",
 			damage: func(_ *testing.T, s *Subject) {
 				d := s.Projections[0].FundFlows
@@ -303,9 +273,7 @@ func TestRevenueLinesTieIsFailable(t *testing.T) {
 			},
 		},
 		{
-			// The line's own id and the link that sources from it move together,
-			// which is the drift a renamed taxonomy slug makes: the document
-			// still adds up and names a line nothing declares.
+			// A renamed taxonomy slug: the document still adds up.
 			name: "a line the taxonomy declares nothing about",
 			damage: func(t *testing.T, s *Subject) {
 				lineLink(t, s, securedLine, "fund/100").Source = "revenue-line/taxes/property/invented"
@@ -317,9 +285,7 @@ func TestRevenueLinesTieIsFailable(t *testing.T) {
 			},
 		},
 		{
-			// The fund group is the registry's, so re-targeting a link moves the
-			// money between groups even though both fund nodes are parented
-			// exactly as before.
+			// The fund group is the registry's, not the fund node's parent.
 			name:       "a link re-targeted at a fund of another group",
 			damage:     func(t *testing.T, s *Subject) { lineLink(t, s, libraryLine, "fund/500").Target = "fund/700" },
 			wantStatus: StatusFail, wantSubjects: 12,
@@ -331,9 +297,7 @@ func TestRevenueLinesTieIsFailable(t *testing.T) {
 			},
 		},
 		{
-			// The fund's own parent edge says enterprise money is now general's,
-			// and the check does not believe it: a mis-parented fund must not be
-			// able to reconcile itself against the group it claims.
+			// A mis-parented fund cannot reconcile against the group it claims.
 			name: "a fund re-parented in the document changes nothing",
 			damage: func(t *testing.T, s *Subject) {
 				lineNode(t, s, "fund/500").Parent = "fund-group/general"
@@ -350,11 +314,8 @@ func TestRevenueLinesTieIsFailable(t *testing.T) {
 			},
 		},
 		{
-			// THE CONTRA ROW, SUMMED WITH ITS SIGN. Drawing ERAF positive is
-			// what taking a contra's absolute value does, and the cell it sits
-			// in is then out by twice the row. The base fixture passing is the
-			// other half of this proof: that cell ties only because the negative
-			// was added rather than subtracted or dropped.
+			// Taking a contra's absolute value puts the cell out by twice the
+			// row; the base fixture passing is the other half of the proof.
 			name: "a contra row drawn positive",
 			damage: func(t *testing.T, s *Subject) {
 				lineLink(t, s, erafLine, "fund/100").ValueCents = 20_000
@@ -366,9 +327,7 @@ func TestRevenueLinesTieIsFailable(t *testing.T) {
 			},
 		},
 		{
-			// A flow into a fund from neither a line nor the transfer endpoint
-			// is money this check would otherwise sum into no cell, and the
-			// cell it belongs to would then read as a dropped rule.
+			// Neither a line nor the transfer endpoint: money summed into no cell.
 			name:       "a third shape of flow into a fund",
 			damage:     func(t *testing.T, s *Subject) { lineLink(t, s, libraryLine, "fund/100").Source = "fund-balance/draw" },
 			wantStatus: StatusFail, wantSubjects: 11,
@@ -380,9 +339,7 @@ func TestRevenueLinesTieIsFailable(t *testing.T) {
 			},
 		},
 		{
-			// The exemption is a claim about the document, and this is the arm
-			// that stops it outliving the claim: the General Fund transfer in is
-			// drawn after all, so it must reconcile like every other cell.
+			// The exemption must not outlive its claim about the document.
 			name: "the exempted cell drawn after all",
 			damage: func(_ *testing.T, s *Subject) {
 				d := s.Projections[0].FundFlows
@@ -397,11 +354,8 @@ func TestRevenueLinesTieIsFailable(t *testing.T) {
 			},
 		},
 		{
-			// A fund the registry does not list. internal/project refuses to
-			// build such a document at all, so this arm reports a subject that
-			// reaches the check only through a hand-built one — and it is here
-			// because guessing the group from the node's parent is exactly what
-			// this check must not do when the registry cannot answer.
+			// Reachable only through a hand-built document; the group must not
+			// be guessed from the node's parent.
 			name:       "a link into a fund data/funds.yaml does not list",
 			damage:     func(t *testing.T, s *Subject) { lineLink(t, s, transfersInNode, "fund/500").Target = "fund/999" },
 			wantStatus: StatusFail, wantSubjects: 11,
@@ -439,9 +393,8 @@ func TestRevenueLinesTieIsFailable(t *testing.T) {
 	}
 }
 
-// TestRevenueLinesTieIsVacuousWithoutADrillDown pins the one verdict that must
-// not be a pass: with no drill-down there is no line, and a check that reported
-// nothing wrong would be reporting that the lines had been checked.
+// TestRevenueLinesTieIsVacuousWithoutADrillDown pins that no drill-down is
+// vacuous, not a pass.
 func TestRevenueLinesTieIsVacuousWithoutADrillDown(t *testing.T) {
 	s := lineTieSubject(t)
 	s.Projections = nil
@@ -457,11 +410,8 @@ func TestRevenueLinesTieIsVacuousWithoutADrillDown(t *testing.T) {
 	}
 }
 
-// TestRevenueLinesTieRefusesATwoColumnDrillDown covers the arm that has no
-// finding to report over any document internal/project will build: a flow
-// diagram of two budget years. The links of such a document cannot be keyed to a
-// fiscal year, so summing them would tie against neither column, and the arm
-// exists so that the cells go unreported rather than wrongly reported.
+// TestRevenueLinesTieRefusesATwoColumnDrillDown covers a shape internal/project
+// never builds: links that cannot be keyed to a fiscal year.
 func TestRevenueLinesTieRefusesATwoColumnDrillDown(t *testing.T) {
 	s := lineTieSubject(t)
 	s.Projections[0].Options.Columns = []project.Column{
@@ -480,9 +430,8 @@ func TestRevenueLinesTieRefusesATwoColumnDrillDown(t *testing.T) {
 	}
 }
 
-// TestRevenueLinesTieReadsTheFactsItIsGiven is the guard on the arithmetic's
-// other side: the spine is the FACT STORE and not the spine graph, so a fact
-// that leaves the store leaves the comparison.
+// TestRevenueLinesTieReadsTheFactsItIsGiven: the spine side is the fact store,
+// not the spine graph.
 func TestRevenueLinesTieReadsTheFactsItIsGiven(t *testing.T) {
 	s := lineTieSubject(t)
 	s.Facts = slices.DeleteFunc(s.Facts, func(f fact.Fact) bool {

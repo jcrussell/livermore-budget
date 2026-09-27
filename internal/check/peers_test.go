@@ -10,10 +10,9 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/structure"
 )
 
-// TestTheCommittedPeersOverlapOnlyByDeclaredIdentity pins, by name, what the
-// peer check covers over the committed corpus: which pairs at one level were
-// compared, the one overlap and its figure, and which pairs were refused with
-// which reason.
+// TestTheCommittedPeersOverlapOnlyByDeclaredIdentity pins, by name, which
+// pairs at one level the committed corpus compares, the one overlap and its
+// figure, and which pairs are refused with which reason.
 func TestTheCommittedPeersOverlapOnlyByDeclaredIdentity(t *testing.T) {
 	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
 	if err != nil {
@@ -31,11 +30,21 @@ func TestTheCommittedPeersOverlapOnlyByDeclaredIdentity(t *testing.T) {
 		`revenue-detail + transfers-detail at fund-by-category: 22 shared cell(s), 22 under identity "a-transfer-in-is-printed-at-both-ends" carrying $42183495.00 on each side`,
 		"acfr-general-fund-summary + acfr-fund-balances/general at fund-group-by-category: 0 shared cell(s)",
 		"acfr-changes-in-fund-balances + acfr-fund-balances/other-governmental at category: 0 shared cell(s)",
-		`peers "spine" and "acfr-general-fund-summary": "spine" prints [adopted] columns and "acfr-general-fund-summary" prints [audited]; there is no column both print`,
-		`peers "spine" and "acfr-fund-balances/general"`,
+		"2 pair(s) at one level refused: spine/acfr-general-fund-summary, spine/acfr-fund-balances/general",
 	} {
 		if !strings.Contains(res.Summary, want) {
 			t.Errorf("summary does not say %q", want)
+		}
+	}
+	cut := map[string]structure.Cut{}
+	for _, c := range structure.AllCuts() {
+		cut[c.Name] = c
+	}
+	for _, b := range []string{"acfr-general-fund-summary", "acfr-fund-balances/general"} {
+		_, err := structure.Peers(s.Facts, cut["spine"], cut[b], structure.BudgetBookIdentities(), structure.BudgetBookExceptions())
+		want := `"spine" prints [adopted] columns and "` + b + `" prints [audited]; there is no column both print`
+		if err == nil || !strings.Contains(err.Error(), want) {
+			t.Errorf("Peers(spine, %s) = %v, want %q", b, err, want)
 		}
 	}
 }
@@ -75,10 +84,9 @@ func TestThePeerCheckGoesRed(t *testing.T) {
 	}
 }
 
-// TestADocumentSelectingBothReadingsIsAFinding is fisc-n6yq's acceptance (b)
-// reached through the registered check: a projection whose scope set holds
-// both readings of one figure is refused as a view whether or not its own
-// code noticed, and one whose scopes are summable together is not.
+// TestADocumentSelectingBothReadingsIsAFinding: a projection whose scope set
+// holds both readings of one figure, or a cut beside its decomposition, is
+// refused as a view.
 func TestADocumentSelectingBothReadingsIsAFinding(t *testing.T) {
 	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
 	if err != nil {

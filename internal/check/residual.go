@@ -3,52 +3,16 @@ package check
 import "maps"
 
 // residualNodes are the spine's flow endpoints, each with the reason a
-// fund-level schedule cannot decompose it.
+// fund-level schedule cannot decompose it: money pp.66-67 print at group grain
+// and pp.127-140 and pp.167-170 print nowhere finer. Declared rather than
+// inferred, so a row the drill-down drops is unaccounted, not absorbed.
 //
-// THE DRILL PUTS ONE DOCUMENT INSIDE THE OTHER, AND THE TOTALS DO NOT MATCH.
-// pp.66-67 print a fund group's inflow and outflow whole; pp.127-140 and
-// 167-170 print the same money by fund and by division, and they print no
-// fund-balance row and decompose no transfer out. What is left over when the
-// second is subtracted from the first is the RESIDUAL, and it is money the
-// city printed at group grain and nowhere finer -- not an error, and not a
-// figure anything here computes.
-//
-// DECLARED RATHER THAN INFERRED. "The fund-level document carries no link from
-// this node" is evidence about today's corpus and not a rule, and a set
-// inferred from it would absorb whatever the drill-down dropped next. So an
-// endpoint is in the residual only when it is named HERE, and every other gap
-// between the two documents is unaccounted.
-//
-// AN ENDPOINT IS RESIDUAL PER GROUP, NOT PER NODE, and the rule deciding which
-// is the documents' own: a declared endpoint's flow into (or out of) a group is
-// residual where the fund-level document carries NOTHING from that endpoint
-// into that group's funds, and is decomposed where it carries it WHOLE. It is
-// never split. Measured on the committed corpus, transfers/in is both:
-// pp.127-140 print Transfers In for funds 210/310/400/401/402/610/622/642 and
-// for no general-group fund, so the spine's 480,400 into general has no
-// fund-level counterpart while enterprise's 13,247,000 is decomposed to the
-// cent. A rule that subtracted the fund-level figure instead would make a
-// dropped fund row look like residual.
-//
-// THE SET CROSSES THE SEAM AND THE RULE DOES NOT. The chart's residual node
-// copies these spine links verbatim onto one derived node per opened group;
-// this map, read through [ResidualNodes], is the set it chooses from, and
-// site/app.js decides which of them by the whole-or-nothing rule above, spelled
-// there in its own terms. Two copies of a set that must agree drift; one
-// declaration cannot. The rule has no seam and is spelled once on each side,
-// which is fisc-8wn7.
-//
-// WHAT HOLDS THE SET. The keys are the five ids endpointTiers declares tiers
-// for, and a test pins that the two tables name the same nodes: an endpoint is
-// a flow that sits outside the hierarchy, and sitting outside the hierarchy is
-// exactly what makes it undecomposable by a schedule that IS the hierarchy.
-// The reasons quote no figure, because one reason is shown under every
-// column; the ribbons carry the money. What cuts-tie-along-the-lattice
-// compares is the claim under them -- the fund-level cuts print no
-// fund-balance row and no transfer out by declaration
-// (structure.BudgetBookCuts), and the general group's transfer in is a
-// declared exception. Deriving this set from those declarations rather than
-// restating it beside them is fisc-8wn7 too.
+// An endpoint is residual per group, never split: where the fund-level
+// document carries nothing from it into that group's funds, not where it
+// carries it whole. transfers/in is both -- residual into general, decomposed
+// into enterprise. site/app.js spells that rule again (fisc-8wn7). The keys
+// are endpointTiers', and a test holds them equal. The reasons quote no
+// figure: one reason is shown under every column.
 var residualNodes = map[string]string{
 	"fund-balance/draw": "a negative change in working capital, inferred from pp.66-67's " +
 		"Change in Working Capital row and drawn into the group. pp.127-140 print no " +
