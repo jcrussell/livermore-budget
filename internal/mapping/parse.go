@@ -924,6 +924,9 @@ func validateRule(r *Rule, errf errFunc) error {
 	if err := validateTotalRowAbove(r, errf); err != nil {
 		return err
 	}
+	if err := validateTotalRowTail(r, errf); err != nil {
+		return err
+	}
 	if err := validatePrintedDecimals(r, errf); err != nil {
 		return err
 	}
@@ -1072,6 +1075,26 @@ func validatePrintedDecimals(r *Rule, errf errFunc) error {
 					"the rule so the block with the orphan and the block that "+
 					"rounds are checked separately")
 		}
+	}
+	return nil
+}
+
+// validateTotalRowTail refuses a tail with nothing to follow: no total_row, a
+// total printed above its rows (whose line is the section anchor's, so the
+// line after it is the block's first row), or a tail that is not one line of
+// text.
+func validateTotalRowTail(r *Rule, errf errFunc) error {
+	if r.TotalRowTail == "" {
+		return nil
+	}
+	switch {
+	case r.TotalRow == "":
+		return errf(r.ID, "total_row_tail", "declared without a total_row")
+	case r.TotalRowAbove:
+		return errf(r.ID, "total_row_tail", "declared with total_row_above")
+	case strings.TrimSpace(r.TotalRowTail) != r.TotalRowTail || strings.Contains(r.TotalRowTail, "\n"):
+		return errf(r.ID, "total_row_tail",
+			"is %q; it is the one printed line after the total, trimmed", r.TotalRowTail)
 	}
 	return nil
 }

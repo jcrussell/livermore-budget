@@ -67,6 +67,16 @@ func BudgetBookCuts() []Cut {
 			Bases:          budgetBookDetail,
 		},
 		{
+			// pp.172-183, expenditure by fund and object for every operating
+			// fund. Its General Fund is pp.167-170's money, which this cut's
+			// containment of general-fund-departments holds equal.
+			Name:  "fund-expenditures",
+			Scope: "expenditure-by-fund",
+			Level: LevelFundByCategory,
+			Kinds: []mapping.Kind{mapping.KindExpenditure},
+			Bases: budgetBookDetail,
+		},
+		{
 			// pp.85-125, expenditure by department and object across every
 			// fund, with no fund axis printed anywhere on the pages.
 			Name:           "departmentwide",
@@ -185,9 +195,9 @@ func init() {
 // not tie, each pinned on both sides and to the printed figure the two differ
 // by. None is a tolerance; each carries its own argument in Reason and Printed.
 //
-// p0067's 250,000 is held apart on two axes, fund group and object, because
-// fisc-av0w keeps p0067's figure as printed and neither axis locates the cell
-// alone.
+// p0067's 250,000 is held apart once per schedule that decomposes its cell:
+// pp.85-125 by fund group and by object, which neither locates it alone, and
+// pp.172-183 by both at once. fisc-av0w keeps p0067's figure as printed.
 func BudgetBookExceptions() []Exception {
 	general := map[Axis]string{AxisFundGroup: "general", AxisCategory: "transfers/in"}
 	present := func(c int64) Sum { return Sum{Cents: c, Present: true} }
@@ -255,6 +265,35 @@ func BudgetBookExceptions() []Exception {
 				"and 26,294,515 is printed on p0183.txt:64, p0075.txt:53, p0205 and p0209",
 			Reason: "p0067's Internal Service Funds column prints Services & Supplies of 16,796,010 for " +
 				"FY2026-27, and the five internal service funds' own rows on pp.172-183 sum to 250,000 less. " +
+				"The store publishes p0067 as printed",
+			Bead: "fisc-av0w",
+		},
+		{
+			Name: "general-fund-departments-rounds-services-and-supplies-2024",
+			Cut:  "general-fund-departments", Against: "fund-expenditures", At: LevelFundByCategory,
+			Cells: []Pin{{Year: 2024, Basis: "actual",
+				Coords: map[Axis]string{AxisFundGroup: "general", AxisFund: "100", AxisCategory: "services-and-supplies"},
+				Cut:    present(5445217000), Against: present(5445217100)}},
+			Residual: 100,
+			Printed: "p0172.txt:16 Services & Supplies 54,452,171; p0170.txt:23 and p0172.txt:22 both total " +
+				"123,228,190, and each side's rows miss it by the dollars their rules' stated_total_deltas declare",
+			Reason: "the two schedules print one General Fund total and round the rows under it differently " +
+				"in the FY2023-24 Actual column",
+			Bead: "fisc-2sd",
+		},
+		{
+			Name: "p0067-internal-service-is-250000-high-by-fund",
+			Cut:  "fund-expenditures", Against: "spine", At: LevelFundGroupByCategory,
+			Cells: []Pin{{Year: 2027, Basis: "adopted",
+				Coords: map[Axis]string{AxisFundGroup: "internal-service", AxisCategory: "services-and-supplies"},
+				Cut:    present(1654601000), Against: present(1679601000)}},
+			Residual:       25000000,
+			SameResidualAs: "p0067-internal-service-is-250000-high-by-fund-group",
+			Printed: "p0067.txt:31 prints 16,796,010; the five Services & Supplies rows of p0183.txt:16-60 " +
+				"sum to 16,546,010, which is arithmetic, and the entry is grounded by differing by exactly " +
+				"what the fund-group cut holds apart",
+			Reason: "p0067's Internal Service Funds column prints Services & Supplies of 16,796,010 for " +
+				"FY2026-27, and the five internal service funds' own rows on p183 sum to 250,000 less. " +
 				"The store publishes p0067 as printed",
 			Bead: "fisc-av0w",
 		},

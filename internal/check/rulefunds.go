@@ -186,7 +186,7 @@ func (*ruleFundsMatchTheirHeadings) Run(_ context.Context, s *Subject) (Result, 
 			// rollup that covers it.
 			anchors := []string{}
 			if ru.TotalRow != "" {
-				anchors = append(anchors, ru.TotalRow)
+				anchors = append(anchors, ru.WrappedTotalLabel())
 			}
 			for _, ro := range f.Rollups {
 				for _, id := range ro.Covers {

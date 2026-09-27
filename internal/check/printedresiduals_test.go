@@ -79,6 +79,7 @@ func TestEveryExceptionResidualIsPrintedWhereItSaysItIs(t *testing.T) {
 			{124, 25, "266,798"}},
 		"general-fund-departments-rounds-administrative-services-2024": {{168, 35, "6,311,564"}, {97, 47, "6,311,564"}},
 		"general-fund-departments-rounds-community-development-2024":   {{169, 45, "15,925,170"}, {101, 51, "15,925,170"}},
+		"general-fund-departments-rounds-services-and-supplies-2024":   {{170, 23, "123,228,190"}, {172, 22, "123,228,190"}},
 	}
 
 	exceptions := structure.BudgetBookExceptions()

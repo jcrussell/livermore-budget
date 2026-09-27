@@ -538,9 +538,10 @@ different checks. Measured by mutating the fact and running `fisc verify`:
 | `amount_cents` corrected, token left as p67 prints it | `fact-token-reparses` -- token `"16,796,010"` is $16,796,010.00 but the fact carries $16,546,010.00 |
 | `amount_cents` and token both corrected | `fact-offset-points-at-token` -- p67 at offset 2548 is `"16,796,010"`, but the fact cites `"16,546,010"` |
 
-Each route yields **three** failures, not one: the fact check above plus
-`cuts-tie-along-the-lattice` twice, whose
-`p0067-internal-service-is-250000-high-by-fund-group` and
+Each route yields five findings, not one: the fact check above,
+`fund-group-sources-equal-uses` on the internal service column, and
+`cuts-tie-along-the-lattice` three times, whose
+`p0067-internal-service-is-250000-high-by-fund-group`, `-by-fund` and
 `-by-object` exceptions pin the spine's present figure and go red the moment it
 moves. The table names only the fact check because that is the arm a synthetic
 figure cannot get past -- the lattice arms would fall silent again if the
@@ -556,9 +557,9 @@ tying everywhere. The declaration is *conditional on the graph actually drawing
 `26,544,515`*, so correcting the fact retires the sentence with nobody having to
 remember it.
 
-Two exceptions carry this $250,000, and **not for the same cell** -- they reach
-it on different axes, which is what makes them independent witnesses rather than
-two copies of one claim. `p0067-internal-service-is-250000-high-by-fund-group`
+Three exceptions carry this $250,000, and **not for the same cell** -- they
+reach it on different axes, which is what makes them independent witnesses rather
+than copies of one claim. `p0067-internal-service-is-250000-high-by-fund-group`
 holds out `(FY2027, adopted, internal-service)`, a FUND GROUP, against two
 figures both of which pages print. `p0067-internal-service-is-250000-high-by-object`
 holds out `(FY2027, adopted, services-and-supplies)`, an OBJECT CATEGORY, where
@@ -566,6 +567,10 @@ its own `Printed` is careful to say neither figure is printed anywhere and all
 three are arithmetic; `SameResidualAs` is what grounds the second in the first. pp.85-125 decompose the money by department, division and object with
 no fund dimension at all, and still put the difference in this category and this
 year and in none of the other seven cells.
+`p0067-internal-service-is-250000-high-by-fund` holds out the 48th cell itself,
+`(FY2027, adopted, internal-service, services-and-supplies)`, where the
+`fund-expenditures` cut sums pp.172-183's per-fund rows to the spine's grain; it
+too is arithmetic on one side and grounded in the fund-group entry.
 
 The failure message `internal/structure`'s exception machinery prints already
 says what to do if the city reissues the page: *delete the exception rather than

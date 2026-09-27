@@ -150,8 +150,9 @@ funds:
     aliases:
       #@cite p0135 "Total Cal Home Reuse - $40,000 $70,000 $70,000"
       #@cite p0204 "Cal Home Reuse 810,548 70,000 - 880,548"
+      #@cite p0178 "Total Cal Home Reuse - $243,305 $242,000 $242,000"
       - term: "Cal Home Reuse"
-        pages: [135, 204]
+        pages: [135, 178, 204]
 
   #@cite p0259 grants group
   - number: 206
@@ -162,8 +163,9 @@ funds:
     aliases:
       #@cite p0135 "Total California Begin Program - $120,000 $70,000 $70,000"
       #@cite p0204 "California Begin Program 572,331 70,000 - 642,331"
+      #@cite p0178 "Total California Begin Program - $121,000 $122,000 $122,000"
       - term: "California Begin Program"
-        pages: [135, 204]
+        pages: [135, 178, 204]
 
   #@cite p0259 grants group
   - number: 207
@@ -226,8 +228,9 @@ funds:
       #@cite p0136 "Total Asset Seizure - Dep of Justice $12,559 $9,014
       #@cite     $17,000 $22,000" — the appendix spells it "Dept"
       #@cite p0204 "Asset Seizure - Dep of Justice 537,655 22,000 - 559,655"
+      #@cite p0178 "Asset Seizure - Dep of Justice" heading its expenditure rows
       - term: "Asset Seizure - Dep of Justice"
-        pages: [136, 204]
+        pages: [136, 178, 204]
 
   #@cite p0259 local/state/federal assistance for safety activities
   - number: 222
@@ -679,8 +682,9 @@ funds:
     aliases:
       #@cite p0134 "Total Doolan Canyon Preserve Endow $19,533 - - -"
       #@cite p0076 "to Doolan Canyon Preserve Endow"; p0206 same truncation
+      #@cite p0177 "Doolan Canyon Preserve Endow" heading its expenditure rows
       - term: "Doolan Canyon Preserve Endow"
-        pages: [76, 134, 206]
+        pages: [76, 134, 177, 206]
 
   #@cite p0260 (same entry as 470)
   - number: 471
@@ -850,8 +854,9 @@ funds:
     aliases:
       #@cite p0140 "Total Facilities Rehab Pgm $6,111,465 $2,125,000"
       #@cite p0208 "Facilities Rehab Pgm 1,677,100 2,125,000 - 3,802,100"
+      #@cite p0183 "Total Facilities Rehab Pgm $2,487,238 $3,621,833 $3,666,142 $3,785,705"
       - term: "Facilities Rehab Pgm"
-        pages: [140, 208]
+        pages: [140, 183, 208]
 
   #@cite p0254/p0257 list 741 under INTERNAL SERVICE FUNDS; p0222 bridge pairs
   #@cite     741 -> 101 (CIP Reserves - Facilities)

@@ -1585,7 +1585,30 @@ func (r *Resolver) totalAnchor(rule *Rule, p *Part, blk *block, text string) (in
 			Page: p.Page, Field: "total_row", Err: ErrNotFound,
 			Msg: fmt.Sprintf("%q does not occur after the block", rule.TotalRow)}
 	}
-	return blk.End + i + len(rule.TotalRow), "total_row", nil
+	at := blk.End + i + len(rule.TotalRow)
+	if rule.TotalRowTail != "" {
+		if got := lineAfter(text, at); got != rule.TotalRowTail {
+			return 0, "total_row_tail", &resolveError{DocID: r.file.DocID, RuleID: rule.ID,
+				Page: p.Page, Field: "total_row_tail", Err: ErrNotFound,
+				Msg: fmt.Sprintf("the line after %q prints %q, not %q",
+					rule.TotalRow, got, rule.TotalRowTail)}
+		}
+	}
+	return at, "total_row", nil
+}
+
+// lineAfter is the line after the one off falls on, trimmed, or "" on the
+// page's last line.
+func lineAfter(text string, off int) string {
+	nl := strings.IndexByte(text[off:], '\n')
+	if nl < 0 {
+		return ""
+	}
+	next := text[off+nl+1:]
+	if end := strings.IndexByte(next, '\n'); end >= 0 {
+		next = next[:end]
+	}
+	return strings.TrimSpace(next)
 }
 
 // lineAt is the 0-based index of the line offset off falls on. Two anchors that

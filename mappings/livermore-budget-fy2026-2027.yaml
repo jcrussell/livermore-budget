@@ -4861,6 +4861,1462 @@ rules:
       - {label: "Debt Services", category: debt-services, department: water-resources}
 
 
+  # ==========================================================================
+  # CITYWIDE EXPENDITURES BY FUND AND OBJECT, Budget Book pp.172-183
+  # (fisc-5gk.7). One rule per fund, rows only where the page prints them.
+  #
+  # The General Fund rule is the same money as pp.167-170's divisions, in its
+  # own scope so that no view sums the two; the cut containment is what holds
+  # them equal.
+  # ==========================================================================
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-general-fund
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total General Fund"
+    parts:
+      - page: 172
+        section: "General Fund\n"
+        section_ordinal: 2
+        stop_at: "Total General Fund"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: general, fund: 100, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fund: 100, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fund: 100, fiscal_year: 2026}
+          - {fund_group: general, fund: 100, fiscal_year: 2027}
+        stated_total_deltas:
+          - column: 1
+            delta_cents: -100
+            note: >-
+              The city's own rounding, stated minus mapped, measured off the page.
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits}
+      - {label: "Services & Supplies", category: services-and-supplies}
+      - {label: "Capital Outlay", category: capital-outlay}
+      - {label: "Debt Services", category: debt-services}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-airport
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total Airport"
+    parts:
+      - page: 173
+        section: "Airport\n"
+        stop_at: "Total Airport"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: enterprise, fund: 600, fiscal_year: 2024, basis: actual}
+          - {fund_group: enterprise, fund: 600, fiscal_year: 2025, basis: revised}
+          - {fund_group: enterprise, fund: 600, fiscal_year: 2026}
+          - {fund_group: enterprise, fund: 600, fiscal_year: 2027}
+        stated_total_deltas:
+          - column: 1
+            delta_cents: 100
+            note: >-
+              The city's own rounding, stated minus mapped, measured off the page.
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits}
+      - {label: "Services & Supplies", category: services-and-supplies}
+      - {label: "Debt Services", category: debt-services}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-storm-drain
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total Storm Drain"
+    parts:
+      - page: 173
+        section: "Storm Drain\n"
+        stop_at: "Total Storm Drain"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: enterprise, fund: 612, fiscal_year: 2024, basis: actual}
+          - {fund_group: enterprise, fund: 612, fiscal_year: 2025, basis: revised}
+          - {fund_group: enterprise, fund: 612, fiscal_year: 2026}
+          - {fund_group: enterprise, fund: 612, fiscal_year: 2027}
+    rows:
+      - {label: "Services & Supplies", category: services-and-supplies}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-stormwater
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total Stormwater"
+    parts:
+      - page: 173
+        section: "Stormwater\n"
+        stop_at: "Total Stormwater"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: enterprise, fund: 610, fiscal_year: 2024, basis: actual}
+          - {fund_group: enterprise, fund: 610, fiscal_year: 2025, basis: revised}
+          - {fund_group: enterprise, fund: 610, fiscal_year: 2026}
+          - {fund_group: enterprise, fund: 610, fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits}
+      - {label: "Services & Supplies", category: services-and-supplies}
+      - {label: "Capital Outlay", category: capital-outlay}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-wastewater
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total Wastewater"
+    parts:
+      - page: 173
+        section: "Wastewater\n"
+        stop_at: "Total Wastewater"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: enterprise, fund: 620, fiscal_year: 2024, basis: actual}
+          - {fund_group: enterprise, fund: 620, fiscal_year: 2025, basis: revised}
+          - {fund_group: enterprise, fund: 620, fiscal_year: 2026}
+          - {fund_group: enterprise, fund: 620, fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits}
+      - {label: "Services & Supplies", category: services-and-supplies}
+      - {label: "Capital Outlay", category: capital-outlay}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-wastewater-connection-fees
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total Wastewater Connection"
+    total_row_tail: "Fees"
+    parts:
+      - page: 173
+        section: "Wastewater Connection Fees\n"
+        stop_at: "Total Wastewater Connection"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: enterprise, fund: 623, fiscal_year: 2024, basis: actual}
+          - {fund_group: enterprise, fund: 623, fiscal_year: 2025, basis: revised}
+          - {fund_group: enterprise, fund: 623, fiscal_year: 2026}
+          - {fund_group: enterprise, fund: 623, fiscal_year: 2027}
+    rows:
+      - {label: "Services & Supplies", category: services-and-supplies}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-wastewater-replacement
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total Wastewater Replacement"
+    parts:
+      - page: 173
+        section: "Wastewater Replacement\n"
+        stop_at: "Total Wastewater Replacement"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: enterprise, fund: 622, fiscal_year: 2024, basis: actual}
+          - {fund_group: enterprise, fund: 622, fiscal_year: 2025, basis: revised}
+          - {fund_group: enterprise, fund: 622, fiscal_year: 2026}
+          - {fund_group: enterprise, fund: 622, fiscal_year: 2027}
+    rows:
+      - {label: "Services & Supplies", category: services-and-supplies}
+      - {label: "Capital Outlay", category: capital-outlay}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-water
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total Water"
+    total_spans_parts: true
+    parts:
+      - page: 173
+        section: "Water\n"
+        stop_at: "BUDGET FY 2025-27"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: enterprise, fund: 640, fiscal_year: 2024, basis: actual}
+          - {fund_group: enterprise, fund: 640, fiscal_year: 2025, basis: revised}
+          - {fund_group: enterprise, fund: 640, fiscal_year: 2026}
+          - {fund_group: enterprise, fund: 640, fiscal_year: 2027}
+        omitted_rows: ["Services & Supplies", "Debt Services"]
+      - page: 174
+        section: "FY 2026-27\n"
+        stop_at: "Total Water"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: enterprise, fund: 640, fiscal_year: 2024, basis: actual}
+          - {fund_group: enterprise, fund: 640, fiscal_year: 2025, basis: revised}
+          - {fund_group: enterprise, fund: 640, fiscal_year: 2026}
+          - {fund_group: enterprise, fund: 640, fiscal_year: 2027}
+        omitted_rows: ["Wages & Benefits"]
+        stated_total_deltas:
+          - column: 1
+            delta_cents: 100
+            note: >-
+              The city's own rounding, stated minus mapped, measured off the page.
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits}
+      - {label: "Services & Supplies", category: services-and-supplies}
+      - {label: "Debt Services", category: debt-services}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-water-connection-fees
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total Water Connection Fees"
+    parts:
+      - page: 174
+        section: "Water Connection Fees\n"
+        stop_at: "Total Water Connection Fees"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: enterprise, fund: 643, fiscal_year: 2024, basis: actual}
+          - {fund_group: enterprise, fund: 643, fiscal_year: 2025, basis: revised}
+          - {fund_group: enterprise, fund: 643, fiscal_year: 2026}
+          - {fund_group: enterprise, fund: 643, fiscal_year: 2027}
+    rows:
+      - {label: "Services & Supplies", category: services-and-supplies}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-water-replacement
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total Water Replacement"
+    parts:
+      - page: 174
+        section: "Water Replacement\n"
+        stop_at: "Total Water Replacement"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: enterprise, fund: 642, fiscal_year: 2024, basis: actual}
+          - {fund_group: enterprise, fund: 642, fiscal_year: 2025, basis: revised}
+          - {fund_group: enterprise, fund: 642, fiscal_year: 2026}
+          - {fund_group: enterprise, fund: 642, fiscal_year: 2027}
+    rows:
+      - {label: "Services & Supplies", category: services-and-supplies}
+      - {label: "Capital Outlay", category: capital-outlay}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-county-meas-bb-bike-pedestrian
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total County Meas BB-"
+    total_row_tail: "Bike/Pedestrian"
+    parts:
+      - page: 175
+        section: "County Meas BB-Bike/Pedestrian\n"
+        stop_at: "Total County Meas BB-"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: capital, fund: 551, fiscal_year: 2024, basis: actual}
+          - {fund_group: capital, fund: 551, fiscal_year: 2025, basis: revised}
+          - {fund_group: capital, fund: 551, fiscal_year: 2026}
+          - {fund_group: capital, fund: 551, fiscal_year: 2027}
+    rows:
+      - {label: "Services & Supplies", category: services-and-supplies}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-county-meas-bb-local-st-rd
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total County Meas BB-Local St &"
+    total_row_tail: "Rd"
+    parts:
+      - page: 175
+        section: "County Meas BB-Local St & Rd\n"
+        stop_at: "Total County Meas BB-Local St &"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: capital, fund: 552, fiscal_year: 2024, basis: actual}
+          - {fund_group: capital, fund: 552, fiscal_year: 2025, basis: revised}
+          - {fund_group: capital, fund: 552, fiscal_year: 2026}
+          - {fund_group: capital, fund: 552, fiscal_year: 2027}
+    rows:
+      - {label: "Services & Supplies", category: services-and-supplies}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-county-measure-d
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total County Measure D"
+    parts:
+      - page: 175
+        section: "County Measure D\n"
+        stop_at: "Total County Measure D"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: capital, fund: 550, fiscal_year: 2024, basis: actual}
+          - {fund_group: capital, fund: 550, fiscal_year: 2025, basis: revised}
+          - {fund_group: capital, fund: 550, fiscal_year: 2026}
+          - {fund_group: capital, fund: 550, fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits}
+      - {label: "Services & Supplies", category: services-and-supplies}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-county-measure-f-veh-reg-fee
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total County Measure F Veh Reg"
+    total_row_tail: "Fee"
+    parts:
+      - page: 175
+        section: "County Measure F Veh Reg Fee\n"
+        stop_at: "Total County Measure F Veh Reg"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: capital, fund: 553, fiscal_year: 2024, basis: actual}
+          - {fund_group: capital, fund: 553, fiscal_year: 2025, basis: revised}
+          - {fund_group: capital, fund: 553, fiscal_year: 2026}
+          - {fund_group: capital, fund: 553, fiscal_year: 2027}
+    rows:
+      - {label: "Services & Supplies", category: services-and-supplies}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-park-fee-ab-1600
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total Park Fee - AB 1600"
+    parts:
+      - page: 175
+        section: "Park Fee - AB 1600\n"
+        stop_at: "Total Park Fee - AB 1600"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: capital, fund: 512, fiscal_year: 2024, basis: actual}
+          - {fund_group: capital, fund: 512, fiscal_year: 2025, basis: revised}
+          - {fund_group: capital, fund: 512, fiscal_year: 2026}
+          - {fund_group: capital, fund: 512, fiscal_year: 2027}
+    rows:
+      - {label: "Services & Supplies", category: services-and-supplies}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-state-gas-tax
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total State - Gas Tax"
+    parts:
+      - page: 175
+        section: "State - Gas Tax\n"
+        stop_at: "Total State - Gas Tax"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: capital, fund: 560, fiscal_year: 2024, basis: actual}
+          - {fund_group: capital, fund: 560, fiscal_year: 2025, basis: revised}
+          - {fund_group: capital, fund: 560, fiscal_year: 2026}
+          - {fund_group: capital, fund: 560, fiscal_year: 2027}
+    rows:
+      - {label: "Services & Supplies", category: services-and-supplies}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-state-sb1
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total State - SB1"
+    parts:
+      - page: 175
+        section: "State - SB1\n"
+        stop_at: "Total State - SB1"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: capital, fund: 561, fiscal_year: 2024, basis: actual}
+          - {fund_group: capital, fund: 561, fiscal_year: 2025, basis: revised}
+          - {fund_group: capital, fund: 561, fiscal_year: 2026}
+          - {fund_group: capital, fund: 561, fiscal_year: 2027}
+    rows:
+      - {label: "Services & Supplies", category: services-and-supplies}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-traffic-impact-fee-tif
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total Traffic Impact Fee (TIF)"
+    parts:
+      - page: 175
+        section: "Traffic Impact Fee (TIF)\n"
+        stop_at: "Total Traffic Impact Fee (TIF)"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: capital, fund: 510, fiscal_year: 2024, basis: actual}
+          - {fund_group: capital, fund: 510, fiscal_year: 2025, basis: revised}
+          - {fund_group: capital, fund: 510, fiscal_year: 2026}
+          - {fund_group: capital, fund: 510, fiscal_year: 2027}
+    rows:
+      - {label: "Services & Supplies", category: services-and-supplies}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-2020-cops-series-a
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total 2020 COPS Series A"
+    parts:
+      - page: 176
+        section: "2020 COPS Series A\n"
+        stop_at: "Total 2020 COPS Series A"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: debt-service, fund: 400, fiscal_year: 2024, basis: actual}
+          - {fund_group: debt-service, fund: 400, fiscal_year: 2025, basis: revised}
+          - {fund_group: debt-service, fund: 400, fiscal_year: 2026}
+          - {fund_group: debt-service, fund: 400, fiscal_year: 2027}
+    rows:
+      - {label: "Services & Supplies", category: services-and-supplies}
+      - {label: "Debt Services", category: debt-services}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-2020-cops-series-b
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total 2020 COPS Series B"
+    parts:
+      - page: 176
+        section: "2020 COPS Series B\n"
+        stop_at: "Total 2020 COPS Series B"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: debt-service, fund: 401, fiscal_year: 2024, basis: actual}
+          - {fund_group: debt-service, fund: 401, fiscal_year: 2025, basis: revised}
+          - {fund_group: debt-service, fund: 401, fiscal_year: 2026}
+          - {fund_group: debt-service, fund: 401, fiscal_year: 2027}
+    rows:
+      - {label: "Services & Supplies", category: services-and-supplies}
+      - {label: "Debt Services", category: debt-services}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-2022-cops
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total 2022 COPS"
+    parts:
+      - page: 176
+        section: "2022 COPS\n"
+        stop_at: "Total 2022 COPS"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: debt-service, fund: 402, fiscal_year: 2024, basis: actual}
+          - {fund_group: debt-service, fund: 402, fiscal_year: 2025, basis: revised}
+          - {fund_group: debt-service, fund: 402, fiscal_year: 2026}
+          - {fund_group: debt-service, fund: 402, fiscal_year: 2027}
+    rows:
+      - {label: "Services & Supplies", category: services-and-supplies}
+      - {label: "Debt Services", category: debt-services}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-doolan-canyon-preserve-endow
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total Doolan Canyon Preserve"
+    total_row_tail: "Endow"
+    parts:
+      - page: 177
+        section: "Doolan Canyon Preserve Endow\n"
+        stop_at: "Total Doolan Canyon Preserve"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: permanent, fund: 470, fiscal_year: 2024, basis: actual}
+          - {fund_group: permanent, fund: 470, fiscal_year: 2025, basis: revised}
+          - {fund_group: permanent, fund: 470, fiscal_year: 2026}
+          - {fund_group: permanent, fund: 470, fiscal_year: 2027}
+    rows:
+      - {label: "Services & Supplies", category: services-and-supplies}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-accessibility-compliance
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total Accessibility Compliance"
+    parts:
+      - page: 178
+        section: "Accessibility Compliance\n"
+        stop_at: "Total Accessibility Compliance"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 286, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 286, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 286, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 286, fiscal_year: 2027}
+    rows:
+      - {label: "Services & Supplies", category: services-and-supplies}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-asset-seizure-county
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total Asset Seizure - County"
+    parts:
+      - page: 178
+        section: "Asset Seizure - County\n"
+        stop_at: "Total Asset Seizure - County"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 211, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 211, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 211, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 211, fiscal_year: 2027}
+    rows:
+      - {label: "Services & Supplies", category: services-and-supplies}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-asset-seizure-dep-of-justice
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total Asset Seizure - Dep of"
+    total_row_tail: "Justice"
+    parts:
+      - page: 178
+        section: "Asset Seizure - Dep of Justice\n"
+        stop_at: "Total Asset Seizure - Dep of"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 221, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 221, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 221, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 221, fiscal_year: 2027}
+    rows:
+      - {label: "Services & Supplies", category: services-and-supplies}
+      - {label: "Capital Outlay", category: capital-outlay}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-asset-seizure-treasury
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total Asset Seizure - Treasury"
+    parts:
+      - page: 178
+        section: "Asset Seizure - Treasury\n"
+        stop_at: "Total Asset Seizure - Treasury"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 222, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 222, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 222, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 222, fiscal_year: 2027}
+    rows:
+      - {label: "Services & Supplies", category: services-and-supplies}
+      - {label: "Capital Outlay", category: capital-outlay}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-cal-home-reuse
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total Cal Home Reuse"
+    parts:
+      - page: 178
+        section: "Cal Home Reuse\n"
+        stop_at: "Total Cal Home Reuse"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 205, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 205, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 205, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 205, fiscal_year: 2027}
+    rows:
+      - {label: "Services & Supplies", category: services-and-supplies}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-california-begin-program
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total California Begin Program"
+    parts:
+      - page: 178
+        section: "California Begin Program\n"
+        stop_at: "Total California Begin Program"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 206, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 206, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 206, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 206, fiscal_year: 2027}
+    rows:
+      - {label: "Services & Supplies", category: services-and-supplies}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-city-street-sweeping-fee
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total City Street Sweeping Fee"
+    parts:
+      - page: 178
+        section: "City Street Sweeping Fee\n"
+        stop_at: "Total City Street Sweeping Fee"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 283, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 283, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 283, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 283, fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits}
+      - {label: "Services & Supplies", category: services-and-supplies}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-downtown-lmd
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total Downtown LMD"
+    total_spans_parts: true
+    parts:
+      - page: 178
+        section: "Downtown LMD\n"
+        stop_at: "BUDGET FY 2025-27"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 310, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 310, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 310, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 310, fiscal_year: 2027}
+        omitted_rows: ["Services & Supplies"]
+      - page: 179
+        section: "FY 2026-27\n"
+        stop_at: "Total Downtown LMD"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 310, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 310, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 310, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 310, fiscal_year: 2027}
+        omitted_rows: ["Wages & Benefits"]
+        stated_total_deltas:
+          - column: 1
+            delta_cents: -100
+            note: >-
+              The city's own rounding, stated minus mapped, measured off the page.
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits}
+      - {label: "Services & Supplies", category: services-and-supplies}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-el-charro-cfd-2009-1-maint
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total El Charro CFD 2009-1 Maint"
+    parts:
+      - page: 179
+        section: "El Charro CFD 2009-1 Maint\n"
+        stop_at: "Total El Charro CFD 2009-1 Maint"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 320, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 320, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 320, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 320, fiscal_year: 2027}
+    rows:
+      - {label: "Services & Supplies", category: services-and-supplies}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-fema-funding
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total FEMA Funding"
+    parts:
+      - page: 179
+        section: "FEMA Funding\n"
+        stop_at: "Total FEMA Funding"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 226, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 226, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 226, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 226, fiscal_year: 2027}
+    rows:
+      - {label: "Services & Supplies", category: services-and-supplies}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-grant-cdbg
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total Grant - CDBG"
+    parts:
+      - page: 179
+        section: "Grant - CDBG\n"
+        stop_at: "Total Grant - CDBG"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 224, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 224, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 224, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 224, fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits}
+      - {label: "Services & Supplies", category: services-and-supplies}
+      - {label: "Debt Services", category: debt-services}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-grant-federal-grant-fund
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total Grant - Federal Grant Fund"
+    parts:
+      - page: 179
+        section: "Grant - Federal Grant Fund\n"
+        stop_at: "Total Grant - Federal Grant Fund"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 220, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 220, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 220, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 220, fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits}
+      - {label: "Services & Supplies", category: services-and-supplies}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-grant-home-grant
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total Grant - Home Grant"
+    parts:
+      - page: 179
+        section: "Grant - Home Grant\n"
+        stop_at: "Total Grant - Home Grant"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 225, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 225, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 225, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 225, fiscal_year: 2027}
+    rows:
+      - {label: "Services & Supplies", category: services-and-supplies}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-grant-hud-edi-special-grant
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total Grant - HUD EDI Special"
+    total_row_tail: "Grant"
+    parts:
+      - page: 179
+        section: "Grant - HUD EDI Special Grant\n"
+        stop_at: "Total Grant - HUD EDI Special"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 223, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 223, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 223, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 223, fiscal_year: 2027}
+    rows:
+      - {label: "Services & Supplies", category: services-and-supplies}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-grant-state-grant-fund
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total Grant - State Grant Fund"
+    parts:
+      - page: 179
+        section: "Grant - State Grant Fund\n"
+        stop_at: "Total Grant - State Grant Fund"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 240, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 240, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 240, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 240, fiscal_year: 2027}
+        stated_total_deltas:
+          - column: 1
+            delta_cents: 100
+            note: >-
+              The city's own rounding, stated minus mapped, measured off the page.
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits}
+      - {label: "Services & Supplies", category: services-and-supplies}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-hhs-loan-fund
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total HHS Loan Fund"
+    parts:
+      - page: 180
+        section: "HHS Loan Fund\n"
+        stop_at: "Total HHS Loan Fund"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 204, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 204, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 204, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 204, fiscal_year: 2027}
+    rows:
+      - {label: "Services & Supplies", category: services-and-supplies}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-horizons
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total Horizons"
+    parts:
+      - page: 180
+        section: "Horizons\n"
+        stop_at: "Total Horizons"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 210, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 210, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 210, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 210, fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits}
+      - {label: "Services & Supplies", category: services-and-supplies}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-host-community-impact-fee
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total Host Community Impact Fee"
+    parts:
+      - page: 180
+        section: "Host Community Impact Fee\n"
+        stop_at: "Total Host Community Impact Fee"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 282, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 282, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 282, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 282, fiscal_year: 2027}
+    rows:
+      - {label: "Services & Supplies", category: services-and-supplies}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-housing-successor-agency
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total Housing Successor Agency"
+    parts:
+      - page: 180
+        section: "Housing Successor Agency\n"
+        stop_at: "Total Housing Successor Agency"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 201, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 201, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 201, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 201, fiscal_year: 2027}
+    rows:
+      - {label: "Services & Supplies", category: services-and-supplies}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-human-services-facility-fee
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total Human Services Facility Fee"
+    parts:
+      - page: 180
+        section: "Human Services Facility Fee\n"
+        stop_at: "Total Human Services Facility Fee"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 290, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 290, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 290, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 290, fiscal_year: 2027}
+    rows:
+      - {label: "Services & Supplies", category: services-and-supplies}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-import-mitigation-fee
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total Import Mitigation Fee"
+    parts:
+      - page: 180
+        section: "Import Mitigation Fee\n"
+        stop_at: "Total Import Mitigation Fee"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 288, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 288, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 288, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 288, fiscal_year: 2027}
+    rows:
+      - {label: "Services & Supplies", category: services-and-supplies}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-library-donations
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total Library Donations"
+    parts:
+      - page: 180
+        section: "Library Donations\n"
+        stop_at: "Total Library Donations"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 330, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 330, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 330, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 330, fiscal_year: 2027}
+    rows:
+      - {label: "Services & Supplies", category: services-and-supplies}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-local-housing-trust
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total Local Housing Trust"
+    parts:
+      - page: 180
+        section: "Local Housing Trust\n"
+        stop_at: "Total Local Housing Trust"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 207, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 207, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 207, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 207, fiscal_year: 2027}
+    rows:
+      - {label: "Services & Supplies", category: services-and-supplies}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-low-income-housing-fund
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total Low Income Housing Fund"
+    total_spans_parts: true
+    parts:
+      - page: 180
+        section: "Low Income Housing Fund\n"
+        stop_at: "BUDGET FY 2025-27"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 200, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 200, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 200, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 200, fiscal_year: 2027}
+        omitted_rows: ["Capital Outlay"]
+      - page: 181
+        section: "FY 2026-27\n"
+        stop_at: "Total Low Income Housing Fund"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 200, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 200, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 200, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 200, fiscal_year: 2027}
+        omitted_rows: ["Wages & Benefits", "Services & Supplies"]
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits}
+      - {label: "Services & Supplies", category: services-and-supplies}
+      - {label: "Capital Outlay", category: capital-outlay}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-mortgage-assistance
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total Mortgage Assistance"
+    parts:
+      - page: 181
+        section: "Mortgage Assistance\n"
+        stop_at: "Total Mortgage Assistance"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 203, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 203, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 203, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 203, fiscal_year: 2027}
+    rows:
+      - {label: "Services & Supplies", category: services-and-supplies}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-open-space-acquisition-mgmt
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total Open Space Acquisition &"
+    total_row_tail: "Mgmt"
+    parts:
+      - page: 181
+        section: "Open Space Acquisition & Mgmt\n"
+        stop_at: "Total Open Space Acquisition &"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 300, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 300, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 300, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 300, fiscal_year: 2027}
+    rows:
+      - {label: "Services & Supplies", category: services-and-supplies}
+      - {label: "Capital Outlay", category: capital-outlay}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-opioid-settlement
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total Opioid Settlement"
+    parts:
+      - page: 181
+        section: "Opioid Settlement\n"
+        stop_at: "Total Opioid Settlement"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 241, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 241, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 241, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 241, fiscal_year: 2027}
+    rows:
+      - {label: "Services & Supplies", category: services-and-supplies}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-other-lmd
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total Other LMD"
+    parts:
+      - page: 181
+        section: "Other LMD\n"
+        stop_at: "Total Other LMD"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 311, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 311, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 311, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 311, fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits}
+      - {label: "Services & Supplies", category: services-and-supplies}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-other-maintenance-cfds
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total Other Maintenance CFDs"
+    parts:
+      - page: 181
+        section: "Other Maintenance CFDs\n"
+        stop_at: "Total Other Maintenance CFDs"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 321, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 321, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 321, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 321, fiscal_year: 2027}
+        stated_total_deltas:
+          - column: 1
+            delta_cents: 100
+            note: >-
+              The city's own rounding, stated minus mapped, measured off the page.
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits}
+      - {label: "Services & Supplies", category: services-and-supplies}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-pd-cops-grant
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total PD COPS Grant"
+    parts:
+      - page: 181
+        section: "PD COPS Grant\n"
+        stop_at: "Total PD COPS Grant"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 242, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 242, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 242, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 242, fiscal_year: 2027}
+    rows:
+      - {label: "Services & Supplies", category: services-and-supplies}
+      - {label: "Capital Outlay", category: capital-outlay}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-peg-capital-fees
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total PEG Capital Fees"
+    parts:
+      - page: 181
+        section: "PEG Capital Fees\n"
+        stop_at: "Total PEG Capital Fees"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 287, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 287, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 287, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 287, fiscal_year: 2027}
+    rows:
+      - {label: "Services & Supplies", category: services-and-supplies}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-police-donations
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total Police Donations"
+    parts:
+      - page: 182
+        section: "Police Donations\n"
+        stop_at: "Total Police Donations"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 331, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 331, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 331, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 331, fiscal_year: 2027}
+    rows:
+      - {label: "Services & Supplies", category: services-and-supplies}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-public-art-fee
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total Public Art Fee"
+    parts:
+      - page: 182
+        section: "Public Art Fee\n"
+        stop_at: "Total Public Art Fee"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 284, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 284, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 284, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 284, fiscal_year: 2027}
+    rows:
+      - {label: "Services & Supplies", category: services-and-supplies}
+      - {label: "Capital Outlay", category: capital-outlay}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-soef-social-op-endowment
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total SOEF (Social Op"
+    total_row_tail: "Endowment)"
+    parts:
+      - page: 182
+        section: "SOEF (Social Op Endowment)\n"
+        stop_at: "Total SOEF (Social Op"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 202, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 202, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 202, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 202, fiscal_year: 2027}
+    rows:
+      - {label: "Services & Supplies", category: services-and-supplies}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-solid-waste-recycling-fee
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total Solid Waste & Recycling Fee"
+    parts:
+      - page: 182
+        section: "Solid Waste & Recycling Fee\n"
+        stop_at: "Total Solid Waste & Recycling Fee"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 289, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 289, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 289, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 289, fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits}
+      - {label: "Services & Supplies", category: services-and-supplies}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-vehicle-impound-fee
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total Vehicle Impound Fee"
+    parts:
+      - page: 182
+        section: "Vehicle Impound Fee\n"
+        stop_at: "Total Vehicle Impound Fee"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 285, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 285, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 285, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 285, fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-facilities-rehab-pgm
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total Facilities Rehab Pgm"
+    parts:
+      - page: 183
+        section: "Facilities Rehab Pgm\n"
+        stop_at: "Total Facilities Rehab Pgm"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: internal-service, fund: 740, fiscal_year: 2024, basis: actual}
+          - {fund_group: internal-service, fund: 740, fiscal_year: 2025, basis: revised}
+          - {fund_group: internal-service, fund: 740, fiscal_year: 2026}
+          - {fund_group: internal-service, fund: 740, fiscal_year: 2027}
+        stated_total_deltas:
+          - column: 1
+            delta_cents: 100
+            note: >-
+              The city's own rounding, stated minus mapped, measured off the page.
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits}
+      - {label: "Services & Supplies", category: services-and-supplies}
+      - {label: "Capital Outlay", category: capital-outlay}
+      - {label: "Debt Services", category: debt-services}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-fleet-equipment-services
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total Fleet & Equipment Services"
+    parts:
+      - page: 183
+        section: "Fleet & Equipment Services\n"
+        stop_at: "Total Fleet & Equipment Services"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: internal-service, fund: 730, fiscal_year: 2024, basis: actual}
+          - {fund_group: internal-service, fund: 730, fiscal_year: 2025, basis: revised}
+          - {fund_group: internal-service, fund: 730, fiscal_year: 2026}
+          - {fund_group: internal-service, fund: 730, fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits}
+      - {label: "Services & Supplies", category: services-and-supplies}
+      - {label: "Capital Outlay", category: capital-outlay}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-general-liability
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total General Liability"
+    parts:
+      - page: 183
+        section: "General Liability\n"
+        stop_at: "Total General Liability"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: internal-service, fund: 700, fiscal_year: 2024, basis: actual}
+          - {fund_group: internal-service, fund: 700, fiscal_year: 2025, basis: revised}
+          - {fund_group: internal-service, fund: 700, fiscal_year: 2026}
+          - {fund_group: internal-service, fund: 700, fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits}
+      - {label: "Services & Supplies", category: services-and-supplies}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-information-technology
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total Information Technology"
+    parts:
+      - page: 183
+        section: "Information Technology\n"
+        stop_at: "Total Information Technology"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: internal-service, fund: 720, fiscal_year: 2024, basis: actual}
+          - {fund_group: internal-service, fund: 720, fiscal_year: 2025, basis: revised}
+          - {fund_group: internal-service, fund: 720, fiscal_year: 2026}
+          - {fund_group: internal-service, fund: 720, fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits}
+      - {label: "Services & Supplies", category: services-and-supplies}
+      - {label: "Capital Outlay", category: capital-outlay}
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-workers-comp-insurance
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-fund
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total Workers Comp Insurance"
+    parts:
+      - page: 183
+        section: "Workers Comp Insurance\n"
+        stop_at: "Total Workers Comp Insurance"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: internal-service, fund: 710, fiscal_year: 2024, basis: actual}
+          - {fund_group: internal-service, fund: 710, fiscal_year: 2025, basis: revised}
+          - {fund_group: internal-service, fund: 710, fiscal_year: 2026}
+          - {fund_group: internal-service, fund: 710, fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits}
+      - {label: "Services & Supplies", category: services-and-supplies}
+
 rollups:
   # --------------------------------------------------------------------------
   - id: dept-city-council
@@ -5008,3 +6464,80 @@ rollups:
       here can assert it. It exceeds the 69 printed fund totals it closes by
       58,773,547 / 58,836,449 / 56,492,834 / 57,373,508 -- a different amount in
       every column, so neither rounding nor one omitted fund.
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-total-enterprise
+    page: 174
+    total_row: "Total Enterprise Funds"
+    unassertable: >-
+      A rollup compares its covered rules' columns whole, fund included, and
+      this line sums the group's funds. Each fund's own printed Total is asserted by
+      its rule; the adopted columns also tie to pp.66-67 through the
+      fund-expenditures cut. fisc-5gk.9 is the cross-fund rollup that would
+      assert this line.
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-total-capital
+    page: 175
+    total_row: "Total Capital Funds"
+    unassertable: >-
+      A rollup compares its covered rules' columns whole, fund included, and
+      this line sums the group's funds. Each fund's own printed Total is asserted by
+      its rule; the adopted columns also tie to pp.66-67 through the
+      fund-expenditures cut. fisc-5gk.9 is the cross-fund rollup that would
+      assert this line.
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-total-debt-service
+    page: 176
+    total_row: "Total Debt Service Funds"
+    unassertable: >-
+      A rollup compares its covered rules' columns whole, fund included, and
+      this line sums the group's funds. Each fund's own printed Total is asserted by
+      its rule; the adopted columns also tie to pp.66-67 through the
+      fund-expenditures cut. fisc-5gk.9 is the cross-fund rollup that would
+      assert this line.
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-total-permanent
+    page: 177
+    total_row: "Total Permanent Funds"
+    unassertable: >-
+      A rollup compares its covered rules' columns whole, fund included, and
+      this line sums the group's funds. Each fund's own printed Total is asserted by
+      its rule; the adopted columns also tie to pp.66-67 through the
+      fund-expenditures cut. fisc-5gk.9 is the cross-fund rollup that would
+      assert this line.
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-total-special-revenue
+    page: 182
+    total_row: "Total Special Revenue Funds"
+    unassertable: >-
+      A rollup compares its covered rules' columns whole, fund included, and
+      this line sums the group's funds. Each fund's own printed Total is asserted by
+      its rule; the adopted columns also tie to pp.66-67 through the
+      fund-expenditures cut. fisc-5gk.9 is the cross-fund rollup that would
+      assert this line.
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-total-internal-service
+    page: 183
+    total_row: "Total Internal Service Funds"
+    unassertable: >-
+      A rollup compares its covered rules' columns whole, fund included, and
+      this line sums the group's funds. Each fund's own printed Total is asserted by
+      its rule; the adopted columns also tie to pp.66-67 through the
+      fund-expenditures cut. fisc-5gk.9 is the cross-fund rollup that would
+      assert this line.
+
+  # --------------------------------------------------------------------------
+  - id: fund-exp-grand-total
+    page: 183
+    total_row: "Grand Total"
+    unassertable: >-
+      A rollup compares its covered rules' columns whole, fund included, and
+      this line sums every fund on pp.172-183. Each fund's own printed Total is asserted by
+      its rule; the adopted columns also tie to pp.66-67 through the
+      fund-expenditures cut. fisc-5gk.9 is the cross-fund rollup that would
+      assert this line.

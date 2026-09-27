@@ -208,3 +208,41 @@ func TestAClaimOnOnePageDoesNotSilenceAnotherPage(t *testing.T) {
 		t.Errorf("findings = %v, want none once both pages claim the total", got)
 	}
 }
+
+// TestAWrappedTotalNamesItsFundWithItsTail runs the check over the committed
+// corpus with one rule's total_row_tail removed. p0175 prints "Total County
+// Meas BB-" and wraps "Bike/Pedestrian" onto the next line, so the truncated
+// label names no fund and the rule is reported as anchored to nothing.
+func TestAWrappedTotalNamesItsFundWithItsTail(t *testing.T) {
+	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	const id = "fund-exp-county-meas-bb-bike-pedestrian"
+	res := resultFor(t, runOne(t, s, &ruleFundsMatchTheirHeadings{}), "rule-funds-match-their-headings")
+	if res.Status != StatusPass {
+		t.Fatalf("status = %s over the committed corpus, findings:\n  %v", res.Status, res.Findings)
+	}
+	found := false
+	for _, f := range s.Files {
+		for i := range f.Rules {
+			if f.Rules[i].ID == id {
+				if f.Rules[i].TotalRowTail == "" {
+					t.Fatalf("%s declares no total_row_tail, so this mutation changes nothing", id)
+				}
+				f.Rules[i].TotalRowTail = ""
+				found = true
+			}
+		}
+	}
+	if !found {
+		t.Fatalf("no rule %s in the committed mappings", id)
+	}
+	res = resultFor(t, runOne(t, s, &ruleFundsMatchTheirHeadings{}), "rule-funds-match-their-headings")
+	if len(res.Findings) != 1 || res.Findings[0].Subject != id {
+		t.Fatalf("findings = %v, want exactly %s's", res.Findings, id)
+	}
+	if want := `"Total County Meas BB-"`; !strings.Contains(res.Findings[0].Detail, want) {
+		t.Errorf("finding does not quote the truncated label %s: %v", want, res.Findings[0])
+	}
+}

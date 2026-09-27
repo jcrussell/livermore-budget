@@ -356,6 +356,14 @@ type Rule struct {
 	// every line after that one.
 	TotalRowAbove bool `yaml:"total_row_above"`
 
+	// TotalRowTail is the rest of the total's label where the page wraps it
+	// onto the next line, verbatim: p0175 prints "Total County Meas BB-" with
+	// the figures and "Bike/Pedestrian" alone beneath. total_row still anchors
+	// the figures; totalAnchor refuses the rule unless the next line is this
+	// text and nothing else, so the tail is read off the page rather than
+	// asserted about it. See WrappedTotalLabel.
+	TotalRowTail string `yaml:"total_row_tail"`
+
 	// PrintedDecimals is how many decimal places this rule's page PRINTS its
 	// figures to, and declaring it is what gives CheckTotals a tolerance
 	// derived from the document instead of from an author's judgement.
@@ -1004,6 +1012,20 @@ func (r Row) Identity() string {
 		return r.Label
 	}
 	return r.Label + "\x1f" + r.LabelTail
+}
+
+// WrappedTotalLabel is the whole printed label of the rule's total: total_row,
+// and total_row_tail after it where the page wraps one. A label broken at a
+// hyphen joins without a space, as p0175's "County Meas BB-" + "Bike/Pedestrian"
+// does; a wrong join names no fund, which the heading check reports.
+func (r *Rule) WrappedTotalLabel() string {
+	if r.TotalRowTail == "" {
+		return r.TotalRow
+	}
+	if strings.HasSuffix(r.TotalRow, "-") {
+		return r.TotalRow + r.TotalRowTail
+	}
+	return r.TotalRow + " " + r.TotalRowTail
 }
 
 // totalCovers says whether a row of this kind is one the printed total_row

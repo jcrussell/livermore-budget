@@ -73,6 +73,8 @@ func TestTheDeclaredExceptionsAreTheWholeResidual(t *testing.T) {
 		"transfers-detail -> spine":                     nil,
 		"transfers-detail + cip-transfers-out -> spine": nil,
 		"general-fund-departments -> spine":             nil,
+		"fund-expenditures -> spine":                    {"p0067-internal-service-is-250000-high-by-fund"},
+		"general-fund-departments -> fund-expenditures": {"general-fund-departments-rounds-services-and-supplies-2024"},
 		"departmentwide ~ spine":                        {"p0067-internal-service-is-250000-high-by-object"},
 		"funding-sources ~ spine":                       {"p0067-internal-service-is-250000-high-by-fund-group"},
 		"departmentwide ~ funding-sources": {
