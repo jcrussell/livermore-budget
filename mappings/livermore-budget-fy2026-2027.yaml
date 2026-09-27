@@ -1195,7 +1195,13 @@ rules:
   # those same pages reconciles exactly: p74's Transfers In 72,386,884 equals
   # p76's FY2026-27 grand total 21,624,633 plus p0075.txt:58's Transfers Out to
   # CIP 50,762,251. So pp.73-75 and p76 are the same money and agree; it is the
-  # REVENUE column that does not, and the cause is unresolved.
+  # REVENUE column that does not.
+  #
+  # The difference is the CIP funds. p0204.txt prints the same 310,669,663 as
+  # Total Operating Budget 282,447,173 (the spine's five non-internal-service
+  # groups) + Internal Service 19,995,870 + Capital Improvement Program Funds
+  # 8,226,620, and p0208.txt:60 prints that 8,226,620 again. pp.66-67 carry no
+  # CIP-fund column, so pp.68-75 include funds the spine does not.
   #
   # cuts-tie-along-the-lattice WOULD catch the over-inclusion -- it requires
   # this scope's per-cell sums to equal the spine's -- but it would surface as a

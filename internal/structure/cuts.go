@@ -57,7 +57,7 @@ func BudgetBookCuts() []Cut {
 			Bases:          budgetBookDetail,
 		},
 		{
-			// pp.171-176, which department's money comes from which fund. The
+			// pp.85-125, which department's money comes from which fund. The
 			// rows name departments where the other schedules name divisions.
 			Name:           "funding-sources",
 			Scope:          "department-funding-sources",
