@@ -115,12 +115,10 @@ func (*ruleFundsMatchTheirHeadings) Run(_ context.Context, s *Subject) (Result, 
 	// spoken for. Both are per document: two documents may print the same
 	// heading and mean different funds.
 	pages := map[string]map[int]bool{}
-	// CLAIMED IS KEYED ON THE PAGE AS WELL AS THE DOCUMENT (fisc-lkx). It used
-	// to be (doc_id, printed label), with no page dimension at all, while the
-	// claim this check makes is explicitly per page -- "on the pages a schedule
-	// maps, the schedule maps all of it". So one mapped total silenced an
-	// identically-worded total on every OTHER swept page of the same document,
-	// which is exactly the hole clause 2 exists to close.
+	// CLAIMED IS KEYED ON THE PAGE AS WELL AS THE DOCUMENT (fisc-lkx): the
+	// claim this check makes is per page -- "on the pages a schedule maps, the
+	// schedule maps all of it" -- so a total mapped on one page must not
+	// silence an identically-worded total on another.
 	//
 	// p0166, p0130 and p0172 all print "Total General Fund". p0130's is claimed
 	// by the rollup gf-total-revenues and p0172's -- printed twice, the fund's
@@ -137,19 +135,12 @@ func (*ruleFundsMatchTheirHeadings) Run(_ context.Context, s *Subject) (Result, 
 		for i := range f.Rules {
 			ru := &f.Rules[i]
 
-			// THE TOTAL IS CLAIMED BEFORE EITHER CONTINUE BELOW, and that
-			// ordering is the fix (fisc-948). Claiming a total is the statement
-			// that SOME rule reads that printed heading, which is true whether
-			// or not the rule declares one fund. Claiming it after the guards
-			// meant a rule mapping a fund section with fund_group-only columns
-			// -- or one whose columns declare two funds, already reported for
-			// that -- never claimed its own printed total, and clause 2's
-			// unclaimedFundTotals then reported a MAPPED section as one no rule
-			// or rollup declares: two findings from one cause, the second false.
-			//
-			// Latent on the committed corpus, which declares a fund on every
-			// column of every fund-bearing rule. It goes live the moment a
-			// schedule declares its fund per ROW, which is what p76 does.
+			// THE TOTAL IS CLAIMED BEFORE EITHER CONTINUE BELOW (fisc-948).
+			// Claiming a total is the statement that SOME rule reads that
+			// printed heading, which is true whether or not the rule declares
+			// one fund: a rule declaring its fund per ROW, as p76's do, still
+			// claims its printed total, so clause 2 does not report a mapped
+			// section as one no rule declares.
 			//
 			// THE CLAIM IS RECORDED ON EVERY PAGE OF THE RULE'S PARTS, which is an OVER-claim and is
 			// still strictly narrower than the document-wide claim it replaces.
@@ -341,12 +332,8 @@ func unclaimedFundTotals(s *Subject, pages map[string]map[int]bool,
 				if !ok {
 					continue
 				}
-				// BOTH PRINTED SHAPES, through the same helper clause 1 uses.
-				// While this clause carried its own leading-`Total ` regex it
-				// could not see `General Fund Total Expenses` at all, so on
-				// pp.167-170 -- swept for the first time when those rules
-				// declared fund 100 -- it reported coverage it was not
-				// providing.
+				// BOTH PRINTED SHAPES, through the same helper clause 1 uses, so
+				// `General Fund Total Expenses` on p170 is read as fund 100.
 				name, ok := fundNameIn(label)
 				if !ok {
 					continue
@@ -357,9 +344,9 @@ func unclaimedFundTotals(s *Subject, pages map[string]map[int]bool,
 				// where it is one: "Total Water" over "Replacement" is 642,
 				// not the 640 its head alone names.
 				if i+1 < len(lines) {
-					// A fragment is words with no column gap; a line with one is a
-					// row of its own, figures and all.
-					if tail := strings.TrimSpace(lines[i+1]); tail != "" && !strings.Contains(tail, "  ") {
+					// A fragment carries no figure; a line with one is a row of
+					// its own. Its words may be spaced as the page spaces them.
+					if tail := strings.TrimSpace(lines[i+1]); tail != "" && !strings.ContainsAny(tail, "0123456789") {
 						whole := mapping.JoinWrapped(label, tail)
 						if joined, ok := fundNameIn(whole); ok {
 							if e, jerr := s.Vocabulary.FundByLabel(joined); jerr == nil {

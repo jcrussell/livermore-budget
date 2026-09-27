@@ -765,6 +765,20 @@ func (f *fundFlows) netFundFlows(facts []fact.Fact) (map[revKey]*cellSum, map[ex
 					"pp.173-183 draw a fund into its object categories, so a fact missing "+
 						"either end has no link to be")
 			}
+			// The General Fund is drawn through its divisions; a second
+			// reading of it here would draw its spending twice.
+			if *fa.Fund == generalFund {
+				return nil, nil, nil, cmdutil.WithHint(
+					fmt.Errorf("fund-flows: fact %s draws fund %d from expenditure-by-fund", fa.ID, generalFund),
+					"pp.167-170 decompose the General Fund, and p172's block of it is "+
+						"general-fund-by-category, which this document does not read")
+			}
+			// The node's group is the registry's; a fact filed under another
+			// would draw a link of the wrong kind under the right group.
+			if t, ok := f.Labels.FundType(*fa.Fund); !ok || t != fa.FundGroup {
+				return nil, nil, nil, fmt.Errorf("fund-flows: fact %s files fund %d under %q and "+
+					"data/funds.yaml puts it in %q", fa.ID, *fa.Fund, fa.FundGroup, t)
+			}
 			add(byFund, fundExpKey{fundGroup: fa.FundGroup, fund: *fa.Fund, category: fa.Category}, fa)
 		default:
 			return nil, nil, nil, fmt.Errorf("fund-flows: fact %s is in scope %q, which this "+

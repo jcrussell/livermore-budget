@@ -161,3 +161,30 @@ func TestOpenableNodesRefusesAnEmptySetRatherThanShippingOne(t *testing.T) {
 		}
 	}
 }
+
+// TestOpenableNodesNeedsTheFlankTheWindowAboveSends: both funds pay on into
+// the step's own column, and the window they are opened from sends its kept
+// flank into only one. The other would open into a window whose flank sends
+// it nothing, which the client refuses, so it is not offered.
+func TestOpenableNodesNeedsTheFlankTheWindowAboveSends(t *testing.T) {
+	v := View{Path: "index.html"}
+	step := DrillStep{From: 3, Tiers: []int{2, 3, 4}, Keep: []int{2}}
+	raw := openableDoc(t, [2]string{"g", "opens"}, [2]string{"g", "shut"},
+		[2]string{"opens", "d"}, [2]string{"shut", "d"})
+	parent := openableDoc(t, [2]string{"g", "opens"}, [2]string{"shut", "d"})
+
+	unfiltered, err := openableNodes(v, 0, step, "stem", raw, nil)
+	if err != nil {
+		t.Fatalf("openableNodes: %v", err)
+	}
+	if diff := cmp.Diff([]string{"opens", "shut"}, unfiltered); diff != "" {
+		t.Fatalf("with no window above, both open (-want +got):\n%s", diff)
+	}
+	got, err := openableNodes(v, 0, step, "stem", raw, [][]byte{parent})
+	if err != nil {
+		t.Fatalf("openableNodes: %v", err)
+	}
+	if diff := cmp.Diff([]string{"opens"}, got); diff != "" {
+		t.Errorf("the window above flanks only \"opens\" (-want +got):\n%s", diff)
+	}
+}

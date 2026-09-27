@@ -190,7 +190,8 @@ func answerNeeds(g export.Graph, s export.DrillStep, opened string, nearIsSource
 			return fmt.Errorf("step %q opens %q without tier %d: %w", s.Key, opened, s.Widen[k], err)
 		}
 		for _, t := range narrow {
-			if !slices.Contains(outward, t) {
+			// A widened column's own ids are drawn with it by definition.
+			if !slices.Contains(outward, t) || slices.Contains(s.Widen, t) {
 				continue
 			}
 			for _, id := range full.At[t] {

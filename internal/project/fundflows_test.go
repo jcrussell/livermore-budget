@@ -482,6 +482,22 @@ func TestFundFlowsRefusesWhatItCannotPlace(t *testing.T) {
 			want: "carries no department",
 		},
 		{
+			// pp.167-170 draw the General Fund through its divisions; a second
+			// reading of it from expenditure-by-fund would draw it twice.
+			name: "the General Fund from expenditure-by-fund",
+			facts: []fact.Fact{
+				fundFlowsFact(scopeExpenditureByFund, mapping.KindExpenditure, "wages-and-benefits", "", "general", fact.FundNumber(100), 1, "z"),
+			},
+			want: "draws fund 100 from expenditure-by-fund",
+		},
+		{
+			name: "a fund filed under a group the registry does not put it in",
+			facts: []fact.Fact{
+				fundFlowsFact(scopeExpenditureByFund, mapping.KindExpenditure, "wages-and-benefits", "", "capital", fact.FundNumber(500), 1, "z"),
+			},
+			want: `files fund 500 under "capital"`,
+		},
+		{
 			// The tier-5 id carries the DIVISION and not the fund, so two funds
 			// spending on one division/object would collide on one link.
 			name: "two funds on the expenditure side",
