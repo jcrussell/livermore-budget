@@ -563,9 +563,7 @@ func TestACommentAboveAnIndentedLiteralElementIsNotMalformed(t *testing.T) {
 // paths leaves the lookup unexercised -- green because nothing was examined.
 func TestTheScanRunsFromAnyWorkingDirectory(t *testing.T) {
 	root := t.TempDir()
-	// EVERY EXEMPTED FILE HAS TO EXIST UNDER THIS ROOT, because checkExemptions
-	// refuses a declaration that has outlived its file -- so a temp tree that
-	// omits one fails on the exemption rather than on the thing under test.
+	// Every exempted file must exist, or the run fails on checkExemptions.
 	for _, d := range []string{"docs", filepath.Join("tools", "doccheck"), filepath.Join("tools", "beadrefs")} {
 		if err := os.MkdirAll(filepath.Join(root, d), 0o750); err != nil {
 			t.Fatalf("mkdir %s: %v", d, err)
@@ -579,9 +577,7 @@ func TestTheScanRunsFromAnyWorkingDirectory(t *testing.T) {
 	src := filepath.Join(root, "x.go")
 	write(t, src, "package x\n\n// see AGENTS.md, \"The extraction boundary\". See docs/real.md.\n"+
 		"// TestTheOnlyOne is what pins it.\n")
-	// AND A DECLARATION FOR THAT CITATION TO RESOLVE AGAINST, for the reason the
-	// citation and the docs/ path are here: run refuses a scan that finds none of
-	// the three, because a pattern that has stopped matching reports nothing dead.
+	// And a declaration for it: run refuses a scan that finds none.
 	decls := filepath.Join(root, "x_test.go")
 	write(t, decls, "package x\n\nfunc TestTheOnlyOne(t *testing.T) {}\n")
 
@@ -688,13 +684,8 @@ func write(t *testing.T, path, content string) {
 	}
 }
 
-// A cited test name resolves against a declaration or it is dead, and the two
-// halves of the wrap rule each have a case here.
-//
-// THE FIXTURES SPELL THE NAMES IN A GO COMMENT because that is where the tree
-// carries them, and this file is exempt from the scan for the reason the exempt
-// map gives: a fixture naming a test that must NOT resolve would otherwise be
-// reported beside the real ones.
+// A cited test name resolves against a declaration or it is dead; each half of
+// the wrap rule has a case here.
 func TestADeadTestNameIsRefusedAndTheThreeLiveShapesAreNot(t *testing.T) {
 	dir := t.TempDir()
 	decls := filepath.Join(dir, "x_test.go")
@@ -737,9 +728,7 @@ func TestADeadTestNameIsRefusedAndTheThreeLiveShapesAreNot(t *testing.T) {
 	}
 }
 
-// The over-join case, stated on its own because it is the reason BOTH forms are
-// tried rather than only the joined one. "TestTheSentenceRunsOn.\n// Is the
-// point" joins to a name no test declares; the unwrapped form is what answers.
+// The over-join case: the joined form names no test, the unwrapped one answers.
 func TestUnwrapOverJoinsAndTheUnwrappedFormIsWhatAnswers(t *testing.T) {
 	dir := t.TempDir()
 	src := filepath.Join(dir, "y.go")
@@ -760,9 +749,8 @@ func TestUnwrapOverJoinsAndTheUnwrappedFormIsWhatAnswers(t *testing.T) {
 	}
 }
 
-// testDeclPattern reads a declaration and not a call, a string or a citation of
-// one. Without the line anchor every comment naming a test would declare it, and
-// the arm would resolve every citation against itself.
+// testDeclPattern reads a declaration, not a citation; without the line anchor
+// every citation would resolve against itself.
 func TestTestDeclPatternReadsDeclarationsOnly(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "x_test.go")

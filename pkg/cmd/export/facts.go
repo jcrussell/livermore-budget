@@ -331,9 +331,8 @@ func factCSVHeader() []string {
 }
 
 // factCSVNullable is the set of columns the store may publish null in: the
-// pointer fields of fact.Fact, read off the type for factCSVHeader's reason. A
-// literal set would let a field go nullable without the CSV learning it, and
-// the transcoder would then refuse the committed store as not the store.
+// pointer fields of fact.Fact, read off the type so a new pointer field cannot
+// go unlearned.
 func factCSVNullable() map[string]bool {
 	t := reflect.TypeOf(fact.Fact{})
 	out := map[string]bool{}
@@ -465,11 +464,8 @@ func unexpectedEnd(err error) error {
 // csvCell renders one JSON scalar. A number keeps its source literal; there is
 // no numeric type here at all.
 //
-// A NULL IS A CELL ONLY IN A NULLABLE COLUMN. The store publishes null in
-// exactly its pointer fields -- fund, where null is an absent fund and 0 would
-// be a fund -- and the CSV spells that absence as an empty cell, which is how
-// its string axes already spell theirs: an empty department is a row with no
-// department. Anywhere else a null means the file is not the store.
+// A null is an empty cell only in a nullable column (fund: null is no fund, 0
+// is a fund); anywhere else it means the file is not the store.
 func csvCell(v any, nullable bool) (string, error) {
 	switch t := v.(type) {
 	case json.Number:
@@ -489,8 +485,7 @@ func csvCell(v any, nullable bool) (string, error) {
 	}
 }
 
-// describeNullable lists the nullable columns for a refusal, so the message
-// names what the store does allow rather than only what it does not.
+// describeNullable lists the nullable columns for a refusal.
 func describeNullable() string {
 	var names []string
 	for name := range factCSVNullable() {

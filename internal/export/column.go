@@ -13,7 +13,7 @@ import (
 	"github.com/jcrussell/livermore-budget/schema"
 )
 
-// columnSchemaVersion is the version a ColumnDoc declares, spelled once.
+// columnSchemaVersion is the version a ColumnDoc declares.
 const columnSchemaVersion = 1
 
 // ColumnDoc is everything the chart needs for one published column: one node
@@ -57,13 +57,8 @@ type ColumnSchedNode struct {
 }
 
 // ColumnFundGroup is one fund group this column draws, in the order the page
-// lays the fund column out.
-//
-// THE SLUG IS SHIPPED RATHER THAN CUT OUT OF THE ID BY THE CLIENT. site/app.js
-// binds a hue per fund group, and the binding lives in site/style.css where
-// every other colour does; the slug is the key it looks one up by. Handing the
-// client the id alone would have it parse `fund-group/permanent` to reach the
-// custom property, which is the id-parsing [ColumnNode.Role] exists to remove.
+// lays the fund column out. Slug is the key site/style.css binds a hue to, so
+// the client never parses an id.
 type ColumnFundGroup struct {
 	ID   string `json:"id"`
 	Slug string `json:"slug"`
@@ -77,16 +72,14 @@ type ColumnTier struct {
 
 // ColumnSched is one printed schedule of a column.
 type ColumnSched struct {
-	// An array because fund-flows spans two: revenue-by-fund and
-	// expenditure-by-department. The per-projection files spell this two ways.
-	Scopes   []string        `json:"scopes"`
-	Headline json.RawMessage `json:"headline,omitempty"`
-	Counts   json.RawMessage `json:"counts,omitempty"`
-	Caveats  json.RawMessage `json:"caveats,omitempty"`
-	Sources  json.RawMessage `json:"sources,omitempty"`
-	// This schedule's own view of the marks it draws.
-	Nodes []ColumnSchedNode `json:"nodes"`
-	Links []ColumnLink      `json:"links"`
+	// An array because fund-flows spans two scopes.
+	Scopes   []string          `json:"scopes"`
+	Headline json.RawMessage   `json:"headline,omitempty"`
+	Counts   json.RawMessage   `json:"counts,omitempty"`
+	Caveats  json.RawMessage   `json:"caveats,omitempty"`
+	Sources  json.RawMessage   `json:"sources,omitempty"`
+	Nodes    []ColumnSchedNode `json:"nodes"`
+	Links    []ColumnLink      `json:"links"`
 }
 
 // ColumnLink references its ends by index into the node table, which is why
@@ -101,9 +94,8 @@ type ColumnLink struct {
 	Locators   json.RawMessage `json:"locators"`
 	Derived    bool            `json:"derived,omitempty"`
 	Partition  bool            `json:"partition,omitempty"`
-	// Contra is the sentence naming the schedule a negative link is printed as
-	// a reduction of, carried from the projection so the page reads it rather
-	// than composing it from a parent the fold has already blanked.
+	// Contra is carried from the projection so the page never composes it
+	// from a parent the fold has already blanked.
 	Contra string `json:"contra,omitempty"`
 }
 
@@ -147,17 +139,9 @@ type decoded struct {
 }
 
 // ColumnIndex answers which built document is one schedule of one column:
-// [ColumnPath] -> [scheduleKey] -> filename stem.
-//
-// IT IS THE JOIN THE CLIENT ALREADY MAKES. site/app.js fetches the column the
-// year landed and selects a schedule out of it by [DrillStep.Projection], so a
-// step's document is fully determined by (column, schedule key). Go resolving
-// it any other way is a second answer to a settled question, and the map that
-// used to be declared per step could point a year at another year's figures
-// while satisfying every arm that guarded it.
-//
-// Built in [ColumnsOf]'s own loop so the fold and the index cannot disagree
-// about which documents are column-shaped.
+// [ColumnPath] -> [scheduleKey] -> filename stem. It is the same join
+// site/app.js makes, and is built in [ColumnsOf]'s own loop so the fold and
+// the index cannot disagree.
 type ColumnIndex struct {
 	schedules map[string]map[string]string
 	columns   map[string]string
@@ -171,13 +155,9 @@ func (ix ColumnIndex) Stem(column, schedule string) (string, bool) {
 }
 
 // PublishedPath is where a reader fetches a built document: the column it
-// folded into, or its own file under data/ where it folded into none.
-//
-// ONE ANSWER FOR THREE QUESTIONS -- which files the write plan lays down,
-// which the footer's disclosure links, and which the caveats page points a
-// document at. Three spellings of it would be three chances for the site to
-// link a path it does not write, which is exactly what a reader meets as a
-// 404 and no test sees.
+// folded into, or its own file under data/ where it folded into none. The
+// write plan, the footer and the caveats page all read it, so none can link a
+// path the site does not write.
 func (ix ColumnIndex) PublishedPath(stem string) string {
 	if column, folded := ix.Column(stem); folded {
 		return column
@@ -238,20 +218,9 @@ func ColumnsOf(projections map[string][]byte, generatedBy string) (map[string]Co
 		if !seen {
 			col = &ColumnDoc{
 				SchemaVersion: columnSchemaVersion,
-				// THE EXPORT'S STAMP AND NOT THE PROJECTION'S, because this
-				// file is the export's artifact and the one claim a reader
-				// needs from it is "the page you are reading and I came out
-				// of one run". The client compares it against
-				// CONFIG.exported_by, which is the only thing that can catch
-				// a cached column beside a fresh app.js -- see loadColumn in
-				// site/app.js.
-				//
-				// NOTHING HERE REFUSES TWO SCHEDULES BUILT BY DIFFERENT RUNS,
-				// and that is deliberate rather than missed. buildProjections
-				// runs once, so the state is unreachable in the pipeline; the
-				// disagreement that IS reachable -- a step document crediting
-				// a builder the footer does not name -- is refused by
-				// stepDocuments, where the credit is actually made.
+				// The export's stamp, not the projection's: loadColumn in
+				// site/app.js compares it against CONFIG.exported_by to catch
+				// a cached column beside a fresh app.js.
 				GeneratedBy: generatedBy,
 				Column: ColumnKey{
 					FiscalYear: d.Metadata.FiscalYear,
@@ -265,8 +234,6 @@ func ColumnsOf(projections map[string][]byte, generatedBy string) (map[string]Co
 			ix.schedules[key] = map[string]string{}
 		}
 		if was, dup := ix.schedules[key][schedule]; dup {
-			// Two stems folding into one slot is a silent overwrite of a
-			// whole schedule, and which one won would depend on sort order.
 			return nil, ColumnIndex{}, fmt.Errorf(
 				"column %s: %q and %q are both schedule %q", key, was, stem, schedule)
 		}
@@ -285,8 +252,6 @@ func ColumnsOf(projections map[string][]byte, generatedBy string) (map[string]Co
 				at[n.ID] = i
 				col.Nodes = append(col.Nodes, node)
 			} else if col.Nodes[i] != node {
-				// Two schedules meaning different things by one id is not
-				// something a rule here could pick between.
 				return nil, ColumnIndex{}, fmt.Errorf(
 					"column %s: %q disagrees between schedules about the same node: %+v and %+v",
 					key, n.ID, col.Nodes[i], node)
@@ -338,12 +303,8 @@ func ColumnsOf(projections map[string][]byte, generatedBy string) (map[string]Co
 // yearSuffix is what project.PublishedStem appends to a projection name.
 var yearSuffix = regexp.MustCompile(`-(\d{4})(-actual|-revised)?$`)
 
-// scheduleKey is the schedule a stem's document becomes in its column.
-//
-// It inverts project.PublishedStem, which appends the year to a projection name
-// when a projection publishes more than one column. NOTHING HOLDS THE TWO
-// TOGETHER: this package does not import internal/project, so the two spellings
-// of one rule can drift in silence. fisc-9akl.
+// scheduleKey is the schedule a stem's document becomes in its column. It
+// inverts project.PublishedStem and nothing holds the two together (fisc-9akl).
 func scheduleKey(stem string) string {
 	return yearSuffix.ReplaceAllString(stem, "")
 }
@@ -378,33 +339,17 @@ func tiersOf(nodes []ColumnNode) []ColumnTier {
 	return out
 }
 
-// roleFundGroup is [ColumnNode.Role] on a node that IS a fund group.
-//
-// Spelled here because this package reads projections as bytes and imports
-// neither internal/project, which composes the value, nor pkg/cmd/export,
-// which re-spells it in its step declarations. TestRoleFundGroupIsOneOfThe
-// SchemasRoles holds this copy to schema/column.schema.json's `role` enum,
-// which is the one list all three are checked against.
+// roleFundGroup is [ColumnNode.Role] on a node that IS a fund group, held to
+// schema/column.schema.json's `role` enum by TestRoleFundGroupIsOneOfTheSchemasRoles.
 const roleFundGroup = "fund_group"
 
 // fundGroupDisplayOrder is the fund column top to bottom, by fund-type slug,
 // and with it the categorical slot each group wears.
 //
-// THIS ORDER IS MEASURED, NOT CHOSEN FOR LOOKS. Ribbons stack at a node in
-// column order, so the fund colours that touch are the consecutive pairs of
-// whichever groups are present at that node. Over the pairs that actually
-// occur in this graph, this ordering's worst pair is CVD dE 9.1 light / 8.4
-// dark (target 8) and normal-vision dE 19.6 / 19.3 (floor 15). The obvious
-// orderings do not clear that: sorting the column by size drops the worst dark
-// pair to 6.9, and one ordering collapses it to 1.6. Re-run the dataviz
-// validator over the touching pairs before changing this. fisc-y0k.
-//
-// IT IS A PREFERENCE AND NOT A MEMBERSHIP LIST. data/funds.yaml grows a fund
-// type without asking this file, and [fundGroupsOf] puts one this sequence
-// does not name AFTER the ones it does, in id order, rather than dropping it
-// or refusing the column. Six is the palette's capacity, not the world's:
-// site/style.css declares six hues and a seventh group draws --muted, which is
-// a rendering limit and stays on that side.
+// The order is measured: over the colour pairs that touch in this graph its
+// worst is CVD dE 9.1 light / 8.4 dark (target 8); sorting by size drops the
+// worst dark pair to 6.9. Re-run the dataviz validator over the touching pairs
+// before changing it (fisc-y0k). A slug it does not name sorts after, by id.
 var fundGroupDisplayOrder = []string{
 	"internal-service",
 	"capital",
@@ -415,21 +360,14 @@ var fundGroupDisplayOrder = []string{
 }
 
 // fundGroupsOf is the fund groups this column draws, ordered for the page.
-//
-// The client reads this instead of holding a list of its own: which groups
-// exist is the document's and the order is the packager's, and site/app.js
-// spelled both as six-element literals that could not see a seventh.
 func fundGroupsOf(nodes []ColumnNode) ([]ColumnFundGroup, error) {
 	out := []ColumnFundGroup{}
 	for _, n := range nodes {
 		if n.Role != roleFundGroup {
 			continue
 		}
-		// An id form is read by cutting at the FIRST slash, which is the id
-		// grammar internal/project composes these under. A fund group whose id
-		// carries no form is refused rather than shipped with the whole id as
-		// its slug, which would send the client looking up a custom property
-		// no stylesheet declares and draw it muted with no other symptom.
+		// An id with no form is refused: the whole id as a slug would draw
+		// the group muted with no other symptom.
 		cut := strings.Index(n.ID, "/")
 		if cut < 0 || cut == len(n.ID)-1 {
 			return nil, fmt.Errorf("node %q is role %s and its id names no fund type", n.ID, roleFundGroup)
@@ -452,10 +390,8 @@ func fundGroupsOf(nodes []ColumnNode) ([]ColumnFundGroup, error) {
 }
 
 // encodeColumn renders one column and refuses bytes that do not match the
-// published schema.
-//
-// A DERIVED NODE WITHOUT ITS WORDS IS REFUSED HERE and not by the schema,
-// which cannot join a schedule's node to the table entry saying it is derived.
+// published schema. A derived node without its words is refused here because
+// the schema cannot join a schedule's node to its table entry.
 func encodeColumn(doc ColumnDoc) ([]byte, error) {
 	for _, key := range slices.Sorted(maps.Keys(doc.Schedules)) {
 		for _, sn := range doc.Schedules[key].Nodes {
@@ -487,27 +423,11 @@ func encodeColumn(doc ColumnDoc) ([]byte, error) {
 }
 
 // StepStems is the document each declared step draws for one year, in
-// declaration order: the step's own schedule where it names one, and where it
-// names none the document of the chart its After opens from -- `year` itself
-// for "" -- which is validateSteps' resolution and site/app.js's
-// stepDocument's. Parents drawing two documents are refused, as there.
-//
-// ONE SPELLING, TWO CALLERS -- stepDocuments here and the rung walk in
-// pkg/cmd/export. They were two, and they disagreed: where a step's year
-// carried no entry, one resolved "" and the other fell back to the declared
-// projection, so the shipped rung answer and the page could name different
-// documents for one rung.
-//
-// A SCHEDULE THE COLUMN DOES NOT CARRY IS REFUSED BY NAME, which is what the
-// four arms guarding the old declared map add up to and the one thing they
-// could not say: those checked that the packager had written an entry, and
-// this checks that the document it names folded into the column a reader will
-// actually fetch.
-//
-// THE COLUMN IS LOOKED UP HERE AND NOT BY THE CALLER, so a year that folded
-// into none is a failure only for a step that needs one. A view whose steps
-// all draw the document before them selects nothing out of a column, and a
-// document stating no fiscal year is still walkable.
+// declaration order: the step's own schedule where it names one, else the
+// document of the chart its After opens from (`year` itself for ""), as
+// site/app.js's stepDocument resolves it. A schedule the year's column does
+// not carry is refused by name; a year in no column fails only a step that
+// selects a schedule.
 func StepStems(steps []DrillStep, year string, ix ColumnIndex) ([]string, error) {
 	out := make([]string, len(steps))
 	index := make(map[string]int, len(steps))
@@ -558,18 +478,7 @@ func StepStems(steps []DrillStep, year string, ix ColumnIndex) ([]string, error)
 
 // DrawnStems is every document this view's steps draw, across every year it
 // lists: the schedule each step names, resolved in each year's own column.
-//
-// ONE SPELLING FOR TWO QUESTIONS -- which documents the caveats page may
-// promise a chart flag for, and which documents the published set may call
-// reachable. Both used to read [DrillStep]'s declared per-year map, and both
-// got the same wrong answer when it was built from projections and year stems
-// alone: every reader of the caveats page was told the charts do not flag
-// fund-flows' marks, while they do.
-//
-// A step drawing the document before it adds nothing, because that document
-// is already in the list or is the year's own. A year that folded into no
-// column contributes nothing rather than failing: [StepStems] is where that
-// is refused, by name, for the step that needed it.
+// A year in no column contributes nothing; [StepStems] refuses that.
 func (v View) DrawnStems(ix ColumnIndex) []string {
 	var out []string
 	seen := map[string]bool{}

@@ -111,11 +111,8 @@ func TestEveryColumnLinkEqualsTheFactsItCites(t *testing.T) {
 						name, schedule, i, missing)
 					continue
 				}
-				// The draw leg carries the negation of its facts; the same
-				// allowance internal/check's link-values-tie-to-facts makes.
-				// The condition is the source node id and not the sign of the
-				// sum, because "equals the absolute sum" accepts a leg pointing
-				// the wrong way.
+				// The draw leg carries its facts' negation, keyed on the source
+				// id: "equals the absolute sum" would accept a reversed leg.
 				want := sum
 				if col.Nodes[l.From].ID == project.NodeFundBalanceDraw {
 					want = -sum
@@ -188,14 +185,9 @@ func TestEveryColumnIndexResolves(t *testing.T) {
 	}
 }
 
-// TestEveryFundGroupNodeHasAPlaceInItsColumnsOrder holds a column's
-// fund_groups to the node table it is built from: every node the column
-// marks role fund_group is in the list, and nothing else is.
-//
-// THE CLIENT ORDERS BY THIS LIST AND HAS NO FALLBACK. site/app.js's
-// fundGroupPlace answers the list's index and nothing else, so a group the
-// list omitted would sort by -1 in the fund column and the legend alike. The
-// case is refused here rather than survived there.
+// TestEveryFundGroupNodeHasAPlaceInItsColumnsOrder: a column's fund_groups is
+// exactly its fund_group nodes. site/app.js orders by the list with no
+// fallback, so an omitted group would sort at -1.
 func TestEveryFundGroupNodeHasAPlaceInItsColumnsOrder(t *testing.T) {
 	built, err := buildAll(repoRootForTest(t))
 	if err != nil {

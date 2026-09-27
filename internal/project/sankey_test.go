@@ -655,40 +655,17 @@ func TestTransferCaveatWhenLegsMatch(t *testing.T) {
 	}
 }
 
-// TestTransferCaveatNamesThePrintedColumn is the evidence for the correction
-// this caveat carries, and it asserts the two halves separately because they
-// went stale for different reasons.
-//
-// THE STALE REASON, AND IT HAS NOW GONE STALE TWICE IN THE SAME PLACE. The
-// caveat first said the legs were unpaired "because the p76 transfer schedule
-// is not yet mapped (fisc-5gk.3)"; the page was mapped and the legs stayed
-// unpaired, because its facts are at scope transfers-by-fund and no projection
-// selected it. It then said pairing them "needs a document of p76's own and a
-// transfer_id derived from the two legs' shared page and offset (fisc-9gh)";
-// that document exists, and this chart's Transfers In opens into it. Both
-// sentences were true when written and neither was revisited, which is the
-// failure mode this test exists to make loud -- so the stale list below names a
-// promise of work rather than one wording, and grows by one entry each time.
-//
-// WHAT IS STILL TRUE IS SCOPED TO THIS DOCUMENT. The spine's own links carry no
-// transfer_id and cannot: internal/project nets p76's rows into fund-group
-// cells before a pairing could attach to anything. The caveat has to say that
-// about THIS graph without telling a reader the pairing does not exist.
-//
-// THE PRINTED COLUMN. The residual is not a discrepancy: the city prints it
-// under a heading of its own. The figure asserted here is the one the six
-// p76-lists-no-transfer-to-the-cip-* entries of structure.BudgetBookExceptions
-// sum to, and the caveat is
-// built to name the column ONLY when this document's own residual meets the
-// hand-typed page figure -- so this test also covers that gate being open.
+// TestTransferCaveatNamesThePrintedColumn asserts the caveat promises no
+// work that has landed, points at transfers-by-fund, and names the printed
+// to-CIP column, which it does only when this document's residual meets the
+// hand-typed page figure.
 func TestTransferCaveatNamesThePrintedColumn(t *testing.T) {
 	g := buildGraph(t, spineFacts(t, testYear), testOptions())
 	text := caveatText(g)
 
 	for _, stale := range []string{
 		"not yet mapped", "not mapped yet", "fisc-5gk.3",
-		// The pairing is done. A caveat naming the bead for it, or saying what
-		// it would take, tells a reader the chart cannot do what it does.
+		// The pairing is done, one document over.
 		"fisc-9gh", "Pairing the legs needs",
 	} {
 		if strings.Contains(text, stale) {
@@ -700,9 +677,7 @@ func TestTransferCaveatNamesThePrintedColumn(t *testing.T) {
 		"Transfers Out to CIP", // the printed heading
 		"$38,086,737",          // p0073.txt:58, and this document's own residual
 		"PDF p73",              // the site labels citations "PDF p" + the PDF page index
-		// The document that DOES pair them, which is what a reader who has just
-		// been told this graph does not needs pointed at. It is also where p76's
-		// facts are, which is why they are not in this graph.
+		// The document that does pair them.
 		"transfers-by-fund",
 	} {
 		if !strings.Contains(text, want) {
@@ -991,9 +966,8 @@ func TestGroupExpenditureSumsOnlyThatGroupsObjectLinks(t *testing.T) {
 	}
 }
 
-// TestTheHeadlineIsANamedCut is fisc-w11l's acceptance arithmetic on the new
-// path: the four published figures, produced as a sum over the view the
-// document names rather than accumulated as its cells are drawn, and unchanged.
+// TestTheHeadlineIsANamedCut is fisc-w11l's acceptance arithmetic: the four
+// published figures, summed over the view the document names.
 func TestTheHeadlineIsANamedCut(t *testing.T) {
 	g := buildGraph(t, spineFacts(t, testYear), testOptions())
 	want := Headline{

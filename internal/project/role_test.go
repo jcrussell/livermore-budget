@@ -14,26 +14,10 @@ import (
 // TestEveryDeclaredRoleIsInTheSchemasEnum holds the role vocabulary this
 // package composes to the one schema/column.schema.json publishes.
 //
-// THE ROLES ARE WHAT KEEPS A CLIENT FROM PARSING AN ID, which is what their own
-// declaration says they are for, and site/app.js's isFundGroup now reads one.
-// That only works while every speller agrees: this package writes the values,
-// pkg/cmd/export re-spells five of them in its step declarations, and
-// internal/export selects fund groups by a sixth copy. None of the three can
-// see the others, and the enum is where they meet.
-//
-// BOTH DIRECTIONS. A role declared here and missing from the enum ships a
-// document `fisc export` refuses; a role in the enum this package no longer
-// composes is a value the contract still promises a reader.
-//
-// A ROLE COMPOSED AT A CALL SITE RATHER THAN THROUGH THE BLOCK NEEDS NO ARM
-// HERE, and that is worth saying so it is not added: encodeColumn validates
-// every published column against this enum before writing it, so a literal
-// that reached a node would fail the export over the real corpus rather than
-// slip past a test that compares two lists neither of which mentions it.
+// Both directions: a role missing from the enum ships a document `fisc export`
+// refuses, and an enum value nothing composes is a promise about nothing.
 func TestEveryDeclaredRoleIsInTheSchemasEnum(t *testing.T) {
-	// Every value the const block above declares, listed rather than reflected
-	// because an unexported const block cannot be enumerated at run time. A
-	// role added there and not here is caught by the count arm below.
+	// Listed by hand: an unexported const block cannot be enumerated.
 	declared := []string{
 		roleRevenueSource, roleRevenueLine, roleFundGroup, roleFund,
 		roleGeneralFund, roleDepartment, roleWholeDepartment, roleObjectCategory,

@@ -16,14 +16,8 @@ const DepartmentSpendingProjection = "department-spending"
 // DepartmentSpendingScope is the schedule this document is of: Budget Book
 // pp.85-125's UPPER block, Expenditures by Category.
 //
-// THE LOWER BLOCK OF THE SAME ELEVEN PAGES IS NOT IN IT, and the reason is the
-// tier it is keyed on rather than a missing field. Department Funding Sources
-// rows carry a DEPARTMENT -- the ALL-CAPS tier of data/departments.yaml -- where
-// this block's rows carry a DIVISION, and five slugs name both, so a document
-// keyed on a division cannot place one of them without asking which tier it is
-// holding. [departmentFunding] is the document that draws them. Adding the two
-// blocks together would also double the city's expenditure, which is what the
-// two ties-to-spine checks over these pages each reconcile separately.
+// The lower block of the same pages is keyed on DEPARTMENT, not division, and
+// is [departmentFunding]'s; adding the two blocks doubles the city's spending.
 const DepartmentSpendingScope = "departmentwide-expenditures"
 
 // DepartmentSpendingScopes is the schedule set, as [Options.Scopes] holds it.
@@ -31,18 +25,8 @@ func DepartmentSpendingScopes() []string { return []string{DepartmentSpendingSco
 
 // departmentSpendingCounts is how much of the corpus this document accounts for.
 //
-// IT IS NOT [FundFlowsCounts] and there is no facts_cited_twice, which is the
-// difference between the two documents rather than an omission. The drill-down
-// holds the same money at two grains -- a fund-to-division link sums the
-// division's object rows -- so a fact there is behind two links and the overlap
-// has to be published as a number. Here every printed cell is one link and one
-// link only: there is no summing link above the cell, because the column above
-// a division is the object category the cell is already addressed by.
-//
-// facts = facts_cited + facts_uncited is this document's identity, and every
-// uncited fact is a cell the city printed as a dash or a zero. The projection
-// REFUSES any other uncited fact rather than publishing a smaller city, so the
-// identity holds by construction and the numbers state it for a reader.
+// Every printed cell is one link, so there is no facts_cited_twice.
+// facts = facts_cited + facts_uncited, every uncited fact a printed zero.
 type departmentSpendingCounts struct {
 	Facts        int `json:"facts"`
 	FactsCited   int `json:"facts_cited"`
@@ -51,13 +35,8 @@ type departmentSpendingCounts struct {
 	Links        int `json:"links"`
 }
 
-// departmentSpendingMetadata is this document's metadata block.
-//
-// It embeds [Envelope] rather than [MultiScopeEnvelope]: this document is of one
-// schedule, and a plural `scopes` key holding a single entry would advertise a
-// second schedule it does not draw. fiscal_year and basis are here because it is
-// of one column; a cross-tab of two budget years adds every cell to its
-// successor and still looks like a table.
+// departmentSpendingMetadata is this document's metadata block, of one
+// schedule and one column.
 type departmentSpendingMetadata struct {
 	Envelope
 	FiscalYear      int                      `json:"fiscal_year"`
@@ -87,33 +66,13 @@ type DepartmentSpendingDocument struct {
 //	          |  one link per printed cell, PARTITION, value the cell
 //	tier 4  dept/<division>        parent ""
 //
-// THE TIER-5 IDS ARE THE SPINE'S OWN, deliberately. A reader opens this document
-// by clicking an object category on sankey.json, and the node they clicked is
-// the centre of what they are shown; a second id form for the same category
-// would make the centre a different box wearing the same words.
-//
-// BOTH ENDS ARE PARENTLESS, AND THAT IS THE PAGES RATHER THAN AN OMISSION. These
-// rows print what a division spends whatever pays for it -- they carry no fund
-// and no fund group, which is why departmentwide-ties-to-spine can tie them only
-// to the spine's object categories summed over all six groups. So there is no
-// fund for a division to hang from here, and no group for a category. The client
-// draws a ribbon with a group-less end muted, which is correct and is what the
-// no-fund-axis caveat below says in words.
-//
-// THE LINKS RUN 5 -> 4, WHICH DESCENDS, AND THEY SAY SO. pp.85-125 print one
-// matrix, divisions down and object categories across; a chart can read it
-// either way round and neither reading is money moving. Link.Partition is that
-// claim on the wire, and node-tiers-are-declared admits a descending link only
-// where it is carried.
-//
-// A ZERO CELL IS A FACT AND NOT A FLOW, fundflows' rule at the same place: 28
-// divisions print a Wages & Benefits row and two of them print a dash in FY2026,
-// so a link for every cell would draw ribbons the schedule prints as nothing.
-// The facts survive and are counted in facts_uncited.
+// The tier-5 ids are the spine's own, because a reader opens this document by
+// clicking an object category on sankey.json. Both ends are parentless: these
+// rows carry no fund. The links descend 5 -> 4 and carry Link.Partition, since
+// one printed matrix read either way round is not money moving. A zero cell
+// draws no link and stays in facts_uncited.
 type departmentSpending struct {
-	// Labels supplies the city's words for a division slug and an object
-	// category. It is optional, as Sankey's is: a nil registry degrades to a
-	// slug-derived label rather than to no document.
+	// Labels is optional: a nil registry degrades to a slug-derived label.
 	Labels labels
 }
 
@@ -125,18 +84,8 @@ var (
 // Name is [Projection]'s, and it is this document's file stem.
 func (*departmentSpending) Name() string { return DepartmentSpendingProjection }
 
-// Slices is one Options per column the schedule carries, [Sankey.Slices]'s rule:
-// a cross-tab of two budget years adds every cell to its successor.
-//
-// ALL FOUR PRINTED COLUMNS, not the two the spine publishes. pp.85-125 print
-// FY2023-24 Actual, FY2024-25 Revised and both adopted years, and two reasons
-// make drawing all four the right answer. It is the only document that draws
-// these pages at all, so drawing two of the four would publish half a schedule
-// with nothing on the site or in the fact store saying which half. And a reader
-// asking
-// which divisions spent the money in FY2024 is asking the question this document
-// exists to answer; that the spine prints no actual column is a fact about
-// pp.66-67 rather than about pp.85-125.
+// Slices is one Options per column the schedule carries: all four printed
+// columns, not only the two the spine publishes.
 func (*departmentSpending) Slices(facts []fact.Fact, version string) []Options {
 	seen := map[Column]bool{}
 	for i := range facts {
@@ -226,10 +175,7 @@ func (d *departmentSpending) Document(facts []fact.Fact, o Options) (*Department
 			Source: src.id, Target: dst.id, ValueCents: c.cents,
 			Kind: spendingLinkKind(k.kind), FactIDs: c.factIDs,
 			Locators: c.locs.sources(),
-			// THE FLAG IS SET HERE AND NOWHERE ELSE IN THIS PACKAGE. Every
-			// link this document draws is a cell of one printed matrix read
-			// along its second axis, so the claim is the document's rather
-			// than any link's.
+			// Every link here is a cell of one matrix read along its second axis.
 			Partition: true,
 		})
 	}
@@ -240,11 +186,8 @@ func (d *departmentSpending) Document(facts []fact.Fact, o Options) (*Department
 	}
 	out := sortedNodes(nodes)
 
-	// EVERY UNCITED FACT MUST BE A PRINTED ZERO, refused here rather than
-	// asserted downstream, for the reason fundFlows gives at the same place: a
-	// fact that reached no link for any other reason is money this document
-	// dropped, and a document publishing the identity while quietly failing it
-	// is worse than one publishing no counts at all.
+	// Every uncited fact must be a printed zero; anything else is money
+	// dropped in silence.
 	uncited := 0
 	for i := range selected {
 		id := selected[i].ID
@@ -298,17 +241,9 @@ func (d *departmentSpending) Document(facts []fact.Fact, o Options) (*Department
 // spendKey addresses one printed cell: what a division spends under an object
 // heading.
 //
-// THERE IS NO FUND IN IT BECAUSE THERE IS NO FUND ON THE PAGE. Every fact of
-// this scope carries fund 0 and fund_group "", which is the upper block's whole
-// point -- it prints what a department spends whatever pays for it. netCells'
-// usual guard, "a fact naming no fund cannot be placed", is therefore the wrong
-// guard here and its opposite is the right one: see netDepartmentSpending.
-//
-// The KIND is in the key so that the one row on these eleven pages which is not
-// an expenditure keeps its own address. p124 prints a Transfers Out row under
-// Maintenance, and a cell mixing it with that division's expenditure would be
-// one link carrying two kinds -- which link-kinds-match-their-facts reports as a
-// cell key that lost an axis.
+// There is no fund in it because there is no fund on the page. The kind is in
+// it for p124's Transfers Out row under Maintenance, the one row that is not an
+// expenditure.
 type spendKey struct {
 	kind     mapping.Kind
 	division string
@@ -317,10 +252,6 @@ type spendKey struct {
 
 // netDepartmentSpending sums the selected facts into the cell map, refusing
 // anything it cannot address.
-//
-// EVERY GUARD IS A REFUSAL AND NOT A SKIP, this package's rule: a fact this
-// document cannot place is a mapping defect, and dropping it publishes a smaller
-// city with no error anywhere.
 func netDepartmentSpending(facts []fact.Fact) (map[spendKey]*cellSum, error) {
 	out := map[spendKey]*cellSum{}
 	for i := range facts {
@@ -341,13 +272,8 @@ func netDepartmentSpending(facts []fact.Fact) (map[spendKey]*cellSum, error) {
 					fa.Department),
 				"this document's tier 5 IS the object category the row is printed under")
 		}
-		// A FUND IS REFUSED RATHER THAN REQUIRED, which inverts the drill-down's
-		// guard on purpose. Every fact of this scope carries no fund and no
-		// fund_group because these rows have no fund axis; one that carried a
-		// fund would be a fact of the LOWER block, or of pp.167-170, wearing
-		// this scope -- and it would be drawn here as though the page had
-		// printed it with no fund, which is the claim the no-fund-axis caveat
-		// makes to every reader of the file.
+		// A fund is refused rather than required: these rows have no fund
+		// axis, so a fact carrying one belongs to another schedule.
 		if fa.Fund != nil || fa.FundGroup != "" {
 			return nil, cmdutil.WithHint(
 				fmt.Errorf("department-spending: fact %s (%s) names fund %s and fund group %q",
@@ -361,13 +287,8 @@ func netDepartmentSpending(facts []fact.Fact) (map[spendKey]*cellSum, error) {
 	return out, nil
 }
 
-// spendingObjectEndpoint is the tier-5 end of a cell, and its id is THE SPINE'S.
-//
-// An expenditure row's category becomes `expenditure/<slug>`; the Transfers Out
-// row's becomes the flow endpoint `transfers/out`, which is the id and the tier
-// the spine gives it and which endpointTiers pins at 5. Deriving one form for
-// both would put a second box on the page for a node the reader may have clicked
-// to get here.
+// spendingObjectEndpoint is the tier-5 end of a cell, at the spine's id:
+// `expenditure/<slug>`, or `transfers/out` for the Transfers Out row.
 func spendingObjectEndpoint(k spendKey) (endpoint, error) {
 	switch k.kind {
 	case mapping.KindExpenditure:
@@ -386,12 +307,8 @@ func spendingObjectEndpoint(k spendKey) (endpoint, error) {
 
 // spendingLinkKind classifies a cell.
 //
-// A TRANSFER IS NEVER EXTERNAL, which is the one classification these facts can
-// support: money moving between two city funds crosses no boundary. Everything
-// else is `external` and the boundary caveat below says why that is the weakest
-// of this document's claims -- these rows carry no fund group, so the question
-// boundaryKind answers cannot be asked of them, and the citywide internal
-// service charge is inside these figures rather than beside them.
+// A transfer is internal; everything else is `external`, because these rows
+// carry no fund group to ask boundaryKind with. A caveat says so.
 func spendingLinkKind(k mapping.Kind) LinkKind {
 	if k == mapping.KindTransferOut {
 		return KindInternalTransfer
@@ -407,8 +324,7 @@ func (d *departmentSpending) addNode(nodes map[string]Node, e endpoint) {
 	nodes[e.id] = Node{ID: e.id, Label: d.label(e), Tier: e.tier, Role: e.role}
 }
 
-// label resolves a node's words: a built-in first, then the registry, then a
-// readable transform of the id -- Sankey.label's order, for its reasons.
+// label resolves a node's words: a built-in, then the registry, then the id.
 func (d *departmentSpending) label(e endpoint) string {
 	if l, ok := builtinLabels[e.id]; ok {
 		return l
@@ -428,15 +344,8 @@ func (d *departmentSpending) label(e endpoint) string {
 	return slugLabel(e.id)
 }
 
-// departmentSpendingCaveats are the things a reader of this file has to be told,
-// each a property of the document rather than a hedge about it.
-//
-// ALL THREE ARE UNCONDITIONAL AND NONE NAMES A NODE. Each is a statement about
-// the SCHEDULE -- it has no fund axis, its ribbons are a cross-tab, its kinds
-// cannot classify the boundary -- so marking particular marks would be marking
-// every one of them, which marks none. ValidateCaveats is given the drawn node
-// set anyway, and an empty applies_to means document-wide rather than
-// not-yet-filled-in.
+// departmentSpendingCaveats are the things a reader of this file has to be told.
+// Each is about the whole schedule, so none names a node.
 func departmentSpendingCaveats() []Caveat {
 	return []Caveat{
 		{
@@ -481,9 +390,8 @@ func departmentSpendingCaveats() []Caveat {
 	}
 }
 
-// sortedSpendKeys is a total order over the cell map, so node creation does not
-// depend on map iteration order. Links are re-sorted afterwards, but a node's
-// first touch is decided here.
+// sortedSpendKeys is a total order over the cell map, so a node's first touch
+// does not depend on map iteration order.
 func sortedSpendKeys(m map[spendKey]*cellSum) []spendKey {
 	out := make([]spendKey, 0, len(m))
 	for k := range m {

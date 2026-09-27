@@ -393,29 +393,14 @@ func (r *Registry) Categories() []Category {
 
 // LinesPrintedAs is every entry under parent that the city prints as printed
 // for kind: a `parent:` of parent, a `kinds:` naming kind, and a
-// `document_term` or an alias equal to printed byte for byte.
+// `document_term` or an alias equal to printed byte for byte. It is how a
+// printed row, which carries a label and no slug, gets an identity.
 //
-// A PRINTED ROW REACHES ITS SLUG THROUGH ITS LABEL AND NOTHING ELSE. A fact
-// carries a category and the free text of the row it was read from, and no
-// slug; this is the join that gives that row an identity, which is what a
-// projection needs before it can draw the row as a node of its own.
-//
-// EXACTNESS IS THE POINT, as it is for FundByLabel: pp.127-140 print
-// "Current Year - Secured" beside "Current Year - Unsecured" and "Prior Year -
-// Secured", so a prefix or fuzzy match picks a sibling silently.
-//
-// IT RETURNS A SLICE BECAUSE AMBIGUITY IS THE CALLER'S TO REFUSE. FundByLabel
-// can promise one fund because funds.yaml rejects a second claimant when it
-// loads; nothing rejects two lines under one category sharing a printed
-// spelling, and adding that refusal here would make an arm of
-// fact-revenue-lines-resolve unreachable -- the check reports the ambiguity
-// with the rows it resolves to, which a loader refusing the file could not.
-// So the answer is "the lines that claim this spelling", and a caller wanting
-// one says so.
+// Exact, because pp.127-140 print "Current Year - Secured" beside "Current
+// Year - Unsecured". A slice, because ambiguity is the caller's to refuse:
+// fact-revenue-lines-resolve reports it with the rows it resolves to.
 func (r *Registry) LinesPrintedAs(parent, printed, kind string) []string {
-	// An empty spelling matches nothing, rather than matching every entry that
-	// declares no document_term. Slug order, which r.slugs carries, so two
-	// answers cannot swap places between runs.
+	// An empty spelling would match every entry declaring no document_term.
 	if printed == "" {
 		return nil
 	}
@@ -569,11 +554,8 @@ func (r *Registry) DivisionLabel(slug string) (string, bool) {
 }
 
 // DepartmentLabel is the city's own words for a department slug -- the ALL-CAPS
-// tier -- and whether departments.yaml lists it.
-//
-// SEPARATE FROM [Registry.DivisionLabel] BECAUSE THE SLUGS OVERLAP. Five names
-// are in both tiers, so a single lookup would answer whichever map it consulted
-// first and a caller could not tell which tier it had been given.
+// tier -- and whether departments.yaml lists it. Separate from
+// [Registry.DivisionLabel] because some slugs are in both tiers.
 func (r *Registry) DepartmentLabel(slug string) (string, bool) {
 	d, ok := r.departments[slug]
 	if !ok {
@@ -612,24 +594,14 @@ func (r *Registry) Division(slug string) (Division, bool) {
 }
 
 // Department reports whether slug is a department departments.yaml lists — the
-// ALL-CAPS tier.
-//
-// It answers a predicate rather than returning the entry because the entry's
-// type is unexported and a consumer's narrow interface could not name it. What
-// a consumer needs from this tier is whether a fact's `department` field joins:
-// Budget Book pp.85-125's funding-source rows name a DEPARTMENT where every
-// other department-bearing rule names a division, and six of the eleven
-// departments are not division slugs.
+// ALL-CAPS tier. Budget Book pp.85-125's rows name a department where every
+// other rule names a division.
 func (r *Registry) Department(slug string) bool {
 	_, ok := r.departments[slug]
 	return ok
 }
 
 // departmentEntry returns the departments.yaml entry for slug.
-//
-// It is named apart from [Registry.Department] rather than overloading it: a
-// predicate and an accessor differing only in case is a pair a reader has to
-// look up, and the two are asked for by different callers.
 //
 // It exists because Division.Department is a slug, and a parent nothing can
 // resolve is a field a consumer cannot use: whoever holds a Division and wants

@@ -17,30 +17,10 @@ import (
 )
 
 // TestTheSchemaStatesWhatThePageConfigCarries holds schema/page.schema.json to
-// the structs [encodeConfig] marshals: every JSON name window.FISC_CONFIG can
-// carry is a property there, and nothing is a property there it cannot carry.
-//
-// WHY A SHAPE CONTRACT IS NEEDED AT ALL HERE, since the page renders either
-// way: these structs are rendered TWICE, by the template which reads Go FIELD
-// names and as JSON which the year toggle reads. Only the second cares about
-// tags, and dropping one is silent -- the page still renders, because the
-// template never sees the JSON, and only the tiles a reader gets AFTER
-// switching year go blank. That is exactly how it shipped once and was caught
-// by eye.
-//
-// ONE TEST AND NOT ONE PER STRUCT, which is the part worth keeping. A
-// marshal-and-compare-top-level-keys test cannot see an inner shape at all:
-// "caveats" is one entry of yearView's key list whatever its elements turn out
-// to be, so caveatRef's three fields needed a second test, stepView's a third,
-// and clientDoc's was simply missing. [schema.Names] walks the whole tree, so
-// there is nothing left for a per-struct test to add.
-//
-// WHAT THE SCHEMA STATES THAT THIS COMPARISON CANNOT. caveatRef is deliberately
-// id, summary and href with NO `text`: a chart page shows a line and links to
-// the paragraph, and the cheapest way to undo that is to put the paragraph back
-// within a template's reach. additionalProperties: false in the schema is what
-// fails the moment such a field exists, rather than when some template gets
-// round to rendering it.
+// the structs [encodeConfig] marshals, both ways, over the whole tree. The
+// template reads Go field names and never sees the JSON, so a dropped tag is
+// silent until a reader switches year. The schema's additionalProperties: false
+// is also what refuses a `text` on caveatRef.
 func TestTheSchemaStatesWhatThePageConfigCarries(t *testing.T) {
 	stated, err := schema.Names(schema.Page)
 	if err != nil {

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://jcrussell.github.io/livermore-budget/schema/page.schema.json",
   "title": "fisc page config",
-  "description": "window.FISC_CONFIG: what site/app.js has before it has fetched anything. THE ONE ARTIFACT THAT CROSSES THIS BOUNDARY WITHOUT BEING FETCHED -- it is rendered into the page's own <script>, so a reader cannot hold a stale copy of it beside a fresh app.js the way they can of a column. It is a contract all the same: a dropped json tag is silent, because the template renders the same structs by Go field name and only what a reader gets AFTER switching year goes blank. EVERY OBJECT HERE IS CLOSED. additionalProperties: false is what makes a field added to one of these structs refused by name at the export rather than shipped to a client that ignores it.",
+  "description": "window.FISC_CONFIG: what site/app.js has before it has fetched anything, rendered into the page's own <script>. Every object here is closed, so a field added to one of these structs is refused at the export rather than shipped to a client that ignores it.",
   "type": "object",
   "required": [
     "schema_version",
@@ -16,7 +16,7 @@
   "additionalProperties": false,
   "properties": {
     "schema_version": {
-      "description": "The projection's own version, which site/app.js compares against its SCHEMA_VERSION constant before it draws. NOT A const HERE: this encoder does not choose the number, it passes the projection's through, and a const would be a third party to a pin internal/export already holds between app.js and the producer.",
+      "description": "The projection's own version, which site/app.js compares against its SCHEMA_VERSION constant before it draws. Not a const: this encoder passes the projection's number through.",
       "type": "integer",
       "minimum": 1
     },
@@ -306,7 +306,7 @@
             "description": "What other steps name this one by."
           },
           "after": {
-            "description": "The keys of the steps whose charts this one opens from, carrying \"\" for the view's own. A ROOT SAYS SO BY CARRYING \"\" IN THE LIST, not by carrying an empty one: a step read as a root is one its own children match by \"\", which opens a chart into itself without end.",
+            "description": "The keys of the steps whose charts this one opens from. A root carries \"\" in the list, not an empty list.",
             "type": "array",
             "minItems": 1,
             "items": {
@@ -420,7 +420,7 @@
       "description": "Where Go's answer for every rung this page opens is served. OMITTED MEANS NOBODY ANSWERS THIS PAGE'S RUNGS -- a page whose steps the walk never reached must not be handed another page's."
     },
     "wording": {
-      "description": "Every sentence app.js composes about the chart on screen, as templates it fills. `{name}` is a variable's value and `{name:one|many}` is the value followed by the singular or the plural word, by whether the value is 1. Declared by the packager so the words are its and a test can reword them and watch the page follow.",
+      "description": "Every sentence app.js composes about the chart on screen, as templates it fills. `{name}` is a variable's value and `{name:one|many}` is the value followed by the singular or the plural word, by whether the value is 1.",
       "type": "object",
       "required": [
         "counts",

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://jcrussell.github.io/livermore-budget/schema/rungs.schema.json",
   "title": "fisc rung answer",
-  "description": "Go's reading of a page's declared drill steps against the documents they draw: for every opened path, which nodes each column of the resulting chart holds, and which marks the client adds that no page prints. NOT A RE-ENCODING OF THE DECLARATIONS -- every figure here is computed over a document, so the client comparing against it is comparing against what Go says the chart holds rather than against a second reading of its own.",
+  "description": "Go's reading of a page's declared drill steps against the documents they draw: for every opened path, which nodes each column of the resulting chart holds, and which marks the client adds that no page prints.",
   "type": "object",
   "required": [
     "schema_version",
@@ -59,7 +59,7 @@
                   "minLength": 1
                 },
                 "draws": {
-                  "description": "One entry per column of the chart this rung draws, in the order the reader meets them left to right. A COLUMN SAYS WHAT IT HOLDS, NOT WHAT WOULD FIT: the ids are unfolded and no cap has been applied, because which of them a viewport leaves room for is the client's.",
+                  "description": "One entry per column of the chart this rung draws, left to right. The ids are unfolded and uncapped: which of them a viewport leaves room for is the client's.",
                   "type": "array",
                   "minItems": 1,
                   "items": {
@@ -101,7 +101,7 @@
                   }
                 },
                 "amounts": {
-                  "description": "The figure a mark prints, for the nodes on this rung whose drawn ribbons do not add up to it. Every other mark is the sum of its ribbons and has no entry; a node a schedule prints a reduction under is the exception, because the reduction is drawn forward at its magnitude and the arriving ribbons come to the figure plus twice the reductions. The client draws a node at the amount named here if one is named and lets the layout size it otherwise.",
+                  "description": "The figure a mark prints, for the nodes on this rung whose drawn ribbons do not add up to it, such as a node a schedule prints a reduction under. A node with no entry is sized by the layout.",
                   "type": "object",
                   "minProperties": 1,
                   "additionalProperties": {

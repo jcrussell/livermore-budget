@@ -544,18 +544,8 @@ func validateRule(r *Rule, errf errFunc) error {
 		// category, so a department row still says what KIND of spending the
 		// figure is.
 		//
-		// ACCEPTING `department:` INSTEAD LEAVES A SILENT HOLE rather than a
-		// theoretical one. A fact with no category is in no graph unless its
-		// scope is projected, so in scope transfers-by-fund -- 88 facts,
-		// selected by no projection -- it is named by NOTHING: measured,
-		// swapping a p76 row's category: for a department: produces two
-		// facts with category "" and leaves `fisc verify` reporting zero
-		// failures. internal/check cannot close that: factVocabulary declines an
-		// absent value on purpose ("an absent value is the mapping's
-		// business") and factKindMatchesCategory skips it. So it is closed
-		// here, at the boundary, which is where it was always the mapping's
-		// business to close it. All 49 department rows already carried one, so
-		// no fact moved.
+		// Closed here because internal/check declines an absent category on
+		// purpose ("an absent value is the mapping's business").
 		// A non-amount row is exempt exactly as a skipped one: it publishes
 		// nothing, so there is no fact for a category to classify.
 		if !row.Skip && row.Quantity == "" && row.Category == "" {
@@ -946,8 +936,7 @@ func validateRule(r *Rule, errf errFunc) error {
 	if err := validateTotalSpansParts(r, errf); err != nil {
 		return err
 	}
-	// Last, so that a rule refused for its own shape is refused for that and
-	// not for the declaration it is missing over it.
+	// Last, so a rule is refused for its own shape before a missing grain.
 	return validateGrain(r, errf)
 }
 
@@ -972,8 +961,7 @@ func validateGrain(r *Rule, errf errFunc) error {
 }
 
 // publishes says whether any cell of this rule can become a fact: a row that
-// is neither skipped nor a non-amount quantity, read in a column that is
-// neither. Either alone publishes nothing.
+// is neither skipped nor a non-amount quantity, in a column that is neither.
 func (r *Rule) publishes() bool {
 	row := false
 	for i := range r.Rows {

@@ -15,51 +15,20 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/project"
 )
 
-// The two tiers the line tier is folded back to: the revenue categories the
-// drill-down published before it existed, and the funds they flow into.
-//
-// FOLDING THE WHOLE DOCUMENT TO {0,3} LEAVES THE REVENUE SIDE ALONE, which is
-// what makes this one comparison rather than a filtered one. Both expenditure
-// links fold to fund/100 -> fund/100 -- the tier-4-to-5 one through dept, the
-// tier-3-to-4 one directly -- and a link whose ends fold together is a flow
-// inside one box and is dropped, by this fold and by site/app.js's alike.
+// The revenue categories and the funds they flow into. Folding to {0,3}
+// leaves only the revenue side, since expenditure links fold inside one box
+// and are dropped.
 const (
 	foldToRevenueCategory = 0
 	foldToFund            = 3
 )
 
-// TestTheLineTierFoldsToTheCategoryLinks is the proof that publishing pp.127-140
-// as rows REFINED the drill-down rather than changing it.
-//
-// A LINE TIER THAT DOES NOT FOLD BACK TO WHAT IT REPLACED HAS CHANGED THE
-// DOCUMENT, and no other check in this tree can tell the two apart. The amounts
-// still tie to the spine either way (cuts-tie-along-the-lattice sums facts and
-// never reads a link), every link still cites facts that sum to it
-// (link-values-tie-to-facts is per link), and the counts still reconcile against
-// the document's own arrays. What none of them holds is that the SAME money
-// still runs between the SAME pairs of nodes.
-//
-// So each document is folded to {0,3} and diffed against an INDEPENDENT
-// re-netting of its own facts by (kind, category, fund) -- the key revKey held
-// before the line was added to it. The oracle below reads no registry, calls
-// nothing in internal/project, and reaches the category off the fact's own
-// field rather than off a node's parent, which is what makes a re-pointed line
-// visible here: the fold carries the money to whatever category the document
-// says, and the oracle carries it to the one the fact says.
-//
-// EVERY COLUMN, not the two the site draws. The projection declares four and
-// they are not the same shape -- FY2023-24 carries a seventh fund group -- so a
-// fold proved over one is a fold proved over one.
-//
-// THE ONE THING THE FOLD DOES NOT REPRODUCE IS A PRINTED ZERO'S CITATION, and
-// it is the refinement rather than a gap in it. A cell that nets to zero earns
-// no link, and the cell is now the printed ROW: measured over the committed
-// store, 6 rows in each adopted column, 3 in FY2023-24 actual and 8 in FY2024-25
-// revised print a dash inside a category cell that is not zero, so the category
-// link used to cite them and no line link does. They are not lost -- they are
-// counted in counts.facts_uncited, which is what that number is for, and
-// TestThePrintedZeroRowsAreNotNodes holds them there. The oracle applies the
-// same rule at the same grain and says so.
+// TestTheLineTierFoldsToTheCategoryLinks holds that the pp.127-140 revenue rows
+// fold back to the same money between the same (category, fund) pairs, which
+// no other check sees. Every column is folded to {0,3} and diffed against an
+// independent re-netting of its facts that reads the category off the fact,
+// so a re-pointed line shows. A printed zero row earns no link; those are
+// TestThePrintedZeroRowsAreNotNodes'.
 func TestTheLineTierFoldsToTheCategoryLinks(t *testing.T) {
 	_, facts := committedStore(t)
 	docs := builtFundFlows(t)
@@ -73,11 +42,8 @@ func TestTheLineTierFoldsToTheCategoryLinks(t *testing.T) {
 			if err != nil {
 				t.Fatalf("folding %s to {0,3}: %v", stem, err)
 			}
-			// WHAT THE FOLD IS ALLOWED TO LOSE IS NAMED, PER PAIR. The (2,3)
-			// rollup runs from a parentless tier-2 group, so {0,3} can place
-			// neither it nor any other link out of one; asserting the pairs
-			// rather than a count is what stops a REVENUE link quietly joining
-			// the set the comparison below never sees.
+			// What the fold may lose is named per pair, so a revenue link
+			// cannot quietly join it.
 			gotDropped := make([]string, 0, len(unplaceable))
 			for _, l := range unplaceable {
 				gotDropped = append(gotDropped, l.Source+" -> "+l.Target)
@@ -104,19 +70,9 @@ func TestTheLineTierFoldsToTheCategoryLinks(t *testing.T) {
 	}
 }
 
-// TestThePrintedZeroRowsAreNotNodes is the other half of the fold, and the half
-// a green cmp.Diff would hide.
-//
-// A PRINTED DASH IS A FACT AND NOT A FLOW. The city prints a zero in a revenue
-// row to say the line exists and was nil this year; drawing it would put a
-// d3-sankey node of zero height beside the lines that did happen, and it would
-// assert that a row the city printed as nothing is a thing that happens.
-//
-// Every such row must therefore be UNCITED and absent from the node list, and
-// the two are asserted together because either alone passes on the wrong
-// document: a zero-valued link would leave the fact cited and the node drawn,
-// and a fact dropped before netting would leave it uncited with nothing saying
-// so.
+// TestThePrintedZeroRowsAreNotNodes: a revenue row printed as a dash is a fact,
+// not a flow, so it is both uncited and absent from the nodes. Either alone
+// passes on the wrong document.
 func TestThePrintedZeroRowsAreNotNodes(t *testing.T) {
 	_, facts := committedStore(t)
 	for stem, doc := range builtFundFlows(t) {
@@ -143,9 +99,6 @@ func TestThePrintedZeroRowsAreNotNodes(t *testing.T) {
 						f.ID, f.Category, f.RowLabel, fact.FundString(f.Fund))
 				}
 			}
-			// The identity the document publishes, restated as the claim this
-			// test is about: the uncited facts are the printed zeros and
-			// nothing else.
 			if got := doc.Metadata.Counts.FactsUncited; got != zeros {
 				t.Errorf("counts.facts_uncited is %d and %d revenue rows print a dash; a "+
 					"gap either way is money that reached no link for some other reason",
@@ -155,15 +108,9 @@ func TestThePrintedZeroRowsAreNotNodes(t *testing.T) {
 	}
 }
 
-// TestEveryRevenueLineIsParentedToItsPrintedCategory is the edge the fold walks,
-// asserted at the producer.
-//
-// The fold above cannot distinguish a line parented to the wrong category from
-// one whose facts were netted into the wrong cell -- both move the same money to
-// the same wrong place -- so it reports either as a diff. This says which,
-// against the taxonomy's own grammar: a line slug is its category plus one
-// segment, so the parent a node publishes must be the id form of the slug minus
-// that segment.
+// TestEveryRevenueLineIsParentedToItsPrintedCategory: a line's parent is its
+// slug minus the last segment. The fold reports a wrong parent and a wrong
+// cell alike; this says which.
 func TestEveryRevenueLineIsParentedToItsPrintedCategory(t *testing.T) {
 	lines := 0
 	for stem, doc := range builtFundFlows(t) {
@@ -198,9 +145,6 @@ func TestEveryRevenueLineIsParentedToItsPrintedCategory(t *testing.T) {
 }
 
 // builtFundFlows is every fund-flows column `fisc export` writes, by stem.
-//
-// Selected by the projection each document names rather than by a list of
-// stems, so a fifth published column is covered the day it is declared.
 func builtFundFlows(t *testing.T) map[string]*project.FundFlowsDocument {
 	t.Helper()
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
@@ -224,23 +168,9 @@ func builtFundFlows(t *testing.T) map[string]*project.FundFlowsDocument {
 	return out
 }
 
-// foldTo is site/app.js's foldDocument over a Go document, kept to the two
-// clauses this comparison needs: each node folds to its nearest ancestor at a
-// drawn tier, links fold with their ends and merge on the folded pair, and a
-// link whose ends fold together is dropped.
-//
-// IT RETURNS WHAT IT COULD NOT PLACE RATHER THAN REFUSING IT, and that is
-// stricter than the refusal it replaces rather than weaker. A fund group is
-// parentless at tier 2, so the (2,3) rollup out of one can be placed by no fold
-// of this document to {0,3}; refusing it would make this comparison
-// unstateable, and dropping it in silence would lose a column. Returning it
-// lets the caller name the links a fold is allowed to lose and go red on any
-// other -- which is what the caller does, per pair.
-//
-// IT PLACES THE ENDS OF LINKS AND NOT EVERY NODE, which {0,3} needs and the
-// client's own fold does not. site/app.js reaches the same document through
-// filterToNode, whose quiet branch has already dropped the end this cannot
-// place.
+// foldTo folds each link's ends to their nearest ancestor at a drawn tier,
+// merging on the folded pair and dropping a link folded inside one box. It
+// returns the links it could not place so the caller can name them.
 func foldTo(doc *project.FundFlowsDocument, tiers ...int) ([]project.Link, []project.Link, error) {
 	drawn := map[int]bool{}
 	for _, t := range tiers {
@@ -335,16 +265,9 @@ func foldTo(doc *project.FundFlowsDocument, tiers ...int) ([]project.Link, []pro
 	return out, unplaceable, nil
 }
 
-// netByCategory re-nets the revenue facts of one column at the grain the
-// drill-down published before the line tier existed: one link per (kind,
-// category, fund) cell that is not a printed zero.
-//
-// INDEPENDENT OF THE PROJECTION, which is the whole of its value. It reads the
-// fact fields and nothing else: no registry, no revKey, no revenueEndpoint, no
-// Node.Parent. The one rule it shares with the projection is the one this
-// document has always had -- a cell that nets to zero earns no link -- and it is
-// applied at the ROW, because the row is the cell the schedule prints and a
-// category cell was only ever a sum of rows.
+// netByCategory re-nets one column's revenue facts to one link per (kind,
+// category, fund), reading fact fields only. Like the projection, a row that
+// nets to zero earns no link.
 func netByCategory(facts []fact.Fact, year int, basis string) []project.Link {
 	type key struct {
 		kind     mapping.Kind
@@ -381,9 +304,6 @@ func netByCategory(facts []fact.Fact, year int, basis string) []project.Link {
 	}
 	out := make([]project.Link, 0, len(order))
 	for _, k := range order {
-		// The source end is the category itself for revenue and the flow
-		// endpoint for a transfer, which is where a transfer's row stays: it is
-		// not a line of anything.
 		source := "revenue/" + k.category
 		kind := project.KindExternal
 		if k.kind == mapping.KindTransferIn {
@@ -454,25 +374,10 @@ func sortLinksByEnds(links []project.Link) {
 	})
 }
 
-// TestAContraRowIsANegativeLinkOnItsOwnLine pins where the sign goes, which the
-// diff of a regenerated golden will not show.
-//
-// THE CHILD MODEL FORCES THE PLACEMENT. pp.127-140 print ERAF and RPTTF
-// Reduction in parentheses inside the Property Taxes subtotal -- they are
-// shift-aways of property tax to the county, and the printed total of the
-// thirteen detail rows is 64,143,762 only if they are read as negative. While
-// the category was the node, they netted inside its cell and no link was ever
-// negative. Now that the row IS the node, the only placement that folds back to
-// that cell is a negative value on the line's own link: a reversed positive link
-// would fold to a fund -> category flow that does not exist, and a
-// sign-decomposed endpoint -- the spine's answer for CHANGE IN WORKING CAPITAL --
-// would fold to a link from a node the category grain never had.
-//
-// TWO LINKS CARRY THE SIGN NOW, not one, and the second is checked against the
-// same printed figures rather than against the first.
-//
-// The figures are the ones p127 prints, so this is a comparison against the
-// document rather than against the pipeline.
+// TestAContraRowIsANegativeLinkOnItsOwnLine pins p127's parenthesised ERAF and
+// RPTTF Reduction rows as negative values on the line's link to the fund and
+// on its rollup, both against the printed figures: the only placement that
+// folds back to the category cell.
 func TestAContraRowIsANegativeLinkOnItsOwnLine(t *testing.T) {
 	want := map[string]map[string]int64{
 		// p0127 "ERAF (14,086,438) (14,661,836) (15,175,000) (15,857,875)" and
@@ -480,12 +385,8 @@ func TestAContraRowIsANegativeLinkOnItsOwnLine(t *testing.T) {
 		"fund-flows":              {"eraf": -1517500000, "rpttf-reduction": -181033900},
 		"fund-flows-2027":         {"eraf": -1585787500, "rpttf-reduction": -189180400},
 		"fund-flows-2025-revised": {"eraf": -1466183600, "rpttf-reduction": -170459500},
-		// THE THIRD ONE IS NOT A CONTRA ROW. p0127 "Prior Year - Unsecured"
-		// prints (20,033) in the FY2023-24 actual column alone and the taxonomy
-		// declares it `sign: positive`, so it reaches the document as an
-		// ordinary row that was negative that year (fisc-9psv). It is here
-		// because a test listing only the declared contra rows would go red on
-		// this column for a reason that reads as a defect in the sign rule.
+		// Not a contra row: p0127 "Prior Year - Unsecured" is `sign: positive`
+		// and printed (20,033) in FY2023-24 actual alone (fisc-9psv).
 		"fund-flows-2024-actual": {"eraf": -1408643800, "rpttf-reduction": -174912000,
 			"prior-year-unsecured": -2003300},
 	}
@@ -502,11 +403,6 @@ func TestAContraRowIsANegativeLinkOnItsOwnLine(t *testing.T) {
 				switch {
 				case l.Target == "fund/100":
 					got[line] = l.ValueCents
-				// THE ROLLUP CARRIES THE SIGN THROUGH, for the reason the flow
-				// into the fund does: a reduction of Property Taxes reduces the
-				// category, so the only placement that adds the rows back up to
-				// p127's printed 64,143,762 is a negative value on the line's
-				// own rollup.
 				case l.Target == "revenue/taxes/property" &&
 					strings.HasPrefix(l.Source, "revenue-line/taxes/property/"):
 					rolled[line] = l.ValueCents
@@ -520,11 +416,8 @@ func TestAContraRowIsANegativeLinkOnItsOwnLine(t *testing.T) {
 				t.Errorf("the negative links of %s are not the rows p127 prints in "+
 					"parentheses (-printed +published):\n%s", stem, diff)
 			}
-			// THE SAME FIGURES AGAIN, AND THAT IS A CLAIM ABOUT THE PAGE: p127
-			// prints each of these rows in the General Fund column alone, so
-			// the line's whole sum IS its one cell. A rollup that had gathered
-			// a second fund's money, or one cell short of the line, would
-			// differ here while the column above stayed green.
+			// p127 prints each row in the General Fund column alone, so the
+			// rollup is the same figure.
 			if diff := cmp.Diff(want[stem], rolled); diff != "" {
 				t.Errorf("the rollups of %s's contra lines into Property Taxes are not the "+
 					"rows p127 prints in parentheses (-printed +published):\n%s", stem, diff)

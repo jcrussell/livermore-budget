@@ -10,13 +10,8 @@ import (
 
 // residualPrefix is the id prefix site/app.js draws a residual node under,
 // and gapPrefix the one it draws a gap node under: each followed by the id
-// of the node the reader opened.
-//
-// TWO PREFIXES AND NOT ONE, because the two marks make different claims and
-// a check counting one must not find the other. A residual is money the
-// chart above prints that the drawn document carries no row for, copied
-// across with its citations; a gap is one cell two schedules print at two
-// figures, which no page prints at all.
+// of the node the reader opened. Two prefixes, so a check counting one mark
+// never finds the other.
 const (
 	residualPrefix = "residual/"
 	gapPrefix      = "gap/"
@@ -45,19 +40,10 @@ func IsGap(id string) bool { return strings.HasPrefix(id, gapPrefix) }
 // Mark is one node the client draws that no page prints: which, where, and
 // how many cents arrive at it and leave it over the drawn chart's ribbons.
 //
-// THE TIER IS THE STEP'S OWN, READ OFF ITS DECLARED TIERS AND NOT OFF THE
-// COLUMNS THE CLIENT ENDS UP DRAWING. carryResidual and markGap both index
-// step.tiers, so a mark can be placed at a column the client dropped for
-// want of room, and this reproduces that rather than correcting it: the
-// artifact is Go's reading of what the client draws, and a placement Go
-// quietly repaired would be one the arm could never see disagree.
-//
-// A mark is the same at every width the client may choose, measured: every
-// path the artifact answered at both three and four columns carried
-// byte-identical marks at both, so these are emitted once per rung.
-//
-// Ends is a residual's alone: the declared endpoints whose flow it carries,
-// sorted. A gap has one ribbon and no endpoint.
+// Tier is read off the step's declared tiers, as the client's carryResidual
+// and markGap index step.tiers, even where the client drops that column for
+// want of room. Ends is a residual's alone: the declared endpoints whose flow
+// it carries, sorted.
 type Mark struct {
 	ID       string
 	Role     string
@@ -65,18 +51,8 @@ type Mark struct {
 	InCents  int64
 	OutCents int64
 	Ends     []string
-	// Label, Rationale and SourceNote are the words a reader meets on the mark.
-	//
-	// THEY ARE CLAIMS ABOUT THE DOCUMENTS AND SO THEY ARE GO'S. A residual says
-	// which flow a schedule does not split by fund and why; a gap says which
-	// cell two documents disagree about and by how much. Composed in the client
-	// they were sentences no Go check could be held against -- and one of them
-	// said `fisc verify` holds a difference it does not hold (fisc-4lsx).
-	//
-	// THE LABEL IS DECLARED AND NOT DERIVED FROM A TIER. "Not broken down by
-	// fund" was hard-coded in the client and right only because every residual
-	// on the committed corpus stands on a fund-group rung; it is the step's
-	// noun that makes it true, and the step is what names it here.
+	// Label, Rationale and SourceNote are the words a reader meets on the
+	// mark; they are claims about the documents, so Go composes them.
 	Label      string
 	Rationale  string
 	SourceNote string
@@ -89,12 +65,8 @@ type Mark struct {
 // endpoints it brings along from the chart above -- the ribbons to add, and
 // Splice, the indices into the drawn chart's links that those ribbons
 // replace, sorted. A gap splices nothing; a residual re-points what the
-// chart already draws and splices the originals out.
-//
-// SPLICE IS BY INDEX AND NOT BY VALUE, because the client's is by identity
-// and value-equal ribbons exist: two ends can carry the same cents of the
-// same kind, and a splice by value would take both where the client takes
-// one.
+// chart already draws and splices the originals out. Splice is by index
+// because value-equal ribbons exist and the client splices by identity.
 type Carry struct {
 	Mark   Mark
 	Nodes  []GraphNode
@@ -133,19 +105,11 @@ func (g Gaps) MarshalJSON() ([]byte, error) {
 // difference -- unlicensed, licensed in another column, or at another figure
 // -- is an error, and so is a licence for a centre that balances.
 //
-// SIGNED, OVER THE DRAWN CHART AS IT STANDS. The sums are of ValueCents as
-// the fold left them, reductions negative, which is what the client reads
-// before markContra makes them positive; after that pass a centre taking a
-// category's gross against the spine's net reads as a shortfall of twice
-// the reductions.
-//
-// THE SHORT SIDE DECIDES WHERE THE MARK GOES: too little leaving stands at
-// the last of tiers, too little arriving at the first, and the one ribbon
-// runs from opened to the mark or from the mark to opened accordingly.
-//
-// The mark cites every page a ribbon touching opened was read from, in from
-// (the chart above's document) and in doc (the drawn one): the pages of the
-// two totals its rationale subtracts.
+// The sums are signed, reductions negative, as the client reads them before
+// markContra makes them positive; after that pass a centre would read short
+// by twice the reductions. Too little leaving stands the mark at the last of
+// tiers, too little arriving at the first. It cites every page a ribbon
+// touching opened was read from, in from and in doc.
 func GapOf(drawn, from, doc Graph, col ColumnKey, opened string, tiers []int, gaps map[string]Gaps) (Carry, bool, error) {
 	if len(gaps) == 0 {
 		return Carry{}, false, nil
@@ -268,28 +232,18 @@ func citedAround(opened string, gs ...Graph) ([]Locator, error) {
 // unfolded, and doc the document this step draws, unfolded. ok is false
 // where the step declares no residual or nothing is carried.
 //
-// WHOLE OR NOTHING PER DECLARED ENDPOINT, in sorted id order: an endpoint's
-// flow into the opened node is carried only where doc carries nothing from
-// that endpoint into any node inside the opened one, and its flow out only
-// where the drawn chart decomposes the node at all -- some ribbon leaves a
-// node inside it other than itself -- and doc carries nothing from inside
-// to that endpoint. Where an endpoint is on both sides the outflow's
-// placement wins, which is the client's last write to its map.
+// Whole or nothing per declared endpoint, in sorted id order: its inflow is
+// carried only where doc carries nothing from it into the opened node, its
+// outflow only where drawn decomposes the node and doc carries nothing from
+// inside to it; where both, the outflow's placement wins, as in the client.
 //
-// THE RIBBONS ARE THE CHART ABOVE'S, TAKEN FROM WHERE THEY ARE DRAWN. An
-// endpoint's ribbons come off the drawn chart where it draws any, and off
-// from where it draws none, which is every endpoint the window's tiers do
-// not hold; both are never taken, because a window keeps a flank of the
-// chart above and its ribbons are already on screen pointing at the opened
-// node -- taking the file's as well drew transfers/in at 960,800 against
-// the 480,400 p0067 prints. A ribbon taken off drawn is spliced out by
-// index; one taken off from replaces nothing.
+// An endpoint's ribbons come off drawn where it draws any (spliced out by
+// index), else off from, never both: the window's flank is already on
+// screen, and taking both doubled transfers/in against what p0067 prints.
 //
-// THE MARK STANDS AT THE SHALLOWEST DECLARED TIER OF ANY NODE INSIDE THE
-// OPENED ONE, read off doc, and a node with no part at a declared tier is
-// an error rather than a mark beside nothing. Its in and out differ by
-// construction: the difference is what the drawn document does not break
-// down, and the client sizes the mark at the larger.
+// The mark stands at the shallowest declared tier of any node inside the
+// opened one, read off doc; with none it is an error. Its in and out need
+// not balance, and the client sizes it at the larger.
 func ResidualOf(drawn, from, doc Graph, opened string, tiers []int, residual map[string]string, grain string) (Carry, bool, error) {
 	if len(residual) == 0 {
 		return Carry{}, false, nil
@@ -368,10 +322,8 @@ func ResidualOf(drawn, from, doc Graph, opened string, tiers []int, residual map
 	}
 	slices.Sort(c.Splice)
 	c.Splice = slices.Compact(c.Splice)
-	// THE ENDPOINTS COME WITH THEIR RIBBONS, at the first declared tier when
-	// the flow arrives and the last when it leaves, parentless, with the
-	// record the chart above holds for them otherwise; one the window
-	// already draws keeps its place.
+	// Endpoints come with their ribbons, at the first declared tier when the
+	// flow arrives and the last when it leaves; one already drawn stays put.
 	have := indexNodes(drawn)
 	fromByID := indexNodes(from)
 	for _, e := range ends {
@@ -408,10 +360,7 @@ func ResidualOf(drawn, from, doc Graph, opened string, tiers []int, residual map
 		}
 		return n
 	}
-	// THE REASONS ARE THE STEP'S OWN WORDS, one per declared endpoint, in the
-	// order the mark carries them. They are why a reader is told no part of the
-	// opened node receives that flow, in the words the check that guards the
-	// identity declares it in rather than in a paraphrase.
+	// The reasons are the step's own words, one per endpoint, in Ends order.
 	reasons := make([]string, 0, len(sortedEnds))
 	for _, e := range sortedEnds {
 		why := residual[e]
@@ -423,10 +372,7 @@ func ResidualOf(drawn, from, doc Graph, opened string, tiers []int, residual map
 	c.Mark = Mark{
 		ID: id, Role: RoleResidual, Tier: tier, Ends: sortedEnds,
 		Label: "Not split by " + grain + " here",
-		// NO PLURAL IS FORMED FROM THE GRAIN. "the opened node's parts" says
-		// what "the funds" said without a rule for turning one word into
-		// another, which is a rule this would get wrong on the first grain that
-		// does not take an s.
+		// No plural is formed from the grain.
 		Rationale: "Money the chart above prints for " + label(opened) + " as a whole and " +
 			"that the schedule this chart is drawn from does not split by " + grain + ", so " +
 			"no " + grain + " here receives or pays it. It is drawn beside the opened node's " +

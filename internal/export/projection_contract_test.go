@@ -11,27 +11,9 @@ import (
 
 // TestEveryNameThisPackageDecodesIsOneAProjectionStates holds the decoders in
 // this package to schema/projection.schema.json and schema/series.schema.json.
-//
-// THIS IS THE SEAM THE SCHEMAS WERE WRITTEN FOR. This package does not import
-// internal/project -- deliberately, so a packager cannot recompute what a
-// projection published -- and the price is that [decoded] and the decoders in
-// page.go are a second spelling of those documents' shapes, joined to them by
-// json tags alone. A tag renamed on one side reads as a zero value here with no
-// error anywhere: the page renders, the figure is absent, and nothing is red.
-//
-// CONTAINMENT AND NOT EQUALITY, which is the difference between this side and
-// internal/project's. A decoder legitimately reads a SUBSET: [decoded] wants
-// enough of a document to fold it into a column and has no reason to know what
-// a caveat's fields are. What it may not do is read a name no document carries,
-// because that name decodes to a zero value forever.
-//
-// THE DEEP NAME SET IS THE ONE COMPARED, because these decoders are not opaque
-// where the column's are: sourceMeta and caveatMeta are real structs that
-// [schema.StructNames] walks into, so the locator and caveat shapes the schema
-// reaches through a $ref are shapes this package genuinely reads. Where it IS
-// opaque -- [decoded] holds a link's locators as json.RawMessage -- the emitted
-// side simply stops, and containment has nothing to say about what it did not
-// look at.
+// This package does not import internal/project, so a renamed tag reads as a
+// zero value with no error. Containment, not equality: a decoder may read a
+// subset, never a name no document carries.
 func TestEveryNameThisPackageDecodesIsOneAProjectionStates(t *testing.T) {
 	for _, tc := range []struct {
 		name     string
@@ -58,12 +40,9 @@ func TestEveryNameThisPackageDecodesIsOneAProjectionStates(t *testing.T) {
 			if len(stated) == 0 {
 				t.Fatalf("%s states no property, so this test compares nothing", tc.schema)
 			}
-			// THE STATED SET IS EVERY SUFFIX OF EVERY PATH, because a decoder
-			// reaches a nested shape through a type of its own: caveatMeta is
-			// compared as `id`, `summary`, ... where the schema states them as
-			// `metadata.caveats.id`. Comparing the leaf name alone would accept
-			// a name from anywhere in the document; comparing whole paths would
-			// refuse every decoder that is not the root one.
+			// Every suffix of every path: a nested decoder names `id` where the schema
+			// states `metadata.caveats.id`. Leaf names alone would accept a name from
+			// anywhere; whole paths would refuse every non-root decoder.
 			tails := map[string]bool{}
 			for _, n := range stated {
 				parts := strings.Split(n, ".")

@@ -89,17 +89,7 @@ type Caveat struct {
 }
 
 // revenueSchedulePublishedTwiceCaveat is on every document that draws Budget
-// Book pp.127-140, and there are two of them.
-//
-// THE SENTENCE CARRIES THE ASYMMETRY, which is what makes publishing both
-// honest rather than a second figure for the same money: the chart draws ONE
-// adopted column of those rows and the Revenue tables print all four the
-// schedule carries. A reader who finds a row in both places is looking at one
-// printed figure in two views, and the two are not to be added.
-//
-// SHARED RATHER THAN SPELLED TWICE, because it is one claim about one schedule.
-// Two copies would be two sentences a reader could find disagreeing, on two
-// pages that are meant to be saying the same thing.
+// Book pp.127-140, shared so the two cannot disagree.
 func revenueSchedulePublishedTwiceCaveat() Caveat {
 	return Caveat{
 		ID: "the-revenue-schedule-is-published-twice",
@@ -111,8 +101,7 @@ func revenueSchedulePublishedTwiceCaveat() Caveat {
 			"columns it carries: FY2023-24 actual, FY2024-25 revised, and both adopted years. " +
 			"A row found in both places is one printed figure shown once in each, so neither " +
 			"view is a second measurement of it and the two are never to be added.",
-		// DOCUMENT-WIDE. It is about where else a schedule is drawn, which is
-		// no more true of one node of it than of another.
+		// Document-wide: it is about the schedule, not any node.
 		AppliesTo: []string{},
 	}
 }
@@ -231,35 +220,10 @@ func (l *locatorSet) sources() []Source {
 	return out
 }
 
-// encode renders a document as the canonical JSON every projection publishes.
-//
-// It is one function rather than a habit each projection repeats because the
-// configuration is not defaulted and the difference is visible in the file.
-// HTML escaping is off, so "Fines & Forfeitures" stays readable instead of
-// becoming "Fines & Forfeitures"; the indent is two spaces, so a reviewer
-// diffs the file line by line; and json.Encoder appends exactly one newline,
-// giving the file LF endings and a trailing newline like every other text file
-// in the repo.
-//
-// A second projection that built its own encoder would ship with escaping ON,
-// because that is json.Marshal's default and nothing would say so until a
-// reader saw & on the page.
-//
-// name is the projection's, so a failure names the document that could not be
-// written rather than the type that could not be marshalled.
-//
-// IT VALIDATES THE BYTES IT IS ABOUT TO RETURN, against the schema the caller
-// names. This is the one place every projection passes through, so the check
-// belongs here rather than six times over -- and it is the BYTES rather than
-// the struct, because a struct has already lost the difference between a key
-// that was absent and one present and empty.
-//
-// WHAT IT GUARDS IS A SEAM NO COMPILER SEES. internal/export reads these
-// documents back without importing this package: its `decoded` struct and the
-// decoders in page.go are a second spelling of these shapes, joined to them by
-// json tags alone. A tag renamed on either side decodes to a zero value and
-// nothing anywhere returns an error, which is the failure page.schema.json was
-// written for one layer up.
+// encode is [marshal] validated against the schema the caller names. It checks
+// the bytes rather than the struct, which has lost the difference between an
+// absent key and an empty one; internal/export decodes these documents by json
+// tag alone, so a renamed tag would otherwise decode to zero in silence.
 func encode(v any, name, schemaName string) ([]byte, error) {
 	raw, err := marshal(v, name)
 	if err != nil {
@@ -279,13 +243,9 @@ func encode(v any, name, schemaName string) ([]byte, error) {
 	return raw, nil
 }
 
-// marshal is [encode]'s bytes without its shape check: the canonical JSON every
-// projection publishes.
-//
-// SPLIT OUT SO THE ENCODER'S OWN CLAIM STAYS TESTABLE. What this settles -- HTML
-// escaping off, two-space indent, one trailing newline -- is true of any value,
-// and pinning it through a schema would need a fixture shaped like a document to
-// assert something that has nothing to do with the shape.
+// marshal is the canonical JSON every projection publishes: HTML escaping off,
+// so "Fines & Forfeitures" stays readable, a two-space indent and one trailing
+// newline. name is the projection's, so a failure names the document.
 func marshal(v any, name string) ([]byte, error) {
 	var b bytes.Buffer
 	enc := json.NewEncoder(&b)

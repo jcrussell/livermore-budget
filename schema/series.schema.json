@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://jcrussell.github.io/livermore-budget/schema/series.schema.json",
   "title": "fisc series projection",
-  "description": "One document internal/project builds as a series per printed row rather than as a graph: the revenue trends and the two ACFR fund-balance schedules. These are the only projections a reader fetches as themselves -- internal/export folds the graph documents into one file per column and copies these through verbatim -- so this schema holds bytes that are served rather than only passed between packages.",
+  "description": "One document internal/project builds as a series per printed row rather than as a graph. Served as itself, so this schema holds bytes a reader fetches.",
   "type": "object",
   "required": ["schema_version", "projection", "metadata", "series"],
   "additionalProperties": false,
@@ -12,7 +12,7 @@
       "enum": ["revenue-trends", "fund-balances", "changes-in-fund-balances"]
     },
     "metadata": {
-      "description": "THE ENVELOPE AND NO MORE. It carries no fiscal_year, fiscal_year_label, basis or headline, and their absence is the contract rather than an omission: a document of four columns and three bases has no singular year or basis, and publishing them zeroed to keep a familiar shape is the absent-is-not-zero error this project refuses everywhere else. `columns` is what carries them, one entry per printed column.",
+      "description": "The envelope and no more: no fiscal_year, fiscal_year_label, basis or headline, because a document of several columns and bases has no singular one. `columns` carries them.",
       "type": "object",
       "required": ["generated_by", "scope", "currency", "units", "columns", "sources", "counts", "caveats"],
       "additionalProperties": false,
@@ -76,7 +76,7 @@
           "series_id": { "type": "string", "minLength": 1 },
           "label": { "type": "string", "minLength": 1 },
           "fund": {
-            "description": "NULL AND NOT ZERO where the row sits under no numbered fund -- the ACFR's fund-balance schedules print a fund's components and an aggregate across funds, never a fund. It is fact.Fact.Fund carried through, and no fund is numbered 0, so zero would be a fund rather than the absence of one. AGENTS.md, \"Provenance invariants\".",
+            "description": "Null, not zero, where the row sits under no numbered fund: no fund is numbered 0. AGENTS.md, \"Provenance invariants\".",
             "type": ["integer", "null"],
             "minimum": 1
           },

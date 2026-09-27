@@ -360,11 +360,8 @@ func TestLoadRealRegistries(t *testing.T) {
 	}
 
 	cats := r.Categories()
-	// 40 categories, plus one line entry per distinct revenue row pp.127-140
-	// print: 101, measured off facts/facts.jsonl on 2026-09-12 as the distinct
-	// (category, row_label) of scope revenue-by-fund and kind revenue. The
-	// second term is a count against the pages, and
-	// TestEveryRevenueLineIsPrintedOnItsPages is what ties each entry to one.
+	// Plus one line entry per distinct revenue row pp.127-140 print: 101,
+	// measured off facts/facts.jsonl on 2026-09-12.
 	if got, want := len(cats), 40+101; got != want {
 		t.Errorf("len(Categories()) = %d, want %d", got, want)
 	}
@@ -546,11 +543,7 @@ func TestDepartmentsRegistryMatchesThePages(t *testing.T) {
 		}
 	}
 
-	// The cross-AXIS refusal, which does not relax and which covers BOTH
-	// tiers: a fact's `department` field holds a division on pp.167-170 and a
-	// DEPARTMENT on pp.85-125's funding-source rows, and row_path joins
-	// whichever it holds to a category. Load enforces it; this says so against
-	// the committed pair rather than against a fixture.
+	// The cross-axis refusal over both tiers, against the committed data.
 	for _, d := range r.Departments() {
 		if _, isCategory := r.Category(d.Slug); isCategory {
 			t.Errorf("department %q is also a taxonomy category slug", d.Slug)
@@ -715,26 +708,10 @@ func TestEveryDivisionIsPrintedOnItsPages(t *testing.T) {
 }
 
 // TestEveryRevenueLineIsPrintedOnItsPages ties each revenue line entry in
-// data/taxonomy.yaml to the pages it cites, as TestEveryDivisionIsPrintedOnItsPages
-// does for departments.yaml: the registry against the printed page, with no
-// rule file and no fact store in between.
-//
-// A LINE IS A CHILD OF AN ASSIGNABLE CATEGORY. That is the whole definition: a
-// fact reaches it through (category, row_label), so its parent is a category a
-// rule may write, and taxes/property -- a child of the rollup `taxes`, which no
-// rule may write -- is not one.
-//
-// The match is a ROW match and not the divisions test's Contains, because
-// pp.127-140 allow it: every row prints its label at the start of its own line
-// and the figures after it, so the term must begin a line and end at a space or
-// the line's end. "Franchise Tax- Gas" is therefore not satisfied by "Franchise
-// Tax- Garbage", nor "Citations" by a heading that mentions them. What it still
-// cannot witness is the figure beside the label; that is
-// fact-offset-points-at-token's, at verify time.
-//
-// Every page cited is read as a Budget Book page, which is the file's stated
-// convention for a bare page number; a line alias citing another document
-// would have to say so in a note and be read from that document's pages.
+// data/taxonomy.yaml (a child of an assignable category) to the Budget Book
+// pages it cites. The match is a row match: the term begins a line and ends at
+// a space or the line's end, so "Franchise Tax- Gas" is not satisfied by
+// "Franchise Tax- Garbage".
 //
 // Mutation: change any line's pages to a page that does not print it -- 127 for
 // miscellaneous-revenue/cardroom-revenue, which p130 prints -- and this fails
@@ -793,13 +770,9 @@ func TestEveryRevenueLineIsPrintedOnItsPages(t *testing.T) {
 		}
 	}
 
-	// The floors are counts against the documents, for the reason
-	// TestEveryDivisionIsPrintedOnItsPages gives at length: a floor summed from
-	// r.Categories() in the same run could never fire. Measured off
-	// facts/facts.jsonl on 2026-09-12, scope revenue-by-fund and kind revenue:
-	// 101 distinct (category, row_label) pairs, printed on 139 distinct
-	// (pair, page) combinations -- pp.127-130's General Fund rows once each,
-	// and pp.131-140's fund-level rows on every page a fund prints them.
+	// Floors counted against the pages, not summed from r.Categories() in the
+	// same run. Measured off facts/facts.jsonl on 2026-09-12: 101 distinct
+	// (category, row_label) pairs on 139 distinct (pair, page) combinations.
 	if lines != 101 {
 		t.Errorf("the registry declares %d revenue lines, want 101; the floor below is a "+
 			"count against the pages and means nothing if the schedule changed", lines)
@@ -870,14 +843,8 @@ const linesTaxonomy = validTaxonomy + `
     pages: [127]
 `
 
-// TestLinesPrintedAsAnswersWithEveryClaimant is the join a projection needs
-// before it can draw a printed row as a node, and the reason it answers with a
-// slice.
-//
-// AMBIGUITY IS NOT RESOLVED HERE. Nothing refuses two lines under one category
-// sharing a printed spelling when taxonomy.yaml loads, and a lookup that picked
-// one of them would be the plausible-wrong-value failure this project exists to
-// prevent. So both come back and the caller refuses.
+// TestLinesPrintedAsAnswersWithEveryClaimant: ambiguity is not resolved here;
+// every claimant comes back and the caller refuses.
 func TestLinesPrintedAsAnswersWithEveryClaimant(t *testing.T) {
 	r := load(t, "", linesTaxonomy, "")
 
@@ -896,11 +863,7 @@ func TestLinesPrintedAsAnswersWithEveryClaimant(t *testing.T) {
 		{"a label is never a match key", "taxes/property", "ERAF ", "revenue", nil},
 		{"a spelling under another category", "taxes", "ERAF", "revenue", nil},
 		{"an empty spelling matches nothing", "taxes/property", "", "revenue", nil},
-		// THE METHOD IS STRUCTURAL AND KNOWS NOTHING ABOUT "LINE": it answers
-		// "the entries under this parent printed as this". taxes/property is a
-		// child of the taxes rollup and comes back as one. No fact can ask that
-		// question -- fact-vocabulary refuses a rule writing an unassignable
-		// slug as a category -- and the answer is still the honest one.
+		// The method is structural and knows nothing about "line".
 		{"a child that is itself a category", "taxes", "Property Taxes", "revenue",
 			[]string{"taxes/property"}},
 	}

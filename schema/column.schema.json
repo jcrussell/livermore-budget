@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://jcrussell.github.io/livermore-budget/schema/column.schema.json",
   "title": "fisc published column",
-  "description": "Everything the chart needs for one published column of the city's budget. KEYED BY COLUMN AND NOT BY YEAR: a column is (fiscal_year, basis), and one basis per year is a property of today's corpus rather than a guarantee -- the day it prints FY2026 revised beside FY2026 adopted, a per-year name collides.",
+  "description": "Everything the chart needs for one published column of the city's budget. Keyed by column, (fiscal_year, basis), and not by year: one basis per year is today's corpus, not a guarantee.",
   "type": "object",
   "required": [
     "schema_version",
@@ -51,7 +51,7 @@
       }
     },
     "nodes": {
-      "description": "ONE TABLE SHARED BY EVERY SCHEDULE, CARRYING ONLY WHAT THEY AGREE ON. Measured over every published column: id, label, tier, role and derived never disagree between two schedules naming the same mark, and parent, constraint_tier, rationale and source_note do -- parent 156 times. A node's IDENTITY is shared; its place in a hierarchy and its annotations belong to the schedule that draws it, and live there.",
+      "description": "One table shared by every schedule, carrying only what they agree on: a node's identity. Its parent and annotations belong to the schedule that draws it.",
       "type": "array",
       "minItems": 1,
       "items": {
@@ -76,7 +76,7 @@
             "minimum": 0
           },
           "role": {
-            "description": "What this node is for, so a client never has to parse its id. THE DECLARED SET AND NOT THE OBSERVED ONE: internal/project declares these constants and pkg/cmd/export re-spells five of them in its step declarations, so this enum is the one list all three are held to. A role present in no published column today is still valid -- writing the enum from the corpus is the mistake docs/schema-contracts.md records about `basis` and `units`.",
+            "description": "What this node is for, so a client never has to parse its id. The declared set, not the observed one: a role no published column carries today is still valid.",
             "type": "string",
             "enum": [
               "department",
@@ -131,7 +131,7 @@
       }
     },
     "fund_groups": {
-      "description": "The fund groups this column draws, in the order the page lays the fund column out. AN ORDERED LIST AND NOT A CLOSED SET: which groups exist is the document's, the order is the packager's, and neither is enumerated here. data/funds.yaml grows a fund type without asking this file, so a schema naming the ids it expects would refuse a correct column the first time the registry grew. site/app.js held both as six-element literals that could not see a seventh; this is what replaced them.",
+      "description": "The fund groups this column draws, in the order the page lays the fund column out. An ordered list, not a closed set: data/funds.yaml can grow a fund type without this file.",
       "type": "array",
       "items": {
         "type": "object",
@@ -312,7 +312,7 @@
                   }
                 },
                 {
-                  "description": "A NEGATIVE FIGURE NAMES THE SCHEDULE IT REDUCES, AND ONLY A NEGATIVE ONE DOES. The sign is what the page printed; the sentence is what a reader is owed beside a ribbon the chart draws at its magnitude. Stated as a biconditional rather than in a hand-written key check, so neither half can hold without the other.",
+                  "description": "A negative figure names the schedule it reduces, and only a negative one does.",
                   "if": {
                     "properties": {
                       "value_cents": {
@@ -402,7 +402,7 @@
             }
           },
           "scopes": {
-            "description": "The fact-store scopes this schedule draws. AN ARRAY BECAUSE ONE OF THEM GENUINELY SPANS TWO: fund-flows joins revenue-by-fund and expenditure-by-department into one graph. The per-projection documents spell this two ways -- `scope` on four of them and `scopes` on the fifth -- and the column normalises it to the shape that can express both.",
+            "description": "The fact-store scopes this schedule draws. An array because fund-flows spans two: revenue-by-fund and expenditure-by-department.",
             "type": "array",
             "minItems": 1,
             "items": {

@@ -26,15 +26,8 @@ rules:
 ` + columns + "\n"
 }
 
-// TestGrainIsRequiredExactlyWhereARulePublishes is Rule.Grain's two refusals.
-//
-// A grain is a claim about a table; a rule that reads a table and publishes
-// nothing from it -- acfr-p0177-debt-by-type and acfr-p0169-other-financing,
-// whose every row is skipped -- makes no claim the store could bear out, so a
-// grain there is refused rather than tolerated. Every row skipped, every
-// column skipped and every column non-amount are three spellings of the same
-// silence, and all three are covered here so that a fourth cannot pass on
-// resemblance to one of them.
+// TestGrainIsRequiredExactlyWhereARulePublishes is Rule.Grain's two refusals,
+// over each of the three ways a rule publishes nothing.
 func TestGrainIsRequiredExactlyWhereARulePublishes(t *testing.T) {
 	const grain = "    grain: category\n"
 	amountRow := `      - {label: "Taxes", category: taxes/other}`

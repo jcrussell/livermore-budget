@@ -103,10 +103,7 @@ func TestWriteProducesTheSiteLayout(t *testing.T) {
 	want := []string{
 		".fisc-export",
 		"app.js",
-		// ONE DOCUMENT PER PUBLISHED COLUMN AND NOT ALSO ONE PER SCHEDULE.
-		// data/sankey.json was here: sankey folds into this column, so
-		// shipping it too was the same figures at two paths, and the second
-		// was fetched by nothing.
+		// One document per published column, not also one per schedule.
 		"fy2026-adopted.json",
 		"index.html",
 		"style.css",
@@ -195,19 +192,10 @@ func TestEveryAssetThePageAsksForWasWritten(t *testing.T) {
 	}
 }
 
-// TestWriteCopiesAColumnlessProjectionVerbatim is the verbatim-copy contract,
-// narrowed to where it still holds and said so.
-//
-// IT USED TO BE ASKED OF sankey, and that is no longer a copy: a document
-// stating a fiscal year and a basis folds into its column and is re-encoded
-// there. What replaces the guarantee for those is stronger and is held
-// elsewhere -- encodeColumn refuses bytes that do not match
-// schema/column.schema.json, and pkg/cmd/export/column_test.go holds every
-// column's figures to facts/facts.jsonl.
-//
-// What has no column and no schema is revenue-trends and the two balance
-// documents, which carry a series and state no year. Those ship as themselves
-// and must ship BYTE FOR BYTE, because nothing else looks at them at all.
+// TestWriteCopiesAColumnlessProjectionVerbatim: revenue-trends and the two
+// balance documents have no column and no schema, so they must ship byte for
+// byte. A document with a column is re-encoded and held by encodeColumn's
+// schema check instead.
 func TestWriteCopiesAColumnlessProjectionVerbatim(t *testing.T) {
 	series := []byte(`{"schema_version":1,"projection":"revenue-trends",` +
 		`"metadata":{"generated_by":"fisc test","sources":[]},"series":[]}` + "\n")
@@ -401,10 +389,8 @@ func TestPageRendersCaveatsWithoutJavaScript(t *testing.T) {
 		// print the text today whatever the template does, because caveatRef
 		// carries no such field -- so what it really guards is somebody putting
 		// one back. The structural form of that claim is
-		// TestTheSchemaStatesWhatThePageConfigCarries, which walks caveatRef
-		// against schema/page.schema.json's additionalProperties: false and so
-		// fails the moment the field exists rather than when a template happens
-		// to render it.
+		// TestTheSchemaStatesWhatThePageConfigCarries, which fails the moment the
+		// field exists on caveatRef.
 		if len(caveat.Text) > 80 && strings.Contains(visible, template.HTMLEscapeString(caveat.Text)) {
 			t.Errorf("caveat %q's full text is on index.html; the summary is meant to "+
 				"stand in for it, not to precede it", caveat.ID)
@@ -666,10 +652,8 @@ func TestPageConfigCarriesTheProjectionMetadataVerbatim(t *testing.T) {
 	if got.Primary != "sankey" {
 		t.Errorf("got primary %q, want %q", got.Primary, "sankey")
 	}
-	// NO PROJECTIONS MAP IS ASSERTED, because the config carries none. A year
-	// names its document by its column and a step names its schedule, so a
-	// stem -> path map on the wire would be a third name for the same file
-	// and a second thing to keep in step.
+	// No projections map: a year names its document by its column and a step by
+	// its schedule.
 	if got.SchemaVersion != 1 {
 		t.Errorf("got schema_version %d, want 1", got.SchemaVersion)
 	}
@@ -840,15 +824,10 @@ func TestClientSchemaVersionIsPinnedToTheProducer(t *testing.T) {
 	}
 }
 
-// TestThePageBootsTheClientAsAModule pins the two halves of the handshake
-// between the template and the client: the template imports boot from
-// ./app.js in a module script, and app.js exports a function by that name.
-//
-// PINNED AS TEXT ON BOTH SIDES, because nothing in this tree runs the page. A
-// rename on either side leaves a page that loads and draws nothing, with the
-// only report a console error no test reads; this is the one test that would
-// see it. The module script must also come AFTER the three classic scripts,
-// which set the globals app.js reads at import.
+// TestThePageBootsTheClientAsAModule pins both halves of the handshake: the
+// template imports boot from ./app.js in a module script after the three
+// classic scripts whose globals it reads, and app.js exports boot. A rename on
+// either side draws nothing, and nothing in this tree runs the page.
 func TestThePageBootsTheClientAsAModule(t *testing.T) {
 	page, err := fs.ReadFile(site.FS(), export.SankeyTemplate)
 	if err != nil {
@@ -1181,13 +1160,9 @@ func TestTheDisabledYearToggleKeepsItsSelectionUnderTheCursor(t *testing.T) {
 // TestTheStylesheetHasOneTextMeasure witnesses ONE DECLARATION, NOT ONE
 // RENDERING, and the distinction is the whole of what this test is worth.
 //
-// Nothing in this tree parses or renders CSS (fisc-6at): the client's tests
-// read style.css as text, and the two tests below this one match selector
-// strings.
-// So this cannot say that --measure applies to any element a template renders,
-// that a line comes out at 68 characters, or that the wide tables stayed at the
-// container width. Those are read in a browser after `make site` and nowhere
-// else.
+// Nothing in this tree parses or renders CSS (fisc-6at), so this cannot say
+// that --measure applies to any rendered element; that is read in a browser
+// after `make site`.
 //
 // What it CAN say is that the three hand-written measures became one token and
 // stay one: 68ch on .lede, 46em on .caveat and main's 1180px inherited by
@@ -1221,8 +1196,7 @@ func TestTheStylesheetHasOneTextMeasure(t *testing.T) {
 	// THE CONTAINER RULE ITSELF, not the number anywhere in the file. Grepping
 	// for "max-width: 1180px" passes over a stylesheet that split this rule in
 	// two and clamped `main` to the reading measure while leaving .page-head at
-	// 1180px -- which squeezes the page's tiles and tables, and squeezed the
-	// chart too until .chart-wrap took a width of its own (fisc-5e2b).
+	// 1180px -- which squeezes the page's tiles and tables.
 	// Mutation-measured: that split was green.
 	const container = "main,\n.page-head {\n  max-width: 1180px;"
 	// THE PRINT BLOCK OPENS WHAT THE PAGE FOLDS. Declared only -- this cannot
@@ -1242,20 +1216,9 @@ func TestTheStylesheetHasOneTextMeasure(t *testing.T) {
 	}
 }
 
-// writeSite renders o into o.Dir in one step, which is what most of these
-// tests want and what the binary deliberately does not do: pkg/cmd/export
-// takes Prepare, then cleans the directory, then plan.Write, so a render that
-// fails does not destroy the previous site first. Keeping the one-step form
-// here rather than in the package means that ordering has no shortcut around
-// it in production.
-// TestAPageWithNoBuildStampIsRefused is the one arm [writeSite]'s default is
-// written around.
-//
-// AN EMPTY exported_by IS A GATE SWITCHED OFF, not a cosmetic gap. site/app.js
-// refuses a fetched artifact whose generated_by disagrees with
-// CONFIG.exported_by, and that comparison is the only thing left that catches a
-// column a reader cached from before the last deploy -- the site publishes no
-// cache-busting. Two empty strings pass it for every file, forever.
+// TestAPageWithNoBuildStampIsRefused: an empty exported_by switches off the
+// client's cache gate, since two empty strings match every artifact's
+// generated_by.
 func TestAPageWithNoBuildStampIsRefused(t *testing.T) {
 	_, err := export.Prepare(export.Options{
 		Dir:         t.TempDir(),
@@ -1274,17 +1237,9 @@ func TestAPageWithNoBuildStampIsRefused(t *testing.T) {
 }
 
 // writeSite prepares and writes one site, stamping the build where the caller
-// did not.
-//
-// THE STAMP IS FILLED IN AND THE TEST THAT IS ABOUT IT PLANTS ITS OWN. An empty
-// GeneratedBy is refused by page.schema.json, because the client's one surviving
-// cache gate compares a fetched artifact's generated_by with CONFIG.exported_by
-// and two empty strings pass it trivially -- so a page with no stamp is a page
-// with that gate switched off. Every test above is about something else and the
-// real command has never produced one (generatedBy() is "fisc " plus the build),
-// so defaulting here keeps those arms about their own subject.
-// TestAPageWithNoBuildStampIsRefused is the one that asserts the refusal, and it
-// calls Prepare directly rather than coming through here.
+// did not. The binary cleans the directory between Prepare and Write, so a
+// failed render does not destroy the previous site; the one-step form lives
+// only here.
 func writeSite(o export.Options) ([]string, error) {
 	if o.GeneratedBy == "" {
 		o.GeneratedBy = "fisc (test)"
@@ -1298,10 +1253,8 @@ func writeSite(o export.Options) ([]string, error) {
 
 // What style.css DECLARES; nothing here renders CSS (fisc-6at).
 //
-// Mutation: move the focus block above `.node.derived rect` -- equal
-// specificity, so the later wins -- and a focused derived mark keeps the dashed
-// stroke with every other test green. Dropping the dasharray reset is the same
-// defect one property in.
+// Mutation: move the focus block above `.node.derived rect` (equal specificity)
+// and a focused derived mark keeps the dashed stroke.
 func TestTheChartsFocusRingIsDeclaredOnTheMarkAndAfterTheDerivedRule(t *testing.T) {
 	b, err := fs.ReadFile(site.FS(), "style.css")
 	if err != nil {
@@ -1309,9 +1262,7 @@ func TestTheChartsFocusRingIsDeclaredOnTheMarkAndAfterTheDerivedRule(t *testing.
 	}
 	css := string(b)
 
-	// The global ring is what put a box round the whole <g>. It has to stay for
-	// every other focusable thing on the page, so the chart turns it off rather
-	// than the file dropping it.
+	// The global ring stays for everything else focusable; the chart turns it off.
 	if !strings.Contains(css, "svg.sankey .node:focus-visible {\n  outline: none;\n}") {
 		t.Error("style.css does not turn the global outline off on a chart node; the ring " +
 			"follows the <g>'s union box, which holds the label out in the gutter")
@@ -1330,8 +1281,7 @@ func TestTheChartsFocusRingIsDeclaredOnTheMarkAndAfterTheDerivedRule(t *testing.
 			"rule wins and a focused derived mark draws no indicator")
 	}
 
-	// Without this the indicator inherits the derived rule's dashes and reads as
-	// a different kind of mark rather than as focus.
+	// Without this the indicator inherits the derived rule's dashes.
 	focusBlock := css[iFocused:]
 	if end := strings.Index(focusBlock, "}"); end >= 0 {
 		focusBlock = focusBlock[:end]
@@ -1341,11 +1291,8 @@ func TestTheChartsFocusRingIsDeclaredOnTheMarkAndAfterTheDerivedRule(t *testing.
 			"derived mark draws its focus indicator dashed")
 	}
 
-	// A ribbon cannot take the node's fix -- its stroke and its dashes are both
-	// published distinctions -- and it cannot keep the box either: a <path>'s
-	// bounding box is the whole bezier's rectangle, so any outline on one is a
-	// ring around mostly empty space. It takes neither, and a drawn echo
-	// instead.
+	// A ribbon's stroke and dashes are both published distinctions, and an
+	// outline on a <path> rings its whole bounding box, so it takes a drawn echo.
 	iLink := strings.Index(css, "svg.sankey .link:focus-visible {")
 	if iLink < 0 {
 		t.Fatal("style.css states no focus rule for a ribbon")

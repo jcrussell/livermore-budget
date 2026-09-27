@@ -362,11 +362,8 @@ categories:
 `,
 			want: `taxonomy.yaml: category "intergovernmental": parent: is "taxes", but the slug has no parent segment`,
 		}, {
-			// Depth is unbounded, so a three-segment slug is refused for its
-			// GRAMMAR and never for its depth: the parent of
-			// taxes/property/secured is the slug minus its last segment, and
-			// `taxes` is the grandparent. TestTheTaxonomyNestsToAnyDepth is
-			// the same slug loading with the right parent.
+			// Refused for its grammar, never its depth: `taxes` is the
+			// grandparent.
 			name: "parent that is the grandparent",
 			taxonomy: `
 schema_version: 1
@@ -451,9 +448,8 @@ divisions:
 `,
 			want: `departments.yaml: division "patrol": slug: duplicate slug`,
 		}, {
-			// The same refusal one tier up, and it is not decorative: a
-			// pp.85-125 funding-source row names a DEPARTMENT, so a department
-			// slug reaches row_path and can be the ambiguous half.
+			// The same refusal one tier up: pp.85-125 rows put a department
+			// slug in row_path.
 			name: "department slug that is also a category",
 			departments: `
 schema_version: 1
@@ -574,16 +570,10 @@ divisions:
 	}
 }
 
-// A file from a newer fisc is not a malformed file, and telling the reader to
-// upgrade rather than to go hunting for a typo is the difference.
-// TestTheTaxonomyNestsToAnyDepth pins the recursion: a child of a child loads,
-// and so does a child of that, because the grammar is "a slug's parent is the
-// slug minus its last segment" at every depth and no arm counts segments.
+// TestTheTaxonomyNestsToAnyDepth: no arm counts segments.
 //
-// Mutation: an arm that counts "/" in a slug, or one that refuses a parent
-// which itself has a parent, fails this at depth 2 before the depth-3 entry is
-// reached. Cutting the slug at its FIRST slash instead of its last fails it too,
-// at depth 2, with taxes/property/secured told its head noun is "taxes".
+// Mutation: counting "/" in a slug, refusing a parent that has a parent, or
+// cutting the slug at its first slash fails this at depth 2.
 func TestTheTaxonomyNestsToAnyDepth(t *testing.T) {
 	r := load(t, "", `
 schema_version: 1
@@ -616,6 +606,8 @@ categories:
 	}
 }
 
+// A file from a newer fisc is not a malformed file, and telling the reader to
+// upgrade rather than to go hunting for a typo is the difference.
 func TestLoadHintsAtANewerSchema(t *testing.T) {
 	_, err := Load(registryFS(t, "schema_version: 2\nfunds: []\n", "", ""))
 	var hint *cmdutil.ErrHint

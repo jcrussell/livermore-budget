@@ -33,24 +33,8 @@ import (
 )
 
 // idPattern matches the project's own ids. byobPattern matches byob's, which
-// are in this graph too.
-//
-// BOTH ARE CHECKED, and the reason only one used to be does not survive being
-// written down: a byob id names reference material and AGENTS.md says never to
-// claim or close one, so -- the argument went -- nothing here should assert
-// they exist. That is a rule about what an agent may DO to a bead, not about
-// whether a citation of one should resolve. The 105 byob beads are rows of
-// .beads/issues.jsonl like any other, so this resolves them the same way, and a
-// typo'd byob id now fails here instead of sending a reader to `bd show` and an
-// empty answer. AGENTS.md's Go section cites eleven of them.
-//
-// NO EXAMPLE ID IS SPELLED IN THIS FILE, which is the same trade tools/doccheck
-// makes about citations: an example is exactly the shape the pattern matches,
-// so writing one would make the command report itself.
-//
-// NOT A LIVE DEFECT WHEN THIS LANDED, measured: all 16 distinct byob ids cited
-// in tracked Go, markdown, .mjs and the Makefile resolve. What was missing is
-// the guard.
+// are rows of the same graph and so must resolve too. No example id is spelled
+// in this file: it would make the command report itself.
 //
 // THE PATTERN ALONE IS NOT ENOUGH, because `fisc-` is an overloaded prefix in
 // this tree and not a namespace: fact ids are fisc-f-<hash>, series ids are
@@ -60,15 +44,9 @@ import (
 // the boundaries are applied in citedIn rather than here; RE2 has no lookaround.
 var idPattern = regexp.MustCompile(`fisc-[a-z0-9]+(?:\.[0-9]+)*`)
 
-// byobPattern takes the whole hyphenated slug, because a byob id's hyphens are
-// PART OF IT: a two-word slug with a dotted child is one id and not three. It
-// cannot end on a hyphen, which is what the grouping is for -- an id written
-// before an em dash must match up to the slug and stop.
-//
-// SO THE TRAILING-HYPHEN RULE IN citedIn DOES NOT APPLY TO IT. That rule exists
-// to keep fisc-f-<hash> from reading as a bead; here a following hyphen is
-// already known not to start another segment, so refusing on it would drop
-// every id written before an em dash.
+// byobPattern takes the whole hyphenated slug, which is one id, and cannot end
+// on a hyphen, so an id written before an em dash stops at the slug. citedIn's
+// trailing-hyphen rule therefore does not apply to it.
 var byobPattern = regexp.MustCompile(`byob-[a-z0-9]+(?:-[a-z0-9]+)*(?:\.[0-9]+)*`)
 
 // exempt names files whose fisc- literals are fixtures rather than claims about
@@ -85,27 +63,12 @@ var exempt = map[string]string{
 }
 
 // exemptIDs names tokens that are shaped like a bead id and are not one, with
-// what each actually is. All of them are in the client, and none can be told
-// from a bead id by any rule: a localStorage key and a radio-group name both
-// read as `fisc-` plus a short token, and so does a bead id.
+// what each actually is. None can be told from a bead id by any rule, and
+// renaming them would orphan values a returning reader's browser holds.
 //
-// Renaming them would be the better fix and is not free: AGENTS.md requires a
-// change to site/app.js to ship its check in the same commit, and these
-// are strings a returning reader's browser already holds.
-//
-// Each names ONE file it lives in, and that is what its staleness is measured
-// against: the file must exist, and if a run scanned that file the token must
-// have been seen there. Both of these tokens occur in several files, so the
-// anchor is a choice; if one moves out of its anchor the run says so and names
-// both remedies, since re-pointing and deleting are different answers and
-// deleting the wrong one turns the surviving occurrences into dead beads. Anchoring it to a file rather than to the walk is the
-// same principle checkExemptions follows -- a run over a narrower path set is a
-// narrower run and not a stale declaration.
-//
-// The sighting must also come from OUTSIDE this file, because the declaration
-// below is itself scanned; without that, every exemption satisfies its own
-// staleness test. That was measured rather than reasoned: renaming a key here to
-// a token in no other file left a full run green.
+// Each names ONE anchor file: the file must exist, and if a run scanned it the
+// token must have been seen there, from outside this file (the declaration
+// below is itself scanned, so it would satisfy its own staleness test).
 var exemptIDs = map[string]exemptID{
 	"fisc-theme":   {file: "site/app.js", what: "the localStorage key holding the reader's light/dark choice; also inlined in every site/*.html.tmpl"},
 	"fisc-year":    {file: "site/index.html.tmpl", what: "the radio-group name for the fiscal-year control"},
@@ -414,9 +377,7 @@ func citedIn(line string) []string {
 		}
 		ids = append(ids, line[loc[0]:loc[1]])
 	}
-	// A byob id has already taken every hyphen-joined segment, so what follows
-	// a match cannot begin another one and the trailing-hyphen rule above does
-	// not apply -- see byobPattern.
+	// No trailing-hyphen rule here; see byobPattern.
 	for _, loc := range byobPattern.FindAllStringIndex(line, -1) {
 		if loc[0] > 0 && runsInto(line[loc[0]-1]) {
 			continue

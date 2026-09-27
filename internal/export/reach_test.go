@@ -57,9 +57,8 @@ func TestFoldIsTheClientsFoldDocument(t *testing.T) {
 	}
 }
 
-// TestFoldRefusesARibbonEndNoDrawnTierPlaces mirrors foldDocument's refusal
-// of a node with no ancestor at a drawn tier: dropped, the ribbon would
-// vanish in silence and the chart would be one ribbon short of the document.
+// TestFoldRefusesARibbonEndNoDrawnTierPlaces mirrors foldDocument's refusal of
+// a node with no ancestor at a drawn tier.
 func TestFoldRefusesARibbonEndNoDrawnTierPlaces(t *testing.T) {
 	g := foldFixture()
 	g.Nodes = append(g.Nodes, GraphNode{ID: "z", Tier: 3})
@@ -71,8 +70,7 @@ func TestFoldRefusesARibbonEndNoDrawnTierPlaces(t *testing.T) {
 }
 
 // TestReachOfCarriesTheFoldedChart is that Drawn is Fold over exactly the
-// ribbons the filter keeps -- no more, because a ribbon whose near end is
-// outside the opened node's subtree is one the fold would otherwise draw.
+// ribbons the filter keeps.
 func TestReachOfCarriesTheFoldedChart(t *testing.T) {
 	g := foldFixture()
 	// A ribbon whose near end is outside b's subtree, which the filter drops
@@ -96,9 +94,8 @@ func TestReachOfCarriesTheFoldedChart(t *testing.T) {
 	}
 }
 
-// TestFoldRefusesAParentCycle is a two-node parent ring. Truncated at the
-// hop bound, each chain reads as ending at a root, and Fold draws the ring's
-// ribbon folded to whichever node the bound happened to stop on.
+// TestFoldRefusesAParentCycle is a two-node parent ring, which a chain
+// truncated at the hop bound would read as ending at a root.
 func TestFoldRefusesAParentCycle(t *testing.T) {
 	g := Graph{
 		Nodes: []GraphNode{{ID: "a", Tier: 0}, {ID: "x", Tier: 1, Parent: "y"}, {ID: "y", Tier: 1, Parent: "x"}},

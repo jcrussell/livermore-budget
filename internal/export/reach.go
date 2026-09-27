@@ -16,17 +16,12 @@ type Graph struct {
 	Links []GraphLink `json:"links"`
 }
 
-// GraphNode is one node of a [Graph]: its id, the tier it sits at, the role
-// the document printed it with, the id of its parent or "" at a root, and
-// whether the document marks it derived -- which the client reads as "not
-// one of the opened node's parts" wherever the node is drawn.
+// GraphNode is one node of a [Graph]. Parent is "" at a root; the client reads
+// Derived as "not one of the opened node's parts" wherever the node is drawn.
 type GraphNode struct {
 	ID   string `json:"id"`
 	Tier int    `json:"tier"`
-	// Label is the city's own word for the node, decoded because a mark's
-	// prose names the node it stands beside and that sentence is Go's: a
-	// residual says which flow the schedule does not split, and a gap says
-	// which cell the two documents disagree about.
+	// Label is decoded because a mark's prose names the node it stands beside.
 	Label   string `json:"label"`
 	Role    string `json:"role"`
 	Parent  string `json:"parent"`
@@ -40,9 +35,8 @@ type GraphLink struct {
 	Target     string `json:"target"`
 	ValueCents int64  `json:"value_cents"`
 	Kind       string `json:"kind"`
-	// Derived is whether the document infers the ribbon rather than reading
-	// it off a page; the fold may not merge a printed ribbon with an inferred
-	// one, and validateSteps refuses a cap under which it would.
+	// Derived: the fold may not merge a printed ribbon with an inferred one,
+	// and validateSteps refuses a cap under which it would.
 	Derived bool `json:"derived"`
 	// Locators is what the document cites for the ribbon. A fold and a
 	// [Chart] drop it: a merged ribbon's citations are no one's.
@@ -56,8 +50,7 @@ type Locator struct {
 }
 
 // DecodeGraph reads a projection document down to its [Graph], and refuses
-// one with no nodes: every question asked of a graph here is a question about
-// what a document draws, and a document drawing nothing answers none of them.
+// one with no nodes.
 func DecodeGraph(raw []byte) (Graph, error) {
 	var g Graph
 	if err := json.Unmarshal(raw, &g); err != nil {
@@ -72,14 +65,8 @@ func DecodeGraph(raw []byte) (Graph, error) {
 // Reach is what a document draws at each of a set of tiers when one node is
 // opened into them: At holds, per drawn tier, the ids the chart touches,
 // sorted, and Drawn is the chart itself, which is what a rung leaves on
-// screen and the next rung reads its flank off.
-//
-// NO PRE-FOLD TOTAL RIDES ALONG, and a caller that wants one computes it
-// itself. The cents into and out of each node before the fold are the key
-// site/app.js's capColumn ranks a column by, and ranking a column against a
-// cap is fitting, which is the client's (fisc-lwh5). A second spelling of it
-// here would be a figure Go computes for a reader it does not have, free to
-// drift from the one that draws.
+// screen and the next rung reads its flank off. No pre-fold total rides
+// along: ranking a column against a cap is the client's (fisc-lwh5).
 type Reach struct {
 	At    map[int][]string
 	Drawn Graph
@@ -93,33 +80,14 @@ const maxHops = 9
 // draws of document g when node opened is opened into tiers, on the side its
 // step declares.
 //
-// THE RULE IS THE HIERARCHY'S, NOT THE RIBBONS'. A ribbon is kept when its
-// near end -- its source when nearIsSource, its target otherwise, which is
-// filterFromNode against filterToNode -- is the opened node or a descendant of
-// it by parent chain, and both of its ends have an ancestor at a drawn tier to
-// be folded to. Every kept ribbon is then folded to those ancestors by [Fold],
-// a ribbon folding to one node is dropped as a flow inside what is now one
-// box, and a node no folded ribbon touches is pruned. What is left at each
-// tier is At.
+// The rule is the hierarchy's, not the ribbons': a ribbon is kept when its
+// near end (source when nearIsSource, as filterFromNode) is the opened node
+// or a descendant by parent chain and both ends have an ancestor at a drawn
+// tier; kept ribbons are then [Fold]ed. A walk along ribbons would miss
+// transfers/in, which no ribbon touches and whose payers are its children.
 //
-// WHY NOT A WALK OUTWARD ALONG RIBBONS FROM THE OPENED NODE: the transfers
-// document's tier 0 is transfers/in, which no ribbon touches in either
-// direction; the eight payer ends at tier 2 are its children, and the client
-// reaches them through the parent chain. On every step that keeps a flank the
-// two readings coincide on the committed corpus, and the rung artifact under
-// testdata/ is the measurement; this is the one that also answers the step
-// that keeps none.
-//
-// THE OPENED NODE HAS TO EXIST IN g, and that is the whole of what the client
-// asks of it: filterLinks refuses an id the document does not carry and reads
-// nothing else about the node, not even its tier. A caller that wants the
-// opened node at a particular tier of g asks that itself.
-//
-// EMPTY IS AN ANSWER HERE AND A REFUSAL IN EVERY CALLER. A Reach whose At is
-// empty is a node the document does not decompose under these tiers, which
-// stepView.Opens leaves out and a rung refuses by name; returning it rather
-// than an error is what lets one function answer both "which nodes open" and
-// "what does this one draw".
+// opened must exist in g and nothing else is asked of it, as in filterLinks.
+// An empty At is an answer, not an error: callers refuse it themselves.
 func ReachOf(g Graph, opened string, nearIsSource bool, tiers []int) (Reach, error) {
 	byID := indexNodes(g)
 	if _, ok := byID[opened]; !ok {
@@ -173,14 +141,8 @@ func ReachOf(g Graph, opened string, nearIsSource bool, tiers []int) (Reach, err
 // the fold kept, or to "" where none was, so the chart's own hierarchy is
 // the one a later "inside" walks. Nodes come back sorted by id and links by
 // source, target and kind, so two folds of one graph are one byte sequence.
-//
-// A RIBBON END WITH NO ANCESTOR AT A DRAWN TIER IS REFUSED, as foldDocument
-// refuses it, rather than dropped: a caller that wants such ribbons left out
-// filters them first, which is what [ReachOf] does and filterLinks does.
-//
-// It is the overview of a view with no Root -- shapeFor folds the document
-// to the render tiers and filters nothing -- and the second half of every
-// reach.
+// A ribbon end with no ancestor at a drawn tier is refused, as foldDocument
+// refuses it; callers that want it dropped filter first.
 func Fold(g Graph, tiers []int) (Graph, error) {
 	byID := indexNodes(g)
 	chains, err := ancestry(g, byID)

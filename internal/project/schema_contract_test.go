@@ -17,17 +17,8 @@ import (
 // name a document can carry is a property there, and nothing is a property there
 // a document cannot carry.
 //
-// EQUALITY AND NOT CONTAINMENT, which is the difference between this side and
-// internal/export's. These structs ARE the document, so a name on one side and
-// not the other is a defect whichever side it is on: a key the schema does not
-// state is one additionalProperties would refuse at the next build, and a
-// property no struct emits is a claim the contract makes about nothing.
-//
-// IT IS THE UNION ACROSS THE FIVE GRAPH DOCUMENTS, because they share one
-// schema and no single one of them carries every key: only the spine has a
-// headline, only fund-flows states `scopes` rather than `scope`, and the counts
-// block differs three ways. Which of those a given projection must carry is the
-// schema's own if/then, held against real bytes by [encode] on every build.
+// Equality, not containment: these structs ARE the document. It is the union
+// across the graph documents, which share one schema.
 func TestTheSchemasStateWhatTheProjectionsCarry(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
@@ -77,21 +68,8 @@ func TestTheSchemasStateWhatTheProjectionsCarry(t *testing.T) {
 // TestTheSchemaHoldsASignToItsSentence poses all four quadrants of the
 // biconditional the projection schema states about a reduction.
 //
-// THE PROSE FORM OF THIS CLAIM WAS THE ALTERNATIVE, and AGENTS.md prefers the
-// machine-checkable one for a measured reason: a shape stated in a comment,
-// again in a struct tag and a third time in a hand-written key check is three
-// spellings none of which can be held against the bytes. What is held here is
-// the schema itself, against documents this test builds to be valid in every
-// other respect.
-//
-// BOTH ACCEPTING CASES ARE POSED, and that is the half a one-sided test would
-// miss. A schema that refused every link would pass an "it refuses the bad
-// shape" test while making the whole field unpublishable.
-//
-// THE REFUSALS ARE READ FOR THEIR REASON and not only for their exit: the first
-// draft of this test refused all four, for an empty metadata.counts, and a
-// version checking only that an error came back would have reported the
-// biconditional working when nothing had exercised it.
+// Both accepting cases are posed, so a schema refusing every link fails, and
+// each refusal is read for its reason rather than only its exit.
 func TestTheSchemaHoldsASignToItsSentence(t *testing.T) {
 	loc := []any{map[string]any{"doc_id": "livermore-budget-fy2026-2027", "pages": []int{127}}}
 	link := func(cents int64, contra string) map[string]any {

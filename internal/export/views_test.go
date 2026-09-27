@@ -197,10 +197,8 @@ func TestEachViewsFooterCitesItsOwnSources(t *testing.T) {
 // This crosses the client's own config against every document it can fetch, which
 // is the set of paths the browser will actually construct.
 //
-// THE FETCHABLE SET IS THE YEARS' COLUMNS. What a browser opens is the column
-// its year landed on, and every schedule inside it is one a drill can select --
-// so this walks a layer deeper than the config's own list of paths could, and
-// reaches a source cited only by a schedule behind a click.
+// It walks the years' columns, so it reaches a source cited only by a schedule
+// behind a click.
 func TestEveryCitationTheClientComposesResolves(t *testing.T) {
 	dir := twoViews(t, 127, 128)
 	cfg := clientConfigOf(t, readFile(t, dir, "index.html"))
@@ -229,9 +227,7 @@ func TestEveryCitationTheClientComposesResolves(t *testing.T) {
 			for _, src := range sched.Sources {
 				d, ok := cfg.Docs[src.DocID]
 				if !ok {
-					// Not a failure of this check: the client skips a document
-					// it has no entry for, so no link is composed. Recorded so
-					// a reader knows the loop did not silently cover nothing.
+					// Not a failure: the client composes no link for a document it has no entry for.
 					t.Logf("%s's %s schedule cites %s, which the client config does not describe",
 						y.Path, key, src.DocID)
 					continue
@@ -259,11 +255,7 @@ func TestEveryCitationTheClientComposesResolves(t *testing.T) {
 // anything -- a field renamed, a default filled in -- would still name a
 // message and still pass, and nothing would say which arm had gone quiet.
 //
-// IT IS A SECOND SankeyTemplate VIEW, at a path the site does not open on.
-// There was a second chart template and this stood one up; the rules the cases
-// below break are the ones that bind any view that draws a chart, so the
-// vehicle moved to the template that still exists rather than the cases being
-// dropped with it.
+// It is a second SankeyTemplate view, at a path the site does not open on.
 func chartView(breaks func(*export.View)) export.View {
 	v := export.View{
 		Path: "extra.html", Template: export.SankeyTemplate, Projection: "sankey",
@@ -277,9 +269,8 @@ func chartView(breaks func(*export.View)) export.View {
 }
 
 // chainView is chartView with a second step: tier 3's nodes open into {3, 4},
-// on the same document. The cases about the chain break the second step,
-// because a refusal that fires on the first alone is the one-drill guard
-// restated rather than the chain's.
+// on the same document. The chain's cases break the second step, so the
+// refusal is the chain's and not the first hop's.
 func chainView(breaks func(*export.View)) export.View {
 	return chartView(func(v *export.View) {
 		v.Steps = append(v.Steps, export.DrillStep{Key: "funds", After: []string{"groups"},
@@ -290,14 +281,9 @@ func chainView(breaks func(*export.View)) export.View {
 	})
 }
 
-// windowView is chartView's step turned into a window: the chart on screen
-// draws tiers {0, 2}, tier 2's nodes open, and tier 0 -- the flank to their
-// left there -- stays drawn to their left here, beside what tier 2 opens into.
-//
-// A WELL-FORMED ONE, because every case that breaks a window is measured
-// against the arm it is meant to trip and not against a type that refuses every
-// window. TestAStepMayKeepOneFlankOfTheChartItOpensFrom writes this view and is
-// what says so.
+// windowView is chartView's step turned into a well-formed window: the chart on
+// screen draws tiers {0, 2}, tier 2's nodes open, and tier 0 stays drawn to
+// their left. TestAStepMayKeepOneFlankOfTheChartItOpensFrom is its control.
 func windowView(breaks func(*export.View)) export.View {
 	return chartView(func(v *export.View) {
 		v.Steps[0].Keep = []int{0}
@@ -307,28 +293,19 @@ func windowView(breaks func(*export.View)) export.View {
 }
 
 // TestAStepMayKeepOneFlankOfTheChartItOpensFrom is the control for the window
-// refusals: the shape they each break is one a caller can actually declare, and
-// the page ships it.
-//
-// AND THE ABSENT ONE IS ABSENT ON THE WIRE, which is the whole reason Keep is a
-// slice. A step keeping nothing must ship no `keep` key at all -- as `keep: 0`
-// it would say "keep tier 0", the spine's revenue categories, on every step
-// that declares nothing.
+// refusals, and pins that a step keeping nothing ships no `keep` key: `keep: 0`
+// would say "keep tier 0".
 func TestAStepMayKeepOneFlankOfTheChartItOpensFrom(t *testing.T) {
 	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
 	if err != nil {
 		t.Fatalf("read fund-flows golden: %v", err)
 	}
 	dir := t.TempDir()
-	// THE WINDOW'S OWN CLAUSES ARE UNTOUCHED HERE. Only the document changes:
-	// a rendered chart page needs a drilldown document's metadata, which the
-	// spine golden does not carry, and the refusal table never renders one.
+	// Only the document changes: a rendered chart page needs a drilldown
+	// document's metadata, which the spine golden does not carry.
 	v := windowView(func(v *export.View) { v.Nav, v.Projection = "Extra", "fund-flows" })
 	v.Steps = append(v.Steps,
-		// A WINDOW THE OTHER WAY UP, from the same chart: tier 0 opens and tier
-		// 2, which that chart draws to its right, is the flank that stays. Both
-		// signs are declarable or only one of the two arms that read the sign
-		// has ever been satisfied.
+		// A window the other way up: tier 0 opens and tier 2 is the flank that stays.
 		export.DrillStep{Key: "cats", After: []string{""}, From: 0, Keep: []int{2},
 			Tiers: []int{1, 0, 2}, Back: "All categories", Noun: "thing", Tail: "lines",
 			Description: "Opened the other way."},
@@ -359,15 +336,9 @@ func TestAStepMayKeepOneFlankOfTheChartItOpensFrom(t *testing.T) {
 	}
 }
 
-// deepWindowView is a window whose flank is TWO columns deep: the chart on
-// screen draws tiers {1, 0, 2}, tier 2's nodes open, and tiers 0 and 1 -- the
-// two columns to their left there -- stay drawn to their left here, nearest
-// the centre first.
-//
-// A WELL-FORMED ONE, for windowView's reason: the cases that break a deep
-// flank are measured against the arm each is meant to trip, and
-// TestAWindowsFlankMayBeTwoColumnsDeep is what says the shape itself is
-// declarable.
+// deepWindowView is a well-formed window whose flank is two columns deep: the
+// chart on screen draws tiers {1, 0, 2}, tier 2's nodes open, and tiers 0 and 1
+// stay drawn to their left, nearest the centre first.
 func deepWindowView(breaks func(*export.View)) export.View {
 	return chartView(func(v *export.View) {
 		v.RenderTiers = []int{1, 0, 2}
@@ -378,15 +349,8 @@ func deepWindowView(breaks func(*export.View)) export.View {
 }
 
 // TestAWindowsFlankMayBeTwoColumnsDeep is the control for the deep window and
-// the widened one: both are shapes a caller can declare, and the refusal table
-// breaks clauses of them rather than measuring a type that refuses four columns
-// outright.
-//
-// AND THE WIDENED ONE SHIPS BOTH DECLARATIONS. A widened column is a column of
-// `tiers` AND an entry in `widen`: the first says where it is drawn and the
-// second says it is the one to drop when the reader has no room for it. A
-// client reading only the first would draw it always, and one reading only the
-// second could not say which end it is at.
+// the widened one. A widened column ships in both `tiers` (where it is drawn)
+// and `widen` (that it is the one to drop).
 func TestAWindowsFlankMayBeTwoColumnsDeep(t *testing.T) {
 	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
 	if err != nil {
@@ -400,9 +364,8 @@ func TestAWindowsFlankMayBeTwoColumnsDeep(t *testing.T) {
 		{"a flank two columns deep",
 			deepWindowView(func(v *export.View) { v.Nav, v.Projection = "Extra", "fund-flows" }),
 			[]string{`"keep":[0,1]`, `"tiers":[1,0,2,3]`}},
-		// THE WIDENED COLUMN IS THE OPENED NODE'S, at the end away from the
-		// kept flank, and the absent `widen` on the narrow window above is what
-		// says an undeclared one is undeclared rather than empty.
+		// The widened column is the opened node's, at the end away from the kept
+		// flank; the narrow window above ships no `widen`.
 		{"a window widened by one column",
 			windowView(func(v *export.View) {
 				v.Nav, v.Projection = "Extra", "fund-flows"
@@ -430,9 +393,8 @@ func TestAWindowsFlankMayBeTwoColumnsDeep(t *testing.T) {
 			}
 		})
 	}
-	// A STEP THAT WIDENS BY NOTHING SHIPS NO KEY AT ALL, which is Keep's own
-	// absent-is-not-zero argument one field over: `"widen":[]` would have a
-	// client that reads the length ask for a column the packager never named.
+	// A step that widens by nothing ships no key: a client reading the length of
+	// `"widen":[]` would ask for a column the packager never named.
 	dir := t.TempDir()
 	if _, err := writeSite(export.Options{
 		Dir:         dir,
@@ -451,22 +413,18 @@ func TestAWindowsFlankMayBeTwoColumnsDeep(t *testing.T) {
 	}
 }
 
-// TestAStepIsPlacedAgainstEveryChartItOpensFrom is the list's own arms, over a
-// step with TWO parents: it is accepted when both place it, refused when the
-// SECOND one cannot reach its From, and refused when they draw different
-// documents and it names none of its own.
-//
-// THE SECOND PARENT IS THE POINT. A loop that stopped at the first would accept
-// the middle case, and the rung would be unreachable from exactly one of the
-// two charts that offer it -- the failure a single parent could not have.
+// TestAStepIsPlacedAgainstEveryChartItOpensFrom is the list's own arms over a
+// step with two parents: accepted when both place it, refused when the SECOND
+// cannot reach its From, and refused when they draw different documents and it
+// names none of its own. A loop stopping at the first parent accepts the middle
+// case.
 func TestAStepIsPlacedAgainstEveryChartItOpensFrom(t *testing.T) {
 	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
 	if err != nil {
 		t.Fatalf("read fund-flows golden: %v", err)
 	}
-	// TWO PARENTS DRAWING DIFFERENT DOCUMENTS, which is what makes "the
-	// document before it" a question with two answers: "a" switches to
-	// fund-flows and "b" draws the view's own.
+	// Two parents drawing different documents: "a" switches to fund-flows and "b"
+	// draws the view's own.
 	steps := func(breaks func([]export.DrillStep)) []export.DrillStep {
 		s := []export.DrillStep{
 			{Key: "a", After: []string{""}, From: 2, Projection: "fund-flows",
@@ -688,16 +646,10 @@ func TestTheCaveatsPagePromisesAChartFlagOnlyWhereThereIsAChart(t *testing.T) {
 	}
 }
 
-// TestTheCaveatsPagePromisesAChartFlagOnAStepsDocument is the promise one
-// rung down: a document a chart OPENS INTO is drawn -- its marks are chipped
-// and its caveats linked at depth 1, which the client's tests measure --
-// and on the merged site both fund-flows documents are reached that way
-// alone.
-//
-// THE SECOND YEAR'S DOCUMENT IS THE SHARPER ARM: no step's Projection names
-// it, only the per-year join does, so a drawn map reading Projection alone
-// would promise the flag on one fund-flows column and withhold it on the
-// other.
+// TestTheCaveatsPagePromisesAChartFlagOnAStepsDocument: a document a chart
+// opens into is drawn, so its marks are flagged. The second year's document is
+// named only by the per-year join, so a drawn set reading Projection alone
+// would withhold the flag on it.
 func TestTheCaveatsPagePromisesAChartFlagOnAStepsDocument(t *testing.T) {
 	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
 	if err != nil {
@@ -894,18 +846,10 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 			{Path: "extra.html", Template: export.SankeyTemplate, Projection: "sankey",
 				Lede: "a sentence that would go nowhere"}},
 			"has no {{.Lede}}"},
-		// THE DRILL FAMILY, AND EVERY ARM OF IT. Eight refusals landed with the
-		// Revenue/Spending split and not one had a case, while every earlier arm
-		// of this same switch does -- so the guards that keep the two
-		// interaction contracts apart were themselves unguarded. A refusal
-		// nobody has tried to trip is a refusal that may already not fire.
-		//
-		// `chart` below is a well-formed chart view; each case breaks
-		// exactly one thing about it, so the message named is the one that arm
-		// produces rather than whichever fires first.
-		// ON THE TRENDS TEMPLATE, because the spine now publishes steps: the
-		// case is about a template with no breadcrumb to come back by, and
-		// SankeyTemplate stopped being one.
+		// The drill family, every arm: `chart` below is a well-formed chart view and
+		// each case breaks exactly one thing about it, so the message named is the one
+		// that arm produces rather than whichever fires first.
+		// On the trends template, which has no breadcrumb to come back by.
 		{"a drill on a template that publishes none", []export.View{ok,
 			{Path: "trends.html", Nav: "Revenue tables", Template: export.TrendsTemplate,
 				Projection: "sankey",
@@ -913,12 +857,6 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 					Tiers: []int{0, 3}, Back: "b", Noun: "thing", Tail: "t",
 					Description: "d."}}}},
 			"the chart would isolate on a click while this view believes it opens"},
-		// THE FIXTURES ALL END IN A PERIOD, WHICH IS WHAT HID THE STEP CASE
-		// BELOW. app.js keeps the pointer to the closed flow table through a
-		// drill by taking the description's last sentence, so a description
-		// that does not close runs into the template's pointer and the drilled
-		// reader loses it. Every Go test and client fixture supplied a terminated
-		// sentence, so the whole suite was green over a shape a caller can send.
 		{"a drill with no tiers", []export.View{ok,
 			chartView(func(v *export.View) { v.Steps[0].Tiers = nil })},
 			"drawn by the same tier set it was closed under"},
@@ -928,16 +866,14 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 		{"a drill with no back label", []export.View{ok,
 			chartView(func(v *export.View) { v.Steps[0].Back = "" })},
 			"a button with no words in it"},
-		// THE NOUN A RUNG IS QUALIFIED WITH WHEN THE DOCUMENTS COLLIDE. Budget
-		// Book p66 prints "General Fund" over a fund-group column and p255
-		// prints it as fund 100's name, so a trail two rungs in draws one
-		// phrase twice and the noun is the only thing that tells them apart.
+		// The noun is what tells two rungs apart when the documents collide: Budget
+		// Book p66 prints "General Fund" over a fund-group column and p255 as fund
+		// 100's name.
 		{"a drill with no noun", []export.View{ok,
 			chartView(func(v *export.View) { v.Steps[0].Noun = "" })},
 			"two rungs of one trail drawing the same words"},
-		// THE OPENED CHART'S OWN WORDS, for the reason DrillStep.Description
-		// exists: without them the <desc> a screen reader hears at depth 1 is
-		// the opening state's, over a chart that no longer draws it.
+		// Without it the <desc> a screen reader hears at depth 1 is the opening
+		// state's, over a chart that no longer draws it.
 		{"a drill with no description", []export.View{ok,
 			chartView(func(v *export.View) { v.Steps[0].Description = "" })},
 			"told the opening state's over a chart it no longer draws"},
@@ -947,20 +883,15 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 		{"a drill from a tier the page does not draw", []export.View{ok,
 			chartView(func(v *export.View) { v.Steps[0].From = 5 })},
 			"no node on it is ever openable"},
-		// ITS OWN ARM WITH NO TIER SET AT ALL, which is the configuration the
-		// From arm most needed to refuse and the one a `len(RenderTiers) > 0`
-		// guard on it let through: a chart that folds nothing, drawing a
-		// 61-node column at zero height, under a breadcrumb offering to open
-		// it. Its own arm because the From arm cannot say it -- an empty tier
-		// set draws every tier, and the spine drills from one of them.
+		// Its own arm: an empty tier set draws every tier, so the From arm cannot
+		// refuse it, and the chart would lay every node out at zero height.
 		{"a drill on a page that declares no tiers", []export.View{ok,
 			chartView(func(v *export.View) { v.RenderTiers = nil })},
 			"lays every node out at zero height"},
 		{"a drill with no cap", []export.View{ok,
 			chartView(func(v *export.View) { v.Steps[0].Caps[0].Cap = 0 })},
 			"a column of one node is not a chart"},
-		// THE CHAIN'S OWN ARMS, each broken on the SECOND step so the refusal
-		// is the chain's and not the first hop's restated.
+		// The chain's own arms, each broken on the second step.
 		{"a second step with no tiers", []export.View{ok,
 			chainView(func(v *export.View) { v.Steps[1].Tiers = nil })},
 			"step 1 with no tiers"},
@@ -978,10 +909,8 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 		{"a step that redraws the tiers it opened from", []export.View{ok,
 			chainView(func(v *export.View) { v.Steps[1].Tiers = []int{0, 3}; v.Steps[1].Caps = nil })},
 			"the set step \"groups\" already draws"},
-		// THE TREE'S OWN ARMS. A flat list with declared parentage can say
-		// things a path could not, and each of these is one of them said
-		// wrongly: a step nothing can name, two steps answering to one name, a
-		// parent that does not exist, a parent declared later, and two steps
+		// The tree's own arms: a step nothing can name, two steps answering to one
+		// name, a parent that does not exist, a parent declared later, and two steps
 		// one node would match.
 		{"a step with no key", []export.View{ok,
 			chartView(func(v *export.View) { v.Steps[0].Key = "" })},
@@ -992,11 +921,9 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 		{"a step opening from a key no step declares", []export.View{ok,
 			chainView(func(v *export.View) { v.Steps[1].After = []string{"nope"} })},
 			"which no step declares as its key"},
-		// THE LIST'S OWN ARMS, which a single parent could not say wrongly: a
-		// step hanging off nothing, one naming the same chart twice, and a
-		// collision on a SHARED parent between two steps whose parent lists
-		// are not equal -- the last is what a comparison of the lists whole
-		// would let through.
+		// The list's own arms: a step hanging off nothing, one naming the same chart
+		// twice, and a collision on a shared parent between two steps whose parent
+		// lists are not equal, which a comparison of the lists whole would let through.
 		{"a step opening from no chart at all", []export.View{ok,
 			chartView(func(v *export.View) { v.Steps[0].After = nil })},
 			"opening from no chart at all"},
@@ -1005,17 +932,14 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 			"opens from \"groups\" twice"},
 		{"two steps colliding on one of several parents", []export.View{ok,
 			chainView(func(v *export.View) {
-				// A THIRD STEP WHOSE PARENT LIST IS NOT step 1's. Both open
-				// tier 3 of "groups" in no role, so a node there matches both;
-				// the lists differ, so a comparison of them whole says nothing.
+				// A third step whose parent list is not step 1's, both opening tier 3 of
+				// "groups" in no role.
 				v.Steps = append(v.Steps, export.DrillStep{Key: "x",
 					After: []string{"funds", "groups"}, From: 3, Tiers: []int{0, 4},
 					Back: "Back", Noun: "thing", Tail: "things", Description: "Opened a third time."})
 			})},
 			"both opening tier 3 of step \"groups\"'s chart"},
-		// A CYCLE IS UNDECLARABLE BECAUSE OF THIS ARM, so this is the arm that
-		// keeps it so: with the pair swapped, step 0 opens from a chart the
-		// list does not reach until step 1.
+		// This arm is what keeps a cycle undeclarable.
 		{"a step opening from a step declared after it", []export.View{ok,
 			chainView(func(v *export.View) { v.Steps[0], v.Steps[1] = v.Steps[1], v.Steps[0] })},
 			"After names an EARLIER step"},
@@ -1030,27 +954,15 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 		{"a step opening a side this package does not declare", []export.View{ok,
 			chartView(func(v *export.View) { v.Steps[0].Side = "Source" })},
 			"opens side \"Source\""},
-		// EVERY ROOT IS PLACED, NOT THE FIRST STEP. The second step is made a
-		// root here, so the arm that fires is the view's own -- and before it
-		// took every root, a second edge out of the page's chart could open
-		// from a tier the page never draws.
+		// Every root is placed, not only the first step: the second is made a root.
 		{"a second root from a tier the page does not draw", []export.View{ok,
 			chainView(func(v *export.View) { v.Steps[1].After = []string{""}; v.Steps[1].From = 5 })},
 			"step 1 drills from tier 5"},
-		// THE WINDOW'S OWN ARMS, one per thing the type now promises about a
-		// step that keeps a flank. windowView and deepWindowView are
-		// well-formed windows -- TestAStepMayKeepOneFlankOfTheChartItOpensFrom
-		// and TestAWindowsFlankMayBeTwoColumnsDeep are what keep these from
-		// being green because a window, or a deep one, is refused outright --
-		// and each case breaks one clause of them.
+		// The window's own arms, each breaking one clause of a well-formed window.
 		{"a window keeping a second flank where its centre is", []export.View{ok,
 			windowView(func(v *export.View) { v.Steps[0].Keep = []int{0, 2} })},
 			"one column each and one more for every widening -- 4 columns here, and not 3"},
-		// A FLANK IS CONTIGUOUS AND RUNS OUT FROM THE CENTRE, and these two
-		// break each half of that against a parent wide enough to say it: a
-		// flank with the chart's own column 1 missing from the middle of it,
-		// and one declared outermost-first, which would have the packager and
-		// the client disagree about which kept column is beside the node.
+		// A flank is contiguous and runs out from the centre; these break each half.
 		{"a flank with a gap in it", []export.View{ok,
 			deepWindowView(func(v *export.View) {
 				v.RenderTiers = []int{6, 1, 0, 2}
@@ -1061,11 +973,8 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 		{"a flank declared outermost first", []export.View{ok,
 			deepWindowView(func(v *export.View) { v.Steps[0].Keep = []int{1, 0} })},
 			"the kept columns are the ones at ONE end of what the step draws, outermost first"},
-		// THE ARM THAT REFUSES A CLICK ON A KEPT FLANK READS EVERY KEPT
-		// COLUMN. Against a one-deep flank the tier the child opens is the
-		// only one there is, so a parent keeping TWO is the shape that tells a
-		// membership test from a test of the first entry -- and it is the
-		// second entry, the OUTERMOST kept column, that the child opens here.
+		// A parent keeping two columns tells a membership test from a test of the
+		// first entry: the child opens the outermost kept column.
 		{"a step opening the outer tier of a two-deep flank above it", []export.View{ok,
 			deepWindowView(func(v *export.View) {
 				v.Steps = append(v.Steps, export.DrillStep{Key: "outer", After: []string{"groups"},
@@ -1073,17 +982,13 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 					Description: "Opened off the outer kept column."})
 			})},
 			"which KEEPS that tier"},
-		// A TIER IS A COLUMN. Two columns of one tier draw the same nodes
-		// twice, and the flank's own end could not be read off the list
-		// either, which is what every arm below indexes on.
+		// A tier is a column: two columns of one tier draw the same nodes twice.
 		{"a step drawing one tier twice", []export.View{ok,
 			chartView(func(v *export.View) { v.Steps[0].Tiers = []int{0, 3, 0} })},
 			"which name tier 0 twice"},
-		// THE WIDENING'S OWN ARMS. A widened column is declared twice on
-		// purpose -- once as a column of Tiers and once as an entry in Widen,
-		// which says it is optional and when it goes -- so the two can be held
-		// against each other; and a step with no flank has no centre to widen
-		// out from, which is a different construct and not a wider window.
+		// The widening's own arms. A widened column is declared in both Tiers and
+		// Widen so the two can be held against each other, and a step with no flank
+		// has no centre to widen out from.
 		{"a widening on a step that keeps nothing", []export.View{ok,
 			windowView(func(v *export.View) { v.Steps[0].Keep, v.Steps[0].Widen = nil, []int{4} })},
 			"has no centre to add a column out from"},
@@ -1118,14 +1023,9 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 		{"a window keeping a tier that is not beside the opened one", []export.View{ok,
 			windowView(func(v *export.View) { v.RenderTiers = []int{0, 1, 2} })},
 			"a window slides by one column"},
-		// A STEP OPENING THE TIER ITS PARENT KEPT. The adjacency arms above
-		// are all satisfied -- this is a well-formed window hanging off a
-		// well-formed window -- and the chart it draws is still wrong, because
-		// a kept flank is drawn at its share of the centre and the step would
-		// send that node's whole decomposition out the other side. Measured on
-		// the committed corpus at 157,797,110 of unaccounted node height; the
-		// arm is what keeps that declaration undeclarable rather than
-		// remembered.
+		// A well-formed window hanging off a well-formed window can still open the
+		// tier its parent kept, and would send that node's whole decomposition out the
+		// other side of a flank drawn at its share of the centre.
 		{"a step opening the tier the chart above kept", []export.View{ok,
 			windowView(func(v *export.View) {
 				v.Steps = append(v.Steps, export.DrillStep{Key: "cats", After: []string{"groups"},
@@ -1138,25 +1038,16 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 				v.Steps[0].Tiers = []int{3, 2, 0}
 			})},
 			"draws to the LEFT of the opened tier 2, and draws tiers [3 2 0]"},
-		// THE OTHER DIRECTION, WHICH IS THE ONE THE SPINE'S REVENUE CATEGORIES
-		// WILL TAKE: tier 0 opens and tier 2, drawn to its RIGHT, is what stays.
-		// Its own case because its own arm: the sign of the adjacency is the
-		// declaration, and an arm that only ever sees one sign is half a rule.
+		// The other direction: tier 0 opens and tier 2, drawn to its right, stays. An
+		// arm that only ever sees one sign is half a rule.
 		{"a window pushing the other way and keeping its flank on the wrong side",
 			[]export.View{ok, windowView(func(v *export.View) {
 				v.Steps[0].From, v.Steps[0].Keep = 0, []int{2}
 				v.Steps[0].Tiers = []int{2, 0, 3}
 			})},
 			"draws to the RIGHT of the opened tier 0, and draws tiers [2 0 3]"},
-		// A WINDOW ON A CHART DRAWN WHOLE, REFUSED ONE ARM EARLIER THAN THE
-		// SHAPE OF THE STEP. app.js hands a graph with no declared tier set to
-		// d3's sankeyJustify, so there is no order for a side to be a position
-		// in -- but a view that DRILLS on a template publishing render tiers
-		// is refused for declaring none before any step is placed, and both
-		// chart templates publish them. The case is kept because it is the
-		// configuration the window model most needs refused; the message it
-		// gets is the one that actually fires, rather than a second arm inside
-		// validateSteps that nothing could ever reach.
+		// A window on a chart drawn whole: refused for declaring no render tiers
+		// before any step is placed, since the chart template publishes them.
 		{"a window on a page whose chart is drawn whole", []export.View{ok,
 			{Path: "extra.html", Nav: "Extra", Template: export.SankeyTemplate,
 				Projection: "sankey",
@@ -1164,12 +1055,8 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 					Keep: []int{0}, Tiers: []int{0, 2, 3}, Back: "b", Noun: "thing", Tail: "t",
 					Description: "d."}}}},
 			"drills and declares no render tiers"},
-		// A RESIDUAL NEEDS A SECOND DOCUMENT AND A REASON. The first case
-		// declares one on the chain's same-document step, where nothing could
-		// be residual between two grains of one file; the second names a
-		// projection so the step switches, and gives an endpoint no reason --
-		// the node that carries it would draw a mark whose rationale says
-		// nothing.
+		// A residual needs a second document and a reason: the first case declares one
+		// on a same-document step, the second gives an endpoint no reason.
 		{"a residual on a step that switches no document", []export.View{ok,
 			chainView(func(v *export.View) {
 				v.Steps[1].Residual = map[string]string{"transfers/in": "a reason"}
@@ -1179,11 +1066,7 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 			chartView(func(v *export.View) {
 				v.Steps[0].Projection = "sankey"
 				v.Steps[0].Residual = map[string]string{"transfers/in": ""}
-				// THE GRAIN IS SET SO THIS CASE REACHES THE ARM IT IS ABOUT.
-				// Without it the grain guard refuses first and the case goes
-				// red on a sentence it was not written to test -- which is
-				// indistinguishable, by exit code, from the reason guard
-				// working.
+				// The grain is set so the grain guard does not refuse first.
 				v.Steps[0].ResidualGrain = "fund"
 			})},
 			"declares residual endpoint \"transfers/in\" with reason \"\""},
@@ -1199,13 +1082,8 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 				v.Steps[0].ResidualGrain = "fund"
 			})},
 			"declares residual_grain \"fund\" and no residual endpoint"},
-		// A GAP NEEDS THE SAME TWO THINGS FOR A DIFFERENT REASON, and the two
-		// declarations are told apart by which node the key names -- an
-		// endpoint of the chart above for a residual, the opened node itself
-		// for a gap. A gap on a same-document step names a cell one file prints
-		// once; a gap with no reason draws the two documents' drift with
-		// nothing on the mark to say it was expected, which is the only thing
-		// separating a declared gap from a defect.
+		// A gap needs the same two things: a same-document step names a cell one file
+		// prints once, and a gap with no reason is indistinguishable from drift.
 		{"a gap on a step that switches no document", []export.View{ok,
 			chainView(func(v *export.View) {
 				v.Steps[1].Gaps = map[string]export.Gaps{"expenditure/services-and-supplies": {{FiscalYear: 2027, Basis: "adopted", Cents: 1, Reason: "A reason."}}}
@@ -1235,10 +1113,8 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 		{"a year stem that was not built", []export.View{{Path: export.IndexPath,
 			Nav: "Budget flows", Template: export.SankeyTemplate, Projection: "sankey",
 			YearStems: []string{"sankey", "sankey-2099"}}}, "names no projection that was built"},
-		// The Lede trap one field over, and a worse one: a lede dropped in
-		// silence loses a sentence, year stems dropped in silence lose whole
-		// documents. Only the two chart templates render a year control, and
-		// nothing anywhere told a caller that.
+		// The Lede trap one field over: year stems dropped in silence lose whole
+		// documents. Only the chart template renders a year control.
 		{"year stems a template cannot render", []export.View{ok,
 			{Path: "trends.html", Nav: "Revenue tables", Template: export.TrendsTemplate,
 				Projection: "sankey", YearStems: []string{"sankey"}}},
@@ -1248,12 +1124,10 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 		{"a view with neither a nav label nor a title", []export.View{ok,
 			{Path: "trends.html", Template: export.SankeyTemplate, Projection: "sankey"}},
 			"empty link"},
-		// THE THIRD FIELD OF THE SAME FAMILY, missing when the first two were
-		// closed. Only the drill-down publishes render_tiers
-		// to the client; the other builders omit the key and app.js reads
-		// `CONFIG.render_tiers ?? []`, so a fold asked for here was not
-		// refused, not reported and not applied -- the chart drew every tier
-		// and looked like a chart rather than like a defect.
+		// The third field of the same family. Only the chart template publishes
+		// render_tiers; the others omit the key and app.js reads
+		// `CONFIG.render_tiers ?? []`, so a fold asked for here would draw every tier
+		// and look like a chart rather than like a defect.
 		{"render tiers a template does not publish", []export.View{ok,
 			{Path: "trends.html", Nav: "Revenue tables", Template: export.TrendsTemplate,
 				Projection: "sankey", RenderTiers: []int{0, 2, 4}}},
@@ -1397,19 +1271,12 @@ func readFile(t *testing.T, dir, name string) string {
 	return string(b)
 }
 
-// TestTheSpineTemplatePublishesTheColumnOrderItDeclares is the third member of
-// the render-tiers family reaching the template that draws index.html.
+// TestTheSpineTemplatePublishesTheColumnOrderItDeclares: templateRendersTiers
+// says the template publishes render tiers, and only a rendered page can say it
+// does. A spine whose order was dropped aligns on d3's justify and nothing
+// reports it.
 //
-// A VIEW'S DECLARATION THAT REACHES NO BLOB IS THE SILENT FAILURE THE FAMILY
-// EXISTS FOR, and this is the direction the family's own guard cannot witness:
-// templateRendersTiers can say a template publishes them, and only a rendered
-// page can say it does. app.js reads `CONFIG.render_tiers ?? []`, so a spine
-// whose order was dropped here aligns on d3's justify, every window's kept
-// flank lands on whichever side topology put it, and nothing anywhere reports
-// it.
-//
-// The mutation is one line: drop RenderTiers from buildSankeyPage's
-// clientConfig and this goes red while every other test stays green.
+// The mutation: drop RenderTiers from buildSankeyPage's clientConfig.
 func TestTheSpineTemplatePublishesTheColumnOrderItDeclares(t *testing.T) {
 	dir := t.TempDir()
 	if _, err := writeSite(export.Options{
@@ -1435,17 +1302,12 @@ func TestTheSpineTemplatePublishesTheColumnOrderItDeclares(t *testing.T) {
 }
 
 // TestTheRungAnswerIsNamedToThePageThatCanUseIt pins both halves of rungsFor
-// against rendered pages.
+// against rendered pages: a page told to read an answer that does not carry its
+// paths refuses every click, so the absent key is a promise too.
 //
-// THE ABSENT HALF IS THE ONE THAT MATTERS. app.js reads the key as "Go answers
-// this page's rungs"; a page told to read an answer that does not carry its
-// paths refuses every click, so "no key" and "a key" are two different
-// promises and only one of them is checkable by looking at the spine.
-//
-// The mutation is one line: return RungsPath unconditionally from rungsFor and
-// the stepless view below goes red while the spine stays green; drop the
-// Rungs field from buildSankeyPage's clientConfig and the spine goes red
-// while the stepless view stays green.
+// The mutations: return RungsPath unconditionally from rungsFor and the stepless
+// view goes red; drop Rungs from buildSankeyPage's clientConfig and the spine
+// does.
 func TestTheRungAnswerIsNamedToThePageThatCanUseIt(t *testing.T) {
 	spine := export.View{Path: export.IndexPath, Nav: "Budget flows",
 		Template: export.SankeyTemplate, Projection: "sankey",
@@ -2032,18 +1894,9 @@ func TestBothChartTemplatesAcceptYearStems(t *testing.T) {
 }
 
 // headlined stamps a headline onto a drill-down document, so a view test can
-// RENDER one as a page.
-//
-// WHY A FIXTURE NEEDS THIS AT ALL, because it reads as papering over a refusal
-// and is not. fund-flows carries the same money at more than one grain, so "the
-// total" is ambiguous and it publishes no headline deliberately -- and
-// decodeSankey refuses a headline-less document, correctly. A second chart
-// template used to render one; it is gone, so the only way to render this
-// document's TIER STRUCTURE -- which is what every window case here is about,
-// and which the spine golden's {0,2,5} cannot supply -- is to hand the renderer
-// a headline it does not read. The figure is a literal because nothing asserts
-// it: these cases are about View.validate and the window, and the page's stat
-// tiles are another test's subject.
+// render its tier structure as a page. fund-flows publishes no headline on
+// purpose and decodeSankey refuses one without; the figure is a literal
+// because nothing asserts it.
 func headlined(t *testing.T, raw []byte) []byte {
 	t.Helper()
 	var doc map[string]any
@@ -2733,10 +2586,7 @@ func TestTheChartsAccessibleNameIsTheYearViewsOwnString(t *testing.T) {
 		if err := json.Unmarshal(configBlob(t, src), &config); err != nil {
 			t.Fatalf("%s: decode FISC_CONFIG: %v", page, err)
 		}
-		// THE OPENING YEAR IS THE LAST OF THEM, because buildSankeyPage renders
-		// years[len-1] -- the newest budget, which is the one in force. Compared
-		// against Years[0] this passed for the wrong reason while the page opened
-		// on the year it listed first.
+		// The opening year is the last: buildSankeyPage renders years[len-1].
 		if len(config.Years) == 0 || config.Years[len(config.Years)-1].ChartTitle == "" {
 			t.Fatalf("%s: the config carries no opening chart_title to compare against", page)
 		}
@@ -2749,9 +2599,7 @@ func TestTheChartsAccessibleNameIsTheYearViewsOwnString(t *testing.T) {
 	}
 }
 
-// chartAndSpine writes the template that draws a chart: the spine's
-// index.html. It carries an apparatus, and the tests below are about what a
-// reader can and cannot reach on it.
+// chartAndSpine writes the template that draws a chart: the spine's index.html.
 func chartAndSpine(t *testing.T) string {
 	t.Helper()
 	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
@@ -2784,10 +2632,7 @@ func chartAndSpine(t *testing.T) string {
 // likely to ship open by accident.
 func TestTheApparatusShipsClosedOnEveryChartPage(t *testing.T) {
 	dir := chartAndSpine(t)
-	// THE ATTRIBUTE HAS THREE SPELLINGS and this matched two. `open`, `open>`
-	// and `open=""` are one boolean attribute; a character class stopping at
-	// whitespace and `>` lets a disclosure written `open=""` ship open past
-	// here, measured by mutation with the whole Go suite staying green.
+	// `open`, `open>` and `open=""` are one boolean attribute.
 	open := regexp.MustCompile(`<details[^>]*\sopen(?:[\s>]|="")`)
 
 	for _, page := range []string{export.IndexPath} {
@@ -2814,17 +2659,10 @@ func TestTheApparatusShipsClosedOnEveryChartPage(t *testing.T) {
 	}
 }
 
-// TestTheColumnControlShipsInertOnEveryChartPage closes the same fail-open
-// TestEachYearCarriesItsOwnBasisAndTitle names one control over: if the
-// templates stop rendering it, maybeEl returns null, wireColumns'
-// `if (fewer && more)` swallows it, and the reader silently loses the only way
-// to ask for a fourth column.
-//
-// AND IT ASSERTS THE disabled ATTRIBUTE, not merely the element. The control is
-// entirely a client behaviour -- app.js lays the chart out and these buttons
-// move only the budget it is laid out at -- so a template that shipped them
-// live would hand a reader with JavaScript off two buttons that do nothing,
-// which is the year fieldset's argument and the same remedy.
+// TestTheColumnControlShipsInertOnEveryChartPage: if the templates stop
+// rendering the column control, wireColumns' `if (fewer && more)` swallows it in
+// silence. It asserts `disabled` too, so a reader without JavaScript is not
+// handed two buttons that do nothing.
 func TestTheColumnControlShipsInertOnEveryChartPage(t *testing.T) {
 	dir := chartAndSpine(t)
 	for _, page := range []string{export.IndexPath} {
@@ -2876,14 +2714,8 @@ func TestAClosedFlowTableIsNotDescribedAsListedBelow(t *testing.T) {
 			t.Errorf("%s folds its flow table but renders no chart <desc>", page)
 			continue
 		}
-		// THE TEMPLATE'S OWN WORDS. index.html.tmpl writes the whole <desc>
-		// itself, so there is no caller-supplied half to strip before the
-		// assertion and nothing a description carrying "opens" could satisfy
-		// the escape hatch with.
-		//
-		// Whitespace collapsed first: the template wraps this sentence to fit
-		// its own margins, so "opens from" straddles a newline and a literal
-		// match would report a defect that is only a line break.
+		// The template writes the whole <desc> itself, so there is no caller-supplied
+		// half to strip. Whitespace is collapsed because the template wraps it.
 		suffix := strings.TrimSpace(strings.Join(strings.Fields(m[1]), " "))
 		if suffix == "" {
 			t.Errorf("%s renders an empty <desc>, so it says nothing about where "+
@@ -2923,13 +2755,8 @@ func TestAClosedFlowTableIsNotDescribedAsListedBelow(t *testing.T) {
 				"where app.js looks for it; the last sentence is %q", page, last)
 		}
 	}
-	// ANTI-VACUITY, AND IT MUST NOT CONTRADICT THE ESCAPE HATCH ABOVE. The loop
-	// deliberately skips a page whose #table-view ships open, because there
-	// "below" is true -- so counting folded pages would turn that allowance
-	// into a failure. What is asserted instead is that the page renders a
-	// #table-view AT ALL, which is what makes the skip meaningful: a template
-	// that stopped rendering one would otherwise leave the loop green over
-	// nothing.
+	// Anti-vacuity, without contradicting the skip above: the page must render a
+	// #table-view at all, or the loop is green over nothing.
 	if len(withTable) != 1 {
 		t.Errorf("%d of 1 page renders a #table-view: %v; the assertion above is about "+
 			"the pages that have one", len(withTable), withTable)
@@ -3102,18 +2929,11 @@ func TestTheCaveatsPageFoldsItsFileListAndNotItsReason(t *testing.T) {
 // that has stopped agreeing asserts the wrong thing while reading correctly.
 var sentenceSplit = regexp.MustCompile(`[.!?]\s+`)
 
-// TestAStepDescriptionMayCloseWithAnyTerminatorAppJsSplitsOn. validate refuses
-// an unterminated description because app.js separates it from the sentences
-// it appends by sentence; the set it accepts therefore has to be the set
-// lastSentence splits on, and no wider.
-//
-// THE ACCEPTING HALF IS THE HALF THAT WAS MISSING. Only "." was ever exercised,
-// so narrowing validate to a period alone -- which would refuse a description a
-// reader-facing caller may legitimately write -- was measured green.
-//
-// ON A STEP AND NOT ON A VIEW. endsASentence guards DrillStep.Description,
-// which is the only caller-supplied description the packager accepts, and it
-// is measured against the splitter site/app.js runs on the served page.
+// TestAStepDescriptionMayCloseWithAnyTerminatorAppJsSplitsOn: validate refuses
+// an unterminated DrillStep.Description because app.js separates it by
+// sentence, so the set it accepts has to be the set lastSentence splits on, and
+// no wider. The accepting half is what keeps validate from narrowing to "."
+// alone.
 func TestAStepDescriptionMayCloseWithAnyTerminatorAppJsSplitsOn(t *testing.T) {
 	for _, tc := range []struct {
 		desc   string
@@ -3205,23 +3025,17 @@ func TestEveryFooterDisclosureKeepsItsHeadingInTheOutline(t *testing.T) {
 				"out of the outline while the panel is closed", name)
 		}
 	}
-	// Anti-vacuity: five templates ship and every one of them folds a footer
-	// list. A loop that found none would report nothing at all.
+	// Anti-vacuity: every template folds a footer list.
 	if found != 5 {
 		t.Errorf("found %d templates folding a footer list, want 5", found)
 	}
 }
 
-// TestAStepsDocumentIsCitedByThePageThatOpensIt pins the union one layer in
-// from unionSources: a step that switches document draws figures from pages
-// the view's own year loop never decodes, and both the footer and the client's
-// docs map have to carry them.
-//
-// THE DOC MAP IS THE ARM THAT MATTERS. citations() in site/app.js skips a
-// doc_id the map has no entry for, so a missing entry makes a step's citations
-// vanish with no error. The two documents the site publishes share one doc_id,
-// which is why the fixture restamps the step's: on the real corpus this test
-// could only ever pass by luck.
+// TestAStepsDocumentIsCitedByThePageThatOpensIt: a step that switches document
+// draws figures from pages the view's year loop never decodes, and both the
+// footer and the client's docs map must carry them. citations() in site/app.js
+// skips a doc_id the map lacks, silently; the fixture restamps the step's
+// doc_id because the site's two documents share one.
 func TestAStepsDocumentIsCitedByThePageThatOpensIt(t *testing.T) {
 	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
 	if err != nil {
@@ -3232,18 +3046,14 @@ func TestAStepsDocumentIsCitedByThePageThatOpensIt(t *testing.T) {
 			Tiers: []int{0, 3, 4},
 			Caps:  []export.TierCap{{Tier: 3, Cap: 8}, {Tier: 4, Cap: 24, Tail: "divisions"}},
 			Back:  "All fund groups", Noun: "thing", Tail: "funds", Description: "Opened."},
-		// A SECOND ROOT, ON THE OTHER SIDE AND IN A ROLE, so that the wire
-		// comparison below has a non-zero value of every walked field to lose.
+		// A second root, on the other side and in a role, so every walked field is
+		// non-zero on the wire.
 		{Key: "category", After: []string{""}, From: 0, Side: export.SideSource, Role: "revenue_source",
 			Projection: "fund-flows", Tiers: []int{1, 3},
 			Caps: []export.TierCap{{Tier: 1, Cap: 8}, {Tier: 3, Cap: 8, Tail: "funds"}},
 			Back: "All revenue categories", Noun: "thing", Tail: "lines", Description: "Opened a category."},
-		// AND A CHILD, BECAUSE TWO ROOTS BOTH CARRY After [""]. A comparison of
-		// the zero value against the zero value is what this declaration is
-		// arranged to avoid, and it was reached anyway on the one field whose
-		// absence costs the most: with After back to `json:"-"` the wire
-		// carries no `after`, app.js's STEPS drops every step for want of one,
-		// and the whole drill leaves the site with every gate green.
+		// And a child, because both roots carry After [""]: without After on the wire,
+		// app.js's STEPS drops every step.
 		{Key: "division", After: []string{"group"}, From: 4, Tiers: []int{4, 5},
 			Caps: []export.TierCap{{Tier: 5, Cap: 8}},
 			Back: "All divisions", Noun: "thing", Tail: "categories", Description: "Opened a division."},
@@ -3273,20 +3083,16 @@ func TestAStepsDocumentIsCitedByThePageThatOpensIt(t *testing.T) {
 			"spine's pages under a chart drawn from another document's")
 	}
 
-	// AND THE CHAIN REACHED THE BLOB, decoded back through the same type so
-	// the round trip is the claim rather than a substring.
+	// Decoded back through the same type, so the round trip is the claim.
 	var cfg struct {
 		Steps []export.DrillStep `json:"steps"`
 	}
 	if err := json.Unmarshal(configBlob(t, page), &cfg); err != nil {
 		t.Fatalf("decode window.FISC_CONFIG: %v", err)
 	}
-	// THE PARENTAGE IS SHIPPED, BECAUSE THE CLIENT WALKS IT. Key, After, Side
-	// and Role are what site/app.js matches a clicked node against to find the
-	// step it opens into, and a per-cap Tail is what labels a fund tail "funds"
-	// beside a line tail "lines" on one step. Each is asserted non-zero on the
-	// declaration first, so a tag dropped back to `json:"-"` is a diff here and
-	// not a comparison of one zero value against another.
+	// Key, After, Side, Role and per-cap Tail are what site/app.js matches and
+	// labels a step by; each is non-zero on the declaration, so a tag dropped to
+	// `json:"-"` is a diff here.
 	wantOnWire := slices.Clone(steps)
 	second := steps[1]
 	if second.Key == "" || second.Side == "" || second.Role == "" || second.Caps[1].Tail == "" ||
@@ -3299,13 +3105,9 @@ func TestAStepsDocumentIsCitedByThePageThatOpensIt(t *testing.T) {
 	}
 }
 
-// TestTheSpineShipsAChainOnlyWhenItDeclaresOne is the pure-refactor half: a
-// spine with no steps ships no steps key, and the elements a chain needs are
-// in the page either way, hidden and empty.
-//
-// THE KEY'S ABSENCE IS PINNED because app.js reads an absent key as "this page
-// isolates on a click", and a present-but-empty list would be a second
-// spelling of that state for the client to get wrong.
+// TestTheSpineShipsAChainOnlyWhenItDeclaresOne: a spine with no steps ships no
+// steps key, which app.js reads as "this page isolates on a click", and the
+// chain's elements are in the page either way, hidden and empty.
 func TestTheSpineShipsAChainOnlyWhenItDeclaresOne(t *testing.T) {
 	dir := t.TempDir()
 	if _, err := writeSite(export.Options{
@@ -3338,21 +3140,16 @@ func TestTheSpineShipsAChainOnlyWhenItDeclaresOne(t *testing.T) {
 	}
 }
 
-// TestAStepThatSwitchesDocumentMayRepeatTierNumbers pins the one thing
-// validateSteps cannot check and must not pretend to. Tier numbers belong to
-// a document's hierarchy, so a step that draws {0, 3} of another document is
-// a different chart from the {0, 3} it opened from -- while the same numbers
-// of the SAME document would redraw what the reader just left.
+// TestAStepThatSwitchesDocumentMayRepeatTierNumbers: tier numbers belong to a
+// document, so {0, 3} of another document is a different chart, while the same
+// numbers of the same document would redraw what the reader just left.
 func TestAStepThatSwitchesDocumentMayRepeatTierNumbers(t *testing.T) {
 	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
 	if err != nil {
 		t.Fatalf("read fund-flows golden: %v", err)
 	}
-	// {0, 2} ARE TIERS BOTH DOCUMENTS DECOMPOSE A NODE INTO -- the spine draws
-	// its categories into its groups there, and fund-flows folds its category-
-	// to-fund ribbons to the same pair -- because stepDocuments refuses a step
-	// whose document decomposes nothing, on a step that keeps no flank as on
-	// one that does, and that refusal is not the one under test.
+	// {0, 2} are tiers both documents decompose a node into, so stepDocuments'
+	// refusal of a step whose document decomposes nothing does not fire first.
 	write := func(secondStepDoc string) error {
 		_, err := writeSite(export.Options{
 			Dir: t.TempDir(),
@@ -3387,11 +3184,8 @@ func TestAStepThatSwitchesDocumentMayRepeatTierNumbers(t *testing.T) {
 	}
 }
 
-// builtLike restamps a document's generated_by to another document's, so the
-// two committed goldens -- one hand-derived, one captured -- can be paired on
-// one page. stepDocuments refuses a step document built by a different
-// projection for the reason buildSankeyPage refuses a year built by one: the
-// footer credits a single builder for every figure on the page.
+// builtLike restamps a document's generated_by to another's, so two committed
+// goldens can be paired on one page: the footer credits a single builder.
 func builtLike(t *testing.T, like, raw []byte) []byte {
 	t.Helper()
 	var src, doc map[string]any
@@ -3410,31 +3204,8 @@ func builtLike(t *testing.T, like, raw []byte) []byte {
 	return out
 }
 
-// TestAStepsColumnJoinIsExactOrRefused covers every arm that refuses a step
-// whose schedule its year's column cannot answer, each broken on its own from
-// one well-formed two-year chain -- so the message named is the arm's rather
-// than whichever fires first.
-//
-// THE CONTROL PASSES FIRST. A refusal table over a fixture that is refused for
-// some other reason proves nothing about any arm in it.
-//
-// SIX ROWS ARE GONE AND ARE NOT REPLACED, because the state each broke cannot
-// be spelled any more: a year with no entry, an entry for an unlisted year, an
-// opening-year entry disagreeing with the projection, a same-document step
-// carrying a map, a map on a view listing no years, and an entry naming an
-// unbuilt document. All six broke a DECLARED per-year map. A step now names a
-// schedule and the year names a column, and the pair selects the document.
-//
-// THE ROW THAT MATTERS SURVIVED AND GOT SHARPER. "A year pointed at the other
-// column's step document" (fisc-p1ae) was the case every key arm accepted; it
-// is now unreachable, because the index is built from each document's own
-// fiscal_year and basis. What replaces it is the row below: a column that does
-// not carry the schedule at all.
-
-// columnless strips fiscal_year and basis from a document's metadata, which is
-// what a document that never declared them looks like -- neither decodeSankey
-// nor stepDocument requires either field, so this is a shape the packager can
-// really be handed rather than one invented for the test.
+// columnless strips fiscal_year and basis from a document's metadata, a shape
+// neither decodeSankey nor stepDocument refuses.
 func columnless(t *testing.T, raw []byte) []byte {
 	t.Helper()
 	var doc map[string]any
@@ -3454,6 +3225,9 @@ func columnless(t *testing.T, raw []byte) []byte {
 	return out
 }
 
+// TestAStepsColumnJoinIsExactOrRefused covers every arm that refuses a step
+// whose schedule its year's column cannot answer, each broken on its own from
+// one well-formed two-year chain whose control passes first.
 func TestAStepsColumnJoinIsExactOrRefused(t *testing.T) {
 	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
 	if err != nil {
@@ -3499,26 +3273,19 @@ func TestAStepsColumnJoinIsExactOrRefused(t *testing.T) {
 		built  map[string][]byte
 		want   string
 	}{
-		// THE SCHEDULE A YEAR CANNOT ANSWER, which is what the whole deleted
-		// table adds up to and the one thing it could not say: those arms
-		// checked that the packager had WRITTEN an entry, and this checks that
-		// the document it resolves to folded into the column a reader fetches.
+		// The schedule a year cannot answer: the document it resolves to must have
+		// folded into the column a reader fetches.
 		{"a step naming a schedule no column carries", func(v *export.View) {
 			v.Steps[0].Projection = "nope"
 		}, projections(), `opens into schedule "nope"`},
-		// One year of two, which the opening year alone would not catch: the
-		// 2027 document is the only one dropped, so a chain green on FY2026
-		// would still open FY2026-27 into nothing.
+		// One year of two: only the 2027 document is dropped.
 		{"a schedule missing from the second year's column only", func(*export.View) {},
 			func() map[string][]byte {
 				p := projections()
 				delete(p, "fund-flows-2027")
 				return p
 			}(), `carries no such schedule`},
-		// A DOCUMENT IN NO COLUMN IS IN NO INDEX, so it cannot be selected at
-		// all -- which is the same refusal as the row above rather than a
-		// message of its own. Two absences are not a match, and this is the
-		// shape that used to be compared at 0 and "".
+		// A document in no column is in no index, so it is the same refusal as above.
 		{"a step document that does not say which column it is of", func(*export.View) {},
 			func() map[string][]byte {
 				p := projections()
@@ -3532,8 +3299,7 @@ func TestAStepsColumnJoinIsExactOrRefused(t *testing.T) {
 				p["sankey-2027"] = columnless(t, reyeared(t, spine, 2027, "FY 2026-27"))
 				return p
 			}(), "folded into no column"},
-		// THE BUILDER CHECK, one rung down from the year loop's: a step
-		// document built by another projection would have the footer credit
+		// A step document built by another projection would have the footer credit
 		// one builder for figures drawn from two.
 		{"a year's step document built by another projection", func(*export.View) {},
 			func() map[string][]byte {
@@ -3555,19 +3321,12 @@ func TestAStepsColumnJoinIsExactOrRefused(t *testing.T) {
 }
 
 // TestEachYearOpensIntoItsOwnStepDocumentWithItsOwnCaveatLinks is the per-year
-// join on the wire, and the fix for fisc-ko1j.13 with it.
-//
-// TWO CLAIMS, READ BACK FROM THE CONFIG BLOB, AND THE CAVEAT HREF CARRIES
-// BOTH. The entry carries the caveat refs of the document THIS year's rung
-// draws, with the anchor composed per (stem, caveat) -- so the href reading
-// caveat-fund-flows-2027-- is the evidence that FY2026-27's rung resolved to
-// its own document, and the evidence that a caveat on a depth-1 mark links to
-// that document's paragraph rather than losing its link to the spine's refs.
-// The entry names no file to assert on: a step's document is the year's column
-// and its schedule key, and neither is per-step. The same-document second step resolves to the first's
-// document, so the client reads one entry per step. And the second year's step
-// document is cited: its doc_id reaches the docs map and the footer, or app.js
-// would drop every citation drawn from it under that year.
+// join on the wire (fisc-ko1j.13). The caveat href reading
+// caveat-fund-flows-2027-- is the evidence that FY2026-27's rung resolved to its
+// own document and that a depth-1 mark links that document's paragraph. The
+// same-document second step resolves to the first's document, and the second
+// year's step document must reach the docs map and the footer, or app.js drops
+// its citations.
 func TestEachYearOpensIntoItsOwnStepDocumentWithItsOwnCaveatLinks(t *testing.T) {
 	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
 	if err != nil {
@@ -3671,9 +3430,8 @@ func recited(t *testing.T, raw []byte, docID string) []byte {
 	return out
 }
 
-// The years list oldest first and the page opens on the last. It reads the
-// RENDERED page, because the defect is tiles disagreeing with the checked
-// radio.
+// The years list oldest first and the page opens on the last, read off the
+// rendered page.
 func TestThePageOpensOnTheYearItDeclaresWhileListingThemOldestFirst(t *testing.T) {
 	var second map[string]any
 	if err := json.Unmarshal(goldenSankey(t), &second); err != nil {
@@ -3722,8 +3480,7 @@ func TestThePageOpensOnTheYearItDeclaresWhileListingThemOldestFirst(t *testing.T
 			"meets them in and must stay ascending, which is what Opens exists to allow")
 	}
 
-	// And the newest is the one already selected, with the page's own words
-	// agreeing with it.
+	// And the newest is already selected, with the page's words agreeing.
 	if !strings.Contains(page, `value="sankey-2027"`+"\n             checked") {
 		t.Error("index.html does not mark sankey-2027 checked, so the page opens on " +
 			"the year it lists first rather than the year it declares")
@@ -3741,15 +3498,10 @@ func TestThePageOpensOnTheYearItDeclaresWhileListingThemOldestFirst(t *testing.T
 	}
 }
 
-// TestACapUnderWhichAPrintedFlowAndAnInferredOneWouldMergeIsRefused is the
-// rule the client's fold cannot carry: two members of a capped tier reaching
-// one far end with ribbons that disagree on derived would fold into one mark
-// that is neither printed nor inferred, so the export refuses the cap.
-//
-// THE CASE IS BUILT, because no published column carries it: every ribbon in
-// the fund-flows golden is printed, so one fund's is marked inferred here and
-// the cap chartView already declares on the funds' tier is what would merge
-// it with its printed neighbours.
+// TestACapUnderWhichAPrintedFlowAndAnInferredOneWouldMergeIsRefused: two
+// members of a capped tier reaching one far end with ribbons that disagree on
+// derived would fold into a mark neither printed nor inferred. No published
+// column carries the case, so one fund's ribbon is marked inferred here.
 func TestACapUnderWhichAPrintedFlowAndAnInferredOneWouldMergeIsRefused(t *testing.T) {
 	fundFlows, readErr := os.ReadFile("../../testdata/fund-flows.golden.json")
 	if readErr != nil {

@@ -22,10 +22,8 @@ type stubFundFlows struct {
 	tiers     map[int]string
 	notes     map[int]string
 	divisions map[string]string
-	// departments is the ALL-CAPS tier, kept apart from divisions for the
-	// reason data/departments.yaml keeps two namespaces: five slugs name both,
-	// so one map would answer either and a projection reading the wrong tier
-	// would be invisible here.
+	// departments is the ALL-CAPS tier, kept apart from divisions because
+	// five slugs name both.
 	departments map[string]string
 	lines       map[lineKey][]string
 }
@@ -43,25 +41,21 @@ func (s stubFundFlows) DivisionLabel(d string) (string, bool) {
 	return v, ok
 }
 
-// DepartmentLabel answers from a map of its own, so a fixture can give a
-// department and a division the same slug and still tell which tier a
-// projection asked for.
+// DepartmentLabel answers from its own map, so a fixture can tell which tier
+// a projection asked for.
 func (s stubFundFlows) DepartmentLabel(d string) (string, bool) {
 	v, ok := s.departments[d]
 	return v, ok
 }
 
-// LinesPrintedAs answers only what a test declared. A miss is the registry's
-// "no line is printed as this", which the projection refuses -- so a fixture
-// that forgets a row fails loudly rather than drawing it under its category.
+// LinesPrintedAs answers only what a test declared, so a forgotten row fails
+// loudly.
 func (s stubFundFlows) LinesPrintedAs(parent, printed, kind string) []string {
 	return s.lines[lineKey{parent, printed, kind}]
 }
 
-// printedRow is the row label this fixture prints for a category, and
-// lineOf is the line slug it resolves to. Every schedule row is printed under
-// some category, so one row per category is what the fixture needs everywhere
-// the line TIER is not itself the subject.
+// printedRow is the row label this fixture prints for a category, and lineOf
+// the line slug it resolves to: one row per category.
 func printedRow(category string) string { return "Printed " + category }
 func lineOf(category string) string     { return category + "/printed" }
 
@@ -89,18 +83,12 @@ func fundFlowsOptions() Options {
 }
 
 // fundFlowsFact is one fact at an address. The amount is what nets.
-// factID is the id of the fixture fact `tag` names, so an assertion can read by
-// the handle it was written with while the document carries an id of the shape
-// a store holds.
+// factID is the id of the fixture fact `tag` names.
 func factID(tag string) string { return fmt.Sprintf("fisc-f-%012x", tag[0]) }
 
-// fundFlowsFact builds one fact of this file's fixture.
-//
-// tag IS A HANDLE AND THE ID IS BUILT FROM IT, rather than the handle being the
-// id: schema/fact-id.schema.json says a fact id is `fisc-f-` and twelve hex
-// digits, so a link citing "a" is a link no store can hold and no published
-// document can contain. A fixture shaped like something that cannot occur is
-// one whose tests pass against a document the tree would refuse.
+// fundFlowsFact builds one fact of this file's fixture. tag is a handle and
+// the id is built from it, so the id has the shape
+// schema/fact-id.schema.json requires.
 func fundFlowsFact(scope string, kind mapping.Kind, category, department, group string,
 	fund *int, cents int64, tag string) fact.Fact {
 	id := factID(tag)
@@ -371,11 +359,9 @@ func TestTheCountsIdentityHolds(t *testing.T) {
 	if c.FactsUncited != 1 {
 		t.Errorf("uncited = %d, want 1: the transfers_in row is a printed zero", c.FactsUncited)
 	}
-	// FOUR, AND THE TWO OVERLAPS ARE NOT THE SAME SHAPE. Both expenditure facts
-	// are behind their own object link AND the fund-to-department link that
-	// totals them; both revenue facts are behind their own flow into a fund AND
-	// the rollup of their line into Property Taxes. The printed zero is behind
-	// neither, which is what keeps it in facts_uncited above.
+	// Both expenditure facts are behind their object link and the
+	// fund-to-department link; both revenue facts behind their fund flow and
+	// their line's rollup. The printed zero is behind neither.
 	if c.FactsCitedTwice != 4 {
 		t.Errorf("cited twice = %d, want 4: the two object rows are also in the division "+
 			"total, and the two revenue rows are also in their line's rollup",
@@ -383,17 +369,10 @@ func TestTheCountsIdentityHolds(t *testing.T) {
 	}
 }
 
-// TestALineRollsUpIntoItsCategoryOncePerKind is the (1,0) link's shape, and the
-// per-kind half of it is held by nothing else in the tree.
-//
-// ONE PRINTED ROW REACHES THE CITY UNDER TWO KINDS. pp.127-140 print rows whose
-// money lands in the five Internal Service Funds as an internal service charge
-// and in the rest of the city as external revenue -- 2 of the 93 lines in both
-// published columns. A single rollup would have to publish one of those two
-// answers for all of it, and nothing else would notice: the value would still
-// tie to the facts it cites, every one of those facts is a revenue row so
-// link-kinds-match-their-facts stays quiet, and checkDistinctLinks refuses two
-// links of ONE kind on a pair rather than a pair carrying two kinds.
+// TestALineRollsUpIntoItsCategoryOncePerKind: one printed row can reach the
+// Internal Service Funds as an internal service charge and the rest of the
+// city as external revenue, so the (1,0) rollup is per kind. No other check
+// holds this.
 func TestALineRollsUpIntoItsCategoryOncePerKind(t *testing.T) {
 	labels := fundFlowsLabels()
 	labels.names[700] = "Fleet Maintenance"
@@ -430,9 +409,7 @@ func TestALineRollsUpIntoItsCategoryOncePerKind(t *testing.T) {
 	if diff := cmp.Diff([]string{factID("f")}, got[KindInternalService].FactIDs); diff != "" {
 		t.Errorf("the internal-service rollup cites the wrong rows (-want +got):\n%s", diff)
 	}
-	// PUBLISHED, NOT INFERRED. A rollup of rows the city printed is a reading of
-	// the page and not a model of it, so the flag that would draw it dashed and
-	// list it under "what we inferred" stays false.
+	// A rollup of printed rows is published, not derived.
 	for k, l := range got {
 		if l.Derived {
 			t.Errorf("the %s rollup is published as derived", k)
@@ -440,15 +417,9 @@ func TestALineRollsUpIntoItsCategoryOncePerKind(t *testing.T) {
 	}
 }
 
-// TestAPrintedZeroIsNotInItsLinesRollup holds the one place the tier-3-to-4 rule
-// is deliberately not copied.
-//
-// A DASH IS A FACT AND NOT A FLOW on this side of the document: the division
-// total sums every object cell including the zeros and cites them all, while a
-// revenue row printed as a dash earns no link and is counted in facts_uncited.
-// Rolling the zeros up would cite them, move that number and contradict
-// TestThePrintedZeroRowsAreNotNodes -- and the value would not move a cent,
-// which is why only a test of the CITATION can see it.
+// TestAPrintedZeroIsNotInItsLinesRollup: unlike the division total, a line's
+// rollup does not cite its printed dashes. Only the citation can show it; the
+// value is the same either way.
 func TestAPrintedZeroIsNotInItsLinesRollup(t *testing.T) {
 	labels := fundFlowsLabels()
 	labels.names[600] = "Capital Projects"
@@ -472,7 +443,7 @@ func TestAPrintedZeroIsNotInItsLinesRollup(t *testing.T) {
 	if rollup.ValueCents != 3000 {
 		t.Errorf("the rollup is %d, want 3000: a dash adds nothing", rollup.ValueCents)
 	}
-	// The dash is still a fact, and the identity is where it is accounted for.
+	// The dash is accounted for in the identity.
 	c := doc.Metadata.Counts
 	if c.FactsUncited != 2 || c.FactsCited+c.FactsUncited != c.Facts {
 		t.Errorf("%d cited + %d uncited of %d facts, want 2 uncited: the transfers_in row "+
@@ -553,10 +524,8 @@ func TestFundFlowsRefusesWhatItCannotPlace(t *testing.T) {
 			want: "names funds",
 		},
 		{
-			// A ROW THE TAXONOMY DOES NOT DECLARE. The tempting half-measure is
-			// to draw it under its category, which ties to the spine and leaves
-			// a ribbon that looks like one more row while being the remainder of
-			// every row nobody declared.
+			// A row the taxonomy does not declare is refused, not drawn under
+			// its category.
 			name: "a revenue row no line is printed as",
 			facts: []fact.Fact{
 				fundFlowsFact(rev, mapping.KindRevenue, "taxes/sales", "", "general", fact.FundNumber(100), 1, "z"),
@@ -719,12 +688,9 @@ func TestATransferInLinkIsNotExternal(t *testing.T) {
 	}
 }
 
-// TestTheExpenditureSideRefusesAFundlessFact: an expenditure side of fundless
-// facts would parent every department to fund/100 and source every division
-// link from it -- attributing the whole of the spending to the General Fund on
-// no evidence. Nothing downstream would see it: the amounts are unchanged, so
-// cuts-tie-along-the-lattice still ties, and fact-funds-resolve only examines
-// facts that DO name a fund.
+// TestTheExpenditureSideRefusesAFundlessFact: fundless facts would be
+// attributed to the General Fund on no evidence, and no amount check would
+// see it.
 func TestTheExpenditureSideRefusesAFundlessFact(t *testing.T) {
 	facts := []fact.Fact{
 		fundFlowsFact(scopeExpenditureByDepartment, mapping.KindExpenditure,
@@ -760,22 +726,14 @@ func TestATierFiveParentIsCutAtTheFirstSlash(t *testing.T) {
 	}
 }
 
-// TestAReductionNamesTheCategoryTheSchedulePrintsItUnder is the projection half
-// of the claim the chart rests on.
-//
-// THE CHART DRAWS A REDUCTION FORWARD AT ITS MAGNITUDE, because a ribbon cannot
-// carry a minus sign, so the sentence is the only thing distinguishing it from
-// an addition of the same size. Budget Book p127 prints ERAF as its own row
-// under Property Taxes and prints it negative; it reaches the document TWICE --
-// once as the fund cell and once as that line's rollup into its category -- and
-// a pass that named only the site a link was built at would leave the other half
-// silent on the page.
+// TestAReductionNamesTheCategoryTheSchedulePrintsItUnder: a ribbon cannot carry
+// a minus sign, so Contra is what tells a reduction from an addition. p127's
+// ERAF reaches the document twice, as a fund cell and as its line's rollup.
 func TestAReductionNamesTheCategoryTheSchedulePrintsItUnder(t *testing.T) {
 	const eraf = "ERAF"
 	labels := fundFlowsLabels()
-	// ITS OWN PRINTED ROW, as p127 prints it. A reduction sharing a row with the
-	// additions beside it nets into one positive cell and the document draws no
-	// negative link at all -- which is a fixture that would hide the whole defect.
+	// Its own printed row: sharing one with additions would net positive
+	// and hide the defect.
 	labels.lines[lineKey{"taxes/property", eraf, "revenue"}] = []string{
 		prefixRevenueLine + "taxes/property/eraf"}
 	reduction := fundFlowsFact(ScopeRevenueByFund, mapping.KindRevenue,
@@ -804,9 +762,8 @@ func TestAReductionNamesTheCategoryTheSchedulePrintsItUnder(t *testing.T) {
 	if len(wrong) > 0 {
 		t.Errorf("wrong sentence: %v", wrong)
 	}
-	// THE CELL AND THE LINE'S ROLLUP, which is why this is two and not one: a
-	// post-pass running at one emitting site passes a test asserting "at least
-	// one" and leaves half the reader's ribbons unexplained.
+	// Both the cell and the line's rollup, so a pass covering only one
+	// emitting site fails.
 	if len(named) != 2 {
 		t.Errorf("%d negative link(s) carry the sentence, want 2 -- the fund cell and "+
 			"its line's rollup into the category: %v", len(named), named)

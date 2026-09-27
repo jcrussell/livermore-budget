@@ -16,13 +16,8 @@ const DepartmentFundingProjection = "department-funding"
 // DepartmentFundingScope is the schedule this document is of: Budget Book
 // pp.85-125's LOWER block, Department Funding Sources.
 //
-// THE UPPER BLOCK OF THE SAME ELEVEN PAGES IS NOT IN IT, and the two are kept
-// apart by what they are printed by rather than by preference. The upper block
-// prints what a DIVISION spends under each object heading and carries no fund;
-// this one prints, once per DEPARTMENT, which funds pay for it. Adding them
-// together would double the city's expenditure -- the two blocks are two
-// readings of one figure, which is why each has a ties-to-spine check of its
-// own and neither borrows the other's.
+// The upper block of the same pages is a separate scope: the two blocks are
+// two readings of one figure, and adding them doubles the city's expenditure.
 const DepartmentFundingScope = "department-funding-sources"
 
 // DepartmentFundingScopes is the schedule set, as [Options.Scopes] holds it.
@@ -30,14 +25,8 @@ func DepartmentFundingScopes() []string { return []string{DepartmentFundingScope
 
 // departmentFundingCounts is how much of the corpus this document accounts for.
 //
-// IT IS NOT [FundFlowsCounts] and there is no facts_cited_twice, for the reason
-// [departmentSpendingCounts] gives: every printed cell here is one link and one
-// link only. A department's rows are not summed into anything the document also
-// draws, because the column above a department is the fund the cell is already
-// addressed by.
-//
-// facts = facts_cited + facts_uncited is this document's identity, and every
-// uncited fact is a cell the city printed as a dash or a zero.
+// Every printed cell is one link, so there is no facts_cited_twice.
+// facts = facts_cited + facts_uncited, every uncited fact a printed zero.
 type departmentFundingCounts struct {
 	Facts        int `json:"facts"`
 	FactsCited   int `json:"facts_cited"`
@@ -46,9 +35,8 @@ type departmentFundingCounts struct {
 	Links        int `json:"links"`
 }
 
-// departmentFundingMetadata is this document's metadata block. It embeds
-// [Envelope] for [departmentSpendingMetadata]'s reason: one schedule, one
-// column, and a plural `scopes` key would advertise a second schedule.
+// departmentFundingMetadata is this document's metadata block, of one
+// schedule and one column.
 type departmentFundingMetadata struct {
 	Envelope
 	FiscalYear      int                     `json:"fiscal_year"`
@@ -78,40 +66,14 @@ type DepartmentFundingDocument struct {
 //	          |  one link per printed cell, value the cell
 //	tier 4  department/<slug>     parent "" -- a department draws on many funds
 //
-// IT IS WHAT OPENS THE SIXTY DEAD-END FUNDS. pp.167-170 are the General Fund's
-// schedule and decompose that fund alone, so before this document existed every
-// other fund the drill-down draws was the end of the chain. These eleven pages
-// are the only published schedule that says what any other fund pays for.
-//
-// THE TIER-3 IDS ARE THE DRILL-DOWN'S OWN, for the reason departmentSpending's
-// tier-5 ids are the spine's: a reader arrives here by clicking a fund, and the
-// node they clicked is the centre of what they are shown. A second id form for
-// the same fund would make that centre a different box wearing the same words.
-//
-// TIER 4 IS `department/` AND NOT `dept/`, WHICH IS THE ONE NEW ID FORM THIS
-// DOCUMENT COINS. `dept/` is tier 4 and holds DIVISIONS -- pp.167-170's row
-// groups, and the tier docs/general-fund-drilldown-contract.md is explicit
-// about -- while this schedule's axis is the eleven ALL-CAPS departments.
-// data/departments.yaml keeps those as two namespaces on purpose, and FIVE
-// SLUGS ARE IN BOTH: city-council, city-manager, city-attorney, general-services
-// and administrative-services each name a department and a division beneath it.
-// So `dept/city-council` would mean the department in this file and the division
-// in the drill-down, and an id form is read by cutting at the first slash --
-// which is exactly the collision `revenue-line/` was given its own prefix to
-// avoid.
-//
-// A DEPARTMENT IS PARENTLESS AND A FUND IS NOT. The schedule prints one row per
-// (department, fund) pair, so a fund folds into its group -- data/funds.yaml
-// says which -- while a department is paid for by several funds and has no
-// single one to fold into. The client draws a parentless end muted, which is
-// correct: a department here is not the property of any one fund group.
-//
-// A ZERO CELL IS A FACT AND NOT A FLOW, fundFlows' rule and departmentSpending's
-// at the same place. The facts survive and are counted in facts_uncited.
+// It is the only published schedule saying what a fund other than the General
+// Fund pays for. The tier-3 ids are the drill-down's own, because a reader
+// arrives here by clicking a fund. Tier 4 is `department/`, not `dept/`
+// (divisions), because five slugs name both. A department is parentless: it
+// is paid for by several funds. A zero cell draws no link and stays in
+// facts_uncited.
 type departmentFunding struct {
-	// Labels supplies the city's words for a fund number and a department slug.
-	// Optional, as the other projections' is: a nil registry degrades to a
-	// slug-derived label rather than to no document.
+	// Labels is optional: a nil registry degrades to a slug-derived label.
 	Labels labels
 }
 
@@ -123,20 +85,9 @@ var (
 // Name is [Projection]'s, and it is this document's file stem.
 func (*departmentFunding) Name() string { return DepartmentFundingProjection }
 
-// Slices is one Options per column the schedule carries, [Sankey.Slices]'s rule.
-//
-// ALL FOUR PRINTED COLUMNS, for departmentSpending.Slices' two reasons: this is
-// the only document that draws these rows at all, so drawing two of the four
-// would publish half a schedule with nothing saying which half, and a reader
-// asking which funds paid for Police in FY2024 is asking the question this
-// document exists to answer.
-//
-// THE TWO HISTORICAL COLUMNS TIE TO NOTHING ON THE SPINE, and that is a fact
-// about pp.66-67 rather than a weakness here: those pages print no actual and
-// no revised column, so cuts-tie-along-the-lattice has nothing to compare them
-// against and the only figure they reconcile to is each department's own
-// printed Total Department Funding Sources. The caveat below says so to a
-// reader.
+// Slices is one Options per column the schedule carries, all four printed
+// columns. The two historical ones tie to nothing on the spine, which prints
+// no actual or revised column; a caveat says so.
 func (*departmentFunding) Slices(facts []fact.Fact, version string) []Options {
 	seen := map[Column]bool{}
 	for i := range facts {
@@ -225,12 +176,8 @@ func (d *departmentFunding) Document(facts []fact.Fact, o Options) (*DepartmentF
 		}
 		links = append(links, Link{
 			Source: src.id, Target: dst.id, ValueCents: c.cents,
-			// THE FUND GROUP AT THE PAYING END IS THE BOUNDARY QUESTION, and
-			// these rows can answer it where pp.85-125's upper block cannot:
-			// the schedule prints the fund, so an Internal Service Fund paying
-			// a department is an internal service charge and says so. The cross-
-			// tab beside this one publishes every expenditure ribbon as external
-			// and carries a caveat explaining that it has no fund to ask with.
+			// These rows print the fund, so the paying fund group can answer
+			// the boundary question the upper block cannot.
 			Kind: boundaryKind(k.fundGroup), FactIDs: c.factIDs,
 			Locators: c.locs.sources(),
 		})
@@ -245,11 +192,8 @@ func (d *departmentFunding) Document(facts []fact.Fact, o Options) (*DepartmentF
 	}
 	out := sortedNodes(nodes)
 
-	// EVERY UNCITED FACT MUST BE A PRINTED ZERO, refused here rather than
-	// asserted downstream, for the reason fundFlows gives at the same place: a
-	// fact that reached no link for any other reason is money this document
-	// dropped, and a document publishing the identity while quietly failing it
-	// is worse than one publishing no counts at all.
+	// Every uncited fact must be a printed zero; anything else is money
+	// dropped in silence.
 	uncited := 0
 	for i := range selected {
 		id := selected[i].ID
@@ -303,13 +247,8 @@ func (d *departmentFunding) Document(facts []fact.Fact, o Options) (*DepartmentF
 // fundingKey addresses one printed cell: what one fund pays towards one
 // department.
 //
-// THE FUND GROUP RIDES ALONG AND IS NOT PART OF THE ADDRESS. It is the fact's
-// own, read off the section header the row sits under, and it decides the link
-// kind; the node's PARENT comes from data/funds.yaml instead, so the two
-// records stay independent and rule-funds-match-their-headings has something to
-// compare. Keying on it as well would let one (fund, department) pair split
-// into two links if the two records ever disagreed, which would hide exactly
-// the disagreement that check exists to find.
+// The fact's fund group decides the link kind but is not in the address, so
+// a disagreement with data/funds.yaml cannot split one cell into two links.
 type fundingKey struct {
 	fund       int
 	department string
@@ -324,10 +263,6 @@ type fundingCell struct {
 
 // netDepartmentFunding sums the selected facts into the cell map, refusing
 // anything it cannot address.
-//
-// EVERY GUARD IS A REFUSAL AND NOT A SKIP, this package's rule: a fact this
-// document cannot place is a mapping defect, and dropping it publishes a
-// smaller city with no error anywhere.
 func netDepartmentFunding(facts []fact.Fact) (map[fundingCell]*cellSum, error) {
 	out := map[fundingCell]*cellSum{}
 	groups := map[fundingKey]string{}
@@ -343,12 +278,8 @@ func netDepartmentFunding(facts []fact.Fact) (map[fundingCell]*cellSum, error) {
 				"this document's tier 4 IS the department, and pp.85-125 print one funding "+
 					"schedule per department")
 		}
-		// A FUND IS REQUIRED, WHICH INVERTS departmentSpending'S GUARD ON
-		// PURPOSE. That block has no fund axis and refuses a fact carrying one;
-		// this block IS the fund axis, and a fact of this scope with no fund is
-		// a row of the upper block wearing this one's name -- which would be
-		// drawn here as though the page had attributed it to a fund it does not
-		// name. An absent fund is refused with an absent group.
+		// A fund is required: this block IS the fund axis, the inverse of
+		// departmentSpending's guard.
 		if fa.Fund == nil || fa.FundGroup == "" {
 			return nil, cmdutil.WithHint(
 				fmt.Errorf("department-funding: fact %s (%s) names fund %s and fund group %q",
@@ -357,10 +288,8 @@ func netDepartmentFunding(facts []fact.Fact) (map[fundingCell]*cellSum, error) {
 					"scope with no fund has nothing to hang a ribbon from")
 		}
 		k := fundingKey{fund: *fa.Fund, department: fa.Department}
-		// ONE FUND GROUP PER (fund, department) CELL, refused rather than
-		// last-wins. The group decides the link's kind, so two rows of one cell
-		// disagreeing about it would publish whichever was read last as the
-		// classification of both.
+		// One fund group per cell, refused rather than last-wins: the group
+		// decides the link's kind.
 		if g, ok := groups[k]; ok && g != fa.FundGroup {
 			return nil, cmdutil.WithHint(
 				fmt.Errorf("department-funding: fund %d under %s is printed under fund group "+
@@ -374,13 +303,7 @@ func netDepartmentFunding(facts []fact.Fact) (map[fundingCell]*cellSum, error) {
 	return out, nil
 }
 
-// fundEndpoint is the paying end of a cell, and its id is THE DRILL-DOWN'S.
-//
-// THE GENERAL FUND KEEPS ITS OWN ROLE HERE TOO. fund/100 is `general_fund`
-// wherever it is drawn, because 100 IS the General Fund and not because a
-// particular column decomposes it -- the same claim fundFlows makes, and the
-// reason the drill step that opens this document gates on `fund` and leaves
-// fund/100 opening into pp.167-170's divisions instead.
+// fundEndpoint is the paying end of a cell, at the drill-down's id and role.
 func (d *departmentFunding) fundEndpoint(number int) (endpoint, error) {
 	role := roleFund
 	if number == generalFund {
@@ -390,11 +313,7 @@ func (d *departmentFunding) fundEndpoint(number int) (endpoint, error) {
 	if d.Labels == nil {
 		return e, nil
 	}
-	// A FUND THE REGISTRY DOES NOT KNOW IS REFUSED, not drawn parentless.
-	// fact-funds-resolve already guarantees every fact's fund is in
-	// data/funds.yaml, so this cannot fire on the committed corpus -- what it
-	// prevents is a fund silently losing its group, and with it its colour and
-	// its place in the fold, on a corpus where that guarantee has lapsed.
+	// A fund the registry does not know is refused, not drawn parentless.
 	t, ok := d.Labels.FundType(number)
 	if !ok || t == "" {
 		return endpoint{}, cmdutil.WithHint(
@@ -415,8 +334,7 @@ func (d *departmentFunding) addNode(nodes map[string]Node, e endpoint) {
 	n := Node{ID: e.id, Label: d.label(e), Tier: e.tier, Role: e.role, Parent: e.parent}
 	if e.tier == tierFund && d.Labels != nil {
 		if number, err := strconv.Atoi(e.id[len(prefixFund):]); err == nil {
-			// THE NODE IS PUBLISHED AND THE TIER IS OURS, so Derived stays
-			// false and the disclosure rides on the two fields beside it.
+			// Only the tier is ours, so Derived stays false.
 			if tier := d.Labels.ConstraintTier(number); tier != "" {
 				n.ConstraintTier = tier
 				n.SourceNote = "data/funds.yaml, our reading of Budget Book pp.258-261"
@@ -430,11 +348,7 @@ func (d *departmentFunding) addNode(nodes map[string]Node, e endpoint) {
 // addFundGroups adds the tier-2 node above every fund, which this document
 // parents to and does not otherwise build.
 //
-// THE GROUP IS A PARENT AND NOT A COLUMN HERE. No link touches it: the chart
-// that opens this document keeps the fund's group from the chart the reader
-// came from, and what this file needs the node for is the fold -- a fund folded
-// out of a capped column has to have a box to fold into, and the client colours
-// a fund by walking to it.
+// No link touches it; it is there for the fold and the fund's colour.
 func (d *departmentFunding) addFundGroups(nodes map[string]Node) error {
 	for _, id := range sortedKeys(nodes) {
 		p := nodes[id].Parent
@@ -455,8 +369,7 @@ func (d *departmentFunding) addFundGroups(nodes map[string]Node) error {
 	return nil
 }
 
-// label resolves a node's words: a built-in first, then the registry, then a
-// readable transform of the id -- Sankey.label's order, for its reasons.
+// label resolves a node's words: a built-in, then the registry, then the id.
 func (d *departmentFunding) label(e endpoint) string {
 	if l, ok := builtinLabels[e.id]; ok {
 		return l
@@ -477,13 +390,8 @@ func (d *departmentFunding) label(e endpoint) string {
 	return slugLabel(e.id)
 }
 
-// departmentFundingCaveats are the things a reader of this file has to be told,
-// each a property of the document rather than a hedge about it.
-//
-// NONE NAMES A NODE, for departmentSpendingCaveats' reason: each is a statement
-// about the SCHEDULE -- which tier of departments.yaml it is printed by, what
-// its totals are and are not, and which of its columns the spine can check --
-// so marking particular marks would be marking every one of them.
+// departmentFundingCaveats are the things a reader of this file has to be told.
+// Each is about the whole schedule, so none names a node.
 func departmentFundingCaveats() []Caveat {
 	return []Caveat{
 		ConstraintTierCaveat(),
@@ -530,9 +438,8 @@ func departmentFundingCaveats() []Caveat {
 	}
 }
 
-// sortedFundingKeys is a total order over the cell map, so node creation does
-// not depend on map iteration order. Links are re-sorted afterwards, but a
-// node's first touch is decided here.
+// sortedFundingKeys is a total order over the cell map, so a node's first touch
+// does not depend on map iteration order.
 func sortedFundingKeys(m map[fundingCell]*cellSum) []fundingCell {
 	out := make([]fundingCell, 0, len(m))
 	for k := range m {

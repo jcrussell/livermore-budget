@@ -37,35 +37,15 @@ func openableDoc(t *testing.T, links ...[2]string) []byte {
 	return raw
 }
 
-// TestOpenableNodesReadsTheRibbonOutOfANode is the mutation this whole
-// declaration exists to survive.
-//
-// A FUND IS FED BY ITS GROUP AT A TIER THE STEP DRAWS, so "touches a link whose
-// other end is a column of this step" is true of every fund in the column and
-// would declare all sixty openable — the exact state the set exists to end,
-// arrived at through the set itself. What windowFor asks the step's document for
-// is the half AWAY from the kept flank, so the ribbon has to run outward.
-//
-// Measured on the committed corpus with the direction removed: fund/511 is
-// declared openable, drillDown(fund/511) fails, and the reader is shown a
-// refusal banner over a mark drawn with the open affordance.
+// TestOpenableNodesReadsTheRibbonOutOfANode: a fund is fed by its group at a
+// tier the step draws, so a reading without direction would declare every fund
+// openable. windowFor asks for the half away from the kept flank.
 func TestOpenableNodesReadsTheRibbonOutOfANode(t *testing.T) {
 	v := View{Path: "index.html"}
 	step := DrillStep{From: 3, Tiers: []int{2, 3, 4}, Keep: []int{2}}
-	// THE THIRD RIBBON IS WHAT MAKES THE DIRECTION LOAD-BEARING, and it took a
-	// mutation to find that out. `outward` already excludes the flank's own
-	// columns, so a document whose only other ribbon into "shut" comes from the
-	// GROUP is answered the same way with the direction removed -- which is what
-	// the first version of this fixture was, and the mutation passed it. What
-	// separates the two readings is a ribbon pointing INTO the opened node from
-	// a column BEYOND it: `d -> shut` is a 4-to-3 link, and read without a
-	// direction it declares "shut" openable on a ribbon windowFor will not draw.
-	//
-	// LATENT ON THE COMMITTED CORPUS AND SAID SO. Every document the site
-	// publishes runs its ribbons coarse-to-fine across each window's centre, so
-	// no shipped step can tell the two rules apart; department-spending's
-	// cross-tab is the shape that could, and it prints 5 -> 4 where the step
-	// that opens it keeps tier 2 on the left.
+	// The third ribbon, `d -> shut` from a column beyond the opened node, is what
+	// makes the direction load-bearing: without it the mutation passes. Latent on
+	// the committed corpus, whose ribbons all run coarse-to-fine across a centre.
 	raw := openableDoc(t, [2]string{"g", "opens"}, [2]string{"g", "shut"},
 		[2]string{"opens", "d"}, [2]string{"d", "shut"})
 
@@ -79,16 +59,10 @@ func TestOpenableNodesReadsTheRibbonOutOfANode(t *testing.T) {
 	}
 }
 
-// TestOpenableNodesReadsWhichEndTheFlankIsAt pins the arm a first draft got
-// wrong, and it is wrong in a way no committed document would have shown.
-//
-// `centre == len(Keep)` is true of a LEFT flank by construction and true of the
-// revenue-category step's RIGHT one by arithmetic — Keep {2}, Tiers {1,0,2},
-// centre 1 — so a derived keptLeft read that window backwards. It did not go
-// quiet: it refused the whole site with "fund-flows draws no ribbon from tier 0
-// into tier(s) [1]". A document where the backwards reading would have SUCCEEDED
-// is what this asserts against, so the arm is pinned by its answer rather than
-// by the accident of which failure it produced.
+// TestOpenableNodesReadsWhichEndTheFlankIsAt: `centre == len(Keep)` is true of
+// a left flank and, by arithmetic, of the revenue-category step's right one
+// (Keep {2}, Tiers {1,0,2}). This document is one where the backwards reading
+// would succeed, so the arm is pinned by its answer.
 func TestOpenableNodesReadsWhichEndTheFlankIsAt(t *testing.T) {
 	v := View{Path: "index.html"}
 	// Ribbons run both ways across the opened tier: "shut" pays the flank and
@@ -133,22 +107,11 @@ func hierarchyDoc(t *testing.T) []byte {
 	return raw
 }
 
-// TestOpenableNodesReadsAStepThatKeepsNothingThroughTheHierarchy is the arm
-// the transfers step needs, and the fixture is why a ribbon reading cannot
-// supply it.
-//
-// "root" TOUCHES NO RIBBON, the way transfers/in touches none in either
-// direction on Budget Book p76's document: what decomposes it is its
-// children. A reading that asked which nodes draw a ribbon out would answer
-// the two payers and never the root, and the client, which filters by parent
-// chain, would offer a click Go said nothing about. The side is read too:
-// declared SideSource the set is the nodes whose subtree pays, and declared
-// "" it is the nodes whose subtree is paid, and no node is in both.
-//
-// "fund-x" IS IN NEITHER SET ON THE SOURCE SIDE, though it pays "far": that
-// end has no ancestor at a drawn tier, so the ribbon is one the client drops
-// before it counts anything, and a set that included fund-x would offer a
-// click that draws nothing.
+// TestOpenableNodesReadsAStepThatKeepsNothingThroughTheHierarchy: "root"
+// touches no ribbon, as transfers/in touches none, and is decomposed by its
+// children, so a ribbon reading would never offer it. SideSource answers the
+// nodes whose subtree pays, "" those whose subtree is paid. "fund-x" pays "far",
+// which no drawn tier places, so it is in neither set.
 func TestOpenableNodesReadsAStepThatKeepsNothingThroughTheHierarchy(t *testing.T) {
 	v := View{Path: "index.html"}
 	cases := []struct {
@@ -170,8 +133,7 @@ func TestOpenableNodesReadsAStepThatKeepsNothingThroughTheHierarchy(t *testing.T
 			}
 		})
 	}
-	// THE REFUSAL HOLDS ON THIS ARM TOO: a step whose tiers place no end of
-	// any ribbon is a rung no reader could reach, not an absent key.
+	// A step whose tiers place no end of any ribbon is refused here too.
 	_, err := openableNodes(v, 3, DrillStep{From: 0, Tiers: []int{7, 8}, Side: SideSource}, "stem", hierarchyDoc(t))
 	if err == nil {
 		t.Fatal("openableNodes accepted a step whose tiers place nothing")
@@ -183,13 +145,9 @@ func TestOpenableNodesReadsAStepThatKeepsNothingThroughTheHierarchy(t *testing.T
 	}
 }
 
-// TestOpenableNodesRefusesAnEmptySetRatherThanShippingOne is what lets the
-// client default open on an absent key.
-//
-// `opens` carries omitempty, so nil and an empty slice ship the same absent key.
-// A window whose document decomposes nothing at the opened tier is a rung no
-// reader could ever reach, and reporting it by name here is what keeps the two
-// states from being one.
+// TestOpenableNodesRefusesAnEmptySetRatherThanShippingOne: `opens` carries
+// omitempty, so an empty set would ship as the absent key the client defaults
+// open on.
 func TestOpenableNodesRefusesAnEmptySetRatherThanShippingOne(t *testing.T) {
 	_, err := openableNodes(View{Path: "index.html"}, 2,
 		DrillStep{From: 3, Tiers: []int{2, 3, 4}, Keep: []int{2}},

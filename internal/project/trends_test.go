@@ -254,11 +254,7 @@ func TestTrendsKeepsContraRowsSigned(t *testing.T) {
 // TestTrendsSlicesTakeTheWholeScope is the constraint fisc-rmw imposes on this
 // projection, checked rather than trusted.
 //
-// A document covering PART of a declared scope publishes part of a schedule and
-// says nothing about the rest, which no reader of the document can tell from a
-// schedule the city printed at that width. So this projection must return ONE
-// slice carrying EVERY column the store has -- not the two adopted years the
-// spine prints a column for, which is the obvious first cut.
+// It must return ONE slice carrying EVERY column the store has.
 func TestTrendsSlicesTakeTheWholeScope(t *testing.T) {
 	facts := trendsFixture(t)
 	got := (&Trends{}).Slices(facts, "test")

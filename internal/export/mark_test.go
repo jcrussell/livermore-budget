@@ -361,13 +361,8 @@ func TestTheShapeSentenceAndTheMarkAgreeOnWhatTallestMeans(t *testing.T) {
 }
 
 // TestTheClientComposesMarkIDsWithTheProducersPrefixes pins site/app.js's
-// RESIDUAL_PREFIX and GAP_PREFIX literals to residualPrefix and gapPrefix.
-//
-// THE CLIENT COMPOSES THESE IDS AND NO LONGER CHECKS THEM: carryResidual and
-// markGap read a mark's id off the rung answer and draw it, and the one thing
-// that would leave a mark drawn under a name the page's own tests for
-// isResidual and isGap do not recognise is the two prefixes drifting apart.
-// Pinned as text on both sides, because nothing compiles the client.
+// RESIDUAL_PREFIX and GAP_PREFIX literals to residualPrefix and gapPrefix, as
+// text, because nothing compiles the client.
 func TestTheClientComposesMarkIDsWithTheProducersPrefixes(t *testing.T) {
 	app, err := fs.ReadFile(site.FS(), "app.js")
 	if err != nil {

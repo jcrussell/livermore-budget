@@ -292,14 +292,9 @@ func TestTheCSVQuotesTokensThatCarryACommaAndRoundTrips(t *testing.T) {
 	t.Logf("%d fields carry a comma and survived the round trip", quoted)
 }
 
-// TestTheCSVSpellsAnAbsentFundAsAnEmptyCellAndRefusesNullElsewhere is the CSV's
-// side of "absent is not zero". The store publishes null in exactly one column,
-// fund, where nil is an absent fund and 0 would be a fund; the CSV spells that
-// absence as an empty cell, as its string axes already spell theirs. A null in
-// any other column still means the file is not the store.
-//
-// OVER THE COMMITTED STORE, AND BOTH SPELLINGS MUST OCCUR: a store whose every
-// fund were absent, or none, would let one arm pass vacuously.
+// TestTheCSVSpellsAnAbsentFundAsAnEmptyCellAndRefusesNullElsewhere: a null
+// fund is an empty CSV cell, and a null in any other column is refused. Over
+// the committed store, where both an absent and a present fund must occur.
 func TestTheCSVSpellsAnAbsentFundAsAnEmptyCellAndRefusesNullElsewhere(t *testing.T) {
 	raw, facts := committedStore(t)
 	out, err := factsCSV(raw)

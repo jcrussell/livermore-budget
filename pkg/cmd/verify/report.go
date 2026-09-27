@@ -98,10 +98,8 @@ func printText(w io.Writer, rep *check.Report) {
 // printDeclarations prints the exemption surface on every run, whether or not
 // anything is wrong with it.
 //
-// IT IS UNCONDITIONAL BECAUSE A DECLARATION THAT IS ONLY VISIBLE WHEN IT BREAKS
-// is one nobody re-reads, and re-reading is the whole mechanism. Each line names
-// the bead whose landing deletes the entry, so the list doubles as the shortest
-// statement of what this gate is still waiting for.
+// A declaration only visible when it breaks is one nobody re-reads. Each line
+// names the bead whose landing deletes the entry.
 func printDeclarations(w io.Writer, rep *check.Report) {
 	for _, d := range rep.Declared {
 		// A declaration for a check this run did not include says nothing about

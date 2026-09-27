@@ -30,14 +30,8 @@ const (
 	// declares. It ships no script beyond the theme stamp.
 	HistoryTemplate = "history.html.tmpl"
 	// ProvenanceTemplate renders the fact store's index, and CaveatsTemplate
-	// every document's caveats in one place. THEY ARE THE TWO TEMPLATES THAT
-	// RENDER NO PROJECTION DOCUMENT -- see templateRendersADocument, whose doc
-	// comment predicted a second one and is the reason that predicate is an
-	// allow-list rather than `name != ProvenanceTemplate`.
-	//
-	// The caveats page is an index ACROSS documents rather than of one, which
-	// is why it cannot name a projection: naming any single document would
-	// make the other six's caveats look like that document's.
+	// every document's caveats in one place. They render no projection
+	// document (templateRendersADocument).
 	ProvenanceTemplate = "provenance.html.tmpl"
 	CaveatsTemplate    = "caveats.html.tmpl"
 )
@@ -76,11 +70,7 @@ func checkSchemaVersion(stem string, got int) error {
 	if got == SchemaVersion {
 		return nil
 	}
-	// The refusal names the document it read, not the primary one. It used to
-	// say PrimaryProjection unconditionally, which was harmless while there was
-	// one document and is a wrong signpost the moment there are two: an
-	// operator sent to sankey.json to fix sankey-2027.json finds nothing wrong
-	// with it.
+	// The refusal names the document it read, not the primary one.
 	err := fmt.Errorf("%s projection: %w: got %d, want %d",
 		stem, ErrSchemaVersion, got, SchemaVersion)
 	switch {
@@ -109,14 +99,7 @@ type projectionDoc struct {
 }
 
 // documentCaveats is as much of ANY document as the caveats page needs.
-//
-// SHAPE-BLIND, for documentSources' reason and with the same payoff:
-// metadata.caveats is a block every projection carries whatever its body is, so
-// caveats.html can list a document this package has never been taught the shape
-// of. A fourth projection kind added tomorrow gets its caveats published
-// without an arm here -- which is the opposite of how the buildSite switch
-// works, deliberately, because that switch decides what a page LOOKS like and
-// this only reads a field.
+// Shape-blind, for documentSources' reason.
 type documentCaveats struct {
 	Metadata struct {
 		FiscalYearLabel string       `json:"fiscal_year_label"`
@@ -134,10 +117,7 @@ type sourceMeta struct {
 // documentSources is as much of ANY document as the citation union needs.
 //
 // It is deliberately shape-blind: metadata.sources is the one block every
-// projection carries whatever its body is, so the set of pages a site must ship
-// can be collected across views without this package knowing whether a given
-// document holds nodes and links or series and points. That is what makes
-// fisc-fjy's fix general rather than a second special case beside the year loop.
+// projection carries whatever its body is.
 type documentSources struct {
 	Metadata struct {
 		Sources []sourceMeta `json:"sources"`
@@ -185,14 +165,8 @@ type caveatMeta struct {
 }
 
 // caveatRef is one caveat as a PAGE shows it: a line, and somewhere to go for
-// the rest. The text is deliberately absent -- a page carrying it would be the
-// wall this whole change exists to take down.
-//
-// Href IS EMPTY WHEN THERE IS NO CAVEATS PAGE, which is a real configuration
-// rather than a defect: Options.views()'s default and writeGolden both produce
-// a single-view site with no caveats.html, and an unconditional link there
-// would 404 and fail TestEveryAssetThePageAsksForWasWritten. The template
-// renders plain text in that case.
+// the rest; the text is deliberately absent. Href is empty when the site has
+// no caveats page, and the template then renders plain text.
 type caveatRef struct {
 	ID      string `json:"id"`
 	Summary string `json:"summary"`
@@ -202,12 +176,8 @@ type caveatRef struct {
 // caveatRefs composes the page-facing form. base is the caveats view's path, or
 // "" when the site has no such page.
 //
-// THE ANCHOR IS PER (CAVEAT, DOCUMENT), not per caveat. One id can carry
-// different text in different documents -- transfer-legs-unpaired has three
-// sentences, picked by each column's own arithmetic -- so a page linking to a
-// bare #<id> would land its reader on whichever document buildCaveatsPage
-// happened to list first. stem is what disambiguates, and it is required rather
-// than optional for that reason.
+// The anchor is per (caveat, document), not per caveat: one id can carry
+// different text in different documents, so stem is required.
 func caveatRefs(metas []caveatMeta, stem, base string) []caveatRef {
 	out := make([]caveatRef, 0, len(metas))
 	for _, m := range metas {
@@ -276,104 +246,43 @@ type projectionRef struct {
 // yearView is one published fiscal year's worth of everything the page states
 // in words rather than draws.
 //
-// IT IS BUILT IN GO FOR EVERY YEAR, not just the one the page opens on, and the
-// client swaps between them. The alternative was for app.js to rebuild the
-// tiles itself on a year switch, which would put the prose — "The wrong answer:
-// summing the expenditure column counts transfers between funds twice" — in two
-// languages and let them drift. Here there is one implementation and the client
-// only chooses.
-//
-// It also keeps the no-JavaScript headline: the template renders the opening
-// year's tiles into the HTML exactly as before, and these are what the toggle
-// reaches for afterwards.
+// It is built in Go for every year, not just the one the page opens on, and
+// the client only chooses between them.
 type yearView struct {
 	Year  int    `json:"year"`
 	Label string `json:"label"`
 	Stem  string `json:"stem"`
 	Path  string `json:"path"`
 	Basis string `json:"basis"`
-	// Title is this year's <title>, built here rather than composed in the
-	// client. app.js used to assemble it from a literal copied out of
-	// sankeyTitle below, which is the one string paintYearWords wrote that the
-	// packager had not built -- and it overwrote a caller's own Title without a
-	// word. See sankeyTitle for why the caller's words survive the switch.
+	// Title is this year's <title>. See sankeyTitle for why the caller's words
+	// survive the switch.
 	Title   string      `json:"title"`
 	Hero    figure      `json:"hero"`
 	Figures []figure    `json:"figures"`
 	Caveats []caveatRef `json:"caveats"`
 	Counts  countsRef   `json:"counts"`
-	// Steps is what this year's rungs draw, one entry per [View.Steps] entry:
-	// the document a node opens into at that depth, resolved for THIS year,
-	// with the caveat refs that document's marks link to. Omitted on a view
-	// that opens nothing.
-	//
-	// PER YEAR AND NOT PER PAGE, because what a step draws is per year. A
-	// caveat on a depth-1 mark resolves against the document THAT year's rung
-	// draws; looked up in the year's own refs, which are the spine's, every
-	// caveat on a switched document loses its link (fisc-ko1j.13). What a rung
-	// discloses is a property of the year on screen, and this is where the
-	// year's properties live.
+	// Steps is what this year's rungs disclose, one entry per [View.Steps]
+	// entry, resolved for THIS year. Omitted on a view that opens nothing.
 	Steps []stepView `json:"steps,omitempty"`
 	// ChartTitle is the <title> inside the SVG -- the chart's accessible name,
 	// and a different string from Title, which is the document's.
-	//
-	// BUILT HERE FOR THE REASON Title IS. paintYearWords composed this from a
-	// literal naming a Sankey "of the <year> <basis> budget", which is right on
-	// the spine and wrong on any other chart: the drill-down's template names a
-	// diagram by fund and division, and the first year repaint replaced it, so
-	// two different charts announced themselves identically to a screen reader.
 	ChartTitle string `json:"chart_title"`
 }
 
 // stepView is what one rung's document discloses for one year: the caveats its
-// marks link to and the nodes it decomposes. One entry per declared step,
-// whatever each step declared, because a same-document step resolves to the
-// step before it.
-//
-// NOTHING HERE NAMES A FILE. The client fetches the column its year landed on
-// and selects a schedule out of it by [DrillStep.Projection], so a per-step
-// stem was a third name for a document already identified twice -- and it was
-// shipped, and read by nothing.
+// marks link to and the nodes it decomposes. Nothing here names a file: the
+// client selects the schedule out of its year's column.
 type stepView struct {
 	Caveats []caveatRef `json:"caveats"`
 	// Opens is every node id this year's document actually decomposes under
 	// the step -- at the step's From where it keeps a flank and at any tier
 	// where it keeps none -- or nil for a step that declares no such set.
 	//
-	// DERIVED FROM THE DOCUMENT, NEVER DECLARED, and that is the whole of what
-	// makes it safe. [DrillStep.Role] gates a tier by what its nodes ARE, which
-	// is the right question for a flow endpoint and the wrong one for a fund:
-	// measured on the committed corpus, 6 of the 61 funds the drill-down draws
-	// in FY2025-26 and 7 of 60 in FY2026-27 are named by no row of Budget Book
-	// pp.85-125, and no role can tell fund/511 from fund/512. A hand-written
-	// exemption list could not either, because the set is DIFFERENT IN EVERY
-	// COLUMN -- 13 funds in FY2023-24 against 6 in FY2025-26 -- while a step is
-	// declared once for every year the view lists. So it is read off the
-	// document, per year, where the answer already is.
-	//
-	// WITHOUT IT THE CLIENT OFFERS A CLICK IT CANNOT ANSWER. filterLinks
-	// refuses a node its document does not carry, in words, and site/app.js
-	// turns that into a refusal banner: the reader is shown a mark drawn with
-	// the open affordance, activates it, and is told the file does not have it.
-	// Measured before this field existed, over both committed columns:
-	// drillDown(fund/511) failed and left the chart on fund-group/capital.
-	//
-	// AT FROM ON A STEP THAT KEEPS A FLANK, AND AT ANY TIER ON ONE THAT DOES
-	// NOT. A window's centre is the opened node and windowFor draws its far
-	// half out of the step's own document, so From IS a tier of that document
-	// there. On a step that keeps nothing the two hierarchies are unrelated
-	// ([DrillStep]'s own doc comment): the client's filter asks the document
-	// for the id and never for its tier, so the set is every node the document
-	// decomposes on the step's declared side, and the tier and role of the
-	// chart on screen are what narrow it to the ones a reader is offered. The
-	// transfers step is that case: From is the spine's tier 0, and its document
-	// carries transfers/in at tier 0 too, with the eight payer ends that
-	// decompose it as its children rather than at the end of any ribbon.
-	//
-	// OMITTED WHEN EMPTY, AND AN EMPTY SET IS REFUSED rather than shipped, so
-	// the absent key has exactly one meaning. A step whose document decomposes
-	// nothing at all is a rung no reader can reach, which stepDocuments
-	// reports by name.
+	// Derived from the document, per year, never declared: which funds a
+	// document decomposes differs by column, and no [DrillStep.Role] can tell
+	// them apart. Without it the client offers a click it cannot answer. An
+	// empty set is refused rather than shipped, so the absent key has one
+	// meaning.
 	Opens []string `json:"opens,omitempty"`
 }
 
@@ -391,31 +300,20 @@ type pageData struct {
 	FiscalYearLabel string
 	Basis           string
 	// ChartTitle is the SVG's accessible name: the opening yearView's string,
-	// handed to the template rather than composed in it from FiscalYearLabel
-	// and Basis. app.js repaints the element from the same string on a year
-	// switch, so a template carrying its own composition is a second source
-	// for the one sentence a screen reader announces -- and an edit to either
-	// wording ships a name that silently reverts on the first toggle, to
-	// exactly the readers who cannot see the marks disagree.
+	// the same one app.js repaints on a year switch.
 	ChartTitle string
 	Hero       figure
 	Figures    []figure
-	// Years is every published year, in the order a reader meets them, oldest
-	// first. The template renders the OPENS year's tiles and caveats into the
-	// HTML and lists them all as a selector; app.js swaps between them without
-	// refetching the page.
+	// Years is every published year, oldest first. The template renders the
+	// Opens year's tiles and caveats and lists them all as a selector.
 	Years []yearView
-	// Opens is the stem of the year the page opens on -- the last of Years,
-	// computed here so the template can mark that radio `checked` without
-	// arithmetic on an index. It is a rendering input and not a declaration:
-	// nothing chooses it, the order does.
+	// Opens is the stem of the year the page opens on: the last of Years.
 	Opens string
 	Facts int
 	Nodes int
 	Links int
-	// Drill is whether this page's chart opens a node: the lede's sentence about
-	// what a click does is per view, and the spine's used to promise that every
-	// node isolates.
+	// Drill is whether this page's chart opens a node, which the lede's
+	// sentence about a click depends on.
 	Drill bool
 	// ConfigJSON is window.FISC_CONFIG. json.Marshal escapes <, > and & to
 	// their \u form, so the blob cannot close the script element it sits in.
@@ -628,11 +526,8 @@ type clientDoc struct {
 // `{name:one|many}` is the value followed by the singular or the plural word,
 // by whether the value is 1.
 //
-// DECLARED HERE AND FORMATTED THERE, so the words are the packager's and the
-// numbers the chart's. A sentence spelled in the client is one nothing can
-// hold to the template that renders its server-side twin, and rewording both
-// left every gate green; a template the client fills is data a test can
-// reword and watch the page follow.
+// Declared here and formatted there, so the words are the packager's and the
+// numbers the chart's.
 type wording struct {
 	Counts            string `json:"counts"`
 	CountsPartial     string `json:"counts_partial"`
@@ -701,40 +596,25 @@ type clientConfig struct {
 	// RenderTiers is the node tiers the page draws, left to right; omitted
 	// when the page draws its document whole.
 	//
-	// OMITTED AND NOT [] WHEN ABSENT, which app.js relies on: a page that
-	// declares nothing hands its graph to d3's own aligner, and an empty list
-	// would be a second spelling of that state for the client to get wrong.
+	// OMITTED AND NOT [] WHEN ABSENT, which app.js relies on.
 	RenderTiers []int `json:"render_tiers,omitempty"`
-	// Steps is how the page opens a node, one hop per step, omitted on a page
-	// that opens none.
-	//
-	// OMITTED AND NOT [] WHEN ABSENT, for RenderTiers' reason: app.js reads an
-	// absent key as "this page isolates on a click", and an empty list would
-	// be a second spelling of the same state for the client to get wrong.
+	// Steps is how the page opens a node, one hop per step, omitted (not [])
+	// on a page that opens none.
 	Steps []DrillStep `json:"steps,omitempty"`
 	// Root is the node whose subtree the page draws, omitted when it draws the
 	// whole document.
 	Root string `json:"root,omitempty"`
-	// Rungs is where the page fetches Go's answer for every rung it can open:
-	// which columns each rung draws, in what order, and which nodes each of
-	// those columns holds. [RungsPath], never a second spelling of it.
-	//
-	// OMITTED MEANS "NOBODY ANSWERS THIS PAGE'S RUNGS", and app.js reads it
-	// that way: a page that opens nothing needs no answer, and one whose steps
-	// the walk behind [RungsPath] never reached must not be handed another
-	// page's. Set only where both hold — see buildSankeyPage.
+	// Rungs is [RungsPath] where the page fetches Go's answer for every rung
+	// it can open, or omitted where nothing answers this page's rungs
+	// (rungsFor).
 	Rungs string `json:"rungs,omitempty"`
 }
 
 // encodeConfig renders window.FISC_CONFIG and refuses bytes that do not match
 // the published schema, as encodeColumn does for a column.
 //
-// REFUSED AT THE BUILD AND NOT AT THE FETCH. This one is rendered into the
-// page's own <script>, so there is no cached-copy question to ask on arrival --
-// which is exactly why nothing on the client side would ever have caught a
-// dropped key. The template renders these same structs by GO FIELD NAME, so a
-// tag that went missing still draws the opening year correctly and blanks only
-// what a reader gets after switching.
+// The template renders these structs by Go field name, so a missing JSON tag
+// would blank only what a reader gets after a year switch; this catches it.
 func encodeConfig(cfg clientConfig) ([]byte, error) {
 	blob, err := json.Marshal(cfg)
 	if err != nil {
@@ -755,14 +635,9 @@ func encodeConfig(cfg clientConfig) ([]byte, error) {
 	return blob, nil
 }
 
-// rungsFor is the rung answer's path for one view, or "" where nothing
-// answers that view's rungs.
-//
-// TWO CONDITIONS AND NOT ONE. A view with no steps opens nothing, so there is
-// no rung to answer; a view that is not the one at [IndexPath] has steps the
-// walk behind [RungsPath] never walked, and a page handed that path would
-// fetch a file answering none of its clicks. Either way "" is the honest
-// answer, and it is the value app.js reads as "no rung answer is on offer".
+// rungsFor is the rung answer's path for one view, or "" for a view with no
+// steps or not at [IndexPath], whose rungs the walk behind [RungsPath] never
+// reached.
 func rungsFor(v View) string {
 	if v.Path != IndexPath || len(v.Steps) == 0 {
 		return ""
@@ -809,22 +684,8 @@ func tilesFor(meta projectionMetadata) (figure, []figure) {
 	}, {
 		Label: "Unmatched transfers",
 		Value: dollars(h.TransferResidualCents),
-		// THIS NOTE SAYS WHAT THE NUMBER IS AND DEFERS WHY, deliberately, and
-		// it is the one tile that has to. It used to restate the mechanism --
-		// "the schedule that would pair them is not mapped yet" -- which is a
-		// claim internal/project's transferCaveat also makes, about the same
-		// difference, from the facts. Two copies of one claim in two packages
-		// drifted exactly as you would expect: both went stale when p76 was
-		// published in ced45b4, and they were not even greppable together,
-		// because this one said "not mapped yet" and the caveat said "not yet
-		// mapped". The caveat is the copy with the arithmetic behind it, so it
-		// keeps the explanation and this tile points at it.
-		//
-		// IT PROMISES NO CAVEAT, deliberately. An earlier wording said "the
-		// caveats below say what the difference is" -- but this tile is
-		// unconditional and internal/project emits the transfer caveat only when
-		// the document has transfers at all, so a document with none would point
-		// at a caveat that is not there.
+		// Says what the number is and defers why to internal/project's
+		// transfer caveat, and promises no caveat: that one is conditional.
 		Note: "Transfers out minus transfers in. No link in this chart pairs a transfer's two legs.",
 	}}
 }
@@ -852,15 +713,8 @@ func decodeDocument(stem string, raw []byte) (projectionDoc, error) {
 
 // decodeSankey reads a document as a SPINE document, and refuses one that is not.
 //
-// THE TWO REFUSALS BELOW ARE THE SANKEY'S, NOT EVERY DOCUMENT'S. They used to
-// live in the one decode path every document went through, which was correct
-// while the Sankey was the only document and would have refused the revenue
-// trends outright: internal/project/document.go states in writing that a trends
-// document carries neither a fiscal_year_label nor a headline, and is not
-// defective for that. They stay, because a spine document missing either IS
-// defective -- a page with blanks where the headline goes is the thing this
-// packager exists not to publish -- and they moved here so that being a Sankey is
-// what invokes them.
+// The two refusals below are the Sankey's, not every document's: a trends
+// document carries neither a fiscal_year_label nor a headline.
 func decodeSankey(stem string, raw []byte) (projectionDoc, projectionMetadata, error) {
 	doc, err := decodeDocument(stem, raw)
 	if err != nil {
@@ -917,24 +771,11 @@ type navItem struct {
 // buildSite renders every view and returns the pages plus the union of the
 // citations they made.
 //
-// THE CITATION SET IS THE UNION AND THE FOOTERS ARE NOT (fisc-fjy). Write copies
-// the extracted text of the pages named here into the output, and it used to be
-// handed the PRIMARY document's citations alone -- fine while the primary was the
-// only document, and fourteen dead links the moment a view cites pp.127-140. So
-// the shipped file set is unioned across every view and every year. The footer's
-// Sources list stays each view's own, because a page claiming provenance for
-// figures it never showed is its own defect, and unioning that too would trade
-// one wrong page for another.
-//
-// THAT PRINCIPLE NOW HAS ONE STATED EXCEPTION, added by fisc-yi4 in 19a580f: a
-// view's footer IS unioned across its own YEARS. Both directions are wrong and
-// they are not equally wrong. Under-citing was SILENT -- app.js drops a citation
-// whose doc_id is missing from CONFIG.docs, so a fact's provenance row simply
-// vanished, with no error and no banner. Over-citing is VISIBLE: under an FY2027
-// chart the footer lists a page only FY2026 cites, and a reader can see it and
-// follow it. Between a defect a reader cannot detect and one they can, this
-// takes the one they can -- and then says so on the page rather than leaving
-// them to infer the set, which is why the heading names the years.
+// THE CITATION SET IS THE UNION AND THE FOOTERS ARE NOT: the shipped page text
+// is unioned across every view and year, while a footer lists its own view's
+// sources. The one exception is a view's own years, unioned because app.js
+// drops a citation whose doc_id is missing from CONFIG.docs in silence, and
+// the heading names the years.
 //
 // pageTextBase resolves a doc id to the directory the page text is cited from,
 // with its trailing slash. A FUNCTION AND NOT A URL because the caller, not
@@ -959,19 +800,11 @@ func buildSite(o *Options, ix ColumnIndex, pageTextBase func(docID string) strin
 	var cited []Citation
 	seen := map[Citation]bool{}
 	collect := func(stem string) error {
-		// A VIEW WITH NO PROJECTION CITES NOTHING THROUGH THIS PATH, and the
-		// guard is here rather than at the call site because there are three
-		// of them. Without it the provenance view reaches
-		// json.Unmarshal(nil, ...) and Write fails with "unexpected end of
-		// JSON input" naming an empty stem -- a refusal that describes neither
-		// the view nor the cause.
+		// A view with no projection cites nothing through this path.
 		if stem == "" {
 			return nil
 		}
-		// Deduplicated: a document that cites a page twice is one file to ship,
-		// and shipping it twice is a write collision. Two VIEWS citing one page
-		// is the same statement one scale up, and is the ordinary case -- both
-		// spine years cite pp.66-67.
+		// Deduplicated: shipping one page twice is a write collision.
 		cs, err := citationsOf(stem, o.Projections[stem])
 		if err != nil {
 			return err
@@ -1009,15 +842,8 @@ func buildSite(o *Options, ix ColumnIndex, pageTextBase func(docID string) strin
 			data any
 			err  error
 		)
-		// EVERY TEMPLATE IS AN EXPLICIT ARM AND THE UNKNOWN ONE IS REFUSED.
-		// This was `default: buildSankeyPage`, which meant any template name
-		// that was not the trends one -- including a typo, and including a
-		// third template added without a matching arm here -- was handed
-		// pageData and rendered as a spine. The failure is silent by
-		// construction: a template that reads none of the fields it is given
-		// renders a page with blanks where the figures should be, and nothing
-		// in the pipeline compares a template against the shape of the data it
-		// received. Fail closed instead.
+		// Every template is an explicit arm and the unknown one is refused: a
+		// template handed data it does not read renders blanks in silence.
 		switch v.Template {
 		case TrendsTemplate:
 			data, err = buildTrendsPage(o, v, here, byID, ix, pageTextBase)
@@ -1033,9 +859,7 @@ func buildSite(o *Options, ix ColumnIndex, pageTextBase func(docID string) strin
 			return nil, nil, cmdutil.WithHint(
 				fmt.Errorf("view %q renders template %q, which this package has no builder for",
 					v.Path, v.Template),
-				"every template needs an arm in buildSite naming the page data it is "+
-					"built from; a template with no arm used to be rendered as a spine "+
-					"and would publish a page of blanks")
+				"every template needs an arm in buildSite naming the page data it is built from")
 		}
 		if err != nil {
 			return nil, nil, err
@@ -1047,38 +871,17 @@ func buildSite(o *Options, ix ColumnIndex, pageTextBase func(docID string) strin
 		pages = append(pages, sitePage{Path: v.Path, HTML: html})
 	}
 
-	// EVERY PUBLISHED DOCUMENT SHIPS ITS PAGES, NOT EVERY VIEWED ONE. The loop
-	// above walks views, so a projection the site writes to data/<stem>.json
-	// but renders no page for contributes nothing -- and its citations name
-	// pages dist/extracted/ would not hold. Every other document is guaranteed
-	// the opposite: a cited page the tree does not carry is an error, and a
-	// reader following a provenance link would get a 404 from the one part of
-	// this site that exists to be checkable.
-	//
-	// Collected AFTER the view loop and in sorted stem order so the pages a
-	// viewed document cites keep the order they had; this only ever appends.
+	// Every published document ships its pages, not only every viewed one.
+	// Collected after the view loop, so this only ever appends.
 	for _, stem := range sortedKeys(o.Projections) {
 		if err := collect(stem); err != nil {
 			return nil, nil, err
 		}
 	}
 
-	// AND EVERY PAGE THE INDEX PUBLISHES IS CITED, which is what makes the
-	// published store complete rather than a function of what the charts
-	// happen to draw.
-	//
-	// Before this, the shipped extraction was whatever the projections' own
-	// metadata.sources named. The fact store covers a page the charts do not:
-	// p76's 88 transfer facts are in scope transfers-by-fund, which no
-	// projection selects, so a provenance link to that page resolved to a
-	// shard beside a 404. Worse, the set was unstable -- a fact would enter
-	// and leave the published extraction as views were added, with no event
-	// anyone could see.
-	//
-	// Routing it through cited rather than through a second mechanism means
-	// withPageText's existing refusal covers it: a cited page absent from the
-	// extraction tree is an error, so a locator the site publishes cannot
-	// point at text the site does not carry.
+	// And every page the index publishes is cited, so the published store
+	// ships its page text whatever the charts draw, under withPageText's
+	// refusal of a page the extraction tree lacks.
 	for _, e := range o.PageIndex {
 		if !seen[e.Citation] {
 			seen[e.Citation] = true
@@ -1090,11 +893,7 @@ func buildSite(o *Options, ix ColumnIndex, pageTextBase func(docID string) strin
 
 // caveatsPathOf is the caveats view's path, or "" when the site has none.
 //
-// DERIVED FROM THE VIEW SET rather than threaded through five builder
-// signatures, and rather than sat on Options: it IS a function of the views, so
-// a caller who adds or drops the caveats view cannot leave this out of step.
-// The empty case is real -- Options.views()'s default is one view -- and every
-// caller has to handle it, which is what the empty Href means.
+// Derived from the view set, so it cannot drift out of step with it.
 func caveatsPathOf(o *Options) string {
 	for _, v := range o.views() {
 		if v.Template == CaveatsTemplate {
@@ -1160,25 +959,8 @@ func sourcesFor(srcs []sourceMeta, byID map[string]Doc, pageTextBase func(string
 
 // sankeyTitle is one year's <title> on the spine page.
 //
-// IT EXISTS SO THE LITERAL DOES NOT. site/app.js used to compose
-// "City of Livermore budget flows — " + year.label itself, which was a copy of
-// the fallback below in a second language -- and paintYearWords' own doc comment
-// says every string it writes was built by the packager. That was the one line
-// that did not.
-//
-// THE CALLER'S WORDS SURVIVE THE SWITCH. A View that sets a Title gets it on
-// every year, unsuffixed: the packager composing prose over the top of a
-// caller's would be the trap [View.Title] warns about, and a caller who names a
-// page has said what they want it called. Only the fallback carries a year,
-// because a title composed here has nothing else to tell one year from another.
-//
-// Refusing a Title on this template instead was considered and rejected. The
-// [View.Lede] refusal reads as the precedent and is not: it fires because
-// index.html.tmpl renders no {{.Lede}}, so the sentence would vanish in
-// silence. This template renders {{.Title}} at line 6. Nothing is dropped, so
-// there is nothing to refuse -- and refusing would make this package the
-// mandatory author of the site's front page, strand buildSite's v.Nav fallback
-// for this view, and leave the branch below dead by construction.
+// THE CALLER'S WORDS SURVIVE THE SWITCH: a View that sets a Title gets it on
+// every year, unsuffixed. Only the fallback carries a year.
 func sankeyTitle(callerTitle, yearLabel string) string {
 	if callerTitle != "" {
 		return callerTitle
@@ -1189,33 +971,9 @@ func sankeyTitle(callerTitle, yearLabel string) string {
 // unionSources merges the sources of every year a view publishes into one list,
 // deduplicated and ordered.
 //
-// WHY A UNION AND NOT THE OPENING YEAR'S. The footer and clientConfig.Docs were
-// built from ONE document's metadata -- the year the view opens on -- while
-// CONFIG.years lists every published year and site/app.js will switch to any of
-// them. app.js composes a citation per cited fact as
-// CONFIG.docs[doc_id].page_text_base, and citations() SKIPS a fact whose doc_id
-// is not in that map:
-//
-//	if (!doc) continue;
-//
-// So a year whose document cites a doc_id the opening year does not -- an
-// ACFR-backed column, a schedule mapped out of a different book -- would have
-// its citations silently DROPPED. Not a 404 and not a banner: the provenance
-// panel simply shows fewer rows than the chart has facts, and nothing says so.
-// That is the one failure mode this project exists to prevent, arriving through
-// the only channel that produces no error. The footer's source list had the same
-// shape one level less severely, advertising the opening year's pages under a
-// chart drawn from another year's.
-//
-// THIS IS THE FIX fisc-fjy ALREADY MADE ONE LEVEL UP, which is the argument for
-// it being right: that made the SHIPPED page-text set the union over every VIEW,
-// shape-blind through metadata.sources. This is the same union over every YEAR
-// of one view. The asymmetry that must survive is that it is a union WITHIN a
-// view and never across views -- TestEachViewsFooterCitesItsOwnSources asserts a
-// view's footer does not advertise another view's pages, and it still holds.
-//
-// Latent until the day two published years of one view cite different documents,
-// which is why it is worth a test rather than a comment.
+// A union and not the opening year's, because site/app.js's citations() skips
+// a fact whose doc_id is not in CONFIG.docs, in silence. A union within a view
+// and never across views.
 func unionSources(srcs []sourceMeta) []sourceMeta {
 	pages := map[string]map[int]bool{}
 	for _, s := range srcs {
@@ -1232,9 +990,6 @@ func unionSources(srcs []sourceMeta) []sourceMeta {
 		for p := range pages[id] {
 			ps = append(ps, p)
 		}
-		// Sorted rather than first-seen: the footer's page list is published
-		// output, so its order has to be a property of the pages and not of
-		// which year happened to open the view.
 		slices.Sort(ps)
 		out = append(out, sourceMeta{DocID: id, Pages: ps})
 	}
@@ -1242,9 +997,7 @@ func unionSources(srcs []sourceMeta) []sourceMeta {
 }
 
 // stepDocument is as much of ANY document as a rung needs: who built it, what
-// it cites and what it discloses. Shape-blind like documentSources, and for
-// the same reason -- which tiers a step's document holds is the client's
-// business.
+// it cites and what it discloses.
 type stepDocument struct {
 	Metadata struct {
 		GeneratedBy string       `json:"generated_by"`
@@ -1259,22 +1012,9 @@ type stepDocument struct {
 // resolves to for that year, with its own caveat refs, and the pages those
 // documents cite.
 //
-// THE JOIN IS [StepStems]' AND IS NOT SPELLED HERE. A step names a schedule,
-// the year names a column, and the document is what the two select -- refused
-// by name where the column carries no such schedule.
-//
-// THE PAGES FEED THE SAME UNION THE YEARS DO, one layer further in. The
-// footer's Sources and the client's docs map are built from one list, and a
-// step that switches document draws figures from pages that list would
-// otherwise not carry. The client's half is the sharper one: citations() in
-// site/app.js skips a doc_id the map has no entry for, so a step document's
-// citations would VANISH WITH NO ERROR. Both documents the site publishes today
-// share a doc_id, so nothing drops -- which is luck, and this is where it stops
-// being relied on.
-//
-// builtBy is the view's own projection's generated_by, and a step document
-// built by another is refused for the reason a year built by another is: the
-// footer credits one builder for every figure on the page.
+// The join is [StepStems]'. The pages feed the same union the years do, for
+// unionSources' reason. builtBy is the view's own projection's generated_by;
+// a step document built by another is refused, as a year's is.
 func stepDocuments(v View, year, builtBy string, fiscalYear int, basis string,
 	projections map[string][]byte, ix ColumnIndex, caveatsPath string,
 ) ([]stepView, []sourceMeta, error) {
@@ -1308,43 +1048,15 @@ func stepDocuments(v View, year, builtBy string, fiscalYear int, basis string,
 					"was built by %q; the footer credits one projection for figures drawn "+
 					"from both", v.Path, v.Projection, builtBy, i, stem, year, doc.Metadata.GeneratedBy)
 		}
-		// THE JOIN IS OF ONE COLUMN, AND THE DOCUMENT SAYS WHICH IT IS.
-		//
-		// validateSteps checks that every year stem has an entry, that the entry
-		// was built, and that the opening year's agrees with Projection -- all of
-		// which a map pointing a year at the WRONG year's document satisfies. The
-		// opening year is covered only incidentally, by the two-documents-for-one-
-		// year arm; every other year was covered by nothing, and the reader met it
-		// as a fund column from a year they were not looking at. fisc-p1ae.
-		//
-		// Compared against the year's own decoded column rather than against the
-		// stem's spelling: a stem is a filename and two of them here differ by a
-		// suffix, so agreeing on the name is not agreeing on the column.
-		// ABSENT IS NOT ZERO, AND TWO ABSENCES ARE NOT A MATCH. The comparison
-		// below is ==, so a year document and a step document that both omit
-		// these fields agree at 0 and "" and the arm says nothing -- the shape
-		// this project refuses by name, here in the guard that exists to stop a
-		// column being wrong. Neither side's decoder requires them, so both are
-		// checked rather than assumed. Found by pass two of /code-review over
-		// pass one's own fix.
-		// TWO COLUMN GUARDS USED TO STAND HERE and nothing replaces them,
-		// because the state they refused can no longer be reached: a step
-		// document stating no column, and one stating another year's. Both
-		// were arms against a DECLARED per-year map, which could name any
-		// built document at all. [ColumnIndex] is built from each document's
-		// own fiscal_year and basis, so a document is only ever selected
-		// under the column it itself declares, and a document declaring none
-		// is in no column and is refused above by name. A comparison here
-		// would now be one that cannot fail.
+		// No column guard here: [ColumnIndex] selects a document only under
+		// the column it itself declares, so it cannot be another year's.
 		opens, openErr := openableNodes(v, i, s, stem, raw)
 		if openErr != nil {
 			return nil, nil, openErr
 		}
 		cited = append(cited, doc.Metadata.Sources...)
 		out = append(out, stepView{
-			// The anchor stays STEM-keyed and stays inside this function:
-			// two schedules of one column can each carry a caveat with the
-			// same id, and the column's key cannot tell them apart.
+			// Stem-keyed: two schedules of one column can carry one caveat id.
 			Caveats: caveatRefs(doc.Metadata.Caveats, stem, caveatsPath),
 			Opens:   opens,
 		})
@@ -1357,18 +1069,9 @@ func stepDocuments(v View, year, builtBy string, fiscalYear int, basis string,
 // when Keep is the left end of Tiers, and ok false when neither end of Tiers is
 // the kept flank. A step that keeps nothing has no flank and reports ok false.
 //
-// keptLeft IS SET BY THE ARM THAT MATCHED AND NOT DERIVED FROM THE CENTRE,
-// which is where the first draft of this was wrong. `centre == len(Keep)` is
-// true of a LEFT flank by construction and true of the revenue-category
-// step's RIGHT one by arithmetic -- Keep {2}, Tiers {1,0,2}, centre 1 -- so
-// the derived version read that window backwards and refused the whole site
-// with "fund-flows draws no ribbon from tier 0 into tier(s) [1]". Which side
-// the flank is on is the thing the two arms exist to decide.
-//
-// FOR A RIGHT FLANK THE OUTWARD TIERS RUN LEFTWARD, so they are returned
-// reversed: the first entry is always the tier adjacent to the centre, which
-// is what a walk from the opened node needs and what Tiers' own order cannot
-// say without knowing the side.
+// keptLeft is set by the arm that matched, not derived from the centre's
+// index, which cannot tell a left flank from a right one of equal depth
+// (Keep {2}, Tiers {1,0,2}). Outward is always nearest the centre first.
 func Flank(s DrillStep) (keptLeft bool, outward []int, ok bool) {
 	m, n := len(s.Keep), len(s.Tiers)
 	if m == 0 || m >= n {
@@ -1389,42 +1092,11 @@ func Flank(s DrillStep) (keptLeft bool, outward []int, ok bool) {
 // this document decomposes on the side the step opens it from, at the step's
 // From on a window step and at any tier on a step that keeps no flank.
 //
-// TWO ARMS, BECAUSE THE TWO KINDS OF STEP ASK THE DOCUMENT DIFFERENT
-// QUESTIONS. A window step's centre is the opened node, so the question is
-// which nodes at From draw a ribbon OUT into the columns beyond the centre;
-// a step that keeps nothing draws a single filtered chart, so the question is
-// which nodes the chart is non-empty for, which is [ReachOf] under the step's
-// own tiers on its declared side, asked of every node the document carries.
-// The transfers step is why the second arm exists: transfers/in touches no
-// ribbon at all, and what decomposes it is its children.
-//
-// THE WINDOW ARM NARROWS BY TWO THINGS AND THEY ARE NOT ONE THING. The far end
-// must land in a column BEYOND the centre: a fund the drill-down draws has a
-// ribbon from its fund group at a tier this step lists, so "touches a link
-// whose other end is a tier the step draws" is true of every fund in the
-// column and declares all sixty openable. And the ribbon must run the way
-// windowFor will draw it -- filterFromNode when the flank is on the left,
-// filterToNode when it is on the right -- so a ribbon pointing INTO the opened
-// node from beyond it is not a chart.
-//
-// THE SECOND GUARD IS LATENT ON EVERY COMMITTED DOCUMENT, measured and not
-// assumed: all of them run their ribbons coarse-to-fine across each window's
-// centre, so no shipped step can tell a direction-aware reading from a
-// direction-blind one, and the first fixture written for this passed with the
-// direction removed. The shape that separates them is a descending ribbon into
-// the opened tier, which is what openable_test.go plants.
-//
-// WHICH END THE FLANK IS AT IS READ THE WAY [View.validateSteps] READS IT, off
-// Tiers and Keep, because a third reading of one shape is a third thing to
-// drift. validateSteps has already refused a step whose ends are not its flank,
-// so the default arm below cannot be reached through a validated view -- it is
-// there because this function is also handed steps by its own test.
-//
-// SHAPE-BLIND EVERYWHERE ELSE AND NOT HERE. stepDocument reads metadata alone
-// because which tiers a document holds is the client's business; this reads
-// the graph because the question it answers -- can this node be opened at all
-// -- is one only the graph can answer, and answering it in the client would
-// mean fetching every step document on page load.
+// A step that keeps nothing asks [ReachOf] of every node under the step's own
+// tiers on its declared side. A window step asks which nodes at From draw a
+// ribbon OUT into a column beyond the centre, in the direction windowFor draws
+// it; the direction guard is latent on every committed document, and
+// openable_test.go plants the descending ribbon that separates them.
 func openableNodes(v View, i int, s DrillStep, stem string, raw []byte) ([]string, error) {
 	g, err := DecodeGraph(raw)
 	if err != nil {
@@ -1486,15 +1158,8 @@ func openableNodes(v View, i int, s DrillStep, stem string, raw []byte) ([]strin
 
 // projectionRefs is every data file the site publishes, which is the whole set
 // on every page: they are downloadable provenance, not this view's figures.
-//
-// ONE ENTRY PER FILE AND NOT PER DOCUMENT, which is the difference the column
-// makes: five schedules of FY2026 adopted are one download. It listed a path
-// per stem, and once the folded stems stopped being written that sentence
-// offered a reader nineteen links, sixteen of them 404s.
-//
-// RUNGS IS A DATA FILE TOO and is listed where the site ships one. It is
-// fetched by the same page that fetches a column and was never in this list,
-// so "every data file the site publishes" was already one short.
+// One entry per file and not per document, rungs.json included where the
+// site ships one.
 func projectionRefs(o *Options, ix ColumnIndex) []projectionRef {
 	seen := map[string]bool{}
 	var paths []string
@@ -1546,27 +1211,9 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 				return pageData{}, err
 			}
 		}
-		// THE FOOTER SENTENCE HAS THREE VALUES AND ONLY ONE OF THEM IS
-		// REPAINTED. "Scope X, basis Y. Projection: Z." is rendered from the
-		// OPENING year's metadata; basis is genuinely per-year and travels in
-		// yearView, and the other two fail closed here instead.
-		//
-		// Scope, because repainting it would fix one of TWO copies of one claim:
-		// the lede three screens up says "all funds, gross" in template prose
-		// that no switch touches. And it cannot vary anyway -- Sankey.Slices
-		// fixes it, its doc comment saying "The scope is fixed rather than
-		// derived. It selects the SCHEDULE." Building a repaint for a state
-		// nothing can emit means pinning it with a test that can never go red,
-		// which is the defect this whole branch has been removing.
-		//
-		// GeneratedBy, because it is a claim about the TOOL that built the
-		// document, not about the year. A page attributing its FY2026 figures to
-		// one builder and drawing FY2027's from another is not a wording problem
-		// a repaint fixes; the two documents disagree about their own
-		// provenance, and this project's answer to ambiguity is to refuse it.
-		// BOTH OF THE BASIS'S SENTENCE-MATES ARE GUARDED, not just one of them:
-		// fixing one value of three and leaving the others is how the original
-		// defect got in.
+		// The footer's "Scope X, basis Y. Projection: Z." is rendered from the
+		// opening year; basis travels per year in yearView, and scope and
+		// builder fail closed here instead of being repainted.
 		if m.Scope != meta.Scope {
 			return pageData{}, fmt.Errorf(
 				"view %q opens on %q with scope %q but its year stem %q has scope %q; "+
@@ -1603,13 +1250,8 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			Steps: steps,
 		})
 	}
-	// THE PAGE OPENS ON THE NEWEST YEAR, WHICH IS THE LAST OF THEM, since
-	// [View.YearStems] is oldest first. Everything per-year the page renders
-	// statically comes from this entry, so a reader with no JavaScript agrees
-	// with the checked radio.
-	//
-	// Scope and the builder stay off meta: the loop above refuses a year whose
-	// own differ, so they are already equal across every year.
+	// The page opens on the newest year, the last of them; everything
+	// per-year the page renders statically comes from this entry.
 	open := years[len(years)-1]
 
 	sources, clientDocs := sourcesFor(unionSources(cited), byID, pageTextBase, o.RecordsBase)
@@ -1624,13 +1266,7 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		Wording:       defaultWording(),
 		RenderTiers:   v.RenderTiers,
 		Steps:         v.Steps,
-		// THE ANSWER IS THE SPINE'S, so only the spine is told where it is.
-		// The walk that computes [RungsPath] starts from the view at
-		// IndexPath; handing its path to another view's page would have that
-		// page fetch a file which answers none of its rungs and refuse every
-		// click, which is worse than the derivation it replaced. A view that
-		// opens nothing needs no answer at all.
-		Rungs: rungsFor(v),
+		Rungs:         rungsFor(v),
 	}
 	blob, err := encodeConfig(cfg)
 	if err != nil {
@@ -2317,54 +1953,20 @@ func buildProvenancePage(o *Options, v View, nav []navItem, byID map[string]Doc,
 // buildCaveatsPage lists every published document's caveats, in full, with an
 // anchor per (document, caveat) that every other page's summary links to.
 //
-// IT NAMES NO PROJECTION, and is the second view of which that is true. A
-// caveat belongs to a document, and this page is an index ACROSS them -- naming
-// any one would make the other six's caveats read as that document's. That is
-// why View.validate's "names no projection" arm is a weakening rather than a
-// rule, and why CaveatsTemplate has to be in templateIsKnown: without it, a
-// caveats view that DID name a projection would be refused with advice that is
-// right by accident.
-//
-// FIVE REFUSALS, and each is a failure that renders. An empty page means a nav
-// entry pointing at nothing. A caveat with no id publishes an anchor of
-// "#caveat-<stem>--", which every summary on the site would then share; one
-// with no summary a blank line in every list; one with no text a heading over
-// nothing. Two entries claiming one anchor is a link that lands on the wrong
-// paragraph, and the reader has no way to tell.
-//
-// WHAT project.ValidateCaveats DOES AND DOES NOT COVER. It refuses the three
-// empty-field cases and a repeated id WITHIN one document, at build time. It
-// does NOT cover the empty-page case: it returns nil for an empty caveat slice,
-// since a document with no caveats is legal and only a caveats PAGE with
-// nothing to list is not. And it never sees a document decoded from bytes,
-// which is every document here.
-//
-// THE ANCHOR ARM IS NARROWER THAN "ACROSS DOCUMENTS", which is what an earlier
-// version of this comment claimed. Anchors are caveat-<stem>--<id> and stems
-// are the keys of a map, so two DIFFERENT documents cannot collide on a stem.
-// What the arm reaches is a repeated id inside one document -- which is the
-// case it is tested for -- and the composition being ambiguous, since "--" is a
-// separator and not an escape: a stem "a--b" with id "c" and a stem "a" with id
-// "b--c" compose the same fragment. Neither shape occurs today. The arm is kept
-// because it is three lines and the failure it prevents is one a reader cannot
-// detect, not because it is load-bearing over the current corpus.
+// It names no projection: it is an index across documents. It refuses an
+// empty page, a caveat with no id, summary or text, and two entries claiming
+// one anchor -- a repeated id in one document, or the "--" separator making
+// two compositions ambiguous. project.ValidateCaveats never sees a document
+// decoded from bytes, which is every document here.
 func buildCaveatsPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	ix ColumnIndex, pageTextBase func(string) string,
 ) (caveatsPageData, error) {
 	caveatsPath := caveatsPathOf(o)
-	// WHICH DOCUMENTS A VIEW ACTUALLY RENDERS, by the same rule
-	// assertPublishedReachable uses one package up: a document is reached
-	// through a view's projection, through its year stems, or through a
-	// step's documents. This page is not one of them -- it names no
-	// projection, and listing a document is not drawing it.
+	// Which documents a chart actually draws: through a view's projection,
+	// its year stems, or its steps' documents.
 	drawn := map[string]bool{}
 	for _, v := range o.views() {
-		// A VIEW THAT DRAWS NO CHART FLAGS NOTHING, whatever it renders.
-		// trends.html names revenue-trends as its projection and ships no
-		// app.js -- its figures are a server-rendered table -- so a caveat on
-		// that document can be listed here and can never be chipped on a mark.
-		// "Some view names this stem" was the wrong test, and it was latent
-		// only because no revenue-trends caveat carries a non-empty applies_to.
+		// A view that draws no chart flags nothing, whatever it renders.
 		if !templateDrawsAChart(v.Template) {
 			continue
 		}
@@ -2374,16 +1976,7 @@ func buildCaveatsPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		for _, stem := range v.YearStems {
 			drawn[stem] = true
 		}
-		// A DOCUMENT A CHART OPENS INTO IS DRAWN: its marks are chipped and
-		// its caveats linked one rung down, and both fund-flows documents the
-		// site draws are reached that way alone. Built from projections and
-		// year stems only, this told every reader of the caveats page that
-		// the charts do not flag fund-flows' marks, while they do.
-		//
-		// RESOLVED PER YEAR, because a step names a SCHEDULE and every year
-		// the view lists opens that schedule out of its own column. Marking
-		// the schedule key itself would be right only where it happens to
-		// spell a stem too, which is the coincidence this lane removed.
+		// A document a chart opens into is drawn too, resolved per year.
 		for _, stem := range v.DrawnStems(ix) {
 			drawn[stem] = true
 		}
@@ -2680,11 +2273,8 @@ func buildCells(points []trendPoint, columns []columnRef, meta []trendColumnMeta
 // Openable is openableNodes for a caller outside this package: the nodes at
 // step s's From that the document raw decomposes, for the view v it is step i
 // of.
-//
-// ONE RULE, ONE HOME. The rung answer the composition root serves is
-// enumerated over this answer, so what a page offers a reader to open and
-// what it is given to draw when they do cannot drift apart by a second
-// spelling of the direction rule.
+// The rung answer is enumerated over it, so what a page offers to open and
+// what it draws cannot drift apart.
 func Openable(v View, i int, s DrillStep, stem string, raw []byte) ([]string, error) {
 	return openableNodes(v, i, s, stem, raw)
 }

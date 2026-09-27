@@ -48,11 +48,7 @@
 // evidence-doc contract and deliberately no more of it: the declared map, the
 // opening markers and the backlinks belong to fisc-ak39.
 //
-// AND A CITED GO TEST NAME IS THE SAME CLAIM IN THE MOST DANGEROUS FORM. A
-// comment saying a named test pins something reads as coverage, so nobody
-// looks; when the name resolves to nothing the claim is not merely dead but
-// misleading about what is guarded. See testNamePattern for why this one is
-// writable where a general identifier check is not.
+// A cited Go test name must resolve too: a dead one reads as coverage.
 package main
 
 import (
@@ -155,72 +151,28 @@ var loosePattern = regexp.MustCompile("AGENTS\\.md(?:[^\".\\n]|\\.[^\" \t\n]|\\n
 // included; missingDocs decides what a prefixed one resolves against.
 var docPathPattern = regexp.MustCompile(`(^|[^A-Za-z0-9_./-])((?:\.\.?/)*docs/[A-Za-z0-9._/-]+\.md)`)
 
-// srcPathPattern finds a SOURCE path cited as a claim about this tree, by the
-// same guard rule as docPathPattern: a slash or a word character in front means
-// the path is the tail of something longer, and a claim about another
-// repository's tree is not this gate's to check.
-//
-// FOUR DIRECTORIES AND TWO EXTENSIONS, AND THE NARROWNESS IS THE POINT. A rule
-// saying "every path resolves" is unwritable here, and the false-positive
-// classes are what make this one writable:
-//
-//   - data/, dist/ and facts/ are BUILD OUTPUT and served artifacts, whose
-//     repo-relative spelling is not their path: the tree cites
-//     dist/data/sankey.json as data/sankey.json and means it.
-//   - a bare testdata/... path is PACKAGE-RELATIVE by Go convention, so it
-//     resolves against the citing package's directory and not against the root.
-//   - site/*.html is a rendered page and exists only after `make site`.
-//
-// Measured over the tree when this arm landed: 29 repo-shaped paths in tracked
-// comments and docs did not resolve, and under this rule exactly one of them
-// was a real dead pointer -- a harness comment naming the column emitter under
-// the command package, where it lives in internal/export. Every other miss fell
-// into a class above.
-//
-// THAT EXAMPLE IS DESCRIBED AND NOT SPELLED, for the reason this command's
-// package comment gives about citations: the path it wants is exactly the shape
-// this pattern matches, so writing it would make the command report itself.
-//
-// AND THE FIX IS USUALLY TO DROP THE PATH, NOT TO CORRECT IT, which is why this
-// gate's population shrinks rather than grows: AGENTS.md's "Where writing goes"
-// says a comment names a symbol and does not say where the symbol lives.
+// srcPathPattern finds a source path cited as a claim about this tree, with
+// docPathPattern's guard. Four directories and two extensions, because the
+// other repo-shaped paths are false positives: data/, dist/ and facts/ are
+// build output cited by their served spelling, a bare testdata/ path is
+// package-relative, and site/*.html exists only after `make site`. The usual
+// fix for a hit is to drop the path, not correct it.
 var srcPathPattern = regexp.MustCompile(
 	`(^|[^A-Za-z0-9_./-])((?:internal|pkg|cmd|tools)/[A-Za-z0-9._/-]+\.(?:go|mjs))`)
 
 // testNamePattern finds a Go test cited by name, and testDeclPattern is what it
-// resolves against.
-//
-// THIS ARM IS WRITABLE WHERE A GENERAL IDENTIFIER CHECK IS NOT, and the shape is
-// the whole reason. A Go test name is `Test` followed by a capital, it is
-// declared in exactly one place and in one form, and no other vocabulary in this
-// tree spells anything that way -- unlike a check id, which shares its spelling
-// with scopes, stems and taxonomy slugs and so cannot be told from them by shape.
-//
-// A NAME MAY BE WRAPPED AND A WRAPPED NAME IS NOT A DEAD ONE. Both forms are
-// tried, which is what keeps the false-positive rate at zero without an
-// exemption list: unwrapped for a name that runs into the next sentence, and the
-// joined form for one gofmt broke across two comment lines. unwrap says how.
-//
-// Measured over the scanned paths at 0cf899c, where this arm landed: 965
-// DISTINCT names cited against 948 declared, 955 of them resolving, and every
-// one of the 10 that did not was a real dead pointer -- five of them naming a
-// test that pins a contract and does not exist. Distinct names and not
-// occurrences: the same name is cited more than once.
+// resolves against. Unlike a general identifier, `Test` plus a capital is a
+// shape nothing else in the tree spells. A wrapped name is tried both unwrapped
+// and joined; see unwrap.
 var (
 	testNamePattern = regexp.MustCompile(`(^|[^A-Za-z0-9_])(Test[A-Z][A-Za-z0-9_]*)`)
 	testDeclPattern = regexp.MustCompile(`(?m)^func (Test[A-Z][A-Za-z0-9_]*)\(`)
 )
 
-// unwrap rejoins an identifier a comment broke across two lines: the optional
-// soft hyphen, the newline, and the next line's indentation and comment marker,
-// but ONLY between two identifier characters.
-//
-// THE FLANK CONDITION IS THE WHOLE GUARD. Joining unconditionally would glue the
-// last word of one line to the first of the next everywhere, inventing names out
-// of ordinary prose; requiring an identifier character on each side confines it
-// to the case a wrap actually produces. It still over-joins a name that ends a
-// line and is followed by a capitalised word, which is why the unwrapped form is
-// tried as well rather than instead.
+// unwrap rejoins an identifier a comment broke across two lines, but only
+// between two identifier characters; without that flank condition it would
+// glue ordinary prose into names. It still over-joins a name followed by a
+// capitalised word, which is why the unwrapped form is tried as well.
 var unwrap = regexp.MustCompile(`([A-Za-z0-9_])-?\n[ \t]*(?://+|\*|#)?[ \t]*([A-Za-z0-9_])`)
 
 // headingPattern and boldPattern are the two shapes an anchor takes in AGENTS.md.
@@ -322,9 +274,7 @@ func run(args []string, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "  to match rather than a tree with nothing to check.")
 		return 2
 	}
-	// A third floor, and this one guards two patterns at once: a scan that cites
-	// no test at all, or one that finds no declaration to resolve against, would
-	// pass every citation in the tree.
+	// A scan with no cited test or no declaration would pass every citation.
 	if len(testRefs) == 0 || len(declaredTests) == 0 {
 		fmt.Fprintf(stderr, "doccheck: the scanned paths yielded %d cited test name(s) and %d declaration(s)\n",
 			len(testRefs), len(declaredTests))
@@ -574,10 +524,8 @@ func scanUnder(root string, paths []string, anchors map[string]bool) (cites, mal
 				return err
 			}
 			testRefs = append(testRefs, tests...)
-			// THE DECLARATIONS COME FROM THE SAME WALK, so a package that
-			// leaves the scanned path list takes its tests with it and the
-			// citations of them go red, rather than resolving against a
-			// file nothing else here reads.
+			// Declarations come from the same walk, so an unscanned
+			// package's tests do not resolve citations.
 			if strings.HasSuffix(norm(path), "_test.go") {
 				decls, err := testDeclsIn(path)
 				if err != nil {
@@ -688,9 +636,8 @@ func pathRefsIn(path string, pattern *regexp.Regexp) ([]cite, error) {
 	return out, nil
 }
 
-// testRef is one cited Go test name, with the joined forms of the same
-// occurrence that a wrap could have produced. A ref is alive when ANY of them
-// is declared; see testNamePattern.
+// testRef is one cited Go test name, with the joined forms a wrap could have
+// produced; it is alive when any of them is declared.
 type testRef struct {
 	cite
 	alts []string
@@ -710,8 +657,7 @@ func testDeclsIn(path string) ([]string, error) {
 }
 
 // testRefsIn returns every Go test name cited in a file, each carrying the
-// names the same file yields once unwrapped that extend it. A wrapped citation
-// appears here as the short prefix plus the whole name as an alternative.
+// longer names unwrapping the file yields for it.
 func testRefsIn(path string) ([]testRef, error) {
 	b, err := os.ReadFile(path) // #nosec G304,G703 -- see scanUnder.
 	if err != nil {

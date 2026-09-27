@@ -279,10 +279,8 @@ var (
 // a check that the absence had ended, which is a thing to build when a page
 // makes it possible and not a condition to guess at here.
 //
-// THE FOURTH IS NOT ABOUT THIS SCHEDULE'S GAPS AT ALL. It is about the site
-// drawing these same rows a second time, at one column instead of four, and it
-// is shared with the document that draws them; see
-// [revenueSchedulePublishedTwiceCaveat].
+// The fourth is [revenueSchedulePublishedTwiceCaveat], shared with the
+// document that draws these rows a second time.
 func trendsCaveats() []Caveat {
 	return []Caveat{caveatGeneralFundTransfersIn, caveatCapitalReserves, caveatComparability,
 		revenueSchedulePublishedTwiceCaveat()}

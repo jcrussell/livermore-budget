@@ -13,11 +13,8 @@ import (
 // spendingCell is one printed cell of Budget Book pp.85-125's upper block: a
 // division, the object heading its row sits under, and what the page prints.
 //
-// THE FIXTURE IS THREE DIVISIONS AND NOT TWENTY-NINE, and it carries every shape
-// the committed corpus does: a division with two object rows, one with a printed
-// dash, and p124's Transfers Out row, which is the one row on those eleven pages
-// that is not an expenditure. Copying all 73 rows would make this a second fact
-// store rather than a test of the projection.
+// It carries a division with two object rows, a printed dash, and p124's
+// Transfers Out row, the one row that is not an expenditure.
 var spendingCells = []struct {
 	division string
 	category string
@@ -34,11 +31,8 @@ var spendingCells = []struct {
 	{"maintenance", "transfers/out", mapping.KindTransferOut, "Transfers Out", 124, 26_679_800},
 }
 
-// spendingFacts renders the fixture at the scope this document selects.
-//
-// mutate runs over each fact before it is appended, so a test can put one fact
-// in a state the corpus is not in -- a fund number, say -- without a second
-// copy of the table.
+// spendingFacts renders the fixture at the scope this document selects, with
+// mutate run over each fact.
 func spendingFacts(t *testing.T, mutate func(f *fact.Fact)) []fact.Fact {
 	t.Helper()
 	out := make([]fact.Fact, 0, len(spendingCells))
@@ -95,14 +89,9 @@ func buildSpending(t *testing.T, facts []fact.Fact) *DepartmentSpendingDocument 
 	return doc
 }
 
-// TestTheCrossTabDrawsOneRibbonPerPrintedCell is the document's whole shape in
-// one assertion: which ribbons exist, which way they run, and what they claim.
-//
-// THE DIRECTION AND THE FLAG ARE ASSERTED TOGETHER because either alone is a
-// different document. A ribbon running 5 -> 4 without `partition` is a chart
-// claiming money flows from an object category into a division, which is not
-// something Budget Book pp.85-125 print; the flag is what makes the direction a
-// drawing choice rather than a claim.
+// TestTheCrossTabDrawsOneRibbonPerPrintedCell pins which ribbons exist, their
+// direction and kind, and `partition` with the direction: 5 -> 4 without it
+// would claim money flows from an object category into a division.
 func TestTheCrossTabDrawsOneRibbonPerPrintedCell(t *testing.T) {
 	doc := buildSpending(t, spendingFacts(t, nil))
 
@@ -116,19 +105,13 @@ func TestTheCrossTabDrawsOneRibbonPerPrintedCell(t *testing.T) {
 	for _, l := range doc.Links {
 		got = append(got, ribbon{l.Source, l.Target, l.ValueCents, l.Kind, l.Partition})
 	}
-	// THE ZERO CELL IS NOT HERE AND ITS FACT IS. general-services prints a dash
-	// under Wages & Benefits, so there is no ribbon for it -- and the fact is
-	// still counted, below.
+	// general-services' printed dash draws no ribbon; its fact is counted below.
 	want := []ribbon{
 		{"expenditure/services-and-supplies", "dept/city-council", 7_808_000, KindExternal, true},
 		{"expenditure/services-and-supplies", "dept/general-services", 1_200_000, KindExternal, true},
 		{"expenditure/services-and-supplies", "dept/maintenance", 3_000_000, KindExternal, true},
 		{"expenditure/wages-and-benefits", "dept/city-council", 7_470_100, KindExternal, true},
-		// THE TRANSFER TAKES THE SPINE'S OWN NODE ID AND IS NOT EXTERNAL.
-		// `transfers/out` is a flow endpoint the contract pins at tier 5, and a
-		// link whose every fact is a transfer may not be published as money
-		// crossing the city's boundary -- link-kinds-match-their-facts reports
-		// exactly that.
+		// The transfer takes the spine's node id and is not external.
 		{"transfers/out", "dept/maintenance", 26_679_800, KindInternalTransfer, true},
 	}
 	if diff := cmp.Diff(want, got, cmp.AllowUnexported(ribbon{})); diff != "" {
@@ -156,12 +139,9 @@ func TestTheCrossTabDrawsOneRibbonPerPrintedCell(t *testing.T) {
 	}
 }
 
-// TestTheCrossTabCountsEveryFactOnceOrAsAPrintedZero pins the identity the
-// document publishes, and the number that makes it worth publishing.
-//
-// facts = facts_cited + facts_uncited, and the uncited one is general-services'
-// printed dash. A document that dropped a cell would publish a smaller `facts`
-// and still satisfy the identity, so the slice size is asserted too.
+// TestTheCrossTabCountsEveryFactOnceOrAsAPrintedZero pins facts = facts_cited +
+// facts_uncited, and `facts` against the slice size, since a dropped cell would
+// still satisfy the identity.
 func TestTheCrossTabCountsEveryFactOnceOrAsAPrintedZero(t *testing.T) {
 	doc := buildSpending(t, spendingFacts(t, nil))
 	c := doc.Metadata.Counts
@@ -185,16 +165,9 @@ func TestTheCrossTabCountsEveryFactOnceOrAsAPrintedZero(t *testing.T) {
 	}
 }
 
-// TestTheCrossTabRefusesAFactThatCarriesAFund is the guard that inverts the
-// drill-down's, and it is the one a reader is most likely to think is backwards.
-//
-// EVERY FACT OF THIS SCOPE CARRIES fund 0 AND fund_group "", because the upper
-// block prints what a division spends whatever pays for it. A fact here with a
-// fund is a row of the LOWER block, or of pp.167-170, wearing this scope -- and
-// drawn without a refusal it would be published under a document whose caveat
-// tells every reader that no row carries a fund. The amounts would be unchanged,
-// so departmentwide-ties-to-spine would still tie and nothing downstream would
-// see it.
+// TestTheCrossTabRefusesAFactThatCarriesAFund: these rows have no fund axis,
+// so a fact carrying one belongs to another schedule, and no amount check
+// would see it.
 func TestTheCrossTabRefusesAFactThatCarriesAFund(t *testing.T) {
 	for _, tc := range []struct {
 		name   string
@@ -242,10 +215,6 @@ func TestTheCrossTabRefusesAFactThatCarriesAFund(t *testing.T) {
 
 // TestTheCrossTabRefusesTwoColumnsAndTheWrongSchedule covers the two options
 // mistakes that produce a document which looks right.
-//
-// Two columns add every cell to its own successor and the matrix still reads as
-// a matrix; the wrong scope publishes another schedule's rows under this one's
-// caveats, which say those rows carry no fund.
 func TestTheCrossTabRefusesTwoColumnsAndTheWrongSchedule(t *testing.T) {
 	facts := spendingFacts(t, nil)
 
@@ -282,9 +251,6 @@ func TestTheCrossTabIsDeterministic(t *testing.T) {
 
 // TestTheCrossTabDeclaresOneSlicePerPrintedColumn pins the declaration
 // PublishedDocuments states by hand against the one the corpus produces.
-//
-// The two are deliberately separate -- a published set derived from the facts
-// would agree with them by construction -- so this is where they are compared.
 func TestTheCrossTabDeclaresOneSlicePerPrintedColumn(t *testing.T) {
 	facts := spendingFacts(t, nil)
 	for i := range facts {

@@ -123,21 +123,10 @@ func TestRevenueDetailDoesNotEnterTheSpine(t *testing.T) {
 	}
 }
 
-// TestRevenueDetailAtSpineScopeIsRefusedByTheKey pins what a mis-scoped
-// revenue rule now meets, which is a refusal rather than a doubled figure.
-//
-// IT USED TO BUILD, DOUBLED, SILENTLY: with no fund in the cell key the
-// thirteen detail lines landed in the spine's own General Fund property tax
-// cell and the chart published 128,287,524 where p66 prints 64,143,762, with
-// every graph check green. With the fund in the key each detail line is its
-// own cell, the graph gains a second link from the same source to the same
-// group, and checkDistinctLinks refuses it by name. The scope string is no
-// longer the whole of the guard.
-//
-// WHAT THIS DOES NOT PROVE is that a fund-bearing rule cannot double a
-// figure some other way: a rule at the spine's scope whose rows carried no
-// fund would still land on the spine's cells. That case is cuts-tie-along-
-// the-lattice's, which compares the schedules to each other.
+// TestRevenueDetailAtSpineScopeIsRefusedByTheKey: with the fund in the cell
+// key, a mis-scoped revenue rule's detail lines become a second link on the
+// spine's pair, which checkDistinctLinks refuses, rather than a doubled figure.
+// A fundless rule at the spine's scope is cuts-tie-along-the-lattice's case.
 func TestRevenueDetailAtSpineScopeIsRefusedByTheKey(t *testing.T) {
 	all := append(spineFacts(t, testYear), revenueDetailFacts(t, testScope)...)
 

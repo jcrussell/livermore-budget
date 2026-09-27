@@ -45,30 +45,17 @@ import (
 )
 
 // PrimaryProjection is the spine document, and the default view's projection.
-//
-// IT IS NO LONGER "the projection whose metadata drives the page", which is what
-// it meant while there was one page. Each view now decodes its own document and
-// composes its own chrome. What survives is narrower than it looks and is worth
-// stating exactly, because an earlier draft of this comment claimed more than
-// the code does: this stem must be among the projections built (ErrNoPrimary),
-// and it is the projection of the view a caller gets when it names none. It is
-// NOT required to be the view at IndexPath -- validate asks only that exactly
-// one view is there -- because which document a site opens on is the composition
-// root's decision and there is no reason this package should own it.
+// It must be among the projections built (ErrNoPrimary). It is NOT required to
+// be the view at IndexPath: which document a site opens on is the caller's.
 const PrimaryProjection = "sankey"
 
 // IndexPath is the view the site opens on. It is the fixed entry point of the
 // output layout, so it is a constant rather than something a caller may move.
 const IndexPath = "index.html"
 
-// RungsPath is where the rung answer is served: Go's reading of every rung
-// the drill walks, at the site root. The composition
-// root computes and writes it; this package only names it, into
-// window.FISC_CONFIG, so the page fetches the file the site actually wrote.
-//
-// IT IS THE SPINE'S ANSWER AND NOT EVERY PAGE'S. The walk behind it starts
-// from the view at [IndexPath], so a page whose steps are not that view's has
-// no entry in it and must not be told to read one.
+// RungsPath is where the rung answer is served. The caller writes it; this
+// package only names it in window.FISC_CONFIG. It is the answer for the view
+// at [IndexPath] only, so no other page is told to read it.
 const RungsPath = "rungs.json"
 
 // dataDir is the output subdirectory holding projection JSON. It is part of
@@ -150,100 +137,41 @@ type View struct {
 	// must be a key of [Options.Projections].
 	Projection string
 	// Title is the <title>, and on a template that renders one, the page
-	// heading. Lede is the sentence under it.
+	// heading. Lede is the sentence under it. Both are the caller's words.
 	//
-	// BOTH ARE THE CALLER'S WORDS, not composed here. A packager that wrote
-	// prose about a document would be making a claim about figures it is
-	// forbidden to recompute; what it may do is render what it was handed.
-	//
-	// ONLY THE TRENDS TEMPLATE RENDERS A LEDE, and that is a property of the
-	// documents rather than an oversight. The spine's lede wraps a live
-	// <span id="lede-year"> that app.js rewrites on every year switch, so it
-	// cannot be a string handed over once at package time; its <h1> is a
-	// standing question rather than a description of one year, which is why it
-	// differs from the <title> that carries the year. The trends page has one
-	// document, no year control and no such span, so both are simply rendered.
-	//
-	// A Lede on a template that renders none is REFUSED rather than dropped --
-	// see validate. It was silently ignored, which is a trap for the next
-	// caller: the field is set, the export succeeds, and the sentence is
-	// nowhere on the page.
+	// Only the trends template renders a Lede: the spine's lede wraps a live
+	// <span id="lede-year"> that app.js rewrites on every year switch. A Lede
+	// on a template that renders none is refused rather than dropped.
 	Title string
 	Lede  string
 	// YearStems are the documents that are the same projection for different
 	// fiscal years, OLDEST FIRST, which is the order a reader meets them in.
 	// Empty means this view has one document and renders no year control.
 	//
-	// THE PAGE OPENS ON THE LAST OF THEM. Reordering this list changes which
-	// year a reader is greeted with, which is the one thing to know before
-	// doing it.
-	//
-	// IT IS PER VIEW, not per site. Years are a property of the SPINE, which
-	// publishes one document per fiscal year; the revenue trends publish one
-	// document spanning four columns and have no year to switch between. A
-	// single site-wide list could not say that.
+	// THE PAGE OPENS ON THE LAST OF THEM, so reordering this list changes
+	// which year a reader is greeted with.
 	YearStems []string
 
 	// Sections are the printed blocks a history table groups its rows under,
-	// in printed order. The caller's words, like Title and Lede: a heading is
-	// prose about the document, which this package may render and never
-	// compose. buildHistoryPage refuses a series no section claims and a
-	// section that claims no series, so the declaration cannot silently
-	// mislabel a block the schedule gained or lost.
+	// in printed order, in the caller's words. buildHistoryPage refuses a
+	// series no section claims and a section that claims no series.
 	Sections []Section
 
 	// RenderTiers is the node tiers this view's chart draws, left to right,
-	// shipped to the client as FISC_CONFIG.render_tiers. Empty draws the
-	// document whole, in whatever column order d3 infers from its topology.
+	// shipped as FISC_CONFIG.render_tiers. Empty draws the document whole.
 	//
-	// IT IS A COLUMN ORDER AND NOT ONLY A SET. site/app.js aligns a node on
-	// this list's indexOf, so what is to the LEFT of what is a declaration
-	// rather than an inference -- which is why a view that OPENS a node must
-	// carry one: a step that keeps a flank of its parent's chart names a tier
-	// adjacent to the one it opens from, and adjacency is a question only a
-	// declared order can answer. validateSteps refuses the kept flank against
-	// a parent that declares none.
-	//
-	// IT IS PER VIEW BECAUSE THE DOCUMENTS HAVE DIFFERENT HIERARCHIES. The
-	// spine publishes tiers 0, 2 and 5; the drill-down publishes 0, 2, 3, 4
-	// and 5 and cannot be drawn whole at all -- its 61-node fund column lays
-	// every node and every ribbon out at zero height. A tier set belonging to
-	// this package rather than to a view would be wrong for one of them: the
-	// drill-down's set over the spine REFUSES to draw, because a spine node is
-	// parentless and has no ancestor to fold to. A refusal is the better of
-	// the two failures and still a broken page.
-	//
-	// The fold itself is the client's: see site/app.js's foldDocument and the
-	// "Drawing it" section of docs/general-fund-drilldown-contract.md. This
-	// package ships the declaration and never applies it, which is the same
-	// division of labour as every other figure on the page.
+	// IT IS A COLUMN ORDER AND NOT ONLY A SET: site/app.js aligns a node on
+	// this list's indexOf, so adjacency is declared. validateSteps refuses a
+	// kept flank against a parent that declares none. The fold is the client's.
 	RenderTiers []int
 
 	// Steps is how this view's chart opens a node, one hop per step, or empty
-	// for a view whose chart does not open at all. Shipped to the client as
-	// FISC_CONFIG.steps.
+	// for a chart that does not open; a node click then isolates instead.
+	// Shipped as FISC_CONFIG.steps.
 	//
-	// PER VIEW FOR RenderTiers' REASON, AND THEN SOME: it declares what
-	// activating a node MEANS on this page. Without it a node click isolates,
-	// which is what the spine has always done; with it a node at a step's From
-	// opens into that step's Tiers, and a node at a child step's From in THAT
-	// chart opens into the child's. Those are two interaction contracts and no
-	// page has both, because a page that drills has two drawn columns and
-	// isolating on two columns dims a column the reader was not looking at
-	// (fisc-ppkq).
-	//
-	// THE LIST IS FLAT AND THE SHAPE IS A TREE. A step names the charts it
-	// opens from ([DrillStep.After]), so two openable tiers at one depth are
-	// two steps sharing a parent rather than two entries of a path, and a view
-	// may declare several steps that open from its own chart. A step may name
-	// several parents, so one chart is reachable from several -- which makes
-	// the shape a DAG over a strictly decreasing declaration order, and leaves
-	// every walk of it finite for the reason After's comment gives. Flat
-	// rather than nested because the packager resolves one step document per
-	// entry. What a declared tree must satisfy is validateSteps'.
-	//
-	// The behaviour is entirely the client's, like the fold. This package ships
-	// the declaration.
+	// THE LIST IS FLAT AND THE SHAPE IS A DAG: a step names the charts it opens
+	// from ([DrillStep.After]). What a declared tree must satisfy is
+	// validateSteps'.
 	Steps []DrillStep
 }
 
@@ -424,157 +352,63 @@ type Section struct {
 	Rows map[string]string
 }
 
-// DrillStep is one hop of a view's chart opening a node into its parts.
-//
-// WHY FILTER-AND-RESCALE AND NOT EXPAND-IN-PLACE. Measured, and recorded on
-// fisc-ppkq: the vendored d3-sankey derives its column count from topology and
-// clamps the align function into it, so expanding one node in place draws that
-// node's children in the same column as the next tier while the unexpanded
-// ribbons span two -- which the client's layout test refuses outright.
-// Filtering to one node keeps every tier set uniform, which is the only shape
-// this build lays out.
+// DrillStep is one hop of a view's chart opening a node into its parts, by
+// filtering and rescaling rather than expanding in place (fisc-ppkq records
+// why d3-sankey cannot lay out the latter).
 //
 // FROM AND TIERS ARE NOT NECESSARILY TIERS OF THE SAME DOCUMENT. From is a tier
-// of the chart on screen when the reader opens a node -- the step After names,
-// or the view's own document for a root step -- and Tiers are tiers of the
-// document THIS step draws. On a step that switches document the two
-// hierarchies are unrelated: From: 2 is the spine's fund-group tier while
-// Tiers: {0, 3, 4} are fund-flows'. So validateSteps places From against this
-// step's parent and Tiers against this step's caps, and cannot relate From to
-// Tiers at all. A reader expecting it to has read the struct as one document.
-//
-// THE TREE IS ON THE WIRE BECAUSE THE CLIENT WALKS IT. Key, After, Side and
-// Role say what this step opens and what it opens from, and site/app.js
-// resolves the step a node opens into by matching all three against the rung
-// on screen rather than by depth -- two steps open from the spine's chart, one
-// per tier, and a depth cannot tell them apart. They were `json:"-"` while no
-// client read them, so that a key on the wire could not be a second
-// declaration of a tree nothing walked.
+// of the chart on screen; Tiers are tiers of the document THIS step draws. On
+// a step that switches document the two hierarchies are unrelated, so
+// validateSteps never relates From to Tiers.
 type DrillStep struct {
-	// Key names this step, so another step can declare that it opens from this
-	// step's chart. Required and unique within a view: a step no other step can
-	// name is a chart no second edge can ever be attached to, and the
-	// uniqueness is what makes [DrillStep.After] resolve to one parent.
+	// Key names this step for [DrillStep.After]. Required and unique within a
+	// view.
 	Key string `json:"key"`
 	// After is the Keys of the steps whose charts this one opens from, and ""
-	// is the view's own chart. Several steps may share one entry: that is the
-	// second edge out of one chart a path cannot express. Several entries,
-	// because one chart is reachable from several -- a fund group opens the
-	// same view whether the reader clicked it on the spine, in a revenue
-	// category's window or in an object category's, and one parent could not
-	// say so.
+	// is the view's own chart.
 	//
-	// EVERY ENTRY NAMES AN EARLIER STEP, ALWAYS, and validateSteps refuses one
-	// that does not. A cycle is then undeclarable rather than detected: every
-	// parent chain strictly decreases whichever entry it is walked through, so
-	// it ends at a root in at most len(Steps) hops. That argument is the list's
-	// unchanged, which is why the list is safe -- it generalises which charts a
-	// step hangs off and weakens nothing about the order they are declared in.
-	//
-	// A ROOT SAYS SO WITH "", NOT WITH AN EMPTY LIST. "Opens from the view's
-	// own chart" and "declares no parent at all" are different claims and the
-	// zero value cannot be the first; validateSteps refuses a step naming no
-	// chart. The client matches by membership against the key of the rung on
-	// screen, which is "" on the overview.
+	// EVERY ENTRY NAMES AN EARLIER STEP, so a cycle is undeclarable rather than
+	// detected. A root says so with "", not with an empty list, which
+	// validateSteps refuses.
 	After []string `json:"after"`
 	// From is the tier whose nodes open, in the chart on screen before they do.
 	// One tier rather than a set: a step is one hop, and a second tier of the
 	// same chart is a second step sharing this one's After.
 	From int `json:"from"`
 	// Side is which end of a link the opened node sits on: "" for the node the
-	// links point AT, which is every step the site ships today, and
-	// [SideSource] for the node they come FROM.
-	//
-	// DECLARED, NEVER INFERRED. "The opened tier is below every tier this step
-	// draws, so it must be a source" is a mapping from tier numbers to meaning
-	// -- the construct paintBreadcrumb's comment in site/app.js refuses. It is
-	// true of the columns that exist and says nothing a third document would
-	// have to obey.
+	// links point AT, [SideSource] for the node they come FROM. Declared, never
+	// inferred from tier numbers.
 	Side string `json:"side,omitempty"`
 	// Role is which of the nodes at From open, in the caller's vocabulary, or
-	// "" for all of them.
-	//
-	// A DISCRIMINATOR THIS PACKAGE GIVES NO MEANING. validateSteps requires
-	// only that (After, From, Role) name at most one step, so two steps opening
-	// one tier of one chart are told apart by something the caller declared
-	// rather than by declaration order.
+	// "" for all of them. This package gives it no meaning beyond requiring
+	// (After, From, Role) to name at most one step.
 	Role string `json:"role,omitempty"`
 	// Projection is the SCHEDULE this step draws, or "" to draw the same
-	// document as the step before it -- the view's own, for the first step.
-	// Every column the view lists must carry it; validateSteps refuses one
-	// that does not.
-	//
-	// A SCHEDULE KEY AND NOT A FILENAME STEM, which is what makes the per-year
-	// join disappear rather than move. A reader fetches the column their year
-	// landed on and selects this key out of it ([ColumnIndex]), so the year is
-	// carried by the file and the step names only the printed schedule. It was
-	// a stem, resolved through a declared per-year map, and that map could
-	// point a year at another year's figures while satisfying every arm that
-	// guarded it.
-	//
-	// Omitted from the JSON when empty, so the client reads an absent key as
-	// "the same document" rather than as a schedule named "".
+	// document as the step before it. Every column the view lists must carry
+	// it. A schedule key and not a filename stem: the year is carried by the
+	// column file the reader fetched ([ColumnIndex]).
 	Projection string `json:"projection,omitempty"`
 	// Tiers is the tier set drawn once a node has opened -- this step's
 	// RenderTiers, and a different declaration from the chart's before it.
 	Tiers []int `json:"tiers"`
-	// Keep is the flank of the chart on screen that stays drawn beside the node
-	// the reader opened -- the columns they came from -- NEAREST THE CENTRE
-	// FIRST, or empty for a step that draws the opened node's parts alone, which
-	// is every step the site ships today.
+	// Keep is the flank of the chart on screen that stays drawn beside the
+	// opened node, NEAREST THE CENTRE FIRST, or empty for a step that draws the
+	// opened node's parts alone. A slice and not an int because tier 0 is a
+	// real tier. The entries are contiguous and on one side of the opened tier.
 	//
-	// A SLICE AND NOT AN INT, because tier 0 is a real tier: it is the spine's
-	// revenue categories, and the flank a fund group's window keeps. An int's
-	// zero value would read as "keep tier 0" on every step that declares
-	// nothing at all, which is the absent-is-not-zero rule the fact store is
-	// built on (AGENTS.md, "Provenance invariants") arriving at this seam.
-	//
-	// ONE FLANK, AND IT MAY BE MORE THAN ONE COLUMN DEEP. The entries are
-	// columns of the parent chart's own order, contiguous and all on ONE side of
-	// the opened tier: two ends is two answers to which flank, and a gap is a
-	// column the reader was looking at dropped out of the middle of the ones
-	// that stay.
-	//
-	// WITH AN ENTRY IT MAKES THE WINDOW A PROPERTY OF THE TYPE. Tiers is then
-	// the flank, the node that was opened and what it opens into -- one column
-	// each, plus one for every [DrillStep.Widen] entry -- with the flank at
-	// whichever end the parent's own column order names: kept to From's left in
-	// the chart on screen, kept columns on the left here and outermost first.
-	// The sign of that adjacency is what tells the client which way the window
-	// pushes -- declared and positional, not the tier-number inference
-	// paintBreadcrumb's comment in site/app.js refuses. validateSteps checks it
-	// against EVERY chart this step opens from, so a step reachable from two
-	// charts that disagree about which side its kept flank is on cannot be
-	// declared.
+	// With an entry, Tiers is the flank, the opened node and what it opens
+	// into, plus one column per [DrillStep.Widen] entry, with the flank at the
+	// end the parent's column order names. validateSteps checks that side
+	// against every chart this step opens from.
 	Keep []int `json:"keep,omitempty"`
 	// Widen is the tier this step adds for each column beyond the window's own
-	// three, in the order they are added: the first entry is the first column a
-	// reader with room for a fourth is shown, and a client with room for fewer
-	// drops them from the end of this order.
-	//
-	// WHICH SIDE AN ENTRY LANDS ON IS DERIVED, and it is the one thing at this
-	// seam that CAN be: a widened column is on the opened node's side, so it
-	// sits at the end of Tiers away from the kept flank, and the order outward
-	// from the centre is this list's own. The caller declares which columns are
-	// optional and in what order they go, Tiers says where they are drawn, and
-	// validateSteps refuses a pair that disagree -- two parties recording one
-	// shape independently rather than one declaration restated.
-	//
-	// A FLANK IS DEEPENED BY KEEPING A COLUMN, NOT BY WIDENING INTO ONE. Both
-	// end up as a fourth column and they are different claims: a kept column is
-	// drawn at its share of the centre and carries the chart the reader came
-	// from, and a widened one is part of what the opened node decomposes into.
-	//
-	// REFUSED ON A STEP THAT KEEPS NOTHING, which is a filter and not a window:
-	// it draws the opened node's parts alone, at whatever tiers it names, and
-	// has no centre for a column to be added out from.
+	// three, in the order they are added; a client with room for fewer drops
+	// them from the end. A widened column sits at the end of Tiers away from
+	// the kept flank, and validateSteps refuses a Tiers that disagrees.
+	// Refused on a step that keeps nothing.
 	Widen []int `json:"widen,omitempty"`
 	// Caps bounds the columns this step draws, one per tier that needs one; a
 	// tier with no cap is drawn whole.
-	//
-	// A SLICE AND NOT A MAP. The shipped JSON then has one order whatever the
-	// declaration's, and validateSteps can refuse a cap on a tier the step does
-	// not draw, which a map keyed by tier would carry in silence.
 	Caps []TierCap `json:"caps,omitempty"`
 	// Back is what the breadcrumb's return control says, e.g. "All fund
 	// groups". Declared rather than derived from From, because a tier number
@@ -582,140 +416,55 @@ type DrillStep struct {
 	Back string `json:"back"`
 	// Tail is the plural noun the capped aggregate is counted in -- "funds",
 	// "categories" -- so its label reads "24 smaller funds". A cap naming its
-	// own [TierCap.Tail] takes that instead; this is the default for the rest.
-	//
-	// DECLARED FOR Back's REASON, and it was derived for one commit: app.js
-	// read `tier === 3 ? "funds" : "categories"`, which is the exact construct
-	// the comment on paintBreadcrumb refuses two functions away. A third page
-	// drilling into a third tier would have been given "categories" and nothing
-	// would have said so.
+	// own [TierCap.Tail] takes that instead. Declared for Back's reason.
 	Tail string `json:"tail"`
 	// Noun is the singular noun for a node opened on this step -- "fund group",
-	// "division" -- which the client spends only to tell two rungs of one trail
-	// apart when the documents print them in the same words.
-	//
-	// REQUIRED, THOUGH MOST TRAILS NEVER DRAW IT. The collision is the city's
-	// rather than this site's: Budget Book p66 prints "General Fund" as a
-	// fund-group column header and p255 prints it as fund 100's name, so a reader
-	// two rungs in is told "opened into General Fund, then General Fund" with
-	// nothing saying which is which. Neither label may be changed without
-	// inventing words for a box the city named, so the trail is where it is
-	// resolved.
-	//
-	// DECLARED FOR Back's AND Tail's REASON: a tier number does not know what the
-	// reader calls the things in it, and singularising Back is that same
-	// inference with a harder grammar. Optional would be worse than absent -- a
-	// step shipping none would compose an unqualified duplicate in silence, on
-	// the first document whose words happen to collide.
+	// "division" -- which the client uses only to tell two rungs of one trail
+	// apart when the documents print them in the same words (Budget Book p66
+	// and p255 both print "General Fund"). Required, though most trails never
+	// draw it.
 	Noun string `json:"noun"`
 	// Description is the chart's long description once a node has opened on
-	// this step: what the columns are and what the marks mean, in the caller's
-	// words. The client writes it into the SVG's <desc> at that depth and
-	// appends how to get back and where the flow table is.
-	//
-	// REQUIRED AND TERMINATED. An opened chart with no description of its own
-	// announces the opening state's -- "revenue categories flow into six fund
-	// groups" over a chart of one group's funds -- and only to the readers who
-	// cannot see the marks disagree. Terminated because the client appends its
-	// own sentences after it, and an unterminated one runs into them.
+	// this step, in the caller's words; the client writes it into the SVG's
+	// <desc>. Required, and terminated because the client appends sentences.
 	Description string `json:"description"`
 	// Residual is the set of endpoints of the chart this step opens FROM whose
 	// flow into or out of the opened node the document this step DRAWS does
-	// not decompose, each with the reason it cannot: node id to reason. The
-	// client copies those links verbatim onto one derived node beside the
-	// opened node's parts, so a reader sees the money the finer document does
-	// not carry rather than a total that silently fell short.
+	// not decompose: node id to reason. The client copies those links onto one
+	// derived node beside the opened node's parts.
 	//
-	// ONLY ON A STEP THAT SWITCHES DOCUMENT. A residual is what one document
-	// prints at a grain the other does not, and a step drawing the document
-	// before it has no second grain for anything to be residual between;
-	// validateSteps refuses one there rather than let the client carry a set
-	// that nothing on that step could match.
-	//
-	// DECLARED BY THE CALLER FROM ONE PLACE, not composed here or in the
-	// client. The composition root reads it off the check that guards the
-	// identity it states (check.ResidualNodes), and the reasons ride along
-	// because they are what the node's rationale says to a reader. Omitted
-	// from the JSON when empty, so the client reads an absent key as "this
-	// step carries nothing across", which is every same-document step.
+	// Only on a step that switches document. The caller reads it off
+	// check.ResidualNodes.
 	Residual map[string]string `json:"residual,omitempty"`
 	// ResidualGrain is the grain the document this step draws does NOT split
-	// that money by, in the city's own singular word for it -- "fund". The mark
-	// is named "Not split by <grain> here" and its rationale says the same word
-	// again, which is why the grain is declared and the sentences are not.
-	//
-	// A CLAIM ABOUT THE DOCUMENT AND NOT ABOUT THE TIER. The client hard-coded
-	// "Not broken down by fund", and it read correctly only because every
-	// residual on the committed corpus stands on a step that opens into funds. A
-	// step opening into divisions would have told a reader the schedule does not
-	// split by fund when what it does not split by is a division. Required
-	// wherever Residual is non-empty, so the pair cannot half-exist.
-	//
-	// NOT ON THE WIRE, and the tag says so deliberately. The grain is what Go
-	// composes the mark's label and rationale FROM; the page is served those
-	// sentences and has no use for the word itself, so shipping it would put a
-	// second source of the same claim in front of the client and invite it to
-	// compose a third. fisc-kops is the opposite failure -- a json:"-" on a
-	// field the client needed -- and the difference is whether anything on the
-	// far side reads it. Nothing does.
+	// that money by, in the city's singular word -- "fund". Go composes the
+	// mark's label and rationale from it. Required wherever Residual is
+	// non-empty. Not on the wire: the client is served the sentences.
 	ResidualGrain string `json:"-"`
 	// Gaps is the set of nodes this step OPENS whose total the document it
-	// draws does not reach, each with its licences: node id to the columns it
-	// differs in, by how much, and why. The client draws the shortfall as one
-	// derived node beside the opened node's parts, in the words GapOf composes.
+	// draws does not reach: node id to the licences for each column it differs
+	// in, by how much, and why. The client draws the shortfall as one derived
+	// node, in the words GapOf composes.
 	//
-	// NOT [DrillStep.Residual], AND THE KEY IS WHAT SEPARATES THEM. A residual
-	// key is an ENDPOINT of the chart above whose flow into or out of the
-	// opened node has no finer grain, and the client carries that endpoint's
-	// published link across verbatim. A gap key is the OPENED NODE itself and
-	// there is no link to carry: both documents draw the cell, at figures that
-	// differ. Declared in the other's field it would also have the client treat
-	// the node the reader clicked as carried from the chart above, which it is
-	// not.
-	//
-	// EACH LICENCE NAMES ITS COLUMN AND ITS CENTS, because a gap is per fiscal
-	// column while a step is declared once for every year the view lists.
-	// GapOf takes the difference off the drawn graph at export time and
-	// refuses one no licence names at that column and that figure.
-	//
-	// A STEP DECLARING ONE CLAIMS EVERY OTHER NODE IT OPENS BALANCES. The
-	// client refuses a shortfall on a node named nowhere here rather than
-	// drawing it unexplained, which is the claim's only teeth. A step declaring
-	// none makes no such claim: the fund-group step's opened node is
-	// deliberately unbalanced and says so through [DrillStep.Residual] instead.
-	//
-	// ONLY ON A STEP THAT SWITCHES DOCUMENT, for Residual's reason.
+	// A gap key is the opened node itself; a [DrillStep.Residual] key is an
+	// endpoint of the chart above. A step declaring a gap claims every other
+	// node it opens balances. Only on a step that switches document.
 	Gaps map[string]Gaps `json:"gaps,omitempty"`
 }
 
 // SideSource is [DrillStep.Side] for a step opening the node its chart's links
-// come FROM, as against "", which opens the node they point at.
-//
-// A CONSTANT BECAUSE THE PACKAGER SPELLS IT. The two values are a vocabulary
-// this package refuses outside of, and a caller's "Source" would otherwise be a
-// declaration that validates and means nothing.
+// come FROM.
 const SideSource = "source"
 
 // TierCap is how many nodes one drawn tier may hold before its tail, by value,
-// is folded into one aggregate node.
-//
-// IT IS NOT A TIDINESS SETTING. fisc-ppkq claims rescaling to a group's own
-// total is what makes its funds legible, and that is measured false: the
-// special-revenue group rescaled to itself still puts 22 of its 49 ribbons
-// under one pixel, because the concentration is WITHIN the group -- one fund
-// is 34.9% of it and the smallest two are 0.034%. Rescaling cannot fix a
-// distribution. At cap 8 the same graph draws 2 sub-pixel ribbons.
+// is folded into one aggregate node. Rescaling alone does not make a group's
+// funds legible: the concentration is within the group.
 type TierCap struct {
 	Tier int `json:"tier"`
 	Cap  int `json:"cap"`
 	// Tail is the plural noun this tier's folded tail is counted in, or "" to
-	// take the step's [DrillStep.Tail].
-	//
-	// PER CAP BECAUSE ONE STEP CAPS TWO TIERS OF DIFFERENT THINGS. A revenue
-	// category opens into its printed lines and the funds they land in, and
-	// both columns fold on the committed corpus -- so one noun on the step
-	// labels the fund tail "26 smaller lines". The fund-group step had the same
-	// defect latent: its division cap read "funds" and never engaged.
+	// take the step's [DrillStep.Tail]. Per cap because one step may cap two
+	// tiers of different things.
 	Tail string `json:"tail,omitempty"`
 }
 
@@ -728,9 +477,6 @@ type Download struct {
 }
 
 // ColumnPath is the file one published column ships at, at the site root.
-//
-// Named by COLUMN and not by year: one basis per year is a property of today's
-// corpus, and the packager already refuses a document on both.
 func ColumnPath(year int, basis string) string {
 	return fmt.Sprintf("fy%d-%s.json", year, basis)
 }
@@ -769,23 +515,11 @@ func (o *Options) validate(ix ColumnIndex) error {
 			index++
 		}
 	}
-	// Exactly one, not at least one: a site with no index.html has no entry
-	// point and a caller listing it twice has already been refused above, so
-	// what is left to say is that the front door is a single view.
 	if index != 1 {
 		return fmt.Errorf("%d views are at %s; the site opens on exactly one", index, IndexPath)
 	}
-	// A NAV LABEL IS ONLY OWED WHEN A NAV IS RENDERED, which is why this is
-	// here and not in View.validate: only Options knows how many views there
-	// are. Every template guards its nav with {{if gt (len .Nav) 1}}, so a
-	// single-view site draws none and a view with neither field loses nothing.
-	// From two views up, buildSite falls back Nav -> Title and has nothing
-	// after that, so the nav ships <a href="trends.html"></a> -- a link a
-	// reader can see, cannot read, and can still click.
-	//
-	// Refused rather than defaulted to path.Base(v.Path). A filename is not a
-	// label, and dropping the caller's intent into one is what the Lede rule
-	// above declines to do.
+	// A nav label is only owed when a nav is rendered, from two views up;
+	// without one the nav ships an empty link.
 	if len(o.views()) > 1 {
 		for _, v := range o.views() {
 			if v.Nav == "" && v.Title == "" {
@@ -800,10 +534,7 @@ func (o *Options) validate(ix ColumnIndex) error {
 			return err
 		}
 	}
-	// A PUBLISHED LOCATOR MUST POINT AT BYTES THIS SITE SHIPS. The provenance
-	// page's whole claim is that a citation resolves; an entry naming a file
-	// the caller did not supply publishes a link that 404s, which is worse
-	// than publishing nothing.
+	// A published locator must point at bytes this site ships.
 	for _, e := range o.PageIndex {
 		switch {
 		case e.DocID == "":
@@ -818,35 +549,15 @@ func (o *Options) validate(ix ColumnIndex) error {
 			return fmt.Errorf("page index entry %s p%d publishes %q, which is not among "+
 				"the files to be written", e.DocID, e.Page, e.Data)
 		}
-		// Checked rather than trusted: the size is printed to a reader as a
-		// promise about a download, and a caller computing it from something
-		// other than these bytes is how it comes to be wrong.
 		if e.Bytes != len(b) {
 			return fmt.Errorf("page index entry %s p%d says %q is %d bytes and it is %d",
 				e.DocID, e.Page, e.Data, e.Bytes, len(b))
 		}
-		// AND THE BASE THE CLIENT COMPOSES WITH MUST BE THE DIRECTORY THE
-		// RECORDS WERE ACTUALLY WRITTEN INTO. Both sides come from the same
-		// producer, so this cannot witness a wrong path rule -- it catches a
-		// MIS-WIRED CALLER, one that fills RecordsBase from a different source
-		// than the entries, which is how the client would come to compose a
-		// URL for a file no one wrote. Claimed as that and no more.
+		// The base must be exactly the entry's directory, trailing slash
+		// included: the client appends only a filename. Both sides come from
+		// one producer, so this catches a mis-wired caller, not a wrong path
+		// rule.
 		if base, ok := o.RecordsBase[e.DocID]; ok {
-			// A DIRECTORY PREFIX, NOT A STRING PREFIX. Without the trailing
-			// separator "facts/d/pages" is a clean prefix of
-			// "facts/d/pages/p0066.jsonl" and the client composes
-			// "facts/d/pagesp0066.jsonl" -- every records anchor 404s, from a
-			// base that validated. Options.Build is a public seam, so a caller
-			// reaching for path.Join instead of shardBase is the likely way in,
-			// and it is exactly the mis-wired caller this guard claims to catch.
-			// EXACT DIRECTORY, not a prefix and not an ancestor. A prefix test
-			// accepts "facts/" while the shards live at "facts/<doc>/pages/",
-			// and the client -- which appends only a filename -- then composes
-			// "facts/p0066.jsonl" and 404s every anchor. The trailing-separator
-			// arm alone does not catch that: "facts/" has one. Both failures
-			// are the same mis-wired caller and this states the relationship
-			// the client actually relies on, which is that the base IS the
-			// entry's directory.
 			if want := path.Dir(e.Data) + "/"; base != want {
 				return fmt.Errorf("records base for %s is %q, but page index entry p%d "+
 					"has its records in %q; the client appends only a filename to the base",
@@ -877,15 +588,8 @@ func (o *Options) validate(ix ColumnIndex) error {
 	return nil
 }
 
-// fixedPaths are the output paths Write owns whatever the caller asked for. An
-// asset landing on one of them would not be an extra file but a replaced one:
-// the site would still export, and the page would be broken in the browser only.
-//
-// IT NO LONGER CONTAINS index.html, and that is the point of the split. The
-// pages are now a property of Options -- one per View -- so which paths are
-// reserved is too, and a package-level set could only ever know about the one
-// page that used to exist. An asset at trends.html would have shadowed a view
-// silently.
+// fixedPaths are the output paths Write owns whatever the caller asked for.
+// The views' own paths are added per Options by reservedPaths.
 var fixedPaths = func() map[string]bool {
 	m := map[string]bool{markerName: true}
 	for _, name := range verbatimAssets {
@@ -905,11 +609,6 @@ func (o *Options) reservedPaths() map[string]bool {
 }
 
 // views is Views, or the single Sankey page a caller that named none meant.
-//
-// The default is here rather than in every reader so that "no views" and "the
-// one view this site had before views existed" are the same thing to everything
-// downstream. It also keeps the existing callers -- and the existing output --
-// working unchanged.
 func (o *Options) views() []View {
 	if len(o.Views) > 0 {
 		return o.Views
@@ -929,41 +628,19 @@ func (v View) validate(built map[string][]byte, ix ColumnIndex) error {
 	switch {
 	case v.Path == "":
 		return errors.New("a view has no output path")
-	// THIS ARM RUNS BEFORE THE SUFFIX CHECK, and the order is the whole point.
-	// Behind it, every fixedPaths key -- .fisc-export, app.js, style.css,
-	// .nojekyll -- was caught first by "is not an .html file", and any
-	// data/x.html by the flat-root check, so the branch could never fire on any
-	// input. views_test.go's case named "a path that shadows an asset" asserted
-	// "not an .html file", which is to say it pinned the arm's unreachability
-	// rather than the shadowing it is named for.
-	//
-	// The distinction matters to whoever hits it: "app.js is not an .html file"
-	// invites you to rename it to app.html, which shadows nothing and is still
-	// wrong. "app.js is part of the fixed site layout" says why.
+	// Before the suffix check, or every fixedPaths key is reported as "not an
+	// .html file" and this arm is unreachable.
 	case fixedPaths[v.Path], strings.HasPrefix(v.Path, dataDir+"/"):
 		return fmt.Errorf("view path %q is part of the fixed site layout", v.Path)
 	case !strings.HasSuffix(v.Path, ".html"):
 		return fmt.Errorf("view path %q is not an .html file", v.Path)
 	case path.Base(v.Path) != v.Path:
-		// Flat, per the View doc comment: every asset path in the output is
-		// relative, so a page in a subdirectory would need ../ on all of them.
 		return fmt.Errorf("view path %q is not at the site root", v.Path)
-	// BEFORE ANYTHING ABOUT WHAT A TEMPLATE RENDERS, because nothing can be
-	// said about the renderings of a template that is not named. With this arm
-	// below the pair that follows, an empty Template made
-	// templateRendersADocument return false and a view with a projection was
-	// refused as "renders template \"\", which renders no document" -- true,
-	// and useless next to "names no template".
+	// Before anything about what a template renders.
 	case v.Template == "":
 		return fmt.Errorf("view %q names no template", v.Path)
-	// A WEAKENING, NOT A THIRD RULE OF THE FAMILY BELOW, and it is worth being
-	// plain about that. Lede, YearStems and RenderTiers each REFUSE a field a
-	// template cannot render. This arm stops refusing something: a template
-	// that renders no projection document -- the provenance index, which is
-	// built from Options.PageIndex and decodes nothing -- has no projection to
-	// name, and requiring one would mean naming an unrelated document to
-	// satisfy a guard. Both directions are refused so the weakening stays
-	// narrow: a template that DOES render a document still must name one.
+	// A template that renders no document (the provenance index) names no
+	// projection; one that does must name one.
 	case v.Projection == "" && templateRendersADocument(v.Template):
 		return fmt.Errorf("view %q names no projection", v.Path)
 	case v.Projection != "" && templateIsKnown(v.Template) && !templateRendersADocument(v.Template):
@@ -997,36 +674,16 @@ func (v View) validate(built map[string][]byte, ix ColumnIndex) error {
 			"view %q declares a drill chain and renders template %q, which publishes none; "+
 				"the chart would isolate on a click while this view believes it opens",
 			v.Path, v.Template)
-	// TWO ARMS, NOT ONE ARM BEHIND A `len(v.RenderTiers) > 0 &&` GUARD, and
-	// not one plain arm either. RenderTiers empty means the document is drawn
-	// WHOLE, every tier on screen, so a root step's From is drawn by
-	// definition: the spine draws whole and its tier 2 IS drawn. Without the
-	// guard, `!slices.Contains(v.RenderTiers, From)` refuses exactly that view.
-	// With the guard wrapping the only arm, the configuration that most needs
-	// refusing passes outright: a view on a template whose documents need
-	// folding, with a chain and NO tier set, ships the breadcrumb and the
-	// "click to open" hint over an unfolded 61-node column that lays every
-	// node out at zero height. So the first arm says only what it can know,
-	// and the hazard the guard hid is the second arm's, stated on its own.
-	//
-	// EVERY ROOT, NOT THE FIRST STEP. A view may declare several steps that
-	// open from its own chart; each is placed against RenderTiers here, and
-	// every other step is placed against its parent by validateSteps.
+	// Two arms: RenderTiers empty draws the document whole, so every root's
+	// From is drawn; the next arm refuses a drilling view with no tier set.
 	case len(v.RenderTiers) > 0 && badRoot >= 0:
 		return fmt.Errorf(
 			"view %q's step %d drills from tier %d and draws tiers %v, which do not include "+
 				"it; the page would ship the breadcrumb and the words about opening a node "+
 				"while no node on it is ever openable",
 			v.Path, badRoot, v.Steps[badRoot].From, v.RenderTiers)
-	// A CHART THAT OPENS DECLARES ITS COLUMN ORDER, whichever chart-bearing
-	// template draws it. The drill-down cannot be drawn whole at all -- its
-	// 61-node fund column lays every node out at zero height -- and the spine
-	// can, which is why this once read as a rule about folding. What it is
-	// about is ADJACENCY: app.js aligns on RenderTiers' indexOf and falls back
-	// to d3's own justify when the list is empty, so on a chart drawn whole
-	// nothing is to the left of anything, and a step that keeps a flank of
-	// this chart has no side to keep it on. The kept-flank arm below refuses
-	// that case by name; this one refuses the declaration that leads to it.
+	// A chart that opens declares its column order: without one nothing is
+	// adjacent to anything, and a kept flank has no side.
 	case len(v.Steps) > 0 && len(v.RenderTiers) == 0 && templateRendersTiers(v.Template):
 		return fmt.Errorf(
 			"view %q drills and declares no render tiers on template %q, which publishes "+
@@ -1036,8 +693,6 @@ func (v View) validate(built map[string][]byte, ix ColumnIndex) error {
 			v.Path, v.Template)
 	}
 	if _, ok := built[v.Projection]; !ok && v.Projection != "" {
-		// Named rather than "a projection is missing": the fix differs by which
-		// side is wrong, and an operator holding both names can tell.
 		return fmt.Errorf("view %q renders projection %q, which was not built", v.Path, v.Projection)
 	}
 	for i, stem := range v.YearStems {
@@ -1051,12 +706,9 @@ func (v View) validate(built map[string][]byte, ix ColumnIndex) error {
 			}
 		}
 	}
-	// THE PROJECTION IS ONE OF THE YEARS, AND NEED NOT BE THE FIRST. It was
-	// required to be YearStems[0] while the order and the opening year were one
-	// declaration; they are two now, so what survives is membership. A
-	// Projection outside its own year list would leave the page's non-per-year
-	// metadata -- scope, and the builder the footer credits -- read off a
-	// document the reader can never select.
+	// The projection is one of the years, not necessarily the first; outside
+	// the list, the page's non-per-year metadata would come from a document
+	// the reader can never select.
 	if len(v.YearStems) > 0 && !slices.Contains(v.YearStems, v.Projection) {
 		return fmt.Errorf("view %q renders projection %q, which is not among its year stems %v",
 			v.Path, v.Projection, v.YearStems)
@@ -1065,8 +717,7 @@ func (v View) validate(built map[string][]byte, ix ColumnIndex) error {
 }
 
 // rootOutsideRenderTiers is the first step opening from the view's own chart at
-// a tier the view does not draw, or -1 when every root is placed. Its caller
-// guards it on a non-empty RenderTiers, which is where the reason lives.
+// a tier the view does not draw, or -1 when every root is placed.
 func (v View) rootOutsideRenderTiers() int {
 	for i, s := range v.Steps {
 		if slices.Contains(s.After, "") && !slices.Contains(v.RenderTiers, s.From) {
@@ -1076,51 +727,25 @@ func (v View) rootOutsideRenderTiers() int {
 	return -1
 }
 
-// validateSteps refuses a drill tree a reader could not walk, and a step that
-// would fold nothing, say nothing, draw a document that was not built, or draw
-// one year's document under another year's chart.
-//
-// EVERY STEP IS PLACED AGAINST EVERY PARENT IT NAMES. A step opens from the
-// charts its After names -- the view's own, for the "" entry -- so its From
-// must be a tier EVERY one of them draws, which is what makes every breadcrumb
-// rung reachable from the one above it. Steps sharing an entry are two edges
-// out of one chart, which is what a tier-0 revenue category opening beside a
-// tier-2 fund group needs and what a path could not declare at all
-// (fisc-ko1j.12); a step naming two entries is one chart reachable from two,
-// which is what a fund group clickable on the spine and inside a window needs.
-//
-// A CYCLE CANNOT BE DECLARED, SO NOTHING HERE DETECTS ONE. Every entry of After
-// may only name a step EARLIER in the list, so every parent chain ends at a
-// root in at most as many hops as there are steps. THE LIST LEAVES THAT
-// ARGUMENT INTACT, and it is worth saying why rather than asserting it: a walk
-// upward takes one entry at a time, every entry names a strictly smaller index,
-// and a strictly decreasing sequence of non-negative integers terminates
-// however many branches it could have taken at each step. Several parents make
-// the shape a DAG over the declaration order rather than a path through it;
-// they cannot make it a ring. The arms below say what a declared tree must
-// satisfy; that it is acyclic is the type's property, not theirs.
 // parentChart is one chart a step opens from: the key naming it, "" for the
-// view's own, with the column order it draws and the document it draws them of.
-//
-// THE COLUMN ORDER AND NOT A SET. Tiers is a declaration order and may be
-// non-monotonic -- site/app.js's layOut aligns on tiers.indexOf(d.tier), so
-// {2,5,4} is three columns in that order and not a sorted set -- and a kept
-// flank's side is a POSITION in it.
+// view's own, with the column order it draws (not a set: a kept flank's side
+// is a position in it) and the document it draws them of.
 type parentChart struct {
 	key   string
 	tiers []int
 	doc   string
-	// keep is that chart's own kept flank, or nil where it keeps none -- which
-	// is every root, since a view is not a window. A step may not open the tier
-	// its parent kept; the arm below says why.
+	// keep is that chart's own kept flank, or nil where it keeps none.
 	keep []int
 }
 
+// validateSteps refuses a drill tree a reader could not walk, and a step that
+// would fold nothing, say nothing, draw a document that was not built, or draw
+// one year's document under another year's chart. Every step is placed
+// against every parent it names. A cycle cannot be declared, since After names
+// only earlier steps, so nothing here detects one.
 func (v View) validateSteps(built map[string][]byte, ix ColumnIndex) error {
-	// KEYS FIRST, AS A PASS OF THEIR OWN, so that After below resolves against
-	// a set already known to name one step each. Interleaved with the arms that
-	// follow, a duplicate key later in the list would be met by whichever arm
-	// its first parent broke, and the reader would be told about a tier.
+	// Keys first, as a pass of their own, so After resolves against a set
+	// already known to name one step each.
 	index := make(map[string]int, len(v.Steps))
 	for i, s := range v.Steps {
 		if s.Key == "" {
@@ -1146,11 +771,7 @@ func (v View) validateSteps(built map[string][]byte, ix ColumnIndex) error {
 					"from the view's own chart says so with \"\", and an empty list is a rung "+
 					"hanging off nothing", v.Path, i)
 		}
-		// The charts this step opens from, in the order it names them: each
-		// one's column order and the document it draws. "" is the view's own
-		// chart, whose From is placed by validate's two arms above rather than
-		// here -- RenderTiers empty means the document is drawn WHOLE, which
-		// those arms can say and a tier set cannot.
+		// "" is the view's own chart, whose From validate places.
 		parents := make([]parentChart, 0, len(s.After))
 		for k, a := range s.After {
 			if slices.Contains(s.After[:k], a) {
@@ -1181,11 +802,8 @@ func (v View) validateSteps(built map[string][]byte, ix ColumnIndex) error {
 		}
 		doc := s.Projection
 		if doc == "" {
-			// ONE DOCUMENT BEFORE IT, OR NAME ONE. "The document before it" has
-			// as many answers as this step has parents, and two parents drawing
-			// different files would leave the packager to resolve whichever it
-			// walked first -- a rung whose file depends on the route the reader
-			// took to reach it.
+			// One document before it, or name one: otherwise the rung's file
+			// would depend on the route the reader took.
 			doc = parents[0].doc
 			for _, p := range parents[1:] {
 				if p.doc != doc {
@@ -1225,44 +843,23 @@ func (v View) validateSteps(built map[string][]byte, ix ColumnIndex) error {
 				"view %q gives step %d a description ending %q rather than in a sentence "+
 					"terminator; the client appends the way back and the table pointer after "+
 					"it, and an unterminated one runs into them", v.Path, i, lastRune(s.Description))
-		// A RESIDUAL NEEDS TWO DOCUMENTS AND A REASON. On a same-document
-		// step there is no second grain, so a set declared there would be
-		// carried by the client against a document that decomposes every
-		// one of its own links -- a node of nothing, or worse, a copy of a
-		// link the chart already draws. And an endpoint with no reason
-		// draws a mark whose rationale explains nothing, which is the
-		// derived-node rule broken in output.
 		case s.Projection == "" && len(s.Residual) > 0:
 			return fmt.Errorf(
 				"view %q's step %d carries a residual of %d endpoint(s) and draws the "+
 					"document before it; a residual is what one document prints at a grain "+
 					"the other does not, and a step that switches no document has no second "+
 					"grain", v.Path, i, len(s.Residual))
-		// A GAP NEEDS TWO DOCUMENTS FOR THE SAME REASON AND A DIFFERENT ONE: it
-		// is one cell printed twice at two figures, and a step drawing the
-		// document before it has only the one printing.
 		case s.Projection == "" && len(s.Gaps) > 0:
 			return fmt.Errorf(
 				"view %q's step %d declares a gap on %d node(s) and draws the document "+
 					"before it; a gap is one cell two documents print at two figures, and a "+
 					"step that switches no document has only one", v.Path, i, len(s.Gaps))
-		// A SIDE IS A VOCABULARY OF TWO. Anything else is a declaration that
-		// would be carried to a client reading it against the two it knows,
-		// which is a step that silently opens the wrong end of its links.
 		case s.Side != "" && s.Side != SideSource:
 			return fmt.Errorf(
 				"view %q's step %d opens side %q; the sides are \"\", the node a link points "+
 					"at, and %q, the node it comes from", v.Path, i, s.Side, SideSource)
-		// A WINDOW KEEPS ONE FLANK, AND THESE ARMS ARE WHAT MAKE IT A PROPERTY
-		// OF THE TYPE rather than of the client that draws it. A side beside a
-		// kept flank is two answers to which end opened, because a window's
-		// centre is the target of one half and the source of the other; a
-		// widening with no flank to widen out from is a filter dressed as a
-		// window; a column drawn twice leaves the flank's own end underived; and
-		// a window whose columns do not come to the flank, the opened node and
-		// what it opens into -- one each and one more per widening -- is not the
-		// shape the reader was promised. Checked here and not per parent because
-		// Tiers is one declaration whatever chart the step was reached from.
+		// The window's shape, checked once rather than per parent because Tiers
+		// is one declaration whatever chart the step was reached from.
 		case len(s.Keep) > 0 && s.Side != "":
 			return fmt.Errorf(
 				"view %q's step %d keeps tier(s) %v and opens side %q; a window's opened node "+
@@ -1289,12 +886,8 @@ func (v View) validateSteps(built map[string][]byte, ix ColumnIndex) error {
 					"and not %d",
 				v.Path, i, s.Keep, len(s.Widen), s.Tiers, len(s.Keep)+2+len(s.Widen), len(s.Tiers))
 		}
-		// WHICH END THE FLANK IS AT IS READ OFF Tiers ONCE, and every arm after
-		// this reads that answer rather than asking again. It is what makes
-		// [DrillStep.Widen]'s side derivable: the widened columns are the ones at
-		// the other end, so a list of tiers and an order out from the centre are
-		// between them a whole shape, and the per-parent arms below have only to
-		// agree that the chart the reader came from draws the flank on that side.
+		// Which end the flank is at is read off Tiers once; every arm after
+		// this reads that answer.
 		keptLeft := false
 		if m := len(s.Keep); m > 0 {
 			n := len(s.Tiers)
@@ -1335,11 +928,7 @@ func (v View) validateSteps(built map[string][]byte, ix ColumnIndex) error {
 				}
 			}
 		}
-		// EVERY PARENT PLACES THIS STEP, not the first one that happens to fit.
-		// A step reachable from a chart whose columns do not include its From
-		// is a rung nothing on that chart can reach, and a kept flank that is
-		// not beside the opened node in one of those charts is a window that
-		// slides the wrong way when the reader arrives by that route.
+		// Every parent places this step, not the first one that fits.
 		for _, p := range parents {
 			where := "the view's own chart"
 			if p.key != "" {
@@ -1352,19 +941,8 @@ func (v View) validateSteps(built map[string][]byte, ix ColumnIndex) error {
 						"view %q's step %d opens from tier %d, and step %q draws tiers "+
 							"%v, which do not include it; the breadcrumb would carry a rung nothing "+
 							"on the chart can reach", v.Path, i, s.From, p.key, p.tiers)
-				// THE SAME DOCUMENT ONLY. Across a document switch the two tier
-				// sets are numbered by different hierarchies, and equal numbers
-				// are not the same chart -- the DrillStep doc comment says why
-				// validate cannot do better than skip.
-				//
-				// EQUALITY AND NOT CONTAINMENT, decided (fisc-ke1f). The same
-				// columns filtered to the opened node's subtree is the chart
-				// already on screen; a strict SUBSET of a widened parent's is
-				// not -- the fund step's {2,3,4,5} under a fund-group step
-				// drawing {0,2,3,4,5} is a narrower chart of one fund, which
-				// the client draws at every column budget (site/columns.test.mjs
-				// holds it). A parent's Widen is in p.tiers, so the comparison
-				// is against the parent at its widest.
+				// Same document only, and equality not containment (fisc-ke1f):
+				// a strict subset of a widened parent's tiers is a narrower chart.
 				case doc == p.doc && slices.Equal(p.tiers, s.Tiers):
 					return fmt.Errorf(
 						"view %q's step %d draws tiers %v of %q, the set step %q "+
@@ -1372,25 +950,9 @@ func (v View) validateSteps(built map[string][]byte, ix ColumnIndex) error {
 							"from", v.Path, i, s.Tiers, doc, p.key)
 				}
 			}
-			// A KEPT FLANK IS NOT A WHOLE NODE, SO NOTHING ON ONE MAY OPEN.
-			// A window draws its kept column at that column's share of the
-			// CENTRE -- the spine's cell for ONE revenue category into a fund
-			// group, not the group's own inflow -- while a step opening one of
-			// those marks draws that node's WHOLE decomposition on the other
-			// side. The two are different quantities and no mark can say so:
-			// d3-sankey sizes the node at the larger and the difference is node
-			// height with no ribbon under it. Measured over both committed
-			// columns before this arm existed: the Contributions & Outsourced
-			// window keeps fund-group/general at 76,360, and opening it drew
-			// 157,873,470 leaving -- 157,797,110 of silence.
-			//
-			// PER PARENT, because it is a property of the chart the reader came
-			// from: the same step may be reachable from a chart that draws the
-			// tier whole and from one that keeps it, and only the second is
-			// refused. And of EVERY column of that chart's flank rather than the
-			// one nearest its centre: a flank two columns deep is drawn at its
-			// share of the centre in both of them, so both are node heights this
-			// step would open a whole decomposition out of.
+			// A kept flank is drawn at its share of the centre, not whole, so
+			// nothing on one may open: the node would take one figure in and
+			// send its whole decomposition out. Per parent, every flank column.
 			if slices.Contains(p.keep, s.From) {
 				return fmt.Errorf(
 					"view %q's step %d opens tier %d of %s, which KEEPS that tier; a kept "+
@@ -1402,25 +964,9 @@ func (v View) validateSteps(built map[string][]byte, ix ColumnIndex) error {
 			if len(s.Keep) == 0 {
 				continue
 			}
-			// EVERY PARENT HERE HAS A COLUMN ORDER, AND NOT BECAUSE A WINDOW
-			// ASKED FOR ONE. A named parent is an earlier step, whose own
-			// Tiers were refused empty in its own iteration; the "" parent is
-			// this view's RenderTiers, which validate requires of any view
-			// that drills at all. So the case a kept flank could not survive
-			// -- a side taken in an order nobody declared -- cannot reach
-			// here, and an arm for it would be green because the gate fired
-			// rather than because the defect was prevented.
-			//
-			// From IS IN THIS ORDER ALREADY, which is why the arms below may
-			// index on it: the arm above places it for a named parent, and
-			// validate's badRoot arm places it against RenderTiers for the ""
-			// one.
+			// Every parent here has a column order and already contains From,
+			// so fi >= 0. The flank walks out from the opened node.
 			fi := slices.Index(p.tiers, s.From)
-			// THE FLANK WALKS OUT FROM THE OPENED NODE, one column of this chart
-			// per entry, in the direction s.Tiers already put it. Nearest the
-			// centre first is what lets these two orders be compared at all: the
-			// step's own list runs outward from the middle whichever end the flank
-			// is at, and the parent's runs left to right.
 			step := -1
 			if !keptLeft {
 				step = 1
@@ -1460,17 +1006,8 @@ func (v View) validateSteps(built map[string][]byte, ix ColumnIndex) error {
 				}
 			}
 		}
-		// ONE STEP PER (After, From, Role) OVER THE CROSS PRODUCT, AND A
-		// ROLE-LESS STEP TAKES THE WHOLE TIER. Two steps a node matches are two
-		// rungs it opens into, and the client would take whichever it found
-		// first -- the silent choice the key and the role exist to make
-		// impossible. Per SHARED parent and not per equal list: two steps that
-		// open one tier of one chart collide on that chart however many other
-		// charts either of them also hangs off, and comparing the lists whole
-		// would let a step add a parent and slip past a collision it keeps.
-		// Compared against every earlier step rather than through a set,
-		// because the two refusals want to name the other step, the chart they
-		// collide on, and which of the three parts collided.
+		// One step per (After, From, Role), per SHARED parent rather than per
+		// equal After list, and a role-less step takes the whole tier.
 		for j, o := range v.Steps[:i] {
 			if o.From != s.From {
 				continue
@@ -1506,9 +1043,7 @@ func (v View) validateSteps(built map[string][]byte, ix ColumnIndex) error {
 		if len(s.Residual) > 0 && s.ResidualGrain == "" {
 			return fmt.Errorf(
 				"view %q's step %d declares %d residual endpoint(s) and no residual_grain; "+
-					"the mark they hang on is named for the grain this step's document does "+
-					"not split that money by, and a step carrying a residual without saying "+
-					"so draws a mark named for whatever the client last hard-coded",
+					"the mark they hang on is named for that grain",
 				v.Path, i, len(s.Residual))
 		}
 		if len(s.Residual) == 0 && s.ResidualGrain != "" {
@@ -1534,16 +1069,8 @@ func (v View) validateSteps(built map[string][]byte, ix ColumnIndex) error {
 						"unexplained", v.Path, i, id)
 			}
 		}
-		// EVERY YEAR THE VIEW LISTS OPENS INTO SOMETHING, asked of the column
-		// the reader will fetch rather than of a map the packager wrote.
-		//
-		// Four arms guarded that map: that every year stem had an entry, that
-		// the entry was built, that the opening year's agreed with Projection,
-		// and that no entry named an unlisted year. Three of those states can
-		// no longer be spelled -- there is one key and it IS Projection. The
-		// first is this, and it is stronger: a map satisfying all four could
-		// still name a document that never folded into the column the year
-		// resolves to, and no arm could see it.
+		// Every year the view lists opens into something, asked of the column
+		// the reader will fetch.
 		if s.Projection != "" {
 			for _, stem := range v.YearStems {
 				col, folded := ix.Column(stem)
@@ -1579,7 +1106,6 @@ func (v View) validateSteps(built map[string][]byte, ix ColumnIndex) error {
 			}
 		}
 		if _, ok := built[doc]; s.Projection != "" && !ok {
-			// Named for the same reason v.Projection's refusal is.
 			return fmt.Errorf("view %q's step %d renders projection %q, which was not built",
 				v.Path, i, s.Projection)
 		}
@@ -1589,14 +1115,9 @@ func (v View) validateSteps(built map[string][]byte, ix ColumnIndex) error {
 
 // capMergesNoPrintedWithInferred refuses a cap under which two members of the
 // capped tier send a printed ribbon and an inferred one to one far end of one
-// kind, in every year's document of the schedule the step draws.
-//
-// THE FOLD MERGES BY FAR END AND KIND, so those two ribbons become one mark,
-// and one mark cannot be drawn dashed over an amount the city printed most
-// of nor listed whole under what was inferred. Which members fold is the
-// client's, by rank and by the reader's viewport, so any pair that disagrees
-// is a pair that may fold together. Every document of the schedule is read,
-// because a step opens into its own year's column.
+// kind, in any year's document of the schedule the step draws. The fold
+// merges by far end and kind, and which members fold is the client's, so any
+// such pair may become one mark that cannot be drawn as both.
 func capMergesNoPrintedWithInferred(path string, i int, c TierCap, doc string, built map[string][]byte) error {
 	type far struct {
 		end, kind string
@@ -1649,17 +1170,7 @@ func capMergesNoPrintedWithInferred(path string, i int, c TierCap, doc string, b
 }
 
 // templateRendersLede answers whether a template has a {{.Lede}} to render.
-//
-// IT IS A PROPERTY OF THE TEMPLATE AND NOT A LIST OF EXCEPTIONS, which is the
-// whole reason it exists as a function. The guard above read
-// `v.Template != TrendsTemplate` while exactly one template rendered a lede,
-// and that spelling has one failure mode: it goes stale silently the next time
-// a template lands, refusing a lede on a page that would have rendered one
-// perfectly well. That is what it did to the drill-down (fisc-5miz.5).
-//
-// A template ABSENT from this set is refused a lede rather than dropping it,
-// which is the conservative direction: a page missing a sentence somebody wrote
-// is louder than a page quietly not showing it.
+// An allow-list: a template absent from it is refused a lede.
 func templateRendersLede(name string) bool {
 	switch name {
 	case TrendsTemplate, HistoryTemplate, ProvenanceTemplate, CaveatsTemplate:
@@ -1670,25 +1181,9 @@ func templateRendersLede(name string) bool {
 }
 
 // templateRendersAYearControl answers whether a template has a year control to
-// render [View.YearStems] in.
-//
-// The same shape as templateRendersLede above and for the same reason, but the
-// trap it closes is a step worse: a lede dropped in silence loses a sentence,
-// and year stems dropped in silence lose whole documents. The trends page took
-// a four-stem list and rendered one year, with every check green, because the
-// only thing that reads YearStems is a template arm that page does not have.
-//
-// A SWITCH OVER ONE NAME AND NOT `name == SankeyTemplate`, which is the shape
-// rather than a leftover: this list had two entries when two templates drew a
-// chart, and an equality would have to be found and widened by whoever adds
-// the third. templateRendersLede's fourteen lines are the argument.
+// render [View.YearStems] in. Its own switch rather than templateDrawsAChart:
+// the two agree on every template today and guard different failures.
 func templateRendersAYearControl(name string) bool {
-	// ITS OWN SWITCH, NOT templateDrawsAChart'S. The two agree on every template
-	// that exists, and delegating made them one predicate wearing two names:
-	// a template could gain a chart without a year control, or a control
-	// without a chart, and the failure each of them guards is different. A lede
-	// dropped in silence loses a sentence; year stems dropped in silence lose
-	// whole documents.
 	switch name {
 	case SankeyTemplate:
 		return true
@@ -1698,13 +1193,8 @@ func templateRendersAYearControl(name string) bool {
 }
 
 // templateDrawsAChart answers whether a template ships app.js and an SVG for it
-// to draw into.
-//
-// IT IS NOT "renders a document". trends.html renders revenue-trends and ships
-// no app.js at all -- its figures are a server-rendered table -- so a caveat on
-// that document can be listed and can never be flagged on a mark. The caveats
-// page promises a chart flag per document, and "some view names this stem" was
-// the wrong test for it.
+// to draw into. Not the same as rendering a document: trends.html renders one
+// as a server-side table with no app.js.
 func templateDrawsAChart(name string) bool {
 	switch name {
 	case SankeyTemplate:
@@ -1715,18 +1205,8 @@ func templateDrawsAChart(name string) bool {
 }
 
 // templateRendersADocument answers whether a template renders a projection
-// document, as opposed to being built from Options directly.
-//
-// Every template did until the provenance index, which is an index OF the
-// site's own artifacts and reads no projection at all.
-//
-// AN ALLOW-LIST, like its two siblings, and the first draft of this was the
-// negated form -- `name != ProvenanceTemplate` -- which its own doc comment
-// then claimed not to be. That form fails OPEN: a second document-less
-// template would default to true, so View.validate would demand a projection
-// the page cannot render and the mirror arm that catches an ignored projection
-// would never fire. The allow-list fails the other way, loudly, and a new
-// template needs an arm in buildSite's exhaustive switch regardless.
+// document, as opposed to being built from Options directly. An allow-list,
+// because the negated form fails open for a new document-less template.
 func templateRendersADocument(name string) bool {
 	switch name {
 	case SankeyTemplate, TrendsTemplate, HistoryTemplate:
@@ -1737,79 +1217,34 @@ func templateRendersADocument(name string) bool {
 }
 
 // templateIsKnown answers whether this package has a builder for a template.
-//
-// IT KEEPS buildSite's DISPATCH REFUSAL REACHABLE, which is its only job. The
-// arm above refuses a projection named on a template that renders none, and
-// without this clause it also swallowed a template with no builder AT ALL: an
-// unrecognised name renders no document by this package's reckoning, so the
-// view was refused before the dispatch ever saw it, with a message that told a
-// reader to drop the projection. Following that advice slips the view past
-// validate and into a decode of an empty stem.
-//
-// Measured: restoring the historical `default: buildSankeyPage` bug -- the one
-// that rendered any unknown template as a page of blanks -- left
-// TestATemplateWithNoArmIsRefusedRatherThanRenderedAsASpine PASSING, because
-// the new message happened to contain both strings it asserted. A guard that
-// passes over the defect it is named for is worse than no guard.
-//
-// Drift against buildSite's switch is benign in both directions, which is why
-// there is no test pairing them: a template missing here loses the
-// ignored-projection guard and is still dispatched correctly, and one missing
-// there is refused by the dispatch.
+// It keeps buildSite's dispatch refusal reachable: without it, validate's
+// ignored-projection arm refuses an unknown template first, with advice that
+// leads past validate. Drift against buildSite's switch is benign both ways.
 func templateIsKnown(name string) bool {
 	return templateRendersADocument(name) ||
 		name == ProvenanceTemplate || name == CaveatsTemplate
 }
 
 // templateRendersSections answers whether a template groups its rows under
-// [View.Sections] headings. The same family as the five around it, and both
-// directions are refused in validate: headings dropped in silence lose the
-// only thing telling p167's two same-labelled blocks apart.
+// [View.Sections] headings.
 func templateRendersSections(name string) bool {
 	return name == HistoryTemplate
 }
 
 // templateRendersTiers answers whether a template publishes [View.RenderTiers]
-// to the client.
-//
-// The third field of this family, and it was missing when the first two were
-// closed -- which is the argument for writing them as a family rather than as
-// three guards. A template that omits the key leaves app.js reading
-// `CONFIG.render_tiers ?? []`, so a fold asked for there is not refused, not
-// reported and not applied: the chart draws every tier and looks like a chart
-// rather than like a defect.
-//
-// THE CHART-BEARING TEMPLATE PUBLISHES IT, and the spine is the reason. A view
-// that opens a node has to declare the order of its own columns, because that
-// order is what says which tier is adjacent to which -- see [View.RenderTiers].
-// Templates that render no Sankey at all answer no.
+// to the client. A template that omits the key leaves app.js drawing every
+// tier, so a fold asked for there would be neither refused nor applied.
 func templateRendersTiers(name string) bool {
 	return name == SankeyTemplate
 }
 
 // templateRendersSteps answers whether a template publishes [View.Steps] to the
-// client.
-//
-// THE FOURTH FIELD OF THE FAMILY, and it exists for the same reason as the
-// third. app.js reads `CONFIG.steps`, so a chain asked for on a template whose
-// builder omits the key is not refused, not reported, and not applied. The page
-// would then isolate on a click while its view believed it opened -- which
-// looks like a chart rather than like a defect.
-//
-// THE CHART TEMPLATE, because its builder puts Steps in the config blob and it
-// ships the #breadcrumb and #chart-hint a chain comes back out of a node by.
-// It is the arm that keeps the two interaction contracts apart: a view that
-// sets Steps is declaring that activating a node OPENS it, and a template with
-// no breadcrumb and no way back would make that a trapdoor.
+// client, with the #breadcrumb a chain comes back out of a node by.
 func templateRendersSteps(name string) bool {
 	return name == SankeyTemplate
 }
 
 // repeatedTier returns a tier the list names twice, or -1.
-//
-// A COLUMN ORDER AND NOT A SET, which is why this is spelled out rather than
-// compared against a sorted copy: [DrillStep.Tiers] may be non-monotonic, and
-// {2, 5, 4} is three columns in that order.
 func repeatedTier(tiers []int) int {
 	seen := make(map[int]bool, len(tiers))
 	for _, t := range tiers {
@@ -1821,21 +1256,15 @@ func repeatedTier(tiers []int) int {
 	return -1
 }
 
-// reversedTiers is tiers back to front, in a copy.
-//
-// THE COPY IS THE POINT. slices.Reverse works in place, and the callers below
-// hold the caller's own [DrillStep] fields -- reversing one there would edit
-// the declaration the packager is about to ship.
+// reversedTiers is tiers back to front, in a copy: the callers hold the
+// caller's own [DrillStep] fields.
 func reversedTiers(tiers []int) []int {
 	out := slices.Clone(tiers)
 	slices.Reverse(out)
 	return out
 }
 
-// endsASentence reports whether s closes with a terminator, which is what keeps
-// a step's chart description separable from the sentences the client appends
-// after it. The validate arm that calls this says what depends on the
-// separation.
+// endsASentence reports whether s closes with a sentence terminator.
 func endsASentence(s string) bool {
 	if s == "" {
 		return false
@@ -1847,8 +1276,7 @@ func endsASentence(s string) bool {
 	return false
 }
 
-// lastRune is the final character of s as a string, so a refusal can show what
-// a description actually ended with rather than quoting the whole sentence.
+// lastRune is the final character of s as a string.
 func lastRune(s string) string {
 	r := []rune(s)
 	if len(r) == 0 {
@@ -1875,20 +1303,8 @@ func assetPath(rel string, reserved map[string]bool) error {
 }
 
 // plan is a site resolved in full and not yet written: every byte of every
-// file, in the order it goes down.
-//
-// IT EXISTS SO A CALLER CAN LEARN ITS INPUT IS BAD BEFORE IT DESTROYS ANYTHING.
-// `fisc export --clean` empties the output directory, and everything that can
-// refuse an export -- validation, rendering, resolving the cited page text out
-// of the extraction tree, reading the embedded assets -- needs nothing that
-// cleaning produces. Leaving any of it inside the writer means a fault that was
-// detectable up front is discovered after the reader's site is gone.
-//
-// That is not hypothetical and it is why this type replaced a plain
-// Options.Validate(): validation alone was hoisted first, and withPageText was
-// left behind inside Write, so an export whose store covers a page the
-// extraction does not still emptied the directory and then refused. Reproduced
-// by moving one committed page text aside.
+// file, in the order it goes down. It exists so everything that can refuse an
+// export does so before `fisc export --clean` empties the output directory.
 type plan struct {
 	dir   string
 	files []plannedFile
@@ -1903,10 +1319,8 @@ type plannedFile struct {
 // Prepare resolves an Options into a Plan, or refuses it. It touches no
 // filesystem outside the inputs it reads.
 func Prepare(o Options) (*plan, error) {
-	// ONE FOLD FOR THE WHOLE EXPORT, and everything downstream reads it: the
-	// write plan takes the columns and the pages take the index, so which
-	// document a step draws is answered by the same walk that writes the file
-	// the reader will fetch it out of.
+	// One fold for the whole export: the write plan takes the columns and the
+	// pages take the index.
 	columns, ix, cerr := ColumnsOf(o.Projections, o.GeneratedBy)
 	if cerr != nil {
 		return nil, cerr
@@ -1914,10 +1328,8 @@ func Prepare(o Options) (*plan, error) {
 	if err := o.validate(ix); err != nil {
 		return nil, err
 	}
-	// Where a page-text citation points is decided once, here, and handed to
-	// buildSite as the base it composes: an explicit remote wins, otherwise the
-	// site cites what it ships, and only a caller that offers neither falls
-	// back to the constant.
+	// An explicit remote wins, otherwise the site cites what it ships, and
+	// only a caller that offers neither falls back to the constant.
 	ship := o.SourceBrowseURL == "" && o.PageText != nil
 	browse := o.SourceBrowseURL
 	if browse == "" {
@@ -1945,9 +1357,6 @@ func Prepare(o Options) (*plan, error) {
 	seen := make(map[string]bool)
 	add := func(rel string, b []byte) error {
 		if seen[rel] {
-			// Two writers landing on one path is a silent overwrite: the file
-			// is there, the export succeeds, and which of the two bytes won
-			// depends on map order.
 			return fmt.Errorf("two assets claim the output path %q", rel)
 		}
 		seen[rel] = true
@@ -1974,17 +1383,8 @@ func Prepare(o Options) (*plan, error) {
 	if err := copyTree(o.assetTree(), "vendor", add); err != nil {
 		return nil, err
 	}
-	// A DOCUMENT THAT FOLDED INTO A COLUMN IS PUBLISHED AS THAT COLUMN AND NOT
-	// ALSO AS ITSELF. Sixteen of the nineteen fold, and shipping both was the
-	// same figures twice -- 1,661,760 bytes of them, measured over the
-	// committed corpus, none of it fetched: site/app.js asks for a column and
-	// for rungs.json and for nothing else.
-	//
-	// THE THREE THAT DO NOT FOLD STILL SHIP AS THEMSELVES, and that is not a
-	// leftover: revenue-trends, fund-balances and changes-in-fund-balances
-	// carry a series and state no fiscal year or basis at all, so there is no
-	// column to be part of, and data/revenue-trends.json is the only published
-	// form trends.html has.
+	// A document that folded into a column is published as that column and
+	// not also as itself. One stating no fiscal year or basis ships as itself.
 	for _, name := range sortedKeys(o.Projections) {
 		if _, folded := ix.Column(name); folded {
 			continue
@@ -1993,8 +1393,6 @@ func Prepare(o Options) (*plan, error) {
 			return nil, err
 		}
 	}
-	// ONE DOCUMENT PER PUBLISHED COLUMN, written by the same call that writes
-	// the page naming them.
 	for _, name := range sortedKeys(columns) {
 		encoded, eerr := encodeColumn(columns[name])
 		if eerr != nil {
@@ -2100,9 +1498,7 @@ func sortedKeys[V any](m map[string]V) []string {
 // second write path would be a second set of rules about what may land where.
 // The input map is not modified — a caller's map is the caller's.
 //
-// A cited page the tree does not hold is an error. The alternative is a page
-// that renders a citation nobody can follow, which is the failure this whole
-// change exists to remove.
+// A cited page the tree does not hold is an error.
 func withPageText(files map[string][]byte, tree fs.FS, cited []Citation, reserved map[string]bool) (map[string][]byte, error) {
 	out := make(map[string][]byte, len(files)+len(cited))
 	maps.Copy(out, files)

@@ -229,15 +229,11 @@ func (stubLabels) ConstraintTier(int) string           { return "" }
 func (stubLabels) RestrictionNote(int) string          { return "" }
 func (stubLabels) DivisionLabel(string) (string, bool) { return "", false }
 
-// DepartmentLabel answers nothing, as DivisionLabel does: a fixture that wants
-// the city's words for a department says so through its own stub. The two are
-// separate methods because five slugs name both tiers, so one that answered for
-// either would hide a projection reading the wrong one.
+// DepartmentLabel answers nothing, as DivisionLabel does.
 func (stubLabels) DepartmentLabel(string) (string, bool) { return "", false }
 
-// LinesPrintedAs returns no line, which is the honest stub for the spine: the
-// schedule it draws prints no revenue rows under its categories, and a stub that
-// invented one would let a test pass over a decomposition nothing declared.
+// LinesPrintedAs returns no line: the spine prints no revenue rows under its
+// categories.
 // stubLines supplies real answers where a test needs them.
 func (stubLabels) LinesPrintedAs(string, string, string) []string { return nil }
 

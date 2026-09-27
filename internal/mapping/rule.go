@@ -159,15 +159,9 @@ const (
 	SignPositive Sign = "positive"
 	// SignContra marks a deduction booked as negative revenue — the ERAF and
 	// RPTTF property-tax shifts on Budget Book p127 are ~26% of gross
-	// property tax.
-	//
-	// WHERE THE NEGATIVE GOES IS THE CONSUMER'S, AND IT IS NOT ONE ANSWER. A
-	// view drawn at category grain nets a contra row into its parent, which is
-	// what the citywide spine does. A view that draws the printed ROW cannot:
-	// the row is the node, so the deduction is a negative value on that node's
-	// own link, and any other placement — a reversed positive link, a
-	// sign-decomposed endpoint — is a flow the category grain never had. Both
-	// publish the figure exactly as printed; neither negates anything here.
+	// property tax. Where the negative goes is the consumer's: a category-grain
+	// view nets it into its parent, a view drawing the printed row carries it
+	// as a negative value on that row's own link.
 	SignContra Sign = "contra"
 	// SignNetted marks a row the document prints with the OPPOSITE ORIENTATION
 	// to its kind's convention, because it sits inside a block that sums to a
@@ -314,20 +308,10 @@ type Rule struct {
 	Basis Basis  `yaml:"basis"`
 	Scope string `yaml:"scope"`
 	// Grain names the lattice level this rule's figures are totals at: which
-	// of fund_group, fund, department and category the table it reads has an
-	// axis for. A rule reads one table at one grain, so it is a claim about
-	// the PAGE, made once, beside the scope -- and it is REQUIRED on a rule
-	// that publishes a fact and REFUSED on one that publishes none. A grain
-	// declared over zero facts is a declaration nothing can check against the
-	// store, which is the one shape a declaration here must not have; the two
-	// ACFR rules whose every row is skipped say what they read without saying
-	// what grain it would be at.
-	//
-	// THE PARSER CHECKS PRESENCE AND NOTHING ELSE. The level vocabulary and
-	// the derivation that checks a declaration against the axes a rule's facts
-	// populate live in internal/structure, which reads this package and so
-	// cannot be read by it. A grain that names no level, or one that names the
-	// wrong level, is refused there, over the whole store, by rule and by name.
+	// of fund_group, fund, department and category the table has an axis for.
+	// Required on a rule that publishes a fact and refused on one that
+	// publishes none, since nothing could check it. The parser checks presence
+	// only; internal/structure checks the name against the facts.
 	Grain string       `yaml:"grain"`
 	Units amount.Units `yaml:"units"`
 

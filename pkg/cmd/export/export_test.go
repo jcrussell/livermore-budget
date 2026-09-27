@@ -202,8 +202,7 @@ func TestExportRunWritesASiteAndSaysHowToServeIt(t *testing.T) {
 		t.Fatalf("exportRun: %v", err)
 	}
 
-	// THE COLUMN AND NOT data/sankey.json: a document stating a fiscal year
-	// and a basis is published as its column and not also as itself.
+	// A document stating a year and basis ships as its column, not as data/sankey.json.
 	for _, rel := range []string{"index.html", "app.js", "style.css", ".nojekyll",
 		"vendor/d3.min.js", "fy2026-adopted.json"} {
 		if _, err := os.Stat(filepath.Join(opts.OutputDir, filepath.FromSlash(rel))); err != nil {
@@ -388,11 +387,7 @@ func TestTheSiteDoesNotSayThePSeventySixScheduleIsUnmapped(t *testing.T) {
 	for name, page := range pages {
 		for _, stale := range []string{
 			"not yet mapped", "not mapped yet", "fisc-5gk.3",
-			// AND THE SECOND STALE PROMISE, which replaced the first and went
-			// the same way: the caveat said pairing the legs "needs a document
-			// of p76's own" and named the bead for it. That document is
-			// published and this page's Transfers In opens into it, so a reader
-			// meeting the sentence is told the site cannot do what it does.
+			// p76's own document is published and Transfers In opens into it.
 			"fisc-9gh", "Pairing the legs needs",
 		} {
 			if strings.Contains(page, stale) {
@@ -406,17 +401,12 @@ func TestTheSiteDoesNotSayThePSeventySixScheduleIsUnmapped(t *testing.T) {
 	// And the correction is present rather than merely the falsehood absent: a
 	// caveat that dropped the sentence entirely would pass the loop above.
 	//
-	// READ OFF caveats.html WITH ITS CONFIG BLOB ABSENT BY CONSTRUCTION -- that
-	// page ships no app.js and no FISC_CONFIG -- so this cannot go green on
-	// machine-readable bytes the way the index.html version had begun to.
+	// caveats.html ships no FISC_CONFIG, so this cannot pass on JSON no reader reads.
 	caveats := pages["caveats.html"]
 	if strings.Contains(caveats, "FISC_CONFIG") {
-		t.Fatal("caveats.html now ships a config blob; this test's substring search would " +
-			"pass on JSON no reader reads, which is what it was rewritten to stop doing")
+		t.Fatal("caveats.html ships a config blob, so this test's substring search " +
+			"could pass on JSON no reader reads")
 	}
-	// "transfers-by-fund" replaces the bead id the stale list now refuses: what
-	// a reader needs is the document that DOES pair the legs, not the work that
-	// was going to build it.
 	for _, want := range []string{"Transfers Out to CIP", "transfers-by-fund"} {
 		if !strings.Contains(caveats, want) {
 			t.Errorf("the exported caveats.html does not say %q, so the residual is "+
@@ -672,10 +662,7 @@ func TestExportRunCleanEmptiesItsOwnOutput(t *testing.T) {
 	if err := exportRun(opts); err != nil {
 		t.Fatalf("first export: %v", err)
 	}
-	// SEEDED IN A SUBDIRECTORY, because that is the case --clean has to reach
-	// and a file at the root would not prove it. data/ need not exist: the
-	// fixture's one projection folds into a column, so nothing was written
-	// under it.
+	// Seeded in a subdirectory, which is what --clean has to reach.
 	stale := filepath.Join(opts.OutputDir, "data", "gone.json")
 	if err := os.MkdirAll(filepath.Dir(stale), 0o750); err != nil {
 		t.Fatalf("seed: %v", err)
@@ -828,22 +815,10 @@ func TestBuildProjectionsRunsThePipeline(t *testing.T) {
 	if err != nil {
 		t.Fatalf("buildProjections: %v", err)
 	}
-	// The stems are asserted in full, and the two rules that produce them are
-	// visible in the list. A SINGLE-COLUMN document is a year of something and
-	// goes through project.PublishedStem, so the spine's opening year keeps the
-	// bare stem the contract promises and the next is suffixed. A document of
-	// SEVERAL columns is a year of nothing and takes its projection's name
-	// verbatim -- revenue-trends spans four columns, and putting it through
-	// PublishedStem would write it twice, once per published year, as two
-	// byte-identical files one of which claims a year it does not cover.
-	// A THIRD RULE IS NOW VISIBLE IN THE LIST. fund-flows publishes four
-	// single-column documents, so the FY2026 adopted one -- the opening
-	// published column -- takes the bare stem and the other three are suffixed,
-	// the historical two by year AND basis because their basis is not the
-	// published one. department-spending publishes the same four columns and
-	// names them by the same rule, and department-funding a third set of four,
-	// which is what makes the rule visible as a rule rather than as one
-	// document's spelling.
+	// A single-column document goes through project.PublishedStem: the opening
+	// published column keeps the bare stem, others are suffixed by year, and by
+	// basis where it is not the published one. A multi-column document keeps
+	// its projection's name.
 	if diff := cmp.Diff([]string{
 		"changes-in-fund-balances",
 		"department-funding", "department-funding-2024-actual",
@@ -917,23 +892,11 @@ func keys(m map[string][]byte) []string {
 	return out
 }
 
-// TestTheCommittedStemsAreUnchanged pins the DOCUMENT NAMES as literal strings,
-// which is fisc-rmx's own acceptance criterion and the only thing that makes the
-// naming rule safe to change again. They are TYPED rather than generated, which
-// is the whole of the test: a list derived from the same rule under test would
-// agree with a rename by construction.
-//
-// A STEM IS AN INTERNAL IDENTITY AND MOSTLY NOT A PUBLISHED PATH. Sixteen of
-// these nineteen fold into a column and are published as that column; three
-// state no fiscal year and ship as data/<stem>.json. What the stem still
-// determines everywhere is the schedule key -- scheduleKey inverts
-// project.PublishedStem -- and the year radio's value, which site/app.js
-// resolves by years.find(y => y.stem === target.value). A rename would move
-// both at once, silently, because every internal consumer would rename with it.
-//
-// THE PUBLISHED PATHS ARE PINNED SEPARATELY, by
-// TestTheSitePublishesOneFilePerColumnAndNothingTwice, which is the claim this
-// test used to be making and could not: it never read an export.
+// TestTheCommittedStemsAreUnchanged pins the document stems as typed literals
+// (fisc-rmx): a list derived from the naming rule would agree with a rename.
+// A stem is the schedule key and the year radio's value in site/app.js, so a
+// rename moves both silently. Published paths are
+// TestTheSitePublishesOneFilePerColumnAndNothingTwice's.
 func TestTheCommittedStemsAreUnchanged(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {
@@ -961,21 +924,9 @@ func TestTheCommittedStemsAreUnchanged(t *testing.T) {
 	}
 }
 
-// TestTheServedPageIsWhatGoRenders pins testdata/index.golden.html to the
-// bytes `fisc export` writes at index.html over the committed store, the way
-// testdata/rungs.json is pinned: rebuild and compare, never in place, and on a
-// difference the served page is written under bin/ with the `cp -f` to run.
-//
-// THE PAGE IS THE CLIENT'S INPUT, which is why it is pinned as a whole and not
-// as its config alone: site/app.js reads window.FISC_CONFIG out of it and
-// every element it paints into, and the tests under site/ build their DOM from
-// this file. A fixture the tests assembled themselves would be a second
-// spelling of the template.
-//
-// THE STAMP IS BLANKED ON BOTH SIDES, in both places the page carries it: the
-// config's exported_by and the footer's "Packaged by". Each names the build,
-// so comparing either would make the fixture stale on every commit and say
-// nothing about the page.
+// TestTheServedPageIsWhatGoRenders pins testdata/index.golden.html, whole, to
+// the index.html `fisc export` writes: the tests under site/ build their DOM
+// from it. Both build stamps are blanked.
 func TestTheServedPageIsWhatGoRenders(t *testing.T) {
 	servedArtifactIsTheFixture(t, "index.html", "index.golden.html", []stampBlank{
 		{regexp.MustCompile(`"exported_by":"[^"]*"`), `"exported_by":""`},
@@ -1041,19 +992,10 @@ func TestEveryRecordsShardIsNamedLikeItsPageText(t *testing.T) {
 	}
 }
 
-// TestTheColumnArtifactsAreWhatGoEncodes pins the two spine columns the page
-// fetches, testdata/fy2026-adopted.column.json and
-// testdata/fy2027-adopted.column.json, to what `fisc export` writes at the
-// site root.
-//
-// THE COLUMN AND NOT THE PROJECTION GOLDENS, because the column is what
-// site/app.js fetches: loadColumn reads a ColumnDoc and scheduleOf turns one
-// of its schedules back into the document shape, and a test that handed the
-// client a projection golden would be driving a path no reader's browser
-// takes. The projection goldens stay for the projections' own tests.
-//
-// BOTH YEARS, because the two are not the same shape and a client test
-// driven over one twice could not see a year join to the wrong document.
+// TestTheColumnArtifactsAreWhatGoEncodes pins testdata/fy2026-adopted.column.json
+// and testdata/fy2027-adopted.column.json to what `fisc export` writes: the
+// column, not a projection golden, is what site/app.js fetches, and both years
+// so a year joined to the wrong document shows.
 func TestTheColumnArtifactsAreWhatGoEncodes(t *testing.T) {
 	blank := []stampBlank{{regexp.MustCompile(`"generated_by":\s*"[^"]*"`), `"generated_by": ""`}}
 	for _, stem := range []string{"fy2026-adopted", "fy2027-adopted"} {
@@ -1114,22 +1056,10 @@ func servedArtifactIsTheFixture(t *testing.T, served, fixture string, blanks []s
 	}
 }
 
-// TestTheSitePublishesOneFilePerColumnAndNothingTwice pins what `fisc export`
-// lays down, as typed literals, and is the check the format change owes.
-//
-// NOTHING HELD THE SHIPPED SET BEFORE. The stem list above reads
-// buildProjections and never reaches an export, and the goldens compare
-// against the same in-memory map -- so a format change that regenerated them
-// was green by construction, and a file silently leaving or entering dist/
-// was a diff nobody read.
-//
-// TYPED AND NOT DERIVED, for the stem list's reason. Deriving the want from
-// ColumnsOf would agree with any change to ColumnsOf.
-//
-// SIXTEEN DOCUMENTS ARE HERE AS FOUR COLUMNS and three are here as
-// themselves, which is the whole distinction: revenue-trends, fund-balances
-// and changes-in-fund-balances state no fiscal year or basis, so there is no
-// column for them to be part of.
+// TestTheSitePublishesOneFilePerColumnAndNothingTwice pins the file set
+// `fisc export` lays down, as typed literals: deriving it from ColumnsOf would
+// agree with any change to ColumnsOf. A document stating no fiscal year or
+// basis ships as itself.
 func TestTheSitePublishesOneFilePerColumnAndNothingTwice(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {
@@ -1310,15 +1240,8 @@ func TestBuildProjectionsDoesNotRefuseASecondSchedule(t *testing.T) {
 // TestEveryPublishedDocumentIsRenderedOrDeclaredUnrendered is the assertion
 // whose absence let four documents ship unreachable.
 //
-// A COUNT IS NOT COVERAGE, and it is why the name of this test matters.
-// published-projection-built and assertPublishedBuilt each assert every
-// published document was BUILT, and neither asks whether a page renders it. published-projection-built and
-// assertPublishedBuilt each assert every published document was BUILT, and
-// neither asks whether a page renders it -- so a document can ship as bytes
-// nobody can open with `fisc verify` green over it, and an assertion on how
-// many views exist would stay green too.
-//
-// The count assertions are kept below, under their own name.
+// published-projection-built and assertPublishedBuilt assert every published
+// document was built; neither asks whether a page renders it.
 func TestEveryPublishedDocumentIsRenderedOrDeclaredUnrendered(t *testing.T) {
 	built := builtStemsForTest(t)
 	if err := assertPublishedReachable(views(result{Projections: built}), built); err != nil {
@@ -1402,16 +1325,8 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 		t.Errorf("the spine view lists %d year stems, want both adopted years", len(spine.YearStems))
 	}
 
-	// THE YEAR STEMS ARE ASCENDING, AND THAT IS LOAD-BEARING RATHER THAN TIDY.
-	// The page opens on the LAST of them -- buildSankeyPage takes years[len-1],
-	// because the newest budget is the one in force -- so this order is the
-	// whole of what decides which year a reader is greeted with. Reordering the
-	// list silently changes that, and this is what says so.
-	//
-	// It is asserted here rather than in internal/export because that package
-	// lays out what it is handed: a view listing its years newest-first would be
-	// rendered faithfully and open on the oldest. The order is this composition
-	// root's, so the check belongs with it.
+	// Ascending is load-bearing: the page opens on the last year stem, and
+	// internal/export renders whatever order it is handed.
 	years := map[string]int{}
 	for _, d := range project.PublishedDocuments() {
 		for _, c := range d.Columns {
@@ -1430,18 +1345,13 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 		}
 	}
 
-	// ASSERTED BY PATH RATHER THAN BY INDEX from here down. The nav order is a
-	// design decision that has already moved once in this lane -- the trends
-	// page was second and is now fourth -- and a test that fails when it moves
-	// again is a test about the order rather than about the views.
+	// By path rather than index: the nav order is a design decision, not this test's.
 	byPath := map[string]export.View{}
 	for _, v := range got {
 		byPath[v.Path] = v
 	}
 
-	// EVERY VIEW THAT DRAWS SOMETHING SHIPS THE WORDS FOR IT. Titles and ledes
-	// are the caller's: a packager composing prose about a document would be
-	// making a claim about figures it may not recompute.
+	// Titles and ledes are the caller's, not the packager's.
 	for _, path := range []string{"trends.html", "history.html", "balances.html"} {
 		v, ok := byPath[path]
 		if !ok {
@@ -1456,10 +1366,8 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 		}
 	}
 
-	// THE RETIRED PAGES STAY RETIRED. revenue.html and spending.html were
-	// fund-flows split at its seam, and drilldown.html the page they split;
-	// the spine now opens into that document, and a second view over it would
-	// publish the same money a second time with a nav entry to find it under.
+	// fund-flows is drawn by opening the spine; a page of its own would publish
+	// the same money twice.
 	for _, path := range []string{"revenue.html", "spending.html", "drilldown.html"} {
 		if _, ok := byPath[path]; ok {
 			t.Errorf("%s is in the nav; the spine's chain is where that document is drawn now", path)
@@ -1471,17 +1379,9 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 		}
 	}
 
-	// THE CHAIN'S ACTUAL VALUES, because the client's tests measure against
-	// them -- there is no seam between Go and node, so what they measure
-	// against is a claim and this is the only thing that can keep it honest.
-	// Asserting merely that a step EXISTS would leave them free to measure a
-	// configuration no page ships: change a cap, a tier set or a description here and every
-	// gate stays green while the checks go on pinning the old one.
-	//
-	// A STEP NAMES A SCHEDULE, not a file and not a per-year map. Which
-	// document each year draws is export.ColumnIndex's answer, derived from
-	// the documents; what is pinned here is the declaration.
-	// TestOpensIntoJoinsOnColumnNotOnDeclaredOrder measures the join itself.
+	// The chain's actual values, because the client's tests measure against
+	// them. Which document each year draws is export.ColumnIndex's, measured by
+	// TestOpensIntoJoinsOnColumnNotOnDeclaredOrder.
 	want := []export.DrillStep{
 		{
 			Key:        "fund-group",
@@ -1495,9 +1395,7 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 			Noun:       "fund group",
 			Back:       "All fund groups",
 			Tail:       "funds",
-			// READ OFF THE CHECK, NOT SPELLED, because the check is the
-			// declaration: a literal here would be the second copy the
-			// declaration exists to prevent, kept green by nothing.
+			// Read off the check, which is the declaration.
 			Residual:      check.ResidualNodes(),
 			ResidualGrain: "fund",
 			Description: "The revenue categories on the left are the citywide chart's own " +
@@ -1583,10 +1481,7 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 			Noun:       "object category",
 			Back:       "All object categories",
 			Tail:       "divisions",
-			// READ OFF THE CHECK FOR check.ResidualNodes' REASON, one field
-			// over: cuts-tie-along-the-lattice pins both sides of every
-			// entry this set is built from, and a literal here would be a
-			// second spelling nothing holds to it.
+			// Read off the check, which cuts-tie-along-the-lattice pins.
 			Gaps: spendingGaps(),
 			Description: "The fund groups that pay for this object category are on the " +
 				"left; the divisions that spend it are on the right \u2014 Budget Book " +
@@ -1597,12 +1492,8 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 				"no division here takes the colour of a fund group.",
 		},
 		{
-			// THE ONLY STEP THAT KEEPS NO FLANK AND THE ONLY ONE THAT OPENS A
-			// SOURCE, which are one fact rather than two: transfers/in is a
-			// tier-0 node with nothing pointing at it, so the end that opened
-			// is the end its links come FROM, and a window's centre is the
-			// target of one half and the source of the other -- validateSteps
-			// refuses Keep and Side declared together for exactly that reason.
+			// No flank because it opens a source: validateSteps refuses Keep
+			// and Side together.
 			Key:        "transfers",
 			After:      []string{""},
 			From:       0,
@@ -1621,17 +1512,9 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 				"the citywide chart counts.",
 		},
 		{
-			// THE SECOND STEP OPENING TIER 3 OF THE FUND GROUP'S WINDOW, and
-			// the only place on the site where two steps share an (After,
-			// From). validateSteps admits that exactly when both name a role
-			// and the roles differ, so `general_fund` takes fund/100 into
-			// pp.167-170's divisions and `fund` takes the other sixty into
-			// pp.85-125's departments.
-			//
-			// NO CAPS, WHICH IS A MEASUREMENT. The widest fund this step opens
-			// draws 5 departments (fund/240 in FY2023-24 actual, 3 in both
-			// adopted columns) against fund/100's 11, and fund/100 opens
-			// elsewhere.
+			// Shares (After, From) with `fund`, which validateSteps admits
+			// because the roles differ. No caps, measured: the widest fund it
+			// opens draws 5 departments (fund/240, FY2023-24 actual).
 			Key:        "fund-departments",
 			After:      []string{"fund-group"},
 			From:       3,
@@ -1658,31 +1541,15 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 		t.Errorf("the spine's steps (-want +got):\n%s\nthe client's tests measure "+
 			"against this", diff)
 	}
-	// THE COLUMN ORDER IS PINNED AS THE STEPS ARE, and by hand, because it is
-	// the declaration every kept flank is placed against: a step keeping tier
-	// 2 beside tier 0 is adjacent in {0,2,5} and not in {0,5,2}, and nothing
-	// else in the tree would notice the list being reordered. The spine draws
-	// a chart and opens nodes on it, so View.validate requires the list.
+	// Pinned by hand: every kept flank's adjacency is read against this order.
 	if diff := cmp.Diff([]int{0, 2, 5}, spine.RenderTiers); diff != "" {
 		t.Errorf("the spine's render tiers (-want +got):\n%s", diff)
 	}
 }
 
-// TestOpensIntoJoinsOnColumnNotOnDeclaredOrder is fisc-zojk's first obstacle
-// dissolving, measured rather than asserted.
-//
-// THE ORDER IS READ OFF PublishedDocuments HERE, so the premise cannot go
-// stale in silence: yearStems walks that list in declared order, which puts
-// fund-flows' bare stem third among its projection's documents, and a view
-// opening on it through a YearStems list is refused by View.validate. The
-// join is on Column instead, and the stem's position in the list is not an
-// input to it -- the mutation that proves it is the one this test's third
-// arm names: a join on declared order pairs sankey with fund-flows-2024-actual.
-//
-// IT ANSWERS A BOOLEAN NOW and the per-year resolution is export.ColumnIndex's,
-// so the second arm asks what opensInto decides -- whether the STEP is
-// declared at all -- and the rest of the file asks the index what each year
-// draws.
+// TestOpensIntoJoinsOnColumnNotOnDeclaredOrder (fisc-zojk): a year's step
+// document is joined on Column, not on its position in PublishedDocuments. A
+// join on declared order pairs sankey with fund-flows-2024-actual.
 func TestOpensIntoJoinsOnColumnNotOnDeclaredOrder(t *testing.T) {
 	built := builtStemsForTest(t)
 
@@ -1705,9 +1572,7 @@ func TestOpensIntoJoinsOnColumnNotOnDeclaredOrder(t *testing.T) {
 	if !opensInto(export.PrimaryProjection, project.FundFlowsProjection, built) {
 		t.Error("opensInto says the spine's opening year has no fund-flows document to open into")
 	}
-	// THE OPENING YEAR JOINS TO THE BARE STEM AND NOT TO THE FIRST DECLARED,
-	// which is the whole claim. Asked of the index, because that is what the
-	// page and the rung walk both resolve through.
+	// The opening year joins to the bare stem, not the first declared.
 	_, ix, err := export.ColumnsOf(built, "fisc test")
 	if err != nil {
 		t.Fatalf("ColumnsOf: %v", err)
@@ -1722,11 +1587,7 @@ func TestOpensIntoJoinsOnColumnNotOnDeclaredOrder(t *testing.T) {
 			stem, ok, position)
 	}
 
-	// A YEAR WHOSE STEP DOCUMENT WAS NOT BUILT IS IN NO COLUMN, and the view
-	// is then refused by NAME rather than dropped: assertPublishedBuilt
-	// refuses this state in the real pipeline, and under a custom Builder the
-	// refusal is what stops a site shipping one year's drill and not the
-	// other's in silence.
+	// A year whose step document was not built is refused by name, not dropped.
 	short := map[string][]byte{}
 	for k, v := range built {
 		if k != "fund-flows-2027" {
@@ -1744,15 +1605,7 @@ func TestOpensIntoJoinsOnColumnNotOnDeclaredOrder(t *testing.T) {
 		t.Errorf("got %v, want the refusal naming the year's column", err)
 	}
 
-	// AND NO DRILL INTO A DOCUMENT THAT WAS NOT BUILT, for the reason a view
-	// whose document was not built is dropped: a chain pointing at a file that
-	// was not written is a click that 404s.
-	//
-	// PER PROJECTION AND NOT PER SPINE, which is why the first case below is
-	// not zero. The three fund-flows steps and the object-category step are
-	// guarded by separate calls to opensInto, so a corpus that lost pp.127-140
-	// keeps the drill that opens pp.85-125 -- and one guard over both documents
-	// could not say that.
+	// No drill into a document that was not built, guarded per projection.
 	without := func(prefixes ...string) map[string][]byte {
 		out := map[string][]byte{}
 		for k, v := range built {
@@ -1762,22 +1615,12 @@ func TestOpensIntoJoinsOnColumnNotOnDeclaredOrder(t *testing.T) {
 		}
 		return out
 	}
-	//
-	// ASSERTED AS THE KEYS THAT SURVIVE rather than as a count, because three
-	// projections now join separately and a count alone would let a corpus lose
-	// one document and gain a step somewhere else without the difference
-	// showing.
 	for _, tc := range []struct {
 		name string
 		drop []string
 		want []string
 	}{
-		// LOSING pp.127-140 LOSES THE FUNDING STEP TOO, which is the one
-		// entry here that is not a projection standing on its own. The
-		// fund-departments step opens tier 3 of the fund GROUP's window, so it
-		// needs pp.85-125 for the document it draws and pp.127-140 for the
-		// chart it opens from; views() guards it on both, and validateSteps
-		// would refuse the view outright if it did not.
+		// fund-departments needs both pp.85-125 and the pp.127-140 chart it opens from.
 		{"no fund-flows", []string{project.FundFlowsProjection},
 			[]string{"object-category", "transfers"}},
 		{"no department-spending", []string{project.DepartmentSpendingProjection},
@@ -2294,43 +2137,23 @@ func TestTheFundFlowsFixtureIsTheDocumentTheSiteDraws(t *testing.T) {
 }
 
 // TestTheFundFlows2027FixtureIsTheDocumentTheSiteDraws is the same claim over
-// the other column the merged page reaches.
-//
-// THE SPINE PUBLISHES TWO YEARS AND EACH OPENS INTO ITS OWN DOCUMENT
-// (stepStems), so a drill measured over FY2026's capture alone leaves FY2027's
-// with nothing able to see it go wrong -- and the two are not the same shape:
-// fund/207 prints a dash in the FY2027 column and is not a node there. The
-// stem is spelled rather than computed, because it is the file the join names
-// and a test deriving it the way the code does would agree with the code by
+// the other spine year, whose shape differs (fund/207 is a dash in FY2027).
+// The stem is spelled, not computed, so it cannot agree with the join by
 // construction.
 func TestTheFundFlows2027FixtureIsTheDocumentTheSiteDraws(t *testing.T) {
 	fixtureIsTheDocumentExported(t, "fund-flows-2027", "fund-flows-2027.golden.json")
 }
 
 // TestTheSankey2027FixtureIsTheDocumentTheSiteDraws pins the second spine
-// column's capture the way the drill-down's is pinned.
-//
-// IT EXISTS BECAUSE THE RESIDUAL READS THE SPINE. Until the chart carried the
-// residual, the client's tests could serve FY2026's spine under both years' paths --
-// the drill read nothing off it but the clicked node's id -- and one spine
-// golden was enough. The residual node copies the spine's own links into the
-// opened group, and the two columns differ exactly where the declared set
-// says they do: FY2027 general's change in working capital is a contribution
-// out, not a draw in. A check over FY2026's spine twice would never see
-// fund-balance/contribution carried at all.
+// column's capture. The residual reads the spine, and only FY2027 carries
+// fund-balance/contribution.
 func TestTheSankey2027FixtureIsTheDocumentTheSiteDraws(t *testing.T) {
 	fixtureIsTheDocumentExported(t, "sankey-2027", "sankey-2027.golden.json")
 }
 
 // TestTheDepartmentSpendingFixtureIsTheDocumentTheSiteDraws and its 2027 twin
-// pin the captures the object-category window is measured over.
-//
-// ONE PER PUBLISHED SPINE YEAR, for the fund-flows pair's reason and a sharper
-// one: the two columns are not the same shape -- capital-outlay reaches five
-// divisions in FY2025-26 and four in FY2026-27 -- and only FY2026-27 carries
-// the declared 250,000 gap between p0067 and pp.85-125. A window measured over
-// FY2025-26's capture twice would never see a gap mark drawn at all, and one
-// measured over FY2026-27's twice would never see a chart that ties.
+// pin the captures the object-category window is measured over, one per spine
+// year: only FY2026-27 carries the declared gap between p0067 and pp.85-125.
 func TestTheDepartmentSpendingFixtureIsTheDocumentTheSiteDraws(t *testing.T) {
 	fixtureIsTheDocumentExported(t, project.DepartmentSpendingProjection,
 		"department-spending.golden.json")
@@ -2342,14 +2165,8 @@ func TestTheDepartmentSpending2027FixtureIsTheDocumentTheSiteDraws(t *testing.T)
 }
 
 // TestTheDepartmentFundingFixtureIsTheDocumentTheSiteDraws and its 2027 twin pin
-// the captures the fund-departments window is measured over.
-//
-// ONE PER PUBLISHED SPINE YEAR, for the cross-tab pair's reason and a sharper
-// one: the two columns draw different FUNDS. Measured off these two captures --
-// 58 funds reach a department in FY2025-26 and 55 in FY2026-27, out of the 63
-// the schedule names in every column -- so a window measured over one capture
-// twice could not see a fund stop being decomposed, which is the whole state
-// this step's openability declaration exists to keep the reader out of.
+// the captures the fund-departments window is measured over, one per spine
+// year, because the two years decompose different funds.
 func TestTheDepartmentFundingFixtureIsTheDocumentTheSiteDraws(t *testing.T) {
 	fixtureIsTheDocumentExported(t, project.DepartmentFundingProjection,
 		"department-funding.golden.json")
@@ -2360,27 +2177,15 @@ func TestTheDepartmentFunding2027FixtureIsTheDocumentTheSiteDraws(t *testing.T) 
 		"department-funding-2027.golden.json")
 }
 
-// TestTheTransfersByFundFixtureIsTheDocumentTheSiteDraws keeps the capture of
-// Budget Book p76 honest.
-//
-// THIS DOCUMENT IS THE ONE SHAPE THE CLIENT'S TESTS CANNOT INFER FROM ANOTHER. Every
-// other captured document draws one ribbon per printed cell; this one draws TWO
-// per printed figure, a receiving leg and a paying one carrying the same
-// transfer_id, so a harness handed any other fixture would measure a chart whose
-// ribbons sum to the schedule rather than to twice it. The transfers step draws
-// the receiving legs alone, and whether the fold it hangs off is the one
-// `fisc export` writes is exactly what this compares.
+// TestTheTransfersByFundFixtureIsTheDocumentTheSiteDraws pins the capture of
+// Budget Book p76, the one document drawing two legs per printed figure.
 func TestTheTransfersByFundFixtureIsTheDocumentTheSiteDraws(t *testing.T) {
 	fixtureIsTheDocumentExported(t, project.TransfersByFundProjection,
 		"transfers-by-fund.golden.json")
 }
 
 // TestTheTransfersByFund2027FixtureIsTheDocumentTheSiteDraws is the same claim
-// over the spine's other year, and the two documents are NOT interchangeable
-// even though they are the same shape: p76 prints different figures in the two
-// budget columns, so each ties to its own printed grand total -- $21,525,997 in
-// FY2025-26 and $21,624,633 in FY2026-27 -- and a harness driven over one
-// capture twice could not see a year join to the wrong document.
+// over the other spine year, whose p76 column prints different figures.
 func TestTheTransfersByFund2027FixtureIsTheDocumentTheSiteDraws(t *testing.T) {
 	fixtureIsTheDocumentExported(t, "transfers-by-fund-2027",
 		"transfers-by-fund-2027.golden.json")
@@ -2431,11 +2236,8 @@ func fixtureIsTheDocumentExported(t *testing.T, stem, fixture string) {
 	}
 }
 
-// TestEveryServedStampIsTheExportsOwn is one real export's build stamps held
-// to each other: every page's exported_by and every served JSON's top-level
-// generated_by. The client refuses a rung answer or a column whose stamp is
-// not its page's, so one written from a second call that disagreed would be
-// a site refusing itself on first load.
+// TestEveryServedStampIsTheExportsOwn holds one export's build stamps to each
+// other: the client refuses a rung answer or column whose stamp is not its page's.
 func TestEveryServedStampIsTheExportsOwn(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {

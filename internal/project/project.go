@@ -201,14 +201,9 @@ func PublishedDocuments() []PublishedDocument {
 		})
 	}
 
-	// THE CROSS-TAB PUBLISHES ALL FOUR COLUMNS TOO, and for the drill-down's
-	// first reason rather than its second: it is the only document that draws
-	// Budget Book pp.85-125 at all, so two of the four would be half a schedule
-	// with nothing saying which half.
-	//
-	// Two of the four are unreachable from any chart until the spine's
-	// right-hand column opens, and are declared in `fisc export`'s
-	// unviewedDocuments rather than left to ship as bytes nobody can open.
+	// The cross-tab publishes all four columns: it is the only document that
+	// draws pp.85-125's upper block. `fisc export`'s unviewedDocuments declares
+	// the ones no chart reaches.
 	spending := departmentSpendingSlices()
 	for _, o := range spending {
 		out = append(out, PublishedDocument{
@@ -219,15 +214,8 @@ func PublishedDocuments() []PublishedDocument {
 		})
 	}
 
-	// THE FUNDING SOURCES PUBLISH ALL FOUR COLUMNS, on the cross-tab's argument
-	// one block down the same eleven pages: this is the only document that
-	// draws pp.85-125's LOWER block, so two of the four would be half a
-	// schedule with nothing saying which half.
-	//
-	// Two of the four are unreachable from any chart until a reader switches
-	// year, and the spine publishes no actual and no revised column at all; the
-	// document says so in a caveat of its own rather than leaving a reader to
-	// discover that two of its columns tie to no citywide total.
+	// The funding sources publish all four columns, for the same reason, one
+	// block down the same pages.
 	funding := departmentFundingSlices()
 	for _, o := range funding {
 		out = append(out, PublishedDocument{
@@ -238,14 +226,9 @@ func PublishedDocuments() []PublishedDocument {
 		})
 	}
 
-	// THE TRANSFER NETWORK PUBLISHES THE TWO ADOPTED COLUMNS AND p76 PRINTS
-	// FOUR, which is the opposite shape from the two documents above and is not
-	// a narrower promise. The other two publish four because the corpus carries
-	// four and drawing two would leave half a schedule unsaid; here the corpus
-	// carries two, because p76's historical columns miss its own
-	// printed grand total by $6,858,051 and by exactly $5,000,000 and the rules
-	// read and skip them. So this IS the whole schedule, and stating two columns
-	// is what makes a corpus that lost one reportable.
+	// The transfer network publishes the two adopted columns, all the corpus
+	// carries: the rules skip p76's historical columns, which miss its own
+	// printed grand total by millions.
 	transfers := transfersByFundSlices()
 	for _, o := range transfers {
 		out = append(out, PublishedDocument{
@@ -278,9 +261,7 @@ func PublishedDocuments() []PublishedDocument {
 // [FundFlows.Slices] would declare them over a corpus that carries both its
 // schedules across the four printed columns.
 //
-// STATED HERE RATHER THAN READ OFF THE FACTS, for the reason [PublishedDocuments]
-// gives: a published set that consulted the corpus would agree with it by
-// construction and could not report that the corpus stopped covering it.
+// Stated rather than read off the facts, for [PublishedDocuments]' reason.
 func fundFlowsSlices() []Options {
 	cols := []Column{
 		{FiscalYear: 2024, Basis: mapping.BasisActual},
@@ -299,9 +280,7 @@ func fundFlowsSlices() []Options {
 // [departmentSpending.Slices] would declare them over a corpus carrying
 // pp.85-125's upper block across the four printed columns.
 //
-// STATED HERE RATHER THAN READ OFF THE FACTS, for the reason [PublishedDocuments]
-// gives: a published set that consulted the corpus would agree with it by
-// construction and could not report that the corpus stopped covering it.
+// Stated rather than read off the facts, for [PublishedDocuments]' reason.
 func departmentSpendingSlices() []Options {
 	cols := []Column{
 		{FiscalYear: 2024, Basis: mapping.BasisActual},
@@ -320,9 +299,7 @@ func departmentSpendingSlices() []Options {
 // [departmentFunding.Slices] would declare them over a corpus carrying
 // pp.85-125's lower block across the four printed columns.
 //
-// STATED HERE RATHER THAN READ OFF THE FACTS, for the reason [PublishedDocuments]
-// gives: a published set that consulted the corpus would agree with it by
-// construction and could not report that the corpus stopped covering it.
+// Stated rather than read off the facts, for [PublishedDocuments]' reason.
 func departmentFundingSlices() []Options {
 	cols := []Column{
 		{FiscalYear: 2024, Basis: mapping.BasisActual},
@@ -341,9 +318,7 @@ func departmentFundingSlices() []Options {
 // [transfersByFund.Slices] would declare them over a corpus carrying p76's two
 // adopted columns.
 //
-// STATED HERE RATHER THAN READ OFF THE FACTS, for the reason [PublishedDocuments]
-// gives: a published set that consulted the corpus would agree with it by
-// construction and could not report that the corpus stopped covering it.
+// Stated rather than read off the facts, for [PublishedDocuments]' reason.
 func transfersByFundSlices() []Options {
 	cols := []Column{
 		{FiscalYear: 2026, Basis: mapping.BasisAdopted},

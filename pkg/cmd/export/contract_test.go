@@ -13,19 +13,8 @@ import (
 )
 
 // TestTheSchemaStatesWhatTheRungAnswerCarries holds schema/rungs.schema.json
-// to the emitted structs: every JSON name the artifact can carry is a property
-// there, nothing is a property there that the artifact cannot carry, and the
-// declared schema version is the one the packager stamps.
-//
-// THE SCHEMA AND NOT A FENCED BLOCK IN docs/, because a schema is compared
-// against the emitted BYTES by encodeRungs and a block can only ever be
-// compared against the struct tags. The prose keeps the argument, which is what
-// a schema cannot say.
-//
-// THE COMPARISON IS OF NAMES AND NOT OF TYPES, deliberately. Whether `ids` is
-// an array of strings is the schema's to enforce against real bytes; whether
-// the struct and the schema even agree on WHICH keys exist is the thing a
-// reader of either one would otherwise have to check by eye.
+// to the emitted structs by property name, both ways, and to the schema
+// version the packager stamps. Types are the schema's, checked against bytes.
 func TestTheSchemaStatesWhatTheRungAnswerCarries(t *testing.T) {
 	raw, err := fs.ReadFile(schema.FS(), schema.Rungs)
 	if err != nil {

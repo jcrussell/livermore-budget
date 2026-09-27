@@ -345,21 +345,9 @@ func (r *Registry) loadDepartments(fsys fs.FS) error {
 		if d.Label == "" {
 			return deptf(d.Slug, "label", "is required")
 		}
-		// THE CROSS-AXIS REFUSAL, at the department tier for the division
-		// tier's reason and no weaker one. A fact's row_path joins the slug
-		// its `department` field holds to its category on a "/", and
-		// [Registry.Division]'s tier is no longer the only one that field may
-		// hold: Budget Book pp.85-125's funding-source rows name a DEPARTMENT,
-		// so `community-development/department-funding-sources` is a row_path
-		// whose halves a reader must be able to tell apart.
-		//
-		// Measured when this arm was added: data/taxonomy.yaml's ACFR p168
-		// function axis printed `public-works` and `community-development`,
-		// both equal to a department slug, and both had to be renamed for this
-		// file to load. The taxonomy side moved because a department slug is a
-		// mechanical transform of a printed ALL-CAPS heading and this file
-		// derives nothing, where `library-function` had already set the
-		// suffix convention on the other side.
+		// A fact's row_path joins its `department` to its category on a "/",
+		// and Budget Book pp.85-125's rows put a department slug there, so the
+		// two axes may not share a slug.
 		if _, isCategory := r.categories[d.Slug]; isCategory {
 			return deptf(d.Slug, "slug",
 				"is also a %s category slug; a department and a category are two axes and a "+
@@ -735,9 +723,8 @@ func validateCategory(c Category, catf errFunc) error {
 // saying one thing and `parent:` another — cannot load, and so cannot put a row
 // under a group it does not belong to in a rollup view.
 //
-// Depth is unbounded, and there is deliberately no cycle check: a parent slug
-// is a strict prefix of its child's and so strictly shorter, so no chain of
-// `parent:` links can be spelled that returns to where it started.
+// Depth is unbounded and no cycle check is needed: a parent slug is strictly
+// shorter than its child's.
 func validateParent(c Category, byslug map[string]Category, catf errFunc) error {
 	i := strings.LastIndex(c.Slug, "/")
 	nested := i >= 0

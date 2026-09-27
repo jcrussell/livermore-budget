@@ -1,13 +1,8 @@
 // Package schema holds the machine-checkable contracts for the artifacts this
 // project publishes or reads across a language boundary.
 //
-// Go validates fully, through this package. tools/extract.py reads the same
-// files and compares its own refusals against the `required` arrays, because
-// it may not take a dependency; the client reads none and draws what Go
-// validated.
-//
-// The embed is here because //go:embed patterns cannot escape the directory of
-// the file that declares them, which is site/embed.go's reason too.
+// Go validates fully; tools/extract.py, which may take no dependency, compares
+// its own refusals against the `required` arrays.
 //
 // Why, measured: docs/schema-contracts.md.
 package schema
@@ -49,10 +44,7 @@ func Load(name string) (*jsonschema.Resolved, error) {
 	return resolved, nil
 }
 
-// load answers a $ref from the embedded copy.
-//
-// Each schema's $id is the URL it will be published at, so a ref reads as a
-// public identifier and still resolves with no network.
+// load answers a $ref, a published URL, from the embedded copy by filename.
 func load(uri *url.URL) (*jsonschema.Schema, error) {
 	name := path.Base(uri.Path)
 	raw, err := fs.ReadFile(files, name)
@@ -66,9 +58,8 @@ func load(uri *url.URL) (*jsonschema.Schema, error) {
 	return &doc, nil
 }
 
-// Validate holds one decoded JSON value to the named schema.
-//
-// It compiles on every call. A caller in a loop should Load once instead.
+// Validate holds one decoded JSON value to the named schema, compiling it on
+// every call.
 func Validate(name string, v any) error {
 	resolved, err := Load(name)
 	if err != nil {
@@ -110,28 +101,20 @@ func ValidateJSONL(r io.Reader, name string) error {
 	return nil
 }
 
-// The schemas a caller names. Three more are embedded and have no constant --
-// fact-id, locator and caveat -- because nothing loads them by name: they are
-// reached only as $ref targets, resolved from the referring schema's URL.
+// The schemas a caller names. The others are reached only as $ref targets.
 const (
 	// Fact is one line of facts/facts.jsonl and of every published page shard.
 	Fact = "fact.schema.json"
-	// Manifest is data/extracted/<doc_id>/manifest.json, which
-	// tools/extract.py writes and internal/corpus reads.
+	// Manifest is data/extracted/<doc_id>/manifest.json.
 	Manifest = "manifest.schema.json"
-	// Column is one published column: a node table, the tier order, and one
-	// entry per printed schedule.
+	// Column is one published column.
 	Column = "column.schema.json"
-	// Rungs is the answer a page opens nodes against: which nodes each column
-	// of each reachable chart holds, and which marks the client adds.
+	// Rungs is which nodes each column of each reachable chart holds.
 	Rungs = "rungs.schema.json"
-	// Page is window.FISC_CONFIG: what the page has before it has fetched
-	// anything, and which artifacts it may fetch.
+	// Page is window.FISC_CONFIG.
 	Page = "page.schema.json"
-	// Projection is one document internal/project builds as a graph: the
-	// citywide spine and the four schedules drawn beside it.
+	// Projection is one document internal/project builds as a graph.
 	Projection = "projection.schema.json"
-	// Series is one built as a series per printed row instead: the revenue
-	// trends and the two ACFR fund-balance schedules.
+	// Series is one built as a series per printed row instead.
 	Series = "series.schema.json"
 )

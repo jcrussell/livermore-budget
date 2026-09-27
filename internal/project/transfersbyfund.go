@@ -14,34 +14,18 @@ import (
 // TransfersByFundProjection is this document's name and file stem.
 const TransfersByFundProjection = "transfers-by-fund"
 
-// TransfersByFundScope is the schedule this document is of: Budget Book p76,
-// Summary of Transfers.
-//
-// IT IS ITS OWN SCOPE AND IT CANNOT JOIN ANOTHER DOCUMENT'S. Measured on the
-// committed store, transfers-by-fund and revenue-by-fund share 22 keys of
-// (kind, category, fund_group, fund, year, basis) carrying $42,183,495 of
-// transfer_in across the published columns, because pp.127-140 print a fund's
-// transfers in and p76 prints the same movement from the payer's end. One
-// document holding both would double it, which
-// peers-overlap-only-by-declared-identity refuses; and at the spine's scope the
-// same rows double the city's transfers.
+// TransfersByFundScope is Budget Book p76, Summary of Transfers. It is its own
+// scope because pp.127-140 print the same transfers in from the receiving end,
+// so a document holding both would double them.
 const TransfersByFundScope = "transfers-by-fund"
 
 // TransfersByFundScopes is the schedule set, as [Options.Scopes] holds it.
 func TransfersByFundScopes() []string { return []string{TransfersByFundScope} }
 
 // transfersByFundCounts is how much of the corpus this document accounts for.
-//
-// facts = facts_cited + facts_uncited, and here facts_cited is EVERY fact of a
-// row the page prints a figure for, because each leg is its own link. That is
-// the difference between this document and every other one in the project: a
-// cell elsewhere nets several facts into one ribbon, so its citation is a set;
-// a leg here is one printed figure read in one direction, so its citation is a
-// singleton and the two counts move together.
-//
-// transfers is the number of printed movements drawn, which is links/2. It is
-// published because it is the figure a reader needs to not double the schedule:
-// summing every link comes to twice p76's grand total, by construction.
+// Each leg is its own link citing one fact, so facts_cited is every fact of a
+// non-zero row. transfers is links/2: summing every link comes to twice p76's
+// grand total.
 type transfersByFundCounts struct {
 	Facts        int `json:"facts"`
 	FactsCited   int `json:"facts_cited"`
@@ -51,9 +35,8 @@ type transfersByFundCounts struct {
 	Links        int `json:"links"`
 }
 
-// transfersByFundMetadata is this document's metadata block. It embeds
-// [Envelope] rather than [MultiScopeEnvelope] for departmentSpendingMetadata's
-// reason: this document is of one schedule and one printed column.
+// transfersByFundMetadata is this document's metadata block, of one schedule
+// and one printed column.
 type transfersByFundMetadata struct {
 	Envelope
 	FiscalYear      int                   `json:"fiscal_year"`
@@ -86,48 +69,21 @@ type TransfersByFundDocument struct {
 //	          |  the PAYING leg, one link per printed figure
 //	tier 5  transfer-to/<fund>        parent ""
 //
-// ONE PRINTED FIGURE IS TWO LINKS, and that is this document's whole structure
-// rather than a duplication. p76 names both ends of every movement, so the fact
-// store carries two facts per printed figure -- a receiving leg keyed to the
-// destination fund and a paying leg keyed to the payer, citing the same
-// doc_id/page/offset (fisc-4rh). A link may cite only facts that SUM to its
-// value, so one ribbon carrying both legs would publish a figure twice the one
-// the page prints. Two links, one per leg, each citing one fact, is the shape
-// that keeps link-values-tie-to-facts exact -- and it is what [Link.TransferID]
-// was declared for: the two legs carry the same id, and transfer-legs-pair
-// asserts they are two and equal.
+// ONE PRINTED FIGURE IS TWO LINKS. The store carries a receiving and a paying
+// leg per figure at the same doc_id/page/offset (fisc-4rh); one ribbon citing
+// both would publish twice the printed value, so each leg is its own link and
+// the two share a [Link.TransferID].
 //
-// THE PAYER IS ITS OWN ID FORM BECAUSE fund/<a> -> fund/<b> CANNOT BE DRAWN.
-// The natural link runs tier 3 to tier 3: node-tiers-are-declared refuses it,
-// since it is neither a revenue line's rollup into its category nor a partition --
-// p76 IS money moving, not one table read along a second axis, and declaring
-// otherwise would be a false claim on the wire -- and d3-sankey cannot lay it
-// out either, both ends taking the same column index. `transfer-from/<number>`
-// at tier 2 is the payer's end of a movement rather than the payer itself, the
-// same construct nodeTransfersIn already is on the spine, and it makes the link
-// run coarse to fine with no new exception anywhere.
+// The payer is `transfer-from/<n>` at tier 2 because fund/<a> -> fund/<b> is
+// tier 3 to tier 3, which node-tiers-are-declared and d3-sankey both refuse.
+// The paying legs (`transfer-to/<n>`) are published but no view draws them:
+// the spine pins transfers/out at tier 5 and nothing finer can decompose it
+// (fisc-ko1j.12.10).
 //
-// `transfer-to/<number>` IS THE MIRROR AND IT IS NOT SYMMETRIC IN USE. The
-// receiving legs are drawn: `fisc export`'s transfers step opens the spine's
-// transfers/in into tiers {2,3}. The paying legs are published and no view
-// draws them, because the spine pins transfers/out at tier 5 and a node
-// decomposing it would have to be FINER than its own parent, which the tier
-// order forbids. That asymmetry is the spine's -- nodeTransfersOut records the
-// same thing one document over -- and it is fisc-ko1j.12.10.
-//
-// THE FOLD IS EXACT AND IS THE REASON transfers/in IS HERE AT ALL. Every payer
-// node is parented to it, and the payer legs sum to $21,525,997 in FY2025-26
-// and $21,624,633 in FY2026-27, which are p76's own printed grand totals and
-// the spine's transfers/in to the cent. The node is also what the client opens:
-// the reader clicks transfers/in on sankey.json, and filterFromNode asks this
-// document for the subtree of the id they clicked.
-//
-// A PRINTED DASH IS A FACT AND NOT A FLOW, fundFlows' rule at the same place.
-// Nine of p76's 22 rows print a dash in both budget columns; they draw no
-// ribbon and survive in facts_uncited.
+// Every payer is parented to transfers/in, whose fold equals p76's printed
+// grand total. A printed dash draws no ribbon and stays in facts_uncited.
 type transfersByFund struct {
-	// Labels supplies the city's words for a fund number. It is optional, as
-	// Sankey's is: a nil registry degrades to a slug-derived label.
+	// Labels is optional: a nil registry degrades to a slug-derived label.
 	Labels labels
 }
 
@@ -139,16 +95,9 @@ var (
 // Name is [Projection]'s, and it is this document's file stem.
 func (*transfersByFund) Name() string { return TransfersByFundProjection }
 
-// Slices is one Options per column the schedule carries, [Sankey.Slices]'s
-// rule: a cross-tab of two budget years adds every movement to its successor.
-//
-// THE CORPUS CARRIES TWO COLUMNS AND p76 PRINTS FOUR, and the two that are
-// missing are missing at the MAPPING rather than here. p76's FY2023-24 and
-// FY2024-25 columns miss its own printed grand total by $6,858,051 and by
-// exactly $5,000,000 -- millions, nothing like the <=$5 rounding class
-// stated_total_deltas is for -- so mappings/ reads and skips them and no fact
-// carries them. This therefore draws the schedule exhaustively over what the
-// store holds.
+// Slices is one Options per column the store carries. p76 prints four columns;
+// the mapping skips the two historical ones, which miss the page's own grand
+// total by millions.
 func (*transfersByFund) Slices(facts []fact.Fact, version string) []Options {
 	seen := map[Column]bool{}
 	for i := range facts {
@@ -232,11 +181,8 @@ func (t *transfersByFund) Document(facts []fact.Fact, o Options) (*TransfersByFu
 		cited[r.in.ID] = true
 		cited[r.out.ID] = true
 		id := transferID(k)
-		// THE RECEIVING LEG CITES THE RECEIVING FACT, whose own fund IS this
-		// link's target. The payer at the other end is read off the counterpart
-		// rather than off this fact, and the citation does not lose it: the two
-		// legs share a (doc_id, page, offset), so both ends of the ribbon
-		// resolve to the one printed figure this link's locator names.
+		// The receiving leg cites the receiving fact; its payer is read off
+		// the counterpart, which shares the same printed figure.
 		links = append(links, Link{
 			Source: payer.from.id, Target: receiver.fund.id, ValueCents: r.in.AmountCents,
 			Kind: KindInternalTransfer, TransferID: id, FactIDs: []string{r.in.ID},
@@ -255,11 +201,8 @@ func (t *transfersByFund) Document(facts []fact.Fact, o Options) (*TransfersByFu
 	}
 	out := sortedNodes(nodes)
 
-	// EVERY UNCITED FACT MUST BE A PRINTED ZERO, refused here rather than
-	// asserted downstream, for the reason fundFlows and departmentSpending each
-	// give at the same place: a fact that reached no link for any other reason
-	// is a transfer this document dropped, and a document publishing the
-	// identity while quietly failing it is worse than one publishing no counts.
+	// Every uncited fact must be a printed zero; anything else is a dropped
+	// transfer.
 	uncited := 0
 	for i := range selected {
 		id := selected[i].ID
@@ -310,15 +253,9 @@ func (t *transfersByFund) Document(facts []fact.Fact, o Options) (*TransfersByFu
 	}, nil
 }
 
-// transferKey addresses one printed figure of p76: the page and the offset the
-// token was read at.
-//
-// IT IS THE PAIRING, AND IT IS CONTENT-INDEPENDENT. fisc-4rh settled that the
-// two legs of a movement cite the same doc_id, page and offset by construction,
-// because one printed figure is the evidence for both directions. Keying on the
-// row LABEL could not do this: three of p76's rows omit their payer because it
-// continues from the row above, and p67 elsewhere in this corpus prints four
-// byte-identical all-dash lines -- identity has to come from position.
+// transferKey addresses one printed figure of p76 by position, which pairs its
+// two legs. Keying on the row label could not: three of p76's rows omit their
+// payer because it continues from the row above.
 type transferKey struct {
 	docID  string
 	page   int
@@ -326,12 +263,7 @@ type transferKey struct {
 }
 
 // transferID is [Link.TransferID]: the printed figure both legs were read from,
-// spelled so a reader can find it.
-//
-// IT IS NOT A HASH. A fact id is hashed because it has to survive a rule being
-// renamed; this names a place in a document, and a place is worth being legible
-// -- a reader holding `livermore-budget-fy2026-2027/p76/3136` can open p0076.txt
-// and seek to the character the two legs were read from.
+// spelled legibly rather than hashed, e.g. `livermore-budget-fy2026-2027/p76/3136`.
 func transferID(k transferKey) string {
 	return fmt.Sprintf("%s/p%d/%d", k.docID, k.page, k.offset)
 }
@@ -352,16 +284,9 @@ type transferEnds struct {
 	to endpoint
 }
 
-// endpoints resolves the four nodes a movement touches, refusing a leg that
-// names no fund.
-//
-// A FUND OF 0 IS REFUSED RATHER THAN DEFAULTED, and it is reachable rather than
-// hypothetical: p76's LAVWMA row publishes a receiving leg carrying fund 0,
-// because the row's destination is not a single fund of data/funds.yaml. It
-// prints a dash in both budget columns, so it never reaches here -- the caller
-// drops a zero row first -- and the day it prints a figure this refuses to draw
-// a movement into a fund it cannot name, rather than coining `fund/0`, which
-// node-tiers-are-declared refuses in as many words.
+// endpoints resolves the nodes a movement touches, refusing a leg that names no
+// fund. p76's LAVWMA row carries no single fund; it prints dashes today, so the
+// zero-row skip keeps it from reaching here.
 func (r transferRow) endpoints() (transferEnds, transferEnds, error) {
 	payer, err := transferFundEnds(&r.out)
 	if err != nil {
@@ -392,9 +317,7 @@ func transferFundEnds(fa *fact.Fact) (transferEnds, error) {
 	}, nil
 }
 
-// transferFundRole is fundFlows' rule, for its reason: fund 100 is the General
-// Fund whatever any column holds, and a reader of the published node learns it
-// from the role rather than from the number.
+// transferFundRole marks fund 100 as the General Fund.
 func transferFundRole(number int) string {
 	if number == generalFund {
 		return roleGeneralFund
@@ -402,27 +325,15 @@ func transferFundRole(number int) string {
 	return roleFund
 }
 
-// transfersInEndpoint is the spine's own flow endpoint, at the spine's own id.
-//
-// THE ID IS THE SPINE'S DELIBERATELY, departmentSpending's rule for its tier-5
-// nodes: a reader opens this document by clicking transfers/in on sankey.json,
-// and a second id form for the same endpoint would make the thing they clicked
-// a different box wearing the same words.
+// transfersInEndpoint is the spine's transfers/in, at the spine's id: it is the
+// node a reader clicks to open this document.
 func transfersInEndpoint() endpoint {
 	return endpoint{id: nodeTransfersIn, slug: nodeTransfersIn,
 		tier: tierRevenueSource, role: roleTransferIn}
 }
 
 // pairTransferLegs groups the selected facts into printed figures, refusing any
-// shape that is not exactly one receiving leg and one paying leg.
-//
-// EVERY GUARD IS A REFUSAL AND NOT A SKIP, this package's rule. A group that is
-// not a pair is a mapping defect -- a counterpart that was not declared, a rule
-// writing two rows at one offset -- and drawing what is left would publish half
-// a movement with no error anywhere. The equal-amounts guard is the one that
-// matters most: transfer-legs-pair asserts the same thing over the LINKS, and a
-// projection that let an unequal pair through would be handing that check a
-// finding it should never have had to make.
+// shape that is not exactly one receiving and one paying leg of equal amount.
 func pairTransferLegs(facts []fact.Fact) (map[transferKey]transferRow, error) {
 	legs := map[transferKey][]fact.Fact{}
 	var order []transferKey
@@ -487,9 +398,8 @@ func pairTransferLegs(facts []fact.Fact) (map[transferKey]transferRow, error) {
 	return out, nil
 }
 
-// sortedTransferKeys is a total order over the printed figures, so node
-// creation does not depend on map iteration order. Links are re-sorted
-// afterwards, but a node's first touch is decided here.
+// sortedTransferKeys is a total order over the printed figures, so a node's
+// first touch does not depend on map iteration order.
 func sortedTransferKeys(m map[transferKey]transferRow) []transferKey {
 	out := make([]transferKey, 0, len(m))
 	for k := range m {
@@ -517,15 +427,9 @@ func (t *transfersByFund) addNode(nodes map[string]Node, e endpoint) {
 	nodes[e.id] = Node{ID: e.id, Label: t.label(e), Tier: e.tier, Role: e.role, Parent: e.parent}
 }
 
-// label resolves a node's words: a built-in first, then the registry, then a
-// readable transform of the id -- Sankey.label's order, for its reasons.
-//
-// THE THREE FUND-BEARING FORMS TAKE THE SAME WORDS, and that is the document
-// rather than an omission: `transfer-from/620` and `fund/620` are both the
-// Wastewater Fund, drawn in two columns because a flow diagram cannot draw a
-// fund paying itself into the same box. The caveat below says so to a reader
-// who meets one fund twice on one chart; inventing "(paying)" for it would put
-// words on a node the city did not print.
+// label resolves a node's words: a built-in, then the registry, then the id.
+// The three fund-bearing forms deliberately take the same words; the
+// a-fund-is-drawn-once-per-end caveat tells the reader why.
 func (t *transfersByFund) label(e endpoint) string {
 	if l, ok := builtinLabels[e.id]; ok {
 		return l
@@ -561,10 +465,7 @@ func transferFundNumber(id string) (int, bool) {
 }
 
 // transfersByFundCaveats are the things a reader of this file has to be told.
-//
-// NONE NAMES A NODE, departmentSpending's rule at the same place: each is a
-// statement about the SCHEDULE, so marking particular marks would mark every
-// one of them, which marks none.
+// Each is about the whole schedule, so none names a node.
 func transfersByFundCaveats() []Caveat {
 	return []Caveat{
 		{

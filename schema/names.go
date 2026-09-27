@@ -9,37 +9,16 @@ import (
 )
 
 // Names is every dotted JSON name a schema declares, with array nesting
-// collapsed: "columns", "columns.stem", "columns.rungs.draws.ids".
-//
-// IT IS HALF OF A PAIR AND USELESS ALONE. [StructNames] produces the same
-// spelling off the structs an encoder marshals, and a contract test compares
-// the two: every name the artifact can carry is a property here, and nothing is
-// a property here the artifact cannot carry. The comparison is of NAMES AND NOT
-// TYPES, deliberately -- whether `ids` holds strings is this schema's to enforce
-// against real bytes, while whether the struct and the schema even agree on
-// WHICH keys exist is what a reader of either would otherwise check by eye.
-//
-// A MAP IS STEPPED THROUGH BY ITS additionalProperties, because a path names
-// keys and not instances: the page config's `docs` is one shape under arbitrary
-// doc ids, and naming the ids would make this test a copy of the corpus.
-// A $ref IS A LEAF HERE, and [NamesDeep] is the other half of that choice.
-// Which one a comparison wants is decided by the STRUCT it is compared against:
-// internal/export holds a column's locators and caveats as [json.RawMessage],
-// passing another package's bytes through without decoding them, so the schema
-// naming what is inside would be knowledge the struct does not have.
+// collapsed: "columns", "columns.stem", "columns.rungs.draws.ids". A contract
+// test compares it with [StructNames]; names, not types. A map is stepped
+// through by its additionalProperties, and a $ref is a leaf (see [NamesDeep]),
+// matching structs that pass another package's bytes as [json.RawMessage].
 func Names(name string) ([]string, error) {
 	return namesIn(name, nil)
 }
 
-// NamesDeep is [Names] with every $ref followed into the schema it names.
-//
-// FOR THE SIDE THAT WALKS IN. internal/project's own documents hold locators as
-// a []Source and caveats as a []Caveat, so [StructNames] walks into both; a
-// schema that stopped at the reference would state a shorter name set than the
-// encoder can write, and the pair would disagree on every document citing a
-// page. The reference is resolved by FILENAME against this package's embedded
-// files: every $id here is a published URL whose last segment is the file, and
-// nothing in this tree refs a schema it does not ship.
+// NamesDeep is [Names] with every $ref followed, by filename, into the
+// embedded schema it names: for structs that decode locators and caveats.
 func NamesDeep(name string) ([]string, error) {
 	return namesIn(name, map[string]bool{})
 }
@@ -62,9 +41,7 @@ func names(node map[string]any, prefix string, seen map[string]bool) ([]string, 
 			return nil, nil
 		}
 		file := ref[strings.LastIndex(ref, "/")+1:]
-		// A CYCLE IS A STOP AND NOT AN ERROR. Nothing here refs itself today;
-		// one that did would otherwise recurse until the stack ran out, and a
-		// name set is finite whatever the reference graph looks like.
+		// A cycle is a stop, not an error.
 		if seen[file] {
 			return nil, nil
 		}
@@ -114,28 +91,14 @@ func names(node map[string]any, prefix string, seen map[string]bool) ([]string, 
 }
 
 // StructNames is [Names]' other half: the same set read off the structs an
-// encoder marshals.
-//
-// A field with no json tag is named by its Go name, which is what encoding/json
-// would write, so an untagged field goes red in the comparison rather than
-// slipping past a tag lookup that returned "".
-//
-// TWO KINDS STOP THE WALK RATHER THAN DESCENDING. A map's VALUE is walked,
-// matching the schema's additionalProperties; [json.RawMessage] is not, because
-// its contents are another package's document passed through verbatim and this
-// side knows nothing about their shape -- which is why the schema holds it as a
-// bare object too.
+// encoder marshals. An untagged field is named by its Go name, as encoding/json
+// writes it; a map's value is walked; [json.RawMessage] is a leaf.
 func StructNames(t reflect.Type, prefix string) []string {
 	var out []string
 	for i := range t.NumField() {
 		f := t.Field(i)
 		name := strings.Split(f.Tag.Get("json"), ",")[0]
-		// AN EMBEDDED STRUCT WITH NO TAG IS INLINED, because that is what
-		// encoding/json writes: project.Envelope's four keys appear at the level
-		// of the struct embedding it and under no name of their own. Walking it
-		// as a named field states `metadata.Envelope.currency` for a document
-		// whose bytes say `metadata.currency`, which makes the comparison this
-		// feeds disagree on every document that embeds anything.
+		// An untagged embedded struct is inlined, as encoding/json writes it.
 		if f.Anonymous && name == "" && f.Type.Kind() == reflect.Struct {
 			out = append(out, StructNames(f.Type, prefix)...)
 			continue
@@ -153,7 +116,7 @@ func StructNames(t reflect.Type, prefix string) []string {
 		if f.Type == reflect.TypeOf(json.RawMessage(nil)) {
 			continue
 		}
-		// A TYPE THAT MARSHALS ITSELF IS A LEAF, as encoding/json treats it.
+		// A type that marshals itself is a leaf.
 		marshals := func(t reflect.Type) bool { return t.Implements(reflect.TypeFor[json.Marshaler]()) }
 		ft := f.Type
 		for !marshals(ft) && (ft.Kind() == reflect.Slice || ft.Kind() == reflect.Pointer ||

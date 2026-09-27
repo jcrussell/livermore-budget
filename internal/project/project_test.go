@@ -231,18 +231,8 @@ func TestOnlyScopeRefusesASetItCannotDescribe(t *testing.T) {
 // TestASingleGrainDocumentRefusesTwoScopes is the same guard reached through the
 // two projections that publish a singular metadata.scope.
 //
-// HOW MANY SCHEDULES AND WHICH SCHEDULE ARE DIFFERENT MISTAKES with different
-// remedies, so they are two refusals and not one: a set of two means someone
-// pointed a single-grain document at a drill-down's options; a set of one that
-// is the wrong schedule means they pointed it at the wrong page. Reporting
-// either as the other sends the reader to the wrong declaration.
-//
-// THE LATTICE REFUSES FIRST, AND ONLY WHERE IT HAS SOMETHING TO SAY. The spine
-// beside pp.127-140 is a headline over two grains of one money, and the view
-// refuses that pair with both cuts named before the sankey asks how many
-// schedules it was handed. Two schedules that ARE summable together --
-// pp.127-140's revenue beside pp.167-170's expenditure -- pass the lattice and
-// reach the sankey's own refusal.
+// The lattice refuses the spine beside pp.127-140 first, with both cuts named;
+// two summable schedules pass it and reach the sankey's own refusal.
 func TestASingleGrainDocumentRefusesTwoScopes(t *testing.T) {
 	both := []string{PublishedScope, TrendsScope}
 

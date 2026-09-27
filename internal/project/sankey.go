@@ -46,16 +46,8 @@ const (
 // them, and the flow endpoints below sit at the ends rather than inside it.
 const (
 	tierRevenueSource = 0
-	// tierRevenueLine is a printed revenue ROW: pp.127-140 break each of the
-	// ten categories into the lines the city prints under it, and a line's
-	// parent edge is its category, one string, defined for every line.
-	//
-	// THE NUMBER WAS EMPTY AND NOT FREE. The contract reserves tier 1 for a
-	// layer between the revenue source and the fund group, and a constraint
-	// tier cannot be one: it is a property of a fund and the fund groups do not
-	// partition along it (data/funds.yaml has capital = 3 committed + 43
-	// restricted-by-law), so its parent edge has no single answer. A line's
-	// does. See docs/sankey-contract.md.
+	// tierRevenueLine is a printed revenue ROW of pp.127-140, parented to its
+	// category. See docs/sankey-contract.md for why tier 1 holds it.
 	tierRevenueLine    = 1
 	tierFundGroup      = 2
 	tierFund           = 3
@@ -71,20 +63,16 @@ const (
 	roleFund          = "fund"
 	roleGeneralFund   = "general_fund"
 	roleDepartment    = "department"
-	// roleWholeDepartment is the ALL-CAPS tier of data/departments.yaml, which
-	// only [departmentFunding] draws. It is not roleDepartment: that one is on
-	// a `dept/<division>` node, and five slugs name a department and a division
-	// beneath it, so one role over both tiers would be a vocabulary that cannot
-	// tell the two apart at exactly the ids where it matters.
+	// roleWholeDepartment is the ALL-CAPS tier of data/departments.yaml. It is
+	// not roleDepartment because five slugs name both a department and a
+	// division beneath it.
 	roleWholeDepartment = "whole_department"
 	roleObjectCategory  = "object_category"
 	roleTransferIn      = "transfer_in"
 	roleTransferOut     = "transfer_out"
 	// RoleTransferSource and RoleTransferSink are the payer's and the
-	// receiver's end of one printed movement, which only [transfersByFund]
-	// draws. They are not roleTransferIn and roleTransferOut: those two are the
-	// spine's single flow endpoints, and a step's Role is how `fisc export`
-	// tells one node at a tier from another.
+	// receiver's end of one printed movement in [transfersByFund], distinct
+	// from the spine's single flow endpoints.
 	RoleTransferSource          = "transfer_source"
 	RoleTransferSink            = "transfer_destination"
 	roleReserveIncrease         = "reserve_increase"
@@ -99,74 +87,32 @@ const (
 // near-miss is deliberate.
 const (
 	prefixRevenue = "revenue/"
-	// prefixRevenueLine is its own form rather than a deeper `revenue/` id,
-	// because an id form is read by cutting at the FIRST slash: `revenue/` is
-	// declared tier 0 and `revenue/taxes/property` is a tier-0 category with a
-	// slash already inside its slug, so a line nested under that prefix would
-	// be indistinguishable from its own parent. `expenditure/<division>/<object>`
-	// is the precedent for the shape and not for the prefix.
+	// prefixRevenueLine is its own form because an id form is read by cutting
+	// at the FIRST slash, and a category slug may already contain one.
 	prefixRevenueLine = "revenue-line/"
 	prefixExpenditure = "expenditure/"
 	prefixFundGroup   = "fund-group/"
 	prefixFund        = "fund/"
 	prefixDept        = "dept/"
-	// prefixDepartment is the ALL-CAPS department tier, and it is a SEPARATE
-	// form from prefixDept rather than a deeper id under it. `dept/` holds
-	// divisions, five slugs name a department and a division beneath it, and an
-	// id form is read by cutting at the first slash -- so `dept/city-council`
-	// under both tiers would mean the department in one document and the
-	// division in another. `revenue-line/` is the precedent: a form gets its own
-	// prefix when the alternative is one prefix answering to two things.
+	// prefixDepartment is the ALL-CAPS department tier, separate from
+	// prefixDept because five slugs name both a department and a division.
 	prefixDepartment = "department/"
-	// prefixTransfers is the flow endpoints outside the hierarchy. Nothing on
-	// THE SPINE is parented to them; the prefix exists so transferEndpoints can
-	// recognise a transfer node without a list of ids to keep in step.
+	// prefixTransfers is the flow endpoints outside the spine's hierarchy.
 	prefixTransfers = "transfers/"
 	// prefixTransferFrom and prefixTransferTo are the two ends of one printed
-	// movement, and they exist because `fund/<a> -> fund/<b>` cannot be drawn:
-	// the link runs tier 3 to tier 3, which node-tiers-are-declared refuses and
-	// d3-sankey cannot lay out. See [transfersByFund] for the whole argument.
+	// movement; see [transfersByFund].
 	prefixTransferFrom = "transfer-from/"
 	prefixTransferTo   = "transfer-to/"
 )
 
 // nodeTransfersIn is the flow endpoint every transfer arrives from. On the
-// spine it sits OUTSIDE the hierarchy -- nothing is parented to it and it
-// aggregates nothing -- and carries tier 0 only so the diagram lays out left to
-// right.
-//
-// IT IS A FOLD IN ONE DOCUMENT, and the exception is exact rather than a
-// weakening. [transfersByFund] parents every payer's end to it, and those
-// legs come to p76's printed grand total -- $21,525,997 in FY2025-26 and
-// $21,624,633 in FY2026-27 -- which is the spine's own transfers/in to the
-// cent. So the fold says what a fold says there, while the spine's node still
-// aggregates nothing.
+// spine it aggregates nothing and carries tier 0 only for layout; in
+// [transfersByFund] it is the fold of every payer's end, which equals p76's
+// printed grand total.
 const nodeTransfersIn = "transfers/in"
 
-// nodeTransfersOut is its mirror, and the two are not symmetric in use.
-//
-// nodeTransfersIn IS ON THE PRODUCTION PATH -- revenueEndpoint returns it for every
-// KindTransferIn cell -- while nodeTransfersOut is read only by tests. That
-// asymmetry is the document's, not an oversight: the drill-down has a revenue side
-// and no transfers-out end to name.
-//
-// This constant was added to spell [Caveat.AppliesTo]'s two legs, and that is
-// no longer what reads it: the field is built by transferEndpoints from the
-// links a graph actually draws. What it is for now is letting a test name the
-// endpoint it expects without retyping the string the taxonomy produces.
-//
-// (Two earlier versions of this comment were wrong in opposite directions --
-// one said this constant was on the production path, the next said neither was.
-// The second was written in the commit that fixed the first, which is the shape
-// docs/review-loop-evidence.md collects.)
-//
-// builtinLabels below spells both keys as bare literals, and an earlier version
-// of this comment defended that with two wrong facts -- that the table has
-// eleven other rows and that they are literal. Measured: twelve rows, of which
-// nine already key off a constant and three do not. So the table is mostly
-// constants, and these two are part of the minority rather than the norm.
-// Converting them is a tidy-up nothing here needs; it is not a decision this
-// comment should keep pretending was made.
+// nodeTransfersOut is its mirror. Only tests read it: the drill-down has no
+// transfers-out end to name.
 const nodeTransfersOut = "transfers/out"
 
 // The slugs this projection has to recognize by name rather than by shape.
@@ -243,31 +189,16 @@ type labels interface {
 	// RestrictionNote is the sentence a constraint tier was read from, which is
 	// what a node carrying one publishes as its rationale.
 	RestrictionNote(fund int) string
-	// DivisionLabel is the city's own words for a division slug, which is what
-	// a fact's `department` field holds. A projection drawing a division
-	// refuses a miss.
+	// DivisionLabel is the city's own words for a division slug. A projection
+	// drawing a division refuses a miss.
 	DivisionLabel(slug string) (string, bool)
-	// DepartmentLabel is the city's own words for a DEPARTMENT slug, which is
-	// the other thing a fact's `department` field holds: pp.85-125's funding
-	// rows name the ALL-CAPS tier where every other department-bearing rule
-	// names a division. A miss is refused, as DivisionLabel's is.
-	//
-	// IT IS A SECOND METHOD AND NOT A WIDENED FIRST ONE. Five slugs name a
-	// department and a division beneath it, so one lookup over both tiers would
-	// answer either -- and which of the two it answered would depend on the map
-	// it happened to consult first, at exactly the five ids where the caller
-	// most needs to know which tier it is holding.
+	// DepartmentLabel is the city's own words for an ALL-CAPS DEPARTMENT slug,
+	// a second method because five slugs name both a department and a division.
+	// A miss is refused.
 	DepartmentLabel(slug string) (string, bool)
 	// LinesPrintedAs is the line slugs a printed row label resolves to under a
-	// category, for the kind the fact carries. A fact names the row it was read
-	// from in free text and names no slug, so this is the only route from a
-	// printed row to a node id.
-	//
-	// EVERY ANSWER BUT ONE SLUG IS AN ERROR TO THE CALLER, both the empty
-	// result and the ambiguous one, and for the same reason FundType's miss is:
-	// a row this cannot place has no node, and drawing it under its category
-	// instead would publish a line the city prints as a share of one it does
-	// not.
+	// category, for the fact's kind. Any answer but exactly one slug is an
+	// error to the caller.
 	LinesPrintedAs(parent, printed, kind string) []string
 }
 
@@ -433,20 +364,9 @@ type Link struct {
 	Target     string   `json:"target"`
 	ValueCents int64    `json:"value_cents"`
 	Kind       LinkKind `json:"kind"`
-	// TransferID pairs the two legs of one transfer: the printed figure both
-	// were read from, as [transferID] spells it.
-	//
-	// ONE PROJECTION POPULATES IT AND THE REST LEAVE IT "", which is a property
-	// of the schedules rather than of this field. A leg can only carry a
-	// pairing where the document draws each end of a movement separately, and
-	// only [transfersByFund] does: the spine nets p76's 22 movements into
-	// fund-group cells before a pairing could attach to anything, and the
-	// drill-down cannot select that scope at all -- it publishes transfer_in
-	// from pp.127-140, and the two scopes overlap.
-	//
-	// transfer-legs-pair is what reads it, and a "" leg is invisible to that
-	// check by construction: it skips an empty id, so blanking one leg of a
-	// pair leaves the other reporting one leg where it wants two.
+	// TransferID pairs the two legs of one transfer, as [transferID] spells it.
+	// Only [transfersByFund] draws each end separately, so every other
+	// document leaves it "", which transfer-legs-pair skips.
 	TransferID string `json:"transfer_id"`
 	// FactIDs cite every fact this link sums, ascending. More than one means
 	// contra rows netted into their parent category.
@@ -476,34 +396,13 @@ type Link struct {
 	Locators []Source `json:"locators"`
 	Derived  bool     `json:"derived"`
 	// Partition says the ribbon divides one printed table along a second axis
-	// rather than following money the schedule prints as moving that way.
-	//
-	// IT IS THE PROJECTION'S ANSWER AND NOT THE CLIENT'S, which is the whole
-	// reason it is on the wire. Budget Book pp.85-125 print one matrix of
-	// cells, divisions down and object categories across; a chart can read it
-	// either way round and neither reading is money moving. Nothing in a graph
-	// distinguishes a cross-tab from a chain by looking, so a page that guessed
-	// would be deciding what a published table means.
-	//
-	// node-tiers-are-declared reads it: a partition link is the second thing
-	// allowed to run from a finer tier to a coarser one, beside a rollup into
-	// the source's own parent. A link that is neither is still refused.
+	// rather than following money the schedule prints as moving that way. It is
+	// on the wire because nothing in a graph distinguishes a cross-tab from a
+	// chain; node-tiers-are-declared lets such a link run finer to coarser.
 	Partition bool `json:"partition"`
-	// Contra names the schedule a negative link is printed as a reduction of.
-	// Non-empty exactly when ValueCents is negative: the schemas state that
-	// biconditional as an if/then and contra-links-name-their-schedule holds it
-	// in both directions.
-	//
-	// IT IS THE DOCUMENT'S SENTENCE AND NOT THE CLIENT'S, which is the whole
-	// reason it is on the wire. The words name the parent the SCHEDULE prints
-	// the row under, and the client folds a line's parent away before the chart
-	// is drawn -- so a page composing this from what it has left would name a
-	// category the reader is not looking at, or name nothing at all.
-	//
-	// A SOURCE WHOSE PARENT THE DOCUMENT DOES NOT CARRY is named for what it is
-	// rather than for a category it is not. Unreachable on the committed corpus,
-	// where every negative link is one of Budget Book p127's two printed
-	// reductions and resolves to Property Taxes.
+	// Contra names the schedule a negative link is printed as a reduction of,
+	// non-empty exactly when ValueCents is negative. It is on the wire because
+	// the client folds away the parent it names.
 	Contra string `json:"contra"`
 }
 
@@ -603,12 +502,8 @@ func (s *sankey) Build(facts []fact.Fact, o Options) ([]byte, error) {
 // cellKey addresses one printed cell of the schedule: a row's classification
 // crossed with a column's fund group, and the fund where the row names one.
 //
-// THE FUND IS IN THE KEY AND THAT IS NECESSARY AND NOT SUFFICIENT. Without
-// it a fund-level row and the spine's fund-group cell for the same category
-// land at one address and are summed; with it they are two cells, and a
-// document holding both grains still adds both into every total it
-// accumulates. What makes the second impossible is the view the headline is
-// summed over, refused at construction unless it is an antichain.
+// The fund keeps a fund-level row and a fund-group cell apart; the headline's
+// view is what keeps both from being summed.
 type cellKey struct {
 	kind      mapping.Kind
 	category  string
@@ -634,32 +529,13 @@ func (s *sankey) Graph(facts []fact.Fact, o Options) (*Graph, error) {
 	if err := o.validate(); err != nil {
 		return nil, fmt.Errorf("sankey options: %w", err)
 	}
-	// THE HEADLINE IS A TOTAL OVER A NAMED VIEW, and the view is built before
-	// anything is summed. A cut set one of whose cuts decomposes another is
-	// refused here, by the lattice, with the two cuts named -- which is what
-	// keeps "the total" from being a sum over two grains of the same money
-	// that every downstream check, re-summing the same facts, would agree
-	// with. The refusals below are this document's own and come after: how
-	// many schedules, and which.
+	// The headline is a total over a view the lattice refuses unless its
+	// cuts are summable together.
 	view, err := structure.ViewOf("headline", o.Scopes, nil)
 	if err != nil {
 		return nil, fmt.Errorf("sankey: %w", err)
 	}
-	// The scope selects the SCHEDULE, and refusing a foreign one is what stops
-	// this projection publishing another schedule's rows under the spine's
-	// contract. Trends.Document makes the same refusal in the same shape; the
-	// asymmetry was that the one document the site publishes as its headline
-	// was the one that did not make it, while the newer and smaller document
-	// did. Unreachable through Slices, which pins PublishedScope -- but Graph
-	// is exported and Options.Scopes' own doc comment says the field exists to
-	// stop exactly the doubling this would produce.
-	//
-	// TWO REFUSALS, NOT ONE, and OnlyScope makes the first of them. "How many
-	// schedules" and "which schedule" are different mistakes with different
-	// remedies: a set of two here means someone pointed a single-grain document
-	// at a drill-down's options, and a set of one that is not the spine means
-	// they pointed it at the wrong schedule. Reporting either as the other
-	// sends the reader to the wrong declaration.
+	// Two refusals: how many schedules (onlyScope), and which.
 	scope, err := o.onlyScope()
 	if err != nil {
 		return nil, fmt.Errorf("sankey: %w", err)
@@ -833,13 +709,8 @@ func (s *sankey) Graph(facts []fact.Fact, o Options) (*Graph, error) {
 	}, nil
 }
 
-// headlineOver sums the four published totals over the facts a view admits.
-//
-// A TOTAL IS A SUM OVER ONE ANTICHAIN, and it is computed from the view rather
-// than accumulated as the cells are drawn, because accumulating per cell has
-// no notion of grain: split one cell into two and both are added. The view was
-// refused before this runs if its cuts were not summable together, so what is
-// summed here is one reading of each figure.
+// headlineOver sums the four published totals over the facts a view admits,
+// rather than per drawn cell, which has no notion of grain.
 func headlineOver(v structure.View, facts []fact.Fact) Headline {
 	var h Headline
 	identities := structure.BudgetBookIdentities()
@@ -984,10 +855,8 @@ type endpoint struct {
 	slug string
 	tier int
 	role string
-	// parent is the node this one folds into, where the endpoint itself knows
-	// it. A fund's comes from the registry and a division's is fixed, so both
-	// are filled in by addFundFlowNode; a revenue line's is the category the
-	// row was printed under, which only the cell it was netted from carries.
+	// parent is the node this one folds into, where only the endpoint's
+	// cell knows it (a revenue line's category).
 	parent string
 }
 
@@ -1068,10 +937,8 @@ func sortedNodes(nodes map[string]Node) []Node {
 
 // sortLinks orders links by (source, target, kind).
 //
-// THE KIND IS PART OF THE ORDER BECAUSE IT IS PART OF THE IDENTITY, and
-// sort.Slice is not stable: a pair carrying one ribbon per kind would otherwise
-// come out in whichever order the sort happened to leave, and two builds of the
-// same facts would differ by a line. docs/sankey-contract.md states the order.
+// The kind is in the order because sort.Slice is not stable and a pair may
+// carry one ribbon per kind.
 func sortLinks(links []Link) {
 	sort.Slice(links, func(i, j int) bool {
 		if links[i].Source != links[j].Source {
@@ -1092,15 +959,7 @@ func sortLinks(links []Link) {
 // only happen if two cells collapse onto one pair, which means a classification
 // is wrong upstream, so it is an error rather than a silent merge.
 //
-// THE KIND IS IN THE KEY, which is site/app.js's foldDocument rule and not a
-// relaxation of it: one ribbon per kind between a pair, so a ribbon's kind is
-// true of all of it. A line rolled up into its category reaches it under every
-// kind its funds take the money under -- external into most, internal_service
-// into the five Internal Service Funds -- and collapsing those two onto one
-// ribbon would publish internal service charges as money crossing the city's
-// boundary, which is the claim link-kinds-match-their-facts exists to refuse.
-// Two links of the SAME kind on one pair is still a lost axis and still an
-// error.
+// One ribbon per kind is allowed, so a ribbon's kind is true of all of it.
 func checkDistinctLinks(links []Link) error {
 	for i := 1; i < len(links); i++ {
 		if links[i].Source == links[i-1].Source && links[i].Target == links[i-1].Target &&
@@ -1179,22 +1038,11 @@ var (
 // What a reader is owed is not our arithmetic but the knowledge that the city's
 // own book disagrees with itself here.
 //
-// PrintedBy AND ImpliedBy ARE SEPARATE FIELDS AND THAT IS THE POINT. The first
-// draft of the caveat said "six other schedules PRINT" a figure that four of
-// them print and two of them imply -- p0061 prints that figure plus a transfer
-// it also prints, and pp.85-125 sum to it across 78 rows. A derived figure cited
-// as a printed one is the defect this project exists to refuse, and it had got
-// into reader-facing text.
-//
-// IT RETIRES ITSELF. The caveat is emitted only when the graph actually draws
-// Published; correct the fact and the condition stops matching and the sentence
-// stops being printed. What that alone would NOT catch is the entry going dead
-// while still sitting here, so two tests cover it over the committed corpus:
-// TestContestedTotalsAreStillContested asserts every entry still describes what
-// is drawn, and TestContestedTotalsAgreeWithTheirCheckException that it still
-// agrees with structure.BudgetBookExceptions' funding-sources pins, which
-// cuts-tie-along-the-lattice verifies against the corpus on every run. Between
-// them, neither a stale caveat nor a stale declaration can survive.
+// PrintedBy and ImpliedBy are separate so a derived figure is never cited as
+// a printed one. The caveat is emitted only when the graph draws Published;
+// TestContestedTotalsAreStillContested and
+// TestContestedTotalsAgreeWithTheirCheckException keep an entry from going
+// stale.
 type contestedTotal struct {
 	Column    Column
 	FundGroup string
@@ -1373,13 +1221,9 @@ func contestedCaveat(c contestedTotal, col Column, links []Link) (Caveat, bool) 
 // printed -- which is the point: naming the column for a basis the city prints
 // no figure for would publish an identity that does not exist.
 //
-// EVERY FIGURE IS READ OFF A PAGE. p0073.txt:58 and p0075.txt:58, under the
-// header at p0073.txt:9. They are hand-typed here in the same way, and for the
-// same reason, as the six p76-lists-no-transfer-to-the-cip-* entries of
-// structure.BudgetBookExceptions: pp.72-75 are
-// not fixtures, so nothing in this tree parses them. What IS machine-checked is
-// that the figure below equals this document's own residual -- see
-// transferCaveat, which declines to name the column when it does not.
+// Hand-typed from p0073.txt:58 and p0075.txt:58, which nothing parses;
+// transferCaveat names the column only when the figure equals this
+// document's own residual.
 var transfersOutToCIP = map[Column]struct {
 	Cents amount.Cents
 	// Page is the PDF page index, which is what the site's citations label
@@ -1394,69 +1238,28 @@ var transfersOutToCIP = map[Column]struct {
 
 // transferCaveat says the transfer legs do not pair up, and by how much.
 //
-// ITS TWO CLAIMS ARE KEPT APART ON PURPOSE, and neither is the one this
-// function used to make. That no link carries a transfer_id is NOT caused by
-// p76 being unmapped -- p76 has been mapped and published since ced45b4, and
-// the legs are still unpaired, because its facts are at scope
-// transfers-by-fund and this document is of all-funds-gross. The residual is
-// not caused by it either, and mapping the page DEMONSTRATED that rather than
-// predicting it: p76's grand total is the transfers-in side to the cent, so the
-// city itemises every transfer received and none of the difference.
-//
-// THE RESIDUAL IS A PRINTED COLUMN, which is a stronger claim than the
-// decomposition this comment used to point at. fisc-5gk.3's per-fund-group
-// table was corrected in 19bb265 and must not be cited; what is published is
-// the citywide figure, and only that. Splitting it by fund group is derived,
-// because pp.72-75 print a to-CIP figure per major fund and one aggregate for
-// every non-major one -- this project's own published-is-not-derived rule, made
-// in full at internal/check's collapseNonMajor.
+// The legs are unpaired because p76's facts are at scope transfers-by-fund,
+// not because p76 is unmapped. The residual is the printed to-CIP column,
+// published citywide only: splitting it by fund group would be derived.
 func transferCaveat(h Headline, col Column, links []Link) Caveat {
-	// ONE ID OVER THREE TEXTS, deliberately. Which of the three sentences a
-	// document gets is a fact about that document's own arithmetic -- whether
-	// the legs balance, and whether the residual meets the printed to-CIP
-	// column -- and not three different caveats. A reader following the anchor
-	// wants "the transfer legs do not pair"; the paragraph they land on is the
-	// one their document earned. What that costs is that a page listing more
-	// than one document's caveats has to key on (id, document) rather than on
-	// id alone, and cannot assume one text per id.
+	// One id over three texts: which one a document gets depends on its own
+	// arithmetic, so a page listing several documents' caveats keys on
+	// (id, document).
 	const id = "transfer-legs-unpaired"
 	const unpaired = "Transfer legs are unpaired IN THIS DOCUMENT: no link here carries a " +
-		"transfer_id. Budget Book p76's transfer schedule is mapped and published, but at " +
-		"scope transfers-by-fund, and this document is of all-funds-gross -- so none of " +
-		"its facts is in this graph. They cannot simply be added to it: transfers-by-fund " +
-		"and revenue-by-fund both publish transfer_in over the same money, and the " +
-		"peers-overlap-only-by-declared-identity check holds every cell the two share to " +
-		"a declared identity -- so a document carrying both has to say which schedule it " +
-		"reads that money from rather than summing both. The legs ARE paired one document " +
-		"over: transfers-by-fund draws each end of every figure p76 prints as its own " +
-		"link, the two carrying the same transfer_id, and this chart's Transfers In opens " +
-		"into it. "
+		"transfer_id. Budget Book p76's transfers are published one document over, in " +
+		"transfers-by-fund, which draws each end of every figure p76 prints as its own link " +
+		"under one transfer_id, and this chart's Transfers In opens into it. They are not " +
+		"added here because revenue-by-fund publishes transfer_in over the same money, and " +
+		"a document carrying both would have to say which schedule it reads that money from. "
 	in, out := h.InternalTransferInCents, h.InternalTransferOutCents
 
-	// AppliesTo IS READ OFF THE LINKS, not inferred from the totals above.
-	//
-	// Two wrong versions preceded this one and the second is the instructive
-	// one. Naming both legs unconditionally was plainly wrong -- caveats()
-	// emits this caveat when EITHER side is non-zero, so a transfers-in-only
-	// document pointed at a node it does not carry, and ValidateCaveats caught
-	// it via TestLabelFallback. Gating each leg on its own headline total fixed
-	// that case and was still a PROXY: a non-zero transfers-out total says some
-	// transfer_out fact was summed, not that the node it produced is spelled
-	// "transfers/out". data/taxonomy.yaml admits categories under that kind
-	// which would produce another id, and the failure mode is an aborted build
-	// naming a node nobody wrote -- fail-closed, but from a message that points
-	// at the wrong thing.
-	//
-	// The endpoints are in hand, so use them. A transfer link's own endpoint IS
-	// the node, which is exact rather than a proxy for it, and it degrades the
-	// right way: a document whose transfer endpoints are named something else
-	// marks those, instead of asserting about ids it guessed.
+	// AppliesTo is read off the links' own transfer endpoints, not inferred
+	// from the totals.
 	targets := transferEndpoints(links)
 
 	if out == in {
-		// NO RESIDUAL, SO NO PRINTED COLUMN TO NAME. The city prints a to-CIP
-		// figure whatever the legs do, but a caveat that pointed at it here
-		// would be explaining a difference this document does not have.
+		// No residual, so no printed column to name.
 		return Caveat{
 			ID: id,
 			Summary: fmt.Sprintf(
@@ -1469,11 +1272,8 @@ func transferCaveat(h Headline, col Column, links []Link) Caveat {
 		}
 	}
 	verb := "exceed"
-	// signed is out - in, kept alongside the magnitude the prose prints,
-	// because the printed column below is transfers OUT to the CIP. A document
-	// whose transfers IN exceeded its out by exactly the tabled figure would
-	// otherwise be handed an outflow column as the explanation for an inflow
-	// surplus -- the arithmetic would match and the sentence would be nonsense.
+	// signed is out - in: the printed column is transfers OUT, so only an
+	// outflow surplus may match it.
 	signed := out - in
 	residual := signed
 	if residual < 0 {
@@ -1483,11 +1283,8 @@ func transferCaveat(h Headline, col Column, links []Link) Caveat {
 	const stated = " It is stated as headline.transfer_residual_cents rather than netted " +
 		"away or padded with an invented link."
 
-	// THE PRINTED CLAIM IS MADE ONLY WHEN THIS DOCUMENT'S OWN ARITHMETIC MEETS
-	// THE PAGE. A hand-typed constant that has drifted from the graph it is
-	// published beside would be exactly the kind of plausible wrong figure this
-	// project exists to refuse, and the reader has no way to see the drift. So
-	// the stronger sentence is earned per build rather than asserted once.
+	// The printed claim is made only when this document's arithmetic meets
+	// the page, so a drifted constant cannot publish.
 	if cip, ok := transfersOutToCIP[col]; ok && amount.Cents(signed) == cip.Cents {
 		return Caveat{
 			ID: id,

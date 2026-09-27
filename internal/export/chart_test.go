@@ -7,11 +7,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-// TestChartSplicesAsWindowForDoes is the three rules a carried chart is
-// assembled under: the first record of an id wins, ribbons between one pair
-// of ends of one kind merge, and a ribbon joining a node to itself is
-// dropped -- which is what windowFor's splice does with a kept half and a
-// fresh one that overlap in the centre column.
+// TestChartSplicesAsWindowForDoes: the first record of an id wins, ribbons
+// between one pair of ends of one kind merge, and a self-loop is dropped.
 func TestChartSplicesAsWindowForDoes(t *testing.T) {
 	c := IndexGraph(Graph{
 		Nodes: []GraphNode{{ID: "centre", Tier: 1, Parent: "flank"}, {ID: "flank", Tier: 0}},
@@ -48,9 +45,6 @@ func TestChartSplicesAsWindowForDoes(t *testing.T) {
 	}
 }
 
-// TestChartRefusesARibbonToANodeItDoesNotHold: the walk that assembles a
-// chart has already refused the fold that could orphan a ribbon, so an
-// absent end here is its own bookkeeping gone wrong and not a case to drop.
 func TestChartRefusesARibbonToANodeItDoesNotHold(t *testing.T) {
 	c := IndexGraph(Graph{Nodes: []GraphNode{{ID: "a"}}})
 	err := c.Link(GraphLink{Source: "a", Target: "gone"})

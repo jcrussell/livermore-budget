@@ -50,11 +50,8 @@ func buildAll(repoRoot string) (result, error) {
 	if err != nil {
 		return result{}, err
 	}
-	// THE RUNG ANSWER SHIPS TOO. Go walks every rung of the spine to build
-	// it, and until it shipped the walk's only reader was
-	// the test that pinned testdata/rungs.json to it; the client drew each
-	// rung from a derivation of its own instead. A projections-only result
-	// is enough to name the spine, which is all spineView needs.
+	// The rung answer ships too, so the client draws each rung from Go's walk
+	// rather than a derivation of its own.
 	spine, err := spineView(result{Projections: projections})
 	if err != nil {
 		return result{}, err
@@ -336,27 +333,10 @@ func loadDocs(repoRoot string) ([]export.Doc, error) {
 // generatedBy names this binary for the page footer.
 func generatedBy() string { return "fisc " + build.Get().String() }
 
-// yearStems is the document stems for one projection, in the order a reader
-// should meet them.
-//
-// IT READS THE DECLARED STEMS RATHER THAN REBUILDING THEM, and that is fisc-rmx
-// note (3). It used to walk PublishedFiscalYears() and recompute the stem from
-// each year, which was a fourth spelling of the naming rule and was the one that
-// bit: a stem that stemFor produced and this function could not reconstruct FROM
-// A YEAR ALONE would be written to disk and offered to no reader, so the toggle
-// would silently lose a document rather than fail. project.PublishedDocuments
-// states each stem, so there is nothing left to reconstruct.
-//
-// It lists only stems a document was actually built for. The published list is
-// what the site MEANS to publish; built is what it HAS, and the year control
-// must name the second or it offers the reader a 404. The two agree whenever
-// buildProjections wrote them -- it loops the same list -- and disagree when the
-// caller supplied its own Builder, which the Options.Build seam exists to allow.
-//
-// A published year that produced no document is not silently dropped from the
-// world by this: `fisc verify` fails published-projection-built for it, which is
-// the check that exists to notice a year the site publishes and nothing looked
-// at.
+// yearStems is the built document stems for one projection, in the order a
+// reader should meet them. It reads the stems project.PublishedDocuments
+// declares rather than rebuilding them from a year, and lists only those built,
+// so the year control never offers a 404.
 func yearStems(name string, projections map[string][]byte) []string {
 	docs := project.PublishedDocuments()
 	out := make([]string, 0, len(docs))
@@ -371,95 +351,49 @@ func yearStems(name string, projections map[string][]byte) []string {
 	return out
 }
 
-// unviewedDocuments are documents the site PUBLISHES and no page RENDERS, each
-// with the reason and the bead that will give it one.
-//
-// AN ENTRY IS A DECLARATION, NOT A NOTE, and it exists because the gap it
-// records is one every other gate is blind to. published-projection-built and
-// assertPublishedBuilt each assert a published document was BUILT, and neither
-// asks whether a reader can reach it -- so four fund-flows documents can ship
-// as bytes nobody can open with `fisc verify` green over all of them. Declaring
-// the gap is what makes a document reachable by NOBODY a stated decision rather
-// than an omission.
-//
-// AN ENTRY THAT HAS STOPPED BEING TRUE MUST GO RED, NOT QUIET, which is the
-// same standard internal/check's staleDocumentDeclarations applies to
-// uncheckedDocuments: the moment a view names one of these stems, the entry is a
-// false statement about the site, so assertPublishedReachable refuses it and
-// the entry is deleted rather than left for whoever forgets.
-//
-// WHY THE FUND-FLOWS PAIR IS NOT A CHART PROBLEM ANY MORE. It was: the
-// drill-down's 61-node fund column laid every node and every ribbon out at zero
-// height, and c3a337d landed the fold that fixes it. index.html opens the spine
-// into fund-flows now, joining the two documents on Column -- see opensInto --
-// and that join is what those two cannot satisfy: see the const. Every entry
-// left here is a printed column pp.66-67 have no year for, on one projection or
-// the other.
+// unviewedDocuments are documents the site publishes and no page renders, each
+// with its reason. The build gates never ask whether a reader can reach a
+// document, so this declaration is what makes an unreachable one a decision;
+// unviewedDocuments are documents the site publishes and no page renders, each
+// with its reason. The build gates never ask whether a reader can reach a
+// document, so this declaration is what makes an unreachable one a decision;
+// assertPublishedReachable refuses an entry a view renders or that names no
+// published document. Each entry is a column pp.66-67 print no year for, so no
+// spine year opens into it.
 var unviewedDocuments = map[string]string{
 	project.FundFlowsProjection + "-2024-actual":  fundFlowsNoSpineColumn,
 	project.FundFlowsProjection + "-2025-revised": fundFlowsNoSpineColumn,
 
-	// THE CROSS-TAB'S TWO ADOPTED COLUMNS ARE GONE FROM HERE, and the two
-	// historical ones are what is left. The object-category step opens the
-	// spine's tier 5 into this projection and joins on Column, so each spine
-	// year reaches its own column; the actual and revised columns have no spine
-	// year to be opened from, which is the same shape as fund-flows' pair.
 	project.DepartmentSpendingProjection + "-2024-actual":  spendingNoSpineColumn,
 	project.DepartmentSpendingProjection + "-2025-revised": spendingNoSpineColumn,
 
-	// AND THE FUNDING SOURCES' TWO HISTORICAL COLUMNS, which is the same shape
-	// a third time and for the third schedule of the same eleven pages. The
-	// fund-departments step opens tier 3 of the fund group's window into this
-	// projection and joins on Column, so each spine year reaches its own
-	// column and the two the spine does not print reach none.
 	project.DepartmentFundingProjection + "-2024-actual":  fundingNoSpineColumn,
 	project.DepartmentFundingProjection + "-2025-revised": fundingNoSpineColumn,
 }
 
 const fundingNoSpineColumn = "a published column of pp.85-125's Department Funding Sources " +
-	"that the chart cannot reach even though its fund-departments step has landed. A fund " +
-	"opens into this document one fiscal year at a time, joining on Column, and pp.66-67 " +
-	"print no actual and no revised column -- so there is no spine year to open this one " +
-	"from. It is published because pp.85-125 DO print those two columns and this is the " +
-	"only document that draws that block: drawing two of the four would publish half a " +
-	"schedule with nothing saying which half. Those two " +
-	"columns also tie to no citywide figure at all, which the document says in a caveat of " +
-	"its own. caveats.html lists its caveats, which indexes the document rather than " +
-	"rendering it and does not retire this entry"
+	"with no spine year to open it from: the fund-departments step joins on Column and " +
+	"pp.66-67 print no actual or revised column. It is published because this is the only " +
+	"document drawing that block, and two of the four columns would be half a schedule with " +
+	"nothing saying which half. caveats.html lists its caveats but does not render it"
 
-const spendingNoSpineColumn = "a published column of the departmentwide cross-tab that the " +
-	"chart cannot reach even though its object-category step has landed. The spine opens " +
-	"into a document one " +
-	"fiscal year at a time, joining on Column, and pp.66-67 print no actual and no revised " +
-	"column -- so there is no spine year to open this one from. It is published because " +
-	"pp.85-125 DO print those two columns and this is the only document that draws those " +
-	"pages: drawing two of the four would publish half a schedule with nothing saying " +
-	"which half. caveats.html lists its caveats, which indexes the " +
-	"document rather than rendering it and does not retire this entry"
+const spendingNoSpineColumn = "a published column of the departmentwide cross-tab with no " +
+	"spine year to open it from: the object-category step joins on Column and pp.66-67 " +
+	"print no actual or revised column. It is published because this is the only document " +
+	"drawing pp.85-125, and two of the four columns would be half a schedule with nothing " +
+	"saying which half. caveats.html lists its caveats but does not render it"
 
-const fundFlowsNoSpineColumn = "a published column of the General Fund drill-down that the chart " +
-	"cannot reach. index.html opens the spine into fund-flows one fiscal year at a time, " +
-	"joining the two documents on Column, and pp.66-67 print no actual and no revised " +
-	"column -- so there is no spine year to open this one from. Note that caveats.html " +
-	"DOES list its caveats -- it indexes every published document rather than drawing " +
-	"one -- which is not the same as rendering it and does not retire this entry. " +
-	"Reaching it means a spine-less way into fund-flows, and FY2023-24 also carries a " +
-	"seventh fund group, permanent, which the client's palette has no hue for: it is " +
-	"drawn and listed in the legend, muted, rather than dropped (fisc-zojk)"
+const fundFlowsNoSpineColumn = "a published column of the General Fund drill-down with no " +
+	"spine year to open it from: index.html opens fund-flows joining on Column and pp.66-67 " +
+	"print no actual or revised column. caveats.html lists its caveats but does not render " +
+	"it. Reaching it means a spine-less way into fund-flows, and FY2023-24 also carries a " +
+	"seventh fund group, permanent, which the client draws muted rather than dropping " +
+	"(fisc-zojk)"
 
-// assertPublishedReachable is the half of the published-document contract that
-// assertPublishedBuilt does not make: a document a reader can open.
-//
-// It takes the views rather than reading them, for assertPublishedBuilt's
-// reason -- a test can hand it a set the real repository is never in.
-//
-// A DOCUMENT IS REACHABLE THROUGH A VIEW'S PROJECTION, THROUGH ITS YEAR STEMS,
-// OR THROUGH A STEP'S DOCUMENTS, and all three arms are needed: the spine's
-// second year has no view of its own and is reached only from the first
-// view's year control, and both fund-flows documents the site draws are
-// reached only by opening a node -- fund-flows-2027 by resolving the step's
-// schedule in its own year's column, which is what export.View.DrawnStems
-// answers and what the caveats page asks the same way.
+// assertPublishedReachable refuses a built published document no view can
+// reach unless unviewedDocuments declares it. A document is reached through a
+// view's projection, its year stems, or a step's drawn stems: the spine's second
+// year only through the year control, and fund-flows only by opening a node.
 func assertPublishedReachable(vs []export.View, built map[string][]byte) error {
 	_, ix, err := export.ColumnsOf(built, "")
 	if err != nil {
@@ -476,12 +410,8 @@ func assertPublishedReachable(vs []export.View, built map[string][]byte) error {
 		}
 	}
 	for _, d := range project.PublishedDocuments() {
-		// A document that was not BUILT is assertPublishedBuilt's finding, not
-		// this one -- and views() drops a view whose document is missing on
-		// purpose, so every unbuilt document would otherwise be reported here
-		// as unreachable too. That matters beyond tidiness: Options.Build is a
-		// documented seam for a caller supplying its own builder, and a caller
-		// building one document must not be told the other six are unreachable.
+		// Unbuilt is assertPublishedBuilt's finding, and a caller's own Builder
+		// may build only some documents.
 		if _, ok := built[d.Stem]; !ok {
 			continue
 		}
@@ -500,13 +430,8 @@ func assertPublishedReachable(vs []export.View, built map[string][]byte) error {
 		}
 	}
 
-	// AND AN ENTRY NAMING NO PUBLISHED DOCUMENT IS ITSELF STALE. Without this
-	// arm the map is only half-checked: a stem that stops being published
-	// leaves its declaration behind, still asserting something about a document
-	// the site no longer has, and nothing would ever say so. A MISTYPED entry
-	// is already caught -- the real document goes undeclared and the arm above
-	// fires -- but a leftover one is silent, which is the shape this whole
-	// declaration exists to refuse.
+	// An entry naming no published document is stale too. A mistyped one is
+	// caught above; a leftover one would be silent.
 	published := make(map[string]struct{}, len(unviewedDocuments))
 	for _, d := range project.PublishedDocuments() {
 		published[d.Stem] = struct{}{}
@@ -533,13 +458,7 @@ func spendingGaps() map[string]export.Gaps {
 }
 
 // stepByKey is the declared step with this key, and whether one was declared.
-//
-// A STEP IS NAMED AND NOT COUNTED, which is fisc-7e1g's rule arriving on the
-// producing side. Every guarded block here appends, so the index of a step
-// declared in an earlier block is a fact about how many blocks ran rather than
-// about the step -- and a later block asking "is the fund-group chart there to
-// open from" by index would be asking a different question on a corpus that
-// lost a schedule.
+// Steps are looked up by key, never index: the blocks append conditionally.
 func stepByKey(steps []export.DrillStep, key string) (export.DrillStep, bool) {
 	for _, s := range steps {
 		if s.Key == key {
@@ -549,26 +468,11 @@ func stepByKey(steps []export.DrillStep, key string) (export.DrillStep, bool) {
 	return export.DrillStep{}, false
 }
 
-// opensInto reports whether the step's projection published a document for the
-// same column as the spine's opening one -- which decides whether the step is
-// DECLARED at all, not which document any year of it draws.
-//
-// ON COLUMN, NOT ON DECLARED ORDER, and that is what dissolves fisc-zojk's
-// first obstacle. yearStems walks PublishedDocuments() in declared order,
-// which for fund-flows is 2024-actual, 2025-revised, 2026, 2027 -- so the bare
-// stem is THIRD, and a view opening on it through a YearStems list is refused
-// by View.validate. A step is not a YearStems list: nothing here asks which
-// document comes first, only whether one covers the column the reader lands on.
-//
-// A BOOLEAN AND NOT A PER-YEAR MAP. Which document each year draws is
-// export.ColumnIndex's, derived from the documents' own fiscal year and basis;
-// this is the composition root's separate question -- whether the corpus it
-// just built can support the rung -- and its answer decides a declaration
-// rather than a lookup. The map was both at once, and a year it resolved
-// wrongly satisfied every arm that guarded it.
-//
-// Only built documents on both sides, for yearStems' reason: a declaration
-// must be supportable by files the site HAS, not by files it means to have.
+// opensInto reports whether the opening document was built and the step's
+// projection built one for the same column, which decides whether the step is
+// declared at all. It matches on Column, not declared order: fund-flows' bare
+// stem is third in PublishedDocuments. Which document each year draws is
+// export.ColumnIndex's question.
 func opensInto(opening, step string, projections map[string][]byte) bool {
 	if _, ok := projections[opening]; !ok {
 		return false
@@ -590,21 +494,13 @@ func opensInto(opening, step string, projections map[string][]byte) bool {
 	return false
 }
 
-// views is the site's pages, in nav order, the page it opens on first.
+// views is the site's pages, in nav order, the page it opens on first. It lives
+// in the composition root because naming a view means knowing what a projection
+// is of, which internal/export must not.
 //
-// IT LIVES IN THE COMMAND, not in internal/export, and that is what keeps that
-// package's stated property true: it "consumes projections as filename stem ->
-// JSON bytes and knows nothing about how they were built" and never imports
-// internal/project. Naming a view means naming a projection and knowing what it
-// is of, which is knowledge only the composition root has.
-//
-// A view whose document was not built is DROPPED rather than refused, and only
-// here. The reason is the asymmetry between the two failures: `fisc verify`
-// already fails when a published document is missing (published-projection-built,
-// and fisc-w7d for the rest), so a missing document is caught by the gate; while
-// refusing to export at all would mean a corpus that lost one schedule could not
-// publish the others. What must never happen is a NAV ENTRY pointing at a page
-// that was not written, and dropping the view is exactly what prevents that.
+// A view whose document was not built is dropped rather than refused: `fisc
+// verify` already fails a missing published document, and a nav entry to an
+// unwritten page is what must never ship.
 func views(built result) []export.View {
 	projections := built.Projections
 	spine := export.View{
@@ -613,179 +509,57 @@ func views(built result) []export.View {
 		Template:   export.SankeyTemplate,
 		Projection: export.PrimaryProjection,
 		YearStems:  yearStems(export.PrimaryProjection, projections),
-		// THE SPINE'S COLUMNS, DECLARED RATHER THAN INFERRED. Both published
-		// spine documents carry exactly these three tiers, so the fold this
-		// buys is a no-op on the corpus; what it buys is ADJACENCY. A step
-		// that keeps one flank of the chart it opens from names a tier next to
-		// the one it opens from, and "next to" has no answer on a chart whose
-		// columns are d3's own inference -- View.RenderTiers says why, and
-		// validateSteps refuses the kept flank without it.
-		//
-		// MEASURED, BOTH YEARS, BEFORE IT WAS DECLARED. Driven through the
-		// client's tests over the two committed spine goldens, the
-		// drawn document and the laid geometry are identical either way: the
-		// same nodes and links in the same order carrying the same values, and
-		// every node's depth, x0, y0 and y1 and every ribbon's y0, y1 and
-		// width unchanged to the digit. The reason is structural rather than
-		// lucky -- the spine is a clean three-layer DAG whose tier 0 is pure
-		// source and tier 5 pure sink, and sankeyJustify's own rule puts a
-		// link-less sink in the LAST column, which is where indexOf puts tier
-		// 5. The client's layout test keeps that measurement in the tree.
+		// Declared rather than left to d3's inference so a step's kept flank has a
+		// column to be adjacent to. On both spine goldens the layout is identical
+		// either way, which the client's layout test pins.
 		RenderTiers: []int{0, 2, 5},
 	}
-	// THE SPINE OPENS INTO FUND-FLOWS, AND FUND-FLOWS INTO ITSELF: one page
-	// where there were three. revenue.html drew fund-flows at {0,2} and opened
-	// a group into {0,3}; spending.html drew fund/100 at {3,4} and opened a
-	// division into {4,5}; index.html drew the spine and opened nothing. Those
-	// were the levels of one chain laid side by side, and a reader following a
-	// dollar from Property Taxes to Patrol had to notice three nav entries and
-	// know which was which (fisc-ko1j, owner decisions of 2026-09-08).
+	// The spine opens into fund-flows, and fund-flows into itself (fisc-ko1j).
 	//
-	// EVERY TIER SET AND EVERY CAP BELOW IS MEASURED, laying the graph out
-	// with the shipped vendor/d3-sankey at app.js's own constants against the
-	// two committed goldens. The client's tests walk the chain on every
-	// run and pin the figures: the depth-1 General Fund at 39 nodes and 37
-	// links, of which the residual is one derived node, its four carried
-	// endpoints and their four links, with 2 sub-pixel ribbons in FY2025-26
-	// and 3 in FY2026-27; special-revenue's 32 funds folded to 8
-	// (uncapped, 22 of its 49 ribbons are under a pixel, and the cap is what
-	// makes the column drawable rather than the rescaling); the division
-	// column's 23 under its cap of 24, so that cap is inert on the corpus and
-	// pinned inert; and the worst depth-2 ribbon at 51px.
+	// Every tier set and cap below is measured against the committed goldens with
+	// the shipped d3-sankey at app.js's constants; the client's tests pin the
+	// figures. Caps are per tier: one cap on the finest tier leaves
+	// special-revenue's fund column undrawable.
 	//
-	// CAPS ARE PER TIER because a single cap on the finest tier leaves
-	// special-revenue's fund column uncapped at {0,3,4}: 40 nodes, 22
-	// sub-pixel ribbons, 9 zero-height nodes -- undrawable.
-	//
-	// ONLY THE GENERAL FUND HAS TIER-4 NODES, so the other five groups' charts
-	// end at their funds. spending.html said that in its lede; here it is a
-	// property of the drawn chart, and step 0's description says it in fewer
-	// words for the reader who cannot see the column stop.
-	//
-	// THE JOIN IS PER YEAR AND ON COLUMN -- see export.ColumnIndex. Both spine years
-	// reach their own fund-flows column, which is what makes fund-flows-2027
-	// reachable and retired its unviewedDocuments entry; the actual and
-	// revised columns have no spine year and stay declared there.
-	//
-	// STEPS ARE DECLARED ONLY WHEN THE OPENING YEAR'S DOCUMENT WAS BUILT, for
-	// the reason a view whose document was not built is dropped: a chain
-	// pointing at a file that was not written is a click that 404s. A second
-	// year missing its document is not dropped but REFUSED, by View.validate
-	// naming the year -- a site that built one year's drill-down and not the
-	// other's is a state assertPublishedBuilt already refuses in the real
-	// pipeline, and hiding it under a custom Builder would be the silence
-	// unviewedDocuments exists to refuse.
+	// Steps are declared only when the opening year's document was built, since a
+	// step to an unwritten file is a click that 404s; a second year missing its
+	// document is refused by View.validate.
 	if opensInto(export.PrimaryProjection, project.FundFlowsProjection, projections) {
 		spine.Steps = []export.DrillStep{
 			{
-				// THE SPINE'S CHART AND NO OTHER, WHICH IS A MEASUREMENT AND
-				// NOT A CHOICE. A revenue category's window and an object
-				// category's both draw fund groups, and a group kept on one of
-				// those flanks is drawn at its share of THAT centre -- the
-				// spine's cell for one category into the group -- while this
-				// step draws the group's whole decomposition on the other
-				// side. Measured over both committed columns with
-				// "revenue-category" in this list: the Contributions &
-				// Outsourced window keeps fund-group/general at 76,360 and
-				// opening it drew 157,873,470 leaving, 157,797,110 of node
-				// height with no ribbon under it and nothing on the page
-				// saying so. validateSteps refuses that declaration by name
-				// now, so this list is held rather than remembered.
+				// After the spine's chart only: a group kept on a revenue- or object-category
+				// window is drawn at its share of that centre while this step draws its whole
+				// decomposition, leaving node height with no ribbon. validateSteps refuses it.
 				Key:        "fund-group",
 				After:      []string{""},
 				From:       2,
 				Projection: project.FundFlowsProjection,
-				// A WINDOW WHOSE KEPT FLANK IS TIER 0, which is the case Keep
-				// is a slice for: the spine draws its revenue categories to the
-				// LEFT of its fund groups, so they stay the left column here
-				// and the window pushes right into the group's own funds.
-				// [revenue categories | this group | its funds], the owner's
-				// decision of 2026-09-13 over the {0,3,4} chart this replaces,
-				// which drew the funds and the divisions and left the group the
-				// reader clicked off the screen entirely.
+				// [revenue categories | this group | its funds]: the spine draws tier 0 left
+				// of tier 2, so the window pushes right.
 				Keep: []int{0},
-				// A FOURTH COLUMN WHERE THERE IS ROOM FOR ONE, and tier 4 is
-				// what is there to draw: the divisions that spend each fund,
-				// which is the fund step's tier-4 column and takes its noun.
-				// Only the General Fund's document fills it -- pp.167-170
-				// decompose fund/100 and no other fund has a spending side --
-				// so on the other five groups' rungs Go answers tier 4 with no
-				// ids and the client drops the column (dropEmptyColumns) and
-				// draws the three it has. fisc-84y5.
-				//
-				// THIS IS THE ONLY OTHER STEP THAT CAN WIDEN, and the reason
-				// each of the five cannot is the document it draws: division
-				// ({3,4,5}) and revenue-category ({1,0,2}) already draw the
-				// last tier fund-flows has on their outward side; the
-				// object-category step draws department-spending, whose
-				// nodes are tiers 4 and 5 only; fund-departments draws
-				// department-funding, tiers 2 to 4 only; and transfers keeps
-				// no flank, which validateSteps refuses a widening on.
+				// A fourth column where there is room: the divisions that spend each fund.
+				// Only the General Fund's document fills tier 4 (pp.167-170), so other groups'
+				// rungs answer it with no ids and the client drops the column (fisc-84y5).
 				Tiers: []int{0, 2, 3, 4},
 				Widen: []int{4},
-				// ONE CAP AT THE FUND COLUMN, because the division column is
-				// a step further out now. Measured off both committed goldens:
-				// special-revenue draws 32 funds in FY2025-26 and 31 in
-				// FY2026-27 and folds to 8 either way; capital 11, enterprise 9,
-				// internal-service 5, debt-service 3 and general 1. Uncapped,
-				// special-revenue's window lays 9 of its 42 ribbons under a
-				// pixel in FY2025-26 and 7 of 41 in FY2026-27, with a smallest
-				// of 0.12px and 0.05px; capped it draws 19 ribbons and none of
-				// them is sub-pixel, in either column.
-				//
-				// THE TIER-4 CAP IS THE FUND STEP'S, carried at the width it
-				// was declared at and inert for the same reason: fund/100's 23
-				// divisions against 24. It names its own noun because the
-				// step's counts funds, and the noun is the fund step's for the
-				// same column.
+				// Special-revenue's 31-32 funds fold to 8 with no sub-pixel ribbon; uncapped,
+				// up to 9 of its ribbons lie under a pixel. The tier-4 cap is the fund step's,
+				// inert against fund/100's 23 divisions.
 				Caps: []export.TierCap{{Tier: 3, Cap: 8}, {Tier: 4, Cap: 24, Tail: "divisions"}},
 				Noun: "fund group",
-				// THE GRAIN THIS STEP'S DOCUMENT DOES NOT SPLIT THE CARRIED
-				// FLOWS BY. pp.127-140 print revenue and spending by fund and
-				// print no fund-balance row at all, so what the spine sends
-				// into a group as a draw reaches no fund here.
+				// pp.127-140 print no fund-balance row, so a draw the spine sends into a
+				// group reaches no fund here.
 				ResidualGrain: "fund",
 				Back:          "All fund groups",
 				Tail:          "funds",
-				// THE RESIDUAL IS A DECLARATION, READ, NOT COPIED.
-				// check.ResidualNodes names which spine endpoints
-				// pp.127-140 and 167-170 cannot decompose, each with its
-				// reason, and the money each reason quotes is what
-				// cuts-tie-along-the-lattice compares; the chart carries
-				// the same set onto one derived node per opened group. Two
-				// spellings of a set that must agree drift, so this is the
-				// one place the client's set comes from.
-				//
-				// THIS IMPORT IS NOT THE COUPLING joinComma REFUSES. That
-				// rule is about a command and a check sharing a helper for
-				// nothing; this is the command shipping a declaration the
-				// check owns because the check is the only thing that can
-				// fail on it. Spelling the five ids here instead would give
-				// the site a set nothing verifies.
-				//
-				// IT IS WHAT MAKES THE CENTRE BALANCE, and that is new at
-				// {0,2,3}. The group's own mark is now drawn, so the money
-				// pp.127-140 print for no fund has to leave the reader's eye
-				// somewhere: each declared endpoint's ribbon is re-pointed
-				// past the group onto one derived node beside its funds, and
-				// the group then takes in exactly what its funds take in.
-				// Measured over both goldens, in dollars: general 1,514,554
-				// (a 1,034,154 fund-balance draw and 480,400 of transfers in)
-				// and 486,735 in FY2026-27, capital 2,500,213 and 10,129,416,
-				// internal-service 6,147,533 and 7,160,645; special-revenue,
-				// enterprise and debt-service nothing in either column, and
-				// their groups tie to the cent with no mark at all.
+				// check.ResidualNodes is the check's declaration of which spine endpoints
+				// pp.127-140 and 167-170 cannot decompose, shipped rather than respelled so the
+				// client's set is one something verifies. Each such ribbon is re-pointed past
+				// the group onto one derived node, so the group takes in exactly what its funds
+				// take in.
 				Residual: check.ResidualNodes(),
-				// THE FIGURES IN THIS SENTENCE ARE MEASURED off both
-				// committed goldens, and the client's tests pin them
-				// per column: fund/100 takes 49.18% of the fund column's
-				// inflow in FY2026 and 50.79% in FY2027, and the smallest
-				// fund -- fund/550 at $5,000, then fund/202 at $3,000 -- is
-				// 1/31,575 and 1/54,786 of fund/100's. "Less than a
-				// thirty-thousandth" is the bound both columns clear; the
-				// exact ratio belongs to the check, not to a sentence that is
-				// shown under either year. That gap is the reason a citywide
-				// fund column is not drawn and a group is opened instead.
+				// The client's tests pin these figures per column: fund/100 is about half the
+				// fund column, and the smallest fund under 1/30,000 of it, in both years.
 				Description: "The revenue categories on the left are the citywide chart's " +
 					"own cells; this fund group is the mark in the middle, and its own funds " +
 					"are on the right, rescaled to the group's total — the citywide " +
@@ -803,83 +577,29 @@ func views(built result) []export.View {
 					"fund those pages decompose, so their windows stay three columns.",
 			},
 			{
-				// THE ROLE IS THE MIRROR OF THE OTHER TWO GATES, and it is
-				// what keeps 60-odd funds from offering a click that cannot be
-				// answered. pp.167-170 are the General Fund's schedule and no
-				// other fund has a spending side at all, so `general_fund` --
-				// which internal/project publishes on fund 100 because 100 IS
-				// the General Fund, not because this column happens to
-				// decompose it -- opens and `fund` does not. Run, not
-				// predicted: without it every drawn fund is drillable and a
-				// click on one banners "nothing flows between tiers 3, 4 for
-				// node fund/200, so there is no chart to open it into", which
-				// is Lane F's finding at the other end of the chart.
+				// Role general_fund: pp.167-170 decompose fund 100 alone, so no other fund
+				// offers a click this step cannot answer.
 				Key:   "fund",
 				After: []string{"fund-group"},
 				From:  3,
 				Role:  "general_fund",
-				// [the group | this fund | the divisions that spend it]. The
-				// step before it draws tier 2 to the LEFT of tier 3, so the
-				// group stays the left column here.
+				// [the group | this fund | the divisions that spend it].
 				Keep: []int{2},
-				// A FOURTH COLUMN WHERE THERE IS ROOM FOR ONE, and tier 5 is
-				// what is there to draw: pp.167-170 print each of fund/100's 23
-				// divisions against the object categories it spends on, so the
-				// document carries 44 cells at tier 5 under those divisions and
-				// one 4->5 link each. Measured over the committed goldens, both
-				// columns: 6 nodes and 6 links at tiers {2,3}, 23 and 23 at
-				// {3,4}, 44 and 44 at {4,5} -- every adjacent pair of these four
-				// columns carries ribbons, which is the condition a sankey band
-				// is counted under (the client's layout test).
-				//
-				// BOTH DECLARATIONS, AND THEY SAY DIFFERENT THINGS. Tiers is
-				// where the column is drawn -- at the end away from the kept
-				// flank, which is what makes the widening's side derivable --
-				// and Widen is which of those columns a client with less room
-				// does without, in the order it drops them. validateSteps
-				// refuses either one alone.
+				// Tier 5 is the object categories each division spends on, drawn at the end
+				// away from the kept flank. Tiers is where columns are drawn, Widen which a
+				// narrow client drops first; validateSteps refuses either alone.
 				Tiers: []int{2, 3, 4, 5},
 				Widen: []int{5},
-				// THE DIVISION CAP HAS NEVER ENGAGED AND IS PINNED INERT: 23
-				// divisions against 24 in both committed columns. It is carried
-				// at the width it was declared at rather than tightened,
-				// because tightening it would fold a column no reader has ever
-				// seen folded on the strength of no measurement.
-				//
-				// THE TIER-5 CAP IS WHAT MAKES THE WIDENED COLUMN DRAWABLE, and
-				// it is the fund-group cap's argument one column further out.
-				// Measured over the committed goldens at four columns, both
-				// years: uncapped, the 44 cells lay out as 44 marks with 11
-				// ribbons under a pixel and 11 nodes of no height at all --
-				// which is the state that cap's comment calls undrawable.
-				// Capped, the column draws 8 cells and a tail, no node is
-				// height-less and the 2 ribbons left under a pixel are the
-				// division column's own, at the same widths the three-column
-				// window draws them.
-				//
-				// AND IT NAMES ITS OWN NOUN, because the step's counts
-				// divisions: the tail read "36 smaller divisions" over a column
-				// of object-category cells before this Tail was declared.
+				// The division cap is inert (23 divisions) and pinned so. The tier-5 cap makes
+				// the widened column drawable: uncapped, its 44 cells leave 11 nodes of no
+				// height.
 				Caps: []export.TierCap{{Tier: 4, Cap: 24}, {Tier: 5, Cap: 8, Tail: "categories"}},
 				Noun: "fund",
 				Back: "All funds",
 				Tail: "divisions",
-				// WHAT THIS CENTRE DOES NOT CLAIM, said in the chart's own
-				// words because no mark can say it. A fund's revenue and its
-				// spending are two schedules and they are not one cell printed
-				// twice. THE DIFFERENCE HAS TWO TERMS AND THE SENTENCE NAMES
-				// BOTH: what pp.66-67 print leaving the GROUP other than through
-				// its divisions -- transfers out and the fund-balance rows --
-				// LESS what the group takes in that no fund receives, which is
-				// the residual mark the step above carries. Measured off both
-				// goldens, in dollars: fund/100 takes 157,873,470 and pays
-				// 144,650,802 to its divisions in FY2025-26, a difference of
-				// 13,222,668, against 14,737,222 leaving the group and
-				// 1,514,554 carried in; and 164,358,147 against 149,014,579 in
-				// FY2026-27, 15,343,568 against 15,830,303 less 486,735. A
-				// sentence naming the first term alone is off by the residual
-				// in both years, and TestTheFundStepsSentenceIsItsArithmetic
-				// holds these words to that identity.
+				// The difference has two terms and the sentence names both: what leaves the
+				// group other than through its divisions, less the residual carried in above.
+				// TestTheFundStepsSentenceIsItsArithmetic holds the words to that identity.
 				Description: "The fund group this fund belongs to is on the left and the " +
 					"divisions that spend it are on the right — that fund's rows of " +
 					"Budget Book pp.167-170, rescaled to its total. The two sides of the " +
@@ -894,10 +614,7 @@ func views(built result) []export.View {
 				Key:   "division",
 				After: []string{"fund"},
 				From:  4,
-				// [the fund | this division | what it spends on]. A window
-				// where this drew two columns: the fund the division is paid
-				// from stays on screen, which is the level a reader arrived
-				// from and the one that says whose money this is.
+				// [the fund | this division | what it spends on].
 				Keep:  []int{3},
 				Tiers: []int{3, 4, 5},
 				Caps:  []export.TierCap{{Tier: 5, Cap: 8}},
@@ -909,38 +626,21 @@ func views(built result) []export.View {
 					"cells of Budget Book pp.167-170, rescaled to its total.",
 			},
 			{
-				// A SECOND EDGE OUT OF THE SPINE'S CHART, not a rung of the
-				// chain above it: After carries "" like the fund-group step's,
-				// and the two are told apart by From. The role is declared
-				// because transfers/in and fund-balance/draw share tier 0 with
-				// the categories and open into nothing pp.127-140 print.
+				// A second edge out of the spine's chart, told apart from fund-group by
+				// From. The role closes transfers/in and fund-balance/draw, which share tier 0
+				// and open into nothing pp.127-140 print.
 				Key:        "revenue-category",
 				After:      []string{""},
 				From:       0,
 				Role:       "revenue_source",
 				Projection: project.FundFlowsProjection,
-				// A WINDOW, AND THE CATEGORY IS ITS CENTRE. The node the
-				// reader clicked stays on the screen, in the middle column,
-				// with the lines pp.127-140 print under it on one side and the
-				// fund groups the spine draws it reaching on the other -- and
-				// the two sides of that mark are one figure read from two
-				// schedules. Tier 2 is to the RIGHT of tier 0 in the spine's
-				// own {0,2,5}, so the kept flank is the last column here and
-				// the window pushes left; validateSteps checks that adjacency
-				// against the spine's declared order rather than the tier
-				// numbers.
+				// A window centred on the category: its pp.127-140 lines on one side, the fund
+				// groups it reaches on the other. The spine draws tier 2 right of tier 0, so
+				// the window pushes left.
 				Keep:  []int{2},
 				Tiers: []int{1, 0, 2},
-				// ONE COLUMN FOLDS NOW, WHERE TWO DID, AND THE CAP TAKES
-				// THE STEP'S OWN NOUN. Measured over both goldens: five of
-				// the ten categories print more than nine lines --
-				// charges-for-services 19, other taxes 15, property taxes and
-				// licenses and permits 14 each, miscellaneous 11 -- so the
-				// line cap engages exactly where it did before. The fund
-				// column it also capped is gone: the right-hand column is the
-				// spine's own fund groups, and no category reaches more than
-				// five of the six. With one cap left there is nothing for a
-				// second noun to count, so Tail is not respelled here.
+				// Five of the ten categories print more than nine lines, so the line cap
+				// engages; no category reaches more than five of the six fund groups.
 				Caps: []export.TierCap{{Tier: 1, Cap: 8}},
 				Noun: "revenue category",
 				Back: "All revenue categories",
@@ -955,43 +655,14 @@ func views(built result) []export.View {
 			},
 		}
 	}
-	// THE SPINE'S RIGHT-HAND COLUMN OPENS INTO A SECOND DOCUMENT, and it is
-	// declared apart from the three above because it is joined to a different
-	// projection: a corpus that built pp.85-125 and not pp.127-140 should lose
-	// the fund-group drill and keep this one, which one guard over both could
-	// not express.
+	// The spine's right-hand column opens into department-spending, guarded apart
+	// from fund-flows so a corpus with pp.85-125 and not pp.127-140 keeps it.
 	//
-	// A WINDOW, AND THE ONLY ONE THE SITE SHIPS TODAY. Keep 2 with Tiers
-	// {2,5,4} draws the fund groups that pay for the category the reader
-	// clicked, the category itself, and the divisions that spend it. Tier 2 is
-	// to the LEFT of tier 5 in the spine's own {0,2,5}, so the window pushes
-	// right and the kept flank is the first column here -- validateSteps checks
-	// that adjacency against the spine's declared order rather than against the
-	// tier numbers.
-	//
-	// THE ROLE IS THE MIRROR OF THE REVENUE STEP'S. Three of the spine's seven
-	// tier-5 nodes are flow ends rather than object categories -- transfers/out
-	// and the two fund-balance rows -- and pp.85-125 decompose none of them:
-	// the Transfers Out row those pages print is a dash in both budget columns.
-	// Role closes them exactly as "revenue_source" closes transfers/in and
-	// fund-balance/draw at the other end of the chart.
-	//
-	// THE CAP ENGAGES HERE, WHICH THE DIVISION CAP ON THE STEP ABOVE DOES NOT.
-	// Measured off both committed columns: services-and-supplies reaches 29
-	// divisions and wages-and-benefits 26, against 5 for debt-services and 5
-	// (FY2025-26) or 4 (FY2026-27) for capital-outlay. Uncapped, the smallest
-	// services ribbon lays out under a pixel; the client's tests pin the
-	// fold on all four.
-	//
-	// THE GAP IS THE CHECK'S DECLARATION, READ, NOT COPIED -- the argument the
-	// residual above makes one field over. check.SpendingGaps() reads
-	// structure.BudgetBookExceptions' departmentwide-against-spine entries,
-	// keyed by the node the chart draws each at, and
-	// cuts-tie-along-the-lattice pins both of an entry's sides against the
-	// corpus on every run. FY2026-27's services-and-supplies is the
-	// one entry: p0067 publishes 130,502,087 where pp.85-125's rows come to
-	// 130,252,087, which is fisc-av0w. The chart draws the 250,000 as a mark of
-	// its own rather than letting the ribbons fall short of the node.
+	// Role object_category closes transfers/out and the two fund-balance rows,
+	// which pp.85-125 do not decompose. The cap engages: services-and-supplies
+	// reaches 29 divisions. The gap is check.SpendingGaps, read not copied:
+	// FY2026-27's services-and-supplies falls 250,000 short of p0067's figure
+	// (fisc-av0w), drawn as a mark of its own.
 	if opensInto(export.PrimaryProjection, project.DepartmentSpendingProjection, projections) {
 		spine.Steps = append(spine.Steps, []export.DrillStep{
 			{
@@ -1017,43 +688,16 @@ func views(built result) []export.View {
 			},
 		}...)
 	}
-	// THE SPINE'S TRANSFERS IN OPENS INTO p76, AND THIS IS THE ONLY STEP ON THE
-	// SITE THAT IS NOT A WINDOW. The three above keep a flank of the chart the
-	// reader came from; this one keeps none, and the reason is positional
-	// rather than editorial. A kept flank has to be a column ADJACENT to the
-	// opened tier in the chart on screen, and on the spine's own {0,2,5} the
-	// column beside tier 0 is tier 2 -- which is the tier this step's own
-	// left-hand column draws. Keeping it would name one tier at two columns,
-	// which validateSteps refuses by name.
+	// The spine's transfers/in opens into p76, keeping no flank: the column beside
+	// tier 0 on the spine is tier 2, which this step draws itself, and
+	// validateSteps refuses one tier at two columns.
 	//
-	// IT IS ALSO THE ONLY STEP THAT OPENS A SOURCE. transfers/in is a tier-0
-	// node with nothing pointing at it, and filterToNode asked for it answers an
-	// empty graph with no error -- the id is known, so the guard on an unknown
-	// one does not fire -- and d3-sankey dies on the empty graph with a
-	// RangeError. Side says which end opened, so the client picks filterFromNode
-	// instead. DECLARED AND NOT INFERRED: "the opened tier is below every tier
-	// this step draws, so it must be a source" is true of the columns that exist
-	// and says nothing a third document would have to obey.
-	//
-	// THE ROLE IS WHAT MAKES IT REACHABLE. The revenue-category step also opens
-	// tier 0 of this same chart after "", and validateSteps refuses two steps
-	// sharing an (After, From, Role). That step names "revenue_source", which is
-	// what leaves transfers/in and fund-balance/draw closed; this one names
-	// transfers/in's own role, so the two partition the column instead of
-	// colliding on it.
-	//
-	// ONE SIDE OF p76 IS DRAWN AND BOTH ARE PUBLISHED. The document carries a
-	// receiving leg and a paying leg for every printed figure; this step's
-	// {2,3} draws the receiving legs, whose subtree hangs off transfers/in. The
-	// paying legs end at tier 5, which the spine pins transfers/out at, and a
-	// node decomposing that would have to be FINER than its own parent -- the
-	// tier order forbids it, and fisc-ko1j.12.10 is where the other half goes.
-	//
-	// NO CAP AND NO GAP. The drawn columns are 8 payer ends and 9 receiving
-	// funds in both budget years, which is under any cap worth declaring, and
-	// the receiving legs come to p76's printed grand total -- $21,525,997 in
-	// FY2025-26 and $21,624,633 in FY2026-27 -- which is the spine's own
-	// transfers/in to the cent, so the opened node has nothing to fall short by.
+	// It opens a source, so Side is declared and the client filters from the node;
+	// filtering to a source yields an empty graph d3-sankey dies on. Role
+	// transfer_in partitions tier 0 with revenue-category's revenue_source. Only
+	// p76's receiving legs are drawn (fisc-ko1j.12.10 has the paying side). No cap
+	// and no gap: 8 payers and 9 receivers, and the legs sum to the spine's
+	// transfers/in to the cent.
 	if opensInto(export.PrimaryProjection, project.TransfersByFundProjection, projections) {
 		spine.Steps = append(spine.Steps, []export.DrillStep{
 			{
@@ -1076,40 +720,14 @@ func views(built result) []export.View {
 			},
 		}...)
 	}
-	// THE FUND COLUMN OPENS AT LAST, AND IT IS THE STEP THIS CHART HAS BEEN
-	// MISSING. pp.167-170 are the General Fund's schedule and decompose that
-	// fund alone, so until this step existed every OTHER fund the drill-down
-	// draws was the end of the chain -- which is what the `general_fund` role
-	// on the step above exists to keep honest, by not offering a click it
-	// cannot answer. pp.85-125's lower block is the only published schedule
-	// that says what any other fund pays for.
+	// Every other fund opens into the departments it pays for, from pp.85-125's
+	// lower block: a sibling of the fund step told apart by Role, so fund 100 keeps
+	// opening into its divisions. Guarded on the fund-group step, the window it
+	// opens from.
 	//
-	// A SIBLING OF THAT STEP AND NOT A REPLACEMENT FOR IT. Both open tier 3 of
-	// the fund group's window; they are told apart by Role, which validateSteps
-	// requires to be distinct and non-empty on both. fund/100 is `general_fund`
-	// wherever it is drawn, so it keeps opening into its 23 divisions -- a
-	// finer answer than its eleven departments -- and this step takes the other
-	// sixty.
-	//
-	// IT IS DECLARED APART FROM THE FUND-FLOWS BLOCK AND GUARDED ON IT, because
-	// it needs two things and the two can fail separately: pp.85-125's lower
-	// block, for the document it draws, and pp.127-140, for the chart it opens
-	// FROM. A corpus that lost the revenue schedule would have no fund-group
-	// window for this rung to hang off, and validateSteps would refuse the view
-	// by name rather than the site dropping one page.
-	//
-	// NO CAP, MEASURED RATHER THAN ASSUMED. The widest fund this step opens
-	// draws 5 departments (fund/240 in FY2023-24 actual; 3 in both adopted
-	// columns), against the 11 on fund/100, which opens elsewhere. A cap
-	// declared over a column that never reaches it is a fold no reader has ever
-	// seen, pinned inert.
-	//
-	// NO GAP AND NO RESIDUAL. A gap would claim every other node this step
-	// opens balances, and the two sides of a fund here are two schedules that
-	// are not meant to be equal -- the caveat on the document says so, and the
-	// description below says it on the chart. A residual is for an endpoint of
-	// the chart above that the drawn document cannot decompose; the flank this
-	// window keeps is carried verbatim off that chart, so there is none.
+	// No cap (the widest fund draws 5 departments), no gap (the two sides are two
+	// schedules and not meant to be equal), and no residual (the kept flank is
+	// carried verbatim).
 	_, openable := stepByKey(spine.Steps, "fund-group")
 	if openable && opensInto(export.PrimaryProjection, project.DepartmentFundingProjection, projections) {
 		spine.Steps = append(spine.Steps, []export.DrillStep{
@@ -1120,9 +738,6 @@ func views(built result) []export.View {
 				Role:       "fund",
 				Projection: project.DepartmentFundingProjection,
 				// [the group | this fund | the departments it pays for].
-				// The step before it draws tier 2 to the LEFT of tier 3, so
-				// the group stays the left column here -- the same window
-				// the General Fund's opens into, one document over.
 				Keep:  []int{2},
 				Tiers: []int{2, 3, 4},
 				Noun:  "fund",
@@ -1145,19 +760,10 @@ func views(built result) []export.View {
 	}
 	out := []export.View{spine}
 
-	// THE TABLES COME AFTER THE CHARTS THEY BELONG TO. Listed before them the
-	// nav read "Revenue tables" and then "Revenue" -- two entries beginning
-	// with the same word, in an order that made the fuller answer look like the
-	// footnote. The charts are what a reader came for; this is where they go
-	// when a chart is not enough.
+	// The tables come after the charts they belong to.
 	if _, ok := projections[project.TrendsProjection]; ok {
 		out = append(out, export.View{
-			Path: "trends.html",
-			// "Revenue tables" AND NOT "Revenue by fund", because a Revenue
-			// page that draws a chart is coming and two nav entries both
-			// beginning "Revenue" would leave a reader guessing which is
-			// which. This one is the tables; that is the distinction worth
-			// putting in the label.
+			Path:       "trends.html",
 			Nav:        "Revenue tables",
 			Template:   export.TrendsTemplate,
 			Projection: project.TrendsProjection,
@@ -1216,29 +822,9 @@ func views(built result) []export.View {
 				"GASB 54 categories that say how spendable each dollar is.",
 		})
 	}
-	// THE CAVEATS INDEX, THE SECOND VIEW THAT NAMES NO PROJECTION. It lists
-	// every published document's caveats in full, so the other pages can show
-	// one line and link here instead of reprinting the whole paragraph
-	// underneath a chart.
-	//
-	// UNCONDITIONAL, like the spine and unlike the three views between them,
-	// and the asymmetry is a claim worth stating rather than an oversight.
-	// Those three are conditional because a nav entry pointing at a page that
-	// was not written is the failure views() exists to prevent -- and a
-	// document that was not built cannot be rendered. The spine is
-	// unconditional because a site with no index.html is not a site, and
-	// Options.validate refuses one. This page is unconditional for a third
-	// reason: it depends on no single document. Every builder in
-	// internal/project emits caveats unconditionally: caveats() always appends
-	// the stocks and permanent-funds pair, fundFlowsCaveats returns three and a
-	// fourth on a column that decomposes a fund group, and trendsCaveats
-	// returns four. So the empty case cannot arise from this
-	// repository -- and buildCaveatsPage refuses it anyway, rather than
-	// publishing a nav entry to a blank page, because "cannot arise here" is a
-	// claim about today's corpus and the guard is about tomorrow's.
-	//
-	// It is appended BEFORE the provenance block so that the two indexes sit
-	// together at the end of the nav, after the pages that draw something.
+	// The caveats index names no projection and is unconditional: it depends on
+	// no single document, and buildCaveatsPage refuses an empty one rather than
+	// link a blank page. Appended before provenance so the two indexes end the nav.
 	out = append(out, export.View{
 		Path:     "caveats.html",
 		Nav:      "Caveats",
@@ -1252,25 +838,14 @@ func views(built result) []export.View {
 			"specific document does not do.",
 	})
 
-	// THE PROVENANCE INDEX, WHICH NAMES NO PROJECTION. It is an index of the
-	// site's own record store, built from Result.PageIndex. It was the one view
-	// whose template rendered no document -- see
-	// export.templateRendersADocument, whose own comment anticipated a second
-	// one -- and the caveats index above is now the other.
-	//
-	// Conditional on the index being non-empty for the same reason every other
-	// view is conditional on its document: a nav entry pointing at a page that
-	// was not written is the failure this function exists to prevent.
+	// The provenance index names no projection either. It is conditional on
+	// Result.PageIndex, for the reason every view is conditional on its document.
 	if len(built.PageIndex) > 0 {
 		out = append(out, export.View{
 			Path:     "provenance.html",
 			Nav:      "Sources and data",
 			Template: export.ProvenanceTemplate,
 			Title:    "Every figure this site publishes, and the page it came from",
-			// ONE SENTENCE, and the rest of what this lede said is still on the
-			// page: the locator rule it enumerated is stated at the top of
-			// provenance.html.tmpl, where a reader meets the links it governs,
-			// and repeating it in a header was the second copy.
 			Lede: "Every figure this site publishes, with the document, page and byte " +
 				"offset it was read from — downloadable whole, or one page at a time.",
 		})

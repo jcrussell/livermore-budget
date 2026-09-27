@@ -18,41 +18,13 @@ import (
 )
 
 // TestTheRungArtifactIsWhatGoComputes pins testdata/rungs.json to the bytes
-// buildAll ships at rungsServedPath over the committed store, byte for
-// byte, the way facts.jsonl is pinned to `fisc build`: rebuild and compare,
-// never in place. On a difference the served artifact is written under bin/
-// and the test says how to copy it over, so the regeneration is one visible
-// step with a diff to read rather than an -update flag.
-//
-// THE SERVED BYTES, NOT A SECOND CALL OF rungsOf: a fixture pinned to a
-// computation the export did not make would hold the client to an answer
-// the site never served, and a buildAll that dropped the file would leave
-// that pin green.
-//
-// THE VACUITY GUARDS ARE THE POINT. The client's tests hold the client to
-// this file, and a file in which every column's ids are empty, in which no
-// column holds more than a cap the client would fold, or which answers for
-// one year, is one they could report PASS against without the comparison
-// they exist for ever running. Each guard below names the shape it refuses and
-// where the committed corpus supplies the opposite.
-//
-// WHAT HOLDS A COLUMN'S MEMBERSHIP, now that the client reads this artifact
-// rather than recomputing one to compare against it. Three of these guards
-// read the documents and the step declarations
-// and never the walk: every id a column draws is a node a document holds at
-// that tier, every id it carries is one the document marks derived or the
-// step declares an endpoint, and every id it draws that a later step opens
-// is answered by a rung of its own. The third leans on export.Openable,
-// which the walk also asks, so it is completeness read from the parent
-// rather than a second reading of the documents.
-//
-// AND WHAT THEY DO NOT REFUSE, which is why the replay below exists: a
-// mark's cents is not guarded here, nor which of its step's declared tiers it
-// stands at, nor how many of the declared endpoints it names, and an id
-// dropped from a column no later step opens leaves no trace in this test.
-// Those four are
-// TestTheRungArtifactIsWhatTheReachPrimitivesAnswer's. The mutations, and
-// which guard took each one, are in docs/rung-walk-witness-evidence.md.
+// buildAll serves at rungsServedPath, rebuilt and compared rather than
+// updated in place, and refuses an artifact the client's tests could pass
+// against vacuously. The membership guards read the documents and the step
+// declarations, never the walk; a mark's cents, tier and endpoints, and an id
+// dropped from a column no later step opens, are
+// TestTheRungArtifactIsWhatTheReachPrimitivesAnswer's. Which guard took which
+// mutation is in docs/rung-walk-witness-evidence.md.
 func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {
@@ -78,15 +50,10 @@ func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 		t.Fatalf("%s declares schema_version %d, want %d", rungsServedPath, doc.SchemaVersion, rungsSchemaVersion)
 	}
 	want, readErr := os.ReadFile(filepath.Join(root, filepath.FromSlash(rungsPath)))
-	// THE STAMP IS BLANKED ON BOTH SIDES, as the projection goldens' is. It
-	// carries the commit and the build date, so comparing it would make this
-	// fixture stale on every build and say nothing about the walk.
+	// The stamp carries the commit and build date, so it is blanked on both sides.
 	stamp := regexp.MustCompile(`"generated_by": "[^"]*"`)
 	blank := []byte(`"generated_by": ""`)
 	if readErr != nil || !bytes.Equal(stamp.ReplaceAll(got, blank), stamp.ReplaceAll(want, blank)) {
-		// bin/ is where `fisc build --output bin/facts-rebuilt.jsonl` lands
-		// too: gitignored, inside the checkout, and still there after the
-		// test returns, which a t.TempDir is not.
 		rebuilt := filepath.Join(root, "bin", "rungs-rebuilt.json")
 		if err := os.MkdirAll(filepath.Dir(rebuilt), 0o750); err != nil {
 			t.Fatal(err)
@@ -105,10 +72,7 @@ func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 	var overCap, uncappedIDs, plural, unflanked, flankPlural, flankCarried, emptyFlank, parented int
 	var documented, documentedKept, countedPlain, carriedDerived, carriedDeclared, answeredBelow int
 	distinct := map[string]bool{}
-	// THE MARKS ARE ANSWERED ON DIFFERENT STEPS AND NEVER MEET, which is a
-	// pinned zero: no step declares both a residual and a gap, so no rung
-	// carries two marks, and the order the two are applied in is a claim
-	// nothing on the committed spine can contradict.
+	// A pinned zero: no step declares both marks, so their order is unwitnessed.
 	for _, s := range spine.Steps {
 		if len(s.Residual) > 0 && len(s.Gaps) > 0 {
 			t.Errorf("step %q declares both a residual and a gap, which no rung in this artifact has been measured carrying together", s.Key)
@@ -120,11 +84,8 @@ func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 		if len(col.Rungs) == 0 {
 			t.Fatalf("column %q has no rung, so there is nothing to hold the client to", col.Stem)
 		}
-		// THE DOCUMENTS THIS COLUMN IS READ AGAINST, and there are two kinds:
-		// each step's own for this year, which is where its outward columns
-		// come from, and the year's own, which the overview the first rungs
-		// open from was folded from. The guards below ask these documents
-		// what they hold; they do not ask the walk again.
+		// Each step's document for this year, plus the year's own, which the
+		// overview was folded from.
 		stems := stepStemsFor(t, spine, built.Projections, col.Stem)
 		records := map[string]map[string]export.GraphNode{}
 		for _, stem := range append(slices.Clone(stems), col.Stem) {
@@ -145,10 +106,8 @@ func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 			}
 			records[stem] = byID
 		}
-		// WHAT EACH STEP OFFERS A READER TO OPEN, read once per column off
-		// export.Openable -- the same answer the walk asks for, which is why
-		// the completeness guard below is completeness from the parent and
-		// not an independent reading of the documents.
+		// export.Openable is what the walk asks too, so the completeness guard
+		// below is completeness from the parent, not an independent reading.
 		opens := make([][]string, len(spine.Steps))
 		for i, st := range spine.Steps {
 			o, err := export.Openable(spine, i, st, stems[i], built.Projections[stems[i]])
@@ -157,10 +116,7 @@ func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 			}
 			opens[i] = o
 		}
-		// WHAT EACH RUNG HOLDS, READ ONCE AND KEYED BY PATH, which is the
-		// artifact's shape now that no column budget multiplies it: a path
-		// answered twice is two answers to one question, and the second pass
-		// needs the first pass's whole file to ask about a rung's parent.
+		// Keyed by path: the second pass asks about a rung's parent.
 		holds := map[string][]string{}
 		answers := map[string]string{}
 		for _, r := range col.Rungs {
@@ -187,16 +143,10 @@ func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 				t.Helper()
 				t.Errorf("%s %s: %s", col.Stem, key, fmt.Sprintf(format, args...))
 			}
-			// WHICH DOCUMENT AN ID CAME OFF IS NOT ONE DOCUMENT PER RUNG. An
-			// outward column is this step's own document read at the tier the
-			// column names. The centre and the flank are the chart on screen,
-			// whose records this step's document need not hold at all: every
-			// fund group a kept flank draws on an object-category rung is one
-			// department-spending never mentions, so holding the kept half to
-			// this step's own document fails on the committed corpus. It is
-			// held to the documents this column reads instead, which is the
-			// weaker claim of the two and is said here rather than implied.
-			// The count is in docs/rung-walk-witness-evidence.md.
+			// An outward id is held to this step's document; a kept id only to
+			// some document this column reads, the weaker claim, because the
+			// chart on screen holds nodes this step's document need not
+			// (docs/rung-walk-witness-evidence.md).
 			recordOf := func(d drawnTier, id string) (export.GraphNode, bool) {
 				if d.Role == roleOutward {
 					n, held := records[stems[si]][id]
@@ -213,11 +163,7 @@ func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 			for i, d := range r.Draws {
 				tiers[i] = d.Tier
 			}
-			// EVERY COLUMN THE STEP DECLARES IS ANSWERED, IN ITS ORDER. A
-			// column the document draws nothing in is answered empty rather
-			// than dropped, so a walk that dropped one -- as it dropped a
-			// widened column at a narrow budget -- is one id set short of the
-			// step it claims to answer.
+			// Every declared column is answered, in order, empty rather than dropped.
 			if !slices.Equal(tiers, s.Tiers) {
 				at("draws tiers %v and the step declares %v", tiers, s.Tiers)
 			}
@@ -245,9 +191,6 @@ func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 				default:
 					at("tier %d has role %q", d.Tier, d.Role)
 				}
-				// IDS IS A LIST EVEN WHEN EMPTY: an omitted field is what "not
-				// answered" looked like, and the arm reading this file compares
-				// the two shapes differently.
 				if d.IDs == nil {
 					at("tier %d's ids are omitted rather than empty", d.Tier)
 				}
@@ -257,8 +200,7 @@ func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 				if !slices.IsSorted(d.Carried) || len(slices.Compact(slices.Clone(d.Carried))) != len(d.Carried) {
 					at("tier %d's carried ids are not sorted and unique: %v", d.Tier, d.Carried)
 				}
-				// A DECLARED ENDPOINT IS NEVER COUNTED AS A PART: it is carried
-				// or absent, on every column of a step that declares it.
+				// A declared endpoint is carried or absent, never counted.
 				for _, id := range d.IDs {
 					if _, declared := s.Residual[id]; declared {
 						at("tier %d counts %q as a part of the opened node, and the step declares it a residual endpoint", d.Tier, id)
@@ -268,11 +210,8 @@ func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 					}
 					distinct[id] = true
 				}
-				// EVERY ID A COLUMN DRAWS IS A NODE A DOCUMENT HOLDS AT THAT
-				// TIER, which is the arm that refuses an id moved to a column
-				// the document does not print it in. A tier is a property of
-				// the documents and the walk computes none of it, so this is
-				// a claim the walk cannot satisfy by agreeing with itself.
+				// A tier is the documents' property, not the walk's, so this
+				// refuses an id moved to a column the document does not print it in.
 				for _, id := range slices.Concat(d.IDs, d.Carried) {
 					n, held := recordOf(d, id)
 					switch {
@@ -287,13 +226,8 @@ func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 						at("tier %d draws %q, and no document this column reads holds a node of that id at tier %d", d.Tier, id, d.Tier)
 						continue
 					}
-					// WHAT A COLUMN CARRIES IS WHAT MAKES A NODE CARRIED, and
-					// it is the document and the declaration that say which:
-					// a node the document marks derived, or an endpoint the
-					// step declares. Counting one of those, or carrying a row
-					// the document prints, are the two halves of the same
-					// defect -- a reader is shown the same nodes either way
-					// and the opened node's parts come to a different figure.
+					// Carried iff the document marks it derived or the step
+					// declares it an endpoint.
 					_, declared := s.Residual[id]
 					switch carried := slices.Contains(d.Carried, id); {
 					case carried && n.Derived:
@@ -311,21 +245,12 @@ func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 				if len(d.IDs) > 1 {
 					plural++
 				}
-				// WHAT THE CLIENT IS LEFT TO FOLD, counted against the step's own
-				// declaration rather than against a field of this file: a column
-				// holding more than the cap DrillStep.Caps declares for its tier
-				// is one the client folds and this artifact does not.
 				if c, capped := capOf(s, d.Tier); capped && drawn > c {
 					overCap++
 				} else if !capped && len(d.IDs) > 0 {
 					uncappedIDs++
 				}
 			}
-			// A MARK IS THE OPENED NODE'S OWN, UNDER THE CLIENT'S ID, AND IS
-			// COUNTED ON NO COLUMN: its role names which of the two it is,
-			// its id is that role's prefix on the last node of the path, a
-			// gap has exactly one side, the short one, and a residual names
-			// the declared endpoints it carries, sorted, and carries cents.
 			if len(r.Marks) > 1 {
 				at("carries %d marks, and the spine declares the two marks on different steps", len(r.Marks))
 			}
@@ -383,10 +308,7 @@ func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 			if flanks != len(s.Keep) {
 				at("draws %d flank column(s) and the step keeps %d", flanks, len(s.Keep))
 			}
-			// THE RUNG ABOVE HOLDS THE NODE THIS ONE OPENED, and that is what
-			// says the walk descends the whole chart rather than the part a
-			// fold left: a column answered folded would be one whose hidden
-			// members are opened by rungs no answer above them names.
+			// The rung above holds the node this one opened.
 			if len(r.Path) > 1 {
 				above := strings.Join(r.Path[:len(r.Path)-1], " > ")
 				switch held, answered := holds[above]; {
@@ -398,20 +320,9 @@ func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 					parented++
 				}
 			}
-			// AND THE MIRROR, WHICH IS THE HALF THE PARENTAGE GUARD LEAVES
-			// OPEN: a walk that stopped walking satisfies it, because every
-			// rung it did write down still names its parent. So each id this
-			// rung draws at a tier a later step opens, with the role that
-			// step declares and where that step's document decomposes it,
-			// has to be answered by a rung one path longer. Suppressing a
-			// whole step's rungs took this artifact from 99 and 97 to 45 and
-			// 45 with every other gate green (fisc-u8di).
-			//
-			// IT ASKS export.Openable, WHICH THE WALK ALSO ASKS. That makes
-			// it completeness read from the parent rather than a second
-			// reading of the documents: it cannot witness the openable set
-			// itself being wrong, only the walk answering fewer rungs than
-			// that set offers.
+			// The mirror, which a walk that stopped walking fails: each id a
+			// later step opens is answered by a rung one path longer. It
+			// cannot witness export.Openable itself being wrong (fisc-u8di).
 			for j, s2 := range spine.Steps {
 				if !slices.Contains(s2.After, r.Step) {
 					continue
@@ -420,12 +331,8 @@ func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 					if d.Tier != s2.From {
 						continue
 					}
-					// A LATER STEP OPENING A KEPT COLUMN IS REFUSED RATHER
-					// THAN READ: the role it would be matched on lives on the
-					// chart on screen, and recordOf reads a kept id off
-					// whichever document holds it. No shipped step does this
-					// -- every child step opens its parent's outward column
-					// -- so the shape is a pinned zero and not a case.
+					// A pinned zero: no shipped step opens a kept column, and
+					// recordOf has no role to match a kept id on.
 					if d.Role != roleOutward {
 						at("tier %d is a %s column and step %q opens tier %d after %q, which this guard reads no node record for", d.Tier, d.Role, s2.Key, s2.From, r.Step)
 						continue
@@ -449,18 +356,7 @@ func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 			}
 		}
 	}
-	// EACH OF THESE IS A SHAPE THE ARM COULD PASS WITHOUT COMPARING ANYTHING.
-	// The corpus supplies them today at, respectively, special-revenue's 32
-	// funds under fund-group's cap of 8; fund-departments' tier 4, which no
-	// step caps; every fund opened out of a fund group; and transfers/in
-	// under the transfers step, which keeps no flank.
-	//
-	// THE UNFLANKED GUARD IS A REGRESSION SEEN FROM BOTH SIDES. The walk once
-	// skipped every step that keeps no flank and wrote the skip into the
-	// artifact, and the arm let every rung under a skipped step by. A walk
-	// that quietly did so again would leave every other guard here green and
-	// the transfers rung unanswered, so the artifact must answer under such a
-	// step.
+	// Vacuity guards: each zero is a shape the arms above pass without comparing.
 	if overCap == 0 {
 		t.Error("no column holds more than the cap its step declares for that tier, so the client has no fold left to exercise and this artifact could not show one")
 	}
@@ -476,11 +372,6 @@ func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 	if unflanked == 0 {
 		t.Error("no rung is answered under a step that keeps no flank, so the transfers step is unanswered and the arm has nothing to hold the client to there")
 	}
-	// THE FLANK'S OWN THREE SHAPES, each supplied by the corpus: a flank of
-	// several ids, where one id perturbed can be seen; a flank carrying a
-	// declared endpoint, where the residual's subtraction is compared rather
-	// than assumed on both sides; and a flank whose every mark is carried,
-	// where "answered with nothing" has to be written to be read.
 	if flankPlural == 0 {
 		t.Error("no flank draws more than one id, so an id perturbed on a flank could not be seen")
 	}
@@ -490,12 +381,6 @@ func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 	if emptyFlank == 0 {
 		t.Error("no flank draws nothing of its own, so an omitted ids would be indistinguishable from an empty one")
 	}
-	// THE MEMBERSHIP GUARDS' OWN FIVE SHAPES, each supplied by the corpus and
-	// each a way this artifact could hold nothing: a column whose ids were all
-	// unknown to every document, a kept half drawn from no document, a carried
-	// id that is neither derived nor declared, a counted id that is neither,
-	// and a rung that opens nothing further. Where a count is zero the arm
-	// above it compared nothing and reported PASS.
 	if documented == 0 || documentedKept == 0 {
 		t.Errorf("%d outward id(s) and %d kept id(s) were found in a document at the tier their column names, so the membership arm read nothing", documented, documentedKept)
 	}
@@ -508,55 +393,26 @@ func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 	if answeredBelow == 0 {
 		t.Error("no id a rung draws is opened by a rung below it, so a walk that stopped walking would satisfy every guard here")
 	}
-	// THE GAP IS ANSWERED ON THE YEAR THAT DRAWS ONE: p0067's
-	// services-and-supplies against pp.85-125's rows in FY2026-27, which ties
-	// to the cent in FY2025-26. An artifact with no gap mark is one the arm
-	// could hold the client's markGap to without ever comparing a figure.
+	// The gap is p0067's services-and-supplies against pp.85-125's rows in
+	// FY2026-27; FY2025-26 ties to the cent.
 	if len(gapYears) == 0 {
 		t.Error("no column answers a gap mark, so the arm has no gap to hold the client to")
 	}
-	// THE RESIDUAL IS ANSWERED IN EVERY YEAR: the fund groups
-	// whose draw or transfers in pp.127-140 print for no fund, which both
-	// published columns have.
+	// Both years have a fund group whose draw or transfers in pp.127-140 print
+	// for no fund.
 	if len(residualYears) != len(doc.Columns) {
 		t.Errorf("%d of %d columns answer a residual mark, and every published column carries a group the fund schedule does not fully decompose", len(residualYears), len(doc.Columns))
 	}
 }
 
-// TestTheRungArtifactIsWhatTheReachPrimitivesAnswer holds every id and every
-// figure the artifact writes down to export.ReachOf, export.ResidualOf and
-// export.GapOf CALLED HERE, and never to a second run of rungsOf. A rung's
-// path and the step that answered it are taken as the artifact states them;
-// what that step's columns hold and what marks stand beside them are
-// recomputed from the documents, so a perturbation of what the emitter wrote
-// down has only one side moving.
-//
-// WHY THIS IS NOT THE RE-DERIVATION internal/check/check.go REFUSES. Two
-// spellings of one computation in one process witness nothing, and this is
-// not that. The primitives are held by their own fixture tests over
-// hand-written graphs in internal/export, which is the layer below; what is
-// spelled a second time here is the ASSEMBLY -- which column is asked of
-// which document on which side, which record answers for each id, and which
-// figures are written down. A bug in ReachOf is that layer's to catch, and a
-// bug in what rungsOf wrote down is this one's.
-//
-// THE FOUR MUTATIONS IT EXISTS FOR, none of which any other gate sees once
-// testdata/rungs.json is regenerated from the mutated walk: an id dropped
-// from a column no later step opens, a mark moved to another tier the step
-// declares, every derived mark's cents perturbed by one, and an endpoint
-// dropped from a residual's ends. The matrix is in
+// TestTheRungArtifactIsWhatTheReachPrimitivesAnswer holds every id and figure
+// the artifact writes down to export.ReachOf, export.ResidualOf and
+// export.GapOf called here, never to a second run of rungsOf, so a
+// perturbation of the emitter has one side moving. What is spelled twice is
+// the assembly, not the primitives, which have fixture tests of their own. The
+// window is rebuilt here too, since a mark is arithmetic over it. It takes
+// which rungs exist as given. Its four mutations are in
 // docs/rung-walk-witness-evidence.md.
-//
-// THE WINDOW IS REBUILT HERE TOO, and it has to be: a mark is arithmetic
-// over the chart a rung leaves on screen, so a replay that asked the
-// artifact for that chart would be asking the mutated side for the answer.
-// Each rung's chart is this test's own, built from its parent's, and the
-// overview the first rungs open from is export.Fold of the year's document.
-//
-// WHAT IT DOES NOT WITNESS, since the replay takes them as given: which
-// rungs exist at all -- the paths and the steps are the artifact's, and
-// their completeness is TestTheRungArtifactIsWhatGoComputes' parentage
-// guards -- and the primitives themselves being wrong.
 func TestTheRungArtifactIsWhatTheReachPrimitivesAnswer(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {
@@ -598,24 +454,14 @@ func TestTheRungArtifactIsWhatTheReachPrimitivesAnswer(t *testing.T) {
 			return documents[stem]
 		}
 		year := of(col.Stem)
-		// THE OVERVIEW IS export.Fold OF THE YEAR'S DOCUMENT, which is what
-		// shapeFor draws before anything is opened. The primitive is called
-		// here rather than overviewOf for the reason the walk is not re-run:
-		// overviewOf is the emitter's assembly.
+		// The primitive, not overviewOf, which is the emitter's assembly.
 		overview, err := export.Fold(year, spine.RenderTiers)
 		if err != nil {
 			t.Fatalf("column %q: overview: %v", col.Stem, err)
 		}
-		// WHAT EACH RUNG LEAVES ON SCREEN AND WHAT IT WAS SHAPED FROM, this
-		// test's own, keyed by path so a child reads its parent's: the chart
-		// is the window this replay built and from is the document that
-		// rung's step drew, which is what a residual's ribbons come off where
-		// the window does not draw them.
+		// Keyed by path so a child reads its parent's chart and document.
 		screens, froms := map[string]export.Graph{}, map[string]export.Graph{}
-		// SHALLOWEST FIRST, so a parent's window exists before its children
-		// ask for it. The artifact's own order already is, by path string,
-		// and sorting rather than relying on that keeps the replay's
-		// prerequisite stated where it is needed.
+		// Shallowest first, so a parent's window exists before its children.
 		order := slices.Clone(col.Rungs)
 		slices.SortStableFunc(order, func(a, b rung) int { return len(a.Path) - len(b.Path) })
 		for _, r := range order {
@@ -681,12 +527,7 @@ func TestTheRungArtifactIsWhatTheReachPrimitivesAnswer(t *testing.T) {
 			}
 		}
 	}
-	// EACH OF THESE IS A SHAPE IN WHICH THE COMPARISONS ABOVE COMPARE
-	// NOTHING, and the corpus supplies the opposite of every one: a replay
-	// that answered no rung, columns holding no id on either side of the
-	// window, and the two marks, whose cents and whose endpoint list are
-	// three of the four mutations this test exists for. A count of zero
-	// against any of them is a PASS reported over an empty comparison.
+	// Vacuity guards: each zero is a comparison above that compared nothing.
 	if replayed == 0 {
 		t.Error("no rung was replayed, so nothing here was held to the documents")
 	}
@@ -704,18 +545,9 @@ func TestTheRungArtifactIsWhatTheReachPrimitivesAnswer(t *testing.T) {
 	}
 }
 
-// replayRung is one rung recomputed from the primitives: what every column
-// the step declares holds, the marks that stand beside them, and the chart
-// the rung leaves on screen for its children to open from. It asks
-// rungWalker.answer's question a second time in this test's own words, over
-// the same export.ReachOf, export.ResidualOf and export.GapOf.
-//
-// THE REFUSALS answer MAKES ARE NOT REPEATED -- a neighbour beside the
-// opened node in a centre column, a flank that sends nothing in, a mark
-// surviving onto a kept tier. A corpus that provoked one of those would have
-// failed the walk before an artifact existed to replay, and those shapes
-// have refusal tests of their own; what is repeated here is only what gets
-// written down.
+// replayRung is one rung recomputed from the primitives: its columns, its
+// marks, and the chart it leaves on screen for its children. rungWalker.answer's
+// refusals are not repeated; they have tests of their own.
 func replayRung(s export.DrillStep, drawing, screen, from export.Graph, ck export.ColumnKey, opened string) ([]drawnTier, []drawnMark, export.Graph, error) {
 	nearIsSource, outward, centre := s.Side == export.SideSource, slices.Clone(s.Tiers), len(s.Keep) > 0
 	var keptTiers []int
@@ -729,9 +561,6 @@ func replayRung(s export.DrillStep, drawing, screen, from export.Graph, ck expor
 			keptTiers = s.Tiers[:idx+1]
 		}
 	}
-	// THE DOCUMENT IS ASKED FOR THE CENTRE AND EVERYTHING BEYOND IT, and the
-	// chart on screen for the flank and the centre on the other side, which
-	// is the pair of questions windowFor asks.
 	half := slices.Clone(outward)
 	if centre {
 		half = append([]int{s.From}, half...)
@@ -754,9 +583,7 @@ func replayRung(s export.DrillStep, drawing, screen, from export.Graph, ck expor
 		return byID
 	}
 	freshNodes, keptNodes := record(fresh.Drawn), record(kept.Drawn)
-	// THE KEPT HALF GOES IN WHOLE AND FIRST, so its record of the opened node
-	// is the one the window carries, and the fresh half's ribbons arrive at
-	// the ends the fold left them at.
+	// The kept half goes in first, so its record of the opened node wins.
 	window := export.IndexGraph(kept.Drawn)
 	for _, t := range outward {
 		for _, id := range fresh.At[t] {
@@ -771,10 +598,6 @@ func replayRung(s export.DrillStep, drawing, screen, from export.Graph, ck expor
 			return nil, nil, export.Graph{}, fmt.Errorf("the window of %q: %w", opened, err)
 		}
 	}
-	// WHAT THE CLIENT DRAWS BUT DOES NOT COUNT is the document's word and the
-	// step's: a node the document marks derived, or an endpoint the step
-	// declares a residual for. Sorting the ids first leaves both lists
-	// sorted, which is the order the artifact writes them in.
 	split := func(ids []string, byID map[string]export.GraphNode) (own, lent []string) {
 		own = []string{}
 		for _, id := range slices.Sorted(slices.Values(ids)) {
@@ -801,10 +624,7 @@ func replayRung(s export.DrillStep, drawing, screen, from export.Graph, ck expor
 		own, lent := split(ids, byID)
 		draws = append(draws, drawnTier{Tier: t, Role: role, IDs: own, Carried: lent})
 	}
-	// THE MARKS GO ON LAST AND IN ORDER, the residual over the whole spliced
-	// window and the gap over the chart the residual left, which is the order
-	// shapeFor applies them in. A residual is carried only across a document
-	// switch, which is carryResidual's own gate.
+	// Residual then gap, shapeFor's order; a residual only across a document switch.
 	residual := s.Residual
 	if s.Projection == "" {
 		residual = nil
@@ -831,13 +651,8 @@ func replayRung(s export.DrillStep, drawing, screen, from export.Graph, ck expor
 	return draws, marks, window.Graph(), nil
 }
 
-// spliceMark is drawn with one mark applied: the ribbons it re-points taken
-// out by index, its nodes added and its ribbons merged in.
-//
-// THIS TEST'S OWN, NOT rungs.go's carry, for the reason the whole replay is
-// written twice: a seam shared with the emitter is one a mutation moves both
-// sides of. The two drifting apart is a red test rather than a quiet
-// agreement.
+// spliceMark is drawn with one mark applied. It is this test's own rather
+// than the emitter's, so a mutation there moves only one side.
 func spliceMark(drawn export.Graph, c export.Carry) (*export.Chart, error) {
 	kept := export.Graph{Nodes: drawn.Nodes}
 	for i, l := range drawn.Links {
@@ -857,17 +672,9 @@ func spliceMark(drawn export.Graph, c export.Carry) (*export.Chart, error) {
 	return chart, nil
 }
 
-// TestRungsAnswerAColumnTheDocumentDrawsNothingIn is the shape no committed
-// document supplies, on a spine of one hand-written document: a column the
-// step declares that the document folds no node to. It is answered with an
-// empty id list rather than dropped, because a dropped column reads as one
-// the step never declared (drawnTier), and the walk no longer drops a widened
-// column at all.
-//
-// MEASURED AGAINST THE CORPUS, which is why it is hand-written: every outward
-// column every shipped step declares holds at least one node once the answer
-// stops being cut to a budget, so the committed artifact witnesses this
-// nowhere.
+// TestRungsAnswerAColumnTheDocumentDrawsNothingIn: a declared column the
+// document folds no node to is answered with an empty id list, not dropped.
+// Hand-written because no committed document supplies the shape.
 func TestRungsAnswerAColumnTheDocumentDrawsNothingIn(t *testing.T) {
 	// g's parts reach tier 2 and nothing reaches the widened tier 3.
 	doc := export.Graph{
@@ -909,18 +716,9 @@ func TestRungsAnswerAColumnTheDocumentDrawsNothingIn(t *testing.T) {
 	}
 }
 
-// TestRungsRefuseADriftTheStepDoesNotDeclare is the refusals a declaration
-// can provoke, inert on the committed declarations and shown firing on a
-// one-field change: the object-category step licensing a gap on another node
-// alone, or services-and-supplies' gap in the column that ties, or at another
-// figure, while p.67 and pp.85-125 still print FY 2026-27's cell 250,000
-// dollars apart.
-//
-// DROPPING THE WHOLE MAP IS NOT THE MUTATION, measured: a step that declares
-// no gap at all makes no claim that its nodes balance, so rungsOf builds
-// with the difference unstated, which is markGap's own first rule. The
-// claim with teeth is a declaration that names some node, which is a claim
-// about every other node the step opens.
+// TestRungsRefuseADriftTheStepDoesNotDeclare shows each gap refusal firing on
+// a one-field change to the committed declaration. Dropping the whole map is
+// not the mutation: a step declaring no gap makes no balance claim.
 func TestRungsRefuseADriftTheStepDoesNotDeclare(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {
@@ -981,17 +779,8 @@ func capOf(s export.DrillStep, tier int) (int, bool) {
 	return 0, false
 }
 
-// TestRungsRefuseAWindowTheClientWouldNotDraw is the refusal in
-// rungWalker.answer a declaration of the shipped spine can provoke, inert on
-// the committed declarations and shown firing on a one-field change to them:
-// a flank that sends nothing into the opened node, which filterLinks throws
-// on rather than drawing empty.
-//
-// THE THREE CAP REFUSALS THIS TEST ALSO HELD ARE GONE WITH THEIR SUBJECT. A
-// cap on a kept flank, a cap on the centre and a fold above a drawn deeper
-// tier were each a shape in which Go's fold and the client's would disagree,
-// and the walk no longer folds: DrillStep.Caps is a permission it ships and
-// does not spend (drawnTier).
+// TestRungsRefuseAWindowTheClientWouldNotDraw shows the flank refusal in
+// rungWalker.answer firing on a one-field change to the shipped spine.
 func TestRungsRefuseAWindowTheClientWouldNotDraw(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {
@@ -1034,19 +823,9 @@ func TestRungsRefuseAWindowTheClientWouldNotDraw(t *testing.T) {
 	}
 }
 
-// TestRungsRefuseAKeptHalfTheArtifactHasNoShapeFor is the refusal no
-// committed document can provoke, on a spine of one hand-written document: a
-// second node beside the opened one in the kept half's centre column, which
-// the client would draw beside the node the reader clicked -- the mirror of
-// the fresh half's refusal.
-//
-// The walk is run rather than answer called, because the shape arises from
-// what an earlier rung left on screen: here the overview's own fold.
-//
-// IT HELD A SECOND CASE, A FOLDED TAIL AT A KEPT TIER, and that case is gone
-// with its subject: it reached the refusal by capping a column on the rung
-// above so the chart left on screen carried a tail, and no chart this walk
-// builds carries one now (drawnTier).
+// TestRungsRefuseAKeptHalfTheArtifactHasNoShapeFor: a second node beside the
+// opened one in the kept centre column is refused. The whole walk runs,
+// because the shape comes from the overview's fold.
 func TestRungsRefuseAKeptHalfTheArtifactHasNoShapeFor(t *testing.T) {
 	encode := func(g export.Graph) []byte {
 		raw, err := json.Marshal(g)
@@ -1090,9 +869,7 @@ func TestRungsRefuseAKeptHalfTheArtifactHasNoShapeFor(t *testing.T) {
 	}
 }
 
-// stepStemsFor is the test's own resolution of what each step draws for one
-// year, asked of the index the packager resolves through. It is a wrapper and
-// not a second spelling: export.StepStems is the function under test's own.
+// stepStemsFor is export.StepStems for one year over the packager's index.
 func stepStemsFor(t *testing.T, spine export.View, projections map[string][]byte, year string) []string {
 	t.Helper()
 	_, ix, err := export.ColumnsOf(projections, "fisc test")
@@ -1107,16 +884,10 @@ func stepStemsFor(t *testing.T, spine export.View, projections map[string][]byte
 }
 
 // TestTheFundStepsSentenceIsItsArithmetic holds the fund step's Description
-// to the identity it states, over every published column. What fund/100
-// takes in less what its divisions draw is what pp.66-67 print leaving the
-// general group other than through its divisions -- transfers out and the
-// fund-balance rows -- LESS the residual the group's own rung carries in,
-// read off the rungs artifact rather than recomputed. Measured off this
-// test, in cents: 1,322,266,800 = 1,473,722,200 - 151,455,400 in FY2025-26
-// and 1,534,356,800 = 1,583,030,300 - 48,673,500 in FY2026-27. A sentence
-// naming the first term alone, which is what the old wording did, is off by
-// the residual in both years, and the words are pinned here beside the
-// arithmetic so that neither can move without the other.
+// to the identity it states in every published column: what fund/100 takes in
+// less what its divisions draw equals what pp.66-67 print leaving the general
+// group other than through its divisions, less the residual its rung carries
+// in. The words and the arithmetic are pinned together.
 func TestTheFundStepsSentenceIsItsArithmetic(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {
@@ -1292,13 +1063,9 @@ var (
 )
 
 // TestAGapIsAnsweredOnlyOnTheColumnItsExceptionPins holds each column's gap
-// marks to the exceptions structure declares, per (year, basis, cell): the
-// FY2025-26 column answers no gap, because no pin names it, and the
-// FY2026-27 column answers services-and-supplies at the pin's own difference
-// rather than at a literal. The licence GapOf reads is keyed by node alone
-// (fisc-sixz), so this is the arm that sees a gap drawn on a column the
-// exception does not pin, which the artifact would otherwise carry with the
-// other year's prose.
+// marks to the exceptions structure pins per (year, basis, cell). GapOf's
+// licence is keyed by node alone (fisc-sixz), so this is what sees a gap drawn
+// on a column no exception pins.
 func TestAGapIsAnsweredOnlyOnTheColumnItsExceptionPins(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {
@@ -1356,22 +1123,10 @@ func TestAGapIsAnsweredOnlyOnTheColumnItsExceptionPins(t *testing.T) {
 	}
 }
 
-// TestARungsAmountIsTheFigureTheOverviewLabelsTheNodeWith is what makes
-// rung.Amounts evidence rather than a second spelling of the drawing.
-//
-// THE WHOLE POINT OF THE FIELD IS THAT THE RIBBONS DISAGREE WITH IT. A
-// category a schedule prints a reduction under has its reduction drawn forward
-// at its magnitude, so the ribbons arriving at the mark come to the figure plus
-// twice the reductions -- 10,343,009,200 against a published 6,945,941,400 on
-// FY2025-26. An amount re-derived from those same ribbons by the test would
-// agree with the walk by construction and witness nothing.
-//
-// SO IT IS COMPARED AGAINST THE OTHER DOCUMENT. The spine publishes that node's
-// own cell one click earlier, from pp.66-67, and the drill-down reads
-// pp.127-140: two schedules, independently mapped, and the amount is right only
-// if it is the figure the reader was just shown. That is the comparison, and it
-// is the same one the window itself makes -- the two sides of a category mark
-// are one figure read from two schedules.
+// TestARungsAmountIsTheFigureTheOverviewLabelsTheNodeWith holds rung.Amounts to
+// the spine's own cell from pp.66-67, not to the drill-down's ribbons, which
+// disagree with it by twice the reductions drawn forward. Two independently
+// mapped schedules must agree.
 func TestARungsAmountIsTheFigureTheOverviewLabelsTheNodeWith(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {
@@ -1382,8 +1137,6 @@ func TestARungsAmountIsTheFigureTheOverviewLabelsTheNodeWith(t *testing.T) {
 		t.Fatalf("buildProjections: %v", err)
 	}
 
-	// The spine's own cell for a node: what the overview labels it with, which
-	// is everything leaving it at the citywide grain.
 	spineCell := func(t *testing.T, stem, node string) int64 {
 		t.Helper()
 		raw, ok := built[stem]
@@ -1439,10 +1192,7 @@ func TestARungsAmountIsTheFigureTheOverviewLabelsTheNodeWith(t *testing.T) {
 			}
 		}
 	}
-	// THE VACUITY GUARD, in this file's own idiom: an artifact naming no amount
-	// would pass every line above. Budget Book p127 prints ERAF and the RPTTF
-	// reduction under Property Taxes, and both published spine years open into
-	// that category, so the committed corpus supplies exactly two.
+	// Budget Book p127 prints reductions under Property Taxes, opened in both years.
 	if named != 2 {
 		t.Errorf("%d amount(s) named across the artifact, want 2 -- Property Taxes on each "+
 			"published year. A walk naming none would report nothing and pass", named)
@@ -1450,12 +1200,7 @@ func TestARungsAmountIsTheFigureTheOverviewLabelsTheNodeWith(t *testing.T) {
 }
 
 // TestARungsAmountOfZeroIsRefusedAtTheWrite holds the schema's lower bound on
-// a rung's amounts: a mark drawn at zero or below sets the scale for its
-// whole column, and the client draws whatever figure it is answered.
-//
-// OVER THE BUILT ANSWER AND NOT A LITERAL, so the document that reaches the
-// schema is one every other key of which is what buildAll writes; the one
-// change is the figure.
+// a rung's amounts, over the built answer with only the figure changed.
 func TestARungsAmountOfZeroIsRefusedAtTheWrite(t *testing.T) {
 	built, err := buildAll(repoRootForTest(t))
 	if err != nil {

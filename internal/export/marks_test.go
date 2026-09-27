@@ -9,18 +9,10 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
-// TestGapOfIsMarkGapsArithmetic is markGap's rule on a hand-written chart,
-// each row a branch of it: no declaration draws nothing; a centre that
-// balances draws nothing; too little leaving stands at the last tier with
-// the ribbon running out of the centre, too little arriving at the first
-// with the ribbon running in; and a difference no licence names at this
-// column and this figure is refused rather than drawn, as is a licence on a
-// centre that balances.
-//
-// THE SUMS ARE SIGNED. The fourth row's centre takes 100 and sends 60
-// forward and 40 as a reduction, which is a chart that balances as printed
-// and reads as 80 short once the reduction is drawn at its magnitude; the
-// row pins that this reads it as printed.
+// TestGapOfIsMarkGapsArithmetic is markGap's rule, one row per branch. The
+// sums are signed: the fourth row's centre takes 100 and sends 60 forward and
+// 40 as a reduction, which balances as printed and would read 80 short at
+// magnitudes.
 func TestGapOfIsMarkGapsArithmetic(t *testing.T) {
 	chart := func(links ...GraphLink) Graph {
 		return Graph{
@@ -152,11 +144,8 @@ func TestGapOfIsMarkGapsArithmetic(t *testing.T) {
 			if ok != tc.ok {
 				t.Fatalf("ok = %v, want %v", ok, tc.ok)
 			}
-			// THE ARITHMETIC AND THE WORDS ARE ASSERTED APART. The struct
-			// diff is about which mark exists, where it stands, what it is
-			// worth and what it cites; a reworded sentence showing up as a
-			// changed rule would train a reader to re-baseline this diff
-			// without reading it.
+			// The arithmetic and the words are asserted apart, so a reworded sentence is
+			// not a changed rule.
 			if diff := cmp.Diff(tc.want, got, cmpopts.IgnoreFields(Mark{},
 				"Label", "Rationale", "SourceNote")); diff != "" {
 				t.Errorf("GapOf mismatch (-want +got):\n%s", diff)
@@ -167,11 +156,8 @@ func TestGapOfIsMarkGapsArithmetic(t *testing.T) {
 			if got.Mark.Label != "Difference between the two schedules" {
 				t.Errorf("label = %q", got.Mark.Label)
 			}
-			// THE FIGURES IN THE SENTENCE ARE THE MARK'S OWN, which is the half
-			// a fixed-string comparison would not catch: a rationale quoting
-			// the wrong side of the difference reads perfectly. The column is
-			// named in the page's own words, the reason is this column's and
-			// not another's, and a shortfall is not called a surplus.
+			// The figures in the sentence are the mark's own: the column, this column's
+			// reason, and a shortfall not called a surplus.
 			var into, outOf int64
 			for _, l := range tc.drawn.Links {
 				if l.Target == opened {
@@ -204,9 +190,8 @@ func TestGapOfIsMarkGapsArithmetic(t *testing.T) {
 
 var tiers3 = []int{0, 1, 2}
 
-// TestMarkIDsAreTwoPrefixes pins that a residual's id and a gap's id cannot
-// be mistaken for each other or for a document node's: a check counting one
-// must not find the other.
+// TestMarkIDsAreTwoPrefixes pins that a residual's id and a gap's id cannot be
+// mistaken for each other or for a document node's.
 func TestMarkIDsAreTwoPrefixes(t *testing.T) {
 	r, g := ResidualID("fund-group/general"), GapID("expenditure/services-and-supplies")
 	if !IsResidual(r) || IsGap(r) {
@@ -221,10 +206,7 @@ func TestMarkIDsAreTwoPrefixes(t *testing.T) {
 }
 
 // TestResidualOfIsCarryResiduals is carryResidual's rule on a hand-written
-// pair of documents in the fund-group step's shape: a chart above that
-// prints a group's inflow and outflow whole, and a step document that
-// prints the same money by fund and carries no row for a draw or a
-// transfer out. Each row is one branch of the rule.
+// pair of documents in the fund-group step's shape, one row per branch.
 func TestResidualOfIsCarryResiduals(t *testing.T) {
 	// The chart above: revenue r, a draw e1 and transfers in tin at tier 0
 	// feed group G at tier 2, which sends out to tier 5 and both ways to b.
@@ -368,10 +350,8 @@ func TestResidualOfIsCarryResiduals(t *testing.T) {
 			if !tc.ok {
 				return
 			}
-			// THE GRAIN IS THE STEP'S AND IS SAID TWICE, so a mark carrying the
-			// label of one grain and the rationale of another cannot pass. That
-			// was reachable while the client hard-coded the label and derived
-			// nothing from the step.
+			// The grain is said twice, so a label of one grain and a rationale of another
+			// cannot pass.
 			if got.Mark.Label != "Not split by fund here" {
 				t.Errorf("label = %q, want it named for the declared grain", got.Mark.Label)
 			}
@@ -379,17 +359,14 @@ func TestResidualOfIsCarryResiduals(t *testing.T) {
 				!strings.Contains(got.Mark.Rationale, "no fund here receives or pays it") {
 				t.Errorf("rationale does not say the grain the label names: %q", got.Mark.Rationale)
 			}
-			// AND EVERY DECLARED ENDPOINT'S REASON REACHES IT, in the step's own
-			// words. A rationale naming the endpoints and dropping a reason
-			// would read as complete.
+			// And every declared endpoint's reason reaches it.
 			for _, e := range got.Mark.Ends {
 				if why := tc.residual[e]; why != "" && !strings.Contains(got.Mark.Rationale, why) {
 					t.Errorf("rationale drops %s's declared reason %q", e, why)
 				}
 			}
-			// THE RESIDUAL'S NOTE IS THE CLIENT'S, because it renders the
-			// citations of the flows it carries and neither Graph nor this
-			// package's walk decodes a locator. fisc-tihl.
+			// The residual's note is the client's: it renders the citations of the flows
+			// it carries (fisc-tihl).
 			if got.Mark.SourceNote != "" {
 				t.Errorf("source note = %q, want empty: the residual's note is the client's", got.Mark.SourceNote)
 			}
