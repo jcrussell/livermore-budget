@@ -422,9 +422,9 @@ func TestRowFundsCatchesASameGroupEndSwap(t *testing.T) {
 // The swap is Water 640 -> Water Replacement 642: both `enterprise` in
 // data/funds.yaml, so no money leaves its group and no sum moves, and
 // fact-funds-resolve and cuts-tie-along-the-lattice both stay PASS. Its CIP
-// twin 641 is no longer such a swap: 641 is a fund of the cip-funds cut, which
-// is outside the reference, so cuts-tie-along-the-lattice refuses it -- the
-// last subtest holds that. Deleting the BARE-LABEL arm from Run -- the second of
+// twin 641 is not such a swap: 641 is a fund of the cip-funds cut, which is
+// outside the reference, so cuts-tie-along-the-lattice refuses it -- the last
+// subtest holds that. Deleting the BARE-LABEL arm from Run -- the second of
 // the two gated on ru.RowLabelsNameFunds, not the phrased-label refusal above it
 // -- returns it to green.
 func TestRowFundsCatchesABareLabelTwinTheGateDoesNot(t *testing.T) {
@@ -538,6 +538,8 @@ func TestTheFundNumberArmHoldsBothEndsOfAP222Row(t *testing.T) {
 	}{
 		{"the receiving fund", func(r *mapping.Row) { r.Fund = 813 }, "the fund which receives is 813"},
 		{"the transferring fund", func(r *mapping.Row) { r.Counterpart.Fund = 510 }, "the fund which pays is 510"},
+		// A transfer read as revenue: the page still numbers its payer.
+		{"the counterpart dropped", func(r *mapping.Row) { r.Counterpart = nil }, "declares no counterpart"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})

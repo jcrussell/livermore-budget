@@ -88,6 +88,9 @@ func ValidateSplits(cuts []Cut, splits []Split) error {
 			claimed[key] = s.Name
 		}
 		for _, c := range sides {
+			if c.Outside != "" {
+				return fmt.Errorf("split %q: %q is outside the reference and is compared with no cut", s.Name, c.Name)
+			}
 			if c.Level != s.At && !Refines(c.Level, s.At) {
 				return fmt.Errorf("split %q: %q is at %q, which does not refine %q", s.Name, c.Name, c.Level, s.At)
 			}

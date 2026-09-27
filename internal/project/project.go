@@ -350,7 +350,6 @@ func transfersOutSlices() []Options {
 	out := transfersByFundSlices()
 	for i := range out {
 		out[i].Scopes = TransfersOutScopes()
-		out[i].Kinds = transferKinds
 	}
 	return out
 }

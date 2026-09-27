@@ -151,9 +151,13 @@ func (t *transfersByFund) kinds() []mapping.Kind {
 // the page's own grand total by millions; p222's FY2024-25 revised column has
 // no p76 column beside it, so the transfers-out network has none either.
 func (t *transfersByFund) Slices(facts []fact.Fact, version string) []Options {
+	sel := Options{Scopes: t.scopes(), Kinds: t.kinds()}
 	seen := map[Column]map[string]bool{}
 	for i := range facts {
 		f := &facts[i]
+		if !sel.HasScope(f.Scope) || !sel.HasKind(f.Kind) {
+			continue
+		}
 		c := Column{FiscalYear: f.FiscalYear, Basis: f.Basis}
 		if seen[c] == nil {
 			seen[c] = map[string]bool{}

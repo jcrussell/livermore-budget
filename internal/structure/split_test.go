@@ -142,6 +142,9 @@ func TestASplitIsRefusedWhenItsSidesCannotBearIt(t *testing.T) {
 		{"a level a side does not refine", func(s *structure.Split) {
 			s.At = structure.LevelDepartment
 		}, "does not refine"},
+		{"a side outside the reference", func(s *structure.Split) {
+			s.Parts = []string{s.Parts[0], "cip-funds"}
+		}, "outside the reference"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			s := splitNamed(t, transferOutSplit)

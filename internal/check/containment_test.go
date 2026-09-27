@@ -382,3 +382,36 @@ func TestTheDepartmentSchedulesTieInEveryColumn(t *testing.T) {
 		})
 	}
 }
+
+// TestASplitWithAnEmptySideLeavesItsPairsToTheLattice drops p222's facts: the
+// split then holds nothing, so p76 is compared with the spine on transfers out
+// again and the CIP's share is a finding rather than a pair compared by nothing.
+func TestASplitWithAnEmptySideLeavesItsPairsToTheLattice(t *testing.T) {
+	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	kept := s.Facts[:0:0]
+	for _, f := range s.Facts {
+		if f.Scope != "cip-funding-sources" {
+			kept = append(kept, f)
+		}
+	}
+	s.Facts = kept
+	res, err := (&cutsTieAlongTheLattice{}).Run(t.Context(), s)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	var b strings.Builder
+	for _, f := range res.Findings {
+		b.WriteString(f.Subject + ": " + f.Detail + "\n")
+	}
+	for _, want := range []string{"transfers-detail -> spine", "category=transfers/out fund_group=capital"} {
+		if !strings.Contains(b.String(), want) {
+			t.Errorf("no finding says %q:\n%s", want, b.String())
+		}
+	}
+	if strings.Contains(res.Summary, "held only by a split") {
+		t.Errorf("the summary still counts a pair held by a split that holds nothing:\n%s", res.Summary)
+	}
+}

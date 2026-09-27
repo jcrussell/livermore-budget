@@ -87,6 +87,15 @@ func (*cutsTieAlongTheLattice) Run(_ context.Context, s *Subject) (Result, error
 	for _, name := range empty {
 		isEmpty[name] = true
 	}
+	// A split with an empty side holds nothing, so its pairs keep their kinds
+	// and the lattice compares them as though it were not declared.
+	var live []structure.Split
+	for _, sp := range splits {
+		if !isEmpty[sp.Whole] && !slices.ContainsFunc(sp.Parts, func(p string) bool { return isEmpty[p] }) {
+			live = append(live, sp)
+		}
+	}
+	splits = live
 
 	for _, m := range structure.TierMisfits(s.Facts, cuts, func(tier, slug string) bool {
 		if tier == "division" {
@@ -183,9 +192,6 @@ func (*cutsTieAlongTheLattice) Run(_ context.Context, s *Subject) (Result, error
 	}
 
 	for _, sp := range splits {
-		if isEmpty[sp.Whole] || slices.ContainsFunc(sp.Parts, func(p string) bool { return isEmpty[p] }) {
-			continue
-		}
 		c, err := structure.HoldSplit(s.Facts, cuts, sp)
 		if err != nil {
 			findings = append(findings, finding(sp.Name, "%v", err))

@@ -168,13 +168,23 @@ func (*rowFundsMatchTheirAnchors) Run(_ context.Context, s *Subject) (Result, er
 						want    int
 						end     string
 					}{{row.Label, near, "receives"}}
+					tail, _, _ := strings.Cut(row.LabelTail, " ")
 					if far != 0 {
-						tail, _, _ := strings.Cut(row.LabelTail, " ")
 						ends = append(ends, struct {
 							printed string
 							want    int
 							end     string
 						}{tail, far, "pays"})
+					} else if _, err := strconv.Atoi(tail); err == nil {
+						// The page numbers a paying fund and the row declares none:
+						// a transfer read as something else.
+						subjects++
+						numbered++
+						findings = append(findings, finding(
+							fmt.Sprintf("%s %q", ru.ID, row.PrintedLabel()),
+							"this rule declares that its rows print fund numbers, and the "+
+								"page prints %q as the fund which pays where this row declares "+
+								"no counterpart", tail))
 					}
 					for _, e := range ends {
 						subjects++

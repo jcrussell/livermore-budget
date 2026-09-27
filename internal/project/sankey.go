@@ -111,8 +111,8 @@ const (
 // printed grand total.
 const nodeTransfersIn = "transfers/in"
 
-// nodeTransfersOut is its mirror. Only tests read it: the drill-down has no
-// transfers-out end to name.
+// nodeTransfersOut is its mirror. On the spine it is the end of every transfer
+// out; in the transfers-out network it is the fold of every receiver's end.
 const nodeTransfersOut = "transfers/out"
 
 // The slugs this projection has to recognize by name rather than by shape.

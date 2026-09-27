@@ -3377,7 +3377,7 @@ rules:
   # THE DESTINATION OF THE SPINE'S TRANSFERS TO THE CIP. pp.66-67's TRANSFER
   # OUT includes each group's transfers to the Capital Improvement Program and
   # p76 lists none of them; this page lists them fund by fund, as a receiving
-  # CIP fund and a transferring operating fund. The 28 rows naming an operating
+  # CIP fund and a transferring operating fund. The 26 rows naming an operating
   # fund sum to 38,086,737 and 50,762,251, p0073.txt:58 and p0075.txt:58's
   # "Transfers Out to CIP", and to 92,968,752 in FY2024-25, p0071.txt:58's.
   #
@@ -3394,7 +3394,7 @@ rules:
   # where the page prints it on that line, the description.
   #
   # THREE KINDS UNDER ONE PRINTED "Totals", which covers every row:
-  #   - transfers: the 28 rows naming an operating fund;
+  #   - transfers: the 26 rows naming an operating fund;
   #   - grants, printed with no operating fund at 816/817/818/611/601/731/621,
   #     as revenue of the CIP fund: pp.198/204's CIP Funds row prints revenues
   #     of 7,814,799 and 8,226,620, these rows exactly. They are filed at

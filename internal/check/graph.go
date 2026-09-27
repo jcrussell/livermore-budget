@@ -1124,8 +1124,10 @@ func (*constraintTierVocabulary) Run(_ context.Context, s *Subject) (Result, err
 // It restates internal/project's own selection on purpose. A check that asked
 // the projection which facts it had used would be asking the thing under test;
 // re-selecting from the fact store is what makes counts.facts a claim rather
-// than a restatement. All three selectors are applied, because a projection
-// filtered on fiscal year alone doubles every figure and still balances.
+// than a restatement. Every selector is applied, because a projection
+// filtered on fiscal year alone doubles every figure and still balances. The
+// kinds are the published Options', so a fact of a kind no document selects
+// is outside every count here.
 func factsFor(facts []fact.Fact, o project.Options) []fact.Fact {
 	out := make([]fact.Fact, 0, len(facts))
 	for _, f := range facts {
