@@ -224,12 +224,18 @@ func (*nodeTiersAreDeclared) Run(_ context.Context, s *Subject) (Result, error) 
 			} else {
 				plain++
 			}
-			if src < dst {
+			if src < dst && !isRollup(l.Target, l.Source, parentOf) {
 				continue
 			}
 			switch {
 			case isRollup(l.Source, l.Target, parentOf):
 				rollups++
+			case isRollup(l.Target, l.Source, parentOf):
+				findings = append(findings, finding(p.String(),
+					"link %q -> %q runs from a revenue category into its own line. A line "+
+						"rolls up into its category and never the reverse; the client drops a "+
+						"reversed rollup without a word, so the line's ribbon vanishes and its "+
+						"category falls short by its amount", l.Source, l.Target))
 			case l.Partition:
 			default:
 				findings = append(findings, finding(p.String(),

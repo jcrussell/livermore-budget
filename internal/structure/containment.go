@@ -2,6 +2,7 @@ package structure
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
@@ -420,26 +421,87 @@ func compareAt(facts []fact.Fact, c, against Cut, at Level) (Comparison, error) 
 	for k := range ref {
 		columns[k.Column()] = true
 	}
-
 	out := Comparison{Cut: c, Against: against, At: at}
+	out.tally(cells, ref, func(k Key) bool { return columns[k.Column()] })
+	return out, nil
+}
+
+// tally fills a comparison with every key either side produced that keep admits.
+func (c *Comparison) tally(cells, ref map[Key]Sum, keep func(Key) bool) {
+	columns := map[string]bool{}
 	for _, k := range unionKeys(cells, ref) {
-		if !columns[k.Column()] {
+		if !keep(k) {
 			continue
 		}
+		columns[k.Column()] = true
 		cell := Cell{Key: k, Cut: cells[k], Against: ref[k]}
-		out.Cells = append(out.Cells, cell)
-		out.Subjects++
+		c.Cells = append(c.Cells, cell)
+		c.Subjects++
 		if !cell.Cut.Present || !cell.Against.Present {
-			out.OneSided++
+			c.OneSided++
 		}
 		if !cell.Ties() {
-			out.Findings = append(out.Findings, out.Finding(cell))
+			c.Findings = append(c.Findings, c.Finding(cell))
 		}
 	}
 	for col := range columns {
-		out.Columns = append(out.Columns, col)
+		c.Columns = append(c.Columns, col)
 	}
-	sort.Strings(out.Columns)
+	sort.Strings(c.Columns)
+}
+
+// A Tie is two cuts that print one money at a level the lattice cannot compare
+// them at, because one names divisions and the other departments.
+type Tie struct {
+	Name string
+	A, B string
+	At   Level
+}
+
+// HoldTie compares a tie in every column both cuts print, a division-tier
+// side's facts summed into the department data/departments.yaml puts them in.
+func HoldTie(facts []fact.Fact, cuts []Cut, t Tie, department func(division string) string) (Comparison, error) {
+	var a, b Cut
+	for _, c := range cuts {
+		switch c.Name {
+		case t.A:
+			a = c
+		case t.B:
+			b = c
+		}
+	}
+	if a.Name == "" || b.Name == "" || !Refines(a.Level, t.At) || !Refines(b.Level, t.At) {
+		return Comparison{}, fmt.Errorf("tie %q: %q and %q are not two declared cuts that both refine %q",
+			t.Name, t.A, t.B, t.At)
+	}
+	folded := slices.Clone(facts)
+	for _, c := range []*Cut{&a, &b} {
+		if c.DepartmentTier != "division" {
+			continue
+		}
+		for i := range folded {
+			if c.admits(&folded[i]) {
+				folded[i].Department = department(folded[i].Department)
+			}
+		}
+		c.DepartmentTier = "department"
+	}
+	r, err := restrict(a, b, t.At)
+	if err != nil {
+		return Comparison{}, fmt.Errorf("tie %q: %w", t.Name, err)
+	}
+	as, err := project(folded, a, t.At, r)
+	if err != nil {
+		return Comparison{}, err
+	}
+	bs, err := project(folded, b, t.At, r)
+	if err != nil {
+		return Comparison{}, err
+	}
+	out := Comparison{Cut: a, Against: b, Relation: Agreement, At: t.At}
+	out.tally(as, bs, func(k Key) bool {
+		return a.prints(mapping.Basis(k.Basis)) && b.prints(mapping.Basis(k.Basis))
+	})
 	return out, nil
 }
 

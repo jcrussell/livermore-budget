@@ -1,6 +1,7 @@
 package check
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -328,5 +329,77 @@ func TestAFundNodeNamesAFundNumber(t *testing.T) {
 		if tier, ok := declaredTier(id); ok {
 			t.Errorf("declaredTier(%q) = %d, true; want it refused", id, tier)
 		}
+	}
+}
+
+// TestAReversedRollupIsRefused reverses one revenue-line rollup in every
+// document that draws one, over the committed corpus.
+func TestAReversedRollupIsRefused(t *testing.T) {
+	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res := runNodeTiers(t, s); res.Status != StatusPass {
+		t.Fatalf("the committed corpus is %s: %v", res.Status, res.Findings)
+	}
+	reversed := 0
+	for _, p := range s.linkedDocuments() {
+		for i := range p.Links {
+			l := &p.Links[i]
+			if strings.HasPrefix(l.Source, "revenue-line/") && strings.HasPrefix(l.Target, "revenue/") {
+				l.Source, l.Target = l.Target, l.Source
+				reversed++
+				break
+			}
+		}
+	}
+	if reversed == 0 {
+		t.Fatal("no document draws a rollup, so nothing was reversed")
+	}
+	res := runNodeTiers(t, s)
+	got := 0
+	for _, f := range res.Findings {
+		if strings.Contains(f.Detail, "runs from a revenue category into its own line") {
+			got++
+		}
+	}
+	if res.Status != StatusFail || got != reversed {
+		t.Errorf("%d rollups reversed, %d refused as reversed (status %s): %v",
+			reversed, got, res.Status, res.Findings)
+	}
+}
+
+// TestEachRollupClauseIsNeeded plants one link per clause of isRollup that
+// satisfies the other two, so dropping that clause lets it through.
+func TestEachRollupClauseIsNeeded(t *testing.T) {
+	for _, tc := range []struct {
+		name           string
+		source, target project.Node
+		parented       bool
+	}{
+		{"a line into another category", project.Node{ID: "revenue-line/other/eraf", Tier: 1,
+			Parent: "revenue/other"}, project.Node{ID: "revenue/taxes-x", Tier: 0}, false},
+		{"a fund parented to a category", project.Node{ID: "fund/510", Tier: 3},
+			project.Node{ID: "revenue/taxes-x", Tier: 0}, true},
+		{"a line parented to an endpoint", project.Node{ID: "revenue-line/taxes-x/eraf", Tier: 1},
+			project.Node{ID: "transfers/in", Tier: 0}, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			s := tieredSubject(t)
+			g := s.graphs()[0].Graph
+			if tc.parented {
+				tc.source.Parent = tc.target.ID
+			}
+			for _, n := range []project.Node{tc.source, tc.target} {
+				if !slices.ContainsFunc(g.Nodes, func(m project.Node) bool { return m.ID == n.ID }) {
+					g.Nodes = append(g.Nodes, n)
+				}
+			}
+			g.Links = append(g.Links, project.Link{Source: tc.source.ID, Target: tc.target.ID,
+				ValueCents: 1, Kind: project.KindExternal, FactIDs: []string{"x"}})
+			if res := runNodeTiers(t, s); res.Status != StatusFail {
+				t.Errorf("%s -> %s is %s, want FAIL", tc.source.ID, tc.target.ID, res.Status)
+			}
+		})
 	}
 }

@@ -41,7 +41,8 @@ import (
 // agree on the cells they share is a different question with a different
 // failure mode; Compare refuses them by name and the refusal is reported, not
 // hidden. Columns the reference does not publish -- pp.66-67 print no actual or
-// revised column -- are gaps in the documents and are named per comparison.
+// revised column -- are gaps in the documents and are named per comparison;
+// only a declared structure.Tie holds a detail schedule's actual and revised.
 type cutsTieAlongTheLattice struct{}
 
 var _ Check = (*cutsTieAlongTheLattice)(nil)
@@ -51,8 +52,8 @@ func (*cutsTieAlongTheLattice) Tier() int  { return 1 }
 func (*cutsTieAlongTheLattice) Full() bool { return false }
 func (*cutsTieAlongTheLattice) Description() string {
 	return "every cut sums to the coarser cut it decomposes, or agrees with the spine " +
-		"at the grain both decompose, to the cent, except the cells a declared exception pins on " +
-		"both sides to a printed residual"
+		"at the grain both decompose, or ties to a schedule printing the same money in every column " +
+		"both print, to the cent, except the cells a declared exception pins on both sides to a printed residual"
 }
 
 // budgetBookExceptions is a seam so a test can declare an exception the tree
@@ -135,6 +136,26 @@ func (*cutsTieAlongTheLattice) Run(_ context.Context, s *Subject) (Result, error
 		held      []string
 		consulted = map[string]bool{}
 	)
+	reconcile := func(c structure.Comparison) {
+		r := structure.Reconcile(c, exceptions)
+		for _, name := range r.Consulted {
+			consulted[name] = true
+		}
+		subjects += r.Subjects
+		for _, f := range r.Findings {
+			findings = append(findings, finding(c.Name(), "%s", f))
+		}
+		for _, e := range r.Excused {
+			held = append(held, fmt.Sprintf("%s holds %s apart on %s (%d cell(s)): %s. Printed: %s (%s)",
+				e.Name, structure.Cents(e.Residual), c.Name(), len(e.Cells), e.Reason, e.Printed, e.Bead))
+		}
+		clause := fmt.Sprintf("%s at %s: %d cells over %s, %d one-sided and agreeing at zero",
+			c.Name(), c.At, r.Subjects, joinComma(c.Columns), r.AgreeAtZero)
+		if n := len(r.Excused); n > 0 {
+			clause += fmt.Sprintf(", %d exception(s) held apart and NOT among the %d", n, r.Subjects)
+		}
+		clauses = append(clauses, clause)
+	}
 	for i, a := range cuts {
 		for _, b := range cuts[i+1:] {
 			if isEmpty[a.Name] || isEmpty[b.Name] {
@@ -145,25 +166,23 @@ func (*cutsTieAlongTheLattice) Run(_ context.Context, s *Subject) (Result, error
 				refused = append(refused, err.Error())
 				continue
 			}
-			r := structure.Reconcile(c, exceptions)
-			for _, name := range r.Consulted {
-				consulted[name] = true
-			}
-			subjects += r.Subjects
-			for _, f := range r.Findings {
-				findings = append(findings, finding(c.Name(), "%s", f))
-			}
-			for _, e := range r.Excused {
-				held = append(held, fmt.Sprintf("%s holds %s apart on %s (%d cell(s)): %s. Printed: %s (%s)",
-					e.Name, structure.Cents(e.Residual), c.Name(), len(e.Cells), e.Reason, e.Printed, e.Bead))
-			}
-			clause := fmt.Sprintf("%s at %s: %d cells over %s, %d one-sided and agreeing at zero",
-				c.Name(), c.At, r.Subjects, joinComma(c.Columns), r.AgreeAtZero)
-			if n := len(r.Excused); n > 0 {
-				clause += fmt.Sprintf(", %d exception(s) held apart and NOT among the %d", n, r.Subjects)
-			}
-			clauses = append(clauses, clause)
+			reconcile(c)
 		}
+	}
+	department := func(division string) string {
+		d, _ := s.Vocabulary.Division(division)
+		return d.Department
+	}
+	for _, t := range structure.BudgetBookTies() {
+		if isEmpty[t.A] || isEmpty[t.B] {
+			continue
+		}
+		c, err := structure.HoldTie(s.Facts, cuts, t, department)
+		if err != nil {
+			findings = append(findings, finding(t.Name, "%v", err))
+			continue
+		}
+		reconcile(c)
 	}
 
 	// EVERY DECLARED EXCEPTION MUST HAVE BEEN CONSULTED BY SOME COMPARISON. One

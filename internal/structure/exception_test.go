@@ -1,12 +1,15 @@
 package structure_test
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
+	"github.com/jcrussell/livermore-budget/internal/registry"
 	"github.com/jcrussell/livermore-budget/internal/structure"
 )
 
@@ -16,6 +19,24 @@ func compared(t *testing.T, facts []fact.Fact, a, b string) structure.Comparison
 	got, err := structure.Compare(facts, cutNamed(t, a), cutNamed(t, b))
 	if err != nil {
 		t.Fatalf("compare %q against %q: %v", a, b, err)
+	}
+	return got
+}
+
+// heldTie runs HoldTie over the committed store, divisions folded through
+// data/departments.yaml.
+func heldTie(t *testing.T, facts []fact.Fact, tie structure.Tie) structure.Comparison {
+	t.Helper()
+	reg, err := registry.Load(os.DirFS(filepath.Join("..", "..", "data")))
+	if err != nil {
+		t.Fatalf("load the registries: %v", err)
+	}
+	got, err := structure.HoldTie(facts, structure.AllCuts(), tie, func(division string) string {
+		d, _ := reg.Division(division)
+		return d.Department
+	})
+	if err != nil {
+		t.Fatalf("hold tie %q: %v", tie.Name, err)
 	}
 	return got
 }
@@ -68,6 +89,21 @@ func TestTheDeclaredExceptionsAreTheWholeResidual(t *testing.T) {
 		"general-fund-departments -> spine": nil,
 		"departmentwide ~ spine":            {"p0067-internal-service-is-250000-high-by-object"},
 		"funding-sources ~ spine":           {"p0067-internal-service-is-250000-high-by-fund-group"},
+		"departmentwide ~ funding-sources": {
+			"departmentwide-rounds-administrative-services-2024",
+			"departmentwide-rounds-innovation-and-economic-development-2024",
+			"departmentwide-rounds-library-department-2024",
+			"departmentwide-rounds-police-department-2024",
+			"departmentwide-rounds-public-works-2024",
+		},
+		"general-fund-departments ~ funding-sources": {
+			"general-fund-departments-rounds-administrative-services-2024",
+			"general-fund-departments-rounds-community-development-2024",
+		},
+	}
+	ties := map[string]structure.Comparison{}
+	for _, tie := range structure.BudgetBookTies() {
+		ties[tie.A+" ~ "+tie.B] = heldTie(t, facts, tie)
 	}
 	fired := map[string]bool{}
 	for pair, names := range want {
@@ -75,7 +111,11 @@ func TestTheDeclaredExceptionsAreTheWholeResidual(t *testing.T) {
 		if !strings.Contains(pair, " -> ") {
 			a, b, _ = strings.Cut(pair, " ~ ")
 		}
-		r := structure.Reconcile(compared(t, facts, a, b), exceptions)
+		c, ok := ties[pair]
+		if !ok {
+			c = compared(t, facts, a, b)
+		}
+		r := structure.Reconcile(c, exceptions)
 		if len(r.Findings) != 0 {
 			t.Errorf("%s: %d finding(s) survive the declared exceptions:\n  %s",
 				pair, len(r.Findings), strings.Join(r.Findings, "\n  "))

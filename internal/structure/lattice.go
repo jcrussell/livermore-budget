@@ -59,6 +59,9 @@ const (
 	// LevelFundByDepartment is pp.171-176, which reach a fund and a department
 	// and print no object category to reach.
 	LevelFundByDepartment Level = "fund-by-department"
+	// LevelDepartment is a department's total, the grain pp.85-125 print it at
+	// twice: Total Department Expenditures and Total Department Funding Sources.
+	LevelDepartment Level = "department"
 	// LevelFundByDepartmentByCategory is the finest the store carries.
 	LevelFundByDepartmentByCategory Level = "fund-by-department-by-category"
 )
@@ -74,6 +77,7 @@ var levelAxes = map[Level][]Axis{
 	LevelFundByCategory:             {AxisFundGroup, AxisFund, AxisCategory},
 	LevelDepartmentByCategory:       {AxisDepartment, AxisCategory},
 	LevelFundByDepartment:           {AxisFundGroup, AxisFund, AxisDepartment},
+	LevelDepartment:                 {AxisDepartment},
 	LevelFundByDepartmentByCategory: {AxisFundGroup, AxisFund, AxisDepartment, AxisCategory},
 }
 
@@ -86,8 +90,8 @@ var levelAxes = map[Level][]Axis{
 var refinements = map[Level][]Level{
 	LevelFundGroupByCategory:        {LevelFundGroup, LevelCategory},
 	LevelFundByCategory:             {LevelFundGroupByCategory},
-	LevelDepartmentByCategory:       {LevelCategory},
-	LevelFundByDepartment:           {LevelFundGroup},
+	LevelDepartmentByCategory:       {LevelCategory, LevelDepartment},
+	LevelFundByDepartment:           {LevelFundGroup, LevelDepartment},
 	LevelFundByDepartmentByCategory: {LevelFundByCategory, LevelDepartmentByCategory, LevelFundByDepartment},
 }
 

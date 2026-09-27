@@ -90,6 +90,20 @@ func TestEveryExceptionResidualIsPrintedWhereItSaysItIs(t *testing.T) {
 			[]printed{{67, 34, "26,544,515"}, {183, 64, "26,294,515"}}, func(v []int64) int64 { return v[0] - v[1] }},
 	}
 
+	// Exceptions between two schedules that print one total: each cited line
+	// prints the same token, and the residual is how differently their rows
+	// round to it, which no page prints.
+	oneTotal := map[string][]printed{
+		"departmentwide-rounds-administrative-services-2024":             {{97, 43, "12,785,955"}, {97, 51, "12,785,955"}},
+		"departmentwide-rounds-innovation-and-economic-development-2024": {{111, 27, "5,680,590"}, {111, 37, "5,680,590"}},
+		"departmentwide-rounds-library-department-2024":                  {{115, 19, "6,583,809"}, {115, 31, "6,583,809"}},
+		"departmentwide-rounds-police-department-2024":                   {{119, 47, "43,463,240"}, {120, 13, "43,463,240"}},
+		"departmentwide-rounds-public-works-2024": {{124, 45, "62,853,536"}, {125, 33, "62,853,536"},
+			{124, 25, "266,798"}},
+		"general-fund-departments-rounds-administrative-services-2024": {{168, 35, "6,311,564"}, {97, 47, "6,311,564"}},
+		"general-fund-departments-rounds-community-development-2024":   {{169, 45, "15,925,170"}, {101, 51, "15,925,170"}},
+	}
+
 	exceptions := structure.BudgetBookExceptions()
 	byName := map[string]structure.Exception{}
 	for _, e := range exceptions {
@@ -97,6 +111,21 @@ func TestEveryExceptionResidualIsPrintedWhereItSaysItIs(t *testing.T) {
 	}
 	seen := map[string]bool{}
 	for _, e := range exceptions {
+		if figures, ok := oneTotal[e.Name]; ok {
+			seen[e.Name] = true
+			for _, p := range figures {
+				cents(p)
+				if !strings.Contains(e.Printed, p.token) {
+					t.Errorf("exception %s rests on %s and its Printed string does not cite it: %q",
+						e.Name, p.token, e.Printed)
+				}
+			}
+			if figures[0].token != figures[1].token {
+				t.Errorf("exception %s cites two totals that differ: %s and %s", e.Name,
+					figures[0].token, figures[1].token)
+			}
+			continue
+		}
 		row, ok := table[e.Name]
 		if !ok {
 			if g, grounded := byName[e.SameResidualAs]; grounded && table[g.Name].figures != nil {
@@ -121,6 +150,11 @@ func TestEveryExceptionResidualIsPrintedWhereItSaysItIs(t *testing.T) {
 		}
 	}
 	for name := range table {
+		if !seen[name] {
+			t.Errorf("this test reads pages for %q and no exception of that name is declared", name)
+		}
+	}
+	for name := range oneTotal {
 		if !seen[name] {
 			t.Errorf("this test reads pages for %q and no exception of that name is declared", name)
 		}

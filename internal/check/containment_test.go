@@ -2,6 +2,7 @@ package check
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 
@@ -28,7 +29,9 @@ func TestTheCommittedCutsTieAlongTheLattice(t *testing.T) {
 		t.Fatalf("status = %s, findings:\n  %v", res.Status, res.Findings)
 	}
 	for _, want := range []string{
-		"5 comparison(s) of 10 cut(s)",
+		"7 comparison(s) of 10 cut(s)",
+		"departmentwide ~ funding-sources at department: 39 cells over FY2024 actual, FY2025 revised, FY2026 adopted, FY2027 adopted",
+		"general-fund-departments ~ funding-sources at department: 42 cells over FY2024 actual, FY2025 revised, FY2026 adopted, FY2027 adopted",
 		"revenue-detail -> spine at fund-group-by-category",
 		"transfers-detail -> spine at fund-group-by-category",
 		"general-fund-departments -> spine at fund-group-by-category",
@@ -317,4 +320,67 @@ func withExceptions(t *testing.T, exceptions []structure.Exception) {
 	prev := budgetBookExceptions
 	budgetBookExceptions = func() []structure.Exception { return exceptions }
 	t.Cleanup(func() { budgetBookExceptions = prev })
+}
+
+// TestTheDepartmentSchedulesTieInEveryColumn plants in the actual and revised
+// columns, which the spine does not print and only the ties reach.
+func TestTheDepartmentSchedulesTieInEveryColumn(t *testing.T) {
+	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	for _, tc := range []struct {
+		name, pair, cell string
+		plant            func(facts []fact.Fact) []fact.Fact
+	}{
+		{"funding-city-council's actual and revised columns swapped", "departmentwide ~ funding-sources",
+			"FY2024 actual department[department=city-council]", func(facts []fact.Fact) []fact.Fact {
+				for i := range facts {
+					f := &facts[i]
+					if f.RuleID == "funding-city-council" && f.FiscalYear == 2024 {
+						f.FiscalYear, f.Basis = 2025, mapping.BasisRevised
+					} else if f.RuleID == "funding-city-council" && f.FiscalYear == 2025 {
+						f.FiscalYear, f.Basis = 2024, mapping.BasisActual
+					}
+				}
+				return facts
+			}},
+		{"an FY2024 funding fact deleted", "departmentwide ~ funding-sources",
+			"FY2024 actual department[department=city-council]", func(facts []fact.Fact) []fact.Fact {
+				return slices.DeleteFunc(facts, func(f fact.Fact) bool {
+					return f.RuleID == "funding-city-council" && f.FiscalYear == 2024
+				})
+			}},
+		{"an FY2025 departmentwide fact moved to another department's division", "departmentwide ~ funding-sources",
+			"FY2025 revised department[department=city-council]", func(facts []fact.Fact) []fact.Fact {
+				for i := range facts {
+					f := &facts[i]
+					if f.Scope == "departmentwide-expenditures" && f.FiscalYear == 2025 &&
+						f.Department == "city-council" && f.AmountCents != 0 {
+						f.Department = "patrol"
+						break
+					}
+				}
+				return facts
+			}},
+		{"an FY2025 General Fund department fact deleted", "general-fund-departments ~ funding-sources",
+			"FY2025 revised department[department=city-council]", func(facts []fact.Fact) []fact.Fact {
+				return slices.DeleteFunc(facts, func(f fact.Fact) bool {
+					return f.Scope == "expenditure-by-department" && f.FiscalYear == 2025 &&
+						f.Department == "city-council" && f.AmountCents != 0
+				})
+			}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			mutated := *s
+			mutated.Facts = tc.plant(slices.Clone(s.Facts))
+			res := resultFor(t, runOne(t, &mutated, &cutsTieAlongTheLattice{}), "cuts-tie-along-the-lattice")
+			for _, f := range res.Findings {
+				if f.Subject == tc.pair && strings.Contains(f.Detail, tc.cell) {
+					return
+				}
+			}
+			t.Fatalf("status %s, want %s refusing %s:\n  %v", res.Status, tc.pair, tc.cell, res.Findings)
+		})
+	}
 }

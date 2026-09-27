@@ -176,6 +176,19 @@ func BudgetBookIdentities() []Identity {
 	}}
 }
 
+// BudgetBookTies are the Budget Book's same-money relations the lattice cannot
+// reach, held in every column both sides print. pp.85-125 print each
+// department's Total Department Expenditures and Total Department Funding
+// Sources as one figure, and each department's General Fund funding row is the
+// department's total on pp.167-170.
+func BudgetBookTies() []Tie {
+	return []Tie{
+		{Name: "a-department-spends-what-funds-it", A: "departmentwide", B: "funding-sources", At: LevelDepartment},
+		{Name: "the-general-fund-row-is-the-general-fund-schedule", A: "general-fund-departments",
+			B: "funding-sources", At: LevelDepartment},
+	}
+}
+
 func init() {
 	if err := ValidateIdentities(AllCuts(), BudgetBookIdentities()); err != nil {
 		panic("internal/structure: " + err.Error())
@@ -240,7 +253,37 @@ func BudgetBookExceptions() []Exception {
 	}
 	present := func(c int64) Sum { return Sum{Cents: c, Present: true} }
 	absent := Sum{}
+	rounded := func(cut, dept string, c, a int64, printed string) Exception {
+		return Exception{
+			Name: cut + "-rounds-" + dept + "-2024", Cut: cut, Against: "funding-sources", At: LevelDepartment,
+			Cells: []Pin{{Year: 2024, Basis: "actual", Coords: map[Axis]string{AxisDepartment: dept},
+				Cut: present(c), Against: present(a)}},
+			Residual: a - c,
+			Printed:  printed + "; each side's rows miss it by the dollars their rules' stated_total_deltas declare",
+			Reason:   "the two schedules print one total and round the rows under it differently in the FY2023-24 Actual column",
+			Bead:     "fisc-2sd",
+		}
+	}
 	return []Exception{
+		rounded("departmentwide", "administrative-services", 1278595300, 1278595400,
+			"p0097.txt:43 and :51, both 12,785,955"),
+		rounded("departmentwide", "innovation-and-economic-development", 568058900, 568059000,
+			"p0111.txt:27 and :37, both 5,680,590"),
+		rounded("departmentwide", "library-department", 658380900, 658380800,
+			"p0115.txt:19 and :31, both 6,583,809"),
+		rounded("departmentwide", "police-department", 4346324000, 4346324100,
+			"p0119.txt:47 and p0120.txt:13, both 43,463,240"),
+		func() Exception {
+			e := rounded("departmentwide", "public-works", 6258673700, 6285353700,
+				"p0124.txt:45 and p0125.txt:33, both 62,853,536, and p0124.txt:25 Transfers Out 266,798")
+			e.Reason = "the departmentwide cut leaves out Maintenance's Transfers Out, a declared residue the " +
+				"funding sources include, and the two schedules round the rows under one total $2 apart"
+			return e
+		}(),
+		rounded("general-fund-departments", "administrative-services", 631156300, 631156400,
+			"p0168.txt:35 ADMINISTRATIVE SERVICES TOTAL and p0097.txt:47 General Fund, both 6,311,564"),
+		rounded("general-fund-departments", "community-development", 1592517100, 1592517000,
+			"p0169.txt:45 COMMUNITY DEVELOPMENT TOTAL and p0101.txt:51 General Fund, both 15,925,170"),
 		{
 			Name: "pp.127-130-print-no-general-fund-transfer-in-2026",
 			Cut:  "revenue-detail", Against: "spine", At: LevelFundGroupByCategory,
