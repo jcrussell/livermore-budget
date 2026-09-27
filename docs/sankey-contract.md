@@ -226,14 +226,16 @@ it is money moving.
 They take the spine's own tiers for the same end of the chart — a payer's end at
 2 with the fund groups, a receiver's at 5 with the object categories — so a link
 runs tier 2 to tier 3, coarse to fine, and needs no exception anywhere. Only
-`transfers-by-fund` publishes them.
+`transfers-by-fund` and `transfers-out` publish them.
 
-**One flow endpoint is a container in one document.** `transfers/in` carries no
-link in `transfers-by-fund` and every `transfer-from/` node is parented to it, so
-there it is a fold root rather than an end. `node-hierarchy-well-formed` allows
-that exactly where the endpoint draws no flow of its own: on the spine the same
-id is the source of the city's transfer inflow, and a node parented to it there
-is still refused.
+**A flow endpoint is a container in the two transfer networks.** `transfers/in`
+carries no link in `transfers-by-fund` and every `transfer-from/` node is
+parented to it, so there it is a fold root rather than an end; `transfers/out`
+is the same in `transfers-out`, holding every `transfer-to/` node at its own
+tier 5. `node-hierarchy-well-formed` allows that exactly where the endpoint draws
+no flow of its own, and a container alone may hold a node at its own tier: on
+the spine the same ids are the ends of the city's transfers, and a node parented
+to one there is still refused.
 
 **Tier 1 is a printed row, not a constraint layer.** A constraint tier is a
 property of a **fund**, and the fund groups do not partition along it. Counting `data/funds.yaml` by `type` x `constraint_tier`, `capital`
@@ -441,9 +443,11 @@ reconciling the chart against p66 will find three rows unaccounted for, so
 
 Transfers out ($59,612,734) exceed transfers in ($21,525,997) by $38,086,737.
 
-`transfer_id` is `""` on every spine link. Only `transfers-by-fund` draws each
-end of a p76 movement as its own link, and there the two legs share a
-`transfer_id` derived from their shared `(doc_id, page, offset)`.
+`transfer_id` is `""` on every spine link. Only `transfers-by-fund` and
+`transfers-out` draw each end of a movement as its own link, and there the two
+legs share a `transfer_id` derived from their shared `(doc_id, page, offset)`.
+`transfers-out` is p76's legs and p222's transfers to the CIP, the spine's
+TRANSFER OUT by fund group, and the spine's Transfers Out opens into it.
 
 p76's own grand total *is* the transfers-in side, to the cent: each of its
 destination sections equals the matching `TRANSFER IN:` cell on pp.66-67, and

@@ -2,6 +2,7 @@ package project
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"strconv"
 
@@ -22,6 +23,22 @@ const TransfersByFundScope = "transfers-by-fund"
 // TransfersByFundScopes is the schedule set, as [Options.Scopes] holds it.
 func TransfersByFundScopes() []string { return []string{TransfersByFundScope} }
 
+// TransfersOutProjection is the network of every transfer out the city makes,
+// and its file stem.
+const TransfersOutProjection = "transfers-out"
+
+// CIPFundingScope is Budget Book p222, the CIP's funding sources.
+const CIPFundingScope = "cip-funding-sources"
+
+// TransfersOutScopes is p76 and p222 together: pp.66-67's TRANSFER OUT is what
+// p76 lists plus what p222 lists going to the CIP, per fund group
+// (structure.BudgetBookSplits).
+func TransfersOutScopes() []string { return []string{TransfersByFundScope, CIPFundingScope} }
+
+// transferKinds is the transfers-out network's kind set: p222 also prints the
+// CIP funds' grants and a balance draw, which are not transfers.
+var transferKinds = []mapping.Kind{mapping.KindTransferIn, mapping.KindTransferOut}
+
 // transfersByFundCounts is how much of the corpus this document accounts for.
 // Each leg is its own link citing one fact, so facts_cited is every fact of a
 // non-zero row. transfers is links/2: summing every link comes to twice p76's
@@ -35,10 +52,15 @@ type transfersByFundCounts struct {
 	Links        int `json:"links"`
 }
 
-// transfersByFundMetadata is this document's metadata block, of one schedule
-// and one printed column.
+// transfersByFundMetadata is this document's metadata block, of one printed
+// column. Its envelope is spelled out so a network of two schedules can say
+// `scopes` where p76's says `scope`, in Envelope's key order.
 type transfersByFundMetadata struct {
-	Envelope
+	GeneratedBy     string                `json:"generated_by"`
+	Scope           string                `json:"scope,omitempty"`
+	Scopes          []string              `json:"scopes,omitempty"`
+	Currency        string                `json:"currency"`
+	Units           string                `json:"units"`
 	FiscalYear      int                   `json:"fiscal_year"`
 	FiscalYearLabel string                `json:"fiscal_year_label"`
 	Basis           string                `json:"basis"`
@@ -76,15 +98,23 @@ type TransfersByFundDocument struct {
 //
 // The payer is `transfer-from/<n>` at tier 2 because fund/<a> -> fund/<b> is
 // tier 3 to tier 3, which node-tiers-are-declared and d3-sankey both refuse.
-// The paying legs (`transfer-to/<n>`) are published but no view draws them:
-// the spine pins transfers/out at tier 5 and nothing finer can decompose it
-// (fisc-ko1j.12.10).
+// The paying legs (`transfer-to/<n>`) are drawn by the transfers-out network
+// below, which holds them beside p222's.
 //
 // Every payer is parented to transfers/in, whose fold equals p76's printed
 // grand total. A printed dash draws no ribbon and stays in facts_uncited.
+//
+// # Transfers out
+//
+// With Out set it is [TransfersOutProjection]: p76's legs and p222's
+// transfers to the CIP, the network pp.66-67's TRANSFER OUT totals. Every
+// receiver's end is parented to transfers/out, which touches no link, so the
+// spine's Transfers Out opens into the paying legs; nothing is parented to
+// transfers/in, which p222's receipts at the CIP funds are not part of.
 type transfersByFund struct {
 	// Labels is optional: a nil registry degrades to a slug-derived label.
 	Labels labels
+	Out    bool
 }
 
 var (
@@ -93,27 +123,58 @@ var (
 )
 
 // Name is [Projection]'s, and it is this document's file stem.
-func (*transfersByFund) Name() string { return TransfersByFundProjection }
-
-// Slices is one Options per column the store carries. p76 prints four columns;
-// the mapping skips the two historical ones, which miss the page's own grand
-// total by millions.
-func (*transfersByFund) Slices(facts []fact.Fact, version string) []Options {
-	seen := map[Column]bool{}
-	for i := range facts {
-		if facts[i].Scope == TransfersByFundScope {
-			seen[Column{FiscalYear: facts[i].FiscalYear, Basis: facts[i].Basis}] = true
-		}
+func (t *transfersByFund) Name() string {
+	if t.Out {
+		return TransfersOutProjection
 	}
-	cols := make([]Column, 0, len(seen))
-	for c := range seen {
-		cols = append(cols, c)
+	return TransfersByFundProjection
+}
+
+// scopes is the schedule set this network is of.
+func (t *transfersByFund) scopes() []string {
+	if t.Out {
+		return TransfersOutScopes()
+	}
+	return TransfersByFundScopes()
+}
+
+// kinds is the kind set this network selects, empty for every kind.
+func (t *transfersByFund) kinds() []mapping.Kind {
+	if t.Out {
+		return transferKinds
+	}
+	return nil
+}
+
+// Slices is one Options per column every one of its schedules prints. p76
+// prints four columns and the mapping skips the two historical ones, which miss
+// the page's own grand total by millions; p222's FY2024-25 revised column has
+// no p76 column beside it, so the transfers-out network has none either.
+func (t *transfersByFund) Slices(facts []fact.Fact, version string) []Options {
+	seen := map[Column]map[string]bool{}
+	for i := range facts {
+		f := &facts[i]
+		c := Column{FiscalYear: f.FiscalYear, Basis: f.Basis}
+		if seen[c] == nil {
+			seen[c] = map[string]bool{}
+		}
+		seen[c][f.Scope] = true
+	}
+	var cols []Column
+	for c, scopes := range seen {
+		every := true
+		for _, sc := range t.scopes() {
+			every = every && scopes[sc]
+		}
+		if every {
+			cols = append(cols, c)
+		}
 	}
 	sortColumns(cols)
 	out := make([]Options, 0, len(cols))
 	for _, c := range cols {
 		out = append(out, Options{
-			Columns: []Column{c}, Scopes: TransfersByFundScopes(), Version: version,
+			Columns: []Column{c}, Scopes: t.scopes(), Kinds: t.kinds(), Version: version,
 		})
 	}
 	return out
@@ -134,10 +195,10 @@ func (t *transfersByFund) Document(facts []fact.Fact, o Options) (*TransfersByFu
 	if err := o.validate(); err != nil {
 		return nil, fmt.Errorf("transfers-by-fund options: %w", err)
 	}
-	if !sameScopes(o.Scopes, TransfersByFundScopes()) {
+	if !sameScopes(o.Scopes, t.scopes()) || !slices.Equal(o.Kinds, t.kinds()) {
 		return nil, cmdutil.WithHint(
-			fmt.Errorf("transfers-by-fund: scopes are %q, want %q", o.ScopeList(),
-				Options{Scopes: TransfersByFundScopes()}.ScopeList()),
+			fmt.Errorf("%s: scopes are %q and kinds %v, want %q and %v", t.Name(), o.ScopeList(),
+				o.Kinds, Options{Scopes: t.scopes()}.ScopeList(), t.kinds()),
 			"p76 restates money pp.66-67 and pp.127-140 already publish, so a document "+
 				"holding this schedule beside either of them doubles the city's transfers")
 	}
@@ -150,7 +211,7 @@ func (t *transfersByFund) Document(facts []fact.Fact, o Options) (*TransfersByFu
 	col := o.Columns[0]
 	selected := selectFacts(facts, o)
 
-	rows, err := pairTransferLegs(selected)
+	rows, err := pairTransferLegs(selected, o)
 	if err != nil {
 		return nil, err
 	}
@@ -173,7 +234,13 @@ func (t *transfersByFund) Document(facts []fact.Fact, o Options) (*TransfersByFu
 			return nil, err
 		}
 		transfers++
-		t.addNode(nodes, transfersInEndpoint())
+		if t.Out {
+			payer.from.parent = ""
+			receiver.to.parent = nodeTransfersOut
+			t.addNode(nodes, transfersOutEndpoint())
+		} else {
+			t.addNode(nodes, transfersInEndpoint())
+		}
 		t.addNode(nodes, payer.from)
 		t.addNode(nodes, payer.fund)
 		t.addNode(nodes, receiver.fund)
@@ -220,20 +287,29 @@ func (t *transfersByFund) Document(facts []fact.Fact, o Options) (*TransfersByFu
 	}
 
 	cavs := transfersByFundCaveats()
+	if t.Out {
+		cavs = transfersOutCaveats(rows)
+	}
 	if err := validateCaveats(cavs, nodeIDs(out)); err != nil {
 		return nil, fmt.Errorf("%s: %w", col, err)
 	}
 
+	var scope string
+	var scopes []string
+	if t.Out {
+		scopes = TransfersOutScopes()
+	} else {
+		scope = TransfersByFundScope
+	}
 	return &TransfersByFundDocument{
 		SchemaVersion: SchemaVersion,
 		Projection:    t.Name(),
 		Metadata: transfersByFundMetadata{
-			Envelope: Envelope{
-				GeneratedBy: o.Version,
-				Scope:       TransfersByFundScope,
-				Currency:    "USD",
-				Units:       "cents",
-			},
+			GeneratedBy:     o.Version,
+			Scope:           scope,
+			Scopes:          scopes,
+			Currency:        "USD",
+			Units:           "cents",
 			FiscalYear:      col.FiscalYear,
 			FiscalYearLabel: fiscalYearLabel(col.FiscalYear),
 			Basis:           string(col.Basis),
@@ -325,6 +401,14 @@ func transferFundRole(number int) string {
 	return roleFund
 }
 
+// transfersOutEndpoint is the spine's transfers/out, at the spine's id: the
+// node a reader clicks to open the transfers-out network, and the container
+// its receivers' ends fold into.
+func transfersOutEndpoint() endpoint {
+	return endpoint{id: nodeTransfersOut, slug: nodeTransfersOut,
+		tier: tierObjectCategory, role: roleTransferOut}
+}
+
 // transfersInEndpoint is the spine's transfers/in, at the spine's id: it is the
 // node a reader clicks to open this document.
 func transfersInEndpoint() endpoint {
@@ -334,14 +418,14 @@ func transfersInEndpoint() endpoint {
 
 // pairTransferLegs groups the selected facts into printed figures, refusing any
 // shape that is not exactly one receiving and one paying leg of equal amount.
-func pairTransferLegs(facts []fact.Fact) (map[transferKey]transferRow, error) {
+func pairTransferLegs(facts []fact.Fact, o Options) (map[transferKey]transferRow, error) {
 	legs := map[transferKey][]fact.Fact{}
 	var order []transferKey
 	for i := range facts {
 		fa := facts[i]
-		if fa.Scope != TransfersByFundScope {
-			return nil, fmt.Errorf("transfers-by-fund: fact %s is in scope %q, which this "+
-				"document does not select", fa.ID, fa.Scope)
+		if !o.HasScope(fa.Scope) || !o.HasKind(fa.Kind) {
+			return nil, fmt.Errorf("transfers-by-fund: fact %s is in scope %q and of kind %s, "+
+				"which this document does not select", fa.ID, fa.Scope, fa.Kind)
 		}
 		k := transferKey{docID: fa.DocID, page: fa.Page, offset: fa.Offset}
 		if len(legs[k]) == 0 {
@@ -515,10 +599,70 @@ func transfersByFundCaveats() []Caveat {
 				"Budget Book pp.66-67 to the cent, so the paying legs drawn here sum to " +
 				"the transfers-in total and not to the city's transfers out. What pp.66-67 " +
 				"fold into TRANSFER OUT and p76 does not list is the transfers each fund " +
-				"makes to the Capital Improvement Program: $38,086,737 in FY 2025-26 and " +
-				"$50,762,251 in " +
-				"FY 2026-27. Do not read a fund's paying leg here as the whole of what it " +
-				"transfers out.",
+				"makes to the Capital Improvement Program, which Budget Book p222 lists " +
+				"and the transfers-out document draws beside these. Do not read a fund's " +
+				"paying leg here as the whole of what it transfers out.",
+			AppliesTo: []string{},
+		},
+	}
+}
+
+// transfersOutCaveats are the transfers-out network's disclosures. Every figure
+// in them is summed from the printed figures the network draws.
+func transfersOutCaveats(rows map[transferKey]transferRow) []Caveat {
+	var p76, cip int64
+	for _, r := range rows {
+		switch r.out.Scope {
+		case TransfersByFundScope:
+			p76 += r.out.AmountCents
+		case CIPFundingScope:
+			cip += r.out.AmountCents
+		}
+	}
+	return []Caveat{
+		{
+			ID: "one-figure-is-two-ribbons",
+			Summary: "Every printed transfer is drawn twice, once from each end; summing " +
+				"every ribbon here comes to twice what the city transfers out.",
+			Text: fmt.Sprintf("Budget Book p76 and p222 name both ends of every movement they "+
+				"print, and this document publishes both: a receiving leg into the fund that "+
+				"gets the money and a paying leg out of the fund that sends it, under one "+
+				"transfer_id and at one value. A reader adding every value_cents in this "+
+				"file gets twice the %s the city transfers out.", dollars(p76+cip)),
+			AppliesTo: []string{},
+		},
+		{
+			ID: "transfers-out-are-two-schedules",
+			Summary: "The city's transfers out are two printed lists: p76's transfers between " +
+				"operating funds, and p222's transfers to the Capital Improvement Program.",
+			Text: fmt.Sprintf("Budget Book p76 lists the transfers the operating funds make to "+
+				"one another, %s here, and p222 lists what each operating fund transfers to a "+
+				"Capital Improvement Program fund, %s. pp.66-67 print TRANSFER OUT as the two "+
+				"together, and fisc verify holds that sum to the spine by fund group to the "+
+				"cent. A fund that appears on both lists pays both.", dollars(p76), dollars(cip)),
+			AppliesTo: []string{},
+		},
+		{
+			ID: "the-cip-funds-are-outside-the-operating-budget",
+			Summary: "The Capital Improvement Program funds that receive p222's transfers are " +
+				"not on the citywide chart; their receipts are not part of its Transfers In.",
+			Text: "Budget Book p204 prints the Capital Improvement Program funds on a line of " +
+				"their own, beside the operating budget, and pp.66-67 total the operating " +
+				"budget alone. So money an operating fund transfers to a CIP fund leaves the " +
+				"citywide chart as Transfers Out and the chart draws no CIP fund to receive it. " +
+				"This document draws each CIP fund under the name data/funds.yaml gives it; " +
+				"what the CIP funds spend it on is not drawn.",
+			AppliesTo: []string{},
+		},
+		{
+			ID: "a-fund-is-drawn-once-per-end",
+			Summary: "A fund that both pays and receives appears in more than one column, " +
+				"under the same name.",
+			Text: "This is money moving between the city's own funds, and a flow diagram " +
+				"cannot draw a box pointing at itself. So a fund's paying end and its " +
+				"receiving end are separate marks, each with the words the city prints for " +
+				"it. Two marks with one name on this chart are one fund seen from two ends, " +
+				"not two funds.",
 			AppliesTo: []string{},
 		},
 	}

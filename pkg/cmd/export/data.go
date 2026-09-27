@@ -695,7 +695,7 @@ func views(built result) []export.View {
 	// It opens a source, so Side is declared and the client filters from the node;
 	// filtering to a source yields an empty graph d3-sankey dies on. Role
 	// transfer_in partitions tier 0 with revenue-category's revenue_source. Only
-	// p76's receiving legs are drawn (fisc-ko1j.12.10 has the paying side). No cap
+	// p76's receiving legs are drawn; transfers-out draws the paying side. No cap
 	// and no gap: 8 payers and 9 receivers, and the legs sum to the spine's
 	// transfers/in to the cent.
 	if opensInto(export.PrimaryProjection, project.TransfersByFundProjection, projections) {
@@ -717,6 +717,35 @@ func views(built result) []export.View {
 					"and a fund that both pays and receives is drawn once on each side, under " +
 					"the same name. This is the money coming IN, which is what the mark on " +
 					"the citywide chart counts.",
+			},
+		}...)
+	}
+	// The spine's transfers/out opens into the transfers-out network: p76's
+	// paying legs and p222's transfers to the CIP, which together are the
+	// spine's TRANSFER OUT by fund group (structure.BudgetBookSplits). The
+	// payers' funds are on the left and each receiver's end on the right, every
+	// one of them folded into transfers/out. Role transfer_out partitions tier 5
+	// with object-category's object_category. No gap: the legs sum to the
+	// spine's figure. Both columns are capped, for some thirty receivers.
+	if opensInto(export.PrimaryProjection, project.TransfersOutProjection, projections) {
+		spine.Steps = append(spine.Steps, []export.DrillStep{
+			{
+				Key:        "transfers-out",
+				After:      []string{""},
+				From:       5,
+				Role:       "transfer_out",
+				Projection: project.TransfersOutProjection,
+				Tiers:      []int{3, 5},
+				Caps:       []export.TierCap{{Tier: 3, Cap: 10}, {Tier: 5, Cap: 10}},
+				Noun:       "money going out",
+				Back:       "All money going out",
+				Tail:       "funds",
+				Description: "Budget Book p76 and p222: the funds that pay each transfer the " +
+					"city makes are on the left, and the funds that receive them are on the " +
+					"right. p76 lists the transfers between operating funds and p222 the " +
+					"transfers to the Capital Improvement Program, whose funds are not on the " +
+					"citywide chart; the two lists together are the Transfers Out it counts. " +
+					"One ribbon is one figure a page prints.",
 			},
 		}...)
 	}

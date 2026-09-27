@@ -409,18 +409,40 @@ for (const year of YEARS) {
     });
   });
 
-  describe(`${year.label}: the object-category windows`, () => {
-    const ENDS = ["transfers/out", "fund-balance/contribution", "fund-balance/reserve-increase"];
+  describe(`${year.label}: the transfers-out window`, () => {
+    test(`${year.label} transfers out: the payers on the left and the receivers on the right, each column capped, and nothing refused`, async (t) => {
+      const { app, config } = await onYear(year.stem);
+      const step = stepByKey(config, "transfers-out");
+      await opened(app, "transfers/out");
+      const d = app.projection;
+      const payers = atTier(app, 3);
+      const receivers = atTier(app, 5);
+      const tails = d.nodes.filter((n) => app.isAggregate(n.id)).map((n) => n.label);
+      t.diagnostic(`${year.label} transfers out: ${payers.length} payer mark(s), ${receivers.length} ` +
+        `receiver mark(s), ${d.links.length} ribbon(s), tails ${JSON.stringify(tails)}`);
+      assert.deepEqual(placedTiers(app), step.tiers);
+      for (const cap of step.caps) {
+        assert.ok(atTier(app, cap.tier).length <= cap.cap + 1, `tier ${cap.tier} draws past its cap`);
+      }
+      assert.ok(payers.length > 1 && receivers.length > 1);
+      assert.equal(refusals(document).length, 0);
+    });
+  });
 
-    test(`${year.label} object: the spine's four object categories open and its three flow ends do not`, async (t) => {
+  describe(`${year.label}: the object-category windows`, () => {
+    const ENDS = ["fund-balance/contribution", "fund-balance/reserve-increase"];
+
+    test(`${year.label} object: the spine's four object categories and its transfers out open, and its two fund-balance ends do not`, async (t) => {
       const { app, config } = await onYear(year.stem);
       const ids = yearStep(year, config, "object-category").opens;
+      const out = ["transfers/out"];
+      assert.ok(yearStep(year, config, "transfers-out").opens.includes(out[0]));
       const at5 = atTier(app, 5);
       t.diagnostic(`${year.label} object: the spine draws ${at5.length} node(s) in its right-hand column; ` +
         `${ids.filter((id) => offers(app, id)).length} of ${ids.length} object categories open`);
       assert.equal(ids.length, 4);
-      assert.equal(at5.length, ids.length + ENDS.length);
-      for (const id of ids) assert.equal(offers(app, id), true, id + " does not open");
+      assert.equal(at5.length, ids.length + out.length + ENDS.length);
+      for (const id of ids.concat(out)) assert.equal(offers(app, id), true, id + " does not open");
       for (const id of ENDS) assert.equal(offers(app, id), false, id + " opens");
     });
 

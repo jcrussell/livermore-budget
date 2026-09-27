@@ -678,7 +678,7 @@ func (s *sankey) Graph(facts []fact.Fact, o Options) (*Graph, error) {
 	// name a node a DIFFERENT column carries and this one does not, and that is
 	// exactly the mistake AppliesTo makes silent.
 	drawn := sortedNodes(nodes)
-	cavs := caveats(h, col, links)
+	cavs := caveats(h, col, links, toCIP(facts, col))
 	if err := validateCaveats(cavs, nodeIDs(drawn)); err != nil {
 		return nil, fmt.Errorf("%s: %w", col, err)
 	}
@@ -755,7 +755,7 @@ func headlineOver(v structure.View, facts []fact.Fact) Headline {
 func selectFacts(facts []fact.Fact, o Options) []fact.Fact {
 	out := make([]fact.Fact, 0, len(facts))
 	for _, f := range facts {
-		if !o.HasScope(f.Scope) {
+		if !o.HasScope(f.Scope) || !o.HasKind(f.Kind) {
 			continue
 		}
 		if !slices.Contains(o.Columns, Column{FiscalYear: f.FiscalYear, Basis: f.Basis}) {
@@ -1102,11 +1102,11 @@ func GroupExpenditure(links []Link, fundGroup string) int64 {
 // service charges in a document that has none would be misdirection, the
 // transfer caveat quotes figures it can only get from the graph, and a contested
 // total that this document does not draw is not this document's problem.
-func caveats(h Headline, col Column, links []Link) []Caveat {
+func caveats(h Headline, col Column, links []Link, cip cipTransfers) []Caveat {
 	out := make([]Caveat, 0, 5)
 
 	if h.InternalTransferInCents != 0 || h.InternalTransferOutCents != 0 {
-		out = append(out, transferCaveat(h, col, links))
+		out = append(out, transferCaveat(h, col, links, cip))
 	}
 	for _, l := range links {
 		if l.Kind == KindInternalService {
@@ -1212,36 +1212,35 @@ func contestedCaveat(c contestedTotal, col Column, links []Link) (Caveat, bool) 
 	}, true
 }
 
-// transfersOutToCIP is the "Transfers Out to CIP" column the city prints on its
-// sources-and-uses schedule, per spine column, read off the page.
-//
-// KEYED ON THE WHOLE COLUMN AND NOT ON THE YEAR, because pp.72-75 print ONE
-// budget column each and no actual or revised figure. A revised spine column
-// would find no entry here and fall back to the wording that claims nothing
-// printed -- which is the point: naming the column for a basis the city prints
-// no figure for would publish an identity that does not exist.
-//
-// Hand-typed from p0073.txt:58 and p0075.txt:58, which nothing parses;
-// transferCaveat names the column only when the figure equals this
-// document's own residual.
-var transfersOutToCIP = map[Column]struct {
-	Cents amount.Cents
-	// Page is the PDF page index, which is what the site's citations label
-	// "PDF p" and deep-link with #page=N. The printed folio on that sheet reads
-	// 69, four lower; a reader given a bare "p73" and a paper copy looks at the
-	// wrong table.
-	Page int
-}{
-	{FiscalYear: 2026, Basis: mapping.BasisAdopted}: {Cents: 3808673700, Page: 73},
-	{FiscalYear: 2027, Basis: mapping.BasisAdopted}: {Cents: 5076225100, Page: 75},
+// cipTransfers is what Budget Book p222 lists the operating funds
+// transferring to the Capital Improvement Program in one column, summed from
+// the published facts, and whether the store carries that column at all.
+type cipTransfers struct {
+	Cents   int64
+	Printed bool
+}
+
+// toCIP sums p222's paying legs in col.
+func toCIP(facts []fact.Fact, col Column) cipTransfers {
+	var out cipTransfers
+	for i := range facts {
+		f := &facts[i]
+		if f.Scope != CIPFundingScope || f.Kind != mapping.KindTransferOut ||
+			f.FiscalYear != col.FiscalYear || f.Basis != col.Basis {
+			continue
+		}
+		out.Cents += f.AmountCents
+		out.Printed = true
+	}
+	return out
 }
 
 // transferCaveat says the transfer legs do not pair up, and by how much.
 //
 // The legs are unpaired because p76's facts are at scope transfers-by-fund,
-// not because p76 is unmapped. The residual is the printed to-CIP column,
-// published citywide only: splitting it by fund group would be derived.
-func transferCaveat(h Headline, col Column, links []Link) Caveat {
+// not because p76 is unmapped. The residual is named as p222's transfers to
+// the CIP only when it is their sum in this column.
+func transferCaveat(h Headline, col Column, links []Link, cip cipTransfers) Caveat {
 	// One id over three texts: which one a document gets depends on its own
 	// arithmetic, so a page listing several documents' caveats keys on
 	// (id, document).
@@ -1283,23 +1282,21 @@ func transferCaveat(h Headline, col Column, links []Link) Caveat {
 	const stated = " It is stated as headline.transfer_residual_cents rather than netted " +
 		"away or padded with an invented link."
 
-	// The printed claim is made only when this document's arithmetic meets
-	// the page, so a drifted constant cannot publish.
-	if cip, ok := transfersOutToCIP[col]; ok && amount.Cents(signed) == cip.Cents {
+	// The claim is made only when this document's arithmetic meets p222's
+	// published facts, so a schedule that stops tying cannot publish it.
+	if cip.Printed && signed == cip.Cents {
 		return Caveat{
 			ID: id,
 			Summary: fmt.Sprintf(
-				"No link pairs a transfer's two legs; transfers out %s transfers in by %s, which the city prints as its own column.",
+				"No link pairs a transfer's two legs; transfers out %s transfers in by %s, the transfers to the Capital Improvement Program.",
 				verb, dollars(residual)),
 			Text: unpaired + fmt.Sprintf(
 				"Transfers out (%s) %s transfers in (%s), and the %s difference is not an "+
-					"unexplained gap: the city prints it as a column of its own, \"Transfers "+
-					"Out to CIP\", on the sources-and-uses schedule at PDF p%d -- with p76's "+
-					"grand total printed beside it as the transfers-out figure that excludes "+
-					"the CIP. Only the citywide total is published: splitting it by fund group "+
-					"is our arithmetic, because that schedule prints one aggregate for every "+
-					"non-major fund.%s",
-				dollars(out), verb, dollars(in), dollars(residual), cip.Page, stated),
+					"unexplained gap: it is what the operating funds transfer to the Capital "+
+					"Improvement Program, which Budget Book p222 lists fund by fund and whose "+
+					"funds are not on this chart. The Transfers Out mark opens into p76's "+
+					"transfers and p222's together.%s",
+				dollars(out), verb, dollars(in), dollars(residual), stated),
 			AppliesTo: targets,
 		}
 	}

@@ -10,7 +10,7 @@
     "schema_version": { "const": 1 },
     "projection": {
       "description": "A declared set, not an open one: each value is an internal/project constant the export's steps name.",
-      "enum": ["sankey", "fund-flows", "department-spending", "department-funding", "transfers-by-fund"]
+      "enum": ["sankey", "fund-flows", "department-spending", "department-funding", "transfers-by-fund", "transfers-out"]
     },
     "metadata": {
       "type": "object",

@@ -848,7 +848,9 @@ func describeLegs(legs []project.Link) string {
 //
 // An endpoint touching no link is a container, and folding into it is
 // ordinary: transfers-by-fund draws transfers/in that way. Give it one link and
-// every child is a finding.
+// every child is a finding. A container may hold nodes at its own tier:
+// transfers-out parents every receiver's end to transfers/out, and both are
+// tier 5, where the spine draws the endpoint the reader opens.
 //
 // SUBJECTS ARE THE PARENTED NODES, so this stays honestly vacuous over a
 // document with no hierarchy — the spine — and goes live over the first one that
@@ -862,8 +864,8 @@ func (*nodeHierarchyWellFormed) Tier() int  { return 1 }
 func (*nodeHierarchyWellFormed) Full() bool { return false }
 func (*nodeHierarchyWellFormed) Description() string {
 	return "every node.parent resolves to a node of the same document, at a strictly coarser " +
-		"tier, with no node its own ancestor and none parented to a flow endpoint that " +
-		"carries a flow in that same document"
+		"tier or a flow endpoint drawn as a container at its own, with no node its own ancestor " +
+		"and none parented to a flow endpoint that carries a flow in that same document"
 }
 
 func (*nodeHierarchyWellFormed) Run(_ context.Context, s *Subject) (Result, error) {
@@ -896,6 +898,7 @@ func (*nodeHierarchyWellFormed) Run(_ context.Context, s *Subject) (Result, erro
 						"money it carries leaves the picture", n.ID, n.Parent))
 				continue
 			}
+			container := false
 			if _, isEndpoint := endpointTiers[n.Parent]; isEndpoint {
 				if flowing[n.Parent] {
 					findings = append(findings, finding(p.String(),
@@ -907,8 +910,9 @@ func (*nodeHierarchyWellFormed) Run(_ context.Context, s *Subject) (Result, erro
 					continue
 				}
 				endpointParents++
+				container = true
 			}
-			if parent.Tier >= n.Tier {
+			if parent.Tier > n.Tier || (parent.Tier == n.Tier && !container) {
 				findings = append(findings, finding(p.String(),
 					"node %q is at tier %d and its parent %q is at tier %d. A parent is "+
 						"strictly coarser than its child, or the fold runs the wrong way "+
@@ -1125,7 +1129,7 @@ func (*constraintTierVocabulary) Run(_ context.Context, s *Subject) (Result, err
 func factsFor(facts []fact.Fact, o project.Options) []fact.Fact {
 	out := make([]fact.Fact, 0, len(facts))
 	for _, f := range facts {
-		if !o.HasScope(f.Scope) {
+		if !o.HasScope(f.Scope) || !o.HasKind(f.Kind) {
 			continue
 		}
 		if !slices.Contains(o.Columns, project.Column{FiscalYear: f.FiscalYear, Basis: f.Basis}) {

@@ -396,8 +396,9 @@ and a wide screen must not show a reader less than a narrow one.
 | 1 | `fund-flows` | `{1,0,2}` keeping tier 2: the lines pp.127-140 print under the opened category on the left, the category itself in the middle, and the spine's own fund groups for it on the right; a line printed as a reduction draws as a contra ribbon at its magnitude, into the centre | nothing | tier 1 at 8 (lines) |
 | 1 | `department-spending` | `{2,5,4}` keeping tier 2: the fund groups that fund the opened object category, the category, and the divisions pp.85-125 print spending it | nothing | tier 4 at 8 (divisions) |
 | 1 | `transfers-by-fund` | `{2,3}`, no flank: the funds p76 prints paying each transfer on the left, the funds receiving them on the right | nothing | — |
+| 1 | `transfers-out` | `{3,5}`, no flank: the funds p76 and p222 print paying each transfer out on the left, the operating and CIP funds receiving them on the right | nothing | tier 3 at 10; tier 5 at 10 (funds) |
 
-The steps are a tree and not a chain: four open from the spine's chart, told
+The steps are a tree and not a chain: five open from the spine's chart, told
 apart by the tier they open from and, where two share a tier, by the node's role.
 The client walks it by key (`after` names the step whose chart a step opens
 from) and never by depth.

@@ -239,6 +239,17 @@ func PublishedDocuments() []PublishedDocument {
 		})
 	}
 
+	// The transfers-out network publishes the columns p76 and p222 both print.
+	out76 := transfersOutSlices()
+	for _, o := range out76 {
+		out = append(out, PublishedDocument{
+			Projection: TransfersOutProjection,
+			Stem:       stemOrPanic(TransfersOutProjection, o, out76),
+			Scopes:     TransfersOutScopes(),
+			Columns:    slices.Clone(o.Columns),
+		})
+	}
+
 	// The two ACFR ten-year schedules, one document each: two row axes, two
 	// scopes, and seriesSpec's one-schedule rule keeps them apart. Their
 	// columns are stated by [HistoryColumns], for TrendsColumns' reason.
@@ -327,6 +338,19 @@ func transfersByFundSlices() []Options {
 	out := make([]Options, 0, len(cols))
 	for _, c := range cols {
 		out = append(out, Options{Columns: []Column{c}, Scopes: TransfersByFundScopes()})
+	}
+	return out
+}
+
+// transfersOutSlices is every document the transfers-out network publishes:
+// p76's two adopted columns, which p222 prints beside its revised one.
+//
+// Stated rather than read off the facts, for [PublishedDocuments]' reason.
+func transfersOutSlices() []Options {
+	out := transfersByFundSlices()
+	for i := range out {
+		out[i].Scopes = TransfersOutScopes()
+		out[i].Kinds = transferKinds
 	}
 	return out
 }
@@ -529,6 +553,11 @@ type Options struct {
 	// MOST DOCUMENTS ARE OF EXACTLY ONE, and say so through [Options.OnlyScope]
 	// rather than by indexing this field.
 	Scopes []string
+	// Kinds narrows the slice to facts of these kinds, or is empty for every
+	// kind the scopes carry. A document of one kind of money over a scope
+	// printing several needs it: p222 prints transfers, grants and a balance
+	// draw under one total, and the transfer network draws the transfers.
+	Kinds []mapping.Kind
 	// Version is build.Get().String(), published as metadata.generated_by so
 	// a reader can tell which binary produced the file.
 	Version string
@@ -609,6 +638,13 @@ func (o Options) validate() error {
 		}
 		scopes[s] = true
 	}
+	kinds := make(map[mapping.Kind]bool, len(o.Kinds))
+	for _, k := range o.Kinds {
+		if kinds[k] {
+			return fmt.Errorf("kind %q is listed twice", k)
+		}
+		kinds[k] = true
+	}
 	if o.Version == "" {
 		return errors.New("version is required for metadata.generated_by")
 	}
@@ -651,6 +687,12 @@ func (o Options) onlyScope() (string, error) {
 // that makes the second derivation worthless rather than independent.
 func (o Options) HasScope(scope string) bool {
 	return slices.Contains(o.Scopes, scope)
+}
+
+// HasKind reports whether a fact of this kind is in the slice, for HasScope's
+// reason: selectFacts and internal/check's factsFor both ask it.
+func (o Options) HasKind(k mapping.Kind) bool {
+	return len(o.Kinds) == 0 || slices.Contains(o.Kinds, k)
 }
 
 // ScopeList is the scope set as one string, for a report line or an error.
@@ -717,6 +759,7 @@ func Registry(l labels) []Projection {
 		&departmentSpending{Labels: l},
 		&departmentFunding{Labels: l},
 		&transfersByFund{Labels: l},
+		&transfersByFund{Labels: l, Out: true},
 		&FundBalanceChanges{Labels: l},
 		&FundBalances{Labels: l},
 	}

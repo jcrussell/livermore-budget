@@ -3448,6 +3448,81 @@
               ]
             }
           ]
+        },
+        {
+          "path": [
+            "transfers/out"
+          ],
+          "step": "transfers-out",
+          "draws": [
+            {
+              "tier": 3,
+              "role": "outward",
+              "ids": [
+                "fund/100",
+                "fund/101",
+                "fund/224",
+                "fund/282",
+                "fund/286",
+                "fund/290",
+                "fund/311",
+                "fund/330",
+                "fund/510",
+                "fund/511",
+                "fund/512",
+                "fund/513",
+                "fund/551",
+                "fund/552",
+                "fund/560",
+                "fund/561",
+                "fund/580",
+                "fund/583",
+                "fund/600",
+                "fund/612",
+                "fund/620",
+                "fund/622",
+                "fund/623",
+                "fund/640",
+                "fund/642",
+                "fund/730"
+              ]
+            },
+            {
+              "tier": 5,
+              "role": "outward",
+              "ids": [
+                "transfer-to/100",
+                "transfer-to/210",
+                "transfer-to/310",
+                "transfer-to/400",
+                "transfer-to/401",
+                "transfer-to/402",
+                "transfer-to/601",
+                "transfer-to/610",
+                "transfer-to/611",
+                "transfer-to/621",
+                "transfer-to/622",
+                "transfer-to/641",
+                "transfer-to/642",
+                "transfer-to/731",
+                "transfer-to/741",
+                "transfer-to/811",
+                "transfer-to/822",
+                "transfer-to/823",
+                "transfer-to/824",
+                "transfer-to/825",
+                "transfer-to/826",
+                "transfer-to/829",
+                "transfer-to/830",
+                "transfer-to/834",
+                "transfer-to/835",
+                "transfer-to/836",
+                "transfer-to/837",
+                "transfer-to/838",
+                "transfer-to/839"
+              ]
+            }
+          ]
         }
       ]
     },
@@ -6862,6 +6937,79 @@
                 "fund/610",
                 "fund/622",
                 "fund/642"
+              ]
+            }
+          ]
+        },
+        {
+          "path": [
+            "transfers/out"
+          ],
+          "step": "transfers-out",
+          "draws": [
+            {
+              "tier": 3,
+              "role": "outward",
+              "ids": [
+                "fund/100",
+                "fund/101",
+                "fund/224",
+                "fund/282",
+                "fund/286",
+                "fund/290",
+                "fund/311",
+                "fund/330",
+                "fund/510",
+                "fund/511",
+                "fund/512",
+                "fund/513",
+                "fund/551",
+                "fund/552",
+                "fund/560",
+                "fund/561",
+                "fund/580",
+                "fund/600",
+                "fund/612",
+                "fund/620",
+                "fund/622",
+                "fund/623",
+                "fund/640",
+                "fund/642",
+                "fund/730"
+              ]
+            },
+            {
+              "tier": 5,
+              "role": "outward",
+              "ids": [
+                "transfer-to/100",
+                "transfer-to/210",
+                "transfer-to/310",
+                "transfer-to/400",
+                "transfer-to/401",
+                "transfer-to/402",
+                "transfer-to/601",
+                "transfer-to/610",
+                "transfer-to/611",
+                "transfer-to/621",
+                "transfer-to/622",
+                "transfer-to/641",
+                "transfer-to/642",
+                "transfer-to/731",
+                "transfer-to/741",
+                "transfer-to/811",
+                "transfer-to/822",
+                "transfer-to/823",
+                "transfer-to/824",
+                "transfer-to/825",
+                "transfer-to/826",
+                "transfer-to/829",
+                "transfer-to/830",
+                "transfer-to/834",
+                "transfer-to/835",
+                "transfer-to/836",
+                "transfer-to/838",
+                "transfer-to/839"
               ]
             }
           ]

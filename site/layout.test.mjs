@@ -814,6 +814,7 @@ const OVER_GUTTER = {
     "revenue-line/taxes/property/rpttf-receipts-and-other-proptax",
     "revenue-line/taxes/sales/prop-172-public-sfty-augmnt",
     "revenue-line/use-of-money-and-property/multi-service-center-rentals",
+    "transfer-to/611",
   ],
   // gap/expenditure/services-and-supplies is p0067's FY2026-27 shortfall,
   // the widest label drawn anywhere.
@@ -834,6 +835,7 @@ const OVER_GUTTER = {
     "revenue-line/taxes/property/rpttf-receipts-and-other-proptax",
     "revenue-line/taxes/sales/prop-172-public-sfty-augmnt",
     "revenue-line/use-of-money-and-property/multi-service-center-rentals",
+    "transfer-to/731", "transfer-to/826", "transfer-to/830",
   ],
 };
 

@@ -39,12 +39,12 @@ func TestSankeyReproducesGoldenFile(t *testing.T) {
 		t.Fatalf("decode golden: %v", err)
 	}
 
-	got := buildGraph(t, spineFacts(t, testYear), testOptions())
+	got := buildGraph(t, withCIPLeg(t, spineFacts(t, testYear)), testOptions())
 	if diff := cmp.Diff(want, *got); diff != "" {
 		t.Errorf("graph mismatch (-want +got):\n%s", diff)
 	}
 
-	gotBytes, err := (&sankey{Labels: goldenLabels}).Build(spineFacts(t, testYear), testOptions())
+	gotBytes, err := (&sankey{Labels: goldenLabels}).Build(withCIPLeg(t, spineFacts(t, testYear)), testOptions())
 	if err != nil {
 		t.Fatalf("Build: %v", err)
 	}
@@ -52,6 +52,17 @@ func TestSankeyReproducesGoldenFile(t *testing.T) {
 		t.Errorf("encoded bytes differ from %s (got %d bytes, want %d)",
 			goldenPath, len(gotBytes), len(wantBytes))
 	}
+}
+
+// withCIPLeg adds one p222 transfer to the CIP carrying FY2025-26's whole
+// 38,086,737, which is what the committed store's p222 legs sum to in that
+// column: the pipeline test holds testdata/sankey.golden.json to the committed
+// store, and the spine's caveat reads that sum.
+func withCIPLeg(t *testing.T, facts []fact.Fact) []fact.Fact {
+	t.Helper()
+	leg := facts[0]
+	leg.ID, leg.Scope, leg.Kind, leg.AmountCents = "p222-leg", CIPFundingScope, mapping.KindTransferOut, 3808673700
+	return append(facts, leg)
 }
 
 // TestFiscalYearFilter is the trap that no consistency check can catch: both
@@ -656,11 +667,11 @@ func TestTransferCaveatWhenLegsMatch(t *testing.T) {
 }
 
 // TestTransferCaveatNamesThePrintedColumn asserts the caveat promises no
-// work that has landed, points at transfers-by-fund, and names the printed
-// to-CIP column, which it does only when this document's residual meets the
-// hand-typed page figure.
+// work that has landed, points at transfers-by-fund, and names p222's
+// transfers to the CIP, which it does only when the store carries p222's legs
+// in this column and they sum to this document's residual.
 func TestTransferCaveatNamesThePrintedColumn(t *testing.T) {
-	g := buildGraph(t, spineFacts(t, testYear), testOptions())
+	g := buildGraph(t, withCIPLeg(t, spineFacts(t, testYear)), testOptions())
 	text := caveatText(g)
 
 	for _, stale := range []string{
@@ -674,9 +685,9 @@ func TestTransferCaveatNamesThePrintedColumn(t *testing.T) {
 		}
 	}
 	for _, want := range []string{
-		"Transfers Out to CIP", // the printed heading
-		"$38,086,737",          // p0073.txt:58, and this document's own residual
-		"PDF p73",              // the site labels citations "PDF p" + the PDF page index
+		"Capital Improvement Program",
+		"p222",
+		"$38,086,737", // p0073.txt:58, and this document's own residual
 		// The document that does pair them.
 		"transfers-by-fund",
 	} {
@@ -686,39 +697,32 @@ func TestTransferCaveatNamesThePrintedColumn(t *testing.T) {
 	}
 }
 
-// TestTransferCaveatDeclinesTheColumnItCannotVouchFor pins the gate rather than
-// the happy path: transfersOutToCIP is hand-typed off a page no fixture carries,
-// so a figure that has drifted from the graph beside it must lose the caveat its
-// stronger sentence, not publish a mismatch.
-func TestTransferCaveatDeclinesTheColumnItCannotVouchFor(t *testing.T) {
+// TestTransferCaveatNamesTheCIPOnlyWhenP222IsTheResidual pins the gate: the
+// residual is named as the transfers to the CIP only when p222's published
+// legs in the same column sum to it, with the sign of an outflow.
+func TestTransferCaveatNamesTheCIPOnlyWhenP222IsTheResidual(t *testing.T) {
 	col := Column{FiscalYear: testYear, Basis: testBasis}
-	h := Headline{InternalTransferInCents: 100000, InternalTransferOutCents: 500000}
-
-	if got := transferCaveat(h, col, nil).Text; strings.Contains(got, "Transfers Out to CIP") {
-		t.Errorf("a $4,000.00 residual claimed the printed column:\n%s", got)
-	}
-
-	// And a basis pp.72-75 print no figure for gets no claim either, whatever
-	// the arithmetic does: those pages carry one budget column per year.
-	revised := Column{FiscalYear: testYear, Basis: mapping.BasisRevised}
+	const cip = "transfers to the Capital Improvement Program"
 	real := Headline{InternalTransferInCents: 2152599700, InternalTransferOutCents: 5961273400}
-	if got := transferCaveat(real, revised, nil).Text; strings.Contains(got, "Transfers Out to CIP") {
-		t.Errorf("a revised column claimed a schedule that prints only an adopted one:\n%s", got)
-	}
-	if got := transferCaveat(real, col, nil).Text; !strings.Contains(got, "Transfers Out to CIP") {
-		t.Errorf("the adopted column did not name the printed column:\n%s", got)
-	}
+	printed := cipTransfers{Cents: 3808673700, Printed: true}
 
-	// AND THE SIGN IS PART OF THE MATCH, not just the magnitude. The printed
-	// column is transfers OUT to the CIP; a document whose transfers IN exceeded
-	// its out by exactly that figure must not be handed an outflow column as the
-	// explanation for an inflow surplus.
-	inverted := Headline{
-		InternalTransferInCents:  real.InternalTransferOutCents,
-		InternalTransferOutCents: real.InternalTransferInCents,
+	if got := transferCaveat(real, col, nil, printed).Text; !strings.Contains(got, "p222") {
+		t.Errorf("a residual equal to p222's legs did not name them:\n%s", got)
 	}
-	if got := transferCaveat(inverted, col, nil).Text; strings.Contains(got, "Transfers Out to CIP") {
-		t.Errorf("transfers in exceeding out by the tabled figure claimed an OUT column:\n%s", got)
+	for _, tc := range []struct {
+		name string
+		h    Headline
+		cip  cipTransfers
+	}{
+		{"p222's legs a dollar off", real, cipTransfers{Cents: 3808673600, Printed: true}},
+		{"no p222 column", real, cipTransfers{}},
+		// The legs are transfers OUT; an inflow surplus of the same size is not them.
+		{"the sign inverted", Headline{InternalTransferInCents: real.InternalTransferOutCents,
+			InternalTransferOutCents: real.InternalTransferInCents}, printed},
+	} {
+		if got := transferCaveat(tc.h, col, nil, tc.cip).Summary; strings.Contains(got, cip) {
+			t.Errorf("%s: the caveat named the CIP:\n%s", tc.name, got)
+		}
 	}
 }
 
@@ -746,7 +750,7 @@ func TestTheTransferCaveatMarksTheLegsTheGraphDRAWS(t *testing.T) {
 			ValueCents: 500, Kind: KindInternalTransfer},
 	}
 	if diff := cmp.Diff([]string{nodeTransfersIn, nodeTransfersOut},
-		transferCaveat(h, col, both).AppliesTo); diff != "" {
+		transferCaveat(h, col, both, cipTransfers{}).AppliesTo); diff != "" {
 		t.Errorf("both legs drawn (-want +got):\n%s", diff)
 	}
 
@@ -755,7 +759,7 @@ func TestTheTransferCaveatMarksTheLegsTheGraphDRAWS(t *testing.T) {
 	// is there, or ValidateCaveats aborts the build.
 	inOnly := both[:1]
 	if diff := cmp.Diff([]string{nodeTransfersIn},
-		transferCaveat(h, col, inOnly).AppliesTo); diff != "" {
+		transferCaveat(h, col, inOnly, cipTransfers{}).AppliesTo); diff != "" {
 		t.Errorf("only the in leg drawn (-want +got):\n%s", diff)
 	}
 
@@ -766,7 +770,7 @@ func TestTheTransferCaveatMarksTheLegsTheGraphDRAWS(t *testing.T) {
 			ValueCents: 500, Kind: KindInternalTransfer},
 	}
 	if diff := cmp.Diff([]string{prefixTransfers + "out-to-cip"},
-		transferCaveat(h, col, odd).AppliesTo); diff != "" {
+		transferCaveat(h, col, odd, cipTransfers{}).AppliesTo); diff != "" {
 		t.Errorf("an endpoint named otherwise (-want +got):\n%s", diff)
 	}
 
@@ -776,42 +780,8 @@ func TestTheTransferCaveatMarksTheLegsTheGraphDRAWS(t *testing.T) {
 		{Source: "fund-balance/draw", Target: prefixFundGroup + "general",
 			ValueCents: 100, Kind: KindFundBalance},
 	}
-	if got := transferCaveat(h, col, none).AppliesTo; len(got) != 0 {
+	if got := transferCaveat(h, col, none, cipTransfers{}).AppliesTo; len(got) != 0 {
 		t.Errorf("a graph with no transfer link marked %v", got)
-	}
-}
-
-// TestEveryPrintedToCIPColumnIsCited pins the page number as well as the figure.
-//
-// WHY IT IS SEPARATE. transferCaveat gates the printed-column sentence on the
-// Cents field meeting the document's own residual, so a wrong AMOUNT cannot
-// ship. Nothing gates the Page field: pp.72-75 are not fixtures, so no test can
-// read the number off the sheet, and transposing 73 and 75 would publish a
-// citation pointing a reader at the other year's schedule with every check
-// green. This asserts each published column names its own page, which is the
-// most a tree without those fixtures can say.
-func TestEveryPrintedToCIPColumnIsCited(t *testing.T) {
-	want := map[Column]string{
-		{FiscalYear: 2026, Basis: mapping.BasisAdopted}: "PDF p73",
-		{FiscalYear: 2027, Basis: mapping.BasisAdopted}: "PDF p75",
-	}
-	if len(want) != len(transfersOutToCIP) {
-		t.Fatalf("transfersOutToCIP has %d entries and this test knows %d; a new "+
-			"printed column needs its page asserted here", len(transfersOutToCIP), len(want))
-	}
-	for col, page := range want {
-		cip, ok := transfersOutToCIP[col]
-		if !ok {
-			t.Errorf("no printed to-CIP column declared for %s", col)
-			continue
-		}
-		// Drive the real function rather than reading the field, so this fails
-		// if the citation stops reaching the prose as well as if it changes.
-		h := Headline{InternalTransferOutCents: int64(cip.Cents), InternalTransferInCents: 0}
-		got := transferCaveat(h, col, nil).Text
-		if !strings.Contains(got, page) {
-			t.Errorf("%s cites no %s:\n%s", col, page, got)
-		}
 	}
 }
 

@@ -1159,6 +1159,25 @@ func TestNodeHierarchyWellFormedIsFailable(t *testing.T) {
 			want: "strictly coarser",
 		},
 		{
+			// Only a flow endpoint drawn as a container may hold a node at its
+			// own tier; two fund groups may not fold into each other.
+			name: "a parent at its child's own tier that is not a container",
+			damage: func(t *testing.T, s *Subject) {
+				g := s.Projections[0].Graph
+				var at2 []string
+				for _, n := range g.Nodes {
+					if _, end := endpointTiers[n.ID]; n.Tier == 2 && !end {
+						at2 = append(at2, n.ID)
+					}
+				}
+				if len(at2) < 2 {
+					t.Fatal("the fixture has fewer than two fund groups")
+				}
+				nodePointer(t, g, at2[0]).Parent = at2[1]
+			},
+			want: "strictly coarser",
+		},
+		{
 			// Node.Parent is one string, so a cycle needs two nodes -- which is
 			// exactly why the old doc comment's "double-parented node" could
 			// never have been the thing this caught.

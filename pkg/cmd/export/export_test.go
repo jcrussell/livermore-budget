@@ -407,7 +407,7 @@ func TestTheSiteDoesNotSayThePSeventySixScheduleIsUnmapped(t *testing.T) {
 		t.Fatal("caveats.html ships a config blob, so this test's substring search " +
 			"could pass on JSON no reader reads")
 	}
-	for _, want := range []string{"Transfers Out to CIP", "transfers-by-fund"} {
+	for _, want := range []string{"p222", "Capital Improvement Program", "transfers-by-fund"} {
 		if !strings.Contains(caveats, want) {
 			t.Errorf("the exported caveats.html does not say %q, so the residual is "+
 				"unexplained rather than cited", want)
@@ -828,7 +828,7 @@ func TestBuildProjectionsRunsThePipeline(t *testing.T) {
 		"fund-balances",
 		"fund-flows", "fund-flows-2024-actual", "fund-flows-2025-revised", "fund-flows-2027",
 		"revenue-trends", "sankey", "sankey-2027",
-		"transfers-by-fund", "transfers-by-fund-2027",
+		"transfers-by-fund", "transfers-by-fund-2027", "transfers-out", "transfers-out-2027",
 	}, keys(got)); diff != "" {
 		t.Errorf("projection names (-want +got):\n%s", diff)
 	}
@@ -915,7 +915,7 @@ func TestTheCommittedStemsAreUnchanged(t *testing.T) {
 		"fund-balances",
 		"fund-flows", "fund-flows-2024-actual", "fund-flows-2025-revised", "fund-flows-2027",
 		"revenue-trends", "sankey", "sankey-2027",
-		"transfers-by-fund", "transfers-by-fund-2027",
+		"transfers-by-fund", "transfers-by-fund-2027", "transfers-out", "transfers-out-2027",
 	}
 	got := keys(built)
 	sort.Strings(got)
@@ -1512,6 +1512,26 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 				"the citywide chart counts.",
 		},
 		{
+			// Shares (After, From) with object-category, which validateSteps
+			// admits because the roles differ.
+			Key:        "transfers-out",
+			After:      []string{""},
+			From:       5,
+			Role:       "transfer_out",
+			Projection: project.TransfersOutProjection,
+			Tiers:      []int{3, 5},
+			Caps:       []export.TierCap{{Tier: 3, Cap: 10}, {Tier: 5, Cap: 10}},
+			Noun:       "money going out",
+			Back:       "All money going out",
+			Tail:       "funds",
+			Description: "Budget Book p76 and p222: the funds that pay each transfer the " +
+				"city makes are on the left, and the funds that receive them are on the " +
+				"right. p76 lists the transfers between operating funds and p222 the " +
+				"transfers to the Capital Improvement Program, whose funds are not on the " +
+				"citywide chart; the two lists together are the Transfers Out it counts. " +
+				"One ribbon is one figure a page prints.",
+		},
+		{
 			// Shares (After, From) with `fund`, which validateSteps admits
 			// because the roles differ. No caps, measured: the widest fund it
 			// opens draws 5 departments (fund/240, FY2023-24 actual).
@@ -1622,21 +1642,24 @@ func TestOpensIntoJoinsOnColumnNotOnDeclaredOrder(t *testing.T) {
 	}{
 		// fund-departments needs both pp.85-125 and the pp.127-140 chart it opens from.
 		{"no fund-flows", []string{project.FundFlowsProjection},
-			[]string{"object-category", "transfers"}},
+			[]string{"object-category", "transfers", "transfers-out"}},
 		{"no department-spending", []string{project.DepartmentSpendingProjection},
 			[]string{"fund-group", "fund", "division", "revenue-category", "transfers",
-				"fund-departments"}},
+				"transfers-out", "fund-departments"}},
 		{"no transfers-by-fund", []string{project.TransfersByFundProjection},
 			[]string{"fund-group", "fund", "division", "revenue-category", "object-category",
-				"fund-departments"}},
+				"transfers-out", "fund-departments"}},
+		{"no transfers-out", []string{project.TransfersOutProjection},
+			[]string{"fund-group", "fund", "division", "revenue-category", "object-category",
+				"transfers", "fund-departments"}},
 		{"no department-funding", []string{project.DepartmentFundingProjection},
 			[]string{"fund-group", "fund", "division", "revenue-category", "object-category",
-				"transfers"}},
+				"transfers", "transfers-out"}},
 		{"neither detail document", []string{project.FundFlowsProjection,
-			project.DepartmentSpendingProjection}, []string{"transfers"}},
+			project.DepartmentSpendingProjection}, []string{"transfers", "transfers-out"}},
 		{"no step document at all", []string{project.FundFlowsProjection,
 			project.DepartmentSpendingProjection, project.TransfersByFundProjection,
-			project.DepartmentFundingProjection}, nil},
+			project.TransfersOutProjection, project.DepartmentFundingProjection}, nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			got := stepKeys(views(result{Projections: without(tc.drop...)})[0].Steps)
@@ -2170,6 +2193,17 @@ func TestTheDepartmentSpending2027FixtureIsTheDocumentTheSiteDraws(t *testing.T)
 func TestTheDepartmentFundingFixtureIsTheDocumentTheSiteDraws(t *testing.T) {
 	fixtureIsTheDocumentExported(t, project.DepartmentFundingProjection,
 		"department-funding.golden.json")
+}
+
+// TestTheTransfersOutFixtureIsTheDocumentTheSiteDraws and its 2027 twin pin the
+// captures the transfers-out window is measured over: p76's legs and p222's
+// transfers to the CIP, whose receivers differ between the two years.
+func TestTheTransfersOutFixtureIsTheDocumentTheSiteDraws(t *testing.T) {
+	fixtureIsTheDocumentExported(t, project.TransfersOutProjection, "transfers-out.golden.json")
+}
+
+func TestTheTransfersOut2027FixtureIsTheDocumentTheSiteDraws(t *testing.T) {
+	fixtureIsTheDocumentExported(t, "transfers-out-2027", "transfers-out-2027.golden.json")
 }
 
 func TestTheDepartmentFunding2027FixtureIsTheDocumentTheSiteDraws(t *testing.T) {

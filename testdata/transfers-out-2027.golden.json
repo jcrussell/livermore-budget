@@ -1,0 +1,2677 @@
+{
+  "schema_version": 1,
+  "projection": "transfers-out",
+  "metadata": {
+    "generated_by": "testdata/transfers-out-2027.golden.json (captured from fisc export; see testdata/README.md)",
+    "scopes": [
+      "transfers-by-fund",
+      "cip-funding-sources"
+    ],
+    "currency": "USD",
+    "units": "cents",
+    "fiscal_year": 2027,
+    "fiscal_year_label": "FY 2026-27",
+    "basis": "adopted",
+    "sources": [
+      {
+        "doc_id": "livermore-budget-fy2026-2027",
+        "pages": [
+          76,
+          222
+        ]
+      }
+    ],
+    "counts": {
+      "facts": 96,
+      "facts_cited": 70,
+      "facts_uncited": 26,
+      "transfers": 35,
+      "nodes": 104,
+      "links": 70
+    },
+    "caveats": [
+      {
+        "id": "one-figure-is-two-ribbons",
+        "summary": "Every printed transfer is drawn twice, once from each end; summing every ribbon here comes to twice what the city transfers out.",
+        "text": "Budget Book p76 and p222 name both ends of every movement they print, and this document publishes both: a receiving leg into the fund that gets the money and a paying leg out of the fund that sends it, under one transfer_id and at one value. A reader adding every value_cents in this file gets twice the $72,386,884 the city transfers out.",
+        "applies_to": []
+      },
+      {
+        "id": "transfers-out-are-two-schedules",
+        "summary": "The city's transfers out are two printed lists: p76's transfers between operating funds, and p222's transfers to the Capital Improvement Program.",
+        "text": "Budget Book p76 lists the transfers the operating funds make to one another, $21,624,633 here, and p222 lists what each operating fund transfers to a Capital Improvement Program fund, $50,762,251. pp.66-67 print TRANSFER OUT as the two together, and fisc verify holds that sum to the spine by fund group to the cent. A fund that appears on both lists pays both.",
+        "applies_to": []
+      },
+      {
+        "id": "the-cip-funds-are-outside-the-operating-budget",
+        "summary": "The Capital Improvement Program funds that receive p222's transfers are not on the citywide chart; their receipts are not part of its Transfers In.",
+        "text": "Budget Book p204 prints the Capital Improvement Program funds on a line of their own, beside the operating budget, and pp.66-67 total the operating budget alone. So money an operating fund transfers to a CIP fund leaves the citywide chart as Transfers Out and the chart draws no CIP fund to receive it. This document draws each CIP fund under the name data/funds.yaml gives it; what the CIP funds spend it on is not drawn.",
+        "applies_to": []
+      },
+      {
+        "id": "a-fund-is-drawn-once-per-end",
+        "summary": "A fund that both pays and receives appears in more than one column, under the same name.",
+        "text": "This is money moving between the city's own funds, and a flow diagram cannot draw a box pointing at itself. So a fund's paying end and its receiving end are separate marks, each with the words the city prints for it. Two marks with one name on this chart are one fund seen from two ends, not two funds.",
+        "applies_to": []
+      }
+    ]
+  },
+  "nodes": [
+    {
+      "id": "transfer-from/100",
+      "label": "General Fund",
+      "tier": 2,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "transfer_source",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "transfer-from/101",
+      "label": "General Fund CIP Reserves",
+      "tier": 2,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "transfer_source",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "transfer-from/224",
+      "label": "Grant - CDBG",
+      "tier": 2,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "transfer_source",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "transfer-from/282",
+      "label": "Host Community Impact Fee",
+      "tier": 2,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "transfer_source",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "transfer-from/286",
+      "label": "Accessibility Compliance",
+      "tier": 2,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "transfer_source",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "transfer-from/290",
+      "label": "Human Services Facility Fee",
+      "tier": 2,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "transfer_source",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "transfer-from/311",
+      "label": "Other LMD",
+      "tier": 2,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "transfer_source",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "transfer-from/330",
+      "label": "Library Donations",
+      "tier": 2,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "transfer_source",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "transfer-from/510",
+      "label": "Traffic Impact Fee (TIF)",
+      "tier": 2,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "transfer_source",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "transfer-from/511",
+      "label": "TVTC 20% Fee",
+      "tier": 2,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "transfer_source",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "transfer-from/512",
+      "label": "Park Fee - AB 1600",
+      "tier": 2,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "transfer_source",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "transfer-from/513",
+      "label": "Solid Waste & Recyc Impact Fee",
+      "tier": 2,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "transfer_source",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "transfer-from/551",
+      "label": "County Meas BB-Bike/Pedestrian",
+      "tier": 2,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "transfer_source",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "transfer-from/552",
+      "label": "County Meas BB-Local St & Rd",
+      "tier": 2,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "transfer_source",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "transfer-from/560",
+      "label": "State - Gas Tax",
+      "tier": 2,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "transfer_source",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "transfer-from/561",
+      "label": "State - SB1",
+      "tier": 2,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "transfer_source",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "transfer-from/580",
+      "label": "Developers Deposit",
+      "tier": 2,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "transfer_source",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "transfer-from/600",
+      "label": "Airport",
+      "tier": 2,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "transfer_source",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "transfer-from/612",
+      "label": "Storm Drain",
+      "tier": 2,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "transfer_source",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "transfer-from/620",
+      "label": "Wastewater",
+      "tier": 2,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "transfer_source",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "transfer-from/622",
+      "label": "Wastewater Replacement",
+      "tier": 2,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "transfer_source",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "transfer-from/623",
+      "label": "Wastewater Connection Fees",
+      "tier": 2,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "transfer_source",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "transfer-from/640",
+      "label": "Water",
+      "tier": 2,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "transfer_source",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "transfer-from/642",
+      "label": "Water Replacement",
+      "tier": 2,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "transfer_source",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "transfer-from/730",
+      "label": "Fleet & Equipment Services",
+      "tier": 2,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "transfer_source",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund/100",
+      "label": "General Fund",
+      "tier": 3,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "general_fund",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund/101",
+      "label": "General Fund CIP Reserves",
+      "tier": 3,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund/210",
+      "label": "Horizons",
+      "tier": 3,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund/224",
+      "label": "Grant - CDBG",
+      "tier": 3,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund/282",
+      "label": "Host Community Impact Fee",
+      "tier": 3,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund/286",
+      "label": "Accessibility Compliance",
+      "tier": 3,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund/290",
+      "label": "Human Services Facility Fee",
+      "tier": 3,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund/310",
+      "label": "Downtown LMD",
+      "tier": 3,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund/311",
+      "label": "Other LMD",
+      "tier": 3,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund/330",
+      "label": "Library Donations",
+      "tier": 3,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund/400",
+      "label": "2020 COPS Series A",
+      "tier": 3,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund/401",
+      "label": "2020 COPS Series B",
+      "tier": 3,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund/402",
+      "label": "2022 COPS",
+      "tier": 3,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund/510",
+      "label": "Traffic Impact Fee (TIF)",
+      "tier": 3,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund/511",
+      "label": "TVTC 20% Fee",
+      "tier": 3,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund/512",
+      "label": "Park Fee - AB 1600",
+      "tier": 3,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund/513",
+      "label": "Solid Waste & Recyc Impact Fee",
+      "tier": 3,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund/551",
+      "label": "County Meas BB-Bike/Pedestrian",
+      "tier": 3,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund/552",
+      "label": "County Meas BB-Local St & Rd",
+      "tier": 3,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund/560",
+      "label": "State - Gas Tax",
+      "tier": 3,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund/561",
+      "label": "State - SB1",
+      "tier": 3,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund/580",
+      "label": "Developers Deposit",
+      "tier": 3,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund/600",
+      "label": "Airport",
+      "tier": 3,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund/601",
+      "label": "CIP Airport",
+      "tier": 3,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund/610",
+      "label": "Stormwater",
+      "tier": 3,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund/611",
+      "label": "CIP Stormwater & Storm Drain",
+      "tier": 3,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund/612",
+      "label": "Storm Drain",
+      "tier": 3,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund/620",
+      "label": "Wastewater",
+      "tier": 3,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund/621",
+      "label": "CIP Wastewater",
+      "tier": 3,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund/622",
+      "label": "Wastewater Replacement",
+      "tier": 3,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund/623",
+      "label": "Wastewater Connection Fees",
+      "tier": 3,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund/640",
+      "label": "Water",
+      "tier": 3,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund/641",
+      "label": "CIP Water",
+      "tier": 3,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund/642",
+      "label": "Water Replacement",
+      "tier": 3,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund/730",
+      "label": "Fleet & Equipment Services",
+      "tier": 3,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund/731",
+      "label": "CIP Fleet & Equipment Services",
+      "tier": 3,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund/741",
+      "label": "CIP Facilities",
+      "tier": 3,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund/811",
+      "label": "CIP General Fund",
+      "tier": 3,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund/822",
+      "label": "CIP Library Donations",
+      "tier": 3,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund/823",
+      "label": "CIP Traffic Impact Fee",
+      "tier": 3,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund/824",
+      "label": "CIP TVTC 20% Fee",
+      "tier": 3,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund/825",
+      "label": "CIP Park Fee - AB 1600",
+      "tier": 3,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund/826",
+      "label": "CIP Solid Waste & Recycling",
+      "tier": 3,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund/829",
+      "label": "CIP County Measure BB-Bike/Ped",
+      "tier": 3,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund/830",
+      "label": "CIP County Measure BB-Street",
+      "tier": 3,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund/834",
+      "label": "CIP State Gas Tax",
+      "tier": 3,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund/835",
+      "label": "CIP State SB1",
+      "tier": 3,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund/836",
+      "label": "CIP Developers Deposit",
+      "tier": 3,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund/838",
+      "label": "CIP CDBG",
+      "tier": 3,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund/839",
+      "label": "CIP Human Svcs Facility Fee",
+      "tier": 3,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "transfer-to/100",
+      "label": "General Fund",
+      "tier": 5,
+      "parent": "transfers/out",
+      "constraint_tier": "",
+      "role": "transfer_destination",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "transfer-to/210",
+      "label": "Horizons",
+      "tier": 5,
+      "parent": "transfers/out",
+      "constraint_tier": "",
+      "role": "transfer_destination",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "transfer-to/310",
+      "label": "Downtown LMD",
+      "tier": 5,
+      "parent": "transfers/out",
+      "constraint_tier": "",
+      "role": "transfer_destination",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "transfer-to/400",
+      "label": "2020 COPS Series A",
+      "tier": 5,
+      "parent": "transfers/out",
+      "constraint_tier": "",
+      "role": "transfer_destination",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "transfer-to/401",
+      "label": "2020 COPS Series B",
+      "tier": 5,
+      "parent": "transfers/out",
+      "constraint_tier": "",
+      "role": "transfer_destination",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "transfer-to/402",
+      "label": "2022 COPS",
+      "tier": 5,
+      "parent": "transfers/out",
+      "constraint_tier": "",
+      "role": "transfer_destination",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "transfer-to/601",
+      "label": "CIP Airport",
+      "tier": 5,
+      "parent": "transfers/out",
+      "constraint_tier": "",
+      "role": "transfer_destination",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "transfer-to/610",
+      "label": "Stormwater",
+      "tier": 5,
+      "parent": "transfers/out",
+      "constraint_tier": "",
+      "role": "transfer_destination",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "transfer-to/611",
+      "label": "CIP Stormwater & Storm Drain",
+      "tier": 5,
+      "parent": "transfers/out",
+      "constraint_tier": "",
+      "role": "transfer_destination",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "transfer-to/621",
+      "label": "CIP Wastewater",
+      "tier": 5,
+      "parent": "transfers/out",
+      "constraint_tier": "",
+      "role": "transfer_destination",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "transfer-to/622",
+      "label": "Wastewater Replacement",
+      "tier": 5,
+      "parent": "transfers/out",
+      "constraint_tier": "",
+      "role": "transfer_destination",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "transfer-to/641",
+      "label": "CIP Water",
+      "tier": 5,
+      "parent": "transfers/out",
+      "constraint_tier": "",
+      "role": "transfer_destination",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "transfer-to/642",
+      "label": "Water Replacement",
+      "tier": 5,
+      "parent": "transfers/out",
+      "constraint_tier": "",
+      "role": "transfer_destination",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "transfer-to/731",
+      "label": "CIP Fleet & Equipment Services",
+      "tier": 5,
+      "parent": "transfers/out",
+      "constraint_tier": "",
+      "role": "transfer_destination",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "transfer-to/741",
+      "label": "CIP Facilities",
+      "tier": 5,
+      "parent": "transfers/out",
+      "constraint_tier": "",
+      "role": "transfer_destination",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "transfer-to/811",
+      "label": "CIP General Fund",
+      "tier": 5,
+      "parent": "transfers/out",
+      "constraint_tier": "",
+      "role": "transfer_destination",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "transfer-to/822",
+      "label": "CIP Library Donations",
+      "tier": 5,
+      "parent": "transfers/out",
+      "constraint_tier": "",
+      "role": "transfer_destination",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "transfer-to/823",
+      "label": "CIP Traffic Impact Fee",
+      "tier": 5,
+      "parent": "transfers/out",
+      "constraint_tier": "",
+      "role": "transfer_destination",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "transfer-to/824",
+      "label": "CIP TVTC 20% Fee",
+      "tier": 5,
+      "parent": "transfers/out",
+      "constraint_tier": "",
+      "role": "transfer_destination",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "transfer-to/825",
+      "label": "CIP Park Fee - AB 1600",
+      "tier": 5,
+      "parent": "transfers/out",
+      "constraint_tier": "",
+      "role": "transfer_destination",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "transfer-to/826",
+      "label": "CIP Solid Waste & Recycling",
+      "tier": 5,
+      "parent": "transfers/out",
+      "constraint_tier": "",
+      "role": "transfer_destination",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "transfer-to/829",
+      "label": "CIP County Measure BB-Bike/Ped",
+      "tier": 5,
+      "parent": "transfers/out",
+      "constraint_tier": "",
+      "role": "transfer_destination",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "transfer-to/830",
+      "label": "CIP County Measure BB-Street",
+      "tier": 5,
+      "parent": "transfers/out",
+      "constraint_tier": "",
+      "role": "transfer_destination",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "transfer-to/834",
+      "label": "CIP State Gas Tax",
+      "tier": 5,
+      "parent": "transfers/out",
+      "constraint_tier": "",
+      "role": "transfer_destination",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "transfer-to/835",
+      "label": "CIP State SB1",
+      "tier": 5,
+      "parent": "transfers/out",
+      "constraint_tier": "",
+      "role": "transfer_destination",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "transfer-to/836",
+      "label": "CIP Developers Deposit",
+      "tier": 5,
+      "parent": "transfers/out",
+      "constraint_tier": "",
+      "role": "transfer_destination",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "transfer-to/838",
+      "label": "CIP CDBG",
+      "tier": 5,
+      "parent": "transfers/out",
+      "constraint_tier": "",
+      "role": "transfer_destination",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "transfer-to/839",
+      "label": "CIP Human Svcs Facility Fee",
+      "tier": 5,
+      "parent": "transfers/out",
+      "constraint_tier": "",
+      "role": "transfer_destination",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "transfers/out",
+      "label": "Transfers Out",
+      "tier": 5,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "transfer_out",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    }
+  ],
+  "links": [
+    {
+      "source": "fund/100",
+      "target": "transfer-to/210",
+      "value_cents": 49800000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p76/3481",
+      "fact_ids": [
+        "fisc-f-120483e9df39"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            76
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/100",
+      "target": "transfer-to/310",
+      "value_cents": 34000000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p76/3625",
+      "fact_ids": [
+        "fisc-f-1004ec1d39cd"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            76
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/100",
+      "target": "transfer-to/401",
+      "value_cents": 388117300,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p76/2861",
+      "fact_ids": [
+        "fisc-f-64c7ce8cd202"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            76
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/100",
+      "target": "transfer-to/402",
+      "value_cents": 255742500,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p76/3005",
+      "fact_ids": [
+        "fisc-f-ecc8340a0284"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            76
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/100",
+      "target": "transfer-to/610",
+      "value_cents": 287000000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p76/1965",
+      "fact_ids": [
+        "fisc-f-3c9da2e5b10f"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            76
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/101",
+      "target": "transfer-to/611",
+      "value_cents": 223825100,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p222/1770",
+      "fact_ids": [
+        "fisc-f-7f3d25c06b3e"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            222
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/101",
+      "target": "transfer-to/731",
+      "value_cents": 446200000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p222/1895",
+      "fact_ids": [
+        "fisc-f-8754ea083390"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            222
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/101",
+      "target": "transfer-to/741",
+      "value_cents": 265000000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p222/2020",
+      "fact_ids": [
+        "fisc-f-2f65da7b3e4b"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            222
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/101",
+      "target": "transfer-to/811",
+      "value_cents": 89500000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p222/2147",
+      "fact_ids": [
+        "fisc-f-ad80f2c84da6"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            222
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/224",
+      "target": "transfer-to/838",
+      "value_cents": 2500000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p222/635",
+      "fact_ids": [
+        "fisc-f-5a0f2303ad7f"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            222
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/282",
+      "target": "transfer-to/400",
+      "value_cents": 53130000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p76/3151",
+      "fact_ids": [
+        "fisc-f-798123de6d51"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            76
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/286",
+      "target": "transfer-to/100",
+      "value_cents": 1925000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p76/1231",
+      "fact_ids": [
+        "fisc-f-28523eb29e18"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            76
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/290",
+      "target": "transfer-to/839",
+      "value_cents": 2500000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p222/852",
+      "fact_ids": [
+        "fisc-f-eb8c190edbde"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            222
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/311",
+      "target": "transfer-to/100",
+      "value_cents": 25000000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p76/1518",
+      "fact_ids": [
+        "fisc-f-dacaa54fb4b4"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            76
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/330",
+      "target": "transfer-to/822",
+      "value_cents": 5000000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p222/2401",
+      "fact_ids": [
+        "fisc-f-f79454696d80"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            222
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/510",
+      "target": "transfer-to/100",
+      "value_cents": 7956800,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p76/1663",
+      "fact_ids": [
+        "fisc-f-543f45413379"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            76
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/510",
+      "target": "transfer-to/823",
+      "value_cents": 102000000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p222/2523",
+      "fact_ids": [
+        "fisc-f-dd45ca59f146"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            222
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/511",
+      "target": "transfer-to/824",
+      "value_cents": 175000000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p222/2702",
+      "fact_ids": [
+        "fisc-f-5212085a2622"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            222
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/512",
+      "target": "transfer-to/825",
+      "value_cents": 592000000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p222/2875",
+      "fact_ids": [
+        "fisc-f-9749d00663cf"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            222
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/513",
+      "target": "transfer-to/826",
+      "value_cents": 319500000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p222/3000",
+      "fact_ids": [
+        "fisc-f-d0733804b4c7"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            222
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/551",
+      "target": "transfer-to/829",
+      "value_cents": 100000000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p222/3255",
+      "fact_ids": [
+        "fisc-f-5fa171e44ea4"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            222
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/552",
+      "target": "transfer-to/830",
+      "value_cents": 397000000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p222/3380",
+      "fact_ids": [
+        "fisc-f-2e21bb53df60"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            222
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/560",
+      "target": "transfer-to/100",
+      "value_cents": 13791700,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p76/1806",
+      "fact_ids": [
+        "fisc-f-99068200683e"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            76
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/560",
+      "target": "transfer-to/834",
+      "value_cents": 443000000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p222/3981",
+      "fact_ids": [
+        "fisc-f-58db43b9859f"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            222
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/561",
+      "target": "transfer-to/835",
+      "value_cents": 425000000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p222/4106",
+      "fact_ids": [
+        "fisc-f-0eb7556dc155"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            222
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/580",
+      "target": "transfer-to/836",
+      "value_cents": 5000000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p222/4234",
+      "fact_ids": [
+        "fisc-f-d5be581508c0"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            222
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/600",
+      "target": "transfer-to/601",
+      "value_cents": 6000000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p222/1023",
+      "fact_ids": [
+        "fisc-f-a79ed8145d64"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            222
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/612",
+      "target": "transfer-to/611",
+      "value_cents": 15000000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p222/1147",
+      "fact_ids": [
+        "fisc-f-e77556730afa"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            222
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/620",
+      "target": "transfer-to/610",
+      "value_cents": 46000000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p76/2111",
+      "fact_ids": [
+        "fisc-f-cbb3d746be61"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            76
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/620",
+      "target": "transfer-to/622",
+      "value_cents": 800000000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p76/2253",
+      "fact_ids": [
+        "fisc-f-71b8362fcfda"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            76
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/622",
+      "target": "transfer-to/621",
+      "value_cents": 1062450000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p222/1269",
+      "fact_ids": [
+        "fisc-f-b3aaabe89d65"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            222
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/623",
+      "target": "transfer-to/621",
+      "value_cents": 35150000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p222/1397",
+      "fact_ids": [
+        "fisc-f-37f2e2290df1"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            222
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/640",
+      "target": "transfer-to/642",
+      "value_cents": 200000000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p76/2554",
+      "fact_ids": [
+        "fisc-f-b8e4c15c4b6c"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            76
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/642",
+      "target": "transfer-to/641",
+      "value_cents": 303400000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p222/1520",
+      "fact_ids": [
+        "fisc-f-1215bb65fa86"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            222
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/730",
+      "target": "transfer-to/731",
+      "value_cents": 61200000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p222/1647",
+      "fact_ids": [
+        "fisc-f-5aa1c83a7a41"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            222
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "transfer-from/100",
+      "target": "fund/210",
+      "value_cents": 49800000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p76/3481",
+      "fact_ids": [
+        "fisc-f-caf3a3d8d90f"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            76
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "transfer-from/100",
+      "target": "fund/310",
+      "value_cents": 34000000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p76/3625",
+      "fact_ids": [
+        "fisc-f-c1accfcaf562"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            76
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "transfer-from/100",
+      "target": "fund/401",
+      "value_cents": 388117300,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p76/2861",
+      "fact_ids": [
+        "fisc-f-879a77616320"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            76
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "transfer-from/100",
+      "target": "fund/402",
+      "value_cents": 255742500,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p76/3005",
+      "fact_ids": [
+        "fisc-f-b51091295096"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            76
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "transfer-from/100",
+      "target": "fund/610",
+      "value_cents": 287000000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p76/1965",
+      "fact_ids": [
+        "fisc-f-011cc6e35bb6"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            76
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "transfer-from/101",
+      "target": "fund/611",
+      "value_cents": 223825100,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p222/1770",
+      "fact_ids": [
+        "fisc-f-dc7a4342d018"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            222
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "transfer-from/101",
+      "target": "fund/731",
+      "value_cents": 446200000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p222/1895",
+      "fact_ids": [
+        "fisc-f-71ed6839cc66"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            222
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "transfer-from/101",
+      "target": "fund/741",
+      "value_cents": 265000000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p222/2020",
+      "fact_ids": [
+        "fisc-f-da1706e3512f"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            222
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "transfer-from/101",
+      "target": "fund/811",
+      "value_cents": 89500000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p222/2147",
+      "fact_ids": [
+        "fisc-f-67e369775fb4"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            222
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "transfer-from/224",
+      "target": "fund/838",
+      "value_cents": 2500000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p222/635",
+      "fact_ids": [
+        "fisc-f-dd8a7cd9b3b9"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            222
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "transfer-from/282",
+      "target": "fund/400",
+      "value_cents": 53130000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p76/3151",
+      "fact_ids": [
+        "fisc-f-d32825df4959"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            76
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "transfer-from/286",
+      "target": "fund/100",
+      "value_cents": 1925000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p76/1231",
+      "fact_ids": [
+        "fisc-f-6359c913209f"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            76
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "transfer-from/290",
+      "target": "fund/839",
+      "value_cents": 2500000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p222/852",
+      "fact_ids": [
+        "fisc-f-3b7b78d4dfc2"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            222
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "transfer-from/311",
+      "target": "fund/100",
+      "value_cents": 25000000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p76/1518",
+      "fact_ids": [
+        "fisc-f-a2bf0f63976a"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            76
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "transfer-from/330",
+      "target": "fund/822",
+      "value_cents": 5000000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p222/2401",
+      "fact_ids": [
+        "fisc-f-3bdcbaee3103"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            222
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "transfer-from/510",
+      "target": "fund/100",
+      "value_cents": 7956800,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p76/1663",
+      "fact_ids": [
+        "fisc-f-152702fba734"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            76
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "transfer-from/510",
+      "target": "fund/823",
+      "value_cents": 102000000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p222/2523",
+      "fact_ids": [
+        "fisc-f-acbc06193ed0"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            222
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "transfer-from/511",
+      "target": "fund/824",
+      "value_cents": 175000000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p222/2702",
+      "fact_ids": [
+        "fisc-f-62626d316c29"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            222
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "transfer-from/512",
+      "target": "fund/825",
+      "value_cents": 592000000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p222/2875",
+      "fact_ids": [
+        "fisc-f-ba29c4fe8b8a"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            222
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "transfer-from/513",
+      "target": "fund/826",
+      "value_cents": 319500000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p222/3000",
+      "fact_ids": [
+        "fisc-f-0350e25a4a1c"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            222
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "transfer-from/551",
+      "target": "fund/829",
+      "value_cents": 100000000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p222/3255",
+      "fact_ids": [
+        "fisc-f-38b0f152eda4"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            222
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "transfer-from/552",
+      "target": "fund/830",
+      "value_cents": 397000000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p222/3380",
+      "fact_ids": [
+        "fisc-f-3bf8e8e44c79"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            222
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "transfer-from/560",
+      "target": "fund/100",
+      "value_cents": 13791700,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p76/1806",
+      "fact_ids": [
+        "fisc-f-816f23885db7"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            76
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "transfer-from/560",
+      "target": "fund/834",
+      "value_cents": 443000000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p222/3981",
+      "fact_ids": [
+        "fisc-f-439035e8dbb3"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            222
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "transfer-from/561",
+      "target": "fund/835",
+      "value_cents": 425000000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p222/4106",
+      "fact_ids": [
+        "fisc-f-de32d7e5884f"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            222
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "transfer-from/580",
+      "target": "fund/836",
+      "value_cents": 5000000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p222/4234",
+      "fact_ids": [
+        "fisc-f-37654ad9adad"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            222
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "transfer-from/600",
+      "target": "fund/601",
+      "value_cents": 6000000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p222/1023",
+      "fact_ids": [
+        "fisc-f-8f52b0c29881"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            222
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "transfer-from/612",
+      "target": "fund/611",
+      "value_cents": 15000000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p222/1147",
+      "fact_ids": [
+        "fisc-f-5dc414f8e3c5"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            222
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "transfer-from/620",
+      "target": "fund/610",
+      "value_cents": 46000000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p76/2111",
+      "fact_ids": [
+        "fisc-f-89a2fb4b2fa5"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            76
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "transfer-from/620",
+      "target": "fund/622",
+      "value_cents": 800000000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p76/2253",
+      "fact_ids": [
+        "fisc-f-402bb100d957"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            76
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "transfer-from/622",
+      "target": "fund/621",
+      "value_cents": 1062450000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p222/1269",
+      "fact_ids": [
+        "fisc-f-d33e19bd5ce6"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            222
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "transfer-from/623",
+      "target": "fund/621",
+      "value_cents": 35150000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p222/1397",
+      "fact_ids": [
+        "fisc-f-6fffb9c5efe9"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            222
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "transfer-from/640",
+      "target": "fund/642",
+      "value_cents": 200000000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p76/2554",
+      "fact_ids": [
+        "fisc-f-aa1243f91297"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            76
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "transfer-from/642",
+      "target": "fund/641",
+      "value_cents": 303400000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p222/1520",
+      "fact_ids": [
+        "fisc-f-f8ce77865ac0"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            222
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "transfer-from/730",
+      "target": "fund/731",
+      "value_cents": 61200000,
+      "kind": "internal_transfer",
+      "transfer_id": "livermore-budget-fy2026-2027/p222/1647",
+      "fact_ids": [
+        "fisc-f-4a0ffc54f5ec"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            222
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    }
+  ]
+}

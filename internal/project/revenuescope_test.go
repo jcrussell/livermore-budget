@@ -99,7 +99,7 @@ func TestRevenueDetailDoesNotEnterTheSpine(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read golden: %v", err)
 	}
-	all := append(spineFacts(t, testYear), revenueDetailFacts(t, revenueScope)...)
+	all := append(withCIPLeg(t, spineFacts(t, testYear)), revenueDetailFacts(t, revenueScope)...)
 
 	got, err := (&sankey{Labels: goldenLabels}).Build(all, testOptions())
 	if err != nil {
