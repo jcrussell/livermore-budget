@@ -3,6 +3,7 @@ package check
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -38,13 +39,21 @@ func (*cutsTieAlongTheLattice) Description() string {
 // does not.
 var budgetBookExceptions = structure.BudgetBookExceptions
 
+// budgetBookSplits is a seam so a test can declare a split the tree does not.
+var budgetBookSplits = structure.BudgetBookSplits
+
 func (*cutsTieAlongTheLattice) Run(_ context.Context, s *Subject) (Result, error) {
 	cuts := structure.AllCuts()
 	exceptions := budgetBookExceptions()
+	splits := budgetBookSplits()
 
 	var findings []Finding
 	if err := structure.ValidateExceptions(exceptions); err != nil {
 		findings = append(findings, finding("exceptions", "%v", err))
+	}
+	if err := structure.ValidateSplits(cuts, splits); err != nil {
+		findings = append(findings, finding("splits", "%v", err))
+		splits = nil
 	}
 
 	// A cut at a level its facts do not sit at, or carrying no fact, is refused
@@ -95,11 +104,21 @@ func (*cutsTieAlongTheLattice) Run(_ context.Context, s *Subject) (Result, error
 	for _, f := range coverage {
 		findings = append(findings, finding("coverage", "%s", f))
 	}
+	var outside []string
+	for _, c := range cuts {
+		if c.Outside != "" && !isEmpty[c.Name] {
+			outside = append(outside, c.Name)
+		}
+	}
+	for _, f := range structure.ValidateOutside(s.Facts, cuts) {
+		findings = append(findings, finding("outside", "%s", f))
+	}
 
 	var (
 		subjects  int
 		clauses   []string
 		refused   int
+		bySplit   int
 		held      []string
 		consulted = map[string]bool{}
 	)
@@ -129,10 +148,15 @@ func (*cutsTieAlongTheLattice) Run(_ context.Context, s *Subject) (Result, error
 	}
 	for i, a := range cuts {
 		for _, b := range cuts[i+1:] {
-			if isEmpty[a.Name] || isEmpty[b.Name] {
+			if isEmpty[a.Name] || isEmpty[b.Name] || a.Outside != "" || b.Outside != "" {
 				continue
 			}
-			c, err := structure.Compare(s.Facts, a, b)
+			sa, sb, held := structure.SplitPair(a, b, splits)
+			if held {
+				bySplit++
+				continue
+			}
+			c, err := structure.Compare(s.Facts, sa, sb)
 			if err != nil {
 				if !tied[[2]string{a.Name, b.Name}] {
 					refused++
@@ -153,6 +177,18 @@ func (*cutsTieAlongTheLattice) Run(_ context.Context, s *Subject) (Result, error
 		c, err := structure.HoldTie(s.Facts, cuts, t, department)
 		if err != nil {
 			findings = append(findings, finding(t.Name, "%v", err))
+			continue
+		}
+		reconcile(c)
+	}
+
+	for _, sp := range splits {
+		if isEmpty[sp.Whole] || slices.ContainsFunc(sp.Parts, func(p string) bool { return isEmpty[p] }) {
+			continue
+		}
+		c, err := structure.HoldSplit(s.Facts, cuts, sp)
+		if err != nil {
+			findings = append(findings, finding(sp.Name, "%v", err))
 			continue
 		}
 		reconcile(c)
@@ -180,6 +216,13 @@ func (*cutsTieAlongTheLattice) Run(_ context.Context, s *Subject) (Result, error
 	}
 	if refused > 0 {
 		summary += fmt.Sprintf(". %d pair(s) no comparison or tie relates", refused)
+	}
+	if bySplit > 0 {
+		summary += fmt.Sprintf(". %d pair(s) held only by a split", bySplit)
+	}
+	if len(outside) > 0 {
+		summary += fmt.Sprintf(". %s outside the reference, its funds carried by no other cut, and compared with none",
+			joinComma(outside))
 	}
 	if len(empty) > 0 {
 		summary += fmt.Sprintf(". %d cut(s) carry no fact and were not compared: %s",

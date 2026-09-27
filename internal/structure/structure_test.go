@@ -241,7 +241,7 @@ func TestTheGeneralFundDepartmentsDecomposeTheSpine(t *testing.T) {
 // cells Reconcile compared.
 func TestAnExcusedCellIsNotCountedAsAgreeingAtZero(t *testing.T) {
 	facts := committedFacts(t)
-	for _, name := range []string{"revenue-detail", "transfers-detail"} {
+	for _, name := range []string{"revenue-detail"} {
 		c, err := structure.Compare(facts, cutNamed(t, name), cutNamed(t, "spine"))
 		if err != nil {
 			t.Fatalf("%s: %v", name, err)

@@ -487,12 +487,12 @@ contributes zero. Capital pays $211,150 of its $28,584,740: Traffic Impact Fee
 
 `TestP76SourcesDecomposeTheResidualByFundType` resolves every payer through
 `registry.FundByLabel` and asserts `spine_TRANSFER_OUT == p76_paid + to_CIP` for
-all six groups in both budget years; `cuts-tie-along-the-lattice`'s
-`transfers-detail` comparison makes the same claim over the published facts,
-with the to-CIP figures declared as the six `p76-lists-no-transfer-to-the-cip-*`
-entries of `structure.BudgetBookExceptions`. Those entries hold Capital and
-Special Revenue together against p73's non-major aggregate rather than against
-p199's split.
+all six groups in both budget years; `cuts-tie-along-the-lattice` makes the
+same claim over the published facts through the split
+`a-transfer-out-is-p76-or-to-the-cip`, which sums p76's transfers out and
+p222's transfers to the CIP by fund group and holds them to the spine. p222
+names each transferring fund, so the sum splits Capital from Special Revenue
+exactly as p199 and p205 do.
 
 `fisc-1wr.4` asks for a residual node. This contract states the residual as
 `headline.transfer_residual_cents` instead, and has `verify` assert it equals

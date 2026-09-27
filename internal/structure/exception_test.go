@@ -16,7 +16,11 @@ import (
 // compared runs Compare over the committed store for two named cuts.
 func compared(t *testing.T, facts []fact.Fact, a, b string) structure.Comparison {
 	t.Helper()
-	got, err := structure.Compare(facts, cutNamed(t, a), cutNamed(t, b))
+	ca, cb, held := structure.SplitPair(cutNamed(t, a), cutNamed(t, b), structure.BudgetBookSplits())
+	if held {
+		t.Fatalf("%q and %q are compared only by a split", a, b)
+	}
+	got, err := structure.Compare(facts, ca, cb)
 	if err != nil {
 		t.Fatalf("compare %q against %q: %v", a, b, err)
 	}
@@ -66,17 +70,11 @@ func TestTheDeclaredExceptionsAreTheWholeResidual(t *testing.T) {
 			"pp.127-130-print-no-general-fund-transfer-in-2026",
 			"pp.127-130-print-no-general-fund-transfer-in-2027",
 		},
-		"transfers-detail -> spine": {
-			"p76-lists-no-transfer-to-the-cip-2026-enterprise",
-			"p76-lists-no-transfer-to-the-cip-2026-internal-service",
-			"p76-lists-no-transfer-to-the-cip-2026-non-major",
-			"p76-lists-no-transfer-to-the-cip-2027-enterprise",
-			"p76-lists-no-transfer-to-the-cip-2027-internal-service",
-			"p76-lists-no-transfer-to-the-cip-2027-non-major",
-		},
-		"general-fund-departments -> spine": nil,
-		"departmentwide ~ spine":            {"p0067-internal-service-is-250000-high-by-object"},
-		"funding-sources ~ spine":           {"p0067-internal-service-is-250000-high-by-fund-group"},
+		"transfers-detail -> spine":                     nil,
+		"transfers-detail + cip-transfers-out -> spine": nil,
+		"general-fund-departments -> spine":             nil,
+		"departmentwide ~ spine":                        {"p0067-internal-service-is-250000-high-by-object"},
+		"funding-sources ~ spine":                       {"p0067-internal-service-is-250000-high-by-fund-group"},
 		"departmentwide ~ funding-sources": {
 			"departmentwide-rounds-administrative-services-2024",
 			"departmentwide-rounds-innovation-and-economic-development-2024",
@@ -92,6 +90,13 @@ func TestTheDeclaredExceptionsAreTheWholeResidual(t *testing.T) {
 	ties := map[string]structure.Comparison{}
 	for _, tie := range structure.BudgetBookTies() {
 		ties[tie.A+" ~ "+tie.B] = heldTie(t, facts, tie)
+	}
+	for _, sp := range structure.BudgetBookSplits() {
+		c, err := structure.HoldSplit(facts, structure.AllCuts(), sp)
+		if err != nil {
+			t.Fatalf("hold split %q: %v", sp.Name, err)
+		}
+		ties[strings.Join(sp.Parts, " + ")+" -> "+sp.Whole] = c
 	}
 	fired := map[string]bool{}
 	for pair, names := range want {
@@ -203,7 +208,7 @@ func TestAnExceptionGoesRed(t *testing.T) {
 	})
 
 	t.Run("a mistyped residual is refused before the store is consulted", func(t *testing.T) {
-		e := exceptionNamed(t, "p76-lists-no-transfer-to-the-cip-2026-non-major")
+		e := exceptionNamed(t, "pp.127-130-print-no-general-fund-transfer-in-2026")
 		e.Residual += 1
 		err := structure.ValidateExceptions([]structure.Exception{e})
 		if err == nil || !strings.Contains(err.Error(), e.Name) || !strings.Contains(err.Error(), "mistyped") {

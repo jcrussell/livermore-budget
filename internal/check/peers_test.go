@@ -26,11 +26,14 @@ func TestTheCommittedPeersOverlapOnlyByDeclaredIdentity(t *testing.T) {
 		t.Errorf("subjects = %d, want the 22 cells pp.127-140 and p76 share", res.Subjects)
 	}
 	for _, want := range []string{
-		"22 shared cell(s) over 3 pair(s)",
+		"22 shared cell(s) over 6 pair(s)",
+		"revenue-detail + cip-funds at fund-by-category: 0 shared cell(s)",
+		"transfers-detail + cip-transfers-out at fund-by-category: 0 shared cell(s)",
+		"transfers-detail + cip-funds at fund-by-category: 0 shared cell(s)",
 		`revenue-detail + transfers-detail at fund-by-category: 22 shared cell(s), 22 under identity "a-transfer-in-is-printed-at-both-ends" carrying $42183495.00 on each side`,
 		"acfr-general-fund-summary + acfr-fund-balances/general at fund-group-by-category: 0 shared cell(s)",
 		"acfr-changes-in-fund-balances + acfr-fund-balances/other-governmental at category: 0 shared cell(s)",
-		"2 pair(s) at one level refused: spine/acfr-general-fund-summary, spine/acfr-fund-balances/general",
+		"4 pair(s) at one level refused: spine/acfr-general-fund-summary, spine/acfr-fund-balances/general, revenue-detail/cip-transfers-out, cip-transfers-out/cip-funds",
 	} {
 		if !strings.Contains(res.Summary, want) {
 			t.Errorf("summary does not say %q", want)

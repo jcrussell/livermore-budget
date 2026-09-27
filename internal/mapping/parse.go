@@ -930,6 +930,10 @@ func validateRule(r *Rule, errf errFunc) error {
 	if err := validateTotalRowKinds(r, errf); err != nil {
 		return err
 	}
+	if r.RowLabelsNameFunds && r.RowLabelsAreFundNumbers {
+		return errf(r.ID, "row_labels_are_fund_numbers",
+			"is declared with row_labels_name_funds; a label is a fund's name or its number, not both")
+	}
 	if err := validateRowLabelFunds(r, errf); err != nil {
 		return err
 	}

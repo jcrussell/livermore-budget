@@ -492,6 +492,14 @@ type Rule struct {
 	// not assert direction.
 	RowLabelsNameFunds bool `yaml:"row_labels_name_funds"`
 
+	// RowLabelsAreFundNumbers declares that every row's label is the printed
+	// number of the fund the row declares, and that on a row with a
+	// counterpart the first field of its label_tail is the printed number of
+	// the counterpart's fund. Budget Book p222 prints its receiving CIP fund
+	// and its transferring operating fund as two number columns in that order,
+	// so row-funds-match-their-anchors holds both ends, direction included.
+	RowLabelsAreFundNumbers bool `yaml:"row_labels_are_fund_numbers"`
+
 	// Note records why this rule looks the way it does, for the next reader.
 	Note string `yaml:"note"`
 }
@@ -608,6 +616,11 @@ type Part struct {
 	// not reliably a row's own: Budget Book p167 wraps "INNOVATION & ECONOMIC
 	// DEVELOPEMENT TOTAL" onto a second line too, and under one-rule-per-
 	// division that TOTAL line belongs to no rule's row set.
+	//
+	// A gap may hold several fragments, one to a printed line, each declared
+	// on its own: p222 ends one row's description and begins the next row's
+	// between their figures. A line in the gap that is not declared refuses
+	// the whole gap.
 	//
 	// A declared fragment the page does not use is an error, for the same
 	// reason a stated_total_delta that now ties exactly is one: the
@@ -898,6 +911,11 @@ type Row struct {
 	// what makes this a two-anchor match rather than a relaxation of the
 	// substring match -- a word appearing between the fields is still a row
 	// the rule has not accounted for.
+	//
+	// A tail of several words names several fields: each matches with any run
+	// of spaces or tabs before the next, and never across a line break. p222
+	// prints "601   600       Airport", so a label of "601" takes the tail
+	// "600 Airport" without spelling the kerning.
 	LabelTail string `yaml:"label_tail"`
 
 	Category   string `yaml:"category"`

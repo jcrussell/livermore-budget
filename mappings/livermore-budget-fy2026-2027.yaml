@@ -3372,6 +3372,149 @@ rules:
          counterpart: {category: "transfers/out", kind: transfer_out, fund: 550, fund_group: capital}}
 
   # ==========================================================================
+  # BUDGET BOOK p222, CIP "FUNDING SOURCES" -- scope: cip-funding-sources.
+  #
+  # THE DESTINATION OF THE SPINE'S TRANSFERS TO THE CIP. pp.66-67's TRANSFER
+  # OUT includes each group's transfers to the Capital Improvement Program and
+  # p76 lists none of them; this page lists them fund by fund, as a receiving
+  # CIP fund and a transferring operating fund. The 28 rows naming an operating
+  # fund sum to 38,086,737 and 50,762,251, p0073.txt:58 and p0075.txt:58's
+  # "Transfers Out to CIP", and to 92,968,752 in FY2024-25, p0071.txt:58's.
+  #
+  # ITS OWN SCOPE, because the CIP funds are outside the spine: p0204 prints
+  # "Capital Improvement Program Funds" apart from the operating fund groups,
+  # while data/funds.yaml types each CIP fund by the fund type the appendix
+  # prints (811-840 capital, 601/611/621/641 enterprise, 731/741 internal
+  # service). So the receiving leg carries its CIP fund's type as its group.
+  #
+  # ONE PRINTED FIGURE, TWO FACTS, as on p76: the row's fund is the receiving
+  # CIP fund and the counterpart the transferring operating fund, both citing
+  # the figure's one offset. The row IS the two printed fund numbers, so the
+  # label is the receiving number and label_tail the transferring number and,
+  # where the page prints it on that line, the description.
+  #
+  # THREE KINDS UNDER ONE PRINTED "Totals", which covers every row:
+  #   - transfers: the 28 rows naming an operating fund;
+  #   - grants, printed with no operating fund at 816/817/818/611/601/731/621,
+  #     as revenue of the CIP fund: pp.198/204's CIP Funds row prints revenues
+  #     of 7,814,799 and 8,226,620, these rows exactly. They are filed at
+  #     `intergovernmental` and not at its grant lines, which are pp.127-140's
+  #     row vocabulary; the row label keeps federal, state and local;
+  #   - Measure B 831/832, printed with no operating fund and not revenue, as a
+  #     draw on the CIP funds' own balance. p0198.txt:19 prints that row
+  #     opening at 1,603,591 and closing at 420,504 in FY2025-26, a change of
+  #     exactly 1,183,087 = 293,087 + 890,000, and p0204.txt:19 opens and
+  #     closes at 420,504 with both rows "-". fund-balance/use-for-cip is
+  #     oriented as this page prints it: positive is money drawn.
+  # ==========================================================================
+  - id: p222-cip-funding-sources
+    kind: transfer_in
+    basis: adopted
+    scope: cip-funding-sources
+    grain: fund-by-category
+    units: dollars
+    total_row: "Totals"
+    row_labels_are_fund_numbers: true
+    parts:
+      - page: 222
+        section: "(Receiving) (Transferring)"
+        stop_at: "Totals"
+        column_headers: ["FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        # Every description that wraps prints its figures on its middle line,
+        # so the fragments land either side of the row. 838's tail and 839's
+        # head share one gap, a line each.
+        wrapped_labels:
+          - "Community Development Block"
+          - "Grant (CDBG)"
+          - "Housing & Human Services"
+          - "(HHS) Facility Fee"
+          - "Tri Valley Transportation"
+          - "Council (TVTC) Fees"
+          - "Measure F Vehicle Registration"
+          - "Fees"
+          - "South Livermore Specific Plan /"
+          - "Assessment District Close Out"
+        columns:
+          - {fiscal_year: 2025, basis: revised}
+          - {fiscal_year: 2026}
+          - {fiscal_year: 2027}
+    rows:
+      - {label: "838", label_tail: "224", category: "transfers/in", fund: 838, fund_group: capital,
+         counterpart: {category: "transfers/out-to-cip", kind: transfer_out, fund: 224, fund_group: special-revenue}}
+      - {label: "839", label_tail: "290", category: "transfers/in", fund: 839, fund_group: capital,
+         counterpart: {category: "transfers/out-to-cip", kind: transfer_out, fund: 290, fund_group: special-revenue}}
+      - {label: "601", label_tail: "600 Airport", category: "transfers/in", fund: 601, fund_group: enterprise,
+         counterpart: {category: "transfers/out-to-cip", kind: transfer_out, fund: 600, fund_group: enterprise}}
+      - {label: "611", label_tail: "612 Storm Drain", category: "transfers/in", fund: 611, fund_group: enterprise,
+         counterpart: {category: "transfers/out-to-cip", kind: transfer_out, fund: 612, fund_group: enterprise}}
+      - {label: "621", label_tail: "622 Sewer Replacement", category: "transfers/in", fund: 621, fund_group: enterprise,
+         counterpart: {category: "transfers/out-to-cip", kind: transfer_out, fund: 622, fund_group: enterprise}}
+      # "Conncetion" as printed.
+      - {label: "621", label_tail: "623 Sewer Conncetion Fees", category: "transfers/in", fund: 621, fund_group: enterprise,
+         counterpart: {category: "transfers/out-to-cip", kind: transfer_out, fund: 623, fund_group: enterprise}}
+      - {label: "641", label_tail: "642 Water Replacement", category: "transfers/in", fund: 641, fund_group: enterprise,
+         counterpart: {category: "transfers/out-to-cip", kind: transfer_out, fund: 642, fund_group: enterprise}}
+      - {label: "731", label_tail: "730 Fleet", category: "transfers/in", fund: 731, fund_group: internal-service,
+         counterpart: {category: "transfers/out-to-cip", kind: transfer_out, fund: 730, fund_group: internal-service}}
+      # Fund 101, General Fund CIP Reserves, pays four CIP funds.
+      - {label: "611", label_tail: "101 CIP Reserves - Storm", category: "transfers/in", fund: 611, fund_group: enterprise,
+         counterpart: {category: "transfers/out-to-cip", kind: transfer_out, fund: 101, fund_group: capital}}
+      - {label: "731", label_tail: "101 CIP Reserves - Fleet", category: "transfers/in", fund: 731, fund_group: internal-service,
+         counterpart: {category: "transfers/out-to-cip", kind: transfer_out, fund: 101, fund_group: capital}}
+      - {label: "741", label_tail: "101 CIP Reserves - Facilities", category: "transfers/in", fund: 741, fund_group: internal-service,
+         counterpart: {category: "transfers/out-to-cip", kind: transfer_out, fund: 101, fund_group: capital}}
+      - {label: "811", label_tail: "101 CIP Reserves - Govt", category: "transfers/in", fund: 811, fund_group: capital,
+         counterpart: {category: "transfers/out-to-cip", kind: transfer_out, fund: 101, fund_group: capital}}
+      - {label: "813", label_tail: "211 Asset Seizure - County", category: "transfers/in", fund: 813, fund_group: capital,
+         counterpart: {category: "transfers/out-to-cip", kind: transfer_out, fund: 211, fund_group: special-revenue}}
+      - {label: "822", label_tail: "330 Library Donation", category: "transfers/in", fund: 822, fund_group: capital,
+         counterpart: {category: "transfers/out-to-cip", kind: transfer_out, fund: 330, fund_group: special-revenue}}
+      - {label: "823", label_tail: "510 Traffic Impact Fees (TIF)", category: "transfers/in", fund: 823, fund_group: capital,
+         counterpart: {category: "transfers/out-to-cip", kind: transfer_out, fund: 510, fund_group: capital}}
+      - {label: "824", label_tail: "511", category: "transfers/in", fund: 824, fund_group: capital,
+         counterpart: {category: "transfers/out-to-cip", kind: transfer_out, fund: 511, fund_group: capital}}
+      - {label: "825", label_tail: "512 Park Fees", category: "transfers/in", fund: 825, fund_group: capital,
+         counterpart: {category: "transfers/out-to-cip", kind: transfer_out, fund: 512, fund_group: capital}}
+      - {label: "826", label_tail: "513 Solid Waste & Recycling", category: "transfers/in", fund: 826, fund_group: capital,
+         counterpart: {category: "transfers/out-to-cip", kind: transfer_out, fund: 513, fund_group: capital}}
+      - {label: "827", label_tail: "540 2022 COPS Construction Fund", category: "transfers/in", fund: 827, fund_group: capital,
+         counterpart: {category: "transfers/out-to-cip", kind: transfer_out, fund: 540, fund_group: capital}}
+      - {label: "829", label_tail: "551 Measure BB Bike/Ped", category: "transfers/in", fund: 829, fund_group: capital,
+         counterpart: {category: "transfers/out-to-cip", kind: transfer_out, fund: 551, fund_group: capital}}
+      - {label: "830", label_tail: "552 Measure BB Streets", category: "transfers/in", fund: 830, fund_group: capital,
+         counterpart: {category: "transfers/out-to-cip", kind: transfer_out, fund: 552, fund_group: capital}}
+      - {label: "831", label_tail: "Measure B Bike/Ped", category: "fund-balance/use-for-cip", kind: fund_balance,
+         fund: 831, fund_group: capital}
+      - {label: "832", label_tail: "Measure B Streets", category: "fund-balance/use-for-cip", kind: fund_balance,
+         fund: 832, fund_group: capital}
+      - {label: "833", label_tail: "553", category: "transfers/in", fund: 833, fund_group: capital,
+         counterpart: {category: "transfers/out-to-cip", kind: transfer_out, fund: 553, fund_group: capital}}
+      - {label: "834", label_tail: "560 Gas Tax", category: "transfers/in", fund: 834, fund_group: capital,
+         counterpart: {category: "transfers/out-to-cip", kind: transfer_out, fund: 560, fund_group: capital}}
+      - {label: "835", label_tail: "561 SB1", category: "transfers/in", fund: 835, fund_group: capital,
+         counterpart: {category: "transfers/out-to-cip", kind: transfer_out, fund: 561, fund_group: capital}}
+      - {label: "836", label_tail: "580 Developer Deposit", category: "transfers/in", fund: 836, fund_group: capital,
+         counterpart: {category: "transfers/out-to-cip", kind: transfer_out, fund: 580, fund_group: capital}}
+      - {label: "837", label_tail: "583", category: "transfers/in", fund: 837, fund_group: capital,
+         counterpart: {category: "transfers/out-to-cip", kind: transfer_out, fund: 583, fund_group: capital}}
+      - {label: "816", label_tail: "Federal Grant Govt", category: "intergovernmental", kind: revenue,
+         fund: 816, fund_group: capital}
+      - {label: "817", label_tail: "State Grant Govt", category: "intergovernmental", kind: revenue,
+         fund: 817, fund_group: capital}
+      - {label: "818", label_tail: "Local Grant Govt", category: "intergovernmental", kind: revenue,
+         fund: 818, fund_group: capital}
+      - {label: "611", label_tail: "Federal Grant Storm", category: "intergovernmental", kind: revenue,
+         fund: 611, fund_group: enterprise}
+      - {label: "611", label_tail: "State Grant Storm", category: "intergovernmental", kind: revenue,
+         fund: 611, fund_group: enterprise}
+      - {label: "601", label_tail: "Federal Grant Airport", category: "intergovernmental", kind: revenue,
+         fund: 601, fund_group: enterprise}
+      - {label: "731", label_tail: "State Grant Fleet", category: "intergovernmental", kind: revenue,
+         fund: 731, fund_group: internal-service}
+      - {label: "621", label_tail: "State Grant Sewer", category: "intergovernmental", kind: revenue,
+         fund: 621, fund_group: enterprise}
+
+  # ==========================================================================
   # DEPARTMENT FUNDING SOURCES, pp. 85-125 (fisc-71j)
   #
   # Fourteen pages print "DEPARTMENTWIDE EXPENDITURES WITH FUNDING SOURCES" for

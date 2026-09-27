@@ -362,7 +362,7 @@ func TestLoadRealRegistries(t *testing.T) {
 	cats := r.Categories()
 	// Plus one line entry per distinct revenue row pp.127-140 print: 101,
 	// measured off facts/facts.jsonl on 2026-09-12.
-	if got, want := len(cats), 40+101; got != want {
+	if got, want := len(cats), 41+101; got != want {
 		t.Errorf("len(Categories()) = %d, want %d", got, want)
 	}
 	if got, want := len(r.FundGroups()), 7; got != want {
@@ -398,7 +398,7 @@ func TestLoadRealRegistries(t *testing.T) {
 	if diff := cmp.Diff(wantUnassignable, unassignable); diff != "" {
 		t.Errorf("non-assignable slugs mismatch (-want +got):\n%s", diff)
 	}
-	if got, want := len(derived), 16; got != want {
+	if got, want := len(derived), 17; got != want {
 		t.Errorf("derived categories = %d %v, want %d", got, derived, want)
 	}
 

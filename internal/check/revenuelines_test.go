@@ -282,7 +282,7 @@ func TestRevenueLinesAreDistinctFromRollupChildren(t *testing.T) {
 		"fund-balance/assigned", "fund-balance/beginning", "fund-balance/change",
 		"fund-balance/committed", "fund-balance/ending", "fund-balance/excess-of-revenues",
 		"fund-balance/nonspendable", "fund-balance/reserve-increase", "fund-balance/restricted",
-		"fund-balance/unassigned", "taxes/other", "taxes/property", "taxes/sales",
+		"fund-balance/unassigned", "fund-balance/use-for-cip", "taxes/other", "taxes/property", "taxes/sales",
 		"transfers/in", "transfers/out", "transfers/out-to-cip",
 	}
 	if diff := cmp.Diff(wantRollupChildren, rollupChildren); diff != "" {

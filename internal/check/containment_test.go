@@ -26,7 +26,7 @@ func TestTheCommittedCutsTieAlongTheLattice(t *testing.T) {
 		t.Fatalf("status = %s, findings:\n  %v", res.Status, res.Findings)
 	}
 	for _, want := range []string{
-		"7 comparison(s) of 10 cut(s)",
+		"8 comparison(s) of 12 cut(s)",
 		"departmentwide ~ funding-sources at department: 39 cells over FY2024 actual, FY2025 revised, FY2026 adopted, FY2027 adopted",
 		"general-fund-departments ~ funding-sources at department: 42 cells over FY2024 actual, FY2025 revised, FY2026 adopted, FY2027 adopted",
 		"revenue-detail -> spine at fund-group-by-category",
@@ -34,10 +34,14 @@ func TestTheCommittedCutsTieAlongTheLattice(t *testing.T) {
 		"general-fund-departments -> spine at fund-group-by-category",
 		"departmentwide ~ spine at category",
 		"funding-sources ~ spine at fund-group",
-		// Excused cells are neither compared nor agreeing at zero.
-		"transfers-detail -> spine at fund-group-by-category: 18 cells over FY2026 adopted, FY2027 adopted, 8 one-sided at zero, 6 held apart",
-		// 40 pairs Compare refuses, less the two a declared tie holds.
-		"38 pair(s) no comparison or tie relates",
+		// The split takes transfers out, so p76 meets the spine on transfers in.
+		"transfers-detail -> spine at fund-group-by-category: 14 cells over FY2026 adopted, FY2027 adopted, 6 one-sided at zero",
+		"transfers-detail + cip-transfers-out -> spine at fund-group: 12 cells over FY2026 adopted, FY2027 adopted, 2 one-sided at zero",
+		"1 pair(s) held only by a split",
+		"cip-funds outside the reference, its funds carried by no other cut, and compared with none",
+		// 66 pairs of 12 cuts: 5 compared, 11 with the outside cut, 1 held
+		// only by the split, 2 held by a declared tie, and these.
+		"47 pair(s) no comparison or tie relates",
 	} {
 		if !strings.Contains(res.Summary, want) {
 			t.Errorf("summary does not say %q", want)

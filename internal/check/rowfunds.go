@@ -3,6 +3,7 @@ package check
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/jcrussell/livermore-budget/internal/mapping"
@@ -109,6 +110,8 @@ func (*rowFundsMatchTheirAnchors) Run(_ context.Context, s *Subject) (Result, er
 	// bare counts the subjects the bare-label arm resolved, so the summary can keep
 	// the two claims apart rather than averaging them into one false sentence.
 	bare := 0
+	// numbered counts the ends the fund-number arm resolved.
+	numbered := 0
 	var unanchoredRows []string
 	// The rules an unphrased declaration belongs to, deduplicated: 78 rows over
 	// eleven rules is a list of eleven, not of 78. See the note where it is
@@ -153,6 +156,39 @@ func (*rowFundsMatchTheirAnchors) Run(_ context.Context, s *Subject) (Result, er
 				}
 
 				namedNear, namedFar, phrased := false, false, false
+
+				// THE FUND-NUMBER ARM. The label is the row's own fund as the
+				// page prints it, and on a transfer the tail's first field is
+				// the payer's, so both ends are held, direction included. An
+				// end the row declares and the page does not number is a
+				// finding, never a skip.
+				if ru.RowLabelsAreFundNumbers {
+					ends := []struct {
+						printed string
+						want    int
+						end     string
+					}{{row.Label, near, "receives"}}
+					if far != 0 {
+						tail, _, _ := strings.Cut(row.LabelTail, " ")
+						ends = append(ends, struct {
+							printed string
+							want    int
+							end     string
+						}{tail, far, "pays"})
+					}
+					for _, e := range ends {
+						subjects++
+						numbered++
+						if n, err := strconv.Atoi(e.printed); err != nil || n != e.want {
+							findings = append(findings, finding(
+								fmt.Sprintf("%s %q", ru.ID, row.PrintedLabel()),
+								"this rule declares that its rows print fund numbers, and the "+
+									"page prints %q where this row declares that the fund which "+
+									"%s is %d", e.printed, e.end, e.want))
+						}
+					}
+					continue
+				}
 
 				// THE BARE-LABEL ARM, and it runs before the prefix arm
 				// because the two read the same string for different
@@ -373,7 +409,7 @@ func (*rowFundsMatchTheirAnchors) Run(_ context.Context, s *Subject) (Result, er
 		// false for the bare-label rows the moment they became subjects. A verb
 		// phrase carries direction and this check reads it; a bare fund name
 		// carries none and it must not claim to.
-		held:     heldLine(subjects, bare) + unanchoredNote,
+		held:     heldLine(subjects-numbered, bare) + numberedClause(numbered) + unanchoredNote,
 		nothing:  nothing,
 		findings: findings,
 	}.result(), nil
@@ -412,6 +448,16 @@ func heldLine(subjects, bare int) string {
 			"fund name under row_labels_name_funds, each the fund its row declares -- a "+
 			"bare label names no direction, so none is checked", subjects, phrased, bare)
 	}
+}
+
+// numberedClause states the fund-number arm's claim, or nothing where no rule
+// declares row_labels_are_fund_numbers.
+func numberedClause(numbered int) string {
+	if numbered == 0 {
+		return ""
+	}
+	return fmt.Sprintf("; and %d printed fund numbers under row_labels_are_fund_numbers, each "+
+		"the fund its row declares at the end whose column prints it", numbered)
 }
 
 // anchorHasVerbPhrase reports whether a printed anchor opens with one of the

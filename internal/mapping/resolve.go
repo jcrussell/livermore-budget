@@ -478,7 +478,7 @@ func (r *Resolver) labelledValues(rule *Rule, p *Part, blk *block, guard *column
 
 		after := cursor + j + len(row.Label)
 		if row.LabelTail != "" {
-			k := strings.Index(blk.Text[after:], row.LabelTail)
+			k, n := findFields(blk.Text[after:], row.LabelTail)
 			if k < 0 {
 				return nil, fail("rows", fmt.Sprintf(
 					"row %q: second anchor %q does not occur after it",
@@ -494,7 +494,7 @@ func (r *Resolver) labelledValues(rule *Rule, p *Part, blk *block, guard *column
 						"separate them; a word here means the anchors matched "+
 						"different rows")
 			}
-			after += k + len(row.LabelTail)
+			after += k + n
 		}
 		toks, err := dropCurrencyMarks(tokens(blk.Text[after:], blk.Start+after))
 		if err != nil {
@@ -518,8 +518,8 @@ func (r *Resolver) labelledValues(rule *Rule, p *Part, blk *block, guard *column
 	// Anything after the last row's figures is a row the rule did not map --
 	// unless the page wrapped a label there, which is the same shape as a gap
 	// between two rows and is declared the same way.
-	if rest := strings.TrimSpace(blk.Text[cursor:]); rest != "" {
-		if !slices.Contains(p.WrappedLabels, rest) && !declaresUnmapped(p, rest) {
+	if rest := strings.TrimSpace(blk.Text[cursor:]); rest != "" && !wrappedGap(p, rest, used) {
+		if !declaresUnmapped(p, rest) {
 			return nil, fail("rows", fmt.Sprintf(
 				"%q follows the last mapped row but is not mapped", rest),
 				"every row inside the block must be listed in rows, with skip: true "+
@@ -614,8 +614,7 @@ func (r *Resolver) checkGap(rule *Rule, p *Part, gap string, rows []Row, i int,
 			}
 			gap = gap[nl+1:]
 		}
-		if trimmed := strings.TrimSpace(gap); slices.Contains(p.WrappedLabels, trimmed) {
-			used[trimmed] = true
+		if wrappedGap(p, strings.TrimSpace(gap), used) {
 			return nil
 		}
 		// NOTE: unmapped_text is deliberately NOT honoured here. This gap is
@@ -640,8 +639,7 @@ func (r *Resolver) checkGap(rule *Rule, p *Part, gap string, rows []Row, i int,
 	if trimmed == "" {
 		return nil
 	}
-	if slices.Contains(p.WrappedLabels, trimmed) {
-		used[trimmed] = true
+	if wrappedGap(p, trimmed, used) {
 		return nil
 	}
 	if declaresUnmapped(p, trimmed) {
@@ -656,6 +654,72 @@ func (r *Resolver) checkGap(rule *Rule, p *Part, gap string, rows []Row, i int,
 			"wrapped_labels if the page wrapped a label onto its own line, or to "+
 			"unmapped_text if it is a figure belonging to no row; leaving it out "+
 			"would publish a breakdown that does not add up")
+}
+
+// wrappedGap reports whether a trimmed gap is wrapped label text the part
+// declares, and marks what it used. The gap is either one declared fragment or
+// several, one to a printed line: Budget Book p222 ends one row's description
+// and begins the next row's on the two lines between their figures. Each line
+// is matched whole and trimmed, so the declaration names fragments rather than
+// the run of spaces between them, and a line that is not declared refuses the
+// whole gap.
+func wrappedGap(p *Part, trimmed string, used map[string]bool) bool {
+	if slices.Contains(p.WrappedLabels, trimmed) {
+		used[trimmed] = true
+		return true
+	}
+	lines := strings.Split(trimmed, "\n")
+	if len(lines) < 2 {
+		return false
+	}
+	var frags []string
+	for _, l := range lines {
+		l = strings.TrimSpace(l)
+		if l == "" {
+			continue
+		}
+		if !slices.Contains(p.WrappedLabels, l) {
+			return false
+		}
+		frags = append(frags, l)
+	}
+	for _, f := range frags {
+		used[f] = true
+	}
+	return true
+}
+
+// findFields finds the first run of s that is tail's whitespace-separated
+// fields in order, separated by spaces or tabs and never by a line break, and
+// returns its offset and length, or -1. A tail spanning several printed fields
+// names each field and not the kerning between them, which is what p222's
+// "600       Airport" after a label of "601" needs.
+func findFields(s, tail string) (int, int) {
+	fields := strings.Fields(tail)
+	for from := 0; ; {
+		i := strings.Index(s[from:], fields[0])
+		if i < 0 {
+			return -1, 0
+		}
+		start := from + i
+		end := start + len(fields[0])
+		ok := true
+		for _, f := range fields[1:] {
+			j := end
+			for j < len(s) && (s[j] == ' ' || s[j] == '\t') {
+				j++
+			}
+			if j == end || !strings.HasPrefix(s[j:], f) {
+				ok = false
+				break
+			}
+			end = j + len(f)
+		}
+		if ok {
+			return start, end - start
+		}
+		from = start + 1
+	}
 }
 
 // declaresUnmapped reports whether the part declares this exact gap text as a

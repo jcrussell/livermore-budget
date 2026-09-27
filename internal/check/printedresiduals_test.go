@@ -63,18 +63,6 @@ func TestEveryExceptionResidualIsPrintedWhereItSaysItIs(t *testing.T) {
 			[]printed{{66, 24, "480,400"}}, func(v []int64) int64 { return v[0] }},
 		"pp.127-130-print-no-general-fund-transfer-in-2027": {
 			[]printed{{66, 24, "486,735"}}, func(v []int64) int64 { return v[0] }},
-		"p76-lists-no-transfer-to-the-cip-2026-enterprise": {
-			[]printed{{73, 55, "9,393,147"}, {73, 53, "40,000"}}, func(v []int64) int64 { return v[0] - v[1] }},
-		"p76-lists-no-transfer-to-the-cip-2026-internal-service": {
-			[]printed{{73, 53, "40,000"}}, func(v []int64) int64 { return v[0] }},
-		"p76-lists-no-transfer-to-the-cip-2026-non-major": {
-			[]printed{{73, 56, "28,693,590"}}, func(v []int64) int64 { return v[0] }},
-		"p76-lists-no-transfer-to-the-cip-2027-enterprise": {
-			[]printed{{75, 55, "14,832,000"}, {75, 53, "612,000"}}, func(v []int64) int64 { return v[0] - v[1] }},
-		"p76-lists-no-transfer-to-the-cip-2027-internal-service": {
-			[]printed{{75, 53, "612,000"}}, func(v []int64) int64 { return v[0] }},
-		"p76-lists-no-transfer-to-the-cip-2027-non-major": {
-			[]printed{{75, 56, "35,930,251"}}, func(v []int64) int64 { return v[0] }},
 		"p0067-internal-service-is-250000-high-by-fund-group": {
 			[]printed{{67, 34, "26,544,515"}, {183, 64, "26,294,515"}}, func(v []int64) int64 { return v[0] - v[1] }},
 	}

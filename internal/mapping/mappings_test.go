@@ -422,7 +422,8 @@ func TestPublishedPartsDeclareColumnHeaders(t *testing.T) {
 	// two groups declare the same four headers over the same pages because
 	// checkColumnGrids is per (doc_id, page) and all-or-none, so a division part
 	// omitting the list would be a hard parse error rather than a weaker read.
-	if want := 168; parts != want {
+	// And p222, the CIP funding bridge, one part.
+	if want := 169; parts != want {
 		t.Errorf("checked %d parts, want %d; the published file's shape changed",
 			parts, want)
 	}

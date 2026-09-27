@@ -693,7 +693,7 @@ categories:
     label: "Intergovernmental"
     document_term: "Intergovernmental"
     kinds: [revenue]
-    pages: [41, 66, 128, 131, 133, 134, 135, 136, 137, 138, 139, 140, 168]
+    pages: [41, 66, 128, 131, 133, 134, 135, 136, 137, 138, 139, 140, 168, 222]
     note: >-
       PAGES 41 AND 168 ARE THE ACFR, not Budget Book pages — see the note on
       `pages` in this file's header, and `taxes/sales` for why they are on
@@ -1806,6 +1806,28 @@ categories:
       extraction caveat as fund-balance/ending: on pp. 69/71/73/75 the header
       appears in the page text as "Reserve" and "Increase/(Use)" separated by
       the other column labels.
+
+  #@cite p0222 "831 Measure B Bike/Ped 146,913 293,087 -"
+  #@cite p0198 "Capital Improvement Program Funds 1,603,591 7,814,799 38,086,737"
+  - slug: fund-balance/use-for-cip
+    label: "Fund Balance Used for the CIP"
+    parent: fund-balance
+    kinds: [fund_balance]
+    pages: [222]
+    derived: true
+    rationale: >-
+      p222 lists two rows, Measure B 831 and 832, as CIP funding sources with
+      no transferring fund, and they are not revenue: the CIP funds' revenues
+      on p198 and p204 are the grant rows exactly. They are the CIP funds'
+      own balance, spent. p198 prints the CIP funds opening FY2025-26 at
+      1,603,591 and closing at 420,504, a draw of 1,183,087 = 293,087 +
+      890,000. Oriented as p222 prints it, a positive figure is money drawn
+      from the balance, so this is NOT fund-balance/change, whose positive
+      is an increase.
+    source_note: >-
+      Budget Book p. 222 (rows 831 and 832) and p. 198 (the Capital
+      Improvement Program Funds row, whose opening and closing balances prove
+      the draw). The label is ours; p222 prints only the fund names.
 
   # The GASB 54 components, from ACFR p167 (Fund Balances of Governmental
   # Funds, mapped at scope acfr-fund-balances). The rows print bare

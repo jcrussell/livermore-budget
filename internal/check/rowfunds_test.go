@@ -2,6 +2,7 @@ package check
 
 import (
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 
@@ -136,13 +137,14 @@ func TestTheCommittedCorpusRowAnchorsHold(t *testing.T) {
 	// Their rules declare row_labels_name_funds, so the label is resolved whole
 	// and the hand-typed number is checked against it.
 	//
-	// 118 IS THE NUMBER THAT SAYS SO: 40 printed anchors on p76 plus these 78.
+	// 180 IS THE NUMBER THAT SAYS SO: 40 printed anchors on p76 plus these 78,
+	// plus p222's 62 printed fund numbers -- 36 receiving ends and 26 paying.
 	// Asserting the count rather than the absence of the old clause is
 	// deliberate -- a regression that dropped the arm entirely would delete the
 	// clause too, and an absence assertion would pass on it.
-	if res.Subjects != 118 {
-		t.Errorf("the check resolves %d row anchors, want 118: 40 printed on p76 plus "+
-			"the 78 bare fund labels on pp.85-125\n%s", res.Subjects, res.Summary)
+	if res.Subjects != 180 {
+		t.Errorf("the check resolves %d row anchors, want 180: 40 printed on p76, "+
+			"the 78 bare fund labels on pp.85-125 and p222's 62 fund numbers\n%s", res.Subjects, res.Summary)
 	}
 	// THE WORDING SEARCHED FOR HERE IS THE ONE THE CODE EMITS, checked against
 	// rowfunds.go rather than remembered. A negative assertion over a string no
@@ -199,9 +201,9 @@ func TestTheBareLabelArmIsWhatTheDeclarationTurnsOn(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
-	if res.Subjects != 40 {
+	if res.Subjects != 102 {
 		t.Errorf("with the declaration cleared the check resolves %d row anchors, "+
-			"want 40 -- the p76 anchors alone", res.Subjects)
+			"want 102 -- the p76 anchors and p222's fund numbers alone", res.Subjects)
 	}
 	if !strings.Contains(res.Summary, "a further 78 declared fund(s) sit at an end this "+
 		"check does not read") {
@@ -417,11 +419,12 @@ func TestRowFundsCatchesASameGroupEndSwap(t *testing.T) {
 // tell the new arm from the old test is green because the other gate fired --
 // which is the shape AGENTS.md names and which this repo has shipped four times.
 //
-// Measured with the arm in place: `fisc verify` goes red on
-// row-funds-match-their-anchors alone, with 1 finding over 118 row anchors,
-// while fact-funds-resolve and cuts-tie-along-the-lattice both stay PASS --
-// 640 and 641 are both `enterprise` in data/funds.yaml, so no money leaves its
-// group and no sum moves. Deleting the BARE-LABEL arm from Run -- the second of
+// The swap is Water 640 -> Water Replacement 642: both `enterprise` in
+// data/funds.yaml, so no money leaves its group and no sum moves, and
+// fact-funds-resolve and cuts-tie-along-the-lattice both stay PASS. Its CIP
+// twin 641 is no longer such a swap: 641 is a fund of the cip-funds cut, which
+// is outside the reference, so cuts-tie-along-the-lattice refuses it -- the
+// last subtest holds that. Deleting the BARE-LABEL arm from Run -- the second of
 // the two gated on ru.RowLabelsNameFunds, not the phrased-label refusal above it
 // -- returns it to green.
 func TestRowFundsCatchesABareLabelTwinTheGateDoesNot(t *testing.T) {
@@ -429,10 +432,7 @@ func TestRowFundsCatchesABareLabelTwinTheGateDoesNot(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	// Water 640 -> CIP Water 641, with the fund group left alone. All four of
-	// Public Works' operating/CIP twins keep their operating fund's type -- the
-	// OPPOSITE of p76, where every twin is capital -- which is exactly why the
-	// group is not touched here and why the two sibling checks below stay green.
+	// Water 640 -> Water Replacement 642, with the fund group left alone.
 	swapped := 0
 	for _, f := range s.Files {
 		for i := range f.Rules {
@@ -444,7 +444,7 @@ func TestRowFundsCatchesABareLabelTwinTheGateDoesNot(t *testing.T) {
 				if row.Fund != 640 {
 					t.Fatalf("row %q declares fund %d, want 640", row.Label, row.Fund)
 				}
-				row.Fund = 641
+				row.Fund = 642
 				swapped++
 			}
 		}
@@ -464,7 +464,7 @@ func TestRowFundsCatchesABareLabelTwinTheGateDoesNot(t *testing.T) {
 	for _, f := range res.Findings {
 		b.WriteString(f.Subject + ": " + f.Detail + "\n")
 	}
-	for _, want := range []string{`funding-public-works "Water"`, "fund 640", "fund 641"} {
+	for _, want := range []string{`funding-public-works "Water"`, "fund 640", "fund 642"} {
 		if !strings.Contains(b.String(), want) {
 			t.Errorf("no finding mentions %q:\n%s", want, b.String())
 		}
@@ -478,12 +478,13 @@ func TestRowFundsCatchesABareLabelTwinTheGateDoesNot(t *testing.T) {
 	// cutsTieAlongTheLattice read s.Facts, everything above reads s.Files, and
 	// with only the rules mutated both pass without ever seeing the swap.
 	// Editing the facts in place is what `fisc build` would emit from the
-	// mutated rule: 640 and 641 are both enterprise, so no group sum moves.
+	// mutated rule: 640 and 642 are both enterprise, so no group sum moves.
+	original := slices.Clone(s.Facts)
 	swappedFacts := 0
 	for i := range s.Facts {
 		f := &s.Facts[i]
 		if f.RuleID == "funding-public-works" && f.Fund != nil && *f.Fund == 640 {
-			f.Fund = fact.FundNumber(641)
+			f.Fund = fact.FundNumber(642)
 			swappedFacts++
 		}
 	}
@@ -500,6 +501,73 @@ func TestRowFundsCatchesABareLabelTwinTheGateDoesNot(t *testing.T) {
 			t.Errorf("%s reported %s over the same-type swap; this test proves the "+
 				"wrong thing if another check sees it: %s", c.ID(), got.Status, got.Summary)
 		}
+	}
+
+	t.Run("the CIP twin is refused by the outside cut", func(t *testing.T) {
+		s.Facts = slices.Clone(original)
+		for i := range s.Facts {
+			f := &s.Facts[i]
+			if f.RuleID == "funding-public-works" && f.Fund != nil && *f.Fund == 640 {
+				f.Fund = fact.FundNumber(641)
+			}
+		}
+		got, err := (&cutsTieAlongTheLattice{}).Run(t.Context(), s)
+		if err != nil {
+			t.Fatalf("Run: %v", err)
+		}
+		var b strings.Builder
+		for _, f := range got.Findings {
+			b.WriteString(f.Subject + ": " + f.Detail + "\n")
+		}
+		if got.Status != StatusFail || !strings.Contains(b.String(), "fund 641") ||
+			!strings.Contains(b.String(), "funding-sources") {
+			t.Fatalf("Water 640 -> CIP Water 641 reported %s, want a finding naming fund 641 "+
+				"and the cut that now carries it:\n%s", got.Status, b.String())
+		}
+	})
+}
+
+// TestTheFundNumberArmHoldsBothEndsOfAP222Row mutates one p222 row's
+// receiving fund and, separately, its transferring fund, each to another fund
+// of the same type, which moves no sum any check reads.
+func TestTheFundNumberArmHoldsBothEndsOfAP222Row(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		mutate func(*mapping.Row)
+		want   string
+	}{
+		{"the receiving fund", func(r *mapping.Row) { r.Fund = 813 }, "the fund which receives is 813"},
+		{"the transferring fund", func(r *mapping.Row) { r.Counterpart.Fund = 510 }, "the fund which pays is 510"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
+			if err != nil {
+				t.Fatalf("Load: %v", err)
+			}
+			hit := 0
+			for _, f := range s.Files {
+				for i := range f.Rules {
+					for j := range f.Rules[i].Rows {
+						row := &f.Rules[i].Rows[j]
+						if f.Rules[i].ID == "p222-cip-funding-sources" && row.Label == "811" {
+							tc.mutate(row)
+							hit++
+						}
+					}
+				}
+			}
+			if hit != 1 {
+				t.Fatalf("mutated %d rows, want 1", hit)
+			}
+			res, err := (&rowFundsMatchTheirAnchors{}).Run(t.Context(), s)
+			if err != nil {
+				t.Fatalf("Run: %v", err)
+			}
+			if res.Status != StatusFail || len(res.Findings) != 1 ||
+				!strings.Contains(res.Findings[0].Detail, tc.want) {
+				t.Fatalf("reported %s with %v, want one finding saying %q", res.Status, res.Findings, tc.want)
+			}
+		})
 	}
 }
 
