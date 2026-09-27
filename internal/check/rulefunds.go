@@ -122,11 +122,9 @@ func (*ruleFundsMatchTheirHeadings) Run(_ context.Context, s *Subject) (Result, 
 	// identically-worded total on every OTHER swept page of the same document,
 	// which is exactly the hole clause 2 exists to close.
 	//
-	// Measured before the fix: rollup gf-total-revenues claims "Total General
-	// Fund" from p130 for the whole document, and p0166 and p0172 print the same
-	// line. Neither is swept today, so nothing was wrong in the committed
-	// corpus -- but both adjoin pp.167-170, whose 23 division rules declare
-	// fund 100, so any rule whose parts reached p166 or p172 opened it.
+	// p0166, p0130 and p0172 all print "Total General Fund". p0130's is claimed
+	// by the rollup gf-total-revenues and p0172's -- printed twice, the fund's
+	// total and its group's -- by fund-exp-general-fund; p0166 is not swept.
 	claimed := map[string]map[claimKey]bool{}
 
 	for _, f := range s.Files {
@@ -337,7 +335,8 @@ func unclaimedFundTotals(s *Subject, pages map[string]map[int]bool,
 					"a rule reads this page and it cannot be read: %v", err))
 				continue
 			}
-			for _, line := range strings.Split(text, "\n") {
+			lines := strings.Split(text, "\n")
+			for i, line := range lines {
 				label, ok := printedTotalLabel(line)
 				if !ok {
 					continue
@@ -353,6 +352,15 @@ func unclaimedFundTotals(s *Subject, pages map[string]map[int]bool,
 					continue
 				}
 				entry, err := s.Vocabulary.FundByLabel(name)
+				// A total wrapping onto the next line names its fund only
+				// rejoined, as a rule's total_row_tail does.
+				if err != nil && i+1 < len(lines) {
+					if tail := strings.TrimSpace(lines[i+1]); tail != "" {
+						if joined, ok := fundNameIn(mapping.JoinWrapped(label, tail)); ok {
+							entry, err = s.Vocabulary.FundByLabel(joined)
+						}
+					}
+				}
 				if err != nil {
 					// Not a fund total. pp.127-130 print ten CATEGORY totals
 					// and this is how they are told apart -- by the registry,

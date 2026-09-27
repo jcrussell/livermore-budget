@@ -246,3 +246,35 @@ func TestAWrappedTotalNamesItsFundWithItsTail(t *testing.T) {
 		t.Errorf("finding does not quote the truncated label %s: %v", want, res.Findings[0])
 	}
 }
+
+// TestAWrappedTotalNobodyMapsIsReported removes one wrapped fund's rule from
+// the committed corpus. p181 prints "Total Open Space Acquisition &" and wraps
+// "Mgmt" beneath it, so clause 2 finds the fund only by rejoining the two.
+func TestAWrappedTotalNobodyMapsIsReported(t *testing.T) {
+	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	const id = "fund-exp-open-space-acquisition-mgmt"
+	removed := false
+	for _, f := range s.Files {
+		for i := range f.Rules {
+			if f.Rules[i].ID == id {
+				f.Rules = append(f.Rules[:i], f.Rules[i+1:]...)
+				removed = true
+				break
+			}
+		}
+	}
+	if !removed {
+		t.Fatalf("no rule %s in the committed mappings", id)
+	}
+	res := resultFor(t, runOne(t, s, &ruleFundsMatchTheirHeadings{}), "rule-funds-match-their-headings")
+	if len(res.Findings) != 1 {
+		t.Fatalf("findings = %v, want exactly p181's unclaimed wrapped total", res.Findings)
+	}
+	f := res.Findings[0]
+	if !strings.Contains(f.Subject, "p181") || !strings.Contains(f.Detail, "fund 300") {
+		t.Errorf("finding %v does not name p181 and fund 300", f)
+	}
+}

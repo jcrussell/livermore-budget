@@ -1081,8 +1081,8 @@ func validatePrintedDecimals(r *Rule, errf errFunc) error {
 
 // validateTotalRowTail refuses a tail with nothing to follow: no total_row, a
 // total printed above its rows (whose line is the section anchor's, so the
-// line after it is the block's first row), or a tail that is not one line of
-// text.
+// line after it is the block's first row), a rule a label-less part of which
+// totals by stop_at, or a tail that is not one line of text.
 func validateTotalRowTail(r *Rule, errf errFunc) error {
 	if r.TotalRowTail == "" {
 		return nil
@@ -1092,6 +1092,10 @@ func validateTotalRowTail(r *Rule, errf errFunc) error {
 		return errf(r.ID, "total_row_tail", "declared without a total_row")
 	case r.TotalRowAbove:
 		return errf(r.ID, "total_row_tail", "declared with total_row_above")
+	case slices.ContainsFunc(r.Parts, func(p Part) bool { return p.LabelsFrom != 0 }):
+		// A label-less part finds its totals from stop_at, so the tail would
+		// be read off no page.
+		return errf(r.ID, "total_row_tail", "declared on a rule with a labels_from part")
 	case strings.TrimSpace(r.TotalRowTail) != r.TotalRowTail || strings.Contains(r.TotalRowTail, "\n"):
 		return errf(r.ID, "total_row_tail",
 			"is %q; it is the one printed line after the total, trimmed", r.TotalRowTail)

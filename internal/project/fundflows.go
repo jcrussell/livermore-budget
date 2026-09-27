@@ -1080,7 +1080,10 @@ func sortedFundExpKeys(m map[fundExpKey]*cellSum) []fundExpKey {
 		if out[i].fund != out[j].fund {
 			return out[i].fund < out[j].fund
 		}
-		return out[i].category < out[j].category
+		if out[i].category != out[j].category {
+			return out[i].category < out[j].category
+		}
+		return out[i].fundGroup < out[j].fundGroup
 	})
 	return out
 }

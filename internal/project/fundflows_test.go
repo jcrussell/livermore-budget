@@ -195,8 +195,7 @@ func TestEveryFundNodeDisclosesItsConstraintTier(t *testing.T) {
 
 // TestTheStoppedGroupCountIsTheDocumentsOwn computes which groups end at
 // their funds rather than writing a count down: the published columns differ
-// in which groups they carry, and a literal was once shipped that was true of
-// one column only.
+// in which groups they carry.
 func TestTheStoppedGroupCountIsTheDocumentsOwn(t *testing.T) {
 	general := []Node{
 		{ID: prefixFund + "100", Tier: tierFund, Parent: prefixFundGroup + "general"},

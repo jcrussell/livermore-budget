@@ -100,6 +100,8 @@ func TestTotalRowTailRefusals(t *testing.T) {
 		{"no total_row", Rule{TotalRowTail: "Fees"}, "declared without a total_row"},
 		{"above its rows", Rule{TotalRow: "Total", TotalRowAbove: true, TotalRowTail: "Fees"},
 			"declared with total_row_above"},
+		{"a label-less part", Rule{TotalRow: "Total", TotalRowTail: "Fees", Parts: []Part{{Page: 67, LabelsFrom: 66}}},
+			"declared on a rule with a labels_from part"},
 		{"padded", Rule{TotalRow: "Total", TotalRowTail: " Fees"}, "the one printed line after the total"},
 		{"two lines", Rule{TotalRow: "Total", TotalRowTail: "Fees\nMore"}, "the one printed line after the total"},
 	} {

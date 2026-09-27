@@ -1015,17 +1015,23 @@ func (r Row) Identity() string {
 }
 
 // WrappedTotalLabel is the whole printed label of the rule's total: total_row,
-// and total_row_tail after it where the page wraps one. A label broken at a
-// hyphen joins without a space, as p0175's "County Meas BB-" + "Bike/Pedestrian"
-// does; a wrong join names no fund, which the heading check reports.
+// and total_row_tail after it where the page wraps one, joined by JoinWrapped.
 func (r *Rule) WrappedTotalLabel() string {
 	if r.TotalRowTail == "" {
 		return r.TotalRow
 	}
-	if strings.HasSuffix(r.TotalRow, "-") {
-		return r.TotalRow + r.TotalRowTail
+	return JoinWrapped(r.TotalRow, r.TotalRowTail)
+}
+
+// JoinWrapped is a label the page breaks across two lines, rejoined. A label
+// broken at a hyphen joins without a space, as p0175's "County Meas BB-" +
+// "Bike/Pedestrian" does; a wrong join names no fund, which the heading check
+// reports.
+func JoinWrapped(head, tail string) string {
+	if strings.HasSuffix(head, "-") {
+		return head + tail
 	}
-	return r.TotalRow + " " + r.TotalRowTail
+	return head + " " + tail
 }
 
 // totalCovers says whether a row of this kind is one the printed total_row
