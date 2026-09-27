@@ -12,7 +12,7 @@
   "additionalProperties": false,
   "properties": {
     "schema_version": {
-      "const": 5
+      "const": 6
     },
     "generated_by": {
       "description": "The export that wrote this answer. The page carries the same string as exported_by, and the client refuses a pair that disagree, since nothing cache-busts one file against the other.",
@@ -95,6 +95,15 @@
                         "items": {
                           "type": "string",
                           "minLength": 1
+                        }
+                      },
+                      "needs": {
+                        "description": "For each id of this column whose every ribbon leads into a widened column, the widened tier it is drawn with; a viewport dropping that column draws the id nowhere.",
+                        "type": "object",
+                        "minProperties": 1,
+                        "additionalProperties": {
+                          "type": "integer",
+                          "minimum": 0
                         }
                       }
                     }

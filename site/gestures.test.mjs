@@ -218,7 +218,9 @@ for (const year of YEARS) {
       // THE TWO MARKS THIS CHART WOULD REFUSE, asked of the predicate directly
       // because no committed document draws either: a tail at a tier this
       // rung declares no cap for, and the tier already expanded.
-      const foreign = app.expandable({ id: app.aggregateID(CATEGORY_TIER), tier: CATEGORY_TIER });
+      const group = stepByKey(PAGE, "fund-group");
+      const uncapped = group.tiers.find((tier) => !group.caps.some((c) => c.tier === tier));
+      const foreign = app.expandable({ id: app.aggregateID(uncapped), tier: uncapped });
       const twice = app.expandable({ id: tail.id, tier: tail.tier });
 
       assert.equal(spaceFollowed, tail.id, "Space follows the tail's money");

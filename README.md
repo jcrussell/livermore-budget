@@ -51,7 +51,8 @@ it.
 The site publishes **six pages**. `index.html` is the fund-group spine as a
 Sankey, with a toggle between the two adopted years, and it is the one chart
 page: **click a fund group and it opens** into that group's own funds from
-pp.127-140 and pp.167-170, drawn for the same fiscal year; click a General Fund
+pp.127-140, and where there is room on into what each fund spends on, from
+pp.167-170 and pp.173-183, drawn for the same fiscal year; click a General Fund
 division and it opens again into what that division spends on — each rescaled
 to the opened node's own total, because the citywide chart cannot show them at
 all. `trends.html` draws all

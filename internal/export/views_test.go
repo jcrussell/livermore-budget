@@ -3381,7 +3381,7 @@ func TestEachYearOpensIntoItsOwnStepDocumentWithItsOwnCaveatLinks(t *testing.T) 
 	if len(cfg.Years) != 2 {
 		t.Fatalf("got %d years, want 2", len(cfg.Years))
 	}
-	const caveat = "only-the-general-fund-is-decomposed"
+	const caveat = "only-the-general-fund-has-divisions"
 	for i, want := range []string{"fund-flows", "fund-flows-2027"} {
 		y := cfg.Years[i]
 		if len(y.Steps) != 2 {

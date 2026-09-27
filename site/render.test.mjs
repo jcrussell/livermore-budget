@@ -127,20 +127,22 @@ function statesIn(rungs) {
 }
 
 /**
- * The depth-1 rung of the fund-group step whose column is widest: the view
- * the fund cap is for.
+ * The depth-1 rung of the fund-group step whose fund column is widest: the
+ * view the fund cap is for. The fund column, not the widest of any: the
+ * General Fund's object column is wider and is drawn only where there is room.
  * @param {any[]} rungs
  */
 function worstOf(rungs) {
+  const funds = (r) => (r.draws.find((d) => d.tier === 3) || { ids: [] }).ids.length;
   const groups = rungs.filter((r) => r.path.length === 1 && r.step === "fund-group");
-  return groups.reduce((a, b) => (widest(b) > widest(a) ? b : a)).path[0];
+  return groups.reduce((a, b) => (funds(b) > funds(a) ? b : a)).path[0];
 }
 
 /** Go's rungs for one column. */
 function rungsOf(stem) {
   const artifact = rungsFixture();
-  if (artifact.schema_version !== 5) {
-    throw new Error(`testdata/rungs.json declares schema_version ${artifact.schema_version}; this file reads 5`);
+  if (artifact.schema_version !== 6) {
+    throw new Error(`testdata/rungs.json declares schema_version ${artifact.schema_version}; this file reads 6`);
   }
   const column = artifact.columns.find((c) => c.stem === stem);
   if (!column) throw new Error(`testdata/rungs.json answers for no column with stem ${stem}`);
@@ -620,17 +622,18 @@ describe("the drill's drawing", () => {
     assert.equal(app.joinOr(["a", "b", "c"]), "a, b or c");
   });
 
-  test("on a chart of four columns the hint names an inner column by its place, not as the middle", async (t) => {
+  test("on a chart of four or five columns the hint names an inner column by its place, not as the middle", async (t) => {
     const w = CONFIG.wording;
     const said = [];
-    for (const path of [["fund-group/general"], ["fund-group/general", "fund/100"]]) {
+    // The General Fund's group window is five columns and its fund window four.
+    for (const [path, width] of [[["fund-group/general"], 5], [["fund-group/general", "fund/100"], 4]]) {
       const { app, document } = await bootedApp({ checkedStem: YEARS[0].stem, viewport: 2000 });
       await opened(app, ...path);
       const tiers = app.activeTiers();
       const opening = new Set(app.projection.nodes.filter(app.drillable).map((n) => n.tier));
       const hint = document.getElementById("chart-hint").textContent;
       said.push(`${path[path.length - 1]} at {${tiers}} opens from {${[...opening]}}: "${hint}"`);
-      assert.equal(tiers.length, 4);
+      assert.equal(tiers.length, width);
       assert.deepEqual([...opening].map((tier) => tiers.indexOf(tier)), [2]);
       assert.deepEqual(app.openableColumns(), [w.column_third]);
       assert.ok(hint.includes(app.say("in_column", { columns: w.column_third })), hint);

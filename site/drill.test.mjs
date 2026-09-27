@@ -112,14 +112,18 @@ function offers(app, id) {
 
 /** The ids the answer says one rung draws at the columns this viewport lays out. */
 function answeredIDs(answer, tiers, app) {
+  // An id Go says needs a widened column is drawn only while that column is.
+  const drawnHere = (d) => (id) => !(d.needs && id in d.needs && !tiers.includes(d.needs[id]));
+  const step = stepByKey(PAGE, answer.step);
+  // A residual all of whose flows leave is drawn only where its leaving leg is.
+  const markDrawn = (m) => m.role !== "residual" || m.in_cents > 0 || app.leavingLegDrawn(step, tiers);
   const ids = new Set(answer.draws.filter((d) => tiers.includes(d.tier))
-    .flatMap((d) => d.ids.concat(d.carried || []))
-    .concat((answer.marks || []).map((m) => m.id)));
+    .flatMap((d) => d.ids.concat(d.carried || []).filter(drawnHere(d)))
+    .concat((answer.marks || []).filter(markDrawn).map((m) => m.id)));
   // A RESIDUAL'S LEAVING ENDPOINTS ARE NAMED ON THE MARK AND NOT IN A COLUMN:
   // Go answers a column's ids off the documents, and an endpoint the spine
   // draws at tier 5 is no document's node at the step's last tier. Whether
   // the client draws them at these columns is the shipped rule's answer.
-  const step = stepByKey(PAGE, answer.step);
   const answered = new Set(answer.draws.flatMap((d) => d.ids.concat(d.carried || [])));
   for (const m of answer.marks || []) {
     if (m.role !== "residual") continue;

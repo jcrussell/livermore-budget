@@ -1050,7 +1050,11 @@ func stepDocuments(v View, year, builtBy string, fiscalYear int, basis string,
 		}
 		// No column guard here: [ColumnIndex] selects a document only under
 		// the column it itself declares, so it cannot be another year's.
-		opens, openErr := openableNodes(v, i, s, stem, raw)
+		parents, perr := FlankDocuments(v, s, year, stems, projections)
+		if perr != nil {
+			return nil, nil, perr
+		}
+		opens, openErr := openableNodes(v, i, s, stem, raw, parents)
 		if openErr != nil {
 			return nil, nil, openErr
 		}
@@ -1097,7 +1101,7 @@ func Flank(s DrillStep) (keptLeft bool, outward []int, ok bool) {
 // ribbon OUT into a column beyond the centre, in the direction windowFor draws
 // it; the direction guard is latent on every committed document, and
 // openable_test.go plants the descending ribbon that separates them.
-func openableNodes(v View, i int, s DrillStep, stem string, raw []byte) ([]string, error) {
+func openableNodes(v View, i int, s DrillStep, stem string, raw []byte, parents [][]byte) ([]string, error) {
 	g, err := DecodeGraph(raw)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", stem, err)
@@ -1129,8 +1133,10 @@ func openableNodes(v View, i int, s DrillStep, stem string, raw []byte) ([]strin
 			v.Path, i, s.Keep, s.Tiers, stem)
 	}
 	tier := make(map[string]int, len(g.Nodes))
+	role := make(map[string]string, len(g.Nodes))
 	for _, nd := range g.Nodes {
 		tier[nd.ID] = nd.Tier
+		role[nd.ID] = nd.Role
 	}
 	for _, l := range g.Links {
 		near, far := l.Source, l.Target
@@ -1138,7 +1144,7 @@ func openableNodes(v View, i int, s DrillStep, stem string, raw []byte) ([]strin
 			near, far = l.Target, l.Source
 		}
 		nt, ok := tier[near]
-		if !ok || nt != s.From {
+		if !ok || nt != s.From || (s.Role != "" && role[near] != s.Role) {
 			continue
 		}
 		ft, ok := tier[far]
@@ -1146,6 +1152,42 @@ func openableNodes(v View, i int, s DrillStep, stem string, raw []byte) ([]strin
 			continue
 		}
 		opens[near] = true
+	}
+	// And a node the window above it sends no kept flank into is not offered:
+	// the client refuses that window, and the rung walker refuses to answer it.
+	if len(parents) > 0 {
+		idx := slices.Index(s.Tiers, s.From)
+		kept := s.Tiers[idx:]
+		if keptLeft {
+			kept = s.Tiers[:idx+1]
+		}
+		var graphs []Graph
+		for _, p := range parents {
+			pg, err := DecodeGraph(p)
+			if err != nil {
+				return nil, fmt.Errorf("view %q's step %d: a document it opens after: %w", v.Path, i, err)
+			}
+			graphs = append(graphs, pg)
+		}
+		for n := range opens {
+			flanked := false
+			for _, pg := range graphs {
+				if _, carried := indexNodes(pg)[n]; !carried {
+					continue
+				}
+				r, err := ReachOf(pg, n, !keptLeft, kept)
+				if err != nil {
+					return nil, fmt.Errorf("view %q's step %d keeps the flank of %q: %w", v.Path, i, n, err)
+				}
+				if slices.Contains(r.At[s.From], n) {
+					flanked = true
+					break
+				}
+			}
+			if !flanked {
+				delete(opens, n)
+			}
+		}
 	}
 	if len(opens) == 0 {
 		return nil, fmt.Errorf(
@@ -2272,9 +2314,35 @@ func buildCells(points []trendPoint, columns []columnRef, meta []trendColumnMeta
 
 // Openable is openableNodes for a caller outside this package: the nodes at
 // step s's From that the document raw decomposes, for the view v it is step i
-// of.
+// of, and that a document in parents sends the kept flank into.
 // The rung answer is enumerated over it, so what a page offers to open and
 // what it draws cannot drift apart.
-func Openable(v View, i int, s DrillStep, stem string, raw []byte) ([]string, error) {
-	return openableNodes(v, i, s, stem, raw)
+func Openable(v View, i int, s DrillStep, stem string, raw []byte, parents [][]byte) ([]string, error) {
+	return openableNodes(v, i, s, stem, raw, parents)
+}
+
+// FlankDocuments is the documents a window step s is opened from, for one
+// year: the view's own year document for After "", and the named step's for
+// every other key. A step that keeps no flank has none.
+func FlankDocuments(v View, s DrillStep, year string, stems []string, projections map[string][]byte) ([][]byte, error) {
+	if len(s.Keep) == 0 {
+		return nil, nil
+	}
+	var out [][]byte
+	for _, key := range s.After {
+		stem := year
+		if key != "" {
+			j := slices.IndexFunc(v.Steps, func(p DrillStep) bool { return p.Key == key })
+			if j < 0 || j >= len(stems) {
+				return nil, fmt.Errorf("step %q opens after %q, which view %q does not declare", s.Key, key, v.Path)
+			}
+			stem = stems[j]
+		}
+		raw, ok := projections[stem]
+		if !ok {
+			return nil, fmt.Errorf("step %q opens after %q, whose document %q was not built", s.Key, key, stem)
+		}
+		out = append(out, raw)
+	}
+	return out, nil
 }

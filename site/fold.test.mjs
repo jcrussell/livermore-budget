@@ -161,6 +161,32 @@ describe("the tail's note carries the figure the tail is drawn at", () => {
     assert.equal(app.tailFigure(folded, tail.id), drawnAt);
   });
 
+  // A FOLDED NODE'S CHILDREN STAY, hung from the tail: a fund group's window
+  // folds its smallest funds, and their object categories are money the
+  // column beyond them must still carry.
+  test("a folded node's children hang from the tail and carry their money onward", async (t) => {
+    const app = await drawing([2, 3, 5]);
+    const doc = lines();
+    const funds = ["fund/1", "fund/2", "fund/3", "fund/4"];
+    doc.nodes = [doc.node("fund-group/g", 2, "")];
+    doc.links = [];
+    funds.forEach((f, i) => {
+      doc.nodes.push(doc.node(f, 3, "fund-group/g"), doc.node(`expenditure/${f}/x`, 5, f));
+      doc.links.push(doc.link("fund-group/g", f, 1000 * (4 - i)), doc.link(f, `expenditure/${f}/x`, 1000 * (4 - i)));
+    });
+    const capped = app.capColumn(doc, 3, 1, "fund-group/g", "funds");
+    const tail = capped.nodes.find((n) => app.isAggregate(n.id));
+    const into5 = (d) => d.links.filter((l) => d.nodes.find((n) => n.id === l.target).tier === 5)
+      .reduce((a, l) => a + l.value_cents, 0);
+    const hung = capped.nodes.filter((n) => n.parent === tail.id).map((n) => n.id);
+    t.diagnostic(`${tail.label} folds ${JSON.stringify(tail.folds)}; ${hung.length} child(ren) hang from it; ` +
+      `${into5(capped)} of ${into5(doc)} cents still reach the fifth tier`);
+    assert.deepEqual(tail.folds, ["fund/2", "fund/3", "fund/4"]);
+    assert.deepEqual(hung.sort(), ["expenditure/fund/2/x", "expenditure/fund/3/x", "expenditure/fund/4/x"]);
+    assert.equal(into5(capped), into5(doc));
+    assert.equal(into5(app.foldDocument(capped)), into5(doc));
+  });
+
   // A SECOND CAP RE-POINTS WHAT THE FIRST TAIL HELD: capping the categories
   // after the lines merges the first tail's ribbons into ones between two
   // tails, and a reduction among them nets only then.
@@ -198,9 +224,10 @@ describe("the drill-down is drawable only folded", () => {
       const raw = fundFlows(whole, col.stem);
       const flat = smallest(whole.layOut(raw));
       t.diagnostic(`unfolded: ${raw.nodes.length} nodes over ${flat.columns.length} columns (${flat.columns.join("/")}), smallest node ${flat.node.toFixed(4)}px and smallest ribbon ${flat.ribbon.toFixed(4)}px`);
-      // === and not assert.equal: d3 hands back -0 for a mark of no height.
+      // === and not assert.equal: d3 hands back -0 for a mark of no height. A
+      // ribbon of no width can come back a rounding error either side of zero.
       assert.ok(flat.node === 0, `smallest node ${flat.node}`);
-      assert.ok(flat.ribbon === 0, `smallest ribbon ${flat.ribbon}`);
+      assert.ok(Math.abs(flat.ribbon) < 1e-9, `smallest ribbon ${flat.ribbon}`);
     });
     test(`${col.label}: folded, every node has height and every ribbon has width`, (t) => {
       const folded = drill.foldDocument(fundFlows(drill, col.stem));
@@ -218,9 +245,13 @@ describe("the drill-down is drawable only folded", () => {
       assert.equal(hairlines, col.hairlines);
       assert.equal(slivers, col.slivers);
     });
-    test(`${col.label}: the fold cites nothing away`, (t) => {
-      const raw = fundFlows(drill, col.stem);
-      const folded = drill.foldDocument(raw);
+    // AT THE FUND-GROUP WINDOW'S OWN COLUMNS: a fold with no object column
+    // collapses pp.172-183's fund-to-object ribbons onto their group, and
+    // those facts are cited by nothing else.
+    test(`${col.label}: the fold to the fund-group window's columns cites nothing away`, async (t) => {
+      const wide = await drawing([0, 2, 3, 4, 5]);
+      const raw = fundFlows(wide, col.stem);
+      const folded = wide.foldDocument(raw);
       const before_ = cited(raw), after = cited(folded);
       t.diagnostic(`${before_.size} facts cited by ${raw.links.length} links before the fold, ${after.size} by ${folded.links.length} after`);
       assert.equal(after.size, before_.size);
@@ -232,9 +263,16 @@ describe("the drill-down is drawable only folded", () => {
       deep.layOut(doc);
       const objects = doc.nodes.filter((n) => n.id.startsWith("expenditure/"));
       const depts = doc.nodes.filter((n) => n.id.startsWith("dept/"));
-      t.diagnostic(`${objects.length} object cells and ${depts.length} divisions resolve through parent`);
-      assert.ok(objects.length > 0 && depts.length > 0);
-      for (const n of objects) assert.equal(deep.fundGroupOf(n), "fund-group/general", n.id);
+      // A fund's own object cells (pp.172-183) resolve to the group its fund
+      // node is parented to in the document; a division's to the General Fund.
+      const raw = new Map(fundFlows(deep, col.stem).nodes.map((n) => [n.id, n]));
+      const groupOf = (n) => n.id.startsWith("expenditure/fund/")
+        ? raw.get(raw.get(n.id).parent).parent : "fund-group/general";
+      const own = objects.filter((n) => n.id.startsWith("expenditure/fund/"));
+      t.diagnostic(`${objects.length} object cells (${own.length} of them a fund's own) and ${depts.length} divisions resolve through parent`);
+      assert.ok(objects.length > 0 && depts.length > 0 && own.length > 0);
+      assert.ok(own.some((n) => groupOf(n) !== "fund-group/general"));
+      for (const n of objects) assert.equal(deep.fundGroupOf(n), groupOf(n), n.id);
       for (const n of depts) assert.equal(deep.fundGroupOf(n), "fund-group/general", n.id);
     });
   }

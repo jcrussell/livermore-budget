@@ -216,7 +216,7 @@
  *   the previous step's
  * @property {number[]} tiers
  * @property {number[]} [keep]  the flank that stays drawn beside the opened node
- * @property {number[]} [widen]  the tiers a fourth column buys, in order
+ * @property {number[]} [widen]  the tiers columns beyond the window's own buy, in order
  * @property {string} [noun]
  * @property {FiscTierCap[]} [caps]  a tier with none is drawn whole
  * @property {string} back
@@ -2281,6 +2281,11 @@ export function carryResidual(drawn, from, rung, mark) {
     }
   }
 
+  // A MARK NONE OF WHOSE FLOWS THIS WIDTH DRAWS IS NOT DRAWN: every flow of an
+  // enterprise or special revenue residual leaves through the widened column,
+  // and at three columns it would be a box of no height citing nothing.
+  if (!links.length) return drawn;
+
   // ENDPOINTS STAND AT THE FIRST DRAWN TIER WHEN THEIR FLOW ARRIVES AND THE
   // LAST WHEN IT LEAVES -- drawn, not declared: an undrawn declared tier is
   // clamped to the first column and the ribbon runs backwards. Filtered in the
@@ -2448,8 +2453,8 @@ export function capColumn(doc, tier, cap, opened, noun) {
     constraint_tier: "",
     // An empty role renders as an empty .chip.
     role: "aggregate",
-    // THE IDS IT SWALLOWED, descendants included, so caveatsFor still reaches
-    // them: the tail is folded by value, which no parent chain records.
+    // THE IDS IT SWALLOWED, so caveatsFor still reaches them: the tail is
+    // folded by value, which no parent chain records.
     folds: [],
     derived: true,
     rationale: "Our grouping, not a line the city printed: the " + folded.length +
@@ -2461,25 +2466,15 @@ export function capColumn(doc, tier, cap, opened, noun) {
   const tail = new Set(folded.map((n) => n.id));
   const remap = (/** @type {string} */ id) => (tail.has(id) ? aggregateID(tier) : id);
 
-  // A FOLDED NODE'S DESCENDANTS GO WITH IT, or foldDocument refuses a child
-  // naming a parent the document does not carry.
-  const byID = new Map(doc.nodes.map((n) => [n.id, n]));
-  const orphaned = (/** @type {{parent: string}} */ n) => {
-    let up = n.parent;
-    for (let hops = 0; up && hops < 9; hops++) {
-      if (tail.has(up)) return true;
-      const above = byID.get(up);
-      up = above ? above.parent : "";
-    }
-    return false;
-  };
+  aggregate.folds = folded.map((n) => n.id);
 
-  // Filled here, not at the literal: orphaned() is a const declared below it.
-  const dropped = doc.nodes.filter(orphaned).map((n) => n.id);
-  aggregate.folds = folded.map((n) => n.id).concat(dropped);
-
+  // A FOLDED NODE'S CHILDREN HANG FROM THE TAIL: foldDocument refuses a child
+  // naming a parent the document does not carry, and dropping the child would
+  // drop the money it carries onward -- a folded fund's object categories, in
+  // a fund group's window.
   const nodes = doc.nodes
-    .filter((n) => (n.tier !== tier || kept.has(n.id)) && !orphaned(n))
+    .filter((n) => n.tier !== tier || kept.has(n.id))
+    .map((n) => (tail.has(n.parent) ? Object.assign({}, n, { parent: aggregateID(tier) }) : n))
     .concat([aggregate]);
   // And the links that named them, for the same refusal.
   const present = new Set(nodes.map((n) => n.id));
@@ -3587,13 +3582,9 @@ export function syncColumns() {
   };
   // Would it move THIS CHART, not the budget: only a step declaring `widen`
   // has a second width.
-  const moves = (/** @type {number} */ delta) => {
-    const want = Math.min(OFFERED_COLUMNS, Math.max(NARROW_COLUMNS, columnBudget + delta));
-    return want !== columnBudget && drawnColumns(want) !== drawnColumns();
-  };
   const had = document.activeElement;
-  bound("column-fewer", !moves(-1));
-  bound("column-more", !moves(1));
+  bound("column-fewer", nextBudget(-1) === null);
+  bound("column-more", nextBudget(1) === null);
   // A disabled button drops focus to <body>, so the sibling takes it.
   const pair = [maybeEl("column-fewer"), maybeEl("column-more")];
   const at = had ? pair.indexOf(/** @type {HTMLElement} */ (had)) : -1;
@@ -3627,16 +3618,34 @@ export function applyColumns(redraw) {
 }
 
 /**
+ * The nearest budget in the direction of `delta` at which the chart on screen
+ * draws a different number of columns, or null. A budget wider than the chart
+ * draws what the chart's own width does, so one step of the budget can move
+ * nothing: a reader on a four-column window at a budget of five would find
+ * the minus doing nothing.
+ *
+ * @param {number} delta -1 or 1
+ * @returns {number | null}
+ */
+export function nextBudget(delta) {
+  const now = drawnColumns();
+  for (let want = columnBudget + delta; want >= NARROW_COLUMNS && want <= OFFERED_COLUMNS; want += delta) {
+    if (drawnColumns(want) !== now) return want;
+  }
+  return null;
+}
+
+/**
  * Takes the reader's step, records it as theirs so the next media change does
  * not undo it, and repaints.
  *
  * @param {number} delta
  */
 export function stepColumns(delta) {
-  const want = Math.min(OFFERED_COLUMNS, Math.max(NARROW_COLUMNS, columnBudget + delta));
-  if (want === columnBudget) return;
-  // Stepping back to the viewport's own answer releases the override.
-  const released = want === viewportColumns();
+  const want = nextBudget(delta);
+  if (want === null) return;
+  // Stepping back to what the viewport's own answer draws releases the override.
+  const released = drawnColumns(want) === drawnColumns(viewportColumns());
   const override = columnOverride;
   columnOverride = released ? null : want;
   // A REFUSED STEP IS NOT THE READER'S CHOICE: kept, it would fail on every visit.

@@ -72,7 +72,9 @@ func TestTheLineTierFoldsToTheCategoryLinks(t *testing.T) {
 
 // TestThePrintedZeroRowsAreNotNodes: a revenue row printed as a dash is a fact,
 // not a flow, so it is both uncited and absent from the nodes. Either alone
-// passes on the wrong document.
+// passes on the wrong document. A pp.172-183 object row printed as a dash is
+// uncited for the same reason; a pp.167-170 one is cited by its division's
+// total and is not counted here.
 func TestThePrintedZeroRowsAreNotNodes(t *testing.T) {
 	_, facts := committedStore(t)
 	for stem, doc := range builtFundFlows(t) {
@@ -89,7 +91,14 @@ func TestThePrintedZeroRowsAreNotNodes(t *testing.T) {
 			}
 
 			zeros := 0
-			for _, f := range revenueRows(facts, doc.Metadata.FiscalYear, doc.Metadata.Basis) {
+			rows := revenueRows(facts, doc.Metadata.FiscalYear, doc.Metadata.Basis)
+			for _, f := range facts {
+				if f.Scope == "expenditure-by-fund" && f.FiscalYear == doc.Metadata.FiscalYear &&
+					string(f.Basis) == doc.Metadata.Basis {
+					rows = append(rows, f)
+				}
+			}
+			for _, f := range rows {
 				if f.AmountCents != 0 {
 					continue
 				}
@@ -100,7 +109,7 @@ func TestThePrintedZeroRowsAreNotNodes(t *testing.T) {
 				}
 			}
 			if got := doc.Metadata.Counts.FactsUncited; got != zeros {
-				t.Errorf("counts.facts_uncited is %d and %d revenue rows print a dash; a "+
+				t.Errorf("counts.facts_uncited is %d and %d revenue and fund object rows print a dash; a "+
 					"gap either way is money that reached no link for some other reason",
 					got, zeros)
 			}

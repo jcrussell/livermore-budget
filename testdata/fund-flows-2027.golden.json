@@ -5,7 +5,8 @@
     "generated_by": "testdata/fund-flows-2027.golden.json (captured from fisc export; see testdata/README.md)",
     "scopes": [
       "revenue-by-fund",
-      "expenditure-by-department"
+      "expenditure-by-department",
+      "expenditure-by-fund"
     ],
     "currency": "USD",
     "units": "cents",
@@ -33,17 +34,28 @@
           167,
           168,
           169,
-          170
+          170,
+          173,
+          174,
+          175,
+          176,
+          177,
+          178,
+          179,
+          180,
+          181,
+          182,
+          183
         ]
       }
     ],
     "counts": {
-      "facts": 280,
-      "facts_cited": 231,
-      "facts_uncited": 49,
+      "facts": 382,
+      "facts_cited": 315,
+      "facts_uncited": 67,
       "facts_cited_twice": 226,
-      "nodes": 237,
-      "links": 409
+      "nodes": 323,
+      "links": 493
     },
     "caveats": [
       {
@@ -65,9 +77,9 @@
         "applies_to": []
       },
       {
-        "id": "only-the-general-fund-is-decomposed",
-        "summary": "Only the General Fund opens into divisions and object categories; the other 5 groups' funds do not.",
-        "text": "Budget Book pp.167-170 break the General Fund alone down by division and object category, so the other 5 fund groups' money is not drawn at that grain.",
+        "id": "only-the-general-fund-has-divisions",
+        "summary": "Only the General Fund opens into divisions; every other fund's spending goes straight to its object categories.",
+        "text": "Budget Book pp.167-170 break the General Fund down by division and then by object category. pp.172-183 print every other fund by object category alone, with no division, so their spending is drawn from the fund straight to its categories and the division column holds the General Fund's alone.",
         "applies_to": [
           "fund-group/capital",
           "fund-group/debt-service",
@@ -1423,6 +1435,17 @@
       "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
+      "id": "fund/223",
+      "label": "Grant - HUD EDI Special Grant",
+      "tier": 3,
+      "parent": "fund-group/special-revenue",
+      "constraint_tier": "restricted-by-law",
+      "role": "fund",
+      "derived": false,
+      "rationale": "HUD Economic Development Initiative special grant; spendable only per the grant award.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
       "id": "fund/224",
       "label": "Grant - CDBG",
       "tier": 3,
@@ -1552,6 +1575,17 @@
       "role": "fund",
       "derived": false,
       "rationale": "Public, Educational and Government access fees from cable TV franchises; restricted to PEG capital use.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/288",
+      "label": "Import Mitigation Fee",
+      "tier": 3,
+      "parent": "fund-group/special-revenue",
+      "constraint_tier": "restricted-by-law",
+      "role": "fund",
+      "derived": false,
+      "rationale": "Waste import mitigation fee within the solid waste management group; restricted to source reduction and recycling programs.",
       "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
@@ -2428,6 +2462,930 @@
       "label": "Services & Supplies",
       "tier": 5,
       "parent": "dept/fire-administration",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/200/services-and-supplies",
+      "label": "Services & Supplies",
+      "tier": 5,
+      "parent": "fund/200",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/200/wages-and-benefits",
+      "label": "Wages & Benefits",
+      "tier": 5,
+      "parent": "fund/200",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/201/services-and-supplies",
+      "label": "Services & Supplies",
+      "tier": 5,
+      "parent": "fund/201",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/202/services-and-supplies",
+      "label": "Services & Supplies",
+      "tier": 5,
+      "parent": "fund/202",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/203/services-and-supplies",
+      "label": "Services & Supplies",
+      "tier": 5,
+      "parent": "fund/203",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/204/services-and-supplies",
+      "label": "Services & Supplies",
+      "tier": 5,
+      "parent": "fund/204",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/205/services-and-supplies",
+      "label": "Services & Supplies",
+      "tier": 5,
+      "parent": "fund/205",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/206/services-and-supplies",
+      "label": "Services & Supplies",
+      "tier": 5,
+      "parent": "fund/206",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/210/services-and-supplies",
+      "label": "Services & Supplies",
+      "tier": 5,
+      "parent": "fund/210",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/210/wages-and-benefits",
+      "label": "Wages & Benefits",
+      "tier": 5,
+      "parent": "fund/210",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/221/services-and-supplies",
+      "label": "Services & Supplies",
+      "tier": 5,
+      "parent": "fund/221",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/222/services-and-supplies",
+      "label": "Services & Supplies",
+      "tier": 5,
+      "parent": "fund/222",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/223/services-and-supplies",
+      "label": "Services & Supplies",
+      "tier": 5,
+      "parent": "fund/223",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/224/debt-services",
+      "label": "Debt Services",
+      "tier": 5,
+      "parent": "fund/224",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/224/services-and-supplies",
+      "label": "Services & Supplies",
+      "tier": 5,
+      "parent": "fund/224",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/224/wages-and-benefits",
+      "label": "Wages & Benefits",
+      "tier": 5,
+      "parent": "fund/224",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/225/services-and-supplies",
+      "label": "Services & Supplies",
+      "tier": 5,
+      "parent": "fund/225",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/240/services-and-supplies",
+      "label": "Services & Supplies",
+      "tier": 5,
+      "parent": "fund/240",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/240/wages-and-benefits",
+      "label": "Wages & Benefits",
+      "tier": 5,
+      "parent": "fund/240",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/241/services-and-supplies",
+      "label": "Services & Supplies",
+      "tier": 5,
+      "parent": "fund/241",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/242/services-and-supplies",
+      "label": "Services & Supplies",
+      "tier": 5,
+      "parent": "fund/242",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/282/services-and-supplies",
+      "label": "Services & Supplies",
+      "tier": 5,
+      "parent": "fund/282",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/283/services-and-supplies",
+      "label": "Services & Supplies",
+      "tier": 5,
+      "parent": "fund/283",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/283/wages-and-benefits",
+      "label": "Wages & Benefits",
+      "tier": 5,
+      "parent": "fund/283",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/284/capital-outlay",
+      "label": "Capital Outlay",
+      "tier": 5,
+      "parent": "fund/284",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/284/services-and-supplies",
+      "label": "Services & Supplies",
+      "tier": 5,
+      "parent": "fund/284",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/285/wages-and-benefits",
+      "label": "Wages & Benefits",
+      "tier": 5,
+      "parent": "fund/285",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/286/services-and-supplies",
+      "label": "Services & Supplies",
+      "tier": 5,
+      "parent": "fund/286",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/287/services-and-supplies",
+      "label": "Services & Supplies",
+      "tier": 5,
+      "parent": "fund/287",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/288/services-and-supplies",
+      "label": "Services & Supplies",
+      "tier": 5,
+      "parent": "fund/288",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/289/services-and-supplies",
+      "label": "Services & Supplies",
+      "tier": 5,
+      "parent": "fund/289",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/289/wages-and-benefits",
+      "label": "Wages & Benefits",
+      "tier": 5,
+      "parent": "fund/289",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/310/services-and-supplies",
+      "label": "Services & Supplies",
+      "tier": 5,
+      "parent": "fund/310",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/310/wages-and-benefits",
+      "label": "Wages & Benefits",
+      "tier": 5,
+      "parent": "fund/310",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/311/services-and-supplies",
+      "label": "Services & Supplies",
+      "tier": 5,
+      "parent": "fund/311",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/311/wages-and-benefits",
+      "label": "Wages & Benefits",
+      "tier": 5,
+      "parent": "fund/311",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/320/services-and-supplies",
+      "label": "Services & Supplies",
+      "tier": 5,
+      "parent": "fund/320",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/321/services-and-supplies",
+      "label": "Services & Supplies",
+      "tier": 5,
+      "parent": "fund/321",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/330/services-and-supplies",
+      "label": "Services & Supplies",
+      "tier": 5,
+      "parent": "fund/330",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/331/services-and-supplies",
+      "label": "Services & Supplies",
+      "tier": 5,
+      "parent": "fund/331",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/400/debt-services",
+      "label": "Debt Services",
+      "tier": 5,
+      "parent": "fund/400",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/401/debt-services",
+      "label": "Debt Services",
+      "tier": 5,
+      "parent": "fund/401",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/402/debt-services",
+      "label": "Debt Services",
+      "tier": 5,
+      "parent": "fund/402",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/510/services-and-supplies",
+      "label": "Services & Supplies",
+      "tier": 5,
+      "parent": "fund/510",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/550/services-and-supplies",
+      "label": "Services & Supplies",
+      "tier": 5,
+      "parent": "fund/550",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/550/wages-and-benefits",
+      "label": "Wages & Benefits",
+      "tier": 5,
+      "parent": "fund/550",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/551/services-and-supplies",
+      "label": "Services & Supplies",
+      "tier": 5,
+      "parent": "fund/551",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/552/services-and-supplies",
+      "label": "Services & Supplies",
+      "tier": 5,
+      "parent": "fund/552",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/553/services-and-supplies",
+      "label": "Services & Supplies",
+      "tier": 5,
+      "parent": "fund/553",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/560/services-and-supplies",
+      "label": "Services & Supplies",
+      "tier": 5,
+      "parent": "fund/560",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/561/services-and-supplies",
+      "label": "Services & Supplies",
+      "tier": 5,
+      "parent": "fund/561",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/600/debt-services",
+      "label": "Debt Services",
+      "tier": 5,
+      "parent": "fund/600",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/600/services-and-supplies",
+      "label": "Services & Supplies",
+      "tier": 5,
+      "parent": "fund/600",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/600/wages-and-benefits",
+      "label": "Wages & Benefits",
+      "tier": 5,
+      "parent": "fund/600",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/610/capital-outlay",
+      "label": "Capital Outlay",
+      "tier": 5,
+      "parent": "fund/610",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/610/services-and-supplies",
+      "label": "Services & Supplies",
+      "tier": 5,
+      "parent": "fund/610",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/610/wages-and-benefits",
+      "label": "Wages & Benefits",
+      "tier": 5,
+      "parent": "fund/610",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/612/services-and-supplies",
+      "label": "Services & Supplies",
+      "tier": 5,
+      "parent": "fund/612",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/620/capital-outlay",
+      "label": "Capital Outlay",
+      "tier": 5,
+      "parent": "fund/620",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/620/services-and-supplies",
+      "label": "Services & Supplies",
+      "tier": 5,
+      "parent": "fund/620",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/620/wages-and-benefits",
+      "label": "Wages & Benefits",
+      "tier": 5,
+      "parent": "fund/620",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/622/capital-outlay",
+      "label": "Capital Outlay",
+      "tier": 5,
+      "parent": "fund/622",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/622/services-and-supplies",
+      "label": "Services & Supplies",
+      "tier": 5,
+      "parent": "fund/622",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/623/services-and-supplies",
+      "label": "Services & Supplies",
+      "tier": 5,
+      "parent": "fund/623",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/640/debt-services",
+      "label": "Debt Services",
+      "tier": 5,
+      "parent": "fund/640",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/640/services-and-supplies",
+      "label": "Services & Supplies",
+      "tier": 5,
+      "parent": "fund/640",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/640/wages-and-benefits",
+      "label": "Wages & Benefits",
+      "tier": 5,
+      "parent": "fund/640",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/642/capital-outlay",
+      "label": "Capital Outlay",
+      "tier": 5,
+      "parent": "fund/642",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/642/services-and-supplies",
+      "label": "Services & Supplies",
+      "tier": 5,
+      "parent": "fund/642",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/643/services-and-supplies",
+      "label": "Services & Supplies",
+      "tier": 5,
+      "parent": "fund/643",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/700/services-and-supplies",
+      "label": "Services & Supplies",
+      "tier": 5,
+      "parent": "fund/700",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/700/wages-and-benefits",
+      "label": "Wages & Benefits",
+      "tier": 5,
+      "parent": "fund/700",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/710/services-and-supplies",
+      "label": "Services & Supplies",
+      "tier": 5,
+      "parent": "fund/710",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/710/wages-and-benefits",
+      "label": "Wages & Benefits",
+      "tier": 5,
+      "parent": "fund/710",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/720/capital-outlay",
+      "label": "Capital Outlay",
+      "tier": 5,
+      "parent": "fund/720",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/720/services-and-supplies",
+      "label": "Services & Supplies",
+      "tier": 5,
+      "parent": "fund/720",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/720/wages-and-benefits",
+      "label": "Wages & Benefits",
+      "tier": 5,
+      "parent": "fund/720",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/730/capital-outlay",
+      "label": "Capital Outlay",
+      "tier": 5,
+      "parent": "fund/730",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/730/services-and-supplies",
+      "label": "Services & Supplies",
+      "tier": 5,
+      "parent": "fund/730",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/730/wages-and-benefits",
+      "label": "Wages & Benefits",
+      "tier": 5,
+      "parent": "fund/730",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/740/capital-outlay",
+      "label": "Capital Outlay",
+      "tier": 5,
+      "parent": "fund/740",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/740/debt-services",
+      "label": "Debt Services",
+      "tier": 5,
+      "parent": "fund/740",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/740/services-and-supplies",
+      "label": "Services & Supplies",
+      "tier": 5,
+      "parent": "fund/740",
+      "constraint_tier": "",
+      "role": "object_category",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "expenditure/fund/740/wages-and-benefits",
+      "label": "Wages & Benefits",
+      "tier": 5,
+      "parent": "fund/740",
       "constraint_tier": "",
       "role": "object_category",
       "derived": false,
@@ -5604,6 +6562,1770 @@
           "doc_id": "livermore-budget-fy2026-2027",
           "pages": [
             168
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/200",
+      "target": "expenditure/fund/200/services-and-supplies",
+      "value_cents": 189251700,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-736288f69aab"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            180
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/200",
+      "target": "expenditure/fund/200/wages-and-benefits",
+      "value_cents": 69895900,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-be561b9aa580"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            180
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/201",
+      "target": "expenditure/fund/201/services-and-supplies",
+      "value_cents": 1900,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-8cf1bd64f5f2"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            180
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/202",
+      "target": "expenditure/fund/202/services-and-supplies",
+      "value_cents": 15679800,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-ca066f4982ab"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            182
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/203",
+      "target": "expenditure/fund/203/services-and-supplies",
+      "value_cents": 12715400,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-55306fd77708"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            181
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/204",
+      "target": "expenditure/fund/204/services-and-supplies",
+      "value_cents": 33300000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-634728798ff2"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            180
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/205",
+      "target": "expenditure/fund/205/services-and-supplies",
+      "value_cents": 24200000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-cfd5f011a6bd"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            178
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/206",
+      "target": "expenditure/fund/206/services-and-supplies",
+      "value_cents": 12200000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-e857b6a8d0b5"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            178
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/210",
+      "target": "expenditure/fund/210/services-and-supplies",
+      "value_cents": 19286000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-04435eceace9"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            180
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/210",
+      "target": "expenditure/fund/210/wages-and-benefits",
+      "value_cents": 104092400,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-3da29208a623"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            180
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/221",
+      "target": "expenditure/fund/221/services-and-supplies",
+      "value_cents": 5311300,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-201803789bd4"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            178
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/222",
+      "target": "expenditure/fund/222/services-and-supplies",
+      "value_cents": 5000000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-5351fea66285"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            178
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/223",
+      "target": "expenditure/fund/223/services-and-supplies",
+      "value_cents": 18030000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-1f494d9acc09"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            179
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/224",
+      "target": "expenditure/fund/224/debt-services",
+      "value_cents": 15619600,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-90569eb2003b"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            179
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/224",
+      "target": "expenditure/fund/224/services-and-supplies",
+      "value_cents": 17748500,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-43f9f15c8dc5"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            179
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/224",
+      "target": "expenditure/fund/224/wages-and-benefits",
+      "value_cents": 10997500,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-9dd76d8c1d05"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            179
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/225",
+      "target": "expenditure/fund/225/services-and-supplies",
+      "value_cents": 12283400,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-57a8e73ad199"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            179
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/240",
+      "target": "expenditure/fund/240/services-and-supplies",
+      "value_cents": 23233000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-18eaa13acc64"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            179
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/240",
+      "target": "expenditure/fund/240/wages-and-benefits",
+      "value_cents": 3082500,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-b72484147aa8"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            179
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/241",
+      "target": "expenditure/fund/241/services-and-supplies",
+      "value_cents": 9091700,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-f46703153bde"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            181
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/242",
+      "target": "expenditure/fund/242/services-and-supplies",
+      "value_cents": 10000000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-801f4bec5189"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            181
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/282",
+      "target": "expenditure/fund/282/services-and-supplies",
+      "value_cents": 2427400,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-b6c9c42db756"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            180
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/283",
+      "target": "expenditure/fund/283/services-and-supplies",
+      "value_cents": 31208800,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-07b91dbb0ffa"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            178
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/283",
+      "target": "expenditure/fund/283/wages-and-benefits",
+      "value_cents": 18595200,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-320ab523b77f"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            178
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/284",
+      "target": "expenditure/fund/284/capital-outlay",
+      "value_cents": 5000000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-18363e678864"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            182
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/284",
+      "target": "expenditure/fund/284/services-and-supplies",
+      "value_cents": 21359700,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-4102b8b36f43"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            182
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/285",
+      "target": "expenditure/fund/285/wages-and-benefits",
+      "value_cents": 2152600,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-45f22ca8767a"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            182
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/286",
+      "target": "expenditure/fund/286/services-and-supplies",
+      "value_cents": 3000000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-5081231f2bf1"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            178
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/287",
+      "target": "expenditure/fund/287/services-and-supplies",
+      "value_cents": 140100,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-01d94a38b9d4"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            181
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/288",
+      "target": "expenditure/fund/288/services-and-supplies",
+      "value_cents": 100000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-f514ccf2b64b"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            180
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/289",
+      "target": "expenditure/fund/289/services-and-supplies",
+      "value_cents": 9609700,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-ac7a4fda6e8c"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            182
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/289",
+      "target": "expenditure/fund/289/wages-and-benefits",
+      "value_cents": 25652400,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-16f279f21d7e"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            182
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/310",
+      "target": "expenditure/fund/310/services-and-supplies",
+      "value_cents": 49922100,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-865c7b1f33c5"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            179
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/310",
+      "target": "expenditure/fund/310/wages-and-benefits",
+      "value_cents": 28381500,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-36367bd41914"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            178
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/311",
+      "target": "expenditure/fund/311/services-and-supplies",
+      "value_cents": 185994500,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-c3fc896dd88c"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            181
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/311",
+      "target": "expenditure/fund/311/wages-and-benefits",
+      "value_cents": 111955900,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-38582ae39bb6"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            181
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/320",
+      "target": "expenditure/fund/320/services-and-supplies",
+      "value_cents": 40826300,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-1a035ad6e846"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            179
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/321",
+      "target": "expenditure/fund/321/services-and-supplies",
+      "value_cents": 19854200,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-e3dfb66db7de"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            181
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/330",
+      "target": "expenditure/fund/330/services-and-supplies",
+      "value_cents": 12533500,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-cee87481062f"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            180
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/331",
+      "target": "expenditure/fund/331/services-and-supplies",
+      "value_cents": 1065500,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-59ae0f7c9bef"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            182
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/400",
+      "target": "expenditure/fund/400/debt-services",
+      "value_cents": 53130000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-77a31b7109a0"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            176
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/401",
+      "target": "expenditure/fund/401/debt-services",
+      "value_cents": 388117300,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-2502b796fa77"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            176
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/402",
+      "target": "expenditure/fund/402/debt-services",
+      "value_cents": 255742500,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-7eaea6086d43"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            176
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/510",
+      "target": "expenditure/fund/510/services-and-supplies",
+      "value_cents": 8500000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-fabe387e924d"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            175
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/550",
+      "target": "expenditure/fund/550/services-and-supplies",
+      "value_cents": 31800000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-a1092afad83d"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            175
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/550",
+      "target": "expenditure/fund/550/wages-and-benefits",
+      "value_cents": 18778400,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-e1064f642f63"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            175
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/551",
+      "target": "expenditure/fund/551/services-and-supplies",
+      "value_cents": 5200000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-5fafd31e3305"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            175
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/552",
+      "target": "expenditure/fund/552/services-and-supplies",
+      "value_cents": 16145000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-58979cbe3d01"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            175
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/553",
+      "target": "expenditure/fund/553/services-and-supplies",
+      "value_cents": 6170000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-d6f5550e5171"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            175
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/560",
+      "target": "expenditure/fund/560/services-and-supplies",
+      "value_cents": 10200000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-e22feaf44fa3"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            175
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/561",
+      "target": "expenditure/fund/561/services-and-supplies",
+      "value_cents": 200000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-5025a62dd929"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            175
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/600",
+      "target": "expenditure/fund/600/debt-services",
+      "value_cents": 35248600,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-fd55fab25fd1"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            173
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/600",
+      "target": "expenditure/fund/600/services-and-supplies",
+      "value_cents": 177322600,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-34021fde790e"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            173
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/600",
+      "target": "expenditure/fund/600/wages-and-benefits",
+      "value_cents": 184537400,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-7a192a031d48"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            173
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/610",
+      "target": "expenditure/fund/610/capital-outlay",
+      "value_cents": 1500000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-9c7bc170b132"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            173
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/610",
+      "target": "expenditure/fund/610/services-and-supplies",
+      "value_cents": 330817700,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-a7d1449db682"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            173
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/610",
+      "target": "expenditure/fund/610/wages-and-benefits",
+      "value_cents": 127432200,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-17f9ff219f55"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            173
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/612",
+      "target": "expenditure/fund/612/services-and-supplies",
+      "value_cents": 637400,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-e71b31ed410d"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            173
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/620",
+      "target": "expenditure/fund/620/capital-outlay",
+      "value_cents": 8390000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-4e2ceef2c0a3"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            173
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/620",
+      "target": "expenditure/fund/620/services-and-supplies",
+      "value_cents": 1646754400,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-8efa1b3ae6aa"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            173
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/620",
+      "target": "expenditure/fund/620/wages-and-benefits",
+      "value_cents": 955815600,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-20917c776079"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            173
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/622",
+      "target": "expenditure/fund/622/capital-outlay",
+      "value_cents": 27500000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-67209fa1c5bf"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            173
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/622",
+      "target": "expenditure/fund/622/services-and-supplies",
+      "value_cents": 40285200,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-a12fbed69557"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            173
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/623",
+      "target": "expenditure/fund/623/services-and-supplies",
+      "value_cents": 107943200,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-c15db48352bf"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            173
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/640",
+      "target": "expenditure/fund/640/debt-services",
+      "value_cents": 34486400,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-c29994eb02ee"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            174
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/640",
+      "target": "expenditure/fund/640/services-and-supplies",
+      "value_cents": 1619942000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-83b7191305a8"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            174
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/640",
+      "target": "expenditure/fund/640/wages-and-benefits",
+      "value_cents": 383763200,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-66177ae56c0c"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            173
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/642",
+      "target": "expenditure/fund/642/capital-outlay",
+      "value_cents": 8000000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-6ce9b4fee809"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            174
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/642",
+      "target": "expenditure/fund/642/services-and-supplies",
+      "value_cents": 63057400,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-6d214dfa3bb1"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            174
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/643",
+      "target": "expenditure/fund/643/services-and-supplies",
+      "value_cents": 1363700,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-4962d88a111a"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            174
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/700",
+      "target": "expenditure/fund/700/services-and-supplies",
+      "value_cents": 605097000,
+      "kind": "internal_service",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-804e4e35596d"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            183
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/700",
+      "target": "expenditure/fund/700/wages-and-benefits",
+      "value_cents": 46698200,
+      "kind": "internal_service",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-14441668e1cc"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            183
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/710",
+      "target": "expenditure/fund/710/services-and-supplies",
+      "value_cents": 260530200,
+      "kind": "internal_service",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-6c4c72005c69"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            183
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/710",
+      "target": "expenditure/fund/710/wages-and-benefits",
+      "value_cents": 34553500,
+      "kind": "internal_service",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-173fe1a5a5ae"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            183
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/720",
+      "target": "expenditure/fund/720/capital-outlay",
+      "value_cents": 35000000,
+      "kind": "internal_service",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-21cc228f3cb7"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            183
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/720",
+      "target": "expenditure/fund/720/services-and-supplies",
+      "value_cents": 425877400,
+      "kind": "internal_service",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-4a5d8ba79ecc"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            183
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/720",
+      "target": "expenditure/fund/720/wages-and-benefits",
+      "value_cents": 294701500,
+      "kind": "internal_service",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-57e65099ccd1"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            183
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/730",
+      "target": "expenditure/fund/730/capital-outlay",
+      "value_cents": 214093100,
+      "kind": "internal_service",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-25a58f728915"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            183
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/730",
+      "target": "expenditure/fund/730/services-and-supplies",
+      "value_cents": 190504500,
+      "kind": "internal_service",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-780acc5caccd"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            183
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/730",
+      "target": "expenditure/fund/730/wages-and-benefits",
+      "value_cents": 143825600,
+      "kind": "internal_service",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-22deec2a17cc"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            183
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/740",
+      "target": "expenditure/fund/740/capital-outlay",
+      "value_cents": 12200400,
+      "kind": "internal_service",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-78b5f38eb330"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            183
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/740",
+      "target": "expenditure/fund/740/debt-services",
+      "value_cents": 111551000,
+      "kind": "internal_service",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-81017cfc72e7"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            183
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/740",
+      "target": "expenditure/fund/740/services-and-supplies",
+      "value_cents": 172591900,
+      "kind": "internal_service",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-90a44d37708d"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            183
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false,
+      "contra": ""
+    },
+    {
+      "source": "fund/740",
+      "target": "expenditure/fund/740/wages-and-benefits",
+      "value_cents": 82227200,
+      "kind": "internal_service",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-57a74cce611e"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            183
           ]
         }
       ],

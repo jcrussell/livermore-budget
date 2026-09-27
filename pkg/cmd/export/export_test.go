@@ -1389,12 +1389,13 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 			From:       2,
 			Projection: project.FundFlowsProjection,
 			Keep:       []int{0},
-			Tiers:      []int{0, 2, 3, 4},
-			Widen:      []int{4},
-			Caps:       []export.TierCap{{Tier: 3, Cap: 8}, {Tier: 4, Cap: 24, Tail: "divisions"}},
-			Noun:       "fund group",
-			Back:       "All fund groups",
-			Tail:       "funds",
+			Tiers:      []int{0, 2, 3, 4, 5},
+			Widen:      []int{4, 5},
+			Caps: []export.TierCap{{Tier: 3, Cap: 8}, {Tier: 4, Cap: 24, Tail: "divisions"},
+				{Tier: 5, Cap: 8, Tail: "categories"}},
+			Noun: "fund group",
+			Back: "All fund groups",
+			Tail: "funds",
 			// Read off the check, which is the declaration.
 			Residual:      check.ResidualNodes(),
 			ResidualGrain: "fund",
@@ -1409,9 +1410,11 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 				"further: the General Fund into the divisions that spend it, from Budget " +
 				"Book pp.167-170, and every other fund into the departments it pays for, " +
 				"from pp.85-125. Any other fund ends the drill. " +
-				"Where there is room for a fourth column, the General Fund's divisions " +
-				"from pp.167-170 are drawn beyond its funds; no other group has a " +
-				"fund those pages decompose, so their windows stay three columns.",
+				"Where there is room for more columns, the General Fund's divisions " +
+				"from pp.167-170 are drawn beyond its funds, and beyond them the " +
+				"object categories each fund spends on: the General Fund's through " +
+				"its divisions, every other fund's straight from pp.172-183, which " +
+				"print no division.",
 		},
 		{
 			Key:   "fund",

@@ -110,7 +110,11 @@ func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 		// below is completeness from the parent, not an independent reading.
 		opens := make([][]string, len(spine.Steps))
 		for i, st := range spine.Steps {
-			o, err := export.Openable(spine, i, st, stems[i], built.Projections[stems[i]])
+			parents, err := export.FlankDocuments(spine, st, col.Stem, stems, built.Projections)
+			if err != nil {
+				t.Fatalf("column %q: step %q: %v", col.Stem, st.Key, err)
+			}
+			o, err := export.Openable(spine, i, st, stems[i], built.Projections[stems[i]], parents)
 			if err != nil {
 				t.Fatalf("column %q: step %q: %v", col.Stem, st.Key, err)
 			}
@@ -623,6 +627,35 @@ func replayRung(s export.DrillStep, drawing, screen, from export.Graph, ck expor
 		}
 		own, lent := split(ids, byID)
 		draws = append(draws, drawnTier{Tier: t, Role: role, IDs: own, Carried: lent})
+	}
+	// Needs, keeping the widened columns from the front: an outward id first
+	// reached once Widen[k] is kept needs Widen[k].
+	reachedWith := func(k int) (export.Reach, error) {
+		narrow := slices.DeleteFunc(slices.Clone(half), func(t int) bool { return slices.Contains(s.Widen[k:], t) })
+		return export.ReachOf(drawing, opened, nearIsSource, narrow)
+	}
+	for i := range draws {
+		if draws[i].Role != roleOutward || slices.Contains(s.Widen, draws[i].Tier) {
+			continue
+		}
+		for _, id := range slices.Concat(draws[i].IDs, draws[i].Carried) {
+			for k := 0; k < len(s.Widen); k++ {
+				r, err := reachedWith(k)
+				if err != nil {
+					return nil, nil, export.Graph{}, err
+				}
+				if slices.Contains(r.At[draws[i].Tier], id) {
+					break
+				}
+				if next, err := reachedWith(k + 1); err == nil && slices.Contains(next.At[draws[i].Tier], id) {
+					if draws[i].Needs == nil {
+						draws[i].Needs = map[string]int{}
+					}
+					draws[i].Needs[id] = s.Widen[k]
+					break
+				}
+			}
+		}
 	}
 	// Residual then gap, shapeFor's order; a residual only across a document switch.
 	residual := s.Residual

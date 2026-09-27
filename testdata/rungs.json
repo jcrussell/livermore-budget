@@ -1,5 +1,5 @@
 {
-  "schema_version": 5,
+  "schema_version": 6,
   "generated_by": "fisc dev",
   "columns": [
     {
@@ -242,6 +242,21 @@
               "tier": 4,
               "role": "outward",
               "ids": []
+            },
+            {
+              "tier": 5,
+              "role": "outward",
+              "ids": [
+                "expenditure/fund/510/services-and-supplies",
+                "expenditure/fund/512/services-and-supplies",
+                "expenditure/fund/550/services-and-supplies",
+                "expenditure/fund/550/wages-and-benefits",
+                "expenditure/fund/551/services-and-supplies",
+                "expenditure/fund/552/services-and-supplies",
+                "expenditure/fund/553/services-and-supplies",
+                "expenditure/fund/560/services-and-supplies",
+                "expenditure/fund/561/services-and-supplies"
+              ]
             }
           ],
           "marks": [
@@ -250,11 +265,13 @@
               "role": "residual",
               "tier": 3,
               "in_cents": 250021300,
+              "out_cents": 2858474000,
               "ends": [
-                "fund-balance/draw"
+                "fund-balance/draw",
+                "transfers/out"
               ],
               "label": "Not split by fund here",
-              "rationale": "Money the chart above prints for Capital Funds as a whole and that the schedule this chart is drawn from does not split by fund, so no fund here receives or pays it. It is drawn beside the opened node's parts rather than attributed to one of them, and what flows in and what flows out need not balance: the difference is what that schedule does not break down. Fund Balance Draw: a negative change in working capital, inferred from pp.66-67's Change in Working Capital row and drawn into the group. pp.127-140 print no fund-balance row at all, so no fund receives it.",
+              "rationale": "Money the chart above prints for Capital Funds as a whole and that the schedule this chart is drawn from does not split by fund, so no fund here receives or pays it. It is drawn beside the opened node's parts rather than attributed to one of them, and what flows in and what flows out need not balance: the difference is what that schedule does not break down. Fund Balance Draw: a negative change in working capital, inferred from pp.66-67's Change in Working Capital row and drawn into the group. pp.127-140 print no fund-balance row at all, so no fund receives it. Transfers Out: pp.66-67 print Transfers Out per fund group, and the pages this chart is drawn from print no transfer out, so the group's transfer out leaves beside its funds rather than through one.",
               "source_note": ""
             }
           ]
@@ -533,6 +550,15 @@
               "tier": 4,
               "role": "outward",
               "ids": []
+            },
+            {
+              "tier": 5,
+              "role": "outward",
+              "ids": [
+                "expenditure/fund/400/debt-services",
+                "expenditure/fund/401/debt-services",
+                "expenditure/fund/402/debt-services"
+              ]
             }
           ]
         },
@@ -670,6 +696,46 @@
               "tier": 4,
               "role": "outward",
               "ids": []
+            },
+            {
+              "tier": 5,
+              "role": "outward",
+              "ids": [
+                "expenditure/fund/600/debt-services",
+                "expenditure/fund/600/services-and-supplies",
+                "expenditure/fund/600/wages-and-benefits",
+                "expenditure/fund/610/capital-outlay",
+                "expenditure/fund/610/services-and-supplies",
+                "expenditure/fund/610/wages-and-benefits",
+                "expenditure/fund/612/services-and-supplies",
+                "expenditure/fund/620/capital-outlay",
+                "expenditure/fund/620/services-and-supplies",
+                "expenditure/fund/620/wages-and-benefits",
+                "expenditure/fund/622/capital-outlay",
+                "expenditure/fund/622/services-and-supplies",
+                "expenditure/fund/623/services-and-supplies",
+                "expenditure/fund/640/debt-services",
+                "expenditure/fund/640/services-and-supplies",
+                "expenditure/fund/640/wages-and-benefits",
+                "expenditure/fund/642/capital-outlay",
+                "expenditure/fund/642/services-and-supplies",
+                "expenditure/fund/643/services-and-supplies"
+              ]
+            }
+          ],
+          "marks": [
+            {
+              "id": "residual/fund-group/enterprise",
+              "role": "residual",
+              "tier": 3,
+              "out_cents": 2370753100,
+              "ends": [
+                "fund-balance/contribution",
+                "transfers/out"
+              ],
+              "label": "Not split by fund here",
+              "rationale": "Money the chart above prints for Enterprise Funds as a whole and that the schedule this chart is drawn from does not split by fund, so no fund here receives or pays it. It is drawn beside the opened node's parts rather than attributed to one of them, and what flows in and what flows out need not balance: the difference is what that schedule does not break down. Fund Balance Contribution: a positive change in working capital, inferred from pp.66-67's Change in Working Capital row and drawn out of the group. pp.127-140 print no fund-balance row at all, so no fund pays it. Transfers Out: pp.66-67 print Transfers Out per fund group, and the pages this chart is drawn from print no transfer out, so the group's transfer out leaves beside its funds rather than through one.",
+              "source_note": ""
             }
           ]
         },
@@ -1010,6 +1076,56 @@
                 "dept/public-works-administration",
                 "dept/special-operations",
                 "dept/support-services"
+              ]
+            },
+            {
+              "tier": 5,
+              "role": "outward",
+              "ids": [
+                "expenditure/administrative-services/services-and-supplies",
+                "expenditure/administrative-services/wages-and-benefits",
+                "expenditure/building-and-safety/services-and-supplies",
+                "expenditure/building-and-safety/wages-and-benefits",
+                "expenditure/city-attorney/services-and-supplies",
+                "expenditure/city-attorney/wages-and-benefits",
+                "expenditure/city-clerk/services-and-supplies",
+                "expenditure/city-clerk/wages-and-benefits",
+                "expenditure/city-council/services-and-supplies",
+                "expenditure/city-council/wages-and-benefits",
+                "expenditure/city-manager/services-and-supplies",
+                "expenditure/city-manager/wages-and-benefits",
+                "expenditure/community-development-admin/services-and-supplies",
+                "expenditure/community-development-admin/wages-and-benefits",
+                "expenditure/engineering/services-and-supplies",
+                "expenditure/engineering/wages-and-benefits",
+                "expenditure/environmental-services/services-and-supplies",
+                "expenditure/environmental-services/wages-and-benefits",
+                "expenditure/finance/services-and-supplies",
+                "expenditure/finance/wages-and-benefits",
+                "expenditure/fire-administration/services-and-supplies",
+                "expenditure/general-services/services-and-supplies",
+                "expenditure/housing-and-human-services/services-and-supplies",
+                "expenditure/housing-and-human-services/wages-and-benefits",
+                "expenditure/human-resources/services-and-supplies",
+                "expenditure/human-resources/wages-and-benefits",
+                "expenditure/innovation-and-economic-devel/services-and-supplies",
+                "expenditure/innovation-and-economic-devel/wages-and-benefits",
+                "expenditure/library/services-and-supplies",
+                "expenditure/library/wages-and-benefits",
+                "expenditure/maintenance/services-and-supplies",
+                "expenditure/maintenance/wages-and-benefits",
+                "expenditure/patrol/services-and-supplies",
+                "expenditure/patrol/wages-and-benefits",
+                "expenditure/planning/services-and-supplies",
+                "expenditure/planning/wages-and-benefits",
+                "expenditure/police-administration/services-and-supplies",
+                "expenditure/police-administration/wages-and-benefits",
+                "expenditure/public-works-administration/services-and-supplies",
+                "expenditure/public-works-administration/wages-and-benefits",
+                "expenditure/special-operations/services-and-supplies",
+                "expenditure/special-operations/wages-and-benefits",
+                "expenditure/support-services/services-and-supplies",
+                "expenditure/support-services/wages-and-benefits"
               ]
             }
           ],
@@ -1907,6 +2023,26 @@
               "tier": 4,
               "role": "outward",
               "ids": []
+            },
+            {
+              "tier": 5,
+              "role": "outward",
+              "ids": [
+                "expenditure/fund/700/services-and-supplies",
+                "expenditure/fund/700/wages-and-benefits",
+                "expenditure/fund/710/services-and-supplies",
+                "expenditure/fund/710/wages-and-benefits",
+                "expenditure/fund/720/capital-outlay",
+                "expenditure/fund/720/services-and-supplies",
+                "expenditure/fund/720/wages-and-benefits",
+                "expenditure/fund/730/capital-outlay",
+                "expenditure/fund/730/services-and-supplies",
+                "expenditure/fund/730/wages-and-benefits",
+                "expenditure/fund/740/capital-outlay",
+                "expenditure/fund/740/debt-services",
+                "expenditure/fund/740/services-and-supplies",
+                "expenditure/fund/740/wages-and-benefits"
+              ]
             }
           ],
           "marks": [
@@ -1915,11 +2051,13 @@
               "role": "residual",
               "tier": 3,
               "in_cents": 614753300,
+              "out_cents": 4000000,
               "ends": [
-                "fund-balance/draw"
+                "fund-balance/draw",
+                "transfers/out"
               ],
               "label": "Not split by fund here",
-              "rationale": "Money the chart above prints for Internal Service Funds as a whole and that the schedule this chart is drawn from does not split by fund, so no fund here receives or pays it. It is drawn beside the opened node's parts rather than attributed to one of them, and what flows in and what flows out need not balance: the difference is what that schedule does not break down. Fund Balance Draw: a negative change in working capital, inferred from pp.66-67's Change in Working Capital row and drawn into the group. pp.127-140 print no fund-balance row at all, so no fund receives it.",
+              "rationale": "Money the chart above prints for Internal Service Funds as a whole and that the schedule this chart is drawn from does not split by fund, so no fund here receives or pays it. It is drawn beside the opened node's parts rather than attributed to one of them, and what flows in and what flows out need not balance: the difference is what that schedule does not break down. Fund Balance Draw: a negative change in working capital, inferred from pp.66-67's Change in Working Capital row and drawn into the group. pp.127-140 print no fund-balance row at all, so no fund receives it. Transfers Out: pp.66-67 print Transfers Out per fund group, and the pages this chart is drawn from print no transfer out, so the group's transfer out leaves beside its funds rather than through one.",
               "source_note": ""
             }
           ]
@@ -2119,6 +2257,7 @@
                 "fund/211",
                 "fund/221",
                 "fund/222",
+                "fund/223",
                 "fund/224",
                 "fund/225",
                 "fund/240",
@@ -2131,7 +2270,9 @@
                 "fund/285",
                 "fund/286",
                 "fund/287",
+                "fund/288",
                 "fund/289",
+                "fund/290",
                 "fund/300",
                 "fund/310",
                 "fund/311",
@@ -2139,12 +2280,80 @@
                 "fund/321",
                 "fund/330",
                 "fund/331"
-              ]
+              ],
+              "needs": {
+                "fund/223": 5,
+                "fund/288": 5,
+                "fund/290": 5
+              }
             },
             {
               "tier": 4,
               "role": "outward",
               "ids": []
+            },
+            {
+              "tier": 5,
+              "role": "outward",
+              "ids": [
+                "expenditure/fund/200/services-and-supplies",
+                "expenditure/fund/200/wages-and-benefits",
+                "expenditure/fund/201/services-and-supplies",
+                "expenditure/fund/202/services-and-supplies",
+                "expenditure/fund/203/services-and-supplies",
+                "expenditure/fund/204/services-and-supplies",
+                "expenditure/fund/205/services-and-supplies",
+                "expenditure/fund/206/services-and-supplies",
+                "expenditure/fund/207/services-and-supplies",
+                "expenditure/fund/210/services-and-supplies",
+                "expenditure/fund/210/wages-and-benefits",
+                "expenditure/fund/221/services-and-supplies",
+                "expenditure/fund/222/services-and-supplies",
+                "expenditure/fund/223/services-and-supplies",
+                "expenditure/fund/224/debt-services",
+                "expenditure/fund/224/services-and-supplies",
+                "expenditure/fund/224/wages-and-benefits",
+                "expenditure/fund/225/services-and-supplies",
+                "expenditure/fund/240/services-and-supplies",
+                "expenditure/fund/240/wages-and-benefits",
+                "expenditure/fund/241/services-and-supplies",
+                "expenditure/fund/242/capital-outlay",
+                "expenditure/fund/282/services-and-supplies",
+                "expenditure/fund/283/services-and-supplies",
+                "expenditure/fund/283/wages-and-benefits",
+                "expenditure/fund/284/capital-outlay",
+                "expenditure/fund/284/services-and-supplies",
+                "expenditure/fund/285/wages-and-benefits",
+                "expenditure/fund/286/services-and-supplies",
+                "expenditure/fund/287/services-and-supplies",
+                "expenditure/fund/288/services-and-supplies",
+                "expenditure/fund/289/services-and-supplies",
+                "expenditure/fund/289/wages-and-benefits",
+                "expenditure/fund/290/services-and-supplies",
+                "expenditure/fund/310/services-and-supplies",
+                "expenditure/fund/310/wages-and-benefits",
+                "expenditure/fund/311/services-and-supplies",
+                "expenditure/fund/311/wages-and-benefits",
+                "expenditure/fund/320/services-and-supplies",
+                "expenditure/fund/321/services-and-supplies",
+                "expenditure/fund/330/services-and-supplies",
+                "expenditure/fund/331/services-and-supplies"
+              ]
+            }
+          ],
+          "marks": [
+            {
+              "id": "residual/fund-group/special-revenue",
+              "role": "residual",
+              "tier": 3,
+              "out_cents": 1001199900,
+              "ends": [
+                "fund-balance/contribution",
+                "transfers/out"
+              ],
+              "label": "Not split by fund here",
+              "rationale": "Money the chart above prints for Special Revenue Funds as a whole and that the schedule this chart is drawn from does not split by fund, so no fund here receives or pays it. It is drawn beside the opened node's parts rather than attributed to one of them, and what flows in and what flows out need not balance: the difference is what that schedule does not break down. Fund Balance Contribution: a positive change in working capital, inferred from pp.66-67's Change in Working Capital row and drawn out of the group. pp.127-140 print no fund-balance row at all, so no fund pays it. Transfers Out: pp.66-67 print Transfers Out per fund group, and the pages this chart is drawn from print no transfer out, so the group's transfer out leaves beside its funds rather than through one.",
+              "source_note": ""
             }
           ]
         },
@@ -3796,6 +4005,20 @@
               "tier": 4,
               "role": "outward",
               "ids": []
+            },
+            {
+              "tier": 5,
+              "role": "outward",
+              "ids": [
+                "expenditure/fund/510/services-and-supplies",
+                "expenditure/fund/550/services-and-supplies",
+                "expenditure/fund/550/wages-and-benefits",
+                "expenditure/fund/551/services-and-supplies",
+                "expenditure/fund/552/services-and-supplies",
+                "expenditure/fund/553/services-and-supplies",
+                "expenditure/fund/560/services-and-supplies",
+                "expenditure/fund/561/services-and-supplies"
+              ]
             }
           ],
           "marks": [
@@ -3804,11 +4027,13 @@
               "role": "residual",
               "tier": 3,
               "in_cents": 1012941600,
+              "out_cents": 3604773600,
               "ends": [
-                "fund-balance/draw"
+                "fund-balance/draw",
+                "transfers/out"
               ],
               "label": "Not split by fund here",
-              "rationale": "Money the chart above prints for Capital Funds as a whole and that the schedule this chart is drawn from does not split by fund, so no fund here receives or pays it. It is drawn beside the opened node's parts rather than attributed to one of them, and what flows in and what flows out need not balance: the difference is what that schedule does not break down. Fund Balance Draw: a negative change in working capital, inferred from pp.66-67's Change in Working Capital row and drawn into the group. pp.127-140 print no fund-balance row at all, so no fund receives it.",
+              "rationale": "Money the chart above prints for Capital Funds as a whole and that the schedule this chart is drawn from does not split by fund, so no fund here receives or pays it. It is drawn beside the opened node's parts rather than attributed to one of them, and what flows in and what flows out need not balance: the difference is what that schedule does not break down. Fund Balance Draw: a negative change in working capital, inferred from pp.66-67's Change in Working Capital row and drawn into the group. pp.127-140 print no fund-balance row at all, so no fund receives it. Transfers Out: pp.66-67 print Transfers Out per fund group, and the pages this chart is drawn from print no transfer out, so the group's transfer out leaves beside its funds rather than through one.",
               "source_note": ""
             }
           ]
@@ -4057,6 +4282,15 @@
               "tier": 4,
               "role": "outward",
               "ids": []
+            },
+            {
+              "tier": 5,
+              "role": "outward",
+              "ids": [
+                "expenditure/fund/400/debt-services",
+                "expenditure/fund/401/debt-services",
+                "expenditure/fund/402/debt-services"
+              ]
             }
           ]
         },
@@ -4194,6 +4428,46 @@
               "tier": 4,
               "role": "outward",
               "ids": []
+            },
+            {
+              "tier": 5,
+              "role": "outward",
+              "ids": [
+                "expenditure/fund/600/debt-services",
+                "expenditure/fund/600/services-and-supplies",
+                "expenditure/fund/600/wages-and-benefits",
+                "expenditure/fund/610/capital-outlay",
+                "expenditure/fund/610/services-and-supplies",
+                "expenditure/fund/610/wages-and-benefits",
+                "expenditure/fund/612/services-and-supplies",
+                "expenditure/fund/620/capital-outlay",
+                "expenditure/fund/620/services-and-supplies",
+                "expenditure/fund/620/wages-and-benefits",
+                "expenditure/fund/622/capital-outlay",
+                "expenditure/fund/622/services-and-supplies",
+                "expenditure/fund/623/services-and-supplies",
+                "expenditure/fund/640/debt-services",
+                "expenditure/fund/640/services-and-supplies",
+                "expenditure/fund/640/wages-and-benefits",
+                "expenditure/fund/642/capital-outlay",
+                "expenditure/fund/642/services-and-supplies",
+                "expenditure/fund/643/services-and-supplies"
+              ]
+            }
+          ],
+          "marks": [
+            {
+              "id": "residual/fund-group/enterprise",
+              "role": "residual",
+              "tier": 3,
+              "out_cents": 2609028000,
+              "ends": [
+                "fund-balance/contribution",
+                "transfers/out"
+              ],
+              "label": "Not split by fund here",
+              "rationale": "Money the chart above prints for Enterprise Funds as a whole and that the schedule this chart is drawn from does not split by fund, so no fund here receives or pays it. It is drawn beside the opened node's parts rather than attributed to one of them, and what flows in and what flows out need not balance: the difference is what that schedule does not break down. Fund Balance Contribution: a positive change in working capital, inferred from pp.66-67's Change in Working Capital row and drawn out of the group. pp.127-140 print no fund-balance row at all, so no fund pays it. Transfers Out: pp.66-67 print Transfers Out per fund group, and the pages this chart is drawn from print no transfer out, so the group's transfer out leaves beside its funds rather than through one.",
+              "source_note": ""
             }
           ]
         },
@@ -4533,6 +4807,56 @@
                 "dept/public-works-administration",
                 "dept/special-operations",
                 "dept/support-services"
+              ]
+            },
+            {
+              "tier": 5,
+              "role": "outward",
+              "ids": [
+                "expenditure/administrative-services/services-and-supplies",
+                "expenditure/administrative-services/wages-and-benefits",
+                "expenditure/building-and-safety/services-and-supplies",
+                "expenditure/building-and-safety/wages-and-benefits",
+                "expenditure/city-attorney/services-and-supplies",
+                "expenditure/city-attorney/wages-and-benefits",
+                "expenditure/city-clerk/services-and-supplies",
+                "expenditure/city-clerk/wages-and-benefits",
+                "expenditure/city-council/services-and-supplies",
+                "expenditure/city-council/wages-and-benefits",
+                "expenditure/city-manager/services-and-supplies",
+                "expenditure/city-manager/wages-and-benefits",
+                "expenditure/community-development-admin/services-and-supplies",
+                "expenditure/community-development-admin/wages-and-benefits",
+                "expenditure/engineering/services-and-supplies",
+                "expenditure/engineering/wages-and-benefits",
+                "expenditure/environmental-services/services-and-supplies",
+                "expenditure/environmental-services/wages-and-benefits",
+                "expenditure/finance/services-and-supplies",
+                "expenditure/finance/wages-and-benefits",
+                "expenditure/fire-administration/services-and-supplies",
+                "expenditure/general-services/services-and-supplies",
+                "expenditure/housing-and-human-services/services-and-supplies",
+                "expenditure/housing-and-human-services/wages-and-benefits",
+                "expenditure/human-resources/services-and-supplies",
+                "expenditure/human-resources/wages-and-benefits",
+                "expenditure/innovation-and-economic-devel/services-and-supplies",
+                "expenditure/innovation-and-economic-devel/wages-and-benefits",
+                "expenditure/library/services-and-supplies",
+                "expenditure/library/wages-and-benefits",
+                "expenditure/maintenance/services-and-supplies",
+                "expenditure/maintenance/wages-and-benefits",
+                "expenditure/patrol/services-and-supplies",
+                "expenditure/patrol/wages-and-benefits",
+                "expenditure/planning/services-and-supplies",
+                "expenditure/planning/wages-and-benefits",
+                "expenditure/police-administration/services-and-supplies",
+                "expenditure/police-administration/wages-and-benefits",
+                "expenditure/public-works-administration/services-and-supplies",
+                "expenditure/public-works-administration/wages-and-benefits",
+                "expenditure/special-operations/services-and-supplies",
+                "expenditure/special-operations/wages-and-benefits",
+                "expenditure/support-services/services-and-supplies",
+                "expenditure/support-services/wages-and-benefits"
               ]
             }
           ],
@@ -5430,6 +5754,26 @@
               "tier": 4,
               "role": "outward",
               "ids": []
+            },
+            {
+              "tier": 5,
+              "role": "outward",
+              "ids": [
+                "expenditure/fund/700/services-and-supplies",
+                "expenditure/fund/700/wages-and-benefits",
+                "expenditure/fund/710/services-and-supplies",
+                "expenditure/fund/710/wages-and-benefits",
+                "expenditure/fund/720/capital-outlay",
+                "expenditure/fund/720/services-and-supplies",
+                "expenditure/fund/720/wages-and-benefits",
+                "expenditure/fund/730/capital-outlay",
+                "expenditure/fund/730/services-and-supplies",
+                "expenditure/fund/730/wages-and-benefits",
+                "expenditure/fund/740/capital-outlay",
+                "expenditure/fund/740/debt-services",
+                "expenditure/fund/740/services-and-supplies",
+                "expenditure/fund/740/wages-and-benefits"
+              ]
             }
           ],
           "marks": [
@@ -5438,11 +5782,13 @@
               "role": "residual",
               "tier": 3,
               "in_cents": 716064500,
+              "out_cents": 61200000,
               "ends": [
-                "fund-balance/draw"
+                "fund-balance/draw",
+                "transfers/out"
               ],
               "label": "Not split by fund here",
-              "rationale": "Money the chart above prints for Internal Service Funds as a whole and that the schedule this chart is drawn from does not split by fund, so no fund here receives or pays it. It is drawn beside the opened node's parts rather than attributed to one of them, and what flows in and what flows out need not balance: the difference is what that schedule does not break down. Fund Balance Draw: a negative change in working capital, inferred from pp.66-67's Change in Working Capital row and drawn into the group. pp.127-140 print no fund-balance row at all, so no fund receives it.",
+              "rationale": "Money the chart above prints for Internal Service Funds as a whole and that the schedule this chart is drawn from does not split by fund, so no fund here receives or pays it. It is drawn beside the opened node's parts rather than attributed to one of them, and what flows in and what flows out need not balance: the difference is what that schedule does not break down. Fund Balance Draw: a negative change in working capital, inferred from pp.66-67's Change in Working Capital row and drawn into the group. pp.127-140 print no fund-balance row at all, so no fund receives it. Transfers Out: pp.66-67 print Transfers Out per fund group, and the pages this chart is drawn from print no transfer out, so the group's transfer out leaves beside its funds rather than through one.",
               "source_note": ""
             }
           ]
@@ -5641,6 +5987,7 @@
                 "fund/211",
                 "fund/221",
                 "fund/222",
+                "fund/223",
                 "fund/224",
                 "fund/225",
                 "fund/240",
@@ -5653,6 +6000,7 @@
                 "fund/285",
                 "fund/286",
                 "fund/287",
+                "fund/288",
                 "fund/289",
                 "fund/300",
                 "fund/310",
@@ -5661,12 +6009,77 @@
                 "fund/321",
                 "fund/330",
                 "fund/331"
-              ]
+              ],
+              "needs": {
+                "fund/223": 5,
+                "fund/288": 5
+              }
             },
             {
               "tier": 4,
               "role": "outward",
               "ids": []
+            },
+            {
+              "tier": 5,
+              "role": "outward",
+              "ids": [
+                "expenditure/fund/200/services-and-supplies",
+                "expenditure/fund/200/wages-and-benefits",
+                "expenditure/fund/201/services-and-supplies",
+                "expenditure/fund/202/services-and-supplies",
+                "expenditure/fund/203/services-and-supplies",
+                "expenditure/fund/204/services-and-supplies",
+                "expenditure/fund/205/services-and-supplies",
+                "expenditure/fund/206/services-and-supplies",
+                "expenditure/fund/210/services-and-supplies",
+                "expenditure/fund/210/wages-and-benefits",
+                "expenditure/fund/221/services-and-supplies",
+                "expenditure/fund/222/services-and-supplies",
+                "expenditure/fund/223/services-and-supplies",
+                "expenditure/fund/224/debt-services",
+                "expenditure/fund/224/services-and-supplies",
+                "expenditure/fund/224/wages-and-benefits",
+                "expenditure/fund/225/services-and-supplies",
+                "expenditure/fund/240/services-and-supplies",
+                "expenditure/fund/240/wages-and-benefits",
+                "expenditure/fund/241/services-and-supplies",
+                "expenditure/fund/242/services-and-supplies",
+                "expenditure/fund/282/services-and-supplies",
+                "expenditure/fund/283/services-and-supplies",
+                "expenditure/fund/283/wages-and-benefits",
+                "expenditure/fund/284/capital-outlay",
+                "expenditure/fund/284/services-and-supplies",
+                "expenditure/fund/285/wages-and-benefits",
+                "expenditure/fund/286/services-and-supplies",
+                "expenditure/fund/287/services-and-supplies",
+                "expenditure/fund/288/services-and-supplies",
+                "expenditure/fund/289/services-and-supplies",
+                "expenditure/fund/289/wages-and-benefits",
+                "expenditure/fund/310/services-and-supplies",
+                "expenditure/fund/310/wages-and-benefits",
+                "expenditure/fund/311/services-and-supplies",
+                "expenditure/fund/311/wages-and-benefits",
+                "expenditure/fund/320/services-and-supplies",
+                "expenditure/fund/321/services-and-supplies",
+                "expenditure/fund/330/services-and-supplies",
+                "expenditure/fund/331/services-and-supplies"
+              ]
+            }
+          ],
+          "marks": [
+            {
+              "id": "residual/fund-group/special-revenue",
+              "role": "residual",
+              "tier": 3,
+              "out_cents": 992252200,
+              "ends": [
+                "fund-balance/contribution",
+                "transfers/out"
+              ],
+              "label": "Not split by fund here",
+              "rationale": "Money the chart above prints for Special Revenue Funds as a whole and that the schedule this chart is drawn from does not split by fund, so no fund here receives or pays it. It is drawn beside the opened node's parts rather than attributed to one of them, and what flows in and what flows out need not balance: the difference is what that schedule does not break down. Fund Balance Contribution: a positive change in working capital, inferred from pp.66-67's Change in Working Capital row and drawn out of the group. pp.127-140 print no fund-balance row at all, so no fund pays it. Transfers Out: pp.66-67 print Transfers Out per fund group, and the pages this chart is drawn from print no transfer out, so the group's transfer out leaves beside its funds rather than through one.",
+              "source_note": ""
             }
           ]
         },

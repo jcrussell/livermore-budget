@@ -27,7 +27,8 @@ const (
 	// transfer_id, because p76's facts carry their own end's fund only.
 	namesPartnerFund
 	// namesCategory: every cited fact's category is the id's slug -- in the
-	// drill-down, its division and category, `<division>/<category>`.
+	// drill-down, its division and category, `<division>/<category>`, or for a
+	// fact printing no division its fund, `fund/<n>/<category>`.
 	namesCategory
 	// namesLine: the id is a data/taxonomy.yaml line under each cited fact's
 	// category, printed as that fact's row label.
@@ -218,6 +219,10 @@ func (e linkEnd) mismatch(id string, source bool) (string, bool) {
 			carried = f.Category
 			if e.divisionExpenditure && form == "expenditure" {
 				carried = f.Department + "/" + f.Category
+				// pp.172-183 print no division, so their ids name the fund.
+				if f.Department == "" {
+					carried = "fund/" + fact.FundString(f.Fund) + "/" + f.Category
+				}
 			}
 		case namesLine:
 			if msg := e.lineMismatch(id, value, f); msg != "" {

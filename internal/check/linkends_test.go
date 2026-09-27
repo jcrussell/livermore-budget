@@ -140,6 +140,9 @@ func TestLinkEndsMatchTheirFactsIsFailable(t *testing.T) {
 		{"one division's money in another division's box", []edit{{"fund-flows", "dept/city-attorney",
 			"expenditure/city-attorney/wages-and-benefits", target("expenditure/city-council/wages-and-benefits")}},
 			`expenditure/city-council/wages-and-benefits names "city-council/wages-and-benefits"`},
+		{"one fund's spending in another fund's box", []edit{{"fund-flows", "fund/600",
+			"expenditure/fund/600/wages-and-benefits", target("expenditure/fund/620/wages-and-benefits")}},
+			`expenditure/fund/620/wages-and-benefits names "fund/620/wages-and-benefits"`},
 		{"two revenue lines swapped into the general fund", []edit{
 			{"fund-flows", "revenue-line/charges-for-services/library-fees", "fund/100",
 				source("revenue-line/charges-for-services/weed-abatement")},

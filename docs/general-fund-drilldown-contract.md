@@ -7,7 +7,8 @@ fund*, and it cannot answer *which department*, because pp.66-67 publish neither
 axis.
 
 This document answers those. It reads Budget Book **pp.127-140** (revenue by
-fund) and **pp.167-170** (General Fund expenditure by department), and it is a
+fund), **pp.167-170** (General Fund expenditure by department) and
+**pp.173-183** (every other fund's expenditure by object), and it is a
 second document rather than a deeper spine because a headline is a property of a
 single-grain file — see *No headline*.
 
@@ -60,7 +61,13 @@ tier 3  fund/<n>                     parent = fund-group/<type>
 tier 4  dept/<division>              parent = fund/100
           |   one link per netted (department, category) cell
 tier 5  expenditure/<division>/<object>   parent = dept/<division>
+tier 5  expenditure/fund/<n>/<object>     parent = fund/<n>, one link per
+          netted (fund, category) cell of pp.173-183, from the fund itself
 ```
+
+p172's General Fund block is scope `general-fund-by-category` and is not read:
+it is pp.167-170's money a grain coarser, and `structure.ViewOf` refuses the
+scope set that holds both.
 
 `nodes` and `links` are `project.Node` and `project.Link`, byte-identical in
 shape to the spine's. **No key is added to either type**, which is why one
@@ -279,16 +286,16 @@ carry.
   change in working capital, printed on pp.66-67 and not carried here. There is
   **no invented sink node** — the caveat says so instead.
 - **What the funds other than the General Fund spend, by division.** pp.167-170
-  decompose that fund alone. Every fund's object rows are printed on pp.172-183
-  and every fund's expenses on pp.198-209, neither by division, and this
-  document carries neither. pp.85-125's Department Funding Sources — which
-  departments each fund pays for — is drawn by `department-funding`, which is
-  what the fund column of this document opens into for every fund but 100.
+  decompose that fund alone; pp.173-183 print every other fund by object and
+  not by division, and this document draws them straight from the fund to its
+  categories. pp.85-125's Department Funding Sources — which departments each
+  fund pays for — is drawn by `department-funding`, which is what the fund
+  column of this document opens into for every fund but 100.
 
-  **No count is given here on purpose.** It is not six and it is not fixed: the
-  published columns carry six fund groups, of which five stop short, except
-  FY2023-24, which carries a seventh — permanent — and stops six. The caveat in
-  each document computes its own.
+  A fund pp.173-183 print spending for and pp.127-140 print no revenue for is
+  drawn with nothing flowing into it, and its window cannot keep a flank, so
+  it opens into nothing. Which funds those are differs by column; each rung's
+  answer names them under `needs`.
 - **Transfers between funds.** p76's legs are scope `transfers-by-fund`, which
   this document does not select because the two overlap `revenue-by-fund` on
   `transfer_in`. They have a document of their own, `transfers-by-fund`, which
@@ -380,7 +387,7 @@ sees.
 A step may declare more columns than that budget draws: `widen` names the
 columns of its own `tiers` a narrower client does without, in the order it drops
 them, and they sit at the end away from the kept flank. The fund-group step
-widens `{0,2,3,4}` by `{4}` and the fund step `{2,3,4,5}` by `{5}`, so their
+widens `{0,2,3,4,5}` by `{4,5}` and the fund step `{2,3,4,5}` by `{5}`, so their
 rows below state both. A widened
 column the document leaves empty is dropped and the chart re-laid at the columns
 it has, rather than refused: five of the six fund groups have no tier-4 node,
@@ -389,7 +396,7 @@ and a wide screen must not show a reader less than a narrow one.
 | depth | document | draws | opening a node draws | caps |
 |---|---|---|---|---|
 | 0 | `sankey` | the spine, whole | a fund group (tier 2); or a revenue category (tier 0); or an object category (tier 5) | — |
-| 1 | `fund-flows` | `{0,2,3}` keeping tier 0 of the chart above: the spine's own revenue categories on the left, the opened group in the middle, its funds on the right, with the money pp.127-140 split by no fund carried past the centre onto one derived mark beside them — widening to `{0,2,3,4}`, the General Fund's divisions, where there is room for a fourth column | a fund (tier 3) — the General Fund into its divisions, every other fund pp.85-125 name into its departments | tier 3 at 8; tier 4 at 24 (divisions) |
+| 1 | `fund-flows` | `{0,2,3}` keeping tier 0 of the chart above: the spine's own revenue categories on the left, the opened group in the middle, its funds on the right, with the money pp.127-140 split by no fund carried past the centre onto one derived mark beside them — widening to `{0,2,3,4,5}` where there is room: the General Fund's divisions, and the object categories every fund spends on, through its divisions for the General Fund and straight from pp.173-183 for every other | a fund (tier 3) — the General Fund into its divisions, every other fund pp.85-125 name into its departments | tier 3 at 8; tier 4 at 24 (divisions); tier 5 at 8 (categories) |
 | 2 | `fund-flows` | `{2,3,4}` keeping tier 2: the group, the opened fund, the divisions that spend it — widening to `{2,3,4,5}`, their object-category cells, where there is room for a fourth column | a division (tier 4) | tier 4 at 24; tier 5 at 8 (categories) |
 | 3 | `fund-flows` | `{3,4,5}` keeping tier 3: the fund, the opened division, its object categories | nothing | tier 5 at 8 |
 | 2 | `department-funding` | `{2,3,4}` keeping tier 2: the group, the opened fund, the departments pp.85-125 print it paying for | nothing | — |

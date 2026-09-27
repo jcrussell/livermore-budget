@@ -193,155 +193,124 @@ func TestEveryFundNodeDisclosesItsConstraintTier(t *testing.T) {
 	}
 }
 
-// TestTheTruncatedGroupCountIsTheDocumentsOwn is the seven-group column that
-// justifies computing this rather than writing it down.
-//
-// THE CAVEAT SAID "the other six fund groups" AND SIX IS TRUE OF ONE COLUMN.
-// fund-flows-2024-actual carries a seventh fund group, permanent, so six of its
-// seven stop short; the other three published columns carry six and FIVE stop --
-// including FY2025-26, which is the one the site draws. The page shipped a
-// figure that was wrong about the chart beside it.
-//
-// AND THE FIX WAS ASSERTED BY NOTHING. Replacing groupsWithNoSpendingSide's
-// body with `return 5` -- the literal the correction was about -- left every Go
-// test passing, which is the same shape as the defect: a number nobody checks.
-func TestTheTruncatedGroupCountIsTheDocumentsOwn(t *testing.T) {
+// TestTheStoppedGroupCountIsTheDocumentsOwn computes which groups end at
+// their funds rather than writing a count down: the published columns differ
+// in which groups they carry, and a literal was once shipped that was true of
+// one column only.
+func TestTheStoppedGroupCountIsTheDocumentsOwn(t *testing.T) {
+	general := []Node{
+		{ID: prefixFund + "100", Tier: tierFund, Parent: prefixFundGroup + "general"},
+		{ID: prefixDept + "patrol", Tier: tierDepartment, Parent: prefixFund + "100"},
+	}
 	for _, tc := range []struct {
-		name   string
-		groups []string
-		want   int
+		name  string
+		extra []Node
+		want  []string
 	}{
-		// Six groups, one of which (general) has divisions beneath it.
-		{"six groups, five stop", []string{"general", "capital", "enterprise",
-			"special-revenue", "debt-service", "internal-service"}, 5},
-		// The FY2023-24 shape: a seventh group, permanent, and six stop.
-		{"seven groups, six stop", []string{"general", "capital", "enterprise",
-			"special-revenue", "debt-service", "internal-service", "permanent"}, 6},
-		{"one group, none stop", []string{"general"}, 0},
+		{"every group spends", []Node{
+			{ID: prefixFund + "600", Tier: tierFund, Parent: prefixFundGroup + "enterprise"},
+			{ID: prefixExpenditure + "fund/600/wages-and-benefits", Tier: tierObjectCategory, Parent: prefixFund + "600"},
+		}, []string{}},
+		{"a group with revenue and no spending stops", []Node{
+			{ID: prefixFund + "600", Tier: tierFund, Parent: prefixFundGroup + "enterprise"},
+			{ID: prefixFund + "470", Tier: tierFund, Parent: prefixFundGroup + "permanent"},
+			{ID: prefixExpenditure + "fund/600/wages-and-benefits", Tier: tierObjectCategory, Parent: prefixFund + "600"},
+		}, []string{prefixFundGroup + "permanent"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			nodes := []Node{
-				// The General Fund alone is decomposed: a fund with a division
-				// beneath it is what "has a spending side" means here.
-				{ID: prefixFund + "100", Tier: tierFund, Parent: prefixFundGroup + "general"},
-				{ID: prefixDept + "patrol", Tier: tierDepartment, Parent: prefixFund + "100"},
-			}
-			for _, g := range tc.groups {
-				nodes = append(nodes, Node{ID: prefixFundGroup + g, Tier: tierFundGroup})
-			}
-			got := truncatedGroups(nodes)
-			if len(got) != tc.want {
-				t.Errorf("truncatedGroups = %v (%d), want %d", got, len(got), tc.want)
-			}
-			// AND THE MARKS ARE THE SAME SET PLUS THE EXCEPTION. The count and
-			// the applies_to list came from two computations and disagreed: the
-			// caveat said "the other 5 groups" and marked six, general among
-			// them. One function feeds both now, and this is what says so.
-			marks := appliesToTruncatedGroups(nodes)
-			want := append(append([]string{}, got...), prefixFund+"100")
-			slices.Sort(want)
-			if diff := cmp.Diff(want, marks); diff != "" {
-				t.Errorf("applies_to (-want +got):\n%s", diff)
-			}
-			for _, m := range marks {
-				if m == prefixFundGroup+"general" {
-					t.Error("the marks include fund-group/general, which is the exception " +
-						"the sentence excludes from its count; fund/100 is how it is named")
+			nodes := append(append([]Node{}, general...), tc.extra...)
+			for _, g := range []string{"general", "enterprise", "permanent"} {
+				for _, n := range nodes {
+					if n.Parent == prefixFundGroup+g {
+						nodes = append(nodes, Node{ID: prefixFundGroup + g, Tier: tierFundGroup})
+						break
+					}
 				}
+			}
+			if diff := cmp.Diff(tc.want, truncatedGroups(nodes)); diff != "" {
+				t.Errorf("truncatedGroups (-want +got):\n%s", diff)
+			}
+			var marks []string
+			for _, c := range fundFlowsCaveats(0, nodes) {
+				if c.ID == "some-funds-show-no-spending" {
+					marks = c.AppliesTo
+				}
+			}
+			if len(tc.want) == 0 && marks != nil {
+				t.Errorf("no group stops and the caveat is published, marking %v", marks)
+			}
+			if len(tc.want) > 0 && !cmp.Equal(tc.want, marks) {
+				t.Errorf("the caveat marks %v, want the groups it counts, %v", marks, tc.want)
 			}
 		})
 	}
 }
 
-// TestAColumnThatDecomposesNothingDoesNotClaimTheGeneralFundIsSpecial is the
-// latent arm of the caveat above.
-//
-// It opens "Only the General Fund has a spending side", and a column with no
-// department rows has none -- so every group counts as truncated and the
-// sentence would read "the other 6 groups' revenue ends at their funds" out of
-// six, over a document that decomposes nothing at all. All four published
-// columns carry pp.167-170 today, so this shape reaches no reader; it also
-// reaches no test unless one builds it, and a caveat describing a distinction
-// the document does not draw is worse than a missing one, because it reads as
-// though the distinction was checked.
-func TestAColumnThatDecomposesNothingDoesNotClaimTheGeneralFundIsSpecial(t *testing.T) {
-	groups := []Node{
-		{ID: prefixFundGroup + "general", Tier: tierFundGroup},
-		{ID: prefixFundGroup + "capital", Tier: tierFundGroup},
-		{ID: prefixFund + "100", Tier: tierFund, Parent: prefixFundGroup + "general"},
-	}
-	has := func(cs []Caveat, id string) bool {
+// TestOnlyTheGeneralFundHasDivisionsIsPublishedOnlyWhereTrue holds the
+// divisions caveat to its sentence: the General Fund alone has a division
+// beneath it, and some other group is drawn straight to its categories.
+func TestOnlyTheGeneralFundHasDivisionsIsPublishedOnlyWhereTrue(t *testing.T) {
+	const id = "only-the-general-fund-has-divisions"
+	has := func(cs []Caveat) (Caveat, bool) {
 		for _, c := range cs {
 			if c.ID == id {
-				return true
+				return c, true
 			}
 		}
-		return false
+		return Caveat{}, false
 	}
-	const id = "only-the-general-fund-is-decomposed"
-
-	if got := fundFlowsCaveats(0, groups); has(got, id) {
-		t.Errorf("a column with no division rows still carries %q; it says only the "+
-			"General Fund has a spending side, and nothing here has one", id)
-	}
-
-	// AND A COLUMN THAT DECOMPOSES SOMETHING ELSE. "Anything is decomposed" was
-	// the first guard and it is not what the sentence claims: a column with
-	// divisions under a capital fund and none under the General Fund satisfies
-	// it and makes "Only the General Fund has a spending side" false -- while
-	// the applies_to beside it would list fund-group/general among the groups
-	// the sentence counts as stopping, which is the contradiction this lane
-	// removed.
-	elsewhere := []Node{
+	groups := []Node{
 		{ID: prefixFundGroup + "general", Tier: tierFundGroup},
-		{ID: prefixFundGroup + "capital", Tier: tierFundGroup},
+		{ID: prefixFundGroup + "enterprise", Tier: tierFundGroup},
 		{ID: prefixFund + "100", Tier: tierFund, Parent: prefixFundGroup + "general"},
-		{ID: prefixFund + "510", Tier: tierFund, Parent: prefixFundGroup + "capital"},
-		{ID: prefixDept + "parks", Tier: tierDepartment, Parent: prefixFund + "510"},
+		{ID: prefixFund + "600", Tier: tierFund, Parent: prefixFundGroup + "enterprise"},
 	}
-	if got := fundFlowsCaveats(0, elsewhere); has(got, id) {
-		t.Errorf("a column decomposing capital and not the General Fund carries %q, "+
-			"which says the opposite", id)
+	division := Node{ID: prefixDept + "patrol", Tier: tierDepartment, Parent: prefixFund + "100"}
+	direct := Node{ID: prefixExpenditure + "fund/600/wages-and-benefits", Tier: tierObjectCategory,
+		Parent: prefixFund + "600"}
+
+	both := append(append([]Node{}, groups...), division, direct)
+	c, ok := has(fundFlowsCaveats(0, both))
+	if !ok {
+		t.Fatalf("a column with the General Fund's divisions and another fund's categories carries no %q", id)
 	}
-	// And with one division it comes back, so the condition is not simply off.
-	withDivision := append(append([]Node{}, groups...),
-		Node{ID: prefixDept + "patrol", Tier: tierDepartment, Parent: prefixFund + "100"})
-	if got := fundFlowsCaveats(0, withDivision); !has(got, id) {
-		t.Errorf("a column that DOES decompose the General Fund carries no %q", id)
+	if diff := cmp.Diff([]string{prefixFundGroup + "enterprise", prefixFund + "100"}, c.AppliesTo); diff != "" {
+		t.Errorf("applies_to (-want +got):\n%s", diff)
+	}
+	if _, ok := has(fundFlowsCaveats(0, append(append([]Node{}, groups...), division))); ok {
+		t.Errorf("a column where no other fund reaches its categories carries %q", id)
+	}
+	if _, ok := has(fundFlowsCaveats(0, append(append([]Node{}, groups...), direct))); ok {
+		t.Errorf("a column with no division at all carries %q", id)
+	}
+	elsewhere := append(append([]Node{}, both...),
+		Node{ID: prefixDept + "airport", Tier: tierDepartment, Parent: prefixFund + "600"})
+	if _, ok := has(fundFlowsCaveats(0, elsewhere)); ok {
+		t.Errorf("a column with divisions under enterprise too carries %q, which says the opposite", id)
 	}
 }
 
-// TestTheTruncatedCountIsPluralised is the one-group column.
-//
-// Every number in these caveats was a literal until this lane, and every
-// literal was written for one column. The moment they became computed, a column
-// with exactly one truncated group would publish "the other 1 groups' revenue
-// ends at their funds" -- in the caveat, on the caveats page, and in every
-// tooltip badge that shows the summary. No published column has that shape, so
-// nothing but this reaches it.
-func TestTheTruncatedCountIsPluralised(t *testing.T) {
-	// Two groups, one decomposed: exactly one stops.
+// TestTheStoppedCountIsPluralised is the one-group column: "1 fund group's",
+// never "1 fund groups'".
+func TestTheStoppedCountIsPluralised(t *testing.T) {
 	nodes := []Node{
 		{ID: prefixFundGroup + "general", Tier: tierFundGroup},
 		{ID: prefixFundGroup + "capital", Tier: tierFundGroup},
 		{ID: prefixFund + "100", Tier: tierFund, Parent: prefixFundGroup + "general"},
 		{ID: prefixDept + "patrol", Tier: tierDepartment, Parent: prefixFund + "100"},
 	}
-	if n := len(truncatedGroups(nodes)); n != 1 {
-		t.Fatalf("%d groups stop short, want 1; this test is about the singular", n)
-	}
+	found := false
 	for _, c := range fundFlowsCaveats(0, nodes) {
-		if c.ID != "only-the-general-fund-is-decomposed" {
+		if c.ID != "some-funds-show-no-spending" {
 			continue
 		}
-		for _, bad := range []string{"1 groups", "1 fund groups"} {
-			if strings.Contains(c.Summary, bad) || strings.Contains(c.Text, bad) {
-				t.Errorf("the caveat says %q:\n  %s\n  %s", bad, c.Summary, c.Text)
-			}
+		found = true
+		if !strings.Contains(c.Summary, "1 fund group's") || strings.Contains(c.Text, "1 fund groups") {
+			t.Errorf("the caveat does not read \"1 fund group's\":\n  %s\n  %s", c.Summary, c.Text)
 		}
-		if !strings.Contains(c.Summary, "1 group's") {
-			t.Errorf("the summary does not read \"1 group's\": %s", c.Summary)
-		}
+	}
+	if !found {
+		t.Fatal("capital stops at its funds and no caveat says so")
 	}
 }
 

@@ -49,7 +49,7 @@ func TestOpenableNodesReadsTheRibbonOutOfANode(t *testing.T) {
 	raw := openableDoc(t, [2]string{"g", "opens"}, [2]string{"g", "shut"},
 		[2]string{"opens", "d"}, [2]string{"d", "shut"})
 
-	got, err := openableNodes(v, 0, step, "stem", raw)
+	got, err := openableNodes(v, 0, step, "stem", raw, nil)
 	if err != nil {
 		t.Fatalf("openableNodes: %v", err)
 	}
@@ -70,7 +70,7 @@ func TestOpenableNodesReadsWhichEndTheFlankIsAt(t *testing.T) {
 	// would answer "shut"; read as the right flank it declares, "opens".
 	raw := openableDoc(t, [2]string{"d", "opens"}, [2]string{"shut", "g"})
 	got, err := openableNodes(v, 0, DrillStep{From: 3, Tiers: []int{4, 3, 2}, Keep: []int{2}},
-		"stem", raw)
+		"stem", raw, nil)
 	if err != nil {
 		t.Fatalf("openableNodes: %v", err)
 	}
@@ -124,7 +124,7 @@ func TestOpenableNodesReadsAStepThatKeepsNothingThroughTheHierarchy(t *testing.T
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := openableNodes(v, 0, tc.step, "stem", hierarchyDoc(t))
+			got, err := openableNodes(v, 0, tc.step, "stem", hierarchyDoc(t), nil)
 			if err != nil {
 				t.Fatalf("openableNodes: %v", err)
 			}
@@ -134,7 +134,7 @@ func TestOpenableNodesReadsAStepThatKeepsNothingThroughTheHierarchy(t *testing.T
 		})
 	}
 	// A step whose tiers place no end of any ribbon is refused here too.
-	_, err := openableNodes(v, 3, DrillStep{From: 0, Tiers: []int{7, 8}, Side: SideSource}, "stem", hierarchyDoc(t))
+	_, err := openableNodes(v, 3, DrillStep{From: 0, Tiers: []int{7, 8}, Side: SideSource}, "stem", hierarchyDoc(t), nil)
 	if err == nil {
 		t.Fatal("openableNodes accepted a step whose tiers place nothing")
 	}
@@ -151,7 +151,7 @@ func TestOpenableNodesReadsAStepThatKeepsNothingThroughTheHierarchy(t *testing.T
 func TestOpenableNodesRefusesAnEmptySetRatherThanShippingOne(t *testing.T) {
 	_, err := openableNodes(View{Path: "index.html"}, 2,
 		DrillStep{From: 3, Tiers: []int{2, 3, 4}, Keep: []int{2}},
-		"stem", openableDoc(t, [2]string{"g", "opens"}))
+		"stem", openableDoc(t, [2]string{"g", "opens"}), nil)
 	if err == nil {
 		t.Fatal("openableNodes accepted a document with nothing beyond the opened tier")
 	}

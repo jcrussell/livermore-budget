@@ -16,19 +16,22 @@ import (
 // FundFlowsProjection is this document's name and file stem.
 const FundFlowsProjection = "fund-flows"
 
-// The two schedules this document is of.
+// The three schedules this document is of.
 //
 // ScopeRevenueByFund is TrendsScope's string, named for the schedule rather
 // than for its first consumer.
 const (
 	ScopeRevenueByFund           = TrendsScope
 	scopeExpenditureByDepartment = "expenditure-by-department"
+	scopeExpenditureByFund       = "expenditure-by-fund"
 )
 
 // FundFlowsScopes is the schedule set, in the order a reader meets the money:
-// revenue first, then what it is spent on.
+// revenue first, then what it is spent on. expenditure-by-fund carries no
+// General Fund -- p172's is general-fund-by-category, which pp.167-170
+// decompose -- so the set constructs as a view (structure.ViewOf).
 func FundFlowsScopes() []string {
-	return []string{ScopeRevenueByFund, scopeExpenditureByDepartment}
+	return []string{ScopeRevenueByFund, scopeExpenditureByDepartment, scopeExpenditureByFund}
 }
 
 // generalFund is the only fund pp.167-170 decompose, and the tier-3 node the
@@ -137,9 +140,11 @@ type FundFlowsMetadata struct {
 //	tier 4  dept/<division>     parent = fund/100
 //	          |  one link per netted (department, category) cell
 //	tier 5  expenditure/<division>/<object>   parent = dept/<division>
+//	tier 5  expenditure/fund/<n>/<object>     parent = fund/<n>, one link per
+//	          netted (fund, category) cell of pp.172-183, from the fund itself
 //
 // MIXED GRAIN IS UNAVOIDABLE: pp.167-170 are General Fund only, so every other
-// fund group's revenue ends at tier 3 (fisc-gkv).
+// fund reaches its object categories with no division between (fisc-gkv).
 //
 // The (3,4), (1,0) and (2,3) links are emitted rather than left to the client
 // to fold: without them a view drawing those tiers finds nothing flowing into
@@ -227,7 +232,7 @@ func (f *fundFlows) Document(facts []fact.Fact, o Options) (*FundFlowsDocument, 
 	col := o.Columns[0]
 	selected := selectFacts(facts, o)
 
-	rev, exp, err := f.netFundFlows(selected)
+	rev, exp, byFund, err := f.netFundFlows(selected)
 	if err != nil {
 		return nil, err
 	}
@@ -426,6 +431,32 @@ func (f *fundFlows) Document(facts []fact.Fact, o Options) (*FundFlowsDocument, 
 		})
 	}
 
+	// Tier 3 -> 5, one link per pp.172-183 cell, from the fund itself.
+	for _, k := range sortedFundExpKeys(byFund) {
+		c := byFund[k]
+		if c.cents == 0 {
+			for _, id := range c.factIDs {
+				zero[id] = true
+			}
+			continue
+		}
+		src, srcErr := f.fundEndpoint(k.fund)
+		if srcErr != nil {
+			return nil, srcErr
+		}
+		dst := fundObjectEndpoint(k.fund, k.category)
+		f.addFundFlowNode(nodes, src)
+		f.addFundFlowNode(nodes, dst)
+		for _, id := range c.factIDs {
+			cited[id] = true
+		}
+		links = append(links, Link{
+			Source: src.id, Target: dst.id, ValueCents: c.cents,
+			Kind: boundaryKind(k.fundGroup), FactIDs: c.factIDs,
+			Locators: c.locs.sources(),
+		})
+	}
+
 	// Every parent must resolve to a node in this document, even one no link
 	// touches.
 	if err := f.addParents(nodes); err != nil {
@@ -494,14 +525,10 @@ func (f *fundFlows) Document(facts []fact.Fact, o Options) (*FundFlowsDocument, 
 	}, nil
 }
 
-// fundFlowsCaveats are the things a reader of this file has to be told. All but
-// the last are unconditional.
+// fundFlowsCaveats are the things a reader of this file has to be told. The
+// first three are unconditional; the last two are published only where their
+// sentences are true of this column.
 func fundFlowsCaveats(twice int, nodes []Node) []Caveat {
-	truncated := len(truncatedGroups(nodes))
-	// The last caveat is published only when its sentence is true: the General
-	// Fund's group, and nothing else, has a spending side.
-	sides := spendingSides(nodes)
-	decomposed := len(sides) == 1 && sides[prefixFundGroup+"general"]
 	out := []Caveat{
 		ConstraintTierCaveat(),
 		revenueSchedulePublishedTwiceCaveat(),
@@ -519,20 +546,31 @@ func fundFlowsCaveats(twice int, nodes []Node) []Caveat {
 				twice),
 			AppliesTo: []string{},
 		},
-		{
-			ID: "only-the-general-fund-is-decomposed",
-			// The count is the document's: columns differ in how many groups stop.
-			Summary: fmt.Sprintf("Only the General Fund opens into divisions and object "+
-				"categories; the other %s funds do not.", plural(truncated, "group")),
-			Text: fmt.Sprintf("Budget Book pp.167-170 break the General Fund alone down by "+
-				"division and object category, so the other %s money is not drawn at "+
-				"that grain.", plural(truncated, "fund group")),
-			// Marks both the groups that stop and fund/100, the exception.
-			AppliesTo: appliesToTruncatedGroups(nodes),
-		},
 	}
-	if !decomposed {
-		return out[:len(out)-1]
+	divided, direct := spendingSides(nodes)
+	if len(divided) == 1 && divided[prefixFundGroup+"general"] && len(direct) > 0 {
+		out = append(out, Caveat{
+			ID: "only-the-general-fund-has-divisions",
+			Summary: "Only the General Fund opens into divisions; every other fund's spending " +
+				"goes straight to its object categories.",
+			Text: "Budget Book pp.167-170 break the General Fund down by division and then by " +
+				"object category. pp.172-183 print every other fund by object category alone, " +
+				"with no division, so their spending is drawn from the fund straight to its " +
+				"categories and the division column holds the General Fund's alone.",
+			// The groups drawn without divisions, and fund/100, the exception.
+			AppliesTo: append(sortedSet(direct), prefixFund+strconv.Itoa(generalFund)),
+		})
+	}
+	if stopped := truncatedGroups(nodes); len(stopped) > 0 && len(divided)+len(direct) > 0 {
+		out = append(out, Caveat{
+			ID: "some-funds-show-no-spending",
+			// The count is the document's: columns differ in which groups stop.
+			Summary: fmt.Sprintf("The %s money ends at their funds.", plural(len(stopped), "fund group")),
+			Text: fmt.Sprintf("Budget Book pp.167-170 and pp.172-183 print no spending in this "+
+				"column for the %s funds, so their money is drawn into the fund and no further.",
+				plural(len(stopped), "fund group")),
+			AppliesTo: stopped,
+		})
 	}
 	return out
 }
@@ -545,35 +583,39 @@ func plural(n int, noun string) string {
 	return fmt.Sprintf("%d %ss'", n, noun)
 }
 
-// spendingSides is the fund groups this document decomposes: the ones with a
-// division beneath one of their funds.
+// spendingSides is the fund groups this document draws spending for:
+// divided, a division beneath one of its funds (pp.167-170), and direct, an
+// object category hung from one of its funds itself (pp.172-183).
 //
-// The caveat's count and its marks both come from here, so they agree.
-func spendingSides(nodes []Node) map[string]bool {
+// The caveats' counts and their marks all come from here, so they agree.
+func spendingSides(nodes []Node) (divided, direct map[string]bool) {
 	parent := map[string]string{}
 	for _, n := range nodes {
 		if n.Tier == tierFund {
 			parent[n.ID] = n.Parent
 		}
 	}
-	out := map[string]bool{}
+	divided, direct = map[string]bool{}, map[string]bool{}
 	for _, n := range nodes {
-		if n.Tier == tierDepartment {
-			if g := parent[n.Parent]; g != "" {
-				out[g] = true
-			}
+		g := parent[n.Parent]
+		switch {
+		case g == "":
+		case n.Tier == tierDepartment:
+			divided[g] = true
+		case n.Tier == tierObjectCategory:
+			direct[g] = true
 		}
 	}
-	return out
+	return divided, direct
 }
 
 // truncatedGroups is the fund groups whose money ends at their funds, sorted.
 // Counted per document, because the published columns differ.
 func truncatedGroups(nodes []Node) []string {
-	decomposed := spendingSides(nodes)
+	divided, direct := spendingSides(nodes)
 	out := []string{}
 	for _, n := range nodes {
-		if strings.HasPrefix(n.ID, prefixFundGroup) && !decomposed[n.ID] {
+		if strings.HasPrefix(n.ID, prefixFundGroup) && !divided[n.ID] && !direct[n.ID] {
 			out = append(out, n.ID)
 		}
 	}
@@ -581,17 +623,11 @@ func truncatedGroups(nodes []Node) []string {
 	return out
 }
 
-// appliesToTruncatedGroups names the marks the only-the-general-fund caveat is
-// about: every group whose money ends at its funds, and fund/100, the
-// exception. The exception is a fund rather than a group so it is not among
-// the groups the sentence counts.
-func appliesToTruncatedGroups(nodes []Node) []string {
-	out := truncatedGroups(nodes)
-	for _, n := range nodes {
-		if n.ID == prefixFund+"100" {
-			out = append(out, n.ID)
-			break
-		}
+// sortedSet is a set's members in order.
+func sortedSet(m map[string]bool) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
 	}
 	slices.Sort(out)
 	return out
@@ -623,6 +659,14 @@ type expKey struct {
 	category string
 }
 
+// fundExpKey addresses an expenditure cell of pp.172-183: what a fund other
+// than the General Fund spends, by object.
+type fundExpKey struct {
+	fundGroup string
+	fund      int
+	category  string
+}
+
 // rollupKey addresses a revenue line's rollup into its category, per link kind:
 // one printed row reaches the Internal Service Funds as an internal service
 // charge and the rest of the city as external revenue.
@@ -646,50 +690,52 @@ type lineRollup struct {
 
 // netFundFlows sums the selected facts into the two cell maps, refusing anything
 // it cannot address.
-func (f *fundFlows) netFundFlows(facts []fact.Fact) (map[revKey]*cellSum, map[expKey]*cellSum, error) {
+func (f *fundFlows) netFundFlows(facts []fact.Fact) (map[revKey]*cellSum, map[expKey]*cellSum,
+	map[fundExpKey]*cellSum, error) {
 	rev := map[revKey]*cellSum{}
 	exp := map[expKey]*cellSum{}
+	byFund := map[fundExpKey]*cellSum{}
 	var expFund *int
 	for i := range facts {
 		fa := &facts[i]
 		switch fa.Scope {
 		case ScopeRevenueByFund:
 			if fa.Category == "" {
-				return nil, nil, cmdutil.WithHint(
+				return nil, nil, nil, cmdutil.WithHint(
 					fmt.Errorf("fund-flows: fact %s carries no category", fa.ID),
 					"a revenue node is a category, so a fact without one has no source end")
 			}
 			if fa.Fund == nil {
-				return nil, nil, cmdutil.WithHint(
+				return nil, nil, nil, cmdutil.WithHint(
 					fmt.Errorf("fund-flows: fact %s (%s) names no fund", fa.ID, fa.Category),
 					"this document's tier 3 IS the fund, and a fact without one has no box "+
 						"to land in")
 			}
 			if fa.FundGroup == "" {
-				return nil, nil, cmdutil.WithHint(
+				return nil, nil, nil, cmdutil.WithHint(
 					fmt.Errorf("fund-flows: fact %s (%s) names no fund group", fa.ID, fa.Category),
 					"the fund group decides whether a flow crosses the city's boundary")
 			}
 			line, lineErr := f.revenueLine(fa)
 			if lineErr != nil {
-				return nil, nil, lineErr
+				return nil, nil, nil, lineErr
 			}
 			add(rev, revKey{fa.Kind, fa.Category, line, fa.FundGroup, *fa.Fund}, fa)
 		case scopeExpenditureByDepartment:
 			if fa.Department == "" {
-				return nil, nil, cmdutil.WithHint(
+				return nil, nil, nil, cmdutil.WithHint(
 					fmt.Errorf("fund-flows: fact %s carries no department", fa.ID),
 					"this document's tier 4 IS the department")
 			}
 			if fa.Category == "" {
-				return nil, nil, cmdutil.WithHint(
+				return nil, nil, nil, cmdutil.WithHint(
 					fmt.Errorf("fund-flows: fact %s (%s) carries no category", fa.ID, fa.Department),
 					"an object-category node is a category")
 			}
 			// A fundless fact would be attributed to the General Fund on no
 			// evidence, and no downstream check would see it.
 			if fa.Fund == nil {
-				return nil, nil, cmdutil.WithHint(
+				return nil, nil, nil, cmdutil.WithHint(
 					fmt.Errorf("fund-flows: fact %s (%s) names no fund", fa.ID, fa.Department),
 					"this document parents every department to the fund that pays it, and "+
 						"a fact naming none has no parent to give it")
@@ -700,7 +746,7 @@ func (f *fundFlows) netFundFlows(facts []fact.Fact) (map[revKey]*cellSum, map[ex
 				expFund = fa.Fund
 			}
 			if *fa.Fund != *expFund {
-				return nil, nil, cmdutil.WithHint(
+				return nil, nil, nil, cmdutil.WithHint(
 					fmt.Errorf("fund-flows: the expenditure side names funds %d and %d",
 						*expFund, *fa.Fund),
 					"pp.167-170 are a General Fund schedule and this document's department "+
@@ -708,16 +754,24 @@ func (f *fundFlows) netFundFlows(facts []fact.Fact) (map[revKey]*cellSum, map[ex
 						"the schedule a wider key would be for")
 			}
 			add(exp, expKey{fa.Department, fa.Category}, fa)
+		case scopeExpenditureByFund:
+			if fa.Category == "" || fa.Fund == nil || fa.FundGroup == "" {
+				return nil, nil, nil, cmdutil.WithHint(
+					fmt.Errorf("fund-flows: fact %s names no category, fund or fund group", fa.ID),
+					"pp.172-183 draw a fund into its object categories, so a fact missing "+
+						"either end has no link to be")
+			}
+			add(byFund, fundExpKey{fundGroup: fa.FundGroup, fund: *fa.Fund, category: fa.Category}, fa)
 		default:
-			return nil, nil, fmt.Errorf("fund-flows: fact %s is in scope %q, which this "+
+			return nil, nil, nil, fmt.Errorf("fund-flows: fact %s is in scope %q, which this "+
 				"document does not select", fa.ID, fa.Scope)
 		}
 	}
 	if expFund != nil && *expFund != generalFund {
-		return nil, nil, fmt.Errorf("fund-flows: the expenditure side is fund %d, want %d",
+		return nil, nil, nil, fmt.Errorf("fund-flows: the expenditure side is fund %d, want %d",
 			*expFund, generalFund)
 	}
-	return rev, exp, nil
+	return rev, exp, byFund, nil
 }
 
 // revenueLine is the data/taxonomy.yaml line a revenue fact's printed row names,
@@ -840,6 +894,15 @@ func (*fundFlows) objectEndpoint(division, category string) endpoint {
 		tier: tierObjectCategory, role: roleObjectCategory}
 }
 
+// fundObjectEndpoint is a tier-5 node of pp.172-183, under the fund that
+// spends it: ReachOf draws a node only beneath the one opened, so a bare
+// expenditure/<object> shared by every fund would reach no group's window.
+func fundObjectEndpoint(fund int, category string) endpoint {
+	return endpoint{id: prefixExpenditure + "fund/" + strconv.Itoa(fund) + "/" + category,
+		slug: category, tier: tierObjectCategory, role: roleObjectCategory,
+		parent: prefixFund + strconv.Itoa(fund)}
+}
+
 // addFundFlowNode records a node the first time something touches it, and hangs
 // the constraint tier and its disclosure on a fund.
 func (f *fundFlows) addFundFlowNode(nodes map[string]Node, e endpoint) {
@@ -865,7 +928,7 @@ func (f *fundFlows) addFundFlowNode(nodes map[string]Node, e endpoint) {
 	if e.tier == tierDepartment {
 		n.Parent = prefixFund + strconv.Itoa(generalFund)
 	}
-	if e.tier == tierObjectCategory {
+	if e.tier == tierObjectCategory && e.parent == "" {
 		// expenditure/<division>/<object> -> dept/<division>, cut at the FIRST
 		// slash: a category may contain one, a division cannot.
 		rest := e.id[len(prefixExpenditure):]
@@ -1004,6 +1067,20 @@ func sortedFundRollupKeys(m map[fundRollupKey]*cellSum) []fundRollupKey {
 			return out[i].fund < out[j].fund
 		}
 		return out[i].kind < out[j].kind
+	})
+	return out
+}
+
+func sortedFundExpKeys(m map[fundExpKey]*cellSum) []fundExpKey {
+	out := make([]fundExpKey, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].fund != out[j].fund {
+			return out[i].fund < out[j].fund
+		}
+		return out[i].category < out[j].category
 	})
 	return out
 }

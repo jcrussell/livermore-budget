@@ -21,7 +21,7 @@ const rungsServedPath = export.RungsPath
 
 // rungsSchemaVersion is the version a rungsDoc declares, spelled once. The
 // arm reading the artifact refuses any other.
-const rungsSchemaVersion = 5
+const rungsSchemaVersion = 6
 
 // rungsDoc is Go's reading of the declared steps against the documents they
 // draw: every figure is computed by export.ReachOf, not re-encoded from a
@@ -96,6 +96,12 @@ type drawnTier struct {
 	Role    string   `json:"role"`
 	IDs     []string `json:"ids"`
 	Carried []string `json:"carried,omitempty"`
+	// Needs is, for each id of this column whose every ribbon leads into a
+	// widened column, the widened tier it is drawn with: a viewport that drops
+	// that column leaves the id no ribbon to be drawn by. pp.172-183 print
+	// spending for funds pp.127-140 print no revenue for, so in a group's
+	// window such a fund reaches only the object categories.
+	Needs map[string]int `json:"needs,omitempty"`
 }
 
 const (
@@ -154,7 +160,7 @@ func rungsOf(projections map[string][]byte, spine export.View) (rungsDoc, error)
 			return rungsDoc{}, fmt.Errorf("rungs: %s: %w", year, err)
 		}
 		col := rungColumn{Stem: year}
-		w := rungWalker{spine: spine, projections: projections, stems: stems}
+		w := rungWalker{spine: spine, projections: projections, stems: stems, year: year}
 		if err := w.walk(screen, chart, "", nil, &col.Rungs); err != nil {
 			return rungsDoc{}, fmt.Errorf("rungs: %s: %w", year, err)
 		}
@@ -169,6 +175,42 @@ func rungsOf(projections map[string][]byte, spine export.View) (rungsDoc, error)
 		doc.Columns = append(doc.Columns, col)
 	}
 	return doc, nil
+}
+
+// answerNeeds fills each outward column's Needs: dropping the widened columns
+// from the end, as the client does, an id the narrower reach no longer draws
+// needs the last widened column dropped.
+func answerNeeds(g export.Graph, s export.DrillStep, opened string, nearIsSource bool,
+	half, outward []int, full export.Reach, draws []drawnTier) error {
+	needs := map[string]int{}
+	for k := len(s.Widen) - 1; k >= 0; k-- {
+		narrow := slices.DeleteFunc(slices.Clone(half), func(t int) bool { return slices.Contains(s.Widen[k:], t) })
+		r, err := export.ReachOf(g, opened, nearIsSource, narrow)
+		if err != nil {
+			return fmt.Errorf("step %q opens %q without tier %d: %w", s.Key, opened, s.Widen[k], err)
+		}
+		for _, t := range narrow {
+			if !slices.Contains(outward, t) {
+				continue
+			}
+			for _, id := range full.At[t] {
+				if _, known := needs[id]; !known && !slices.Contains(r.At[t], id) {
+					needs[id] = s.Widen[k]
+				}
+			}
+		}
+	}
+	for i := range draws {
+		for _, id := range slices.Concat(draws[i].IDs, draws[i].Carried) {
+			if t, ok := needs[id]; ok {
+				if draws[i].Needs == nil {
+					draws[i].Needs = map[string]int{}
+				}
+				draws[i].Needs[id] = t
+			}
+		}
+	}
+	return nil
 }
 
 // spineView is the view at export.IndexPath, the one whose steps the rung
@@ -204,6 +246,8 @@ type rungWalker struct {
 	spine       export.View
 	projections map[string][]byte
 	stems       []string
+	// year is the spine's own document stem, which a step after "" opens from.
+	year string
 }
 
 // walk answers every node the chart on screen offers, and the charts those
@@ -221,7 +265,11 @@ func (w rungWalker) walk(chart, from export.Graph, openedKey string, path []stri
 		if !ok {
 			return fmt.Errorf("step %q draws %q, which was not built", s.Key, stem)
 		}
-		opens, err := export.Openable(w.spine, i, s, stem, raw)
+		parents, err := export.FlankDocuments(w.spine, s, w.year, w.stems, w.projections)
+		if err != nil {
+			return err
+		}
+		opens, err := export.Openable(w.spine, i, s, stem, raw, parents)
 		if err != nil {
 			return err
 		}
@@ -369,6 +417,9 @@ func (rungWalker) answer(g, screen, from export.Graph, col export.ColumnKey, s e
 		default:
 			return rung{}, export.Graph{}, fmt.Errorf("step %q draws tier %d, which is neither its centre, a flank it keeps, nor a tier it opens into", s.Key, t)
 		}
+	}
+	if err := answerNeeds(g, s, opened, nearIsSource, half, outward, reach, draws); err != nil {
+		return rung{}, export.Graph{}, err
 	}
 	if !centre {
 		next.Add(fresh.Nodes[opened])

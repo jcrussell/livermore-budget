@@ -537,15 +537,19 @@ func views(built result) []export.View {
 				// [revenue categories | this group | its funds]: the spine draws tier 0 left
 				// of tier 2, so the window pushes right.
 				Keep: []int{0},
-				// A fourth column where there is room: the divisions that spend each fund.
-				// Only the General Fund's document fills tier 4 (pp.167-170), so other groups'
-				// rungs answer it with no ids and the client drops the column (fisc-84y5).
-				Tiers: []int{0, 2, 3, 4},
-				Widen: []int{4},
+				// Two more columns where there is room: the divisions that spend each fund,
+				// and the object categories they spend on. Only the General Fund fills tier
+				// 4 (pp.167-170), so other groups' rungs answer it with no ids and the
+				// client drops the column (fisc-84y5); every group fills tier 5, the General
+				// Fund through its divisions and every other fund from pp.172-183.
+				Tiers: []int{0, 2, 3, 4, 5},
+				Widen: []int{4, 5},
 				// Special-revenue's 31-32 funds fold to 8 with no sub-pixel ribbon; uncapped,
 				// up to 9 of its ribbons lie under a pixel. The tier-4 cap is the fund step's,
-				// inert against fund/100's 23 divisions.
-				Caps: []export.TierCap{{Tier: 3, Cap: 8}, {Tier: 4, Cap: 24, Tail: "divisions"}},
+				// inert against fund/100's 23 divisions, and the tier-5 cap is the fund
+				// step's too.
+				Caps: []export.TierCap{{Tier: 3, Cap: 8}, {Tier: 4, Cap: 24, Tail: "divisions"},
+					{Tier: 5, Cap: 8, Tail: "categories"}},
 				Noun: "fund group",
 				// pp.127-140 print no fund-balance row, so a draw the spine sends into a
 				// group reaches no fund here.
@@ -572,9 +576,11 @@ func views(built result) []export.View {
 					"divisions that spend it, from Budget Book pp.167-170, and every " +
 					"other fund into the departments it pays for, from pp.85-125. Any " +
 					"other fund ends the drill. Where " +
-					"there is room for a fourth column, the General Fund's divisions " +
-					"from pp.167-170 are drawn beyond its funds; no other group has a " +
-					"fund those pages decompose, so their windows stay three columns.",
+					"there is room for more columns, the General Fund's divisions " +
+					"from pp.167-170 are drawn beyond its funds, and beyond them the " +
+					"object categories each fund spends on: the General Fund's through " +
+					"its divisions, every other fund's straight from pp.172-183, which " +
+					"print no division.",
 			},
 			{
 				// Role general_fund: pp.167-170 decompose fund 100 alone, so no other fund
