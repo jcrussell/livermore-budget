@@ -385,8 +385,8 @@ wide buys a fourth. The tier sets in the table below are what a narrow reader
 sees.
 
 A step may declare more columns than that budget draws: `widen` names the
-columns of its own `tiers` a narrower client does without, in the order it drops
-them, and they sit at the end away from the kept flank. The fund-group step
+columns of its own `tiers` a narrower client does without, and it drops them
+from the end of `widen`; they sit at the end away from the kept flank. The fund-group step
 widens `{0,2,3,4,5}` by `{4,5}` and the fund step `{2,3,4,5}` by `{5}`, so their
 rows below state both. A widened
 column the document leaves empty is dropped and the chart re-laid at the columns

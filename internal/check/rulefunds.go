@@ -344,9 +344,10 @@ func unclaimedFundTotals(s *Subject, pages map[string]map[int]bool,
 				// where it is one: "Total Water" over "Replacement" is 642,
 				// not the 640 its head alone names.
 				if i+1 < len(lines) {
-					// A fragment carries no figure; a line with one is a row of
-					// its own. Its words may be spaced as the page spaces them.
-					if tail := strings.TrimSpace(lines[i+1]); tail != "" && !strings.ContainsAny(tail, "0123456789") {
+					// A row of its own has figures set off by a column gap; a
+					// fragment may have either and not both ("2009-1 Maint").
+					if tail := strings.TrimSpace(lines[i+1]); tail != "" &&
+						(!strings.Contains(tail, "  ") || !strings.ContainsAny(tail, "0123456789")) {
 						whole := mapping.JoinWrapped(label, tail)
 						if joined, ok := fundNameIn(whole); ok {
 							if e, jerr := s.Vocabulary.FundByLabel(joined); jerr == nil {

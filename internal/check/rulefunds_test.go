@@ -307,3 +307,24 @@ func TestAWrappedTotalWhoseHeadIsAFundNamesTheWholeFund(t *testing.T) {
 		t.Errorf("findings = %v, want none once the whole label is claimed", got)
 	}
 }
+
+// TestAWrappedTotalWhoseTailCarriesDigitsIsRead: a fund name may hold digits,
+// so a tail is refused as a row only where it also has a column gap.
+func TestAWrappedTotalWhoseTailCarriesDigitsIsRead(t *testing.T) {
+	const docID = "livermore-budget-fy2026-2027"
+	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	inline := &Subject{
+		Vocabulary: s.Vocabulary,
+		Docs: map[string]*corpus.Doc{docID: inlinePagesDoc(t, docID, map[int]string{
+			179: "      Total El Charro CFD            $1,000         $2,000\n      2009-1 Maint\n",
+		})},
+	}
+	got := unclaimedFundTotals(inline, map[string]map[int]bool{docID: {179: true}},
+		map[string]map[claimKey]bool{docID: {}})
+	if len(got) != 1 || !strings.Contains(got[0].Detail, "fund 320") {
+		t.Fatalf("findings = %v, want the unclaimed El Charro CFD 2009-1 Maint total", got)
+	}
+}

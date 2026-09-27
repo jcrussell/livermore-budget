@@ -30,7 +30,7 @@ function stepByKey(config, key) {
  * The tier the fund window folds its object categories at, read off the step
  * the packager ships rather than spelled here.
  */
-const CATEGORY_TIER = stepByKey(PAGE, "fund").caps.find((c) => c.tail === "categories").tier;
+const CATEGORY_TIER = stepByKey(PAGE, "fund").caps.find((c) => c.tail === "object rows").tier;
 
 /** A mark that opens on the spine, and a flow end that opens into nothing. */
 const OPENS = "fund-group/general";

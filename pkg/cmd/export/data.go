@@ -548,8 +548,10 @@ func views(built result) []export.View {
 				// up to 9 of its ribbons lie under a pixel. The tier-4 cap is the fund step's,
 				// inert against fund/100's 23 divisions, and the tier-5 cap is the fund
 				// step's too.
+				// Tier 5 is a fund's or a division's own object rows, not the
+				// four categories, so its tail counts rows.
 				Caps: []export.TierCap{{Tier: 3, Cap: 8}, {Tier: 4, Cap: 24, Tail: "divisions"},
-					{Tier: 5, Cap: 8, Tail: "categories"}},
+					{Tier: 5, Cap: 8, Tail: "object rows"}},
 				Noun: "fund group",
 				// pp.127-140 print no fund-balance row, so a draw the spine sends into a
 				// group reaches no fund here.
@@ -599,7 +601,7 @@ func views(built result) []export.View {
 				// The division cap is inert (23 divisions) and pinned so. The tier-5 cap makes
 				// the widened column drawable: uncapped, its 44 cells leave 11 nodes of no
 				// height.
-				Caps: []export.TierCap{{Tier: 4, Cap: 24}, {Tier: 5, Cap: 8, Tail: "categories"}},
+				Caps: []export.TierCap{{Tier: 4, Cap: 24}, {Tier: 5, Cap: 8, Tail: "object rows"}},
 				Noun: "fund",
 				Back: "All funds",
 				Tail: "divisions",

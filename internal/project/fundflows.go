@@ -562,10 +562,10 @@ func fundFlowsCaveats(twice int, nodes []Node) []Caveat {
 				"spending for is drawn with money arriving and none leaving, and one that " +
 				"spends with no printed revenue with money leaving and none arriving.",
 			// The groups drawn without divisions, and fund/100, the exception.
-			AppliesTo: append(sortedSet(direct), prefixFund+strconv.Itoa(generalFund)),
+			AppliesTo: append(sortedKeys(direct), prefixFund+strconv.Itoa(generalFund)),
 		})
 	}
-	if stopped := truncatedGroups(nodes); len(stopped) > 0 && len(divided)+len(direct) > 0 {
+	if stopped := truncatedGroups(nodes); len(stopped) > 0 {
 		out = append(out, Caveat{
 			ID: "some-funds-show-no-spending",
 			// The count is the document's: columns differ in which groups stop.
@@ -622,16 +622,6 @@ func truncatedGroups(nodes []Node) []string {
 		if strings.HasPrefix(n.ID, prefixFundGroup) && !divided[n.ID] && !direct[n.ID] {
 			out = append(out, n.ID)
 		}
-	}
-	slices.Sort(out)
-	return out
-}
-
-// sortedSet is a set's members in order.
-func sortedSet(m map[string]bool) []string {
-	out := make([]string, 0, len(m))
-	for k := range m {
-		out = append(out, k)
 	}
 	slices.Sort(out)
 	return out

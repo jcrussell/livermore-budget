@@ -215,9 +215,17 @@ func TestTheStoppedGroupCountIsTheDocumentsOwn(t *testing.T) {
 			{ID: prefixFund + "470", Tier: tierFund, Parent: prefixFundGroup + "permanent"},
 			{ID: prefixExpenditure + "fund/600/wages-and-benefits", Tier: tierObjectCategory, Parent: prefixFund + "600"},
 		}, []string{prefixFundGroup + "permanent"}},
+		// No spending drawn at all: every group stops, and the caveat is true
+		// of every one of them.
+		{"no group spends", []Node{
+			{ID: prefixFund + "600", Tier: tierFund, Parent: prefixFundGroup + "enterprise"},
+		}, []string{prefixFundGroup + "enterprise", prefixFundGroup + "general"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			nodes := append(append([]Node{}, general...), tc.extra...)
+			if tc.name == "no group spends" {
+				nodes = append([]Node{general[0]}, tc.extra...)
+			}
 			for _, g := range []string{"general", "enterprise", "permanent"} {
 				for _, n := range nodes {
 					if n.Parent == prefixFundGroup+g {
