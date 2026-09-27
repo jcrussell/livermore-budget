@@ -340,19 +340,25 @@ func unclaimedFundTotals(s *Subject, pages map[string]map[int]bool,
 					continue
 				}
 				entry, err := s.Vocabulary.FundByLabel(name)
-				// A total wrapping onto the next line names its fund rejoined,
-				// as a rule's total_row_tail does, and the rejoined name wins
-				// where it names ANOTHER fund: "Total Water" over "Replacement"
-				// is 642, not the 640 its head alone names. Where it names the
-				// same fund -- "General Fund Total Expenses" over a caption --
-				// the head is the printed label a rule claims.
-				if i+1 < len(lines) {
-					if tail := strings.TrimSpace(lines[i+1]); tail != "" && !isFigureRow(tail) {
+				// A `Total <fund>` wrapping onto the next line names its fund
+				// rejoined, as a rule's total_row_tail does, and the rejoined
+				// name wins where it is one: "Total Water" over "Replacement"
+				// is 642, not the 640 its head alone names, and a claim of the
+				// head is then a claim of another fund. Where both name one
+				// fund -- 300 is printed "Open Space" and "Open Space
+				// Acquisition & Mgmt" -- either label claims it. The trailing
+				// shape ends its name before " Total", so no tail can change it.
+				labels := []string{label}
+				if strings.HasPrefix(label, "Total ") && i+1 < len(lines) {
+					if tail := strings.Join(strings.Fields(lines[i+1]), " "); tail != "" && !isFigureRow(lines[i+1]) {
 						whole := mapping.JoinWrapped(label, tail)
 						if joined, ok := fundNameIn(whole); ok {
-							e, jerr := s.Vocabulary.FundByLabel(joined)
-							if jerr == nil && (err != nil || e.Number != entry.Number) {
-								entry, err, label = e, nil, whole
+							if e, jerr := s.Vocabulary.FundByLabel(joined); jerr == nil {
+								if err != nil || e.Number != entry.Number {
+									labels = nil
+								}
+								entry, err = e, nil
+								labels = append(labels, whole)
 							}
 						}
 					}
@@ -363,13 +369,16 @@ func unclaimedFundTotals(s *Subject, pages map[string]map[int]bool,
 					// not by a list in this file.
 					continue
 				}
-				// Claimed under the label AS PRINTED, which is what a rule's
-				// total_row holds. Rebuilding "Total "+name would only ever
-				// match the leading shape and would report a claimed trailing
-				// one as unclaimed.
-				if claimed[docID][claimKey{page: n, label: label}] {
+				// Claimed under the label AS PRINTED, head or rejoined, which is
+				// what a rule's WrappedTotalLabel holds. Rebuilding "Total "+name
+				// would only ever match the leading shape and would report a
+				// claimed trailing one as unclaimed.
+				if slices.ContainsFunc(labels, func(l string) bool {
+					return claimed[docID][claimKey{page: n, label: l}]
+				}) {
 					continue
 				}
+				label = labels[len(labels)-1]
 				findings = append(findings, finding(fmt.Sprintf("%s p%d", docID, n),
 					"the page prints %q, which is fund %d (%s), and no rule or rollup "+
 						"declares that total. A fund section nobody mapped is invisible to "+
@@ -381,18 +390,12 @@ func unclaimedFundTotals(s *Subject, pages map[string]map[int]bool,
 	return findings
 }
 
-// isFigureRow says a trimmed line is a row of its own rather than a wrapped
-// fragment: cells set off by a column gap, one of which is a figure or a
-// printed dash. A fragment may hold a digit ("2009-1 Maint") or a gap, not
-// both.
+// isFigureRow says a line is a row of its own rather than a wrapped fragment:
+// cells set off by a column gap, with a figure among them. A fragment may hold
+// a digit ("2009-1 Maint") or a gap, not both.
 func isFigureRow(line string) bool {
-	if !strings.Contains(line, "  ") {
-		return false
-	}
-	if strings.ContainsAny(line, "0123456789") {
-		return true
-	}
-	return slices.Contains(strings.Fields(line), "-")
+	line = strings.TrimSpace(line)
+	return strings.Contains(line, "  ") && strings.ContainsAny(line, "0123456789")
 }
 
 // describeAnchors renders the printed totals that govern a rule, so a finding

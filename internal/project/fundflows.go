@@ -218,9 +218,9 @@ func (f *fundFlows) Document(facts []fact.Fact, o Options) (*FundFlowsDocument, 
 		return nil, cmdutil.WithHint(
 			fmt.Errorf("fund-flows: scopes are %q, want %q", o.ScopeList(),
 				Options{Scopes: FundFlowsScopes()}.ScopeList()),
-			"this document is of three schedules and all are required; without one it "+
-				"draws a revenue side with no spending, a department axis with no income, "+
-				"or every fund but the General Fund ending at itself")
+			"this document is of three schedules, and a set of any others is a different "+
+				"document: pp.127-140 are what flows into the funds, pp.167-170 the General "+
+				"Fund's divisions, and pp.173-183 every other fund's spending")
 	}
 	if len(o.Columns) != 1 {
 		return nil, cmdutil.WithHint(
@@ -770,12 +770,10 @@ func (f *fundFlows) netFundFlows(facts []fact.Fact) (map[revKey]*cellSum, map[ex
 			}
 			// The node's group is the registry's; a fact filed under another
 			// would draw a link of the wrong kind under the right group.
-			t, ok := f.Labels.FundType(*fa.Fund)
-			if !ok {
-				return nil, nil, nil, fmt.Errorf("fund-flows: fact %s names fund %d, which "+
-					"data/funds.yaml does not list", fa.ID, *fa.Fund)
+			if _, err := f.fundEndpoint(*fa.Fund); err != nil {
+				return nil, nil, nil, err
 			}
-			if t != fa.FundGroup {
+			if t, _ := f.Labels.FundType(*fa.Fund); t != fa.FundGroup {
 				return nil, nil, nil, fmt.Errorf("fund-flows: fact %s files fund %d under %q and "+
 					"data/funds.yaml puts it in %q", fa.ID, *fa.Fund, fa.FundGroup, t)
 			}

@@ -351,14 +351,13 @@ func TestARejoinNamingTheSameFundKeepsTheHead(t *testing.T) {
 }
 
 // TestIsFigureRowTellsARowFromAFragment: a row has cells set off by a gap,
-// one a figure or a printed dash; a fragment may hold either and not both.
+// one a figure; a fragment may hold a digit or a gap and not both.
 func TestIsFigureRowTellsARowFromAFragment(t *testing.T) {
 	for _, tc := range []struct {
 		line string
 		want bool
 	}{
 		{"Total General Fund                  $1,000         $2,000", true},
-		{"Some Row      -      -      -      -", true},
 		{"2009-1 Maint", false},
 		{"Local St &  Rd", false},
 		{"Bike/Pedestrian", false},
@@ -367,5 +366,36 @@ func TestIsFigureRowTellsARowFromAFragment(t *testing.T) {
 		if got := isFigureRow(tc.line); got != tc.want {
 			t.Errorf("isFigureRow(%q) = %v, want %v", tc.line, got, tc.want)
 		}
+	}
+}
+
+// TestAWrappedTotalIsClaimedUnderEitherLabel: fund 300 is printed "Open
+// Space" and "Open Space Acquisition & Mgmt", so a wrapped total's head and
+// its rejoin are both its names; a rule claiming the whole label claims it.
+// And a fragment's layout spacing is not part of the name.
+func TestAWrappedTotalIsClaimedUnderEitherLabel(t *testing.T) {
+	const docID = "livermore-budget-fy2026-2027"
+	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	subject := func(page string) *Subject {
+		return &Subject{Vocabulary: s.Vocabulary, Docs: map[string]*corpus.Doc{docID: inlinePagesDoc(t, docID,
+			map[int]string{181: page})}}
+	}
+	pages := map[string]map[int]bool{docID: {181: true}}
+	aliased := subject("      Total Open Space                 $55,295         $1,000\n      Acquisition & Mgmt\n")
+	claimed := map[string]map[claimKey]bool{docID: {{page: 181, label: "Total Open Space Acquisition & Mgmt"}: true}}
+	if got := unclaimedFundTotals(aliased, pages, claimed); len(got) != 0 {
+		t.Errorf("findings = %v, want none: the whole label is claimed", got)
+	}
+	headOnly := map[string]map[claimKey]bool{docID: {{page: 181, label: "Total Open Space"}: true}}
+	if got := unclaimedFundTotals(aliased, pages, headOnly); len(got) != 0 {
+		t.Errorf("findings = %v, want none: the head names the same fund and is claimed", got)
+	}
+	spaced := subject("      Total County Meas BB-            $1,000         $2,000\n      Local St &  Rd\n")
+	got := unclaimedFundTotals(spaced, pages, map[string]map[claimKey]bool{docID: {}})
+	if len(got) != 1 || !strings.Contains(got[0].Detail, "fund 552") {
+		t.Errorf("findings = %v, want the unclaimed County Meas BB-Local St & Rd total", got)
 	}
 }
