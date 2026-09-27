@@ -1025,10 +1025,11 @@ func (r *Rule) WrappedTotalLabel() string {
 
 // JoinWrapped is a label the page breaks across two lines, rejoined. A label
 // broken at a hyphen joins without a space, as p0175's "County Meas BB-" +
-// "Bike/Pedestrian" does; a wrong join names no fund, which the heading check
-// reports.
+// "Bike/Pedestrian" does; a spaced separator dash ("Asset Seizure -") is a
+// word of its own and keeps the space. A wrong join names no fund, which the
+// heading check reports.
 func JoinWrapped(head, tail string) string {
-	if strings.HasSuffix(head, "-") {
+	if strings.HasSuffix(head, "-") && !strings.HasSuffix(head, " -") {
 		return head + tail
 	}
 	return head + " " + tail

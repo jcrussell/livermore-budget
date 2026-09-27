@@ -202,28 +202,29 @@ func TestTheStoppedGroupCountIsTheDocumentsOwn(t *testing.T) {
 		{ID: prefixDept + "patrol", Tier: tierDepartment, Parent: prefixFund + "100"},
 	}
 	for _, tc := range []struct {
-		name  string
-		extra []Node
-		want  []string
+		name       string
+		noDivision bool
+		extra      []Node
+		want       []string
 	}{
-		{"every group spends", []Node{
+		{"every group spends", false, []Node{
 			{ID: prefixFund + "600", Tier: tierFund, Parent: prefixFundGroup + "enterprise"},
 			{ID: prefixExpenditure + "fund/600/wages-and-benefits", Tier: tierObjectCategory, Parent: prefixFund + "600"},
 		}, []string{}},
-		{"a group with revenue and no spending stops", []Node{
+		{"a group with revenue and no spending stops", false, []Node{
 			{ID: prefixFund + "600", Tier: tierFund, Parent: prefixFundGroup + "enterprise"},
 			{ID: prefixFund + "470", Tier: tierFund, Parent: prefixFundGroup + "permanent"},
 			{ID: prefixExpenditure + "fund/600/wages-and-benefits", Tier: tierObjectCategory, Parent: prefixFund + "600"},
 		}, []string{prefixFundGroup + "permanent"}},
 		// No spending drawn at all: every group stops, and the caveat is true
 		// of every one of them.
-		{"no group spends", []Node{
+		{"no group spends", true, []Node{
 			{ID: prefixFund + "600", Tier: tierFund, Parent: prefixFundGroup + "enterprise"},
 		}, []string{prefixFundGroup + "enterprise", prefixFundGroup + "general"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			nodes := append(append([]Node{}, general...), tc.extra...)
-			if tc.name == "no group spends" {
+			if tc.noDivision {
 				nodes = append([]Node{general[0]}, tc.extra...)
 			}
 			for _, g := range []string{"general", "enterprise", "permanent"} {
@@ -461,7 +462,7 @@ func TestFundFlowsRefusesWhatItCannotPlace(t *testing.T) {
 		want   string
 	}{
 		{
-			name:  "one scope where two are required",
+			name:  "one scope where three are required",
 			facts: fundFlowsFacts(),
 			opts:  func(o Options) Options { o.Scopes = []string{rev}; return o },
 			want:  "want",
@@ -504,6 +505,13 @@ func TestFundFlowsRefusesWhatItCannotPlace(t *testing.T) {
 				fundFlowsFact(scopeExpenditureByFund, mapping.KindExpenditure, "wages-and-benefits", "", "capital", fact.FundNumber(500), 1, "z"),
 			},
 			want: `files fund 500 under "capital"`,
+		},
+		{
+			name: "a fund the registry does not list",
+			facts: []fact.Fact{
+				fundFlowsFact(scopeExpenditureByFund, mapping.KindExpenditure, "wages-and-benefits", "", "capital", fact.FundNumber(999), 1, "z"),
+			},
+			want: "names fund 999, which data/funds.yaml does not list",
 		},
 		{
 			// The tier-5 id carries the DIVISION and not the fund, so two funds

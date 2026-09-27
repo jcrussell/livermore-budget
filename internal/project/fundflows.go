@@ -163,8 +163,11 @@ var (
 // Name is [Projection]'s, and it is this document's file stem.
 func (*fundFlows) Name() string { return FundFlowsProjection }
 
-// Slices is one Options per column that BOTH schedules carry, so no document
-// draws a revenue side against an empty expenditure side.
+// Slices is one Options per column that pp.127-140 and pp.167-170 both carry,
+// so no document draws a revenue side against an empty expenditure side.
+// pp.173-183 are not required of a column: one they left out would draw every
+// fund but the General Fund ending at itself, which some-funds-show-no-spending
+// discloses.
 func (*fundFlows) Slices(facts []fact.Fact, version string) []Options {
 	type col = Column
 	seen := map[string]map[col]bool{
@@ -215,8 +218,9 @@ func (f *fundFlows) Document(facts []fact.Fact, o Options) (*FundFlowsDocument, 
 		return nil, cmdutil.WithHint(
 			fmt.Errorf("fund-flows: scopes are %q, want %q", o.ScopeList(),
 				Options{Scopes: FundFlowsScopes()}.ScopeList()),
-			"this document is of two schedules and both are required; one alone draws "+
-				"a revenue side with no spending or a department axis with no income")
+			"this document is of three schedules and all are required; without one it "+
+				"draws a revenue side with no spending, a department axis with no income, "+
+				"or every fund but the General Fund ending at itself")
 	}
 	if len(o.Columns) != 1 {
 		return nil, cmdutil.WithHint(
@@ -570,8 +574,9 @@ func fundFlowsCaveats(twice int, nodes []Node) []Caveat {
 			ID: "some-funds-show-no-spending",
 			// The count is the document's: columns differ in which groups stop.
 			Summary: fmt.Sprintf("The %s money ends at their funds.", plural(len(stopped), "fund group")),
-			Text: fmt.Sprintf("Budget Book pp.167-170 and pp.173-183 print no spending in this "+
-				"column for the %s funds, so their money is drawn into the fund and no further.",
+			Text: fmt.Sprintf("The schedules this document reads for spending, Budget Book "+
+				"pp.167-170 and pp.173-183, give none in this column for the %s funds, so "+
+				"their money is drawn into the fund and no further.",
 				plural(len(stopped), "fund group")),
 			AppliesTo: stopped,
 		})
@@ -765,7 +770,12 @@ func (f *fundFlows) netFundFlows(facts []fact.Fact) (map[revKey]*cellSum, map[ex
 			}
 			// The node's group is the registry's; a fact filed under another
 			// would draw a link of the wrong kind under the right group.
-			if t, ok := f.Labels.FundType(*fa.Fund); !ok || t != fa.FundGroup {
+			t, ok := f.Labels.FundType(*fa.Fund)
+			if !ok {
+				return nil, nil, nil, fmt.Errorf("fund-flows: fact %s names fund %d, which "+
+					"data/funds.yaml does not list", fa.ID, *fa.Fund)
+			}
+			if t != fa.FundGroup {
 				return nil, nil, nil, fmt.Errorf("fund-flows: fact %s files fund %d under %q and "+
 					"data/funds.yaml puts it in %q", fa.ID, *fa.Fund, fa.FundGroup, t)
 			}

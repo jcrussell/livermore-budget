@@ -77,6 +77,7 @@ func TestWrappedTotalLabelJoinsAtAHyphenWithoutASpace(t *testing.T) {
 	for _, tc := range []struct{ row, tail, want string }{
 		{"Total County Meas BB-", "Bike/Pedestrian", "Total County Meas BB-Bike/Pedestrian"},
 		{"Total Wastewater Connection", "Fees", "Total Wastewater Connection Fees"},
+		{"Total Asset Seizure -", "County", "Total Asset Seizure - County"},
 		{"Total Airport", "", "Total Airport"},
 	} {
 		r := &Rule{TotalRow: tc.row, TotalRowTail: tc.tail}

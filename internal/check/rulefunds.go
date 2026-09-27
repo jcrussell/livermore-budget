@@ -3,6 +3,7 @@ package check
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -341,16 +342,16 @@ func unclaimedFundTotals(s *Subject, pages map[string]map[int]bool,
 				entry, err := s.Vocabulary.FundByLabel(name)
 				// A total wrapping onto the next line names its fund rejoined,
 				// as a rule's total_row_tail does, and the rejoined name wins
-				// where it is one: "Total Water" over "Replacement" is 642,
-				// not the 640 its head alone names.
+				// where it names ANOTHER fund: "Total Water" over "Replacement"
+				// is 642, not the 640 its head alone names. Where it names the
+				// same fund -- "General Fund Total Expenses" over a caption --
+				// the head is the printed label a rule claims.
 				if i+1 < len(lines) {
-					// A row of its own has figures set off by a column gap; a
-					// fragment may have either and not both ("2009-1 Maint").
-					if tail := strings.TrimSpace(lines[i+1]); tail != "" &&
-						(!strings.Contains(tail, "  ") || !strings.ContainsAny(tail, "0123456789")) {
+					if tail := strings.TrimSpace(lines[i+1]); tail != "" && !isFigureRow(tail) {
 						whole := mapping.JoinWrapped(label, tail)
 						if joined, ok := fundNameIn(whole); ok {
-							if e, jerr := s.Vocabulary.FundByLabel(joined); jerr == nil {
+							e, jerr := s.Vocabulary.FundByLabel(joined)
+							if jerr == nil && (err != nil || e.Number != entry.Number) {
 								entry, err, label = e, nil, whole
 							}
 						}
@@ -378,6 +379,20 @@ func unclaimedFundTotals(s *Subject, pages map[string]map[int]bool,
 		}
 	}
 	return findings
+}
+
+// isFigureRow says a trimmed line is a row of its own rather than a wrapped
+// fragment: cells set off by a column gap, one of which is a figure or a
+// printed dash. A fragment may hold a digit ("2009-1 Maint") or a gap, not
+// both.
+func isFigureRow(line string) bool {
+	if !strings.Contains(line, "  ") {
+		return false
+	}
+	if strings.ContainsAny(line, "0123456789") {
+		return true
+	}
+	return slices.Contains(strings.Fields(line), "-")
 }
 
 // describeAnchors renders the printed totals that govern a rule, so a finding

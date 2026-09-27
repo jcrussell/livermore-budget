@@ -328,3 +328,44 @@ func TestAWrappedTotalWhoseTailCarriesDigitsIsRead(t *testing.T) {
 		t.Fatalf("findings = %v, want the unclaimed El Charro CFD 2009-1 Maint total", got)
 	}
 }
+
+// TestARejoinNamingTheSameFundKeepsTheHead: "General Fund Total Expenses"
+// over a figure-free caption rejoins to fund 100 as well, and the rule claims
+// the head, so the head stays the key.
+func TestARejoinNamingTheSameFundKeepsTheHead(t *testing.T) {
+	const docID = "livermore-budget-fy2026-2027"
+	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	inline := &Subject{
+		Vocabulary: s.Vocabulary,
+		Docs: map[string]*corpus.Doc{docID: inlinePagesDoc(t, docID, map[int]string{
+			170: "General Fund Total Expenses         $1,000         $2,000\n      Includes transfers\n",
+		})},
+	}
+	claimed := map[string]map[claimKey]bool{docID: {{page: 170, label: "General Fund Total Expenses"}: true}}
+	if got := unclaimedFundTotals(inline, map[string]map[int]bool{docID: {170: true}}, claimed); len(got) != 0 {
+		t.Errorf("findings = %v, want none: the printed head is claimed", got)
+	}
+}
+
+// TestIsFigureRowTellsARowFromAFragment: a row has cells set off by a gap,
+// one a figure or a printed dash; a fragment may hold either and not both.
+func TestIsFigureRowTellsARowFromAFragment(t *testing.T) {
+	for _, tc := range []struct {
+		line string
+		want bool
+	}{
+		{"Total General Fund                  $1,000         $2,000", true},
+		{"Some Row      -      -      -      -", true},
+		{"2009-1 Maint", false},
+		{"Local St &  Rd", false},
+		{"Bike/Pedestrian", false},
+		{"Asset Seizure - County", false},
+	} {
+		if got := isFigureRow(tc.line); got != tc.want {
+			t.Errorf("isFigureRow(%q) = %v, want %v", tc.line, got, tc.want)
+		}
+	}
+}

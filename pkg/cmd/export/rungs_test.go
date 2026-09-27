@@ -647,7 +647,11 @@ func replayRung(s export.DrillStep, drawing, screen, from export.Graph, ck expor
 				if slices.Contains(r.At[draws[i].Tier], id) {
 					break
 				}
-				if next, err := reachedWith(k + 1); err == nil && slices.Contains(next.At[draws[i].Tier], id) {
+				next, err := reachedWith(k + 1)
+				if err != nil {
+					return nil, nil, export.Graph{}, err
+				}
+				if slices.Contains(next.At[draws[i].Tier], id) {
 					if draws[i].Needs == nil {
 						draws[i].Needs = map[string]int{}
 					}
