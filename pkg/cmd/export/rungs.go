@@ -21,7 +21,7 @@ const rungsServedPath = export.RungsPath
 
 // rungsSchemaVersion is the version a rungsDoc declares, spelled once. The
 // arm reading the artifact refuses any other.
-const rungsSchemaVersion = 6
+const rungsSchemaVersion = 1
 
 // rungsDoc is Go's reading of the declared steps against the documents they
 // draw: every figure is computed by export.ReachOf, not re-encoded from a

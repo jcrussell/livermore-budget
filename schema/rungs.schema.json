@@ -12,7 +12,7 @@
   "additionalProperties": false,
   "properties": {
     "schema_version": {
-      "const": 6
+      "const": 1
     },
     "generated_by": {
       "description": "The export that wrote this answer. The page carries the same string as exported_by, and the client refuses a pair that disagree, since nothing cache-busts one file against the other.",

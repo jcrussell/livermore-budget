@@ -141,8 +141,8 @@ function worstOf(rungs) {
 /** Go's rungs for one column. */
 function rungsOf(stem) {
   const artifact = rungsFixture();
-  if (artifact.schema_version !== 6) {
-    throw new Error(`testdata/rungs.json declares schema_version ${artifact.schema_version}; this file reads 6`);
+  if (artifact.schema_version !== 1) {
+    throw new Error(`testdata/rungs.json declares schema_version ${artifact.schema_version}; this file reads 1`);
   }
   const column = artifact.columns.find((c) => c.stem === stem);
   if (!column) throw new Error(`testdata/rungs.json answers for no column with stem ${stem}`);
