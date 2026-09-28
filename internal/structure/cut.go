@@ -183,6 +183,11 @@ func (c Cut) DerivedLevel(byRule map[string]Level, facts []fact.Fact) (Level, bo
 	return got, got != ""
 }
 
+// Admits says whether a fact falls inside this cut: its scope, its rules
+// where the cut selects some, its fund groups where the cut is pinned to
+// some, and its kinds.
+func (c Cut) Admits(f *fact.Fact) bool { return c.admits(f) }
+
 // admits says whether a fact falls inside this cut.
 func (c Cut) admits(f *fact.Fact) bool {
 	if f.Scope != c.Scope {

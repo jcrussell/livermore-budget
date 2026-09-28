@@ -17,6 +17,9 @@ type Residue struct {
 	Reason string
 }
 
+// Matches says whether a fact is the one this residue declares.
+func (r Residue) Matches(f *fact.Fact) bool { return r.matches(f) }
+
 func (r Residue) matches(f *fact.Fact) bool {
 	return f.Scope == r.Scope && f.RuleID == r.Rule && f.Kind == r.Kind
 }

@@ -137,6 +137,9 @@ type PublishedDocument struct {
 	// Scopes is the schedule set it is of, matching [Options.Scopes]. Compared
 	// as a SET -- see [MissingColumns].
 	Scopes []string
+	// Kinds is the kind set it selects out of those schedules, matching
+	// [Options.Kinds]: empty for every kind the schedules carry.
+	Kinds []mapping.Kind
 	// Columns is every (fiscal year, basis) pair the document must cover. A
 	// document missing one of these was built, but not over what the site
 	// promised, and that is a finding rather than silence.
@@ -188,6 +191,7 @@ func PublishedDocuments() []PublishedDocument {
 				Projection: g.projection,
 				Stem:       stemOrPanic(g.projection, o, declared),
 				Scopes:     slices.Clone(g.scopes),
+				Kinds:      slices.Clone(g.kinds),
 				Columns:    slices.Clone(o.Columns),
 			})
 		}
