@@ -5,7 +5,7 @@ import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  bootedApp, opened, settle, pageFixture, rungsFixture, columnFixture, refusals, fire, topOf,
+  bootedApp, opened, settle, pageFixture, columnFixture, refusals, fire, topOf,
 } from "./testlib.mjs";
 
 const disabled = (b) => !b || b.hasAttribute("disabled");
@@ -242,10 +242,9 @@ describe("a budget whose chart will not draw", () => {
 
 describe("a widened step", () => {
   /** One window at a stated budget: its shape, read off the chart. */
-  async function windowAt(stem, budget, path, config, answer) {
+  async function windowAt(stem, budget, path, config) {
     const o = { checkedStem: stem };
     if (config) o.config = config;
-    if (answer) o.plan = { "rungs.json": { doc: answer } };
     const { app, document } = await bootedApp(o);
     app.setColumnBudget(budget);
     await opened(app, ...path);
@@ -299,32 +298,8 @@ describe("a widened step", () => {
     });
     return config;
   }
-  /**
-   * The same widening in Go's answer: the General Fund's own nodes at each
-   * widened tier on its group's rung, read off the fund step's answer, and
-   * nothing on the other groups'. A tier the shipped answer already draws is
-   * left as answered.
-   */
-  function widenFundGroupAnswer(into) {
-    const answer = rungsFixture();
-    for (const column of answer.columns) {
-      const fund = column.rungs.find((r) => r.path.join("|") === "fund-group/general|fund/100");
-      assert.ok(fund, `${column.stem} answers no rung for fund-group/general > fund/100`);
-      for (const rung of column.rungs) {
-        if (rung.step !== "fund-group") continue;
-        for (const tier of into) {
-          if (rung.draws.some((d) => d.tier === tier)) continue;
-          const at = fund.draws.find((d) => d.tier === tier);
-          assert.ok(at, `${column.stem}'s fund/100 rung draws no tier ${tier}`);
-          rung.draws.push({ tier: tier, role: "outward", ids: rung.path[0] === "fund-group/general" ? at.ids.slice() : [] });
-        }
-        delete rung.marks;
-      }
-    }
-    return answer;
-  }
   // THE FUND-GROUP STEP SHIPS WIDENED TO TIERS 4 AND 5, so these two
-  // drive the pinned config and Go's own answer rather than a synthetic pair.
+  // drive the pinned config rather than a synthetic one.
   test("a widened column the document leaves empty is dropped, and the chart is re-laid at the columns it has", async (t) => {
     const worst = "fund-group/special-revenue";
     const empty = await windowAt("sankey", 5, [worst]);
@@ -375,7 +350,7 @@ describe("a widened step", () => {
         assert.ok(arriving.length > 0);
         assert.equal(flat, 0);
         // AND THE NOTE SAYS WHICH OF THE MARK'S FLOWS THIS WIDTH DRAWS, since
-        // Go's rationale names every endpoint at every width.
+        // the rationale names every endpoint at every width.
         const drawnFlows = arriving.length + leaving.length;
         at[budget] = { note: residual.source_note, drawn: drawnFlows, leaving: leaving.length };
         assert.ok(residual.source_note.startsWith(
@@ -402,22 +377,33 @@ describe("a widened step", () => {
       t.diagnostic(legs.join("; "));
     });
   }
-  // THE FIGURES ARE GO'S AT EVERY WIDTH, formatted here without the page's
-  // formatter, against the cents the answer carries.
+  // THE FIGURES ARE THE SAME AT EVERY WIDTH, formatted here without the page's
+  // formatter: the sums of the ribbons carried each way, read off the width
+  // that draws every leg and held at the width that holds the leaving ones back.
   const dollars = (cents) => new Intl.NumberFormat("en-US",
     { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(cents / 100);
   for (const stem of ["sankey", "sankey-2027"]) {
-    test(`${stem}: the residual states Go's figures in and out whether or not its leaving legs are drawn`, async (t) => {
-      const mark = rungsFixture().columns.find((c) => c.stem === stem).rungs
-        .find((r) => r.path.join("|") === "fund-group/general").marks.find((m) => m.role === "residual");
-      assert.ok(mark.in_cents > 0 && mark.out_cents > 0, "the General Fund's residual is not answered both ways");
+    test(`${stem}: the residual states its figures in and out whether or not its leaving legs are drawn`, async (t) => {
       const said = {};
       const shares = {};
-      for (const budget of [3, 5]) {
+      /** @type {{id: string, in_cents: number, out_cents: number} | null} */
+      let mark = null;
+      for (const budget of [5, 3]) {
         const { app, document } = await bootedApp({ checkedStem: stem });
         app.setColumnBudget(budget);
         await opened(app, "fund-group/general");
         const chart = document.getElementById("chart");
+        const residual = app.projection.nodes.find((n) => app.isResidual(n.id));
+        assert.ok(residual, `no residual is drawn at ${budget} columns`);
+        if (budget === 5) {
+          // Every leg drawn: the two figures are the drawn ribbons' sums.
+          const sum = (side) => app.projection.links.filter((l) => l[side] === residual.id)
+            .reduce((a, l) => a + l.value_cents, 0);
+          assert.equal(residual.in_cents, sum("target"));
+          assert.equal(residual.out_cents, sum("source"));
+          assert.ok(residual.in_cents > 0 && residual.out_cents > 0, "the General Fund's residual does not carry both ways");
+          mark = { id: residual.id, in_cents: residual.in_cents, out_cents: residual.out_cents };
+        }
         const g = [...chart.querySelectorAll("g.node")].find((m) => m.__data__.id === mark.id);
         assert.ok(g, `${mark.id} is not drawn at ${budget} columns`);
         app.showTip({ target: chart, clientX: 0, clientY: 0 }, g.__data__);
@@ -439,7 +425,7 @@ describe("a widened step", () => {
         shares[budget] = { share: app.columnShare(g.__data__), drawn: "\u25c7 our " + pct.toFixed(1) + "% of this column" };
       }
       const flows = `${dollars(mark.in_cents)} in, ${dollars(mark.out_cents)} out`;
-      t.diagnostic(`Go answers ${mark.in_cents} in and ${mark.out_cents} out; at 3 columns "${said[3].aria}", ` +
+      t.diagnostic(`the mark carries ${mark.in_cents} in and ${mark.out_cents} out; at 3 columns "${said[3].aria}", ` +
         `share ${JSON.stringify(shares[3])}; at 5 "${said[5].aria}", share ${JSON.stringify(shares[5])}`);
       assert.deepEqual(said[3], said[5]);
       for (const budget of [3, 5]) assert.equal(shares[budget].share, shares[budget].drawn, `at ${budget} columns`);
@@ -449,19 +435,17 @@ describe("a widened step", () => {
     });
   }
   // A RESIDUAL WITH NO LEAVING FLOW HOLDS NOTHING BACK AT ANY WIDTH. No
-  // committed group has one, so the capital group's answer is taken minus its
-  // leaving endpoint, transfers/out: what is left draws on its balance only.
+  // committed group has one, so the step is redeclared without its leaving
+  // endpoint, transfers/out: what is left of capital's draws on its balance only.
   for (const stem of ["sankey", "sankey-2027"]) {
     test(`${stem}: a residual with no leaving flow says nothing is held back, at either width`, async (t) => {
-      const answer = rungsFixture();
-      const rung = answer.columns.find((c) => c.stem === stem).rungs
-        .find((r) => r.path.join("|") === "fund-group/capital");
-      const mark = rung.marks.find((m) => m.role === "residual");
-      assert.ok(mark.ends.includes("transfers/out"), "capital's residual no longer leaves by transfers/out");
-      mark.ends = mark.ends.filter((e) => e !== "transfers/out");
+      const config = structuredClone(pageFixture().config);
+      const step = config.steps.find((s) => s.key === "fund-group");
+      assert.ok(step.residual && step.residual["transfers/out"], "the fund-group step no longer carries transfers/out");
+      delete step.residual["transfers/out"];
       const notes = [];
       for (const budget of [3, 5]) {
-        const { app } = await bootedApp({ checkedStem: stem, plan: { "rungs.json": { doc: answer } } });
+        const { app } = await bootedApp({ checkedStem: stem, config });
         app.setColumnBudget(budget);
         await opened(app, "fund-group/capital");
         const residual = app.projection.nodes.find((n) => app.isResidual(n.id));
@@ -507,7 +491,7 @@ describe("a widened step", () => {
       const group = config.steps.find((s) => s.key === "fund-group");
       const fund = config.steps.find((s) => s.key === "fund");
       assert.ok(fund.tiers.every((tier) => group.tiers.includes(tier)) && fund.tiers.length < group.tiers.length);
-      const at = await windowAt("sankey", budget, path, config, widenFundGroupAnswer([4, 5]));
+      const at = await windowAt("sankey", budget, path, config);
       seen.push(`budget ${budget}: {${at.tiers}}, ${at.nodes} nodes, ${at.links} links, bands ${at.bands}, ${at.banners} banner(s)`);
       assert.equal(at.banners, 0);
       assert.equal(at.columns, Math.min(budget, 4));

@@ -56,11 +56,6 @@ export function columnFixture(stem) {
   return JSON.parse(readFileSync(join(repoRoot, "testdata", stem + ".column.json"), "utf8"));
 }
 
-/** Go's rung answer, testdata/rungs.json. */
-export function rungsFixture() {
-  return JSON.parse(readFileSync(join(repoRoot, "testdata", "rungs.json"), "utf8"));
-}
-
 /** The FY2026 spine as a projection document, testdata/sankey.golden.json. */
 export function goldenGraph() {
   return JSON.parse(readFileSync(join(repoRoot, "testdata", "sankey.golden.json"), "utf8"));
@@ -142,7 +137,6 @@ export function installBrowser({ html, storage, viewport = 1000, osDark = false 
 export function plannedFetch(plan, stamp) {
   const asked = [];
   const full = Object.assign({
-    "rungs.json": { doc: rungsFixture() },
     "fy2026-adopted.json": { doc: columnFixture("fy2026-adopted") },
     "fy2027-adopted.json": { doc: columnFixture("fy2027-adopted") },
   }, plan || {});

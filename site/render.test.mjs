@@ -1,6 +1,7 @@
 // What render() put in the SVG, read back off the DOM after a state is
-// driven, held against the chart the client laid and Go's rung answer. What a
-// mark should read is asked of the shipped nodeClass and nodeFlags.
+// driven, held against the chart the client laid. What a mark should read is
+// asked of the shipped nodeClass and nodeFlags; which states to drive is read
+// off the pinned columns and the steps the page declares.
 //
 // The first block drives a handful of states per published column at two
 // column budgets; the second is the drill's own rendering claims.
@@ -11,7 +12,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 import {
-  bootedApp, opened, expandAll, everyOffer, settle, refusals, rungsFixture, columnFixture, pageFixture, fire, repoRoot,
+  bootedApp, opened, expandAll, everyOffer, settle, refusals, columnFixture, pageFixture, fire, repoRoot,
   dollars, shortDollars,
 } from "./testlib.mjs";
 
@@ -74,79 +75,62 @@ function tailPromise(mark) {
 }
 
 /**
- * The ids Go's answer accounts for at one rung, each with the tier it stands
- * at: the opened node's parts, the marks carried beside them, and the marks
- * the client adds of its own, which get -1 so a fold can never excuse them.
- * @param {any} rung
- * @returns {Map<string, number>}
+ * The fund group whose fund column is widest in the fund-flows schedule of
+ * the column on screen: the view the fund cap is for. Read off the unfolded
+ * schedule, by the group's own ribbons into the fund tier.
+ * @param {any} app
  */
-function answeredIDs(rung, app) {
-  const step = app.CONFIG.steps.find((s) => s.key === rung.step);
-  const ids = new Map();
-  for (const d of rung.draws) {
-    for (const id of d.ids) ids.set(id, d.tier);
-    for (const id of d.carried || []) ids.set(id, d.tier);
-  }
-  for (const m of rung.marks || []) {
-    ids.set(m.id, -1);
-    // A residual's leaving endpoints are answered on the mark, and read here
-    // as ids of a column off screen exactly when leavingLegDrawn drops the leg.
-    if (m.role !== "residual") continue;
-    for (const e of m.ends || []) {
-      if (!ids.has(e)) ids.set(e, app.leavingLegDrawn(step, app.activeTiers()) ? step.tiers[step.tiers.length - 1] : -2);
+function worstOf(app) {
+  const doc = app.scheduleOf(app.column, stepByKey("fund-group").projection);
+  if (!doc) throw new Error("the column on screen carries no fund-flows schedule");
+  const tierOf = new Map(doc.nodes.map((n) => [n.id, n.tier]));
+  const funds = new Map();
+  for (const l of doc.links) {
+    if (tierOf.get(l.source) === 2 && tierOf.get(l.target) === 3) {
+      (funds.get(l.source) || funds.set(l.source, new Set()).get(l.source)).add(l.target);
     }
   }
-  return ids;
+  return [...funds.entries()].reduce((a, b) => (b[1].size > a[1].size ? b : a))[0];
 }
 
-/** How many nodes the widest column of one rung holds, unfolded. */
-const widest = (rung) => Math.max(...rung.draws.map((d) => d.ids.length + (d.carried || []).length));
-
 /**
- * The rungs driven in one column: the overview, the first depth-1 rung, the
- * widest column's, the first with a residual, the first with a gap, and the
- * deepest.
- * @param {any[]} rungs
+ * The paths a step's declared gaps name for one year: every opened node
+ * licensed to differ in this year's column.
+ * @param {{year: number, basis: string}} year
  * @returns {string[][]}
  */
-function statesIn(rungs) {
-  const chosen = [[]];
-  const deepest = Math.max(...rungs.map((r) => r.path.length));
-  const wanted = [
-    rungs.find((r) => r.path.length === 1),
-    rungs.reduce((a, b) => (widest(b) > widest(a) ||
-      (widest(b) === widest(a) && keyOf(b.path) < keyOf(a.path)) ? b : a)),
-    rungs.find((r) => (r.marks || []).some((m) => m.role === "residual")),
-    rungs.find((r) => (r.marks || []).some((m) => m.role === "gap")),
-    rungs.find((r) => r.path.length === deepest),
-  ];
-  for (const r of wanted) {
-    if (r && !chosen.some((p) => keyOf(p) === keyOf(r.path))) chosen.push(r.path);
+function gapPaths(year) {
+  const out = [];
+  for (const s of CONFIG.steps) {
+    for (const [id, licences] of Object.entries(s.gaps || {})) {
+      if (licences.some((g) => g.fiscal_year === year.year && g.basis === year.basis)) out.push([id]);
+    }
   }
-  return chosen;
+  return out;
 }
 
 /**
- * The depth-1 rung of the fund-group step whose fund column is widest: the
- * view the fund cap is for. The fund column, not the widest of any: the
- * General Fund's object column is wider and is drawn only where there is room.
- * @param {any[]} rungs
+ * The states driven in one column: the overview, the first node the overview
+ * offers, the group whose fund column is widest, the General Fund (which
+ * carries a residual), each node a step licenses a gap on in this year, and
+ * the chain three rungs deep.
+ * @param {any} app  booted and on the year
+ * @returns {Promise<string[][]>}
  */
-function worstOf(rungs) {
-  const funds = (r) => (r.draws.find((d) => d.tier === 3) || { ids: [] }).ids.length;
-  const groups = rungs.filter((r) => r.path.length === 1 && r.step === "fund-group");
-  return groups.reduce((a, b) => (funds(b) > funds(a) ? b : a)).path[0];
-}
-
-/** Go's rungs for one column. */
-function rungsOf(stem) {
-  const artifact = rungsFixture();
-  if (artifact.schema_version !== 1) {
-    throw new Error(`testdata/rungs.json declares schema_version ${artifact.schema_version}; this file reads 1`);
-  }
-  const column = artifact.columns.find((c) => c.stem === stem);
-  if (!column) throw new Error(`testdata/rungs.json answers for no column with stem ${stem}`);
-  return column.rungs;
+async function statesFor(app) {
+  const chosen = [[]];
+  const first = app.projection.nodes.filter((n) => app.drillable(n)).map((n) => n.id).sort()[0];
+  const add = (path) => { if (path && !chosen.some((p) => keyOf(p) === keyOf(path))) chosen.push(path); };
+  add([first]);
+  add([worstOf(app)]);
+  add(["fund-group/general"]);
+  for (const path of gapPaths(app.shownYear)) add(path);
+  await opened(app, "fund-group/general", "fund/100");
+  const division = app.projection.nodes.filter((n) => app.drillable(n)).map((n) => n.id).sort()[0];
+  app.drillUp(0);
+  await settle();
+  add(["fund-group/general", "fund/100", division]);
+  return chosen;
 }
 
 /**
@@ -179,14 +163,14 @@ const crumbs = (document) =>
  * off each, returning what disagreed and what was counted.
  */
 async function drive(year) {
-  const rungs = rungsOf(year.stem);
-  const answers = new Map(rungs.map((r) => [keyOf(r.path), r]));
   const wrong = { reach: [], ribbons: [], written: [], gestures: [], banner: [], tails: [] };
   const seen = {
-    states: 0, answered: 0, marks: 0, attributes: 0, ribbons: 0, gestures: 0,
-    tails: 0, ownMarks: 0, offscreen: 0, expansions: 0, revealed: 0, refused: 0,
+    states: 0, marks: 0, attributes: 0, ribbons: 0, gestures: 0,
+    tails: 0, ownMarks: 0, expansions: 0, revealed: 0, refused: 0,
     emphasis: 0, focus: 0,
   };
+  /** @type {string[][] | null} */
+  let states = null;
 
   for (const width of [3, 4]) {
     const { app, document } = await bootedApp({ checkedStem: year.stem });
@@ -196,9 +180,14 @@ async function drive(year) {
     const content = document.querySelector("main");
     if (!content) throw new Error("the page has no <main>, so a refusal banner would have nowhere to be");
 
-    for (const path of statesIn(rungs)) {
+    if (!states) states = await statesFor(app);
+    for (const path of states) {
       const where = `${year.label} at ${width} columns, ${keyOf(path)}`;
       seen.states++;
+      // THE PLANTED CLOCK ONLY MOVES FORWARD across states, as a real one does:
+      // the activation guard compares timestamps, and one earlier than the last
+      // state's Enter on the same node would read as the click it synthesised.
+      const t0 = seen.states * 100000;
       // A STATE THAT THROWS IS A STATE THAT DID NOT DRAW, reported as one
       // rather than left to take the file down.
       try {
@@ -224,8 +213,7 @@ async function drive(year) {
           `${marks.length} mark(s), which is not a chart that drew`);
       }
 
-      // (a) every node reaches a mark: DOM against the laid graph, and the
-      // laid graph against Go's answer.
+      // (a) every node reaches a mark: DOM against the laid graph.
       const drawn = marks.map((m) => m.__data__.id);
       const laid = app.projection.nodes.map((n) => n.id);
       const missing = laid.filter((id) => !drawn.includes(id));
@@ -238,32 +226,14 @@ async function drive(year) {
           (twice ? `; only ${new Set(drawn).size} of the marks are distinct` : ""));
       }
       seen.marks += marks.length;
-
-      const answer = answers.get(keyOf(path));
-      if (answer) {
-        seen.answered++;
-        seen.ownMarks += (answer.marks || []).length;
-        const tails = marks.filter((m) => app.isAggregate(m.__data__.id));
-        const folded = new Set(tails.map((m) => m.__data__.tier));
-        seen.tails += tails.length;
-        const columns = new Set(app.activeTiers());
-        const want = answeredIDs(answer, app);
-        const tailIDs = [...folded].map((t) => app.aggregateID(t));
-        const unanswered = drawn.filter((id) => !want.has(id) && !tailIDs.includes(id));
-        const offscreen = [...want.keys()].filter((id) => want.get(id) !== -1 && !columns.has(want.get(id)));
-        const undrawn = [...want.keys()].filter((id) => !drawn.includes(id) &&
-          !folded.has(want.get(id)) && !offscreen.includes(id));
-        seen.offscreen += offscreen.length;
-        if (unanswered.length || undrawn.length) {
-          wrong.reach.push(`${where}: Go accounts for ${want.size} id(s), the chart draws ` +
-            `${drawn.length} of which ${tails.length} stand(s) for a folded column, and ` +
-            `${offscreen.length} stand(s) at a column this budget drops` +
-            (undrawn.length ? `; Go answers, no mark carries and no tail stands for: ${undrawn.join(", ")}` : "") +
-            (unanswered.length ? `; drawn and Go accounts for none: ${unanswered.join(", ")}` : ""));
-        }
-      } else if (path.length) {
-        wrong.reach.push(`${where}: testdata/rungs.json answers for no such rung`);
-      }
+      seen.tails += marks.filter((m) => app.isAggregate(m.__data__.id)).length;
+      seen.ownMarks += marks.filter((m) => app.isResidual(m.__data__.id) || app.isGap(m.__data__.id)).length;
+      // EVERY DRAWN MARK STANDS AT A COLUMN THIS WIDTH DRAWS, or is a mark the
+      // rung added beside them.
+      const columns = new Set(app.activeTiers());
+      const astray = marks.map((m) => m.__data__).filter((d) => path.length && !columns.has(d.tier))
+        .map((d) => `${d.id}@${d.tier}`);
+      if (astray.length) wrong.reach.push(`${where}: drawn at a column this budget does not lay out: ${astray.join(", ")}`);
 
       // (b) every link reaches a ribbon, and both its ends are marks here.
       const laidLinks = app.projection.links.length;
@@ -323,12 +293,12 @@ async function drive(year) {
       // (d) what a gesture DOES, by dispatch: a click isolates and a second
       // releases; Space isolates and the click it synthesises does not undo
       // it; a held key does nothing; a double click and Enter each open.
-      const opener = marks.find((m) => answers.has(keyOf(path.concat([m.__data__.id]))));
+      const opener = marks.find((m) => app.drillable(m.__data__));
       const subject = opener || marks[0];
       if (subject) {
         const id = subject.__data__.id;
         const note = (what) => wrong.gestures.push(`${where}: ${id} ${what}`);
-        seen.gestures++; fire(subject, "click", { timeStamp: 1000 });
+        seen.gestures++; fire(subject, "click", { timeStamp: t0 + 1000 });
         if (app.isolated !== id) note(`does not isolate on a click (isolated is ${JSON.stringify(app.isolated)})`);
         // The dimming, stated as invariants rather than recomputing the predicate.
         const lit = ribbonsIn(chart).filter((p) => p.__data__.source.id === id || p.__data__.target.id === id);
@@ -342,21 +312,21 @@ async function drive(year) {
         }
         if (subject.classList.contains("dim")) note("dims itself while isolated");
 
-        seen.gestures++; fire(subject, "click", { timeStamp: 2000 });
+        seen.gestures++; fire(subject, "click", { timeStamp: t0 + 2000 });
         if (app.isolated !== "") note(`does not release on a second click (isolated is ${JSON.stringify(app.isolated)})`);
         const stuck = ribbonsIn(chart).filter((p) => p.classList.contains("dim")).length +
           marksIn(chart).filter((m) => m.classList.contains("dim")).length;
         if (stuck > 0) note(`leaves ${stuck} mark(s) and ribbon(s) dimmed after the isolation is released`);
 
-        seen.gestures++; fire(subject, "keydown", { key: " ", timeStamp: 3000 });
+        seen.gestures++; fire(subject, "keydown", { key: " ", timeStamp: t0 + 3000 });
         if (app.isolated !== id) note(`does not isolate on Space (isolated is ${JSON.stringify(app.isolated)})`);
-        seen.gestures++; fire(subject, "click", { timeStamp: 3000 });
+        seen.gestures++; fire(subject, "click", { timeStamp: t0 + 3000 });
         if (app.isolated !== id) note("is un-isolated by the click its own Space synthesised");
-        seen.gestures++; fire(subject, "keydown", { key: " ", timeStamp: 9000 });
+        seen.gestures++; fire(subject, "keydown", { key: " ", timeStamp: t0 + 9000 });
         if (app.isolated !== "") note(`does not release on a second Space (isolated is ${JSON.stringify(app.isolated)})`);
 
         const before = app.drilled.length;
-        seen.gestures++; fire(subject, "keydown", { key: "Enter", timeStamp: 9500, repeat: true });
+        seen.gestures++; fire(subject, "keydown", { key: "Enter", timeStamp: t0 + 9500, repeat: true });
         await settle();
         if (app.isolated !== "" || app.drilled.length !== before) {
           note(`acts on a held key (isolated ${JSON.stringify(app.isolated)}, ${app.drilled.length} rung(s))`);
@@ -365,7 +335,7 @@ async function drive(year) {
         if (opener) {
           // A drill replaces the chart, so restoreFocus must land focus somewhere real.
           subject.focus();
-          seen.gestures++; fire(subject, "dblclick", { timeStamp: 10000 });
+          seen.gestures++; fire(subject, "dblclick", { timeStamp: t0 + 10000 });
           await settle();
           const landed = document.activeElement;
           seen.focus++;
@@ -382,7 +352,7 @@ async function drive(year) {
           const again = marksIn(chart).find((m) => m.__data__.id === id);
           if (!again) note("is gone from the chart it was just opened from");
           else {
-            seen.gestures++; fire(again, "keydown", { key: "Enter", timeStamp: 11000 });
+            seen.gestures++; fire(again, "keydown", { key: "Enter", timeStamp: t0 + 11000 });
             await settle();
             if (app.drilled.length !== before + 1) {
               note(`does not open on Enter (${app.drilled.length} rung(s), was ${before})`);
@@ -392,10 +362,11 @@ async function drive(year) {
       }
 
       // (f) what a folded tail stands for: Enter on the tail the way a reader
-      // asks, and then the DOM again. The label is part of the answer.
-      if (answer) {
+      // asks, and then the DOM again. The label is part of the claim, and so
+      // is the tail's own `folds`: what it says it stands for is what drawing
+      // it out reveals, no more and no fewer.
+      if (path.length) {
         await goTo(app, path);
-        const want = answeredIDs(answer, app);
         let refused = [];
         const LIMIT = 32;
         let done = 0;
@@ -406,11 +377,11 @@ async function drive(year) {
           if (!tail) { refused = shown; break; }
           const tier = tail.__data__.tier;
           const drawnBefore = before.map((m) => m.__data__.id);
-          const hidden = [...want.keys()].filter((id) => want.get(id) === tier && !drawnBefore.includes(id));
+          const hidden = (tail.__data__.folds || []).filter((id) => !drawnBefore.includes(id));
           const promised = tailPromise(tail);
           seen.expansions++;
           const note = (what) => wrong.tails.push(`${where}: the tail at column ${tier} ${what}`);
-          fire(tail, "keydown", { key: "Enter", timeStamp: 20000 + done });
+          fire(tail, "keydown", { key: "Enter", timeStamp: t0 + 20000 + done });
           await settle();
           const out = marksIn(chart)
             .filter((m) => m.__data__.tier === tier && !app.isAggregate(m.__data__.id))
@@ -418,12 +389,12 @@ async function drive(year) {
           const revealed = out.filter((id) => !drawnBefore.includes(id));
           seen.revealed += revealed.length;
           const stillHidden = hidden.filter((id) => !out.includes(id));
-          const strangers = out.filter((id) => !want.has(id));
+          const strangers = revealed.filter((id) => !hidden.includes(id));
           if (stillHidden.length) {
-            note(`stood for ${hidden.length} id(s) Go accounts for and drew no mark for ` +
+            note(`stood for ${hidden.length} id(s) and drew no mark for ` +
               `${stillHidden.length} of them: ${stillHidden.join(", ")}`);
           }
-          if (strangers.length) note(`drew ${strangers.join(", ")}, which Go accounts for nowhere at this rung`);
+          if (strangers.length) note(`drew ${strangers.join(", ")}, which it did not say it stood for`);
           if (promised !== revealed.length) {
             note(`says "${promised}" in its own words and drew ${revealed.length} mark(s) the chart did not already carry`);
           }
@@ -438,11 +409,11 @@ async function drive(year) {
         for (const m of refused) {
           seen.refused++;
           const tier = m.__data__.tier;
-          const behind = [...want.keys()].filter((id) => want.get(id) === tier && !drawnNow.includes(id));
+          const behind = (m.__data__.folds || []).filter((id) => !drawnNow.includes(id));
           wrong.tails.push(`${where}: the tail at column ${tier} (${m.__data__.id}, ` +
             `${JSON.stringify(m.__data__.label)}) is drawn and the page offers no gesture ` +
             `that draws it out, so what it stands for is unaskable here -- ` +
-            `${behind.length} id(s) Go accounts for at that column reach no mark: ${behind.join(", ") || "(none)"}`);
+            `${behind.length} id(s) it stands for reach no mark: ${behind.join(", ") || "(none)"}`);
         }
       }
     }
@@ -460,14 +431,12 @@ for (const year of YEARS) {
     // Each arm carries the counter that could vanish under it alone.
     const drove = () => seen.states > 0 && seen.marks > 0;
 
-    test(`${year.label}: every node the chart lays out reaches a mark, and every mark is one Go accounts for`, (t) => {
-      const detail = `${seen.marks} mark(s) over ${seen.states} state(s), ${seen.answered} of them a rung ` +
-        `testdata/rungs.json answers -- every id it accounts for drawn, behind one of ` +
-        `${seen.tails} folded tail(s), or at one of ${seen.offscreen} places in a column this ` +
-        `budget drops -- and ${seen.ownMarks} mark(s) the client adds of its own`;
+    test(`${year.label}: every node the chart lays out reaches a mark, at a column the width draws`, (t) => {
+      const detail = `${seen.marks} mark(s) over ${seen.states} state(s), ${seen.tails} of them folded ` +
+        `tail(s) and ${seen.ownMarks} mark(s) the rung adds of its own`;
       t.diagnostic(detail);
       assert.equal(wrong.reach.length, 0, `${wrong.reach.length} disagreement(s), ${firstOf(wrong.reach)}`);
-      assert.ok(drove() && seen.answered > 0 && seen.tails > 0 && seen.ownMarks > 0, detail);
+      assert.ok(drove() && seen.tails > 0 && seen.ownMarks > 0, detail);
     });
 
     test(`${year.label}: every link the chart lays out reaches a ribbon with a path, a width and a name`, (t) => {
@@ -490,7 +459,7 @@ for (const year of YEARS) {
     test(`${year.label}: a gesture on a drawn mark does what the page says it does`, (t) => {
       const detail = `${seen.gestures} event(s) fired over ${seen.states} state(s): a click isolates and ` +
         "a second releases, Space isolates, the click that Space synthesises does not undo it, " +
-        "a held key does nothing, and a double click and Enter each open the node Go answers a " +
+        "a held key does nothing, and a double click and Enter each open a node that opens a " +
         `rung for; the isolation dims ${seen.emphasis} mark(s) and ribbon(s), none of them the ` +
         "isolated node or a flow of its own, and none left dimmed once released; and from focus " +
         `on a mark a drill moved it to the rung's own return control ${seen.focus} time(s)`;
@@ -805,11 +774,10 @@ describe("the drill's drawing", () => {
       app.pin(node);
       const panel = document.getElementById("detail").textContent;
       const opens = app.projection.nodes.filter((n) => app.isCarried(n.id) && app.drillable(n)).map((n) => n.id);
-      // THE WORDS ARE GO'S: the label and the rationale are read off the
-      // served answer, not spelled here.
-      const answered = (rungsOf(year.stem).find((r) => keyOf(r.path) === general).marks || [])
-        .find((m) => m.role === "residual");
-      assert.ok(answered, "Go answers no residual mark for the General Fund");
+      // THE WORDS ARE THE DECLARATION'S: the mark is named for the step's grain
+      // and carries the step's reason for every endpoint it took a flow from.
+      const grain = stepByKey("fund-group").residual_grain;
+      assert.ok(grain, "the fund-group step declares no residual_grain");
       const carriedPrinted = node.targetLinks.filter((l) => !l.derived);
       const wrongProvenance = carriedPrinted.filter((l) => {
         const said = app.linkDescription(l);
@@ -830,13 +798,12 @@ describe("the drill's drawing", () => {
         `flow(s) re-pointed onto it, the table reading "${carriedCell}"`);
       assert.equal(node.derived, true);
       assert.ok(mark.classList.contains("derived"), mark.getAttribute("class"));
-      assert.equal(node.label, answered.label);
-      assert.equal(node.rationale, answered.rationale);
+      assert.ok(node.label.includes(grain), node.label);
       assert.notEqual(node.rationale, "");
       assert.deepEqual(missingReasons, []);
       assert.ok(node.source_note.includes("Carried, not computed"), node.source_note);
       assert.ok(citedPages.length > 0 && citedPages.every((pg) => node.source_note.includes(String(pg))), node.source_note);
-      assert.ok(listed.includes(answered.label) && listed.includes(node.rationale), listed);
+      assert.ok(listed.includes(node.label) && listed.includes(node.rationale), listed);
       assert.equal(listedFlows, wantFlowLines);
       assert.ok(namedOnce && saysCarried, listed);
       assert.ok(carriedPrinted.length > 0);
@@ -850,7 +817,7 @@ describe("the drill's drawing", () => {
     test(`${year.label}: the capped tail is marked as ours, not as something the city printed`, async (t) => {
       const { app, document } = await bootedApp({ checkedStem: year.stem });
       const chart = document.getElementById("chart");
-      const worst = worstOf(rungsOf(year.stem));
+      const worst = worstOf(app);
       await opened(app, worst);
       const tail = marksIn(chart).find((m) => app.isAggregate(m.__data__.id));
       assert.ok(tail, `no aggregate mark: the cap folded nothing on ${worst}`);
@@ -875,7 +842,7 @@ describe("the drill's drawing", () => {
     test(`${year.label}: the breadcrumb says how many marks the expansion drew, and folds them back`, async (t) => {
       const { app, document } = await bootedApp({ checkedStem: year.stem });
       const chart = document.getElementById("chart");
-      await opened(app, worstOf(rungsOf(year.stem)));
+      await opened(app, worstOf(app));
       const capped = ribbonsIn(chart).length;
       const tail = marksIn(chart).find((m) => app.expandable(m.__data__));
       assert.ok(tail, "no drawn mark offers to expand");
@@ -901,10 +868,10 @@ describe("the drill's drawing", () => {
     });
 
     test(`${year.label}: a caveat about a folded row marks the tail while it stands for it, and the row itself once it is drawn`, async (t) => {
-      const worst = worstOf(rungsOf(year.stem));
       // Which row the cap folds is the client's answer: read off a plain page,
       // then a caveat naming that row is planted on a copy of the column.
       const plain = await bootedApp({ checkedStem: year.stem });
+      const worst = worstOf(plain.app);
       await opened(plain.app, worst);
       const foldedTail = plain.app.projection.nodes.find((n) => plain.app.isAggregate(n.id));
       assert.ok(foldedTail && foldedTail.folds && foldedTail.folds.length, "the cap folded nothing");
@@ -950,35 +917,51 @@ describe("the drill's drawing", () => {
 });
 
 describe("a gap mark", () => {
-  // Every gap Go answers, in whichever column answers one.
-  const gaps = rungsFixture().columns.flatMap((c) => c.rungs.flatMap((r) =>
-    (r.marks || []).filter((m) => m.role === "gap").map((m) => ({ stem: c.stem, path: r.path, mark: m }))));
-  test("the pinned answer carries a gap to drive", () => assert.ok(gaps.length > 0));
-  for (const { stem, path, mark } of gaps) {
-    test(`${stem} ${path.join(" > ")}: the gap and its ribbon cite Go's pages and say what they are, with no empty label`, async (t) => {
-      const { app, document } = await bootedApp({ checkedStem: stem });
+  // Every gap a step licenses, in whichever column licenses one.
+  const gaps = YEARS.flatMap((year) => gapPaths(year.config).map((path) => ({ year, path })));
+  test("the pinned page licenses a gap to drive", () => assert.ok(gaps.length > 0));
+  for (const { year, path } of gaps) {
+    test(`${year.stem} ${path.join(" > ")}: the gap and its ribbon cite the pages of both totals and say what they are, with no empty label`, async (t) => {
+      const { app, document } = await bootedApp({ checkedStem: year.stem });
+      const step = app.stepFor(app.projection.nodes.find((n) => n.id === path[0]));
+      const licence = step.gaps[path[0]].find((g) => g.fiscal_year === year.config.year && g.basis === year.config.basis);
+      // THE PAGES BOTH TOTALS WERE READ FROM: every page a ribbon touching the
+      // opened node cites, in the chart above's document and in the drawn one.
+      const above = app.docAt(0);
       await opened(app, ...path);
       const chart = document.getElementById("chart");
       const detail = document.getElementById("detail");
-      const node = marksIn(chart).find((m) => m.__data__.id === mark.id);
+      const id = app.gapID(path[path.length - 1]);
+      const node = marksIn(chart).find((m) => m.__data__.id === id);
       const ribbon = [...chart.querySelectorAll("path")].find((p) => p.__data__ && p.__data__.source &&
-        (p.__data__.source.id === mark.id || p.__data__.target.id === mark.id));
-      assert.ok(node && ribbon, `${mark.id} or its ribbon is not drawn`);
+        (p.__data__.source.id === id || p.__data__.target.id === id));
+      assert.ok(node && ribbon, `${id} or its ribbon is not drawn`);
+      const touching = (doc) => {
+        const inside = app.withinNode(doc, path[path.length - 1]);
+        return doc.links.filter((l) => inside.has(l.source) || inside.has(l.target))
+          .flatMap((l) => l.locators.flatMap((s) => s.pages));
+      };
+      const want = [...new Set(touching(above).concat(touching(app.drawnDoc())))].sort((a, b) => a - b);
       const pdfPages = () => [...detail.querySelectorAll("a")].map((a) => a.getAttribute("href") || "")
         .filter((href) => href.includes("#page=")).map((href) => Number(href.split("#page=")[1]));
-      const want = mark.locators.flatMap((l) => l.pages);
       app.pin(node.__data__);
       const nodeCites = pdfPages();
+      const nodePanel = detail.textContent;
       app.pin(ribbon.__data__);
       const ribbonCites = pdfPages();
       const panel = detail.textContent;
       const chips = [...detail.querySelectorAll(".chip")].map((c) => c.textContent);
       const aria = ribbon.getAttribute("aria-label") || "";
-      t.diagnostic(`Go cites pp.${want.join(",")}; the node's panel pp.${nodeCites.join(",")}, the ribbon's pp.${ribbonCites.join(",")}; chips ${JSON.stringify(chips)}; aria "${aria}"`);
+      const figure = Math.max(node.__data__.in_cents || 0, node.__data__.out_cents || 0);
+      t.diagnostic(`the two documents cite pp.${want.join(",")}; the node's panel pp.${nodeCites.join(",")}, ` +
+        `the ribbon's pp.${ribbonCites.join(",")}; the mark stands for ${figure} cents against a licence of ` +
+        `${licence.cents}; chips ${JSON.stringify(chips)}; aria "${aria}"`);
       assert.deepEqual(nodeCites, want);
       assert.deepEqual(ribbonCites, want);
+      assert.equal(figure, Math.abs(licence.cents));
       assert.ok(!panel.includes("Facts:"), panel);
-      assert.ok(panel.includes(mark.source_note), panel);
+      assert.ok(panel.includes(node.__data__.source_note), panel);
+      assert.ok(nodePanel.includes(licence.reason), nodePanel);
       assert.ok(chips.every((c) => c !== ""), JSON.stringify(chips));
       assert.doesNotMatch(aria, /, ,/);
     });

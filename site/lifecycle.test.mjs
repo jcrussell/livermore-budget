@@ -4,7 +4,7 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  loadApp, settle, refusals, pageFixture, columnFixture, rungsFixture, clickYear, keydownListeners, listenerErrors,
+  loadApp, settle, refusals, pageFixture, columnFixture, clickYear, keydownListeners, listenerErrors,
 } from "./testlib.mjs";
 
 const FIRST = "sankey";
@@ -322,44 +322,6 @@ describe("a copy from another build", () => {
   });
 });
 
-describe("the rung answer's fetch", () => {
-  // Which nodes a column draws is Go's answer, fetched. The shape asserted is
-  // "banner, and nothing drawn": the year's own document is never asked for,
-  // which is what says the refusal happened before the draw.
-  const RUNGS = "rungs.json";
-  const truncated = () => {
-    const answer = structuredClone(rungsFixture());
-    // Kept as the body of the other-build row on purpose: a correctly-shaped
-    // answer from another build is refused just the same, so the refusal is
-    // about the stamp and not the shape.
-    delete answer.columns[0].rungs[0].draws[0].ids;
-    return answer;
-  };
-  for (const tc of [
-    { name: "a rung answer the server will not serve", plan: { [RUNGS]: { ok: false, status: 404 } }, says: "HTTP 404" },
-    { name: "a rung answer from another build",
-      plan: { [RUNGS]: { doc: Object.assign(truncated(), { generated_by: "fisc other" }) } }, says: "fisc other" },
-  ]) {
-    test(`${tc.name} refuses the page in words and draws nothing`, async (t) => {
-      const { app, document, fetch, config } = await onFirstYear({ plan: tc.plan });
-      const banners = said(document);
-      const askedYear = fetch.asked.includes(config.years[0].path);
-      t.diagnostic(`main() asked for ${JSON.stringify(fetch.asked)}; ${banners.length} banner(s) ` +
-        `(${banners.length ? JSON.stringify(banners[0]) : "none"}); the year document was ` +
-        `${askedYear ? "FETCHED ANYWAY" : "never asked for"}, ${marks(document)} mark(s) drawn ` +
-        `and the lede still reads the served "${lede(document)}"`);
-      assert.equal(fetch.asked[0], RUNGS, "the rung answer was not what failed");
-      assert.equal(banners.length, 1);
-      assert.ok(banners[0].includes(RUNGS), "the banner does not name the file");
-      assert.ok(banners[0].includes(tc.says), `the banner does not say ${JSON.stringify(tc.says)}`);
-      assert.equal(askedYear, false);
-      assert.equal(app.shownYear, null);
-      assert.equal(app.projection, null);
-      assert.equal(marks(document), 0);
-    });
-  }
-});
-
 describe("a gesture that throws", () => {
   test("a gesture that throws leaves a refusal a reader can read, not a half-built panel", async (t) => {
     // The shape is served rather than simulated: a schedule with no sources
@@ -413,28 +375,6 @@ describe("refusals nothing drove", () => {
     assert.equal(marks(document), 0);
     assert.equal(lede(document), served);
   });
-
-  for (const tc of [
-    { name: "a rung answer the network refuses", plan: { "rungs.json": { reject: new TypeError("Failed to fetch") } },
-      says: /Could not load rungs\.json\. If you opened this file directly/ },
-    { name: "a rung answer that is not JSON", plan: { "rungs.json": { badBody: true } },
-      says: /Could not read rungs\.json: the file is not valid JSON/ },
-  ]) {
-    test(`${tc.name} refuses the page in words and draws nothing`, async (t) => {
-      const { app, document, fetch, config } = await onFirstYear({ plan: tc.plan });
-      const banners = said(document);
-      const askedYear = fetch.asked.includes(config.years[0].path);
-      t.diagnostic(`main() asked for ${JSON.stringify(fetch.asked)}; ${banners.length} banner(s) ` +
-        `(${banners.length ? JSON.stringify(banners[0]) : "none"}); the year document was ` +
-        `${askedYear ? "FETCHED ANYWAY" : "never asked for"} and ${marks(document)} mark(s) drawn`);
-      assert.equal(fetch.asked[0], "rungs.json");
-      assert.equal(banners.length, 1);
-      assert.match(banners[0], tc.says);
-      assert.equal(askedYear, false);
-      assert.equal(app.shownYear, null);
-      assert.equal(marks(document), 0);
-    });
-  }
 
   test("a page packaged with no published year says so and fetches nothing", async (t) => {
     const config = structuredClone(pageFixture().config);

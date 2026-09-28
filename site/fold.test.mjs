@@ -138,9 +138,9 @@ describe("the tail's note carries the figure the tail is drawn at", () => {
   test("the page's capping writes the figure the fold leaves, not the one before it", async (t) => {
     const app = await drawing(DRAWN);
     const doc = lines();
-    const held = new Map(doc.nodes.map((n) => [n.id, n.tier === 0 ? 0 : 1]));
-    const rung = { id: "", step: { caps: [{ tier: 0, cap: 2 }], tail: "lines" } };
-    const side = app.sideOf(doc, rung, [0, 2], held);
+    // Opened on the category the lines run into, which every line is drawn for.
+    const rung = { id: "revenue/tax", step: { caps: [{ tier: 0, cap: 2 }], tail: "lines" } };
+    const side = app.sideOf(doc, rung, [0, 2], false);
     const tail = side.nodes.find((n) => app.isAggregate(n.id));
     assert.ok(tail, "nothing folded");
     t.diagnostic(`the tail's note reads "${tail.source_note}"`);
@@ -453,4 +453,113 @@ describe("a parent the document does not carry", () => {
     const rooted = Object.assign({}, stray, { parent: "" });
     assert.equal(whole.fundGroupOf(rooted), "");
   });
+});
+
+// THE FOLD'S OWN PROPERTIES, over every rung the shipped steps can open on the
+// pinned columns, at the widest tier set the step declares and the narrowest
+// the budget leaves. Each half of a chart is filtered, capped and folded by
+// the same three functions the page draws with, and what comes out is held to
+// what went in: the sums, the citations and the caps. Nothing here compares a
+// figure to anything Go computed; the unfolded schedule is the only witness.
+describe("the fold preserves what it folds, on every rung at every width", () => {
+  const CONFIG = pageFixture().config;
+  const STEMS = ["fy2026-adopted", "fy2027-adopted"];
+
+  /** The tier sets one step is drawn at: every declared column, and the fewest. */
+  function widths(step) {
+    const keep = new Set(step.keep || []);
+    const fresh = step.tiers.filter((t) => !keep.has(t));
+    const widen = new Set(step.widen || []);
+    const narrow = fresh.filter((t) => !widen.has(t));
+    return narrow.length === fresh.length ? [fresh] : [fresh, narrow];
+  }
+
+  /** Cents and cited fact ids over a set of links. */
+  function totals(links) {
+    const cited = new Set();
+    let cents = 0;
+    for (const l of links) {
+      cents += l.value_cents;
+      for (const id of l.fact_ids) cited.add(id);
+    }
+    return { cents, cited: [...cited].sort() };
+  }
+
+  for (const stem of STEMS) {
+    test(`${stem}: every rung's sums, citations and caps survive the cap and the fold`, async (t) => {
+      const app = (await loadApp({ config: CONFIG })).app;
+      const column = columnFixture(stem);
+      const wrong = [];
+      let rungs = 0;
+      let capped = 0;
+      let merged = 0;
+      /** The schedule a step draws: its own, or the one the step before it draws. */
+      const drawsFrom = (step) => {
+        for (let s = step, hops = 0; s && hops < 9; hops++) {
+          if (s.projection) return s.projection;
+          s = CONFIG.steps.find((x) => x.key === s.after[0]);
+        }
+        return "";
+      };
+      for (const step of CONFIG.steps) {
+        const key = drawsFrom(step);
+        const doc = app.scheduleOf(column, key);
+        assert.ok(doc, `${stem} carries no schedule ${key} for step ${step.key}`);
+        const window = Boolean(step.keep && step.keep.length);
+        const nearIsSource = window ? app.flankIsLeft(step) : step.side === app.SIDE_SOURCE;
+        const opens = [...app.decomposable(step, doc)].sort();
+        assert.ok(opens.length > 0, `${stem}: step ${step.key} decomposes no node of ${key}`);
+        for (const id of opens) {
+          for (const tiers of widths(step)) {
+            rungs++;
+            const where = `${stem} ${step.key} ${id} at {${tiers}}`;
+            const rung = { id, step, doc };
+            const raw = app.filterLinks(doc, id, tiers, app.reaching(doc, id, nearIsSource, tiers));
+            const drawn = app.sideOf(doc, rung, tiers, nearIsSource);
+            // A ribbon whose two ends fold to one node is drawn by nothing,
+            // and the fold drops it: it is money inside one drawn mark.
+            const byID = new Map(raw.nodes.map((n) => [n.id, n]));
+            const set = new Set(tiers);
+            const folds = (end) => app.foldTarget(byID, byID.get(end), set);
+            const kept = raw.links.filter((l) => folds(l.source) !== folds(l.target));
+            // (a) SUMS, in total and at the opened node.
+            const want = totals(kept);
+            const got = totals(drawn.links);
+            if (want.cents !== got.cents) wrong.push(`${where}: ${want.cents} cents filtered, ${got.cents} drawn`);
+            const at = (links, node) => links.filter((l) => l.source === node || l.target === node)
+              .reduce((a, l) => a + l.value_cents, 0);
+            if (drawn.nodes.some((n) => n.id === id) && at(kept, id) !== at(drawn.links, id)) {
+              wrong.push(`${where}: ${at(kept, id)} cents touch ${id} unfolded, ${at(drawn.links, id)} drawn`);
+            }
+            // (b) NO RIBBON LOST OR DUPLICATED: the same facts cited, and the
+            // same cents -- a ribbon dropped loses its facts, one drawn twice
+            // doubles its cents.
+            if (want.cited.join() !== got.cited.join()) {
+              const lost = want.cited.filter((f) => !got.cited.includes(f));
+              const invented = got.cited.filter((f) => !want.cited.includes(f));
+              wrong.push(`${where}: ${lost.length} fact(s) cited away, ${invented.length} cited from nowhere`);
+            }
+            merged += kept.length - drawn.links.length;
+            // (c) CAPS: a capped column holds at most cap + 1 marks, and where
+            // it folded, the tail's members and the kept marks are the column.
+            for (const cap of step.caps || []) {
+              if (!tiers.includes(cap.tier)) continue;
+              const own = drawn.nodes.filter((n) => n.tier === cap.tier);
+              const tail = own.find((n) => app.isAggregate(n.id));
+              if (own.length > cap.cap + 1) wrong.push(`${where}: ${own.length} marks at tier ${cap.tier}, capped at ${cap.cap}`);
+              if (!tail) continue;
+              capped++;
+              const whole = raw.nodes.filter((n) => n.tier === cap.tier).map((n) => n.id).sort();
+              const stood = own.filter((n) => n !== tail).map((n) => n.id).concat(tail.folds).sort();
+              if (whole.join() !== stood.join()) wrong.push(`${where}: the column holds ${whole.length} and the tail plus the kept stand for ${stood.length}`);
+              if (tail.folds.length < 2) wrong.push(`${where}: a tail of ${tail.folds.length}`);
+            }
+          }
+        }
+      }
+      t.diagnostic(`${stem}: ${rungs} rung-widths, ${capped} folded tails, ${merged} ribbons merged or dropped by the fold`);
+      assert.ok(rungs > 0 && capped > 0 && merged > 0);
+      assert.deepEqual(wrong, []);
+    });
+  }
 });

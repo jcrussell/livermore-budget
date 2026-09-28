@@ -273,7 +273,7 @@ describe("a year switch and an open drill", () => {
     const label = app.projection.nodes.find((n) => n.id === "fund/100")?.label;
     const unique = [...new Set(fetch.asked)].sort();
     t.diagnostic(`two drills and a year switch asked for [${unique}] and drew fund/100 labelled "${label}"`);
-    assert.deepEqual(unique, ["fy2026-adopted.json", "fy2027-adopted.json", "rungs.json"]);
+    assert.deepEqual(unique, ["fy2026-adopted.json", "fy2027-adopted.json"]);
     assert.equal(label, "General Fund, the other year");
   });
   test("a year switch closes every rung, and the next drill draws the new year's schedule", async (t) => {

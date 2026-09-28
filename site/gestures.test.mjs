@@ -331,20 +331,31 @@ describe("the kept flank", () => {
 });
 
 describe("a carried mark under a step that would open it", () => {
-  test("a residual stays closed where a step names its tier, role and no opens set", async (t) => {
-    // The fund step with no role and no opens set, both of which the packager
-    // may ship: stepFor then answers for the residual beside fund/100.
+  test("a residual stays closed under a step at its tier with neither role nor flank: no document carries it, and it is carried", async (t) => {
+    // The fund step stripped to the most permissive declaration the packager
+    // could ship, no role and no kept flank: only the decomposition rule and
+    // the carried gate then stand between the residual beside fund/100 and
+    // the step at its tier.
     const config = structuredClone(PAGE);
     const at = config.steps.findIndex((s) => s.key === "fund");
     delete config.steps[at].role;
-    for (const y of config.years) delete y.steps[at].opens;
+    delete config.steps[at].keep;
     const { app, document } = await bootedApp({ config });
     await opened(app, OPENS);
     const residual = app.projection.nodes.find((n) => app.isResidual(n.id));
     assert.ok(residual, `${OPENS} draws no residual`);
-    const step = app.stepFor(residual);
-    t.diagnostic(`${residual.id} at tier ${residual.tier}: stepFor answers ${step ? step.key : "nothing"}, drillable ${app.drillable(residual)}`);
-    assert.ok(step, "no step answers for the residual, so the carried gate is not what refuses it");
+    const step = config.steps[at];
+    assert.equal(residual.tier, step.from, "the residual does not stand at the fund step's tier");
+    // TWO GATES, EACH REFUSING ON ITS OWN. The mark is a node of no document,
+    // so the step decomposes it into nothing and no step answers for it; and
+    // it is carried, so drillable would refuse it under a step that did.
+    const decomposes = app.stepDecomposes(step, residual.id);
+    const answered = app.stepFor(residual);
+    t.diagnostic(`${residual.id} at tier ${residual.tier}: the ${step.key} step decomposes it ${decomposes}, ` +
+      `stepFor answers ${answered ? answered.key : "nothing"}, carried ${app.isCarried(residual.id)}, drillable ${app.drillable(residual)}`);
+    assert.equal(decomposes, false, "a step decomposes a mark no document carries");
+    assert.ok(answered === null, "a step answers for the residual");
+    assert.equal(app.isCarried(residual.id), true);
     assert.equal(app.drillable(residual), false);
     fire(markOf(app, document, residual.id), "dblclick", { timeStamp: 1000 });
     await settle();
