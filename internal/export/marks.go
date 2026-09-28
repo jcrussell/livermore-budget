@@ -1,7 +1,6 @@
 package export
 
 import (
-	"encoding/json"
 	"fmt"
 	"maps"
 	"slices"
@@ -77,26 +76,18 @@ type Carry struct {
 // Gap licenses one gap mark: the column it may stand in, the signed cents it
 // comes to there -- what the chart above sends into the opened node less what
 // the drawn document draws out of it -- and why the two documents differ, as
-// terminated sentences.
+// terminated sentences. The cents is the one figure of a gap the client cannot
+// sum for itself: it is structure's, and the client holds the drawn difference
+// to it.
 type Gap struct {
-	FiscalYear int
-	Basis      string
-	Cents      int64
-	Reason     string
+	FiscalYear int    `json:"fiscal_year"`
+	Basis      string `json:"basis"`
+	Cents      int64  `json:"cents"`
+	Reason     string `json:"reason"`
 }
 
-// Gaps is one node's licences, one per column it differs in. On the wire it
-// is the reasons alone: the client reads only that a gap is declared.
+// Gaps is one node's licences, one per column it differs in.
 type Gaps []Gap
-
-// MarshalJSON writes the licences' reasons as one string.
-func (g Gaps) MarshalJSON() ([]byte, error) {
-	reasons := make([]string, 0, len(g))
-	for _, l := range g {
-		reasons = append(reasons, l.Reason)
-	}
-	return json.Marshal(strings.Join(reasons, " "))
-}
 
 // GapOf is markGap's arithmetic: what the drawn chart's ribbons send into
 // opened, less what they send out of it, stated as one mark where the step

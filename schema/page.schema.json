@@ -399,11 +399,48 @@
               "type": "string"
             }
           },
+          "residual_grain": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The grain the document this step draws does NOT split the residual's money by, in the city's singular word; the client names the residual mark for it. Present exactly where residual is."
+          },
           "gaps": {
-            "description": "Nodes this step OPENS whose total the document it draws does not reach, id to the declared reason two documents print one cell at two figures.",
+            "description": "Nodes this step OPENS whose total the document it draws does not reach, id to the licences for each column it differs in: the signed cents the chart above carries over what the drawn document accounts for, and why. The client holds the difference its drawn chart comes to against the licence for its column and refuses any other.",
             "type": "object",
             "additionalProperties": {
-              "type": "string"
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "required": [
+                  "fiscal_year",
+                  "basis",
+                  "cents",
+                  "reason"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "fiscal_year": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "basis": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "cents": {
+                    "type": "integer",
+                    "description": "Signed: positive where the chart above puts more through the node than the drawn document accounts for. Never zero: a licence for a node that balances is refused at the write.",
+                    "not": {
+                      "const": 0
+                    }
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
             }
           }
         }

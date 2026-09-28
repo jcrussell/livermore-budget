@@ -1095,6 +1095,12 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 				v.Steps[0].Gaps = map[string]export.Gaps{"expenditure/services-and-supplies": {{FiscalYear: 2027, Basis: "adopted", Cents: 1}}}
 			})},
 			"declares a gap on node \"expenditure/services-and-supplies\" with no reason in some column"},
+		{"a gap licensing zero cents", []export.View{ok,
+			chartView(func(v *export.View) {
+				v.Steps[0].Projection = "sankey"
+				v.Steps[0].Gaps = map[string]export.Gaps{"expenditure/services-and-supplies": {{FiscalYear: 2027, Basis: "adopted", Reason: "A reason."}}}
+			})},
+			"declares a gap of 0 cents on node \"expenditure/services-and-supplies\""},
 		{"a cap on a tier the step does not draw", []export.View{ok,
 			chartView(func(v *export.View) { v.Steps[0].Caps = []export.TierCap{{Tier: 4, Cap: 8}} })},
 			"the cap would fold nothing, in silence"},
@@ -3555,5 +3561,50 @@ func TestACapUnderWhichAPrintedFlowAndAnInferredOneWouldMergeIsRefused(t *testin
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("refusal %q does not name %q", err.Error(), want)
 		}
+	}
+}
+
+// TestTheServedStepsCarryTheirLicences pins the two declarations the client
+// draws its marks from to the wire: a residual's grain, which names the mark,
+// and a gap's licence -- the column, the signed cents and the reason -- which
+// the client holds its drawn difference to. Decoded back into the declaring
+// type, so a field neither side names is a difference here.
+//
+// The mutations: json:"-" back on DrillStep.ResidualGrain and the grain comes
+// back ""; Gaps marshalled as its reasons joined and the steps do not decode.
+func TestTheServedStepsCarryTheirLicences(t *testing.T) {
+	declared := []export.DrillStep{{
+		Key: "group", After: []string{""}, From: 2, Projection: "sankey",
+		Tiers: []int{0, 2}, Back: "All fund groups", Noun: "fund group", Tail: "funds",
+		Description:   "One.",
+		Residual:      map[string]string{"transfers/in": "no fund receives it"},
+		ResidualGrain: "fund",
+		Gaps: map[string]export.Gaps{"fund-group/general": {
+			{FiscalYear: 2026, Basis: "adopted", Cents: -25000000, Reason: "The pages disagree."},
+			{FiscalYear: 2027, Basis: "adopted", Cents: 4200, Reason: "So do these."},
+		}},
+	}}
+	dir := t.TempDir()
+	if _, err := writeSite(export.Options{
+		Dir:         dir,
+		Projections: map[string][]byte{"sankey": goldenSankey(t)},
+		Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
+			Template: export.SankeyTemplate, Projection: "sankey",
+			RenderTiers: []int{0, 2, 5}, Steps: declared}},
+		Docs:        budgetDocs(),
+		GeneratedBy: "fisc test",
+	}); err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	var served struct {
+		Steps []export.DrillStep `json:"steps"`
+	}
+	if err := json.Unmarshal(configBlob(t, readFile(t, dir, "index.html")), &served); err != nil {
+		t.Fatalf("decode window.FISC_CONFIG.steps: %v", err)
+	}
+	if diff := cmp.Diff(declared, served.Steps); diff != "" {
+		t.Errorf("the steps window.FISC_CONFIG carries are not the ones declared (-declared +served):\n%s\n"+
+			"the client names the residual mark for residual_grain and holds a gap to its "+
+			"licence's cents; a field dropped here is a mark drawn from nothing", diff)
 	}
 }

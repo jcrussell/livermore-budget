@@ -224,8 +224,21 @@
  * @property {string} description
  * @property {Record<string,string>} [residual]  endpoints whose flow the drawn
  *   document does not decompose, id to reason
- * @property {Record<string,string>} [gaps]  opened nodes whose total the drawn
- *   document does not reach, id to reason
+ * @property {string} [residual_grain]  the grain the drawn document does not
+ *   split that money by, which names the residual mark; present with `residual`
+ * @property {Record<string,FiscGap[]>} [gaps]  opened nodes whose total the
+ *   drawn document does not reach, id to the licence for each column it
+ *   differs in
+ */
+
+/**
+ * One column's licence for a gap: the signed cents the chart above carries
+ * over what the drawn document accounts for, and why.
+ * @typedef {Object} FiscGap
+ * @property {number} fiscal_year
+ * @property {string} basis
+ * @property {number} cents
+ * @property {string} reason
  */
 
 /**

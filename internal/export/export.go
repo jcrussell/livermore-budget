@@ -437,14 +437,15 @@ type DrillStep struct {
 	// cuts and exceptions internal/structure declares.
 	Residual map[string]string `json:"residual,omitempty"`
 	// ResidualGrain is the grain the document this step draws does NOT split
-	// that money by, in the city's singular word -- "fund". Go composes the
-	// mark's label and rationale from it. Required wherever Residual is
-	// non-empty. Not on the wire: the client is served the sentences.
-	ResidualGrain string `json:"-"`
+	// that money by, in the city's singular word -- "fund". The client's
+	// carryResidual names the mark for it. Required wherever Residual is
+	// non-empty.
+	ResidualGrain string `json:"residual_grain,omitempty"`
 	// Gaps is the set of nodes this step OPENS whose total the document it
 	// draws does not reach: node id to the licences for each column it differs
-	// in, by how much, and why. The client draws the shortfall as one derived
-	// node, in the words GapOf composes.
+	// in, by how much, and why. The client's markGap holds the difference the
+	// drawn chart comes to against the licence for its column and draws the
+	// shortfall as one derived node, or refuses the chart.
 	//
 	// A gap key is the opened node itself; a [DrillStep.Residual] key is an
 	// endpoint of the chart above. A step declaring a gap claims every other
@@ -1067,6 +1068,12 @@ func (v View) validateSteps(built map[string][]byte, ix ColumnIndex) error {
 						"only thing separating a declared gap from two documents drifting apart "+
 						"is the reason the mark states, and an empty one draws the drift "+
 						"unexplained", v.Path, i, id)
+			}
+			if slices.ContainsFunc(s.Gaps[id], func(g Gap) bool { return g.Cents == 0 }) {
+				return fmt.Errorf(
+					"view %q's step %d declares a gap of 0 cents on node %q in some column; a "+
+						"licence for a node that balances licenses nothing, and the client would "+
+						"refuse the chart for balancing where a gap was declared", v.Path, i, id)
 			}
 		}
 		// Every year the view lists opens into something, asked of the column
