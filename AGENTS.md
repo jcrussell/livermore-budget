@@ -21,18 +21,27 @@ looks.
 ### Go vets, JavaScript renders
 
 **What EXISTS goes in Go, emitted vetted**: which nodes, which links, which
-columns, which columns MAY fold, which derived marks and their amounts. Which
-of a column's members a fold then hides is the client's, because folding is
-fitting to a viewport Go cannot see; `DrillStep.Caps` is where the permission
-is declared and `DrillStep.Widen` which columns a wider viewport buys.
+documents, which steps and their declarations -- tiers, flank, role, caps,
+widen, residual endpoints and grain, gap licences in cents. Every figure Go
+emits is cited and checked.
 
-**What MOVES goes in JavaScript**: d3-sankey positions, tooltips, focus,
+**Folding is JavaScript's.** Only the client knows the screen, and it is
+trusted with sums and lengths over figures Go has cited: which ribbons a rung
+holds, which nodes open, which of a column's members a cap folds, a merged
+ribbon's cents, a residual's two figures and a gap's difference held to its
+licence are all computed in `site/app.js`, once, and held by property tests
+over the pinned artifacts (sums preserved, no ribbon lost or duplicated, caps
+respected), each with a stated mutation. Go implements no fold and answers no
+rung; a Go function that replays the client's shaping to cross-check it is a
+second implementation of one rule, which is the defect this boundary exists to
+name.
+
+**What MOVES goes in JavaScript** too: d3-sankey positions, tooltips, focus,
 transitions, the year control.
 
-So the stitching, the auditing and the cross-checking are Go's, and the client
-renders an answer it does not re-derive. A shaping decision spelled in
-`site/app.js` is in the wrong language however well it draws, and a second
-spelling of one Go already makes is the defect this boundary exists to name.
+So the stitching, the auditing and the cross-checking of the fact store are
+Go's, and a figure the client shows is either one Go cited or a sum or
+difference of such figures under a licence Go shipped.
 
 ## Where to start
 

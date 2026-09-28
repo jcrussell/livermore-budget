@@ -2,7 +2,6 @@ package export
 
 import (
 	"io/fs"
-	"strconv"
 	"strings"
 	"testing"
 
@@ -357,25 +356,5 @@ func TestTheShapeSentenceAndTheMarkAgreeOnWhatTallestMeans(t *testing.T) {
 		t.Errorf("the tallest bar belongs to cell %d, want cell 3: the figure furthest "+
 			"from zero no longer takes the tallest bar, so the promise both templates "+
 			"print is false as published", tallest)
-	}
-}
-
-// TestTheClientComposesMarkIDsWithTheProducersPrefixes pins site/app.js's
-// RESIDUAL_PREFIX and GAP_PREFIX literals to residualPrefix and gapPrefix, as
-// text, because nothing compiles the client.
-func TestTheClientComposesMarkIDsWithTheProducersPrefixes(t *testing.T) {
-	app, err := fs.ReadFile(site.FS(), "app.js")
-	if err != nil {
-		t.Fatalf("read embedded app.js: %v", err)
-	}
-	src := string(app)
-	for name, want := range map[string]string{
-		"RESIDUAL_PREFIX": residualPrefix,
-		"GAP_PREFIX":      gapPrefix,
-	} {
-		decl := "export const " + name + " = " + strconv.Quote(want) + ";"
-		if !strings.Contains(src, decl) {
-			t.Errorf("site/app.js does not declare %s; the client would compose a mark id the producer does not", decl)
-		}
 	}
 }

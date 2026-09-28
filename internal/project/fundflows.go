@@ -772,8 +772,9 @@ func (*fundFlows) objectEndpoint(division, category string) endpoint {
 }
 
 // fundObjectEndpoint is a tier-5 node of pp.173-183, under the fund that
-// spends it: ReachOf draws a node only beneath the one opened, so a bare
-// expenditure/<object> shared by every fund would reach no group's window.
+// spends it: the client's reach draws a node only beneath the one opened, so
+// a bare expenditure/<object> shared by every fund would reach no group's
+// window.
 func fundObjectEndpoint(fund int, category string) endpoint {
 	return endpoint{id: prefixExpenditure + "fund/" + strconv.Itoa(fund) + "/" + category,
 		slug: category, tier: tierObjectCategory, role: roleObjectCategory,

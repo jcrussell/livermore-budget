@@ -9,7 +9,7 @@ import (
 )
 
 // Names is every dotted JSON name a schema declares, with array nesting
-// collapsed: "columns", "columns.stem", "columns.rungs.draws.ids". A contract
+// collapsed: "years", "years.stem", "years.steps.caveats.href". A contract
 // test compares it with [StructNames]; names, not types. A map is stepped
 // through by its additionalProperties, and a $ref is a leaf (see [NamesDeep]),
 // matching structs that pass another package's bytes as [json.RawMessage].

@@ -109,8 +109,6 @@ const (
 	Manifest = "manifest.schema.json"
 	// Column is one published column.
 	Column = "column.schema.json"
-	// Rungs is which nodes each column of each reachable chart holds.
-	Rungs = "rungs.schema.json"
 	// Page is window.FISC_CONFIG.
 	Page = "page.schema.json"
 	// Projection is one document internal/project builds as a graph.

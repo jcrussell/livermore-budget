@@ -68,7 +68,8 @@ var residualReasons = map[string]string{
 // endpoint whose kind no cut of the drill-down's view prints, and one whose
 // cell an exception pins the view's cut absent for -- pp.127-130 print no
 // General Fund transfer in. An endpoint is residual per group, never split,
-// which is export.ResidualOf's rule; this is the set it may draw from.
+// which is carryResidual's rule in site/app.js; this is the set it may draw
+// from.
 //
 // It panics rather than errs on a derived endpoint with no reason declared,
 // since both are this package's declarations and a corpus cannot reach it.

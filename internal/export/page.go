@@ -273,20 +273,11 @@ type yearView struct {
 }
 
 // stepView is what one rung's document discloses for one year: the caveats its
-// marks link to and the nodes it decomposes. Nothing here names a file: the
-// client selects the schedule out of its year's column.
+// marks link to. Nothing here names a file: the client selects the schedule
+// out of its year's column, and which of its nodes open is read off that
+// document by the client's own reach (decomposable in site/app.js).
 type stepView struct {
 	Caveats []caveatRef `json:"caveats"`
-	// Opens is every node id this year's document actually decomposes under
-	// the step -- at the step's From where it keeps a flank and at any tier
-	// where it keeps none -- or nil for a step that declares no such set.
-	//
-	// Derived from the document, per year, never declared: which funds a
-	// document decomposes differs by column, and no [DrillStep.Role] can tell
-	// them apart. Without it the client offers a click it cannot answer. An
-	// empty set is refused rather than shipped, so the absent key has one
-	// meaning.
-	Opens []string `json:"opens,omitempty"`
 }
 
 // countsRef is the "N flows between M nodes, from K facts" line, per year.
@@ -607,10 +598,6 @@ type clientConfig struct {
 	// Root is the node whose subtree the page draws, omitted when it draws the
 	// whole document.
 	Root string `json:"root,omitempty"`
-	// Rungs is [RungsPath] where the page fetches Go's answer for every rung
-	// it can open, or omitted where nothing answers this page's rungs
-	// (rungsFor).
-	Rungs string `json:"rungs,omitempty"`
 }
 
 // encodeConfig renders window.FISC_CONFIG and refuses bytes that do not match
@@ -636,16 +623,6 @@ func encodeConfig(cfg clientConfig) ([]byte, error) {
 			cfg.Primary, schema.Page, err)
 	}
 	return blob, nil
-}
-
-// rungsFor is the rung answer's path for one view, or "" for a view with no
-// steps or not at [IndexPath], whose rungs the walk behind [RungsPath] never
-// reached.
-func rungsFor(v View) string {
-	if v.Path != IndexPath || len(v.Steps) == 0 {
-		return ""
-	}
-	return RungsPath
 }
 
 // tilesFor renders one year's headline figures.
@@ -1030,7 +1007,7 @@ func stepDocuments(v View, year, builtBy string, fiscalYear int, basis string,
 		out   []stepView
 		cited []sourceMeta
 	)
-	for i, s := range v.Steps {
+	for i := range v.Steps {
 		stem := stems[i]
 		raw, ok := projections[stem]
 		if !ok {
@@ -1053,158 +1030,18 @@ func stepDocuments(v View, year, builtBy string, fiscalYear int, basis string,
 		}
 		// No column guard here: [ColumnIndex] selects a document only under
 		// the column it itself declares, so it cannot be another year's.
-		parents, perr := FlankDocuments(v, s, year, stems, projections)
-		if perr != nil {
-			return nil, nil, perr
-		}
-		opens, openErr := openableNodes(v, i, s, stem, raw, parents)
-		if openErr != nil {
-			return nil, nil, openErr
-		}
 		cited = append(cited, doc.Metadata.Sources...)
 		out = append(out, stepView{
 			// Stem-keyed: two schedules of one column can carry one caveat id.
 			Caveats: caveatRefs(doc.Metadata.Caveats, stem, caveatsPath),
-			Opens:   opens,
 		})
 	}
 	return out, cited, nil
 }
 
-// Flank is which side a window step keeps its flank on and the tiers it opens
-// a node OUT into, in the order they are drawn away from the centre: keptLeft
-// when Keep is the left end of Tiers, and ok false when neither end of Tiers is
-// the kept flank. A step that keeps nothing has no flank and reports ok false.
-//
-// keptLeft is set by the arm that matched, not derived from the centre's
-// index, which cannot tell a left flank from a right one of equal depth
-// (Keep {2}, Tiers {1,0,2}). Outward is always nearest the centre first.
-func Flank(s DrillStep) (keptLeft bool, outward []int, ok bool) {
-	m, n := len(s.Keep), len(s.Tiers)
-	if m == 0 || m >= n {
-		return false, nil, false
-	}
-	switch {
-	case slices.Equal(s.Tiers[:m], reversedTiers(s.Keep)):
-		return true, slices.Clone(s.Tiers[m+1:]), true
-	case slices.Equal(s.Tiers[n-m:], s.Keep):
-		out := slices.Clone(s.Tiers[:n-1-m])
-		slices.Reverse(out)
-		return false, out, true
-	}
-	return false, nil, false
-}
-
-// openableNodes is [stepView.Opens] for one step and one year: every node
-// this document decomposes on the side the step opens it from, at the step's
-// From on a window step and at any tier on a step that keeps no flank.
-//
-// A step that keeps nothing asks [ReachOf] of every node under the step's own
-// tiers on its declared side. A window step asks which nodes at From draw a
-// ribbon OUT into a column beyond the centre, in the direction windowFor draws
-// it; the direction guard is latent on every committed document, and
-// openable_test.go plants the descending ribbon that separates them.
-func openableNodes(v View, i int, s DrillStep, stem string, raw []byte, parents [][]byte) ([]string, error) {
-	g, err := DecodeGraph(raw)
-	if err != nil {
-		return nil, fmt.Errorf("%s: %w", stem, err)
-	}
-	opens := map[string]bool{}
-	if len(s.Keep) == 0 {
-		for _, n := range g.Nodes {
-			r, err := ReachOf(g, n.ID, s.Side == SideSource, s.Tiers)
-			if err != nil {
-				return nil, fmt.Errorf("view %q's step %d opens %q: %w", v.Path, i, stem, err)
-			}
-			if len(r.At) > 0 {
-				opens[n.ID] = true
-			}
-		}
-		if len(opens) == 0 {
-			return nil, fmt.Errorf(
-				"view %q's step %d draws tiers %v of %q and that document decomposes no node "+
-					"into them, so the rung is one no reader could ever reach",
-				v.Path, i, s.Tiers, stem)
-		}
-		return slices.Sorted(maps.Keys(opens)), nil
-	}
-	keptLeft, outward, ok := Flank(s)
-	if !ok {
-		return nil, fmt.Errorf(
-			"view %q's step %d keeps tier(s) %v and draws tiers %v, whose ends are not that "+
-				"flank, so which half of %q it opens a node into cannot be read",
-			v.Path, i, s.Keep, s.Tiers, stem)
-	}
-	tier := make(map[string]int, len(g.Nodes))
-	role := make(map[string]string, len(g.Nodes))
-	for _, nd := range g.Nodes {
-		tier[nd.ID] = nd.Tier
-		role[nd.ID] = nd.Role
-	}
-	for _, l := range g.Links {
-		near, far := l.Source, l.Target
-		if !keptLeft {
-			near, far = l.Target, l.Source
-		}
-		nt, ok := tier[near]
-		if !ok || nt != s.From || (s.Role != "" && role[near] != s.Role) {
-			continue
-		}
-		ft, ok := tier[far]
-		if !ok || !slices.Contains(outward, ft) {
-			continue
-		}
-		opens[near] = true
-	}
-	// And a node the window above it sends no kept flank into is not offered:
-	// the client refuses that window, and the rung walker refuses to answer it.
-	if len(parents) > 0 {
-		idx := slices.Index(s.Tiers, s.From)
-		kept := s.Tiers[idx:]
-		if keptLeft {
-			kept = s.Tiers[:idx+1]
-		}
-		var graphs []Graph
-		for _, p := range parents {
-			pg, err := DecodeGraph(p)
-			if err != nil {
-				return nil, fmt.Errorf("view %q's step %d: a document it opens after: %w", v.Path, i, err)
-			}
-			graphs = append(graphs, pg)
-		}
-		for n := range opens {
-			flanked := false
-			for _, pg := range graphs {
-				if _, carried := indexNodes(pg)[n]; !carried {
-					continue
-				}
-				r, err := ReachOf(pg, n, !keptLeft, kept)
-				if err != nil {
-					return nil, fmt.Errorf("view %q's step %d keeps the flank of %q: %w", v.Path, i, n, err)
-				}
-				if slices.Contains(r.At[s.From], n) {
-					flanked = true
-					break
-				}
-			}
-			if !flanked {
-				delete(opens, n)
-			}
-		}
-	}
-	if len(opens) == 0 {
-		return nil, fmt.Errorf(
-			"view %q's step %d opens tier %d of %q and that document draws no ribbon from "+
-				"tier %d into tier(s) %v, so the rung is one no reader could ever reach",
-			v.Path, i, s.From, stem, s.From, outward)
-	}
-	return slices.Sorted(maps.Keys(opens)), nil
-}
-
 // projectionRefs is every data file the site publishes, which is the whole set
 // on every page: they are downloadable provenance, not this view's figures.
-// One entry per file and not per document, rungs.json included where the
-// site ships one.
+// One entry per file and not per document.
 func projectionRefs(o *Options, ix ColumnIndex) []projectionRef {
 	seen := map[string]bool{}
 	var paths []string
@@ -1215,9 +1052,6 @@ func projectionRefs(o *Options, ix ColumnIndex) []projectionRef {
 		}
 		seen[p] = true
 		paths = append(paths, p)
-	}
-	if _, ships := o.Files[RungsPath]; ships {
-		paths = append(paths, RungsPath)
 	}
 	slices.Sort(paths)
 	refs := make([]projectionRef, 0, len(paths))
@@ -1311,7 +1145,6 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		Wording:       defaultWording(),
 		RenderTiers:   v.RenderTiers,
 		Steps:         v.Steps,
-		Rungs:         rungsFor(v),
 	}
 	blob, err := encodeConfig(cfg)
 	if err != nil {
@@ -2313,39 +2146,4 @@ func buildCells(points []trendPoint, columns []columnRef, meta []trendColumnMeta
 		placed++
 	}
 	return out, placed, nil
-}
-
-// Openable is openableNodes for a caller outside this package: the nodes at
-// step s's From that the document raw decomposes, for the view v it is step i
-// of, and that a document in parents sends the kept flank into.
-// The rung answer is enumerated over it, so what a page offers to open and
-// what it draws cannot drift apart.
-func Openable(v View, i int, s DrillStep, stem string, raw []byte, parents [][]byte) ([]string, error) {
-	return openableNodes(v, i, s, stem, raw, parents)
-}
-
-// FlankDocuments is the documents a window step s is opened from, for one
-// year: the view's own year document for After "", and the named step's for
-// every other key. A step that keeps no flank has none.
-func FlankDocuments(v View, s DrillStep, year string, stems []string, projections map[string][]byte) ([][]byte, error) {
-	if len(s.Keep) == 0 {
-		return nil, nil
-	}
-	var out [][]byte
-	for _, key := range s.After {
-		stem := year
-		if key != "" {
-			j := slices.IndexFunc(v.Steps, func(p DrillStep) bool { return p.Key == key })
-			if j < 0 || j >= len(stems) {
-				return nil, fmt.Errorf("step %q opens after %q, which view %q does not declare", s.Key, key, v.Path)
-			}
-			stem = stems[j]
-		}
-		raw, ok := projections[stem]
-		if !ok {
-			return nil, fmt.Errorf("step %q opens after %q, whose document %q was not built", s.Key, key, stem)
-		}
-		out = append(out, raw)
-	}
-	return out, nil
 }

@@ -414,13 +414,15 @@ document.** Six of the 61 funds this document draws in FY2025-26 and seven of
 the 60 in FY2026-27 are named by no row of those pages, and nothing about
 `fund/511` distinguishes it from `fund/512`; the set is different in every
 printed column — 13 funds in FY2023-24 against 6 in FY2025-26 — while a step is
-declared once for every year the view lists. So `export.openableNodes` computes,
-per year and per window step, the node ids at its `from` that the document it
-draws decomposes, and ships them as `steps[].opens`. `site/app.js`'s `stepFor`
-takes that as a fourth match beside the key, the tier and the role; a step with
-no `opens` declares no set and every node at its tier opens. Measured without it:
-`drillDown(fund/511)` failed and left the chart on `fund-group/capital`, over a
-mark drawn with the open affordance.
+declared once for every year the view lists. So `site/app.js`'s `decomposable`
+reads, per year's document and per step, the node ids at its `from` that the
+document decomposes at the tiers the step declares, with the same reach the
+chart is drawn with (`reaching`); `stepFor` takes that as a fourth match beside
+the key, the tier and the role, and a window step further asks that the chart on
+screen send a kept flank into the node. Nothing ships the set: what is offered
+to open and what draws are one rule in one language. Measured without the
+fourth match: `drillDown(fund/511)` failed and left the chart on
+`fund-group/capital`, over a mark drawn with the open affordance.
 
 **The step document is the spine year's, joined on column.** A spine stem
 opens into the `fund-flows` stem carrying the same fiscal year on the same
@@ -443,8 +445,8 @@ the sentence keeps apart.** At `{0,2,4}` the fold cites nothing away; a rung
 filtered to one node cannot, and a window also draws a flank of the chart it was
 opened from, whose ribbons cite that document and not this one. So the counts
 line partitions the ribbons before it gives either fact count. The drill tests
-under `site/` hold every opened view's drawn nodes and ribbons to the ids Go's
-rung answer names for it.
+under `site/` walk every node the page offers at every width and hold each
+opened view's drawn nodes and ribbons to the properties below.
 
 ### Opening a node: filter, cap, fold
 
@@ -508,93 +510,49 @@ the reader is looking at; pointing them at the file would put a 175-row table
 beside a 52-ribbon chart. The footer still links the unfolded file, and the
 merged links still name every fact behind every ribbon.
 
-## Go's half: the rung answer
+## Go's half: the declarations
 
-**Every rung this chain can reach, answered once, in one file for every
-published year.** Go walks the declared steps over the built documents and
-writes what each column of each rung HOLDS; the client's tests hold the
-client to that answer, and the page fetches it under the name the
-config carries. The committed `testdata/rungs.json` is pinned to the bytes the
-export serves, so a fixture and a served file cannot be two answers.
+**Go ships what only Go can know, and computes no rung.** A step is declared
+once in `views()` and reaches the page as `FISC_CONFIG.steps`: its `tiers` in
+draw order, the `keep` flank and `from` centre, the `role` that opens it, the
+`caps` a column may fold under, the `widen` a wider viewport buys, the
+`residual` endpoints with the reason each is carried and the `residual_grain`
+its mark is named by, and the `gaps` licences — the cents per column, from
+`structure.BudgetBookExceptions`, that two schedules are declared to differ by
+at one node. `validateSteps` refuses a declaration whose shape the client could
+not draw, and `capMergesNoPrintedWithInferred` a cap under which the client's
+fold would merge a printed ribbon with an inferred one. The shape is
+[`schema/page.schema.json`](../schema/page.schema.json), compared against the
+emitted bytes at the write.
 
-**The shape lives in [`schema/rungs.schema.json`](../schema/rungs.schema.json)**,
-not here. The schema is compared against the emitted BYTES: `encodeRungs`
-refuses an answer that does not match it, the way `encodeColumn` refuses a
-column. `TestTheSchemaStatesWhatTheRungAnswerCarries`
-holds the schema's property set to the structs' JSON tags in both directions, so
-a field added to the artifact with no line in the schema is red, and so is a
-schema bumped without the packager's constant moving.
+**The client computes everything a rung draws from that and the column
+document**: which ribbons a rung holds (`reaching`: the near end inside the
+opened node by parent chain, both ends placeable, folded ends running forward
+in the step's column order), which nodes it offers to open (`decomposable`,
+the same reach), the roles of its columns (`flankIsLeft`, by position), the
+figure a centre prints net of reductions (`markAmounts`), the residual's
+ribbons, ends, tier and figures (`carryResidual`), and the gap, held to the
+shipped licence and refused — banner, chart unchanged — where the two
+documents differ by any other figure (`markGap`). A residual's leaving legs
+exist by the step's declared tiers, not by the columns a budget draws, so its
+figures do not move with the viewport.
 
-**`ids` is written even when empty, and that is the load-bearing one.** A flank
-whose only mark is carried answers with nothing, and a column the document draws
-nothing at is still a column the step declares; both have to be told from "not
-answered" by a reader of the file. A client that accepted the absence would read
-the first as the second and draw a column Go says holds nothing.
+**What licenses a client-side sum** is that every summand is a published
+figure: each unfolded ribbon's `value_cents` is in the column document the page
+has already fetched, with its own `fact_ids`, which `link-values-tie-to-facts`
+witnesses. A merged ribbon, a tail, a residual's two figures and a gap's
+difference are sums and differences over those and nothing else.
 
-**`generated_by` is not part of the answer, it is part of the delivery.** The
-page carries the same string as `exported_by`, and `site/app.js` refuses a pair
-that disagree: these are two files with no cache-busting between them, so a
-reader can hold one from before the last deploy. No schema can express that,
-because each file is valid on its own.
-
-- `columns[]` is a **published year**, by the spine document's stem, and not a
-  chart column. The chart's columns are a rung's `draws`; the two words meet in
-  one file and this is the only place they can be confused.
-- A **rung** is one opened path: `path` is the node ids that were opened to
-  reach it, outermost first, and `step` is the key of the step that opened the
-  last of them.
-- `draws` is that step's columns **in the order it draws them**, one entry per
-  tier it declares. `role` is `centre` for the opened node's own column, `flank`
-  for a column kept off the chart the node was clicked on, and `outward` for one
-  the step opens the node into. `ids` is every node the document draws at that
-  tier as the opened node's own parts, sorted; `carried` is every node drawn
-  there that is not counted as one of them — a node the document marks derived,
-  or one the step's residual declaration names.
-- `marks` is what the client adds to the window that no page prints: the
-  residual that stands beside the opened node's parts, and the gap between what
-  the chart above sends into the opened node and what the drawn document breaks
-  it into. Each carries its `id`, `role`, the step's declared `tier`, and the
-  cents that arrive at it and leave it; `ends` is a residual's declared
-  endpoints, and a gap carries exactly one of `in_cents` and `out_cents`, which
-  is the side the short one stands on. **Their prose is not here.** A mark's
-  rationale and source note are built from labels and locators this walk does
-  not decode, and the client's tests are what hold those.
-
-### What it deliberately does not carry
-
-Each absence is a decision (`fisc-lwh5`) rather than an omission, and together
-they are the half that "So the client folds" above would otherwise have nothing
-to be contradicted against.
-
-- **No cap, and no hidden count.** A `caps` entry is a permission Go ships in
-  `FISC_CONFIG.steps` and never spends: `ids` is the whole candidate set at its
-  tier, unfolded, and how much of it a reader's viewport has room for is decided
-  by `capColumn` in `site/app.js`. An answer pre-folded to a cap would be Go
-  fitting a screen it cannot see (AGENTS.md, "Go vets, JavaScript renders"),
-  and it would also hide from this walk every rung under every id it dropped
-  (`fisc-qics`).
-- **No candidates count.** How many nodes a column holds is the length of its own
-  `ids`. A second spelling of it is a number the two sides can disagree about in
-  silence.
-- **No column-budget dimension.** A rung is answered **once, not once per
-  width**. Which of a step's declared columns a narrow reader is shown is what
-  `widen` says, and the client spends it; what the document draws in a column
-  does not change when a narrower client drops another one. The marks are
-  answered once for a stronger reason than that: a fold merges ribbons but
-  preserves what arrives at and leaves the opened node, so a mark reads the same
-  cents off a folded chart and an unfolded one. Measured at `86f0fae`, the last
-  artifact that still answered each path at two column budgets — every path
-  carried byte-identical marks at both.
-- **No ribbons.** The client folds, so the client sums, and what licenses that is
-  that every summand is a published figure: each unfolded ribbon's `value_cents`
-  is in the projection document the page has already fetched, with its own
-  `fact_ids`, which `link-values-tie-to-facts` already witnesses. The membership
-  is Go's, given outright rather than inferred, so the client can only add
-  numbers a check has seen. **That licence stops at the marks** — a residual's
-  cents is a difference and a gap's is a shortfall, neither a sum over published
-  summands — which is why those two are carried above and the ribbons are not.
-- **No folded tail.** It has no id here and is not a fact about the documents at
-  all: it exists only where a reader's screen made the client fold.
+**What holds the fold** is the property tests in `site/fold.test.mjs`, over
+every rung the page offers at every width in both pinned columns, each with a
+mutation that reddens it: what arrives at and leaves the opened node is the
+same before and after the cap and the fold; the fact ids cited and the cents
+drawn are the filtered ribbons' exactly, so no ribbon is lost or drawn twice;
+and a capped column holds at most `cap + 1` marks, its tail's members and the
+kept marks together being the whole column. The trade accepted with
+`fisc-bjqa`: Go no longer refuses at build a step whose document decomposes
+nothing for a year; the client walk in `site/*.test.mjs`, a CI-required check,
+refuses it.
 
 So, in one line: **Go declares what may fold and the client decides how much
 fits.** The `caps` column of the table under "One page draws it" and each step's

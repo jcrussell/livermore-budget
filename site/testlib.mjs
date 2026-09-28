@@ -129,7 +129,7 @@ export function installBrowser({ html, storage, viewport = 1000, osDark = false 
  * A fetch whose answers a test plans, one entry per path: `{doc}`; `null` for
  * a 404; `{status, ok: false}`; `{hang: true}`; `{reject}`; `{settle}` to be
  * handed resolve/reject; `{doc, badBody: true}` for an unparseable 200. The
- * pinned columns and rung answer are planned by default.
+ * pinned columns are planned by default.
  *
  * A body without generated_by gets the page's stamp; one a test planted is
  * never overwritten.

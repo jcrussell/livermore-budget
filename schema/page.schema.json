@@ -217,14 +217,6 @@
                       }
                     }
                   }
-                },
-                "opens": {
-                  "description": "Node ids this year's document decomposes under the step. ABSENT IS NOT EMPTY: absent offers every node at the tier; [] opens none.",
-                  "type": "array",
-                  "items": {
-                    "type": "string",
-                    "minLength": 1
-                  }
                 }
               }
             }
@@ -450,11 +442,6 @@
       "type": "string",
       "minLength": 1,
       "description": "The node whose subtree the page draws; omitted when it draws the whole document."
-    },
-    "rungs": {
-      "type": "string",
-      "minLength": 1,
-      "description": "Where Go's answer for every rung this page opens is served. Omitted when nothing answers this page's rungs, so it is never handed another page's."
     },
     "wording": {
       "description": "Every sentence app.js composes about the chart on screen, as templates it fills. `{name}` is a variable's value and `{name:one|many}` is the value followed by the singular or the plural word, by whether the value is 1.",

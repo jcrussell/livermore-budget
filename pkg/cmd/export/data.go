@@ -49,21 +49,6 @@ func buildAll(repoRoot string) (result, error) {
 	if err != nil {
 		return result{}, err
 	}
-	// The rung answer ships too, so the client draws each rung from Go's walk
-	// rather than a derivation of its own.
-	spine, err := spineView(result{Projections: projections})
-	if err != nil {
-		return result{}, err
-	}
-	rungs, err := rungsOf(projections, spine)
-	if err != nil {
-		return result{}, err
-	}
-	served, err := encodeRungs(rungs)
-	if err != nil {
-		return result{}, err
-	}
-	assets.Files[rungsServedPath] = served
 	return result{
 		Projections: projections,
 		Files:       assets.Files,
@@ -538,7 +523,7 @@ func views(built result) []export.View {
 				Keep: []int{0},
 				// Two more columns where there is room: the divisions that spend each fund,
 				// and the object categories they spend on. Only the General Fund fills tier
-				// 4 (pp.167-170), so other groups' rungs answer it with no ids and the
+				// 4 (pp.167-170), so other groups' windows draw nothing there and the
 				// client drops the column (fisc-84y5); every group fills tier 5, the General
 				// Fund through its divisions and every other fund from pp.173-183.
 				Tiers: []int{0, 2, 3, 4, 5},

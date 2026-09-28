@@ -53,11 +53,6 @@ const PrimaryProjection = "sankey"
 // output layout, so it is a constant rather than something a caller may move.
 const IndexPath = "index.html"
 
-// RungsPath is where the rung answer is served. The caller writes it; this
-// package only names it in window.FISC_CONFIG. It is the answer for the view
-// at [IndexPath] only, so no other page is told to read it.
-const RungsPath = "rungs.json"
-
 // dataDir is the output subdirectory holding projection JSON. It is part of
 // the published contract — docs/sankey-contract.md promises
 // <output>/data/<projection>.json — so it is a constant, not a flag.
@@ -1120,11 +1115,34 @@ func (v View) validateSteps(built map[string][]byte, ix ColumnIndex) error {
 	return nil
 }
 
+// Graph is as much of a projection document as the cap licence needs: which
+// tier each node stands at, and which nodes each ribbon joins, of what kind,
+// printed or inferred.
+type Graph struct {
+	Nodes []GraphNode `json:"nodes"`
+	Links []GraphLink `json:"links"`
+}
+
+// GraphNode is one node of a [Graph].
+type GraphNode struct {
+	ID   string `json:"id"`
+	Tier int    `json:"tier"`
+}
+
+// GraphLink is one ribbon of a [Graph]. The client's fold merges ribbons by
+// folded ends and Kind and may not merge a printed one with an inferred one.
+type GraphLink struct {
+	Source  string `json:"source"`
+	Target  string `json:"target"`
+	Kind    string `json:"kind"`
+	Derived bool   `json:"derived"`
+}
+
 // capMergesNoPrintedWithInferred refuses a cap under which two members of the
 // capped tier send a printed ribbon and an inferred one to one far end of one
-// kind, in any year's document of the schedule the step draws. The fold
-// merges by far end and kind, and which members fold is the client's, so any
-// such pair may become one mark that cannot be drawn as both.
+// kind, in any year's document of the schedule the step draws. The client's
+// fold merges by far end and kind, and which members fold is the client's,
+// so any such pair may become one mark that cannot be drawn as both.
 func capMergesNoPrintedWithInferred(path string, i int, c TierCap, doc string, built map[string][]byte) error {
 	type far struct {
 		end, kind string

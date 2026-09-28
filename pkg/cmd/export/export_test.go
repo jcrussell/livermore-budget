@@ -1100,7 +1100,6 @@ func TestTheSitePublishesOneFilePerColumnAndNothingTwice(t *testing.T) {
 		"fy2025-revised.json",
 		"fy2026-adopted.json",
 		"fy2027-adopted.json",
-		"rungs.json",
 	}
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("the JSON the site publishes (-want +got):\n%s", diff)
@@ -2273,7 +2272,7 @@ func fixtureIsTheDocumentExported(t *testing.T, stem, fixture string) {
 }
 
 // TestEveryServedStampIsTheExportsOwn holds one export's build stamps to each
-// other: the client refuses a rung answer or column whose stamp is not its page's.
+// other: the client refuses a column whose stamp is not its page's.
 func TestEveryServedStampIsTheExportsOwn(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {
@@ -2324,7 +2323,7 @@ func TestEveryServedStampIsTheExportsOwn(t *testing.T) {
 		t.Fatal(walkErr)
 	}
 	want := stamps["index.html exported_by"]
-	for _, must := range []string{"index.html exported_by", rungsServedPath + " generated_by", "fy2026-adopted.json generated_by"} {
+	for _, must := range []string{"index.html exported_by", "fy2026-adopted.json generated_by"} {
 		if _, ok := stamps[must]; !ok {
 			t.Fatalf("the export wrote no %s, so the comparison below is missing the stamp it exists for", must)
 		}

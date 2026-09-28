@@ -299,8 +299,8 @@ than containers do not open, and the `Role` on each step is what closes them. Th
 sixty funds pp.167-170 do not decompose are closed to the DIVISION step by a
 `Role` in the same way and opened by a step of their own into pp.85-125's
 departments; which of them that step can open is read off each year's document
-as `steps[].opens`, stated in `docs/general-fund-drilldown-contract.md`. Depth 0
-is this document drawn whole.
+by the client (`decomposable` in `site/app.js`), stated in
+`docs/general-fund-drilldown-contract.md`. Depth 0 is this document drawn whole.
 
 Those counts are per TIER and include the flow endpoints, which is why they are
 larger than the id-form counts a reader might tally from the table above: tier 0

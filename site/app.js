@@ -935,8 +935,8 @@ export function reaching(doc, opened, nearIsSource, tiers) {
 
 /**
  * The links `holds` admits whose ends this tier set can place, and the nodes
- * those links need. Refuses nothing: that the id exists and something flows
- * for it is Go's to hold at the write.
+ * those links need. Refuses nothing: an id nothing flows for is an empty
+ * answer, which decomposable reads as "does not open" and windowFor refuses.
  *
  * @param {FiscProjection} doc
  * @param {string} id
