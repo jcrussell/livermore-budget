@@ -246,20 +246,15 @@ func (d *departmentFunding) fundEndpoint(number int) (endpoint, error) {
 }
 
 // addNode records a node the first time a link touches it, and hangs the
-// constraint tier and its disclosure on a fund, as fundFlows does.
+// constraint tier on a fund through annotateFund.
 func (d *departmentFunding) addNode(nodes map[string]Node, e endpoint) {
 	if _, ok := nodes[e.id]; ok {
 		return
 	}
 	n := Node{ID: e.id, Label: d.label(e), Tier: e.tier, Role: e.role, Parent: e.parent}
-	if e.tier == tierFund && d.Labels != nil {
+	if e.tier == tierFund {
 		if number, err := strconv.Atoi(e.id[len(prefixFund):]); err == nil {
-			// Only the tier is ours, so Derived stays false.
-			if tier := d.Labels.ConstraintTier(number); tier != "" {
-				n.ConstraintTier = tier
-				n.SourceNote = "data/funds.yaml, our reading of Budget Book pp.258-261"
-				n.Rationale = d.Labels.RestrictionNote(number)
-			}
+			annotateFund(&n, d.Labels, number)
 		}
 	}
 	nodes[e.id] = n

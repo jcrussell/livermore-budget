@@ -402,12 +402,20 @@ func sortedTransferKeys(m map[transferKey]transferRow) []transferKey {
 	return out
 }
 
-// addNode records a node the first time a link touches it.
+// addNode records a node the first time a link touches it, and hangs the
+// constraint tier on a fund's own node through annotateFund. The two ends of
+// a movement are ends and not the fund, and carry none.
 func (t *transfersByFund) addNode(nodes map[string]Node, e endpoint) {
 	if _, ok := nodes[e.id]; ok {
 		return
 	}
-	nodes[e.id] = Node{ID: e.id, Label: t.label(e), Tier: e.tier, Role: e.role, Parent: e.parent}
+	n := Node{ID: e.id, Label: t.label(e), Tier: e.tier, Role: e.role, Parent: e.parent}
+	if e.tier == tierFund {
+		if number, err := strconv.Atoi(e.id[len(prefixFund):]); err == nil {
+			annotateFund(&n, t.Labels, number)
+		}
+	}
+	nodes[e.id] = n
 }
 
 // label resolves a node's words: a built-in, then the registry, then the id.
@@ -448,9 +456,11 @@ func transferFundNumber(id string) (int, bool) {
 }
 
 // transfersByFundCaveats are the things a reader of this file has to be told.
-// Each is about the whole schedule, so none names a node.
+// Each is about the whole schedule, so none names a node; the first is the
+// disclosure every document drawing a fund node carries.
 func transfersByFundCaveats() []Caveat {
 	return []Caveat{
+		ConstraintTierCaveat(),
 		{
 			ID: "one-figure-is-two-ribbons",
 			Summary: "Every printed transfer is drawn twice, once from each end; summing " +
@@ -519,6 +529,7 @@ func transfersOutCaveats(rows map[transferKey]transferRow) []Caveat {
 		}
 	}
 	return []Caveat{
+		ConstraintTierCaveat(),
 		{
 			ID: "one-figure-is-two-ribbons",
 			Summary: "Every printed transfer is drawn twice, once from each end; summing " +

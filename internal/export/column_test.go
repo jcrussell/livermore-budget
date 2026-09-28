@@ -264,6 +264,13 @@ func TestColumnsOfRefusesWhatItCannotFold(t *testing.T) {
 			"one": columnTestDoc(ab, columnTestLink),
 			"two": columnTestDoc(`{"id": "a", "label": "Not A", "tier": 0}, {"id": "b", "label": "B", "tier": 1}`, columnTestLink),
 		}, `"a" disagrees between schedules about the same node`},
+		// An annotation is the node's, so a schedule stating one the other
+		// leaves blank is refused, not merged.
+		{"two schedules disagree about a node's constraint tier", map[string][]byte{
+			"one": columnTestDoc(ab, columnTestLink),
+			"two": columnTestDoc(`{"id": "a", "label": "A", "tier": 0, "constraint_tier": "committed",
+			  "rationale": "read", "source_note": "from"}, {"id": "b", "label": "B", "tier": 1}`, columnTestLink),
+		}, `"a" disagrees between schedules about the same node`},
 		{"a ribbon names a node the document does not carry", map[string][]byte{
 			"one": columnTestDoc(`{"id": "b", "label": "B", "tier": 1}`, columnTestLink),
 		}, "link a -> b names a node the document does not carry"},
@@ -277,9 +284,37 @@ func TestColumnsOfRefusesWhatItCannotFold(t *testing.T) {
 	}
 }
 
-// TestEncodeColumnRefusesWhatItMayNotServe is the write's two refusals: bytes
-// the schema does not accept, and a derived node drawn without its words. Each
-// starts from a column that encodes.
+// TestTwoSchedulesMayHangOneNodeDifferently: the parent is the schedule's,
+// so two schedules agreeing on a node's table entry and disagreeing about
+// where it hangs fold into one node with two parent edges.
+func TestTwoSchedulesMayHangOneNodeDifferently(t *testing.T) {
+	cols, _, err := ColumnsOf(map[string][]byte{
+		"one": columnTestDoc(`{"id": "a", "label": "A", "tier": 0}, {"id": "b", "label": "B", "tier": 1, "parent": "a"}`, columnTestLink),
+		"two": columnTestDoc(`{"id": "a", "label": "A", "tier": 0}, {"id": "b", "label": "B", "tier": 1}`, columnTestLink),
+	}, "t")
+	if err != nil {
+		t.Fatalf("ColumnsOf refused two schedules that differ only in a parent edge: %v", err)
+	}
+	col := cols["fy2026-adopted.json"]
+	if len(col.Nodes) != 2 {
+		t.Fatalf("the column carries %d nodes, want the two the schedules share", len(col.Nodes))
+	}
+	parents := map[string]string{}
+	for key, s := range col.Schedules {
+		for _, n := range s.Nodes {
+			if col.Nodes[n.Node].ID == "b" {
+				parents[key] = n.Parent
+			}
+		}
+	}
+	if parents["one"] != "a" || parents["two"] != "" {
+		t.Errorf("b hangs under %q in one and %q in two; want a and none", parents["one"], parents["two"])
+	}
+}
+
+// TestEncodeColumnRefusesWhatItMayNotServe is the write's refusals, all of
+// them the schema's: a value it does not list, and a derived node in the table
+// without its words. Each starts from a column that encodes.
 func TestEncodeColumnRefusesWhatItMayNotServe(t *testing.T) {
 	derived := `{"id": "a", "label": "A", "tier": 0, "derived": true,
 	  "rationale": "why it exists", "source_note": "what it was read from"},
@@ -304,12 +339,13 @@ func TestEncodeColumnRefusesWhatItMayNotServe(t *testing.T) {
 	}{
 		{"a basis the schema does not list", func(c *ColumnDoc) { c.Column.Basis = "guessed" },
 			"does not match " + schema.Column},
-		{"a derived node with no source note", func(c *ColumnDoc) {
-			c.Schedules["one"].Nodes[0].SourceNote = ""
-		}, `draws derived node "a" without both a rationale and a source note`},
-		{"a derived node with no rationale", func(c *ColumnDoc) {
-			c.Schedules["one"].Nodes[0].Rationale = ""
-		}, `draws derived node "a" without both a rationale and a source note`},
+		{"a derived node with no source note", func(c *ColumnDoc) { c.Nodes[0].SourceNote = "" },
+			"does not match " + schema.Column},
+		{"a derived node with no rationale", func(c *ColumnDoc) { c.Nodes[0].Rationale = "" },
+			"does not match " + schema.Column},
+		{"a tier with no note it was read from", func(c *ColumnDoc) {
+			c.Nodes[1].ConstraintTier = "committed"
+		}, "does not match " + schema.Column},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			c := column(t)

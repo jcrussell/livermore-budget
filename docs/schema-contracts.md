@@ -124,15 +124,31 @@ series' `fund` is null rather than zero
 where the row sits under no numbered fund, and no fund is numbered 0; and a
 projection with nodes must cite a source, while an empty one may cite none.
 
-## Why a column's schedules are not merged
+## Why a column's node is one table entry and its parent is the schedule's
 
-They share node ids — `fund-group/capital` is in three of them — but their links
-differ, because each is a different printed schedule with its own provenance.
-Merging them into one graph would silently reconcile the cells `DrillStep.Gaps`
-exists to keep visibly unreconciled.
+A column's schedules share node ids — `fund-group/capital` is in three of them —
+but their links differ, because each is a different printed schedule with its
+own provenance. Merging the links into one graph would silently reconcile the
+cells `DrillStep.Gaps` exists to keep visibly unreconciled, so a schedule keeps
+its own link set.
 
-What *is* shared was measured rather than assumed: across every published
-column, two schedules naming one mark never disagree about `id`, `label`,
-`tier`, `role` or `derived`, and do disagree about `parent` 156 times and
-`constraint_tier`, `rationale` and `source_note` 64 each. A node's identity is
-shared; where it hangs belongs to the schedule that draws it.
+What a node's table entry carries was measured rather than assumed, over
+`testdata/fy2026-adopted.column.json` and `fy2027-adopted.column.json`. Of the
+123 and 121 nodes two or more schedules draw, none disagree about `id`,
+`label`, `tier`, `role` or `derived`; none disagree about `constraint_tier`,
+`rationale` or `source_note`, because every builder annotates a fund node
+through one constructor from `data/funds.yaml` — before that constructor, 30
+and 29 fund nodes carried a tier in two schedules and none in the transfer
+networks, an absence and not a second reading. So the table carries the
+identity and the annotations, and `ColumnsOf` refuses a schedule that
+disagrees about any table field rather than merging.
+
+`parent` differs on 70 and 69 of those shared nodes, and stays the schedule's:
+23 `dept/` nodes hang under `fund/100` in fund-flows (pp.167-170 are the
+General Fund's) and under nothing in department-spending (pp.85-125 carry no
+fund); 30 and 29 `fund/` nodes hang under their group where a schedule draws
+the groups and under nothing in the transfer networks, which draw none; 17
+transfer ends hang under `transfers/in` or `transfers/out` in the network that
+folds them there and under nothing in the other, since transfers-out's p222
+legs are outside `transfers/in`. A parent is a claim about one schedule's
+hierarchy, and two schedules can be right about one node.

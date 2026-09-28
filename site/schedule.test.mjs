@@ -34,3 +34,31 @@ describe("a schedule read out of a column", () => {
     assert.equal(app.scheduleOf(columnFixture("fy2026-adopted"), "no-such-schedule"), null);
   });
 });
+
+describe("a node's annotations are the column's, its parent the schedule's", () => {
+  test("a fund's constraint tier reads the same out of every schedule that draws it, and a division hangs under the General Fund in one schedule and under nothing in another", async (t) => {
+    const app = await module();
+    const column = columnFixture("fy2026-adopted");
+    const funds = column.nodes.filter((n) => n.id.startsWith("fund/") && n.constraint_tier);
+    assert.ok(funds.length > 0, "the column's table carries a fund with a constraint tier");
+    let compared = 0;
+    for (const key of ["fund-flows", "department-funding", "transfers-by-fund", "transfers-out"]) {
+      const doc = app.scheduleOf(column, key);
+      for (const n of doc.nodes.filter((x) => x.id.startsWith("fund/"))) {
+        const table = column.nodes.find((x) => x.id === n.id);
+        assert.equal(n.constraint_tier, table.constraint_tier || "", `${key} ${n.id} tier`);
+        assert.equal(n.rationale, table.rationale || "", `${key} ${n.id} rationale`);
+        assert.equal(n.source_note, table.source_note || "", `${key} ${n.id} source note`);
+        compared++;
+      }
+    }
+    t.diagnostic(`${compared} fund nodes across four schedules read their annotations off the table`);
+    assert.ok(compared > 0);
+    const division = (key) => app.scheduleOf(column, key).nodes.find((n) => n.id.startsWith("dept/"));
+    const drill = division("fund-flows");
+    const spending = app.scheduleOf(column, "department-spending").nodes.find((n) => n.id === drill.id);
+    assert.ok(spending, `${drill.id} is drawn by both schedules`);
+    assert.equal(drill.parent, "fund/100", "pp.167-170 hang a division under the General Fund");
+    assert.equal(spending.parent, "", "pp.85-125 carry no fund, so the same division hangs under nothing");
+  });
+});

@@ -31,6 +31,12 @@
     },
     "caveats": [
       {
+        "id": "constraint-tier-is-our-reading",
+        "summary": "A fund's constraint tier is our reading of the Description of Funds narrative, not a figure the city printed.",
+        "text": "A fund's constraint tier is OUR reading of the Description of Funds narrative (Budget Book pp. 258-261), not something the city printed. Each fund node carries the note it was read from. \"unknown\" means the document does not establish a restriction; it is a classification, not a gap.",
+        "applies_to": []
+      },
+      {
         "id": "one-figure-is-two-ribbons",
         "summary": "Every printed transfer is drawn twice, once from each end; summing every ribbon here comes to twice what the city transfers out.",
         "text": "Budget Book p76 and p222 name both ends of every movement they print, and this document publishes both: a receiving leg into the fund that gets the money and a paying leg out of the fund that sends it, under one transfer_id and at one value. A reader adding every value_cents in this file gets twice the $59,612,734 the city transfers out.",
@@ -348,572 +354,572 @@
       "label": "General Fund",
       "tier": 3,
       "parent": "",
-      "constraint_tier": "",
+      "constraint_tier": "discretionary",
       "role": "general_fund",
       "derived": false,
-      "rationale": "",
-      "source_note": ""
+      "rationale": "General revenues not levied or collected for another fund; available for any general city service.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
       "id": "fund/101",
       "label": "General Fund CIP Reserves",
       "tier": 3,
       "parent": "",
-      "constraint_tier": "",
+      "constraint_tier": "committed",
       "role": "fund",
       "derived": false,
-      "rationale": "",
-      "source_note": ""
+      "rationale": "General Fund resources set aside by the City for capital projects; constrained by City action, not by law.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
       "id": "fund/210",
       "label": "Horizons",
       "tier": 3,
       "parent": "",
-      "constraint_tier": "",
+      "constraint_tier": "unknown",
       "role": "fund",
       "derived": false,
-      "rationale": "",
-      "source_note": ""
+      "rationale": "Youth/community program fund. The description only lumps it with local assistance and grants, while the fund detail (p136) shows charges for services plus a General Fund transfer, so no legal restriction is established.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
       "id": "fund/224",
       "label": "Grant - CDBG",
       "tier": 3,
       "parent": "",
-      "constraint_tier": "",
+      "constraint_tier": "restricted-by-law",
       "role": "fund",
       "derived": false,
-      "rationale": "",
-      "source_note": ""
+      "rationale": "Community Development Block Grant funds; restricted to HUD-eligible activities.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
       "id": "fund/282",
       "label": "Host Community Impact Fee",
       "tier": 3,
       "parent": "",
-      "constraint_tier": "",
+      "constraint_tier": "restricted-by-law",
       "role": "fund",
       "derived": false,
-      "rationale": "",
-      "source_note": ""
+      "rationale": "Host community impact fees from the Altamont and Vasco Road landfills; restricted to promoting the arts in Livermore.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
       "id": "fund/286",
       "label": "Accessibility Compliance",
       "tier": 3,
       "parent": "",
-      "constraint_tier": "",
+      "constraint_tier": "restricted-by-law",
       "role": "fund",
       "derived": false,
-      "rationale": "",
-      "source_note": ""
+      "rationale": "State-mandated CASp fee collected with business licenses; restricted to the certified access specialist program.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
       "id": "fund/290",
       "label": "Human Services Facility Fee",
       "tier": 3,
       "parent": "",
-      "constraint_tier": "",
+      "constraint_tier": "restricted-by-law",
       "role": "fund",
       "derived": false,
-      "rationale": "",
-      "source_note": ""
+      "rationale": "Development fees restricted to capital improvements that provide human services facilities.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
       "id": "fund/310",
       "label": "Downtown LMD",
       "tier": 3,
       "parent": "",
-      "constraint_tier": "",
+      "constraint_tier": "restricted-by-law",
       "role": "fund",
       "derived": false,
-      "rationale": "",
-      "source_note": ""
+      "rationale": "Landscape maintenance district assessments; spendable only within the benefited district.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
       "id": "fund/311",
       "label": "Other LMD",
       "tier": 3,
       "parent": "",
-      "constraint_tier": "",
+      "constraint_tier": "restricted-by-law",
       "role": "fund",
       "derived": false,
-      "rationale": "",
-      "source_note": ""
+      "rationale": "Landscape maintenance district assessments; spendable only within the benefited district.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
       "id": "fund/330",
       "label": "Library Donations",
       "tier": 3,
       "parent": "",
-      "constraint_tier": "",
+      "constraint_tier": "restricted-by-law",
       "role": "fund",
       "derived": false,
-      "rationale": "",
-      "source_note": ""
+      "rationale": "Donations to the Library; donor-designated to specific community programs.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
       "id": "fund/400",
       "label": "2020 COPS Series A",
       "tier": 3,
       "parent": "",
-      "constraint_tier": "",
+      "constraint_tier": "committed",
       "role": "fund",
       "derived": false,
-      "rationale": "",
-      "source_note": ""
+      "rationale": "Accumulates principal and interest payments for the 2020 COP Series A.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
       "id": "fund/401",
       "label": "2020 COPS Series B",
       "tier": 3,
       "parent": "",
-      "constraint_tier": "",
+      "constraint_tier": "committed",
       "role": "fund",
       "derived": false,
-      "rationale": "",
-      "source_note": ""
+      "rationale": "Accumulates principal and interest payments for the 2020 COP Series B.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
       "id": "fund/402",
       "label": "2022 COPS",
       "tier": 3,
       "parent": "",
-      "constraint_tier": "",
+      "constraint_tier": "committed",
       "role": "fund",
       "derived": false,
-      "rationale": "",
-      "source_note": ""
+      "rationale": "Accumulates principal and interest payments for the 2022 COP.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
       "id": "fund/510",
       "label": "Traffic Impact Fee (TIF)",
       "tier": 3,
       "parent": "",
-      "constraint_tier": "",
+      "constraint_tier": "restricted-by-law",
       "role": "fund",
       "derived": false,
-      "rationale": "",
-      "source_note": ""
+      "rationale": "Traffic impact fees paid by developers; restricted to interchange and local street improvement projects.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
       "id": "fund/511",
       "label": "TVTC 20% Fee",
       "tier": 3,
       "parent": "",
-      "constraint_tier": "",
+      "constraint_tier": "restricted-by-law",
       "role": "fund",
       "derived": false,
-      "rationale": "",
-      "source_note": ""
+      "rationale": "Tri-Valley Transportation Council fees; restricted to the regional street and transportation projects they fund.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
       "id": "fund/512",
       "label": "Park Fee - AB 1600",
       "tier": 3,
       "parent": "",
-      "constraint_tier": "",
+      "constraint_tier": "restricted-by-law",
       "role": "fund",
       "derived": false,
-      "rationale": "",
-      "source_note": ""
+      "rationale": "AB 1600 (Mitigation Fee Act) park impact fees; restricted to acquisition and construction of park improvements.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
       "id": "fund/513",
       "label": "Solid Waste & Recyc Impact Fee",
       "tier": 3,
       "parent": "",
-      "constraint_tier": "",
+      "constraint_tier": "restricted-by-law",
       "role": "fund",
       "derived": false,
-      "rationale": "",
-      "source_note": ""
+      "rationale": "Solid waste and recycling impact fees; restricted to the street capital work the fee is levied for.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
       "id": "fund/551",
       "label": "County Meas BB-Bike/Pedestrian",
       "tier": 3,
       "parent": "",
-      "constraint_tier": "",
+      "constraint_tier": "restricted-by-law",
       "role": "fund",
       "derived": false,
-      "rationale": "",
-      "source_note": ""
+      "rationale": "Alameda County Measure BB bicycle/pedestrian pass-through; restricted to those street projects by the voter-approved measure.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
       "id": "fund/552",
       "label": "County Meas BB-Local St & Rd",
       "tier": 3,
       "parent": "",
-      "constraint_tier": "",
+      "constraint_tier": "restricted-by-law",
       "role": "fund",
       "derived": false,
-      "rationale": "",
-      "source_note": ""
+      "rationale": "Alameda County Measure BB local streets and roads pass-through; restricted to street construction and maintenance.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
       "id": "fund/560",
       "label": "State - Gas Tax",
       "tier": 3,
       "parent": "",
-      "constraint_tier": "",
+      "constraint_tier": "restricted-by-law",
       "role": "fund",
       "derived": false,
-      "rationale": "",
-      "source_note": ""
+      "rationale": "State gasoline tax subventions; restricted by state law to street and road purposes.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
       "id": "fund/561",
       "label": "State - SB1",
       "tier": 3,
       "parent": "",
-      "constraint_tier": "",
+      "constraint_tier": "restricted-by-law",
       "role": "fund",
       "derived": false,
-      "rationale": "",
-      "source_note": ""
+      "rationale": "SB 1 Road Maintenance and Rehabilitation Account funds; restricted by state law to eligible road work.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
       "id": "fund/580",
       "label": "Developers Deposit",
       "tier": 3,
       "parent": "",
-      "constraint_tier": "",
+      "constraint_tier": "restricted-by-law",
       "role": "fund",
       "derived": false,
-      "rationale": "",
-      "source_note": ""
+      "rationale": "Refundable performance deposits held on behalf of developers; returned when the developer performs, so not city money to spend.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
       "id": "fund/583",
       "label": "So Liv Spec Plan & AD Closeout",
       "tier": 3,
       "parent": "",
-      "constraint_tier": "",
+      "constraint_tier": "restricted-by-law",
       "role": "fund",
       "derived": false,
-      "rationale": "",
-      "source_note": ""
+      "rationale": "Surplus from the closeout of Assessment Districts 1993-4 and 2002; dedicated to maintenance and improvements within the district boundaries per the closeout report.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
       "id": "fund/600",
       "label": "Airport",
       "tier": 3,
       "parent": "",
-      "constraint_tier": "",
+      "constraint_tier": "restricted-by-law",
       "role": "fund",
       "derived": false,
-      "rationale": "",
-      "source_note": ""
+      "rationale": "Airport operating revenues and FAA grants; restricted to airport operations, related 2020 COP Series B debt service, and airport capital.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
       "id": "fund/601",
       "label": "CIP Airport",
       "tier": 3,
       "parent": "",
-      "constraint_tier": "",
+      "constraint_tier": "restricted-by-law",
       "role": "fund",
       "derived": false,
-      "rationale": "",
-      "source_note": ""
+      "rationale": "Capital projects side of the Airport enterprise (fund 600); same airport-revenue and FAA-grant restrictions.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
       "id": "fund/610",
       "label": "Stormwater",
       "tier": 3,
       "parent": "",
-      "constraint_tier": "",
+      "constraint_tier": "restricted-by-law",
       "role": "fund",
       "derived": false,
-      "rationale": "",
-      "source_note": ""
+      "rationale": "Self-supporting storm water operations funded by ratepayer charges; restricted to storm water service.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
       "id": "fund/611",
       "label": "CIP Stormwater & Storm Drain",
       "tier": 3,
       "parent": "",
-      "constraint_tier": "",
+      "constraint_tier": "restricted-by-law",
       "role": "fund",
       "derived": false,
-      "rationale": "",
-      "source_note": ""
+      "rationale": "Capital projects side of the storm water enterprise (funds 610/612); ratepayer and impact-fee restricted.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
       "id": "fund/612",
       "label": "Storm Drain",
       "tier": 3,
       "parent": "",
-      "constraint_tier": "",
+      "constraint_tier": "restricted-by-law",
       "role": "fund",
       "derived": false,
-      "rationale": "",
-      "source_note": ""
+      "rationale": "Storm drain impact fees; restricted to storm drain infrastructure.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
       "id": "fund/620",
       "label": "Wastewater",
       "tier": 3,
       "parent": "",
-      "constraint_tier": "",
+      "constraint_tier": "restricted-by-law",
       "role": "fund",
       "derived": false,
-      "rationale": "",
-      "source_note": ""
+      "rationale": "Self-supporting wastewater disposal plant, export pipeline and urban run-off operations funded by ratepayer charges.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
       "id": "fund/621",
       "label": "CIP Wastewater",
       "tier": 3,
       "parent": "",
-      "constraint_tier": "",
+      "constraint_tier": "restricted-by-law",
       "role": "fund",
       "derived": false,
-      "rationale": "",
-      "source_note": ""
+      "rationale": "Capital projects side of the wastewater enterprise (funds 620/622/623); ratepayer and connection-fee restricted.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
       "id": "fund/622",
       "label": "Wastewater Replacement",
       "tier": 3,
       "parent": "",
-      "constraint_tier": "",
+      "constraint_tier": "restricted-by-law",
       "role": "fund",
       "derived": false,
-      "rationale": "",
-      "source_note": ""
+      "rationale": "Ratepayer-funded reserve for replacement of wastewater system assets.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
       "id": "fund/623",
       "label": "Wastewater Connection Fees",
       "tier": 3,
       "parent": "",
-      "constraint_tier": "",
+      "constraint_tier": "restricted-by-law",
       "role": "fund",
       "derived": false,
-      "rationale": "",
-      "source_note": ""
+      "rationale": "Wastewater connection (impact) fees; restricted to wastewater capacity and capital.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
       "id": "fund/640",
       "label": "Water",
       "tier": 3,
       "parent": "",
-      "constraint_tier": "",
+      "constraint_tier": "restricted-by-law",
       "role": "fund",
       "derived": false,
-      "rationale": "",
-      "source_note": ""
+      "rationale": "Self-supporting municipal water service funded by user charges, including related 2020 COP Series B debt service.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
       "id": "fund/641",
       "label": "CIP Water",
       "tier": 3,
       "parent": "",
-      "constraint_tier": "",
+      "constraint_tier": "restricted-by-law",
       "role": "fund",
       "derived": false,
-      "rationale": "",
-      "source_note": ""
+      "rationale": "Capital projects side of the water enterprise (funds 640/642/643); ratepayer and connection-fee restricted.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
       "id": "fund/642",
       "label": "Water Replacement",
       "tier": 3,
       "parent": "",
-      "constraint_tier": "",
+      "constraint_tier": "restricted-by-law",
       "role": "fund",
       "derived": false,
-      "rationale": "",
-      "source_note": ""
+      "rationale": "Ratepayer-funded reserve for replacement of water system assets.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
       "id": "fund/730",
       "label": "Fleet & Equipment Services",
       "tier": 3,
       "parent": "",
-      "constraint_tier": "",
+      "constraint_tier": "committed",
       "role": "fund",
       "derived": false,
-      "rationale": "",
-      "source_note": ""
+      "rationale": "Departmental charges funding maintenance and acquisition of the city fleet and small equipment.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
       "id": "fund/731",
       "label": "CIP Fleet & Equipment Services",
       "tier": 3,
       "parent": "",
-      "constraint_tier": "",
+      "constraint_tier": "committed",
       "role": "fund",
       "derived": false,
-      "rationale": "",
-      "source_note": ""
+      "rationale": "Capital projects side of Fleet & Equipment Services (fund 730); same internal cost-reimbursement basis.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
       "id": "fund/741",
       "label": "CIP Facilities",
       "tier": 3,
       "parent": "",
-      "constraint_tier": "",
+      "constraint_tier": "committed",
       "role": "fund",
       "derived": false,
-      "rationale": "",
-      "source_note": ""
+      "rationale": "Capital projects side of the facilities rehabilitation program (fund 740); funded largely from General Fund CIP reserves.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
       "id": "fund/811",
       "label": "CIP General Fund",
       "tier": 3,
       "parent": "",
-      "constraint_tier": "",
+      "constraint_tier": "committed",
       "role": "fund",
       "derived": false,
-      "rationale": "",
-      "source_note": ""
+      "rationale": "General Fund money appropriated to capital projects (paired with fund 101); constrained by City action, not by law.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
       "id": "fund/822",
       "label": "CIP Library Donations",
       "tier": 3,
       "parent": "",
-      "constraint_tier": "",
+      "constraint_tier": "restricted-by-law",
       "role": "fund",
       "derived": false,
-      "rationale": "",
-      "source_note": ""
+      "rationale": "Capital side of Library Donations (330); donor-designated to specific library programs.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
       "id": "fund/823",
       "label": "CIP Traffic Impact Fee",
       "tier": 3,
       "parent": "",
-      "constraint_tier": "",
+      "constraint_tier": "restricted-by-law",
       "role": "fund",
       "derived": false,
-      "rationale": "",
-      "source_note": ""
+      "rationale": "Capital side of the traffic impact fee (510); developer fees restricted to interchange and local street improvements.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
       "id": "fund/824",
       "label": "CIP TVTC 20% Fee",
       "tier": 3,
       "parent": "",
-      "constraint_tier": "",
+      "constraint_tier": "restricted-by-law",
       "role": "fund",
       "derived": false,
-      "rationale": "",
-      "source_note": ""
+      "rationale": "Capital side of the TVTC 20% fee (511); Tri-Valley Transportation Council fees restricted to street projects.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
       "id": "fund/825",
       "label": "CIP Park Fee - AB 1600",
       "tier": 3,
       "parent": "",
-      "constraint_tier": "",
+      "constraint_tier": "restricted-by-law",
       "role": "fund",
       "derived": false,
-      "rationale": "",
-      "source_note": ""
+      "rationale": "Capital side of the AB 1600 park fee (512); restricted to park acquisition and construction.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
       "id": "fund/826",
       "label": "CIP Solid Waste & Recycling",
       "tier": 3,
       "parent": "",
-      "constraint_tier": "",
+      "constraint_tier": "restricted-by-law",
       "role": "fund",
       "derived": false,
-      "rationale": "",
-      "source_note": ""
+      "rationale": "Capital side of the solid waste and recycling impact fee (513); restricted to solid waste and recycling purposes.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
       "id": "fund/829",
       "label": "CIP County Measure BB-Bike/Ped",
       "tier": 3,
       "parent": "",
-      "constraint_tier": "",
+      "constraint_tier": "restricted-by-law",
       "role": "fund",
       "derived": false,
-      "rationale": "",
-      "source_note": ""
+      "rationale": "Capital side of Measure BB bike/pedestrian (551); restricted to those street projects.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
       "id": "fund/830",
       "label": "CIP County Measure BB-Street",
       "tier": 3,
       "parent": "",
-      "constraint_tier": "",
+      "constraint_tier": "restricted-by-law",
       "role": "fund",
       "derived": false,
-      "rationale": "",
-      "source_note": ""
+      "rationale": "Capital side of Measure BB local streets and roads (552); restricted to street construction and maintenance.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
       "id": "fund/834",
       "label": "CIP State Gas Tax",
       "tier": 3,
       "parent": "",
-      "constraint_tier": "",
+      "constraint_tier": "restricted-by-law",
       "role": "fund",
       "derived": false,
-      "rationale": "",
-      "source_note": ""
+      "rationale": "Capital side of the state gas tax fund (560); restricted by state law to street and road purposes.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
       "id": "fund/835",
       "label": "CIP State SB1",
       "tier": 3,
       "parent": "",
-      "constraint_tier": "",
+      "constraint_tier": "restricted-by-law",
       "role": "fund",
       "derived": false,
-      "rationale": "",
-      "source_note": ""
+      "rationale": "Capital side of the SB 1 fund (561); restricted by state law to eligible road maintenance and rehabilitation.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
       "id": "fund/836",
       "label": "CIP Developers Deposit",
       "tier": 3,
       "parent": "",
-      "constraint_tier": "",
+      "constraint_tier": "restricted-by-law",
       "role": "fund",
       "derived": false,
-      "rationale": "",
-      "source_note": ""
+      "rationale": "Capital side of developer deposits (580); performance deposits held on developers' behalf and refundable to them.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
       "id": "fund/837",
       "label": "CIP So Liv Spec & AD Close",
       "tier": 3,
       "parent": "",
-      "constraint_tier": "",
+      "constraint_tier": "restricted-by-law",
       "role": "fund",
       "derived": false,
-      "rationale": "",
-      "source_note": ""
+      "rationale": "Capital side of the South Livermore specific plan / assessment district closeout fund (583); dedicated to improvements within the district boundaries.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
       "id": "fund/838",
       "label": "CIP CDBG",
       "tier": 3,
       "parent": "",
-      "constraint_tier": "",
+      "constraint_tier": "restricted-by-law",
       "role": "fund",
       "derived": false,
-      "rationale": "",
-      "source_note": ""
+      "rationale": "Capital side of the CDBG grant fund (224); restricted to HUD-eligible activities.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
       "id": "fund/839",
       "label": "CIP Human Svcs Facility Fee",
       "tier": 3,
       "parent": "",
-      "constraint_tier": "",
+      "constraint_tier": "restricted-by-law",
       "role": "fund",
       "derived": false,
-      "rationale": "",
-      "source_note": ""
+      "rationale": "Capital side of the human services facility fee (290); development fees restricted to human services capital improvements.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
     },
     {
       "id": "transfer-to/100",

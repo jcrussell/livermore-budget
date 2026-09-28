@@ -3,7 +3,6 @@ package export
 import (
 	"encoding/json"
 	"fmt"
-	"maps"
 	"path"
 	"regexp"
 	"slices"
@@ -17,7 +16,8 @@ import (
 const columnSchemaVersion = 1
 
 // ColumnDoc is everything the chart needs for one published column: one node
-// table and one link set per printed schedule, keyed by (fiscal year, basis).
+// table, and per printed schedule its links and its parent edges, keyed by
+// (fiscal year, basis).
 //
 // The schedules are not merged; why, measured: docs/schema-contracts.md.
 type ColumnDoc struct {
@@ -37,23 +37,28 @@ type ColumnKey struct {
 	Label      string `json:"label"`
 }
 
-// ColumnNode carries only the fields every schedule agrees on. Where a node
-// hangs is ColumnSchedNode's, because two schedules disagree about it.
+// ColumnNode is a node's identity and its own annotations, stated once for
+// the column: every schedule drawing it must agree on every field, and
+// ColumnsOf refuses one that does not rather than merging. Where a node hangs
+// is ColumnSchedNode's, because two schedules legitimately disagree about it.
 type ColumnNode struct {
 	ID      string `json:"id"`
 	Label   string `json:"label"`
 	Tier    int    `json:"tier"`
 	Role    string `json:"role,omitempty"`
 	Derived bool   `json:"derived,omitempty"`
-}
-
-// ColumnSchedNode is one schedule's view of a node the column carries.
-type ColumnSchedNode struct {
-	Node           int    `json:"node"`
-	Parent         string `json:"parent,omitempty"`
+	// ConstraintTier, Rationale and SourceNote are the node's: a fund's tier
+	// read from data/funds.yaml, or a derived node's words.
 	ConstraintTier string `json:"constraint_tier,omitempty"`
 	Rationale      string `json:"rationale,omitempty"`
 	SourceNote     string `json:"source_note,omitempty"`
+}
+
+// ColumnSchedNode is one schedule's view of a node the column carries: its
+// place in that schedule's hierarchy.
+type ColumnSchedNode struct {
+	Node   int    `json:"node"`
+	Parent string `json:"parent,omitempty"`
 }
 
 // ColumnFundGroup is one fund group this column draws, in the order the page
@@ -244,6 +249,7 @@ func ColumnsOf(projections map[string][]byte, generatedBy string) (map[string]Co
 			i, had := at[n.ID]
 			node := ColumnNode{
 				ID: n.ID, Label: n.Label, Tier: n.Tier, Role: n.Role, Derived: n.Derived,
+				ConstraintTier: n.ConstraintTier, Rationale: n.Rationale, SourceNote: n.SourceNote,
 			}
 			if !had {
 				i = len(col.Nodes)
@@ -254,10 +260,7 @@ func ColumnsOf(projections map[string][]byte, generatedBy string) (map[string]Co
 					"column %s: %q disagrees between schedules about the same node: %+v and %+v",
 					key, n.ID, col.Nodes[i], node)
 			}
-			drawn = append(drawn, ColumnSchedNode{
-				Node: i, Parent: n.Parent, ConstraintTier: n.ConstraintTier,
-				Rationale: n.Rationale, SourceNote: n.SourceNote,
-			})
+			drawn = append(drawn, ColumnSchedNode{Node: i, Parent: n.Parent})
 		}
 
 		links := make([]ColumnLink, 0, len(d.Links))
@@ -377,17 +380,8 @@ func fundGroupsOf(nodes []ColumnNode) ([]ColumnFundGroup, error) {
 }
 
 // encodeColumn renders one column and refuses bytes that do not match the
-// published schema. A derived node without its words is refused here because
-// the schema cannot join a schedule's node to its table entry.
+// published schema, which states that a derived node carries its words.
 func encodeColumn(doc ColumnDoc) ([]byte, error) {
-	for _, key := range slices.Sorted(maps.Keys(doc.Schedules)) {
-		for _, sn := range doc.Schedules[key].Nodes {
-			if sn.Node < len(doc.Nodes) && doc.Nodes[sn.Node].Derived && (sn.Rationale == "" || sn.SourceNote == "") {
-				return nil, fmt.Errorf("the column for FY%d %s: schedule %s draws derived node %q without both a rationale and a source note",
-					doc.Column.FiscalYear, doc.Column.Basis, key, doc.Nodes[sn.Node].ID)
-			}
-		}
-	}
 	b, err := json.MarshalIndent(doc, "", " ")
 	if err != nil {
 		return nil, fmt.Errorf("encode column: %w", err)

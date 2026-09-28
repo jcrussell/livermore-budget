@@ -51,7 +51,7 @@
       }
     },
     "nodes": {
-      "description": "One table shared by every schedule, carrying only what they agree on: a node's identity. Its parent and annotations belong to the schedule that draws it.",
+      "description": "One table shared by every schedule: a node's identity and its own annotations, each stated once. Where it hangs belongs to the schedule that draws it.",
       "type": "array",
       "minItems": 1,
       "items": {
@@ -98,8 +98,61 @@
           },
           "derived": {
             "type": "boolean"
+          },
+          "constraint_tier": {
+            "description": "A fund's tier as data/funds.yaml reads it, our reading of pp.258-261; empty where the document classifies nothing.",
+            "type": "string"
+          },
+          "rationale": {
+            "type": "string"
+          },
+          "source_note": {
+            "type": "string"
           }
-        }
+        },
+        "allOf": [
+          {
+            "description": "A derived node says why it exists and what it was read from; a tier is read from a note and carries it.",
+            "if": {
+              "anyOf": [
+                {
+                  "properties": {
+                    "derived": {
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "derived"
+                  ]
+                },
+                {
+                  "properties": {
+                    "constraint_tier": {
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "constraint_tier"
+                  ]
+                }
+              ]
+            },
+            "then": {
+              "required": [
+                "rationale",
+                "source_note"
+              ],
+              "properties": {
+                "rationale": {
+                  "minLength": 1
+                },
+                "source_note": {
+                  "minLength": 1
+                }
+              }
+            }
+          }
+        ]
       }
     },
     "tiers": {
@@ -340,7 +393,7 @@
             }
           },
           "nodes": {
-            "description": "The nodes this schedule draws, and its own view of them. A schedule states a parent where its hierarchy has one; the same mark may hang elsewhere, or nowhere, in another schedule of the same column.",
+            "description": "The nodes this schedule draws, each by its index into the column's node table, with the one thing a schedule states for itself: where the node hangs in its hierarchy. The same mark may hang elsewhere, or nowhere, in another schedule of the same column.",
             "type": "array",
             "minItems": 1,
             "items": {
@@ -357,48 +410,8 @@
                 },
                 "parent": {
                   "type": "string"
-                },
-                "constraint_tier": {
-                  "type": "string"
-                },
-                "rationale": {
-                  "type": "string"
-                },
-                "source_note": {
-                  "type": "string"
                 }
-              },
-              "allOf": [
-                {
-                  "description": "A derived node says why it exists and what it was read from.",
-                  "if": {
-                    "required": [
-                      "rationale"
-                    ]
-                  },
-                  "then": {
-                    "properties": {
-                      "rationale": {
-                        "minLength": 1
-                      }
-                    }
-                  }
-                },
-                {
-                  "if": {
-                    "required": [
-                      "source_note"
-                    ]
-                  },
-                  "then": {
-                    "properties": {
-                      "source_note": {
-                        "minLength": 1
-                      }
-                    }
-                  }
-                }
-              ]
+              }
             }
           },
           "scopes": {

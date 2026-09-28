@@ -217,10 +217,11 @@ of whether the figures in a headline happen to be non-zero.
 
 ## `constraint_tier`
 
-Every tier-3 fund node carries one, and the value is **ours**: our reading of the
-Description of Funds narrative, pp.258-261. `node.derived` stays `false` — the
-city prints the fund — and the disclosure rides on `source_note` and `rationale`
-beside it. The document also carries the disclosure sentence in
+Every tier-3 fund node carries one, here and in every other document that
+draws a fund, and the value is **ours**: our reading of the Description of
+Funds narrative, pp.258-261. `node.derived` stays `false` — the city prints the
+fund — and the disclosure rides on `source_note` and `rationale` beside it. The
+document also carries the disclosure sentence in
 `metadata.caveats` under the id `constraint-tier-is-our-reading`, and
 `constraint-tier-vocabulary` finds it by that id and then compares its text
 against `project.ConstraintTierCaveat()` rather than against prose written

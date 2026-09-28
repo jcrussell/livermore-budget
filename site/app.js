@@ -3736,8 +3736,9 @@ export function clearRefusal() {
 
 /**
  * One schedule of a column document, with the shared node table's indices
- * resolved to ids and the keys the column omits (empty strings, false
- * booleans) filled in.
+ * resolved to ids, a node's identity and annotations taken from the table and
+ * its parent from the schedule, and the keys the column omits (empty strings,
+ * false booleans) filled in.
  *
  * @param {any} column
  * @param {string} key the schedule to read -- a step's `projection`
@@ -3755,8 +3756,11 @@ export function scheduleOf(column, key) {
     return {
       id: base.id, label: base.label, tier: base.tier,
       role: base.role || "", derived: Boolean(base.derived),
-      parent: n.parent || "", constraint_tier: n.constraint_tier || "",
-      rationale: n.rationale || "", source_note: n.source_note || "",
+      constraint_tier: base.constraint_tier || "",
+      rationale: base.rationale || "", source_note: base.source_note || "",
+      // The one field a schedule states for itself: where the node hangs in
+      // its own hierarchy.
+      parent: n.parent || "",
     };
   });
   const links = sched.links.map((l) => {

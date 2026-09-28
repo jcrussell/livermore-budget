@@ -781,7 +781,7 @@ func fundObjectEndpoint(fund int, category string) endpoint {
 }
 
 // addFundFlowNode records a node the first time something touches it, and hangs
-// the constraint tier and its disclosure on a fund.
+// the group and the constraint tier on a fund.
 func (f *fundFlows) addFundFlowNode(nodes map[string]Node, e endpoint) {
 	if _, ok := nodes[e.id]; ok {
 		return
@@ -793,13 +793,7 @@ func (f *fundFlows) addFundFlowNode(nodes map[string]Node, e endpoint) {
 			if t, ok := f.Labels.FundType(number); ok {
 				n.Parent = prefixFundGroup + t
 			}
-			// The node is printed and only the tier is ours, so Derived stays
-			// false; the disclosure rides on SourceNote and Rationale.
-			if tier := f.Labels.ConstraintTier(number); tier != "" {
-				n.ConstraintTier = tier
-				n.SourceNote = "data/funds.yaml, our reading of Budget Book pp.258-261"
-				n.Rationale = f.Labels.RestrictionNote(number)
-			}
+			annotateFund(&n, f.Labels, number)
 		}
 	}
 	if e.tier == tierDepartment {
@@ -814,6 +808,25 @@ func (f *fundFlows) addFundFlowNode(nodes map[string]Node, e endpoint) {
 		}
 	}
 	nodes[e.id] = n
+}
+
+// annotateFund hangs a fund's constraint tier and its disclosure on the node,
+// wherever a document draws the fund: the tier is a property of the FUND, read
+// once from data/funds.yaml, so every schedule drawing fund/<n> states it the
+// same way and a column's node table can carry it once. The node is printed
+// and only the tier is ours, so Derived stays false; the disclosure rides on
+// SourceNote and Rationale, and the document carries ConstraintTierCaveat.
+//
+// A nil registry annotates nothing, as it labels nothing.
+func annotateFund(n *Node, l labels, number int) {
+	if l == nil {
+		return
+	}
+	if tier := l.ConstraintTier(number); tier != "" {
+		n.ConstraintTier = tier
+		n.SourceNote = "data/funds.yaml, our reading of Budget Book pp.258-261"
+		n.Rationale = l.RestrictionNote(number)
+	}
 }
 
 // addParents adds the two kinds of node this document parents to and does not
