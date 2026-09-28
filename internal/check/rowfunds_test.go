@@ -168,9 +168,8 @@ func TestTheCommittedCorpusRowAnchorsHold(t *testing.T) {
 		}
 	}
 	// AND NOT ONE BY ONE. Naming each row put this check's PASS line at 11 KB,
-	// against roughly 450 bytes before, which is detailtie.go's "a count is the
-	// honest middle" argument arriving one check late. A row that HOLDS is
-	// counted; only a row that fails is named.
+	// against roughly 450 bytes before. A count is the honest middle: a row
+	// that HOLDS is counted; only a row that fails is named.
 	//
 	// THE LENGTH BOUND IS WHAT ENFORCES THAT, not a search for one row's name.
 	// This used to assert the summary did not contain `funding-public-works
@@ -214,8 +213,7 @@ func TestTheBareLabelArmIsWhatTheDeclarationTurnsOn(t *testing.T) {
 	// because a rewrite once dropped them: replacing the
 	// seenRule dedup with a per-row append left the suite green, so the 11 KB
 	// PASS line this counter exists to prevent could come back unnoticed.
-	// detailtie.go's "a count is the honest middle" is the argument; this is
-	// what holds it.
+	// A count is the honest middle; this is what holds it.
 	for _, want := range []string{"funding-city-council", "funding-public-works"} {
 		if !strings.Contains(res.Summary, want) {
 			t.Errorf("the summary does not attribute the unread declarations to their "+

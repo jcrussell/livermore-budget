@@ -189,7 +189,7 @@ func TestRevenueLinesTieOverTheFixture(t *testing.T) {
 		Summary: "5 cells over 1 (fiscal year, basis) pair(s), summed from 10 flows into " +
 			"funds, 1 of them a printed zero no link is drawn for; 6 revenue-line nodes " +
 			"under their data/taxonomy.yaml category; 1 cell(s) held apart, not among the 5: " +
-			generalTransferInException(t, 2026).Name + " (FY2026 adopted general transfers/in, " +
+			generalTransferInException(t, 2026).Name + " (FY2026 adopted fund-group-by-category[category=transfers/in fund_group=general], " +
 			"$100.00); 1 pair(s) with no spine column: FY2024 actual",
 	}
 	got := verdict{res.Status, res.Subjects, res.Summary}
@@ -219,10 +219,10 @@ func TestRevenueLinesTieIsFailable(t *testing.T) {
 				`node "revenue-line/taxes/property/current-secured" is parented to ` +
 					`"revenue/charges-for-services" and data/taxonomy.yaml declares it under ` +
 					`"taxes/property", so it wants "revenue/taxes/property"`,
-				"FY2026 adopted general charges-for-services: the detail sums to $1,600.00 " +
-					"and the spine publishes $400.00, a difference of $1,200.00",
-				"FY2026 adopted general taxes/property: the detail sums to -$200.00 and the " +
-					"spine publishes $1,000.00, a difference of -$1,200.00",
+				"FY2026 adopted fund-group-by-category[category=charges-for-services fund_group=general]: the detail sums to $1600.00 " +
+					"and the spine publishes $400.00, a difference of $1200.00",
+				"FY2026 adopted fund-group-by-category[category=taxes/property fund_group=general]: the detail sums to -$200.00 and the " +
+					"spine publishes $1000.00, a difference of -$1200.00",
 			},
 		},
 		{
@@ -234,10 +234,10 @@ func TestRevenueLinesTieIsFailable(t *testing.T) {
 			want: []string{
 				`node "revenue-line/taxes/property/current-secured" is parented to "" and ` +
 					`data/taxonomy.yaml declares it under "taxes/property"`,
-				"FY2026 adopted general : the detail publishes $1,200.00 here and the spine " +
+				"FY2026 adopted fund-group-by-category[category=(absent) fund_group=general]: the detail publishes $1200.00 here and the spine " +
 					"has no such cell",
-				"FY2026 adopted general taxes/property: the detail sums to -$200.00 and the " +
-					"spine publishes $1,000.00, a difference of -$1,200.00",
+				"FY2026 adopted fund-group-by-category[category=taxes/property fund_group=general]: the detail sums to -$200.00 and the " +
+					"spine publishes $1000.00, a difference of -$1200.00",
 			},
 		},
 		{
@@ -247,9 +247,9 @@ func TestRevenueLinesTieIsFailable(t *testing.T) {
 			want: []string{
 				`node "revenue-line/taxes/property/current-secured" is parented to ` +
 					`"revenue/typo" and data/taxonomy.yaml declares it under "taxes/property"`,
-				"FY2026 adopted general taxes/property: the detail sums to -$200.00 and the " +
-					"spine publishes $1,000.00, a difference of -$1,200.00",
-				"FY2026 adopted general typo: the detail publishes $1,200.00 here and the " +
+				"FY2026 adopted fund-group-by-category[category=taxes/property fund_group=general]: the detail sums to -$200.00 and the " +
+					"spine publishes $1000.00, a difference of -$1200.00",
+				"FY2026 adopted fund-group-by-category[category=typo fund_group=general]: the detail publishes $1200.00 here and the " +
 					"spine has no such cell",
 			},
 		},
@@ -290,9 +290,9 @@ func TestRevenueLinesTieIsFailable(t *testing.T) {
 			damage:     func(t *testing.T, s *Subject) { lineLink(t, s, libraryLine, "fund/500").Target = "fund/700" },
 			wantStatus: StatusFail, wantSubjects: 12,
 			want: []string{
-				"FY2026 adopted enterprise charges-for-services: the spine publishes $500.00 " +
+				"FY2026 adopted fund-group-by-category[category=charges-for-services fund_group=enterprise]: the spine publishes $500.00 " +
 					"here and the detail has no such row at all",
-				"FY2026 adopted internal-service charges-for-services: the detail publishes " +
+				"FY2026 adopted fund-group-by-category[category=charges-for-services fund_group=internal-service]: the detail publishes " +
 					"$500.00 here and the spine has no such cell",
 			},
 		},
@@ -309,8 +309,8 @@ func TestRevenueLinesTieIsFailable(t *testing.T) {
 			damage:     func(t *testing.T, s *Subject) { lineLink(t, s, securedLine, "fund/100").ValueCents = 0 },
 			wantStatus: StatusFail, wantSubjects: 11,
 			want: []string{
-				"FY2026 adopted general taxes/property: the detail sums to -$200.00 and the " +
-					"spine publishes $1,000.00, a difference of -$1,200.00",
+				"FY2026 adopted fund-group-by-category[category=taxes/property fund_group=general]: the detail sums to -$200.00 and the " +
+					"spine publishes $1000.00, a difference of -$1200.00",
 			},
 		},
 		{
@@ -322,8 +322,8 @@ func TestRevenueLinesTieIsFailable(t *testing.T) {
 			},
 			wantStatus: StatusFail, wantSubjects: 11,
 			want: []string{
-				"FY2026 adopted general taxes/property: the detail sums to $1,400.00 and the " +
-					"spine publishes $1,000.00, a difference of $400.00",
+				"FY2026 adopted fund-group-by-category[category=taxes/property fund_group=general]: the detail sums to $1400.00 and the " +
+					"spine publishes $1000.00, a difference of $400.00",
 			},
 		},
 		{
@@ -334,7 +334,7 @@ func TestRevenueLinesTieIsFailable(t *testing.T) {
 			want: []string{
 				`link "fund-balance/draw" -> "fund/100" reaches a fund from a node that is ` +
 					`neither a revenue-line/ line this document carries nor "transfers/in"`,
-				"FY2026 adopted general charges-for-services: the spine publishes $400.00 " +
+				"FY2026 adopted fund-group-by-category[category=charges-for-services fund_group=general]: the spine publishes $400.00 " +
 					"here and the detail has no such row at all",
 			},
 		},
@@ -349,7 +349,7 @@ func TestRevenueLinesTieIsFailable(t *testing.T) {
 			wantStatus: StatusFail, wantSubjects: 12,
 			want: []string{
 				"pp.127-130-print-no-general-fund-transfer-in-2026: the drill-down draws a flow " +
-					"into FY2026 adopted general transfers/in, so the exception it is exempted " +
+					"into FY2026 adopted fund-group-by-category[category=transfers/in fund_group=general], so the exception it is exempted " +
 					"by has stopped describing the document",
 			},
 		},
@@ -361,7 +361,7 @@ func TestRevenueLinesTieIsFailable(t *testing.T) {
 			wantStatus: StatusFail, wantSubjects: 11,
 			want: []string{
 				`link "transfers/in" -> "fund/999" names a fund data/funds.yaml does not list`,
-				"FY2026 adopted enterprise transfers/in: the spine publishes $200.00 here " +
+				"FY2026 adopted fund-group-by-category[category=transfers/in fund_group=enterprise]: the spine publishes $200.00 here " +
 					"and the detail has no such row at all",
 			},
 		},
@@ -445,7 +445,7 @@ func TestRevenueLinesTieReadsTheFactsItIsGiven(t *testing.T) {
 	if res.Status != StatusFail {
 		t.Fatalf("status %s, want fail", res.Status)
 	}
-	want := "FY2026 adopted general taxes/property: the detail publishes $1,000.00 here and " +
+	want := "FY2026 adopted fund-group-by-category[category=taxes/property fund_group=general]: the detail publishes $1000.00 here and " +
 		"the spine has no such cell"
 	if got := findingLines(res); len(got) != 1 || !strings.Contains(got[0], want) {
 		t.Errorf("findings are %v, want one containing %q", got, want)

@@ -17,7 +17,6 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/project"
-	"github.com/jcrussell/livermore-budget/internal/structure"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
@@ -982,47 +981,6 @@ func TestContestedTotalsAreStillContested(t *testing.T) {
 		// all, and would print a caveat saying a figure differs from itself.
 		if e.Published == e.Elsewhere {
 			t.Errorf("%s declares the same figure as both published and elsewhere", e.Bead)
-		}
-	}
-}
-
-// TestContestedTotalsAgreeWithTheirCheckException is the cross-check that stops
-// the caveat's two figures being an unguarded second copy.
-//
-// structure.BudgetBookExceptions declares the same pair as an exception's two
-// pins, which cuts-tie-along-the-lattice verifies against the corpus on every
-// run; tying the caveat's figures to them makes those corpus-verified too.
-func TestContestedTotalsAgreeWithTheirCheckException(t *testing.T) {
-	for _, c := range project.ContestedTotals() {
-		var found bool
-		for _, e := range structure.BudgetBookExceptions() {
-			if e.Cut != "funding-sources" || e.Against != spineCut {
-				continue
-			}
-			for _, p := range e.Cells {
-				if p.Coords[structure.AxisFundGroup] != c.FundGroup || p.Year != c.Column.FiscalYear ||
-					p.Basis != string(c.Column.Basis) {
-					continue
-				}
-				found = true
-				if p.Against.Cents != c.Published {
-					t.Errorf("%s: the caveat says the spine prints %d and exception %s says %d",
-						c.Bead, c.Published, e.Name, p.Against.Cents)
-				}
-				if p.Cut.Cents != c.Elsewhere {
-					t.Errorf("%s: the caveat says the rest of the book makes it %d and exception "+
-						"%s says %d", c.Bead, c.Elsewhere, e.Name, p.Cut.Cents)
-				}
-				if e.Bead != c.Bead {
-					t.Errorf("the two declarations of %s %s name different beads: %q and %q",
-						c.Column, c.FundGroup, c.Bead, e.Bead)
-				}
-			}
-		}
-		if !found {
-			t.Errorf("%s declares a contested %s %s total that no funding-sources "+
-				"exception covers, so neither of its figures is verified against the "+
-				"corpus by anything", c.Bead, c.Column, c.FundGroup)
 		}
 	}
 }

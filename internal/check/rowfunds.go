@@ -362,8 +362,8 @@ func (*rowFundsMatchTheirAnchors) Run(_ context.Context, s *Subject) (Result, er
 			joinComma(unanchoredRows)))
 	}
 	// COUNTED AND ATTRIBUTED TO ITS RULES, NOT LISTED ROW BY ROW, which is the
-	// opposite of the arm above and deliberately so. detailtie.go's argument
-	// applies here: a count is the honest middle, loud without being a wall. The
+	// opposite of the arm above and deliberately so. a count is the honest
+	// middle, loud without being a wall. The
 	// three rows above are three, are p76's own, and each needs naming because a
 	// reader cannot otherwise find which line the page leaves blank. These are
 	// a whole schedule at a time -- naming pp.85-125's 78 individually turned

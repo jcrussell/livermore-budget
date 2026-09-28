@@ -433,8 +433,8 @@ type DrillStep struct {
 	// not decompose: node id to reason. The client copies those links onto one
 	// derived node beside the opened node's parts.
 	//
-	// Only on a step that switches document. The caller reads it off
-	// check.ResidualNodes.
+	// Only on a step that switches document. The caller derives it from the
+	// cuts and exceptions internal/structure declares.
 	Residual map[string]string `json:"residual,omitempty"`
 	// ResidualGrain is the grain the document this step draws does NOT split
 	// that money by, in the city's singular word -- "fund". Go composes the

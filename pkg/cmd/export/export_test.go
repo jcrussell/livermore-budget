@@ -16,7 +16,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
-	"github.com/jcrussell/livermore-budget/internal/check"
 	"github.com/jcrussell/livermore-budget/internal/export"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/project"
@@ -1396,8 +1395,8 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 			Noun: "fund group",
 			Back: "All fund groups",
 			Tail: "funds",
-			// Read off the check, which is the declaration.
-			Residual:      check.ResidualNodes(),
+			// Derived from the cuts and exceptions, which are the declaration.
+			Residual:      project.FundFlowsResidual(),
 			ResidualGrain: "fund",
 			Description: "The revenue categories on the left are the citywide chart's own " +
 				"cells; this fund group is the mark in the middle, and its own funds are " +
@@ -1484,7 +1483,7 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 			Noun:       "object category",
 			Back:       "All object categories",
 			Tail:       "divisions",
-			// Read off the check, which cuts-tie-along-the-lattice pins.
+			// Derived from the exceptions cuts-tie-along-the-lattice pins.
 			Gaps: spendingGaps(),
 			Description: "The fund groups that pay for this object category are on the " +
 				"left; the divisions that spend it are on the right \u2014 Budget Book " +

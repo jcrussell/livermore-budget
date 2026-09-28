@@ -3,10 +3,12 @@ package check
 import (
 	"context"
 	"fmt"
+	"slices"
+	"sort"
 	"strconv"
 	"strings"
 
-	"github.com/jcrussell/livermore-budget/internal/amount"
+	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/internal/structure"
@@ -29,13 +31,16 @@ const (
 	spineCut         = "spine"
 )
 
-// revenueDetailRestriction is what pp.127-140 print: revenue and transfers in,
+// revenueDetailKinds is what pp.127-140 print: revenue and transfers in,
 // across every fund group. Transfers In sits inside a printed `Total <fund>`
 // on pp.131-140, so dropping that kind leaves the drill-down's transfer flows
 // summed into no cell.
-var revenueDetailRestriction = detailRestriction{
-	Kinds: []mapping.Kind{mapping.KindRevenue, mapping.KindTransferIn},
-}
+var revenueDetailKinds = []mapping.Kind{mapping.KindRevenue, mapping.KindTransferIn}
+
+// spineGrain is the level arm 1 compares at: the spine's own, so a cell is a
+// structure.Key both this check and cuts-tie-along-the-lattice spell the same
+// way.
+const spineGrain = structure.LevelFundGroupByCategory
 
 // revenueLinesTieToTheirCategories asserts the drill-down's line tier decomposes
 // the spine's revenue rather than restating or reclassifying it:
@@ -80,7 +85,7 @@ func (c *revenueLinesTieToTheirCategories) Run(_ context.Context, s *Subject) (R
 	}
 
 	var findings []Finding
-	detail := map[detailKey]cellSum{}
+	detail := map[structure.Key]structure.Sum{}
 	lines, drawn := 0, 0
 
 	for _, p := range docs {
@@ -130,20 +135,22 @@ func (c *revenueLinesTieToTheirCategories) Run(_ context.Context, s *Subject) (R
 					l.Source, l.Target, revenueLinePrefix, transfersInNode))
 				continue
 			}
-			k := detailKey{col.FiscalYear, col.Basis, group, category}
+			k := structure.Key{Year: col.FiscalYear, Basis: string(col.Basis), Level: spineGrain,
+				Coords: structure.Coords(spineGrain, map[structure.Axis]string{
+					structure.AxisFundGroup: group, structure.AxisCategory: category})}
 			cell := detail[k]
-			cell.cents += amount.Cents(l.ValueCents)
-			cell.present = true
+			cell.Cents += l.ValueCents
+			cell.Present = true
 			detail[k] = cell
 		}
 	}
 
-	spine := detailSums(s.Facts, spineScope, revenueDetailRestriction)
-	reconcile, unmatched := reconciledPairs(detail, spine)
+	spine := spineCells(s.Facts)
+	reconcile, unmatched := reconciledColumns(detail, spine)
 	exempt, notes, exceptionFindings := lineExceptions(detail, spine, reconcile)
 	findings = append(findings, exceptionFindings...)
 
-	cmp := compareDetail(detail, spine, reconcile, project.FundFlowsProjection, exempt)
+	cmp := compareCells(detail, spine, reconcile, project.FundFlowsProjection, exempt)
 	findings = append(findings, cmp.findings...)
 
 	held := fmt.Sprintf("%d cells over %d (fiscal year, basis) pair(s), summed from %d flows "+
@@ -155,7 +162,7 @@ func (c *revenueLinesTieToTheirCategories) Run(_ context.Context, s *Subject) (R
 			cmp.exempt, cmp.subjects, strings.Join(notes, ", "))
 	}
 	if len(unmatched) > 0 {
-		held += fmt.Sprintf("; %d pair(s) with no spine column: %s", len(unmatched), describePairs(unmatched))
+		held += fmt.Sprintf("; %d pair(s) with no spine column: %s", len(unmatched), joinComma(sortedStrings(unmatched)))
 	}
 
 	return conclusion{
@@ -243,15 +250,15 @@ func inflowCategory(byID map[string]project.Node, source string) (string, bool) 
 // cuts-tie-along-the-lattice uses, shared rather than restated. This check's
 // own arm refuses one the drill-down draws a link for; whether the spine's
 // figure matches the pin is the containment check's.
-func lineExceptions(detail, spine map[detailKey]cellSum,
-	reconcile map[yearBasis]bool) (func(detailKey) bool, []string, []Finding) {
+func lineExceptions(detail, spine map[structure.Key]structure.Sum,
+	reconcile map[string]bool) (func(structure.Key) bool, []string, []Finding) {
 
 	var notes []string
 	var findings []Finding
-	exempted := map[detailKey]bool{}
+	exempted := map[structure.Key]bool{}
 
 	for _, e := range budgetBookExceptions() {
-		if e.Cut != revenueDetailCut || e.Against != spineCut {
+		if e.Cut != revenueDetailCut || e.Against != spineCut || e.At != spineGrain {
 			continue
 		}
 		for _, p := range e.Cells {
@@ -259,45 +266,168 @@ func lineExceptions(detail, spine map[detailKey]cellSum,
 			if p.Cut.Present {
 				continue
 			}
-			k := detailKey{p.Year, mapping.Basis(p.Basis),
-				p.Coords[structure.AxisFundGroup], p.Coords[structure.AxisCategory]}
-			if !reconcile[yearBasis{k.year, k.basis}] {
+			k := e.Key(p)
+			if !reconcile[k.Column()] {
 				continue
 			}
 			sp, ok := spine[k]
 			if !ok {
 				continue
 			}
-			if detail[k].present {
+			if detail[k].Present {
 				findings = append(findings, finding(e.Name,
 					"the drill-down draws a flow into %s, so the exception it is exempted by "+
 						"has stopped describing the document", k))
 				continue
 			}
 			exempted[k] = true
-			notes = append(notes, fmt.Sprintf("%s (%s, %s)", e.Name, k, sp.cents))
+			notes = append(notes, fmt.Sprintf("%s (%s, %s)", e.Name, k, structure.Cents(sp.Cents)))
 		}
 	}
 	if len(exempted) == 0 {
 		return nil, notes, findings
 	}
-	return func(k detailKey) bool { return exempted[k] }, notes, findings
+	return func(k structure.Key) bool { return exempted[k] }, notes, findings
 }
 
 // silentZeros is how many reconciled cells the spine prints as zero and the
-// drill-down draws no link for. detailComparison.oneSided is not that count: it
+// drill-down draws no link for. cellComparison.oneSided is not that count: it
 // counts a key either side is missing.
-func silentZeros(detail, spine map[detailKey]cellSum, reconcile map[yearBasis]bool,
-	exempt func(detailKey) bool) int {
+func silentZeros(detail, spine map[structure.Key]structure.Sum, reconcile map[string]bool,
+	exempt func(structure.Key) bool) int {
 
 	n := 0
 	for k, sp := range spine {
-		if !reconcile[yearBasis{k.year, k.basis}] || (exempt != nil && exempt(k)) {
+		if !reconcile[k.Column()] || (exempt != nil && exempt(k)) {
 			continue
 		}
-		if sp.present && sp.cents == 0 && !detail[k].present {
+		if sp.Present && sp.Cents == 0 && !detail[k].Present {
 			n++
 		}
 	}
 	return n
+}
+
+// spineCells sums the spine's facts of the kinds pp.127-140 print into the
+// cells of its own grain, keyed as cuts-tie-along-the-lattice keys them.
+func spineCells(facts []fact.Fact) map[structure.Key]structure.Sum {
+	out := map[structure.Key]structure.Sum{}
+	for i := range facts {
+		f := &facts[i]
+		if f.Scope != spineScope || !slices.Contains(revenueDetailKinds, f.Kind) {
+			continue
+		}
+		k := structure.KeyOf(f, spineGrain)
+		c := out[k]
+		c.Cents += f.AmountCents
+		c.Present = true
+		out[k] = c
+	}
+	return out
+}
+
+// reconciledColumns splits the (fiscal year, basis) columns the two sides
+// carry into the ones this check reconciles and the ones it cannot.
+//
+// THE SPINE DECIDES, and the detail does not get a say: an intersection would
+// let the detail opt out of a column by dropping it. A spine column with no
+// detail behind it is a gap in the MAPPING, which this check exists for; a
+// detail column with no spine column is a gap in the DOCUMENT -- pp.66-67
+// print no actual or revised column -- and is returned separately so the
+// summary can name it rather than leave a reader counting facts to guess.
+func reconciledColumns(detail, spine map[structure.Key]structure.Sum) (reconcile, unmatched map[string]bool) {
+	reconcile = map[string]bool{}
+	for k := range spine {
+		reconcile[k.Column()] = true
+	}
+	unmatched = map[string]bool{}
+	for k := range detail {
+		if col := k.Column(); !reconcile[col] {
+			unmatched[col] = true
+		}
+	}
+	return reconcile, unmatched
+}
+
+// compareCells is the comparison itself: every key either side produced,
+// inside the columns the spine publishes, with the three ways a cell can
+// disagree told apart because they need different fixes.
+//
+// THE UNION, NOT THE DETAIL'S KEYS. Iterating only the keys the DETAIL produces
+// would make a dropped rule invisible: delete a whole block and its category
+// vanishes from the detail side entirely, so a detail-keyed loop compares
+// nothing and reports green. A spine key with no detail counterpart is a
+// FAILURE.
+func compareCells(detail, spine map[structure.Key]structure.Sum, reconcile map[string]bool,
+	scope string, exempt func(structure.Key) bool) cellComparison {
+	var out cellComparison
+	for _, k := range unionKeys(detail, spine) {
+		if !reconcile[k.Column()] {
+			continue
+		}
+		if exempt != nil && exempt(k) {
+			out.exempt++
+			continue
+		}
+		d, sp := detail[k], spine[k]
+		out.subjects++
+		if !d.Present || !sp.Present {
+			out.oneSided++
+		}
+		if d.Cents == sp.Cents {
+			continue
+		}
+		switch {
+		case !d.Present:
+			out.findings = append(out.findings, finding(k.String(),
+				"the spine publishes %s here and the detail has no such row at all; a "+
+					"category the schedule stopped printing is a rule that was dropped, "+
+					"not a cell that is empty", structure.Cents(sp.Cents)))
+		case !sp.Present:
+			out.findings = append(out.findings, finding(k.String(),
+				"the detail publishes %s here and the spine has no such cell; %q must "+
+					"decompose the spine, never extend it", structure.Cents(d.Cents), scope))
+		default:
+			out.findings = append(out.findings, finding(k.String(),
+				"the detail sums to %s and the spine publishes %s, a difference of %s; "+
+					"these are the same money decomposed two ways and must tie to the cent",
+				structure.Cents(d.Cents), structure.Cents(sp.Cents), structure.Cents(d.Cents-sp.Cents)))
+		}
+	}
+	return out
+}
+
+// cellComparison is what one pass over the union produced. oneSided is
+// carried because a key only one side produced ties when the other is zero,
+// a real agreement and not a vacancy; exempt is separate again, since an
+// exempted cell was neither compared nor agreed at zero but handed to another
+// check.
+type cellComparison struct {
+	subjects int
+	oneSided int
+	exempt   int
+	findings []Finding
+}
+
+// unionKeys is every key either side produced, in a stable order.
+func unionKeys(a, b map[structure.Key]structure.Sum) []structure.Key {
+	keys := make([]structure.Key, 0, len(a)+len(b))
+	for k := range a {
+		keys = append(keys, k)
+	}
+	for k := range b {
+		if _, dup := a[k]; !dup {
+			keys = append(keys, k)
+		}
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		if keys[i].Year != keys[j].Year {
+			return keys[i].Year < keys[j].Year
+		}
+		if keys[i].Basis != keys[j].Basis {
+			return keys[i].Basis < keys[j].Basis
+		}
+		return keys[i].Coords < keys[j].Coords
+	})
+	return keys
 }

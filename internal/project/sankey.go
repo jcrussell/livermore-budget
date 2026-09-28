@@ -962,12 +962,18 @@ var (
 // What a reader is owed is not our arithmetic but the knowledge that the city's
 // own book disagrees with itself here.
 //
-// PrintedBy and ImpliedBy are separate so a derived figure is never cited as
-// a printed one. The caveat is emitted only when the graph draws Published;
-// TestContestedTotalsAreStillContested and
-// TestContestedTotalsAgreeWithTheirCheckException keep an entry from going
-// stale.
+// THE FIGURES ARE THE EXCEPTION'S. Column, FundGroup, Published, Elsewhere and
+// Bead are read off the structure.Exception named by Exception -- a fund-group
+// cell held apart against the spine, both sides printed -- so the caveat and
+// cuts-tie-along-the-lattice cannot name two different pairs. What this
+// declaration adds is the prose: PrintedBy and ImpliedBy are separate so a
+// derived figure is never cited as a printed one. The caveat is emitted only
+// when the graph draws Published; TestContestedTotalsAreStillContested keeps an
+// entry from going stale.
 type contestedTotal struct {
+	// Exception names the structure.BudgetBookExceptions entry the figures
+	// are read from.
+	Exception string
 	Column    Column
 	FundGroup string
 	// Published is the spine's figure for the group, in cents, and is what this
@@ -985,32 +991,51 @@ type contestedTotal struct {
 	Bead string
 }
 
-// contestedTotals is the whole list. One entry, and it should stay short: an
-// entry here is a place the city's book contradicts itself that we publish
-// anyway, and a long list would mean the corpus had stopped being reconcilable
-// rather than that this mechanism had become useful.
+// contestedTotals is the whole list, in the words a reader meets. One entry,
+// and it should stay short: an entry here is a place the city's book
+// contradicts itself that we publish anyway, and a long list would mean the
+// corpus had stopped being reconcilable rather than that this mechanism had
+// become useful.
 var contestedTotals = []contestedTotal{{
-	Column:     Column{FiscalYear: 2027, Basis: mapping.BasisAdopted},
-	FundGroup:  "internal-service",
-	Published:  2654451500,
-	Elsewhere:  2629451500,
+	Exception:  "p0067-internal-service-is-250000-high-by-fund-group",
 	SpinePages: "pp.66-67",
 	Row:        "Services & Supplies",
 	PrintedBy:  "p0183, p0075, p0205 and p0209",
 	ImpliedBy: "p0061 prints $26,906,515, which is that figure plus the $612,000 " +
 		"transfer to the CIP it prints beside it, and the 78 rows of pp.85-125 sum to it",
-	Bead: "fisc-av0w",
 }}
 
-// ContestedTotals is the declared list, exported so a test over the COMMITTED
-// corpus can assert every entry still describes what that corpus draws.
+// ContestedTotals is the declared list with each entry's figures filled from
+// the exception it names, exported so a test over the COMMITTED corpus can
+// assert every entry still describes what that corpus draws.
 //
-// A fresh slice per call, as Registry does, so no caller can append to the
-// published set. Exported for the same reason ConstraintTierCaveat is: an
-// assertion should compare against THIS declaration rather than against a
-// second copy of the same figures, because two copies agreeing is not the claim
-// worth making.
-func ContestedTotals() []contestedTotal { return slices.Clone(contestedTotals) }
+// It panics on an entry naming no exception, or one that is not a single
+// fund-group cell against the reference: both are this package's declarations
+// and a corpus cannot reach them.
+func ContestedTotals() []contestedTotal {
+	byName := map[string]structure.Exception{}
+	for _, e := range structure.BudgetBookExceptions() {
+		byName[e.Name] = e
+	}
+	reference, _ := structure.Reference(structure.AllCuts())
+	out := make([]contestedTotal, 0, len(contestedTotals))
+	for _, c := range contestedTotals {
+		e, ok := byName[c.Exception]
+		if !ok {
+			panic(fmt.Sprintf("project: contested total names exception %q, which is not declared", c.Exception))
+		}
+		if e.Against != reference.Name || e.At != structure.LevelFundGroup || len(e.Cells) != 1 {
+			panic(fmt.Sprintf("project: contested total names exception %q, which is not one fund-group cell against %q", c.Exception, reference.Name))
+		}
+		p := e.Cells[0]
+		c.Column = Column{FiscalYear: p.Year, Basis: mapping.Basis(p.Basis)}
+		c.FundGroup = p.Coords[structure.AxisFundGroup]
+		c.Published, c.Elsewhere = p.Against.Cents, p.Cut.Cents
+		c.Bead = e.Bead
+		out = append(out, c)
+	}
+	return out
+}
 
 // GroupExpenditure is what a graph draws as one fund group's expenditure,
 // exported alongside ContestedTotals because an assertion about an entry needs
@@ -1038,7 +1063,7 @@ func caveats(h Headline, col Column, links []Link, cip cipTransfers) []Caveat {
 			break
 		}
 	}
-	for _, c := range contestedTotals {
+	for _, c := range ContestedTotals() {
 		if cav, ok := contestedCaveat(c, col, links); ok {
 			out = append(out, cav)
 		}

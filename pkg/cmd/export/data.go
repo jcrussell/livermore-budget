@@ -12,7 +12,6 @@ import (
 	yaml "go.yaml.in/yaml/v3"
 
 	"github.com/jcrussell/livermore-budget/internal/build"
-	"github.com/jcrussell/livermore-budget/internal/check"
 	"github.com/jcrussell/livermore-budget/internal/export"
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/project"
@@ -446,10 +445,10 @@ func assertPublishedReachable(vs []export.View, built map[string][]byte) error {
 	return nil
 }
 
-// spendingGaps is check.SpendingGaps as the step declares it.
+// spendingGaps is project.SpendingGaps as the step declares it.
 func spendingGaps() map[string]export.Gaps {
 	out := map[string]export.Gaps{}
-	for id, gaps := range check.SpendingGaps() {
+	for id, gaps := range project.SpendingGaps() {
 		for _, g := range gaps {
 			out[id] = append(out[id], export.Gap(g))
 		}
@@ -558,12 +557,12 @@ func views(built result) []export.View {
 				ResidualGrain: "fund",
 				Back:          "All fund groups",
 				Tail:          "funds",
-				// check.ResidualNodes is the check's declaration of which spine endpoints
-				// pp.127-140 and 167-170 cannot decompose, shipped rather than respelled so the
-				// client's set is one something verifies. Each such ribbon is re-pointed past
-				// the group onto one derived node, so the group takes in exactly what its funds
-				// take in.
-				Residual: check.ResidualNodes(),
+				// project.FundFlowsResidual is derived from the cuts and exceptions
+				// internal/structure declares, shipped rather than respelled so the
+				// client's set is one thing. Each such ribbon is re-pointed past the group
+				// onto one derived node, so the group takes in exactly what its funds take
+				// in.
+				Residual: project.FundFlowsResidual(),
 				// The client's tests pin these figures per column: fund/100 is about half the
 				// fund column, and the smallest fund under 1/30,000 of it, in both years.
 				Description: "The revenue categories on the left are the citywide chart's " +
@@ -668,7 +667,7 @@ func views(built result) []export.View {
 	//
 	// Role object_category closes transfers/out and the two fund-balance rows,
 	// which pp.85-125 do not decompose. The cap engages: services-and-supplies
-	// reaches 29 divisions. The gap is check.SpendingGaps, read not copied:
+	// reaches 29 divisions. The gap is project.SpendingGaps, read not copied:
 	// FY2026-27's services-and-supplies falls 250,000 short of p0067's figure
 	// (fisc-av0w), drawn as a mark of its own.
 	if opensInto(export.PrimaryProjection, project.DepartmentSpendingProjection, projections) {
