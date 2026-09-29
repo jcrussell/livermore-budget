@@ -107,7 +107,7 @@ func (d *departmentFunding) Document(facts []fact.Fact, o Options) (*Document, e
 		if srcErr != nil {
 			return nil, srcErr
 		}
-		dst := endpoint{id: PrefixDepartment + k.department, role: roleWholeDepartment}
+		dst := endpoint{id: PrefixDepartment + k.department, role: RoleWholeDepartment}
 		if d.Labels != nil {
 			if l, ok := d.Labels.DepartmentLabel(k.department); !ok || l == "" {
 				return nil, fmt.Errorf("department-funding: data/departments.yaml lists no "+
@@ -225,9 +225,9 @@ func netDepartmentFunding(facts []fact.Fact) (map[fundingCell]*cellSum, error) {
 
 // fundEndpoint is the paying end of a cell, at the drill-down's id and role.
 func (d *departmentFunding) fundEndpoint(number int) (endpoint, error) {
-	role := roleFund
+	role := RoleFund
 	if number == generalFund {
-		role = roleGeneralFund
+		role = RoleGeneralFund
 	}
 	e := endpoint{id: PrefixFund + strconv.Itoa(number), role: role}
 	if d.Labels == nil {
@@ -279,7 +279,7 @@ func (d *departmentFunding) addFundGroups(nodes map[string]Node) error {
 				"on demand", id, p)
 		}
 		nodes[p] = Node{ID: p, Label: d.label(endpoint{id: p}), Tier: endpoint{id: p}.tier(),
-			Role: roleFundGroup}
+			Role: RoleFundGroup}
 	}
 	return nil
 }

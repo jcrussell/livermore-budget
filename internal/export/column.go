@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/schema"
 )
 
@@ -329,10 +330,6 @@ func tiersOf(nodes []ColumnNode) []ColumnTier {
 	return out
 }
 
-// roleFundGroup is [ColumnNode.Role] on a node that IS a fund group, held to
-// schema/column.schema.json's `role` enum by TestRoleFundGroupIsOneOfTheSchemasRoles.
-const roleFundGroup = "fund_group"
-
 // fundGroupDisplayOrder is the fund column top to bottom, by fund-type slug,
 // and with it the categorical slot each group wears.
 //
@@ -353,14 +350,14 @@ var fundGroupDisplayOrder = []string{
 func fundGroupsOf(nodes []ColumnNode) ([]ColumnFundGroup, error) {
 	out := []ColumnFundGroup{}
 	for _, n := range nodes {
-		if n.Role != roleFundGroup {
+		if n.Role != project.RoleFundGroup {
 			continue
 		}
 		// An id with no form is refused: the whole id as a slug would draw
 		// the group muted with no other symptom.
 		cut := strings.Index(n.ID, "/")
 		if cut < 0 || cut == len(n.ID)-1 {
-			return nil, fmt.Errorf("node %q is role %s and its id names no fund type", n.ID, roleFundGroup)
+			return nil, fmt.Errorf("node %q is role %s and its id names no fund type", n.ID, project.RoleFundGroup)
 		}
 		out = append(out, ColumnFundGroup{ID: n.ID, Slug: n.ID[cut+1:]})
 	}

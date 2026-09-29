@@ -82,25 +82,6 @@ func TestOptionsValidate(t *testing.T) {
 	}
 }
 
-// TestOptionsValidateAcceptsEveryBasis keeps Validate honest about the enum:
-// adding a basis to internal/mapping without adding it here would silently
-// make that basis unprojectable.
-func TestOptionsValidateAcceptsEveryBasis(t *testing.T) {
-	for _, b := range []mapping.Basis{
-		mapping.BasisAdopted, mapping.BasisRevised, mapping.BasisActual,
-		mapping.BasisAudited, mapping.BasisProjected,
-	} {
-		o := Options{
-			Columns: []Column{{FiscalYear: 2026, Basis: b}},
-			Scopes:  []string{"all-funds-gross"},
-			Version: "dev",
-		}
-		if err := o.validate(); err != nil {
-			t.Errorf("basis %q: got %v, want no error", b, err)
-		}
-	}
-}
-
 func TestRegistry(t *testing.T) {
 	got := Registry(nil)
 	// The names are asserted rather than the count alone, and in order: the

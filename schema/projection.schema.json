@@ -23,7 +23,7 @@
         "generated_by": { "type": "string", "minLength": 1 },
         "fiscal_year": { "type": "integer", "minimum": 1900 },
         "fiscal_year_label": { "type": "string", "minLength": 1 },
-        "basis": { "enum": ["actual", "revised", "adopted", "projected"] },
+        "basis": { "$ref": "https://jcrussell.github.io/livermore-budget/schema/enums.schema.json#/$defs/basis" },
         "scopes": {
           "description": "The schedule set the facts came from, in the projection's own order; one entry on most documents, three on fund-flows.",
           "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 }
@@ -109,7 +109,7 @@
             "description": "Integer cents as printed, signed: a contra row, printed in parentheses, arrives negative.",
             "type": "integer"
           },
-          "kind": { "enum": ["external", "internal_transfer", "internal_service", "fund_balance"] },
+          "kind": { "$ref": "https://jcrussell.github.io/livermore-budget/schema/enums.schema.json#/$defs/link_kind" },
           "transfer_id": { "type": "string" },
           "fact_ids": {
             "type": "array",

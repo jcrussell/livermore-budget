@@ -617,14 +617,14 @@ func TestNodeTiersAndRoles(t *testing.T) {
 	g := buildGraph(t, spineFacts(t, testYear), testOptions())
 
 	want := map[string][2]any{
-		"revenue/taxes/property":         {tierRevenueSource, roleRevenueSource},
-		"transfers/in":                   {tierRevenueSource, roleTransferIn},
-		NodeFundBalanceDraw:              {tierRevenueSource, roleFundBalanceDraw},
-		"fund-group/general":             {tierFundGroup, roleFundGroup},
-		"expenditure/wages-and-benefits": {tierObjectCategory, roleObjectCategory},
-		"transfers/out":                  {tierObjectCategory, roleTransferOut},
-		"fund-balance/reserve-increase":  {tierObjectCategory, roleReserveIncrease},
-		NodeFundBalanceContribution:      {tierObjectCategory, roleFundBalanceContribution},
+		"revenue/taxes/property":         {tierRevenueSource, RoleRevenueSource},
+		"transfers/in":                   {tierRevenueSource, RoleTransferIn},
+		NodeFundBalanceDraw:              {tierRevenueSource, RoleFundBalanceDraw},
+		"fund-group/general":             {tierFundGroup, RoleFundGroup},
+		"expenditure/wages-and-benefits": {tierObjectCategory, RoleObjectCategory},
+		"transfers/out":                  {tierObjectCategory, RoleTransferOut},
+		"fund-balance/reserve-increase":  {tierObjectCategory, RoleReserveIncrease},
+		NodeFundBalanceContribution:      {tierObjectCategory, RoleFundBalanceContribution},
 	}
 	for id, w := range want {
 		n := nodeByID(t, g, id)

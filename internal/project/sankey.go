@@ -124,28 +124,38 @@ func Endpoints() []string { return slices.Sorted(maps.Keys(endpointTiers)) }
 
 // Node roles, which say what a node is for without the client parsing its id.
 const (
-	roleRevenueSource = "revenue_source"
-	roleRevenueLine   = "revenue_line"
-	roleFundGroup     = "fund_group"
-	roleFund          = "fund"
-	roleGeneralFund   = "general_fund"
-	roleDepartment    = "department"
-	// roleWholeDepartment is the ALL-CAPS tier of data/departments.yaml. It is
-	// not roleDepartment because five slugs name both a department and a
+	RoleRevenueSource = "revenue_source"
+	RoleRevenueLine   = "revenue_line"
+	RoleFundGroup     = "fund_group"
+	RoleFund          = "fund"
+	RoleGeneralFund   = "general_fund"
+	RoleDepartment    = "department"
+	// RoleWholeDepartment is the ALL-CAPS tier of data/departments.yaml. It is
+	// not RoleDepartment because five slugs name both a department and a
 	// division beneath it.
-	roleWholeDepartment = "whole_department"
-	roleObjectCategory  = "object_category"
-	roleTransferIn      = "transfer_in"
-	roleTransferOut     = "transfer_out"
+	RoleWholeDepartment = "whole_department"
+	RoleObjectCategory  = "object_category"
+	RoleTransferIn      = "transfer_in"
+	RoleTransferOut     = "transfer_out"
 	// RoleTransferSource and RoleTransferSink are the payer's and the
 	// receiver's end of one printed movement in [transfersByFund], distinct
 	// from the spine's single flow endpoints.
 	RoleTransferSource          = "transfer_source"
 	RoleTransferSink            = "transfer_destination"
-	roleReserveIncrease         = "reserve_increase"
-	roleFundBalanceDraw         = "fund_balance_draw"
-	roleFundBalanceContribution = "fund_balance_contribution"
+	RoleReserveIncrease         = "reserve_increase"
+	RoleFundBalanceDraw         = "fund_balance_draw"
+	RoleFundBalanceContribution = "fund_balance_contribution"
 )
+
+// Roles is every node role a document may carry.
+func Roles() []string {
+	return []string{
+		RoleRevenueSource, RoleRevenueLine, RoleFundGroup, RoleFund, RoleGeneralFund,
+		RoleDepartment, RoleWholeDepartment, RoleObjectCategory, RoleTransferIn,
+		RoleTransferOut, RoleTransferSource, RoleTransferSink, RoleReserveIncrease,
+		RoleFundBalanceDraw, RoleFundBalanceContribution,
+	}
+}
 
 // Node id prefixes. A node id is a data/taxonomy.yaml or data/funds.yaml slug
 // under the prefix that says which axis it is on, because the same word can be
@@ -563,7 +573,7 @@ func (s *sankey) Document(facts []fact.Fact, o Options) (*Document, error) {
 
 	for _, k := range sortedCellKeys(cells) {
 		c := cells[k]
-		group := endpoint{id: PrefixFundGroup + k.fundGroup, role: roleFundGroup}
+		group := endpoint{id: PrefixFundGroup + k.fundGroup, role: RoleFundGroup}
 
 		var src, dst endpoint
 		var kind LinkKind
@@ -573,24 +583,24 @@ func (s *sankey) Document(facts []fact.Fact, o Options) (*Document, error) {
 		switch k.kind {
 		case mapping.KindRevenue:
 			src = endpoint{id: PrefixRevenue + k.category, slug: k.category,
-				role: roleRevenueSource}
+				role: RoleRevenueSource}
 			dst = group
 			kind = boundaryKind(k.fundGroup)
 
 		case mapping.KindExpenditure:
 			src = group
 			dst = endpoint{id: PrefixExpenditure + k.category, slug: k.category,
-				role: roleObjectCategory}
+				role: RoleObjectCategory}
 			kind = boundaryKind(k.fundGroup)
 
 		case mapping.KindTransferIn:
-			src = endpoint{id: k.category, slug: k.category, role: roleTransferIn}
+			src = endpoint{id: k.category, slug: k.category, role: RoleTransferIn}
 			dst = group
 			kind = KindInternalTransfer
 
 		case mapping.KindTransferOut:
 			src = group
-			dst = endpoint{id: k.category, slug: k.category, role: roleTransferOut}
+			dst = endpoint{id: k.category, slug: k.category, role: RoleTransferOut}
 			kind = KindInternalTransfer
 
 		case mapping.KindFundBalance:
@@ -606,16 +616,16 @@ func (s *sankey) Document(facts []fact.Fact, o Options) (*Document, error) {
 				isDerived = true
 				kind = KindFundBalance
 				if c.cents < 0 {
-					src = endpoint{id: NodeFundBalanceDraw, role: roleFundBalanceDraw}
+					src = endpoint{id: NodeFundBalanceDraw, role: RoleFundBalanceDraw}
 					dst = group
 					value = -c.cents
 				} else {
 					src = group
-					dst = endpoint{id: NodeFundBalanceContribution, role: roleFundBalanceContribution}
+					dst = endpoint{id: NodeFundBalanceContribution, role: RoleFundBalanceContribution}
 				}
 			default:
 				src = group
-				dst = endpoint{id: k.category, slug: k.category, role: roleReserveIncrease}
+				dst = endpoint{id: k.category, slug: k.category, role: RoleReserveIncrease}
 				kind = KindFundBalance
 			}
 

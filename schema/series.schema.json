@@ -31,7 +31,7 @@
             "properties": {
               "fiscal_year": { "type": "integer", "minimum": 1900 },
               "fiscal_year_label": { "type": "string", "minLength": 1 },
-              "basis": { "enum": ["actual", "revised", "adopted", "projected", "audited"] },
+              "basis": { "$ref": "https://jcrussell.github.io/livermore-budget/schema/enums.schema.json#/$defs/basis" },
               "comparable_group": {
                 "description": "Which columns may be read against each other. A basis is not a comparability claim on its own: the budget book's actual, revised and adopted columns are three groups.",
                 "type": "string",
@@ -82,7 +82,7 @@
           },
           "fund_name": { "type": "string" },
           "fund_group": { "type": "string" },
-          "kind": { "enum": ["revenue", "expenditure", "transfer_in", "transfer_out", "fund_balance"] },
+          "kind": { "$ref": "https://jcrussell.github.io/livermore-budget/schema/enums.schema.json#/$defs/kind" },
           "category": { "type": "string" },
           "category_label": { "type": "string" },
           "points": {
@@ -98,7 +98,7 @@
               "additionalProperties": false,
               "properties": {
                 "fiscal_year": { "type": "integer", "minimum": 1900 },
-                "basis": { "enum": ["actual", "revised", "adopted", "projected", "audited"] },
+                "basis": { "$ref": "https://jcrussell.github.io/livermore-budget/schema/enums.schema.json#/$defs/basis" },
                 "amount_cents": { "type": "integer" },
                 "fact_id": { "$ref": "https://jcrussell.github.io/livermore-budget/schema/fact-id.schema.json" },
                 "doc_id": { "type": "string", "minLength": 1 },

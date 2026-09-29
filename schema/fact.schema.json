@@ -57,24 +57,10 @@
       "minLength": 1
     },
     "kind": {
-      "type": "string",
-      "enum": [
-        "revenue",
-        "expenditure",
-        "transfer_in",
-        "transfer_out",
-        "fund_balance"
-      ]
+      "$ref": "https://jcrussell.github.io/livermore-budget/schema/enums.schema.json#/$defs/kind"
     },
     "basis": {
-      "type": "string",
-      "enum": [
-        "adopted",
-        "revised",
-        "actual",
-        "audited",
-        "projected"
-      ]
+      "$ref": "https://jcrussell.github.io/livermore-budget/schema/enums.schema.json#/$defs/basis"
     },
     "scope": {
       "type": "string",
@@ -111,21 +97,11 @@
     },
     "sign": {
       "description": "How this row relates to its category. NOT an instruction to negate: amount_cents is always the figure as printed.",
-      "type": "string",
-      "enum": [
-        "positive",
-        "contra",
-        "netted"
-      ]
+      "$ref": "https://jcrussell.github.io/livermore-budget/schema/enums.schema.json#/$defs/sign"
     },
     "units": {
       "description": "The unit the PAGE printed in. amount_cents is always cents regardless.",
-      "type": "string",
-      "enum": [
-        "dollars",
-        "thousands",
-        "millions"
-      ]
+      "$ref": "https://jcrussell.github.io/livermore-budget/schema/enums.schema.json#/$defs/units"
     },
     "amount_cents": {
       "description": "Integer cents. No float reaches this field; see AGENTS.md, \"Provenance invariants\".",

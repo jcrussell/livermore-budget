@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
+	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 	"github.com/jcrussell/livermore-budget/schema"
 )
@@ -1239,10 +1240,6 @@ func dollars(cents int64) string {
 // gate red rather than quietly switching it off.
 const UnauditedCaveatID = "statistical-section-unaudited"
 
-// basisAudited is mapping.BasisAudited's value, duplicated here for
-// [UnauditedCaveatID]'s reason and pinned by TestBasisAuditedIsPinnedToTheEnum.
-const basisAudited = "audited"
-
 // basisLabelFor is the word a column chip and a cell tooltip print for a basis.
 //
 // It is deliberately NOT the basis itself. Basis is component 7 of fact.MakeID,
@@ -1259,7 +1256,7 @@ const basisAudited = "audited"
 // column on some other basis, and relabelling that one would be the same defect
 // pointing the other way.
 func basisLabelFor(caveats []caveatMeta, basis string) string {
-	if basis != basisAudited {
+	if basis != string(mapping.BasisAudited) {
 		return basis
 	}
 	for _, c := range caveats {

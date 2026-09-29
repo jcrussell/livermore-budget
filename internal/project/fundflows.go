@@ -726,11 +726,11 @@ func (*fundFlows) revenueEndpoint(k revKey) (endpoint, error) {
 					"cell with no line has no source end")
 		}
 		return endpoint{id: PrefixRevenueLine + k.line, slug: k.line,
-			role:   roleRevenueLine,
+			role:   RoleRevenueLine,
 			parent: PrefixRevenue + k.category}, nil
 	case mapping.KindTransferIn:
 		return endpoint{id: NodeTransfersIn, slug: k.category,
-			role: roleTransferIn}, nil
+			role: RoleTransferIn}, nil
 	default:
 		return endpoint{}, cmdutil.WithHint(
 			fmt.Errorf("fund-flows: kind %q has no source end in this document", k.kind),
@@ -749,9 +749,9 @@ func (f *fundFlows) fundEndpoint(number int) (endpoint, error) {
 			"a fund node's parent is its type, so a fund the registry does not list "+
 				"cannot be placed in the hierarchy")
 	}
-	role := roleFund
+	role := RoleFund
 	if number == generalFund {
-		role = roleGeneralFund
+		role = RoleGeneralFund
 	}
 	return endpoint{id: PrefixFund + strconv.Itoa(number), role: role}, nil
 }
@@ -761,7 +761,7 @@ func (f *fundFlows) divisionEndpoint(division string) (endpoint, error) {
 		return endpoint{}, fmt.Errorf("fund-flows: data/departments.yaml lists no division %q, "+
 			"so the row has no division to draw", division)
 	}
-	return endpoint{id: PrefixDept + division, role: roleDepartment}, nil
+	return endpoint{id: PrefixDept + division, role: RoleDepartment}, nil
 }
 
 // objectEndpoint is a tier-5 node, and its id carries the DIVISION.
@@ -769,7 +769,7 @@ func (f *fundFlows) divisionEndpoint(division string) (endpoint, error) {
 // A bare expenditure/<object> node would need one parent per division.
 func (*fundFlows) objectEndpoint(division, category string) endpoint {
 	return endpoint{id: PrefixExpenditure + division + "/" + category, slug: category,
-		role: roleObjectCategory}
+		role: RoleObjectCategory}
 }
 
 // fundObjectEndpoint is a tier-5 node of pp.173-183, under the fund that
@@ -778,7 +778,7 @@ func (*fundFlows) objectEndpoint(division, category string) endpoint {
 // window.
 func fundObjectEndpoint(fund int, category string) endpoint {
 	return endpoint{id: PrefixExpenditure + "fund/" + strconv.Itoa(fund) + "/" + category,
-		slug: category, role: roleObjectCategory,
+		slug: category, role: RoleObjectCategory,
 		parent: PrefixFund + strconv.Itoa(fund)}
 }
 
@@ -852,12 +852,12 @@ func (f *fundFlows) addParents(nodes map[string]Node) error {
 		switch {
 		case strings.HasPrefix(p.parent, PrefixFundGroup):
 			nodes[p.parent] = Node{ID: p.parent, Label: f.label(endpoint{id: p.parent}),
-				Tier: endpoint{id: p.parent}.tier(), Role: roleFundGroup}
+				Tier: endpoint{id: p.parent}.tier(), Role: RoleFundGroup}
 		case strings.HasPrefix(p.parent, PrefixRevenue):
 			slug := p.parent[len(PrefixRevenue):]
 			nodes[p.parent] = Node{ID: p.parent,
 				Label: f.label(endpoint{id: p.parent, slug: slug}),
-				Tier:  endpoint{id: p.parent}.tier(), Role: roleRevenueSource}
+				Tier:  endpoint{id: p.parent}.tier(), Role: RoleRevenueSource}
 		default:
 			return fmt.Errorf("fund-flows: node %q is parented to %q, which this document "+
 				"does not build and cannot infer -- only a fund group and a revenue "+

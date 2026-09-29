@@ -155,8 +155,8 @@ func TestADepartmentIsNotADivision(t *testing.T) {
 		t.Errorf("the department node reads %q, want %q: the fixture gives the division the "+
 			"other words on purpose", got.Label, "City Council")
 	}
-	if got.Role != roleWholeDepartment {
-		t.Errorf("the department node's role is %q, want %q", got.Role, roleWholeDepartment)
+	if got.Role != RoleWholeDepartment {
+		t.Errorf("the department node's role is %q, want %q", got.Role, RoleWholeDepartment)
 	}
 	// A department is parentless: it is paid for by several funds.
 	if got.Parent != "" {

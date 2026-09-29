@@ -1,8 +1,6 @@
 package export
 
 import (
-	"encoding/json"
-	"io/fs"
 	"reflect"
 	"slices"
 	"sort"
@@ -12,6 +10,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
+	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/schema"
 )
 
@@ -21,10 +20,10 @@ import (
 func TestFundGroupsAreOrderedAndOpenEnded(t *testing.T) {
 	nodes := []ColumnNode{
 		{ID: "revenue/taxes", Role: "revenue_source"},
-		{ID: "fund-group/debt-service", Role: roleFundGroup},
-		{ID: "fund-group/permanent", Role: roleFundGroup},
-		{ID: "fund-group/general", Role: roleFundGroup},
-		{ID: "fund-group/aardvark", Role: roleFundGroup},
+		{ID: "fund-group/debt-service", Role: project.RoleFundGroup},
+		{ID: "fund-group/permanent", Role: project.RoleFundGroup},
+		{ID: "fund-group/general", Role: project.RoleFundGroup},
+		{ID: "fund-group/aardvark", Role: project.RoleFundGroup},
 		{ID: "fund/100", Role: "fund"},
 	}
 	got, err := fundGroupsOf(nodes)
@@ -49,19 +48,9 @@ func TestFundGroupsAreOrderedAndOpenEnded(t *testing.T) {
 // that is really a whole id draws muted with no other symptom.
 func TestAFundGroupWithNoFundTypeInItsIDIsRefused(t *testing.T) {
 	for _, id := range []string{"fundgroup", "fund-group/"} {
-		if _, err := fundGroupsOf([]ColumnNode{{ID: id, Role: roleFundGroup}}); err == nil {
+		if _, err := fundGroupsOf([]ColumnNode{{ID: id, Role: project.RoleFundGroup}}); err == nil {
 			t.Errorf("fundGroupsOf accepted %q as a fund group; it names no fund type", id)
 		}
-	}
-}
-
-// TestRoleFundGroupIsOneOfTheSchemasRoles holds this package's copy of the
-// value to schema/column.schema.json's role enum.
-func TestRoleFundGroupIsOneOfTheSchemasRoles(t *testing.T) {
-	roles := schemaRoles(t)
-	if !slices.Contains(roles, roleFundGroup) {
-		t.Errorf("%s's role enum does not list %q, which this package selects fund groups by: %v",
-			schema.Column, roleFundGroup, roles)
 	}
 }
 
@@ -96,36 +85,6 @@ func TestTheSchemaStatesWhatAColumnCarries(t *testing.T) {
 			"Every name a column carries is a property of the schema, and only those.",
 			schema.Column, diff)
 	}
-}
-
-// schemaRoles is the `role` enum column.schema.json declares for a node.
-func schemaRoles(t *testing.T) []string {
-	t.Helper()
-	raw, err := fs.ReadFile(schema.FS(), schema.Column)
-	if err != nil {
-		t.Fatalf("read %s: %v", schema.Column, err)
-	}
-	var doc struct {
-		Properties struct {
-			Nodes struct {
-				Items struct {
-					Properties struct {
-						Role struct {
-							Enum []string `json:"enum"`
-						} `json:"role"`
-					} `json:"properties"`
-				} `json:"items"`
-			} `json:"nodes"`
-		} `json:"properties"`
-	}
-	if err = json.Unmarshal(raw, &doc); err != nil {
-		t.Fatalf("parse %s: %v", schema.Column, err)
-	}
-	got := doc.Properties.Nodes.Items.Properties.Role.Enum
-	if len(got) == 0 {
-		t.Fatalf("%s states no role enum, so this test compares nothing", schema.Column)
-	}
-	return got
 }
 
 // TestAReductionsSentenceSurvivesTheFoldIntoAColumn: the packager decodes into

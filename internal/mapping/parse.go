@@ -446,7 +446,7 @@ func validateRule(r *Rule, errf errFunc) error {
 	if !r.Kind.valid() {
 		return errf(r.ID, "kind", "got %q, want one of %s", r.Kind, kindList())
 	}
-	if !r.Basis.valid() {
+	if !r.Basis.Valid() {
 		return errf(r.ID, "basis", "got %q, want one of adopted, revised, actual, "+
 			"audited, projected", r.Basis)
 	}
@@ -745,7 +745,7 @@ func validateRule(r *Rule, errf errFunc) error {
 		// the first.
 		cols := map[Column]bool{}
 		for j, c := range p.Columns {
-			if c.Basis != "" && !c.Basis.valid() {
+			if c.Basis != "" && !c.Basis.Valid() {
 				return errf(r.ID, fmt.Sprintf("parts[page %d].columns[%d].basis", p.Page, j),
 					"got %q", c.Basis)
 			}

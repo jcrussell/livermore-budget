@@ -35,14 +35,7 @@
           "minimum": 1900
         },
         "basis": {
-          "type": "string",
-          "enum": [
-            "adopted",
-            "revised",
-            "actual",
-            "audited",
-            "projected"
-          ]
+          "$ref": "https://jcrussell.github.io/livermore-budget/schema/enums.schema.json#/$defs/basis"
         },
         "label": {
           "type": "string",
@@ -77,24 +70,7 @@
           },
           "role": {
             "description": "What this node is for, so a client never parses its id. The declared set, not the observed one.",
-            "type": "string",
-            "enum": [
-              "department",
-              "fund",
-              "fund_balance_contribution",
-              "fund_balance_draw",
-              "fund_group",
-              "general_fund",
-              "object_category",
-              "reserve_increase",
-              "revenue_line",
-              "revenue_source",
-              "transfer_destination",
-              "transfer_in",
-              "transfer_out",
-              "transfer_source",
-              "whole_department"
-            ]
+            "$ref": "https://jcrussell.github.io/livermore-budget/schema/enums.schema.json#/$defs/role"
           },
           "derived": {
             "type": "boolean"
@@ -295,13 +271,7 @@
                   "type": "integer"
                 },
                 "kind": {
-                  "type": "string",
-                  "enum": [
-                    "external",
-                    "internal_transfer",
-                    "internal_service",
-                    "fund_balance"
-                  ]
+                  "$ref": "https://jcrussell.github.io/livermore-budget/schema/enums.schema.json#/$defs/link_kind"
                 },
                 "transfer_id": {
                   "type": "string"

@@ -138,13 +138,13 @@ const (
 	BasisProjected Basis = "projected"
 )
 
-func (b Basis) valid() bool {
-	switch b {
-	case BasisAdopted, BasisRevised, BasisActual, BasisAudited, BasisProjected:
-		return true
-	}
-	return false
-}
+var bases = []Basis{BasisAdopted, BasisRevised, BasisActual, BasisAudited, BasisProjected}
+
+// Bases is every basis a column may be of.
+func Bases() []Basis { return slices.Clone(bases) }
+
+// Valid reports whether b is one of [Bases].
+func (b Basis) Valid() bool { return slices.Contains(bases, b) }
 
 // Sign says how a row relates to its category, and it is never an instruction
 // to negate: AmountCents is always the figure as the document printed it.
@@ -187,9 +187,12 @@ const (
 	SignNetted Sign = "netted"
 )
 
-func (s Sign) valid() bool {
-	return s == "" || s == SignPositive || s == SignContra || s == SignNetted
-}
+var signs = []Sign{SignPositive, SignContra, SignNetted}
+
+// Signs is every sign a row may declare; a row declaring none is positive.
+func Signs() []Sign { return slices.Clone(signs) }
+
+func (s Sign) valid() bool { return s == "" || slices.Contains(signs, s) }
 
 // File is one rule file, covering one source document.
 type File struct {

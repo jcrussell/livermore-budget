@@ -24,6 +24,12 @@ func NamesDeep(name string) ([]string, error) {
 }
 
 func namesIn(name string, seen map[string]bool) ([]string, error) {
+	return namesAt(name, "", seen)
+}
+
+// namesAt is [namesIn] at a JSON pointer into the file, as a $ref's fragment
+// names one of its $defs.
+func namesAt(name, pointer string, seen map[string]bool) ([]string, error) {
 	raw, err := fs.ReadFile(files, name)
 	if err != nil {
 		return nil, fmt.Errorf("reading schema %s: %w", name, err)
@@ -31,6 +37,16 @@ func namesIn(name string, seen map[string]bool) ([]string, error) {
 	var doc map[string]any
 	if err = json.Unmarshal(raw, &doc); err != nil {
 		return nil, fmt.Errorf("parsing schema %s: %w", name, err)
+	}
+	for _, key := range strings.Split(strings.TrimPrefix(pointer, "/"), "/") {
+		if key == "" {
+			continue
+		}
+		next, ok := doc[key].(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf("schema %s has nothing at %s", name, pointer)
+		}
+		doc = next
 	}
 	return names(doc, "", seen)
 }
@@ -40,14 +56,15 @@ func names(node map[string]any, prefix string, seen map[string]bool) ([]string, 
 		if seen == nil {
 			return nil, nil
 		}
-		file := ref[strings.LastIndex(ref, "/")+1:]
+		target, fragment, _ := strings.Cut(ref, "#")
+		file := target[strings.LastIndex(target, "/")+1:]
 		// A cycle is a stop, not an error.
-		if seen[file] {
+		if seen[ref] {
 			return nil, nil
 		}
-		seen[file] = true
-		defer delete(seen, file)
-		under, err := namesIn(file, seen)
+		seen[ref] = true
+		defer delete(seen, ref)
+		under, err := namesAt(file, fragment, seen)
 		if err != nil {
 			return nil, err
 		}

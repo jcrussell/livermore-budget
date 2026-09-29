@@ -67,6 +67,9 @@ const (
 	Millions  Units = "millions"
 )
 
+// AllUnits is every scale a source table may be printed in.
+func AllUnits() []Units { return []Units{Dollars, Thousands, Millions} }
+
 // centsPer returns how many cents one unit represents, and the maximum number
 // of decimal places that can be represented exactly at that scale.
 func (u Units) centsPer() (mult int64, maxDecimals int, ok bool) {

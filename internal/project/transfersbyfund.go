@@ -296,9 +296,9 @@ func transferFundEnds(fa *fact.Fact) (transferEnds, error) {
 // transferFundRole marks fund 100 as the General Fund.
 func transferFundRole(number int) string {
 	if number == generalFund {
-		return roleGeneralFund
+		return RoleGeneralFund
 	}
-	return roleFund
+	return RoleFund
 }
 
 // transfersOutEndpoint is the spine's transfers/out, at the spine's id: the
@@ -306,14 +306,14 @@ func transferFundRole(number int) string {
 // its receivers' ends fold into.
 func transfersOutEndpoint() endpoint {
 	return endpoint{id: NodeTransfersOut, slug: NodeTransfersOut,
-		role: roleTransferOut}
+		role: RoleTransferOut}
 }
 
 // transfersInEndpoint is the spine's transfers/in, at the spine's id: it is the
 // node a reader clicks to open this document.
 func transfersInEndpoint() endpoint {
 	return endpoint{id: NodeTransfersIn, slug: NodeTransfersIn,
-		role: roleTransferIn}
+		role: RoleTransferIn}
 }
 
 // pairTransferLegs groups the selected facts into printed figures, refusing any

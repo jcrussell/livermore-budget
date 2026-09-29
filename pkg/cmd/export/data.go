@@ -14,6 +14,7 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/build"
 	"github.com/jcrussell/livermore-budget/internal/export"
 	"github.com/jcrussell/livermore-budget/internal/fact"
+	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/internal/registry"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
@@ -586,7 +587,7 @@ func views(built result) ([]export.View, error) {
 				Key:   "fund",
 				After: []string{"fund-group"},
 				From:  3,
-				Role:  "general_fund",
+				Role:  project.RoleGeneralFund,
 				// [the group | this fund | the divisions that spend it].
 				Keep: []int{2},
 				// Tier 5 is the object categories each division spends on, drawn at the end
@@ -636,7 +637,7 @@ func views(built result) ([]export.View, error) {
 				Key:        "revenue-category",
 				After:      []string{""},
 				From:       0,
-				Role:       "revenue_source",
+				Role:       project.RoleRevenueSource,
 				Projection: project.FundFlowsProjection,
 				// A window centred on the category: its pp.127-140 lines on one side, the fund
 				// groups it reaches on the other. The spine draws tier 2 right of tier 0, so
@@ -673,7 +674,7 @@ func views(built result) ([]export.View, error) {
 				Key:        "object-category",
 				After:      []string{""},
 				From:       5,
-				Role:       "object_category",
+				Role:       project.RoleObjectCategory,
 				Projection: project.DepartmentSpendingProjection,
 				Keep:       []int{2},
 				Tiers:      []int{2, 5, 4},
@@ -709,7 +710,7 @@ func views(built result) ([]export.View, error) {
 				After:      []string{""},
 				From:       0,
 				Side:       export.SideSource,
-				Role:       "transfer_in",
+				Role:       project.RoleTransferIn,
 				Projection: project.TransfersByFundProjection,
 				Tiers:      []int{2, 3},
 				Noun:       "money coming in",
@@ -737,7 +738,7 @@ func views(built result) ([]export.View, error) {
 				Key:        "transfers-out",
 				After:      []string{""},
 				From:       5,
-				Role:       "transfer_out",
+				Role:       project.RoleTransferOut,
 				Projection: project.TransfersOutProjection,
 				Tiers:      []int{3, 5},
 				Caps:       []export.TierCap{{Tier: 3, Cap: 10}, {Tier: 5, Cap: 10}},
@@ -768,7 +769,7 @@ func views(built result) ([]export.View, error) {
 				Key:        "fund-departments",
 				After:      []string{"fund-group"},
 				From:       3,
-				Role:       "fund",
+				Role:       project.RoleFund,
 				Projection: project.DepartmentFundingProjection,
 				// [the group | this fund | the departments it pays for].
 				Keep:  []int{2},
@@ -818,8 +819,8 @@ func views(built result) ([]export.View, error) {
 			Template:   export.HistoryTemplate,
 			Projection: project.ChangesProjection,
 			Sections: []export.Section{
-				{Heading: "Revenues", Kind: "revenue"},
-				{Heading: "Expenditures", Kind: "expenditure"},
+				{Heading: "Revenues", Kind: string(mapping.KindRevenue)},
+				{Heading: "Expenditures", Kind: string(mapping.KindExpenditure)},
 				// CLOSED, unlike the two blocks above, because this heading
 				// names one printed row rather than a category: any other
 				// fund_balance series with no fund group reaching this
@@ -827,7 +828,7 @@ func views(built result) ([]export.View, error) {
 				// display label is p168's own three wrapped lines joined —
 				// the fact's row_label stays the printed tail, and only the
 				// Line cell says the whole phrase.
-				{Heading: "Excess of revenues over (under) expenditures", Kind: "fund_balance",
+				{Heading: "Excess of revenues over (under) expenditures", Kind: string(mapping.KindFundBalance),
 					Rows: map[string]string{
 						"over (under) expenditures": "Excess of Revenues over (under) expenditures",
 					}},
@@ -846,8 +847,8 @@ func views(built result) ([]export.View, error) {
 			Template:   export.HistoryTemplate,
 			Projection: project.FundBalancesProjection,
 			Sections: []export.Section{
-				{Heading: "General Fund", Kind: "fund_balance", FundGroup: "general"},
-				{Heading: "All Other Governmental Funds", Kind: "fund_balance"},
+				{Heading: "General Fund", Kind: string(mapping.KindFundBalance), FundGroup: "general"},
+				{Heading: "All Other Governmental Funds", Kind: string(mapping.KindFundBalance)},
 			},
 			Title: "What Livermore's funds held at each year's end",
 			Lede: "The balance of the General Fund and of all other governmental " +

@@ -39,23 +39,6 @@ func TestTheSchemaStatesWhatThePageConfigCarries(t *testing.T) {
 	}
 }
 
-// TestBasisAuditedIsPinnedToTheEnum keeps [basisLabelFor]'s subject in step with
-// the producer's basis value.
-//
-// This package does not import internal/project, and basisAudited is a second
-// copy of what internal/mapping declares. The copy is what makes the drift
-// silent: if the enum's value moved, basisLabelFor would simply stop matching
-// and both ACFR ten-year pages would go back to printing the word their own
-// caveat withdraws, with every other test still green.
-func TestBasisAuditedIsPinnedToTheEnum(t *testing.T) {
-	if basisAudited != string(mapping.BasisAudited) {
-		t.Errorf("basisAudited is %q but mapping.BasisAudited is %q; basisLabelFor "+
-			"matches on this string, so a mismatch silently stops relabelling the "+
-			"columns the statistical-section-unaudited caveat covers",
-			basisAudited, mapping.BasisAudited)
-	}
-}
-
 // TestBasisLabelForRewritesOnlyTheAuditedBasisOfAnUnauditedDocument covers the
 // three answers separately, because two of them are the ones a careless
 // widening would break: a document without the caveat must keep its word, and a
@@ -70,9 +53,9 @@ func TestBasisLabelForRewritesOnlyTheAuditedBasisOfAnUnauditedDocument(t *testin
 		basis   string
 		want    string
 	}{
-		{name: "audited under the caveat", caveats: unaudited, basis: basisAudited, want: "unaudited"},
-		{name: "audited without the caveat", caveats: other, basis: basisAudited, want: basisAudited},
-		{name: "audited with no caveats at all", caveats: nil, basis: basisAudited, want: basisAudited},
+		{name: "audited under the caveat", caveats: unaudited, basis: string(mapping.BasisAudited), want: "unaudited"},
+		{name: "audited without the caveat", caveats: other, basis: string(mapping.BasisAudited), want: string(mapping.BasisAudited)},
+		{name: "audited with no caveats at all", caveats: nil, basis: string(mapping.BasisAudited), want: string(mapping.BasisAudited)},
 		{name: "another basis under the caveat", caveats: unaudited, basis: "adopted", want: "adopted"},
 	}
 	for _, tc := range cases {

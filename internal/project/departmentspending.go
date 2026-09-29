@@ -105,7 +105,7 @@ func (d *departmentSpending) Document(facts []fact.Fact, o Options) (*Document, 
 		if srcErr != nil {
 			return nil, srcErr
 		}
-		dst := endpoint{id: PrefixDept + k.division, role: roleDepartment}
+		dst := endpoint{id: PrefixDept + k.division, role: RoleDepartment}
 		if d.Labels != nil {
 			if l, ok := d.Labels.DivisionLabel(k.division); !ok || l == "" {
 				return nil, fmt.Errorf("department-spending: data/departments.yaml lists no "+
@@ -214,10 +214,10 @@ func spendingObjectEndpoint(k spendKey) (endpoint, error) {
 	switch k.kind {
 	case mapping.KindExpenditure:
 		return endpoint{id: PrefixExpenditure + k.category, slug: k.category,
-			role: roleObjectCategory}, nil
+			role: RoleObjectCategory}, nil
 	case mapping.KindTransferOut:
 		return endpoint{id: k.category, slug: k.category,
-			role: roleTransferOut}, nil
+			role: RoleTransferOut}, nil
 	default:
 		return endpoint{}, cmdutil.WithHint(
 			fmt.Errorf("department-spending: kind %q has no object end in this document", k.kind),

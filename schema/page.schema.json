@@ -317,8 +317,8 @@
             "description": "Which end of a link the opened node is; absent for the end links point at."
           },
           "role": {
-            "type": "string",
-            "description": "Which nodes at `from` open, by node.role; absent opens every node at the tier."
+            "description": "Which nodes at `from` open, by node.role; absent opens every node at the tier.",
+            "$ref": "https://jcrussell.github.io/livermore-budget/schema/enums.schema.json#/$defs/role"
           },
           "projection": {
             "type": "string",

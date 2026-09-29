@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jcrussell.github.io/livermore-budget/schema/enums.schema.json",
+  "title": "fisc shared vocabularies",
+  "description": "Each closed set a published document draws a value from, stated once; the document schemas $ref these. schema/enums_test.go holds each to the Go set it mirrors, both ways.",
+  "$defs": {
+    "basis": {
+      "description": "Which column of a schedule a figure is from; mapping.Bases.",
+      "type": "string",
+      "enum": ["adopted", "revised", "actual", "audited", "projected"]
+    },
+    "kind": {
+      "description": "What kind of money a fact is; mapping.Kinds.",
+      "type": "string",
+      "enum": ["revenue", "expenditure", "transfer_in", "transfer_out", "fund_balance"]
+    },
+    "sign": {
+      "description": "How a row relates to its category; mapping.Signs.",
+      "type": "string",
+      "enum": ["positive", "contra", "netted"]
+    },
+    "units": {
+      "description": "The scale a page printed in; amount.AllUnits.",
+      "type": "string",
+      "enum": ["dollars", "thousands", "millions"]
+    },
+    "link_kind": {
+      "description": "Whether a link crosses the city's boundary; project.LinkKinds.",
+      "type": "string",
+      "enum": ["external", "internal_transfer", "internal_service", "fund_balance"]
+    },
+    "role": {
+      "description": "What a node is for, so a client never parses its id; project.Roles.",
+      "type": "string",
+      "enum": [
+        "revenue_source", "revenue_line", "fund_group", "fund", "general_fund",
+        "department", "whole_department", "object_category", "transfer_in",
+        "transfer_out", "transfer_source", "transfer_destination", "reserve_increase",
+        "fund_balance_draw", "fund_balance_contribution"
+      ]
+    }
+  }
+}

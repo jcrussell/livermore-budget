@@ -540,11 +540,8 @@ func (o Options) validate() error {
 		if c.FiscalYear <= 0 {
 			return fmt.Errorf("fiscal year is required (got %d)", c.FiscalYear)
 		}
-		switch c.Basis {
-		case mapping.BasisAdopted, mapping.BasisRevised, mapping.BasisActual,
-			mapping.BasisAudited, mapping.BasisProjected:
-		default:
-			return fmt.Errorf("basis %q is not one of adopted, revised, actual, audited, projected", c.Basis)
+		if !c.Basis.Valid() {
+			return fmt.Errorf("basis %q is not one of %v", c.Basis, mapping.Bases())
 		}
 		// A repeated column would be counted twice by anything summing the
 		// document, which is the same doubling the field's doc comment is
