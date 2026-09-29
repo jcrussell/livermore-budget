@@ -1,9 +1,9 @@
 // Package export packages a set of projection documents into a static site.
 //
 // The seam this package sits on is deliberate: it consumes projections as
-// filename stem -> JSON bytes and knows nothing about how they were built.
-// It does not import internal/project, and it does not recompute anything the
-// projection already published. Every figure the page shows — the fiscal year
+// filename stem -> JSON bytes and knows nothing about how they were built. It
+// names what it reads with internal/project's constants and types, and it does
+// not recompute anything the projection already published. Every figure the page shows — the fiscal year
 // label, the headline totals, the caveats, the source pages — is read back out
 // of the projection JSON, because a packager that reassembles metadata is a
 // second implementation of the contract and will drift from the first.
@@ -41,6 +41,7 @@ import (
 	"strings"
 
 	"github.com/jcrussell/livermore-budget/internal/corpus"
+	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 	"github.com/jcrussell/livermore-budget/site"
 )
@@ -48,7 +49,7 @@ import (
 // PrimaryProjection is the spine document, and the default view's projection.
 // It must be among the projections built (ErrNoPrimary). It is NOT required to
 // be the view at IndexPath: which document a site opens on is the caller's.
-const PrimaryProjection = "sankey"
+const PrimaryProjection = project.PublishedProjection
 
 // IndexPath is the view the site opens on. It is the fixed entry point of the
 // output layout, so it is a constant rather than something a caller may move.
@@ -200,8 +201,7 @@ type Options struct {
 	// The list is STATED BY THE CALLER, as YearStems was and for the same
 	// reason: which documents are views of what, and which are years of which,
 	// is the composition root's knowledge. This package lays out what it is
-	// handed and does not import internal/project to find out. `func views()`
-	// lives in pkg/cmd/export.
+	// handed and does not decide it. `func views()` lives in pkg/cmd/export.
 	Views []View
 
 	// Docs are the source documents the page cites, keyed by doc id in the

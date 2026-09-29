@@ -767,44 +767,6 @@ func TestWriteRefusesBadInput(t *testing.T) {
 	}
 }
 
-// TestPrimaryProjectionIsPinnedToTheProducer keeps the packager's idea of which
-// document drives the page in step with the producer's.
-//
-// internal/export does not import internal/project, deliberately, so nothing
-// compiles the two names against each other. They stopped being decorative when
-// each projection began declaring its own slices: published-projection-built now
-// asserts that the projection NAMED here was built at the published triple, so a
-// drift between these two constants would make that check green over a document
-// the page does not render.
-func TestPrimaryProjectionIsPinnedToTheProducer(t *testing.T) {
-	if export.PrimaryProjection != project.PublishedProjection {
-		t.Errorf("export.PrimaryProjection is %q but project.PublishedProjection is %q; "+
-			"internal/export does not import internal/project, so this test is the only "+
-			"thing keeping the page's document in step with the one verify checks -- "+
-			"move both", export.PrimaryProjection, project.PublishedProjection)
-	}
-}
-
-// The packager's schema constant is a deliberate second copy of the producer's:
-// internal/export consumes projections as bytes and does not import
-// internal/project, so nothing but an assertion holds the two together. This
-// test is that assertion, and the reason the duplication is safe rather than
-// merely tolerated. Without it the constants drift the first time
-// project.SchemaVersion moves, and buildSankeyPage then accepts exactly the
-// document its gate exists to refuse — silently, because a schema bump changes
-// what the graph means and not what its keys are called.
-//
-// When project.SchemaVersion moves, move export.SchemaVersion and
-// SCHEMA_VERSION in site/app.js in the same change.
-func TestSchemaVersionIsPinnedToTheProducer(t *testing.T) {
-	if export.SchemaVersion != project.SchemaVersion {
-		t.Errorf("export.SchemaVersion is %d but project.SchemaVersion is %d; "+
-			"internal/export does not import internal/project, so this test is the only "+
-			"thing keeping the packager's gate in step with the producer's stamp — move both",
-			export.SchemaVersion, project.SchemaVersion)
-	}
-}
-
 // The client's copy is the one nothing compiles against, so it is the one that
 // would drift in silence. Read it out of the same embedded asset tree the
 // packager ships and pin the literal.

@@ -320,10 +320,9 @@ it over all 1010 fund-bearing facts.
 
 **One `schema_version` spans both contracts, and it versions the envelope.**
 
-`internal/export`'s copy is pinned to `project.SchemaVersion` by
-`TestSchemaVersionIsPinnedToTheProducer` and the client's `site/app.js` copy by
-`TestClientSchemaVersionIsPinnedToTheProducer`; all three read `1` and a trends
-document at `1` satisfies them. `checkSchemaVersion` is already generic on the
+`internal/export` reads `project.SchemaVersion` itself, and the client's
+`site/app.js` copy is pinned to it by `TestClientSchemaVersionIsPinnedToTheProducer`;
+both read `1` and a trends document at `1` satisfies them. `checkSchemaVersion` is already generic on the
 document stem — `fisc-oxf` made its refusal name the document it read rather
 than the primary one, "a wrong signpost the moment there are two".
 

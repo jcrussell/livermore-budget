@@ -41,21 +41,9 @@ const (
 	CaveatsTemplate    = "caveats.html.tmpl"
 )
 
-// SchemaVersion is the projection schema this packager understands.
-//
-// It is deliberately a second copy of project.SchemaVersion and not an import
-// of it. This package consumes projections as filename stem -> JSON bytes and
-// does not import internal/project (see the package doc); reaching for the
-// producer's constant here to save a line would put back the seam the package
-// exists to hold open.
-//
-// What makes the duplication safe is TestSchemaVersionIsPinnedToTheProducer,
-// which asserts the two are equal. The test is load-bearing, not decorative:
-// without it the constants drift the first time the producer's version moves,
-// and this gate then waves through exactly the document it exists to refuse.
-// The same test pins the client's copy in site/app.js, which nothing compiles
-// against at all.
-const SchemaVersion = 1
+// SchemaVersion is the projection schema this packager understands, the
+// producer's.
+const SchemaVersion = project.SchemaVersion
 
 // ErrSchemaVersion reports a projection whose schema this packager does not
 // understand. It is always wrapped with the versions involved, so callers
@@ -137,15 +125,15 @@ type documentSources struct {
 // decodeSankey is about: headline is the spine's alone, and a trends document
 // carries neither it nor a fiscal year and is not defective for that.
 type projectionMetadata struct {
-	GeneratedBy     string       `json:"generated_by"`
-	FiscalYear      int          `json:"fiscal_year"`
-	FiscalYearLabel string       `json:"fiscal_year_label"`
-	Basis           string       `json:"basis"`
-	Scopes          []string     `json:"scopes"`
-	Currency        string       `json:"currency"`
-	Units           string       `json:"units"`
-	Sources         []sourceMeta `json:"sources"`
-	Headline        headline     `json:"headline"`
+	GeneratedBy     string           `json:"generated_by"`
+	FiscalYear      int              `json:"fiscal_year"`
+	FiscalYearLabel string           `json:"fiscal_year_label"`
+	Basis           string           `json:"basis"`
+	Scopes          []string         `json:"scopes"`
+	Currency        string           `json:"currency"`
+	Units           string           `json:"units"`
+	Sources         []sourceMeta     `json:"sources"`
+	Headline        project.Headline `json:"headline"`
 	Counts          struct {
 		Facts int `json:"facts"`
 		Nodes int `json:"nodes"`
@@ -201,18 +189,6 @@ func caveatRefs(metas []caveatMeta, stem, base string) []caveatRef {
 // caveatAnchor is the one spelling of the fragment, so the page that emits the
 // id and the pages that link to it cannot disagree about its form.
 func caveatAnchor(stem, id string) string { return "caveat-" + stem + "--" + id }
-
-// headline is the projection's published totals, in cents.
-type headline struct {
-	AllFundsGrossRevenueCents     int64 `json:"all_funds_gross_revenue_cents"`
-	AllFundsGrossExpenditureCents int64 `json:"all_funds_gross_expenditure_cents"`
-	ExternalRevenueCents          int64 `json:"external_revenue_cents"`
-	ExternalExpenditureCents      int64 `json:"external_expenditure_cents"`
-	InternalTransferInCents       int64 `json:"internal_transfer_in_cents"`
-	InternalTransferOutCents      int64 `json:"internal_transfer_out_cents"`
-	NaiveExpenditureCents         int64 `json:"naive_expenditure_cents"`
-	TransferResidualCents         int64 `json:"transfer_residual_cents"`
-}
 
 // figure is one stat tile.
 // The JSON tags are load-bearing, not decoration: a figure is rendered by the

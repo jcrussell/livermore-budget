@@ -336,8 +336,6 @@ func TestEveryCaveatSummaryLinksToAnAnchorThatExists(t *testing.T) {
 //
 // So this asserts over the RENDERED PAGE rather than over either source. The
 // page is where a reader meets both, and no word-order variant survives it.
-// internal/export cannot import internal/project by design, so the composition
-// root is the lowest place a claim about both can be made at all.
 //
 // WHAT THIS TEST OBSERVES, EXACTLY, because the two halves reach the page by
 // different routes and only one of them is live here. testOptions stubs Build
