@@ -103,8 +103,8 @@ with the file it claims to be is the failure this project exists to refuse.
 
 `LC_ALL=C` in the command above is not decoration. With more than one document
 id, a UTF-8 locale's collation ignores punctuation on its first pass, so the
-shell could glob in an order `fact.less` does not produce. **There are now two
-documents and 36 pages, and the orders still coincide** — `livermore-acfr-*`
+shell could glob in an order `fact.less` does not produce. **With two documents
+the orders coincide** — `livermore-acfr-*`
 sorts before `livermore-budget-*` under C and under en_US.UTF-8 alike, and both
 forms of the command reconcile today. So this is a latent hazard rather than an
 active one, and the reason to keep the variable is the third document.

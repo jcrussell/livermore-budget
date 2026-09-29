@@ -31,12 +31,11 @@ second spelling is a chance for the site to serve a document under a name
 nothing else expects. A projection publishing one document takes its name
 verbatim; among several, the opening published slice keeps the bare name and the
 rest are suffixed by every column they carry, with the basis spelled out
-whenever it is not the published one. Today that is seven: `sankey` and `sankey-2027` for the spine's two published
-years, `revenue-trends`, and the drill-down's four — `fund-flows`,
-`fund-flows-2024-actual`, `fund-flows-2025-revised` and `fund-flows-2027`. All
-seven are pinned as literal strings by `TestTheCommittedStemsAreUnchanged`,
-because these are the paths this document promises and the values the year radio
-carries. The browser `fetch`es it; it is never inlined into
+whenever it is not the published one: `sankey` and `sankey-2027` for the spine's
+two published years, `fund-flows-2024-actual` for a detail schedule's actual
+column. Every published stem is pinned as a literal string by
+`TestTheCommittedStemsAreUnchanged`, because these are the paths this document
+promises and the values the year radio carries. The browser `fetch`es it; it is never inlined into
 the page, because a provenance file you cannot curl on its own is not much of
 an audit trail.
 

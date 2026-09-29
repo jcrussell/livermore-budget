@@ -128,8 +128,8 @@ adopted column, both into `fund/100` under `taxes/property`, plus
 negative that year rather than a declared contra (`fisc-9psv`).
 
 **A tier-5 id carries its division.** `Node.Parent` is one string and
-`wages-and-benefits` is spent by 22 divisions, so a bare
-`expenditure/wages-and-benefits` node could not have 22 parents. The prefix stays
+`wages-and-benefits` is spent by nearly every General Fund division, so a bare
+`expenditure/wages-and-benefits` node could not have one parent per division. The prefix stays
 `expenditure/` because that is the id form the tier table gives tier 5.
 
 **Six or seven `fund-group/<type>` nodes carry no link.** Every `parent` must
@@ -181,16 +181,14 @@ its line's rollup into the category and its fund's rollup under the group.
 over.** Fold within one tier pair; never across the whole graph. The count is of
 FACTS behind more than one link, so a row behind three counts once.
 
-FY2025-26: `280 = 233 + 47`, with 228 cited twice, over 238 nodes and 412 links.
-`counts-reconcile` re-derives all six from the published links. The
-228 is 44 expenditure rows plus the 184 revenue rows that earned a flow; the 47
-that print a dash are in neither.
+The document's own `counts` carry the figures, and `counts-reconcile`
+re-derives all six from the published links.
 
-**The 47 uncited facts are the 47 revenue rows that print a dash**, exactly,
-because the cell a zero is tested at is the printed ROW. Drawn at category grain
-the two sets come apart: measured on this column, six rows printing a dash sit
-inside a category cell that is not zero, and a category's link cites them while
-no line's link does. Neither reading moves any money — a dash adds nothing to a
+**The uncited facts are exactly the rows that print a dash**, because the cell a
+zero is tested at is the printed ROW: revenue and transfers-in rows of
+pp.127-140, and expenditure rows of pp.173-183. Drawn at category grain the two
+sets come apart: a row printing a dash can sit inside a category cell that is
+not zero, and a category's link would cite it while no line's link does. Neither reading moves any money — a dash adds nothing to a
 sum — so the difference is a citation and not a figure.
 
 ## No headline
@@ -244,20 +242,19 @@ documents, so a reader cannot find the two pages disagreeing about it.
 
 ## Tiers
 
-| tier | nodes, FY2025-26 | of 238 |
-|---|---|---|
-| 0 | 10 revenue categories, each the **target** of its own lines' rollups and the source of nothing, plus `transfers/in`, which is the source of a flow into every fund it reaches | 11 |
-| 1 | printed revenue rows that were not a printed zero | 93 |
-| 2 | fund groups, each the **source** of its own funds' rollups and the target of nothing | 6 |
-| 3 | funds that took in money this column | 61 |
-| 4 | divisions, not departments — a fact of THIS document's scopes holds a division slug in its `department` field; pp.85-125's funding rows hold a department in the same field, which is why `department-funding` draws them at `department/<slug>` and not at `dept/<slug>` | 23 |
-| 5 | division x object cells that were not a printed zero | 44 |
+| tier | nodes |
+|---|---|
+| 0 | revenue categories, each the **target** of its own lines' rollups and the source of nothing, plus `transfers/in`, which is the source of a flow into every fund it reaches |
+| 1 | printed revenue rows that were not a printed zero |
+| 2 | fund groups, each the **source** of its own funds' rollups and the target of nothing |
+| 3 | funds that took in or spent money this column |
+| 4 | divisions, not departments — a fact of THIS document's scopes holds a division slug in its `department` field; pp.85-125's funding rows hold a department in the same field, which is why `department-funding` draws them at `department/<slug>` and not at `dept/<slug>` |
+| 5 | object rows that were not a printed zero: a General Fund division's, or another fund's own |
 
-The tier-1 count is 93 and not the 101 rows `data/taxonomy.yaml` declares,
-because a row that prints a dash in every fund of this column earns no link — the
-same rule as tier 3's. The tier-3 count is 61 and not the 70 funds pp.131-140
-print, for that rule again. The tier-4 count is 23 and not 11: pp.167-170 print
-eleven DEPARTMENT totals over 23 divisions, and the divisions are what the facts
+Tier 1 holds fewer rows than `data/taxonomy.yaml` declares, because a row that
+prints a dash in every fund of the column earns no link; tier 3 holds fewer funds
+than the pages print, for that rule again. Tier 4 holds divisions and not the
+departments pp.167-170 total them under, because the divisions are what the facts
 carry.
 
 ## What this document does not answer
@@ -341,8 +338,8 @@ So the client folds. The rule, in full:
   same money and the same facts, over every cell including the printed zeros,
   which is what `facts_cited_twice` counts. The `(1,0)` rollups are the same
   case on the revenue side — both ends fold to the category — and the line's own
-  flows into the funds carry every fact they cited. Measured on FY2025-26: 233
-  facts cited by 412 links before the fold, 233 by 52 after.
+  flows into the funds carry every fact they cited; `site/fold.test.mjs` holds
+  the citations equal before and after the fold on every rung at every width.
 - **A retained node's `parent` is re-pointed at its own folded ancestor**, so
   the folded document satisfies client-side what `node-hierarchy-well-formed`
   asserts of the published one.

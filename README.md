@@ -12,17 +12,17 @@ defect here regardless of how good the chart looks.
 
 ## What is covered today
 
-**Thirty-eight pages of 786, across two of the three documents** (measured at
-`6da1c44`). This is still a proof of concept, and saying so plainly is part of
+**Fifty-one pages of 786, across two of the three documents** (measured at
+`4ecfe3b`). This is still a proof of concept, and saying so plainly is part of
 the point.
 
 | document | pages | extracted | mapped |
 |---|---:|---:|---:|
-| FY 2025-2027 Budget Book | 268 | all | **35** (pp. 66–67, 76, 85–125 in part, 127–140, 167–170) |
+| FY 2025-2027 Budget Book | 268 | all | **48** (pp. 66–67, 76, 85–125 in part, 127–140, 167–170, 172–183, 222) |
 | 2025-2030 Capital Improvement Plan | 323 | all | 0 |
 | FY 2024-25 Annual Comprehensive Financial Report | 195 | all | **3** (pp. 41, 167–168, in part) |
 
-Those pages carry nine schedules, each of which reconciles against something the
+Those pages carry twelve schedules, each of which reconciles against something the
 city itself printed:
 
 | schedule | what it is | fiscal years |
@@ -33,6 +33,9 @@ city itself printed:
 | p. 76 | the transfer schedule, both legs of every transfer | 2026, 2027 adopted |
 | pp. 85–125 | which funds pay for each department | 2024 actual, 2025 revised, 2026 + 2027 adopted |
 | pp. 85–124 | departmentwide expenditure by object category | the same four |
+| p. 172 | the General Fund's expenditure by object category | the same four |
+| pp. 173–183 | every other fund's expenditure by object category | the same four |
+| p. 222 | the Capital Improvement Plan's funding sources, transfers from operating funds among them | 2025 revised, 2026 + 2027 adopted |
 | ACFR p. 41 | the General Fund's revenues, transfers, General Government divisions and fund balances | 2025 audited |
 | ACFR p. 167 | fund balances, ten years | 2016–2025 audited |
 | ACFR p. 168 | changes in fund balances, ten years | 2016–2025 audited |
