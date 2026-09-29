@@ -1,9 +1,11 @@
 package project
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
+	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 )
 
@@ -275,9 +277,34 @@ func TestTierOfRefusesACoinedForm(t *testing.T) {
 			t.Errorf("TierOf(%q) = %d, %v; want %d, true", id, got, ok, want)
 		}
 	}
-	for _, id := range []string{"fund/0", "fund/general", "fund/", "fund", "revenue/", "dept", "fund-balance/change", "coined/x"} {
+	for _, id := range []string{"fund/0", "fund/-1", "fund/+100", "fund/0100", "fund/general", "fund/", "fund", "revenue/", "dept", "fund-balance/change", "coined/x"} {
 		if tier, ok := TierOf(id); ok {
 			t.Errorf("TierOf(%q) = %d, true; want it refused", id, tier)
 		}
+	}
+}
+
+// TestSelectFactsAppliesEverySelector holds the one fact selection the
+// builders and the checks share to its three selectors: a fact outside the
+// scopes, the kinds or the columns is not selected, and one inside all three
+// is.
+func TestSelectFactsAppliesEverySelector(t *testing.T) {
+	col := Column{FiscalYear: 2026, Basis: mapping.BasisAdopted}
+	mk := func(id, scope string, kind mapping.Kind, year int) fact.Fact {
+		return fact.Fact{ID: id, Scope: scope, Kind: kind, FiscalYear: year, Basis: col.Basis}
+	}
+	facts := []fact.Fact{
+		mk("in", TransfersByFundScope, mapping.KindTransferIn, 2026),
+		mk("other-scope", PublishedScope, mapping.KindTransferIn, 2026),
+		mk("other-kind", TransfersByFundScope, mapping.KindRevenue, 2026),
+		mk("other-column", TransfersByFundScope, mapping.KindTransferIn, 2027),
+	}
+	o := Options{Columns: []Column{col}, Scopes: []string{TransfersByFundScope}, Kinds: transferKinds}
+	var got []string
+	for _, f := range SelectFacts(facts, o) {
+		got = append(got, f.ID)
+	}
+	if !slices.Equal(got, []string{"in"}) {
+		t.Errorf("SelectFacts = %v, want only the fact inside every selector", got)
 	}
 }

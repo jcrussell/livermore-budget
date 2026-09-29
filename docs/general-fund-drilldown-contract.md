@@ -550,10 +550,9 @@ mutation that reddens it: what arrives at and leaves the opened node is the
 same before and after the cap and the fold; the fact ids cited and the cents
 drawn are the filtered ribbons' exactly, so no ribbon is lost or drawn twice;
 and a capped column holds at most `cap + 1` marks, its tail's members and the
-kept marks together being the whole column. The trade accepted with
-`fisc-bjqa`: Go no longer refuses at build a step whose document decomposes
-nothing for a year; the client walk in `site/*.test.mjs`, a CI-required check,
-refuses it.
+kept marks together being the whole column. A step whose document decomposes
+nothing for a year is refused by the client walk in `site/*.test.mjs`, a
+CI-required check, and not at build.
 
 So, in one line: **Go declares what may fold and the client decides how much
 fits.** The `caps` column of the table under "One page draws it" and each step's

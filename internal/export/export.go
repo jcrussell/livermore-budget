@@ -1127,23 +1127,23 @@ func (v View) validateSteps(built map[string][]byte, ix ColumnIndex) error {
 	return nil
 }
 
-// Graph is as much of a projection document as the cap licence needs: which
+// capGraph is as much of a projection document as the cap licence needs: which
 // tier each node stands at, and which nodes each ribbon joins, of what kind,
 // printed or inferred.
-type Graph struct {
-	Nodes []GraphNode `json:"nodes"`
-	Links []GraphLink `json:"links"`
+type capGraph struct {
+	Nodes []capGraphNode `json:"nodes"`
+	Links []capGraphLink `json:"links"`
 }
 
-// GraphNode is one node of a [Graph].
-type GraphNode struct {
+// capGraphNode is one node of a [capGraph].
+type capGraphNode struct {
 	ID   string `json:"id"`
 	Tier int    `json:"tier"`
 }
 
-// GraphLink is one ribbon of a [Graph]. The client's fold merges ribbons by
+// capGraphLink is one ribbon of a [capGraph]. The client's fold merges ribbons by
 // folded ends and Kind and may not merge a printed one with an inferred one.
-type GraphLink struct {
+type capGraphLink struct {
 	Source  string `json:"source"`
 	Target  string `json:"target"`
 	Kind    string `json:"kind"`
@@ -1168,7 +1168,7 @@ func capMergesNoPrintedWithInferred(path string, i int, c TierCap, doc string, b
 		if scheduleKey(stem) != scheduleKey(doc) {
 			continue
 		}
-		var g Graph
+		var g capGraph
 		if err := json.Unmarshal(built[stem], &g); err != nil {
 			return fmt.Errorf("view %q's step %d caps tier %d of %s, which does not decode: %w", path, i, c.Tier, stem, err)
 		}

@@ -1,6 +1,6 @@
 // fold.test.mjs — the client's fold: capColumn and foldDocument, and the
-// claim that the drill-down could not be drawn without them. Nothing here
-// compares a figure to Go's answer.
+// claim that the drill-down could not be drawn without them. The fold is the
+// client's alone; the unfolded schedule is what every figure is held to.
 
 import { before, describe, test } from "node:test";
 import assert from "node:assert/strict";

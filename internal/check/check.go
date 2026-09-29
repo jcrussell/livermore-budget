@@ -37,8 +37,10 @@
 // its id form does not have, a published count that no longer matches its own
 // graph. They read the producer's own definitions (the fact selection, the
 // internal-service group, the id forms and tiers), so a wrong definition moves
-// both sides together; the definition's own tests in internal/project are what
-// catch that.
+// both sides together; what catches that is internal/project's own tests of
+// each definition (TestSelectFactsAppliesEverySelector,
+// TestTierOfRefusesACoinedForm) and its goldens, which every node's tier and
+// every document's counts are pinned in.
 //
 // The independent witnesses are the two that leave the derivation entirely:
 // fact-token-reparses re-parses the verbatim source text each amount was read

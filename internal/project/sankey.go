@@ -91,8 +91,10 @@ var endpointTiers = func() map[string]int {
 
 // TierOf is the tier a node id sits at: an endpoint's by name, any other id's
 // by the prefix up to its first slash, with something after it. ok is false
-// for a coined form. A fund id is `fund/<number>`: `fund/general` names no
-// fund, one hyphen from `fund-group/general`, and no fund is numbered 0.
+// for a coined form. A fund id is `fund/<number>` in its one spelling:
+// `fund/general` names no fund, one hyphen from `fund-group/general`; no fund
+// is numbered 0 or below; and `fund/+100` or `fund/0100` would be a second id
+// for fund 100.
 func TierOf(id string) (tier int, ok bool) {
 	if t, isEndpoint := endpointTiers[id]; isEndpoint {
 		return t, true
@@ -107,7 +109,7 @@ func TierOf(id string) (tier int, ok bool) {
 		return 0, false
 	}
 	if prefix == PrefixFund {
-		if n, err := strconv.Atoi(rest); err != nil || n == 0 {
+		if n, err := strconv.Atoi(rest); err != nil || n <= 0 || strconv.Itoa(n) != rest {
 			return 0, false
 		}
 	}
