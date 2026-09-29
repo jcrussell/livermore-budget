@@ -30,52 +30,10 @@ which year it covers.
 
 ## Shape
 
-```jsonc
-{
-  "schema_version": 1,
-  "projection": "revenue-trends",
-  "metadata": {
-    "generated_by": "fisc ...",
-    "scope": "revenue-by-fund",
-    "currency": "USD",
-    "units": "cents",
-    "columns": [
-      {"fiscal_year": 2024, "fiscal_year_label": "FY 2023-24", "basis": "actual",
-       "comparable_group": "actual"},
-      {"fiscal_year": 2025, "fiscal_year_label": "FY 2024-25", "basis": "revised",
-       "comparable_group": "revised"},
-      {"fiscal_year": 2026, "fiscal_year_label": "FY 2025-26", "basis": "adopted",
-       "comparable_group": "adopted"},
-      {"fiscal_year": 2027, "fiscal_year_label": "FY 2026-27", "basis": "adopted",
-       "comparable_group": "adopted"}
-    ],
-    "sources": [{"doc_id": "livermore-budget-fy2026-2027",
-                 "pages": [127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139, 140]}],
-    "counts": {"facts": 924, "series": 231, "points": 924},
-    "caveats": [
-      {"id": "...", "summary": "...", "text": "...", "applies_to": []}
-    ]
-  },
-  "series": [{
-    "series_id": "fisc-s-ce9117881328",
-    "label": "Industrial Construction Tax",
-    "fund": 100, "fund_name": "General Fund", "fund_group": "general",
-    "kind": "revenue", "category": "taxes/other", "category_label": "Other Taxes",
-    "points": [
-      {"fiscal_year": 2024, "basis": "actual", "amount_cents": 0,
-       "fact_id": "fisc-f-0ba7b00dfaf7", "doc_id": "livermore-budget-fy2026-2027",
-       "page": 127, "offset": 3579, "token": "-", "derived": false},
-      {"fiscal_year": 2025, "basis": "revised", "amount_cents": 20000000,
-       "fact_id": "fisc-f-977588b137ae", "doc_id": "livermore-budget-fy2026-2027",
-       "page": 127, "offset": 3588, "token": "200,000", "derived": false}
-      /* ... 2026 and 2027 ... */
-    ]
-  }]
-}
-```
-
-That worked example is real: `fisc-s-ce9117881328` and its four fact ids are
-computed off the committed store, not invented for the document.
+The shape is `schema/series.schema.json`, which every document is validated
+against as it is encoded; a built site carries this one at
+`data/revenue-trends.json`. Each point is one printed figure and cites its fact
+by id, page, offset and token.
 
 Every key is present on every object, in declaration order. **No `omitempty`** —
 `fact.Fact`'s discipline and `internal/project`'s, for the reason stated in both:

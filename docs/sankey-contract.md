@@ -189,21 +189,11 @@ present and `false` on every link of every document.
 
 ## Tiers and node ids
 
-| tier | meaning | id form |
-|---|---|---|
-| 0 | revenue source | `revenue/<slug>` |
-| 1 | revenue line — one printed row of a category | `revenue-line/<slug>` |
-| 2 | fund group | `fund-group/<type>` |
-| 2 | the paying end of one printed transfer | `transfer-from/<number>` |
-| 3 | fund | `fund/<number>` |
-| 4 | division — one of `data/departments.yaml`'s mixed-case row groups | `dept/<slug>` |
-| 4 | department — one of its ALL-CAPS headings | `department/<slug>` |
-| 5 | object category | `expenditure/<slug>` |
-| 5 | the receiving end of one printed transfer | `transfer-to/<number>` |
-
-Plus the flow endpoints that are not part of that hierarchy: `transfers/in`
-(tier 0), `transfers/out` (tier 5), `fund-balance/reserve-increase` (tier 5),
-`fund-balance/draw` (tier 0), `fund-balance/contribution` (tier 5).
+A node's id form fixes its tier. `project.TierOf` is the table — the id
+prefixes by tier, and the flow endpoints (`transfers/in`, `transfers/out`,
+`fund-balance/draw`, `fund-balance/contribution`,
+`fund-balance/reserve-increase`) by name — and every builder takes a node's
+tier from it; `node-tiers-are-declared` holds each published node to it.
 
 **`department/` and `dept/` are two id forms at ONE tier, and they have to be.**
 `data/departments.yaml` keeps two namespaces because the pages do: pp.167-170
@@ -386,20 +376,11 @@ would be the absent-is-not-zero mistake in a new field.
 
 ## link.kind
 
-`external | internal_transfer | internal_service | fund_balance`
-
-This is `fisc-gxa.1`'s set plus `fund_balance`; the bead carries the amendment.
-
-- `external` — money crossing the city's boundary. The only kind in the
-  headline.
-- `internal_service` — Internal Service Fund charges, billed by one city
-  department to another. $18,969,834 in, $25,077,367 out in FY2026. Real money
-  in a real fund, but counting it as revenue *and* as the paying department's
-  expenditure double-counts it.
-- `internal_transfer` — transfers between funds.
-- `fund_balance` — a draw on or contribution to accumulated balance, and
-  additions to reserves. Not external money; not a transfer either, because
-  nothing moves between funds.
+`kind` is one of `schema/enums.schema.json`'s `link_kind`, the set
+`project.LinkKinds` declares; the page's words for each are
+`project.LinkKindLabel`'s. Only `external` is in the headline: an Internal
+Service Fund charge is billed by one city department to another, so counting
+it as revenue *and* as the paying department's expenditure counts it twice.
 
 ## headline
 
@@ -607,34 +588,12 @@ makes the identity a cross-check rather than a restatement of itself.
 
 ## Row-to-slug map
 
-The seam between the rule file (`fisc-mq4.7`) and the projection
-(`fisc-gxa.1`). Both sides code against this table.
-
-| printed row | `category` | `mapping.Kind` | projection |
-|---|---|---|---|
-| Property Taxes | `taxes/property` | revenue | `revenue/taxes/property` → group |
-| Other Taxes | `taxes/other` | revenue | ” |
-| Intergovernmental | `intergovernmental` | revenue | ” |
-| Charges for Services | `charges-for-services` | revenue | ” |
-| Use of Money And Property | `use-of-money-and-property` | revenue | ” |
-| Contributions Outsourced | `contributions-outsourced` | revenue | ” |
-| Miscellaneous Revenue | `miscellaneous-revenue` | revenue | ” |
-| Sales Taxes | `taxes/sales` | revenue | ” |
-| Fines & Forfeitures | `fines-and-forfeitures` | revenue | ” |
-| Licenses & Permits | `licenses-and-permits` | revenue | ” |
-| Wages & Benefits | `wages-and-benefits` | expenditure | group → `expenditure/…` |
-| Services & Supplies | `services-and-supplies` | expenditure | ” |
-| Capital Outlay | `capital-outlay` | expenditure | ” |
-| Debt Services | `debt-services` | expenditure | ” |
-| TRANSFER IN: | `transfers/in` | transfer_in | `transfers/in` → group, `internal_transfer` |
-| TRANSFER OUT: | `transfers/out` | transfer_out | group → `transfers/out`, `internal_transfer` |
-| ADDITION TO RESERVES | `fund-balance/reserve-increase` | fund_balance | group → node, `fund_balance` |
-| CHANGE IN WORKING CAPITAL | `fund-balance/change` | fund_balance | `< 0` draw → group; `> 0` group → contribution; `== 0` no link. `derived: true` |
-| BEGINNING WORKING CAPITAL | `fund-balance/beginning` | fund_balance | **excluded — stock** |
-| ENDING WORKING CAPITAL | `fund-balance/ending` | fund_balance | **excluded — stock** |
-
-A revenue or expenditure link whose fund group is `internal-service` takes
-`kind: internal_service`; every other one takes `external`.
+Which printed row of pp.66-67 is which `category` and `kind` is the rule
+file's, `mappings/livermore-budget-fy2026-2027.yaml`, over the slugs
+`data/taxonomy.yaml` declares; how each becomes a node and a link is
+`internal/project`'s. Beginning and ending working capital are stocks and draw
+no link; the change in working capital is split by sign into
+`fund-balance/draw` and `fund-balance/contribution`.
 
 `sign: contra` rows net into their parent category before links are built.
 pp.66-67 print none — the contra rows are on p127 (ERAF, RPTTF) — so that path

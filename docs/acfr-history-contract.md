@@ -5,10 +5,10 @@ on `docs/revenue-trends-contract.md`'s precedent: a published document shape is
 a decision in this repository, not a bullet inside the bead that implements it
 (`fisc-oakx.4`).
 
-| stem                       | schedule                                                | scope                           | facts |
-| -------------------------- | ------------------------------------------------------- | ------------------------------- | ----- |
-| `changes-in-fund-balances` | ACFR p168, Changes in Fund Balances of Governmental Funds | `acfr-changes-in-fund-balances` | 220   |
-| `fund-balances`            | ACFR p167, Fund Balances of Governmental Funds            | `acfr-fund-balances`            | 90    |
+| stem                       | schedule                                                | scope                           |
+| -------------------------- | ------------------------------------------------------- | ------------------------------- |
+| `changes-in-fund-balances` | ACFR p168, Changes in Fund Balances of Governmental Funds | `acfr-changes-in-fund-balances` |
+| `fund-balances`            | ACFR p167, Fund Balances of Governmental Funds            | `acfr-fund-balances`            |
 
 Every figure is already in `facts/facts.jsonl` — no new extraction, no new
 mapping. The schedule titled "pp.168-169" publishes only p168's rows; see

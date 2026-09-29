@@ -85,13 +85,6 @@ the `toks[:ncols]` two lines below.
 Nobody has enumerated what is left once all four defences are in play. A
 block-final row backed by an unlabelled total line is the obvious candidate.
 
-## poppler has no structured error channel
-
-It writes free-form English to stderr and exits 0. The manifest records every
-stderr line under `warnings`, and reserves `errors` for non-zero exits and
-unparseable output. An empty `errors` is not a promise that every page came out
-whole.
-
 ## Two parties record the hash
 
 `tools/extract.py` deliberately does not read `data/sources.yaml`. It discovers

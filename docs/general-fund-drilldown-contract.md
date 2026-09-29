@@ -366,24 +366,26 @@ sees.
 
 A step may declare more columns than that budget draws: `widen` names the
 columns of its own `tiers` a narrower client does without, and it drops them
-from the end of `widen`; they sit at the end away from the kept flank. The fund-group step
-widens `{0,2,3,4,5}` by `{4,5}` and the fund step `{2,3,4,5}` by `{5}`, so their
-rows below state both. A widened
+from the end of `widen`; they sit at the end away from the kept flank. A widened
 column the document leaves empty is dropped and the chart re-laid at the columns
 it has, rather than refused: five of the six fund groups have no tier-4 node,
 and a wide screen must not show a reader less than a narrow one.
 
-| depth | document | draws | opening a node draws | caps |
-|---|---|---|---|---|
-| 0 | `sankey` | the spine, whole | a fund group (tier 2); or a revenue category (tier 0); or an object category (tier 5) | — |
-| 1 | `fund-flows` | `{0,2,3}` keeping tier 0 of the chart above: the spine's own revenue categories on the left, the opened group in the middle, its funds on the right, with the money pp.127-140 split by no fund carried past the centre onto one derived mark beside them — widening to `{0,2,3,4,5}` where there is room: the General Fund's divisions, and the object categories every fund spends on, through its divisions for the General Fund and straight from pp.173-183 for every other | a fund (tier 3) — the General Fund into its divisions, every other fund pp.85-125 name into its departments | tier 3 at 8; tier 4 at 24 (divisions); tier 5 at 8 (object rows) |
-| 2 | `fund-flows` | `{2,3,4}` keeping tier 2: the group, the opened fund, the divisions that spend it — widening to `{2,3,4,5}`, their object-category cells, where there is room for a fourth column | a division (tier 4) | tier 4 at 24; tier 5 at 8 (object rows) |
-| 3 | `fund-flows` | `{3,4,5}` keeping tier 3: the fund, the opened division, its object categories | nothing | tier 5 at 8 |
-| 2 | `department-funding` | `{2,3,4}` keeping tier 2: the group, the opened fund, the departments pp.85-125 print it paying for | nothing | — |
-| 1 | `fund-flows` | `{1,0,2}` keeping tier 2: the lines pp.127-140 print under the opened category on the left, the category itself in the middle, and the spine's own fund groups for it on the right; a line printed as a reduction draws as a contra ribbon at its magnitude, into the centre | nothing | tier 1 at 8 (lines) |
-| 1 | `department-spending` | `{2,5,4}` keeping tier 2: the fund groups that fund the opened object category, the category, and the divisions pp.85-125 print spending it | nothing | tier 4 at 8 (divisions) |
-| 1 | `transfers-by-fund` | `{2,3}`, no flank: the funds p76 prints paying each transfer on the left, the funds receiving them on the right | nothing | — |
-| 1 | `transfers-out` | `{3,5}`, no flank: the funds p76 and p222 print paying each transfer out on the left, the operating and CIP funds receiving them on the right | nothing | tier 3 at 10; tier 5 at 10 (funds) |
+Each step's tiers, kept flank, widening and caps are declared once, in
+`views()` in `pkg/cmd/export`, and shipped as `FISC_CONFIG.steps` under
+`schema/page.schema.json`. What each draws, for a reader:
+
+| depth | document | draws | opening a node draws |
+|---|---|---|---|
+| 0 | `sankey` | the spine, whole | a fund group; or a revenue category; or an object category |
+| 1 | `fund-flows` | the spine's own revenue categories on the left, the opened group in the middle, its funds on the right, with the money pp.127-140 split by no fund carried past the centre onto one derived mark beside them — and, where there is room, the General Fund's divisions and the object categories every fund spends on, through its divisions for the General Fund and straight from pp.173-183 for every other | a fund — the General Fund into its divisions, every other fund pp.85-125 name into its departments |
+| 2 | `fund-flows` | the group, the opened fund, the divisions that spend it — and their object-category cells where there is room | a division |
+| 3 | `fund-flows` | the fund, the opened division, its object categories | nothing |
+| 2 | `department-funding` | the group, the opened fund, the departments pp.85-125 print it paying for | nothing |
+| 1 | `fund-flows` | the lines pp.127-140 print under the opened category on the left, the category itself in the middle, and the spine's own fund groups for it on the right; a line printed as a reduction draws as a contra ribbon at its magnitude, into the centre | nothing |
+| 1 | `department-spending` | the fund groups that fund the opened object category, the category, and the divisions pp.85-125 print spending it | nothing |
+| 1 | `transfers-by-fund` | the funds p76 prints paying each transfer on the left, the funds receiving them on the right | nothing |
+| 1 | `transfers-out` | the funds p76 and p222 print paying each transfer out on the left, the operating and CIP funds receiving them on the right | nothing |
 
 The steps are a tree and not a chain: several open from the spine's chart, told
 apart by the tier they open from and, where two share a tier, by the node's role.
@@ -511,11 +513,10 @@ merged links still name every fact behind every ribbon.
 ## Go's half: the declarations
 
 **Go ships what only Go can know, and computes no rung.** A step is declared
-once in `views()` and reaches the page as `FISC_CONFIG.steps`: its `tiers` in
-draw order, the `keep` flank and `from` centre, the `role` that opens it, the
-`caps` a column may fold under, the `widen` a wider viewport buys, the
-`residual` endpoints with the reason each is carried and the `residual_grain`
-its mark is named by, and the `gaps` licences — the cents per column, from
+once in `views()` and reaches the page as `FISC_CONFIG.steps`, in the shape
+`schema/page.schema.json` gives it: what it draws and where it opens, what may
+fold, and the licences only the fact store can state — the residual endpoints
+each with its reason, and the gap cents per column, from
 `structure.BudgetBookExceptions`, that two schedules are declared to differ by
 at one node. `validateSteps` refuses a declaration whose shape the client could
 not draw; `foldDocument` refuses a fold that would merge a printed ribbon with an
