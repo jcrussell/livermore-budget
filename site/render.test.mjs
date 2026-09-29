@@ -1036,9 +1036,6 @@ describe("arms no committed column reaches", () => {
     t.diagnostic(`${marks} marks drawn, ${ids.length} ids asked, all with no caveat`);
     assert.ok(marks > 0);
     assert.ok(ids.every((id) => app.caveatsFor(id).length === 0));
-    // The guard on a source with no caveats list at all.
-    app.projection.metadata.caveats = undefined;
-    assert.deepEqual(app.caveatsFor(ids[0]), []);
   });
   test("a label anchored at an end shifts its qualifier less than one anchored in the middle", async () => {
     const { app } = await bootedApp({ checkedStem: newest.stem });

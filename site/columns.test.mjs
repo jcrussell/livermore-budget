@@ -230,7 +230,9 @@ describe("a budget whose chart will not draw", () => {
     app.expandTier(tail);
     await settle();
     // Planted under the expanded chart, so only the fold back reads it.
-    for (const l of app.drilled[app.drilled.length - 1].doc.links) delete l.fact_ids;
+    const rung = app.drilled[app.drilled.length - 1];
+    rung.doc = structuredClone(rung.doc);
+    for (const l of rung.doc.links) delete l.fact_ids;
     app.collapseTier(tail.tier);
     await settle();
     const banners = refusals(document).map((b) => b.textContent);

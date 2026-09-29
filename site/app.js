@@ -160,11 +160,26 @@ export function stepDecomposes(step, id) {
   if (!doc) return true;
   if (!decomposable(step, doc).has(id)) return false;
   if (!step.keep || !step.keep.length || !projection) return true;
-  const keep = new Set(step.keep);
-  const keptTiers = step.tiers.filter((t) => keep.has(t) || t === step.from);
-  return filterLinks(projection, id, keptTiers,
-    reaching(projection, id, !flankIsLeft(step), keptTiers)).links.length > 0;
+  let byStep = flanks.get(projection);
+  if (!byStep) {
+    byStep = new Map();
+    flanks.set(projection, byStep);
+  }
+  const at = step.key + "\u001f" + id;
+  let holds = byStep.get(at);
+  if (holds === undefined) {
+    holds = keptFlank(projection, { id: id, step: step }).nodes.some((n) => n.id === id);
+    byStep.set(at, holds);
+  }
+  return holds;
 }
+
+/**
+ * Whether a window step's kept flank holds a node, per chart on screen, per
+ * step and node: nodeClass asks per mark per paint.
+ * @type {WeakMap<FiscProjection, Map<string, boolean>>}
+ */
+const flanks = new WeakMap();
 
 /**
  * The ids at a step's opened tier that its document decomposes, computed once
@@ -1715,6 +1730,29 @@ export function tailFigure(doc, id) {
 }
 
 /**
+ * The tiers a window keeps from the chart on screen: its flank and its centre.
+ * Never widened, so every viewport keeps the same ones.
+ * @param {FiscDrillStep} step
+ * @returns {number[]}
+ */
+export function keptTiersOf(step) {
+  const keep = new Set(step.keep || []);
+  return step.tiers.filter((t) => keep.has(t) || t === step.from);
+}
+
+/**
+ * A window's kept half: the chart on screen, read at its printed signs, at the
+ * kept tiers, reaching the opened node. The one reading windowFor draws and
+ * stepDecomposes offers by, so what is offered is what draws.
+ * @param {FiscProjection} onScreen
+ * @param {{id: string, step: FiscDrillStep, expanded?: Set<number>}} rung
+ * @returns {FiscProjection}
+ */
+export function keptFlank(onScreen, rung) {
+  return sideOf(unmarkContra(onScreen), /** @type {any} */ (rung), keptTiersOf(rung.step), !flankIsLeft(rung.step));
+}
+
+/**
  * A window on the node the reader clicked: the flank they came from on one
  * side, the step document's decomposition on the other, and that node between
  * them.
@@ -1743,15 +1781,14 @@ export function windowFor(onScreen, stepDoc, rung) {
   // is the TARGET of the kept half and the SOURCE of the fresh one; on the
   // right, the reverse.
   const keptLeft = flankIsLeft(step);
-  const keptTiers = tiers.filter((t) => keep.has(t) || t === step.from);
   const freshOnScreen = tiers.filter((t) => !keep.has(t));
-  const kept = sideOf(unmarkContra(onScreen), rung, keptTiers, !keptLeft);
+  const kept = keptFlank(onScreen, rung);
   const fresh = sideOf(stepDoc, rung, freshOnScreen, keptLeft);
   // THE KEPT CENTRE MUST HOLD THE OPENED NODE: a window whose flank sends
   // nothing into it is refused rather than drawn as its fresh half alone.
   if (!kept.nodes.some((n) => n.id === rung.id)) {
     throw new Error("cannot draw " + stepDoc.projection + ": the chart on screen sends nothing " +
-      "between tiers " + keptTiers.join(", ") + " and " + rung.id + ", so there is no flank to keep");
+      "between tiers " + keptTiersOf(step).join(", ") + " and " + rung.id + ", so there is no flank to keep");
   }
 
   // carried_from IS SET WHERE ABSENT AND NEVER CLEARED: a node keeps the stem
@@ -3135,9 +3172,8 @@ export function caveatsFor(id) {
   // A carried mark's caveats are the document it was carried from.
   const carried = projection.nodes.find((n) => n.id === id && n.carried_from);
   const source = carried ? carriedSource(carried.carried_from) : projection;
-  if (!source || !source.metadata || !Array.isArray(source.metadata.caveats)) {
-    return [];
-  }
+  // Every document is scheduleOf's, which gives metadata a caveats list.
+  if (!source) return [];
   // The aggregate folds by value, not ancestry, so the walk cannot reach its ids.
   const drawnNode = projection.nodes.find((n) => n.id === id);
   const swallowed = drawnNode && Array.isArray(drawnNode.folds) ? drawnNode.folds : [];
@@ -3790,6 +3826,44 @@ export function clearRefusal() {
  * @returns {FiscProjection | null} null when the column carries no such schedule
  */
 export function scheduleOf(column, key) {
+  if (!column || typeof column !== "object") return assembleSchedule(column, key);
+  let byKey = schedules.get(column);
+  if (!byKey) {
+    byKey = new Map();
+    schedules.set(column, byKey);
+  }
+  if (!byKey.has(key)) byKey.set(key, deepFreeze(assembleSchedule(column, key)));
+  return /** @type {FiscProjection | null} */ (byKey.get(key));
+}
+
+/**
+ * Each column's schedules, assembled once: a document is read per mark per
+ * paint (stepDecomposes), and caches keyed on it (decomposable) only hit if
+ * one column's schedule is one object. Frozen, so a caller that would change
+ * it throws rather than changing every later reader's copy.
+ * @type {WeakMap<object, Map<string, FiscProjection | null>>}
+ */
+const schedules = new WeakMap();
+
+/**
+ * @template T
+ * @param {T} v
+ * @returns {T}
+ */
+function deepFreeze(v) {
+  if (v && typeof v === "object" && !Object.isFrozen(v)) {
+    Object.freeze(v);
+    for (const k of Object.keys(v)) deepFreeze(/** @type {any} */ (v)[k]);
+  }
+  return v;
+}
+
+/**
+ * @param {any} column
+ * @param {string} key
+ * @returns {FiscProjection | null}
+ */
+function assembleSchedule(column, key) {
   const sched = column && column.schedules ? column.schedules[key] : null;
   if (!sched) return null;
   const table = Array.isArray(column.nodes) ? column.nodes : [];

@@ -62,3 +62,18 @@ describe("a node's annotations are the column's, its parent the schedule's", () 
     assert.equal(spending.parent, "", "pp.85-125 carry no fund, so the same division hangs under nothing");
   });
 });
+
+describe("a column's schedules are assembled once", () => {
+  // stepDecomposes reads a step's schedule per mark per paint, and decomposable
+  // caches on the document object, so one column's schedule is one object --
+  // frozen, so no reader can change it under the others.
+  test("scheduleOf returns one frozen document per column and schedule", async () => {
+    const app = (await loadApp()).app;
+    const column = columnFixture("fy2026-adopted");
+    const first = app.scheduleOf(column, "fund-flows");
+    assert.ok(first, "the pinned column carries no fund-flows schedule");
+    assert.equal(app.scheduleOf(column, "fund-flows"), first, "a second read assembled a second document");
+    assert.ok(Object.isFrozen(first) && Object.isFrozen(first.links[0]), "the shared document can be changed by a reader");
+    assert.notEqual(app.scheduleOf(structuredClone(column), "fund-flows"), first, "another column's schedule is this one's");
+  });
+});
