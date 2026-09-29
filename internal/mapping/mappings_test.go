@@ -87,16 +87,6 @@ func (s spineTotals) allFunds(k Kind, year int) amount.Cents {
 	return sum
 }
 
-func (s spineTotals) category(category, group string, year int) amount.Cents {
-	var sum amount.Cents
-	for c, v := range s {
-		if c.category == category && c.group == group && c.year == year {
-			sum += v
-		}
-	}
-	return sum
-}
-
 // dollars converts a figure written the way the document prints it into the
 // integer cents a fact carries.
 func dollars(d int64) amount.Cents { return amount.Cents(d) * 100 }
@@ -233,70 +223,6 @@ func TestPublishedSpineHeadlineFigures(t *testing.T) {
 	for _, tt := range tests {
 		if want := dollars(tt.want); tt.got != want {
 			t.Errorf("%s = %s, want %s", tt.name, tt.got, want)
-		}
-	}
-}
-
-// TestPublishedSpineBalancesPerFundGroup is the cross-check for everything
-// CheckTotals cannot reach: no fund group may spend, transfer out or reserve
-// more than it takes in, once transfers in and draws on accumulated balance are
-// counted.
-//
-//	revenue + transfers_in + draw
-//	    == expenditure + transfers_out + reserve_increase + contribution
-//
-// The draw and the contribution are the two halves of the signed
-// "CHANGE IN WORKING CAPITAL" row: a negative change is money coming out of
-// accumulated balance to fund the year, a positive one is money going into it.
-//
-// Both sides land on a control total the city itself prints — TOTAL USES for a
-// group that draws on balance, TOTAL SOURCES for one that adds to it, and they
-// are equal where the change is zero. Those rows are mapped by no rule, which
-// is what makes this a cross-check rather than a restatement of the figures
-// being checked. It covers all six fund groups in both budget years, so it
-// reaches the eight p67 expenditure columns CheckTotals cannot.
-func TestPublishedSpineBalancesPerFundGroup(t *testing.T) {
-	totals := readSpine(t).totals
-
-	tests := []struct {
-		group string
-		// The greater of the group's printed TOTAL SOURCES and TOTAL USES, in
-		// dollars, for FY2025-26 and FY2026-27.
-		fy2026, fy2027 int64
-	}{
-		{"general", 159_388_024, 164_844_882},
-		{"enterprise", 80_761_261, 83_638_250},
-		{"capital", 29_646_095, 37_017_670},
-		{"debt-service", 6_984_597, 6_969_898},
-		{"special-revenue", 29_279_560, 21_730_522},
-		{"internal-service", 25_117_367, 27_156_515},
-	}
-	for _, tt := range tests {
-		for _, y := range []struct {
-			year int
-			want int64
-		}{{2026, tt.fy2026}, {2027, tt.fy2027}} {
-			year, want := y.year, y.want
-			t.Run(fmt.Sprintf("%s/%d", tt.group, year), func(t *testing.T) {
-				change := totals.category("fund-balance/change", tt.group, year)
-				sources := totals.kind(KindRevenue, tt.group, year) +
-					totals.kind(KindTransferIn, tt.group, year) +
-					max(0, -change)
-				uses := totals.kind(KindExpenditure, tt.group, year) +
-					totals.kind(KindTransferOut, tt.group, year) +
-					totals.category("fund-balance/reserve-increase", tt.group, year) +
-					max(0, change)
-
-				if sources != uses {
-					t.Errorf("sources %s, uses %s: off by %s", sources, uses, sources-uses)
-				}
-				if got, w := sources, dollars(want); got != w {
-					t.Errorf("sources = %s, want %s (the printed control total)", got, w)
-				}
-				if got, w := uses, dollars(want); got != w {
-					t.Errorf("uses = %s, want %s (the printed control total)", got, w)
-				}
-			})
 		}
 	}
 }

@@ -34,9 +34,10 @@ import (
 // different one from CheckTotals, which ties rows to a total on their own page
 // at build time.
 //
-// WHAT IT IS NOT. internal/mapping's TestPublishedSpineBalancesPerFundGroup
-// covers the RESIDUAL identity -- revenue + transfers in - expenditure -
-// transfers out - reserve increase == change -- and pins both sides to pp.66-67's
+// WHAT IT IS NOT. structure.SourcesUses is the RESIDUAL identity -- revenue +
+// transfers in - expenditure - transfers out - reserve increase == change --
+// which fund-group-sources-equal-uses holds, and
+// TestTheSpineBalancesAtThePrintedControlTotals pins both sides to pp.66-67's
 // printed TOTAL SOURCES and TOTAL USES. That says nothing about beginning and
 // ending, which are two more printed cells on the same rows. fisc-7m2 exists
 // because the two were being conflated, and the two claims are kept apart here so

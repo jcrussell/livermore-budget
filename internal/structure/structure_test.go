@@ -440,3 +440,46 @@ func TestTheComparisonGoesRed(t *testing.T) {
 		}
 	})
 }
+
+// TestTheSpineBalancesAtThePrintedControlTotals holds pp.66-67's identity to
+// the control totals the city prints for it: per fund group and adopted year,
+// the facts' sources and uses are equal, and each is the page's printed TOTAL
+// SOURCES or TOTAL USES, rows no rule maps. It covers the p67 expenditure
+// columns a rule's own stated total cannot.
+func TestTheSpineBalancesAtThePrintedControlTotals(t *testing.T) {
+	facts := committedFacts(t)
+	for _, tt := range []struct {
+		group string
+		// The greater of the group's printed TOTAL SOURCES and TOTAL USES, in
+		// dollars, for FY2025-26 and FY2026-27.
+		fy2026, fy2027 int64
+	}{
+		{"general", 159_388_024, 164_844_882},
+		{"enterprise", 80_761_261, 83_638_250},
+		{"capital", 29_646_095, 37_017_670},
+		{"debt-service", 6_984_597, 6_969_898},
+		{"special-revenue", 29_279_560, 21_730_522},
+		{"internal-service", 25_117_367, 27_156_515},
+	} {
+		for year, want := range map[int]int64{2026: tt.fy2026, 2027: tt.fy2027} {
+			var su structure.SourcesUses
+			for i := range facts {
+				f := &facts[i]
+				if f.Scope == structure.ScopeAllFundsGross && f.FundGroup == tt.group &&
+					f.FiscalYear == year && f.Basis == mapping.BasisAdopted && !su.Add(f) {
+					t.Errorf("%s FY%d: fact %s is no term of sources = uses", tt.group, year, f.ID)
+				}
+			}
+			if su.Changes == 0 {
+				t.Errorf("%s FY%d: no change row, so nothing is balanced", tt.group, year)
+				continue
+			}
+			if su.Sources() != su.Uses() {
+				t.Errorf("%s FY%d: sources %d, uses %d", tt.group, year, su.Sources(), su.Uses())
+			}
+			if su.Sources() != want*100 {
+				t.Errorf("%s FY%d: sources %d cents, the page prints %d dollars", tt.group, year, su.Sources(), want)
+			}
+		}
+	}
+}

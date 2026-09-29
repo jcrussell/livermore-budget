@@ -210,11 +210,11 @@ const (
 	FundGroupInternalService = registry.FundTypeInternalService
 	// The three fund-balance rows pp.66-67 print. Change is decomposed by
 	// sign; beginning and ending are stocks and get no link at all.
-	CategoryFundBalanceChange    = "fund-balance/change"
-	CategoryFundBalanceBeginning = "fund-balance/beginning"
-	CategoryFundBalanceEnding    = "fund-balance/ending"
+	CategoryFundBalanceChange    = structure.CategoryFundBalanceChange
+	CategoryFundBalanceBeginning = structure.CategoryFundBalanceBeginning
+	CategoryFundBalanceEnding    = structure.CategoryFundBalanceEnding
 	// CategoryFundBalanceReserveIncrease is a printed row drawn at its own id.
-	CategoryFundBalanceReserveIncrease = "fund-balance/reserve-increase"
+	CategoryFundBalanceReserveIncrease = structure.CategoryFundBalanceReserveIncrease
 )
 
 // NodeFundBalanceDraw and NodeFundBalanceContribution are the two nodes this
