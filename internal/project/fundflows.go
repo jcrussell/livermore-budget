@@ -9,6 +9,7 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/internal/structure"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 	"github.com/jcrussell/livermore-budget/schema"
 )
@@ -22,8 +23,8 @@ const FundFlowsProjection = "fund-flows"
 // than for its first consumer.
 const (
 	ScopeRevenueByFund           = TrendsScope
-	scopeExpenditureByDepartment = "expenditure-by-department"
-	scopeExpenditureByFund       = "expenditure-by-fund"
+	scopeExpenditureByDepartment = structure.ScopeExpenditureByDepartment
+	scopeExpenditureByFund       = structure.ScopeExpenditureByFund
 )
 
 // FundFlowsScopes is the schedule set, in the order a reader meets the money:
@@ -409,7 +410,7 @@ func fundFlowsCaveats(twice int, nodes []Node) []Caveat {
 		},
 	}
 	divided, direct := spendingSides(nodes)
-	if len(divided) == 1 && divided[prefixFundGroup+"general"] && len(direct) > 0 {
+	if len(divided) == 1 && divided[PrefixFundGroup+"general"] && len(direct) > 0 {
 		out = append(out, Caveat{
 			ID: "only-the-general-fund-has-divisions",
 			Summary: "Only the General Fund opens into divisions; every other fund's spending " +
@@ -423,7 +424,7 @@ func fundFlowsCaveats(twice int, nodes []Node) []Caveat {
 				"spending for is drawn with money arriving and none leaving, and one that " +
 				"spends with no printed revenue with money leaving and none arriving.",
 			// The groups drawn without divisions, and fund/100, the exception.
-			AppliesTo: append(sortedKeys(direct), prefixFund+strconv.Itoa(generalFund)),
+			AppliesTo: append(sortedKeys(direct), PrefixFund+strconv.Itoa(generalFund)),
 		})
 	}
 	if stopped := truncatedGroups(nodes); len(stopped) > 0 {
@@ -481,7 +482,7 @@ func truncatedGroups(nodes []Node) []string {
 	divided, direct := spendingSides(nodes)
 	out := []string{}
 	for _, n := range nodes {
-		if strings.HasPrefix(n.ID, prefixFundGroup) && !divided[n.ID] && !direct[n.ID] {
+		if strings.HasPrefix(n.ID, PrefixFundGroup) && !divided[n.ID] && !direct[n.ID] {
 			out = append(out, n.ID)
 		}
 	}
@@ -724,11 +725,11 @@ func (*fundFlows) revenueEndpoint(k revKey) (endpoint, error) {
 				"pp.127-140 print revenue as rows and this document draws the rows, so a "+
 					"cell with no line has no source end")
 		}
-		return endpoint{id: prefixRevenueLine + k.line, slug: k.line,
+		return endpoint{id: PrefixRevenueLine + k.line, slug: k.line,
 			tier: tierRevenueLine, role: roleRevenueLine,
-			parent: prefixRevenue + k.category}, nil
+			parent: PrefixRevenue + k.category}, nil
 	case mapping.KindTransferIn:
-		return endpoint{id: nodeTransfersIn, slug: k.category,
+		return endpoint{id: NodeTransfersIn, slug: k.category,
 			tier: tierRevenueSource, role: roleTransferIn}, nil
 	default:
 		return endpoint{}, cmdutil.WithHint(
@@ -752,7 +753,7 @@ func (f *fundFlows) fundEndpoint(number int) (endpoint, error) {
 	if number == generalFund {
 		role = roleGeneralFund
 	}
-	return endpoint{id: prefixFund + strconv.Itoa(number), tier: tierFund, role: role}, nil
+	return endpoint{id: PrefixFund + strconv.Itoa(number), tier: tierFund, role: role}, nil
 }
 
 func (f *fundFlows) divisionEndpoint(division string) (endpoint, error) {
@@ -760,14 +761,14 @@ func (f *fundFlows) divisionEndpoint(division string) (endpoint, error) {
 		return endpoint{}, fmt.Errorf("fund-flows: data/departments.yaml lists no division %q, "+
 			"so the row has no division to draw", division)
 	}
-	return endpoint{id: prefixDept + division, tier: tierDepartment, role: roleDepartment}, nil
+	return endpoint{id: PrefixDept + division, tier: tierDepartment, role: roleDepartment}, nil
 }
 
 // objectEndpoint is a tier-5 node, and its id carries the DIVISION.
 //
 // A bare expenditure/<object> node would need one parent per division.
 func (*fundFlows) objectEndpoint(division, category string) endpoint {
-	return endpoint{id: prefixExpenditure + division + "/" + category, slug: category,
+	return endpoint{id: PrefixExpenditure + division + "/" + category, slug: category,
 		tier: tierObjectCategory, role: roleObjectCategory}
 }
 
@@ -776,9 +777,9 @@ func (*fundFlows) objectEndpoint(division, category string) endpoint {
 // a bare expenditure/<object> shared by every fund would reach no group's
 // window.
 func fundObjectEndpoint(fund int, category string) endpoint {
-	return endpoint{id: prefixExpenditure + "fund/" + strconv.Itoa(fund) + "/" + category,
+	return endpoint{id: PrefixExpenditure + "fund/" + strconv.Itoa(fund) + "/" + category,
 		slug: category, tier: tierObjectCategory, role: roleObjectCategory,
-		parent: prefixFund + strconv.Itoa(fund)}
+		parent: PrefixFund + strconv.Itoa(fund)}
 }
 
 // addFundFlowNode records a node the first time something touches it, and hangs
@@ -789,23 +790,23 @@ func (f *fundFlows) addFundFlowNode(nodes map[string]Node, e endpoint) {
 	}
 	n := Node{ID: e.id, Label: f.label(e), Tier: e.tier, Role: e.role, Parent: e.parent}
 	if e.tier == tierFund {
-		number, err := strconv.Atoi(e.id[len(prefixFund):])
+		number, err := strconv.Atoi(e.id[len(PrefixFund):])
 		if err == nil {
 			if t, ok := f.Labels.FundType(number); ok {
-				n.Parent = prefixFundGroup + t
+				n.Parent = PrefixFundGroup + t
 			}
 			annotateFund(&n, f.Labels, number)
 		}
 	}
 	if e.tier == tierDepartment {
-		n.Parent = prefixFund + strconv.Itoa(generalFund)
+		n.Parent = PrefixFund + strconv.Itoa(generalFund)
 	}
 	if e.tier == tierObjectCategory && e.parent == "" {
 		// expenditure/<division>/<object> -> dept/<division>, cut at the FIRST
 		// slash: a category may contain one, a division cannot.
-		rest := e.id[len(prefixExpenditure):]
+		rest := e.id[len(PrefixExpenditure):]
 		if i := strings.Index(rest, "/"); i > 0 {
-			n.Parent = prefixDept + rest[:i]
+			n.Parent = PrefixDept + rest[:i]
 		}
 	}
 	nodes[e.id] = n
@@ -849,11 +850,11 @@ func (f *fundFlows) addParents(nodes map[string]Node) error {
 			continue
 		}
 		switch {
-		case strings.HasPrefix(p.parent, prefixFundGroup):
+		case strings.HasPrefix(p.parent, PrefixFundGroup):
 			nodes[p.parent] = Node{ID: p.parent, Label: f.label(endpoint{id: p.parent}),
 				Tier: tierFundGroup, Role: roleFundGroup}
-		case strings.HasPrefix(p.parent, prefixRevenue):
-			slug := p.parent[len(prefixRevenue):]
+		case strings.HasPrefix(p.parent, PrefixRevenue):
+			slug := p.parent[len(PrefixRevenue):]
 			nodes[p.parent] = Node{ID: p.parent,
 				Label: f.label(endpoint{id: p.parent, slug: slug, tier: tierRevenueSource}),
 				Tier:  tierRevenueSource, Role: roleRevenueSource}
@@ -872,14 +873,14 @@ func (f *fundFlows) label(e endpoint) string {
 		return l
 	}
 	if e.tier == tierFund {
-		if n, err := strconv.Atoi(e.id[len(prefixFund):]); err == nil {
+		if n, err := strconv.Atoi(e.id[len(PrefixFund):]); err == nil {
 			if name, ok := f.Labels.FundName(n); ok && name != "" {
 				return name
 			}
 		}
 	}
 	if e.tier == tierDepartment {
-		if l, ok := f.Labels.DivisionLabel(e.id[len(prefixDept):]); ok && l != "" {
+		if l, ok := f.Labels.DivisionLabel(e.id[len(PrefixDept):]); ok && l != "" {
 			return l
 		}
 	}
@@ -891,6 +892,13 @@ func (f *fundFlows) label(e endpoint) string {
 	return slugLabel(e.id)
 }
 
+// ContraPrefix and ContraOrphan are the two sentences a negative link carries:
+// the first followed by the label of the node its source is printed under.
+const (
+	ContraPrefix = "printed as a reduction of "
+	ContraOrphan = "printed rows netting to a reduction"
+)
+
 // nameContraLinks gives every negative link the sentence naming what it is
 // printed as a reduction of. It runs after addParents, because that parent may
 // be a node no link touches, and as one post-pass so every site that can emit
@@ -901,10 +909,10 @@ func nameContraLinks(links []Link, nodes map[string]Node) {
 			continue
 		}
 		if up, ok := nodes[nodes[links[i].Source].Parent]; ok {
-			links[i].Contra = "printed as a reduction of " + up.Label
+			links[i].Contra = ContraPrefix + up.Label
 			continue
 		}
-		links[i].Contra = "printed rows netting to a reduction"
+		links[i].Contra = ContraOrphan
 	}
 }
 

@@ -6,6 +6,7 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/internal/structure"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 	"github.com/jcrussell/livermore-budget/schema"
 )
@@ -18,7 +19,7 @@ const DepartmentSpendingProjection = "department-spending"
 //
 // The lower block of the same pages is keyed on DEPARTMENT, not division, and
 // is [departmentFunding]'s; adding the two blocks doubles the city's spending.
-const DepartmentSpendingScope = "departmentwide-expenditures"
+const DepartmentSpendingScope = structure.ScopeDepartmentwideExpenditures
 
 // DepartmentSpendingScopes is the schedule set, as [Options.Scopes] holds it.
 func DepartmentSpendingScopes() []string { return []string{DepartmentSpendingScope} }
@@ -104,7 +105,7 @@ func (d *departmentSpending) Document(facts []fact.Fact, o Options) (*Document, 
 		if srcErr != nil {
 			return nil, srcErr
 		}
-		dst := endpoint{id: prefixDept + k.division, tier: tierDepartment, role: roleDepartment}
+		dst := endpoint{id: PrefixDept + k.division, tier: tierDepartment, role: roleDepartment}
 		if d.Labels != nil {
 			if l, ok := d.Labels.DivisionLabel(k.division); !ok || l == "" {
 				return nil, fmt.Errorf("department-spending: data/departments.yaml lists no "+
@@ -212,7 +213,7 @@ func netDepartmentSpending(facts []fact.Fact) (map[spendKey]*cellSum, error) {
 func spendingObjectEndpoint(k spendKey) (endpoint, error) {
 	switch k.kind {
 	case mapping.KindExpenditure:
-		return endpoint{id: prefixExpenditure + k.category, slug: k.category,
+		return endpoint{id: PrefixExpenditure + k.category, slug: k.category,
 			tier: tierObjectCategory, role: roleObjectCategory}, nil
 	case mapping.KindTransferOut:
 		return endpoint{id: k.category, slug: k.category,
@@ -251,7 +252,7 @@ func (d *departmentSpending) label(e endpoint) string {
 	}
 	if d.Labels != nil {
 		if e.tier == tierDepartment {
-			if l, ok := d.Labels.DivisionLabel(e.id[len(prefixDept):]); ok && l != "" {
+			if l, ok := d.Labels.DivisionLabel(e.id[len(PrefixDept):]); ok && l != "" {
 				return l
 			}
 		}

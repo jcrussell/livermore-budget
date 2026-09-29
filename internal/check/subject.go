@@ -50,18 +50,6 @@ const (
 // published triple was built at all, which no amount of shared spelling can.
 const spineScope = project.PublishedScope
 
-// The scope strings the detail schedules are mapped at. A string only ever
-// compared is where a typo survives; TestScopeConstantsNameDeclaredCuts holds
-// these to structure.BudgetBookCuts.
-const (
-	// revenueDetailScope is Budget Book pp.127-140, revenue and transfers in
-	// per fund.
-	revenueDetailScope = "revenue-by-fund"
-	// fundingSourcesScope is Budget Book pp.85-125's lower block, which fund
-	// pays for which department.
-	fundingSourcesScope = "department-funding-sources"
-)
-
 // Vocabulary is the view of the curated registries (internal/registry) the
 // checks need, declared here in the consumer and kept to the methods actually
 // used (byob-interfaces.2), as internal/project does with its Labels.

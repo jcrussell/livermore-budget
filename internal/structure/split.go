@@ -33,7 +33,7 @@ func BudgetBookSplits() []Split {
 		// and p222's rows are the "Transfers Out to CIP" pp.69-75 print beside
 		// it, so the two name one money differently and agree only by group.
 		Name:  "a-transfer-out-is-p76-or-to-the-cip",
-		Whole: "spine",
+		Whole: CutSpine,
 		Parts: []string{"transfers-detail", "cip-transfers-out"},
 		At:    LevelFundGroup,
 		Kinds: []mapping.Kind{mapping.KindTransferOut},

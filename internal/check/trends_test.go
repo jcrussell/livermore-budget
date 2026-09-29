@@ -10,7 +10,7 @@ import (
 )
 
 // trendsTestScope is the scope the trends document is of, spelled here for the
-// same reason revenueDetailScope is spelled in its own file.
+// same reason project.ScopeRevenueByFund is spelled in its own file.
 const trendsTestScope = "revenue-by-fund"
 
 var trendsTestColumns = []project.Column{

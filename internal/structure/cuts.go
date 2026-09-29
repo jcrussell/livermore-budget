@@ -2,6 +2,14 @@ package structure
 
 import "github.com/jcrussell/livermore-budget/internal/mapping"
 
+// The cut names other packages select by.
+const (
+	CutSpine          = "spine"
+	CutRevenueDetail  = "revenue-detail"
+	CutDepartmentwide = "departmentwide"
+	CutFundingSources = "funding-sources"
+)
+
 // BudgetBookCuts are the Budget Book's schedules as cuts of one hierarchy,
 // each a claim about its pages.
 func BudgetBookCuts() []Cut {
@@ -12,8 +20,8 @@ func BudgetBookCuts() []Cut {
 		{
 			// pp.66-67, the citywide control totals every other Budget Book
 			// schedule decomposes.
-			Name:      "spine",
-			Scope:     "all-funds-gross",
+			Name:      CutSpine,
+			Scope:     ScopeAllFundsGross,
 			Level:     LevelFundGroupByCategory,
 			Kinds:     everyKind,
 			Reference: true,
@@ -21,8 +29,8 @@ func BudgetBookCuts() []Cut {
 		},
 		{
 			// pp.127-140, revenue and transfers in per fund.
-			Name:  "revenue-detail",
-			Scope: "revenue-by-fund",
+			Name:  CutRevenueDetail,
+			Scope: ScopeRevenueByFund,
 			Level: LevelFundByCategory,
 			Kinds: []mapping.Kind{mapping.KindRevenue, mapping.KindTransferIn},
 			Bases: budgetBookDetail,
@@ -30,7 +38,7 @@ func BudgetBookCuts() []Cut {
 		{
 			// p76, both legs of every transfer, per fund.
 			Name:  "transfers-detail",
-			Scope: "transfers-by-fund",
+			Scope: ScopeTransfersByFund,
 			Level: LevelFundByCategory,
 			Kinds: []mapping.Kind{mapping.KindTransferIn, mapping.KindTransferOut},
 			Bases: []mapping.Basis{mapping.BasisAdopted},
@@ -39,7 +47,7 @@ func BudgetBookCuts() []Cut {
 			// p222, what each operating fund transfers to the CIP. Part of the
 			// spine's TRANSFER OUT, with p76, under BudgetBookSplits.
 			Name:  "cip-transfers-out",
-			Scope: "cip-funding-sources",
+			Scope: ScopeCIPFundingSources,
 			Level: LevelFundByCategory,
 			Kinds: []mapping.Kind{mapping.KindTransferOut},
 			Bases: []mapping.Basis{mapping.BasisRevised, mapping.BasisAdopted},
@@ -48,7 +56,7 @@ func BudgetBookCuts() []Cut {
 			// p222, what each CIP fund receives: those transfers, its grants,
 			// and the balance it draws.
 			Name:  "cip-funds",
-			Scope: "cip-funding-sources",
+			Scope: ScopeCIPFundingSources,
 			Level: LevelFundByCategory,
 			Kinds: []mapping.Kind{mapping.KindTransferIn, mapping.KindRevenue, mapping.KindFundBalance},
 			Bases: []mapping.Basis{mapping.BasisRevised, mapping.BasisAdopted},
@@ -59,7 +67,7 @@ func BudgetBookCuts() []Cut {
 			// pp.167-170, General Fund expenditure by department and object.
 			// `general` is a footprint, not a placeholder.
 			Name:           "general-fund-departments",
-			Scope:          "expenditure-by-department",
+			Scope:          ScopeExpenditureByDepartment,
 			Level:          LevelFundByDepartmentByCategory,
 			Kinds:          []mapping.Kind{mapping.KindExpenditure},
 			FundGroups:     []string{"general"},
@@ -70,7 +78,7 @@ func BudgetBookCuts() []Cut {
 			// p172, the General Fund's expenditure by object: pp.167-170's
 			// money a grain coarser, held equal by their containment.
 			Name:       "general-fund-by-category",
-			Scope:      "general-fund-by-category",
+			Scope:      ScopeGeneralFundByCategory,
 			Level:      LevelFundByCategory,
 			Kinds:      []mapping.Kind{mapping.KindExpenditure},
 			FundGroups: []string{"general"},
@@ -81,7 +89,7 @@ func BudgetBookCuts() []Cut {
 			// operating fund. The footprint is what lets fund-flows draw it
 			// beside general-fund-departments.
 			Name:       "fund-expenditures",
-			Scope:      "expenditure-by-fund",
+			Scope:      ScopeExpenditureByFund,
 			Level:      LevelFundByCategory,
 			Kinds:      []mapping.Kind{mapping.KindExpenditure},
 			FundGroups: []string{"enterprise", "capital", "debt-service", "permanent", "special-revenue", "internal-service"},
@@ -90,8 +98,8 @@ func BudgetBookCuts() []Cut {
 		{
 			// pp.85-125, expenditure by department and object across every
 			// fund, with no fund axis printed anywhere on the pages.
-			Name:           "departmentwide",
-			Scope:          "departmentwide-expenditures",
+			Name:           CutDepartmentwide,
+			Scope:          ScopeDepartmentwideExpenditures,
 			Level:          LevelDepartmentByCategory,
 			Kinds:          []mapping.Kind{mapping.KindExpenditure},
 			DepartmentTier: "division",
@@ -100,8 +108,8 @@ func BudgetBookCuts() []Cut {
 		{
 			// pp.85-125, which department's money comes from which fund. The
 			// rows name departments where the other schedules name divisions.
-			Name:           "funding-sources",
-			Scope:          "department-funding-sources",
+			Name:           CutFundingSources,
+			Scope:          ScopeDepartmentFundingSources,
 			Level:          LevelFundByDepartment,
 			Kinds:          []mapping.Kind{mapping.KindExpenditure},
 			Placeholders:   []Axis{AxisCategory},
@@ -127,7 +135,7 @@ func ACFRCuts() []Cut {
 			// p41, the General Fund's revenues, expenditures, transfers and
 			// fund balance for one audited year, at the spine's own grain.
 			Name:       "acfr-general-fund-summary",
-			Scope:      "acfr-general-fund-summary",
+			Scope:      ScopeACFRGeneralFundSummary,
 			Level:      LevelFundGroupByCategory,
 			Kinds:      everyKind,
 			FundGroups: []string{"general"},
@@ -137,7 +145,7 @@ func ACFRCuts() []Cut {
 			// pp.168-169, ten audited years of all governmental funds combined,
 			// with no fund group printed anywhere.
 			Name:  "acfr-changes-in-fund-balances",
-			Scope: "acfr-changes-in-fund-balances",
+			Scope: ScopeACFRChangesInFundBalances,
 			Level: LevelCategory,
 			Kinds: []mapping.Kind{mapping.KindRevenue, mapping.KindExpenditure, mapping.KindFundBalance},
 			Bases: audited,
@@ -145,7 +153,7 @@ func ACFRCuts() []Cut {
 		{
 			// p167, the General Fund's GASB 54 components with the group named.
 			Name:       "acfr-fund-balances/general",
-			Scope:      "acfr-fund-balances",
+			Scope:      ScopeACFRFundBalances,
 			Rules:      []string{"acfr-p0167-general-fund-balances"},
 			Level:      LevelFundGroupByCategory,
 			Kinds:      []mapping.Kind{mapping.KindFundBalance},
@@ -155,7 +163,7 @@ func ACFRCuts() []Cut {
 		{
 			// p167, every other governmental fund's components, aggregated.
 			Name:  "acfr-fund-balances/other-governmental",
-			Scope: "acfr-fund-balances",
+			Scope: ScopeACFRFundBalances,
 			Rules: []string{"acfr-p0167-other-governmental-fund-balances"},
 			Level: LevelCategory,
 			Kinds: []mapping.Kind{mapping.KindFundBalance},
@@ -175,7 +183,7 @@ func AllCuts() []Cut {
 func BudgetBookIdentities() []Identity {
 	return []Identity{{
 		Name:  "a-transfer-in-is-printed-at-both-ends",
-		A:     "revenue-detail",
+		A:     CutRevenueDetail,
 		B:     "transfers-detail",
 		Kinds: []mapping.Kind{mapping.KindTransferIn},
 		Reason: "pp.127-140 print a fund's Transfers In at the receiving fund and p76 prints the " +
@@ -187,9 +195,9 @@ func BudgetBookIdentities() []Identity {
 // reach, held in every column both sides print.
 func BudgetBookTies() []Tie {
 	return []Tie{
-		{Name: "a-department-spends-what-funds-it", A: "departmentwide", B: "funding-sources", At: LevelDepartment},
+		{Name: "a-department-spends-what-funds-it", A: CutDepartmentwide, B: CutFundingSources, At: LevelDepartment},
 		{Name: "the-general-fund-row-is-the-general-fund-schedule", A: "general-fund-departments",
-			B: "funding-sources", At: LevelDepartment},
+			B: CutFundingSources, At: LevelDepartment},
 	}
 }
 
@@ -215,7 +223,7 @@ func BudgetBookExceptions() []Exception {
 	absent := Sum{}
 	rounded := func(cut, dept string, c, a int64, printed string) Exception {
 		return Exception{
-			Name: cut + "-rounds-" + dept + "-2024", Cut: cut, Against: "funding-sources", At: LevelDepartment,
+			Name: cut + "-rounds-" + dept + "-2024", Cut: cut, Against: CutFundingSources, At: LevelDepartment,
 			Cells: []Pin{{Year: 2024, Basis: "actual", Coords: map[Axis]string{AxisDepartment: dept},
 				Cut: present(c), Against: present(a)}},
 			Residual: a - c,
@@ -225,16 +233,16 @@ func BudgetBookExceptions() []Exception {
 		}
 	}
 	return []Exception{
-		rounded("departmentwide", "administrative-services", 1278595300, 1278595400,
+		rounded(CutDepartmentwide, "administrative-services", 1278595300, 1278595400,
 			"p0097.txt:43 and :51, both 12,785,955"),
-		rounded("departmentwide", "innovation-and-economic-development", 568058900, 568059000,
+		rounded(CutDepartmentwide, "innovation-and-economic-development", 568058900, 568059000,
 			"p0111.txt:27 and :37, both 5,680,590"),
-		rounded("departmentwide", "library-department", 658380900, 658380800,
+		rounded(CutDepartmentwide, "library-department", 658380900, 658380800,
 			"p0115.txt:19 and :31, both 6,583,809"),
-		rounded("departmentwide", "police-department", 4346324000, 4346324100,
+		rounded(CutDepartmentwide, "police-department", 4346324000, 4346324100,
 			"p0119.txt:47 and p0120.txt:13, both 43,463,240"),
 		func() Exception {
-			e := rounded("departmentwide", "public-works", 6258673700, 6285353700,
+			e := rounded(CutDepartmentwide, "public-works", 6258673700, 6285353700,
 				"p0124.txt:45 and p0125.txt:33, both 62,853,536, and p0124.txt:25 Transfers Out 266,798")
 			e.Reason = "the departmentwide cut leaves out Maintenance's Transfers Out, a declared residue the " +
 				"funding sources include, and the two schedules round the rows under one total $2 apart"
@@ -246,7 +254,7 @@ func BudgetBookExceptions() []Exception {
 			"p0169.txt:45 COMMUNITY DEVELOPMENT TOTAL and p0101.txt:51 General Fund, both 15,925,170"),
 		{
 			Name: "pp.127-130-print-no-general-fund-transfer-in-2026",
-			Cut:  "revenue-detail", Against: "spine", At: LevelFundGroupByCategory,
+			Cut:  CutRevenueDetail, Against: CutSpine, At: LevelFundGroupByCategory,
 			Cells:    []Pin{{Year: 2026, Basis: "adopted", Coords: general, Cut: absent, Against: present(48040000)}},
 			Residual: 48040000,
 			Printed:  "p0066.txt:24, TRANSFER IN 480,400 for the General Fund; pp.127-130 print TOTAL REVENUES and no Transfers In row",
@@ -257,7 +265,7 @@ func BudgetBookExceptions() []Exception {
 		},
 		{
 			Name: "pp.127-130-print-no-general-fund-transfer-in-2027",
-			Cut:  "revenue-detail", Against: "spine", At: LevelFundGroupByCategory,
+			Cut:  CutRevenueDetail, Against: CutSpine, At: LevelFundGroupByCategory,
 			Cells:    []Pin{{Year: 2027, Basis: "adopted", Coords: general, Cut: absent, Against: present(48673500)}},
 			Residual: 48673500,
 			Printed:  "p0066.txt:24, TRANSFER IN 486,735 for the General Fund; pp.127-130 print TOTAL REVENUES and no Transfers In row",
@@ -268,7 +276,7 @@ func BudgetBookExceptions() []Exception {
 		},
 		{
 			Name: "p0067-internal-service-is-250000-high-by-fund-group",
-			Cut:  "funding-sources", Against: "spine", At: LevelFundGroup,
+			Cut:  CutFundingSources, Against: CutSpine, At: LevelFundGroup,
 			Cells: []Pin{{Year: 2027, Basis: "adopted", Coords: map[Axis]string{AxisFundGroup: "internal-service"},
 				Cut: present(2629451500), Against: present(2654451500)}},
 			Residual: 25000000,
@@ -294,7 +302,7 @@ func BudgetBookExceptions() []Exception {
 		},
 		{
 			Name: "p0067-internal-service-is-250000-high-by-fund",
-			Cut:  "fund-expenditures", Against: "spine", At: LevelFundGroupByCategory,
+			Cut:  "fund-expenditures", Against: CutSpine, At: LevelFundGroupByCategory,
 			Cells: []Pin{{Year: 2027, Basis: "adopted",
 				Coords: map[Axis]string{AxisFundGroup: "internal-service", AxisCategory: "services-and-supplies"},
 				Cut:    present(1654601000), Against: present(1679601000)}},
@@ -310,7 +318,7 @@ func BudgetBookExceptions() []Exception {
 		},
 		{
 			Name: "p0067-internal-service-is-250000-high-by-object",
-			Cut:  "departmentwide", Against: "spine", At: LevelCategory,
+			Cut:  CutDepartmentwide, Against: CutSpine, At: LevelCategory,
 			Cells: []Pin{{Year: 2027, Basis: "adopted", Coords: map[Axis]string{AxisCategory: "services-and-supplies"},
 				Cut: present(13025208700), Against: present(13050208700)}},
 			Residual:       25000000,

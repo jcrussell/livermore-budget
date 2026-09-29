@@ -121,8 +121,8 @@ func (*linkEndsMatchTheirFacts) Run(_ context.Context, s *Subject) (Result, erro
 			if checked && len(facts) > 0 {
 				links++
 			}
-			group, gok := strings.CutPrefix(l.Source, fundGroupPrefix)
-			number, fok := strings.CutPrefix(l.Target, fundNodePrefix)
+			group, gok := strings.CutPrefix(l.Source, project.PrefixFundGroup)
+			number, fok := strings.CutPrefix(l.Target, project.PrefixFund)
 			if gok && fok {
 				n, err := strconv.Atoi(number)
 				fund, listed := s.Vocabulary.Fund(n)
@@ -246,7 +246,7 @@ func (e linkEnd) mismatch(id string, source bool) (string, bool) {
 		if !source {
 			want = other.Target
 		}
-		if want != fundNodePrefix+value {
+		if want != project.PrefixFund+value {
 			return fmt.Sprintf("%s names fund %s and the other leg of transfer %s is %s -> %s",
 				id, value, e.link.TransferID, other.Source, other.Target), true
 		}

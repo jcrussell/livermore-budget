@@ -124,7 +124,7 @@ func TestUncitedFactsArePrintedZerosAllowsTheSpinesStocks(t *testing.T) {
 	s = testSubject(t)
 	moved := false
 	for i := range s.Facts {
-		if s.Facts[i].Category == categoryFundBalanceBeginning && s.Facts[i].AmountCents != 0 {
+		if s.Facts[i].Category == project.CategoryFundBalanceBeginning && s.Facts[i].AmountCents != 0 {
 			s.Facts[i].Category = "fund-balance/change"
 			moved = true
 			break

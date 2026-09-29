@@ -8,6 +8,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/internal/registry"
 )
 
@@ -55,7 +56,7 @@ func revenueLinesSubject(t *testing.T, taxonomy string, rows ...revenueRow) *Sub
 		t.Fatalf("%d rows over %d fixture facts", len(rows), len(facts))
 	}
 	for i, r := range rows {
-		facts[i].Scope = revenueDetailScope
+		facts[i].Scope = project.ScopeRevenueByFund
 		facts[i].Kind = r.kind
 		facts[i].Category = r.category
 		facts[i].RowLabel = r.label
@@ -205,7 +206,7 @@ func TestEveryRevenueLineIsARowOfTheMapping(t *testing.T) {
 	for _, f := range s.Files {
 		for i := range f.Rules {
 			r := &f.Rules[i]
-			if r.Scope != revenueDetailScope {
+			if r.Scope != project.ScopeRevenueByFund {
 				continue
 			}
 			for _, rw := range r.Rows {
@@ -253,7 +254,7 @@ func TestEveryRevenueLineIsARowOfTheMapping(t *testing.T) {
 	if got := len(rows); got != 101 {
 		t.Errorf("the rule files carry %d distinct revenue rows of scope %s, want 101; "+
 			"the pin is a count against pp.127-140 and means nothing if the schedule changed",
-			got, revenueDetailScope)
+			got, project.ScopeRevenueByFund)
 	}
 	if lines != 101 {
 		t.Errorf("the registry declares %d revenue lines, want 101 for the same reason", lines)

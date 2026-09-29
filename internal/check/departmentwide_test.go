@@ -228,7 +228,7 @@ func TestDepartmentwideExceptionFiguresAreNotPrintedAndTheirDifferenceIs(t *test
 	var byObject []structure.Exception
 	for _, e := range structure.BudgetBookExceptions() {
 		byName[e.Name] = e
-		if e.Cut == departmentwideCut && e.Against == spineCut {
+		if e.Cut == structure.CutDepartmentwide && e.Against == structure.CutSpine {
 			byObject = append(byObject, e)
 		}
 	}
@@ -292,7 +292,7 @@ func TestDepartmentwideExceptionFiguresAreNotPrintedAndTheirDifferenceIs(t *test
 		// And the ground's own figures ARE printed, which is what makes it a
 		// ground: TestP0067IsTheOutlierAndFivePagesDisagree reads them off the
 		// pages, and the cut it names is the by-fund-group one.
-		if g.Cut != "funding-sources" || g.Against != spineCut {
+		if g.Cut != "funding-sources" || g.Against != structure.CutSpine {
 			t.Errorf("exception %s is grounded in %s, which compares %s against %s; the "+
 				"printed figures are on the funding-sources side", e.Name, g.Name, g.Cut, g.Against)
 		}

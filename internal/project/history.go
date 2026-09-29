@@ -3,11 +3,12 @@ package project
 import (
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/internal/structure"
 )
 
 // FundBalancesScope is the schedule [FundBalances] draws: ACFR p167, Fund
 // Balances of Governmental Funds.
-const FundBalancesScope = "acfr-fund-balances"
+const FundBalancesScope = structure.ScopeACFRFundBalances
 
 // FundBalancesProjection is the file stem, and the name every check and the
 // packager refer to this document by.
@@ -15,7 +16,7 @@ const FundBalancesProjection = "fund-balances"
 
 // ChangesScope is the schedule [FundBalanceChanges] draws: ACFR pp.168-169,
 // Changes in Fund Balances of Governmental Funds.
-const ChangesScope = "acfr-changes-in-fund-balances"
+const ChangesScope = structure.ScopeACFRChangesInFundBalances
 
 // ChangesProjection is the file stem for the changes document.
 const ChangesProjection = "changes-in-fund-balances"

@@ -39,10 +39,6 @@ func (*cutsTieAlongTheLattice) Description() string {
 // does not.
 var budgetBookExceptions = structure.BudgetBookExceptions
 
-// departmentwideCut is pp.85-125's upper block's cut name;
-// TestScopeConstantsNameDeclaredCuts holds it to the declaration.
-const departmentwideCut = "departmentwide"
-
 // budgetBookSplits is a seam so a test can declare a split the tree does not.
 var budgetBookSplits = structure.BudgetBookSplits
 

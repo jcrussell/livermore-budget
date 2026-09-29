@@ -8,22 +8,8 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/fact"
+	"github.com/jcrussell/livermore-budget/internal/project"
 )
-
-// categoryFundBalanceChange is the third line this identity is over. The other
-// two come from internal/check/graph.go, which already declared them: this file
-// first shipped a second spelling of both, one concept with two names in one
-// package.
-//
-// THE CHANGE LINE STAYS HERE AND IS NOT ADDED TO THAT BLOCK, which is where the
-// de-duplication first put it and where it falsified three sentences at once.
-// graph.go introduces its constants as "the two rows pp.66-67 print that are
-// STOCKS rather than flows ... the projection records the facts and draws no
-// link", and as a restatement of "two unexported constants in internal/project".
-// fund-balance/change is none of those: it is a flow, the projection DOES draw a
-// link for it, and graph.go's own stock predicate excludes it. Three constants
-// under a comment saying two, one of them the opposite of what it describes.
-const categoryFundBalanceChange = "fund-balance/change"
 
 // The set of three is exhaustive on purpose.
 //
@@ -132,7 +118,7 @@ type balance struct {
 // whose subject is empty addresses nothing, and the report is what a reader
 // greps.
 func (b *balance) subject(k fundBalanceKey) string {
-	for _, c := range []string{categoryFundBalanceBeginning, categoryFundBalanceChange, categoryFundBalanceEnding} {
+	for _, c := range []string{project.CategoryFundBalanceBeginning, project.CategoryFundBalanceChange, project.CategoryFundBalanceEnding} {
 		if id, ok := b.ids[c]; ok && id != "" {
 			return id
 		}
@@ -146,7 +132,7 @@ func (*fundBalanceIdentity) Run(_ context.Context, s *Subject) (Result, error) {
 
 	for _, f := range s.Facts {
 		switch f.Category {
-		case categoryFundBalanceBeginning, categoryFundBalanceChange, categoryFundBalanceEnding:
+		case project.CategoryFundBalanceBeginning, project.CategoryFundBalanceChange, project.CategoryFundBalanceEnding:
 		default:
 			continue
 		}
@@ -197,7 +183,7 @@ func (*fundBalanceIdentity) Run(_ context.Context, s *Subject) (Result, error) {
 		}
 
 		var missing []string
-		for _, c := range []string{categoryFundBalanceBeginning, categoryFundBalanceChange, categoryFundBalanceEnding} {
+		for _, c := range []string{project.CategoryFundBalanceBeginning, project.CategoryFundBalanceChange, project.CategoryFundBalanceEnding} {
 			if _, ok := b.amounts[c]; !ok {
 				missing = append(missing, c)
 			}
@@ -212,10 +198,10 @@ func (*fundBalanceIdentity) Run(_ context.Context, s *Subject) (Result, error) {
 		}
 
 		complete++
-		beginning, change, ending := b.amounts[categoryFundBalanceBeginning],
-			b.amounts[categoryFundBalanceChange], b.amounts[categoryFundBalanceEnding]
+		beginning, change, ending := b.amounts[project.CategoryFundBalanceBeginning],
+			b.amounts[project.CategoryFundBalanceChange], b.amounts[project.CategoryFundBalanceEnding]
 		if got := beginning + change; got != ending {
-			findings = append(findings, finding(b.ids[categoryFundBalanceEnding],
+			findings = append(findings, finding(b.ids[project.CategoryFundBalanceEnding],
 				"%s: beginning %s + change %s = %s, but the document prints an ending "+
 					"balance of %s, a difference of %s",
 				k, beginning, change, got, ending, ending-got))

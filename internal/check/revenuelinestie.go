@@ -14,23 +14,6 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/structure"
 )
 
-// The id forms this check reads, spelled here rather than imported: it reads
-// the published document, not the constants that wrote it.
-const (
-	revenueLinePrefix = "revenue-line/"
-	revenueNodePrefix = "revenue/"
-	fundNodePrefix    = "fund/"
-	fundGroupPrefix   = "fund-group/"
-	transfersInNode   = "transfers/in"
-)
-
-// The cut names an exception pairs; TestScopeConstantsNameDeclaredCuts holds
-// them to structure.BudgetBookCuts.
-const (
-	revenueDetailCut = "revenue-detail"
-	spineCut         = "spine"
-)
-
 // revenueDetailKinds is what pp.127-140 print: revenue and transfers in,
 // across every fund group. Transfers In sits inside a printed `Total <fund>`
 // on pp.131-140, so dropping that kind leaves the drill-down's transfer flows
@@ -110,12 +93,12 @@ func (c *revenueLinesTieToTheirCategories) Run(_ context.Context, s *Subject) (R
 		col := p.Options.Columns[0]
 
 		for _, l := range doc.Links {
-			if !strings.HasPrefix(l.Target, fundNodePrefix) {
+			if !strings.HasPrefix(l.Target, project.PrefixFund) {
 				continue
 			}
 			// A group's rollup into its funds is the same money one grain
 			// coarser; counting it doubles every cell.
-			if strings.HasPrefix(l.Source, fundGroupPrefix) {
+			if strings.HasPrefix(l.Source, project.PrefixFundGroup) {
 				continue
 			}
 			drawn++
@@ -132,7 +115,7 @@ func (c *revenueLinesTieToTheirCategories) Run(_ context.Context, s *Subject) (R
 				findings = append(findings, finding(p.String(),
 					"link %q -> %q reaches a fund from a node that is neither a %s line this "+
 						"document carries nor %q, so it sums into no cell",
-					l.Source, l.Target, revenueLinePrefix, transfersInNode))
+					l.Source, l.Target, project.PrefixRevenueLine, project.NodeTransfersIn))
 				continue
 			}
 			k := structure.Key{Year: col.FiscalYear, Basis: string(col.Basis), Level: spineGrain,
@@ -184,11 +167,11 @@ func (*revenueLinesTieToTheirCategories) checkParents(doc string, nodes []projec
 	var findings []Finding
 	lines := 0
 	for _, n := range nodes {
-		if !strings.HasPrefix(n.ID, revenueLinePrefix) {
+		if !strings.HasPrefix(n.ID, project.PrefixRevenueLine) {
 			continue
 		}
 		lines++
-		slug := strings.TrimPrefix(n.ID, revenueLinePrefix)
+		slug := strings.TrimPrefix(n.ID, project.PrefixRevenueLine)
 		entry, ok := v.Category(slug)
 		if !ok {
 			findings = append(findings, finding(doc,
@@ -196,7 +179,7 @@ func (*revenueLinesTieToTheirCategories) checkParents(doc string, nodes []projec
 					"is whatever its parent edge says and nothing can contradict it", n.ID))
 			continue
 		}
-		want := revenueNodePrefix + entry.Parent
+		want := project.PrefixRevenue + entry.Parent
 		if n.Parent != want {
 			findings = append(findings, finding(doc,
 				"node %q is parented to %q and data/taxonomy.yaml declares it under %q, so "+
@@ -216,7 +199,7 @@ func (*revenueLinesTieToTheirCategories) checkParents(doc string, nodes []projec
 // fundGroupOf is the group data/funds.yaml gives the fund a `fund/<number>` id
 // names.
 func fundGroupOf(v Vocabulary, id string) (string, bool) {
-	number, err := strconv.Atoi(strings.TrimPrefix(id, fundNodePrefix))
+	number, err := strconv.Atoi(strings.TrimPrefix(id, project.PrefixFund))
 	if err != nil {
 		return "", false
 	}
@@ -232,17 +215,17 @@ func fundGroupOf(v Vocabulary, id string) (string, bool) {
 // the wrong cell rather than nowhere. A transfer in has no line and is drawn
 // from the tier-0 endpoint straight into the fund.
 func inflowCategory(byID map[string]project.Node, source string) (string, bool) {
-	if source == transfersInNode {
-		return transfersInNode, true
+	if source == project.NodeTransfersIn {
+		return project.NodeTransfersIn, true
 	}
-	if !strings.HasPrefix(source, revenueLinePrefix) {
+	if !strings.HasPrefix(source, project.PrefixRevenueLine) {
 		return "", false
 	}
 	node, ok := byID[source]
 	if !ok {
 		return "", false
 	}
-	return strings.TrimPrefix(node.Parent, revenueNodePrefix), true
+	return strings.TrimPrefix(node.Parent, project.PrefixRevenue), true
 }
 
 // lineExceptions holds apart the revenue-detail-against-spine cells a
@@ -258,7 +241,7 @@ func lineExceptions(detail, spine map[structure.Key]structure.Sum,
 	exempted := map[structure.Key]bool{}
 
 	for _, e := range budgetBookExceptions() {
-		if e.Cut != revenueDetailCut || e.Against != spineCut || e.At != spineGrain {
+		if e.Cut != structure.CutRevenueDetail || e.Against != structure.CutSpine || e.At != spineGrain {
 			continue
 		}
 		for _, p := range e.Cells {

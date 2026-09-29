@@ -28,11 +28,11 @@ type spineEndpoint struct {
 // the reserve row at its own, and the two halves of the change in working
 // capital. A test holds the list to the spine's golden.
 var spineEndpoints = []spineEndpoint{
-	{nodeTransfersIn, mapping.KindTransferIn, nodeTransfersIn},
-	{nodeTransfersOut, mapping.KindTransferOut, nodeTransfersOut},
-	{"fund-balance/reserve-increase", mapping.KindFundBalance, "fund-balance/reserve-increase"},
-	{NodeFundBalanceDraw, mapping.KindFundBalance, categoryFundBalanceChange},
-	{NodeFundBalanceContribution, mapping.KindFundBalance, categoryFundBalanceChange},
+	{NodeTransfersIn, mapping.KindTransferIn, NodeTransfersIn},
+	{NodeTransfersOut, mapping.KindTransferOut, NodeTransfersOut},
+	{CategoryFundBalanceReserveIncrease, mapping.KindFundBalance, CategoryFundBalanceReserveIncrease},
+	{NodeFundBalanceDraw, mapping.KindFundBalance, CategoryFundBalanceChange},
+	{NodeFundBalanceContribution, mapping.KindFundBalance, CategoryFundBalanceChange},
 }
 
 // residualReasons is why a fund-level schedule cannot decompose each spine
@@ -49,15 +49,15 @@ var residualReasons = map[string]string{
 		"pp.66-67's Change in Working Capital row and drawn out of the group. pp.127-140 " +
 		"print no fund-balance row at all, so no fund pays it",
 
-	"fund-balance/reserve-increase": "a printed row of pp.66-67 that the city books against " +
+	CategoryFundBalanceReserveIncrease: "a printed row of pp.66-67 that the city books against " +
 		"the group as a whole: it has no division and no object category on pp.167-170, " +
 		"which decompose expenditure and nothing else",
 
-	nodeTransfersIn: "pp.66-67 print Transfers In per fund group, and pp.127-140, which this " +
+	NodeTransfersIn: "pp.66-67 print Transfers In per fund group, and pp.127-140, which this " +
 		"chart draws the funds from, print it for none of this group's funds, so the group's " +
 		"transfer in is carried here whole",
 
-	nodeTransfersOut: "pp.66-67 print Transfers Out per fund group, and the pages this chart " +
+	NodeTransfersOut: "pp.66-67 print Transfers Out per fund group, and the pages this chart " +
 		"is drawn from print no transfer out, so the group's transfer out leaves beside its " +
 		"funds rather than through one",
 }
@@ -128,7 +128,7 @@ func SpendingGaps() map[string][]Gap {
 	out := map[string][]Gap{}
 	for _, e := range structure.ExceptionsOn(structure.BudgetBookExceptions(), cuts[0].Name, reference.Name, structure.LevelCategory) {
 		for _, p := range e.Cells {
-			id := prefixExpenditure + p.Coords[structure.AxisCategory]
+			id := PrefixExpenditure + p.Coords[structure.AxisCategory]
 			out[id] = append(out[id], Gap{
 				FiscalYear: p.Year, Basis: p.Basis,
 				Cents:  p.Against.Cents - p.Cut.Cents,

@@ -27,7 +27,7 @@ func (r Residue) matches(f *fact.Fact) bool {
 // BudgetBookResidue is every declared residue.
 func BudgetBookResidue() []Residue {
 	return []Residue{{
-		Scope: "departmentwide-expenditures",
+		Scope: ScopeDepartmentwideExpenditures,
 		Rule:  "dw-maintenance",
 		Kind:  mapping.KindTransferOut,
 		Reason: "pp.85-125 print one Transfers Out row, under Maintenance, and no other: 266,798 in " +

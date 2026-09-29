@@ -8,11 +8,8 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/internal/project"
 )
-
-// acfrChangesScope is the scope ACFR pp.168-169's Changes in Fund Balances
-// schedule is mapped at.
-const acfrChangesScope = "acfr-changes-in-fund-balances"
 
 // categoryExcessOfRevenues is the printed subtotal this identity recomputes.
 const categoryExcessOfRevenues = "fund-balance/excess-of-revenues"
@@ -63,7 +60,7 @@ type excessColumn struct {
 }
 
 func (k excessColumn) String() string {
-	return fmt.Sprintf("%s FY%d %s", acfrChangesScope, k.year, k.basis)
+	return fmt.Sprintf("%s FY%d %s", project.ChangesScope, k.year, k.basis)
 }
 
 // excessSide is what one column accumulated from one side of the identity.
@@ -88,7 +85,7 @@ func (*excessOfRevenuesIdentity) Run(_ context.Context, s *Subject) (Result, err
 		}
 	}
 	for _, f := range s.Facts {
-		if f.Scope != acfrChangesScope {
+		if f.Scope != project.ChangesScope {
 			continue
 		}
 		k := excessColumn{f.FiscalYear, f.Basis}
@@ -164,8 +161,8 @@ func (*excessOfRevenuesIdentity) Run(_ context.Context, s *Subject) (Result, err
 		subjects: len(order),
 		unit:     "columns",
 		held: fmt.Sprintf("%d columns of %q, each with total revenues minus total "+
-			"expenditures equal to the printed excess to the cent", complete, acfrChangesScope),
-		nothing:  fmt.Sprintf("no fact is in scope %q", acfrChangesScope),
+			"expenditures equal to the printed excess to the cent", complete, project.ChangesScope),
+		nothing:  fmt.Sprintf("no fact is in scope %q", project.ChangesScope),
 		findings: findings,
 	}.result(), nil
 }

@@ -86,43 +86,45 @@ const (
 // "debt-services" the object category, and the taxonomy is explicit that the
 // near-miss is deliberate.
 const (
-	prefixRevenue = "revenue/"
-	// prefixRevenueLine is its own form because an id form is read by cutting
+	PrefixRevenue = "revenue/"
+	// PrefixRevenueLine is its own form because an id form is read by cutting
 	// at the FIRST slash, and a category slug may already contain one.
-	prefixRevenueLine = "revenue-line/"
-	prefixExpenditure = "expenditure/"
-	prefixFundGroup   = "fund-group/"
-	prefixFund        = "fund/"
-	prefixDept        = "dept/"
-	// prefixDepartment is the ALL-CAPS department tier, separate from
-	// prefixDept because five slugs name both a department and a division.
-	prefixDepartment = "department/"
-	// prefixTransfers is the flow endpoints outside the spine's hierarchy.
-	prefixTransfers = "transfers/"
-	// prefixTransferFrom and prefixTransferTo are the two ends of one printed
+	PrefixRevenueLine = "revenue-line/"
+	PrefixExpenditure = "expenditure/"
+	PrefixFundGroup   = "fund-group/"
+	PrefixFund        = "fund/"
+	PrefixDept        = "dept/"
+	// PrefixDepartment is the ALL-CAPS department tier, separate from
+	// PrefixDept because five slugs name both a department and a division.
+	PrefixDepartment = "department/"
+	// PrefixTransfers is the flow endpoints outside the spine's hierarchy.
+	PrefixTransfers = "transfers/"
+	// PrefixTransferFrom and PrefixTransferTo are the two ends of one printed
 	// movement; see [transfersByFund].
-	prefixTransferFrom = "transfer-from/"
-	prefixTransferTo   = "transfer-to/"
+	PrefixTransferFrom = "transfer-from/"
+	PrefixTransferTo   = "transfer-to/"
 )
 
-// nodeTransfersIn is the flow endpoint every transfer arrives from. On the
+// NodeTransfersIn is the flow endpoint every transfer arrives from. On the
 // spine it aggregates nothing and carries tier 0 only for layout; in
 // [transfersByFund] it is the fold of every payer's end, which equals p76's
 // printed grand total.
-const nodeTransfersIn = "transfers/in"
+const NodeTransfersIn = "transfers/in"
 
-// nodeTransfersOut is its mirror. On the spine it is the end of every transfer
+// NodeTransfersOut is its mirror. On the spine it is the end of every transfer
 // out; in the transfers-out network it is the fold of every receiver's end.
-const nodeTransfersOut = "transfers/out"
+const NodeTransfersOut = "transfers/out"
 
 // The slugs this projection has to recognize by name rather than by shape.
 const (
-	fundGroupInternalService = "internal-service"
+	FundGroupInternalService = "internal-service"
 	// The three fund-balance rows pp.66-67 print. Change is decomposed by
 	// sign; beginning and ending are stocks and get no link at all.
-	categoryFundBalanceChange    = "fund-balance/change"
-	categoryFundBalanceBeginning = "fund-balance/beginning"
-	categoryFundBalanceEnding    = "fund-balance/ending"
+	CategoryFundBalanceChange    = "fund-balance/change"
+	CategoryFundBalanceBeginning = "fund-balance/beginning"
+	CategoryFundBalanceEnding    = "fund-balance/ending"
+	// CategoryFundBalanceReserveIncrease is a printed row drawn at its own id.
+	CategoryFundBalanceReserveIncrease = "fund-balance/reserve-increase"
 )
 
 // NodeFundBalanceDraw and NodeFundBalanceContribution are the two nodes this
@@ -245,13 +247,13 @@ var derivedNodes = map[string]derived{
 // A registry label wins over any of these, which can only happen for a node
 // that has a category slug.
 var builtinLabels = map[string]string{
-	prefixFundGroup + "general":          "General Fund",
-	prefixFundGroup + "special-revenue":  "Special Revenue Funds",
-	prefixFundGroup + "capital":          "Capital Funds",
-	prefixFundGroup + "debt-service":     "Debt Service Funds",
-	prefixFundGroup + "enterprise":       "Enterprise Funds",
-	prefixFundGroup + "internal-service": "Internal Service Funds",
-	prefixFundGroup + "permanent":        "Permanent Funds",
+	PrefixFundGroup + "general":          "General Fund",
+	PrefixFundGroup + "special-revenue":  "Special Revenue Funds",
+	PrefixFundGroup + "capital":          "Capital Funds",
+	PrefixFundGroup + "debt-service":     "Debt Service Funds",
+	PrefixFundGroup + "enterprise":       "Enterprise Funds",
+	PrefixFundGroup + "internal-service": "Internal Service Funds",
+	PrefixFundGroup + "permanent":        "Permanent Funds",
 
 	NodeFundBalanceDraw:         "Fund Balance Draw",
 	NodeFundBalanceContribution: "Fund Balance Contribution",
@@ -266,9 +268,9 @@ var builtinLabels = map[string]string{
 	// "Reserve Increase / (Use)" — the p75 column header it was merged with.
 	// testdata/sankey.golden.json shows p66's words; a build with a registry
 	// attached shows the taxonomy's.
-	"transfers/in":                  "Transfers In",
-	"transfers/out":                 "Transfers Out",
-	"fund-balance/reserve-increase": "Addition to Reserves",
+	"transfers/in":                     "Transfers In",
+	"transfers/out":                    "Transfers Out",
+	CategoryFundBalanceReserveIncrease: "Addition to Reserves",
 }
 
 // Headline is the set of figures a reader quotes without reading the chart.
@@ -494,7 +496,7 @@ func (s *sankey) Document(facts []fact.Fact, o Options) (*Document, error) {
 
 	for _, k := range sortedCellKeys(cells) {
 		c := cells[k]
-		group := endpoint{id: prefixFundGroup + k.fundGroup, tier: tierFundGroup, role: roleFundGroup}
+		group := endpoint{id: PrefixFundGroup + k.fundGroup, tier: tierFundGroup, role: roleFundGroup}
 
 		var src, dst endpoint
 		var kind LinkKind
@@ -503,14 +505,14 @@ func (s *sankey) Document(facts []fact.Fact, o Options) (*Document, error) {
 
 		switch k.kind {
 		case mapping.KindRevenue:
-			src = endpoint{id: prefixRevenue + k.category, slug: k.category,
+			src = endpoint{id: PrefixRevenue + k.category, slug: k.category,
 				tier: tierRevenueSource, role: roleRevenueSource}
 			dst = group
 			kind = boundaryKind(k.fundGroup)
 
 		case mapping.KindExpenditure:
 			src = group
-			dst = endpoint{id: prefixExpenditure + k.category, slug: k.category,
+			dst = endpoint{id: PrefixExpenditure + k.category, slug: k.category,
 				tier: tierObjectCategory, role: roleObjectCategory}
 			kind = boundaryKind(k.fundGroup)
 
@@ -526,10 +528,10 @@ func (s *sankey) Document(facts []fact.Fact, o Options) (*Document, error) {
 
 		case mapping.KindFundBalance:
 			switch k.category {
-			case categoryFundBalanceBeginning, categoryFundBalanceEnding:
+			case CategoryFundBalanceBeginning, CategoryFundBalanceEnding:
 				// A stock, not a flow. The fact stays; the link never exists.
 				continue
-			case categoryFundBalanceChange:
+			case CategoryFundBalanceChange:
 				// The decomposition, and the only place this projection
 				// infers rather than reads. Neither node carries the
 				// fund-balance/change slug: they are not that category, they
@@ -630,7 +632,7 @@ func (s *sankey) Document(facts []fact.Fact, o Options) (*Document, error) {
 // which are recorded and drawn as no flow.
 func isStock(f *fact.Fact) bool {
 	return f.Kind == mapping.KindFundBalance &&
-		(f.Category == categoryFundBalanceBeginning || f.Category == categoryFundBalanceEnding)
+		(f.Category == CategoryFundBalanceBeginning || f.Category == CategoryFundBalanceEnding)
 }
 
 // headlineOver sums the four published totals over the facts a view admits,
@@ -765,7 +767,7 @@ func sortedCellKeys(cells map[cellKey]*cell) []cellKey {
 // touches. An Internal Service Fund is inside the city, so its charges are not
 // external money however much they look like revenue.
 func boundaryKind(fundGroup string) LinkKind {
-	if fundGroup == fundGroupInternalService {
+	if fundGroup == FundGroupInternalService {
 		return KindInternalService
 	}
 	return KindExternal
@@ -948,7 +950,7 @@ var (
 			"departments, so they are classified internal_service and excluded from the " +
 			"external headline. The all_funds_gross figures include them and match the " +
 			"city's own citywide totals.",
-		AppliesTo: []string{prefixFundGroup + "internal-service"},
+		AppliesTo: []string{PrefixFundGroup + "internal-service"},
 	}
 )
 
@@ -1079,9 +1081,9 @@ func caveats(h Headline, col Column, links []Link, cip cipTransfers) []Caveat {
 // headline is a citywide figure and the claim here is about one group.
 func groupExpenditure(links []Link, fundGroup string) int64 {
 	var total int64
-	source := prefixFundGroup + fundGroup
+	source := PrefixFundGroup + fundGroup
 	for _, l := range links {
-		if l.Source == source && strings.HasPrefix(l.Target, prefixExpenditure) {
+		if l.Source == source && strings.HasPrefix(l.Target, PrefixExpenditure) {
 			total += l.ValueCents
 		}
 	}
@@ -1103,11 +1105,11 @@ func transferEndpoints(links []Link) []string {
 		if l.Kind != KindInternalTransfer {
 			continue
 		}
-		if strings.HasPrefix(l.Source, prefixTransfers) && !seen[l.Source] {
+		if strings.HasPrefix(l.Source, PrefixTransfers) && !seen[l.Source] {
 			seen[l.Source] = true
 			in = append(in, l.Source)
 		}
-		if strings.HasPrefix(l.Target, prefixTransfers) && !seen[l.Target] {
+		if strings.HasPrefix(l.Target, PrefixTransfers) && !seen[l.Target] {
 			seen[l.Target] = true
 			out = append(out, l.Target)
 		}
@@ -1131,7 +1133,7 @@ func contestedCaveat(c contestedTotal, col Column, links []Link) (Caveat, bool) 
 	if groupExpenditure(links, c.FundGroup) != c.Published {
 		return Caveat{}, false
 	}
-	label := builtinLabels[prefixFundGroup+c.FundGroup]
+	label := builtinLabels[PrefixFundGroup+c.FundGroup]
 	if label == "" {
 		label = c.FundGroup
 	}
@@ -1157,7 +1159,7 @@ func contestedCaveat(c contestedTotal, col Column, links []Link) (Caveat, bool) 
 				"publish is open (%s).",
 			label, dollars(c.Published), c.SpinePages, col.String(), dollars(c.Elsewhere),
 			c.PrintedBy, c.ImpliedBy, dollars(c.Published-c.Elsewhere), c.Row, c.Bead),
-		AppliesTo: []string{prefixFundGroup + c.FundGroup},
+		AppliesTo: []string{PrefixFundGroup + c.FundGroup},
 	}, true
 }
 

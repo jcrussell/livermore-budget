@@ -133,7 +133,7 @@ func TestChangeInWorkingCapitalSign(t *testing.T) {
 	change := func(group string, cents int64) cellSpec {
 		return cellSpec{
 			kind:     mapping.KindFundBalance,
-			category: categoryFundBalanceChange,
+			category: CategoryFundBalanceChange,
 			label:    "CHANGE IN WORKING CAPITAL",
 			group:    group,
 			cents:    cents,
@@ -223,9 +223,9 @@ func TestStocksAreExcluded(t *testing.T) {
 	g := buildGraph(t, facts(t,
 		cellSpec{kind: mapping.KindRevenue, category: "taxes/property", label: "Property Taxes",
 			group: "general", cents: 6414376200},
-		cellSpec{kind: mapping.KindFundBalance, category: categoryFundBalanceBeginning,
+		cellSpec{kind: mapping.KindFundBalance, category: CategoryFundBalanceBeginning,
 			label: "BEGINNING WORKING CAPITAL", group: "general", cents: 176661300},
-		cellSpec{kind: mapping.KindFundBalance, category: categoryFundBalanceEnding,
+		cellSpec{kind: mapping.KindFundBalance, category: CategoryFundBalanceEnding,
 			label: "ENDING WORKING CAPITAL", group: "general", cents: 73245900},
 	), testOptions())
 
@@ -236,7 +236,7 @@ func TestStocksAreExcluded(t *testing.T) {
 		t.Errorf("got %d links, want 1", g.Metadata.Counts.Links)
 	}
 	for _, n := range g.Nodes {
-		if strings.HasPrefix(n.ID, categoryFundBalanceBeginning) || strings.HasPrefix(n.ID, categoryFundBalanceEnding) {
+		if strings.HasPrefix(n.ID, CategoryFundBalanceBeginning) || strings.HasPrefix(n.ID, CategoryFundBalanceEnding) {
 			t.Errorf("got a node %q for a stock, want none", n.ID)
 		}
 	}
@@ -345,10 +345,10 @@ func TestFundGroupsBalance(t *testing.T) {
 	in := make(map[string]int64)
 	out := make(map[string]int64)
 	for _, l := range g.Links {
-		if strings.HasPrefix(l.Target, prefixFundGroup) {
+		if strings.HasPrefix(l.Target, PrefixFundGroup) {
 			in[l.Target] += l.ValueCents
 		}
-		if strings.HasPrefix(l.Source, prefixFundGroup) {
+		if strings.HasPrefix(l.Source, PrefixFundGroup) {
 			out[l.Source] += l.ValueCents
 		}
 	}
@@ -762,12 +762,12 @@ func TestTheTransferCaveatMarksTheLegsTheGraphDRAWS(t *testing.T) {
 	h := Headline{InternalTransferInCents: 100, InternalTransferOutCents: 500}
 
 	both := []Link{
-		{Source: nodeTransfersIn, Target: prefixFundGroup + "general",
+		{Source: NodeTransfersIn, Target: PrefixFundGroup + "general",
 			ValueCents: 100, Kind: KindInternalTransfer},
-		{Source: prefixFundGroup + "general", Target: nodeTransfersOut,
+		{Source: PrefixFundGroup + "general", Target: NodeTransfersOut,
 			ValueCents: 500, Kind: KindInternalTransfer},
 	}
-	if diff := cmp.Diff([]string{nodeTransfersIn, nodeTransfersOut},
+	if diff := cmp.Diff([]string{NodeTransfersIn, NodeTransfersOut},
 		transferCaveat(h, col, both, cipTransfers{}).AppliesTo); diff != "" {
 		t.Errorf("both legs drawn (-want +got):\n%s", diff)
 	}
@@ -776,7 +776,7 @@ func TestTheTransferCaveatMarksTheLegsTheGraphDRAWS(t *testing.T) {
 	// caveats() gates on either side being non-zero -- and must mark only what
 	// is there, or ValidateCaveats aborts the build.
 	inOnly := both[:1]
-	if diff := cmp.Diff([]string{nodeTransfersIn},
+	if diff := cmp.Diff([]string{NodeTransfersIn},
 		transferCaveat(h, col, inOnly, cipTransfers{}).AppliesTo); diff != "" {
 		t.Errorf("only the in leg drawn (-want +got):\n%s", diff)
 	}
@@ -784,10 +784,10 @@ func TestTheTransferCaveatMarksTheLegsTheGraphDRAWS(t *testing.T) {
 	// A transfer endpoint the corpus does not use today. The headline is
 	// identical to the first case and the answer must not be.
 	odd := []Link{
-		{Source: prefixFundGroup + "general", Target: prefixTransfers + "out-to-cip",
+		{Source: PrefixFundGroup + "general", Target: PrefixTransfers + "out-to-cip",
 			ValueCents: 500, Kind: KindInternalTransfer},
 	}
-	if diff := cmp.Diff([]string{prefixTransfers + "out-to-cip"},
+	if diff := cmp.Diff([]string{PrefixTransfers + "out-to-cip"},
 		transferCaveat(h, col, odd, cipTransfers{}).AppliesTo); diff != "" {
 		t.Errorf("an endpoint named otherwise (-want +got):\n%s", diff)
 	}
@@ -795,7 +795,7 @@ func TestTheTransferCaveatMarksTheLegsTheGraphDRAWS(t *testing.T) {
 	// A link that is not a transfer contributes nothing, so a fund-balance
 	// endpoint at tier 0 is not mistaken for a leg.
 	none := []Link{
-		{Source: "fund-balance/draw", Target: prefixFundGroup + "general",
+		{Source: "fund-balance/draw", Target: PrefixFundGroup + "general",
 			ValueCents: 100, Kind: KindFundBalance},
 	}
 	if got := transferCaveat(h, col, none, cipTransfers{}).AppliesTo; len(got) != 0 {
@@ -857,7 +857,7 @@ func contestedFY2027(t *testing.T) contestedTotal {
 func TestContestedCaveatIsEmittedOnlyForTheColumnThatDrawsIt(t *testing.T) {
 	c := contestedFY2027(t)
 	links := []Link{
-		{Source: prefixFundGroup + c.FundGroup, Target: prefixExpenditure + "services-and-supplies",
+		{Source: PrefixFundGroup + c.FundGroup, Target: PrefixExpenditure + "services-and-supplies",
 			ValueCents: c.Published},
 	}
 
@@ -888,7 +888,7 @@ func TestContestedCaveatIsEmittedOnlyForTheColumnThatDrawsIt(t *testing.T) {
 		}
 	}
 	// And it marks the group it is about, so a chart can flag that node.
-	if len(got.AppliesTo) != 1 || got.AppliesTo[0] != prefixFundGroup+c.FundGroup {
+	if len(got.AppliesTo) != 1 || got.AppliesTo[0] != PrefixFundGroup+c.FundGroup {
 		t.Errorf("caveat applies to %v, want just the %s group", got.AppliesTo, c.FundGroup)
 	}
 
@@ -913,7 +913,7 @@ func TestContestedCaveatIsEmittedOnlyForTheColumnThatDrawsIt(t *testing.T) {
 func TestContestedCaveatRetiresItselfWhenTheFigureIsCorrected(t *testing.T) {
 	c := contestedFY2027(t)
 	corrected := []Link{
-		{Source: prefixFundGroup + c.FundGroup, Target: prefixExpenditure + "services-and-supplies",
+		{Source: PrefixFundGroup + c.FundGroup, Target: PrefixExpenditure + "services-and-supplies",
 			ValueCents: c.Elsewhere},
 	}
 	if cav, ok := contestedCaveat(c, c.Column, corrected); ok {
@@ -925,7 +925,7 @@ func TestContestedCaveatRetiresItselfWhenTheFigureIsCorrected(t *testing.T) {
 	// internal/check exists: silence here must not be the only signal, or an
 	// entry could go dead unnoticed.
 	third := []Link{
-		{Source: prefixFundGroup + c.FundGroup, Target: prefixExpenditure + "services-and-supplies",
+		{Source: PrefixFundGroup + c.FundGroup, Target: PrefixExpenditure + "services-and-supplies",
 			ValueCents: c.Published + 1},
 	}
 	if cav, ok := contestedCaveat(c, c.Column, third); ok {
@@ -937,14 +937,14 @@ func TestContestedCaveatRetiresItselfWhenTheFigureIsCorrected(t *testing.T) {
 // rests on, and it is the arm a wrong sum would break silently.
 func TestGroupExpenditureSumsOnlyThatGroupsObjectLinks(t *testing.T) {
 	links := []Link{
-		{Source: prefixFundGroup + "internal-service", Target: prefixExpenditure + "wages-and-benefits", ValueCents: 100},
-		{Source: prefixFundGroup + "internal-service", Target: prefixExpenditure + "services-and-supplies", ValueCents: 20},
+		{Source: PrefixFundGroup + "internal-service", Target: PrefixExpenditure + "wages-and-benefits", ValueCents: 100},
+		{Source: PrefixFundGroup + "internal-service", Target: PrefixExpenditure + "services-and-supplies", ValueCents: 20},
 		// Another group's expenditure.
-		{Source: prefixFundGroup + "general", Target: prefixExpenditure + "wages-and-benefits", ValueCents: 7},
+		{Source: PrefixFundGroup + "general", Target: PrefixExpenditure + "wages-and-benefits", ValueCents: 7},
 		// The same group's non-expenditure flows.
-		{Source: prefixFundGroup + "internal-service", Target: "transfers/out", ValueCents: 5},
+		{Source: PrefixFundGroup + "internal-service", Target: "transfers/out", ValueCents: 5},
 		// And a link INTO the group, which is revenue rather than spending.
-		{Source: prefixRevenue + "intergovernmental", Target: prefixFundGroup + "internal-service", ValueCents: 900},
+		{Source: PrefixRevenue + "intergovernmental", Target: PrefixFundGroup + "internal-service", ValueCents: 900},
 	}
 	if got, want := GroupExpenditure(links, "internal-service"), int64(120); got != want {
 		t.Errorf("GroupExpenditure = %d, want %d", got, want)

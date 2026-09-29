@@ -7,6 +7,7 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/internal/project"
 )
 
 // excessFact is one fact of the fields this check reads. The subjects here are
@@ -15,7 +16,7 @@ import (
 // reddens the provenance checks on the unmutated baseline.
 func excessFact(id string, kind mapping.Kind, category string, year int, cents int64) fact.Fact {
 	return fact.Fact{
-		ID: id, DocID: "livermore-acfr-fy2025", Scope: acfrChangesScope,
+		ID: id, DocID: "livermore-acfr-fy2025", Scope: project.ChangesScope,
 		Kind: kind, Category: category, Basis: mapping.BasisAudited,
 		FiscalYear: year, AmountCents: cents,
 	}
@@ -155,7 +156,7 @@ func TestExcessIdentityIsVacuousOverAnEmptyScope(t *testing.T) {
 	if res.Status != StatusVacuous {
 		t.Fatalf("status = %s (%s), want vacuous", res.Status, res.Summary)
 	}
-	if !strings.Contains(res.Summary, acfrChangesScope) {
+	if !strings.Contains(res.Summary, project.ChangesScope) {
 		t.Errorf("summary %q does not say which scope is empty", res.Summary)
 	}
 }

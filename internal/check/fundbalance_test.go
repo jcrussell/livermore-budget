@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/internal/project"
 )
 
 // fundBalanceResult runs the whole suite over a fixture whose cells have been
@@ -28,7 +29,7 @@ func fundBalanceResult(t *testing.T, cells []testCell) Result {
 func TestFundBalanceIdentityCatchesAnEndingThatDoesNotFollow(t *testing.T) {
 	cells := slices.Clone(fixtureCells)
 	for i := range cells {
-		if cells[i].category == categoryFundBalanceEnding && cells[i].group == "general" {
+		if cells[i].category == project.CategoryFundBalanceEnding && cells[i].group == "general" {
 			cells[i].cents += 100
 		}
 	}
@@ -67,7 +68,7 @@ func TestFundBalanceIdentityCatchesAnEndingThatDoesNotFollow(t *testing.T) {
 func TestFundBalanceIdentityCatchesADroppedLine(t *testing.T) {
 	var cells []testCell
 	for _, c := range fixtureCells {
-		if c.category == categoryFundBalanceChange && c.group == "general" {
+		if c.category == project.CategoryFundBalanceChange && c.group == "general" {
 			continue
 		}
 		cells = append(cells, c)
@@ -83,7 +84,7 @@ func TestFundBalanceIdentityCatchesADroppedLine(t *testing.T) {
 	}
 	got := res.Findings[0].Detail
 	if !strings.Contains(got, "publishes 2 of the three fund-balance lines") ||
-		!strings.Contains(got, categoryFundBalanceChange) {
+		!strings.Contains(got, project.CategoryFundBalanceChange) {
 		t.Errorf("finding %q does not say which line is missing", got)
 	}
 	// The finding must name a FACT, so it points at a line of facts.jsonl. A
@@ -165,7 +166,7 @@ func TestFundBalanceIdentityIsNotVacuousOverTheCommittedCorpus(t *testing.T) {
 func TestFundBalanceIdentityReportsADuplicateWithoutAbandoningTheRest(t *testing.T) {
 	cells := slices.Clone(fixtureCells)
 	for _, c := range fixtureCells {
-		if c.category == categoryFundBalanceEnding && c.group == "general" {
+		if c.category == project.CategoryFundBalanceEnding && c.group == "general" {
 			// The same balance's ending line a second time, at a different
 			// figure, which is what makes it unanswerable rather than merely
 			// repeated.
@@ -194,7 +195,7 @@ func TestFundBalanceIdentityReportsADuplicateWithoutAbandoningTheRest(t *testing
 		t.Errorf("finding subject = %q, want a fact id", res.Findings[0].Subject)
 	}
 	got := res.Findings[0].Detail
-	for _, want := range []string{categoryFundBalanceEnding, "twice", "excluded from it"} {
+	for _, want := range []string{project.CategoryFundBalanceEnding, "twice", "excluded from it"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("finding %q does not contain %q", got, want)
 		}
@@ -218,7 +219,7 @@ func TestFundBalanceIdentityReportsADuplicateWithoutAbandoningTheRest(t *testing
 // line, and asserted no finding had an empty subject. It looked like it covered
 // both arms. It covered one: the duplicate arm runs first and `continue`s, so
 // the missing-lines arm was never reached. MEASURED -- reverting that arm to
-// finding(b.ids[categoryFundBalanceBeginning], ...), left the whole
+// finding(b.ids[project.CategoryFundBalanceBeginning], ...), left the whole
 // internal/check suite GREEN.
 // A test named for a property, passing on the bug it was written for.
 //
@@ -230,7 +231,7 @@ func TestFundBalanceFindingsAlwaysNameASubject(t *testing.T) {
 	withoutBeginning := func() []testCell {
 		var out []testCell
 		for _, c := range fixtureCells {
-			if c.category == categoryFundBalanceBeginning && c.group == "general" {
+			if c.category == project.CategoryFundBalanceBeginning && c.group == "general" {
 				continue
 			}
 			out = append(out, c)
@@ -254,7 +255,7 @@ func TestFundBalanceFindingsAlwaysNameASubject(t *testing.T) {
 				var out []testCell
 				for _, c := range withoutBeginning() {
 					out = append(out, c)
-					if c.category == categoryFundBalanceEnding && c.group == "general" {
+					if c.category == project.CategoryFundBalanceEnding && c.group == "general" {
 						out = append(out, testCell{c.kind, c.category, c.group, c.cents + 999})
 					}
 				}

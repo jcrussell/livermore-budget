@@ -5,6 +5,7 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/internal/structure"
 )
 
 // TrendsScope is the schedule this projection draws: Budget Book pp.127-140,
@@ -14,7 +15,7 @@ import (
 // existing separately. Those pages are the per-fund, line-item decomposition of
 // pp.66-67's REVENUE rows -- the same money, printed twice -- so a document
 // drawing both would double the city's revenue while balancing perfectly.
-const TrendsScope = "revenue-by-fund"
+const TrendsScope = structure.ScopeRevenueByFund
 
 // TrendsProjection is the file stem, and the name every check and the packager
 // refer to this document by.

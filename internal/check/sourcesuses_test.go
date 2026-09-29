@@ -7,6 +7,7 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/internal/project"
 )
 
 // TestFundGroupSourcesEqualUsesIsFailable plants over the committed corpus.
@@ -45,7 +46,7 @@ func TestFundGroupSourcesEqualUsesIsFailable(t *testing.T) {
 			return facts
 		}
 	}
-	isChange := func(f fact.Fact) bool { return f.Category == categoryFundBalanceChange }
+	isChange := func(f fact.Fact) bool { return f.Category == project.CategoryFundBalanceChange }
 	const noChange = "general FY2027 adopted: prints a term of sources = uses and no fund-balance/change"
 
 	for _, tc := range []struct {
@@ -62,7 +63,7 @@ func TestFundGroupSourcesEqualUsesIsFailable(t *testing.T) {
 		{"only expenditure printed", only(func(f fact.Fact) bool { return f.Kind == mapping.KindExpenditure }), noChange},
 		{"only transfers in printed", only(func(f fact.Fact) bool { return f.Kind == mapping.KindTransferIn }), noChange},
 		{"only transfers out printed", only(func(f fact.Fact) bool { return f.Kind == mapping.KindTransferOut }), noChange},
-		{"only the reserve increase printed", only(func(f fact.Fact) bool { return f.Category == categoryReserveIncrease }), noChange},
+		{"only the reserve increase printed", only(func(f fact.Fact) bool { return f.Category == project.CategoryFundBalanceReserveIncrease }), noChange},
 		{"one cent moved into a revenue row", nudge(1), "(off by $0.01)"},
 		{"one cent moved out of a revenue row", nudge(-1), "(off by -$0.01)"},
 		{"a category that is no term", func() []fact.Fact {

@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
+	"github.com/jcrussell/livermore-budget/internal/structure"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 	"github.com/jcrussell/livermore-budget/schema"
 )
@@ -18,7 +19,7 @@ const DepartmentFundingProjection = "department-funding"
 //
 // The upper block of the same pages is a separate scope: the two blocks are
 // two readings of one figure, and adding them doubles the city's expenditure.
-const DepartmentFundingScope = "department-funding-sources"
+const DepartmentFundingScope = structure.ScopeDepartmentFundingSources
 
 // DepartmentFundingScopes is the schedule set, as [Options.Scopes] holds it.
 func DepartmentFundingScopes() []string { return []string{DepartmentFundingScope} }
@@ -106,7 +107,7 @@ func (d *departmentFunding) Document(facts []fact.Fact, o Options) (*Document, e
 		if srcErr != nil {
 			return nil, srcErr
 		}
-		dst := endpoint{id: prefixDepartment + k.department, tier: tierDepartment,
+		dst := endpoint{id: PrefixDepartment + k.department, tier: tierDepartment,
 			role: roleWholeDepartment}
 		if d.Labels != nil {
 			if l, ok := d.Labels.DepartmentLabel(k.department); !ok || l == "" {
@@ -229,7 +230,7 @@ func (d *departmentFunding) fundEndpoint(number int) (endpoint, error) {
 	if number == generalFund {
 		role = roleGeneralFund
 	}
-	e := endpoint{id: prefixFund + strconv.Itoa(number), tier: tierFund, role: role}
+	e := endpoint{id: PrefixFund + strconv.Itoa(number), tier: tierFund, role: role}
 	if d.Labels == nil {
 		return e, nil
 	}
@@ -241,7 +242,7 @@ func (d *departmentFunding) fundEndpoint(number int) (endpoint, error) {
 			"a fund's fund group is its parent edge, and a node parented to `fund-group/` is "+
 				"parented to nothing")
 	}
-	e.parent = prefixFundGroup + t
+	e.parent = PrefixFundGroup + t
 	return e, nil
 }
 
@@ -253,7 +254,7 @@ func (d *departmentFunding) addNode(nodes map[string]Node, e endpoint) {
 	}
 	n := Node{ID: e.id, Label: d.label(e), Tier: e.tier, Role: e.role, Parent: e.parent}
 	if e.tier == tierFund {
-		if number, err := strconv.Atoi(e.id[len(prefixFund):]); err == nil {
+		if number, err := strconv.Atoi(e.id[len(PrefixFund):]); err == nil {
 			annotateFund(&n, d.Labels, number)
 		}
 	}
@@ -273,7 +274,7 @@ func (d *departmentFunding) addFundGroups(nodes map[string]Node) error {
 		if _, ok := nodes[p]; ok {
 			continue
 		}
-		if len(p) <= len(prefixFundGroup) || p[:len(prefixFundGroup)] != prefixFundGroup {
+		if len(p) <= len(PrefixFundGroup) || p[:len(PrefixFundGroup)] != PrefixFundGroup {
 			return fmt.Errorf("department-funding: node %q is parented to %q, which this "+
 				"document does not build and cannot infer -- only a fund group is added "+
 				"on demand", id, p)
@@ -292,13 +293,13 @@ func (d *departmentFunding) label(e endpoint) string {
 	if d.Labels != nil {
 		switch e.tier {
 		case tierFund:
-			if n, err := strconv.Atoi(e.id[len(prefixFund):]); err == nil {
+			if n, err := strconv.Atoi(e.id[len(PrefixFund):]); err == nil {
 				if name, ok := d.Labels.FundName(n); ok && name != "" {
 					return name
 				}
 			}
 		case tierDepartment:
-			l, _ := d.Labels.DepartmentLabel(e.id[len(prefixDepartment):])
+			l, _ := d.Labels.DepartmentLabel(e.id[len(PrefixDepartment):])
 			return l
 		}
 	}

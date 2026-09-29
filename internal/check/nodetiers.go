@@ -46,7 +46,7 @@ var hierarchyTiers = map[string]int{
 // prefix and two tiers, so a prefix rule could not express them and a reader
 // deriving one from the other would be wrong half the time.
 // SPELLED OUT RATHER THAN IMPORTED, which is this package's habit where the
-// point is an independent second reading (fundGroupInternalService says the
+// point is an independent second reading (project.FundGroupInternalService says the
 // same about itself). internal/project exports two of these five as
 // constants; taking them from there and the other three from the contract would
 // make half the table agree with the producer by construction and the other half

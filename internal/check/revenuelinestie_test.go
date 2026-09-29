@@ -78,7 +78,7 @@ func lineTieSubject(t *testing.T) *Subject {
 	nodes := []project.Node{
 		node("revenue/taxes/property", "", 0),
 		node("revenue/charges-for-services", "", 0),
-		node(transfersInNode, "", 0),
+		node(project.NodeTransfersIn, "", 0),
 		node(securedLine, "revenue/taxes/property", 1),
 		node(erafLine, "revenue/taxes/property", 1),
 		node(libraryLine, "revenue/charges-for-services", 1),
@@ -90,7 +90,7 @@ func lineTieSubject(t *testing.T) *Subject {
 		link(erafLine, "fund/100", -20_000),
 		link(libraryLine, "fund/100", 40_000),
 		link(libraryLine, "fund/500", 50_000),
-		link(transfersInNode, "fund/500", 20_000),
+		link(project.NodeTransfersIn, "fund/500", 20_000),
 	}
 	drill := func(col project.Column) projection {
 		return projection{
@@ -127,7 +127,7 @@ func findingLines(res Result) []string {
 func generalTransferInException(t *testing.T, year int) structure.Exception {
 	t.Helper()
 	for _, e := range structure.BudgetBookExceptions() {
-		if e.Cut != revenueDetailCut || e.Against != spineCut {
+		if e.Cut != structure.CutRevenueDetail || e.Against != structure.CutSpine {
 			continue
 		}
 		for _, p := range e.Cells {
@@ -344,7 +344,7 @@ func TestRevenueLinesTieIsFailable(t *testing.T) {
 			damage: func(_ *testing.T, s *Subject) {
 				d := s.Projections[0].Graph
 				d.Links = append(slices.Clone(d.Links),
-					project.Link{Source: transfersInNode, Target: "fund/100", ValueCents: 10_000})
+					project.Link{Source: project.NodeTransfersIn, Target: "fund/100", ValueCents: 10_000})
 			},
 			wantStatus: StatusFail, wantSubjects: 12,
 			want: []string{
@@ -356,8 +356,10 @@ func TestRevenueLinesTieIsFailable(t *testing.T) {
 		{
 			// Reachable only through a hand-built document; the group must not
 			// be guessed from the node's parent.
-			name:       "a link into a fund data/funds.yaml does not list",
-			damage:     func(t *testing.T, s *Subject) { lineLink(t, s, transfersInNode, "fund/500").Target = "fund/999" },
+			name: "a link into a fund data/funds.yaml does not list",
+			damage: func(t *testing.T, s *Subject) {
+				lineLink(t, s, project.NodeTransfersIn, "fund/500").Target = "fund/999"
+			},
 			wantStatus: StatusFail, wantSubjects: 11,
 			want: []string{
 				`link "transfers/in" -> "fund/999" names a fund data/funds.yaml does not list`,

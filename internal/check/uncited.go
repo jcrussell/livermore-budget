@@ -7,6 +7,7 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/internal/project"
 )
 
 // isStock is whether a fact is one of the two balance rows pp.66-67 print,
@@ -14,7 +15,7 @@ import (
 // stock is.
 func isStock(f *fact.Fact) bool {
 	return f.Kind == mapping.KindFundBalance &&
-		(f.Category == categoryFundBalanceBeginning || f.Category == categoryFundBalanceEnding)
+		(f.Category == project.CategoryFundBalanceBeginning || f.Category == project.CategoryFundBalanceEnding)
 }
 
 // uncitedFactsArePrintedZeros asserts that every fact a schedule document was

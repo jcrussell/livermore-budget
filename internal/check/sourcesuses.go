@@ -10,8 +10,6 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/project"
 )
 
-const categoryReserveIncrease = "fund-balance/reserve-increase"
-
 // fundGroupSourcesEqualUses asserts each fund group column of the spine
 // balances: revenue + transfers in - expenditure - transfers out - reserve
 // increase == fund-balance/change, exactly.
@@ -68,13 +66,13 @@ func (*fundGroupSourcesEqualUses) Run(_ context.Context, s *Subject) (Result, er
 			c.transfersIn += f.AmountCents
 		case f.Kind == mapping.KindTransferOut:
 			c.transfersOut += f.AmountCents
-		case f.Category == categoryReserveIncrease:
+		case f.Category == project.CategoryFundBalanceReserveIncrease:
 			c.reserve += f.AmountCents
-		case f.Category == categoryFundBalanceChange:
+		case f.Category == project.CategoryFundBalanceChange:
 			c.change += f.AmountCents
 			c.changes++
 			continue
-		case f.Category == categoryFundBalanceBeginning, f.Category == categoryFundBalanceEnding:
+		case f.Category == project.CategoryFundBalanceBeginning, f.Category == project.CategoryFundBalanceEnding:
 			continue
 		default:
 			findings = append(findings, finding(f.ID,
@@ -96,7 +94,7 @@ func (*fundGroupSourcesEqualUses) Run(_ context.Context, s *Subject) (Result, er
 			if c.terms > 0 {
 				findings = append(findings, finding(k.String(),
 					"prints a term of sources = uses and no %s, so its sources and uses balance against nothing",
-					categoryFundBalanceChange))
+					project.CategoryFundBalanceChange))
 			}
 			continue
 		}
@@ -108,7 +106,7 @@ func (*fundGroupSourcesEqualUses) Run(_ context.Context, s *Subject) (Result, er
 					"= %s, and its %s is %s (off by %s)",
 				amount.Cents(c.revenue), amount.Cents(c.transfersIn), amount.Cents(c.expenditure),
 				amount.Cents(c.transfersOut), amount.Cents(c.reserve), amount.Cents(net),
-				categoryFundBalanceChange, amount.Cents(c.change), amount.Cents(net-c.change)))
+				project.CategoryFundBalanceChange, amount.Cents(c.change), amount.Cents(net-c.change)))
 		}
 	}
 	return conclusion{

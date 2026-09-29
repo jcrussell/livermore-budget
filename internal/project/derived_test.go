@@ -27,8 +27,8 @@ func TestTheSpineEndpointsAreTheGoldensOwn(t *testing.T) {
 	}
 	var drawn []string
 	for _, n := range doc.Nodes {
-		if strings.HasPrefix(n.ID, prefixRevenue) || strings.HasPrefix(n.ID, prefixExpenditure) ||
-			strings.HasPrefix(n.ID, prefixFundGroup) {
+		if strings.HasPrefix(n.ID, PrefixRevenue) || strings.HasPrefix(n.ID, PrefixExpenditure) ||
+			strings.HasPrefix(n.ID, PrefixFundGroup) {
 			continue
 		}
 		drawn = append(drawn, n.ID)
@@ -54,7 +54,7 @@ func TestTheResidualSetIsDerivedFromTheCuts(t *testing.T) {
 	got := FundFlowsResidual()
 	want := []string{
 		NodeFundBalanceContribution, NodeFundBalanceDraw, "fund-balance/reserve-increase",
-		nodeTransfersIn, nodeTransfersOut,
+		NodeTransfersIn, NodeTransfersOut,
 	}
 	slices.Sort(want)
 	if diff := cmp.Diff(want, slices.Sorted(maps.Keys(got))); diff != "" {
@@ -79,7 +79,7 @@ func TestTheResidualSetIsDerivedFromTheCuts(t *testing.T) {
 	if slices.Contains(undecomposed, "transfer_in") {
 		t.Fatal("transfer_in is undecomposed by kind, so the exception arm below is not what carries transfers/in")
 	}
-	if _, ok := got[nodeTransfersIn]; !ok {
+	if _, ok := got[NodeTransfersIn]; !ok {
 		t.Error("transfers/in is not residual, and pp.127-130 print no General Fund transfer in")
 	}
 	// The published map is a fresh copy.

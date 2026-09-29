@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/internal/registry"
 )
 
@@ -48,7 +49,7 @@ func (*factRevenueLinesResolve) Run(_ context.Context, s *Subject) (Result, erro
 	printed := map[string]bool{}
 	rows := 0
 	for _, f := range s.Facts {
-		if f.Scope != revenueDetailScope || f.Kind != mapping.KindRevenue {
+		if f.Scope != project.ScopeRevenueByFund || f.Kind != mapping.KindRevenue {
 			continue
 		}
 		rows++
@@ -80,7 +81,7 @@ func (*factRevenueLinesResolve) Run(_ context.Context, s *Subject) (Result, erro
 		if !printed[slug] {
 			findings = append(findings, finding(taxonomyFile,
 				"line %q is printed by no fact of scope %s and kind %s; a node nothing can draw",
-				slug, revenueDetailScope, mapping.KindRevenue))
+				slug, project.ScopeRevenueByFund, mapping.KindRevenue))
 		}
 	}
 
@@ -89,9 +90,9 @@ func (*factRevenueLinesResolve) Run(_ context.Context, s *Subject) (Result, erro
 		unit:     "rows and lines",
 		held: fmt.Sprintf("%d revenue rows of scope %s each resolve to one of the %d lines %s "+
 			"declares under %d categories, and every line is printed",
-			rows, revenueDetailScope, len(declared), taxonomyFile, len(lines)),
+			rows, project.ScopeRevenueByFund, len(declared), taxonomyFile, len(lines)),
 		nothing: fmt.Sprintf("no fact is a revenue row of scope %s and %s declares no line "+
-			"under an assignable revenue category", revenueDetailScope, taxonomyFile),
+			"under an assignable revenue category", project.ScopeRevenueByFund, taxonomyFile),
 		findings: findings,
 	}.result(), nil
 }

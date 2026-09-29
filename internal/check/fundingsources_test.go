@@ -10,6 +10,7 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/internal/project"
 )
 
 // This file is the arithmetic behind pp.85-125, and it is deliberately NOT a
@@ -281,7 +282,7 @@ func TestEveryFundingSourceFactMatchesThePrintedRow(t *testing.T) {
 	seen := 0
 	for i := range s.Facts {
 		f := &s.Facts[i]
-		if f.Scope != fundingSourcesScope {
+		if f.Scope != project.DepartmentFundingScope {
 			continue
 		}
 		seen++
@@ -341,7 +342,7 @@ func TestEveryFundingSourceFactMatchesThePrintedRow(t *testing.T) {
 	}
 	if want := 78 * 4; seen != want {
 		t.Errorf("scope %q carries %d facts, want %d (78 rows x 4 columns)",
-			fundingSourcesScope, seen, want)
+			project.DepartmentFundingScope, seen, want)
 	}
 }
 
@@ -460,7 +461,7 @@ func TestTheScopeIsWhatStopsTheDoubling(t *testing.T) {
 	s.Facts = append([]fact.Fact(nil), base.Facts...)
 	moved := 0
 	for i := range s.Facts {
-		if s.Facts[i].Scope == fundingSourcesScope {
+		if s.Facts[i].Scope == project.DepartmentFundingScope {
 			s.Facts[i].Scope = spineScope
 			moved++
 		}

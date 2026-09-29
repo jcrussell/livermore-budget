@@ -1682,7 +1682,7 @@ func fundRuleSubject(t *testing.T, page string, rules []mapping.Rule,
 func fundRule(id string, fund int, group, totalRow string) mapping.Rule {
 	return mapping.Rule{
 		ID: id, Kind: mapping.KindRevenue, Basis: mapping.BasisAdopted,
-		Scope: revenueDetailScope, Units: "dollars", TotalRow: totalRow,
+		Scope: project.ScopeRevenueByFund, Units: "dollars", TotalRow: totalRow,
 		Parts: []mapping.Part{{Page: 1, Columns: []mapping.Column{
 			{FundGroup: group, Fund: fund, FiscalYear: 2026},
 		}}},

@@ -27,13 +27,6 @@ func (*contraLinksNameTheirSchedule) Description() string {
 		"of, in the words the page shows beside it; no other link names one"
 }
 
-// contraPrefix and contraOrphan are the two sentences a reduction can carry,
-// spelled here rather than read from the projection under test.
-const (
-	contraPrefix = "printed as a reduction of "
-	contraOrphan = "printed rows netting to a reduction"
-)
-
 func (*contraLinksNameTheirSchedule) Run(_ context.Context, s *Subject) (Result, error) {
 	var findings []Finding
 	negatives := 0
@@ -68,9 +61,9 @@ func (*contraLinksNameTheirSchedule) Run(_ context.Context, s *Subject) (Result,
 			}
 
 			up, ok := labels[labels[l.Source].Parent]
-			want := contraOrphan
+			want := project.ContraOrphan
 			if ok {
-				want = contraPrefix + up.Label
+				want = project.ContraPrefix + up.Label
 			}
 			if l.Contra != want {
 				findings = append(findings, finding(subject,

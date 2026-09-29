@@ -46,6 +46,7 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/internal/structure"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
@@ -71,7 +72,7 @@ const (
 	// difference between a default and a limit.
 	PublishedFiscalYear = 2026
 	PublishedBasis      = mapping.BasisAdopted
-	PublishedScope      = "all-funds-gross"
+	PublishedScope      = structure.ScopeAllFundsGross
 	// PublishedProjection is the stem of the document the page is built from.
 	//
 	// It is here with the slice rather than only in internal/export because it

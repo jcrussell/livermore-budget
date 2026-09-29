@@ -198,8 +198,8 @@ func TestEveryFundNodeDisclosesItsConstraintTier(t *testing.T) {
 // in which groups they carry.
 func TestTheStoppedGroupCountIsTheDocumentsOwn(t *testing.T) {
 	general := []Node{
-		{ID: prefixFund + "100", Tier: tierFund, Parent: prefixFundGroup + "general"},
-		{ID: prefixDept + "patrol", Tier: tierDepartment, Parent: prefixFund + "100"},
+		{ID: PrefixFund + "100", Tier: tierFund, Parent: PrefixFundGroup + "general"},
+		{ID: PrefixDept + "patrol", Tier: tierDepartment, Parent: PrefixFund + "100"},
 	}
 	for _, tc := range []struct {
 		name       string
@@ -208,19 +208,19 @@ func TestTheStoppedGroupCountIsTheDocumentsOwn(t *testing.T) {
 		want       []string
 	}{
 		{"every group spends", false, []Node{
-			{ID: prefixFund + "600", Tier: tierFund, Parent: prefixFundGroup + "enterprise"},
-			{ID: prefixExpenditure + "fund/600/wages-and-benefits", Tier: tierObjectCategory, Parent: prefixFund + "600"},
+			{ID: PrefixFund + "600", Tier: tierFund, Parent: PrefixFundGroup + "enterprise"},
+			{ID: PrefixExpenditure + "fund/600/wages-and-benefits", Tier: tierObjectCategory, Parent: PrefixFund + "600"},
 		}, []string{}},
 		{"a group with revenue and no spending stops", false, []Node{
-			{ID: prefixFund + "600", Tier: tierFund, Parent: prefixFundGroup + "enterprise"},
-			{ID: prefixFund + "470", Tier: tierFund, Parent: prefixFundGroup + "permanent"},
-			{ID: prefixExpenditure + "fund/600/wages-and-benefits", Tier: tierObjectCategory, Parent: prefixFund + "600"},
-		}, []string{prefixFundGroup + "permanent"}},
+			{ID: PrefixFund + "600", Tier: tierFund, Parent: PrefixFundGroup + "enterprise"},
+			{ID: PrefixFund + "470", Tier: tierFund, Parent: PrefixFundGroup + "permanent"},
+			{ID: PrefixExpenditure + "fund/600/wages-and-benefits", Tier: tierObjectCategory, Parent: PrefixFund + "600"},
+		}, []string{PrefixFundGroup + "permanent"}},
 		// No spending drawn at all: every group stops, and the caveat is true
 		// of every one of them.
 		{"no group spends", true, []Node{
-			{ID: prefixFund + "600", Tier: tierFund, Parent: prefixFundGroup + "enterprise"},
-		}, []string{prefixFundGroup + "enterprise", prefixFundGroup + "general"}},
+			{ID: PrefixFund + "600", Tier: tierFund, Parent: PrefixFundGroup + "enterprise"},
+		}, []string{PrefixFundGroup + "enterprise", PrefixFundGroup + "general"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			nodes := append(append([]Node{}, general...), tc.extra...)
@@ -229,8 +229,8 @@ func TestTheStoppedGroupCountIsTheDocumentsOwn(t *testing.T) {
 			}
 			for _, g := range []string{"general", "enterprise", "permanent"} {
 				for _, n := range nodes {
-					if n.Parent == prefixFundGroup+g {
-						nodes = append(nodes, Node{ID: prefixFundGroup + g, Tier: tierFundGroup})
+					if n.Parent == PrefixFundGroup+g {
+						nodes = append(nodes, Node{ID: PrefixFundGroup + g, Tier: tierFundGroup})
 						break
 					}
 				}
@@ -268,21 +268,21 @@ func TestOnlyTheGeneralFundHasDivisionsIsPublishedOnlyWhereTrue(t *testing.T) {
 		return Caveat{}, false
 	}
 	groups := []Node{
-		{ID: prefixFundGroup + "general", Tier: tierFundGroup},
-		{ID: prefixFundGroup + "enterprise", Tier: tierFundGroup},
-		{ID: prefixFund + "100", Tier: tierFund, Parent: prefixFundGroup + "general"},
-		{ID: prefixFund + "600", Tier: tierFund, Parent: prefixFundGroup + "enterprise"},
+		{ID: PrefixFundGroup + "general", Tier: tierFundGroup},
+		{ID: PrefixFundGroup + "enterprise", Tier: tierFundGroup},
+		{ID: PrefixFund + "100", Tier: tierFund, Parent: PrefixFundGroup + "general"},
+		{ID: PrefixFund + "600", Tier: tierFund, Parent: PrefixFundGroup + "enterprise"},
 	}
-	division := Node{ID: prefixDept + "patrol", Tier: tierDepartment, Parent: prefixFund + "100"}
-	direct := Node{ID: prefixExpenditure + "fund/600/wages-and-benefits", Tier: tierObjectCategory,
-		Parent: prefixFund + "600"}
+	division := Node{ID: PrefixDept + "patrol", Tier: tierDepartment, Parent: PrefixFund + "100"}
+	direct := Node{ID: PrefixExpenditure + "fund/600/wages-and-benefits", Tier: tierObjectCategory,
+		Parent: PrefixFund + "600"}
 
 	both := append(append([]Node{}, groups...), division, direct)
 	c, ok := has(fundFlowsCaveats(0, both))
 	if !ok {
 		t.Fatalf("a column with the General Fund's divisions and another fund's categories carries no %q", id)
 	}
-	if diff := cmp.Diff([]string{prefixFundGroup + "enterprise", prefixFund + "100"}, c.AppliesTo); diff != "" {
+	if diff := cmp.Diff([]string{PrefixFundGroup + "enterprise", PrefixFund + "100"}, c.AppliesTo); diff != "" {
 		t.Errorf("applies_to (-want +got):\n%s", diff)
 	}
 	if _, ok := has(fundFlowsCaveats(0, append(append([]Node{}, groups...), division))); ok {
@@ -292,7 +292,7 @@ func TestOnlyTheGeneralFundHasDivisionsIsPublishedOnlyWhereTrue(t *testing.T) {
 		t.Errorf("a column with no division at all carries %q", id)
 	}
 	elsewhere := append(append([]Node{}, both...),
-		Node{ID: prefixDept + "airport", Tier: tierDepartment, Parent: prefixFund + "600"})
+		Node{ID: PrefixDept + "airport", Tier: tierDepartment, Parent: PrefixFund + "600"})
 	if _, ok := has(fundFlowsCaveats(0, elsewhere)); ok {
 		t.Errorf("a column with divisions under enterprise too carries %q, which says the opposite", id)
 	}
@@ -302,10 +302,10 @@ func TestOnlyTheGeneralFundHasDivisionsIsPublishedOnlyWhereTrue(t *testing.T) {
 // never "1 fund groups'".
 func TestTheStoppedCountIsPluralised(t *testing.T) {
 	nodes := []Node{
-		{ID: prefixFundGroup + "general", Tier: tierFundGroup},
-		{ID: prefixFundGroup + "capital", Tier: tierFundGroup},
-		{ID: prefixFund + "100", Tier: tierFund, Parent: prefixFundGroup + "general"},
-		{ID: prefixDept + "patrol", Tier: tierDepartment, Parent: prefixFund + "100"},
+		{ID: PrefixFundGroup + "general", Tier: tierFundGroup},
+		{ID: PrefixFundGroup + "capital", Tier: tierFundGroup},
+		{ID: PrefixFund + "100", Tier: tierFund, Parent: PrefixFundGroup + "general"},
+		{ID: PrefixDept + "patrol", Tier: tierDepartment, Parent: PrefixFund + "100"},
 	}
 	found := false
 	for _, c := range fundFlowsCaveats(0, nodes) {
@@ -359,10 +359,10 @@ func TestALineRollsUpIntoItsCategoryOncePerKind(t *testing.T) {
 
 	got := map[LinkKind]Link{}
 	for _, l := range buildFundFlows(t, facts, labels).Links {
-		if l.Target != prefixRevenue+"taxes/property" {
+		if l.Target != PrefixRevenue+"taxes/property" {
 			continue
 		}
-		if l.Source != prefixRevenueLine+lineOf("taxes/property") {
+		if l.Source != PrefixRevenueLine+lineOf("taxes/property") {
 			t.Errorf("%s -> %s: the category's inflow comes from something other than its "+
 				"own line", l.Source, l.Target)
 		}
@@ -407,7 +407,7 @@ func TestAPrintedZeroIsNotInItsLinesRollup(t *testing.T) {
 	doc := buildFundFlows(t, facts, labels)
 	var rollup *Link
 	for i := range doc.Links {
-		if doc.Links[i].Target == prefixRevenue+"taxes/property" {
+		if doc.Links[i].Target == PrefixRevenue+"taxes/property" {
 			rollup = &doc.Links[i]
 		}
 	}
@@ -664,7 +664,7 @@ func TestATransferInLinkIsNotExternal(t *testing.T) {
 
 	seen := 0
 	for _, l := range doc.Links {
-		if l.Source != nodeTransfersIn {
+		if l.Source != NodeTransfersIn {
 			continue
 		}
 		seen++
@@ -680,7 +680,7 @@ func TestATransferInLinkIsNotExternal(t *testing.T) {
 	// And a revenue link into the same fund group is still external, so the fix
 	// is a distinction rather than a blanket relabelling.
 	for _, l := range doc.Links {
-		if strings.HasPrefix(l.Source, prefixRevenue) && l.Target == "fund/100" {
+		if strings.HasPrefix(l.Source, PrefixRevenue) && l.Target == "fund/100" {
 			if l.Kind != KindExternal {
 				t.Errorf("%s -> %s is %q, want %q", l.Source, l.Target, l.Kind, KindExternal)
 			}
@@ -735,7 +735,7 @@ func TestAReductionNamesTheCategoryTheSchedulePrintsItUnder(t *testing.T) {
 	// Its own printed row: sharing one with additions would net positive
 	// and hide the defect.
 	labels.lines[lineKey{"taxes/property", eraf, "revenue"}] = []string{
-		prefixRevenueLine + "taxes/property/eraf"}
+		PrefixRevenueLine + "taxes/property/eraf"}
 	reduction := fundFlowsFact(ScopeRevenueByFund, mapping.KindRevenue,
 		"taxes/property", "", "general", fact.FundNumber(100), -250, "r")
 	reduction.RowLabel = eraf

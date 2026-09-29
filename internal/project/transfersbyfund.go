@@ -8,6 +8,7 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/internal/structure"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 	"github.com/jcrussell/livermore-budget/schema"
 )
@@ -18,7 +19,7 @@ const TransfersByFundProjection = "transfers-by-fund"
 // TransfersByFundScope is Budget Book p76, Summary of Transfers. It is its own
 // scope because pp.127-140 print the same transfers in from the receiving end,
 // so a document holding both would double them.
-const TransfersByFundScope = "transfers-by-fund"
+const TransfersByFundScope = structure.ScopeTransfersByFund
 
 // TransfersByFundScopes is the schedule set, as [Options.Scopes] holds it.
 func TransfersByFundScopes() []string { return []string{TransfersByFundScope} }
@@ -28,7 +29,7 @@ func TransfersByFundScopes() []string { return []string{TransfersByFundScope} }
 const TransfersOutProjection = "transfers-out"
 
 // CIPFundingScope is Budget Book p222, the CIP's funding sources.
-const CIPFundingScope = "cip-funding-sources"
+const CIPFundingScope = structure.ScopeCIPFundingSources
 
 // TransfersOutScopes is p76 and p222 together: pp.66-67's TRANSFER OUT is what
 // p76 lists plus what p222 lists going to the CIP, per fund group
@@ -165,7 +166,7 @@ func (t *transfersByFund) Document(facts []fact.Fact, o Options) (*Document, err
 		}
 		if t.Out {
 			payer.from.parent = ""
-			receiver.to.parent = nodeTransfersOut
+			receiver.to.parent = NodeTransfersOut
 			t.addNode(nodes, transfersOutEndpoint())
 		} else {
 			t.addNode(nodes, transfersInEndpoint())
@@ -285,10 +286,10 @@ func transferFundEnds(fa *fact.Fact) (transferEnds, error) {
 	}
 	n := strconv.Itoa(*fa.Fund)
 	return transferEnds{
-		from: endpoint{id: prefixTransferFrom + n, tier: tierFundGroup, role: RoleTransferSource,
-			parent: nodeTransfersIn},
-		fund: endpoint{id: prefixFund + n, tier: tierFund, role: transferFundRole(*fa.Fund)},
-		to:   endpoint{id: prefixTransferTo + n, tier: tierObjectCategory, role: RoleTransferSink},
+		from: endpoint{id: PrefixTransferFrom + n, tier: tierFundGroup, role: RoleTransferSource,
+			parent: NodeTransfersIn},
+		fund: endpoint{id: PrefixFund + n, tier: tierFund, role: transferFundRole(*fa.Fund)},
+		to:   endpoint{id: PrefixTransferTo + n, tier: tierObjectCategory, role: RoleTransferSink},
 	}, nil
 }
 
@@ -304,14 +305,14 @@ func transferFundRole(number int) string {
 // node a reader clicks to open the transfers-out network, and the container
 // its receivers' ends fold into.
 func transfersOutEndpoint() endpoint {
-	return endpoint{id: nodeTransfersOut, slug: nodeTransfersOut,
+	return endpoint{id: NodeTransfersOut, slug: NodeTransfersOut,
 		tier: tierObjectCategory, role: roleTransferOut}
 }
 
 // transfersInEndpoint is the spine's transfers/in, at the spine's id: it is the
 // node a reader clicks to open this document.
 func transfersInEndpoint() endpoint {
-	return endpoint{id: nodeTransfersIn, slug: nodeTransfersIn,
+	return endpoint{id: NodeTransfersIn, slug: NodeTransfersIn,
 		tier: tierRevenueSource, role: roleTransferIn}
 }
 
@@ -411,7 +412,7 @@ func (t *transfersByFund) addNode(nodes map[string]Node, e endpoint) {
 	}
 	n := Node{ID: e.id, Label: t.label(e), Tier: e.tier, Role: e.role, Parent: e.parent}
 	if e.tier == tierFund {
-		if number, err := strconv.Atoi(e.id[len(prefixFund):]); err == nil {
+		if number, err := strconv.Atoi(e.id[len(PrefixFund):]); err == nil {
 			annotateFund(&n, t.Labels, number)
 		}
 	}
@@ -443,7 +444,7 @@ func (t *transfersByFund) label(e endpoint) string {
 // transferFundNumber is the fund a node id names, for the three forms that name
 // one. It returns false for transfers/in, which names no fund.
 func transferFundNumber(id string) (int, bool) {
-	for _, prefix := range []string{prefixFund, prefixTransferFrom, prefixTransferTo} {
+	for _, prefix := range []string{PrefixFund, PrefixTransferFrom, PrefixTransferTo} {
 		if len(id) > len(prefix) && id[:len(prefix)] == prefix {
 			n, err := strconv.Atoi(id[len(prefix):])
 			if err != nil {

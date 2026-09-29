@@ -13,22 +13,6 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/project"
 )
 
-// The two rows pp.66-67 print that are stocks rather than flows: a balance
-// carried into or out of the year is not money moving, so the projection records
-// the facts and draws no link.
-//
-// These strings restate two unexported constants in internal/project. That is
-// deliberate rather than an oversight: this check re-derives what the projection
-// should have counted, and a check that imported the projection's own answer
-// would be asking the thing under test. The restatement is safe in the direction
-// that matters — if internal/project changes which rows are stocks, the counts
-// identity below stops adding up and the check FAILS, rather than passing
-// against a definition that has moved.
-const (
-	categoryFundBalanceBeginning = "fund-balance/beginning"
-	categoryFundBalanceEnding    = "fund-balance/ending"
-)
-
 // graphAcyclic asserts no projection contains a cycle.
 //
 // A cycle in a flow diagram is money that funds itself. d3-sankey will render
@@ -279,7 +263,7 @@ func (*linkValuesTieToFacts) Run(_ context.Context, s *Subject) (Result, error) 
 // well-formed either way.
 //
 // IT RE-DERIVES THE GROUPING RATHER THAN CALLING project.sourcesOf, for the
-// reason this file's header already gives for categoryFundBalanceBeginning: a
+// reason this file's header already gives for project.CategoryFundBalanceBeginning: a
 // check that asks the producer for the answer is asking the thing under test.
 // locatorSet is exactly the code that built the field, so comparing against it
 // would pass on any bug inside it.
@@ -480,18 +464,6 @@ func (*countsReconcile) Run(_ context.Context, s *Subject) (Result, error) {
 	}.result(), nil
 }
 
-// fundGroupInternalService is the fund group whose flows are inside the city.
-//
-// It restates an unexported constant in internal/project, and the restatement is
-// the point: the external headline figures are the gross ones minus this group,
-// so a check that took the projection's word for which group that is would not be
-// checking anything. It fails closed — were the projection to classify a
-// different group as internal, the sums below would disagree with what it
-// published — and data/funds.yaml records `internal-service` as a fund type, so
-// the fact-vocabulary check would already have failed on a group that does not
-// exist.
-const fundGroupInternalService = "internal-service"
-
 // headlineTiesToFacts asserts the five revenue and expenditure headline figures
 // are the sums they claim to be.
 //
@@ -535,7 +507,7 @@ func (*headlineTiesToFacts) Run(_ context.Context, s *Subject) (Result, error) {
 	for _, p := range s.graphs() {
 		var grossRevenue, grossExpenditure, externalRevenue, externalExpenditure, transfersOut int64
 		for _, f := range factsFor(s.Facts, p.Options) {
-			external := f.FundGroup != fundGroupInternalService
+			external := f.FundGroup != project.FundGroupInternalService
 			switch f.Kind {
 			case mapping.KindRevenue:
 				subjects++
