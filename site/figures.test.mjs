@@ -132,20 +132,19 @@ for (const year of YEARS) {
       await opened(app, PROPERTY);
       const [printed] = columnLinks(year.column, "fund-flows", (from, to) => from === ERAF && to === PROPERTY);
       const doc = PAGE.config.docs[printed.locators[0].doc_id];
-      // Go's own spelling of each page's text file, off the anchors it wrote into the served page.
-      const served = new Map();
+      // The anchors Go rendered into the served page: a page's text link in
+      // the config is the one the page's own footer carries.
+      const served = new Set();
       for (const a of new window.DOMParser().parseFromString(PAGE.html, "text/html").querySelectorAll("a[href]")) {
-        const href = a.getAttribute("href");
-        const m = href.startsWith(doc.page_text_base) && /^p(\d+)\.txt$/.exec(href.slice(doc.page_text_base.length));
-        if (m) served.set(Number(m[1]), href);
+        served.add(a.getAttribute("href"));
       }
       const want = [];
       for (const loc of printed.locators) {
         for (const page of loc.pages) {
-          const text = served.get(page);
-          assert.ok(text, `the served page carries no text anchor for p${page}`);
-          const file = text.slice(doc.page_text_base.length);
-          want.push(doc.pdf_url + "#page=" + page, text, doc.records_base + file.replace(/\.txt$/, ".jsonl"));
+          const links = doc.pages[String(page)];
+          assert.ok(links, `the config carries no links for p${page}`);
+          assert.ok(served.has(links.text), `p${page}'s text link ${links.text} is not the served page's`);
+          want.push(links.pdf, links.text, links.records);
         }
       }
       app.pin(ribbonOf(document.getElementById("chart"), ERAF, PROPERTY).__data__);

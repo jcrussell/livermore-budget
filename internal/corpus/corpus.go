@@ -273,7 +273,12 @@ func (d *Doc) PopplerVersion() string { return d.man.PopplerVersion }
 // .txt, not .md: GitHub renders markdown in its blob view and collapses the
 // runs of spaces that ARE the column grid, which would silently break the
 // provenance deep links these paths are published as.
-func PagePath(n int) string { return fmt.Sprintf("pages/p%04d.txt", n) }
+func PagePath(n int) string { return "pages/" + PageStem(n) + ".txt" }
+
+// PageStem is page n's file name without its extension, the one spelling of
+// the zero-padded page number every per-page file is named by: the page text,
+// its geometry and the published records shard.
+func PageStem(n int) string { return fmt.Sprintf("p%04d", n) }
 
 // GeometryPath is the artifact path for page n's word geometry, the `-bbox`
 // substrate that carries the x-position of every token.
@@ -285,7 +290,7 @@ func PagePath(n int) string { return fmt.Sprintf("pages/p%04d.txt", n) }
 // reader; `fisc verify` separately checks that both artifacts exist for every
 // page, because an extraction missing half its geometry looks complete right up
 // until a rule asks for the half that is gone.
-func GeometryPath(n int) string { return fmt.Sprintf("geometry/p%04d.json", n) }
+func GeometryPath(n int) string { return "geometry/" + PageStem(n) + ".json" }
 
 // Page returns the extracted layout text for page n.
 //

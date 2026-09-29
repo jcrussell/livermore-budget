@@ -8,10 +8,13 @@ import (
 	"html/template"
 	"io/fs"
 	"maps"
+	"path"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
+	"github.com/jcrussell/livermore-budget/internal/corpus"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 	"github.com/jcrussell/livermore-budget/schema"
@@ -487,32 +490,21 @@ type cellRef struct {
 	Href string
 }
 
-// clientDoc is a source document as the client sees it.
+// clientDoc is a source document as the client sees it: its title, and for
+// every page the site cites, the three links a citation opens, built here so
+// the client composes none.
 type clientDoc struct {
-	Title     string `json:"title"`
-	Publisher string `json:"publisher"`
-	PDFURL    string `json:"pdf_url"`
-	// PageTextBase is the directory holding the committed page text; the
-	// client appends pNNNN.txt. Splitting it this way keeps the zero-padding
-	// rule (corpus.PagePath) in one place per side rather than in a template
-	// string the client has to parse.
-	//
-	// It is a relative path into this site — see export.PageTextDir — whenever
-	// the export shipped the text, and an absolute URL only when it was told
-	// to cite a remote instead. The client appends the same filename either
-	// way and must not assume a scheme.
-	PageTextBase string `json:"page_text_base"`
-	// RecordsBase is the directory holding this document's fact-store shards;
-	// the client appends pNNNN.jsonl. It is what turns a link's locators into
-	// a fetchable URL, which is the whole point of publishing them.
-	//
-	// IT IS ALWAYS SITE-RELATIVE, unlike PageTextBase beside it. Shards are
-	// written into the output tree on every export; page text is not, and goes
-	// absolute under --source-browse-url. The two look alike and are not.
-	//
-	// "" means the caller published no records for this document and the
-	// client renders no records link -- absent, not a base pointing nowhere.
-	RecordsBase string `json:"records_base"`
+	Title     string                `json:"title"`
+	Publisher string                `json:"publisher"`
+	Pages     map[string]clientPage `json:"pages"`
+}
+
+// clientPage is one cited page's links. An empty one is a link this export
+// has nothing to point at: no PDF URL for the document, or no records.
+type clientPage struct {
+	PDF     string `json:"pdf"`
+	Text    string `json:"text"`
+	Records string `json:"records"`
 }
 
 // wording is every sentence site/app.js composes about the chart on screen,
@@ -919,21 +911,23 @@ func sourcesFor(srcs []sourceMeta, byID map[string]Doc, pageTextBase func(string
 			ref.Title = s.DocID
 		}
 		base := pageTextBase(s.DocID)
+		pages := make(map[string]clientPage, len(s.Pages))
 		for _, p := range s.Pages {
 			ref.Pages = append(ref.Pages, pageRef{
 				Number:  p,
 				PDFURL:  pdfPageURL(d.PDFURL, p),
 				TextURL: base + pageTextFile(p),
 			})
+			// An empty records base is a document published with no records:
+			// no link, not one pointing nowhere.
+			records := ""
+			if rb := recordsBase[s.DocID]; rb != "" {
+				records = rb + RecordsFile(p)
+			}
+			pages[strconv.Itoa(p)] = clientPage{PDF: pdfPageURL(d.PDFURL, p), Text: base + pageTextFile(p), Records: records}
 		}
 		sources = append(sources, ref)
-		clientDocs[s.DocID] = clientDoc{
-			Title:        ref.Title,
-			Publisher:    ref.Publisher,
-			PDFURL:       d.PDFURL,
-			PageTextBase: base,
-			RecordsBase:  recordsBase[s.DocID],
-		}
+		clientDocs[s.DocID] = clientDoc{Title: ref.Title, Publisher: ref.Publisher, Pages: pages}
 	}
 	return sources, clientDocs
 }
@@ -1215,10 +1209,8 @@ func remotePageTextBase(browseURL, docID string) string {
 	return strings.TrimSuffix(browseURL, "/") + "/data/extracted/" + docID + "/pages/"
 }
 
-// pageTextFile mirrors corpus.PagePath's zero padding. It is spelled out
-// rather than imported because it is a URL here, not a filesystem path, and
-// the two only look alike.
-func pageTextFile(page int) string { return fmt.Sprintf("p%04d.txt", page) }
+// pageTextFile is page n's text file name, corpus.PagePath's last element.
+func pageTextFile(page int) string { return path.Base(corpus.PagePath(page)) }
 
 // dollars renders integer cents the way the schedule prints them: whole
 // dollars with thousands separators, keeping the cents only when a figure

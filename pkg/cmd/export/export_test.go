@@ -933,11 +933,10 @@ func TestTheServedPageIsWhatGoRenders(t *testing.T) {
 	})
 }
 
-// TestEveryRecordsShardIsNamedLikeItsPageText holds the one rule site/app.js
-// relies on to cite records: a shard's file is its page text's, with .jsonl
-// for .txt, so the client composes both from the one spelling the served page
-// carries.
-func TestEveryRecordsShardIsNamedLikeItsPageText(t *testing.T) {
+// TestEveryRecordsLinkTheConfigCarriesIsAShardTheExportWrote holds the page
+// config's records links to the export's own output: the client opens each
+// verbatim, so a link to a file the export did not write is a broken citation.
+func TestEveryRecordsLinkTheConfigCarriesIsAShardTheExportWrote(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {
 		t.Fatalf("resolve repo root: %v", err)
@@ -957,8 +956,9 @@ func TestEveryRecordsShardIsNamedLikeItsPageText(t *testing.T) {
 	body, _, _ := strings.Cut(rest, ";</script>")
 	var config struct {
 		Docs map[string]struct {
-			PageTextBase string `json:"page_text_base"`
-			RecordsBase  string `json:"records_base"`
+			Pages map[string]struct {
+				Records string `json:"records"`
+			} `json:"pages"`
 		} `json:"docs"`
 	}
 	if err := json.Unmarshal([]byte(body), &config); err != nil {
@@ -966,29 +966,20 @@ func TestEveryRecordsShardIsNamedLikeItsPageText(t *testing.T) {
 	}
 	shards := 0
 	for id, doc := range config.Docs {
-		if doc.RecordsBase == "" {
-			continue
-		}
-		entries, err := os.ReadDir(filepath.Join(opts.OutputDir, filepath.FromSlash(doc.RecordsBase)))
-		if err != nil {
-			t.Errorf("%s: records_base %q: %v", id, doc.RecordsBase, err)
-			continue
-		}
-		for _, e := range entries {
-			stem, ok := strings.CutSuffix(e.Name(), ".jsonl")
-			if !ok {
+		for n, p := range doc.Pages {
+			if p.Records == "" {
 				continue
 			}
 			shards++
-			text := doc.PageTextBase + stem + ".txt"
-			if _, err := os.Stat(filepath.Join(opts.OutputDir, filepath.FromSlash(text))); err != nil {
-				t.Errorf("%s: the shard %s%s has no page text at %s: %v", id, doc.RecordsBase, e.Name(), text, err)
+			if _, err := os.Stat(filepath.Join(opts.OutputDir, filepath.FromSlash(p.Records))); err != nil {
+				t.Errorf("%s p%s links records %q, which the export did not write: %v", id, n, p.Records, err)
 			}
 		}
 	}
 	if shards == 0 {
-		t.Fatal("the export wrote no records shard under any records_base, so this test asserts nothing")
+		t.Fatal("the config carries no records link, so this test asserts nothing")
 	}
+	t.Logf("%d records links, each a shard the export wrote", shards)
 }
 
 // TestTheColumnArtifactsAreWhatGoEncodes pins testdata/fy2026-adopted.column.json

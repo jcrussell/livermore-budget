@@ -434,12 +434,12 @@ func TestPageCitesThePDFPageAndTheTextTheSiteShips(t *testing.T) {
 	// way a browser would — relative to the page — rather than trusting the
 	// string.
 	for _, doc := range configDocs(t, page) {
-		if strings.Contains(doc.PageTextBase, "://") {
-			t.Errorf("got page_text_base %q, want a path relative to the site", doc.PageTextBase)
-			continue
-		}
-		for _, page := range []int{66, 67} {
-			ref := fmt.Sprintf("%sp%04d.txt", doc.PageTextBase, page)
+		for _, page := range []string{"66", "67"} {
+			ref := doc.Pages[page].Text
+			if ref == "" || strings.Contains(ref, "://") {
+				t.Errorf("got text link %q for p%s, want a path relative to the site", ref, page)
+				continue
+			}
 			if _, err := os.Stat(filepath.Join(dir, filepath.FromSlash(ref))); err != nil {
 				t.Errorf("the config cites %q, which the site does not carry: %v", ref, err)
 			}
@@ -637,13 +637,10 @@ func TestPageConfigCarriesTheProjectionMetadataVerbatim(t *testing.T) {
 
 	cfg := configBlob(t, page)
 	var got struct {
-		SchemaVersion int             `json:"schema_version"`
-		Primary       string          `json:"primary"`
-		Metadata      json.RawMessage `json:"metadata"`
-		Docs          map[string]struct {
-			PDFURL       string `json:"pdf_url"`
-			PageTextBase string `json:"page_text_base"`
-		} `json:"docs"`
+		SchemaVersion int                `json:"schema_version"`
+		Primary       string             `json:"primary"`
+		Metadata      json.RawMessage    `json:"metadata"`
+		Docs          map[string]testDoc `json:"docs"`
 	}
 	if err := json.Unmarshal(cfg, &got); err != nil {
 		t.Fatalf("decode window.FISC_CONFIG: %v", err)
@@ -682,14 +679,14 @@ func TestPageConfigCarriesTheProjectionMetadataVerbatim(t *testing.T) {
 	if !ok {
 		t.Fatal("config carries no doc entry for the budget book")
 	}
-	if want := "https://www.livermoreca.gov/home/showpublisheddocument/12813"; doc.PDFURL != want {
-		t.Errorf("got pdf_url %q, want %q", doc.PDFURL, want)
+	p66 := doc.Pages["66"]
+	if want := "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=66"; p66.PDF != want {
+		t.Errorf("got p66's pdf link %q, want %q", p66.PDF, want)
 	}
-	// The base moved off github.com with fisc-ze7: the site ships the cited
-	// pages, so the client composes a same-origin path and the provenance
-	// resolves with no network access to a forge.
-	if want := export.LocalPageTextBase(budgetDocID); doc.PageTextBase != want {
-		t.Errorf("got page_text_base %q, want %q", doc.PageTextBase, want)
+	// The site ships the cited pages, so the text link is same-origin and the
+	// provenance resolves with no network access to a forge.
+	if !strings.HasPrefix(p66.Text, export.LocalPageTextBase(budgetDocID)) {
+		t.Errorf("got p66's text link %q, want one under %q", p66.Text, export.LocalPageTextBase(budgetDocID))
 	}
 }
 
@@ -983,17 +980,24 @@ func TestPageCarriesTheWorkInProgressBanner(t *testing.T) {
 	}
 }
 
+// testDoc is one FISC_CONFIG docs entry as the tests read it.
+type testDoc struct {
+	Title string              `json:"title"`
+	Pages map[string]testPage `json:"pages"`
+}
+
+// testPage is one cited page's links.
+type testPage struct {
+	PDF     string `json:"pdf"`
+	Text    string `json:"text"`
+	Records string `json:"records"`
+}
+
 // configDocs decodes window.FISC_CONFIG's docs block.
-func configDocs(t *testing.T, page string) map[string]struct {
-	PDFURL       string `json:"pdf_url"`
-	PageTextBase string `json:"page_text_base"`
-} {
+func configDocs(t *testing.T, page string) map[string]testDoc {
 	t.Helper()
 	var cfg struct {
-		Docs map[string]struct {
-			PDFURL       string `json:"pdf_url"`
-			PageTextBase string `json:"page_text_base"`
-		} `json:"docs"`
+		Docs map[string]testDoc `json:"docs"`
 	}
 	if err := json.Unmarshal(configBlob(t, page), &cfg); err != nil {
 		t.Fatalf("decode window.FISC_CONFIG: %v", err)

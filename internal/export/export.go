@@ -40,6 +40,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/jcrussell/livermore-budget/internal/corpus"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 	"github.com/jcrussell/livermore-budget/site"
 )
@@ -1434,7 +1435,7 @@ func withPageText(files map[string][]byte, tree fs.FS, cited []Citation, reserve
 	out := make(map[string][]byte, len(files)+len(cited))
 	maps.Copy(out, files)
 	for _, c := range cited {
-		src := path.Join(c.DocID, pageTextPath(c.Page))
+		src := path.Join(c.DocID, corpus.PagePath(c.Page))
 		b, err := fs.ReadFile(tree, src)
 		if err != nil {
 			return nil, fmt.Errorf("read the extracted text of %s page %d: %w", c.DocID, c.Page, err)
@@ -1462,11 +1463,9 @@ func LocalPageTextBase(docID string) string {
 	return path.Join(PageTextDir, docID, "pages") + "/"
 }
 
-// pageTextPath is corpus.PagePath, spelled out for the same reason
-// pageTextFile is: this package reads an fs.FS the caller rooted, and importing
-// internal/corpus to compose two path elements would give the packager a
-// dependency on the extraction reader it otherwise has no use for.
-func pageTextPath(page int) string { return "pages/" + pageTextFile(page) }
+// RecordsFile is the published records shard for one page, named by the page
+// as its text is.
+func RecordsFile(page int) string { return corpus.PageStem(page) + ".jsonl" }
 
 // assetTree is the site source tree the templates and verbatim assets come
 // from: the caller's, or the embedded one.

@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -234,9 +235,13 @@ func TestEveryCitationTheClientComposesResolves(t *testing.T) {
 				}
 				for _, p := range src.Pages {
 					checked++
-					href := d.PageTextBase + fmt.Sprintf("p%04d.txt", p)
+					href := d.Pages[strconv.Itoa(p)].Text
+					if href == "" {
+						t.Errorf("the config carries no text link for %s page %d, which a schedule cites", src.DocID, p)
+						continue
+					}
 					if _, err := os.Stat(filepath.Join(dir, filepath.FromSlash(href))); err != nil {
-						t.Errorf("the client would compose %q for %s page %d, and it is not in "+
+						t.Errorf("the config links %q for %s page %d, and it is not in "+
 							"the output: %v", href, src.DocID, p, err)
 					}
 				}
@@ -1333,10 +1338,8 @@ type clientCfg struct {
 		Stem string `json:"stem"`
 		Path string `json:"path"`
 	} `json:"years"`
-	Docs map[string]struct {
-		PageTextBase string `json:"page_text_base"`
-	} `json:"docs"`
-	RenderTiers []int `json:"render_tiers"`
+	Docs        map[string]testDoc `json:"docs"`
+	RenderTiers []int              `json:"render_tiers"`
 }
 
 func clientConfigOf(t *testing.T, page string) clientCfg {
@@ -1757,15 +1760,13 @@ func TestASecondYearsCitationsSurviveTheYearItDoesNotOpenOn(t *testing.T) {
 	cfg := strings.TrimPrefix(
 		between(t, page, "window.FISC_CONFIG = ", ";</script>"), "window.FISC_CONFIG = ")
 	var config struct {
-		Docs map[string]struct {
-			PageTextBase string `json:"page_text_base"`
-		} `json:"docs"`
+		Docs map[string]testDoc `json:"docs"`
 	}
 	if err := json.Unmarshal([]byte(cfg), &config); err != nil {
 		t.Fatalf("decode FISC_CONFIG: %v", err)
 	}
 	for _, id := range []string{budgetDocID, acfr} {
-		if config.Docs[id].PageTextBase == "" {
+		if len(config.Docs[id].Pages) == 0 {
 			t.Errorf("FISC_CONFIG.docs has no entry for %q; every fact citing it "+
 				"would lose its citation with no error (docs: %v)", id, config.Docs)
 		}
@@ -2325,18 +2326,17 @@ func TestRecordsBaseStaysSiteRelativeUnderSourceBrowseURL(t *testing.T) {
 	if rerr != nil {
 		t.Fatalf("read index: %v", rerr)
 	}
-	page := string(b)
-	if !strings.Contains(page, `"records_base":"facts/d/pages/"`) {
-		t.Error("records_base is not the site-relative path; shards ship locally whatever " +
-			"the page text does")
-	}
-	if strings.Contains(page, `"records_base":"https://`) {
-		t.Error("records_base went absolute, following page_text_base; the shards are " +
-			"in this output tree and the remote does not have them")
-	}
-	if !strings.Contains(page, `"page_text_base":"https://example.invalid/`) {
-		t.Fatal("page_text_base did not go remote, so this test is not exercising " +
-			"the asymmetry it is named for")
+	for id, doc := range configDocs(t, string(b)) {
+		for n, p := range doc.Pages {
+			if !strings.HasPrefix(p.Text, "https://example.invalid/") {
+				t.Fatalf("%s p%s's text link %q did not go remote, so this test is not exercising "+
+					"the asymmetry it is named for", id, n, p.Text)
+			}
+			if p.Records != "" && !strings.HasPrefix(p.Records, "facts/d/pages/") {
+				t.Errorf("%s p%s's records link %q is not the site-relative shard; shards ship "+
+					"locally whatever the page text does", id, n, p.Records)
+			}
+		}
 	}
 }
 
@@ -2436,9 +2436,17 @@ func TestAnAbsentRecordsBaseIsNotAnError(t *testing.T) {
 	if rerr != nil {
 		t.Fatalf("read index: %v", rerr)
 	}
-	if !strings.Contains(string(b), `"records_base":""`) {
-		t.Error("the page config does not carry an empty records_base; the key must be " +
-			"present and empty rather than absent, as every other clientDoc key is")
+	for id, doc := range configDocs(t, string(b)) {
+		for n, p := range doc.Pages {
+			if p.Records != "" {
+				t.Errorf("%s p%s carries records link %q with no records published; the key "+
+					"must be present and empty", id, n, p.Records)
+			}
+		}
+	}
+	if !strings.Contains(string(b), `"records":""`) {
+		t.Error("the page config carries no empty records link; the key must be present and " +
+			"empty rather than absent, as every other link is")
 	}
 }
 

@@ -487,11 +487,8 @@ export function nodeRank(node) {
 
 /**
  * Citations for a set of source documents: the city's PDF at the page, the
- * committed page text, and the fact-store shard for the page.
- *
- * page_text_base is usually relative: do not assume a scheme or compose it
- * with `new URL(base)`. When absolute it points at a blob view, never
- * raw.githubusercontent.com.
+ * committed page text, and the fact-store shard for the page, each the link
+ * the export built for that page. A link it left empty is not rendered.
  * @param {FiscSource[]} sources
  * @returns {{label:string, href:string}[]}
  */
@@ -500,19 +497,13 @@ export function citations(sources) {
   const out = [];
   for (const source of sources) {
     const doc = CONFIG.docs[source.doc_id];
-    if (!doc) continue;
+    if (!doc || !doc.pages) continue;
     for (const page of source.pages) {
-      if (doc.pdf_url) {
-        out.push({ label: "PDF p" + page, href: doc.pdf_url + "#page=" + page });
-      }
-      if (doc.page_text_base) {
-        const padded = String(page).padStart(4, "0");
-        out.push({ label: "extracted p" + page, href: doc.page_text_base + "p" + padded + ".txt" });
-      }
-      if (doc.records_base) {
-        const padded = String(page).padStart(4, "0");
-        out.push({ label: "records p" + page, href: doc.records_base + "p" + padded + ".jsonl" });
-      }
+      const links = doc.pages[String(page)];
+      if (!links) continue;
+      if (links.pdf) out.push({ label: "PDF p" + page, href: links.pdf });
+      if (links.text) out.push({ label: "extracted p" + page, href: links.text });
+      if (links.records) out.push({ label: "records p" + page, href: links.records });
     }
   }
   return out;

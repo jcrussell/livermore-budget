@@ -106,9 +106,7 @@ func shardBase(docID string) string {
 	return fmt.Sprintf("%s/%s/pages/", factsDir, docID)
 }
 
-func shardFile(page int) string {
-	return fmt.Sprintf("p%04d.jsonl", page)
-}
+func shardFile(page int) string { return export.RecordsFile(page) }
 
 // buildFactAssets shards the committed store by (doc_id, page), transcodes it
 // to CSV, and describes both.
