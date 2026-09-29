@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/internal/structure"
@@ -139,7 +140,7 @@ func (c *revenueLinesTieToTheirCategories) Run(_ context.Context, s *Subject) (R
 			cmp.exempt, cmp.subjects, strings.Join(notes, ", "))
 	}
 	if len(unmatched) > 0 {
-		held += fmt.Sprintf("; %d pair(s) with no spine column: %s", len(unmatched), joinComma(sortedStrings(unmatched)))
+		held += fmt.Sprintf("; %d pair(s) with no spine column: %s", len(unmatched), strings.Join(sortedStrings(unmatched), ", "))
 	}
 
 	return conclusion{
@@ -258,7 +259,7 @@ func lineExceptions(detail, spine map[structure.Key]structure.Sum,
 				continue
 			}
 			exempted[k] = true
-			notes = append(notes, fmt.Sprintf("%s (%s, %s)", e.Name, k, structure.Cents(sp.Cents)))
+			notes = append(notes, fmt.Sprintf("%s (%s, %s)", e.Name, k, amount.Cents(sp.Cents)))
 		}
 	}
 	if len(exempted) == 0 {
@@ -361,16 +362,16 @@ func compareCells(detail, spine map[structure.Key]structure.Sum, reconcile map[s
 			out.findings = append(out.findings, finding(cell.Key.String(),
 				"the spine publishes %s here and the detail has no such row at all; a "+
 					"category the schedule stopped printing is a rule that was dropped, "+
-					"not a cell that is empty", structure.Cents(sp.Cents)))
+					"not a cell that is empty", amount.Cents(sp.Cents)))
 		case !sp.Present:
 			out.findings = append(out.findings, finding(cell.Key.String(),
 				"the detail publishes %s here and the spine has no such cell; %q must "+
-					"decompose the spine, never extend it", structure.Cents(d.Cents), scope))
+					"decompose the spine, never extend it", amount.Cents(d.Cents), scope))
 		default:
 			out.findings = append(out.findings, finding(cell.Key.String(),
 				"the detail sums to %s and the spine publishes %s, a difference of %s; "+
 					"these are the same money decomposed two ways and must tie to the cent",
-				structure.Cents(d.Cents), structure.Cents(sp.Cents), structure.Cents(d.Cents-sp.Cents)))
+				amount.Cents(d.Cents), amount.Cents(sp.Cents), amount.Cents(d.Cents-sp.Cents)))
 		}
 	}
 	return out

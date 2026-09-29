@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
+	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/project"
 )
@@ -60,7 +61,7 @@ type excessColumn struct {
 }
 
 func (k excessColumn) String() string {
-	return fmt.Sprintf("%s FY%d %s", project.ChangesScope, k.year, k.basis)
+	return project.ChangesScope + " " + fact.ColumnLabel(k.year, k.basis)
 }
 
 // excessSide is what one column accumulated from one side of the identity.

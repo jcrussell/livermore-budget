@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
+	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/registry"
@@ -870,8 +871,8 @@ func TestContestedCaveatIsEmittedOnlyForTheColumnThatDrawsIt(t *testing.T) {
 	}
 	// The sentence must carry BOTH figures and the bead. A caveat naming only
 	// the drawn figure tells a reader nothing they could act on.
-	for _, want := range []string{dollars(c.Published), dollars(c.Elsewhere), c.Bead,
-		dollars(c.Published - c.Elsewhere)} {
+	for _, want := range []string{amount.Cents(c.Published).Dollars(), amount.Cents(c.Elsewhere).Dollars(), c.Bead,
+		amount.Cents(c.Published - c.Elsewhere).Dollars()} {
 		if !strings.Contains(got.Text, want) {
 			t.Errorf("caveat does not mention %q:\n%s", want, got.Text)
 		}
@@ -885,7 +886,7 @@ func TestContestedCaveatIsEmittedOnlyForTheColumnThatDrawsIt(t *testing.T) {
 	}
 	// The summary is what a reader sees in a list of its peers, so it has to
 	// name the group and the size of the disagreement on its own.
-	for _, want := range []string{dollars(c.Published - c.Elsewhere)} {
+	for _, want := range []string{amount.Cents(c.Published - c.Elsewhere).Dollars()} {
 		if !strings.Contains(got.Summary, want) {
 			t.Errorf("summary does not mention %q:\n%s", want, got.Summary)
 		}
@@ -921,7 +922,7 @@ func TestContestedCaveatRetiresItselfWhenTheFigureIsCorrected(t *testing.T) {
 	}
 	if cav, ok := contestedCaveat(c, c.Column, corrected); ok {
 		t.Errorf("the caveat survived the figure being corrected to %s:\n%s",
-			dollars(c.Elsewhere), cav.Text)
+			amount.Cents(c.Elsewhere).Dollars(), cav.Text)
 	}
 	// And a third value -- neither the spine's nor the other schedules' -- also
 	// silences it. That is correct and is why the corpus-level assertion in

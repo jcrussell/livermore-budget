@@ -3,6 +3,9 @@ package check
 import (
 	"context"
 	"fmt"
+	"strings"
+
+	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
 // uncheckedDocuments are the projection shapes no structural check reads yet,
@@ -129,7 +132,7 @@ func (*documentsAreChecked) Run(_ context.Context, s *Subject) (Result, error) {
 		if shapes := built[name]; len(shapes) > 0 {
 			what = fmt.Sprintf("every projection of that name now carries a %s, so a "+
 				"structural check reads it and the declaration is exempting nothing",
-				joinComma(sortedStrings(shapes)))
+				strings.Join(sortedStrings(shapes), ", "))
 		}
 		findings = append(findings, finding(name,
 			"uncheckedDocuments declares this projection unchecked, but %s; the "+
@@ -149,10 +152,10 @@ func (*documentsAreChecked) Run(_ context.Context, s *Subject) (Result, error) {
 	// projections structurally checked ()". The count is the fix; there is
 	// nothing left for a guard here to catch.
 	held := fmt.Sprintf("%d %s, each read by the structural checks: %s",
-		checked, plural(checked, "projection", "projections"), describeShapes(shapes))
+		checked, cmdutil.Plural(checked, "projection", "projections"), describeShapes(shapes))
 	if len(declared) > 0 {
 		held = fmt.Sprintf("%d %s structurally checked (%s), plus %s declared unchecked",
-			checked, plural(checked, "projection", "projections"),
+			checked, cmdutil.Plural(checked, "projection", "projections"),
 			describeShapes(shapes), describeUnchecked(declared))
 	}
 	return conclusion{
@@ -219,7 +222,7 @@ func describeShapes(byShape map[string]int) string {
 	for _, shape := range sortedStrings(byShape) {
 		out = append(out, fmt.Sprintf("%d %s", byShape[shape], shape))
 	}
-	return joinComma(out)
+	return strings.Join(out, ", ")
 }
 
 // describeUnchecked renders the declared-unchecked projections with their
@@ -229,5 +232,5 @@ func describeUnchecked(byName map[string]int) string {
 	for _, name := range sortedStrings(byName) {
 		out = append(out, fmt.Sprintf("%d of %q (%s)", byName[name], name, uncheckedDocuments[name]))
 	}
-	return joinComma(out)
+	return strings.Join(out, ", ")
 }

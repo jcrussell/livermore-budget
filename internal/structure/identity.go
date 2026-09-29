@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 )
@@ -139,7 +140,7 @@ func Peers(facts []fact.Fact, a, b Cut, identities []Identity, exceptions []Exce
 						out.Findings = append(out.Findings, fmt.Sprintf(
 							"%s %s: identity %q says %q and %q print one figure, and %q prints %s here "+
 								"where %q has no such cell, and no exception declares the absence",
-							key, k, identity, a.Name, b.Name, present.Name, cents(sa.Cents+sb.Cents), missing.Name))
+							key, k, identity, a.Name, b.Name, present.Name, amount.Cents(sa.Cents+sb.Cents).String(), missing.Name))
 					}
 				}
 				continue
@@ -154,12 +155,12 @@ func Peers(facts []fact.Fact, a, b Cut, identities []Identity, exceptions []Exce
 				out.Findings = append(out.Findings, fmt.Sprintf(
 					"%s %s: %q and %q both publish here (%s and %s) and no identity says they are one "+
 						"figure; a total selecting both would count it twice",
-					key, k, a.Name, b.Name, cents(sa.Cents), cents(sb.Cents)))
+					key, k, a.Name, b.Name, amount.Cents(sa.Cents).String(), amount.Cents(sb.Cents).String()))
 			case sa.Cents != sb.Cents:
 				out.Findings = append(out.Findings, fmt.Sprintf(
 					"%s %s: identity %q says %q and %q print one figure here, and they print %s and "+
 						"%s, a difference of %s; the pages disagree",
-					key, k, cell.Identity, a.Name, b.Name, cents(sa.Cents), cents(sb.Cents), cents(sa.Cents-sb.Cents)))
+					key, k, cell.Identity, a.Name, b.Name, amount.Cents(sa.Cents).String(), amount.Cents(sb.Cents).String(), amount.Cents(sa.Cents-sb.Cents).String()))
 			}
 		}
 	}

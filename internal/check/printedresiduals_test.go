@@ -124,7 +124,7 @@ func TestEveryExceptionResidualIsPrintedWhereItSaysItIs(t *testing.T) {
 		}
 		if got := row.residual(v); got != e.Residual {
 			t.Errorf("exception %s declares a residual of %s and the pages it cites give %s",
-				e.Name, structure.Cents(e.Residual), structure.Cents(got))
+				e.Name, amount.Cents(e.Residual), amount.Cents(got))
 		}
 	}
 	for name := range table {

@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/internal/registry"
 	"github.com/jcrussell/livermore-budget/schema"
@@ -391,8 +392,8 @@ func encodeColumn(doc ColumnDoc) ([]byte, error) {
 		return nil, fmt.Errorf("re-read column: %w", err)
 	}
 	if err := resolved.Validate(v); err != nil {
-		return nil, fmt.Errorf("the column this build produced for FY%d %s does not match %s: %w",
-			doc.Column.FiscalYear, doc.Column.Basis, schema.Column, err)
+		return nil, fmt.Errorf("the column this build produced for %s does not match %s: %w",
+			fact.ColumnLabel(doc.Column.FiscalYear, doc.Column.Basis), schema.Column, err)
 	}
 	return b, nil
 }

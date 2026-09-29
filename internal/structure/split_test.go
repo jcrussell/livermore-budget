@@ -60,7 +60,7 @@ func TestTheSpineTransferOutIsP76PlusTheCIP(t *testing.T) {
 		if len(got.Findings) != 8 {
 			t.Fatalf("%d findings, want 8:\n  %s", len(got.Findings), strings.Join(got.Findings, "\n  "))
 		}
-		if !strings.Contains(strings.Join(got.Findings, "\n"), "-$28373590.00") {
+		if !strings.Contains(strings.Join(got.Findings, "\n"), "-$28,373,590.00") {
 			t.Errorf("no finding names FY2026 capital's 28,373,590 to the CIP:\n  %s",
 				strings.Join(got.Findings, "\n  "))
 		}

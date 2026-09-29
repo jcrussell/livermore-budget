@@ -3,6 +3,8 @@ package structure
 import (
 	"fmt"
 	"sort"
+
+	"github.com/jcrussell/livermore-budget/internal/amount"
 )
 
 // A Pin is one cell of an exception: where it is, and what each side says.
@@ -94,7 +96,7 @@ func ValidateExceptions(exceptions []Exception) error {
 			if p.Cut.Cents == p.Against.Cents {
 				return fmt.Errorf("exception %q pins %s to %s on both sides; a cell that ties needs "+
 					"no exception, and one declared over it would excuse a figure that later moved",
-					e.Name, e.Key(p), cents(p.Cut.Cents))
+					e.Name, e.Key(p), amount.Cents(p.Cut.Cents).String())
 			}
 			for a := range p.Coords {
 				if !hasAxis(e.At, a) {
@@ -104,7 +106,7 @@ func ValidateExceptions(exceptions []Exception) error {
 		}
 		if got := e.pinned(); got != e.Residual {
 			return fmt.Errorf("exception %q pins sides that differ by %s and declares a printed "+
-				"residual of %s; one of the three figures is mistyped", e.Name, cents(got), cents(e.Residual))
+				"residual of %s; one of the three figures is mistyped", e.Name, amount.Cents(got).String(), amount.Cents(e.Residual).String())
 		}
 		if e.SameResidualAs != "" {
 			g, ok := byName[e.SameResidualAs]
@@ -114,7 +116,7 @@ func ValidateExceptions(exceptions []Exception) error {
 			if g.Residual != e.Residual {
 				return fmt.Errorf("exception %q holds %s apart and is grounded in %q, which holds %s "+
 					"apart; they are one discrepancy seen on two axes and must agree",
-					e.Name, cents(e.Residual), g.Name, cents(g.Residual))
+					e.Name, amount.Cents(e.Residual).String(), g.Name, amount.Cents(g.Residual).String())
 			}
 		}
 	}
@@ -177,7 +179,7 @@ func Reconcile(c Comparison, exceptions []Exception) Reconciled {
 					"exception %q names %s and the two sides agree at %s, so the declaration is a "+
 						"false claim about the pages and would excuse a figure that later moved; "+
 						"remove it and let the cell tie like every other (%s)",
-					e.Name, k, cents(cell.Cut.Cents), e.Bead))
+					e.Name, k, amount.Cents(cell.Cut.Cents).String(), e.Bead))
 				fired = false
 			case cell.Cut != p.Cut:
 				out.Findings = append(out.Findings, fmt.Sprintf(
@@ -217,5 +219,5 @@ func sum(s Sum) string {
 	if !s.Present {
 		return "no such cell"
 	}
-	return cents(s.Cents)
+	return amount.Cents(s.Cents).String()
 }

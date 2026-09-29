@@ -8,6 +8,7 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 	"github.com/jcrussell/livermore-budget/pkg/iostreams"
 )
 
@@ -259,21 +260,21 @@ func (rep *report) print(ios *iostreams.IOStreams, asJSON bool) error {
 	w := ios.ErrOut
 	fmt.Fprintf(w, "wrote %d facts to %s\n", rep.Facts, rep.Output)
 	fmt.Fprintf(w, "%d rules over %d parts in %d rule %s\n",
-		rep.Rules, rep.Parts, rep.RuleFiles, plural(rep.RuleFiles, "file", "files"))
+		rep.Rules, rep.Parts, rep.RuleFiles, cmdutil.Plural(rep.RuleFiles, "file", "files"))
 	fmt.Fprintf(w, "%d of %d parts tie to a total the document prints, covering %d %s\n",
 		rep.PartsChecked, rep.Parts, rep.ColumnsTied,
-		plural(rep.ColumnsTied, "column", "columns"))
+		cmdutil.Plural(rep.ColumnsTied, "column", "columns"))
 	if rep.SpanningRulesChecked > 0 {
 		fmt.Fprintf(w, "%d of those %s checked against a total spanning its parts\n",
 			rep.SpanningRulesChecked,
-			plural(rep.SpanningRulesChecked, "rule was", "rules were"))
+			cmdutil.Plural(rep.SpanningRulesChecked, "rule was", "rules were"))
 	}
 	if rep.ColumnsTiedByDeclaration > 0 {
 		// "of those columns" stays plural and the VERB agrees: one column ties,
 		// several tie. Pluralising the noun here gives "1 of those column tie".
 		fmt.Fprintf(w, "%d of those columns %s only to a declared delta in the document's own arithmetic\n",
 			rep.ColumnsTiedByDeclaration,
-			plural(rep.ColumnsTiedByDeclaration, "ties", "tie"))
+			cmdutil.Plural(rep.ColumnsTiedByDeclaration, "ties", "tie"))
 	}
 	if rep.ColumnsTiedByTolerance > 0 {
 		// The slack is printed, not just the count. A tolerance is derived from
@@ -285,14 +286,14 @@ func (rep *report) print(ios *iostreams.IOStreams, asJSON bool) error {
 		}
 		fmt.Fprintf(w, "%d of those columns %s only within the tolerance the page's own printed precision allows, by %s\n",
 			rep.ColumnsTiedByTolerance,
-			plural(rep.ColumnsTiedByTolerance, "ties", "tie"),
+			cmdutil.Plural(rep.ColumnsTiedByTolerance, "ties", "tie"),
 			strings.Join(amounts, ", "))
 	}
 	if rep.RollupsAsserted > 0 {
 		fmt.Fprintf(w, "%d printed %s covering several rules %s, over %d %s\n",
-			rep.RollupsAsserted, plural(rep.RollupsAsserted, "total", "totals"),
-			plural(rep.RollupsAsserted, "ties", "tie"), rep.RollupColumnsTied,
-			plural(rep.RollupColumnsTied, "column", "columns"))
+			rep.RollupsAsserted, cmdutil.Plural(rep.RollupsAsserted, "total", "totals"),
+			cmdutil.Plural(rep.RollupsAsserted, "ties", "tie"), rep.RollupColumnsTied,
+			cmdutil.Plural(rep.RollupColumnsTied, "column", "columns"))
 	}
 	for _, u := range rep.RollupsUnasserted {
 		fmt.Fprintf(w, "UNASSERTED ROLLUP %s p%d: the document prints this total and %s\n",
@@ -306,11 +307,4 @@ func (rep *report) print(ios *iostreams.IOStreams, asJSON bool) error {
 			o.RuleID, o.Page, o.RowLabel)
 	}
 	return nil
-}
-
-func plural(n int, one, many string) string {
-	if n == 1 {
-		return one
-	}
-	return many
 }

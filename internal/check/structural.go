@@ -9,9 +9,11 @@ import (
 	"io/fs"
 	"path"
 	"sort"
+	"strings"
 
 	"github.com/jcrussell/livermore-budget/internal/corpus"
 	"github.com/jcrussell/livermore-budget/internal/registry"
+	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
 // The structural checks: tier 0, because they are not about arithmetic.
@@ -152,7 +154,7 @@ func (*artifactsMatchManifest) Run(_ context.Context, s *Subject) (Result, error
 		unit:     "artifacts",
 		held: fmt.Sprintf("%d artifacts across %d %s, each hashing to the sha256 its "+
 			"manifest records, and nothing present that is unlisted",
-			subjects, len(s.Extractions), plural(len(s.Extractions), "extraction", "extractions")),
+			subjects, len(s.Extractions), cmdutil.Plural(len(s.Extractions), "extraction", "extractions")),
 		nothing:  "no extraction is committed under " + extractedDir,
 		findings: findings,
 	}.result(), nil
@@ -310,15 +312,15 @@ func (*extractionEmittedEveryPage) Run(_ context.Context, s *Subject) (Result, e
 		}
 		if len(unexpected) > 0 {
 			says = append(says, fmt.Sprintf("%d %s for no page of a %d-page document (%s)",
-				len(unexpected), plural(len(unexpected), "artifact", "artifacts"), pages,
-				joinComma(capped(unexpected, 5))))
+				len(unexpected), cmdutil.Plural(len(unexpected), "artifact", "artifacts"), pages,
+				strings.Join(capped(unexpected, 5), ", ")))
 		}
 		if len(says) > 0 {
 			findings = append(findings, finding(docID,
 				"the manifest counts %d pages and lists %d artifacts: %s. An extraction "+
 					"missing pages is one whose manifest agrees with its own directory, so "+
 					"nothing else in this report can see it",
-				pages, len(listed), joinComma(says)))
+				pages, len(listed), strings.Join(says, ", ")))
 			continue
 		}
 		summaries = append(summaries, describeExtraction(docID, pages, doc.BlankPageCount()))
@@ -329,7 +331,7 @@ func (*extractionEmittedEveryPage) Run(_ context.Context, s *Subject) (Result, e
 		unit:     "extractions",
 		held: fmt.Sprintf("%d extractions, each with a page text and a word geometry "+
 			"artifact for every page counted: %s",
-			len(s.Extractions), joinComma(summaries)),
+			len(s.Extractions), strings.Join(summaries, ", ")),
 		nothing:  "no extraction is committed under " + extractedDir,
 		findings: findings,
 	}.result(), nil
@@ -356,7 +358,7 @@ func describePages(pages []int, of int) string {
 	for _, n := range pages {
 		out = append(out, fmt.Sprintf("p%d", n))
 	}
-	return fmt.Sprintf("%d of %d pages (%s)", len(pages), of, joinComma(capped(out, 8)))
+	return fmt.Sprintf("%d of %d pages (%s)", len(pages), of, strings.Join(capped(out, 8), ", "))
 }
 
 // capped truncates a list for a report line, saying how much it left out. A finding
@@ -432,7 +434,7 @@ func (*extractorReportedNoErrors) Run(_ context.Context, s *Subject) (Result, er
 			"the extractor recorded %d %s and wrote no artifact for what failed, so this "+
 				"extraction is incomplete: %s. Re-run `make extract` for this document; it "+
 				"exits non-zero when this happens", len(errs),
-			plural(len(errs), "failure", "failures"), joinComma(capped(says, 5))))
+			cmdutil.Plural(len(errs), "failure", "failures"), strings.Join(capped(says, 5), ", ")))
 	}
 
 	return conclusion{
@@ -441,8 +443,8 @@ func (*extractorReportedNoErrors) Run(_ context.Context, s *Subject) (Result, er
 		held: fmt.Sprintf("%d extractions, none recording a failure; %d poppler %s and %d "+
 			"blank %s across them, which poppler did not treat as fatal and which are "+
 			"recorded in each manifest.json for a human to read",
-			len(s.Extractions), warnings, plural(warnings, "warning", "warnings"),
-			blank, plural(blank, "page", "pages")),
+			len(s.Extractions), warnings, cmdutil.Plural(warnings, "warning", "warnings"),
+			blank, cmdutil.Plural(blank, "page", "pages")),
 		nothing:  "no extraction is committed under " + extractedDir,
 		findings: findings,
 	}.result(), nil
@@ -544,7 +546,7 @@ func compareManifest(docID string, src registry.Source, doc *corpus.Doc) []Findi
 	}
 	return []Finding{finding(docID, "%s; the extraction and %s disagree about which "+
 		"document this is, and one of them is describing a file nobody read",
-		joinComma(says), sourcesFile)}
+		strings.Join(says, ", "), sourcesFile)}
 }
 
 // union is every key of either map, sorted, so a report over two vocabularies of
@@ -612,7 +614,7 @@ func (*extractionToolchainPinned) Run(_ context.Context, s *Subject) (Result, er
 			findings = append(findings, finding(docID,
 				"%s: this extraction was not produced by the pinned toolchain, so its "+
 					"artifacts are not the ones that were reviewed (see requirements.txt for "+
-					"the re-extraction workflow)", joinComma(says)))
+					"the re-extraction workflow)", strings.Join(says, ", ")))
 		}
 	}
 
@@ -733,16 +735,16 @@ func (*sourcePDFsMatchBothRecords) Run(_ context.Context, s *Subject) (Result, e
 			"in Git LFS — run `git lfs pull` to fetch them, or drop --full, which every "+
 			"other check runs without",
 			len(unavailable), len(s.Sources),
-			plural(len(s.Sources), "document", "documents"), joinComma(unavailable))
+			cmdutil.Plural(len(s.Sources), "document", "documents"), strings.Join(unavailable, ", "))
 	}
 	return conclusion{
 		subjects: registryRecords + manifestRecords,
 		unit:     "records",
 		held: fmt.Sprintf("%d records over %d source %s hashed: %d %s %s and %d extraction "+
 			"%s, every one of them the hash of the bytes on disk",
-			registryRecords+manifestRecords, hashed, plural(hashed, "document", "documents"),
-			registryRecords, sourcesFile, plural(registryRecords, "entry", "entries"),
-			manifestRecords, plural(manifestRecords, "manifest", "manifests")),
+			registryRecords+manifestRecords, hashed, cmdutil.Plural(hashed, "document", "documents"),
+			registryRecords, sourcesFile, cmdutil.Plural(registryRecords, "entry", "entries"),
+			manifestRecords, cmdutil.Plural(manifestRecords, "manifest", "manifests")),
 		nothing:  "no source document is listed in " + sourcesFile,
 		findings: findings,
 	}.result(), nil
@@ -799,5 +801,5 @@ func comparePDF(pdf sourcePDF, src registry.Source, doc *corpus.Doc) []Finding {
 	return []Finding{finding(src.ID,
 		"%s is %d bytes hashing to %s, but %s; the document on disk is not the one this "+
 			"repository describes, and every figure read from it is a figure from a "+
-			"different file", pdf.Path, pdf.Bytes, short(pdf.SHA256), joinComma(says))}
+			"different file", pdf.Path, pdf.Bytes, short(pdf.SHA256), strings.Join(says, ", "))}
 }

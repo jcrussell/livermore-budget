@@ -15,6 +15,7 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/corpus"
+	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
@@ -651,35 +652,35 @@ func tilesFor(meta projectionMetadata) (figure, []figure) {
 	h := meta.Headline
 	hero := figure{
 		Label: "What the city actually spends",
-		Value: dollars(h.AllFundsGrossExpenditureCents),
+		Value: amount.Cents(h.AllFundsGrossExpenditureCents).Dollars(),
 		Note:  "All funds, gross, " + meta.FiscalYearLabel + " " + meta.Basis + " budget",
 		Kind:  "hero",
 	}
 	return hero, []figure{{
 		Label: "Naive column total",
-		Value: dollars(h.NaiveExpenditureCents),
+		Value: amount.Cents(h.NaiveExpenditureCents).Dollars(),
 		Note: "The wrong answer: summing the expenditure column counts transfers between funds twice, inflating the total by " +
-			dollars(h.NaiveExpenditureCents-h.AllFundsGrossExpenditureCents) + ".",
+			amount.Cents(h.NaiveExpenditureCents-h.AllFundsGrossExpenditureCents).Dollars() + ".",
 		Kind: "error",
 	}, {
 		Label: "All-funds gross revenue",
-		Value: dollars(h.AllFundsGrossRevenueCents),
+		Value: amount.Cents(h.AllFundsGrossRevenueCents).Dollars(),
 		Note:  "Ties to the printed schedule; includes internal service charges.",
 	}, {
 		Label: "External revenue",
-		Value: dollars(h.ExternalRevenueCents),
+		Value: amount.Cents(h.ExternalRevenueCents).Dollars(),
 		Note:  "Net of internal service charges billed between city departments.",
 	}, {
 		Label: "External spending",
-		Value: dollars(h.ExternalExpenditureCents),
+		Value: amount.Cents(h.ExternalExpenditureCents).Dollars(),
 		Note:  "Net of internal service charges.",
 	}, {
 		Label: "Transfers in / out",
-		Value: dollars(h.InternalTransferInCents) + " / " + dollars(h.InternalTransferOutCents),
+		Value: amount.Cents(h.InternalTransferInCents).Dollars() + " / " + amount.Cents(h.InternalTransferOutCents).Dollars(),
 		Note:  "Money moving between the city's own funds.",
 	}, {
 		Label: "Unmatched transfers",
-		Value: dollars(h.TransferResidualCents),
+		Value: amount.Cents(h.TransferResidualCents).Dollars(),
 		// Says what the number is and defers why to internal/project's
 		// transfer caveat, and promises no caveat: that one is conditional.
 		Note: "Transfers out minus transfers in. No link in this chart pairs a transfer's two legs.",
@@ -1237,14 +1238,6 @@ func remotePageTextBase(browseURL, docID string) string {
 
 // pageTextFile is page n's text file name, corpus.PagePath's last element.
 func pageTextFile(page int) string { return path.Base(corpus.PagePath(page)) }
-
-// dollars renders integer cents the way the schedule prints them: whole
-// dollars with thousands separators, keeping the cents only when a figure
-// actually has some.
-func dollars(cents int64) string {
-	s := amount.Cents(cents).String()
-	return strings.TrimSuffix(s, ".00")
-}
 
 // basisLabelFor is the word a column chip and a cell tooltip print for a basis.
 //
@@ -2118,8 +2111,8 @@ func buildCells(points []trendPoint, columns []columnRef, meta []trendColumnMeta
 		// below would still reconcile while a figure had vanished.
 		if prev, dup := byColumn[k]; dup {
 			return nil, 0, fmt.Errorf(
-				"two points publish FY%d %s: %s and %s; one of them would be dropped",
-				p.FiscalYear, p.Basis, dollars(prev.AmountCents), dollars(p.AmountCents))
+				"two points publish %s: %s and %s; one of them would be dropped",
+				fact.ColumnLabel(p.FiscalYear, p.Basis), amount.Cents(prev.AmountCents).Dollars(), amount.Cents(p.AmountCents).Dollars())
 		}
 		byColumn[k] = p
 	}
@@ -2140,7 +2133,7 @@ func buildCells(points []trendPoint, columns []columnRef, meta []trendColumnMeta
 			out = append(out, cell)
 			continue
 		}
-		cell.Value = dollars(p.AmountCents)
+		cell.Value = amount.Cents(p.AmountCents).Dollars()
 		cell.Cents = p.AmountCents
 		cell.Negative = p.AmountCents < 0
 		cell.Page = p.Page

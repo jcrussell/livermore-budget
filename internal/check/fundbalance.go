@@ -95,7 +95,7 @@ func (k fundBalanceKey) String() string {
 	if k.fund != fact.FundString(nil) {
 		group = fmt.Sprintf("%s fund %s", group, k.fund)
 	}
-	return fmt.Sprintf("%s %s %s FY%d %s", k.docID, k.scope, group, k.fiscalYear, k.basis)
+	return fmt.Sprintf("%s %s %s %s", k.docID, k.scope, group, fact.ColumnLabel(k.fiscalYear, k.basis))
 }
 
 // balance is the three lines of one fund balance, as collected from the store.

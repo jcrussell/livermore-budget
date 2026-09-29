@@ -287,7 +287,7 @@ func TestDepartmentwideExceptionFiguresAreNotPrintedAndTheirDifferenceIs(t *test
 		if g.Residual != e.Residual {
 			t.Errorf("exception %s holds %s apart and %s holds %s; they are the same "+
 				"discrepancy on two axes and must agree",
-				e.Name, structure.Cents(e.Residual), g.Name, structure.Cents(g.Residual))
+				e.Name, amount.Cents(e.Residual), g.Name, amount.Cents(g.Residual))
 		}
 		// And the ground's own figures ARE printed, which is what makes it a
 		// ground: TestP0067IsTheOutlierAndFivePagesDisagree reads them off the

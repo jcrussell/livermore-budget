@@ -1262,7 +1262,7 @@ func contestedCaveat(c contestedTotal, col Column, links []Link) (Caveat, bool) 
 		ID: "contested-total-" + c.FundGroup,
 		Summary: fmt.Sprintf(
 			"The city's own book prints two different figures for %s expenditure, %s apart; this chart draws the one on %s.",
-			label, dollars(c.Published-c.Elsewhere), c.SpinePages),
+			label, amount.Cents(c.Published-c.Elsewhere).Dollars(), c.SpinePages),
 		Text: fmt.Sprintf(
 			"THE CITY'S OWN BOOK DISAGREES WITH ITSELF ABOUT THIS ONE FIGURE. %s "+
 				"expenditure is drawn at %s, which is what %s print for %s. Other "+
@@ -1272,8 +1272,8 @@ func contestedCaveat(c contestedTotal, col Column, links []Link) (Caveat, bool) 
 				"page it is cited from, and substituting a number from elsewhere would "+
 				"make this one an exception to that. Which figure the corpus should "+
 				"publish is open (%s).",
-			label, dollars(c.Published), c.SpinePages, col.String(), dollars(c.Elsewhere),
-			c.PrintedBy, c.ImpliedBy, dollars(c.Published-c.Elsewhere), c.Row, c.Bead),
+			label, amount.Cents(c.Published).Dollars(), c.SpinePages, col.String(), amount.Cents(c.Elsewhere).Dollars(),
+			c.PrintedBy, c.ImpliedBy, amount.Cents(c.Published-c.Elsewhere).Dollars(), c.Row, c.Bead),
 		AppliesTo: []string{PrefixFundGroup + c.FundGroup},
 	}, true
 }
@@ -1329,10 +1329,10 @@ func transferCaveat(h Headline, col Column, links []Link, cip cipTransfers) Cave
 			ID: id,
 			Summary: fmt.Sprintf(
 				"No link pairs a transfer's two legs; that both sides total %s is not evidence they match.",
-				dollars(out)),
+				amount.Cents(out).Dollars()),
 			Text: unpaired + fmt.Sprintf(
 				"That transfers out and transfers in both total %s is not evidence the "+
-					"legs pair up; nothing has checked them against each other.", dollars(out)),
+					"legs pair up; nothing has checked them against each other.", amount.Cents(out).Dollars()),
 			AppliesTo: targets,
 		}
 	}
@@ -1355,13 +1355,13 @@ func transferCaveat(h Headline, col Column, links []Link, cip cipTransfers) Cave
 			ID: id,
 			Summary: fmt.Sprintf(
 				"No link pairs a transfer's two legs; transfers out %s transfers in by %s, the transfers to the Capital Improvement Program.",
-				verb, dollars(residual)),
+				verb, amount.Cents(residual).Dollars()),
 			Text: unpaired + fmt.Sprintf(
 				"Transfers out (%s) %s transfers in (%s), and the %s difference is not an "+
 					"unexplained gap: it is what the operating funds transfer to the Capital "+
 					"Improvement Program, which Budget Book p222 lists fund by fund and whose "+
 					"funds are not on this chart.%s",
-				dollars(out), verb, dollars(in), dollars(residual), stated),
+				amount.Cents(out).Dollars(), verb, amount.Cents(in).Dollars(), amount.Cents(residual).Dollars(), stated),
 			AppliesTo: targets,
 		}
 	}
@@ -1372,13 +1372,13 @@ func transferCaveat(h Headline, col Column, links []Link, cip cipTransfers) Cave
 			ID: id,
 			Summary: fmt.Sprintf(
 				"No link pairs a transfer's two legs; transfers out %s transfers in by %s, which Budget Book p222's transfers to the Capital Improvement Program do not account for.",
-				verb, dollars(residual)),
+				verb, amount.Cents(residual).Dollars()),
 			Text: unpaired + fmt.Sprintf(
 				"Transfers out (%s) %s transfers in (%s) by %s, and the transfers to the "+
 					"Capital Improvement Program that Budget Book p222 lists total %s in this "+
 					"column. The two do not reconcile here, so the difference is not "+
 					"explained.%s",
-				dollars(out), verb, dollars(in), dollars(residual), dollars(cip.Cents), stated),
+				amount.Cents(out).Dollars(), verb, amount.Cents(in).Dollars(), amount.Cents(residual).Dollars(), amount.Cents(cip.Cents).Dollars(), stated),
 			AppliesTo: targets,
 		}
 	}
@@ -1386,19 +1386,12 @@ func transferCaveat(h Headline, col Column, links []Link, cip cipTransfers) Cave
 		ID: id,
 		Summary: fmt.Sprintf(
 			"No link pairs a transfer's two legs; transfers out %s transfers in by %s, and mapping p76 did not close it.",
-			verb, dollars(residual)),
+			verb, amount.Cents(residual).Dollars()),
 		Text: unpaired + fmt.Sprintf(
 			"Transfers out (%s) %s transfers in (%s), and mapping p76 did not close the %s "+
 				"difference: that schedule's own grand total is the transfers-in side, so the "+
 				"gap is the city's rather than this project's.%s",
-			dollars(out), verb, dollars(in), dollars(residual), stated),
+			amount.Cents(out).Dollars(), verb, amount.Cents(in).Dollars(), amount.Cents(residual).Dollars(), stated),
 		AppliesTo: targets,
 	}
-}
-
-// dollars renders cents for prose. The exact ".00" is dropped because these
-// schedules print whole dollars, and a caveat reading "$59,612,734.00" invites
-// the reader to look for a precision the source does not have.
-func dollars(cents int64) string {
-	return strings.TrimSuffix(amount.Cents(cents).String(), ".00")
 }

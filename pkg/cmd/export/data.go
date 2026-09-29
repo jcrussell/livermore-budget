@@ -205,7 +205,7 @@ func assertPublishedBuilt(builtAt map[string]builtDoc) error {
 		if !ok {
 			return fmt.Errorf(
 				"the site publishes %s and no projection built it; the documents "+
-					"built were: %s", d, joinComma(builtStems(builtAt)))
+					"built were: %s", d, strings.Join(builtStems(builtAt), ", "))
 		}
 		if missing := project.MissingColumns(d, b.opts); len(missing) > 0 {
 			return fmt.Errorf(
@@ -270,11 +270,6 @@ type builtDoc struct {
 func stemFor(name string, o project.Options, declared []project.Options) (string, error) {
 	return project.Stem(name, o, declared)
 }
-
-// joinComma renders a list the way a message should. It is spelled here rather
-// than reached for from internal/check, which has its own: a command and a check
-// package sharing a formatting helper would couple them for nothing.
-func joinComma(s []string) string { return strings.Join(s, ", ") }
 
 // sourceRegistry is as much of data/sources.yaml as the site needs. The file
 // is the only place a URL is asserted, so the page must read its citation

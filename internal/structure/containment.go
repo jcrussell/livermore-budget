@@ -5,6 +5,7 @@ import (
 	"slices"
 	"sort"
 
+	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 )
@@ -20,11 +21,11 @@ type Key struct {
 }
 
 func (k Key) String() string {
-	return fmt.Sprintf("FY%d %s %s[%s]", k.Year, k.Basis, k.Level, k.Coords)
+	return fmt.Sprintf("%s %s[%s]", fact.ColumnLabel(k.Year, k.Basis), k.Level, k.Coords)
 }
 
 // Column is the (year, basis) half of a Key, the way a finding names it.
-func (k Key) Column() string { return fmt.Sprintf("FY%d %s", k.Year, k.Basis) }
+func (k Key) Column() string { return fact.ColumnLabel(k.Year, k.Basis) }
 
 // Sum is one side of a comparison: a total, and whether the cut said anything
 // about the key at all. A printed zero and no such cell are different claims.
@@ -189,17 +190,17 @@ func (c Comparison) Finding(cell Cell) string {
 		return fmt.Sprintf(
 			"%s: %q publishes %s here and %q has no such cell at all; a cell the finer "+
 				"schedule stopped printing is a rule that was dropped, not a cell that is empty",
-			cell.Key, c.Against.Name, cents(sp.Cents), c.Cut.Name)
+			cell.Key, c.Against.Name, amount.Cents(sp.Cents).String(), c.Cut.Name)
 	case !sp.Present:
 		return fmt.Sprintf(
 			"%s: %q publishes %s here and %q has no such cell; a finer cut must decompose "+
 				"the coarser one, never extend it",
-			cell.Key, c.Cut.Name, cents(d.Cents), c.Against.Name)
+			cell.Key, c.Cut.Name, amount.Cents(d.Cents).String(), c.Against.Name)
 	default:
 		return fmt.Sprintf(
 			"%s: %q sums to %s and %q publishes %s, a difference of %s; these are the same "+
 				"money decomposed two ways and must tie to the cent",
-			cell.Key, c.Cut.Name, cents(d.Cents), c.Against.Name, cents(sp.Cents), cents(d.Cents-sp.Cents))
+			cell.Key, c.Cut.Name, amount.Cents(d.Cents).String(), c.Against.Name, amount.Cents(sp.Cents).String(), amount.Cents(d.Cents-sp.Cents).String())
 	}
 }
 
@@ -449,17 +450,6 @@ func HoldTie(facts []fact.Fact, cuts []Cut, t Tie, department func(division stri
 	})
 	return out, nil
 }
-
-func cents(c int64) string {
-	neg := ""
-	if c < 0 {
-		neg, c = "-", -c
-	}
-	return fmt.Sprintf("%s$%d.%02d", neg, c/100, c%100)
-}
-
-// Cents renders an amount the way a finding does.
-func Cents(c int64) string { return cents(c) }
 
 // UnionKeys is every key either side produced, in a stable order.
 func UnionKeys(a, b map[Key]Sum) []Key {

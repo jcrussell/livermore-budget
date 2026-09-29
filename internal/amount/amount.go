@@ -26,6 +26,10 @@ import (
 // Cents is a monetary value in integer cents.
 type Cents int64
 
+// Dollars is String without a zero cents part: whole dollars with thousands
+// separators, keeping the cents only when a figure has some.
+func (c Cents) Dollars() string { return strings.TrimSuffix(c.String(), ".00") }
+
 // String renders Cents as a signed dollar figure with thousands separators.
 func (c Cents) String() string {
 	if c == Cents(math.MinInt64) {

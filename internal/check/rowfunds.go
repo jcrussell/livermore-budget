@@ -359,7 +359,7 @@ func (*rowFundsMatchTheirAnchors) Run(_ context.Context, s *Subject) (Result, er
 	if unanchored > 0 {
 		clauses = append(clauses, fmt.Sprintf("%d declared fund(s) have no printed anchor "+
 			"on their own line and are checked by nothing here: %s", unanchored,
-			joinComma(unanchoredRows)))
+			strings.Join(unanchoredRows, ", ")))
 	}
 	// COUNTED AND ATTRIBUTED TO ITS RULES, NOT LISTED ROW BY ROW, which is the
 	// opposite of the arm above and deliberately so. a count is the honest
@@ -388,7 +388,7 @@ func (*rowFundsMatchTheirAnchors) Run(_ context.Context, s *Subject) (Result, er
 			"row_labels_name_funds. The label may well be printed -- pp.85-125's rows "+
 			"are bare fund names -- but nothing here reads it, so no claim is made "+
 			"about them: %s",
-			lead, unphrased, joinComma(unphrasedRules)))
+			lead, unphrased, strings.Join(unphrasedRules, ", ")))
 	}
 	unanchoredNote := ""
 	if len(clauses) > 0 {

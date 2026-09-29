@@ -200,7 +200,7 @@ func TestAnExceptionGoesRed(t *testing.T) {
 		if len(r.Findings) != 1 {
 			t.Fatalf("%d findings, want 1:\n  %s", len(r.Findings), strings.Join(r.Findings, "\n  "))
 		}
-		for _, want := range []string{e.Name, "$26544516.00", "$26544515.00", "delete the exception"} {
+		for _, want := range []string{e.Name, "$26,544,516.00", "$26,544,515.00", "delete the exception"} {
 			if !strings.Contains(r.Findings[0], want) {
 				t.Errorf("finding does not say %q:\n  %s", want, r.Findings[0])
 			}

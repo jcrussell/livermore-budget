@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 )
@@ -146,8 +147,8 @@ func TestDollars(t *testing.T) {
 		123:        "$1.23",
 	}
 	for cents, want := range cases {
-		if got := dollars(cents); got != want {
-			t.Errorf("dollars(%d) = %q, want %q", cents, got, want)
+		if got := amount.Cents(cents).Dollars(); got != want {
+			t.Errorf("amount.Cents(%d).Dollars() = %q, want %q", cents, got, want)
 		}
 	}
 }

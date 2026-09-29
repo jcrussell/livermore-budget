@@ -71,7 +71,8 @@ import (
 	"context"
 	"fmt"
 	"slices"
-	"strings"
+
+	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
 // Status is what a check concluded. There are five, because "it passed" and
@@ -324,7 +325,7 @@ func (c conclusion) result() Result {
 			Status:   StatusFail,
 			Subjects: c.subjects,
 			Summary: fmt.Sprintf("%d %s over %d %s", len(c.findings),
-				plural(len(c.findings), "finding", "findings"), c.subjects, c.unit),
+				cmdutil.Plural(len(c.findings), "finding", "findings"), c.subjects, c.unit),
 			Findings: c.findings,
 		}
 	case c.subjects == 0:
@@ -333,9 +334,6 @@ func (c conclusion) result() Result {
 		return Result{Status: StatusPass, Subjects: c.subjects, Summary: c.held, Findings: []Finding{}}
 	}
 }
-
-// joinComma renders a list for prose.
-func joinComma(items []string) string { return strings.Join(items, ", ") }
 
 // sortedStrings returns a map's keys in order, so a report over a map does not
 // change between two runs over the same corpus.
@@ -346,13 +344,6 @@ func sortedStrings[V any](m map[string]V) []string {
 	}
 	slices.Sort(out)
 	return out
-}
-
-func plural(n int, one, many string) string {
-	if n == 1 {
-		return one
-	}
-	return many
 }
 
 // finding is shorthand for one entry, formatted.

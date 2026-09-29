@@ -170,7 +170,7 @@ func (*factKindMatchesCategory) Run(_ context.Context, s *Subject) (Result, erro
 			findings = append(findings, finding(f.ID,
 				"%s p%d %q: kind %q is not one data/taxonomy.yaml declares for category %q, "+
 					"which declares %s", f.DocID, f.Page, f.RowLabel, f.Kind, f.Category,
-				joinComma(c.Kinds)))
+				strings.Join(c.Kinds, ", ")))
 		}
 	}
 

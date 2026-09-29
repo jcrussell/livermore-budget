@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
+	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/site"
 )
 
@@ -30,7 +31,7 @@ func cells(amounts ...*int64) []cellRef {
 			out = append(out, cellRef{Missing: true, Value: "—"})
 			continue
 		}
-		out = append(out, cellRef{Cents: *a, Value: dollars(*a), Negative: *a < 0})
+		out = append(out, cellRef{Cents: *a, Value: amount.Cents(*a).Dollars(), Negative: *a < 0})
 	}
 	return out
 }

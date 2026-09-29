@@ -512,7 +512,7 @@ type Column struct {
 }
 
 // String renders a column the way a report should name one.
-func (c Column) String() string { return fmt.Sprintf("FY%d %s", c.FiscalYear, c.Basis) }
+func (c Column) String() string { return fact.ColumnLabel(c.FiscalYear, c.Basis) }
 
 // Describe renders a set of columns for a message. It is here rather than at
 // each call site because three packages format the same list and a reader

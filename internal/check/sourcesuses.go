@@ -6,6 +6,7 @@ import (
 	"sort"
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
+	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/internal/structure"
@@ -37,7 +38,7 @@ type sourcesUsesKey struct {
 }
 
 func (k sourcesUsesKey) String() string {
-	return fmt.Sprintf("%s %s FY%d %s", k.docID, k.fundGroup, k.fiscalYear, k.basis)
+	return fmt.Sprintf("%s %s %s", k.docID, k.fundGroup, fact.ColumnLabel(k.fiscalYear, k.basis))
 }
 
 func (*fundGroupSourcesEqualUses) Run(_ context.Context, s *Subject) (Result, error) {

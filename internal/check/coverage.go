@@ -8,6 +8,7 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/project"
+	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
 // projectionsBuild asserts every slice of the fact store that a projection was
@@ -72,7 +73,7 @@ func (*projectionsBuild) Run(_ context.Context, s *Subject) (Result, error) {
 		subjects: slicesBuilt + slicesRefused,
 		unit:     "projection slices",
 		held: fmt.Sprintf("%d %s built, none refused",
-			slicesBuilt, plural(slicesBuilt, "projection slice", "projection slices")),
+			slicesBuilt, cmdutil.Plural(slicesBuilt, "projection slice", "projection slices")),
 		nothing:  "no projection was asked for at all",
 		findings: findings,
 	}.result(), nil
@@ -192,7 +193,7 @@ func (*publishedProjectionBuilt) Run(_ context.Context, s *Subject) (Result, err
 		}
 		detail := "no projection was built at all"
 		if len(names) > 0 {
-			detail = fmt.Sprintf("the projections built were: %s", joinComma(names))
+			detail = fmt.Sprintf("the projections built were: %s", strings.Join(names, ", "))
 		}
 		// The finding names the DOCUMENT, then which of its columns is missing,
 		// because those are two different repairs. A whole document absent is a
@@ -271,7 +272,7 @@ func (*publishedProjectionBuilt) Run(_ context.Context, s *Subject) (Result, err
 		subjects: len(s.Published),
 		unit:     "published documents",
 		held: fmt.Sprintf("every document the site publishes was built over every column "+
-			"it publishes: %s", joinComma(describeDocuments(s.Published))),
+			"it publishes: %s", strings.Join(describeDocuments(s.Published), ", ")),
 		nothing:  "the site publishes no document, so there is nothing to have built",
 		findings: findings,
 	}.result(), nil

@@ -215,8 +215,8 @@ func (*linkValuesTieToFacts) Run(_ context.Context, s *Subject) (Result, error) 
 					unknown = true
 					if other, exists := all[id]; exists {
 						findings = append(findings, finding(subject,
-							"cites fact %s, which is FY%d %s %s and not this projection's slice",
-							id, other.FiscalYear, other.Basis, other.Scope))
+							"cites fact %s, which is %s %s and not this projection's slice",
+							id, fact.ColumnLabel(other.FiscalYear, other.Basis), other.Scope))
 					} else {
 						findings = append(findings, finding(subject,
 							"cites fact %s, which is not in %s", id, factsFile))

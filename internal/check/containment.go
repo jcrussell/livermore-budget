@@ -145,7 +145,7 @@ func (*cutsTieAlongTheLattice) Run(_ context.Context, s *Subject) (Result, error
 			held = append(held, e.Name)
 		}
 		clause := fmt.Sprintf("%s at %s: %d cells over %s, %d one-sided at zero",
-			c.Name(), c.At, r.Subjects, joinComma(c.Columns), r.AgreeAtZero)
+			c.Name(), c.At, r.Subjects, strings.Join(c.Columns, ", "), r.AgreeAtZero)
 		if n := len(r.Excused); n > 0 {
 			clause += fmt.Sprintf(", %d held apart", n)
 		}
@@ -216,7 +216,7 @@ func (*cutsTieAlongTheLattice) Run(_ context.Context, s *Subject) (Result, error
 	summary := fmt.Sprintf("%d cells over %d comparison(s) of %d cut(s): %s",
 		subjects, len(clauses), len(cuts)-len(empty), strings.Join(clauses, "; "))
 	if len(held) > 0 {
-		summary += fmt.Sprintf(". %d exception(s) held apart: %s", len(held), joinComma(held))
+		summary += fmt.Sprintf(". %d exception(s) held apart: %s", len(held), strings.Join(held, ", "))
 	}
 	if uncovered > 0 {
 		summary += fmt.Sprintf(". %d fact(s) fall in no cut, under %d declared residue(s)", uncovered, len(residue))
@@ -229,11 +229,11 @@ func (*cutsTieAlongTheLattice) Run(_ context.Context, s *Subject) (Result, error
 	}
 	if len(outside) > 0 && len(refuted) == 0 {
 		summary += fmt.Sprintf(". %s outside the reference, its funds carried by no other cut, and compared with none",
-			joinComma(outside))
+			strings.Join(outside, ", "))
 	}
 	if len(empty) > 0 {
 		summary += fmt.Sprintf(". %d cut(s) carry no fact and were not compared: %s",
-			len(empty), joinComma(empty))
+			len(empty), strings.Join(empty, ", "))
 	}
 	if !levelsChecked {
 		summary += ". No rule file is loaded, so no cut's level was checked against its facts"

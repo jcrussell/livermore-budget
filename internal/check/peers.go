@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/structure"
 )
 
@@ -95,7 +96,7 @@ func (*peersOverlapOnlyByDeclaredIdentity) Run(_ context.Context, s *Subject) (R
 			for _, id := range identities {
 				if n := byIdentity[id.Name]; n > 0 {
 					clause += fmt.Sprintf(", %d under identity %q carrying %s on each side",
-						n, id.Name, structure.Cents(cents[id.Name]))
+						n, id.Name, amount.Cents(cents[id.Name]))
 				}
 			}
 			clauses = append(clauses, clause)
@@ -145,7 +146,7 @@ func (*peersOverlapOnlyByDeclaredIdentity) Run(_ context.Context, s *Subject) (R
 		"document scope set(s) each construct as a view",
 		subjects, pairs, strings.Join(clauses, "; "), views)
 	if len(refused) > 0 {
-		summary += fmt.Sprintf(". %d pair(s) at one level refused: %s", len(refused), joinComma(refused))
+		summary += fmt.Sprintf(". %d pair(s) at one level refused: %s", len(refused), strings.Join(refused, ", "))
 	}
 	return conclusion{
 		subjects: subjects,

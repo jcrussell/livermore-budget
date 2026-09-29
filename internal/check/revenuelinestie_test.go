@@ -219,10 +219,10 @@ func TestRevenueLinesTieIsFailable(t *testing.T) {
 				`node "revenue-line/taxes/property/current-secured" is parented to ` +
 					`"revenue/charges-for-services" and data/taxonomy.yaml declares it under ` +
 					`"taxes/property", so it wants "revenue/taxes/property"`,
-				"FY2026 adopted fund-group-by-category[category=charges-for-services fund_group=general]: the detail sums to $1600.00 " +
-					"and the spine publishes $400.00, a difference of $1200.00",
+				"FY2026 adopted fund-group-by-category[category=charges-for-services fund_group=general]: the detail sums to $1,600.00 " +
+					"and the spine publishes $400.00, a difference of $1,200.00",
 				"FY2026 adopted fund-group-by-category[category=taxes/property fund_group=general]: the detail sums to -$200.00 and the " +
-					"spine publishes $1000.00, a difference of -$1200.00",
+					"spine publishes $1,000.00, a difference of -$1,200.00",
 			},
 		},
 		{
@@ -234,10 +234,10 @@ func TestRevenueLinesTieIsFailable(t *testing.T) {
 			want: []string{
 				`node "revenue-line/taxes/property/current-secured" is parented to "" and ` +
 					`data/taxonomy.yaml declares it under "taxes/property"`,
-				"FY2026 adopted fund-group-by-category[category=(absent) fund_group=general]: the detail publishes $1200.00 here and the spine " +
+				"FY2026 adopted fund-group-by-category[category=(absent) fund_group=general]: the detail publishes $1,200.00 here and the spine " +
 					"has no such cell",
 				"FY2026 adopted fund-group-by-category[category=taxes/property fund_group=general]: the detail sums to -$200.00 and the " +
-					"spine publishes $1000.00, a difference of -$1200.00",
+					"spine publishes $1,000.00, a difference of -$1,200.00",
 			},
 		},
 		{
@@ -248,8 +248,8 @@ func TestRevenueLinesTieIsFailable(t *testing.T) {
 				`node "revenue-line/taxes/property/current-secured" is parented to ` +
 					`"revenue/typo" and data/taxonomy.yaml declares it under "taxes/property"`,
 				"FY2026 adopted fund-group-by-category[category=taxes/property fund_group=general]: the detail sums to -$200.00 and the " +
-					"spine publishes $1000.00, a difference of -$1200.00",
-				"FY2026 adopted fund-group-by-category[category=typo fund_group=general]: the detail publishes $1200.00 here and the " +
+					"spine publishes $1,000.00, a difference of -$1,200.00",
+				"FY2026 adopted fund-group-by-category[category=typo fund_group=general]: the detail publishes $1,200.00 here and the " +
 					"spine has no such cell",
 			},
 		},
@@ -310,7 +310,7 @@ func TestRevenueLinesTieIsFailable(t *testing.T) {
 			wantStatus: StatusFail, wantSubjects: 11,
 			want: []string{
 				"FY2026 adopted fund-group-by-category[category=taxes/property fund_group=general]: the detail sums to -$200.00 and the " +
-					"spine publishes $1000.00, a difference of -$1200.00",
+					"spine publishes $1,000.00, a difference of -$1,200.00",
 			},
 		},
 		{
@@ -322,8 +322,8 @@ func TestRevenueLinesTieIsFailable(t *testing.T) {
 			},
 			wantStatus: StatusFail, wantSubjects: 11,
 			want: []string{
-				"FY2026 adopted fund-group-by-category[category=taxes/property fund_group=general]: the detail sums to $1400.00 and the " +
-					"spine publishes $1000.00, a difference of $400.00",
+				"FY2026 adopted fund-group-by-category[category=taxes/property fund_group=general]: the detail sums to $1,400.00 and the " +
+					"spine publishes $1,000.00, a difference of $400.00",
 			},
 		},
 		{
@@ -447,7 +447,7 @@ func TestRevenueLinesTieReadsTheFactsItIsGiven(t *testing.T) {
 	if res.Status != StatusFail {
 		t.Fatalf("status %s, want fail", res.Status)
 	}
-	want := "FY2026 adopted fund-group-by-category[category=taxes/property fund_group=general]: the detail publishes $1000.00 here and " +
+	want := "FY2026 adopted fund-group-by-category[category=taxes/property fund_group=general]: the detail publishes $1,000.00 here and " +
 		"the spine has no such cell"
 	if got := findingLines(res); len(got) != 1 || !strings.Contains(got[0], want) {
 		t.Errorf("findings are %v, want one containing %q", got, want)

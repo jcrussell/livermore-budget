@@ -131,6 +131,11 @@ func FundString(fund *int) string {
 	return strconv.Itoa(*fund)
 }
 
+// ColumnLabel names a (fiscal year, basis) column the way every report does.
+func ColumnLabel[B ~string](year int, basis B) string {
+	return fmt.Sprintf("FY%d %s", year, basis)
+}
+
 // SameFund reports whether two fund coordinates agree: both absent, or both
 // the same number (not the same address).
 func SameFund(a, b *int) bool {
@@ -517,10 +522,10 @@ func CheckUniqueIDs(facts []Fact) error {
 		}
 		return cmdutil.WithHint(
 			fmt.Errorf("id %s is claimed twice: rule %q p%d says %s, rule %q p%d says %s "+
-				"(both are %s %s %s FY%d %s)",
+				"(both are %s %s %s %s)",
 				f.ID, prev.RuleID, prev.Page, amount.Cents(prev.AmountCents),
 				f.RuleID, f.Page, amount.Cents(f.AmountCents),
-				f.DocID, f.RowPath, f.ColumnPath, f.FiscalYear, f.Basis),
+				f.DocID, f.RowPath, f.ColumnPath, ColumnLabel(f.FiscalYear, f.Basis)),
 			"two rules assert a figure for the same cell; one is reading the "+
 				"wrong column or double-counting a subtotal, so check both "+
 				"before changing either")

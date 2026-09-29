@@ -3,6 +3,7 @@ package check
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/project"
@@ -73,7 +74,7 @@ func (*factRevenueLinesResolve) Run(_ context.Context, s *Subject) (Result, erro
 		default:
 			findings = append(findings, finding(f.ID,
 				"%s p%d %q: resolves to %d lines under %q, %s; one printed row is one node",
-				f.DocID, f.Page, f.RowLabel, len(hits), f.Category, joinComma(hits)))
+				f.DocID, f.Page, f.RowLabel, len(hits), f.Category, strings.Join(hits, ", ")))
 		}
 	}
 

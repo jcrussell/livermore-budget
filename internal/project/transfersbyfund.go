@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strconv"
 
+	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/structure"
@@ -539,7 +540,7 @@ func transfersOutCaveats(rows map[transferKey]transferRow) []Caveat {
 				"print, and this document publishes both: a receiving leg into the fund that "+
 				"gets the money and a paying leg out of the fund that sends it, under one "+
 				"transfer_id and at one value. A reader adding every value_cents in this "+
-				"file gets twice the %s the city transfers out.", dollars(p76+cip)),
+				"file gets twice the %s the city transfers out.", amount.Cents(p76+cip).Dollars()),
 			AppliesTo: []string{},
 		},
 		{
@@ -550,7 +551,7 @@ func transfersOutCaveats(rows map[transferKey]transferRow) []Caveat {
 				"one another, %s here, and p222 lists what each operating fund transfers to a "+
 				"Capital Improvement Program fund, %s. pp.66-67 print TRANSFER OUT as the two "+
 				"together, and fisc verify holds that sum to the spine by fund group to the "+
-				"cent. A fund that appears on both lists pays both.", dollars(p76), dollars(cip)),
+				"cent. A fund that appears on both lists pays both.", amount.Cents(p76).Dollars(), amount.Cents(cip).Dollars()),
 			AppliesTo: []string{},
 		},
 		{

@@ -3,10 +3,12 @@ package check
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/project"
+	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
 // trendPointsTieToFacts asserts every published point IS the fact it cites.
@@ -86,11 +88,11 @@ func (*trendPointsTieToFacts) Run(_ context.Context, s *Subject) (Result, error)
 				// because `fisc verify` runs before `fisc export`.
 				if col := (project.Column{FiscalYear: pt.FiscalYear, Basis: mapping.Basis(pt.Basis)}); !declared[col] {
 					findings = append(findings, finding(
-						fmt.Sprintf("%s %s FY%d %s", p.Name, series.SeriesID, pt.FiscalYear, pt.Basis),
-						"this point publishes FY%d %s, which is not one of the %d columns %q "+
+						fmt.Sprintf("%s %s %s", p.Name, series.SeriesID, fact.ColumnLabel(pt.FiscalYear, pt.Basis)),
+						"this point publishes %s, which is not one of the %d columns %q "+
 							"declares; no page can draw a column the document does not publish, "+
 							"so the figure would be dropped",
-						pt.FiscalYear, pt.Basis, len(p.Options.Columns), p.Name))
+						fact.ColumnLabel(pt.FiscalYear, pt.Basis), len(p.Options.Columns), p.Name))
 				}
 			}
 		}
@@ -115,7 +117,7 @@ func (*trendPointsTieToFacts) Run(_ context.Context, s *Subject) (Result, error)
 		held: fmt.Sprintf("%d points across %d trends %s, each equal to the fact it cites and "+
 			"each fact in the slice published exactly once",
 			points, len(s.trendDocuments()),
-			plural(len(s.trendDocuments()), "document", "documents")),
+			cmdutil.Plural(len(s.trendDocuments()), "document", "documents")),
 		nothing:  "no projection built a trends document, so no point has been compared",
 		findings: findings,
 	}.result(), nil
@@ -131,7 +133,7 @@ func (*trendPointsTieToFacts) Run(_ context.Context, s *Subject) (Result, error)
 func comparePoint(p projection, series project.Series, pt project.Point,
 	byID map[string]fact.Fact, published map[string]bool,
 ) []Finding {
-	subject := fmt.Sprintf("%s %s FY%d %s", p.Name, series.SeriesID, pt.FiscalYear, pt.Basis)
+	subject := fmt.Sprintf("%s %s %s", p.Name, series.SeriesID, fact.ColumnLabel(pt.FiscalYear, pt.Basis))
 
 	f, ok := byID[pt.FactID]
 	if !ok {
@@ -173,7 +175,7 @@ func comparePoint(p projection, series project.Series, pt project.Point,
 		report("derived", pt.Derived, f.Derived)
 	}
 	if pt.FiscalYear != f.FiscalYear || pt.Basis != string(f.Basis) {
-		report("column", fmt.Sprintf("FY%d %s", pt.FiscalYear, pt.Basis), fyBasis(f))
+		report("column", fact.ColumnLabel(pt.FiscalYear, pt.Basis), fyBasis(f))
 	}
 	// The series id is recomputed from the fact rather than trusted, because it
 	// is what groups the four points into one printed row. A point filed under
@@ -189,7 +191,7 @@ func comparePoint(p projection, series project.Series, pt project.Point,
 }
 
 // fyBasis names a fact's column the way a finding should.
-func fyBasis(f fact.Fact) string { return fmt.Sprintf("FY%d %s", f.FiscalYear, f.Basis) }
+func fyBasis(f fact.Fact) string { return fact.ColumnLabel(f.FiscalYear, f.Basis) }
 
 // incompleteSeries are the series a trends document legitimately cannot fill in
 // every column, each with the reason.
@@ -336,5 +338,5 @@ func describeIncomplete(byID map[string]int) string {
 	for _, id := range sortedStrings(byID) {
 		out = append(out, fmt.Sprintf("%s (%s)", id, incompleteSeries[id]))
 	}
-	return joinComma(out)
+	return strings.Join(out, ", ")
 }

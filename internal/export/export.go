@@ -41,6 +41,7 @@ import (
 	"strings"
 
 	"github.com/jcrussell/livermore-budget/internal/corpus"
+	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 	"github.com/jcrussell/livermore-budget/site"
@@ -1052,9 +1053,9 @@ func (v View) validateSteps(built map[string][]byte, ix ColumnIndex) error {
 				col := [2]string{strconv.Itoa(g.FiscalYear), g.Basis}
 				if seen[col] {
 					return fmt.Errorf(
-						"view %q's step %d declares two gaps on node %q for FY%d %s; the client "+
+						"view %q's step %d declares two gaps on node %q for %s; the client "+
 							"holds a column's chart to one licence, and would keep one and drop "+
-							"the other in silence", v.Path, i, id, g.FiscalYear, g.Basis)
+							"the other in silence", v.Path, i, id, fact.ColumnLabel(g.FiscalYear, g.Basis))
 				}
 				seen[col] = true
 			}

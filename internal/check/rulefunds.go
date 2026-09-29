@@ -398,7 +398,7 @@ func describeAnchors(anchors []string) string {
 		out = append(out, fmt.Sprintf("%q", a))
 	}
 	sort.Strings(out)
-	return "the totals governing it are " + joinComma(out)
+	return "the totals governing it are " + strings.Join(out, ", ")
 }
 
 // claimKey is one printed total on one page.

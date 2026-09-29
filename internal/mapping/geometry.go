@@ -524,17 +524,10 @@ func (r *Resolver) checkLineAccounting(rule *Rule, p *Part, blk *block, rows []R
 		return fail(fmt.Sprintf(
 			"the block covers %d printed %s but the rule has %d %s here; "+
 				"rows declared absent from this page: %s",
-			printed, plural(printed, "line", "lines"),
-			len(rows), plural(len(rows), "row", "rows"), declaredOmissions(p)),
+			printed, cmdutil.Plural(printed, "line", "lines"),
+			len(rows), cmdutil.Plural(len(rows), "row", "rows"), declaredOmissions(p)),
 			"a label-less page is read positionally, one row per printed line, "+
 				"so a line the rule has no row for would mismap every row below it")
 	}
 	return nil
-}
-
-func plural(n int, one, many string) string {
-	if n == 1 {
-		return one
-	}
-	return many
 }

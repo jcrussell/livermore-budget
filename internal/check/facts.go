@@ -9,6 +9,7 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/corpus"
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
 // factsSorted asserts the committed fact store is in canonical order.
@@ -128,10 +129,10 @@ func (*factIDsRecompute) Run(_ context.Context, s *Subject) (Result, error) {
 			continue
 		}
 		findings = append(findings, finding(f.ID,
-			"%s p%d %q: the published fields (rule %q, row_path %q, column_path %q, FY%d %s) "+
+			"%s p%d %q: the published fields (rule %q, row_path %q, column_path %q, %s) "+
 				"hash to %s; an id that does not recompute addresses nothing",
 			f.DocID, f.Page, f.RowLabel, f.RuleID, f.RowPath, f.ColumnPath,
-			f.FiscalYear, f.Basis, want))
+			fact.ColumnLabel(f.FiscalYear, f.Basis), want))
 	}
 	return conclusion{
 		subjects: len(s.Facts),
@@ -278,7 +279,7 @@ func (*factOffsetPointsAtToken) Run(_ context.Context, s *Subject) (Result, erro
 		subjects: len(s.Facts),
 		unit:     "facts",
 		held: fmt.Sprintf("%d facts, each offset landing on its own token in %d %s",
-			len(s.Facts), pages.read, plural(pages.read, "page", "pages")),
+			len(s.Facts), pages.read, cmdutil.Plural(pages.read, "page", "pages")),
 		nothing:  "the fact store is empty",
 		findings: findings,
 	}.result(), nil
@@ -408,7 +409,7 @@ func (*factCitationsAreDeclared) Run(_ context.Context, s *Subject) (Result, err
 		subjects: len(s.Facts),
 		unit:     "facts",
 		held: fmt.Sprintf("%d facts over %d printed figures; %d %s shared by a row and its declared counterpart",
-			len(s.Facts), len(order), declared, plural(declared, "figure", "figures")),
+			len(s.Facts), len(order), declared, cmdutil.Plural(declared, "figure", "figures")),
 		nothing:  "the fact store is empty",
 		findings: findings,
 	}.result(), nil

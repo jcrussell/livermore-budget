@@ -327,8 +327,8 @@ func ValidateCuts(facts []fact.Fact, byRule map[string]Level, cuts []Cut) (empty
 		for _, col := range columns {
 			for _, k := range c.Kinds {
 				if !kinds[col][k] {
-					return nil, fmt.Errorf("cut %q declares kind %q and its FY%d %s column carries no fact of it",
-						c.Name, k, col.year, col.basis)
+					return nil, fmt.Errorf("cut %q declares kind %q and its %s column carries no fact of it",
+						c.Name, k, fact.ColumnLabel(col.year, col.basis))
 				}
 			}
 		}
