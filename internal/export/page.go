@@ -16,6 +16,7 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/corpus"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 	"github.com/jcrussell/livermore-budget/schema"
 )
@@ -274,6 +275,9 @@ type yearView struct {
 	// ChartTitle is the <title> inside the SVG -- the chart's accessible name,
 	// and a different string from Title, which is the document's.
 	ChartTitle string `json:"chart_title"`
+	// Lede is the year and basis as the lede names them, "FY 2025-26 adopted";
+	// the template renders it and app.js repaints it and names a column by it.
+	Lede string `json:"lede"`
 }
 
 // stepView is what one rung's document discloses for one year: the caveats its
@@ -295,8 +299,11 @@ type countsRef struct {
 // only a spine page has.
 type pageData struct {
 	chrome
-	FiscalYearLabel string
-	Basis           string
+	// Lede is the opening year's, as yearView carries it.
+	Lede  string
+	Basis string
+	// Wording is the client's words, which the template's legend shares.
+	Wording wording
 	// ChartTitle is the SVG's accessible name: the opening yearView's string,
 	// the same one app.js repaints on a year switch.
 	ChartTitle string
@@ -536,7 +543,31 @@ type wording struct {
 	ColumnRight       string `json:"column_right"`
 	GoBack            string `json:"go_back"`
 	BackControl       string `json:"back_control"`
+	PrintedByCity     string `json:"printed_by_city"`
+	InferredByUs      string `json:"inferred_by_us"`
+	OurInference      string `json:"our_inference"`
+	InferredChip      string `json:"inferred_chip"`
+	PrintedChip       string `json:"printed_chip"`
+	CarriedNote       string `json:"carried_note"`
+	CarriedChip       string `json:"carried_chip"`
+	DescOpens         string `json:"desc_opens"`
+	DescExpands       string `json:"desc_expands"`
+	DescFollows       string `json:"desc_follows"`
+	FlowInferred      string `json:"flow_inferred"`
+	NoneInferred      string `json:"none_inferred"`
 }
+
+// kindLabels is project's words for every link kind, keyed as a link names it.
+func kindLabels() map[string]string {
+	out := make(map[string]string, len(project.LinkKinds()))
+	for _, k := range project.LinkKinds() {
+		out[string(k)] = project.LinkKindLabel(k)
+	}
+	return out
+}
+
+// ledeOf is a column named the way the lede names it.
+func ledeOf(label, basis string) string { return label + " " + basis }
 
 // defaultWording is the site's English. The counts sentence's head is also
 // rendered server-side by site/index.html.tmpl for the page before app.js
@@ -563,6 +594,18 @@ func defaultWording() wording {
 		ColumnRight:       "right-hand",
 		GoBack:            "Use the breadcrumb above the chart, or press Escape, to go back.",
 		BackControl:       "\u2190 {back}",
+		PrintedByCity:     "printed by the city",
+		InferredByUs:      "inferred by us",
+		OurInference:      "◇ our inference",
+		InferredChip:      "◇ inferred",
+		PrintedChip:       "printed",
+		CarriedNote:       "figure printed by the city, re-pointed onto a mark of ours",
+		CarriedChip:       "◇ re-pointed by us",
+		DescOpens:         ", opens into its parts on a double click or Enter; a single click or Space follows this money",
+		DescExpands:       ", draws all of them separately on a double click or Enter; a single click or Space follows this money",
+		DescFollows:       ", follow this money",
+		FlowInferred:      "This flow is inferred; both endpoints are printed by the city.",
+		NoneInferred:      "Nothing on this chart is inferred: every node and flow is printed by the city.",
 	}
 }
 
@@ -578,6 +621,8 @@ type clientConfig struct {
 	// the packager so the client never composes a figure or a caveat itself.
 	Years []yearView           `json:"years"`
 	Docs  map[string]clientDoc `json:"docs"`
+	// KindLabels is each link kind in the page's words.
+	KindLabels map[string]string `json:"kind_labels"`
 	// Wording is every sentence the client composes, as templates it fills.
 	Wording wording `json:"wording"`
 	// RenderTiers is the node tiers the page draws, left to right; omitted
@@ -1114,7 +1159,8 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			Path:       ColumnPath(m.FiscalYear, m.Basis),
 			Basis:      m.Basis,
 			Title:      sankeyTitle(v.Title, m.FiscalYearLabel),
-			ChartTitle: "Sankey diagram of the " + m.FiscalYearLabel + " " + m.Basis + " budget",
+			ChartTitle: "Sankey diagram of the " + ledeOf(m.FiscalYearLabel, m.Basis) + " budget",
+			Lede:       ledeOf(m.FiscalYearLabel, m.Basis),
 			Hero:       hero,
 			Figures:    figures,
 			Caveats:    caveatRefs(m.Caveats, stem, caveatsPath),
@@ -1137,6 +1183,7 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		Metadata:      doc.Metadata,
 		Years:         years,
 		Docs:          clientDocs,
+		KindLabels:    kindLabels(),
 		Wording:       defaultWording(),
 		RenderTiers:   v.RenderTiers,
 		Steps:         v.Steps,
@@ -1160,17 +1207,18 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			Caveats:      open.Caveats,
 			CaveatsPath:  caveatsPath,
 		},
-		FiscalYearLabel: open.Label,
-		Basis:           open.Basis,
-		ChartTitle:      open.ChartTitle,
-		Hero:            open.Hero,
-		Figures:         open.Figures,
-		Years:           years,
-		Opens:           open.Stem,
-		Facts:           open.Counts.Facts,
-		Nodes:           open.Counts.Nodes,
-		Links:           open.Counts.Links,
-		Drill:           len(v.Steps) > 0,
+		Lede:       open.Lede,
+		Basis:      open.Basis,
+		Wording:    defaultWording(),
+		ChartTitle: open.ChartTitle,
+		Hero:       open.Hero,
+		Figures:    open.Figures,
+		Years:      years,
+		Opens:      open.Stem,
+		Facts:      open.Counts.Facts,
+		Nodes:      open.Counts.Nodes,
+		Links:      open.Counts.Links,
+		Drill:      len(v.Steps) > 0,
 		// #nosec G203 -- blob is encoding/json's output, which escapes <, >
 		// and & to their \u form, so it cannot terminate the script element
 		// or inject markup. The alternative, letting html/template escape a

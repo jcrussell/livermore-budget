@@ -289,3 +289,17 @@ func TestSelectFactsAppliesEverySelector(t *testing.T) {
 		t.Errorf("SelectFacts = %v, want only the fact inside every selector", got)
 	}
 }
+
+// TestEveryLinkKindHasWords holds the page's words for link kinds to the set:
+// a kind with none would reach the reader as its snake_case name.
+func TestEveryLinkKindHasWords(t *testing.T) {
+	for _, k := range LinkKinds() {
+		if LinkKindLabel(k) == "" {
+			t.Errorf("link kind %q has no words for the page", k)
+		}
+	}
+	if len(linkKindLabels) != len(LinkKinds()) {
+		t.Errorf("%d kinds have words and %d kinds exist; a label for no kind is a promise about nothing",
+			len(linkKindLabels), len(LinkKinds()))
+	}
+}

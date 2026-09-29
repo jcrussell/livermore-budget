@@ -11,6 +11,7 @@
     "metadata",
     "years",
     "docs",
+    "kind_labels",
     "wording"
   ],
   "additionalProperties": false,
@@ -51,7 +52,8 @@
           "figures",
           "caveats",
           "counts",
-          "chart_title"
+          "chart_title",
+          "lede"
         ],
         "additionalProperties": false,
         "properties": {
@@ -223,7 +225,8 @@
           },
           "chart_title": {
             "type": "string"
-          }
+          },
+          "lede": { "type": "string", "minLength": 1, "description": "The year and basis as the lede names them; the template renders it and the client repaints it and names a column by it." }
         }
       }
     },
@@ -442,6 +445,12 @@
       "minLength": 1,
       "description": "The node whose subtree the page draws; omitted when it draws the whole document."
     },
+    "kind_labels": {
+      "description": "Each link kind in the page's words; project.LinkKindLabel.",
+      "type": "object",
+      "propertyNames": { "$ref": "https://jcrussell.github.io/livermore-budget/schema/enums.schema.json#/$defs/link_kind" },
+      "additionalProperties": { "type": "string", "minLength": 1 }
+    },
     "wording": {
       "description": "Every sentence app.js composes about the chart on screen, as templates it fills. `{name}` is a variable's value and `{name:one|many}` is the value followed by the singular or the plural word, by whether the value is 1.",
       "type": "object",
@@ -465,7 +474,19 @@
         "column_third",
         "column_right",
         "go_back",
-        "back_control"
+        "back_control",
+        "printed_by_city",
+        "inferred_by_us",
+        "our_inference",
+        "inferred_chip",
+        "printed_chip",
+        "carried_note",
+        "carried_chip",
+        "desc_opens",
+        "desc_expands",
+        "desc_follows",
+        "flow_inferred",
+        "none_inferred"
       ],
       "additionalProperties": false,
       "properties": {
@@ -568,7 +589,19 @@
           "type": "string",
           "minLength": 1,
           "description": "A breadcrumb control's text: {back}, the step's back."
-        }
+        },
+        "printed_by_city": { "type": "string", "minLength": 1 },
+        "inferred_by_us": { "type": "string", "minLength": 1 },
+        "our_inference": { "type": "string", "minLength": 1 },
+        "inferred_chip": { "type": "string", "minLength": 1 },
+        "printed_chip": { "type": "string", "minLength": 1 },
+        "carried_note": { "type": "string", "minLength": 1 },
+        "carried_chip": { "type": "string", "minLength": 1 },
+        "desc_opens": { "type": "string", "minLength": 1 },
+        "desc_expands": { "type": "string", "minLength": 1 },
+        "desc_follows": { "type": "string", "minLength": 1 },
+        "flow_inferred": { "type": "string", "minLength": 1 },
+        "none_inferred": { "type": "string", "minLength": 1 }
       }
     }
   }

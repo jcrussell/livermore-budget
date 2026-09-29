@@ -256,13 +256,14 @@ export function flankIsLeft(step) {
 }
 
 
-/** Human wording for link.kind. The JSON's vocabulary is not English. */
-export const KIND_LABEL = {
-  external: "external money",
-  internal_transfer: "transfer between funds",
-  internal_service: "internal service charge",
-  fund_balance: "fund balance movement",
-};
+/**
+ * A link kind in the page's words, as the export ships them.
+ * @param {string} kind
+ * @returns {string}
+ */
+export function kindLabel(kind) {
+  return CONFIG.kind_labels[kind];
+}
 
 export const NODE_WIDTH = 14;
 export const NODE_PADDING = 14;
@@ -2329,6 +2330,20 @@ export function carryResidual(drawn, from, rung) {
 }
 
 /**
+ * A drawn document's column, named as the page's lede names that year: the
+ * published year the export shipped the name for.
+ * @param {any} meta
+ * @returns {string}
+ */
+export function ledeOf(meta) {
+  const year = CONFIG.years.find((y) => y.year === meta.fiscal_year && y.basis === meta.basis);
+  if (!year) {
+    throw new Error("cannot name FY" + meta.fiscal_year + " " + meta.basis + ": the page publishes no such year");
+  }
+  return year.lede;
+}
+
+/**
  * States as a mark of its own the difference between what the chart above
  * sends into the opened node and what the document this rung draws breaks that
  * node into, where the step licenses exactly that difference in this column.
@@ -2370,7 +2385,7 @@ export function markGap(drawn, from, rung) {
   }
   const gap = into - outOf;
   const meta = drawn.metadata || /** @type {any} */ ({});
-  const where = "FY" + meta.fiscal_year + " " + meta.basis;
+  const where = ledeOf(meta);
   const licence = (gaps[opened] || [])
     .find((g) => g.fiscal_year === meta.fiscal_year && g.basis === meta.basis);
   if (gap === 0 && !licence) return drawn;
@@ -2396,7 +2411,7 @@ export function markGap(drawn, from, rung) {
   }
   const centreNode = drawn.nodes.find((n) => n.id === opened && n.label);
   const centre = centreNode ? centreNode.label : opened;
-  const column = meta.fiscal_year_label + " " + meta.basis;
+  const column = where;
   const lead = gap > 0
     ? "In " + column + ", the chart above puts " + fmt(into) + " through " + centre +
       " and the schedule this chart is drawn from accounts for " + fmt(outOf) + " of it, " +
@@ -2508,11 +2523,9 @@ export function capColumn(doc, tier, cap, opened, noun) {
   const kept = new Set(ranked.slice(0, cap).map((n) => n.id));
   const folded = ranked.slice(cap);
 
-  // The noun is the view's. Pluralised though the threshold guarantees two,
-  // because only this rule is about grammar.
+  // The noun is the view's, plural: the threshold above folds two or more.
   const word = noun || "items";
-  const label = folded.length + " smaller " +
-    (folded.length === 1 ? word.replace(/s$/, "") : word);
+  const label = folded.length + " smaller " + word;
   // derived: true IS THE INVARIANT: the city printed no line called "N
   // smaller funds". Every cent inside is printed; the grouping is inferred.
   const aggregate = {
@@ -3076,22 +3089,16 @@ export function applyEmphasis() {
  * @returns {string}
  */
 export function provenanceOf(derived, ontoOurs) {
-  if (derived) return "inferred by us";
-  return ontoOurs ? CARRIED_NOTE : "printed by the city";
+  if (derived) return say("inferred_by_us");
+  return ontoOurs ? say("carried_note") : say("printed_by_city");
 }
-
-/** What a printed figure re-pointed onto a derived mark is: the only spelling. */
-export const CARRIED_NOTE = "figure printed by the city, re-pointed onto a mark of ours";
-
-/** CARRIED_NOTE's short form, for a chip. */
-export const CARRIED_CHIP = "\u25c7 re-pointed by us";
 
 /**
  * @param {LaidLink} d
  * @returns {string}
  */
 export function linkDescription(d) {
-  const kind = /** @type {Record<string,string>} */ (KIND_LABEL)[d.kind] || d.kind;
+  const kind = kindLabel(d.kind);
   return d.source.label + " to " + d.target.label + ", " + fmtSigned(markCents(d)) +
     (kind ? ", " + kind : "") +
     (d.contra ? ", " + d.contra : "") +
@@ -3107,18 +3114,12 @@ export function nodeDescription(d) {
   // WHAT EACH GESTURE DOES, for a reader who cannot see the triangle. Space is
   // named only where it differs from Enter; the folded tail's sentence uses the
   // words of the chip that undoes it, since it opens nothing.
-  const what = drillable(d)
-    ? ", opens into its parts on a double click or Enter; a single click or Space follows " +
-      "this money"
-    : expandable(d)
-      ? ", draws all of them separately on a double click or Enter; a single click or Space " +
-        "follows this money"
-      : ", follow this money";
+  const what = drillable(d) ? say("desc_opens") : expandable(d) ? say("desc_expands") : say("desc_follows");
   const note = contraNote(d);
   // The cross-tab qualification, for a reader who cannot see the ribbons.
   const flows = residualFlows(d);
   return d.label + (flows ? ", " + flows : ", total " + fmtSigned(markCents(d))) +
-    (d.derived ? ", inferred by us" : ", printed by the city") +
+    ", " + say(d.derived ? "inferred_by_us" : "printed_by_city") +
     (isPartitionNode(d) ? ", " + PARTITION_NOTE : "") +
     (note ? ", " + note.replace(/^\u25c7 /, "") : "") + what;
 }
@@ -3272,11 +3273,11 @@ export function showTip(event, d) {
   const meta = h("div", "tip-meta");
   if (asLink) {
     const l = /** @type {LaidLink} */ (d);
-    meta.append(h("span", "chip", /** @type {Record<string,string>} */ (KIND_LABEL)[l.kind] || l.kind));
+    meta.append(h("span", "chip", kindLabel(l.kind)));
     meta.append(document.createTextNode(" "));
     const lentTo = Boolean(l.source.derived || l.target.derived);
     meta.append(h("span", l.derived || lentTo ? "chip derived" : "chip",
-      l.derived ? "◇ inferred" : lentTo ? CARRIED_CHIP : "printed"));
+      say(l.derived ? "inferred_chip" : lentTo ? "carried_chip" : "printed_chip")));
     if (l.contra) {
       meta.append(document.createTextNode(" "));
       meta.append(h("span", "chip contra", "reduction"));
@@ -3298,7 +3299,7 @@ export function showTip(event, d) {
       meta.append(h("span", "chip", "constraint: " + n.constraint_tier));
     }
     meta.append(document.createTextNode(" "));
-    meta.append(h("span", n.derived ? "chip derived" : "chip", n.derived ? "◇ inferred" : "printed"));
+    meta.append(h("span", n.derived ? "chip derived" : "chip", say(n.derived ? "inferred_chip" : "printed_chip")));
     const share = columnShare(n);
     if (share) {
       meta.append(document.createTextNode(" "));
@@ -3366,11 +3367,11 @@ export function pin(d) {
   const chips = h("div", "prov");
   if (asLink) {
     const l = /** @type {LaidLink} */ (d);
-    const kind = /** @type {Record<string,string>} */ (KIND_LABEL)[l.kind] || l.kind;
+    const kind = kindLabel(l.kind);
     if (kind) chips.append(h("span", "chip", kind));
     const lent = Boolean(l.source.derived || l.target.derived);
     chips.append(h("span", l.derived || lent ? "chip derived" : "chip",
-      l.derived ? "◇ our inference" : lent ? CARRIED_CHIP : "printed by the city"));
+      say(l.derived ? "our_inference" : lent ? "carried_chip" : "printed_by_city")));
     if (l.contra) chips.append(h("span", "chip contra", "reduction"));
     if (l.partition) chips.append(h("span", "chip partition", "cross-tab"));
     panel.append(chips);
@@ -3384,7 +3385,7 @@ export function pin(d) {
     const n = /** @type {LaidNode} */ (d);
     chips.append(h("span", "chip", n.role.replace(/_/g, " ")));
     if (n.constraint_tier) chips.append(h("span", "chip", "constraint: " + n.constraint_tier));
-    chips.append(h("span", n.derived ? "chip derived" : "chip", n.derived ? "◇ our inference" : "printed by the city"));
+    chips.append(h("span", n.derived ? "chip derived" : "chip", say(n.derived ? "our_inference" : "printed_by_city")));
     const share = columnShare(n);
     if (share) chips.append(h("span", "chip derived", share));
     panel.append(chips);
@@ -3507,13 +3508,13 @@ export function buildDerivedList() {
     const li = document.createElement("li");
     li.append(h("div", "what", "◇ " +
       (labels.get(l.source) || l.source) + " → " + (labels.get(l.target) || l.target)));
-    li.append(h("div", "why", "This flow is inferred; both endpoints are printed by the city."));
+    li.append(h("div", "why", say("flow_inferred")));
     li.append(h("div", "subtle", fmt(l.value_cents)));
     list.append(li);
   }
 
   if (!nodes.length && !orphans.length) {
-    list.append(h("li", "subtle", "Nothing on this chart is inferred: every node and flow is printed by the city."));
+    list.append(h("li", "subtle", say("none_inferred")));
   }
 }
 
@@ -3530,11 +3531,11 @@ export function tableRows(doc) {
     tr.append(h("td", "", labels.get(l.source) || l.source));
     tr.append(h("td", "", labels.get(l.target) || l.target));
     tr.append(h("td", "num", fmtSigned(l.contra ? -l.value_cents : l.value_cents)));
-    tr.append(h("td", "", /** @type {Record<string,string>} */ (KIND_LABEL)[l.kind] || l.kind));
-    tr.append(h("td", "", l.derived ? "◇ inferred"
+    tr.append(h("td", "", kindLabel(l.kind)));
+    tr.append(h("td", "", l.derived ? say("inferred_chip")
       : l.contra ? l.contra
         : l.partition ? PARTITION_NOTE
-          : ours.has(l.source) || ours.has(l.target) ? CARRIED_CHIP : "printed"));
+          : ours.has(l.source) || ours.has(l.target) ? say("carried_chip") : say("printed_chip")));
     tr.append(h("td", "ids", l.fact_ids.join(" ")));
     // PER ROW, not per document: the pages this row's own figure was read from.
     const td = h("td", "");
@@ -4109,7 +4110,7 @@ export function paintYearWords(year) {
   if (caveatCount) caveatCount.textContent = String(year.caveats.length);
 
   const lede = maybeEl("lede-year");
-  if (lede) lede.textContent = year.label + " " + year.basis;
+  if (lede) lede.textContent = year.lede;
 
   shownYear = year;
   paintCounts();

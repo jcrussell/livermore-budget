@@ -808,7 +808,7 @@ describe("the drill's drawing", () => {
       assert.ok(namedOnce && saysCarried, listed);
       assert.ok(carriedPrinted.length > 0);
       assert.deepEqual(wrongProvenance, []);
-      assert.equal(carriedCell, app.CARRIED_CHIP);
+      assert.equal(carriedCell, app.say("carried_chip"));
       assert.ok(tip.includes("◇ inferred") && tip.includes(node.rationale), tip);
       assert.ok(panel.includes("◇ our inference") && panel.includes(node.rationale) && panel.includes(node.source_note), panel);
       assert.deepEqual(opens, []);

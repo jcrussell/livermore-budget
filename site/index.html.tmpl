@@ -44,7 +44,7 @@
            Nothing repaints either, so a view built on another scope would ship
            a lede contradicting its own footer. TestTheLedesProseNamesThePages
            Scope pins the pair. -->
-      The <span id="lede-year">{{.FiscalYearLabel}} {{.Basis}}</span> budget, all funds, gross — read out of the city's
+      The <span id="lede-year">{{.Lede}}</span> budget, all funds, gross — read out of the city's
       published schedule and traced back to it. Figures the city printed are drawn solid;
       the two things we inferred are drawn dashed and labelled.
       {{- /* Empty until the view declares steps; paintChartHint owns the words. */}}
@@ -119,8 +119,8 @@
     <div class="legend" id="legend" aria-label="Fund groups"></div>
   </div>
   <div class="legend" aria-label="How to read the marks">
-    <span><span class="key published" aria-hidden="true"></span> printed by the city</span>
-    <span><span class="key derived" aria-hidden="true"></span> ◇ our inference (dashed)</span>
+    <span><span class="key published" aria-hidden="true"></span> {{.Wording.PrintedByCity}}</span>
+    <span><span class="key derived" aria-hidden="true"></span> {{.Wording.OurInference}} (dashed)</span>
   </div>
   {{- /* Shipped empty and hidden on every page: the trail is where the reader
          has walked, which the server cannot know. */}}

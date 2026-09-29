@@ -46,6 +46,18 @@ const (
 	KindFundBalance LinkKind = "fund_balance"
 )
 
+// linkKindLabels is each link kind in the page's words.
+var linkKindLabels = map[LinkKind]string{
+	KindExternal:         "external money",
+	KindInternalTransfer: "transfer between funds",
+	KindInternalService:  "internal service charge",
+	KindFundBalance:      "fund balance movement",
+}
+
+// LinkKindLabel is a link kind in the page's words, "" for no kind of
+// [LinkKinds].
+func LinkKindLabel(k LinkKind) string { return linkKindLabels[k] }
+
 // LinkKinds is the closed set of link kinds, in declaration order.
 func LinkKinds() []LinkKind {
 	return []LinkKind{KindExternal, KindInternalTransfer, KindInternalService, KindFundBalance}
