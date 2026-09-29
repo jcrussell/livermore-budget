@@ -1404,7 +1404,7 @@ export function paintChartName() {
   if (!desc) return;
   if (!baseDescription) {
     baseDescription = desc.textContent;
-    tablePointer = lastSentence(baseDescription);
+    tablePointer = say("table_pointer");
   }
   // THE TABLE POINTER CLOSES EVERY DEPTH'S DESCRIPTION: the closed flow table
   // is out of the accessibility tree, so this sentence is the only route to it.
@@ -1418,22 +1418,6 @@ export function paintChartName() {
     return;
   }
   desc.textContent = baseDescription;
-}
-
-/**
- * The last sentence of a server-rendered description, with the template's own
- * line wrapping collapsed.
- *
- * Returns "" for a description of one sentence.
- *
- * @param {string} s
- * @returns {string}
- */
-export function lastSentence(s) {
-  // ANY TERMINATOR: Go accepts ".", "!" and "?" to close a description, and
-  // refuses an unterminated one.
-  const parts = String(s).replace(/\s+/g, " ").trim().split(/[.!?]\s+/);
-  return parts.length < 2 ? "" : parts[parts.length - 1].trim();
 }
 
 /**

@@ -3,6 +3,7 @@ package export_test
 import (
 	"encoding/json"
 	"fmt"
+	stdhtml "html"
 	"html/template"
 	"io/fs"
 	"os"
@@ -2703,8 +2704,9 @@ func TestAClosedFlowTableIsNotDescribedAsListedBelow(t *testing.T) {
 			continue
 		}
 		// The template writes the whole <desc> itself, so there is no caller-supplied
-		// half to strip. Whitespace is collapsed because the template wraps it.
-		suffix := strings.TrimSpace(strings.Join(strings.Fields(m[1]), " "))
+		// half to strip. Read as a browser does: entities decoded, whitespace
+		// collapsed because the template wraps it.
+		suffix := strings.TrimSpace(strings.Join(strings.Fields(stdhtml.UnescapeString(m[1])), " "))
 		if suffix == "" {
 			t.Errorf("%s renders an empty <desc>, so it says nothing about where "+
 				"the table is", page)
@@ -2729,18 +2731,6 @@ func TestAClosedFlowTableIsNotDescribedAsListedBelow(t *testing.T) {
 		if !strings.Contains(html, "<h2>"+quoted+"</h2>") {
 			t.Errorf("%s's <desc> sends a reader to a heading %q that the page does not "+
 				"render", page, quoted)
-		}
-		// AND IT IS THE LAST SENTENCE, which is a claim about POSITION that the
-		// client depends on. app.js keeps this pointer through a drill by
-		// lifting the description's last sentence off the served markup --
-		// deliberately by position, because matching its words there would be a
-		// second copy of a sentence these templates own. Move the pointer into
-		// the middle of a <desc> and a drilled reader silently loses the only
-		// route they have to a table that ships closed.
-		sentences := sentenceSplit.Split(suffix, -1)
-		if last := strings.TrimSpace(sentences[len(sentences)-1]); !strings.Contains(last, "opens from") {
-			t.Errorf("%s's table pointer is not the last sentence of its <desc>, which is "+
-				"where app.js looks for it; the last sentence is %q", page, last)
 		}
 	}
 	// Anti-vacuity, without contradicting the skip above: the page must render a
@@ -2911,17 +2901,9 @@ func TestTheCaveatsPageFoldsItsFileListAndNotItsReason(t *testing.T) {
 	}
 }
 
-// sentenceSplit is app.js's own sentence boundary. Spelled once here because
-// this file asserts WHERE the client looks; a hand-written ". " was a stale copy
-// of it the moment lastSentence learned the other two terminators, and a copy
-// that has stopped agreeing asserts the wrong thing while reading correctly.
-var sentenceSplit = regexp.MustCompile(`[.!?]\s+`)
-
 // TestAStepDescriptionMayCloseWithAnyTerminatorAppJsSplitsOn: validate refuses
-// an unterminated DrillStep.Description because app.js separates it by
-// sentence, so the set it accepts has to be the set lastSentence splits on, and
-// no wider. The accepting half is what keeps validate from narrowing to "."
-// alone.
+// an unterminated DrillStep.Description because app.js appends sentences after
+// it. The accepting half is what keeps validate from narrowing to "." alone.
 func TestAStepDescriptionMayCloseWithAnyTerminatorAppJsSplitsOn(t *testing.T) {
 	for _, tc := range []struct {
 		desc   string

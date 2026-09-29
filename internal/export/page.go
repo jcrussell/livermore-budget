@@ -555,6 +555,7 @@ type wording struct {
 	DescFollows       string `json:"desc_follows"`
 	FlowInferred      string `json:"flow_inferred"`
 	NoneInferred      string `json:"none_inferred"`
+	TablePointer      string `json:"table_pointer"`
 }
 
 // kindLabels is project's words for every link kind, keyed as a link names it.
@@ -606,6 +607,7 @@ func defaultWording() wording {
 		DescFollows:       ", follow this money",
 		FlowInferred:      "This flow is inferred; both endpoints are printed by the city.",
 		NoneInferred:      "Nothing on this chart is inferred: every node and flow is printed by the city.",
+		TablePointer:      "The same figures are in the flow table below, which opens from the \"Every flow, as a table\" heading.",
 	}
 }
 

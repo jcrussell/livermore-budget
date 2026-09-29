@@ -486,7 +486,8 @@
         "desc_expands",
         "desc_follows",
         "flow_inferred",
-        "none_inferred"
+        "none_inferred",
+        "table_pointer"
       ],
       "additionalProperties": false,
       "properties": {
@@ -601,7 +602,8 @@
         "desc_expands": { "type": "string", "minLength": 1 },
         "desc_follows": { "type": "string", "minLength": 1 },
         "flow_inferred": { "type": "string", "minLength": 1 },
-        "none_inferred": { "type": "string", "minLength": 1 }
+        "none_inferred": { "type": "string", "minLength": 1 },
+        "table_pointer": { "type": "string", "minLength": 1 }
       }
     }
   }
