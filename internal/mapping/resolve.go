@@ -1549,6 +1549,23 @@ func (r *Resolver) rollupNamesItsOwnLine(ro *Rollup, rules []*Rule, bearers []*P
 	return nil
 }
 
+// The two anchors a part's stated totals are read from.
+const (
+	AnchorTotalRow = "total_row"
+	AnchorStopAt   = "stop_at"
+)
+
+// AnchorOf is which anchor a part's stated totals are read from: a part whose
+// labels come from another part has none of its own and ends at its block's
+// stop_at; any other part reads its rule's total_row. totalAnchor branches on
+// it, and so does any caller naming the line.
+func AnchorOf(p *Part) string {
+	if p.LabelsFrom != 0 {
+		return AnchorStopAt
+	}
+	return AnchorTotalRow
+}
+
 // totalAnchor returns the offset just past the anchor a part's stated totals
 // are read from, and the field name an error about it should carry.
 //
@@ -1557,7 +1574,7 @@ func (r *Resolver) rollupNamesItsOwnLine(ro *Rollup, rules []*Rule, bearers []*P
 // line as one of the totals it covers -- and two computations of "where does
 // this rule's printed total sit" would be two things to keep in step.
 func (r *Resolver) totalAnchor(rule *Rule, p *Part, blk *block, text string) (int, string, error) {
-	if p.LabelsFrom != 0 {
+	if AnchorOf(p) == AnchorStopAt {
 		if p.StopAt == "" {
 			return 0, "stop_at", &resolveError{DocID: r.file.DocID, RuleID: rule.ID,
 				Page: p.Page, Field: "stop_at", Err: ErrNoStatedTotals,

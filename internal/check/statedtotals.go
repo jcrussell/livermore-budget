@@ -117,7 +117,7 @@ func (*factOffsetIsNotAStatedTotal) Run(_ context.Context, s *Subject) (Result, 
 		// spine-expenditures on p67) also DECLARE a total_row, so the narrow
 		// filter would have reached them anyway, and the three that declare none
 		// anchor on a block terminator that prints no totals run at all. The
-		// widening is kept because it mirrors totalAnchor rather than
+		// widening is kept because it follows mapping.AnchorOf rather than
 		// second-guessing it; a witness for it needs a synthetic rule, which is
 		// fisc-loxx.
 		for i := range f.Rules {
@@ -140,7 +140,7 @@ func (*factOffsetIsNotAStatedTotal) Run(_ context.Context, s *Subject) (Result, 
 					// rule's total prints on the block's last page, and a
 					// label-less part anchors on the block terminator rather
 					// than on a totals row.
-					if !rule.TotalSpansParts && p.LabelsFrom == 0 && rule.TotalRow != "" {
+					if !rule.TotalSpansParts && mapping.AnchorOf(p) == mapping.AnchorTotalRow && rule.TotalRow != "" {
 						failures = append(failures, fmt.Sprintf("p%d: %v", p.Page, err))
 					}
 					continue
@@ -149,8 +149,8 @@ func (*factOffsetIsNotAStatedTotal) Run(_ context.Context, s *Subject) (Result, 
 				if spans[f.DocID] == nil {
 					spans[f.DocID] = map[int][]totalSpan{}
 				}
-				// THE LABEL MUST BRANCH THE WAY totalAnchor BRANCHED, and on
-				// LabelsFrom FIRST. spine-revenues and spine-expenditures on
+				// THE LABEL NAMES THE ANCHOR mapping.AnchorOf SAYS the part reads,
+				// the branch totalAnchor takes. spine-revenues and spine-expenditures on
 				// p67 are label-less AND declare a total_row, and their anchor
 				// is still stop_at -- so naming rule.TotalRow there would name
 				// "TOTAL REVENUES:" as p67's printed stated-total line, a string
@@ -158,7 +158,7 @@ func (*factOffsetIsNotAStatedTotal) Run(_ context.Context, s *Subject) (Result, 
 				// reports a defect by pointing at a line that is not there sends
 				// its reader to grep for nothing.
 				label := "the end of the block, via stop_at " + strconv.Quote(p.StopAt)
-				if p.LabelsFrom == 0 && rule.TotalRow != "" {
+				if mapping.AnchorOf(p) == mapping.AnchorTotalRow {
 					label = rule.TotalRow
 				}
 				spans[f.DocID][p.Page] = append(spans[f.DocID][p.Page],
