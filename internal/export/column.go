@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"path"
-	"regexp"
 	"slices"
 	"sort"
 	"strings"
@@ -108,7 +107,8 @@ type ColumnLink struct {
 
 // decoded is a published document, read far enough to fold into a column.
 type decoded struct {
-	Nodes []struct {
+	Projection string `json:"projection"`
+	Nodes      []struct {
 		ID             string `json:"id"`
 		Label          string `json:"label"`
 		Tier           int    `json:"tier"`
@@ -211,10 +211,14 @@ func ColumnsOf(projections map[string][]byte, generatedBy string) (map[string]Co
 
 	for _, stem := range stems {
 		raw := projections[stem]
-		schedule := scheduleKey(stem)
 		var d decoded
 		if err := json.Unmarshal(raw, &d); err != nil {
 			return nil, ColumnIndex{}, fmt.Errorf("decode %s: %w", stem, err)
+		}
+		// The schedule a document becomes is the projection it says it is.
+		schedule := d.Projection
+		if schedule == "" && len(d.Nodes) > 0 {
+			return nil, ColumnIndex{}, fmt.Errorf("document %s states no projection, so it is no schedule of its column", stem)
 		}
 		if d.Metadata.FiscalYear == 0 || d.Metadata.Basis == "" || len(d.Nodes) == 0 {
 			continue
@@ -302,15 +306,6 @@ func ColumnsOf(projections map[string][]byte, generatedBy string) (map[string]Co
 		out[key] = *col
 	}
 	return out, ix, nil
-}
-
-// yearSuffix is what project.PublishedStem appends to a projection name.
-var yearSuffix = regexp.MustCompile(`-(\d{4})(-actual|-revised)?$`)
-
-// scheduleKey is the schedule a stem's document becomes in its column. It
-// inverts project.PublishedStem and nothing holds the two together (fisc-9akl).
-func scheduleKey(stem string) string {
-	return yearSuffix.ReplaceAllString(stem, "")
 }
 
 // tiersOf is the reader's left-to-right: every tier the column draws a node at,

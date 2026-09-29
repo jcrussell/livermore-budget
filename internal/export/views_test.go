@@ -1,6 +1,7 @@
 package export_test
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	stdhtml "html"
@@ -608,7 +609,8 @@ func TestTheCaveatsPagePromisesAChartFlagOnlyWhereThereIsAChart(t *testing.T) {
 		Projections: map[string][]byte{
 			export.PrimaryProjection: goldenSankey(t),
 			"revenue-trends":         trendsDoc(127),
-			"unviewed":               goldenSankey(t),
+			// A second schedule of the column, which no view renders.
+			"unviewed": bytes.Replace(goldenSankey(t), []byte(`"projection": "sankey"`), []byte(`"projection": "fund-flows"`), 1),
 		},
 		Views: []export.View{
 			{Path: export.IndexPath, Nav: "Budget flows",

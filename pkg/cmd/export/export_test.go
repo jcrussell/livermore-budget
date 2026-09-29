@@ -639,9 +639,20 @@ func TestExportRunRefusesBeforeCleanDestroysTheSite(t *testing.T) {
 	}
 	delete(unviewedDocuments, stem)
 	t.Cleanup(func() { unviewedDocuments[stem] = reason })
+	// The document states the projection the published declaration gives it.
+	projection := ""
+	for _, d := range project.PublishedDocuments() {
+		if d.Stem == stem {
+			projection = d.Projection
+		}
+	}
+	if projection == "" {
+		t.Fatalf("no published document has stem %q", stem)
+	}
+	doc := bytes.Replace(goldenSankey(t), []byte(`"projection": "sankey"`), []byte(`"projection": "`+projection+`"`), 1)
 	opts.Build = func(string) (result, error) {
 		return result{Projections: map[string][]byte{
-			"sankey": goldenSankey(t), stem: goldenSankey(t)}}, nil
+			"sankey": goldenSankey(t), stem: doc}}, nil
 	}
 
 	opts.Clean = true

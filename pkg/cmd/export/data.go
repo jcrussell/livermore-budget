@@ -346,14 +346,32 @@ func yearStems(name string, projections map[string][]byte) []string {
 // published document. Each entry is a column pp.66-67 print no year for, so no
 // spine year opens into it.
 var unviewedDocuments = map[string]string{
-	project.FundFlowsProjection + "-2024-actual":  fundFlowsNoSpineColumn,
-	project.FundFlowsProjection + "-2025-revised": fundFlowsNoSpineColumn,
+	publishedStem(project.FundFlowsProjection, actual2024):  fundFlowsNoSpineColumn,
+	publishedStem(project.FundFlowsProjection, revised2025): fundFlowsNoSpineColumn,
 
-	project.DepartmentSpendingProjection + "-2024-actual":  spendingNoSpineColumn,
-	project.DepartmentSpendingProjection + "-2025-revised": spendingNoSpineColumn,
+	publishedStem(project.DepartmentSpendingProjection, actual2024):  spendingNoSpineColumn,
+	publishedStem(project.DepartmentSpendingProjection, revised2025): spendingNoSpineColumn,
 
-	project.DepartmentFundingProjection + "-2024-actual":  fundingNoSpineColumn,
-	project.DepartmentFundingProjection + "-2025-revised": fundingNoSpineColumn,
+	publishedStem(project.DepartmentFundingProjection, actual2024):  fundingNoSpineColumn,
+	publishedStem(project.DepartmentFundingProjection, revised2025): fundingNoSpineColumn,
+}
+
+// The two columns pp.66-67 print no year for.
+var (
+	actual2024  = project.Column{FiscalYear: 2024, Basis: mapping.BasisActual}
+	revised2025 = project.Column{FiscalYear: 2025, Basis: mapping.BasisRevised}
+)
+
+// publishedStem is the stem project.PublishedDocuments gives a projection's
+// document of one column, or "" if it publishes none, which
+// assertPublishedReachable refuses as an entry naming no published document.
+func publishedStem(projection string, col project.Column) string {
+	for _, d := range project.PublishedDocuments() {
+		if d.Projection == projection && len(d.Columns) == 1 && d.Columns[0] == col {
+			return d.Stem
+		}
+	}
+	return ""
 }
 
 const fundingNoSpineColumn = "a published column of pp.85-125's Department Funding Sources " +

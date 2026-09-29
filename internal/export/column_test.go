@@ -1,6 +1,7 @@
 package export
 
 import (
+	"bytes"
 	"reflect"
 	"slices"
 	"sort"
@@ -117,7 +118,7 @@ func TestAReductionsSentenceSurvivesTheFoldIntoAColumn(t *testing.T) {
 	  ]
 	}`)
 
-	cols, _, err := ColumnsOf(map[string][]byte{"fund-flows": doc}, "t")
+	cols, _, err := ColumnsOf(named(map[string][]byte{"fund-flows": doc}), "t")
 	if err != nil {
 		t.Fatalf("ColumnsOf: %v", err)
 	}
@@ -170,7 +171,7 @@ func TestStepStemsResolvesAStepWithNoScheduleThroughItsAfter(t *testing.T) {
 		return []byte(`{"nodes":[{"id":"n","label":"N","tier":0}],"links":[],` +
 			`"metadata":{"fiscal_year":2026,"basis":"adopted"}}`)
 	}
-	_, ix, err := ColumnsOf(map[string][]byte{"year": doc(), "first": doc(), "second": doc()}, "")
+	_, ix, err := ColumnsOf(named(map[string][]byte{"year": doc(), "first": doc(), "second": doc()}), "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -236,7 +237,7 @@ func TestColumnsOfRefusesWhatItCannotFold(t *testing.T) {
 		}, "link a -> b names a node the document does not carry"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			_, _, err := ColumnsOf(tc.docs, "t")
+			_, _, err := ColumnsOf(named(tc.docs), "t")
 			if err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("ColumnsOf: err = %v, want one containing %q", err, tc.want)
 			}
@@ -248,10 +249,10 @@ func TestColumnsOfRefusesWhatItCannotFold(t *testing.T) {
 // so two schedules agreeing on a node's table entry and disagreeing about
 // where it hangs fold into one node with two parent edges.
 func TestTwoSchedulesMayHangOneNodeDifferently(t *testing.T) {
-	cols, _, err := ColumnsOf(map[string][]byte{
+	cols, _, err := ColumnsOf(named(map[string][]byte{
 		"one": columnTestDoc(`{"id": "a", "label": "A", "tier": 0}, {"id": "b", "label": "B", "tier": 1, "parent": "a"}`, columnTestLink),
 		"two": columnTestDoc(`{"id": "a", "label": "A", "tier": 0}, {"id": "b", "label": "B", "tier": 1}`, columnTestLink),
-	}, "t")
+	}), "t")
 	if err != nil {
 		t.Fatalf("ColumnsOf refused two schedules that differ only in a parent edge: %v", err)
 	}
@@ -281,7 +282,7 @@ func TestEncodeColumnRefusesWhatItMayNotServe(t *testing.T) {
 	  {"id": "b", "label": "B", "tier": 1}`
 	column := func(t *testing.T) ColumnDoc {
 		t.Helper()
-		cols, _, err := ColumnsOf(map[string][]byte{"one": columnTestDoc(derived, columnTestLink)}, "t")
+		cols, _, err := ColumnsOf(named(map[string][]byte{"one": columnTestDoc(derived, columnTestLink)}), "t")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -314,5 +315,24 @@ func TestEncodeColumnRefusesWhatItMayNotServe(t *testing.T) {
 				t.Fatalf("encodeColumn: err = %v, want one containing %q", err, tc.want)
 			}
 		})
+	}
+}
+
+// named gives each hand-built document the projection its stem names, as
+// every built document states its own.
+func named(docs map[string][]byte) map[string][]byte {
+	out := make(map[string][]byte, len(docs))
+	for stem, raw := range docs {
+		out[stem] = append([]byte(`{"projection": "`+stem+`", `), bytes.TrimPrefix(bytes.TrimSpace(raw), []byte("{"))...)
+	}
+	return out
+}
+
+// TestColumnsOfRefusesADocumentNamingNoProjection: the schedule a document
+// becomes is the projection it states, so one stating none has no schedule.
+func TestColumnsOfRefusesADocumentNamingNoProjection(t *testing.T) {
+	_, _, err := ColumnsOf(map[string][]byte{"one": columnTestDoc(`{"id": "a", "label": "A", "tier": 0}, {"id": "b", "label": "B", "tier": 1}`, columnTestLink)}, "t")
+	if err == nil || !strings.Contains(err.Error(), "states no projection") {
+		t.Fatalf("ColumnsOf: err = %v, want the missing projection named", err)
 	}
 }
