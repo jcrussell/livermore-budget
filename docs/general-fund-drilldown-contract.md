@@ -276,8 +276,9 @@ carry.
 
   A fund pp.173-183 print spending for and pp.127-140 print no revenue for is
   drawn with nothing flowing into it, and its window cannot keep a flank, so
-  it opens into nothing. Which funds those are differs by column; each rung's
-  answer names them under `needs`.
+  it opens into nothing. Which funds those are differs by column; the client
+  finds them in the column document it draws, and drops a widened column the
+  document leaves empty.
 - **Transfers between funds.** p76's legs are scope `transfers-by-fund`, which
   this document does not select because the two overlap `revenue-by-fund` on
   `transfer_in`. They have a document of their own, `transfers-by-fund`, which

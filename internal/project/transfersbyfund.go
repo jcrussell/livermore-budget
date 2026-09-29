@@ -181,12 +181,12 @@ func (t *transfersByFund) Document(facts []fact.Fact, o Options) (*Document, err
 		links = append(links, Link{
 			Source: payer.from.id, Target: receiver.fund.id, ValueCents: r.in.AmountCents,
 			Kind: KindInternalTransfer, TransferID: id, FactIDs: []string{r.in.ID},
-			Locators: sourcesOf([]fact.Fact{r.in}),
+			Locators: SourcesOf([]fact.Fact{r.in}),
 		})
 		links = append(links, Link{
 			Source: payer.fund.id, Target: receiver.to.id, ValueCents: r.out.AmountCents,
 			Kind: KindInternalTransfer, TransferID: id, FactIDs: []string{r.out.ID},
-			Locators: sourcesOf([]fact.Fact{r.out}),
+			Locators: SourcesOf([]fact.Fact{r.out}),
 		})
 	}
 
@@ -220,7 +220,7 @@ func (t *transfersByFund) Document(facts []fact.Fact, o Options) (*Document, err
 			Scopes:          t.scopes(),
 			Currency:        "USD",
 			Units:           "cents",
-			Sources:         sourcesOf(selected),
+			Sources:         SourcesOf(selected),
 			Counts:          c,
 			Caveats:         cavs,
 		},

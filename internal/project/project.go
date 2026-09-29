@@ -366,7 +366,8 @@ func sameScopes(a, b []string) bool {
 
 // stemOrPanic is [Stem] where the arguments are this package's own literals and
 // an error is a bug here rather than a state a corpus can reach. Stem's only
-// error is an Options with no columns, and spineOptions always has one; a
+// error is an Options with no columns, and publishedGraph.options gives each
+// Options one; a
 // returned error would have to be swallowed or would have to make
 // PublishedDocuments fallible, and a published set that can fail to be stated
 // is worse than a panic on a line no input reaches.

@@ -378,7 +378,7 @@ func (f *fundFlows) Document(facts []fact.Fact, o Options) (*Document, error) {
 			Scopes:          FundFlowsScopes(),
 			Currency:        "USD",
 			Units:           "cents",
-			Sources:         sourcesOf(selected),
+			Sources:         SourcesOf(selected),
 			Counts:          c,
 			Caveats:         cavs,
 		},

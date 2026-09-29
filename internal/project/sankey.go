@@ -78,16 +78,16 @@ var idFormTiers = map[string]int{
 	PrefixTransferTo:   tierObjectCategory,
 }
 
-// endpointTiers are the flow endpoints, which sit outside the hierarchy and
-// carry a tier by name: one prefix, fund-balance/, holds a tier-0 and a tier-5
-// endpoint, so no prefix rule could place them.
-var endpointTiers = map[string]int{
-	NodeTransfersIn:                    tierRevenueSource,
-	NodeTransfersOut:                   tierObjectCategory,
-	NodeFundBalanceDraw:                tierRevenueSource,
-	NodeFundBalanceContribution:        tierObjectCategory,
-	CategoryFundBalanceReserveIncrease: tierObjectCategory,
-}
+// endpointTiers are the flow endpoints' tiers, read off spineEndpoints: they
+// sit outside the hierarchy and carry a tier by name, since one prefix,
+// fund-balance/, holds a tier-0 and a tier-5 endpoint.
+var endpointTiers = func() map[string]int {
+	out := make(map[string]int, len(spineEndpoints))
+	for _, e := range spineEndpoints {
+		out[e.id] = e.tier
+	}
+	return out
+}()
 
 // TierOf is the tier a node id sits at: an endpoint's by name, any other id's
 // by the prefix up to its first slash, with something after it. ok is false
@@ -685,7 +685,7 @@ func (s *sankey) Document(facts []fact.Fact, o Options) (*Document, error) {
 			Scopes:          []string{scope},
 			Currency:        "USD",
 			Units:           "cents",
-			Sources:         sourcesOf(selected),
+			Sources:         SourcesOf(selected),
 			Headline:        &h,
 			Counts:          c,
 			Caveats:         cavs,
@@ -973,9 +973,10 @@ func checkDistinctLinks(links []Link) error {
 	return nil
 }
 
-// sourcesOf lists the documents and pages the facts were read from, so the
-// citation on the page names pages rather than a document.
-func sourcesOf(facts []fact.Fact) []Source {
+// SourcesOf lists the documents and pages the facts were read from, grouped by
+// locatorSet, the rule every document's sources and every link's locators go
+// through.
+func SourcesOf(facts []fact.Fact) []Source {
 	var l locatorSet
 	for i := range facts {
 		l.add(&facts[i])

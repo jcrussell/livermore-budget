@@ -233,16 +233,6 @@ func nodeIDs(nodes []Node) map[string]struct{} {
 	return out
 }
 
-// SourcesOf is the (doc_id, page) pairs facts were read from, in the published
-// shape; it is how every link's Locators are built.
-func SourcesOf(facts []*fact.Fact) []Source {
-	var l locatorSet
-	for _, f := range facts {
-		l.add(f)
-	}
-	return l.sources()
-}
-
 // locatorSet collects the (doc_id, page) pairs of a set of facts.
 //
 // IT IS THE ONE GROUPING RULE IN THIS PACKAGE. Both sourcesOf (a whole

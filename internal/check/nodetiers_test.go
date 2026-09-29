@@ -59,6 +59,30 @@ func TestNodeTiersAreDeclaredIsFailable(t *testing.T) {
 		want   string
 	}{
 		{
+			// A Node literal naming a tier rather than taking TierOf's.
+			name: "a node at the wrong tier for its id form",
+			damage: func(t *testing.T, g *project.Document) {
+				g.Nodes[nodeIndex(t, g, "fund-group/")].Tier = 3
+			},
+			want: "its id form's is 2",
+		},
+		{
+			// A line left at its parent's tier: only the tier moves.
+			name: "a revenue line at its category's tier",
+			damage: func(t *testing.T, g *project.Document) {
+				i := nodeIndex(t, g, "revenue/")
+				was := g.Nodes[i].ID
+				now := "revenue-line/" + strings.TrimPrefix(was, "revenue/") + "/eraf"
+				g.Nodes[i].ID = now
+				for j := range g.Links {
+					if g.Links[j].Source == was {
+						g.Links[j].Source = now
+					}
+				}
+			},
+			want: "its id form's is 1",
+		},
+		{
 			// docs/sankey-contract.md: "Do not coin new ones."
 			name: "a coined id form",
 			damage: func(t *testing.T, g *project.Document) {

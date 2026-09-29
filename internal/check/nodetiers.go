@@ -12,9 +12,9 @@ import (
 // nodeTiersAreDeclared asserts every node is of an id form project.TierOf
 // declares, and every link runs from a coarser tier to a finer one.
 //
-// The builders take each node's tier from project.TierOf, so a node's tier is
-// its form's by construction; what a builder can still do is coin an id of no
-// declared form, which carries tier -1 and is a finding here. It does not
+// project.TierOf is the one tier table. A node of no declared form, or whose
+// published tier is not its form's -- a Node literal that names a tier rather
+// than taking it from the table -- is a finding here. It does not
 // witness that the tier table is the right model of the city's finances, and it
 // does not witness node.parent, which is the fold and belongs to
 // aggregation-invariance.
@@ -39,7 +39,7 @@ func (*nodeTiersAreDeclared) ID() string { return "node-tiers-are-declared" }
 func (*nodeTiersAreDeclared) Tier() int  { return 1 }
 func (*nodeTiersAreDeclared) Full() bool { return false }
 func (*nodeTiersAreDeclared) Description() string {
-	return "every node is of an id form the tier table declares, and every link runs from a coarser tier to a finer one unless it is a revenue " +
+	return "every node is of an id form the tier table declares and at that form's tier, and every link runs from a coarser tier to a finer one unless it is a revenue " +
 		"line rolled up into its category or a document-wide partition along one pair of tiers"
 }
 
@@ -58,13 +58,18 @@ func (*nodeTiersAreDeclared) Run(_ context.Context, s *Subject) (Result, error) 
 			tierOf[n.ID] = n.Tier
 			parentOf[n.ID] = n.Parent
 
-			// The builders take every tier from project.TierOf, so the one thing
-			// left to hold is that the id is of a declared form.
-			if _, ok := project.TierOf(n.ID); !ok {
+			want, ok := project.TierOf(n.ID)
+			switch {
+			case !ok:
 				findings = append(findings, finding(p.String(),
 					"node %q is of no declared id form (%s, or one of the endpoints %s); "+
 						"a coined form has no tier and no place in the fold",
 					n.ID, strings.Join(project.IDForms(), ", "), strings.Join(project.Endpoints(), ", ")))
+			case n.Tier != want:
+				findings = append(findings, finding(p.String(),
+					"node %q carries tier %d and its id form's is %d. The tier is what "+
+						"the client folds on and orders the columns by, so the node is drawn "+
+						"in the wrong column", n.ID, n.Tier, want))
 			}
 		}
 
@@ -145,7 +150,7 @@ func (*nodeTiersAreDeclared) Run(_ context.Context, s *Subject) (Result, error) 
 	return conclusion{
 		subjects: nodes,
 		unit:     "nodes",
-		held: fmt.Sprintf("%d nodes over %d graph document(s), each of a declared id form; %d "+
+		held: fmt.Sprintf("%d nodes over %d graph document(s), each at its declared id form's tier; %d "+
 			"links, each coarser to finer or one of %d rollups and %d partitions",
 			nodes, len(s.linkedDocuments()), links, rollups, partitions),
 		nothing:  "no projection carries a node, so no tier has been read",

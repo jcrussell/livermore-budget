@@ -22,6 +22,7 @@ type spineEndpoint struct {
 	id       string
 	kind     mapping.Kind
 	category string
+	tier     int
 }
 
 // spineEndpoints are the five nodes the spine draws outside its hierarchy,
@@ -29,11 +30,11 @@ type spineEndpoint struct {
 // the reserve row at its own, and the two halves of the change in working
 // capital. A test holds the list to the spine's golden.
 var spineEndpoints = []spineEndpoint{
-	{NodeTransfersIn, mapping.KindTransferIn, NodeTransfersIn},
-	{NodeTransfersOut, mapping.KindTransferOut, NodeTransfersOut},
-	{CategoryFundBalanceReserveIncrease, mapping.KindFundBalance, CategoryFundBalanceReserveIncrease},
-	{NodeFundBalanceDraw, mapping.KindFundBalance, CategoryFundBalanceChange},
-	{NodeFundBalanceContribution, mapping.KindFundBalance, CategoryFundBalanceChange},
+	{NodeTransfersIn, mapping.KindTransferIn, NodeTransfersIn, tierRevenueSource},
+	{NodeTransfersOut, mapping.KindTransferOut, NodeTransfersOut, tierObjectCategory},
+	{CategoryFundBalanceReserveIncrease, mapping.KindFundBalance, CategoryFundBalanceReserveIncrease, tierObjectCategory},
+	{NodeFundBalanceDraw, mapping.KindFundBalance, CategoryFundBalanceChange, tierRevenueSource},
+	{NodeFundBalanceContribution, mapping.KindFundBalance, CategoryFundBalanceChange, tierObjectCategory},
 }
 
 // EndpointCategory is the category every fact behind a spine flow endpoint

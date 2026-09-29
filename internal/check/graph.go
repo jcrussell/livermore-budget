@@ -261,7 +261,7 @@ func (*linkValuesTieToFacts) Run(_ context.Context, s *Subject) (Result, error) 
 // link-values-tie-to-facts reads only fact_ids, and the shard itself is
 // well-formed either way.
 //
-// The grouping is project.SourcesOf, the one rule the builders use; what this
+// The grouping is project.SourcesOf, over the builders' locatorSet; what this
 // holds is that a link's locators are built from exactly the facts it cites.
 //
 // It resolves ids in the projection's OWN slice, as its neighbour does, so a
@@ -293,7 +293,7 @@ func (*linkLocatorsMatchTheirFacts) Run(_ context.Context, s *Subject) (Result, 
 						"%d facts it cites", len(l.FactIDs)))
 				continue
 			}
-			var cited []*fact.Fact
+			var cited []fact.Fact
 			unknown := false
 			for _, id := range l.FactIDs {
 				f, ok := selected[id]
@@ -304,7 +304,7 @@ func (*linkLocatorsMatchTheirFacts) Run(_ context.Context, s *Subject) (Result, 
 					unknown = true
 					break
 				}
-				cited = append(cited, &f)
+				cited = append(cited, f)
 			}
 			if unknown {
 				continue
@@ -361,8 +361,8 @@ func describeSources(ss []project.Source) string {
 // The identity every document publishes is facts = facts_cited + facts_uncited,
 // and it holds whatever an uncited fact is worth; that an uncited fact is a
 // printed zero or a stock row is refused at build by every builder. counts.facts
-// against a fresh selection from the store catches a selector dropped from the
-// projection's filter; facts_cited and facts_cited_twice against the union of
+// against project.SelectFacts catches a document that counted other facts than
+// the ones it selected; facts_cited and facts_cited_twice against the union of
 // every link's fact_ids catch a citation the document dropped or counted twice;
 // nodes and links against the arrays are a ratchet, and labelled as one.
 type countsReconcile struct{}

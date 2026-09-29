@@ -158,7 +158,7 @@ func (sp seriesSpec) document(facts []fact.Fact, o Options) (*TrendsDocument, er
 		Metadata: trendsMetadata{
 			Envelope: env,
 			Columns:  trendColumns(o.Columns),
-			Sources:  sourcesOf(selected),
+			Sources:  SourcesOf(selected),
 			Counts: trendCounts{
 				Facts:  len(selected),
 				Series: len(series),

@@ -32,10 +32,13 @@
 // against this package's re-derivation of it is comparing two functions over
 // identical input inside one process. Those two move together: they cannot witness
 // a wrong amount, and a run of 61 perturbed amounts once passed every one of them.
-// What they DO catch is a derivation rule that is wrong or has drifted — a link
-// citing facts that are not the ones its value came from, a selector dropped from
-// the fact selection, the internal service split applied to the wrong group, a
-// published count that no longer matches its own graph.
+// What they DO catch is output that contradicts a rule the producer states — a
+// link citing facts that are not the ones its value came from, a node at a tier
+// its id form does not have, a published count that no longer matches its own
+// graph. They read the producer's own definitions (the fact selection, the
+// internal-service group, the id forms and tiers), so a wrong definition moves
+// both sides together; the definition's own tests in internal/project are what
+// catch that.
 //
 // The independent witnesses are the two that leave the derivation entirely:
 // fact-token-reparses re-parses the verbatim source text each amount was read

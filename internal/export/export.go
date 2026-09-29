@@ -38,6 +38,7 @@ import (
 	"path/filepath"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
@@ -1069,6 +1070,17 @@ func (v View) validateSteps(built map[string][]byte, ix ColumnIndex) error {
 					"view %q's step %d declares a gap of 0 cents on node %q in some column; a "+
 						"licence for a node that balances licenses nothing, and the client would "+
 						"refuse the chart for balancing where a gap was declared", v.Path, i, id)
+			}
+			seen := map[[2]string]bool{}
+			for _, g := range s.Gaps[id] {
+				col := [2]string{strconv.Itoa(g.FiscalYear), g.Basis}
+				if seen[col] {
+					return fmt.Errorf(
+						"view %q's step %d declares two gaps on node %q for FY%d %s; the client "+
+							"holds a column's chart to one licence, and would keep one and drop "+
+							"the other in silence", v.Path, i, id, g.FiscalYear, g.Basis)
+				}
+				seen[col] = true
 			}
 		}
 		// Every year the view lists opens into something, asked of the column

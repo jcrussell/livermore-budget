@@ -155,7 +155,7 @@ func (d *departmentFunding) Document(facts []fact.Fact, o Options) (*Document, e
 			Scopes:          DepartmentFundingScopes(),
 			Currency:        "USD",
 			Units:           "cents",
-			Sources:         sourcesOf(selected),
+			Sources:         SourcesOf(selected),
 			Counts:          c,
 			Caveats:         cavs,
 		},
