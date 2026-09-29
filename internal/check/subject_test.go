@@ -941,7 +941,10 @@ func TestAPublishedDocumentShortAColumnIsReported(t *testing.T) {
 // project.ContestedTotals() rather than a second copy of the figures -- two
 // copies agreeing is not the claim worth making.
 func TestContestedTotalsAreStillContested(t *testing.T) {
-	entries := project.ContestedTotals()
+	entries, err := project.ContestedTotals()
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(entries) == 0 {
 		t.Skip("no contested totals are declared, so there is nothing to keep honest")
 	}

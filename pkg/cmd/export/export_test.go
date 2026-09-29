@@ -1242,7 +1242,7 @@ func TestBuildProjectionsDoesNotRefuseASecondSchedule(t *testing.T) {
 // document was built; neither asks whether a page renders it.
 func TestEveryPublishedDocumentIsRenderedOrDeclaredUnrendered(t *testing.T) {
 	built := builtStemsForTest(t)
-	if err := assertPublishedReachable(views(result{Projections: built}), built); err != nil {
+	if err := assertPublishedReachable(mustViews(t, result{Projections: built}), built); err != nil {
 		t.Fatalf("the committed corpus: %v", err)
 	}
 
@@ -1263,7 +1263,7 @@ func TestEveryPublishedDocumentIsRenderedOrDeclaredUnrendered(t *testing.T) {
 	// Built from the REAL view set plus one, so the only thing wrong with it is
 	// the stale declaration -- starting from a bare slice would trip the
 	// missing-view arm above instead and prove nothing about this one.
-	stale := views(result{Projections: built})
+	stale := mustViews(t, result{Projections: built})
 	for stem := range unviewedDocuments {
 		stale = append(stale, export.View{Path: "x.html", Projection: stem})
 		break
@@ -1282,7 +1282,7 @@ func TestEveryPublishedDocumentIsRenderedOrDeclaredUnrendered(t *testing.T) {
 	// refuse.
 	unviewedDocuments["no-such-document"] = "left behind"
 	t.Cleanup(func() { delete(unviewedDocuments, "no-such-document") })
-	if err := assertPublishedReachable(views(result{Projections: built}), built); err == nil {
+	if err := assertPublishedReachable(mustViews(t, result{Projections: built}), built); err == nil {
 		t.Error("a declaration naming no published document was accepted")
 	} else if !strings.Contains(err.Error(), "publishes no such document") {
 		t.Errorf("got %v, want a refusal naming the leftover entry", err)
@@ -1309,7 +1309,7 @@ func builtStemsForTest(t *testing.T) map[string][]byte {
 // spine and to no other view, and that the spine is the one chart page.
 func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 	built := builtStemsForTest(t)
-	got := views(result{Projections: built})
+	got := mustViews(t, result{Projections: built})
 
 	if len(got) != 5 {
 		t.Fatalf("got %d views over %v, want the spine, the revenue trends, the two ACFR "+
@@ -1395,7 +1395,7 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 			Back: "All fund groups",
 			Tail: "funds",
 			// Derived from the cuts and exceptions, which are the declaration.
-			Residual:      project.FundFlowsResidual(),
+			Residual:      must[map[string]string](t)(project.FundFlowsResidual()),
 			ResidualGrain: "fund",
 			Description: "The revenue categories on the left are the citywide chart's own " +
 				"cells; this fund group is the mark in the middle, and its own funds are " +
@@ -1483,7 +1483,7 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 			Back:       "All object categories",
 			Tail:       "divisions",
 			// Derived from the exceptions cuts-tie-along-the-lattice pins.
-			Gaps: spendingGaps(),
+			Gaps: must[map[string]export.Gaps](t)(spendingGaps()),
 			Description: "The fund groups that pay for this object category are on the " +
 				"left; the divisions that spend it are on the right \u2014 Budget Book " +
 				"pp.85-125's rows for this category, every division in the city that " +
@@ -1663,7 +1663,7 @@ func TestOpensIntoJoinsOnColumnNotOnDeclaredOrder(t *testing.T) {
 			project.TransfersOutProjection, project.DepartmentFundingProjection}, nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got := stepKeys(views(result{Projections: without(tc.drop...)})[0].Steps)
+			got := stepKeys(mustViews(t, result{Projections: without(tc.drop...)})[0].Steps)
 			if len(got) == 0 {
 				got = nil
 			}
@@ -1705,7 +1705,7 @@ func TestAPageThatDisclaimsAuditAssuranceDoesNotClaimItInItsProse(t *testing.T) 
 
 	const disclaimer = export.UnauditedCaveatID
 	shipping := map[string]bool{}
-	for _, v := range views(result{Projections: built}) {
+	for _, v := range mustViews(t, result{Projections: built}) {
 		if v.Projection == "" {
 			continue
 		}
@@ -1797,7 +1797,7 @@ func TestAPageDoesNotLabelAColumnWithAWordItsCaveatWithdraws(t *testing.T) {
 	}
 
 	scanned := 0
-	for _, v := range views(result{Projections: built}) {
+	for _, v := range mustViews(t, result{Projections: built}) {
 		if v.Projection == "" {
 			continue
 		}
@@ -1871,7 +1871,7 @@ func TestAPageDoesNotLabelAColumnWithAWordItsCaveatWithdraws(t *testing.T) {
 // `fisc verify` is what says the document is missing.
 func TestAViewWhoseDocumentWasNotBuiltIsDropped(t *testing.T) {
 	only := map[string][]byte{export.PrimaryProjection: {}}
-	got := views(result{Projections: only})
+	got := mustViews(t, result{Projections: only})
 
 	// EVERY VIEW THAT NAMES A PROJECTION IS THE SPINE'S, and that is the
 	// assertion rather than a count. It used to be `len(got) != 1`, which was
@@ -1905,7 +1905,7 @@ func TestAViewWhoseDocumentWasNotBuiltIsDropped(t *testing.T) {
 	// the list is now derived from the views the full set produces rather than
 	// typed out.
 	dropped := map[string]bool{}
-	for _, v := range views(result{Projections: map[string][]byte{
+	for _, v := range mustViews(t, result{Projections: map[string][]byte{
 		export.PrimaryProjection:       {},
 		project.TrendsProjection:       {},
 		project.FundFlowsProjection:    {},
@@ -2332,5 +2332,27 @@ func TestEveryServedStampIsTheExportsOwn(t *testing.T) {
 		if got != want {
 			t.Errorf("%s is %q and index.html's exported_by is %q", where, got, want)
 		}
+	}
+}
+
+// mustViews is views for a test, where a declaration it cannot derive is a
+// fatal setup error.
+func mustViews(t *testing.T, built result) []export.View {
+	t.Helper()
+	vs, err := views(built)
+	if err != nil {
+		t.Fatalf("views: %v", err)
+	}
+	return vs
+}
+
+// must unwraps a declaration a test cannot proceed without.
+func must[T any](t *testing.T) func(T, error) T {
+	return func(v T, err error) T {
+		t.Helper()
+		if err != nil {
+			t.Fatal(err)
+		}
+		return v
 	}
 }

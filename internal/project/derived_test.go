@@ -51,7 +51,10 @@ func TestTheSpineEndpointsAreTheGoldensOwn(t *testing.T) {
 // derivation does not ship. A reason for an endpoint the cuts decompose would
 // be prose the client never shows.
 func TestTheResidualSetIsDerivedFromTheCuts(t *testing.T) {
-	got := FundFlowsResidual()
+	got, err := FundFlowsResidual()
+	if err != nil {
+		t.Fatal(err)
+	}
 	want := []string{
 		NodeFundBalanceContribution, NodeFundBalanceDraw, "fund-balance/reserve-increase",
 		NodeTransfersIn, NodeTransfersOut,
@@ -84,7 +87,7 @@ func TestTheResidualSetIsDerivedFromTheCuts(t *testing.T) {
 	}
 	// The published map is a fresh copy.
 	got["coined/node"] = "widened by a caller"
-	if _, leaked := FundFlowsResidual()["coined/node"]; leaked {
+	if got, _ := FundFlowsResidual(); got["coined/node"] != "" {
 		t.Error("FundFlowsResidual handed out a shared map")
 	}
 }
@@ -94,7 +97,10 @@ func TestTheResidualSetIsDerivedFromTheCuts(t *testing.T) {
 // map under its node id and column at the difference of its pins, with its
 // reason, and nothing else does.
 func TestSpendingGapsAreTheDeclaredExceptions(t *testing.T) {
-	got := SpendingGaps()
+	got, err := SpendingGaps()
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(got) == 0 {
 		t.Fatal("SpendingGaps is empty, so nothing below asserts anything")
 	}
@@ -131,7 +137,10 @@ func TestSpendingGapsAreTheDeclaredExceptions(t *testing.T) {
 // carries the exception's column, group, both figures and bead, so the caveat
 // and cuts-tie-along-the-lattice cannot name two different pairs.
 func TestContestedTotalsReadTheirFiguresOffTheException(t *testing.T) {
-	all := ContestedTotals()
+	all, err := ContestedTotals()
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(all) != 1 {
 		t.Fatalf("got %d contested totals, want 1", len(all))
 	}
@@ -157,5 +166,18 @@ func TestContestedTotalsReadTheirFiguresOffTheException(t *testing.T) {
 	}
 	if c.Published-c.Elsewhere != e.Residual {
 		t.Errorf("the caveat's difference is %d and the exception's residual %d", c.Published-c.Elsewhere, e.Residual)
+	}
+}
+
+// TestAContestedTotalNamingNoExceptionIsAnError pins that a declaration naming
+// an exception structure no longer carries refuses with a message, which
+// verify records as a projection that did not build, rather than a panic.
+func TestAContestedTotalNamingNoExceptionIsAnError(t *testing.T) {
+	was := contestedTotals
+	t.Cleanup(func() { contestedTotals = was })
+	contestedTotals = slices.Clone(was)
+	contestedTotals[0].Exception = "renamed-away"
+	if _, err := resolveContestedTotals(); err == nil || !strings.Contains(err.Error(), `"renamed-away", which is not declared`) {
+		t.Errorf("resolveContestedTotals = %v, want the undeclared exception named", err)
 	}
 }

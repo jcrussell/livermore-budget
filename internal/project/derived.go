@@ -1,6 +1,7 @@
 package project
 
 import (
+	"errors"
 	"fmt"
 	"slices"
 	"sort"
@@ -82,12 +83,11 @@ var residualReasons = map[string]string{
 // which is carryResidual's rule in site/app.js; this is the set it may draw
 // from.
 //
-// It panics rather than errs on a derived endpoint with no reason declared,
-// since both are this package's declarations and a corpus cannot reach it.
-func FundFlowsResidual() map[string]string {
-	reference, ok := structure.Reference(structure.AllCuts())
-	if !ok {
-		panic("project: no declared cut is the reference, so nothing says what a document leaves undecomposed")
+// It errs on a derived endpoint with no reason declared.
+func FundFlowsResidual() (map[string]string, error) {
+	reference, err := referenceCut()
+	if err != nil {
+		return nil, err
 	}
 	view := structure.CutsOf(FundFlowsScopes())
 	undecomposed := structure.Undecomposed(view, reference)
@@ -105,11 +105,20 @@ func FundFlowsResidual() map[string]string {
 		}
 		reason, ok := residualReasons[e.id]
 		if !ok {
-			panic(fmt.Sprintf("project: %s is left undecomposed by the drill-down's cuts and no residual reason is declared for it", e.id))
+			return nil, fmt.Errorf("project: %s is left undecomposed by the drill-down's cuts and no residual reason is declared for it", e.id)
 		}
 		out[e.id] = reason
 	}
-	return out
+	return out, nil
+}
+
+// referenceCut is the cut every derived licence is against.
+func referenceCut() (structure.Cut, error) {
+	reference, ok := structure.Reference(structure.AllCuts())
+	if !ok {
+		return structure.Cut{}, errors.New("project: no declared cut is the reference, so nothing says what a derived licence is against")
+	}
+	return reference, nil
 }
 
 // Gap is one column's licence for a gap between the spine's figure for a
@@ -127,14 +136,14 @@ type Gap struct {
 // is drawn at: the departmentwide exceptions against the spine at the
 // category level, which cuts-tie-along-the-lattice holds to the facts, spelled
 // in node ids rather than declared again.
-func SpendingGaps() map[string][]Gap {
-	reference, ok := structure.Reference(structure.AllCuts())
-	if !ok {
-		panic("project: no declared cut is the reference, so nothing says what a gap is against")
+func SpendingGaps() (map[string][]Gap, error) {
+	reference, err := referenceCut()
+	if err != nil {
+		return nil, err
 	}
 	cuts := structure.CutsOf(DepartmentSpendingScopes())
 	if len(cuts) != 1 {
-		panic(fmt.Sprintf("project: scope %s is read by %d cuts, and a gap is declared against one", DepartmentSpendingScope, len(cuts)))
+		return nil, fmt.Errorf("project: scope %s is read by %d cuts, and a gap is declared against one", DepartmentSpendingScope, len(cuts))
 	}
 	out := map[string][]Gap{}
 	for _, e := range structure.ExceptionsOn(structure.BudgetBookExceptions(), cuts[0].Name, reference.Name, structure.LevelCategory) {
@@ -155,5 +164,5 @@ func SpendingGaps() map[string][]Gap {
 			return out[id][i].Basis < out[id][j].Basis
 		})
 	}
-	return out
+	return out, nil
 }

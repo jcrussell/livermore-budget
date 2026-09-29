@@ -43,7 +43,7 @@ func TestTheFundStepsSentenceIsItsArithmetic(t *testing.T) {
 		t.Fatalf("buildProjections: %v", err)
 	}
 	var spine export.View
-	for _, v := range views(result{Projections: built}) {
+	for _, v := range mustViews(t, result{Projections: built}) {
 		if v.Path == export.IndexPath {
 			spine = v
 		}

@@ -246,7 +246,10 @@ func exportRun(o *Options) error {
 	// published an undeclared document EMPTIES the output directory and then
 	// refuses -- destroying a site to report a fault that was detectable before
 	// anything was touched.
-	siteViews := views(built)
+	siteViews, err := views(built)
+	if err != nil {
+		return err
+	}
 	if err = assertPublishedReachable(siteViews, projections); err != nil {
 		return err
 	}

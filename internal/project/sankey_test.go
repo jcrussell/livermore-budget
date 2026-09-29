@@ -846,7 +846,10 @@ func sortedStrings(s []string) bool {
 // change to the declaration reaches these tests.
 func contestedFY2027(t *testing.T) contestedTotal {
 	t.Helper()
-	all := ContestedTotals()
+	all, err := ContestedTotals()
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(all) != 1 {
 		t.Fatalf("got %d contested totals, want 1; this file is written about the "+
 			"single fisc-av0w entry and a second one needs its own tests", len(all))

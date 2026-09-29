@@ -431,14 +431,18 @@ func assertPublishedReachable(vs []export.View, built map[string][]byte) error {
 }
 
 // spendingGaps is project.SpendingGaps as the step declares it.
-func spendingGaps() map[string]export.Gaps {
+func spendingGaps() (map[string]export.Gaps, error) {
+	declared, err := project.SpendingGaps()
+	if err != nil {
+		return nil, err
+	}
 	out := map[string]export.Gaps{}
-	for id, gaps := range project.SpendingGaps() {
+	for id, gaps := range declared {
 		for _, g := range gaps {
 			out[id] = append(out[id], export.Gap(g))
 		}
 	}
-	return out
+	return out, nil
 }
 
 // stepByKey is the declared step with this key, and whether one was declared.
@@ -485,7 +489,15 @@ func opensInto(opening, step string, projections map[string][]byte) bool {
 // A view whose document was not built is dropped rather than refused: `fisc
 // verify` already fails a missing published document, and a nav entry to an
 // unwritten page is what must never ship.
-func views(built result) []export.View {
+func views(built result) ([]export.View, error) {
+	residual, err := project.FundFlowsResidual()
+	if err != nil {
+		return nil, err
+	}
+	gaps, err := spendingGaps()
+	if err != nil {
+		return nil, err
+	}
 	projections := built.Projections
 	spine := export.View{
 		Path:       export.IndexPath,
@@ -547,7 +559,7 @@ func views(built result) []export.View {
 				// client's set is one thing. Each such ribbon is re-pointed past the group
 				// onto one derived node, so the group takes in exactly what its funds take
 				// in.
-				Residual: project.FundFlowsResidual(),
+				Residual: residual,
 				// The client's tests pin these figures per column: fund/100 is about half the
 				// fund column, and the smallest fund under 1/30,000 of it, in both years.
 				Description: "The revenue categories on the left are the citywide chart's " +
@@ -669,7 +681,7 @@ func views(built result) []export.View {
 				Noun:       "object category",
 				Back:       "All object categories",
 				Tail:       "divisions",
-				Gaps:       spendingGaps(),
+				Gaps:       gaps,
 				Description: "The fund groups that pay for this object category are on the " +
 					"left; the divisions that spend it are on the right \u2014 Budget Book " +
 					"pp.85-125's rows for this category, every division in the city that " +
@@ -871,5 +883,5 @@ func views(built result) []export.View {
 				"offset it was read from — downloadable whole, or one page at a time.",
 		})
 	}
-	return out
+	return out, nil
 }

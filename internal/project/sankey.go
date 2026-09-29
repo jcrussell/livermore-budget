@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/fact"
@@ -647,7 +648,7 @@ func (s *sankey) Document(facts []fact.Fact, o Options) (*Document, error) {
 	h.TransferResidualCents = h.InternalTransferOutCents - h.InternalTransferInCents
 
 	sortLinks(links)
-	if err := checkDistinctLinks(links); err != nil {
+	if err = checkDistinctLinks(links); err != nil {
 		return nil, err
 	}
 
@@ -658,7 +659,10 @@ func (s *sankey) Document(facts []fact.Fact, o Options) (*Document, error) {
 	// name a node a DIFFERENT column carries and this one does not, and that is
 	// exactly the mistake AppliesTo makes silent.
 	drawn := sortedNodes(nodes)
-	cavs := caveats(h, col, links, toCIP(facts, col))
+	cavs, err := caveats(h, col, links, toCIP(facts, col))
+	if err != nil {
+		return nil, err
+	}
 	if err := validateCaveats(cavs, nodeIDs(drawn)); err != nil {
 		return nil, fmt.Errorf("%s: %w", col, err)
 	}
@@ -1082,23 +1086,33 @@ var contestedTotals = []contestedTotal{{
 // the exception it names, exported so a test over the COMMITTED corpus can
 // assert every entry still describes what that corpus draws.
 //
-// It panics on an entry naming no exception, or one that is not a single
-// fund-group cell against the reference: both are this package's declarations
-// and a corpus cannot reach them.
-func ContestedTotals() []contestedTotal {
+// It errs on an entry naming no exception, or one that is not a single
+// fund-group cell against the reference. The declarations are fixed for the
+// life of the process, so they are resolved once.
+func ContestedTotals() ([]contestedTotal, error) {
+	out, err := resolvedContestedTotals()
+	return slices.Clone(out), err
+}
+
+var resolvedContestedTotals = sync.OnceValues(resolveContestedTotals)
+
+func resolveContestedTotals() ([]contestedTotal, error) {
 	byName := map[string]structure.Exception{}
 	for _, e := range structure.BudgetBookExceptions() {
 		byName[e.Name] = e
 	}
-	reference, _ := structure.Reference(structure.AllCuts())
+	reference, err := referenceCut()
+	if err != nil {
+		return nil, err
+	}
 	out := make([]contestedTotal, 0, len(contestedTotals))
 	for _, c := range contestedTotals {
 		e, ok := byName[c.Exception]
 		if !ok {
-			panic(fmt.Sprintf("project: contested total names exception %q, which is not declared", c.Exception))
+			return nil, fmt.Errorf("project: contested total names exception %q, which is not declared", c.Exception)
 		}
 		if e.Against != reference.Name || e.At != structure.LevelFundGroup || len(e.Cells) != 1 {
-			panic(fmt.Sprintf("project: contested total names exception %q, which is not one fund-group cell against %q", c.Exception, reference.Name))
+			return nil, fmt.Errorf("project: contested total names exception %q, which is not one fund-group cell against %q", c.Exception, reference.Name)
 		}
 		p := e.Cells[0]
 		c.Column = Column{FiscalYear: p.Year, Basis: mapping.Basis(p.Basis)}
@@ -1107,7 +1121,7 @@ func ContestedTotals() []contestedTotal {
 		c.Bead = e.Bead
 		out = append(out, c)
 	}
-	return out
+	return out, nil
 }
 
 // GroupExpenditure is what a graph draws as one fund group's expenditure,
@@ -1124,7 +1138,7 @@ func GroupExpenditure(links []Link, fundGroup string) int64 {
 // service charges in a document that has none would be misdirection, the
 // transfer caveat quotes figures it can only get from the graph, and a contested
 // total that this document does not draw is not this document's problem.
-func caveats(h Headline, col Column, links []Link, cip cipTransfers) []Caveat {
+func caveats(h Headline, col Column, links []Link, cip cipTransfers) ([]Caveat, error) {
 	out := make([]Caveat, 0, 5)
 
 	if h.InternalTransferInCents != 0 || h.InternalTransferOutCents != 0 {
@@ -1136,13 +1150,17 @@ func caveats(h Headline, col Column, links []Link, cip cipTransfers) []Caveat {
 			break
 		}
 	}
-	for _, c := range ContestedTotals() {
+	contested, err := ContestedTotals()
+	if err != nil {
+		return nil, err
+	}
+	for _, c := range contested {
 		if cav, ok := contestedCaveat(c, col, links); ok {
 			out = append(out, cav)
 		}
 	}
 	out = append(out, caveatStocks, caveatPermanentFunds)
-	return out
+	return out, nil
 }
 
 // groupExpenditure is what this graph draws as one fund group's expenditure:
