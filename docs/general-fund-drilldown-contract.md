@@ -518,8 +518,9 @@ draw order, the `keep` flank and `from` centre, the `role` that opens it, the
 its mark is named by, and the `gaps` licences — the cents per column, from
 `structure.BudgetBookExceptions`, that two schedules are declared to differ by
 at one node. `validateSteps` refuses a declaration whose shape the client could
-not draw, and `capMergesNoPrintedWithInferred` a cap under which the client's
-fold would merge a printed ribbon with an inferred one. The shape is
+not draw; `foldDocument` refuses a fold that would merge a printed ribbon with an
+inferred one, which the client walk in `site/*.test.mjs` exercises on every rung
+at every width. The shape is
 [`schema/page.schema.json`](../schema/page.schema.json), compared against the
 emitted bytes at the write.
 

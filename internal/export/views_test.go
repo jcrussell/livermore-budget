@@ -3474,66 +3474,6 @@ func TestThePageOpensOnTheYearItDeclaresWhileListingThemOldestFirst(t *testing.T
 	}
 }
 
-// TestACapUnderWhichAPrintedFlowAndAnInferredOneWouldMergeIsRefused: two
-// members of a capped tier reaching one far end with ribbons that disagree on
-// derived would fold into a mark neither printed nor inferred. No published
-// column carries the case, so one fund's ribbon is marked inferred here.
-func TestACapUnderWhichAPrintedFlowAndAnInferredOneWouldMergeIsRefused(t *testing.T) {
-	fundFlows, readErr := os.ReadFile("../../testdata/fund-flows.golden.json")
-	if readErr != nil {
-		t.Fatalf("read fund-flows golden: %v", readErr)
-	}
-	inferred := func(t *testing.T, raw []byte, source, target string) []byte {
-		t.Helper()
-		var doc map[string]any
-		if err := json.Unmarshal(raw, &doc); err != nil {
-			t.Fatal(err)
-		}
-		flipped := false
-		for _, l := range doc["links"].([]any) {
-			link := l.(map[string]any)
-			if link["source"] == source && link["target"] == target {
-				link["derived"] = true
-				flipped = true
-			}
-		}
-		if !flipped {
-			t.Fatalf("the golden carries no %s -> %s link to mark inferred", source, target)
-		}
-		out, err := json.Marshal(doc)
-		if err != nil {
-			t.Fatal(err)
-		}
-		return out
-	}
-	write := func(fundFlows []byte) error {
-		_, err := writeSite(export.Options{
-			Dir:         t.TempDir(),
-			Projections: map[string][]byte{"sankey": goldenSankey(t), "fund-flows": fundFlows},
-			Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
-				Template: export.SankeyTemplate, Projection: "sankey"},
-				windowView(func(v *export.View) { v.Nav, v.Projection = "Extra", "fund-flows" })},
-			Docs:        budgetDocs(),
-			GeneratedBy: "fisc test",
-		})
-		return err
-	}
-	// The same cap over the untouched golden is accepted, so the refusal below
-	// is the flipped ribbon's and not the cap's.
-	if err := write(headlined(t, fundFlows)); err != nil {
-		t.Fatalf("the cap on the funds' tier of the untouched document was refused: %v", err)
-	}
-	err := write(inferred(t, headlined(t, fundFlows), "fund-group/capital", "fund/510"))
-	if err == nil {
-		t.Fatal("a cap under which a printed flow and an inferred one would merge was accepted")
-	}
-	for _, want := range []string{"a printed flow and an inferred one", "fund/510", "fund-group/capital"} {
-		if !strings.Contains(err.Error(), want) {
-			t.Errorf("refusal %q does not name %q", err.Error(), want)
-		}
-	}
-}
-
 // TestTheServedStepsCarryTheirLicences pins the two declarations the client
 // draws its marks from to the wire: a residual's grain, which names the mark,
 // and a gap's licence -- the column, the signed cents and the reason -- which

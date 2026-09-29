@@ -330,17 +330,20 @@ describe("foldDocument's clauses, on the miniature", () => {
     orphan.links.push({ source: "revenue/tax", target: "stray", value_cents: 1, kind: "external", transfer_id: "", fact_ids: ["z"], locators: [{ doc_id: "d", pages: [1] }], derived: false });
     assert.throws(() => drill.foldDocument(orphan), (e) => /stray/.test(e.message) && /tier 9/.test(e.message));
   });
-  // Whether a printed leg and an inferred one may meet in one merge is Go's
-  // question; the fold does not ask it again: the merged ribbon's flag is the
-  // first leg's.
-  test("a merged ribbon keeps the first leg's provenance flag and sums every leg", () => {
-    const mixed = miniature();
-    mixed.links.push({ source: "revenue/tax", target: "fund/101", value_cents: 7, kind: "external", transfer_id: "", fact_ids: ["y"], locators: [{ doc_id: "d", pages: [1] }], derived: true });
-    const l = drill.foldDocument(mixed).links.find((x) => x.source === "revenue/tax" && x.target === "fund-group/general");
+  // The fold is the one place a printed leg and an inferred one could meet in
+  // one ribbon, so it is the fold that refuses them.
+  test("a merged ribbon sums and cites every leg, and refuses a printed leg beside an inferred one", () => {
+    const leg = { source: "revenue/tax", target: "fund/101", value_cents: 7, kind: "external", transfer_id: "", fact_ids: ["y"], locators: [{ doc_id: "d", pages: [1] }], derived: false };
+    const printed = miniature();
+    printed.links.push(leg);
+    const l = drill.foldDocument(printed).links.find((x) => x.source === "revenue/tax" && x.target === "fund-group/general");
     assert.ok(l);
     assert.equal(l.derived, false);
     assert.equal(l.value_cents, 307);
     assert.deepEqual([...l.fact_ids].sort(), ["a", "b", "y"]);
+    const mixed = miniature();
+    mixed.links.push(Object.assign({}, leg, { derived: true }));
+    assert.throws(() => drill.foldDocument(mixed), /merges a printed flow and an inferred one/);
   });
 });
 
@@ -629,5 +632,29 @@ describe("which nodes a step opens", () => {
       : l);
     assert.ok(!app.decomposable(step, planted).has(group),
       `${group} is offered though every ribbon from its parts runs against the column order`);
+  });
+});
+
+describe("a printed flow and an inferred one", () => {
+  // No published fold merges the two, so one is planted: two lines of one
+  // category into one fund fold into one ribbon at the category grain, and
+  // one of them is marked inferred.
+  test("are never merged into one ribbon", async () => {
+    const app = (await loadApp()).app;
+    const doc = structuredClone(fundFlows(app, "fy2026-adopted"));
+    const byID = new Map(doc.nodes.map((n) => [n.id, n]));
+    const pair = new Map();
+    let planted = null;
+    for (const l of doc.links) {
+      const src = byID.get(l.source);
+      if (!src || src.tier !== 1 || byID.get(l.target).tier !== 3) continue;
+      const key = src.parent + "\u001f" + l.target + "\u001f" + l.kind;
+      if (pair.has(key)) { planted = l; break; }
+      pair.set(key, l);
+    }
+    assert.ok(planted, "no two lines of one category reach one fund, so nothing folds together");
+    assert.doesNotThrow(() => app.foldDocument(doc, [0, 2, 3, 4, 5]), "the printed document folds");
+    planted.derived = true;
+    assert.throws(() => app.foldDocument(doc, [0, 2, 3, 4, 5]), /merges a printed flow and an inferred one/);
   });
 });

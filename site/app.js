@@ -2601,8 +2601,13 @@ export function foldDocument(doc, tiers) {
       located.set(key, new Set(locatorKeys(l.locators)));
       continue;
     }
-    // A PRINTED LEG AND AN INFERRED ONE NEVER MEET HERE -- the export refuses
-    // such a cap -- so the first leg's derived flag is true of all of it.
+    // A PRINTED LEG AND AN INFERRED ONE ARE NEVER ONE RIBBON: one mark cannot
+    // be drawn as both, so the fold refuses rather than letting the first
+    // leg's flag speak for the other.
+    if (Boolean(at.derived) !== Boolean(l.derived)) {
+      throw new Error("cannot draw " + doc.projection + ": folding merges a printed flow and an " +
+        "inferred one from " + source + " to " + target + " (" + l.kind + ") into one ribbon");
+    }
     at.value_cents += l.value_cents;
     // A transfer id names one leg of one transfer and cannot survive a merge.
     if (at.transfer_id !== l.transfer_id) at.transfer_id = "";
