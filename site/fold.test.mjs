@@ -465,13 +465,20 @@ describe("the fold preserves what it folds, on every rung at every width", () =>
   const CONFIG = pageFixture().config;
   const STEMS = ["fy2026-adopted", "fy2027-adopted"];
 
-  /** The tier sets one step is drawn at: every declared column, and the fewest. */
+  /**
+   * The tier sets one step is drawn at: a viewport buys the widened columns in
+   * their declared order, so every prefix of `widen` over the rest.
+   */
   function widths(step) {
     const keep = new Set(step.keep || []);
     const fresh = step.tiers.filter((t) => !keep.has(t));
-    const widen = new Set(step.widen || []);
-    const narrow = fresh.filter((t) => !widen.has(t));
-    return narrow.length === fresh.length ? [fresh] : [fresh, narrow];
+    const widen = (step.widen || []).filter((t) => fresh.includes(t));
+    const out = [];
+    for (let k = 0; k <= widen.length; k++) {
+      const bought = new Set(widen.slice(0, k));
+      out.push(fresh.filter((t) => !widen.includes(t) || bought.has(t)));
+    }
+    return out;
   }
 
   /** Cents and cited fact ids over a set of links. */
@@ -562,4 +569,44 @@ describe("the fold preserves what it folds, on every rung at every width", () =>
       assert.deepEqual(wrong, []);
     });
   }
+});
+
+describe("a reduction read back off the chart on screen", () => {
+  // windowFor takes a kept flank off the drawn chart, which markContra has
+  // flipped; unmarkContra is what lets the flank be summed at its printed sign
+  // and drawn again with its sentence.
+  test("unmarkContra undoes markContra, and marking again keeps every sentence", async () => {
+    const app = (await loadApp()).app;
+    for (const stem of ["fy2026-adopted", "fy2027-adopted"]) {
+      const printed = fundFlows(app, stem);
+      assert.ok(printed.links.some((l) => l.value_cents < 0), `${stem} prints no reduction, so nothing here is held`);
+      const shown = app.markContra(printed);
+      const back = app.unmarkContra(shown);
+      assert.deepEqual(back.links.map((l) => l.value_cents), printed.links.map((l) => l.value_cents),
+        `${stem}: a reduction read back off the screen is not at its printed sign`);
+      const again = app.markContra(back);
+      assert.deepEqual(again.links.map((l) => l.contra || ""), shown.links.map((l) => l.contra || ""),
+        `${stem}: marking the chart a second time dropped a reduction's sentence`);
+    }
+  });
+});
+
+describe("a window's kept flank", () => {
+  // The flank comes off rung.chart, the chart as drawn, which markContra has
+  // flipped; windowFor reads it back at the sign it was printed at. Planted:
+  // no published flank carries a reduction today.
+  test("keeps a reduction it carries at its printed sign", async () => {
+    const { app } = await bootedApp();
+    await opened(app, "fund-group/general");
+    const rung = app.drilled[app.drilled.length - 1];
+    const planted = structuredClone(app.markContra(rung.chart));
+    const i = planted.links.findIndex((l) => l.target === "fund-group/general" && l.value_cents > 0);
+    assert.ok(i >= 0, "the spine sends nothing into fund-group/general, so no flank ribbon was planted");
+    planted.links[i] = Object.assign({}, planted.links[i], { contra: "printed as a reduction of Test" });
+    const want = -planted.links[i].value_cents;
+    const window = app.windowFor(planted, rung.doc, Object.assign({}, rung, { chart: planted }));
+    const kept = window.links.find((l) => l.source === planted.links[i].source && l.target === "fund-group/general");
+    assert.ok(kept, "the planted ribbon is not in the window's flank");
+    assert.equal(kept.value_cents, want, "a reduction in the kept flank is read at the screen's sign, not its printed one");
+  });
 });

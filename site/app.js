@@ -1743,7 +1743,7 @@ export function windowFor(onScreen, stepDoc, rung) {
   const keptLeft = flankIsLeft(step);
   const keptTiers = tiers.filter((t) => keep.has(t) || t === step.from);
   const freshOnScreen = tiers.filter((t) => !keep.has(t));
-  const kept = sideOf(onScreen, rung, keptTiers, !keptLeft);
+  const kept = sideOf(unmarkContra(onScreen), rung, keptTiers, !keptLeft);
   const fresh = sideOf(stepDoc, rung, freshOnScreen, keptLeft);
   // THE KEPT CENTRE MUST HOLD THE OPENED NODE: a window whose flank sends
   // nothing into it is refused rather than drawn as its fresh half alone.
@@ -1871,6 +1871,23 @@ export function markContra(drawn) {
       }
       return l.contra ? Object.assign({}, l, { contra: "" }) : l;
     }),
+  });
+}
+
+/**
+ * The chart as its documents print it, markContra undone: a link carrying a
+ * contra sentence after markContra was printed negative, so it goes back to
+ * its own sign. A kept flank is read off the chart on screen, which is marked,
+ * and its reductions are summed and folded at the sign they were printed at.
+ * @param {FiscProjection} drawn
+ * @returns {FiscProjection}
+ */
+export function unmarkContra(drawn) {
+  if (!drawn.links.some((l) => l.contra && l.value_cents > 0)) return drawn;
+  return Object.assign({}, drawn, {
+    links: drawn.links.map((l) => l.contra && l.value_cents > 0
+      ? Object.assign({}, l, { value_cents: -l.value_cents })
+      : l),
   });
 }
 

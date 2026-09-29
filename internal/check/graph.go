@@ -877,7 +877,7 @@ func (*nodeHierarchyWellFormed) Run(_ context.Context, s *Subject) (Result, erro
 				continue
 			}
 			sameTier := false
-			if slices.Contains(project.Endpoints(), n.Parent) {
+			if _, isEndpoint := project.EndpointCategory(n.Parent); isEndpoint {
 				if flowing[n.Parent] {
 					findings = append(findings, finding(p.String(),
 						"node %q is parented to %q, a flow endpoint this document draws a "+

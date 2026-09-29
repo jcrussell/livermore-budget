@@ -60,6 +60,7 @@ func (*linkKindsMatchTheirFacts) Description() string {
 }
 
 func (*linkKindsMatchTheirFacts) Run(_ context.Context, s *Subject) (Result, error) {
+	kinds := project.LinkKinds()
 	var findings []Finding
 	links := 0
 
@@ -69,7 +70,7 @@ func (*linkKindsMatchTheirFacts) Run(_ context.Context, s *Subject) (Result, err
 			links++
 			subject := fmt.Sprintf("%s %s -> %s", p, l.Source, l.Target)
 
-			if !slices.Contains(project.LinkKinds(), l.Kind) {
+			if !slices.Contains(kinds, l.Kind) {
 				findings = append(findings, finding(subject,
 					"kind is %q, which is not one of %s", l.Kind, describeLinkKinds()))
 			}
