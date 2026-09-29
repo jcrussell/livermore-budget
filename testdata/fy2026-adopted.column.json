@@ -3317,27 +3317,27 @@
  "fund_groups": [
   {
    "id": "fund-group/internal-service",
-   "slug": "internal-service"
+   "slot": 1
   },
   {
    "id": "fund-group/capital",
-   "slug": "capital"
+   "slot": 2
   },
   {
    "id": "fund-group/general",
-   "slug": "general"
+   "slot": 3
   },
   {
    "id": "fund-group/special-revenue",
-   "slug": "special-revenue"
+   "slot": 4
   },
   {
    "id": "fund-group/enterprise",
-   "slug": "enterprise"
+   "slot": 5
   },
   {
    "id": "fund-group/debt-service",
-   "slug": "debt-service"
+   "slot": 6
   }
  ],
  "schedules": {

@@ -441,15 +441,17 @@ export function nodeColor(node) {
 }
 
 /**
- * The custom property holding a fund group's hue, or --muted when style.css
- * has none for its slug. Shared so the legend swatch matches the chart.
+ * The custom property holding a fund group's hue: the slot the column ships
+ * for it, or --muted for a group with none or a slot style.css has no hue for.
+ * Shared so the legend swatch matches the chart.
  * @param {string} id
  * @returns {string}
  */
 export function fundColorVar(id) {
   const group = fundGroups().find((g) => g.id === id);
   if (!group) return "--muted";
-  const name = "--fund-" + group.slug;
+  if (!(group.slot > 0)) return "--muted";
+  const name = "--fund-slot-" + group.slot;
   return cssVar(name) ? name : "--muted";
 }
 

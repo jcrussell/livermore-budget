@@ -50,21 +50,18 @@ const (
 )
 
 // The near miss this project is most likely to make: `debt-service` is a fund
-// TYPE in funds.yaml, `debt-services` an expenditure CATEGORY in
+// TYPE in funds.yaml (FundTypeDebtService), `debt-services` an expenditure CATEGORY in
 // taxonomy.yaml. They are different axes — a fund's classification versus what
 // a dollar was spent on — and taxonomy.yaml renamed its category to the plural
 // specifically to keep one string from spanning both.
-const (
-	fundTypeDebtService  = "debt-service"
-	categoryDebtServices = "debt-services"
-)
+const categoryDebtServices = "debt-services"
 
 // Duplicate constant keys in a map literal are a compile-time error, so this
 // declaration stops building the day someone "normalizes" one of the two
 // spellings into the other — which is exactly the edit that would silently
 // cross the axes, and which no test over today's data would catch.
 var _ = map[string]struct{}{
-	fundTypeDebtService:  {},
+	FundTypeDebtService:  {},
 	categoryDebtServices: {},
 }
 
@@ -73,14 +70,29 @@ var _ = map[string]struct{}{
 // has no column on the citywide spine, which is a gap in the spine and not a
 // reason to leave the type out here.
 var fundTypes = []string{
-	"general",
-	"special-revenue",
-	"capital",
-	fundTypeDebtService,
-	"enterprise",
-	"internal-service",
-	"permanent",
+	FundTypeGeneral,
+	FundTypeSpecialRevenue,
+	FundTypeCapital,
+	FundTypeDebtService,
+	FundTypeEnterprise,
+	FundTypeInternalService,
+	FundTypePermanent,
 }
+
+// The fund types, each the fund group a fund of that type is drawn in.
+const (
+	FundTypeGeneral         = "general"
+	FundTypeSpecialRevenue  = "special-revenue"
+	FundTypeCapital         = "capital"
+	FundTypeDebtService     = "debt-service"
+	FundTypeEnterprise      = "enterprise"
+	FundTypeInternalService = "internal-service"
+	FundTypePermanent       = "permanent"
+)
+
+// FundTypes is every fund type data/funds.yaml may declare, in the appendix's
+// order.
+func FundTypes() []string { return slices.Clone(fundTypes) }
 
 // factKinds is the closed set of `kinds` members a taxonomy category may
 // declare. IT IS A SECOND SPELLING OF mapping.Kind AND THAT IS DELIBERATE.

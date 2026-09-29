@@ -1,6 +1,9 @@
 package structure
 
-import "github.com/jcrussell/livermore-budget/internal/mapping"
+import (
+	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/internal/registry"
+)
 
 // The cut names other packages select by.
 const (
@@ -70,7 +73,7 @@ func BudgetBookCuts() []Cut {
 			Scope:          ScopeExpenditureByDepartment,
 			Level:          LevelFundByDepartmentByCategory,
 			Kinds:          []mapping.Kind{mapping.KindExpenditure},
-			FundGroups:     []string{"general"},
+			FundGroups:     []string{registry.FundTypeGeneral},
 			DepartmentTier: "division",
 			Bases:          budgetBookDetail,
 		},
@@ -81,7 +84,7 @@ func BudgetBookCuts() []Cut {
 			Scope:      ScopeGeneralFundByCategory,
 			Level:      LevelFundByCategory,
 			Kinds:      []mapping.Kind{mapping.KindExpenditure},
-			FundGroups: []string{"general"},
+			FundGroups: []string{registry.FundTypeGeneral},
 			Bases:      budgetBookDetail,
 		},
 		{
@@ -92,7 +95,7 @@ func BudgetBookCuts() []Cut {
 			Scope:      ScopeExpenditureByFund,
 			Level:      LevelFundByCategory,
 			Kinds:      []mapping.Kind{mapping.KindExpenditure},
-			FundGroups: []string{"enterprise", "capital", "debt-service", "permanent", "special-revenue", "internal-service"},
+			FundGroups: allFundTypesBut(registry.FundTypeGeneral),
 			Bases:      budgetBookDetail,
 		},
 		{
@@ -138,7 +141,7 @@ func ACFRCuts() []Cut {
 			Scope:      ScopeACFRGeneralFundSummary,
 			Level:      LevelFundGroupByCategory,
 			Kinds:      everyKind,
-			FundGroups: []string{"general"},
+			FundGroups: []string{registry.FundTypeGeneral},
 			Bases:      audited,
 		},
 		{
@@ -157,7 +160,7 @@ func ACFRCuts() []Cut {
 			Rules:      []string{"acfr-p0167-general-fund-balances"},
 			Level:      LevelFundGroupByCategory,
 			Kinds:      []mapping.Kind{mapping.KindFundBalance},
-			FundGroups: []string{"general"},
+			FundGroups: []string{registry.FundTypeGeneral},
 			Bases:      audited,
 		},
 		{
@@ -218,7 +221,7 @@ func init() {
 // pp.85-125 by fund group and by object, which neither locates it alone, and
 // pp.172-183 by both at once. fisc-av0w keeps p0067's figure as printed.
 func BudgetBookExceptions() []Exception {
-	general := map[Axis]string{AxisFundGroup: "general", AxisCategory: "transfers/in"}
+	general := map[Axis]string{AxisFundGroup: registry.FundTypeGeneral, AxisCategory: "transfers/in"}
 	present := func(c int64) Sum { return Sum{Cents: c, Present: true} }
 	absent := Sum{}
 	rounded := func(cut, dept string, c, a int64, printed string) Exception {
@@ -277,7 +280,7 @@ func BudgetBookExceptions() []Exception {
 		{
 			Name: "p0067-internal-service-is-250000-high-by-fund-group",
 			Cut:  CutFundingSources, Against: CutSpine, At: LevelFundGroup,
-			Cells: []Pin{{Year: 2027, Basis: "adopted", Coords: map[Axis]string{AxisFundGroup: "internal-service"},
+			Cells: []Pin{{Year: 2027, Basis: "adopted", Coords: map[Axis]string{AxisFundGroup: registry.FundTypeInternalService},
 				Cut: present(2629451500), Against: present(2654451500)}},
 			Residual: 25000000,
 			Printed: "both sides: p0067.txt:34 prints TOTAL EXPENDITURES 26,544,515 for the Internal Service Funds, " +
@@ -291,7 +294,7 @@ func BudgetBookExceptions() []Exception {
 			Name: "general-fund-departments-rounds-services-and-supplies-2024",
 			Cut:  "general-fund-departments", Against: "general-fund-by-category", At: LevelFundByCategory,
 			Cells: []Pin{{Year: 2024, Basis: "actual",
-				Coords: map[Axis]string{AxisFundGroup: "general", AxisFund: "100", AxisCategory: "services-and-supplies"},
+				Coords: map[Axis]string{AxisFundGroup: registry.FundTypeGeneral, AxisFund: "100", AxisCategory: "services-and-supplies"},
 				Cut:    present(5445217000), Against: present(5445217100)}},
 			Residual: 100,
 			Printed: "p0172.txt:16 Services & Supplies 54,452,171; p0170.txt:23 and p0172.txt:22 both total " +
@@ -304,7 +307,7 @@ func BudgetBookExceptions() []Exception {
 			Name: "p0067-internal-service-is-250000-high-by-fund",
 			Cut:  "fund-expenditures", Against: CutSpine, At: LevelFundGroupByCategory,
 			Cells: []Pin{{Year: 2027, Basis: "adopted",
-				Coords: map[Axis]string{AxisFundGroup: "internal-service", AxisCategory: "services-and-supplies"},
+				Coords: map[Axis]string{AxisFundGroup: registry.FundTypeInternalService, AxisCategory: "services-and-supplies"},
 				Cut:    present(1654601000), Against: present(1679601000)}},
 			Residual:       25000000,
 			SameResidualAs: "p0067-internal-service-is-250000-high-by-fund-group",
@@ -332,4 +335,16 @@ func BudgetBookExceptions() []Exception {
 			Bead: "fisc-av0w",
 		},
 	}
+}
+
+// allFundTypesBut is every fund type data/funds.yaml may declare but one: a
+// cut covering the city's other funds covers a type the registry adds.
+func allFundTypesBut(except string) []string {
+	var out []string
+	for _, t := range registry.FundTypes() {
+		if t != except {
+			out = append(out, t)
+		}
+	}
+	return out
 }

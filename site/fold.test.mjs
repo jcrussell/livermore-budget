@@ -384,7 +384,7 @@ describe("the spine's fund groups", () => {
     const link = sched.links.find((l) => l.to === model);
     sched.links.push(Object.assign({}, link, { to: idx }));
     col.tiers.find((t) => t.tier === col.nodes[model].tier).nodes.push(idx);
-    if (listed) col.fund_groups.push({ id, slug: id.split("/")[1] });
+    if (listed) col.fund_groups.push({ id, slot: 0 });
   }
 
   test("the legend is the column's fund groups, in the order it shipped them, and each has flows", async (t) => {

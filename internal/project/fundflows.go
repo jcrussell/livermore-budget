@@ -9,6 +9,7 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/internal/registry"
 	"github.com/jcrussell/livermore-budget/internal/structure"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 	"github.com/jcrussell/livermore-budget/schema"
@@ -410,7 +411,7 @@ func fundFlowsCaveats(twice int, nodes []Node) []Caveat {
 		},
 	}
 	divided, direct := spendingSides(nodes)
-	if len(divided) == 1 && divided[PrefixFundGroup+"general"] && len(direct) > 0 {
+	if len(divided) == 1 && divided[PrefixFundGroup+registry.FundTypeGeneral] && len(direct) > 0 {
 		out = append(out, Caveat{
 			ID: "only-the-general-fund-has-divisions",
 			Summary: "Only the General Fund opens into divisions; every other fund's spending " +

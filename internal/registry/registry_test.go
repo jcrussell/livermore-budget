@@ -327,12 +327,12 @@ func TestDebtServiceIsNotDebtServices(t *testing.T) {
 		t.Fatalf("Load(%s): %v", realData, err)
 	}
 
-	if !r.FundGroup(fundTypeDebtService) {
-		t.Errorf("FundGroup(%q) = false, want true", fundTypeDebtService)
+	if !r.FundGroup(FundTypeDebtService) {
+		t.Errorf("FundGroup(%q) = false, want true", FundTypeDebtService)
 	}
-	if _, ok := r.Category(fundTypeDebtService); ok {
+	if _, ok := r.Category(FundTypeDebtService); ok {
 		t.Errorf("Category(%q) = ok, want false: it is a fund type, not a category",
-			fundTypeDebtService)
+			FundTypeDebtService)
 	}
 	if !r.Assignable(categoryDebtServices) {
 		t.Errorf("Assignable(%q) = false, want true", categoryDebtServices)

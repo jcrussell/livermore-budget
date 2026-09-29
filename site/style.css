@@ -47,12 +47,12 @@
   --warn-edge: #d9b64e;
 
   /* Categorical slots 1-6, light. */
-  --fund-internal-service: #2a78d6;
-  --fund-capital: #eb6834;
-  --fund-general: #1baf7a;
-  --fund-special-revenue: #eda100;
-  --fund-enterprise: #e87ba4;
-  --fund-debt-service: #008300;
+  --fund-slot-1: #2a78d6;
+  --fund-slot-2: #eb6834;
+  --fund-slot-3: #1baf7a;
+  --fund-slot-4: #eda100;
+  --fund-slot-5: #e87ba4;
+  --fund-slot-6: #008300;
 
   --link-opacity: 0.42;
   --link-opacity-derived: 0.24;
@@ -96,12 +96,12 @@
     --warn-fg: #f6c453;
     --warn-edge: #6b571a;
 
-    --fund-internal-service: #3987e5;
-    --fund-capital: #d95926;
-    --fund-general: #199e70;
-    --fund-special-revenue: #c98500;
-    --fund-enterprise: #d55181;
-    --fund-debt-service: #008300;
+    --fund-slot-1: #3987e5;
+    --fund-slot-2: #d95926;
+    --fund-slot-3: #199e70;
+    --fund-slot-4: #c98500;
+    --fund-slot-5: #d55181;
+    --fund-slot-6: #008300;
 
     --link-opacity: 0.5;
     --link-opacity-derived: 0.3;
@@ -127,12 +127,12 @@
   --warn-fg: #f6c453;
   --warn-edge: #6b571a;
 
-  --fund-internal-service: #3987e5;
-  --fund-capital: #d95926;
-  --fund-general: #199e70;
-  --fund-special-revenue: #c98500;
-  --fund-enterprise: #d55181;
-  --fund-debt-service: #008300;
+  --fund-slot-1: #3987e5;
+  --fund-slot-2: #d95926;
+  --fund-slot-3: #199e70;
+  --fund-slot-4: #c98500;
+  --fund-slot-5: #d55181;
+  --fund-slot-6: #008300;
 
   --link-opacity: 0.5;
   --link-opacity-derived: 0.3;

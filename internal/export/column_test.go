@@ -31,11 +31,12 @@ func TestFundGroupsAreOrderedAndOpenEnded(t *testing.T) {
 		t.Fatalf("fundGroupsOf: %v", err)
 	}
 	want := []ColumnFundGroup{
-		{ID: "fund-group/general", Slug: "general"},
-		{ID: "fund-group/debt-service", Slug: "debt-service"},
-		// Neither is in the declared sequence, so both land after, in id order.
-		{ID: "fund-group/aardvark", Slug: "aardvark"},
-		{ID: "fund-group/permanent", Slug: "permanent"},
+		{ID: "fund-group/general", Slot: 3},
+		{ID: "fund-group/debt-service", Slot: 6},
+		// Neither is in the declared sequence, so both land after, in id
+		// order, and wear no slot.
+		{ID: "fund-group/aardvark", Slot: 0},
+		{ID: "fund-group/permanent", Slot: 0},
 	}
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("fundGroupsOf (-want +got):\n%s\n"+

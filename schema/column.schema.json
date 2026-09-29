@@ -166,7 +166,7 @@
         "type": "object",
         "required": [
           "id",
-          "slug"
+          "slot"
         ],
         "additionalProperties": false,
         "properties": {
@@ -175,10 +175,10 @@
             "type": "string",
             "minLength": 1
           },
-          "slug": {
-            "description": "The fund type, which site/style.css binds a hue to. Shipped so the client never parses it out of the id.",
-            "type": "string",
-            "minLength": 1
+          "slot": {
+            "description": "The 1-based categorical slot the group wears, which site/style.css binds a hue to as --fund-slot-<n>; 0 for a group with none, drawn muted. Shipped so the client never parses the id.",
+            "type": "integer",
+            "minimum": 0
           }
         }
       }

@@ -12,6 +12,7 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/internal/registry"
 	"github.com/jcrussell/livermore-budget/internal/structure"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 	"github.com/jcrussell/livermore-budget/schema"
@@ -194,7 +195,7 @@ const NodeTransfersOut = "transfers/out"
 
 // The slugs this projection has to recognize by name rather than by shape.
 const (
-	FundGroupInternalService = "internal-service"
+	FundGroupInternalService = registry.FundTypeInternalService
 	// The three fund-balance rows pp.66-67 print. Change is decomposed by
 	// sign; beginning and ending are stocks and get no link at all.
 	CategoryFundBalanceChange    = "fund-balance/change"
@@ -324,13 +325,13 @@ var derivedNodes = map[string]derived{
 // A registry label wins over any of these, which can only happen for a node
 // that has a category slug.
 var builtinLabels = map[string]string{
-	PrefixFundGroup + "general":          "General Fund",
-	PrefixFundGroup + "special-revenue":  "Special Revenue Funds",
-	PrefixFundGroup + "capital":          "Capital Funds",
-	PrefixFundGroup + "debt-service":     "Debt Service Funds",
-	PrefixFundGroup + "enterprise":       "Enterprise Funds",
-	PrefixFundGroup + "internal-service": "Internal Service Funds",
-	PrefixFundGroup + "permanent":        "Permanent Funds",
+	PrefixFundGroup + registry.FundTypeGeneral:         "General Fund",
+	PrefixFundGroup + registry.FundTypeSpecialRevenue:  "Special Revenue Funds",
+	PrefixFundGroup + registry.FundTypeCapital:         "Capital Funds",
+	PrefixFundGroup + registry.FundTypeDebtService:     "Debt Service Funds",
+	PrefixFundGroup + registry.FundTypeEnterprise:      "Enterprise Funds",
+	PrefixFundGroup + registry.FundTypeInternalService: "Internal Service Funds",
+	PrefixFundGroup + registry.FundTypePermanent:       "Permanent Funds",
 
 	NodeFundBalanceDraw:         "Fund Balance Draw",
 	NodeFundBalanceContribution: "Fund Balance Contribution",
@@ -1038,7 +1039,7 @@ var (
 			"departments, so they are classified internal_service and excluded from the " +
 			"external headline. The all_funds_gross figures include them and match the " +
 			"city's own citywide totals.",
-		AppliesTo: []string{PrefixFundGroup + "internal-service"},
+		AppliesTo: []string{PrefixFundGroup + registry.FundTypeInternalService},
 	}
 )
 

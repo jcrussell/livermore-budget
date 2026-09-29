@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/jcrussell/livermore-budget/internal/project"
+	"github.com/jcrussell/livermore-budget/internal/registry"
 	"github.com/jcrussell/livermore-budget/schema"
 )
 
@@ -63,11 +64,12 @@ type ColumnSchedNode struct {
 }
 
 // ColumnFundGroup is one fund group this column draws, in the order the page
-// lays the fund column out. Slug is the key site/style.css binds a hue to, so
-// the client never parses an id.
+// lays the fund column out. Slot is the 1-based categorical slot it wears,
+// its place in fundGroupDisplayOrder, which site/style.css binds a hue to as
+// --fund-slot-<n>; 0 is a group with no slot, drawn muted.
 type ColumnFundGroup struct {
 	ID   string `json:"id"`
-	Slug string `json:"slug"`
+	Slot int    `json:"slot"`
 }
 
 // ColumnTier is the reader's left-to-right. A tier with no node is absent.
@@ -338,12 +340,12 @@ func tiersOf(nodes []ColumnNode) []ColumnTier {
 // worst dark pair to 6.9. Re-run the dataviz validator over the touching pairs
 // before changing it (fisc-y0k). A slug it does not name sorts after, by id.
 var fundGroupDisplayOrder = []string{
-	"internal-service",
-	"capital",
-	"general",
-	"special-revenue",
-	"enterprise",
-	"debt-service",
+	registry.FundTypeInternalService,
+	registry.FundTypeCapital,
+	registry.FundTypeGeneral,
+	registry.FundTypeSpecialRevenue,
+	registry.FundTypeEnterprise,
+	registry.FundTypeDebtService,
 }
 
 // fundGroupsOf is the fund groups this column draws, ordered for the page.
@@ -359,11 +361,11 @@ func fundGroupsOf(nodes []ColumnNode) ([]ColumnFundGroup, error) {
 		if cut < 0 || cut == len(n.ID)-1 {
 			return nil, fmt.Errorf("node %q is role %s and its id names no fund type", n.ID, project.RoleFundGroup)
 		}
-		out = append(out, ColumnFundGroup{ID: n.ID, Slug: n.ID[cut+1:]})
+		out = append(out, ColumnFundGroup{ID: n.ID, Slot: slices.Index(fundGroupDisplayOrder, n.ID[cut+1:]) + 1})
 	}
 	place := func(g ColumnFundGroup) int {
-		if i := slices.Index(fundGroupDisplayOrder, g.Slug); i >= 0 {
-			return i
+		if g.Slot > 0 {
+			return g.Slot - 1
 		}
 		return len(fundGroupDisplayOrder)
 	}

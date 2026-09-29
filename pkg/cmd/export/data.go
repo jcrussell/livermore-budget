@@ -847,7 +847,7 @@ func views(built result) ([]export.View, error) {
 			Template:   export.HistoryTemplate,
 			Projection: project.FundBalancesProjection,
 			Sections: []export.Section{
-				{Heading: "General Fund", Kind: string(mapping.KindFundBalance), FundGroup: "general"},
+				{Heading: "General Fund", Kind: string(mapping.KindFundBalance), FundGroup: registry.FundTypeGeneral},
 				{Heading: "All Other Governmental Funds", Kind: string(mapping.KindFundBalance)},
 			},
 			Title: "What Livermore's funds held at each year's end",
