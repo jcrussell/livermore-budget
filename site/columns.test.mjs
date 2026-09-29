@@ -522,3 +522,25 @@ describe("a storage the browser refuses", () => {
     }
   });
 });
+
+describe("the residual mark's reasons", () => {
+  // The rationale names a reason for every endpoint whose flow the mark
+  // carries, arriving or leaving: a reader meets the leaving ribbons too.
+  test("give a reason for every endpoint the mark's ribbons reach", async () => {
+    const { app } = await bootedApp({ checkedStem: "sankey", viewport: 2000 });
+    await opened(app, "fund-group/general");
+    const mark = app.projection.nodes.find((n) => n.role === "residual");
+    assert.ok(mark, "fund-group/general's window draws no residual mark");
+    const step = app.drilled[app.drilled.length - 1].step;
+    const reached = new Set();
+    for (const l of app.projection.links) {
+      if (l.target === mark.id && step.residual[l.source]) reached.add(l.source);
+      if (l.source === mark.id && step.residual[l.target]) reached.add(l.target);
+    }
+    assert.ok([...reached].some((e) => app.projection.links.some((l) => l.source === mark.id && l.target === e)),
+      "the mark draws no leaving ribbon at this width, so the leaving case is not held");
+    for (const e of reached) {
+      assert.ok(mark.rationale.includes(step.residual[e]), `the rationale gives no reason for ${e}, whose flow the mark carries`);
+    }
+  });
+});

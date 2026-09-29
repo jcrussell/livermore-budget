@@ -2210,17 +2210,23 @@ export function carryResidual(drawn, from, rung) {
   let withheld = 0;
   let inCents = 0;
   let outCents = 0;
+  // The endpoints whose flow the mark carries, drawn or withheld: the ones
+  // its rationale gives a reason for.
+  /** @type {Set<string>} */
+  const touched = new Set();
   for (const e of Object.keys(residual).sort()) {
     if (!carriesFrom(e)) {
       for (const l of above((l) => l.source === e && l.target === opened)) {
         links.push(Object.assign({}, l, { target: id }));
         inCents += l.value_cents;
         ends.set(e, true);
+        touched.add(e);
         spliced.add(l);
       }
     }
     if (!decomposed || carriesTo(e)) continue;
     const leaving = above((l) => l.source === opened && l.target === e);
+    if (leaving.length) touched.add(e);
     for (const l of leaving) outCents += l.value_cents;
     if (!leaves) {
       withheld += leaving.length;
@@ -2243,8 +2249,8 @@ export function carryResidual(drawn, from, rung) {
   // declared tier has nowhere to stand it.
   let tier = -1;
   for (const n of doc.nodes) {
-    if (n.id !== opened || !inside.has(n.id)) {
-      if (inside.has(n.id) && step.tiers.includes(n.tier) && (tier < 0 || n.tier < tier)) tier = n.tier;
+    if (n.id !== opened && inside.has(n.id) && step.tiers.includes(n.tier) && (tier < 0 || n.tier < tier)) {
+      tier = n.tier;
     }
   }
   if (tier < 0) {
@@ -2297,17 +2303,9 @@ export function carryResidual(drawn, from, rung) {
     return theirs ? theirs.label : n;
   };
   const grain = step.residual_grain || "";
-  const reasons = Object.keys(residual).sort().filter((e) => ends.has(e) || residualTouches(e))
+  const reasons = Object.keys(residual).sort().filter((e) => touched.has(e))
     .map((e) => label(e) + ": " + residual[e] + ".");
-  /**
-   * Whether an endpoint's flow was carried in either direction, drawn or
-   * withheld: only those are named in the rationale.
-   * @param {string} e
-   */
-  function residualTouches(e) {
-    return (!carriesFrom(e) && above((l) => l.source === e && l.target === opened).length > 0) ||
-      (decomposed && !carriesTo(e) && above((l) => l.source === opened && l.target === e).length > 0);
-  }
+
   const node = {
     id: id,
     label: "Not split by " + grain + " here",
