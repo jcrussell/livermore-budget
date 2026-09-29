@@ -6,7 +6,7 @@ import { before, describe, test } from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  loadApp, bootedApp, opened, expandAll, settle, columnFixture, goldenGraph, pageFixture,
+  loadApp, bootedApp, opened, expandAll, settle, columnFixture, goldenGraph, pageFixture, publishedColumns,
 } from "./testlib.mjs";
 
 /** A module drawing one tier set: the pinned config with render_tiers replaced. */
@@ -466,7 +466,16 @@ describe("a parent the document does not carry", () => {
 // figure to anything Go computed; the unfolded schedule is the only witness.
 describe("the fold preserves what it folds, on every rung at every width", () => {
   const CONFIG = pageFixture().config;
-  const STEMS = ["fy2026-adopted", "fy2027-adopted"];
+  // Every year the page publishes: a year added to the page is walked once its
+  // column is pinned, and refused until it is.
+  const STEMS = publishedColumns();
+
+  test("every published year's column is pinned, so the walk below reaches it", () => {
+    for (const stem of STEMS) {
+      assert.doesNotThrow(() => columnFixture(stem), `the page publishes ${stem} and testdata/ pins no column for it`);
+    }
+    assert.ok(STEMS.length > 0, "the pinned page publishes no year, so the walk below covers nothing");
+  });
 
   /**
    * The tier sets one step is drawn at: a viewport buys the widened columns in

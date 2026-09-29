@@ -51,6 +51,15 @@ export function pageFixture() {
   return { html, config: JSON.parse(rest.slice(0, j)) };
 }
 
+/**
+ * Every column the pinned page publishes, by the fixture stem each is pinned
+ * under: a year's served path with .json dropped.
+ * @returns {string[]}
+ */
+export function publishedColumns() {
+  return pageFixture().config.years.map((y) => y.path.replace(/\.json$/, ""));
+}
+
 /** One published column as the page fetches it: testdata/<stem>.column.json. */
 export function columnFixture(stem) {
   return JSON.parse(readFileSync(join(repoRoot, "testdata", stem + ".column.json"), "utf8"));
