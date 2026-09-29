@@ -1,12 +1,16 @@
 package geom
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/fs"
 	"math"
 	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+
+	"github.com/jcrussell/livermore-budget/schema"
 )
 
 // page renders a geometry artifact the way tools/extract.py writes one, so the
@@ -256,4 +260,30 @@ func lineTexts(lines []Line) [][]string {
 		}
 	}
 	return out
+}
+
+// TestSchemaVersionIsTheSchemasConst holds the version this package reads to
+// the one schema/geometry.schema.json pins, which tools/extract.py writes to.
+func TestSchemaVersionIsTheSchemasConst(t *testing.T) {
+	raw, err := fs.ReadFile(schema.FS(), schema.Geometry)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var doc struct {
+		Properties struct {
+			SchemaVersion struct {
+				Const *int `json:"const"`
+			} `json:"schema_version"`
+		} `json:"properties"`
+	}
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		t.Fatal(err)
+	}
+	c := doc.Properties.SchemaVersion.Const
+	if c == nil {
+		t.Fatalf("%s pins no schema_version", schema.Geometry)
+	}
+	if *c != schemaVersion {
+		t.Errorf("%s pins schema_version %d and this package reads %d", schema.Geometry, *c, schemaVersion)
+	}
 }

@@ -28,7 +28,8 @@ import (
 // It is the geometry file's OWN version, stamped by tools/extract.py, and is
 // deliberately not the manifest's corpus.SchemaVersion: the two artifacts
 // version independently, and a reader pinned to the wrong one would report a
-// perfectly good page as unreadable.
+// perfectly good page as unreadable. TestSchemaVersionIsTheSchemasConst holds
+// it to schema/geometry.schema.json.
 const schemaVersion = 1
 
 // Word is one word poppler placed on the page: its bounding box and its text.

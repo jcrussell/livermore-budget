@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jcrussell.github.io/livermore-budget/schema/geometry.schema.json",
+  "title": "fisc page geometry",
+  "description": "One page's word boxes from pdftotext -bbox, as tools/extract.py writes data/extracted/<doc-id>/geometry/pNNNN.json and internal/geom reads it: each word's box in PDF points, rounded to two places, and its text.",
+  "type": "object",
+  "required": ["schema_version", "doc_id", "page", "width", "height", "words"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": 1 },
+    "doc_id": { "type": "string", "minLength": 1 },
+    "page": { "type": "integer", "minimum": 1 },
+    "width": { "type": "number", "exclusiveMinimum": 0 },
+    "height": { "type": "number", "exclusiveMinimum": 0 },
+    "words": {
+      "description": "Every word on the page, sorted by position: [x0, y0, x1, y1, text].",
+      "type": "array",
+      "items": {
+        "type": "array",
+        "minItems": 5,
+        "maxItems": 5,
+        "prefixItems": [
+          { "type": "number" },
+          { "type": "number" },
+          { "type": "number" },
+          { "type": "number" },
+          { "type": "string", "minLength": 1 }
+        ]
+      }
+    }
+  }
+}

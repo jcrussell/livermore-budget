@@ -115,4 +115,6 @@ const (
 	Projection = "projection.schema.json"
 	// Series is one built as a series per printed row instead.
 	Series = "series.schema.json"
+	// Geometry is one page's word boxes, as tools/extract.py writes them.
+	Geometry = "geometry.schema.json"
 )

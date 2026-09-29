@@ -192,7 +192,7 @@ def check_against_schema(obj: dict, schema_name: str) -> None:
     problems = fails(obj, schema, schema_name.removesuffix(".schema.json"))
     if problems:
         raise SystemExit(
-            "the manifest this run produced does not match "
+            "the " + schema_name.removesuffix(".schema.json") + " this run produced does not match "
             + str(path.relative_to(REPO))
             + ":\n  "
             + "\n  ".join(problems[:10])
@@ -430,6 +430,7 @@ def extract_doc(doc_id: str, pdf: pathlib.Path, out_root: pathlib.Path, version:
 
         try:
             geom = page_geometry(doc_id, pdf, page, stderr_log)
+            check_against_schema(geom, "geometry.schema.json")
         except PopplerError as e:
             errors.append({"stage": "bbox", "page": page, "message": str(e)})
         else:
