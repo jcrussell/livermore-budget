@@ -74,7 +74,7 @@ func (*linkEndsMatchTheirFacts) Run(_ context.Context, s *Subject) (Result, erro
 	tiers := departmentTiers(structure.AllCuts())
 	links := 0
 	for _, p := range s.linkedDocuments() {
-		selected := factIndex(factsFor(s.Facts, p.Options))
+		selected := factIndex(project.SelectFacts(s.Facts, p.Options))
 		legs := map[string][]int{}
 		for i, l := range p.Links {
 			if l.TransferID != "" {

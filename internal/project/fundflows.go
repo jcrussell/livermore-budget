@@ -154,7 +154,7 @@ func (f *fundFlows) Document(facts []fact.Fact, o Options) (*Document, error) {
 				"cannot be built without one")
 	}
 	col := o.Columns[0]
-	selected := selectFacts(facts, o)
+	selected := SelectFacts(facts, o)
 
 	rev, exp, byFund, err := f.netFundFlows(selected)
 	if err != nil {

@@ -85,7 +85,6 @@ func TestFixtureVerdicts(t *testing.T) {
 		// And the two over the schedule documents likewise: the fixture builds
 		// none of the four, so there is no count to re-derive and no uncited
 		// fact to value.
-		"uncited-facts-are-printed-zeros": "pass over 5",
 		// No drill-down, no line node. Not declared vacuous: the committed
 		// corpus gives it a subject (TestTheCommittedCorpusVacuitySplit).
 		"revenue-lines-tie-to-their-categories": "vacuous over 0",
@@ -131,7 +130,7 @@ func TestFixtureVerdicts(t *testing.T) {
 	if diff := cmp.Diff(want, statuses(rep)); diff != "" {
 		t.Errorf("verdicts mismatch (-want +got):\n%s", diff)
 	}
-	if got := (counts{Pass: 26, Vacuous: 21, Skipped: 1}); got != rep.Counts {
+	if got := (counts{Pass: 25, Vacuous: 21, Skipped: 1}); got != rep.Counts {
 		t.Errorf("counts = %+v, want %+v", rep.Counts, got)
 	}
 	// The counts are pinned as numbers above rather than spelled in words here,
@@ -921,7 +920,9 @@ func TestCountsMustAccountForEveryFact(t *testing.T) {
 	}{
 		{"facts", func(g *project.Document) { g.Metadata.Counts.Facts++ }, "counts.facts is 13"},
 		{"cited", func(g *project.Document) { g.Metadata.Counts.FactsCited++ }, "counts.facts_cited is 8"},
-		{"a stock row grew a link", func(g *project.Document) {
+		// A fact newly cited with facts_cited raised and facts_uncited left:
+		// the identity, not the kind of fact, is what goes red.
+		{"a citation added and facts_uncited left", func(g *project.Document) {
 			g.Links[0].FactIDs = append(g.Links[0].FactIDs, stockFactID(g))
 			g.Metadata.Counts.FactsCited++
 		}, "8 + 5 = 13"},
@@ -1936,5 +1937,45 @@ func TestAnEndpointCarryingNoFlowMayBeAParent(t *testing.T) {
 	if got := strings.Count(findingDetails(res), "a flow endpoint this document draws a flow at"); got != folded {
 		t.Errorf("%d findings name the endpoint, want one per folded node (%d): %s",
 			got, folded, findingDetails(res))
+	}
+}
+
+// scheduleSubject is one document of each of the four schedule shapes, each
+// over one cited fact and one uncited printed zero. Hand-assembled, because
+// every producer would build more than the check under test needs.
+func scheduleSubject() *Subject {
+	col := project.Column{FiscalYear: 2026, Basis: mapping.BasisAdopted}
+	mk := func(id, scope string, cents int64) fact.Fact {
+		return fact.Fact{ID: id, Scope: scope, Kind: mapping.KindRevenue,
+			RowLabel: "Police", Category: "wages-and-benefits", FiscalYear: col.FiscalYear,
+			Basis: col.Basis, AmountCents: cents}
+	}
+	link := func(cited string) []project.Link {
+		return []project.Link{{Source: "expenditure/wages-and-benefits", Target: "dept/police",
+			ValueCents: 100, FactIDs: []string{cited}}}
+	}
+	nodes := []project.Node{{ID: "expenditure/wages-and-benefits"}, {ID: "dept/police"}}
+	facts := []fact.Fact{
+		mk("ff-a", project.TrendsScope, 100), mk("ff-z", project.TrendsScope, 0),
+		mk("ds-a", project.DepartmentSpendingScope, 100), mk("ds-z", project.DepartmentSpendingScope, 0),
+		mk("df-a", project.DepartmentFundingScope, 100), mk("df-z", project.DepartmentFundingScope, 0),
+		mk("tb-a", project.TransfersByFundScope, 100), mk("tb-z", project.TransfersByFundScope, 0),
+	}
+	options := func(scopes []string) project.Options {
+		return project.Options{Columns: []project.Column{col}, Scopes: scopes, Version: testVersion}
+	}
+	doc := func(cited string) *project.Document {
+		return &project.Document{Nodes: nodes, Links: link(cited),
+			Metadata: project.Metadata{Counts: project.Counts{
+				Facts: 2, FactsCited: 1, FactsUncited: 1, Nodes: 2, Links: 1}}}
+	}
+	return &Subject{
+		Facts: facts,
+		Projections: []projection{
+			{Name: project.FundFlowsProjection, Options: options(project.FundFlowsScopes()), Graph: doc("ff-a")},
+			{Name: project.DepartmentSpendingProjection, Options: options(project.DepartmentSpendingScopes()), Graph: doc("ds-a")},
+			{Name: project.DepartmentFundingProjection, Options: options(project.DepartmentFundingScopes()), Graph: doc("df-a")},
+			{Name: project.TransfersByFundProjection, Options: options(project.TransfersByFundScopes()), Graph: doc("tb-a")},
+		},
 	}
 }

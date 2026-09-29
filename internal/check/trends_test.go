@@ -213,7 +213,7 @@ func TestASeriesShortAColumnIsCaught(t *testing.T) {
 	// What actually happens, reproduced rather than reasoned about: dropping a
 	// point reddens BOTH checks. trend-points-tie-to-facts fails through its
 	// REVERSE arm, because the dropped point's fact is still in
-	// factsFor(p.Options) and no point publishes it; trend-series-are-complete
+	// project.SelectFacts(p.Options) and no point publishes it; trend-series-are-complete
 	// fails because the series is short a column. That is redundancy, not a
 	// division of labour, and it is very likely the right answer -- two
 	// independent statements about one corruption is what makes a check set
@@ -308,7 +308,7 @@ func runTrendPoints(t *testing.T, s *Subject) Result {
 // Only its COLUMN is one the document does not publish.
 //
 // That is the shape nothing could see. comparePoint compares a point against
-// its own fact, which agrees; and the reverse sweep walks factsFor(p.Options),
+// its own fact, which agrees; and the reverse sweep walks project.SelectFacts(p.Options),
 // which filters on the declared columns, so the fact behind the extra point is
 // never looked at. Both arms stayed green while a figure was being published
 // that no page could draw -- internal/export drops it, having no column to put

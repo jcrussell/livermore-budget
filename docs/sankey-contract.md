@@ -312,7 +312,7 @@ is 10 `revenue/` nodes plus `transfers/in` and `fund-balance/draw`, and tier 5 i
 year, basis and scope. `counts.facts_cited` is how many of those a link
 actually carries, and `counts.facts_uncited` the rest: on this document exactly
 the zero-valued cells (a dash is a printed fact but earns no link) plus the two
-stock rows, so it is a quantity `uncited-facts-are-printed-zeros` asserts rather
+stock rows, so it is a quantity the build refuses to let hold anything else, rather
 than a discrepancy a reader has to explain away. For FY2026: 120 = 58 cited +
 62 uncited, the 62 being 50 zero cells and 12 stock rows. `facts_cited_twice`
 is 0: no fact here is behind two links.

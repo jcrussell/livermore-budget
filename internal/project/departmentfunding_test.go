@@ -307,7 +307,7 @@ func TestTheFundingGraphRefusesWhatItCannotPlace(t *testing.T) {
 }
 
 // TestNetDepartmentFundingRefusesAFactOfAnotherScope drives the netting
-// function directly: through Document, selectFacts drops the fact first and
+// function directly: through Document, SelectFacts drops the fact first and
 // the test would be green because that gate fired.
 func TestNetDepartmentFundingRefusesAFactOfAnotherScope(t *testing.T) {
 	_, err := netDepartmentFunding(fundingFacts(t, func(f *fact.Fact) {

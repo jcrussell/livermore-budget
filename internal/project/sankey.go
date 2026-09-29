@@ -44,6 +44,11 @@ const (
 	KindFundBalance LinkKind = "fund_balance"
 )
 
+// LinkKinds is the closed set of link kinds, in declaration order.
+func LinkKinds() []LinkKind {
+	return []LinkKind{KindExternal, KindInternalTransfer, KindInternalService, KindFundBalance}
+}
+
 // Node tiers. The hierarchy has six levels; this schedule publishes two of
 // them, and the flow endpoints below sit at the ends rather than inside it.
 const (
@@ -536,7 +541,7 @@ func (s *sankey) Document(facts []fact.Fact, o Options) (*Document, error) {
 	}
 	col := o.Columns[0]
 
-	selected := selectFacts(facts, o)
+	selected := SelectFacts(facts, o)
 	h := headlineOver(view, selected)
 
 	// Net first, link second. A contra row (Budget Book p127 prints ERAF as
@@ -725,7 +730,7 @@ func headlineOver(v structure.View, facts []fact.Fact) Headline {
 	return h
 }
 
-// selectFacts keeps the facts this projection is of: the scope, and any one of
+// SelectFacts keeps the facts this projection is of: the scope, and any one of
 // the columns.
 //
 // Both selectors are applied. Filtering on the columns alone would let a
@@ -736,7 +741,7 @@ func headlineOver(v structure.View, facts []fact.Fact) Headline {
 // The column test is membership rather than equality because a document may be
 // of several columns. What it is not is a wildcard: an Options with no columns
 // selects NOTHING here, and [Options.Validate] refuses one before it can.
-func selectFacts(facts []fact.Fact, o Options) []fact.Fact {
+func SelectFacts(facts []fact.Fact, o Options) []fact.Fact {
 	out := make([]fact.Fact, 0, len(facts))
 	for _, f := range facts {
 		if !o.HasScope(f.Scope) || !o.HasKind(f.Kind) {

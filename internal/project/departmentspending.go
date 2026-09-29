@@ -86,7 +86,7 @@ func (d *departmentSpending) Document(facts []fact.Fact, o Options) (*Document, 
 			"two budget years in one matrix add every cell to its own successor")
 	}
 	col := o.Columns[0]
-	selected := selectFacts(facts, o)
+	selected := SelectFacts(facts, o)
 
 	cells, err := netDepartmentSpending(selected)
 	if err != nil {

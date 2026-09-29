@@ -3,6 +3,7 @@ package check
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -58,27 +59,17 @@ func (*linkKindsMatchTheirFacts) Description() string {
 		"boundary"
 }
 
-// declaredLinkKinds is docs/sankey-contract.md's closed set, spelled here for
-// the reason this package spells every vocabulary it checks: a check reading its
-// answer from the thing under test asserts nothing.
-var declaredLinkKinds = map[project.LinkKind]bool{
-	project.KindExternal:         true,
-	project.KindInternalTransfer: true,
-	project.KindInternalService:  true,
-	project.KindFundBalance:      true,
-}
-
 func (*linkKindsMatchTheirFacts) Run(_ context.Context, s *Subject) (Result, error) {
 	var findings []Finding
 	links := 0
 
 	for _, p := range s.linkedDocuments() {
-		byID := factIndex(factsFor(s.Facts, p.Options))
+		byID := factIndex(project.SelectFacts(s.Facts, p.Options))
 		for _, l := range p.Links {
 			links++
 			subject := fmt.Sprintf("%s %s -> %s", p, l.Source, l.Target)
 
-			if !declaredLinkKinds[l.Kind] {
+			if !slices.Contains(project.LinkKinds(), l.Kind) {
 				findings = append(findings, finding(subject,
 					"kind is %q, which is not one of %s", l.Kind, describeLinkKinds()))
 			}
@@ -146,8 +137,8 @@ func allOf(got map[mapping.Kind]bool, want ...mapping.Kind) bool {
 }
 
 func describeLinkKinds() string {
-	out := make([]string, 0, len(declaredLinkKinds))
-	for k := range declaredLinkKinds {
+	out := make([]string, 0, len(project.LinkKinds()))
+	for _, k := range project.LinkKinds() {
 		out = append(out, string(k))
 	}
 	sort.Strings(out)

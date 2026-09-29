@@ -73,7 +73,7 @@ func (sp seriesSpec) document(facts []fact.Fact, o Options) (*TrendsDocument, er
 				"schedule's facts would publish them under this one's contract")
 	}
 
-	selected := selectFacts(facts, o)
+	selected := SelectFacts(facts, o)
 
 	// Grouped by series, then each series' points ordered by the COLUMN ORDER
 	// THE OPTIONS DECLARE rather than by anything read off the facts. That is

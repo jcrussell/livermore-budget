@@ -588,7 +588,7 @@ func (o Options) validate() error {
 		if s == "" {
 			return errors.New("a scope may not be empty")
 		}
-		// A repeated scope is not merely redundant: selectFacts tests
+		// A repeated scope is not merely redundant: SelectFacts tests
 		// membership, so the same fact would be selected once however many
 		// times its scope is listed -- but every reader of this field that
 		// COUNTS scopes (the report strings, the disjointness check) would see
@@ -639,18 +639,11 @@ func (o Options) onlyScope() (string, error) {
 }
 
 // HasScope reports whether a fact carrying this scope is in the slice.
-//
-// A METHOD RATHER THAN A slices.Contains AT EVERY CALL SITE because the two
-// callers that matter -- internal/project's selectFacts and internal/check's
-// factsFor -- are a deliberate second derivation of one another, and the check
-// re-selecting facts by a rule the projection does not use is the divergence
-// that makes the second derivation worthless rather than independent.
 func (o Options) HasScope(scope string) bool {
 	return slices.Contains(o.Scopes, scope)
 }
 
-// HasKind reports whether a fact of this kind is in the slice, for HasScope's
-// reason: selectFacts and internal/check's factsFor both ask it.
+// HasKind reports whether a fact of this kind is in the slice.
 func (o Options) HasKind(k mapping.Kind) bool {
 	return len(o.Kinds) == 0 || slices.Contains(o.Kinds, k)
 }

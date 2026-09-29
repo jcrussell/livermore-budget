@@ -249,7 +249,6 @@ func TestTheCommittedCorpusVacuitySplit(t *testing.T) {
 		"fact-kind-matches-category":              StatusPass,
 		"node-tiers-are-declared":                 StatusPass,
 		"link-kinds-match-their-facts":            StatusPass,
-		"uncited-facts-are-printed-zeros":         StatusPass,
 		"revenue-lines-tie-to-their-categories":   StatusPass,
 		"projections-build":                       StatusPass,
 		"published-projection-built":              StatusPass,

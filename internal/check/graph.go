@@ -3,7 +3,6 @@ package check
 import (
 	"context"
 	"fmt"
-	"maps"
 	"slices"
 	"strings"
 
@@ -199,7 +198,7 @@ func (*linkValuesTieToFacts) Run(_ context.Context, s *Subject) (Result, error) 
 	var findings []Finding
 	links := 0
 	for _, p := range s.linkedDocuments() {
-		selected := factIndex(factsFor(s.Facts, p.Options))
+		selected := factIndex(project.SelectFacts(s.Facts, p.Options))
 		for _, l := range p.Links {
 			links++
 			subject := fmt.Sprintf("%s %s -> %s", p, l.Source, l.Target)
@@ -262,11 +261,8 @@ func (*linkValuesTieToFacts) Run(_ context.Context, s *Subject) (Result, error) 
 // link-values-tie-to-facts reads only fact_ids, and the shard itself is
 // well-formed either way.
 //
-// IT RE-DERIVES THE GROUPING RATHER THAN CALLING project.sourcesOf, for the
-// reason this file's header already gives for project.CategoryFundBalanceBeginning: a
-// check that asks the producer for the answer is asking the thing under test.
-// locatorSet is exactly the code that built the field, so comparing against it
-// would pass on any bug inside it.
+// The grouping is project.SourcesOf, the one rule the builders use; what this
+// holds is that a link's locators are built from exactly the facts it cites.
 //
 // It resolves ids in the projection's OWN slice, as its neighbour does, so a
 // locator derived from another year's fact is caught here rather than accepted
@@ -287,7 +283,7 @@ func (*linkLocatorsMatchTheirFacts) Run(_ context.Context, s *Subject) (Result, 
 	var findings []Finding
 	links := 0
 	for _, p := range s.linkedDocuments() {
-		selected := factIndex(factsFor(s.Facts, p.Options))
+		selected := factIndex(project.SelectFacts(s.Facts, p.Options))
 		for _, l := range p.Links {
 			links++
 			subject := fmt.Sprintf("%s %s -> %s", p, l.Source, l.Target)
@@ -297,7 +293,7 @@ func (*linkLocatorsMatchTheirFacts) Run(_ context.Context, s *Subject) (Result, 
 						"%d facts it cites", len(l.FactIDs)))
 				continue
 			}
-			pages := map[string]map[int]bool{}
+			var cited []*fact.Fact
 			unknown := false
 			for _, id := range l.FactIDs {
 				f, ok := selected[id]
@@ -308,19 +304,12 @@ func (*linkLocatorsMatchTheirFacts) Run(_ context.Context, s *Subject) (Result, 
 					unknown = true
 					break
 				}
-				if pages[f.DocID] == nil {
-					pages[f.DocID] = map[int]bool{}
-				}
-				pages[f.DocID][f.Page] = true
+				cited = append(cited, &f)
 			}
 			if unknown {
 				continue
 			}
-			want := make([]project.Source, 0, len(pages))
-			for _, doc := range slices.Sorted(maps.Keys(pages)) {
-				ps := slices.Sorted(maps.Keys(pages[doc]))
-				want = append(want, project.Source{DocID: doc, Pages: ps})
-			}
+			want := project.SourcesOf(cited)
 			// slices.EqualFunc and not cmp.Diff: this is the fisc binary that
 			// IS the gate, and go-cmp is a test library that panics on types
 			// it cannot walk. The diff was never shown to anyone anyway --
@@ -371,7 +360,7 @@ func describeSources(ss []project.Source) string {
 //
 // The identity every document publishes is facts = facts_cited + facts_uncited,
 // and it holds whatever an uncited fact is worth; that an uncited fact is a
-// printed zero or a stock row is uncited-facts-are-printed-zeros'. counts.facts
+// printed zero or a stock row is refused at build by every builder. counts.facts
 // against a fresh selection from the store catches a selector dropped from the
 // projection's filter; facts_cited and facts_cited_twice against the union of
 // every link's fact_ids catch a citation the document dropped or counted twice;
@@ -395,7 +384,7 @@ func (*countsReconcile) Run(_ context.Context, s *Subject) (Result, error) {
 
 	for _, p := range s.linkedDocuments() {
 		c := p.Graph.Metadata.Counts
-		slice := factsFor(s.Facts, p.Options)
+		slice := project.SelectFacts(s.Facts, p.Options)
 		times := map[string]int{}
 		for _, l := range p.Links {
 			for _, id := range l.FactIDs {
@@ -506,7 +495,7 @@ func (*headlineTiesToFacts) Run(_ context.Context, s *Subject) (Result, error) {
 
 	for _, p := range s.graphs() {
 		var grossRevenue, grossExpenditure, externalRevenue, externalExpenditure, transfersOut int64
-		for _, f := range factsFor(s.Facts, p.Options) {
+		for _, f := range project.SelectFacts(s.Facts, p.Options) {
 			external := f.FundGroup != project.FundGroupInternalService
 			switch f.Kind {
 			case mapping.KindRevenue:
@@ -589,7 +578,7 @@ func (*headlineTransferResidual) Run(_ context.Context, s *Subject) (Result, err
 
 	for _, p := range s.graphs() {
 		var in, out int64
-		for _, f := range factsFor(s.Facts, p.Options) {
+		for _, f := range project.SelectFacts(s.Facts, p.Options) {
 			switch f.Kind {
 			case mapping.KindTransferIn:
 				subjects++
@@ -1091,29 +1080,6 @@ func (*constraintTierVocabulary) Run(_ context.Context, s *Subject) (Result, err
 		nothing:  "no node carries a constraint_tier, so none has been checked against data/funds.yaml",
 		findings: findings,
 	}.result(), nil
-}
-
-// factsFor is the facts one projection is of.
-//
-// It restates internal/project's own selection on purpose. A check that asked
-// the projection which facts it had used would be asking the thing under test;
-// re-selecting from the fact store is what makes counts.facts a claim rather
-// than a restatement. Every selector is applied, because a projection
-// filtered on fiscal year alone doubles every figure and still balances. The
-// kinds are the published Options', so a fact of a kind no document selects
-// is outside every count here.
-func factsFor(facts []fact.Fact, o project.Options) []fact.Fact {
-	out := make([]fact.Fact, 0, len(facts))
-	for _, f := range facts {
-		if !o.HasScope(f.Scope) || !o.HasKind(f.Kind) {
-			continue
-		}
-		if !slices.Contains(o.Columns, project.Column{FiscalYear: f.FiscalYear, Basis: f.Basis}) {
-			continue
-		}
-		out = append(out, f)
-	}
-	return out
 }
 
 // factIndex keys facts by id, which is unique by construction and proved so by

@@ -203,7 +203,7 @@ func documentShape(p projection) string {
 	case p.Graph != nil:
 		// Every check over Subject.linkedDocuments: graph-acyclic,
 		// node-tiers-are-declared, link-values-tie-to-facts, counts-reconcile,
-		// uncited-facts-are-printed-zeros, transfer-legs-pair and the rest.
+		// transfer-legs-pair and the rest.
 		return "graph"
 	case p.Trends != nil:
 		// trend-points-tie-to-facts and trend-series-are-complete.

@@ -6,6 +6,9 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/jcrussell/livermore-budget/internal/fact"
+	"github.com/jcrussell/livermore-budget/internal/mapping"
 )
 
 // jsonTags is the JSON key each field of a struct publishes, in declaration
@@ -175,5 +178,32 @@ func TestEncodeLeavesHTMLAlone(t *testing.T) {
 	var back map[string]string
 	if err := json.Unmarshal(got, &back); err != nil {
 		t.Fatalf("the encoder produced undecodable JSON: %v", err)
+	}
+}
+
+// TestRefuseUncitedAdmitsOnlyPrintedZeros holds the one rule every builder
+// applies to the facts it draws no link for: a printed zero passes, anything
+// else is refused unless the builder's allow names it, as the spine's does for
+// its two stock rows.
+func TestRefuseUncitedAdmitsOnlyPrintedZeros(t *testing.T) {
+	zero := &fact.Fact{ID: "z", Kind: mapping.KindRevenue, Category: "taxes/property"}
+	money := &fact.Fact{ID: "m", Kind: mapping.KindRevenue, Category: "taxes/property", AmountCents: 100}
+	stock := &fact.Fact{ID: "s", Kind: mapping.KindFundBalance, Category: CategoryFundBalanceBeginning, AmountCents: 100}
+	for _, tt := range []struct {
+		name    string
+		uncited []*fact.Fact
+		allow   func(*fact.Fact) bool
+		refused bool
+	}{
+		{"a printed zero", []*fact.Fact{zero}, nil, false},
+		{"money no link carries", []*fact.Fact{zero, money}, nil, true},
+		{"a stock row where the builder admits stocks", []*fact.Fact{stock}, isStock, false},
+		{"a stock row where it does not", []*fact.Fact{stock}, nil, true},
+		{"money where the builder admits only stocks", []*fact.Fact{money}, isStock, true},
+	} {
+		err := refuseUncited("t", tt.uncited, tt.allow)
+		if (err != nil) != tt.refused {
+			t.Errorf("%s: refuseUncited = %v, want refused %v", tt.name, err, tt.refused)
+		}
 	}
 }

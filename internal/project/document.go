@@ -68,8 +68,7 @@ type Counts struct {
 	// FactsCited is how many DISTINCT facts some link carries.
 	FactsCited int `json:"facts_cited"`
 	// FactsUncited is the facts no link carries: a printed zero, or on the
-	// spine a stock row. uncited-facts-are-printed-zeros holds that to the
-	// store; every builder refuses anything else at build.
+	// spine a stock row. Every builder refuses anything else at build.
 	FactsUncited int `json:"facts_uncited"`
 	// FactsCitedTwice is how many distinct facts are behind MORE THAN ONE
 	// link. Zero on a document whose links partition its facts; on the
@@ -107,8 +106,8 @@ func tally(selected []fact.Fact, links []Link, nodes int) (Counts, []*fact.Fact)
 	return c, uncited
 }
 
-// refuseUncited is the build-time half of uncited-facts-are-printed-zeros:
-// a fact no link carries is a printed zero, or the document has dropped money
+// refuseUncited holds every document to its uncited facts: a fact no link
+// carries is a printed zero, or the document has dropped money
 // in silence and its own counts cannot show it. allow names the one other
 // shape a builder admits, or is nil.
 func refuseUncited(name string, uncited []*fact.Fact, allow func(*fact.Fact) bool) error {
@@ -232,6 +231,16 @@ func nodeIDs(nodes []Node) map[string]struct{} {
 		out[n.ID] = struct{}{}
 	}
 	return out
+}
+
+// SourcesOf is the (doc_id, page) pairs facts were read from, in the published
+// shape; it is how every link's Locators are built.
+func SourcesOf(facts []*fact.Fact) []Source {
+	var l locatorSet
+	for _, f := range facts {
+		l.add(f)
+	}
+	return l.sources()
 }
 
 // locatorSet collects the (doc_id, page) pairs of a set of facts.

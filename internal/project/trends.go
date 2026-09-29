@@ -303,7 +303,7 @@ func trendColumns(cols []Column) []trendColumn {
 
 // sortPoints puts a series' points in the document's column order.
 //
-// A point whose column the options do not declare cannot occur -- selectFacts
+// A point whose column the options do not declare cannot occur -- SelectFacts
 // filtered on exactly that set -- so an unknown column sorts last rather than
 // panicking, which keeps the ordering total under any future caller.
 func sortPoints(points []Point, cols []Column) {

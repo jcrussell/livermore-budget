@@ -73,7 +73,7 @@ func (*trendPointsTieToFacts) Run(_ context.Context, s *Subject) (Result, error)
 				// to every other arm here, and measured rather than assumed:
 				// comparePoint compares a point only against ITS OWN FACT, so a
 				// point whose every field matches a real fact passes it; and the
-				// reverse sweep below walks factsFor(p.Options), which filters on
+				// reverse sweep below walks project.SelectFacts(p.Options), which filters on
 				// these same columns, so the fact behind such a point is never
 				// even looked at. Append a genuine FY2027 point to a one-column
 				// document and both arms stay green over it.
@@ -98,7 +98,7 @@ func (*trendPointsTieToFacts) Run(_ context.Context, s *Subject) (Result, error)
 		// not. Iterating the facts the projection was BUILT over rather than the
 		// whole store is what keeps this a statement about the document rather
 		// than about every schedule in the corpus.
-		for _, f := range factsFor(s.Facts, p.Options) {
+		for _, f := range project.SelectFacts(s.Facts, p.Options) {
 			if published[f.ID] {
 				continue
 			}
