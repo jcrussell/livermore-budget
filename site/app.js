@@ -2102,8 +2102,8 @@ export function isCarried(id) {
  * carries nothing from inside to it; where both, the outflow's placement
  * wins. An endpoint's ribbons come off
  * the chart on screen where it draws any, else off the file, never both: the
- * window's flank is already on screen, and taking both doubled transfers/in
- * against what p0067 prints. The mark's two figures are the sums of the
+ * window's flank is already on screen, and taking both would count
+ * transfers/in twice against what p0067 prints. The mark's two figures are the sums of the
  * ribbons carried each way, the leaving ones counted whether or not this width
  * draws their column, so the figures do not move with the viewport. Its
  * inflow and outflow differ by construction, and d3-sankey shows that on the
