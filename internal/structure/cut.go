@@ -133,7 +133,7 @@ type Cut struct {
 	// FundGroups pins the cut to the groups its pages cover. Empty means all.
 	FundGroups []string
 	// DepartmentTier is the tier of data/departments.yaml the pages name on
-	// the department axis, "division" or "department"; required where the
+	// the department axis, TierDivision or TierDepartment; required where the
 	// level carries that axis, since the two tiers share no key.
 	DepartmentTier string
 	// Reference marks the cut whose columns every agreement is held to: the
@@ -258,7 +258,7 @@ func ValidateCuts(facts []fact.Fact, byRule map[string]Level, cuts []Cut) (empty
 		case !hasAxis(c.Level, AxisDepartment) && c.DepartmentTier != "":
 			return nil, fmt.Errorf("cut %q declares department tier %q at %q, which carries no department axis",
 				c.Name, c.DepartmentTier, c.Level)
-		case c.DepartmentTier != "" && c.DepartmentTier != "division" && c.DepartmentTier != "department":
+		case c.DepartmentTier != "" && c.DepartmentTier != TierDivision && c.DepartmentTier != TierDepartment:
 			return nil, fmt.Errorf("cut %q declares department tier %q; the tiers are division and department",
 				c.Name, c.DepartmentTier)
 		}

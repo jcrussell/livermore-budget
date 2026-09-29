@@ -98,7 +98,7 @@ func (*cutsTieAlongTheLattice) Run(_ context.Context, s *Subject) (Result, error
 	splits = live
 
 	for _, m := range structure.TierMisfits(s.Facts, cuts, func(tier, slug string) bool {
-		if tier == "division" {
+		if tier == structure.TierDivision {
 			_, ok := s.Vocabulary.Division(slug)
 			return ok
 		}

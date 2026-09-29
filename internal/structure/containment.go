@@ -421,7 +421,7 @@ func HoldTie(facts []fact.Fact, cuts []Cut, t Tie, department func(division stri
 	}
 	folded := slices.Clone(facts)
 	for _, c := range []*Cut{&a, &b} {
-		if c.DepartmentTier != "division" {
+		if c.DepartmentTier != TierDivision {
 			continue
 		}
 		for i := range folded {
@@ -429,7 +429,7 @@ func HoldTie(facts []fact.Fact, cuts []Cut, t Tie, department func(division stri
 				folded[i].Department = department(folded[i].Department)
 			}
 		}
-		c.DepartmentTier = "department"
+		c.DepartmentTier = TierDepartment
 	}
 	r, err := restrict(a, b, t.At)
 	if err != nil {

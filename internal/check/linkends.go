@@ -200,19 +200,15 @@ func (e linkEnd) mismatch(id string, source bool) (string, bool) {
 			carried = f.FundGroup
 		case namesDivision, namesDepartment:
 			carried = f.Department
-			tier := map[endName]string{namesDivision: "division", namesDepartment: "department"}[name]
+			tier := map[endName]string{namesDivision: structure.TierDivision, namesDepartment: structure.TierDepartment}[name]
 			if e.tiers[f.Scope] != tier {
 				return fmt.Sprintf("%s names a %s and fact %s is from %s, which no cut declares at that tier",
 					id, tier, f.ID, f.Scope), true
 			}
 		case namesCategory:
 			carried = f.Category
-			if e.divisionExpenditure && form == "expenditure" {
-				carried = f.Department + "/" + f.Category
-				// pp.172-183 print no division, so their ids name the fund.
-				if f.Department == "" {
-					carried = project.PrefixFund + fact.FundString(f.Fund) + "/" + f.Category
-				}
+			if e.divisionExpenditure && form+"/" == project.PrefixExpenditure {
+				carried = strings.TrimPrefix(project.ExpenditureIDOf(&f), project.PrefixExpenditure)
 			}
 		case namesLine:
 			if msg := e.lineMismatch(id, value, f); msg != "" {

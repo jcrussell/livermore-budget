@@ -74,7 +74,7 @@ func BudgetBookCuts() []Cut {
 			Level:          LevelFundByDepartmentByCategory,
 			Kinds:          []mapping.Kind{mapping.KindExpenditure},
 			FundGroups:     []string{registry.FundTypeGeneral},
-			DepartmentTier: "division",
+			DepartmentTier: TierDivision,
 			Bases:          budgetBookDetail,
 		},
 		{
@@ -105,7 +105,7 @@ func BudgetBookCuts() []Cut {
 			Scope:          ScopeDepartmentwideExpenditures,
 			Level:          LevelDepartmentByCategory,
 			Kinds:          []mapping.Kind{mapping.KindExpenditure},
-			DepartmentTier: "division",
+			DepartmentTier: TierDivision,
 			Bases:          budgetBookDetail,
 		},
 		{
@@ -116,7 +116,7 @@ func BudgetBookCuts() []Cut {
 			Level:          LevelFundByDepartment,
 			Kinds:          []mapping.Kind{mapping.KindExpenditure},
 			Placeholders:   []Axis{AxisCategory},
-			DepartmentTier: "department",
+			DepartmentTier: TierDepartment,
 			Bases:          budgetBookDetail,
 		},
 	}

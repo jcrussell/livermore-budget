@@ -16,3 +16,10 @@ const (
 	ScopeACFRChangesInFundBalances  = "acfr-changes-in-fund-balances"
 	ScopeACFRFundBalances           = "acfr-fund-balances"
 )
+
+// The two tiers a cut's department axis may be read at: pp.167-170's
+// divisions, or pp.85-125's departments above them.
+const (
+	TierDivision   = "division"
+	TierDepartment = "department"
+)

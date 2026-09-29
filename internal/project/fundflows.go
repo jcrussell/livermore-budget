@@ -769,8 +769,27 @@ func (f *fundFlows) divisionEndpoint(division string) (endpoint, error) {
 //
 // A bare expenditure/<object> node would need one parent per division.
 func (*fundFlows) objectEndpoint(division, category string) endpoint {
-	return endpoint{id: PrefixExpenditure + division + "/" + category, slug: category,
+	return endpoint{id: divisionObjectID(division, category), slug: category,
 		role: RoleObjectCategory}
+}
+
+// divisionObjectID and fundObjectID are the drill-down's two tier-5 id forms:
+// a division's object row, and a fund's where the page prints no division.
+func divisionObjectID(division, category string) string {
+	return PrefixExpenditure + division + "/" + category
+}
+
+func fundObjectID(fund, category string) string {
+	return PrefixExpenditure + PrefixFund + fund + "/" + category
+}
+
+// ExpenditureIDOf is the drill-down's tier-5 id for an expenditure fact: its
+// division's object row, or its fund's where it carries no division.
+func ExpenditureIDOf(f *fact.Fact) string {
+	if f.Department == "" {
+		return fundObjectID(fact.FundString(f.Fund), f.Category)
+	}
+	return divisionObjectID(f.Department, f.Category)
 }
 
 // fundObjectEndpoint is a tier-5 node of pp.173-183, under the fund that
@@ -778,7 +797,7 @@ func (*fundFlows) objectEndpoint(division, category string) endpoint {
 // a bare expenditure/<object> shared by every fund would reach no group's
 // window.
 func fundObjectEndpoint(fund int, category string) endpoint {
-	return endpoint{id: PrefixExpenditure + "fund/" + strconv.Itoa(fund) + "/" + category,
+	return endpoint{id: fundObjectID(strconv.Itoa(fund), category),
 		slug: category, role: RoleObjectCategory,
 		parent: PrefixFund + strconv.Itoa(fund)}
 }
