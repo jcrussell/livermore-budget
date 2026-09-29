@@ -12,13 +12,13 @@ import (
 // TestEveryPublishedDocumentSelectsExactlyItsCutsFootprint is the measurement
 // fisc-4qv2.4 rests on: a graph document's fact selection -- scope, kind and
 // column, project.Options' three selectors -- is exactly the facts the cuts and
-// residues declared on its scopes admit, in its column and its kinds. The two
-// are separate implementations, selectFacts in internal/project and Cut.Admits
-// in internal/structure, so a builder that narrowed or widened its selection
-// past the cut model, or a cut pinned to fund groups its scope's document
-// still draws, is red here. It is what lets a document be read as a view over
-// its cuts without a second selection being written for it, and it names the
-// one document that draws a declared residue.
+// residues declared on its scopes admit, in its column and its kinds. The
+// selection is the builders' own, project.SelectFacts; the footprint is
+// structure's Cut.Admits and Residue.Matches, a different question (which
+// cells a schedule prints) asked of the same facts. So a builder that narrowed
+// or widened its selection past the cut model, or a cut pinned to fund groups
+// its scope's document still draws, is red here. It names the documents that
+// draw a declared residue.
 func TestEveryPublishedDocumentSelectsExactlyItsCutsFootprint(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {
@@ -41,13 +41,17 @@ func TestEveryPublishedDocumentSelectsExactlyItsCutsFootprint(t *testing.T) {
 			continue
 		}
 		documents++
+		chosen := map[string]bool{}
+		for _, f := range project.SelectFacts(facts, o) {
+			chosen[f.ID] = true
+		}
 		selected, drawnResidue := 0, 0
 		for i := range facts {
 			f := &facts[i]
 			if !slices.Contains(o.Columns, project.Column{FiscalYear: f.FiscalYear, Basis: f.Basis}) || !o.HasKind(f.Kind) {
 				continue
 			}
-			inScope := o.HasScope(f.Scope)
+			inScope := chosen[f.ID]
 			inCut := slices.ContainsFunc(cuts, func(c structure.Cut) bool { return c.Admits(f) })
 			inResidue := slices.ContainsFunc(residues, func(r structure.Residue) bool {
 				return r.Matches(f) && slices.Contains(d.Scopes, r.Scope)

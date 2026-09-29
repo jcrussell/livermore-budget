@@ -160,32 +160,16 @@ func (d PublishedDocument) String() string {
 // A FUNCTION RETURNING A FRESH SLICE, for [PublishedFiscalYears]'s reason: a
 // package variable would let any caller reorder or extend the published set by
 // accident, and the point of this declaration is that `fisc export` and `fisc
-// verify` cannot disagree about what it contains. The spine's entries are
-// derived from that list so the two cannot drift; the trends entry is stated,
-// because nothing else states it.
+// verify` cannot disagree about what it contains. Every graph's entries come
+// from [publishedGraphs] in one loop; the three series
+// documents are stated, because nothing else states them.
 //
 // Nothing here is checked against the corpus at declaration time, deliberately.
 // A published set that consulted the facts could not report that the facts stop
 // covering it, which is the only thing it is for.
 func PublishedDocuments() []PublishedDocument {
-	years := PublishedFiscalYears()
-	out := make([]PublishedDocument, 0, len(years)+1)
-	for _, year := range years {
-		out = append(out, PublishedDocument{
-			Projection: PublishedProjection,
-			Stem:       stemOrPanic(PublishedProjection, spineOptions(year), spineSlices()),
-			Scopes:     []string{PublishedScope},
-			Columns:    []Column{{FiscalYear: year, Basis: PublishedBasis}},
-		})
-	}
-	out = append(out, PublishedDocument{
-		Projection: TrendsProjection,
-		Stem:       TrendsProjection,
-		Scopes:     []string{TrendsScope},
-		Columns:    TrendsColumns(),
-	})
-
-	for _, g := range publishedGraphs()[1:] {
+	var out []PublishedDocument
+	for _, g := range publishedGraphs() {
 		declared := g.options()
 		for _, o := range declared {
 			out = append(out, PublishedDocument{
@@ -197,6 +181,13 @@ func PublishedDocuments() []PublishedDocument {
 			})
 		}
 	}
+
+	out = append(out, PublishedDocument{
+		Projection: TrendsProjection,
+		Stem:       TrendsProjection,
+		Scopes:     []string{TrendsScope},
+		Columns:    TrendsColumns(),
+	})
 
 	// The two ACFR ten-year schedules, one document each: two row axes, two
 	// scopes, and seriesSpec's one-schedule rule keeps them apart. Their
@@ -253,7 +244,7 @@ func publishedGraphs() []publishedGraph {
 		{projection: DepartmentSpendingProjection, scopes: DepartmentSpendingScopes(), columns: budgetBookDetailColumns()},
 		{projection: DepartmentFundingProjection, scopes: DepartmentFundingScopes(), columns: budgetBookDetailColumns()},
 		{projection: TransfersByFundProjection, scopes: TransfersByFundScopes(), columns: adoptedColumns()},
-		{projection: TransfersOutProjection, scopes: TransfersOutScopes(), kinds: transferKinds, columns: adoptedColumns()},
+		{projection: TransfersOutProjection, scopes: TransfersOutScopes(), kinds: (&transfersByFund{Out: true}).kinds(), columns: adoptedColumns()},
 	}
 }
 
@@ -356,16 +347,6 @@ func MissingColumns(d PublishedDocument, o Options) []Column {
 	return missing
 }
 
-// spineOptions is one published year of the spine, as the projection would be
-// built over it. It exists so [PublishedDocuments] computes its stems through
-// [Stem] rather than restating the rule.
-func spineOptions(year int) Options {
-	return Options{
-		Columns: []Column{{FiscalYear: year, Basis: PublishedBasis}},
-		Scopes:  []string{PublishedScope},
-	}
-}
-
 // sameScopes reports whether two scope sets name the same schedules.
 //
 // Sorted copies rather than a map, because these sets are one or two entries
@@ -381,14 +362,6 @@ func sameScopes(a, b []string) bool {
 	slices.Sort(x)
 	slices.Sort(y)
 	return slices.Equal(x, y)
-}
-
-// spineSlices is every document the spine publishes, as [sankey.Slices] would
-// declare them over a corpus that covers the published years. It is what
-// [PublishedDocuments] hands [Stem], so the declaration names its files by the
-// same rule and over the same list `fisc export` will.
-func spineSlices() []Options {
-	return publishedGraphs()[0].options()
 }
 
 // stemOrPanic is [Stem] where the arguments are this package's own literals and
