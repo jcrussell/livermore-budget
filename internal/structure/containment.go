@@ -57,6 +57,21 @@ func project(facts []fact.Fact, c Cut, at Level, r restriction) (map[Key]Sum, er
 	return out, nil
 }
 
+// CellsOf sums a cut's facts into the cells of a level: the one cell sum
+// every comparison of cuts is made over.
+func CellsOf(facts []fact.Fact, c Cut, at Level) (map[Key]Sum, error) {
+	return project(facts, c, at, restriction{kinds: c.Kinds})
+}
+
+// Tally compares two sides' cells key by key over the keys keep admits, as
+// every comparison of cuts does; a caller whose sides are not both cuts reads
+// Cells, Subjects and OneSided off it and words its own findings.
+func Tally(cells, ref map[Key]Sum, keep func(Key) bool) Comparison {
+	var c Comparison
+	c.tally(cells, ref, keep)
+	return c
+}
+
 // KeyOf is the cell a fact falls in at a level. The level must be declared;
 // callers project through Axes first.
 func KeyOf(f *fact.Fact, at Level) Key {
@@ -359,7 +374,7 @@ func compareAt(facts []fact.Fact, c, against Cut, at Level) (Comparison, error) 
 // tally fills a comparison with every key either side produced that keep admits.
 func (c *Comparison) tally(cells, ref map[Key]Sum, keep func(Key) bool) {
 	columns := map[string]bool{}
-	for _, k := range unionKeys(cells, ref) {
+	for _, k := range UnionKeys(cells, ref) {
 		if !keep(k) {
 			continue
 		}
@@ -446,8 +461,8 @@ func cents(c int64) string {
 // Cents renders an amount the way a finding does.
 func Cents(c int64) string { return cents(c) }
 
-// unionKeys is every key either side produced, in a stable order.
-func unionKeys(a, b map[Key]Sum) []Key {
+// UnionKeys is every key either side produced, in a stable order.
+func UnionKeys(a, b map[Key]Sum) []Key {
 	keys := make([]Key, 0, len(a)+len(b))
 	for k := range a {
 		keys = append(keys, k)

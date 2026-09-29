@@ -126,7 +126,7 @@ func Peers(facts []fact.Fact, a, b Cut, identities []Identity, exceptions []Exce
 				break
 			}
 		}
-		for _, key := range unionKeys(as, bs) {
+		for _, key := range UnionKeys(as, bs) {
 			sa, sb := as[key], bs[key]
 			if !sa.Present || !sb.Present {
 				if identity != "" && a.prints(mapping.Basis(key.Basis)) && b.prints(mapping.Basis(key.Basis)) &&

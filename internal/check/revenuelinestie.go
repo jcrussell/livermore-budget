@@ -3,22 +3,13 @@ package check
 import (
 	"context"
 	"fmt"
-	"slices"
-	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
-	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/internal/structure"
 )
-
-// revenueDetailKinds is what pp.127-140 print: revenue and transfers in,
-// across every fund group. Transfers In sits inside a printed `Total <fund>`
-// on pp.131-140, so dropping that kind leaves the drill-down's transfer flows
-// summed into no cell.
-var revenueDetailKinds = []mapping.Kind{mapping.KindRevenue, mapping.KindTransferIn}
 
 // spineGrain is the level arm 1 compares at: the spine's own, so a cell is a
 // structure.Key both this check and cuts-tie-along-the-lattice spell the same
@@ -128,7 +119,10 @@ func (c *revenueLinesTieToTheirCategories) Run(_ context.Context, s *Subject) (R
 		}
 	}
 
-	spine := spineCells(s.Facts)
+	spine, err := spineCells(s.Facts)
+	if err != nil {
+		return Result{}, err
+	}
 	reconcile, unmatched := reconciledColumns(detail, spine)
 	exempt, notes, exceptionFindings := lineExceptions(detail, spine, reconcile)
 	findings = append(findings, exceptionFindings...)
@@ -293,20 +287,22 @@ func silentZeros(detail, spine map[structure.Key]structure.Sum, reconcile map[st
 
 // spineCells sums the spine's facts of the kinds pp.127-140 print into the
 // cells of its own grain, keyed as cuts-tie-along-the-lattice keys them.
-func spineCells(facts []fact.Fact) map[structure.Key]structure.Sum {
-	out := map[structure.Key]structure.Sum{}
-	for i := range facts {
-		f := &facts[i]
-		if f.Scope != spineScope || !slices.Contains(revenueDetailKinds, f.Kind) {
-			continue
+func spineCells(facts []fact.Fact) (map[structure.Key]structure.Sum, error) {
+	var spine, detail structure.Cut
+	for _, c := range structure.AllCuts() {
+		switch c.Name {
+		case structure.CutSpine:
+			spine = c
+		case structure.CutRevenueDetail:
+			detail = c
 		}
-		k := structure.KeyOf(f, spineGrain)
-		c := out[k]
-		c.Cents += f.AmountCents
-		c.Present = true
-		out[k] = c
 	}
-	return out
+	if spine.Name == "" || detail.Name == "" {
+		return nil, fmt.Errorf("structure declares no %q or no %q cut", structure.CutSpine, structure.CutRevenueDetail)
+	}
+	// The spine's cells of the kinds the revenue detail prints.
+	spine.Kinds = detail.Kinds
+	return structure.CellsOf(facts, spine, spineGrain)
 }
 
 // reconciledColumns splits the (fiscal year, basis) columns the two sides
@@ -344,34 +340,34 @@ func reconciledColumns(detail, spine map[structure.Key]structure.Sum) (reconcile
 func compareCells(detail, spine map[structure.Key]structure.Sum, reconcile map[string]bool,
 	scope string, exempt func(structure.Key) bool) cellComparison {
 	var out cellComparison
-	for _, k := range unionKeys(detail, spine) {
+	tallied := structure.Tally(detail, spine, func(k structure.Key) bool {
 		if !reconcile[k.Column()] {
-			continue
+			return false
 		}
 		if exempt != nil && exempt(k) {
 			out.exempt++
+			return false
+		}
+		return true
+	})
+	out.subjects, out.oneSided = tallied.Subjects, tallied.OneSided
+	for _, cell := range tallied.Cells {
+		if cell.Ties() {
 			continue
 		}
-		d, sp := detail[k], spine[k]
-		out.subjects++
-		if !d.Present || !sp.Present {
-			out.oneSided++
-		}
-		if d.Cents == sp.Cents {
-			continue
-		}
+		d, sp := cell.Cut, cell.Against
 		switch {
 		case !d.Present:
-			out.findings = append(out.findings, finding(k.String(),
+			out.findings = append(out.findings, finding(cell.Key.String(),
 				"the spine publishes %s here and the detail has no such row at all; a "+
 					"category the schedule stopped printing is a rule that was dropped, "+
 					"not a cell that is empty", structure.Cents(sp.Cents)))
 		case !sp.Present:
-			out.findings = append(out.findings, finding(k.String(),
+			out.findings = append(out.findings, finding(cell.Key.String(),
 				"the detail publishes %s here and the spine has no such cell; %q must "+
 					"decompose the spine, never extend it", structure.Cents(d.Cents), scope))
 		default:
-			out.findings = append(out.findings, finding(k.String(),
+			out.findings = append(out.findings, finding(cell.Key.String(),
 				"the detail sums to %s and the spine publishes %s, a difference of %s; "+
 					"these are the same money decomposed two ways and must tie to the cent",
 				structure.Cents(d.Cents), structure.Cents(sp.Cents), structure.Cents(d.Cents-sp.Cents)))
@@ -390,27 +386,4 @@ type cellComparison struct {
 	oneSided int
 	exempt   int
 	findings []Finding
-}
-
-// unionKeys is every key either side produced, in a stable order.
-func unionKeys(a, b map[structure.Key]structure.Sum) []structure.Key {
-	keys := make([]structure.Key, 0, len(a)+len(b))
-	for k := range a {
-		keys = append(keys, k)
-	}
-	for k := range b {
-		if _, dup := a[k]; !dup {
-			keys = append(keys, k)
-		}
-	}
-	sort.Slice(keys, func(i, j int) bool {
-		if keys[i].Year != keys[j].Year {
-			return keys[i].Year < keys[j].Year
-		}
-		if keys[i].Basis != keys[j].Basis {
-			return keys[i].Basis < keys[j].Basis
-		}
-		return keys[i].Coords < keys[j].Coords
-	})
-	return keys
 }
