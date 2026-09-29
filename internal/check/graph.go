@@ -8,7 +8,6 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/fact"
-	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/project"
 )
 
@@ -453,21 +452,53 @@ func (*countsReconcile) Run(_ context.Context, s *Subject) (Result, error) {
 	}.result(), nil
 }
 
-// headlineTiesToFacts asserts the five revenue and expenditure headline figures
-// are the sums they claim to be.
+// drawnTotals sums a document's published links by what the headline says
+// they are: out of a revenue category, into an object category (each also by
+// the external kind), out of transfers/in and into transfers/out.
+type drawnTotals struct {
+	grossRevenue, externalRevenue, grossExpenditure, externalExpenditure int64
+	transfersIn, transfersOut                                            int64
+	links                                                                int
+}
+
+func drawnTotalsOf(links []project.Link) drawnTotals {
+	var d drawnTotals
+	for _, l := range links {
+		external := l.Kind == project.KindExternal
+		switch {
+		case strings.HasPrefix(l.Source, project.PrefixRevenue):
+			d.links++
+			d.grossRevenue += l.ValueCents
+			if external {
+				d.externalRevenue += l.ValueCents
+			}
+		case strings.HasPrefix(l.Target, project.PrefixExpenditure):
+			d.links++
+			d.grossExpenditure += l.ValueCents
+			if external {
+				d.externalExpenditure += l.ValueCents
+			}
+		case l.Source == project.NodeTransfersIn:
+			d.links++
+			d.transfersIn += l.ValueCents
+		case l.Target == project.NodeTransfersOut:
+			d.links++
+			d.transfersOut += l.ValueCents
+		}
+	}
+	return d
+}
+
+// headlineTiesToFacts asserts the four revenue and expenditure headline
+// figures are what the document draws: each equals the sum of the published
+// links it summarises, by the links' own kinds. link-values-tie-to-facts ties
+// every link to its facts, so the two together tie the headline to the facts.
 //
-// These are the figures a reader quotes without reading the chart, and they are
-// accumulated cell by cell inside internal/project rather than published as
-// anything a consumer can re-add. Before this check, all five could be wrong with
-// every link still tying to its facts.
-//
-// What it witnesses is the CLASSIFICATION, not the amounts: the sums here are over
-// the same facts the projection used, so a corrupted amount moves both sides
-// together (fact-token-reparses is what catches that). The rule each side applies
-// is different, though, and that difference is the point — this one filters facts
-// by kind and by fund group, while the projection accumulates per printed cell as
-// it decides each link's kind, so an external figure that includes internal service
-// charges, or a gross figure that has quietly stopped including them, fails here.
+// The producer computes the headline over facts and the links over cells, so a
+// figure that counts internal service charges as external, or a gross figure
+// that stopped including them, disagrees with the chart it heads. The naive
+// figure and the transfer residual are derived from these in one line each by
+// internal/project, and are held there.
 type headlineTiesToFacts struct{}
 
 var _ Check = (*headlineTiesToFacts)(nil)
@@ -476,90 +507,51 @@ func (*headlineTiesToFacts) ID() string { return "headline-ties-to-facts" }
 func (*headlineTiesToFacts) Tier() int  { return 1 }
 func (*headlineTiesToFacts) Full() bool { return false }
 func (*headlineTiesToFacts) Description() string {
-	return "the gross and external revenue and expenditure figures, and the naive expenditure " +
-		"figure, each equal the sum of the facts they are of"
+	return "the gross and external revenue and expenditure figures each equal the sum of the " +
+		"published links they summarise, which link-values-tie-to-facts ties to the facts"
 }
 
-// Run sums the facts each figure is of, which for the two external figures means
-// every fund group but the internal service one: an Internal Service Fund charge
-// is billed by one city department to another, so counting it as revenue AND as the
-// paying department's expenditure double-counts it.
-//
-// The naive figure is here rather than with headline-naive-expenditure because its
-// identity — expenditures plus transfers out — is a sum of facts like the other
-// four, while that check makes a different kind of claim about it. Keeping the two
-// apart is also what lets each report a subject count it can defend.
 func (*headlineTiesToFacts) Run(_ context.Context, s *Subject) (Result, error) {
 	var findings []Finding
 	subjects := 0
-
 	for _, p := range s.graphs() {
-		var grossRevenue, grossExpenditure, externalRevenue, externalExpenditure, transfersOut int64
-		for _, f := range project.SelectFacts(s.Facts, p.Options) {
-			external := f.FundGroup != project.FundGroupInternalService
-			switch f.Kind {
-			case mapping.KindRevenue:
-				subjects++
-				grossRevenue += f.AmountCents
-				if external {
-					externalRevenue += f.AmountCents
-				}
-			case mapping.KindExpenditure:
-				subjects++
-				grossExpenditure += f.AmountCents
-				if external {
-					externalExpenditure += f.AmountCents
-				}
-			case mapping.KindTransferOut:
-				// A subject of this check too: the naive figure is not a sum of
-				// expenditures alone, and counting the facts behind a figure is
-				// what makes "0 subjects" mean something.
-				subjects++
-				transfersOut += f.AmountCents
-			default:
-				// Transfers in and fund balance have their own figures, checked by
-				// headline-transfer-residual and carried by their own links.
-			}
-		}
-
+		d := drawnTotalsOf(p.Graph.Links)
+		subjects += d.links
 		h := p.Graph.Metadata.Headline
 		for _, f := range []struct {
 			key       string
 			got, want int64
 		}{
-			{"all_funds_gross_revenue_cents", h.AllFundsGrossRevenueCents, grossRevenue},
-			{"all_funds_gross_expenditure_cents", h.AllFundsGrossExpenditureCents, grossExpenditure},
-			{"external_revenue_cents", h.ExternalRevenueCents, externalRevenue},
-			{"external_expenditure_cents", h.ExternalExpenditureCents, externalExpenditure},
-			{"naive_expenditure_cents", h.NaiveExpenditureCents, grossExpenditure + transfersOut},
+			{"all_funds_gross_revenue_cents", h.AllFundsGrossRevenueCents, d.grossRevenue},
+			{"all_funds_gross_expenditure_cents", h.AllFundsGrossExpenditureCents, d.grossExpenditure},
+			{"external_revenue_cents", h.ExternalRevenueCents, d.externalRevenue},
+			{"external_expenditure_cents", h.ExternalExpenditureCents, d.externalExpenditure},
 		} {
 			if f.got != f.want {
 				findings = append(findings, finding(p.String(),
-					"%s is %s but the facts sum to %s (off by %s)",
+					"%s is %s but the links it summarises draw %s (off by %s)",
 					f.key, amount.Cents(f.got), amount.Cents(f.want), amount.Cents(f.got-f.want)))
 			}
 		}
 	}
 	return conclusion{
 		subjects: subjects,
-		unit:     "facts",
-		held: fmt.Sprintf("%d revenue, expenditure and transfer-out facts across %d projections, "+
-			"each of the five figures the sum of them", subjects, len(s.graphs())),
-		nothing:  "no fact is a revenue, an expenditure or a transfer out, so there is no headline to check",
+		unit:     "links",
+		held: fmt.Sprintf("%d revenue and expenditure links across %d projections, each of the "+
+			"four figures the sum of the links it summarises", subjects, len(s.graphs())),
+		nothing:  "no link leaves a revenue category or reaches an object category, so there is no headline to check",
 		findings: findings,
 	}.result(), nil
 }
 
-// headlineTransferResidual asserts the transfer headline is the facts, and the
-// residual is the difference between its two halves.
+// headlineTransferResidual asserts the two transfer headlines are what the
+// document draws out of transfers/in and into transfers/out. The residual is
+// their difference, derived in one line by internal/project.
 //
-// The residual is not zero and the caveats say why. It is NOT waiting on the p76
-// transfer schedule being mapped: p76's own grand total is the transfers-in side
-// to the cent, so mapping it pairs every leg the city itemises and leaves the
-// $38,086,737 exactly where it is (fisc-5gk.3, proved in
-// internal/mapping/transfers_p76_test.go). Publishing it as a figure rather
-// than as prose is what lets it move when the city's own schedules move
-// (fisc-1wr.4), and this check is what makes it a figure that has been checked.
+// The residual is not zero and the caveats say why: p76's own grand total is
+// the transfers-in side to the cent, so mapping it pairs every leg the city
+// itemises and leaves the residual exactly where it is (fisc-5gk.3, proved in
+// internal/mapping/transfers_p76_test.go).
 type headlineTransferResidual struct{}
 
 var _ Check = (*headlineTransferResidual)(nil)
@@ -568,50 +560,38 @@ func (*headlineTransferResidual) ID() string { return "headline-transfer-residua
 func (*headlineTransferResidual) Tier() int  { return 1 }
 func (*headlineTransferResidual) Full() bool { return false }
 func (*headlineTransferResidual) Description() string {
-	return "headline.transfer_residual_cents equals internal_transfer_out minus " +
-		"internal_transfer_in, and both equal the transfer facts"
+	return "internal_transfer_in and internal_transfer_out each equal the published links " +
+		"out of transfers/in and into transfers/out"
 }
 
 func (*headlineTransferResidual) Run(_ context.Context, s *Subject) (Result, error) {
 	var findings []Finding
 	subjects := 0
-
 	for _, p := range s.graphs() {
-		var in, out int64
-		for _, f := range project.SelectFacts(s.Facts, p.Options) {
-			switch f.Kind {
-			case mapping.KindTransferIn:
+		d := drawnTotalsOf(p.Graph.Links)
+		h := p.Graph.Metadata.Headline
+		for _, l := range p.Graph.Links {
+			if l.Source == project.NodeTransfersIn || l.Target == project.NodeTransfersOut {
 				subjects++
-				in += f.AmountCents
-			case mapping.KindTransferOut:
-				subjects++
-				out += f.AmountCents
-			default:
 			}
 		}
-		h := p.Graph.Metadata.Headline
-		if h.InternalTransferInCents != in {
+		if h.InternalTransferInCents != d.transfersIn {
 			findings = append(findings, finding(p.String(),
-				"internal_transfer_in_cents is %s but the transfer_in facts sum to %s",
-				amount.Cents(h.InternalTransferInCents), amount.Cents(in)))
+				"internal_transfer_in_cents is %s but the links out of %s draw %s",
+				amount.Cents(h.InternalTransferInCents), project.NodeTransfersIn, amount.Cents(d.transfersIn)))
 		}
-		if h.InternalTransferOutCents != out {
+		if h.InternalTransferOutCents != d.transfersOut {
 			findings = append(findings, finding(p.String(),
-				"internal_transfer_out_cents is %s but the transfer_out facts sum to %s",
-				amount.Cents(h.InternalTransferOutCents), amount.Cents(out)))
-		}
-		if want := h.InternalTransferOutCents - h.InternalTransferInCents; h.TransferResidualCents != want {
-			findings = append(findings, finding(p.String(),
-				"transfer_residual_cents is %s but out minus in is %s",
-				amount.Cents(h.TransferResidualCents), amount.Cents(want)))
+				"internal_transfer_out_cents is %s but the links into %s draw %s",
+				amount.Cents(h.InternalTransferOutCents), project.NodeTransfersOut, amount.Cents(d.transfersOut)))
 		}
 	}
 	return conclusion{
 		subjects: subjects,
-		unit:     "transfer facts",
-		held: fmt.Sprintf("%d transfer facts across %d projections, each headline the sum of them",
+		unit:     "transfer links",
+		held: fmt.Sprintf("%d transfer links across %d projections, each transfer headline the sum of them",
 			subjects, len(s.graphs())),
-		nothing:  "no fact is a transfer, so there is no residual to state",
+		nothing:  "no link is a transfer, so there is no transfer headline to check",
 		findings: findings,
 	}.result(), nil
 }

@@ -964,13 +964,13 @@ func TestTransferHeadlineIsTheFacts(t *testing.T) {
 	}
 
 	s := testSubject(t)
-	s.Projections[0].Graph.Metadata.Headline.TransferResidualCents = 0
+	s.Projections[0].Graph.Metadata.Headline.InternalTransferOutCents = 0
 	res = resultFor(t, runChecks(t, s), "headline-transfer-residual")
 	if res.Status != StatusFail {
-		t.Fatalf("status = %s, want fail for a residual that is not out minus in", res.Status)
+		t.Fatalf("status = %s, want fail for a transfer-out figure the links do not draw", res.Status)
 	}
-	if !strings.Contains(findingDetails(res), "transfer_residual_cents is $0.00") {
-		t.Errorf("findings %v do not state the residual that was published", res.Findings)
+	if !strings.Contains(findingDetails(res), "internal_transfer_out_cents is $0.00") {
+		t.Errorf("findings %v do not state the figure that was published", res.Findings)
 	}
 }
 

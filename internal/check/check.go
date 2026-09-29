@@ -35,8 +35,9 @@
 // What they DO catch is output that contradicts a rule the producer states — a
 // link citing facts that are not the ones its value came from, a node at a tier
 // its id form does not have, a published count that no longer matches its own
-// graph. They read the producer's own definitions (the fact selection, the
-// internal-service group, the id forms and tiers), so a wrong definition moves
+// graph, a headline that is not the sum of the links it heads. They read the
+// producer's own definitions (the fact selection, the id forms and tiers, the
+// link kinds), so a wrong definition moves
 // both sides together; what catches that is internal/project's own tests of
 // each definition (TestSelectFactsAppliesEverySelector,
 // TestTierOfRefusesACoinedForm) and its goldens, which every node's tier and

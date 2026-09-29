@@ -204,8 +204,8 @@ anything is summed.
 Giving this document one is not the cheap way out either. A revenue-side
 drill-down has transfers **in** and no transfers out, so
 `transfer_residual_cents` would publish −21,045,597 and
-`headline-transfer-residual` would report it **green** — the figure being the sum
-of the facts, and the facts being one leg. That is a published number that is
+`headline-transfer-residual` would report it **green** — each transfer figure
+being the sum of its links, and the links being one leg. That is a published number that is
 arithmetically correct and means nothing.
 
 So the three headline checks read `Subject.Graphs`, the documents whose TYPE
