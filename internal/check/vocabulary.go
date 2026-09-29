@@ -3,7 +3,6 @@ package check
 import (
 	"context"
 	"fmt"
-	"regexp"
 	"slices"
 	"strings"
 
@@ -201,21 +200,6 @@ func declaresKind(c registry.Category, k mapping.Kind) bool {
 	return slices.Contains(c.Kinds, string(k))
 }
 
-// departmentSlug is the shape a department identifier must have: the same
-// lowercase, single-segment kebab-case data/taxonomy.yaml's slug rule produces.
-//
-// One segment, and NOT because the axis is flat — it is not. pp.167-170 print 23
-// divisions under 11 departments. The hierarchy is real and it is recorded in
-// data/departments.yaml as a `department:` FIELD on each division. It stays out
-// of the slug because a fact's row_path is `<division>/<category>`
-// (internal/fact.RowPath), so a two-segment slug here would emit a two-slash
-// row_path that no reader could split back into its two axes.
-//
-// data/departments.yaml applies the same rule when it loads. Both are checked,
-// because they are two different claims: that the file is well formed, and that
-// a published fact is.
-var departmentSlug = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
-
 // factDepartmentsResolve asserts the department axis is a controlled vocabulary.
 //
 // It can now do that. data/taxonomy.yaml is explicit that departments are
@@ -286,7 +270,7 @@ func (*factDepartmentsResolve) Run(_ context.Context, s *Subject) (Result, error
 		// registry either — departments.yaml applies the same rule when it
 		// loads — so reporting both would put two findings and one fix against
 		// one fact, and the shape is the more specific diagnosis.
-		if !departmentSlug.MatchString(f.Department) {
+		if !registry.ValidSlug(f.Department) {
 			findings = append(findings, finding(f.ID,
 				"%s p%d %q: department %q is not a slug: lower case, digits and single hyphens, "+
 					"one segment", f.DocID, f.Page, f.RowLabel, f.Department))

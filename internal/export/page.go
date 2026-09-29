@@ -1270,18 +1270,6 @@ func dollars(cents int64) string {
 	return strings.TrimSuffix(s, ".00")
 }
 
-// UnauditedCaveatID is the caveat a document ships to say its figures come from
-// the ACFR section headed "Statistical Section (Unaudited)", which the auditor's
-// report explicitly declines to give an opinion on.
-//
-// It is a second copy of the producer's caveat id and not an import of it, for
-// [SchemaVersion]'s reason: this package does not import internal/project. What
-// keeps the two in step is the anchor half of
-// TestAPageThatDisclaimsAuditAssuranceDoesNotClaimItInItsProse, which fails when
-// no page ships this id at all -- so a rename on the producer's side takes the
-// gate red rather than quietly switching it off.
-const UnauditedCaveatID = "statistical-section-unaudited"
-
 // basisLabelFor is the word a column chip and a cell tooltip print for a basis.
 //
 // It is deliberately NOT the basis itself. Basis is component 7 of fact.MakeID,
@@ -1302,7 +1290,7 @@ func basisLabelFor(caveats []caveatMeta, basis string) string {
 		return basis
 	}
 	for _, c := range caveats {
-		if c.ID == UnauditedCaveatID {
+		if c.ID == project.UnauditedCaveatID {
 			return "unaudited"
 		}
 	}

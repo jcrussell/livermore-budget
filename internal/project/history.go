@@ -125,6 +125,12 @@ func (p *FundBalanceChanges) Document(facts []fact.Fact, o Options) (*TrendsDocu
 	return p.spec().document(facts, o)
 }
 
+// UnauditedCaveatID is the caveat a document ships to say its figures come
+// from the ACFR section headed "Statistical Section (Unaudited)", which the
+// auditor's report declines to give an opinion on; the page reads it to print
+// "unaudited" for the basis.
+const UnauditedCaveatID = "statistical-section-unaudited"
+
 // The caveats each document ships. Every figure in both is printed; these are
 // statements about what the schedules do not say, with the amounts measured off
 // the committed store. Unconditional, for trendsCaveats' reason: each is about
@@ -175,7 +181,7 @@ var (
 		AppliesTo: []string{},
 	}
 	caveatStatisticalSectionIsUnaudited = Caveat{
-		ID:      "statistical-section-unaudited",
+		ID:      UnauditedCaveatID,
 		Summary: "These ten-year schedules sit in the section the ACFR itself labels (Unaudited); the auditor's opinion does not cover them.",
 		Text: "p161, the section divider, reads \"Statistical Section (Unaudited)\", and " +
 			"the auditor's report (p29) says of this section: \"Our opinions on the " +

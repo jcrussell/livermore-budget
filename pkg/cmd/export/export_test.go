@@ -1705,7 +1705,7 @@ func stepKeys(steps []export.DrillStep) []string {
 func TestAPageThatDisclaimsAuditAssuranceDoesNotClaimItInItsProse(t *testing.T) {
 	built := builtStemsForTest(t)
 
-	const disclaimer = export.UnauditedCaveatID
+	const disclaimer = project.UnauditedCaveatID
 	shipping := map[string]bool{}
 	for _, v := range mustViews(t, result{Projections: built}) {
 		if v.Projection == "" {
@@ -1821,7 +1821,7 @@ func TestAPageDoesNotLabelAColumnWithAWordItsCaveatWithdraws(t *testing.T) {
 			ID string `json:"id"`
 		},
 		) bool {
-			return c.ID == export.UnauditedCaveatID
+			return c.ID == project.UnauditedCaveatID
 		}) {
 			continue
 		}
@@ -1853,7 +1853,7 @@ func TestAPageDoesNotLabelAColumnWithAWordItsCaveatWithdraws(t *testing.T) {
 					t.Errorf("%s prints %q in a %s while its document ships the %s caveat: "+
 						"the auditor's opinion does not cover these columns, and the page "+
 						"withdraws its own label a few paragraphs below",
-						v.Path, h[1], surface.what, export.UnauditedCaveatID)
+						v.Path, h[1], surface.what, project.UnauditedCaveatID)
 					break
 				}
 			}
@@ -1863,7 +1863,7 @@ func TestAPageDoesNotLabelAColumnWithAWordItsCaveatWithdraws(t *testing.T) {
 	// loop above never runs, and a scan over nothing passes.
 	if scanned != 2 {
 		t.Errorf("scanned %d pages shipping the %s caveat, want 2 (history.html and "+
-			"balances.html); this refusal has lost its subject", scanned, export.UnauditedCaveatID)
+			"balances.html); this refusal has lost its subject", scanned, project.UnauditedCaveatID)
 	}
 }
 

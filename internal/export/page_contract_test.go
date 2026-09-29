@@ -12,6 +12,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/schema"
 	"github.com/jcrussell/livermore-budget/site"
 )
@@ -44,7 +45,7 @@ func TestTheSchemaStatesWhatThePageConfigCarries(t *testing.T) {
 // widening would break: a document without the caveat must keep its word, and a
 // document with it must keep a basis that was never "audited".
 func TestBasisLabelForRewritesOnlyTheAuditedBasisOfAnUnauditedDocument(t *testing.T) {
-	unaudited := []caveatMeta{{ID: "some-other-caveat"}, {ID: UnauditedCaveatID}}
+	unaudited := []caveatMeta{{ID: "some-other-caveat"}, {ID: project.UnauditedCaveatID}}
 	other := []caveatMeta{{ID: "some-other-caveat"}}
 
 	cases := []struct {

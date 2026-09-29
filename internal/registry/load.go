@@ -290,10 +290,12 @@ func (r *Registry) loadTaxonomy(fsys fs.FS) error {
 // One segment is not a style rule. A fact's row_path is `<division>/<category>`
 // (internal/fact.RowPath), so a slug carrying its own "/" would emit a
 // two-slash row_path that no reader could split back into its two axes. It is
-// the same shape internal/check enforces on the value a fact carries; checked
-// in both places because they are two different claims — that the file is well
-// formed, and that a published fact is.
+// the same shape internal/check enforces on the value a fact carries, through
+// ValidSlug.
 var slugShape = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
+
+// ValidSlug reports whether s has a department slug's shape.
+func ValidSlug(s string) bool { return slugShape.MatchString(s) }
 
 // loadDepartments reads departments.yaml.
 //
