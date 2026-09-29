@@ -13,197 +13,42 @@
 
 /* global d3 */
 
-/**
- * @typedef {Object} FiscNode
- * @property {string} id
- * @property {string} label
- * @property {number} tier
- * @property {string} parent
- * @property {string} constraint_tier
- * @property {string} role
- * @property {boolean} derived
- * @property {string} rationale
- * @property {string} source_note
- * @property {string[]} [folds] the ids a synthetic aggregate stands for; only
- *   on capColumn's aggregate, whose members no parent chain records.
- * @property {number} [in_cents] a residual's or a gap's figure, summed here over
- *   the ribbons carried onto it or the difference it stands for
- * @property {number} [out_cents]
- * @property {FiscSource[]} [locators] a gap's citations: every page a ribbon
- *   touching the opened node was read from, in either document
- * @property {string} [carried_from] the stem of the document a node was carried
- *   from into a window, set once and never cleared
- * @property {number} [fixedValue] the figure d3-sankey sizes the node at where
- *   its drawn ribbons do not add up to it (markAmounts)
+/*
+ * The wire shapes are schema/'s. Go validates every artifact against its
+ * schema before writing it, so a typedef below names one shape by its schema
+ * path and states none of its fields; the fields a typedef does list are ones
+ * this file adds, which no artifact carries.
  */
 
 /**
- * @typedef {Object} FiscLink
- * @property {string} source
- * @property {string} target
- * @property {number} value_cents
- * @property {string} kind
- * @property {string} transfer_id
- * @property {string[]} fact_ids
- * @property {FiscSource[]} locators
- * @property {boolean} derived
- * @property {string} [contra]  the document's words for a link the schedule
- *   prints as a reduction; present only on such a link.
- * @property {boolean} [partition]  the ribbon divides one printed table along
- *   a second axis rather than following money; the projection's call, since
- *   the client cannot tell a cross-tab from a chain.
+ * A node as schema/projection.schema.json#/properties/nodes/items has it,
+ * which scheduleOf assembles from a column document's node table and a
+ * schedule's parent edges, plus what this file sets on it.
+ * @typedef {Record<string, any> & {
+ *   folds?: string[], in_cents?: number, out_cents?: number,
+ *   locators?: FiscSource[], carried_from?: string, fixedValue?: number
+ * }} FiscNode
+ *   folds: the ids a synthetic aggregate stands for, only on capColumn's
+ *   aggregate. in_cents, out_cents, locators: a residual's or a gap's figures
+ *   and citations, computed here. carried_from: the stem of the document a
+ *   node was carried from into a window. fixedValue: the figure d3-sankey
+ *   sizes the node at where its drawn ribbons do not add up to it.
  */
 
-/**
- * @typedef {Object} FiscSource
- * @property {string} doc_id
- * @property {number[]} pages
- */
-
-/**
- * @typedef {Object} FiscMetadata
- * @property {string} generated_by
- * @property {number} fiscal_year
- * @property {string} fiscal_year_label
- * @property {string} basis
- * @property {string[]} scopes
- * @property {string} currency
- * @property {string} units
- * @property {FiscSource[]} sources
- * @property {Record<string, number>} headline
- * @property {{facts:number, nodes:number, links:number}} counts
- * @property {FiscCaveat[]} caveats
- */
-
-/**
- * One thing the document cannot show. An empty `applies_to` means
- * document-wide, not "not filled in".
- * @typedef {Object} FiscCaveat
- * @property {string} id
- * @property {string} summary
- * @property {string} text
- * @property {string[]} applies_to
- */
-
-/**
- * A caveat as the page shows it: a summary and a link, deliberately no `text`.
- * `href` is empty when the site has no caveats page, and the renderer falls
- * back to plain text.
- * @typedef {Object} FiscCaveatRef
- * @property {string} id
- * @property {string} summary
- * @property {string} href
- */
-
-/**
- * @typedef {Object} FiscDoc
- * @property {string} title
- * @property {string} publisher
- * @property {string} pdf_url
- * @property {string} page_text_base
- * @property {string} records_base
- */
-
-/**
- * @typedef {Object} FiscFigure
- * @property {string} label
- * @property {string} value
- * @property {string} note
- * @property {string} kind
- */
-
-/**
- * One published fiscal year, with every word that belongs to it.
- * @typedef {Object} FiscYear
- * @property {number} year
- * @property {string} label
- * @property {string} stem
- * @property {string} path
- * @property {string} basis
- * @property {string} title
- * @property {FiscFigure} hero
- * @property {FiscFigure[]} figures
- * @property {FiscCaveatRef[]} caveats
- * @property {{facts:number, nodes:number, links:number}} counts
- * @property {FiscStepDoc[]} [steps]  one per declared step, resolved for this year
- * @property {string} chart_title
- */
-
-/**
- * What one rung's document discloses for one year.
- * @typedef {Object} FiscStepDoc
- * @property {FiscCaveatRef[]} caveats
- */
-
-/**
- * @typedef {Object} FiscConfig
- * @property {number} schema_version
- * @property {string} exported_by
- * @property {string} primary
- * @property {FiscYear[]} years
- * @property {FiscMetadata} metadata
- * @property {Record<string, FiscDoc>} docs
- * @property {number[]} [render_tiers]
- * @property {FiscDrillStep[]} [steps]
- * @property {string} [root]
- * @property {Record<string, string>} wording  templates say() fills
- */
-
-/**
- * @typedef {Object} FiscTierCap
- * @property {number} tier
- * @property {number} cap  how many nodes the tier holds before its tail folds
- * @property {string} [tail]  the plural noun the tail is counted in; absent,
- *   the step's own
- */
-
-/**
- * One step of the drill tree, verbatim from export.DrillStep.
- * @typedef {Object} FiscDrillStep
- * @property {string} key
- * @property {string[]} after  the steps this one opens from; "" is the view's
- *   own chart
- * @property {string} [side]  absent for the end links point at, "source" for
- *   the end they come from
- * @property {string} [role]  which nodes at `from` open; absent opens all
- * @property {number} from  the tier whose nodes open
- * @property {string} [projection]  the schedule this step draws; absent means
- *   the previous step's
- * @property {number[]} tiers
- * @property {number[]} [keep]  the flank that stays drawn beside the opened node
- * @property {number[]} [widen]  the tiers columns beyond the window's own buy, in order
- * @property {string} [noun]
- * @property {FiscTierCap[]} [caps]  a tier with none is drawn whole
- * @property {string} back
- * @property {string} tail
- * @property {string} description
- * @property {Record<string,string>} [residual]  endpoints whose flow the drawn
- *   document does not decompose, id to reason
- * @property {string} [residual_grain]  the grain the drawn document does not
- *   split that money by, which names the residual mark; present with `residual`
- * @property {Record<string,FiscGap[]>} [gaps]  opened nodes whose total the
- *   drawn document does not reach, id to the licence for each column it
- *   differs in
- */
-
-/**
- * One column's licence for a gap: the signed cents the chart above carries
- * over what the drawn document accounts for, and why.
- * @typedef {Object} FiscGap
- * @property {number} fiscal_year
- * @property {string} basis
- * @property {number} cents
- * @property {string} reason
- */
-
-/**
- * @typedef {Object} FiscProjection
- * @property {number} schema_version
- * @property {string} projection
- * @property {FiscMetadata} metadata
- * @property {FiscNode[]} nodes
- * @property {FiscLink[]} links
- */
+/** schema/projection.schema.json#/properties/links/items. @typedef {Record<string, any>} FiscLink */
+/** schema/locator.schema.json. @typedef {Record<string, any>} FiscSource */
+/** schema/projection.schema.json#/properties/metadata. @typedef {Record<string, any>} FiscMetadata */
+/** schema/caveat.schema.json. @typedef {Record<string, any>} FiscCaveat */
+/** schema/page.schema.json#/properties/years/items/properties/caveats/items. @typedef {Record<string, any>} FiscCaveatRef */
+/** schema/page.schema.json#/properties/docs/additionalProperties. @typedef {Record<string, any>} FiscDoc */
+/** schema/page.schema.json#/properties/years/items/properties/hero. @typedef {Record<string, any>} FiscFigure */
+/** schema/page.schema.json#/properties/years/items. @typedef {Record<string, any>} FiscYear */
+/** schema/page.schema.json#/properties/years/items/properties/steps/items. @typedef {Record<string, any>} FiscStepDoc */
+/** schema/page.schema.json, the page's window.FISC_CONFIG. @typedef {Record<string, any>} FiscConfig */
+/** schema/page.schema.json#/properties/steps/items/properties/caps/items. @typedef {Record<string, any>} FiscTierCap */
+/** schema/page.schema.json#/properties/steps/items, one step of the drill tree. @typedef {Record<string, any>} FiscDrillStep */
+/** schema/page.schema.json#/properties/steps/items/properties/gaps/additionalProperties/items. @typedef {Record<string, any>} FiscGap */
+/** schema/projection.schema.json, as scheduleOf assembles it from a column document. @typedef {Record<string, any>} FiscProjection */
 
 /**
  * A node after d3-sankey has laid it out (d3 mutates what it is given).
