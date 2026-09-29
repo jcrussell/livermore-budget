@@ -52,6 +52,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -376,10 +377,109 @@ func run(args []string, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "  now, drop the sentence, or write the test.")
 		fmt.Fprintln(stderr, "  See AGENTS.md, \"Prove it can fail\".")
 	}
+	deadSchema, err := deadSchemaRefs(root, args[1:])
+	if err != nil {
+		fmt.Fprintf(stderr, "doccheck: %v\n", err)
+		return 2
+	}
+	if len(deadSchema) > 0 {
+		fail = true
+		sortCites(deadSchema)
+		for _, c := range deadSchema {
+			fmt.Fprintf(stderr, "%s:%d: %s\n", c.file, c.line, c.title)
+		}
+		fmt.Fprintln(stderr, "")
+		fmt.Fprintln(stderr, "doccheck: the schema references above resolve to nothing.")
+		fmt.Fprintln(stderr, "  site/app.js's typedefs name the shape they stand for by its schema")
+		fmt.Fprintln(stderr, "  path and state none of its fields, so a path the schema no longer has")
+		fmt.Fprintln(stderr, "  is the one way one can drift. Re-point it at the shape's path now.")
+		fmt.Fprintln(stderr, "  See AGENTS.md, \"Where writing goes\".")
+	}
 	if fail {
 		return 1
 	}
 	return 0
+}
+
+// schemaRefPattern is a schema file cited by path, and optionally a JSON
+// pointer into it after '#'.
+var schemaRefPattern = regexp.MustCompile(`(^|[^A-Za-z0-9_./-])schema/([a-z-]+\.schema\.json)(#[A-Za-z0-9_$/-]*)?`)
+
+// fiscTypedef is a site/app.js typedef standing for a wire shape.
+var fiscTypedef = regexp.MustCompile(`@typedef \{[^\n]*\}\s*(Fisc[A-Za-z]+)`)
+
+// deadSchemaRefs is every schema/<file>.schema.json#<pointer> cited in the
+// scanned paths that names no file or no node of it, and every Fisc* typedef
+// in site/app.js whose doc comment names no schema path at all.
+func deadSchemaRefs(root string, paths []string) ([]cite, error) {
+	var out []cite
+	for _, p := range paths {
+		err := filepath.WalkDir(p, func(path string, d os.DirEntry, err error) error {
+			if err != nil || d.IsDir() {
+				return err
+			}
+			if norm(path) != norm(p) && !scannable(path) {
+				return nil
+			}
+			if _, ok := exempt[relTo(root, path)]; ok {
+				return nil
+			}
+			raw, err := os.ReadFile(path) // #nosec G304 -- a path this command walks.
+			if err != nil {
+				return err
+			}
+			text := string(raw)
+			rel := relTo(root, path)
+			for _, m := range schemaRefPattern.FindAllStringSubmatchIndex(text, -1) {
+				file, pointer := text[m[4]:m[5]], ""
+				if m[6] >= 0 {
+					pointer = text[m[6]+1 : m[7]]
+				}
+				line := strings.Count(text[:m[4]], "\n") + 1
+				if msg := resolveSchemaRef(root, file, pointer); msg != "" {
+					out = append(out, cite{title: msg, file: rel, line: line})
+				}
+			}
+			if norm(rel) == "site/app.js" {
+				for _, m := range fiscTypedef.FindAllStringSubmatchIndex(text, -1) {
+					start := strings.LastIndex(text[:m[0]], "/**")
+					if start < 0 || !strings.Contains(text[start:m[0]], "schema/") {
+						out = append(out, cite{title: text[m[2]:m[3]] + " names no schema path, so nothing holds it to a shape",
+							file: rel, line: strings.Count(text[:m[0]], "\n") + 1})
+					}
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+	return out, nil
+}
+
+// resolveSchemaRef is "" when schema/file exists and the JSON pointer names a
+// node of it, and otherwise what is missing.
+func resolveSchemaRef(root, file, pointer string) string {
+	raw, err := os.ReadFile(filepath.Join(root, "schema", file)) // #nosec G304 -- a cited schema file.
+	if err != nil {
+		return "schema/" + file + " is not a schema this tree has"
+	}
+	var at any
+	if err := json.Unmarshal(raw, &at); err != nil {
+		return "schema/" + file + " does not parse: " + err.Error()
+	}
+	for _, key := range strings.Split(strings.TrimPrefix(pointer, "/"), "/") {
+		if key == "" {
+			continue
+		}
+		m, ok := at.(map[string]any)
+		if !ok || m[key] == nil {
+			return "schema/" + file + "#" + pointer + " names no node of it"
+		}
+		at = m[key]
+	}
+	return ""
 }
 
 // sortCites orders findings for a stable report: by file, then line, then

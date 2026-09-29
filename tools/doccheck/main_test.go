@@ -775,3 +775,41 @@ func slicesContains(hay []string, needle string) bool {
 	}
 	return false
 }
+
+// TestDeadSchemaRefsResolvesEveryPointerAndEveryTypedef holds the schema arm
+// to both halves: a cited pointer must name a node of a schema this tree has,
+// and a Fisc* typedef must cite a schema path at all.
+func TestDeadSchemaRefsResolvesEveryPointerAndEveryTypedef(t *testing.T) {
+	root := t.TempDir()
+	write := func(rel, body string) {
+		t.Helper()
+		p := filepath.Join(root, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(p), 0o750); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("schema/x.schema.json", `{"properties": {"nodes": {"items": {}}}}`)
+	write("site/app.js", "/** schema/x.schema.json#/properties/nodes/items. @typedef {Object} FiscNode */\n"+
+		"/** schema/x.schema.json#/properties/edges/items. @typedef {Object} FiscLink */\n"+
+		"/** schema/y.schema.json. @typedef {Object} FiscDoc */\n"+
+		"/** a shape with no path. @typedef {Object} FiscYear */\n")
+	got, err := deadSchemaRefs(root, []string{filepath.Join(root, "site")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var titles []string
+	for _, c := range got {
+		titles = append(titles, c.title)
+	}
+	want := []string{
+		"schema/x.schema.json#/properties/edges/items names no node of it",
+		"schema/y.schema.json is not a schema this tree has",
+		"FiscYear names no schema path, so nothing holds it to a shape",
+	}
+	if diff := cmp.Diff(want, titles); diff != "" {
+		t.Errorf("deadSchemaRefs (-want +got):\n%s", diff)
+	}
+}
