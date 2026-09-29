@@ -2174,10 +2174,6 @@ export function carryResidual(drawn, from, rung) {
   let inCents = 0;
   let outCents = 0;
   for (const e of Object.keys(residual).sort()) {
-    if (!String(residual[e] || "").trim()) {
-      throw new Error("cannot draw " + doc.projection + ": " + e +
-        " is carried onto the residual mark with no reason declared for it");
-    }
     if (!carriesFrom(e)) {
       for (const l of above((l) => l.source === e && l.target === opened)) {
         links.push(Object.assign({}, l, { target: id }));
@@ -2348,7 +2344,7 @@ export function markGap(drawn, from, rung) {
   const meta = drawn.metadata || /** @type {any} */ ({});
   const where = "FY" + meta.fiscal_year + " " + meta.basis;
   const licence = (gaps[opened] || [])
-    .filter((g) => g.fiscal_year === meta.fiscal_year && g.basis === meta.basis && g.reason).pop();
+    .find((g) => g.fiscal_year === meta.fiscal_year && g.basis === meta.basis);
   if (gap === 0 && !licence) return drawn;
   if (gap === 0) {
     throw new Error("cannot draw " + drawn.projection + ": the step declares a gap of " + licence.cents +

@@ -1064,24 +1064,26 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 			"a step that switches no document has no second grain"},
 		{"a residual endpoint with no reason", []export.View{ok,
 			chartView(func(v *export.View) {
+				v.Nav = "Extra"
 				v.Steps[0].Projection = "sankey"
 				v.Steps[0].Residual = map[string]string{"transfers/in": ""}
-				// The grain is set so the grain guard does not refuse first.
 				v.Steps[0].ResidualGrain = "fund"
 			})},
-			"declares residual endpoint \"transfers/in\" with reason \"\""},
+			"residual/additionalProperties: minLength"},
 		{"a residual with no grain to name its mark", []export.View{ok,
 			chartView(func(v *export.View) {
+				v.Nav = "Extra"
 				v.Steps[0].Projection = "sankey"
 				v.Steps[0].Residual = map[string]string{"transfers/in": "the reason"}
 			})},
-			"declares 1 residual endpoint(s) and no residual_grain"},
+			`dependentRequired["residual"]: missing properties ["residual_grain"]`},
 		{"a grain naming a mark the step never draws", []export.View{ok,
 			chartView(func(v *export.View) {
+				v.Nav = "Extra"
 				v.Steps[0].Projection = "sankey"
 				v.Steps[0].ResidualGrain = "fund"
 			})},
-			"declares residual_grain \"fund\" and no residual endpoint"},
+			`dependentRequired["residual_grain"]: missing properties ["residual"]`},
 		// A gap needs the same two things: a same-document step names a cell one file
 		// prints once, and a gap with no reason is indistinguishable from drift.
 		{"a gap on a step that switches no document", []export.View{ok,
@@ -1091,16 +1093,18 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 			"a step that switches no document has only one"},
 		{"a gap with no reason", []export.View{ok,
 			chartView(func(v *export.View) {
+				v.Nav = "Extra"
 				v.Steps[0].Projection = "sankey"
 				v.Steps[0].Gaps = map[string]export.Gaps{"expenditure/services-and-supplies": {{FiscalYear: 2027, Basis: "adopted", Cents: 1}}}
 			})},
-			"declares a gap on node \"expenditure/services-and-supplies\" with no reason in some column"},
+			"items/properties/reason: minLength"},
 		{"a gap licensing zero cents", []export.View{ok,
 			chartView(func(v *export.View) {
+				v.Nav = "Extra"
 				v.Steps[0].Projection = "sankey"
 				v.Steps[0].Gaps = map[string]export.Gaps{"expenditure/services-and-supplies": {{FiscalYear: 2027, Basis: "adopted", Reason: "A reason."}}}
 			})},
-			"declares a gap of 0 cents on node \"expenditure/services-and-supplies\""},
+			"items/properties/cents: not"},
 		{"a gap on a step that widens", []export.View{ok,
 			windowView(func(v *export.View) {
 				v.Nav = "Extra"

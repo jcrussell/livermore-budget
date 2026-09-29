@@ -1042,40 +1042,10 @@ func (v View) validateSteps(built map[string][]byte, ix ColumnIndex) error {
 					v.Path, j, i, s.From, where, o.Role, s.Role)
 			}
 		}
-		if len(s.Residual) > 0 && s.ResidualGrain == "" {
-			return fmt.Errorf(
-				"view %q's step %d declares %d residual endpoint(s) and no residual_grain; "+
-					"the mark they hang on is named for that grain",
-				v.Path, i, len(s.Residual))
-		}
-		if len(s.Residual) == 0 && s.ResidualGrain != "" {
-			return fmt.Errorf(
-				"view %q's step %d declares residual_grain %q and no residual endpoint; the "+
-					"grain names a mark this step never draws", v.Path, i, s.ResidualGrain)
-		}
-		for _, id := range slices.Sorted(maps.Keys(s.Residual)) {
-			if id == "" || s.Residual[id] == "" {
-				return fmt.Errorf(
-					"view %q's step %d declares residual endpoint %q with reason %q; the node "+
-						"that carries it tells the reader why no part of the opened node "+
-						"receives that flow in the reason's words, and an empty one draws a "+
-						"mark that explains nothing", v.Path, i, id, s.Residual[id])
-			}
-		}
+		// Residual and gap SHAPE -- a grain exactly where a residual is, no
+		// empty id or reason, no licence of 0 cents -- is page.schema.json's,
+		// held at the write; what follows is what a schema cannot say.
 		for _, id := range slices.Sorted(maps.Keys(s.Gaps)) {
-			if id == "" || len(s.Gaps[id]) == 0 || slices.ContainsFunc(s.Gaps[id], func(g Gap) bool { return g.Reason == "" }) {
-				return fmt.Errorf(
-					"view %q's step %d declares a gap on node %q with no reason in some column; the "+
-						"only thing separating a declared gap from two documents drifting apart "+
-						"is the reason the mark states, and an empty one draws the drift "+
-						"unexplained", v.Path, i, id)
-			}
-			if slices.ContainsFunc(s.Gaps[id], func(g Gap) bool { return g.Cents == 0 }) {
-				return fmt.Errorf(
-					"view %q's step %d declares a gap of 0 cents on node %q in some column; a "+
-						"licence for a node that balances licenses nothing, and the client would "+
-						"refuse the chart for balancing where a gap was declared", v.Path, i, id)
-			}
 			seen := map[[2]string]bool{}
 			for _, g := range s.Gaps[id] {
 				col := [2]string{strconv.Itoa(g.FiscalYear), g.Basis}

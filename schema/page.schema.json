@@ -280,6 +280,10 @@
       "items": {
         "description": "How the page opens a node, one hop per step.",
         "type": "object",
+        "dependentRequired": {
+          "residual": ["residual_grain"],
+          "residual_grain": ["residual"]
+        },
         "required": [
           "key",
           "after",
@@ -387,16 +391,19 @@
           "residual": {
             "description": "Endpoints of the chart this step opens FROM whose flow the document it draws does not decompose, id to declared reason.",
             "type": "object",
+            "propertyNames": { "minLength": 1 },
             "additionalProperties": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             }
           },
           "residual_grain": {
             "type": "string",
             "minLength": 1,
-            "description": "The grain the document this step draws does NOT split the residual's money by, in the city's singular word; the client names the residual mark for it. Present exactly where residual is."
+            "description": "The grain the document this step draws does NOT split the residual's money by, in the city's singular word; the client names the residual mark for it."
           },
           "gaps": {
+            "propertyNames": { "minLength": 1 },
             "description": "Nodes this step OPENS whose total the document it draws does not reach, id to the licences for each column it differs in: the signed cents the chart above carries over what the drawn document accounts for, and why. The client holds the difference its drawn chart comes to against the licence for its column and refuses any other.",
             "type": "object",
             "additionalProperties": {
