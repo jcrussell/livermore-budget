@@ -12,14 +12,17 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/structure"
 )
 
-// TestEveryIdFormSaysWhatItNames holds endNames to hierarchyTiers, so a form
-// added to one is declared in the other rather than passed by omission.
+// TestEveryIdFormSaysWhatItNames holds endNames to project.IDForms, and
+// every endpoint to a category, so a form or endpoint added to project is
+// declared here rather than passed by omission.
 func TestEveryIdFormSaysWhatItNames(t *testing.T) {
-	if diff := cmp.Diff(slices.Sorted(maps.Keys(hierarchyTiers)), slices.Sorted(maps.Keys(endNames))); diff != "" {
-		t.Errorf("hierarchyTiers and endNames name different forms (-tiers +names):\n%s", diff)
+	if diff := cmp.Diff(project.IDForms(), slices.Sorted(maps.Keys(endNames))); diff != "" {
+		t.Errorf("project's id forms and endNames differ (-project +names):\n%s", diff)
 	}
-	if diff := cmp.Diff(slices.Sorted(maps.Keys(endpointTiers)), slices.Sorted(maps.Keys(endpointCategories))); diff != "" {
-		t.Errorf("endpointTiers and endpointCategories name different endpoints (-tiers +categories):\n%s", diff)
+	for _, id := range project.Endpoints() {
+		if _, ok := project.EndpointCategory(id); !ok {
+			t.Errorf("endpoint %q carries no category, so link-ends-match-their-facts cannot hold its facts", id)
+		}
 	}
 }
 

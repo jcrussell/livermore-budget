@@ -286,10 +286,10 @@ func transferFundEnds(fa *fact.Fact) (transferEnds, error) {
 	}
 	n := strconv.Itoa(*fa.Fund)
 	return transferEnds{
-		from: endpoint{id: PrefixTransferFrom + n, tier: tierFundGroup, role: RoleTransferSource,
+		from: endpoint{id: PrefixTransferFrom + n, role: RoleTransferSource,
 			parent: NodeTransfersIn},
-		fund: endpoint{id: PrefixFund + n, tier: tierFund, role: transferFundRole(*fa.Fund)},
-		to:   endpoint{id: PrefixTransferTo + n, tier: tierObjectCategory, role: RoleTransferSink},
+		fund: endpoint{id: PrefixFund + n, role: transferFundRole(*fa.Fund)},
+		to:   endpoint{id: PrefixTransferTo + n, role: RoleTransferSink},
 	}, nil
 }
 
@@ -306,14 +306,14 @@ func transferFundRole(number int) string {
 // its receivers' ends fold into.
 func transfersOutEndpoint() endpoint {
 	return endpoint{id: NodeTransfersOut, slug: NodeTransfersOut,
-		tier: tierObjectCategory, role: roleTransferOut}
+		role: roleTransferOut}
 }
 
 // transfersInEndpoint is the spine's transfers/in, at the spine's id: it is the
 // node a reader clicks to open this document.
 func transfersInEndpoint() endpoint {
 	return endpoint{id: NodeTransfersIn, slug: NodeTransfersIn,
-		tier: tierRevenueSource, role: roleTransferIn}
+		role: roleTransferIn}
 }
 
 // pairTransferLegs groups the selected facts into printed figures, refusing any
@@ -410,8 +410,8 @@ func (t *transfersByFund) addNode(nodes map[string]Node, e endpoint) {
 	if _, ok := nodes[e.id]; ok {
 		return
 	}
-	n := Node{ID: e.id, Label: t.label(e), Tier: e.tier, Role: e.role, Parent: e.parent}
-	if e.tier == tierFund {
+	n := Node{ID: e.id, Label: t.label(e), Tier: e.tier(), Role: e.role, Parent: e.parent}
+	if e.tier() == tierFund {
 		if number, err := strconv.Atoi(e.id[len(PrefixFund):]); err == nil {
 			annotateFund(&n, t.Labels, number)
 		}

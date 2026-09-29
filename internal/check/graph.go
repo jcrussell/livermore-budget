@@ -794,7 +794,7 @@ func describeLegs(legs []project.Link) string {
 
 // sameTierContainers is the one container that holds nodes at its own tier,
 // and the id form it holds: transfers-out's receivers' ends.
-var sameTierContainers = map[string]string{"transfers/out": "transfer-to/"}
+var sameTierContainers = map[string]string{project.NodeTransfersOut: project.PrefixTransferTo}
 
 // nodeHierarchyWellFormed asserts the tier hierarchy a document publishes can
 // actually be folded: every parent resolves, the hierarchy runs coarse to fine,
@@ -888,7 +888,7 @@ func (*nodeHierarchyWellFormed) Run(_ context.Context, s *Subject) (Result, erro
 				continue
 			}
 			sameTier := false
-			if _, isEndpoint := endpointTiers[n.Parent]; isEndpoint {
+			if slices.Contains(project.Endpoints(), n.Parent) {
 				if flowing[n.Parent] {
 					findings = append(findings, finding(p.String(),
 						"node %q is parented to %q, a flow endpoint this document draws a "+

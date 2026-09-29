@@ -35,6 +35,17 @@ var spineEndpoints = []spineEndpoint{
 	{NodeFundBalanceContribution, mapping.KindFundBalance, CategoryFundBalanceChange},
 }
 
+// EndpointCategory is the category every fact behind a spine flow endpoint
+// carries, and whether id is one.
+func EndpointCategory(id string) (string, bool) {
+	for _, e := range spineEndpoints {
+		if e.id == id {
+			return e.category, true
+		}
+	}
+	return "", false
+}
+
 // residualReasons is why a fund-level schedule cannot decompose each spine
 // endpoint the drill-down's cuts leave undecomposed, in the words the client
 // prints under the residual mark. The reasons quote no figure: one reason is

@@ -59,37 +59,12 @@ func TestNodeTiersAreDeclaredIsFailable(t *testing.T) {
 		want   string
 	}{
 		{
-			// The case the check exists for: the id says one layer and the
-			// field says another.
-			name: "a node at the wrong tier for its id form",
-			damage: func(t *testing.T, g *project.Document) {
-				g.Nodes[nodeIndex(t, g, "fund-group/")].Tier = 3
-			},
-			want: "declares tier 2",
-		},
-		{
 			// docs/sankey-contract.md: "Do not coin new ones."
 			name: "a coined id form",
 			damage: func(t *testing.T, g *project.Document) {
 				g.Nodes[nodeIndex(t, g, "revenue/")].ID = "programme/police"
 			},
-			want: "no id form the contract declares",
-		},
-		{
-			// A line left at its parent's tier: only the tier moves.
-			name: "a revenue line at its category's tier",
-			damage: func(t *testing.T, g *project.Document) {
-				i := nodeIndex(t, g, "revenue/")
-				was := g.Nodes[i].ID
-				now := "revenue-line/" + strings.TrimPrefix(was, "revenue/") + "/eraf"
-				g.Nodes[i].ID = now
-				for j := range g.Links {
-					if g.Links[j].Source == was {
-						g.Links[j].Source = now
-					}
-				}
-			},
-			want: "declares tier 1",
+			want: "of no declared id form",
 		},
 		{
 			// A backward ribbon. d3 will draw it, which is why no rendering
@@ -266,28 +241,6 @@ func TestAPartitionIsTheOTHERDescendingLinkAllowed(t *testing.T) {
 	if !saw {
 		t.Errorf("no finding names both the missing parent edge and the missing partition "+
 			"declaration; got %v", res.Findings)
-	}
-}
-
-// TestAFundNodeNamesAFundNumber is the one id form whose SHAPE carries meaning
-// beyond its prefix.
-//
-// `fund/<number>` is the contract's form, and the number is what makes the node
-// a fund rather than a word beginning with "fund". Without this,
-// `fund/general` would pass as a tier-3 node naming no fund at all -- and it is
-// a plausible mistake, because `fund-group/general` is a real node one hyphen
-// away.
-func TestAFundNodeNamesAFundNumber(t *testing.T) {
-	for _, id := range []string{"fund/100", "fund/642"} {
-		if _, ok := declaredTier(id); !ok {
-			t.Errorf("declaredTier(%q) = not a declared form, want tier 3", id)
-		}
-	}
-	// fund/0 is refused with the non-numbers: no fund is numbered 0.
-	for _, id := range []string{"fund/0", "fund/general", "fund/", "fund", "revenue/", "dept"} {
-		if tier, ok := declaredTier(id); ok {
-			t.Errorf("declaredTier(%q) = %d, true; want it refused", id, tier)
-		}
 	}
 }
 

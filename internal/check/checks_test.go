@@ -1164,7 +1164,7 @@ func TestNodeHierarchyWellFormedIsFailable(t *testing.T) {
 				g := s.Projections[0].Graph
 				var at2 []string
 				for _, n := range g.Nodes {
-					if _, end := endpointTiers[n.ID]; n.Tier == 2 && !end {
+					if end := slices.Contains(project.Endpoints(), n.ID); n.Tier == 2 && !end {
 						at2 = append(at2, n.ID)
 					}
 				}
@@ -1183,7 +1183,7 @@ func TestNodeHierarchyWellFormedIsFailable(t *testing.T) {
 				g := s.Projections[0].Graph
 				g.Nodes = append(g.Nodes, project.Node{ID: "fund-balance/reserve-increase", Tier: 5})
 				for _, n := range g.Nodes {
-					if _, end := endpointTiers[n.ID]; n.Tier == 5 && !end {
+					if end := slices.Contains(project.Endpoints(), n.ID); n.Tier == 5 && !end {
 						nodePointer(t, g, n.ID).Parent = "fund-balance/reserve-increase"
 						return
 					}

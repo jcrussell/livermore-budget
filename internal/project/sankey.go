@@ -2,8 +2,10 @@ package project
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
@@ -54,6 +56,63 @@ const (
 	tierDepartment     = 4
 	tierObjectCategory = 5
 )
+
+// idFormTiers is the tier each node id form sits at, keyed by the prefix that
+// makes an id that form. A prefix not here is a coined form, which
+// docs/sankey-contract.md forbids.
+var idFormTiers = map[string]int{
+	PrefixRevenue:      tierRevenueSource,
+	PrefixRevenueLine:  tierRevenueLine,
+	PrefixFundGroup:    tierFundGroup,
+	PrefixTransferFrom: tierFundGroup,
+	PrefixFund:         tierFund,
+	PrefixDept:         tierDepartment,
+	PrefixDepartment:   tierDepartment,
+	PrefixExpenditure:  tierObjectCategory,
+	PrefixTransferTo:   tierObjectCategory,
+}
+
+// endpointTiers are the flow endpoints, which sit outside the hierarchy and
+// carry a tier by name: one prefix, fund-balance/, holds a tier-0 and a tier-5
+// endpoint, so no prefix rule could place them.
+var endpointTiers = map[string]int{
+	NodeTransfersIn:                    tierRevenueSource,
+	NodeTransfersOut:                   tierObjectCategory,
+	NodeFundBalanceDraw:                tierRevenueSource,
+	NodeFundBalanceContribution:        tierObjectCategory,
+	CategoryFundBalanceReserveIncrease: tierObjectCategory,
+}
+
+// TierOf is the tier a node id sits at: an endpoint's by name, any other id's
+// by the prefix up to its first slash, with something after it. ok is false
+// for a coined form. A fund id is `fund/<number>`: `fund/general` names no
+// fund, one hyphen from `fund-group/general`, and no fund is numbered 0.
+func TierOf(id string) (tier int, ok bool) {
+	if t, isEndpoint := endpointTiers[id]; isEndpoint {
+		return t, true
+	}
+	i := strings.IndexByte(id, '/')
+	if i < 0 || i == len(id)-1 {
+		return 0, false
+	}
+	prefix, rest := id[:i+1], id[i+1:]
+	t, ok := idFormTiers[prefix]
+	if !ok {
+		return 0, false
+	}
+	if prefix == PrefixFund {
+		if n, err := strconv.Atoi(rest); err != nil || n == 0 {
+			return 0, false
+		}
+	}
+	return t, true
+}
+
+// IDForms is every declared id prefix, sorted.
+func IDForms() []string { return slices.Sorted(maps.Keys(idFormTiers)) }
+
+// Endpoints is every flow endpoint's id, sorted.
+func Endpoints() []string { return slices.Sorted(maps.Keys(endpointTiers)) }
 
 // Node roles, which say what a node is for without the client parsing its id.
 const (
@@ -496,7 +555,7 @@ func (s *sankey) Document(facts []fact.Fact, o Options) (*Document, error) {
 
 	for _, k := range sortedCellKeys(cells) {
 		c := cells[k]
-		group := endpoint{id: PrefixFundGroup + k.fundGroup, tier: tierFundGroup, role: roleFundGroup}
+		group := endpoint{id: PrefixFundGroup + k.fundGroup, role: roleFundGroup}
 
 		var src, dst endpoint
 		var kind LinkKind
@@ -506,24 +565,24 @@ func (s *sankey) Document(facts []fact.Fact, o Options) (*Document, error) {
 		switch k.kind {
 		case mapping.KindRevenue:
 			src = endpoint{id: PrefixRevenue + k.category, slug: k.category,
-				tier: tierRevenueSource, role: roleRevenueSource}
+				role: roleRevenueSource}
 			dst = group
 			kind = boundaryKind(k.fundGroup)
 
 		case mapping.KindExpenditure:
 			src = group
 			dst = endpoint{id: PrefixExpenditure + k.category, slug: k.category,
-				tier: tierObjectCategory, role: roleObjectCategory}
+				role: roleObjectCategory}
 			kind = boundaryKind(k.fundGroup)
 
 		case mapping.KindTransferIn:
-			src = endpoint{id: k.category, slug: k.category, tier: tierRevenueSource, role: roleTransferIn}
+			src = endpoint{id: k.category, slug: k.category, role: roleTransferIn}
 			dst = group
 			kind = KindInternalTransfer
 
 		case mapping.KindTransferOut:
 			src = group
-			dst = endpoint{id: k.category, slug: k.category, tier: tierObjectCategory, role: roleTransferOut}
+			dst = endpoint{id: k.category, slug: k.category, role: roleTransferOut}
 			kind = KindInternalTransfer
 
 		case mapping.KindFundBalance:
@@ -539,17 +598,16 @@ func (s *sankey) Document(facts []fact.Fact, o Options) (*Document, error) {
 				isDerived = true
 				kind = KindFundBalance
 				if c.cents < 0 {
-					src = endpoint{id: NodeFundBalanceDraw, tier: tierRevenueSource, role: roleFundBalanceDraw}
+					src = endpoint{id: NodeFundBalanceDraw, role: roleFundBalanceDraw}
 					dst = group
 					value = -c.cents
 				} else {
 					src = group
-					dst = endpoint{id: NodeFundBalanceContribution, tier: tierObjectCategory, role: roleFundBalanceContribution}
+					dst = endpoint{id: NodeFundBalanceContribution, role: roleFundBalanceContribution}
 				}
 			default:
 				src = group
-				dst = endpoint{id: k.category, slug: k.category, tier: tierObjectCategory,
-					role: roleReserveIncrease}
+				dst = endpoint{id: k.category, slug: k.category, role: roleReserveIncrease}
 				kind = KindFundBalance
 			}
 
@@ -779,11 +837,19 @@ func boundaryKind(fundGroup string) LinkKind {
 type endpoint struct {
 	id   string
 	slug string
-	tier int
 	role string
 	// parent is the node this one folds into, where only the endpoint's
 	// cell knows it (a revenue line's category).
 	parent string
+}
+
+// tier is where the endpoint's id sits, from [TierOf]; -1 for a coined form,
+// which node-tiers-are-declared refuses.
+func (e endpoint) tier() int {
+	if t, ok := TierOf(e.id); ok {
+		return t
+	}
+	return -1
 }
 
 // addNode records a node the first time a link touches it. Nodes exist because
@@ -792,7 +858,7 @@ func (s *sankey) addNode(nodes map[string]Node, e endpoint) {
 	if _, ok := nodes[e.id]; ok {
 		return
 	}
-	n := Node{ID: e.id, Label: s.label(e.id, e.slug), Tier: e.tier, Role: e.role}
+	n := Node{ID: e.id, Label: s.label(e.id, e.slug), Tier: e.tier(), Role: e.role}
 	if d, ok := derivedNodes[e.id]; ok {
 		n.Derived = true
 		n.Rationale = d.rationale

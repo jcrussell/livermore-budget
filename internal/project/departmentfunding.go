@@ -107,8 +107,7 @@ func (d *departmentFunding) Document(facts []fact.Fact, o Options) (*Document, e
 		if srcErr != nil {
 			return nil, srcErr
 		}
-		dst := endpoint{id: PrefixDepartment + k.department, tier: tierDepartment,
-			role: roleWholeDepartment}
+		dst := endpoint{id: PrefixDepartment + k.department, role: roleWholeDepartment}
 		if d.Labels != nil {
 			if l, ok := d.Labels.DepartmentLabel(k.department); !ok || l == "" {
 				return nil, fmt.Errorf("department-funding: data/departments.yaml lists no "+
@@ -230,7 +229,7 @@ func (d *departmentFunding) fundEndpoint(number int) (endpoint, error) {
 	if number == generalFund {
 		role = roleGeneralFund
 	}
-	e := endpoint{id: PrefixFund + strconv.Itoa(number), tier: tierFund, role: role}
+	e := endpoint{id: PrefixFund + strconv.Itoa(number), role: role}
 	if d.Labels == nil {
 		return e, nil
 	}
@@ -252,8 +251,8 @@ func (d *departmentFunding) addNode(nodes map[string]Node, e endpoint) {
 	if _, ok := nodes[e.id]; ok {
 		return
 	}
-	n := Node{ID: e.id, Label: d.label(e), Tier: e.tier, Role: e.role, Parent: e.parent}
-	if e.tier == tierFund {
+	n := Node{ID: e.id, Label: d.label(e), Tier: e.tier(), Role: e.role, Parent: e.parent}
+	if e.tier() == tierFund {
 		if number, err := strconv.Atoi(e.id[len(PrefixFund):]); err == nil {
 			annotateFund(&n, d.Labels, number)
 		}
@@ -279,7 +278,7 @@ func (d *departmentFunding) addFundGroups(nodes map[string]Node) error {
 				"document does not build and cannot infer -- only a fund group is added "+
 				"on demand", id, p)
 		}
-		nodes[p] = Node{ID: p, Label: d.label(endpoint{id: p}), Tier: tierFundGroup,
+		nodes[p] = Node{ID: p, Label: d.label(endpoint{id: p}), Tier: endpoint{id: p}.tier(),
 			Role: roleFundGroup}
 	}
 	return nil
@@ -291,7 +290,7 @@ func (d *departmentFunding) label(e endpoint) string {
 		return l
 	}
 	if d.Labels != nil {
-		switch e.tier {
+		switch e.tier() {
 		case tierFund:
 			if n, err := strconv.Atoi(e.id[len(PrefixFund):]); err == nil {
 				if name, ok := d.Labels.FundName(n); ok && name != "" {

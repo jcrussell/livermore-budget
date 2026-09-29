@@ -105,7 +105,7 @@ func (d *departmentSpending) Document(facts []fact.Fact, o Options) (*Document, 
 		if srcErr != nil {
 			return nil, srcErr
 		}
-		dst := endpoint{id: PrefixDept + k.division, tier: tierDepartment, role: roleDepartment}
+		dst := endpoint{id: PrefixDept + k.division, role: roleDepartment}
 		if d.Labels != nil {
 			if l, ok := d.Labels.DivisionLabel(k.division); !ok || l == "" {
 				return nil, fmt.Errorf("department-spending: data/departments.yaml lists no "+
@@ -214,10 +214,10 @@ func spendingObjectEndpoint(k spendKey) (endpoint, error) {
 	switch k.kind {
 	case mapping.KindExpenditure:
 		return endpoint{id: PrefixExpenditure + k.category, slug: k.category,
-			tier: tierObjectCategory, role: roleObjectCategory}, nil
+			role: roleObjectCategory}, nil
 	case mapping.KindTransferOut:
 		return endpoint{id: k.category, slug: k.category,
-			tier: tierObjectCategory, role: roleTransferOut}, nil
+			role: roleTransferOut}, nil
 	default:
 		return endpoint{}, cmdutil.WithHint(
 			fmt.Errorf("department-spending: kind %q has no object end in this document", k.kind),
@@ -242,7 +242,7 @@ func (d *departmentSpending) addNode(nodes map[string]Node, e endpoint) {
 	if _, ok := nodes[e.id]; ok {
 		return
 	}
-	nodes[e.id] = Node{ID: e.id, Label: d.label(e), Tier: e.tier, Role: e.role}
+	nodes[e.id] = Node{ID: e.id, Label: d.label(e), Tier: e.tier(), Role: e.role}
 }
 
 // label resolves a node's words: a built-in, then the registry, then the id.
@@ -251,7 +251,7 @@ func (d *departmentSpending) label(e endpoint) string {
 		return l
 	}
 	if d.Labels != nil {
-		if e.tier == tierDepartment {
+		if e.tier() == tierDepartment {
 			if l, ok := d.Labels.DivisionLabel(e.id[len(PrefixDept):]); ok && l != "" {
 				return l
 			}

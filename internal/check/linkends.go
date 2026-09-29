@@ -35,28 +35,18 @@ const (
 	namesLine
 )
 
-// endNames is what each hierarchy id form names. Its keys are hierarchyTiers'
-// and a test holds them equal, so a new form is declared here or refused.
+// endNames is what each id form names, keyed by project's prefixes. A test
+// holds its keys to project.IDForms, so a new form is declared here or refused.
 var endNames = map[string]endName{
-	"revenue":       namesCategory,
-	"revenue-line":  namesLine,
-	"fund-group":    namesFundGroup,
-	"transfer-from": namesPartnerFund,
-	"fund":          namesFund,
-	"dept":          namesDivision,
-	"department":    namesDepartment,
-	"expenditure":   namesCategory,
-	"transfer-to":   namesPartnerFund,
-}
-
-// endpointCategories is the category every fact behind each flow endpoint
-// carries. Its keys are endpointTiers' and a test holds them equal.
-var endpointCategories = map[string]string{
-	"transfers/in":                  "transfers/in",
-	"transfers/out":                 "transfers/out",
-	"fund-balance/draw":             "fund-balance/change",
-	"fund-balance/contribution":     "fund-balance/change",
-	"fund-balance/reserve-increase": "fund-balance/reserve-increase",
+	project.PrefixRevenue:      namesCategory,
+	project.PrefixRevenueLine:  namesLine,
+	project.PrefixFundGroup:    namesFundGroup,
+	project.PrefixTransferFrom: namesPartnerFund,
+	project.PrefixFund:         namesFund,
+	project.PrefixDept:         namesDivision,
+	project.PrefixDepartment:   namesDepartment,
+	project.PrefixExpenditure:  namesCategory,
+	project.PrefixTransferTo:   namesPartnerFund,
 }
 
 // linkEndsMatchTheirFacts asserts a link's ends name the fund, fund group,
@@ -177,7 +167,7 @@ type linkEnd struct {
 // mismatch is why the end id does not name what the link's facts carry, or
 // "", and whether the end was held to anything.
 func (e linkEnd) mismatch(id string, source bool) (string, bool) {
-	if want, ok := endpointCategories[id]; ok {
+	if want, ok := project.EndpointCategory(id); ok {
 		var sum int64
 		for _, f := range e.facts {
 			if f.Category != want {
@@ -187,14 +177,14 @@ func (e linkEnd) mismatch(id string, source bool) (string, bool) {
 		}
 		// A draw and a contribution cite the same category, told apart by sign;
 		// a zero sum is neither.
-		if len(e.facts) > 0 && ((id == "fund-balance/draw" && sum >= 0) ||
-			(id == "fund-balance/contribution" && sum <= 0)) {
+		if len(e.facts) > 0 && ((id == project.NodeFundBalanceDraw && sum >= 0) ||
+			(id == project.NodeFundBalanceContribution && sum <= 0)) {
 			return fmt.Sprintf("%s cites facts summing to %d cents; a draw is negative and a contribution positive", id, sum), true
 		}
 		return "", true
 	}
 	form, value, ok := strings.Cut(id, "/")
-	name, declared := endNames[form]
+	name, declared := endNames[form+"/"]
 	if !ok || !declared {
 		return fmt.Sprintf("%s is no declared id form, so what it names cannot be held to its facts", id), false
 	}
@@ -221,7 +211,7 @@ func (e linkEnd) mismatch(id string, source bool) (string, bool) {
 				carried = f.Department + "/" + f.Category
 				// pp.172-183 print no division, so their ids name the fund.
 				if f.Department == "" {
-					carried = "fund/" + fact.FundString(f.Fund) + "/" + f.Category
+					carried = project.PrefixFund + fact.FundString(f.Fund) + "/" + f.Category
 				}
 			}
 		case namesLine:

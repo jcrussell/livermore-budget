@@ -263,3 +263,21 @@ func TestASingleGrainDocumentRefusesTwoScopes(t *testing.T) {
 		t.Errorf("Trends.Document = %q, want it to say the document is of one schedule", err)
 	}
 }
+
+// TestTierOfRefusesACoinedForm pins the id forms' shape rules: a declared
+// prefix with something after it, and a fund id that is a fund number.
+func TestTierOfRefusesACoinedForm(t *testing.T) {
+	for id, want := range map[string]int{
+		"fund/100": tierFund, "fund/642": tierFund, "revenue/taxes/property": tierRevenueSource,
+		NodeFundBalanceDraw: tierRevenueSource, NodeFundBalanceContribution: tierObjectCategory,
+	} {
+		if got, ok := TierOf(id); !ok || got != want {
+			t.Errorf("TierOf(%q) = %d, %v; want %d, true", id, got, ok, want)
+		}
+	}
+	for _, id := range []string{"fund/0", "fund/general", "fund/", "fund", "revenue/", "dept", "fund-balance/change", "coined/x"} {
+		if tier, ok := TierOf(id); ok {
+			t.Errorf("TierOf(%q) = %d, true; want it refused", id, tier)
+		}
+	}
+}
