@@ -610,3 +610,24 @@ describe("a window's kept flank", () => {
     assert.equal(kept.value_cents, want, "a reduction in the kept flank is read at the screen's sign, not its printed one");
   });
 });
+
+describe("which nodes a step opens", () => {
+  // reaching admits a ribbon only if it runs from an earlier drawn column to a
+  // later one. No pinned document has a backward ribbon, so one is planted: a
+  // fund group whose parts' ribbons all run against the column order is not
+  // offered, and the same group with its ribbons as printed is.
+  test("a node whose only ribbons run backwards does not open", async () => {
+    const app = (await loadApp()).app;
+    const step = pageFixture().config.steps.find((s) => s.key === "fund-group");
+    const printed = fundFlows(app, "fy2026-adopted");
+    const group = "fund-group/general";
+    assert.ok(app.decomposable(step, printed).has(group), `${group} does not open over the printed document`);
+    const inside = app.withinNode(printed, group);
+    const planted = structuredClone(printed);
+    planted.links = planted.links.map((l) => inside.has(l.source)
+      ? Object.assign({}, l, { source: l.target, target: l.source })
+      : l);
+    assert.ok(!app.decomposable(step, planted).has(group),
+      `${group} is offered though every ribbon from its parts runs against the column order`);
+  });
+});

@@ -846,6 +846,12 @@ func (v View) validateSteps(built map[string][]byte, ix ColumnIndex) error {
 					"document before it; a residual is what one document prints at a grain "+
 					"the other does not, and a step that switches no document has no second "+
 					"grain", v.Path, i, len(s.Residual))
+		case len(s.Gaps) > 0 && len(s.Widen) > 0:
+			return fmt.Errorf(
+				"view %q's step %d declares a gap on %d node(s) and widens tiers %v; the "+
+					"client stands the gap mark at the step's first or last declared tier, and "+
+					"a viewport that does not buy that tier would draw the mark in a column "+
+					"that is not there", v.Path, i, len(s.Gaps), s.Widen)
 		case s.Projection == "" && len(s.Gaps) > 0:
 			return fmt.Errorf(
 				"view %q's step %d declares a gap on %d node(s) and draws the document "+
@@ -1083,8 +1089,9 @@ func (v View) validateSteps(built map[string][]byte, ix ColumnIndex) error {
 				seen[col] = true
 			}
 		}
-		// Every year the view lists opens into something, asked of the column
-		// the reader will fetch.
+		// Every year the view lists carries the schedule the step draws, asked
+		// of the column the reader will fetch. Whether any node of it opens is
+		// the client's to answer, and site/*.test.mjs walks every rung.
 		if s.Projection != "" {
 			for _, stem := range v.YearStems {
 				col, folded := ix.Column(stem)

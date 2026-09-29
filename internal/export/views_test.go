@@ -1101,6 +1101,14 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 				v.Steps[0].Gaps = map[string]export.Gaps{"expenditure/services-and-supplies": {{FiscalYear: 2027, Basis: "adopted", Reason: "A reason."}}}
 			})},
 			"declares a gap of 0 cents on node \"expenditure/services-and-supplies\""},
+		{"a gap on a step that widens", []export.View{ok,
+			windowView(func(v *export.View) {
+				v.Nav = "Extra"
+				v.Steps[0].Projection = "sankey"
+				v.Steps[0].Tiers, v.Steps[0].Widen = []int{0, 2, 3, 4}, []int{4}
+				v.Steps[0].Gaps = map[string]export.Gaps{"expenditure/services-and-supplies": {{FiscalYear: 2027, Basis: "adopted", Cents: 1, Reason: "A reason."}}}
+			})},
+			"declares a gap on 1 node(s) and widens tiers"},
 		{"two gap licences for one column", []export.View{ok,
 			chartView(func(v *export.View) {
 				v.Steps[0].Projection = "sankey"

@@ -7,8 +7,10 @@
  * and nothing runs at import. Nothing runs tsc: `@ts-check` is for an editor.
  *
  * Go validates every artifact against schema/ before writing it, so nothing
- * here re-checks a shape. What this file refuses is what no schema can answer:
- * a 200 carrying an error page, and a file cached from before the last deploy.
+ * here re-checks a shape. What this file refuses is what only it can answer:
+ * a 200 carrying an error page, a file cached from before the last deploy,
+ * and a chart its own sums contradict -- a gap that drifts from its licence,
+ * a window with no flank, a reduction's node that sums to nothing.
  */
 
 /* global d3 */
