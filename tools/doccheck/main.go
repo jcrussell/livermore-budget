@@ -414,6 +414,8 @@ var fiscTypedef = regexp.MustCompile(`@typedef \{[^\n]*\}\s*(Fisc[A-Za-z]+)`)
 func deadSchemaRefs(root string, paths []string) ([]cite, error) {
 	var out []cite
 	for _, p := range paths {
+		// #nosec G703 -- the path list is this command's argument; it checks the
+		// paths it is asked to.
 		err := filepath.WalkDir(p, func(path string, d os.DirEntry, err error) error {
 			if err != nil || d.IsDir() {
 				return err
@@ -424,7 +426,7 @@ func deadSchemaRefs(root string, paths []string) ([]cite, error) {
 			if _, ok := exempt[relTo(root, path)]; ok {
 				return nil
 			}
-			raw, err := os.ReadFile(path) // #nosec G304 -- a path this command walks.
+			raw, err := os.ReadFile(path) // #nosec G304 G122 -- a file of the tree this command is asked to check.
 			if err != nil {
 				return err
 			}
@@ -461,7 +463,7 @@ func deadSchemaRefs(root string, paths []string) ([]cite, error) {
 // resolveSchemaRef is "" when schema/file exists and the JSON pointer names a
 // node of it, and otherwise what is missing.
 func resolveSchemaRef(root, file, pointer string) string {
-	raw, err := os.ReadFile(filepath.Join(root, "schema", file)) // #nosec G304 -- a cited schema file.
+	raw, err := os.ReadFile(filepath.Join(root, "schema", file)) // #nosec G304 G703 -- a schema file the checked tree cites.
 	if err != nil {
 		return "schema/" + file + " is not a schema this tree has"
 	}
