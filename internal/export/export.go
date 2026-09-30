@@ -202,7 +202,7 @@ type Options struct {
 	// The list is STATED BY THE CALLER, as YearStems was and for the same
 	// reason: which documents are views of what, and which are years of which,
 	// is the composition root's knowledge. This package lays out what it is
-	// handed and does not decide it. `func views()` lives in pkg/cmd/export.
+	// handed and does not decide it.
 	Views []View
 
 	// Docs are the source documents the page cites, keyed by doc id in the

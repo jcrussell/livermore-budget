@@ -233,30 +233,30 @@
       "description": "Cited documents by doc_id, keyed by data and not enumerated: which documents a page cites is the corpus's to say.",
       "type": "object",
       "additionalProperties": {
-                                "description": "One cited document: its title, and for every page the site cites, the links a citation opens, built by the export so the client composes none.",
-                                "type": "object",
-                                "required": ["title", "publisher", "pages"],
-                                "additionalProperties": false,
-                                "properties": {
-                                  "title": { "type": "string", "minLength": 1 },
-                                  "publisher": { "type": "string" },
-                                  "pages": {
-                                    "description": "Page number to its links. An empty link is one this export has nothing to point at: no PDF URL for the document, or no records published.",
-                                    "type": "object",
-                                    "propertyNames": { "pattern": "^[1-9][0-9]*$" },
-                                    "additionalProperties": {
-                                      "type": "object",
-                                      "required": ["pdf", "text", "records"],
-                                      "additionalProperties": false,
-                                      "properties": {
-                                        "pdf": { "type": "string", "description": "The city's own PDF, opened at the page." },
-                                        "text": { "type": "string", "minLength": 1, "description": "The committed page text; relative to the site, or absolute under --source-browse-url." },
-                                        "records": { "type": "string", "description": "The page's fact-store shard, relative to the site." }
-                                      }
-                                    }
-                                  }
-                                }
-                              }
+        "description": "One cited document: its title, and for every page the site cites, the links a citation opens, built by the export so the client composes none.",
+        "type": "object",
+        "required": ["title", "publisher", "pages"],
+        "additionalProperties": false,
+        "properties": {
+          "title": { "type": "string", "minLength": 1 },
+          "publisher": { "type": "string" },
+          "pages": {
+            "description": "Page number to its links. An empty link is one this export has nothing to point at: no PDF URL for the document, or no records published.",
+            "type": "object",
+            "propertyNames": { "pattern": "^[1-9][0-9]*$" },
+            "additionalProperties": {
+              "type": "object",
+              "required": ["pdf", "text", "records"],
+              "additionalProperties": false,
+              "properties": {
+                "pdf": { "type": "string", "description": "The city's own PDF, opened at the page." },
+                "text": { "type": "string", "minLength": 1, "description": "The committed page text; relative to the site, or absolute under --source-browse-url." },
+                "records": { "type": "string", "description": "The page's fact-store shard, relative to the site." }
+              }
+            }
+          }
+        }
+      }
     },
     "render_tiers": {
       "description": "The node tiers the page draws, left to right. OMITTED, NEVER [], WHEN ABSENT: app.js then hands the graph to d3's own aligner.",

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://jcrussell.github.io/livermore-budget/schema/enums.schema.json",
   "title": "fisc shared vocabularies",
-  "description": "Each closed set a published document draws a value from, stated once; the document schemas $ref these. schema/enums_test.go holds each to the Go set it mirrors, both ways.",
+  "description": "Each closed set a published document draws a value from, stated once; the document schemas $ref these. Each is held to the Go set it mirrors, both ways.",
   "$defs": {
     "basis": {
       "description": "Which column of a schedule a figure is from; mapping.Bases.",
