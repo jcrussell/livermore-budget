@@ -458,7 +458,7 @@ func (*countsReconcile) Run(_ context.Context, s *Subject) (Result, error) {
 type drawnTotals struct {
 	grossRevenue, externalRevenue, grossExpenditure, externalExpenditure int64
 	transfersIn, transfersOut                                            int64
-	links                                                                int
+	flowLinks, transferLinks                                             int
 }
 
 func drawnTotalsOf(links []project.Link) drawnTotals {
@@ -467,22 +467,22 @@ func drawnTotalsOf(links []project.Link) drawnTotals {
 		external := l.Kind == project.KindExternal
 		switch {
 		case strings.HasPrefix(l.Source, project.PrefixRevenue):
-			d.links++
+			d.flowLinks++
 			d.grossRevenue += l.ValueCents
 			if external {
 				d.externalRevenue += l.ValueCents
 			}
 		case strings.HasPrefix(l.Target, project.PrefixExpenditure):
-			d.links++
+			d.flowLinks++
 			d.grossExpenditure += l.ValueCents
 			if external {
 				d.externalExpenditure += l.ValueCents
 			}
 		case l.Source == project.NodeTransfersIn:
-			d.links++
+			d.transferLinks++
 			d.transfersIn += l.ValueCents
 		case l.Target == project.NodeTransfersOut:
-			d.links++
+			d.transferLinks++
 			d.transfersOut += l.ValueCents
 		}
 	}
@@ -516,7 +516,7 @@ func (*headlineTiesToFacts) Run(_ context.Context, s *Subject) (Result, error) {
 	subjects := 0
 	for _, p := range s.graphs() {
 		d := drawnTotalsOf(p.Graph.Links)
-		subjects += d.links
+		subjects += d.flowLinks
 		h := p.Graph.Metadata.Headline
 		for _, f := range []struct {
 			key       string
@@ -570,11 +570,7 @@ func (*headlineTransferResidual) Run(_ context.Context, s *Subject) (Result, err
 	for _, p := range s.graphs() {
 		d := drawnTotalsOf(p.Graph.Links)
 		h := p.Graph.Metadata.Headline
-		for _, l := range p.Graph.Links {
-			if l.Source == project.NodeTransfersIn || l.Target == project.NodeTransfersOut {
-				subjects++
-			}
-		}
+		subjects += d.transferLinks
 		if h.InternalTransferInCents != d.transfersIn {
 			findings = append(findings, finding(p.String(),
 				"internal_transfer_in_cents is %s but the links out of %s draw %s",
@@ -606,9 +602,9 @@ func (*headlineTransferResidual) Run(_ context.Context, s *Subject) (Result, err
 //
 // This check establishes the inequality and nothing more. It does not establish
 // that either figure is right: driving external expenditure to $0.00 satisfies it,
-// because $0.00 is not $59.6M. What the two figures ARE is headline-ties-to-facts'
-// claim, and that check is where a wrong external figure fails; the two together are
-// the pair, and neither on its own says what the headline means.
+// because $0.00 is not $59.6M. headline-ties-to-facts is where a wrong external
+// figure fails, against the links it heads; the naive figure is derived in one
+// line by internal/project and pinned there by its own test.
 type headlineNaiveExpenditure struct{}
 
 var _ Check = (*headlineNaiveExpenditure)(nil)

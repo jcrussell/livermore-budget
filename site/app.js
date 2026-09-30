@@ -168,10 +168,27 @@ export function stepDecomposes(step, id) {
   const at = step.key + "\u001f" + id;
   let holds = byStep.get(at);
   if (holds === undefined) {
-    holds = keptFlank(projection, { id: id, step: step }).nodes.some((n) => n.id === id);
+    holds = flankHolds(projection, step, id);
     byStep.set(at, holds);
   }
   return holds;
+}
+
+/**
+ * Whether a window step's kept flank off the chart on screen holds the node.
+ * A flank the fold refuses is offered rather than thrown here: this is asked
+ * per mark per paint, and the drill that opens it says why it cannot draw.
+ * @param {FiscProjection} onScreen
+ * @param {FiscDrillStep} step
+ * @param {string} id
+ * @returns {boolean}
+ */
+export function flankHolds(onScreen, step, id) {
+  try {
+    return keptFlank(onScreen, { id: id, step: step }).nodes.some((n) => n.id === id);
+  } catch {
+    return true;
+  }
 }
 
 /**

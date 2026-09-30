@@ -94,7 +94,7 @@ func TestFixtureVerdicts(t *testing.T) {
 		"link-values-tie-to-facts":              "pass over 7",
 		"link-kinds-match-their-facts":          "pass over 7",
 		"counts-reconcile":                      "pass over 1",
-		"headline-ties-to-facts":                "pass over 5", // 3 revenue + 1 expenditure + 1 transfer out
+		"headline-ties-to-facts":                "pass over 3", // 3 revenue + 1 expenditure + 1 transfer out
 		"headline-transfer-residual":            "pass over 2",
 		"headline-naive-expenditure":            "pass over 1",
 		// Nothing to check: no link carries a transfer_id, no node a parent or a

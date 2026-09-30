@@ -64,6 +64,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import functools
 import json
 import os
 import pathlib
@@ -145,6 +146,16 @@ def geometry_json(payload: dict) -> bytes:
     return ("{\n" + ",\n".join(parts) + "\n}\n").encode()
 
 
+@functools.lru_cache(maxsize=None)
+def load_schema(schema_name: str) -> dict:
+    """The committed schema, read once per run however many pages it holds."""
+    path = REPO / "schema" / schema_name
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except OSError as exc:
+        raise SystemExit(f"cannot read {path}: {exc}") from exc
+
+
 def check_against_schema(obj: dict, schema_name: str) -> None:
     """Hold an object this script just wrote to the committed schema.
 
@@ -154,10 +165,7 @@ def check_against_schema(obj: dict, schema_name: str) -> None:
     Why, measured: docs/schema-contracts.md.
     """
     path = REPO / "schema" / schema_name
-    try:
-        schema = json.loads(path.read_text(encoding="utf-8"))
-    except OSError as exc:
-        raise SystemExit(f"cannot read {path}: {exc}") from exc
+    schema = load_schema(schema_name)
 
     types = {
         "object": dict, "array": list, "string": str,

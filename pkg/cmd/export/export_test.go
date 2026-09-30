@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -2355,4 +2356,77 @@ func must[T any](t *testing.T) func(T, error) T {
 		}
 		return v
 	}
+}
+
+// TestEveryPageALinkCitesHasItsLinksInTheConfig holds the config's per-page
+// links to every locator of every link the published columns carry: the
+// client shows a figure's citations by looking its pages up, so a cited page
+// with no entry is a figure shown without its provenance.
+func TestEveryPageALinkCitesHasItsLinksInTheConfig(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatalf("resolve repo root: %v", err)
+	}
+	opts, _, _, _ := testOptions(t)
+	opts.RepoRoot = func() (string, error) { return root, nil }
+	opts.Build = buildAll
+	if err := exportRun(opts); err != nil {
+		t.Fatalf("exportRun: %v", err)
+	}
+	page := readPage(t, opts.OutputDir)
+	_, rest, ok := strings.Cut(page, "window.FISC_CONFIG = ")
+	if !ok {
+		t.Fatal("the served page carries no FISC_CONFIG")
+	}
+	body, _, _ := strings.Cut(rest, ";</script>")
+	var config struct {
+		Years []struct {
+			Path string `json:"path"`
+		} `json:"years"`
+		Docs map[string]struct {
+			Pages map[string]struct {
+				Text string `json:"text"`
+			} `json:"pages"`
+		} `json:"docs"`
+	}
+	if err := json.Unmarshal([]byte(body), &config); err != nil {
+		t.Fatalf("decode FISC_CONFIG: %v", err)
+	}
+	cited := 0
+	for _, y := range config.Years {
+		raw, err := os.ReadFile(filepath.Join(opts.OutputDir, filepath.FromSlash(y.Path)))
+		if err != nil {
+			t.Fatalf("read %s: %v", y.Path, err)
+		}
+		var column struct {
+			Schedules map[string]struct {
+				Links []struct {
+					Locators []struct {
+						DocID string `json:"doc_id"`
+						Pages []int  `json:"pages"`
+					} `json:"locators"`
+				} `json:"links"`
+			} `json:"schedules"`
+		}
+		if err := json.Unmarshal(raw, &column); err != nil {
+			t.Fatalf("decode %s: %v", y.Path, err)
+		}
+		for key, sched := range column.Schedules {
+			for _, l := range sched.Links {
+				for _, loc := range l.Locators {
+					for _, p := range loc.Pages {
+						cited++
+						if config.Docs[loc.DocID].Pages[strconv.Itoa(p)].Text == "" {
+							t.Errorf("%s's %s schedule cites %s p%d, and the config carries no links for it",
+								y.Path, key, loc.DocID, p)
+						}
+					}
+				}
+			}
+		}
+	}
+	if cited == 0 {
+		t.Fatal("no link cites a page, so this test asserts nothing")
+	}
+	t.Logf("%d cited pages, each with its links in the config", cited)
 }

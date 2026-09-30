@@ -1078,6 +1078,14 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 				v.Steps[0].ResidualGrain = "fund"
 			})},
 			"residual/additionalProperties: minLength"},
+		{"a residual endpoint whose reason is only whitespace", []export.View{ok,
+			chartView(func(v *export.View) {
+				v.Nav = "Extra"
+				v.Steps[0].Projection = "sankey"
+				v.Steps[0].Residual = map[string]string{"transfers/in": "  "}
+				v.Steps[0].ResidualGrain = "fund"
+			})},
+			"residual/additionalProperties: pattern"},
 		{"a residual with no grain to name its mark", []export.View{ok,
 			chartView(func(v *export.View) {
 				v.Nav = "Extra"

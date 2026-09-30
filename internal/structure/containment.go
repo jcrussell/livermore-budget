@@ -66,10 +66,12 @@ func CellsOf(facts []fact.Fact, c Cut, at Level) (map[Key]Sum, error) {
 
 // Tally compares two sides' cells key by key over the keys keep admits, as
 // every comparison of cuts does; a caller whose sides are not both cuts reads
-// Cells, Subjects and OneSided off it and words its own findings.
+// Cells, Subjects and OneSided off it and words its own findings, so Findings
+// comes back empty rather than naming two cuts that are not there.
 func Tally(cells, ref map[Key]Sum, keep func(Key) bool) Comparison {
 	var c Comparison
 	c.tally(cells, ref, keep)
+	c.Findings = nil
 	return c
 }
 

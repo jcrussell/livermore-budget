@@ -667,3 +667,21 @@ describe("a printed flow and an inferred one", () => {
     assert.throws(() => app.foldDocument(doc, [0, 2, 3, 4, 5]), /merges a printed flow and an inferred one/);
   });
 });
+
+describe("a kept flank the fold refuses", () => {
+  // stepDecomposes asks this per mark per paint, so a flank whose fold throws
+  // must answer, not throw: planted, a second ribbon of one kind between one
+  // revenue category and the group, inferred where the first is printed.
+  test("is offered rather than thrown while the chart paints", async () => {
+    const app = (await loadApp()).app;
+    const step = pageFixture().config.steps.find((s) => s.key === "fund-group");
+    const chart = structuredClone(goldenGraph());
+    const i = chart.links.findIndex((l) => l.target === "fund-group/general" && !l.derived);
+    assert.ok(i >= 0, "the spine sends no printed ribbon into fund-group/general");
+    chart.links.push(Object.assign({}, chart.links[i], { derived: true, fact_ids: [], value_cents: 1 }));
+    assert.throws(() => app.keptFlank(chart, { id: "fund-group/general", step }), /merges a printed flow and an inferred one/,
+      "the planted flank does not make the fold refuse, so this test holds nothing");
+    assert.doesNotThrow(() => app.flankHolds(chart, step, "fund-group/general"));
+    assert.equal(app.flankHolds(chart, step, "fund-group/general"), true);
+  });
+});

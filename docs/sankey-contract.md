@@ -486,8 +486,9 @@ names each transferring fund, so the sum splits Capital from Special Revenue
 exactly as p199 and p205 do.
 
 `fisc-1wr.4` asks for a residual node. This contract states the residual as
-`headline.transfer_residual_cents` instead, and has `verify` assert it equals
-out minus in. A synthetic link into `transfers/in` or out of `transfers/out`
+`headline.transfer_residual_cents` instead: out minus in, derived in one line
+by `internal/project` and pinned there by its own test, while `verify` holds
+each of in and out to the links it heads. A synthetic link into `transfers/in` or out of `transfers/out`
 would unbalance that node, and splitting the $59.6M into matched and unmatched
 portions would publish a division the city never printed.
 
