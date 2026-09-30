@@ -483,3 +483,21 @@ func TestTheSpineBalancesAtThePrintedControlTotals(t *testing.T) {
 		}
 	}
 }
+
+// TestTallyCountsWithoutWording holds Tally to the split it documents: a
+// disagreeing and a one-sided cell are counted and carried, and no finding
+// names the two cuts a caller of Tally does not have.
+func TestTallyCountsWithoutWording(t *testing.T) {
+	a := structure.Key{Year: 2026, Basis: "adopted", Coords: "a"}
+	b := structure.Key{Year: 2026, Basis: "adopted", Coords: "b"}
+	c := structure.Tally(
+		map[structure.Key]structure.Sum{a: {Cents: 1, Present: true}, b: {Cents: 2, Present: true}},
+		map[structure.Key]structure.Sum{a: {Cents: 3, Present: true}},
+		func(structure.Key) bool { return true })
+	if c.Subjects != 2 || c.OneSided != 1 || len(c.Cells) != 2 {
+		t.Errorf("Tally = %d subjects, %d one-sided, %d cells; want 2, 1, 2", c.Subjects, c.OneSided, len(c.Cells))
+	}
+	if len(c.Findings) != 0 {
+		t.Errorf("Tally worded %q; its caller words its own findings", c.Findings)
+	}
+}

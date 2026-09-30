@@ -143,6 +143,14 @@ var bases = []Basis{BasisAdopted, BasisRevised, BasisActual, BasisAudited, Basis
 // Bases is every basis a column may be of.
 func Bases() []Basis { return slices.Clone(bases) }
 
+func basisList() string {
+	s := make([]string, len(bases))
+	for i, b := range bases {
+		s[i] = string(b)
+	}
+	return strings.Join(s, ", ")
+}
+
 // Valid reports whether b is one of [Bases].
 func (b Basis) Valid() bool { return slices.Contains(bases, b) }
 

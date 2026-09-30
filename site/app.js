@@ -186,8 +186,10 @@ export function stepDecomposes(step, id) {
 export function flankHolds(onScreen, step, id) {
   try {
     return keptFlank(onScreen, { id: id, step: step }).nodes.some((n) => n.id === id);
-  } catch {
-    return true;
+  } catch (e) {
+    // Only the fold's refusal; anything else is a defect and is thrown.
+    if (e instanceof Error && e.message.includes(FOLD_REFUSES_MIXED)) return true;
+    throw e;
   }
 }
 
@@ -2386,10 +2388,11 @@ export function markGap(drawn, from, rung) {
   }
   const gap = into - outOf;
   const meta = drawn.metadata || /** @type {any} */ ({});
-  const where = ledeOf(meta);
   const licence = (gaps[opened] || [])
     .find((g) => g.fiscal_year === meta.fiscal_year && g.basis === meta.basis);
   if (gap === 0 && !licence) return drawn;
+  // Named only once there is something to say about the column.
+  const where = ledeOf(meta);
   if (gap === 0) {
     throw new Error("cannot draw " + drawn.projection + ": the step declares a gap of " + licence.cents +
       " cents on " + opened + " in " + where + " and the chart balances there");
@@ -2572,6 +2575,9 @@ export function capColumn(doc, tier, cap, opened, noun) {
   return Object.assign({}, doc, { nodes: nodes, links: links });
 }
 
+/** The fold's refusal to merge a printed flow with an inferred one. */
+export const FOLD_REFUSES_MIXED = "folding merges a printed flow and an inferred one";
+
 /**
  * Folds a document to the tiers this page draws: each node to its nearest
  * drawn ancestor, links merged on the folded pair and kind with values summed
@@ -2643,8 +2649,8 @@ export function foldDocument(doc, tiers) {
     // be drawn as both, so the fold refuses rather than letting the first
     // leg's flag speak for the other.
     if (Boolean(at.derived) !== Boolean(l.derived)) {
-      throw new Error("cannot draw " + doc.projection + ": folding merges a printed flow and an " +
-        "inferred one from " + source + " to " + target + " (" + l.kind + ") into one ribbon");
+      throw new Error("cannot draw " + doc.projection + ": " + FOLD_REFUSES_MIXED + " from " +
+        source + " to " + target + " (" + l.kind + ") into one ribbon");
     }
     at.value_cents += l.value_cents;
     // A transfer id names one leg of one transfer and cannot survive a merge.

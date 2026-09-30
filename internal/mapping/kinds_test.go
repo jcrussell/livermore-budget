@@ -86,3 +86,17 @@ func TestKindListSpellsEveryKind(t *testing.T) {
 		t.Errorf("kindList() = %q, want %q", got, want)
 	}
 }
+
+// TestBasisListSpellsEveryBasis covers the basis refusal's enumeration, which
+// is read off [Bases] so a sixth basis cannot be accepted and left unnamed.
+func TestBasisListSpellsEveryBasis(t *testing.T) {
+	got := basisList()
+	for _, b := range Bases() {
+		if !strings.Contains(got, string(b)) {
+			t.Errorf("basisList() = %q, which does not name %q", got, b)
+		}
+	}
+	if want := "adopted, revised, actual, audited, projected"; got != want {
+		t.Errorf("basisList() = %q, want %q", got, want)
+	}
+}

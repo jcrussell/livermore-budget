@@ -70,8 +70,7 @@ func CellsOf(facts []fact.Fact, c Cut, at Level) (map[Key]Sum, error) {
 // comes back empty rather than naming two cuts that are not there.
 func Tally(cells, ref map[Key]Sum, keep func(Key) bool) Comparison {
 	var c Comparison
-	c.tally(cells, ref, keep)
-	c.Findings = nil
+	c.count(cells, ref, keep)
 	return c
 }
 
@@ -374,8 +373,19 @@ func compareAt(facts []fact.Fact, c, against Cut, at Level) (Comparison, error) 
 	return out, nil
 }
 
-// tally fills a comparison with every key either side produced that keep admits.
+// tally fills a comparison with every key either side produced that keep
+// admits, and words a finding for each cell that does not tie.
 func (c *Comparison) tally(cells, ref map[Key]Sum, keep func(Key) bool) {
+	c.count(cells, ref, keep)
+	for _, cell := range c.Cells {
+		if !cell.Ties() {
+			c.Findings = append(c.Findings, c.Finding(cell))
+		}
+	}
+}
+
+// count is tally without the wording: the cells, their counts and columns.
+func (c *Comparison) count(cells, ref map[Key]Sum, keep func(Key) bool) {
 	columns := map[string]bool{}
 	for _, k := range UnionKeys(cells, ref) {
 		if !keep(k) {
@@ -387,9 +397,6 @@ func (c *Comparison) tally(cells, ref map[Key]Sum, keep func(Key) bool) {
 		c.Subjects++
 		if !cell.Cut.Present || !cell.Against.Present {
 			c.OneSided++
-		}
-		if !cell.Ties() {
-			c.Findings = append(c.Findings, c.Finding(cell))
 		}
 	}
 	for col := range columns {

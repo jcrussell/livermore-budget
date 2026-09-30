@@ -159,8 +159,8 @@ def load_schema(schema_name: str) -> dict:
 def check_against_schema(obj: dict, schema_name: str) -> None:
     """Hold an object this script just wrote to the committed schema.
 
-    A subset and not an implementation: required keys, JSON types, enum and
-    const. PyPI is unreachable here, and Go validates the same file fully.
+    A subset and not an implementation: required keys, JSON types, enum,
+    const, string and array lengths, prefixItems and numeric minimums. PyPI is unreachable here, and Go validates the same file fully.
 
     Why, measured: docs/schema-contracts.md.
     """
@@ -192,6 +192,21 @@ def check_against_schema(obj: dict, schema_name: str) -> None:
             for key, sub in spec.get("properties", {}).items():
                 if key in value:
                     out.extend(fails(value[key], sub, f"{where}.{key}"))
+        if isinstance(value, str) and len(value) < spec.get("minLength", 0):
+            out.append(f"{where}: {value!r} is shorter than {spec['minLength']}")
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            if "minimum" in spec and value < spec["minimum"]:
+                out.append(f"{where}: {value!r} is below {spec['minimum']}")
+            if "exclusiveMinimum" in spec and value <= spec["exclusiveMinimum"]:
+                out.append(f"{where}: {value!r} is not above {spec['exclusiveMinimum']}")
+        if isinstance(value, list):
+            if len(value) < spec.get("minItems", 0):
+                out.append(f"{where}: {len(value)} items, want at least {spec['minItems']}")
+            if "maxItems" in spec and len(value) > spec["maxItems"]:
+                out.append(f"{where}: {len(value)} items, want at most {spec['maxItems']}")
+            for i, sub in enumerate(spec.get("prefixItems", [])):
+                if i < len(value):
+                    out.extend(fails(value[i], sub, f"{where}[{i}]"))
         if isinstance(value, list) and isinstance(spec.get("items"), dict):
             for i, item in enumerate(value):
                 out.extend(fails(item, spec["items"], f"{where}[{i}]"))

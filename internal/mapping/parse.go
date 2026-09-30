@@ -447,8 +447,7 @@ func validateRule(r *Rule, errf errFunc) error {
 		return errf(r.ID, "kind", "got %q, want one of %s", r.Kind, kindList())
 	}
 	if !r.Basis.Valid() {
-		return errf(r.ID, "basis", "got %q, want one of adopted, revised, actual, "+
-			"audited, projected", r.Basis)
+		return errf(r.ID, "basis", "got %q, want one of %s", r.Basis, basisList())
 	}
 	if r.Units == "" {
 		return cmdutil.WithHint(

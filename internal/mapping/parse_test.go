@@ -169,6 +169,11 @@ func TestParseRejects(t *testing.T) {
 			want: "kind",
 		},
 		{
+			name: "bad basis names every basis",
+			yaml: strings.Replace(base(""), "basis: adopted", "basis: budgeted", 1),
+			want: "want one of adopted, revised, actual, audited, projected",
+		},
+		{
 			// SignNetted says a row is printed against its KIND's direction, so
 			// it means nothing on a kind that has no direction -- and
 			// fact-transfer-orientation-is-declared witnesses only transfers,

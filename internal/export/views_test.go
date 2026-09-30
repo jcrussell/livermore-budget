@@ -192,8 +192,8 @@ func TestEachViewsFooterCitesItsOwnSources(t *testing.T) {
 //
 // TestEveryAssetThePageAsksForWasWritten walks src= and href= out of the rendered
 // markup, and it is green -- but the citation links fisc-fjy is about are not IN
-// the markup. site/app.js composes them at runtime, per cited fact, as
-// CONFIG.docs[d].page_text_base + "p" + padded + ".txt", and only the footer's
+// the markup. site/app.js reads them at runtime, per cited fact, from
+// CONFIG.docs[d].pages[n].text, and only the footer's
 // handful ever reach the HTML. So a walk of the page cannot see the class of
 // link that broke.
 //
@@ -2319,10 +2319,10 @@ func TestWriteRefusesAProvenanceRowWithNoShard(t *testing.T) {
 // clientDoc doc comment warns about, asserted rather than described.
 //
 // --source-browse-url ships no page text and cites a remote URL, so
-// page_text_base goes ABSOLUTE. The shards are written into the output tree on
-// every export, so records_base must stay SITE-RELATIVE -- two keys that look
-// alike, sit beside each other in one clientDoc, and differ in kind. Making
-// records_base follow page_text_base would publish a browse URL for 21 files
+// a page's text link goes ABSOLUTE. The shards are written into the output tree
+// on every export, so its records link must stay SITE-RELATIVE -- two keys that
+// look alike, sit beside each other in one clientPage, and differ in kind.
+// Making records follow text would publish a browse URL for 21 files
 // the remote does not have, which is the mistake facts.go's index comment
 // records having already been made once.
 func TestRecordsBaseStaysSiteRelativeUnderSourceBrowseURL(t *testing.T) {
@@ -2356,8 +2356,8 @@ func TestRecordsBaseStaysSiteRelativeUnderSourceBrowseURL(t *testing.T) {
 //
 // A base and the entries' Data both come from the same producer, so this
 // cannot witness a wrong path RULE -- what it catches is a caller filling
-// RecordsBase from a different source than PageIndex, which is how the client
-// would come to compose a URL for a file nobody wrote. That failure is
+// RecordsBase from a different source than PageIndex, which is how the config
+// would come to carry a URL for a file nobody wrote. That failure is
 // otherwise completely silent: every shard is present, every byte count
 // matches, the provenance page's own links work, and only the chart's records
 // links 404.

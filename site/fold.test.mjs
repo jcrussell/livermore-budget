@@ -685,3 +685,29 @@ describe("a kept flank the fold refuses", () => {
     assert.equal(app.flankHolds(chart, step, "fund-group/general"), true);
   });
 });
+
+describe("flankHolds' refusal", () => {
+  test("absorbs only the fold's refusal and throws any other error", async () => {
+    const app = (await loadApp()).app;
+    const step = pageFixture().config.steps.find((s) => s.key === "fund-group");
+    const broken = structuredClone(goldenGraph());
+    broken.links = null;
+    assert.throws(() => app.flankHolds(broken, step, "fund-group/general"), TypeError,
+      "a defect in the flank reading was offered as a node that opens");
+  });
+});
+
+describe("a gap step's balanced chart", () => {
+  // markGap names a column only to say something about it: a chart that
+  // balances with no licence is returned as drawn, whatever its metadata.
+  test("is drawn unchanged even where its column names no published year", async () => {
+    const app = (await loadApp()).app;
+    const drawn = {
+      projection: "t", metadata: {},
+      nodes: [{ id: "a" }, { id: "b" }, { id: "c" }],
+      links: [{ source: "a", target: "b", value_cents: 5 }, { source: "b", target: "c", value_cents: 5 }],
+    };
+    const rung = { id: "b", step: { gaps: { other: [] } } };
+    assert.equal(app.markGap(drawn, drawn, rung), drawn);
+  });
+});

@@ -267,8 +267,8 @@ type Options struct {
 
 	// RecordsBase is where each document's records live, keyed by doc id, in
 	// the form a client appends pNNNN.jsonl to. It is what lets a mark on a
-	// chart resolve to the facts behind it: a link publishes locators, and the
-	// client composes base + file.
+	// chart resolve to the facts behind it: a link publishes locators, and
+	// base + [RecordsFile] is each cited page's records link in the config.
 	//
 	// THIS PACKAGE DOES NOT KNOW HOW THAT PATH IS BUILT AND MUST NOT LEARN.
 	// The rule is spelled once, in whoever produced the records -- the same
@@ -276,12 +276,12 @@ type Options struct {
 	// the two agree instead of taking this on trust.
 	//
 	// UNLIKE PageTextBase THERE IS NO LOCAL/REMOTE FORK. A --source-browse-url
-	// export ships no page text and cites a remote URL, so page_text_base goes
-	// absolute; the shards are always written into the output tree, so this
-	// stays site-relative. The two therefore differ in kind while sitting
-	// beside each other in the same clientDoc.
+	// export ships no page text and cites a remote URL, so a page's text link
+	// goes absolute; the shards are always written into the output tree, so
+	// its records link stays site-relative. The two therefore differ in kind
+	// while sitting beside each other in the same clientPage.
 	//
-	// A doc with no entry publishes records_base: "" and the client renders no
+	// A doc with no entry publishes records: "" and the client renders no
 	// records link. Absent is not zero: a base that was never supplied is not
 	// a base pointing at nothing.
 	RecordsBase map[string]string

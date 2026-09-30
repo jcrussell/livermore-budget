@@ -521,7 +521,7 @@ func (a factAssets) pageIndex() []export.PageIndexEntry {
 // and the path the file was written at cannot drift apart. internal/export
 // asserts that relationship rather than trusting it.
 //
-// Unlike page_text_base there is no local/remote fork: shards are always
+// Unlike a page's text link there is no local/remote fork: shards are always
 // written into the output tree, so this is always site-relative.
 func (a factAssets) recordsBase() map[string]string {
 	out := make(map[string]string, len(a.Pages))

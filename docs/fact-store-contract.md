@@ -49,26 +49,27 @@ resolves after the store grows.
 
 ### Who holds a locator
 
-The URL is composed from two halves, so nothing has to parse a path to take it
-apart:
+The URL is composed in Go from two halves, so nothing has to parse a path to
+take it apart, and the client reads the whole link at
+`CONFIG.docs[<doc_id>].pages[<page>].records`:
 
-| half | who states it | where the client reads it |
-|---|---|---|
-| `facts/<doc_id>/pages/` | `pkg/cmd/export`'s `shardBase` | `CONFIG.docs[<doc_id>].records_base` |
-| `p<page padded to 4>.jsonl` | `pkg/cmd/export`'s `shardFile` | composed by `citations()` in `site/app.js` |
+| half | who states it |
+|---|---|
+| `facts/<doc_id>/pages/` | `pkg/cmd/export`'s `shardBase`, passed as `Options.RecordsBase` |
+| `p<page padded to 4>.jsonl` | `internal/export`'s `RecordsFile` |
 
-Both are `shardPath` split at exactly the point a client has to compose it, so
+Both are `shardPath` split at the package boundary, so
 "the rule is spelled once" survives the split — and
 `TestTheRecordsBaseComposesBackToTheShardPath` asserts the halves still make
 the whole for every page published, rather than leaving it to the comment.
 
-`internal/export` publishes `records_base` and **does not know how it is
-built**. That is the same rule `PageIndexEntry.Data` follows and it is stated
+`internal/export` joins the base to the file and **does not know how the base
+is built**. That is the same rule `PageIndexEntry.Data` follows and it is stated
 in `buildProvenancePage`: the locator-to-URL rule belongs to whoever produced
 the records.
 
-`records_base` is always site-relative, unlike `page_text_base` beside it in
-the same object. Shards are written into the output tree on every export; page
+A page's `records` link is always site-relative, unlike its `text` link beside
+it in the same object. Shards are written into the output tree on every export; page
 text is not, and goes absolute under `--source-browse-url`.
 
 ### What a chart cites

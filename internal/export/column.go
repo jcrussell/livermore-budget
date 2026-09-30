@@ -146,7 +146,7 @@ type decoded struct {
 }
 
 // ColumnIndex answers which built document is one schedule of one column:
-// [ColumnPath] -> [scheduleKey] -> filename stem. It is the same join
+// [ColumnPath] -> the document's own projection name -> filename stem. It is the same join
 // site/app.js makes, and is built in [ColumnsOf]'s own loop so the fold and
 // the index cannot disagree.
 type ColumnIndex struct {
