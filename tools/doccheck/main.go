@@ -59,6 +59,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -403,10 +404,37 @@ func run(args []string, stderr io.Writer) int {
 
 // schemaRefPattern is a schema file cited by path, and optionally a JSON
 // pointer into it after '#'.
-var schemaRefPattern = regexp.MustCompile(`(^|[^A-Za-z0-9_./-])schema/([a-z-]+\.schema\.json)(#[A-Za-z0-9_$/-]*)?`)
+var schemaRefPattern = regexp.MustCompile(`(^|[^A-Za-z0-9_./-])schema/([a-z-]+\.schema\.json)(#[A-Za-z0-9_$/.~-]*)?`)
 
-// fiscTypedef is a site/app.js typedef standing for a wire shape.
-var fiscTypedef = regexp.MustCompile(`@typedef \{[^\n]*\}\s*(Fisc[A-Za-z]+)`)
+// fiscTypedefName is the name after a typedef's type, which fiscTypedefs
+// finds by brace depth because the type can span lines.
+var fiscTypedefName = regexp.MustCompile(`^\s*(Fisc[A-Za-z]+)`)
+
+// fiscTypedefs is every site/app.js typedef standing for a wire shape: its
+// name and the offset of its "@typedef".
+func fiscTypedefs(text string) (names []string, at []int) {
+	const tag = "@typedef {"
+	for i := 0; ; {
+		j := strings.Index(text[i:], tag)
+		if j < 0 {
+			return names, at
+		}
+		start := i + j
+		end, depth := start+len(tag), 1
+		for ; end < len(text) && depth > 0; end++ {
+			switch text[end] {
+			case '{':
+				depth++
+			case '}':
+				depth--
+			}
+		}
+		if m := fiscTypedefName.FindStringSubmatch(text[end:]); m != nil {
+			names, at = append(names, m[1]), append(at, start)
+		}
+		i = end
+	}
+}
 
 // deadSchemaRefs is every schema/<file>.schema.json#<pointer> cited in the
 // scanned paths that names no file or no node of it, and every Fisc* typedef
@@ -435,7 +463,9 @@ func deadSchemaRefs(root string, paths []string) ([]cite, error) {
 			for _, m := range schemaRefPattern.FindAllStringSubmatchIndex(text, -1) {
 				file, pointer := text[m[4]:m[5]], ""
 				if m[6] >= 0 {
-					pointer = text[m[6]+1 : m[7]]
+					// A pointer may hold '.', so a sentence's full stop is not
+					// part of it.
+					pointer = strings.TrimRight(text[m[6]+1:m[7]], ".")
 				}
 				line := strings.Count(text[:m[4]], "\n") + 1
 				if msg := resolveSchemaRef(root, file, pointer); msg != "" {
@@ -443,11 +473,12 @@ func deadSchemaRefs(root string, paths []string) ([]cite, error) {
 				}
 			}
 			if norm(rel) == "site/app.js" {
-				for _, m := range fiscTypedef.FindAllStringSubmatchIndex(text, -1) {
-					start := strings.LastIndex(text[:m[0]], "/**")
-					if start < 0 || !strings.Contains(text[start:m[0]], "schema/") {
-						out = append(out, cite{title: text[m[2]:m[3]] + " names no schema path, so nothing holds it to a shape",
-							file: rel, line: strings.Count(text[:m[0]], "\n") + 1})
+				names, at := fiscTypedefs(text)
+				for i, name := range names {
+					start := strings.LastIndex(text[:at[i]], "/**")
+					if start < 0 || !strings.Contains(text[start:at[i]], "schema/") {
+						out = append(out, cite{title: name + " names no schema path, so nothing holds it to a shape",
+							file: rel, line: strings.Count(text[:at[i]], "\n") + 1})
 					}
 				}
 			}
@@ -475,11 +506,20 @@ func resolveSchemaRef(root, file, pointer string) string {
 		if key == "" {
 			continue
 		}
-		m, ok := at.(map[string]any)
-		if !ok || m[key] == nil {
+		key = strings.ReplaceAll(strings.ReplaceAll(key, "~1", "/"), "~0", "~")
+		var ok bool
+		switch node := at.(type) {
+		case map[string]any:
+			at, ok = node[key]
+		case []any:
+			i, bad := strconv.Atoi(key)
+			if ok = bad == nil && i >= 0 && i < len(node); ok {
+				at = node[i]
+			}
+		}
+		if !ok {
 			return "schema/" + file + "#" + pointer + " names no node of it"
 		}
-		at = m[key]
 	}
 	return ""
 }

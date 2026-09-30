@@ -154,3 +154,27 @@ for (const year of YEARS) {
     });
   });
 }
+
+describe("a figure whose words or pages the page does not carry", () => {
+  test("a cited page the export built no links for is refused, not dropped from the Sources", async (t) => {
+    const config = structuredClone(PAGE.config);
+    const { app } = await bootedApp({ checkedStem: "sankey", config });
+    const [printed] = columnLinks("fy2026-adopted", "fund-flows", (from, to) => from === ERAF && to === PROPERTY);
+    const loc = printed.locators[0];
+    const page = String(loc.pages[0]);
+    assert.ok(app.citations(printed.locators).length > 0);
+    delete config.docs[loc.doc_id].pages[page];
+    t.diagnostic(`ERAF cites ${loc.doc_id} p${page}; with its entry deleted, citations() is asked again`);
+    assert.throws(() => app.citations(printed.locators), new RegExp(`cannot cite ${loc.doc_id} p${page}`));
+  });
+
+  test("a link kind with no label is refused, and a gap's empty kind has no words", async () => {
+    const config = structuredClone(PAGE.config);
+    const { app } = await bootedApp({ checkedStem: "sankey", config });
+    const [kind] = Object.keys(config.kind_labels);
+    assert.ok(app.kindLabel(kind));
+    assert.equal(app.kindLabel(""), "");
+    delete config.kind_labels[kind];
+    assert.throws(() => app.kindLabel(kind), new RegExp(`cannot name link kind ${kind}`));
+  });
+});

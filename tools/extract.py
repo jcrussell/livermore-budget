@@ -160,7 +160,8 @@ def check_against_schema(obj: dict, schema_name: str) -> None:
     """Hold an object this script just wrote to the committed schema.
 
     A subset and not an implementation: required keys, JSON types, enum,
-    const, string and array lengths, prefixItems and numeric minimums. PyPI is unreachable here, and Go validates the same file fully.
+    const, string and array lengths, prefixItems and numeric minimums. PyPI
+    is unreachable here, and Go validates the same file fully.
 
     Why, measured: docs/schema-contracts.md.
     """
@@ -208,8 +209,9 @@ def check_against_schema(obj: dict, schema_name: str) -> None:
                 if i < len(value):
                     out.extend(fails(value[i], sub, f"{where}[{i}]"))
         if isinstance(value, list) and isinstance(spec.get("items"), dict):
-            for i, item in enumerate(value):
-                out.extend(fails(item, spec["items"], f"{where}[{i}]"))
+            # Under draft 2020-12 items covers only what prefixItems does not.
+            for i in range(len(spec.get("prefixItems", [])), len(value)):
+                out.extend(fails(value[i], spec["items"], f"{where}[{i}]"))
         return out
 
     problems = fails(obj, schema, schema_name.removesuffix(".schema.json"))

@@ -495,10 +495,13 @@ func drawnTotalsOf(links []project.Link) drawnTotals {
 // every link to its facts, so the two together tie the headline to the facts.
 //
 // The producer computes the headline over facts and the links over cells, so a
-// figure that counts internal service charges as external, or a gross figure
-// that stopped including them, disagrees with the chart it heads. The naive
-// figure and the transfer residual are derived from these in one line each by
-// internal/project, and are held there.
+// headline that admits a fact the chart does not draw, or drops one it does,
+// disagrees with the chart it heads. Both sides take external from
+// project.boundaryKind, so a wrong boundary moves them together and is not
+// seen here: that definition is the producer's, held by
+// TestInternalServiceClassification. The naive figure and the transfer
+// residual are derived from these in one line each by internal/project, and
+// are held there.
 type headlineTiesToFacts struct{}
 
 var _ Check = (*headlineTiesToFacts)(nil)

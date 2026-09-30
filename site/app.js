@@ -276,12 +276,16 @@ export function flankIsLeft(step) {
 
 
 /**
- * A link kind in the page's words, as the export ships them.
+ * A link kind in the page's words, as the export ships them. The empty kind
+ * is a gap's, which crosses no printed boundary, and has no words.
  * @param {string} kind
  * @returns {string}
  */
 export function kindLabel(kind) {
-  return CONFIG.kind_labels[kind];
+  if (kind === "") return "";
+  const label = CONFIG.kind_labels[kind];
+  if (!label) throw new Error("cannot name link kind " + kind + ": the page publishes no label for it");
+  return label;
 }
 
 export const NODE_WIDTH = 14;
@@ -508,7 +512,8 @@ export function nodeRank(node) {
 /**
  * Citations for a set of source documents: the city's PDF at the page, the
  * committed page text, and the fact-store shard for the page, each the link
- * the export built for that page. A link it left empty is not rendered.
+ * the export built for that page. A link it left empty is not rendered; a
+ * page it built no entry for is refused, so a cited page cannot vanish.
  * @param {FiscSource[]} sources
  * @returns {{label:string, href:string}[]}
  */
@@ -517,10 +522,11 @@ export function citations(sources) {
   const out = [];
   for (const source of sources) {
     const doc = CONFIG.docs[source.doc_id];
-    if (!doc || !doc.pages) continue;
     for (const page of source.pages) {
-      const links = doc.pages[String(page)];
-      if (!links) continue;
+      const links = doc && doc.pages && doc.pages[String(page)];
+      if (!links) {
+        throw new Error("cannot cite " + source.doc_id + " p" + page + ": the page publishes no links for it");
+      }
       if (links.pdf) out.push({ label: "PDF p" + page, href: links.pdf });
       if (links.text) out.push({ label: "extracted p" + page, href: links.text });
       if (links.records) out.push({ label: "records p" + page, href: links.records });
@@ -3280,8 +3286,11 @@ export function showTip(event, d) {
   const meta = h("div", "tip-meta");
   if (asLink) {
     const l = /** @type {LaidLink} */ (d);
-    meta.append(h("span", "chip", kindLabel(l.kind)));
-    meta.append(document.createTextNode(" "));
+    const kind = kindLabel(l.kind);
+    if (kind) {
+      meta.append(h("span", "chip", kind));
+      meta.append(document.createTextNode(" "));
+    }
     const lentTo = Boolean(l.source.derived || l.target.derived);
     meta.append(h("span", l.derived || lentTo ? "chip derived" : "chip",
       say(l.derived ? "inferred_chip" : lentTo ? "carried_chip" : "printed_chip")));

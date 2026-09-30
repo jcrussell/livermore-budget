@@ -791,11 +791,14 @@ func TestDeadSchemaRefsResolvesEveryPointerAndEveryTypedef(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	write("schema/x.schema.json", `{"properties": {"nodes": {"items": {}}}}`)
+	write("schema/x.schema.json", `{"properties": {"nodes": {"items": {}}, "words": {"prefixItems": [{}, {"default": null}]}}}`)
 	write("site/app.js", "/** schema/x.schema.json#/properties/nodes/items. @typedef {Object} FiscNode */\n"+
 		"/** schema/x.schema.json#/properties/edges/items. @typedef {Object} FiscLink */\n"+
 		"/** schema/y.schema.json. @typedef {Object} FiscDoc */\n"+
-		"/** a shape with no path. @typedef {Object} FiscYear */\n")
+		"/** a shape with no path. @typedef {Object} FiscYear */\n"+
+		"/** a shape with no path. @typedef {Record<string, any> & {\n *   a?: {b: number}\n * }} FiscSpan */\n"+
+		"/** schema/x.schema.json#/properties/words/prefixItems/1/default. @typedef {Object} FiscWord */\n"+
+		"/** schema/x.schema.json#/properties/words/prefixItems/2. @typedef {Object} FiscPast */\n")
 	got, err := deadSchemaRefs(root, []string{filepath.Join(root, "site")})
 	if err != nil {
 		t.Fatal(err)
@@ -807,7 +810,9 @@ func TestDeadSchemaRefsResolvesEveryPointerAndEveryTypedef(t *testing.T) {
 	want := []string{
 		"schema/x.schema.json#/properties/edges/items names no node of it",
 		"schema/y.schema.json is not a schema this tree has",
+		"schema/x.schema.json#/properties/words/prefixItems/2 names no node of it",
 		"FiscYear names no schema path, so nothing holds it to a shape",
+		"FiscSpan names no schema path, so nothing holds it to a shape",
 	}
 	if diff := cmp.Diff(want, titles); diff != "" {
 		t.Errorf("deadSchemaRefs (-want +got):\n%s", diff)
