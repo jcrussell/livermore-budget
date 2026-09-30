@@ -653,7 +653,7 @@ func tilesFor(meta projectionMetadata) (figure, []figure) {
 	hero := figure{
 		Label: "What the city actually spends",
 		Value: amount.Cents(h.AllFundsGrossExpenditureCents).Dollars(),
-		Note:  "All funds, gross, " + meta.FiscalYearLabel + " " + meta.Basis + " budget",
+		Note:  "All funds, gross, " + ledeOf(meta.FiscalYearLabel, meta.Basis) + " budget",
 		Kind:  "hero",
 	}
 	return hero, []figure{{

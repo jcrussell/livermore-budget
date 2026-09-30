@@ -2581,8 +2581,8 @@ export function capColumn(doc, tier, cap, opened, noun) {
   return Object.assign({}, doc, { nodes: nodes, links: links });
 }
 
-/** The fold's refusal to merge a printed flow with an inferred one. */
-export const FOLD_REFUSES_MIXED = "folding merges a printed flow and an inferred one";
+/** The fold's refusal to merge two ribbons one mark cannot draw as one. */
+export const FOLD_REFUSES_MIXED = "folding merges ribbons one mark cannot draw as one";
 
 /**
  * Folds a document to the tiers this page draws: each node to its nearest
@@ -2651,13 +2651,19 @@ export function foldDocument(doc, tiers) {
       located.set(key, new Set(locatorKeys(l.locators)));
       continue;
     }
-    // A PRINTED LEG AND AN INFERRED ONE ARE NEVER ONE RIBBON: one mark cannot
-    // be drawn as both, so the fold refuses rather than letting the first
-    // leg's flag speak for the other.
-    if (Boolean(at.derived) !== Boolean(l.derived)) {
-      throw new Error("cannot draw " + doc.projection + ": " + FOLD_REFUSES_MIXED + " from " +
-        source + " to " + target + " (" + l.kind + ") into one ribbon");
+    // A PRINTED LEG AND AN INFERRED ONE, OR A PARTITION LEG AND ONE THAT IS
+    // NOT, ARE NEVER ONE RIBBON: one mark cannot be drawn as both, so the fold
+    // refuses rather than letting the first leg's flag speak for the other.
+    const mixed = Boolean(at.derived) !== Boolean(l.derived) ? "a printed flow and an inferred one"
+      : Boolean(at.partition) !== Boolean(l.partition) ? "a cross-tab slice and a flow that is not one"
+        : "";
+    if (mixed) {
+      throw new Error("cannot draw " + doc.projection + ": " + FOLD_REFUSES_MIXED + ", " + mixed +
+        ", from " + source + " to " + target + " (" + l.kind + ")");
     }
+    // One leg's reduction words cannot name the sum; markContra names what
+    // the merged ribbon nets to.
+    if ((at.contra || "") !== (l.contra || "")) at.contra = "";
     at.value_cents += l.value_cents;
     // A transfer id names one leg of one transfer and cannot survive a merge.
     if (at.transfer_id !== l.transfer_id) at.transfer_id = "";

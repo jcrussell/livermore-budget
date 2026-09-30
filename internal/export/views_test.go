@@ -1104,21 +1104,21 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 		// prints once, and a gap with no reason is indistinguishable from drift.
 		{"a gap on a step that switches no document", []export.View{ok,
 			chainView(func(v *export.View) {
-				v.Steps[1].Gaps = map[string]export.Gaps{"expenditure/services-and-supplies": {{FiscalYear: 2027, Basis: "adopted", Cents: 1, Reason: "A reason."}}}
+				v.Steps[1].Gaps = map[string]export.Gaps{"expenditure/services-and-supplies": {{FiscalYear: 2026, Basis: "adopted", Cents: 1, Reason: "A reason."}}}
 			})},
 			"a step that switches no document has only one"},
 		{"a gap with no reason", []export.View{ok,
 			chartView(func(v *export.View) {
 				v.Nav = "Extra"
 				v.Steps[0].Projection = "sankey"
-				v.Steps[0].Gaps = map[string]export.Gaps{"expenditure/services-and-supplies": {{FiscalYear: 2027, Basis: "adopted", Cents: 1}}}
+				v.Steps[0].Gaps = map[string]export.Gaps{"expenditure/services-and-supplies": {{FiscalYear: 2026, Basis: "adopted", Cents: 1}}}
 			})},
 			"items/properties/reason: minLength"},
 		{"a gap licensing zero cents", []export.View{ok,
 			chartView(func(v *export.View) {
 				v.Nav = "Extra"
 				v.Steps[0].Projection = "sankey"
-				v.Steps[0].Gaps = map[string]export.Gaps{"expenditure/services-and-supplies": {{FiscalYear: 2027, Basis: "adopted", Reason: "A reason."}}}
+				v.Steps[0].Gaps = map[string]export.Gaps{"expenditure/services-and-supplies": {{FiscalYear: 2026, Basis: "adopted", Reason: "A reason."}}}
 			})},
 			"items/properties/cents: not"},
 		{"a gap on a step that widens", []export.View{ok,
@@ -1126,17 +1126,24 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 				v.Nav = "Extra"
 				v.Steps[0].Projection = "sankey"
 				v.Steps[0].Tiers, v.Steps[0].Widen = []int{0, 2, 3, 4}, []int{4}
-				v.Steps[0].Gaps = map[string]export.Gaps{"expenditure/services-and-supplies": {{FiscalYear: 2027, Basis: "adopted", Cents: 1, Reason: "A reason."}}}
+				v.Steps[0].Gaps = map[string]export.Gaps{"expenditure/services-and-supplies": {{FiscalYear: 2026, Basis: "adopted", Cents: 1, Reason: "A reason."}}}
 			})},
 			"declares a gap on 1 node(s) and widens tiers"},
 		{"two gap licences for one column", []export.View{ok,
 			chartView(func(v *export.View) {
 				v.Steps[0].Projection = "sankey"
 				v.Steps[0].Gaps = map[string]export.Gaps{"expenditure/services-and-supplies": {
-					{FiscalYear: 2027, Basis: "adopted", Cents: 1, Reason: "A reason."},
-					{FiscalYear: 2027, Basis: "adopted", Cents: 2, Reason: "Another."}}}
+					{FiscalYear: 2026, Basis: "adopted", Cents: 1, Reason: "A reason."},
+					{FiscalYear: 2026, Basis: "adopted", Cents: 2, Reason: "Another."}}}
 			})},
-			"declares two gaps on node \"expenditure/services-and-supplies\" for FY2027 adopted"},
+			"declares two gaps on node \"expenditure/services-and-supplies\" for FY2026 adopted"},
+		{"a gap licensing a column the view lists no year of", []export.View{ok,
+			chartView(func(v *export.View) {
+				v.Steps[0].Projection = "sankey"
+				v.Steps[0].Gaps = map[string]export.Gaps{"expenditure/services-and-supplies": {
+					{FiscalYear: 2027, Basis: "adopted", Cents: 1, Reason: "A reason."}}}
+			})},
+			"licenses a gap on node \"expenditure/services-and-supplies\" for FY2027 adopted, a column the view lists no year of"},
 		{"a cap on a tier the step does not draw", []export.View{ok,
 			chartView(func(v *export.View) { v.Steps[0].Caps = []export.TierCap{{Tier: 4, Cap: 8}} })},
 			"the cap would fold nothing, in silence"},
@@ -3500,10 +3507,12 @@ func TestTheServedStepsCarryTheirLicences(t *testing.T) {
 	}}
 	dir := t.TempDir()
 	if _, err := writeSite(export.Options{
-		Dir:         dir,
-		Projections: map[string][]byte{"sankey": goldenSankey(t)},
+		Dir: dir,
+		Projections: map[string][]byte{
+			"sankey": goldenSankey(t), "sankey-2027": reyeared(t, goldenSankey(t), 2027, "FY 2027-28"),
+		},
 		Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
-			Template: export.SankeyTemplate, Projection: "sankey",
+			Template: export.SankeyTemplate, Projection: "sankey", YearStems: []string{"sankey", "sankey-2027"},
 			RenderTiers: []int{0, 2, 5}, Steps: declared}},
 		Docs:        budgetDocs(),
 		GeneratedBy: "fisc test",

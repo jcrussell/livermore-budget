@@ -75,8 +75,7 @@
             "description": "The column file this year is fetched from."
           },
           "basis": {
-            "type": "string",
-            "minLength": 1
+            "$ref": "https://jcrussell.github.io/livermore-budget/schema/enums.schema.json#/$defs/basis"
           },
           "title": {
             "type": "string"
@@ -420,8 +419,7 @@
                     "minimum": 1
                   },
                   "basis": {
-                    "type": "string",
-                    "minLength": 1
+                    "$ref": "https://jcrussell.github.io/livermore-budget/schema/enums.schema.json#/$defs/basis"
                   },
                   "cents": {
                     "type": "integer",

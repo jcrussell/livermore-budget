@@ -359,3 +359,14 @@ func TestTheShapeSentenceAndTheMarkAgreeOnWhatTallestMeans(t *testing.T) {
 			"print is false as published", tallest)
 	}
 }
+
+// TestTheHeroNoteNamesItsColumnAsTheLedeDoes holds the hero tile's note to
+// ledeOf, the one spelling of a column the chart title and the lede use.
+// Mutation: spell the note's column by hand with a comma, and it goes red.
+func TestTheHeroNoteNamesItsColumnAsTheLedeDoes(t *testing.T) {
+	meta := projectionMetadata{FiscalYear: 2026, FiscalYearLabel: "FY 2025-26", Basis: "adopted"}
+	hero, _ := tilesFor(meta)
+	if want := ledeOf(meta.FiscalYearLabel, meta.Basis); !strings.Contains(hero.Note, want) {
+		t.Errorf("hero note %q does not name its column as the lede does, %q", hero.Note, want)
+	}
+}

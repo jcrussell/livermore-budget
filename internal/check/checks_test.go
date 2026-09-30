@@ -94,7 +94,7 @@ func TestFixtureVerdicts(t *testing.T) {
 		"link-values-tie-to-facts":              "pass over 7",
 		"link-kinds-match-their-facts":          "pass over 7",
 		"counts-reconcile":                      "pass over 1",
-		"headline-ties-to-facts":                "pass over 3", // 3 revenue + 1 expenditure + 1 transfer out
+		"headline-ties-to-facts":                "pass over 3", // links leaving a revenue node or entering an expenditure one
 		"headline-transfer-residual":            "pass over 2",
 		"headline-naive-expenditure":            "pass over 1",
 		// Nothing to check: no link carries a transfer_id, no node a parent or a
@@ -954,10 +954,10 @@ func TestCountsReconcileNamesTheArithmetic(t *testing.T) {
 	}
 }
 
-// TestTransferHeadlineIsTheFacts checks the headline against the fact store
-// rather than against itself, which is the only way a headline check means
-// anything.
-func TestTransferHeadlineIsTheFacts(t *testing.T) {
+// TestTransferHeadlineIsTheLinks checks the headline against the transfer
+// links the document draws rather than against itself, which is the only way a
+// headline check means anything.
+func TestTransferHeadlineIsTheLinks(t *testing.T) {
 	res := resultFor(t, runChecks(t, testSubject(t)), "headline-transfer-residual")
 	if res.Status != StatusPass || res.Subjects != 2 {
 		t.Fatalf("status = %s over %d, want pass over 2", res.Status, res.Subjects)

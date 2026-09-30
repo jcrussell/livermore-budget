@@ -343,7 +343,7 @@ describe("foldDocument's clauses, on the miniature", () => {
     assert.deepEqual([...l.fact_ids].sort(), ["a", "b", "y"]);
     const mixed = miniature();
     mixed.links.push(Object.assign({}, leg, { derived: true }));
-    assert.throws(() => drill.foldDocument(mixed), /merges a printed flow and an inferred one/);
+    assert.throws(() => drill.foldDocument(mixed), /cannot draw as one, a printed flow and an inferred one/);
   });
 });
 
@@ -664,7 +664,34 @@ describe("a printed flow and an inferred one", () => {
     assert.ok(planted, "no two lines of one category reach one fund, so nothing folds together");
     assert.doesNotThrow(() => app.foldDocument(doc, [0, 2, 3, 4, 5]), "the printed document folds");
     planted.derived = true;
-    assert.throws(() => app.foldDocument(doc, [0, 2, 3, 4, 5]), /merges a printed flow and an inferred one/);
+    assert.throws(() => app.foldDocument(doc, [0, 2, 3, 4, 5]), /cannot draw as one, a printed flow and an inferred one/);
+    planted.derived = false;
+    planted.partition = true;
+    assert.throws(() => app.foldDocument(doc, [0, 2, 3, 4, 5]), /cannot draw as one, a cross-tab slice and a flow that is not one/);
+  });
+
+  test("a reduction's words do not name a ribbon it was only one leg of", async (t) => {
+    const app = (await loadApp()).app;
+    const doc = structuredClone(fundFlows(app, "fy2026-adopted"));
+    const byID = new Map(doc.nodes.map((n) => [n.id, n]));
+    const byKey = new Map();
+    for (const l of doc.links) {
+      const src = byID.get(l.source);
+      if (!src || src.tier !== 1 || byID.get(l.target).tier !== 3 || l.contra) continue;
+      const key = src.parent + "\u001f" + l.target + "\u001f" + l.kind;
+      byKey.set(key, (byKey.get(key) || []).concat([l]));
+    }
+    const legs = [...byKey.values()].find((ls) => ls.length > 1);
+    assert.ok(legs, "no two lines of one category reach one fund, so nothing folds together");
+    const [first] = legs;
+    const merged = () => app.foldDocument(doc, [0, 2, 3, 4, 5]).links
+      .find((l) => l.source === byID.get(first.source).parent && l.target === first.target && l.kind === first.kind);
+    t.diagnostic(`${legs.length} lines of ${byID.get(first.source).parent} fold into one ribbon to ${first.target}`);
+    const words = "a reduction every leg prints";
+    for (const l of legs) l.contra = words;
+    assert.equal(merged().contra, words, "legs that print the same reduction lost its words");
+    legs[legs.length - 1].contra = "";
+    assert.equal(merged().contra, "", "one leg's reduction words named the merged ribbon");
   });
 });
 
@@ -679,7 +706,7 @@ describe("a kept flank the fold refuses", () => {
     const i = chart.links.findIndex((l) => l.target === "fund-group/general" && !l.derived);
     assert.ok(i >= 0, "the spine sends no printed ribbon into fund-group/general");
     chart.links.push(Object.assign({}, chart.links[i], { derived: true, fact_ids: [], value_cents: 1 }));
-    assert.throws(() => app.keptFlank(chart, { id: "fund-group/general", step }), /merges a printed flow and an inferred one/,
+    assert.throws(() => app.keptFlank(chart, { id: "fund-group/general", step }), /cannot draw as one, a printed flow and an inferred one/,
       "the planted flank does not make the fold refuse, so this test holds nothing");
     assert.doesNotThrow(() => app.flankHolds(chart, step, "fund-group/general"));
     assert.equal(app.flankHolds(chart, step, "fund-group/general"), true);

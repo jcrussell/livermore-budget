@@ -759,6 +759,14 @@ func (v View) validateSteps(built map[string][]byte, ix ColumnIndex) error {
 		}
 		index[s.Key] = i
 	}
+	// The columns a reader can open, which a gap licence must name one of: the
+	// view's years, or its own document where it lists none.
+	years := map[string]bool{}
+	for _, stem := range append([]string{v.Projection}, v.YearStems...) {
+		if col, folded := ix.Column(stem); folded {
+			years[col] = true
+		}
+	}
 	// The document each step draws, filled in declaration order: a step naming
 	// no projection draws its parent's, and a parent is always earlier.
 	docs := make([]string, len(v.Steps))
@@ -1050,6 +1058,12 @@ func (v View) validateSteps(built map[string][]byte, ix ColumnIndex) error {
 		for _, id := range slices.Sorted(maps.Keys(s.Gaps)) {
 			seen := map[[2]string]bool{}
 			for _, g := range s.Gaps[id] {
+				if !years[ColumnPath(g.FiscalYear, g.Basis)] {
+					return fmt.Errorf(
+						"view %q's step %d licenses a gap on node %q for %s, a column the view "+
+							"lists no year of; the licence would match no chart the reader can open",
+						v.Path, i, id, fact.ColumnLabel(g.FiscalYear, g.Basis))
+				}
 				col := [2]string{strconv.Itoa(g.FiscalYear), g.Basis}
 				if seen[col] {
 					return fmt.Errorf(
