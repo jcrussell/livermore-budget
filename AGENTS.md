@@ -43,6 +43,8 @@ So the stitching, the auditing and the cross-checking of the fact store are
 Go's, and a figure the client shows is either one Go cited or a sum or
 difference of such figures under a licence Go shipped.
 
+Why, measured: [`docs/chart-model.md`](docs/chart-model.md).
+
 ## Where to start
 
 ```bash

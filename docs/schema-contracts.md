@@ -153,3 +153,16 @@ transfer ends hang under `transfers/in` or `transfers/out` in the network that
 folds them there and under nothing in the other, since transfers-out's p222
 legs are outside `transfers/in`. A parent is a claim about one schedule's
 hierarchy, and two schedules can be right about one node.
+
+## A shape Go never emits still has a schema
+
+The client synthesises three nodes no document carries: the aggregate a cap
+folds a column's tail into, the residual that carries flow a drawn document
+does not decompose, and the gap that holds a licensed difference. Their roles
+and id prefixes are a declared set in `enums.schema.json`, held to the Go set
+`internal/export` refuses on a producer node, and their shape is
+`mark.schema.json`. Go validates nothing against it, because Go never writes
+one; `site/marks.test.mjs` reads the schema and holds each mark the client
+builds to its required keys, its properties, the enum and the pattern, which
+is the subset `tools/extract.py` checks and the same precedent. The client
+itself reads no schema.

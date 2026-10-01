@@ -514,28 +514,30 @@ merged links still name every fact behind every ribbon.
 
 **Go ships what only Go can know, and computes no rung.** A step is declared
 once in `views()` and reaches the page as `FISC_CONFIG.steps`, in the shape
-`schema/page.schema.json` gives it: what it draws and where it opens, what may
-fold, and the licences only the fact store can state — the residual endpoints
-each with its reason, and the gap cents per column, from
-`structure.BudgetBookExceptions`, that two schedules are declared to differ by
-at one node. `validateSteps` refuses a declaration whose shape the client could
-not draw; `foldDocument` refuses a fold that would merge a printed ribbon with an
-inferred one, which the client walk in `site/*.test.mjs` exercises on every rung
-at every width. The shape is
-[`schema/page.schema.json`](../schema/page.schema.json), compared against the
-emitted bytes at the write.
+`schema/page.schema.json` gives it: the generic drill fields the core reads
+(what opens from where, into which schedule, the words), the licences only the
+fact store can state (the residual endpoints each with its reason, and the gap
+cents per column from `structure.BudgetBookExceptions` that two schedules are
+declared to differ by at one node), and the chart's **form** with that form's
+hints under its own key, which is what may fold: the Sankey's tiers, kept
+flank, widened columns and caps. The schema refuses a hint foreign to the
+declared form; `validateSteps` refuses a declaration whose shape the form could
+not draw. The layers and the seams are in
+[`chart-model.md`](chart-model.md).
 
 **The client computes everything a rung draws from that and the column
-document**: which ribbons a rung holds (`reaching`: the near end inside the
-opened node by parent chain, both ends placeable, folded ends running forward
-in the step's column order), which nodes it offers to open (`decomposable`,
-the same reach), the roles of its columns (`flankIsLeft`, by position), the
-figure a centre prints net of reductions (`markAmounts`), the residual's
-ribbons, ends, tier and figures (`carryResidual`), and the gap, held to the
-shipped licence and refused — banner, chart unchanged — where the two
-documents differ by any other figure (`markGap`). A residual's leaving legs
-exist by the step's declared tiers, not by the columns a budget draws, so its
-figures do not move with the viewport.
+document.** The core sums: which nodes a parent chain holds, the fold, the cap,
+the marks and their figures. The Sankey renderer fits: which ribbons a rung
+holds (`reaching`: the near end inside the opened node by parent chain, both
+ends placeable, folded ends running forward in the step's column order), which
+nodes it offers to open (`decomposable`, the same reach), the roles of its
+columns (`flankIsLeft`, by position), the figure a centre prints net of
+reductions (`markAmounts`), the residual's ribbons, ends, tier and figures
+(`carryResidual`), and the gap, held to the shipped licence and refused with a
+banner and the chart unchanged where the two documents differ by any other
+figure (`markGap`). A residual's leaving legs exist by the step's declared
+tiers, not by the columns a budget draws, so its figures do not move with the
+viewport.
 
 **What licenses a client-side sum** is that every summand is a published
 figure: each unfolded ribbon's `value_cents` is in the column document the page
@@ -555,5 +557,4 @@ CI-required check, and not at build.
 
 So, in one line: **Go declares what may fold and the client decides how much
 fits.** The `caps` column of the table under "One page draws it" and each step's
-`widen` are declarations; `capColumn` and `foldDocument` in `site/app.js` are
-what spend them.
+`widen` are declarations; `capColumn` and `foldDocument` are what spend them.

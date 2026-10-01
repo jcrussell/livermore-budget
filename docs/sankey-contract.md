@@ -8,10 +8,6 @@ written at the same time by people who could not see each other's code.
 out of the committed pp.66-67 artifacts, with real fact ids. Read it alongside
 this document — where the two disagree, the golden file is a bug.
 
-**This file is the interim home.** It moves to the package doc comment on
-`internal/project` once that package exists (`fisc-gxa.1`); a contract that
-lives only in prose drifts from the code that implements it.
-
 ## Where it goes
 
 `<output>/fy<year>-<basis>.json`, one document per published column, so
@@ -46,16 +42,12 @@ is what a citation on the page points at, so both classes — the city's PDF at
 `fisc export --source-browse-url` cites a browsable copy of the repository
 instead.
 
-**Cited means cited by the site, not by a chart**, and the distinction is
-load-bearing since the fact store began shipping. This sentence used to say
-"only for the cited pages", meaning the pages named in some projection's
-`metadata.sources`. The published record store covers a page no chart draws —
-p76's transfer schedule is in scope `transfers-by-fund`, which no projection
-selects — so under the old rule a provenance link resolved to a record file
-sitting beside a 404. Worse, the set was unstable: a page entered and left the
-published extraction as views were added, with no event anyone could see. The
-pages `facts/index.json` publishes are cited, so the extraction covers every
-locator the site can resolve. It is still not the whole corpus: 36 pages of 786.
+**Cited means cited by the site, not by a chart.** The pages
+`facts/index.json` publishes are the cited set, so the extraction covers every
+locator the site can resolve, including a page no chart draws. A set defined by
+the charts instead would leave a provenance link resolving to a record file
+beside a 404, and would change as views were added. It is still not the whole
+corpus.
 
 And `<output>/facts/` carries the record store itself — the shards, the CSV and
 the index. It has a contract of its own:
@@ -87,8 +79,8 @@ dropped.
 
 ### A caveat is an object, not a string
 
-It carries an **`id`**, a one-line **`summary`**, the **`text`** that used to be
-the whole caveat, and **`applies_to`**: the node ids the caveat is about.
+It carries an **`id`**, a one-line **`summary`**, the **`text`** of the caveat
+itself, and **`applies_to`**: the node ids the caveat is about.
 
 The id goes into a **published URL fragment** and is stable across rewordings of
 the other two fields, so a bookmark or a citation survives an edit to a
