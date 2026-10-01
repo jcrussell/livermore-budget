@@ -163,6 +163,9 @@ export function homeOf(l) {
  *   offers(step: FiscDrillStep, doc: FiscProjection, onScreen: FiscProjection | null, id: string): boolean,
  *   shape(doc: FiscProjection, rung: Rung | null, from: FiscProjection | null, tiers: number[]): FiscProjection,
  *   refit(drawn: FiscProjection, rung: Rung | null, tiers: number[]): boolean,
+ *   layOut(drawn: FiscProjection, ctx: {tiers: number[], columns: number, groupOf: (n: FiscNode | LaidNode) => string, placeOf: (id: string) => number}): {nodes: LaidNode[], links: LaidLink[]},
+ *   render(graph: {nodes: LaidNode[], links: LaidLink[]}, ctx: Record<string, any>): void,
+ *   paint(ctx: {svg: any, colour: {link: (d: LaidLink) => string, node: (d: LaidNode) => string}}): void,
  *   widest(steps: FiscDrillStep[]): number,
  * }} FormRenderer
  */

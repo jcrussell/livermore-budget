@@ -53,8 +53,7 @@ export function chartWidth(n) {
 
 /**
  * The px `100vw` counts that the window does not: body padding plus a classic
- * scrollbar. style.css records it independently as --chart-cushion; no test
- * holds the two together.
+ * scrollbar. style.css records it independently as --chart-cushion.
  */
 export const CHART_CUSHION = 56;
 

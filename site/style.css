@@ -607,9 +607,8 @@ button[aria-pressed="true"] {
    where the viewport is narrow, min() collapses both to the room there is.
 
    The cap is app.js's --chart-max, from chartWidth() over the declared steps;
-   100% is the no-script state. --chart-cushion must equal app.js's
-   CHART_CUSHION (40px body padding plus 16px for a classic scrollbar); no test
-   holds the two together. */
+   100% is the no-script state. --chart-cushion must equal sankey.js's
+   CHART_CUSHION (40px body padding plus 16px for a classic scrollbar). */
 .chart-wrap {
   position: relative;
   --chart-cushion: 56px;

@@ -880,6 +880,15 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 					}}, Back: "b", Noun: "thing", Tail: "t",
 					Description: "d."}}}},
 			"the chain would be dropped in silence"},
+		// The form arms: a form outside ChartForms() on a step and on the
+		// overview. A test-only second form lives on the client
+		// (site/form.test.mjs), and Go refusing it here is why.
+		{"a step in a form no renderer draws", []export.View{ok,
+			chartView(func(v *export.View) { v.Steps[0].Form = "stub"; v.Steps[0].Sankey = nil })},
+			"step 0 in form \"stub\", which is not one of"},
+		{"an overview in a form no renderer draws", []export.View{ok,
+			chartView(func(v *export.View) { v.Overview.Form = "stub"; v.Overview.Sankey = nil })},
+			"declares chart form \"stub\", which is not one of"},
 		{"a drill with no tiers", []export.View{ok,
 			chartView(func(v *export.View) { v.Steps[0].Sankey.Tiers = nil })},
 			"drawn by the same tier set it was closed under"},
