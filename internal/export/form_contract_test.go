@@ -12,7 +12,8 @@ import (
 // TestTheSchemaHoldsAChartToItsForm is the arm Go's validate does not spell: a
 // hint foreign to the declared form, a Sankey step with no tiers, and a flank
 // on the overview are refused by schema/page.schema.json at the write. Over the
-// served page's own config, so the control is a shape this build produces.
+// config of testdata/index.golden.html, the page this build writes over the
+// client subset, so the control is a shape this build produces.
 func TestTheSchemaHoldsAChartToItsForm(t *testing.T) {
 	page, err := os.ReadFile("../../testdata/index.golden.html")
 	if err != nil {

@@ -22,12 +22,11 @@ import (
 )
 
 // The client fixtures are testdata/index.golden.html and the column files the
-// page fetches, exported over clientSubset rather than the whole store. They
-// are held to what the client relies on rather than to Go's bytes: the page's
-// markup and decoded config are the ones Go writes over the subset, build
-// stamps aside, and each column draws the marks and links Go's does, validates,
-// resolves, and carries figures equal to the facts each link cites, on the
-// pages its locators name.
+// page fetches: what `fisc export` writes over clientSubset rather than over
+// the whole store, held decoded rather than byte for byte. The page's markup
+// and config and each column are the ones Go writes over the subset, build
+// stamps aside; each column also validates, resolves, and carries figures equal
+// to the facts each link cites, on the pages its locators name.
 
 // clientFixtureColumns are the column files the page fixture's years fetch,
 // as stems of testdata/<stem>.column.json.
@@ -165,24 +164,32 @@ func pageFixtureFaults(served, fixture []byte) []string {
 	return faults
 }
 
-// columnFixtureFaults is every way one column fixture fails what the client
-// relies on, with served the column Go writes at the same path and facts the
-// committed store by id.
+// columnFixtureFaults is every way one column fixture fails to be served, the
+// column Go writes at the same path, or fails what the client relies on of
+// any column, with facts the committed store by id.
 func columnFixtureFaults(stem string, served, fixture []byte, stamp string, facts map[string]fact.Fact) []string {
 	var faults []string
-	var raw any
+	var raw, goRaw map[string]any
 	if err := json.Unmarshal(fixture, &raw); err != nil {
 		return []string{stem + " does not decode: " + err.Error()}
 	}
 	if err := schema.Validate(schema.Column, raw); err != nil {
 		faults = append(faults, stem+" does not match "+schema.Column+": "+err.Error())
 	}
-	var col, goCol export.ColumnDoc
+	if err := json.Unmarshal(served, &goRaw); err != nil {
+		return append(faults, "the served "+stem+" does not decode: "+err.Error())
+	}
+	unstamped := func(m map[string]any) map[string]any {
+		out := maps.Clone(m)
+		delete(out, "generated_by")
+		return out
+	}
+	if diff := cmp.Diff(unstamped(goRaw), unstamped(raw)); diff != "" {
+		faults = append(faults, stem+" is not the column Go writes over the subset (-go +fixture):\n"+diff)
+	}
+	var col export.ColumnDoc
 	if err := json.Unmarshal(fixture, &col); err != nil {
 		return append(faults, stem+" does not decode as a column: "+err.Error())
-	}
-	if err := json.Unmarshal(served, &goCol); err != nil {
-		return append(faults, "the served "+stem+" does not decode as a column: "+err.Error())
 	}
 	if want := fmt.Sprintf("fy%d-%s", col.Column.FiscalYear, col.Column.Basis); want != stem {
 		faults = append(faults, fmt.Sprintf("%s states the column of %s", stem, want))
@@ -191,27 +198,6 @@ func columnFixtureFaults(stem string, served, fixture []byte, stamp string, fact
 		faults = append(faults, fmt.Sprintf("%s is stamped %q and the page %q, so the client would refuse it as a stale copy",
 			stem, col.GeneratedBy, stamp))
 	}
-	if diff := cmp.Diff(slices.Sorted(maps.Keys(goCol.Schedules)), slices.Sorted(maps.Keys(col.Schedules))); diff != "" {
-		faults = append(faults, stem+" serves other schedules than Go's (-go +fixture):\n"+diff)
-	}
-	for _, name := range slices.Sorted(maps.Keys(col.Schedules)) {
-		goSched, ok := goCol.Schedules[name]
-		if !ok {
-			continue
-		}
-		goNodes, goLinks := scheduleOf(goCol, goSched, false)
-		nodes, links := scheduleOf(col, col.Schedules[name], false)
-		if diff := cmp.Diff(goNodes, nodes); diff != "" {
-			faults = append(faults, fmt.Sprintf("%s %s draws other marks than Go's (-go +fixture):\n%s", stem, name, diff))
-		}
-		if diff := cmp.Diff(goLinks, links); diff != "" {
-			faults = append(faults, fmt.Sprintf("%s %s draws other links than Go's (-go +fixture):\n%s", stem, name, diff))
-		}
-	}
-	if !cmp.Equal(goCol.Column, col.Column) {
-		faults = append(faults, fmt.Sprintf("%s is the column %+v and Go's %+v", stem, col.Column, goCol.Column))
-	}
-
 	inRange := func(i int) bool { return i >= 0 && i < len(col.Nodes) }
 	for name, sched := range col.Schedules {
 		at := stem + " " + name
@@ -553,10 +539,7 @@ func TestTheClientFixtureChecksCanFail(t *testing.T) {
 	} {
 		t.Run("page/"+c.name, func(t *testing.T) {
 			faults := strings.Join(pageFixtureFaults(servedPage, c.page(t)), "\n")
-			switch {
-			case c.want == "" && faults != "":
-				t.Errorf("refused a change to a figure, which the fixture is free to make:\n%s", faults)
-			case c.want != "" && !strings.Contains(faults, c.want):
+			if !strings.Contains(faults, c.want) {
 				t.Errorf("not refused for %q; faults:\n%s", c.want, faults)
 			}
 		})
@@ -628,20 +611,20 @@ func TestTheClientFixtureChecksCanFail(t *testing.T) {
 		{"a fund group the order omits", "fund_groups omit it", func(col map[string]any) {
 			col["fund_groups"] = col["fund_groups"].([]any)[1:]
 		}, ""},
-		{"a mark the subset does not draw", "draws other marks than Go's", func(col map[string]any) {
+		{"a mark the subset does not draw", "not the column Go writes", func(col map[string]any) {
 			nodes := col["schedules"].(map[string]any)["fund-flows"].(map[string]any)["nodes"].([]any)
 			col["schedules"].(map[string]any)["fund-flows"].(map[string]any)["nodes"] = nodes[:len(nodes)-1]
 		}, ""},
-		{"a mark at another tier", "draws other marks", func(col map[string]any) {
+		{"a mark at another tier", "not the column Go writes", func(col map[string]any) {
 			node(col, "fund/100")["tier"] = 4.0
 		}, ""},
-		{"a mark with another role", "draws other marks", func(col map[string]any) {
+		{"a mark with another role", "not the column Go writes", func(col map[string]any) {
 			node(col, "fund/100")["role"] = "fund"
 		}, ""},
-		{"a mark with another label", "draws other marks", func(col map[string]any) {
+		{"a mark with another label", "not the column Go writes", func(col map[string]any) {
 			node(col, "fund/100")["label"] = "Bogus"
 		}, ""},
-		{"a mark under another parent", "draws other marks", func(col map[string]any) {
+		{"a mark under another parent", "not the column Go writes", func(col map[string]any) {
 			for _, n := range sched(col, "fund-flows")["nodes"].([]any) {
 				if parent, _ := n.(map[string]any)["parent"].(string); parent == "fund-group/general" {
 					n.(map[string]any)["parent"] = "fund-group/special-revenue"
@@ -649,10 +632,10 @@ func TestTheClientFixtureChecksCanFail(t *testing.T) {
 				}
 			}
 		}, ""},
-		{"a link dropped", "draws other links", func(col map[string]any) {
+		{"a link dropped", "not the column Go writes", func(col map[string]any) {
 			spine(col)["links"] = spine(col)["links"].([]any)[1:]
 		}, ""},
-		{"a cited link passed off as derived", "draws other links", func(col map[string]any) {
+		{"a cited link passed off as derived", "not the column Go writes", func(col map[string]any) {
 			for _, l := range spine(col)["links"].([]any) {
 				if derived, _ := l.(map[string]any)["derived"].(bool); !derived {
 					l.(map[string]any)["fact_ids"] = []any{}
@@ -665,7 +648,21 @@ func TestTheClientFixtureChecksCanFail(t *testing.T) {
 		{"a link located on a page its facts are not on", "locates", func(col map[string]any) {
 			firstLink(col)["locators"].([]any)[0].(map[string]any)["pages"] = []any{999.0}
 		}, ""},
-		{"a schedule dropped", "other schedules", func(col map[string]any) {
+		{"two links' figures swapped, each still its facts' sum", "not the column Go writes", func(col map[string]any) {
+			links := spine(col)["links"].([]any)
+			a, b := links[0].(map[string]any), links[1].(map[string]any)
+			for _, k := range []string{"value_cents", "fact_ids", "locators"} {
+				a[k], b[k] = b[k], a[k]
+			}
+		}, ""},
+		{"a fund group in another slot", "not the column Go writes", func(col map[string]any) {
+			g := col["fund_groups"].([]any)[0].(map[string]any)
+			g["slot"] = g["slot"].(float64) + 1
+		}, ""},
+		{"a schedule's caveats rewritten", "not the column Go writes", func(col map[string]any) {
+			spine(col)["caveats"] = []any{}
+		}, ""},
+		{"a schedule dropped", "not the column Go writes", func(col map[string]any) {
 			delete(col["schedules"].(map[string]any), "transfers-out")
 		}, ""},
 		{"a column the schema refuses", "does not match", func(col map[string]any) {
@@ -693,9 +690,30 @@ var wholeSchedules = []string{"sankey", "department-spending", "transfers-by-fun
 // TestTheClientSubsetLeavesTheLicensedSchedulesWhole exports the store and the
 // subset and requires every schedule a licence is stated against to be the
 // same in both: a fund the subset drops from one of them is a difference the
-// client refuses, or worse, one it is licensed to draw.
+// client refuses, or worse, one it is licensed to draw. The page config is the
+// same in both too, but for the pages it links.
 func TestTheClientSubsetLeavesTheLicensedSchedulesWhole(t *testing.T) {
 	full, subset := exportedSite(t), clientExport(t)
+	config := func(dir string) map[string]any {
+		t.Helper()
+		page, err := os.ReadFile(filepath.Join(dir, "index.html")) // #nosec G304 -- a temp dir this test wrote.
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, body, err := splitPage(page)
+		if err != nil {
+			t.Fatalf("page %v", err)
+		}
+		var cfg map[string]any
+		if err := json.Unmarshal(body, &cfg); err != nil {
+			t.Fatal(err)
+		}
+		delete(cfg, "docs")
+		return cfg
+	}
+	if diff := cmp.Diff(config(full), config(subset)); diff != "" {
+		t.Errorf("the page config differs over the subset beyond the pages it links (-store +subset):\n%s", diff)
+	}
 	for _, stem := range clientFixtureColumns {
 		read := func(dir string) export.ColumnDoc {
 			t.Helper()
@@ -721,6 +739,11 @@ func TestTheClientSubsetLeavesTheLicensedSchedulesWhole(t *testing.T) {
 			}
 			if diff := cmp.Diff(fLinks, sLinks); diff != "" {
 				t.Errorf("%s %s draws other links over the subset (-store +subset):\n%s", stem, name, diff)
+			}
+			fs, ss := f.Schedules[name], s.Schedules[name]
+			fs.Nodes, fs.Links, ss.Nodes, ss.Links = nil, nil, nil, nil
+			if diff := cmp.Diff(fs, ss); diff != "" {
+				t.Errorf("%s %s states other scopes, counts, caveats or sources over the subset (-store +subset):\n%s", stem, name, diff)
 			}
 		}
 	}
