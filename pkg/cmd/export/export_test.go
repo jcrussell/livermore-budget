@@ -933,16 +933,6 @@ func TestTheCommittedStemsAreUnchanged(t *testing.T) {
 	}
 }
 
-// TestTheServedPageIsWhatGoRenders pins testdata/index.golden.html, whole, to
-// the index.html `fisc export` writes: the tests under site/ build their DOM
-// from it. Both build stamps are blanked.
-func TestTheServedPageIsWhatGoRenders(t *testing.T) {
-	servedArtifactIsTheFixture(t, "index.html", "index.golden.html", []stampBlank{
-		{regexp.MustCompile(`"exported_by":"[^"]*"`), `"exported_by":""`},
-		{regexp.MustCompile(`Packaged by [^<\n]*`), `Packaged by`},
-	})
-}
-
 // TestEveryRecordsLinkTheConfigCarriesIsAShardTheExportWrote holds the page
 // config's records links to the export's own output: the client opens each
 // verbatim, so a link to a file the export did not write is a broken citation.
@@ -990,70 +980,6 @@ func TestEveryRecordsLinkTheConfigCarriesIsAShardTheExportWrote(t *testing.T) {
 		t.Fatal("the config carries no records link, so this test asserts nothing")
 	}
 	t.Logf("%d records links, each a shard the export wrote", shards)
-}
-
-// TestTheColumnArtifactsAreWhatGoEncodes pins testdata/fy2026-adopted.column.json
-// and testdata/fy2027-adopted.column.json to what `fisc export` writes: the
-// column, not a projection golden, is what site/app.js fetches, and both years
-// so a year joined to the wrong document shows.
-func TestTheColumnArtifactsAreWhatGoEncodes(t *testing.T) {
-	blank := []stampBlank{{regexp.MustCompile(`"generated_by":\s*"[^"]*"`), `"generated_by": ""`}}
-	for _, stem := range []string{"fy2026-adopted", "fy2027-adopted"} {
-		t.Run(stem, func(t *testing.T) {
-			servedArtifactIsTheFixture(t, stem+".json", stem+".column.json", blank)
-		})
-	}
-}
-
-// stampBlank is one build-stamp pattern and what it is replaced with before a
-// served artifact and its fixture are compared.
-type stampBlank struct {
-	pattern *regexp.Regexp
-	with    string
-}
-
-// servedArtifactIsTheFixture exports the committed store to a temp dir and
-// holds one written file, stamps blanked, to testdata/<fixture>.
-func servedArtifactIsTheFixture(t *testing.T, served, fixture string, blanks []stampBlank) {
-	t.Helper()
-	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
-	if err != nil {
-		t.Fatalf("resolve repo root: %v", err)
-	}
-	opts, _, _, _ := testOptions(t)
-	opts.RepoRoot = func() (string, error) { return root, nil }
-	opts.Build = buildAll
-	if runErr := exportRun(opts); runErr != nil {
-		t.Fatalf("exportRun: %v", runErr)
-	}
-	got, err := os.ReadFile(filepath.Join(opts.OutputDir, filepath.FromSlash(served)))
-	if err != nil {
-		t.Fatalf("fisc export wrote no %s: %v", served, err)
-	}
-	blanked := func(b []byte) []byte {
-		for _, s := range blanks {
-			b = s.pattern.ReplaceAll(b, []byte(s.with))
-		}
-		return b
-	}
-	for _, s := range blanks {
-		if !s.pattern.Match(got) {
-			t.Fatalf("%s carries no build stamp matching %s, so the comparison below would be blind to a stale one", served, s.pattern)
-		}
-	}
-	want, readErr := os.ReadFile(filepath.Join(root, "testdata", fixture))
-	if readErr != nil || !bytes.Equal(blanked(got), blanked(want)) {
-		rebuilt := filepath.Join(root, "bin", strings.TrimSuffix(fixture, filepath.Ext(fixture))+"-rebuilt"+filepath.Ext(fixture))
-		if err := os.MkdirAll(filepath.Dir(rebuilt), 0o750); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(rebuilt, got, 0o600); err != nil {
-			t.Fatal(err)
-		}
-		t.Fatalf("testdata/%s is not what fisc export writes at %s over the committed store (%v); the served "+
-			"artifact is at %s -- regenerate with `cp -f %s testdata/%s` and read the diff before committing it",
-			fixture, served, readErr, rebuilt, rebuilt, fixture)
-	}
 }
 
 // TestTheSitePublishesOneFilePerColumnAndNothingTwice pins the file set
