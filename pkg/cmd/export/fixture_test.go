@@ -582,6 +582,17 @@ func TestTheClientFixtureChecksCanFail(t *testing.T) {
 		})
 	}
 
+	t.Run("page/a served page with no build stamp", func(t *testing.T) {
+		unstamped := regexp.MustCompile(`"exported_by":"[^"]*",?`).ReplaceAll(servedPage, nil)
+		if bytes.Equal(unstamped, servedPage) {
+			t.Fatal("the served page carries no exported_by to remove, so this row tests nothing")
+		}
+		faults := strings.Join(pageFixtureFaults(unstamped, fixturePage), "\n")
+		if !strings.Contains(faults, "carries no exported_by") {
+			t.Errorf("a served page with no stamp was not refused; faults:\n%s", faults)
+		}
+	})
+
 	const stem = "fy2026-adopted"
 	served, err := os.ReadFile(filepath.Join(dir, stem+".json"))
 	if err != nil {

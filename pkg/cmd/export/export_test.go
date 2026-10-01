@@ -1034,8 +1034,7 @@ func TestTheSitePublishesOneFilePerColumnAndNothingTwice(t *testing.T) {
 }
 
 // TestStemForAsksHowManyDocumentsNotHowManyColumns pins both directions of the
-// naming rule, and the second case is one an earlier version of stemFor got
-// wrong.
+// naming rule; the second case is the one a column count gets wrong.
 //
 // The question is whether the projection publishes one document PER YEAR, which
 // is answered by the number of SLICES it declared. Asking the column count
@@ -1106,12 +1105,10 @@ func TestStemForAsksHowManyDocumentsNotHowManyColumns(t *testing.T) {
 
 // TestBuildProjectionsDoesNotRefuseASecondSchedule is fisc-neh, pinned.
 //
-// The build loop used to be the cartesian product of the published fiscal years
-// and the registry, and it hard-errored through slicesContain when a Sliced
-// projection did not declare the published SPINE slice. A trends projection
-// declares one slice of a different schedule, so `fisc export` failed on its
-// first invocation, before writing a file. fisc-744 fixed the same shape in
-// internal/check and left this copy behind.
+// A Sliced projection is built over the slices it declares, not over the
+// published fiscal years: a trends projection declares one slice of a
+// different schedule, and refusing it for lacking the SPINE slice fails
+// `fisc export` before it writes a file.
 func TestBuildProjectionsDoesNotRefuseASecondSchedule(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {
@@ -1817,13 +1814,11 @@ func TestAViewWhoseDocumentWasNotBuiltIsDropped(t *testing.T) {
 	got := mustViews(t, result{Projections: only})
 
 	// EVERY VIEW THAT NAMES A PROJECTION IS THE SPINE'S, and that is the
-	// assertion rather than a count. It used to be `len(got) != 1`, which was
-	// the same claim while every view named a document -- and stopped being it
-	// the moment the caveats index arrived, because a view naming NO
-	// projection has nothing that could fail to be built and so nothing to
-	// drop. Counting would have made this test fail for a reason it is not
-	// about, and the shortest way to green would have been to make the caveats
-	// page conditional on a document it does not have.
+	// assertion rather than a count: a view naming NO projection, the caveats
+	// index, has nothing that could fail to be built and so nothing to drop.
+	// A count would fail this test for a reason it is not about, and the
+	// shortest way to green would be to make the caveats page conditional on
+	// a document it does not have.
 	for _, v := range got {
 		if v.Projection == "" {
 			continue
@@ -2054,8 +2049,8 @@ func TestPublishedDocumentsAreWhatTheCorpusBuilds(t *testing.T) {
 	}
 }
 
-// TestStemForRefusesADocumentWithNoColumns covers the index that used to be
-// taken blind.
+// TestStemForRefusesADocumentWithNoColumns covers `o.Columns[0]`, refused
+// rather than indexed blind.
 //
 // A zero-column Options is not reachable through project.Slices today, but a
 // projection is an interface any future type can satisfy, and the failure mode
