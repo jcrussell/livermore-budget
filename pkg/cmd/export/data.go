@@ -42,6 +42,12 @@ func buildAll(repoRoot string) (result, error) {
 	if err != nil {
 		return result{}, err
 	}
+	return buildFrom(repoRoot, raw, facts)
+}
+
+// buildFrom is buildAll over a store already read: raw must be facts as
+// fact.Write encodes them, which buildFactAssets asserts.
+func buildFrom(repoRoot string, raw []byte, facts []fact.Fact) (result, error) {
 	projections, err := buildProjectionsFrom(repoRoot, facts)
 	if err != nil {
 		return result{}, err

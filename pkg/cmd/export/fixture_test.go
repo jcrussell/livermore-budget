@@ -32,10 +32,79 @@ import (
 // as stems of testdata/<stem>.column.json.
 var clientFixtureColumns = []string{"fy2026-adopted", "fy2027-adopted"}
 
+// clientSubset is the declared subset of the store the client fixtures are
+// exported from, keyed by node id: a fund group kept whole, or one fund of a
+// group that is not, each with the failure mode it is kept for. Every other
+// fund is dropped from fundAxisScopes and from nothing else.
+var clientSubset = map[string]string{
+	"fund-group/general": "fund/100 and its divisions, the only fund pp.167-170 decompose, " +
+		"which most of the client suite opens",
+	"fund-group/special-revenue": "the column the tier-3 cap folds hardest: site/layout.test.mjs " +
+		"draws all of it out and requires no two labels to stack, which only its real count tests; " +
+		"fund/240 must fold into its tail; fund/207 and fund/290 print in FY2026 only, so the years' tails differ",
+	"fund/513": "a capital fund whose label runs past the gutter (site/layout.test.mjs OVER_GUTTER)",
+	"fund/551": "a capital fund whose label runs past the gutter (OVER_GUTTER)",
+	"fund/552": "a capital fund whose label runs past the gutter (OVER_GUTTER)",
+	"fund/600": "pays department/innovation-and-economic-development, whose label runs past " +
+		"the gutter only in the department window fund/600 opens (OVER_GUTTER)",
+	"fund/610": "with fund/622 and fund/642, the enterprise funds fund-flows carries transfers/in " +
+		"into, so the enterprise residual is all-leaving (site/columns.test.mjs)",
+	"fund/622": "see fund/610",
+	"fund/642": "see fund/610",
+	"fund/623": "an enterprise fund whose label runs past the gutter (OVER_GUTTER)",
+	"fund/730": "an internal-service fund whose label runs past the gutter (OVER_GUTTER)",
+}
+
+// fundAxisScopes are the scopes a fund is dropped from. Every other scope
+// stays whole: the spine and the department pages are what a step's gap
+// licence is stated against, in cents over the whole column, so a fund
+// dropped from either would be a difference the client refuses.
+var fundAxisScopes = []string{"revenue-by-fund", "expenditure-by-fund", "department-funding-sources"}
+
+// clientFacts is the store less every fund-axis fact of a fund clientSubset
+// keeps neither whole nor by its group.
+func clientFacts(facts []fact.Fact) []fact.Fact {
+	var out []fact.Fact
+	for _, f := range facts {
+		if f.Fund == nil || !slices.Contains(fundAxisScopes, f.Scope) {
+			out = append(out, f)
+			continue
+		}
+		_, group := clientSubset["fund-group/"+f.FundGroup]
+		_, fund := clientSubset[fmt.Sprintf("fund/%d", *f.Fund)]
+		if !group && !fund {
+			continue
+		}
+		out = append(out, f)
+	}
+	return out
+}
+
+// buildClientSubset is buildAll over clientFacts.
+func buildClientSubset(repoRoot string) (result, error) {
+	_, facts, err := readFactStore(repoRoot)
+	if err != nil {
+		return result{}, err
+	}
+	subset := clientFacts(facts)
+	var raw bytes.Buffer
+	if err := fact.Write(&raw, subset); err != nil {
+		return result{}, err
+	}
+	return buildFrom(repoRoot, raw.Bytes(), subset)
+}
+
 // clientExport writes the site the client fixtures are taken from.
 func clientExport(t *testing.T) string {
 	t.Helper()
-	return exportedSite(t)
+	opts, _, _, _ := testOptions(t)
+	root := repoRootForTest(t)
+	opts.RepoRoot = func() (string, error) { return root, nil }
+	opts.Build = buildClientSubset
+	if err := exportRun(opts); err != nil {
+		t.Fatalf("exportRun over the client subset: %v", err)
+	}
+	return opts.OutputDir
 }
 
 // packagedBy is the footer's build stamp, blanked before markup is compared.
@@ -188,6 +257,15 @@ func columnFixtureFaults(stem string, served, fixture []byte, stamp string, fact
 	if diff := cmp.Diff(slices.Sorted(maps.Keys(goCol.Schedules)), slices.Sorted(maps.Keys(col.Schedules))); diff != "" {
 		faults = append(faults, stem+" serves other schedules than Go's (-go +fixture):\n"+diff)
 	}
+	for _, name := range slices.Sorted(maps.Keys(col.Schedules)) {
+		goSched, ok := goCol.Schedules[name]
+		if !ok {
+			continue
+		}
+		if diff := cmp.Diff(drawnIDs(goCol, goSched), drawnIDs(col, col.Schedules[name])); diff != "" {
+			faults = append(faults, fmt.Sprintf("%s %s draws other marks than Go's (-go +fixture):\n%s", stem, name, diff))
+		}
+	}
 	if !cmp.Equal(goCol.Column, col.Column) {
 		faults = append(faults, fmt.Sprintf("%s is the column %+v and Go's %+v", stem, col.Column, goCol.Column))
 	}
@@ -250,6 +328,19 @@ func columnFixtureFaults(stem string, served, fixture []byte, stamp string, fact
 		faults = append(faults, fmt.Sprintf("%s lists fund group %s and carries no such node", stem, id))
 	}
 	return faults
+}
+
+// drawnIDs is the sorted node ids one schedule draws, any index past the
+// table skipped: the arm that refuses one is below.
+func drawnIDs(col export.ColumnDoc, sched export.ColumnSched) []string {
+	var ids []string
+	for _, n := range sched.Nodes {
+		if n.Node >= 0 && n.Node < len(col.Nodes) {
+			ids = append(ids, col.Nodes[n.Node].ID)
+		}
+	}
+	sort.Strings(ids)
+	return ids
 }
 
 // linkFactFaults holds one fixture link to the facts it cites: each in the
@@ -547,6 +638,10 @@ func TestTheClientFixtureChecksCanFail(t *testing.T) {
 		{"a fund group the order omits", "fund_groups omit it", func(col map[string]any) {
 			col["fund_groups"] = col["fund_groups"].([]any)[1:]
 		}, ""},
+		{"a mark the subset does not draw", "draws other marks than Go's", func(col map[string]any) {
+			nodes := col["schedules"].(map[string]any)["fund-flows"].(map[string]any)["nodes"].([]any)
+			col["schedules"].(map[string]any)["fund-flows"].(map[string]any)["nodes"] = nodes[:len(nodes)-1]
+		}, ""},
 		{"a schedule dropped", "other schedules", func(col map[string]any) {
 			delete(col["schedules"].(map[string]any), "transfers-out")
 		}, ""},
@@ -566,4 +661,99 @@ func TestTheClientFixtureChecksCanFail(t *testing.T) {
 			}
 		})
 	}
+}
+
+// wholeSchedules are the schedules a step's gap licence or residual is stated
+// against, which the subset must leave figure for figure as the store has them.
+var wholeSchedules = []string{"sankey", "department-spending", "transfers-by-fund", "transfers-out"}
+
+// scheduleOf is one schedule's marks and links by id, for comparing two
+// columns whose node tables are indexed differently.
+func scheduleOf(col export.ColumnDoc, name string) (ids []string, links []string) {
+	sched := col.Schedules[name]
+	ids = drawnIDs(col, sched)
+	for _, l := range sched.Links {
+		links = append(links, fmt.Sprintf("%s -> %s %d %s %v", col.Nodes[l.From].ID, col.Nodes[l.To].ID,
+			l.ValueCents, l.Kind, l.FactIDs))
+	}
+	sort.Strings(links)
+	return ids, links
+}
+
+// TestTheClientSubsetLeavesTheLicensedSchedulesWhole exports the store and the
+// subset and requires every schedule a licence is stated against to be the
+// same in both: a fund the subset drops from one of them is a difference the
+// client refuses, or worse, one it is licensed to draw.
+func TestTheClientSubsetLeavesTheLicensedSchedulesWhole(t *testing.T) {
+	full, subset := exportedSite(t), clientExport(t)
+	for _, stem := range clientFixtureColumns {
+		read := func(dir string) export.ColumnDoc {
+			t.Helper()
+			raw, err := os.ReadFile(filepath.Join(dir, stem+".json")) // #nosec G304 -- a temp dir this test wrote.
+			if err != nil {
+				t.Fatal(err)
+			}
+			var col export.ColumnDoc
+			if err := json.Unmarshal(raw, &col); err != nil {
+				t.Fatal(err)
+			}
+			return col
+		}
+		f, s := read(full), read(subset)
+		for _, name := range wholeSchedules {
+			if _, ok := f.Schedules[name]; !ok {
+				t.Fatalf("%s serves no %s, so this test holds nothing of it", stem, name)
+			}
+			fIDs, fLinks := scheduleOf(f, name)
+			sIDs, sLinks := scheduleOf(s, name)
+			if diff := cmp.Diff(fIDs, sIDs); diff != "" {
+				t.Errorf("%s %s draws other marks over the subset (-store +subset):\n%s", stem, name, diff)
+			}
+			if diff := cmp.Diff(fLinks, sLinks); diff != "" {
+				t.Errorf("%s %s draws other links over the subset (-store +subset):\n%s", stem, name, diff)
+			}
+		}
+	}
+}
+
+// TestTheClientSubsetIsDeclaredAgainstTheStore holds each member of
+// clientSubset to the store: a reason, a fund group or fund the fund-axis
+// scopes carry, and a fund only where its group is not kept whole. The cut is
+// not vacuous: it drops facts and keeps facts.
+func TestTheClientSubsetIsDeclaredAgainstTheStore(t *testing.T) {
+	_, facts, err := readFactStore(repoRootForTest(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	groupOf := map[string]string{}
+	groups := map[string]bool{}
+	for _, f := range facts {
+		if f.Fund != nil && slices.Contains(fundAxisScopes, f.Scope) {
+			groupOf[fmt.Sprintf("fund/%d", *f.Fund)] = f.FundGroup
+			groups["fund-group/"+f.FundGroup] = true
+		}
+	}
+	for _, id := range slices.Sorted(maps.Keys(clientSubset)) {
+		if strings.TrimSpace(clientSubset[id]) == "" {
+			t.Errorf("%s is kept for no stated reason", id)
+		}
+		if strings.HasPrefix(id, "fund-group/") {
+			if !groups[id] {
+				t.Errorf("%s is kept whole and the fund-axis scopes carry no such group", id)
+			}
+			continue
+		}
+		group, ok := groupOf[id]
+		switch {
+		case !ok:
+			t.Errorf("%s is kept and the fund-axis scopes carry no such fund", id)
+		case clientSubset["fund-group/"+group] != "":
+			t.Errorf("%s is kept by name and its group fund-group/%s is kept whole, so the entry says nothing", id, group)
+		}
+	}
+	kept := len(clientFacts(facts))
+	if kept == 0 || kept == len(facts) {
+		t.Fatalf("the subset keeps %d of %d facts, so it is not a subset of anything", kept, len(facts))
+	}
+	t.Logf("the client subset keeps %d of the store's %d facts", kept, len(facts))
 }

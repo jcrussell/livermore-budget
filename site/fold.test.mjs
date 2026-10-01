@@ -211,8 +211,8 @@ describe("the tail's note carries the figure the tail is drawn at", () => {
 
 describe("the drill-down is drawable only folded", () => {
   const COLUMNS = [
-    { label: "FY 2025-26", stem: "fy2026-adopted", hairlines: 7, slivers: 4 },
-    { label: "FY 2026-27", stem: "fy2027-adopted", hairlines: 8, slivers: 5 },
+    { label: "FY 2025-26", stem: "fy2026-adopted", hairlines: 5, slivers: 3 },
+    { label: "FY 2026-27", stem: "fy2027-adopted", hairlines: 6, slivers: 4 },
   ];
   let whole, drill;
   before(async () => {
