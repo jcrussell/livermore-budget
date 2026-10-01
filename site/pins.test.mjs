@@ -27,6 +27,15 @@ describe("the literals the client shares", () => {
     assert.deepEqual(groups, ["fund_group"]);
   });
 
+  test("the mark prefixes are mark.schema.json's id pattern, in role order", async (t) => {
+    const { app } = await loadApp();
+    const pattern = read("mark.schema.json").properties.id.pattern;
+    const m = /^\^\(([^()|]+(?:\|[^()|]+)*)\)$/.exec(pattern);
+    t.diagnostic(`the schema's id pattern is ${pattern}; the client's prefixes are ${JSON.stringify([app.AGGREGATE_PREFIX, app.RESIDUAL_PREFIX, app.GAP_PREFIX])}`);
+    assert.ok(m, `the id pattern ${pattern} is not ^(a|b|c)`);
+    assert.deepEqual(m[1].split("|"), [app.AGGREGATE_PREFIX, app.RESIDUAL_PREFIX, app.GAP_PREFIX]);
+  });
+
   test("CHART_CUSHION is the stylesheet's --chart-cushion", async (t) => {
     const { app } = await loadApp();
     const found = [...stylesheet().matchAll(/--chart-cushion:\s*(\d+)px/g)].map((m) => Number(m[1]));

@@ -132,6 +132,33 @@ describe("the marks this client makes", () => {
     assert.ok(flows > 0, "no residual stated both figures, so residual_flows was never exercised");
   });
 
+  test("sideOf leaves an aggregate the chart above finished as it came, and finishes only the ones it makes", async (t) => {
+    const { app } = await bootedApp();
+    const config = pageFixture().config;
+    const fund = structuredClone(config.steps.find((s) => s.key === "fund"));
+    // No cap of this step's, so the only aggregate in the result is the one
+    // planted: an already-finished tail inside the opened node, as a kept
+    // flank of a chart above would carry it.
+    delete fund.sankey.caps;
+    const doc = app.scheduleOf(columnFixture("fy2026-adopted"), "fund-flows");
+    const parts = doc.nodes.filter((n) => n.tier === 4 && n.parent === "fund/100");
+    assert.ok(parts.length > 1, "fund/100 has divisions to hang a tail under");
+    const finished = app.aggregateMark(5, parts[0].id, ["object/a", "object/b"], 9, 8, "object rows");
+    finished.source_note += app.say("aggregate_together", { figure: "$1" });
+    const planted = Object.assign({}, doc, {
+      nodes: doc.nodes.concat([finished]),
+      links: doc.links.concat([{ source: parts[0].id, target: finished.id, value_cents: 100,
+        kind: "external", transfer_id: "", fact_ids: ["fisc-f-planted"], locators: [{ doc_id: "d", pages: [1] }],
+        derived: true, partition: false, contra: "" }]),
+    });
+    const drawn = app.sideOf(planted, { id: "fund/100", step: fund, doc: planted }, [3, 4, 5], false);
+    const kept = drawn.nodes.find((n) => n.id === finished.id);
+    t.diagnostic(`the planted tail came out with parent ${JSON.stringify(kept && kept.parent)} and note ending ${JSON.stringify(kept && kept.source_note.slice(-24))}`);
+    assert.ok(kept, "the planted tail is reached from the opened node");
+    assert.equal(kept.parent, finished.parent);
+    assert.equal(kept.source_note, finished.source_note);
+  });
+
   test("a window refuses a kept flank carrying a residual or a gap from the rung above", async (t) => {
     const { app } = await bootedApp();
     const config = pageFixture().config;

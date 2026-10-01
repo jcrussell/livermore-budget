@@ -196,6 +196,9 @@ export function sideOf(doc, rung, tiers, nearIsSource) {
   const step = rung.step;
   let shaped = filterLinks(doc, rung.id, tiers, reaching(doc, rung.id, nearIsSource, tiers));
   const inside = withinNode(doc, rung.id);
+  // An aggregate the chart above drew and this side reaches is finished
+  // already: its parent and note are left as they came.
+  const had = new Set(doc.nodes.filter((n) => isAggregate(n.id)).map((n) => n.id));
   // CAPS RUN IN THE TIER ORDER THIS CHART DRAWS: folding a coarse node
   // removes descendants a finer cap would otherwise rank.
   //
@@ -214,11 +217,11 @@ export function sideOf(doc, rung, tiers, nearIsSource) {
   }
   const drawn = foldDocument(shaped, tiers);
 
-  // EVERY AGGREGATE'S PARENT IS PUT BACK AFTER THE FOLD, which blanks it
-  // because the opened node was filtered away. Its note is finished here with
-  // the figure only the folded document knows.
+  // EVERY AGGREGATE THIS CALL MADE HAS ITS PARENT PUT BACK AFTER THE FOLD,
+  // which blanks it because the opened node was filtered away. Its note is
+  // finished here with the figure only the folded document knows.
   return Object.assign({}, drawn, {
-    nodes: drawn.nodes.map((n) => (isAggregate(n.id)
+    nodes: drawn.nodes.map((n) => (isAggregate(n.id) && !had.has(n.id)
       ? Object.assign({}, n, {
         parent: parentOf.get(n.tier) || "",
         source_note: n.source_note + say("aggregate_together", { figure: fmt(tailFigure(drawn, n.id)) }),

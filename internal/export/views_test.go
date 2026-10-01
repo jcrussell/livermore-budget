@@ -1081,6 +1081,14 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 				v.Steps[0].Sankey.Tiers = []int{2, 0, 3}
 			})},
 			"draws to the RIGHT of the opened tier 0, and draws tiers [2 0 3]"},
+		// A cap on the flank: the kept columns are the chart above's, already
+		// capped by the rung that drew them, and flankHolds computes the flank
+		// without this rung's expansions while windowFor computes it with them.
+		{"a window capping a tier it keeps", []export.View{ok,
+			windowView(func(v *export.View) {
+				v.Steps[0].Sankey.Caps = append(v.Steps[0].Sankey.Caps, export.TierCap{Tier: 0, Cap: 8})
+			})},
+			"caps tier 0, which it keeps"},
 		// A window on a chart drawn whole: refused for declaring no render tiers
 		// before any step is placed, since the chart template publishes them.
 		{"a window on a page whose chart is drawn whole", []export.View{ok,

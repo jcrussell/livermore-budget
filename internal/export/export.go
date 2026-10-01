@@ -467,7 +467,7 @@ func ChartForms() []string { return []string{SankeyForm} }
 func MarkRoles() []string { return []string{"aggregate", "residual", "gap"} }
 
 // MarkPrefixes is the id prefix each mark role's ids carry, in [MarkRoles]
-// order.
+// order; schema/mark.schema.json's id pattern states the same set.
 func MarkPrefixes() []string { return []string{"aggregate/tail/", "residual/", "gap/"} }
 
 // markPrefixOf is the mark prefix an id carries, or "".
@@ -1081,7 +1081,18 @@ func (v View) validateSteps(built map[string][]byte, ix ColumnIndex) error {
 func (v View) validateSankeyStep(i int, s DrillStep, parents []parentChart, doc string) error {
 	h := s.Sankey
 	repeated := repeatedTier(h.Tiers)
+	keptCap := -1
+	for _, c := range h.Caps {
+		if slices.Contains(h.Keep, c.Tier) {
+			keptCap = c.Tier
+		}
+	}
 	switch {
+	case keptCap >= 0:
+		return fmt.Errorf(
+			"view %q's step %d caps tier %d, which it keeps; a kept flank is the chart "+
+				"above's column as that chart drew it, and a cap of this step's on it would "+
+				"be applied by the draw and not by the offer", v.Path, i, keptCap)
 	case len(h.Tiers) == 0:
 		return fmt.Errorf(
 			"view %q declares step %d with no tiers, so a node opened on it would be "+
