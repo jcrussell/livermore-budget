@@ -41,10 +41,12 @@ name.
 **What MOVES goes in JavaScript** too: d3-sankey positions, tooltips, focus,
 transitions, the year control.
 
-**`site/core.js` computes figures and reads no form hint.** It and a form
-module hold no module-level state and read no global at import; a global is
-read at call time or passed in. `site/app.js` holds the page's state and binds
-it.
+**`site/core.js` computes figures and reads no form hint.** A form module
+fits them to the screen and reads of a step only the generic fields and its
+own hints; `site/app.js` hands every chart to the renderer registered for its
+form and reads no hint itself. Neither module holds module-level state or
+reads a global at import; a global is read at call time or passed in.
+`site/app.js` holds the page's state and binds it.
 
 So the stitching, the auditing and the cross-checking of the fact store are
 Go's, and a figure the client shows is either one Go cited or a sum or

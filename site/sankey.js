@@ -1133,3 +1133,81 @@ export function nodeRank(groupOf, placeOf, node) {
   // average. It sorts to the top and its own value breaks the tie.
   return weight === 0 ? 0 : place / weight;
 }
+
+/**
+ * The Sankey form's renderer, as app.js's FORMS holds it under "sankey".
+ * Every method takes what it needs: the chart's declaration, the rung, the
+ * columns on screen, the document on screen. It reads of a step the generic
+ * fields and `step.sankey`, and nothing of any other form's hints; the test
+ * in site/drill.test.mjs wraps the hints in a recording Proxy and holds every
+ * read to this file.
+ * @type {FormRenderer}
+ */
+export const SANKEY = Object.freeze({
+  form: "sankey",
+
+  /** The declared tiers of an overview or a step, left to right. */
+  tiersOf(chart) {
+    return (chart.sankey && chart.sankey.tiers) || [];
+  },
+
+  /** The caps a chart declares, one per tier that needs one. */
+  caps(chart) {
+    return (chart.sankey && chart.sankey.caps) || [];
+  },
+
+  /**
+   * The tier set a rung draws at a budget: the step's tiers, less the widened
+   * columns the budget drops (from the END of `widen`, so a narrowed window
+   * has no hole) and the columns the rung dropped as empty. Re-asked after
+   * every drop: a tier already dropped as empty is an entry of this same
+   * order, and a fixed shortfall would drop it twice.
+   */
+  columns(chart, rung, budget) {
+    const tiers = SANKEY.tiersOf(chart);
+    const widen = (chart.sankey && chart.sankey.widen) || [];
+    const drop = new Set((rung && rung.dropped) || []);
+    for (let k = widen.length - 1; k >= 0 && tiers.length - drop.size > budget; k--) {
+      drop.add(widen[k]);
+    }
+    return drop.size ? tiers.filter((t) => !drop.has(t)) : tiers;
+  },
+
+  /**
+   * Whether this form can draw `id` opened on `step` out of `doc`: the step's
+   * document decomposes it, and on a window step the kept flank of the chart
+   * on screen holds it.
+   */
+  offers(step, doc, onScreen, id) {
+    if (!decomposable(step, doc).has(id)) return false;
+    if (!step.sankey.keep || !step.sankey.keep.length || !onScreen) return true;
+    return flankHolds(onScreen, step, id);
+  },
+
+  /**
+   * Fits a document to the columns on screen. On the overview, the fold and
+   * the reductions flipped. On a rung, the window or the side, then THE
+   * MARKS AFTER THE CAP AND THE FOLD, which must not touch them, in this
+   * order: the amount a node prints net of reductions is read off the fresh
+   * ribbons before any mark is added, then the residual, then the gap over
+   * what the residual left, then markContra over what the fold left negative.
+   */
+  shape(doc, rung, from, tiers) {
+    if (!rung) return markContra(foldDocument(doc, tiers));
+    const step = rung.step;
+    const drawn = (step.sankey.keep && step.sankey.keep.length)
+      ? windowFor(rung.chart, doc, rung, tiers)
+      : sideOf(doc, rung, tiers, step.sankey.side === SIDE_SOURCE);
+    return markContra(markGap(carryResidual(markAmounts(drawn, rung), from, rung, tiers), from, rung));
+  },
+
+  /** Whether the drawn chart must be shaped again at fewer columns. */
+  refit(drawn, rung, tiers) {
+    return rung ? dropEmptyColumns(drawn, rung, tiers) : false;
+  },
+
+  /** The most columns any of these steps declares. */
+  widest(steps) {
+    return steps.reduce((most, s) => Math.max(most, SANKEY.tiersOf(s).length), 0);
+  },
+});

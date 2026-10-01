@@ -793,3 +793,36 @@ describe("the refusal a drill can still meet", () => {
     });
   }
 });
+
+describe("the form seam", () => {
+  test("only the Sankey renderer reads a step's sankey hints: on every rung the page offers, no read comes from core.js or app.js", async (t) => {
+    const config = structuredClone(pageFixture().config);
+    /** @type {{chart: string, prop: string, frame: string}[]} */
+    const reads = [];
+    const record = (chart, key) => {
+      if (!chart.sankey) return;
+      chart.sankey = new Proxy(chart.sankey, {
+        get(target, prop) {
+          // The frame above this handler is the reader.
+          const frame = ((new Error().stack || "").split("\n")[2] || "").trim();
+          reads.push({ chart: key, prop: String(prop), frame });
+          return target[prop];
+        },
+      });
+    };
+    record(config.overview, "overview");
+    for (const s of config.steps) record(s, s.key);
+    const { app } = await bootedApp({ config });
+    const walked = await everyOffer(app, async () => {});
+    assert.equal(walked.refused, "", walked.refused);
+    const files = new Map();
+    for (const r of reads) {
+      const file = (r.frame.match(/site\/[a-z.]+js/) || ["elsewhere"])[0];
+      files.set(file, (files.get(file) || 0) + 1);
+    }
+    t.diagnostic(`${reads.length} hint read(s) over ${walked.visited} rung(s): ${[...files].map(([f, n]) => `${f} ${n}`).join(", ")}`);
+    assert.ok(reads.length > 0, "the walk read no hint, so this proves nothing");
+    const outside = reads.filter((r) => !r.frame.includes("site/sankey.js"));
+    assert.deepEqual([...new Set(outside.map((r) => `${r.chart}.${r.prop} read at ${r.frame}`))], []);
+  });
+});

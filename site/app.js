@@ -28,7 +28,7 @@ import {
 } from "./core.js";
 import * as sankey from "./sankey.js";
 import {
-  NODE_WIDTH, NODE_PADDING, RIBBON_GAP, CHART_HEIGHT, LABEL_GUTTER, chartWidth, CHART_CUSHION, SIDE_SOURCE, reaching, sideOf, flankHolds, decomposable, markAmounts, markContra, isContraNode, isPartitionNode, isLink, markCents, contraBand, residualFlows, contraNote, markGap, restackLinks, alignFor, labelLineShift,
+  NODE_WIDTH, NODE_PADDING, RIBBON_GAP, CHART_HEIGHT, LABEL_GUTTER, chartWidth, CHART_CUSHION, SIDE_SOURCE, reaching, sideOf, flankHolds, decomposable, markAmounts, markContra, isContraNode, isPartitionNode, isLink, markCents, contraBand, residualFlows, contraNote, markGap, restackLinks, alignFor, labelLineShift, SANKEY,
 } from "./sankey.js";
 export * from "./core.js";
 export * from "./sankey.js";
@@ -114,7 +114,7 @@ export function carryResidual(drawn, from, rung) {
 /** sankey.dropEmptyColumns over the innermost rung and the columns on screen. */
 export function dropEmptyColumns(drawn) {
   const rung = drilled.length ? drilled[drilled.length - 1] : null;
-  return sankey.dropEmptyColumns(drawn, rung, activeTiers());
+  return rung ? formFor(rung.step).refit(drawn, rung, activeTiers()) : false;
 }
 
 /** sankey.columnOf over the columns on screen. */
@@ -152,22 +152,54 @@ export function homeOf(l) {
 }
 
 /**
+ * What a form module exports: one object app.js hands every chart of that
+ * form to. A renderer reads of a step the generic fields and its own hints,
+ * calls core.js for every figure, and computes none of its own.
+ * @typedef {{
+ *   form: string,
+ *   tiersOf(chart: FiscChart | FiscDrillStep): number[],
+ *   caps(chart: FiscChart | FiscDrillStep): FiscTierCap[],
+ *   columns(chart: FiscDrillStep, rung: Rung | null, budget: number): number[],
+ *   offers(step: FiscDrillStep, doc: FiscProjection, onScreen: FiscProjection | null, id: string): boolean,
+ *   shape(doc: FiscProjection, rung: Rung | null, from: FiscProjection | null, tiers: number[]): FiscProjection,
+ *   refit(drawn: FiscProjection, rung: Rung | null, tiers: number[]): boolean,
+ *   widest(steps: FiscDrillStep[]): number,
+ * }} FormRenderer
+ */
+
+/**
+ * The renderers this script holds, by form. Every chart the page declares
+ * names its form, and one naming a form not here is refused before anything
+ * is fetched: the wrong renderer draws a chart that is wrong rather than one
+ * that fails. A second form registers here and nowhere else.
+ * @type {Map<string, FormRenderer>}
+ */
+export const FORMS = new Map([["sankey", SANKEY]]);
+
+/**
+ * The renderer for a chart, by its declared form.
+ * @param {FiscChart | FiscDrillStep} chart
+ * @returns {FormRenderer}
+ */
+export function formFor(chart) {
+  const renderer = FORMS.get(chart.form);
+  if (!renderer) throw new Error("no renderer here draws a " + chart.form + " chart");
+  return renderer;
+}
+
+/**
  * The node tiers this page's own Sankey draws, coarsest first: the overview's
  * hints. Per view and never a constant here: the spine and the drill-down
  * have different hierarchies, and one's set over the other throws. Absent
  * skips the fold entirely.
  * @type {number[]}
  */
-export const RENDER_TIERS = (CONFIG && CONFIG.overview && CONFIG.overview.sankey && CONFIG.overview.sankey.tiers) || [];
+export const RENDER_TIERS = (() => {
+  const overview = CONFIG && CONFIG.overview;
+  const renderer = overview ? FORMS.get(overview.form) : null;
+  return renderer ? renderer.tiersOf(overview) : [];
+})();
 
-/**
- * The renderers this script holds, by form. Every chart the page declares
- * names its form, and one naming a form not here is refused before anything
- * is fetched: the wrong renderer draws a chart that is wrong rather than one
- * that fails.
- * @type {Map<string, {form: string}>}
- */
-export const FORMS = new Map([["sankey", { form: "sankey" }]]);
 
 /**
  * The form of the first chart this page declares that no renderer here draws,
@@ -235,9 +267,7 @@ export function stepDecomposes(step, id) {
   // A column carrying no such schedule offers the node, so the drill can say
   // which schedule is missing rather than the node silently not opening.
   if (!doc) return true;
-  if (!decomposable(step, doc).has(id)) return false;
-  if (!step.sankey.keep || !step.sankey.keep.length || !projection) return true;
-  return flankHolds(projection, step, id);
+  return formFor(step).offers(step, doc, projection, id);
 }
 
 /**
@@ -334,10 +364,8 @@ export const NARROW_COLUMNS = 3;
  * The most columns any step this page declares can ask for: the longest
  * `tiers`. COLUMN_QUERIES answers the room; the reader gets the smaller.
  */
-export const OFFERED_COLUMNS = STEPS.reduce(
-  (most, s) => Math.max(most, ((s.sankey && s.sankey.tiers) || []).length),
-  NARROW_COLUMNS,
-);
+export const OFFERED_COLUMNS = Math.max(NARROW_COLUMNS,
+  ...Array.from(FORMS.values(), (r) => r.widest(STEPS.filter((s) => s.form === r.form))));
 
 /**
  * The viewport widths that buy a column beyond the floor. Each threshold is
@@ -500,15 +528,7 @@ export function activeTiers(budget) {
   if (!drilled.length) return RENDER_TIERS;
   const at = budget === undefined ? columnBudget : budget;
   const rung = drilled[drilled.length - 1];
-  const tiers = rung.step.sankey.tiers;
-  const widen = rung.step.sankey.widen || [];
-  const drop = new Set(rung.dropped || []);
-  // Re-asked after every drop: a tier already dropped as empty is an entry of
-  // this same order, and a fixed shortfall would drop it twice.
-  for (let k = widen.length - 1; k >= 0 && tiers.length - drop.size > at; k--) {
-    drop.add(widen[k]);
-  }
-  return drop.size ? tiers.filter((t) => !drop.has(t)) : tiers;
+  return formFor(rung.step).columns(rung.step, rung, at);
 }
 
 /**
@@ -619,7 +639,7 @@ export function expandable(d) {
   const rung = drilled.length ? drilled[drilled.length - 1] : null;
   if (!rung || !isAggregate(d.id)) return false;
   if (rung.expanded && rung.expanded.has(d.tier)) return false;
-  return (rung.step.sankey.caps || []).some((c) => c.tier === d.tier);
+  return formFor(rung.step).caps(rung.step).some((c) => c.tier === d.tier);
 }
 
 /**
@@ -1142,7 +1162,7 @@ export function columnSize(tier) {
 export function tailNoun(tier) {
   const rung = drilled.length ? drilled[drilled.length - 1] : null;
   if (!rung) return "items";
-  const cap = (rung.step.sankey.caps || []).find((c) => c.tier === tier);
+  const cap = formFor(rung.step).caps(rung.step).find((c) => c.tier === tier);
   return (cap && cap.tail) || rung.step.tail || "items";
 }
 
@@ -1185,20 +1205,9 @@ export function trailOfRungs() {
  */
 export function shapeFor(doc) {
   const rung = drilled.length ? drilled[drilled.length - 1] : null;
-  if (!rung) {
-    return markContra(foldDocument(doc));
-  }
-  const step = rung.step;
-  const drawn = (step.sankey.keep && step.sankey.keep.length)
-    ? windowFor(rung.chart, doc, rung)
-    : sideOf(doc, rung, activeTiers(), step.sankey.side === SIDE_SOURCE);
-  // THE MARKS COME AFTER THE CAP AND THE FOLD, which must not touch them, in
-  // this order: the amount a node prints net of reductions is read off the
-  // fresh ribbons before any mark is added, then the residual, then the gap
-  // over what the residual left, then markContra over what the fold left
-  // negative.
-  const from = docAt(drilled.length - 1);
-  return markContra(markGap(carryResidual(markAmounts(drawn, rung), from, rung), from, rung));
+  const chart = rung ? rung.step : CONFIG.overview;
+  const from = rung ? docAt(drilled.length - 1) : null;
+  return formFor(chart).shape(doc, rung, from, activeTiers());
 }
 
 /**

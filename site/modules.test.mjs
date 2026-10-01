@@ -48,7 +48,9 @@ describe("the shipped modules hold no state", () => {
     delete globalThis.d3;
     t.diagnostic(`alignFor([]) returned d3's aligner installed after the import: ${inferred === marker}`);
     assert.equal(inferred, marker);
+    // The one object export is the renderer, frozen: a caller cannot move it.
     const objects = Object.entries(sankey).filter(([, v]) => typeof v === "object").map(([k]) => k).sort();
-    assert.deepEqual(objects, [], "sankey.js exports no object a caller could move");
+    assert.deepEqual(objects, ["SANKEY"]);
+    assert.ok(Object.isFrozen(sankey.SANKEY));
   });
 });
