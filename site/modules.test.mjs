@@ -48,6 +48,25 @@ describe("the shipped modules hold no state", () => {
     delete globalThis.d3;
     t.diagnostic(`alignFor([]) returned d3's aligner installed after the import: ${inferred === marker}`);
     assert.equal(inferred, marker);
+    // The renderer lays out with no page at all: the columns, the lookups and
+    // d3 are its inputs, and a DOM is not among them.
+    const core = await import(pathToFileURL(path.join(HERE, "core.js")).href);
+    const { loadD3, goldenGraph } = await import("./testlib.mjs");
+    loadD3();
+    const tiers = [0, 2, 5];
+    const drawn = sankey.markContra(core.foldDocument(goldenGraph(), tiers));
+    const groups = [...new Set(drawn.nodes.filter((n) => n.role === "fund_group").map((n) => n.id))].sort();
+    const index = new Map(drawn.nodes.map((n) => [n.id, n]));
+    assert.equal(typeof globalThis.document, "undefined", "no DOM is installed for the layout");
+    const laid = sankey.SANKEY.layOut(drawn, {
+      tiers, columns: tiers.length,
+      groupOf: (n) => core.fundGroupOf(index, n), placeOf: (id) => groups.indexOf(id),
+    });
+    const x = (tier) => laid.nodes.filter((n) => n.tier === tier).map((n) => n.x0);
+    t.diagnostic(`laid ${laid.nodes.length} marks and ${laid.links.length} ribbons of the FY2026 spine with no DOM; tier 0 at x ${x(0)[0]}, tier 5 at x ${x(5)[0]}`);
+    assert.equal(laid.nodes.length, drawn.nodes.length);
+    assert.ok(laid.nodes.every((n) => Number.isFinite(n.x0) && Number.isFinite(n.y0)));
+    assert.ok(Math.max(...x(0)) < Math.min(...x(2)) && Math.max(...x(2)) < Math.min(...x(5)), "the declared column order is the laid order");
     // The one object export is the renderer, frozen: a caller cannot move it.
     const objects = Object.entries(sankey).filter(([, v]) => typeof v === "object").map(([k]) => k).sort();
     assert.deepEqual(objects, ["SANKEY"]);

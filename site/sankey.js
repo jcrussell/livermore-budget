@@ -14,7 +14,7 @@
  */
 
 import {
-  FOLD_REFUSES_MIXED, capColumn, citations, config, fmt, foldDocument, foldTarget, gapID, gapMark, isAggregate, isFundGroup, isGap, isResidual, ledeOf, link, regroupLocators, residualID, residualMark, scoped, tailFigure, withinNode,
+  FOLD_REFUSES_MIXED, capColumn, citations, config, fmt, fmtShortSigned, foldDocument, foldTarget, gapID, gapMark, isAggregate, isFundGroup, isGap, isResidual, ledeOf, link, regroupLocators, residualID, residualMark, scoped, tailFigure, withinNode,
 } from "./core.js";
 
 export const NODE_WIDTH = 14;
@@ -1204,6 +1204,177 @@ export const SANKEY = Object.freeze({
   /** Whether the drawn chart must be shaped again at fewer columns. */
   refit(drawn, rung, tiers) {
     return rung ? dropEmptyColumns(drawn, rung, tiers) : false;
+  },
+
+  /**
+   * Lays a shaped document out with d3-sankey, pure of the page: the columns
+   * on screen, the group and place lookups and the constants are all it
+   * reads. d3-sankey mutates its input, so it gets a copy and the document
+   * stays the thing the table and the detail panel read from.
+   */
+  layOut(drawn, ctx) {
+    const d3 = /** @type {any} */ (globalThis).d3;
+    const sankey = d3.sankey()
+      .nodeId(/** @param {LaidNode} d */ (d) => d.id)
+      .nodeWidth(NODE_WIDTH)
+      .nodePadding(NODE_PADDING)
+      .nodeAlign(alignFor(ctx.tiers))
+      // Supplying this switches d3's own ordering pass off.
+      .nodeSort(/** @param {LaidNode} a @param {LaidNode} b */ (a, b) =>
+        nodeRank(ctx.groupOf, ctx.placeOf, a) - nodeRank(ctx.groupOf, ctx.placeOf, b) || b.value - a.value)
+      // The same column count render() sizes the viewBox from.
+      .extent([[LABEL_GUTTER, 12],
+        [chartWidth(ctx.columns) - LABEL_GUTTER, CHART_HEIGHT - 12]]);
+    const graph = sankey({
+      nodes: drawn.nodes.map((n) => Object.assign({}, n)),
+      links: drawn.links.map((l) => Object.assign({}, l, { value: l.value_cents })),
+    });
+    restackLinks(graph);
+    return graph;
+  },
+
+  /**
+   * Draws a laid graph into ctx.svg: ribbons, marks, bands and labels, with
+   * the classes, descriptions and gestures the page hands it. Paints nothing:
+   * the page paints after, so a theme change repaints without redrawing.
+   */
+  render(graph, ctx) {
+    const d3 = /** @type {any} */ (globalThis).d3;
+    const svg = ctx.svg;
+    const width = chartWidth(ctx.columns);
+    const height = CHART_HEIGHT;
+    const on = ctx.on;
+
+    // No width or height attributes: the viewBox makes the drawing scale.
+    svg.attr("viewBox", "0 0 " + width + " " + height);
+    svg.selectAll("g").remove();
+
+    const gLinks = svg.append("g").attr("class", "links");
+    const gNodes = svg.append("g").attr("class", "nodes");
+
+    gLinks.selectAll("path")
+      .data(graph.links)
+      .join("path")
+      .attr("class", /** @param {LaidLink} d */ (d) => ctx.classes.link(d))
+      .attr("d", d3.sankeyLinkHorizontal())
+      // The surface gap, not a stroke, separates stacked ribbons.
+      .attr("stroke-width", /** @param {LaidLink} d */ (d) => Math.max(1, d.width - RIBBON_GAP))
+      .attr("tabindex", 0)
+      .attr("role", "button")
+      .attr("aria-label", /** @param {LaidLink} d */ (d) => ctx.describe.link(d))
+      .on("pointerenter", /** @param {PointerEvent} e @param {LaidLink} d */ (e, d) => on.tip(e, d))
+      .on("pointermove", /** @param {PointerEvent} e @param {LaidLink} d */ (e, d) => on.tip(e, d))
+      .on("pointerleave", on.hide)
+      .on("focus", /** @param {FocusEvent} e @param {LaidLink} d */ (e, d) => on.guarded("show this flow", () => { if (on.restoring()) return; on.tip(e, d); on.pin(d); }))
+      .on("blur", on.hide)
+      .on("click", /** @param {MouseEvent} e @param {LaidLink} d */ (e, d) => on.guarded("pin this flow", () => { e.stopPropagation(); on.pin(d); }));
+
+    const node = gNodes.selectAll("g")
+      .data(graph.nodes)
+      .join("g")
+      .attr("class", /** @param {LaidNode} d */ (d) => ctx.classes.node(d))
+      .attr("tabindex", 0)
+      .attr("role", "button")
+      // aria-pressed is the isolation, on every node. OPENING IS NOT THE TOGGLE
+      // and must never be announced as one: it replaces the chart, leaving no
+      // pressed state to return to. The label announces what a node opens into.
+      .attr("aria-pressed", "false")
+      .attr("aria-label", /** @param {LaidNode} d */ (d) => ctx.describe.node(d))
+      // Both keys activate every node; which one opens is the description's to say.
+      .attr("aria-keyshortcuts", "Enter Space")
+      .on("pointerenter", /** @param {PointerEvent} e @param {LaidNode} d */ (e, d) => on.tip(e, d))
+      .on("pointermove", /** @param {PointerEvent} e @param {LaidNode} d */ (e, d) => on.tip(e, d))
+      .on("pointerleave", on.hide)
+      .on("focus", /** @param {FocusEvent} e @param {LaidNode} d */ (e, d) => on.guarded("show this mark", () => { if (on.restoring()) return; on.tip(e, d); on.pin(d); }))
+      .on("blur", on.hide)
+      // TWO GESTURES, ONE MEANING EACH: a single click and Space isolate on every
+      // node; a double click and Enter open the nodes that open.
+      //
+      // Both click and keydown, because an SVG g[role=button] synthesises no click
+      // from Enter, and some screen readers send both -- which would toggle twice.
+      // So the guard is on the activation: a click on the node a key just
+      // activated is that key's own click. Focus must not isolate, and a held key
+      // is ignored, or tabbing would strobe the chart.
+      .on("click", /** @param {MouseEvent} e @param {LaidNode} d */ (e, d) => {
+        on.guarded("pin this mark", () => {
+          e.stopPropagation();
+          on.click(d, e.timeStamp);
+        });
+      })
+      // ON EVERY NODE, not only one that opens: its two clicks have already
+      // toggled the isolation twice, and this restores what was isolated before.
+      // preventDefault stops the double click selecting the label.
+      .on("dblclick", /** @param {MouseEvent} e @param {LaidNode} d */ (e, d) => {
+        on.guarded("open this mark", () => {
+          e.stopPropagation();
+          e.preventDefault();
+          on.dblclick(d, e.timeStamp);
+        });
+      })
+      .on("keydown", /** @param {KeyboardEvent} e @param {LaidNode} d */ (e, d) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        if (e.repeat) return;
+        e.preventDefault();
+        on.guarded("act on this mark", () => on.key(d, e.key, e.timeStamp));
+      });
+
+    node.append("rect")
+      .attr("x", /** @param {LaidNode} d */ (d) => d.x0)
+      .attr("y", /** @param {LaidNode} d */ (d) => d.y0)
+      .attr("width", /** @param {LaidNode} d */ (d) => d.x1 - d.x0)
+      .attr("height", /** @param {LaidNode} d */ (d) => Math.max(2, d.y1 - d.y0))
+      .attr("rx", 2);
+
+    // On every mark, displayed on the ones that hang: the vendored d3 selection
+    // has no filter(). pointer-events none, because the band is not the mark.
+    node.append("rect")
+      .attr("class", "contra-band")
+      .attr("display", /** @param {LaidNode} d */ (d) => (contraBand(d) ? null : "none"))
+      .attr("x", /** @param {LaidNode} d */ (d) => d.x0)
+      .attr("y", /** @param {LaidNode} d */ (d) => (contraBand(d) || { y: 0 }).y)
+      .attr("width", /** @param {LaidNode} d */ (d) => d.x1 - d.x0)
+      .attr("height", /** @param {LaidNode} d */ (d) => (contraBand(d) || { height: 0 }).height)
+      .attr("pointer-events", "none");
+
+    // Every node is directly labelled: the relief the palette's contrast check
+    // requires.
+    const place = (/** @type {LaidNode} */ d) => labelPlacement(ctx.tiers, d, lastColumn);
+    const lastColumn = Math.max(...graph.nodes.map((d) => columnOf(ctx.tiers, d)));
+    const qualified = labelQualifiers(ctx.doc, ctx.tiers, graph.nodes);
+    /** @param {LaidNode} d */
+    const qualifierOf = (d) => qualified.get(d.id) || "";
+    const label = node.append("text")
+      .attr("class", "halo")
+      .attr("y", /** @param {LaidNode} d */ (d) => place(d).y)
+      .attr("dy", /** @param {LaidNode} d */ (d) => place(d).dy)
+      .attr("x", /** @param {LaidNode} d */ (d) => place(d).x)
+      .attr("text-anchor", /** @param {LaidNode} d */ (d) => place(d).anchor);
+
+    // On an unqualified mark the qualifier tspan is empty with no x or dy, so it
+    // starts no line.
+    label.append("tspan")
+      .attr("class", "qualifier")
+      .attr("x", /** @param {LaidNode} d */ (d) => (qualifierOf(d) ? place(d).x : null))
+      .attr("dy", /** @param {LaidNode} d */ (d) => (qualifierOf(d) ? labelLineShift(place(d).anchor).qualifier : null))
+      .text(/** @param {LaidNode} d */ (d) => qualifierOf(d));
+    label.append("tspan")
+      .attr("x", /** @param {LaidNode} d */ (d) => (qualifierOf(d) ? place(d).x : null))
+      .attr("dy", /** @param {LaidNode} d */ (d) => (qualifierOf(d) ? labelLineShift(place(d).anchor).label : null))
+      .text(/** @param {LaidNode} d */ (d) => d.label);
+    label.append("tspan")
+      .attr("class", "value")
+      .text(/** @param {LaidNode} d */ (d) => "  " + fmtShortSigned(markCents(d)));
+    label.append("tspan")
+      .attr("class", "flag")
+      .text(/** @param {LaidNode} d */ (d) => ctx.classes.flags(d));
+  },
+
+  /** Colours the drawn ribbons and marks; the colours are the page's. */
+  paint(ctx) {
+    ctx.svg.selectAll("path.link")
+      .attr("stroke", /** @param {LaidLink} d */ (d) => ctx.colour.link(d));
+    ctx.svg.selectAll("g.node rect")
+      .attr("fill", /** @param {LaidNode} d */ (d) => ctx.colour.node(d));
   },
 
   /** The most columns any of these steps declares. */

@@ -1205,9 +1205,17 @@ export function trailOfRungs() {
  */
 export function shapeFor(doc) {
   const rung = drilled.length ? drilled[drilled.length - 1] : null;
-  const chart = rung ? rung.step : CONFIG.overview;
   const from = rung ? docAt(drilled.length - 1) : null;
-  return formFor(chart).shape(doc, rung, from, activeTiers());
+  return formFor(chartOnScreen()).shape(doc, rung, from, activeTiers());
+}
+
+/**
+ * The chart on screen's declaration: the innermost rung's step, or the
+ * overview.
+ * @returns {FiscChart | FiscDrillStep}
+ */
+export function chartOnScreen() {
+  return drilled.length ? drilled[drilled.length - 1].step : CONFIG.overview;
 }
 
 /**
@@ -1266,211 +1274,67 @@ export function isCarried(id) {
 }
 
 /**
- * Lays a document out, touching nothing on the page.
- *
- * SEPARATE FROM render() SO A DOCUMENT THAT WILL NOT DRAW CANNOT LEAVE TWO
- * FISCAL YEARS ON THE PAGE: everything that can throw is here, and showYear
- * calls it before repainting anything (fisc-bsg).
- *
+ * Lays a shaped document out through its form, binding the page: the hue
+ * index is the drawn nodes overwritten by the unfolded document this rung was
+ * shaped from, because a colour is where a node really sits and the fold
+ * re-points parents; the drawn set contributes only what the file lacks, such
+ * as the aggregate. Assigned only once the layout has not thrown, or the next
+ * paint() would recolour the chart on screen against a document it was not
+ * drawn from.
  * @param {FiscProjection} doc
+ * @returns {{nodes:LaidNode[], links:LaidLink[]}}
  */
 export function layOut(doc) {
-  // THE HUE INDEX: the drawn nodes, overwritten by the unfolded document this
-  // rung was shaped from, because a colour is where a node really sits and
-  // the fold re-points parents. The drawn set contributes only what the file
-  // lacks, such as the aggregate. Assigned before anything can throw.
-  const previous = groupIndex;
-  groupIndex = new Map(doc.nodes.map((n) => [n.id, n]));
+  const index = new Map(doc.nodes.map((n) => [n.id, n]));
   const source = drawnDoc();
   if (source) {
-    for (const n of source.nodes) groupIndex.set(n.id, n);
+    for (const n of source.nodes) index.set(n.id, n);
   }
-
-  const sankey = D3.sankey()
-    .nodeId(/** @param {LaidNode} d */ (d) => d.id)
-    .nodeWidth(NODE_WIDTH)
-    .nodePadding(NODE_PADDING)
-    .nodeAlign(alignFor(activeTiers()))
-    // Supplying this switches d3's own ordering pass off.
-    .nodeSort(/** @param {LaidNode} a @param {LaidNode} b */ (a, b) =>
-      nodeRank(a) - nodeRank(b) || b.value - a.value)
-    // The same column count render() sizes the viewBox from.
-    .extent([[LABEL_GUTTER, 12],
-      [chartWidth(drawnColumns()) - LABEL_GUTTER, CHART_HEIGHT - 12]]);
-
-  // d3-sankey mutates its input, so it gets a copy and the fetched document
-  // stays the thing the table and the detail panel read from.
-  /** @type {{nodes:LaidNode[], links:LaidLink[]}} */
-  let graph;
-  try {
-    graph = sankey({
-      nodes: doc.nodes.map((n) => Object.assign({}, n)),
-      links: doc.links.map((l) => Object.assign({}, l, { value: l.value_cents })),
-    });
-  } catch (e) {
-    // THE INDEX GOES BACK WITH THE THROW, or the next paint() recolours the
-    // chart on screen against a document it was not drawn from.
-    groupIndex = previous;
-    throw e;
-  }
-  restackLinks(graph);
+  const graph = formFor(chartOnScreen()).layOut(doc, {
+    tiers: activeTiers(),
+    columns: drawnColumns(),
+    groupOf: (/** @type {FiscNode | LaidNode} */ n) => core.fundGroupOf(index, n),
+    placeOf: fundGroupPlace,
+  });
+  groupIndex = index;
   // For columnShare: only the laid graph knows a mark's column.
   laidNodes = graph.nodes;
   return graph;
 }
 
 /**
- * Draws a laid-out graph. Omitting `laid` lays the projection out here, which
- * is non-atomic with anything else on the page.
+ * Draws the chart on screen through its form, then paints it and applies the
+ * emphasis. The gestures, descriptions and classes are this file's: they read
+ * the page's state, which a renderer never holds.
  * @param {{nodes:LaidNode[], links:LaidLink[]}} [laid]
  */
 export function render(laid) {
   if (!projection) return;
   const graph = laid || layOut(projection);
-  const svg = D3.select("#chart");
-  const width = chartWidth(drawnColumns());
-  const height = CHART_HEIGHT;
-
-  // No width or height attributes: the viewBox makes the drawing scale.
-  svg.attr("viewBox", "0 0 " + width + " " + height);
-  svg.selectAll("g").remove();
-
-  const gLinks = svg.append("g").attr("class", "links");
-  const gNodes = svg.append("g").attr("class", "nodes");
-
-  gLinks.selectAll("path")
-    .data(graph.links)
-    .join("path")
-    .attr("class", /** @param {LaidLink} d */ (d) => linkClass(d))
-    .attr("d", D3.sankeyLinkHorizontal())
-    // The surface gap, not a stroke, separates stacked ribbons.
-    .attr("stroke-width", /** @param {LaidLink} d */ (d) => Math.max(1, d.width - RIBBON_GAP))
-    .attr("tabindex", 0)
-    .attr("role", "button")
-    .attr("aria-label", /** @param {LaidLink} d */ (d) => linkDescription(d))
-    .on("pointerenter", /** @param {PointerEvent} e @param {LaidLink} d */ (e, d) => showTip(e, d))
-    .on("pointermove", /** @param {PointerEvent} e @param {LaidLink} d */ (e, d) => showTip(e, d))
-    .on("pointerleave", hideTip)
-    .on("focus", /** @param {FocusEvent} e @param {LaidLink} d */ (e, d) => guarded("show this flow", () => { if (restoring) return; showTip(e, d); pin(d); }))
-    .on("blur", hideTip)
-    .on("click", /** @param {MouseEvent} e @param {LaidLink} d */ (e, d) => guarded("pin this flow", () => { e.stopPropagation(); pin(d); }));
-
-  const node = gNodes.selectAll("g")
-    .data(graph.nodes)
-    .join("g")
-    .attr("class", /** @param {LaidNode} d */ (d) => nodeClass(d))
-    .attr("tabindex", 0)
-    .attr("role", "button")
-    // aria-pressed is the isolation, on every node. OPENING IS NOT THE TOGGLE
-    // and must never be announced as one: it replaces the chart, leaving no
-    // pressed state to return to. The label announces what a node opens into.
-    .attr("aria-pressed", "false")
-    .attr("aria-label", /** @param {LaidNode} d */ (d) => nodeDescription(d))
-    // Both keys activate every node; which one opens is nodeDescription's to say.
-    .attr("aria-keyshortcuts", "Enter Space")
-    .on("pointerenter", /** @param {PointerEvent} e @param {LaidNode} d */ (e, d) => showTip(e, d))
-    .on("pointermove", /** @param {PointerEvent} e @param {LaidNode} d */ (e, d) => showTip(e, d))
-    .on("pointerleave", hideTip)
-    .on("focus", /** @param {FocusEvent} e @param {LaidNode} d */ (e, d) => guarded("show this mark", () => { if (restoring) return; showTip(e, d); pin(d); }))
-    .on("blur", hideTip)
-    // TWO GESTURES, ONE MEANING EACH: a single click and Space isolate on every
-    // node; a double click and Enter open the nodes that open.
-    //
-    // Both click and keydown, because an SVG g[role=button] synthesises no click
-    // from Enter, and some screen readers send both -- which would toggle twice.
-    // So the guard is on the activation: a click on the node a key just
-    // activated is that key's own click. Focus must not isolate, and a held key
-    // is ignored, or tabbing would strobe the chart.
-    .on("click", /** @param {MouseEvent} e @param {LaidNode} d */ (e, d) => {
-      guarded("pin this mark", () => {
-        e.stopPropagation();
-        clickNode(d, e.timeStamp);
-      });
-    })
-    // ON EVERY NODE, not only one that opens: its two clicks have already
-    // toggled the isolation twice, and this restores what was isolated before.
-    // preventDefault stops the double click selecting the label.
-    .on("dblclick", /** @param {MouseEvent} e @param {LaidNode} d */ (e, d) => {
-      guarded("open this mark", () => {
-        e.stopPropagation();
-        e.preventDefault();
-        doubleClickNode(d, e.timeStamp);
-      });
-    })
-    .on("keydown", /** @param {KeyboardEvent} e @param {LaidNode} d */ (e, d) => {
-      if (e.key !== "Enter" && e.key !== " ") return;
-      if (e.repeat) return;
-      e.preventDefault();
-      guarded("act on this mark", () => keyNode(d, e.key, e.timeStamp));
-    });
-
-  node.append("rect")
-    .attr("x", /** @param {LaidNode} d */ (d) => d.x0)
-    .attr("y", /** @param {LaidNode} d */ (d) => d.y0)
-    .attr("width", /** @param {LaidNode} d */ (d) => d.x1 - d.x0)
-    .attr("height", /** @param {LaidNode} d */ (d) => Math.max(2, d.y1 - d.y0))
-    .attr("rx", 2);
-
-  // On every mark, displayed on the ones that hang: the vendored d3 selection
-  // has no filter(). pointer-events none, because the band is not the mark.
-  node.append("rect")
-    .attr("class", "contra-band")
-    .attr("display", /** @param {LaidNode} d */ (d) => (contraBand(d) ? null : "none"))
-    .attr("x", /** @param {LaidNode} d */ (d) => d.x0)
-    .attr("y", /** @param {LaidNode} d */ (d) => (contraBand(d) || { y: 0 }).y)
-    .attr("width", /** @param {LaidNode} d */ (d) => d.x1 - d.x0)
-    .attr("height", /** @param {LaidNode} d */ (d) => (contraBand(d) || { height: 0 }).height)
-    .attr("pointer-events", "none");
-
-  // Every node is directly labelled: the relief the palette's contrast check
-  // requires.
-  const lastColumn = Math.max(...graph.nodes.map(columnOf));
-  const qualified = labelQualifiers(graph.nodes);
-  /** @param {LaidNode} d */
-  const qualifierOf = (d) => qualified.get(d.id) || "";
-  const label = node.append("text")
-    .attr("class", "halo")
-    .attr("y", /** @param {LaidNode} d */ (d) => labelPlacement(d, lastColumn).y)
-    .attr("dy", /** @param {LaidNode} d */ (d) => labelPlacement(d, lastColumn).dy)
-    .attr("x", /** @param {LaidNode} d */ (d) => labelPlacement(d, lastColumn).x)
-    .attr("text-anchor", /** @param {LaidNode} d */ (d) => labelPlacement(d, lastColumn).anchor);
-
-  // On an unqualified mark the qualifier tspan is empty with no x or dy, so it
-  // starts no line.
-  label.append("tspan")
-    .attr("class", "qualifier")
-    .attr("x", /** @param {LaidNode} d */ (d) =>
-      (qualifierOf(d) ? labelPlacement(d, lastColumn).x : null))
-    .attr("dy", /** @param {LaidNode} d */ (d) =>
-      (qualifierOf(d)
-        ? labelLineShift(labelPlacement(d, lastColumn).anchor).qualifier
-        : null))
-    .text(/** @param {LaidNode} d */ (d) => qualifierOf(d));
-  label.append("tspan")
-    .attr("x", /** @param {LaidNode} d */ (d) =>
-      (qualifierOf(d) ? labelPlacement(d, lastColumn).x : null))
-    .attr("dy", /** @param {LaidNode} d */ (d) =>
-      (qualifierOf(d)
-        ? labelLineShift(labelPlacement(d, lastColumn).anchor).label
-        : null))
-    .text(/** @param {LaidNode} d */ (d) => d.label);
-  label.append("tspan")
-    .attr("class", "value")
-    .text(/** @param {LaidNode} d */ (d) => "  " + fmtShortSigned(markCents(d)));
-  label.append("tspan")
-    .attr("class", "flag")
-    .text(/** @param {LaidNode} d */ (d) => nodeFlags(d));
-
+  formFor(chartOnScreen()).render(graph, {
+    svg: D3.select("#chart"),
+    tiers: activeTiers(),
+    columns: drawnColumns(),
+    doc: projection,
+    classes: { link: linkClass, node: nodeClass, flags: nodeFlags },
+    describe: { link: linkDescription, node: nodeDescription },
+    on: {
+      tip: showTip, hide: hideTip, pin: pin, guarded: guarded,
+      click: clickNode, dblclick: doubleClickNode, key: keyNode,
+      restoring: () => restoring,
+    },
+  });
   paint();
   applyEmphasis();
 }
 
-/** Re-reads the palette from CSS and repaints. Called after a theme change. */
+/** Colours the chart through its form, and the legend's swatches here. */
 export function paint() {
-  D3.select("#chart").selectAll("path.link")
-    .attr("stroke", /** @param {LaidLink} d */ (d) => linkColor(d));
-  D3.select("#chart").selectAll("g.node rect")
-    .attr("fill", /** @param {LaidNode} d */ (d) => nodeColor(d));
+  if (!CONFIG || !CONFIG.overview) return;
+  formFor(chartOnScreen()).paint({
+    svg: D3.select("#chart"),
+    colour: { link: linkColor, node: nodeColor },
+  });
   for (const button of document.querySelectorAll("#legend button .key")) {
     const swatch = /** @type {HTMLElement} */ (button);
     const name = swatch.dataset.var;
