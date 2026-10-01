@@ -472,7 +472,8 @@ func deadSchemaRefs(root string, paths []string) ([]cite, error) {
 					out = append(out, cite{title: msg, file: rel, line: line})
 				}
 			}
-			if norm(rel) == "site/app.js" {
+			// The shipped client modules; a test file carries no wire typedef.
+			if strings.HasPrefix(norm(rel), "site/") && strings.HasSuffix(rel, ".js") {
 				names, at := fiscTypedefs(text)
 				for i, name := range names {
 					start := strings.LastIndex(text[:at[i]], "/**")

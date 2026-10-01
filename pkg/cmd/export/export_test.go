@@ -203,7 +203,7 @@ func TestExportRunWritesASiteAndSaysHowToServeIt(t *testing.T) {
 	}
 
 	// A document stating a year and basis ships as its column, not as data/sankey.json.
-	for _, rel := range []string{"index.html", "app.js", "style.css", ".nojekyll",
+	for _, rel := range []string{"index.html", "app.js", "core.js", "style.css", ".nojekyll",
 		"vendor/d3.min.js", "fy2026-adopted.json"} {
 		if _, err := os.Stat(filepath.Join(opts.OutputDir, filepath.FromSlash(rel))); err != nil {
 			t.Errorf("missing %s: %v", rel, err)

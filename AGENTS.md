@@ -31,7 +31,7 @@ figure Go emits is cited and checked.
 trusted with sums and lengths over figures Go has cited: which ribbons a rung
 holds, which nodes open, which of a column's members a cap folds, a merged
 ribbon's cents, a residual's two figures and a gap's difference held to its
-licence are all computed in `site/app.js`, once, and held by property tests
+licence are all computed in the client, once, and held by property tests
 over the pinned artifacts (sums preserved, no ribbon lost or duplicated, caps
 respected), each with a stated mutation. Go implements no fold and answers no
 rung; a Go function that replays the client's shaping to cross-check it is a
@@ -40,6 +40,11 @@ name.
 
 **What MOVES goes in JavaScript** too: d3-sankey positions, tooltips, focus,
 transitions, the year control.
+
+**`site/core.js` computes figures and reads no form hint.** It and a form
+module hold no module-level state and read no global at import; a global is
+read at call time or passed in. `site/app.js` holds the page's state and binds
+it.
 
 So the stitching, the auditing and the cross-checking of the fact store are
 Go's, and a figure the client shows is either one Go cited or a sum or

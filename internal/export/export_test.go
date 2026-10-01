@@ -103,6 +103,7 @@ func TestWriteProducesTheSiteLayout(t *testing.T) {
 	want := []string{
 		".fisc-export",
 		"app.js",
+		"core.js",
 		// One document per published column, not also one per schedule.
 		"fy2026-adopted.json",
 		"index.html",
@@ -750,13 +751,13 @@ func TestWriteRefusesBadInput(t *testing.T) {
 // would drift in silence. Read it out of the same embedded asset tree the
 // packager ships and pin the literal.
 func TestClientSchemaVersionIsPinnedToTheProducer(t *testing.T) {
-	b, err := fs.ReadFile(site.FS(), "app.js")
+	b, err := fs.ReadFile(site.FS(), "core.js")
 	if err != nil {
-		t.Fatalf("read embedded app.js: %v", err)
+		t.Fatalf("read embedded core.js: %v", err)
 	}
 	want := fmt.Sprintf("const SCHEMA_VERSION = %d;", project.SchemaVersion)
 	if !bytes.Contains(b, []byte(want)) {
-		t.Errorf("site/app.js does not declare %q; the browser gate has drifted from "+
+		t.Errorf("site/core.js does not declare %q; the browser gate has drifted from "+
 			"project.SchemaVersion %d, so the page would draw a document it does not understand",
 			want, project.SchemaVersion)
 	}
