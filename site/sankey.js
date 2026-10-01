@@ -331,9 +331,11 @@ export function windowFor(onScreen, stepDoc, rung, tiers) {
 const flanks = new WeakMap();
 
 /**
- * Whether a window step's kept flank off the chart on screen holds the node.
- * A flank the fold refuses is offered rather than thrown here: this is asked
- * per mark per paint, and the drill that opens it says why it cannot draw.
+ * Whether a window step's kept flank off the chart on screen holds the node,
+ * and carries no residual or gap, which windowFor refuses: the offer and the
+ * draw are one rule. A flank the fold refuses is offered rather than thrown
+ * here: this is asked per mark per paint, and the drill that opens it says
+ * why it cannot draw.
  * @param {FiscProjection} onScreen
  * @param {FiscDrillStep} step
  * @param {string} id
@@ -349,7 +351,8 @@ export function flankHolds(onScreen, step, id) {
   let holds = byStep.get(at);
   if (holds === undefined) {
     try {
-      holds = keptFlank(onScreen, { id: id, step: step }).nodes.some((n) => n.id === id);
+      const kept = keptFlank(onScreen, { id: id, step: step }).nodes;
+      holds = kept.some((n) => n.id === id) && !kept.some((n) => isResidual(n.id) || isGap(n.id));
     } catch (e) {
       // Only the fold's refusal; anything else is a defect and is thrown.
       if (!(e instanceof Error && e.message.includes(FOLD_REFUSES_MIXED))) throw e;

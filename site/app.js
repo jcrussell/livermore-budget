@@ -1331,9 +1331,13 @@ export function render(laid) {
   applyEmphasis();
 }
 
-/** Colours the chart through its form, and the legend's swatches here. */
+/**
+ * Colours the chart through its form, and the legend's swatches here. Nothing
+ * on a page main() refused for its form: the theme toggle is wired before
+ * that refusal and repaints through here.
+ */
 export function paint() {
-  if (!CONFIG || !CONFIG.overview) return;
+  if (!CONFIG || !CONFIG.overview || undrawableForm()) return;
   formFor(chartOnScreen()).paint({
     svg: D3.select("#chart"),
     colour: { link: linkColor, node: nodeColor },
@@ -2308,7 +2312,9 @@ export async function main() {
   wireTheme();
   wireColumns();
   // This script against the page it was served in: app.js is cached
-  // separately and carries no stamp, so a constant is the only handshake.
+  // separately and carries no stamp, so a constant is the only handshake. It
+  // holds the page to core.js; nothing yet holds the three modules to each
+  // other (fisc-mokd).
   if (CONFIG.schema_version !== SCHEMA_VERSION) {
     fail("This page will not draw: it was packaged for schema_version " +
       CONFIG.schema_version + " and this script renders schema_version " +
