@@ -507,7 +507,7 @@ func views(built result) ([]export.View, error) {
 		// Declared rather than left to d3's inference so a step's kept flank has a
 		// column to be adjacent to. On both spine goldens the layout is identical
 		// either way, which the client's layout test pins.
-		RenderTiers: []int{0, 2, 5},
+		Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{0, 2, 5}}},
 	}
 	// The spine opens into fund-flows, and fund-flows into itself (fisc-ko1j).
 	//
@@ -529,24 +529,26 @@ func views(built result) ([]export.View, error) {
 				After:      []string{""},
 				From:       2,
 				Projection: project.FundFlowsProjection,
-				// [revenue categories | this group | its funds]: the spine draws tier 0 left
-				// of tier 2, so the window pushes right.
-				Keep: []int{0},
-				// Two more columns where there is room: the divisions that spend each fund,
-				// and the object categories they spend on. Only the General Fund fills tier
-				// 4 (pp.167-170), so other groups' windows draw nothing there and the
-				// client drops the column (fisc-84y5); every group fills tier 5, the General
-				// Fund through its divisions and every other fund from pp.173-183.
-				Tiers: []int{0, 2, 3, 4, 5},
-				Widen: []int{4, 5},
-				// Special-revenue's 31-32 funds fold to 8 with no sub-pixel ribbon; uncapped,
-				// up to 9 of its ribbons lie under a pixel. The tier-4 cap is the fund step's,
-				// inert against fund/100's 23 divisions, and the tier-5 cap is the fund
-				// step's too.
-				// Tier 5 is a fund's or a division's own object rows, not the
-				// four categories, so its tail counts rows.
-				Caps: []export.TierCap{{Tier: 3, Cap: 8}, {Tier: 4, Cap: 24, Tail: "divisions"},
-					{Tier: 5, Cap: 8, Tail: "object rows"}},
+				Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
+					// [revenue categories | this group | its funds]: the spine draws tier 0 left
+					// of tier 2, so the window pushes right.
+					Keep: []int{0},
+					// Two more columns where there is room: the divisions that spend each fund,
+					// and the object categories they spend on. Only the General Fund fills tier
+					// 4 (pp.167-170), so other groups' windows draw nothing there and the
+					// client drops the column (fisc-84y5); every group fills tier 5, the General
+					// Fund through its divisions and every other fund from pp.173-183.
+					Tiers: []int{0, 2, 3, 4, 5},
+					Widen: []int{4, 5},
+					// Special-revenue's 31-32 funds fold to 8 with no sub-pixel ribbon; uncapped,
+					// up to 9 of its ribbons lie under a pixel. The tier-4 cap is the fund step's,
+					// inert against fund/100's 23 divisions, and the tier-5 cap is the fund
+					// step's too.
+					// Tier 5 is a fund's or a division's own object rows, not the
+					// four categories, so its tail counts rows.
+					Caps: []export.TierCap{{Tier: 3, Cap: 8}, {Tier: 4, Cap: 24, Tail: "divisions"},
+						{Tier: 5, Cap: 8, Tail: "object rows"}},
+				}},
 				Noun: "fund group",
 				// pp.127-140 print no fund-balance row, so a draw the spine sends into a
 				// group reaches no fund here.
@@ -586,17 +588,19 @@ func views(built result) ([]export.View, error) {
 				After: []string{"fund-group"},
 				From:  3,
 				Role:  project.RoleGeneralFund,
-				// [the group | this fund | the divisions that spend it].
-				Keep: []int{2},
-				// Tier 5 is the object categories each division spends on, drawn at the end
-				// away from the kept flank. Tiers is where columns are drawn, Widen which a
-				// narrow client drops first; validateSteps refuses either alone.
-				Tiers: []int{2, 3, 4, 5},
-				Widen: []int{5},
-				// The division cap is inert (23 divisions) and pinned so. The tier-5 cap makes
-				// the widened column drawable: uncapped, its 44 cells leave 11 nodes of no
-				// height.
-				Caps: []export.TierCap{{Tier: 4, Cap: 24}, {Tier: 5, Cap: 8, Tail: "object rows"}},
+				Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
+					// [the group | this fund | the divisions that spend it].
+					Keep: []int{2},
+					// Tier 5 is the object categories each division spends on, drawn at the end
+					// away from the kept flank. Tiers is where columns are drawn, Widen which a
+					// narrow client drops first; validateSteps refuses either alone.
+					Tiers: []int{2, 3, 4, 5},
+					Widen: []int{5},
+					// The division cap is inert (23 divisions) and pinned so. The tier-5 cap makes
+					// the widened column drawable: uncapped, its 44 cells leave 11 nodes of no
+					// height.
+					Caps: []export.TierCap{{Tier: 4, Cap: 24}, {Tier: 5, Cap: 8, Tail: "object rows"}},
+				}},
 				Noun: "fund",
 				Back: "All funds",
 				Tail: "divisions",
@@ -617,13 +621,15 @@ func views(built result) ([]export.View, error) {
 				Key:   "division",
 				After: []string{"fund"},
 				From:  4,
-				// [the fund | this division | what it spends on].
-				Keep:  []int{3},
-				Tiers: []int{3, 4, 5},
-				Caps:  []export.TierCap{{Tier: 5, Cap: 8}},
-				Noun:  "division",
-				Back:  "All divisions",
-				Tail:  "categories",
+				Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
+					// [the fund | this division | what it spends on].
+					Keep:  []int{3},
+					Tiers: []int{3, 4, 5},
+					Caps:  []export.TierCap{{Tier: 5, Cap: 8}},
+				}},
+				Noun: "division",
+				Back: "All divisions",
+				Tail: "categories",
 				Description: "The fund that pays for this division is on the left and the " +
 					"object categories it spends on are on the right — that division's " +
 					"cells of Budget Book pp.167-170, rescaled to its total.",
@@ -637,14 +643,16 @@ func views(built result) ([]export.View, error) {
 				From:       0,
 				Role:       project.RoleRevenueSource,
 				Projection: project.FundFlowsProjection,
-				// A window centred on the category: its pp.127-140 lines on one side, the fund
-				// groups it reaches on the other. The spine draws tier 2 right of tier 0, so
-				// the window pushes left.
-				Keep:  []int{2},
-				Tiers: []int{1, 0, 2},
-				// Five of the ten categories print more than nine lines, so the line cap
-				// engages; no category reaches more than five of the six fund groups.
-				Caps: []export.TierCap{{Tier: 1, Cap: 8}},
+				Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
+					// A window centred on the category: its pp.127-140 lines on one side, the fund
+					// groups it reaches on the other. The spine draws tier 2 right of tier 0, so
+					// the window pushes left.
+					Keep:  []int{2},
+					Tiers: []int{1, 0, 2},
+					// Five of the ten categories print more than nine lines, so the line cap
+					// engages; no category reaches more than five of the six fund groups.
+					Caps: []export.TierCap{{Tier: 1, Cap: 8}},
+				}},
 				Noun: "revenue category",
 				Back: "All revenue categories",
 				Tail: "lines",
@@ -674,13 +682,15 @@ func views(built result) ([]export.View, error) {
 				From:       5,
 				Role:       project.RoleObjectCategory,
 				Projection: project.DepartmentSpendingProjection,
-				Keep:       []int{2},
-				Tiers:      []int{2, 5, 4},
-				Caps:       []export.TierCap{{Tier: 4, Cap: 8}},
-				Noun:       "object category",
-				Back:       "All object categories",
-				Tail:       "divisions",
-				Gaps:       gaps,
+				Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
+					Keep:  []int{2},
+					Tiers: []int{2, 5, 4},
+					Caps:  []export.TierCap{{Tier: 4, Cap: 8}},
+				}},
+				Noun: "object category",
+				Back: "All object categories",
+				Tail: "divisions",
+				Gaps: gaps,
 				Description: "The fund groups that pay for this object category are on the " +
 					"left; the divisions that spend it are on the right \u2014 Budget Book " +
 					"pp.85-125's rows for this category, every division in the city that " +
@@ -704,13 +714,15 @@ func views(built result) ([]export.View, error) {
 	if opensInto(export.PrimaryProjection, project.TransfersByFundProjection, projections) {
 		spine.Steps = append(spine.Steps, []export.DrillStep{
 			{
-				Key:        "transfers",
-				After:      []string{""},
-				From:       0,
-				Side:       export.SideSource,
+				Key:   "transfers",
+				After: []string{""},
+				From:  0,
+				Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
+					Side:  export.SideSource,
+					Tiers: []int{2, 3},
+				}},
 				Role:       project.RoleTransferIn,
 				Projection: project.TransfersByFundProjection,
-				Tiers:      []int{2, 3},
 				Noun:       "money coming in",
 				Back:       "All money coming in",
 				Tail:       "funds",
@@ -738,11 +750,13 @@ func views(built result) ([]export.View, error) {
 				From:       5,
 				Role:       project.RoleTransferOut,
 				Projection: project.TransfersOutProjection,
-				Tiers:      []int{3, 5},
-				Caps:       []export.TierCap{{Tier: 3, Cap: 10}, {Tier: 5, Cap: 10}},
-				Noun:       "money going out",
-				Back:       "All money going out",
-				Tail:       "funds",
+				Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
+					Tiers: []int{3, 5},
+					Caps:  []export.TierCap{{Tier: 3, Cap: 10}, {Tier: 5, Cap: 10}},
+				}},
+				Noun: "money going out",
+				Back: "All money going out",
+				Tail: "funds",
 				Description: "Budget Book p76 and p222: the funds that pay each transfer the " +
 					"city makes are on the left, and the funds that receive them are on the " +
 					"right. p76 lists the transfers between operating funds and p222 the " +
@@ -769,12 +783,14 @@ func views(built result) ([]export.View, error) {
 				From:       3,
 				Role:       project.RoleFund,
 				Projection: project.DepartmentFundingProjection,
-				// [the group | this fund | the departments it pays for].
-				Keep:  []int{2},
-				Tiers: []int{2, 3, 4},
-				Noun:  "fund",
-				Back:  "All funds",
-				Tail:  "departments",
+				Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
+					// [the group | this fund | the departments it pays for].
+					Keep:  []int{2},
+					Tiers: []int{2, 3, 4},
+				}},
+				Noun: "fund",
+				Back: "All funds",
+				Tail: "departments",
 				// NO DIRECTION AND NO ACCOUNT OF THE DIFFERENCE: either side
 				// is the larger on some fund in both committed columns.
 				Description: "The fund group this fund belongs to is on the left and the " +

@@ -104,7 +104,7 @@ func writeHistorySite(t *testing.T, doc []byte, sections []export.Section) (stri
 		},
 		Views: []export.View{
 			{Path: export.IndexPath, Nav: "Budget flows",
-				Template: export.SankeyTemplate, Projection: "sankey"},
+				Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "sankey"},
 			{Path: "balances.html", Nav: "Fund balances",
 				Template: export.HistoryTemplate, Projection: "fund-balances",
 				Sections: sections, Title: "Fund balances", Lede: "A lede."},

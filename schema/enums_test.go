@@ -9,6 +9,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
+	"github.com/jcrussell/livermore-budget/internal/export"
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/project"
@@ -62,12 +63,13 @@ func enumAt(t *testing.T, file string, path ...string) []string {
 // never writes is a promise about nothing.
 func TestEverySharedEnumIsItsGoSet(t *testing.T) {
 	for def, want := range map[string][]string{
-		"basis":     strs(mapping.Bases()),
-		"kind":      strs(mapping.Kinds()),
-		"sign":      strs(mapping.Signs()),
-		"units":     strs(amount.AllUnits()),
-		"link_kind": strs(project.LinkKinds()),
-		"role":      strs(project.Roles()),
+		"basis":      strs(mapping.Bases()),
+		"kind":       strs(mapping.Kinds()),
+		"sign":       strs(mapping.Signs()),
+		"units":      strs(amount.AllUnits()),
+		"link_kind":  strs(project.LinkKinds()),
+		"role":       strs(project.Roles()),
+		"chart_form": strs(export.ChartForms()),
 	} {
 		if diff := cmp.Diff(want, enumAt(t, "enums.schema.json", "$defs", def)); diff != "" {
 			t.Errorf("enums.schema.json's %s and its Go set differ (-go +schema):\n%s", def, diff)

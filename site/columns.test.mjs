@@ -295,8 +295,8 @@ describe("a widened step", () => {
     const config = structuredClone(pageFixture().config);
     config.steps = config.steps.map((s) => {
       if (s.key !== "fund-group") return s;
-      const own = s.tiers.filter((t) => !(s.widen || []).includes(t));
-      return Object.assign({}, s, { tiers: own.concat(into), widen: into.slice() });
+      const own = s.sankey.tiers.filter((t) => !(s.sankey.widen || []).includes(t));
+      return Object.assign({}, s, { sankey: Object.assign({}, s.sankey, { tiers: own.concat(into), widen: into.slice() }) });
     });
     return config;
   }
@@ -492,7 +492,7 @@ describe("a widened step", () => {
       const config = widenFundGroup([4, 5]);
       const group = config.steps.find((s) => s.key === "fund-group");
       const fund = config.steps.find((s) => s.key === "fund");
-      assert.ok(fund.tiers.every((tier) => group.tiers.includes(tier)) && fund.tiers.length < group.tiers.length);
+      assert.ok(fund.sankey.tiers.every((tier) => group.sankey.tiers.includes(tier)) && fund.sankey.tiers.length < group.sankey.tiers.length);
       const at = await windowAt("sankey", budget, path, config);
       seen.push(`budget ${budget}: {${at.tiers}}, ${at.nodes} nodes, ${at.links} links, bands ${at.bands}, ${at.banners} banner(s)`);
       assert.equal(at.banners, 0);

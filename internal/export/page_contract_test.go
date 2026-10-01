@@ -23,7 +23,9 @@ import (
 // silent until a reader switches year. The schema's additionalProperties: false
 // is also what refuses a `text` on caveatRef.
 func TestTheSchemaStatesWhatThePageConfigCarries(t *testing.T) {
-	stated, err := schema.Names(schema.Page)
+	// Deep, because the Sankey hints are one $def the overview and every step
+	// share, and a $ref is a leaf to Names.
+	stated, err := schema.NamesDeep(schema.Page)
 	if err != nil {
 		t.Fatalf("read %s: %v", schema.Page, err)
 	}

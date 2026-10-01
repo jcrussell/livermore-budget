@@ -21,9 +21,11 @@ looks.
 ### Go vets, JavaScript renders
 
 **What EXISTS goes in Go, emitted vetted**: which nodes, which links, which
-documents, which steps and their declarations -- tiers, flank, role, caps,
-widen, residual endpoints and grain, gap licences in cents. Every figure Go
-emits is cited and checked.
+documents, which steps and their declarations -- role, residual endpoints and
+grain, gap licences in cents -- and for every chart its **form**, with that
+form's hints under the form's own key (the Sankey's tiers, flank, caps and
+widen). A hint foreign to the declared form is refused at the write. Every
+figure Go emits is cited and checked.
 
 **Folding is JavaScript's.** Only the client knows the screen, and it is
 trusted with sums and lengths over figures Go has cited: which ribbons a rung

@@ -1387,11 +1387,13 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 			After:      []string{""},
 			From:       2,
 			Projection: project.FundFlowsProjection,
-			Keep:       []int{0},
-			Tiers:      []int{0, 2, 3, 4, 5},
-			Widen:      []int{4, 5},
-			Caps: []export.TierCap{{Tier: 3, Cap: 8}, {Tier: 4, Cap: 24, Tail: "divisions"},
-				{Tier: 5, Cap: 8, Tail: "object rows"}},
+			Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
+				Keep:  []int{0},
+				Tiers: []int{0, 2, 3, 4, 5},
+				Widen: []int{4, 5},
+				Caps: []export.TierCap{{Tier: 3, Cap: 8}, {Tier: 4, Cap: 24, Tail: "divisions"},
+					{Tier: 5, Cap: 8, Tail: "object rows"}},
+			}},
 			Noun: "fund group",
 			Back: "All fund groups",
 			Tail: "funds",
@@ -1420,13 +1422,15 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 			After: []string{"fund-group"},
 			From:  3,
 			Role:  "general_fund",
-			Keep:  []int{2},
-			Tiers: []int{2, 3, 4, 5},
-			Widen: []int{5},
-			Caps:  []export.TierCap{{Tier: 4, Cap: 24}, {Tier: 5, Cap: 8, Tail: "object rows"}},
-			Noun:  "fund",
-			Back:  "All funds",
-			Tail:  "divisions",
+			Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
+				Keep:  []int{2},
+				Tiers: []int{2, 3, 4, 5},
+				Widen: []int{5},
+				Caps:  []export.TierCap{{Tier: 4, Cap: 24}, {Tier: 5, Cap: 8, Tail: "object rows"}},
+			}},
+			Noun: "fund",
+			Back: "All funds",
+			Tail: "divisions",
 			Description: "The fund group this fund belongs to is on the left and the " +
 				"divisions that spend it are on the right \u2014 that fund's rows of " +
 				"Budget Book pp.167-170, rescaled to its total. The two sides of the " +
@@ -1441,12 +1445,14 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 			Key:   "division",
 			After: []string{"fund"},
 			From:  4,
-			Keep:  []int{3},
-			Tiers: []int{3, 4, 5},
-			Caps:  []export.TierCap{{Tier: 5, Cap: 8}},
-			Noun:  "division",
-			Back:  "All divisions",
-			Tail:  "categories",
+			Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
+				Keep:  []int{3},
+				Tiers: []int{3, 4, 5},
+				Caps:  []export.TierCap{{Tier: 5, Cap: 8}},
+			}},
+			Noun: "division",
+			Back: "All divisions",
+			Tail: "categories",
 			Description: "The fund that pays for this division is on the left and the " +
 				"object categories it spends on are on the right \u2014 that division's " +
 				"cells of Budget Book pp.167-170, rescaled to its total.",
@@ -1457,12 +1463,14 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 			From:       0,
 			Role:       "revenue_source",
 			Projection: project.FundFlowsProjection,
-			Keep:       []int{2},
-			Tiers:      []int{1, 0, 2},
-			Caps:       []export.TierCap{{Tier: 1, Cap: 8}},
-			Noun:       "revenue category",
-			Back:       "All revenue categories",
-			Tail:       "lines",
+			Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
+				Keep:  []int{2},
+				Tiers: []int{1, 0, 2},
+				Caps:  []export.TierCap{{Tier: 1, Cap: 8}},
+			}},
+			Noun: "revenue category",
+			Back: "All revenue categories",
+			Tail: "lines",
 			Description: "The lines Budget Book pp.127-140 print under this revenue " +
 				"category are on the left; the fund groups its money reaches are on the " +
 				"right, as the citywide chart draws them. The category itself is the mark " +
@@ -1477,12 +1485,14 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 			From:       5,
 			Role:       "object_category",
 			Projection: project.DepartmentSpendingProjection,
-			Keep:       []int{2},
-			Tiers:      []int{2, 5, 4},
-			Caps:       []export.TierCap{{Tier: 4, Cap: 8}},
-			Noun:       "object category",
-			Back:       "All object categories",
-			Tail:       "divisions",
+			Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
+				Keep:  []int{2},
+				Tiers: []int{2, 5, 4},
+				Caps:  []export.TierCap{{Tier: 4, Cap: 8}},
+			}},
+			Noun: "object category",
+			Back: "All object categories",
+			Tail: "divisions",
 			// Derived from the exceptions cuts-tie-along-the-lattice pins.
 			Gaps: must[map[string][]project.Gap](t)(project.SpendingGaps()),
 			Description: "The fund groups that pay for this object category are on the " +
@@ -1496,13 +1506,15 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 		{
 			// No flank because it opens a source: validateSteps refuses Keep
 			// and Side together.
-			Key:        "transfers",
-			After:      []string{""},
-			From:       0,
-			Side:       export.SideSource,
+			Key:   "transfers",
+			After: []string{""},
+			From:  0,
+			Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
+				Side:  export.SideSource,
+				Tiers: []int{2, 3},
+			}},
 			Role:       "transfer_in",
 			Projection: project.TransfersByFundProjection,
-			Tiers:      []int{2, 3},
 			Noun:       "money coming in",
 			Back:       "All money coming in",
 			Tail:       "funds",
@@ -1521,11 +1533,13 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 			From:       5,
 			Role:       "transfer_out",
 			Projection: project.TransfersOutProjection,
-			Tiers:      []int{3, 5},
-			Caps:       []export.TierCap{{Tier: 3, Cap: 10}, {Tier: 5, Cap: 10}},
-			Noun:       "money going out",
-			Back:       "All money going out",
-			Tail:       "funds",
+			Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
+				Tiers: []int{3, 5},
+				Caps:  []export.TierCap{{Tier: 3, Cap: 10}, {Tier: 5, Cap: 10}},
+			}},
+			Noun: "money going out",
+			Back: "All money going out",
+			Tail: "funds",
 			Description: "Budget Book p76 and p222: the funds that pay each transfer the " +
 				"city makes are on the left, and the funds that receive them are on the " +
 				"right. p76 lists the transfers between operating funds and p222 the " +
@@ -1542,11 +1556,13 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 			From:       3,
 			Role:       "fund",
 			Projection: project.DepartmentFundingProjection,
-			Keep:       []int{2},
-			Tiers:      []int{2, 3, 4},
-			Noun:       "fund",
-			Back:       "All funds",
-			Tail:       "departments",
+			Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
+				Keep:  []int{2},
+				Tiers: []int{2, 3, 4},
+			}},
+			Noun: "fund",
+			Back: "All funds",
+			Tail: "departments",
 			Description: "The fund group this fund belongs to is on the left and the " +
 				"city departments it pays for are on the right — that fund's rows " +
 				"of Budget Book pp.85-125, rescaled to its total. The two sides of the " +
@@ -1564,7 +1580,7 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 			"against this", diff)
 	}
 	// Pinned by hand: every kept flank's adjacency is read against this order.
-	if diff := cmp.Diff([]int{0, 2, 5}, spine.RenderTiers); diff != "" {
+	if diff := cmp.Diff([]int{0, 2, 5}, spine.Overview.Sankey.Tiers); diff != "" {
 		t.Errorf("the spine's render tiers (-want +got):\n%s", diff)
 	}
 }

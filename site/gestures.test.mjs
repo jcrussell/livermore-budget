@@ -30,7 +30,7 @@ function stepByKey(config, key) {
  * The tier the fund window folds its object categories at, read off the step
  * the packager ships rather than spelled here.
  */
-const CATEGORY_TIER = stepByKey(PAGE, "fund").caps.find((c) => c.tail === "object rows").tier;
+const CATEGORY_TIER = stepByKey(PAGE, "fund").sankey.caps.find((c) => c.tail === "object rows").tier;
 
 /** A mark that opens on the spine, and a flow end that opens into nothing. */
 const OPENS = "fund-group/general";
@@ -219,7 +219,7 @@ for (const year of YEARS) {
       // because no committed document draws either: a tail at a tier this
       // rung declares no cap for, and the tier already expanded.
       const group = stepByKey(PAGE, "fund-group");
-      const uncapped = group.tiers.find((tier) => !group.caps.some((c) => c.tier === tier));
+      const uncapped = group.sankey.tiers.find((tier) => !group.sankey.caps.some((c) => c.tier === tier));
       const foreign = app.expandable({ id: app.aggregateID(uncapped), tier: uncapped });
       const twice = app.expandable({ id: tail.id, tier: tail.tier });
 
@@ -339,7 +339,7 @@ describe("a carried mark under a step that would open it", () => {
     const config = structuredClone(PAGE);
     const at = config.steps.findIndex((s) => s.key === "fund");
     delete config.steps[at].role;
-    delete config.steps[at].keep;
+    delete config.steps[at].sankey.keep;
     const { app, document } = await bootedApp({ config });
     await opened(app, OPENS);
     const residual = app.projection.nodes.find((n) => app.isResidual(n.id));

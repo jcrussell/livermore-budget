@@ -9,10 +9,10 @@ import {
   loadApp, bootedApp, opened, expandAll, settle, columnFixture, goldenGraph, pageFixture, publishedColumns,
 } from "./testlib.mjs";
 
-/** A module drawing one tier set: the pinned config with render_tiers replaced. */
+/** A module drawing one tier set: the pinned config with the overview's tiers replaced. */
 async function drawing(tiers) {
   const config = structuredClone(pageFixture().config);
-  config.render_tiers = tiers;
+  config.overview.sankey.tiers = tiers;
   return (await loadApp({ config })).app;
 }
 
@@ -139,7 +139,7 @@ describe("the tail's note carries the figure the tail is drawn at", () => {
     const app = await drawing(DRAWN);
     const doc = lines();
     // Opened on the category the lines run into, which every line is drawn for.
-    const rung = { id: "revenue/tax", step: { caps: [{ tier: 0, cap: 2 }], tail: "lines" } };
+    const rung = { id: "revenue/tax", step: { sankey: { caps: [{ tier: 0, cap: 2 }] }, tail: "lines" } };
     const side = app.sideOf(doc, rung, [0, 2], false);
     const tail = side.nodes.find((n) => app.isAggregate(n.id));
     assert.ok(tail, "nothing folded");
@@ -481,9 +481,9 @@ describe("the fold preserves what it folds, on every rung at every width", () =>
    * their declared order, so every prefix of `widen` over the rest.
    */
   function widths(step) {
-    const keep = new Set(step.keep || []);
-    const fresh = step.tiers.filter((t) => !keep.has(t));
-    const widen = (step.widen || []).filter((t) => fresh.includes(t));
+    const keep = new Set(step.sankey.keep || []);
+    const fresh = step.sankey.tiers.filter((t) => !keep.has(t));
+    const widen = (step.sankey.widen || []).filter((t) => fresh.includes(t));
     const out = [];
     for (let k = 0; k <= widen.length; k++) {
       const bought = new Set(widen.slice(0, k));
@@ -523,8 +523,8 @@ describe("the fold preserves what it folds, on every rung at every width", () =>
         const key = drawsFrom(step);
         const doc = app.scheduleOf(column, key);
         assert.ok(doc, `${stem} carries no schedule ${key} for step ${step.key}`);
-        const window = Boolean(step.keep && step.keep.length);
-        const nearIsSource = window ? app.flankIsLeft(step) : step.side === app.SIDE_SOURCE;
+        const window = Boolean(step.sankey.keep && step.sankey.keep.length);
+        const nearIsSource = window ? app.flankIsLeft(step) : step.sankey.side === app.SIDE_SOURCE;
         const opens = [...app.decomposable(step, doc)].sort();
         assert.ok(opens.length > 0, `${stem}: step ${step.key} decomposes no node of ${key}`);
         for (const id of opens) {
@@ -560,7 +560,7 @@ describe("the fold preserves what it folds, on every rung at every width", () =>
             merged += kept.length - drawn.links.length;
             // (c) CAPS: a capped column holds at most cap + 1 marks, and where
             // it folded, the tail's members and the kept marks are the column.
-            for (const cap of step.caps || []) {
+            for (const cap of step.sankey.caps || []) {
               if (!tiers.includes(cap.tier)) continue;
               const own = drawn.nodes.filter((n) => n.tier === cap.tier);
               const tail = own.find((n) => app.isAggregate(n.id));

@@ -72,6 +72,30 @@ describe("the version handshake", () => {
   });
 });
 
+describe("the form handshake", () => {
+  test("a chart whose form this script holds no renderer for is refused before anything is fetched", async (t) => {
+    const asked = async (breaks) => {
+      const config = structuredClone(pageFixture().config);
+      breaks(config);
+      const { app, document, fetch } = await loadApp({ config });
+      await app.boot();
+      await settle();
+      return { fetched: fetch.asked.length, banners: said(document), forms: Array.from(app.FORMS.keys()) };
+    };
+    const overview = await asked((c) => { c.overview.form = "treemap"; });
+    const step = await asked((c) => { c.steps[c.steps.length - 1].form = "bars"; });
+    const good = await asked(() => {});
+    t.diagnostic(`this script draws ${overview.forms.join(", ")}; a treemap overview fetches ${overview.fetched} file(s) ` +
+      `and says ${JSON.stringify(overview.banners)}; a bars step fetches ${step.fetched}`);
+    assert.ok(good.fetched > 0 && good.banners.length === 0);
+    assert.equal(overview.fetched, 0);
+    assert.equal(overview.banners.length, 1);
+    assert.match(overview.banners[0], /declares a treemap chart/);
+    assert.equal(step.fetched, 0);
+    assert.match(step.banners[0], /declares a bars chart/);
+  });
+});
+
 describe("a click during the opening fetch", () => {
   // The opening fetch never settles and the reader clicks the other year.
   // wireYears removes the control's `disabled` before main() awaits, so the

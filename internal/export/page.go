@@ -600,11 +600,8 @@ type clientConfig struct {
 	KindLabels map[string]string `json:"kind_labels"`
 	// Wording is every sentence the client composes, as templates it fills.
 	Wording wording `json:"wording"`
-	// RenderTiers is the node tiers the page draws, left to right; omitted
-	// when the page draws its document whole.
-	//
-	// OMITTED AND NOT [] WHEN ABSENT, which app.js relies on.
-	RenderTiers []int `json:"render_tiers,omitempty"`
+	// Overview is the page's own chart: its form and that form's hints.
+	Overview Chart `json:"overview"`
 	// Steps is how the page opens a node, one hop per step, omitted (not [])
 	// on a page that opens none.
 	Steps []DrillStep `json:"steps,omitempty"`
@@ -1156,7 +1153,7 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		Docs:          clientDocs,
 		KindLabels:    kindLabels(),
 		Wording:       defaultWording(),
-		RenderTiers:   v.RenderTiers,
+		Overview:      v.Overview,
 		Steps:         v.Steps,
 	}
 	blob, err := encodeConfig(cfg)

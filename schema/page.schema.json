@@ -12,7 +12,8 @@
     "docs",
     "kind_labels",
     "wording"
-  ],
+  ,
+    "overview"],
   "additionalProperties": false,
   "properties": {
     "schema_version": {
@@ -253,14 +254,28 @@
         }
       }
     },
-    "render_tiers": {
-      "description": "The node tiers the page draws, left to right. OMITTED, NEVER [], WHEN ABSENT: app.js then hands the graph to d3's own aligner.",
-      "type": "array",
-      "minItems": 1,
-      "items": {
-        "type": "integer",
-        "minimum": 0
-      }
+    "overview": {
+      "description": "The page's own chart: its form and that form's hints. An overview keeps no flank, widens nothing and caps nothing, because no node has opened.",
+      "type": "object",
+      "required": ["form"],
+      "additionalProperties": false,
+      "properties": {
+        "form": {
+          "$ref": "https://jcrussell.github.io/livermore-budget/schema/enums.schema.json#/$defs/chart_form"
+        },
+        "sankey": {
+          "$ref": "https://jcrussell.github.io/livermore-budget/schema/page.schema.json#/$defs/sankey_hints",
+          "properties": { "keep": false, "widen": false, "caps": false, "side": false }
+        }
+      },
+      "allOf": [
+        {
+          "description": "A chart of form sankey carries its sankey hints, and no other form does.",
+          "if": { "properties": { "form": { "const": "sankey" } } },
+          "then": { "required": ["sankey"] },
+          "else": { "properties": { "sankey": false } }
+        }
+      ]
     },
     "steps": {
       "description": "How the page opens a node. OMITTED, NEVER [], WHEN ABSENT: app.js then isolates on a click.",
@@ -273,11 +288,24 @@
           "residual": ["residual_grain"],
           "residual_grain": ["residual"]
         },
+        "allOf": [
+          {
+            "description": "A chart of form sankey carries its sankey hints, and no other form does.",
+            "if": { "properties": { "form": { "const": "sankey" } } },
+            "then": { "required": ["sankey"] },
+            "else": { "properties": { "sankey": false } }
+          },
+          {
+            "description": "A step's Sankey names the tiers it draws once a node has opened.",
+            "if": { "properties": { "form": { "const": "sankey" } } },
+            "then": { "properties": { "sankey": { "required": ["tiers"] } } }
+          }
+        ],
         "required": [
           "key",
           "after",
           "from",
-          "tiers",
+          "form",
           "back",
           "tail",
           "noun",
@@ -302,13 +330,6 @@
             "type": "integer",
             "minimum": 0
           },
-          "side": {
-            "type": "string",
-            "enum": [
-              "source"
-            ],
-            "description": "Which end of a link the opened node is; absent for the end links point at."
-          },
           "role": {
             "description": "Which nodes at `from` open, by node.role; absent opens every node at the tier.",
             "$ref": "https://jcrussell.github.io/livermore-budget/schema/enums.schema.json#/$defs/role"
@@ -317,53 +338,13 @@
             "type": "string",
             "description": "The schedule this step draws, selected out of the year's own column; absent means the same document as the step before it."
           },
-          "tiers": {
-            "type": "array",
-            "minItems": 1,
-            "items": {
-              "type": "integer",
-              "minimum": 0
-            }
+          "form": {
+            "description": "Which renderer draws the chart once a node has opened; enums.schema.json chart_form.",
+            "$ref": "https://jcrussell.github.io/livermore-budget/schema/enums.schema.json#/$defs/chart_form"
           },
-          "keep": {
-            "type": "array",
-            "items": {
-              "type": "integer",
-              "minimum": 0
-            }
-          },
-          "widen": {
-            "type": "array",
-            "items": {
-              "type": "integer",
-              "minimum": 0
-            }
-          },
-          "caps": {
-            "type": "array",
-            "items": {
-              "description": "How many marks one tier draws before the rest fold into a tail. THE PERMISSION, NOT THE FOLD: which members fold is the client's.",
-              "type": "object",
-              "required": [
-                "tier",
-                "cap"
-              ],
-              "additionalProperties": false,
-              "properties": {
-                "tier": {
-                  "type": "integer",
-                  "minimum": 0
-                },
-                "cap": {
-                  "type": "integer",
-                  "minimum": 1
-                },
-                "tail": {
-                  "type": "string",
-                  "description": "The plural noun the folded tail is counted in; absent takes the step's own."
-                }
-              }
-            }
+          "sankey": {
+            "description": "The Sankey form's hints, present exactly when form is sankey; a step's names its tiers.",
+            "$ref": "https://jcrussell.github.io/livermore-budget/schema/page.schema.json#/$defs/sankey_hints"
           },
           "back": {
             "type": "string"
@@ -594,6 +575,73 @@
         "flow_inferred": { "type": "string", "minLength": 1 },
         "none_inferred": { "type": "string", "minLength": 1 },
         "table_pointer": { "type": "string", "minLength": 1 }
+      }
+    }
+  },
+  "$defs": {
+    "sankey_hints": {
+      "description": "What the Sankey form may fold and where, which the client's capColumn and foldDocument spend.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tiers": {
+          "description": "The tier set drawn, left to right: a column order and not only a set. Absent on the overview draws the document whole.",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "keep": {
+          "description": "The flank of the chart on screen kept beside the opened node, nearest the centre first.",
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "widen": {
+          "description": "The tiers added beyond the window's own three, in the order they are added; a narrow client drops them from the end.",
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "caps": {
+          "type": "array",
+          "items": {
+            "description": "How many marks one tier draws before the rest fold into a tail. THE PERMISSION, NOT THE FOLD: which members fold is the client's.",
+            "type": "object",
+            "required": [
+              "tier",
+              "cap"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "tier": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "cap": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "tail": {
+                "type": "string",
+                "description": "The plural noun the folded tail is counted in; absent takes the step's own."
+              }
+            }
+          }
+        },
+        "side": {
+          "type": "string",
+          "enum": [
+            "source"
+          ],
+          "description": "Which end of a link the opened node is; absent for the end links point at."
+        }
       }
     }
   }

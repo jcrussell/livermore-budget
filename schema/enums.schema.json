@@ -29,6 +29,11 @@
       "type": "string",
       "enum": ["external", "internal_transfer", "internal_service", "fund_balance"]
     },
+    "chart_form": {
+      "description": "Which renderer draws a chart; export.ChartForms.",
+      "type": "string",
+      "enum": ["sankey"]
+    },
     "role": {
       "description": "What a node is for, so a client never parses its id; project.Roles.",
       "type": "string",

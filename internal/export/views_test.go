@@ -120,7 +120,7 @@ func twoViews(t *testing.T, trendsPages ...int) string {
 		},
 		Views: []export.View{
 			{Path: export.IndexPath, Nav: "Budget flows",
-				Template: export.SankeyTemplate, Projection: "sankey"},
+				Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "sankey"},
 			{Path: "trends.html", Nav: "Revenue tables",
 				Template: export.TrendsTemplate, Projection: "revenue-trends",
 				Title: "Revenue tables", Lede: "A lede."},
@@ -266,10 +266,12 @@ func TestEveryCitationTheClientComposesResolves(t *testing.T) {
 func chartView(breaks func(*export.View)) export.View {
 	v := export.View{
 		Path: "extra.html", Template: export.SankeyTemplate, Projection: "sankey",
-		RenderTiers: []int{0, 2},
+		Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{0, 2}}},
 		Steps: []export.DrillStep{{Key: "groups", After: []string{""}, From: 2,
-			Tiers: []int{0, 3}, Back: "All groups", Noun: "thing",
-			Tail: "funds", Caps: []export.TierCap{{Tier: 3, Cap: 8}}, Description: "Opened."}},
+			Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
+				Tiers: []int{0, 3}, Caps: []export.TierCap{{Tier: 3, Cap: 8}},
+			}}, Back: "All groups", Noun: "thing",
+			Tail: "funds", Description: "Opened."}},
 	}
 	breaks(&v)
 	return v
@@ -281,8 +283,9 @@ func chartView(breaks func(*export.View)) export.View {
 func chainView(breaks func(*export.View)) export.View {
 	return chartView(func(v *export.View) {
 		v.Steps = append(v.Steps, export.DrillStep{Key: "funds", After: []string{"groups"},
-			From: 3, Tiers: []int{3, 4},
-			Back: "All funds", Noun: "thing", Tail: "divisions", Caps: []export.TierCap{{Tier: 4, Cap: 8}},
+			From:  3,
+			Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{3, 4}, Caps: []export.TierCap{{Tier: 4, Cap: 8}}}},
+			Back:  "All funds", Noun: "thing", Tail: "divisions",
 			Description: "Opened again."})
 		breaks(v)
 	})
@@ -293,8 +296,8 @@ func chainView(breaks func(*export.View)) export.View {
 // their left. TestAStepMayKeepOneFlankOfTheChartItOpensFrom is its control.
 func windowView(breaks func(*export.View)) export.View {
 	return chartView(func(v *export.View) {
-		v.Steps[0].Keep = []int{0}
-		v.Steps[0].Tiers = []int{0, 2, 3}
+		v.Steps[0].Sankey.Keep = []int{0}
+		v.Steps[0].Sankey.Tiers = []int{0, 2, 3}
 		breaks(v)
 	})
 }
@@ -313,17 +316,20 @@ func TestAStepMayKeepOneFlankOfTheChartItOpensFrom(t *testing.T) {
 	v := windowView(func(v *export.View) { v.Nav, v.Projection = "Extra", "fund-flows" })
 	v.Steps = append(v.Steps,
 		// A window the other way up: tier 0 opens and tier 2 is the flank that stays.
-		export.DrillStep{Key: "cats", After: []string{""}, From: 0, Keep: []int{2},
-			Tiers: []int{1, 0, 2}, Back: "All categories", Noun: "thing", Tail: "lines",
+		export.DrillStep{Key: "cats", After: []string{""}, From: 0,
+			Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Keep: []int{2},
+				Tiers: []int{1, 0, 2},
+			}}, Back: "All categories", Noun: "thing", Tail: "lines",
 			Description: "Opened the other way."},
 		export.DrillStep{Key: "funds", After: []string{"groups"},
-			From: 3, Tiers: []int{3, 4}, Back: "All funds", Noun: "thing", Tail: "divisions",
+			From:  3,
+			Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{3, 4}}}, Back: "All funds", Noun: "thing", Tail: "divisions",
 			Description: "Opened again."})
 	if _, err := writeSite(export.Options{
 		Dir:         dir,
 		Projections: map[string][]byte{"sankey": goldenSankey(t), "fund-flows": headlined(t, fundFlows)},
 		Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
-			Template: export.SankeyTemplate, Projection: "sankey"}, v},
+			Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "sankey"}, v},
 		Docs:        budgetDocs(),
 		GeneratedBy: "fisc test",
 	}); err != nil {
@@ -348,9 +354,9 @@ func TestAStepMayKeepOneFlankOfTheChartItOpensFrom(t *testing.T) {
 // stay drawn to their left, nearest the centre first.
 func deepWindowView(breaks func(*export.View)) export.View {
 	return chartView(func(v *export.View) {
-		v.RenderTiers = []int{1, 0, 2}
-		v.Steps[0].Keep = []int{0, 1}
-		v.Steps[0].Tiers = []int{1, 0, 2, 3}
+		v.Overview.Sankey.Tiers = []int{1, 0, 2}
+		v.Steps[0].Sankey.Keep = []int{0, 1}
+		v.Steps[0].Sankey.Tiers = []int{1, 0, 2, 3}
 		breaks(v)
 	})
 }
@@ -376,7 +382,7 @@ func TestAWindowsFlankMayBeTwoColumnsDeep(t *testing.T) {
 		{"a window widened by one column",
 			windowView(func(v *export.View) {
 				v.Nav, v.Projection = "Extra", "fund-flows"
-				v.Steps[0].Tiers, v.Steps[0].Widen = []int{0, 2, 3, 4}, []int{4}
+				v.Steps[0].Sankey.Tiers, v.Steps[0].Sankey.Widen = []int{0, 2, 3, 4}, []int{4}
 			}),
 			[]string{`"keep":[0]`, `"tiers":[0,2,3,4]`, `"widen":[4]`}},
 	} {
@@ -386,7 +392,7 @@ func TestAWindowsFlankMayBeTwoColumnsDeep(t *testing.T) {
 				Dir:         dir,
 				Projections: map[string][]byte{"sankey": goldenSankey(t), "fund-flows": headlined(t, fundFlows)},
 				Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
-					Template: export.SankeyTemplate, Projection: "sankey"}, tc.view},
+					Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "sankey"}, tc.view},
 				Docs:        budgetDocs(),
 				GeneratedBy: "fisc test",
 			}); err != nil {
@@ -407,7 +413,7 @@ func TestAWindowsFlankMayBeTwoColumnsDeep(t *testing.T) {
 		Dir:         dir,
 		Projections: map[string][]byte{"sankey": goldenSankey(t), "fund-flows": headlined(t, fundFlows)},
 		Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
-			Template: export.SankeyTemplate, Projection: "sankey"},
+			Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "sankey"},
 			windowView(func(v *export.View) { v.Nav, v.Projection = "Extra", "fund-flows" })},
 		Docs:        budgetDocs(),
 		GeneratedBy: "fisc test",
@@ -435,11 +441,16 @@ func TestAStepIsPlacedAgainstEveryChartItOpensFrom(t *testing.T) {
 	steps := func(breaks func([]export.DrillStep)) []export.DrillStep {
 		s := []export.DrillStep{
 			{Key: "a", After: []string{""}, From: 2, Projection: "fund-flows",
-				Tiers: []int{0, 3, 4}, Back: "Back", Noun: "thing", Tail: "funds", Description: "One."},
-			{Key: "b", After: []string{""}, From: 0, Side: export.SideSource, Tiers: []int{0, 2},
-				Back: "Back", Noun: "thing", Tail: "lines", Description: "Two."},
-			{Key: "c", After: []string{"a", "b"}, From: 0, Side: export.SideSource, Projection: "fund-flows",
-				Tiers: []int{0, 3}, Back: "Back", Noun: "thing", Tail: "divisions", Description: "Three."},
+				Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
+					Tiers: []int{0, 3, 4},
+				}}, Back: "Back", Noun: "thing", Tail: "funds", Description: "One."},
+			{Key: "b", After: []string{""}, From: 0,
+				Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Side: export.SideSource, Tiers: []int{0, 2}}},
+				Back:  "Back", Noun: "thing", Tail: "lines", Description: "Two."},
+			{Key: "c", After: []string{"a", "b"}, From: 0,
+				Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Side: export.SideSource,
+					Tiers: []int{0, 3},
+				}}, Projection: "fund-flows", Back: "Back", Noun: "thing", Tail: "divisions", Description: "Three."},
 		}
 		breaks(s)
 		return s
@@ -453,7 +464,7 @@ func TestAStepIsPlacedAgainstEveryChartItOpensFrom(t *testing.T) {
 			},
 			Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
 				Template: export.SankeyTemplate, Projection: "sankey",
-				RenderTiers: []int{0, 2, 5}, Steps: s}},
+				Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{0, 2, 5}}}, Steps: s}},
 			Docs:        budgetDocs(),
 			GeneratedBy: "fisc test",
 		})
@@ -469,7 +480,7 @@ func TestAStepIsPlacedAgainstEveryChartItOpensFrom(t *testing.T) {
 	}{
 		{"the second parent cannot reach it", func(s []export.DrillStep) {
 			// Tier 4 is a column of "a" and not of "b".
-			s[2].From, s[2].Tiers = 4, []int{4, 5}
+			s[2].From, s[2].Sankey.Tiers = 4, []int{4, 5}
 		}, "step \"b\" draws tiers [0 2]"},
 		{"the two parents draw different documents", func(s []export.DrillStep) {
 			s[2].Projection = ""
@@ -614,7 +625,7 @@ func TestTheCaveatsPagePromisesAChartFlagOnlyWhereThereIsAChart(t *testing.T) {
 		},
 		Views: []export.View{
 			{Path: export.IndexPath, Nav: "Budget flows",
-				Template: export.SankeyTemplate, Projection: export.PrimaryProjection},
+				Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: export.PrimaryProjection},
 			{Path: "trends.html", Nav: "Revenue tables", Template: export.TrendsTemplate,
 				Projection: "revenue-trends", Title: "Trends", Lede: "A lede."},
 			{Path: "caveats.html", Nav: "Caveats", Template: export.CaveatsTemplate,
@@ -676,10 +687,12 @@ func TestTheCaveatsPagePromisesAChartFlagOnAStepsDocument(t *testing.T) {
 		Views: []export.View{
 			{Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate,
 				Projection: "sankey", YearStems: []string{"sankey", "sankey-2027"},
-				RenderTiers: []int{0, 2, 5},
+				Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{0, 2, 5}}},
 				Steps: []export.DrillStep{{Key: "group", After: []string{""}, From: 2,
 					Projection: "fund-flows",
-					Tiers:      []int{0, 3, 4}, Back: "All fund groups", Noun: "thing", Tail: "funds", Description: "One."}}},
+					Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
+						Tiers: []int{0, 3, 4},
+					}}, Back: "All fund groups", Noun: "thing", Tail: "funds", Description: "One."}}},
 			{Path: "caveats.html", Nav: "Caveats", Template: export.CaveatsTemplate,
 				Title: "Caveats", Lede: "A lede."},
 		},
@@ -821,19 +834,19 @@ func TestASingleViewSiteRendersNoNav(t *testing.T) {
 // and nowhere else.
 func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 	ok := export.View{Path: export.IndexPath, Nav: "Budget flows",
-		Template: export.SankeyTemplate, Projection: "sankey"}
+		Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "sankey"}
 	cases := []struct {
 		name  string
 		views []export.View
 		want  string
 	}{
 		{"no index", []export.View{{Path: "trends.html",
-			Template: export.SankeyTemplate, Projection: "sankey"}}, "opens on exactly one"},
+			Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "sankey"}}, "opens on exactly one"},
 		{"two indexes", []export.View{ok, ok}, "two views claim the output path"},
 		{"a path that is not html", []export.View{ok, {Path: "revenue.txt",
-			Template: export.SankeyTemplate, Projection: "sankey"}}, "not an .html file"},
+			Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "sankey"}}, "not an .html file"},
 		{"a path in a subdirectory", []export.View{ok, {Path: "views/trends.html",
-			Template: export.SankeyTemplate, Projection: "sankey"}}, "not at the site root"},
+			Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "sankey"}}, "not at the site root"},
 		// THE SHADOWING MESSAGE, not "not an .html file". This case is named for
 		// the fixed-layout guard and used to assert the suffix check, which is to
 		// say it pinned the guard's UNREACHABILITY: every fixedPaths key is
@@ -841,17 +854,17 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 		// distinction is what the reader does next -- "not an .html file" invites
 		// renaming app.js to app.html, which shadows nothing and is still wrong.
 		{"a path that shadows an asset", []export.View{ok, {Path: "app.js",
-			Template: export.SankeyTemplate, Projection: "sankey"}},
+			Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "sankey"}},
 			"part of the fixed site layout"},
 		// And a genuine non-html path still gets the suffix message, so moving
 		// the arm has not swallowed the case it used to answer.
 		{"a path that shadows nothing and is not html", []export.View{ok,
-			{Path: "notes.txt", Template: export.SankeyTemplate, Projection: "sankey"}},
+			{Path: "notes.txt", Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "sankey"}},
 			"not an .html file"},
 		// A lede on a template that renders none was set, exported and dropped in
 		// silence -- the field is a trap for the next caller unless it fails.
 		{"a lede the template cannot render", []export.View{ok,
-			{Path: "extra.html", Template: export.SankeyTemplate, Projection: "sankey",
+			{Path: "extra.html", Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "sankey",
 				Lede: "a sentence that would go nowhere"}},
 			"has no {{.Lede}}"},
 		// The drill family, every arm: `chart` below is a well-formed chart view and
@@ -862,11 +875,13 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 			{Path: "trends.html", Nav: "Revenue tables", Template: export.TrendsTemplate,
 				Projection: "sankey",
 				Steps: []export.DrillStep{{Key: "g", After: []string{""}, From: 2,
-					Tiers: []int{0, 3}, Back: "b", Noun: "thing", Tail: "t",
+					Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
+						Tiers: []int{0, 3},
+					}}, Back: "b", Noun: "thing", Tail: "t",
 					Description: "d."}}}},
-			"the chart would isolate on a click while this view believes it opens"},
+			"the chain would be dropped in silence"},
 		{"a drill with no tiers", []export.View{ok,
-			chartView(func(v *export.View) { v.Steps[0].Tiers = nil })},
+			chartView(func(v *export.View) { v.Steps[0].Sankey.Tiers = nil })},
 			"drawn by the same tier set it was closed under"},
 		{"a drill with no tail noun", []export.View{ok,
 			chartView(func(v *export.View) { v.Steps[0].Tail = "" })},
@@ -894,14 +909,14 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 		// Its own arm: an empty tier set draws every tier, so the From arm cannot
 		// refuse it, and the chart would lay every node out at zero height.
 		{"a drill on a page that declares no tiers", []export.View{ok,
-			chartView(func(v *export.View) { v.RenderTiers = nil })},
+			chartView(func(v *export.View) { v.Overview.Sankey.Tiers = nil })},
 			"lays every node out at zero height"},
 		{"a drill with no cap", []export.View{ok,
-			chartView(func(v *export.View) { v.Steps[0].Caps[0].Cap = 0 })},
+			chartView(func(v *export.View) { v.Steps[0].Sankey.Caps[0].Cap = 0 })},
 			"a column of one node is not a chart"},
 		// The chain's own arms, each broken on the second step.
 		{"a second step with no tiers", []export.View{ok,
-			chainView(func(v *export.View) { v.Steps[1].Tiers = nil })},
+			chainView(func(v *export.View) { v.Steps[1].Sankey.Tiers = nil })},
 			"step 1 with no tiers"},
 		{"a second step with no tail noun", []export.View{ok,
 			chainView(func(v *export.View) { v.Steps[1].Tail = "" })},
@@ -915,7 +930,7 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 			chainView(func(v *export.View) { v.Steps[1].From = 5 })},
 			"a rung nothing on the chart can reach"},
 		{"a step that redraws the tiers it opened from", []export.View{ok,
-			chainView(func(v *export.View) { v.Steps[1].Tiers = []int{0, 3}; v.Steps[1].Caps = nil })},
+			chainView(func(v *export.View) { v.Steps[1].Sankey.Tiers = []int{0, 3}; v.Steps[1].Sankey.Caps = nil })},
 			"the set step \"groups\" already draws"},
 		// The tree's own arms: a step nothing can name, two steps answering to one
 		// name, a parent that does not exist, a parent declared later, and two steps
@@ -943,8 +958,9 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 				// A third step whose parent list is not step 1's, both opening tier 3 of
 				// "groups" in no role.
 				v.Steps = append(v.Steps, export.DrillStep{Key: "x",
-					After: []string{"funds", "groups"}, From: 3, Tiers: []int{0, 4},
-					Back: "Back", Noun: "thing", Tail: "things", Description: "Opened a third time."})
+					After: []string{"funds", "groups"}, From: 3,
+					Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{0, 4}}},
+					Back:  "Back", Noun: "thing", Tail: "things", Description: "Opened a third time."})
 			})},
 			"both opening tier 3 of step \"groups\"'s chart"},
 		// This arm is what keeps a cycle undeclarable.
@@ -960,7 +976,7 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 			})},
 			"a step with no role opens EVERY node at its tier"},
 		{"a step opening a side this package does not declare", []export.View{ok,
-			chartView(func(v *export.View) { v.Steps[0].Side = "Source" })},
+			chartView(func(v *export.View) { v.Steps[0].Sankey.Side = "Source" })},
 			"opens side \"Source\""},
 		// Every root is placed, not only the first step: the second is made a root.
 		{"a second root from a tier the page does not draw", []export.View{ok,
@@ -968,68 +984,69 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 			"step 1 drills from tier 5"},
 		// The window's own arms, each breaking one clause of a well-formed window.
 		{"a window keeping a second flank where its centre is", []export.View{ok,
-			windowView(func(v *export.View) { v.Steps[0].Keep = []int{0, 2} })},
+			windowView(func(v *export.View) { v.Steps[0].Sankey.Keep = []int{0, 2} })},
 			"one column each and one more for every widening -- 4 columns here, and not 3"},
 		// A flank is contiguous and runs out from the centre; these break each half.
 		{"a flank with a gap in it", []export.View{ok,
 			deepWindowView(func(v *export.View) {
-				v.RenderTiers = []int{6, 1, 0, 2}
-				v.Steps[0].Keep = []int{0, 6}
-				v.Steps[0].Tiers = []int{6, 0, 2, 3}
+				v.Overview.Sankey.Tiers = []int{6, 1, 0, 2}
+				v.Steps[0].Sankey.Keep = []int{0, 6}
+				v.Steps[0].Sankey.Tiers = []int{6, 0, 2, 3}
 			})},
 			"a gap in it is a column the reader was looking at dropped out of the middle"},
 		{"a flank declared outermost first", []export.View{ok,
-			deepWindowView(func(v *export.View) { v.Steps[0].Keep = []int{1, 0} })},
+			deepWindowView(func(v *export.View) { v.Steps[0].Sankey.Keep = []int{1, 0} })},
 			"the kept columns are the ones at ONE end of what the step draws, outermost first"},
 		// A parent keeping two columns tells a membership test from a test of the
 		// first entry: the child opens the outermost kept column.
 		{"a step opening the outer tier of a two-deep flank above it", []export.View{ok,
 			deepWindowView(func(v *export.View) {
 				v.Steps = append(v.Steps, export.DrillStep{Key: "outer", After: []string{"groups"},
-					From: 1, Tiers: []int{1, 6}, Back: "All of them", Noun: "thing", Tail: "things",
+					From:  1,
+					Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{1, 6}}}, Back: "All of them", Noun: "thing", Tail: "things",
 					Description: "Opened off the outer kept column."})
 			})},
 			"which KEEPS that tier"},
 		// A tier is a column: two columns of one tier draw the same nodes twice.
 		{"a step drawing one tier twice", []export.View{ok,
-			chartView(func(v *export.View) { v.Steps[0].Tiers = []int{0, 3, 0} })},
+			chartView(func(v *export.View) { v.Steps[0].Sankey.Tiers = []int{0, 3, 0} })},
 			"which name tier 0 twice"},
 		// The widening's own arms. A widened column is declared in both Tiers and
 		// Widen so the two can be held against each other, and a step with no flank
 		// has no centre to widen out from.
 		{"a widening on a step that keeps nothing", []export.View{ok,
-			windowView(func(v *export.View) { v.Steps[0].Keep, v.Steps[0].Widen = nil, []int{4} })},
+			windowView(func(v *export.View) { v.Steps[0].Sankey.Keep, v.Steps[0].Sankey.Widen = nil, []int{4} })},
 			"has no centre to add a column out from"},
 		{"a widening the step draws no column for", []export.View{ok,
-			windowView(func(v *export.View) { v.Steps[0].Widen = []int{4} })},
+			windowView(func(v *export.View) { v.Steps[0].Sankey.Widen = []int{4} })},
 			"one column each and one more for every widening -- 4 columns here, and not 3"},
 		{"a widening drawn somewhere other than the end away from the flank", []export.View{ok,
 			windowView(func(v *export.View) {
-				v.Steps[0].Tiers, v.Steps[0].Widen = []int{0, 2, 3, 4}, []int{3}
+				v.Steps[0].Sankey.Tiers, v.Steps[0].Sankey.Widen = []int{0, 2, 3, 4}, []int{3}
 			})},
 			"a widened column is on the opened node's side"},
 		{"a widening on the kept flank's own side", []export.View{ok,
 			windowView(func(v *export.View) {
-				v.Steps[0].Tiers, v.Steps[0].Widen = []int{1, 0, 2, 3}, []int{1}
+				v.Steps[0].Sankey.Tiers, v.Steps[0].Sankey.Widen = []int{1, 0, 2, 3}, []int{1}
 			})},
 			"a widening on the flank's side would push them off it"},
 		{"a window that also declares a side", []export.View{ok,
-			windowView(func(v *export.View) { v.Steps[0].Side = export.SideSource })},
+			windowView(func(v *export.View) { v.Steps[0].Sankey.Side = export.SideSource })},
 			"is the TARGET of one half and the SOURCE of the other"},
 		{"a window that is not three columns", []export.View{ok,
-			windowView(func(v *export.View) { v.Steps[0].Tiers = []int{0, 2} })},
+			windowView(func(v *export.View) { v.Steps[0].Sankey.Tiers = []int{0, 2} })},
 			"one column each and one more for every widening -- 3 columns here, and not 2"},
 		{"a window whose centre is not the opened tier", []export.View{ok,
-			windowView(func(v *export.View) { v.Steps[0].Tiers = []int{0, 3, 2} })},
+			windowView(func(v *export.View) { v.Steps[0].Sankey.Tiers = []int{0, 3, 2} })},
 			"the node the reader clicked is the centre of a window"},
 		{"a window keeping a tier the chart it opens from does not draw", []export.View{ok,
 			windowView(func(v *export.View) {
-				v.Steps[0].Keep = []int{5}
-				v.Steps[0].Tiers = []int{5, 2, 3}
+				v.Steps[0].Sankey.Keep = []int{5}
+				v.Steps[0].Sankey.Tiers = []int{5, 2, 3}
 			})},
 			"the flank the reader came from has to be a column they were looking at"},
 		{"a window keeping a tier that is not beside the opened one", []export.View{ok,
-			windowView(func(v *export.View) { v.RenderTiers = []int{0, 1, 2} })},
+			windowView(func(v *export.View) { v.Overview.Sankey.Tiers = []int{0, 1, 2} })},
 			"a window slides by one column"},
 		// A well-formed window hanging off a well-formed window can still open the
 		// tier its parent kept, and would send that node's whole decomposition out the
@@ -1037,30 +1054,33 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 		{"a step opening the tier the chart above kept", []export.View{ok,
 			windowView(func(v *export.View) {
 				v.Steps = append(v.Steps, export.DrillStep{Key: "cats", After: []string{"groups"},
-					From: 0, Keep: []int{2}, Tiers: []int{1, 0, 2}, Back: "All categories", Noun: "thing",
+					From:  0,
+					Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Keep: []int{2}, Tiers: []int{1, 0, 2}}}, Back: "All categories", Noun: "thing",
 					Tail: "lines", Description: "Opened off the kept flank."})
 			})},
 			"which KEEPS that tier"},
 		{"a window keeping its flank on the side the reader did not see it on",
 			[]export.View{ok, windowView(func(v *export.View) {
-				v.Steps[0].Tiers = []int{3, 2, 0}
+				v.Steps[0].Sankey.Tiers = []int{3, 2, 0}
 			})},
 			"draws to the LEFT of the opened tier 2, and draws tiers [3 2 0]"},
 		// The other direction: tier 0 opens and tier 2, drawn to its right, stays. An
 		// arm that only ever sees one sign is half a rule.
 		{"a window pushing the other way and keeping its flank on the wrong side",
 			[]export.View{ok, windowView(func(v *export.View) {
-				v.Steps[0].From, v.Steps[0].Keep = 0, []int{2}
-				v.Steps[0].Tiers = []int{2, 0, 3}
+				v.Steps[0].From, v.Steps[0].Sankey.Keep = 0, []int{2}
+				v.Steps[0].Sankey.Tiers = []int{2, 0, 3}
 			})},
 			"draws to the RIGHT of the opened tier 0, and draws tiers [2 0 3]"},
 		// A window on a chart drawn whole: refused for declaring no render tiers
 		// before any step is placed, since the chart template publishes them.
 		{"a window on a page whose chart is drawn whole", []export.View{ok,
-			{Path: "extra.html", Nav: "Extra", Template: export.SankeyTemplate,
+			{Path: "extra.html", Nav: "Extra", Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}},
 				Projection: "sankey",
 				Steps: []export.DrillStep{{Key: "g", After: []string{""}, From: 2,
-					Keep: []int{0}, Tiers: []int{0, 2, 3}, Back: "b", Noun: "thing", Tail: "t",
+					Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
+						Keep: []int{0}, Tiers: []int{0, 2, 3},
+					}}, Back: "b", Noun: "thing", Tail: "t",
 					Description: "d."}}}},
 			"drills and declares no render tiers"},
 		// A residual needs a second document and a reason: the first case declares one
@@ -1125,7 +1145,7 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 			windowView(func(v *export.View) {
 				v.Nav = "Extra"
 				v.Steps[0].Projection = "sankey"
-				v.Steps[0].Tiers, v.Steps[0].Widen = []int{0, 2, 3, 4}, []int{4}
+				v.Steps[0].Sankey.Tiers, v.Steps[0].Sankey.Widen = []int{0, 2, 3, 4}, []int{4}
 				v.Steps[0].Gaps = map[string][]project.Gap{"expenditure/services-and-supplies": {{FiscalYear: 2026, Basis: "adopted", Cents: 1, Reason: "A reason."}}}
 			})},
 			"declares a gap on 1 node(s) and widens tiers"},
@@ -1145,22 +1165,22 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 			})},
 			"licenses a gap on node \"expenditure/services-and-supplies\" for FY2027 adopted, a column the view lists no year of"},
 		{"a cap on a tier the step does not draw", []export.View{ok,
-			chartView(func(v *export.View) { v.Steps[0].Caps = []export.TierCap{{Tier: 4, Cap: 8}} })},
+			chartView(func(v *export.View) { v.Steps[0].Sankey.Caps = []export.TierCap{{Tier: 4, Cap: 8}} })},
 			"the cap would fold nothing, in silence"},
 		{"a cap declared twice for one tier", []export.View{ok,
 			chartView(func(v *export.View) {
-				v.Steps[0].Caps = []export.TierCap{{Tier: 3, Cap: 8}, {Tier: 3, Cap: 24}}
+				v.Steps[0].Sankey.Caps = []export.TierCap{{Tier: 3, Cap: 8}, {Tier: 3, Cap: 24}}
 			})},
 			"caps tier 3 twice"},
 		{"a step naming a projection that was not built", []export.View{ok,
 			chartView(func(v *export.View) { v.Steps[0].Projection = "nope" })},
 			"step 0 renders projection \"nope\", which was not built"},
 		{"a projection that was not built", []export.View{ok, {Path: "trends.html",
-			Template: export.SankeyTemplate, Projection: "nope"}}, "which was not built"},
+			Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "nope"}}, "which was not built"},
 		{"no template", []export.View{ok, {Path: "trends.html", Projection: "sankey"}},
 			"names no template"},
 		{"a year stem that was not built", []export.View{{Path: export.IndexPath,
-			Nav: "Budget flows", Template: export.SankeyTemplate, Projection: "sankey",
+			Nav: "Budget flows", Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "sankey",
 			YearStems: []string{"sankey", "sankey-2099"}}}, "names no projection that was built"},
 		// The Lede trap one field over: year stems dropped in silence lose whole
 		// documents. Only the chart template renders a year control.
@@ -1171,21 +1191,19 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 		// buildSite falls back Nav -> Title and has nothing after that, so this
 		// set shipped <a href="trends.html"></a> on every page of the site.
 		{"a view with neither a nav label nor a title", []export.View{ok,
-			{Path: "trends.html", Template: export.SankeyTemplate, Projection: "sankey"}},
+			{Path: "trends.html", Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "sankey"}},
 			"empty link"},
 		// The third field of the same family. Only the chart template publishes
-		// render_tiers; the others omit the key and app.js reads
-		// `CONFIG.render_tiers ?? []`, so a fold asked for here would draw every tier
-		// and look like a chart rather than like a defect.
-		{"render tiers a template does not publish", []export.View{ok,
+		// an overview; on any other the form would be dropped in silence.
+		{"a chart form a template does not publish", []export.View{ok,
 			{Path: "trends.html", Nav: "Revenue tables", Template: export.TrendsTemplate,
-				Projection: "sankey", RenderTiers: []int{0, 2, 4}}},
-			"publishes none"},
+				Projection: "sankey", Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{0, 2, 4}}}}},
+			"draws none"},
 		// The sections family, both directions: headings dropped in silence
 		// lose the only thing telling p167's two same-labelled blocks apart,
 		// and a history table with none puts every row under no heading.
 		{"sections a template cannot group", []export.View{ok,
-			{Path: "extra.html", Nav: "Extra", Template: export.SankeyTemplate,
+			{Path: "extra.html", Nav: "Extra", Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}},
 				Projection: "sankey",
 				Sections:   []export.Section{{Heading: "Revenues", Kind: "revenue"}}}},
 			"groups nothing"},
@@ -1222,7 +1240,7 @@ func TestAnAssetCannotShadowAView(t *testing.T) {
 		Dir:         t.TempDir(),
 		Projections: map[string][]byte{"sankey": goldenSankey(t), "revenue-trends": trendsDoc(127)},
 		Views: []export.View{
-			{Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate, Projection: "sankey"},
+			{Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "sankey"},
 			{Path: "trends.html", Nav: "Revenue tables", Template: export.TrendsTemplate, Projection: "revenue-trends"},
 		},
 		Files:       map[string][]byte{"trends.html": []byte("not the view")},
@@ -1276,7 +1294,7 @@ func TestTheTrendsViewRefusesADocumentWithNoColumns(t *testing.T) {
 		Dir:         t.TempDir(),
 		Projections: map[string][]byte{"sankey": goldenSankey(t), "revenue-trends": trendsDoc()},
 		Views: []export.View{
-			{Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate, Projection: "sankey"},
+			{Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "sankey"},
 			{Path: "trends.html", Nav: "Revenue tables", Template: export.TrendsTemplate, Projection: "revenue-trends"},
 		},
 		Docs:        budgetDocs(),
@@ -1320,12 +1338,11 @@ func readFile(t *testing.T, dir, name string) string {
 	return string(b)
 }
 
-// TestTheSpineTemplatePublishesTheColumnOrderItDeclares: templateRendersTiers
-// says the template publishes render tiers, and only a rendered page can say it
-// does. A spine whose order was dropped aligns on d3's justify and nothing
-// reports it.
+// TestTheSpineTemplatePublishesTheColumnOrderItDeclares: the chart template
+// publishes the overview's hints, and only a rendered page can say it does. A
+// spine whose order was dropped aligns on d3's justify and nothing reports it.
 //
-// The mutation: drop RenderTiers from buildSankeyPage's clientConfig.
+// The mutation: drop Overview from buildSankeyPage's clientConfig.
 func TestTheSpineTemplatePublishesTheColumnOrderItDeclares(t *testing.T) {
 	dir := t.TempDir()
 	if _, err := writeSite(export.Options{
@@ -1333,18 +1350,20 @@ func TestTheSpineTemplatePublishesTheColumnOrderItDeclares(t *testing.T) {
 		Projections: map[string][]byte{"sankey": goldenSankey(t)},
 		Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
 			Template: export.SankeyTemplate, Projection: "sankey",
-			RenderTiers: []int{0, 2, 5},
+			Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{0, 2, 5}}},
 			Steps: []export.DrillStep{{Key: "group", After: []string{""}, From: 2,
-				Tiers: []int{0, 2},
-				Back:  "All fund groups", Noun: "thing", Tail: "funds", Description: "One."}}}},
+				Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
+					Tiers: []int{0, 2},
+				}},
+				Back: "All fund groups", Noun: "thing", Tail: "funds", Description: "One."}}}},
 		Docs:        budgetDocs(),
 		GeneratedBy: "fisc test",
 	}); err != nil {
 		t.Fatalf("Write: %v", err)
 	}
 	cfg := clientConfigOf(t, readFile(t, dir, "index.html"))
-	if diff := cmp.Diff([]int{0, 2, 5}, cfg.RenderTiers); diff != "" {
-		t.Errorf("index.html's FISC_CONFIG.render_tiers (-want +got):\n%s\n"+
+	if diff := cmp.Diff([]int{0, 2, 5}, cfg.Overview.Sankey.Tiers); diff != "" {
+		t.Errorf("index.html's FISC_CONFIG.overview.sankey.tiers (-want +got):\n%s\n"+
 			"site/app.js aligns every column on this list, and reads an absent key as "+
 			"\"let d3 decide\"", diff)
 	}
@@ -1356,8 +1375,13 @@ type clientCfg struct {
 		Stem string `json:"stem"`
 		Path string `json:"path"`
 	} `json:"years"`
-	Docs        map[string]testDoc `json:"docs"`
-	RenderTiers []int              `json:"render_tiers"`
+	Docs     map[string]testDoc `json:"docs"`
+	Overview struct {
+		Form   string `json:"form"`
+		Sankey struct {
+			Tiers []int `json:"tiers"`
+		} `json:"sankey"`
+	} `json:"overview"`
 }
 
 func clientConfigOf(t *testing.T, page string) clientCfg {
@@ -1422,7 +1446,7 @@ func TestAShortSeriesDoesNotShiftItsNeighboursIntoTheWrongColumn(t *testing.T) {
 			"sankey": goldenSankey(t), "revenue-trends": short,
 		},
 		Views: []export.View{
-			{Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate, Projection: "sankey"},
+			{Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "sankey"},
 			{Path: "trends.html", Nav: "Revenue tables", Template: export.TrendsTemplate, Projection: "revenue-trends"},
 		},
 		Docs:        budgetDocs(),
@@ -1497,7 +1521,7 @@ func TestTheMarkReachesTheRenderedPage(t *testing.T) {
 		Dir:         dir,
 		Projections: map[string][]byte{"sankey": goldenSankey(t), "revenue-trends": trendsDoc(pages...)},
 		Views: []export.View{
-			{Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate, Projection: "sankey"},
+			{Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "sankey"},
 			{Path: "trends.html", Nav: "Revenue tables", Template: export.TrendsTemplate, Projection: "revenue-trends"},
 		},
 		Docs:        budgetDocs(),
@@ -1553,7 +1577,7 @@ func writeTrends(t *testing.T, raw []byte, pages ...int) error {
 			"sankey": goldenSankey(t), "revenue-trends": raw,
 		},
 		Views: []export.View{
-			{Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate, Projection: "sankey"},
+			{Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "sankey"},
 			{Path: "trends.html", Nav: "Revenue tables", Template: export.TrendsTemplate, Projection: "revenue-trends"},
 		},
 		Docs:        budgetDocs(),
@@ -1753,7 +1777,7 @@ func TestASecondYearsCitationsSurviveTheYearItDoesNotOpenOn(t *testing.T) {
 			"sankey": goldenSankey(t), "sankey-2027": raw,
 		},
 		Views: []export.View{{
-			Path: export.IndexPath, Template: export.SankeyTemplate,
+			Path: export.IndexPath, Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}},
 			Projection: "sankey", YearStems: []string{"sankey", "sankey-2027"},
 		}},
 		Docs: append(budgetDocs(), export.Doc{
@@ -1824,6 +1848,9 @@ func twoYearSankey(t *testing.T, view export.View, edit func(meta map[string]any
 
 	view.Path = export.IndexPath
 	view.Template = export.SankeyTemplate
+	if view.Overview.Form == "" {
+		view.Overview = export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}
+	}
 	view.Projection = "sankey"
 	view.YearStems = []string{"sankey", "sankey-2027"}
 
@@ -1875,7 +1902,7 @@ func TestBothChartTemplatesAcceptYearStems(t *testing.T) {
 			"sankey": goldenSankey(t), "sankey-2027": second, "fund-flows": fundFlows,
 		},
 		Views: []export.View{
-			{Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate,
+			{Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}},
 				Projection: "sankey", YearStems: []string{"sankey", "sankey-2027"}},
 		},
 		Docs:        budgetDocs(),
@@ -2148,7 +2175,7 @@ func TestATemplateWithNoArmIsRefusedRatherThanRenderedAsASpine(t *testing.T) {
 		Projections: map[string][]byte{"sankey": goldenSankey(t)},
 		Views: []export.View{
 			{Path: export.IndexPath, Nav: "Budget flows",
-				Template: export.SankeyTemplate, Projection: "sankey"},
+				Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "sankey"},
 			{Path: "unclaimed.html", Nav: "Unclaimed",
 				Template: orphan, Projection: "sankey"},
 		},
@@ -2196,7 +2223,7 @@ func TestAProjectionWithNoViewStillShipsItsCitedPages(t *testing.T) {
 		Projections: map[string][]byte{"sankey": goldenSankey(t), "revenue-trends": trendsDoc(127)},
 		Views: []export.View{
 			{Path: export.IndexPath, Nav: "Budget flows",
-				Template: export.SankeyTemplate, Projection: "sankey"},
+				Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "sankey"},
 		},
 		Docs:        budgetDocs(),
 		GeneratedBy: "fisc test",
@@ -2231,7 +2258,7 @@ func provenanceSite(t *testing.T, edit func(*export.Options)) (string, error) {
 		Projections: map[string][]byte{"sankey": goldenSankey(t)},
 		Views: []export.View{
 			{Path: export.IndexPath, Nav: "Budget flows",
-				Template: export.SankeyTemplate, Projection: "sankey"},
+				Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "sankey"},
 			{Path: "provenance.html", Nav: "Sources and data",
 				Template: export.ProvenanceTemplate, Title: "Every figure"},
 		},
@@ -2284,7 +2311,7 @@ func TestTheProvenanceViewNeedsNoProjection(t *testing.T) {
 		Projections: map[string][]byte{"sankey": goldenSankey(t)},
 		Views: []export.View{
 			{Path: export.IndexPath, Nav: "Budget flows",
-				Template: export.SankeyTemplate, Projection: "sankey"},
+				Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "sankey"},
 			{Path: "provenance.html", Nav: "Sources and data",
 				Template: export.ProvenanceTemplate, Projection: "sankey"},
 		},
@@ -2573,7 +2600,7 @@ func TestTheChartsAccessibleNameIsTheYearViewsOwnString(t *testing.T) {
 			"sankey": goldenSankey(t), "sankey-2027": second, "fund-flows": fundFlows,
 		},
 		Views: []export.View{
-			{Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate,
+			{Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}},
 				Projection: "sankey", YearStems: []string{"sankey", "sankey-2027"}},
 		},
 		Docs:        budgetDocs(),
@@ -2617,7 +2644,7 @@ func chartAndSpine(t *testing.T) string {
 		Dir:         dir,
 		Projections: map[string][]byte{"sankey": goldenSankey(t), "fund-flows": headlined(t, fundFlows)},
 		Views: []export.View{
-			{Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate,
+			{Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}},
 				Projection: "sankey"},
 		},
 		Docs:        budgetDocs(),
@@ -2859,7 +2886,7 @@ func TestTheCaveatsPageFoldsItsFileListAndNotItsReason(t *testing.T) {
 		},
 		Views: []export.View{
 			{Path: export.IndexPath, Nav: "Budget flows",
-				Template: export.SankeyTemplate, Projection: export.PrimaryProjection},
+				Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: export.PrimaryProjection},
 			{Path: "caveats.html", Nav: "Caveats", Template: export.CaveatsTemplate,
 				Title: "Caveats", Lede: "A lede."},
 		},
@@ -2942,12 +2969,14 @@ func TestAStepDescriptionMayCloseWithAnyTerminatorAppJsSplitsOn(t *testing.T) {
 			Projections: map[string][]byte{"sankey": goldenSankey(t), "fund-flows": headlined(t, fundFlows)},
 			Views: []export.View{
 				{Path: export.IndexPath, Nav: "Budget flows",
-					Template: export.SankeyTemplate, Projection: "sankey"},
+					Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "sankey"},
 				{Path: "spending.html", Nav: "Spending", Template: export.SankeyTemplate,
-					Projection: "fund-flows", RenderTiers: []int{0, 2, 4},
+					Projection: "fund-flows", Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{0, 2, 4}}},
 					Steps: []export.DrillStep{{Key: "groups", After: []string{""}, From: 2,
-						Tiers: []int{0, 3}, Back: "All groups", Noun: "thing", Tail: "funds",
-						Caps: []export.TierCap{{Tier: 3, Cap: 8}}, Description: tc.desc}}},
+						Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
+							Tiers: []int{0, 3},
+							Caps:  []export.TierCap{{Tier: 3, Cap: 8}},
+						}}, Back: "All groups", Noun: "thing", Tail: "funds", Description: tc.desc}}},
 			},
 			Docs:        budgetDocs(),
 			GeneratedBy: "fisc test",
@@ -3030,19 +3059,25 @@ func TestAStepsDocumentIsCitedByThePageThatOpensIt(t *testing.T) {
 	}
 	steps := []export.DrillStep{
 		{Key: "group", After: []string{""}, From: 2, Projection: "fund-flows",
-			Tiers: []int{0, 3, 4},
-			Caps:  []export.TierCap{{Tier: 3, Cap: 8}, {Tier: 4, Cap: 24, Tail: "divisions"}},
-			Back:  "All fund groups", Noun: "thing", Tail: "funds", Description: "Opened."},
+			Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
+				Tiers: []int{0, 3, 4},
+				Caps:  []export.TierCap{{Tier: 3, Cap: 8}, {Tier: 4, Cap: 24, Tail: "divisions"}},
+			}},
+			Back: "All fund groups", Noun: "thing", Tail: "funds", Description: "Opened."},
 		// A second root, on the other side and in a role, so every walked field is
 		// non-zero on the wire.
-		{Key: "category", After: []string{""}, From: 0, Side: export.SideSource, Role: "revenue_source",
-			Projection: "fund-flows", Tiers: []int{1, 3},
-			Caps: []export.TierCap{{Tier: 1, Cap: 8}, {Tier: 3, Cap: 8, Tail: "funds"}},
-			Back: "All revenue categories", Noun: "thing", Tail: "lines", Description: "Opened a category."},
+		{Key: "category", After: []string{""}, From: 0,
+			Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Side: export.SideSource, Tiers: []int{1, 3},
+				Caps: []export.TierCap{{Tier: 1, Cap: 8}, {Tier: 3, Cap: 8, Tail: "funds"}},
+			}}, Role: "revenue_source",
+			Projection: "fund-flows",
+			Back:       "All revenue categories", Noun: "thing", Tail: "lines", Description: "Opened a category."},
 		// And a child, because both roots carry After [""]: without After on the wire,
 		// app.js's STEPS drops every step.
-		{Key: "division", After: []string{"group"}, From: 4, Tiers: []int{4, 5},
-			Caps: []export.TierCap{{Tier: 5, Cap: 8}},
+		{Key: "division", After: []string{"group"}, From: 4,
+			Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{4, 5},
+				Caps: []export.TierCap{{Tier: 5, Cap: 8}},
+			}},
 			Back: "All divisions", Noun: "thing", Tail: "categories", Description: "Opened a division."},
 	}
 	dir := t.TempDir()
@@ -3054,7 +3089,7 @@ func TestAStepsDocumentIsCitedByThePageThatOpensIt(t *testing.T) {
 		},
 		Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
 			Template: export.SankeyTemplate, Projection: "sankey",
-			RenderTiers: []int{0, 2, 5}, Steps: steps}},
+			Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{0, 2, 5}}}, Steps: steps}},
 		Docs:        budgetDocs(),
 		GeneratedBy: "fisc test",
 	}); err != nil {
@@ -3082,7 +3117,7 @@ func TestAStepsDocumentIsCitedByThePageThatOpensIt(t *testing.T) {
 	// `json:"-"` is a diff here.
 	wantOnWire := slices.Clone(steps)
 	second := steps[1]
-	if second.Key == "" || second.Side == "" || second.Role == "" || second.Caps[1].Tail == "" ||
+	if second.Key == "" || second.Sankey.Side == "" || second.Role == "" || second.Sankey.Caps[1].Tail == "" ||
 		len(steps[2].After) == 0 || steps[2].After[0] == "" {
 		t.Fatal("the declared steps carry no key, after, side, role or cap tail, so the " +
 			"comparison below asserts nothing")
@@ -3101,7 +3136,7 @@ func TestTheSpineShipsAChainOnlyWhenItDeclaresOne(t *testing.T) {
 		Dir:         dir,
 		Projections: map[string][]byte{"sankey": goldenSankey(t)},
 		Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
-			Template: export.SankeyTemplate, Projection: "sankey"}},
+			Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "sankey"}},
 		Docs:        budgetDocs(),
 		GeneratedBy: "fisc test",
 	}); err != nil {
@@ -3145,14 +3180,18 @@ func TestAStepThatSwitchesDocumentMayRepeatTierNumbers(t *testing.T) {
 			},
 			Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
 				Template: export.SankeyTemplate, Projection: "sankey",
-				RenderTiers: []int{0, 2, 5},
+				Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{0, 2, 5}}},
 				Steps: []export.DrillStep{
 					{Key: "group", After: []string{""}, From: 2, Projection: "fund-flows",
-						Tiers: []int{0, 2},
-						Back:  "All fund groups", Noun: "thing", Tail: "funds", Description: "One."},
+						Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
+							Tiers: []int{0, 2},
+						}},
+						Back: "All fund groups", Noun: "thing", Tail: "funds", Description: "One."},
 					{Key: "fund", After: []string{"group"}, From: 2, Projection: secondStepDoc,
-						Tiers: []int{0, 2},
-						Back:  "All funds", Noun: "thing", Tail: "things", Description: "Two."},
+						Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
+							Tiers: []int{0, 2},
+						}},
+						Back: "All funds", Noun: "thing", Tail: "things", Description: "Two."},
 				}}},
 			Docs:        budgetDocs(),
 			GeneratedBy: "fisc test",
@@ -3233,12 +3272,15 @@ func TestAStepsColumnJoinIsExactOrRefused(t *testing.T) {
 		v := export.View{
 			Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate,
 			Projection: "sankey", YearStems: []string{"sankey", "sankey-2027"},
-			RenderTiers: []int{0, 2, 5},
+			Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{0, 2, 5}}},
 			Steps: []export.DrillStep{
 				{Key: "group", After: []string{""}, From: 2, Projection: "fund-flows",
-					Tiers: []int{0, 3, 4}, Back: "All fund groups", Noun: "thing", Tail: "funds", Description: "One."},
-				{Key: "division", After: []string{"group"}, From: 4, Tiers: []int{4, 5},
-					Back: "All divisions", Noun: "thing", Tail: "categories", Description: "Two."},
+					Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
+						Tiers: []int{0, 3, 4},
+					}}, Back: "All fund groups", Noun: "thing", Tail: "funds", Description: "One."},
+				{Key: "division", After: []string{"group"}, From: 4,
+					Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{4, 5}}},
+					Back:  "All divisions", Noun: "thing", Tail: "categories", Description: "Two."},
 			},
 		}
 		breaks(&v)
@@ -3334,12 +3376,15 @@ func TestEachYearOpensIntoItsOwnStepDocumentWithItsOwnCaveatLinks(t *testing.T) 
 		Views: []export.View{
 			{Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate,
 				Projection: "sankey", YearStems: []string{"sankey", "sankey-2027"},
-				RenderTiers: []int{0, 2, 5},
+				Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{0, 2, 5}}},
 				Steps: []export.DrillStep{
 					{Key: "group", After: []string{""}, From: 2, Projection: "fund-flows",
-						Tiers: []int{0, 3, 4}, Back: "All fund groups", Noun: "thing", Tail: "funds", Description: "One."},
-					{Key: "division", After: []string{"group"}, From: 4, Tiers: []int{4, 5},
-						Back: "All divisions", Noun: "thing", Tail: "categories", Description: "Two."},
+						Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
+							Tiers: []int{0, 3, 4},
+						}}, Back: "All fund groups", Noun: "thing", Tail: "funds", Description: "One."},
+					{Key: "division", After: []string{"group"}, From: 4,
+						Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{4, 5}}},
+						Back:  "All divisions", Noun: "thing", Tail: "categories", Description: "Two."},
 				}},
 			{Path: "caveats.html", Nav: "Caveats", Template: export.CaveatsTemplate,
 				Title: "What these figures do not say", Lede: "A lede."},
@@ -3439,7 +3484,7 @@ func TestThePageOpensOnTheYearItDeclaresWhileListingThemOldestFirst(t *testing.T
 			"sankey": goldenSankey(t), "sankey-2027": raw,
 		},
 		Views: []export.View{{
-			Path: export.IndexPath, Template: export.SankeyTemplate,
+			Path: export.IndexPath, Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}},
 			Projection: "sankey",
 			YearStems:  []string{"sankey", "sankey-2027"},
 		}},
@@ -3496,7 +3541,9 @@ func TestThePageOpensOnTheYearItDeclaresWhileListingThemOldestFirst(t *testing.T
 func TestTheServedStepsCarryTheirLicences(t *testing.T) {
 	declared := []export.DrillStep{{
 		Key: "group", After: []string{""}, From: 2, Projection: "sankey",
-		Tiers: []int{0, 2}, Back: "All fund groups", Noun: "fund group", Tail: "funds",
+		Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
+			Tiers: []int{0, 2},
+		}}, Back: "All fund groups", Noun: "fund group", Tail: "funds",
 		Description:   "One.",
 		Residual:      map[string]string{"transfers/in": "no fund receives it"},
 		ResidualGrain: "fund",
@@ -3513,7 +3560,7 @@ func TestTheServedStepsCarryTheirLicences(t *testing.T) {
 		},
 		Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
 			Template: export.SankeyTemplate, Projection: "sankey", YearStems: []string{"sankey", "sankey-2027"},
-			RenderTiers: []int{0, 2, 5}, Steps: declared}},
+			Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{0, 2, 5}}}, Steps: declared}},
 		Docs:        budgetDocs(),
 		GeneratedBy: "fisc test",
 	}); err != nil {

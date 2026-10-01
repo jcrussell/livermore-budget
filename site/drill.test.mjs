@@ -137,12 +137,12 @@ for (const year of YEARS) {
           // A WINDOW DRAWS THE NODE IT OPENED; a step that keeps no flank draws
           // the node's parts alone.
           const rung = app.drilled[app.drilled.length - 1];
-          if ((rung.step.keep || []).length && !app.projection.nodes.some((n) => n.id === where[where.length - 1])) {
+          if ((rung.step.sankey.keep || []).length && !app.projection.nodes.some((n) => n.id === where[where.length - 1])) {
             short.push(`${where.join(" > ")} does not draw the node it opened`);
           }
           // CAPS RESPECTED: a capped column holds at most cap + 1 marks of its
           // own -- a tail of one is drawn whole -- unless the reader drew it out.
-          for (const cap of rung.step.caps || []) {
+          for (const cap of rung.step.sankey.caps || []) {
             if (rung.expanded && rung.expanded.has(cap.tier)) continue;
             const own = app.projection.nodes.filter((n) => n.tier === cap.tier && !app.isCarried(n.id) && !n.carried_from);
             if (own.length > cap.cap + 1) overCap.push(`${where.join(" > ")} draws ${own.length} at tier ${cap.tier}, capped at ${cap.cap}`);
@@ -180,11 +180,11 @@ for (const year of YEARS) {
       assert.equal(app.drilled.length, 1);
       assert.equal(d.projection, step.projection);
       assert.equal(fetch.asked.length, asked, "the drill fetched");
-      assert.deepEqual(placedTiers(app), step.tiers);
+      assert.deepEqual(placedTiers(app), step.sankey.tiers);
       assert.ok(d.links.length > 0, "no receiving leg drawn");
       // EVERY LEG RUNS PAYER TO RECEIVER, and the legs are the spine's
       // Transfers In to the cent: p76's receiving side is what that mark counts.
-      assert.ok(payers.every((tier) => tier === step.tiers[0]) && receivers.every((tier) => tier === step.tiers[1]));
+      assert.ok(payers.every((tier) => tier === step.sankey.tiers[0]) && receivers.every((tier) => tier === step.sankey.tiers[1]));
       assert.equal(drawnCents, spineIn);
       assert.ok(!app.projection.nodes.some((n) => app.drillable(n)), "something on it opens further");
     });
@@ -197,16 +197,16 @@ for (const year of YEARS) {
       const step = stepByKey(PAGE, "fund-departments");
       const fundStep = stepByKey(PAGE, "fund");
       t.diagnostic(`both open tier ${step.from} of ${JSON.stringify(step.after)}; roles ` +
-        `"${fundStep.role}" and "${step.role}"; this one draws ${JSON.stringify(step.tiers)} keeping ` +
-        `${JSON.stringify(step.keep)} of ${step.projection} with ${(step.caps || []).length} cap(s)`);
+        `"${fundStep.role}" and "${step.role}"; this one draws ${JSON.stringify(step.sankey.tiers)} keeping ` +
+        `${JSON.stringify(step.sankey.keep)} of ${step.projection} with ${(step.sankey.caps || []).length} cap(s)`);
       assert.deepEqual(step.after, fundStep.after);
       assert.equal(step.from, fundStep.from);
       assert.equal(step.role, "fund");
       assert.equal(fundStep.role, "general_fund");
-      assert.deepEqual(step.tiers, [2, 3, 4]);
-      assert.deepEqual(step.keep, [2]);
+      assert.deepEqual(step.sankey.tiers, [2, 3, 4]);
+      assert.deepEqual(step.sankey.keep, [2]);
       assert.equal(step.projection, "department-funding");
-      assert.equal((step.caps || []).length, 0);
+      assert.equal((step.sankey.caps || []).length, 0);
     });
 
     test(`${year.label} departments: a fund the group's window draws opens into its own funding rows, with the group kept beside it`, async (t) => {
@@ -228,7 +228,7 @@ for (const year of YEARS) {
         `${app.projection.links.filter((l) => l.target === fund).length} kept from the chart above`);
       assert.equal(app.drilled.length, 2);
       assert.equal(app.projection.projection, step.projection);
-      assert.deepEqual(placedTiers(app), step.tiers);
+      assert.deepEqual(placedTiers(app), step.sankey.tiers);
       assert.ok(ribbons.length > 0);
       assert.deepEqual(ribbons.map((l) => l.target).sort(), departments);
       assert.deepEqual(at.crumbControls, [app.say("back_control", { back: groupStep.back }), app.say("back_control", { back: step.back })]);
@@ -304,7 +304,7 @@ for (const year of YEARS) {
         `title "${at.title}"; breadcrumb ${JSON.stringify(at.crumbControls)} + "${at.crumbHere}"`);
       assert.equal(at.depth, 1);
       assert.equal(at.drawnIsYears, false);
-      assert.deepEqual(placedTiers(app), step.tiers);
+      assert.deepEqual(placedTiers(app), step.sankey.tiers);
       assert.deepEqual(atTier(app, 0), [PROPERTY]);
       assert.deepEqual(flank.slice().sort(), reaches);
       assert.equal(fetch.asked.length, asked);
@@ -386,8 +386,8 @@ for (const year of YEARS) {
       const tails = d.nodes.filter((n) => app.isAggregate(n.id)).map((n) => n.label);
       t.diagnostic(`${year.label} transfers out: ${payers.length} payer mark(s), ${receivers.length} ` +
         `receiver mark(s), ${d.links.length} ribbon(s), tails ${JSON.stringify(tails)}`);
-      assert.deepEqual(placedTiers(app), step.tiers);
-      for (const cap of step.caps) {
+      assert.deepEqual(placedTiers(app), step.sankey.tiers);
+      for (const cap of step.sankey.caps) {
         assert.ok(atTier(app, cap.tier).length <= cap.cap + 1, `tier ${cap.tier} draws past its cap`);
       }
       assert.ok(payers.length > 1 && receivers.length > 1);
@@ -427,7 +427,7 @@ for (const year of YEARS) {
         const d = app.projection;
         shapes.push(`${id}: ${d.nodes.length} nodes, ${d.links.length} links, ` +
           `${atTier(app, 2).length} funding group(s), tail "${(d.nodes.find((n) => app.isAggregate(n.id)) || {}).label || ""}"`);
-        assert.deepEqual(placedTiers(app), step.tiers, id);
+        assert.deepEqual(placedTiers(app), step.sankey.tiers, id);
         assert.deepEqual(atTier(app, 5), [id]);
         assert.deepEqual(d.nodes.filter((n) => n.tier === 4 && n.parent).map((n) => n.id), [],
           id + " draws a division carrying a fund group");
@@ -484,7 +484,7 @@ describe("the window: three columns spliced on the node the reader clicked", () 
       `${fromKept.length} ribbon(s) into the centre and ${residualEnds.length} past it; opened column ` +
       `${atTier(app, 3).length} node(s) taking ${toFunds.length} from it`);
     // AT THE BUDGET EVERY READER GETS, which does not buy the step's widening.
-    const own = step.tiers.filter((tier) => !(step.widen || []).includes(tier));
+    const own = step.sankey.tiers.filter((tier) => !(step.sankey.widen || []).includes(tier));
     assert.deepEqual(tiers, own.slice().sort((a, b) => a - b));
     assert.deepEqual(placedTiers(app), own);
     assert.deepEqual(atTier(app, 2), [CENTRE]);
@@ -532,7 +532,7 @@ describe("the window: three columns spliced on the node the reader clicked", () 
     t.diagnostic(`${app.shownYear.label}: fund/100 opened at tiers ${JSON.stringify(deepTiers)}; ` +
       `popping back left ${app.drilled.length} rung`);
     assert.deepEqual(deepTiers, app.activeTiers(app.columnBudget).length
-      ? stepByKey(config, "fund").tiers.filter((x) => deepTiers.includes(x)) : deepTiers);
+      ? stepByKey(config, "fund").sankey.tiers.filter((x) => deepTiers.includes(x)) : deepTiers);
     assert.equal(app.drilled.length, 1);
     assert.equal(shape(app.projection), before);
   });
@@ -604,7 +604,7 @@ for (const year of YEARS) {
       assert.equal(at.drawnIsYears, false);
       // THE STEP DECLARES A FOURTH COLUMN AND THE DEFAULT BUDGET DOES NOT BUY
       // IT: the placed tiers are the step's less its widening.
-      assert.deepEqual(placedTiers(app), step.tiers.filter((tier) => !step.widen.includes(tier)));
+      assert.deepEqual(placedTiers(app), step.sankey.tiers.filter((tier) => !step.sankey.widen.includes(tier)));
       assert.deepEqual(placedTiers(app), [0, 2, 3]);
       assert.deepEqual(atTier(app, 4), []);
       assert.ok(at.title.startsWith(year.chart_title) && at.title.endsWith(label), at.title);
@@ -632,7 +632,7 @@ for (const year of YEARS) {
         `links; ${divisions.length} divisions drawn, ${folded.length} folded; counts "${at.counts}"`);
       assert.equal(at.depth, 2);
       assert.equal(fetch.asked.length, asked);
-      assert.deepEqual(placedTiers(app), fundStep.tiers.filter((x) => app.activeTiers().includes(x)));
+      assert.deepEqual(placedTiers(app), fundStep.sankey.tiers.filter((x) => app.activeTiers().includes(x)));
       assert.deepEqual(placedTiers(app), [2, 3, 4]);
       assert.deepEqual(folded, []);
       assert.equal(offers(app, CHAIN[2]), true, "a division does not open");
@@ -658,7 +658,7 @@ for (const year of YEARS) {
       assert.equal(at.depth, 3);
       assert.ok(app.projection.links.length > 0);
       assert.equal(fetch.asked.length, asked);
-      assert.deepEqual(placedTiers(app), steps[2].tiers);
+      assert.deepEqual(placedTiers(app), steps[2].sankey.tiers);
       for (const l of labels) assert.ok(at.title.includes(l), `the title lacks ${l}: ${at.title}`);
       assert.ok(at.title.endsWith(labels[2]), at.title);
       assert.deepEqual(at.crumbControls, steps.map((s) => app.say("back_control", { back: s.back })));

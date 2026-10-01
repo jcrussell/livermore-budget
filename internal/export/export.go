@@ -155,13 +155,16 @@ type View struct {
 	// series no section claims and a section that claims no series.
 	Sections []Section
 
-	// RenderTiers is the node tiers this view's chart draws, left to right,
-	// shipped as FISC_CONFIG.render_tiers. Empty draws the document whole.
+	// Overview is the view's own chart, its form and that form's hints,
+	// shipped as FISC_CONFIG.overview. Required on a template that draws a
+	// chart and refused on one that does not. A Sankey overview with no tiers
+	// draws the document whole.
 	//
-	// IT IS A COLUMN ORDER AND NOT ONLY A SET: site/app.js aligns a node on
-	// this list's indexOf, so adjacency is declared. validateSteps refuses a
-	// kept flank against a parent that declares none. The fold is the client's.
-	RenderTiers []int
+	// THE SANKEY'S TIERS ARE A COLUMN ORDER AND NOT ONLY A SET: site/app.js
+	// aligns a node on the list's indexOf, so adjacency is declared.
+	// validateSteps refuses a kept flank against a parent that declares none.
+	// The fold is the client's.
+	Overview Chart
 
 	// Steps is how this view's chart opens a node, one hop per step, or empty
 	// for a chart that does not open; a node click then isolates instead.
@@ -353,10 +356,14 @@ type Section struct {
 // filtering and rescaling rather than expanding in place (fisc-ppkq records
 // why d3-sankey cannot lay out the latter).
 //
-// FROM AND TIERS ARE NOT NECESSARILY TIERS OF THE SAME DOCUMENT. From is a tier
-// of the chart on screen; Tiers are tiers of the document THIS step draws. On
-// a step that switches document the two hierarchies are unrelated, so
-// validateSteps never relates From to Tiers.
+// FROM AND THE FORM'S TIERS ARE NOT NECESSARILY TIERS OF THE SAME DOCUMENT.
+// From is a tier of the chart on screen; a Sankey's tiers are tiers of the
+// document THIS step draws. On a step that switches document the two
+// hierarchies are unrelated, so validateSteps never relates From to them.
+//
+// The fields here are the step's generic half, read by the client core and by
+// validateStep whatever the form. What the form may fold is the embedded
+// [Chart]'s, under the form's own key.
 type DrillStep struct {
 	// Key names this step for [DrillStep.After]. Required and unique within a
 	// view.
@@ -372,10 +379,6 @@ type DrillStep struct {
 	// One tier rather than a set: a step is one hop, and a second tier of the
 	// same chart is a second step sharing this one's After.
 	From int `json:"from"`
-	// Side is which end of a link the opened node sits on: "" for the node the
-	// links point AT, [SideSource] for the node they come FROM. Declared, never
-	// inferred from tier numbers.
-	Side string `json:"side,omitempty"`
 	// Role is which of the nodes at From open, in the caller's vocabulary, or
 	// "" for all of them. This package gives it no meaning beyond requiring
 	// (After, From, Role) to name at most one step.
@@ -385,28 +388,9 @@ type DrillStep struct {
 	// it. A schedule key and not a filename stem: the year is carried by the
 	// column file the reader fetched ([ColumnIndex]).
 	Projection string `json:"projection,omitempty"`
-	// Tiers is the tier set drawn once a node has opened -- this step's
-	// RenderTiers, and a different declaration from the chart's before it.
-	Tiers []int `json:"tiers"`
-	// Keep is the flank of the chart on screen that stays drawn beside the
-	// opened node, NEAREST THE CENTRE FIRST, or empty for a step that draws the
-	// opened node's parts alone. A slice and not an int because tier 0 is a
-	// real tier. The entries are contiguous and on one side of the opened tier.
-	//
-	// With an entry, Tiers is the flank, the opened node and what it opens
-	// into, plus one column per [DrillStep.Widen] entry, with the flank at the
-	// end the parent's column order names. validateSteps checks that side
-	// against every chart this step opens from.
-	Keep []int `json:"keep,omitempty"`
-	// Widen is the tier this step adds for each column beyond the window's own
-	// three, in the order they are added; a client with room for fewer drops
-	// them from the end. A widened column sits at the end of Tiers away from
-	// the kept flank, and validateSteps refuses a Tiers that disagrees.
-	// Refused on a step that keeps nothing.
-	Widen []int `json:"widen,omitempty"`
-	// Caps bounds the columns this step draws, one per tier that needs one; a
-	// tier with no cap is drawn whole.
-	Caps []TierCap `json:"caps,omitempty"`
+	// Chart is the form this step draws once a node has opened, and that
+	// form's hints. Inlined on the wire: `form` and the form's own key.
+	Chart
 	// Back is what the breadcrumb's return control says, e.g. "All fund
 	// groups". Declared rather than derived from From, because a tier number
 	// does not know what the reader calls the things in it.
@@ -450,9 +434,81 @@ type DrillStep struct {
 	Gaps map[string][]project.Gap `json:"gaps,omitempty"`
 }
 
-// SideSource is [DrillStep.Side] for a step opening the node its chart's links
-// come FROM.
+// Chart is one drawn chart's form and that form's hints under the form's own
+// key: the overview's on [View.Overview], a step's embedded in [DrillStep]. A
+// hint foreign to the declared form is refused by schema/page.schema.json at
+// the write, and the client core reads none of them. A second form adds one
+// value to [ChartForms], one hint type here, one closed object in the schema
+// and one renderer module under site/.
+type Chart struct {
+	// Form is which renderer draws the chart, one of [ChartForms].
+	Form string `json:"form"`
+	// Sankey is the Sankey form's hints, present exactly when Form is
+	// [SankeyForm].
+	Sankey *SankeyHints `json:"sankey,omitempty"`
+}
+
+// SankeyForm is the form site/sankey.js draws: columns of tiers joined by
+// ribbons.
+const SankeyForm = "sankey"
+
+// ChartForms is the declared set of forms, which schema/enums.schema.json
+// states as chart_form and schema/enums_test.go holds to this.
+func ChartForms() []string { return []string{SankeyForm} }
+
+// SankeyHints is what the Sankey form may fold and where. Go declares; the
+// client's capColumn and foldDocument spend the declaration.
+type SankeyHints struct {
+	// Tiers is the tier set drawn, left to right: on a step, once a node has
+	// opened, and a different declaration from the chart's before it; on the
+	// overview, the page's own column order, or empty to draw the document
+	// whole.
+	Tiers []int `json:"tiers,omitempty"`
+	// Keep is the flank of the chart on screen that stays drawn beside the
+	// opened node, NEAREST THE CENTRE FIRST, or empty for a step that draws the
+	// opened node's parts alone. A slice and not an int because tier 0 is a
+	// real tier. The entries are contiguous and on one side of the opened tier.
+	//
+	// With an entry, Tiers is the flank, the opened node and what it opens
+	// into, plus one column per [SankeyHints.Widen] entry, with the flank at
+	// the end the parent's column order names. validateSteps checks that side
+	// against every chart this step opens from.
+	Keep []int `json:"keep,omitempty"`
+	// Widen is the tier this step adds for each column beyond the window's own
+	// three, in the order they are added; a client with room for fewer drops
+	// them from the end. A widened column sits at the end of Tiers away from
+	// the kept flank, and validateSteps refuses a Tiers that disagrees.
+	// Refused on a step that keeps nothing.
+	Widen []int `json:"widen,omitempty"`
+	// Caps bounds the columns this step draws, one per tier that needs one; a
+	// tier with no cap is drawn whole.
+	Caps []TierCap `json:"caps,omitempty"`
+	// Side is which end of a link the opened node sits on: "" for the node the
+	// links point AT, [SideSource] for the node they come FROM. Declared, never
+	// inferred from tier numbers.
+	Side string `json:"side,omitempty"`
+}
+
+// SideSource is [SankeyHints.Side] for a step opening the node its chart's
+// links come FROM.
 const SideSource = "source"
+
+// drawnTiers is the column order a chart of this form draws, or nil for a
+// Sankey drawing its document whole.
+func (c Chart) drawnTiers() []int {
+	if c.Form == SankeyForm && c.Sankey != nil {
+		return c.Sankey.Tiers
+	}
+	return nil
+}
+
+// keptFlank is a Sankey chart's kept flank, or nil.
+func (c Chart) keptFlank() []int {
+	if c.Form == SankeyForm && c.Sankey != nil {
+		return c.Sankey.Keep
+	}
+	return nil
+}
 
 // TierCap is how many nodes one drawn tier may hold before its tail, by value,
 // is folded into one aggregate node. Rescaling alone does not make a group's
@@ -616,13 +672,14 @@ func (o *Options) views() []View {
 		Nav:        "Budget flows",
 		Template:   SankeyTemplate,
 		Projection: PrimaryProjection,
+		Overview:   Chart{Form: SankeyForm, Sankey: &SankeyHints{}},
 	}}
 }
 
 // validate refuses a view that could not be rendered, or that would land on a
 // path the site owns.
 func (v View) validate(built map[string][]byte, ix ColumnIndex) error {
-	badRoot := v.rootOutsideRenderTiers()
+	badRoot := v.rootOutsideOverview()
 	switch {
 	case v.Path == "":
 		return errors.New("a view has no output path")
@@ -663,26 +720,40 @@ func (v View) validate(built map[string][]byte, ix ColumnIndex) error {
 		return fmt.Errorf(
 			"view %q renders template %q and declares no sections, so every row would "+
 				"land under no printed heading", v.Path, v.Template)
-	case len(v.RenderTiers) > 0 && !templateRendersTiers(v.Template):
+	case v.Overview.Form != "" && !templateDrawsAChart(v.Template):
 		return fmt.Errorf(
-			"view %q asks for render tiers %v and renders template %q, which publishes "+
-				"none; the chart would draw every tier", v.Path, v.RenderTiers, v.Template)
-	case len(v.Steps) > 0 && !templateRendersSteps(v.Template):
+			"view %q declares a %q chart and renders template %q, which draws none; "+
+				"the form would be dropped in silence", v.Path, v.Overview.Form, v.Template)
+	case v.Overview.Form == "" && templateDrawsAChart(v.Template):
 		return fmt.Errorf(
-			"view %q declares a drill chain and renders template %q, which publishes none; "+
-				"the chart would isolate on a click while this view believes it opens",
+			"view %q renders template %q, which draws a chart, and declares no form for "+
+				"it; the client would have no renderer to hand the document to",
 			v.Path, v.Template)
-	// Two arms: RenderTiers empty draws the document whole, so every root's
-	// From is drawn; the next arm refuses a drilling view with no tier set.
-	case len(v.RenderTiers) > 0 && badRoot >= 0:
+	case v.Overview.Form != "" && !slices.Contains(ChartForms(), v.Overview.Form):
+		return fmt.Errorf(
+			"view %q declares chart form %q, which is not one of %v",
+			v.Path, v.Overview.Form, ChartForms())
+	case v.Overview.Form == SankeyForm && v.Overview.Sankey == nil:
+		return fmt.Errorf(
+			"view %q declares a sankey chart with no sankey hints; the column order "+
+				"is a declaration, and an absent one is not the same as an empty one",
+			v.Path)
+	case len(v.Steps) > 0 && !templateDrawsAChart(v.Template):
+		return fmt.Errorf(
+			"view %q declares a drill chain and renders template %q, which draws no "+
+				"chart; the chain would be dropped in silence", v.Path, v.Template)
+	// Two arms: a Sankey with no tiers draws the document whole, so every
+	// root's From is drawn; the next arm refuses a drilling view with no tier
+	// set.
+	case len(v.Overview.drawnTiers()) > 0 && badRoot >= 0:
 		return fmt.Errorf(
 			"view %q's step %d drills from tier %d and draws tiers %v, which do not include "+
 				"it; the page would ship the breadcrumb and the words about opening a node "+
 				"while no node on it is ever openable",
-			v.Path, badRoot, v.Steps[badRoot].From, v.RenderTiers)
+			v.Path, badRoot, v.Steps[badRoot].From, v.Overview.drawnTiers())
 	// A chart that opens declares its column order: without one nothing is
 	// adjacent to anything, and a kept flank has no side.
-	case len(v.Steps) > 0 && len(v.RenderTiers) == 0 && templateRendersTiers(v.Template):
+	case len(v.Steps) > 0 && len(v.Overview.drawnTiers()) == 0 && templateDrawsAChart(v.Template):
 		return fmt.Errorf(
 			"view %q drills and declares no render tiers on template %q, which publishes "+
 				"them; the page would ship the breadcrumb over a chart whose columns are "+
@@ -714,11 +785,11 @@ func (v View) validate(built map[string][]byte, ix ColumnIndex) error {
 	return v.validateSteps(built, ix)
 }
 
-// rootOutsideRenderTiers is the first step opening from the view's own chart at
+// rootOutsideOverview is the first step opening from the view's own chart at
 // a tier the view does not draw, or -1 when every root is placed.
-func (v View) rootOutsideRenderTiers() int {
+func (v View) rootOutsideOverview() int {
 	for i, s := range v.Steps {
-		if slices.Contains(s.After, "") && !slices.Contains(v.RenderTiers, s.From) {
+		if slices.Contains(s.After, "") && !slices.Contains(v.Overview.drawnTiers(), s.From) {
 			return i
 		}
 	}
@@ -787,7 +858,7 @@ func (v View) validateSteps(built map[string][]byte, ix ColumnIndex) error {
 						"other parents once", v.Path, i, a)
 			}
 			if a == "" {
-				parents = append(parents, parentChart{tiers: v.RenderTiers, doc: v.Projection})
+				parents = append(parents, parentChart{tiers: v.Overview.drawnTiers(), doc: v.Projection})
 				continue
 			}
 			j, ok := index[a]
@@ -803,8 +874,8 @@ func (v View) validateSteps(built map[string][]byte, ix ColumnIndex) error {
 						"step, and that is what makes a cycle undeclarable rather than something "+
 						"this has to detect", v.Path, i, a, j)
 			}
-			parents = append(parents, parentChart{key: a, tiers: v.Steps[j].Tiers, doc: docs[j],
-				keep: v.Steps[j].Keep})
+			parents = append(parents, parentChart{key: a, tiers: v.Steps[j].drawnTiers(), doc: docs[j],
+				keep: v.Steps[j].keptFlank()})
 		}
 		doc := s.Projection
 		if doc == "" {
@@ -821,12 +892,15 @@ func (v View) validateSteps(built map[string][]byte, ix ColumnIndex) error {
 			}
 		}
 		docs[i] = doc
-		repeated := repeatedTier(s.Tiers)
 		switch {
-		case len(s.Tiers) == 0:
+		case !slices.Contains(ChartForms(), s.Form):
 			return fmt.Errorf(
-				"view %q declares step %d with no tiers, so a node opened on it would be "+
-					"drawn by the same tier set it was closed under", v.Path, i)
+				"view %q declares step %d in form %q, which is not one of %v; the client "+
+					"would have no renderer to hand the opened node to", v.Path, i, s.Form, ChartForms())
+		case s.Form == SankeyForm && s.Sankey == nil:
+			return fmt.Errorf(
+				"view %q declares step %d as a sankey with no sankey hints; what it draws "+
+					"once a node opens is a declaration and not an inference", v.Path, i)
 		case s.Tail == "":
 			return fmt.Errorf(
 				"view %q declares step %d with no tail noun, so a capped column would be "+
@@ -855,167 +929,25 @@ func (v View) validateSteps(built map[string][]byte, ix ColumnIndex) error {
 					"document before it; a residual is what one document prints at a grain "+
 					"the other does not, and a step that switches no document has no second "+
 					"grain", v.Path, i, len(s.Residual))
-		case len(s.Gaps) > 0 && len(s.Widen) > 0:
-			return fmt.Errorf(
-				"view %q's step %d declares a gap on %d node(s) and widens tiers %v; the "+
-					"client stands the gap mark at the step's first or last declared tier, and "+
-					"a viewport that does not buy that tier would draw the mark in a column "+
-					"that is not there", v.Path, i, len(s.Gaps), s.Widen)
 		case s.Projection == "" && len(s.Gaps) > 0:
 			return fmt.Errorf(
 				"view %q's step %d declares a gap on %d node(s) and draws the document "+
 					"before it; a gap is one cell two documents print at two figures, and a "+
 					"step that switches no document has only one", v.Path, i, len(s.Gaps))
-		case s.Side != "" && s.Side != SideSource:
-			return fmt.Errorf(
-				"view %q's step %d opens side %q; the sides are \"\", the node a link points "+
-					"at, and %q, the node it comes from", v.Path, i, s.Side, SideSource)
-		// The window's shape, checked once rather than per parent because Tiers
-		// is one declaration whatever chart the step was reached from.
-		case len(s.Keep) > 0 && s.Side != "":
-			return fmt.Errorf(
-				"view %q's step %d keeps tier(s) %v and opens side %q; a window's opened node "+
-					"is the TARGET of one half and the SOURCE of the other, so its side is "+
-					"both and a step declaring one would be two declarations of one thing",
-				v.Path, i, s.Keep, s.Side)
-		case len(s.Widen) > 0 && len(s.Keep) == 0:
-			return fmt.Errorf(
-				"view %q's step %d widens by tier(s) %v and keeps no flank; a step that keeps "+
-					"nothing draws the opened node's parts alone and has no centre to add a "+
-					"column out from, so the widening names a construct this is not",
-				v.Path, i, s.Widen)
-		case repeated >= 0:
-			return fmt.Errorf(
-				"view %q's step %d draws tiers %v, which name tier %d twice; a tier is a "+
-					"column, two columns of one tier is the same nodes drawn twice, and which "+
-					"end a kept flank is at could not be read off the list either",
-				v.Path, i, s.Tiers, repeated)
-		case len(s.Keep) > 0 && len(s.Tiers) != len(s.Keep)+2+len(s.Widen):
-			return fmt.Errorf(
-				"view %q's step %d keeps tier(s) %v, widens by %d column(s) and draws tiers "+
-					"%v; a window is its kept flank, the node that was opened and what it opens "+
-					"into, one column each and one more for every widening -- %d columns here, "+
-					"and not %d",
-				v.Path, i, s.Keep, len(s.Widen), s.Tiers, len(s.Keep)+2+len(s.Widen), len(s.Tiers))
 		}
-		// Which end the flank is at is read off Tiers once; every arm after
-		// this reads that answer.
-		keptLeft := false
-		if m := len(s.Keep); m > 0 {
-			n := len(s.Tiers)
-			switch {
-			case slices.Equal(s.Tiers[:m], reversedTiers(s.Keep)):
-				keptLeft = true
-			case slices.Equal(s.Tiers[n-m:], s.Keep):
-			default:
-				return fmt.Errorf(
-					"view %q's step %d keeps tier(s) %v and draws tiers %v, whose ends are not "+
-						"that flank; the kept columns are the ones at ONE end of what the step "+
-						"draws, outermost first, and a widening on the flank's side would push "+
-						"them off it -- a flank two columns deep is declared by keeping two",
-					v.Path, i, s.Keep, s.Tiers)
-			}
-			centre := m
-			if !keptLeft {
-				centre = n - 1 - m
-			}
-			if s.Tiers[centre] != s.From {
-				return fmt.Errorf(
-					"view %q's step %d keeps tier(s) %v and draws tiers %v, whose column %d is "+
-						"tier %d and not the opened tier %d; the node the reader clicked is the "+
-						"centre of a window", v.Path, i, s.Keep, s.Tiers, centre, s.Tiers[centre], s.From)
-			}
-			if w := len(s.Widen); w > 0 {
-				drawn, want := s.Tiers[n-w:], s.Widen
-				if !keptLeft {
-					drawn, want = s.Tiers[:w], reversedTiers(s.Widen)
-				}
-				if !slices.Equal(drawn, want) {
-					return fmt.Errorf(
-						"view %q's step %d widens by tier(s) %v and draws tiers %v, whose %d "+
-							"column(s) away from the kept flank are %v; a widened column is on the "+
-							"opened node's side and the widening order is the order OUT from it, so "+
-							"a client dropping the last of them draws a narrower window and not a "+
-							"hole", v.Path, i, s.Widen, s.Tiers, w, drawn)
-				}
-			}
-		}
-		// Every parent places this step, not the first one that fits.
+		// Every parent draws the tier this step opens from, whatever the form.
 		for _, p := range parents {
-			where := "the view's own chart"
-			if p.key != "" {
-				where = fmt.Sprintf("step %q", p.key)
-			}
-			if p.key != "" {
-				switch {
-				case !slices.Contains(p.tiers, s.From):
-					return fmt.Errorf(
-						"view %q's step %d opens from tier %d, and step %q draws tiers "+
-							"%v, which do not include it; the breadcrumb would carry a rung nothing "+
-							"on the chart can reach", v.Path, i, s.From, p.key, p.tiers)
-				// Same document only, and equality not containment (fisc-ke1f):
-				// a strict subset of a widened parent's tiers is a narrower chart.
-				case doc == p.doc && slices.Equal(p.tiers, s.Tiers):
-					return fmt.Errorf(
-						"view %q's step %d draws tiers %v of %q, the set step %q "+
-							"already draws; opening a node would redraw the chart it was opened "+
-							"from", v.Path, i, s.Tiers, doc, p.key)
-				}
-			}
-			// A kept flank is drawn at its share of the centre, not whole, so
-			// nothing on one may open: the node would take one figure in and
-			// send its whole decomposition out. Per parent, every flank column.
-			if slices.Contains(p.keep, s.From) {
+			if p.key != "" && !slices.Contains(p.tiers, s.From) {
 				return fmt.Errorf(
-					"view %q's step %d opens tier %d of %s, which KEEPS that tier; a kept "+
-						"flank is drawn at its share of that chart's centre rather than whole, "+
-						"so this step would draw a node taking one figure in and sending its "+
-						"whole decomposition out, with the difference left as node height "+
-						"nothing accounts for", v.Path, i, s.From, where)
+					"view %q's step %d opens from tier %d, and step %q draws tiers "+
+						"%v, which do not include it; the breadcrumb would carry a rung nothing "+
+						"on the chart can reach", v.Path, i, s.From, p.key, p.tiers)
 			}
-			if len(s.Keep) == 0 {
-				continue
-			}
-			// Every parent here has a column order and already contains From,
-			// so fi >= 0. The flank walks out from the opened node.
-			fi := slices.Index(p.tiers, s.From)
-			step := -1
-			if !keptLeft {
-				step = 1
-			}
-			for n, k := range s.Keep {
-				ki := slices.Index(p.tiers, k)
-				drawnSide := "RIGHT"
-				if ki < fi {
-					drawnSide = "LEFT"
-				}
-				switch {
-				case ki < 0:
-					return fmt.Errorf(
-						"view %q's step %d keeps tier %d and opens from %s, which draws tiers %v "+
-							"and does not include it; the flank the reader came from has to be a "+
-							"column they were looking at", v.Path, i, k, where, p.tiers)
-				case n == 0 && ki != fi-1 && ki != fi+1:
-					return fmt.Errorf(
-						"view %q's step %d keeps tier %d and opens tier %d of %s, which draws "+
-							"them as columns %d and %d of %v; a window slides by one column, and "+
-							"which way it slides is the SIGN of that adjacency",
-						v.Path, i, k, s.From, where, ki, fi, p.tiers)
-				case n == 0 && ki != fi+step:
-					return fmt.Errorf(
-						"view %q's step %d keeps tier %d, which %s draws to the %s of the "+
-							"opened tier %d, and draws tiers %v, which put it at the other end; "+
-							"the kept flank stays on the side the reader saw it on",
-						v.Path, i, k, where, drawnSide, s.From, s.Tiers)
-				case ki != fi+step*(n+1):
-					return fmt.Errorf(
-						"view %q's step %d keeps tier(s) %v and opens tier %d of %s, which draws "+
-							"tier %d as column %d of %v and the opened tier as column %d; a flank "+
-							"is the columns BESIDE EACH OTHER walking out from the node that was "+
-							"opened, so a gap in it is a column the reader was looking at dropped "+
-							"out of the middle of the ones that stay",
-						v.Path, i, s.Keep, s.From, where, k, ki, p.tiers, fi)
-				}
+		}
+		// One arm per form; a second form adds its own here.
+		if s.Form == SankeyForm {
+			if err := v.validateSankeyStep(i, s, parents, doc); err != nil {
+				return err
 			}
 		}
 		// One step per (After, From, Role), per SHARED parent rather than per
@@ -1093,24 +1025,186 @@ func (v View) validateSteps(built map[string][]byte, ix ColumnIndex) error {
 				}
 			}
 		}
-		for j, c := range s.Caps {
-			switch {
-			case c.Cap < 1:
-				return fmt.Errorf(
-					"view %q's step %d caps tier %d at %d; the cap is what keeps a fine "+
-						"column drawable and a column of one node is not a chart",
-					v.Path, i, c.Tier, c.Cap)
-			case !slices.Contains(s.Tiers, c.Tier):
-				return fmt.Errorf(
-					"view %q's step %d caps tier %d and draws tiers %v, which do not include "+
-						"it; the cap would fold nothing, in silence", v.Path, i, c.Tier, s.Tiers)
-			case slices.ContainsFunc(s.Caps[:j], func(o TierCap) bool { return o.Tier == c.Tier }):
-				return fmt.Errorf("view %q's step %d caps tier %d twice", v.Path, i, c.Tier)
-			}
-		}
 		if _, ok := built[doc]; s.Projection != "" && !ok {
 			return fmt.Errorf("view %q's step %d renders projection %q, which was not built",
 				v.Path, i, s.Projection)
+		}
+	}
+	return nil
+}
+
+// validateSankeyStep is the Sankey form's half of a step's validation: the
+// window's shape, its placement against every chart it opens from, and its
+// caps. The generic half is validateSteps'.
+func (v View) validateSankeyStep(i int, s DrillStep, parents []parentChart, doc string) error {
+	h := s.Sankey
+	repeated := repeatedTier(h.Tiers)
+	switch {
+	case len(h.Tiers) == 0:
+		return fmt.Errorf(
+			"view %q declares step %d with no tiers, so a node opened on it would be "+
+				"drawn by the same tier set it was closed under", v.Path, i)
+	case len(s.Gaps) > 0 && len(h.Widen) > 0:
+		return fmt.Errorf(
+			"view %q's step %d declares a gap on %d node(s) and widens tiers %v; the "+
+				"client stands the gap mark at the step's first or last declared tier, and "+
+				"a viewport that does not buy that tier would draw the mark in a column "+
+				"that is not there", v.Path, i, len(s.Gaps), h.Widen)
+	case h.Side != "" && h.Side != SideSource:
+		return fmt.Errorf(
+			"view %q's step %d opens side %q; the sides are \"\", the node a link points "+
+				"at, and %q, the node it comes from", v.Path, i, h.Side, SideSource)
+	case len(h.Keep) > 0 && h.Side != "":
+		return fmt.Errorf(
+			"view %q's step %d keeps tier(s) %v and opens side %q; a window's opened node "+
+				"is the TARGET of one half and the SOURCE of the other, so its side is "+
+				"both and a step declaring one would be two declarations of one thing",
+			v.Path, i, h.Keep, h.Side)
+	case len(h.Widen) > 0 && len(h.Keep) == 0:
+		return fmt.Errorf(
+			"view %q's step %d widens by tier(s) %v and keeps no flank; a step that keeps "+
+				"nothing draws the opened node's parts alone and has no centre to add a "+
+				"column out from, so the widening names a construct this is not",
+			v.Path, i, h.Widen)
+	case repeated >= 0:
+		return fmt.Errorf(
+			"view %q's step %d draws tiers %v, which name tier %d twice; a tier is a "+
+				"column, two columns of one tier is the same nodes drawn twice, and which "+
+				"end a kept flank is at could not be read off the list either",
+			v.Path, i, h.Tiers, repeated)
+	case len(h.Keep) > 0 && len(h.Tiers) != len(h.Keep)+2+len(h.Widen):
+		return fmt.Errorf(
+			"view %q's step %d keeps tier(s) %v, widens by %d column(s) and draws tiers "+
+				"%v; a window is its kept flank, the node that was opened and what it opens "+
+				"into, one column each and one more for every widening -- %d columns here, "+
+				"and not %d",
+			v.Path, i, h.Keep, len(h.Widen), h.Tiers, len(h.Keep)+2+len(h.Widen), len(h.Tiers))
+	}
+	// Which end the flank is at is read off Tiers once; every arm after
+	// this reads that answer.
+	keptLeft := false
+	if m := len(h.Keep); m > 0 {
+		n := len(h.Tiers)
+		switch {
+		case slices.Equal(h.Tiers[:m], reversedTiers(h.Keep)):
+			keptLeft = true
+		case slices.Equal(h.Tiers[n-m:], h.Keep):
+		default:
+			return fmt.Errorf(
+				"view %q's step %d keeps tier(s) %v and draws tiers %v, whose ends are not "+
+					"that flank; the kept columns are the ones at ONE end of what the step "+
+					"draws, outermost first, and a widening on the flank's side would push "+
+					"them off it -- a flank two columns deep is declared by keeping two",
+				v.Path, i, h.Keep, h.Tiers)
+		}
+		centre := m
+		if !keptLeft {
+			centre = n - 1 - m
+		}
+		if h.Tiers[centre] != s.From {
+			return fmt.Errorf(
+				"view %q's step %d keeps tier(s) %v and draws tiers %v, whose column %d is "+
+					"tier %d and not the opened tier %d; the node the reader clicked is the "+
+					"centre of a window", v.Path, i, h.Keep, h.Tiers, centre, h.Tiers[centre], s.From)
+		}
+		if w := len(h.Widen); w > 0 {
+			drawn, want := h.Tiers[n-w:], h.Widen
+			if !keptLeft {
+				drawn, want = h.Tiers[:w], reversedTiers(h.Widen)
+			}
+			if !slices.Equal(drawn, want) {
+				return fmt.Errorf(
+					"view %q's step %d widens by tier(s) %v and draws tiers %v, whose %d "+
+						"column(s) away from the kept flank are %v; a widened column is on the "+
+						"opened node's side and the widening order is the order OUT from it, so "+
+						"a client dropping the last of them draws a narrower window and not a "+
+						"hole", v.Path, i, h.Widen, h.Tiers, w, drawn)
+			}
+		}
+	}
+	// Every parent places this step, not the first one that fits.
+	for _, p := range parents {
+		where := "the view's own chart"
+		if p.key != "" {
+			where = fmt.Sprintf("step %q", p.key)
+		}
+		// Same document only, and equality not containment (fisc-ke1f): a
+		// strict subset of a widened parent's tiers is a narrower chart.
+		if p.key != "" && doc == p.doc && slices.Equal(p.tiers, h.Tiers) {
+			return fmt.Errorf(
+				"view %q's step %d draws tiers %v of %q, the set step %q "+
+					"already draws; opening a node would redraw the chart it was opened "+
+					"from", v.Path, i, h.Tiers, doc, p.key)
+		}
+		// A kept flank is drawn at its share of the centre, not whole, so
+		// nothing on one may open: the node would take one figure in and
+		// send its whole decomposition out. Per parent, every flank column.
+		if slices.Contains(p.keep, s.From) {
+			return fmt.Errorf(
+				"view %q's step %d opens tier %d of %s, which KEEPS that tier; a kept "+
+					"flank is drawn at its share of that chart's centre rather than whole, "+
+					"so this step would draw a node taking one figure in and sending its "+
+					"whole decomposition out, with the difference left as node height "+
+					"nothing accounts for", v.Path, i, s.From, where)
+		}
+		if len(h.Keep) == 0 {
+			continue
+		}
+		// Every parent here has a column order and already contains From,
+		// so fi >= 0. The flank walks out from the opened node.
+		fi := slices.Index(p.tiers, s.From)
+		step := -1
+		if !keptLeft {
+			step = 1
+		}
+		for n, k := range h.Keep {
+			ki := slices.Index(p.tiers, k)
+			drawnSide := "RIGHT"
+			if ki < fi {
+				drawnSide = "LEFT"
+			}
+			switch {
+			case ki < 0:
+				return fmt.Errorf(
+					"view %q's step %d keeps tier %d and opens from %s, which draws tiers %v "+
+						"and does not include it; the flank the reader came from has to be a "+
+						"column they were looking at", v.Path, i, k, where, p.tiers)
+			case n == 0 && ki != fi-1 && ki != fi+1:
+				return fmt.Errorf(
+					"view %q's step %d keeps tier %d and opens tier %d of %s, which draws "+
+						"them as columns %d and %d of %v; a window slides by one column, and "+
+						"which way it slides is the SIGN of that adjacency",
+					v.Path, i, k, s.From, where, ki, fi, p.tiers)
+			case n == 0 && ki != fi+step:
+				return fmt.Errorf(
+					"view %q's step %d keeps tier %d, which %s draws to the %s of the "+
+						"opened tier %d, and draws tiers %v, which put it at the other end; "+
+						"the kept flank stays on the side the reader saw it on",
+					v.Path, i, k, where, drawnSide, s.From, h.Tiers)
+			case ki != fi+step*(n+1):
+				return fmt.Errorf(
+					"view %q's step %d keeps tier(s) %v and opens tier %d of %s, which draws "+
+						"tier %d as column %d of %v and the opened tier as column %d; a flank "+
+						"is the columns BESIDE EACH OTHER walking out from the node that was "+
+						"opened, so a gap in it is a column the reader was looking at dropped "+
+						"out of the middle of the ones that stay",
+					v.Path, i, h.Keep, s.From, where, k, ki, p.tiers, fi)
+			}
+		}
+	}
+	for j, c := range h.Caps {
+		switch {
+		case c.Cap < 1:
+			return fmt.Errorf(
+				"view %q's step %d caps tier %d at %d; the cap is what keeps a fine "+
+					"column drawable and a column of one node is not a chart",
+				v.Path, i, c.Tier, c.Cap)
+		case !slices.Contains(h.Tiers, c.Tier):
+			return fmt.Errorf(
+				"view %q's step %d caps tier %d and draws tiers %v, which do not include "+
+					"it; the cap would fold nothing, in silence", v.Path, i, c.Tier, h.Tiers)
+		case slices.ContainsFunc(h.Caps[:j], func(o TierCap) bool { return o.Tier == c.Tier }):
+			return fmt.Errorf("view %q's step %d caps tier %d twice", v.Path, i, c.Tier)
 		}
 	}
 	return nil
@@ -1140,8 +1234,9 @@ func templateRendersAYearControl(name string) bool {
 }
 
 // templateDrawsAChart answers whether a template ships app.js and an SVG for it
-// to draw into. Not the same as rendering a document: trends.html renders one
-// as a server-side table with no app.js.
+// to draw into, and with them [View.Overview] and [View.Steps]. Not the same
+// as rendering a document: trends.html renders one as a server-side table with
+// no app.js.
 func templateDrawsAChart(name string) bool {
 	switch name {
 	case SankeyTemplate:
@@ -1176,19 +1271,6 @@ func templateIsKnown(name string) bool {
 // [View.Sections] headings.
 func templateRendersSections(name string) bool {
 	return name == HistoryTemplate
-}
-
-// templateRendersTiers answers whether a template publishes [View.RenderTiers]
-// to the client. A template that omits the key leaves app.js drawing every
-// tier, so a fold asked for there would be neither refused nor applied.
-func templateRendersTiers(name string) bool {
-	return name == SankeyTemplate
-}
-
-// templateRendersSteps answers whether a template publishes [View.Steps] to the
-// client, with the #breadcrumb a chain comes back out of a node by.
-func templateRendersSteps(name string) bool {
-	return name == SankeyTemplate
 }
 
 // repeatedTier returns a tier the list names twice, or -1.

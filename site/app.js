@@ -47,7 +47,9 @@
 /** schema/page.schema.json#/properties/years/items. @typedef {Record<string, any>} FiscYear */
 /** schema/page.schema.json#/properties/years/items/properties/steps/items. @typedef {Record<string, any>} FiscStepDoc */
 /** schema/page.schema.json, the page's window.FISC_CONFIG. @typedef {Record<string, any>} FiscConfig */
-/** schema/page.schema.json#/properties/steps/items/properties/caps/items. @typedef {Record<string, any>} FiscTierCap */
+/** schema/page.schema.json#/$defs/sankey_hints, a chart's Sankey hints. @typedef {Record<string, any>} FiscSankeyHints */
+/** schema/page.schema.json#/$defs/sankey_hints/properties/caps/items. @typedef {Record<string, any>} FiscTierCap */
+/** schema/page.schema.json#/properties/overview, the page's own chart: its form and hints. @typedef {Record<string, any>} FiscChart */
 /** schema/page.schema.json#/properties/steps/items, one step of the drill tree. @typedef {Record<string, any>} FiscDrillStep */
 /** schema/page.schema.json#/properties/steps/items/properties/gaps/additionalProperties/items. @typedef {Record<string, any>} FiscGap */
 /** schema/projection.schema.json, as scheduleOf assembles it from a column document. @typedef {Record<string, any>} FiscProjection */
@@ -80,12 +82,33 @@ export const CONFIG = /** @type {any} */ (globalThis).FISC_CONFIG;
 export const SCHEMA_VERSION = 1;
 
 /**
- * The node tiers this page draws, coarsest first. Per view and never a
- * constant here: the spine and the drill-down have different hierarchies, and
- * one's set over the other throws. Absent skips the fold entirely.
+ * The node tiers this page's own Sankey draws, coarsest first: the overview's
+ * hints. Per view and never a constant here: the spine and the drill-down
+ * have different hierarchies, and one's set over the other throws. Absent
+ * skips the fold entirely.
  * @type {number[]}
  */
-export const RENDER_TIERS = (CONFIG && CONFIG.render_tiers) || [];
+export const RENDER_TIERS = (CONFIG && CONFIG.overview && CONFIG.overview.sankey && CONFIG.overview.sankey.tiers) || [];
+
+/**
+ * The renderers this script holds, by form. Every chart the page declares
+ * names its form, and one naming a form not here is refused before anything
+ * is fetched: the wrong renderer draws a chart that is wrong rather than one
+ * that fails.
+ * @type {Map<string, {form: string}>}
+ */
+export const FORMS = new Map([["sankey", { form: "sankey" }]]);
+
+/**
+ * The form of the first chart this page declares that no renderer here draws,
+ * or "" when every one is drawable. The overview and every step declare one.
+ * @returns {string}
+ */
+export function undrawableForm() {
+  const charts = [CONFIG.overview || {}].concat(STEPS);
+  const missing = charts.find((c) => !FORMS.has(c.form));
+  return missing ? String(missing.form) : "";
+}
 
 /**
  * The steps this page drills through, read by key; empty opens nothing.
@@ -159,7 +182,7 @@ export function stepDecomposes(step, id) {
   // which schedule is missing rather than the node silently not opening.
   if (!doc) return true;
   if (!decomposable(step, doc).has(id)) return false;
-  if (!step.keep || !step.keep.length || !projection) return true;
+  if (!step.sankey.keep || !step.sankey.keep.length || !projection) return true;
   let byStep = flanks.get(projection);
   if (!byStep) {
     byStep = new Map();
@@ -238,8 +261,8 @@ export function decomposable(step, doc) {
  * @returns {number[]}
  */
 export function freshTiers(step) {
-  const keep = new Set(step.keep || []);
-  return step.tiers.filter((t) => !keep.has(t));
+  const keep = new Set(step.sankey.keep || []);
+  return step.sankey.tiers.filter((t) => !keep.has(t));
 }
 
 /**
@@ -254,9 +277,9 @@ export function freshTiers(step) {
  * @returns {FiscProjection}
  */
 export function freshHalf(step, doc, id) {
-  const window = Boolean(step.keep && step.keep.length);
+  const window = Boolean(step.sankey.keep && step.sankey.keep.length);
   const tiers = freshTiers(step);
-  const nearIsSource = window ? flankIsLeft(step) : step.side === SIDE_SOURCE;
+  const nearIsSource = window ? flankIsLeft(step) : step.sankey.side === SIDE_SOURCE;
   return filterLinks(doc, id, tiers, reaching(doc, id, nearIsSource, tiers));
 }
 
@@ -271,7 +294,7 @@ export const SIDE_SOURCE = "source";
  * @returns {boolean}
  */
 export function flankIsLeft(step) {
-  return step.tiers.indexOf(step.keep[0]) < step.tiers.indexOf(step.from);
+  return step.sankey.tiers.indexOf(step.sankey.keep[0]) < step.sankey.tiers.indexOf(step.from);
 }
 
 
@@ -604,7 +627,7 @@ export const NARROW_COLUMNS = 3;
  * `tiers`. COLUMN_QUERIES answers the room; the reader gets the smaller.
  */
 export const OFFERED_COLUMNS = STEPS.reduce(
-  (most, s) => Math.max(most, (s.tiers || []).length),
+  (most, s) => Math.max(most, ((s.sankey && s.sankey.tiers) || []).length),
   NARROW_COLUMNS,
 );
 
@@ -927,8 +950,8 @@ export function activeTiers(budget) {
   if (!drilled.length) return RENDER_TIERS;
   const at = budget === undefined ? columnBudget : budget;
   const rung = drilled[drilled.length - 1];
-  const tiers = rung.step.tiers;
-  const widen = rung.step.widen || [];
+  const tiers = rung.step.sankey.tiers;
+  const widen = rung.step.sankey.widen || [];
   const drop = new Set(rung.dropped || []);
   // Re-asked after every drop: a tier already dropped as empty is an entry of
   // this same order, and a fixed shortfall would drop it twice.
@@ -1046,7 +1069,7 @@ export function expandable(d) {
   const rung = drilled.length ? drilled[drilled.length - 1] : null;
   if (!rung || !isAggregate(d.id)) return false;
   if (rung.expanded && rung.expanded.has(d.tier)) return false;
-  return (rung.step.caps || []).some((c) => c.tier === d.tier);
+  return (rung.step.sankey.caps || []).some((c) => c.tier === d.tier);
 }
 
 /**
@@ -1579,7 +1602,7 @@ export function columnSize(tier) {
 export function tailNoun(tier) {
   const rung = drilled.length ? drilled[drilled.length - 1] : null;
   if (!rung) return "items";
-  const cap = (rung.step.caps || []).find((c) => c.tier === tier);
+  const cap = (rung.step.sankey.caps || []).find((c) => c.tier === tier);
   return (cap && cap.tail) || rung.step.tail || "items";
 }
 
@@ -1626,9 +1649,9 @@ export function shapeFor(doc) {
     return markContra(foldDocument(doc));
   }
   const step = rung.step;
-  const drawn = (step.keep && step.keep.length)
+  const drawn = (step.sankey.keep && step.sankey.keep.length)
     ? windowFor(rung.chart, doc, rung)
-    : sideOf(doc, rung, activeTiers(), step.side === SIDE_SOURCE);
+    : sideOf(doc, rung, activeTiers(), step.sankey.side === SIDE_SOURCE);
   // THE MARKS COME AFTER THE CAP AND THE FOLD, which must not touch them, in
   // this order: the amount a node prints net of reductions is read off the
   // fresh ribbons before any mark is added, then the residual, then the gap
@@ -1651,7 +1674,7 @@ export function shapeFor(doc) {
  */
 export function dropEmptyColumns(drawn) {
   const rung = drilled.length ? drilled[drilled.length - 1] : null;
-  const widen = rung && rung.step.widen ? rung.step.widen : [];
+  const widen = rung && rung.step.sankey.widen ? rung.step.sankey.widen : [];
   if (!widen.length) return false;
   const has = new Set(drawn.nodes.map((n) => n.tier));
   const gone = activeTiers().filter((t) => widen.indexOf(t) >= 0 && !has.has(t));
@@ -1687,7 +1710,7 @@ export function sideOf(doc, rung, tiers, nearIsSource) {
   /** @type {Map<number, string>} */
   const parentOf = new Map();
   for (const tier of tiers) {
-    const cap = (step.caps || []).find((c) => c.tier === tier);
+    const cap = (step.sankey.caps || []).find((c) => c.tier === tier);
     // An expanded tier skips the cap and only the cap.
     if (!cap || (rung.expanded && rung.expanded.has(tier))) continue;
     const column = shaped.nodes.filter((n) => n.tier === tier);
@@ -1739,8 +1762,8 @@ export function tailFigure(doc, id) {
  * @returns {number[]}
  */
 export function keptTiersOf(step) {
-  const keep = new Set(step.keep || []);
-  return step.tiers.filter((t) => keep.has(t) || t === step.from);
+  const keep = new Set(step.sankey.keep || []);
+  return step.sankey.tiers.filter((t) => keep.has(t) || t === step.from);
 }
 
 /**
@@ -1778,7 +1801,7 @@ export function windowFor(onScreen, stepDoc, rung) {
   const step = rung.step;
   // The columns on screen, not the columns declared.
   const tiers = activeTiers();
-  const keep = new Set(step.keep);
+  const keep = new Set(step.sankey.keep);
   // THE CENTRE IS THE ONLY COLUMN BOTH HALVES HOLD, so a ribbon of one cannot
   // land in a column of the other. With the flank on the left the opened node
   // is the TARGET of the kept half and the SOURCE of the fresh one; on the
@@ -1828,7 +1851,7 @@ export function windowFor(onScreen, stepDoc, rung) {
  * @returns {boolean}
  */
 export function leavingLegDrawn(step, tiers) {
-  return tiers.includes(step.tiers[step.tiers.length - 1]);
+  return tiers.includes(step.sankey.tiers[step.sankey.tiers.length - 1]);
 }
 
 /**
@@ -1868,7 +1891,7 @@ export function contraBand(d) {
  * @returns {FiscProjection} drawn itself when no arriving ribbon is a reduction
  */
 export function markAmounts(drawn, rung) {
-  const keep = new Set(rung.step.keep || []);
+  const keep = new Set(rung.step.sankey.keep || []);
   const tierOf = new Map(drawn.nodes.map((n) => [n.id, n.tier]));
   let sum = 0;
   let contra = false;
@@ -2252,7 +2275,7 @@ export function carryResidual(drawn, from, rung) {
   // declared tier has nowhere to stand it.
   let tier = -1;
   for (const n of doc.nodes) {
-    if (n.id !== opened && inside.has(n.id) && step.tiers.includes(n.tier) && (tier < 0 || n.tier < tier)) {
+    if (n.id !== opened && inside.has(n.id) && step.sankey.tiers.includes(n.tier) && (tier < 0 || n.tier < tier)) {
       tier = n.tier;
     }
   }
@@ -2265,7 +2288,7 @@ export function carryResidual(drawn, from, rung) {
   // LAST WHEN IT LEAVES -- drawn, not declared: an undrawn declared tier is
   // clamped to the first column and the ribbon runs backwards. Filtered in the
   // step's own order, which is a column order and not a sorted set.
-  const tiers = step.tiers.filter((t) => drawn.nodes.some((n) => n.tier === t));
+  const tiers = step.sankey.tiers.filter((t) => drawn.nodes.some((n) => n.tier === t));
   const have = new Set(drawn.nodes.map((n) => n.id));
   const fromByID = new Map(from.nodes.map((n) => [n.id, n]));
   /** @type {FiscNode[]} */
@@ -2413,7 +2436,7 @@ export function markGap(drawn, from, rung) {
     throw new Error("cannot draw " + drawn.projection + ": the step declares a gap of " + licence.cents +
       " cents on " + opened + " in " + where + " and the charts differ there by " + gap);
   }
-  const tiers = step.tiers;
+  const tiers = step.sankey.tiers;
   const locators = citedAround(opened, from ? [from, rung.doc] : [rung.doc]);
   if (!locators.length) {
     throw new Error("cannot draw " + drawn.projection + ": no ribbon touching " + opened +
@@ -4218,6 +4241,14 @@ export async function main() {
         : "The page is older than this script.") +
       " Drawing it anyway would produce a chart that is wrong rather than one " +
       "that fails.");
+    return;
+  }
+
+  const form = undrawableForm();
+  if (form) {
+    fail("This page will not draw: it declares a " + form + " chart, and this script " +
+      "draws " + Array.from(FORMS.keys()).join(", ") + ". Drawing it with another " +
+      "renderer would produce a chart that is wrong rather than one that fails.");
     return;
   }
 

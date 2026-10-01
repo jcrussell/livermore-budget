@@ -299,7 +299,7 @@ column; the smallest fund reaches one pixel at a canvas 64,203px tall.
 
 So the client folds. The rule, in full:
 
-- **A page declares the tiers it draws**, as `render_tiers` in `FISC_CONFIG`.
+- **A page declares the tiers it draws**, as its overview's Sankey hints in `FISC_CONFIG`.
   It is per view and never a constant in `app.js`: the spine and this document
   are drawn by the same script from different hierarchies. Applying one page's
   set to the other document **refuses** rather than corrupts — `{0,2,4}` over
