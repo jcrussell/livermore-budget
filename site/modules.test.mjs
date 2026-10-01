@@ -33,4 +33,22 @@ describe("the shipped modules hold no state", () => {
     const objects = Object.entries(core).filter(([, v]) => typeof v === "object").map(([k]) => k).sort();
     assert.deepEqual(objects, ["money", "moneyCompact"]);
   });
+
+  test("sankey.js imports with no d3 on the global, and reads d3 when a layout asks for it", async (t) => {
+    delete globalThis.FISC_CONFIG;
+    delete globalThis.d3;
+    const sankey = await import(pathToFileURL(path.join(HERE, "sankey.js")).href);
+    assert.equal(typeof sankey.reaching, "function");
+    const declared = sankey.alignFor([0, 2, 5]);
+    assert.equal(typeof declared, "function", "a declared column order aligns without d3");
+    // A module that took d3 at import holds undefined here and cannot answer.
+    const marker = () => 0;
+    globalThis.d3 = { sankeyJustify: marker };
+    const inferred = sankey.alignFor([]);
+    delete globalThis.d3;
+    t.diagnostic(`alignFor([]) returned d3's aligner installed after the import: ${inferred === marker}`);
+    assert.equal(inferred, marker);
+    const objects = Object.entries(sankey).filter(([, v]) => typeof v === "object").map(([k]) => k).sort();
+    assert.deepEqual(objects, [], "sankey.js exports no object a caller could move");
+  });
 });

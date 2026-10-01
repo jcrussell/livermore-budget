@@ -19,7 +19,7 @@
  * The page's window.FISC_CONFIG, read when asked for and never at import.
  * @returns {FiscConfig}
  */
-function config() {
+export function config() {
   return /** @type {any} */ (globalThis).FISC_CONFIG;
 }
 

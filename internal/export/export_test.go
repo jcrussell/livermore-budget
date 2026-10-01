@@ -107,6 +107,7 @@ func TestWriteProducesTheSiteLayout(t *testing.T) {
 		// One document per published column, not also one per schedule.
 		"fy2026-adopted.json",
 		"index.html",
+		"sankey.js",
 		"style.css",
 		"vendor/d3-sankey.LICENSE",
 		"vendor/d3-sankey.min.js",

@@ -105,7 +105,7 @@ const DefaultSourceBrowseURL = "https://github.com/jcrussell/livermore-budget/bl
 
 // verbatimAssets are copied from the embedded site tree byte for byte. The
 // page template is not in this list: it is rendered, and vendor/ is walked.
-var verbatimAssets = []string{"app.js", "core.js", "style.css", ".nojekyll"}
+var verbatimAssets = []string{"app.js", "core.js", "sankey.js", "style.css", ".nojekyll"}
 
 // View is one HTML page of the site: one document, rendered by one template.
 //
