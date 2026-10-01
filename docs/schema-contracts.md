@@ -134,7 +134,7 @@ cells `DrillStep.Gaps` exists to keep visibly unreconciled, so a schedule keeps
 its own link set.
 
 What a node's table entry carries was measured rather than assumed, over
-`testdata/fy2026-adopted.column.json` and `fy2027-adopted.column.json`. Of the
+the `fy2026-adopted.json` and `fy2027-adopted.json` that `fisc export` writes. Of the
 123 and 121 nodes two or more schedules draw, none disagree about `id`,
 `label`, `tier`, `role` or `derived`; none disagree about `constraint_tier`,
 `rationale` or `source_note`, because every builder annotates a fund node

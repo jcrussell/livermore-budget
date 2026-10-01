@@ -441,6 +441,7 @@ describe("the cap is what makes a fund group's column drawable", () => {
     assert.equal(sr.capped.sub, 0);
     assert.equal(cap.capped.sub, 0);
     assert.ok(sr.whole.sub > 0);
+    assert.ok(cap.whole.sub > 0, "the whole capital column draws no sub-pixel ribbon, so its cap is held to nothing");
   });
 });
 

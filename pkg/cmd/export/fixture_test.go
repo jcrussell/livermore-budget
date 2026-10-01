@@ -22,11 +22,12 @@ import (
 )
 
 // The client fixtures are testdata/index.golden.html and the column files the
-// page fetches. They are held to what the client relies on, not to Go's bytes:
-// the markup outside FISC_CONFIG is the template's, every declaration in the
-// config is the one Go makes, and each column validates, resolves and cites
-// facts that sum to its figures. A figure may differ from the served site's;
-// a declaration may not.
+// page fetches, exported over clientSubset rather than the whole store. They
+// are held to what the client relies on rather than to Go's bytes: the page's
+// markup and decoded config are the ones Go writes over the subset, build
+// stamps aside, and each column draws the marks and links Go's does, validates,
+// resolves, and carries figures equal to the facts each link cites, on the
+// pages its locators name.
 
 // clientFixtureColumns are the column files the page fixture's years fetch,
 // as stems of testdata/<stem>.column.json.
@@ -42,16 +43,16 @@ var clientSubset = map[string]string{
 	"fund-group/special-revenue": "the column the tier-3 cap folds hardest: site/layout.test.mjs " +
 		"draws all of it out and requires no two labels to stack, which only its real count tests; " +
 		"fund/240 must fold into its tail; fund/207 and fund/290 print in FY2026 only, so the years' tails differ",
-	"fund/513": "a capital fund whose label runs past the gutter (site/layout.test.mjs OVER_GUTTER)",
-	"fund/551": "a capital fund whose label runs past the gutter (OVER_GUTTER)",
-	"fund/552": "a capital fund whose label runs past the gutter (OVER_GUTTER)",
+	"fund-group/capital": "the second column the tier-3 cap folds: site/fold.test.mjs requires the cap " +
+		"to remove sub-pixel ribbons its whole column draws, which fewer funds than the cap never draw; " +
+		"fund/513, fund/551 and fund/552 run past the gutter (site/layout.test.mjs OVER_GUTTER)",
 	"fund/600": "pays department/innovation-and-economic-development, whose label runs past " +
 		"the gutter only in the department window fund/600 opens (OVER_GUTTER)",
 	"fund/610": "with fund/622 and fund/642, the enterprise funds fund-flows carries transfers/in " +
 		"into, so the enterprise residual is all-leaving (site/columns.test.mjs)",
 	"fund/622": "see fund/610",
 	"fund/642": "see fund/610",
-	"fund/623": "an enterprise fund whose label runs past the gutter (OVER_GUTTER)",
+	"fund/623": "an enterprise fund whose label runs past the gutter (site/layout.test.mjs OVER_GUTTER)",
 	"fund/730": "an internal-service fund whose label runs past the gutter (OVER_GUTTER)",
 }
 
@@ -127,13 +128,11 @@ func splitPage(page []byte) (markup []byte, config []byte, err error) {
 	return packagedBy.ReplaceAll(markup, []byte("Packaged by")), body, nil
 }
 
-// configFigures are the parts of FISC_CONFIG that are figures of the fixture's
-// own facts rather than declarations: the doc page index is checked entry by
-// entry instead, and each year's figures are free.
-var configFigures = []string{"hero", "figures", "caveats", "counts"}
-
-// pageFixtureFaults is every way fixture fails to be the page the template
-// renders with the declarations served carries.
+// pageFixtureFaults is every way fixture fails to be the page served is: the
+// same markup and the same decoded config, build stamps aside. The config is
+// compared whole because the markup renders its figures -- the hero, the
+// caveats, the page links -- so a config free to differ would describe a page
+// its own markup contradicts.
 func pageFixtureFaults(served, fixture []byte) []string {
 	var faults []string
 	sMarkup, sBody, err := splitPage(served)
@@ -158,72 +157,10 @@ func pageFixtureFaults(served, fixture []byte) []string {
 	if err := schema.Validate(schema.Page, fCfg); err != nil {
 		faults = append(faults, "the fixture's config does not match "+schema.Page+": "+err.Error())
 	}
-	if s, _ := sCfg["exported_by"].(string); s == "" {
-		faults = append(faults, "the served config carries no exported_by, so a fixture's stamp could not be told stale")
-	}
-	sDocs, fDocs := sCfg["docs"], fCfg["docs"]
-	if diff := cmp.Diff(declarations(sCfg), declarations(fCfg)); diff != "" {
-		faults = append(faults, "the fixture's config declares what Go does not (-go +fixture):\n"+diff)
-	}
-	faults = append(faults, docFaults(sDocs, fDocs)...)
-	return faults
-}
-
-// declarations is a decoded config with its figures removed. It copies, so
-// the caller's config keeps its docs.
-func declarations(cfg map[string]any) map[string]any {
-	out := map[string]any{}
-	for k, v := range cfg {
-		if k != "docs" && k != "exported_by" {
-			out[k] = v
-		}
-	}
-	years, _ := cfg["years"].([]any)
-	stripped := make([]any, 0, len(years))
-	for _, y := range years {
-		year, _ := y.(map[string]any)
-		kept := map[string]any{}
-		for k, v := range year {
-			if !slices.Contains(configFigures, k) {
-				kept[k] = v
-			}
-		}
-		stripped = append(stripped, kept)
-	}
-	if years != nil {
-		out["years"] = stripped
-	}
-	return out
-}
-
-// docFaults holds the fixture's page index to the served one: the same
-// documents, and every page the fixture carries carried the same way. The
-// fixture may cite fewer pages; it may not cite one Go would not link.
-func docFaults(served, fixture any) []string {
-	s, _ := served.(map[string]any)
-	f, _ := fixture.(map[string]any)
-	var faults []string
-	if diff := cmp.Diff(slices.Sorted(maps.Keys(s)), slices.Sorted(maps.Keys(f))); diff != "" {
-		faults = append(faults, "the fixture's config describes other documents than Go's (-go +fixture):\n"+diff)
-	}
-	for id, fd := range f {
-		sd, _ := s[id].(map[string]any)
-		fdoc, _ := fd.(map[string]any)
-		for k, v := range fdoc {
-			if k == "pages" {
-				continue
-			}
-			if !cmp.Equal(sd[k], v) {
-				faults = append(faults, fmt.Sprintf("the fixture's %s carries %s %v and Go's %v", id, k, v, sd[k]))
-			}
-		}
-		sPages, _ := sd["pages"].(map[string]any)
-		fPages, _ := fdoc["pages"].(map[string]any)
-		for n, p := range fPages {
-			if !cmp.Equal(sPages[n], p) {
-				faults = append(faults, fmt.Sprintf("the fixture's %s p%s is %v and Go links %v", id, n, p, sPages[n]))
-			}
-		}
+	delete(sCfg, "exported_by")
+	delete(fCfg, "exported_by")
+	if diff := cmp.Diff(sCfg, fCfg); diff != "" {
+		faults = append(faults, "the fixture's config is not the one Go writes (-go +fixture):\n"+diff)
 	}
 	return faults
 }
@@ -262,8 +199,13 @@ func columnFixtureFaults(stem string, served, fixture []byte, stamp string, fact
 		if !ok {
 			continue
 		}
-		if diff := cmp.Diff(drawnIDs(goCol, goSched), drawnIDs(col, col.Schedules[name])); diff != "" {
+		goNodes, goLinks := scheduleOf(goCol, goSched, false)
+		nodes, links := scheduleOf(col, col.Schedules[name], false)
+		if diff := cmp.Diff(goNodes, nodes); diff != "" {
 			faults = append(faults, fmt.Sprintf("%s %s draws other marks than Go's (-go +fixture):\n%s", stem, name, diff))
+		}
+		if diff := cmp.Diff(goLinks, links); diff != "" {
+			faults = append(faults, fmt.Sprintf("%s %s draws other links than Go's (-go +fixture):\n%s", stem, name, diff))
 		}
 	}
 	if !cmp.Equal(goCol.Column, col.Column) {
@@ -330,22 +272,43 @@ func columnFixtureFaults(stem string, served, fixture []byte, stamp string, fact
 	return faults
 }
 
-// drawnIDs is the sorted node ids one schedule draws, any index past the
-// table skipped: the arm that refuses one is below.
-func drawnIDs(col export.ColumnDoc, sched export.ColumnSched) []string {
-	var ids []string
-	for _, n := range sched.Nodes {
-		if n.Node >= 0 && n.Node < len(col.Nodes) {
-			ids = append(ids, col.Nodes[n.Node].ID)
+// scheduleOf is one schedule's marks and links, each spelled by node id so
+// two columns whose tables are indexed differently compare: every field the
+// client folds or labels by, and the figures as well where figures is set.
+// An index past the table is skipped; the arm that refuses one is
+// columnFixtureFaults'.
+func scheduleOf(col export.ColumnDoc, sched export.ColumnSched, figures bool) (nodes, links []string) {
+	id := func(i int) string {
+		if i < 0 || i >= len(col.Nodes) {
+			return fmt.Sprintf("#%d", i)
 		}
+		return col.Nodes[i].ID
 	}
-	sort.Strings(ids)
-	return ids
+	for _, n := range sched.Nodes {
+		if n.Node < 0 || n.Node >= len(col.Nodes) {
+			continue
+		}
+		c := col.Nodes[n.Node]
+		nodes = append(nodes, fmt.Sprintf("%s tier=%d role=%q label=%q parent=%q derived=%t constraint=%q rationale=%q source=%q",
+			c.ID, c.Tier, c.Role, c.Label, n.Parent, c.Derived, c.ConstraintTier, c.Rationale, c.SourceNote))
+	}
+	for _, l := range sched.Links {
+		link := fmt.Sprintf("%s -> %s kind=%s transfer=%q derived=%t partition=%t contra=%q",
+			id(l.From), id(l.To), l.Kind, l.TransferID, l.Derived, l.Partition, l.Contra)
+		if figures {
+			link += fmt.Sprintf(" cents=%d facts=%v locators=%s", l.ValueCents, l.FactIDs, l.Locators)
+		}
+		links = append(links, link)
+	}
+	sort.Strings(nodes)
+	sort.Strings(links)
+	return nodes, links
 }
 
-// linkFactFaults holds one fixture link to the facts it cites: each in the
-// store, of the column's year and basis, and summing to the link's value, the
-// draw leg carrying their negation. A link citing nothing must say so.
+// linkFactFaults holds one link to the facts it cites: each in the store, of
+// the column's year and basis, summing to the link's value -- the draw leg
+// carrying their negation -- and on exactly the pages its locators name. A
+// link citing nothing must say so.
 func linkFactFaults(at string, l export.ColumnLink, src string, column export.ColumnKey, facts map[string]fact.Fact) []string {
 	if len(l.FactIDs) == 0 {
 		if !l.Derived {
@@ -355,6 +318,7 @@ func linkFactFaults(at string, l export.ColumnLink, src string, column export.Co
 	}
 	var faults []string
 	var sum int64
+	pages := map[string]bool{}
 	for _, id := range l.FactIDs {
 		f, ok := facts[id]
 		if !ok {
@@ -365,6 +329,23 @@ func linkFactFaults(at string, l export.ColumnLink, src string, column export.Co
 			faults = append(faults, fmt.Sprintf("%s cites %s of FY%d %s", at, id, f.FiscalYear, f.Basis))
 		}
 		sum += f.AmountCents
+		pages[fmt.Sprintf("%s p%d", f.DocID, f.Page)] = true
+	}
+	var locs []struct {
+		DocID string `json:"doc_id"`
+		Pages []int  `json:"pages"`
+	}
+	if err := json.Unmarshal(l.Locators, &locs); err != nil {
+		faults = append(faults, fmt.Sprintf("%s carries locators that do not decode: %v", at, err))
+	}
+	located := map[string]bool{}
+	for _, loc := range locs {
+		for _, pg := range loc.Pages {
+			located[fmt.Sprintf("%s p%d", loc.DocID, pg)] = true
+		}
+	}
+	if want, got := slices.Sorted(maps.Keys(pages)), slices.Sorted(maps.Keys(located)); len(faults) == 0 && !slices.Equal(want, got) {
+		faults = append(faults, fmt.Sprintf("%s locates %v and its facts are on %v", at, got, want))
 	}
 	if src == project.NodeFundBalanceDraw {
 		sum = -sum
@@ -483,8 +464,7 @@ func TestTheClientFixturesHoldWhatTheClientReads(t *testing.T) {
 }
 
 // TestTheClientFixtureChecksCanFail breaks one thing per row, in the fixture
-// the check above is run over, and requires the check to name it; the rows
-// that change a figure are the arms that must stay green.
+// the check above is run over, and requires the check to name it.
 func TestTheClientFixtureChecksCanFail(t *testing.T) {
 	dir := clientExport(t)
 	root := repoRootForTest(t)
@@ -539,27 +519,27 @@ func TestTheClientFixtureChecksCanFail(t *testing.T) {
 		{"one byte of markup", "markup outside FISC_CONFIG", func(*testing.T) []byte {
 			return bytes.Replace(fixturePage, []byte(`id="year-toggle"`), []byte(`id="year-toggl"`), 1)
 		}},
-		{"a wording key dropped", "declares what Go does not", func(t *testing.T) []byte {
+		{"a wording key dropped", "not the one Go writes", func(t *testing.T) []byte {
 			return reconfigured(t, func(cfg map[string]any) { delete(cfg["wording"].(map[string]any), "opened_hint") })
 		}},
-		{"a cap moved", "declares what Go does not", func(t *testing.T) []byte {
+		{"a cap moved", "not the one Go writes", func(t *testing.T) []byte {
 			return reconfigured(t, func(cfg map[string]any) {
 				caps := stepOf(cfg, "fund-group")["sankey"].(map[string]any)["caps"].([]any)
 				caps[0].(map[string]any)["cap"] = 9.0
 			})
 		}},
-		{"a page linked elsewhere", "Go links", func(t *testing.T) []byte {
+		{"a page linked elsewhere", "not the one Go writes", func(t *testing.T) []byte {
 			return reconfigured(t, func(cfg map[string]any) { firstPage(cfg)["pdf"] = "https://example.invalid/" })
 		}},
 		{"a config the schema refuses", "does not match", func(t *testing.T) []byte {
 			return reconfigured(t, func(cfg map[string]any) { delete(stepOf(cfg, "fund-group"), "sankey") })
 		}},
-		{"a hero figure changed", "", func(t *testing.T) []byte {
+		{"a hero figure changed", "not the one Go writes", func(t *testing.T) []byte {
 			return reconfigured(t, func(cfg map[string]any) {
 				cfg["years"].([]any)[0].(map[string]any)["hero"].(map[string]any)["value"] = "$1"
 			})
 		}},
-		{"a page the fixture does not cite", "", func(t *testing.T) []byte {
+		{"a page the fixture does not cite", "not the one Go writes", func(t *testing.T) []byte {
 			return reconfigured(t, func(cfg map[string]any) {
 				for _, d := range cfg["docs"].(map[string]any) {
 					pages := d.(map[string]any)["pages"].(map[string]any)
@@ -581,17 +561,6 @@ func TestTheClientFixtureChecksCanFail(t *testing.T) {
 			}
 		})
 	}
-
-	t.Run("page/a served page with no build stamp", func(t *testing.T) {
-		unstamped := regexp.MustCompile(`"exported_by":"[^"]*",?`).ReplaceAll(servedPage, nil)
-		if bytes.Equal(unstamped, servedPage) {
-			t.Fatal("the served page carries no exported_by to remove, so this row tests nothing")
-		}
-		faults := strings.Join(pageFixtureFaults(unstamped, fixturePage), "\n")
-		if !strings.Contains(faults, "carries no exported_by") {
-			t.Errorf("a served page with no stamp was not refused; faults:\n%s", faults)
-		}
-	})
 
 	const stem = "fy2026-adopted"
 	served, err := os.ReadFile(filepath.Join(dir, stem+".json"))
@@ -620,8 +589,18 @@ func TestTheClientFixtureChecksCanFail(t *testing.T) {
 		}
 		return enc
 	}
-	spine := func(col map[string]any) map[string]any {
-		return col["schedules"].(map[string]any)["sankey"].(map[string]any)
+	sched := func(col map[string]any, name string) map[string]any {
+		return col["schedules"].(map[string]any)[name].(map[string]any)
+	}
+	spine := func(col map[string]any) map[string]any { return sched(col, "sankey") }
+	node := func(col map[string]any, id string) map[string]any {
+		for _, n := range col["nodes"].([]any) {
+			if n.(map[string]any)["id"] == id {
+				return n.(map[string]any)
+			}
+		}
+		t.Fatalf("the column carries no %s", id)
+		return nil
 	}
 	firstLink := func(col map[string]any) map[string]any {
 		return spine(col)["links"].([]any)[0].(map[string]any)
@@ -653,6 +632,39 @@ func TestTheClientFixtureChecksCanFail(t *testing.T) {
 			nodes := col["schedules"].(map[string]any)["fund-flows"].(map[string]any)["nodes"].([]any)
 			col["schedules"].(map[string]any)["fund-flows"].(map[string]any)["nodes"] = nodes[:len(nodes)-1]
 		}, ""},
+		{"a mark at another tier", "draws other marks", func(col map[string]any) {
+			node(col, "fund/100")["tier"] = 4.0
+		}, ""},
+		{"a mark with another role", "draws other marks", func(col map[string]any) {
+			node(col, "fund/100")["role"] = "fund"
+		}, ""},
+		{"a mark with another label", "draws other marks", func(col map[string]any) {
+			node(col, "fund/100")["label"] = "Bogus"
+		}, ""},
+		{"a mark under another parent", "draws other marks", func(col map[string]any) {
+			for _, n := range sched(col, "fund-flows")["nodes"].([]any) {
+				if parent, _ := n.(map[string]any)["parent"].(string); parent == "fund-group/general" {
+					n.(map[string]any)["parent"] = "fund-group/special-revenue"
+					return
+				}
+			}
+		}, ""},
+		{"a link dropped", "draws other links", func(col map[string]any) {
+			spine(col)["links"] = spine(col)["links"].([]any)[1:]
+		}, ""},
+		{"a cited link passed off as derived", "draws other links", func(col map[string]any) {
+			for _, l := range spine(col)["links"].([]any) {
+				if derived, _ := l.(map[string]any)["derived"].(bool); !derived {
+					l.(map[string]any)["fact_ids"] = []any{}
+					l.(map[string]any)["derived"] = true
+					return
+				}
+			}
+			t.Fatal("the spine carries no cited link that is not derived")
+		}, ""},
+		{"a link located on a page its facts are not on", "locates", func(col map[string]any) {
+			firstLink(col)["locators"].([]any)[0].(map[string]any)["pages"] = []any{999.0}
+		}, ""},
 		{"a schedule dropped", "other schedules", func(col map[string]any) {
 			delete(col["schedules"].(map[string]any), "transfers-out")
 		}, ""},
@@ -678,19 +690,6 @@ func TestTheClientFixtureChecksCanFail(t *testing.T) {
 // against, which the subset must leave figure for figure as the store has them.
 var wholeSchedules = []string{"sankey", "department-spending", "transfers-by-fund", "transfers-out"}
 
-// scheduleOf is one schedule's marks and links by id, for comparing two
-// columns whose node tables are indexed differently.
-func scheduleOf(col export.ColumnDoc, name string) (ids []string, links []string) {
-	sched := col.Schedules[name]
-	ids = drawnIDs(col, sched)
-	for _, l := range sched.Links {
-		links = append(links, fmt.Sprintf("%s -> %s %d %s %v", col.Nodes[l.From].ID, col.Nodes[l.To].ID,
-			l.ValueCents, l.Kind, l.FactIDs))
-	}
-	sort.Strings(links)
-	return ids, links
-}
-
 // TestTheClientSubsetLeavesTheLicensedSchedulesWhole exports the store and the
 // subset and requires every schedule a licence is stated against to be the
 // same in both: a fund the subset drops from one of them is a difference the
@@ -715,8 +714,8 @@ func TestTheClientSubsetLeavesTheLicensedSchedulesWhole(t *testing.T) {
 			if _, ok := f.Schedules[name]; !ok {
 				t.Fatalf("%s serves no %s, so this test holds nothing of it", stem, name)
 			}
-			fIDs, fLinks := scheduleOf(f, name)
-			sIDs, sLinks := scheduleOf(s, name)
+			fIDs, fLinks := scheduleOf(f, f.Schedules[name], true)
+			sIDs, sLinks := scheduleOf(s, s.Schedules[name], true)
 			if diff := cmp.Diff(fIDs, sIDs); diff != "" {
 				t.Errorf("%s %s draws other marks over the subset (-store +subset):\n%s", stem, name, diff)
 			}
