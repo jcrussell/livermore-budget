@@ -29,6 +29,11 @@
       "type": "string",
       "enum": ["external", "internal_transfer", "internal_service", "fund_balance"]
     },
+    "mark_role": {
+      "description": "What a node the client makes is for; export.MarkRoles. No document carries one.",
+      "type": "string",
+      "enum": ["aggregate", "residual", "gap"]
+    },
     "chart_form": {
       "description": "Which renderer draws a chart; export.ChartForms.",
       "type": "string",

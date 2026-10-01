@@ -456,6 +456,40 @@ const SankeyForm = "sankey"
 // states as chart_form and schema/enums_test.go holds to this.
 func ChartForms() []string { return []string{SankeyForm} }
 
+// MarkRoles is the declared set of roles a node the CLIENT makes may wear:
+// the aggregate a cap folds a column's tail into, the residual carrying flow
+// a drawn document does not decompose, and the gap holding a licensed
+// difference. No document carries one: [ColumnsOf] refuses a producer node
+// wearing a mark's role or id, validateSteps refuses a licence naming one,
+// schema/enums.schema.json states the set as mark_role, and
+// schema/mark.schema.json is the shape, held on the client by
+// site/marks.test.mjs.
+func MarkRoles() []string { return []string{"aggregate", "residual", "gap"} }
+
+// MarkPrefixes is the id prefix each mark role's ids carry, in [MarkRoles]
+// order.
+func MarkPrefixes() []string { return []string{"aggregate/tail/", "residual/", "gap/"} }
+
+// markPrefixOf is the mark prefix an id carries, or "".
+func markPrefixOf(id string) string {
+	for _, p := range MarkPrefixes() {
+		if strings.HasPrefix(id, p) {
+			return p
+		}
+	}
+	return ""
+}
+
+// markKey is the first key of a licence map that names a mark, or "".
+func markKey[V any](m map[string]V) string {
+	for _, id := range slices.Sorted(maps.Keys(m)) {
+		if markPrefixOf(id) != "" {
+			return id
+		}
+	}
+	return ""
+}
+
 // SankeyHints is what the Sankey form may fold and where. Go declares; the
 // client's capColumn and foldDocument spend the declaration.
 type SankeyHints struct {
@@ -923,6 +957,14 @@ func (v View) validateSteps(built map[string][]byte, ix ColumnIndex) error {
 				"view %q gives step %d a description ending %q rather than in a sentence "+
 					"terminator; the client appends the way back and the table pointer after "+
 					"it, and an unterminated one runs into them", v.Path, i, lastRune(s.Description))
+		case markKey(s.Residual) != "":
+			return fmt.Errorf(
+				"view %q's step %d declares a residual on %q, which is a mark the client "+
+					"makes and no chart above sends flow from", v.Path, i, markKey(s.Residual))
+		case markKey(s.Gaps) != "":
+			return fmt.Errorf(
+				"view %q's step %d licenses a gap on %q, which is a mark the client makes "+
+					"and no document prints a total for", v.Path, i, markKey(s.Gaps))
 		case s.Projection == "" && len(s.Residual) > 0:
 			return fmt.Errorf(
 				"view %q's step %d carries a residual of %d endpoint(s) and draws the "+

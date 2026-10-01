@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jcrussell.github.io/livermore-budget/schema/mark.schema.json",
+  "title": "fisc client mark",
+  "description": "A node the client makes and no document carries: the aggregate a cap folds a column's tail into, the residual carrying flow a drawn document does not decompose, and the gap holding a licensed difference between two schedules. Go writes none and refuses a producer node wearing one; site/marks.test.mjs holds every mark the client builds to this shape. Every figure on one is a sum over cited ribbons, and it says so in its rationale and source note like any derived node.",
+  "type": "object",
+  "required": [
+    "id",
+    "label",
+    "tier",
+    "parent",
+    "role",
+    "derived",
+    "rationale",
+    "source_note"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^(aggregate/tail/|residual/|gap/)",
+      "description": "The mark's prefix names its role; export.MarkPrefixes."
+    },
+    "label": {
+      "type": "string",
+      "minLength": 1
+    },
+    "tier": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "parent": {
+      "type": "string",
+      "description": "The opened node an aggregate or a residual hangs under; empty for a gap, which belongs to neither document and is drawn muted."
+    },
+    "constraint_tier": {
+      "const": "",
+      "description": "A mark reads no fund type: the key is present so a mark is shaped like a node, and empty because no page classifies it."
+    },
+    "role": {
+      "$ref": "https://jcrussell.github.io/livermore-budget/schema/enums.schema.json#/$defs/mark_role"
+    },
+    "derived": {
+      "const": true,
+      "description": "The invariant: the city printed no such line."
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_note": {
+      "type": "string",
+      "minLength": 1
+    },
+    "folds": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "The ids an aggregate stands for, which no parent chain records."
+    },
+    "in_cents": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "out_cents": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "locators": {
+      "type": "array",
+      "items": {
+        "$ref": "https://jcrussell.github.io/livermore-budget/schema/locator.schema.json"
+      },
+      "description": "A gap's citations: the pages cited around the node it stands beside."
+    },
+    "carried_from": {
+      "type": "string",
+      "description": "The stem of the document a mark was carried from into a window, set by the window and never cleared."
+    }
+  },
+  "allOf": [
+    {
+      "description": "An aggregate names what it folded, and folds at least two: an aggregate of one is worse than none.",
+      "if": {
+        "properties": {
+          "role": {
+            "const": "aggregate"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "folds"
+        ],
+        "properties": {
+          "folds": {
+            "minItems": 2
+          }
+        }
+      }
+    },
+    {
+      "description": "A residual carries two figures, what flows in and what flows out, which need not balance.",
+      "if": {
+        "properties": {
+          "role": {
+            "const": "residual"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "in_cents",
+          "out_cents"
+        ]
+      }
+    },
+    {
+      "description": "A gap carries its difference on one side and cites the pages around the node it stands beside.",
+      "if": {
+        "properties": {
+          "role": {
+            "const": "gap"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "in_cents",
+          "out_cents",
+          "locators"
+        ],
+        "properties": {
+          "locators": {
+            "minItems": 1
+          }
+        }
+      }
+    }
+  ]
+}

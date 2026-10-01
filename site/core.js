@@ -593,29 +593,9 @@ export function capColumn(doc, tier, cap, opened, noun) {
 
   // The noun is the view's, plural: the threshold above folds two or more.
   const word = noun || "items";
-  const label = folded.length + " smaller " + word;
-  // derived: true IS THE INVARIANT: the city printed no line called "N
-  // smaller funds". Every cent inside is printed; the grouping is inferred.
-  const aggregate = {
-    id: aggregateID(tier), label: label, tier: tier,
-    parent: opened,
-    constraint_tier: "",
-    // An empty role renders as an empty .chip.
-    role: "aggregate",
-    // THE IDS IT SWALLOWED, so caveatsFor still reaches them: the tail is
-    // folded by value, which no parent chain records.
-    folds: [],
-    derived: true,
-    rationale: "Our grouping, not a line the city printed: the " + folded.length +
-      " smallest " + word + " in this column are drawn as one " +
-      "mark because they cannot be drawn separately. Every figure inside it is printed; " +
-      "the box around them is ours.",
-    source_note: "",
-  };
+  const aggregate = aggregateMark(tier, opened, folded.map((n) => n.id), atTier.length, cap, word);
   const tail = new Set(folded.map((n) => n.id));
   const remap = (/** @type {string} */ id) => (tail.has(id) ? aggregateID(tier) : id);
-
-  aggregate.folds = folded.map((n) => n.id);
 
   // A FOLDED NODE'S CHILDREN HANG FROM THE TAIL: foldDocument refuses a child
   // naming a parent the document does not carry, and dropping the child would
@@ -631,11 +611,8 @@ export function capColumn(doc, tier, cap, opened, noun) {
     .map((l) => Object.assign({}, l, { source: remap(l.source), target: remap(l.target) }))
     .filter((l) => present.has(l.source) && present.has(l.target));
 
-  // THE FIGURE IS NOT HERE: tailFigure finishes the note after the fold and
-  // any later cap have re-pointed these ribbons.
-  aggregate.source_note = "The " + folded.length + " smallest of " + atTier.length +
-    " by value, at this page's cap of " + cap;
-
+  // THE FIGURE IS NOT ON THE MARK: tailFigure finishes the note after the
+  // fold and any later cap have re-pointed these ribbons.
   return Object.assign({}, doc, { nodes: nodes, links: links });
 }
 
@@ -725,6 +702,111 @@ export function gapID(opened) {
 
 /**
  * Whether an id names a gap node.
+ * @param {string} id
+ * @returns {boolean}
+ */
+/**
+ * Whether an id is a mark this client makes: an aggregate, a residual or a
+ * gap. The declared set is export.MarkPrefixes.
+ * @param {string} id
+ * @returns {boolean}
+ */
+export function isMark(id) {
+  return isAggregate(id) || isResidual(id) || isGap(id);
+}
+
+/**
+ * The aggregate a cap folds a column's tail into: schema/mark.schema.json,
+ * role aggregate. derived: true IS THE INVARIANT: the city printed no line
+ * called "N smaller funds". Every cent inside is printed; the grouping is
+ * inferred, and the ids it swallowed are kept so caveatsFor still reaches
+ * them, since a tail folded by value is recorded by no parent chain.
+ * @param {number} tier
+ * @param {string} opened the node the aggregate hangs under, "" across groups
+ * @param {string[]} folded the ids folded, two or more
+ * @param {number} total how many nodes the column held before the cap
+ * @param {number} cap the cap it was folded at
+ * @param {string} word the plural noun the tail is counted in
+ * @returns {FiscMark}
+ */
+export function aggregateMark(tier, opened, folded, total, cap, word) {
+  return {
+    id: aggregateID(tier),
+    label: folded.length + " smaller " + word,
+    tier: tier,
+    parent: opened,
+    constraint_tier: "",
+    role: "aggregate",
+    derived: true,
+    folds: folded.slice(),
+    rationale: "Our grouping, not a line the city printed: the " + folded.length +
+      " smallest " + word + " in this column are drawn as one " +
+      "mark because they cannot be drawn separately. Every figure inside it is printed; " +
+      "the box around them is ours.",
+    source_note: "The " + folded.length + " smallest of " + total +
+      " by value, at this page's cap of " + cap,
+  };
+}
+
+/**
+ * The residual carrying flow a drawn document does not decompose:
+ * schema/mark.schema.json, role residual. Its two figures need not balance;
+ * the words are the renderer's, since they name what it carried.
+ * @param {string} opened the node it stands beside
+ * @param {number} tier
+ * @param {string} grain the city's singular word for what is not split
+ * @param {number} inCents
+ * @param {number} outCents
+ * @param {string} rationale
+ * @param {string} sourceNote
+ * @returns {FiscMark}
+ */
+export function residualMark(opened, tier, grain, inCents, outCents, rationale, sourceNote) {
+  return {
+    id: residualID(opened),
+    label: "Not split by " + grain + " here",
+    tier: tier,
+    parent: opened,
+    constraint_tier: "",
+    role: "residual",
+    derived: true,
+    in_cents: inCents,
+    out_cents: outCents,
+    rationale: rationale,
+    source_note: sourceNote,
+  };
+}
+
+/**
+ * The gap holding a licensed difference between two schedules:
+ * schema/mark.schema.json, role gap. Parentless, so drawn muted: it belongs
+ * to neither document. The difference stands on one side only.
+ * @param {string} opened the node it stands beside
+ * @param {number} tier
+ * @param {number} gap the signed difference, positive where the chart above sends more
+ * @param {string} rationale
+ * @param {string} sourceNote
+ * @param {FiscSource[]} locators the pages cited around the opened node
+ * @returns {FiscMark}
+ */
+export function gapMark(opened, tier, gap, rationale, sourceNote, locators) {
+  return {
+    id: gapID(opened),
+    label: "Difference between the two schedules",
+    tier: tier,
+    parent: "",
+    constraint_tier: "",
+    role: "gap",
+    derived: true,
+    in_cents: gap > 0 ? gap : 0,
+    out_cents: gap > 0 ? 0 : -gap,
+    rationale: rationale,
+    source_note: sourceNote,
+    locators: locators,
+  };
+}
+
+/**
  * @param {string} id
  * @returns {boolean}
  */

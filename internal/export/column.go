@@ -245,6 +245,13 @@ func ColumnsOf(projections map[string][]byte, generatedBy string) (map[string]Co
 
 		drawn := make([]ColumnSchedNode, 0, len(d.Nodes))
 		for _, n := range d.Nodes {
+			// A mark is the client's: a document carrying one would ship a
+			// figure nothing cited as though a page printed it.
+			if slices.Contains(MarkRoles(), n.Role) || markPrefixOf(n.ID) != "" {
+				return nil, ColumnIndex{}, fmt.Errorf(
+					"column %s: schedule %q carries node %q in role %q, a mark the client "+
+						"makes and no document may ship", key, schedule, n.ID, n.Role)
+			}
 			i, had := at[n.ID]
 			node := ColumnNode{
 				ID: n.ID, Label: n.Label, Tier: n.Tier, Role: n.Role, Derived: n.Derived,

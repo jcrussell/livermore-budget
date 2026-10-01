@@ -1122,6 +1122,23 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 			`dependentRequired["residual_grain"]: missing properties ["residual"]`},
 		// A gap needs the same two things: a same-document step names a cell one file
 		// prints once, and a gap with no reason is indistinguishable from drift.
+		// A licence may not name a mark: the client draws marks, no chart
+		// above sends flow from one and no document prints a total for one.
+		{"a residual on a mark", []export.View{ok,
+			chartView(func(v *export.View) {
+				v.Nav = "Extra"
+				v.Steps[0].Projection = "sankey"
+				v.Steps[0].ResidualGrain = "fund"
+				v.Steps[0].Residual = map[string]string{"residual/transfers/in": "A reason."}
+			})},
+			`declares a residual on "residual/transfers/in", which is a mark`},
+		{"a gap on a mark", []export.View{ok,
+			chartView(func(v *export.View) {
+				v.Nav = "Extra"
+				v.Steps[0].Projection = "sankey"
+				v.Steps[0].Gaps = map[string][]project.Gap{"gap/expenditure/services-and-supplies": {{FiscalYear: 2026, Basis: "adopted", Cents: 1, Reason: "A reason."}}}
+			})},
+			`licenses a gap on "gap/expenditure/services-and-supplies", which is a mark`},
 		{"a gap on a step that switches no document", []export.View{ok,
 			chainView(func(v *export.View) {
 				v.Steps[1].Gaps = map[string][]project.Gap{"expenditure/services-and-supplies": {{FiscalYear: 2026, Basis: "adopted", Cents: 1, Reason: "A reason."}}}

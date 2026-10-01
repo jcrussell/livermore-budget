@@ -161,7 +161,7 @@ folds a column's tail into, the residual that carries flow a drawn document
 does not decompose, and the gap that holds a licensed difference. Their roles
 and id prefixes are a declared set in `enums.schema.json`, held to the Go set
 `internal/export` refuses on a producer node, and their shape is
-`mark.schema.json`. Go validates nothing against it, because Go never writes
+`schema/mark.schema.json`. Go validates nothing against it, because Go never writes
 one; `site/marks.test.mjs` reads the schema and holds each mark the client
 builds to its required keys, its properties, the enum and the pattern, which
 is the subset `tools/extract.py` checks and the same precedent. The client

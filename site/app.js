@@ -36,17 +36,13 @@ export * from "./sankey.js";
 /**
  * A node as schema/projection.schema.json#/properties/nodes/items has it,
  * which scheduleOf assembles from a column document's node table and a
- * schedule's parent edges, plus what this file sets on it.
- * @typedef {Record<string, any> & {
- *   folds?: string[], in_cents?: number, out_cents?: number,
- *   locators?: FiscSource[], carried_from?: string, fixedValue?: number
- * }} FiscNode
- *   folds: the ids a synthetic aggregate stands for, only on capColumn's
- *   aggregate. in_cents, out_cents, locators: a residual's or a gap's figures
- *   and citations, computed here. carried_from: the stem of the document a
- *   node was carried from into a window. fixedValue: the figure d3-sankey
- *   sizes the node at where its drawn ribbons do not add up to it.
+ * schedule's parent edges, plus what the client sets on it. carried_from: the
+ * stem of the document a node was carried from into a window. fixedValue: the
+ * figure d3-sankey sizes the node at where its drawn ribbons do not add up to
+ * it.
+ * @typedef {Record<string, any> & {carried_from?: string, fixedValue?: number}} FiscNode
  */
+/** schema/mark.schema.json, a node this client makes: an aggregate, a residual or a gap. @typedef {Record<string, any>} FiscMark */
 
 /** schema/projection.schema.json#/properties/links/items. @typedef {Record<string, any>} FiscLink */
 /** schema/locator.schema.json. @typedef {Record<string, any>} FiscSource */

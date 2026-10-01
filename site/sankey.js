@@ -14,7 +14,7 @@
  */
 
 import {
-  FOLD_REFUSES_MIXED, capColumn, citations, config, fmt, foldDocument, foldTarget, gapID, isAggregate, isFundGroup, isResidual, ledeOf, link, regroupLocators, residualID, scoped, tailFigure, withinNode,
+  FOLD_REFUSES_MIXED, capColumn, citations, config, fmt, foldDocument, foldTarget, gapID, gapMark, isAggregate, isFundGroup, isGap, isResidual, ledeOf, link, regroupLocators, residualID, residualMark, scoped, tailFigure, withinNode,
 } from "./core.js";
 
 export const NODE_WIDTH = 14;
@@ -281,6 +281,15 @@ export function windowFor(onScreen, stepDoc, rung, tiers) {
   const keptLeft = flankIsLeft(step);
   const freshOnScreen = tiers.filter((t) => !keep.has(t));
   const kept = keptFlank(onScreen, rung);
+  // A RESIDUAL OR A GAP ON THE FLANK IS REFUSED: it is a mark this page drew
+  // and no schedule prints, so the fresh half never computed its figure and
+  // the window would carry it as though the new document had.
+  const mark = kept.nodes.find((n) => isResidual(n.id) || isGap(n.id));
+  if (mark) {
+    throw new Error("cannot draw " + stepDoc.projection + ": the kept flank carries " + mark.id +
+      ", a mark this page drew and no schedule prints, so the window would show a figure " +
+      "the document it draws never computed");
+  }
   const fresh = sideOf(stepDoc, rung, freshOnScreen, keptLeft);
   // THE KEPT CENTRE MUST HOLD THE OPENED NODE: a window whose flank sends
   // nothing into it is refused rather than drawn as its fresh half alone.
@@ -779,29 +788,19 @@ export function carryResidual(drawn, from, rung, onScreen) {
   const reasons = Object.keys(residual).sort().filter((e) => touched.has(e))
     .map((e) => label(e) + ": " + residual[e] + ".");
 
-  const node = {
-    id: id,
-    label: "Not split by " + grain + " here",
-    tier: tier,
-    parent: opened,
-    constraint_tier: "",
-    role: "residual",
-    derived: true,
-    in_cents: inCents,
-    out_cents: outCents,
-    // No plural is formed from the grain.
-    rationale: "Money the chart above prints for " + label(opened) + " as a whole and " +
+  // No plural is formed from the grain. The note cites the ribbons carried
+  // at this width.
+  const node = residualMark(opened, tier, grain, inCents, outCents,
+    "Money the chart above prints for " + label(opened) + " as a whole and " +
       "that the schedule this chart is drawn from does not split by " + grain + ", so " +
       "no " + grain + " here receives or pays it. It is drawn beside the opened node's " +
       "parts rather than attributed to one of them, and what flows in and what flows " +
       "out need not balance: the difference is what that schedule does not break " +
       "down. " + reasons.join(" "),
-    // It cites the ribbons carried at this width.
-    source_note: "Carried, not computed: " + links.length + " flow" + (links.length === 1 ? "" : "s") +
+    "Carried, not computed: " + links.length + " flow" + (links.length === 1 ? "" : "s") +
       " of the chart above with figures and citations unchanged — " + where + "." +
       (withheld ? " " + (withheld === 1 ? "The flow" : "The " + withheld + " flows") + " leaving it " +
-        (withheld === 1 ? "is" : "are") + " drawn where there is room for a further column." : ""),
-  };
+        (withheld === 1 ? "is" : "are") + " drawn where there is room for a further column." : ""));
   return Object.assign({}, drawn, {
     nodes: drawn.nodes.concat(added, [node]),
     links: drawn.links.filter((l) => !spliced.has(l)).concat(links),
@@ -888,25 +887,14 @@ export function markGap(drawn, from, rung) {
   const id = gapID(opened);
   // THE SIDE THE FIGURE IS ON IS THE SIDE THE MARK STANDS ON: too little
   // leaving arrives at the mark, too little arriving leaves it.
-  const node = {
-    id: id,
-    label: "Difference between the two schedules",
-    tier: gap > 0 ? tiers[tiers.length - 1] : tiers[0],
-    // Parentless, so drawn --muted: it belongs to neither document.
-    parent: "",
-    constraint_tier: "",
-    role: "gap",
-    derived: true,
-    in_cents: gap > 0 ? gap : 0,
-    out_cents: gap > 0 ? 0 : -gap,
-    rationale: lead + " " + licence.reason + " This mark is that " + fmt(Math.abs(gap)) +
+  const node = gapMark(opened, gap > 0 ? tiers[tiers.length - 1] : tiers[0], gap,
+    lead + " " + licence.reason + " This mark is that " + fmt(Math.abs(gap)) +
       ", drawn so that the ribbons and the node agree; no page prints it as a figure of its own.",
-    source_note: "Derived, not published: one document's total for this cell less the " +
+    "Derived, not published: one document's total for this cell less the " +
       "other's. Each total is built from figures `fisc verify` ties to the pages the city " +
       "printed, and the difference is the one declared for this column; no page prints " +
       "it as a figure of its own.",
-    locators: locators,
-  };
+    locators);
   const link = gap > 0
     ? { source: opened, target: id, value_cents: gap }
     : { source: id, target: opened, value_cents: -gap };

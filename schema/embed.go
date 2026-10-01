@@ -117,4 +117,7 @@ const (
 	Series = "series.schema.json"
 	// Geometry is one page's word boxes, as tools/extract.py writes them.
 	Geometry = "geometry.schema.json"
+	// Mark is a node the client makes and no document carries; Go writes
+	// none, and site/marks.test.mjs holds the client to it.
+	Mark = "mark.schema.json"
 )

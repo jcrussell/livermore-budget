@@ -232,6 +232,15 @@ func TestColumnsOfRefusesWhatItCannotFold(t *testing.T) {
 			"two": columnTestDoc(`{"id": "a", "label": "A", "tier": 0, "constraint_tier": "committed",
 			  "rationale": "read", "source_note": "from"}, {"id": "b", "label": "B", "tier": 1}`, columnTestLink),
 		}, `"a" disagrees between schedules about the same node`},
+		// A mark is the client's: ids and roles under export.MarkPrefixes and
+		// MarkRoles are refused from a producer whatever else it says.
+		{"a node wearing a mark's role", map[string][]byte{
+			"one": columnTestDoc(`{"id": "a", "label": "A", "tier": 0, "role": "gap"}, {"id": "b", "label": "B", "tier": 1}`, columnTestLink),
+		}, `node "a" in role "gap", a mark the client makes`},
+		{"a node under a mark's prefix", map[string][]byte{
+			"one": columnTestDoc(`{"id": "a", "label": "A", "tier": 0}, {"id": "residual/b", "label": "B", "tier": 1}`,
+				`{"source": "a", "target": "residual/b", "value_cents": 1, "kind": "external", "fact_ids": ["f"], "locators": [{"doc_id": "d", "pages": [1]}]}`),
+		}, `node "residual/b" in role "", a mark the client makes`},
 		{"a ribbon names a node the document does not carry", map[string][]byte{
 			"one": columnTestDoc(`{"id": "b", "label": "B", "tier": 1}`, columnTestLink),
 		}, "link a -> b names a node the document does not carry"},
