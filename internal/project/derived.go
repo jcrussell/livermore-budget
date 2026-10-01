@@ -126,10 +126,10 @@ func referenceCut() (structure.Cut, error) {
 // node and what the schedule a step draws accounts for: the signed cents the
 // spine carries over, and the reason a reader meets, terminated.
 type Gap struct {
-	FiscalYear int
-	Basis      string
-	Cents      int64
-	Reason     string
+	FiscalYear int    `json:"fiscal_year"`
+	Basis      string `json:"basis"`
+	Cents      int64  `json:"cents"`
+	Reason     string `json:"reason"`
 }
 
 // SpendingGaps is the gap between the spine's object-category cells and

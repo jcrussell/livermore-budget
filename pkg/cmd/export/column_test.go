@@ -149,26 +149,6 @@ func TestEveryColumnIndexResolves(t *testing.T) {
 		t.Fatalf("columnsOf: %v", err)
 	}
 	for name, col := range columns {
-		seen := map[int]bool{}
-		for _, tier := range col.Tiers {
-			for _, i := range tier.Nodes {
-				if i < 0 || i >= len(col.Nodes) {
-					t.Fatalf("%s tier %d names node %d of %d", name, tier.Tier, i, len(col.Nodes))
-				}
-				if col.Nodes[i].Tier != tier.Tier {
-					t.Errorf("%s tier %d holds %s, which is tier %d",
-						name, tier.Tier, col.Nodes[i].ID, col.Nodes[i].Tier)
-				}
-				if seen[i] {
-					t.Errorf("%s lists node %s in two tiers", name, col.Nodes[i].ID)
-				}
-				seen[i] = true
-			}
-		}
-		if len(seen) != len(col.Nodes) {
-			t.Errorf("%s: the tier lists reach %d of %d nodes, so some node stands in no column",
-				name, len(seen), len(col.Nodes))
-		}
 		for schedule, sched := range col.Schedules {
 			for _, n := range sched.Nodes {
 				if n.Node < 0 || n.Node >= len(col.Nodes) {

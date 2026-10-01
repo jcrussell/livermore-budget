@@ -19,16 +19,16 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/jcrussell/livermore-budget/internal/export"
+	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/site"
 )
 
 // trendsDoc is a minimal revenue-trends document citing pages the SPINE does
 // not, which is the whole point: it is the shape fisc-fjy was filed about.
 //
-// It is hand-written rather than built by internal/project, because this package
-// deliberately does not import it -- the packager consumes projections as bytes
-// and knows nothing about how they were built, and a test that reached for the
-// producer would quietly retire that seam.
+// It is hand-written rather than built by internal/project: the packager
+// consumes projections as bytes and knows nothing about how they were built,
+// and a test that reached for the producer would quietly retire that seam.
 func trendsDoc(pages ...int) []byte {
 	type point struct {
 		FiscalYear  int    `json:"fiscal_year"`
@@ -1104,21 +1104,21 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 		// prints once, and a gap with no reason is indistinguishable from drift.
 		{"a gap on a step that switches no document", []export.View{ok,
 			chainView(func(v *export.View) {
-				v.Steps[1].Gaps = map[string]export.Gaps{"expenditure/services-and-supplies": {{FiscalYear: 2026, Basis: "adopted", Cents: 1, Reason: "A reason."}}}
+				v.Steps[1].Gaps = map[string][]project.Gap{"expenditure/services-and-supplies": {{FiscalYear: 2026, Basis: "adopted", Cents: 1, Reason: "A reason."}}}
 			})},
 			"a step that switches no document has only one"},
 		{"a gap with no reason", []export.View{ok,
 			chartView(func(v *export.View) {
 				v.Nav = "Extra"
 				v.Steps[0].Projection = "sankey"
-				v.Steps[0].Gaps = map[string]export.Gaps{"expenditure/services-and-supplies": {{FiscalYear: 2026, Basis: "adopted", Cents: 1}}}
+				v.Steps[0].Gaps = map[string][]project.Gap{"expenditure/services-and-supplies": {{FiscalYear: 2026, Basis: "adopted", Cents: 1}}}
 			})},
 			"items/properties/reason: minLength"},
 		{"a gap licensing zero cents", []export.View{ok,
 			chartView(func(v *export.View) {
 				v.Nav = "Extra"
 				v.Steps[0].Projection = "sankey"
-				v.Steps[0].Gaps = map[string]export.Gaps{"expenditure/services-and-supplies": {{FiscalYear: 2026, Basis: "adopted", Reason: "A reason."}}}
+				v.Steps[0].Gaps = map[string][]project.Gap{"expenditure/services-and-supplies": {{FiscalYear: 2026, Basis: "adopted", Reason: "A reason."}}}
 			})},
 			"items/properties/cents: not"},
 		{"a gap on a step that widens", []export.View{ok,
@@ -1126,13 +1126,13 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 				v.Nav = "Extra"
 				v.Steps[0].Projection = "sankey"
 				v.Steps[0].Tiers, v.Steps[0].Widen = []int{0, 2, 3, 4}, []int{4}
-				v.Steps[0].Gaps = map[string]export.Gaps{"expenditure/services-and-supplies": {{FiscalYear: 2026, Basis: "adopted", Cents: 1, Reason: "A reason."}}}
+				v.Steps[0].Gaps = map[string][]project.Gap{"expenditure/services-and-supplies": {{FiscalYear: 2026, Basis: "adopted", Cents: 1, Reason: "A reason."}}}
 			})},
 			"declares a gap on 1 node(s) and widens tiers"},
 		{"two gap licences for one column", []export.View{ok,
 			chartView(func(v *export.View) {
 				v.Steps[0].Projection = "sankey"
-				v.Steps[0].Gaps = map[string]export.Gaps{"expenditure/services-and-supplies": {
+				v.Steps[0].Gaps = map[string][]project.Gap{"expenditure/services-and-supplies": {
 					{FiscalYear: 2026, Basis: "adopted", Cents: 1, Reason: "A reason."},
 					{FiscalYear: 2026, Basis: "adopted", Cents: 2, Reason: "Another."}}}
 			})},
@@ -1140,7 +1140,7 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 		{"a gap licensing a column the view lists no year of", []export.View{ok,
 			chartView(func(v *export.View) {
 				v.Steps[0].Projection = "sankey"
-				v.Steps[0].Gaps = map[string]export.Gaps{"expenditure/services-and-supplies": {
+				v.Steps[0].Gaps = map[string][]project.Gap{"expenditure/services-and-supplies": {
 					{FiscalYear: 2027, Basis: "adopted", Cents: 1, Reason: "A reason."}}}
 			})},
 			"licenses a gap on node \"expenditure/services-and-supplies\" for FY2027 adopted, a column the view lists no year of"},
@@ -3500,7 +3500,7 @@ func TestTheServedStepsCarryTheirLicences(t *testing.T) {
 		Description:   "One.",
 		Residual:      map[string]string{"transfers/in": "no fund receives it"},
 		ResidualGrain: "fund",
-		Gaps: map[string]export.Gaps{"fund-group/general": {
+		Gaps: map[string][]project.Gap{"fund-group/general": {
 			{FiscalYear: 2026, Basis: "adopted", Cents: -25000000, Reason: "The pages disagree."},
 			{FiscalYear: 2027, Basis: "adopted", Cents: 4200, Reason: "So do these."},
 		}},

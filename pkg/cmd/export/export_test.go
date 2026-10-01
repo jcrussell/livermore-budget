@@ -1484,7 +1484,7 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 			Back:       "All object categories",
 			Tail:       "divisions",
 			// Derived from the exceptions cuts-tie-along-the-lattice pins.
-			Gaps: must[map[string]export.Gaps](t)(spendingGaps()),
+			Gaps: must[map[string][]project.Gap](t)(project.SpendingGaps()),
 			Description: "The fund groups that pay for this object category are on the " +
 				"left; the divisions that spend it are on the right \u2014 Budget Book " +
 				"pp.85-125's rows for this category, every division in the city that " +

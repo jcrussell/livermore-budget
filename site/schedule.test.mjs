@@ -29,6 +29,15 @@ describe("a schedule read out of a column", () => {
       "the drill-down is of three schedules");
   });
 
+  test("a schedule's headline is not the column's to carry: a planted one does not reach the assembled document", async () => {
+    const { app } = await loadApp();
+    const column = structuredClone(columnFixture("fy2026-adopted"));
+    column.schedules.sankey.headline = { all_funds_gross_revenue_cents: 1 };
+    const doc = app.scheduleOf(column, "sankey");
+    assert.equal("headline" in doc.metadata, false,
+      "the spine's headline is Go's to render from the projection, and the column file carries no copy of it");
+  });
+
   test("a schedule the column does not carry is null, not a document with nothing in it", async () => {
     const app = await module();
     assert.equal(app.scheduleOf(columnFixture("fy2026-adopted"), "no-such-schedule"), null);

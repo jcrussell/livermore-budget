@@ -27,7 +27,6 @@ type ColumnDoc struct {
 	GeneratedBy   string                 `json:"generated_by,omitempty"`
 	Column        ColumnKey              `json:"column"`
 	Nodes         []ColumnNode           `json:"nodes"`
-	Tiers         []ColumnTier           `json:"tiers"`
 	FundGroups    []ColumnFundGroup      `json:"fund_groups"`
 	Schedules     map[string]ColumnSched `json:"schedules"`
 }
@@ -72,21 +71,14 @@ type ColumnFundGroup struct {
 	Slot int    `json:"slot"`
 }
 
-// ColumnTier is the reader's left-to-right. A tier with no node is absent.
-type ColumnTier struct {
-	Tier  int   `json:"tier"`
-	Nodes []int `json:"nodes"`
-}
-
 // ColumnSched is one printed schedule of a column.
 type ColumnSched struct {
-	Scopes   []string          `json:"scopes"`
-	Headline json.RawMessage   `json:"headline,omitempty"`
-	Counts   json.RawMessage   `json:"counts,omitempty"`
-	Caveats  json.RawMessage   `json:"caveats,omitempty"`
-	Sources  json.RawMessage   `json:"sources,omitempty"`
-	Nodes    []ColumnSchedNode `json:"nodes"`
-	Links    []ColumnLink      `json:"links"`
+	Scopes  []string          `json:"scopes"`
+	Counts  json.RawMessage   `json:"counts,omitempty"`
+	Caveats json.RawMessage   `json:"caveats,omitempty"`
+	Sources json.RawMessage   `json:"sources,omitempty"`
+	Nodes   []ColumnSchedNode `json:"nodes"`
+	Links   []ColumnLink      `json:"links"`
 }
 
 // ColumnLink references its ends by index into the node table, which is why
@@ -138,7 +130,6 @@ type decoded struct {
 		Basis           string          `json:"basis"`
 		Scopes          []string        `json:"scopes"`
 		GeneratedBy     string          `json:"generated_by"`
-		Headline        json.RawMessage `json:"headline"`
 		Counts          json.RawMessage `json:"counts"`
 		Caveats         json.RawMessage `json:"caveats"`
 		Sources         json.RawMessage `json:"sources"`
@@ -286,19 +277,17 @@ func ColumnsOf(projections map[string][]byte, generatedBy string) (map[string]Co
 			})
 		}
 		col.Schedules[schedule] = ColumnSched{
-			Nodes:    drawn,
-			Scopes:   d.Metadata.Scopes,
-			Headline: d.Metadata.Headline,
-			Counts:   d.Metadata.Counts,
-			Caveats:  d.Metadata.Caveats,
-			Sources:  d.Metadata.Sources,
-			Links:    links,
+			Nodes:   drawn,
+			Scopes:  d.Metadata.Scopes,
+			Counts:  d.Metadata.Counts,
+			Caveats: d.Metadata.Caveats,
+			Sources: d.Metadata.Sources,
+			Links:   links,
 		}
 	}
 
 	out := make(map[string]ColumnDoc, len(byColumn))
 	for key, col := range byColumn {
-		col.Tiers = tiersOf(col.Nodes)
 		groups, err := fundGroupsOf(col.Nodes)
 		if err != nil {
 			return nil, ColumnIndex{}, fmt.Errorf("column %s: %w", key, err)
@@ -307,25 +296,6 @@ func ColumnsOf(projections map[string][]byte, generatedBy string) (map[string]Co
 		out[key] = *col
 	}
 	return out, ix, nil
-}
-
-// tiersOf is the reader's left-to-right: every tier the column draws a node at,
-// ascending, each with its nodes in table order.
-func tiersOf(nodes []ColumnNode) []ColumnTier {
-	at := map[int][]int{}
-	for i, n := range nodes {
-		at[n.Tier] = append(at[n.Tier], i)
-	}
-	tiers := make([]int, 0, len(at))
-	for t := range at {
-		tiers = append(tiers, t)
-	}
-	sort.Ints(tiers)
-	out := make([]ColumnTier, 0, len(tiers))
-	for _, t := range tiers {
-		out = append(out, ColumnTier{Tier: t, Nodes: at[t]})
-	}
-	return out
 }
 
 // fundGroupDisplayOrder is the fund column top to bottom, by fund-type slug,

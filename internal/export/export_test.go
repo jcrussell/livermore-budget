@@ -639,7 +639,6 @@ func TestPageConfigCarriesTheProjectionMetadataVerbatim(t *testing.T) {
 	var got struct {
 		SchemaVersion int                `json:"schema_version"`
 		Primary       string             `json:"primary"`
-		Metadata      json.RawMessage    `json:"metadata"`
 		Docs          map[string]testDoc `json:"docs"`
 	}
 	if err := json.Unmarshal(cfg, &got); err != nil {
@@ -653,26 +652,6 @@ func TestPageConfigCarriesTheProjectionMetadataVerbatim(t *testing.T) {
 	// its schedule.
 	if got.SchemaVersion != 1 {
 		t.Errorf("got schema_version %d, want 1", got.SchemaVersion)
-	}
-
-	// The page must not reassemble metadata the projection already published:
-	// a second copy of the fiscal year or the headline is a second thing to
-	// keep in step. Compare the whole block, semantically.
-	var wantMeta, gotMeta any
-	var golden struct {
-		Metadata json.RawMessage `json:"metadata"`
-	}
-	if err := json.Unmarshal(goldenSankey(t), &golden); err != nil {
-		t.Fatalf("decode golden: %v", err)
-	}
-	if err := json.Unmarshal(golden.Metadata, &wantMeta); err != nil {
-		t.Fatalf("decode golden metadata: %v", err)
-	}
-	if err := json.Unmarshal(got.Metadata, &gotMeta); err != nil {
-		t.Fatalf("decode config metadata: %v", err)
-	}
-	if diff := cmp.Diff(wantMeta, gotMeta); diff != "" {
-		t.Errorf("config metadata differs from the projection's (-want +got):\n%s", diff)
 	}
 
 	doc, ok := got.Docs["livermore-budget-fy2026-2027"]

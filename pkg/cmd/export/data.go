@@ -444,21 +444,6 @@ func assertPublishedReachable(vs []export.View, built map[string][]byte) error {
 	return nil
 }
 
-// spendingGaps is project.SpendingGaps as the step declares it.
-func spendingGaps() (map[string]export.Gaps, error) {
-	declared, err := project.SpendingGaps()
-	if err != nil {
-		return nil, err
-	}
-	out := map[string]export.Gaps{}
-	for id, gaps := range declared {
-		for _, g := range gaps {
-			out[id] = append(out[id], export.Gap(g))
-		}
-	}
-	return out, nil
-}
-
 // stepByKey is the declared step with this key, and whether one was declared.
 // Steps are looked up by key, never index: the blocks append conditionally.
 func stepByKey(steps []export.DrillStep, key string) (export.DrillStep, bool) {
@@ -508,7 +493,7 @@ func views(built result) ([]export.View, error) {
 	if err != nil {
 		return nil, err
 	}
-	gaps, err := spendingGaps()
+	gaps, err := project.SpendingGaps()
 	if err != nil {
 		return nil, err
 	}

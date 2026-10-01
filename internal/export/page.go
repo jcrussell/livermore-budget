@@ -83,9 +83,7 @@ func checkSchemaVersion(stem string, got int) error {
 // Everything else — nodes, links — is bulk the browser fetches, and decoding
 // it here would be a second parser for a contract that already has one.
 //
-// Metadata is kept as raw JSON as well as decoded, so window.FISC_CONFIG can
-// carry the projection's own bytes rather than this package's re-rendering of
-// them. A field this struct does not know about still reaches the client.
+// Metadata is kept as raw JSON and decoded by each reader for what it needs.
 type projectionDoc struct {
 	SchemaVersion int             `json:"schema_version"`
 	Projection    string          `json:"projection"`
@@ -594,8 +592,6 @@ type clientConfig struct {
 	SchemaVersion int    `json:"schema_version"`
 	ExportedBy    string `json:"exported_by"`
 	Primary       string `json:"primary"`
-	// Metadata is the primary projection's metadata block, verbatim.
-	Metadata json.RawMessage `json:"metadata"`
 	// Years is every published year with the words that belong to it, built by
 	// the packager so the client never composes a figure or a caveat itself.
 	Years []yearView           `json:"years"`
@@ -612,9 +608,6 @@ type clientConfig struct {
 	// Steps is how the page opens a node, one hop per step, omitted (not [])
 	// on a page that opens none.
 	Steps []DrillStep `json:"steps,omitempty"`
-	// Root is the node whose subtree the page draws, omitted when it draws the
-	// whole document.
-	Root string `json:"root,omitempty"`
 }
 
 // encodeConfig renders window.FISC_CONFIG and refuses bytes that do not match
@@ -1159,7 +1152,6 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		SchemaVersion: doc.SchemaVersion,
 		ExportedBy:    o.GeneratedBy,
 		Primary:       v.Projection,
-		Metadata:      doc.Metadata,
 		Years:         years,
 		Docs:          clientDocs,
 		KindLabels:    kindLabels(),

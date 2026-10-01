@@ -447,7 +447,7 @@ type DrillStep struct {
 	// A gap key is the opened node itself; a [DrillStep.Residual] key is an
 	// endpoint of the chart above. A step declaring a gap claims every other
 	// node it opens balances. Only on a step that switches document.
-	Gaps map[string]Gaps `json:"gaps,omitempty"`
+	Gaps map[string][]project.Gap `json:"gaps,omitempty"`
 }
 
 // SideSource is [DrillStep.Side] for a step opening the node its chart's links

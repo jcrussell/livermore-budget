@@ -3922,7 +3922,6 @@ function assembleSchedule(column, key) {
       scopes: sched.scopes,
       currency: "USD", units: "cents",
       sources: sched.sources,
-      headline: sched.headline || {},
       counts: sched.counts || {},
       caveats: sched.caveats || [],
     },

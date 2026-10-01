@@ -8,7 +8,6 @@
     "schema_version",
     "exported_by",
     "primary",
-    "metadata",
     "years",
     "docs",
     "kind_labels",
@@ -30,10 +29,6 @@
       "type": "string",
       "minLength": 1,
       "description": "The projection this page is of."
-    },
-    "metadata": {
-      "description": "The primary projection's metadata block, verbatim and opaque here: projection.schema.json states its shape.",
-      "type": "object"
     },
     "years": {
       "type": "array",
@@ -439,11 +434,6 @@
           }
         }
       }
-    },
-    "root": {
-      "type": "string",
-      "minLength": 1,
-      "description": "The node whose subtree the page draws; omitted when it draws the whole document."
     },
     "kind_labels": {
       "description": "Each link kind in the page's words; project.LinkKindLabel.",

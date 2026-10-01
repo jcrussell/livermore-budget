@@ -8,7 +8,6 @@
     "schema_version",
     "column",
     "nodes",
-    "tiers",
     "fund_groups",
     "schedules"
   ],
@@ -131,34 +130,6 @@
         ]
       }
     },
-    "tiers": {
-      "description": "The reader's left-to-right, and which nodes stand in each. A tier the column draws no node at is absent rather than empty.",
-      "type": "array",
-      "minItems": 1,
-      "items": {
-        "type": "object",
-        "required": [
-          "tier",
-          "nodes"
-        ],
-        "additionalProperties": false,
-        "properties": {
-          "tier": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "nodes": {
-            "type": "array",
-            "minItems": 1,
-            "items": {
-              "description": "An index into the nodes table.",
-              "type": "integer",
-              "minimum": 0
-            }
-          }
-        }
-      }
-    },
     "fund_groups": {
       "description": "The fund groups this column draws, in the order the page lays the fund column out. Ordered, not closed: data/funds.yaml can add a fund type.",
       "type": "array",
@@ -200,9 +171,6 @@
         ],
         "additionalProperties": false,
         "properties": {
-          "headline": {
-            "type": "object"
-          },
           "counts": {
             "type": "object",
             "required": [

@@ -383,7 +383,6 @@ describe("the spine's fund groups", () => {
     sched.nodes.push({ node: idx });
     const link = sched.links.find((l) => l.to === model);
     sched.links.push(Object.assign({}, link, { to: idx }));
-    col.tiers.find((t) => t.tier === col.nodes[model].tier).nodes.push(idx);
     if (listed) col.fund_groups.push({ id, slot: 0 });
   }
 
