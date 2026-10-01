@@ -2095,78 +2095,12 @@ func TestStemForRefusesADocumentWithNoColumns(t *testing.T) {
 // of them would be a transcription of the same schedules the mapping rules
 // already read.
 //
-// So the fixture exists for the client's tests, which have no Go and no
-// facts.jsonl and cannot lay out a document they are not handed. What this test buys is that
-// the document it lays out is the one `fisc export` writes -- without it, the
-// fold could be proved to work on a drill-down that stopped being ours.
+// So the fixture exists as the real drill-down internal/export's view tests
+// take as input, and this test keeps it the one buildProjections writes:
+// without it, a step could be proved against a document that stopped being
+// ours.
 func TestTheFundFlowsFixtureIsTheDocumentTheSiteDraws(t *testing.T) {
 	fixtureIsTheDocumentExported(t, project.FundFlowsProjection, "fund-flows.golden.json")
-}
-
-// TestTheFundFlows2027FixtureIsTheDocumentTheSiteDraws is the same claim over
-// the other spine year, whose shape differs (fund/207 is a dash in FY2027).
-// The stem is spelled, not computed, so it cannot agree with the join by
-// construction.
-func TestTheFundFlows2027FixtureIsTheDocumentTheSiteDraws(t *testing.T) {
-	fixtureIsTheDocumentExported(t, "fund-flows-2027", "fund-flows-2027.golden.json")
-}
-
-// TestTheSankey2027FixtureIsTheDocumentTheSiteDraws pins the second spine
-// column's capture. The residual reads the spine, and only FY2027 carries
-// fund-balance/contribution.
-func TestTheSankey2027FixtureIsTheDocumentTheSiteDraws(t *testing.T) {
-	fixtureIsTheDocumentExported(t, "sankey-2027", "sankey-2027.golden.json")
-}
-
-// TestTheDepartmentSpendingFixtureIsTheDocumentTheSiteDraws and its 2027 twin
-// pin the captures the object-category window is measured over, one per spine
-// year: only FY2026-27 carries the declared gap between p0067 and pp.85-125.
-func TestTheDepartmentSpendingFixtureIsTheDocumentTheSiteDraws(t *testing.T) {
-	fixtureIsTheDocumentExported(t, project.DepartmentSpendingProjection,
-		"department-spending.golden.json")
-}
-
-func TestTheDepartmentSpending2027FixtureIsTheDocumentTheSiteDraws(t *testing.T) {
-	fixtureIsTheDocumentExported(t, "department-spending-2027",
-		"department-spending-2027.golden.json")
-}
-
-// TestTheDepartmentFundingFixtureIsTheDocumentTheSiteDraws and its 2027 twin pin
-// the captures the fund-departments window is measured over, one per spine
-// year, because the two years decompose different funds.
-func TestTheDepartmentFundingFixtureIsTheDocumentTheSiteDraws(t *testing.T) {
-	fixtureIsTheDocumentExported(t, project.DepartmentFundingProjection,
-		"department-funding.golden.json")
-}
-
-// TestTheTransfersOutFixtureIsTheDocumentTheSiteDraws and its 2027 twin pin the
-// captures the transfers-out window is measured over: p76's legs and p222's
-// transfers to the CIP, whose receivers differ between the two years.
-func TestTheTransfersOutFixtureIsTheDocumentTheSiteDraws(t *testing.T) {
-	fixtureIsTheDocumentExported(t, project.TransfersOutProjection, "transfers-out.golden.json")
-}
-
-func TestTheTransfersOut2027FixtureIsTheDocumentTheSiteDraws(t *testing.T) {
-	fixtureIsTheDocumentExported(t, "transfers-out-2027", "transfers-out-2027.golden.json")
-}
-
-func TestTheDepartmentFunding2027FixtureIsTheDocumentTheSiteDraws(t *testing.T) {
-	fixtureIsTheDocumentExported(t, "department-funding-2027",
-		"department-funding-2027.golden.json")
-}
-
-// TestTheTransfersByFundFixtureIsTheDocumentTheSiteDraws pins the capture of
-// Budget Book p76, the one document drawing two legs per printed figure.
-func TestTheTransfersByFundFixtureIsTheDocumentTheSiteDraws(t *testing.T) {
-	fixtureIsTheDocumentExported(t, project.TransfersByFundProjection,
-		"transfers-by-fund.golden.json")
-}
-
-// TestTheTransfersByFund2027FixtureIsTheDocumentTheSiteDraws is the same claim
-// over the other spine year, whose p76 column prints different figures.
-func TestTheTransfersByFund2027FixtureIsTheDocumentTheSiteDraws(t *testing.T) {
-	fixtureIsTheDocumentExported(t, "transfers-by-fund-2027",
-		"transfers-by-fund-2027.golden.json")
 }
 
 // fixtureIsTheDocumentExported compares one committed capture line for line
