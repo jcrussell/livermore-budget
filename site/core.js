@@ -717,8 +717,8 @@ export function isMark(id) {
 
 /**
  * The aggregate a cap folds a column's tail into: schema/mark.schema.json,
- * role aggregate. derived: true IS THE INVARIANT: the city printed no line
- * called "N smaller funds". Every cent inside is printed; the grouping is
+ * role aggregate, worded by the page's aggregate_* templates. derived: true
+ * IS THE INVARIANT: the city printed no line called "N smaller funds". Every cent inside is printed; the grouping is
  * inferred, and the ids it swallowed are kept so caveatsFor still reaches
  * them, since a tail folded by value is recorded by no parent chain.
  * @param {number} tier
@@ -732,26 +732,23 @@ export function isMark(id) {
 export function aggregateMark(tier, opened, folded, total, cap, word) {
   return {
     id: aggregateID(tier),
-    label: folded.length + " smaller " + word,
+    label: say("aggregate_label", { folded: folded.length, word: word }),
     tier: tier,
     parent: opened,
     constraint_tier: "",
     role: "aggregate",
     derived: true,
     folds: folded.slice(),
-    rationale: "Our grouping, not a line the city printed: the " + folded.length +
-      " smallest " + word + " in this column are drawn as one " +
-      "mark because they cannot be drawn separately. Every figure inside it is printed; " +
-      "the box around them is ours.",
-    source_note: "The " + folded.length + " smallest of " + total +
-      " by value, at this page's cap of " + cap,
+    rationale: say("aggregate_rationale", { folded: folded.length, word: word }),
+    source_note: say("aggregate_note", { folded: folded.length, total: total, cap: cap }),
   };
 }
 
 /**
  * The residual carrying flow a drawn document does not decompose:
  * schema/mark.schema.json, role residual. Its two figures need not balance;
- * the words are the renderer's, since they name what it carried.
+ * the rationale and note are the renderer's to fill, since they name what it
+ * carried, from the page's residual_* templates.
  * @param {string} opened the node it stands beside
  * @param {number} tier
  * @param {string} grain the city's singular word for what is not split
@@ -764,7 +761,7 @@ export function aggregateMark(tier, opened, folded, total, cap, word) {
 export function residualMark(opened, tier, grain, inCents, outCents, rationale, sourceNote) {
   return {
     id: residualID(opened),
-    label: "Not split by " + grain + " here",
+    label: say("residual_label", { grain: grain }),
     tier: tier,
     parent: opened,
     constraint_tier: "",
@@ -792,7 +789,7 @@ export function residualMark(opened, tier, grain, inCents, outCents, rationale, 
 export function gapMark(opened, tier, gap, rationale, sourceNote, locators) {
   return {
     id: gapID(opened),
-    label: "Difference between the two schedules",
+    label: say("gap_label"),
     tier: tier,
     parent: "",
     constraint_tier: "",

@@ -458,7 +458,23 @@
         "desc_follows",
         "flow_inferred",
         "none_inferred",
-        "table_pointer"
+        "table_pointer",
+        "aggregate_label",
+        "aggregate_rationale",
+        "aggregate_note",
+        "aggregate_together",
+        "residual_label",
+        "residual_rationale",
+        "residual_note",
+        "residual_withheld_one",
+        "residual_withheld_many",
+        "residual_flows",
+        "gap_label",
+        "gap_lead_short",
+        "gap_lead_over",
+        "gap_rationale",
+        "gap_note",
+        "contra_orphan"
       ],
       "additionalProperties": false,
       "properties": {
@@ -574,7 +590,87 @@
         "desc_follows": { "type": "string", "minLength": 1 },
         "flow_inferred": { "type": "string", "minLength": 1 },
         "none_inferred": { "type": "string", "minLength": 1 },
-        "table_pointer": { "type": "string", "minLength": 1 }
+        "table_pointer": { "type": "string", "minLength": 1 },
+        "aggregate_label": {
+          "type": "string",
+          "minLength": 1,
+          "description": "An aggregate mark's label, mark.schema.json role aggregate: {folded} ids folded, {word} the plural noun they are counted in."
+        },
+        "aggregate_rationale": {
+          "type": "string",
+          "minLength": 1,
+          "description": "An aggregate's rationale: {folded}, {word}."
+        },
+        "aggregate_note": {
+          "type": "string",
+          "minLength": 1,
+          "description": "An aggregate's source note: {folded} of {total} nodes the column held, folded at {cap}."
+        },
+        "aggregate_together": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Appended to an aggregate's source note once the folded chart knows its figure: {figure}, formatted."
+        },
+        "residual_label": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A residual mark's label, role residual: {grain}, the city's singular word for what the schedule does not split."
+        },
+        "residual_rationale": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A residual's rationale: {opened} the opened node's label, {grain}, {reasons} the step's declared reasons joined."
+        },
+        "residual_note": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A residual's source note: {flows} carried at this width, {where} the column's lede, {withheld} residual_withheld_one or _many led by a space, or empty."
+        },
+        "residual_withheld_one": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The residual note's clause for one leaving flow a narrower chart holds back."
+        },
+        "residual_withheld_many": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The residual note's clause for {n} leaving flows a narrower chart holds back."
+        },
+        "residual_flows": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A residual's two figures where money both enters and leaves it: {in}, {out}, formatted."
+        },
+        "gap_label": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A gap mark's label, role gap."
+        },
+        "gap_lead_short": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A gap rationale's lead where the chart above sends more than this one accounts for: {column}, {into}, {centre}, {out}, {gap}, figures formatted."
+        },
+        "gap_lead_over": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A gap rationale's lead where this chart accounts for more than the chart above sends: {column}, {out}, {centre}, {gap}, {into}."
+        },
+        "gap_rationale": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A gap's rationale: {lead} one of the two leads filled, {reason} the licence's, {gap} the difference formatted."
+        },
+        "gap_note": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A gap's source note."
+        },
+        "contra_orphan": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The sentence a ribbon carries when a fold nets it negative with no printed reduction behind it; project.ContraOrphan."
+        }
       }
     }
   },

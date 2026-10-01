@@ -531,6 +531,28 @@ type wording struct {
 	FlowInferred      string `json:"flow_inferred"`
 	NoneInferred      string `json:"none_inferred"`
 	TablePointer      string `json:"table_pointer"`
+	// The three marks the client makes, schema/mark.schema.json: their
+	// labels, rationales and source notes are templates the constructors
+	// fill, so no sentence about what a mark IS is spelled in JavaScript.
+	AggregateLabel       string `json:"aggregate_label"`
+	AggregateRationale   string `json:"aggregate_rationale"`
+	AggregateNote        string `json:"aggregate_note"`
+	AggregateTogether    string `json:"aggregate_together"`
+	ResidualLabel        string `json:"residual_label"`
+	ResidualRationale    string `json:"residual_rationale"`
+	ResidualNote         string `json:"residual_note"`
+	ResidualWithheldOne  string `json:"residual_withheld_one"`
+	ResidualWithheldMany string `json:"residual_withheld_many"`
+	ResidualFlows        string `json:"residual_flows"`
+	GapLabel             string `json:"gap_label"`
+	GapLeadShort         string `json:"gap_lead_short"`
+	GapLeadOver          string `json:"gap_lead_over"`
+	GapRationale         string `json:"gap_rationale"`
+	GapNote              string `json:"gap_note"`
+	// ContraOrphan is project.ContraOrphan, the sentence a reduction carries
+	// when no printed line explains it, shipped so a fold that nets a ribbon
+	// negative names it in the producer's words.
+	ContraOrphan string `json:"contra_orphan"`
 }
 
 // kindLabels is project's words for every link kind, keyed as a link names it.
@@ -583,6 +605,31 @@ func defaultWording() wording {
 		FlowInferred:      "This flow is inferred; both endpoints are printed by the city.",
 		NoneInferred:      "Nothing on this chart is inferred: every node and flow is printed by the city.",
 		TablePointer:      "The same figures are in the flow table below, which opens from the \"Every flow, as a table\" heading.",
+		AggregateLabel:    "{folded} smaller {word}",
+		AggregateRationale: "Our grouping, not a line the city printed: the {folded} smallest {word} in this column are drawn as one " +
+			"mark because they cannot be drawn separately. Every figure inside it is printed; the box around them is ours.",
+		AggregateNote:     "The {folded} smallest of {total} by value, at this page's cap of {cap}",
+		AggregateTogether: ", together {figure}.",
+		ResidualLabel:     "Not split by {grain} here",
+		ResidualRationale: "Money the chart above prints for {opened} as a whole and that the schedule this chart is drawn from " +
+			"does not split by {grain}, so no {grain} here receives or pays it. It is drawn beside the opened node's parts " +
+			"rather than attributed to one of them, and what flows in and what flows out need not balance: the difference " +
+			"is what that schedule does not break down. {reasons}",
+		ResidualNote:         "Carried, not computed: {flows:flow|flows} of the chart above with figures and citations unchanged \u2014 {where}.{withheld}",
+		ResidualWithheldOne:  "The flow leaving it is drawn where there is room for a further column.",
+		ResidualWithheldMany: "The {n} flows leaving it are drawn where there is room for a further column.",
+		ResidualFlows:        "{in} in, {out} out",
+		GapLabel:             "Difference between the two schedules",
+		GapLeadShort: "In {column}, the chart above puts {into} through {centre} and the schedule this chart is drawn from " +
+			"accounts for {out} of it, {gap} less.",
+		GapLeadOver: "In {column}, the schedule this chart is drawn from accounts for {out} through {centre}, {gap} more " +
+			"than the {into} the chart above puts through it.",
+		GapRationale: "{lead} {reason} This mark is that {gap}, drawn so that the ribbons and the node agree; no page prints " +
+			"it as a figure of its own.",
+		GapNote: "Derived, not published: one document's total for this cell less the other's. Each total is built from " +
+			"figures `fisc verify` ties to the pages the city printed, and the difference is the one declared for this " +
+			"column; no page prints it as a figure of its own.",
+		ContraOrphan: project.ContraOrphan,
 	}
 }
 

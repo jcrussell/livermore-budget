@@ -89,6 +89,49 @@ describe("the marks this client makes", () => {
     assert.deepEqual(check(MARK, one, "aggregate", []), ["aggregate.folds: fewer than 2 items"]);
   });
 
+  test("every mark's words are the page's wording templates filled, on every rung the page offers", async (t) => {
+    // Every template prefixed with its own key: a word the client spelled
+    // itself carries no prefix, and a placeholder it never filled stays as
+    // braces.
+    const config = structuredClone(pageFixture().config);
+    for (const key of Object.keys(config.wording)) config.wording[key] = `«${key}» ` + config.wording[key];
+    const { app } = await bootedApp({ config });
+    const wordsOf = { aggregate: ["aggregate_label", "aggregate_rationale", "aggregate_note"],
+      residual: ["residual_label", "residual_rationale", "residual_note"],
+      gap: ["gap_label", "gap_rationale", "gap_note"] };
+    /** @type {string[]} */
+    const faults = [];
+    const roles = new Map();
+    let flows = 0;
+    let together = 0;
+    const walked = await everyOffer(app, async (path) => {
+      for (const n of app.projection.nodes) {
+        if (!app.isMark(n.id)) continue;
+        roles.set(n.role, (roles.get(n.role) || 0) + 1);
+        const [label, rationale, note] = wordsOf[n.role];
+        const at = path.join(" > ") + " :: " + n.id;
+        for (const [field, key] of [["label", label], ["rationale", rationale], ["source_note", note]]) {
+          const text = String(n[field]);
+          if (!text.startsWith(`«${key}» `)) faults.push(`${at}: ${field} is not ${key}: ${JSON.stringify(text.slice(0, 60))}`);
+          if (/\{\w+(:[^|}]*\|[^}]*)?\}/.test(text)) faults.push(`${at}: ${field} keeps a placeholder: ${JSON.stringify(text)}`);
+        }
+        if (n.role === "aggregate" && n.source_note.includes("«aggregate_together» ")) together++;
+        if (n.role === "residual" && n.in_cents && n.out_cents) {
+          flows++;
+          const said = app.residualFlows(n);
+          if (!said.startsWith("«residual_flows» ")) faults.push(`${at}: residualFlows is not the wording's: ${said}`);
+        }
+      }
+    });
+    assert.equal(walked.refused, "", walked.refused);
+    t.diagnostic(`${walked.visited} rung(s); marks by role: ${[...roles].map(([r, n]) => `${r} ${n}`).join(", ")}; ` +
+      `${together} aggregate note(s) carry the figure clause; ${flows} residual(s) state both figures`);
+    assert.deepEqual(faults, []);
+    for (const role of Object.keys(wordsOf)) assert.ok(roles.has(role), `no rung drew a ${role}`);
+    assert.ok(together > 0, "no aggregate note carried aggregate_together, so that template was never exercised");
+    assert.ok(flows > 0, "no residual stated both figures, so residual_flows was never exercised");
+  });
+
   test("a window refuses a kept flank carrying a residual or a gap from the rung above", async (t) => {
     const { app } = await bootedApp();
     const config = pageFixture().config;

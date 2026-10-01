@@ -14,7 +14,7 @@
  */
 
 import {
-  FOLD_REFUSES_MIXED, capColumn, citations, config, fmt, fmtShortSigned, foldDocument, foldTarget, gapID, gapMark, isAggregate, isFundGroup, isGap, isResidual, ledeOf, link, regroupLocators, residualID, residualMark, scoped, tailFigure, withinNode,
+  FOLD_REFUSES_MIXED, capColumn, citations, config, fmt, fmtShortSigned, foldDocument, foldTarget, gapID, gapMark, isAggregate, isFundGroup, isGap, isResidual, ledeOf, link, regroupLocators, residualID, residualMark, say, scoped, tailFigure, withinNode,
 } from "./core.js";
 
 export const NODE_WIDTH = 14;
@@ -221,7 +221,7 @@ export function sideOf(doc, rung, tiers, nearIsSource) {
     nodes: drawn.nodes.map((n) => (isAggregate(n.id)
       ? Object.assign({}, n, {
         parent: parentOf.get(n.tier) || "",
-        source_note: n.source_note + ", together " + fmt(tailFigure(drawn, n.id)) + ".",
+        source_note: n.source_note + say("aggregate_together", { figure: fmt(tailFigure(drawn, n.id)) }),
       })
       : n)),
   });
@@ -483,7 +483,7 @@ export function markContra(drawn) {
       if (l.value_cents < 0) {
         return Object.assign({}, l, {
           value_cents: -l.value_cents,
-          contra: l.contra || "printed rows netting to a reduction",
+          contra: l.contra || say("contra_orphan"),
         });
       }
       return l.contra ? Object.assign({}, l, { contra: "" }) : l;
@@ -584,7 +584,7 @@ export function contraBand(d) {
  */
 export function residualFlows(d) {
   if (!isResidual(d.id) || !d.in_cents || !d.out_cents) return "";
-  return fmt(d.in_cents) + " in, " + fmt(d.out_cents) + " out";
+  return say("residual_flows", { in: fmt(d.in_cents), out: fmt(d.out_cents) });
 }
 
 /**
@@ -790,16 +790,12 @@ export function carryResidual(drawn, from, rung, onScreen) {
   // No plural is formed from the grain. The note cites the ribbons carried
   // at this width.
   const node = residualMark(opened, tier, grain, inCents, outCents,
-    "Money the chart above prints for " + label(opened) + " as a whole and " +
-      "that the schedule this chart is drawn from does not split by " + grain + ", so " +
-      "no " + grain + " here receives or pays it. It is drawn beside the opened node's " +
-      "parts rather than attributed to one of them, and what flows in and what flows " +
-      "out need not balance: the difference is what that schedule does not break " +
-      "down. " + reasons.join(" "),
-    "Carried, not computed: " + links.length + " flow" + (links.length === 1 ? "" : "s") +
-      " of the chart above with figures and citations unchanged — " + where + "." +
-      (withheld ? " " + (withheld === 1 ? "The flow" : "The " + withheld + " flows") + " leaving it " +
-        (withheld === 1 ? "is" : "are") + " drawn where there is room for a further column." : ""));
+    say("residual_rationale", { opened: label(opened), grain: grain, reasons: reasons.join(" ") }),
+    say("residual_note", {
+      flows: links.length, where: where,
+      withheld: !withheld ? ""
+        : " " + (withheld === 1 ? say("residual_withheld_one") : say("residual_withheld_many", { n: withheld })),
+    }));
   return Object.assign({}, drawn, {
     nodes: drawn.nodes.concat(added, [node]),
     links: drawn.links.filter((l) => !spliced.has(l)).concat(links),
@@ -877,22 +873,14 @@ export function markGap(drawn, from, rung) {
   const centre = centreNode ? centreNode.label : opened;
   const column = where;
   const lead = gap > 0
-    ? "In " + column + ", the chart above puts " + fmt(into) + " through " + centre +
-      " and the schedule this chart is drawn from accounts for " + fmt(outOf) + " of it, " +
-      fmt(gap) + " less."
-    : "In " + column + ", the schedule this chart is drawn from accounts for " + fmt(outOf) +
-      " through " + centre + ", " + fmt(-gap) + " more than the " + fmt(into) +
-      " the chart above puts through it.";
+    ? say("gap_lead_short", { column: column, into: fmt(into), centre: centre, out: fmt(outOf), gap: fmt(gap) })
+    : say("gap_lead_over", { column: column, out: fmt(outOf), centre: centre, gap: fmt(-gap), into: fmt(into) });
   const id = gapID(opened);
   // THE SIDE THE FIGURE IS ON IS THE SIDE THE MARK STANDS ON: too little
   // leaving arrives at the mark, too little arriving leaves it.
   const node = gapMark(opened, gap > 0 ? tiers[tiers.length - 1] : tiers[0], gap,
-    lead + " " + licence.reason + " This mark is that " + fmt(Math.abs(gap)) +
-      ", drawn so that the ribbons and the node agree; no page prints it as a figure of its own.",
-    "Derived, not published: one document's total for this cell less the " +
-      "other's. Each total is built from figures `fisc verify` ties to the pages the city " +
-      "printed, and the difference is the one declared for this column; no page prints " +
-      "it as a figure of its own.",
+    say("gap_rationale", { lead: lead, reason: licence.reason, gap: fmt(Math.abs(gap)) }),
+    say("gap_note"),
     locators);
   const link = gap > 0
     ? { source: opened, target: id, value_cents: gap }

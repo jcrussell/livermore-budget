@@ -76,15 +76,27 @@ func TestBasisLabelForRewritesOnlyTheAuditedBasisOfAnUnauditedDocument(t *testin
 // template never names is a figure the reader is not shown.
 func TestTheWordingFillsEveryPlaceholderTheClientHands(t *testing.T) {
 	hands := map[string][]string{
-		"counts":              {"links", "nodes", "facts"},
-		"counts_partial":      {"links", "nodes", "cited", "facts"},
-		"counts_carried":      {"links", "nodes", "own", "cited", "facts", "carried"},
-		"counts_carried_from": {"above", "theirs"},
-		"opened_hint":         {"label"},
-		"open_further":        {"where"},
-		"open_into":           {"where"},
-		"in_column":           {"columns"},
-		"back_control":        {"back"},
+		"counts":                 {"links", "nodes", "facts"},
+		"counts_partial":         {"links", "nodes", "cited", "facts"},
+		"counts_carried":         {"links", "nodes", "own", "cited", "facts", "carried"},
+		"counts_carried_from":    {"above", "theirs"},
+		"opened_hint":            {"label"},
+		"open_further":           {"where"},
+		"open_into":              {"where"},
+		"in_column":              {"columns"},
+		"back_control":           {"back"},
+		"aggregate_label":        {"folded", "word"},
+		"aggregate_rationale":    {"folded", "word"},
+		"aggregate_note":         {"folded", "total", "cap"},
+		"aggregate_together":     {"figure"},
+		"residual_label":         {"grain"},
+		"residual_rationale":     {"opened", "grain", "reasons"},
+		"residual_note":          {"flows", "where", "withheld"},
+		"residual_withheld_many": {"n"},
+		"residual_flows":         {"in", "out"},
+		"gap_lead_short":         {"column", "into", "centre", "out", "gap"},
+		"gap_lead_over":          {"column", "out", "centre", "gap", "into"},
+		"gap_rationale":          {"lead", "reason", "gap"},
 	}
 	blob, err := json.Marshal(defaultWording())
 	if err != nil {
