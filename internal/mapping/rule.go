@@ -596,10 +596,11 @@ type Part struct {
 
 	// OmittedCells lists cells THE DOCUMENT leaves blank in rows it prints:
 	// OmittedRows' declaration one cell wide, about the document in the same
-	// way. Budget Book p207 prints five figures on County Measure D's line and
-	// nothing under Reserve Increase/(Use), where every other row prints a
-	// figure or a "-". A blank is absent, not zero, so the cell yields no
-	// Value and is reported as an Omission with Cell set.
+	// way. Budget Book p207 prints five figures on each of County Measure D's,
+	// Wastewater's and Water's lines and nothing under Reserve
+	// Increase/(Use), where every other row prints a figure or a "-". A blank
+	// is absent, not zero, so the cell yields no Value and is reported as an
+	// Omission with Cell set.
 	//
 	// The row is read with its tokens filed left to right under the columns
 	// it does print, so this part must declare column_headers: the guard is
@@ -1206,10 +1207,13 @@ func (r Row) EffectiveQuantity(c Column) Quantity {
 	return QuantityAmount
 }
 
-// Publishes says whether this row's cell in c can become a fact: neither is
-// skipped and the cell is an amount.
+// Publishes says whether this row's cell in c can become a fact: the row is
+// not skipped, and c publishes under the row's quantity override.
 func (r Row) Publishes(c Column) bool {
-	return !r.Skip && !c.Skip && r.EffectiveQuantity(c) == QuantityAmount
+	if r.Quantity != "" {
+		c.Quantity = r.Quantity
+	}
+	return !r.Skip && c.publishes()
 }
 
 // EffectiveColumn is the column a row's own fact is filed under: the printed

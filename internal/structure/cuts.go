@@ -487,7 +487,7 @@ func fundBalanceExceptions() []Exception {
 			Reason: "pp.66-67 print a fund group's change in balance on a line of its own, and pp.186-209 print " +
 				"no such line: a fund's change is its ending balance less its beginning, each of which this " +
 				"comparison holds",
-			Bead: "fisc-3eh2",
+			Bead: "fisc-qnn5",
 		}
 	}
 	gfIn := func(name string, year int, basis string, c int64, printed string) Exception {

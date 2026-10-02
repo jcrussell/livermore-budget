@@ -6971,8 +6971,8 @@ rules:
   # positionally against its even page, as p67 is against p66. The last pair
   # of each year prints the Capital Improvement Program Funds below the
   # internal service funds, and reads them as a rule of their own: those are
-  # p222's funds, which internal/structure holds outside pp.66-67's totals,
-  # and a cut selects rules, not rows. The funds above the block are the
+  # p222's funds, which fundBalancesRules keeps out of the cuts held to
+  # pp.66-67's totals, and a cut selects rules, not rows. The funds above the block are the
   # pair's `-above-cip` rule.
   #
   # ROWS ARE WRITTEN ONCE. The four years print the same 129 rows in one
@@ -7274,7 +7274,7 @@ rules:
         section: "Total Sources"
         stop_at: "Capital Improvement Program Funds"
         unmapped_text:
-          - {text: "1", note: "the footnote marker printed alone above the next row, keying p190's footnote 1, printed at the foot of this page: the CIP specific funds were created in FY 2024-25 with the transition to the new ERP system"}
+          - {text: "1", note: "the footnote marker printed alone after the last row, above the Capital Improvement Program Funds heading this part stops at, keying p190's footnote 1, printed at the foot of this page: the CIP specific funds were created in FY 2024-25 with the transition to the new ERP system"}
         column_headers: ["7/1/23", "Revenues", "Transfers In", "Total Sources"]
         columns:
           - {fiscal_year: 2024, category: fund-balance/beginning}
@@ -7438,15 +7438,15 @@ rules:
           - column: "7/1/24"
             delta_cents: -100
             note: >-
-              The six fund-group rows above it sum to 357,259,059 under beginning balance and the page prints 357,259,058: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last.
+              The six fund-group rows above it sum to 357,259,059 under beginning balance and the page prints 357,259,058: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last but Capital Funds, whose General Fund CIP Reserves ends FY2023-24 at '-' on p189 and begins FY2024-25 at 34,954,363 on p194, in the rows and the printed total alike.
           - column: "Total Sources"
             delta_cents: -100
             note: >-
-              The six fund-group rows above it sum to 646,372,988 under Total Sources and the page prints 646,372,987: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last; Total Sources keeps the beginning balance's dollar, and the year's flows tie.
+              The six fund-group rows above it sum to 646,372,988 under Total Sources and the page prints 646,372,987: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last but Capital Funds, whose General Fund CIP Reserves ends FY2023-24 at '-' on p189 and begins FY2024-25 at 34,954,363 on p194, in the rows and the printed total alike; Total Sources keeps the beginning balance's dollar, and the year's flows tie.
           - column: "6/30/25"
             delta_cents: -100
             note: >-
-              The six fund-group rows above it sum to 293,164,683 under ending balance and the page prints 293,164,682: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last; the ending balance keeps the beginning balance's dollar, and the year's flows tie.
+              The six fund-group rows above it sum to 293,164,683 under ending balance and the page prints 293,164,682: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last but Capital Funds, whose General Fund CIP Reserves ends FY2023-24 at '-' on p189 and begins FY2024-25 at 34,954,363 on p194, in the rows and the printed total alike; the ending balance keeps the beginning balance's dollar, and the year's flows tie.
       - &s_isf {label: "Internal Service", skip: true}
       - *s_cip  # Capital Improvement Program Funds
       - {label: "Total Capital Improvement Program", skip: true, subtotal: 1}
@@ -7457,15 +7457,15 @@ rules:
           - column: "7/1/24"
             delta_cents: -100
             note: >-
-              The eight fund-group rows above it sum to 383,050,451 under beginning balance and the page prints 383,050,450: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last.
+              The eight fund-group rows above it sum to 383,050,451 under beginning balance and the page prints 383,050,450: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last but Capital Funds, whose General Fund CIP Reserves ends FY2023-24 at '-' on p189 and begins FY2024-25 at 34,954,363 on p194, in the rows and the printed total alike.
           - column: "Total Sources"
             delta_cents: -100
             note: >-
-              The eight fund-group rows above it sum to 802,289,706 under Total Sources and the page prints 802,289,705: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last; Total Sources keeps the beginning balance's dollar, and the year's flows tie.
+              The eight fund-group rows above it sum to 802,289,706 under Total Sources and the page prints 802,289,705: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last but Capital Funds, whose General Fund CIP Reserves ends FY2023-24 at '-' on p189 and begins FY2024-25 at 34,954,363 on p194, in the rows and the printed total alike; Total Sources keeps the beginning balance's dollar, and the year's flows tie.
           - column: "6/30/25"
             delta_cents: -100
             note: >-
-              The eight fund-group rows above it sum to 316,605,539 under ending balance and the page prints 316,605,538: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last; the ending balance keeps the beginning balance's dollar, and the year's flows tie.
+              The eight fund-group rows above it sum to 316,605,539 under ending balance and the page prints 316,605,538: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last but Capital Funds, whose General Fund CIP Reserves ends FY2023-24 at '-' on p189 and begins FY2024-25 at 34,954,363 on p194, in the rows and the printed total alike; the ending balance keeps the beginning balance's dollar, and the year's flows tie.
       - *f200  # Low Income Housing Fund
       - *f201  # Housing Successor Agency
       - *f202  # SOEF (Social Op Endowment)
@@ -7588,15 +7588,15 @@ rules:
           - column: "7/1/24"
             delta_cents: 100
             note: >-
-              The funds above it sum to 136,150,989 under beginning balance and the page prints 136,150,990: FY2023-24's rounding carried forward. p189 prints this total's 6/30/24 balance a dollar over the rows above it, and each of those rows begins every later year where it ended the last.
+              The funds above it sum to 136,150,989 under beginning balance and the page prints 136,150,990: FY2023-24's rounding carried forward. p189 prints this total's 6/30/24 balance a dollar over the rows above it, and each of those rows begins every later year where it ended the last but General Fund CIP Reserves, which ends FY2023-24 at '-' on p189 and begins FY2024-25 at 34,954,363 on p194, in the rows and the printed total alike.
           - column: "Total Sources"
             delta_cents: 100
             note: >-
-              The funds above it sum to 170,990,264 under Total Sources and the page prints 170,990,265: FY2023-24's rounding carried forward. p189 prints this total's 6/30/24 balance a dollar over the rows above it, and each of those rows begins every later year where it ended the last; Total Sources keeps the beginning balance's dollar, and the year's flows tie.
+              The funds above it sum to 170,990,264 under Total Sources and the page prints 170,990,265: FY2023-24's rounding carried forward. p189 prints this total's 6/30/24 balance a dollar over the rows above it, and each of those rows begins every later year where it ended the last but General Fund CIP Reserves, which ends FY2023-24 at '-' on p189 and begins FY2024-25 at 34,954,363 on p194, in the rows and the printed total alike; Total Sources keeps the beginning balance's dollar, and the year's flows tie.
           - column: "6/30/25"
             delta_cents: 100
             note: >-
-              The funds above it sum to 110,713,544 under ending balance and the page prints 110,713,545: FY2023-24's rounding carried forward. p189 prints this total's 6/30/24 balance a dollar over the rows above it, and each of those rows begins every later year where it ended the last; the ending balance keeps the beginning balance's dollar, and the year's flows tie.
+              The funds above it sum to 110,713,544 under ending balance and the page prints 110,713,545: FY2023-24's rounding carried forward. p189 prints this total's 6/30/24 balance a dollar over the rows above it, and each of those rows begins every later year where it ended the last but General Fund CIP Reserves, which ends FY2023-24 at '-' on p189 and begins FY2024-25 at 34,954,363 on p194, in the rows and the printed total alike; the ending balance keeps the beginning balance's dollar, and the year's flows tie.
       - *f600  # Airport
       - *f610  # Stormwater
       - *f612  # Storm Drain
@@ -7623,7 +7623,7 @@ rules:
         stop_at: "Capital Improvement Program Funds"
         headings: ["Internal Service Funds"]
         unmapped_text:
-          - {text: "1", note: "the footnote marker printed alone above the next row, keying p196's footnote 1, printed at the foot of this page: the CIP specific funds were created in FY 2024-25 with the transition to the new ERP system"}
+          - {text: "1", note: "the footnote marker printed alone after the last row, above the Capital Improvement Program Funds heading this part stops at, keying p196's footnote 1, printed at the foot of this page: the CIP specific funds were created in FY 2024-25 with the transition to the new ERP system"}
         column_headers: ["7/1/24", "Revenues", "Transfers In", "Total Sources"]
         columns:
           - {fiscal_year: 2025, category: fund-balance/beginning}
@@ -7775,15 +7775,15 @@ rules:
           - column: "7/1/25"
             delta_cents: -100
             note: >-
-              The six fund-group rows above it sum to 293,164,683 under beginning balance and the page prints 293,164,682: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last.
+              The six fund-group rows above it sum to 293,164,683 under beginning balance and the page prints 293,164,682: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last but Capital Funds, whose General Fund CIP Reserves ends FY2023-24 at '-' on p189 and begins FY2024-25 at 34,954,363 on p194, in the rows and the printed total alike.
           - column: "Total Sources"
             delta_cents: -100
             note: >-
-              The six fund-group rows above it sum to 595,689,853 under Total Sources and the page prints 595,689,852: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last; Total Sources keeps the beginning balance's dollar, and the year's flows tie.
+              The six fund-group rows above it sum to 595,689,853 under Total Sources and the page prints 595,689,852: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last but Capital Funds, whose General Fund CIP Reserves ends FY2023-24 at '-' on p189 and begins FY2024-25 at 34,954,363 on p194, in the rows and the printed total alike; Total Sources keeps the beginning balance's dollar, and the year's flows tie.
           - column: "6/30/26"
             delta_cents: -100
             note: >-
-              The six fund-group rows above it sum to 302,399,649 under ending balance and the page prints 302,399,648: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last; the ending balance keeps the beginning balance's dollar, and the year's flows tie.
+              The six fund-group rows above it sum to 302,399,649 under ending balance and the page prints 302,399,648: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last but Capital Funds, whose General Fund CIP Reserves ends FY2023-24 at '-' on p189 and begins FY2024-25 at 34,954,363 on p194, in the rows and the printed total alike; the ending balance keeps the beginning balance's dollar, and the year's flows tie.
       - *s_isf  # Internal Service
       - *s_cip  # Capital Improvement Program Funds
       - {label: "Total Capital Improvement Program", skip: true, subtotal: 1}
@@ -7794,15 +7794,15 @@ rules:
           - column: "7/1/25"
             delta_cents: -100
             note: >-
-              The eight fund-group rows above it sum to 316,605,539 under beginning balance and the page prints 316,605,538: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last.
+              The eight fund-group rows above it sum to 316,605,539 under beginning balance and the page prints 316,605,538: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last but Capital Funds, whose General Fund CIP Reserves ends FY2023-24 at '-' on p189 and begins FY2024-25 at 34,954,363 on p194, in the rows and the printed total alike.
           - column: "Total Sources"
             delta_cents: -100
             note: >-
-              The eight fund-group rows above it sum to 684,002,079 under Total Sources and the page prints 684,002,078: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last; Total Sources keeps the beginning balance's dollar, and the year's flows tie.
+              The eight fund-group rows above it sum to 684,002,079 under Total Sources and the page prints 684,002,078: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last but Capital Funds, whose General Fund CIP Reserves ends FY2023-24 at '-' on p189 and begins FY2024-25 at 34,954,363 on p194, in the rows and the printed total alike; Total Sources keeps the beginning balance's dollar, and the year's flows tie.
           - column: "6/30/26"
             delta_cents: -100
             note: >-
-              The eight fund-group rows above it sum to 318,509,885 under ending balance and the page prints 318,509,884: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last; the ending balance keeps the beginning balance's dollar, and the year's flows tie.
+              The eight fund-group rows above it sum to 318,509,885 under ending balance and the page prints 318,509,884: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last but Capital Funds, whose General Fund CIP Reserves ends FY2023-24 at '-' on p189 and begins FY2024-25 at 34,954,363 on p194, in the rows and the printed total alike; the ending balance keeps the beginning balance's dollar, and the year's flows tie.
       - *f200  # Low Income Housing Fund
       - *f201  # Housing Successor Agency
       - *f202  # SOEF (Social Op Endowment)
@@ -7923,15 +7923,15 @@ rules:
           - column: "7/1/25"
             delta_cents: 100
             note: >-
-              The funds above it sum to 110,713,544 under beginning balance and the page prints 110,713,545: FY2023-24's rounding carried forward. p189 prints this total's 6/30/24 balance a dollar over the rows above it, and each of those rows begins every later year where it ended the last.
+              The funds above it sum to 110,713,544 under beginning balance and the page prints 110,713,545: FY2023-24's rounding carried forward. p189 prints this total's 6/30/24 balance a dollar over the rows above it, and each of those rows begins every later year where it ended the last but General Fund CIP Reserves, which ends FY2023-24 at '-' on p189 and begins FY2024-25 at 34,954,363 on p194, in the rows and the printed total alike.
           - column: "Total Sources"
             delta_cents: 100
             note: >-
-              The funds above it sum to 137,859,426 under Total Sources and the page prints 137,859,427: FY2023-24's rounding carried forward. p189 prints this total's 6/30/24 balance a dollar over the rows above it, and each of those rows begins every later year where it ended the last; Total Sources keeps the beginning balance's dollar, and the year's flows tie.
+              The funds above it sum to 137,859,426 under Total Sources and the page prints 137,859,427: FY2023-24's rounding carried forward. p189 prints this total's 6/30/24 balance a dollar over the rows above it, and each of those rows begins every later year where it ended the last but General Fund CIP Reserves, which ends FY2023-24 at '-' on p189 and begins FY2024-25 at 34,954,363 on p194, in the rows and the printed total alike; Total Sources keeps the beginning balance's dollar, and the year's flows tie.
           - column: "6/30/26"
             delta_cents: 100
             note: >-
-              The funds above it sum to 108,213,331 under ending balance and the page prints 108,213,332: FY2023-24's rounding carried forward. p189 prints this total's 6/30/24 balance a dollar over the rows above it, and each of those rows begins every later year where it ended the last; the ending balance keeps the beginning balance's dollar, and the year's flows tie.
+              The funds above it sum to 108,213,331 under ending balance and the page prints 108,213,332: FY2023-24's rounding carried forward. p189 prints this total's 6/30/24 balance a dollar over the rows above it, and each of those rows begins every later year where it ended the last but General Fund CIP Reserves, which ends FY2023-24 at '-' on p189 and begins FY2024-25 at 34,954,363 on p194, in the rows and the printed total alike; the ending balance keeps the beginning balance's dollar, and the year's flows tie.
       - *f600  # Airport
       - *f610  # Stormwater
       - *f612  # Storm Drain
@@ -8107,15 +8107,15 @@ rules:
           - column: "7/1/26"
             delta_cents: -100
             note: >-
-              The six fund-group rows above it sum to 302,399,649 under beginning balance and the page prints 302,399,648: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last.
+              The six fund-group rows above it sum to 302,399,649 under beginning balance and the page prints 302,399,648: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last but Capital Funds, whose General Fund CIP Reserves ends FY2023-24 at '-' on p189 and begins FY2024-25 at 34,954,363 on p194, in the rows and the printed total alike.
           - column: "Total Sources"
             delta_cents: -100
             note: >-
-              The six fund-group rows above it sum to 606,471,455 under Total Sources and the page prints 606,471,454: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last; Total Sources keeps the beginning balance's dollar, and the year's flows tie.
+              The six fund-group rows above it sum to 606,471,455 under Total Sources and the page prints 606,471,454: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last but Capital Funds, whose General Fund CIP Reserves ends FY2023-24 at '-' on p189 and begins FY2024-25 at 34,954,363 on p194, in the rows and the printed total alike; Total Sources keeps the beginning balance's dollar, and the year's flows tie.
           - column: "6/30/27"
             delta_cents: -100
             note: >-
-              The six fund-group rows above it sum to 305,053,583 under ending balance and the page prints 305,053,582: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last; the ending balance keeps the beginning balance's dollar, and the year's flows tie.
+              The six fund-group rows above it sum to 305,053,583 under ending balance and the page prints 305,053,582: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last but Capital Funds, whose General Fund CIP Reserves ends FY2023-24 at '-' on p189 and begins FY2024-25 at 34,954,363 on p194, in the rows and the printed total alike; the ending balance keeps the beginning balance's dollar, and the year's flows tie.
       - *s_isf  # Internal Service
       - *s_cip  # Capital Improvement Program Funds
       - {label: "Total Capital Improvement Program", skip: true, subtotal: 1}
@@ -8126,15 +8126,15 @@ rules:
           - column: "7/1/26"
             delta_cents: -100
             note: >-
-              The eight fund-group rows above it sum to 318,509,885 under beginning balance and the page prints 318,509,884: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last.
+              The eight fund-group rows above it sum to 318,509,885 under beginning balance and the page prints 318,509,884: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last but Capital Funds, whose General Fund CIP Reserves ends FY2023-24 at '-' on p189 and begins FY2024-25 at 34,954,363 on p194, in the rows and the printed total alike.
           - column: "Total Sources"
             delta_cents: -100
             note: >-
-              The eight fund-group rows above it sum to 701,566,432 under Total Sources and the page prints 701,566,431: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last; Total Sources keeps the beginning balance's dollar, and the year's flows tie.
+              The eight fund-group rows above it sum to 701,566,432 under Total Sources and the page prints 701,566,431: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last but Capital Funds, whose General Fund CIP Reserves ends FY2023-24 at '-' on p189 and begins FY2024-25 at 34,954,363 on p194, in the rows and the printed total alike; Total Sources keeps the beginning balance's dollar, and the year's flows tie.
           - column: "6/30/27"
             delta_cents: -100
             note: >-
-              The eight fund-group rows above it sum to 314,253,174 under ending balance and the page prints 314,253,173: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last; the ending balance keeps the beginning balance's dollar, and the year's flows tie.
+              The eight fund-group rows above it sum to 314,253,174 under ending balance and the page prints 314,253,173: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last but Capital Funds, whose General Fund CIP Reserves ends FY2023-24 at '-' on p189 and begins FY2024-25 at 34,954,363 on p194, in the rows and the printed total alike; the ending balance keeps the beginning balance's dollar, and the year's flows tie.
       - *f200  # Low Income Housing Fund
       - *f201  # Housing Successor Agency
       - *f202  # SOEF (Social Op Endowment)
@@ -8200,9 +8200,9 @@ rules:
         section: "6/30/27"
         stop_at: "BUDGET FY 2025-27"
         omitted_cells:
-          - {label: "County Measure D", column: "Increase/(Use)", note: "the page prints the line's other five figures and nothing under Reserve Increase/(Use), where every other line prints a figure or a dash"}
-          - {label: "Wastewater", column: "Increase/(Use)", note: "the page prints the line's other five figures and nothing under Reserve Increase/(Use), where every other line prints a figure or a dash"}
-          - {label: "Water", column: "Increase/(Use)", note: "the page prints the line's other five figures and nothing under Reserve Increase/(Use), where every other line prints a figure or a dash"}
+          - {label: "County Measure D", column: "Increase/(Use)", note: "the page prints the line's other five figures and nothing under Reserve Increase/(Use), where every line but County Measure D, Wastewater and Water prints a figure or a dash"}
+          - {label: "Wastewater", column: "Increase/(Use)", note: "the page prints the line's other five figures and nothing under Reserve Increase/(Use), where every line but County Measure D, Wastewater and Water prints a figure or a dash"}
+          - {label: "Water", column: "Increase/(Use)", note: "the page prints the line's other five figures and nothing under Reserve Increase/(Use), where every line but County Measure D, Wastewater and Water prints a figure or a dash"}
         column_headers: ["Expenses", "Transfers Out", "Transfers Out to CIP", "Increase/(Use)", "Total Uses", "6/30/27"]
         columns:
           - {fiscal_year: 2027, kind: expenditure, category: expenses}
@@ -8259,15 +8259,15 @@ rules:
           - column: "7/1/26"
             delta_cents: 100
             note: >-
-              The funds above it sum to 108,213,331 under beginning balance and the page prints 108,213,332: FY2023-24's rounding carried forward. p189 prints this total's 6/30/24 balance a dollar over the rows above it, and each of those rows begins every later year where it ended the last.
+              The funds above it sum to 108,213,331 under beginning balance and the page prints 108,213,332: FY2023-24's rounding carried forward. p189 prints this total's 6/30/24 balance a dollar over the rows above it, and each of those rows begins every later year where it ended the last but General Fund CIP Reserves, which ends FY2023-24 at '-' on p189 and begins FY2024-25 at 34,954,363 on p194, in the rows and the printed total alike.
           - column: "Total Sources"
             delta_cents: 100
             note: >-
-              The funds above it sum to 135,101,585 under Total Sources and the page prints 135,101,586: FY2023-24's rounding carried forward. p189 prints this total's 6/30/24 balance a dollar over the rows above it, and each of those rows begins every later year where it ended the last; Total Sources keeps the beginning balance's dollar, and the year's flows tie.
+              The funds above it sum to 135,101,585 under Total Sources and the page prints 135,101,586: FY2023-24's rounding carried forward. p189 prints this total's 6/30/24 balance a dollar over the rows above it, and each of those rows begins every later year where it ended the last but General Fund CIP Reserves, which ends FY2023-24 at '-' on p189 and begins FY2024-25 at 34,954,363 on p194, in the rows and the printed total alike; Total Sources keeps the beginning balance's dollar, and the year's flows tie.
           - column: "6/30/27"
             delta_cents: 100
             note: >-
-              The funds above it sum to 98,083,915 under ending balance and the page prints 98,083,916: FY2023-24's rounding carried forward. p189 prints this total's 6/30/24 balance a dollar over the rows above it, and each of those rows begins every later year where it ended the last; the ending balance keeps the beginning balance's dollar, and the year's flows tie.
+              The funds above it sum to 98,083,915 under ending balance and the page prints 98,083,916: FY2023-24's rounding carried forward. p189 prints this total's 6/30/24 balance a dollar over the rows above it, and each of those rows begins every later year where it ended the last but General Fund CIP Reserves, which ends FY2023-24 at '-' on p189 and begins FY2024-25 at 34,954,363 on p194, in the rows and the printed total alike; the ending balance keeps the beginning balance's dollar, and the year's flows tie.
       - *f600  # Airport
       - *f610  # Stormwater
       - *f612  # Storm Drain

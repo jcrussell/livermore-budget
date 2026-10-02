@@ -301,6 +301,13 @@ func TestParseRefusesABadOmittedCell(t *testing.T) {
 		{"every column of a row but a skipped one", pair(blankEntry +
 			`          - {label: "Beta", column: "FY B", note: n}` + "\n"),
 			`declares every column of "Beta" blank`},
+		// A skipped row publishes nothing, but its figures are still read off
+		// the page, and a row that prints none leaves the read nothing to end
+		// on.
+		{"every column of a skipped row", with(with(blankLabelled, blankLabelledEntry, blankLabelledEntry+
+			"          - {label: \"Beta\", column: \"FY A\", note: n}\n"),
+			`{label: "Beta", category: taxes/sales}`, `{label: "Beta", skip: true}`),
+			`declares every column of "Beta" blank`},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.src == blankPair || tt.src == blankLabelled {
@@ -311,6 +318,30 @@ func TestParseRefusesABadOmittedCell(t *testing.T) {
 				t.Fatalf("got %v, want an error containing %q", err, tt.want)
 			}
 		})
+	}
+}
+
+// TestABlankAmountBesideAPrintedPercentageIsRead is a row that prints a
+// figure no fact is made of and leaves its one amount cell blank: it still
+// prints a column, so it is not every column declared blank.
+func TestABlankAmountBesideAPrintedPercentageIsRead(t *testing.T) {
+	src := strings.NewReplacer(
+		`    total_row: "Total"`+"\n", "",
+		`          - {fiscal_year: 2025}`, `          - {quantity: percentage}`,
+	).Replace(blankLabelled)
+	row := func(label, a, b string) string { return fmt.Sprintf("%-12s%10s%10s\n", label, a, b) }
+	pages := map[int]string{1: row("", "FY A", "FY B") + row("Alpha", "1.0%", "200") +
+		row("Beta", "3.0%", "") + row("Gamma", "5.0%", "600") + "Total\n"}
+	p, cells, omissions, err := readBlank(t, src, pages, 0)
+	if err != nil {
+		t.Fatalf("read: %v", err)
+	}
+	want := []placedCell{{"Alpha", "FY B", "200", 20000}, {"Gamma", "FY B", "600", 60000}}
+	if diff := cmp.Diff(want, placedCells(p, cells)); diff != "" {
+		t.Errorf("cells (-want +got):\n%s", diff)
+	}
+	if diff := cmp.Diff([]omittedCellAt{{"Beta", 1, true, 1, "FY B"}}, omittedCellsAt(omissions)); diff != "" {
+		t.Errorf("omissions (-want +got):\n%s", diff)
 	}
 }
 

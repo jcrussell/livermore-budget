@@ -1,6 +1,7 @@
 package mapping
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -127,8 +128,9 @@ func TestStaleHeadingIsRefused(t *testing.T) {
 	}
 }
 
-// p190Mixed maps the two rows either side of p190's mixed gap: the footnote
-// marker "1" and the heading on consecutive lines between them.
+// p190Mixed maps the two rows either side of p190's mixed gap, under the
+// column guard whose geometry raises the footnote marker "1": the marker and
+// the heading on consecutive lines between them.
 //
 //	Total Internal Service Funds   $  27,749,075 ...
 //
@@ -156,6 +158,7 @@ rules:
         stop_at: "CIP Stormwater"
         headings: ["Capital Improvement Program Funds"]
         #UNMAPPED
+        column_headers: ["7/1/23", "Revenues", "Transfers In", "Total Sources"]
         columns:
           - {fund_group: general, fiscal_year: 2024, basis: actual}
           - {fiscal_year: 2025, skip: true}
@@ -257,34 +260,128 @@ rules:
 // TestAFigureSharesAGapOnlyAsAFootnoteMarker: a row broken over two lines
 // ("Foo Fund" then "1,234") declared as heading plus unmapped figure would drop
 // the row's figure, so a declared figure shares a gap with other declared
-// lines only when it is a footnote marker, with headings alone, on the line
-// above a heading or above the row the gap ends at: "12" in millions among a
-// wrapped label's fragments is a figure and not a marker. Alone, a declared
-// figure is still the whole gap and is admitted.
+// lines only when the geometry raises it as a footnote marker, with headings
+// alone, on the line above a heading or above the row the gap ends at: "12" in
+// millions among a wrapped label's fragments is a figure and not a marker, and
+// so is a "12" the page prints full height. Alone, a declared figure is still
+// the whole gap and is admitted.
 func TestAFigureSharesAGapOnlyAsAFootnoteMarker(t *testing.T) {
 	p := &Part{
 		Headings:      []string{"Foo Fund", "Capital Improvement Program Funds"},
 		WrappedLabels: []string{"Special Revenue", "Funds"},
 		UnmappedText:  []unmappedText{{Text: "1,234"}, {Text: "1"}, {Text: "12"}},
 	}
+	// raised stands in for the geometry raising every line, so the shape of
+	// what it raises is still the marker's; flat raises none.
+	var gap string
+	raised := func(off int) bool { return isFootnoteMarker(strings.Fields(gap[off:])[0]) }
+	flat := func(int) bool { return false }
 	for _, tc := range []struct {
 		name, gap string
+		raised    func(int) bool
 		want      bool
 	}{
-		{"broken row", "Foo Fund\n1,234", false},
-		{"broken row, figure first", "1,234\nFoo Fund", false},
-		{"marker above heading", "1\nCapital Improvement Program Funds", true},
-		{"marker among wrapped-label fragments", "Special Revenue\n12\nFunds", false},
-		{"marker above a wrapped label", "12\nFunds", false},
-		{"marker below heading, above the next row", "Capital Improvement Program Funds\n1", true},
-		{"marker below heading, above a wrapped label", "Capital Improvement Program Funds\n1\nFunds", false},
-		{"marker with a wrapped label before its heading", "1\nFunds\nCapital Improvement Program Funds", false},
-		{"marker above a marker", "12\n1\nCapital Improvement Program Funds", false},
-		{"lone figure", "1,234", true},
+		{"broken row", "Foo Fund\n1,234", raised, false},
+		{"broken row, figure first", "1,234\nFoo Fund", raised, false},
+		{"broken row, a two-digit figure printed full height", "Foo Fund\n12", flat, false},
+		{"marker above heading", "1\nCapital Improvement Program Funds", raised, true},
+		{"marker above heading, printed full height", "1\nCapital Improvement Program Funds", flat, false},
+		{"marker among wrapped-label fragments", "Special Revenue\n12\nFunds", raised, false},
+		{"marker above a wrapped label", "12\nFunds", raised, false},
+		{"marker below heading, above the next row", "Capital Improvement Program Funds\n1", raised, true},
+		{"marker below heading, after the last row", "Capital Improvement Program Funds\n1", nil, false},
+		{"marker below heading, above a wrapped label", "Capital Improvement Program Funds\n1\nFunds", raised, false},
+		{"marker with a wrapped label before its heading", "1\nFunds\nCapital Improvement Program Funds", raised, false},
+		{"marker above a marker", "12\n1\nCapital Improvement Program Funds", raised, false},
+		{"lone figure", "1,234", nil, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := declaredGap(p, tc.gap, map[string]bool{}, true); got != tc.want {
+			gap = tc.gap
+			if got := declaredGap(p, tc.gap, map[string]bool{}, true, tc.raised); got != tc.want {
 				t.Errorf("declaredGap(%q) = %v, want %v", tc.gap, got, tc.want)
+			}
+		})
+	}
+}
+
+// markerRule reads two rows, Alpha and Beta, with one heading and one marker
+// declared, under the column guard; markerPage prints mid between them and
+// tail after Beta.
+const markerRule = `schema_version: 1
+doc_id: marker-doc
+
+rules:
+  - id: marker
+    kind: revenue
+    basis: adopted
+    scope: probe
+    grain: category
+    units: dollars
+    rows:
+      - {label: "Alpha", category: taxes/property}
+      - {label: "Beta", category: taxes/sales}
+    parts:
+      - page: 1
+        section: "FY A\n"
+        stop_at: "END"
+        headings: ["Foo Fund"]
+        unmapped_text:
+          - {text: "MARK", note: "the line under the heading"}
+        column_headers: ["FY A"]
+        columns:
+          - {fiscal_year: 2025}
+`
+
+// markerValues reads markerRule with mark declared, over a page printing mid
+// between the rows and tail after them. The geometry is the monospaced page's,
+// with mark printed as a superscript when raised is set.
+func markerValues(t *testing.T, mark, mid, tail string, raised bool) error {
+	t.Helper()
+	row := func(label, v string) string { return fmt.Sprintf("%-12s%10s\n", label, v) }
+	pages := map[int]string{1: fmt.Sprintf("%22s\n", "FY A") + row("Alpha", "100") + mid +
+		row("Beta", "200") + tail + "END\n"}
+	geometry := textGeometry("marker-doc", pages)
+	if raised {
+		line := strings.Count(pages[1][:strings.Index(pages[1], "\n"+mark+"\n")+1], "\n")
+		was := fmt.Sprintf("[0,%d,%d,%d,%q]", line*12, len(mark)*6, line*12+10, mark)
+		g := strings.Replace(geometry[1], was,
+			fmt.Sprintf("[0,%d,%d,%d,%q]", line*12, len(mark)*6, line*12+5, mark), 1)
+		if g == geometry[1] {
+			t.Fatalf("no word %s in the geometry", was)
+		}
+		geometry[1] = g
+	}
+	f, err := parse(strings.NewReader(strings.Replace(markerRule, "MARK", mark, 1)), "marker.yaml")
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	r, err := NewResolver(inlineDocWithGeometry(t, f.DocID, pages, geometry), f)
+	if err != nil {
+		t.Fatalf("NewResolver: %v", err)
+	}
+	_, _, err = r.Values(&f.Rules[0], &f.Rules[0].Parts[0])
+	return err
+}
+
+// TestOnlyARaisedMarkerSharesAGapWithAHeading reads the gap rule through the
+// resolver: a raised "1" under a heading keys the row below it and is read;
+// the same "1" after the last row keys no row, and a "12" the page prints full
+// height is the figure of a row broken over two lines. Both are refused.
+func TestOnlyARaisedMarkerSharesAGapWithAHeading(t *testing.T) {
+	if err := markerValues(t, "1", "Foo Fund\n1\n", "", true); err != nil {
+		t.Errorf("a raised marker between a heading and the next row: %v", err)
+	}
+	for _, tc := range []struct {
+		name, mark, mid, tail string
+		raised                bool
+	}{
+		{"a full-height figure under a heading", "12", "Foo Fund\n12\n", "", false},
+		{"a raised marker after the last row", "1", "", "Foo Fund\n1\n", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := markerValues(t, tc.mark, tc.mid, tc.tail, tc.raised)
+			if !strings.Contains(fmt.Sprint(err), "but is not mapped") {
+				t.Fatalf("got %v, want the gap's refusal", err)
 			}
 		})
 	}

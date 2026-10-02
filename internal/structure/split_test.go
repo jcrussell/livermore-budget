@@ -163,6 +163,20 @@ func TestASplitIsRefusedWhenItsSidesCannotBearIt(t *testing.T) {
 	}
 }
 
+// TestAOnePartSplitTheLatticeCannotPlaceIsRefused: one part is a split only
+// where At drops an axis the pair meets on, and a pair the lattice gives no
+// meet has none to drop.
+func TestAOnePartSplitTheLatticeCannotPlaceIsRefused(t *testing.T) {
+	cuts := append(structure.AllCuts(), structure.Cut{Name: "by-department",
+		Level: structure.LevelDepartment, Kinds: []mapping.Kind{mapping.KindTransferOut}})
+	s := splitNamed(t, transferOutSplit)
+	s.Parts = []string{"by-department"}
+	err := structure.ValidateSplits(cuts, []structure.Split{s})
+	if err == nil || !strings.Contains(err.Error(), "share no common coarsening") {
+		t.Fatalf("ValidateSplits = %v, want the meet's refusal", err)
+	}
+}
+
 // TestACutOutsideTheReferenceIsHeldToItsFunds: p222's CIP funds carry no
 // fact in any other cut, and the claim goes red the moment one does.
 func TestACutOutsideTheReferenceIsHeldToItsFunds(t *testing.T) {

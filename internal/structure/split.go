@@ -80,7 +80,12 @@ func ValidateSplits(cuts []Cut, splits []Split) error {
 			if !ok {
 				return fmt.Errorf("split %q: part %q is not a declared cut", s.Name, s.Parts[0])
 			}
-			if meet, err := Meet(part.Level, whole.Level); err == nil && meet == s.At {
+			meet, err := Meet(part.Level, whole.Level)
+			if err != nil {
+				return fmt.Errorf("split %q names one part, and the lattice places no grain it compares %q with %q at: %w",
+					s.Name, part.Name, whole.Name, err)
+			}
+			if meet == s.At {
 				return fmt.Errorf("split %q names one part at %q, where the lattice compares %q with %q; "+
 					"one part decomposing the whole at their meet is a containment", s.Name, s.At, part.Name, whole.Name)
 			}

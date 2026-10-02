@@ -243,12 +243,13 @@ func TestAnExceptionBetweenPeersIsThePeerChecks(t *testing.T) {
 		coarse.Cells = []structure.Pin{{Year: 2026, Basis: "adopted",
 			Coords:  map[structure.Axis]string{structure.AxisFundGroup: "general", structure.AxisCategory: "transfers/in"},
 			Against: structure.Sum{Cents: 100, Present: true}}}
+		outer := budgetBookExceptions
 		budgetBookExceptions = func() []structure.Exception { return append(structure.BudgetBookExceptions(), coarse) }
+		t.Cleanup(func() { budgetBookExceptions = outer })
 		res := resultFor(t, runOne(t, s, &peersOverlapOnlyByDeclaredIdentity{}), "peers-overlap-only-by-declared-identity")
 		if len(res.Findings) != 1 || !strings.Contains(res.Findings[0].Detail, "pinned at their own level") {
 			t.Fatalf("status %s, want the level refused:\n  %v", res.Status, res.Findings)
 		}
-		budgetBookExceptions = func() []structure.Exception { return append(structure.BudgetBookExceptions(), stale) }
 	})
 	lattice := resultFor(t, runOne(t, s, &cutsTieAlongTheLattice{}), "cuts-tie-along-the-lattice")
 	for _, f := range lattice.Findings {

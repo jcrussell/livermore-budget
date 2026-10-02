@@ -538,7 +538,9 @@ func (r *Resolver) labelledValues(rule *Rule, p *Part, blk *block, guard *column
 					"be the order the page prints them")
 		}
 		gap := blk.Text[cursor : cursor+j]
-		if err := r.checkGap(rule, p, gap, rows, i, used); err != nil {
+		gapAt := blk.Start + cursor
+		raised := func(off int) bool { return guard.raisedMarker(gapAt + off) }
+		if err := r.checkGap(rule, p, gap, rows, i, used, raised); err != nil {
 			return nil, err
 		}
 
@@ -578,14 +580,17 @@ func (r *Resolver) labelledValues(rule *Rule, p *Part, blk *block, guard *column
 			return nil, err
 		}
 		values = append(values, vals...)
-		last := toks[len(toks)-1]
-		cursor = last.off - blk.Start + len(last.text)
+		cursor = after
+		if len(toks) > 0 {
+			last := toks[len(toks)-1]
+			cursor = last.off - blk.Start + len(last.text)
+		}
 	}
 
 	// Anything after the last row's figures is a row the rule did not map --
 	// unless the page wrapped a label there, which is the same shape as a gap
 	// between two rows and is declared the same way.
-	if rest := strings.TrimSpace(blk.Text[cursor:]); rest != "" && !declaredGap(p, rest, used, true) {
+	if rest := strings.TrimSpace(blk.Text[cursor:]); rest != "" && !declaredGap(p, blk.Text[cursor:], used, true, nil) {
 		return nil, fail("rows", fmt.Sprintf(
 			"%q follows the last mapped row but is not mapped", rest),
 			"every row inside the block must be listed in rows, with skip: true "+
@@ -634,9 +639,10 @@ func (r *Resolver) labelledValues(rule *Rule, p *Part, blk *block, guard *column
 // checkGap enforces what may sit between one row's last figure and the next
 // row's label. Before the first row the block may carry column headers, which
 // are words; between rows nothing at all may intervene, because anything that
-// does is a row the rule has not mapped.
+// does is a row the rule has not mapped. raised is declaredGap's, for a gap
+// between two rows.
 func (r *Resolver) checkGap(rule *Rule, p *Part, gap string, rows []Row, i int,
-	used map[string]bool) error {
+	used map[string]bool, raised func(off int) bool) error {
 	if i == 0 {
 		// A LABEL WRAPPED BEFORE THE FIRST MAPPED ROW IS DECLARABLE HERE, and
 		// until fisc-2jk it was the one place a fragment was invisible either
@@ -688,7 +694,7 @@ func (r *Resolver) checkGap(rule *Rule, p *Part, gap string, rows []Row, i int,
 			}
 			gap = gap[nl+1:]
 		}
-		if declaredGap(p, strings.TrimSpace(gap), used, false) {
+		if declaredGap(p, gap, used, false, nil) {
 			return nil
 		}
 		// NOTE: unmapped_text is deliberately NOT honoured here. This gap is
@@ -713,7 +719,7 @@ func (r *Resolver) checkGap(rule *Rule, p *Part, gap string, rows []Row, i int,
 	if trimmed == "" {
 		return nil
 	}
-	if declaredGap(p, trimmed, used, true) {
+	if declaredGap(p, gap, used, true, raised) {
 		return nil
 	}
 	return cmdutil.WithHint(&resolveError{DocID: r.file.DocID, RuleID: rule.ID,
@@ -736,47 +742,56 @@ func (r *Resolver) checkGap(rule *Rule, p *Part, gap string, rows []Row, i int,
 // figure, so the declaration names lines rather than the run of spaces between
 // them, and a line that is not declared refuses the whole gap.
 //
-// A declared figure must be the whole gap, or a footnote marker
-// (isFootnoteMarker) in a gap of headings and such markers alone, on the line
-// immediately above a heading (p190) or on the gap's last line, keying the row
-// below it (p194). A wrapped label never shares a gap with a figure, so the
+// A declared figure must be the whole gap, or a footnote marker in a gap of
+// headings and such markers alone, on the line immediately above a heading or
+// on the gap's last line, keying the row below it (p194). A marker is what
+// raised says the page prints as one, given the line's offset in gap; it is
+// nil after the last row, where no row follows for a marker to key, and
+// before the first. A wrapped label never shares a gap with a figure, so the
 // declaration cannot admit a row broken over two lines, nor a two-digit figure
 // printed among a label's fragments.
 //
 // figures is false only before the first row, where unmapped_text is not
 // honoured; see checkGap.
-func declaredGap(p *Part, trimmed string, used map[string]bool, figures bool) bool {
-	if slices.Contains(p.WrappedLabels, trimmed) {
+func declaredGap(p *Part, gap string, used map[string]bool, figures bool, raised func(off int) bool) bool {
+	if trimmed := strings.TrimSpace(gap); slices.Contains(p.WrappedLabels, trimmed) {
 		used[trimmed] = true
 		return true
 	}
-	var frags []string
+	type frag struct {
+		text string
+		at   int
+	}
+	var frags []frag
 	figure := false
-	for _, l := range strings.Split(trimmed, "\n") {
-		l = strings.TrimSpace(l)
-		if l == "" {
+	at := 0
+	for _, l := range strings.Split(gap, "\n") {
+		lineAt := at
+		at += len(l) + 1
+		t := strings.TrimSpace(l)
+		if t == "" {
 			continue
 		}
-		if !slices.Contains(p.WrappedLabels, l) && !slices.Contains(p.Headings, l) {
-			if !figures || !declaresUnmapped(p, l) {
+		if !slices.Contains(p.WrappedLabels, t) && !slices.Contains(p.Headings, t) {
+			if !figures || !declaresUnmapped(p, t) {
 				return false
 			}
 			figure = true
 		}
-		frags = append(frags, l)
+		frags = append(frags, frag{t, lineAt + strings.Index(l, t)})
 	}
 	if figure && len(frags) > 1 {
 		for i, f := range frags {
-			heading := slices.Contains(p.Headings, f)
-			marker := !heading && declaresUnmapped(p, f) && isFootnoteMarker(f) &&
-				(i+1 == len(frags) || slices.Contains(p.Headings, frags[i+1]))
+			heading := slices.Contains(p.Headings, f.text)
+			marker := !heading && raised != nil && declaresUnmapped(p, f.text) && raised(f.at) &&
+				(i+1 == len(frags) || slices.Contains(p.Headings, frags[i+1].text))
 			if !heading && !marker {
 				return false
 			}
 		}
 	}
 	for _, f := range frags {
-		used[f] = true
+		used[f.text] = true
 	}
 	return true
 }

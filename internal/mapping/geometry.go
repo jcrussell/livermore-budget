@@ -119,8 +119,7 @@ type textLine struct {
 //
 // -layout prints a superscript on a line of its own while its y0 sits within
 // Page.Lines' tolerance of the line under it. The committed pages that pair
-// only because of this are pinned by TestFootnoteSuperscriptsTheCorpusReconciles;
-// Budget Book pp.186-196's even pages are among them.
+// only because of this are pinned by TestFootnoteSuperscriptsTheCorpusReconciles.
 //
 // It walks the two substrates in step and SPLITS rather than compares: the
 // lines it returns go through buildPairing's token-by-token comparison like
@@ -199,6 +198,22 @@ func isFootnoteMarker(s string) bool {
 		}
 	}
 	return true
+}
+
+// raisedMarker reports whether the token at page offset off is a footnote
+// marker the page prints as a superscript over the line below it: what
+// absorbedSuperscript holds a marker the geometry clustered to, asked of a
+// marker whether or not it was clustered. A part with no guard has no
+// geometry to say so, and prints no marker.
+func (g *columnGuard) raisedMarker(off int) bool {
+	if g == nil {
+		return false
+	}
+	pl, ok := g.pair.words[off]
+	if !ok || !isFootnoteMarker(pl.word.Text) || pl.line+1 >= len(g.pair.lines) {
+		return false
+	}
+	return isSuperscript(pl.word, g.pair.lines[pl.line+1].Words)
 }
 
 func isSuperscript(w geom.Word, line []geom.Word) bool {

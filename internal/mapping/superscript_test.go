@@ -190,8 +190,8 @@ func TestP186IsPlacedByTheColumnGuard(t *testing.T) {
 }
 
 // TestFootnoteSuperscriptsTheCorpusReconciles pins which committed pages pair
-// only because a footnote superscript is split back onto its own line. Every
-// other page pairs or refuses exactly as it did without the reconciliation.
+// with a footnote superscript split back onto its own line: those whose
+// pairing holds more lines than the geometry clustered.
 func TestFootnoteSuperscriptsTheCorpusReconciles(t *testing.T) {
 	want := map[string][]int{
 		"livermore-acfr-fy2025":        {36, 96, 99, 105, 124, 126, 128, 177, 178, 186},

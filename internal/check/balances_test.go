@@ -541,7 +541,8 @@ func TestABalanceHeldApartIsNotCountedAsHolding(t *testing.T) {
 			fund102.facts(byFundRow())...)
 		res := runBalance(t, &fundGroupSourcesEqualUses{}, facts)
 		wantPass(t, res, 2)
-		const want = "1 balances, each with sources minus uses equal to its change, and 1 held apart by declared exceptions"
+		const want = "1 balances, each with sources minus uses equal to its change, 1 held apart by declared " +
+			"exceptions, and 0 exempted by declared blank cells"
 		if res.Summary != want {
 			t.Errorf("summary %q, want %q", res.Summary, want)
 		}
@@ -563,4 +564,31 @@ func TestABlankStockOnAScopePrintingItsChangeStillHoldsSourcesUses(t *testing.T)
 	wantPass(t, runBalance(t, &fundGroupSourcesEqualUses{}, spine.facts(lines), file), 1)
 	misfiled := spine.facts(replace(lines, "taxes", 50_001))
 	wantFail(t, runBalance(t, &fundGroupSourcesEqualUses{}, misfiled, file), "(off by $0.01)")
+}
+
+// TestABalanceExemptedByABlankIsCounted: a blank stock leaves sources = uses
+// no change to hold, and the summary names the balance it set aside, so a
+// rule wrongly declaring a stock blank cannot shrink the population unseen.
+func TestABalanceExemptedByABlankIsCounted(t *testing.T) {
+	noEnding := measureD.facts(without(without(byFundRow(), structure.CategoryFundBalanceReserveIncrease),
+		structure.CategoryFundBalanceEnding))
+	res := runBalance(t, &fundGroupSourcesEqualUses{}, append(noEnding, fund101.facts(byFundRow())...),
+		blankCells(t, true))
+	const want = "1 balances, each with sources minus uses equal to its change, 0 held apart by declared " +
+		"exceptions, and 1 exempted by declared blank cells"
+	if res.Summary != want {
+		t.Errorf("summary %q, want %q", res.Summary, want)
+	}
+}
+
+// TestTwoFactsOnOneLineOfSourcesUsesFail: a second revenue figure on one
+// fund's year would be summed into its revenue, here to the revenue that
+// balances, so sources = uses refuses the balance and names both facts.
+func TestTwoFactsOnOneLineOfSourcesUsesFail(t *testing.T) {
+	facts := measureD.facts(append(replace(byFundRow(), "taxes", 49_999), balanceLine{mapping.KindRevenue, "fees", 1}))
+	res := runBalance(t, &fundGroupSourcesEqualUses{}, facts)
+	wantFail(t, res, facts[1].ID, facts[len(facts)-1].ID, "revenue twice")
+	if res.Subjects != 0 {
+		t.Errorf("examined %d balances, want 0: a balance with no single revenue is not compared", res.Subjects)
+	}
 }

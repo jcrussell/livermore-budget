@@ -4,26 +4,25 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/structure"
 )
 
-// fund101Break is the shape of General Fund CIP Reserves' FY2024 -> FY2025
-// carry-forward, which the rules commit for pp.186-209 declares.
-func fund101Break() structure.BalanceException {
-	return structure.BalanceException{
-		Identity: structure.BalanceCarryForward,
-		At: structure.BalanceAt{DocID: "livermore-budget-fy2026-2027", Scope: structure.ScopeFundBalancesByFund,
-			FundGroup: "capital", Fund: "101", Year: 2024, Basis: mapping.BasisActual},
-		Left: 0, Right: 3495436300,
-		Printed: "p0189 '-' and p0194 34,954,363", Reason: "CIP funds were created in FY2024-25",
-		Bead: "fisc-3eh2",
+// fund101Break is General Fund CIP Reserves' FY2024 -> FY2025 carry-forward
+// as BalanceExceptions declares it.
+func fund101Break(t *testing.T) structure.BalanceException {
+	t.Helper()
+	for _, e := range structure.BalanceExceptions() {
+		if e.Identity == structure.BalanceCarryForward && e.At.FundGroup == "capital" && e.At.Fund == "101" {
+			return e
+		}
 	}
+	t.Fatal("BalanceExceptions declares no carry-forward break for fund 101")
+	return structure.BalanceException{}
 }
 
 func TestValidateBalanceExceptionsRefusesWhatCouldHoldNothingApart(t *testing.T) {
 	if err := structure.ValidateBalanceExceptions(structure.FundBalances(),
-		[]structure.BalanceException{fund101Break()}); err != nil {
+		[]structure.BalanceException{fund101Break(t)}); err != nil {
 		t.Fatalf("the well-formed declaration is refused: %v", err)
 	}
 	for _, tt := range []struct {
@@ -42,7 +41,7 @@ func TestValidateBalanceExceptionsRefusesWhatCouldHoldNothingApart(t *testing.T)
 		{"no bead", func(e *structure.BalanceException) { e.Bead = "" }, "where it is printed"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			e := fund101Break()
+			e := fund101Break(t)
 			tt.edit(&e)
 			err := structure.ValidateBalanceExceptions(structure.FundBalances(), []structure.BalanceException{e})
 			if err == nil || !strings.Contains(err.Error(), tt.want) {
@@ -51,7 +50,7 @@ func TestValidateBalanceExceptionsRefusesWhatCouldHoldNothingApart(t *testing.T)
 		})
 	}
 	err := structure.ValidateBalanceExceptions(structure.FundBalances(),
-		[]structure.BalanceException{fund101Break(), fund101Break()})
+		[]structure.BalanceException{fund101Break(t), fund101Break(t)})
 	if err == nil || !strings.Contains(err.Error(), "declared twice") {
 		t.Fatalf("err = %v, want a duplicate refused", err)
 	}

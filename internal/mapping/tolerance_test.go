@@ -827,7 +827,7 @@ func TestTotalRowAboveAllowsAWrappedLabelAfterTheTotalsLine(t *testing.T) {
 
 	used := map[string]bool{}
 	if err := res.checkGap(rule, &Part{Page: 41, WrappedLabels: []string{"Current:"}},
-		gap, rows, 0, used); err != nil {
+		gap, rows, 0, used, nil); err != nil {
 		t.Fatalf("a wrapped label after the total's line was refused: %v", err)
 	}
 	if !used["Current:"] {
@@ -837,14 +837,14 @@ func TestTotalRowAboveAllowsAWrappedLabelAfterTheTotalsLine(t *testing.T) {
 
 	// Undeclared, the same fragment is still refused -- so the arm above is
 	// about the declaration and not about the skip swallowing everything.
-	if err := res.checkGap(rule, &Part{Page: 41}, gap, rows, 0, map[string]bool{}); err != nil {
+	if err := res.checkGap(rule, &Part{Page: 41}, gap, rows, 0, map[string]bool{}, nil); err != nil {
 		t.Logf("undeclared non-digit text is permitted here, as on every other "+
 			"rule: %v", err)
 	}
 	// FIGURES on the line after the total's are refused, which is the guard the
 	// skip must not clear.
 	if err := res.checkGap(rule, &Part{Page: 41},
-		"   157.20   145.50\n      18.45\n", rows, 0, map[string]bool{}); err == nil {
+		"   157.20   145.50\n      18.45\n", rows, 0, map[string]bool{}, nil); err == nil {
 		t.Error("figures on the line AFTER the total's were accepted; the skip is " +
 			"clearing more than one line")
 	}
