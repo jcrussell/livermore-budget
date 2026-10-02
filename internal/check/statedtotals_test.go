@@ -223,9 +223,11 @@ func TestARepublishedRollupTotalIsCaught(t *testing.T) {
 //
 // The finding arm under-claims on purpose (fisc-xbvs): ten of the eleven
 // total_spans_parts rules can lose their only span with the check still
-// reporting pass. What makes that loss VISIBLE rather than silent is the
-// unresolved count, published unconditionally, so breaking an exempt rule moves
-// a number `fisc verify` prints on every run.
+// reporting pass, because `fisc build` refuses the same lost line first
+// (TestTheTotalRowMustIdentifyOnePage's "on no page" case).
+// Within verify, what makes the loss VISIBLE is the unresolved count, published
+// unconditionally, so breaking an exempt rule moves a number `fisc verify`
+// prints on every run.
 //
 // This asserts that count specifically and not merely that the summary changed
 // -- the RESOLVED count moves too, so a laxer assertion passes with the
@@ -279,12 +281,12 @@ func TestLosingAnExemptSpanStillMovesThePublishedCount(t *testing.T) {
 			"went %d -> %d, want %d: the loss is not visible as a loss.\n  before: %q\n  after:  %q",
 			bent.ID, wasUnresolved, nowUnresolved, wasUnresolved+1, before.Summary, after.Summary)
 	}
-	// It is exempt from the FINDING on purpose, and that is the claim fisc-xbvs
-	// owns. If this ever starts failing, the exemption has been tightened and
-	// this test should be replaced by one asserting the finding.
+	// It is exempt from the FINDING on purpose: the build refuses a spanning
+	// rule whose total no page prints. If this ever starts failing, the
+	// exemption has been tightened and this test should assert the finding.
 	if after.Status != StatusPass {
 		t.Logf("NOTE: breaking a spanning rule now reports %s -- the exemption has been "+
-			"tightened and fisc-xbvs may be dischargeable", after.Status)
+			"tightened", after.Status)
 	}
 }
 

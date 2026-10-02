@@ -30,21 +30,10 @@ import (
 // rows skip: true. Two of them -- "Transfers in" and "Transfers (out)" -- are
 // rows the sibling rule PUBLISHES, so un-skipping one puts two facts at one
 // address and fact-citations-are-declared refuses it. The third, "Total Other
-// Financing Sources (Uses)", is that sibling's total_row, and un-skipping it was
-// refused by nothing:
-//
-//   - un-skipped with kind transfer_out and no sign, `fisc verify` went red on
-//     fact-transfer-orientation-is-declared, complaining the row prints "(25.19)"
-//     while declaring sign positive. That is the gate firing on an unrelated
-//     defect, not the doubling being caught -- see AGENTS.md, "green because the
-//     gate fired".
-//   - un-skipped and ALSO declared sign: netted, which is CORRECT for that
-//     figure, `fisc verify` reported zero failures while the store
-//     published the block's own printed total as a third transfer_out fact:
-//     ACFR transfers/out became 25.72 + 25.19.
-//
-// So the author careless enough to get the sign wrong was caught, and the author
-// careful enough to get it right was not.
+// Financing Sources (Uses)", is that sibling's total_row. Un-skipped with sign:
+// netted, which is CORRECT for that figure, the build publishes the block's own
+// printed total as a third transfer_out fact, and this is the only check that
+// fails.
 //
 // THE POSITION IS RESOLVED, NOT SEARCHED FOR. A rule's total_row is anchored
 // AFTER that rule's block, so the same printed string earlier on the page is a
@@ -62,11 +51,11 @@ import (
 //     predicate can hide.
 //   - THE FINDING IS NARROW, and deliberately under-claims. It fires for a
 //     LABELLED part of a rule that declares a total_row and does not spread it
-//     across parts. Break a spanning rule or a label-less part's anchor and this
-//     check still reports pass, with the counts moved. Widening it correctly
-//     needs the exemptions to be DECLARED the way declaredVacuous and
-//     structure.BudgetBookExceptions are, rather than inferred from a predicate over the
-//     rule's shape; that is fisc-xbvs and it is not done here.
+//     across parts. Break a spanning rule's total_row or a label-less part's
+//     stop_at and this check still reports pass, with the counts moved -- but
+//     `fisc build` resolves the same lines and exits non-zero on either break
+//     (measured on div-special-operations and on spine-revenues' p67 part),
+//     so CI's rebuild refuses it before any fact is published.
 type factOffsetIsNotAStatedTotal struct{}
 
 var _ Check = (*factOffsetIsNotAStatedTotal)(nil)
