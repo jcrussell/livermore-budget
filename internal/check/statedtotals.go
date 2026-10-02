@@ -101,15 +101,16 @@ func (*factOffsetIsNotAStatedTotal) Run(_ context.Context, s *Subject) (Result, 
 		// label-less part's stated total is wherever its block ends, via
 		// stop_at, whether or not its rule declares one.
 		//
-		// NO COMMITTED PART EXERCISES THIS TODAY, and the honest thing is to say
-		// so rather than claim a guard. Measured: five parts are label-less; the
-		// two that resolve a real stated total (spine-revenues and
-		// spine-expenditures on p67) also DECLARE a total_row, so the narrow
-		// filter would have reached them anyway, and the three that declare none
-		// anchor on a block terminator that prints no totals run at all. The
-		// widening is kept because it follows mapping.AnchorOf rather than
-		// second-guessing it; a witness for it needs a synthetic rule, which is
-		// fisc-loxx.
+		// NO COMMITTED PART EXERCISES THIS, and the honest thing is to say so
+		// rather than claim a guard. The label-less parts that resolve a real
+		// stated total -- p67's spine-revenues and spine-expenditures, p81's
+		// debt-service-principal and debt-service-interest -- also DECLARE a
+		// total_row, so the narrow filter would reach them anyway; the rest
+		// anchor on a block terminator that prints no totals run: p67's other
+		// three on its fund-group header and running footer, pp.225-235's CIP
+		// continuation parts on the running footer. The widening is kept
+		// because it follows mapping.AnchorOf rather than second-guessing it; a
+		// witness for it needs a synthetic rule, which is fisc-loxx.
 		for i := range f.Rules {
 			rule := &f.Rules[i]
 			failures := []string{}
@@ -168,11 +169,13 @@ func (*factOffsetIsNotAStatedTotal) Run(_ context.Context, s *Subject) (Result, 
 			//     page, so the earlier parts cannot resolve it. All eleven
 			//     committed failures of that shape are exactly this.
 			//   - A LABEL-LESS part anchors on the block TERMINATOR rather than
-			//     a totals row, and three committed parts land on text that is
-			//     no total at all -- spine-transfers-in on p67's fund-group
-			//     header, spine-transfers-out and spine-fund-balance on the
-			//     running footer. Resolving nothing there is the corpus's normal
-			//     shape and pkg/cmd/build already reports those parts unchecked.
+			//     a totals row, and committed parts land on text that is no
+			//     total at all -- spine-transfers-in on p67's fund-group header,
+			//     spine-transfers-out, spine-fund-balance and pp.225-235's CIP
+			//     continuation parts on the running footer. Resolving nothing
+			//     there is the corpus's normal shape: pkg/cmd/build reports p67's
+			//     three unchecked, and ties the CIP parts' figures through their
+			//     subtotal chain.
 			//
 			// So what must resolve is a LABELLED part of a rule that DECLARES a
 			// total_row and does not spread it across parts.

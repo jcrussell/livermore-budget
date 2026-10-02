@@ -254,6 +254,12 @@ func (r *Resolver) anchor(rule *Rule, p *Part, field, text string, from int, nee
 		i += j + len(needle)
 	}
 
+	// A stop_at is counted from the block's start, not the page's, and its
+	// message says so: an author recounting from the top gets another number.
+	where := "on the page"
+	if from > 0 {
+		where = "after the block's start"
+	}
 	fail := func(err error, msg, hint string) (int, error) {
 		return 0, cmdutil.WithHint(&resolveError{DocID: r.file.DocID, RuleID: rule.ID,
 			Page: p.Page, Field: field, Msg: msg, Err: err}, hint)
@@ -267,19 +273,19 @@ func (r *Resolver) anchor(rule *Rule, p *Part, field, text string, from int, nee
 		return fail(ErrNotFound, fmt.Sprintf("ordinal %d; ordinals count from 1", ordinal),
 			"leave the ordinal unset to require a unique match")
 	case len(at) == 0:
-		return fail(ErrNotFound, fmt.Sprintf("%q does not occur on the page", needle),
+		return fail(ErrNotFound, fmt.Sprintf("%q does not occur %s", needle, where),
 			"the page may have been re-extracted or the document revised; "+
 				"check the page text under data/extracted/")
 	case ordinal == 0 && len(at) > 1:
 		return fail(ErrAmbiguous,
-			fmt.Sprintf("%q occurs %d times on the page: %s", needle, len(at),
+			fmt.Sprintf("%q occurs %d times %s: %s", needle, len(at), where,
 				describeAt(text, at)),
 			fmt.Sprintf("set section_ordinal to say which one starts the block "+
 				"(1 to %d)", len(at)))
 	case ordinal > len(at):
 		return fail(ErrNotFound,
-			fmt.Sprintf("occurrence %d of %q was requested but it occurs %d times: %s",
-				ordinal, needle, len(at), describeAt(text, at)),
+			fmt.Sprintf("occurrence %d of %q was requested but it occurs %d times %s: %s",
+				ordinal, needle, len(at), where, describeAt(text, at)),
 			"the page's shape changed; re-count the occurrences before "+
 				"adjusting the ordinal, because a wrong one reads a real block "+
 				"at the wrong place")
@@ -801,8 +807,8 @@ func (r *Resolver) parseRow(rule *Rule, p *Part, row Row, rowIndex int, toks []t
 				Msg:   err.Error(), Err: err}
 		}
 		// A skipped row or column still consumes its position — that is the
-		// point of skip — and is returned here as a cell; readPart keeps it
-		// out of the part's values, so it yields no fact.
+		// point of skip — and is returned here as a cell; Values keeps it out
+		// of the part's values, so it yields no fact.
 		out = append(out, Value{Cents: cents, Row: row, Column: col,
 			RowIndex: rowIndex, ColumnIndex: c, Page: p.Page,
 			Offset: tk.off, Token: tk.text})
@@ -1736,12 +1742,10 @@ type decimalsWitness struct {
 
 // observe records what one value's token says about the page's precision.
 //
-// IT DOES NOT TEST v.Column.Skip, and the first draft did. parseRow drops a
-// skipped row or column before it builds a Value at all, so no Value reaching
-// here can carry one and the test was dead -- deleting it left every test green
-// and facts.jsonl byte-identical, which is how review found it. Where skipped
-// columns are actually excluded from the witness is parseRow, one layer down,
-// and saying so here is worth more than a guard that cannot fire.
+// IT DOES NOT TEST v.Column.Skip. Values drops a skipped row or column, so no
+// Value reaching here carries one and such a test could not fire. Where
+// skipped columns are excluded from the witness is Values, and Cells, which
+// keeps them, must not feed it.
 func (w *decimalsWitness) observe(rule *Rule, v Value) error {
 	if rule.PrintedDecimals == nil {
 		return nil
@@ -1765,8 +1769,8 @@ func (w *decimalsWitness) settle(rule *Rule) error {
 	if rule.PrintedDecimals == nil || w.exact {
 		return nil
 	}
-	// "SUMMED INTO A COMPARED COLUMN", not "reads". parseRow drops a skipped
-	// row or column before a Value exists, so the witness never sees those
+	// "SUMMED INTO A COMPARED COLUMN", not "reads". Values drops a skipped
+	// row or column, so the witness never sees those
 	// tokens -- and a rule whose compared column prints integers while its
 	// SKIPPED column prints "16.00" would otherwise be told, falsely, that no
 	// token it reads prints two decimals. Rule.PrintedDecimals draws exactly

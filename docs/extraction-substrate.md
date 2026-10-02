@@ -23,7 +23,8 @@ collapses the spaces that *are* the grid.
 It does not recover a value the PDF never put in its text layer, and it does not
 settle "absent is not zero" on its own.
 
-**The CIP document's tables are pictures.** Every program summary sampled (pp.22,
+**The CIP document's tables are pictures.** Measured at 4625b7c: every program
+summary sampled (pp.22,
 29, 40, 52, 117, 172) and the by-fund summary on p218 is a raster image the
 width of the table (`pdfimages -list`: 2099x471 on p22, 1221x845 on p218), and
 the text both substrates carry is an OCR layer over it. Rendered, p218 prints

@@ -12,22 +12,32 @@ import (
 type SubtotalsResult struct {
 	// Lines is the subtotal rows tied, and Cells the figures on them.
 	Lines, Cells int
+
+	// Tied is each tied subtotal row's figures, so a caller counting across
+	// chains can count a printed figure once: debt-service-principal and
+	// debt-service-interest read one block, and each chain compares all of it.
+	Tied [][]Value
 }
 
 // Chains groups a file's rules into the runs CheckSubtotals reads, in file
 // order: each named Rule.SubtotalChain is one run, and a rule with subtotal
 // rows and no chain is a run of its own. Rules in neither are left out.
 func Chains(f *File) [][]*Rule {
+	// Keyed apart, so a declared chain cannot be spelled into a rule's own.
+	type key struct {
+		declared bool
+		name     string
+	}
 	var out [][]*Rule
-	at := map[string]int{}
+	at := map[key]int{}
 	for i := range f.Rules {
 		rule := &f.Rules[i]
-		name := rule.SubtotalChain
-		if name == "" {
+		name := key{true, rule.SubtotalChain}
+		if rule.SubtotalChain == "" {
 			if !slices.ContainsFunc(rule.Rows, func(r Row) bool { return r.Subtotal > 0 }) {
 				continue
 			}
-			name = "rule:" + rule.ID
+			name = key{false, rule.ID}
 		}
 		j, ok := at[name]
 		if !ok {
@@ -57,21 +67,22 @@ func Chains(f *File) [][]*Rule {
 func (r *Resolver) CheckSubtotals(chain []*Rule) (*SubtotalsResult, error) {
 	type column struct{ part, col int }
 	first := chain[0]
-	name := func(k column) string {
-		return fmt.Sprintf("%q on p%d", first.Parts[k.part].ColumnHeaders[k.col].Text,
-			first.Parts[k.part].Page)
-	}
 	levels := 0
 	for _, rule := range chain {
-		if err := sameColumns(first, rule); err != nil {
-			return nil, err
+		if msg := sameColumns(first, rule); msg != "" {
+			return nil, &resolveError{DocID: r.file.DocID, RuleID: rule.ID, Page: rule.Parts[0].Page,
+				Field: "subtotal_chain", Err: ErrNotFound, Msg: msg}
 		}
 		for _, row := range rule.Rows {
 			levels = max(levels, row.Subtotal)
 		}
 	}
 	if levels == 0 {
-		return nil, fmt.Errorf("subtotal chain of rule %q declares no subtotal row", first.ID)
+		return nil, cmdutil.WithHint(&resolveError{DocID: r.file.DocID, RuleID: first.ID,
+			Page: first.Parts[0].Page, Field: "subtotal_chain", Err: ErrNotFound,
+			Msg: fmt.Sprintf("names chain %q, and no rule in it declares a subtotal row",
+				first.SubtotalChain)},
+			"a chain exists to carry rows to the subtotals they sit under")
 	}
 	sums := make([]map[column]amount.Cents, levels+1)
 	rows := make([]int, levels+1)
@@ -85,6 +96,10 @@ func (r *Resolver) CheckSubtotals(chain []*Rule) (*SubtotalsResult, error) {
 
 	res := &SubtotalsResult{}
 	for _, rule := range chain {
+		name := func(k column) string {
+			return fmt.Sprintf("%q on p%d", rule.Parts[k.part].ColumnHeaders[k.col].Text,
+				rule.Parts[k.part].Page)
+		}
 		figures := make([]map[column]Value, len(rule.Rows))
 		for i := range rule.Parts {
 			cells, err := r.Cells(rule, &rule.Parts[i])
@@ -105,8 +120,13 @@ func (r *Resolver) CheckSubtotals(chain []*Rule) (*SubtotalsResult, error) {
 						sums[l][k] += c.Cents
 					}
 				}
-				for l := 1; l <= levels; l++ {
-					rows[l]++
+				// A row no part prints -- omitted on every page -- adds
+				// nothing, and counting it would let a subtotal over it pass
+				// with nothing summed.
+				if len(figures[i]) > 0 {
+					for l := 1; l <= levels; l++ {
+						rows[l]++
+					}
 				}
 				continue
 			}
@@ -142,6 +162,7 @@ func (r *Resolver) CheckSubtotals(chain []*Rule) (*SubtotalsResult, error) {
 				}
 				return a.col - b.col
 			})
+			var tied []Value
 			for _, k := range keys {
 				got, ok := figures[i][k]
 				if !ok {
@@ -162,12 +183,14 @@ func (r *Resolver) CheckSubtotals(chain []*Rule) (*SubtotalsResult, error) {
 						got.Token, name(k), above, row.Subtotal, want[k].String(), delta.String()))
 				}
 				res.Cells++
+				tied = append(tied, got)
 			}
 			for k := range deltas {
 				return nil, r.subtotalError(rule, row, 0, fmt.Sprintf(
 					"declares a delta under %s, a column neither it nor a row above it prints", name(k)))
 			}
 			res.Lines++
+			res.Tied = append(res.Tied, tied)
 			reset(row.Subtotal)
 		}
 	}
@@ -182,23 +205,22 @@ func (r *Resolver) CheckSubtotals(chain []*Rule) (*SubtotalsResult, error) {
 	return res, nil
 }
 
-// sameColumns refuses a chain member whose parts or headers are laid out
-// unlike the chain's first rule, since CheckSubtotals matches columns by
-// position.
-func sameColumns(first, rule *Rule) error {
+// sameColumns says how a chain member's parts or headers are laid out unlike
+// the chain's first rule, or "" when they are not, since CheckSubtotals
+// matches columns by position.
+func sameColumns(first, rule *Rule) string {
 	if len(rule.Parts) != len(first.Parts) {
-		return fmt.Errorf("rule %q has %d parts and rule %q, first in its subtotal chain, has %d; "+
-			"a chain compares columns by position", rule.ID, len(rule.Parts), first.ID, len(first.Parts))
+		return fmt.Sprintf("has %d parts and rule %q, first in its subtotal chain, has %d; "+
+			"a chain compares columns by position", len(rule.Parts), first.ID, len(first.Parts))
 	}
 	for i := range rule.Parts {
 		a, b := first.Parts[i].ColumnHeaders, rule.Parts[i].ColumnHeaders
 		if !slices.Equal(a, b) {
-			return fmt.Errorf("rule %q part %d declares column_headers %v and rule %q, first in "+
-				"its subtotal chain, declares %v; a chain compares columns by position",
-				rule.ID, i+1, b, first.ID, a)
+			return fmt.Sprintf("part %d declares column_headers %v and rule %q, first in its "+
+				"subtotal chain, declares %v; a chain compares columns by position", i+1, b, first.ID, a)
 		}
 	}
-	return nil
+	return ""
 }
 
 func (r *Resolver) subtotalError(rule *Rule, row Row, page int, msg string) error {

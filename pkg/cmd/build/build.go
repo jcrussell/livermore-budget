@@ -268,13 +268,26 @@ func resolve(root string, files []*mapping.File) ([]fact.Fact, *report, error) {
 			}
 		}
 
+		// A printed figure is counted once however many chains compare it:
+		// debt-service-principal and debt-service-interest read one block.
+		type at struct{ page, offset int }
+		seen := map[at]bool{}
 		for _, chain := range chains {
 			res, err := r.CheckSubtotals(chain)
 			if err != nil {
 				return nil, nil, err
 			}
-			rep.SubtotalLinesTied += res.Lines
-			rep.SubtotalCellsTied += res.Cells
+			for _, line := range res.Tied {
+				if len(line) > 0 && !seen[at{line[0].Page, line[0].Offset}] {
+					rep.SubtotalLinesTied++
+				}
+				for _, c := range line {
+					if !seen[at{c.Page, c.Offset}] {
+						seen[at{c.Page, c.Offset}] = true
+						rep.SubtotalCellsTied++
+					}
+				}
+			}
 			for _, rule := range chain {
 				if rule.TotalRow == "" {
 					rep.PartsChecked += len(rule.Parts)

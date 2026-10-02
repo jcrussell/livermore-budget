@@ -190,7 +190,7 @@ func TestASubtotalTheRowsDoNotSumToIsRefused(t *testing.T) {
 	}{
 		{"a published column", "$   30", "$   31", `"SUBTOTAL X"`, 1},
 		{"a skipped column", "$   42", "$   43", `"TOTAL"`, 2},
-		{"a level-2 total", "$   31", "$   30", `"TOTAL FUND"`, 3},
+		{"a level-2 total", "$   31", "$   30", `"TOTAL FUND": prints 30 under "FY A" on p3`, 3},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			pages := subtotalPages()
@@ -354,5 +354,56 @@ func TestAChainLaidOutUnlikeItsFirstRuleIsRefused(t *testing.T) {
 	_, err := subtotalCheck(t, src, pages)
 	if err == nil || !strings.Contains(err.Error(), "compares columns by position") {
 		t.Errorf("a chain whose second rule names its columns differently: got %v, want it refused", err)
+	}
+}
+
+// TestASubtotalOverARowNoPagePrintsIsRefused: a row omitted from every part
+// adds nothing, so a subtotal over it alone sums nothing, and a printed dash
+// there would tie against an empty sum.
+func TestASubtotalOverARowNoPagePrintsIsRefused(t *testing.T) {
+	src := strings.Replace(subtotalRules,
+		"      - {label: \"SUBTOTAL X\", skip: true, subtotal: 1}\n",
+		"      - {label: \"SUBTOTAL X\", skip: true, subtotal: 1}\n"+
+			"      - {label: \"P9 Ghost\", category: capital-projects}\n"+
+			"      - {label: \"ZERO TOTAL\", skip: true, subtotal: 1}\n", 1)
+	src = strings.Replace(src, "        column_headers: [\"FY A\"]\n",
+		"        omitted_rows: [\"P9 Ghost\"]\n        column_headers: [\"FY A\"]\n", 1)
+	src = strings.Replace(src, "        column_headers: [\"FY B\", \"TOTAL\"]\n",
+		"        omitted_rows: [\"P9 Ghost\"]\n        column_headers: [\"FY B\", \"TOTAL\"]\n", 1)
+	pages := subtotalPages()
+	pages[1] = strings.Replace(pages[1], "P3 Gamma", fmt.Sprintf("%-12s%10s\nP3 Gamma", "  ZERO TOTAL", "-"), 1)
+	pages[2] = strings.Replace(pages[2], fmt.Sprintf("%10s%10s\n", "2", "3"),
+		fmt.Sprintf("%10s%10s\n%10s%10s\n", "-", "-", "2", "3"), 1)
+	_, err := subtotalCheck(t, src, pages)
+	if err == nil || !strings.Contains(err.Error(), `"ZERO TOTAL"`) || !strings.Contains(err.Error(), "over no row") {
+		t.Errorf("a subtotal over a row no page prints: got %v, want it refused", err)
+	}
+}
+
+// TestADeclaredChainCannotJoinARulesOwn: a rule with subtotal rows and no
+// subtotal_chain is a chain of its own, whatever another rule names its chain.
+func TestADeclaredChainCannotJoinARulesOwn(t *testing.T) {
+	src := strings.Replace(subtotalRules, "    subtotal_chain: listing\n", "", 1)
+	src = strings.Replace(src, "    subtotal_chain: listing\n", "    subtotal_chain: \"rule:pair-1\"\n", 1)
+	f, err := parse(strings.NewReader(src), "subtotal.yaml")
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if got := len(Chains(f)); got != 2 {
+		t.Errorf("Chains = %d runs, want 2: pair-1's own and the one pair-2 names", got)
+	}
+}
+
+// TestAChainWithNoSubtotalSaysWhere: a chain named on a rule with no subtotal
+// row is refused with the document, rule and page, like every resolve failure.
+func TestAChainWithNoSubtotalSaysWhere(t *testing.T) {
+	src := strings.Replace(subtotalRules, "      - {label: \"SUBTOTAL X\", skip: true, subtotal: 1}\n",
+		"      - {label: \"SUBTOTAL X\", skip: true}\n", 1)
+	src = strings.Replace(src, "    subtotal_chain: listing\n", "    subtotal_chain: lonely\n", 1)
+	_, err := subtotalCheck(t, src, subtotalPages())
+	for _, want := range []string{"subtotal-doc p1", `"pair-1"`, `"lonely"`} {
+		if err == nil || !strings.Contains(err.Error(), want) {
+			t.Errorf("a chain with no subtotal: got %v, want it to name %s", err, want)
+		}
 	}
 }

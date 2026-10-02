@@ -126,7 +126,7 @@ func TestAStopAtOrdinalPastThePageIsRefused(t *testing.T) {
 		t.Fatalf("parse: %v", err)
 	}
 	_, _, err = r.Values(rule, &rule.Parts[1])
-	if err == nil || !strings.Contains(err.Error(), "occurs 2 times") {
+	if err == nil || !strings.Contains(err.Error(), "occurs 2 times after the block's start") {
 		t.Errorf("stop_at_ordinal 3 over two \"$\": got %v, want a refusal counting 2", err)
 	}
 }

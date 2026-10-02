@@ -898,3 +898,26 @@ func TestASubtotalThatDoesNotTieFailsTheBuild(t *testing.T) {
 		}
 	}
 }
+
+// TestASubtotalTwoRulesCompareIsCountedOnce: the report counts what the page
+// prints, so a subtotal two chains both compare is one line and one figure.
+//
+// Mutation: count each chain's result as it comes, and this reports 2 and 2.
+func TestASubtotalTwoRulesCompareIsCountedOnce(t *testing.T) {
+	root := testRepoWithGeometry(t, map[int]string{95: subtotalPage},
+		map[int]string{95: monoGeometry(95, subtotalPage)}, "subtotal_twice.yaml")
+	opts, out, _ := testOptions(t, root)
+	opts.JSON = true
+
+	if err := buildRun(opts); err != nil {
+		t.Fatalf("buildRun: %v", err)
+	}
+	var rep report
+	if err := json.Unmarshal(out.Bytes(), &rep); err != nil {
+		t.Fatalf("decode report: %v", err)
+	}
+	if rep.SubtotalLinesTied != 1 || rep.SubtotalCellsTied != 1 {
+		t.Errorf("subtotal_lines_tied = %d, subtotal_cells_tied = %d, want 1 and 1: the page "+
+			"prints one subtotal with one figure", rep.SubtotalLinesTied, rep.SubtotalCellsTied)
+	}
+}
