@@ -58,7 +58,10 @@ var clientSubset = map[string]string{
 // fundAxisScopes are the scopes a fund is dropped from. Every other scope
 // stays whole: the spine and the department pages are what a step's gap
 // licence is stated against, in cents over the whole column, so a fund
-// dropped from either would be a difference the client refuses.
+// dropped from either would be a difference the client refuses. A fund
+// dropped here still leaves its group's window drawing the whole spine
+// figure in and only the kept funds out, which no declaration licenses and
+// nothing refuses; fisc-m78u.
 var fundAxisScopes = []string{"revenue-by-fund", "expenditure-by-fund", "department-funding-sources"}
 
 // clientFacts is the store less every fund-axis fact of a fund clientSubset
@@ -304,11 +307,13 @@ func linkFactFaults(at string, l export.ColumnLink, src string, column export.Co
 	}
 	var faults []string
 	var sum int64
+	missing := false
 	pages := map[string]bool{}
 	for _, id := range l.FactIDs {
 		f, ok := facts[id]
 		if !ok {
 			faults = append(faults, fmt.Sprintf("%s cites %s, which facts/facts.jsonl does not carry", at, id))
+			missing = true
 			continue
 		}
 		if f.FiscalYear != column.FiscalYear || string(f.Basis) != column.Basis {
@@ -330,13 +335,13 @@ func linkFactFaults(at string, l export.ColumnLink, src string, column export.Co
 			located[fmt.Sprintf("%s p%d", loc.DocID, pg)] = true
 		}
 	}
-	if want, got := slices.Sorted(maps.Keys(pages)), slices.Sorted(maps.Keys(located)); len(faults) == 0 && !slices.Equal(want, got) {
+	if want, got := slices.Sorted(maps.Keys(pages)), slices.Sorted(maps.Keys(located)); !missing && !slices.Equal(want, got) {
 		faults = append(faults, fmt.Sprintf("%s locates %v and its facts are on %v", at, got, want))
 	}
 	if src == project.NodeFundBalanceDraw {
 		sum = -sum
 	}
-	if len(faults) == 0 && sum != l.ValueCents {
+	if !missing && sum != l.ValueCents {
 		faults = append(faults, fmt.Sprintf("%s carries %d and its facts come to %d", at, l.ValueCents, sum))
 	}
 	return faults
@@ -467,8 +472,14 @@ func TestTheClientFixtureChecksCanFail(t *testing.T) {
 	}
 	reconfigured := func(t *testing.T, edit func(cfg map[string]any)) []byte {
 		t.Helper()
-		before, rest, _ := bytes.Cut(fixturePage, []byte(configOpen))
-		body, after, _ := bytes.Cut(rest, []byte(configClose))
+		before, rest, ok := bytes.Cut(fixturePage, []byte(configOpen))
+		if !ok {
+			t.Fatal("the page fixture carries no FISC_CONFIG")
+		}
+		body, after, ok := bytes.Cut(rest, []byte(configClose))
+		if !ok {
+			t.Fatal("the page fixture never closes FISC_CONFIG")
+		}
 		var cfg map[string]any
 		if decodeErr := json.Unmarshal(body, &cfg); decodeErr != nil {
 			t.Fatal(decodeErr)
@@ -661,6 +672,37 @@ func TestTheClientFixtureChecksCanFail(t *testing.T) {
 		}, ""},
 		{"a schedule's caveats rewritten", "not the column Go writes", func(col map[string]any) {
 			spine(col)["caveats"] = []any{}
+		}, ""},
+		{"a fact of another year", " of FY", func(col map[string]any) {
+			for id, f := range facts {
+				if f.FiscalYear != 2026 {
+					firstLink(col)["fact_ids"] = []any{id}
+					return
+				}
+			}
+			t.Fatal("the store carries no fact of another year")
+		}, ""},
+		{"a cited link that cites nothing", "cites no fact and is not derived", func(col map[string]any) {
+			for _, l := range spine(col)["links"].([]any) {
+				if derived, _ := l.(map[string]any)["derived"].(bool); !derived {
+					l.(map[string]any)["fact_ids"] = []any{}
+					return
+				}
+			}
+			t.Fatal("the spine carries no cited link that is not derived")
+		}, ""},
+		{"two marks each other's parent", "in a cycle", func(col map[string]any) {
+			nodes := spine(col)["nodes"].([]any)
+			ids := col["nodes"].([]any)
+			a, b := nodes[0].(map[string]any), nodes[1].(map[string]any)
+			a["parent"] = ids[int(b["node"].(float64))].(map[string]any)["id"]
+			b["parent"] = ids[int(a["node"].(float64))].(map[string]any)["id"]
+		}, ""},
+		{"the column of another year", "states the column of", func(col map[string]any) {
+			col["column"].(map[string]any)["fiscal_year"] = 2025.0
+		}, ""},
+		{"a fund group with no node", "carries no such node", func(col map[string]any) {
+			col["fund_groups"] = append(col["fund_groups"].([]any), map[string]any{"id": "fund-group/ghost", "slot": 0.0})
 		}, ""},
 		{"a schedule dropped", "not the column Go writes", func(col map[string]any) {
 			delete(col["schedules"].(map[string]any), "transfers-out")
