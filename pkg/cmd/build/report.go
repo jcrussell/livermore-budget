@@ -90,6 +90,11 @@ type report struct {
 	SubtotalLinesTied int `json:"subtotal_lines_tied"`
 	SubtotalCellsTied int `json:"subtotal_cells_tied"`
 
+	// SubtotalCellsTiedByDeclaration is how many of those figures tie only
+	// through a declared subtotal_deltas entry, kept apart for the reason
+	// ColumnsTiedByDeclaration is.
+	SubtotalCellsTiedByDeclaration int `json:"subtotal_cells_tied_by_declaration"`
+
 	PartsUnchecked    []uncheckedPart    `json:"parts_unchecked"`
 	RollupsUnasserted []unassertedRollup `json:"rollups_unasserted"`
 	Omissions         []declaredOmission `json:"declared_omissions"`
@@ -302,6 +307,11 @@ func (rep *report) print(ios *iostreams.IOStreams, asJSON bool) error {
 			rep.SubtotalLinesTied, cmdutil.Plural(rep.SubtotalLinesTied, "subtotal", "subtotals"),
 			cmdutil.Plural(rep.SubtotalLinesTied, "ties to", "tie to"), rep.SubtotalCellsTied,
 			cmdutil.Plural(rep.SubtotalCellsTied, "figure", "figures"))
+		if rep.SubtotalCellsTiedByDeclaration > 0 {
+			fmt.Fprintf(w, "%d of those figures %s only to a declared delta in the document's own arithmetic\n",
+				rep.SubtotalCellsTiedByDeclaration,
+				cmdutil.Plural(rep.SubtotalCellsTiedByDeclaration, "ties", "tie"))
+		}
 	}
 	if rep.RollupsAsserted > 0 {
 		fmt.Fprintf(w, "%d printed %s covering several rules %s, over %d %s\n",

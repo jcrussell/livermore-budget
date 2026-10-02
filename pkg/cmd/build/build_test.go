@@ -76,16 +76,6 @@ Total Services $134,242
 	// Two divisions and the department total printed over both, plus a total
 	// the page prints that nothing on it sums to. 300 + 700 = 1,000.
 	// See testdata/rollup.yaml.
-	// A block and its printed subtotal, figures right-aligned under their
-	// header so the geometry monoGeometry derives places each in its column.
-	// See testdata/subtotal.yaml.
-	subtotalPage = `      FY A
-Alpha       10
-Beta        20
-SUBTOTAL  $ 30
-END
-`
-
 	rollupPage = `Division One
 Wages 100
 Supplies 200
@@ -96,6 +86,16 @@ Supplies 400
 Total $700
 DEPARTMENT TOTAL $1,000
 Total Sources $58,000
+`
+
+	// A block and its printed subtotal, figures right-aligned under their
+	// header so the geometry monoGeometry derives places each in its column.
+	// See testdata/subtotal.yaml.
+	subtotalPage = `      FY A
+Alpha       10
+Beta        20
+SUBTOTAL  $ 30
+END
 `
 )
 
@@ -919,5 +919,30 @@ func TestASubtotalTwoRulesCompareIsCountedOnce(t *testing.T) {
 	if rep.SubtotalLinesTied != 1 || rep.SubtotalCellsTied != 1 {
 		t.Errorf("subtotal_lines_tied = %d, subtotal_cells_tied = %d, want 1 and 1: the page "+
 			"prints one subtotal with one figure", rep.SubtotalLinesTied, rep.SubtotalCellsTied)
+	}
+}
+
+// TestASubtotalTiedByDeclarationIsReportedApart: a figure that ties only
+// through a declared delta is the document disagreeing with itself, said out
+// loud, and the report says so rather than folding it into the ties.
+//
+// Mutation: drop the declared count from resolve, and this reports 0.
+func TestASubtotalTiedByDeclarationIsReportedApart(t *testing.T) {
+	page := strings.Replace(subtotalPage, "SUBTOTAL  $ 30", "SUBTOTAL  $ 31", 1)
+	root := testRepoWithGeometry(t, map[int]string{95: page},
+		map[int]string{95: monoGeometry(95, page)}, "subtotal_delta.yaml")
+	opts, out, _ := testOptions(t, root)
+	opts.JSON = true
+
+	if err := buildRun(opts); err != nil {
+		t.Fatalf("buildRun: %v", err)
+	}
+	var rep report
+	if err := json.Unmarshal(out.Bytes(), &rep); err != nil {
+		t.Fatalf("decode report: %v", err)
+	}
+	if rep.SubtotalCellsTied != 1 || rep.SubtotalCellsTiedByDeclaration != 1 {
+		t.Errorf("subtotal_cells_tied = %d, subtotal_cells_tied_by_declaration = %d, want 1 and 1",
+			rep.SubtotalCellsTied, rep.SubtotalCellsTiedByDeclaration)
 	}
 }

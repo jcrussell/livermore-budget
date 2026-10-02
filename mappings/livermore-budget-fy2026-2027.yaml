@@ -6334,8 +6334,8 @@ rules:
   # Total equals the revised Debt Services row of one fund on pp.172-183 --
   # 2020A COP fund 400, 2020B COP fund 401, 2022 COP fund 402, HUD Loans fund
   # 224, the Lease/Purchase Loan fund 740, Airport's two rows fund 600, Water's
-  # fund 640 -- all to the dollar. The Interfund Loan's 117,500 is in no fund's
-  # Debt Services row.
+  # fund 640, the Interfund Loan the General Fund (fund 100, p172) -- all to the
+  # dollar.
   #
   # The rows carry no fund. Only the business-type headings name one; the
   # governmental issues name none, and a grain is per rule.
@@ -6359,8 +6359,8 @@ rules:
   # the first row is "$"-prefixed too, so stop_at_ordinal counts it: six "$" on
   # the first row, six on each subtotal, and the grand Total's is the 19th.
   #
-  # Not mapped: the DEBT SERVICE REQUIREMENTS schedule below each block, which
-  # prints future years' requirements (fisc-nvw is where a forecast may live).
+  # Not mapped: the DEBT SERVICE REQUIREMENTS schedule below each block, future
+  # years' printed requirements (fisc-5gk.10).
   # --------------------------------------------------------------------------
   - id: debt-service-principal
     kind: expenditure

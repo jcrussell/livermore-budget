@@ -158,8 +158,8 @@ func subtotalCheck(t *testing.T, src string, pages map[int]string) (*SubtotalsRe
 		if err != nil {
 			return nil, err
 		}
-		sum.Lines += res.Lines
-		sum.Cells += res.Cells
+		sum.Tied = append(sum.Tied, res.Tied...)
+		sum.Declared = append(sum.Declared, res.Declared...)
 	}
 	return sum, nil
 }
@@ -175,9 +175,13 @@ func TestASubtotalChainTiesAcrossRulesAndLevels(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CheckSubtotals: %v", err)
 	}
-	if res.Lines != 5 || res.Cells != 15 {
-		t.Errorf("tied %d lines over %d cells, want 5 lines over 15 (three headers each)",
-			res.Lines, res.Cells)
+	cells := 0
+	for _, line := range res.Tied {
+		cells += len(line)
+	}
+	if len(res.Tied) != 5 || cells != 15 || len(res.Declared) != 0 {
+		t.Errorf("tied %d lines over %d cells, %d by declaration, want 5 lines over 15 "+
+			"(three headers each) and none declared", len(res.Tied), cells, len(res.Declared))
 	}
 }
 
@@ -242,13 +246,16 @@ func TestASubtotalDeltaIsADeclarationNotATolerance(t *testing.T) {
 
 	pages := subtotalPages()
 	pages[4] = strings.Replace(pages[4], "$   18", "$   17", 1)
-	if _, err := subtotalCheck(t, src, pages); err != nil {
+	res, err := subtotalCheck(t, src, pages)
+	if err != nil {
 		t.Errorf("a grand total a dollar under its rows, declared: %v", err)
+	} else if len(res.Declared) != 1 || res.Declared[0].Token != "17" {
+		t.Errorf("declared figures = %+v, want the one 17 the delta ties", res.Declared)
 	}
-	if _, err := subtotalCheck(t, subtotalRules, pages); err == nil {
+	if _, err = subtotalCheck(t, subtotalRules, pages); err == nil {
 		t.Error("the same dollar undeclared was accepted")
 	}
-	_, err := subtotalCheck(t, src, subtotalPages())
+	_, err = subtotalCheck(t, src, subtotalPages())
 	if err == nil || !strings.Contains(err.Error(), "ties exactly") {
 		t.Errorf("a delta over a column that ties: got %v, want it refused as stale", err)
 	}

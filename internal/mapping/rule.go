@@ -413,7 +413,7 @@ type Rule struct {
 	//   - It must describe the page. Every token that is SUMMED INTO A COMPARED
 	//     COLUMN is checked against it, and a declaration no such token
 	//     justifies is refused. Not every token the rule reads: a skipped row or
-	//     column never becomes a Value (Values drops it), and a row the
+	//     column never reaches the witness (Values drops it), and a row the
 	//     total_row does not cover is filtered out of the sum by totalCovers.
 	//     Both are outside the comparison the tolerance applies to, so
 	//     witnessing them could only let a declaration pass on precision the

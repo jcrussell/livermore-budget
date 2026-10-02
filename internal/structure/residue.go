@@ -69,15 +69,15 @@ func cipProjectListingResidue() []Residue {
 }
 
 // debtServiceByIssueResidue is why pp.80-81 sit in no cut. Their axis is the
-// debt issue, which no other schedule prints, and their grand total is not
-// pp.172-183's Debt Services summed over funds: the FY2024-25 column differs
-// by exactly the Interfund Loan's 117,500, which no fund's Debt Services row
-// carries, and FY2025-26 by 119,578 over four funds.
+// debt issue, which no other schedule prints, and only their FY2024-25 grand
+// total is pp.172-183's Debt Services summed over funds, 8,931,434 both ways:
+// the budget years differ, chiefly in funds 224 and 402.
 const debtServiceByIssueResidue = "pp.80-81 print debt service by issue, an axis no other " +
-	"schedule has, and their grand total is not the funds' Debt Services on pp.172-183: " +
-	"FY2024-25 differs by the Interfund Loan's 117,500, which no fund's Debt Services " +
-	"row carries, and FY2025-26 by 119,578 over funds 224, 402, 600 and 740. Each " +
-	"column ties to the schedule's own printed Total"
+	"schedule has. Their FY2024-25 grand total, 8,931,434, is the funds' Debt Services on " +
+	"pp.172-183 summed, the Interfund Loan's 117,500 being the General Fund's; their " +
+	"budget years are not, differing by 119,578 and 110,926, chiefly in fund 224 " +
+	"(137,684 and 130,003 more than the HUD Loans) and fund 402 (18,250 and 19,125 " +
+	"less than the 2022 COPs). Each column ties to the schedule's own printed Total"
 
 // Covered holds a store to its cuts: every fact is admitted by exactly one
 // cut, or by no cut and exactly one declared residue, and every residue

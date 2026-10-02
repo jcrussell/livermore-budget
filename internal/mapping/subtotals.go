@@ -8,15 +8,17 @@ import (
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
-// SubtotalsResult counts what [Resolver.CheckSubtotals] compared.
+// SubtotalsResult is what [Resolver.CheckSubtotals] compared.
 type SubtotalsResult struct {
-	// Lines is the subtotal rows tied, and Cells the figures on them.
-	Lines, Cells int
-
 	// Tied is each tied subtotal row's figures, so a caller counting across
 	// chains can count a printed figure once: debt-service-principal and
 	// debt-service-interest read one block, and each chain compares all of it.
 	Tied [][]Value
+
+	// Declared is the figures among Tied that tie only through a declared
+	// subtotal_deltas entry, which a report must not count as the document
+	// agreeing with itself.
+	Declared []Value
 }
 
 // Chains groups a file's rules into the runs CheckSubtotals reads, in file
@@ -182,14 +184,30 @@ func (r *Resolver) CheckSubtotals(chain []*Rule) (*SubtotalsResult, error) {
 							"subtotal sum to %s (a declared delta of %s)",
 						got.Token, name(k), above, row.Subtotal, want[k].String(), delta.String()))
 				}
-				res.Cells++
 				tied = append(tied, got)
+				if declared {
+					res.Declared = append(res.Declared, got)
+				}
 			}
+			// A delta naming no compared column -- a header only a column
+			// neither the subtotal nor its rows print -- is a stale claim.
+			// Reported in column order, so two of them name the same one first
+			// on every run.
+			unused := make([]column, 0, len(deltas))
 			for k := range deltas {
-				return nil, r.subtotalError(rule, row, 0, fmt.Sprintf(
-					"declares a delta under %s, a column neither it nor a row above it prints", name(k)))
+				unused = append(unused, k)
 			}
-			res.Lines++
+			if len(unused) > 0 {
+				slices.SortFunc(unused, func(a, b column) int {
+					if a.part != b.part {
+						return a.part - b.part
+					}
+					return a.col - b.col
+				})
+				return nil, r.subtotalError(rule, row, 0, fmt.Sprintf(
+					"declares a delta under %s, a column neither it nor a row above it prints",
+					name(unused[0])))
+			}
 			res.Tied = append(res.Tied, tied)
 			reset(row.Subtotal)
 		}
