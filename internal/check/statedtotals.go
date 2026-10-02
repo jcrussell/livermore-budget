@@ -150,7 +150,11 @@ func (*factOffsetIsNotAStatedTotal) Run(_ context.Context, s *Subject) (Result, 
 				// its reader to grep for nothing.
 				label := "the end of the block, via stop_at " + strconv.Quote(p.StopAt)
 				if p.StopAtOrdinal > 0 {
-					label += fmt.Sprintf(" (occurrence %d after the block's start)", p.StopAtOrdinal)
+					from := "after the block's start"
+					if p.Section == "" {
+						from = "on the page"
+					}
+					label += fmt.Sprintf(" (occurrence %d %s)", p.StopAtOrdinal, from)
 				}
 				if mapping.AnchorOf(p) == mapping.AnchorTotalRow {
 					label = rule.TotalRow
@@ -176,9 +180,9 @@ func (*factOffsetIsNotAStatedTotal) Run(_ context.Context, s *Subject) (Result, 
 			//     total at all -- spine-transfers-in on p67's fund-group header,
 			//     spine-transfers-out, spine-fund-balance and pp.225-235's CIP
 			//     continuation parts on the running footer. Resolving nothing
-			//     there is the corpus's normal shape: pkg/cmd/build reports p67's
-			//     three unchecked, and ties the CIP parts' figures through their
-			//     subtotal chain.
+			//     there is the corpus's normal shape: the build reports p67's
+			//     three unchecked, and mapping.Resolver.CheckSubtotals ties the
+			//     CIP parts' figures.
 			//
 			// So what must resolve is a LABELLED part of a rule that DECLARES a
 			// total_row and does not spread it across parts.

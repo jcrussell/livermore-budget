@@ -6473,8 +6473,7 @@ rules:
   # 104,665,416; FY2030-45, fifteen years in one figure; and TOTAL, each row's
   # sum.
   # The budget years are not p222's new appropriations either: the listing's
-  # totals carry forward unspent appropriations (see the residue declared in
-  # internal/structure).
+  # totals carry forward unspent appropriations (structure.BudgetBookResidue).
   #
   # SUBTOTALS. Each fund's block ends in a printed total, fund 101's four
   # sub-blocks in a SUBTOTAL each, and p234 in the grand TOTAL. The odd pages

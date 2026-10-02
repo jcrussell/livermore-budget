@@ -574,3 +574,40 @@ func TestALineFoundByOrdinalIsNamedWithIt(t *testing.T) {
 		t.Errorf("the finding does not name the line by its ordinal: %s", got)
 	}
 }
+
+// TestAnOrdinalWithNoSectionCountsFromThePage: with no section the block
+// starts at the top of the page, which is where the resolver counts from and
+// what its own refusal says, so the label says it too.
+//
+// Mutation: always say "after the block's start", and this is red.
+func TestAnOrdinalWithNoSectionCountsFromThePage(t *testing.T) {
+	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	cleared := 0
+	for _, f := range s.Files {
+		for i := range f.Rules {
+			for j := range f.Rules[i].Parts {
+				if p := &f.Rules[i].Parts[j]; p.StopAtOrdinal > 0 {
+					p.Section, p.SectionOrdinal = "", 0
+					cleared++
+				}
+			}
+		}
+	}
+	if cleared == 0 {
+		t.Fatal("no committed part declares stop_at_ordinal, so this test asserts nothing")
+	}
+	doc, page, off, _ := aStatedTotalLine(t, s, func(_ *mapping.Rule, p *mapping.Part) bool {
+		return p.StopAtOrdinal > 0
+	})
+	s.Facts = append(s.Facts, fact.Fact{
+		DocID: doc, Page: page, Offset: off, Token: "5,548,908.00",
+		RuleID: "some-other-rule", RowLabel: "A Row That Is Really A Total",
+	})
+	res := runStatedTotals(t, s)
+	if got := findingDetails(res); !strings.Contains(got, "occurrence 19 on the page") {
+		t.Errorf("the finding does not count the ordinal from the page: %s", got)
+	}
+}
