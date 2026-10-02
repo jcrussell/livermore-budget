@@ -6351,8 +6351,9 @@ rules:
   # skipped rather than published as a separate zero-dollar issue: either
   # reading leaves every total unchanged, and only one of them is a row.
   #
-  # Both subtotals are skip rows, consumed and not published; the grand Total
-  # is the stated total. On p80 the block stops at "Total  ", the grand Total's
+  # Both activity totals are subtotal rows, consumed and not published and
+  # held to the issues above them in every column, Total included; the grand
+  # Total is the stated total. On p80 the block stops at "Total  ", the grand Total's
   # label followed by the run of spaces before its figure: the subtotals' labels
   # follow "Total" with one space. On p81 nothing but "$" marks the total, and
   # the first row is "$"-prefixed too, so stop_at_ordinal counts it: six "$" on
@@ -6399,11 +6400,11 @@ rules:
       - {label: "Interfund Loan", category: debt-services/principal}
       - {label: "Internal Service Fund\nBanc of America Equipment", skip: true}
       - {label: "Lease/Purchase Loan", category: debt-services/principal}
-      - {label: "Total Governmental Activities", skip: true}
+      - {label: "Total Governmental Activities", skip: true, subtotal: 1}
       - {label: "Business-Type Actitivies:\nAirport\n2020B Certificates of Participation", category: debt-services/principal}
       - {label: "Banc of America Equipment Lease/Purchase Loan", category: debt-services/principal}
       - {label: "Water\n2020B Certificates of Participation", category: debt-services/principal}
-      - {label: "Total Business-Type Activities", skip: true}
+      - {label: "Total Business-Type Activities", skip: true, subtotal: 1}
 
   # --------------------------------------------------------------------------
   - id: debt-service-interest
@@ -6444,11 +6445,11 @@ rules:
       - {label: "Interfund Loan", category: debt-services/interest}
       - {label: "Internal Service Fund\nBanc of America Equipment", skip: true}
       - {label: "Lease/Purchase Loan", category: debt-services/interest}
-      - {label: "Total Governmental Activities", skip: true}
+      - {label: "Total Governmental Activities", skip: true, subtotal: 1}
       - {label: "Business-Type Actitivies:\nAirport\n2020B Certificates of Participation", category: debt-services/interest}
       - {label: "Banc of America Equipment Lease/Purchase Loan", category: debt-services/interest}
       - {label: "Water\n2020B Certificates of Participation", category: debt-services/interest}
-      - {label: "Total Business-Type Activities", skip: true}
+      - {label: "Total Business-Type Activities", skip: true, subtotal: 1}
 
   # ==========================================================================
   # CAPITAL IMPROVEMENT PROGRAM, PROJECT LISTING BY FUND, pp.224-235.

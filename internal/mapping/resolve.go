@@ -128,7 +128,6 @@ type partKey struct {
 // a second attempt can only differ if the page text did — and for a single-shot
 // CLI over local files, a page that changed mid-run is not a case to paper over.
 type resolvedPart struct {
-	values    []Value
 	cells     []Value
 	omissions []Omission
 	err       error
@@ -357,7 +356,13 @@ func (r *Resolver) Values(rule *Rule, p *Part) ([]Value, []Omission, error) {
 	if rp.err != nil {
 		return nil, nil, rp.err
 	}
-	return slices.Clone(rp.values), slices.Clone(rp.omissions), nil
+	var values []Value
+	for _, v := range rp.cells {
+		if !v.Row.Skip && !v.Column.Skip {
+			values = append(values, v)
+		}
+	}
+	return values, slices.Clone(rp.omissions), nil
 }
 
 // Cells is every amount the part reads, in Values' order: its values, and the
@@ -386,11 +391,6 @@ func (r *Resolver) resolvePart(rule *Rule, p *Part) *resolvedPart {
 	}
 	rp := &resolvedPart{}
 	rp.cells, rp.omissions, rp.err = r.readPart(rule, p)
-	for _, v := range rp.cells {
-		if !v.Row.Skip && !v.Column.Skip {
-			rp.values = append(rp.values, v)
-		}
-	}
 	return r.storePart(key, rp)
 }
 

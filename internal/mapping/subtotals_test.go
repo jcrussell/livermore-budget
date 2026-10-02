@@ -267,6 +267,8 @@ func TestSubtotalDeclarationsAreRefusedWhereTheyCannotMean(t *testing.T) {
 			`{label: "P4 Delta", category: capital-projects, subtotal_deltas: [{column: "FY B", delta_cents: 1, note: "x"}]}`,
 			"is not a subtotal"},
 		{"a delta with no note", "#DELTAS", `subtotal_deltas: [{column: "FY B", delta_cents: 1}]`, "has no note"},
+		{"a delta naming no column", "#DELTAS", `subtotal_deltas: [{column: "FY Z", delta_cents: 1, note: "x"}]`,
+			"names exactly one"},
 		{"a published row repeated", `{label: "P2 Beta", category: capital-projects}`,
 			`{label: "P1 Alpha", category: capital-projects}`, "duplicate row label"},
 	} {
@@ -302,5 +304,55 @@ func TestTwoSkippedRowsMayShareALabel(t *testing.T) {
 	if _, err := parse(strings.NewReader(omitted), "subtotal.yaml"); err == nil ||
 		!strings.Contains(err.Error(), "more than once") {
 		t.Errorf("an omission naming a repeated row: got %v, want it refused", err)
+	}
+}
+
+// TestASubtotalOverNoRowIsRefused: a grand total declared one level too low
+// follows a level-2 total that cleared its sum, so it would compare nothing
+// and be counted as tied.
+func TestASubtotalOverNoRowIsRefused(t *testing.T) {
+	from := "        subtotal: 3\n"
+	if !strings.Contains(subtotalRules, from) {
+		t.Fatal("the mutation matches nothing")
+	}
+	src := strings.Replace(subtotalRules, from, "        subtotal: 2\n", 1)
+	_, err := subtotalCheck(t, src, subtotalPages())
+	if err == nil || !strings.Contains(err.Error(), "over no row") {
+		t.Errorf("a subtotal with no row since its level last cleared: got %v, want it refused", err)
+	}
+}
+
+// TestAColumnIsItsPositionNotItsHeader: Budget Book p81 prints Principal,
+// Interest and Total once a year, so two columns may share a header. Keyed by
+// header, the second column's figures overwrite the first's and a wrong
+// subtotal in the first is never compared.
+func TestAColumnIsItsPositionNotItsHeader(t *testing.T) {
+	src := strings.ReplaceAll(subtotalRules, `column_headers: ["FY B", "TOTAL"]`, `column_headers: ["TOTAL", "TOTAL"]`)
+	pages := subtotalPages()
+	for _, n := range []int{2, 4} {
+		pages[n] = strings.Replace(pages[n], fmt.Sprintf("%10s%10s\n", "FY B", "TOTAL"),
+			fmt.Sprintf("%10s%10s\n", "TOTAL", "TOTAL"), 1)
+	}
+	if _, err := subtotalCheck(t, src, pages); err != nil {
+		t.Fatalf("two columns sharing a header: %v", err)
+	}
+	pages[2] = strings.Replace(pages[2], "$   12", "$   13", 1)
+	_, err := subtotalCheck(t, src, pages)
+	if err == nil || !strings.Contains(err.Error(), `"SUBTOTAL X"`) {
+		t.Errorf("a wrong figure in the first of two like-headed columns: got %v, want it refused", err)
+	}
+}
+
+// TestAChainLaidOutUnlikeItsFirstRuleIsRefused: a chain matches columns by
+// position, so its rules must agree on what each position is.
+func TestAChainLaidOutUnlikeItsFirstRuleIsRefused(t *testing.T) {
+	i := strings.LastIndex(subtotalRules, `column_headers: ["FY B", "TOTAL"]`)
+	src := subtotalRules[:i] + `column_headers: ["FY C", "TOTAL"]` +
+		subtotalRules[i+len(`column_headers: ["FY B", "TOTAL"]`):]
+	pages := subtotalPages()
+	pages[4] = strings.Replace(pages[4], fmt.Sprintf("%10s", "FY B"), fmt.Sprintf("%10s", "FY C"), 1)
+	_, err := subtotalCheck(t, src, pages)
+	if err == nil || !strings.Contains(err.Error(), "compares columns by position") {
+		t.Errorf("a chain whose second rule names its columns differently: got %v, want it refused", err)
 	}
 }

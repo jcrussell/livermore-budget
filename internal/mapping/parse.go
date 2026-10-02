@@ -1807,6 +1807,21 @@ func validateSubtotals(r *Rule, errf errFunc) error {
 	if !has {
 		return nil
 	}
+	headers := map[string]int{}
+	for _, p := range r.Parts {
+		for _, h := range p.ColumnHeaders {
+			headers[h.Text]++
+		}
+	}
+	for _, row := range r.Rows {
+		for _, d := range row.SubtotalDeltas {
+			if headers[d.Column] != 1 {
+				return errf(r.ID, "rows", "row %q: subtotal_deltas names %q, which %d of this "+
+					"rule's columns print over them; a delta names exactly one",
+					row.PrintedLabel(), d.Column, headers[d.Column])
+			}
+		}
+	}
 	for _, p := range r.Parts {
 		if len(p.ColumnHeaders) == 0 {
 			return cmdutil.WithHint(
