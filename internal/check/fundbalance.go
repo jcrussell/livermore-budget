@@ -16,14 +16,12 @@ import (
 // The set of three is exhaustive on purpose.
 //
 // There is a FOURTH fund_balance category -- fund-balance/reserve-increase, the
-// spine's ADDITION TO RESERVES -- and it is NOT a term of this identity. It is a
-// movement inside the change, not a fourth line beside beginning and ending.
-//
-// Measured over the committed store: 12 facts carry it and only TWO are non-zero,
-// general FY2026 (4,699,425) and FY2027 (3,332,607) -- p66 prints a dash for
-// every other fund group. So summing it in breaks exactly those two of the
-// twelve spine balances, not all of them. Two is enough to redden the check and
-// enough to make the exclusion worth pinning.
+// spine's ADDITION TO RESERVES and pp.186-209's Increase/(Use) -- and it is NOT
+// a term of this identity. It is a movement inside the change, not a fourth
+// line beside beginning and ending: structure.SourcesUses subtracts it on the
+// way to the change, so summing it into beginning + change counts it twice and
+// breaks every balance whose page prints it non-zero. The store carries such
+// balances in both scopes that print the line.
 var balanceCategories = []string{
 	project.CategoryFundBalanceBeginning, project.CategoryFundBalanceChange, project.CategoryFundBalanceEnding,
 }
@@ -188,7 +186,7 @@ func (*fundBalanceIdentity) Run(_ context.Context, s *Subject) (Result, error) {
 		}
 	}
 
-	carried, carryFindings := carryForward(balances, order, carriedScopes(s.Facts), balanceExceptions())
+	carried, carriedApart, carryFindings := carryForward(balances, order, carriedScopes(s.Facts), balanceExceptions())
 	findings = append(findings, carryFindings...)
 
 	docs := map[string]bool{}
@@ -200,26 +198,22 @@ func (*fundBalanceIdentity) Run(_ context.Context, s *Subject) (Result, error) {
 		unit:     "fund balances",
 		held: fmt.Sprintf("%d fund balance(s) across %d document(s), each with every balance line "+
 			"its scope prints published or declared blank, beginning + change equal to ending to the "+
-			"cent wherever a change is printed, and %d carry-forward(s) each ending where the next "+
-			"year begins", complete, len(docs), carried),
+			"cent wherever a change is printed; %d carry-forward(s) each ending where the next "+
+			"year begins, and %d held apart by declared exceptions", complete, len(docs), carried, carriedApart),
 		nothing:  "no fact carries a beginning, change or ending fund balance",
 		findings: findings,
 	}.result(), nil
 }
 
 // carryForward holds ending(y) == beginning(y+1) for every series printing
-// both, and returns how many it compared, an exception's included.
-//
-// MEASURED over the committed store, every one ties: the spine's six fund
-// groups FY2026 -> FY2027, and nothing else, because ACFR p41 prints one
-// audited year and no other scope prints a stock. So the clause covers every
-// scope, and a break is declared in structure.BalanceExceptions.
+// both, in every declared balance scope, and returns how many tie and how
+// many a declared exception holds apart. A break is declared in
+// structure.BalanceExceptions or is a finding.
 //
 // A series printing one year on two bases has no single ending to carry, and
 // is a finding rather than a guess at which basis follows which.
 func carryForward(balances map[structure.BalanceAt]*balance, order []structure.BalanceAt,
-	carried map[string]bool, exceptions []structure.BalanceException) (int, []Finding) {
-	var findings []Finding
+	carried map[string]bool, exceptions []structure.BalanceException) (tie, heldApart int, findings []Finding) {
 	years := map[string]map[int][]structure.BalanceAt{}
 	var series []string
 	for _, k := range order {
@@ -277,19 +271,21 @@ func carryForward(balances map[structure.BalanceAt]*balance, order []structure.B
 		keys = append(keys, k)
 	}
 	sort.Slice(keys, func(i, j int) bool { return keys[i].String() < keys[j].String() })
-	n := 0
 	for _, k := range keys {
-		n++
-		if held[k] {
+		d := sides[k]
+		switch {
+		case held[k]:
+			heldApart++
+			continue
+		case d[0] == d[1]:
+			tie++
 			continue
 		}
-		if d := sides[k]; d[0] != d[1] {
-			nk := next[k]
-			findings = append(findings, finding(balances[nk].ids[project.CategoryFundBalanceBeginning],
-				"%s: %s ends at %s and %s begins at %s, a difference of %s",
-				k.Series(), fact.ColumnLabel(k.Year, k.Basis), amount.Cents(d[0]),
-				fact.ColumnLabel(nk.Year, nk.Basis), amount.Cents(d[1]), amount.Cents(d[1]-d[0])))
-		}
+		nk := next[k]
+		findings = append(findings, finding(balances[nk].ids[project.CategoryFundBalanceBeginning],
+			"%s: %s ends at %s and %s begins at %s, a difference of %s",
+			k.Series(), fact.ColumnLabel(k.Year, k.Basis), amount.Cents(d[0]),
+			fact.ColumnLabel(nk.Year, nk.Basis), amount.Cents(d[1]), amount.Cents(d[1]-d[0])))
 	}
-	return n, findings
+	return tie, heldApart, findings
 }

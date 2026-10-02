@@ -63,10 +63,6 @@ func (*fundGroupSourcesEqualUses) Run(_ context.Context, s *Subject) (Result, er
 			continue
 		}
 		if l, ok := lineOf(decl, f); ok {
-			if blanks[k][l] {
-				findings = append(findings, finding(f.ID,
-					"%s prints %s, and its rule declares that cell blank", k, l))
-			}
 			c.printed[l] = true
 		}
 	}
@@ -113,37 +109,40 @@ func (*fundGroupSourcesEqualUses) Run(_ context.Context, s *Subject) (Result, er
 	for _, f := range stale {
 		findings = append(findings, finding("structure.BalanceExceptions", "%s", f))
 	}
-	checked := 0
+	holding, heldApart := 0, 0
 	for _, k := range keys {
 		d, ok := sides[k]
-		if !ok {
+		net, change := d[0], d[1]
+		switch {
+		case !ok:
+			continue
+		case held[k]:
+			heldApart++
+			continue
+		case net == change:
+			holding++
 			continue
 		}
-		// An exception's balance is examined: both its sides are compared to
-		// what it pins.
-		checked++
-		if held[k] {
-			continue
+		c := columns[k]
+		its := fmt.Sprintf("its %s is %s", project.CategoryFundBalanceChange, amount.Cents(change))
+		if decl, _ := structure.BalanceOf(declared, k.Scope); !decl.PrintsChange() {
+			its = fmt.Sprintf("its ending %s - beginning %s is %s", amount.Cents(c.terms.Ending),
+				amount.Cents(c.terms.Beginning), amount.Cents(change))
 		}
-		if net, change := d[0], d[1]; net != change {
-			c := columns[k]
-			its := fmt.Sprintf("its %s is %s", project.CategoryFundBalanceChange, amount.Cents(change))
-			if decl, _ := structure.BalanceOf(declared, k.Scope); !decl.PrintsChange() {
-				its = fmt.Sprintf("its ending %s - beginning %s is %s", amount.Cents(c.terms.Ending),
-					amount.Cents(c.terms.Beginning), amount.Cents(change))
-			}
-			findings = append(findings, finding(k.String(),
-				"revenue %s + transfers in %s - expenditure %s - transfers out %s - reserve increase %s "+
-					"= %s, and %s (off by %s)",
-				amount.Cents(c.terms.Revenue), amount.Cents(c.terms.TransfersIn), amount.Cents(c.terms.Expenditure),
-				amount.Cents(c.terms.TransfersOut), amount.Cents(c.terms.Reserve), amount.Cents(net),
-				its, amount.Cents(net-change)))
-		}
+		findings = append(findings, finding(k.String(),
+			"revenue %s + transfers in %s - expenditure %s - transfers out %s - reserve increase %s "+
+				"= %s, and %s (off by %s)",
+			amount.Cents(c.terms.Revenue), amount.Cents(c.terms.TransfersIn), amount.Cents(c.terms.Expenditure),
+			amount.Cents(c.terms.TransfersOut), amount.Cents(c.terms.Reserve), amount.Cents(net),
+			its, amount.Cents(net-change)))
 	}
 	return conclusion{
-		subjects: checked,
+		// An exception's balance is examined, both its sides compared to what
+		// it pins, and is no balance that holds.
+		subjects: len(sides),
 		unit:     "balances",
-		held:     fmt.Sprintf("%d balances, each with sources minus uses equal to its change", checked),
+		held: fmt.Sprintf("%d balances, each with sources minus uses equal to its change, and %d held "+
+			"apart by declared exceptions", holding, heldApart),
 		nothing:  "no balance prints its sources and uses",
 		findings: findings,
 	}.result(), nil

@@ -101,11 +101,9 @@ func TestFundBalanceIdentityCatchesADroppedLine(t *testing.T) {
 // — the spine's ADDITION TO RESERVES — and it is a movement inside the change
 // rather than a fourth line beside beginning and ending.
 //
-// Measured: 12 facts carry it and only TWO are non-zero, general FY2026 and
-// FY2027, because p66 prints a dash for every other fund group. So summing it in
-// reddens two of the twelve committed spine balances — enough to fail the check
-// against a corpus that is not wrong, which is what makes the exclusion worth a
-// test.
+// Summing it in reddens every committed balance whose page prints it non-zero,
+// which would fail the check against a corpus that is not wrong, and is what
+// makes the exclusion worth a test.
 func TestFundBalanceIdentityIgnoresReserveIncrease(t *testing.T) {
 	cells := append(slices.Clone(fixtureCells), testCell{
 		mapping.KindFundBalance, "fund-balance/reserve-increase", "general", 33_000,
@@ -149,9 +147,10 @@ func TestFundBalanceIdentityIsNotVacuousOverTheCommittedCorpus(t *testing.T) {
 	// MEASURED: the spine's six fund groups carry FY2026 into FY2027, and
 	// pp.186-209's 111 rows each carry three years into the next, less
 	// Community Benefit Fund's FY2024, whose ending p187 leaves blank: 6 + 332,
-	// fund 101's declared break among them.
-	if !strings.Contains(res.Summary, "and 338 carry-forward(s)") {
-		t.Errorf("summary %q, want 338 carry-forwards held", res.Summary)
+	// of which fund 101's FY2024 break is held apart and the rest tie.
+	if !strings.Contains(res.Summary, "337 carry-forward(s) each ending where the next year begins, "+
+		"and 1 held apart by declared exceptions") {
+		t.Errorf("summary %q, want 337 carry-forwards tying and 1 held apart", res.Summary)
 	}
 	if !strings.Contains(res.Summary, "across 2 document(s)") {
 		t.Errorf("summary %q does not say how many documents it spans", res.Summary)

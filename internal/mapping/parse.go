@@ -664,9 +664,8 @@ func validateRule(r *Rule, errf errFunc) error {
 		// home to (unmapped_text), and the honest home is worth nothing while
 		// the dishonest one still works.
 		//
-		// All five entries the corpus declares -- "Devel", "Development
-		// Admin", "Services", "Administration", "Connection" -- are refused
-		// by amount.Parse, so this costs the committed rules nothing.
+		// Every entry the committed rules declare is refused by amount.Parse,
+		// which loading them re-measures, so this costs them nothing.
 		if err := validateGapLines(r, p, "wrapped_labels", p.WrappedLabels, errf,
 			"a wrapped label is a claim about the page that PRINTS the "+
 				"label; declare it on that part, where it is checked",

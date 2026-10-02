@@ -347,11 +347,41 @@ func TestADeclaredRowDeltaPassesAndAStaleOneFails(t *testing.T) {
 // Community Benefit Fund's.
 func blankCells(t *testing.T, ending bool) *mapping.File {
 	t.Helper()
-	cells := `          - {label: "County Measure D", column: "Increase/(Use)", note: "the page leaves it blank"}
-`
+	cells := []string{`{label: "County Measure D", column: "Increase/(Use)", note: "the page leaves it blank"}`}
 	if ending {
-		cells += `          - {label: "County Measure D", column: "6/30/27", note: "the page leaves it blank"}
+		cells = append(cells, `{label: "County Measure D", column: "6/30/27", note: "the page leaves it blank"}`)
+	}
+	return blankRule(t, structure.ScopeFundBalancesByFund, blankShape{cells: cells})
+}
+
+// blankShape is what a test adds to blankRule's County Measure D rule: its
+// omitted cells, a row after County Measure D, and a column after the
+// ending balance with its header.
+type blankShape struct {
+	cells          []string
+	row            string
+	header, column string
+}
+
+// blankRule is County Measure D's FY2027 row on p207, in scope, with shape's
+// additions.
+func blankRule(t *testing.T, scope string, shape blankShape) *mapping.File {
+	t.Helper()
+	rows := `      - {label: "County Measure D", fund_group: capital, fund: 305}
 `
+	if shape.row != "" {
+		rows += "      - " + shape.row + "\n"
+	}
+	headers := `"7/1/26", "Revenues", "Transfers In", "Expenses", "Transfers Out",
+                         "Transfers Out to CIP", "Increase/(Use)", "6/30/27"`
+	columns := ""
+	if shape.header != "" {
+		headers += `, "` + shape.header + `"`
+		columns = "          - " + shape.column + "\n"
+	}
+	cells := ""
+	for _, c := range shape.cells {
+		cells += "          - " + c + "\n"
 	}
 	src := `schema_version: 1
 doc_id: ` + testDoc + `
@@ -359,18 +389,16 @@ rules:
   - id: by-fund-capital
     kind: fund_balance
     basis: adopted
-    scope: ` + structure.ScopeFundBalancesByFund + `
+    scope: ` + scope + `
     grain: fund-by-category
     units: dollars
     rows:
-      - {label: "County Measure D", fund_group: capital, fund: 305}
-    parts:
+` + rows + `    parts:
       - page: 207
         section: "Capital Funds\n"
         stop_at: "Total Capital Funds"
         omitted_cells:
-` + cells + `        column_headers: ["7/1/26", "Revenues", "Transfers In", "Expenses", "Transfers Out",
-                         "Transfers Out to CIP", "Increase/(Use)", "6/30/27"]
+` + cells + `        column_headers: [` + headers + `]
         columns:
           - {fiscal_year: 2027, category: fund-balance/beginning}
           - {fiscal_year: 2027, kind: revenue, category: taxes}
@@ -380,7 +408,7 @@ rules:
           - {fiscal_year: 2027, kind: transfer_out, category: transfers/out-to-cip}
           - {fiscal_year: 2027, category: fund-balance/reserve-increase}
           - {fiscal_year: 2027, category: fund-balance/ending}
-`
+` + columns
 	files, err := mapping.LoadDir(fstest.MapFS{"mappings/blank.yaml": &fstest.MapFile{Data: []byte(src)}}, "mappings")
 	if err != nil {
 		t.Fatal(err)
@@ -417,4 +445,82 @@ func TestADeclaredBlankCellIsAbsentAndNotMissing(t *testing.T) {
 	// And a declared blank the store prints anyway is a contradiction.
 	printed := measureD.facts(replace(byFundRow(), structure.CategoryFundBalanceEnding, 123_000))
 	wantFail(t, runBalance(t, &fundGroupSourcesEqualUses{}, printed, blankCells(t, false)), "declares that cell blank")
+}
+
+// TestABlankOnACellThatNeverPublishesIsNoBlank holds declaredBlanks to the
+// predicate the mapping publishes by: a cell of a non-amount row or column
+// yields no fact, so a blank declared there marks no line of the balance.
+func TestABlankOnACellThatNeverPublishesIsNoBlank(t *testing.T) {
+	t.Run("a quantity row", func(t *testing.T) {
+		// The percentage row shares County Measure D's fund, so a blank on
+		// its ending cell, read as an amount, would skip a wrong ending.
+		file := blankRule(t, structure.ScopeFundBalancesByFund, blankShape{
+			row:   `{label: "Share of Measure D", fund_group: capital, fund: 305, quantity: percentage}`,
+			cells: []string{`{label: "Share of Measure D", column: "6/30/27", note: "the page leaves it blank"}`},
+		})
+		off := measureD.facts(replace(byFundRow(), structure.CategoryFundBalanceEnding, 120_001))
+		res := runBalance(t, &fundGroupSourcesEqualUses{}, off, file)
+		wantFail(t, res, "(off by -$0.01)")
+		if strings.Contains(said(res), "declares that cell blank") {
+			t.Errorf("findings %s: a percentage cell is no blank on the balance", said(res))
+		}
+	})
+	t.Run("a quantity column", func(t *testing.T) {
+		file := blankRule(t, structure.ScopeFundBalancesByFund, blankShape{
+			header: "% Change", column: `{quantity: percentage}`,
+			cells: []string{`{label: "County Measure D", column: "% Change", note: "the page leaves it blank"}`},
+		})
+		facts := measureD.facts(byFundRow())
+		wantPass(t, runBalance(t, &fundGroupSourcesEqualUses{}, facts, file), 1)
+		wantPass(t, runBalance(t, &fundBalanceIdentity{}, facts, file), 1)
+	})
+}
+
+// TestADeclaredBlankThatIsPrintedFailsOnEveryBalanceScope is the
+// contradiction on a scope that does not hold sources = uses: ACFR p41's
+// identity is fund-balance-identity's alone, and a printed fact on a line its
+// rule declares blank must not pass there by the printed figure winning.
+func TestADeclaredBlankThatIsPrintedFailsOnEveryBalanceScope(t *testing.T) {
+	acfr := measureD
+	acfr.scope = structure.ScopeACFRGeneralFundSummary
+	file := blankRule(t, acfr.scope, blankShape{
+		cells: []string{`{label: "County Measure D", column: "6/30/27", note: "the page leaves it blank"}`},
+	})
+	facts := acfr.facts([]balanceLine{
+		{mapping.KindFundBalance, structure.CategoryFundBalanceBeginning, 100_000},
+		{mapping.KindFundBalance, structure.CategoryFundBalanceChange, 20_000},
+		{mapping.KindFundBalance, structure.CategoryFundBalanceEnding, 120_000},
+	})
+	wantFail(t, runBalance(t, &fundBalanceIdentity{}, facts, file), "declares that cell blank")
+}
+
+// TestABalanceHeldApartIsNotCountedAsHolding is what each summary counts: a
+// balance an exception holds apart breaks the identity, so it is named
+// apart from the balances that satisfy it.
+func TestABalanceHeldApartIsNotCountedAsHolding(t *testing.T) {
+	withBalanceExceptions(t, carryBreak(120_000, 120_001), rowDelta(20_000, 20_100))
+	t.Run("carry-forward", func(t *testing.T) {
+		fy2028 := fund101
+		fy2028.year = 2028
+		facts := append(twoYears(120_001), fy2028.facts(replace(replace(byFundRow(),
+			structure.CategoryFundBalanceBeginning, 140_001), structure.CategoryFundBalanceEnding, 160_001))...)
+		res := runBalance(t, &fundBalanceIdentity{}, facts)
+		wantPass(t, res, 3)
+		const want = "1 carry-forward(s) each ending where the next year begins, and 1 held apart by declared exceptions"
+		if !strings.Contains(res.Summary, want) {
+			t.Errorf("summary %q, want %q", res.Summary, want)
+		}
+	})
+	t.Run("sources-uses", func(t *testing.T) {
+		fund102 := fund101
+		fund102.fund = 102
+		facts := append(fund101.facts(replace(byFundRow(), structure.CategoryFundBalanceEnding, 120_100)),
+			fund102.facts(byFundRow())...)
+		res := runBalance(t, &fundGroupSourcesEqualUses{}, facts)
+		wantPass(t, res, 2)
+		const want = "1 balances, each with sources minus uses equal to its change, and 1 held apart by declared exceptions"
+		if res.Summary != want {
+			t.Errorf("summary %q, want %q", res.Summary, want)
+		}
+	})
 }

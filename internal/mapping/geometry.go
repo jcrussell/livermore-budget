@@ -54,9 +54,8 @@ type pairing struct {
 // Where they do, each -layout token has exactly one geometry word and the pairing
 // is an offset lookup; where they do not, this fails and the page cannot carry
 // the guard at all. That is a real limit rather than a theoretical one: measured
-// at 554e080 with splitSuperscripts in place, on 99 of the corpus's 786 pages
-// the two disagree about how many lines the page has, and on 108 more they
-// disagree about the tokens on a line.
+// at b47f332, on 99 of the corpus's 786 pages the two disagree about how many
+// lines the page has, and on 108 more they disagree about the tokens on a line.
 //
 // ONE OF THEM IS MAPPED: ACFR p41, which has 52 non-blank text lines against 51
 // geometry lines. It declares no column_headers, so this never runs for it. The

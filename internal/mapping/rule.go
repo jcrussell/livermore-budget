@@ -1206,6 +1206,12 @@ func (r Row) EffectiveQuantity(c Column) Quantity {
 	return QuantityAmount
 }
 
+// Publishes says whether this row's cell in c can become a fact: neither is
+// skipped and the cell is an amount.
+func (r Row) Publishes(c Column) bool {
+	return !r.Skip && !c.Skip && r.EffectiveQuantity(c) == QuantityAmount
+}
+
 // EffectiveColumn is the column a row's own fact is filed under: the printed
 // column, with the row's fund overrides applied where it declares them.
 //

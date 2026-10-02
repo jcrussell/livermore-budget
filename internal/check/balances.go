@@ -24,7 +24,10 @@ func lineOf(b structure.Balance, f *fact.Fact) (structure.Line, bool) {
 // blank: absent, not zero, and not a line a rule stopped publishing.
 type blankLines map[structure.BalanceAt]map[structure.Line]bool
 
-// declaredBlanks reads every omission a rule in a balance scope declares.
+// declaredBlanks reads every omission a rule in a balance scope declares, on
+// a cell mapping.Row.Publishes says could become a fact, and finds every fact
+// the store prints on a line its rule declares blank: both balance checks
+// read their blanks here, so neither can let a printed figure override one.
 //
 // THE ADDRESS IS fact.FromValues', fed the cell the page leaves blank, so the
 // blank lands on exactly the balance and line its figure would have. The
@@ -42,11 +45,8 @@ func declaredBlanks(s *Subject, balances []structure.Balance) (blankLines, []Fin
 			for j := range rule.Parts {
 				p := &rule.Parts[j]
 				for _, o := range mapping.Omissions(rule, p) {
-					if o.Row.Skip {
-						continue
-					}
 					for c, col := range p.Columns {
-						if col.Skip || (o.Cell && c != o.ColumnIndex) {
+						if !o.Row.Publishes(col) || (o.Cell && c != o.ColumnIndex) {
 							continue
 						}
 						blanks, err := fact.FromValues(file, rule, []mapping.Value{{
@@ -70,6 +70,17 @@ func declaredBlanks(s *Subject, balances []structure.Balance) (blankLines, []Fin
 					}
 				}
 			}
+		}
+	}
+	for i := range s.Facts {
+		f := &s.Facts[i]
+		b, ok := structure.BalanceOf(balances, f.Scope)
+		if !ok {
+			continue
+		}
+		if l, ok := lineOf(b, f); ok && out[structure.BalanceAtOf(f)][l] {
+			findings = append(findings, finding(f.ID,
+				"%s prints %s, and its rule declares that cell blank", structure.BalanceAtOf(f), l))
 		}
 	}
 	return out, findings
