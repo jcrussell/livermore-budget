@@ -435,6 +435,36 @@ func TestBuildNamesEveryUncheckedPart(t *testing.T) {
 	}
 }
 
+// TestABlankCellIsReportedAsOneCell holds the summary to the claim a cell
+// omission makes: the row is printed and one cell of it is not.
+func TestABlankCellIsReportedAsOneCell(t *testing.T) {
+	rep := newReport()
+	rule := &mapping.Rule{ID: "r"}
+	rep.addOmissions(rule, []mapping.Omission{
+		{Row: mapping.Row{Label: "Gone"}, Page: 7},
+		{Row: mapping.Row{Label: "Water"}, Page: 7, Cell: true, ColumnIndex: 3, Header: "Increase/(Use)"},
+	})
+	want := []declaredOmission{
+		{RuleID: "r", Page: 7, RowLabel: "Gone"},
+		{RuleID: "r", Page: 7, RowLabel: "Water", Column: "Increase/(Use)"},
+	}
+	if diff := cmp.Diff(want, rep.Omissions); diff != "" {
+		t.Errorf("omissions (-want +got):\n%s", diff)
+	}
+	ios, _, _, errOut := iostreams.Test()
+	if err := rep.print(ios, false); err != nil {
+		t.Fatalf("print: %v", err)
+	}
+	for _, line := range []string{
+		`DECLARED OMISSION r p7: the page does not print row "Gone"`,
+		`DECLARED OMISSION r p7: the page leaves row "Water" blank under "Increase/(Use)"`,
+	} {
+		if !strings.Contains(errOut.String(), line) {
+			t.Errorf("summary %q does not contain %q", errOut, line)
+		}
+	}
+}
+
 func ruleByID(t *testing.T, f *mapping.File, id string) *mapping.Rule {
 	t.Helper()
 	for i := range f.Rules {

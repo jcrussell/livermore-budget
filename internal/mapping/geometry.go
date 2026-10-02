@@ -2,6 +2,7 @@ package mapping
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/jcrussell/livermore-budget/internal/geom"
@@ -388,14 +389,42 @@ func describeLines(pr *pairing, matched []headerMatch) string {
 // band fails too, because the second one is not in the band its own column
 // claims -- which is what catches a printed figure that extraction split in
 // half.
-func (g *columnGuard) checkRow(r *Resolver, rule *Rule, p *Part, row Row, toks []token) error {
+//
+// toks[k] is filed under column cols[k]. A column missing from cols is one the
+// rule declares blank on this row, and a word printed in its band refuses the
+// row: that is the check that a declared blank is blank, and it runs before
+// placement so a figure under it is named as such rather than as a figure
+// filed one column over.
+func (g *columnGuard) checkRow(r *Resolver, rule *Rule, p *Part, row Row, toks []token,
+	cols []int) error {
 	fail := func(field, msg, hint string) error {
 		return cmdutil.WithHint(&resolveError{DocID: r.file.DocID, RuleID: rule.ID,
 			Page: p.Page, Field: field, Msg: msg, Err: ErrNotFound}, hint)
 	}
 
+	if len(cols) < len(p.Columns) && len(toks) > 0 {
+		if pl, ok := g.pair.words[toks[0].off]; ok {
+			for _, w := range g.pair.lines[pl.line].Words {
+				// A detached "$" belongs to the figure after it, and may sit
+				// in the band to that figure's left.
+				if isCurrencyMark(w.Text) {
+					continue
+				}
+				c := g.column(g.grid.Index(w.Right()))
+				if c >= 0 && !slices.Contains(cols, c) {
+					return fail(fmt.Sprintf("row %q column %d", row.PrintedLabel(), c+1),
+						fmt.Sprintf("%q is printed under column %d (%s), which the rule "+
+							"declares blank on this row", w.Text, c+1, p.ColumnHeaders[c].Text),
+						"omitted_cells names a cell the page leaves blank; remove the "+
+							"declaration, or move it to the cell that is")
+				}
+			}
+		}
+	}
+
 	line, num := -1, 0
-	for c, tk := range toks {
+	for k, tk := range toks {
+		c := cols[k]
 		where := fmt.Sprintf("row %q column %d", row.PrintedLabel(), c+1)
 		pl, ok := g.pair.words[tk.off]
 		if !ok {

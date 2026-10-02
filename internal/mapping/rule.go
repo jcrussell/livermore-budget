@@ -594,6 +594,21 @@ type Part struct {
 	// is refused, and so is one that names more than one.
 	OmittedRows []omittedRow `yaml:"omitted_rows"`
 
+	// OmittedCells lists cells THE DOCUMENT leaves blank in rows it prints:
+	// OmittedRows' declaration one cell wide, about the document in the same
+	// way. Budget Book p207 prints five figures on County Measure D's line and
+	// nothing under Reserve Increase/(Use), where every other row prints a
+	// figure or a "-". A blank is absent, not zero, so the cell yields no
+	// Value and is reported as an Omission with Cell set.
+	//
+	// The row is read with its tokens filed left to right under the columns
+	// it does print, so this part must declare column_headers: the guard is
+	// what holds each token to the band of the column it is filed under, and
+	// what refuses a figure printed under a column declared blank. p187
+	// cannot carry that guard yet; TestP187CannotCarryTheColumnGuard
+	// measures why.
+	OmittedCells []omittedCell `yaml:"omitted_cells"`
+
 	// Columns describe the value columns, left to right.
 	Columns []Column `yaml:"columns"`
 
@@ -1288,6 +1303,64 @@ func (o omittedRow) identity() string { return o.row().Identity() }
 // would have published had the page printed it.
 func (o omittedRow) printedLabel() string { return o.row().PrintedLabel() }
 
+// omittedCell names one blank cell: a row, written as an omitted_rows entry's
+// pair is, and the column_headers entry printed over the cell.
+//
+//	omitted_cells:
+//	  - {label: "County Measure D", column: "Increase/(Use)", note: "..."}
+//
+// The row's two fields are spelled out rather than an omittedRow inlined:
+// yaml.v3 hands an inlined field's mapping to that type's UnmarshalYAML, which
+// refuses column and note, and a type with no unmarshaler of its own keeps the
+// decoder's KnownFields refusing a typo'd key.
+type omittedCell struct {
+	Label     string `yaml:"label"`
+	LabelTail string `yaml:"label_tail"`
+	Column    string `yaml:"column"`
+	Note      string `yaml:"note"`
+}
+
+// row is the omitted_rows entry naming the same row, so the row is identified
+// and validated exactly as an omitted row is.
+func (o omittedCell) row() omittedRow { return omittedRow{Label: o.Label, LabelTail: o.LabelTail} }
+
+// describe is how the entry reads in a message.
+func (o omittedCell) describe() string {
+	return fmt.Sprintf("%q under %q", o.row().printedLabel(), o.Column)
+}
+
+// blankColumns is the part's declared blank cells as row identity to the
+// columns blank on that row, each found by its header.
+func blankColumns(p *Part) map[string]map[int]bool {
+	if len(p.OmittedCells) == 0 {
+		return nil
+	}
+	out := map[string]map[int]bool{}
+	for _, o := range p.OmittedCells {
+		for c, h := range p.ColumnHeaders {
+			if !h.Unheaded && h.Text == o.Column {
+				if out[o.row().identity()] == nil {
+					out[o.row().identity()] = map[int]bool{}
+				}
+				out[o.row().identity()][c] = true
+			}
+		}
+	}
+	return out
+}
+
+// printedColumns is the columns a row prints on this part, left to right: all
+// of them, less any the part declares blank on it.
+func printedColumns(p *Part, blank map[string]map[int]bool, row Row) []int {
+	cols := make([]int, 0, len(p.Columns))
+	for c := range p.Columns {
+		if !blank[row.Identity()][c] {
+			cols = append(cols, c)
+		}
+	}
+	return cols
+}
+
 // labelledPart returns the part that carries row labels for p, which is p
 // itself unless p declares LabelsFrom.
 func (r *Rule) labelledPart(p *Part) *Part {
@@ -1338,10 +1411,15 @@ func omittedSet(p *Part) map[string]bool {
 }
 
 // expectedValues is how many numbers a positional read of this part must find:
-// one per active row per column. A mismatch means the page's shape has changed
-// and the rule can no longer be trusted.
+// one per active row per column it prints. A mismatch means the page's shape
+// has changed and the rule can no longer be trusted.
 func (r *Rule) expectedValues(p *Part) int {
-	return len(r.ActiveRows(p)) * len(p.Columns)
+	blank := blankColumns(p)
+	n := 0
+	for _, row := range r.ActiveRows(p) {
+		n += len(printedColumns(p, blank, row))
+	}
+	return n
 }
 
 // SubtotalDelta is one column's declared discrepancy on a subtotal row.

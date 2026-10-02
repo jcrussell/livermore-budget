@@ -833,10 +833,10 @@ func validateRule(r *Rule, errf errFunc) error {
 		// An omitted_rows entry must name EXACTLY ONE row. Naming none is the
 		// stale declaration this has always refused; naming more than one
 		// would drop every row sharing a label, which is the same silent
-		// mismapping the declaration exists to prevent, one page later.
-		field := fmt.Sprintf("parts[page %d].omitted_rows", p.Page)
-		declared := map[string]bool{}
-		for j, o := range p.OmittedRows {
+		// mismapping the declaration exists to prevent, one page later. An
+		// omitted_cells entry names its row the same way, and is held to the
+		// same rule by the same function.
+		namesOneRow := func(field string, j int, o omittedRow, notARow string) error {
 			switch {
 			case strings.TrimSpace(o.Label) == "":
 				return errf(r.ID, field, "entry %d has no label", j)
@@ -850,24 +850,34 @@ func validateRule(r *Rule, errf errFunc) error {
 					"so it cannot say which one the page omits", o.printedLabel())
 			}
 			if rowIndex[o.identity()] {
-				if declared[o.identity()] {
-					return errf(r.ID, field, "%q is declared twice", o.printedLabel())
-				}
-				declared[o.identity()] = true
-				continue
+				return nil
 			}
 			if o.LabelTail == "" && len(tailed[o.Label]) > 0 {
 				return cmdutil.WithHint(
 					errf(r.ID, field, "%q names %d rows, which differ only in "+
 						"their label_tail: %q", o.Label, len(tailed[o.Label]),
 						tailed[o.Label]),
-					"a row named by two anchors is omitted by naming both: "+
+					"a row named by two anchors is named by both: "+
 						"- {label: ..., label_tail: ...}")
 			}
 			return cmdutil.WithHint(
 				errf(r.ID, field, "%q is not one of this rule's rows", o.printedLabel()),
-				"omitted_rows names rows that exist in the rule but are "+
-					"absent from this page")
+				notARow)
+		}
+		field := fmt.Sprintf("parts[page %d].omitted_rows", p.Page)
+		declared := map[string]bool{}
+		for j, o := range p.OmittedRows {
+			if err := namesOneRow(field, j, o, "omitted_rows names rows that exist "+
+				"in the rule but are absent from this page"); err != nil {
+				return err
+			}
+			if declared[o.identity()] {
+				return errf(r.ID, field, "%q is declared twice", o.printedLabel())
+			}
+			declared[o.identity()] = true
+		}
+		if err := validateOmittedCells(r, p, namesOneRow, errf); err != nil {
+			return err
 		}
 
 		// A declared discrepancy is a claim about one column of one page, so
@@ -1868,6 +1878,79 @@ func checkCounterpart(r *Rule, row Row, errf errFunc) error {
 	//
 	// No line numbers here on purpose: the relationship is caller-and-callee,
 	// which does not move when lines do.
+	return nil
+}
+
+// validateOmittedCells holds each omitted_cells entry to naming one cell the
+// part reads: one row, by namesOneRow, that the part prints, under one header
+// of a column the part does not skip. The part must declare column_headers,
+// because the guard is what checks a row's figures sit under the columns they
+// are filed under once one of them is blank.
+func validateOmittedCells(r *Rule, p *Part,
+	namesOneRow func(field string, j int, o omittedRow, notARow string) error, errf errFunc) error {
+	if len(p.OmittedCells) == 0 {
+		return nil
+	}
+	field := fmt.Sprintf("parts[page %d].omitted_cells", p.Page)
+	if len(p.ColumnHeaders) == 0 {
+		return cmdutil.WithHint(
+			errf(r.ID, field, "omitted_cells needs column_headers on the same part"),
+			"a row with a blank cell is read left to right under the columns it "+
+				"prints, and only the column guard can say each figure is under "+
+				"the column it is filed under")
+	}
+	omitted := omittedSet(p)
+	declared := map[string]map[string]bool{}
+	for j, o := range p.OmittedCells {
+		if err := namesOneRow(field, j, o.row(), "omitted_cells names a cell of a "+
+			"row the rule lists"); err != nil {
+			return err
+		}
+		id := o.row().identity()
+		switch {
+		case omitted[id]:
+			return errf(r.ID, field, "%q is omitted from this part by omitted_rows, "+
+				"so it has no cell to leave blank", o.row().printedLabel())
+		case o.Column == "":
+			return errf(r.ID, field, "%q names no column", o.row().printedLabel())
+		case strings.TrimSpace(o.Note) == "":
+			return cmdutil.WithHint(
+				errf(r.ID, field, "%s has no note", o.describe()),
+				"say what the page prints on the row and that this cell is blank")
+		case declared[id][o.Column]:
+			return errf(r.ID, field, "%s is declared twice", o.describe())
+		}
+		at := -1
+		for c, h := range p.ColumnHeaders {
+			if !h.Unheaded && h.Text == o.Column {
+				if at >= 0 {
+					return errf(r.ID, field, "%q heads more than one of this part's "+
+						"columns, so it cannot say which cell is blank", o.Column)
+				}
+				at = c
+			}
+		}
+		switch {
+		case at < 0:
+			return errf(r.ID, field, "%q is not one of this part's column_headers: %s",
+				o.Column, describeHeaders(p.ColumnHeaders))
+		case p.Columns[at].Skip:
+			return cmdutil.WithHint(
+				errf(r.ID, field, "%q is a skipped column", o.Column),
+				"a skipped column yields no figure to be absent; no page needs a "+
+					"blank declared there yet, so the read refuses one")
+		}
+		if declared[id] == nil {
+			declared[id] = map[string]bool{}
+		}
+		declared[id][o.Column] = true
+		if len(declared[id]) == len(p.Columns) {
+			return cmdutil.WithHint(
+				errf(r.ID, field, "declares every column of %q blank",
+					o.row().printedLabel()),
+				"a row the page prints no figure of is declared in omitted_rows")
+		}
+	}
 	return nil
 }
 

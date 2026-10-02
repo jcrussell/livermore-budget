@@ -212,7 +212,8 @@ func (v Value) Kind(rule *Rule) Kind {
 	return v.Row.EffectiveKind(rule)
 }
 
-// Omission is a row a part does not print, declared by the rule.
+// Omission is a row a part does not print, or one cell of a row it does,
+// declared by the rule.
 //
 // Whether these become facts (as zeros) is deliberately not decided here. The
 // argument for it is conditional: with one declared omission and a column total
@@ -223,6 +224,14 @@ type Omission struct {
 	Row      Row
 	RowIndex int
 	Page     int
+
+	// Cell says the page prints the row and leaves one cell of it blank,
+	// declared by Part.OmittedCells: ColumnIndex is that cell's column in the
+	// part's columns and Header the column_headers entry naming it. Unset, the
+	// page prints no part of the row.
+	Cell        bool
+	ColumnIndex int
+	Header      string
 }
 
 // block resolves the span of page text a part covers.
@@ -482,7 +491,7 @@ func canonicalRows(rule *Rule, p *Part) ([]Row, []int) {
 }
 
 func omissions(rule *Rule, p *Part) []Omission {
-	if len(p.OmittedRows) == 0 {
+	if len(p.OmittedRows) == 0 && len(p.OmittedCells) == 0 {
 		return nil
 	}
 	// Keyed on Identity(), the same key ActiveRows drops on. Matching the bare
@@ -490,10 +499,18 @@ func omissions(rule *Rule, p *Part) []Omission {
 	// omissions and the active rows would disagree about which rows the page
 	// prints (fisc-gtv).
 	declared := omittedSet(p)
+	blank := blankColumns(p)
 	var out []Omission
 	for i, row := range rule.Rows {
 		if declared[row.Identity()] {
 			out = append(out, Omission{Row: row, RowIndex: i, Page: p.Page})
+			continue
+		}
+		for c, h := range p.ColumnHeaders {
+			if blank[row.Identity()][c] {
+				out = append(out, Omission{Row: row, RowIndex: i, Page: p.Page,
+					Cell: true, ColumnIndex: c, Header: h.Text})
+			}
 		}
 	}
 	return out
@@ -501,13 +518,13 @@ func omissions(rule *Rule, p *Part) []Omission {
 
 func (r *Resolver) labelledValues(rule *Rule, p *Part, blk *block, guard *columnGuard) ([]Value, error) {
 	rows, rowIndex := canonicalRows(rule, p)
-	ncols := len(p.Columns)
+	blank := blankColumns(p)
 	fail := func(field, msg, hint string) error {
 		return cmdutil.WithHint(&resolveError{DocID: r.file.DocID, RuleID: rule.ID,
 			Page: p.Page, Field: field, Msg: msg, Err: ErrNotFound}, hint)
 	}
 
-	values := make([]Value, 0, len(rows)*ncols)
+	values := make([]Value, 0, rule.expectedValues(p))
 	used := map[string]bool{}
 	cursor := 0
 	for i, row := range rows {
@@ -547,18 +564,19 @@ func (r *Resolver) labelledValues(rule *Rule, p *Part, blk *block, guard *column
 		if err != nil {
 			return nil, fail("rows", fmt.Sprintf("row %q: %s", row.PrintedLabel(), err), currencyHint)
 		}
-		if len(toks) < ncols {
+		cols := printedColumns(p, blank, row)
+		if len(toks) < len(cols) {
 			return nil, fail("rows", fmt.Sprintf(
-				"row %q is followed by %d values, want %d (one per column)",
-				row.PrintedLabel(), len(toks), ncols), "check the part's columns against the page")
+				"row %q is followed by %d values, want %d (one per column it prints)",
+				row.PrintedLabel(), len(toks), len(cols)), "check the part's columns against the page")
 		}
-		toks = toks[:ncols]
-		vals, err := r.parseRow(rule, p, row, rowIndex[i], toks, guard)
+		toks = toks[:len(cols)]
+		vals, err := r.parseRow(rule, p, row, rowIndex[i], toks, cols, guard)
 		if err != nil {
 			return nil, err
 		}
 		values = append(values, vals...)
-		last := toks[ncols-1]
+		last := toks[len(toks)-1]
 		cursor = last.off - blk.Start + len(last.text)
 	}
 
@@ -797,19 +815,21 @@ func precedingRow(rows []Row, i int) string {
 	return fmt.Sprintf("row %q", rows[i-1].Label)
 }
 
+// parseRow reads one row's tokens, toks[k] filed under column cols[k].
 func (r *Resolver) parseRow(rule *Rule, p *Part, row Row, rowIndex int, toks []token,
-	guard *columnGuard) ([]Value, error) {
+	cols []int, guard *columnGuard) ([]Value, error) {
 	// The column check happens here rather than in the two callers because this
 	// is the one place that already has a row, its tokens and the columns they
 	// were filed under together. Checking in both callers would be two copies of
 	// the invariant the whole guard exists for.
 	if guard != nil {
-		if err := guard.checkRow(r, rule, p, row, toks); err != nil {
+		if err := guard.checkRow(r, rule, p, row, toks, cols); err != nil {
 			return nil, err
 		}
 	}
 	out := make([]Value, 0, len(toks))
-	for c, tk := range toks {
+	for k, tk := range toks {
+		c := cols[k]
 		col := p.Columns[c]
 		// The quantity picks the grammar BEFORE skip is consulted, for the
 		// same reason amounts parse before skip: a skipped cell is still a
@@ -860,6 +880,7 @@ func recognize(q Quantity, tok string) error {
 func (r *Resolver) positionalValues(rule *Rule, p *Part, blk *block, guard *columnGuard) ([]Value, error) {
 	rows, rowIndex := canonicalRows(rule, p)
 	ncols := len(p.Columns)
+	blank := blankColumns(p)
 	// The marks are dropped here as on a labelled row: p81's first row and its
 	// subtotals print "$" detached from each figure, inside the block.
 	toks, err := dropCurrencyMarks(tokens(blk.Text, blk.Start))
@@ -872,18 +893,22 @@ func (r *Resolver) positionalValues(rule *Rule, p *Part, blk *block, guard *colu
 	if len(toks) != want {
 		return nil, cmdutil.WithHint(&resolveError{DocID: r.file.DocID, RuleID: rule.ID,
 			Page: p.Page, Field: "parts", Err: ErrNotFound,
-			Msg: fmt.Sprintf("read %d values, want %d (%d rows × %d columns); "+
-				"rows declared absent from this page: %s",
-				len(toks), want, len(rows), ncols, declaredOmissions(p))},
+			Msg: fmt.Sprintf("read %d values, want %d (%d rows × %d columns, "+
+				"less %d declared blank); rows declared absent from this page: %s",
+				len(toks), want, len(rows), ncols, len(p.OmittedCells), declaredOmissions(p))},
 			"a label-less page is read positionally, so a count that does not "+
 				"match means every row after the gap would be mismapped; add or "+
-				"remove an omitted_rows entry only after checking the page")
+				"remove an omitted_rows or omitted_cells entry only after "+
+				"checking the page")
 	}
 
 	values := make([]Value, 0, want)
+	at := 0
 	for i, row := range rows {
-		rowToks := toks[i*ncols : (i+1)*ncols]
-		vals, err := r.parseRow(rule, p, row, rowIndex[i], rowToks, guard)
+		cols := printedColumns(p, blank, row)
+		rowToks := toks[at : at+len(cols)]
+		at += len(cols)
+		vals, err := r.parseRow(rule, p, row, rowIndex[i], rowToks, cols, guard)
 		if err != nil {
 			return nil, err
 		}
@@ -898,14 +923,22 @@ func (r *Resolver) positionalValues(rule *Rule, p *Part, blk *block, guard *colu
 }
 
 func declaredOmissions(p *Part) string {
-	if len(p.OmittedRows) == 0 {
-		return "none"
+	rows := "none"
+	if len(p.OmittedRows) > 0 {
+		labels := make([]string, len(p.OmittedRows))
+		for i, o := range p.OmittedRows {
+			labels[i] = o.printedLabel()
+		}
+		rows = fmt.Sprintf("%q", labels)
 	}
-	labels := make([]string, len(p.OmittedRows))
-	for i, o := range p.OmittedRows {
-		labels[i] = o.printedLabel()
+	if len(p.OmittedCells) == 0 {
+		return rows
 	}
-	return fmt.Sprintf("%q", labels)
+	cells := make([]string, len(p.OmittedCells))
+	for i, o := range p.OmittedCells {
+		cells[i] = o.describe()
+	}
+	return fmt.Sprintf("%s; cells declared blank: %s", rows, strings.Join(cells, ", "))
 }
 
 // StatedTotals reads the totals the document itself prints for a part.
