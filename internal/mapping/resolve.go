@@ -546,16 +546,13 @@ func (r *Resolver) labelledValues(rule *Rule, p *Part, blk *block, guard *column
 	// Anything after the last row's figures is a row the rule did not map --
 	// unless the page wrapped a label there, which is the same shape as a gap
 	// between two rows and is declared the same way.
-	if rest := strings.TrimSpace(blk.Text[cursor:]); rest != "" && !wrappedGap(p, rest, used) {
-		if !declaresUnmapped(p, rest) {
-			return nil, fail("rows", fmt.Sprintf(
-				"%q follows the last mapped row but is not mapped", rest),
-				"every row inside the block must be listed in rows, with skip: true "+
-					"if it should not produce facts, in wrapped_labels if the page "+
-					"wrapped a label onto its own line, or in unmapped_text if it is "+
-					"a figure belonging to no row")
-		}
-		used[rest] = true
+	if rest := strings.TrimSpace(blk.Text[cursor:]); rest != "" && !declaredGap(p, rest, used, true) {
+		return nil, fail("rows", fmt.Sprintf(
+			"%q follows the last mapped row but is not mapped", rest),
+			"every row inside the block must be listed in rows, with skip: true "+
+				"if it should not produce facts, in wrapped_labels if the page "+
+				"wrapped a label onto its own line, in headings if it is a section "+
+				"heading, or in unmapped_text if it is a figure belonging to no row")
 	}
 	// A declared fragment the page did not use is a claim about the document
 	// that has stopped being true. Same direction as a stated_total_delta that
@@ -566,6 +563,16 @@ func (r *Resolver) labelledValues(rule *Rule, p *Part, blk *block, guard *column
 				"%q is declared but does not appear between this part's rows", w),
 				"a wrapped label is a claim about what the page prints; remove "+
 					"the declaration when the page stops wrapping there")
+		}
+	}
+	// Its own arm, and its own message, for the same reason as the figure arm
+	// below: a heading is not a wrapped label and the reader is told which.
+	for _, h := range p.Headings {
+		if !used[h] {
+			return nil, fail("headings", fmt.Sprintf(
+				"%q is declared but does not appear between this part's rows", h),
+				"a heading is a claim about what the page prints; remove the "+
+					"declaration when the page stops printing it there")
 		}
 	}
 	// Its own arm, and its own message. Told that a figure "is declared but
@@ -642,7 +649,7 @@ func (r *Resolver) checkGap(rule *Rule, p *Part, gap string, rows []Row, i int,
 			}
 			gap = gap[nl+1:]
 		}
-		if wrappedGap(p, strings.TrimSpace(gap), used) {
+		if declaredGap(p, strings.TrimSpace(gap), used, false) {
 			return nil
 		}
 		// NOTE: unmapped_text is deliberately NOT honoured here. This gap is
@@ -667,11 +674,7 @@ func (r *Resolver) checkGap(rule *Rule, p *Part, gap string, rows []Row, i int,
 	if trimmed == "" {
 		return nil
 	}
-	if wrappedGap(p, trimmed, used) {
-		return nil
-	}
-	if declaresUnmapped(p, trimmed) {
-		used[trimmed] = true
+	if declaredGap(p, trimmed, used, true) {
 		return nil
 	}
 	return cmdutil.WithHint(&resolveError{DocID: r.file.DocID, RuleID: rule.ID,
@@ -679,34 +682,36 @@ func (r *Resolver) checkGap(rule *Rule, p *Part, gap string, rows []Row, i int,
 		Msg: fmt.Sprintf("%q sits between rows %q and %q but is not mapped",
 			trimmed, rows[i-1].PrintedLabel(), rows[i].PrintedLabel())},
 		"add it to rows, with skip: true if it should not produce facts, to "+
-			"wrapped_labels if the page wrapped a label onto its own line, or to "+
-			"unmapped_text if it is a figure belonging to no row; leaving it out "+
-			"would publish a breakdown that does not add up")
+			"wrapped_labels if the page wrapped a label onto its own line, to "+
+			"headings if it is a section heading, or to unmapped_text if it is a "+
+			"figure belonging to no row; leaving it out would publish a breakdown "+
+			"that does not add up")
 }
 
-// wrappedGap reports whether a trimmed gap is wrapped label text the part
-// declares, and marks what it used. The gap is either one declared fragment or
-// several, one to a printed line: Budget Book p222 ends one row's description
-// and begins the next row's on the two lines between their figures. Each line
-// is matched whole and trimmed, so the declaration names fragments rather than
-// the run of spaces between them, and a line that is not declared refuses the
-// whole gap.
-func wrappedGap(p *Part, trimmed string, used map[string]bool) bool {
+// declaredGap reports whether a trimmed gap is text the part declares, and
+// marks what it used. The gap is either one declared wrapped label or several
+// declared lines: Budget Book p222 ends one row's description and begins the
+// next row's on the two lines between their figures, and p190 prints a
+// footnote marker above a heading. Each line is matched whole and trimmed, as
+// a wrapped label, a heading, or -- when figures is set -- an unmapped_text
+// figure, so the declaration names lines rather than the run of spaces between
+// them, and a line that is not declared refuses the whole gap.
+//
+// figures is false only before the first row, where unmapped_text is not
+// honoured; see checkGap.
+func declaredGap(p *Part, trimmed string, used map[string]bool, figures bool) bool {
 	if slices.Contains(p.WrappedLabels, trimmed) {
 		used[trimmed] = true
 		return true
 	}
-	lines := strings.Split(trimmed, "\n")
-	if len(lines) < 2 {
-		return false
-	}
 	var frags []string
-	for _, l := range lines {
+	for _, l := range strings.Split(trimmed, "\n") {
 		l = strings.TrimSpace(l)
 		if l == "" {
 			continue
 		}
-		if !slices.Contains(p.WrappedLabels, l) {
+		if !slices.Contains(p.WrappedLabels, l) && !slices.Contains(p.Headings, l) &&
+			(!figures || !declaresUnmapped(p, l)) {
 			return false
 		}
 		frags = append(frags, l)
@@ -750,13 +755,13 @@ func findFields(s, tail string) (int, int) {
 	}
 }
 
-// declaresUnmapped reports whether the part declares this exact gap text as a
-// figure belonging to no row.
+// declaresUnmapped reports whether the part declares this exact printed line as
+// a figure belonging to no row.
 //
-// It takes the whole trimmed gap, exactly as the wrapped_labels test does, so a
-// declaration covers one gap and never part of one. A gap holding an orphan
-// figure AND something else stays refused, which is what stops the declaration
-// from being a way to admit a row.
+// It takes one whole trimmed line, exactly as the wrapped_labels and headings
+// tests do, so a declaration covers a line and never part of one. A gap
+// holding an orphan figure AND an undeclared line stays refused, which is what
+// stops the declaration from being a way to admit a row.
 func declaresUnmapped(p *Part, trimmed string) bool {
 	for _, u := range p.UnmappedText {
 		if u.Text == trimmed {

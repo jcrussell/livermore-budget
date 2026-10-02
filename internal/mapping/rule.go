@@ -667,6 +667,26 @@ type Part struct {
 	// being true must be removed rather than left to pass silently.
 	WrappedLabels []string `yaml:"wrapped_labels"`
 
+	// Headings are the section headings this part's page prints on a line of
+	// their own between rows, each written out verbatim. Budget Book p186
+	// prints "Special Revenue Funds" alone between "Total City Budget"'s
+	// figures and "Low Income Housing Fund", opening the detail that follows.
+	//
+	// A heading is not a wrapped label: it is no row's label broken onto a
+	// second line, and declaring it as one would be a false claim about the
+	// page. It is matched exactly as a wrapped label is, one printed line at a
+	// time, and a gap may mix both with unmapped_text figures so long as every
+	// line is declared -- p190 prints a footnote marker "1" alone on the line
+	// above its "Capital Improvement Program Funds" heading. A declared heading
+	// the part never uses is refused.
+	//
+	// A HEADING MAY EQUAL A ROW LABEL OF THE RULE, because p186's does:
+	// "Special Revenue Funds" is also the summary row higher up the same block.
+	// Refusing the collision would leave that page unmappable. It cannot
+	// swallow the row: a gap's lines are matched whole, so a line carrying the
+	// row's figures is never a heading.
+	Headings []string `yaml:"headings"`
+
 	// StatedTotalDeltas declares columns where the total the DOCUMENT prints
 	// is not the sum of the rows it totals, and by how much.
 	//
@@ -742,8 +762,8 @@ type Part struct {
 	// arm, and its first consumer has no arithmetic behind it at all: "0.0"
 	// parses as zero and sits in a skipped column, so removing it from the read
 	// changes no sum and CheckTotals could not redden on a wrong declaration
-	// here. What actually keeps it narrow is that the text must match a gap
-	// exactly and every row still has to be found by its own label. The Note is
+	// here. What actually keeps it narrow is that the text must match a
+	// whole printed line of a gap and every row still has to be found by its own label. The Note is
 	// therefore load-bearing rather than decorative.
 	//
 	// fisc-hcus.
@@ -753,9 +773,10 @@ type Part struct {
 // unmappedText is one figure a page prints inside a block that belongs to no
 // row, and why.
 type unmappedText struct {
-	// Text is the figure exactly as the page prints it, matched against the
-	// fully trimmed text of the gap it sits in -- the same matching
-	// wrapped_labels uses, so the two behave alike where they behave at all.
+	// Text is the figure exactly as the page prints it, matched against one
+	// trimmed printed line of the gap it sits in -- the same matching
+	// wrapped_labels and headings use, so the three behave alike where they
+	// behave at all.
 	Text string `yaml:"text"`
 
 	// Note is required and says why the page prints it. Without one this would

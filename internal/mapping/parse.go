@@ -643,8 +643,7 @@ func validateRule(r *Rule, errf errFunc) error {
 		// so a declaration carrying its own whitespace could never match and
 		// would fail later as a stale declaration rather than here as the typo
 		// it is. Blank and duplicate entries are refused for the same reason.
-		seenWrapped := map[string]bool{}
-		seenUnmapped := map[string]bool{}
+		//
 		// A LABELS_FROM PART CANNOT WRAP A LABEL, because it carries none.
 		// Row identity there is positional: the part routes to positionalValues,
 		// which never reads this field and never staleness-checks it, so a
@@ -660,49 +659,47 @@ func validateRule(r *Rule, errf errFunc) error {
 		// property of the part that CARRIES the label, and this part has
 		// delegated that to another page -- which is where the declaration
 		// belongs.
-		if p.LabelsFrom != 0 && len(p.WrappedLabels) > 0 {
-			return cmdutil.WithHint(
-				errf(r.ID, fmt.Sprintf("parts[page %d].wrapped_labels", p.Page),
-					"is declared on a part whose labels_from takes its row labels from page %d",
-					p.LabelsFrom),
-				"a wrapped label is a claim about the page that PRINTS the "+
-					"label; declare it on that part, where it is checked")
+		//
+		// A WRAPPED LABEL IS A LABEL, and until the amount refusal landed that
+		// was prose rather than a check. Measured before adding it:
+		// wrapped_labels: ["0.0"] on ACFR p41's revenue block PARSED, RESOLVED
+		// all ten rows and tied to the printed total exactly, with nothing
+		// objecting -- so the page's orphan figure could be published under a
+		// declaration asserting the page had wrapped a label onto its own line,
+		// which it had not. That is the shape fisc-hcus exists to give an honest
+		// home to (unmapped_text), and the honest home is worth nothing while
+		// the dishonest one still works.
+		//
+		// All five entries the corpus declares -- "Devel", "Development
+		// Admin", "Services", "Administration", "Connection" -- are refused
+		// by amount.Parse, so this costs the committed rules nothing.
+		if err := validateGapLines(r, p, "wrapped_labels", p.WrappedLabels, errf,
+			"a wrapped label is a claim about the page that PRINTS the "+
+				"label; declare it on that part, where it is checked",
+			"wrapped_labels declares that the page wrapped a row's LABEL "+
+				"onto its own line; a figure there belongs to no row and "+
+				"is declared with unmapped_text, which says so"); err != nil {
+			return err
 		}
-		for _, w := range p.WrappedLabels {
-			field := fmt.Sprintf("parts[page %d].wrapped_labels", p.Page)
-			if strings.TrimSpace(w) == "" {
-				return errf(r.ID, field, "has a blank entry")
+		// headings shares every arm above, for the same reasons: it is matched
+		// the same way, read by the same gap test and staleness-checked the
+		// same way.
+		if err := validateGapLines(r, p, "headings", p.Headings, errf,
+			"a heading is a claim about the page that prints it between "+
+				"labelled rows; a label-less part reads no gaps",
+			"headings declares a section heading printed between rows; a "+
+				"figure there belongs to no row and is declared with "+
+				"unmapped_text, which says so"); err != nil {
+			return err
+		}
+		// One line, one claim: a line declared both a heading and a wrapped
+		// label would say two incompatible things about what the page printed.
+		for _, h := range p.Headings {
+			if slices.Contains(p.WrappedLabels, h) {
+				return errf(r.ID, fmt.Sprintf("parts[page %d].headings", p.Page),
+					"%q is also declared in wrapped_labels; a line is a heading or "+
+						"a wrapped label, not both", h)
 			}
-			if strings.TrimSpace(w) != w {
-				return errf(r.ID, field,
-					"%q has leading or trailing whitespace; it is matched against "+
-						"the trimmed text of the gap", w)
-			}
-			if seenWrapped[w] {
-				return errf(r.ID, field, "%q is listed twice", w)
-			}
-			// A WRAPPED LABEL IS A LABEL, and until this refusal landed that
-			// was prose rather than a check. Measured before adding it:
-			// wrapped_labels: ["0.0"] on ACFR p41's revenue block PARSED,
-			// RESOLVED all ten rows and tied to the printed total exactly, with
-			// nothing objecting -- so the page's orphan figure could be
-			// published under a declaration asserting the page had wrapped a
-			// label onto its own line, which it had not. That is the shape
-			// fisc-hcus exists to give an honest home to (unmapped_text), and
-			// the honest home is worth nothing while the dishonest one still
-			// works.
-			//
-			// All five entries the corpus declares -- "Devel", "Development
-			// Admin", "Services", "Administration", "Connection" -- are refused
-			// by amount.Parse, so this costs the committed rules nothing.
-			if _, err := amount.Parse(w, r.Units); err == nil {
-				return cmdutil.WithHint(
-					errf(r.ID, field, "%q is a currency amount", w),
-					"wrapped_labels declares that the page wrapped a row's LABEL "+
-						"onto its own line; a figure there belongs to no row and "+
-						"is declared with unmapped_text, which says so")
-			}
-			seenWrapped[w] = true
 		}
 		// unmapped_text is the mirror of the block above, and every arm is the
 		// mirror of one of its arms: same trimmed matching, same blank and
@@ -719,6 +716,7 @@ func validateRule(r *Rule, errf errFunc) error {
 					"labelled rows; a label-less part reads none, so the "+
 					"declaration would be accepted and never looked at")
 		}
+		seenUnmapped := map[string]bool{}
 		for _, u := range p.UnmappedText {
 			field := fmt.Sprintf("parts[page %d].unmapped_text", p.Page)
 			if strings.TrimSpace(u.Text) == "" {
@@ -966,6 +964,41 @@ func validateRule(r *Rule, errf errFunc) error {
 	}
 	// Last, so a rule is refused for its own shape before a missing grain.
 	return validateGrain(r, errf)
+}
+
+// validateGapLines refuses the entries of one part's line declaration --
+// wrapped_labels or headings -- that could never match a gap's trimmed line,
+// that repeat, or that are figures, and refuses the declaration outright on a
+// labels_from part, which reads no gaps.
+func validateGapLines(r *Rule, p *Part, key string, entries []string, errf errFunc,
+	labelsFromHint, amountHint string) error {
+	field := fmt.Sprintf("parts[page %d].%s", p.Page, key)
+	if p.LabelsFrom != 0 && len(entries) > 0 {
+		return cmdutil.WithHint(
+			errf(r.ID, field,
+				"is declared on a part whose labels_from takes its row labels from page %d",
+				p.LabelsFrom),
+			labelsFromHint)
+	}
+	seen := map[string]bool{}
+	for _, e := range entries {
+		if strings.TrimSpace(e) == "" {
+			return errf(r.ID, field, "has a blank entry")
+		}
+		if strings.TrimSpace(e) != e {
+			return errf(r.ID, field,
+				"%q has leading or trailing whitespace; it is matched against "+
+					"a trimmed line of the gap", e)
+		}
+		if seen[e] {
+			return errf(r.ID, field, "%q is listed twice", e)
+		}
+		if _, err := amount.Parse(e, r.Units); err == nil {
+			return cmdutil.WithHint(errf(r.ID, field, "%q is a currency amount", e), amountHint)
+		}
+		seen[e] = true
+	}
+	return nil
 }
 
 // validateGrain holds a rule to Rule.Grain's two refusals: a publishing rule
