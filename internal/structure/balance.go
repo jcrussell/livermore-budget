@@ -1,0 +1,234 @@
+package structure
+
+import (
+	"fmt"
+
+	"github.com/jcrussell/livermore-budget/internal/amount"
+	"github.com/jcrussell/livermore-budget/internal/fact"
+	"github.com/jcrussell/livermore-budget/internal/mapping"
+)
+
+// A Line is one row a fund balance prints: a kind, narrowed to a category
+// where the kind alone names more than one row.
+type Line struct {
+	Kind     mapping.Kind
+	Category string
+}
+
+// Matches says whether a fact is printed on this line.
+func (l Line) Matches(f *fact.Fact) bool {
+	return f.Kind == l.Kind && (l.Category == "" || f.Category == l.Category)
+}
+
+func (l Line) String() string {
+	if l.Category == "" {
+		return string(l.Kind)
+	}
+	if l.Kind == mapping.KindFundBalance {
+		return l.Category
+	}
+	return string(l.Kind) + " " + l.Category
+}
+
+// The three lines of a balance's own identity.
+var (
+	LineBeginning = Line{mapping.KindFundBalance, CategoryFundBalanceBeginning}
+	LineChange    = Line{mapping.KindFundBalance, CategoryFundBalanceChange}
+	LineEnding    = Line{mapping.KindFundBalance, CategoryFundBalanceEnding}
+)
+
+// A Balance is a scope that prints a fund balance per fund group, fund and
+// column. Every scope carrying a beginning, change or ending line is one.
+type Balance struct {
+	Scope string
+	// Lines are the rows every balance of the scope must carry, or leave blank
+	// by a cell its rule declares omitted. A scope printing LineChange holds
+	// beginning + change == ending; one that does not holds its change as
+	// ending - beginning, a difference of two printed figures.
+	Lines []Line
+	// SourcesUses says the scope's flows net to its change: revenue +
+	// transfers in - expenditure - transfers out - reserve increase.
+	SourcesUses bool
+}
+
+// PrintsChange says whether the scope prints a change line.
+func (b Balance) PrintsChange() bool {
+	for _, l := range b.Lines {
+		if l == LineChange {
+			return true
+		}
+	}
+	return false
+}
+
+// FundBalances is every scope printing a fund balance, and how.
+//
+// The spine and ACFR p41 print a change line, which witnesses their flows, so
+// only the three balance lines are required of them. pp.186-209 print no change
+// line, so every flow they print is required: a dropped column of dashes would
+// leave ending - beginning with nothing to violate.
+func FundBalances() []Balance {
+	identity := []Line{LineBeginning, LineChange, LineEnding}
+	return []Balance{
+		{Scope: ScopeAllFundsGross, Lines: identity, SourcesUses: true},
+		// p41 prints its Transfers (out) negative, so its flows are not
+		// SourcesUses' terms as signed.
+		{Scope: ScopeACFRGeneralFundSummary, Lines: identity},
+		{
+			Scope: ScopeFundBalancesByFund,
+			Lines: []Line{
+				LineBeginning,
+				{Kind: mapping.KindRevenue},
+				{Kind: mapping.KindTransferIn, Category: "transfers/in"},
+				{Kind: mapping.KindExpenditure},
+				{Kind: mapping.KindTransferOut, Category: "transfers/out"},
+				{Kind: mapping.KindTransferOut, Category: "transfers/out-to-cip"},
+				{Kind: mapping.KindFundBalance, Category: CategoryFundBalanceReserveIncrease},
+				LineEnding,
+			},
+			SourcesUses: true,
+		},
+	}
+}
+
+// BalanceOf is the declaration of a scope, if it prints a fund balance.
+func BalanceOf(balances []Balance, scope string) (Balance, bool) {
+	for _, b := range balances {
+		if b.Scope == scope {
+			return b, true
+		}
+	}
+	return Balance{}, false
+}
+
+// BalanceAt is one balance: one fund of one fund group of one scope of one
+// document, in one (fiscal year, basis) column. Fund is fact.FundString's
+// rendering, so two facts naming one fund are one balance.
+type BalanceAt struct {
+	DocID, Scope, FundGroup, Fund string
+	Year                          int
+	Basis                         mapping.Basis
+}
+
+// BalanceAtOf is the balance a fact is a line of.
+func BalanceAtOf(f *fact.Fact) BalanceAt {
+	return BalanceAt{DocID: f.DocID, Scope: f.Scope, FundGroup: f.FundGroup,
+		Fund: fact.FundString(f.Fund), Year: f.FiscalYear, Basis: f.Basis}
+}
+
+// Series is the balance less its column: what carries forward from year to
+// year.
+func (a BalanceAt) Series() string {
+	group := a.FundGroup
+	if group == "" {
+		group = "(no fund group)"
+	}
+	if a.Fund != fact.FundString(nil) {
+		group = fmt.Sprintf("%s fund %s", group, a.Fund)
+	}
+	return fmt.Sprintf("%s %s %s", a.DocID, a.Scope, group)
+}
+
+func (a BalanceAt) String() string {
+	return a.Series() + " " + fact.ColumnLabel(a.Year, a.Basis)
+}
+
+// A BalanceIdentity names one identity a balance is held to.
+type BalanceIdentity string
+
+const (
+	// BalanceCarryForward is ending(y) == beginning(y+1). An exception's At
+	// is year y's balance; Left is its ending and Right the next beginning.
+	BalanceCarryForward BalanceIdentity = "carry-forward"
+	// BalanceSourcesUses is SourcesUses.Net() == the change. Left is the net
+	// and Right the change.
+	BalanceSourcesUses BalanceIdentity = "sources-uses"
+)
+
+// A BalanceException holds one balance apart from one identity, pinned on
+// both sides. It is not a tolerance: it fails when either side moves, when
+// the balance stops existing, or when the identity holds there.
+type BalanceException struct {
+	Identity    BalanceIdentity
+	At          BalanceAt
+	Left, Right int64
+	// Printed says where both sides are printed; Reason is why the document
+	// breaks the identity there; Bead is the work that retires it or the
+	// decision that keeps it.
+	Printed, Reason, Bead string
+}
+
+// BalanceExceptions are the balances the documents print apart from an
+// identity, each pinned on both sides.
+func BalanceExceptions() []BalanceException {
+	return nil
+}
+
+// ValidateBalanceExceptions refuses a declaration that could not hold
+// anything apart. It reads the declarations alone; HoldBalances reads the store.
+func ValidateBalanceExceptions(balances []Balance, exceptions []BalanceException) error {
+	seen := map[[2]string]bool{}
+	for _, e := range exceptions {
+		b, ok := BalanceOf(balances, e.At.Scope)
+		switch {
+		case e.Identity != BalanceCarryForward && e.Identity != BalanceSourcesUses:
+			return fmt.Errorf("balance exception at %s names identity %q, which is not declared", e.At, e.Identity)
+		case !ok:
+			return fmt.Errorf("balance exception at %s is on a scope FundBalances does not declare", e.At)
+		case e.Identity == BalanceSourcesUses && !b.SourcesUses:
+			return fmt.Errorf("balance exception at %s holds sources = uses apart on a scope that does not hold it", e.At)
+		case e.Left == e.Right:
+			return fmt.Errorf("balance exception at %s pins %s on both sides; a balance that holds needs no exception",
+				e.At, amount.Cents(e.Left))
+		case e.Printed == "" || e.Reason == "" || e.Bead == "":
+			return fmt.Errorf("balance exception at %s does not say where it is printed, why, and which bead keeps it", e.At)
+		}
+		k := [2]string{string(e.Identity), e.At.String()}
+		if seen[k] {
+			return fmt.Errorf("balance exception at %s is declared twice for %s", e.At, e.Identity)
+		}
+		seen[k] = true
+	}
+	return nil
+}
+
+func init() {
+	if err := ValidateBalanceExceptions(FundBalances(), BalanceExceptions()); err != nil {
+		panic("internal/structure: " + err.Error())
+	}
+}
+
+// HoldBalances applies one identity's exceptions to the sides it computed,
+// keyed by balance as [left, right]. It returns the balances an exception
+// holds apart, and a finding for each exception that could not apply: one
+// naming a balance the store does not produce on a scope it carries, one over
+// a balance that holds, and one whose pinned side has moved.
+func HoldBalances(identity BalanceIdentity, sides map[BalanceAt][2]int64, carried map[string]bool,
+	exceptions []BalanceException) (held map[BalanceAt]bool, findings []string) {
+	held = map[BalanceAt]bool{}
+	for _, e := range exceptions {
+		if e.Identity != identity {
+			continue
+		}
+		got, ok := sides[e.At]
+		switch {
+		case !ok && !carried[e.At.Scope]:
+			// A scope the store does not carry -- a fixture -- is not stale.
+		case !ok:
+			findings = append(findings, fmt.Sprintf("balance exception at %s on %s matches no balance, so it "+
+				"excuses nothing; remove it rather than leaving a declaration that has stopped describing "+
+				"the corpus (%s)", e.At, identity, e.Bead))
+		case got[0] == got[1]:
+			findings = append(findings, fmt.Sprintf("balance exception at %s on %s names a balance that holds "+
+				"at %s, so it would excuse a figure that later moved; remove it (%s)",
+				e.At, identity, amount.Cents(got[0]), e.Bead))
+		case got != [2]int64{e.Left, e.Right}:
+			findings = append(findings, fmt.Sprintf("balance exception at %s on %s pins %s and %s and the "+
+				"store says %s and %s. %s (%s)", e.At, identity, amount.Cents(e.Left), amount.Cents(e.Right),
+				amount.Cents(got[0]), amount.Cents(got[1]), e.Reason, e.Bead))
+		default:
+			held[e.At] = true
+		}
+	}
+	return held, findings
+}

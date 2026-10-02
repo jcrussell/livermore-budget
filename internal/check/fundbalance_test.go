@@ -83,7 +83,7 @@ func TestFundBalanceIdentityCatchesADroppedLine(t *testing.T) {
 		t.Fatalf("findings = %v, want exactly the general fund balance", res.Findings)
 	}
 	got := res.Findings[0].Detail
-	if !strings.Contains(got, "publishes 2 of the three fund-balance lines") ||
+	if !strings.Contains(got, "publishes 2 of the 3 fund-balance lines") ||
 		!strings.Contains(got, project.CategoryFundBalanceChange) {
 		t.Errorf("finding %q does not say which line is missing", got)
 	}
@@ -144,6 +144,11 @@ func TestFundBalanceIdentityIsNotVacuousOverTheCommittedCorpus(t *testing.T) {
 	if res.Subjects != 13 {
 		t.Errorf("subjects = %d, want 13: twelve spine balances and ACFR p41's one",
 			res.Subjects)
+	}
+	// MEASURED: the spine's six fund groups carry FY2026 into FY2027, and no
+	// other scope prints two years of stocks.
+	if !strings.Contains(res.Summary, "and 6 carry-forward(s)") {
+		t.Errorf("summary %q, want the spine's six carry-forwards held", res.Summary)
 	}
 	if !strings.Contains(res.Summary, "across 2 document(s)") {
 		t.Errorf("summary %q does not say how many documents it spans", res.Summary)

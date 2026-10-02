@@ -47,7 +47,8 @@ func TestFundGroupSourcesEqualUsesIsFailable(t *testing.T) {
 		}
 	}
 	isChange := func(f fact.Fact) bool { return f.Category == project.CategoryFundBalanceChange }
-	const noChange = "general FY2027 adopted: prints a term of sources = uses and no fund-balance/change"
+	const missing = "all-funds-gross general FY2027 adopted: prints a line of sources = uses and is missing "
+	const noChange = missing + "fund-balance/beginning, fund-balance/change, fund-balance/ending"
 
 	for _, tc := range []struct {
 		name  string
@@ -80,7 +81,7 @@ func TestFundGroupSourcesEqualUsesIsFailable(t *testing.T) {
 				}
 			}
 			return facts
-		}, "other-doc " + noChange},
+		}, "other-doc " + missing + "fund-balance/change"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			s.Facts = tc.facts()

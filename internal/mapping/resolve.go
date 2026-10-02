@@ -468,7 +468,7 @@ func (r *Resolver) readPart(rule *Rule, p *Part) ([]Value, []Omission, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	return values, omissions(rule, p), nil
+	return values, Omissions(rule, p), nil
 }
 
 // canonicalRows returns the part's active rows paired with each one's index in
@@ -490,7 +490,9 @@ func canonicalRows(rule *Rule, p *Part) ([]Row, []int) {
 	return active, idx
 }
 
-func omissions(rule *Rule, p *Part) []Omission {
+// Omissions is what a part declares it does not print. It reads the
+// declaration alone, so a caller with no page in hand gets what Values would.
+func Omissions(rule *Rule, p *Part) []Omission {
 	if len(p.OmittedRows) == 0 && len(p.OmittedCells) == 0 {
 		return nil
 	}

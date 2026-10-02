@@ -14,17 +14,19 @@ const (
 	CategoryFundBalanceReserveIncrease = "fund-balance/reserve-increase"
 )
 
-// SourcesUses is one fund group column's terms of pp.66-67's identity:
-// revenue + transfers in - expenditure - transfers out - reserve increase is
-// the change in working capital. Terms counts the facts booked to the left
-// side and Changes the change rows.
+// SourcesUses is one balance's terms of pp.66-67's identity: revenue +
+// transfers in - expenditure - transfers out - reserve increase is the change
+// in working capital. Every transfer_out is a transfer out, pp.186-209's
+// Transfers Out to CIP among them. Terms counts the facts booked to the left
+// side and Changes the change rows; Beginning and Ending are the stocks.
 type SourcesUses struct {
 	Revenue, TransfersIn, Expenditure, TransfersOut, Reserve, Change int64
+	Beginning, Ending                                                int64
 	Terms, Changes                                                   int
 }
 
 // Add books one fact as its term. It reports false for a fact that is no term
-// of the identity; a stock row is a term of nothing and is accepted unbooked.
+// of the identity; a stock is a term of nothing and is booked as a stock.
 func (s *SourcesUses) Add(f *fact.Fact) bool {
 	switch {
 	case f.Kind == mapping.KindRevenue:
@@ -41,7 +43,11 @@ func (s *SourcesUses) Add(f *fact.Fact) bool {
 		s.Change += f.AmountCents
 		s.Changes++
 		return true
-	case f.Category == CategoryFundBalanceBeginning, f.Category == CategoryFundBalanceEnding:
+	case f.Category == CategoryFundBalanceBeginning:
+		s.Beginning += f.AmountCents
+		return true
+	case f.Category == CategoryFundBalanceEnding:
+		s.Ending += f.AmountCents
 		return true
 	default:
 		return false
