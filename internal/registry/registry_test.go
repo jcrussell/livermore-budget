@@ -363,8 +363,9 @@ func TestLoadRealRegistries(t *testing.T) {
 	// Plus one line entry per distinct revenue row pp.127-140 print: 101,
 	// measured off facts/facts.jsonl on 2026-09-12. Plus pp.80-81's principal
 	// and interest columns under debt-services, and pp.224-235's
-	// capital-projects.
-	if got, want := len(cats), 41+101+2+1; got != want {
+	// capital-projects. Plus pp.186-209's two placeholders, revenues and
+	// expenses.
+	if got, want := len(cats), 41+101+2+1+2; got != want {
 		t.Errorf("len(Categories()) = %d, want %d", got, want)
 	}
 	if got, want := len(r.FundGroups()), 7; got != want {

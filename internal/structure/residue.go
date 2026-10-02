@@ -44,7 +44,30 @@ func BudgetBookResidue() []Residue {
 		Rule:   "debt-service-interest",
 		Kind:   mapping.KindExpenditure,
 		Reason: debtServiceByIssueResidue,
-	}}, cipProjectListingResidue()...)
+	}}, append(cipProjectListingResidue(), fundBalancesByFundResidue()...)...)
+}
+
+// fundBalancesByFundResidue is pp.186-209, one rule per page pair and five
+// kinds per rule.
+func fundBalancesByFundResidue() []Residue {
+	var out []Residue
+	for i, year := range []int{2024, 2025, 2026, 2027} {
+		for page := 186 + 6*i; page < 192+6*i; page += 2 {
+			for _, kind := range []mapping.Kind{mapping.KindFundBalance, mapping.KindRevenue,
+				mapping.KindTransferIn, mapping.KindExpenditure, mapping.KindTransferOut} {
+				out = append(out, Residue{
+					Scope: ScopeFundBalancesByFund,
+					Rule:  fmt.Sprintf("fund-balances-fy%d-p%04d", year, page),
+					Kind:  kind,
+					Reason: "pp.186-209 are read and held to their own printed totals, to each fund's " +
+						"sources and uses and to each balance's carry-forward; the cuts and the " +
+						"cross-checks against pp.66-67, pp.127-140, pp.172-183, p76 and p222 are " +
+						"fisc-3eh2's next commit",
+				})
+			}
+		}
+	}
+	return out
 }
 
 // cipProjectListingResidue is pp.224-235, one rule per page pair. Their axis

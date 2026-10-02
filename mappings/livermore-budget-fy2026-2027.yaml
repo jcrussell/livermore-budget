@@ -6953,6 +6953,1283 @@ rules:
             note: >-
               p235 prints 70,559,870, and the same 219 rows sum to 70,559,871, a dollar under them as in FY 2025-26. Its TOTAL column ties exactly, so the grand total's own year figures sum two dollars short of it.
 
+
+  # ==========================================================================
+  # AVAILABLE FUNDS, USES OF FUNDS, AND FUND BALANCES, pp.186-209.
+  #
+  # Every fund's sources, uses and balance, for FY2023-24 actuals (pp.186-191),
+  # FY2024-25 revised (pp.192-197) and the two adopted years (pp.198-203,
+  # pp.204-209). The schedule is transposed against the rest of the book: a
+  # row is a FUND and a column is a budget LINE, so each column carries the
+  # category and kind and each row the fund.
+  #
+  # TWELVE PAGE PAIRS, ONE RULE EACH. An even page prints the fund name, its
+  # beginning balance, Revenues, Transfers In and Total Sources; the odd page
+  # after it continues the same lines with Expenses, Transfers Out, Transfers
+  # Out to CIP, Reserve Increase/(Use), Total Uses and the ending balance, and
+  # no labels, so it is read positionally against its even page, as p67 is
+  # against p66.
+  #
+  # ROWS ARE WRITTEN ONCE. The four years print the same 129 rows in one
+  # order, labelled identically but for one summary row ("Internal Service
+  # Funds" in FY2023-24, "Internal Service" after), and break them across
+  # pages differently. Each row is anchored in the first rule that prints it
+  # and every later rule aliases it, so a fund's number and group are typed
+  # once. The printed totals carry per-year subtotal_deltas and are written
+  # per year.
+  #
+  # PUBLISHED: every fund row but CIP Multi Funded Governmental, which names
+  # no fund the appendix numbers, and the summary block's General Fund, which
+  # has no detail block of its own. Read and not published: the summary block's
+  # other group rows, which are the detail blocks' printed totals again
+  # (mapping.TestPublishedFundBalancesSummaryRowsAreTheirBlockTotals holds
+  # that); every printed total (fisc-0ijw); and the Total Sources and Total
+  # Uses columns, each a row's sum.
+  #
+  # The two flow columns Revenues and Expenses are a fund's total, not a
+  # category of either, so they carry the placeholder categories `revenues`
+  # and `expenses`.
+  #
+  # SUBTOTALS. A fund block's "Total X Funds" is level 1 over the funds since
+  # the previous total. In the summary block, Total Operating Budget is level
+  # 1 over its six group rows, Total Capital Improvement Program & Internal
+  # Service level 1 over its two, and Total City Budget level 2 over all
+  # eight. Every column is held, the unpublished two included. Each year is
+  # one subtotal_chain because Special Revenue straddles its first page break
+  # and, in three years, Enterprise or Internal Service its second.
+  #
+  # ROUNDING. FY2023-24 actuals are printed rounded to the dollar figure by
+  # figure, so four block totals and both summary totals miss their rows by
+  # one to three dollars, each declared below; 18 fund lines miss their own
+  # identity by a dollar, held in structure.BalanceExceptions. The later
+  # years print no rounding of their own: Special Revenue's and Capital's
+  # dollar, and the summary totals', carry forward from FY2023-24's endings
+  # into each later beginning, Total Sources and ending.
+  # --------------------------------------------------------------------------
+  - id: fund-balances-fy2024-p0186
+    kind: fund_balance
+    basis: actual
+    scope: fund-balances-by-fund
+    grain: fund-by-category
+    units: dollars
+    subtotal_chain: fund-balances-fy2024
+    row_labels_name_funds: true
+    parts:
+      - page: 186
+        section: "Total Sources"
+        stop_at: "BUDGET FY 2025-27"
+        wrapped_labels: ["& Internal Service"]
+        headings: ["Special Revenue Funds"]
+        unmapped_text:
+          - {text: "1", note: "the footnote marker printed alone above the next row, keying p190's footnote 1, which says the CIP specific funds were created in FY 2024-25 with the transition to the new ERP system"}
+        column_headers: ["7/1/23", "Revenues", "Transfers In", "Total Sources"]
+        columns:
+          - {fiscal_year: 2024, category: fund-balance/beginning}
+          - {fiscal_year: 2024, kind: revenue, category: revenues}
+          - {fiscal_year: 2024, kind: transfer_in, category: transfers/in}
+          - {skip: true}
+      - page: 187
+        labels_from: 186
+        section: "6/30/24"
+        stop_at: "BUDGET FY 2025-27"
+        omitted_cells:
+          - {label: "Community Benefit Fund", column: "6/30/24", note: "the page prints the line's other five figures, all dashes, and nothing under the 6/30/24 balance, where every other line prints a figure or a dash"}
+        column_headers: ["Expenses", "Transfers Out", "Transfers Out to CIP", "Increase/(Use)", "Total Uses", "6/30/24"]
+        columns:
+          - {fiscal_year: 2024, kind: expenditure, category: expenses}
+          - {fiscal_year: 2024, kind: transfer_out, category: transfers/out}
+          - {fiscal_year: 2024, kind: transfer_out, category: transfers/out-to-cip}
+          - {fiscal_year: 2024, category: fund-balance/reserve-increase}
+          - {skip: true}
+          - {fiscal_year: 2024, category: fund-balance/ending}
+    rows:
+      - &f100 {label: "General Fund", fund: 100, fund_group: general}
+      - &s_sr {label: "Special Revenue Funds", skip: true}
+      - &s_ds {label: "Debt Service Funds", skip: true}
+      - &s_pf {label: "Permanent Funds", skip: true}
+      - &s_cf {label: "Capital Funds", skip: true}
+      - &s_ef {label: "Enterprise Funds", skip: true}
+      - label: "Total Operating Budget"
+        skip: true
+        subtotal: 1
+        subtotal_deltas:
+          - column: "7/1/23"
+            delta_cents: 100
+            note: >-
+              The six fund-group rows above it sum to 328,933,089 under beginning balance and the page prints 328,933,090, a dollar over them: FY2023-24 actuals are printed rounded to the dollar line by line, and the total is rounded on its own.
+          - column: "Revenues"
+            delta_cents: 100
+            note: >-
+              The six fund-group rows above it sum to 239,006,562 under Revenues and the page prints 239,006,563, a dollar over them: FY2023-24 actuals are printed rounded to the dollar line by line, and the total is rounded on its own.
+          - column: "Expenses"
+            delta_cents: -100
+            note: >-
+              The six fund-group rows above it sum to 186,238,403 under Expenses and the page prints 186,238,402, a dollar under them: FY2023-24 actuals are printed rounded to the dollar line by line, and the total is rounded on its own.
+          - column: "6/30/24"
+            delta_cents: -100
+            note: >-
+              The six fund-group rows above it sum to 322,304,696 under ending balance and the page prints 322,304,695, a dollar under them: FY2023-24 actuals are printed rounded to the dollar line by line, and the total is rounded on its own.
+      - {label: "Internal Service Funds", skip: true}
+      - &s_cip {label: "Capital Improvement Program Funds", skip: true}
+      - {label: "Total Capital Improvement Program", skip: true, subtotal: 1}
+      - label: "Total City Budget"
+        skip: true
+        subtotal: 2
+        subtotal_deltas:
+          - column: "7/1/23"
+            delta_cents: 100
+            note: >-
+              The eight fund-group rows above it sum to 358,645,811 under beginning balance and the page prints 358,645,812, a dollar over them: FY2023-24 actuals are printed rounded to the dollar line by line, and the total is rounded on its own.
+          - column: "6/30/24"
+            delta_cents: -100
+            note: >-
+              The eight fund-group rows above it sum to 348,096,088 under ending balance and the page prints 348,096,087, a dollar under them: FY2023-24 actuals are printed rounded to the dollar line by line, and the total is rounded on its own.
+      - &f200 {label: "Low Income Housing Fund", fund: 200, fund_group: special-revenue}
+      - &f201 {label: "Housing Successor Agency", fund: 201, fund_group: special-revenue}
+      - &f202 {label: "SOEF (Social Op Endowment)", fund: 202, fund_group: special-revenue}
+      - &f203 {label: "Mortgage Assistance", fund: 203, fund_group: special-revenue}
+      - &f204 {label: "HHS Loan Fund", fund: 204, fund_group: special-revenue}
+      - &f205 {label: "Cal Home Reuse", fund: 205, fund_group: special-revenue}
+      - &f206 {label: "California Begin Program", fund: 206, fund_group: special-revenue}
+      - &f207 {label: "Local Housing Trust", fund: 207, fund_group: special-revenue}
+      - &f210 {label: "Horizons", fund: 210, fund_group: special-revenue}
+      - &f211 {label: "Asset Seizure - County", fund: 211, fund_group: special-revenue}
+      - &f220 {label: "Grant - Federal Grant Fund", fund: 220, fund_group: special-revenue}
+      - &f221 {label: "Asset Seizure - Dep of Justice", fund: 221, fund_group: special-revenue}
+      - &f222 {label: "Asset Seizure - Treasury", fund: 222, fund_group: special-revenue}
+      - &f223 {label: "Grant - HUD EDI Special Grant", fund: 223, fund_group: special-revenue}
+      - &f224 {label: "Grant - CDBG", fund: 224, fund_group: special-revenue}
+      - &f225 {label: "Grant - Home Grant", fund: 225, fund_group: special-revenue}
+      - &f226 {label: "FEMA Funding", fund: 226, fund_group: special-revenue}
+      - &f240 {label: "Grant - State Grant Fund", fund: 240, fund_group: special-revenue}
+      - &f241 {label: "Opioid Settlement", fund: 241, fund_group: special-revenue}
+      - &f242 {label: "PD COPS Grant", fund: 242, fund_group: special-revenue}
+      - &f260 {label: "Grant - Local & Other Grants", fund: 260, fund_group: special-revenue}
+      - &f280 {label: "Downtown Revitalization Fee", fund: 280, fund_group: special-revenue}
+      - &f281 {label: "Parking In-Lieu Fee", fund: 281, fund_group: special-revenue}
+      - &f282 {label: "Host Community Impact Fee", fund: 282, fund_group: special-revenue}
+      - &f283 {label: "City Street Sweeping Fee", fund: 283, fund_group: special-revenue}
+      - &f284 {label: "Public Art Fee", fund: 284, fund_group: special-revenue}
+      - &f285 {label: "Vehicle Impound Fee", fund: 285, fund_group: special-revenue}
+      - &f286 {label: "Accessibility Compliance", fund: 286, fund_group: special-revenue}
+      - &f287 {label: "PEG Capital Fees", fund: 287, fund_group: special-revenue}
+      - &f288 {label: "Import Mitigation Fee", fund: 288, fund_group: special-revenue}
+      - &f289 {label: "Solid Waste & Recycling Fee", fund: 289, fund_group: special-revenue}
+      - &f290 {label: "Human Services Facility Fee", fund: 290, fund_group: special-revenue}
+      - &f291 {label: "Community Benefit Fund", fund: 291, fund_group: special-revenue}
+      - &f300 {label: "Open Space Acquisition & Mgmt", fund: 300, fund_group: special-revenue}
+      - &f310 {label: "Downtown LMD", fund: 310, fund_group: special-revenue}
+      - &f311 {label: "Other LMD", fund: 311, fund_group: special-revenue}
+      - &f320 {label: "El Charro CFD 2009-1 Maint", fund: 320, fund_group: special-revenue}
+      - &f321 {label: "Other Maintenance CFDs", fund: 321, fund_group: special-revenue}
+      - &f330 {label: "Library Donations", fund: 330, fund_group: special-revenue}
+
+  # --------------------------------------------------------------------------
+  - id: fund-balances-fy2024-p0188
+    kind: fund_balance
+    basis: actual
+    scope: fund-balances-by-fund
+    grain: fund-by-category
+    units: dollars
+    subtotal_chain: fund-balances-fy2024
+    row_labels_name_funds: true
+    parts:
+      - page: 188
+        section: "Total Sources"
+        stop_at: "BUDGET FY 2025-27"
+        headings: ["Debt Service Funds", "Permanent Funds", "Capital Funds", "Enterprise Funds", "Internal Service Funds"]
+        column_headers: ["7/1/23", "Revenues", "Transfers In", "Total Sources"]
+        columns:
+          - {fiscal_year: 2024, category: fund-balance/beginning}
+          - {fiscal_year: 2024, kind: revenue, category: revenues}
+          - {fiscal_year: 2024, kind: transfer_in, category: transfers/in}
+          - {skip: true}
+      - page: 189
+        labels_from: 188
+        section: "6/30/24"
+        stop_at: "BUDGET FY 2025-27"
+        column_headers: ["Expenses", "Transfers Out", "Transfers Out to CIP", "Increase/(Use)", "Total Uses", "6/30/24"]
+        columns:
+          - {fiscal_year: 2024, kind: expenditure, category: expenses}
+          - {fiscal_year: 2024, kind: transfer_out, category: transfers/out}
+          - {fiscal_year: 2024, kind: transfer_out, category: transfers/out-to-cip}
+          - {fiscal_year: 2024, category: fund-balance/reserve-increase}
+          - {skip: true}
+          - {fiscal_year: 2024, category: fund-balance/ending}
+    rows:
+      - &f331 {label: "Police Donations", fund: 331, fund_group: special-revenue}
+      - label: "Total Special Revenue Funds"
+        skip: true
+        subtotal: 1
+        subtotal_deltas:
+          - column: "Revenues"
+            delta_cents: -200
+            note: >-
+              The funds above it sum to 17,058,474 under Revenues and the page prints 17,058,472, 2 dollars under them: FY2023-24 actuals are printed rounded to the dollar line by line, and the total is rounded on its own.
+          - column: "Total Sources"
+            delta_cents: -300
+            note: >-
+              The funds above it sum to 90,988,470 under Total Sources and the page prints 90,988,467, 3 dollars under them: FY2023-24 actuals are printed rounded to the dollar line by line, and the total is rounded on its own.
+          - column: "6/30/24"
+            delta_cents: -100
+            note: >-
+              The funds above it sum to 79,495,213 under ending balance and the page prints 79,495,212, a dollar under them: FY2023-24 actuals are printed rounded to the dollar line by line, and the total is rounded on its own.
+      - &f400 {label: "2020 COPS Series A", fund: 400, fund_group: debt-service}
+      - &f401 {label: "2020 COPS Series B", fund: 401, fund_group: debt-service}
+      - &f402 {label: "2022 COPS", fund: 402, fund_group: debt-service}
+      - {label: "Total Debt Service Funds", skip: true, subtotal: 1}
+      - &f470 {label: "Doolan Canyon Preserve Endow", fund: 470, fund_group: permanent}
+      - &f471 {label: "Doolan Canyon Open Space", fund: 471, fund_group: permanent}
+      - {label: "Total Permanent Funds", skip: true, subtotal: 1}
+      - &f101 {label: "General Fund CIP Reserves", fund: 101, fund_group: capital}
+      - &f510 {label: "Traffic Impact Fee (TIF)", fund: 510, fund_group: capital}
+      - &f511 {label: "TVTC 20% Fee", fund: 511, fund_group: capital}
+      - &f512 {label: "Park Fee - AB 1600", fund: 512, fund_group: capital}
+      - &f513 {label: "Solid Waste & Recyc Impact Fee", fund: 513, fund_group: capital}
+      - &f540 {label: "2022 COP Construction Fund", fund: 540, fund_group: capital}
+      - &f550 {label: "County Measure D", fund: 550, fund_group: capital}
+      - &f551 {label: "County Meas BB-Bike/Pedestrian", fund: 551, fund_group: capital}
+      - &f552 {label: "County Meas BB-Local St & Rd", fund: 552, fund_group: capital}
+      - &f553 {label: "County Measure F Veh Reg Fee", fund: 553, fund_group: capital}
+      - &f560 {label: "State - Gas Tax", fund: 560, fund_group: capital}
+      - &f561 {label: "State - SB1", fund: 561, fund_group: capital}
+      - &f580 {label: "Developers Deposit", fund: 580, fund_group: capital}
+      - &f581 {label: "Public Utility Undergrounding", fund: 581, fund_group: capital}
+      - &f582 {label: "Transferable Development Cred", fund: 582, fund_group: capital}
+      - &f583 {label: "SoLivSpec Plan & AD Closeout", fund: 583, fund_group: capital}
+      - label: "Total Capital Funds"
+        skip: true
+        subtotal: 1
+        subtotal_deltas:
+          - column: "7/1/23"
+            delta_cents: -100
+            note: >-
+              The funds above it sum to 109,022,260 under beginning balance and the page prints 109,022,259, a dollar under them: FY2023-24 actuals are printed rounded to the dollar line by line, and the total is rounded on its own.
+          - column: "Revenues"
+            delta_cents: 100
+            note: >-
+              The funds above it sum to 19,743,053 under Revenues and the page prints 19,743,054, a dollar over them: FY2023-24 actuals are printed rounded to the dollar line by line, and the total is rounded on its own.
+          - column: "Expenses"
+            delta_cents: 100
+            note: >-
+              The funds above it sum to 491,311 under Expenses and the page prints 491,312, a dollar over them: FY2023-24 actuals are printed rounded to the dollar line by line, and the total is rounded on its own.
+          - column: "6/30/24"
+            delta_cents: 100
+            note: >-
+              The funds above it sum to 101,196,626 under ending balance and the page prints 101,196,627, a dollar over them: FY2023-24 actuals are printed rounded to the dollar line by line, and the total is rounded on its own.
+      - &f600 {label: "Airport", fund: 600, fund_group: enterprise}
+      - &f610 {label: "Stormwater", fund: 610, fund_group: enterprise}
+      - &f612 {label: "Storm Drain", fund: 612, fund_group: enterprise}
+      - &f620 {label: "Wastewater", fund: 620, fund_group: enterprise}
+      - &f622 {label: "Wastewater Replacement", fund: 622, fund_group: enterprise}
+      - &f623 {label: "Wastewater Connection Fees", fund: 623, fund_group: enterprise}
+      - &f640 {label: "Water", fund: 640, fund_group: enterprise}
+      - &f642 {label: "Water Replacement", fund: 642, fund_group: enterprise}
+      - &f643 {label: "Water Connection Fees", fund: 643, fund_group: enterprise}
+      - label: "Total Enterprise Funds"
+        skip: true
+        subtotal: 1
+        subtotal_deltas:
+          - column: "7/1/23"
+            delta_cents: 100
+            note: >-
+              The funds above it sum to 131,536,602 under beginning balance and the page prints 131,536,603, a dollar over them: FY2023-24 actuals are printed rounded to the dollar line by line, and the total is rounded on its own.
+          - column: "Revenues"
+            delta_cents: -100
+            note: >-
+              The funds above it sum to 60,176,639 under Revenues and the page prints 60,176,638, a dollar under them: FY2023-24 actuals are printed rounded to the dollar line by line, and the total is rounded on its own.
+          - column: "Total Sources"
+            delta_cents: -100
+            note: >-
+              The funds above it sum to 209,357,933 under Total Sources and the page prints 209,357,932, a dollar under them: FY2023-24 actuals are printed rounded to the dollar line by line, and the total is rounded on its own.
+          - column: "Expenses"
+            delta_cents: -100
+            note: >-
+              The funds above it sum to 45,319,500 under Expenses and the page prints 45,319,499, a dollar under them: FY2023-24 actuals are printed rounded to the dollar line by line, and the total is rounded on its own.
+          - column: "Transfers Out"
+            delta_cents: 100
+            note: >-
+              The funds above it sum to 14,174,690 under Transfers Out and the page prints 14,174,691, a dollar over them: FY2023-24 actuals are printed rounded to the dollar line by line, and the total is rounded on its own.
+      - &f700 {label: "General Liability", fund: 700, fund_group: internal-service}
+      - &f710 {label: "Workers Comp Insurance", fund: 710, fund_group: internal-service}
+      - &f720 {label: "Information Technology", fund: 720, fund_group: internal-service}
+      - &f730 {label: "Fleet & Equipment Services", fund: 730, fund_group: internal-service}
+
+  # --------------------------------------------------------------------------
+  - id: fund-balances-fy2024-p0190
+    kind: fund_balance
+    basis: actual
+    scope: fund-balances-by-fund
+    grain: fund-by-category
+    units: dollars
+    subtotal_chain: fund-balances-fy2024
+    row_labels_name_funds: true
+    parts:
+      - page: 190
+        section: "Total Sources"
+        stop_at: "Footnote:"
+        headings: ["Capital Improvement Program Funds"]
+        unmapped_text:
+          - {text: "1", note: "the footnote marker printed alone above the next row, keying p190's footnote 1, printed at the foot of this page: the CIP specific funds were created in FY 2024-25 with the transition to the new ERP system"}
+        column_headers: ["7/1/23", "Revenues", "Transfers In", "Total Sources"]
+        columns:
+          - {fiscal_year: 2024, category: fund-balance/beginning}
+          - {fiscal_year: 2024, kind: revenue, category: revenues}
+          - {fiscal_year: 2024, kind: transfer_in, category: transfers/in}
+          - {skip: true}
+      - page: 191
+        labels_from: 190
+        section: "6/30/24"
+        stop_at: "BUDGET FY 2025-27"
+        column_headers: ["Expenses", "Transfers Out", "Transfers Out to CIP", "Increase/(Use)", "Total Uses", "6/30/24"]
+        columns:
+          - {fiscal_year: 2024, kind: expenditure, category: expenses}
+          - {fiscal_year: 2024, kind: transfer_out, category: transfers/out}
+          - {fiscal_year: 2024, kind: transfer_out, category: transfers/out-to-cip}
+          - {fiscal_year: 2024, category: fund-balance/reserve-increase}
+          - {skip: true}
+          - {fiscal_year: 2024, category: fund-balance/ending}
+    rows:
+      - &f740 {label: "Facilities Rehab Pgm", fund: 740, fund_group: internal-service}
+      - label: "Total Internal Service Funds"
+        skip: true
+        subtotal: 1
+        subtotal_deltas:
+          - column: "Total Sources"
+            delta_cents: 100
+            note: >-
+              The funds above it sum to 48,038,932 under Total Sources and the page prints 48,038,933, a dollar over them: FY2023-24 actuals are printed rounded to the dollar line by line, and the total is rounded on its own.
+          - column: "Total Uses"
+            delta_cents: 100
+            note: >-
+              The funds above it sum to 24,208,044 under Total Uses and the page prints 24,208,045, a dollar over them: FY2023-24 actuals are printed rounded to the dollar line by line, and the total is rounded on its own.
+      - &f601 {label: "CIP Airport", fund: 601, fund_group: enterprise}
+      - &f611 {label: "CIP Stormwater & Storm Drain", fund: 611, fund_group: enterprise}
+      - &f621 {label: "CIP Wastewater", fund: 621, fund_group: enterprise}
+      - &f641 {label: "CIP Water", fund: 641, fund_group: enterprise}
+      - &f731 {label: "CIP Fleet & Equipment Svcs", fund: 731, fund_group: internal-service}
+      - &f741 {label: "CIP Facilities", fund: 741, fund_group: internal-service}
+      # CIP MULTI FUNDED GOVERNMENTAL names no fund pp.253-257 number, and
+      # prints a dash in every column of every year, so it is read and not
+      # published (fisc-8c90).
+      - &cipmulti {label: "CIP Multi Funded Governmental", skip: true}
+      - &f811 {label: "CIP General Fund", fund: 811, fund_group: capital}
+      - &f812 {label: "CIP Low Income Housing", fund: 812, fund_group: capital}
+      - &f813 {label: "CIP Asset Seizure - County", fund: 813, fund_group: capital}
+      - &f814 {label: "CIP Asset Seizure - DOJ", fund: 814, fund_group: capital}
+      - &f815 {label: "CIP Asset Seizure - Treasury", fund: 815, fund_group: capital}
+      - &f816 {label: "CIP Federal Grants Fund", fund: 816, fund_group: capital}
+      - &f817 {label: "CIP State Grants Fund", fund: 817, fund_group: capital}
+      - &f818 {label: "CIP Local Grants Fund", fund: 818, fund_group: capital}
+      - &f819 {label: "CIP Parking-In-Lieu Fee", fund: 819, fund_group: capital}
+      - &f820 {label: "CIP Host Community Impact Fee", fund: 820, fund_group: capital}
+      - &f821 {label: "CIP Public Art Fee", fund: 821, fund_group: capital}
+      - &f822 {label: "CIP Library Donations", fund: 822, fund_group: capital}
+      - &f823 {label: "CIP Traffic Impact Fee", fund: 823, fund_group: capital}
+      - &f824 {label: "CIP TVTC 20% FEE", fund: 824, fund_group: capital}
+      - &f825 {label: "CIP Park Fee - AB 1600", fund: 825, fund_group: capital}
+      - &f826 {label: "CIP Solid Waste & Recycling", fund: 826, fund_group: capital}
+      - &f827 {label: "CIP 2022 COP Construction", fund: 827, fund_group: capital}
+      - &f828 {label: "CIP County Measure D", fund: 828, fund_group: capital}
+      - &f829 {label: "CIP County Measure BB-Bike/Ped", fund: 829, fund_group: capital}
+      - &f830 {label: "CIP County Measure BB-Street", fund: 830, fund_group: capital}
+      - &f831 {label: "CIP County Measure B-Bike/Ped", fund: 831, fund_group: capital}
+      - &f832 {label: "CIP County Measure B-Street", fund: 832, fund_group: capital}
+      - &f833 {label: "CIP County Measure F-Veh Reg", fund: 833, fund_group: capital}
+      - &f834 {label: "CIP State Gas Tax", fund: 834, fund_group: capital}
+      - &f835 {label: "CIP State SB1", fund: 835, fund_group: capital}
+      - &f836 {label: "CIP Developers Deposit", fund: 836, fund_group: capital}
+      - &f837 {label: "CIP So Liv Spec & AD Close", fund: 837, fund_group: capital}
+      - &f838 {label: "CIP CDBG", fund: 838, fund_group: capital}
+      - &f839 {label: "CIP Human Svcs Facility Fee", fund: 839, fund_group: capital}
+      - {label: "Total Capital Improvement Program Funds", skip: true, subtotal: 1}
+
+  # --------------------------------------------------------------------------
+  - id: fund-balances-fy2025-p0192
+    kind: fund_balance
+    basis: revised
+    scope: fund-balances-by-fund
+    grain: fund-by-category
+    units: dollars
+    subtotal_chain: fund-balances-fy2025
+    row_labels_name_funds: true
+    parts:
+      - page: 192
+        section: "Total Sources"
+        stop_at: "BUDGET FY 2025-27"
+        wrapped_labels: ["& Internal Service"]
+        headings: ["Special Revenue Funds"]
+        unmapped_text:
+          - {text: "1", note: "the footnote marker printed alone above the next row, keying p196's footnote 1, which says the CIP specific funds were created in FY 2024-25 with the transition to the new ERP system"}
+        column_headers: ["7/1/24", "Revenues", "Transfers In", "Total Sources"]
+        columns:
+          - {fiscal_year: 2025, category: fund-balance/beginning}
+          - {fiscal_year: 2025, kind: revenue, category: revenues}
+          - {fiscal_year: 2025, kind: transfer_in, category: transfers/in}
+          - {skip: true}
+      - page: 193
+        labels_from: 192
+        section: "6/30/25"
+        stop_at: "BUDGET FY 2025-27"
+        column_headers: ["Expenses", "Transfers Out", "Transfers Out to CIP", "Increase/(Use)", "Total Uses", "6/30/25"]
+        columns:
+          - {fiscal_year: 2025, kind: expenditure, category: expenses}
+          - {fiscal_year: 2025, kind: transfer_out, category: transfers/out}
+          - {fiscal_year: 2025, kind: transfer_out, category: transfers/out-to-cip}
+          - {fiscal_year: 2025, category: fund-balance/reserve-increase}
+          - {skip: true}
+          - {fiscal_year: 2025, category: fund-balance/ending}
+    rows:
+      - *f100  # General Fund
+      - *s_sr  # Special Revenue Funds
+      - *s_ds  # Debt Service Funds
+      - *s_pf  # Permanent Funds
+      - *s_cf  # Capital Funds
+      - *s_ef  # Enterprise Funds
+      - label: "Total Operating Budget"
+        skip: true
+        subtotal: 1
+        subtotal_deltas:
+          - column: "7/1/24"
+            delta_cents: -100
+            note: >-
+              The six fund-group rows above it sum to 357,259,059 under beginning balance and the page prints 357,259,058: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last.
+          - column: "Total Sources"
+            delta_cents: -100
+            note: >-
+              The six fund-group rows above it sum to 646,372,988 under Total Sources and the page prints 646,372,987: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last; Total Sources keeps the beginning balance's dollar, and the year's flows tie.
+          - column: "6/30/25"
+            delta_cents: -100
+            note: >-
+              The six fund-group rows above it sum to 293,164,683 under ending balance and the page prints 293,164,682: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last; the ending balance keeps the beginning balance's dollar, and the year's flows tie.
+      - &s_isf {label: "Internal Service", skip: true}
+      - *s_cip  # Capital Improvement Program Funds
+      - {label: "Total Capital Improvement Program", skip: true, subtotal: 1}
+      - label: "Total City Budget"
+        skip: true
+        subtotal: 2
+        subtotal_deltas:
+          - column: "7/1/24"
+            delta_cents: -100
+            note: >-
+              The eight fund-group rows above it sum to 383,050,451 under beginning balance and the page prints 383,050,450: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last.
+          - column: "Total Sources"
+            delta_cents: -100
+            note: >-
+              The eight fund-group rows above it sum to 802,289,706 under Total Sources and the page prints 802,289,705: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last; Total Sources keeps the beginning balance's dollar, and the year's flows tie.
+          - column: "6/30/25"
+            delta_cents: -100
+            note: >-
+              The eight fund-group rows above it sum to 316,605,539 under ending balance and the page prints 316,605,538: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last; the ending balance keeps the beginning balance's dollar, and the year's flows tie.
+      - *f200  # Low Income Housing Fund
+      - *f201  # Housing Successor Agency
+      - *f202  # SOEF (Social Op Endowment)
+      - *f203  # Mortgage Assistance
+      - *f204  # HHS Loan Fund
+      - *f205  # Cal Home Reuse
+      - *f206  # California Begin Program
+      - *f207  # Local Housing Trust
+      - *f210  # Horizons
+      - *f211  # Asset Seizure - County
+      - *f220  # Grant - Federal Grant Fund
+      - *f221  # Asset Seizure - Dep of Justice
+      - *f222  # Asset Seizure - Treasury
+      - *f223  # Grant - HUD EDI Special Grant
+      - *f224  # Grant - CDBG
+      - *f225  # Grant - Home Grant
+      - *f226  # FEMA Funding
+      - *f240  # Grant - State Grant Fund
+      - *f241  # Opioid Settlement
+      - *f242  # PD COPS Grant
+      - *f260  # Grant - Local & Other Grants
+      - *f280  # Downtown Revitalization Fee
+      - *f281  # Parking In-Lieu Fee
+      - *f282  # Host Community Impact Fee
+      - *f283  # City Street Sweeping Fee
+      - *f284  # Public Art Fee
+      - *f285  # Vehicle Impound Fee
+      - *f286  # Accessibility Compliance
+      - *f287  # PEG Capital Fees
+      - *f288  # Import Mitigation Fee
+      - *f289  # Solid Waste & Recycling Fee
+      - *f290  # Human Services Facility Fee
+      - *f291  # Community Benefit Fund
+      - *f300  # Open Space Acquisition & Mgmt
+      - *f310  # Downtown LMD
+      - *f311  # Other LMD
+      - *f320  # El Charro CFD 2009-1 Maint
+      - *f321  # Other Maintenance CFDs
+      - *f330  # Library Donations
+
+  # --------------------------------------------------------------------------
+  - id: fund-balances-fy2025-p0194
+    kind: fund_balance
+    basis: revised
+    scope: fund-balances-by-fund
+    grain: fund-by-category
+    units: dollars
+    subtotal_chain: fund-balances-fy2025
+    row_labels_name_funds: true
+    parts:
+      - page: 194
+        section: "Total Sources"
+        stop_at: "BUDGET FY 2025-27"
+        headings: ["Debt Service Funds", "Permanent Funds", "Capital Funds", "Enterprise Funds"]
+        unmapped_text:
+          - {text: "2", note: "the footnote marker printed alone above the next row, keying p196's footnote 2, which says the CIP reserves fund was created in FY 2024-25 and moved out of the General Fund"}
+        column_headers: ["7/1/24", "Revenues", "Transfers In", "Total Sources"]
+        columns:
+          - {fiscal_year: 2025, category: fund-balance/beginning}
+          - {fiscal_year: 2025, kind: revenue, category: revenues}
+          - {fiscal_year: 2025, kind: transfer_in, category: transfers/in}
+          - {skip: true}
+      - page: 195
+        labels_from: 194
+        section: "6/30/25"
+        stop_at: "BUDGET FY 2025-27"
+        column_headers: ["Expenses", "Transfers Out", "Transfers Out to CIP", "Increase/(Use)", "Total Uses", "6/30/25"]
+        columns:
+          - {fiscal_year: 2025, kind: expenditure, category: expenses}
+          - {fiscal_year: 2025, kind: transfer_out, category: transfers/out}
+          - {fiscal_year: 2025, kind: transfer_out, category: transfers/out-to-cip}
+          - {fiscal_year: 2025, category: fund-balance/reserve-increase}
+          - {skip: true}
+          - {fiscal_year: 2025, category: fund-balance/ending}
+    rows:
+      - *f331  # Police Donations
+      - label: "Total Special Revenue Funds"
+        skip: true
+        subtotal: 1
+        subtotal_deltas:
+          - column: "7/1/24"
+            delta_cents: -100
+            note: >-
+              The funds above it sum to 79,495,213 under beginning balance and the page prints 79,495,212: FY2023-24's rounding carried forward. p189 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last.
+          - column: "Total Sources"
+            delta_cents: -100
+            note: >-
+              The funds above it sum to 99,161,332 under Total Sources and the page prints 99,161,331: FY2023-24's rounding carried forward. p189 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last; Total Sources keeps the beginning balance's dollar, and the year's flows tie.
+          - column: "6/30/25"
+            delta_cents: -100
+            note: >-
+              The funds above it sum to 77,290,074 under ending balance and the page prints 77,290,073: FY2023-24's rounding carried forward. p189 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last; the ending balance keeps the beginning balance's dollar, and the year's flows tie.
+      - *f400  # 2020 COPS Series A
+      - *f401  # 2020 COPS Series B
+      - *f402  # 2022 COPS
+      - {label: "Total Debt Service Funds", skip: true, subtotal: 1}
+      - *f470  # Doolan Canyon Preserve Endow
+      - *f471  # Doolan Canyon Open Space
+      - {label: "Total Permanent Funds", skip: true, subtotal: 1}
+      - *f101  # General Fund CIP Reserves
+      - *f510  # Traffic Impact Fee (TIF)
+      - *f511  # TVTC 20% Fee
+      - *f512  # Park Fee - AB 1600
+      - *f513  # Solid Waste & Recyc Impact Fee
+      - *f540  # 2022 COP Construction Fund
+      - *f550  # County Measure D
+      - *f551  # County Meas BB-Bike/Pedestrian
+      - *f552  # County Meas BB-Local St & Rd
+      - *f553  # County Measure F Veh Reg Fee
+      - *f560  # State - Gas Tax
+      - *f561  # State - SB1
+      - *f580  # Developers Deposit
+      - *f581  # Public Utility Undergrounding
+      - *f582  # Transferable Development Cred
+      - *f583  # SoLivSpec Plan & AD Closeout
+      - label: "Total Capital Funds"
+        skip: true
+        subtotal: 1
+        subtotal_deltas:
+          - column: "7/1/24"
+            delta_cents: 100
+            note: >-
+              The funds above it sum to 136,150,989 under beginning balance and the page prints 136,150,990: FY2023-24's rounding carried forward. p189 prints this total's 6/30/24 balance a dollar over the rows above it, and each of those rows begins every later year where it ended the last.
+          - column: "Total Sources"
+            delta_cents: 100
+            note: >-
+              The funds above it sum to 170,990,264 under Total Sources and the page prints 170,990,265: FY2023-24's rounding carried forward. p189 prints this total's 6/30/24 balance a dollar over the rows above it, and each of those rows begins every later year where it ended the last; Total Sources keeps the beginning balance's dollar, and the year's flows tie.
+          - column: "6/30/25"
+            delta_cents: 100
+            note: >-
+              The funds above it sum to 110,713,544 under ending balance and the page prints 110,713,545: FY2023-24's rounding carried forward. p189 prints this total's 6/30/24 balance a dollar over the rows above it, and each of those rows begins every later year where it ended the last; the ending balance keeps the beginning balance's dollar, and the year's flows tie.
+      - *f600  # Airport
+      - *f610  # Stormwater
+      - *f612  # Storm Drain
+      - *f620  # Wastewater
+      - *f622  # Wastewater Replacement
+      - *f623  # Wastewater Connection Fees
+      - *f640  # Water
+      - *f642  # Water Replacement
+      - *f643  # Water Connection Fees
+      - {label: "Total Enterprise Funds", skip: true, subtotal: 1}
+
+  # --------------------------------------------------------------------------
+  - id: fund-balances-fy2025-p0196
+    kind: fund_balance
+    basis: revised
+    scope: fund-balances-by-fund
+    grain: fund-by-category
+    units: dollars
+    subtotal_chain: fund-balances-fy2025
+    row_labels_name_funds: true
+    parts:
+      - page: 196
+        section: "Total Sources"
+        stop_at: "Footnote:"
+        headings: ["Internal Service Funds", "Capital Improvement Program Funds"]
+        unmapped_text:
+          - {text: "1", note: "the footnote marker printed alone above the next row, keying p196's footnote 1, printed at the foot of this page: the CIP specific funds were created in FY 2024-25 with the transition to the new ERP system"}
+        column_headers: ["7/1/24", "Revenues", "Transfers In", "Total Sources"]
+        columns:
+          - {fiscal_year: 2025, category: fund-balance/beginning}
+          - {fiscal_year: 2025, kind: revenue, category: revenues}
+          - {fiscal_year: 2025, kind: transfer_in, category: transfers/in}
+          - {skip: true}
+      - page: 197
+        labels_from: 196
+        section: "6/30/25"
+        stop_at: "BUDGET FY 2025-27"
+        column_headers: ["Expenses", "Transfers Out", "Transfers Out to CIP", "Increase/(Use)", "Total Uses", "6/30/25"]
+        columns:
+          - {fiscal_year: 2025, kind: expenditure, category: expenses}
+          - {fiscal_year: 2025, kind: transfer_out, category: transfers/out}
+          - {fiscal_year: 2025, kind: transfer_out, category: transfers/out-to-cip}
+          - {fiscal_year: 2025, category: fund-balance/reserve-increase}
+          - {skip: true}
+          - {fiscal_year: 2025, category: fund-balance/ending}
+    rows:
+      - *f700  # General Liability
+      - *f710  # Workers Comp Insurance
+      - *f720  # Information Technology
+      - *f730  # Fleet & Equipment Services
+      - *f740  # Facilities Rehab Pgm
+      - {label: "Total Internal Service Funds", skip: true, subtotal: 1}
+      - *f601  # CIP Airport
+      - *f611  # CIP Stormwater & Storm Drain
+      - *f621  # CIP Wastewater
+      - *f641  # CIP Water
+      - *f731  # CIP Fleet & Equipment Svcs
+      - *f741  # CIP Facilities
+      - *cipmulti  # CIP Multi Funded Governmental
+      - *f811  # CIP General Fund
+      - *f812  # CIP Low Income Housing
+      - *f813  # CIP Asset Seizure - County
+      - *f814  # CIP Asset Seizure - DOJ
+      - *f815  # CIP Asset Seizure - Treasury
+      - *f816  # CIP Federal Grants Fund
+      - *f817  # CIP State Grants Fund
+      - *f818  # CIP Local Grants Fund
+      - *f819  # CIP Parking-In-Lieu Fee
+      - *f820  # CIP Host Community Impact Fee
+      - *f821  # CIP Public Art Fee
+      - *f822  # CIP Library Donations
+      - *f823  # CIP Traffic Impact Fee
+      - *f824  # CIP TVTC 20% FEE
+      - *f825  # CIP Park Fee - AB 1600
+      - *f826  # CIP Solid Waste & Recycling
+      - *f827  # CIP 2022 COP Construction
+      - *f828  # CIP County Measure D
+      - *f829  # CIP County Measure BB-Bike/Ped
+      - *f830  # CIP County Measure BB-Street
+      - *f831  # CIP County Measure B-Bike/Ped
+      - *f832  # CIP County Measure B-Street
+      - *f833  # CIP County Measure F-Veh Reg
+      - *f834  # CIP State Gas Tax
+      - *f835  # CIP State SB1
+      - *f836  # CIP Developers Deposit
+      - *f837  # CIP So Liv Spec & AD Close
+      - *f838  # CIP CDBG
+      - *f839  # CIP Human Svcs Facility Fee
+      - {label: "Total Capital Improvement Program Funds", skip: true, subtotal: 1}
+
+  # --------------------------------------------------------------------------
+  - id: fund-balances-fy2026-p0198
+    kind: fund_balance
+    basis: adopted
+    scope: fund-balances-by-fund
+    grain: fund-by-category
+    units: dollars
+    subtotal_chain: fund-balances-fy2026
+    row_labels_name_funds: true
+    parts:
+      - page: 198
+        section: "Total Sources"
+        stop_at: "BUDGET FY 2025-27"
+        wrapped_labels: ["& Internal Service"]
+        headings: ["Special Revenue Funds"]
+        column_headers: ["7/1/25", "Revenues", "Transfers In", "Total Sources"]
+        columns:
+          - {fiscal_year: 2026, category: fund-balance/beginning}
+          - {fiscal_year: 2026, kind: revenue, category: revenues}
+          - {fiscal_year: 2026, kind: transfer_in, category: transfers/in}
+          - {skip: true}
+      - page: 199
+        labels_from: 198
+        section: "6/30/26"
+        stop_at: "BUDGET FY 2025-27"
+        column_headers: ["Expenses", "Transfers Out", "Transfers Out to CIP", "Increase/(Use)", "Total Uses", "6/30/26"]
+        columns:
+          - {fiscal_year: 2026, kind: expenditure, category: expenses}
+          - {fiscal_year: 2026, kind: transfer_out, category: transfers/out}
+          - {fiscal_year: 2026, kind: transfer_out, category: transfers/out-to-cip}
+          - {fiscal_year: 2026, category: fund-balance/reserve-increase}
+          - {skip: true}
+          - {fiscal_year: 2026, category: fund-balance/ending}
+    rows:
+      - *f100  # General Fund
+      - *s_sr  # Special Revenue Funds
+      - *s_ds  # Debt Service Funds
+      - *s_pf  # Permanent Funds
+      - *s_cf  # Capital Funds
+      - *s_ef  # Enterprise Funds
+      - label: "Total Operating Budget"
+        skip: true
+        subtotal: 1
+        subtotal_deltas:
+          - column: "7/1/25"
+            delta_cents: -100
+            note: >-
+              The six fund-group rows above it sum to 293,164,683 under beginning balance and the page prints 293,164,682: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last.
+          - column: "Total Sources"
+            delta_cents: -100
+            note: >-
+              The six fund-group rows above it sum to 595,689,853 under Total Sources and the page prints 595,689,852: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last; Total Sources keeps the beginning balance's dollar, and the year's flows tie.
+          - column: "6/30/26"
+            delta_cents: -100
+            note: >-
+              The six fund-group rows above it sum to 302,399,649 under ending balance and the page prints 302,399,648: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last; the ending balance keeps the beginning balance's dollar, and the year's flows tie.
+      - *s_isf  # Internal Service
+      - *s_cip  # Capital Improvement Program Funds
+      - {label: "Total Capital Improvement Program", skip: true, subtotal: 1}
+      - label: "Total City Budget"
+        skip: true
+        subtotal: 2
+        subtotal_deltas:
+          - column: "7/1/25"
+            delta_cents: -100
+            note: >-
+              The eight fund-group rows above it sum to 316,605,539 under beginning balance and the page prints 316,605,538: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last.
+          - column: "Total Sources"
+            delta_cents: -100
+            note: >-
+              The eight fund-group rows above it sum to 684,002,079 under Total Sources and the page prints 684,002,078: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last; Total Sources keeps the beginning balance's dollar, and the year's flows tie.
+          - column: "6/30/26"
+            delta_cents: -100
+            note: >-
+              The eight fund-group rows above it sum to 318,509,885 under ending balance and the page prints 318,509,884: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last; the ending balance keeps the beginning balance's dollar, and the year's flows tie.
+      - *f200  # Low Income Housing Fund
+      - *f201  # Housing Successor Agency
+      - *f202  # SOEF (Social Op Endowment)
+      - *f203  # Mortgage Assistance
+      - *f204  # HHS Loan Fund
+      - *f205  # Cal Home Reuse
+      - *f206  # California Begin Program
+      - *f207  # Local Housing Trust
+      - *f210  # Horizons
+      - *f211  # Asset Seizure - County
+      - *f220  # Grant - Federal Grant Fund
+      - *f221  # Asset Seizure - Dep of Justice
+      - *f222  # Asset Seizure - Treasury
+      - *f223  # Grant - HUD EDI Special Grant
+      - *f224  # Grant - CDBG
+      - *f225  # Grant - Home Grant
+      - *f226  # FEMA Funding
+      - *f240  # Grant - State Grant Fund
+      - *f241  # Opioid Settlement
+      - *f242  # PD COPS Grant
+      - *f260  # Grant - Local & Other Grants
+      - *f280  # Downtown Revitalization Fee
+      - *f281  # Parking In-Lieu Fee
+      - *f282  # Host Community Impact Fee
+      - *f283  # City Street Sweeping Fee
+      - *f284  # Public Art Fee
+      - *f285  # Vehicle Impound Fee
+      - *f286  # Accessibility Compliance
+      - *f287  # PEG Capital Fees
+      - *f288  # Import Mitigation Fee
+      - *f289  # Solid Waste & Recycling Fee
+      - *f290  # Human Services Facility Fee
+      - *f291  # Community Benefit Fund
+      - *f300  # Open Space Acquisition & Mgmt
+      - *f310  # Downtown LMD
+      - *f311  # Other LMD
+      - *f320  # El Charro CFD 2009-1 Maint
+      - *f321  # Other Maintenance CFDs
+      - *f330  # Library Donations
+
+  # --------------------------------------------------------------------------
+  - id: fund-balances-fy2026-p0200
+    kind: fund_balance
+    basis: adopted
+    scope: fund-balances-by-fund
+    grain: fund-by-category
+    units: dollars
+    subtotal_chain: fund-balances-fy2026
+    row_labels_name_funds: true
+    parts:
+      - page: 200
+        section: "Total Sources"
+        stop_at: "BUDGET FY 2025-27"
+        headings: ["Debt Service Funds", "Permanent Funds", "Capital Funds", "Enterprise Funds", "Internal Service Funds"]
+        column_headers: ["7/1/25", "Revenues", "Transfers In", "Total Sources"]
+        columns:
+          - {fiscal_year: 2026, category: fund-balance/beginning}
+          - {fiscal_year: 2026, kind: revenue, category: revenues}
+          - {fiscal_year: 2026, kind: transfer_in, category: transfers/in}
+          - {skip: true}
+      - page: 201
+        labels_from: 200
+        section: "6/30/26"
+        stop_at: "BUDGET FY 2025-27"
+        column_headers: ["Expenses", "Transfers Out", "Transfers Out to CIP", "Increase/(Use)", "Total Uses", "6/30/26"]
+        columns:
+          - {fiscal_year: 2026, kind: expenditure, category: expenses}
+          - {fiscal_year: 2026, kind: transfer_out, category: transfers/out}
+          - {fiscal_year: 2026, kind: transfer_out, category: transfers/out-to-cip}
+          - {fiscal_year: 2026, category: fund-balance/reserve-increase}
+          - {skip: true}
+          - {fiscal_year: 2026, category: fund-balance/ending}
+    rows:
+      - *f331  # Police Donations
+      - label: "Total Special Revenue Funds"
+        skip: true
+        subtotal: 1
+        subtotal_deltas:
+          - column: "7/1/25"
+            delta_cents: -100
+            note: >-
+              The funds above it sum to 77,290,074 under beginning balance and the page prints 77,290,073: FY2023-24's rounding carried forward. p189 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last.
+          - column: "Total Sources"
+            delta_cents: -100
+            note: >-
+              The funds above it sum to 106,569,634 under Total Sources and the page prints 106,569,633: FY2023-24's rounding carried forward. p189 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last; Total Sources keeps the beginning balance's dollar, and the year's flows tie.
+          - column: "6/30/26"
+            delta_cents: -100
+            note: >-
+              The funds above it sum to 86,165,023 under ending balance and the page prints 86,165,022: FY2023-24's rounding carried forward. p189 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last; the ending balance keeps the beginning balance's dollar, and the year's flows tie.
+      - *f400  # 2020 COPS Series A
+      - *f401  # 2020 COPS Series B
+      - *f402  # 2022 COPS
+      - {label: "Total Debt Service Funds", skip: true, subtotal: 1}
+      - *f470  # Doolan Canyon Preserve Endow
+      - *f471  # Doolan Canyon Open Space
+      - {label: "Total Permanent Funds", skip: true, subtotal: 1}
+      - *f101  # General Fund CIP Reserves
+      - *f510  # Traffic Impact Fee (TIF)
+      - *f511  # TVTC 20% Fee
+      - *f512  # Park Fee - AB 1600
+      - *f513  # Solid Waste & Recyc Impact Fee
+      - *f540  # 2022 COP Construction Fund
+      - *f550  # County Measure D
+      - *f551  # County Meas BB-Bike/Pedestrian
+      - *f552  # County Meas BB-Local St & Rd
+      - *f553  # County Measure F Veh Reg Fee
+      - *f560  # State - Gas Tax
+      - *f561  # State - SB1
+      - *f580  # Developers Deposit
+      - *f581  # Public Utility Undergrounding
+      - *f582  # Transferable Development Cred
+      - *f583  # SoLivSpec Plan & AD Closeout
+      - label: "Total Capital Funds"
+        skip: true
+        subtotal: 1
+        subtotal_deltas:
+          - column: "7/1/25"
+            delta_cents: 100
+            note: >-
+              The funds above it sum to 110,713,544 under beginning balance and the page prints 110,713,545: FY2023-24's rounding carried forward. p189 prints this total's 6/30/24 balance a dollar over the rows above it, and each of those rows begins every later year where it ended the last.
+          - column: "Total Sources"
+            delta_cents: 100
+            note: >-
+              The funds above it sum to 137,859,426 under Total Sources and the page prints 137,859,427: FY2023-24's rounding carried forward. p189 prints this total's 6/30/24 balance a dollar over the rows above it, and each of those rows begins every later year where it ended the last; Total Sources keeps the beginning balance's dollar, and the year's flows tie.
+          - column: "6/30/26"
+            delta_cents: 100
+            note: >-
+              The funds above it sum to 108,213,331 under ending balance and the page prints 108,213,332: FY2023-24's rounding carried forward. p189 prints this total's 6/30/24 balance a dollar over the rows above it, and each of those rows begins every later year where it ended the last; the ending balance keeps the beginning balance's dollar, and the year's flows tie.
+      - *f600  # Airport
+      - *f610  # Stormwater
+      - *f612  # Storm Drain
+      - *f620  # Wastewater
+      - *f622  # Wastewater Replacement
+      - *f623  # Wastewater Connection Fees
+      - *f640  # Water
+      - *f642  # Water Replacement
+      - *f643  # Water Connection Fees
+      - {label: "Total Enterprise Funds", skip: true, subtotal: 1}
+      - *f700  # General Liability
+      - *f710  # Workers Comp Insurance
+      - *f720  # Information Technology
+      - *f730  # Fleet & Equipment Services
+
+  # --------------------------------------------------------------------------
+  - id: fund-balances-fy2026-p0202
+    kind: fund_balance
+    basis: adopted
+    scope: fund-balances-by-fund
+    grain: fund-by-category
+    units: dollars
+    subtotal_chain: fund-balances-fy2026
+    row_labels_name_funds: true
+    parts:
+      - page: 202
+        section: "Total Sources"
+        stop_at: "BUDGET FY 2025-27"
+        headings: ["Capital Improvement Program Funds"]
+        column_headers: ["7/1/25", "Revenues", "Transfers In", "Total Sources"]
+        columns:
+          - {fiscal_year: 2026, category: fund-balance/beginning}
+          - {fiscal_year: 2026, kind: revenue, category: revenues}
+          - {fiscal_year: 2026, kind: transfer_in, category: transfers/in}
+          - {skip: true}
+      - page: 203
+        labels_from: 202
+        section: "6/30/26"
+        stop_at: "BUDGET FY 2025-27"
+        column_headers: ["Expenses", "Transfers Out", "Transfers Out to CIP", "Increase/(Use)", "Total Uses", "6/30/26"]
+        columns:
+          - {fiscal_year: 2026, kind: expenditure, category: expenses}
+          - {fiscal_year: 2026, kind: transfer_out, category: transfers/out}
+          - {fiscal_year: 2026, kind: transfer_out, category: transfers/out-to-cip}
+          - {fiscal_year: 2026, category: fund-balance/reserve-increase}
+          - {skip: true}
+          - {fiscal_year: 2026, category: fund-balance/ending}
+    rows:
+      - *f740  # Facilities Rehab Pgm
+      - {label: "Total Internal Service Funds", skip: true, subtotal: 1}
+      - *f601  # CIP Airport
+      - *f611  # CIP Stormwater & Storm Drain
+      - *f621  # CIP Wastewater
+      - *f641  # CIP Water
+      - *f731  # CIP Fleet & Equipment Svcs
+      - *f741  # CIP Facilities
+      - *cipmulti  # CIP Multi Funded Governmental
+      - *f811  # CIP General Fund
+      - *f812  # CIP Low Income Housing
+      - *f813  # CIP Asset Seizure - County
+      - *f814  # CIP Asset Seizure - DOJ
+      - *f815  # CIP Asset Seizure - Treasury
+      - *f816  # CIP Federal Grants Fund
+      - *f817  # CIP State Grants Fund
+      - *f818  # CIP Local Grants Fund
+      - *f819  # CIP Parking-In-Lieu Fee
+      - *f820  # CIP Host Community Impact Fee
+      - *f821  # CIP Public Art Fee
+      - *f822  # CIP Library Donations
+      - *f823  # CIP Traffic Impact Fee
+      - *f824  # CIP TVTC 20% FEE
+      - *f825  # CIP Park Fee - AB 1600
+      - *f826  # CIP Solid Waste & Recycling
+      - *f827  # CIP 2022 COP Construction
+      - *f828  # CIP County Measure D
+      - *f829  # CIP County Measure BB-Bike/Ped
+      - *f830  # CIP County Measure BB-Street
+      - *f831  # CIP County Measure B-Bike/Ped
+      - *f832  # CIP County Measure B-Street
+      - *f833  # CIP County Measure F-Veh Reg
+      - *f834  # CIP State Gas Tax
+      - *f835  # CIP State SB1
+      - *f836  # CIP Developers Deposit
+      - *f837  # CIP So Liv Spec & AD Close
+      - *f838  # CIP CDBG
+      - *f839  # CIP Human Svcs Facility Fee
+      - {label: "Total Capital Improvement Program Funds", skip: true, subtotal: 1}
+
+  # --------------------------------------------------------------------------
+  - id: fund-balances-fy2027-p0204
+    kind: fund_balance
+    basis: adopted
+    scope: fund-balances-by-fund
+    grain: fund-by-category
+    units: dollars
+    subtotal_chain: fund-balances-fy2027
+    row_labels_name_funds: true
+    parts:
+      - page: 204
+        section: "Total Sources"
+        stop_at: "BUDGET FY 2025-27"
+        wrapped_labels: ["& Internal Service"]
+        headings: ["Special Revenue Funds"]
+        column_headers: ["7/1/26", "Revenues", "Transfers In", "Total Sources"]
+        columns:
+          - {fiscal_year: 2027, category: fund-balance/beginning}
+          - {fiscal_year: 2027, kind: revenue, category: revenues}
+          - {fiscal_year: 2027, kind: transfer_in, category: transfers/in}
+          - {skip: true}
+      - page: 205
+        labels_from: 204
+        section: "6/30/27"
+        stop_at: "BUDGET FY 2025-27"
+        column_headers: ["Expenses", "Transfers Out", "Transfers Out to CIP", "Increase/(Use)", "Total Uses", "6/30/27"]
+        columns:
+          - {fiscal_year: 2027, kind: expenditure, category: expenses}
+          - {fiscal_year: 2027, kind: transfer_out, category: transfers/out}
+          - {fiscal_year: 2027, kind: transfer_out, category: transfers/out-to-cip}
+          - {fiscal_year: 2027, category: fund-balance/reserve-increase}
+          - {skip: true}
+          - {fiscal_year: 2027, category: fund-balance/ending}
+    rows:
+      - *f100  # General Fund
+      - *s_sr  # Special Revenue Funds
+      - *s_ds  # Debt Service Funds
+      - *s_pf  # Permanent Funds
+      - *s_cf  # Capital Funds
+      - *s_ef  # Enterprise Funds
+      - label: "Total Operating Budget"
+        skip: true
+        subtotal: 1
+        subtotal_deltas:
+          - column: "7/1/26"
+            delta_cents: -100
+            note: >-
+              The six fund-group rows above it sum to 302,399,649 under beginning balance and the page prints 302,399,648: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last.
+          - column: "Total Sources"
+            delta_cents: -100
+            note: >-
+              The six fund-group rows above it sum to 606,471,455 under Total Sources and the page prints 606,471,454: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last; Total Sources keeps the beginning balance's dollar, and the year's flows tie.
+          - column: "6/30/27"
+            delta_cents: -100
+            note: >-
+              The six fund-group rows above it sum to 305,053,583 under ending balance and the page prints 305,053,582: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last; the ending balance keeps the beginning balance's dollar, and the year's flows tie.
+      - *s_isf  # Internal Service
+      - *s_cip  # Capital Improvement Program Funds
+      - {label: "Total Capital Improvement Program", skip: true, subtotal: 1}
+      - label: "Total City Budget"
+        skip: true
+        subtotal: 2
+        subtotal_deltas:
+          - column: "7/1/26"
+            delta_cents: -100
+            note: >-
+              The eight fund-group rows above it sum to 318,509,885 under beginning balance and the page prints 318,509,884: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last.
+          - column: "Total Sources"
+            delta_cents: -100
+            note: >-
+              The eight fund-group rows above it sum to 701,566,432 under Total Sources and the page prints 701,566,431: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last; Total Sources keeps the beginning balance's dollar, and the year's flows tie.
+          - column: "6/30/27"
+            delta_cents: -100
+            note: >-
+              The eight fund-group rows above it sum to 314,253,174 under ending balance and the page prints 314,253,173: FY2023-24's rounding carried forward. p187 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last; the ending balance keeps the beginning balance's dollar, and the year's flows tie.
+      - *f200  # Low Income Housing Fund
+      - *f201  # Housing Successor Agency
+      - *f202  # SOEF (Social Op Endowment)
+      - *f203  # Mortgage Assistance
+      - *f204  # HHS Loan Fund
+      - *f205  # Cal Home Reuse
+      - *f206  # California Begin Program
+      - *f207  # Local Housing Trust
+      - *f210  # Horizons
+      - *f211  # Asset Seizure - County
+      - *f220  # Grant - Federal Grant Fund
+      - *f221  # Asset Seizure - Dep of Justice
+      - *f222  # Asset Seizure - Treasury
+      - *f223  # Grant - HUD EDI Special Grant
+      - *f224  # Grant - CDBG
+      - *f225  # Grant - Home Grant
+      - *f226  # FEMA Funding
+      - *f240  # Grant - State Grant Fund
+      - *f241  # Opioid Settlement
+      - *f242  # PD COPS Grant
+      - *f260  # Grant - Local & Other Grants
+      - *f280  # Downtown Revitalization Fee
+      - *f281  # Parking In-Lieu Fee
+      - *f282  # Host Community Impact Fee
+      - *f283  # City Street Sweeping Fee
+      - *f284  # Public Art Fee
+      - *f285  # Vehicle Impound Fee
+      - *f286  # Accessibility Compliance
+      - *f287  # PEG Capital Fees
+      - *f288  # Import Mitigation Fee
+      - *f289  # Solid Waste & Recycling Fee
+      - *f290  # Human Services Facility Fee
+      - *f291  # Community Benefit Fund
+      - *f300  # Open Space Acquisition & Mgmt
+      - *f310  # Downtown LMD
+      - *f311  # Other LMD
+      - *f320  # El Charro CFD 2009-1 Maint
+      - *f321  # Other Maintenance CFDs
+      - *f330  # Library Donations
+
+  # --------------------------------------------------------------------------
+  - id: fund-balances-fy2027-p0206
+    kind: fund_balance
+    basis: adopted
+    scope: fund-balances-by-fund
+    grain: fund-by-category
+    units: dollars
+    subtotal_chain: fund-balances-fy2027
+    row_labels_name_funds: true
+    parts:
+      - page: 206
+        section: "Total Sources"
+        stop_at: "BUDGET FY 2025-27"
+        headings: ["Debt Service Funds", "Permanent Funds", "Capital Funds", "Enterprise Funds"]
+        column_headers: ["7/1/26", "Revenues", "Transfers In", "Total Sources"]
+        columns:
+          - {fiscal_year: 2027, category: fund-balance/beginning}
+          - {fiscal_year: 2027, kind: revenue, category: revenues}
+          - {fiscal_year: 2027, kind: transfer_in, category: transfers/in}
+          - {skip: true}
+      - page: 207
+        labels_from: 206
+        section: "6/30/27"
+        stop_at: "BUDGET FY 2025-27"
+        omitted_cells:
+          - {label: "County Measure D", column: "Increase/(Use)", note: "the page prints the line's other five figures and nothing under Reserve Increase/(Use), where every other line prints a figure or a dash"}
+          - {label: "Wastewater", column: "Increase/(Use)", note: "the page prints the line's other five figures and nothing under Reserve Increase/(Use), where every other line prints a figure or a dash"}
+          - {label: "Water", column: "Increase/(Use)", note: "the page prints the line's other five figures and nothing under Reserve Increase/(Use), where every other line prints a figure or a dash"}
+        column_headers: ["Expenses", "Transfers Out", "Transfers Out to CIP", "Increase/(Use)", "Total Uses", "6/30/27"]
+        columns:
+          - {fiscal_year: 2027, kind: expenditure, category: expenses}
+          - {fiscal_year: 2027, kind: transfer_out, category: transfers/out}
+          - {fiscal_year: 2027, kind: transfer_out, category: transfers/out-to-cip}
+          - {fiscal_year: 2027, category: fund-balance/reserve-increase}
+          - {skip: true}
+          - {fiscal_year: 2027, category: fund-balance/ending}
+    rows:
+      - *f331  # Police Donations
+      - label: "Total Special Revenue Funds"
+        skip: true
+        subtotal: 1
+        subtotal_deltas:
+          - column: "7/1/26"
+            delta_cents: -100
+            note: >-
+              The funds above it sum to 86,165,023 under beginning balance and the page prints 86,165,022: FY2023-24's rounding carried forward. p189 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last.
+          - column: "Total Sources"
+            delta_cents: -100
+            note: >-
+              The funds above it sum to 107,895,545 under Total Sources and the page prints 107,895,544: FY2023-24's rounding carried forward. p189 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last; Total Sources keeps the beginning balance's dollar, and the year's flows tie.
+          - column: "6/30/27"
+            delta_cents: -100
+            note: >-
+              The funds above it sum to 95,186,995 under ending balance and the page prints 95,186,994: FY2023-24's rounding carried forward. p189 prints this total's 6/30/24 balance a dollar under the rows above it, and each of those rows begins every later year where it ended the last; the ending balance keeps the beginning balance's dollar, and the year's flows tie.
+      - *f400  # 2020 COPS Series A
+      - *f401  # 2020 COPS Series B
+      - *f402  # 2022 COPS
+      - {label: "Total Debt Service Funds", skip: true, subtotal: 1}
+      - *f470  # Doolan Canyon Preserve Endow
+      - *f471  # Doolan Canyon Open Space
+      - {label: "Total Permanent Funds", skip: true, subtotal: 1}
+      - *f101  # General Fund CIP Reserves
+      - *f510  # Traffic Impact Fee (TIF)
+      - *f511  # TVTC 20% Fee
+      - *f512  # Park Fee - AB 1600
+      - *f513  # Solid Waste & Recyc Impact Fee
+      - *f540  # 2022 COP Construction Fund
+      - *f550  # County Measure D
+      - *f551  # County Meas BB-Bike/Pedestrian
+      - *f552  # County Meas BB-Local St & Rd
+      - *f553  # County Measure F Veh Reg Fee
+      - *f560  # State - Gas Tax
+      - *f561  # State - SB1
+      - *f580  # Developers Deposit
+      - *f581  # Public Utility Undergrounding
+      - *f582  # Transferable Development Cred
+      - *f583  # SoLivSpec Plan & AD Closeout
+      - label: "Total Capital Funds"
+        skip: true
+        subtotal: 1
+        subtotal_deltas:
+          - column: "7/1/26"
+            delta_cents: 100
+            note: >-
+              The funds above it sum to 108,213,331 under beginning balance and the page prints 108,213,332: FY2023-24's rounding carried forward. p189 prints this total's 6/30/24 balance a dollar over the rows above it, and each of those rows begins every later year where it ended the last.
+          - column: "Total Sources"
+            delta_cents: 100
+            note: >-
+              The funds above it sum to 135,101,585 under Total Sources and the page prints 135,101,586: FY2023-24's rounding carried forward. p189 prints this total's 6/30/24 balance a dollar over the rows above it, and each of those rows begins every later year where it ended the last; Total Sources keeps the beginning balance's dollar, and the year's flows tie.
+          - column: "6/30/27"
+            delta_cents: 100
+            note: >-
+              The funds above it sum to 98,083,915 under ending balance and the page prints 98,083,916: FY2023-24's rounding carried forward. p189 prints this total's 6/30/24 balance a dollar over the rows above it, and each of those rows begins every later year where it ended the last; the ending balance keeps the beginning balance's dollar, and the year's flows tie.
+      - *f600  # Airport
+      - *f610  # Stormwater
+      - *f612  # Storm Drain
+      - *f620  # Wastewater
+      - *f622  # Wastewater Replacement
+      - *f623  # Wastewater Connection Fees
+      - *f640  # Water
+      - *f642  # Water Replacement
+
+  # --------------------------------------------------------------------------
+  - id: fund-balances-fy2027-p0208
+    kind: fund_balance
+    basis: adopted
+    scope: fund-balances-by-fund
+    grain: fund-by-category
+    units: dollars
+    subtotal_chain: fund-balances-fy2027
+    row_labels_name_funds: true
+    parts:
+      - page: 208
+        section: "Total Sources"
+        stop_at: "BUDGET FY 2025-27"
+        headings: ["Internal Service Funds", "Capital Improvement Program Funds"]
+        column_headers: ["7/1/26", "Revenues", "Transfers In", "Total Sources"]
+        columns:
+          - {fiscal_year: 2027, category: fund-balance/beginning}
+          - {fiscal_year: 2027, kind: revenue, category: revenues}
+          - {fiscal_year: 2027, kind: transfer_in, category: transfers/in}
+          - {skip: true}
+      - page: 209
+        labels_from: 208
+        section: "6/30/27"
+        stop_at: "BUDGET FY 2025-27"
+        column_headers: ["Expenses", "Transfers Out", "Transfers Out to CIP", "Increase/(Use)", "Total Uses", "6/30/27"]
+        columns:
+          - {fiscal_year: 2027, kind: expenditure, category: expenses}
+          - {fiscal_year: 2027, kind: transfer_out, category: transfers/out}
+          - {fiscal_year: 2027, kind: transfer_out, category: transfers/out-to-cip}
+          - {fiscal_year: 2027, category: fund-balance/reserve-increase}
+          - {skip: true}
+          - {fiscal_year: 2027, category: fund-balance/ending}
+    rows:
+      - *f643  # Water Connection Fees
+      - {label: "Total Enterprise Funds", skip: true, subtotal: 1}
+      - *f700  # General Liability
+      - *f710  # Workers Comp Insurance
+      - *f720  # Information Technology
+      - *f730  # Fleet & Equipment Services
+      - *f740  # Facilities Rehab Pgm
+      - {label: "Total Internal Service Funds", skip: true, subtotal: 1}
+      - *f601  # CIP Airport
+      - *f611  # CIP Stormwater & Storm Drain
+      - *f621  # CIP Wastewater
+      - *f641  # CIP Water
+      - *f731  # CIP Fleet & Equipment Svcs
+      - *f741  # CIP Facilities
+      - *cipmulti  # CIP Multi Funded Governmental
+      - *f811  # CIP General Fund
+      - *f812  # CIP Low Income Housing
+      - *f813  # CIP Asset Seizure - County
+      - *f814  # CIP Asset Seizure - DOJ
+      - *f815  # CIP Asset Seizure - Treasury
+      - *f816  # CIP Federal Grants Fund
+      - *f817  # CIP State Grants Fund
+      - *f818  # CIP Local Grants Fund
+      - *f819  # CIP Parking-In-Lieu Fee
+      - *f820  # CIP Host Community Impact Fee
+      - *f821  # CIP Public Art Fee
+      - *f822  # CIP Library Donations
+      - *f823  # CIP Traffic Impact Fee
+      - *f824  # CIP TVTC 20% FEE
+      - *f825  # CIP Park Fee - AB 1600
+      - *f826  # CIP Solid Waste & Recycling
+      - *f827  # CIP 2022 COP Construction
+      - *f828  # CIP County Measure D
+      - *f829  # CIP County Measure BB-Bike/Ped
+      - *f830  # CIP County Measure BB-Street
+      - *f831  # CIP County Measure B-Bike/Ped
+      - *f832  # CIP County Measure B-Street
+      - *f833  # CIP County Measure F-Veh Reg
+      - *f834  # CIP State Gas Tax
+      - *f835  # CIP State SB1
+      - *f836  # CIP Developers Deposit
+      - *f837  # CIP So Liv Spec & AD Close
+      - *f838  # CIP CDBG
+      - *f839  # CIP Human Svcs Facility Fee
+      - {label: "Total Capital Improvement Program Funds", skip: true, subtotal: 1}
+
 rollups:
   # --------------------------------------------------------------------------
   - id: dept-city-council

@@ -127,10 +127,11 @@ func TestFundBalanceIdentityIgnoresReserveIncrease(t *testing.T) {
 //
 // TestTheCommittedCorpusVacuitySplit pins the STATUS, and a status of pass is
 // exactly what a check with nothing to look at would report if it were written
-// to skip instead of to conclude. This pins the population: thirteen balances,
-// over two documents, which is the twelve the Budget Book spine publishes plus
-// the one ACFR p41 does. If a coverage lane adds a fund balance, this number
-// moves and the mover has to decide whether the new balance really does tie.
+// to skip instead of to conclude. This pins the population: 457 balances, over
+// two documents, which is the twelve the Budget Book spine publishes, the one
+// ACFR p41 does, and pp.186-209's 444 -- 111 published rows in each of four
+// years. If a coverage lane adds a fund balance, this number moves and the
+// mover has to decide whether the new balance really does tie.
 func TestFundBalanceIdentityIsNotVacuousOverTheCommittedCorpus(t *testing.T) {
 	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
 	if err != nil {
@@ -141,14 +142,16 @@ func TestFundBalanceIdentityIsNotVacuousOverTheCommittedCorpus(t *testing.T) {
 	if res.Status != StatusPass {
 		t.Fatalf("status = %s (%s), want pass", res.Status, res.Summary)
 	}
-	if res.Subjects != 13 {
-		t.Errorf("subjects = %d, want 13: twelve spine balances and ACFR p41's one",
-			res.Subjects)
+	if res.Subjects != 457 {
+		t.Errorf("subjects = %d, want 457: twelve spine balances, ACFR p41's one and "+
+			"pp.186-209's 444", res.Subjects)
 	}
-	// MEASURED: the spine's six fund groups carry FY2026 into FY2027, and no
-	// other scope prints two years of stocks.
-	if !strings.Contains(res.Summary, "and 6 carry-forward(s)") {
-		t.Errorf("summary %q, want the spine's six carry-forwards held", res.Summary)
+	// MEASURED: the spine's six fund groups carry FY2026 into FY2027, and
+	// pp.186-209's 111 rows each carry three years into the next, less
+	// Community Benefit Fund's FY2024, whose ending p187 leaves blank: 6 + 332,
+	// fund 101's declared break among them.
+	if !strings.Contains(res.Summary, "and 338 carry-forward(s)") {
+		t.Errorf("summary %q, want 338 carry-forwards held", res.Summary)
 	}
 	if !strings.Contains(res.Summary, "across 2 document(s)") {
 		t.Errorf("summary %q does not say how many documents it spans", res.Summary)

@@ -1554,6 +1554,38 @@ categories:
     pages: [85, 89, 93, 97, 101, 102, 105, 108, 111, 115, 119, 120, 124, 125]
 
   # ==================================================================
+  # A FUND'S TOTAL REVENUES AND EXPENSES, pp.186-209
+  #
+  # The fund-balance schedule prints one Revenues and one Expenses figure
+  # per fund and year, each the fund's total and not a category of revenue
+  # or expense: General Fund FY 2025-26 is 157,873,470 under Revenues on
+  # p198, which is p66's TOTAL REVENUES for the General Fund, the sum of
+  # every revenue row p66 prints above it. The page prints no category beneath
+  # them, so these two stand in for the category axis, as
+  # department-funding-sources does for pp.85-125.
+  # ==================================================================
+
+  #@cite p0186 header "... Revenues Transfers In Total Sources"
+  - slug: revenues
+    label: "Revenues"
+    document_term: "Revenues"
+    kinds: [revenue]
+    pages: [186, 188, 190, 192, 194, 196, 198, 200, 202, 204, 206, 208]
+    note: >-
+      A fund's total revenue, not a category of it: summing this with any
+      category of revenue counts the fund's revenue twice.
+
+  #@cite p0187 header "Expenses Transfers Out Transfers Out to CIP ..."
+  - slug: expenses
+    label: "Expenses"
+    document_term: "Expenses"
+    kinds: [expenditure]
+    pages: [187, 189, 191, 193, 195, 197, 199, 201, 203, 205, 207, 209]
+    note: >-
+      A fund's total expenses, not a category of them: summing this with any
+      category of expenditure counts the fund's expenses twice.
+
+  # ==================================================================
   # TRANSFER
   #
   # A transfer is money moving between the city's own funds. It is neither
@@ -1597,7 +1629,7 @@ categories:
     document_term: "Transfers In"
     parent: transfers
     kinds: [transfer_in]
-    pages: [68, 70, 72, 74, 131, 132, 134, 136, 138, 139, 140, 222]
+    pages: [68, 70, 72, 74, 131, 132, 134, 136, 138, 139, 140, 186, 188, 190, 192, 194, 196, 198, 200, 202, 204, 206, 208, 222]
     aliases:
       #@cite p0066 "TRANSFER IN:" — the spine's singular, all-caps, colon form
       - term: "TRANSFER IN:"
@@ -1625,7 +1657,7 @@ categories:
     document_term: "Transfers Out"
     parent: transfers
     kinds: [transfer_out]
-    pages: [69, 71, 73, 75]
+    pages: [69, 71, 73, 75, 187, 189, 191, 193, 195, 197, 199, 201, 203, 205, 207, 209]
     aliases:
       - term: "TRANSFER OUT:"
         pages: [66]
@@ -1658,7 +1690,7 @@ categories:
     document_term: "Transfers Out to CIP"
     parent: transfers
     kinds: [transfer_out]
-    pages: [69, 71, 73, 75, 222]
+    pages: [69, 71, 73, 75, 187, 189, 191, 193, 195, 197, 199, 201, 203, 205, 207, 209, 222]
     note: >-
       A SIBLING of transfers/out, not a subset of it, despite the name. On
       pp. 69/71/73/75 the two are separate columns that both add into Total
@@ -1713,7 +1745,7 @@ categories:
       #@cite p0070 "Fund Balance / Working Capital 7/1/24"
       #@cite p0074 "Est. Fund Balance / Working Capital 7/1/26"
       - term: "Fund Balance / Working Capital"
-        pages: [68, 70, 72, 74]
+        pages: [68, 70, 72, 74, 186, 188, 190, 192, 194, 196, 198, 200, 202, 204, 206, 208]
       #@cite p0041 (ACFR) "Fund Balances- Beginning, as restated    92.10    83.90"
       - term: "Fund Balances- Beginning, as restated"
         pages: [41]
@@ -1756,7 +1788,7 @@ categories:
     pages: [66]
     aliases:
       - term: "Fund Balance / Working Capital"
-        pages: [69, 71, 73, 75]
+        pages: [69, 71, 73, 75, 187, 189, 191, 193, 195, 197, 199, 201, 203, 205, 207, 209]
       #@cite p0041 (ACFR) "Fund Balances- Ending    87.10    92.10"
       - term: "Fund Balances- Ending"
         pages: [41]
@@ -1823,7 +1855,7 @@ categories:
     pages: [66]
     aliases:
       - term: "Reserve Increase/(Use)"
-        pages: [69, 71, 73, 75]
+        pages: [69, 71, 73, 75, 187, 189, 191, 193, 195, 197, 199, 201, 203, 205, 207, 209]
     derived: true
     rationale: >-
       Two schedules, two labels, one line — and unlike most such merges this

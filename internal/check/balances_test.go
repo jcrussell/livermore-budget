@@ -81,8 +81,17 @@ var fund101 = balanceAt{structure.ScopeFundBalancesByFund, "capital", 101, 2026,
 
 // runBalance runs one check over hand-built facts and nothing else: both
 // balance checks read the facts and the rule files and no other input.
+//
+// THE TREE'S EXCEPTIONS ARE WITHHELD unless the test declares its own: they
+// name pp.186-209's balances, on the scope these facts are built on, so over
+// a hand-built store every one of them is stale and a finding.
 func runBalance(t *testing.T, c Check, facts []fact.Fact, files ...*mapping.File) Result {
 	t.Helper()
+	if !declaredBalanceExceptions {
+		prev := balanceExceptions
+		balanceExceptions = func() []structure.BalanceException { return nil }
+		defer func() { balanceExceptions = prev }()
+	}
 	res, err := c.Run(t.Context(), &Subject{Facts: facts, Files: files})
 	if err != nil {
 		t.Fatal(err)
@@ -257,8 +266,12 @@ func withBalanceExceptions(t *testing.T, exceptions ...structure.BalanceExceptio
 	}
 	prev := balanceExceptions
 	balanceExceptions = func() []structure.BalanceException { return exceptions }
-	t.Cleanup(func() { balanceExceptions = prev })
+	declaredBalanceExceptions = true
+	t.Cleanup(func() { balanceExceptions, declaredBalanceExceptions = prev, false })
 }
+
+// declaredBalanceExceptions says a test has declared its own exceptions.
+var declaredBalanceExceptions bool
 
 // carryBreak is the shape of fund 101's real break, ending one year and
 // beginning the next at different figures, declared.

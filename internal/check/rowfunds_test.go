@@ -137,17 +137,18 @@ func TestTheCommittedCorpusRowAnchorsHold(t *testing.T) {
 	// Their rules declare row_labels_name_funds, so the label is resolved whole
 	// and the hand-typed number is checked against it.
 	//
-	// 390 IS THE NUMBER THAT SAYS SO: 40 printed anchors on p76 plus these 78,
+	// 834 IS THE NUMBER THAT SAYS SO: 40 printed anchors on p76 plus these 78,
 	// plus p222's 62 printed fund numbers -- 36 receiving ends and 26 paying --
 	// plus the 210 published project rows of pp.224-235, each opening on its
-	// fund's number.
+	// fund's number, plus pp.186-209's 444 published fund rows, 111 a year,
+	// each a bare fund name under the same declaration.
 	// Asserting the count rather than the absence of the old clause is
 	// deliberate -- a regression that dropped the arm entirely would delete the
 	// clause too, and an absence assertion would pass on it.
-	if res.Subjects != 390 {
-		t.Errorf("the check resolves %d row anchors, want 390: 40 printed on p76, "+
-			"the 78 bare fund labels on pp.85-125, p222's 62 fund numbers and "+
-			"pp.224-235's 210\n%s", res.Subjects, res.Summary)
+	if res.Subjects != 834 {
+		t.Errorf("the check resolves %d row anchors, want 834: 40 printed on p76, "+
+			"the 78 bare fund labels on pp.85-125, p222's 62 fund numbers, "+
+			"pp.224-235's 210 and pp.186-209's 444\n%s", res.Subjects, res.Summary)
 	}
 	// THE WORDING SEARCHED FOR HERE IS THE ONE THE CODE EMITS, checked against
 	// rowfunds.go rather than remembered. A negative assertion over a string no
@@ -163,7 +164,7 @@ func TestTheCommittedCorpusRowAnchorsHold(t *testing.T) {
 	// cf96ed2 removed. This is the assertion that reads what fisc verify prints.
 	for _, want := range []string{
 		"40 printed with a verb phrase",
-		"78 a bare fund name under row_labels_name_funds",
+		"522 a bare fund name under row_labels_name_funds",
 	} {
 		if !strings.Contains(res.Summary, want) {
 			t.Errorf("the PASS line does not keep the two arms apart: no %q in\n%s",
@@ -191,8 +192,9 @@ func TestTheCommittedCorpusRowAnchorsHold(t *testing.T) {
 // forgot the eleven YAML declarations passes every assertion above except the
 // count, and a reader checking "does the new arm work" against a hand-built
 // fixture would see it work. This runs the committed corpus with the flag
-// cleared and asserts the check falls back exactly to where it was: 78 fewer
-// subjects, and the clause naming those rows as unread returns.
+// cleared and asserts the check falls back exactly to where it was: 522 fewer
+// subjects -- pp.85-125's 78 and pp.186-209's 444 -- and the clause naming
+// those rows as unread returns.
 func TestTheBareLabelArmIsWhatTheDeclarationTurnsOn(t *testing.T) {
 	base, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
 	if err != nil {
@@ -208,12 +210,13 @@ func TestTheBareLabelArmIsWhatTheDeclarationTurnsOn(t *testing.T) {
 			"want 312 -- the p76 anchors and the fund numbers of p222 and pp.224-235 "+
 			"alone", res.Subjects)
 	}
-	if !strings.Contains(res.Summary, "a further 78 declared fund(s) sit at an end this "+
+	if !strings.Contains(res.Summary, "a further 522 declared fund(s) sit at an end this "+
 		"check does not read") {
-		t.Errorf("with the declaration cleared the summary does not report the 78 as "+
+		t.Errorf("with the declaration cleared the summary does not report the 522 as "+
 			"rows it makes no claim about:\n%s", res.Summary)
 	}
-	// ELEVEN RULES, NOT SEVENTY-EIGHT ROWS, and both halves of that are asserted
+	// ONE NAME PER RULE, NOT PER ROW -- eleven funding-* rules for 78 rows and
+	// twelve fund-balances-* rules for 444 -- and both halves of that are asserted
 	// because a rewrite once dropped them: replacing the
 	// seenRule dedup with a per-row append left the suite green, so the 11 KB
 	// PASS line this counter exists to prevent could come back unnoticed.
@@ -227,6 +230,9 @@ func TestTheBareLabelArmIsWhatTheDeclarationTurnsOn(t *testing.T) {
 	if n := strings.Count(res.Summary, "funding-"); n != 11 {
 		t.Errorf("the summary names funding-* %d times, want 11 -- one per rule. A "+
 			"per-row list is 78 and is what put this check's PASS line at 11 KB", n)
+	}
+	if n := strings.Count(res.Summary, "fund-balances-fy"); n != 12 {
+		t.Errorf("the summary names fund-balances-* %d times, want 12 -- one per rule", n)
 	}
 }
 

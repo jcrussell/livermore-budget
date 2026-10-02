@@ -68,10 +68,11 @@ func TestEveryScopeInTheStoreIsACut(t *testing.T) {
 	if len(findings) != 0 {
 		t.Errorf("coverage:\n  %s", strings.Join(findings, "\n  "))
 	}
-	if uncovered != 4+54+1050 {
+	if uncovered != 4+54+1050+3548 {
 		t.Errorf("%d facts under the declared residue, want dw-maintenance's 4 Transfers Out "+
 			"cells, pp.80-81's 54 debt-service cells (9 issues, principal and interest, "+
-			"three years) and pp.224-235's 1,050 (210 projects, five years)", uncovered)
+			"three years), pp.224-235's 1,050 (210 projects, five years) and pp.186-209's "+
+			"3,548 (111 rows, eight lines, four years, less four blank cells)", uncovered)
 	}
 	if v, err := structure.NewView("everything", cuts, nil, nil); err == nil {
 		t.Fatalf("a view over every cut was accepted; the cuts are not an antichain and NewView should say so: %+v", v)
@@ -80,11 +81,13 @@ func TestEveryScopeInTheStoreIsACut(t *testing.T) {
 	t.Run("a residue matching no fact is refused, and an undeclared fact is named", func(t *testing.T) {
 		findings, _ := structure.Covered(facts, cuts, nil)
 		joined := strings.Join(findings, "\n  ")
-		if len(findings) != 4+54+1050 || !strings.Contains(joined, "dw-maintenance") ||
+		if len(findings) != 4+54+1050+3548 || !strings.Contains(joined, "dw-maintenance") ||
 			!strings.Contains(joined, "debt-service-principal") ||
-			!strings.Contains(joined, "cip-listing-p0224") {
+			!strings.Contains(joined, "cip-listing-p0224") ||
+			!strings.Contains(joined, "fund-balances-fy2024-p0186") {
 			t.Errorf("with no residue declared, want the 4 Transfers Out facts, the 54 "+
-				"debt-service facts and the 1,050 CIP listing facts named:\n  %s", joined)
+				"debt-service facts, the 1,050 CIP listing facts and the 3,548 fund-balance "+
+				"facts named:\n  %s", joined)
 		}
 		findings, _ = structure.Covered(facts, cuts, append(structure.BudgetBookResidue(),
 			structure.Residue{Scope: "revenue-by-fund", Rule: "nothing", Kind: mapping.KindRevenue, Reason: "invented"}))

@@ -647,6 +647,19 @@ funds:
     type: capital
     constraint_tier: restricted-by-law
     restriction_note: "Surplus from the closeout of Assessment Districts 1993-4 and 2002; dedicated to maintenance and improvements within the district boundaries per the closeout report."
+    aliases:
+      #@cite p0188 "SoLivSpec Plan & AD Closeout 1,387,041 - - 1,387,041"
+      #@cite p0222 "837 583 152,201 708,000 -"
+      - term: "SoLivSpec Plan & AD Closeout"
+        pages: [188, 194, 200, 206]
+        derived: true
+        rationale: >-
+          The appendix name with the spaces inside "So Liv Spec" dropped, which
+          no other fund's name resembles; the fund-balance schedule prints its
+          CIP twin separately as "CIP So Liv Spec & AD Close" (837). The
+          arithmetic agrees: p222 bridges 152,201 and 708,000 from 583 to 837
+          in FY2024-25 and FY2025-26, and those are this row's Transfers Out
+          to CIP on p195 and p201.
 
   # ----------------------------------------------------------- DEBT SERVICE
   #@cite p0260 "2020 COP DEBT SERVICE FUNDS (F. 400, 401)"
@@ -844,6 +857,19 @@ funds:
     type: internal-service
     constraint_tier: committed
     restriction_note: "Capital projects side of Fleet & Equipment Services (fund 730); same internal cost-reimbursement basis."
+    aliases:
+      #@cite p0208 "CIP Fleet & Equipment Svcs - 1,350,000 5,074,000 6,424,000"
+      - term: "CIP Fleet & Equipment Svcs"
+        pages: [190, 196, 202, 208]
+        derived: true
+        rationale: >-
+          "Svcs" abbreviates the appendix's "Services", and the row sits
+          between CIP Water (641) and CIP Facilities (741), where the appendix
+          lists no other fund. The arithmetic agrees: p222 funds 731 from 730
+          and from 101's CIP Reserves - Fleet, 40,000 + 281,000 = 321,000 in
+          FY2025-26 and 612,000 + 4,462,000 = 5,074,000 in FY2026-27, and
+          those are this row's Transfers In on p202 and p208; p222's State
+          Grant Fleet, 250,000 and 1,350,000, are its Revenues.
 
   #@cite p0261 "FACILITIES REHABILITATION (F. 740)"
   - number: 740
@@ -971,6 +997,15 @@ funds:
     type: capital
     constraint_tier: restricted-by-law
     restriction_note: "Capital side of the TVTC 20% fee (511); Tri-Valley Transportation Council fees restricted to street projects."
+    aliases:
+      #@cite p0254 "824 CIP TVTC 20% FEE"
+      #@cite p0208 "CIP TVTC 20% FEE - - 1,750,000 1,750,000"
+      - term: "CIP TVTC 20% FEE"
+        pages: [190, 196, 202, 208, 254, 257]
+        note: >-
+          The appendix's own spelling, which the name above normalizes. p222
+          bridges 330,000 and 1,750,000 from 511 to 824 in FY2025-26 and
+          FY2026-27, and those are this row's Transfers In on p202 and p208.
 
   #@cite p0260 "PARK FEE FUND (F. 512; F. 825)"; p0222 "825 512"
   - number: 825

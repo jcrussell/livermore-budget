@@ -2,6 +2,7 @@ package structure
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/fact"
@@ -161,7 +162,68 @@ type BalanceException struct {
 // BalanceExceptions are the balances the documents print apart from an
 // identity, each pinned on both sides.
 func BalanceExceptions() []BalanceException {
-	return nil
+	return append([]BalanceException{{
+		Identity: BalanceCarryForward,
+		At: BalanceAt{DocID: budgetBookDocID, Scope: ScopeFundBalancesByFund, FundGroup: "capital",
+			Fund: "101", Year: 2024, Basis: mapping.BasisActual},
+		Left:    0,
+		Right:   3_495_436_300,
+		Printed: "Budget Book p189 (General Fund CIP Reserves ends FY2023-24 at -) and p194 (begins FY2024-25 at 34,954,363)",
+		Reason: "p196's footnote 2, keyed to the row on p194, says the CIP reserves fund was created in " +
+			"FY 2024-25 and moved out of the General Fund, and p190's footnote 1 that the CIP specific " +
+			"funds were created in FY 2024-25 with the new ERP system. Neither says where the 34,954,363 " +
+			"came from, and the General Fund begins FY2024-25 at its FY2023-24 ending, 14,740,780, so " +
+			"the schedule shows no balance leaving it",
+		Bead: "fisc-wb2q",
+	}}, fy2024RoundingExceptions()...)
+}
+
+// budgetBookDocID is the Budget Book's registered source id.
+const budgetBookDocID = "livermore-budget-fy2026-2027"
+
+// fy2024RoundingExceptions are the FY2023-24 actual lines on pp.186-191 whose
+// printed figures, each rounded to the dollar on its own, net to a dollar off
+// the change between the printed balances. Measured over every published line
+// of the four years: these 18, all FY2023-24.
+func fy2024RoundingExceptions() []BalanceException {
+	var out []BalanceException
+	for _, r := range []struct {
+		group       string
+		fund, page  int
+		net, change int64
+	}{
+		{"special-revenue", 201, 186, 30093, 30094},   // Housing Successor Agency
+		{"special-revenue", 210, 186, 103261, 103260}, // Horizons
+		{"special-revenue", 220, 186, 44142, 44143},   // Grant - Federal Grant Fund
+		{"special-revenue", 224, 186, -94329, -94330}, // Grant - CDBG
+		{"special-revenue", 225, 186, 42143, 42142},   // Grant - Home Grant
+		{"special-revenue", 240, 186, -76804, -76803}, // Grant - State Grant Fund
+		{"special-revenue", 282, 186, -33382, -33383}, // Host Community Impact Fee
+		{"special-revenue", 284, 186, 17292, 17293},   // Public Art Fee
+		{"special-revenue", 289, 186, -19189, -19190}, // Solid Waste & Recycling Fee
+		{"special-revenue", 290, 186, 113266, 113265}, // Human Services Facility Fee
+		{"special-revenue", 300, 186, 370738, 370739}, // Open Space Acquisition & Mgmt
+		{"special-revenue", 311, 186, 488922, 488923}, // Other LMD
+		{"capital", 510, 188, 576336, 576335},         // Traffic Impact Fee (TIF)
+		{"capital", 512, 188, 941613, 941614},         // Park Fee - AB 1600
+		{"capital", 553, 188, 37842, 37841},           // County Measure F Veh Reg Fee
+		{"capital", 560, 188, -6145, -6144},           // State - Gas Tax
+		{"capital", 561, 188, 650787, 650786},         // State - SB1
+		{"enterprise", 640, 188, 286471, 286472},      // Water
+	} {
+		out = append(out, BalanceException{
+			Identity: BalanceSourcesUses,
+			At: BalanceAt{DocID: budgetBookDocID, Scope: ScopeFundBalancesByFund, FundGroup: r.group,
+				Fund: strconv.Itoa(r.fund), Year: 2024, Basis: mapping.BasisActual},
+			Left:    r.net * 100,
+			Right:   r.change * 100,
+			Printed: fmt.Sprintf("Budget Book pp.%d-%d, fund %d's line", r.page, r.page+1, r.fund),
+			Reason: "FY2023-24 actuals are printed rounded to the dollar figure by figure, so the " +
+				"line's printed flows net to a dollar off its printed balances' difference",
+			Bead: "fisc-3eh2",
+		})
+	}
+	return out
 }
 
 // ValidateBalanceExceptions refuses a declaration that could not hold
