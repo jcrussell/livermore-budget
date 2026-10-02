@@ -486,11 +486,11 @@ rules:
       internal/mapping/acfr_p177_test.go, which reads the page through THIS
       rule with the skips lifted in memory.
 
-      NO column_headers, MEASURED: the page's footnote "(1)" sits on its own
-      -layout line and 2.6pt above its sentence, inside geometry's 4.66pt line
-      tolerance, so the substrates disagree 23 lines to 22 and the pairing
-      refuses -- p41's failure mode. TestACFRDebtPageCannotCarryTheColumnGuard
-      pins it.
+      NO column_headers yet, though the page can carry them: its footnote's
+      "(1)" superscript, which -layout prints on a line of its own, is split
+      back out of its sentence's geometry line, and a header list naming
+      "Income (1)" reads this rule guarded. TestACFRDebtPageCarriesTheColumnGuard
+      pins it; fisc-hn90 declares them.
     parts:
       - page: 177
         # The last word of the four-line column-header block, printed once on

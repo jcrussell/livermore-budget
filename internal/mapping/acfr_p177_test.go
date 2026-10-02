@@ -233,22 +233,32 @@ func TestACFRDebtPerCapitaParsesCleanlyAsAmount(t *testing.T) {
 	}
 }
 
-// TestACFRDebtPageCannotCarryTheColumnGuard pins the measurement behind the
-// rule's missing column_headers: the footnote "(1)" is its own -layout line
-// but clusters into its sentence's geometry line, so the substrates disagree
-// 23 lines to 22 and the pairing refuses. The guard fails CLOSED here — the
-// page reads unguarded and says so, rather than guarded and wrong.
-func TestACFRDebtPageCannotCarryTheColumnGuard(t *testing.T) {
-	r, rule := acfrDebtResolver(t, func(rule *Rule) {
-		rule.Parts[0].ColumnHeaders = columnHeaders{
-			{Text: "Participation"}, {Text: "Payable"}, {Text: "SBITA"},
-			{Text: "Participation"}, {Text: "Purchases"}, {Text: "Loan"},
-			{Text: "SBITA"}, {Text: "Government"}, {Text: "Income"}, {Text: "Capita"},
+// TestACFRDebtPageCarriesTheColumnGuard: p177 prints two "(1)" superscripts.
+// The footnote's own is a line of its own in -layout and clusters into its
+// sentence's geometry line, which splitSuperscripts gives back, so the page
+// pairs. The header line's, after "Income", is on that line in both
+// substrates, so it is a header word like any other: a header list that
+// leaves it out is refused for a column it does not declare, and one naming
+// "Income (1)" reads the committed rule guarded.
+func TestACFRDebtPageCarriesTheColumnGuard(t *testing.T) {
+	headers := func(income string) func(*Rule) {
+		return func(rule *Rule) {
+			rule.Parts[0].ColumnHeaders = columnHeaders{
+				{Text: "Participation"}, {Text: "Payable"}, {Text: "SBITA"},
+				{Text: "Participation"}, {Text: "Purchases"}, {Text: "Loan"},
+				{Text: "SBITA"}, {Text: "Government"}, {Text: income}, {Text: "Capita"},
+			}
 		}
-	})
+	}
+	r, rule := acfrDebtResolver(t, headers("Income (1)"))
+	if _, _, err := r.Values(rule, &rule.Parts[0]); err != nil {
+		t.Fatalf("Values with column_headers: %v", err)
+	}
+
+	r, rule = acfrDebtResolver(t, headers("Income"))
 	_, _, err := r.Values(rule, &rule.Parts[0])
-	if err == nil || !strings.Contains(err.Error(), "23 non-blank lines but the geometry has 22") {
-		t.Fatalf("Values with column_headers: %v, want the pairing refusing "+
-			"23 text lines against 22 geometry lines", err)
+	if err == nil || !strings.Contains(err.Error(), `"(1)" is printed on the header line`) {
+		t.Fatalf("Values with the header line's superscript undeclared: %v, want it "+
+			"refused as a column the part does not declare", err)
 	}
 }

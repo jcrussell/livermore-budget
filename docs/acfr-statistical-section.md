@@ -199,15 +199,14 @@ The other 13 head their columns with text the parser accepts as headers: the
 transposed tables (p173, p176, p177, p180, p194), the snapshots (p178, p181,
 p186, p187, p188, p190-191, p193), and p192, whose headers are "FY2016-17"
 style — rejected by `amount.Parse`, hence declarable. Declarable is
-necessary, not sufficient: fisc-oakx.2 measured p177 and the page **cannot**
-carry the guard after all — its footnote "(1)" is its own `-layout` line but
-sits 2.6pt above its sentence, inside geometry's 4.66pt line tolerance, so the
-substrates disagree 23 lines to 22 and the pairing refuses. That is p41's
-failure mode, which header parseability cannot predict, so each of the other
-12 needs its pairing measured before a rule counts on the guard.
-`TestACFRDebtPageCannotCarryTheColumnGuard` re-measures p177's. The gap over
-the 14 is accepted and tracked as fisc-wiyg; arithmetic per the table above is
-their — and p177's — only guard.
+necessary, not sufficient: a page whose two substrates disagree cannot pair,
+which header parseability cannot predict, so each of these needs its pairing
+measured before a rule counts on the guard. p177 pairs: its footnote "(1)" is
+its own `-layout` line and a superscript the geometry clusters into its
+sentence, which the pairing splits back out, and a header list naming
+"Income (1)" reads the page guarded (`TestACFRDebtPageCarriesTheColumnGuard`).
+The gap over the 14 is accepted and tracked as fisc-wiyg; arithmetic per the
+table above is their only guard.
 
 ## Recommendation: column quantity plus a whole-row override
 

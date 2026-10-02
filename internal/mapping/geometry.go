@@ -54,8 +54,9 @@ type pairing struct {
 // Where they do, each -layout token has exactly one geometry word and the pairing
 // is an offset lookup; where they do not, this fails and the page cannot carry
 // the guard at all. That is a real limit rather than a theoretical one: measured
-// at b62a6c8, on 124 of the corpus's 786 pages the two disagree about how many
-// lines the page has, and on 99 more they disagree about the tokens on a line.
+// at 554e080 with splitSuperscripts in place, on 99 of the corpus's 786 pages
+// the two disagree about how many lines the page has, and on 108 more they
+// disagree about the tokens on a line.
 //
 // ONE OF THEM IS MAPPED: ACFR p41, which has 52 non-blank text lines against 51
 // geometry lines. It declares no column_headers, so this never runs for it. The
@@ -65,13 +66,6 @@ type pairing struct {
 // corpus. Every page that fails refuses here rather than being read
 // approximately.
 func buildPairing(text string, g *geom.Page) (*pairing, error) {
-	lines := g.Lines()
-
-	type textLine struct {
-		body string
-		base int
-		num  int
-	}
 	var printed []textLine
 	base := 0
 	for i, body := range strings.Split(text, "\n") {
@@ -80,6 +74,7 @@ func buildPairing(text string, g *geom.Page) (*pairing, error) {
 		}
 		base += len(body) + 1 // the newline strings.Split consumed
 	}
+	lines := splitSuperscripts(printed, g.Lines())
 
 	if len(printed) != len(lines) {
 		return nil, fmt.Errorf(
@@ -111,6 +106,121 @@ func buildPairing(text string, g *geom.Page) (*pairing, error) {
 		nums[i] = pl.num
 	}
 	return &pairing{words: words, lines: lines, nums: nums}, nil
+}
+
+// textLine is one non-blank line of the page text.
+type textLine struct {
+	body string
+	base int
+	num  int
+}
+
+// splitSuperscripts gives back to its own line every footnote superscript the
+// geometry clustered into the printed line below it.
+//
+// -layout prints a superscript on a line of its own while its y0 sits within
+// Page.Lines' tolerance of the line under it. The committed pages that pair
+// only because of this are pinned by TestFootnoteSuperscriptsTheCorpusReconciles;
+// Budget Book pp.186-196's even pages are among them.
+//
+// It walks the two substrates in step and SPLITS rather than compares: the
+// lines it returns go through buildPairing's token-by-token comparison like
+// any other, which is what refuses a page that disagreed somewhere else.
+func splitSuperscripts(printed []textLine, lines []geom.Line) []geom.Line {
+	out := make([]geom.Line, 0, len(lines))
+	j := 0
+	for i := 0; i < len(printed) && j < len(lines); i++ {
+		if i+1 < len(printed) {
+			if mark, rest, ok := absorbedSuperscript(printed[i].body, printed[i+1].body, lines[j]); ok {
+				out = append(out, mark, rest)
+				i++
+				j++
+				continue
+			}
+		}
+		out = append(out, lines[j])
+		j++
+	}
+	return append(out, lines[j:]...)
+}
+
+// absorbedSuperscript reports whether geometry line l is the text line next
+// plus the lone footnote marker the text line marker prints above it, and if
+// so returns the two lines apart.
+//
+// All of it must hold, and nothing else is reconciled: marker's only token is
+// a footnote marker; l is exactly next's tokens plus one word with that text;
+// and that word is a superscript, shorter than every other word on l and
+// raised above all of them. A full-height or unraised word is a figure the
+// substrates disagree about, and stays refused. ACFR p41's "0.0" fails every
+// arm: it is no marker, it is full height, it sits below its line's top, and
+// the line that absorbed it is the one above it.
+func absorbedSuperscript(marker, next string, l geom.Line) (geom.Line, geom.Line, bool) {
+	toks := tokens(marker, 0)
+	if len(toks) != 1 || !isFootnoteMarker(toks[0].text) {
+		return geom.Line{}, geom.Line{}, false
+	}
+	want := tokens(next, 0)
+	if len(l.Words) != len(want)+1 {
+		return geom.Line{}, geom.Line{}, false
+	}
+	found := -1
+	for k, w := range l.Words {
+		if w.Text != toks[0].text {
+			continue
+		}
+		rest := slices.Delete(slices.Clone(l.Words), k, k+1)
+		if !sameTexts(rest, want) || !isSuperscript(w, rest) {
+			continue
+		}
+		if found >= 0 {
+			return geom.Line{}, geom.Line{}, false
+		}
+		found = k
+	}
+	if found < 0 {
+		return geom.Line{}, geom.Line{}, false
+	}
+	return geom.Line{Words: []geom.Word{l.Words[found]}},
+		geom.Line{Words: slices.Delete(slices.Clone(l.Words), found, found+1)}, true
+}
+
+// isFootnoteMarker accepts "1", "12" and "(1)" -- the forms the reconciled
+// pages print -- and no figure of three digits or more.
+func isFootnoteMarker(s string) bool {
+	if len(s) > 2 && s[0] == '(' && s[len(s)-1] == ')' {
+		s = s[1 : len(s)-1]
+	}
+	if len(s) == 0 || len(s) > 2 {
+		return false
+	}
+	for i := range len(s) {
+		if s[i] < '0' || s[i] > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+func isSuperscript(w geom.Word, line []geom.Word) bool {
+	for _, o := range line {
+		if w.Y1-w.Y0 >= o.Y1-o.Y0 || w.Y0 >= o.Y0 {
+			return false
+		}
+	}
+	return true
+}
+
+func sameTexts(words []geom.Word, toks []token) bool {
+	if len(words) != len(toks) {
+		return false
+	}
+	for i, w := range words {
+		if w.Text != toks[i].text {
+			return false
+		}
+	}
+	return true
 }
 
 // disagreement renders both substrates' view of one line, which is what makes a
