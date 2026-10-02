@@ -175,16 +175,18 @@ func TestTheDeclaredExceptionsAreTheWholeResidual(t *testing.T) {
 		}
 	}
 	// An absence between two peers is the peer pass's to declare.
-	o, err := structure.Peers(facts, cutNamed(t, structure.CutRevenueDetail), cutNamed(t, structure.CutFundBalanceFlows),
-		structure.BudgetBookIdentities(), exceptions)
-	if err != nil {
-		t.Fatalf("peers: %v", err)
-	}
-	if len(o.Findings) != 0 {
-		t.Errorf("revenue-detail + fund-balance-flows: %s", strings.Join(o.Findings, "\n  "))
-	}
-	for _, name := range o.Excused {
-		fired[name] = true
+	for _, peer := range []string{"transfers-detail", structure.CutFundBalanceFlows} {
+		o, err := structure.Peers(facts, cutNamed(t, structure.CutRevenueDetail), cutNamed(t, peer),
+			structure.BudgetBookIdentities(), exceptions)
+		if err != nil {
+			t.Fatalf("peers: %v", err)
+		}
+		if len(o.Findings) != 0 {
+			t.Errorf("revenue-detail + %s: %s", peer, strings.Join(o.Findings, "\n  "))
+		}
+		for _, name := range o.Excused {
+			fired[name] = true
+		}
 	}
 	for _, e := range exceptions {
 		if !fired[e.Name] {

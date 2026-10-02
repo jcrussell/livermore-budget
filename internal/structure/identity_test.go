@@ -200,7 +200,7 @@ func TestAPeerOverlapGoesRed(t *testing.T) {
 	t.Run("an exception excuses an absence only on the side it pins absent", func(t *testing.T) {
 		var gf []structure.Exception
 		for _, e := range structure.BudgetBookExceptions() {
-			if strings.HasPrefix(e.Name, "pp.127-130-print-no-general-fund-transfer-in-") && e.Against == "spine" {
+			if strings.HasPrefix(e.Name, "pp.127-130-print-no-general-fund-transfer-in-p76-") {
 				gf = append(gf, e)
 			}
 		}
@@ -650,5 +650,49 @@ func TestAViewDeclinesAReadingOnlyInItsIdentitysCategories(t *testing.T) {
 	}
 	if admitted["transfers/in"] != 0 || admitted["transfers/out"] != 0 || admitted["transfers/out-to-cip"] == 0 {
 		t.Errorf("the view admits pp.186-209's %v; want only the to-CIP column, the reading p76 does not print", admitted)
+	}
+}
+
+// TestOnlyAnExceptionOnThePeerPairExcusesAPeerAbsence: pp.127-130's missing
+// General Fund Transfers In, declared against the spine at the fund-group
+// level, is not an absence between pp.127-130 and p76; the same pin declared
+// on that pair, at its level, is.
+func TestOnlyAnExceptionOnThePeerPairExcusesAPeerAbsence(t *testing.T) {
+	facts := committedFacts(t)
+	rd, td := allCutNamed(t, structure.CutRevenueDetail), allCutNamed(t, "transfers-detail")
+	var foreign, own []structure.Exception
+	for _, e := range structure.BudgetBookExceptions() {
+		if !strings.HasPrefix(e.Name, "pp.127-130-print-no-general-fund-transfer-in-") || e.Against != structure.CutSpine {
+			continue
+		}
+		foreign = append(foreign, e)
+		e.Against, e.At = td.Name, structure.LevelFundByCategory
+		e.Cells = slices.Clone(e.Cells)
+		for i := range e.Cells {
+			e.Cells[i].Coords = map[structure.Axis]string{structure.AxisFundGroup: "general",
+				structure.AxisFund: "100", structure.AxisCategory: "transfers/in"}
+		}
+		own = append(own, e)
+	}
+	if len(foreign) != 2 {
+		t.Fatalf("%d spine exceptions for the General Fund transfer in, want 2", len(foreign))
+	}
+
+	o, err := structure.Peers(facts, rd, td, structure.BudgetBookIdentities(), foreign)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(o.Findings) != 2 || len(o.Excused) != 0 {
+		t.Fatalf("findings %q, excused %v; want both General Fund cells unexcused by a spine exception",
+			o.Findings, o.Excused)
+	}
+
+	o, err = structure.Peers(facts, rd, td, structure.BudgetBookIdentities(), own)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(o.Findings) != 0 || len(o.Excused) != 2 {
+		t.Fatalf("findings %q, excused %v; want both cells excused by the pair's own exceptions",
+			o.Findings, o.Excused)
 	}
 }

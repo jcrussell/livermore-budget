@@ -152,6 +152,12 @@ func TestFundBalanceIdentityIsNotVacuousOverTheCommittedCorpus(t *testing.T) {
 		"and 1 held apart by declared exceptions") {
 		t.Errorf("summary %q, want 337 carry-forwards tying and 1 held apart", res.Summary)
 	}
+	// MEASURED: the spine's twelve and ACFR p41's one print a change line, and
+	// pp.186-209's 444 print none.
+	if !strings.Contains(res.Summary, "13 of them beginning + change equal to ending to the cent, "+
+		"and 444 checked for completeness only") {
+		t.Errorf("summary %q, want 13 holding the change identity and 444 checked for completeness only", res.Summary)
+	}
 	if !strings.Contains(res.Summary, "across 2 document(s)") {
 		t.Errorf("summary %q does not say how many documents it spans", res.Summary)
 	}

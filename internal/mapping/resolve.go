@@ -736,6 +736,11 @@ func (r *Resolver) checkGap(rule *Rule, p *Part, gap string, rows []Row, i int,
 // figure, so the declaration names lines rather than the run of spaces between
 // them, and a line that is not declared refuses the whole gap.
 //
+// A declared figure that is not a footnote marker (isFootnoteMarker) must be
+// the whole gap: a gap holding such a figure AND any other line stays refused,
+// declared or not, which is what stops the declaration from being a way to
+// admit a row broken over two lines.
+//
 // figures is false only before the first row, where unmapped_text is not
 // honoured; see checkGap.
 func declaredGap(p *Part, trimmed string, used map[string]bool, figures bool) bool {
@@ -744,16 +749,22 @@ func declaredGap(p *Part, trimmed string, used map[string]bool, figures bool) bo
 		return true
 	}
 	var frags []string
+	orphan := false
 	for _, l := range strings.Split(trimmed, "\n") {
 		l = strings.TrimSpace(l)
 		if l == "" {
 			continue
 		}
-		if !slices.Contains(p.WrappedLabels, l) && !slices.Contains(p.Headings, l) &&
-			(!figures || !declaresUnmapped(p, l)) {
-			return false
+		if !slices.Contains(p.WrappedLabels, l) && !slices.Contains(p.Headings, l) {
+			if !figures || !declaresUnmapped(p, l) {
+				return false
+			}
+			orphan = orphan || !isFootnoteMarker(l)
 		}
 		frags = append(frags, l)
+	}
+	if orphan && len(frags) > 1 {
+		return false
 	}
 	for _, f := range frags {
 		used[f] = true
@@ -798,9 +809,8 @@ func findFields(s, tail string) (int, int) {
 // a figure belonging to no row.
 //
 // It takes one whole trimmed line, exactly as the wrapped_labels and headings
-// tests do, so a declaration covers a line and never part of one. A gap
-// holding an orphan figure AND an undeclared line stays refused, which is what
-// stops the declaration from being a way to admit a row.
+// tests do, so a declaration covers a line and never part of one; declaredGap
+// says which gaps such a line may share.
 func declaresUnmapped(p *Part, trimmed string) bool {
 	for _, u := range p.UnmappedText {
 		if u.Text == trimmed {

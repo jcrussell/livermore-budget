@@ -993,7 +993,7 @@ func TestP207IsPlacedByTheColumnGuard(t *testing.T) {
 }
 
 // TestP67KeepsItsFiling pins the guarded page whose figures end closest to the
-// next column's header, which is where a band now ends: Budget Book p67's
+// next column's header, which is where a band ends: Budget Book p67's
 // figures are right-aligned past their headers into a gap only a little wider
 // than the overhang. The room it prints is the measurement.
 func TestP67KeepsItsFiling(t *testing.T) {

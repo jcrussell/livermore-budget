@@ -654,15 +654,13 @@ func validateRule(r *Rule, errf errFunc) error {
 		// delegated that to another page -- which is where the declaration
 		// belongs.
 		//
-		// A WRAPPED LABEL IS A LABEL, and until the amount refusal landed that
-		// was prose rather than a check. Measured before adding it:
-		// wrapped_labels: ["0.0"] on ACFR p41's revenue block PARSED, RESOLVED
-		// all ten rows and tied to the printed total exactly, with nothing
-		// objecting -- so the page's orphan figure could be published under a
-		// declaration asserting the page had wrapped a label onto its own line,
-		// which it had not. That is the shape fisc-hcus exists to give an honest
-		// home to (unmapped_text), and the honest home is worth nothing while
-		// the dishonest one still works.
+		// A WRAPPED LABEL IS A LABEL, and the amount refusal is what holds it
+		// to that: without it, wrapped_labels: ["0.0"] on ACFR p41's revenue
+		// block parses, resolves all ten rows and ties to the printed total
+		// exactly, publishing the page's orphan figure under a declaration that
+		// the page wrapped a label onto its own line, which it did not.
+		// unmapped_text (fisc-hcus) is that figure's honest home, and is worth
+		// nothing while the dishonest one still works.
 		//
 		// Every entry the committed rules declare is refused by amount.Parse,
 		// which loading them re-measures, so this costs them nothing.

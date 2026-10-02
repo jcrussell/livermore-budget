@@ -494,6 +494,29 @@ func TestADeclaredBlankThatIsPrintedFailsOnEveryBalanceScope(t *testing.T) {
 	wantFail(t, runBalance(t, &fundBalanceIdentity{}, facts, file), "declares that cell blank")
 }
 
+// TestABlankChangeIsNotCountedAsHeld: a balance whose scope prints a change
+// line and whose rule declares that cell blank is complete, and beginning +
+// change == ending was never evaluated on it, so the summary counts it apart
+// from the balances that held the identity.
+func TestABlankChangeIsNotCountedAsHeld(t *testing.T) {
+	acfr := measureD
+	acfr.scope = structure.ScopeACFRGeneralFundSummary
+	file := blankRule(t, acfr.scope, blankShape{
+		header: "Change", column: `{fiscal_year: 2027, category: fund-balance/change}`,
+		cells: []string{`{label: "County Measure D", column: "Change", note: "the page leaves it blank"}`},
+	})
+	facts := acfr.facts([]balanceLine{
+		{mapping.KindFundBalance, structure.CategoryFundBalanceBeginning, 100_000},
+		{mapping.KindFundBalance, structure.CategoryFundBalanceEnding, 120_000},
+	})
+	res := runBalance(t, &fundBalanceIdentity{}, facts, file)
+	wantPass(t, res, 1)
+	const want = "0 of them beginning + change equal to ending to the cent, and 1 checked for completeness only"
+	if !strings.Contains(res.Summary, want) {
+		t.Errorf("summary %q, want %q", res.Summary, want)
+	}
+}
+
 // TestABalanceHeldApartIsNotCountedAsHolding is what each summary counts: a
 // balance an exception holds apart breaks the identity, so it is named
 // apart from the balances that satisfy it.

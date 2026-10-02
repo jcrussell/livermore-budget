@@ -49,9 +49,11 @@ var balanceCategories = []string{
 // (structure.FundBalances) has its change held there as ending - beginning, and
 // here only its stocks, the absence of a change line, and its carry-forward.
 //
-// A BALANCE CARRYING ANY OF ITS SCOPE'S LINES MUST CARRY ALL OF THEM, or its
-// rule must declare the cell blank, and that arm is the reason this check can
-// see a dropped row rather than only a wrong one. Skipping an incomplete balance
+// A BALANCE CARRYING ANY OF ITS BEGINNING, CHANGE AND ENDING LINES MUST CARRY
+// EVERY ONE OF THEM structure.FundBalances declares for its scope, or its rule
+// must declare the cell blank, and that arm is the reason this check can see a
+// dropped row rather than only a wrong one. The scope's other declared lines,
+// its flows, are fund-group-sources-equal-uses' to require. Skipping an incomplete balance
 // would fail open in exactly the direction that matters: a rule that stopped
 // publishing its `change` line would leave the identity with nothing to violate.
 // A scope structure.FundBalances does not declare is a finding for the same
@@ -135,7 +137,7 @@ func (*fundBalanceIdentity) Run(_ context.Context, s *Subject) (Result, error) {
 
 	sort.Slice(order, func(i, j int) bool { return order[i].String() < order[j].String() })
 
-	complete := 0
+	held, completeOnly := 0, 0
 	for _, k := range order {
 		b := balances[k]
 		decl, _ := structure.BalanceOf(declared, k.Scope)
@@ -172,10 +174,11 @@ func (*fundBalanceIdentity) Run(_ context.Context, s *Subject) (Result, error) {
 				k, len(b.amounts), len(required), strings.Join(missing, ", ")))
 			continue
 		}
-		complete++
 		if blank || !decl.PrintsChange() {
+			completeOnly++
 			continue
 		}
+		held++
 		beginning, change, ending := b.amounts[project.CategoryFundBalanceBeginning],
 			b.amounts[project.CategoryFundBalanceChange], b.amounts[project.CategoryFundBalanceEnding]
 		if got := beginning + change; got != ending {
@@ -196,10 +199,12 @@ func (*fundBalanceIdentity) Run(_ context.Context, s *Subject) (Result, error) {
 	return conclusion{
 		subjects: len(order),
 		unit:     "fund balances",
-		held: fmt.Sprintf("%d fund balance(s) across %d document(s), each with every balance line "+
-			"its scope prints published or declared blank, beginning + change equal to ending to the "+
-			"cent wherever a change is printed; %d carry-forward(s) each ending where the next "+
-			"year begins, and %d held apart by declared exceptions", complete, len(docs), carried, carriedApart),
+		held: fmt.Sprintf("%d fund balance(s) across %d document(s), each with every beginning, change "+
+			"and ending line its scope prints published or declared blank; %d of them beginning + change "+
+			"equal to ending to the cent, and %d checked for completeness only, printing no change line "+
+			"or declaring it blank; %d carry-forward(s) each ending where the next year begins, and %d "+
+			"held apart by declared exceptions",
+			held+completeOnly, len(docs), held, completeOnly, carried, carriedApart),
 		nothing:  "no fact carries a beginning, change or ending fund balance",
 		findings: findings,
 	}.result(), nil

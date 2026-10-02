@@ -296,7 +296,27 @@ func BudgetBookExceptions() []Exception {
 			Bead:     "fisc-2sd",
 		}
 	}
+	// A peer absence is declared on the peer pair, at its level: the spine's
+	// exceptions above excuse none.
+	p76GFIn := func(year int, c int64, printed string) Exception {
+		return Exception{
+			Name: fmt.Sprintf("pp.127-130-print-no-general-fund-transfer-in-p76-%d", year),
+			Cut:  CutRevenueDetail, Against: "transfers-detail", At: LevelFundByCategory,
+			Cells: []Pin{{Year: year, Basis: "adopted",
+				Coords: map[Axis]string{AxisFundGroup: registry.FundTypeGeneral, AxisFund: "100", AxisCategory: "transfers/in"},
+				Cut:    absent, Against: present(c)}},
+			Residual: c,
+			Printed:  printed + "; pp.127-130 print TOTAL REVENUES and no Transfers In row",
+			Reason: "pp.127-130 print TOTAL REVENUES for the General Fund and no Transfers In row at all, so " +
+				"p76's transfers into the General Fund have no counterpart in this schedule",
+			Bead: "fisc-5gk.3.1",
+		}
+	}
 	return append([]Exception{
+		p76GFIn(2026, 48040000, "p0076.txt:19, :23, :25 and :27, the four transfers to General Fund, "+
+			"19,250 + 250,000 + 77,250 + 133,900 = 480,400"),
+		p76GFIn(2027, 48673500, "p0076.txt:19, :23, :25 and :27, the four transfers to General Fund, "+
+			"19,250 + 250,000 + 79,568 + 137,917 = 486,735"),
 		rounded(CutDepartmentwide, "administrative-services", 1278595300, 1278595400,
 			"p0097.txt:43 and :51, both 12,785,955"),
 		rounded(CutDepartmentwide, "innovation-and-economic-development", 568058900, 568059000,
@@ -470,8 +490,18 @@ func fundBalanceExceptions() []Exception {
 			Bead: "fisc-3eh2",
 		}
 	}
-	const notGFTransfersIn = "pp.127-130 print TOTAL REVENUES for the General Fund and no Transfers In row at all, so " +
-		"pp.186-209's General Fund transfer in has no counterpart in this schedule"
+	gfIn := func(name string, year int, basis string, c int64, printed string) Exception {
+		return Exception{
+			Name: name,
+			Cut:  CutRevenueDetail, Against: CutFundBalanceFlows, At: LevelFundByCategory,
+			Cells:    []Pin{{Year: year, Basis: basis, Coords: transfersIn(registry.FundTypeGeneral, "100"), Against: present(c)}},
+			Residual: c,
+			Printed:  printed + "; pp.127-130 print TOTAL REVENUES and no Transfers In row",
+			Reason: "pp.127-130 print TOTAL REVENUES for the General Fund and no Transfers In row at all, so " +
+				"pp.186-209's General Fund transfer in has no counterpart in this schedule",
+			Bead: "fisc-5gk.3.1",
+		}
+	}
 	return []Exception{
 		carry("capital-beginning-2026", 2026, registry.FundTypeCapital, "fund-balance/beginning", 11071354400, 11071354500,
 			"p0067.txt:40 BEGINNING WORKING CAPITAL and p0200.txt:44 Total Capital Funds, both 110,713,545"),
@@ -631,24 +661,14 @@ func fundBalanceExceptions() []Exception {
 			Bead: "fisc-3eh2",
 		},
 
-		{
-			Name: "pp.127-130-print-no-general-fund-transfer-in-2024",
-			Cut:  CutRevenueDetail, Against: CutFundBalanceFlows, At: LevelFundByCategory,
-			Cells:    []Pin{{Year: 2024, Basis: "actual", Coords: transfersIn(registry.FundTypeGeneral, "100"), Against: present(73745500)}},
-			Residual: 73745500,
-			Printed:  "p0186.txt:10, General Fund Transfers In 737,455; pp.127-130 print TOTAL REVENUES and no Transfers In row",
-			Reason:   notGFTransfersIn,
-			Bead:     "fisc-5gk.3.1",
-		},
-		{
-			Name: "pp.127-130-print-no-general-fund-transfer-in-2025",
-			Cut:  CutRevenueDetail, Against: CutFundBalanceFlows, At: LevelFundByCategory,
-			Cells:    []Pin{{Year: 2025, Basis: "revised", Coords: transfersIn(registry.FundTypeGeneral, "100"), Against: present(91420600)}},
-			Residual: 91420600,
-			Printed:  "p0192.txt:10, General Fund Transfers In 914,206; pp.127-130 print TOTAL REVENUES and no Transfers In row",
-			Reason:   notGFTransfersIn,
-			Bead:     "fisc-5gk.3.1",
-		},
+		gfIn("pp.127-130-print-no-general-fund-transfer-in-2024", 2024, "actual", 73745500,
+			"p0186.txt:10, General Fund Transfers In 737,455"),
+		gfIn("pp.127-130-print-no-general-fund-transfer-in-2025", 2025, "revised", 91420600,
+			"p0192.txt:10, General Fund Transfers In 914,206"),
+		gfIn("pp.127-130-print-no-general-fund-transfer-in-pp.186-209-2026", 2026, "adopted", 48040000,
+			"p0198.txt:10, General Fund Transfers In 480,400"),
+		gfIn("pp.127-130-print-no-general-fund-transfer-in-pp.186-209-2027", 2027, "adopted", 48673500,
+			"p0204.txt:10, General Fund Transfers In 486,735"),
 		{
 			Name: "pp.131-140-print-no-general-fund-cip-reserves-2025",
 			Cut:  CutRevenueDetail, Against: CutFundBalanceFlows, At: LevelFundByCategory,

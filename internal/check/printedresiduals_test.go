@@ -73,6 +73,16 @@ func TestEveryExceptionResidualIsPrintedWhereItSaysItIs(t *testing.T) {
 			[]printed{{186, 10, "737,455"}}, func(v []int64) int64 { return v[0] }},
 		"pp.127-130-print-no-general-fund-transfer-in-2025": {
 			[]printed{{192, 10, "914,206"}}, func(v []int64) int64 { return v[0] }},
+		"pp.127-130-print-no-general-fund-transfer-in-pp.186-209-2026": {
+			[]printed{{198, 10, "480,400"}}, func(v []int64) int64 { return v[0] }},
+		"pp.127-130-print-no-general-fund-transfer-in-pp.186-209-2027": {
+			[]printed{{204, 10, "486,735"}}, func(v []int64) int64 { return v[0] }},
+		"pp.127-130-print-no-general-fund-transfer-in-p76-2026": {
+			[]printed{{76, 19, "19,250"}, {76, 23, "250,000"}, {76, 25, "77,250"}, {76, 27, "133,900"}},
+			func(v []int64) int64 { return v[0] + v[1] + v[2] + v[3] }},
+		"pp.127-130-print-no-general-fund-transfer-in-p76-2027": {
+			[]printed{{76, 19, "19,250"}, {76, 23, "250,000"}, {76, 25, "79,568"}, {76, 27, "137,917"}},
+			func(v []int64) int64 { return v[0] + v[1] + v[2] + v[3] }},
 		"pp.131-140-print-no-general-fund-cip-reserves-2025": {
 			[]printed{{194, 29, "4,125,627"}}, func(v []int64) int64 { return v[0] }},
 		"pp.186-209-carry-no-police-donations-other-financing-2025": {

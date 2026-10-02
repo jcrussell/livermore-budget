@@ -31,7 +31,7 @@ func TestTheCommittedPeersOverlapOnlyByDeclaredIdentity(t *testing.T) {
 		`transfers-detail + fund-balance-flows at fund-by-category: 56 shared cell(s), 56 under identity "a-fund-balance-transfer-is-p76s" carrying $86,301,260.00 on each side`,
 		`cip-transfers-out + fund-balance-flows at fund-by-category: 69 shared cell(s), 69 under identity "a-fund-balance-transfer-to-the-cip-is-p222s" carrying $181,817,740.00 on each side`,
 		"cip-funds + fund-balance-flows at fund-by-category: 0 shared cell(s)",
-		"5 exception(s) excuse a cell one side of an identity has no row for: pp.127-130-print-no-general-fund-transfer-in-2024, pp.127-130-print-no-general-fund-transfer-in-2025, pp.127-130-print-no-general-fund-transfer-in-2026, pp.127-130-print-no-general-fund-transfer-in-2027, pp.131-140-print-no-general-fund-cip-reserves-2025",
+		"7 exception(s) excuse a cell one side of an identity has no row for: pp.127-130-print-no-general-fund-transfer-in-2024, pp.127-130-print-no-general-fund-transfer-in-2025, pp.127-130-print-no-general-fund-transfer-in-p76-2026, pp.127-130-print-no-general-fund-transfer-in-p76-2027, pp.127-130-print-no-general-fund-transfer-in-pp.186-209-2026, pp.127-130-print-no-general-fund-transfer-in-pp.186-209-2027, pp.131-140-print-no-general-fund-cip-reserves-2025",
 		"revenue-detail + cip-funds at fund-by-category: 0 shared cell(s)",
 		"transfers-detail + cip-transfers-out at fund-by-category: 0 shared cell(s)",
 		"transfers-detail + cip-funds at fund-by-category: 0 shared cell(s)",
@@ -82,8 +82,8 @@ func TestThePeerCheckGoesRed(t *testing.T) {
 	mutated := *s
 	mutated.Facts = planted
 	res := resultFor(t, runOne(t, &mutated, &peersOverlapOnlyByDeclaredIdentity{}), "peers-overlap-only-by-declared-identity")
-	// p76 now disagrees with both other readings of the figure: pp.127-140's
-	// and pp.204-209's.
+	// The moved p76 figure disagrees with both other readings of it:
+	// pp.127-140's and pp.204-209's.
 	if res.Status != StatusFail || len(res.Findings) != 2 {
 		t.Fatalf("status %s with %d findings, want two failures:\n  %v", res.Status, len(res.Findings), res.Findings)
 	}

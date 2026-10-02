@@ -269,12 +269,11 @@ type pinnedCell struct {
 }
 
 // absenceDeclared says whether, for every fact of present at key, an
-// exception pins missing absent at the cell that fact falls in at the
-// exception's level, and pins its other side at what present sums to there;
-// and names the cells that did, when every fact was. An exception declared at
-// the pair's own level is between peers and excuses only the pair it names;
-// one at another level is a comparison's, and excuses the absence wherever
-// present prints the figure it pins.
+// exception between the two peers, at their level, pins missing absent at
+// that fact's cell and pins its other side at what present sums to there; and
+// names the cells that did, when every fact was. An exception naming another
+// pair or declared at another level is a comparison's, and excuses no peer
+// absence even where present prints the figure it pins.
 func absenceDeclared(facts []fact.Fact, present, missing Cut, r restriction, key Key, exceptions []Exception,
 	sumAt func(Cut, Level, Key) (Sum, error)) (bool, []pinnedCell, error) {
 	seen := false
@@ -302,7 +301,7 @@ func absenceDeclared(facts []fact.Fact, present, missing Cut, r restriction, key
 				default:
 					continue
 				}
-				if e.At == key.Level && otherCut != present.Name {
+				if e.At != key.Level || otherCut != present.Name {
 					continue
 				}
 				got, err := sumAt(present, e.At, k)

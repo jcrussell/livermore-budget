@@ -253,3 +253,30 @@ rules:
 		}
 	}
 }
+
+// TestAFigureSharesAGapOnlyAsAFootnoteMarker: a row broken over two lines
+// ("Foo Fund" then "1,234") declared as heading plus unmapped figure would drop
+// the row's figure, so a declared figure shares a gap with other declared
+// lines only when it is a footnote marker. Alone, a declared figure is still
+// the whole gap and is admitted.
+func TestAFigureSharesAGapOnlyAsAFootnoteMarker(t *testing.T) {
+	p := &Part{
+		Headings:     []string{"Foo Fund", "Capital Improvement Program Funds"},
+		UnmappedText: []unmappedText{{Text: "1,234"}, {Text: "1"}},
+	}
+	for _, tc := range []struct {
+		name, gap string
+		want      bool
+	}{
+		{"broken row", "Foo Fund\n1,234", false},
+		{"broken row, figure first", "1,234\nFoo Fund", false},
+		{"marker above heading", "1\nCapital Improvement Program Funds", true},
+		{"lone figure", "1,234", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := declaredGap(p, tc.gap, map[string]bool{}, true); got != tc.want {
+				t.Errorf("declaredGap(%q) = %v, want %v", tc.gap, got, tc.want)
+			}
+		})
+	}
+}
