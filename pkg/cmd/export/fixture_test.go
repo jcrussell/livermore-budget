@@ -35,10 +35,10 @@ var clientFixtureColumns = []string{"fy2026-adopted", "fy2027-adopted"}
 // clientSubset is the declared subset of the store the client fixtures are
 // exported from, keyed by node id: a fund group kept whole, or one fund of a
 // group that is not, each with the failure mode it is kept for. Every other
-// fund is dropped from fundAxisScopes and from nothing else. Every group the
-// budget years print is kept whole, because a group cut short draws a window
-// the served site never draws; TestTheClientSubsetDrawsEveryGroupWhole holds
-// that.
+// fund is dropped from fundAxisScopes and from nothing else. Every group with
+// a figure other than zero in a budget year is kept whole, because a group cut
+// short draws a window the served site never draws;
+// TestTheClientSubsetDrawsEveryGroupWhole holds that.
 var clientSubset = map[string]string{
 	"fund-group/general": "fund/100 and its divisions, the only fund pp.167-170 decompose, " +
 		"which most of the client suite opens",
@@ -509,9 +509,11 @@ func TestTheClientFixtureChecksCanFail(t *testing.T) {
 		return nil
 	}
 	firstPage := func(cfg map[string]any) map[string]any {
-		for _, d := range cfg["docs"].(map[string]any) {
-			for _, p := range d.(map[string]any)["pages"].(map[string]any) {
-				return p.(map[string]any)
+		docs := cfg["docs"].(map[string]any)
+		for _, id := range slices.Sorted(maps.Keys(docs)) {
+			pages := docs[id].(map[string]any)["pages"].(map[string]any)
+			for _, n := range slices.Sorted(maps.Keys(pages)) {
+				return pages[n].(map[string]any)
 			}
 		}
 		t.Fatal("the config links no page")
@@ -546,9 +548,10 @@ func TestTheClientFixtureChecksCanFail(t *testing.T) {
 		}},
 		{"a page the fixture does not cite", "not the one Go writes", func(t *testing.T) []byte {
 			return reconfigured(t, func(cfg map[string]any) {
-				for _, d := range cfg["docs"].(map[string]any) {
-					pages := d.(map[string]any)["pages"].(map[string]any)
-					for n := range pages {
+				docs := cfg["docs"].(map[string]any)
+				for _, id := range slices.Sorted(maps.Keys(docs)) {
+					pages := docs[id].(map[string]any)["pages"].(map[string]any)
+					for _, n := range slices.Sorted(maps.Keys(pages)) {
 						delete(pages, n)
 						return
 					}
@@ -682,8 +685,8 @@ func TestTheClientFixtureChecksCanFail(t *testing.T) {
 			spine(col)["caveats"] = []any{}
 		}, ""},
 		{"a fact of another year", " of FY", func(col map[string]any) {
-			for id, f := range facts {
-				if f.FiscalYear != 2026 {
+			for _, id := range slices.Sorted(maps.Keys(facts)) {
+				if facts[id].FiscalYear != 2026 {
 					firstLink(col)["fact_ids"] = []any{id}
 					return
 				}
@@ -848,15 +851,21 @@ func TestTheClientSubsetIsDeclaredAgainstTheStore(t *testing.T) {
 	t.Logf("the client subset keeps %d of the store's %d facts", kept, len(facts))
 }
 
-// TestTheClientSubsetDrawsEveryGroupWhole requires every fund group to send
-// the same out through fund-flows over the subset as over the store. A group
-// cut short draws its window with the spine's whole figure in and only its
-// kept funds out, which no step licenses and the client does not refuse, so
-// the client tests would measure a chart the served site never draws.
+// decompositions are the schedules that open a fund group or a fund, which
+// the cut reaches through fundAxisScopes.
+var decompositions = []string{project.FundFlowsProjection, project.DepartmentFundingProjection}
+
+// TestTheClientSubsetDrawsEveryGroupWhole requires every schedule that opens a
+// fund group or a fund to draw the same marks and links, figures included,
+// over the subset as over the store. A group cut short draws its window with
+// the spine's whole figure in and only its kept funds out, which no step
+// licenses and the client does not refuse, so the client tests would measure
+// a chart the served site never draws. Marks and links rather than a group's
+// outflow, because a fund that only spends in a year has no inflow to miss.
 func TestTheClientSubsetDrawsEveryGroupWhole(t *testing.T) {
 	full, subset := exportedSite(t), clientExport(t)
 	for _, stem := range clientFixtureColumns {
-		outflow := func(dir string) map[string]int64 {
+		read := func(dir string) export.ColumnDoc {
 			t.Helper()
 			raw, err := os.ReadFile(filepath.Join(dir, stem+".json")) // #nosec G304 -- a temp dir this test wrote.
 			if err != nil {
@@ -866,23 +875,21 @@ func TestTheClientSubsetDrawsEveryGroupWhole(t *testing.T) {
 			if err := json.Unmarshal(raw, &col); err != nil {
 				t.Fatal(err)
 			}
-			out := map[string]int64{}
-			for i, l := range col.Schedules[project.FundFlowsProjection].Links {
-				if l.From < 0 || l.From >= len(col.Nodes) {
-					t.Fatalf("%s fund-flows link %d leaves node %d of %d", stem, i, l.From, len(col.Nodes))
-				}
-				if from := col.Nodes[l.From]; from.Role == project.RoleFundGroup {
-					out[from.ID] += l.ValueCents
-				}
+			return col
+		}
+		f, s := read(full), read(subset)
+		for _, name := range decompositions {
+			if len(f.Schedules[name].Links) == 0 {
+				t.Fatalf("%s's %s draws nothing, so this test holds nothing of it", stem, name)
 			}
-			return out
-		}
-		want, got := outflow(full), outflow(subset)
-		if len(want) == 0 {
-			t.Fatalf("%s's fund-flows sends nothing out of a fund group, so this test holds nothing", stem)
-		}
-		if diff := cmp.Diff(want, got); diff != "" {
-			t.Errorf("%s: a fund group sends other cents out over the subset (-store +subset):\n%s", stem, diff)
+			fNodes, fLinks := scheduleOf(f, f.Schedules[name], true)
+			sNodes, sLinks := scheduleOf(s, s.Schedules[name], true)
+			if diff := cmp.Diff(fNodes, sNodes); diff != "" {
+				t.Errorf("%s %s draws other marks over the subset (-store +subset):\n%s", stem, name, diff)
+			}
+			if diff := cmp.Diff(fLinks, sLinks); diff != "" {
+				t.Errorf("%s %s draws other links over the subset (-store +subset):\n%s", stem, name, diff)
+			}
 		}
 	}
 }

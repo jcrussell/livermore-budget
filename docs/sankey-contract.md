@@ -345,12 +345,12 @@ error — and the disclosure travels on the two fields beside it instead:
 one constructor in `internal/project`: fund-flows, department-funding and the
 two transfer networks, in every column each publishes. The tier is a property
 of the fund and not of the schedule, so a column's node table states it once;
-measured at 1529ae5 on the `fy2026-adopted.json` that `fisc export` writes, 86 of its 430 nodes carry
-one (71 `restricted-by-law`, 12 `committed`, 2 `unknown`, 1 `discretionary`),
-and 83 of 422 on FY2027's. `sankey` and `sankey-2027` publish none: the spine
-classifies no node, which is `""`'s meaning below. Read *non-empty* rather than
-*present*: there is no `omitempty` here, so every node in every document
-carries the key.
+measured at 1529ae5 on the `fy2026-adopted.json` that `fisc export` writes, 86
+of its 430 nodes carry one (71 `restricted-by-law`, 12 `committed`, 2 `unknown`,
+1 `discretionary`), and 83 of 422 on FY2027's. `sankey` and `sankey-2027`
+publish none: the spine classifies no node, which is `""`'s meaning below. Read
+*non-empty* rather than *present*: there is no `omitempty` here, so every node
+in every document carries the key.
 
 What those documents owed, and carry: `source_note` and `rationale` on every
 tier-bearing node; the disclosure sentence in `metadata.caveats`, held as a

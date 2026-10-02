@@ -134,14 +134,14 @@ cells `DrillStep.Gaps` exists to keep visibly unreconciled, so a schedule keeps
 its own link set.
 
 What a node's table entry carries was measured rather than assumed, over
-the `fy2026-adopted.json` and `fy2027-adopted.json` that `fisc export` writes at 1529ae5. Of the
-123 and 121 nodes two or more schedules draw, none disagree about `id`,
-`label`, `tier`, `role` or `derived`; none disagree about `constraint_tier`,
-`rationale` or `source_note`, because every builder annotates a fund node
-through one constructor from `data/funds.yaml` — before that constructor, 30
-and 29 fund nodes carried a tier in two schedules and none in the transfer
-networks, an absence and not a second reading. So the table carries the
-identity and the annotations, and `ColumnsOf` refuses a schedule that
+the `fy2026-adopted.json` and `fy2027-adopted.json` that `fisc export` writes at
+1529ae5. Of the 123 and 121 nodes two or more schedules draw, none disagree
+about `id`, `label`, `tier`, `role` or `derived`; none disagree about
+`constraint_tier`, `rationale` or `source_note`, because every builder annotates
+a fund node through one constructor from `data/funds.yaml` — before that
+constructor, 30 and 29 fund nodes carried a tier in two schedules and none in
+the transfer networks, an absence and not a second reading. So the table carries
+the identity and the annotations, and `ColumnsOf` refuses a schedule that
 disagrees about any table field rather than merging.
 
 `parent` differs on 70 and 69 of those shared nodes, and stays the schedule's:
