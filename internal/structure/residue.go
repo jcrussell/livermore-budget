@@ -34,8 +34,29 @@ func BudgetBookResidue() []Residue {
 			"FY2023-24 actual and a printed dash in every later column. It is one division's " +
 			"transfer and not a decomposition of pp.66-67's citywide TRANSFER OUT, so the " +
 			"departmentwide cut prints expenditure only and this row sits in no cut",
+	}, {
+		Scope:  ScopeDebtServiceByIssue,
+		Rule:   "debt-service-principal",
+		Kind:   mapping.KindExpenditure,
+		Reason: debtServiceByIssueResidue,
+	}, {
+		Scope:  ScopeDebtServiceByIssue,
+		Rule:   "debt-service-interest",
+		Kind:   mapping.KindExpenditure,
+		Reason: debtServiceByIssueResidue,
 	}}
 }
+
+// debtServiceByIssueResidue is why pp.80-81 sit in no cut. Their axis is the
+// debt issue, which no other schedule prints, and their grand total is not
+// pp.172-183's Debt Services summed over funds: the FY2024-25 column differs
+// by exactly the Interfund Loan's 117,500, which no fund's Debt Services row
+// carries, and FY2025-26 by 119,578 over four funds.
+const debtServiceByIssueResidue = "pp.80-81 print debt service by issue, an axis no other " +
+	"schedule has, and their grand total is not the funds' Debt Services on pp.172-183: " +
+	"FY2024-25 differs by the Interfund Loan's 117,500, which no fund's Debt Services " +
+	"row carries, and FY2025-26 by 119,578 over funds 224, 402, 600 and 740. Each " +
+	"column ties to the schedule's own printed Total"
 
 // Covered holds a store to its cuts: every fact is admitted by exactly one
 // cut, or by no cut and exactly one declared residue, and every residue

@@ -6319,6 +6319,137 @@ rules:
       - {label: "Wages & Benefits", category: wages-and-benefits}
       - {label: "Services & Supplies", category: services-and-supplies}
 
+  # ==========================================================================
+  # DEBT SERVICE BUDGET, pp.80-81: principal and interest by debt issue.
+  #
+  # p80 prints the issues, labelled, with FY2024-25's Principal, Interest and
+  # Total; p81 continues the same rows for FY2025-26 and FY2026-27 with nothing
+  # but figures, so its row identity is positional against p80, as p67's is
+  # against p66. A column cannot carry a category, so principal and interest are
+  # two rules over the same block, each reading its own column and skipping the
+  # rest. The Total column is Principal plus Interest and publishes nothing:
+  # publishing it too would count every issue twice.
+  #
+  # p80's FY2024-25 column is the REVISED year. Measured: each issue's printed
+  # Total equals the revised Debt Services row of one fund on pp.172-183 --
+  # 2020A COP fund 400, 2020B COP fund 401, 2022 COP fund 402, HUD Loans fund
+  # 224, the Lease/Purchase Loan fund 740, Airport's two rows fund 600, Water's
+  # fund 640 -- all to the dollar. The Interfund Loan's 117,500 is in no fund's
+  # Debt Services row.
+  #
+  # The rows carry no fund. Only the business-type headings name one; the
+  # governmental issues name none, and a grain is per rule.
+  #
+  # "2020B Certificates of Participation" prints three times, once per payer,
+  # and a rule's row labels are unique, so the Airport and Water rows take the
+  # heading lines above them into their labels, as printed. "Actitivies" is
+  # the page's spelling.
+  #
+  # "Banc of America Equipment" under Internal Service Fund prints a dash in
+  # every column and "Lease/Purchase Loan" the figures on the next line; the
+  # business-type block prints the same loan on one line. The dash line is
+  # skipped rather than published as a separate zero-dollar issue: either
+  # reading leaves every total unchanged, and only one of them is a row.
+  #
+  # Both subtotals are skip rows, consumed and not published; the grand Total
+  # is the stated total. On p80 the block stops at "Total  ", the grand Total's
+  # label followed by the run of spaces before its figure: the subtotals' labels
+  # follow "Total" with one space. On p81 nothing but "$" marks the total, and
+  # the first row is "$"-prefixed too, so stop_at_ordinal counts it: six "$" on
+  # the first row, six on each subtotal, and the grand Total's is the 19th.
+  #
+  # Not mapped: the DEBT SERVICE REQUIREMENTS schedule below each block, which
+  # prints future years' requirements (fisc-nvw is where a forecast may live).
+  # --------------------------------------------------------------------------
+  - id: debt-service-principal
+    kind: expenditure
+    basis: adopted
+    scope: debt-service-by-issue
+    grain: category
+    units: dollars
+    total_row: "Total"
+    parts:
+      - page: 80
+        section: "Governmental Activities:"
+        stop_at: "Total  "
+        column_headers: ["Principal", "Interest", "Total"]
+        columns:
+          - {fiscal_year: 2025, basis: revised}
+          - {skip: true}
+          - {skip: true}
+      - page: 81
+        labels_from: 80
+        section: "Total\n"
+        section_ordinal: 1
+        stop_at: "$"
+        stop_at_ordinal: 19
+        column_headers: ["Principal", "Interest", "Total", "Principal", "Interest", "Total"]
+        columns:
+          - {fiscal_year: 2026}
+          - {skip: true}
+          - {skip: true}
+          - {fiscal_year: 2027}
+          - {skip: true}
+          - {skip: true}
+    rows:
+      - {label: "2020A Certificates of Participation", category: debt-services/principal}
+      - {label: "2020B Certificates of Participation", category: debt-services/principal}
+      - {label: "2022 Certificates of Participation", category: debt-services/principal}
+      - {label: "Housing and Urban Development Loans", category: debt-services/principal}
+      - {label: "Interfund Loan", category: debt-services/principal}
+      - {label: "Internal Service Fund\nBanc of America Equipment", skip: true}
+      - {label: "Lease/Purchase Loan", category: debt-services/principal}
+      - {label: "Total Governmental Activities", skip: true}
+      - {label: "Business-Type Actitivies:\nAirport\n2020B Certificates of Participation", category: debt-services/principal}
+      - {label: "Banc of America Equipment Lease/Purchase Loan", category: debt-services/principal}
+      - {label: "Water\n2020B Certificates of Participation", category: debt-services/principal}
+      - {label: "Total Business-Type Activities", skip: true}
+
+  # --------------------------------------------------------------------------
+  - id: debt-service-interest
+    kind: expenditure
+    basis: adopted
+    scope: debt-service-by-issue
+    grain: category
+    units: dollars
+    total_row: "Total"
+    parts:
+      - page: 80
+        section: "Governmental Activities:"
+        stop_at: "Total  "
+        column_headers: ["Principal", "Interest", "Total"]
+        columns:
+          - {skip: true}
+          - {fiscal_year: 2025, basis: revised}
+          - {skip: true}
+      - page: 81
+        labels_from: 80
+        section: "Total\n"
+        section_ordinal: 1
+        stop_at: "$"
+        stop_at_ordinal: 19
+        column_headers: ["Principal", "Interest", "Total", "Principal", "Interest", "Total"]
+        columns:
+          - {skip: true}
+          - {fiscal_year: 2026}
+          - {skip: true}
+          - {skip: true}
+          - {fiscal_year: 2027}
+          - {skip: true}
+    rows:
+      - {label: "2020A Certificates of Participation", category: debt-services/interest}
+      - {label: "2020B Certificates of Participation", category: debt-services/interest}
+      - {label: "2022 Certificates of Participation", category: debt-services/interest}
+      - {label: "Housing and Urban Development Loans", category: debt-services/interest}
+      - {label: "Interfund Loan", category: debt-services/interest}
+      - {label: "Internal Service Fund\nBanc of America Equipment", skip: true}
+      - {label: "Lease/Purchase Loan", category: debt-services/interest}
+      - {label: "Total Governmental Activities", skip: true}
+      - {label: "Business-Type Actitivies:\nAirport\n2020B Certificates of Participation", category: debt-services/interest}
+      - {label: "Banc of America Equipment Lease/Purchase Loan", category: debt-services/interest}
+      - {label: "Water\n2020B Certificates of Participation", category: debt-services/interest}
+      - {label: "Total Business-Type Activities", skip: true}
+
 rollups:
   # --------------------------------------------------------------------------
   - id: dept-city-council

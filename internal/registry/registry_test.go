@@ -361,8 +361,9 @@ func TestLoadRealRegistries(t *testing.T) {
 
 	cats := r.Categories()
 	// Plus one line entry per distinct revenue row pp.127-140 print: 101,
-	// measured off facts/facts.jsonl on 2026-09-12.
-	if got, want := len(cats), 41+101; got != want {
+	// measured off facts/facts.jsonl on 2026-09-12. Plus pp.80-81's principal
+	// and interest columns under debt-services.
+	if got, want := len(cats), 41+101+2; got != want {
 		t.Errorf("len(Categories()) = %d, want %d", got, want)
 	}
 	if got, want := len(r.FundGroups()), 7; got != want {
@@ -744,7 +745,7 @@ func TestEveryRevenueLineIsPrintedOnItsPages(t *testing.T) {
 
 	var lines, claims int
 	for _, c := range r.Categories() {
-		if c.Parent == "" || !r.Assignable(c.Parent) {
+		if c.Parent == "" || !r.Assignable(c.Parent) || !slices.Contains(c.Kinds, "revenue") {
 			continue
 		}
 		lines++

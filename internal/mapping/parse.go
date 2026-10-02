@@ -1385,6 +1385,16 @@ func validatePartAnchors(r *Rule, p *Part, errf errFunc) error {
 			"section_ordinal picks which occurrence of section starts the "+
 				"block, so it means nothing without one")
 	}
+	if p.StopAtOrdinal < 0 {
+		return errf(r.ID, field("stop_at_ordinal"), "is %d; ordinals count from 1",
+			p.StopAtOrdinal)
+	}
+	if p.StopAtOrdinal > 0 && p.StopAt == "" {
+		return cmdutil.WithHint(
+			errf(r.ID, field("stop_at_ordinal"), "is set but stop_at is empty"),
+			"stop_at_ordinal picks which occurrence of stop_at ends the block, "+
+				"so it means nothing without one")
+	}
 	if len(p.ColumnHeaders) == 0 {
 		return nil
 	}

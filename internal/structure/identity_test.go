@@ -48,6 +48,11 @@ func TestEveryScopeInTheStoreIsACut(t *testing.T) {
 	for _, c := range cuts {
 		covered[c.Scope] = true
 	}
+	// A scope no cut selects is held by its declared residue instead, which
+	// Covered below holds fact by fact.
+	for _, r := range structure.BudgetBookResidue() {
+		covered[r.Scope] = true
+	}
 	for sc := range scopes {
 		if !covered[sc] {
 			t.Errorf("scope %q is in the store and no cut selects it", sc)
@@ -63,8 +68,10 @@ func TestEveryScopeInTheStoreIsACut(t *testing.T) {
 	if len(findings) != 0 {
 		t.Errorf("coverage:\n  %s", strings.Join(findings, "\n  "))
 	}
-	if uncovered != 4 {
-		t.Errorf("%d facts under the declared residue, want dw-maintenance's 4 Transfers Out cells", uncovered)
+	if uncovered != 4+54 {
+		t.Errorf("%d facts under the declared residue, want dw-maintenance's 4 Transfers Out "+
+			"cells and pp.80-81's 54 debt-service cells (9 issues, principal and interest, "+
+			"three years)", uncovered)
 	}
 	if v, err := structure.NewView("everything", cuts, nil, nil); err == nil {
 		t.Fatalf("a view over every cut was accepted; the cuts are not an antichain and NewView should say so: %+v", v)
@@ -72,8 +79,11 @@ func TestEveryScopeInTheStoreIsACut(t *testing.T) {
 
 	t.Run("a residue matching no fact is refused, and an undeclared fact is named", func(t *testing.T) {
 		findings, _ := structure.Covered(facts, cuts, nil)
-		if len(findings) != 4 || !strings.Contains(findings[0], "dw-maintenance") {
-			t.Errorf("with no residue declared, want the 4 Transfers Out facts named:\n  %s", strings.Join(findings, "\n  "))
+		joined := strings.Join(findings, "\n  ")
+		if len(findings) != 4+54 || !strings.Contains(joined, "dw-maintenance") ||
+			!strings.Contains(joined, "debt-service-principal") {
+			t.Errorf("with no residue declared, want the 4 Transfers Out facts and the 54 "+
+				"debt-service facts named:\n  %s", joined)
 		}
 		findings, _ = structure.Covered(facts, cuts, append(structure.BudgetBookResidue(),
 			structure.Residue{Scope: "revenue-by-fund", Rule: "nothing", Kind: mapping.KindRevenue, Reason: "invented"}))

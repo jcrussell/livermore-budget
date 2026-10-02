@@ -546,6 +546,18 @@ type Part struct {
 	// at, which is the same discipline OmittedRows uses.
 	SectionOrdinal int `yaml:"section_ordinal"`
 
+	// StopAtOrdinal picks which occurrence of StopAt, counted from the block's
+	// start, ends the block, 1 based. Absent keeps StopAt's first occurrence.
+	//
+	// It exists for a page with no text between its figures. Budget Book p81
+	// continues p80's debt-service rows with nothing but amounts, and its first
+	// row is "$"-prefixed exactly as its total is, so the "$" that p67's parts
+	// stop at is the wrong line on p81 and no other string marks the total.
+	// The ordinal is a count the author made of the page, and a wrong one
+	// moves the block's end onto a row line, where the value count or the
+	// stated total refuses it.
+	StopAtOrdinal int `yaml:"stop_at_ordinal"`
+
 	// LabelsFrom names an earlier part's page when this part carries no row
 	// labels of its own. Budget Book p67 is exactly this: it continues p66's
 	// schedule for four more fund groups with nothing but numbers, so row

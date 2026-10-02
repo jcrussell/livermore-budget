@@ -223,7 +223,13 @@ func (r *Resolver) block(rule *Rule, p *Part) (*block, error) {
 	}
 
 	end := len(text)
-	if p.StopAt != "" {
+	if p.StopAtOrdinal > 0 {
+		at, err := r.anchor(rule, p, "stop_at", text, start, p.StopAt, p.StopAtOrdinal)
+		if err != nil {
+			return nil, err
+		}
+		end = at
+	} else if p.StopAt != "" {
 		i := strings.Index(text[start:], p.StopAt)
 		if i < 0 {
 			return nil, &resolveError{DocID: r.file.DocID, RuleID: rule.ID, Page: p.Page,
@@ -810,7 +816,13 @@ func recognize(q Quantity, tok string) error {
 func (r *Resolver) positionalValues(rule *Rule, p *Part, blk *block, guard *columnGuard) ([]Value, error) {
 	rows, rowIndex := canonicalRows(rule, p)
 	ncols := len(p.Columns)
-	toks := tokens(blk.Text, blk.Start)
+	// The marks are dropped here as on a labelled row: p81's first row and its
+	// subtotals print "$" detached from each figure, inside the block.
+	toks, err := dropCurrencyMarks(tokens(blk.Text, blk.Start))
+	if err != nil {
+		return nil, cmdutil.WithHint(&resolveError{DocID: r.file.DocID, RuleID: rule.ID,
+			Page: p.Page, Field: "parts", Err: ErrNotFound, Msg: err.Error()}, currencyHint)
+	}
 	want := rule.expectedValues(p)
 
 	if len(toks) != want {

@@ -1317,6 +1317,27 @@ categories:
       near-miss this file exists to prevent. spine.yaml was migrated to the
       plural when this file landed.
 
+  #@cite p0080 "Principal             Interest              Total"
+  - slug: debt-services/principal
+    label: "Debt Principal"
+    document_term: "Principal"
+    parent: debt-services
+    kinds: [expenditure]
+    pages: [80, 81]
+    note: >-
+      The Debt Service Budget's principal column, one row per debt issue.
+      Principal plus interest is the issue's printed Total.
+
+  #@cite p0080 "Principal             Interest              Total"
+  - slug: debt-services/interest
+    label: "Debt Interest"
+    document_term: "Interest"
+    parent: debt-services
+    kinds: [expenditure]
+    pages: [80, 81]
+    note: >-
+      The Debt Service Budget's interest column, one row per debt issue.
+
   # ==================================================================
   # EXPENDITURE — the ACFR's function axis
   #
