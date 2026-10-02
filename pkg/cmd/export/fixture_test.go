@@ -35,7 +35,10 @@ var clientFixtureColumns = []string{"fy2026-adopted", "fy2027-adopted"}
 // clientSubset is the declared subset of the store the client fixtures are
 // exported from, keyed by node id: a fund group kept whole, or one fund of a
 // group that is not, each with the failure mode it is kept for. Every other
-// fund is dropped from fundAxisScopes and from nothing else.
+// fund is dropped from fundAxisScopes and from nothing else. Every group the
+// budget years print is kept whole, because a group cut short draws a window
+// the served site never draws; TestTheClientSubsetDrawsEveryGroupWhole holds
+// that.
 var clientSubset = map[string]string{
 	"fund-group/general": "fund/100 and its divisions, the only fund pp.167-170 decompose, " +
 		"which most of the client suite opens",
@@ -43,25 +46,21 @@ var clientSubset = map[string]string{
 		"draws all of it out and requires no two labels to stack, which only its real count tests; " +
 		"fund/240 must fold into its tail; fund/207 and fund/290 print in FY2026 only, so the years' tails differ",
 	"fund-group/capital": "the second column the tier-3 cap folds: site/fold.test.mjs requires the cap " +
-		"to remove sub-pixel ribbons its whole column draws, which fewer funds than the cap never draw; " +
-		"fund/513, fund/551 and fund/552 run past the gutter (site/layout.test.mjs OVER_GUTTER)",
-	"fund/600": "pays department/innovation-and-economic-development, whose label runs past " +
-		"the gutter only in the department window fund/600 opens (OVER_GUTTER)",
-	"fund/610": "with fund/622 and fund/642, the enterprise funds fund-flows carries transfers/in " +
-		"into, so the enterprise residual is all-leaving (site/columns.test.mjs)",
-	"fund/622": "see fund/610",
-	"fund/642": "see fund/610",
-	"fund/623": "an enterprise fund whose label runs past the gutter (site/layout.test.mjs OVER_GUTTER)",
-	"fund/730": "an internal-service fund whose label runs past the gutter (OVER_GUTTER)",
+		"to remove sub-pixel ribbons its whole column draws; fund/513, fund/551 and fund/552 run past " +
+		"the gutter (site/layout.test.mjs OVER_GUTTER)",
+	"fund-group/enterprise": "fund-flows carries transfers/in into fund/610, fund/622 and fund/642, so " +
+		"the enterprise residual is all-leaving (site/columns.test.mjs); fund/600 opens the only department " +
+		"window where department/innovation-and-economic-development runs past the gutter, and fund/623's " +
+		"label does too (OVER_GUTTER)",
+	"fund-group/internal-service": "fund/730's label runs past the gutter (OVER_GUTTER)",
+	"fund-group/debt-service": "a group with no cap and three funds, which the drill walk opens " +
+		"as the served site does",
 }
 
 // fundAxisScopes are the scopes a fund is dropped from. Every other scope
 // stays whole: the spine and the department pages are what a step's gap
 // licence is stated against, in cents over the whole column, so a fund
-// dropped from either would be a difference the client refuses. A fund
-// dropped here still leaves its group's window drawing the whole spine
-// figure in and only the kept funds out, which no declaration licenses and
-// nothing refuses; fisc-m78u.
+// dropped from either would be a difference the client refuses.
 var fundAxisScopes = []string{"revenue-by-fund", "expenditure-by-fund", "department-funding-sources"}
 
 // clientFacts is the store less every fund-axis fact of a fund clientSubset
@@ -831,4 +830,40 @@ func TestTheClientSubsetIsDeclaredAgainstTheStore(t *testing.T) {
 		t.Fatalf("the subset keeps %d of %d facts, so it is not a subset of anything", kept, len(facts))
 	}
 	t.Logf("the client subset keeps %d of the store's %d facts", kept, len(facts))
+}
+
+// TestTheClientSubsetDrawsEveryGroupWhole requires every fund group to send
+// the same out through fund-flows over the subset as over the store. A group
+// cut short draws its window with the spine's whole figure in and only its
+// kept funds out, which no step licenses and the client does not refuse, so
+// the client tests would measure a chart the served site never draws.
+func TestTheClientSubsetDrawsEveryGroupWhole(t *testing.T) {
+	full, subset := exportedSite(t), clientExport(t)
+	for _, stem := range clientFixtureColumns {
+		outflow := func(dir string) map[string]int64 {
+			t.Helper()
+			raw, err := os.ReadFile(filepath.Join(dir, stem+".json")) // #nosec G304 -- a temp dir this test wrote.
+			if err != nil {
+				t.Fatal(err)
+			}
+			var col export.ColumnDoc
+			if err := json.Unmarshal(raw, &col); err != nil {
+				t.Fatal(err)
+			}
+			out := map[string]int64{}
+			for _, l := range col.Schedules[project.FundFlowsProjection].Links {
+				if from := col.Nodes[l.From]; from.Role == "fund_group" {
+					out[from.ID] += l.ValueCents
+				}
+			}
+			return out
+		}
+		want, got := outflow(full), outflow(subset)
+		if len(want) == 0 {
+			t.Fatalf("%s's fund-flows sends nothing out of a fund group, so this test holds nothing", stem)
+		}
+		if diff := cmp.Diff(want, got); diff != "" {
+			t.Errorf("%s: a fund group sends other cents out over the subset (-store +subset):\n%s", stem, diff)
+		}
+	}
 }
