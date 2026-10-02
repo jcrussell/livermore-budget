@@ -58,7 +58,7 @@ var clientSubset = map[string]string{
 }
 
 // fundAxisScopes are the scopes a fund is dropped from. Every other scope
-// stays whole: the spine and the department pages are what a step's gap
+// stays whole: the spine and the departments' spending are what a step's gap
 // licence is stated against, in cents over the whole column, so a fund
 // dropped from either would be a difference the client refuses.
 var fundAxisScopes = []string{"revenue-by-fund", "expenditure-by-fund", "department-funding-sources"}
@@ -212,7 +212,7 @@ func columnFixtureFaults(stem string, served, fixture []byte, stamp string, fact
 			}
 			id := col.Nodes[n.Node].ID
 			if drawn[id] {
-				faults = append(faults, fmt.Sprintf("%s draws %s twice", at, id))
+				faults = append(faults, fmt.Sprintf("%s draws %s more than once", at, id))
 			}
 			drawn[id] = true
 			parentOf[id] = n.Parent
@@ -249,7 +249,7 @@ func columnFixtureFaults(stem string, served, fixture []byte, stamp string, fact
 		listed[g.ID] = true
 	}
 	for _, n := range col.Nodes {
-		if n.Role == "fund_group" && !listed[n.ID] {
+		if n.Role == project.RoleFundGroup && !listed[n.ID] {
 			faults = append(faults, fmt.Sprintf("%s carries fund-group node %s and its fund_groups omit it", stem, n.ID))
 		}
 		delete(listed, n.ID)
@@ -400,11 +400,40 @@ func pageColumns(t *testing.T, page []byte) []string {
 }
 
 // TestTheClientFixturesHoldWhatTheClientReads exports once and holds the page
-// fixture and each column fixture to it. On a fault it writes the export's
-// files to bin/client-fixtures/ and prints the cp -f that would take them.
+// fixture and each column fixture to it.
 func TestTheClientFixturesHoldWhatTheClientReads(t *testing.T) {
 	dir := clientExport(t)
 	root := repoRootForTest(t)
+	// On any failure, a missing or unreadable fixture included, the export's
+	// files are left where a cp -f takes them.
+	t.Cleanup(func() {
+		if !t.Failed() {
+			return
+		}
+		out := filepath.Join(root, "bin", "client-fixtures")
+		if err := os.MkdirAll(out, 0o750); err != nil {
+			t.Error(err)
+			return
+		}
+		files := map[string]string{"index.html": "index.golden.html"}
+		for _, stem := range clientFixtureColumns {
+			files[stem+".json"] = stem + ".column.json"
+		}
+		var copies []string
+		for _, served := range slices.Sorted(maps.Keys(files)) {
+			b, err := os.ReadFile(filepath.Join(dir, served)) // #nosec G304 -- the temp site this test wrote.
+			if err == nil {
+				err = os.WriteFile(filepath.Join(out, files[served]), b, 0o600)
+			}
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			copies = append(copies, "cp -f "+filepath.Join(out, files[served])+" testdata/"+files[served])
+		}
+		t.Logf("the export's files are in %s -- regenerate with\n  %s\nand read the diff before committing it",
+			out, strings.Join(copies, "\n  "))
+	})
 	read := func(path string) []byte {
 		t.Helper()
 		b, err := os.ReadFile(path) // #nosec G304 -- the temp site and testdata/.
@@ -428,29 +457,9 @@ func TestTheClientFixturesHoldWhatTheClientReads(t *testing.T) {
 			read(filepath.Join(root, "testdata", stem+".column.json")),
 			stamp, facts)...)
 	}
-	if len(faults) == 0 {
-		return
-	}
-	out := filepath.Join(root, "bin", "client-fixtures")
-	if err := os.MkdirAll(out, 0o750); err != nil {
-		t.Fatal(err)
-	}
-	copies := []string{"cp -f " + filepath.Join(out, "index.golden.html") + " testdata/index.golden.html"}
-	if err := os.WriteFile(filepath.Join(out, "index.golden.html"), servedPage, 0o600); err != nil {
-		t.Fatal(err)
-	}
-	for _, stem := range clientFixtureColumns {
-		to := filepath.Join(out, stem+".column.json")
-		if err := os.WriteFile(to, read(filepath.Join(dir, stem+".json")), 0o600); err != nil {
-			t.Fatal(err)
-		}
-		copies = append(copies, "cp -f "+to+" testdata/"+stem+".column.json")
-	}
 	for _, f := range faults {
 		t.Error(f)
 	}
-	t.Fatalf("the client fixtures are not what the client relies on; the export's files are in %s -- "+
-		"regenerate with\n  %s\nand read the diff before committing it", out, strings.Join(copies, "\n  "))
 }
 
 // TestTheClientFixtureChecksCanFail breaks one thing per row, in the fixture
@@ -703,6 +712,13 @@ func TestTheClientFixtureChecksCanFail(t *testing.T) {
 		{"a fund group with no node", "carries no such node", func(col map[string]any) {
 			col["fund_groups"] = append(col["fund_groups"].([]any), map[string]any{"id": "fund-group/ghost", "slot": 0.0})
 		}, ""},
+		{"a schedule drawing a node past the table", "draws node", func(col map[string]any) {
+			spine(col)["nodes"] = append(spine(col)["nodes"].([]any), map[string]any{"node": 99999.0})
+		}, ""},
+		{"a schedule drawing one node twice", "more than once", func(col map[string]any) {
+			nodes := spine(col)["nodes"].([]any)
+			spine(col)["nodes"] = append(nodes, map[string]any{"node": nodes[0].(map[string]any)["node"]})
+		}, ""},
 		{"a schedule dropped", "not the column Go writes", func(col map[string]any) {
 			delete(col["schedules"].(map[string]any), "transfers-out")
 		}, ""},
@@ -851,8 +867,11 @@ func TestTheClientSubsetDrawsEveryGroupWhole(t *testing.T) {
 				t.Fatal(err)
 			}
 			out := map[string]int64{}
-			for _, l := range col.Schedules[project.FundFlowsProjection].Links {
-				if from := col.Nodes[l.From]; from.Role == "fund_group" {
+			for i, l := range col.Schedules[project.FundFlowsProjection].Links {
+				if l.From < 0 || l.From >= len(col.Nodes) {
+					t.Fatalf("%s fund-flows link %d leaves node %d of %d", stem, i, l.From, len(col.Nodes))
+				}
+				if from := col.Nodes[l.From]; from.Role == project.RoleFundGroup {
 					out[from.ID] += l.ValueCents
 				}
 			}

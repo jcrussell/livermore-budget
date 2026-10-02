@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/jcrussell/livermore-budget/internal/export"
-	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/project"
 )
 
@@ -229,14 +228,7 @@ func exportedSite(t *testing.T) string {
 func TestEveryServedColumnIsTheScheduleItFolds(t *testing.T) {
 	dir := exportedSite(t)
 	root := repoRootForTest(t)
-	_, facts, err := readFactStore(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	byID := map[string]fact.Fact{}
-	for _, f := range facts {
-		byID[f.ID] = f
-	}
+	byID := storeByID(t)
 	built, err := buildAll(root)
 	if err != nil {
 		t.Fatalf("buildAll: %v", err)

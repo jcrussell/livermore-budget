@@ -511,9 +511,10 @@ rather than inferring from the code.
   A contributor with only Go can still build, test and land a change.
 - **A JavaScript test tests what the client does** — fitting, layout, class and
   label derivation, rendering, gestures, the year control, refusal banners — over
-  the client fixtures under `testdata/`, which Go exports from a declared subset
-  of the store and holds to what it writes there, not to its bytes. It never re-derives a figure Go
-  emitted, and it never parses Go source or an artifact Go already writes.
+  the fixtures under `testdata/`: the hand-derived spine golden, and the page
+  and columns Go exports from a declared subset of the store and holds to what
+  it writes there, not to its bytes. It never re-derives a figure Go emitted,
+  and it never parses Go source or an artifact Go already writes.
 - **A test imports the shipped `app.js`.** It holds no copy of a function and
   reads no source text. A test that needs a malformed artifact takes a
   `structuredClone` of a pinned one minus one stated key.
