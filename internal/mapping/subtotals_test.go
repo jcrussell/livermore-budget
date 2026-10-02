@@ -364,6 +364,20 @@ func TestAChainLaidOutUnlikeItsFirstRuleIsRefused(t *testing.T) {
 	}
 }
 
+// TestAChainWhoseColumnsMeanDifferentThingsIsRefused: headers alike are not
+// enough. A position whose second rule files its figures under another year --
+// or, where the columns carry the category, another category -- would be
+// summed with the first rule's figures as though they were one column.
+func TestAChainWhoseColumnsMeanDifferentThingsIsRefused(t *testing.T) {
+	i := strings.LastIndex(subtotalRules, "          - {fiscal_year: 2026}")
+	src := subtotalRules[:i] + "          - {fiscal_year: 2027}" +
+		subtotalRules[i+len("          - {fiscal_year: 2026}"):]
+	_, err := subtotalCheck(t, src, subtotalPages())
+	if err == nil || !strings.Contains(err.Error(), "compares columns by position") {
+		t.Errorf("a chain whose second rule files a column under another year: got %v, want it refused", err)
+	}
+}
+
 // TestASubtotalOverARowNoPagePrintsIsRefused: a row omitted from every part
 // adds nothing, so a subtotal over it alone sums nothing, and a printed dash
 // there would tie against an empty sum.

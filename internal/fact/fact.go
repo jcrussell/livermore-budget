@@ -323,8 +323,13 @@ func FromValues(f *mapping.File, rule *mapping.Rule, values []mapping.Value) ([]
 			sign = mapping.SignPositive
 		}
 
-		col := v.Row.EffectiveColumn(v.Column)
-		rowPath := RowPath(v.Row)
+		// row is the printed row classified as this figure is: on a rule whose
+		// columns carry the category, the column's category and kind. Every
+		// read below of a fact's category or kind goes through it.
+		row := v.Row
+		row.Category, row.Kind = v.Category(), v.Kind(rule)
+		col := row.EffectiveColumn(v.Column)
+		rowPath := RowPath(row)
 		columnPath := ColumnPath(col, rule.Scope)
 		missing := ""
 		switch {
@@ -333,12 +338,10 @@ func FromValues(f *mapping.File, rule *mapping.Rule, values []mapping.Value) ([]
 		// empty, so a Value carrying `department:` and no category yields a
 		// non-empty path and would publish a fact with Category: "" -- which
 		// both vocabulary checks SKIP, and which in an unprojected scope is
-		// named by nothing at all. That is the hole mapping.Parse closed on
-		// 2026-08-29; this is the same rule at the other constructor, so a
-		// Value built without the parser cannot reopen it. An earlier version
-		// of this comment claimed to be that backstop while testing a
-		// condition it could not reach.
-		case v.Row.Category == "":
+		// named by nothing at all. mapping.Parse refuses that row; this is the
+		// same rule at the other constructor, so a Value built without the
+		// parser cannot reopen it.
+		case row.Category == "":
 			missing = "category (a department is a second axis, not a substitute)"
 		case rowPath == "":
 			missing = "row path (the row has no category)"
@@ -362,13 +365,13 @@ func FromValues(f *mapping.File, rule *mapping.Rule, values []mapping.Value) ([]
 			Offset:      v.Offset,
 			Token:       v.Token,
 			RuleID:      rule.ID,
-			Kind:        v.Row.EffectiveKind(rule),
+			Kind:        row.Kind,
 			Basis:       basis,
 			Scope:       rule.Scope,
 			FiscalYear:  v.Column.FiscalYear,
 			RowPath:     rowPath,
 			RowLabel:    v.Row.PrintedLabel(),
-			Category:    v.Row.Category,
+			Category:    row.Category,
 			Department:  v.Row.Department,
 			ColumnPath:  columnPath,
 			FundGroup:   col.FundGroup,
@@ -384,7 +387,7 @@ func FromValues(f *mapping.File, rule *mapping.Rule, values []mapping.Value) ([]
 		}
 		cp := *v.Row.Counterpart
 		cpCol := cp.Column(v.Column)
-		cpRow := v.Row
+		cpRow := row
 		cpRow.Category, cpRow.Kind = cp.Category, cp.Kind
 		// THE FAR LEG IS GUARDED ON BOTH PATHS, exactly as the near leg is
 		// twenty lines above. cpRow takes its category from the counterpart and

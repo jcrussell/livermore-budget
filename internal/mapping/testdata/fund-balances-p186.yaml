@@ -1,0 +1,46 @@
+schema_version: 1
+doc_id: livermore-budget-fy2026-2027
+
+# Budget Book pp.186-187's summary block, FY2023-24 actuals: one row per fund
+# group and one column per budget LINE, so the category and kind sit on the
+# columns and the fund on the row. The slugs and the fund-group summary rows
+# are a probe of that shape, not the production mapping of these pages; only
+# General Fund publishes.
+rules:
+  - id: fund-balances-fy2024-summary
+    kind: fund_balance
+    basis: actual
+    scope: fund-balances-probe
+    grain: fund-by-category
+    units: dollars
+    rows:
+      - {label: "General Fund", fund: 100, fund_group: general}
+      - {label: "Special Revenue Funds", skip: true}
+      - {label: "Debt Service Funds", skip: true}
+      - {label: "Permanent Funds", skip: true}
+      - {label: "Capital Funds", skip: true}
+      - {label: "Enterprise Funds", skip: true}
+    parts:
+      - page: 186
+        section: "Total Sources"
+        stop_at: "Total Operating Budget"
+        columns:
+          - {fiscal_year: 2024, category: fund-balance/beginning}
+          - {fiscal_year: 2024, kind: revenue, category: taxes}
+          - {fiscal_year: 2024, kind: transfer_in, category: transfers/in}
+          - {skip: true}
+      - page: 187
+        labels_from: 186
+        section: "6/30/24"
+        # p187 prints no labels and its first row's six figures are each
+        # "$"-prefixed, exactly as the Total Operating Budget line's are, so
+        # the seventh "$" from the header is where that total line begins.
+        stop_at: "$"
+        stop_at_ordinal: 7
+        columns:
+          - {fiscal_year: 2024, kind: expenditure, category: wages-and-benefits}
+          - {fiscal_year: 2024, kind: transfer_out, category: transfers/out}
+          - {fiscal_year: 2024, kind: transfer_out, category: transfers/out-to-cip}
+          - {fiscal_year: 2024, category: fund-balance/reserve-increase}
+          - {skip: true}
+          - {fiscal_year: 2024, category: fund-balance/ending}

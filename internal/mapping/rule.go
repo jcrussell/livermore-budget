@@ -923,6 +923,15 @@ type Column struct {
 	// cell BEFORE it consults skip, deliberately, so a skipped "2.5%" still
 	// fails the amount grammar. This is the channel fisc-9tn4 settled on.
 	Quantity Quantity `yaml:"quantity"`
+
+	// Category and Kind classify every figure in this column, for a page whose
+	// columns are its budget LINES and whose rows are its funds: Budget Book
+	// pp.186-209 print a fund per row and starting balance, Revenues, Transfers
+	// In, Expenses, Transfers Out and the rest across. Kind falls back to the
+	// rule's, as Row.Kind does. A rule carries its category on its rows or on
+	// its columns and never both; see Value.Category.
+	Category string `yaml:"category"`
+	Kind     Kind   `yaml:"kind"`
 }
 
 // Counterpart is the far end of a figure that moves money between two funds.
@@ -1125,6 +1134,48 @@ func (r *Rule) totalCovers(k Kind) bool {
 func (r Row) EffectiveKind(rule *Rule) Kind {
 	if r.Kind != "" {
 		return r.Kind
+	}
+	return rule.Kind
+}
+
+// publishes says whether a figure in this column can become a fact: it is
+// neither skipped nor a non-amount quantity.
+func (c Column) publishes() bool {
+	return !c.Skip && c.Quantity == ""
+}
+
+// categoryOnColumns says whether this rule's columns carry its category rather
+// than its rows: some column that publishes declares one.
+func (r *Rule) categoryOnColumns() bool {
+	for i := range r.Parts {
+		for _, c := range r.Parts[i].Columns {
+			if c.publishes() && c.Category != "" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// kindsOf is every kind a row's facts carry, one per column that publishes,
+// read through Value.Kind so it cannot disagree with the facts.
+func (r *Rule) kindsOf(row Row) []Kind {
+	var out []Kind
+	for i := range r.Parts {
+		for _, c := range r.Parts[i].Columns {
+			if c.publishes() {
+				out = append(out, Value{Row: row, Column: c}.Kind(r))
+			}
+		}
+	}
+	return out
+}
+
+// EffectiveKind is the kind this column's facts carry on a rule whose columns
+// carry the category: its own where it declares one, the rule's otherwise.
+func (c Column) EffectiveKind(rule *Rule) Kind {
+	if c.Kind != "" {
+		return c.Kind
 	}
 	return rule.Kind
 }

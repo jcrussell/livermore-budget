@@ -219,9 +219,10 @@ func (r *Resolver) CheckSubtotals(chain []*Rule) (*SubtotalsResult, error) {
 	return res, nil
 }
 
-// sameColumns says how a chain member's parts or headers are laid out unlike
-// the chain's first rule, or "" when they are not, since CheckSubtotals
-// matches columns by position.
+// sameColumns says how a chain member's parts, headers or columns are laid out
+// unlike the chain's first rule, or "" when they are not, since CheckSubtotals
+// matches columns by position. A column is compared as effectiveColumns fills
+// it in, so its year, basis, fund, category and kind all count.
 func sameColumns(first, rule *Rule) string {
 	if len(rule.Parts) != len(first.Parts) {
 		return fmt.Sprintf("has %d parts and rule %q, first in its subtotal chain, has %d; "+
@@ -232,6 +233,16 @@ func sameColumns(first, rule *Rule) string {
 		if !slices.Equal(a, b) {
 			return fmt.Sprintf("part %d declares column_headers %v and rule %q, first in its "+
 				"subtotal chain, declares %v; a chain compares columns by position", i+1, b, first.ID, a)
+		}
+		ac, bc := effectiveColumns(first, &first.Parts[i]), effectiveColumns(rule, &rule.Parts[i])
+		switch j, ok := firstDifferingColumn(ac, bc); {
+		case !ok:
+			return fmt.Sprintf("part %d declares %d columns and rule %q, first in its subtotal "+
+				"chain, declares %d; a chain compares columns by position", i+1, len(bc), first.ID, len(ac))
+		case j >= 0:
+			return fmt.Sprintf("part %d column %d is %s and rule %q, first in its subtotal "+
+				"chain, declares %s; a chain compares columns by position",
+				i+1, j+1, columnIdentity(bc[j]), first.ID, columnIdentity(ac[j]))
 		}
 	}
 	return ""

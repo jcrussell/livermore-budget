@@ -465,6 +465,17 @@ func validateRule(r *Rule, errf errFunc) error {
 		return errf(r.ID, "rows", "is empty")
 	}
 
+	// The columns' categories and kinds are validated before any row, because
+	// the sign check below reads a column-category row's kinds off them.
+	byColumn := r.categoryOnColumns()
+	for i := range r.Parts {
+		for j := range r.Parts[i].Columns {
+			if err := validateColumnClass(r, &r.Parts[i], j, byColumn, errf); err != nil {
+				return err
+			}
+		}
+	}
+
 	// rowIndex is keyed on Identity(), which is what a row IS within its rule;
 	// tailed collects the two-anchor rows by their first anchor alone, so a
 	// declaration that names only that anchor can be told "which one?" rather
@@ -528,9 +539,8 @@ func validateRule(r *Rule, errf errFunc) error {
 			return errf(r.ID, "rows", "row %q: sign %q, want positive, contra or netted",
 				row.Label, row.Sign)
 		}
-		if row.Kind != "" && !row.Kind.valid() {
-			return errf(r.ID, "rows", "row %q: kind %q is not one of the five",
-				row.Label, row.Kind)
+		if err := validateRowClass(r, row, byColumn, errf); err != nil {
+			return err
 		}
 		if row.Quantity != "" {
 			if row.Quantity == QuantityAmount {
@@ -552,22 +562,6 @@ func validateRule(r *Rule, errf errFunc) error {
 					"a counterpart fans one published figure into two facts; a "+
 						"non-amount row publishes none")
 			}
-		}
-		// EVERY ROW CARRIES A CATEGORY. A department is a SECOND AXIS and not
-		// a substitute for one: pp.167-170 cross department against object
-		// category, so a department row still says what KIND of spending the
-		// figure is.
-		//
-		// Closed here because internal/check declines an absent category on
-		// purpose ("an absent value is the mapping's business").
-		// A non-amount row is exempt exactly as a skipped one: it publishes
-		// nothing, so there is no fact for a category to classify.
-		if !row.Skip && row.Quantity == "" && row.Category == "" {
-			return cmdutil.WithHint(
-				errf(r.ID, "rows", "row %q has no category", row.Label),
-				"every row needs one, including a row that declares a department: "+
-					"department is a second axis, not a substitute. Use skip: true if "+
-					"the row is a subtotal that would double-count")
 		}
 		if err := checkCounterpart(r, row, errf); err != nil {
 			return err
@@ -594,7 +588,7 @@ func validateRule(r *Rule, errf errFunc) error {
 		// on kind "income" and a mistyped counterpart kind as `sign netted on kind
 		// "incom"` -- both naming the wrong field to whoever has to fix the YAML.
 		if row.Sign == SignNetted {
-			ends := []Kind{row.EffectiveKind(r)}
+			ends := r.kindsOf(row)
 			if row.Counterpart != nil {
 				ends = append(ends, row.Counterpart.Kind)
 			}
@@ -795,15 +789,22 @@ func validateRule(r *Rule, errf errFunc) error {
 				return errf(r.ID, fmt.Sprintf("parts[page %d].columns[%d]", p.Page, j),
 					"needs a fiscal_year (or skip: true)")
 			}
-			if cols[c] {
+			// KIND IS NOT IN THE KEY because it is not in the fact id: two
+			// columns of one row differing only in kind hash to one id.
+			key := c
+			key.Kind = ""
+			if cols[key] {
 				return cmdutil.WithHint(
 					errf(r.ID, fmt.Sprintf("parts[page %d].columns[%d]", p.Page, j),
-						"duplicates an earlier column (fund_group=%q fund=%d fiscal_year=%d basis=%q)",
-						c.FundGroup, c.Fund, c.FiscalYear, c.Basis),
-					"columns are positional identities; check whether a fiscal_year "+
-						"or fund_group was left unchanged when the column was copied")
+						"duplicates an earlier column (fund_group=%q fund=%d fiscal_year=%d "+
+							"basis=%q category=%q)",
+						c.FundGroup, c.Fund, c.FiscalYear, c.Basis, c.Category),
+					"columns are positional identities; check whether a fiscal_year, "+
+						"fund_group or category was left unchanged when the column was "+
+						"copied. A column's kind does not tell it apart: a fact's id is "+
+						"not hashed over its kind")
 			}
-			cols[c] = true
+			cols[key] = true
 		}
 		// A block boundary must not be a figure the totals check is meant to
 		// verify: anchoring the block on the number proves nothing, and the
@@ -966,6 +967,82 @@ func validateRule(r *Rule, errf errFunc) error {
 	return validateGrain(r, errf)
 }
 
+// validateClass checks one declaration of a category and a kind, wherever the
+// rule carries them: on a row, or on a column. A declaration that publishes
+// needs a category, which internal/check declines to require on purpose ("an
+// absent value is the mapping's business").
+func validateClass(r *Rule, field, owner, category string, kind Kind, publishes bool,
+	errf errFunc, hint string) error {
+	if kind != "" && !kind.valid() {
+		return errf(r.ID, field, "%s: kind %q is not one of the five", owner, kind)
+	}
+	if publishes && category == "" {
+		return cmdutil.WithHint(errf(r.ID, field, "%s has no category", owner), hint)
+	}
+	return nil
+}
+
+// validateRowClass holds a row to the axis its rule carries the category on.
+//
+// On the row axis EVERY ROW CARRIES A CATEGORY, and a department is a SECOND
+// AXIS and not a substitute for one: pp.167-170 cross department against
+// object category, so a department row still says what KIND of spending the
+// figure is. A non-amount row is exempt exactly as a skipped one: it publishes
+// nothing, so there is no fact for a category to classify.
+func validateRowClass(r *Rule, row Row, byColumn bool, errf errFunc) error {
+	if !byColumn {
+		return validateClass(r, "rows", fmt.Sprintf("row %q", row.Label), row.Category,
+			row.Kind, !row.Skip && row.Quantity == "", errf,
+			"every row needs one, including a row that declares a department: "+
+				"department is a second axis, not a substitute. Use skip: true if "+
+				"the row is a subtotal that would double-count. On a page whose "+
+				"columns are its budget lines, every column carries one instead")
+	}
+	for _, d := range []struct{ key, val string }{
+		{"category", row.Category}, {"kind", string(row.Kind)},
+	} {
+		if d.val != "" {
+			return cmdutil.WithHint(
+				errf(r.ID, "rows", "row %q declares %s %q, but this rule's columns "+
+					"carry the category", row.Label, d.key, d.val),
+				"exactly one axis classifies a rule's figures, so that no cell "+
+					"is named twice; declare the category and kind on the rows or "+
+					"on the columns, not on both")
+		}
+	}
+	return nil
+}
+
+// validateColumnClass is validateRowClass for the part's j'th column. A column
+// that publishes nothing classifies nothing, so a category or kind on one is
+// a declaration no fact would ever read.
+func validateColumnClass(r *Rule, p *Part, j int, byColumn bool, errf errFunc) error {
+	c := p.Columns[j]
+	field := fmt.Sprintf("parts[page %d]", p.Page)
+	owner := fmt.Sprintf("columns[%d]", j)
+	if !c.publishes() {
+		if c.Category != "" || c.Kind != "" {
+			return cmdutil.WithHint(
+				errf(r.ID, field, "%s publishes no fact and declares a category or kind", owner),
+				"a skipped or non-amount column publishes no fact, so nothing it "+
+					"classifies is ever read; remove the declaration")
+		}
+		return nil
+	}
+	if byColumn {
+		return validateClass(r, field, owner, c.Category, c.Kind, true, errf,
+			"this rule's other columns carry its category, so every column that "+
+				"publishes must; skip: true a column the rule does not map")
+	}
+	if c.Kind != "" {
+		return cmdutil.WithHint(
+			errf(r.ID, field, "%s declares kind %q and no category", owner, c.Kind),
+			"a column's kind follows its category; on a rule whose rows carry the "+
+				"category, the row's kind overrides the rule's")
+	}
+	return nil
+}
+
 // validateGapLines refuses the entries of one part's line declaration --
 // wrapped_labels or headings -- that could never match a gap's trimmed line,
 // that repeat, or that are figures, and refuses the declaration outright on a
@@ -1035,9 +1112,8 @@ func (r *Rule) publishes() bool {
 		return false
 	}
 	for i := range r.Parts {
-		for j := range r.Parts[i].Columns {
-			c := &r.Parts[i].Columns[j]
-			if !c.Skip && c.Quantity == "" {
+		for _, c := range r.Parts[i].Columns {
+			if c.publishes() {
 				return true
 			}
 		}
@@ -1340,7 +1416,9 @@ func validateTotalRowKinds(r *Rule, errf errFunc) error {
 		if row.Skip {
 			continue
 		}
-		have[row.EffectiveKind(r)] = true
+		for _, k := range r.kindsOf(row) {
+			have[k] = true
+		}
 	}
 	for _, k := range r.TotalRowKinds {
 		if !have[k] {
@@ -1651,6 +1729,15 @@ func checkCounterpart(r *Rule, row Row, errf errFunc) error {
 	cp := row.Counterpart
 	if cp == nil {
 		return nil
+	}
+	if r.categoryOnColumns() {
+		return cmdutil.WithHint(
+			errf(r.ID, "rows", "row %q declares a counterpart, but this rule's columns "+
+				"carry the category", row.Label),
+			"a counterpart names ONE far end for every figure of its row, and a row "+
+				"of this rule holds a figure per budget line -- its revenue, its "+
+				"transfers in, its balances -- which no single far end is the other "+
+				"side of")
 	}
 	if row.Skip {
 		return cmdutil.WithHint(

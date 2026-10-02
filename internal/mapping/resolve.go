@@ -193,6 +193,25 @@ type Value struct {
 	Token  string
 }
 
+// Category is the category this figure's facts carry: its column's on a rule
+// whose columns carry the category, its row's otherwise. Parse refuses a rule
+// that puts one on both axes, so the precedence decides nothing it admits.
+func (v Value) Category() string {
+	if v.Column.Category != "" {
+		return v.Column.Category
+	}
+	return v.Row.Category
+}
+
+// Kind is the kind this figure's facts carry, following the same axis as
+// Category: the column's or the row's override, the rule's where it states none.
+func (v Value) Kind(rule *Rule) Kind {
+	if v.Column.Category != "" {
+		return v.Column.EffectiveKind(rule)
+	}
+	return v.Row.EffectiveKind(rule)
+}
+
 // Omission is a row a part does not print, declared by the rule.
 //
 // Whether these become facts (as zeros) is deliberately not decided here. The
@@ -1144,7 +1163,7 @@ func (r *Resolver) CheckTotals(rule *Rule, p *Part) (*totalsResult, error) {
 	terms := make([]int, len(p.Columns))
 	var w decimalsWitness
 	for _, v := range values {
-		if !rule.totalCovers(v.Row.EffectiveKind(rule)) {
+		if !rule.totalCovers(v.Kind(rule)) {
 			continue
 		}
 		sums[v.ColumnIndex] += v.Cents
@@ -1211,7 +1230,7 @@ func (r *Resolver) CheckSpanningTotals(rule *Rule) (*totalsResult, error) {
 			return nil, err
 		}
 		for _, v := range values {
-			if !rule.totalCovers(v.Row.EffectiveKind(rule)) {
+			if !rule.totalCovers(v.Kind(rule)) {
 				continue
 			}
 			sums[v.ColumnIndex] += v.Cents
@@ -2020,16 +2039,20 @@ func firstDifferingColumn(a, b []Column) (idx int, comparable bool) {
 }
 
 // effectiveColumns is a rule's bearer-part columns with the basis each figure
-// is actually published on filled in.
+// is actually published on filled in, and the kind on a column that carries
+// the category.
 //
-// Column.Basis is an override and is usually empty; the basis in force is the
-// rule's. Comparing the declarations rather than the effective values is what
+// Column.Basis and Column.Kind are overrides and usually empty; the ones in
+// force are the rule's. Comparing the declarations rather than the effective values is what
 // let two rules on different bases read as the same columns.
 func effectiveColumns(rule *Rule, p *Part) []Column {
 	out := make([]Column, len(p.Columns))
 	for i, c := range p.Columns {
 		if c.Basis == "" {
 			c.Basis = rule.Basis
+		}
+		if c.Category != "" {
+			c.Kind = c.EffectiveKind(rule)
 		}
 		out[i] = c
 	}
@@ -2058,6 +2081,12 @@ func columnIdentity(c Column) string {
 	}
 	if c.Quantity != "" {
 		out += " " + string(c.Quantity)
+	}
+	if c.Category != "" {
+		out += " category " + c.Category
+	}
+	if c.Kind != "" {
+		out += " kind " + string(c.Kind)
 	}
 	if c.Skip {
 		out += " (skipped)"

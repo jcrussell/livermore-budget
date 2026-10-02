@@ -967,3 +967,45 @@ func TestMakeSeriesIDIsTheFactIDWithoutTheColumn(t *testing.T) {
 		t.Errorf("series id %q does not carry %q", base, seriesIDPrefix)
 	}
 }
+
+// TestAColumnCategoryReachesTheFact reads Budget Book pp.186-187's General Fund
+// row, whose budget lines are the page's columns. Each fact's row_path is its
+// column's category, so the eight cells of one row in one year hash to eight
+// ids, and each carries the row's fund: the axes a fund-by-category grain names.
+func TestAColumnCategoryReachesTheFact(t *testing.T) {
+	facts := factsFrom(t, "../mapping/testdata/fund-balances-p186.yaml", 186, 187)
+	if err := CheckUniqueIDs(facts); err != nil {
+		t.Fatalf("one row's cells collide: %v", err)
+	}
+	type cell struct {
+		RowPath, Category string
+		Kind              mapping.Kind
+		FundGroup         string
+		Fund              int
+		Cents             int64
+	}
+	var got []cell
+	for _, f := range facts {
+		if f.Fund == nil {
+			t.Fatalf("fact %s carries no fund", f.ID)
+		}
+		if f.ID != MakeID(f.DocID, f.RuleID, f.Category, f.RowLabel, f.ColumnPath,
+			f.FiscalYear, f.Basis) {
+			t.Errorf("fact %s is not hashed over its column's category %q", f.ID, f.Category)
+		}
+		got = append(got, cell{f.RowPath, f.Category, f.Kind, f.FundGroup, *f.Fund, f.AmountCents})
+	}
+	want := []cell{
+		{"fund-balance/beginning", "fund-balance/beginning", mapping.KindFundBalance, "general", 100, 1444069000},
+		{"taxes", "taxes", mapping.KindRevenue, "general", 100, 14202800200},
+		{"transfers/in", "transfers/in", mapping.KindTransferIn, "general", 100, 73745500},
+		{"wages-and-benefits", "wages-and-benefits", mapping.KindExpenditure, "general", 100, 12322819000},
+		{"transfers/out", "transfers/out", mapping.KindTransferOut, "general", 100, 1450739800},
+		{"transfers/out-to-cip", "transfers/out-to-cip", mapping.KindTransferOut, "general", 100, 44084600},
+		{"fund-balance/reserve-increase", "fund-balance/reserve-increase", mapping.KindFundBalance, "general", 100, 428893300},
+		{"fund-balance/ending", "fund-balance/ending", mapping.KindFundBalance, "general", 100, 1474078000},
+	}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("General Fund's facts (-want +got):\n%s", diff)
+	}
+}
