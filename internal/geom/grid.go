@@ -20,12 +20,15 @@ func (s Span) contains(x float64) bool { return x > s.Lo && x <= s.Hi }
 
 // Grid is a page's column geometry: the x-band each column claims.
 //
-// A band runs from the midpoint of the gap before its header to the midpoint of
-// the gap after it. That is a claim about the page's typesetting and not an
-// arbitrary choice -- see the filing rule in internal/mapping, which is where
-// the measurement lives, because deciding that a right edge identifies a column
-// is a judgment about how Livermore typesets schedules and belongs in the
-// judgment layer. This type only does the interval arithmetic.
+// A band runs from its header's left edge to the next header's left edge, the
+// first from the gutter and the last without bound. That is a claim about the
+// page's typesetting: these schedules right-align each figure under or past
+// the right edge of its header, so a figure's right edge falls right of its
+// own header's left edge and short of the next header's. Budget Book p187
+// and p207 overhang past the midpoint of a narrow gap, where a band ending at
+// that midpoint files a Transfers Out figure under Transfers Out to CIP.
+// Deciding that a right edge identifies a column is the judgment layer's, in
+// internal/mapping; this type only does the interval arithmetic.
 type Grid struct {
 	bands  []Span
 	gutter float64
@@ -79,18 +82,16 @@ func NewGrid(headers []Span, gutter float64) (*Grid, error) {
 	// right of the gutter with no gap a value could fall into.
 	bands := make([]Span, len(headers))
 	lo := gutter
-	for i, h := range headers {
+	for i := range headers {
 		hi := math.Inf(1)
 		if i+1 < len(headers) {
-			hi = midpoint(h.Hi, headers[i+1].Lo)
+			hi = headers[i+1].Lo
 		}
 		bands[i] = Span{Lo: lo, Hi: hi}
 		lo = hi
 	}
 	return &Grid{bands: bands, gutter: gutter}, nil
 }
-
-func midpoint(a, b float64) float64 { return (a + b) / 2 }
 
 // Len is how many columns the grid has.
 func (g *Grid) Len() int { return len(g.bands) }

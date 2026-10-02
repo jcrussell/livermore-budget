@@ -3,10 +3,14 @@ package mapping
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"strings"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+
+	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/corpus"
 	"github.com/jcrussell/livermore-budget/internal/geom"
 )
@@ -862,5 +866,144 @@ func TestEveryMappedPartWithHeadersCanCarryTheColumnGuard(t *testing.T) {
 		if _, err := buildPairing(string(text), g); err != nil {
 			t.Errorf("%s p%d declares column_headers but cannot carry the guard: %v", k.doc, k.page, err)
 		}
+	}
+}
+
+// lineFiling is one printed line's figures as the grid files them: the band
+// each figure's right edge falls in, left to right.
+type lineFiling struct {
+	Figures string
+	Bands   []int
+}
+
+// fileFigures files every figure on a Budget Book fixture page under the grid
+// its column headers draw, the grid the guard builds. It returns how many
+// lines file one figure into each band in order, every other line that prints
+// a figure, and room: how far short of the next header's left edge the
+// in-order figures closest to it end.
+func fileFigures(t *testing.T, page int, headers []string) (full int, other []lineFiling, room float64) {
+	t.Helper()
+	b, err := os.ReadFile(fmt.Sprintf("../../testdata/geometry/budget-p%04d.json", page))
+	if err != nil {
+		t.Fatalf("read geometry fixture: %v", err)
+	}
+	g, err := geom.ParsePage(b)
+	if err != nil {
+		t.Fatalf("ParsePage: %v", err)
+	}
+	var grid *geom.Grid
+	var spans []geom.Span
+	for _, l := range g.Lines() {
+		if m := matchHeaders(l, headers); m.ok {
+			if grid != nil {
+				t.Fatalf("p%d prints its header line twice", page)
+			}
+			spans = m.spans
+			if grid, err = geom.NewGrid(m.spans, m.spans[0].Lo); err != nil {
+				t.Fatalf("NewGrid: %v", err)
+			}
+		}
+	}
+	if grid == nil {
+		t.Fatalf("p%d's header line was not found", page)
+	}
+	room = math.Inf(1)
+	for _, l := range g.Lines() {
+		var lf lineFiling
+		var texts []string
+		var rights []float64
+		for _, w := range l.Words {
+			if _, err := amount.Parse(w.Text, amount.Dollars); err != nil {
+				continue
+			}
+			if i := grid.Index(w.Right()); i >= 0 {
+				lf.Bands = append(lf.Bands, i)
+				texts = append(texts, w.Text)
+				rights = append(rights, w.Right())
+			}
+		}
+		if len(lf.Bands) == 0 {
+			continue
+		}
+		inOrder := len(lf.Bands) == len(headers)
+		for k, i := range lf.Bands {
+			inOrder = inOrder && i == k
+		}
+		if inOrder {
+			full++
+			for k := range len(rights) - 1 {
+				room = math.Min(room, spans[k+1].Lo-rights[k])
+			}
+			continue
+		}
+		lf.Figures = strings.Join(texts, " ")
+		other = append(other, lf)
+	}
+	return full, other, room
+}
+
+// fundBalanceUses is the header line of every odd page of Budget Book
+// pp.187-209, for the ending-balance date it prints.
+func fundBalanceUses(date string) []string {
+	return []string{"Expenses", "Transfers Out", "Transfers Out to CIP", "Increase/(Use)",
+		"Total Uses", date}
+}
+
+// TestP187IsPlacedByTheColumnGuard is the grid geom.NewGrid has to place.
+// Budget Book p187 right-aligns each figure past the right edge of the header
+// over it, and the gap between "Transfers Out" and "Transfers Out to CIP" is
+// narrower than that overhang, so a Transfers Out figure wider than a "-" ends
+// past the gap's midpoint. Every six-figure line files one figure per column,
+// and Community Benefit Fund's line, whose ending balance is blank, files its
+// five under the first five.
+func TestP187IsPlacedByTheColumnGuard(t *testing.T) {
+	full, other, _ := fileFigures(t, 187, fundBalanceUses("6/30/24"))
+	if full != 49 {
+		t.Errorf("%d lines file six figures in order, want all 49", full)
+	}
+	want := []lineFiling{
+		{"- - - - -", []int{0, 1, 2, 3, 4}},
+		// The running footer's page number, which files into the last band
+		// as Grid.Index says it will; stop_at is what keeps it out of a block.
+		{"183", []int{5}},
+	}
+	if diff := cmp.Diff(want, other); diff != "" {
+		t.Errorf("lines not filed one figure per column (-want +got):\n%s", diff)
+	}
+}
+
+// TestP207IsPlacedByTheColumnGuard is p187's grid on the page whose three
+// blank Reserve Increase/(Use) cells omitted_cells exists for: County Measure
+// D, Wastewater and Water each file five figures, skipping the fourth band.
+func TestP207IsPlacedByTheColumnGuard(t *testing.T) {
+	full, other, _ := fileFigures(t, 207, fundBalanceUses("6/30/27"))
+	if full != 31 {
+		t.Errorf("%d lines file six figures in order, want all 31", full)
+	}
+	blank := []int{0, 1, 2, 4, 5}
+	want := []lineFiling{
+		{"505,784 - - 505,784 (858,450)", blank},
+		{"26,109,600 8,460,000 - 34,569,600 28,651,566", blank},
+		{"20,381,916 2,000,000 - 22,381,916 3,844,813", blank},
+		{"203", []int{5}},
+	}
+	if diff := cmp.Diff(want, other); diff != "" {
+		t.Errorf("lines not filed one figure per column (-want +got):\n%s", diff)
+	}
+}
+
+// TestP67KeepsItsFiling pins the guarded page whose figures end closest to the
+// next column's header, which is where a band now ends: Budget Book p67's
+// figures are right-aligned past their headers into a gap only a little wider
+// than the overhang. The room it prints is the measurement.
+func TestP67KeepsItsFiling(t *testing.T) {
+	full, other, room := fileFigures(t, 67, spineHeaders)
+	t.Logf("p67: the closest figure ends %.2fpt short of the next column's header", room)
+	if full != 24 {
+		t.Errorf("%d lines file eight figures in order, want all 24", full)
+	}
+	// The running footer's page number.
+	if diff := cmp.Diff([]lineFiling{{"63", []int{7}}}, other); diff != "" {
+		t.Errorf("lines not filed one figure per column (-want +got):\n%s", diff)
 	}
 }

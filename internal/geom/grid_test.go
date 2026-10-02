@@ -11,8 +11,8 @@ import (
 // spineGrid is Budget Book p67's own layout, to the hundredth of a point: the
 // eight "FY 2025-26 / FY 2026-27" headers and the gutter this project derives
 // from the first of them. Using the real numbers rather than round ones keeps
-// the boundary cases honest -- the midpoints below are the midpoints the
-// resolver will actually compute.
+// the boundary cases honest -- the boundaries below are the ones the resolver
+// will actually compute.
 func spineGrid(t *testing.T) *Grid {
 	t.Helper()
 	headers := []Span{
@@ -28,21 +28,21 @@ func spineGrid(t *testing.T) *Grid {
 	return g
 }
 
-func TestGridBandsMeetAtGapMidpoints(t *testing.T) {
+func TestGridBandsEndAtTheNextHeader(t *testing.T) {
 	g := spineGrid(t)
 
 	if got, want := g.Len(), 8; got != want {
 		t.Fatalf("Len() = %d, want %d", got, want)
 	}
 	// Band 0 starts at the gutter, the last band runs to infinity, and every
-	// interior boundary is the midpoint of the gap between two headers.
+	// interior boundary is the next header's left edge.
 	if got, want := g.band(0).Lo, 60.72; got != want {
 		t.Errorf("Band(0).Lo = %v, want %v", got, want)
 	}
 	if got := g.band(7).Hi; !math.IsInf(got, 1) {
 		t.Errorf("Band(7).Hi = %v, want +Inf", got)
 	}
-	if got, want := g.band(0).Hi, (105.13+123.55)/2; got != want {
+	if got, want := g.band(0).Hi, 123.55; got != want {
 		t.Errorf("Band(0).Hi = %v, want %v", got, want)
 	}
 	for i := 1; i < g.Len(); i++ {
@@ -54,7 +54,7 @@ func TestGridBandsMeetAtGapMidpoints(t *testing.T) {
 
 func TestGridIndexBoundaries(t *testing.T) {
 	g := spineGrid(t)
-	firstBoundary := (105.13 + 123.55) / 2 // 114.34
+	firstBoundary := 123.55 // the second header's left edge
 
 	tests := []struct {
 		name string
@@ -69,6 +69,9 @@ func TestGridIndexBoundaries(t *testing.T) {
 		{"exactly on a band boundary is the earlier column", firstBoundary, 0},
 		{"just past a band boundary is the later column", math.Nextafter(firstBoundary, 1e9), 1},
 		{"a figure right-aligned past its header", 114.0, 0},
+		// p187's overhang: past the gap's midpoint (114.34) and short of the
+		// next header, still under its own.
+		{"a figure right-aligned past the gap's midpoint", 120.0, 0},
 		{"the last column has no upper bound", 1e6, 7},
 	}
 	for _, tt := range tests {

@@ -604,9 +604,7 @@ type Part struct {
 	// The row is read with its tokens filed left to right under the columns
 	// it does print, so this part must declare column_headers: the guard is
 	// what holds each token to the band of the column it is filed under, and
-	// what refuses a figure printed under a column declared blank. p187
-	// cannot carry that guard yet; TestP187CannotCarryTheColumnGuard
-	// measures why.
+	// what refuses a figure printed under a column declared blank.
 	OmittedCells []omittedCell `yaml:"omitted_cells"`
 
 	// Columns describe the value columns, left to right.

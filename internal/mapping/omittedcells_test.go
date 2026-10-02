@@ -2,14 +2,12 @@ package mapping
 
 import (
 	"fmt"
-	"os"
 	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
-	"github.com/jcrussell/livermore-budget/internal/geom"
 )
 
 // blankPair is a labelled page and its label-less continuation, whose middle
@@ -313,63 +311,117 @@ func TestParseRefusesABadOmittedCell(t *testing.T) {
 	}
 }
 
-// TestP187CannotCarryTheColumnGuard is why no real page declares a blank cell
-// yet. Budget Book p187 right-aligns each figure past the right edge of the
-// header over it, and the gap between "Transfers Out" and "Transfers Out to
-// CIP" is narrow enough that a Transfers Out figure wider than a "-" ends past
-// the midpoint and files under the next column. So the guard omitted_cells
-// requires refuses the page, and Community Benefit Fund's blank ending balance
-// stays unreadable until the guard can place this grid (fisc-3eh2).
-func TestP187CannotCarryTheColumnGuard(t *testing.T) {
-	b, err := os.ReadFile("../../testdata/geometry/budget-p0187.json")
-	if err != nil {
-		t.Fatalf("read geometry fixture: %v", err)
-	}
-	g, err := geom.ParsePage(b)
-	if err != nil {
-		t.Fatalf("ParsePage: %v", err)
-	}
-	headers := []string{"Expenses", "Transfers Out", "Transfers Out to CIP",
-		"Increase/(Use)", "Total Uses", "6/30/24"}
-	var grid *geom.Grid
-	for _, l := range g.Lines() {
-		if m := matchHeaders(l, headers); m.ok {
-			if grid, err = geom.NewGrid(m.spans, m.spans[0].Lo); err != nil {
-				t.Fatalf("NewGrid: %v", err)
-			}
-		}
-	}
-	if grid == nil {
-		t.Fatal("p187's header line was not found")
-	}
+// p207CapitalFunds reads Budget Book pp.206-207's FY2026-27 Capital Funds
+// block, p207 positionally against p206's labels.
+// Only County Measure D publishes, and its line on p207 prints nothing under
+// Reserve Increase/(Use).
+const p207CapitalFunds = `schema_version: 1
+doc_id: livermore-budget-fy2026-2027
 
-	misfiled := map[string]int{}
-	rows, short := 0, 0
-	for _, l := range g.Lines() {
-		var figures []geom.Word
-		for _, w := range l.Words {
-			if _, err := amount.Parse(w.Text, amount.Dollars); err == nil && grid.Index(w.Right()) >= 0 {
-				figures = append(figures, w)
-			}
+rules:
+  - id: p207-capital-funds
+    kind: fund_balance
+    basis: adopted
+    scope: probe
+    grain: fund-by-category
+    units: dollars
+    rows:
+      - {label: "General Fund CIP Reserves", skip: true}
+      - {label: "Traffic Impact Fee (TIF)", skip: true}
+      - {label: "TVTC 20% Fee", skip: true}
+      - {label: "Park Fee - AB 1600", skip: true}
+      - {label: "Solid Waste & Recyc Impact Fee", skip: true}
+      - {label: "2022 COP Construction Fund", skip: true}
+      - {label: "County Measure D", fund_group: capital}
+      - {label: "County Meas BB-Bike/Pedestrian", skip: true}
+      - {label: "County Meas BB-Local St & Rd", skip: true}
+      - {label: "County Measure F Veh Reg Fee", skip: true}
+      - {label: "State - Gas Tax", skip: true}
+      - {label: "State - SB1", skip: true}
+      - {label: "Developers Deposit", skip: true}
+      - {label: "Public Utility Undergrounding", skip: true}
+      - {label: "Transferable Development Cred", skip: true}
+      - {label: "SoLivSpec Plan & AD Closeout", skip: true}
+    parts:
+      - page: 206
+        section: "Capital Funds\n"
+        stop_at: "Total Capital Funds"
+        columns:
+          - {fiscal_year: 2027, category: fund-balance/beginning}
+          - {fiscal_year: 2027, kind: revenue, category: taxes}
+          - {fiscal_year: 2027, kind: transfer_in, category: transfers/in}
+          - {skip: true}
+      - page: 207
+        labels_from: 206
+        # p207 prints no labels, and the five lines above the block print six
+        # "$" each, so the 31st "$" opens General Fund CIP Reserves' line. Its
+        # other five "$" come next, so the sixth after it opens Total Capital
+        # Funds.
+        section: "$"
+        section_ordinal: 31
+        stop_at: "$"
+        stop_at_ordinal: 6
+        omitted_cells:
+          - {label: "County Measure D", column: "Increase/(Use)", note: "the page prints five figures and nothing under Reserve Increase/(Use)"}
+        column_headers: ["Expenses", "Transfers Out", "Transfers Out to CIP", "Increase/(Use)",
+                         "Total Uses", "6/30/27"]
+        columns:
+          - {fiscal_year: 2027, kind: expenditure, category: capital-projects}
+          - {fiscal_year: 2027, kind: transfer_out, category: transfers/out}
+          - {fiscal_year: 2027, kind: transfer_out, category: transfers/out-to-cip}
+          - {fiscal_year: 2027, category: fund-balance/reserve-increase}
+          - {skip: true}
+          - {fiscal_year: 2027, category: fund-balance/ending}
+`
+
+// TestP207ReadsCountyMeasureDWithItsBlankReserveCell is omitted_cells on the
+// page it exists for, guarded. County Measure D's p207 line prints 505,784 |
+// - | - | (blank) | 505,784 | (858,450), and p206 prints its sources as
+// (358,666) | 6,000 | - | (352,666): (352,666) - 505,784 = (858,450), so the
+// line is read as the page prints it.
+func TestP207ReadsCountyMeasureDWithItsBlankReserveCell(t *testing.T) {
+	f, err := parse(strings.NewReader(p207CapitalFunds), "p207.yaml")
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	r, err := NewResolver(budgetDoc(t, 206, 207), f)
+	if err != nil {
+		t.Fatalf("NewResolver: %v", err)
+	}
+	rule := &f.Rules[0]
+
+	type cell struct {
+		Page     int
+		Category string
+		Token    string
+		Cents    amount.Cents
+	}
+	var got []cell
+	var omitted []omittedCellAt
+	for i := range rule.Parts {
+		vals, omissions, err := r.Values(rule, &rule.Parts[i])
+		if err != nil {
+			t.Fatalf("Values(p%d): %v", rule.Parts[i].Page, err)
 		}
-		switch len(figures) {
-		case len(headers):
-			rows++
-			for k, w := range figures {
-				if grid.Index(w.Right()) != k {
-					misfiled[headers[k]]++
-				}
-			}
-		case len(headers) - 1:
-			short++
+		for _, v := range vals {
+			got = append(got, cell{v.Page, v.Category(), v.Token, v.Cents})
 		}
+		omitted = append(omitted, omittedCellsAt(omissions)...)
 	}
-	if diff := cmp.Diff(map[string]int{"Transfers Out": 15}, misfiled); diff != "" {
-		t.Errorf("figures filed outside their header's band (-want +got):\n%s", diff)
+	want := []cell{
+		{206, "fund-balance/beginning", "(358,666)", -35866600},
+		{206, "taxes", "6,000", 600000},
+		{206, "transfers/in", "-", 0},
+		{207, "capital-projects", "505,784", 50578400},
+		{207, "transfers/out", "-", 0},
+		{207, "transfers/out-to-cip", "-", 0},
+		{207, "fund-balance/ending", "(858,450)", -85845000},
 	}
-	if short != 1 {
-		t.Errorf("%d lines print five figures, want 1: Community Benefit Fund's", short)
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("cells (-want +got):\n%s", diff)
 	}
-	t.Logf("p187: %d of %d six-figure lines file a Transfers Out figure under "+
-		"Transfers Out to CIP", misfiled["Transfers Out"], rows)
+	if diff := cmp.Diff([]omittedCellAt{{"County Measure D", 207, true, 3, "Increase/(Use)"}},
+		omitted); diff != "" {
+		t.Errorf("omissions (-want +got):\n%s", diff)
+	}
 }
