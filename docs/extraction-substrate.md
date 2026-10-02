@@ -74,8 +74,8 @@ pins the message shape.
 
 ## CIP p40 is a probe, not a guard over committed facts
 
-`mappings/` holds two files, mapping the Budget Book and the ACFR, so **no
-production rule reads the CIP document at all**. The refusal is reproducible for a CIP
+`mappings/` maps the Budget Book and the ACFR, so **no production rule reads
+the CIP document at all**. The refusal is reproducible for a CIP
 part you write yourself, and that is the evidence.
 
 `TestCIPp40SparseRowFailsClosedButDoesNotRead` does now reach the row read

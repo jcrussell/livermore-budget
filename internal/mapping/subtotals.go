@@ -68,6 +68,12 @@ func Chains(f *File) [][]*Rule {
 // from the wrong place.
 func (r *Resolver) CheckSubtotals(chain []*Rule) (*SubtotalsResult, error) {
 	type column struct{ part, col int }
+	byPosition := func(a, b column) int {
+		if a.part != b.part {
+			return a.part - b.part
+		}
+		return a.col - b.col
+	}
 	first := chain[0]
 	levels := 0
 	for _, rule := range chain {
@@ -158,17 +164,12 @@ func (r *Resolver) CheckSubtotals(chain []*Rule) (*SubtotalsResult, error) {
 					keys = append(keys, k)
 				}
 			}
-			slices.SortFunc(keys, func(a, b column) int {
-				if a.part != b.part {
-					return a.part - b.part
-				}
-				return a.col - b.col
-			})
+			slices.SortFunc(keys, byPosition)
 			var tied []Value
 			for _, k := range keys {
 				got, ok := figures[i][k]
 				if !ok {
-					return nil, r.subtotalError(rule, row, 0, fmt.Sprintf(
+					return nil, r.subtotalError(rule, row, rule.Parts[k.part].Page, fmt.Sprintf(
 						"prints no figure under %s, which the %d row(s) above it do", name(k), above))
 				}
 				delta, declared := deltas[k]
@@ -198,13 +199,8 @@ func (r *Resolver) CheckSubtotals(chain []*Rule) (*SubtotalsResult, error) {
 				unused = append(unused, k)
 			}
 			if len(unused) > 0 {
-				slices.SortFunc(unused, func(a, b column) int {
-					if a.part != b.part {
-						return a.part - b.part
-					}
-					return a.col - b.col
-				})
-				return nil, r.subtotalError(rule, row, 0, fmt.Sprintf(
+				slices.SortFunc(unused, byPosition)
+				return nil, r.subtotalError(rule, row, rule.Parts[unused[0].part].Page, fmt.Sprintf(
 					"declares a delta under %s, a column neither it nor a row above it prints",
 					name(unused[0])))
 			}

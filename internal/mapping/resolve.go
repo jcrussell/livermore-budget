@@ -353,10 +353,9 @@ func context(text string, off int) string {
 // behavioural difference is on the failing path, described on resolvedPart.
 //
 // The slices returned are copies, so a caller may sort or rewrite them without
-// changing what the next caller sees. Value and Omission carry no slices of
-// their own — every field is a scalar or a Row or Column, which are scalars
-// throughout — so a shallow copy is a whole one, the same argument
-// Rule.ActiveRows makes.
+// changing what the next caller sees. The copy is shallow: a Value's Row
+// shares its Counterpart and SubtotalDeltas with the rule, and a caller must
+// not write through them.
 func (r *Resolver) Values(rule *Rule, p *Part) ([]Value, []Omission, error) {
 	rp := r.resolvePart(rule, p)
 	if rp.err != nil {
@@ -1940,8 +1939,9 @@ const currencyHint = "a '$' printed as its own token belongs to the figure after
 // dropCurrencyMarks removes tokens that are a currency mark and nothing else,
 // so a row printed as "$ 1,234  $ 5,678" reads as two figures rather than four
 // tokens the amount grammar cannot parse. 236 of the corpus's 786 pages print
-// the dollar sign detached from its figure; pp.66-67 print none, which is why
-// turning this on cannot move a byte of facts.jsonl.
+// the dollar sign detached from its figure. A positional read drops them too:
+// Budget Book p81 and pp.225-235 print a "$" before each figure of a block's
+// first row and of its totals.
 //
 // It DROPS the mark rather than joining it to the figure, and that is the whole
 // design. A joined token would be a string this project synthesized: Value

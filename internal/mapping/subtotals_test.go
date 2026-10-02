@@ -414,3 +414,20 @@ func TestAChainWithNoSubtotalSaysWhere(t *testing.T) {
 		}
 	}
 }
+
+// TestASubtotalRefusalNamesThePageOfItsColumn: a delta naming a column no
+// figure is summed under -- a TOTAL column read as a quantity -- is refused on
+// the page that prints that column, p4, not the rule's first, p3.
+//
+// Mutation: report the rule's first page, and this names p3.
+func TestASubtotalRefusalNamesThePageOfItsColumn(t *testing.T) {
+	src := strings.ReplaceAll(subtotalRules, "          - {fiscal_year: 2026}\n          - {skip: true}\n",
+		"          - {fiscal_year: 2026}\n          - {quantity: number}\n")
+	src = strings.Replace(src, "#DELTAS",
+		`subtotal_deltas: [{column: "TOTAL", delta_cents: 100, note: "x"}]`, 1)
+	_, err := subtotalCheck(t, src, subtotalPages())
+	if err == nil || !strings.Contains(err.Error(), "subtotal-doc p4") ||
+		!strings.Contains(err.Error(), `under "TOTAL" on p4`) {
+		t.Errorf("a delta under a quantity column: got %v, want it refused on p4", err)
+	}
+}

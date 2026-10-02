@@ -547,3 +547,30 @@ func TestARuleWhoseTotalResolvesNowhereIsCaught(t *testing.T) {
 		}
 	}
 }
+
+// TestALineFoundByOrdinalIsNamedWithIt: p81's total is the 19th "$" after its
+// block starts, and the first is a row's. A finding naming the line by stop_at
+// "$" alone sends its reader to the first row.
+//
+// Mutation: drop the ordinal from the label, and the finding names stop_at
+// "$" alone.
+func TestALineFoundByOrdinalIsNamedWithIt(t *testing.T) {
+	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	doc, page, off, ruleID := aStatedTotalLine(t, s, func(_ *mapping.Rule, p *mapping.Part) bool {
+		return p.StopAtOrdinal > 0
+	})
+	s.Facts = append(s.Facts, fact.Fact{
+		DocID: doc, Page: page, Offset: off, Token: "5,548,908.00",
+		RuleID: "some-other-rule", RowLabel: "A Row That Is Really A Total",
+	})
+	res := runStatedTotals(t, s)
+	if res.Status != StatusFail {
+		t.Fatalf("a fact on rule %q's ordinal-anchored total reported %s", ruleID, res.Status)
+	}
+	if got := findingDetails(res); !strings.Contains(got, "occurrence 19 after the block's start") {
+		t.Errorf("the finding does not name the line by its ordinal: %s", got)
+	}
+}

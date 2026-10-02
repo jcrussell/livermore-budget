@@ -61,8 +61,9 @@ func cipProjectListingResidue() []Residue {
 			Reason: "pp.224-235 list CIP spending by project, an axis no other schedule " +
 				"has, and their FY2025-26 and FY2026-27 totals include carried-forward " +
 				"appropriations, so they are not p222's new appropriations: 70,765,450 and " +
-				"70,559,870 against 47,084,623 and 58,988,871. Every fund total and the " +
-				"grand total tie to the project rows above them",
+				"70,559,870 against 47,084,623 and 58,988,871. Every fund total ties to " +
+				"the project rows above it, and the grand total does in every column but " +
+				"FY2025-26 and FY2026-27, where it prints a dollar under them",
 		})
 	}
 	return out

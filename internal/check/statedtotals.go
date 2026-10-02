@@ -149,6 +149,9 @@ func (*factOffsetIsNotAStatedTotal) Run(_ context.Context, s *Subject) (Result, 
 				// reports a defect by pointing at a line that is not there sends
 				// its reader to grep for nothing.
 				label := "the end of the block, via stop_at " + strconv.Quote(p.StopAt)
+				if p.StopAtOrdinal > 0 {
+					label += fmt.Sprintf(" (occurrence %d after the block's start)", p.StopAtOrdinal)
+				}
 				if mapping.AnchorOf(p) == mapping.AnchorTotalRow {
 					label = rule.TotalRow
 				}
