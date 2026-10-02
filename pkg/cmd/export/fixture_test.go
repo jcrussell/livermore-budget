@@ -38,7 +38,9 @@ var clientFixtureColumns = []string{"fy2026-adopted", "fy2027-adopted"}
 // fund is dropped from fundAxisScopes and from nothing else. Every group with
 // a figure other than zero in a budget year is kept whole, because a group cut
 // short draws a window the served site never draws;
-// TestTheClientSubsetDrawsEveryGroupWhole holds that.
+// TestTheClientSubsetDrawsEveryGroupWhole holds what each schedule draws over
+// the subset to what it draws over the store, which a fact no link cites does
+// not reach.
 var clientSubset = map[string]string{
 	"fund-group/general": "fund/100 and its divisions, the only fund pp.167-170 decompose, " +
 		"which most of the client suite opens",
@@ -685,8 +687,9 @@ func TestTheClientFixtureChecksCanFail(t *testing.T) {
 			spine(col)["caveats"] = []any{}
 		}, ""},
 		{"a fact of another year", " of FY", func(col map[string]any) {
+			year := int(col["column"].(map[string]any)["fiscal_year"].(float64))
 			for _, id := range slices.Sorted(maps.Keys(facts)) {
-				if facts[id].FiscalYear != 2026 {
+				if facts[id].FiscalYear != year {
 					firstLink(col)["fact_ids"] = []any{id}
 					return
 				}
@@ -775,19 +778,7 @@ func TestTheClientSubsetLeavesTheLicensedSchedulesWhole(t *testing.T) {
 		t.Errorf("the page config differs over the subset beyond the pages it links (-store +subset):\n%s", diff)
 	}
 	for _, stem := range clientFixtureColumns {
-		read := func(dir string) export.ColumnDoc {
-			t.Helper()
-			raw, err := os.ReadFile(filepath.Join(dir, stem+".json")) // #nosec G304 -- a temp dir this test wrote.
-			if err != nil {
-				t.Fatal(err)
-			}
-			var col export.ColumnDoc
-			if err := json.Unmarshal(raw, &col); err != nil {
-				t.Fatal(err)
-			}
-			return col
-		}
-		f, s := read(full), read(subset)
+		f, s := servedColumn(t, full, stem), servedColumn(t, subset, stem)
 		for _, name := range wholeSchedules {
 			if _, ok := f.Schedules[name]; !ok {
 				t.Fatalf("%s serves no %s, so this test holds nothing of it", stem, name)
@@ -851,37 +842,25 @@ func TestTheClientSubsetIsDeclaredAgainstTheStore(t *testing.T) {
 	t.Logf("the client subset keeps %d of the store's %d facts", kept, len(facts))
 }
 
-// decompositions are the schedules that open a fund group or a fund, which
-// the cut reaches through fundAxisScopes.
-var decompositions = []string{project.FundFlowsProjection, project.DepartmentFundingProjection}
-
-// TestTheClientSubsetDrawsEveryGroupWhole requires every schedule that opens a
-// fund group or a fund to draw the same marks and links, figures included,
-// over the subset as over the store. A group cut short draws its window with
-// the spine's whole figure in and only its kept funds out, which no step
-// licenses and the client does not refuse, so the client tests would measure
-// a chart the served site never draws. Marks and links rather than a group's
-// outflow, because a fund that only spends in a year has no inflow to miss.
+// TestTheClientSubsetDrawsEveryGroupWhole requires every schedule the
+// columns serve to draw the same marks and links, figures included, and to
+// state the same caveats and scopes, over the subset as over the store. A
+// group cut short draws its window with the spine's whole figure in and only
+// its kept funds out, which no step licenses and the client does not refuse,
+// so the client tests would measure a chart the served site never draws.
+// Every schedule rather than a group's outflow, because a fund that only
+// spends in a year has no inflow to miss, and rather than a list, because a
+// schedule nobody listed would be compared by nothing. Only counts and
+// sources may differ: they count and cite the facts no link draws, which is
+// all the subset drops.
 func TestTheClientSubsetDrawsEveryGroupWhole(t *testing.T) {
 	full, subset := exportedSite(t), clientExport(t)
 	for _, stem := range clientFixtureColumns {
-		read := func(dir string) export.ColumnDoc {
-			t.Helper()
-			raw, err := os.ReadFile(filepath.Join(dir, stem+".json")) // #nosec G304 -- a temp dir this test wrote.
-			if err != nil {
-				t.Fatal(err)
-			}
-			var col export.ColumnDoc
-			if err := json.Unmarshal(raw, &col); err != nil {
-				t.Fatal(err)
-			}
-			return col
+		f, s := servedColumn(t, full, stem), servedColumn(t, subset, stem)
+		if diff := cmp.Diff(slices.Sorted(maps.Keys(f.Schedules)), slices.Sorted(maps.Keys(s.Schedules))); diff != "" {
+			t.Errorf("%s serves other schedules over the subset (-store +subset):\n%s", stem, diff)
 		}
-		f, s := read(full), read(subset)
-		for _, name := range decompositions {
-			if len(f.Schedules[name].Links) == 0 {
-				t.Fatalf("%s's %s draws nothing, so this test holds nothing of it", stem, name)
-			}
+		for _, name := range slices.Sorted(maps.Keys(f.Schedules)) {
 			fNodes, fLinks := scheduleOf(f, f.Schedules[name], true)
 			sNodes, sLinks := scheduleOf(s, s.Schedules[name], true)
 			if diff := cmp.Diff(fNodes, sNodes); diff != "" {
@@ -890,6 +869,27 @@ func TestTheClientSubsetDrawsEveryGroupWhole(t *testing.T) {
 			if diff := cmp.Diff(fLinks, sLinks); diff != "" {
 				t.Errorf("%s %s draws other links over the subset (-store +subset):\n%s", stem, name, diff)
 			}
+			fs, ss := f.Schedules[name], s.Schedules[name]
+			if diff := cmp.Diff(fs.Caveats, ss.Caveats); diff != "" {
+				t.Errorf("%s %s states other caveats over the subset (-store +subset):\n%s", stem, name, diff)
+			}
+			if diff := cmp.Diff(fs.Scopes, ss.Scopes); diff != "" {
+				t.Errorf("%s %s states other scopes over the subset (-store +subset):\n%s", stem, name, diff)
+			}
 		}
 	}
+}
+
+// servedColumn is the column an export wrote at <stem>.json.
+func servedColumn(t *testing.T, dir, stem string) export.ColumnDoc {
+	t.Helper()
+	raw, err := os.ReadFile(filepath.Join(dir, stem+".json")) // #nosec G304 -- a temp dir a test wrote.
+	if err != nil {
+		t.Fatal(err)
+	}
+	var col export.ColumnDoc
+	if err := json.Unmarshal(raw, &col); err != nil {
+		t.Fatal(err)
+	}
+	return col
 }
