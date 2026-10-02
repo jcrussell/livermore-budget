@@ -9,9 +9,11 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 )
 
-// A Split is a coarse cut whose money, in some kinds, no one finer cut
-// decomposes and several do together: pp.66-67's TRANSFER OUT is p76's list
-// plus p222's transfers to the CIP, and neither page alone sums to it.
+// A Split is a coarse cut whose money, in some kinds, no finer cut decomposes
+// at the grain the lattice compares them: pp.66-67's TRANSFER OUT is p76's
+// list plus p222's transfers to the CIP, and neither page alone sums to it;
+// and it is pp.186-209's Transfers Out plus Transfers Out to CIP, one page's
+// two columns under two categories the spine prints as one line.
 //
 // The pair of the Whole and any one Part is compared without Kinds, and the
 // Parts are summed and held to the Whole at At instead.
@@ -29,6 +31,15 @@ type Split struct {
 // BudgetBookSplits are the Budget Book's splits.
 func BudgetBookSplits() []Split {
 	return []Split{{
+		// Category is not an axis of the level: the spine prints TRANSFER OUT
+		// and pp.186-209 print it as two columns, Transfers Out and Transfers
+		// Out to CIP, which agree with the spine only by group.
+		Name:  "a-fund-transfers-out-or-to-the-cip",
+		Whole: CutSpine,
+		Parts: []string{CutFundBalanceFlows},
+		At:    LevelFundGroup,
+		Kinds: []mapping.Kind{mapping.KindTransferOut},
+	}, {
 		// Category is not an axis of the level: the spine prints TRANSFER OUT
 		// and p222's rows are the "Transfers Out to CIP" pp.69-75 print beside
 		// it, so the two name one money differently and agree only by group.
@@ -59,9 +70,20 @@ func ValidateSplits(cuts []Cut, splits []Split) error {
 		if !ok {
 			return fmt.Errorf("split %q: whole %q is not a declared cut", s.Name, s.Whole)
 		}
-		if len(s.Parts) < 2 {
-			return fmt.Errorf("split %q names %d part(s); one part decomposing the whole is a containment",
-				s.Name, len(s.Parts))
+		if len(s.Parts) == 0 {
+			return fmt.Errorf("split %q names no part", s.Name)
+		}
+		// One part is a split only where At drops an axis the pair meets on;
+		// at the meet itself the lattice already compares the two.
+		if len(s.Parts) == 1 {
+			part, ok := byName[s.Parts[0]]
+			if !ok {
+				return fmt.Errorf("split %q: part %q is not a declared cut", s.Name, s.Parts[0])
+			}
+			if meet, err := Meet(part.Level, whole.Level); err == nil && meet == s.At {
+				return fmt.Errorf("split %q names one part at %q, where the lattice compares %q with %q; "+
+					"one part decomposing the whole at their meet is a containment", s.Name, s.At, part.Name, whole.Name)
+			}
 		}
 		if len(s.Kinds) == 0 {
 			return fmt.Errorf("split %q names no kind", s.Name)
@@ -173,8 +195,10 @@ func HoldSplit(facts []fact.Fact, cuts []Cut, s Split) (Comparison, error) {
 	for k := range ref {
 		columns[k.Column()] = true
 	}
+	// Named by the split, not its parts: a split of one part would otherwise
+	// share its name with the lattice's comparison of that part.
 	out := Comparison{
-		Cut:      Cut{Name: strings.Join(s.Parts, " + ")},
+		Cut:      Cut{Name: s.Name},
 		Against:  whole,
 		Relation: Containment,
 		At:       s.At,

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"slices"
 	"sort"
+	"strings"
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/fact"
@@ -22,6 +23,17 @@ type Key struct {
 
 func (k Key) String() string {
 	return fmt.Sprintf("%s %s[%s]", fact.ColumnLabel(k.Year, k.Basis), k.Level, k.Coords)
+}
+
+// coord is the value the key spells for an axis, or "" where its level
+// carries no such axis.
+func (k Key) coord(a Axis) string {
+	for _, field := range strings.Fields(k.Coords) {
+		if name, value, ok := strings.Cut(field, "="); ok && name == string(a) {
+			return value
+		}
+	}
+	return ""
 }
 
 // Column is the (year, basis) half of a Key, the way a finding names it.

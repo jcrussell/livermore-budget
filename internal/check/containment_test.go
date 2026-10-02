@@ -26,7 +26,7 @@ func TestTheCommittedCutsTieAlongTheLattice(t *testing.T) {
 		t.Fatalf("status = %s, findings:\n  %v", res.Status, res.Findings)
 	}
 	for _, want := range []string{
-		"11 comparison(s) of 14 cut(s)",
+		"20 comparison(s) of 17 cut(s)",
 		"departmentwide ~ funding-sources at department: 39 cells over FY2024 actual, FY2025 revised, FY2026 adopted, FY2027 adopted",
 		"general-fund-departments ~ funding-sources at department: 42 cells over FY2024 actual, FY2025 revised, FY2026 adopted, FY2027 adopted",
 		"revenue-detail -> spine at fund-group-by-category",
@@ -41,12 +41,25 @@ func TestTheCommittedCutsTieAlongTheLattice(t *testing.T) {
 		"funding-sources ~ spine at fund-group",
 		// The split takes transfers out, so p76 meets the spine on transfers in.
 		"transfers-detail -> spine at fund-group-by-category: 14 cells over FY2026 adopted, FY2027 adopted, 6 one-sided at zero",
-		"transfers-detail + cip-transfers-out -> spine at fund-group: 12 cells over FY2026 adopted, FY2027 adopted, 2 one-sided at zero",
+		"a-transfer-out-is-p76-or-to-the-cip -> spine at fund-group: 12 cells over FY2026 adopted, FY2027 adopted, 2 one-sided at zero",
 		"1 pair(s) held only by a split",
 		"cip-funds outside the reference, its funds carried by no other cut, and compared with none",
-		// 91 pairs of 14 cuts: 8 compared, 13 with the outside cut, 1 held
-		// only by the split, 2 held by a declared tie, and these.
-		"67 pair(s) no comparison or tie relates",
+		// pp.186-209 meet the spine through the split on transfers out, and
+		// as a containment on transfers in and balances; their two totals
+		// cuts meet it at the fund group, and every per-fund schedule at the
+		// fund.
+		"fund-balance-flows -> spine at fund-group-by-category: 49 cells over FY2026 adopted, FY2027 adopted",
+		"a-fund-transfers-out-or-to-the-cip -> spine at fund-group: 14 cells over FY2026 adopted, FY2027 adopted, 2 one-sided at zero",
+		"fund-balance-revenues ~ spine at fund-group: 14 cells over FY2026 adopted, FY2027 adopted",
+		"fund-balance-expenses ~ spine at fund-group: 13 cells over FY2026 adopted, FY2027 adopted",
+		"revenue-detail -> fund-balance-revenues at fund: 298 cells over FY2024 actual, FY2025 revised, FY2026 adopted, FY2027 adopted",
+		"general-fund-departments -> fund-balance-expenses at fund: 4 cells over FY2024 actual, FY2025 revised, FY2026 adopted, FY2027 adopted",
+		"general-fund-by-category -> fund-balance-expenses at fund: 3 cells over FY2024 actual, FY2025 revised, FY2026 adopted, FY2027 adopted",
+		"fund-expenditures -> fund-balance-expenses at fund: 291 cells over FY2024 actual, FY2025 revised, FY2026 adopted, FY2027 adopted",
+		"funding-sources -> fund-balance-expenses at fund: 298 cells over FY2024 actual, FY2025 revised, FY2026 adopted, FY2027 adopted",
+		// 136 pairs of 17 cuts: 16 compared, 16 with the outside cut, 1 held
+		// only by a split, 2 held by a declared tie, and these.
+		"101 pair(s) no comparison or tie relates",
 	} {
 		if !strings.Contains(res.Summary, want) {
 			t.Errorf("summary does not say %q", want)
@@ -113,11 +126,17 @@ func TestTheCutsCheckGoesRed(t *testing.T) {
 			t.Fatal("no General Fund property tax row to move")
 		}
 		res := run(t, planted)
-		if res.Status != StatusFail || len(res.Findings) != 1 {
-			t.Fatalf("status %s with %d findings, want one failure:\n  %v", res.Status, len(res.Findings), res.Findings)
+		// Once against the spine by category, once against pp.186-209's
+		// General Fund Revenues.
+		if res.Status != StatusFail || len(res.Findings) != 2 {
+			t.Fatalf("status %s with %d findings, want two failures:\n  %v", res.Status, len(res.Findings), res.Findings)
 		}
 		if !strings.Contains(res.Findings[0].Detail, "taxes/property") || !strings.Contains(res.Findings[0].Detail, "$1.00") {
 			t.Errorf("the finding names neither the cell nor the difference: %s", res.Findings[0].Detail)
+		}
+		if res.Findings[1].Subject != "revenue-detail -> fund-balance-revenues" ||
+			!strings.Contains(res.Findings[1].Detail, "fund=100") || !strings.Contains(res.Findings[1].Detail, "$1.00") {
+			t.Errorf("the second finding is not the General Fund's total on p198: %v", res.Findings[1])
 		}
 	})
 
@@ -306,7 +325,7 @@ func TestTheCutsCheckHoldsTheStoreToEveryCut(t *testing.T) {
 			Coords: map[structure.Axis]string{structure.AxisCategory: "transfers/in"},
 			Cut:    structure.Sum{Cents: 1, Present: true}, Against: structure.Sum{Cents: 2, Present: true}}
 		withExceptions(t, append(structure.BudgetBookExceptions(), structure.Exception{
-			Name: "inert", Cut: "revenue-detail", Against: "transfers-detail", At: structure.LevelCategory,
+			Name: "inert", Cut: "revenue-detail", Against: "departmentwide", At: structure.LevelCategory,
 			Cells: []structure.Pin{pin}, Residual: 1, Printed: "nowhere", Reason: "a plant", Bead: "none",
 		}))
 		res := resultFor(t, runOne(t, s, &cutsTieAlongTheLattice{}), "cuts-tie-along-the-lattice")

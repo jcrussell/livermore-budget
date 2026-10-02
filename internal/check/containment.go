@@ -202,8 +202,9 @@ func (*cutsTieAlongTheLattice) Run(_ context.Context, s *Subject) (Result, error
 	}
 
 	// An exception on a pair no comparison relates is inert, and refused.
+	// One between two cuts at one level is the peer check's.
 	for _, e := range exceptions {
-		if consulted[e.Name] || isEmpty[e.Cut] || isEmpty[e.Against] {
+		if _, between := e.BetweenPeers(cuts); consulted[e.Name] || isEmpty[e.Cut] || isEmpty[e.Against] || between {
 			continue
 		}
 		findings = append(findings, finding(e.Name,

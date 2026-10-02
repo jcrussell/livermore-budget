@@ -6963,12 +6963,17 @@ rules:
   # row is a FUND and a column is a budget LINE, so each column carries the
   # category and kind and each row the fund.
   #
-  # TWELVE PAGE PAIRS, ONE RULE EACH. An even page prints the fund name, its
-  # beginning balance, Revenues, Transfers In and Total Sources; the odd page
-  # after it continues the same lines with Expenses, Transfers Out, Transfers
-  # Out to CIP, Reserve Increase/(Use), Total Uses and the ending balance, and
-  # no labels, so it is read positionally against its even page, as p67 is
-  # against p66.
+  # TWELVE PAGE PAIRS, ONE RULE EACH, AND THE CIP BLOCK ONE MORE. An even
+  # page prints the fund name, its beginning balance, Revenues, Transfers In
+  # and Total Sources; the odd page after it continues the same lines with
+  # Expenses, Transfers Out, Transfers Out to CIP, Reserve Increase/(Use),
+  # Total Uses and the ending balance, and no labels, so it is read
+  # positionally against its even page, as p67 is against p66. The last pair
+  # of each year prints the Capital Improvement Program Funds below the
+  # internal service funds, and reads them as a rule of their own: those are
+  # p222's funds, which internal/structure holds outside pp.66-67's totals,
+  # and a cut selects rules, not rows. The funds above the block are the
+  # pair's `-above-cip` rule.
   #
   # ROWS ARE WRITTEN ONCE. The four years print the same 129 rows in one
   # order, labelled identically but for one summary row ("Internal Service
@@ -7256,7 +7261,7 @@ rules:
       - &f730 {label: "Fleet & Equipment Services", fund: 730, fund_group: internal-service}
 
   # --------------------------------------------------------------------------
-  - id: fund-balances-fy2024-p0190
+  - id: fund-balances-fy2024-p0190-above-cip
     kind: fund_balance
     basis: actual
     scope: fund-balances-by-fund
@@ -7267,8 +7272,7 @@ rules:
     parts:
       - page: 190
         section: "Total Sources"
-        stop_at: "Footnote:"
-        headings: ["Capital Improvement Program Funds"]
+        stop_at: "Capital Improvement Program Funds"
         unmapped_text:
           - {text: "1", note: "the footnote marker printed alone above the next row, keying p190's footnote 1, printed at the foot of this page: the CIP specific funds were created in FY 2024-25 with the transition to the new ERP system"}
         column_headers: ["7/1/23", "Revenues", "Transfers In", "Total Sources"]
@@ -7280,7 +7284,10 @@ rules:
       - page: 191
         labels_from: 190
         section: "6/30/24"
-        stop_at: "BUDGET FY 2025-27"
+        # p191 prints no labels. Four empty lines part the Total Internal
+        # Service Funds line from CIP Airport's, and the block ends at the
+        # first of them, so its stop_at line prints no figure.
+        stop_at: "\n\n\n\n\n"
         column_headers: ["Expenses", "Transfers Out", "Transfers Out to CIP", "Increase/(Use)", "Total Uses", "6/30/24"]
         columns:
           - {fiscal_year: 2024, kind: expenditure, category: expenses}
@@ -7303,6 +7310,44 @@ rules:
             delta_cents: 100
             note: >-
               The funds above it sum to 24,208,044 under Total Uses and the page prints 24,208,045, a dollar over them: FY2023-24 actuals are printed rounded to the dollar line by line, and the total is rounded on its own.
+
+  - id: fund-balances-fy2024-p0190
+    kind: fund_balance
+    basis: actual
+    scope: fund-balances-by-fund
+    grain: fund-by-category
+    units: dollars
+    subtotal_chain: fund-balances-fy2024
+    row_labels_name_funds: true
+    parts:
+      - page: 190
+        # The heading, and not the Total Capital Improvement Program Funds
+        # line that also prints it.
+        section: "Capital Improvement Program Funds"
+        section_ordinal: 1
+        stop_at: "Footnote:"
+        column_headers: ["7/1/23", "Revenues", "Transfers In", "Total Sources"]
+        columns:
+          - {fiscal_year: 2024, category: fund-balance/beginning}
+          - {fiscal_year: 2024, kind: revenue, category: revenues}
+          - {fiscal_year: 2024, kind: transfer_in, category: transfers/in}
+          - {skip: true}
+      - page: 191
+        labels_from: 190
+        # p191 prints no labels; the block opens after the run of empty
+        # lines the rule above ends at.
+        section: "\n\n\n\n\n"
+        section_ordinal: 1
+        stop_at: "BUDGET FY 2025-27"
+        column_headers: ["Expenses", "Transfers Out", "Transfers Out to CIP", "Increase/(Use)", "Total Uses", "6/30/24"]
+        columns:
+          - {fiscal_year: 2024, kind: expenditure, category: expenses}
+          - {fiscal_year: 2024, kind: transfer_out, category: transfers/out}
+          - {fiscal_year: 2024, kind: transfer_out, category: transfers/out-to-cip}
+          - {fiscal_year: 2024, category: fund-balance/reserve-increase}
+          - {skip: true}
+          - {fiscal_year: 2024, category: fund-balance/ending}
+    rows:
       - &f601 {label: "CIP Airport", fund: 601, fund_group: enterprise}
       - &f611 {label: "CIP Stormwater & Storm Drain", fund: 611, fund_group: enterprise}
       - &f621 {label: "CIP Wastewater", fund: 621, fund_group: enterprise}
@@ -7564,7 +7609,7 @@ rules:
       - {label: "Total Enterprise Funds", skip: true, subtotal: 1}
 
   # --------------------------------------------------------------------------
-  - id: fund-balances-fy2025-p0196
+  - id: fund-balances-fy2025-p0196-above-cip
     kind: fund_balance
     basis: revised
     scope: fund-balances-by-fund
@@ -7575,8 +7620,8 @@ rules:
     parts:
       - page: 196
         section: "Total Sources"
-        stop_at: "Footnote:"
-        headings: ["Internal Service Funds", "Capital Improvement Program Funds"]
+        stop_at: "Capital Improvement Program Funds"
+        headings: ["Internal Service Funds"]
         unmapped_text:
           - {text: "1", note: "the footnote marker printed alone above the next row, keying p196's footnote 1, printed at the foot of this page: the CIP specific funds were created in FY 2024-25 with the transition to the new ERP system"}
         column_headers: ["7/1/24", "Revenues", "Transfers In", "Total Sources"]
@@ -7588,7 +7633,10 @@ rules:
       - page: 197
         labels_from: 196
         section: "6/30/25"
-        stop_at: "BUDGET FY 2025-27"
+        # p197 prints no labels. Four empty lines part the Total Internal
+        # Service Funds line from CIP Airport's, and the block ends at the
+        # first of them, so its stop_at line prints no figure.
+        stop_at: "\n\n\n\n\n"
         column_headers: ["Expenses", "Transfers Out", "Transfers Out to CIP", "Increase/(Use)", "Total Uses", "6/30/25"]
         columns:
           - {fiscal_year: 2025, kind: expenditure, category: expenses}
@@ -7604,6 +7652,44 @@ rules:
       - *f730  # Fleet & Equipment Services
       - *f740  # Facilities Rehab Pgm
       - {label: "Total Internal Service Funds", skip: true, subtotal: 1}
+
+  - id: fund-balances-fy2025-p0196
+    kind: fund_balance
+    basis: revised
+    scope: fund-balances-by-fund
+    grain: fund-by-category
+    units: dollars
+    subtotal_chain: fund-balances-fy2025
+    row_labels_name_funds: true
+    parts:
+      - page: 196
+        # The heading, and not the Total Capital Improvement Program Funds
+        # line that also prints it.
+        section: "Capital Improvement Program Funds"
+        section_ordinal: 1
+        stop_at: "Footnote:"
+        column_headers: ["7/1/24", "Revenues", "Transfers In", "Total Sources"]
+        columns:
+          - {fiscal_year: 2025, category: fund-balance/beginning}
+          - {fiscal_year: 2025, kind: revenue, category: revenues}
+          - {fiscal_year: 2025, kind: transfer_in, category: transfers/in}
+          - {skip: true}
+      - page: 197
+        labels_from: 196
+        # p197 prints no labels; the block opens after the run of empty
+        # lines the rule above ends at.
+        section: "\n\n\n\n\n"
+        section_ordinal: 1
+        stop_at: "BUDGET FY 2025-27"
+        column_headers: ["Expenses", "Transfers Out", "Transfers Out to CIP", "Increase/(Use)", "Total Uses", "6/30/25"]
+        columns:
+          - {fiscal_year: 2025, kind: expenditure, category: expenses}
+          - {fiscal_year: 2025, kind: transfer_out, category: transfers/out}
+          - {fiscal_year: 2025, kind: transfer_out, category: transfers/out-to-cip}
+          - {fiscal_year: 2025, category: fund-balance/reserve-increase}
+          - {skip: true}
+          - {fiscal_year: 2025, category: fund-balance/ending}
+    rows:
       - *f601  # CIP Airport
       - *f611  # CIP Stormwater & Storm Drain
       - *f621  # CIP Wastewater
@@ -7862,7 +7948,7 @@ rules:
       - *f730  # Fleet & Equipment Services
 
   # --------------------------------------------------------------------------
-  - id: fund-balances-fy2026-p0202
+  - id: fund-balances-fy2026-p0202-above-cip
     kind: fund_balance
     basis: adopted
     scope: fund-balances-by-fund
@@ -7873,8 +7959,7 @@ rules:
     parts:
       - page: 202
         section: "Total Sources"
-        stop_at: "BUDGET FY 2025-27"
-        headings: ["Capital Improvement Program Funds"]
+        stop_at: "Capital Improvement Program Funds"
         column_headers: ["7/1/25", "Revenues", "Transfers In", "Total Sources"]
         columns:
           - {fiscal_year: 2026, category: fund-balance/beginning}
@@ -7884,7 +7969,10 @@ rules:
       - page: 203
         labels_from: 202
         section: "6/30/26"
-        stop_at: "BUDGET FY 2025-27"
+        # p203 prints no labels. Four empty lines part the Total Internal
+        # Service Funds line from CIP Airport's, and the block ends at the
+        # first of them, so its stop_at line prints no figure.
+        stop_at: "\n\n\n\n\n"
         column_headers: ["Expenses", "Transfers Out", "Transfers Out to CIP", "Increase/(Use)", "Total Uses", "6/30/26"]
         columns:
           - {fiscal_year: 2026, kind: expenditure, category: expenses}
@@ -7896,6 +7984,44 @@ rules:
     rows:
       - *f740  # Facilities Rehab Pgm
       - {label: "Total Internal Service Funds", skip: true, subtotal: 1}
+
+  - id: fund-balances-fy2026-p0202
+    kind: fund_balance
+    basis: adopted
+    scope: fund-balances-by-fund
+    grain: fund-by-category
+    units: dollars
+    subtotal_chain: fund-balances-fy2026
+    row_labels_name_funds: true
+    parts:
+      - page: 202
+        # The heading, and not the Total Capital Improvement Program Funds
+        # line that also prints it.
+        section: "Capital Improvement Program Funds"
+        section_ordinal: 1
+        stop_at: "BUDGET FY 2025-27"
+        column_headers: ["7/1/25", "Revenues", "Transfers In", "Total Sources"]
+        columns:
+          - {fiscal_year: 2026, category: fund-balance/beginning}
+          - {fiscal_year: 2026, kind: revenue, category: revenues}
+          - {fiscal_year: 2026, kind: transfer_in, category: transfers/in}
+          - {skip: true}
+      - page: 203
+        labels_from: 202
+        # p203 prints no labels; the block opens after the run of empty
+        # lines the rule above ends at.
+        section: "\n\n\n\n\n"
+        section_ordinal: 1
+        stop_at: "BUDGET FY 2025-27"
+        column_headers: ["Expenses", "Transfers Out", "Transfers Out to CIP", "Increase/(Use)", "Total Uses", "6/30/26"]
+        columns:
+          - {fiscal_year: 2026, kind: expenditure, category: expenses}
+          - {fiscal_year: 2026, kind: transfer_out, category: transfers/out}
+          - {fiscal_year: 2026, kind: transfer_out, category: transfers/out-to-cip}
+          - {fiscal_year: 2026, category: fund-balance/reserve-increase}
+          - {skip: true}
+          - {fiscal_year: 2026, category: fund-balance/ending}
+    rows:
       - *f601  # CIP Airport
       - *f611  # CIP Stormwater & Storm Drain
       - *f621  # CIP Wastewater
@@ -8152,7 +8278,7 @@ rules:
       - *f642  # Water Replacement
 
   # --------------------------------------------------------------------------
-  - id: fund-balances-fy2027-p0208
+  - id: fund-balances-fy2027-p0208-above-cip
     kind: fund_balance
     basis: adopted
     scope: fund-balances-by-fund
@@ -8163,8 +8289,8 @@ rules:
     parts:
       - page: 208
         section: "Total Sources"
-        stop_at: "BUDGET FY 2025-27"
-        headings: ["Internal Service Funds", "Capital Improvement Program Funds"]
+        stop_at: "Capital Improvement Program Funds"
+        headings: ["Internal Service Funds"]
         column_headers: ["7/1/26", "Revenues", "Transfers In", "Total Sources"]
         columns:
           - {fiscal_year: 2027, category: fund-balance/beginning}
@@ -8174,7 +8300,12 @@ rules:
       - page: 209
         labels_from: 208
         section: "6/30/27"
-        stop_at: "BUDGET FY 2025-27"
+        # p209 prints no labels. Four empty lines part the Total Enterprise
+        # Funds line from General Liability's, and four more the Total
+        # Internal Service Funds line from CIP Airport's; the block ends at the
+        # first of the second run, so its stop_at line prints no figure.
+        stop_at: "\n\n\n\n\n"
+        stop_at_ordinal: 2
         column_headers: ["Expenses", "Transfers Out", "Transfers Out to CIP", "Increase/(Use)", "Total Uses", "6/30/27"]
         columns:
           - {fiscal_year: 2027, kind: expenditure, category: expenses}
@@ -8192,6 +8323,44 @@ rules:
       - *f730  # Fleet & Equipment Services
       - *f740  # Facilities Rehab Pgm
       - {label: "Total Internal Service Funds", skip: true, subtotal: 1}
+
+  - id: fund-balances-fy2027-p0208
+    kind: fund_balance
+    basis: adopted
+    scope: fund-balances-by-fund
+    grain: fund-by-category
+    units: dollars
+    subtotal_chain: fund-balances-fy2027
+    row_labels_name_funds: true
+    parts:
+      - page: 208
+        # The heading, and not the Total Capital Improvement Program Funds
+        # line that also prints it.
+        section: "Capital Improvement Program Funds"
+        section_ordinal: 1
+        stop_at: "BUDGET FY 2025-27"
+        column_headers: ["7/1/26", "Revenues", "Transfers In", "Total Sources"]
+        columns:
+          - {fiscal_year: 2027, category: fund-balance/beginning}
+          - {fiscal_year: 2027, kind: revenue, category: revenues}
+          - {fiscal_year: 2027, kind: transfer_in, category: transfers/in}
+          - {skip: true}
+      - page: 209
+        labels_from: 208
+        # p209 prints no labels; the block opens after the run of empty
+        # lines the rule above ends at.
+        section: "\n\n\n\n\n"
+        section_ordinal: 2
+        stop_at: "BUDGET FY 2025-27"
+        column_headers: ["Expenses", "Transfers Out", "Transfers Out to CIP", "Increase/(Use)", "Total Uses", "6/30/27"]
+        columns:
+          - {fiscal_year: 2027, kind: expenditure, category: expenses}
+          - {fiscal_year: 2027, kind: transfer_out, category: transfers/out}
+          - {fiscal_year: 2027, kind: transfer_out, category: transfers/out-to-cip}
+          - {fiscal_year: 2027, category: fund-balance/reserve-increase}
+          - {skip: true}
+          - {fiscal_year: 2027, category: fund-balance/ending}
+    rows:
       - *f601  # CIP Airport
       - *f611  # CIP Stormwater & Storm Drain
       - *f621  # CIP Wastewater

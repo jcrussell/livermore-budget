@@ -216,11 +216,9 @@ func TestTheBareLabelArmIsWhatTheDeclarationTurnsOn(t *testing.T) {
 			"rows it makes no claim about:\n%s", res.Summary)
 	}
 	// ONE NAME PER RULE, NOT PER ROW -- eleven funding-* rules for 78 rows and
-	// twelve fund-balances-* rules for 444 -- and both halves of that are asserted
-	// because a rewrite once dropped them: replacing the
-	// seenRule dedup with a per-row append left the suite green, so the 11 KB
-	// PASS line this counter exists to prevent could come back unnoticed.
-	// A count is the honest middle; this is what holds it.
+	// sixteen fund-balances-* rules for 444 -- and both halves are asserted:
+	// replacing the seenRule dedup with a per-row append leaves the rest of the
+	// suite green and puts this check's PASS line at 11 KB.
 	for _, want := range []string{"funding-city-council", "funding-public-works"} {
 		if !strings.Contains(res.Summary, want) {
 			t.Errorf("the summary does not attribute the unread declarations to their "+
@@ -231,8 +229,8 @@ func TestTheBareLabelArmIsWhatTheDeclarationTurnsOn(t *testing.T) {
 		t.Errorf("the summary names funding-* %d times, want 11 -- one per rule. A "+
 			"per-row list is 78 and is what put this check's PASS line at 11 KB", n)
 	}
-	if n := strings.Count(res.Summary, "fund-balances-fy"); n != 12 {
-		t.Errorf("the summary names fund-balances-* %d times, want 12 -- one per rule", n)
+	if n := strings.Count(res.Summary, "fund-balances-fy"); n != 16 {
+		t.Errorf("the summary names fund-balances-* %d times, want 16 -- one per rule", n)
 	}
 }
 
@@ -411,31 +409,31 @@ func TestRowFundsCatchesASameGroupEndSwap(t *testing.T) {
 	}
 }
 
-// TestRowFundsCatchesABareLabelTwinTheGateDoesNot is fisc-90fp's proof, and the
-// mutation it runs is the one the bead was filed for.
+// TestRowFundsCatchesABareLabelTwin is fisc-90fp's proof, and the mutation it
+// runs is the one the bead was filed for.
 //
-// WHAT WAS ALREADY TRUE, said first so this test is not read as closing a hole
-// it did not close. TestEveryFundingSourceFactMatchesThePrintedRow has resolved
-// every funding-source fact's RowLabel through FundByLabel since cd1192c, so
-// `go test` was already red on Water 640 -> 641. What was NOT red was the GATE:
-// measured at 02156a7, that mutation left `fisc verify` fully green. A guarantee
-// that lives only inside one lane's test is not one the fact store carries, and
-// the acceptance criterion on fisc-90fp is "makes fisc verify fail".
+// TestEveryFundingSourceFactMatchesThePrintedRow resolves every funding-source
+// fact's RowLabel through FundByLabel inside `go test`. A guarantee that lives
+// only inside one lane's test is not one the fact store carries, and the
+// acceptance criterion on fisc-90fp is "makes fisc verify fail".
 //
 // SO THIS ASSERTS ON THE Result AND NOT ON THE SUITE, deliberately. Running the
 // whole suite over this mutation goes red either way, and a proof that cannot
-// tell the new arm from the old test is green because the other gate fired --
-// which is the shape AGENTS.md names and which this repo has shipped four times.
+// tell this arm from that test is green because the other gate fired -- the
+// shape AGENTS.md names.
 //
 // The swap is Water 640 -> Water Replacement 642: both `enterprise` in
-// data/funds.yaml, so no money leaves its group and no sum moves, and
-// fact-funds-resolve and cuts-tie-along-the-lattice both stay PASS. Its CIP
+// data/funds.yaml, so no money leaves its group and fact-funds-resolve stays
+// PASS. cuts-tie-along-the-lattice goes red, because funding-sources is held
+// per fund to pp.186-209's Expenses: 640 and 642 each miss in all four
+// columns. That is a second gate on this swap, and not one on a same-type swap
+// between two funds whose pp.186-209 Expenses are equal. Its CIP
 // twin 641 is not such a swap: 641 is a fund of the cip-funds cut, which is
 // outside the reference, so cuts-tie-along-the-lattice refuses it -- the last
 // subtest holds that. Deleting the BARE-LABEL arm from Run -- the second of
 // the two gated on ru.RowLabelsNameFunds, not the phrased-label refusal above it
 // -- returns it to green.
-func TestRowFundsCatchesABareLabelTwinTheGateDoesNot(t *testing.T) {
+func TestRowFundsCatchesABareLabelTwin(t *testing.T) {
 	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
 	if err != nil {
 		t.Fatalf("Load: %v", err)
@@ -478,9 +476,9 @@ func TestRowFundsCatchesABareLabelTwinTheGateDoesNot(t *testing.T) {
 		}
 	}
 
-	// THE GREEN HALF, and it is what makes the mutation worth guarding against
-	// rather than merely detectable. Both of the checks that catch the OTHER two
-	// twin-swap shapes report PASS over the same swap.
+	// THE OTHER GATES. fact-funds-resolve, which catches a swap across fund
+	// types, reports PASS over this one; cuts-tie-along-the-lattice reports it
+	// per fund against pp.186-209.
 	//
 	// THE FACTS HAVE TO BE MUTATED TOO: factFundsResolve and
 	// cutsTieAlongTheLattice read s.Facts, everything above reads s.Files, and
@@ -500,15 +498,27 @@ func TestRowFundsCatchesABareLabelTwinTheGateDoesNot(t *testing.T) {
 		t.Fatal("no fact carries funding-public-works fund 640; the green half would " +
 			"pass over an unmutated store, which is what it exists to refuse")
 	}
-	for _, c := range []Check{&factFundsResolve{}, &cutsTieAlongTheLattice{}} {
-		got, err := c.Run(t.Context(), s)
-		if err != nil {
-			t.Fatalf("%s: %v", c.ID(), err)
+	got, err := (&factFundsResolve{}).Run(t.Context(), s)
+	if err != nil {
+		t.Fatalf("fact-funds-resolve: %v", err)
+	}
+	if got.Status != StatusPass {
+		t.Errorf("fact-funds-resolve reported %s over the same-type swap: %s", got.Status, got.Summary)
+	}
+	got, err = (&cutsTieAlongTheLattice{}).Run(t.Context(), s)
+	if err != nil {
+		t.Fatalf("cuts-tie-along-the-lattice: %v", err)
+	}
+	perFund := 0
+	for _, f := range got.Findings {
+		if f.Subject == "funding-sources -> fund-balance-expenses" &&
+			(strings.Contains(f.Detail, "fund=640") || strings.Contains(f.Detail, "fund=642")) {
+			perFund++
 		}
-		if got.Status != StatusPass {
-			t.Errorf("%s reported %s over the same-type swap; this test proves the "+
-				"wrong thing if another check sees it: %s", c.ID(), got.Status, got.Summary)
-		}
+	}
+	if got.Status != StatusFail || perFund != len(got.Findings) || perFund != 8 {
+		t.Errorf("cuts-tie-along-the-lattice reported %s with %d findings, want the 8 cells of "+
+			"funds 640 and 642 against pp.186-209, four columns each:\n  %v", got.Status, len(got.Findings), got.Findings)
 	}
 
 	t.Run("the CIP twin is refused by the outside cut", func(t *testing.T) {

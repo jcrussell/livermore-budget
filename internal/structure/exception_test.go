@@ -71,7 +71,7 @@ func TestTheDeclaredExceptionsAreTheWholeResidual(t *testing.T) {
 			"pp.127-130-print-no-general-fund-transfer-in-2027",
 		},
 		"transfers-detail -> spine":                            nil,
-		"transfers-detail + cip-transfers-out -> spine":        nil,
+		"a-transfer-out-is-p76-or-to-the-cip -> spine":         nil,
 		"general-fund-departments -> spine":                    nil,
 		"general-fund-by-category -> spine":                    nil,
 		"fund-expenditures -> spine":                           {"p0067-internal-service-is-250000-high-by-fund"},
@@ -89,6 +89,50 @@ func TestTheDeclaredExceptionsAreTheWholeResidual(t *testing.T) {
 			"general-fund-departments-rounds-administrative-services-2024",
 			"general-fund-departments-rounds-community-development-2024",
 		},
+		"fund-balance-flows -> spine": {
+			"p0067-internal-service-ending-is-250000-low",
+			"pp.186-209-carry-a-dollar-of-capital-beginning-2026",
+			"pp.186-209-carry-a-dollar-of-capital-beginning-2027",
+			"pp.186-209-carry-a-dollar-of-capital-ending-2026",
+			"pp.186-209-carry-a-dollar-of-capital-ending-2027",
+			"pp.186-209-carry-a-dollar-of-special-revenue-beginning-2026",
+			"pp.186-209-carry-a-dollar-of-special-revenue-beginning-2027",
+			"pp.186-209-carry-a-dollar-of-special-revenue-ending-2026",
+			"pp.186-209-carry-a-dollar-of-special-revenue-ending-2027",
+			"pp.186-209-print-no-change-line-capital-2026",
+			"pp.186-209-print-no-change-line-capital-2027",
+			"pp.186-209-print-no-change-line-enterprise-2026",
+			"pp.186-209-print-no-change-line-enterprise-2027",
+			"pp.186-209-print-no-change-line-general-2026",
+			"pp.186-209-print-no-change-line-general-2027",
+			"pp.186-209-print-no-change-line-internal-service-2026",
+			"pp.186-209-print-no-change-line-internal-service-2027",
+			"pp.186-209-print-no-change-line-special-revenue-2026",
+			"pp.186-209-print-no-change-line-special-revenue-2027",
+		},
+		"a-fund-transfers-out-or-to-the-cip -> spine": nil,
+		"fund-balance-revenues ~ spine":               nil,
+		"fund-balance-expenses ~ spine":               {"p0067-internal-service-is-250000-high-by-fund-total"},
+		"revenue-detail -> fund-balance-revenues": {
+			"pp.127-140-print-three-funds-revenue-as-the-state-grant-funds-2024",
+			"pp.127-140-round-airport-revenue-2024",
+			"pp.127-140-round-low-income-housing-revenue-2024",
+			"pp.186-209-carry-no-police-donations-other-financing-2025",
+		},
+		"general-fund-departments -> fund-balance-expenses": nil,
+		"general-fund-by-category -> fund-balance-expenses": {"p0172-rounds-general-fund-expenses-2024"},
+		"fund-expenditures -> fund-balance-expenses": {
+			"pp.173-183-print-four-funds-spending-as-the-state-grant-funds-2024",
+			"pp.173-183-round-airport-expenses-2024",
+			"pp.173-183-round-downtown-lmd-expenses-2024",
+			"pp.173-183-round-facilities-rehab-expenses-2024",
+			"pp.173-183-round-other-maintenance-cfds-expenses-2024",
+			"pp.173-183-round-water-expenses-2024",
+		},
+		"funding-sources -> fund-balance-expenses": {
+			"pp.85-125-fund-four-funds-spending-from-the-state-grant-fund-2024",
+			"pp.85-125-fund-maintenances-transfer-out-2024",
+		},
 	}
 	ties := map[string]structure.Comparison{}
 	for _, tie := range structure.BudgetBookTies() {
@@ -99,7 +143,7 @@ func TestTheDeclaredExceptionsAreTheWholeResidual(t *testing.T) {
 		if err != nil {
 			t.Fatalf("hold split %q: %v", sp.Name, err)
 		}
-		ties[strings.Join(sp.Parts, " + ")+" -> "+sp.Whole] = c
+		ties[sp.Name+" -> "+sp.Whole] = c
 	}
 	fired := map[string]bool{}
 	for pair, names := range want {
@@ -129,6 +173,18 @@ func TestTheDeclaredExceptionsAreTheWholeResidual(t *testing.T) {
 		})); diff != "" {
 			t.Errorf("%s: exceptions held apart (-want +got):\n%s", pair, diff)
 		}
+	}
+	// An absence between two peers is the peer pass's to declare.
+	o, err := structure.Peers(facts, cutNamed(t, structure.CutRevenueDetail), cutNamed(t, structure.CutFundBalanceFlows),
+		structure.BudgetBookIdentities(), exceptions)
+	if err != nil {
+		t.Fatalf("peers: %v", err)
+	}
+	if len(o.Findings) != 0 {
+		t.Errorf("revenue-detail + fund-balance-flows: %s", strings.Join(o.Findings, "\n  "))
+	}
+	for _, name := range o.Excused {
+		fired[name] = true
 	}
 	for _, e := range exceptions {
 		if !fired[e.Name] {
@@ -271,6 +327,21 @@ func TestAnExceptionGoesRed(t *testing.T) {
 		err := structure.ValidateExceptions([]structure.Exception{byGroup, byObject})
 		if err == nil || !strings.Contains(err.Error(), "two axes") {
 			t.Fatalf("ValidateExceptions = %v, want the grounding refused", err)
+		}
+	})
+
+	t.Run("cells that net to zero are one figure printed in two places, and a lone cell never nets", func(t *testing.T) {
+		e := exceptionNamed(t, "pp.127-140-print-three-funds-revenue-as-the-state-grant-funds-2024")
+		if len(e.Cells) < 2 || e.Residual != 0 {
+			t.Fatalf("%s holds %d cells apart by %d; want a move between cells", e.Name, len(e.Cells), e.Residual)
+		}
+		if err := structure.ValidateExceptions([]structure.Exception{e}); err != nil {
+			t.Fatalf("ValidateExceptions refused a move between cells: %v", err)
+		}
+		e.Cells = e.Cells[:1]
+		err := structure.ValidateExceptions([]structure.Exception{e})
+		if err == nil || !strings.Contains(err.Error(), "residual of zero") {
+			t.Fatalf("ValidateExceptions = %v, want a lone cell's zero residual refused", err)
 		}
 	})
 

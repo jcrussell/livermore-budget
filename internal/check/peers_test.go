@@ -22,18 +22,23 @@ func TestTheCommittedPeersOverlapOnlyByDeclaredIdentity(t *testing.T) {
 	if res.Status != StatusPass {
 		t.Fatalf("status = %s, findings:\n  %v", res.Status, res.Findings)
 	}
-	if res.Subjects != 22 {
-		t.Errorf("subjects = %d, want the 22 cells pp.127-140 and p76 share", res.Subjects)
+	if res.Subjects != 207 {
+		t.Errorf("subjects = %d, want the 22 cells pp.127-140 and p76 share and the 185 pp.186-209 share with them and p222", res.Subjects)
 	}
 	for _, want := range []string{
-		"22 shared cell(s) over 6 pair(s)",
+		"207 shared cell(s) over 10 pair(s)",
+		`revenue-detail + fund-balance-flows at fund-by-category: 60 shared cell(s), 60 under identity "a-fund-balance-transfer-in-is-the-revenue-schedules" carrying $98,159,217.00 on each side`,
+		`transfers-detail + fund-balance-flows at fund-by-category: 56 shared cell(s), 56 under identity "a-fund-balance-transfer-is-p76s" carrying $86,301,260.00 on each side`,
+		`cip-transfers-out + fund-balance-flows at fund-by-category: 69 shared cell(s), 69 under identity "a-fund-balance-transfer-to-the-cip-is-p222s" carrying $181,817,740.00 on each side`,
+		"cip-funds + fund-balance-flows at fund-by-category: 0 shared cell(s)",
+		"5 exception(s) excuse a cell one side of an identity has no row for: pp.127-130-print-no-general-fund-transfer-in-2024, pp.127-130-print-no-general-fund-transfer-in-2025, pp.127-130-print-no-general-fund-transfer-in-2026, pp.127-130-print-no-general-fund-transfer-in-2027, pp.131-140-print-no-general-fund-cip-reserves-2025",
 		"revenue-detail + cip-funds at fund-by-category: 0 shared cell(s)",
 		"transfers-detail + cip-transfers-out at fund-by-category: 0 shared cell(s)",
 		"transfers-detail + cip-funds at fund-by-category: 0 shared cell(s)",
 		`revenue-detail + transfers-detail at fund-by-category: 22 shared cell(s), 22 under identity "a-transfer-in-is-printed-at-both-ends" carrying $42,183,495.00 on each side`,
 		"acfr-general-fund-summary + acfr-fund-balances/general at fund-group-by-category: 0 shared cell(s)",
 		"acfr-changes-in-fund-balances + acfr-fund-balances/other-governmental at category: 0 shared cell(s)",
-		"13 pair(s) at one level refused: spine/acfr-general-fund-summary, spine/acfr-fund-balances/general, revenue-detail/cip-transfers-out, revenue-detail/general-fund-by-category, revenue-detail/fund-expenditures, transfers-detail/general-fund-by-category, transfers-detail/fund-expenditures, cip-transfers-out/cip-funds, cip-transfers-out/general-fund-by-category, cip-transfers-out/fund-expenditures, cip-funds/general-fund-by-category, cip-funds/fund-expenditures, general-fund-by-category/fund-expenditures",
+		"16 pair(s) at one level refused: spine/acfr-general-fund-summary, spine/acfr-fund-balances/general, revenue-detail/cip-transfers-out, revenue-detail/general-fund-by-category, revenue-detail/fund-expenditures, transfers-detail/general-fund-by-category, transfers-detail/fund-expenditures, cip-transfers-out/cip-funds, cip-transfers-out/general-fund-by-category, cip-transfers-out/fund-expenditures, cip-funds/general-fund-by-category, cip-funds/fund-expenditures, general-fund-by-category/fund-expenditures, general-fund-by-category/fund-balance-flows, fund-expenditures/fund-balance-flows, fund-balance-revenues/fund-balance-expenses",
 	} {
 		if !strings.Contains(res.Summary, want) {
 			t.Errorf("summary does not say %q", want)
@@ -77,12 +82,19 @@ func TestThePeerCheckGoesRed(t *testing.T) {
 	mutated := *s
 	mutated.Facts = planted
 	res := resultFor(t, runOne(t, &mutated, &peersOverlapOnlyByDeclaredIdentity{}), "peers-overlap-only-by-declared-identity")
-	if res.Status != StatusFail || len(res.Findings) != 1 {
-		t.Fatalf("status %s with %d findings, want one failure:\n  %v", res.Status, len(res.Findings), res.Findings)
+	// p76 now disagrees with both other readings of the figure: pp.127-140's
+	// and pp.204-209's.
+	if res.Status != StatusFail || len(res.Findings) != 2 {
+		t.Fatalf("status %s with %d findings, want two failures:\n  %v", res.Status, len(res.Findings), res.Findings)
 	}
-	for _, want := range []string{"fund=610", "the pages disagree", "$1.00"} {
-		if !strings.Contains(res.Findings[0].Detail, want) {
-			t.Errorf("the finding does not say %q: %s", want, res.Findings[0].Detail)
+	for i, pair := range []string{"revenue-detail + transfers-detail", "transfers-detail + fund-balance-flows"} {
+		if res.Findings[i].Subject != pair {
+			t.Errorf("finding %d is on %q, want %q", i, res.Findings[i].Subject, pair)
+		}
+		for _, want := range []string{"fund=610", "the pages disagree", "$1.00"} {
+			if !strings.Contains(res.Findings[i].Detail, want) {
+				t.Errorf("the finding does not say %q: %s", want, res.Findings[i].Detail)
+			}
 		}
 	}
 }
@@ -196,5 +208,52 @@ func TestAOneSidedCellUnderAnIdentityGoesRed(t *testing.T) {
 	}
 	if res.Status != StatusFail || !one || !other {
 		t.Fatalf("status %s, want both ends of the move named:\n  %v", res.Status, res.Findings)
+	}
+}
+
+// TestAnExceptionBetweenPeersIsThePeerChecks: an absence pinned between two
+// cuts at one level is read by the peer check alone, which refuses one that
+// excuses no absence; the lattice check, which compares no peers, leaves it be.
+func TestAnExceptionBetweenPeersIsThePeerChecks(t *testing.T) {
+	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	stale := structure.Exception{
+		Name: "a-plant-between-peers", Cut: structure.CutRevenueDetail, Against: structure.CutFundBalanceFlows,
+		At: structure.LevelFundByCategory,
+		Cells: []structure.Pin{{Year: 2026, Basis: "adopted",
+			Coords: map[structure.Axis]string{structure.AxisFundGroup: "general", structure.AxisFund: "999",
+				structure.AxisCategory: "transfers/in"},
+			Against: structure.Sum{Cents: 100, Present: true}}},
+		Residual: 100, Printed: "a plant", Reason: "a plant", Bead: "fisc-3eh2",
+	}
+	prev := budgetBookExceptions
+	budgetBookExceptions = func() []structure.Exception { return append(structure.BudgetBookExceptions(), stale) }
+	t.Cleanup(func() { budgetBookExceptions = prev })
+
+	res := resultFor(t, runOne(t, s, &peersOverlapOnlyByDeclaredIdentity{}), "peers-overlap-only-by-declared-identity")
+	if res.Status != StatusFail || len(res.Findings) != 1 || res.Findings[0].Subject != stale.Name ||
+		!strings.Contains(res.Findings[0].Detail, "meets no absence the pair produces") {
+		t.Fatalf("status %s, want exactly the stale exception named:\n  %v", res.Status, res.Findings)
+	}
+	t.Run("declared at another level", func(t *testing.T) {
+		coarse := stale
+		coarse.At = structure.LevelFundGroupByCategory
+		coarse.Cells = []structure.Pin{{Year: 2026, Basis: "adopted",
+			Coords:  map[structure.Axis]string{structure.AxisFundGroup: "general", structure.AxisCategory: "transfers/in"},
+			Against: structure.Sum{Cents: 100, Present: true}}}
+		budgetBookExceptions = func() []structure.Exception { return append(structure.BudgetBookExceptions(), coarse) }
+		res := resultFor(t, runOne(t, s, &peersOverlapOnlyByDeclaredIdentity{}), "peers-overlap-only-by-declared-identity")
+		if len(res.Findings) != 1 || !strings.Contains(res.Findings[0].Detail, "pinned at their own level") {
+			t.Fatalf("status %s, want the level refused:\n  %v", res.Status, res.Findings)
+		}
+		budgetBookExceptions = func() []structure.Exception { return append(structure.BudgetBookExceptions(), stale) }
+	})
+	lattice := resultFor(t, runOne(t, s, &cutsTieAlongTheLattice{}), "cuts-tie-along-the-lattice")
+	for _, f := range lattice.Findings {
+		if f.Subject == stale.Name {
+			t.Errorf("the lattice check names an exception between peers: %s", f.Detail)
+		}
 	}
 }

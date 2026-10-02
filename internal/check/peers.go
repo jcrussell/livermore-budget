@@ -3,6 +3,7 @@ package check
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
@@ -15,8 +16,10 @@ import (
 // would count every shared cell twice with every downstream check agreeing.
 //
 // A shared cell no identity covers, a shared cell whose readings differ, a
-// non-zero cell one side of an identity omits without an exception, and an
-// identity no shared cell bears out are each a finding.
+// non-zero cell one side of an identity omits without an exception, an
+// identity or a category of one no shared cell bears out, and an exception
+// between two peers that is declared at another level or that does not meet
+// an absence at every cell it pins are each a finding.
 type peersOverlapOnlyByDeclaredIdentity struct{}
 
 var _ Check = (*peersOverlapOnlyByDeclaredIdentity)(nil)
@@ -67,6 +70,7 @@ func (*peersOverlapOnlyByDeclaredIdentity) Run(_ context.Context, s *Subject) (R
 		clauses  []string
 		refused  []string
 		borne    = map[string]bool{}
+		excused  = map[string]bool{}
 	)
 	for i, a := range cuts {
 		for _, b := range cuts[i+1:] {
@@ -80,6 +84,9 @@ func (*peersOverlapOnlyByDeclaredIdentity) Run(_ context.Context, s *Subject) (R
 			}
 			pairs++
 			subjects += len(o.Shared)
+			for _, name := range o.Excused {
+				excused[name] = true
+			}
 			for _, f := range o.Findings {
 				findings = append(findings, finding(fmt.Sprintf("%s + %s", a.Name, b.Name), "%s", f))
 			}
@@ -122,6 +129,29 @@ func (*peersOverlapOnlyByDeclaredIdentity) Run(_ context.Context, s *Subject) (R
 		}
 	}
 
+	// An exception between two peers is read here alone, since the lattice
+	// compares no peers; one that does not meet an absence at every cell is
+	// stale in part.
+	for _, e := range exceptions {
+		at, between := e.BetweenPeers(cuts)
+		if !between || isEmpty[e.Cut] || isEmpty[e.Against] {
+			continue
+		}
+		if e.At != at {
+			findings = append(findings, finding(e.Name,
+				"this exception is declared between %q and %q, two cuts at %s, at %s; an absence between "+
+					"peers is pinned at their own level (%s)", e.Cut, e.Against, at, e.At, e.Bead))
+			continue
+		}
+		if excused[e.Name] {
+			continue
+		}
+		findings = append(findings, finding(e.Name,
+			"this exception is declared between %q and %q, two cuts at one level, and at least one "+
+				"of its %d cell(s) meets no absence the pair produces, or the pair was refused; remove "+
+				"the cells that have stopped describing the corpus (%s)", e.Cut, e.Against, len(e.Cells), e.Bead))
+	}
+
 	// Every document that sums is constructed as a view from its declared
 	// scope set, so one holding both readings of a figure is a finding here.
 	// Series documents publish no total and are not views.
@@ -145,6 +175,15 @@ func (*peersOverlapOnlyByDeclaredIdentity) Run(_ context.Context, s *Subject) (R
 	summary := fmt.Sprintf("%d shared cell(s) over %d pair(s) of cuts at one level: %s. %d "+
 		"document scope set(s) each construct as a view",
 		subjects, pairs, strings.Join(clauses, "; "), views)
+	if len(excused) > 0 {
+		names := make([]string, 0, len(excused))
+		for name := range excused {
+			names = append(names, name)
+		}
+		sort.Strings(names)
+		summary += fmt.Sprintf(". %d exception(s) excuse a cell one side of an identity has no row for: %s",
+			len(names), strings.Join(names, ", "))
+	}
 	if len(refused) > 0 {
 		summary += fmt.Sprintf(". %d pair(s) at one level refused: %s", len(refused), strings.Join(refused, ", "))
 	}

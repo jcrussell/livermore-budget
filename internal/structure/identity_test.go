@@ -68,11 +68,11 @@ func TestEveryScopeInTheStoreIsACut(t *testing.T) {
 	if len(findings) != 0 {
 		t.Errorf("coverage:\n  %s", strings.Join(findings, "\n  "))
 	}
-	if uncovered != 4+54+1050+3548 {
+	if uncovered != 4+54+1050+1120 {
 		t.Errorf("%d facts under the declared residue, want dw-maintenance's 4 Transfers Out "+
 			"cells, pp.80-81's 54 debt-service cells (9 issues, principal and interest, "+
 			"three years), pp.224-235's 1,050 (210 projects, five years) and pp.186-209's "+
-			"3,548 (111 rows, eight lines, four years, less four blank cells)", uncovered)
+			"Capital Improvement Program Funds block, 1,120 (35 funds, eight lines, four years)", uncovered)
 	}
 	if v, err := structure.NewView("everything", cuts, nil, nil); err == nil {
 		t.Fatalf("a view over every cut was accepted; the cuts are not an antichain and NewView should say so: %+v", v)
@@ -81,13 +81,14 @@ func TestEveryScopeInTheStoreIsACut(t *testing.T) {
 	t.Run("a residue matching no fact is refused, and an undeclared fact is named", func(t *testing.T) {
 		findings, _ := structure.Covered(facts, cuts, nil)
 		joined := strings.Join(findings, "\n  ")
-		if len(findings) != 4+54+1050+3548 || !strings.Contains(joined, "dw-maintenance") ||
+		if len(findings) != 4+54+1050+1120 || !strings.Contains(joined, "dw-maintenance") ||
 			!strings.Contains(joined, "debt-service-principal") ||
 			!strings.Contains(joined, "cip-listing-p0224") ||
-			!strings.Contains(joined, "fund-balances-fy2024-p0186") {
+			!strings.Contains(joined, "fund-balances-fy2024-p0190") ||
+			strings.Contains(joined, "fund-balances-fy2024-p0190-above-cip") {
 			t.Errorf("with no residue declared, want the 4 Transfers Out facts, the 54 "+
-				"debt-service facts, the 1,050 CIP listing facts and the 3,548 fund-balance "+
-				"facts named:\n  %s", joined)
+				"debt-service facts, the 1,050 CIP listing facts and the 1,120 CIP-block "+
+				"fund-balance facts named, and none above the block:\n  %s", joined)
 		}
 		findings, _ = structure.Covered(facts, cuts, append(structure.BudgetBookResidue(),
 			structure.Residue{Scope: "revenue-by-fund", Rule: "nothing", Kind: mapping.KindRevenue, Reason: "invented"}))
@@ -199,7 +200,7 @@ func TestAPeerOverlapGoesRed(t *testing.T) {
 	t.Run("an exception excuses an absence only on the side it pins absent", func(t *testing.T) {
 		var gf []structure.Exception
 		for _, e := range structure.BudgetBookExceptions() {
-			if strings.HasPrefix(e.Name, "pp.127-130-print-no-general-fund-transfer-in-") {
+			if strings.HasPrefix(e.Name, "pp.127-130-print-no-general-fund-transfer-in-") && e.Against == "spine" {
 				gf = append(gf, e)
 			}
 		}
@@ -439,5 +440,215 @@ func TestAFactOutsideItsCutsFootprintIsInNoCut(t *testing.T) {
 	findings, _ := structure.Covered([]fact.Fact{stray}, structure.AllCuts(), structure.BudgetBookResidue())
 	if len(findings) == 0 || !strings.Contains(strings.Join(findings, "\n"), "admitted by no cut") {
 		t.Fatalf("findings = %v, want the stray fact admitted by no cut", findings)
+	}
+}
+
+// TestAnIdentityCoversOnlyTheCategoriesItNames: pp.186-209 print a fund's
+// transfers out in two columns, and p76 lists the first and p222 the second.
+// An identity naming its categories excuses neither the column the other
+// schedule never prints nor, outside them, a shared cell.
+func TestAnIdentityCoversOnlyTheCategoriesItNames(t *testing.T) {
+	facts := committedFacts(t)
+	flows, td := allCutNamed(t, structure.CutFundBalanceFlows), allCutNamed(t, "transfers-detail")
+	var p76 structure.Identity
+	for _, id := range structure.BudgetBookIdentities() {
+		if id.Name == "a-fund-balance-transfer-is-p76s" {
+			p76 = id
+		}
+	}
+	if diff := cmp.Diff([]string{"transfers/in", "transfers/out"}, p76.Categories); diff != "" {
+		t.Fatalf("p76's identity with pp.186-209 covers (-want +got):\n%s", diff)
+	}
+	toCIP := func(o structure.Overlap) int {
+		n := 0
+		for _, f := range o.Findings {
+			if strings.Contains(f, "transfers/out-to-cip") {
+				n++
+			}
+		}
+		return n
+	}
+
+	o, err := structure.Peers(facts, flows, td, []structure.Identity{p76}, structure.BudgetBookExceptions())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := toCIP(o); n != 0 {
+		t.Errorf("%d findings on the Transfers Out to CIP column p76 never prints:\n  %s", n, strings.Join(o.Findings, "\n  "))
+	}
+
+	t.Run("without its categories every to-CIP cell is a one-sided finding", func(t *testing.T) {
+		wide := p76
+		wide.Categories = nil
+		o, err := structure.Peers(facts, flows, td, []structure.Identity{wide}, structure.BudgetBookExceptions())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if toCIP(o) == 0 {
+			t.Fatal("an identity over every category excused the to-CIP column")
+		}
+	})
+
+	t.Run("a shared cell outside its categories is uncovered", func(t *testing.T) {
+		narrow := p76
+		narrow.Categories = []string{"transfers/in"}
+		o, err := structure.Peers(facts, flows, td, []structure.Identity{narrow}, structure.BudgetBookExceptions())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(strings.Join(o.Findings, "\n"), "category=transfers/out") ||
+			!strings.Contains(strings.Join(o.Findings, "\n"), "no identity says they are one figure") {
+			t.Fatalf("a transfers/out cell both print was not named:\n  %s", strings.Join(o.Findings, "\n  "))
+		}
+	})
+
+	t.Run("a category no shared cell bears is named", func(t *testing.T) {
+		wide := p76
+		wide.Categories = append([]string{"transfers/out-to-cip"}, p76.Categories...)
+		o, err := structure.Peers(facts, flows, td, []structure.Identity{wide}, structure.BudgetBookExceptions())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(strings.Join(o.Findings, "\n"), `names category "transfers/out-to-cip"`) {
+			t.Fatalf("a category p76 never prints was accepted:\n  %s", strings.Join(o.Findings, "\n  "))
+		}
+	})
+
+	t.Run("categories on a level with no category axis are refused", func(t *testing.T) {
+		twin := allCutNamed(t, structure.CutFundBalanceRevenues)
+		twin.Name = "twin"
+		totals := structure.Identity{Name: "totals", A: structure.CutFundBalanceRevenues, B: twin.Name,
+			Kinds: []mapping.Kind{mapping.KindRevenue}, Categories: []string{"revenues"}, Reason: "a plant"}
+		err := structure.ValidateIdentities(append(structure.AllCuts(), twin), []structure.Identity{totals})
+		if err == nil || !strings.Contains(err.Error(), "no category axis") {
+			t.Fatalf("ValidateIdentities = %v, want categories refused at a level without them", err)
+		}
+	})
+
+	t.Run("a category named twice or empty is refused", func(t *testing.T) {
+		for _, cats := range [][]string{{"transfers/in", "transfers/in"}, {""}} {
+			bad := p76
+			bad.Categories = cats
+			if err := structure.ValidateIdentities(structure.AllCuts(), []structure.Identity{bad}); err == nil {
+				t.Errorf("categories %q were accepted", cats)
+			}
+		}
+	})
+}
+
+// TestAnAbsenceIsExcusedOnlyAtTheFigureItPins: pp.127-130 print no General
+// Fund Transfers In, and the exceptions saying so pin what pp.186-209 print
+// in its place; a figure that moves is no longer the one excused.
+func TestAnAbsenceIsExcusedOnlyAtTheFigureItPins(t *testing.T) {
+	facts := committedFacts(t)
+	rd, flows := allCutNamed(t, structure.CutRevenueDetail), allCutNamed(t, structure.CutFundBalanceFlows)
+	o, err := structure.Peers(facts, rd, flows, structure.BudgetBookIdentities(), structure.BudgetBookExceptions())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(o.Findings) != 0 {
+		t.Fatalf("findings over the committed store:\n  %s", strings.Join(o.Findings, "\n  "))
+	}
+	const name = "pp.127-130-print-no-general-fund-transfer-in-2024"
+	if !slices.Contains(o.Excused, name) {
+		t.Fatalf("excused %v, want %s among them", o.Excused, name)
+	}
+
+	moved := slices.Clone(facts)
+	n := 0
+	for i := range moved {
+		f := &moved[i]
+		if f.Scope == structure.ScopeFundBalancesByFund && f.FiscalYear == 2024 && f.Category == "transfers/in" &&
+			f.Fund != nil && *f.Fund == 100 {
+			f.AmountCents += 99900
+			n++
+		}
+	}
+	if n != 1 {
+		t.Fatalf("moved %d facts, want p186's one General Fund Transfers In", n)
+	}
+	o, err = structure.Peers(moved, rd, flows, structure.BudgetBookIdentities(), structure.BudgetBookExceptions())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(o.Findings) != 1 || !strings.Contains(o.Findings[0], "fund=100") ||
+		!strings.Contains(o.Findings[0], "no exception declares the absence") {
+		t.Fatalf("findings = %q, want the moved General Fund cell named", o.Findings)
+	}
+	if slices.Contains(o.Excused, name) {
+		t.Errorf("%s is reported excusing an absence whose figure it no longer pins", name)
+	}
+}
+
+// TestAPeerExceptionExcusesOnlyItsOwnPairAndOnlyWhole: an exception declared
+// at the pair's level names the two peers it is between, and every cell it
+// pins must meet an absence for it to count as excusing one.
+func TestAPeerExceptionExcusesOnlyItsOwnPairAndOnlyWhole(t *testing.T) {
+	facts := committedFacts(t)
+	rd, flows := allCutNamed(t, structure.CutRevenueDetail), allCutNamed(t, structure.CutFundBalanceFlows)
+	const name = "pp.127-130-print-no-general-fund-transfer-in-2024"
+	plant := func(edit func(*structure.Exception)) []structure.Exception {
+		var out []structure.Exception
+		for _, e := range structure.BudgetBookExceptions() {
+			if e.Name == name {
+				e.Cells = slices.Clone(e.Cells)
+				edit(&e)
+			}
+			out = append(out, e)
+		}
+		return out
+	}
+
+	t.Run("naming a third peer", func(t *testing.T) {
+		o, err := structure.Peers(facts, rd, flows, structure.BudgetBookIdentities(),
+			plant(func(e *structure.Exception) { e.Against = "transfers-detail" }))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(o.Findings) != 1 || !strings.Contains(o.Findings[0], "FY2024 actual") ||
+			slices.Contains(o.Excused, name) {
+			t.Fatalf("findings %q, excused %v; want the FY2024 absence unexcused", o.Findings, o.Excused)
+		}
+	})
+
+	t.Run("with a cell no absence meets", func(t *testing.T) {
+		o, err := structure.Peers(facts, rd, flows, structure.BudgetBookIdentities(),
+			plant(func(e *structure.Exception) {
+				stale := e.Cells[0]
+				stale.Coords = map[structure.Axis]string{structure.AxisFundGroup: "general", structure.AxisFund: "999",
+					structure.AxisCategory: "transfers/in"}
+				e.Cells = append(e.Cells, stale)
+				e.Residual *= 2
+			}))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(o.Findings) != 0 || slices.Contains(o.Excused, name) {
+			t.Fatalf("findings %q, excused %v; want the absence held and the exception not counted whole", o.Findings, o.Excused)
+		}
+	})
+}
+
+// TestAViewDeclinesAReadingOnlyInItsIdentitysCategories: a view taking p76's
+// reading of pp.186-209's transfers still counts the Transfers Out to CIP
+// column, which p76 never prints.
+func TestAViewDeclinesAReadingOnlyInItsIdentitysCategories(t *testing.T) {
+	facts := committedFacts(t)
+	flows, td := allCutNamed(t, structure.CutFundBalanceFlows), allCutNamed(t, "transfers-detail")
+	identities := structure.BudgetBookIdentities()
+	v, err := structure.NewView("transfers", []structure.Cut{flows, td}, identities,
+		map[string]string{"a-fund-balance-transfer-is-p76s": td.Name})
+	if err != nil {
+		t.Fatalf("NewView: %v", err)
+	}
+	admitted := map[string]int{}
+	for i := range facts {
+		f := &facts[i]
+		if flows.Admits(f) && f.Kind != mapping.KindFundBalance && v.Admits(f, identities) {
+			admitted[f.Category]++
+		}
+	}
+	if admitted["transfers/in"] != 0 || admitted["transfers/out"] != 0 || admitted["transfers/out-to-cip"] == 0 {
+		t.Errorf("the view admits pp.186-209's %v; want only the to-CIP column, the reading p76 does not print", admitted)
 	}
 }

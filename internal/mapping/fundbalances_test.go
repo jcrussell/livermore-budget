@@ -157,9 +157,9 @@ func TestPublishedFundBalancesOneFundPerBlock(t *testing.T) {
 			fundBalanceLine(206, "-", "-", "-", "-", "-", "-", "-", "-")},
 		{"fund-balances-fy2027-p0206", "State - SB1", 561, "capital",
 			fundBalanceLine(206, "1,159,427", "2,542,651", "-", "2,000", "-", "4,250,000", "-", "(549,922)")},
-		{"fund-balances-fy2027-p0208", "Water Connection Fees", 643, "enterprise",
+		{"fund-balances-fy2027-p0208-above-cip", "Water Connection Fees", 643, "enterprise",
 			fundBalanceLine(208, "620,374", "946,000", "-", "13,637", "-", "-", "-", "1,552,737")},
-		{"fund-balances-fy2027-p0208", "Facilities Rehab Pgm", 740, "internal-service",
+		{"fund-balances-fy2027-p0208-above-cip", "Facilities Rehab Pgm", 740, "internal-service",
 			fundBalanceLine(208, "1,677,100", "2,125,000", "-", "3,785,705", "-", "-", "-", "16,395")},
 		{"fund-balances-fy2027-p0208", "CIP Fleet & Equipment Svcs", 731, "internal-service",
 			fundBalanceLine(208, "-", "1,350,000", "5,074,000", "6,424,000", "-", "-", "-", "-")},
@@ -242,8 +242,9 @@ func TestPublishedFundBalancesSummaryRowsAreTheirBlockTotals(t *testing.T) {
 				}
 			}
 		}
-		if rules != 3 {
-			t.Errorf("chain %s has %d rules, want 3, one per page pair", chain, rules)
+		if rules != 4 {
+			t.Errorf("chain %s has %d rules, want 4: one per page pair, the third read as "+
+				"the funds above the Capital Improvement Program Funds and the block itself", chain, rules)
 		}
 		for _, pair := range pairs {
 			summary, total := figures[pair[0]], figures[pair[1]]

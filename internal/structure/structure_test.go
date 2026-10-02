@@ -140,6 +140,10 @@ func TestMeetIsTheGrainTwoCutsAgreeAt(t *testing.T) {
 			structure.LevelFundByDepartment, structure.LevelFundGroupByCategory, structure.LevelFundGroup},
 		{"the finest level meets the spine at the spine",
 			structure.LevelFundByDepartmentByCategory, structure.LevelFundGroupByCategory, structure.LevelFundGroupByCategory},
+		{"a fund's total meets the spine at its fund group",
+			structure.LevelFund, structure.LevelFundGroupByCategory, structure.LevelFundGroup},
+		{"pp.127-140 and pp.85-125's funding sources meet at the fund",
+			structure.LevelFundByCategory, structure.LevelFundByDepartment, structure.LevelFund},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			got, err := structure.Meet(c.a, c.b)
@@ -150,6 +154,36 @@ func TestMeetIsTheGrainTwoCutsAgreeAt(t *testing.T) {
 				t.Errorf("Meet(%q, %q) (-want +got):\n%s", c.a, c.b, diff)
 			}
 		})
+	}
+}
+
+// TestAFundTotalSitsBetweenTheFundGroupAndEveryPerFundLevel: pp.186-209 print
+// a fund's Revenues and Expenses whole, so every level carrying the fund
+// decomposes them, and they decompose the fund group.
+func TestAFundTotalSitsBetweenTheFundGroupAndEveryPerFundLevel(t *testing.T) {
+	for _, fine := range []structure.Level{
+		structure.LevelFundByCategory,
+		structure.LevelFundByDepartment,
+		structure.LevelFundByDepartmentByCategory,
+	} {
+		if !structure.Refines(fine, structure.LevelFund) {
+			t.Errorf("%q does not refine %q", fine, structure.LevelFund)
+		}
+	}
+	if !structure.Refines(structure.LevelFund, structure.LevelFundGroup) {
+		t.Errorf("%q does not refine %q", structure.LevelFund, structure.LevelFundGroup)
+	}
+	for _, other := range []structure.Level{
+		structure.LevelFundGroupByCategory, structure.LevelCategory,
+		structure.LevelDepartment, structure.LevelDepartmentByCategory,
+	} {
+		if structure.Refines(structure.LevelFund, other) || structure.Refines(other, structure.LevelFund) {
+			t.Errorf("%q and %q are related; neither carries the other's axes", structure.LevelFund, other)
+		}
+	}
+	if diff := cmp.Diff(structure.LevelFund,
+		structure.Drop(structure.LevelFundByCategory, structure.AxisCategory)); diff != "" {
+		t.Errorf("a per-fund cut whose category is a placeholder (-want +got):\n%s", diff)
 	}
 }
 

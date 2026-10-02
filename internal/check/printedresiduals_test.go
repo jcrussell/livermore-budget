@@ -65,6 +65,55 @@ func TestEveryExceptionResidualIsPrintedWhereItSaysItIs(t *testing.T) {
 			[]printed{{66, 24, "486,735"}}, func(v []int64) int64 { return v[0] }},
 		"p0067-internal-service-is-250000-high-by-fund-group": {
 			[]printed{{67, 34, "26,544,515"}, {183, 64, "26,294,515"}}, func(v []int64) int64 { return v[0] - v[1] }},
+		"p0067-internal-service-is-250000-high-by-fund-total": {
+			[]printed{{67, 34, "26,544,515"}, {209, 20, "26,294,515"}}, func(v []int64) int64 { return v[0] - v[1] }},
+		"p0067-internal-service-ending-is-250000-low": {
+			[]printed{{67, 42, "8,529,087"}, {209, 20, "8,779,087"}}, func(v []int64) int64 { return v[0] - v[1] }},
+		"pp.127-130-print-no-general-fund-transfer-in-2024": {
+			[]printed{{186, 10, "737,455"}}, func(v []int64) int64 { return v[0] }},
+		"pp.127-130-print-no-general-fund-transfer-in-2025": {
+			[]printed{{192, 10, "914,206"}}, func(v []int64) int64 { return v[0] }},
+		"pp.131-140-print-no-general-fund-cip-reserves-2025": {
+			[]printed{{194, 29, "4,125,627"}}, func(v []int64) int64 { return v[0] }},
+		"pp.186-209-carry-no-police-donations-other-financing-2025": {
+			[]printed{{139, 56, "500"}, {139, 58, "5,500"}, {194, 10, "5,000"}}, func(v []int64) int64 { return v[2] - v[1] }},
+		"pp.85-125-fund-maintenances-transfer-out-2024": {
+			[]printed{{124, 25, "266,798"}, {124, 61, "694,574"}, {187, 60, "694,574"}, {124, 63, "2,965,602"},
+				{187, 61, "2,965,602"}}, func(v []int64) int64 { return -v[0] }},
+	}
+	// pp.66-67's CHANGE IN WORKING CAPITAL, which pp.186-209 print no line for.
+	for _, c := range []struct {
+		name  string
+		page  int
+		token string
+	}{
+		{"general-2026", 66, "(1,034,154)"}, {"enterprise-2026", 66, "3,894,384"},
+		{"capital-2026", 67, "(2,500,213)"}, {"internal-service-2026", 67, "(6,147,533)"},
+		{"special-revenue-2026", 67, "8,874,949"},
+		{"general-2027", 66, "2,351,098"}, {"enterprise-2027", 66, "1,410,280"},
+		{"capital-2027", 67, "(10,129,416)"}, {"internal-service-2027", 67, "(7,160,645)"},
+		{"special-revenue-2027", 67, "9,021,972"},
+	} {
+		n := map[int]int{66: 39, 67: 41}[c.page]
+		table["pp.186-209-print-no-change-line-"+c.name] = struct {
+			figures  []printed
+			residual func(v []int64) int64
+		}{[]printed{{c.page, n, c.token}}, func(v []int64) int64 { return v[0] }}
+	}
+
+	// Exceptions where one schedule prints a total and the other divides it
+	// among several cells: the parts sum to the total, and the residual is how
+	// the first schedule's rows round under it, which no page prints.
+	divided := map[string]struct {
+		total printed
+		parts []printed
+	}{
+		"pp.127-140-print-three-funds-revenue-as-the-state-grant-funds-2024": {
+			printed{137, 30, "1,473,006"}, []printed{{186, 31, "208,540"}, {186, 32, "761"}, {186, 44, "1,263,705"}}},
+		"pp.173-183-print-four-funds-spending-as-the-state-grant-funds-2024": {
+			printed{179, 68, "1,135,142"}, []printed{{187, 30, "465,115"}, {187, 31, "778"}, {187, 32, "544"}, {187, 43, "668,705"}}},
+		"pp.85-125-fund-four-funds-spending-from-the-state-grant-fund-2024": {
+			printed{179, 68, "1,135,142"}, []printed{{187, 30, "465,115"}, {187, 31, "778"}, {187, 32, "544"}, {187, 43, "668,705"}}},
 	}
 
 	// Exceptions between two schedules that print one total: each cited line
@@ -80,6 +129,22 @@ func TestEveryExceptionResidualIsPrintedWhereItSaysItIs(t *testing.T) {
 		"general-fund-departments-rounds-administrative-services-2024": {{168, 35, "6,311,564"}, {97, 47, "6,311,564"}},
 		"general-fund-departments-rounds-community-development-2024":   {{169, 45, "15,925,170"}, {101, 51, "15,925,170"}},
 		"general-fund-departments-rounds-services-and-supplies-2024":   {{170, 23, "123,228,190"}, {172, 22, "123,228,190"}},
+		"pp.186-209-carry-a-dollar-of-capital-beginning-2026":          {{67, 40, "110,713,545"}, {200, 44, "110,713,545"}},
+		"pp.186-209-carry-a-dollar-of-capital-ending-2026":             {{67, 42, "108,213,332"}, {201, 46, "108,213,332"}},
+		"pp.186-209-carry-a-dollar-of-capital-beginning-2027":          {{67, 40, "108,213,332"}, {206, 44, "108,213,332"}},
+		"pp.186-209-carry-a-dollar-of-capital-ending-2027":             {{67, 42, "98,083,916"}, {207, 46, "98,083,916"}},
+		"pp.186-209-carry-a-dollar-of-special-revenue-beginning-2026":  {{67, 40, "77,290,073"}, {200, 11, "77,290,073"}},
+		"pp.186-209-carry-a-dollar-of-special-revenue-ending-2026":     {{67, 42, "86,165,022"}, {201, 10, "86,165,022"}},
+		"pp.186-209-carry-a-dollar-of-special-revenue-beginning-2027":  {{67, 40, "86,165,022"}, {206, 11, "86,165,022"}},
+		"pp.186-209-carry-a-dollar-of-special-revenue-ending-2027":     {{67, 42, "95,186,994"}, {207, 10, "95,186,994"}},
+		"pp.127-140-round-low-income-housing-revenue-2024":             {{135, 18, "5,852,912"}, {186, 27, "5,852,912"}},
+		"pp.127-140-round-airport-revenue-2024":                        {{131, 20, "4,886,525"}, {188, 48, "4,886,525"}},
+		"p0172-rounds-general-fund-expenses-2024":                      {{172, 24, "123,228,190"}, {187, 9, "123,228,190"}},
+		"pp.173-183-round-downtown-lmd-expenses-2024":                  {{179, 11, "694,564"}, {187, 60, "694,564"}},
+		"pp.173-183-round-other-maintenance-cfds-expenses-2024":        {{181, 52, "176,138"}, {187, 63, "176,138"}},
+		"pp.173-183-round-airport-expenses-2024":                       {{173, 20, "3,000,829"}, {189, 51, "3,000,829"}},
+		"pp.173-183-round-water-expenses-2024":                         {{174, 13, "16,935,869"}, {189, 57, "16,935,869"}},
+		"pp.173-183-round-facilities-rehab-expenses-2024":              {{183, 22, "2,487,238"}, {191, 9, "2,487,238"}},
 	}
 
 	exceptions := structure.BudgetBookExceptions()
@@ -89,6 +154,42 @@ func TestEveryExceptionResidualIsPrintedWhereItSaysItIs(t *testing.T) {
 	}
 	seen := map[string]bool{}
 	for _, e := range exceptions {
+		if d, ok := divided[e.Name]; ok {
+			seen[e.Name] = true
+			total, sum := cents(d.total), int64(0)
+			for _, p := range append([]printed{d.total}, d.parts...) {
+				if !strings.Contains(e.Printed, p.token) {
+					t.Errorf("exception %s rests on %s and its Printed string does not cite it: %q",
+						e.Name, p.token, e.Printed)
+				}
+			}
+			for _, p := range d.parts {
+				sum += cents(p)
+			}
+			if sum != total {
+				t.Errorf("exception %s: the parts it cites sum to %s and the total it cites is %s",
+					e.Name, amount.Cents(sum), amount.Cents(total))
+			}
+			if len(d.parts) != len(e.Cells) {
+				t.Errorf("exception %s pins %d cells and cites %d parts", e.Name, len(e.Cells), len(d.parts))
+				continue
+			}
+			// Each part is the cell it is cited for, and the residual is
+			// what the total holds over the rows the other side sums.
+			var rows int64
+			for i, p := range d.parts {
+				if got := cents(p); got != e.Cells[i].Against.Cents {
+					t.Errorf("exception %s cites %s for its cell %d and pins %s", e.Name, p.token, i,
+						amount.Cents(e.Cells[i].Against.Cents))
+				}
+				rows += e.Cells[i].Cut.Cents
+			}
+			if got := total - rows; got != e.Residual {
+				t.Errorf("exception %s declares a residual of %s and its cited total holds %s over its rows",
+					e.Name, amount.Cents(e.Residual), amount.Cents(got))
+			}
+			continue
+		}
 		if figures, ok := oneTotal[e.Name]; ok {
 			seen[e.Name] = true
 			for _, p := range figures {
@@ -128,6 +229,11 @@ func TestEveryExceptionResidualIsPrintedWhereItSaysItIs(t *testing.T) {
 		}
 	}
 	for name := range table {
+		if !seen[name] {
+			t.Errorf("this test reads pages for %q and no exception of that name is declared", name)
+		}
+	}
+	for name := range divided {
 		if !seen[name] {
 			t.Errorf("this test reads pages for %q and no exception of that name is declared", name)
 		}

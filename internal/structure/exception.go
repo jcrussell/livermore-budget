@@ -19,14 +19,15 @@ type Pin struct {
 }
 
 // An Exception holds one or more cells of one comparison apart from the tie,
-// with every figure it rests on declared. It is not a tolerance: it pins both
-// sides, and fails when either moves, when the cell stops existing, or when
-// the cell ties.
+// or declares a cell one of two peers has no row for, with every figure it
+// rests on declared. It is not a tolerance: it pins both sides, and fails when
+// either moves, when the cell stops existing, or when the cell ties.
 type Exception struct {
 	// Name is how another exception grounds itself in this one.
 	Name string
 	// Cut and Against name the comparison's two cuts, in Compare's order:
-	// Against is the side whose columns decided what was compared.
+	// Against is the side whose columns decided what was compared. Between
+	// two peers, which Compare refuses, the order carries nothing.
 	Cut, Against string
 	// At is the level the pair meets at, declared so that a lattice change
 	// moving the meet refuses the exception instead of re-addressing it.
@@ -35,8 +36,9 @@ type Exception struct {
 	// single figure for their sum.
 	Cells []Pin
 	// Residual is what Against carries over Cut across the cells, in cents: a
-	// printed figure, or the difference of two on one page. Declared, not
-	// derived from the pins, so the pins are held to the page.
+	// printed figure, the difference of two on one page, or zero where the
+	// cells divide one printed figure differently. Declared, not derived from
+	// the pins, so the pins are held to the page.
 	Residual int64
 	// Printed says where the residual, or both pinned sides, are printed.
 	Printed string
@@ -54,6 +56,25 @@ type Exception struct {
 // Key is the cell a pin names, at the exception's level.
 func (e Exception) Key(p Pin) Key {
 	return Key{Year: p.Year, Basis: p.Basis, Level: e.At, Coords: Coords(e.At, p.Coords)}
+}
+
+// BetweenPeers is the level of the two declared cuts the exception names, and
+// whether they are at one: a pair the lattice never compares, whose absences
+// only Peers reads.
+func (e Exception) BetweenPeers(cuts []Cut) (Level, bool) {
+	var a, b *Cut
+	for i := range cuts {
+		switch cuts[i].Name {
+		case e.Cut:
+			a = &cuts[i]
+		case e.Against:
+			b = &cuts[i]
+		}
+	}
+	if a == nil || b == nil || a.Level != b.Level {
+		return "", false
+	}
+	return a.Level, true
 }
 
 // pinned is the difference the pins declare, for the arm that holds it to
@@ -86,7 +107,9 @@ func ValidateExceptions(exceptions []Exception) error {
 		if len(e.Cells) == 0 {
 			return fmt.Errorf("exception %q names no cell", e.Name)
 		}
-		if e.Residual == 0 {
+		// Several cells may net to zero: one figure the pages print for their
+		// sum, which the two schedules divide differently.
+		if e.Residual == 0 && len(e.Cells) == 1 {
 			return fmt.Errorf("exception %q declares a residual of zero, so it holds nothing apart", e.Name)
 		}
 		if e.Printed == "" {

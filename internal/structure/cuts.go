@@ -1,6 +1,8 @@
 package structure
 
 import (
+	"fmt"
+
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/registry"
 )
@@ -11,6 +13,10 @@ const (
 	CutRevenueDetail  = "revenue-detail"
 	CutDepartmentwide = "departmentwide"
 	CutFundingSources = "funding-sources"
+
+	CutFundBalanceFlows    = "fund-balance-flows"
+	CutFundBalanceRevenues = "fund-balance-revenues"
+	CutFundBalanceExpenses = "fund-balance-expenses"
 )
 
 // BudgetBookCuts are the Budget Book's schedules as cuts of one hierarchy,
@@ -97,6 +103,38 @@ func BudgetBookCuts() []Cut {
 			Kinds:      []mapping.Kind{mapping.KindExpenditure},
 			FundGroups: allFundTypesBut(registry.FundTypeGeneral),
 			Bases:      budgetBookDetail,
+		},
+		{
+			// pp.186-209, each fund's transfers and balances. The Capital
+			// Improvement Program Funds block is p222's money, and residue.
+			Name:  CutFundBalanceFlows,
+			Scope: ScopeFundBalancesByFund,
+			Rules: fundBalancesRules(false),
+			Level: LevelFundByCategory,
+			Kinds: []mapping.Kind{mapping.KindTransferIn, mapping.KindTransferOut, mapping.KindFundBalance},
+			Bases: budgetBookDetail,
+		},
+		{
+			// pp.186-209, each fund's Revenues, printed whole: a fund's
+			// total, which every per-fund revenue schedule decomposes. Two
+			// cuts and not one because a placeholder carries one value.
+			Name:         CutFundBalanceRevenues,
+			Scope:        ScopeFundBalancesByFund,
+			Rules:        fundBalancesRules(false),
+			Level:        LevelFund,
+			Kinds:        []mapping.Kind{mapping.KindRevenue},
+			Placeholders: []Axis{AxisCategory},
+			Bases:        budgetBookDetail,
+		},
+		{
+			// pp.186-209, each fund's Expenses, printed whole.
+			Name:         CutFundBalanceExpenses,
+			Scope:        ScopeFundBalancesByFund,
+			Rules:        fundBalancesRules(false),
+			Level:        LevelFund,
+			Kinds:        []mapping.Kind{mapping.KindExpenditure},
+			Placeholders: []Axis{AxisCategory},
+			Bases:        budgetBookDetail,
 		},
 		{
 			// pp.85-125, expenditure by department and object across every
@@ -191,6 +229,29 @@ func BudgetBookIdentities() []Identity {
 		Kinds: []mapping.Kind{mapping.KindTransferIn},
 		Reason: "pp.127-140 print a fund's Transfers In at the receiving fund and p76 prints the " +
 			"same movements at the paying end; one figure, two schedules, two provenance chains",
+	}, {
+		Name:  "a-fund-balance-transfer-in-is-the-revenue-schedules",
+		A:     CutFundBalanceFlows,
+		B:     CutRevenueDetail,
+		Kinds: []mapping.Kind{mapping.KindTransferIn},
+		Reason: "pp.186-209 print each fund's Transfers In in a column of its sources, and " +
+			"pp.127-140 print the same figure as a row of the fund's revenue section",
+	}, {
+		Name:       "a-fund-balance-transfer-is-p76s",
+		A:          CutFundBalanceFlows,
+		B:          "transfers-detail",
+		Kinds:      []mapping.Kind{mapping.KindTransferIn, mapping.KindTransferOut},
+		Categories: []string{"transfers/in", "transfers/out"},
+		Reason: "pp.198-209 print each fund's Transfers In and Transfers Out as columns, and " +
+			"p76 lists the same movements one by one, at both ends",
+	}, {
+		Name:       "a-fund-balance-transfer-to-the-cip-is-p222s",
+		A:          CutFundBalanceFlows,
+		B:          "cip-transfers-out",
+		Kinds:      []mapping.Kind{mapping.KindTransferOut},
+		Categories: []string{"transfers/out-to-cip"},
+		Reason: "pp.192-209 print each fund's Transfers Out to CIP as a column, and p222 " +
+			"prints the same figure as the fund's row of the CIP's funding sources",
 	}}
 }
 
@@ -235,7 +296,7 @@ func BudgetBookExceptions() []Exception {
 			Bead:     "fisc-2sd",
 		}
 	}
-	return []Exception{
+	return append([]Exception{
 		rounded(CutDepartmentwide, "administrative-services", 1278595300, 1278595400,
 			"p0097.txt:43 and :51, both 12,785,955"),
 		rounded(CutDepartmentwide, "innovation-and-economic-development", 568058900, 568059000,
@@ -333,6 +394,270 @@ func BudgetBookExceptions() []Exception {
 				"fund at all, and they differ from p.67 in this object category by $250,000 and in no " +
 				"other. The chart draws p.67 as printed",
 			Bead: "fisc-av0w",
+		},
+	}, fundBalanceExceptions()...)
+}
+
+// fundBalancesRules is pp.186-209's rules: the Capital Improvement Program
+// Funds block's four when cip is true, and every other when it is false.
+func fundBalancesRules(cip bool) []string {
+	var out []string
+	for i, year := range []int{2024, 2025, 2026, 2027} {
+		first := 186 + 6*i
+		if cip {
+			out = append(out, fmt.Sprintf("fund-balances-fy%d-p%04d", year, first+4))
+			continue
+		}
+		out = append(out,
+			fmt.Sprintf("fund-balances-fy%d-p%04d", year, first),
+			fmt.Sprintf("fund-balances-fy%d-p%04d", year, first+2),
+			fmt.Sprintf("fund-balances-fy%d-p%04d-above-cip", year, first+4))
+	}
+	return out
+}
+
+// fundBalanceExceptions are the cells of pp.186-209's comparisons that do not
+// tie. FY2023-24's rounding, p0067's 250,000 and pp.127-130's missing General
+// Fund transfers in are shapes BudgetBookExceptions holds on other schedules.
+func fundBalanceExceptions() []Exception {
+	present := func(c int64) Sum { return Sum{Cents: c, Present: true} }
+	group := func(g, category string) map[Axis]string {
+		return map[Axis]string{AxisFundGroup: g, AxisCategory: category}
+	}
+	fund := func(g, number string) map[Axis]string {
+		return map[Axis]string{AxisFundGroup: g, AxisFund: number}
+	}
+	transfersIn := func(g, number string) map[Axis]string {
+		return map[Axis]string{AxisFundGroup: g, AxisFund: number, AxisCategory: "transfers/in"}
+	}
+	// A dollar of FY2023-24 rounding, one cell, both sides' printed figure named.
+	rounds := func(name, cut, against string, at Level, year int, basis string, coords map[Axis]string,
+		c, a int64, printed, reason string) Exception {
+		return Exception{
+			Name: name, Cut: cut, Against: against, At: at,
+			Cells:    []Pin{{Year: year, Basis: basis, Coords: coords, Cut: present(c), Against: present(a)}},
+			Residual: a - c,
+			Printed:  printed,
+			Reason:   reason,
+			Bead:     "fisc-2sd",
+		}
+	}
+	const carried = "FY2023-24 actuals are printed rounded figure by figure, and pp.186-209 carry the dollar " +
+		"a fund group's rows miss their printed total by into every later beginning and ending balance; " +
+		"the group's printed total is pp.66-67's figure"
+	const actuals = "the two schedules print one fund total in the FY2023-24 Actual column and round the " +
+		"rows under it differently"
+	carry := func(name string, year int, g, category string, c, a int64, printed string) Exception {
+		return rounds("pp.186-209-carry-a-dollar-of-"+name, CutFundBalanceFlows, CutSpine,
+			LevelFundGroupByCategory, year, "adopted", group(g, category), c, a,
+			printed+"; pp.186-209's rows miss it by the dollar their rules' subtotal_deltas declare", carried)
+	}
+	actual := func(name, cut, against string, g, number string, c, a int64, printed string) Exception {
+		return rounds(name, cut, against, LevelFund, 2024, "actual", fund(g, number), c, a,
+			printed+"; the rows under it miss it by the dollar their rules' stated_total_deltas declare", actuals)
+	}
+	// pp.66-67 print CHANGE IN WORKING CAPITAL, and pp.186-209 no change line.
+	change := func(year int, g string, a int64, printed string) Exception {
+		return Exception{
+			Name: fmt.Sprintf("pp.186-209-print-no-change-line-%s-%d", g, year),
+			Cut:  CutFundBalanceFlows, Against: CutSpine, At: LevelFundGroupByCategory,
+			Cells:    []Pin{{Year: year, Basis: "adopted", Coords: group(g, "fund-balance/change"), Against: present(a)}},
+			Residual: a,
+			Printed:  printed + " CHANGE IN WORKING CAPITAL; pp.186-209 print each fund's balances and Reserve Increase/(Use) and no change line",
+			Reason: "pp.66-67 print a fund group's change in balance on a line of its own, and pp.186-209 print " +
+				"no such line: a fund's change is its ending balance less its beginning, each of which this " +
+				"comparison holds",
+			Bead: "fisc-3eh2",
+		}
+	}
+	const notGFTransfersIn = "pp.127-130 print TOTAL REVENUES for the General Fund and no Transfers In row at all, so " +
+		"pp.186-209's General Fund transfer in has no counterpart in this schedule"
+	return []Exception{
+		carry("capital-beginning-2026", 2026, registry.FundTypeCapital, "fund-balance/beginning", 11071354400, 11071354500,
+			"p0067.txt:40 BEGINNING WORKING CAPITAL and p0200.txt:44 Total Capital Funds, both 110,713,545"),
+		carry("capital-ending-2026", 2026, registry.FundTypeCapital, "fund-balance/ending", 10821333100, 10821333200,
+			"p0067.txt:42 ENDING WORKING CAPITAL and p0201.txt:46, Total Capital Funds' line, both 108,213,332"),
+		carry("capital-beginning-2027", 2027, registry.FundTypeCapital, "fund-balance/beginning", 10821333100, 10821333200,
+			"p0067.txt:40 BEGINNING WORKING CAPITAL and p0206.txt:44 Total Capital Funds, both 108,213,332"),
+		carry("capital-ending-2027", 2027, registry.FundTypeCapital, "fund-balance/ending", 9808391500, 9808391600,
+			"p0067.txt:42 ENDING WORKING CAPITAL and p0207.txt:46, Total Capital Funds' line, both 98,083,916"),
+		carry("special-revenue-beginning-2026", 2026, registry.FundTypeSpecialRevenue, "fund-balance/beginning", 7729007400, 7729007300,
+			"p0067.txt:40 BEGINNING WORKING CAPITAL and p0200.txt:11 Total Special Revenue Funds, both 77,290,073"),
+		carry("special-revenue-ending-2026", 2026, registry.FundTypeSpecialRevenue, "fund-balance/ending", 8616502300, 8616502200,
+			"p0067.txt:42 ENDING WORKING CAPITAL and p0201.txt:10, Total Special Revenue Funds' line, both 86,165,022"),
+		carry("special-revenue-beginning-2027", 2027, registry.FundTypeSpecialRevenue, "fund-balance/beginning", 8616502300, 8616502200,
+			"p0067.txt:40 BEGINNING WORKING CAPITAL and p0206.txt:11 Total Special Revenue Funds, both 86,165,022"),
+		carry("special-revenue-ending-2027", 2027, registry.FundTypeSpecialRevenue, "fund-balance/ending", 9518699500, 9518699400,
+			"p0067.txt:42 ENDING WORKING CAPITAL and p0207.txt:10, Total Special Revenue Funds' line, both 95,186,994"),
+
+		change(2026, registry.FundTypeGeneral, -103415400, "p0066.txt:39, (1,034,154)"),
+		change(2026, registry.FundTypeEnterprise, 389438400, "p0066.txt:39, 3,894,384"),
+		change(2026, registry.FundTypeCapital, -250021300, "p0067.txt:41, (2,500,213)"),
+		change(2026, registry.FundTypeInternalService, -614753300, "p0067.txt:41, (6,147,533)"),
+		change(2026, registry.FundTypeSpecialRevenue, 887494900, "p0067.txt:41, 8,874,949"),
+		change(2027, registry.FundTypeGeneral, 235109800, "p0066.txt:39, 2,351,098"),
+		change(2027, registry.FundTypeEnterprise, 141028000, "p0066.txt:39, 1,410,280"),
+		change(2027, registry.FundTypeCapital, -1012941600, "p0067.txt:41, (10,129,416)"),
+		change(2027, registry.FundTypeInternalService, -716064500, "p0067.txt:41, (7,160,645)"),
+		change(2027, registry.FundTypeSpecialRevenue, 902197200, "p0067.txt:41, 9,021,972"),
+
+		{
+			Name: "p0067-internal-service-ending-is-250000-low",
+			Cut:  CutFundBalanceFlows, Against: CutSpine, At: LevelFundGroupByCategory,
+			Cells: []Pin{{Year: 2027, Basis: "adopted", Coords: group(registry.FundTypeInternalService, "fund-balance/ending"),
+				Cut: present(877908700), Against: present(852908700)}},
+			Residual: -25000000,
+			Printed: "both sides: p0067.txt:42 prints ENDING WORKING CAPITAL $8,529,087 for the Internal Service Funds, " +
+				"and 8,779,087 is printed on p0209.txt:20, p0205.txt:17 and p0075.txt:53",
+			Reason: "p0067's Internal Service Funds column prints FY2026-27 expenditure 250,000 above what the " +
+				"funds' own rows sum to, and carries it into the column's ending working capital. The store " +
+				"publishes p0067 as printed",
+			Bead: "fisc-av0w",
+		},
+		{
+			Name: "p0067-internal-service-is-250000-high-by-fund-total",
+			Cut:  CutFundBalanceExpenses, Against: CutSpine, At: LevelFundGroup,
+			Cells: []Pin{{Year: 2027, Basis: "adopted", Coords: map[Axis]string{AxisFundGroup: registry.FundTypeInternalService},
+				Cut: present(2629451500), Against: present(2654451500)}},
+			Residual:       25000000,
+			SameResidualAs: "p0067-internal-service-is-250000-high-by-fund-group",
+			Printed: "both sides: p0067.txt:34 prints TOTAL EXPENDITURES 26,544,515 for the Internal Service Funds, " +
+				"and p0209.txt:20 prints Total Internal Service Funds Expenses 26,294,515",
+			Reason: "p0067's Internal Service Funds column prints Services & Supplies of 16,796,010 for " +
+				"FY2026-27, and the five internal service funds' Expenses on p209 sum to 250,000 less. " +
+				"The store publishes p0067 as printed",
+			Bead: "fisc-av0w",
+		},
+
+		actual("pp.127-140-round-low-income-housing-revenue-2024", CutRevenueDetail, CutFundBalanceRevenues,
+			registry.FundTypeSpecialRevenue, "200", 585291100, 585291200,
+			"p0135.txt:18 Total Low Income Housing Fund and p0186.txt:27 Revenues, both 5,852,912"),
+		actual("pp.127-140-round-airport-revenue-2024", CutRevenueDetail, CutFundBalanceRevenues,
+			registry.FundTypeEnterprise, "600", 488652400, 488652500,
+			"p0131.txt:20 Total Airport and p0188.txt:48 Revenues, both 4,886,525"),
+		actual("p0172-rounds-general-fund-expenses-2024", "general-fund-by-category", CutFundBalanceExpenses,
+			registry.FundTypeGeneral, "100", 12322819100, 12322819000,
+			"p0172.txt:24 Total General Fund and p0187.txt:9 Expenses, both 123,228,190"),
+		actual("pp.173-183-round-downtown-lmd-expenses-2024", "fund-expenditures", CutFundBalanceExpenses,
+			registry.FundTypeSpecialRevenue, "310", 69456500, 69456400,
+			"p0179.txt:11 Total Downtown LMD and p0187.txt:60 Expenses, both 694,564"),
+		actual("pp.173-183-round-other-maintenance-cfds-expenses-2024", "fund-expenditures", CutFundBalanceExpenses,
+			registry.FundTypeSpecialRevenue, "321", 17613700, 17613800,
+			"p0181.txt:52 Total Other Maintenance CFDs and p0187.txt:63 Expenses, both 176,138"),
+		actual("pp.173-183-round-airport-expenses-2024", "fund-expenditures", CutFundBalanceExpenses,
+			registry.FundTypeEnterprise, "600", 300082800, 300082900,
+			"p0173.txt:20 Total Airport and p0189.txt:51 Expenses, both 3,000,829"),
+		actual("pp.173-183-round-water-expenses-2024", "fund-expenditures", CutFundBalanceExpenses,
+			registry.FundTypeEnterprise, "640", 1693586800, 1693586900,
+			"p0174.txt:13 Total Water and p0189.txt:57 Expenses, both 16,935,869"),
+		actual("pp.173-183-round-facilities-rehab-expenses-2024", "fund-expenditures", CutFundBalanceExpenses,
+			registry.FundTypeInternalService, "740", 248723700, 248723800,
+			"p0183.txt:22 Total Facilities Rehab Pgm and p0191.txt:9 Expenses, both 2,487,238"),
+
+		{
+			Name: "pp.127-140-print-three-funds-revenue-as-the-state-grant-funds-2024",
+			Cut:  CutRevenueDetail, Against: CutFundBalanceRevenues, At: LevelFund,
+			Cells: []Pin{
+				{Year: 2024, Basis: "actual", Coords: fund(registry.FundTypeSpecialRevenue, "204"), Cut: present(0), Against: present(20854000)},
+				{Year: 2024, Basis: "actual", Coords: fund(registry.FundTypeSpecialRevenue, "205"), Cut: present(0), Against: present(76100)},
+				{Year: 2024, Basis: "actual", Coords: fund(registry.FundTypeSpecialRevenue, "240"), Cut: present(147300600), Against: present(126370500)},
+			},
+			Residual: 0,
+			Printed: "p0137.txt:30 Total Grant - State Grant Fund 1,473,006, which p0186.txt:31, :32 and :44 print as " +
+				"HHS Loan Fund 208,540, Cal Home Reuse 761 and Grant - State Grant Fund 1,263,705",
+			Reason: "in the FY2023-24 Actual column pp.127-140 print HHS Loan Fund and Cal Home Reuse as dashes and " +
+				"their revenue inside Grant - State Grant Fund's, and pp.186-209 print each fund's own",
+			Bead: "fisc-3eh2",
+		},
+		{
+			Name: "pp.173-183-print-four-funds-spending-as-the-state-grant-funds-2024",
+			Cut:  "fund-expenditures", Against: CutFundBalanceExpenses, At: LevelFund,
+			Cells: []Pin{
+				{Year: 2024, Basis: "actual", Coords: fund(registry.FundTypeSpecialRevenue, "204"), Cut: present(0), Against: present(46511500)},
+				{Year: 2024, Basis: "actual", Coords: fund(registry.FundTypeSpecialRevenue, "205"), Cut: present(0), Against: present(77800)},
+				{Year: 2024, Basis: "actual", Coords: fund(registry.FundTypeSpecialRevenue, "206"), Cut: present(0), Against: present(54400)},
+				{Year: 2024, Basis: "actual", Coords: fund(registry.FundTypeSpecialRevenue, "240"), Cut: present(113514100), Against: present(66870500)},
+			},
+			Residual: 100,
+			Printed: "p0179.txt:68 Total Grant - State Grant Fund 1,135,142, which p0187.txt:30, :31, :32 and :43 print as " +
+				"HHS Loan Fund 465,115, Cal Home Reuse 778, California Begin Program 544 and Grant - State Grant " +
+				"Fund 668,705; p0179's rows miss its total by the dollar their rule's stated_total_deltas declare",
+			Reason: "in the FY2023-24 Actual column pp.173-183 print HHS Loan Fund, Cal Home Reuse and California " +
+				"Begin Program as dashes and their spending inside Grant - State Grant Fund's, and pp.186-209 print " +
+				"each fund's own",
+			Bead: "fisc-3eh2",
+		},
+		{
+			Name: "pp.85-125-fund-four-funds-spending-from-the-state-grant-fund-2024",
+			Cut:  CutFundingSources, Against: CutFundBalanceExpenses, At: LevelFund,
+			Cells: []Pin{
+				{Year: 2024, Basis: "actual", Coords: fund(registry.FundTypeSpecialRevenue, "204"), Cut: present(0), Against: present(46511500)},
+				{Year: 2024, Basis: "actual", Coords: fund(registry.FundTypeSpecialRevenue, "205"), Cut: present(0), Against: present(77800)},
+				{Year: 2024, Basis: "actual", Coords: fund(registry.FundTypeSpecialRevenue, "206"), Cut: present(0), Against: present(54400)},
+				{Year: 2024, Basis: "actual", Coords: fund(registry.FundTypeSpecialRevenue, "240"), Cut: present(113514200), Against: present(66870500)},
+			},
+			Residual: 0,
+			Printed: "p0101.txt prints HHS Loan Fund, Cal Home Reuse and California Begin Program as dashes and five " +
+				"departments' Grant - State Grant Fund rows on pp.102-124 sum to p0179.txt:68's 1,135,142, which " +
+				"p0187.txt:30, :31, :32 and :43 print as 465,115, 778, 544 and 668,705",
+			Reason: "in the FY2023-24 Actual column pp.85-125 fund the three housing funds' spending from Grant - " +
+				"State Grant Fund, as pp.173-183 do, and pp.186-209 print each fund's own",
+			Bead: "fisc-3eh2",
+		},
+		{
+			Name: "pp.85-125-fund-maintenances-transfer-out-2024",
+			Cut:  CutFundingSources, Against: CutFundBalanceExpenses, At: LevelFund,
+			Cells: []Pin{
+				{Year: 2024, Basis: "actual", Coords: fund(registry.FundTypeSpecialRevenue, "310"), Cut: present(69457400), Against: present(69456400)},
+				{Year: 2024, Basis: "actual", Coords: fund(registry.FundTypeSpecialRevenue, "311"), Cut: present(296560200), Against: present(269881400)},
+			},
+			Residual: -26679800,
+			Printed: "p0124.txt:25 Transfers Out 266,798, which p0124.txt:61 and :63 fund in Downtown LMD 694,574 and " +
+				"Other LMD 2,965,602, p0187.txt:60 and :61's Total Uses, and p0187 prints as Transfers Out of 10 and 266,788",
+			Reason: "pp.85-125 fund Maintenance's FY2023-24 Transfers Out from Downtown LMD and Other LMD, so those " +
+				"funds' funding sources are pp.186-209's Total Uses, whose Expenses leave the transfer out",
+			Bead: "fisc-3eh2",
+		},
+		{
+			Name: "pp.186-209-carry-no-police-donations-other-financing-2025",
+			Cut:  CutRevenueDetail, Against: CutFundBalanceRevenues, At: LevelFund,
+			Cells: []Pin{{Year: 2025, Basis: "revised", Coords: fund(registry.FundTypeSpecialRevenue, "331"),
+				Cut: present(550000), Against: present(500000)}},
+			Residual: -50000,
+			Printed: "p0139.txt:56 Oth Financing Source 500 in p0139.txt:58's Total Police Donations 5,500, and " +
+				"p0194.txt:10 Revenues 5,000 and Transfers In -",
+			Reason: "pp.127-140 count a 500 Other Financing Source in Police Donations' FY2024-25 revenue, and " +
+				"pp.186-209 carry it nowhere: 48,657 + 5,000 - 9,012 is the 44,645 p195 prints",
+			Bead: "fisc-3eh2",
+		},
+
+		{
+			Name: "pp.127-130-print-no-general-fund-transfer-in-2024",
+			Cut:  CutRevenueDetail, Against: CutFundBalanceFlows, At: LevelFundByCategory,
+			Cells:    []Pin{{Year: 2024, Basis: "actual", Coords: transfersIn(registry.FundTypeGeneral, "100"), Against: present(73745500)}},
+			Residual: 73745500,
+			Printed:  "p0186.txt:10, General Fund Transfers In 737,455; pp.127-130 print TOTAL REVENUES and no Transfers In row",
+			Reason:   notGFTransfersIn,
+			Bead:     "fisc-5gk.3.1",
+		},
+		{
+			Name: "pp.127-130-print-no-general-fund-transfer-in-2025",
+			Cut:  CutRevenueDetail, Against: CutFundBalanceFlows, At: LevelFundByCategory,
+			Cells:    []Pin{{Year: 2025, Basis: "revised", Coords: transfersIn(registry.FundTypeGeneral, "100"), Against: present(91420600)}},
+			Residual: 91420600,
+			Printed:  "p0192.txt:10, General Fund Transfers In 914,206; pp.127-130 print TOTAL REVENUES and no Transfers In row",
+			Reason:   notGFTransfersIn,
+			Bead:     "fisc-5gk.3.1",
+		},
+		{
+			Name: "pp.131-140-print-no-general-fund-cip-reserves-2025",
+			Cut:  CutRevenueDetail, Against: CutFundBalanceFlows, At: LevelFundByCategory,
+			Cells:    []Pin{{Year: 2025, Basis: "revised", Coords: transfersIn(registry.FundTypeCapital, "101"), Against: present(412562700)}},
+			Residual: 412562700,
+			Printed:  "p0194.txt:29, General Fund CIP Reserves Transfers In 4,125,627; pp.131-140 print no section for fund 101",
+			Reason: "pp.131-140 print a section for every capital fund but General Fund CIP Reserves, whose one " +
+				"transfer in is FY2024-25's",
+			Bead: "fisc-zl9",
 		},
 	}
 }

@@ -37,6 +37,9 @@ const (
 	LevelFundGroup Level = "fund-group"
 	// LevelFundGroupByCategory is the spine's grain, pp.66-67.
 	LevelFundGroupByCategory Level = "fund-group-by-category"
+	// LevelFund is a fund's total with no category: pp.186-209's Revenues
+	// and Expenses, which every per-fund schedule decomposes.
+	LevelFund Level = "fund"
 	// LevelFundByCategory is pp.127-140 and p76: the same money, per fund.
 	LevelFundByCategory Level = "fund-by-category"
 	// LevelDepartmentByCategory is pp.85-125, which name a department and
@@ -57,6 +60,7 @@ var levelAxes = map[Level][]Axis{
 	LevelCategory:                   {AxisCategory},
 	LevelFundGroup:                  {AxisFundGroup},
 	LevelFundGroupByCategory:        {AxisFundGroup, AxisCategory},
+	LevelFund:                       {AxisFundGroup, AxisFund},
 	LevelFundByCategory:             {AxisFundGroup, AxisFund, AxisCategory},
 	LevelDepartmentByCategory:       {AxisDepartment, AxisCategory},
 	LevelFundByDepartment:           {AxisFundGroup, AxisFund, AxisDepartment},
@@ -68,9 +72,10 @@ var levelAxes = map[Level][]Axis{
 // the levels fine decomposes. [Refines] closes them transitively.
 var refinements = map[Level][]Level{
 	LevelFundGroupByCategory:        {LevelFundGroup, LevelCategory},
-	LevelFundByCategory:             {LevelFundGroupByCategory},
+	LevelFund:                       {LevelFundGroup},
+	LevelFundByCategory:             {LevelFundGroupByCategory, LevelFund},
 	LevelDepartmentByCategory:       {LevelCategory, LevelDepartment},
-	LevelFundByDepartment:           {LevelFundGroup, LevelDepartment},
+	LevelFundByDepartment:           {LevelFund, LevelDepartment},
 	LevelFundByDepartmentByCategory: {LevelFundByCategory, LevelDepartmentByCategory, LevelFundByDepartment},
 }
 

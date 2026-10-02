@@ -47,28 +47,32 @@ func BudgetBookResidue() []Residue {
 	}}, append(cipProjectListingResidue(), fundBalancesByFundResidue()...)...)
 }
 
-// fundBalancesByFundResidue is pp.186-209, one rule per page pair and five
-// kinds per rule.
+// fundBalancesByFundResidue is pp.186-209's Capital Improvement Program
+// Funds block, one rule a year and five kinds per rule.
 func fundBalancesByFundResidue() []Residue {
 	var out []Residue
-	for i, year := range []int{2024, 2025, 2026, 2027} {
-		for page := 186 + 6*i; page < 192+6*i; page += 2 {
-			for _, kind := range []mapping.Kind{mapping.KindFundBalance, mapping.KindRevenue,
-				mapping.KindTransferIn, mapping.KindExpenditure, mapping.KindTransferOut} {
-				out = append(out, Residue{
-					Scope: ScopeFundBalancesByFund,
-					Rule:  fmt.Sprintf("fund-balances-fy%d-p%04d", year, page),
-					Kind:  kind,
-					Reason: "pp.186-209 are read and held to their own printed totals, to each fund's " +
-						"sources and uses and to each balance's carry-forward; the cuts and the " +
-						"cross-checks against pp.66-67, pp.127-140, pp.172-183, p76 and p222 are " +
-						"fisc-3eh2's next commit",
-				})
-			}
+	for _, rule := range fundBalancesRules(true) {
+		for _, kind := range []mapping.Kind{mapping.KindFundBalance, mapping.KindRevenue,
+			mapping.KindTransferIn, mapping.KindExpenditure, mapping.KindTransferOut} {
+			out = append(out, Residue{
+				Scope:  ScopeFundBalancesByFund,
+				Rule:   rule,
+				Kind:   kind,
+				Reason: cipFundsBlockResidue,
+			})
 		}
 	}
 	return out
 }
+
+// cipFundsBlockResidue is why pp.186-209's CIP funds sit in no cut: they are
+// cip-funds' funds, which ValidateOutside lets no second cut carry.
+const cipFundsBlockResidue = "pp.186-209's Capital Improvement Program Funds block is p222's money, " +
+	"which pp.66-67 total outside the operating budget: its 35 funds' Transfers In are p222's legs fund " +
+	"by fund in all three columns p222 prints, 92,968,752, 38,086,737 and 50,762,251 for FY2024-25 " +
+	"to FY2026-27, their Revenues p222's grants, 11,339,751, 7,814,799 and 8,226,620, and the " +
+	"balance they draw, 356,913, 1,183,087 and 0, p222's fund balance. FY2023-24, which p222 does " +
+	"not print, carries 1,963,647 of opening balance and 3,143 of expenses"
 
 // cipProjectListingResidue is pp.224-235, one rule per page pair. Their axis
 // is the project, and their budget years are not p222's appropriations: the
