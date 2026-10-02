@@ -471,9 +471,18 @@ func validateRule(r *Rule, errf errFunc) error {
 	// than "no such row". printed guards the other end: row_label is what a
 	// fact publishes and what its id is hashed from (see fact.MakeID), so two
 	// rows may share neither an identity nor a printed form.
+	//
+	// Except two SKIPPED rows: neither publishes, so no fact id is hashed from
+	// either, and rows are matched in the order the rule lists them, so each
+	// reads its own line. Budget Book p230 prints fund 611's projects twice,
+	// once under its federal grant and once under its state grant, on lines
+	// identical but for the figures. An omitted_rows entry naming such a row
+	// could not say which one, so it is refused below.
 	rowIndex := map[string]bool{}
 	tailed := map[string][]string{}
 	printed := map[string]bool{}
+	skipped := map[string]bool{}
+	repeated := map[string]bool{}
 	for i, row := range r.Rows {
 		if row.Label == "" {
 			return errf(r.ID, "rows", "row %d has no label", i)
@@ -491,18 +500,24 @@ func validateRule(r *Rule, errf errFunc) error {
 					row.Label, row.LabelTail)
 			}
 		}
-		if rowIndex[row.Identity()] {
+		switch {
+		case rowIndex[row.Identity()] && row.Skip && skipped[row.Identity()]:
+			repeated[row.Identity()] = true
+		case rowIndex[row.Identity()]:
 			return cmdutil.WithHint(
 				errf(r.ID, "rows", "duplicate row label %q", row.PrintedLabel()),
-				"row labels are positional identities; two rows cannot share one")
-		}
-		if printed[row.PrintedLabel()] {
+				"row labels are positional identities; two rows cannot share one "+
+					"unless both are skip: true")
+		case printed[row.PrintedLabel()]:
 			return cmdutil.WithHint(
 				errf(r.ID, "rows", "two rows print as %q", row.PrintedLabel()),
 				"the two rows split that text differently between label and "+
 					"label_tail, so they are two identities to the resolver "+
 					"and one row_label to every reader of facts.jsonl, where "+
 					"a fact's id is hashed from row_label")
+		}
+		if !rowIndex[row.Identity()] {
+			skipped[row.Identity()] = row.Skip
 		}
 		rowIndex[row.Identity()] = true
 		printed[row.PrintedLabel()] = true
@@ -831,6 +846,10 @@ func validateRule(r *Rule, errf errFunc) error {
 					"entry %d: label_tail %q has leading or trailing whitespace",
 					j, o.LabelTail)
 			}
+			if repeated[o.identity()] {
+				return errf(r.ID, field, "%q names rows the rule lists more than once, "+
+					"so it cannot say which one the page omits", o.printedLabel())
+			}
 			if rowIndex[o.identity()] {
 				if declared[o.identity()] {
 					return errf(r.ID, field, "%q is declared twice", o.printedLabel())
@@ -940,6 +959,9 @@ func validateRule(r *Rule, errf errFunc) error {
 		return err
 	}
 	if err := validateTotalSpansParts(r, errf); err != nil {
+		return err
+	}
+	if err := validateSubtotals(r, errf); err != nil {
 		return err
 	}
 	// Last, so a rule is refused for its own shape before a missing grain.
@@ -1738,4 +1760,66 @@ func describeHeaders(hs columnHeaders) string {
 		parts[i] = h.String()
 	}
 	return "[" + strings.Join(parts, " ") + "]"
+}
+
+// validateSubtotals checks the rows a rule declares as printed subtotals.
+//
+// A subtotal publishes nothing, so it is a skipped row: spelling both keeps
+// every reader of Row.Skip right without teaching each one about subtotals.
+// Its figures are compared by column header, so every part of a rule with a
+// subtotal row, or in a chain, names each of its columns.
+func validateSubtotals(r *Rule, errf errFunc) error {
+	has := r.SubtotalChain != ""
+	for _, row := range r.Rows {
+		switch {
+		case row.Subtotal < 0:
+			return errf(r.ID, "rows", "row %q: subtotal is %d; levels count from 1",
+				row.PrintedLabel(), row.Subtotal)
+		case row.Subtotal > 0 && !row.Skip:
+			return cmdutil.WithHint(
+				errf(r.ID, "rows", "row %q is a subtotal and is not skip: true", row.PrintedLabel()),
+				"a printed subtotal publishes nothing; publishing it would count its rows twice")
+		case row.Subtotal > 0:
+			has = true
+		case len(row.SubtotalDeltas) > 0:
+			return errf(r.ID, "rows", "row %q declares subtotal_deltas and is not a subtotal",
+				row.PrintedLabel())
+		}
+		seen := map[string]bool{}
+		for _, d := range row.SubtotalDeltas {
+			switch {
+			case d.Column == "":
+				return errf(r.ID, "rows", "row %q: a subtotal_deltas entry names no column",
+					row.PrintedLabel())
+			case seen[d.Column]:
+				return errf(r.ID, "rows", "row %q: subtotal_deltas names %q twice",
+					row.PrintedLabel(), d.Column)
+			case d.Cents == 0:
+				return errf(r.ID, "rows", "row %q: the subtotal_deltas entry for %q is zero, "+
+					"which is a column that ties and declares nothing", row.PrintedLabel(), d.Column)
+			case strings.TrimSpace(d.Note) == "":
+				return errf(r.ID, "rows", "row %q: the subtotal_deltas entry for %q has no note",
+					row.PrintedLabel(), d.Column)
+			}
+			seen[d.Column] = true
+		}
+	}
+	if !has {
+		return nil
+	}
+	for _, p := range r.Parts {
+		if len(p.ColumnHeaders) == 0 {
+			return cmdutil.WithHint(
+				errf(r.ID, fmt.Sprintf("parts[page %d].column_headers", p.Page),
+					"is empty, and this rule's subtotals compare figures by column header"),
+				"declare the headers the page prints over each column")
+		}
+		for i, h := range p.ColumnHeaders {
+			if h.Unheaded {
+				return errf(r.ID, fmt.Sprintf("parts[page %d].column_headers", p.Page),
+					"entry %d is null, and this rule's subtotals compare figures by column header", i+1)
+			}
+		}
+	}
+	return nil
 }

@@ -76,6 +76,16 @@ Total Services $134,242
 	// Two divisions and the department total printed over both, plus a total
 	// the page prints that nothing on it sums to. 300 + 700 = 1,000.
 	// See testdata/rollup.yaml.
+	// A block and its printed subtotal, figures right-aligned under their
+	// header so the geometry monoGeometry derives places each in its column.
+	// See testdata/subtotal.yaml.
+	subtotalPage = `      FY A
+Alpha       10
+Beta        20
+SUBTOTAL  $ 30
+END
+`
+
 	rollupPage = `Division One
 Wages 100
 Supplies 200
@@ -104,12 +114,24 @@ func writeRepoFile(t *testing.T, path, body string) {
 // always created, so a test can ask what an empty one does.
 func testRepo(t *testing.T, pages map[int]string, rules ...string) string {
 	t.Helper()
+	return testRepoWithGeometry(t, pages, nil, rules...)
+}
+
+// testRepoWithGeometry is testRepo with each page's geometry too, for a rule
+// declaring column_headers, whose column guard reads it.
+func testRepoWithGeometry(t *testing.T, pages, geometry map[int]string, rules ...string) string {
+	t.Helper()
 	root := t.TempDir()
 
 	extracted := filepath.Join(root, "data", "extracted", docID)
 	artifacts := map[string]corpus.Artifact{}
 	for n, body := range pages {
 		name := corpus.PagePath(n)
+		writeRepoFile(t, filepath.Join(extracted, filepath.FromSlash(name)), body)
+		artifacts[name] = corpus.Artifact{Bytes: int64(len(body))}
+	}
+	for n, body := range geometry {
+		name := corpus.GeometryPath(n)
 		writeRepoFile(t, filepath.Join(extracted, filepath.FromSlash(name)), body)
 		artifacts[name] = corpus.Artifact{Bytes: int64(len(body))}
 	}
@@ -793,6 +815,84 @@ func TestARollupThatDoesNotTieFailsTheBuild(t *testing.T) {
 		t.Fatal("buildRun succeeded; the divisions state 1,000 and the page now prints 1,001")
 	}
 	for _, want := range []string{"dept-total", "$1,000.00", "$1,001.00"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error = %v, want it to name %s", err, want)
+		}
+	}
+}
+
+// monoGeometry is the geometry a monospaced page implies, in the extractor's
+// format: each word at its character column, six points a character, one line
+// every twelve points.
+func monoGeometry(page int, text string) string {
+	var words []string
+	for i, line := range strings.Split(text, "\n") {
+		for c := 0; c < len(line); {
+			if line[c] == ' ' {
+				c++
+				continue
+			}
+			e := c
+			for e < len(line) && line[e] != ' ' {
+				e++
+			}
+			w, err := json.Marshal(line[c:e])
+			if err != nil {
+				panic(err)
+			}
+			words = append(words, fmt.Sprintf("[%d,%d,%d,%d,%s]", c*6, i*12, e*6, i*12+10, w))
+			c = e
+		}
+	}
+	return fmt.Sprintf(`{"doc_id": %q, "height": 792.0, "page": %d, "schema_version": 1, `+
+		`"width": 612.0, "words": [%s]}`, docID, page, strings.Join(words, ","))
+}
+
+// TestASubtotalIsReportedAndCreditsItsPart: the build runs the subtotal
+// chain, counts what it tied, and credits the part it checked rather than
+// naming it unchecked for want of a total_row.
+//
+// Mutation: drop the chain loop from resolve, and the subtotal counters stay
+// zero and the part is reported unchecked.
+func TestASubtotalIsReportedAndCreditsItsPart(t *testing.T) {
+	root := testRepoWithGeometry(t, map[int]string{95: subtotalPage},
+		map[int]string{95: monoGeometry(95, subtotalPage)}, "subtotal.yaml")
+	opts, out, _ := testOptions(t, root)
+	opts.JSON = true
+
+	if err := buildRun(opts); err != nil {
+		t.Fatalf("buildRun: %v", err)
+	}
+	var rep report
+	if err := json.Unmarshal(out.Bytes(), &rep); err != nil {
+		t.Fatalf("decode report: %v", err)
+	}
+	if rep.SubtotalLinesTied != 1 || rep.SubtotalCellsTied != 1 {
+		t.Errorf("subtotal_lines_tied = %d, subtotal_cells_tied = %d, want 1 and 1",
+			rep.SubtotalLinesTied, rep.SubtotalCellsTied)
+	}
+	if rep.PartsChecked != 1 || len(rep.PartsUnchecked) != 0 {
+		t.Errorf("parts_checked = %d, parts_unchecked = %+v, want the one part checked",
+			rep.PartsChecked, rep.PartsUnchecked)
+	}
+	if rep.Facts != 2 {
+		t.Errorf("facts = %d, want 2; the subtotal publishes nothing", rep.Facts)
+	}
+}
+
+// TestASubtotalThatDoesNotTieFailsTheBuild keeps the subtotal a gate, as a
+// rule's total_row is one.
+func TestASubtotalThatDoesNotTieFailsTheBuild(t *testing.T) {
+	moved := strings.Replace(subtotalPage, "SUBTOTAL  $ 30", "SUBTOTAL  $ 31", 1)
+	root := testRepoWithGeometry(t, map[int]string{95: moved},
+		map[int]string{95: monoGeometry(95, moved)}, "subtotal.yaml")
+	opts, _, _ := testOptions(t, root)
+
+	err := buildRun(opts)
+	if err == nil {
+		t.Fatal("buildRun succeeded; the rows sum to 30 and the page now prints 31")
+	}
+	for _, want := range []string{`"SUBTOTAL"`, "31", "$30.00"} {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("error = %v, want it to name %s", err, want)
 		}

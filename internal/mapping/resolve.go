@@ -129,6 +129,7 @@ type partKey struct {
 // CLI over local files, a page that changed mid-run is not a case to paper over.
 type resolvedPart struct {
 	values    []Value
+	cells     []Value
 	omissions []Omission
 	err       error
 }
@@ -359,6 +360,17 @@ func (r *Resolver) Values(rule *Rule, p *Part) ([]Value, []Omission, error) {
 	return slices.Clone(rp.values), slices.Clone(rp.omissions), nil
 }
 
+// Cells is every amount the part reads, in Values' order: its values, and the
+// figures under a skipped row or column, which publish nothing but which a
+// printed subtotal still adds.
+func (r *Resolver) Cells(rule *Rule, p *Part) ([]Value, error) {
+	rp := r.resolvePart(rule, p)
+	if rp.err != nil {
+		return nil, rp.err
+	}
+	return slices.Clone(rp.cells), nil
+}
+
 // resolvePart returns the memoized read of one part, performing it on the first
 // ask.
 //
@@ -373,7 +385,12 @@ func (r *Resolver) resolvePart(rule *Rule, p *Part) *resolvedPart {
 		return rp
 	}
 	rp := &resolvedPart{}
-	rp.values, rp.omissions, rp.err = r.readPart(rule, p)
+	rp.cells, rp.omissions, rp.err = r.readPart(rule, p)
+	for _, v := range rp.cells {
+		if !v.Row.Skip && !v.Column.Skip {
+			rp.values = append(rp.values, v)
+		}
+	}
 	return r.storePart(key, rp)
 }
 
@@ -784,10 +801,8 @@ func (r *Resolver) parseRow(rule *Rule, p *Part, row Row, rowIndex int, toks []t
 				Msg:   err.Error(), Err: err}
 		}
 		// A skipped row or column still consumes its position — that is the
-		// point of skip — but yields no fact.
-		if row.Skip || col.Skip {
-			continue
-		}
+		// point of skip — and is returned here as a cell; readPart keeps it
+		// out of the part's values, so it yields no fact.
 		out = append(out, Value{Cents: cents, Row: row, Column: col,
 			RowIndex: rowIndex, ColumnIndex: c, Page: p.Page,
 			Offset: tk.off, Token: tk.text})

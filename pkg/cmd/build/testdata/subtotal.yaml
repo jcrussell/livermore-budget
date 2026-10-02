@@ -1,0 +1,26 @@
+# One block with a printed subtotal under its rows and no total_row, the
+# shape of Budget Book pp.224-235's fund blocks. 10 + 20 = 30.
+#
+# The point of the fixture is that the build RUNS the subtotal chain: it
+# credits the part as checked, and a subtotal that does not tie fails it.
+schema_version: 1
+doc_id: livermore-budget-fy2026-2027
+
+rules:
+  - id: listing
+    kind: expenditure
+    basis: adopted
+    scope: cip-project-listing
+    grain: category
+    units: dollars
+    rows:
+      - {label: "Alpha", category: capital-projects}
+      - {label: "Beta", category: capital-projects}
+      - {label: "SUBTOTAL", skip: true, subtotal: 1}
+    parts:
+      - page: 95
+        section: "FY A\n"
+        stop_at: "END"
+        column_headers: ["FY A"]
+        columns:
+          - {fiscal_year: 2026}

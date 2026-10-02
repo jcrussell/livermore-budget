@@ -82,6 +82,14 @@ type report struct {
 	RollupsAsserted   int `json:"rollups_asserted"`
 	RollupColumnsTied int `json:"rollup_columns_tied"`
 
+	// SubtotalLinesTied is how many printed subtotal rows were tied to the rows
+	// above them (mapping.Row.Subtotal), and SubtotalCellsTied the figures on
+	// them. A part of a rule whose rows sit under subtotals counts as checked
+	// once its chain ties, which is why PartsChecked can include parts that
+	// tie to no total_row.
+	SubtotalLinesTied int `json:"subtotal_lines_tied"`
+	SubtotalCellsTied int `json:"subtotal_cells_tied"`
+
 	PartsUnchecked    []uncheckedPart    `json:"parts_unchecked"`
 	RollupsUnasserted []unassertedRollup `json:"rollups_unasserted"`
 	Omissions         []declaredOmission `json:"declared_omissions"`
@@ -288,6 +296,12 @@ func (rep *report) print(ios *iostreams.IOStreams, asJSON bool) error {
 			rep.ColumnsTiedByTolerance,
 			cmdutil.Plural(rep.ColumnsTiedByTolerance, "ties", "tie"),
 			strings.Join(amounts, ", "))
+	}
+	if rep.SubtotalLinesTied > 0 {
+		fmt.Fprintf(w, "%d printed %s inside a block %s the rows above, over %d %s\n",
+			rep.SubtotalLinesTied, cmdutil.Plural(rep.SubtotalLinesTied, "subtotal", "subtotals"),
+			cmdutil.Plural(rep.SubtotalLinesTied, "ties to", "tie to"), rep.SubtotalCellsTied,
+			cmdutil.Plural(rep.SubtotalCellsTied, "figure", "figures"))
 	}
 	if rep.RollupsAsserted > 0 {
 		fmt.Fprintf(w, "%d printed %s covering several rules %s, over %d %s\n",

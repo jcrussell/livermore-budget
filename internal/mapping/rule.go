@@ -451,6 +451,14 @@ type Rule struct {
 	// by the parser is a different thing from one that relies on the author.
 	TotalSpansParts bool `yaml:"total_spans_parts"`
 
+	// SubtotalChain names a run of rules whose rows are one printed table for
+	// the purpose of its subtotal rows (Row.Subtotal), read in file order. A
+	// fund block on Budget Book pp.224-235 can start on one page pair and
+	// print its total on the next, and each page pair is its own rule because
+	// its continuation page is read positionally against it. Absent, a rule
+	// with subtotal rows is a chain of its own.
+	SubtotalChain string `yaml:"subtotal_chain"`
+
 	// TotalRowKinds names the kinds the printed total_row covers, where it
 	// covers only some of them. Absent, it covers every row the rule maps,
 	// which is the reading eleven-plus mixed fund blocks on Budget Book
@@ -1018,6 +1026,27 @@ type Row struct {
 	// as a subtotal that would double-count.
 	Skip bool `yaml:"skip"`
 
+	// Subtotal declares a skipped row to be a subtotal the page prints, and
+	// its level. CheckSubtotals holds each of its figures to the sum of the
+	// rows above it that are not subtotals, since the last subtotal of the
+	// same or a higher level, under the same column header -- so a level-2
+	// fund total over level-1 subgroup subtotals sums the subgroups' rows,
+	// and a level-1 total after it starts afresh. Every column is compared,
+	// skipped ones included: a figure the rule does not publish is still one
+	// the page printed and the subtotal adds.
+	//
+	// It exists for the subtotals a label-less continuation page prints
+	// between its blocks, where no rule boundary can fall: Budget Book p225
+	// continues p224's projects with nothing but figures. A printed total
+	// that ends a block is still the rule's total_row.
+	Subtotal int `yaml:"subtotal"`
+
+	// SubtotalDeltas declares where a subtotal row prints a figure its rows do
+	// not sum to, and by how much: Rule's stated_total_deltas, for a subtotal.
+	// Budget Book p235's grand TOTAL prints FY2025-26 a dollar under its 219
+	// rows. A declared column that ties exactly is refused as stale.
+	SubtotalDeltas []SubtotalDelta `yaml:"subtotal_deltas"`
+
 	// Quantity overrides every column's quantity for this row — the whole-row
 	// arm of fisc-9tn4's decision. In the section's dominant orientation the
 	// non-amount is a ROW spanning every year column (p169, p179, p189, p192),
@@ -1241,4 +1270,16 @@ func omittedSet(p *Part) map[string]bool {
 // and the rule can no longer be trusted.
 func (r *Rule) expectedValues(p *Part) int {
 	return len(r.ActiveRows(p)) * len(p.Columns)
+}
+
+// SubtotalDelta is one column's declared discrepancy on a subtotal row.
+type SubtotalDelta struct {
+	// Column is the header the page prints over the figure.
+	Column string `yaml:"column"`
+
+	// Cents is PRINTED MINUS SUMMED, in cents, as statedTotalDelta's is.
+	Cents amount.Cents `yaml:"delta_cents"`
+
+	// Note is required and says why.
+	Note string `yaml:"note"`
 }

@@ -1283,6 +1283,18 @@ categories:
     kinds: [expenditure]
     pages: [66, 167, 168, 169, 170, 172, 173, 174, 175, 176, 177, 178, 179, 180, 181, 182, 183]
 
+  #@cite p0224 "PROJECT LISTING BY FUND"
+  - slug: capital-projects
+    label: "Capital Projects"
+    document_term: "PROJECT LISTING BY FUND"
+    kinds: [expenditure]
+    pages: [224, 226, 228, 230, 232, 234]
+    note: >-
+      One Capital Improvement Program project's spending in one fund and
+      year, as pp.224-235 list it. A CIP project spends from the CIP funds
+      and from operating funds' transfers, so this is not the operating
+      budget's Capital Outlay object category.
+
   #@cite p0066 "Capital Outlay - - 699,900 453,900"
   #@cite p0183 "Capital Outlay 1,702,861 5,253,272 2,078,574 2,140,931" (Fleet)
   - slug: capital-outlay

@@ -351,8 +351,9 @@ func TestPublishedPartsDeclareColumnHeaders(t *testing.T) {
 	// And p222, the CIP funding bridge, one part; and 66 fund parts over
 	// pp.172-183, one per fund, of which three declare two because their rows
 	// straddle a page break. And pp.80-81's debt service, two rules of two
-	// parts each, principal and interest.
-	if want := 239; parts != want {
+	// parts each, principal and interest; and pp.224-235's CIP project
+	// listing, one rule per page pair.
+	if want := 251; parts != want {
 		t.Errorf("checked %d parts, want %d; the published file's shape changed",
 			parts, want)
 	}

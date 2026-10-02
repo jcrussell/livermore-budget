@@ -137,14 +137,17 @@ func TestTheCommittedCorpusRowAnchorsHold(t *testing.T) {
 	// Their rules declare row_labels_name_funds, so the label is resolved whole
 	// and the hand-typed number is checked against it.
 	//
-	// 180 IS THE NUMBER THAT SAYS SO: 40 printed anchors on p76 plus these 78,
-	// plus p222's 62 printed fund numbers -- 36 receiving ends and 26 paying.
+	// 390 IS THE NUMBER THAT SAYS SO: 40 printed anchors on p76 plus these 78,
+	// plus p222's 62 printed fund numbers -- 36 receiving ends and 26 paying --
+	// plus the 210 published project rows of pp.224-235, each opening on its
+	// fund's number.
 	// Asserting the count rather than the absence of the old clause is
 	// deliberate -- a regression that dropped the arm entirely would delete the
 	// clause too, and an absence assertion would pass on it.
-	if res.Subjects != 180 {
-		t.Errorf("the check resolves %d row anchors, want 180: 40 printed on p76, "+
-			"the 78 bare fund labels on pp.85-125 and p222's 62 fund numbers\n%s", res.Subjects, res.Summary)
+	if res.Subjects != 390 {
+		t.Errorf("the check resolves %d row anchors, want 390: 40 printed on p76, "+
+			"the 78 bare fund labels on pp.85-125, p222's 62 fund numbers and "+
+			"pp.224-235's 210\n%s", res.Subjects, res.Summary)
 	}
 	// THE WORDING SEARCHED FOR HERE IS THE ONE THE CODE EMITS, checked against
 	// rowfunds.go rather than remembered. A negative assertion over a string no
@@ -200,9 +203,10 @@ func TestTheBareLabelArmIsWhatTheDeclarationTurnsOn(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
-	if res.Subjects != 102 {
+	if res.Subjects != 312 {
 		t.Errorf("with the declaration cleared the check resolves %d row anchors, "+
-			"want 102 -- the p76 anchors and p222's fund numbers alone", res.Subjects)
+			"want 312 -- the p76 anchors and the fund numbers of p222 and pp.224-235 "+
+			"alone", res.Subjects)
 	}
 	if !strings.Contains(res.Summary, "a further 78 declared fund(s) sit at an end this "+
 		"check does not read") {

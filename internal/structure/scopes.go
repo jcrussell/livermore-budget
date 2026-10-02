@@ -16,6 +16,7 @@ const (
 	ScopeACFRChangesInFundBalances  = "acfr-changes-in-fund-balances"
 	ScopeACFRFundBalances           = "acfr-fund-balances"
 	ScopeDebtServiceByIssue         = "debt-service-by-issue"
+	ScopeCIPProjectListing          = "cip-project-listing"
 )
 
 // The two tiers a cut's department axis may be read at: pp.167-170's

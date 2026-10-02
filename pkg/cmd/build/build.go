@@ -222,6 +222,14 @@ func resolve(root string, files []*mapping.File) ([]fact.Fact, *report, error) {
 		}
 		rep.RuleFiles++
 
+		chains := mapping.Chains(f)
+		inChain := map[string]bool{}
+		for _, chain := range chains {
+			for _, rule := range chain {
+				inChain[rule.ID] = true
+			}
+		}
+
 		for i := range f.Rules {
 			rule := &f.Rules[i]
 			rep.Rules++
@@ -241,7 +249,12 @@ func resolve(root string, files []*mapping.File) ([]fact.Fact, *report, error) {
 				rep.addOmissions(rule, omissions)
 
 				// A rule whose printed total spans its parts is checked once,
-				// after every part has been read, rather than part by part.
+				// after every part has been read, rather than part by part; a
+				// rule in a subtotal chain with no total_row is checked when
+				// its chain is.
+				if inChain[rule.ID] && rule.TotalRow == "" {
+					continue
+				}
 				if !rule.TotalSpansParts {
 					if err := rep.checkTotals(r, rule, p); err != nil {
 						return nil, nil, err
@@ -251,6 +264,20 @@ func resolve(root string, files []*mapping.File) ([]fact.Fact, *report, error) {
 			if rule.TotalSpansParts {
 				if err := rep.checkSpanningTotals(r, rule); err != nil {
 					return nil, nil, err
+				}
+			}
+		}
+
+		for _, chain := range chains {
+			res, err := r.CheckSubtotals(chain)
+			if err != nil {
+				return nil, nil, err
+			}
+			rep.SubtotalLinesTied += res.Lines
+			rep.SubtotalCellsTied += res.Cells
+			for _, rule := range chain {
+				if rule.TotalRow == "" {
+					rep.PartsChecked += len(rule.Parts)
 				}
 			}
 		}

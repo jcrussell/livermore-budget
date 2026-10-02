@@ -23,10 +23,17 @@ collapses the spaces that *are* the grid.
 It does not recover a value the PDF never put in its text layer, and it does not
 settle "absent is not zero" on its own.
 
-CIP p40 rows PB200654 and PB202617 print `-` in their intervening FY columns and
-those dashes appear in **neither** substrate, because they are drawn as non-text.
-Row PB200429 on the same page does carry its dashes, so this is per-row and not a
-flag chosen wrong. `fisc-8ln` owns the residue.
+**The CIP document's tables are pictures.** Every program summary sampled (pp.22,
+29, 40, 52, 117, 172) and the by-fund summary on p218 is a raster image the
+width of the table (`pdfimages -list`: 2099x471 on p22, 1221x845 on p218), and
+the text both substrates carry is an OCR layer over it. Rendered, p218 prints
+`-` in every cell its text leaves blank; the OCR keeps a dash only where it
+recognised one, which is why p40's PB200429 carries its dashes and PB200654 does
+not. Across the twelve
+program summaries, 116 of 129 project rows read fewer than their eight figures.
+The OCR also splits and misreads digits: p218 prints 251,000 and the text reads
+`25 1,000`; "Measure BB" reads `Measu re 88`. `fisc-8ln` owns the residue. The
+Budget Book reprints the same project listing as vector text on pp.224-235.
 
 ## A sparse row mostly does not fail closed
 
@@ -66,8 +73,8 @@ pins the message shape.
 
 ## CIP p40 is a probe, not a guard over committed facts
 
-`mappings/` holds two files, mapping the Budget Book and one page of the ACFR, so
-**no production rule reads the CIP at all**. The refusal is reproducible for a CIP
+`mappings/` holds two files, mapping the Budget Book and the ACFR, so **no
+production rule reads the CIP document at all**. The refusal is reproducible for a CIP
 part you write yourself, and that is the evidence.
 
 `TestCIPp40SparseRowFailsClosedButDoesNotRead` does now reach the row read

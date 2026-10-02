@@ -26,7 +26,7 @@ func (r Residue) matches(f *fact.Fact) bool {
 
 // BudgetBookResidue is every declared residue.
 func BudgetBookResidue() []Residue {
-	return []Residue{{
+	return append([]Residue{{
 		Scope: ScopeDepartmentwideExpenditures,
 		Rule:  "dw-maintenance",
 		Kind:  mapping.KindTransferOut,
@@ -44,7 +44,28 @@ func BudgetBookResidue() []Residue {
 		Rule:   "debt-service-interest",
 		Kind:   mapping.KindExpenditure,
 		Reason: debtServiceByIssueResidue,
-	}}
+	}}, cipProjectListingResidue()...)
+}
+
+// cipProjectListingResidue is pp.224-235, one rule per page pair. Their axis
+// is the project, and their budget years are not p222's appropriations: the
+// listing's FY2025-26 and FY2026-27 totals, 70,765,450 and 70,559,870, carry
+// forward unspent appropriations that p222's 47,084,623 and 58,988,871 do not.
+func cipProjectListingResidue() []Residue {
+	var out []Residue
+	for page := 224; page <= 234; page += 2 {
+		out = append(out, Residue{
+			Scope: ScopeCIPProjectListing,
+			Rule:  fmt.Sprintf("cip-listing-p%04d", page),
+			Kind:  mapping.KindExpenditure,
+			Reason: "pp.224-235 list CIP spending by project, an axis no other schedule " +
+				"has, and their FY2025-26 and FY2026-27 totals include carried-forward " +
+				"appropriations, so they are not p222's new appropriations: 70,765,450 and " +
+				"70,559,870 against 47,084,623 and 58,988,871. Every fund total and the " +
+				"grand total tie to the project rows above them",
+		})
+	}
+	return out
 }
 
 // debtServiceByIssueResidue is why pp.80-81 sit in no cut. Their axis is the

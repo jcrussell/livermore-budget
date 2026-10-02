@@ -6450,6 +6450,509 @@ rules:
       - {label: "Water\n2020B Certificates of Participation", category: debt-services/interest}
       - {label: "Total Business-Type Activities", skip: true}
 
+  # ==========================================================================
+  # CAPITAL IMPROVEMENT PROGRAM, PROJECT LISTING BY FUND, pp.224-235.
+  #
+  # Every CIP project, by the fund paying for it, for FY2024-25 through
+  # FY2030-45. The CIP document prints the same listing, but its tables are
+  # raster images under an OCR text layer that drops every "-" and splits
+  # digits ("25 1,000" for 251,000), so it is read here and not there
+  # (fisc-8ln).
+  #
+  # SIX PAGE PAIRS, ONE RULE EACH. An even page prints fund, project, name and
+  # FY2024-25; the odd page after it continues the same lines with the other
+  # seven columns and no labels, so it is read positionally against its even
+  # page, as p67 is against p66. The label is the fund number, which the page
+  # prints first on the line, and the tail is the project number and name.
+  #
+  # COLUMNS. FY2025-26 and FY2026-27 publish as adopted, and FY2027-28 to
+  # FY2029-30 as projected: printed plan figures, not appropriations. Three
+  # columns are read and not published: FY2024-25, whose basis nothing on these
+  # pages states and whose 59,192,538 total is not p222's FY2024-25 revised
+  # 104,665,416; FY2030-45, fifteen years in one figure; and TOTAL, each row's
+  # sum.
+  # The budget years are not p222's new appropriations either: the listing's
+  # totals carry forward unspent appropriations (see the residue declared in
+  # internal/structure).
+  #
+  # SUBTOTALS. Each fund's block ends in a printed total, fund 101's four
+  # sub-blocks in a SUBTOTAL each, and p234 in the grand TOTAL. The odd pages
+  # print the same lines as figures alone, so no rule boundary can fall
+  # between blocks; instead each total is a subtotal row -- 1 for fund 101's
+  # sub-blocks, 2 for a fund, 3 for the grand total -- held to the rows above
+  # it in every column, the unpublished three included. The six rules are one
+  # subtotal_chain because funds 290, 552 and 560 begin on one page pair and
+  # are totalled on the next.
+  #
+  # FUND 611 IS READ AND NOT PUBLISHED. p230 lists its projects twice, under
+  # TOTAL - FEDERAL GRANT - STORM and again under TOTAL - STATE GRANT - STORM,
+  # on lines identical but for their figures. A fact's identity is its printed
+  # row, so the two cannot both publish, and publishing one would understate
+  # the fund. Both blocks are skipped rows that their totals still check.
+  #
+  # The stray "." on p224 below fund 101's total is a mark the page prints
+  # between blocks, declared so the read does not refuse it.
+  # --------------------------------------------------------------------------
+  - id: cip-listing-p0224
+    kind: expenditure
+    basis: adopted
+    scope: cip-project-listing
+    grain: fund-by-category
+    units: dollars
+    subtotal_chain: cip-project-listing-by-fund
+    row_labels_are_fund_numbers: true
+    parts:
+      - page: 224
+        section: "FY 2024-25\n"
+        stop_at: "BUDGET FY 2025-27"
+        wrapped_labels: ["."]
+        column_headers: ["FY 2024-25"]
+        columns:
+          - {skip: true}
+      - page: 225
+        labels_from: 224
+        section: "TOTAL\n"
+        stop_at: "BUDGET FY 2025-27"
+        column_headers: ["FY 2025-26", "FY 2026-27", "FY 2027-28", "FY 2028-29", "FY 2029-30",
+                         "FY 2030-45", "TOTAL"]
+        columns:
+          - {fiscal_year: 2026}
+          - {fiscal_year: 2027}
+          - {fiscal_year: 2028, basis: projected}
+          - {fiscal_year: 2029, basis: projected}
+          - {fiscal_year: 2030, basis: projected}
+          - {skip: true}
+          - {skip: true}
+    rows:
+      - {label: "101", label_tail: "BL201518 Carpet Replacement for City Buildings", category: capital-projects, fund: 101, fund_group: capital}
+      - {label: "101", label_tail: "BL201830 City Hall HVAC & Central Plant Chiller Replacement", category: capital-projects, fund: 101, fund_group: capital}
+      - {label: "101", label_tail: "BL202125 UPS Replacements at Civic Center", category: capital-projects, fund: 101, fund_group: capital}
+      - {label: "101", label_tail: "BL202126 Recoating of Civic Center Library", category: capital-projects, fund: 101, fund_group: capital}
+      - {label: "101", label_tail: "BL202415 Civic Center Library & Maintenance Building HVAC Improvements", category: capital-projects, fund: 101, fund_group: capital}
+      - {label: "101", label_tail: "BL202416 Maintenance Service Center Coating Protection", category: capital-projects, fund: 101, fund_group: capital}
+      - {label: "101", label_tail: "BL202419 Multi-Service Center Upgrade", category: capital-projects, fund: 101, fund_group: capital}
+      - {label: "101", label_tail: "PS202316 Police Building Renovations", category: capital-projects, fund: 101, fund_group: capital}
+      - {label: "SUBTOTAL - CIP RESERVE - FACILITIES", skip: true, subtotal: 1}
+      - {label: "101", label_tail: "BL202212 Fleet Shop Expansion", category: capital-projects, fund: 101, fund_group: capital}
+      - {label: "101", label_tail: "BL202320 City Fleet Electrification, Phase 1", category: capital-projects, fund: 101, fund_group: capital}
+      - {label: "101", label_tail: "BL202514 City Fleet Electrification, Phase 2", category: capital-projects, fund: 101, fund_group: capital}
+      - {label: "SUBTOTAL - CIP RESERVE - FLEET", skip: true, subtotal: 1}
+      - {label: "101", label_tail: "BL202418 Civic Center Library Teen Space Improvement", category: capital-projects, fund: 101, fund_group: capital}
+      - {label: "101", label_tail: "BL202715 Library Lot Gate", category: capital-projects, fund: 101, fund_group: capital}
+      - {label: "101", label_tail: "DR202118 Livermore Village Remediation", category: capital-projects, fund: 101, fund_group: capital}
+      - {label: "101", label_tail: "DR202120 Downtown Surface Parking", category: capital-projects, fund: 101, fund_group: capital}
+      - {label: "101", label_tail: "DR583018 Livermore Village Infrastructure", category: capital-projects, fund: 101, fund_group: capital}
+      - {label: "101", label_tail: "DR583019 Livermore Valley Center Trash Compactor Facility", category: capital-projects, fund: 101, fund_group: capital}
+      - {label: "101", label_tail: "PB200654 Decorative Wall Replacement - Holmes Street", category: capital-projects, fund: 101, fund_group: capital}
+      - {label: "101", label_tail: "PS202214 Police Storage Facility", category: capital-projects, fund: 101, fund_group: capital}
+      - {label: "101", label_tail: "PS202716 Police Department Radio Replacement", category: capital-projects, fund: 101, fund_group: capital}
+      - {label: "101", label_tail: "PS203013 Fire Station 10 Replacement", category: capital-projects, fund: 101, fund_group: capital}
+      - {label: "101", label_tail: "SD202427 2024 Storm Damage Citywide Emergency & Preventative Measures", category: capital-projects, fund: 101, fund_group: capital}
+      - {label: "101", label_tail: "TI200720 El Charro Specific Plan Infrastructure", category: capital-projects, fund: 101, fund_group: capital}
+      - {label: "101", label_tail: "WW202313 South Livermore Sewer Extension", category: capital-projects, fund: 101, fund_group: capital}
+      - {label: "101", label_tail: "PS202215 Fire Station 6 Building Improvements", category: capital-projects, fund: 101, fund_group: capital}
+      - {label: "SUBTOTAL - CIP RESERVE - GOVERNMENT", skip: true, subtotal: 1}
+      - {label: "101", label_tail: "SD201726 2018-19 Permanent Storm Damage Repairs - Cottonwood Creek", category: capital-projects, fund: 101, fund_group: capital}
+      - {label: "101", label_tail: "SD201941 Altamont Creek Mitigation", category: capital-projects, fund: 101, fund_group: capital}
+      - {label: "101", label_tail: "SD202015 Arroyo Las Positas Desilting Through Las Positas Golf Course", category: capital-projects, fund: 101, fund_group: capital}
+      - {label: "101", label_tail: "SD202132 Golf Course Damage Repairs", category: capital-projects, fund: 101, fund_group: capital}
+      - {label: "101", label_tail: "TI202414 Arroyo Las Positas at Heather Lane Bridge", category: capital-projects, fund: 101, fund_group: capital}
+      - {label: "101", label_tail: "SD202423 2024 Stream Maintenance by Contractors", category: capital-projects, fund: 101, fund_group: capital}
+      - {label: "101", label_tail: "SD202425 2024 Storm Drain Trash Capture", category: capital-projects, fund: 101, fund_group: capital}
+      - {label: "101", label_tail: "SD202523 Stream Maintenance by Contractors", category: capital-projects, fund: 101, fund_group: capital}
+      - {label: "101", label_tail: "SD202525 Golf Course Clubhouse Parking Lot Drainage Improvements", category: capital-projects, fund: 101, fund_group: capital}
+      - {label: "101", label_tail: "SD202623 Springtown Flood Protection", category: capital-projects, fund: 101, fund_group: capital}
+      - {label: "101", label_tail: "SDS2023A 2023 Storm Damage CAT A - Debris Removal", category: capital-projects, fund: 101, fund_group: capital}
+      - {label: "101", label_tail: "SDS2023P 2023 Storm Damage Permanent Repair C-G", category: capital-projects, fund: 101, fund_group: capital}
+      - {label: "101", label_tail: "SDS2023Z 2023 Storm Damage CAT Z - General, Admin, Meetings, Etc.", category: capital-projects, fund: 101, fund_group: capital}
+      - {label: "101", label_tail: "TI202616 Airway Blvd Culvert Replacement", category: capital-projects, fund: 101, fund_group: capital}
+      - {label: "SUBTOTAL - CIP RESERVE - STORM", skip: true, subtotal: 1}
+      - {label: "TOTAL CIP RESERVE FUND", skip: true, subtotal: 2}
+      - {label: "211", label_tail: "PS201722 Automated License Plate Readers", category: capital-projects, fund: 211, fund_group: special-revenue}
+      - {label: "TOTAL - ASSET SEIZURE - COUNTY", skip: true, subtotal: 2}
+      - {label: "224", label_tail: "BL202419 Multi-Service Center Upgrade", category: capital-projects, fund: 224, fund_group: special-revenue}
+      - {label: "TOTAL - GRANT - COMMUNITY DEVELOPMENT BLOCK GRANT", skip: true, subtotal: 2}
+      - {label: "290", label_tail: "BL202213 241 North M Street Demolition", category: capital-projects, fund: 290, fund_group: special-revenue}
+      - {label: "290", label_tail: "BL202419 Multi-Service Center Upgrade", category: capital-projects, fund: 290, fund_group: special-revenue}
+
+  # --------------------------------------------------------------------------
+  - id: cip-listing-p0226
+    kind: expenditure
+    basis: adopted
+    scope: cip-project-listing
+    grain: fund-by-category
+    units: dollars
+    subtotal_chain: cip-project-listing-by-fund
+    row_labels_are_fund_numbers: true
+    parts:
+      - page: 226
+        section: "FY 2024-25\n"
+        stop_at: "BUDGET FY 2025-27"
+        column_headers: ["FY 2024-25"]
+        columns:
+          - {skip: true}
+      - page: 227
+        labels_from: 226
+        section: "TOTAL\n"
+        stop_at: "BUDGET FY 2025-27"
+        column_headers: ["FY 2025-26", "FY 2026-27", "FY 2027-28", "FY 2028-29", "FY 2029-30",
+                         "FY 2030-45", "TOTAL"]
+        columns:
+          - {fiscal_year: 2026}
+          - {fiscal_year: 2027}
+          - {fiscal_year: 2028, basis: projected}
+          - {fiscal_year: 2029, basis: projected}
+          - {fiscal_year: 2030, basis: projected}
+          - {skip: true}
+          - {skip: true}
+    rows:
+      - {label: "290", label_tail: "DR202118 Livermore Village Remediation", category: capital-projects, fund: 290, fund_group: special-revenue}
+      - {label: "TOTAL - HUMAN SERVICES FACILITY FEE", skip: true, subtotal: 2}
+      - {label: "330", label_tail: "BL202418 Civic Center Library Teen Space Improvement", category: capital-projects, fund: 330, fund_group: special-revenue}
+      - {label: "TOTAL - LIBRARY DONATIONS", skip: true, subtotal: 2}
+      - {label: "510", label_tail: "TB202618 Isabel Pedestrian Bridge and Trail", category: capital-projects, fund: 510, fund_group: capital}
+      - {label: "510", label_tail: "TC202326 Portola Avenue and Sedona Common Traffic Signal Improvements", category: capital-projects, fund: 510, fund_group: capital}
+      - {label: "510", label_tail: "TI199238 Isabel Avenue/I-580 Interchange", category: capital-projects, fund: 510, fund_group: capital}
+      - {label: "510", label_tail: "TI199352 Vasco Road/I-580 Interchange", category: capital-projects, fund: 510, fund_group: capital}
+      - {label: "510", label_tail: "TI200259 North Canyons Parkway/Dublin Bouleveard Connection", category: capital-projects, fund: 510, fund_group: capital}
+      - {label: "510", label_tail: "TI200720 El Charro Specific Plan Infrastructure", category: capital-projects, fund: 510, fund_group: capital}
+      - {label: "510", label_tail: "TI200835 Stanley Boulevard /Murrieta Avenue Intersection Improvements", category: capital-projects, fund: 510, fund_group: capital}
+      - {label: "510", label_tail: "TI201028 Foley Road Realignment", category: capital-projects, fund: 510, fund_group: capital}
+      - {label: "510", label_tail: "TI201837 Vasco Road Widening", category: capital-projects, fund: 510, fund_group: capital}
+      - {label: "510", label_tail: "TI201937 Intersection Improvements - Jack London Boulevard and Isabel Avenue", category: capital-projects, fund: 510, fund_group: capital}
+      - {label: "510", label_tail: "TI202526 Valley Link Station Areas", category: capital-projects, fund: 510, fund_group: capital}
+      - {label: "TOTAL - TRAFFIC IMPACT FEE (TIF)", skip: true, subtotal: 2}
+      - {label: "511", label_tail: "TI199352 Vasco Road/I-580 Interchange", category: capital-projects, fund: 511, fund_group: capital}
+      - {label: "511", label_tail: "TI200259 North Canyons Parkway/Dublin Bouleveard Connection", category: capital-projects, fund: 511, fund_group: capital}
+      - {label: "511", label_tail: "TI201837 Vasco Road Widening", category: capital-projects, fund: 511, fund_group: capital}
+      - {label: "TOTAL - TVTC 20% FEE", skip: true, subtotal: 2}
+      - {label: "512", label_tail: "DR202121 Veterans Park", category: capital-projects, fund: 512, fund_group: capital}
+      - {label: "512", label_tail: "PB200429 Doolan Park Landscape Rehabilitation", category: capital-projects, fund: 512, fund_group: capital}
+      - {label: "512", label_tail: "PB200646 LARPD Park Expansion Projects", category: capital-projects, fund: 512, fund_group: capital}
+      - {label: "512", label_tail: "PB201416 Hagemann Farm Site Assessment and Renovation", category: capital-projects, fund: 512, fund_group: capital}
+      - {label: "512", label_tail: "PB202319 Springtown Open Space Improvements", category: capital-projects, fund: 512, fund_group: capital}
+      - {label: "512", label_tail: "TB200714 South Livermore Valley Trail T-10 Extension", category: capital-projects, fund: 512, fund_group: capital}
+      - {label: "512", label_tail: "TB201945 Las Colinas Trail", category: capital-projects, fund: 512, fund_group: capital}
+      - {label: "512", label_tail: "TB201955 Arroyo Road Trail (T-13, Segment B)", category: capital-projects, fund: 512, fund_group: capital}
+      - {label: "TOTAL - PARK FEE - AB 1600", skip: true, subtotal: 2}
+      - {label: "513", label_tail: "SM202521 North K Street Reconstruction", category: capital-projects, fund: 513, fund_group: capital}
+      - {label: "513", label_tail: "TC202529 Transportation Safety Projects", category: capital-projects, fund: 513, fund_group: capital}
+      - {label: "TOTAL - SOLID WASTE & RECYCLING IMPACT FEE", skip: true, subtotal: 2}
+      - {label: "540", label_tail: "DR202118 Livermore Village Remediation", category: capital-projects, fund: 540, fund_group: capital}
+      - {label: "540", label_tail: "DR202119 Livermore Village Joint Trench", category: capital-projects, fund: 540, fund_group: capital}
+      - {label: "540", label_tail: "DR586003 Livermore Village Parking Garage", category: capital-projects, fund: 540, fund_group: capital}
+      - {label: "TOTAL - 2022 COP CONSTRUCTION FUND", skip: true, subtotal: 2}
+      - {label: "551", label_tail: "PB202319 Springtown Open Space Improvements", category: capital-projects, fund: 551, fund_group: capital}
+      - {label: "551", label_tail: "SM202001 Street Resurfacing", category: capital-projects, fund: 551, fund_group: capital}
+      - {label: "551", label_tail: "TB200245 Arroyo Las Positas Trail - Walmart", category: capital-projects, fund: 551, fund_group: capital}
+      - {label: "551", label_tail: "TB202114 ATP Bike Lane Improvements", category: capital-projects, fund: 551, fund_group: capital}
+      - {label: "551", label_tail: "TB202222 East Ave Corridor ATP Implementation", category: capital-projects, fund: 551, fund_group: capital}
+      - {label: "551", label_tail: "TB202626 Arroyo Mocho Trail at Concannon Boulevard", category: capital-projects, fund: 551, fund_group: capital}
+      - {label: "551", label_tail: "TC202518 Street Lighting", category: capital-projects, fund: 551, fund_group: capital}
+      - {label: "551", label_tail: "TC202613 Street Lighting", category: capital-projects, fund: 551, fund_group: capital}
+      - {label: "551", label_tail: "TC202712 Street Lighting", category: capital-projects, fund: 551, fund_group: capital}
+      - {label: "TOTAL - COUNTY MEASURE BB - BIKE/PEDESTRIAN", skip: true, subtotal: 2}
+      - {label: "552", label_tail: "DR202225 Flagpole Plaza", category: capital-projects, fund: 552, fund_group: capital}
+      - {label: "552", label_tail: "SM201721 Bluebell Drive Bridge Repair at Altamont Creek", category: capital-projects, fund: 552, fund_group: capital}
+      - {label: "552", label_tail: "SM202001 Street Resurfacing", category: capital-projects, fund: 552, fund_group: capital}
+      - {label: "552", label_tail: "SM202219 Bridge Rehabilitation", category: capital-projects, fund: 552, fund_group: capital}
+
+  # --------------------------------------------------------------------------
+  - id: cip-listing-p0228
+    kind: expenditure
+    basis: adopted
+    scope: cip-project-listing
+    grain: fund-by-category
+    units: dollars
+    subtotal_chain: cip-project-listing-by-fund
+    row_labels_are_fund_numbers: true
+    parts:
+      - page: 228
+        section: "FY 2024-25\n"
+        stop_at: "BUDGET FY 2025-27"
+        column_headers: ["FY 2024-25"]
+        columns:
+          - {skip: true}
+      - page: 229
+        labels_from: 228
+        section: "TOTAL\n"
+        stop_at: "BUDGET FY 2025-27"
+        column_headers: ["FY 2025-26", "FY 2026-27", "FY 2027-28", "FY 2028-29", "FY 2029-30",
+                         "FY 2030-45", "TOTAL"]
+        columns:
+          - {fiscal_year: 2026}
+          - {fiscal_year: 2027}
+          - {fiscal_year: 2028, basis: projected}
+          - {fiscal_year: 2029, basis: projected}
+          - {fiscal_year: 2030, basis: projected}
+          - {skip: true}
+          - {skip: true}
+    rows:
+      - {label: "552", label_tail: "SM202521 North K Street Reconstruction", category: capital-projects, fund: 552, fund_group: capital}
+      - {label: "552", label_tail: "TB201723 Arroyo Road Path", category: capital-projects, fund: 552, fund_group: capital}
+      - {label: "552", label_tail: "TB202114 ATP Bike Lane Improvements", category: capital-projects, fund: 552, fund_group: capital}
+      - {label: "552", label_tail: "TB202222 East Ave Corridor ATP Implementation", category: capital-projects, fund: 552, fund_group: capital}
+      - {label: "552", label_tail: "TC201933 Traffic Signal Modification", category: capital-projects, fund: 552, fund_group: capital}
+      - {label: "552", label_tail: "TC202020 Traffic Signal Modification", category: capital-projects, fund: 552, fund_group: capital}
+      - {label: "552", label_tail: "TC202133 Stanley Boulevard at Isabel Avenue Connector Ramp Crossing", category: capital-projects, fund: 552, fund_group: capital}
+      - {label: "552", label_tail: "TC202305 Traffic Calming", category: capital-projects, fund: 552, fund_group: capital}
+      - {label: "552", label_tail: "TC202306 Crosswalk Safety Improvements", category: capital-projects, fund: 552, fund_group: capital}
+      - {label: "552", label_tail: "TC202506 Crosswalk Safety Improvements", category: capital-projects, fund: 552, fund_group: capital}
+      - {label: "552", label_tail: "TC202519 Traffic Signals", category: capital-projects, fund: 552, fund_group: capital}
+      - {label: "552", label_tail: "TC202605 Traffic Calming", category: capital-projects, fund: 552, fund_group: capital}
+      - {label: "552", label_tail: "TC202606 Crosswalk Safety Improvements", category: capital-projects, fund: 552, fund_group: capital}
+      - {label: "552", label_tail: "TC202614 Traffic Signals", category: capital-projects, fund: 552, fund_group: capital}
+      - {label: "552", label_tail: "TC202705 Traffic Calming", category: capital-projects, fund: 552, fund_group: capital}
+      - {label: "552", label_tail: "TC202706 Crosswalk Safety Improvements", category: capital-projects, fund: 552, fund_group: capital}
+      - {label: "552", label_tail: "TC202713 Traffic Signals", category: capital-projects, fund: 552, fund_group: capital}
+      - {label: "552", label_tail: "TC202906 Crosswalk Safety Improvements", category: capital-projects, fund: 552, fund_group: capital}
+      - {label: "552", label_tail: "TC202912 Traffic Signals", category: capital-projects, fund: 552, fund_group: capital}
+      - {label: "552", label_tail: "TI202116 Railroad Ave Street Improvements", category: capital-projects, fund: 552, fund_group: capital}
+      - {label: "552", label_tail: "TI202414 Arroyo Las Positas at Heather Lane Bridge", category: capital-projects, fund: 552, fund_group: capital}
+      - {label: "552", label_tail: "WT202314 Springtown Water Service Replacements", category: capital-projects, fund: 552, fund_group: capital}
+      - {label: "TOTAL - COUNTY MEASURE BB - LOCAL STREETS & ROADS", skip: true, subtotal: 2}
+      - {label: "553", label_tail: "DR201959 Downtown Pavement, Sidewalk, and Miscellaneous ADA Improvements", category: capital-projects, fund: 553, fund_group: capital}
+      - {label: "TOTAL - COUNTY MEASURE F - VEHICLE REGISTRATION FEE", skip: true, subtotal: 2}
+      - {label: "560", label_tail: "DR201959 Downtown Pavement, Sidewalk, and Miscellaneous ADA Improvements", category: capital-projects, fund: 560, fund_group: capital}
+      - {label: "560", label_tail: "DR202225 Flagpole Plaza", category: capital-projects, fund: 560, fund_group: capital}
+      - {label: "560", label_tail: "PB202520 Springtown Boulevard Median Improvements", category: capital-projects, fund: 560, fund_group: capital}
+      - {label: "560", label_tail: "PB202617 Railroad Avenue and Stanley Boulevard Median Improvements", category: capital-projects, fund: 560, fund_group: capital}
+      - {label: "560", label_tail: "PB202619 Fence Replacement - West Side Holmes St from El Caminito to Mocho", category: capital-projects, fund: 560, fund_group: capital}
+      - {label: "560", label_tail: "PB202620 Fence Replacement - East Side Holmes St South of Concannon Blvd", category: capital-projects, fund: 560, fund_group: capital}
+      - {label: "560", label_tail: "PB202811 Fence Replacement - East Side of Holmes St Vancouver Way to Anza Way", category: capital-projects, fund: 560, fund_group: capital}
+      - {label: "560", label_tail: "SD202132 Golf Course Damage Repairs", category: capital-projects, fund: 560, fund_group: capital}
+      - {label: "560", label_tail: "SM201721 Bluebell Drive Bridge Repair at Altamont Creek", category: capital-projects, fund: 560, fund_group: capital}
+      - {label: "560", label_tail: "SM202107 ADA Access Ramps", category: capital-projects, fund: 560, fund_group: capital}
+      - {label: "560", label_tail: "SM202207 ADA Access Ramps", category: capital-projects, fund: 560, fund_group: capital}
+      - {label: "560", label_tail: "SM202302 Sidewalk Repair", category: capital-projects, fund: 560, fund_group: capital}
+      - {label: "560", label_tail: "SM202325 Murrieta Roadway Reconstruction", category: capital-projects, fund: 560, fund_group: capital}
+      - {label: "560", label_tail: "SM202327 Private Sidewalk Repair Revolving Fund", category: capital-projects, fund: 560, fund_group: capital}
+      - {label: "560", label_tail: "SM202402 Sidewalk Repair", category: capital-projects, fund: 560, fund_group: capital}
+      - {label: "560", label_tail: "SM202502 Sidewalk Repair", category: capital-projects, fund: 560, fund_group: capital}
+      - {label: "560", label_tail: "SM202522 Railroad Crossings at Junction Avenue and L Street", category: capital-projects, fund: 560, fund_group: capital}
+      - {label: "560", label_tail: "SM202627 North L Street Undergrounding", category: capital-projects, fund: 560, fund_group: capital}
+      - {label: "560", label_tail: "SM202701 Street Resurfacing", category: capital-projects, fund: 560, fund_group: capital}
+      - {label: "560", label_tail: "TB202222 East Ave Corridor ATP Implementation", category: capital-projects, fund: 560, fund_group: capital}
+      - {label: "560", label_tail: "TC201923 Street Lighting", category: capital-projects, fund: 560, fund_group: capital}
+      - {label: "560", label_tail: "TC202131 Miscellaneous Traffic Signing & Striping", category: capital-projects, fund: 560, fund_group: capital}
+      - {label: "560", label_tail: "TC202328 Traffic Operations Center Upgrade", category: capital-projects, fund: 560, fund_group: capital}
+      - {label: "560", label_tail: "TC202518 Street Lighting", category: capital-projects, fund: 560, fund_group: capital}
+      - {label: "560", label_tail: "TC202613 Street Lighting", category: capital-projects, fund: 560, fund_group: capital}
+      - {label: "560", label_tail: "TC202615 Miscellaneous Traffic Signing & Striping", category: capital-projects, fund: 560, fund_group: capital}
+
+  # --------------------------------------------------------------------------
+  - id: cip-listing-p0230
+    kind: expenditure
+    basis: adopted
+    scope: cip-project-listing
+    grain: fund-by-category
+    units: dollars
+    subtotal_chain: cip-project-listing-by-fund
+    row_labels_are_fund_numbers: true
+    parts:
+      - page: 230
+        section: "FY 2024-25\n"
+        stop_at: "BUDGET FY 2025-27"
+        column_headers: ["FY 2024-25"]
+        columns:
+          - {skip: true}
+      - page: 231
+        labels_from: 230
+        section: "TOTAL\n"
+        stop_at: "BUDGET FY 2025-27"
+        column_headers: ["FY 2025-26", "FY 2026-27", "FY 2027-28", "FY 2028-29", "FY 2029-30",
+                         "FY 2030-45", "TOTAL"]
+        columns:
+          - {fiscal_year: 2026}
+          - {fiscal_year: 2027}
+          - {fiscal_year: 2028, basis: projected}
+          - {fiscal_year: 2029, basis: projected}
+          - {fiscal_year: 2030, basis: projected}
+          - {skip: true}
+          - {skip: true}
+    rows:
+      - {label: "560", label_tail: "TC202706 Street Lighting", category: capital-projects, fund: 560, fund_group: capital}
+      - {label: "560", label_tail: "TC202713 Traffic Signals", category: capital-projects, fund: 560, fund_group: capital}
+      - {label: "560", label_tail: "TC202912 Traffic Signals", category: capital-projects, fund: 560, fund_group: capital}
+      - {label: "560", label_tail: "TI202116 Railroad Ave Street Improvements", category: capital-projects, fund: 560, fund_group: capital}
+      - {label: "560", label_tail: "TI202414 Arroyo Las Positas at Heather Lane Bridge", category: capital-projects, fund: 560, fund_group: capital}
+      - {label: "560", label_tail: "TI202616 Airway Blvd Culvert Replacement", category: capital-projects, fund: 560, fund_group: capital}
+      - {label: "TOTAL - STATE - GAS TAX", skip: true, subtotal: 2}
+      - {label: "561", label_tail: "SD201727 Collier Canyon Culvert, Drainage, and Road Improvements", category: capital-projects, fund: 561, fund_group: capital}
+      - {label: "561", label_tail: "SD202132 Golf Course Damage Repairs", category: capital-projects, fund: 561, fund_group: capital}
+      - {label: "561", label_tail: "SM202001 Street Resurfacing", category: capital-projects, fund: 561, fund_group: capital}
+      - {label: "561", label_tail: "SM202201 Street Resurfacing", category: capital-projects, fund: 561, fund_group: capital}
+      - {label: "561", label_tail: "SM202204 Slurry Seal", category: capital-projects, fund: 561, fund_group: capital}
+      - {label: "561", label_tail: "SM202219 Bridge Rehabilitation", category: capital-projects, fund: 561, fund_group: capital}
+      - {label: "561", label_tail: "SM202501 Street Resurfacing", category: capital-projects, fund: 561, fund_group: capital}
+      - {label: "561", label_tail: "SM202602 Sidewalk Repair", category: capital-projects, fund: 561, fund_group: capital}
+      - {label: "561", label_tail: "SM202604 Slurry Seal", category: capital-projects, fund: 561, fund_group: capital}
+      - {label: "561", label_tail: "SM202704 Slurry Seal", category: capital-projects, fund: 561, fund_group: capital}
+      - {label: "561", label_tail: "TB201944 Montage Trail Connection to Collier Canyon Road", category: capital-projects, fund: 561, fund_group: capital}
+      - {label: "561", label_tail: "TC201923 Street Lighting", category: capital-projects, fund: 561, fund_group: capital}
+      - {label: "561", label_tail: "TC202133 Stanley Boulevard at Isabel Avenue Connector Ramp Crossing", category: capital-projects, fund: 561, fund_group: capital}
+      - {label: "561", label_tail: "TI202116 Railroad Ave Street Improvements", category: capital-projects, fund: 561, fund_group: capital}
+      - {label: "561", label_tail: "TI202414 Arroyo Las Positas at Heather Lane Bridge", category: capital-projects, fund: 561, fund_group: capital}
+      - {label: "TOTAL - STATE - SB1", skip: true, subtotal: 2}
+      - {label: "580", label_tail: "TB200245 Arroyo Las Positas Trail - Walmart", category: capital-projects, fund: 580, fund_group: capital}
+      - {label: "TOTAL - DEVELOPERS DEPOSIT", skip: true, subtotal: 2}
+      - {label: "581", label_tail: "SM202627 North L Street Undergrounding", category: capital-projects, fund: 581, fund_group: capital}
+      - {label: "TOTAL - PUBLIC UTILITY UNDERGROUNDING", skip: true, subtotal: 2}
+      - {label: "583", label_tail: "SD202015 Arroyo Las Positas Desilting Through Las Positas Golf Course", category: capital-projects, fund: 583, fund_group: capital}
+      - {label: "583", label_tail: "SD202425 2024 Storm Drain Trash Capture", category: capital-projects, fund: 583, fund_group: capital}
+      - {label: "TOTAL-SOUTH LIVERMORE SPECIFIC PLAN & AD CLOSEOUT", skip: true, subtotal: 2}
+      - {label: "600", label_tail: "AR201314 Slurry Seal Northside Aprons and Taxi Lanes", category: capital-projects, fund: 600, fund_group: enterprise}
+      - {label: "600", label_tail: "AR201425 Airport Pavement Maintenance", category: capital-projects, fund: 600, fund_group: enterprise}
+      - {label: "600", label_tail: "AR201718 Airport Airfield Markings Maintenance", category: capital-projects, fund: 600, fund_group: enterprise}
+      - {label: "600", label_tail: "AR202628 Aviation Innovation Center", category: capital-projects, fund: 600, fund_group: enterprise}
+      - {label: "600", label_tail: "SD202015 Arroyo Las Positas Desilting Through Las Positas Golf Course", category: capital-projects, fund: 600, fund_group: enterprise}
+      - {label: "TOTAL - AIRPORT OPERATING FUND", skip: true, subtotal: 2}
+      - {label: "601", label_tail: "AR202017 Airport Geometry Study Improvements", category: capital-projects, fund: 601, fund_group: enterprise}
+      - {label: "TOTAL - FEDERAL GRANT - AIRPORT", skip: true, subtotal: 2}
+      - {label: "611", label_tail: "SD201726 2018-19 Permanent Storm Damage Repairs - Cottonwood Creek", skip: true}
+      - {label: "611", label_tail: "SD202015 Arroyo Las Positas Desilting Through Las Positas Golf Course", skip: true}
+      - {label: "611", label_tail: "SD202132 Golf Course Damage Repairs", skip: true}
+      - {label: "611", label_tail: "SDS2023P 2023 Storm Damage Permanent Repair C-G", skip: true}
+      - {label: "611", label_tail: "SDS2023Z 2023 Storm Damage CAT Z - General, Admin, Meetings, Etc.", skip: true}
+      - {label: "TOTAL - FEDERAL GRANT - STORM", skip: true, subtotal: 2}
+      - {label: "611", label_tail: "SD201726 2018-19 Permanent Storm Damage Repairs - Cottonwood Creek", skip: true}
+      - {label: "611", label_tail: "SD202015 Arroyo Las Positas Desilting Through Las Positas Golf Course", skip: true}
+      - {label: "611", label_tail: "SD202132 Golf Course Damage Repairs", skip: true}
+      - {label: "611", label_tail: "SD202425 2024 Storm Drain Trash Capture", skip: true}
+      - {label: "TOTAL - STATE GRANT - STORM", skip: true, subtotal: 2}
+
+  # --------------------------------------------------------------------------
+  - id: cip-listing-p0232
+    kind: expenditure
+    basis: adopted
+    scope: cip-project-listing
+    grain: fund-by-category
+    units: dollars
+    subtotal_chain: cip-project-listing-by-fund
+    row_labels_are_fund_numbers: true
+    parts:
+      - page: 232
+        section: "FY 2024-25\n"
+        stop_at: "BUDGET FY 2025-27"
+        column_headers: ["FY 2024-25"]
+        columns:
+          - {skip: true}
+      - page: 233
+        labels_from: 232
+        section: "TOTAL\n"
+        stop_at: "BUDGET FY 2025-27"
+        column_headers: ["FY 2025-26", "FY 2026-27", "FY 2027-28", "FY 2028-29", "FY 2029-30",
+                         "FY 2030-45", "TOTAL"]
+        columns:
+          - {fiscal_year: 2026}
+          - {fiscal_year: 2027}
+          - {fiscal_year: 2028, basis: projected}
+          - {fiscal_year: 2029, basis: projected}
+          - {fiscal_year: 2030, basis: projected}
+          - {skip: true}
+          - {skip: true}
+    rows:
+      - {label: "612", label_tail: "SD202424 Storm Drains for Ponding Areas", category: capital-projects, fund: 612, fund_group: enterprise}
+      - {label: "612", label_tail: "SD202425 2024 Storm Drain Trash Capture", category: capital-projects, fund: 612, fund_group: enterprise}
+      - {label: "TOTAL - STORM DRAIN", skip: true, subtotal: 2}
+      - {label: "621", label_tail: "WW202527 WRP Recycled Water Fill Station", category: capital-projects, fund: 621, fund_group: enterprise}
+      - {label: "TOTAL - STATE GRANT - SEWER", skip: true, subtotal: 2}
+      - {label: "622", label_tail: "BL202514 City Fleet Electrification, Phase 2", category: capital-projects, fund: 622, fund_group: enterprise}
+      - {label: "622", label_tail: "WW201414 Springtown Trunkline Replacement", category: capital-projects, fund: 622, fund_group: enterprise}
+      - {label: "622", label_tail: "WW201931 WRP Primary & Secondary Treatment Improvements, Phase 1", category: capital-projects, fund: 622, fund_group: enterprise}
+      - {label: "622", label_tail: "WW202003 Sewer Replacement", category: capital-projects, fund: 622, fund_group: enterprise}
+      - {label: "622", label_tail: "WW202128 WRP UV Treatment System Replacement", category: capital-projects, fund: 622, fund_group: enterprise}
+      - {label: "622", label_tail: "WW202129 WRP SCADA Server & Network Upgrade", category: capital-projects, fund: 622, fund_group: enterprise}
+      - {label: "622", label_tail: "WW202203 Sewer Replacement", category: capital-projects, fund: 622, fund_group: enterprise}
+      - {label: "622", label_tail: "WW202217 WRP Primary & Secondary Treatment Improvements, Phase 2", category: capital-projects, fund: 622, fund_group: enterprise}
+      - {label: "622", label_tail: "WW202218 WRP SCADA PLC Controls Upgrade", category: capital-projects, fund: 622, fund_group: enterprise}
+      - {label: "622", label_tail: "WW202315 WRP Digester Heating Loop Replacement", category: capital-projects, fund: 622, fund_group: enterprise}
+      - {label: "622", label_tail: "WW202322 WRP Occupied Building Repairs - Administration", category: capital-projects, fund: 622, fund_group: enterprise}
+      - {label: "622", label_tail: "WW202420 WRP Occupied Building Repairs - Maintenance", category: capital-projects, fund: 622, fund_group: enterprise}
+      - {label: "622", label_tail: "WW202503 Sewer Improvements", category: capital-projects, fund: 622, fund_group: enterprise}
+      - {label: "622", label_tail: "WW202512 Airport Lift Station Improvements", category: capital-projects, fund: 622, fund_group: enterprise}
+      - {label: "622", label_tail: "WW202527 WRP Recycled Water Fill Station", category: capital-projects, fund: 622, fund_group: enterprise}
+      - {label: "622", label_tail: "WW202612 WRP Occupied Building Repairs - Tertiary", category: capital-projects, fund: 622, fund_group: enterprise}
+      - {label: "622", label_tail: "WW202624 WRP Waste Oil Tank Removal", category: capital-projects, fund: 622, fund_group: enterprise}
+      - {label: "TOTAL - WASTEWATER REPLACEMENT", skip: true, subtotal: 2}
+      - {label: "623", label_tail: "WW201931 WRP Primary & Secondary Treatment Improvements, Phase 1", category: capital-projects, fund: 623, fund_group: enterprise}
+      - {label: "623", label_tail: "WW202003 Sewer Replacement", category: capital-projects, fund: 623, fund_group: enterprise}
+      - {label: "623", label_tail: "WW202128 WRP UV Treatment System Replacement", category: capital-projects, fund: 623, fund_group: enterprise}
+      - {label: "623", label_tail: "WW202129 WRP SCADA Server & Network Upgrade", category: capital-projects, fund: 623, fund_group: enterprise}
+      - {label: "623", label_tail: "WW202217 WRP Primary & Secondary Treatment Improvements, Phase 2", category: capital-projects, fund: 623, fund_group: enterprise}
+      - {label: "623", label_tail: "WW202218 WRP SCADA PLC Controls Upgrade", category: capital-projects, fund: 623, fund_group: enterprise}
+      - {label: "623", label_tail: "WW202512 Airport Lift Station Improvements", category: capital-projects, fund: 623, fund_group: enterprise}
+      - {label: "TOTAL - WASTEWATER CONNECTION FEES", skip: true, subtotal: 2}
+      - {label: "642", label_tail: "WT202130 Airway Pump Station Improvements", category: capital-projects, fund: 642, fund_group: enterprise}
+      - {label: "642", label_tail: "WT202314 Springtown Water Service Replacements", category: capital-projects, fund: 642, fund_group: enterprise}
+      - {label: "642", label_tail: "WT202412 Altamont Tank Recoating", category: capital-projects, fund: 642, fund_group: enterprise}
+      - {label: "642", label_tail: "WW202128 WRP UV Treatment System Replacement", category: capital-projects, fund: 642, fund_group: enterprise}
+      - {label: "TOTAL - WATER REPLACEMENT", skip: true, subtotal: 2}
+      - {label: "730", label_tail: "BL202320 City Fleet Electrification, Phase 1", category: capital-projects, fund: 730, fund_group: internal-service}
+      - {label: "730", label_tail: "BL202514 City Fleet Electrification, Phase 2", category: capital-projects, fund: 730, fund_group: internal-service}
+      - {label: "TOTAL - FLEET & EQUIPMENT SERVICES", skip: true, subtotal: 2}
+      - {label: "731", label_tail: "BL202514 City Fleet Electrification, Phase 2", category: capital-projects, fund: 731, fund_group: internal-service}
+      - {label: "TOTAL - STATE GRANT FLEET", skip: true, subtotal: 2}
+      - {label: "816", label_tail: "SD201727 Collier Canyon Culvert, Drainage, and Road Improvements", category: capital-projects, fund: 816, fund_group: capital}
+      - {label: "816", label_tail: "TC202529 Transportation Safety Projects", category: capital-projects, fund: 816, fund_group: capital}
+      - {label: "TOTAL - FEDERAL GRANT - GOVERNMENT", skip: true, subtotal: 2}
+      - {label: "817", label_tail: "TI199352 Vasco Road/I-580 Interchange", category: capital-projects, fund: 817, fund_group: capital}
+      - {label: "817", label_tail: "SD201727 Collier Canyon Culvert, Drainage, and Road Improvements", category: capital-projects, fund: 817, fund_group: capital}
+      - {label: "817", label_tail: "TB201955 Arroyo Road Trail (T-13, Segment B)", category: capital-projects, fund: 817, fund_group: capital}
+      - {label: "817", label_tail: "DR202118 Livermore Village Remediation", category: capital-projects, fund: 817, fund_group: capital}
+      - {label: "TOTAL - STATE GRANT - GOVERNMENT", skip: true, subtotal: 2}
+
+  # --------------------------------------------------------------------------
+  - id: cip-listing-p0234
+    kind: expenditure
+    basis: adopted
+    scope: cip-project-listing
+    grain: fund-by-category
+    units: dollars
+    subtotal_chain: cip-project-listing-by-fund
+    row_labels_are_fund_numbers: true
+    parts:
+      - page: 234
+        section: "FY 2024-25\n"
+        stop_at: "BUDGET FY 2025-27"
+        column_headers: ["FY 2024-25"]
+        columns:
+          - {skip: true}
+      - page: 235
+        labels_from: 234
+        section: "TOTAL\n"
+        stop_at: "BUDGET FY 2025-27"
+        column_headers: ["FY 2025-26", "FY 2026-27", "FY 2027-28", "FY 2028-29", "FY 2029-30",
+                         "FY 2030-45", "TOTAL"]
+        columns:
+          - {fiscal_year: 2026}
+          - {fiscal_year: 2027}
+          - {fiscal_year: 2028, basis: projected}
+          - {fiscal_year: 2029, basis: projected}
+          - {fiscal_year: 2030, basis: projected}
+          - {skip: true}
+          - {skip: true}
+    rows:
+      - {label: "831", label_tail: "DR202225 Flagpole Plaza", category: capital-projects, fund: 831, fund_group: capital}
+      - {label: "831", label_tail: "TC202106 Crosswalk Safety Improvements", category: capital-projects, fund: 831, fund_group: capital}
+      - {label: "TOTAL - COUNTY MEASURE B - BIKE/PEDESTRIAN", skip: true, subtotal: 2}
+      - {label: "832", label_tail: "DR202225 Flagpole Plaza", category: capital-projects, fund: 832, fund_group: capital}
+      - {label: "832", label_tail: "TC202020 Traffic Signal Modification", category: capital-projects, fund: 832, fund_group: capital}
+      - {label: "832", label_tail: "TC202205 Traffic Calming", category: capital-projects, fund: 832, fund_group: capital}
+      - {label: "TOTAL - COUNTY MEASURE B - LOCAL STREETS & ROADS", skip: true, subtotal: 2}
+      - label: "TOTAL"
+        skip: true
+        subtotal: 3
+        subtotal_deltas:
+          - column: "FY 2025-26"
+            delta_cents: -100
+            note: >-
+              p235 prints 70,765,450, and the 219 project rows above it, which tie to every fund total on pp.224-235, sum to 70,765,451: the city's own rounding, a dollar under its rows.
+          - column: "FY 2026-27"
+            delta_cents: -100
+            note: >-
+              p235 prints 70,559,870, and the same 219 rows sum to 70,559,871, a dollar under them as in FY 2025-26. Its TOTAL column ties exactly, so the grand total's own year figures sum two dollars short of it.
+
 rollups:
   # --------------------------------------------------------------------------
   - id: dept-city-council
