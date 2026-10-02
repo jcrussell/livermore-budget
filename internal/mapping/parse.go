@@ -1941,7 +1941,17 @@ func validateOmittedCells(r *Rule, p *Part,
 			declared[id] = map[string]bool{}
 		}
 		declared[id][o.Column] = true
-		if len(declared[id]) == len(p.Columns) {
+		// Counted over the columns the row publishes under: a skipped column
+		// can never be declared blank, so counting it would let a row with
+		// every figure blank pass as one with a cell blank.
+		row := r.Rows[slices.IndexFunc(r.Rows, func(row Row) bool { return row.Identity() == id })]
+		printed := 0
+		for c, col := range p.Columns {
+			if row.Publishes(col) && !declared[id][p.ColumnHeaders[c].Text] {
+				printed++
+			}
+		}
+		if row.Publishes(p.Columns[at]) && printed == 0 {
 			return cmdutil.WithHint(
 				errf(r.ID, field, "declares every column of %q blank",
 					o.row().printedLabel()),

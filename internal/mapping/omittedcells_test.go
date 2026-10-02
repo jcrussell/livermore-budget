@@ -293,10 +293,13 @@ func TestParseRefusesABadOmittedCell(t *testing.T) {
 		{"no column_headers", with(blankPair,
 			`        column_headers: ["FY B", "FY C", "TOTAL"]`+"\n", ""),
 			"omitted_cells needs column_headers"},
-		// blankPair skips TOTAL, which cannot be declared blank, so only a
-		// part with no skipped column can name every one.
 		{"every column of a row", with(blankLabelled, blankLabelledEntry, blankLabelledEntry+
 			"          - {label: \"Beta\", column: \"FY A\", note: n}\n"),
+			`declares every column of "Beta" blank`},
+		// blankPair skips TOTAL, which cannot be declared blank, so the
+		// refusal counts the columns that publish.
+		{"every column of a row but a skipped one", pair(blankEntry +
+			`          - {label: "Beta", column: "FY B", note: n}` + "\n"),
 			`declares every column of "Beta" blank`},
 	} {
 		t.Run(tt.name, func(t *testing.T) {

@@ -257,12 +257,15 @@ rules:
 // TestAFigureSharesAGapOnlyAsAFootnoteMarker: a row broken over two lines
 // ("Foo Fund" then "1,234") declared as heading plus unmapped figure would drop
 // the row's figure, so a declared figure shares a gap with other declared
-// lines only when it is a footnote marker. Alone, a declared figure is still
-// the whole gap and is admitted.
+// lines only when it is a footnote marker, with headings alone, on the line
+// above a heading or above the row the gap ends at: "12" in millions among a
+// wrapped label's fragments is a figure and not a marker. Alone, a declared
+// figure is still the whole gap and is admitted.
 func TestAFigureSharesAGapOnlyAsAFootnoteMarker(t *testing.T) {
 	p := &Part{
-		Headings:     []string{"Foo Fund", "Capital Improvement Program Funds"},
-		UnmappedText: []unmappedText{{Text: "1,234"}, {Text: "1"}},
+		Headings:      []string{"Foo Fund", "Capital Improvement Program Funds"},
+		WrappedLabels: []string{"Special Revenue", "Funds"},
+		UnmappedText:  []unmappedText{{Text: "1,234"}, {Text: "1"}, {Text: "12"}},
 	}
 	for _, tc := range []struct {
 		name, gap string
@@ -271,6 +274,12 @@ func TestAFigureSharesAGapOnlyAsAFootnoteMarker(t *testing.T) {
 		{"broken row", "Foo Fund\n1,234", false},
 		{"broken row, figure first", "1,234\nFoo Fund", false},
 		{"marker above heading", "1\nCapital Improvement Program Funds", true},
+		{"marker among wrapped-label fragments", "Special Revenue\n12\nFunds", false},
+		{"marker above a wrapped label", "12\nFunds", false},
+		{"marker below heading, above the next row", "Capital Improvement Program Funds\n1", true},
+		{"marker below heading, above a wrapped label", "Capital Improvement Program Funds\n1\nFunds", false},
+		{"marker with a wrapped label before its heading", "1\nFunds\nCapital Improvement Program Funds", false},
+		{"marker above a marker", "12\n1\nCapital Improvement Program Funds", false},
 		{"lone figure", "1,234", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

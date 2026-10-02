@@ -547,3 +547,20 @@ func TestABalanceHeldApartIsNotCountedAsHolding(t *testing.T) {
 		}
 	})
 }
+
+// TestABlankStockOnAScopePrintingItsChangeStillHoldsSourcesUses: the spine
+// prints its change, so a blank beginning leaves the flows a printed figure
+// to net to, and a misfiled flow is still a finding.
+func TestABlankStockOnAScopePrintingItsChangeStillHoldsSourcesUses(t *testing.T) {
+	spine := measureD
+	spine.scope = structure.ScopeAllFundsGross
+	file := blankRule(t, spine.scope, blankShape{
+		header: "Change", column: `{fiscal_year: 2027, category: fund-balance/change}`,
+		cells: []string{`{label: "County Measure D", column: "7/1/26", note: "the page leaves it blank"}`},
+	})
+	lines := append(without(byFundRow(), structure.CategoryFundBalanceBeginning),
+		balanceLine{mapping.KindFundBalance, structure.CategoryFundBalanceChange, 20_000})
+	wantPass(t, runBalance(t, &fundGroupSourcesEqualUses{}, spine.facts(lines), file), 1)
+	misfiled := spine.facts(replace(lines, "taxes", 50_001))
+	wantFail(t, runBalance(t, &fundGroupSourcesEqualUses{}, misfiled, file), "(off by $0.01)")
+}

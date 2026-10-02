@@ -48,7 +48,7 @@ func BudgetBookResidue() []Residue {
 }
 
 // fundBalancesByFundResidue is pp.186-209's Capital Improvement Program
-// Funds block, one rule a year and five kinds per rule.
+// Funds block, every kind of every rule reading it.
 func fundBalancesByFundResidue() []Residue {
 	var out []Residue
 	for _, rule := range fundBalancesRules(true) {

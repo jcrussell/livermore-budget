@@ -19,7 +19,9 @@ import (
 //
 // A balance carrying any line of its scope and missing another is a finding,
 // not a skip, unless its rule declares that cell blank: a blank is absent and
-// summed as nothing, and a blank stock or change leaves no change to hold.
+// summed as nothing. A blank change leaves no change to hold, and so does a
+// blank stock on a scope whose change is ending - beginning; where the scope
+// prints its change, a blank stock still leaves that figure to hold.
 // The id names fund groups because the spine's balances are fund groups;
 // pp.186-209's are funds within them, keyed by both.
 type fundGroupSourcesEqualUses struct{}
@@ -82,7 +84,8 @@ func (*fundGroupSourcesEqualUses) Run(_ context.Context, s *Subject) (Result, er
 			switch {
 			case c.printed[l]:
 			case blanks[k][l]:
-				if l == structure.LineBeginning || l == structure.LineChange || l == structure.LineEnding {
+				if l == structure.LineChange ||
+					!decl.PrintsChange() && (l == structure.LineBeginning || l == structure.LineEnding) {
 					blank = true
 				}
 			default:

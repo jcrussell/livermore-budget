@@ -736,10 +736,12 @@ func (r *Resolver) checkGap(rule *Rule, p *Part, gap string, rows []Row, i int,
 // figure, so the declaration names lines rather than the run of spaces between
 // them, and a line that is not declared refuses the whole gap.
 //
-// A declared figure that is not a footnote marker (isFootnoteMarker) must be
-// the whole gap: a gap holding such a figure AND any other line stays refused,
-// declared or not, which is what stops the declaration from being a way to
-// admit a row broken over two lines.
+// A declared figure must be the whole gap, or a footnote marker
+// (isFootnoteMarker) in a gap of headings and such markers alone, on the line
+// immediately above a heading (p190) or on the gap's last line, keying the row
+// below it (p194). A wrapped label never shares a gap with a figure, so the
+// declaration cannot admit a row broken over two lines, nor a two-digit figure
+// printed among a label's fragments.
 //
 // figures is false only before the first row, where unmapped_text is not
 // honoured; see checkGap.
@@ -749,7 +751,7 @@ func declaredGap(p *Part, trimmed string, used map[string]bool, figures bool) bo
 		return true
 	}
 	var frags []string
-	orphan := false
+	figure := false
 	for _, l := range strings.Split(trimmed, "\n") {
 		l = strings.TrimSpace(l)
 		if l == "" {
@@ -759,12 +761,19 @@ func declaredGap(p *Part, trimmed string, used map[string]bool, figures bool) bo
 			if !figures || !declaresUnmapped(p, l) {
 				return false
 			}
-			orphan = orphan || !isFootnoteMarker(l)
+			figure = true
 		}
 		frags = append(frags, l)
 	}
-	if orphan && len(frags) > 1 {
-		return false
+	if figure && len(frags) > 1 {
+		for i, f := range frags {
+			heading := slices.Contains(p.Headings, f)
+			marker := !heading && declaresUnmapped(p, f) && isFootnoteMarker(f) &&
+				(i+1 == len(frags) || slices.Contains(p.Headings, frags[i+1]))
+			if !heading && !marker {
+				return false
+			}
+		}
 	}
 	for _, f := range frags {
 		used[f] = true
