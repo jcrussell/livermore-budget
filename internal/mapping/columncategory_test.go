@@ -164,10 +164,13 @@ func TestParseAcceptsAColumnCategoryAxis(t *testing.T) {
 			strings.Replace(columnRule(`{label: "A", fund: 100, fund_group: general}`,
 				"{fiscal_year: 2024, category: a}, {fiscal_year: 2024, category: b}"),
 				"    rows:", "    row_labels_name_funds: true\n    rows:", 1)},
-		{"sign netted where every column is a transfer",
+		// The skipped column has no category, so a reading of its kind would
+		// find the rule's, which has no direction; the netted check reads only
+		// the cells Row.Publishes admits.
+		{"sign netted where every column is a transfer or skipped",
 			columnRule(`{label: "A", fund: 100, sign: netted}`,
 				"{fiscal_year: 2024, category: a, kind: transfer_in}, "+
-					"{fiscal_year: 2024, category: b, kind: transfer_out}")},
+					"{fiscal_year: 2024, category: b, kind: transfer_out}, {skip: true}")},
 		{"total_row_kinds read off the columns",
 			strings.Replace(columnRule(`{label: "A", fund: 100}`,
 				"{fiscal_year: 2024, category: a}, {fiscal_year: 2024, category: b, kind: revenue}"),

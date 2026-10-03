@@ -144,7 +144,7 @@ func TestQuantityDeclarationsAreValidated(t *testing.T) {
 			src: quantityRuleYAML(amountRow+
 				`      - {label: "Ratio", quantity: percentage, counterpart: {category: transfers/in, kind: transfer_in, fund: 100, fund_group: general}}`+"\n",
 				amountCol),
-			want: "with a counterpart",
+			want: `row "Ratio": counterpart on a row that publishes no cell`,
 		},
 		{
 			name: "total_row over a non-amount column has no totals line to read",

@@ -50,7 +50,6 @@ func TestACounterpartIsRefusedWhenItCouldNotBeToldApart(t *testing.T) {
 		// receives into a joint powers authority that is no City fund.
 		{"a group but no fund", func(r *Row) { r.Counterpart.Fund = 0 },
 			"counterpart declares fund_group"},
-		{"skipped row", func(r *Row) { r.Skip = true }, "declares a counterpart"},
 		{"row with a department", func(r *Row) { r.Department = "police" }, "carries department"},
 		{"same category and fund", func(r *Row) {
 			r.Counterpart.Category = r.Category

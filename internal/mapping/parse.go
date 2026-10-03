@@ -553,26 +553,32 @@ func validateRule(r *Rule, errf errFunc) error {
 				return errf(r.ID, "rows", "row %q: quantity %q, want one of %s",
 					row.Label, row.Quantity, quantityList())
 			}
-			// A non-amount row is read and publishes nothing, so there is no
-			// near leg for a counterpart to be the far end of.
-			if row.Counterpart != nil {
+		}
+		// ONE refusal for any declaration about a row's facts on a row that
+		// has none -- skipped, non-amount, or under columns that all skip --
+		// held to Row.Publishes through kindsOf, so it cannot disagree with
+		// the facts. Above checkCounterpart, because a counterpart's own
+		// defects are moot on a row that should not carry one.
+		publishes := r.kindsOf(row)
+		if len(publishes) == 0 {
+			var declared string
+			switch {
+			case row.Sign != "":
+				declared = "sign " + string(row.Sign)
+			case row.Counterpart != nil:
+				declared = "counterpart"
+			}
+			if declared != "" {
 				return cmdutil.WithHint(
-					errf(r.ID, "rows", "row %q: quantity %s with a counterpart",
-						row.Label, row.Quantity),
-					"a counterpart fans one published figure into two facts; a "+
-						"non-amount row publishes none")
+					errf(r.ID, "rows", "row %q: %s on a row that publishes no cell",
+						row.Label, declared),
+					"a sign says how a row's facts are printed and a counterpart "+
+						"fans one into two; this row publishes no cell, so remove "+
+						"the declaration")
 			}
 		}
 		if err := checkCounterpart(r, row, errf); err != nil {
 			return err
-		}
-		publishes := r.kindsOf(row)
-		if row.Sign != "" && row.Sign != SignPositive && len(publishes) == 0 {
-			return cmdutil.WithHint(
-				errf(r.ID, "rows", "row %q: sign %s on a row that publishes no cell",
-					row.Label, row.Sign),
-				"a sign says how a row's facts are printed, and this row has none; "+
-					"remove the sign, as a skipped row takes no counterpart")
 		}
 		// SignNetted says a row is printed against its KIND's direction, so it
 		// is meaningless on a kind that has no direction, and
@@ -1753,12 +1759,6 @@ func checkCounterpart(r *Rule, row Row, errf errFunc) error {
 				"of this rule holds a figure per budget line -- its revenue, its "+
 				"transfers in, its balances -- which no single far end is the other "+
 				"side of")
-	}
-	if row.Skip {
-		return cmdutil.WithHint(
-			errf(r.ID, "rows", "row %q is skip: true and declares a counterpart", row.Label),
-			"a skipped row produces no facts, so its counterpart would be the "+
-				"only fact from a line the rule says to ignore")
 	}
 	if cp.Category == "" {
 		return cmdutil.WithHint(

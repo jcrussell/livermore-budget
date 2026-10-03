@@ -198,7 +198,7 @@ func TestParseRejects(t *testing.T) {
 		},
 		{
 			// A rule no column of which publishes has rows with no fact to sign.
-			name: "sign netted on a kind with no direction, every column skipped",
+			name: "sign netted where every column skips",
 			yaml: strings.Replace(
 				strings.NewReplacer("columns: [{fiscal_year: 2026}]", "columns: [{skip: true}]",
 					"    grain: category\n", "").Replace(base("")),
@@ -208,12 +208,12 @@ func TestParseRejects(t *testing.T) {
 		{
 			// A sign says how a row's facts are printed; a row with no fact has
 			// none to qualify, whatever its kind.
-			name: "sign netted on a skipped row of a kind with no direction",
+			name: "sign netted on a skipped row",
 			yaml: base("      - {label: \"B\", skip: true, sign: netted}\n"),
 			want: "row \"B\": sign netted on a row that publishes no cell",
 		},
 		{
-			name: "sign netted on a non-amount row of a kind with no direction",
+			name: "sign netted on a non-amount row",
 			yaml: base("      - {label: \"B\", quantity: percentage, sign: netted}\n"),
 			want: "row \"B\": sign netted on a row that publishes no cell",
 		},
@@ -229,8 +229,8 @@ func TestParseRejects(t *testing.T) {
 		},
 		{
 			// A column carrying the category declares its cells' kind for every
-			// row, a non-amount one included, and that kind is no transfer here.
-			name: "sign netted on a non-amount row under a column declaring a kind with no direction",
+			// row, and a non-amount row still publishes none of them.
+			name: "sign netted on a non-amount row of a column-category rule",
 			yaml: strings.NewReplacer(
 				"kind: revenue", "kind: transfer_out",
 				"columns: [{fiscal_year: 2026}]",
@@ -238,6 +238,41 @@ func TestParseRejects(t *testing.T) {
 				`- {label: "A", category: a}`, `- {label: "A"}`).Replace(
 				base("      - {label: \"B\", quantity: percentage, sign: netted}\n")),
 			want: "row \"B\": sign netted on a row that publishes no cell",
+		},
+		{
+			// The default sign is a declaration too, and the publishes-no-cell
+			// refusal is one refusal for any of them.
+			name: "sign positive on a skipped row",
+			yaml: base("      - {label: \"B\", skip: true, sign: positive}\n"),
+			want: "row \"B\": sign positive on a row that publishes no cell",
+		},
+		{
+			name: "a counterpart where every column skips",
+			yaml: strings.Replace(
+				strings.NewReplacer("columns: [{fiscal_year: 2026}]", "columns: [{skip: true}]",
+					"    grain: category\n", "", "kind: revenue", "kind: transfer_out").Replace(base("")),
+				`- {label: "A"`,
+				`- {label: "A", counterpart: {category: c, kind: transfer_in, fund: 1, fund_group: general}`, 1),
+			want: "row \"A\": counterpart on a row that publishes no cell",
+		},
+		{
+			name: "a counterpart on a skipped row",
+			yaml: base("      - {label: \"B\", skip: true, counterpart: {category: c, kind: transfer_in, fund: 1, fund_group: general}}\n"),
+			want: "row \"B\": counterpart on a row that publishes no cell",
+		},
+		{
+			name: "a counterpart on a non-amount row",
+			yaml: base("      - {label: \"B\", quantity: percentage, counterpart: {category: c, kind: transfer_in, fund: 1, fund_group: general}}\n"),
+			want: "row \"B\": counterpart on a row that publishes no cell",
+		},
+		{
+			// The direction check reads each publishing column's kind on a
+			// column-category rule, not the row's, which declares none there.
+			name: "sign netted where a publishing column declares a kind with no direction",
+			yaml: columnRule(`{label: "A", fund: 100, sign: netted}`,
+				"{fiscal_year: 2024, category: a, kind: transfer_in}, "+
+					"{fiscal_year: 2024, category: b, kind: revenue}"),
+			want: "row \"A\": sign netted on kind \"revenue\"",
 		},
 		{
 			// A non-amount row publishes nothing, so its kind is no kind the
