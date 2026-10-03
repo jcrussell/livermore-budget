@@ -554,11 +554,12 @@ func validateRule(r *Rule, errf errFunc) error {
 					row.Label, row.Quantity, quantityList())
 			}
 		}
-		// ONE refusal for any declaration about a row's facts on a row that
-		// has none -- skipped, non-amount, or under columns that all skip --
-		// held to Row.Publishes through kindsOf, so it cannot disagree with
-		// the facts. Above checkCounterpart, because a counterpart's own
-		// defects are moot on a row that should not carry one.
+		// One refusal for a sign or a counterpart on a row that publishes no
+		// cell -- skipped, non-amount, under columns that all skip, or omitted
+		// from every part whose columns publish -- held to kindsOf, which
+		// reads the cells the facts are read from. Above checkCounterpart,
+		// because a counterpart's own defects are moot on a row that should
+		// not carry one.
 		publishes := r.kindsOf(row)
 		if len(publishes) == 0 {
 			var declared string
@@ -1008,12 +1009,13 @@ func validateClass(r *Rule, field, owner, category string, kind Kind, publishes 
 // On the row axis EVERY ROW CARRIES A CATEGORY, and a department is a SECOND
 // AXIS and not a substitute for one: pp.167-170 cross department against
 // object category, so a department row still says what KIND of spending the
-// figure is. A non-amount row is exempt exactly as a skipped one: it publishes
-// nothing, so there is no fact for a category to classify.
+// figure is. A row kindsOf finds no cell for -- skipped, non-amount, or under
+// columns that all skip on every part that prints it -- is exempt: it
+// publishes nothing, so there is no fact for a category to classify.
 func validateRowClass(r *Rule, row Row, byColumn bool, errf errFunc) error {
 	if !byColumn {
 		return validateClass(r, "rows", fmt.Sprintf("row %q", row.Label), row.Category,
-			row.Kind, !row.Skip && row.Quantity == "", errf,
+			row.Kind, len(r.kindsOf(row)) > 0, errf,
 			"every row needs one, including a row that declares a department: "+
 				"department is a second axis, not a substitute. Use skip: true if "+
 				"the row is a subtotal that would double-count. On a page whose "+
@@ -1744,7 +1746,7 @@ func unitsValid(u amount.Units) (int64, int, bool) {
 // The stakes are higher here than for an ordinary row, because a counterpart is
 // invisible to every check the DOCUMENT provides. CheckTotals sums resolved
 // values and the fan-out happens after them (fact.FromValues), so a counterpart
-// declared wrongly still ties to the page's own printed total. These four arms
+// declared wrongly still ties to the page's own printed total. The arms here
 // are the parse-time half of what replaces that.
 func checkCounterpart(r *Rule, row Row, errf errFunc) error {
 	cp := row.Counterpart

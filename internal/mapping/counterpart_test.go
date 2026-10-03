@@ -397,11 +397,9 @@ rules:
 			"this row was refused: %v\nthe row has no cell there to collide with", err)
 	}
 
-	// THE SHARPEST CASE, and the one a row-only fallback after the loop got
-	// wrong: a row omitted from its ONLY part, declaring its own fund and group,
-	// with a counterpart repeating them. The loop passes over the part
-	// correctly; a fallback comparing row.EffectiveColumn(Column{}) then refused
-	// anyway, on a row that publishes no cell anywhere in the document.
+	// A row omitted from its ONLY part publishes no cell anywhere, so its
+	// counterpart is refused for that, above this arm, and never as a
+	// collision: the arm reads no cell of it.
 	const omittedEverywhere = `schema_version: 1
 doc_id: livermore-budget-fy2026-2027
 rules:
@@ -426,9 +424,10 @@ rules:
       - label: "Transfer From Water"
         category: transfers/in
 `
-	if _, err := parse(strings.NewReader(omittedEverywhere), "everywhere.yaml"); err != nil {
-		t.Errorf("a counterpart on a row omitted from its ONLY part was refused: %v\n"+
-			"the row publishes no cell anywhere, so there is nothing to collide with", err)
+	_, everywhereErr := parse(strings.NewReader(omittedEverywhere), "everywhere.yaml")
+	if everywhereErr == nil || !strings.Contains(everywhereErr.Error(), "counterpart on a row that publishes no cell") {
+		t.Errorf("a counterpart on a row omitted from its ONLY part: %v\n"+
+			"want it refused for publishing no cell, not as a collision", everywhereErr)
 	}
 
 	// And with the omission removed, p77's column is live for this row and the

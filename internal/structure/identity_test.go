@@ -624,8 +624,9 @@ func TestAnIdentityCoversAKindOnlyUnderItsOwnCategory(t *testing.T) {
 	// The helper's own premise: the same cut on both sides admits every fact
 	// at key on both, and is refused rather than counted for each.
 	t.Run("relabel refuses a fact both sides admit", func(t *testing.T) {
-		if _, err := relabel(key, false, flows, flows); err == nil {
-			t.Fatalf("relabel counted a fact of %q toward both sides", flows.Name)
+		_, err := relabel(key, false, flows, flows)
+		if err == nil || !strings.Contains(err.Error(), "is admitted by both") {
+			t.Fatalf("relabel(flows, flows) = %v, want a fact refused as admitted by both sides", err)
 		}
 	})
 	misfiled := func(f string) bool {

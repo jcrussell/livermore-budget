@@ -118,6 +118,13 @@ func TestQuantityDeclarationsAreValidated(t *testing.T) {
 				amountCol),
 		},
 		{
+			// A row whose every cell is non-amount publishes nothing, so there
+			// is no fact for a category to classify.
+			name: "a row under only non-amount columns needs no category",
+			src: strings.Replace(quantityRuleYAML(`      - {label: "Ratio"}`+"\n", `          - {quantity: percentage}`),
+				"    grain: category\n", "", 1),
+		},
+		{
 			name: "explicit amount on a column is the default wearing ink",
 			src:  quantityRuleYAML(amountRow, amountCol+"\n          - {quantity: amount}"),
 			want: `quantity "amount" is the default`,

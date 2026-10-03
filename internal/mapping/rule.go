@@ -1171,11 +1171,16 @@ func (r *Rule) categoryOnColumns() bool {
 	return false
 }
 
-// kindsOf is every kind a row's facts carry, one per cell Row.Publishes
-// admits, read through Value.Kind so it cannot disagree with the facts.
+// kindsOf is every kind a row's facts carry: one per cell Row.Publishes
+// admits on a part that does not omit the row, read through Value.Kind. Those
+// are the cells the facts are read from -- ActiveRows per part, then each
+// column -- so a row this finds no cell for publishes none.
 func (r *Rule) kindsOf(row Row) []Kind {
 	var out []Kind
 	for i := range r.Parts {
+		if omittedSet(&r.Parts[i])[row.Identity()] {
+			continue
+		}
 		for _, c := range r.Parts[i].Columns {
 			if row.Publishes(c) {
 				out = append(out, Value{Row: row, Column: c}.Kind(r))

@@ -283,15 +283,10 @@ type Subject struct {
 	// unguarded. See project.PublishedDocument.
 	Published []project.PublishedDocument
 	// BalanceExceptions is every balance the documents print apart from an
-	// identity, which both balance checks hold the store to and report stale
-	// where it matches no balance.
-	//
-	// [Load] fills it from structure.BalanceExceptions, and it is a FIELD for
-	// the reason Published is: they name pp.186-209's balances, so over a
-	// fixture that prints none of them every one would be stale, and a check
-	// reading the package declaration could not tell that fixture from a
-	// corpus whose schedule had been renamed. A subject built by hand carries
-	// only the exceptions its builder declares, and a nil list means none.
+	// identity. Both balance checks hold the store to it and report an entry
+	// stale where it matches no balance. [Load] fills it from
+	// structure.BalanceExceptions; a subject built by hand carries only what
+	// its builder sets, and nil means none.
 	BalanceExceptions []structure.BalanceException
 }
 

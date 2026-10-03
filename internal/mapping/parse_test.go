@@ -247,6 +247,16 @@ func TestParseRejects(t *testing.T) {
 			want: "row \"B\": sign positive on a row that publishes no cell",
 		},
 		{
+			// A row omitted on every part whose columns publish, and printed
+			// only where every column skips, publishes nothing either.
+			name: "sign positive on a row omitted from every publishing part",
+			yaml: strings.Replace(base("      - {label: \"B\", category: b, sign: positive}\n"),
+				"parts: [{page: 1, columns: [{fiscal_year: 2026}]}]",
+				"parts:\n      - {page: 1, columns: [{fiscal_year: 2026}], omitted_rows: [{label: \"B\"}]}\n"+
+					"      - {page: 2, columns: [{skip: true}]}", 1),
+			want: "row \"B\": sign positive on a row that publishes no cell",
+		},
+		{
 			name: "a counterpart where every column skips",
 			yaml: strings.Replace(
 				strings.NewReplacer("columns: [{fiscal_year: 2026}]", "columns: [{skip: true}]",
