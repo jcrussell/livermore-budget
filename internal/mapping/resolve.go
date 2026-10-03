@@ -477,18 +477,17 @@ func (r *Resolver) readPart(rule *Rule, p *Part) ([]Value, []Omission, error) {
 // canonicalRows returns the part's active rows paired with each one's index in
 // the rule's row list. Values and Omissions both index that list, so a caller
 // can lay them out together.
+//
+// It walks the rule's rows by position rather than pairing ActiveRows back by
+// identity: two skipped rows may share an identity on different pages, and
+// pairing would give one the other's index.
 func canonicalRows(rule *Rule, p *Part) ([]Row, []int) {
-	active := rule.ActiveRows(p)
-	idx := make([]int, len(active))
-	at := 0
+	var active []Row
+	var idx []int
 	for i, row := range rule.Rows {
-		// Identity(), the key the rule's rows are unique on: two rows may
-		// share a Label, and pairing on it would give this part's row the
-		// index of one another page prints, filing its figures under a
-		// position the page does not print.
-		if at < len(active) && active[at].Identity() == row.Identity() {
-			idx[at] = i
-			at++
+		if row.OnPart(p) {
+			active = append(active, row)
+			idx = append(idx, i)
 		}
 	}
 	return active, idx

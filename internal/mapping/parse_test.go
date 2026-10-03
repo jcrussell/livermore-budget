@@ -512,6 +512,29 @@ func TestParseRejectsSilentLosses(t *testing.T) {
 			want: `row "A": page 1 is listed twice in parts`,
 		},
 		{
+			// A page on the row of a one-part rule places nothing: every row
+			// is on that part already, and the declaration would stay true
+			// whatever page the row moved to.
+			name: "a row placed in a rule of one part",
+			yaml: strings.Replace(base(""), `{label: "A", category: a}`,
+				`{label: "A", category: a, page: 1}`, 1),
+			want: `row "A": page places nothing in a rule of one part`,
+		},
+		{
+			// A blank cell is an address: internal/check reads a declared
+			// blank as the fact the cell would have been, and that fact needs
+			// the row's category. So a row whose only amount cell is blank
+			// still needs one, though it publishes no fact.
+			name: "row with no classification, its one amount cell blank",
+			yaml: strings.NewReplacer(
+				"parts: [{page: 1, columns: [{fiscal_year: 2026}]}]",
+				"parts: [{page: 1, column_headers: [\"FY\", \"Share\"], "+
+					"omitted_cells: [{label: \"B\", column: \"FY\", note: \"blank\"}], "+
+					"columns: [{fiscal_year: 2026}, {quantity: percentage}]}]",
+			).Replace(base("      - {label: \"B\"}\n")),
+			want: `row "B" has no category`,
+		},
+		{
 			// A DEPARTMENT IS NOT A SUBSTITUTE FOR A CATEGORY, and until
 			// 2026-08-29 it was accepted as one. A fact with no category is in
 			// no graph unless its scope is projected, so in an unprojected

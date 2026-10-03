@@ -300,8 +300,9 @@ func TestTotalSpansPartsRefusesWhatItCannotMean(t *testing.T) {
 			// assertion — a red test either way, and a legible one.
 			head, _, _ := strings.Cut(src, "      - page: 170")
 			// The row p170 printed goes with it, or the placement is refused
-			// first for naming no part.
-			return strings.Replace(head, ", page: 170", "", 1)
+			// first for naming no part, and so does the one part's page on
+			// the other, or it is refused for placing nothing.
+			return strings.NewReplacer(", page: 170", "", ", page: 169", "").Replace(head)
 		},
 	}, {
 		name: "on parts whose columns differ",

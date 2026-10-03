@@ -917,3 +917,44 @@ func TestValuesReturnsCopies(t *testing.T) {
 		t.Errorf("a caller's writes reached the cached omissions: %+v", againOmitted[0])
 	}
 }
+
+// TestCanonicalRowsIndexesByPositionNotIdentity: two skipped rows may share an
+// identity, and with page they may sit on different parts. Pairing a part's
+// rows with the rule's by identity gives the row on page 1 the index of its
+// namesake on page 2, and CheckSubtotals, keyed on RowIndex, then sums one row
+// twice and the other not at all.
+func TestCanonicalRowsIndexesByPositionNotIdentity(t *testing.T) {
+	const src = `schema_version: 1
+doc_id: d
+rules:
+  - id: r
+    kind: revenue
+    basis: adopted
+    grain: category
+    units: dollars
+    rows:
+      - {label: "A", category: a}
+      - {label: "Sub", skip: true, page: 2}
+      - {label: "Sub", skip: true, page: 1}
+    parts:
+      - {page: 1, columns: [{fiscal_year: 2026}]}
+      - {page: 2, columns: [{fiscal_year: 2026}]}
+`
+	f, err := parse(strings.NewReader(src), "canonical.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ru := &f.Rules[0]
+	for _, tc := range []struct {
+		page int
+		want []int
+	}{
+		{1, []int{0, 2}},
+		{2, []int{0, 1}},
+	} {
+		_, got := canonicalRows(ru, partOn(t, ru, tc.page))
+		if diff := cmp.Diff(tc.want, got); diff != "" {
+			t.Errorf("page %d row indexes (-want +got):\n%s", tc.page, diff)
+		}
+	}
+}

@@ -518,6 +518,11 @@ func validateRule(r *Rule, errf errFunc) error {
 			case n > 1:
 				return errf(r.ID, "rows", "row %q: page %d is listed twice in parts, "+
 					"so it names no single part", row.PrintedLabel(), row.Page)
+			case len(r.Parts) == 1:
+				return cmdutil.WithHint(
+					errf(r.ID, "rows", "row %q: page places nothing in a rule of one part",
+						row.PrintedLabel()),
+					"every row of a one-part rule is on that part; omit page")
 			}
 		}
 		if row.LabelTail != "" {
@@ -1015,14 +1020,14 @@ func validateClass(r *Rule, field, owner, category string, kind Kind, publishes 
 // On the row axis EVERY ROW CARRIES A CATEGORY, and a department is a SECOND
 // AXIS and not a substitute for one: pp.167-170 cross department against
 // object category, so a department row still says what KIND of spending the
-// figure is. A row RowPublishes finds no cell for is exempt: skipped,
-// non-amount, under columns that all skip, or blank in every amount cell of
-// the one part that prints it, it publishes nothing, so there is no fact for
-// a category to classify.
+// figure is. A row rowAddressed finds no cell for is exempt: skipped,
+// non-amount, or under columns that all skip, it has no fact for a category
+// to classify. A row blank in every amount cell is NOT exempt: each blank is
+// read by internal/check as the fact the cell would have been.
 func validateRowClass(r *Rule, row Row, byColumn bool, errf errFunc) error {
 	if !byColumn {
 		return validateClass(r, "rows", fmt.Sprintf("row %q", row.Label), row.Category,
-			row.Kind, r.RowPublishes(row), errf,
+			row.Kind, r.rowAddressed(row), errf,
 			"every row needs one, including a row that declares a department: "+
 				"department is a second axis, not a substitute. Use skip: true if "+
 				"the row is a subtotal that would double-count. On a page whose "+
@@ -1924,8 +1929,8 @@ func validateOmittedCells(r *Rule, p *Part,
 			return cmdutil.WithHint(
 				errf(r.ID, field, "declares every column of %q blank",
 					o.row().PrintedLabel()),
-				"a row the page prints no figure of is placed on the page that "+
-					"prints it, by page on the row")
+				"a row this part prints no figure of is not a row of this part: "+
+					"place it with page on the part that prints it, or remove it")
 		}
 	}
 	return nil

@@ -1179,14 +1179,35 @@ func (r *Rule) categoryOnColumns() bool {
 // (it is not in omitted_cells), and Row.Publishes holds for the column.
 // Every decision about the facts a row publishes reads it and nothing
 // re-filters after it: kindsOf, and through it a sign, a counterpart, a
-// grain, a row's category requirement and RowPublishes; checkCounterpart's
-// collision loop; and Resolver.Values. Two decisions deliberately read
-// something else. validateOmittedCells counts the columns a row PRINTS,
-// since a blank is a claim about the page. And a column's class
-// (validateColumnClass) is about the column alone.
+// grain and RowPublishes; checkCounterpart's collision loop; and
+// Resolver.Values. Three decisions deliberately read something else. A row's
+// category requirement reads cellAddressed, since a declared blank is an
+// address too. validateOmittedCells counts the columns a row PRINTS, since a
+// blank is a claim about the page. And a column's class (validateColumnClass)
+// is about the column alone.
 func (p *Part) cellPublishes(j int, row Row) bool {
-	return row.OnPart(p) && !blankColumns(p)[row.Identity()][j] &&
-		row.Publishes(p.Columns[j])
+	return p.cellAddressed(j, row) && !blankColumns(p)[row.Identity()][j]
+}
+
+// cellAddressed is cellPublishes before omitted_cells: the cell is a fact's
+// address, printed or declared blank. A declared blank still needs the row's
+// category, since internal/check reads it as the fact the cell would have
+// been.
+func (p *Part) cellAddressed(j int, row Row) bool {
+	return row.OnPart(p) && row.Publishes(p.Columns[j])
+}
+
+// rowAddressed says whether any cell of this rule is an address of row.
+func (r *Rule) rowAddressed(row Row) bool {
+	for i := range r.Parts {
+		p := &r.Parts[i]
+		for j := range p.Columns {
+			if p.cellAddressed(j, row) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // RowPublishes says whether any cell of this rule publishes row.
@@ -1241,7 +1262,8 @@ func (r Row) Publishes(c Column) bool {
 }
 
 // OnPart says whether p prints this row: every part does unless the row
-// names its page. It is the only reading of Row.Page.
+// names its page. Every placement decision calls it; validateRule alone reads
+// Row.Page directly, to hold it to one part.
 func (r Row) OnPart(p *Part) bool {
 	return r.Page == 0 || r.Page == p.Page
 }
@@ -1352,7 +1374,7 @@ func (r *Rule) labelledPart(p *Part) *Part {
 
 // ActiveRows returns the rule's rows this part prints, by Row.OnPart, in
 // order. This is the sequence a positional read of the part must line up
-// against, and the only place a row's page is applied.
+// against.
 //
 // The result is always a fresh slice. Returning r.Rows directly when every
 // row is on the part would alias the rule, so a caller that wrote through the
