@@ -258,3 +258,35 @@ func TestChangeCentsSubtractsTheBeginning(t *testing.T) {
 		}
 	}
 }
+
+// TestTheGrossChangeCaveatSaysMoreOnlyWhereAGroupNets: a group with one fund
+// drawing and one contributing sums to more than it nets; groups whose funds
+// all move one way are their net change, and the summary must not say more.
+func TestTheGrossChangeCaveatSaysMoreOnlyWhereAGroupNets(t *testing.T) {
+	nodes := []Node{
+		{ID: "fund/200", Parent: PrefixFundGroup + "special-revenue"},
+		{ID: "fund/210", Parent: PrefixFundGroup + "special-revenue"},
+		{ID: "fund/600", Parent: PrefixFundGroup + "enterprise"},
+	}
+	summary := func(links []Link) string {
+		t.Helper()
+		for _, c := range fundSourcesUsesCaveats(links, nodes) {
+			if c.ID == "each-fund-change-is-gross" {
+				return c.Summary
+			}
+		}
+		t.Fatal("no each-fund-change-is-gross caveat")
+		return ""
+	}
+	oneWay := []Link{
+		{Source: NodeFundBalanceDraw, Target: "fund/200", ValueCents: 100},
+		{Source: "fund/600", Target: NodeFundBalanceContribution, ValueCents: 50},
+	}
+	if got := summary(oneWay); strings.Contains(got, "more than") {
+		t.Errorf("no group nets, and the summary says %q", got)
+	}
+	netting := append(slices.Clone(oneWay), Link{Source: "fund/210", Target: NodeFundBalanceContribution, ValueCents: 30})
+	if got := summary(netting); !strings.Contains(got, "sum to more than a fund group's net change") {
+		t.Errorf("special revenue draws 100 and contributes 30, and the summary says %q", got)
+	}
+}

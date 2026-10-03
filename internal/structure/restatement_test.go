@@ -60,6 +60,20 @@ func TestTheCIPFundsBlockIsHeldToP222LineByLine(t *testing.T) {
 	if n < 0 {
 		t.Fatal("no non-zero FY2026 transfer in in the CIP block to move")
 	}
+	t.Run("a column where p222 prints nothing on a line", func(t *testing.T) {
+		var without []fact.Fact
+		for _, f := range facts {
+			if f.Scope == structure.ScopeCIPFundingSources && f.Kind == mapping.KindFundBalance && f.FiscalYear == 2025 {
+				continue
+			}
+			without = append(without, f)
+		}
+		got := strings.Join(hold(without), "\n")
+		if !strings.Contains(got, "FY2025 revised") || !strings.Contains(got, "fund=831") {
+			t.Errorf("with p222's FY2025 balance lines gone the hold says %q; want fund 831's FY2025 draw named", got)
+		}
+	})
+
 	t.Run("a residue line neither restated nor declared unrestated", func(t *testing.T) {
 		r := rs[0]
 		r.Unrestated = r.Unrestated[1:]

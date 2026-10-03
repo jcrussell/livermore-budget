@@ -435,10 +435,15 @@ func fundSourcesUsesCaveats(links []Link, nodes []Node) []Caveat {
 				netContributions += v
 			}
 		}
+		summary := "Each fund's draw on or contribution to its balance is its own, and no " +
+			"fund group here both draws and contributes, so these are also each group's net change."
+		if netDraws != draws || netContributions != contributions {
+			summary = "Each fund's draw on or contribution to its balance is its own, so these " +
+				"sum to more than a fund group's net change."
+		}
 		out = append(out, Caveat{
-			ID: "each-fund-change-is-gross",
-			Summary: "Each fund's draw on or contribution to its balance is its own, so these " +
-				"sum to more than a fund group's net change.",
+			ID:      "each-fund-change-is-gross",
+			Summary: summary,
 			Text: fmt.Sprintf("Budget Book pp.186-209 print each fund's beginning and ending "+
 				"balance, and this chart draws the difference fund by fund: a fund whose balance "+
 				"falls draws on it, and one whose balance rises contributes to it. Summed here, "+

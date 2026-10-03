@@ -134,6 +134,15 @@ func HoldRestatement(facts []fact.Fact, cuts []Cut, r Restatement) ([]Comparison
 				"declares unrestated, so the hold would leave it out unseen", r.Name, f.ID, f.Kind, f.Category)
 		}
 	}
+	// The columns are every one Against prints, on any line: a line's own
+	// reference cells would let a column where Against prints nothing on
+	// that line drop the residue's figures there unseen.
+	columns := map[string]bool{}
+	for i := range facts {
+		if f := &facts[i]; against.admits(f) {
+			columns[KeyOf(f, r.At).Column()] = true
+		}
+	}
 	var out []Comparison
 	for _, l := range r.Lines {
 		cells, ref := map[Key]Sum{}, map[Key]Sum{}
@@ -158,10 +167,6 @@ func HoldRestatement(facts []fact.Fact, cuts []Cut, r Restatement) ([]Comparison
 			case onLine(l.Minus, f):
 				add(cells, f, -1)
 			}
-		}
-		columns := map[string]bool{}
-		for k := range ref {
-			columns[k.Column()] = true
 		}
 		c := Comparison{
 			Cut:      Cut{Name: fmt.Sprintf("%s (%s)", r.Name, l.Against)},
