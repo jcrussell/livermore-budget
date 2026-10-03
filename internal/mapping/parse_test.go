@@ -197,6 +197,24 @@ func TestParseRejects(t *testing.T) {
 			want: "sign netted on kind \"revenue\"",
 		},
 		{
+			// A rule no column of which publishes still declares what its
+			// rows' facts would be; the guard reads that kind off the row.
+			name: "sign netted on a kind with no direction, every column skipped",
+			yaml: strings.Replace(
+				strings.NewReplacer("columns: [{fiscal_year: 2026}]", "columns: [{skip: true}]",
+					"    grain: category\n", "").Replace(base("")),
+				`- {label: "A"`, `- {label: "A", sign: netted`, 1),
+			want: "sign netted on kind \"revenue\"",
+		},
+		{
+			// A non-amount row publishes nothing, so its kind is no kind the
+			// rule maps, and naming the rest names every kind there is.
+			name: "total_row_kinds counting a non-amount row's kind",
+			yaml: base("      - {label: \"B\", quantity: percentage, kind: expenditure}\n" +
+				"    total_row: T\n    total_row_kinds: [revenue]\n"),
+			want: "names every kind the rule maps, so it excludes nothing",
+		},
+		{
 			// The kind arm must be reached first, or the author is told about
 			// the sign when the actual mistake is the kind.
 			name: "an invalid kind is reported as a kind even when the sign is netted",

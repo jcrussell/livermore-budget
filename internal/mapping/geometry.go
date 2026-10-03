@@ -46,6 +46,9 @@ type pairing struct {
 	lines []geom.Line
 	// nums gives each of those lines its number in the page text.
 	nums []int
+	// raised holds the index in lines of every footnote superscript
+	// splitSuperscripts gave back to a line of its own.
+	raised map[int]bool
 }
 
 // buildPairing reconciles the page text with the word geometry, token by token.
@@ -73,7 +76,7 @@ func buildPairing(text string, g *geom.Page) (*pairing, error) {
 		}
 		base += len(body) + 1 // the newline strings.Split consumed
 	}
-	lines := splitSuperscripts(printed, g.Lines())
+	lines, raised := splitSuperscripts(printed, g.Lines())
 
 	if len(printed) != len(lines) {
 		return nil, fmt.Errorf(
@@ -104,7 +107,7 @@ func buildPairing(text string, g *geom.Page) (*pairing, error) {
 	for i, pl := range printed {
 		nums[i] = pl.num
 	}
-	return &pairing{words: words, lines: lines, nums: nums}, nil
+	return &pairing{words: words, lines: lines, nums: nums, raised: raised}, nil
 }
 
 // textLine is one non-blank line of the page text.
@@ -123,13 +126,16 @@ type textLine struct {
 //
 // It walks the two substrates in step and SPLITS rather than compares: the
 // lines it returns go through buildPairing's token-by-token comparison like
-// any other, which is what refuses a page that disagreed somewhere else.
-func splitSuperscripts(printed []textLine, lines []geom.Line) []geom.Line {
+// any other, which is what refuses a page that disagreed somewhere else. The
+// set it returns indexes the superscripts it split out.
+func splitSuperscripts(printed []textLine, lines []geom.Line) ([]geom.Line, map[int]bool) {
 	out := make([]geom.Line, 0, len(lines))
+	raised := map[int]bool{}
 	j := 0
 	for i := 0; i < len(printed) && j < len(lines); i++ {
 		if i+1 < len(printed) {
 			if mark, rest, ok := absorbedSuperscript(printed[i].body, printed[i+1].body, lines[j]); ok {
+				raised[len(out)] = true
 				out = append(out, mark, rest)
 				i++
 				j++
@@ -139,7 +145,7 @@ func splitSuperscripts(printed []textLine, lines []geom.Line) []geom.Line {
 		out = append(out, lines[j])
 		j++
 	}
-	return append(out, lines[j:]...)
+	return append(out, lines[j:]...), raised
 }
 
 // absorbedSuperscript reports whether geometry line l is the text line next
@@ -201,19 +207,18 @@ func isFootnoteMarker(s string) bool {
 }
 
 // raisedMarker reports whether the token at page offset off is a footnote
-// marker the page prints as a superscript over the line below it: what
-// absorbedSuperscript holds a marker the geometry clustered to, asked of a
-// marker whether or not it was clustered. A part with no guard has no
-// geometry to say so, and prints no marker.
+// marker the page prints as a superscript over the line below it, which is
+// exactly the marker absorbedSuperscript split out of the line the geometry
+// clustered it into. A marker on a geometry line of its own is refused even
+// when shorter than that line: nothing ties it to the line below, so a
+// body-size "12" above a heading set larger would pass. A part with no guard
+// has no geometry to say so, and prints no marker.
 func (g *columnGuard) raisedMarker(off int) bool {
 	if g == nil {
 		return false
 	}
 	pl, ok := g.pair.words[off]
-	if !ok || !isFootnoteMarker(pl.word.Text) || pl.line+1 >= len(g.pair.lines) {
-		return false
-	}
-	return isSuperscript(pl.word, g.pair.lines[pl.line+1].Words)
+	return ok && g.pair.raised[pl.line]
 }
 
 func isSuperscript(w geom.Word, line []geom.Word) bool {

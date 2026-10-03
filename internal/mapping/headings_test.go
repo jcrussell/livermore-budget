@@ -334,22 +334,22 @@ rules:
 
 // markerValues reads markerRule with mark declared, over a page printing mid
 // between the rows and tail after them. The geometry is the monospaced page's,
-// with mark printed as a superscript when raised is set.
-func markerValues(t *testing.T, mark, mid, tail string, raised bool) error {
+// with each word reshape names moved to the box it gives.
+func markerValues(t *testing.T, mark, mid, tail string, reshape func(line int, mark string) [][2]string) error {
 	t.Helper()
 	row := func(label, v string) string { return fmt.Sprintf("%-12s%10s\n", label, v) }
 	pages := map[int]string{1: fmt.Sprintf("%22s\n", "FY A") + row("Alpha", "100") + mid +
 		row("Beta", "200") + tail + "END\n"}
 	geometry := textGeometry("marker-doc", pages)
-	if raised {
+	if reshape != nil {
 		line := strings.Count(pages[1][:strings.Index(pages[1], "\n"+mark+"\n")+1], "\n")
-		was := fmt.Sprintf("[0,%d,%d,%d,%q]", line*12, len(mark)*6, line*12+10, mark)
-		g := strings.Replace(geometry[1], was,
-			fmt.Sprintf("[0,%d,%d,%d,%q]", line*12, len(mark)*6, line*12+5, mark), 1)
-		if g == geometry[1] {
-			t.Fatalf("no word %s in the geometry", was)
+		for _, r := range reshape(line, mark) {
+			g := strings.Replace(geometry[1], r[0], r[1], 1)
+			if g == geometry[1] {
+				t.Fatalf("no word %s in the geometry", r[0])
+			}
+			geometry[1] = g
 		}
-		geometry[1] = g
 	}
 	f, err := parse(strings.NewReader(strings.Replace(markerRule, "MARK", mark, 1)), "marker.yaml")
 	if err != nil {
@@ -363,25 +363,78 @@ func markerValues(t *testing.T, mark, mid, tail string, raised bool) error {
 	return err
 }
 
+// box is one monospaced word's geometry as textGeometry writes it.
+func box(x0, y0, x1, y1 int, text string) string {
+	return fmt.Sprintf("[%d,%d,%d,%d,%q]", x0, y0, x1, y1, text)
+}
+
+// superscript prints the marker on line half height with its foot inside the
+// line below, which is where the geometry clusters it into that line.
+func superscript(line int, mark string) [][2]string {
+	w := len(mark) * 6
+	return [][2]string{{box(0, line*12, w, line*12+10, mark), box(0, line*12+10, w, line*12+15, mark)}}
+}
+
+// overTallHeading leaves the marker on line body size and on a geometry line
+// of its own, and sets the "Foo Fund" heading below it taller than the body.
+func overTallHeading(line int, _ string) [][2]string {
+	y := (line + 1) * 12
+	return [][2]string{
+		{box(0, y, 18, y+10, "Foo"), box(0, y, 18, y+14, "Foo")},
+		{box(24, y, 48, y+10, "Fund"), box(24, y, 48, y+14, "Fund")},
+	}
+}
+
 // TestOnlyARaisedMarkerSharesAGapWithAHeading reads the gap rule through the
-// resolver: a raised "1" under a heading keys the row below it and is read;
-// the same "1" after the last row keys no row, and a "12" the page prints full
-// height is the figure of a row broken over two lines. Both are refused.
+// resolver: a superscript "1" under a heading keys the row below it and is
+// read; the same "1" after the last row keys no row, a "12" the page prints
+// full height is the figure of a row broken over two lines, and so is a
+// body-size "12" on a line of its own above a heading set larger than it.
+// All three are refused.
 func TestOnlyARaisedMarkerSharesAGapWithAHeading(t *testing.T) {
-	if err := markerValues(t, "1", "Foo Fund\n1\n", "", true); err != nil {
+	if err := markerValues(t, "1", "Foo Fund\n1\n", "", superscript); err != nil {
 		t.Errorf("a raised marker between a heading and the next row: %v", err)
 	}
 	for _, tc := range []struct {
 		name, mark, mid, tail string
-		raised                bool
+		reshape               func(int, string) [][2]string
 	}{
-		{"a full-height figure under a heading", "12", "Foo Fund\n12\n", "", false},
-		{"a raised marker after the last row", "1", "", "Foo Fund\n1\n", true},
+		{"a full-height figure under a heading", "12", "Foo Fund\n12\n", "", nil},
+		{"a raised marker after the last row", "1", "", "Foo Fund\n1\n", superscript},
+		{"a body-size figure above a taller heading", "12", "12\nFoo Fund\n", "", overTallHeading},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			err := markerValues(t, tc.mark, tc.mid, tc.tail, tc.raised)
+			err := markerValues(t, tc.mark, tc.mid, tc.tail, tc.reshape)
 			if !strings.Contains(fmt.Sprint(err), "but is not mapped") {
 				t.Fatalf("got %v, want the gap's refusal", err)
+			}
+		})
+	}
+}
+
+// TestTheBudgetBooksFootnoteMarkersAreRaised: every lone footnote marker
+// Budget Book pp.190, 194 and 196 print is one the guard reads as raised.
+func TestTheBudgetBooksFootnoteMarkersAreRaised(t *testing.T) {
+	for _, tc := range []struct {
+		page int
+		off  int
+		mark string
+	}{
+		{190, 910, "1"},
+		{194, 1720, "2"},
+		{196, 1493, "1"},
+	} {
+		t.Run(fmt.Sprint(tc.page), func(t *testing.T) {
+			text, g := budgetFixturePair(t, tc.page)
+			pr, err := buildPairing(text, g)
+			if err != nil {
+				t.Fatalf("buildPairing: %v", err)
+			}
+			if got := text[tc.off : tc.off+len(tc.mark)]; got != tc.mark {
+				t.Fatalf("offset %d holds %q, want %q", tc.off, got, tc.mark)
+			}
+			if !(&columnGuard{pair: pr}).raisedMarker(tc.off) {
+				t.Errorf("p%d's %q at offset %d is not read as raised", tc.page, tc.mark, tc.off)
 			}
 		})
 	}

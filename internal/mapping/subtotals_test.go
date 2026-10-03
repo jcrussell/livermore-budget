@@ -365,16 +365,39 @@ func TestAChainLaidOutUnlikeItsFirstRuleIsRefused(t *testing.T) {
 }
 
 // TestAChainWhoseColumnsMeanDifferentThingsIsRefused: headers alike are not
-// enough. A position whose second rule files its figures under another year --
-// or, where the columns carry the category, another category -- would be
-// summed with the first rule's figures as though they were one column.
+// enough. A position whose second rule files its figures under another year,
+// or, on a chain whose columns carry the category, under another category or
+// another kind, would be summed with the first rule's figures as though they
+// were one column. The kind case declares none on the column, so it is the
+// rule's kind the column inherits that differs.
 func TestAChainWhoseColumnsMeanDifferentThingsIsRefused(t *testing.T) {
-	i := strings.LastIndex(subtotalRules, "          - {fiscal_year: 2026}")
-	src := subtotalRules[:i] + "          - {fiscal_year: 2027}" +
-		subtotalRules[i+len("          - {fiscal_year: 2026}"):]
-	_, err := subtotalCheck(t, src, subtotalPages())
-	if err == nil || !strings.Contains(err.Error(), "compares columns by position") {
-		t.Errorf("a chain whose second rule files a column under another year: got %v, want it refused", err)
+	last := func(src, old, repl string) string {
+		i := strings.LastIndex(src, old)
+		if i < 0 {
+			t.Fatalf("no %q in the rules", old)
+		}
+		return src[:i] + repl + src[i+len(old):]
+	}
+	byColumn := strings.NewReplacer(
+		"category: capital-projects}", "fund: 100, fund_group: general}",
+		"{fiscal_year: 2025}", "{fiscal_year: 2025, category: transfers/out}",
+		"{fiscal_year: 2026}", "{fiscal_year: 2026, category: transfers/out}",
+	).Replace(subtotalRules)
+	if _, err := subtotalCheck(t, byColumn, subtotalPages()); err != nil {
+		t.Fatalf("the chain with its columns carrying the category: %v", err)
+	}
+	for _, tc := range []struct{ name, src string }{
+		{"another year", last(subtotalRules, "{fiscal_year: 2026}", "{fiscal_year: 2027}")},
+		{"another category", last(byColumn, "{fiscal_year: 2026, category: transfers/out}",
+			"{fiscal_year: 2026, category: transfers/in}")},
+		{"another kind", last(byColumn, "    kind: expenditure\n", "    kind: transfer_out\n")},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := subtotalCheck(t, tc.src, subtotalPages())
+			if err == nil || !strings.Contains(err.Error(), "compares columns by position") {
+				t.Errorf("a chain whose second rule files a column under %s: got %v, want it refused", tc.name, err)
+			}
+		})
 	}
 }
 
