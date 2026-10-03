@@ -647,7 +647,7 @@ func TestAnIdentityCoversAKindOnlyUnderItsOwnCategory(t *testing.T) {
 	})
 
 	// On a basis only one cut prints, the other's having no cell says nothing.
-	t.Run("one side under another kind's category on a basis the other does not print", func(t *testing.T) {
+	t.Run("one side under another kind's category on a basis the other does not print is still misfiled", func(t *testing.T) {
 		i := slices.IndexFunc(facts, func(f fact.Fact) bool {
 			return f.Kind == mapping.KindTransferOut && flows.Admits(&f) && !slices.Contains(td.Bases, f.Basis)
 		})
@@ -659,8 +659,12 @@ func TestAnIdentityCoversAKindOnlyUnderItsOwnCategory(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if slices.ContainsFunc(o.Findings, misfiled) {
-			t.Fatalf("findings = %q, want none on a basis %q does not print", o.Findings, td.Name)
+		i = slices.IndexFunc(o.Findings, misfiled)
+		if i < 0 {
+			t.Fatalf("findings = %q, want the misfiled cell named on a basis %q does not print", o.Findings, td.Name)
+		}
+		if strings.Contains(o.Findings[i], "overlap") {
+			t.Fatalf("finding %q calls it an overlap on a basis %q does not print", o.Findings[i], td.Name)
 		}
 	})
 }

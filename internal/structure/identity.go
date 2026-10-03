@@ -166,8 +166,9 @@ type Overlap struct {
 // whose readings differ; a covered non-zero cell only one side prints, unless
 // an exception pins the other absent; a cell only one side prints, zero
 // included, that an identity misfiles; an identity no cell bears out; and a
-// (kind, category) pair an identity names that no shared cell bears. A cell
-// only one side prints is judged only on a basis both cuts print.
+// (kind, category) pair an identity names that no shared cell bears. A covered
+// cell only one side prints is judged only on a basis both cuts print; a
+// misfiled one is reported on every basis.
 func Peers(facts []fact.Fact, a, b Cut, identities []Identity, exceptions []Exception) (Overlap, error) {
 	if a.Level != b.Level {
 		return Overlap{}, fmt.Errorf("peers %q (%s) and %q (%s): not at one level", a.Name, a.Level, b.Name, b.Level)
@@ -218,7 +219,7 @@ func Peers(facts []fact.Fact, a, b Cut, identities []Identity, exceptions []Exce
 			sa, sb := as[key], bs[key]
 			if !sa.Present || !sb.Present {
 				both := a.prints(mapping.Basis(key.Basis)) && b.prints(mapping.Basis(key.Basis))
-				if identity == "" && both {
+				if identity == "" {
 					for _, id := range identities {
 						others := id.misfiles(a.Name, b.Name, k, category)
 						if len(others) == 0 {
@@ -228,11 +229,17 @@ func Peers(facts []fact.Fact, a, b Cut, identities []Identity, exceptions []Exce
 						if !sa.Present {
 							present, missing = b, a
 						}
+						// A misfile is a mapping error on any basis; only where
+						// both cuts print the basis can it also be an overlap.
+						reading := "a mis-mapped column"
+						if both {
+							reading += ", or an overlap no identity covers"
+						}
 						out.Findings = append(out.Findings, fmt.Sprintf(
 							"%s %s: %q prints %s here where %q has no such cell, and identity %q pairs %q "+
-								"with %v; a mis-mapped column, or an overlap no identity covers",
+								"with %v; %s",
 							key, k, present.Name, amount.Cents(sa.Cents+sb.Cents).String(), missing.Name, id.Name,
-							category, others))
+							category, others, reading))
 						break
 					}
 				}
