@@ -273,6 +273,9 @@ type labels interface {
 	// A miss IS an error to the caller, unlike Label and FundName: a node
 	// parented to `fund-group/` is parented to nothing.
 	FundType(number int) (string, bool)
+	// FundGroup reports whether a data/funds.yaml fund has this type, which
+	// is what a fund-group/<type> node must answer before it is drawn.
+	FundGroup(name string) bool
 	// ConstraintTier is how tightly a fund's money is tied down, and it is
 	// DERIVED -- our reading of the Description of Funds narrative, pp.258-261.
 	// A node publishing one must publish a source note and a rationale beside

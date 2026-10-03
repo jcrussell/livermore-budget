@@ -225,6 +225,7 @@ func (stubLabels) FundName(int) (string, bool) { return "", false }
 // FundType returning false is the honest stub: it is the PARENT EDGE, and a stub
 // that invented a type would let a test pass over a hierarchy nothing built.
 func (stubLabels) FundType(int) (string, bool)         { return "", false }
+func (stubLabels) FundGroup(string) bool               { return false }
 func (stubLabels) ConstraintTier(int) string           { return "" }
 func (stubLabels) RestrictionNote(int) string          { return "" }
 func (stubLabels) DivisionLabel(string) (string, bool) { return "", false }

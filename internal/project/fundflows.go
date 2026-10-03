@@ -853,7 +853,9 @@ func annotateFund(n *Node, l labels, number int) {
 
 // addParents adds the two kinds of node this document parents to and does not
 // otherwise build: the fund group above every fund, and the revenue category
-// above every line.
+// above every line. Each is built only when its one source declares it -- a
+// fund type data/funds.yaml uses, a category data/taxonomy.yaml declares -- so
+// a parent naming neither is refused rather than published as a box.
 //
 // A category comes from the hierarchy rather than from its rollup link,
 // because a line whose cells cancel draws no rollup.
@@ -871,10 +873,19 @@ func (f *fundFlows) addParents(nodes map[string]Node) error {
 		}
 		switch {
 		case strings.HasPrefix(p.parent, PrefixFundGroup):
+			group := p.parent[len(PrefixFundGroup):]
+			if !f.Labels.FundGroup(group) {
+				return fmt.Errorf("fund-flows: node %q is parented to %q, and no "+
+					"data/funds.yaml fund has type %q", p.child, p.parent, group)
+			}
 			nodes[p.parent] = Node{ID: p.parent, Label: f.label(endpoint{id: p.parent}),
 				Tier: endpoint{id: p.parent}.tier(), Role: RoleFundGroup}
 		case strings.HasPrefix(p.parent, PrefixRevenue):
 			slug := p.parent[len(PrefixRevenue):]
+			if _, ok := f.Labels.Label(slug); !ok {
+				return fmt.Errorf("fund-flows: node %q is parented to %q, and "+
+					"data/taxonomy.yaml declares no category %q", p.child, p.parent, slug)
+			}
 			nodes[p.parent] = Node{ID: p.parent,
 				Label: f.label(endpoint{id: p.parent, slug: slug}),
 				Tier:  endpoint{id: p.parent}.tier(), Role: RoleRevenueSource}

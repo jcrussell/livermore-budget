@@ -36,6 +36,18 @@ func (s stubFundFlows) FundName(n int) (string, bool) { v, ok := s.names[n]; ret
 func (s stubFundFlows) FundType(n int) (string, bool) { v, ok := s.types[n]; return v, ok }
 func (s stubFundFlows) ConstraintTier(n int) string   { return s.tiers[n] }
 func (s stubFundFlows) RestrictionNote(n int) string  { return s.notes[n] }
+
+// FundGroup answers from types, as the registry answers from funds.yaml's
+// types, so a group no fund has is refused.
+func (s stubFundFlows) FundGroup(name string) bool {
+	for _, t := range s.types {
+		if t == name {
+			return true
+		}
+	}
+	return false
+}
+
 func (s stubFundFlows) DivisionLabel(d string) (string, bool) {
 	v, ok := s.divisions[d]
 	return v, ok
@@ -533,6 +545,19 @@ func TestFundFlowsRefusesWhatItCannotPlace(t *testing.T) {
 			want: "no data/taxonomy.yaml line under",
 		},
 		{
+			// A line resolves under a category the taxonomy does not declare:
+			// its parent is refused, not built as a tier-0 box.
+			name: "a line parented to a category the taxonomy does not declare",
+			facts: []fact.Fact{
+				fundFlowsFact(rev, mapping.KindRevenue, "typo", "", "general", fact.FundNumber(100), 1, "z"),
+			},
+			labels: func(l stubFundFlows) stubFundFlows {
+				l.lines[lineKey{"typo", printedRow("typo"), "revenue"}] = []string{lineOf("typo")}
+				return l
+			},
+			want: `parented to "revenue/typo", and data/taxonomy.yaml declares no category "typo"`,
+		},
+		{
 			name: "a revenue row two lines claim",
 			facts: []fact.Fact{
 				fundFlowsFact(rev, mapping.KindRevenue, "taxes/property", "", "general", fact.FundNumber(100), 1, "z"),
@@ -590,6 +615,29 @@ func TestFundFlowsRefusesWhatItCannotPlace(t *testing.T) {
 				t.Errorf("got %q, want it to mention %q", err, c.want)
 			}
 		})
+	}
+}
+
+// TestAFundGroupParentIsOneFundsYamlUses drives addParents directly: every
+// fund's parent is read from FundType, so no fact can reach this arm with a
+// group funds.yaml does not use, and only a node handed in here can.
+func TestAFundGroupParentIsOneFundsYamlUses(t *testing.T) {
+	f := &fundFlows{Labels: fundFlowsLabels()}
+	err := f.addParents(map[string]Node{
+		"fund/500": {ID: "fund/500", Parent: PrefixFundGroup + "typo"},
+	})
+	want := `parented to "fund-group/typo", and no data/funds.yaml fund has type "typo"`
+	if err == nil || !strings.Contains(err.Error(), want) {
+		t.Fatalf("addParents = %v, want a refusal mentioning %q", err, want)
+	}
+	nodes := map[string]Node{
+		"fund/500": {ID: "fund/500", Parent: PrefixFundGroup + "enterprise"},
+	}
+	if err := f.addParents(nodes); err != nil {
+		t.Fatalf("addParents over a declared group: %v", err)
+	}
+	if _, ok := nodes[PrefixFundGroup+"enterprise"]; !ok {
+		t.Errorf("addParents built no %q node", PrefixFundGroup+"enterprise")
 	}
 }
 
