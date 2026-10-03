@@ -364,7 +364,7 @@ func markerValues(t *testing.T, mark, mid, tail string, reshape func(line int, m
 	return err
 }
 
-// box is one monospaced word's geometry as textGeometry writes it.
+// box is one monospaced word's geometry as geomtest.Monospaced writes it.
 func box(x0, y0, x1, y1 int, text string) string {
 	return fmt.Sprintf("[%d,%d,%d,%d,%q]", x0, y0, x1, y1, text)
 }

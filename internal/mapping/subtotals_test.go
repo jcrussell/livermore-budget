@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+
+	"github.com/jcrussell/livermore-budget/internal/geom/geomtest"
 )
 
 // The shape these tests are about, as Budget Book pp.224-235 print it: a
@@ -114,28 +116,11 @@ func subtotalPages() map[int]string {
 	}
 }
 
-// textGeometry is the geometry a monospaced page implies: each word at its
-// character column, six points a character, one line every twelve points.
+// textGeometry is geomtest.Monospaced over each of a document's pages.
 func textGeometry(docID string, pages map[int]string) map[int]string {
 	out := map[int]string{}
 	for n, text := range pages {
-		var words []word
-		for i, line := range strings.Split(text, "\n") {
-			for c := 0; c < len(line); {
-				if line[c] == ' ' {
-					c++
-					continue
-				}
-				e := c
-				for e < len(line) && line[e] != ' ' {
-					e++
-				}
-				words = append(words, word{x0: float64(c * 6), y0: float64(i * 12),
-					x1: float64(e * 6), y1: float64(i*12 + 10), text: line[c:e]})
-				c = e
-			}
-		}
-		out[n] = geomJSON(docID, n, words)
+		out[n] = geomtest.Monospaced(docID, n, text)
 	}
 	return out
 }
