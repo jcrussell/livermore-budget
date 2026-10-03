@@ -75,7 +75,7 @@ func TestEveryScopeInTheStoreIsACut(t *testing.T) {
 			"three years), pp.224-235's 1,050 (210 projects, five years) and pp.186-209's "+
 			"Capital Improvement Program Funds block, 1,120 (35 funds, eight lines, four years)", uncovered)
 	}
-	if v, err := structure.NewView("everything", cuts, nil, nil); err == nil {
+	if v, err := structure.NewView("everything", cuts, nil, nil, nil); err == nil {
 		t.Fatalf("a view over every cut was accepted; the cuts are not an antichain and NewView should say so: %+v", v)
 	}
 
@@ -298,29 +298,29 @@ func TestAViewThatWouldTraverseBothReadingsIsRefused(t *testing.T) {
 	rd, td := allCutNamed(t, "revenue-detail"), allCutNamed(t, "transfers-detail")
 	identities := structure.BudgetBookIdentities()
 
-	_, err := structure.NewView("both", []structure.Cut{rd, td}, identities, nil)
+	_, err := structure.NewView("both", []structure.Cut{rd, td}, identities, nil, nil)
 	if err == nil || !strings.Contains(err.Error(), "which reading it takes") {
 		t.Fatalf("NewView = %v, want the traversal refused", err)
 	}
 
-	_, err = structure.NewView("both", []structure.Cut{rd, td}, identities,
+	_, err = structure.NewView("both", []structure.Cut{rd, td}, identities, nil,
 		map[string]string{"a-transfer-in-is-printed-at-both-ends": "spine"})
 	if err == nil || !strings.Contains(err.Error(), `takes reading "spine"`) {
 		t.Fatalf("NewView = %v, want a reading naming neither cut refused", err)
 	}
 
-	_, err = structure.NewView("one", []structure.Cut{rd}, identities,
+	_, err = structure.NewView("one", []structure.Cut{rd}, identities, nil,
 		map[string]string{"a-transfer-in-is-printed-at-both-ends": "revenue-detail"})
 	if err == nil || !strings.Contains(err.Error(), "joins no two of its cuts") {
 		t.Fatalf("NewView = %v, want a reading over an untraversed identity refused", err)
 	}
 
-	_, err = structure.NewView("nested", []structure.Cut{rd, allCutNamed(t, "spine")}, identities, nil)
+	_, err = structure.NewView("nested", []structure.Cut{rd, allCutNamed(t, "spine")}, identities, nil, nil)
 	if err == nil || !strings.Contains(err.Error(), "not an antichain") {
 		t.Fatalf("NewView = %v, want a nested pair refused", err)
 	}
 
-	v, err := structure.NewView("both", []structure.Cut{rd, td}, identities,
+	v, err := structure.NewView("both", []structure.Cut{rd, td}, identities, nil,
 		map[string]string{"a-transfer-in-is-printed-at-both-ends": "revenue-detail"})
 	if err != nil {
 		t.Fatalf("NewView with a reading: %v", err)
@@ -377,7 +377,7 @@ func TestTheAntichainIsOverMoneyBothCutsPrintAndNotOverLevelsAlone(t *testing.T)
 		}
 	}
 
-	v, err := structure.NewView("drill", []structure.Cut{rd, gd}, identities, nil)
+	v, err := structure.NewView("drill", []structure.Cut{rd, gd}, identities, nil, nil)
 	if err != nil {
 		t.Fatalf("NewView over revenue beside expenditure = %v, want admitted: the levels are comparable but the kinds do not meet", err)
 	}
@@ -395,7 +395,7 @@ func TestTheAntichainIsOverMoneyBothCutsPrintAndNotOverLevelsAlone(t *testing.T)
 
 	// The same cut beside one whose kinds it meets is still refused.
 	spine := allCutNamed(t, "spine")
-	if _, err := structure.NewView("spine-and-drill", []structure.Cut{spine, gd}, identities, nil); err == nil ||
+	if _, err := structure.NewView("spine-and-drill", []structure.Cut{spine, gd}, identities, nil, nil); err == nil ||
 		!strings.Contains(err.Error(), "not an antichain") {
 		t.Fatalf("NewView over the spine beside the departments = %v, want refused: their kinds meet", err)
 	}
@@ -415,7 +415,7 @@ func TestTwoLevelsNeitherRefiningTheOtherAreNotSummable(t *testing.T) {
 			t.Fatalf("%s and %s are now comparable; this pair no longer witnesses an incomparable overlap",
 				c.Level, spine.Level)
 		}
-		_, err := structure.NewView("twice", []structure.Cut{spine, c}, identities, nil)
+		_, err := structure.NewView("twice", []structure.Cut{spine, c}, identities, nil, nil)
 		if err == nil || !strings.Contains(err.Error(), "two decompositions") {
 			t.Errorf("NewView over the spine beside %s = %v, want refused: both print %s's money",
 				other, err, "the General Fund")
@@ -441,10 +441,10 @@ func TestDisjointFootprintsAreSummableAndTheGeneralFundIsNot(t *testing.T) {
 	if slices.Contains(fe.FundGroups, "general") || len(fe.FundGroups) == 0 {
 		t.Fatalf("fund-expenditures' footprint is %v; it must name the groups and leave out general", fe.FundGroups)
 	}
-	if _, err := structure.NewView("drill", []structure.Cut{gd, fe}, identities, nil); err != nil {
+	if _, err := structure.NewView("drill", []structure.Cut{gd, fe}, identities, nil, nil); err != nil {
 		t.Errorf("NewView over the divisions beside every other fund's objects = %v, want admitted", err)
 	}
-	if _, err := structure.NewView("twice", []structure.Cut{gd, gc}, identities, nil); err == nil ||
+	if _, err := structure.NewView("twice", []structure.Cut{gd, gc}, identities, nil, nil); err == nil ||
 		!strings.Contains(err.Error(), "not an antichain") {
 		t.Errorf("NewView over the divisions beside p172's General Fund = %v, want refused: "+
 			"the same money at two grains", err)
@@ -819,7 +819,7 @@ func TestAViewDeclinesAReadingOnlyInItsIdentitysCategories(t *testing.T) {
 	facts := committedFacts(t)
 	flows, td := allCutNamed(t, structure.CutFundBalanceFlows), allCutNamed(t, "transfers-detail")
 	identities := structure.BudgetBookIdentities()
-	v, err := structure.NewView("transfers", []structure.Cut{flows, td}, identities,
+	v, err := structure.NewView("transfers", []structure.Cut{flows, td}, identities, nil,
 		map[string]string{"a-fund-balance-transfer-is-p76s": td.Name})
 	if err != nil {
 		t.Fatalf("NewView: %v", err)
@@ -833,6 +833,78 @@ func TestAViewDeclinesAReadingOnlyInItsIdentitysCategories(t *testing.T) {
 	}
 	if admitted["transfers/in"] != 0 || admitted["transfers/out"] != 0 || admitted["transfers/out-to-cip"] == 0 {
 		t.Errorf("the view admits pp.186-209's %v; want only the to-CIP column, the reading p76 does not print", admitted)
+	}
+}
+
+// TestAViewTakesTheOtherReadingWhereItsOwnIsDeclaredAbsent reads a view over
+// pp.186-209's flows beside pp.127-140, taking pp.127-140's reading of a
+// fund's Transfers In. pp.127-130 print no General Fund Transfers In, which
+// the exceptions declare, so the view counts pp.186-209's figure there and
+// declines every transfer in pp.127-140 do print.
+func TestAViewTakesTheOtherReadingWhereItsOwnIsDeclaredAbsent(t *testing.T) {
+	facts := committedFacts(t)
+	flows, rd := allCutNamed(t, structure.CutFundBalanceFlows), allCutNamed(t, structure.CutRevenueDetail)
+	identities := structure.BudgetBookIdentities()
+	readings := map[string]string{"a-fund-balance-transfer-in-is-the-revenue-schedules": rd.Name}
+	admittedBy := func(exceptions []structure.Exception) map[string]int64 {
+		t.Helper()
+		v, err := structure.NewView("revenues", []structure.Cut{flows, rd}, identities, exceptions, readings)
+		if err != nil {
+			t.Fatalf("NewView: %v", err)
+		}
+		got := map[string]int64{}
+		for i := range facts {
+			f := &facts[i]
+			if f.Kind == mapping.KindTransferIn && flows.Admits(f) && v.Admits(f, identities) {
+				got[fmt.Sprintf("fund %d FY%d %s", *f.Fund, f.FiscalYear, f.Basis)] = f.AmountCents
+			}
+		}
+		return got
+	}
+	want := map[string]int64{
+		"fund 100 FY2024 actual":  73_745_500,
+		"fund 100 FY2025 revised": 91_420_600,
+		"fund 100 FY2026 adopted": 48_040_000,
+		"fund 100 FY2027 adopted": 48_673_500,
+	}
+	// Fund 101's FY2024-25 Transfers In: pp.127-140 print no General Fund
+	// CIP Reserves section that year.
+	want["fund 101 FY2025 revised"] = 412_562_700
+	got := admittedBy(structure.BudgetBookExceptions())
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("admitted pp.186-209 transfers in (-want +got):\n%s", diff)
+	}
+	// With no exception declaring the absence, the view declines every one.
+	if none := admittedBy(nil); len(none) != 0 {
+		t.Errorf("with no declared absence the view admits %v; it should decline every pp.186-209 transfer in", none)
+	}
+	// And the same pin with the reading's side printed admits nothing: that
+	// is a disagreement between two figures, not an absence.
+	var printedBoth []structure.Exception
+	for _, e := range structure.BudgetBookExceptions() {
+		if e.Name != "pp.127-130-print-no-general-fund-transfer-in-2024" || e.Against != flows.Name {
+			continue
+		}
+		e.Cells = slices.Clone(e.Cells)
+		for j := range e.Cells {
+			e.Cells[j].Cut = structure.Sum{Cents: 1, Present: true}
+		}
+		printedBoth = append(printedBoth, e)
+	}
+	if len(printedBoth) != 1 {
+		t.Fatalf("found %d FY2024 absence exceptions on the pair, want 1", len(printedBoth))
+	}
+	if got := admittedBy(printedBoth); len(got) != 0 {
+		t.Errorf("a pin printing both sides admits %v; want nothing", got)
+	}
+	// Nor does a pin declaring both sides absent: nothing says the other
+	// reading's figure is the one the view is missing.
+	for j := range printedBoth[0].Cells {
+		printedBoth[0].Cells[j].Cut = structure.Sum{}
+		printedBoth[0].Cells[j].Against = structure.Sum{}
+	}
+	if got := admittedBy(printedBoth); len(got) != 0 {
+		t.Errorf("a pin absent on both sides admits %v; want nothing", got)
 	}
 }
 
