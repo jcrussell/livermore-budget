@@ -256,9 +256,10 @@ func TestTheSpineTransferOutIsAFundsTwoTransferOutColumns(t *testing.T) {
 	})
 }
 
-// TestTheCIPFundsBlockIsP222sMoney re-measures the residue's reason: the
-// pp.186-209 rows no cut selects are p222's funds, fund by fund, and a cut
-// selecting them is refuted by the cut that declares their money outside.
+// TestTheCIPFundsBlockIsP222sMoney re-measures the figures the residue's
+// reason quotes, and shows a cut selecting the block is refuted by the cut
+// that declares its money outside. That the block is p222's fund by fund is
+// the restatement's, held in fisc verify.
 func TestTheCIPFundsBlockIsP222sMoney(t *testing.T) {
 	facts := committedFacts(t)
 	residue := structure.BudgetBookResidue()
@@ -267,7 +268,6 @@ func TestTheCIPFundsBlockIsP222sMoney(t *testing.T) {
 		fund string
 	}
 	block := map[string]map[cell]int64{}
-	p222 := map[string]map[cell]int64{}
 	add := func(m map[string]map[cell]int64, line string, f *fact.Fact) {
 		if m[line] == nil {
 			m[line] = map[cell]int64{}
@@ -275,13 +275,8 @@ func TestTheCIPFundsBlockIsP222sMoney(t *testing.T) {
 		m[line][cell{f.FiscalYear, fact.FundString(f.Fund)}] += f.AmountCents
 	}
 	funds := map[string]bool{}
-	cip := allCutNamed(t, "cip-funds")
 	for i := range facts {
 		f := &facts[i]
-		if cip.Admits(f) {
-			add(p222, string(f.Kind), f)
-			continue
-		}
 		if f.Scope != structure.ScopeFundBalancesByFund {
 			continue
 		}
@@ -304,24 +299,6 @@ func TestTheCIPFundsBlockIsP222sMoney(t *testing.T) {
 			}
 		}
 		return s
-	}
-	for _, year := range []int{2025, 2026, 2027} {
-		for c, v := range block["transfers/in"] {
-			if c.year == year && p222["transfer_in"][c] != v {
-				t.Errorf("FY%d fund %s: pp.186-209 Transfers In %d, p222 %d", year, c.fund, v, p222["transfer_in"][c])
-			}
-		}
-		for c, v := range block["revenues"] {
-			if c.year == year && p222["revenue"][c] != v {
-				t.Errorf("FY%d fund %s: pp.186-209 Revenues %d, p222 %d", year, c.fund, v, p222["revenue"][c])
-			}
-		}
-		drawn := total(block["fund-balance/beginning"], year) - total(block["fund-balance/ending"], year)
-		t.Logf("FY%d: transfers in %d, revenues %d, balance drawn %d", year,
-			total(block["transfers/in"], year), total(block["revenues"], year), drawn)
-		if drawn != total(p222["fund_balance"], year) {
-			t.Errorf("FY%d: the block draws %d of balance and p222 prints %d", year, drawn, total(p222["fund_balance"], year))
-		}
 	}
 	got := [][]int64{}
 	for _, year := range []int{2025, 2026, 2027} {

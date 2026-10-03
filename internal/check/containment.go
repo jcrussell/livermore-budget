@@ -32,7 +32,8 @@ func (*cutsTieAlongTheLattice) Full() bool { return false }
 func (*cutsTieAlongTheLattice) Description() string {
 	return "every cut sums to the coarser cut it decomposes, or agrees with the spine " +
 		"at the grain both decompose, or ties to a schedule printing the same money in every column " +
-		"both print, to the cent, except the cells a declared exception pins on both sides to a printed residual"
+		"both print, to the cent, except the cells a declared exception pins on both sides to a printed residual; " +
+		"and every residue declared to restate a cut outside the reference ties to it line by line"
 }
 
 // budgetBookExceptions is a seam so a test can declare an exception the tree
@@ -41,6 +42,10 @@ var budgetBookExceptions = structure.BudgetBookExceptions
 
 // budgetBookSplits is a seam so a test can declare a split the tree does not.
 var budgetBookSplits = structure.BudgetBookSplits
+
+// budgetBookRestatements is a seam so a test can declare a restatement the
+// tree does not.
+var budgetBookRestatements = structure.BudgetBookRestatements
 
 func (*cutsTieAlongTheLattice) Run(_ context.Context, s *Subject) (Result, error) {
 	cuts := structure.AllCuts()
@@ -201,6 +206,27 @@ func (*cutsTieAlongTheLattice) Run(_ context.Context, s *Subject) (Result, error
 		reconcile(c)
 	}
 
+	// A residue restating an Outside cut is held to it line by line; nothing
+	// else relates the two.
+	restatements := budgetBookRestatements()
+	if err := structure.ValidateRestatements(cuts, residue, restatements); err != nil {
+		findings = append(findings, finding("restatements", "%v", err))
+		restatements = nil
+	}
+	for _, r := range restatements {
+		if isEmpty[r.Against] {
+			continue
+		}
+		cs, err := structure.HoldRestatement(s.Facts, cuts, r)
+		if err != nil {
+			findings = append(findings, finding(r.Name, "%v", err))
+			continue
+		}
+		for _, c := range cs {
+			reconcile(c)
+		}
+	}
+
 	// An exception on a pair no comparison relates is inert, and refused.
 	// One between two cuts at one level is the peer check's.
 	for _, e := range exceptions {
@@ -229,8 +255,8 @@ func (*cutsTieAlongTheLattice) Run(_ context.Context, s *Subject) (Result, error
 		summary += fmt.Sprintf(". %d pair(s) held only by a split", bySplit)
 	}
 	if len(outside) > 0 && len(refuted) == 0 {
-		summary += fmt.Sprintf(". %s outside the reference, its funds carried by no other cut, and compared with none",
-			strings.Join(outside, ", "))
+		summary += fmt.Sprintf(". %s outside the reference, its funds carried by no other cut, and compared with "+
+			"no cut", strings.Join(outside, ", "))
 	}
 	if len(empty) > 0 {
 		summary += fmt.Sprintf(". %d cut(s) carry no fact and were not compared: %s",

@@ -26,7 +26,7 @@ func TestTheCommittedCutsTieAlongTheLattice(t *testing.T) {
 		t.Fatalf("status = %s, findings:\n  %v", res.Status, res.Findings)
 	}
 	for _, want := range []string{
-		"20 comparison(s) of 17 cut(s)",
+		"23 comparison(s) of 17 cut(s)",
 		"departmentwide ~ funding-sources at department: 39 cells over FY2024 actual, FY2025 revised, FY2026 adopted, FY2027 adopted",
 		"general-fund-departments ~ funding-sources at department: 42 cells over FY2024 actual, FY2025 revised, FY2026 adopted, FY2027 adopted",
 		"revenue-detail -> spine at fund-group-by-category",
@@ -43,7 +43,12 @@ func TestTheCommittedCutsTieAlongTheLattice(t *testing.T) {
 		"transfers-detail -> spine at fund-group-by-category: 14 cells over FY2026 adopted, FY2027 adopted, 6 one-sided at zero",
 		"a-transfer-out-is-p76-or-to-the-cip -> spine at fund-group: 12 cells over FY2026 adopted, FY2027 adopted, 2 one-sided at zero",
 		"1 pair(s) held only by a split",
-		"cip-funds outside the reference, its funds carried by no other cut, and compared with none",
+		"cip-funds outside the reference, its funds carried by no other cut, and compared with no cut",
+		// The CIP block of pp.186-209 is residue, held to p222 line by line
+		// in the three columns p222 prints.
+		"the-cip-funds-block-is-p222s (transfer_in transfers/in) ~ cip-funds at fund: 105 cells over FY2025 revised, FY2026 adopted, FY2027 adopted",
+		"the-cip-funds-block-is-p222s (revenue) ~ cip-funds at fund: 105 cells",
+		"the-cip-funds-block-is-p222s (fund-balance/use-for-cip) ~ cip-funds at fund: 105 cells",
 		// pp.186-209 meet the spine through the split on transfers out, and
 		// as a containment on transfers in and balances; their two totals
 		// cuts meet it at the fund group, and every per-fund schedule at the
