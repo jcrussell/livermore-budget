@@ -60,6 +60,23 @@ type ColumnNode struct {
 type ColumnSchedNode struct {
 	Node   int    `json:"node"`
 	Parent string `json:"parent,omitempty"`
+	// Balances is a fund's printed balances where the schedule cites them.
+	Balances *ColumnBalances `json:"balances,omitempty"`
+}
+
+// ColumnBalances is a fund's printed beginning and ending balance, carried
+// from the projection; a blank balance is absent.
+type ColumnBalances struct {
+	Beginning *ColumnBalance `json:"beginning,omitempty"`
+	Ending    *ColumnBalance `json:"ending,omitempty"`
+}
+
+// ColumnBalance is one printed balance and the fact it cites, its locators
+// copied as a link's are.
+type ColumnBalance struct {
+	ValueCents int64           `json:"value_cents"`
+	FactID     string          `json:"fact_id"`
+	Locators   json.RawMessage `json:"locators"`
 }
 
 // ColumnFundGroup is one fund group this column draws, in the order the page
@@ -111,6 +128,8 @@ type decoded struct {
 		Derived        bool   `json:"derived"`
 		Rationale      string `json:"rationale"`
 		SourceNote     string `json:"source_note"`
+		// Balances is a fund's printed balances, carried with the schedule.
+		Balances *ColumnBalances `json:"balances"`
 	} `json:"nodes"`
 	Links []struct {
 		Source     string          `json:"source"`
@@ -266,7 +285,7 @@ func ColumnsOf(projections map[string][]byte, generatedBy string) (map[string]Co
 					"column %s: %q disagrees between schedules about the same node: %+v and %+v",
 					key, n.ID, col.Nodes[i], node)
 			}
-			drawn = append(drawn, ColumnSchedNode{Node: i, Parent: n.Parent})
+			drawn = append(drawn, ColumnSchedNode{Node: i, Parent: n.Parent, Balances: n.Balances})
 		}
 
 		links := make([]ColumnLink, 0, len(d.Links))

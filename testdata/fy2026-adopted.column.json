@@ -2299,8 +2299,134 @@
    "tier": 0,
    "role": "fund_balance_draw",
    "derived": true,
-   "rationale": "Our sign-decomposition of the published CHANGE IN WORKING CAPITAL row: a negative change is a draw on accumulated balance. The city prints one signed row; a Sankey cannot render a negative link.",
-   "source_note": "Budget Book PDF pp.66-67, CHANGE IN WORKING CAPITAL"
+   "rationale": "Our sign-decomposition of a published change in balance: a negative change is a draw on accumulated balance. The city prints a fund group's change as one signed row, and a fund's as the beginning and ending balances it is the difference of; a Sankey cannot render a negative link.",
+   "source_note": "Budget Book PDF pp.66-67, CHANGE IN WORKING CAPITAL; pp.186-209, each fund's beginning and ending balance"
+  },
+  {
+   "id": "revenue/revenues",
+   "label": "Revenues",
+   "tier": 0,
+   "role": "revenue_source"
+  },
+  {
+   "id": "fund-group/permanent",
+   "label": "Permanent Funds",
+   "tier": 2,
+   "role": "fund_group"
+  },
+  {
+   "id": "fund/101",
+   "label": "General Fund CIP Reserves",
+   "tier": 3,
+   "role": "fund",
+   "constraint_tier": "committed",
+   "rationale": "General Fund resources set aside by the City for capital projects; constrained by City action, not by law.",
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+  },
+  {
+   "id": "fund/220",
+   "label": "Grant - Federal Grant Fund",
+   "tier": 3,
+   "role": "fund",
+   "constraint_tier": "restricted-by-law",
+   "rationale": "Federal grants, including police program grants; spendable only per each grant agreement.",
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+  },
+  {
+   "id": "fund/226",
+   "label": "FEMA Funding",
+   "tier": 3,
+   "role": "fund",
+   "constraint_tier": "restricted-by-law",
+   "rationale": "Federal disaster/COVID-19 grant reimbursements; spendable only on the eligible costs claimed.",
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+  },
+  {
+   "id": "fund/260",
+   "label": "Grant - Local \u0026 Other Grants",
+   "tier": 3,
+   "role": "fund",
+   "constraint_tier": "restricted-by-law",
+   "rationale": "Local and other grant awards for citywide programs; spendable only per each grant agreement.",
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+  },
+  {
+   "id": "fund/281",
+   "label": "Parking In-Lieu Fee",
+   "tier": 3,
+   "role": "fund",
+   "constraint_tier": "restricted-by-law",
+   "rationale": "In-lieu parking fees from developers; restricted to downtown parking.",
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+  },
+  {
+   "id": "fund/291",
+   "label": "Community Benefit Fund",
+   "tier": 3,
+   "role": "fund",
+   "constraint_tier": "committed",
+   "rationale": "Funds economic, climate resilience and community programs and public spaces as set in the Citywide Strategic Plan; the constraint named in the document is the City's own plan, not a law.",
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+  },
+  {
+   "id": "fund/470",
+   "label": "Doolan Canyon Preserve Endowment",
+   "tier": 3,
+   "role": "fund",
+   "constraint_tier": "restricted-by-law",
+   "rationale": "Endowment principal is legally unspendable; only earnings may be used, for burrowing owl habitat mitigation.",
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+  },
+  {
+   "id": "fund/471",
+   "label": "Doolan Canyon Open Space",
+   "tier": 3,
+   "role": "fund",
+   "constraint_tier": "restricted-by-law",
+   "rationale": "Endowment resources restricted to burrowing owl habitat mitigation; principal may not be spent.",
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+  },
+  {
+   "id": "fund/540",
+   "label": "2022 COP Construction Fund",
+   "tier": 3,
+   "role": "fund",
+   "constraint_tier": "restricted-by-law",
+   "rationale": "2022 Certificates of Participation proceeds; restricted by the debt documents to L Street Garage construction.",
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+  },
+  {
+   "id": "fund/581",
+   "label": "Public Utility Undergrounding",
+   "tier": 3,
+   "role": "fund",
+   "constraint_tier": "restricted-by-law",
+   "rationale": "PG\u0026E Rule 20A allocations; restricted to public utility undergrounding improvements.",
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+  },
+  {
+   "id": "fund/582",
+   "label": "Transferable Development Credits",
+   "tier": 3,
+   "role": "fund",
+   "constraint_tier": "restricted-by-law",
+   "rationale": "In-lieu fees under LMC 3.27; restricted to open space acquisition in North Livermore.",
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+  },
+  {
+   "id": "fund/583",
+   "label": "So Liv Spec Plan \u0026 AD Closeout",
+   "tier": 3,
+   "role": "fund",
+   "constraint_tier": "restricted-by-law",
+   "rationale": "Surplus from the closeout of Assessment Districts 1993-4 and 2002; dedicated to maintenance and improvements within the district boundaries per the closeout report.",
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+  },
+  {
+   "id": "expenditure/expenses",
+   "label": "Expenses",
+   "tier": 5,
+   "role": "object_category"
   },
   {
    "id": "fund-balance/contribution",
@@ -2308,8 +2434,8 @@
    "tier": 5,
    "role": "fund_balance_contribution",
    "derived": true,
-   "rationale": "Our sign-decomposition of the published CHANGE IN WORKING CAPITAL row: a positive change is a contribution to accumulated balance.",
-   "source_note": "Budget Book PDF pp.66-67, CHANGE IN WORKING CAPITAL"
+   "rationale": "Our sign-decomposition of a published change in balance: a positive change is a contribution to accumulated balance.",
+   "source_note": "Budget Book PDF pp.66-67, CHANGE IN WORKING CAPITAL; pp.186-209, each fund's beginning and ending balance"
   },
   {
    "id": "fund-balance/reserve-increase",
@@ -2320,6 +2446,12 @@
   {
    "id": "transfers/out",
    "label": "Transfers Out",
+   "tier": 5,
+   "role": "transfer_out"
+  },
+  {
+   "id": "transfers/out-to-cip",
+   "label": "Transfers Out to CIP",
    "tier": 5,
    "role": "transfer_out"
   },
@@ -2532,24 +2664,6 @@
    "label": "Fleet \u0026 Equipment Services",
    "tier": 2,
    "role": "transfer_source"
-  },
-  {
-   "id": "fund/101",
-   "label": "General Fund CIP Reserves",
-   "tier": 3,
-   "role": "fund",
-   "constraint_tier": "committed",
-   "rationale": "General Fund resources set aside by the City for capital projects; constrained by City action, not by law.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
-  },
-  {
-   "id": "fund/583",
-   "label": "So Liv Spec Plan \u0026 AD Closeout",
-   "tier": 3,
-   "role": "fund",
-   "constraint_tier": "restricted-by-law",
-   "rationale": "Surplus from the closeout of Assessment Districts 1993-4 and 2002; dedicated to maintenance and improvements within the district boundaries per the closeout report.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
   },
   {
    "id": "fund/601",
@@ -2876,6 +2990,10 @@
   {
    "id": "fund-group/debt-service",
    "slot": 6
+  },
+  {
+   "id": "fund-group/permanent",
+   "slot": 0
   }
  ],
  "schedules": {
@@ -15867,6 +15985,6222 @@
     }
    ]
   },
+  "fund-sources-uses": {
+   "scopes": [
+    "fund-balances-by-fund"
+   ],
+   "counts": {
+    "facts": 608,
+    "facts_cited": 306,
+    "facts_uncited": 302,
+    "facts_cited_twice": 0,
+    "nodes": 91,
+    "links": 215
+   },
+   "caveats": [
+    {
+     "id": "constraint-tier-is-our-reading",
+     "summary": "A fund's constraint tier is our reading of the Description of Funds narrative, not a figure the city printed.",
+     "text": "A fund's constraint tier is OUR reading of the Description of Funds narrative (Budget Book pp. 258-261), not something the city printed. Each fund node carries the note it was read from. \"unknown\" means the document does not establish a restriction; it is a classification, not a gap.",
+     "applies_to": []
+    },
+    {
+     "id": "the-cip-funds-block-is-not-drawn",
+     "summary": "The Capital Improvement Program funds pp.186-209 print are not drawn here; their money is Budget Book p222's.",
+     "text": "Budget Book pp.190, 196, 202 and 208 print a block of Capital Improvement Program funds below the operating funds, among them the capital-project sides of enterprise and internal service funds, which data/funds.yaml types with those groups. That money is what p222 lists the CIP receiving and spending, outside the operating budget pp.66-67 total, so this chart draws the operating funds alone. Adding the block would publish group totals no page prints.",
+     "applies_to": []
+    },
+    {
+     "id": "each-fund-change-is-gross",
+     "summary": "Each fund's draw on or contribution to its balance is its own, so these sum to more than a fund group's net change.",
+     "text": "Budget Book pp.186-209 print each fund's beginning and ending balance, and this chart draws the difference fund by fund: a fund whose balance falls draws on it, and one whose balance rises contributes to it. Summed here, 36 funds draw $23,235,743 and 25 funds contribute $26,323,176. Netted within each fund group, as pp.66-67 print a group's CHANGE IN WORKING CAPITAL as one signed row, the same changes come to draws of $9,681,900 and contributions of $12,769,333, which is why the citywide chart's Fund Balance Draw and Contribution are smaller than these.",
+     "applies_to": [
+      "fund-balance/draw",
+      "fund-balance/contribution"
+     ]
+    }
+   ],
+   "sources": [
+    {
+     "doc_id": "livermore-budget-fy2026-2027",
+     "pages": [
+      198,
+      199,
+      200,
+      201,
+      202,
+      203
+     ]
+    }
+   ],
+   "nodes": [
+    {
+     "node": 349
+    },
+    {
+     "node": 350
+    },
+    {
+     "node": 118
+    },
+    {
+     "node": 0
+    },
+    {
+     "node": 1
+    },
+    {
+     "node": 2
+    },
+    {
+     "node": 3
+    },
+    {
+     "node": 4
+    },
+    {
+     "node": 351
+    },
+    {
+     "node": 5
+    },
+    {
+     "node": 6,
+     "parent": "fund-group/general",
+     "balances": {
+      "beginning": {
+       "value_cents": 176661300,
+       "fact_id": "fisc-f-4500c408ca97",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          198
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 73245900,
+       "fact_id": "fisc-f-90d6271f1523",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          199
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 352,
+     "parent": "fund-group/capital",
+     "balances": {
+      "beginning": {
+       "value_cents": 2625229800,
+       "fact_id": "fisc-f-d860737c68b8",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          200
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 2137149000,
+       "fact_id": "fisc-f-b1fba1c26427",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          201
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 7,
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 3960459300,
+       "fact_id": "fisc-f-e9eac2033c98",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          198
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 4714868000,
+       "fact_id": "fisc-f-5f423de1dc2f",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          199
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 8,
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 886729800,
+       "fact_id": "fisc-f-a6ea7c69b3ac",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          198
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 902828200,
+       "fact_id": "fisc-f-94dd534d64fd",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          199
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 9,
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 628200,
+       "fact_id": "fisc-f-22239d835dc2",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          198
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 165720200,
+       "fact_id": "fisc-f-485081545072",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          199
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 10,
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 189391800,
+       "fact_id": "fisc-f-72e6183058dd",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          198
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 185739900,
+       "fact_id": "fisc-f-e199138f3971",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          199
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 11,
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 23400000,
+       "fact_id": "fisc-f-703f4ee3a69f",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          198
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 23400000,
+       "fact_id": "fisc-f-e2910ab7a198",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          199
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 12,
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 98254800,
+       "fact_id": "fisc-f-c60c5886dd15",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          198
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 81054800,
+       "fact_id": "fisc-f-aef31b71f964",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          199
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 13,
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 62433100,
+       "fact_id": "fisc-f-085a6b73f810",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          198
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 57233100,
+       "fact_id": "fisc-f-1ed5b3ed3d19",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          199
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 14,
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 0,
+       "fact_id": "fisc-f-5da79bce8152",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          198
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 0,
+       "fact_id": "fisc-f-276bc779396c",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          199
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 15,
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 68763300,
+       "fact_id": "fisc-f-ccc38f300c7f",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          198
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 86418800,
+       "fact_id": "fisc-f-909549b71eb9",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          199
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 212,
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": -2803800,
+       "fact_id": "fisc-f-51e705c493d0",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          198
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": -303800,
+       "fact_id": "fisc-f-4e9a98a07490",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          199
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 353,
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 8769800,
+       "fact_id": "fisc-f-f8a0e54a45f1",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          198
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 8769800,
+       "fact_id": "fisc-f-544d8be378ba",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          199
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 16,
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 57325500,
+       "fact_id": "fisc-f-5adc72642985",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          198
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 53765500,
+       "fact_id": "fisc-f-020d1cda87e0",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          199
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 17,
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 36689400,
+       "fact_id": "fisc-f-7b80357d3a00",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          198
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 32789400,
+       "fact_id": "fisc-f-fb801a04fdce",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          199
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 18,
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 12212700,
+       "fact_id": "fisc-f-038fd2afe39a",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          198
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": -5817300,
+       "fact_id": "fisc-f-f5745ac94a37",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          199
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 19,
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 33889000,
+       "fact_id": "fisc-f-b40124fdfd10",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          198
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 26943600,
+       "fact_id": "fisc-f-46efff428700",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          199
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 20,
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 36069200,
+       "fact_id": "fisc-f-fcce421beb5c",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          198
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 35638900,
+       "fact_id": "fisc-f-a66267f45514",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          199
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 354,
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 114479200,
+       "fact_id": "fisc-f-3beeabf43fc7",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          198
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 114479200,
+       "fact_id": "fisc-f-7635ed644fd6",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          199
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 21,
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 148430500,
+       "fact_id": "fisc-f-ecd90ffae51f",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          198
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 58156100,
+       "fact_id": "fisc-f-918a2a334af3",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          199
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 22,
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 8630000,
+       "fact_id": "fisc-f-3499a0b9da00",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          198
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": -32143200,
+       "fact_id": "fisc-f-e04c91fdf99c",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          199
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 23,
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 20520800,
+       "fact_id": "fisc-f-32da0c4a05c2",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          198
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": -8479200,
+       "fact_id": "fisc-f-87c77c9d3db9",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          199
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 355,
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": -4242600,
+       "fact_id": "fisc-f-17542afc8829",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          198
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": -4242600,
+       "fact_id": "fisc-f-6439bacfd018",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          199
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 213,
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": -358659500,
+       "fact_id": "fisc-f-ec3c98a402aa",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          198
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": -347259500,
+       "fact_id": "fisc-f-53434beb3ad1",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          199
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 356,
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 3120000,
+       "fact_id": "fisc-f-75984cb278e2",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          198
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 3120000,
+       "fact_id": "fisc-f-960394110e7e",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          199
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 24,
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 130070200,
+       "fact_id": "fisc-f-1c8f11459640",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          198
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 125146200,
+       "fact_id": "fisc-f-75cc62f61785",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          199
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 25,
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 52365200,
+       "fact_id": "fisc-f-454293a2c620",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          198
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 81930500,
+       "fact_id": "fisc-f-f38cc6042bd8",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          199
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 26,
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 91776900,
+       "fact_id": "fisc-f-cd2302bf918d",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          198
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 80278800,
+       "fact_id": "fisc-f-9dda6fc99814",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          199
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 27,
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 17294800,
+       "fact_id": "fisc-f-e141f7619e2a",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          198
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 18204900,
+       "fact_id": "fisc-f-1b6ff97de37a",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          199
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 28,
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": -2114200,
+       "fact_id": "fisc-f-0d2110d4ef16",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          198
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": -4739200,
+       "fact_id": "fisc-f-0ac6e2efef98",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          199
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 29,
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 180054800,
+       "fact_id": "fisc-f-6450d38c42e7",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          198
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 202437800,
+       "fact_id": "fisc-f-c39a238e8b87",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          199
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 30,
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 437500,
+       "fact_id": "fisc-f-f059dc46990c",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          198
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 208600,
+       "fact_id": "fisc-f-dc303ef1591c",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          199
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 31,
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": -2320100,
+       "fact_id": "fisc-f-d6a66be3f32b",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          198
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": -4036000,
+       "fact_id": "fisc-f-05261f7c3cfc",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          199
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 32,
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 51934200,
+       "fact_id": "fisc-f-b73ed972d467",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          198
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 12734200,
+       "fact_id": "fisc-f-4bc99011ac4b",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          199
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 357,
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 0,
+       "fact_id": "fisc-f-b940896b9c8a",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          198
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 0,
+       "fact_id": "fisc-f-184890f57977",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          199
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 214,
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 207040300,
+       "fact_id": "fisc-f-93dfdab9e58c",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          198
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 215040300,
+       "fact_id": "fisc-f-c20bb8385534",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          199
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 33,
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 59030400,
+       "fact_id": "fisc-f-acdebadc8606",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          198
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 106568600,
+       "fact_id": "fisc-f-707ddb866cba",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          199
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 34,
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 1025762100,
+       "fact_id": "fisc-f-96a8a6ec01ef",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          198
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 1096048400,
+       "fact_id": "fisc-f-e4d820dfa988",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          199
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 35,
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 282123400,
+       "fact_id": "fisc-f-c292aaf40423",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          198
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 292407300,
+       "fact_id": "fisc-f-20bcd282d6eb",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          199
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 36,
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 206819500,
+       "fact_id": "fisc-f-b9280325bc80",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          198
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 227792700,
+       "fact_id": "fisc-f-b0126f66af62",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          199
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 37,
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 19777400,
+       "fact_id": "fisc-f-911446e8af91",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          198
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 9389400,
+       "fact_id": "fisc-f-4a81dc34611b",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          199
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 38,
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 4464500,
+       "fact_id": "fisc-f-cac9c6851b39",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          200
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 4409900,
+       "fact_id": "fisc-f-76245b404241",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          201
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 39,
+     "parent": "fund-group/debt-service",
+     "balances": {
+      "beginning": {
+       "value_cents": 0,
+       "fact_id": "fisc-f-95c279b87ff7",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          200
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 0,
+       "fact_id": "fisc-f-114e7c29b21c",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          201
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 40,
+     "parent": "fund-group/debt-service",
+     "balances": {
+      "beginning": {
+       "value_cents": 0,
+       "fact_id": "fisc-f-f926790b5abe",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          200
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 0,
+       "fact_id": "fisc-f-f932835a4583",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          201
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 41,
+     "parent": "fund-group/debt-service",
+     "balances": {
+      "beginning": {
+       "value_cents": 200,
+       "fact_id": "fisc-f-2df6c0eb2c90",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          200
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 200,
+       "fact_id": "fisc-f-172f7090f1a0",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          201
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 358,
+     "parent": "fund-group/permanent",
+     "balances": {
+      "beginning": {
+       "value_cents": 0,
+       "fact_id": "fisc-f-c98fb2c32740",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          200
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 0,
+       "fact_id": "fisc-f-8aac3b255794",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          201
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 359,
+     "parent": "fund-group/permanent",
+     "balances": {
+      "beginning": {
+       "value_cents": 0,
+       "fact_id": "fisc-f-fd3da5eb619f",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          200
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 0,
+       "fact_id": "fisc-f-bd700ad6a6a7",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          201
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 42,
+     "parent": "fund-group/capital",
+     "balances": {
+      "beginning": {
+       "value_cents": 2166511600,
+       "fact_id": "fisc-f-c760e189eb3f",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          200
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 2656086600,
+       "fact_id": "fisc-f-eafdb18411d9",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          201
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 215,
+     "parent": "fund-group/capital",
+     "balances": {
+      "beginning": {
+       "value_cents": 831586800,
+       "fact_id": "fisc-f-3fb4a3ea344d",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          200
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 1009086800,
+       "fact_id": "fisc-f-0f9e6295fd43",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          201
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 43,
+     "parent": "fund-group/capital",
+     "balances": {
+      "beginning": {
+       "value_cents": 749376200,
+       "fact_id": "fisc-f-7aeee9e76ac5",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          200
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 534866400,
+       "fact_id": "fisc-f-79e707009044",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          201
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 216,
+     "parent": "fund-group/capital",
+     "balances": {
+      "beginning": {
+       "value_cents": 403686500,
+       "fact_id": "fisc-f-d33a59ebdc41",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          200
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 398029400,
+       "fact_id": "fisc-f-929b23e685b8",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          201
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 360,
+     "parent": "fund-group/capital",
+     "balances": {
+      "beginning": {
+       "value_cents": -185378700,
+       "fact_id": "fisc-f-d100bd51ef7b",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          200
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": -185378700,
+       "fact_id": "fisc-f-b39e2b6fe11d",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          201
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 44,
+     "parent": "fund-group/capital",
+     "balances": {
+      "beginning": {
+       "value_cents": 14053900,
+       "fact_id": "fisc-f-65473efa01b1",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          200
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": -35866600,
+       "fact_id": "fisc-f-da384305b6ae",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          201
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 45,
+     "parent": "fund-group/capital",
+     "balances": {
+      "beginning": {
+       "value_cents": 103691100,
+       "fact_id": "fisc-f-1d954a4cb6f2",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          200
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 119153300,
+       "fact_id": "fisc-f-e69746aec34b",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          201
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 46,
+     "parent": "fund-group/capital",
+     "balances": {
+      "beginning": {
+       "value_cents": 466553800,
+       "fact_id": "fisc-f-0e1d55887b9b",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          200
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 520989200,
+       "fact_id": "fisc-f-ab5eed360755",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          201
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 47,
+     "parent": "fund-group/capital",
+     "balances": {
+      "beginning": {
+       "value_cents": 109482800,
+       "fact_id": "fisc-f-ff9a883c0508",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          200
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 145115800,
+       "fact_id": "fisc-f-e1e64591c578",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          201
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 48,
+     "parent": "fund-group/capital",
+     "balances": {
+      "beginning": {
+       "value_cents": 581404500,
+       "fact_id": "fisc-f-d4173c22f978",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          200
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 658783900,
+       "fact_id": "fisc-f-bec562779203",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          201
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 49,
+     "parent": "fund-group/capital",
+     "balances": {
+      "beginning": {
+       "value_cents": 382780800,
+       "fact_id": "fisc-f-e2167f006155",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          200
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 115942700,
+       "fact_id": "fisc-f-5456b1737fad",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          201
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 217,
+     "parent": "fund-group/capital",
+     "balances": {
+      "beginning": {
+       "value_cents": 401500,
+       "fact_id": "fisc-f-734784426ccb",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          200
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": -3798500,
+       "fact_id": "fisc-f-3043b81c69d7",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          201
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 361,
+     "parent": "fund-group/capital",
+     "balances": {
+      "beginning": {
+       "value_cents": 85524000,
+       "fact_id": "fisc-f-28674efbbb11",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          200
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 85524000,
+       "fact_id": "fisc-f-132efa297d23",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          201
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 362,
+     "parent": "fund-group/capital",
+     "balances": {
+      "beginning": {
+       "value_cents": 2633859000,
+       "fact_id": "fisc-f-cc3b91d7e50c",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          200
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 2633859000,
+       "fact_id": "fisc-f-ea45719cc70e",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          201
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 363,
+     "parent": "fund-group/capital",
+     "balances": {
+      "beginning": {
+       "value_cents": 102590800,
+       "fact_id": "fisc-f-699efe28b6ec",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          200
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 31790800,
+       "fact_id": "fisc-f-02c8d6a5c656",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          201
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 50,
+     "parent": "fund-group/enterprise",
+     "balances": {
+      "beginning": {
+       "value_cents": 882127400,
+       "fact_id": "fisc-f-c2eff2f600bc",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          200
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 941088400,
+       "fact_id": "fisc-f-43d27c2abae2",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          201
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 51,
+     "parent": "fund-group/enterprise",
+     "balances": {
+      "beginning": {
+       "value_cents": 638532000,
+       "fact_id": "fisc-f-9cbe2ce0148d",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          200
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 627042200,
+       "fact_id": "fisc-f-4f71aac3ce2f",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          201
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 52,
+     "parent": "fund-group/enterprise",
+     "balances": {
+      "beginning": {
+       "value_cents": 604886600,
+       "fact_id": "fisc-f-e91e0dd8e0fa",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          200
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 651746800,
+       "fact_id": "fisc-f-46550aacf700",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          201
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 53,
+     "parent": "fund-group/enterprise",
+     "balances": {
+      "beginning": {
+       "value_cents": 2779921900,
+       "fact_id": "fisc-f-21965a70c21d",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          200
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 2729985000,
+       "fact_id": "fisc-f-9903eeebc79e",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          201
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 54,
+     "parent": "fund-group/enterprise",
+     "balances": {
+      "beginning": {
+       "value_cents": 1823474400,
+       "fact_id": "fisc-f-7bc7bf3ec2b8",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          200
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 2136664500,
+       "fact_id": "fisc-f-33aa2798152e",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          201
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 55,
+     "parent": "fund-group/enterprise",
+     "balances": {
+      "beginning": {
+       "value_cents": 263497400,
+       "fact_id": "fisc-f-581b6d3f765b",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          200
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 369777000,
+       "fact_id": "fisc-f-b5314446eb84",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          201
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 56,
+     "parent": "fund-group/enterprise",
+     "balances": {
+      "beginning": {
+       "value_cents": 612886500,
+       "fact_id": "fisc-f-2ecc0d3ac276",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          200
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 505072900,
+       "fact_id": "fisc-f-c6da7d21946f",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          201
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 57,
+     "parent": "fund-group/enterprise",
+     "balances": {
+      "beginning": {
+       "value_cents": 2752028500,
+       "fact_id": "fisc-f-fa8286204018",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          200
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 2705469200,
+       "fact_id": "fisc-f-b90bb46f0ab1",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          201
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 58,
+     "parent": "fund-group/enterprise",
+     "balances": {
+      "beginning": {
+       "value_cents": -17909700,
+       "fact_id": "fisc-f-fe8aa06f5e8e",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          200
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 62037400,
+       "fact_id": "fisc-f-3ee0a560ea44",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          201
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 59,
+     "parent": "fund-group/internal-service",
+     "balances": {
+      "beginning": {
+       "value_cents": 558924600,
+       "fact_id": "fisc-f-552cca1393e3",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          200
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 477043300,
+       "fact_id": "fisc-f-ff689b12dd7f",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          201
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 60,
+     "parent": "fund-group/internal-service",
+     "balances": {
+      "beginning": {
+       "value_cents": 510970300,
+       "fact_id": "fisc-f-07a4420e6d23",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          200
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 377064100,
+       "fact_id": "fisc-f-53a30b318a76",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          201
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 61,
+     "parent": "fund-group/internal-service",
+     "balances": {
+      "beginning": {
+       "value_cents": 224205200,
+       "fact_id": "fisc-f-2dedba9cde83",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          200
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 46377900,
+       "fact_id": "fisc-f-d73d6a0fcfb9",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          201
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 62,
+     "parent": "fund-group/internal-service",
+     "balances": {
+      "beginning": {
+       "value_cents": 567802200,
+       "fact_id": "fisc-f-ff5ef684df72",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          200
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 500777900,
+       "fact_id": "fisc-f-20237584dd05",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          201
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 63,
+     "parent": "fund-group/internal-service",
+     "balances": {
+      "beginning": {
+       "value_cents": 321824200,
+       "fact_id": "fisc-f-72c918154e25",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          202
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 167710000,
+       "fact_id": "fisc-f-f273494e24cb",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          203
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "node": 364
+    },
+    {
+     "node": 365
+    },
+    {
+     "node": 366
+    },
+    {
+     "node": 367
+    },
+    {
+     "node": 368
+    }
+   ],
+   "links": [
+    {
+     "from": 349,
+     "to": 6,
+     "value_cents": 103415400,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-4500c408ca97",
+      "fisc-f-90d6271f1523"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198,
+        199
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 349,
+     "to": 352,
+     "value_cents": 488080800,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-b1fba1c26427",
+      "fisc-f-d860737c68b8"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200,
+        201
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 349,
+     "to": 10,
+     "value_cents": 3651900,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-72e6183058dd",
+      "fisc-f-e199138f3971"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198,
+        199
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 349,
+     "to": 12,
+     "value_cents": 17200000,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-aef31b71f964",
+      "fisc-f-c60c5886dd15"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198,
+        199
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 349,
+     "to": 13,
+     "value_cents": 5200000,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-085a6b73f810",
+      "fisc-f-1ed5b3ed3d19"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198,
+        199
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 349,
+     "to": 16,
+     "value_cents": 3560000,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-020d1cda87e0",
+      "fisc-f-5adc72642985"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198,
+        199
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 349,
+     "to": 17,
+     "value_cents": 3900000,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-7b80357d3a00",
+      "fisc-f-fb801a04fdce"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198,
+        199
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 349,
+     "to": 18,
+     "value_cents": 18030000,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-038fd2afe39a",
+      "fisc-f-f5745ac94a37"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198,
+        199
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 349,
+     "to": 19,
+     "value_cents": 6945400,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-46efff428700",
+      "fisc-f-b40124fdfd10"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198,
+        199
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 349,
+     "to": 20,
+     "value_cents": 430300,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-a66267f45514",
+      "fisc-f-fcce421beb5c"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198,
+        199
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 349,
+     "to": 21,
+     "value_cents": 90274400,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-918a2a334af3",
+      "fisc-f-ecd90ffae51f"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198,
+        199
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 349,
+     "to": 22,
+     "value_cents": 40773200,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-3499a0b9da00",
+      "fisc-f-e04c91fdf99c"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198,
+        199
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 349,
+     "to": 23,
+     "value_cents": 29000000,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-32da0c4a05c2",
+      "fisc-f-87c77c9d3db9"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198,
+        199
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 349,
+     "to": 24,
+     "value_cents": 4924000,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-1c8f11459640",
+      "fisc-f-75cc62f61785"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198,
+        199
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 349,
+     "to": 26,
+     "value_cents": 11498100,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-9dda6fc99814",
+      "fisc-f-cd2302bf918d"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198,
+        199
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 349,
+     "to": 28,
+     "value_cents": 2625000,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-0ac6e2efef98",
+      "fisc-f-0d2110d4ef16"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198,
+        199
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 349,
+     "to": 30,
+     "value_cents": 228900,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-dc303ef1591c",
+      "fisc-f-f059dc46990c"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198,
+        199
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 349,
+     "to": 31,
+     "value_cents": 1715900,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-05261f7c3cfc",
+      "fisc-f-d6a66be3f32b"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198,
+        199
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 349,
+     "to": 32,
+     "value_cents": 39200000,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-4bc99011ac4b",
+      "fisc-f-b73ed972d467"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198,
+        199
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 349,
+     "to": 37,
+     "value_cents": 10388000,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-4a81dc34611b",
+      "fisc-f-911446e8af91"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198,
+        199
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 349,
+     "to": 38,
+     "value_cents": 54600,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-76245b404241",
+      "fisc-f-cac9c6851b39"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200,
+        201
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 349,
+     "to": 43,
+     "value_cents": 214509800,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-79e707009044",
+      "fisc-f-7aeee9e76ac5"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200,
+        201
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 349,
+     "to": 216,
+     "value_cents": 5657100,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-929b23e685b8",
+      "fisc-f-d33a59ebdc41"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200,
+        201
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 349,
+     "to": 44,
+     "value_cents": 49920500,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-65473efa01b1",
+      "fisc-f-da384305b6ae"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200,
+        201
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 349,
+     "to": 49,
+     "value_cents": 266838100,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-5456b1737fad",
+      "fisc-f-e2167f006155"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200,
+        201
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 349,
+     "to": 217,
+     "value_cents": 4200000,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-3043b81c69d7",
+      "fisc-f-734784426ccb"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200,
+        201
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 349,
+     "to": 363,
+     "value_cents": 70800000,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-02c8d6a5c656",
+      "fisc-f-699efe28b6ec"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200,
+        201
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 349,
+     "to": 51,
+     "value_cents": 11489800,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-4f71aac3ce2f",
+      "fisc-f-9cbe2ce0148d"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200,
+        201
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 349,
+     "to": 53,
+     "value_cents": 49936900,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-21965a70c21d",
+      "fisc-f-9903eeebc79e"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200,
+        201
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 349,
+     "to": 56,
+     "value_cents": 107813600,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-2ecc0d3ac276",
+      "fisc-f-c6da7d21946f"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200,
+        201
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 349,
+     "to": 57,
+     "value_cents": 46559300,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-b90bb46f0ab1",
+      "fisc-f-fa8286204018"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200,
+        201
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 349,
+     "to": 59,
+     "value_cents": 81881300,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-552cca1393e3",
+      "fisc-f-ff689b12dd7f"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200,
+        201
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 349,
+     "to": 60,
+     "value_cents": 133906200,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-07a4420e6d23",
+      "fisc-f-53a30b318a76"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200,
+        201
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 349,
+     "to": 61,
+     "value_cents": 177827300,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-2dedba9cde83",
+      "fisc-f-d73d6a0fcfb9"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200,
+        201
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 349,
+     "to": 62,
+     "value_cents": 67024300,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-20237584dd05",
+      "fisc-f-ff5ef684df72"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200,
+        201
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 349,
+     "to": 63,
+     "value_cents": 154114200,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-72c918154e25",
+      "fisc-f-f273494e24cb"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        202,
+        203
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 6,
+     "to": 364,
+     "value_cents": 14465080200,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-4edce49e0efd"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        199
+       ]
+      }
+     ]
+    },
+    {
+     "from": 6,
+     "to": 366,
+     "value_cents": 469942500,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-81b7a3b8d0c9"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        199
+       ]
+      }
+     ]
+    },
+    {
+     "from": 6,
+     "to": 367,
+     "value_cents": 1003779700,
+     "kind": "internal_transfer",
+     "fact_ids": [
+      "fisc-f-fe3cc9007905"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        199
+       ]
+      }
+     ]
+    },
+    {
+     "from": 352,
+     "to": 368,
+     "value_cents": 488080800,
+     "kind": "internal_transfer",
+     "fact_ids": [
+      "fisc-f-0b343dbef14b"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        201
+       ]
+      }
+     ]
+    },
+    {
+     "from": 7,
+     "to": 364,
+     "value_cents": 267904500,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-c2f0e5098f68"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        199
+       ]
+      }
+     ]
+    },
+    {
+     "from": 7,
+     "to": 365,
+     "value_cents": 754408700,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-5f423de1dc2f",
+      "fisc-f-e9eac2033c98"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198,
+        199
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 8,
+     "to": 364,
+     "value_cents": 1600,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-69b89096c41e"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        199
+       ]
+      }
+     ]
+    },
+    {
+     "from": 8,
+     "to": 365,
+     "value_cents": 16098400,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-94dd534d64fd",
+      "fisc-f-a6ea7c69b3ac"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198,
+        199
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 9,
+     "to": 364,
+     "value_cents": 15208000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-4c38acebc70b"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        199
+       ]
+      }
+     ]
+    },
+    {
+     "from": 9,
+     "to": 365,
+     "value_cents": 165092000,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-22239d835dc2",
+      "fisc-f-485081545072"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198,
+        199
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 10,
+     "to": 364,
+     "value_cents": 12651900,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-e36ce89d1a2c"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        199
+       ]
+      }
+     ]
+    },
+    {
+     "from": 11,
+     "to": 364,
+     "value_cents": 37900000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-9003974e38b1"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        199
+       ]
+      }
+     ]
+    },
+    {
+     "from": 12,
+     "to": 364,
+     "value_cents": 24200000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-5bb8c1b7f8d5"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        199
+       ]
+      }
+     ]
+    },
+    {
+     "from": 13,
+     "to": 364,
+     "value_cents": 12200000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-46c70849dd20"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        199
+       ]
+      }
+     ]
+    },
+    {
+     "from": 14,
+     "to": 364,
+     "value_cents": 550000000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-c3604da3c99f"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        199
+       ]
+      }
+     ]
+    },
+    {
+     "from": 15,
+     "to": 364,
+     "value_cents": 122294500,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-0a950730c7f0"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        199
+       ]
+      }
+     ]
+    },
+    {
+     "from": 15,
+     "to": 365,
+     "value_cents": 17655500,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-909549b71eb9",
+      "fisc-f-ccc38f300c7f"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198,
+        199
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 212,
+     "to": 365,
+     "value_cents": 2500000,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-4e9a98a07490",
+      "fisc-f-51e705c493d0"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198,
+        199
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 16,
+     "to": 364,
+     "value_cents": 5260000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-cc153f83babb"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        199
+       ]
+      }
+     ]
+    },
+    {
+     "from": 17,
+     "to": 364,
+     "value_cents": 5000000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-c7cde696e275"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        199
+       ]
+      }
+     ]
+    },
+    {
+     "from": 18,
+     "to": 364,
+     "value_cents": 18030000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-14e073c52216"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        199
+       ]
+      }
+     ]
+    },
+    {
+     "from": 19,
+     "to": 364,
+     "value_cents": 52048900,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-f999093a78c7"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        199
+       ]
+      }
+     ]
+    },
+    {
+     "from": 19,
+     "to": 368,
+     "value_cents": 1000000,
+     "kind": "internal_transfer",
+     "fact_ids": [
+      "fisc-f-93a85e9a968a"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        199
+       ]
+      }
+     ]
+    },
+    {
+     "from": 20,
+     "to": 364,
+     "value_cents": 12210300,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-f4813280ba11"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        199
+       ]
+      }
+     ]
+    },
+    {
+     "from": 21,
+     "to": 364,
+     "value_cents": 106404400,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-03c5daba52b9"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        199
+       ]
+      }
+     ]
+    },
+    {
+     "from": 22,
+     "to": 364,
+     "value_cents": 50137600,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-1888742f619f"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        199
+       ]
+      }
+     ]
+    },
+    {
+     "from": 23,
+     "to": 364,
+     "value_cents": 55000000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-5e91d81f049e"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        199
+       ]
+      }
+     ]
+    },
+    {
+     "from": 213,
+     "to": 365,
+     "value_cents": 11400000,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-53434beb3ad1",
+      "fisc-f-ec3c98a402aa"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198,
+        199
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 24,
+     "to": 364,
+     "value_cents": 2344000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-200aa4cb7d7d"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        199
+       ]
+      }
+     ]
+    },
+    {
+     "from": 24,
+     "to": 367,
+     "value_cents": 54780000,
+     "kind": "internal_transfer",
+     "fact_ids": [
+      "fisc-f-f716ff0bdc02"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        199
+       ]
+      }
+     ]
+    },
+    {
+     "from": 25,
+     "to": 364,
+     "value_cents": 49059800,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-27084df1ef82"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        199
+       ]
+      }
+     ]
+    },
+    {
+     "from": 25,
+     "to": 365,
+     "value_cents": 29565300,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-454293a2c620",
+      "fisc-f-f38cc6042bd8"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198,
+        199
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 26,
+     "to": 364,
+     "value_cents": 26498100,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-b65d6d758b00"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        199
+       ]
+      }
+     ]
+    },
+    {
+     "from": 27,
+     "to": 364,
+     "value_cents": 2089900,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-3f77fe40ac29"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        199
+       ]
+      }
+     ]
+    },
+    {
+     "from": 27,
+     "to": 365,
+     "value_cents": 910100,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-1b6ff97de37a",
+      "fisc-f-e141f7619e2a"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198,
+        199
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 28,
+     "to": 364,
+     "value_cents": 3000000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-7df5185fc0d4"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        199
+       ]
+      }
+     ]
+    },
+    {
+     "from": 28,
+     "to": 367,
+     "value_cents": 1925000,
+     "kind": "internal_transfer",
+     "fact_ids": [
+      "fisc-f-5c4dd5e6d35f"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        199
+       ]
+      }
+     ]
+    },
+    {
+     "from": 29,
+     "to": 364,
+     "value_cents": 117000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-926775b02e15"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        199
+       ]
+      }
+     ]
+    },
+    {
+     "from": 29,
+     "to": 365,
+     "value_cents": 22383000,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-6450d38c42e7",
+      "fisc-f-c39a238e8b87"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198,
+        199
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 30,
+     "to": 364,
+     "value_cents": 228900,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-b6ca56d5be75"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        199
+       ]
+      }
+     ]
+    },
+    {
+     "from": 31,
+     "to": 364,
+     "value_cents": 40140500,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-f26206e0bf1f"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        199
+       ]
+      }
+     ]
+    },
+    {
+     "from": 32,
+     "to": 364,
+     "value_cents": 18200000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-675ff2fc8273"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        199
+       ]
+      }
+     ]
+    },
+    {
+     "from": 32,
+     "to": 368,
+     "value_cents": 21000000,
+     "kind": "internal_transfer",
+     "fact_ids": [
+      "fisc-f-d6689c5b1edf"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        199
+       ]
+      }
+     ]
+    },
+    {
+     "from": 214,
+     "to": 365,
+     "value_cents": 8000000,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-93dfdab9e58c",
+      "fisc-f-c20bb8385534"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198,
+        199
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 33,
+     "to": 364,
+     "value_cents": 76403400,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-b8ab73ab0cbc"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        199
+       ]
+      }
+     ]
+    },
+    {
+     "from": 33,
+     "to": 365,
+     "value_cents": 47538200,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-707ddb866cba",
+      "fisc-f-acdebadc8606"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198,
+        199
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 34,
+     "to": 364,
+     "value_cents": 289949700,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-719901578ab8"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        199
+       ]
+      }
+     ]
+    },
+    {
+     "from": 34,
+     "to": 365,
+     "value_cents": 70286300,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-96a8a6ec01ef",
+      "fisc-f-e4d820dfa988"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198,
+        199
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 34,
+     "to": 367,
+     "value_cents": 25000000,
+     "kind": "internal_transfer",
+     "fact_ids": [
+      "fisc-f-fbafeee3f4ad"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        199
+       ]
+      }
+     ]
+    },
+    {
+     "from": 35,
+     "to": 364,
+     "value_cents": 39537400,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-f67c3649cbd5"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        199
+       ]
+      }
+     ]
+    },
+    {
+     "from": 35,
+     "to": 365,
+     "value_cents": 10283900,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-20bcd282d6eb",
+      "fisc-f-c292aaf40423"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198,
+        199
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 36,
+     "to": 364,
+     "value_cents": 19193100,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-d34634566203"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        199
+       ]
+      }
+     ]
+    },
+    {
+     "from": 36,
+     "to": 365,
+     "value_cents": 20973200,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-b0126f66af62",
+      "fisc-f-b9280325bc80"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198,
+        199
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 37,
+     "to": 364,
+     "value_cents": 12488000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-1caf2e05ab6f"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        199
+       ]
+      }
+     ]
+    },
+    {
+     "from": 37,
+     "to": 368,
+     "value_cents": 10000000,
+     "kind": "internal_transfer",
+     "fact_ids": [
+      "fisc-f-dfe1a474b3fe"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        199
+       ]
+      }
+     ]
+    },
+    {
+     "from": 38,
+     "to": 364,
+     "value_cents": 1054600,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-a0ec247efea6"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        201
+       ]
+      }
+     ]
+    },
+    {
+     "from": 39,
+     "to": 364,
+     "value_cents": 54780000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-a4ae007fa50e"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        201
+       ]
+      }
+     ]
+    },
+    {
+     "from": 40,
+     "to": 364,
+     "value_cents": 387699700,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-99a6449a46b8"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        201
+       ]
+      }
+     ]
+    },
+    {
+     "from": 41,
+     "to": 364,
+     "value_cents": 255980000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-775cb1129c7d"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        201
+       ]
+      }
+     ]
+    },
+    {
+     "from": 42,
+     "to": 364,
+     "value_cents": 3500000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-167e3c6a8905"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        201
+       ]
+      }
+     ]
+    },
+    {
+     "from": 42,
+     "to": 365,
+     "value_cents": 489575000,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-c760e189eb3f",
+      "fisc-f-eafdb18411d9"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200,
+        201
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 42,
+     "to": 367,
+     "value_cents": 7725000,
+     "kind": "internal_transfer",
+     "fact_ids": [
+      "fisc-f-88debec2be0e"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        201
+       ]
+      }
+     ]
+    },
+    {
+     "from": 42,
+     "to": 368,
+     "value_cents": 23500000,
+     "kind": "internal_transfer",
+     "fact_ids": [
+      "fisc-f-ad955e41d3bc"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        201
+       ]
+      }
+     ]
+    },
+    {
+     "from": 215,
+     "to": 365,
+     "value_cents": 177500000,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-0f9e6295fd43",
+      "fisc-f-3fb4a3ea344d"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200,
+        201
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 215,
+     "to": 368,
+     "value_cents": 33000000,
+     "kind": "internal_transfer",
+     "fact_ids": [
+      "fisc-f-5f6557979dc8"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        201
+       ]
+      }
+     ]
+    },
+    {
+     "from": 43,
+     "to": 364,
+     "value_cents": 1600000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-88ea10b7c0db"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        201
+       ]
+      }
+     ]
+    },
+    {
+     "from": 43,
+     "to": 368,
+     "value_cents": 1168709800,
+     "kind": "internal_transfer",
+     "fact_ids": [
+      "fisc-f-1e58d727ddf7"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        201
+       ]
+      }
+     ]
+    },
+    {
+     "from": 216,
+     "to": 368,
+     "value_cents": 158600000,
+     "kind": "internal_transfer",
+     "fact_ids": [
+      "fisc-f-67bc1998426f"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        201
+       ]
+      }
+     ]
+    },
+    {
+     "from": 44,
+     "to": 364,
+     "value_cents": 50420500,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-75c29119d612"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        201
+       ]
+      }
+     ]
+    },
+    {
+     "from": 45,
+     "to": 364,
+     "value_cents": 5200000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-bb98822ec30f"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        201
+       ]
+      }
+     ]
+    },
+    {
+     "from": 45,
+     "to": 365,
+     "value_cents": 15462200,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-1d954a4cb6f2",
+      "fisc-f-e69746aec34b"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200,
+        201
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 45,
+     "to": 368,
+     "value_cents": 40500000,
+     "kind": "internal_transfer",
+     "fact_ids": [
+      "fisc-f-f02a06f3b412"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        201
+       ]
+      }
+     ]
+    },
+    {
+     "from": 46,
+     "to": 364,
+     "value_cents": 28845000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-227a2b10c0ae"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        201
+       ]
+      }
+     ]
+    },
+    {
+     "from": 46,
+     "to": 365,
+     "value_cents": 54435400,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-0e1d55887b9b",
+      "fisc-f-ab5eed360755"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200,
+        201
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 46,
+     "to": 368,
+     "value_cents": 174802300,
+     "kind": "internal_transfer",
+     "fact_ids": [
+      "fisc-f-2815877a41b4"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        201
+       ]
+      }
+     ]
+    },
+    {
+     "from": 47,
+     "to": 364,
+     "value_cents": 6170000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-c89c5dcd0429"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        201
+       ]
+      }
+     ]
+    },
+    {
+     "from": 47,
+     "to": 365,
+     "value_cents": 35633000,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-e1e64591c578",
+      "fisc-f-ff9a883c0508"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200,
+        201
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 48,
+     "to": 364,
+     "value_cents": 10200000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-4194722be0b7"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        201
+       ]
+      }
+     ]
+    },
+    {
+     "from": 48,
+     "to": 365,
+     "value_cents": 77379400,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-bec562779203",
+      "fisc-f-d4173c22f978"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200,
+        201
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 48,
+     "to": 367,
+     "value_cents": 13390000,
+     "kind": "internal_transfer",
+     "fact_ids": [
+      "fisc-f-f8169edc3070"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        201
+       ]
+      }
+     ]
+    },
+    {
+     "from": 48,
+     "to": 368,
+     "value_cents": 165666100,
+     "kind": "internal_transfer",
+     "fact_ids": [
+      "fisc-f-10b906dbd726"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        201
+       ]
+      }
+     ]
+    },
+    {
+     "from": 49,
+     "to": 364,
+     "value_cents": 200000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-15a83a803492"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        201
+       ]
+      }
+     ]
+    },
+    {
+     "from": 49,
+     "to": 368,
+     "value_cents": 508700000,
+     "kind": "internal_transfer",
+     "fact_ids": [
+      "fisc-f-aa5aba87db09"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        201
+       ]
+      }
+     ]
+    },
+    {
+     "from": 217,
+     "to": 368,
+     "value_cents": 5000000,
+     "kind": "internal_transfer",
+     "fact_ids": [
+      "fisc-f-422245062d03"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        201
+       ]
+      }
+     ]
+    },
+    {
+     "from": 363,
+     "to": 368,
+     "value_cents": 70800000,
+     "kind": "internal_transfer",
+     "fact_ids": [
+      "fisc-f-d46dafe68e7b"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        201
+       ]
+      }
+     ]
+    },
+    {
+     "from": 50,
+     "to": 364,
+     "value_cents": 390989700,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-d4aba67035d0"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        201
+       ]
+      }
+     ]
+    },
+    {
+     "from": 50,
+     "to": 365,
+     "value_cents": 58961000,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-43d27c2abae2",
+      "fisc-f-c2eff2f600bc"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200,
+        201
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 50,
+     "to": 368,
+     "value_cents": 24000000,
+     "kind": "internal_transfer",
+     "fact_ids": [
+      "fisc-f-9e5261bc2507"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        201
+       ]
+      }
+     ]
+    },
+    {
+     "from": 51,
+     "to": 364,
+     "value_cents": 453089800,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-aef235d15fab"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        201
+       ]
+      }
+     ]
+    },
+    {
+     "from": 52,
+     "to": 364,
+     "value_cents": 739800,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-9f40dbc0da8b"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        201
+       ]
+      }
+     ]
+    },
+    {
+     "from": 52,
+     "to": 365,
+     "value_cents": 46860200,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-46550aacf700",
+      "fisc-f-e91e0dd8e0fa"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200,
+        201
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 52,
+     "to": 368,
+     "value_cents": 2000000,
+     "kind": "internal_transfer",
+     "fact_ids": [
+      "fisc-f-c675083a486d"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        201
+       ]
+      }
+     ]
+    },
+    {
+     "from": 53,
+     "to": 364,
+     "value_cents": 2611012300,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-795ea3ef9d05"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        201
+       ]
+      }
+     ]
+    },
+    {
+     "from": 53,
+     "to": 367,
+     "value_cents": 846000000,
+     "kind": "internal_transfer",
+     "fact_ids": [
+      "fisc-f-81999b113828"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        201
+       ]
+      }
+     ]
+    },
+    {
+     "from": 54,
+     "to": 364,
+     "value_cents": 66372400,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-6b32e70642c1"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        201
+       ]
+      }
+     ]
+    },
+    {
+     "from": 54,
+     "to": 365,
+     "value_cents": 313190100,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-33aa2798152e",
+      "fisc-f-7bc7bf3ec2b8"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200,
+        201
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 54,
+     "to": 368,
+     "value_cents": 515237500,
+     "kind": "internal_transfer",
+     "fact_ids": [
+      "fisc-f-b483c1de279f"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        201
+       ]
+      }
+     ]
+    },
+    {
+     "from": 55,
+     "to": 364,
+     "value_cents": 110443200,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-78dab79de447"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        201
+       ]
+      }
+     ]
+    },
+    {
+     "from": 55,
+     "to": 365,
+     "value_cents": 106279600,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-581b6d3f765b",
+      "fisc-f-b5314446eb84"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200,
+        201
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 55,
+     "to": 368,
+     "value_cents": 155777200,
+     "kind": "internal_transfer",
+     "fact_ids": [
+      "fisc-f-beaa5d919b94"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        201
+       ]
+      }
+     ]
+    },
+    {
+     "from": 56,
+     "to": 364,
+     "value_cents": 1980213600,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-4eeab50b68d9"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        201
+       ]
+      }
+     ]
+    },
+    {
+     "from": 56,
+     "to": 367,
+     "value_cents": 200000000,
+     "kind": "internal_transfer",
+     "fact_ids": [
+      "fisc-f-a429b101d80c"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        201
+       ]
+      }
+     ]
+    },
+    {
+     "from": 57,
+     "to": 364,
+     "value_cents": 70759300,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-e35b12704c63"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        201
+       ]
+      }
+     ]
+    },
+    {
+     "from": 57,
+     "to": 368,
+     "value_cents": 238300000,
+     "kind": "internal_transfer",
+     "fact_ids": [
+      "fisc-f-cf7947fd9556"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        201
+       ]
+      }
+     ]
+    },
+    {
+     "from": 58,
+     "to": 364,
+     "value_cents": 21752900,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-1b47d8cb51a6"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        201
+       ]
+      }
+     ]
+    },
+    {
+     "from": 58,
+     "to": 365,
+     "value_cents": 79947100,
+     "kind": "fund_balance",
+     "fact_ids": [
+      "fisc-f-3ee0a560ea44",
+      "fisc-f-fe8aa06f5e8e"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200,
+        201
+       ]
+      }
+     ],
+     "derived": true
+    },
+    {
+     "from": 59,
+     "to": 364,
+     "value_cents": 569381600,
+     "kind": "internal_service",
+     "fact_ids": [
+      "fisc-f-4792acd286da"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        201
+       ]
+      }
+     ]
+    },
+    {
+     "from": 60,
+     "to": 364,
+     "value_cents": 285659200,
+     "kind": "internal_service",
+     "fact_ids": [
+      "fisc-f-e1852df0d27b"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        201
+       ]
+      }
+     ]
+    },
+    {
+     "from": 61,
+     "to": 364,
+     "value_cents": 750536900,
+     "kind": "internal_service",
+     "fact_ids": [
+      "fisc-f-f63228546c79"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        201
+       ]
+      }
+     ]
+    },
+    {
+     "from": 62,
+     "to": 364,
+     "value_cents": 535544800,
+     "kind": "internal_service",
+     "fact_ids": [
+      "fisc-f-c88e87b18781"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        201
+       ]
+      }
+     ]
+    },
+    {
+     "from": 62,
+     "to": 368,
+     "value_cents": 4000000,
+     "kind": "internal_transfer",
+     "fact_ids": [
+      "fisc-f-89d92c9c1f41"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        201
+       ]
+      }
+     ]
+    },
+    {
+     "from": 63,
+     "to": 364,
+     "value_cents": 366614200,
+     "kind": "internal_service",
+     "fact_ids": [
+      "fisc-f-d14189ef031c"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        203
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 6,
+     "value_cents": 15787347000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-a84b4df9faa4"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 7,
+     "value_cents": 1022313200,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-0b836fbbe0a6"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 8,
+     "value_cents": 16100000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-88678b07d199"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 9,
+     "value_cents": 180300000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-964e494baa33"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 10,
+     "value_cents": 9000000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-3d945ffe2377"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 11,
+     "value_cents": 37900000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-8207afe95364"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 12,
+     "value_cents": 7000000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-43c4404d118d"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 13,
+     "value_cents": 7000000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-f1bce34c482c"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 14,
+     "value_cents": 550000000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-92dbee90e089"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 15,
+     "value_cents": 91550000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-97d5710d2cea"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 212,
+     "value_cents": 2500000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-2650722f3e31"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 16,
+     "value_cents": 1700000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-018c863b1b83"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 17,
+     "value_cents": 1100000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-085ae544fee7"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 19,
+     "value_cents": 46103500,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-67fb516bdab2"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 20,
+     "value_cents": 11780000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-634c851f47a0"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 21,
+     "value_cents": 16130000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-530bf0cfaa3a"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 22,
+     "value_cents": 9364400,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-e96e12d5d0e1"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 23,
+     "value_cents": 26000000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-c3010818faa7"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 213,
+     "value_cents": 11400000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-263200c944e3"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 24,
+     "value_cents": 52200000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-c3ee124b3ae4"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 25,
+     "value_cents": 78625100,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-d69c2ce45c50"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 26,
+     "value_cents": 15000000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-bf83e893820a"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 27,
+     "value_cents": 3000000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-4416a442066a"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 28,
+     "value_cents": 2300000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-97f98321f209"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 29,
+     "value_cents": 22500000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-9c14e306d914"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 31,
+     "value_cents": 38424600,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-e9d53f0a8902"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 214,
+     "value_cents": 8000000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-54f0cc7d8900"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 33,
+     "value_cents": 90941600,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-197bb7b03f19"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 34,
+     "value_cents": 385236000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-d7850566606e"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 35,
+     "value_cents": 49821300,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-c1ef37100884"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 36,
+     "value_cents": 40166300,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-d82b8f2dc786"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 37,
+     "value_cents": 12100000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-c9b04fc93389"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 38,
+     "value_cents": 1000000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-0f208381dab7"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 42,
+     "value_cents": 524300000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-d1af2977acf0"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 215,
+     "value_cents": 210500000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-97cddc25895e"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 43,
+     "value_cents": 955800000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-fa668bbbdea7"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 216,
+     "value_cents": 152942900,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-bbecf3440976"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 44,
+     "value_cents": 500000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-fd6ae7db60f6"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 45,
+     "value_cents": 61162200,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-6059cbb85d2b"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 46,
+     "value_cents": 258082700,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-88e23e7e48f6"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 47,
+     "value_cents": 41803000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-b7c9b2d1f378"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 48,
+     "value_cents": 266635500,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-c2879c2edce6"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 49,
+     "value_cents": 242061900,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-8e3b97342271"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 217,
+     "value_cents": 800000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-28a09ced6bc7"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 50,
+     "value_cents": 473950700,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-ff7071917e3a"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 51,
+     "value_cents": 116900000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-bf6029117b29"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 52,
+     "value_cents": 49600000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-6468fc97424e"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 53,
+     "value_cents": 3407075400,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-0cea06c93e64"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 54,
+     "value_cents": 94800000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-dd92a2e4b085"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 55,
+     "value_cents": 372500000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-afa3b8abd375"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 56,
+     "value_cents": 2072400000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-b55277821410"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 57,
+     "value_cents": 62500000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-4a3abbf4b778"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 58,
+     "value_cents": 101700000,
+     "kind": "external",
+     "fact_ids": [
+      "fisc-f-e20384eaa78c"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 59,
+     "value_cents": 487500300,
+     "kind": "internal_service",
+     "fact_ids": [
+      "fisc-f-a66fe0021904"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 60,
+     "value_cents": 151753000,
+     "kind": "internal_service",
+     "fact_ids": [
+      "fisc-f-b88b291977c5"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 61,
+     "value_cents": 572709600,
+     "kind": "internal_service",
+     "fact_ids": [
+      "fisc-f-fbf78d8068ed"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 62,
+     "value_cents": 472520500,
+     "kind": "internal_service",
+     "fact_ids": [
+      "fisc-f-d78922e013a3"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200
+       ]
+      }
+     ]
+    },
+    {
+     "from": 350,
+     "to": 63,
+     "value_cents": 212500000,
+     "kind": "internal_service",
+     "fact_ids": [
+      "fisc-f-ee0ff90c7311"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        202
+       ]
+      }
+     ]
+    },
+    {
+     "from": 118,
+     "to": 6,
+     "value_cents": 48040000,
+     "kind": "internal_transfer",
+     "fact_ids": [
+      "fisc-f-701341eb28ea"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198
+       ]
+      }
+     ]
+    },
+    {
+     "from": 118,
+     "to": 15,
+     "value_cents": 48400000,
+     "kind": "internal_transfer",
+     "fact_ids": [
+      "fisc-f-dba62baaf97a"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198
+       ]
+      }
+     ]
+    },
+    {
+     "from": 118,
+     "to": 33,
+     "value_cents": 33000000,
+     "kind": "internal_transfer",
+     "fact_ids": [
+      "fisc-f-5dac5eb6e954"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        198
+       ]
+      }
+     ]
+    },
+    {
+     "from": 118,
+     "to": 39,
+     "value_cents": 54780000,
+     "kind": "internal_transfer",
+     "fact_ids": [
+      "fisc-f-cbeae03c1a75"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200
+       ]
+      }
+     ]
+    },
+    {
+     "from": 118,
+     "to": 40,
+     "value_cents": 387699700,
+     "kind": "internal_transfer",
+     "fact_ids": [
+      "fisc-f-25fdbf27ff30"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200
+       ]
+      }
+     ]
+    },
+    {
+     "from": 118,
+     "to": 41,
+     "value_cents": 255980000,
+     "kind": "internal_transfer",
+     "fact_ids": [
+      "fisc-f-f96931087ed9"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200
+       ]
+      }
+     ]
+    },
+    {
+     "from": 118,
+     "to": 51,
+     "value_cents": 324700000,
+     "kind": "internal_transfer",
+     "fact_ids": [
+      "fisc-f-07e5b437915c"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200
+       ]
+      }
+     ]
+    },
+    {
+     "from": 118,
+     "to": 54,
+     "value_cents": 800000000,
+     "kind": "internal_transfer",
+     "fact_ids": [
+      "fisc-f-7cceb0bdf03e"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200
+       ]
+      }
+     ]
+    },
+    {
+     "from": 118,
+     "to": 57,
+     "value_cents": 200000000,
+     "kind": "internal_transfer",
+     "fact_ids": [
+      "fisc-f-d18b9e9461a9"
+     ],
+     "locators": [
+      {
+       "doc_id": "livermore-budget-fy2026-2027",
+       "pages": [
+        200
+       ]
+      }
+     ]
+    }
+   ]
+  },
   "sankey": {
    "scopes": [
     "all-funds-gross"
@@ -15987,13 +22321,13 @@
      "node": 107
     },
     {
-     "node": 350
+     "node": 365
     },
     {
-     "node": 351
+     "node": 366
     },
     {
-     "node": 352
+     "node": 367
     }
    ],
    "links": [
@@ -16087,7 +22421,7 @@
     },
     {
      "from": 0,
-     "to": 352,
+     "to": 367,
      "value_cents": 2858474000,
      "kind": "internal_transfer",
      "fact_ids": [
@@ -16189,7 +22523,7 @@
     },
     {
      "from": 2,
-     "to": 350,
+     "to": 365,
      "value_cents": 389438400,
      "kind": "fund_balance",
      "fact_ids": [
@@ -16207,7 +22541,7 @@
     },
     {
      "from": 2,
-     "to": 352,
+     "to": 367,
      "value_cents": 1981314700,
      "kind": "internal_transfer",
      "fact_ids": [
@@ -16258,7 +22592,7 @@
     },
     {
      "from": 3,
-     "to": 351,
+     "to": 366,
      "value_cents": 469942500,
      "kind": "fund_balance",
      "fact_ids": [
@@ -16275,7 +22609,7 @@
     },
     {
      "from": 3,
-     "to": 352,
+     "to": 367,
      "value_cents": 1003779700,
      "kind": "internal_transfer",
      "fact_ids": [
@@ -16360,7 +22694,7 @@
     },
     {
      "from": 4,
-     "to": 352,
+     "to": 367,
      "value_cents": 4000000,
      "kind": "internal_transfer",
      "fact_ids": [
@@ -16445,7 +22779,7 @@
     },
     {
      "from": 5,
-     "to": 350,
+     "to": 365,
      "value_cents": 887494900,
      "kind": "fund_balance",
      "fact_ids": [
@@ -16463,7 +22797,7 @@
     },
     {
      "from": 5,
-     "to": 352,
+     "to": 367,
      "value_cents": 113705000,
      "kind": "internal_transfer",
      "fact_ids": [
@@ -17047,35 +23381,35 @@
      "node": 118
     },
     {
-     "node": 353,
+     "node": 369,
      "parent": "transfers/in"
     },
     {
-     "node": 354,
+     "node": 370,
      "parent": "transfers/in"
     },
     {
-     "node": 355,
+     "node": 371,
      "parent": "transfers/in"
     },
     {
-     "node": 356,
+     "node": 372,
      "parent": "transfers/in"
     },
     {
-     "node": 357,
+     "node": 373,
      "parent": "transfers/in"
     },
     {
-     "node": 358,
+     "node": 374,
      "parent": "transfers/in"
     },
     {
-     "node": 359,
+     "node": 375,
      "parent": "transfers/in"
     },
     {
-     "node": 360,
+     "node": 376,
      "parent": "transfers/in"
     },
     {
@@ -17127,37 +23461,37 @@
      "node": 57
     },
     {
-     "node": 361
+     "node": 377
     },
     {
-     "node": 362
+     "node": 378
     },
     {
-     "node": 363
+     "node": 379
     },
     {
-     "node": 364
+     "node": 380
     },
     {
-     "node": 365
+     "node": 381
     },
     {
-     "node": 366
+     "node": 382
     },
     {
-     "node": 367
+     "node": 383
     },
     {
-     "node": 368
+     "node": 384
     },
     {
-     "node": 369
+     "node": 385
     }
    ],
    "links": [
     {
      "from": 6,
-     "to": 362,
+     "to": 378,
      "value_cents": 48400000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p76/3466",
@@ -17175,7 +23509,7 @@
     },
     {
      "from": 6,
-     "to": 363,
+     "to": 379,
      "value_cents": 33000000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p76/3610",
@@ -17193,7 +23527,7 @@
     },
     {
      "from": 6,
-     "to": 365,
+     "to": 381,
      "value_cents": 387699700,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p76/2846",
@@ -17211,7 +23545,7 @@
     },
     {
      "from": 6,
-     "to": 366,
+     "to": 382,
      "value_cents": 255980000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p76/2990",
@@ -17229,7 +23563,7 @@
     },
     {
      "from": 6,
-     "to": 367,
+     "to": 383,
      "value_cents": 278700000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p76/1950",
@@ -17247,7 +23581,7 @@
     },
     {
      "from": 24,
-     "to": 364,
+     "to": 380,
      "value_cents": 54780000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p76/3136",
@@ -17265,7 +23599,7 @@
     },
     {
      "from": 28,
-     "to": 361,
+     "to": 377,
      "value_cents": 1925000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p76/1216",
@@ -17283,7 +23617,7 @@
     },
     {
      "from": 34,
-     "to": 361,
+     "to": 377,
      "value_cents": 25000000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p76/1503",
@@ -17301,7 +23635,7 @@
     },
     {
      "from": 42,
-     "to": 361,
+     "to": 377,
      "value_cents": 7725000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p76/1648",
@@ -17319,7 +23653,7 @@
     },
     {
      "from": 48,
-     "to": 361,
+     "to": 377,
      "value_cents": 13390000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p76/1791",
@@ -17337,7 +23671,7 @@
     },
     {
      "from": 53,
-     "to": 367,
+     "to": 383,
      "value_cents": 46000000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p76/2096",
@@ -17355,7 +23689,7 @@
     },
     {
      "from": 53,
-     "to": 368,
+     "to": 384,
      "value_cents": 800000000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p76/2238",
@@ -17373,7 +23707,7 @@
     },
     {
      "from": 56,
-     "to": 369,
+     "to": 385,
      "value_cents": 200000000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p76/2539",
@@ -17390,7 +23724,7 @@
      ]
     },
     {
-     "from": 353,
+     "from": 369,
      "to": 15,
      "value_cents": 48400000,
      "kind": "internal_transfer",
@@ -17408,7 +23742,7 @@
      ]
     },
     {
-     "from": 353,
+     "from": 369,
      "to": 33,
      "value_cents": 33000000,
      "kind": "internal_transfer",
@@ -17426,7 +23760,7 @@
      ]
     },
     {
-     "from": 353,
+     "from": 369,
      "to": 40,
      "value_cents": 387699700,
      "kind": "internal_transfer",
@@ -17444,7 +23778,7 @@
      ]
     },
     {
-     "from": 353,
+     "from": 369,
      "to": 41,
      "value_cents": 255980000,
      "kind": "internal_transfer",
@@ -17462,7 +23796,7 @@
      ]
     },
     {
-     "from": 353,
+     "from": 369,
      "to": 51,
      "value_cents": 278700000,
      "kind": "internal_transfer",
@@ -17480,7 +23814,7 @@
      ]
     },
     {
-     "from": 354,
+     "from": 370,
      "to": 39,
      "value_cents": 54780000,
      "kind": "internal_transfer",
@@ -17498,7 +23832,7 @@
      ]
     },
     {
-     "from": 355,
+     "from": 371,
      "to": 6,
      "value_cents": 1925000,
      "kind": "internal_transfer",
@@ -17516,7 +23850,7 @@
      ]
     },
     {
-     "from": 356,
+     "from": 372,
      "to": 6,
      "value_cents": 25000000,
      "kind": "internal_transfer",
@@ -17534,7 +23868,7 @@
      ]
     },
     {
-     "from": 357,
+     "from": 373,
      "to": 6,
      "value_cents": 7725000,
      "kind": "internal_transfer",
@@ -17552,7 +23886,7 @@
      ]
     },
     {
-     "from": 358,
+     "from": 374,
      "to": 6,
      "value_cents": 13390000,
      "kind": "internal_transfer",
@@ -17570,7 +23904,7 @@
      ]
     },
     {
-     "from": 359,
+     "from": 375,
      "to": 51,
      "value_cents": 46000000,
      "kind": "internal_transfer",
@@ -17588,7 +23922,7 @@
      ]
     },
     {
-     "from": 359,
+     "from": 375,
      "to": 54,
      "value_cents": 800000000,
      "kind": "internal_transfer",
@@ -17606,7 +23940,7 @@
      ]
     },
     {
-     "from": 360,
+     "from": 376,
      "to": 57,
      "value_cents": 200000000,
      "kind": "internal_transfer",
@@ -17681,76 +24015,7 @@
    ],
    "nodes": [
     {
-     "node": 353
-    },
-    {
-     "node": 370
-    },
-    {
-     "node": 371
-    },
-    {
-     "node": 354
-    },
-    {
-     "node": 355
-    },
-    {
-     "node": 372
-    },
-    {
-     "node": 356
-    },
-    {
-     "node": 373
-    },
-    {
-     "node": 357
-    },
-    {
-     "node": 374
-    },
-    {
-     "node": 375
-    },
-    {
-     "node": 376
-    },
-    {
-     "node": 377
-    },
-    {
-     "node": 378
-    },
-    {
-     "node": 358
-    },
-    {
-     "node": 379
-    },
-    {
-     "node": 380
-    },
-    {
-     "node": 381
-    },
-    {
-     "node": 382
-    },
-    {
-     "node": 383
-    },
-    {
-     "node": 359
-    },
-    {
-     "node": 384
-    },
-    {
-     "node": 385
-    },
-    {
-     "node": 360
+     "node": 369
     },
     {
      "node": 386
@@ -17759,10 +24024,79 @@
      "node": 387
     },
     {
-     "node": 6
+     "node": 370
+    },
+    {
+     "node": 371
     },
     {
      "node": 388
+    },
+    {
+     "node": 372
+    },
+    {
+     "node": 389
+    },
+    {
+     "node": 373
+    },
+    {
+     "node": 390
+    },
+    {
+     "node": 391
+    },
+    {
+     "node": 392
+    },
+    {
+     "node": 393
+    },
+    {
+     "node": 394
+    },
+    {
+     "node": 374
+    },
+    {
+     "node": 395
+    },
+    {
+     "node": 396
+    },
+    {
+     "node": 397
+    },
+    {
+     "node": 398
+    },
+    {
+     "node": 399
+    },
+    {
+     "node": 375
+    },
+    {
+     "node": 400
+    },
+    {
+     "node": 401
+    },
+    {
+     "node": 376
+    },
+    {
+     "node": 402
+    },
+    {
+     "node": 403
+    },
+    {
+     "node": 6
+    },
+    {
+     "node": 352
     },
     {
      "node": 15
@@ -17825,19 +24159,19 @@
      "node": 217
     },
     {
-     "node": 389
+     "node": 363
     },
     {
      "node": 50
     },
     {
-     "node": 390
+     "node": 404
     },
     {
      "node": 51
     },
     {
-     "node": 391
+     "node": 405
     },
     {
      "node": 52
@@ -17846,7 +24180,7 @@
      "node": 53
     },
     {
-     "node": 392
+     "node": 406
     },
     {
      "node": 54
@@ -17858,7 +24192,7 @@
      "node": 56
     },
     {
-     "node": 393
+     "node": 407
     },
     {
      "node": 57
@@ -17867,147 +24201,83 @@
      "node": 62
     },
     {
-     "node": 394
-    },
-    {
-     "node": 395
-    },
-    {
-     "node": 396
-    },
-    {
-     "node": 397
-    },
-    {
-     "node": 398
-    },
-    {
-     "node": 399
-    },
-    {
-     "node": 400
-    },
-    {
-     "node": 401
-    },
-    {
-     "node": 402
-    },
-    {
-     "node": 403
-    },
-    {
-     "node": 404
-    },
-    {
-     "node": 405
-    },
-    {
-     "node": 406
-    },
-    {
-     "node": 407
-    },
-    {
      "node": 408
     },
     {
      "node": 409
     },
     {
-     "node": 361,
+     "node": 410
+    },
+    {
+     "node": 411
+    },
+    {
+     "node": 412
+    },
+    {
+     "node": 413
+    },
+    {
+     "node": 414
+    },
+    {
+     "node": 415
+    },
+    {
+     "node": 416
+    },
+    {
+     "node": 417
+    },
+    {
+     "node": 418
+    },
+    {
+     "node": 419
+    },
+    {
+     "node": 420
+    },
+    {
+     "node": 421
+    },
+    {
+     "node": 422
+    },
+    {
+     "node": 423
+    },
+    {
+     "node": 377,
      "parent": "transfers/out"
     },
     {
-     "node": 362,
+     "node": 378,
      "parent": "transfers/out"
     },
     {
-     "node": 363,
+     "node": 379,
      "parent": "transfers/out"
     },
     {
-     "node": 364,
+     "node": 380,
      "parent": "transfers/out"
     },
     {
-     "node": 365,
+     "node": 381,
      "parent": "transfers/out"
     },
     {
-     "node": 366,
-     "parent": "transfers/out"
-    },
-    {
-     "node": 410,
-     "parent": "transfers/out"
-    },
-    {
-     "node": 367,
-     "parent": "transfers/out"
-    },
-    {
-     "node": 411,
-     "parent": "transfers/out"
-    },
-    {
-     "node": 412,
-     "parent": "transfers/out"
-    },
-    {
-     "node": 368,
-     "parent": "transfers/out"
-    },
-    {
-     "node": 413,
-     "parent": "transfers/out"
-    },
-    {
-     "node": 369,
-     "parent": "transfers/out"
-    },
-    {
-     "node": 414,
-     "parent": "transfers/out"
-    },
-    {
-     "node": 415,
-     "parent": "transfers/out"
-    },
-    {
-     "node": 416,
-     "parent": "transfers/out"
-    },
-    {
-     "node": 417,
-     "parent": "transfers/out"
-    },
-    {
-     "node": 418,
-     "parent": "transfers/out"
-    },
-    {
-     "node": 419,
-     "parent": "transfers/out"
-    },
-    {
-     "node": 420,
-     "parent": "transfers/out"
-    },
-    {
-     "node": 421,
-     "parent": "transfers/out"
-    },
-    {
-     "node": 422,
-     "parent": "transfers/out"
-    },
-    {
-     "node": 423,
+     "node": 382,
      "parent": "transfers/out"
     },
     {
      "node": 424,
+     "parent": "transfers/out"
+    },
+    {
+     "node": 383,
      "parent": "transfers/out"
     },
     {
@@ -18019,7 +24289,15 @@
      "parent": "transfers/out"
     },
     {
+     "node": 384,
+     "parent": "transfers/out"
+    },
+    {
      "node": 427,
+     "parent": "transfers/out"
+    },
+    {
+     "node": 385,
      "parent": "transfers/out"
     },
     {
@@ -18031,13 +24309,69 @@
      "parent": "transfers/out"
     },
     {
-     "node": 352
+     "node": 430,
+     "parent": "transfers/out"
+    },
+    {
+     "node": 431,
+     "parent": "transfers/out"
+    },
+    {
+     "node": 432,
+     "parent": "transfers/out"
+    },
+    {
+     "node": 433,
+     "parent": "transfers/out"
+    },
+    {
+     "node": 434,
+     "parent": "transfers/out"
+    },
+    {
+     "node": 435,
+     "parent": "transfers/out"
+    },
+    {
+     "node": 436,
+     "parent": "transfers/out"
+    },
+    {
+     "node": 437,
+     "parent": "transfers/out"
+    },
+    {
+     "node": 438,
+     "parent": "transfers/out"
+    },
+    {
+     "node": 439,
+     "parent": "transfers/out"
+    },
+    {
+     "node": 440,
+     "parent": "transfers/out"
+    },
+    {
+     "node": 441,
+     "parent": "transfers/out"
+    },
+    {
+     "node": 442,
+     "parent": "transfers/out"
+    },
+    {
+     "node": 443,
+     "parent": "transfers/out"
+    },
+    {
+     "node": 367
     }
    ],
    "links": [
     {
      "from": 6,
-     "to": 362,
+     "to": 378,
      "value_cents": 48400000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p76/3466",
@@ -18055,7 +24389,7 @@
     },
     {
      "from": 6,
-     "to": 363,
+     "to": 379,
      "value_cents": 33000000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p76/3610",
@@ -18073,7 +24407,7 @@
     },
     {
      "from": 6,
-     "to": 365,
+     "to": 381,
      "value_cents": 387699700,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p76/2846",
@@ -18091,7 +24425,7 @@
     },
     {
      "from": 6,
-     "to": 366,
+     "to": 382,
      "value_cents": 255980000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p76/2990",
@@ -18109,7 +24443,7 @@
     },
     {
      "from": 6,
-     "to": 367,
+     "to": 383,
      "value_cents": 278700000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p76/1950",
@@ -18126,8 +24460,8 @@
      ]
     },
     {
-     "from": 388,
-     "to": 411,
+     "from": 352,
+     "to": 425,
      "value_cents": 207980800,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p222/1746",
@@ -18144,8 +24478,8 @@
      ]
     },
     {
-     "from": 388,
-     "to": 414,
+     "from": 352,
+     "to": 428,
      "value_cents": 28100000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p222/1873",
@@ -18162,8 +24496,8 @@
      ]
     },
     {
-     "from": 388,
-     "to": 415,
+     "from": 352,
+     "to": 429,
      "value_cents": 30000000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p222/1998",
@@ -18180,8 +24514,8 @@
      ]
     },
     {
-     "from": 388,
-     "to": 416,
+     "from": 352,
+     "to": 430,
      "value_cents": 222000000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p222/2121",
@@ -18199,7 +24533,7 @@
     },
     {
      "from": 19,
-     "to": 428,
+     "to": 442,
      "value_cents": 1000000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p222/611",
@@ -18217,7 +24551,7 @@
     },
     {
      "from": 24,
-     "to": 364,
+     "to": 380,
      "value_cents": 54780000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p76/3136",
@@ -18235,7 +24569,7 @@
     },
     {
      "from": 28,
-     "to": 361,
+     "to": 377,
      "value_cents": 1925000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p76/1216",
@@ -18253,7 +24587,7 @@
     },
     {
      "from": 32,
-     "to": 429,
+     "to": 443,
      "value_cents": 21000000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p222/827",
@@ -18271,7 +24605,7 @@
     },
     {
      "from": 34,
-     "to": 361,
+     "to": 377,
      "value_cents": 25000000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p76/1503",
@@ -18289,7 +24623,7 @@
     },
     {
      "from": 37,
-     "to": 417,
+     "to": 431,
      "value_cents": 10000000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p222/2376",
@@ -18307,7 +24641,7 @@
     },
     {
      "from": 42,
-     "to": 361,
+     "to": 377,
      "value_cents": 7725000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p76/1648",
@@ -18325,7 +24659,7 @@
     },
     {
      "from": 42,
-     "to": 418,
+     "to": 432,
      "value_cents": 23500000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p222/2501",
@@ -18343,7 +24677,7 @@
     },
     {
      "from": 215,
-     "to": 419,
+     "to": 433,
      "value_cents": 33000000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p222/2680",
@@ -18361,7 +24695,7 @@
     },
     {
      "from": 43,
-     "to": 420,
+     "to": 434,
      "value_cents": 1168709800,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p222/2850",
@@ -18379,7 +24713,7 @@
     },
     {
      "from": 216,
-     "to": 421,
+     "to": 435,
      "value_cents": 158600000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p222/2976",
@@ -18397,7 +24731,7 @@
     },
     {
      "from": 45,
-     "to": 422,
+     "to": 436,
      "value_cents": 40500000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p222/3233",
@@ -18415,7 +24749,7 @@
     },
     {
      "from": 46,
-     "to": 423,
+     "to": 437,
      "value_cents": 174802300,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p222/3356",
@@ -18433,7 +24767,7 @@
     },
     {
      "from": 48,
-     "to": 361,
+     "to": 377,
      "value_cents": 13390000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p76/1791",
@@ -18451,7 +24785,7 @@
     },
     {
      "from": 48,
-     "to": 424,
+     "to": 438,
      "value_cents": 165666100,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p222/3957",
@@ -18469,7 +24803,7 @@
     },
     {
      "from": 49,
-     "to": 425,
+     "to": 439,
      "value_cents": 508700000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p222/4082",
@@ -18487,7 +24821,7 @@
     },
     {
      "from": 217,
-     "to": 426,
+     "to": 440,
      "value_cents": 5000000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p222/4210",
@@ -18504,8 +24838,8 @@
      ]
     },
     {
-     "from": 389,
-     "to": 427,
+     "from": 363,
+     "to": 441,
      "value_cents": 70800000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p222/4395",
@@ -18523,7 +24857,7 @@
     },
     {
      "from": 50,
-     "to": 410,
+     "to": 424,
      "value_cents": 24000000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p222/998",
@@ -18541,7 +24875,7 @@
     },
     {
      "from": 52,
-     "to": 411,
+     "to": 425,
      "value_cents": 2000000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p222/1124",
@@ -18559,7 +24893,7 @@
     },
     {
      "from": 53,
-     "to": 367,
+     "to": 383,
      "value_cents": 46000000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p76/2096",
@@ -18577,7 +24911,7 @@
     },
     {
      "from": 53,
-     "to": 368,
+     "to": 384,
      "value_cents": 800000000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p76/2238",
@@ -18595,7 +24929,7 @@
     },
     {
      "from": 54,
-     "to": 412,
+     "to": 426,
      "value_cents": 515237500,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p222/1246",
@@ -18613,7 +24947,7 @@
     },
     {
      "from": 55,
-     "to": 412,
+     "to": 426,
      "value_cents": 155777200,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p222/1371",
@@ -18631,7 +24965,7 @@
     },
     {
      "from": 56,
-     "to": 369,
+     "to": 385,
      "value_cents": 200000000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p76/2539",
@@ -18649,7 +24983,7 @@
     },
     {
      "from": 57,
-     "to": 413,
+     "to": 427,
      "value_cents": 238300000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p222/1496",
@@ -18667,7 +25001,7 @@
     },
     {
      "from": 62,
-     "to": 414,
+     "to": 428,
      "value_cents": 4000000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p222/1624",
@@ -18684,7 +25018,7 @@
      ]
     },
     {
-     "from": 353,
+     "from": 369,
      "to": 15,
      "value_cents": 48400000,
      "kind": "internal_transfer",
@@ -18702,7 +25036,7 @@
      ]
     },
     {
-     "from": 353,
+     "from": 369,
      "to": 33,
      "value_cents": 33000000,
      "kind": "internal_transfer",
@@ -18720,7 +25054,7 @@
      ]
     },
     {
-     "from": 353,
+     "from": 369,
      "to": 40,
      "value_cents": 387699700,
      "kind": "internal_transfer",
@@ -18738,7 +25072,7 @@
      ]
     },
     {
-     "from": 353,
+     "from": 369,
      "to": 41,
      "value_cents": 255980000,
      "kind": "internal_transfer",
@@ -18756,7 +25090,7 @@
      ]
     },
     {
-     "from": 353,
+     "from": 369,
      "to": 51,
      "value_cents": 278700000,
      "kind": "internal_transfer",
@@ -18774,8 +25108,8 @@
      ]
     },
     {
-     "from": 370,
-     "to": 391,
+     "from": 386,
+     "to": 405,
      "value_cents": 207980800,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p222/1746",
@@ -18792,8 +25126,8 @@
      ]
     },
     {
-     "from": 370,
-     "to": 394,
+     "from": 386,
+     "to": 408,
      "value_cents": 28100000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p222/1873",
@@ -18810,8 +25144,8 @@
      ]
     },
     {
-     "from": 370,
-     "to": 395,
+     "from": 386,
+     "to": 409,
      "value_cents": 30000000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p222/1998",
@@ -18828,8 +25162,8 @@
      ]
     },
     {
-     "from": 370,
-     "to": 396,
+     "from": 386,
+     "to": 410,
      "value_cents": 222000000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p222/2121",
@@ -18846,8 +25180,8 @@
      ]
     },
     {
-     "from": 371,
-     "to": 408,
+     "from": 387,
+     "to": 422,
      "value_cents": 1000000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p222/611",
@@ -18864,7 +25198,7 @@
      ]
     },
     {
-     "from": 354,
+     "from": 370,
      "to": 39,
      "value_cents": 54780000,
      "kind": "internal_transfer",
@@ -18882,7 +25216,7 @@
      ]
     },
     {
-     "from": 355,
+     "from": 371,
      "to": 6,
      "value_cents": 1925000,
      "kind": "internal_transfer",
@@ -18900,8 +25234,8 @@
      ]
     },
     {
-     "from": 372,
-     "to": 409,
+     "from": 388,
+     "to": 423,
      "value_cents": 21000000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p222/827",
@@ -18918,7 +25252,7 @@
      ]
     },
     {
-     "from": 356,
+     "from": 372,
      "to": 6,
      "value_cents": 25000000,
      "kind": "internal_transfer",
@@ -18936,8 +25270,8 @@
      ]
     },
     {
-     "from": 373,
-     "to": 397,
+     "from": 389,
+     "to": 411,
      "value_cents": 10000000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p222/2376",
@@ -18954,7 +25288,7 @@
      ]
     },
     {
-     "from": 357,
+     "from": 373,
      "to": 6,
      "value_cents": 7725000,
      "kind": "internal_transfer",
@@ -18972,8 +25306,8 @@
      ]
     },
     {
-     "from": 357,
-     "to": 398,
+     "from": 373,
+     "to": 412,
      "value_cents": 23500000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p222/2501",
@@ -18990,8 +25324,8 @@
      ]
     },
     {
-     "from": 374,
-     "to": 399,
+     "from": 390,
+     "to": 413,
      "value_cents": 33000000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p222/2680",
@@ -19008,8 +25342,8 @@
      ]
     },
     {
-     "from": 375,
-     "to": 400,
+     "from": 391,
+     "to": 414,
      "value_cents": 1168709800,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p222/2850",
@@ -19026,8 +25360,8 @@
      ]
     },
     {
-     "from": 376,
-     "to": 401,
+     "from": 392,
+     "to": 415,
      "value_cents": 158600000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p222/2976",
@@ -19044,8 +25378,8 @@
      ]
     },
     {
-     "from": 377,
-     "to": 402,
+     "from": 393,
+     "to": 416,
      "value_cents": 40500000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p222/3233",
@@ -19062,8 +25396,8 @@
      ]
     },
     {
-     "from": 378,
-     "to": 403,
+     "from": 394,
+     "to": 417,
      "value_cents": 174802300,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p222/3356",
@@ -19080,7 +25414,7 @@
      ]
     },
     {
-     "from": 358,
+     "from": 374,
      "to": 6,
      "value_cents": 13390000,
      "kind": "internal_transfer",
@@ -19098,8 +25432,8 @@
      ]
     },
     {
-     "from": 358,
-     "to": 404,
+     "from": 374,
+     "to": 418,
      "value_cents": 165666100,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p222/3957",
@@ -19116,8 +25450,8 @@
      ]
     },
     {
-     "from": 379,
-     "to": 405,
+     "from": 395,
+     "to": 419,
      "value_cents": 508700000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p222/4082",
@@ -19134,8 +25468,8 @@
      ]
     },
     {
-     "from": 380,
-     "to": 406,
+     "from": 396,
+     "to": 420,
      "value_cents": 5000000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p222/4210",
@@ -19152,8 +25486,8 @@
      ]
     },
     {
-     "from": 381,
-     "to": 407,
+     "from": 397,
+     "to": 421,
      "value_cents": 70800000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p222/4395",
@@ -19170,8 +25504,8 @@
      ]
     },
     {
-     "from": 382,
-     "to": 390,
+     "from": 398,
+     "to": 404,
      "value_cents": 24000000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p222/998",
@@ -19188,8 +25522,8 @@
      ]
     },
     {
-     "from": 383,
-     "to": 391,
+     "from": 399,
+     "to": 405,
      "value_cents": 2000000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p222/1124",
@@ -19206,7 +25540,7 @@
      ]
     },
     {
-     "from": 359,
+     "from": 375,
      "to": 51,
      "value_cents": 46000000,
      "kind": "internal_transfer",
@@ -19224,7 +25558,7 @@
      ]
     },
     {
-     "from": 359,
+     "from": 375,
      "to": 54,
      "value_cents": 800000000,
      "kind": "internal_transfer",
@@ -19242,8 +25576,8 @@
      ]
     },
     {
-     "from": 384,
-     "to": 392,
+     "from": 400,
+     "to": 406,
      "value_cents": 515237500,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p222/1246",
@@ -19260,8 +25594,8 @@
      ]
     },
     {
-     "from": 385,
-     "to": 392,
+     "from": 401,
+     "to": 406,
      "value_cents": 155777200,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p222/1371",
@@ -19278,7 +25612,7 @@
      ]
     },
     {
-     "from": 360,
+     "from": 376,
      "to": 57,
      "value_cents": 200000000,
      "kind": "internal_transfer",
@@ -19296,8 +25630,8 @@
      ]
     },
     {
-     "from": 386,
-     "to": 393,
+     "from": 402,
+     "to": 407,
      "value_cents": 238300000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p222/1496",
@@ -19314,8 +25648,8 @@
      ]
     },
     {
-     "from": 387,
-     "to": 394,
+     "from": 403,
+     "to": 408,
      "value_cents": 4000000,
      "kind": "internal_transfer",
      "transfer_id": "livermore-budget-fy2026-2027/p222/1624",

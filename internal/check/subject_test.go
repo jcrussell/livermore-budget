@@ -265,6 +265,7 @@ func TestTheCommittedCorpusVacuitySplit(t *testing.T) {
 		"graph-acyclic":                           StatusPass,
 		"derived-nodes-justified":                 StatusPass,
 		"link-locators-match-their-facts":         StatusPass,
+		"node-balances-tie-to-facts":              StatusPass,
 		"link-ends-match-their-facts":             StatusPass,
 		"link-values-tie-to-facts":                StatusPass,
 		"counts-reconcile":                        StatusPass,

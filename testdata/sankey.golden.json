@@ -79,8 +79,8 @@
       "constraint_tier": "",
       "role": "fund_balance_draw",
       "derived": true,
-      "rationale": "Our sign-decomposition of the published CHANGE IN WORKING CAPITAL row: a negative change is a draw on accumulated balance. The city prints one signed row; a Sankey cannot render a negative link.",
-      "source_note": "Budget Book PDF pp.66-67, CHANGE IN WORKING CAPITAL"
+      "rationale": "Our sign-decomposition of a published change in balance: a negative change is a draw on accumulated balance. The city prints a fund group's change as one signed row, and a fund's as the beginning and ending balances it is the difference of; a Sankey cannot render a negative link.",
+      "source_note": "Budget Book PDF pp.66-67, CHANGE IN WORKING CAPITAL; pp.186-209, each fund's beginning and ending balance"
     },
     {
       "id": "revenue/charges-for-services",
@@ -321,8 +321,8 @@
       "constraint_tier": "",
       "role": "fund_balance_contribution",
       "derived": true,
-      "rationale": "Our sign-decomposition of the published CHANGE IN WORKING CAPITAL row: a positive change is a contribution to accumulated balance.",
-      "source_note": "Budget Book PDF pp.66-67, CHANGE IN WORKING CAPITAL"
+      "rationale": "Our sign-decomposition of a published change in balance: a positive change is a contribution to accumulated balance.",
+      "source_note": "Budget Book PDF pp.66-67, CHANGE IN WORKING CAPITAL; pp.186-209, each fund's beginning and ending balance"
     },
     {
       "id": "fund-balance/reserve-increase",

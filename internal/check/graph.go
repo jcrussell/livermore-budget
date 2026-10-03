@@ -177,15 +177,16 @@ func (*linkValuesTieToFacts) Description() string {
 		"name, so its value and its citation are of the same cell"
 }
 
-// Run allows exactly one link a value that is not the plain sum: the
-// fund-balance draw.
+// Run holds every link to project.ChangeCents of its facts, which is their
+// plain sum unless one is a beginning balance, and allows exactly one link
+// the negation of it: the fund-balance draw.
 //
-// The city prints CHANGE IN WORKING CAPITAL once per column, signed, and a
-// Sankey cannot draw a negative link, so internal/project decomposes the sign
-// into two nodes and the draw leg carries the negation of its facts. The
-// condition is the source node id rather than the sign of the sum, because
-// "value equals the absolute sum" would accept a leg pointing the wrong way,
-// which is the error the decomposition can actually make.
+// A change in balance is printed signed, or as the two balances it is the
+// difference of, and a Sankey cannot draw a negative link, so internal/project
+// decomposes the sign into two nodes and the draw leg carries the negation.
+// The condition is the source node id rather than the sign of the sum,
+// because "value equals the absolute sum" would accept a leg pointing the
+// wrong way, which is the error the decomposition can actually make.
 func (*linkValuesTieToFacts) Run(_ context.Context, s *Subject) (Result, error) {
 	// Two indexes, because a link may only cite facts from the slice its own
 	// projection is of. A citation that resolves in the fact store but not in
@@ -207,7 +208,7 @@ func (*linkValuesTieToFacts) Run(_ context.Context, s *Subject) (Result, error) 
 					amount.Cents(l.ValueCents)))
 				continue
 			}
-			var sum int64
+			var cited []fact.Fact
 			unknown := false
 			for _, id := range l.FactIDs {
 				f, ok := selected[id]
@@ -223,18 +224,18 @@ func (*linkValuesTieToFacts) Run(_ context.Context, s *Subject) (Result, error) 
 					}
 					continue
 				}
-				sum += f.AmountCents
+				cited = append(cited, f)
 			}
 			if unknown {
 				continue
 			}
-			want := sum
+			want := project.ChangeCents(cited)
 			if l.Source == project.NodeFundBalanceDraw {
-				want = -sum
+				want = -want
 			}
 			if l.ValueCents != want {
 				findings = append(findings, finding(subject,
-					"value_cents is %s but its %d facts sum to %s (off by %s)",
+					"value_cents is %s but its %d facts come to %s (off by %s)",
 					amount.Cents(l.ValueCents), len(l.FactIDs), amount.Cents(want),
 					amount.Cents(l.ValueCents-want)))
 			}
@@ -397,9 +398,20 @@ func (*countsReconcile) Run(_ context.Context, s *Subject) (Result, error) {
 				twice++
 			}
 		}
+		// A node's balance cites its fact as a link does, and is not a second
+		// link: it counts toward facts_cited and never toward cited twice.
+		onNode := map[string]bool{}
+		for _, n := range p.Nodes {
+			for _, id := range n.Balances.FactIDs() {
+				if times[id] == 0 && !onNode[id] {
+					cited++
+				}
+				onNode[id] = true
+			}
+		}
 		uncited := 0
 		for i := range slice {
-			if times[slice[i].ID] == 0 {
+			if times[slice[i].ID] == 0 && !onNode[slice[i].ID] {
 				uncited++
 			}
 		}
@@ -412,7 +424,7 @@ func (*countsReconcile) Run(_ context.Context, s *Subject) (Result, error) {
 				"the document says it drew a different slice than the one it was built over"},
 			{"counts.facts_cited", c.FactsCited, cited,
 				"a citation the document dropped, or one it counted twice: this is the " +
-					"number of DISTINCT facts some link names"},
+					"number of DISTINCT facts some link or node balance names"},
 			{"counts.facts_uncited", c.FactsUncited, uncited,
 				"a fact that reached no link, and the document disagrees about how many"},
 			{"counts.facts_cited_twice", c.FactsCitedTwice, twice,
@@ -856,7 +868,7 @@ func (*nodeHierarchyWellFormed) Run(_ context.Context, s *Subject) (Result, erro
 				continue
 			}
 			sameTier := false
-			if _, isEndpoint := project.EndpointCategory(n.Parent); isEndpoint {
+			if _, isEndpoint := project.EndpointCategories(n.Parent); isEndpoint {
 				if flowing[n.Parent] {
 					findings = append(findings, finding(p.String(),
 						"node %q is parented to %q, a flow endpoint this document draws a "+

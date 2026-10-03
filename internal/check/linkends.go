@@ -3,6 +3,7 @@ package check
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -167,16 +168,13 @@ type linkEnd struct {
 // mismatch is why the end id does not name what the link's facts carry, or
 // "", and whether the end was held to anything.
 func (e linkEnd) mismatch(id string, source bool) (string, bool) {
-	if want, ok := project.EndpointCategory(id); ok {
-		var sum int64
-		for _, f := range e.facts {
-			if f.Category != want {
-				return fmt.Sprintf("%s carries category %q and fact %s carries %q", id, want, f.ID, f.Category), true
-			}
-			sum += f.AmountCents
+	if readings, ok := project.EndpointCategories(id); ok {
+		if msg := outsideEveryReading(id, readings, e.facts); msg != "" {
+			return msg, true
 		}
-		// A draw and a contribution cite the same category, told apart by sign;
-		// a zero sum is neither.
+		sum := project.ChangeCents(e.facts)
+		// A draw and a contribution cite the same categories, told apart by
+		// sign; a zero change is neither.
 		if len(e.facts) > 0 && ((id == project.NodeFundBalanceDraw && sum >= 0) ||
 			(id == project.NodeFundBalanceContribution && sum <= 0)) {
 			return fmt.Sprintf("%s cites facts summing to %d cents; a draw is negative and a contribution positive", id, sum), true
@@ -238,6 +236,26 @@ func (e linkEnd) mismatch(id string, source bool) (string, bool) {
 		}
 	}
 	return "", true
+}
+
+// outsideEveryReading is why the facts behind a flow endpoint are not all of
+// one of its readings' categories, or "".
+func outsideEveryReading(id string, readings [][]string, facts []fact.Fact) string {
+	for _, cats := range readings {
+		fits := true
+		for _, f := range facts {
+			fits = fits && slices.Contains(cats, f.Category)
+		}
+		if fits {
+			return ""
+		}
+	}
+	got := make([]string, 0, len(facts))
+	for _, f := range facts {
+		got = append(got, fmt.Sprintf("%s carries %q", f.ID, f.Category))
+	}
+	return fmt.Sprintf("%s is read from categories %v and its facts are not all of one of them: %s",
+		id, readings, strings.Join(got, ", "))
 }
 
 // lineMismatch is why line is not the taxonomy line f's row was printed as.

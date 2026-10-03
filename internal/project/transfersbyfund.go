@@ -197,7 +197,7 @@ func (t *transfersByFund) Document(facts []fact.Fact, o Options) (*Document, err
 	}
 	out := sortedNodes(nodes)
 
-	c, uncited := tally(selected, links, len(out))
+	c, uncited := tally(selected, links, out)
 	if err := refuseUncited(t.Name(), uncited, nil); err != nil {
 		return nil, err
 	}

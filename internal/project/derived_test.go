@@ -34,7 +34,7 @@ func TestTheSpineEndpointsAreTheGoldensOwn(t *testing.T) {
 		drawn = append(drawn, n.ID)
 	}
 	var declared []string
-	for _, e := range spineEndpoints {
+	for _, e := range spineEndpoints() {
 		declared = append(declared, e.id)
 	}
 	slices.Sort(drawn)

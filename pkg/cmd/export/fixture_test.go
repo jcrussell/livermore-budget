@@ -218,6 +218,7 @@ func columnFixtureFaults(stem string, served, fixture []byte, stamp string, fact
 			}
 			drawn[id] = true
 			parentOf[id] = n.Parent
+			faults = append(faults, balanceFaults(at+" "+id, n.Balances, id, col.Column, facts)...)
 		}
 		for id, parent := range parentOf {
 			for seen := 0; parent != ""; seen++ {
@@ -279,8 +280,13 @@ func scheduleOf(col export.ColumnDoc, sched export.ColumnSched, figures bool) (n
 			continue
 		}
 		c := col.Nodes[n.Node]
-		nodes = append(nodes, fmt.Sprintf("%s tier=%d role=%q label=%q parent=%q derived=%t constraint=%q rationale=%q source=%q",
-			c.ID, c.Tier, c.Role, c.Label, n.Parent, c.Derived, c.ConstraintTier, c.Rationale, c.SourceNote))
+		node := fmt.Sprintf("%s tier=%d role=%q label=%q parent=%q derived=%t constraint=%q rationale=%q source=%q",
+			c.ID, c.Tier, c.Role, c.Label, n.Parent, c.Derived, c.ConstraintTier, c.Rationale, c.SourceNote)
+		if figures && n.Balances != nil {
+			raw, _ := json.Marshal(n.Balances)
+			node += " balances=" + string(raw)
+		}
+		nodes = append(nodes, node)
 	}
 	for _, l := range sched.Links {
 		link := fmt.Sprintf("%s -> %s kind=%s transfer=%q derived=%t partition=%t contra=%q",
@@ -307,7 +313,7 @@ func linkFactFaults(at string, l export.ColumnLink, src string, column export.Co
 		return nil
 	}
 	var faults []string
-	var sum int64
+	var cited []fact.Fact
 	missing := false
 	pages := map[string]bool{}
 	for _, id := range l.FactIDs {
@@ -320,7 +326,7 @@ func linkFactFaults(at string, l export.ColumnLink, src string, column export.Co
 		if f.FiscalYear != column.FiscalYear || string(f.Basis) != column.Basis {
 			faults = append(faults, fmt.Sprintf("%s cites %s of FY%d %s", at, id, f.FiscalYear, f.Basis))
 		}
-		sum += f.AmountCents
+		cited = append(cited, f)
 		pages[fmt.Sprintf("%s p%d", f.DocID, f.Page)] = true
 	}
 	var locs []struct {
@@ -339,11 +345,50 @@ func linkFactFaults(at string, l export.ColumnLink, src string, column export.Co
 	if want, got := slices.Sorted(maps.Keys(pages)), slices.Sorted(maps.Keys(located)); !missing && !slices.Equal(want, got) {
 		faults = append(faults, fmt.Sprintf("%s locates %v and its facts are on %v", at, got, want))
 	}
+	sum := project.ChangeCents(cited)
 	if src == project.NodeFundBalanceDraw {
 		sum = -sum
 	}
 	if !missing && sum != l.ValueCents {
 		faults = append(faults, fmt.Sprintf("%s carries %d and its facts come to %d", at, l.ValueCents, sum))
+	}
+	return faults
+}
+
+// balanceFaults holds one node's balances to the facts they cite: each in the
+// store, of the column's year and basis, that fund's beginning or ending
+// balance, at the value printed and on the page its locators name.
+func balanceFaults(at string, b *export.ColumnBalances, node string, column export.ColumnKey, facts map[string]fact.Fact) []string {
+	if b == nil {
+		return nil
+	}
+	var faults []string
+	for _, slot := range []struct {
+		b        *export.ColumnBalance
+		category string
+	}{{b.Beginning, project.CategoryFundBalanceBeginning}, {b.Ending, project.CategoryFundBalanceEnding}} {
+		if slot.b == nil {
+			continue
+		}
+		var locs []project.Source
+		if err := json.Unmarshal(slot.b.Locators, &locs); err != nil {
+			faults = append(faults, fmt.Sprintf("%s carries locators that do not decode: %v", at, err))
+			continue
+		}
+		f, ok := facts[slot.b.FactID]
+		switch {
+		case !ok:
+			faults = append(faults, fmt.Sprintf("%s cites %s, which facts/facts.jsonl does not carry", at, slot.b.FactID))
+		case f.FiscalYear != column.FiscalYear || string(f.Basis) != column.Basis:
+			faults = append(faults, fmt.Sprintf("%s cites %s of FY%d %s", at, f.ID, f.FiscalYear, f.Basis))
+		case f.Category != slot.category || project.PrefixFund+fact.FundString(f.Fund) != node:
+			faults = append(faults, fmt.Sprintf("%s cites %s, fund %s's %s, as its %s", at, f.ID,
+				fact.FundString(f.Fund), f.Category, slot.category))
+		case f.AmountCents != slot.b.ValueCents:
+			faults = append(faults, fmt.Sprintf("%s carries %d and %s prints %d", at, slot.b.ValueCents, f.ID, f.AmountCents))
+		case len(locs) != 1 || locs[0].DocID != f.DocID || !slices.Equal(locs[0].Pages, []int{f.Page}):
+			faults = append(faults, fmt.Sprintf("%s locates %v and %s is on %s p%d", at, locs, f.ID, f.DocID, f.Page))
+		}
 	}
 	return faults
 }

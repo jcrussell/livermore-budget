@@ -836,6 +836,8 @@ func TestBuildProjectionsRunsThePipeline(t *testing.T) {
 		"department-spending-2025-revised", "department-spending-2027",
 		"fund-balances",
 		"fund-flows", "fund-flows-2024-actual", "fund-flows-2025-revised", "fund-flows-2027",
+		"fund-sources-uses", "fund-sources-uses-2024-actual", "fund-sources-uses-2025-revised",
+		"fund-sources-uses-2027",
 		"revenue-trends", "sankey", "sankey-2027",
 		"transfers-by-fund", "transfers-by-fund-2027", "transfers-out", "transfers-out-2027",
 	}, keys(got)); diff != "" {
@@ -923,6 +925,8 @@ func TestTheCommittedStemsAreUnchanged(t *testing.T) {
 		"department-spending-2025-revised", "department-spending-2027",
 		"fund-balances",
 		"fund-flows", "fund-flows-2024-actual", "fund-flows-2025-revised", "fund-flows-2027",
+		"fund-sources-uses", "fund-sources-uses-2024-actual", "fund-sources-uses-2025-revised",
+		"fund-sources-uses-2027",
 		"revenue-trends", "sankey", "sankey-2027",
 		"transfers-by-fund", "transfers-by-fund-2027", "transfers-out", "transfers-out-2027",
 	}
@@ -2232,7 +2236,8 @@ func must[T any](t *testing.T) func(T, error) T {
 // TestEveryPageALinkCitesHasItsLinksInTheConfig holds the config's per-page
 // links to every locator of every link the published columns carry: the
 // client shows a figure's citations by looking its pages up, so a cited page
-// with no entry is a figure shown without its provenance.
+// with no entry is a figure shown without its provenance. A schedule
+// unviewedDocuments declares no page renders shows no figure, and is skipped.
 func TestEveryPageALinkCitesHasItsLinksInTheConfig(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {
@@ -2270,6 +2275,10 @@ func TestEveryPageALinkCitesHasItsLinksInTheConfig(t *testing.T) {
 			t.Fatalf("read %s: %v", y.Path, err)
 		}
 		var column struct {
+			Column struct {
+				FiscalYear int    `json:"fiscal_year"`
+				Basis      string `json:"basis"`
+			} `json:"column"`
 			Schedules map[string]struct {
 				Links []struct {
 					Locators []struct {
@@ -2283,6 +2292,11 @@ func TestEveryPageALinkCitesHasItsLinksInTheConfig(t *testing.T) {
 			t.Fatalf("decode %s: %v", y.Path, err)
 		}
 		for key, sched := range column.Schedules {
+			stem := publishedStem(key, project.Column{FiscalYear: column.Column.FiscalYear,
+				Basis: mapping.Basis(column.Column.Basis)})
+			if _, unviewed := unviewedDocuments[stem]; unviewed {
+				continue
+			}
 			for _, l := range sched.Links {
 				for _, loc := range l.Locators {
 					for _, p := range loc.Pages {

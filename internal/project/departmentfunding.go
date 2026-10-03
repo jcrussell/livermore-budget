@@ -134,7 +134,7 @@ func (d *departmentFunding) Document(facts []fact.Fact, o Options) (*Document, e
 	}
 	out := sortedNodes(nodes)
 
-	c, uncited := tally(selected, links, len(out))
+	c, uncited := tally(selected, links, out)
 	if err := refuseUncited(d.Name(), uncited, nil); err != nil {
 		return nil, err
 	}

@@ -113,10 +113,18 @@ func TestLinkEndsMatchTheirFactsIsFailable(t *testing.T) {
 			`revenue/licenses-and-permits names "licenses-and-permits"`},
 		{"capital's transfers out re-pointed to a contribution", []edit{{"sankey", "fund-group/capital",
 			"transfers/out", target("fund-balance/contribution")}},
-			`fund-balance/contribution carries category "fund-balance/change"`},
+			"fund-balance/contribution is read from categories"},
 		{"a reserve increase re-pointed to a contribution", []edit{{"sankey", "fund-group/general",
 			"fund-balance/reserve-increase", target("fund-balance/contribution")}},
-			`fund-balance/contribution carries category "fund-balance/change"`},
+			"fund-balance/contribution is read from categories"},
+		{"a fund's reserve increase re-pointed to its contribution", []edit{{"fund-sources-uses", "fund/100",
+			"fund-balance/reserve-increase", target("fund-balance/contribution")}},
+			"fund-balance/contribution is read from categories"},
+		{"a fund's contribution drawn as a draw", []edit{{"fund-sources-uses", "fund/100",
+			"fund-balance/contribution", func(l *project.Link) {
+				l.Source, l.Target = "fund-balance/draw", "fund/100"
+			}}},
+			"fund-balance/draw cites facts summing to"},
 		{"a contribution drawn as a draw", []edit{{"sankey", "fund-group/enterprise",
 			"fund-balance/contribution", func(l *project.Link) {
 				l.Source, l.Target = "fund-balance/draw", "fund-group/enterprise"

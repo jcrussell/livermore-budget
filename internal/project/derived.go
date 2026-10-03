@@ -6,6 +6,7 @@ import (
 	"slices"
 	"sort"
 
+	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/structure"
 )
@@ -16,36 +17,74 @@ import (
 // from a kind or a cell to the node that draws it is this package's, and the
 // prose a reader meets is declared beside it.
 
-// spineEndpoint is one flow endpoint of the citywide spine: the node id, the
-// kind of money it ends, and the category whose cell draws it.
-type spineEndpoint struct {
+// flowEndpoint is one flow endpoint: the node id, the kind of money it ends,
+// the category whose cell draws it, and whether the citywide spine draws it.
+type flowEndpoint struct {
 	id       string
 	kind     mapping.Kind
 	category string
 	tier     int
+	// spine is whether sankey.Document draws this endpoint; the others are
+	// drawn only by the schedules beside it.
+	spine bool
 }
 
-// spineEndpoints are the five nodes the spine draws outside its hierarchy,
-// as sankey.Document draws them: a transfer's end at the category's own id,
-// the reserve row at its own, and the two halves of the change in working
-// capital. A test holds the list to the spine's golden.
-var spineEndpoints = []spineEndpoint{
-	{NodeTransfersIn, mapping.KindTransferIn, NodeTransfersIn, tierRevenueSource},
-	{NodeTransfersOut, mapping.KindTransferOut, NodeTransfersOut, tierObjectCategory},
-	{CategoryFundBalanceReserveIncrease, mapping.KindFundBalance, CategoryFundBalanceReserveIncrease, tierObjectCategory},
-	{NodeFundBalanceDraw, mapping.KindFundBalance, CategoryFundBalanceChange, tierRevenueSource},
-	{NodeFundBalanceContribution, mapping.KindFundBalance, CategoryFundBalanceChange, tierObjectCategory},
+// flowEndpoints are the nodes the documents draw outside their hierarchy: a
+// transfer's end at the category's own id, the reserve row at its own, and
+// the two halves of a change in balance. A test holds the spine's to the
+// spine's golden.
+var flowEndpoints = []flowEndpoint{
+	{NodeTransfersIn, mapping.KindTransferIn, NodeTransfersIn, tierRevenueSource, true},
+	{NodeTransfersOut, mapping.KindTransferOut, NodeTransfersOut, tierObjectCategory, true},
+	{CategoryFundBalanceReserveIncrease, mapping.KindFundBalance, CategoryFundBalanceReserveIncrease, tierObjectCategory, true},
+	{NodeFundBalanceDraw, mapping.KindFundBalance, CategoryFundBalanceChange, tierRevenueSource, true},
+	{NodeFundBalanceContribution, mapping.KindFundBalance, CategoryFundBalanceChange, tierObjectCategory, true},
+	{NodeTransfersOutToCIP, mapping.KindTransferOut, NodeTransfersOutToCIP, tierObjectCategory, false},
 }
 
-// EndpointCategory is the category every fact behind a spine flow endpoint
-// carries, and whether id is one.
-func EndpointCategory(id string) (string, bool) {
-	for _, e := range spineEndpoints {
-		if e.id == id {
-			return e.category, true
+// spineEndpoints is the flow endpoints the citywide spine draws.
+func spineEndpoints() []flowEndpoint {
+	var out []flowEndpoint
+	for _, e := range flowEndpoints {
+		if e.spine {
+			out = append(out, e)
 		}
 	}
-	return "", false
+	return out
+}
+
+// EndpointCategories is each set of categories the facts behind a flow
+// endpoint may carry, every fact of one link within one set, and whether id is
+// one. A change in balance is read either off a printed change row or off the
+// two balances it is the difference of; [ChangeCents] is its value either way.
+func EndpointCategories(id string) ([][]string, bool) {
+	for _, e := range flowEndpoints {
+		if e.id != id {
+			continue
+		}
+		out := [][]string{{e.category}}
+		if e.category == CategoryFundBalanceChange {
+			out = append(out, []string{CategoryFundBalanceBeginning, CategoryFundBalanceEnding})
+		}
+		return out, true
+	}
+	return nil, false
+}
+
+// ChangeCents is the change in balance a set of facts states, and the value
+// every link is held to: each beginning balance subtracted, every other fact
+// added as printed. Over the facts of any link that cites no beginning balance
+// it is their plain sum.
+func ChangeCents(facts []fact.Fact) int64 {
+	var sum int64
+	for i := range facts {
+		if facts[i].Kind == mapping.KindFundBalance && facts[i].Category == CategoryFundBalanceBeginning {
+			sum -= facts[i].AmountCents
+			continue
+		}
+		sum += facts[i].AmountCents
+	}
+	return sum
 }
 
 // residualReasons is why a fund-level schedule cannot decompose each spine
@@ -94,7 +133,7 @@ func FundFlowsResidual() (map[string]string, error) {
 	undecomposed := structure.Undecomposed(view, reference)
 	absent := structure.AbsentCells(structure.BudgetBookExceptions(), view, reference)
 	out := map[string]string{}
-	for _, e := range spineEndpoints {
+	for _, e := range spineEndpoints() {
 		carried := slices.Contains(undecomposed, e.kind)
 		for _, a := range absent {
 			if a.Pin.Coords[structure.AxisCategory] == e.category {

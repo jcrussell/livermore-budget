@@ -19,8 +19,9 @@
 // Every key is present on every object, in declaration order — no omitempty,
 // no null — the same discipline as [fact.Fact] and for the same reason: a key
 // that vanishes when it is empty makes a diff between two releases read as a
-// structural change. Absent strings are "", absent slices are []. The one key
-// a document may omit is [Metadata.Headline], for the reason on that field.
+// structural change. Absent strings are "", absent slices are []. The keys a
+// document may omit are [Metadata.Headline] and [Node.Balances], each for the
+// reason on its field.
 //
 // Money is an integer count of cents, never a float and never a string.
 // amount.Cents is deliberately not marshalled: it has a String method and
@@ -141,6 +142,9 @@ type PublishedDocument struct {
 	// Kinds is the kind set it selects out of those schedules, matching
 	// [Options.Kinds]: empty for every kind the schedules carry.
 	Kinds []mapping.Kind
+	// ThroughCuts is [Options.ThroughCuts]: a caller rebuilding the document's
+	// selection from this declaration selects what the document drew.
+	ThroughCuts bool
 	// Columns is every (fiscal year, basis) pair the document must cover. A
 	// document missing one of these was built, but not over what the site
 	// promised, and that is a finding rather than silence.
@@ -173,11 +177,12 @@ func PublishedDocuments() []PublishedDocument {
 		declared := g.options()
 		for _, o := range declared {
 			out = append(out, PublishedDocument{
-				Projection: g.projection,
-				Stem:       stemOrPanic(g.projection, o, declared),
-				Scopes:     slices.Clone(g.scopes),
-				Kinds:      slices.Clone(g.kinds),
-				Columns:    slices.Clone(o.Columns),
+				Projection:  g.projection,
+				Stem:        stemOrPanic(g.projection, o, declared),
+				Scopes:      slices.Clone(g.scopes),
+				Kinds:       slices.Clone(g.kinds),
+				ThroughCuts: g.throughCuts,
+				Columns:     slices.Clone(o.Columns),
 			})
 		}
 	}
@@ -215,10 +220,11 @@ func PublishedDocuments() []PublishedDocument {
 // declaration that consulted the store could not report that the store stopped
 // covering it.
 type publishedGraph struct {
-	projection string
-	scopes     []string
-	kinds      []mapping.Kind
-	columns    []Column
+	projection  string
+	scopes      []string
+	kinds       []mapping.Kind
+	throughCuts bool
+	columns     []Column
 }
 
 // options is one Options per published column, as the projection's Slices
@@ -226,7 +232,8 @@ type publishedGraph struct {
 func (g publishedGraph) options() []Options {
 	out := make([]Options, 0, len(g.columns))
 	for _, c := range g.columns {
-		out = append(out, Options{Columns: []Column{c}, Scopes: slices.Clone(g.scopes), Kinds: slices.Clone(g.kinds)})
+		out = append(out, Options{Columns: []Column{c}, Scopes: slices.Clone(g.scopes),
+			Kinds: slices.Clone(g.kinds), ThroughCuts: g.throughCuts})
 	}
 	return out
 }
@@ -245,6 +252,7 @@ func publishedGraphs() []publishedGraph {
 		{projection: DepartmentFundingProjection, scopes: DepartmentFundingScopes(), columns: budgetBookDetailColumns()},
 		{projection: TransfersByFundProjection, scopes: TransfersByFundScopes(), columns: adoptedColumns()},
 		{projection: TransfersOutProjection, scopes: TransfersOutScopes(), kinds: (&transfersByFund{Out: true}).kinds(), columns: adoptedColumns()},
+		{projection: FundSourcesUsesProjection, scopes: FundSourcesUsesScopes(), throughCuts: true, columns: budgetBookDetailColumns()},
 	}
 }
 
@@ -492,6 +500,13 @@ type Options struct {
 	// printing several needs it: p222 prints transfers, grants and a balance
 	// draw under one total, and the transfer network draws the transfers.
 	Kinds []mapping.Kind
+	// ThroughCuts narrows the slice to the facts the view over Scopes admits
+	// (structure.ViewOf): a scope whose pages print a block no cut admits
+	// leaves that block out. It is opt-in, because a document may draw a
+	// scope's residue on purpose -- department-spending draws pp.85-125's
+	// rows no cut reads -- and the checks select through the same Options the
+	// document was built under.
+	ThroughCuts bool
 	// Version is build.Get().String(), published as metadata.generated_by so
 	// a reader can tell which binary produced the file.
 	Version string
@@ -579,7 +594,17 @@ func (o Options) validate() error {
 	if o.Version == "" {
 		return errors.New("version is required for metadata.generated_by")
 	}
+	if o.ThroughCuts {
+		if _, err := o.view(); err != nil {
+			return fmt.Errorf("selecting through the cuts: %w", err)
+		}
+	}
 	return nil
+}
+
+// view is the view a ThroughCuts selection admits facts through.
+func (o Options) view() (structure.View, error) {
+	return structure.ViewOf("selection", o.Scopes, nil)
 }
 
 // onlyScope is the one schedule a single-schedule document is of, and the
@@ -684,6 +709,7 @@ func Registry(l labels) []Projection {
 		&departmentFunding{Labels: l},
 		&transfersByFund{Labels: l},
 		&transfersByFund{Labels: l, Out: true},
+		&fundSourcesUses{Labels: l},
 		&FundBalanceChanges{Labels: l},
 		&FundBalances{Labels: l},
 	}

@@ -372,6 +372,7 @@ describe("the spine's fund groups", () => {
       vars: buttons.map((b) => b.querySelector("[data-var]")?.dataset.var),
       column: app.layOut(app.shapeFor(app.projection)).nodes.filter(app.isFundGroup).sort((a, b) => a.y0 - b.y0).map((n) => n.id),
       served: app.fundGroups().map((g) => g.id),
+      drawn: app.projection.nodes.filter(app.isFundGroup).map((n) => n.id),
     };
   }
   /** Adds a fund-group node modelled on debt-service, with one inflow, under `id`. */
@@ -383,20 +384,20 @@ describe("the spine's fund groups", () => {
     sched.nodes.push({ node: idx });
     const link = sched.links.find((l) => l.to === model);
     sched.links.push(Object.assign({}, link, { to: idx }));
-    if (listed) col.fund_groups.push({ id, slot: 0 });
+    if (listed && !col.fund_groups.some((g) => g.id === id)) col.fund_groups.push({ id, slot: 0 });
   }
 
-  test("the legend is the column's fund groups, in the order it shipped them, and each has flows", async (t) => {
+  test("the legend is the column's fund groups the spine draws, in the order it shipped them, and each has flows", async (t) => {
     const spine = await spineLegend();
     t.diagnostic(spine.ids.map((id) => id.replace("fund-group/", "")).join(", "));
     assert.ok(spine.served.length > 0);
-    assert.deepEqual(spine.ids, spine.served);
+    assert.deepEqual(spine.ids, spine.served.filter((id) => spine.drawn.includes(id)));
   });
   test("a fund group the stylesheet has no hue for is still in the legend, last, and muted", async (t) => {
     const spine = await spineLegend();
     const seventh = await spineLegend((c) => withGroup(c, "fund-group/permanent", "Permanent Funds", true));
     t.diagnostic(seventh.ids.map((id, i) => id.replace("fund-group/", "") + " " + seventh.vars[i]).join(", "));
-    assert.equal(seventh.ids.length, spine.served.length + 1);
+    assert.equal(seventh.ids.length, spine.ids.length + 1);
     assert.deepEqual(seventh.ids, seventh.served);
     assert.equal(seventh.ids.at(-1), "fund-group/permanent");
     assert.equal(seventh.vars.at(-1), "--muted");

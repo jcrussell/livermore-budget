@@ -291,7 +291,10 @@ for (const year of YEARS) {
       const served = words(app, document).desc;
       const pointer = pointerOf(served);
       const label = app.projection.nodes.find((n) => n.id === PROPERTY).label;
-      const groups = columnFixture(year.path.replace(/\.json$/, "")).fund_groups.length;
+      // The legend is the spine's groups; the column lists every schedule's.
+      const col = columnFixture(year.path.replace(/\.json$/, ""));
+      const onSpine = new Set(col.schedules.sankey.nodes.map((n) => col.nodes[n.node].id));
+      const groups = col.fund_groups.filter((g) => onSpine.has(g.id)).length;
       const asked = fetch.asked.length;
       // THE GROUPS THE CATEGORY REACHES, off the spine the flank is kept from.
       const reaches = endsOf(app.docAt(0), PROPERTY, "source");

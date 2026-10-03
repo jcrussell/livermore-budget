@@ -645,7 +645,10 @@ describe("the drill's drawing", () => {
     const swatches1 = legend.children.length;
     t.diagnostic(`overview ${swatches0} swatch(es), one per fund group of the column; opened into the group, ` +
       `its node is ${groupDrawn ? "drawn" : "NOT drawn"} and the legend holds ${swatches1}`);
-    assert.equal(swatches0, columnFixture(YEARS[0].fixture).fund_groups.length);
+    // One swatch per group the spine draws; the column lists every schedule's.
+    const col = columnFixture(YEARS[0].fixture);
+    const onSpine = new Set(col.schedules.sankey.nodes.map((n) => col.nodes[n.node].id));
+    assert.equal(swatches0, col.fund_groups.filter((g) => onSpine.has(g.id)).length);
     assert.ok(groupDrawn, "the group is not drawn on its own window, so this asserts nothing");
     assert.equal(swatches1, 0);
   });

@@ -355,12 +355,19 @@ var unviewedDocuments = map[string]string{
 
 	publishedStem(project.DepartmentFundingProjection, actual2024):  fundingNoSpineColumn,
 	publishedStem(project.DepartmentFundingProjection, revised2025): fundingNoSpineColumn,
+
+	publishedStem(project.FundSourcesUsesProjection, actual2024):  sourcesUsesNoSpineColumn,
+	publishedStem(project.FundSourcesUsesProjection, revised2025): sourcesUsesNoSpineColumn,
+	publishedStem(project.FundSourcesUsesProjection, adopted2026): sourcesUsesNoStep,
+	publishedStem(project.FundSourcesUsesProjection, adopted2027): sourcesUsesNoStep,
 }
 
-// The two columns pp.66-67 print no year for.
+// The two columns pp.66-67 print no year for, and the two they print.
 var (
 	actual2024  = project.Column{FiscalYear: 2024, Basis: mapping.BasisActual}
 	revised2025 = project.Column{FiscalYear: 2025, Basis: mapping.BasisRevised}
+	adopted2026 = project.Column{FiscalYear: 2026, Basis: mapping.BasisAdopted}
+	adopted2027 = project.Column{FiscalYear: 2027, Basis: mapping.BasisAdopted}
 )
 
 // publishedStem is the stem project.PublishedDocuments gives a projection's
@@ -380,6 +387,16 @@ const fundingNoSpineColumn = "a published column of pp.85-125's Department Fundi
 	"pp.66-67 print no actual or revised column. It is published because this is the only " +
 	"document drawing that block, and two of the four columns would be half a schedule with " +
 	"nothing saying which half. caveats.html lists its caveats but does not render it"
+
+const sourcesUsesNoSpineColumn = "a published column of pp.186-209's per-fund sources and " +
+	"uses with no spine year to open it from, and no step opens the document in any year. It " +
+	"is published because this is the only document drawing those pages, and two of the four " +
+	"columns would be half a schedule with nothing saying which half. caveats.html lists its " +
+	"caveats but does not render it"
+
+const sourcesUsesNoStep = "a column of pp.186-209's per-fund sources and uses that no step " +
+	"opens yet: the spine's fund-balance nodes are where a reader will open it, and that step " +
+	"and its client are a later commit. caveats.html lists its caveats but does not render it"
 
 const spendingNoSpineColumn = "a published column of the departmentwide cross-tab with no " +
 	"spine year to open it from: the object-category step joins on Column and pp.66-67 " +

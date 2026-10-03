@@ -91,12 +91,12 @@ var idFormTiers = map[string]int{
 	PrefixTransferTo:   tierObjectCategory,
 }
 
-// endpointTiers are the flow endpoints' tiers, read off spineEndpoints: they
+// endpointTiers are the flow endpoints' tiers, read off flowEndpoints: they
 // sit outside the hierarchy and carry a tier by name, since one prefix,
 // fund-balance/, holds a tier-0 and a tier-5 endpoint.
 var endpointTiers = func() map[string]int {
-	out := make(map[string]int, len(spineEndpoints))
-	for _, e := range spineEndpoints {
+	out := make(map[string]int, len(flowEndpoints))
+	for _, e := range flowEndpoints {
 		out[e.id] = e.tier
 	}
 	return out
@@ -205,6 +205,10 @@ const NodeTransfersIn = "transfers/in"
 // out; in the transfers-out network it is the fold of every receiver's end.
 const NodeTransfersOut = "transfers/out"
 
+// NodeTransfersOutToCIP is the end of pp.186-209's Transfers Out to CIP, a
+// sibling of transfers/out the spine folds into it and those pages print apart.
+const NodeTransfersOutToCIP = "transfers/out-to-cip"
+
 // The slugs this projection has to recognize by name rather than by shape.
 const (
 	FundGroupInternalService = registry.FundTypeInternalService
@@ -300,26 +304,34 @@ type derived struct {
 	sourceNote string
 }
 
-// derivedNodes is the complete list of nodes this projection infers rather
+// derivedNodes is the complete list of nodes this package infers rather
 // than reads off a page, and it has exactly two entries on purpose.
 //
 // The city prints CHANGE IN WORKING CAPITAL once per column, signed — the
-// General Fund's FY2026 figure is "(1,034,154)". A Sankey cannot draw a
-// negative link, so the sign is decomposed into two nodes. That decomposition
-// is ours, not the city's, and the distinction between published and derived
-// is the site's entire premise, so both nodes carry a rationale and a source
-// note and fisc verify fails on a derived node that does not.
+// General Fund's FY2026 figure is "(1,034,154)" — and pp.186-209 print each
+// fund's beginning and ending balance, whose difference is its change. A
+// Sankey cannot draw a negative link, so the sign is decomposed into two
+// nodes. That decomposition is ours, not the city's, and the distinction
+// between published and derived is the site's entire premise, so both nodes
+// carry a rationale and a source note and fisc verify fails on a derived node
+// that does not.
+//
+// ONE NOTE SERVES EVERY DOCUMENT DRAWING THE NODE, because a column's node
+// table states a node once and refuses two schedules that disagree about it.
 var derivedNodes = map[string]derived{
 	NodeFundBalanceDraw: {
-		rationale: "Our sign-decomposition of the published CHANGE IN WORKING CAPITAL row: " +
-			"a negative change is a draw on accumulated balance. The city prints one signed " +
-			"row; a Sankey cannot render a negative link.",
-		sourceNote: "Budget Book PDF pp.66-67, CHANGE IN WORKING CAPITAL",
+		rationale: "Our sign-decomposition of a published change in balance: a negative " +
+			"change is a draw on accumulated balance. The city prints a fund group's change " +
+			"as one signed row, and a fund's as the beginning and ending balances it is the " +
+			"difference of; a Sankey cannot render a negative link.",
+		sourceNote: "Budget Book PDF pp.66-67, CHANGE IN WORKING CAPITAL; pp.186-209, each " +
+			"fund's beginning and ending balance",
 	},
 	NodeFundBalanceContribution: {
-		rationale: "Our sign-decomposition of the published CHANGE IN WORKING CAPITAL row: " +
-			"a positive change is a contribution to accumulated balance.",
-		sourceNote: "Budget Book PDF pp.66-67, CHANGE IN WORKING CAPITAL",
+		rationale: "Our sign-decomposition of a published change in balance: a positive " +
+			"change is a contribution to accumulated balance.",
+		sourceNote: "Budget Book PDF pp.66-67, CHANGE IN WORKING CAPITAL; pp.186-209, each " +
+			"fund's beginning and ending balance",
 	},
 }
 
@@ -414,6 +426,38 @@ type Node struct {
 	Derived    bool   `json:"derived"`
 	Rationale  string `json:"rationale"`
 	SourceNote string `json:"source_note"`
+	// Balances is the stock a fund node stands for, on the document of
+	// pp.186-209 alone: absent on every other node, as the headline is on
+	// every document but the spine's.
+	Balances *NodeBalances `json:"balances,omitempty"`
+}
+
+// NodeBalances is a fund's printed beginning and ending balance in one
+// column. A balance the page leaves blank is absent, not zero.
+type NodeBalances struct {
+	Beginning *NodeBalance `json:"beginning,omitempty"`
+	Ending    *NodeBalance `json:"ending,omitempty"`
+}
+
+// NodeBalance is one printed balance, cited as a link cites its figures.
+type NodeBalance struct {
+	ValueCents int64    `json:"value_cents"`
+	FactID     string   `json:"fact_id"`
+	Locators   []Source `json:"locators"`
+}
+
+// FactIDs is every fact the balances cite, beginning first.
+func (b *NodeBalances) FactIDs() []string {
+	var out []string
+	if b == nil {
+		return out
+	}
+	for _, x := range []*NodeBalance{b.Beginning, b.Ending} {
+		if x != nil {
+			out = append(out, x.FactID)
+		}
+	}
+	return out
 }
 
 // Link is one flow.
@@ -694,7 +738,7 @@ func (s *sankey) Document(facts []fact.Fact, o Options) (*Document, error) {
 
 	// A stock row is the one non-zero fact this schedule leaves uncited:
 	// beginning and ending working capital are balances and earn no link.
-	c, uncited := tally(selected, links, len(drawn))
+	c, uncited := tally(selected, links, drawn)
 	if err := refuseUncited(s.Name(), uncited, isStock); err != nil {
 		return nil, err
 	}
@@ -770,16 +814,32 @@ func headlineOver(v structure.View, facts []fact.Fact) Headline {
 // The column test is membership rather than equality because a document may be
 // of several columns. What it is not is a wildcard: an Options with no columns
 // selects NOTHING here, and [Options.Validate] refuses one before it can.
+//
+// With ThroughCuts set a fact must also be one the scopes' view admits; a
+// view that does not build selects nothing, which validate refuses first.
 func SelectFacts(facts []fact.Fact, o Options) []fact.Fact {
+	var view *structure.View
+	if o.ThroughCuts {
+		v, err := o.view()
+		if err != nil {
+			return []fact.Fact{}
+		}
+		view = &v
+	}
+	identities := structure.BudgetBookIdentities()
 	out := make([]fact.Fact, 0, len(facts))
-	for _, f := range facts {
+	for i := range facts {
+		f := &facts[i]
 		if !o.HasScope(f.Scope) || !o.HasKind(f.Kind) {
 			continue
 		}
 		if !slices.Contains(o.Columns, Column{FiscalYear: f.FiscalYear, Basis: f.Basis}) {
 			continue
 		}
-		out = append(out, f)
+		if view != nil && !view.Admits(f, identities) {
+			continue
+		}
+		out = append(out, *f)
 	}
 	return out
 }

@@ -64,9 +64,11 @@ Every key is present on every object, in declaration order. **No `omitempty`,
 no `null`** — the same discipline as `fact.Fact`, and for the same reason: a
 key that vanishes when it is empty makes a diff between two releases read as a
 structural change. Absent strings are `""`; the client writes `node.parent || null`
-if it wants nullish semantics. The one key a document may omit is `headline`,
+if it wants nullish semantics. The keys a document may omit are `headline`,
 which the spine alone carries: eight zeros in its place on a document with no
-total to name would be absent-is-not-zero at document level.
+total to name would be absent-is-not-zero at document level; and a node's
+`balances`, which fund-sources-uses alone carries, holding only the balances
+its page prints.
 
 Money is always an integer `value_cents`. Never a float, never a string. The
 largest figure here is 2.99e10 cents, exact in float64 and safe in JS.

@@ -348,6 +348,44 @@
                 },
                 "parent": {
                   "type": "string"
+                },
+                "balances": {
+                  "description": "A fund's printed beginning and ending balance, on fund-sources-uses alone: the document's figure, carried with the schedule that cites it. A blank balance is absent, not zero.",
+                  "type": "object",
+                  "minProperties": 1,
+                  "additionalProperties": false,
+                  "properties": {
+                    "beginning": {
+                      "description": "One printed balance and the fact it cites.",
+                      "type": "object",
+                      "required": ["value_cents", "fact_id", "locators"],
+                      "additionalProperties": false,
+                      "properties": {
+                        "value_cents": { "type": "integer" },
+                        "fact_id": { "$ref": "https://jcrussell.github.io/livermore-budget/schema/fact-id.schema.json" },
+                        "locators": {
+                          "type": "array",
+                          "minItems": 1,
+                          "items": { "$ref": "https://jcrussell.github.io/livermore-budget/schema/locator.schema.json" }
+                        }
+                      }
+                    },
+                    "ending": {
+                      "description": "One printed balance and the fact it cites.",
+                      "type": "object",
+                      "required": ["value_cents", "fact_id", "locators"],
+                      "additionalProperties": false,
+                      "properties": {
+                        "value_cents": { "type": "integer" },
+                        "fact_id": { "$ref": "https://jcrussell.github.io/livermore-budget/schema/fact-id.schema.json" },
+                        "locators": {
+                          "type": "array",
+                          "minItems": 1,
+                          "items": { "$ref": "https://jcrussell.github.io/livermore-budget/schema/locator.schema.json" }
+                        }
+                      }
+                    }
+                  }
                 }
               }
             }

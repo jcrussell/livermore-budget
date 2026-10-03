@@ -65,9 +65,10 @@ type Counts struct {
 	// were drawn: a zero-valued cell earns no link, and neither does a stock
 	// row.
 	Facts int `json:"facts"`
-	// FactsCited is how many DISTINCT facts some link carries.
+	// FactsCited is how many DISTINCT facts some link or node balance
+	// carries.
 	FactsCited int `json:"facts_cited"`
-	// FactsUncited is the facts no link carries: a printed zero, or on the
+	// FactsUncited is the facts nothing carries: a printed zero, or on the
 	// spine a stock row. Every builder refuses anything else at build.
 	FactsUncited int `json:"facts_uncited"`
 	// FactsCitedTwice is how many distinct facts are behind MORE THAN ONE
@@ -79,20 +80,30 @@ type Counts struct {
 	Links           int `json:"links"`
 }
 
-// tally is how the links account for the selected facts: the counts a
-// document publishes, and the facts no link carries, in selection order, for
-// the builder to hold to its own rule about what may go uncited.
-func tally(selected []fact.Fact, links []Link, nodes int) (Counts, []*fact.Fact) {
+// tally is how the links and the nodes' balances account for the selected
+// facts: the counts a document publishes, and the facts neither carries, in
+// selection order, for the builder to hold to its own rule about what may go
+// uncited. A balance cites its fact as a link does; only links count toward
+// facts_cited_twice, which warns about summing value_cents.
+func tally(selected []fact.Fact, links []Link, nodes []Node) (Counts, []*fact.Fact) {
 	times := map[string]int{}
 	for _, l := range links {
 		for _, id := range l.FactIDs {
 			times[id]++
 		}
 	}
-	c := Counts{Facts: len(selected), Nodes: nodes, Links: len(links)}
+	onNode := map[string]bool{}
+	for _, n := range nodes {
+		for _, id := range n.Balances.FactIDs() {
+			onNode[id] = true
+		}
+	}
+	c := Counts{Facts: len(selected), Nodes: len(nodes), Links: len(links)}
 	var uncited []*fact.Fact
 	for i := range selected {
 		switch n := times[selected[i].ID]; {
+		case n == 0 && onNode[selected[i].ID]:
+			c.FactsCited++
 		case n == 0:
 			c.FactsUncited++
 			uncited = append(uncited, &selected[i])

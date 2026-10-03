@@ -34,7 +34,8 @@ func TestEveryPublishedDocumentSelectsExactlyItsCutsFootprint(t *testing.T) {
 		if len(d.Columns) != 1 {
 			continue
 		}
-		o := project.Options{Columns: d.Columns, Scopes: d.Scopes, Kinds: d.Kinds, Version: "t"}
+		o := project.Options{Columns: d.Columns, Scopes: d.Scopes, Kinds: d.Kinds,
+			ThroughCuts: d.ThroughCuts, Version: "t"}
 		cuts := structure.CutsOf(d.Scopes)
 		if len(cuts) == 0 {
 			t.Errorf("%s: no declared cut reads any of its scopes %v", d.Stem, d.Scopes)
@@ -53,7 +54,8 @@ func TestEveryPublishedDocumentSelectsExactlyItsCutsFootprint(t *testing.T) {
 			}
 			inScope := chosen[f.ID]
 			inCut := slices.ContainsFunc(cuts, func(c structure.Cut) bool { return c.Admits(f) })
-			inResidue := slices.ContainsFunc(residues, func(r structure.Residue) bool {
+			// A document selecting through its cuts draws no residue.
+			inResidue := !d.ThroughCuts && slices.ContainsFunc(residues, func(r structure.Residue) bool {
 				return r.Matches(f) && slices.Contains(d.Scopes, r.Scope)
 			})
 			if inScope {
