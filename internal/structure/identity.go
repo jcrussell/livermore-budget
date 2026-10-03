@@ -164,9 +164,10 @@ type Overlap struct {
 // Peers compares two cuts at one level, kind by kind, and reports every cell
 // both produce. Findings: a shared cell no identity covers; a covered cell
 // whose readings differ; a covered non-zero cell only one side prints, unless
-// an exception pins the other absent; a non-zero cell only one side prints
-// that an identity misfiles; an identity no cell bears out; and a (kind,
-// category) pair an identity names that no shared cell bears.
+// an exception pins the other absent; a cell only one side prints, zero
+// included, that an identity misfiles; an identity no cell bears out; and a
+// (kind, category) pair an identity names that no shared cell bears. A cell
+// only one side prints is judged only on a basis both cuts print.
 func Peers(facts []fact.Fact, a, b Cut, identities []Identity, exceptions []Exception) (Overlap, error) {
 	if a.Level != b.Level {
 		return Overlap{}, fmt.Errorf("peers %q (%s) and %q (%s): not at one level", a.Name, a.Level, b.Name, b.Level)
@@ -216,7 +217,8 @@ func Peers(facts []fact.Fact, a, b Cut, identities []Identity, exceptions []Exce
 			}
 			sa, sb := as[key], bs[key]
 			if !sa.Present || !sb.Present {
-				if identity == "" && sa.Cents+sb.Cents != 0 {
+				both := a.prints(mapping.Basis(key.Basis)) && b.prints(mapping.Basis(key.Basis))
+				if identity == "" && both {
 					for _, id := range identities {
 						others := id.misfiles(a.Name, b.Name, k, category)
 						if len(others) == 0 {
@@ -234,8 +236,7 @@ func Peers(facts []fact.Fact, a, b Cut, identities []Identity, exceptions []Exce
 						break
 					}
 				}
-				if identity != "" && a.prints(mapping.Basis(key.Basis)) && b.prints(mapping.Basis(key.Basis)) &&
-					sa.Cents+sb.Cents != 0 {
+				if identity != "" && both && sa.Cents+sb.Cents != 0 {
 					present, missing := a, b
 					if !sa.Present {
 						present, missing = b, a

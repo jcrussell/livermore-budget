@@ -1185,22 +1185,6 @@ func (r *Rule) kindsOf(row Row) []Kind {
 	return out
 }
 
-// declaredKinds is every kind a row declares, whether or not any cell of it
-// publishes: Value.Kind of its cell in every column, skipped or not -- the
-// column's kind where the column carries a category, the row's effective kind
-// otherwise. A declaration about the row, such as its sign, is held to these
-// rather than to kindsOf, because a row that publishes nothing still asserts
-// what it is.
-func (r *Rule) declaredKinds(row Row) []Kind {
-	var out []Kind
-	for i := range r.Parts {
-		for _, c := range r.Parts[i].Columns {
-			out = append(out, Value{Row: row, Column: c}.Kind(r))
-		}
-	}
-	return out
-}
-
 // EffectiveKind is the kind this column's facts carry on a rule whose columns
 // carry the category: its own where it declares one, the rule's otherwise.
 func (c Column) EffectiveKind(rule *Rule) Kind {

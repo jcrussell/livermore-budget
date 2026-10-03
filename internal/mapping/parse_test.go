@@ -197,26 +197,35 @@ func TestParseRejects(t *testing.T) {
 			want: "sign netted on kind \"revenue\"",
 		},
 		{
-			// A rule no column of which publishes still declares what its
-			// rows' facts would be; the guard reads that kind off the row.
+			// A rule no column of which publishes has rows with no fact to sign.
 			name: "sign netted on a kind with no direction, every column skipped",
 			yaml: strings.Replace(
 				strings.NewReplacer("columns: [{fiscal_year: 2026}]", "columns: [{skip: true}]",
 					"    grain: category\n", "").Replace(base("")),
 				`- {label: "A"`, `- {label: "A", sign: netted`, 1),
-			want: "sign netted on kind \"revenue\"",
+			want: "row \"A\": sign netted on a row that publishes no cell",
 		},
 		{
-			// A row that publishes nothing still declares its kind, and a sign
-			// on it is a claim about that kind's direction.
+			// A sign says how a row's facts are printed; a row with no fact has
+			// none to qualify, whatever its kind.
 			name: "sign netted on a skipped row of a kind with no direction",
 			yaml: base("      - {label: \"B\", skip: true, sign: netted}\n"),
-			want: "row \"B\": sign netted on kind \"revenue\"",
+			want: "row \"B\": sign netted on a row that publishes no cell",
 		},
 		{
 			name: "sign netted on a non-amount row of a kind with no direction",
 			yaml: base("      - {label: \"B\", quantity: percentage, sign: netted}\n"),
-			want: "row \"B\": sign netted on kind \"revenue\"",
+			want: "row \"B\": sign netted on a row that publishes no cell",
+		},
+		{
+			name: "sign netted on a skipped transfer row",
+			yaml: base("      - {label: \"B\", kind: transfer_out, skip: true, sign: netted}\n"),
+			want: "row \"B\": sign netted on a row that publishes no cell",
+		},
+		{
+			name: "sign netted on a non-amount transfer row",
+			yaml: base("      - {label: \"B\", kind: transfer_in, quantity: percentage, sign: netted}\n"),
+			want: "row \"B\": sign netted on a row that publishes no cell",
 		},
 		{
 			// A column carrying the category declares its cells' kind for every
@@ -228,7 +237,7 @@ func TestParseRejects(t *testing.T) {
 				"columns: [{fiscal_year: 2026, category: c, kind: revenue}]",
 				`- {label: "A", category: a}`, `- {label: "A"}`).Replace(
 				base("      - {label: \"B\", quantity: percentage, sign: netted}\n")),
-			want: "row \"B\": sign netted on kind \"revenue\"",
+			want: "row \"B\": sign netted on a row that publishes no cell",
 		},
 		{
 			// A non-amount row publishes nothing, so its kind is no kind the

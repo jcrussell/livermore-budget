@@ -573,26 +573,45 @@ func TestAnIdentityCoversAKindOnlyUnderItsOwnCategory(t *testing.T) {
 	if key == (structure.Key{}) {
 		t.Fatal("no transfer out both sides print under p76's identity")
 	}
-	relabel := func(t *testing.T, sides ...structure.Cut) []fact.Fact {
+	// relabel files every named side's transfer out at key under transfers/in,
+	// zeroing it too when zero is set.
+	relabel := func(t *testing.T, key structure.Key, zero bool, sides ...structure.Cut) []fact.Fact {
 		t.Helper()
 		moved := slices.Clone(facts)
-		n := 0
+		n := make([]int, len(sides))
 		for i := range moved {
 			f := &moved[i]
-			if f.Kind == mapping.KindTransferOut && slices.ContainsFunc(sides, func(c structure.Cut) bool { return c.Admits(f) }) &&
-				structure.KeyOf(f, key.Level) == key {
+			if f.Kind != mapping.KindTransferOut || structure.KeyOf(f, key.Level) != key {
+				continue
+			}
+			admitted := false
+			for j, c := range sides {
+				if c.Admits(f) {
+					n[j]++
+					admitted = true
+				}
+			}
+			if admitted {
 				f.Category = "transfers/in"
-				n++
+				if zero {
+					f.AmountCents = 0
+				}
 			}
 		}
-		if n < len(sides) {
-			t.Fatalf("relabelled %d facts at %s, want every named side's", n, key)
+		for j, c := range sides {
+			if n[j] == 0 {
+				t.Fatalf("relabelled no fact of %q at %s", c.Name, key)
+			}
 		}
 		return moved
 	}
+	misfiled := func(f string) bool {
+		return strings.Contains(f, "category=transfers/in") && strings.Contains(f, "] transfer_out:") &&
+			strings.Contains(f, `pairs "transfers/in" with [transfer_in]`)
+	}
 
 	t.Run("both sides under another kind's category", func(t *testing.T) {
-		o, err := structure.Peers(relabel(t, flows, td), flows, td, identities, structure.BudgetBookExceptions())
+		o, err := structure.Peers(relabel(t, key, false, flows, td), flows, td, identities, structure.BudgetBookExceptions())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -607,15 +626,41 @@ func TestAnIdentityCoversAKindOnlyUnderItsOwnCategory(t *testing.T) {
 	// with another kind, is a misfiled column, not a figure the other side
 	// may simply not print.
 	t.Run("one side under another kind's category", func(t *testing.T) {
-		o, err := structure.Peers(relabel(t, flows), flows, td, identities, structure.BudgetBookExceptions())
+		o, err := structure.Peers(relabel(t, key, false, flows), flows, td, identities, structure.BudgetBookExceptions())
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !slices.ContainsFunc(o.Findings, func(f string) bool {
-			return strings.Contains(f, "category=transfers/in") && strings.Contains(f, "] transfer_out:") &&
-				strings.Contains(f, `pairs "transfers/in" with [transfer_in]`)
-		}) {
+		if !slices.ContainsFunc(o.Findings, misfiled) {
 			t.Fatalf("findings = %q, want the one-sided transfer out under transfers/in named as misfiled", o.Findings)
+		}
+	})
+
+	// A misfile is a mapping error whatever the figure, "-" included.
+	t.Run("one side's zero under another kind's category", func(t *testing.T) {
+		o, err := structure.Peers(relabel(t, key, true, flows), flows, td, identities, structure.BudgetBookExceptions())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !slices.ContainsFunc(o.Findings, misfiled) {
+			t.Fatalf("findings = %q, want the one-sided zero transfer out under transfers/in named as misfiled", o.Findings)
+		}
+	})
+
+	// On a basis only one cut prints, the other's having no cell says nothing.
+	t.Run("one side under another kind's category on a basis the other does not print", func(t *testing.T) {
+		i := slices.IndexFunc(facts, func(f fact.Fact) bool {
+			return f.Kind == mapping.KindTransferOut && flows.Admits(&f) && !slices.Contains(td.Bases, f.Basis)
+		})
+		if i < 0 {
+			t.Fatalf("no transfer out %q prints on a basis %q does not", flows.Name, td.Name)
+		}
+		o, err := structure.Peers(relabel(t, structure.KeyOf(&facts[i], key.Level), false, flows), flows, td, identities,
+			structure.BudgetBookExceptions())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if slices.ContainsFunc(o.Findings, misfiled) {
+			t.Fatalf("findings = %q, want none on a basis %q does not print", o.Findings, td.Name)
 		}
 	})
 }

@@ -566,6 +566,14 @@ func validateRule(r *Rule, errf errFunc) error {
 		if err := checkCounterpart(r, row, errf); err != nil {
 			return err
 		}
+		publishes := r.kindsOf(row)
+		if row.Sign != "" && row.Sign != SignPositive && len(publishes) == 0 {
+			return cmdutil.WithHint(
+				errf(r.ID, "rows", "row %q: sign %s on a row that publishes no cell",
+					row.Label, row.Sign),
+				"a sign says how a row's facts are printed, and this row has none; "+
+					"remove the sign, as a skipped row takes no counterpart")
+		}
 		// SignNetted says a row is printed against its KIND's direction, so it
 		// is meaningless on a kind that has no direction, and
 		// fact-transfer-orientation-is-declared only witnesses transfers. Left
@@ -588,7 +596,7 @@ func validateRule(r *Rule, errf errFunc) error {
 		// on kind "income" and a mistyped counterpart kind as `sign netted on kind
 		// "incom"` -- both naming the wrong field to whoever has to fix the YAML.
 		if row.Sign == SignNetted {
-			ends := r.declaredKinds(row)
+			ends := publishes
 			if row.Counterpart != nil {
 				ends = append(ends, row.Counterpart.Kind)
 			}
