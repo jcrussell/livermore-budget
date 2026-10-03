@@ -404,10 +404,17 @@ type View struct {
 
 // NewView refuses a set that is not summable: a cut named twice, an identity
 // joining two of its cuts with no reading, a reading for an identity joining
-// none, or two cuts one of which decomposes the other. The antichain is over
-// money both print, not levels alone: revenue by fund and expenditure by
-// fund, department and object are summable together, and so are two cuts
-// whose declared fund groups are disjoint.
+// none, or two cuts at different levels that both print some money. The
+// antichain is over money both print, not levels alone: revenue by fund and
+// expenditure by fund, department and object are summable together, and so
+// are two cuts whose declared fund groups are disjoint.
+//
+// TWO LEVELS NEITHER OF WHICH REFINES THE OTHER ARE REFUSED TOO. A fund's
+// total revenue (fund-balance-revenues, at fund, category a placeholder) and
+// the spine's revenue by fund group and category share no refinement edge, yet
+// both carry the General Fund's revenue, so a total over both counts it twice.
+// Only two cuts at one level can be told apart by an identity, so a pair at
+// different levels has no reading that could make it summable.
 func NewView(name string, cuts []Cut, identities []Identity, readings map[string]string) (View, error) {
 	names := map[string]Cut{}
 	for _, c := range cuts {
@@ -418,7 +425,7 @@ func NewView(name string, cuts []Cut, identities []Identity, readings map[string
 	}
 	for i, a := range cuts {
 		for _, b := range cuts[i+1:] {
-			if !kindsMeet(a, b) || !footprintsMeet(a, b) {
+			if a.Level == b.Level || !kindsMeet(a, b) || !footprintsMeet(a, b) {
 				continue
 			}
 			fine, coarse := a, b
@@ -430,6 +437,9 @@ func NewView(name string, cuts []Cut, identities []Identity, readings map[string
 					"print %v, so a total over both counts that money twice",
 					name, fine.Name, fine.Level, coarse.Name, coarse.Level, sharedKinds(a, b))
 			}
+			return View{}, fmt.Errorf("view %q is not an antichain: %q (%s) and %q (%s) are two "+
+				"decompositions of money both print as %v, so a total over both counts it twice",
+				name, a.Name, a.Level, b.Name, b.Level, sharedKinds(a, b))
 		}
 	}
 	joined := map[string]bool{}

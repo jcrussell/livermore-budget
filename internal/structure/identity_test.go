@@ -401,6 +401,32 @@ func TestTheAntichainIsOverMoneyBothCutsPrintAndNotOverLevelsAlone(t *testing.T)
 	}
 }
 
+// TestTwoLevelsNeitherRefiningTheOtherAreNotSummable reads the cuts whose
+// levels share no refinement edge and whose kinds and footprints meet: a fund's
+// total revenue beside the spine's revenue by fund group and category, and
+// expenditure by department beside the spine. Each pair carries the General
+// Fund's money twice, so a total over it is refused.
+func TestTwoLevelsNeitherRefiningTheOtherAreNotSummable(t *testing.T) {
+	identities := structure.BudgetBookIdentities()
+	spine := allCutNamed(t, structure.CutSpine)
+	for _, other := range []string{structure.CutFundBalanceRevenues, structure.CutDepartmentwide} {
+		c := allCutNamed(t, other)
+		if structure.Refines(c.Level, spine.Level) || structure.Refines(spine.Level, c.Level) {
+			t.Fatalf("%s and %s are now comparable; this pair no longer witnesses an incomparable overlap",
+				c.Level, spine.Level)
+		}
+		_, err := structure.NewView("twice", []structure.Cut{spine, c}, identities, nil)
+		if err == nil || !strings.Contains(err.Error(), "two decompositions") {
+			t.Errorf("NewView over the spine beside %s = %v, want refused: both print %s's money",
+				other, err, "the General Fund")
+		}
+	}
+	// The three cuts pp.186-209 publish are one view: their kinds are disjoint.
+	if _, err := structure.ViewOf("fund-balances", []string{structure.ScopeFundBalancesByFund}, nil); err != nil {
+		t.Errorf("ViewOf(fund-balances-by-fund) = %v, want admitted", err)
+	}
+}
+
 // TestDisjointFootprintsAreSummableAndTheGeneralFundIsNot is what lets
 // fund-flows draw pp.172-183 beside pp.167-170: fund-expenditures refines
 // nothing general-fund-departments prints because their fund groups are

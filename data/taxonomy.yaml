@@ -1573,7 +1573,12 @@ categories:
     pages: [186, 188, 190, 192, 194, 196, 198, 200, 202, 204, 206, 208]
     note: >-
       A fund's total revenue, not a category of it: summing this with any
-      category of revenue counts the fund's revenue twice.
+      category of revenue counts the fund's revenue twice. Only the cut
+      fund-balance-revenues carries it, at level fund, and a view holding that
+      cut beside any cut at another level whose revenue meets it is refused
+      (structure.NewView); peers-overlap-only-by-declared-identity builds that
+      view for every published document. A reader of facts.jsonl who sums
+      kind revenue across scopes is not guarded.
 
   #@cite p0187 header "Expenses Transfers Out Transfers Out to CIP ..."
   - slug: expenses
@@ -1583,7 +1588,8 @@ categories:
     pages: [187, 189, 191, 193, 195, 197, 199, 201, 203, 205, 207, 209]
     note: >-
       A fund's total expenses, not a category of them: summing this with any
-      category of expenditure counts the fund's expenses twice.
+      category of expenditure counts the fund's expenses twice. Only the cut
+      fund-balance-expenses carries it, guarded as revenues is.
 
   # ==================================================================
   # TRANSFER
