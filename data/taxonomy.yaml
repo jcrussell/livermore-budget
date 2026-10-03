@@ -1771,9 +1771,14 @@ categories:
       and the city never states they are the same line. They are: General Fund
       FY 2026-27 is 732,459 as p66 BEGINNING WORKING CAPITAL and as the p74
       7/1/26 column, and 1,766,613 / 732,459 likewise reconcile across p72 and
-      p66's two FY columns.
+      p66's two FY columns. pp.186-209 print the same column per fund and year
+      and tie the same way: the General Fund begins FY 2025-26 at 1,766,613 on
+      p198 and FY 2026-27 at 732,459 on p204, p66's two figures; FY 2023-24
+      and FY 2024-25 (p186, p192), which p66 does not print, carry forward
+      from the ending column of the year before.
     source_note: >-
-      Budget Book p. 66 (row) and p. 74 (column, 7/1/26). The alias term is
+      Budget Book p. 66 (row), p. 74 (column, 7/1/26) and pp. 198/204 (the
+      General Fund's opening column). The alias term is
       disambiguated from fund-balance/ending only by the date in the header
       (7/1 opening vs 6/30 closing), which is why both entries carry the same
       alias string.
@@ -1807,9 +1812,11 @@ categories:
     rationale: >-
       Same merge as fund-balance/beginning and proven the same way: General
       Fund FY 2026-27 is 3,083,557 both as p66 ENDING WORKING CAPITAL and as
-      the last column of p75 (6/30/27).
+      the last column of p75 (6/30/27), and on p205; FY 2025-26 is 732,459 on
+      p66 and on p199.
     source_note: >-
-      Budget Book p. 66 (row) and p. 75 (column, 6/30/27). On pp. 69/71/73/75
+      Budget Book p. 66 (row), p. 75 (column, 6/30/27) and pp. 199/205 (the
+      General Fund's closing column). On pp. 69/71/73/75
       the header does not survive extraction contiguously: the page text reads
       "Fund Balance / Reserve Working Capital Expenses ... Increase/(Use) Total
       Uses 6/30/27" because the extractor walks line 1 across all columns
@@ -1862,12 +1869,15 @@ categories:
       one is arithmetically proven, so it is recorded as a single category
       rather than two. General Fund FY 2026-27 is 3,332,607 as p66 ADDITION TO
       RESERVES and as the p75 Reserve Increase/(Use) column; FY 2025-26 is
-      4,699,425 on p66 and on p73. Classifying it as fund_balance rather than
+      4,699,425 on p66 and on p73. pp.186-209 print the same column per fund
+      and tie the same way: 4,699,425 on p199 and 3,332,607 on p205, p66's two
+      figures. Classifying it as fund_balance rather than
       expenditure is also our judgment: it sits inside p66's TOTAL USES and
       p69-75's Total Uses, but it is a stock movement, and the four expenditure
       object categories above account for it nowhere.
     source_note: >-
-      Budget Book p. 66 (row, both FY columns) and pp. 73/75 (column). Same
+      Budget Book p. 66 (row, both FY columns), pp. 73/75 and pp. 199/205
+      (column). Same
       extraction caveat as fund-balance/ending: on pp. 69/71/73/75 the header
       appears in the page text as "Reserve" and "Increase/(Use)" separated by
       the other column labels.
