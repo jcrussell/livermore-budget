@@ -2,6 +2,7 @@ package mapping
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 
@@ -412,30 +413,42 @@ func TestOnlyARaisedMarkerSharesAGapWithAHeading(t *testing.T) {
 	}
 }
 
-// TestTheBudgetBooksFootnoteMarkersAreRaised: every lone footnote marker
-// Budget Book pp.190, 194 and 196 print is one the guard reads as raised.
+// TestTheBudgetBooksFootnoteMarkersAreRaised: every footnote marker a
+// committed Budget Book rule declares as unmapped_text is one the guard reads
+// as raised, found on its page by content.
 func TestTheBudgetBooksFootnoteMarkersAreRaised(t *testing.T) {
-	for _, tc := range []struct {
-		page int
-		off  int
-		mark string
-	}{
-		{190, 910, "1"},
-		{194, 1720, "2"},
-		{196, 1493, "1"},
-	} {
-		t.Run(fmt.Sprint(tc.page), func(t *testing.T) {
-			text, g := budgetFixturePair(t, tc.page)
-			pr, err := buildPairing(text, g)
-			if err != nil {
-				t.Fatalf("buildPairing: %v", err)
+	files, err := LoadDir(os.DirFS("../.."), "mappings")
+	if err != nil {
+		t.Fatalf("load the committed rule files: %v", err)
+	}
+	seen := 0
+	for _, f := range files {
+		if f.DocID != "livermore-budget-fy2026-2027" {
+			continue
+		}
+		for _, r := range f.Rules {
+			for _, p := range r.Parts {
+				for _, u := range p.UnmappedText {
+					if !isFootnoteMarker(u.Text) {
+						continue
+					}
+					seen++
+					t.Run(fmt.Sprintf("%s/p%d/%s", r.ID, p.Page, u.Text), func(t *testing.T) {
+						text, g := budgetFixturePair(t, p.Page)
+						pr, err := buildPairing(text, g)
+						if err != nil {
+							t.Fatalf("buildPairing: %v", err)
+						}
+						off := loneMarker(t, text, u.Text)
+						if !(&columnGuard{pair: pr}).raisedMarker(off) {
+							t.Errorf("p%d's %q at offset %d is not read as raised", p.Page, u.Text, off)
+						}
+					})
+				}
 			}
-			if got := text[tc.off : tc.off+len(tc.mark)]; got != tc.mark {
-				t.Fatalf("offset %d holds %q, want %q", tc.off, got, tc.mark)
-			}
-			if !(&columnGuard{pair: pr}).raisedMarker(tc.off) {
-				t.Errorf("p%d's %q at offset %d is not read as raised", tc.page, tc.mark, tc.off)
-			}
-		})
+		}
+	}
+	if seen == 0 {
+		t.Fatal("no committed Budget Book rule declares a footnote marker, so nothing was checked")
 	}
 }

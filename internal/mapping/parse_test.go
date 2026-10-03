@@ -207,6 +207,30 @@ func TestParseRejects(t *testing.T) {
 			want: "sign netted on kind \"revenue\"",
 		},
 		{
+			// A row that publishes nothing still declares its kind, and a sign
+			// on it is a claim about that kind's direction.
+			name: "sign netted on a skipped row of a kind with no direction",
+			yaml: base("      - {label: \"B\", skip: true, sign: netted}\n"),
+			want: "row \"B\": sign netted on kind \"revenue\"",
+		},
+		{
+			name: "sign netted on a non-amount row of a kind with no direction",
+			yaml: base("      - {label: \"B\", quantity: percentage, sign: netted}\n"),
+			want: "row \"B\": sign netted on kind \"revenue\"",
+		},
+		{
+			// A column carrying the category declares its cells' kind for every
+			// row, a non-amount one included, and that kind is no transfer here.
+			name: "sign netted on a non-amount row under a column declaring a kind with no direction",
+			yaml: strings.NewReplacer(
+				"kind: revenue", "kind: transfer_out",
+				"columns: [{fiscal_year: 2026}]",
+				"columns: [{fiscal_year: 2026, category: c, kind: revenue}]",
+				`- {label: "A", category: a}`, `- {label: "A"}`).Replace(
+				base("      - {label: \"B\", quantity: percentage, sign: netted}\n")),
+			want: "row \"B\": sign netted on kind \"revenue\"",
+		},
+		{
 			// A non-amount row publishes nothing, so its kind is no kind the
 			// rule maps, and naming the rest names every kind there is.
 			name: "total_row_kinds counting a non-amount row's kind",

@@ -32,24 +32,35 @@ func budgetFixturePair(t *testing.T, page int) (string, *geom.Page) {
 	return string(text), g
 }
 
-// p186Marker returns the byte offset of p186's lone footnote "1" in the page
-// text, and the index of its word in the geometry.
-func p186Marker(t *testing.T, text string, g *geom.Page) (int, int) {
+// loneMarker returns the byte offset of the footnote marker mark that the
+// page text prints alone on a line, failing unless exactly one line does.
+func loneMarker(t *testing.T, text, mark string) int {
 	t.Helper()
 	off := -1
 	base := 0
 	for _, body := range strings.Split(text, "\n") {
-		if strings.TrimSpace(body) == "1" {
+		if strings.TrimSpace(body) == mark {
 			if off >= 0 {
-				t.Fatal("p186 prints a lone \"1\" on two lines")
+				t.Fatalf("the page prints a lone %q on two lines", mark)
 			}
-			off = base + strings.Index(body, "1")
+			off = base + strings.Index(body, mark)
 		}
 		base += len(body) + 1
 	}
+	if off < 0 {
+		t.Fatalf("the page prints no lone %q", mark)
+	}
+	return off
+}
+
+// p186Marker returns the byte offset of p186's lone footnote "1" in the page
+// text, and the index of its word in the geometry.
+func p186Marker(t *testing.T, text string, g *geom.Page) (int, int) {
+	t.Helper()
+	off := loneMarker(t, text, "1")
 	word := slices.IndexFunc(g.Words, func(w geom.Word) bool { return w.Text == "1" })
-	if off < 0 || word < 0 {
-		t.Fatal("p186's footnote \"1\" is gone from a substrate")
+	if word < 0 {
+		t.Fatal("p186's footnote \"1\" is gone from the geometry")
 	}
 	return off, word
 }

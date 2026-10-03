@@ -24,7 +24,9 @@ type Identity struct {
 	// Categories narrows Kinds to the categories both readings print each
 	// kind under, where one side prints a kind under a category the other
 	// never does: a cell outside them is not this identity's, shared or
-	// one-sided. Empty means every category; otherwise it names every kind.
+	// one-sided, except that a kind it covers under a category it pairs with
+	// another kind is misfiled (Identity.misfiles). Empty means every
+	// category; otherwise it names every kind.
 	Categories []KindCategory
 	// Reason is why the pages print one figure twice, about the documents.
 	Reason string
@@ -36,9 +38,30 @@ type KindCategory struct {
 	Category string
 }
 
+func (id Identity) joins(a, b string) bool {
+	return (id.A == a && id.B == b) || (id.A == b && id.B == a)
+}
+
 func (id Identity) covers(a, b string, k mapping.Kind, category string) bool {
-	joins := (id.A == a && id.B == b) || (id.A == b && id.B == a)
-	return joins && id.coversCell(k, category)
+	return id.joins(a, b) && id.coversCell(k, category)
+}
+
+// misfiles is the kinds id pairs category with, where a cell of kind k under
+// it is one id, joining a and b, would cover but for the pairing: id covers k
+// and pairs category with other kinds only. Such a cell is a mis-mapped
+// column, or an overlap no identity covers, and never a figure one peer may
+// simply not print. It is empty for every other cell.
+func (id Identity) misfiles(a, b string, k mapping.Kind, category string) []mapping.Kind {
+	if !id.joins(a, b) || !containsKind(id.Kinds, k) || id.coversCell(k, category) {
+		return nil
+	}
+	var out []mapping.Kind
+	for _, c := range id.Categories {
+		if c.Category == category {
+			out = append(out, c.Kind)
+		}
+	}
+	return out
 }
 
 func (id Identity) coversCell(k mapping.Kind, category string) bool {
@@ -104,9 +127,11 @@ func ValidateIdentities(cuts []Cut, identities []Identity) error {
 			}
 			named[c] = true
 		}
-		for _, k := range id.Kinds {
-			if len(id.Categories) > 0 && !slices.ContainsFunc(id.Categories, func(c KindCategory) bool { return c.Kind == k }) {
-				return fmt.Errorf("identity %q names categories and none for %s, so it covers no cell of it", id.Name, k)
+		if len(id.Categories) > 0 {
+			for _, k := range id.Kinds {
+				if !slices.ContainsFunc(id.Categories, func(c KindCategory) bool { return c.Kind == k }) {
+					return fmt.Errorf("identity %q names categories and none for %s, so it covers no cell of it", id.Name, k)
+				}
 			}
 		}
 	}
@@ -139,8 +164,9 @@ type Overlap struct {
 // Peers compares two cuts at one level, kind by kind, and reports every cell
 // both produce. Findings: a shared cell no identity covers; a covered cell
 // whose readings differ; a covered non-zero cell only one side prints, unless
-// an exception pins the other absent; an identity no cell bears out; and a
-// category an identity names that no shared cell bears.
+// an exception pins the other absent; a non-zero cell only one side prints
+// that an identity misfiles; an identity no cell bears out; and a (kind,
+// category) pair an identity names that no shared cell bears.
 func Peers(facts []fact.Fact, a, b Cut, identities []Identity, exceptions []Exception) (Overlap, error) {
 	if a.Level != b.Level {
 		return Overlap{}, fmt.Errorf("peers %q (%s) and %q (%s): not at one level", a.Name, a.Level, b.Name, b.Level)
@@ -190,6 +216,24 @@ func Peers(facts []fact.Fact, a, b Cut, identities []Identity, exceptions []Exce
 			}
 			sa, sb := as[key], bs[key]
 			if !sa.Present || !sb.Present {
+				if identity == "" && sa.Cents+sb.Cents != 0 {
+					for _, id := range identities {
+						others := id.misfiles(a.Name, b.Name, k, category)
+						if len(others) == 0 {
+							continue
+						}
+						present, missing := a, b
+						if !sa.Present {
+							present, missing = b, a
+						}
+						out.Findings = append(out.Findings, fmt.Sprintf(
+							"%s %s: %q prints %s here where %q has no such cell, and identity %q pairs %q "+
+								"with %v; a mis-mapped column, or an overlap no identity covers",
+							key, k, present.Name, amount.Cents(sa.Cents+sb.Cents).String(), missing.Name, id.Name,
+							category, others))
+						break
+					}
+				}
 				if identity != "" && a.prints(mapping.Basis(key.Basis)) && b.prints(mapping.Basis(key.Basis)) &&
 					sa.Cents+sb.Cents != 0 {
 					present, missing := a, b

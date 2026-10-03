@@ -492,9 +492,11 @@ func TestAnIdentityCoversOnlyTheCategoriesItNames(t *testing.T) {
 	})
 
 	t.Run("a shared cell outside its categories is uncovered", func(t *testing.T) {
+		// Both kinds stay covered, so only the category leaves the
+		// transfers/out cells uncovered.
 		narrow := p76
-		narrow.Categories = []structure.KindCategory{in}
-		narrow.Kinds = []mapping.Kind{mapping.KindTransferIn}
+		narrow.Categories = []structure.KindCategory{in,
+			{Kind: mapping.KindTransferOut, Category: "transfers/out-to-cip"}}
 		o, err := structure.Peers(facts, flows, td, []structure.Identity{narrow}, structure.BudgetBookExceptions())
 		if err != nil {
 			t.Fatal(err)
@@ -571,28 +573,51 @@ func TestAnIdentityCoversAKindOnlyUnderItsOwnCategory(t *testing.T) {
 	if key == (structure.Key{}) {
 		t.Fatal("no transfer out both sides print under p76's identity")
 	}
-	moved := slices.Clone(facts)
-	n := 0
-	for i := range moved {
-		f := &moved[i]
-		if f.Kind == mapping.KindTransferOut && (flows.Admits(f) || td.Admits(f)) &&
-			structure.KeyOf(f, key.Level) == key {
-			f.Category = "transfers/in"
-			n++
+	relabel := func(t *testing.T, sides ...structure.Cut) []fact.Fact {
+		t.Helper()
+		moved := slices.Clone(facts)
+		n := 0
+		for i := range moved {
+			f := &moved[i]
+			if f.Kind == mapping.KindTransferOut && slices.ContainsFunc(sides, func(c structure.Cut) bool { return c.Admits(f) }) &&
+				structure.KeyOf(f, key.Level) == key {
+				f.Category = "transfers/in"
+				n++
+			}
 		}
+		if n < len(sides) {
+			t.Fatalf("relabelled %d facts at %s, want every named side's", n, key)
+		}
+		return moved
 	}
-	if n < 2 {
-		t.Fatalf("relabelled %d facts at %s, want both sides'", n, key)
-	}
-	o, err = structure.Peers(moved, flows, td, identities, structure.BudgetBookExceptions())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(o.Findings) != 1 || !strings.Contains(o.Findings[0], "category=transfers/in") ||
-		!strings.Contains(o.Findings[0], "] transfer_out:") ||
-		!strings.Contains(o.Findings[0], "no identity says they are one figure") {
-		t.Fatalf("findings = %q, want the transfer out under transfers/in named as uncovered", o.Findings)
-	}
+
+	t.Run("both sides under another kind's category", func(t *testing.T) {
+		o, err := structure.Peers(relabel(t, flows, td), flows, td, identities, structure.BudgetBookExceptions())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(o.Findings) != 1 || !strings.Contains(o.Findings[0], "category=transfers/in") ||
+			!strings.Contains(o.Findings[0], "] transfer_out:") ||
+			!strings.Contains(o.Findings[0], "no identity says they are one figure") {
+			t.Fatalf("findings = %q, want the transfer out under transfers/in named as uncovered", o.Findings)
+		}
+	})
+
+	// A cell printed on one side only, under a category the identity pairs
+	// with another kind, is a misfiled column, not a figure the other side
+	// may simply not print.
+	t.Run("one side under another kind's category", func(t *testing.T) {
+		o, err := structure.Peers(relabel(t, flows), flows, td, identities, structure.BudgetBookExceptions())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !slices.ContainsFunc(o.Findings, func(f string) bool {
+			return strings.Contains(f, "category=transfers/in") && strings.Contains(f, "] transfer_out:") &&
+				strings.Contains(f, `pairs "transfers/in" with [transfer_in]`)
+		}) {
+			t.Fatalf("findings = %q, want the one-sided transfer out under transfers/in named as misfiled", o.Findings)
+		}
+	})
 }
 
 // TestAnAbsenceIsExcusedOnlyAtTheFigureItPins: pp.127-130 print no General

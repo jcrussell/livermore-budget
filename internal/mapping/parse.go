@@ -588,7 +588,7 @@ func validateRule(r *Rule, errf errFunc) error {
 		// on kind "income" and a mistyped counterpart kind as `sign netted on kind
 		// "incom"` -- both naming the wrong field to whoever has to fix the YAML.
 		if row.Sign == SignNetted {
-			ends := r.kindsOf(row)
+			ends := r.declaredKinds(row)
 			if row.Counterpart != nil {
 				ends = append(ends, row.Counterpart.Kind)
 			}

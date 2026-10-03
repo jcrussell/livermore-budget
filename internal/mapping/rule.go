@@ -1172,22 +1172,31 @@ func (r *Rule) categoryOnColumns() bool {
 }
 
 // kindsOf is every kind a row's facts carry, one per cell Row.Publishes
-// admits, read through Value.Kind so it cannot disagree with the facts. On a
-// rule no column of which publishes, it is the kind the row's facts would
-// carry, so a declaration about that kind is still held to it.
+// admits, read through Value.Kind so it cannot disagree with the facts.
 func (r *Rule) kindsOf(row Row) []Kind {
 	var out []Kind
-	columns := false
 	for i := range r.Parts {
 		for _, c := range r.Parts[i].Columns {
-			columns = columns || c.publishes()
 			if row.Publishes(c) {
 				out = append(out, Value{Row: row, Column: c}.Kind(r))
 			}
 		}
 	}
-	if !columns && row.Publishes(Column{}) {
-		return []Kind{row.EffectiveKind(r)}
+	return out
+}
+
+// declaredKinds is every kind a row declares, whether or not any cell of it
+// publishes: Value.Kind of its cell in every column, skipped or not -- the
+// column's kind where the column carries a category, the row's effective kind
+// otherwise. A declaration about the row, such as its sign, is held to these
+// rather than to kindsOf, because a row that publishes nothing still asserts
+// what it is.
+func (r *Rule) declaredKinds(row Row) []Kind {
+	var out []Kind
+	for i := range r.Parts {
+		for _, c := range r.Parts[i].Columns {
+			out = append(out, Value{Row: row, Column: c}.Kind(r))
+		}
 	}
 	return out
 }

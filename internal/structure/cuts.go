@@ -615,12 +615,9 @@ func fundBalanceExceptions() []Exception {
 	}
 }
 
-// The helpers below each take the residual as an argument, written out beside
-// the pins rather than computed from them, so ValidateExceptions holds a
-// mistyped pin to it.
-
 // roundsADollar is a dollar of FY2023-24 rounding, one cell, both sides'
-// printed figure named.
+// printed figure named. Its residual is declared beside the pins rather than
+// computed from them, so ValidateExceptions holds a mistyped pin to it.
 func roundsADollar(name, cut, against string, at Level, year int, basis string, coords map[Axis]string,
 	c, a, residual int64, printed, reason string) Exception {
 	return Exception{
@@ -634,6 +631,10 @@ func roundsADollar(name, cut, against string, at Level, year int, basis string, 
 	}
 }
 
+// carriesADollar is the dollar of FY2023-24 rounding pp.186-209 carry into a
+// fund group's later balances against pp.66-67, as roundsADollar declares it.
+// Its residual is declared beside the pins rather than computed from them, so
+// ValidateExceptions holds a mistyped pin to it.
 func carriesADollar(name string, year int, g, category string, c, a, residual int64, printed string) Exception {
 	return roundsADollar("pp.186-209-carry-a-dollar-of-"+name, CutFundBalanceFlows, CutSpine,
 		LevelFundGroupByCategory, year, "adopted", map[Axis]string{AxisFundGroup: g, AxisCategory: category}, c, a, residual,
@@ -643,14 +644,20 @@ func carriesADollar(name string, year int, g, category string, c, a, residual in
 			"the group's printed total is pp.66-67's figure")
 }
 
+// roundsAnActual is a fund total two schedules print in the FY2023-24 Actual
+// column over rows each rounds differently, as roundsADollar declares it. Its
+// residual is declared beside the pins rather than computed from them, so
+// ValidateExceptions holds a mistyped pin to it.
 func roundsAnActual(name, cut, against string, g, number string, c, a, residual int64, printed string) Exception {
 	return roundsADollar(name, cut, against, LevelFund, 2024, "actual", map[Axis]string{AxisFundGroup: g, AxisFund: number},
 		c, a, residual, printed+"; the rows under it miss it by the dollar their rules' stated_total_deltas declare",
 		"the two schedules print one fund total in the FY2023-24 Actual column and round the rows under it differently")
 }
 
-// printsNoChangeLine: pp.66-67 print CHANGE IN WORKING CAPITAL, and
-// pp.186-209 no change line.
+// printsNoChangeLine is the change line pp.66-67 print as CHANGE IN WORKING
+// CAPITAL and pp.186-209 do not. Its residual is the printed figure, declared
+// rather than taken from the pin, so ValidateExceptions holds a mistyped pin
+// to it.
 func printsNoChangeLine(year int, g string, a, residual int64, printed string) Exception {
 	return Exception{
 		Name: fmt.Sprintf("pp.186-209-print-no-change-line-%s-%d", g, year),
@@ -666,6 +673,9 @@ func printsNoChangeLine(year int, g string, a, residual int64, printed string) E
 	}
 }
 
+// printsNoGFTransferIn is the General Fund transfer in pp.186-209 print and
+// pp.127-130 do not. Its residual is the printed figure, declared rather than
+// taken from the pin, so ValidateExceptions holds a mistyped pin to it.
 func printsNoGFTransferIn(name string, year int, basis string, c, residual int64, printed string) Exception {
 	return Exception{
 		Name: name,
@@ -681,8 +691,11 @@ func printsNoGFTransferIn(name string, year int, basis string, c, residual int64
 	}
 }
 
-// printsNoGFTransferInP76 is a peer absence, declared on the peer pair at its
-// level: the spine's exceptions excuse none.
+// printsNoGFTransferInP76 is the General Fund transfer in p76 prints and
+// pp.127-130 do not: a peer absence, declared on the peer pair at its level,
+// since the spine's exceptions excuse none. Its residual is the printed
+// figure, declared rather than taken from the pin, so ValidateExceptions
+// holds a mistyped pin to it.
 func printsNoGFTransferInP76(year int, c, residual int64, printed string) Exception {
 	return Exception{
 		Name: fmt.Sprintf("pp.127-130-print-no-general-fund-transfer-in-p76-%d", year),
