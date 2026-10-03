@@ -349,6 +349,45 @@ func TestAStepMayKeepOneFlankOfTheChartItOpensFrom(t *testing.T) {
 	}
 }
 
+// TestTheLedeSaysANodeOpensExactlyWhenAStepOpensOne renders a chart view with
+// steps beside one without, and reads the lede of each. The sentence telling a
+// reader to double click a node is server-rendered from the view's steps, so it
+// is held here rather than by a client test.
+func TestTheLedeSaysANodeOpensExactlyWhenAStepOpensOne(t *testing.T) {
+	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
+	if err != nil {
+		t.Fatalf("read fund-flows golden: %v", err)
+	}
+	dir := t.TempDir()
+	v := chartView(func(v *export.View) { v.Nav, v.Projection = "Extra", "fund-flows" })
+	if _, err := writeSite(export.Options{
+		Dir:         dir,
+		Projections: map[string][]byte{"sankey": goldenSankey(t), "fund-flows": headlined(t, fundFlows)},
+		Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
+			Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "sankey"}, v},
+		Docs:        budgetDocs(),
+		GeneratedBy: "fisc test",
+	}); err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	const opens, follows = "Double click a node that opens", "Click a node or a fund swatch"
+	for _, c := range []struct {
+		path      string
+		want, not string
+	}{
+		{"extra.html", opens, follows},
+		{export.IndexPath, follows, opens},
+	} {
+		page := readFile(t, dir, c.path)
+		if !strings.Contains(page, c.want) {
+			t.Errorf("%s does not say %q", c.path, c.want)
+		}
+		if strings.Contains(page, c.not) {
+			t.Errorf("%s says %q", c.path, c.not)
+		}
+	}
+}
+
 // deepWindowView is a well-formed window whose flank is two columns deep: the
 // chart on screen draws tiers {1, 0, 2}, tier 2's nodes open, and tiers 0 and 1
 // stay drawn to their left, nearest the centre first.
