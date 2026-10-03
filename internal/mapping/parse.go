@@ -1007,12 +1007,16 @@ func validateClass(r *Rule, field, owner, category string, kind Kind, publishes 
 // On the row axis EVERY ROW CARRIES A CATEGORY, and a department is a SECOND
 // AXIS and not a substitute for one: pp.167-170 cross department against
 // object category, so a department row still says what KIND of spending the
-// figure is. A row RowPublishes finds no cell for is exempt: it publishes
-// nothing, so there is no fact for a category to classify.
+// figure is. A row publishesIfPrinted finds no cell for is exempt: skipped,
+// non-amount, or under columns that all skip, it publishes nothing however
+// the page prints it, so there is no fact for a category to classify. A row
+// the parts OMIT is not exempt: omission is a fact about the page, not
+// about the row's meaning, and a blank declared on the row needs the address
+// its figure would have.
 func validateRowClass(r *Rule, row Row, byColumn bool, errf errFunc) error {
 	if !byColumn {
 		return validateClass(r, "rows", fmt.Sprintf("row %q", row.Label), row.Category,
-			row.Kind, r.RowPublishes(row), errf,
+			row.Kind, r.publishesIfPrinted(row), errf,
 			"every row needs one, including a row that declares a department: "+
 				"department is a second axis, not a substitute. Use skip: true if "+
 				"the row is a subtotal that would double-count. On a page whose "+

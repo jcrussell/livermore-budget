@@ -391,7 +391,7 @@ func (r *Resolver) Values(rule *Rule, p *Part) ([]Value, []Omission, error) {
 	}
 	var values []Value
 	for _, v := range rp.cells {
-		if p.cellPublishes(v.ColumnIndex, v.Row) {
+		if v.Row.Publishes(v.Column) {
 			values = append(values, v)
 		}
 	}

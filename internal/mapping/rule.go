@@ -1174,9 +1174,15 @@ func (r *Rule) categoryOnColumns() bool {
 // cellPublishes says whether row's cell in this part's j'th column becomes
 // a fact: the part prints the row (it is not in omitted_rows) and the cell
 // (it is not in omitted_cells), and Row.Publishes holds for the column.
-// EVERY decision about which cells a row publishes -- a sign, a counterpart,
-// a category, a grain, a collision, a blank on a balance, the values a part
-// yields -- reads this and nothing else, so no two of them can disagree.
+// The decisions about the facts a row DOES publish read it: kindsOf, and
+// through it a sign, a counterpart, a grain and RowPublishes; and
+// checkCounterpart's collision loop. Three decisions deliberately read
+// something else. A row's category requirement (validateRowClass, by
+// publishesIfPrinted) ignores omissions, since an omission is a fact about
+// the page and not about the row's meaning, and a blank declared on the row
+// needs the address its figure would have. validateOmittedCells counts the
+// columns a row PRINTS, since a blank is a claim about the page. And a
+// column's class (validateColumnClass) is about the column alone.
 func (p *Part) cellPublishes(j int, row Row) bool {
 	return !omittedSet(p)[row.Identity()] && !blankColumns(p)[row.Identity()][j] &&
 		row.Publishes(p.Columns[j])
@@ -1187,15 +1193,18 @@ func (r *Rule) RowPublishes(row Row) bool {
 	return len(r.kindsOf(row)) > 0
 }
 
-// OmissionPublishes says whether the cell an omission declares absent would
-// publish were p to print it: cellPublishes with the omission itself set
-// aside, on a row some cell of the rule does publish. A row no cell publishes
-// carries no fact for the blank to stand in for.
-func (r *Rule) OmissionPublishes(p *Part, j int, o Omission) bool {
-	if o.Cell && j != o.ColumnIndex {
-		return false
+// publishesIfPrinted says whether row would publish some cell were every
+// part to print it whole: Row.Publishes holds on some column of some part,
+// with omitted_rows and omitted_cells set aside.
+func (r *Rule) publishesIfPrinted(row Row) bool {
+	for i := range r.Parts {
+		for _, c := range r.Parts[i].Columns {
+			if row.Publishes(c) {
+				return true
+			}
+		}
 	}
-	return r.RowPublishes(o.Row) && o.Row.Publishes(p.Columns[j])
+	return false
 }
 
 // kindsOf is every kind a row's facts carry: one per cell cellPublishes

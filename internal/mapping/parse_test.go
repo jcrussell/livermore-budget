@@ -495,6 +495,18 @@ func TestParseRejectsSilentLosses(t *testing.T) {
 			want: "has no category",
 		},
 		{
+			// Omission is a fact about the page, not about the row's meaning:
+			// a row every part omits still needs the category its figure
+			// would carry were it printed, so a blank declared on it has an
+			// address.
+			name: "row with no classification, omitted from its only part",
+			yaml: strings.NewReplacer(`{label: "A", category: a}`, `{label: "A"}`,
+				"parts: [{page: 1, columns: [{fiscal_year: 2026}]}]",
+				`parts: [{page: 1, omitted_rows: ["A"], columns: [{fiscal_year: 2026}]}]`,
+			).Replace(base("      - {label: \"B\", category: b}\n")),
+			want: "has no category",
+		},
+		{
 			// A DEPARTMENT IS NOT A SUBSTITUTE FOR A CATEGORY, and until
 			// 2026-08-29 it was accepted as one. A fact with no category is in
 			// no graph unless its scope is projected, so in an unprojected
@@ -826,8 +838,8 @@ func TestLoadDirRejectsGridsDisagreeingAcrossFiles(t *testing.T) {
 	}
 }
 
-// TestCellPublishes is the one predicate every decision about which cells a
-// row publishes reads, over each clause: a skipped row or column, a
+// TestCellPublishes is the predicate the decisions about the facts a row
+// does publish read, over each clause: a skipped row or column, a
 // non-amount row or column, a row the part omits, and a cell it declares
 // blank.
 func TestCellPublishes(t *testing.T) {

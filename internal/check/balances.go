@@ -21,10 +21,12 @@ func lineOf(b structure.Balance, f *fact.Fact) (structure.Line, bool) {
 type blankLines map[structure.BalanceAt]map[structure.Line]bool
 
 // declaredBlanks reads every omission a rule in a balance scope declares, on
-// a cell mapping.Rule.OmissionPublishes says would become a fact, and finds
-// every fact the store prints on a line its rule declares blank: both balance
-// checks read their blanks here, so neither can let a printed figure override
-// one.
+// a cell mapping.Row.Publishes says would become a fact were the page to
+// print it, and finds every fact the store prints on a line its rule
+// declares blank: both balance checks read their blanks here, so neither can
+// let a printed figure override one. A row omitted from every part is a
+// blank on every balance its cells would have landed on, and the parser
+// demands a category of it, so fact.FromValues always has an address.
 //
 // THE ADDRESS IS fact.FromValues', fed the cell the page leaves blank, so the
 // blank lands on exactly the balance and line its figure would have. The
@@ -43,7 +45,7 @@ func declaredBlanks(s *Subject, balances []structure.Balance) (blankLines, []Fin
 				p := &rule.Parts[j]
 				for _, o := range mapping.Omissions(rule, p) {
 					for c, col := range p.Columns {
-						if !rule.OmissionPublishes(p, c, o) {
+						if !o.Row.Publishes(col) || (o.Cell && c != o.ColumnIndex) {
 							continue
 						}
 						blanks, err := fact.FromValues(file, rule, []mapping.Value{{
