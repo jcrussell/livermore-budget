@@ -734,9 +734,10 @@
         "side": {
           "type": "string",
           "enum": [
-            "source"
+            "source",
+            "both"
           ],
-          "description": "Which end of a link the opened node is; absent for the end links point at."
+          "description": "Which end of a link the opened node is; absent for the end links point at, both for a node drawn between what comes into it and what leaves it."
         }
       }
     }

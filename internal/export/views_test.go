@@ -388,6 +388,34 @@ func TestTheLedeSaysANodeOpensExactlyWhenAStepOpensOne(t *testing.T) {
 	}
 }
 
+// TestAStepMayOpenANodeOnBothSides is the control for the both-sided
+// refusals: the opened tier drawn between a column on each side is accepted,
+// and the side reaches the page.
+func TestAStepMayOpenANodeOnBothSides(t *testing.T) {
+	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
+	if err != nil {
+		t.Fatalf("read fund-flows golden: %v", err)
+	}
+	dir := t.TempDir()
+	v := chartView(func(v *export.View) {
+		v.Nav, v.Projection = "Extra", "fund-flows"
+		v.Steps[0].Sankey.Side, v.Steps[0].Sankey.Tiers = export.SideBoth, []int{0, 2, 3}
+	})
+	if _, err := writeSite(export.Options{
+		Dir:         dir,
+		Projections: map[string][]byte{"sankey": goldenSankey(t), "fund-flows": headlined(t, fundFlows)},
+		Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
+			Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "sankey"}, v},
+		Docs:        budgetDocs(),
+		GeneratedBy: "fisc test",
+	}); err != nil {
+		t.Fatalf("Write refused a both-sided step: %v", err)
+	}
+	if page := readFile(t, dir, "extra.html"); !strings.Contains(page, `"side":"both"`) {
+		t.Error("the config carries no \"side\":\"both\"")
+	}
+}
+
 // deepWindowView is a well-formed window whose flank is two columns deep: the
 // chart on screen draws tiers {1, 0, 2}, tier 2's nodes open, and tiers 0 and 1
 // stay drawn to their left, nearest the centre first.
@@ -1078,6 +1106,25 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 				v.Steps[0].Sankey.Tiers, v.Steps[0].Sankey.Widen = []int{1, 0, 2, 3}, []int{1}
 			})},
 			"a widening on the flank's side would push them off it"},
+		{"a both-sided step opening its first column", []export.View{ok,
+			chartView(func(v *export.View) {
+				v.Steps[0].Sankey.Side, v.Steps[0].Sankey.Tiers = export.SideBoth, []int{2, 3}
+			})},
+			"so the opened tier must be neither end"},
+		{"a both-sided step opening its last column", []export.View{ok,
+			chartView(func(v *export.View) {
+				v.Steps[0].Sankey.Side, v.Steps[0].Sankey.Tiers = export.SideBoth, []int{0, 2}
+			})},
+			"so the opened tier must be neither end"},
+		{"a both-sided step widening", []export.View{ok,
+			chartView(func(v *export.View) {
+				v.Steps[0].Sankey.Side, v.Steps[0].Sankey.Tiers = export.SideBoth, []int{0, 2, 3, 4}
+				v.Steps[0].Sankey.Widen = []int{4}
+			})},
+			"keeps no flank"},
+		{"a window that is also both-sided", []export.View{ok,
+			windowView(func(v *export.View) { v.Steps[0].Sankey.Side = export.SideBoth })},
+			"is the TARGET of one half and the SOURCE of the other"},
 		{"a window that also declares a side", []export.View{ok,
 			windowView(func(v *export.View) { v.Steps[0].Sankey.Side = export.SideSource })},
 			"is the TARGET of one half and the SOURCE of the other"},

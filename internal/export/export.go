@@ -518,14 +518,26 @@ type SankeyHints struct {
 	// tier with no cap is drawn whole.
 	Caps []TierCap `json:"caps,omitempty"`
 	// Side is which end of a link the opened node sits on: "" for the node the
-	// links point AT, [SideSource] for the node they come FROM. Declared, never
-	// inferred from tier numbers.
+	// links point AT, [SideSource] for the node they come FROM, [SideBoth] for
+	// a node drawn between the two. Declared, never inferred from tier numbers.
 	Side string `json:"side,omitempty"`
 }
 
 // SideSource is [SankeyHints.Side] for a step opening the node its chart's
 // links come FROM.
 const SideSource = "source"
+
+// SideBoth is [SankeyHints.Side] for a step drawing the opened node between
+// what its document sends into it and what it sends out, both read off the
+// step's own document: a window takes its second side from the chart on
+// screen, and this takes it from the document.
+const SideBoth = "both"
+
+// interior reports whether tier is drawn with a column on each side of it.
+func interior(tiers []int, tier int) bool {
+	i := slices.Index(tiers, tier)
+	return i > 0 && i < len(tiers)-1
+}
 
 // drawnTiers is the column order a chart of this form draws, or nil for a
 // Sankey drawing its document whole.
@@ -1103,10 +1115,16 @@ func (v View) validateSankeyStep(i int, s DrillStep, parents []parentChart, doc 
 				"client stands the gap mark at the step's first or last declared tier, and "+
 				"a viewport that does not buy that tier would draw the mark in a column "+
 				"that is not there", v.Path, i, len(s.Gaps), h.Widen)
-	case h.Side != "" && h.Side != SideSource:
+	case h.Side != "" && h.Side != SideSource && h.Side != SideBoth:
 		return fmt.Errorf(
 			"view %q's step %d opens side %q; the sides are \"\", the node a link points "+
-				"at, and %q, the node it comes from", v.Path, i, h.Side, SideSource)
+				"at, %q, the node it comes from, and %q, a node drawn between the two",
+			v.Path, i, h.Side, SideSource, SideBoth)
+	case h.Side == SideBoth && !interior(h.Tiers, s.From):
+		return fmt.Errorf(
+			"view %q's step %d opens tier %d on both sides and draws tiers %v; a node drawn "+
+				"between what enters it and what leaves it is a column with one on each side, "+
+				"so the opened tier must be neither end", v.Path, i, s.From, h.Tiers)
 	case len(h.Keep) > 0 && h.Side != "":
 		return fmt.Errorf(
 			"view %q's step %d keeps tier(s) %v and opens side %q; a window's opened node "+
