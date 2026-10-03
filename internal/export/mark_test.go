@@ -390,3 +390,30 @@ func TestTheNaiveNoteCitesTheTransfersOut(t *testing.T) {
 		t.Errorf("naive note = %q, want it to end by quoting the transfers out, %s", tiles[0].Note, want)
 	}
 }
+
+// TestTheTablePointerQuotesTheHeadingThePagePrints holds the chart
+// description's pointer to the flow table's heading as the page renders it, so
+// a screen reader is never sent to a heading that is not there. Mutation: spell
+// the <h2> in site/index.html.tmpl as a literal other than the pointer's, and
+// it goes red.
+func TestTheTablePointerQuotesTheHeadingThePagePrints(t *testing.T) {
+	data := pageData{Wording: defaultWording(), TableHeading: flowTableHeading}
+	out, err := renderPage(site.FS(), SankeyTemplate, data)
+	if err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	page := string(out)
+	i := strings.Index(page, `id="table-view"`)
+	if i < 0 {
+		t.Fatal("the page has no flow table")
+	}
+	rest := page[i:]
+	a, b := strings.Index(rest, "<h2>"), strings.Index(rest, "</h2>")
+	if a < 0 || b < a {
+		t.Fatal("the flow table has no <h2>")
+	}
+	heading := rest[a+len("<h2>") : b]
+	if want := `"` + heading + `"`; !strings.Contains(data.Wording.TablePointer, want) {
+		t.Errorf("table_pointer %q does not quote the heading the page prints, %s", data.Wording.TablePointer, want)
+	}
+}

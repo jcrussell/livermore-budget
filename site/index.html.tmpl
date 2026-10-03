@@ -158,7 +158,7 @@
       <a href="{{.DataPath}}">{{.DataPath}}</a>. With JavaScript off, that file and the
       figures on this page are still the whole story: every amount, fact id and source page
       is in it. The panels below open without a script, but two of them are FILLED by one:
-      "Every flow, as a table" will be empty and "What we inferred" will still say it is
+      "{{.TableHeading}}" will be empty and "What we inferred" will still say it is
       loading. The file has both.
     </p>
   </noscript>
@@ -290,7 +290,7 @@
        open the table; app.js and the tests reach it by id. */}}
 <details class="apparatus" id="table-view">
   <summary>
-    <h2>Every flow, as a table</h2>
+    <h2>{{.TableHeading}}</h2>
     <span class="apparatus-hint">the chart's twin, same numbers —
       <span id="counts-line">{{.Links}} flows between {{.Nodes}} nodes, from {{.Facts}} facts</span></span>
   </summary>

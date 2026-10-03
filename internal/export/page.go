@@ -279,6 +279,8 @@ type pageData struct {
 	Basis string
 	// Wording is the client's words, which the template's legend shares.
 	Wording wording
+	// TableHeading is flowTableHeading.
+	TableHeading string
 	// ChartTitle is the SVG's accessible name: the opening yearView's string,
 	// the same one app.js repaints on a year switch.
 	ChartTitle string
@@ -571,6 +573,11 @@ func kindLabels() map[string]string {
 // ledeOf is a column named the way the lede names it.
 func ledeOf(label, basis string) string { return label + " " + basis }
 
+// flowTableHeading is the flow table's heading. The template renders it and
+// TablePointer quotes it, so a chart's description cannot point a screen
+// reader at a heading the page no longer prints.
+const flowTableHeading = "Every flow, as a table"
+
 // defaultWording is the site's English. The counts sentence's head is also
 // rendered server-side by site/index.html.tmpl for the page before app.js
 // runs, and a test holds that line to Counts.
@@ -608,7 +615,7 @@ func defaultWording() wording {
 		DescFollows:       ", follow this money",
 		FlowInferred:      "This flow is inferred; both endpoints are printed by the city.",
 		NoneInferred:      "Nothing on this chart is inferred: every node and flow is printed by the city.",
-		TablePointer:      "The same figures are in the flow table below, which opens from the \"Every flow, as a table\" heading.",
+		TablePointer:      "The same figures are in the flow table below, which opens from the \"" + flowTableHeading + "\" heading.",
 		AggregateLabel:    "{folded} smaller {word}",
 		AggregateRationale: "Our grouping, not a line the city printed: the {folded} smallest {word} in this column are drawn as one " +
 			"mark because they cannot be drawn separately. Every figure inside it is printed; the box around them is ours.",
@@ -1230,18 +1237,19 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			Caveats:      open.Caveats,
 			CaveatsPath:  caveatsPath,
 		},
-		Lede:       open.Lede,
-		Basis:      open.Basis,
-		Wording:    defaultWording(),
-		ChartTitle: open.ChartTitle,
-		Hero:       open.Hero,
-		Figures:    open.Figures,
-		Years:      years,
-		Opens:      open.Stem,
-		Facts:      open.Counts.Facts,
-		Nodes:      open.Counts.Nodes,
-		Links:      open.Counts.Links,
-		Drill:      len(v.Steps) > 0,
+		Lede:         open.Lede,
+		Basis:        open.Basis,
+		Wording:      defaultWording(),
+		TableHeading: flowTableHeading,
+		ChartTitle:   open.ChartTitle,
+		Hero:         open.Hero,
+		Figures:      open.Figures,
+		Years:        years,
+		Opens:        open.Stem,
+		Facts:        open.Counts.Facts,
+		Nodes:        open.Counts.Nodes,
+		Links:        open.Counts.Links,
+		Drill:        len(v.Steps) > 0,
 		// #nosec G203 -- blob is encoding/json's output, which escapes <, >
 		// and & to their \u form, so it cannot terminate the script element
 		// or inject markup. The alternative, letting html/template escape a
