@@ -20,8 +20,8 @@
 // no null — the same discipline as [fact.Fact] and for the same reason: a key
 // that vanishes when it is empty makes a diff between two releases read as a
 // structural change. Absent strings are "", absent slices are []. The keys a
-// document may omit are [Metadata.Headline] and [Node.Balances], each for the
-// reason on its field.
+// document may omit are [Metadata.Headline], [Node.Balances] and either of
+// [NodeBalances]' two, each for the reason on its field.
 //
 // Money is an integer count of cents, never a float and never a string.
 // amount.Cents is deliberately not marshalled: it has a String method and

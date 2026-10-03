@@ -1522,8 +1522,8 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 				"drawn at its own fall: the beginning balance less the ending one, which the city " +
 				"prints as two figures and not as one. These are each fund's own draw, gross, " +
 				"where the citywide chart's Fund Balance Draw is net within each fund group, so " +
-				"the funds here sum to more than the mark they were opened from; the caveats say " +
-				"by how much. Every fund opens into where its own money comes from and goes.",
+				"the funds here sum to more than the mark they were opened from; a caveat gives " +
+				"their gross sum and their sum netted within each group. Every fund opens into where its own money comes from and goes.",
 		},
 		{
 			// Shares (After, From) with object-category and transfers-out, told
@@ -1546,7 +1546,7 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 				"prints as two figures and not as one. These are each fund's own contribution, " +
 				"gross, where the citywide chart's Fund Balance Contribution is net within each " +
 				"fund group, so the funds here sum to more than the mark they were opened from; " +
-				"the caveats say by how much. Every fund opens into where its own money comes " +
+				"a caveat gives their gross sum and their sum netted within each group. Every fund opens into where its own money comes " +
 				"from and goes.",
 		},
 		{

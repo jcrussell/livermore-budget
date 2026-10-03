@@ -106,6 +106,17 @@ func TestFundChangesAndBalancesAreFailable(t *testing.T) {
 		}
 	})
 
+	t.Run("a printed balance the node does not publish", func(t *testing.T) {
+		n := node(t, "fund/100")
+		was := *n.Balances
+		n.Balances = &project.NodeBalances{Beginning: was.Beginning}
+		t.Cleanup(func() { n.Balances = &was })
+		res := run(t, &nodeBalancesTieToFacts{})
+		if res.Status != StatusFail || !strings.Contains(findingDetails(res), "the fund's node does not publish it") {
+			t.Fatalf("status %s, findings %v; want the General Fund's dropped ending named", res.Status, res.Findings)
+		}
+	})
+
 	general := node(t, "fund/100")
 	other := node(t, "fund/200")
 	for _, tc := range []struct {

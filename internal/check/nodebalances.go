@@ -3,6 +3,7 @@ package check
 import (
 	"context"
 	"fmt"
+	"maps"
 	"slices"
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
@@ -29,7 +30,7 @@ func (*nodeBalancesTieToFacts) Full() bool { return false }
 func (*nodeBalancesTieToFacts) Description() string {
 	return "every balance a node publishes equals the fact it cites, which is that fund's " +
 		"beginning or ending balance in the document's own slice, read from the pages its " +
-		"locators name"
+		"locators name; and on fund-sources-uses, every balance the slice prints is on its fund's node"
 }
 
 func (*nodeBalancesTieToFacts) Run(_ context.Context, s *Subject) (Result, error) {
@@ -37,6 +38,9 @@ func (*nodeBalancesTieToFacts) Run(_ context.Context, s *Subject) (Result, error
 	balances := 0
 	for _, p := range s.linkedDocuments() {
 		selected := factIndex(project.SelectFacts(s.Facts, p.Options))
+		if p.Name == project.FundSourcesUsesProjection {
+			findings = append(findings, unpublishedBalances(p, selected)...)
+		}
 		for _, n := range p.Nodes {
 			if n.Balances == nil {
 				continue
@@ -66,6 +70,35 @@ func (*nodeBalancesTieToFacts) Run(_ context.Context, s *Subject) (Result, error
 		nothing:  "no node publishes a balance",
 		findings: findings,
 	}.result(), nil
+}
+
+// unpublishedBalances is every beginning or ending balance a fund-sources-uses
+// slice prints that its fund's node does not publish: a balance the change
+// ribbon cites is counted cited whether or not the node shows it, so nothing
+// else sees one dropped.
+func unpublishedBalances(p linked, selected map[string]fact.Fact) []Finding {
+	published := map[string]bool{}
+	for _, n := range p.Nodes {
+		if n.Balances == nil {
+			continue
+		}
+		for _, b := range []*project.NodeBalance{n.Balances.Beginning, n.Balances.Ending} {
+			if b != nil {
+				published[b.FactID] = true
+			}
+		}
+	}
+	var out []Finding
+	for _, id := range slices.Sorted(maps.Keys(selected)) {
+		f := selected[id]
+		if f.Kind != mapping.KindFundBalance || published[id] ||
+			(f.Category != project.CategoryFundBalanceBeginning && f.Category != project.CategoryFundBalanceEnding) {
+			continue
+		}
+		out = append(out, finding(fmt.Sprintf("%s %s%s %s", p, project.PrefixFund, fact.FundString(f.Fund), f.Category),
+			"fact %s prints this balance and the fund's node does not publish it", f.ID))
+	}
+	return out
 }
 
 // balanceMismatch is why one published balance is not the figure it cites,
