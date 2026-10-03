@@ -263,9 +263,10 @@ func init() {
 // HoldBalances applies one identity's exceptions to the sides it computed,
 // keyed by balance as [left, right]. It returns the balances an exception
 // holds apart, and a finding for each exception that could not apply: one
-// naming a balance the store does not produce on a scope it carries, one over
-// a balance that holds, and one whose pinned side has moved.
-func HoldBalances(identity BalanceIdentity, sides map[BalanceAt][2]int64, carried map[string]bool,
+// naming a balance the store does not produce, one over a balance that holds,
+// and one whose pinned side has moved. A caller over a store that does not
+// publish the tree's schedules passes the exceptions it declares, not the tree's.
+func HoldBalances(identity BalanceIdentity, sides map[BalanceAt][2]int64,
 	exceptions []BalanceException) (held map[BalanceAt]bool, findings []string) {
 	held = map[BalanceAt]bool{}
 	for _, e := range exceptions {
@@ -274,8 +275,6 @@ func HoldBalances(identity BalanceIdentity, sides map[BalanceAt][2]int64, carrie
 		}
 		got, ok := sides[e.At]
 		switch {
-		case !ok && !carried[e.At.Scope]:
-			// A scope the store does not carry -- a fixture -- is not stale.
 		case !ok:
 			findings = append(findings, fmt.Sprintf("balance exception at %s on %s matches no balance, so it "+
 				"excuses nothing; remove it rather than leaving a declaration that has stopped describing "+

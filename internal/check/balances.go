@@ -85,13 +85,3 @@ func declaredBlanks(s *Subject, balances []structure.Balance) (blankLines, []Fin
 	}
 	return out, findings
 }
-
-// carriedScopes is every scope the store carries, which is what tells a stale
-// exception from one for a schedule a fixture does not publish.
-func carriedScopes(facts []fact.Fact) map[string]bool {
-	out := map[string]bool{}
-	for i := range facts {
-		out[facts[i].Scope] = true
-	}
-	return out
-}

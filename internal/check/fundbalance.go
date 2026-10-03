@@ -189,7 +189,7 @@ func (*fundBalanceIdentity) Run(_ context.Context, s *Subject) (Result, error) {
 		}
 	}
 
-	carried, carriedApart, carryFindings := carryForward(balances, order, carriedScopes(s.Facts), balanceExceptions())
+	carried, carriedApart, carryFindings := carryForward(balances, order, balanceExceptions())
 	findings = append(findings, carryFindings...)
 
 	docs := map[string]bool{}
@@ -218,7 +218,7 @@ func (*fundBalanceIdentity) Run(_ context.Context, s *Subject) (Result, error) {
 // A series printing one year on two bases has no single ending to carry, and
 // is a finding rather than a guess at which basis follows which.
 func carryForward(balances map[structure.BalanceAt]*balance, order []structure.BalanceAt,
-	carried map[string]bool, exceptions []structure.BalanceException) (tie, heldApart int, findings []Finding) {
+	exceptions []structure.BalanceException) (tie, heldApart int, findings []Finding) {
 	years := map[string]map[int][]structure.BalanceAt{}
 	var series []string
 	for _, k := range order {
@@ -267,7 +267,7 @@ func carryForward(balances map[structure.BalanceAt]*balance, order []structure.B
 		}
 	}
 
-	held, stale := structure.HoldBalances(structure.BalanceCarryForward, sides, carried, exceptions)
+	held, stale := structure.HoldBalances(structure.BalanceCarryForward, sides, exceptions)
 	for _, f := range stale {
 		findings = append(findings, finding("structure.BalanceExceptions", "%s", f))
 	}

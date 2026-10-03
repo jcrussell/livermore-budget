@@ -81,17 +81,9 @@ var fund101 = balanceAt{structure.ScopeFundBalancesByFund, "capital", 101, 2026,
 
 // runBalance runs one check over hand-built facts and nothing else: both
 // balance checks read the facts and the rule files and no other input.
-//
-// THE TREE'S EXCEPTIONS ARE WITHHELD unless the test declares its own: they
-// name pp.186-209's balances, on the scope these facts are built on, so over
-// a hand-built store every one of them is stale and a finding.
 func runBalance(t *testing.T, c Check, facts []fact.Fact, files ...*mapping.File) Result {
 	t.Helper()
-	if !declaredBalanceExceptions {
-		prev := balanceExceptions
-		balanceExceptions = func() []structure.BalanceException { return nil }
-		defer func() { balanceExceptions = prev }()
-	}
+	withoutTreeBalanceExceptions(t)
 	res, err := c.Run(t.Context(), &Subject{Facts: facts, Files: files})
 	if err != nil {
 		t.Fatal(err)
@@ -258,6 +250,20 @@ func TestABalanceInAnUndeclaredScopeFails(t *testing.T) {
 	wantFail(t, runBalance(t, &fundBalanceIdentity{}, at.facts(byFundRow())), `"some-new-schedule"`)
 }
 
+// withoutTreeBalanceExceptions withholds the tree's balance exceptions for one
+// test over a hand-built store, unless the test declares its own: they name
+// pp.186-209's balances, so over a store that does not publish them every one
+// of them is stale and a finding.
+func withoutTreeBalanceExceptions(t *testing.T) {
+	t.Helper()
+	if declaredBalanceExceptions {
+		return
+	}
+	prev := balanceExceptions
+	balanceExceptions = func() []structure.BalanceException { return nil }
+	t.Cleanup(func() { balanceExceptions = prev })
+}
+
 // withBalanceExceptions declares exceptions the tree does not, for one test.
 func withBalanceExceptions(t *testing.T, exceptions ...structure.BalanceException) {
 	t.Helper()
@@ -308,10 +314,10 @@ func TestACarryForwardExceptionMustStillDescribeTheStore(t *testing.T) {
 	}
 }
 
-// TestAnExceptionOnAScopeTheStoreDoesNotCarryIsNotStale is residue's rule: a
-// declaration for pp.186-209 must not redden a store, such as the spine-only
-// fixture, that carries none of them.
-func TestAnExceptionOnAScopeTheStoreDoesNotCarryIsNotStale(t *testing.T) {
+// TestAnExceptionOnAScopeTheStoreDoesNotCarryIsStale: a declaration for
+// pp.186-209 over a store carrying none of them, as a renamed scope would
+// leave it, matches no balance.
+func TestAnExceptionOnAScopeTheStoreDoesNotCarryIsStale(t *testing.T) {
 	withBalanceExceptions(t, carryBreak(120_000, 120_001))
 	spine := fund101
 	spine.scope, spine.fund = structure.ScopeAllFundsGross, 0
@@ -320,7 +326,7 @@ func TestAnExceptionOnAScopeTheStoreDoesNotCarryIsNotStale(t *testing.T) {
 		{mapping.KindFundBalance, structure.CategoryFundBalanceChange, 20_000},
 		{mapping.KindFundBalance, structure.CategoryFundBalanceEnding, 120_000},
 	}
-	wantPass(t, runBalance(t, &fundBalanceIdentity{}, spine.facts(lines)), 1)
+	wantFail(t, runBalance(t, &fundBalanceIdentity{}, spine.facts(lines)), "matches no balance")
 }
 
 // rowDelta is a FY2024 row the document rounds a dollar off its identity.

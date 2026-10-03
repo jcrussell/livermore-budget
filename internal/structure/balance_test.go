@@ -78,3 +78,14 @@ func TestEveryScopePrintingABalanceDeclaresItsStocks(t *testing.T) {
 		t.Errorf("%s is declared to print a change line, and pp.186-209 print none", structure.ScopeFundBalancesByFund)
 	}
 }
+
+// TestAnExceptionOnAScopeTheStoreDoesNotCarryIsStale: a renamed scope leaves
+// every exception declared on it matching no balance, and each is a finding.
+func TestAnExceptionOnAScopeTheStoreDoesNotCarryIsStale(t *testing.T) {
+	e := fund101Break(t)
+	held, findings := structure.HoldBalances(structure.BalanceCarryForward,
+		map[structure.BalanceAt][2]int64{}, []structure.BalanceException{e})
+	if len(held) != 0 || len(findings) != 1 || !strings.Contains(findings[0], "matches no balance") {
+		t.Fatalf("held %v, findings %q; want the exception reported stale", held, findings)
+	}
+}

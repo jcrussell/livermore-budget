@@ -126,7 +126,7 @@ func (*fundGroupSourcesEqualUses) Run(_ context.Context, s *Subject) (Result, er
 		sides[k] = [2]int64{c.terms.Net(), change}
 	}
 
-	held, stale := structure.HoldBalances(structure.BalanceSourcesUses, sides, carriedScopes(s.Facts), balanceExceptions())
+	held, stale := structure.HoldBalances(structure.BalanceSourcesUses, sides, balanceExceptions())
 	for _, f := range stale {
 		findings = append(findings, finding("structure.BalanceExceptions", "%s", f))
 	}

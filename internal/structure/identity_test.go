@@ -456,7 +456,9 @@ func TestAnIdentityCoversOnlyTheCategoriesItNames(t *testing.T) {
 			p76 = id
 		}
 	}
-	if diff := cmp.Diff([]string{"transfers/in", "transfers/out"}, p76.Categories); diff != "" {
+	in, out := structure.KindCategory{Kind: mapping.KindTransferIn, Category: "transfers/in"},
+		structure.KindCategory{Kind: mapping.KindTransferOut, Category: "transfers/out"}
+	if diff := cmp.Diff([]structure.KindCategory{in, out}, p76.Categories); diff != "" {
 		t.Fatalf("p76's identity with pp.186-209 covers (-want +got):\n%s", diff)
 	}
 	toCIP := func(o structure.Overlap) int {
@@ -491,7 +493,8 @@ func TestAnIdentityCoversOnlyTheCategoriesItNames(t *testing.T) {
 
 	t.Run("a shared cell outside its categories is uncovered", func(t *testing.T) {
 		narrow := p76
-		narrow.Categories = []string{"transfers/in"}
+		narrow.Categories = []structure.KindCategory{in}
+		narrow.Kinds = []mapping.Kind{mapping.KindTransferIn}
 		o, err := structure.Peers(facts, flows, td, []structure.Identity{narrow}, structure.BudgetBookExceptions())
 		if err != nil {
 			t.Fatal(err)
@@ -504,7 +507,8 @@ func TestAnIdentityCoversOnlyTheCategoriesItNames(t *testing.T) {
 
 	t.Run("a category no shared cell bears is named", func(t *testing.T) {
 		wide := p76
-		wide.Categories = append([]string{"transfers/out-to-cip"}, p76.Categories...)
+		wide.Categories = append([]structure.KindCategory{{Kind: mapping.KindTransferOut, Category: "transfers/out-to-cip"}},
+			p76.Categories...)
 		o, err := structure.Peers(facts, flows, td, []structure.Identity{wide}, structure.BudgetBookExceptions())
 		if err != nil {
 			t.Fatal(err)
@@ -518,22 +522,77 @@ func TestAnIdentityCoversOnlyTheCategoriesItNames(t *testing.T) {
 		twin := allCutNamed(t, structure.CutFundBalanceRevenues)
 		twin.Name = "twin"
 		totals := structure.Identity{Name: "totals", A: structure.CutFundBalanceRevenues, B: twin.Name,
-			Kinds: []mapping.Kind{mapping.KindRevenue}, Categories: []string{"revenues"}, Reason: "a plant"}
+			Kinds: []mapping.Kind{mapping.KindRevenue}, Categories: []structure.KindCategory{{Kind: mapping.KindRevenue, Category: "revenues"}},
+			Reason: "a plant"}
 		err := structure.ValidateIdentities(append(structure.AllCuts(), twin), []structure.Identity{totals})
 		if err == nil || !strings.Contains(err.Error(), "no category axis") {
 			t.Fatalf("ValidateIdentities = %v, want categories refused at a level without them", err)
 		}
 	})
 
-	t.Run("a category named twice or empty is refused", func(t *testing.T) {
-		for _, cats := range [][]string{{"transfers/in", "transfers/in"}, {""}} {
+	t.Run("a category named twice, empty, for a kind not covered or leaving a kind out is refused", func(t *testing.T) {
+		for _, cats := range [][]structure.KindCategory{
+			{in, out, out},
+			{in, {Kind: mapping.KindTransferOut}},
+			{in, out, {Kind: mapping.KindRevenue, Category: "revenues"}},
+			{in},
+		} {
 			bad := p76
 			bad.Categories = cats
 			if err := structure.ValidateIdentities(structure.AllCuts(), []structure.Identity{bad}); err == nil {
-				t.Errorf("categories %q were accepted", cats)
+				t.Errorf("categories %v were accepted", cats)
 			}
 		}
 	})
+}
+
+// TestAnIdentityCoversAKindOnlyUnderItsOwnCategory: p76's identity with
+// pp.186-209 covers transfers in under transfers/in and transfers out under
+// transfers/out. A transfer out both sides map under transfers/in is a
+// mis-mapped column, an overlap the identity does not cover.
+func TestAnIdentityCoversAKindOnlyUnderItsOwnCategory(t *testing.T) {
+	facts := committedFacts(t)
+	flows, td := allCutNamed(t, structure.CutFundBalanceFlows), allCutNamed(t, "transfers-detail")
+	identities := structure.BudgetBookIdentities()
+	o, err := structure.Peers(facts, flows, td, identities, structure.BudgetBookExceptions())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(o.Findings) != 0 {
+		t.Fatalf("findings under the declared pairs:\n  %s", strings.Join(o.Findings, "\n  "))
+	}
+	var key structure.Key
+	for _, sh := range o.Shared {
+		if sh.Kind == mapping.KindTransferOut && sh.Identity == "a-fund-balance-transfer-is-p76s" {
+			key = sh.Key
+			break
+		}
+	}
+	if key == (structure.Key{}) {
+		t.Fatal("no transfer out both sides print under p76's identity")
+	}
+	moved := slices.Clone(facts)
+	n := 0
+	for i := range moved {
+		f := &moved[i]
+		if f.Kind == mapping.KindTransferOut && (flows.Admits(f) || td.Admits(f)) &&
+			structure.KeyOf(f, key.Level) == key {
+			f.Category = "transfers/in"
+			n++
+		}
+	}
+	if n < 2 {
+		t.Fatalf("relabelled %d facts at %s, want both sides'", n, key)
+	}
+	o, err = structure.Peers(moved, flows, td, identities, structure.BudgetBookExceptions())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(o.Findings) != 1 || !strings.Contains(o.Findings[0], "category=transfers/in") ||
+		!strings.Contains(o.Findings[0], "] transfer_out:") ||
+		!strings.Contains(o.Findings[0], "no identity says they are one figure") {
+		t.Fatalf("findings = %q, want the transfer out under transfers/in named as uncovered", o.Findings)
+	}
 }
 
 // TestAnAbsenceIsExcusedOnlyAtTheFigureItPins: pp.127-130 print no General

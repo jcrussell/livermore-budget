@@ -2,6 +2,7 @@ package structure
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
@@ -20,22 +21,31 @@ type Identity struct {
 	// Kinds are the fact kinds the two readings share. A cell of another kind
 	// both cuts produce is an overlap the identity does not cover.
 	Kinds []mapping.Kind
-	// Categories narrows Kinds to the categories both readings print, where
-	// one side prints a kind under a category the other never does: a cell
-	// outside them is not this identity's, shared or one-sided. Empty means
-	// every category.
-	Categories []string
+	// Categories narrows Kinds to the categories both readings print each
+	// kind under, where one side prints a kind under a category the other
+	// never does: a cell outside them is not this identity's, shared or
+	// one-sided. Empty means every category; otherwise it names every kind.
+	Categories []KindCategory
 	// Reason is why the pages print one figure twice, about the documents.
 	Reason string
 }
 
-func (id Identity) covers(a, b string, k mapping.Kind, category string) bool {
-	joins := (id.A == a && id.B == b) || (id.A == b && id.B == a)
-	return joins && containsKind(id.Kinds, k) && id.coversCategory(category)
+// A KindCategory is one kind under one category.
+type KindCategory struct {
+	Kind     mapping.Kind
+	Category string
 }
 
-func (id Identity) coversCategory(category string) bool {
-	return len(id.Categories) == 0 || contains(id.Categories, category)
+func (id Identity) covers(a, b string, k mapping.Kind, category string) bool {
+	joins := (id.A == a && id.B == b) || (id.A == b && id.B == a)
+	return joins && id.coversCell(k, category)
+}
+
+func (id Identity) coversCell(k mapping.Kind, category string) bool {
+	if !containsKind(id.Kinds, k) {
+		return false
+	}
+	return len(id.Categories) == 0 || slices.Contains(id.Categories, KindCategory{k, category})
 }
 
 // ValidateIdentities holds a set of identities to a set of cuts. It reads
@@ -84,12 +94,20 @@ func ValidateIdentities(cuts []Cut, identities []Identity) error {
 			return fmt.Errorf("identity %q names categories and %q is at %q, which carries no category axis",
 				id.Name, a.Name, a.Level)
 		}
-		named := map[string]bool{}
+		named := map[KindCategory]bool{}
 		for _, c := range id.Categories {
-			if c == "" || named[c] {
-				return fmt.Errorf("identity %q names category %q empty or twice", id.Name, c)
+			if c.Category == "" || named[c] {
+				return fmt.Errorf("identity %q names category %q for %s empty or twice", id.Name, c.Category, c.Kind)
+			}
+			if !containsKind(id.Kinds, c.Kind) {
+				return fmt.Errorf("identity %q names category %q for %s, which it does not cover", id.Name, c.Category, c.Kind)
 			}
 			named[c] = true
+		}
+		for _, k := range id.Kinds {
+			if len(id.Categories) > 0 && !slices.ContainsFunc(id.Categories, func(c KindCategory) bool { return c.Kind == k }) {
+				return fmt.Errorf("identity %q names categories and none for %s, so it covers no cell of it", id.Name, k)
+			}
 		}
 	}
 	return nil
@@ -200,7 +218,7 @@ func Peers(facts []fact.Fact, a, b Cut, identities []Identity, exceptions []Exce
 			cell := Shared{Key: key, Kind: k, A: sa, B: sb, Identity: identity}
 			if identity != "" {
 				borne[identity] = true
-				borne[identity+"\x00"+category] = true
+				borne[identity+"\x00"+string(k)+"\x00"+category] = true
 			}
 			out.Shared = append(out.Shared, cell)
 			switch {
@@ -238,11 +256,11 @@ func Peers(facts []fact.Fact, a, b Cut, identities []Identity, exceptions []Exce
 			continue
 		}
 		for _, c := range id.Categories {
-			if !borne[id.Name+"\x00"+c] {
+			if !borne[id.Name+"\x00"+string(c.Kind)+"\x00"+c.Category] {
 				out.Findings = append(out.Findings, fmt.Sprintf(
-					"identity %q names category %q, and %q and %q share no cell of it; a category "+
+					"identity %q names category %q for %s, and %q and %q share no cell of it; a category "+
 						"no cell bears is a claim nothing holds, so remove it",
-					id.Name, c, a.Name, b.Name))
+					id.Name, c.Category, c.Kind, a.Name, b.Name))
 			}
 		}
 	}
@@ -399,7 +417,7 @@ func (v View) Admits(f *fact.Fact, identities []Identity) bool {
 		}
 		for _, id := range identities {
 			reading, ok := v.Readings[id.Name]
-			if !ok || !containsKind(id.Kinds, f.Kind) || !id.coversCategory(f.Category) {
+			if !ok || !id.coversCell(f.Kind, f.Category) {
 				continue
 			}
 			other := id.A
