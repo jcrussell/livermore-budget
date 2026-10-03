@@ -200,8 +200,8 @@ func documentShape(p projection) string {
 	switch {
 	case p.Graph != nil && p.Graph.Metadata.Headline != nil:
 		// Every check over Subject.linkedDocuments, plus the three headline
-		// checks: headline-ties-to-facts, headline-transfer-residual and
-		// headline-naive-expenditure.
+		// checks where Subject.spine publishes it: headline-ties-to-facts,
+		// headline-transfer-residual and headline-naive-expenditure.
 		return "graph with a headline"
 	case p.Graph != nil:
 		// Every check over Subject.linkedDocuments: graph-acyclic,

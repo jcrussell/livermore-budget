@@ -732,6 +732,50 @@ func TestTheYearTheSitePublishesMustBeBuilt(t *testing.T) {
 	}
 }
 
+// TestASpineDocumentWithoutAHeadlineIsAFinding is fisc-gljt's trigger, over
+// the committed corpus: one of the two spine documents the site publishes
+// loses its headline, and every check that reads one must say so by name.
+//
+// THE OTHER DOCUMENT STAYS A SUBJECT. A spine selected by whether a document
+// carries a headline drops the broken one and passes over the rest, which is
+// the state this test refuses: the report would be green and only the
+// projection count in the summary would move.
+func TestASpineDocumentWithoutAHeadlineIsAFinding(t *testing.T) {
+	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	docs, findings := s.spine()
+	if len(findings) != 0 {
+		t.Fatalf("the committed spine is not whole: %+v", findings)
+	}
+	if len(docs) < 2 {
+		t.Fatalf("the corpus publishes %d spine document(s); with fewer than two, losing "+
+			"one headline cannot be told from losing them all", len(docs))
+	}
+	victim := docs[len(docs)-1]
+	victim.Graph.Metadata.Headline = nil
+
+	rep := runChecks(t, s)
+	for _, id := range []string{
+		"headline-ties-to-facts", "headline-transfer-residual", "headline-naive-expenditure",
+	} {
+		res := resultFor(t, rep, id)
+		if res.Status != StatusFail {
+			t.Errorf("%s = %s (%s), want fail with %s's headline gone", id, res.Status,
+				res.Summary, victim)
+			continue
+		}
+		if len(res.Findings) != 1 || res.Findings[0].Subject != victim.String() {
+			t.Errorf("%s findings = %+v, want exactly one naming %s", id, res.Findings, victim)
+		}
+		if res.Subjects == 0 {
+			t.Errorf("%s examined nothing, but the other spine document still carries "+
+				"its headline and must still be a subject", id)
+		}
+	}
+}
+
 // TestARetargetedScopeUnbuildsThePublishedTrendsDocument is fisc-w7d's own
 // trigger, run against the real corpus.
 //
@@ -976,7 +1020,11 @@ func TestContestedTotalsAreStillContested(t *testing.T) {
 	// One graph per published (fiscal year, basis) of the spine, keyed so a
 	// missing column is reported as a missing column rather than as a zero sum.
 	graphs := map[project.Column]*project.Document{}
-	for _, p := range s.graphs() {
+	docs, findings := s.spine()
+	if len(findings) != 0 {
+		t.Fatalf("the committed spine is not whole: %+v", findings)
+	}
+	for _, p := range docs {
 		for _, c := range p.Options.Columns {
 			graphs[c] = p.Graph
 		}

@@ -64,22 +64,48 @@ func TestANonGraphProjectionDoesNotKillTheRun(t *testing.T) {
 	}
 }
 
-// TestGraphsExcludesWhatHasNoHeadline is the other half: the headline checks
-// read the documents that publish one, and the structural checks every graph,
-// so a projection with no document reaches neither.
-func TestGraphsExcludesWhatHasNoHeadline(t *testing.T) {
-	s := &Subject{Projections: []projection{
-		{Name: "sankey", Graph: &project.Document{Metadata: project.Metadata{Headline: &project.Headline{}}}},
-		{Name: "fund-flows", Graph: &project.Document{}},
-		{Name: "series-only"},
-	}}
-	got := s.graphs()
-	if len(got) != 1 || got[0].Name != "sankey" {
-		t.Fatalf("graphs() = %v, want the one projection publishing a headline", got)
+// TestSpineIsSelectedByPublication is the other half: the headline checks
+// read the documents the site publishes as the spine, and the structural
+// checks every graph, so a projection with no document reaches neither -- and
+// a graph of another projection carrying a headline block reaches only the
+// structural checks, because the spine is a declaration and not a pointer.
+func TestSpineIsSelectedByPublication(t *testing.T) {
+	column := project.Options{
+		Columns: []project.Column{{FiscalYear: 2026, Basis: project.PublishedBasis}},
+		Scopes:  []string{project.PublishedScope},
+	}
+	s := &Subject{
+		Published: spineDocuments(2026),
+		Projections: []projection{
+			{Name: project.PublishedProjection, Options: column,
+				Graph: &project.Document{Metadata: project.Metadata{Headline: &project.Headline{}}}},
+			{Name: "fund-flows", Options: column,
+				Graph: &project.Document{Metadata: project.Metadata{Headline: &project.Headline{}}}},
+			{Name: "series-only"},
+		},
+	}
+	docs, findings := s.spine()
+	if len(findings) != 0 {
+		t.Fatalf("spine() findings = %+v, want none over a spine carrying its headline", findings)
+	}
+	if len(docs) != 1 || docs[0].Name != project.PublishedProjection {
+		t.Fatalf("spine() = %v, want the one projection the site publishes as the spine", docs)
 	}
 	linked := s.linkedDocuments()
-	if len(linked) != 2 || linked[0].Name != "sankey" || linked[1].Name != "fund-flows" {
+	if len(linked) != 2 || linked[0].Name != project.PublishedProjection || linked[1].Name != "fund-flows" {
 		t.Fatalf("linkedDocuments() = %v, want both graphs and not the series", linked)
+	}
+
+	// A spine document the publication names and the pointer would have
+	// dropped: it is a finding and not an absence.
+	s.Projections[0].Graph.Metadata.Headline = nil
+	docs, findings = s.spine()
+	if len(docs) != 0 {
+		t.Errorf("spine() = %v, want no readable document once the spine's headline is gone", docs)
+	}
+	if len(findings) != 1 || findings[0].Subject != s.Projections[0].String() ||
+		!strings.Contains(findings[0].Detail, "carries no headline") {
+		t.Errorf("spine() findings = %+v, want one naming the spine document without a headline", findings)
 	}
 }
 

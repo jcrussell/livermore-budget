@@ -208,10 +208,11 @@ drill-down has transfers **in** and no transfers out, so
 being the sum of its links, and the links being one leg. That is a published number that is
 arithmetically correct and means nothing.
 
-So the three headline checks read `Subject.Graphs`, the documents whose TYPE
-publishes a headline, and the six structural checks read `Subject.LinkedDocuments`,
-every document made of nodes and links. The predicate is structural, never a test
-of whether the figures in a headline happen to be non-zero.
+So the three headline checks read `Subject.spine`, the documents the site
+publishes as the spine, and the six structural checks read `Subject.linkedDocuments`,
+every document made of nodes and links. The predicate is a declaration, never a
+test of whether a document carries a headline block or whether the figures in
+one happen to be non-zero.
 
 ## `constraint_tier`
 

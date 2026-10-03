@@ -156,10 +156,11 @@ type projection struct {
 // THE STRUCTURAL CHECKS ARE ABOUT A GRAPH AND NOT ABOUT A HEADLINE. Acyclicity,
 // tier ordering, a link's value against its citation, a parent that resolves --
 // every one of those claims is true of any document made of nodes and links.
-// The three headline checks read [Subject.graphs], the documents whose
-// metadata publishes one, and that narrowing has a STRUCTURAL predicate rather
-// than a value test: a document is in that set because it carries the block,
-// never because the figures in one happen to be non-zero.
+// The three headline checks read [Subject.spine], the documents the site
+// publishes as the spine, and that narrowing is a DECLARATION rather than a
+// value test: a document is in that set because Published names it, never
+// because it carries a headline block or because the figures in one happen to
+// be non-zero.
 type linked struct {
 	projection
 	Nodes []project.Node
@@ -290,17 +291,48 @@ type Subject struct {
 	BalanceExceptions []structure.BalanceException
 }
 
-// graphs is every projection whose document publishes a headline: the
-// citywide spine, one per published column. The three headline checks read
-// it; everything structural reads [Subject.linkedDocuments].
-func (s *Subject) graphs() []projection {
-	out := make([]projection, 0, len(s.Projections))
+// spine is the citywide spine as `fisc export` publishes it: for every column
+// Published declares of project.PublishedProjection, the graph built over it.
+// The three headline checks read it; everything structural reads
+// [Subject.linkedDocuments].
+//
+// IT IS SELECTED BY THE PUBLISHED DECLARATION AND NOT BY WHAT THE DOCUMENT
+// CARRIES. A spine document whose metadata carries no headline is returned as
+// a finding, one per such document, because each headline check reads a figure
+// off it and none can be examined; selecting on the pointer instead would drop
+// that document out of the set, and the checks would go on passing over the
+// spine documents that remain. A published column nothing built is
+// published-projection-built's finding and is not repeated here. Each built
+// document is returned once, whichever of the published columns it covers.
+func (s *Subject) spine() (docs []projection, findings []Finding) {
 	for _, p := range s.Projections {
-		if p.Graph != nil && p.Graph.Metadata.Headline != nil {
-			out = append(out, p)
+		if p.Graph == nil || !s.publishesSpine(p) {
+			continue
+		}
+		if p.Graph.Metadata.Headline == nil {
+			findings = append(findings, finding(p.String(),
+				"`fisc export` publishes this document as the spine and its metadata "+
+					"carries no headline, so the page shows no figure and nothing here "+
+					"ties one to the facts"))
+			continue
+		}
+		docs = append(docs, p)
+	}
+	return docs, findings
+}
+
+// publishesSpine reports whether p is the spine projection built over a
+// column Published declares for it. The match is project.MissingColumns, the
+// same comparison published-projection-built and `fisc export` make, so one
+// spelling decides what the site serves and what these checks read.
+func (s *Subject) publishesSpine(p projection) bool {
+	for _, d := range s.Published {
+		if d.Projection == project.PublishedProjection && p.Name == d.Projection &&
+			len(project.MissingColumns(d, p.Options)) == 0 {
+			return true
 		}
 	}
-	return out
+	return false
 }
 
 // linkedDocuments is every projection carrying nodes and links, in the order

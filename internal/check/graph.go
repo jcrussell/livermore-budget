@@ -524,9 +524,9 @@ func (*headlineTiesToFacts) Description() string {
 }
 
 func (*headlineTiesToFacts) Run(_ context.Context, s *Subject) (Result, error) {
-	var findings []Finding
+	docs, findings := s.spine()
 	subjects := 0
-	for _, p := range s.graphs() {
+	for _, p := range docs {
 		d := drawnTotalsOf(p.Graph.Links)
 		subjects += d.flowLinks
 		h := p.Graph.Metadata.Headline
@@ -550,7 +550,7 @@ func (*headlineTiesToFacts) Run(_ context.Context, s *Subject) (Result, error) {
 		subjects: subjects,
 		unit:     "links",
 		held: fmt.Sprintf("%d revenue and expenditure links across %d projections, each of the "+
-			"four figures the sum of the links it summarises", subjects, len(s.graphs())),
+			"four figures the sum of the links it summarises", subjects, len(docs)),
 		nothing:  "no link leaves a revenue category or reaches an object category, so there is no headline to check",
 		findings: findings,
 	}.result(), nil
@@ -577,9 +577,9 @@ func (*headlineTransferResidual) Description() string {
 }
 
 func (*headlineTransferResidual) Run(_ context.Context, s *Subject) (Result, error) {
-	var findings []Finding
+	docs, findings := s.spine()
 	subjects := 0
-	for _, p := range s.graphs() {
+	for _, p := range docs {
 		d := drawnTotalsOf(p.Graph.Links)
 		h := p.Graph.Metadata.Headline
 		subjects += d.transferLinks
@@ -598,7 +598,7 @@ func (*headlineTransferResidual) Run(_ context.Context, s *Subject) (Result, err
 		subjects: subjects,
 		unit:     "transfer links",
 		held: fmt.Sprintf("%d transfer links across %d projections, each transfer headline the sum of them",
-			subjects, len(s.graphs())),
+			subjects, len(docs)),
 		nothing:  "no link is a transfer, so there is no transfer headline to check",
 		findings: findings,
 	}.result(), nil
@@ -645,11 +645,11 @@ func (*headlineNaiveExpenditure) Description() string {
 // flow is REVENUE has such a link and no expenditure difference at all, and testing
 // for the link would fail it.
 func (*headlineNaiveExpenditure) Run(_ context.Context, s *Subject) (Result, error) {
-	var findings []Finding
+	docs, findings := s.spine()
 	var summaries []string
 	subjects := 0
 
-	for _, p := range s.graphs() {
+	for _, p := range docs {
 		h := p.Graph.Metadata.Headline
 		if h.InternalTransferOutCents == 0 &&
 			h.AllFundsGrossExpenditureCents == h.ExternalExpenditureCents {

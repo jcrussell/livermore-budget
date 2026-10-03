@@ -12,10 +12,20 @@ import (
 func tieredSubject(t *testing.T) *Subject {
 	t.Helper()
 	s := testSubject(t)
-	if len(s.graphs()) == 0 {
+	if docs, _ := s.spine(); len(docs) == 0 {
 		t.Fatal("the fixture built no graph, so nothing below asserts anything")
 	}
 	return s
+}
+
+// spineGraph is the fixture's one spine document, the graph the cases damage.
+func spineGraph(t *testing.T, s *Subject) *project.Document {
+	t.Helper()
+	docs, findings := s.spine()
+	if len(findings) != 0 || len(docs) == 0 {
+		t.Fatalf("spine() = %d documents, %d findings; want one document and none", len(docs), len(findings))
+	}
+	return docs[0].Graph
 }
 
 func runNodeTiers(t *testing.T, s *Subject) Result {
@@ -134,7 +144,7 @@ func TestNodeTiersAreDeclaredIsFailable(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			s := tieredSubject(t)
-			c.damage(t, s.graphs()[0].Graph)
+			c.damage(t, spineGraph(t, s))
 			res := runNodeTiers(t, s)
 			if res.Status != StatusFail {
 				t.Fatalf("status = %s, want FAIL", res.Status)
@@ -159,7 +169,7 @@ func TestARollupIsTheOnlyDescendingLinkAllowed(t *testing.T) {
 	rolled := func(t *testing.T, target string) *Subject {
 		t.Helper()
 		s := tieredSubject(t)
-		g := s.graphs()[0].Graph
+		g := spineGraph(t, s)
 		category := g.Nodes[nodeIndex(t, g, "revenue/")].ID
 		line := project.Node{ID: "revenue-line/" + strings.TrimPrefix(category, "revenue/") +
 			"/eraf", Tier: 1, Parent: category}
@@ -202,7 +212,7 @@ func TestARollupIsTheOnlyDescendingLinkAllowed(t *testing.T) {
 			project.Node{ID: "expenditure/police-patrol/wages-and-benefits", Tier: 5}},
 	} {
 		s := tieredSubject(t)
-		g := s.graphs()[0].Graph
+		g := spineGraph(t, s)
 		rev.child.Parent = rev.parent.ID
 		g.Nodes = append(g.Nodes, rev.parent, rev.child)
 		g.Links = append(g.Links, project.Link{Source: rev.child.ID, Target: rev.parent.ID,
@@ -322,7 +332,7 @@ func TestEachRollupClauseIsNeeded(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			s := tieredSubject(t)
-			g := s.graphs()[0].Graph
+			g := spineGraph(t, s)
 			if tc.parented {
 				tc.source.Parent = tc.target.ID
 			}
