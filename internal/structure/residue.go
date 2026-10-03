@@ -145,13 +145,8 @@ func Covered(facts []fact.Fact, cuts []Cut, residue []Residue) (findings []strin
 			uncovered++
 		}
 	}
-	// A residue on a scope the store does not carry -- a fixture -- is not stale.
-	scopes := map[string]bool{}
-	for i := range facts {
-		scopes[facts[i].Scope] = true
-	}
 	for j, r := range residue {
-		if matched[j] == 0 && scopes[r.Scope] {
+		if matched[j] == 0 {
 			findings = append(findings, fmt.Sprintf("residue (%s, %s, %s) matches no fact, so it excuses nothing; "+
 				"remove it rather than leaving a declaration that has stopped describing the corpus",
 				r.Scope, r.Rule, r.Kind))

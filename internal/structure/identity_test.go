@@ -97,6 +97,22 @@ func TestEveryScopeInTheStoreIsACut(t *testing.T) {
 			t.Errorf("an invented residue was not refused:\n  %s", strings.Join(findings, "\n  "))
 		}
 	})
+
+	t.Run("a residue on a scope the store does not carry is refused", func(t *testing.T) {
+		residue := structure.BudgetBookResidue()
+		i := slices.IndexFunc(residue, func(r structure.Residue) bool { return r.Rule == "dw-maintenance" })
+		if i < 0 {
+			t.Fatal("no dw-maintenance residue declared")
+		}
+		residue[i].Scope = "departmentwide-expenditures-renamed"
+		findings, _ := structure.Covered(facts, cuts, residue)
+		joined := strings.Join(findings, "\n  ")
+		if len(findings) != 4+1 || !strings.Contains(joined,
+			"residue (departmentwide-expenditures-renamed, dw-maintenance, transfer_out) matches no fact") {
+			t.Errorf("with dw-maintenance's residue moved to a scope the store does not carry, want its "+
+				"4 Transfers Out facts named and the residue refused:\n  %s", joined)
+		}
+	})
 }
 
 // TestThePeersSharingCellsAreOneMovementReadFromTwoEnds: pp.127-140 and p76
@@ -464,7 +480,7 @@ func TestAFactOutsideItsCutsFootprintIsInNoCut(t *testing.T) {
 	stray := facts[i]
 	hundred := 100
 	stray.FundGroup, stray.Fund = "general", &hundred
-	findings, _ := structure.Covered([]fact.Fact{stray}, structure.AllCuts(), structure.BudgetBookResidue())
+	findings, _ := structure.Covered([]fact.Fact{stray}, structure.AllCuts(), nil)
 	if len(findings) == 0 || !strings.Contains(strings.Join(findings, "\n"), "admitted by no cut") {
 		t.Fatalf("findings = %v, want the stray fact admitted by no cut", findings)
 	}

@@ -113,8 +113,7 @@ func (*cutsTieAlongTheLattice) Run(_ context.Context, s *Subject) (Result, error
 	}
 
 	// A fact outside every cut is outside every comparison and every view.
-	residue := structure.BudgetBookResidue()
-	coverage, uncovered := structure.Covered(s.Facts, cuts, residue)
+	coverage, uncovered := structure.Covered(s.Facts, cuts, s.Residue)
 	for _, f := range coverage {
 		findings = append(findings, finding("coverage", "%s", f))
 	}
@@ -207,9 +206,10 @@ func (*cutsTieAlongTheLattice) Run(_ context.Context, s *Subject) (Result, error
 	}
 
 	// A residue restating an Outside cut is held to it line by line; nothing
-	// else relates the two.
+	// else relates the two. The restatements are the tree's, so they are held
+	// to the tree's residue and not to what a hand-built subject declares.
 	restatements := budgetBookRestatements()
-	if err := structure.ValidateRestatements(cuts, residue, restatements); err != nil {
+	if err := structure.ValidateRestatements(cuts, structure.BudgetBookResidue(), restatements); err != nil {
 		findings = append(findings, finding("restatements", "%v", err))
 		restatements = nil
 	}
@@ -246,7 +246,7 @@ func (*cutsTieAlongTheLattice) Run(_ context.Context, s *Subject) (Result, error
 		summary += fmt.Sprintf(". %d exception(s) held apart: %s", len(held), strings.Join(held, ", "))
 	}
 	if uncovered > 0 {
-		summary += fmt.Sprintf(". %d fact(s) fall in no cut, under %d declared residue(s)", uncovered, len(residue))
+		summary += fmt.Sprintf(". %d fact(s) fall in no cut, under %d declared residue(s)", uncovered, len(s.Residue))
 	}
 	if refused > 0 {
 		summary += fmt.Sprintf(". %d pair(s) no comparison or tie relates", refused)

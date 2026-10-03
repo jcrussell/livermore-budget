@@ -171,7 +171,7 @@ func TestTheCutsCheckGoesRed(t *testing.T) {
 		}
 	})
 
-	t.Run("a whole schedule dropped is red on its rules' grain, not compared as nothing", func(t *testing.T) {
+	t.Run("a whole schedule dropped is red on its rules' grain and its residue, not compared as nothing", func(t *testing.T) {
 		kept := make([]fact.Fact, 0, len(facts))
 		for i := range facts {
 			if facts[i].Scope != "departmentwide-expenditures" {
@@ -179,14 +179,19 @@ func TestTheCutsCheckGoesRed(t *testing.T) {
 			}
 		}
 		res := run(t, kept)
-		// The empty cut is skipped, and the grain arm refuses its rules by name.
+		// The empty cut is skipped, the grain arm refuses its rules by name, and
+		// the residue declared on the dropped scope is stale: a scope the store
+		// no longer carries does not excuse its residue.
 		if diff := cmp.Diff(StatusFail, res.Status); diff != "" {
 			t.Fatalf("status (-want +got):\n%s", diff)
 		}
-		if len(res.Findings) != 1 || res.Findings[0].Subject != "grain" ||
+		if len(res.Findings) != 2 || res.Findings[0].Subject != "grain" ||
 			!strings.Contains(res.Findings[0].Detail, "dw-") ||
-			!strings.Contains(res.Findings[0].Detail, "no fact") {
-			t.Errorf("want exactly the grain arm's refusal naming a dw- rule, got:\n  %v", res.Findings)
+			!strings.Contains(res.Findings[0].Detail, "no fact") ||
+			res.Findings[1].Subject != "coverage" ||
+			!strings.Contains(res.Findings[1].Detail, "residue (departmentwide-expenditures, dw-maintenance, transfer_out) matches no fact") {
+			t.Errorf("want the grain arm's refusal naming a dw- rule and the coverage arm's refusal "+
+				"of dw-maintenance's residue, got:\n  %v", res.Findings)
 		}
 		// An exception on the empty cut was never consulted, and is not refused.
 		for _, f := range res.Findings {

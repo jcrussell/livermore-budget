@@ -289,6 +289,12 @@ type Subject struct {
 	// structure.BalanceExceptions; a subject built by hand carries only what
 	// its builder sets, and nil means none.
 	BalanceExceptions []structure.BalanceException
+	// Residue is every set of facts the documents put outside every cut.
+	// cuts-tie-along-the-lattice holds the store to it and reports an entry
+	// stale where it matches no fact. [Load] fills it from
+	// structure.BudgetBookResidue; a subject built by hand carries only what
+	// its builder sets, and nil means none.
+	Residue []structure.Residue
 }
 
 // spine is the citywide spine as `fisc export` publishes it: for every column
@@ -459,6 +465,7 @@ func Load(o LoadOptions) (*Subject, error) {
 	}
 	s.Published = project.PublishedDocuments()
 	s.BalanceExceptions = structure.BalanceExceptions()
+	s.Residue = structure.BudgetBookResidue()
 	registry := project.Registry(reg)
 	if s.Projections, s.ProjectionFailures, err = buildProjections(
 		registry, s.Facts, o.Version); err != nil {
