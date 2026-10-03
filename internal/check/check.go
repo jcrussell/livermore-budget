@@ -211,6 +211,7 @@ func All() []Check {
 		&linkValuesTieToFacts{},
 		&linkLocatorsMatchTheirFacts{},
 		&nodeBalancesTieToFacts{},
+		&fundGroupsAreTheirPrintedRows{},
 		&linkEndsMatchTheirFacts{},
 		&linkKindsMatchTheirFacts{},
 		&contraLinksNameTheirSchedule{},

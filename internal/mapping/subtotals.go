@@ -146,12 +146,10 @@ func (r *Resolver) CheckSubtotals(chain []*Rule) (*SubtotalsResult, error) {
 			}
 			want := sums[row.Subtotal]
 			deltas := map[column]amount.Cents{}
-			for _, d := range row.SubtotalDeltas {
-				for pi, p := range rule.Parts {
-					for ci, h := range p.ColumnHeaders {
-						if h.Text == d.Column {
-							deltas[column{pi, ci}] = d.Cents
-						}
+			for pi := range rule.Parts {
+				for ci := range rule.Parts[pi].ColumnHeaders {
+					if d, ok := row.SubtotalDeltaAt(&rule.Parts[pi], ci); ok {
+						deltas[column{pi, ci}] = d
 					}
 				}
 			}

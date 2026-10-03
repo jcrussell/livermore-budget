@@ -1402,6 +1402,20 @@ func (r *Rule) expectedValues(p *Part) int {
 	return n
 }
 
+// SubtotalDeltaAt is the delta this row declares for the column a part
+// prints at index ci, matched by the header the page prints over it.
+func (r Row) SubtotalDeltaAt(p *Part, ci int) (amount.Cents, bool) {
+	if ci < 0 || ci >= len(p.ColumnHeaders) || p.ColumnHeaders[ci].Unheaded {
+		return 0, false
+	}
+	for _, d := range r.SubtotalDeltas {
+		if d.Column == p.ColumnHeaders[ci].Text {
+			return d.Cents, true
+		}
+	}
+	return 0, false
+}
+
 // SubtotalDelta is one column's declared discrepancy on a subtotal row.
 type SubtotalDelta struct {
 	// Column is the header the page prints over the figure.

@@ -7,6 +7,7 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/internal/registry"
 )
 
 // A Line is one row a fund balance prints: a kind, narrowed to a category
@@ -89,6 +90,40 @@ func FundBalances() []Balance {
 			},
 			SourcesUses: true,
 		},
+	}
+}
+
+// FundBalanceGroupRows maps each summary row pp.186-209 print at the head of a
+// year to the fund type data/funds.yaml gives its funds. The Capital
+// Improvement Program Funds row maps to "": its funds are residue, typed by the
+// operating fund they sit in, and held to p222 instead. FY2023-24 prints the
+// internal service row as "Internal Service Funds", the later years as
+// "Internal Service".
+func FundBalanceGroupRows() map[string]string {
+	return map[string]string{
+		"General Fund":                      registry.FundTypeGeneral,
+		"Special Revenue Funds":             registry.FundTypeSpecialRevenue,
+		"Debt Service Funds":                registry.FundTypeDebtService,
+		"Permanent Funds":                   registry.FundTypePermanent,
+		"Capital Funds":                     registry.FundTypeCapital,
+		"Enterprise Funds":                  registry.FundTypeEnterprise,
+		"Internal Service Funds":            registry.FundTypeInternalService,
+		"Internal Service":                  registry.FundTypeInternalService,
+		"Capital Improvement Program Funds": "",
+	}
+}
+
+// FundBalanceGroupTotals maps each group's printed block total on pp.186-209
+// to its fund type: the row the summary block's group row repeats, and the
+// one whose subtotal_deltas say where the page rounds it off its funds.
+func FundBalanceGroupTotals() map[string]string {
+	return map[string]string{
+		"Total Special Revenue Funds":  registry.FundTypeSpecialRevenue,
+		"Total Debt Service Funds":     registry.FundTypeDebtService,
+		"Total Permanent Funds":        registry.FundTypePermanent,
+		"Total Capital Funds":          registry.FundTypeCapital,
+		"Total Enterprise Funds":       registry.FundTypeEnterprise,
+		"Total Internal Service Funds": registry.FundTypeInternalService,
 	}
 }
 

@@ -91,14 +91,16 @@ func TestFixtureVerdicts(t *testing.T) {
 		"derived-nodes-justified":               "pass over 2",
 		"link-locators-match-their-facts":       "pass over 7",
 		// No fixture document draws pp.186-209, so no node carries a balance.
-		"node-balances-tie-to-facts":   "vacuous over 0",
-		"link-ends-match-their-facts":  "pass over 7",
-		"link-values-tie-to-facts":     "pass over 7",
-		"link-kinds-match-their-facts": "pass over 7",
-		"counts-reconcile":             "pass over 1",
-		"headline-ties-to-facts":       "pass over 3", // links leaving a revenue node or entering an expenditure one
-		"headline-transfer-residual":   "pass over 2",
-		"headline-naive-expenditure":   "pass over 1",
+		"node-balances-tie-to-facts": "vacuous over 0",
+		// The fixture builds no fund-sources-uses document.
+		"fund-groups-are-their-printed-rows": "vacuous over 0",
+		"link-ends-match-their-facts":        "pass over 7",
+		"link-values-tie-to-facts":           "pass over 7",
+		"link-kinds-match-their-facts":       "pass over 7",
+		"counts-reconcile":                   "pass over 1",
+		"headline-ties-to-facts":             "pass over 3", // links leaving a revenue node or entering an expenditure one
+		"headline-transfer-residual":         "pass over 2",
+		"headline-naive-expenditure":         "pass over 1",
 		// Nothing to check: no link carries a transfer_id, no node a parent or a
 		// constraint tier, no fact a department or a fund number.
 		"transfer-legs-pair": "vacuous over 0",
@@ -132,7 +134,7 @@ func TestFixtureVerdicts(t *testing.T) {
 	if diff := cmp.Diff(want, statuses(rep)); diff != "" {
 		t.Errorf("verdicts mismatch (-want +got):\n%s", diff)
 	}
-	if got := (counts{Pass: 25, Vacuous: 22, Skipped: 1}); got != rep.Counts {
+	if got := (counts{Pass: 25, Vacuous: 23, Skipped: 1}); got != rep.Counts {
 		t.Errorf("counts = %+v, want %+v", rep.Counts, got)
 	}
 	// The counts are pinned as numbers above rather than spelled in words here,
@@ -154,8 +156,8 @@ func TestVacuousFailsOnlyUnderStrict(t *testing.T) {
 	lenient := Run(t.Context(), s, All(), ReportOptions{})
 	strict := Run(t.Context(), s, All(), ReportOptions{Strict: true})
 
-	if lenient.Counts.Vacuous != 22 {
-		t.Fatalf("vacuous count = %d, want 22", lenient.Counts.Vacuous)
+	if lenient.Counts.Vacuous != 23 {
+		t.Fatalf("vacuous count = %d, want 23", lenient.Counts.Vacuous)
 	}
 	if lenient.Failed() {
 		t.Error("a run with vacuous checks failed without --strict")
