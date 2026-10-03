@@ -560,6 +560,15 @@ func TestACutIsComparedOnlyOnTheLinesItsPagesPrint(t *testing.T) {
 		t.Error("no ending balance is compared; the change is held through beginning and ending, so both must be")
 	}
 
+	// The spine's change line is declared unprinted; undeclared, a spine
+	// fact on it would leave the comparison unseen, and is refused.
+	undeclared := flows
+	undeclared.Unprinted = nil
+	if _, err := structure.Compare(facts, undeclared, spine); err == nil ||
+		!strings.Contains(err.Error(), "declares neither printed nor unprinted") {
+		t.Errorf("Compare with the change line undeclared = %v, want refused", err)
+	}
+
 	var short []structure.Line
 	for _, l := range flows.Lines {
 		if l != structure.LineEnding {
@@ -568,7 +577,14 @@ func TestACutIsComparedOnlyOnTheLinesItsPagesPrint(t *testing.T) {
 	}
 	flows.Lines = short
 	if _, err := structure.Compare(facts, flows, spine); err == nil ||
-		!strings.Contains(err.Error(), "is on no line") {
+		!strings.Contains(err.Error(), "fund-balance/ending") {
 		t.Errorf("Compare with the ending line undeclared = %v, want refused", err)
+	}
+	// Declared unprinted, the spine's ending passes; the cut's own ending
+	// facts are then on no line it prints, and are refused.
+	flows.Unprinted = append(flows.Unprinted, structure.LineEnding)
+	if _, err := structure.Compare(facts, flows, spine); err == nil ||
+		!strings.Contains(err.Error(), "is on no line") {
+		t.Errorf("Compare with the ending line declared unprinted = %v, want its own facts refused", err)
 	}
 }

@@ -1120,6 +1120,11 @@ func (v View) validateSankeyStep(i int, s DrillStep, parents []parentChart, doc 
 			"view %q's step %d opens side %q; the sides are \"\", the node a link points "+
 				"at, %q, the node it comes from, and %q, a node drawn between the two",
 			v.Path, i, h.Side, SideSource, SideBoth)
+	case h.Side == SideBoth && (len(s.Gaps) > 0 || len(s.Residual) > 0):
+		return fmt.Errorf(
+			"view %q's step %d opens a node on both sides and declares a gap or a residual; the "+
+				"client stands either mark at one end of the step's tiers, and a node drawn between "+
+				"two halves has no one end that mark belongs to", v.Path, i)
 	case h.Side == SideBoth && !interior(h.Tiers, s.From):
 		return fmt.Errorf(
 			"view %q's step %d opens tier %d on both sides and draws tiers %v; a node drawn "+

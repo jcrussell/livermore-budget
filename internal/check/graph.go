@@ -177,9 +177,9 @@ func (*linkValuesTieToFacts) Description() string {
 		"name, so its value and its citation are of the same cell"
 }
 
-// Run holds every link to project.ChangeCents of its facts, which is their
-// plain sum unless one is a beginning balance, and allows exactly one link
-// the negation of it: the fund-balance draw.
+// Run holds every link to project.LinkCents of its facts: their plain sum,
+// except on a link at a change endpoint, which carries the change they state
+// and, on the fund-balance draw, its negation.
 //
 // A change in balance is printed signed, or as the two balances it is the
 // difference of, and a Sankey cannot draw a negative link, so internal/project
@@ -229,10 +229,7 @@ func (*linkValuesTieToFacts) Run(_ context.Context, s *Subject) (Result, error) 
 			if unknown {
 				continue
 			}
-			want := project.ChangeCents(cited)
-			if l.Source == project.NodeFundBalanceDraw {
-				want = -want
-			}
+			want := project.LinkCents(l.Source, l.Target, cited)
 			if l.ValueCents != want {
 				findings = append(findings, finding(subject,
 					"value_cents is %s but its %d facts come to %s (off by %s)",

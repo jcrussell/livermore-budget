@@ -291,8 +291,9 @@ right, with `Side` `both`: the opened node is the TARGET of one half and the
 SOURCE of the other, both read off pp.186-209, so nothing of the chart above is
 kept at its share of the fund. Every rung of it ends the drill.
 
-Every step names the nodes it opens by `Role`, so steps sharing a tier partition
-it. The sixty funds pp.167-170 do not decompose are closed to the DIVISION step
+Steps sharing a tier of one chart partition it by `Role`; a step with no
+`Role` opens every node at its tier, and validateSteps refuses it beside a
+step on that tier that names one. The sixty funds pp.167-170 do not decompose are closed to the DIVISION step
 by a `Role` in the same way and opened by a step of their own into pp.85-125's
 departments; which of them that step can open is read off each year's document
 by the client (`decomposable` in `site/sankey.js`), stated in

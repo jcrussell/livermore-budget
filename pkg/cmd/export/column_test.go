@@ -64,7 +64,7 @@ func TestEveryColumnLinkEqualsTheFactsItCites(t *testing.T) {
 					}
 					cited = append(cited, f)
 				}
-				sum := project.ChangeCents(cited)
+				sum := project.LinkCents(col.Nodes[l.From].ID, col.Nodes[l.To].ID, cited)
 				if len(missing) > 0 {
 					t.Errorf("%s %s link %d cites %v, which facts/facts.jsonl does not carry",
 						name, schedule, i, missing)
@@ -74,7 +74,6 @@ func TestEveryColumnLinkEqualsTheFactsItCites(t *testing.T) {
 				// source id: "equals the absolute sum" would accept a reversed leg.
 				want := sum
 				if col.Nodes[l.From].ID == project.NodeFundBalanceDraw {
-					want = -sum
 					flipped++
 				}
 				if want != l.ValueCents {
@@ -234,7 +233,7 @@ func TestEveryServedColumnIsTheScheduleItFolds(t *testing.T) {
 				if src != doc.Links[i].Source || dst != doc.Links[i].Target {
 					t.Errorf("%s is %s -> %s and %s draws %s -> %s", at, src, dst, stem, doc.Links[i].Source, doc.Links[i].Target)
 				}
-				for _, fault := range linkFactFaults(at, l, src, col.Column, byID) {
+				for _, fault := range linkFactFaults(at, l, src, dst, col.Column, byID) {
 					t.Error(fault)
 				}
 				if len(l.FactIDs) > 0 {

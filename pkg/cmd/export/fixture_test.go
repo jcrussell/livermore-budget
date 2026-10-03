@@ -243,7 +243,7 @@ func columnFixtureFaults(stem string, served, fixture []byte, stamp string, fact
 				faults = append(faults, fmt.Sprintf("%s link %d joins %s -> %s, which it does not both draw", at, i, src, dst))
 			}
 			faults = append(faults, linkFactFaults(fmt.Sprintf("%s link %d (%s -> %s)", at, i, src, dst),
-				l, src, col.Column, facts)...)
+				l, src, dst, col.Column, facts)...)
 		}
 	}
 
@@ -305,7 +305,7 @@ func scheduleOf(col export.ColumnDoc, sched export.ColumnSched, figures bool) (n
 // the column's year and basis, summing to the link's value -- the draw leg
 // carrying their negation -- and on exactly the pages its locators name. A
 // link citing nothing must say so.
-func linkFactFaults(at string, l export.ColumnLink, src string, column export.ColumnKey, facts map[string]fact.Fact) []string {
+func linkFactFaults(at string, l export.ColumnLink, src, dst string, column export.ColumnKey, facts map[string]fact.Fact) []string {
 	if len(l.FactIDs) == 0 {
 		if !l.Derived {
 			return []string{at + " cites no fact and is not derived"}
@@ -345,10 +345,7 @@ func linkFactFaults(at string, l export.ColumnLink, src string, column export.Co
 	if want, got := slices.Sorted(maps.Keys(pages)), slices.Sorted(maps.Keys(located)); !missing && !slices.Equal(want, got) {
 		faults = append(faults, fmt.Sprintf("%s locates %v and its facts are on %v", at, got, want))
 	}
-	sum := project.ChangeCents(cited)
-	if src == project.NodeFundBalanceDraw {
-		sum = -sum
-	}
+	sum := project.LinkCents(src, dst, cited)
 	if !missing && sum != l.ValueCents {
 		faults = append(faults, fmt.Sprintf("%s carries %d and its facts come to %d", at, l.ValueCents, sum))
 	}

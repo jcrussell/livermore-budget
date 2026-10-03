@@ -68,6 +68,53 @@ func TestFundGroupsAreTheirPrintedRowsCanFail(t *testing.T) {
 	})
 }
 
+// TestAFundGroupFoldIsHeldToItsParentAndEveryLine plants the two defects a
+// comparison over the printed cells alone would miss: a fund node parented
+// to another group, and a fund line the summary prints no figure for.
+func TestAFundGroupFoldIsHeldToItsParentAndEveryLine(t *testing.T) {
+	run := func(t *testing.T, plant func(s *Subject)) Result {
+		t.Helper()
+		s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
+		if err != nil {
+			t.Fatalf("Load: %v", err)
+		}
+		plant(s)
+		return resultFor(t, runOne(t, s, &fundGroupsAreTheirPrintedRows{}), "fund-groups-are-their-printed-rows")
+	}
+	t.Run("a fund parented to another group", func(t *testing.T) {
+		res := run(t, func(s *Subject) {
+			for _, p := range s.Projections {
+				if p.Name != project.FundSourcesUsesProjection || p.Graph == nil {
+					continue
+				}
+				for i := range p.Graph.Nodes {
+					if p.Graph.Nodes[i].ID == "fund/200" {
+						p.Graph.Nodes[i].Parent = project.PrefixFundGroup + "general"
+					}
+				}
+			}
+		})
+		if res.Status != StatusFail || !strings.Contains(findingDetails(res), "fund/200 is parented to") {
+			t.Errorf("status %s, findings %v; want fund/200's parent refused", res.Status, res.Findings)
+		}
+	})
+	t.Run("a fund line no group row prints", func(t *testing.T) {
+		res := run(t, func(s *Subject) {
+			for i := range s.Facts {
+				f := &s.Facts[i]
+				if f.Scope == "fund-balances-by-fund" && f.FiscalYear == 2026 && f.Fund != nil &&
+					*f.Fund == 200 && f.Category == "revenues" {
+					f.Category = "intergovernmental"
+				}
+			}
+		})
+		if res.Status != StatusFail || !hasFinding(res, "FY2026 adopted special-revenue intergovernmental: "+
+			"the document's special-revenue funds carry") {
+			t.Errorf("status %s, findings %v; want the unprinted line named", res.Status, res.Findings)
+		}
+	})
+}
+
 func hasFinding(res Result, prefix string) bool {
 	for _, f := range res.Findings {
 		if strings.HasPrefix(f.Subject+": "+f.Detail, prefix) {

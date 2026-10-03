@@ -1122,6 +1122,14 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 				v.Steps[0].Sankey.Widen = []int{4}
 			})},
 			"keeps no flank"},
+		{"a both-sided step carrying a gap", []export.View{ok,
+			chartView(func(v *export.View) {
+				v.Nav = "Extra"
+				v.Steps[0].Projection = "sankey"
+				v.Steps[0].Sankey.Side, v.Steps[0].Sankey.Tiers = export.SideBoth, []int{0, 2, 3}
+				v.Steps[0].Gaps = map[string][]project.Gap{"expenditure/services-and-supplies": {{FiscalYear: 2026, Basis: "adopted", Cents: 1, Reason: "A reason."}}}
+			})},
+			"opens a node on both sides and declares a gap or a residual"},
 		{"a window that is also both-sided", []export.View{ok,
 			windowView(func(v *export.View) { v.Steps[0].Sankey.Side = export.SideBoth })},
 			"is the TARGET of one half and the SOURCE of the other"},

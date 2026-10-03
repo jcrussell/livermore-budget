@@ -126,7 +126,8 @@ func BudgetBookCuts() []Cut {
 				{mapping.KindFundBalance, CategoryFundBalanceReserveIncrease},
 				LineEnding,
 			},
-			Bases: budgetBookDetail,
+			Unprinted: []Line{LineChange},
+			Bases:     budgetBookDetail,
 		},
 		{
 			// pp.186-209, each fund's Revenues, printed whole: a fund's

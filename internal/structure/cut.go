@@ -2,6 +2,7 @@ package structure
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -163,6 +164,11 @@ type Cut struct {
 	// fact of this cut on no declared line, so a line cannot be dropped from
 	// the comparison by being left off the list. Peers does not read Lines.
 	Lines []Line
+	// Unprinted are the lines a cut compared with this one prints and these
+	// pages do not. A comparison refuses a fact of the other side on neither
+	// list, so a line the other side adds is a refusal and not a cell that
+	// leaves the comparison unseen.
+	Unprinted []Line
 }
 
 // DerivedLevel is the level this cut's facts put it at, before its declared
@@ -268,10 +274,13 @@ func ValidateCuts(facts []fact.Fact, byRule map[string]Level, cuts []Cut) (empty
 			return nil, fmt.Errorf("cut %q declares department tier %q; the tiers are division and department",
 				c.Name, c.DepartmentTier)
 		}
-		for _, l := range c.Lines {
+		for _, l := range append(slices.Clone(c.Lines), c.Unprinted...) {
 			if !containsKind(c.Kinds, l.Kind) {
 				return nil, fmt.Errorf("cut %q declares line %s, whose kind it does not print", c.Name, l)
 			}
+		}
+		if len(c.Unprinted) > 0 && len(c.Lines) == 0 {
+			return nil, fmt.Errorf("cut %q declares lines it does not print and none it does", c.Name)
 		}
 		for _, g := range c.FundGroups {
 			if !hasAxis(c.Level, AxisFundGroup) {

@@ -71,10 +71,27 @@ func EndpointCategories(id string) ([][]string, bool) {
 	return nil, false
 }
 
-// ChangeCents is the change in balance a set of facts states, and the value
-// every link is held to: each beginning balance subtracted, every other fact
-// added as printed. Over the facts of any link that cites no beginning balance
-// it is their plain sum.
+// LinkCents is the value a link's cited facts come to: their plain sum, except
+// on a link at a change endpoint, which carries the change they state
+// ([ChangeCents]), negated on a draw. Only those links may subtract a balance,
+// so a link elsewhere citing a beginning balance beside its own fact does not
+// tie by netting it off.
+func LinkCents(source, target string, facts []fact.Fact) int64 {
+	switch {
+	case source == NodeFundBalanceDraw:
+		return -ChangeCents(facts)
+	case target == NodeFundBalanceContribution:
+		return ChangeCents(facts)
+	}
+	var sum int64
+	for i := range facts {
+		sum += facts[i].AmountCents
+	}
+	return sum
+}
+
+// ChangeCents is the change in balance a set of facts states: each beginning
+// balance subtracted, every other fact added as printed.
 func ChangeCents(facts []fact.Fact) int64 {
 	var sum int64
 	for i := range facts {

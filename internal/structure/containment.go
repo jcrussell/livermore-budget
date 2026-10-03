@@ -384,15 +384,22 @@ func compareAt(facts []fact.Fact, c, against Cut, at Level) (Comparison, error) 
 	if err != nil {
 		return Comparison{}, fmt.Errorf("compare %q against %q: %w", c.Name, against.Name, err)
 	}
-	for _, side := range []Cut{c, against} {
+	for _, pair := range [][2]Cut{{c, against}, {against, c}} {
+		side, other := pair[0], pair[1]
 		if len(side.Lines) == 0 {
 			continue
 		}
 		for i := range facts {
-			if f := &facts[i]; side.admits(f) && !onLine(side.Lines, f) {
+			f := &facts[i]
+			switch {
+			case side.admits(f) && !onLine(side.Lines, f):
 				return Comparison{}, fmt.Errorf("compare %q against %q: fact %s (%s %s) is on no line %q "+
 					"declares, so the comparison would not see it", c.Name, against.Name, f.ID, f.Kind,
 					f.Category, side.Name)
+			case other.admits(f) && r.admits(f) && !onLine(side.Lines, f) && !onLine(side.Unprinted, f):
+				return Comparison{}, fmt.Errorf("compare %q against %q: %q prints fact %s (%s %s) on a "+
+					"line %q declares neither printed nor unprinted, so the comparison would drop it "+
+					"unseen", c.Name, against.Name, other.Name, f.ID, f.Kind, f.Category, side.Name)
 			}
 		}
 		r.lines = append(r.lines, side.Lines)

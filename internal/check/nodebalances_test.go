@@ -68,6 +68,44 @@ func TestFundChangesAndBalancesAreFailable(t *testing.T) {
 		t.Fatal("FY2026 draws nothing into fund/100")
 	})
 
+	link := func(t *testing.T, src, dst string) *project.Link {
+		t.Helper()
+		for i := range doc.Links {
+			if doc.Links[i].Source == src && doc.Links[i].Target == dst {
+				return &doc.Links[i]
+			}
+		}
+		t.Fatalf("no link %s -> %s", src, dst)
+		return nil
+	}
+	beginning := node(t, "fund/100").Balances.Beginning
+
+	t.Run("an expenses link netting a beginning balance off", func(t *testing.T) {
+		l := link(t, "fund/100", "expenditure/expenses")
+		was, wasIDs := l.ValueCents, l.FactIDs
+		l.FactIDs = append([]string{beginning.FactID}, l.FactIDs...)
+		l.ValueCents -= beginning.ValueCents
+		t.Cleanup(func() { l.ValueCents, l.FactIDs = was, wasIDs })
+		res := run(t, &linkValuesTieToFacts{})
+		if res.Status != StatusFail {
+			t.Fatalf("status %s; a link outside a change endpoint subtracted a balance and tied", res.Status)
+		}
+	})
+
+	t.Run("a draw citing its beginning balance alone", func(t *testing.T) {
+		l := link(t, project.NodeFundBalanceDraw, "fund/100")
+		was, wasIDs := l.ValueCents, l.FactIDs
+		l.FactIDs, l.ValueCents = []string{beginning.FactID}, beginning.ValueCents
+		t.Cleanup(func() { l.ValueCents, l.FactIDs = was, wasIDs })
+		if res := run(t, &linkValuesTieToFacts{}); res.Status != StatusPass {
+			t.Fatalf("link-values-tie-to-facts is %s; the plant must tie its value so only the ends can see it", res.Status)
+		}
+		res := run(t, &linkEndsMatchTheirFacts{})
+		if res.Status != StatusFail || !strings.Contains(findingDetails(res), "exactly one") {
+			t.Fatalf("status %s, findings %v; want the draw refused for citing one balance", res.Status, res.Findings)
+		}
+	})
+
 	general := node(t, "fund/100")
 	other := node(t, "fund/200")
 	for _, tc := range []struct {

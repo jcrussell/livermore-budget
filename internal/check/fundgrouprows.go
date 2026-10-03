@@ -6,6 +6,7 @@ import (
 	"maps"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
@@ -70,16 +71,46 @@ func (*fundGroupsAreTheirPrintedRows) Run(_ context.Context, s *Subject) (Result
 			}
 			sums[groupCell{f.FiscalYear, string(f.Basis), fund.Type, f.Category}] += f.AmountCents
 		}
-		col := p.Options.Columns[0]
-		var keys []groupCell
-		for k := range printed {
-			if k.year == col.FiscalYear && k.basis == string(col.Basis) {
-				keys = append(keys, k)
+		// The document folds a fund into the group its node is parented to,
+		// so that parent is the type the sums are taken by.
+		for _, n := range p.Graph.Nodes {
+			num, ok := strings.CutPrefix(n.ID, project.PrefixFund)
+			if !ok {
+				continue
+			}
+			number, err := strconv.Atoi(num)
+			fund, known := s.Vocabulary.Fund(number)
+			if err != nil || !known {
+				findings = append(findings, finding(p.Name, "%s names no fund data/funds.yaml lists", n.ID))
+				continue
+			}
+			if want := project.PrefixFundGroup + fund.Type; n.Parent != want {
+				findings = append(findings, finding(p.Name, "%s is parented to %q and data/funds.yaml "+
+					"types fund %d %s, so a fold by group puts it under the wrong row", n.ID, n.Parent,
+					number, fund.Type))
 			}
 		}
+		col := p.Options.Columns[0]
+		// Every cell either side has: a group line the funds carry and the
+		// summary prints no figure for is as much a disagreement as the
+		// reverse.
+		inColumn := map[groupCell]bool{}
+		for k := range printed {
+			if k.year == col.FiscalYear && k.basis == string(col.Basis) {
+				inColumn[k] = true
+			}
+		}
+		for k, v := range sums {
+			if v != 0 {
+				inColumn[k] = true
+			}
+		}
+		keys := slices.Collect(maps.Keys(inColumn))
 		seen := map[string]bool{}
-		for _, k := range keys {
-			seen[k.group] = true
+		for k := range printed {
+			if k.year == col.FiscalYear && k.basis == string(col.Basis) {
+				seen[k.group] = true
+			}
 		}
 		for _, g := range slices.Sorted(maps.Values(structure.FundBalanceGroupRows())) {
 			if g != "" && !seen[g] {
@@ -93,6 +124,12 @@ func (*fundGroupsAreTheirPrintedRows) Run(_ context.Context, s *Subject) (Result
 			cells++
 			// The page rounds a block total off its funds where the rule
 			// declares it; the group row repeats that total.
+			if _, ok := printed[k]; !ok {
+				findings = append(findings, finding(k.String(), "the document's %s funds carry %s "+
+					"and pp.186-209 print no figure for the group on that line", k.group,
+					amount.Cents(sums[k])))
+				continue
+			}
 			if got, want := sums[k], printed[k]-rounded[k]; got != want {
 				findings = append(findings, finding(k.String(), "the document's %s funds sum to %s "+
 					"and pp.186-209 print %s for the group, %s off its funds by declaration, "+

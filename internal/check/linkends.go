@@ -238,13 +238,26 @@ func (e linkEnd) mismatch(id string, source bool) (string, bool) {
 	return "", true
 }
 
-// outsideEveryReading is why the facts behind a flow endpoint are not all of
-// one of its readings' categories, or "".
+// outsideEveryReading is why the facts behind a flow endpoint are not one of
+// its readings, or "". A reading of one category is any number of its facts; a
+// reading of several -- a change as its beginning and ending balances -- is
+// exactly one fact of each, since a change citing one balance, or one twice,
+// publishes a balance as a change.
 func outsideEveryReading(id string, readings [][]string, facts []fact.Fact) string {
 	for _, cats := range readings {
 		fits := true
+		count := map[string]int{}
 		for _, f := range facts {
 			fits = fits && slices.Contains(cats, f.Category)
+			count[f.Category]++
+		}
+		if fits && len(cats) > 1 {
+			for _, c := range cats {
+				if count[c] != 1 {
+					return fmt.Sprintf("%s is read as %v, exactly one fact of each, and its facts "+
+						"carry %d of %q", id, cats, count[c], c)
+				}
+			}
 		}
 		if fits {
 			return ""
