@@ -257,6 +257,28 @@ func TestParseRejects(t *testing.T) {
 			want: "row \"B\": sign positive on a row that publishes no cell",
 		},
 		{
+			// Beta prints a percentage and leaves its one amount cell blank:
+			// the page prints the row, and no fact is made of it.
+			name: "sign positive on a row whose every amount cell is declared blank",
+			yaml: strings.NewReplacer(
+				`    total_row: "Total"`+"\n", "",
+				`          - {fiscal_year: 2025}`, `          - {quantity: percentage}`,
+				`{label: "Beta", category: taxes/sales}`, `{label: "Beta", category: taxes/sales, sign: positive}`,
+			).Replace(blankLabelled),
+			want: "row \"Beta\": sign positive on a row that publishes no cell",
+		},
+		{
+			// A row omitted from its only part publishes no cell anywhere,
+			// so its counterpart is refused for that and never as a
+			// collision with the fund it names.
+			name: "a counterpart on a row omitted from its only part",
+			yaml: strings.Replace(base("      - {label: \"B\", category: b, fund: 200, fund_group: special-revenue, "+
+				"counterpart: {category: b, kind: transfer_out, fund: 200, fund_group: special-revenue}}\n"),
+				"parts: [{page: 1, columns: [{fiscal_year: 2026}]}]",
+				"parts: [{page: 1, columns: [{fund_group: general, fiscal_year: 2026}], omitted_rows: [{label: \"B\"}]}]", 1),
+			want: "row \"B\": counterpart on a row that publishes no cell",
+		},
+		{
 			name: "a counterpart where every column skips",
 			yaml: strings.Replace(
 				strings.NewReplacer("columns: [{fiscal_year: 2026}]", "columns: [{skip: true}]",
@@ -801,5 +823,76 @@ func TestLoadDirRejectsGridsDisagreeingAcrossFiles(t *testing.T) {
 	if want := "m/a.yaml"; !strings.Contains(err.Error(), want) {
 		t.Errorf("LoadDir error = %q, want it to name the file that declared it first (%q)",
 			err, want)
+	}
+}
+
+// TestCellPublishes is the one predicate every decision about which cells a
+// row publishes reads, over each clause: a skipped row or column, a
+// non-amount row or column, a row the part omits, and a cell it declares
+// blank.
+func TestCellPublishes(t *testing.T) {
+	const src = `schema_version: 1
+doc_id: d
+rules:
+  - id: r
+    kind: revenue
+    basis: adopted
+    grain: category
+    units: dollars
+    rows:
+      - {label: "Alpha", category: a}
+      - {label: "Beta", category: b}
+      - {label: "Gamma", category: c}
+      - {label: "Delta", skip: true}
+      - {label: "Epsilon", category: e, quantity: percentage}
+    parts:
+      - page: 1
+        column_headers: ["FY A", "FY B", "TOTAL", "Share"]
+        omitted_rows: ["Gamma"]
+        omitted_cells:
+          - {label: "Beta", column: "FY B", note: "blank"}
+        columns:
+          - {fiscal_year: 2025}
+          - {fiscal_year: 2026}
+          - {skip: true}
+          - {quantity: percentage}
+      - page: 2
+        columns:
+          - {fiscal_year: 2027}
+`
+	f, err := parse(strings.NewReader(src), "cells.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := &f.Rules[0]
+	type cell struct {
+		row  string
+		page int
+		col  int
+	}
+	got := map[cell]bool{}
+	for _, row := range r.Rows {
+		for i := range r.Parts {
+			p := &r.Parts[i]
+			for j := range p.Columns {
+				got[cell{row.Label, p.Page, j}] = p.cellPublishes(j, row)
+			}
+		}
+	}
+	want := map[cell]bool{}
+	for _, c := range []cell{
+		{"Alpha", 1, 0}, {"Alpha", 1, 1}, {"Alpha", 2, 0},
+		{"Beta", 1, 0}, {"Beta", 2, 0}, // not {Beta, 1, 1}: declared blank
+		{"Gamma", 2, 0}, // omitted from page 1
+	} {
+		want[c] = true
+	}
+	for c := range got {
+		if !want[c] {
+			want[c] = false
+		}
+	}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("cellPublishes (-want +got):\n%s", diff)
 	}
 }

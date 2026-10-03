@@ -594,3 +594,40 @@ func TestASubjectBuiltByHandCarriesNoException(t *testing.T) {
 		}
 	}
 }
+
+// TestARowOmittedFromEveryPartMarksNoBlank is the parser and the balance
+// checks agreeing on a row that publishes no cell: parse demands no category
+// of a row omitted from every part, so declaredBlanks must not hand it to
+// fact.FromValues, which would refuse it for that and fail the check.
+func TestARowOmittedFromEveryPartMarksNoBlank(t *testing.T) {
+	src := `schema_version: 1
+doc_id: ` + testDoc + `
+rules:
+  - id: spine
+    kind: fund_balance
+    basis: adopted
+    scope: ` + structure.ScopeAllFundsGross + `
+    grain: category
+    units: dollars
+    rows:
+      - {label: "Beginning", category: ` + structure.CategoryFundBalanceBeginning + `}
+      - {label: "Ghost"}
+    parts:
+      - page: 1
+        section: "S"
+        omitted_rows: ["Ghost"]
+        columns:
+          - {fund_group: general, fiscal_year: 2026}
+`
+	files, err := mapping.LoadDir(fstest.MapFS{"mappings/spine.yaml": &fstest.MapFile{Data: []byte(src)}}, "mappings")
+	if err != nil {
+		t.Fatalf("parse: %v; a row omitted from every part publishes no cell, so it needs no category", err)
+	}
+	spine := fund101
+	spine.scope, spine.fund = structure.ScopeAllFundsGross, 0
+	lines := append(byFundRow(),
+		balanceLine{mapping.KindFundBalance, structure.CategoryFundBalanceChange, 20_000})
+	for _, c := range []Check{&fundGroupSourcesEqualUses{}, &fundBalanceIdentity{}} {
+		wantPass(t, runBalance(t, c, spine.facts(lines), files[0]), 1)
+	}
+}

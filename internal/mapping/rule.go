@@ -1171,18 +1171,41 @@ func (r *Rule) categoryOnColumns() bool {
 	return false
 }
 
-// kindsOf is every kind a row's facts carry: one per cell Row.Publishes
-// admits on a part that does not omit the row, read through Value.Kind. Those
-// are the cells the facts are read from -- ActiveRows per part, then each
-// column -- so a row this finds no cell for publishes none.
+// cellPublishes says whether row's cell in this part's j'th column becomes
+// a fact: the part prints the row (it is not in omitted_rows) and the cell
+// (it is not in omitted_cells), and Row.Publishes holds for the column.
+// EVERY decision about which cells a row publishes -- a sign, a counterpart,
+// a category, a grain, a collision, a blank on a balance, the values a part
+// yields -- reads this and nothing else, so no two of them can disagree.
+func (p *Part) cellPublishes(j int, row Row) bool {
+	return !omittedSet(p)[row.Identity()] && !blankColumns(p)[row.Identity()][j] &&
+		row.Publishes(p.Columns[j])
+}
+
+// RowPublishes says whether any cell of this rule publishes row.
+func (r *Rule) RowPublishes(row Row) bool {
+	return len(r.kindsOf(row)) > 0
+}
+
+// OmissionPublishes says whether the cell an omission declares absent would
+// publish were p to print it: cellPublishes with the omission itself set
+// aside, on a row some cell of the rule does publish. A row no cell publishes
+// carries no fact for the blank to stand in for.
+func (r *Rule) OmissionPublishes(p *Part, j int, o Omission) bool {
+	if o.Cell && j != o.ColumnIndex {
+		return false
+	}
+	return r.RowPublishes(o.Row) && o.Row.Publishes(p.Columns[j])
+}
+
+// kindsOf is every kind a row's facts carry: one per cell cellPublishes
+// admits, read through Value.Kind.
 func (r *Rule) kindsOf(row Row) []Kind {
 	var out []Kind
 	for i := range r.Parts {
-		if omittedSet(&r.Parts[i])[row.Identity()] {
-			continue
-		}
-		for _, c := range r.Parts[i].Columns {
-			if row.Publishes(c) {
+		p := &r.Parts[i]
+		for j, c := range p.Columns {
+			if p.cellPublishes(j, row) {
 				out = append(out, Value{Row: row, Column: c}.Kind(r))
 			}
 		}

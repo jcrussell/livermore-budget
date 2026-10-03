@@ -555,11 +555,9 @@ func validateRule(r *Rule, errf errFunc) error {
 			}
 		}
 		// One refusal for a sign or a counterpart on a row that publishes no
-		// cell -- skipped, non-amount, under columns that all skip, or omitted
-		// from every part whose columns publish -- held to kindsOf, which
-		// reads the cells the facts are read from. Above checkCounterpart,
-		// because a counterpart's own defects are moot on a row that should
-		// not carry one.
+		// cell, held to kindsOf: the kinds of the cells cellPublishes admits.
+		// Above checkCounterpart, because a counterpart's own defects are moot
+		// on a row that should not carry one.
 		publishes := r.kindsOf(row)
 		if len(publishes) == 0 {
 			var declared string
@@ -1009,13 +1007,12 @@ func validateClass(r *Rule, field, owner, category string, kind Kind, publishes 
 // On the row axis EVERY ROW CARRIES A CATEGORY, and a department is a SECOND
 // AXIS and not a substitute for one: pp.167-170 cross department against
 // object category, so a department row still says what KIND of spending the
-// figure is. A row kindsOf finds no cell for -- skipped, non-amount, or under
-// columns that all skip on every part that prints it -- is exempt: it
-// publishes nothing, so there is no fact for a category to classify.
+// figure is. A row RowPublishes finds no cell for is exempt: it publishes
+// nothing, so there is no fact for a category to classify.
 func validateRowClass(r *Rule, row Row, byColumn bool, errf errFunc) error {
 	if !byColumn {
 		return validateClass(r, "rows", fmt.Sprintf("row %q", row.Label), row.Category,
-			row.Kind, len(r.kindsOf(row)) > 0, errf,
+			row.Kind, r.RowPublishes(row), errf,
 			"every row needs one, including a row that declares a department: "+
 				"department is a second axis, not a substitute. Use skip: true if "+
 				"the row is a subtotal that would double-count. On a page whose "+
@@ -1114,31 +1111,19 @@ func validateGrain(r *Rule, errf errFunc) error {
 	case !r.publishes() && r.Grain != "":
 		return cmdutil.WithHint(
 			errf(r.ID, "grain", "is %q, but every row or every column of this rule is "+
-				"skipped or non-amount, so it publishes no fact", r.Grain),
+				"skipped, non-amount or omitted, so it publishes no fact", r.Grain),
 			"a grain declared over zero facts cannot be checked against the store; "+
 				"remove it until the rule publishes")
 	}
 	return nil
 }
 
-// publishes says whether any cell of this rule can become a fact: a row that
-// is neither skipped nor a non-amount quantity, in a column that is neither.
+// publishes says whether any cell of this rule becomes a fact, by
+// cellPublishes.
 func (r *Rule) publishes() bool {
-	row := false
-	for i := range r.Rows {
-		if !r.Rows[i].Skip && r.Rows[i].Quantity == "" {
-			row = true
-			break
-		}
-	}
-	if !row {
-		return false
-	}
-	for i := range r.Parts {
-		for _, c := range r.Parts[i].Columns {
-			if c.publishes() {
-				return true
-			}
+	for _, row := range r.Rows {
+		if r.RowPublishes(row) {
+			return true
 		}
 	}
 	return false
@@ -1818,44 +1803,23 @@ func checkCounterpart(r *Rule, row Row, errf errFunc) error {
 	// category (the row path) and its fund (the column path). Equal on both,
 	// the ids collide.
 	//
-	// IT COMPARES AGAINST EVERY COLUMN OF EVERY PART, and that is the fix for
-	// fisc-i38 rather than a generalisation. The arm used to compare
-	// row.EffectiveColumn(Column{}) -- the row's own fund and group with no
-	// printed column behind them. Two guards above require cp.FundGroup != "",
-	// so the group clause could only hold when the ROW also declared a group,
-	// and no published rule does: on Budget Book p76 a section IS the receiving
-	// group, so the group lives on the COLUMN and the row declares only a fund.
-	// The arm was therefore unreachable on every rule in the tree, while its own
-	// comment claimed it caught "the one an author writing a two-legged row
-	// actually makes". Measured: a counterpart duplicating its near leg parsed
-	// clean and failed much later in `fisc build` as "id ... claimed twice:
-	// rule X ... rule X", which does not read as "your counterpart duplicates
-	// its own near leg".
-	//
-	// A row applies to every column of every part, so "the row's effective fund
-	// group" is not one value here -- which is what made this look unfixable.
-	// The answer is that it does not have to be: a collision on ANY column is a
-	// collision, because that column's figure publishes both legs.
-	// fact.CheckUniqueIDs stays the backstop for whatever a parse-time check
-	// cannot see; it is no longer the only thing that sees this.
+	// IT COMPARES AGAINST EVERY PUBLISHING CELL OF THE ROW. A row applies to
+	// every column of every part, so "the row's effective fund group" is not
+	// one value: a collision on ANY cell cellPublishes admits is a collision,
+	// because that cell's figure publishes both legs, and a cell it refuses
+	// -- omitted, blank, skipped or non-amount -- publishes neither leg, so a
+	// counterpart naming its fund is no collision. The row's own fund and
+	// group with no printed column behind them are compared nowhere: no
+	// published rule declares a group on the row, so that comparison can
+	// never hold. fact.CheckUniqueIDs stays the backstop for whatever a
+	// parse-time check cannot see.
 	if cp.Category != row.Category {
 		return nil
 	}
 	for i := range r.Parts {
 		p := &r.Parts[i]
-		// A PART THAT DOES NOT PRINT THIS ROW PUBLISHES NO FACT FROM IT, so it
-		// cannot collide. Refusing on one would be a false refusal against a
-		// cell the document does not have.
-		if omittedSet(p)[row.Identity()] {
-			continue
-		}
 		for j := range p.Columns {
-			// Same for a skipped column: it consumes its position and yields no
-			// fact, so there is nothing for the far leg to collide with. Both
-			// arms are latent on the committed corpus -- no skipped column
-			// carries a fund today -- and both were real false refusals,
-			// reproduced through Parse before being fixed.
-			if p.Columns[j].Skip {
+			if !p.cellPublishes(j, row) {
 				continue
 			}
 			near := row.EffectiveColumn(p.Columns[j])
@@ -1869,22 +1833,6 @@ func checkCounterpart(r *Rule, row Row, errf errFunc) error {
 			}
 		}
 	}
-	// THERE IS NO ROW-ONLY FALLBACK AFTER THIS LOOP, and there was one for two
-	// commits. It compared row.EffectiveColumn(Column{}) unconditionally, so it
-	// re-imposed the refusal on exactly the cells the exemptions above exist to
-	// excuse: a row omitted from its only part, or colliding only with a skipped
-	// column, was refused by the fallback after the loop had correctly passed
-	// over it. Reproduced through Parse.
-	//
-	// It was written for "a rule with no parts", which cannot reach here:
-	// validateRule refuses one ("is empty; a rule must name at least one page")
-	// before the loop that calls this function. So its only reachable effect was
-	// the false refusal. A guard for a state the CALLER has already excluded is
-	// not defensive; it is a second, worse copy of the check, and this copy
-	// disagreed with the first.
-	//
-	// No line numbers here on purpose: the relationship is caller-and-callee,
-	// which does not move when lines do.
 	return nil
 }
 
@@ -1951,11 +1899,11 @@ func validateOmittedCells(r *Rule, p *Part,
 			declared[id] = map[string]bool{}
 		}
 		declared[id][o.Column] = true
-		// Counted over the columns the row still prints, whether or not a fact
-		// is made of them, and whether or not the row publishes: a row printing
-		// none leaves the read nothing to end on. A skipped column can never
-		// be declared blank, so counting it would let a row with every figure
-		// blank pass as one with a cell blank.
+		// Counted over the columns the row still PRINTS, not the cells it
+		// publishes: a blank is a claim about the page, and a row printing no
+		// figure leaves the read nothing to end on. A skipped column can
+		// never be declared blank, so counting it would let a row with every
+		// figure blank pass as one with a cell blank.
 		printed := 0
 		for c, col := range p.Columns {
 			if !col.Skip && !declared[id][p.ColumnHeaders[c].Text] {

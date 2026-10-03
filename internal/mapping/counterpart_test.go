@@ -349,6 +349,14 @@ rules:
 			"a skipped column publishes no fact, so there is nothing to collide with", err)
 	}
 
+	// A non-amount column is read and publishes nothing, so a counterpart
+	// naming its fund collides with nothing either.
+	ratio := rule("{fund_group: special-revenue, fund: 200, fiscal_year: 2026, quantity: percentage}")
+	if _, err := parse(strings.NewReader(ratio), "ratio.yaml"); err != nil {
+		t.Errorf("a counterpart colliding only with a PERCENTAGE column was refused: %v\n"+
+			"a non-amount column publishes no fact, so there is nothing to collide with", err)
+	}
+
 	// The same collision on a column the rule actually reads is still refused,
 	// so the exemption above is about the CELL and not about the arm.
 	live := rule("{fund_group: special-revenue, fund: 200, fiscal_year: 2026}")
@@ -395,39 +403,6 @@ rules:
 	if _, err := parse(strings.NewReader(omitted), "omitted.yaml"); err != nil {
 		t.Errorf("a counterpart colliding only with a column of a part that OMITS "+
 			"this row was refused: %v\nthe row has no cell there to collide with", err)
-	}
-
-	// A row omitted from its ONLY part publishes no cell anywhere, so its
-	// counterpart is refused for that, above this arm, and never as a
-	// collision: the arm reads no cell of it.
-	const omittedEverywhere = `schema_version: 1
-doc_id: livermore-budget-fy2026-2027
-rules:
-  - id: r
-    kind: transfer_in
-    basis: adopted
-    grain: fund-by-category
-    units: dollars
-    parts:
-      - page: 76
-        section: "S"
-        stop_at: "E"
-        omitted_rows: [{label: "Transfer From Low Income Hsng"}]
-        columns:
-          - {fund_group: general, fiscal_year: 2026}
-    rows:
-      - label: "Transfer From Low Income Hsng"
-        category: transfers/in
-        fund: 200
-        fund_group: special-revenue
-        counterpart: {category: transfers/in, kind: transfer_out, fund: 200, fund_group: special-revenue}
-      - label: "Transfer From Water"
-        category: transfers/in
-`
-	_, everywhereErr := parse(strings.NewReader(omittedEverywhere), "everywhere.yaml")
-	if everywhereErr == nil || !strings.Contains(everywhereErr.Error(), "counterpart on a row that publishes no cell") {
-		t.Errorf("a counterpart on a row omitted from its ONLY part: %v\n"+
-			"want it refused for publishing no cell, not as a collision", everywhereErr)
 	}
 
 	// And with the omission removed, p77's column is live for this row and the
