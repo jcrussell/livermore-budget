@@ -92,12 +92,14 @@
 # parts describing one page's grid differently would read the same figures into
 # different columns, and each would still tie against its own printed total.
 #
-# NO ROW IS OMITTED ANYWHERE IN THIS FILE, and that is a checked claim. p67
-# prints all ten revenue rows at the same ten y-positions as p66's ten labels,
-# including the three that are zero in all four of its fund groups. The project
-# once declared "Licenses & Permits" as omitted from p67; the page prints it and
-# our extractor was deleting it (fisc-c00). `omitted_rows` is a statement about
-# what the CITY printed and must never be used to absorb a pipeline defect.
+# A ROW NAMES A PAGE ONLY WHERE ITS TABLE RUNS ACROSS A PAGE BREAK, and every
+# such `page:` is a checked claim about what the CITY printed: the part it
+# names reads the row and the other part reads the page without it. The spine
+# places no row, and that too is checked: p67 prints all ten revenue rows at
+# the same ten y-positions as p66's ten labels, including the three that are
+# zero in all four of its fund groups. A row's page must never be used to
+# absorb a pipeline defect (fisc-c00); if a row goes missing between the PDF
+# and the artifact, fix extraction.
 #
 # THE PADDED BLOCKS
 #
@@ -190,14 +192,14 @@ rules:
         # circular: it is the figure the totals check exists to verify, and it
         # changes on any revision.
         stop_at: "$"
-        # This part declares NO omitted rows, and that is the corrected state.
-        # It used to declare "Licenses & Permits", on the belief that the page
-        # omits the row because it is zero in all four of this page's fund
-        # groups. The page does not omit it. `pdftotext -bbox` puts ten revenue
-        # rows here at the same ten y-positions as p66's ten labelled rows;
-        # xberg's content_filter.strip_repeating_text was deleting the third of
-        # three identical all-dash rows as if it were boilerplate. See fisc-c00.
-        # The count guard is what caught it: 72 tokens where 80 were required.
+        # Every row is on this page, so no row of the rule names a page.
+        # `pdftotext -bbox` puts ten revenue rows here at the same ten
+        # y-positions as p66's ten labelled rows, "Licenses & Permits" among
+        # them though it is zero in all four of this page's fund groups. An
+        # extractor that drops one of the three identical all-dash rows as
+        # boilerplate is refused by the count guard, 72 tokens where 80 are
+        # required, and is fixed in extraction (fisc-c00), never by placing
+        # the row on p66.
         column_headers: ["FY 2025-26", "FY 2026-27", "FY 2025-26", "FY 2026-27",
                          "FY 2025-26", "FY 2026-27", "FY 2025-26", "FY 2026-27"]
         columns:
@@ -734,7 +736,6 @@ rules:
           - {fund_group: general, fund: 100, fiscal_year: 2025, basis: revised}
           - {fund_group: general, fund: 100, fiscal_year: 2026}
           - {fund_group: general, fund: 100, fiscal_year: 2027}
-        omitted_rows: ["Services & Supplies", "Debt Services"]
       - page: 168
         section: "General Services"
         stop_at: "Total"
@@ -744,11 +745,10 @@ rules:
           - {fund_group: general, fund: 100, fiscal_year: 2025, basis: revised}
           - {fund_group: general, fund: 100, fiscal_year: 2026}
           - {fund_group: general, fund: 100, fiscal_year: 2027}
-        omitted_rows: ["Wages & Benefits"]
     rows:
-      - {label: "Wages & Benefits", category: wages-and-benefits, department: general-services}
-      - {label: "Services & Supplies", category: services-and-supplies, department: general-services}
-      - {label: "Debt Services", category: debt-services, department: general-services}
+      - {label: "Wages & Benefits", page: 167, category: wages-and-benefits, department: general-services}
+      - {label: "Services & Supplies", page: 168, category: services-and-supplies, department: general-services}
+      - {label: "Debt Services", page: 168, category: debt-services, department: general-services}
 
   # --------------------------------------------------------------------------
   - id: div-administrative-services
@@ -912,7 +912,6 @@ rules:
           - {fund_group: general, fund: 100, fiscal_year: 2025, basis: revised}
           - {fund_group: general, fund: 100, fiscal_year: 2026}
           - {fund_group: general, fund: 100, fiscal_year: 2027}
-        omitted_rows: ["Capital Outlay"]
       - page: 169
         section: "Special Operations"
         stop_at: "Total"
@@ -922,11 +921,10 @@ rules:
           - {fund_group: general, fund: 100, fiscal_year: 2025, basis: revised}
           - {fund_group: general, fund: 100, fiscal_year: 2026}
           - {fund_group: general, fund: 100, fiscal_year: 2027}
-        omitted_rows: ["Wages & Benefits", "Services & Supplies"]
     rows:
-      - {label: "Wages & Benefits", category: wages-and-benefits, department: special-operations}
-      - {label: "Services & Supplies", category: services-and-supplies, department: special-operations}
-      - {label: "Capital Outlay", category: capital-outlay, department: special-operations}
+      - {label: "Wages & Benefits", page: 168, category: wages-and-benefits, department: special-operations}
+      - {label: "Services & Supplies", page: 168, category: services-and-supplies, department: special-operations}
+      - {label: "Capital Outlay", page: 169, category: capital-outlay, department: special-operations}
 
   # --------------------------------------------------------------------------
   - id: div-community-development-admin
@@ -1131,7 +1129,6 @@ rules:
           - {fund_group: general, fund: 100, fiscal_year: 2025, basis: revised}
           - {fund_group: general, fund: 100, fiscal_year: 2026}
           - {fund_group: general, fund: 100, fiscal_year: 2027}
-        omitted_rows: ["Services & Supplies"]
       - page: 170
         section: "Environmental Services"
         stop_at: "Total"
@@ -1141,7 +1138,6 @@ rules:
           - {fund_group: general, fund: 100, fiscal_year: 2025, basis: revised}
           - {fund_group: general, fund: 100, fiscal_year: 2026}
           - {fund_group: general, fund: 100, fiscal_year: 2027}
-        omitted_rows: ["Wages & Benefits"]
         stated_total_deltas:
           - column: 1
             delta_cents: -100
@@ -1149,8 +1145,8 @@ rules:
               The city's own rounding: the object rows above sum to one dollar MORE
               than the document states. Measured off the page, stated minus mapped.
     rows:
-      - {label: "Wages & Benefits", category: wages-and-benefits, department: environmental-services}
-      - {label: "Services & Supplies", category: services-and-supplies, department: environmental-services}
+      - {label: "Wages & Benefits", page: 169, category: wages-and-benefits, department: environmental-services}
+      - {label: "Services & Supplies", page: 170, category: services-and-supplies, department: environmental-services}
 
   # --------------------------------------------------------------------------
   - id: div-fire-administration
@@ -1288,7 +1284,6 @@ rules:
           - {fund_group: general, fund: 100, fiscal_year: 2025, basis: revised}
           - {fund_group: general, fund: 100, fiscal_year: 2026}
           - {fund_group: general, fund: 100, fiscal_year: 2027}
-        omitted_rows: ["In-Lieu Taxes", "Emt Service Area"]
       - page: 128
         section: "FY 2026-27\n"
         stop_at: "Total Other Taxes"
@@ -1298,27 +1293,26 @@ rules:
           - {fund_group: general, fund: 100, fiscal_year: 2025, basis: revised}
           - {fund_group: general, fund: 100, fiscal_year: 2026}
           - {fund_group: general, fund: 100, fiscal_year: 2027}
-        omitted_rows: ["Franchise Tax- Electric", "Franchise Tax- Gas", "Franchise Tax- Cable TV", "Franchise Tax- Garbage", "Business License Tax", "Business License Penalty", "Business License Registration", "Real Property Transfer Tax", "TOT - Hotel", "TOT - Short Term Rental", "Residential Construction Tax", "Industrial Construction Tax"]
         stated_total_deltas:
           - column: 1
             delta_cents: 100
             note: >-
               The city's own rounding, stated minus mapped, measured off the page.
     rows:
-      - {label: "Franchise Tax- Electric", category: taxes/other}
-      - {label: "Franchise Tax- Gas", category: taxes/other}
-      - {label: "Franchise Tax- Cable TV", category: taxes/other}
-      - {label: "Franchise Tax- Garbage", category: taxes/other}
-      - {label: "Business License Tax", category: taxes/other}
-      - {label: "Business License Penalty", category: taxes/other}
-      - {label: "Business License Registration", category: taxes/other}
-      - {label: "Real Property Transfer Tax", category: taxes/other}
-      - {label: "TOT - Hotel", category: taxes/other}
-      - {label: "TOT - Short Term Rental", category: taxes/other}
-      - {label: "Residential Construction Tax", category: taxes/other}
-      - {label: "Industrial Construction Tax", category: taxes/other}
-      - {label: "In-Lieu Taxes", category: taxes/other}
-      - {label: "Emt Service Area", category: taxes/other}
+      - {label: "Franchise Tax- Electric", page: 127, category: taxes/other}
+      - {label: "Franchise Tax- Gas", page: 127, category: taxes/other}
+      - {label: "Franchise Tax- Cable TV", page: 127, category: taxes/other}
+      - {label: "Franchise Tax- Garbage", page: 127, category: taxes/other}
+      - {label: "Business License Tax", page: 127, category: taxes/other}
+      - {label: "Business License Penalty", page: 127, category: taxes/other}
+      - {label: "Business License Registration", page: 127, category: taxes/other}
+      - {label: "Real Property Transfer Tax", page: 127, category: taxes/other}
+      - {label: "TOT - Hotel", page: 127, category: taxes/other}
+      - {label: "TOT - Short Term Rental", page: 127, category: taxes/other}
+      - {label: "Residential Construction Tax", page: 127, category: taxes/other}
+      - {label: "Industrial Construction Tax", page: 127, category: taxes/other}
+      - {label: "In-Lieu Taxes", page: 128, category: taxes/other}
+      - {label: "Emt Service Area", page: 128, category: taxes/other}
 
   - id: gf-rev-licenses-permits
     kind: revenue
@@ -1507,9 +1501,8 @@ rules:
           - {fund_group: general, fund: 100, fiscal_year: 2025, basis: revised}
           - {fund_group: general, fund: 100, fiscal_year: 2026}
           - {fund_group: general, fund: 100, fiscal_year: 2027}
-        omitted_rows: ["Contribution Outside Services"]
     rows:
-      - {label: "Contribution Outside Services", category: contributions-outsourced}
+      - {label: "Contribution Outside Services", page: 129, category: contributions-outsourced}
 
   - id: gf-rev-miscellaneous-revenue
     kind: revenue
@@ -1980,7 +1973,6 @@ rules:
           - {fund_group: capital, fund: 560, fiscal_year: 2025, basis: revised}
           - {fund_group: capital, fund: 560, fiscal_year: 2026}
           - {fund_group: capital, fund: 560, fiscal_year: 2027}
-        omitted_rows: ["Charges for Services", "Use of Money & Prop"]
       - page: 134
         section: "FY 2026-27\n"
         stop_at: "Total State - Gas Tax"
@@ -1990,11 +1982,10 @@ rules:
           - {fund_group: capital, fund: 560, fiscal_year: 2025, basis: revised}
           - {fund_group: capital, fund: 560, fiscal_year: 2026}
           - {fund_group: capital, fund: 560, fiscal_year: 2027}
-        omitted_rows: ["Intergovernmental"]
     rows:
-      - {label: "Intergovernmental", category: intergovernmental}
-      - {label: "Charges for Services", category: charges-for-services}
-      - {label: "Use of Money & Prop", category: use-of-money-and-property}
+      - {label: "Intergovernmental", page: 133, category: intergovernmental}
+      - {label: "Charges for Services", page: 134, category: charges-for-services}
+      - {label: "Use of Money & Prop", page: 134, category: use-of-money-and-property}
 
   - id: fund-rev-state-sb1
     kind: revenue
@@ -2850,7 +2841,6 @@ rules:
           - {fund_group: special-revenue, fund: 300, fiscal_year: 2025, basis: revised}
           - {fund_group: special-revenue, fund: 300, fiscal_year: 2026}
           - {fund_group: special-revenue, fund: 300, fiscal_year: 2027}
-        omitted_rows: ["Miscellaneous Rev"]
       - page: 139
         section: "FY 2026-27\n"
         stop_at: "Total Open Space Acquisition & Mgmt"
@@ -2860,12 +2850,11 @@ rules:
           - {fund_group: special-revenue, fund: 300, fiscal_year: 2025, basis: revised}
           - {fund_group: special-revenue, fund: 300, fiscal_year: 2026}
           - {fund_group: special-revenue, fund: 300, fiscal_year: 2027}
-        omitted_rows: ["Intergovernmental", "Use of Money & Prop", "ContributionsOutSrce"]
     rows:
-      - {label: "Intergovernmental", category: intergovernmental}
-      - {label: "Use of Money & Prop", category: use-of-money-and-property}
-      - {label: "ContributionsOutSrce", category: contributions-outsourced}
-      - {label: "Miscellaneous Rev", category: miscellaneous-revenue}
+      - {label: "Intergovernmental", page: 138, category: intergovernmental}
+      - {label: "Use of Money & Prop", page: 138, category: use-of-money-and-property}
+      - {label: "ContributionsOutSrce", page: 138, category: contributions-outsourced}
+      - {label: "Miscellaneous Rev", page: 139, category: miscellaneous-revenue}
 
   - id: fund-rev-downtown-lmd
     kind: revenue
@@ -3018,7 +3007,6 @@ rules:
           - {fund_group: internal-service, fund: 700, fiscal_year: 2025, basis: revised}
           - {fund_group: internal-service, fund: 700, fiscal_year: 2026}
           - {fund_group: internal-service, fund: 700, fiscal_year: 2027}
-        omitted_rows: ["Miscellaneous Rev", "Transfers In"]
       - page: 140
         section: "FY 2026-27\n"
         stop_at: "Total General Liability"
@@ -3028,11 +3016,10 @@ rules:
           - {fund_group: internal-service, fund: 700, fiscal_year: 2025, basis: revised}
           - {fund_group: internal-service, fund: 700, fiscal_year: 2026}
           - {fund_group: internal-service, fund: 700, fiscal_year: 2027}
-        omitted_rows: ["Intergovernmental"]
     rows:
-      - {label: "Intergovernmental", category: intergovernmental}
-      - {label: "Miscellaneous Rev", category: miscellaneous-revenue}
-      - {label: "Transfers In", category: transfers/in, kind: transfer_in}
+      - {label: "Intergovernmental", page: 139, category: intergovernmental}
+      - {label: "Miscellaneous Rev", page: 140, category: miscellaneous-revenue}
+      - {label: "Transfers In", page: 140, category: transfers/in, kind: transfer_in}
 
   - id: fund-rev-workers-comp-insurance
     kind: revenue
@@ -3759,7 +3746,6 @@ rules:
           - {fiscal_year: 2025, basis: revised}
           - {fiscal_year: 2026}
           - {fiscal_year: 2027}
-        omitted_rows: ["Local Housing Trust", "Grant - HUD EDI Special Grant", "Grant - CDBG", "Grant - Home Grant", "FEMA Funding", "Grant - State Grant Fund", "Opioid Settlement", "Accessibility Compliance", "Human Services Facility Fee", "Open Space Acquisition & Mgmt", "Doolan Canyon Preserve Endow", "Traffic Impact Fee (TIF)", "Park Fee - AB 1600", "County Meas BB-Bike/Pedestrian", "County Meas BB-Local St & Rd", "County Measure F Veh Reg Fee", "State - Gas Tax", "State - SB1"]
       - page: 102
         section: "FY 2026-27\n"
         stop_at: "Total Department Funding Sources"
@@ -3769,34 +3755,33 @@ rules:
           - {fiscal_year: 2025, basis: revised}
           - {fiscal_year: 2026}
           - {fiscal_year: 2027}
-        omitted_rows: ["General Fund", "Low Income Housing Fund", "Housing Successor Agency", "SOEF (Social Op Endowment)", "Mortgage Assistance", "HHS Loan Fund", "Cal Home Reuse", "California Begin Program"]
     rows:
-      - {label: "General Fund", category: department-funding-sources, department: community-development, fund: 100, fund_group: general}
-      - {label: "Low Income Housing Fund", category: department-funding-sources, department: community-development, fund: 200, fund_group: special-revenue}
-      - {label: "Housing Successor Agency", category: department-funding-sources, department: community-development, fund: 201, fund_group: special-revenue}
-      - {label: "SOEF (Social Op Endowment)", category: department-funding-sources, department: community-development, fund: 202, fund_group: special-revenue}
-      - {label: "Mortgage Assistance", category: department-funding-sources, department: community-development, fund: 203, fund_group: special-revenue}
-      - {label: "HHS Loan Fund", category: department-funding-sources, department: community-development, fund: 204, fund_group: special-revenue}
-      - {label: "Cal Home Reuse", category: department-funding-sources, department: community-development, fund: 205, fund_group: special-revenue}
-      - {label: "California Begin Program", category: department-funding-sources, department: community-development, fund: 206, fund_group: special-revenue}
-      - {label: "Local Housing Trust", category: department-funding-sources, department: community-development, fund: 207, fund_group: special-revenue}
-      - {label: "Grant - HUD EDI Special Grant", category: department-funding-sources, department: community-development, fund: 223, fund_group: special-revenue}
-      - {label: "Grant - CDBG", category: department-funding-sources, department: community-development, fund: 224, fund_group: special-revenue}
-      - {label: "Grant - Home Grant", category: department-funding-sources, department: community-development, fund: 225, fund_group: special-revenue}
-      - {label: "FEMA Funding", category: department-funding-sources, department: community-development, fund: 226, fund_group: special-revenue}
-      - {label: "Grant - State Grant Fund", category: department-funding-sources, department: community-development, fund: 240, fund_group: special-revenue}
-      - {label: "Opioid Settlement", category: department-funding-sources, department: community-development, fund: 241, fund_group: special-revenue}
-      - {label: "Accessibility Compliance", category: department-funding-sources, department: community-development, fund: 286, fund_group: special-revenue}
-      - {label: "Human Services Facility Fee", category: department-funding-sources, department: community-development, fund: 290, fund_group: special-revenue}
-      - {label: "Open Space Acquisition & Mgmt", category: department-funding-sources, department: community-development, fund: 300, fund_group: special-revenue}
-      - {label: "Doolan Canyon Preserve Endow", category: department-funding-sources, department: community-development, fund: 470, fund_group: permanent}
-      - {label: "Traffic Impact Fee (TIF)", category: department-funding-sources, department: community-development, fund: 510, fund_group: capital}
-      - {label: "Park Fee - AB 1600", category: department-funding-sources, department: community-development, fund: 512, fund_group: capital}
-      - {label: "County Meas BB-Bike/Pedestrian", category: department-funding-sources, department: community-development, fund: 551, fund_group: capital}
-      - {label: "County Meas BB-Local St & Rd", category: department-funding-sources, department: community-development, fund: 552, fund_group: capital}
-      - {label: "County Measure F Veh Reg Fee", category: department-funding-sources, department: community-development, fund: 553, fund_group: capital}
-      - {label: "State - Gas Tax", category: department-funding-sources, department: community-development, fund: 560, fund_group: capital}
-      - {label: "State - SB1", category: department-funding-sources, department: community-development, fund: 561, fund_group: capital}
+      - {label: "General Fund", page: 101, category: department-funding-sources, department: community-development, fund: 100, fund_group: general}
+      - {label: "Low Income Housing Fund", page: 101, category: department-funding-sources, department: community-development, fund: 200, fund_group: special-revenue}
+      - {label: "Housing Successor Agency", page: 101, category: department-funding-sources, department: community-development, fund: 201, fund_group: special-revenue}
+      - {label: "SOEF (Social Op Endowment)", page: 101, category: department-funding-sources, department: community-development, fund: 202, fund_group: special-revenue}
+      - {label: "Mortgage Assistance", page: 101, category: department-funding-sources, department: community-development, fund: 203, fund_group: special-revenue}
+      - {label: "HHS Loan Fund", page: 101, category: department-funding-sources, department: community-development, fund: 204, fund_group: special-revenue}
+      - {label: "Cal Home Reuse", page: 101, category: department-funding-sources, department: community-development, fund: 205, fund_group: special-revenue}
+      - {label: "California Begin Program", page: 101, category: department-funding-sources, department: community-development, fund: 206, fund_group: special-revenue}
+      - {label: "Local Housing Trust", page: 102, category: department-funding-sources, department: community-development, fund: 207, fund_group: special-revenue}
+      - {label: "Grant - HUD EDI Special Grant", page: 102, category: department-funding-sources, department: community-development, fund: 223, fund_group: special-revenue}
+      - {label: "Grant - CDBG", page: 102, category: department-funding-sources, department: community-development, fund: 224, fund_group: special-revenue}
+      - {label: "Grant - Home Grant", page: 102, category: department-funding-sources, department: community-development, fund: 225, fund_group: special-revenue}
+      - {label: "FEMA Funding", page: 102, category: department-funding-sources, department: community-development, fund: 226, fund_group: special-revenue}
+      - {label: "Grant - State Grant Fund", page: 102, category: department-funding-sources, department: community-development, fund: 240, fund_group: special-revenue}
+      - {label: "Opioid Settlement", page: 102, category: department-funding-sources, department: community-development, fund: 241, fund_group: special-revenue}
+      - {label: "Accessibility Compliance", page: 102, category: department-funding-sources, department: community-development, fund: 286, fund_group: special-revenue}
+      - {label: "Human Services Facility Fee", page: 102, category: department-funding-sources, department: community-development, fund: 290, fund_group: special-revenue}
+      - {label: "Open Space Acquisition & Mgmt", page: 102, category: department-funding-sources, department: community-development, fund: 300, fund_group: special-revenue}
+      - {label: "Doolan Canyon Preserve Endow", page: 102, category: department-funding-sources, department: community-development, fund: 470, fund_group: permanent}
+      - {label: "Traffic Impact Fee (TIF)", page: 102, category: department-funding-sources, department: community-development, fund: 510, fund_group: capital}
+      - {label: "Park Fee - AB 1600", page: 102, category: department-funding-sources, department: community-development, fund: 512, fund_group: capital}
+      - {label: "County Meas BB-Bike/Pedestrian", page: 102, category: department-funding-sources, department: community-development, fund: 551, fund_group: capital}
+      - {label: "County Meas BB-Local St & Rd", page: 102, category: department-funding-sources, department: community-development, fund: 552, fund_group: capital}
+      - {label: "County Measure F Veh Reg Fee", page: 102, category: department-funding-sources, department: community-development, fund: 553, fund_group: capital}
+      - {label: "State - Gas Tax", page: 102, category: department-funding-sources, department: community-development, fund: 560, fund_group: capital}
+      - {label: "State - SB1", page: 102, category: department-funding-sources, department: community-development, fund: 561, fund_group: capital}
 
   # --------------------------------------------------------------------------
   - id: funding-fire
@@ -3941,7 +3926,6 @@ rules:
           - {fiscal_year: 2025, basis: revised}
           - {fiscal_year: 2026}
           - {fiscal_year: 2027}
-        omitted_rows: ["Vehicle Impound Fee", "Police Donations"]
       - page: 120
         section: "FY 2026-27\n"
         stop_at: "Total Department Funding Sources"
@@ -3951,7 +3935,6 @@ rules:
           - {fiscal_year: 2025, basis: revised}
           - {fiscal_year: 2026}
           - {fiscal_year: 2027}
-        omitted_rows: ["General Fund", "Horizons", "Asset Seizure - County", "Grant - Federal Grant Fund", "Asset Seizure - Dep of Justice", "Asset Seizure - Treasury", "Grant - State Grant Fund", "PD COPS Grant"]
         stated_total_deltas:
           - column: 1
             delta_cents: -100
@@ -3964,16 +3947,16 @@ rules:
               two are over by one. All three of the revised and budget columns tie
               exactly on all eleven. Measured off the page, stated minus mapped.
     rows:
-      - {label: "General Fund", category: department-funding-sources, department: police-department, fund: 100, fund_group: general}
-      - {label: "Horizons", category: department-funding-sources, department: police-department, fund: 210, fund_group: special-revenue}
-      - {label: "Asset Seizure - County", category: department-funding-sources, department: police-department, fund: 211, fund_group: special-revenue}
-      - {label: "Grant - Federal Grant Fund", category: department-funding-sources, department: police-department, fund: 220, fund_group: special-revenue}
-      - {label: "Asset Seizure - Dep of Justice", category: department-funding-sources, department: police-department, fund: 221, fund_group: special-revenue}
-      - {label: "Asset Seizure - Treasury", category: department-funding-sources, department: police-department, fund: 222, fund_group: special-revenue}
-      - {label: "Grant - State Grant Fund", category: department-funding-sources, department: police-department, fund: 240, fund_group: special-revenue}
-      - {label: "PD COPS Grant", category: department-funding-sources, department: police-department, fund: 242, fund_group: special-revenue}
-      - {label: "Vehicle Impound Fee", category: department-funding-sources, department: police-department, fund: 285, fund_group: special-revenue}
-      - {label: "Police Donations", category: department-funding-sources, department: police-department, fund: 331, fund_group: special-revenue}
+      - {label: "General Fund", page: 119, category: department-funding-sources, department: police-department, fund: 100, fund_group: general}
+      - {label: "Horizons", page: 119, category: department-funding-sources, department: police-department, fund: 210, fund_group: special-revenue}
+      - {label: "Asset Seizure - County", page: 119, category: department-funding-sources, department: police-department, fund: 211, fund_group: special-revenue}
+      - {label: "Grant - Federal Grant Fund", page: 119, category: department-funding-sources, department: police-department, fund: 220, fund_group: special-revenue}
+      - {label: "Asset Seizure - Dep of Justice", page: 119, category: department-funding-sources, department: police-department, fund: 221, fund_group: special-revenue}
+      - {label: "Asset Seizure - Treasury", page: 119, category: department-funding-sources, department: police-department, fund: 222, fund_group: special-revenue}
+      - {label: "Grant - State Grant Fund", page: 119, category: department-funding-sources, department: police-department, fund: 240, fund_group: special-revenue}
+      - {label: "PD COPS Grant", page: 119, category: department-funding-sources, department: police-department, fund: 242, fund_group: special-revenue}
+      - {label: "Vehicle Impound Fee", page: 120, category: department-funding-sources, department: police-department, fund: 285, fund_group: special-revenue}
+      - {label: "Police Donations", page: 120, category: department-funding-sources, department: police-department, fund: 331, fund_group: special-revenue}
 
   # --------------------------------------------------------------------------
   - id: funding-public-works
@@ -4009,7 +3992,6 @@ rules:
           - {fiscal_year: 2025, basis: revised}
           - {fiscal_year: 2026}
           - {fiscal_year: 2027}
-        omitted_rows: ["Other Maintenance CFDs", "County Measure D", "Stormwater", "Storm Drain", "Wastewater", "Wastewater Replacement", "Wastewater Connection Fees", "Water", "Water Replacement", "Water Connection Fees", "Fleet & Equipment Services", "Facilities Rehab Pgm"]
       - page: 125
         section: "FY 2026-27\n"
         stop_at: "Total Department Funding Sources"
@@ -4019,7 +4001,6 @@ rules:
           - {fiscal_year: 2025, basis: revised}
           - {fiscal_year: 2026}
           - {fiscal_year: 2027}
-        omitted_rows: ["General Fund", "Grant - State Grant Fund", "Host Community Impact Fee", "City Street Sweeping Fee", "Import Mitigation Fee", "Solid Waste & Recycling Fee", "Downtown LMD", "Other LMD", "El Charro CFD 2009-1 Maint"]
         stated_total_deltas:
           - column: 1
             delta_cents: -100
@@ -4032,27 +4013,27 @@ rules:
               two are over by one. All three of the revised and budget columns tie
               exactly on all eleven. Measured off the page, stated minus mapped.
     rows:
-      - {label: "General Fund", category: department-funding-sources, department: public-works, fund: 100, fund_group: general}
-      - {label: "Grant - State Grant Fund", category: department-funding-sources, department: public-works, fund: 240, fund_group: special-revenue}
-      - {label: "Host Community Impact Fee", category: department-funding-sources, department: public-works, fund: 282, fund_group: special-revenue}
-      - {label: "City Street Sweeping Fee", category: department-funding-sources, department: public-works, fund: 283, fund_group: special-revenue}
-      - {label: "Import Mitigation Fee", category: department-funding-sources, department: public-works, fund: 288, fund_group: special-revenue}
-      - {label: "Solid Waste & Recycling Fee", category: department-funding-sources, department: public-works, fund: 289, fund_group: special-revenue}
-      - {label: "Downtown LMD", category: department-funding-sources, department: public-works, fund: 310, fund_group: special-revenue}
-      - {label: "Other LMD", category: department-funding-sources, department: public-works, fund: 311, fund_group: special-revenue}
-      - {label: "El Charro CFD 2009-1 Maint", category: department-funding-sources, department: public-works, fund: 320, fund_group: special-revenue}
-      - {label: "Other Maintenance CFDs", category: department-funding-sources, department: public-works, fund: 321, fund_group: special-revenue}
-      - {label: "County Measure D", category: department-funding-sources, department: public-works, fund: 550, fund_group: capital}
-      - {label: "Stormwater", category: department-funding-sources, department: public-works, fund: 610, fund_group: enterprise}
-      - {label: "Storm Drain", category: department-funding-sources, department: public-works, fund: 612, fund_group: enterprise}
-      - {label: "Wastewater", category: department-funding-sources, department: public-works, fund: 620, fund_group: enterprise}
-      - {label: "Wastewater Replacement", category: department-funding-sources, department: public-works, fund: 622, fund_group: enterprise}
-      - {label: "Wastewater Connection Fees", category: department-funding-sources, department: public-works, fund: 623, fund_group: enterprise}
-      - {label: "Water", category: department-funding-sources, department: public-works, fund: 640, fund_group: enterprise}
-      - {label: "Water Replacement", category: department-funding-sources, department: public-works, fund: 642, fund_group: enterprise}
-      - {label: "Water Connection Fees", category: department-funding-sources, department: public-works, fund: 643, fund_group: enterprise}
-      - {label: "Fleet & Equipment Services", category: department-funding-sources, department: public-works, fund: 730, fund_group: internal-service}
-      - {label: "Facilities Rehab Pgm", category: department-funding-sources, department: public-works, fund: 740, fund_group: internal-service}
+      - {label: "General Fund", page: 124, category: department-funding-sources, department: public-works, fund: 100, fund_group: general}
+      - {label: "Grant - State Grant Fund", page: 124, category: department-funding-sources, department: public-works, fund: 240, fund_group: special-revenue}
+      - {label: "Host Community Impact Fee", page: 124, category: department-funding-sources, department: public-works, fund: 282, fund_group: special-revenue}
+      - {label: "City Street Sweeping Fee", page: 124, category: department-funding-sources, department: public-works, fund: 283, fund_group: special-revenue}
+      - {label: "Import Mitigation Fee", page: 124, category: department-funding-sources, department: public-works, fund: 288, fund_group: special-revenue}
+      - {label: "Solid Waste & Recycling Fee", page: 124, category: department-funding-sources, department: public-works, fund: 289, fund_group: special-revenue}
+      - {label: "Downtown LMD", page: 124, category: department-funding-sources, department: public-works, fund: 310, fund_group: special-revenue}
+      - {label: "Other LMD", page: 124, category: department-funding-sources, department: public-works, fund: 311, fund_group: special-revenue}
+      - {label: "El Charro CFD 2009-1 Maint", page: 124, category: department-funding-sources, department: public-works, fund: 320, fund_group: special-revenue}
+      - {label: "Other Maintenance CFDs", page: 125, category: department-funding-sources, department: public-works, fund: 321, fund_group: special-revenue}
+      - {label: "County Measure D", page: 125, category: department-funding-sources, department: public-works, fund: 550, fund_group: capital}
+      - {label: "Stormwater", page: 125, category: department-funding-sources, department: public-works, fund: 610, fund_group: enterprise}
+      - {label: "Storm Drain", page: 125, category: department-funding-sources, department: public-works, fund: 612, fund_group: enterprise}
+      - {label: "Wastewater", page: 125, category: department-funding-sources, department: public-works, fund: 620, fund_group: enterprise}
+      - {label: "Wastewater Replacement", page: 125, category: department-funding-sources, department: public-works, fund: 622, fund_group: enterprise}
+      - {label: "Wastewater Connection Fees", page: 125, category: department-funding-sources, department: public-works, fund: 623, fund_group: enterprise}
+      - {label: "Water", page: 125, category: department-funding-sources, department: public-works, fund: 640, fund_group: enterprise}
+      - {label: "Water Replacement", page: 125, category: department-funding-sources, department: public-works, fund: 642, fund_group: enterprise}
+      - {label: "Water Connection Fees", page: 125, category: department-funding-sources, department: public-works, fund: 643, fund_group: enterprise}
+      - {label: "Fleet & Equipment Services", page: 125, category: department-funding-sources, department: public-works, fund: 730, fund_group: internal-service}
+      - {label: "Facilities Rehab Pgm", page: 125, category: department-funding-sources, department: public-works, fund: 740, fund_group: internal-service}
 
   # ==========================================================================
   # DEPARTMENTWIDE EXPENDITURES BY CATEGORY, pp.85-125 -- scope
@@ -5060,7 +5041,6 @@ rules:
           - {fund_group: enterprise, fund: 640, fiscal_year: 2025, basis: revised}
           - {fund_group: enterprise, fund: 640, fiscal_year: 2026}
           - {fund_group: enterprise, fund: 640, fiscal_year: 2027}
-        omitted_rows: ["Services & Supplies", "Debt Services"]
       - page: 174
         section: "FY 2026-27\n"
         stop_at: "Total Water"
@@ -5070,16 +5050,15 @@ rules:
           - {fund_group: enterprise, fund: 640, fiscal_year: 2025, basis: revised}
           - {fund_group: enterprise, fund: 640, fiscal_year: 2026}
           - {fund_group: enterprise, fund: 640, fiscal_year: 2027}
-        omitted_rows: ["Wages & Benefits"]
         stated_total_deltas:
           - column: 1
             delta_cents: 100
             note: >-
               The city's own rounding, stated minus mapped, measured off the page.
     rows:
-      - {label: "Wages & Benefits", category: wages-and-benefits}
-      - {label: "Services & Supplies", category: services-and-supplies}
-      - {label: "Debt Services", category: debt-services}
+      - {label: "Wages & Benefits", page: 173, category: wages-and-benefits}
+      - {label: "Services & Supplies", page: 174, category: services-and-supplies}
+      - {label: "Debt Services", page: 174, category: debt-services}
 
   # --------------------------------------------------------------------------
   - id: fund-exp-water-connection-fees
@@ -5554,7 +5533,6 @@ rules:
           - {fund_group: special-revenue, fund: 310, fiscal_year: 2025, basis: revised}
           - {fund_group: special-revenue, fund: 310, fiscal_year: 2026}
           - {fund_group: special-revenue, fund: 310, fiscal_year: 2027}
-        omitted_rows: ["Services & Supplies"]
       - page: 179
         section: "FY 2026-27\n"
         stop_at: "Total Downtown LMD"
@@ -5564,15 +5542,14 @@ rules:
           - {fund_group: special-revenue, fund: 310, fiscal_year: 2025, basis: revised}
           - {fund_group: special-revenue, fund: 310, fiscal_year: 2026}
           - {fund_group: special-revenue, fund: 310, fiscal_year: 2027}
-        omitted_rows: ["Wages & Benefits"]
         stated_total_deltas:
           - column: 1
             delta_cents: -100
             note: >-
               The city's own rounding, stated minus mapped, measured off the page.
     rows:
-      - {label: "Wages & Benefits", category: wages-and-benefits}
-      - {label: "Services & Supplies", category: services-and-supplies}
+      - {label: "Wages & Benefits", page: 178, category: wages-and-benefits}
+      - {label: "Services & Supplies", page: 179, category: services-and-supplies}
 
   # --------------------------------------------------------------------------
   - id: fund-exp-el-charro-cfd-2009-1-maint
@@ -5919,7 +5896,6 @@ rules:
           - {fund_group: special-revenue, fund: 200, fiscal_year: 2025, basis: revised}
           - {fund_group: special-revenue, fund: 200, fiscal_year: 2026}
           - {fund_group: special-revenue, fund: 200, fiscal_year: 2027}
-        omitted_rows: ["Capital Outlay"]
       - page: 181
         section: "FY 2026-27\n"
         stop_at: "Total Low Income Housing Fund"
@@ -5929,11 +5905,10 @@ rules:
           - {fund_group: special-revenue, fund: 200, fiscal_year: 2025, basis: revised}
           - {fund_group: special-revenue, fund: 200, fiscal_year: 2026}
           - {fund_group: special-revenue, fund: 200, fiscal_year: 2027}
-        omitted_rows: ["Wages & Benefits", "Services & Supplies"]
     rows:
-      - {label: "Wages & Benefits", category: wages-and-benefits}
-      - {label: "Services & Supplies", category: services-and-supplies}
-      - {label: "Capital Outlay", category: capital-outlay}
+      - {label: "Wages & Benefits", page: 180, category: wages-and-benefits}
+      - {label: "Services & Supplies", page: 180, category: services-and-supplies}
+      - {label: "Capital Outlay", page: 181, category: capital-outlay}
 
   # --------------------------------------------------------------------------
   - id: fund-exp-mortgage-assistance

@@ -190,7 +190,7 @@ func TestPublishedFundBalancesCountyMeasureDHasNoReserve(t *testing.T) {
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("County Measure D FY2027 (-want +got):\n%s", diff)
 	}
-	if diff := cmp.Diff([]omittedCellAt{{"County Measure D", 207, true, 3, "Increase/(Use)"}},
+	if diff := cmp.Diff([]omittedCellAt{{"County Measure D", 207, 3, "Increase/(Use)"}},
 		omitted); diff != "" {
 		t.Errorf("omissions (-want +got):\n%s", diff)
 	}

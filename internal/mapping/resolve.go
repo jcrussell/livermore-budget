@@ -181,9 +181,9 @@ type Value struct {
 	// RowIndex is the row's position in the rule's row list, and ColumnIndex
 	// its column's position in the part's columns, so a caller can rebuild the
 	// grid. RowIndex deliberately indexes the rule's rows rather than the
-	// part's active rows: an Omission has no active-row position at all, and
-	// two indexing bases would collide the moment a part omitted a row from
-	// anywhere but the end.
+	// part's active rows: two parts of one table print different rows, and
+	// two indexing bases would collide the moment a row another page prints
+	// sat anywhere but at the end.
 	RowIndex, ColumnIndex int
 	Page                  int
 	// Offset is the byte offset of the token within the page text, and Token
@@ -212,24 +212,22 @@ func (v Value) Kind(rule *Rule) Kind {
 	return v.Row.EffectiveKind(rule)
 }
 
-// Omission is a row a part does not print, or one cell of a row it does,
-// declared by the rule.
+// Omission is one cell of a row a part prints that the page leaves blank,
+// declared by Part.OmittedCells. A row the part does not print is no
+// omission: another page prints it, and Row.Page says which.
 //
-// Whether these become facts (as zeros) is deliberately not decided here. The
-// argument for it is conditional: with one declared omission and a column total
-// that ties, the tie proves the missing row is zero — but with two omissions on
-// one part it proves nothing, and "absent is not zero" is a project invariant.
+// Whether a blank becomes a fact (as a zero) is deliberately not decided here.
+// The argument for it is conditional: with one blank and a column total that
+// ties, the tie proves the missing cell is zero — but with two blanks in one
+// column it proves nothing, and "absent is not zero" is a project invariant.
 // The fact model decides; resolution only reports what was declared.
 type Omission struct {
 	Row      Row
 	RowIndex int
 	Page     int
 
-	// Cell says the page prints the row and leaves one cell of it blank,
-	// declared by Part.OmittedCells: ColumnIndex is that cell's column in the
-	// part's columns and Header the column_headers entry naming it. Unset, the
-	// page prints no part of the row.
-	Cell        bool
+	// ColumnIndex is the blank cell's column in the part's columns, and
+	// Header the column_headers entry naming it.
 	ColumnIndex int
 	Header      string
 }
@@ -359,7 +357,7 @@ func context(text string, off int) string {
 }
 
 // Values reads the figures a part yields, in row-major order, along with the
-// rows the rule declared this part omits.
+// cells the part declares the page leaves blank.
 //
 // Two shapes of page need two reads. Where the part carries its own row labels,
 // each label anchors the figures that follow it, and the text between rows must
@@ -384,6 +382,11 @@ func context(text string, off int) string {
 // changing what the next caller sees. The copy is shallow: a Value's Row
 // shares its Counterpart and SubtotalDeltas with the rule, and a caller must
 // not write through them.
+//
+// The values are the cells cellPublishes admits. The read yields every cell
+// the part prints, skipped ones included, because a printed subtotal adds
+// them (Cells); the one predicate for which of those become facts is applied
+// here and nowhere after.
 func (r *Resolver) Values(rule *Rule, p *Part) ([]Value, []Omission, error) {
 	rp := r.resolvePart(rule, p)
 	if rp.err != nil {
@@ -391,7 +394,7 @@ func (r *Resolver) Values(rule *Rule, p *Part) ([]Value, []Omission, error) {
 	}
 	var values []Value
 	for _, v := range rp.cells {
-		if v.Row.Publishes(v.Column) {
+		if p.cellPublishes(v.ColumnIndex, v.Row) {
 			values = append(values, v)
 		}
 	}
@@ -479,9 +482,10 @@ func canonicalRows(rule *Rule, p *Part) ([]Row, []int) {
 	idx := make([]int, len(active))
 	at := 0
 	for i, row := range rule.Rows {
-		// Identity(), like ActiveRows: two rows may share a Label, and pairing
-		// on it would give the surviving row the omitted row's index, filing
-		// its figures under a position the page does not print.
+		// Identity(), the key the rule's rows are unique on: two rows may
+		// share a Label, and pairing on it would give this part's row the
+		// index of one another page prints, filing its figures under a
+		// position the page does not print.
 		if at < len(active) && active[at].Identity() == row.Identity() {
 			idx[at] = i
 			at++
@@ -490,28 +494,24 @@ func canonicalRows(rule *Rule, p *Part) ([]Row, []int) {
 	return active, idx
 }
 
-// Omissions is what a part declares it does not print. It reads the
-// declaration alone, so a caller with no page in hand gets what Values would.
+// Omissions is the cells a part declares the page leaves blank, in row order.
+// It reads the declaration alone, so a caller with no page in hand gets what
+// Values would, and internal/check reads its blanks from here and matches
+// nothing of its own.
 func Omissions(rule *Rule, p *Part) []Omission {
-	if len(p.OmittedRows) == 0 && len(p.OmittedCells) == 0 {
+	if len(p.OmittedCells) == 0 {
 		return nil
 	}
-	// Keyed on Identity(), the same key ActiveRows drops on. Matching the bare
-	// Label here would report an omission for every row sharing it, so the
-	// omissions and the active rows would disagree about which rows the page
-	// prints (fisc-gtv).
-	declared := omittedSet(p)
+	// Keyed on Identity(), the key the rule's rows are unique on. Matching
+	// the bare Label here would report a blank on every row sharing it
+	// (fisc-gtv).
 	blank := blankColumns(p)
 	var out []Omission
 	for i, row := range rule.Rows {
-		if declared[row.Identity()] {
-			out = append(out, Omission{Row: row, RowIndex: i, Page: p.Page})
-			continue
-		}
 		for c, h := range p.ColumnHeaders {
 			if blank[row.Identity()][c] {
 				out = append(out, Omission{Row: row, RowIndex: i, Page: p.Page,
-					Cell: true, ColumnIndex: c, Header: h.Text})
+					ColumnIndex: c, Header: h.Text})
 			}
 		}
 	}
@@ -930,11 +930,11 @@ func (r *Resolver) positionalValues(rule *Rule, p *Part, blk *block, guard *colu
 		return nil, cmdutil.WithHint(&resolveError{DocID: r.file.DocID, RuleID: rule.ID,
 			Page: p.Page, Field: "parts", Err: ErrNotFound,
 			Msg: fmt.Sprintf("read %d values, want %d (%d rows × %d columns, "+
-				"less %d declared blank); rows declared absent from this page: %s",
-				len(toks), want, len(rows), ncols, len(p.OmittedCells), declaredOmissions(p))},
+				"less %d declared blank); rows placed on other pages: %s",
+				len(toks), want, len(rows), ncols, len(p.OmittedCells), declaredOmissions(rule, p))},
 			"a label-less page is read positionally, so a count that does not "+
-				"match means every row after the gap would be mismapped; add or "+
-				"remove an omitted_rows or omitted_cells entry only after "+
+				"match means every row after the gap would be mismapped; move a "+
+				"row's page or add or remove an omitted_cells entry only after "+
 				"checking the page")
 	}
 
@@ -958,14 +958,18 @@ func (r *Resolver) positionalValues(rule *Rule, p *Part, blk *block, guard *colu
 	return values, nil
 }
 
-func declaredOmissions(p *Part) string {
+// declaredOmissions renders, for the count message, the rows another page
+// prints and the cells this one declares blank.
+func declaredOmissions(rule *Rule, p *Part) string {
 	rows := "none"
-	if len(p.OmittedRows) > 0 {
-		labels := make([]string, len(p.OmittedRows))
-		for i, o := range p.OmittedRows {
-			labels[i] = o.printedLabel()
+	var elsewhere []string
+	for _, row := range rule.Rows {
+		if !row.OnPart(p) {
+			elsewhere = append(elsewhere, fmt.Sprintf("%s (page %d)", row.PrintedLabel(), row.Page))
 		}
-		rows = fmt.Sprintf("%q", labels)
+	}
+	if len(elsewhere) > 0 {
+		rows = strings.Join(elsewhere, ", ")
 	}
 	if len(p.OmittedCells) == 0 {
 		return rows

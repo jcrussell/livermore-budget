@@ -47,16 +47,19 @@ func TestLoadSpine(t *testing.T) {
 		t.Errorf("p66 expected values = %d, want %d", got, want)
 	}
 
-	// p67 borrows them and has eight columns, and it declares NO omissions:
-	// the page prints all ten rows. The spike measured 9*8=72 here and the
-	// rule declared "Licenses & Permits" omitted to match, but the page was
-	// never short a row — our extractor was deleting one (fisc-c00). 10*8=80
-	// is both what a naive read expects and what the document actually prints.
+	// p67 borrows them and has eight columns, and every row is on both
+	// pages: p67 prints all ten rows. The spike measured 9*8=72 here and the
+	// rule declared "Licenses & Permits" absent from p67 to match, but the
+	// page was never short a row — our extractor was deleting one (fisc-c00).
+	// 10*8=80 is both what a naive read expects and what the document
+	// actually prints.
 	if got := rev.labelledPart(&p67); got == nil || got.Page != 66 {
 		t.Fatalf("p67 should borrow labels from p66")
 	}
-	if len(p67.OmittedRows) != 0 {
-		t.Errorf("p67 declares omissions %q; the page prints all ten rows", p67.OmittedRows)
+	for _, row := range rev.Rows {
+		if row.Page != 0 {
+			t.Errorf("%q is placed on page %d; the page prints all ten rows", row.Label, row.Page)
+		}
 	}
 	if got, want := rev.expectedValues(&p67), 10*8; got != want {
 		t.Errorf("p67 expected values = %d, want %d", got, want)
@@ -247,12 +250,12 @@ func TestParseRejects(t *testing.T) {
 			want: "row \"B\": sign positive on a row that publishes no cell",
 		},
 		{
-			// A row omitted on every part whose columns publish, and printed
-			// only where every column skips, publishes nothing either.
-			name: "sign positive on a row omitted from every publishing part",
-			yaml: strings.Replace(base("      - {label: \"B\", category: b, sign: positive}\n"),
+			// A row placed on the one part whose every column skips publishes
+			// nothing either, whatever the other part's columns do.
+			name: "sign positive on a row placed where every column skips",
+			yaml: strings.Replace(base("      - {label: \"B\", category: b, sign: positive, page: 2}\n"),
 				"parts: [{page: 1, columns: [{fiscal_year: 2026}]}]",
-				"parts:\n      - {page: 1, columns: [{fiscal_year: 2026}], omitted_rows: [{label: \"B\"}]}\n"+
+				"parts:\n      - {page: 1, columns: [{fiscal_year: 2026}]}\n"+
 					"      - {page: 2, columns: [{skip: true}]}", 1),
 			want: "row \"B\": sign positive on a row that publishes no cell",
 		},
@@ -268,14 +271,15 @@ func TestParseRejects(t *testing.T) {
 			want: "row \"Beta\": sign positive on a row that publishes no cell",
 		},
 		{
-			// A row omitted from its only part publishes no cell anywhere,
-			// so its counterpart is refused for that and never as a
-			// collision with the fund it names.
-			name: "a counterpart on a row omitted from its only part",
-			yaml: strings.Replace(base("      - {label: \"B\", category: b, fund: 200, fund_group: special-revenue, "+
+			// A row placed on a part whose only column skips publishes no
+			// cell anywhere, so its counterpart is refused for that and never
+			// as a collision with the fund it names.
+			name: "a counterpart on a row placed where every column skips",
+			yaml: strings.Replace(base("      - {label: \"B\", category: b, fund: 200, fund_group: special-revenue, page: 2, "+
 				"counterpart: {category: b, kind: transfer_out, fund: 200, fund_group: special-revenue}}\n"),
 				"parts: [{page: 1, columns: [{fiscal_year: 2026}]}]",
-				"parts: [{page: 1, columns: [{fund_group: general, fiscal_year: 2026}], omitted_rows: [{label: \"B\"}]}]", 1),
+				"parts:\n      - {page: 1, columns: [{fund_group: general, fiscal_year: 2026}]}\n"+
+					"      - {page: 2, columns: [{fund_group: general, skip: true}]}", 1),
 			want: "row \"B\": counterpart on a row that publishes no cell",
 		},
 		{
@@ -337,14 +341,6 @@ func TestParseRejects(t *testing.T) {
 			name: "duplicate row label",
 			yaml: base("") + "      - {label: \"A\", category: a2}\n",
 			want: "duplicate row label",
-		},
-		{
-			name: "omitted row is not a row of the rule",
-			yaml: strings.Replace(base(""),
-				"parts: [{page: 1, columns: [{fiscal_year: 2026}]}]",
-				"parts:\n      - page: 1\n        omitted_rows: [\"Nope\"]\n"+
-					"        columns: [{fiscal_year: 2026}]", 1),
-			want: "not one of this rule's rows",
 		},
 		{
 			name: "labels_from points at a missing page",
@@ -495,16 +491,25 @@ func TestParseRejectsSilentLosses(t *testing.T) {
 			want: "has no category",
 		},
 		{
-			// Omission is a fact about the page, not about the row's meaning:
-			// a row every part omits still needs the category its figure
-			// would carry were it printed, so a blank declared on it has an
-			// address.
-			name: "row with no classification, omitted from its only part",
-			yaml: strings.NewReplacer(`{label: "A", category: a}`, `{label: "A"}`,
+			// A row's page is the one part that prints it. Naming a page no
+			// part reads would place the row nowhere, so every part would read
+			// the page without it and no count would hold the row against
+			// the page.
+			name: "a row placed on a page no part reads",
+			yaml: strings.Replace(base(""), `{label: "A", category: a}`,
+				`{label: "A", category: a, page: 9}`, 1),
+			want: `row "A": page 9 is not a part of this rule`,
+		},
+		{
+			// Two parts on one page would make the placement name both, so
+			// the row is refused before the parts are.
+			name: "a row placed on a page two parts share",
+			yaml: strings.NewReplacer(`{label: "A", category: a}`, `{label: "A", category: a, page: 1}`,
 				"parts: [{page: 1, columns: [{fiscal_year: 2026}]}]",
-				`parts: [{page: 1, omitted_rows: ["A"], columns: [{fiscal_year: 2026}]}]`,
-			).Replace(base("      - {label: \"B\", category: b}\n")),
-			want: "has no category",
+				"parts: [{page: 1, columns: [{fiscal_year: 2026}], section: \"X\"}, "+
+					"{page: 1, columns: [{fiscal_year: 2026}], section: \"Y\"}]",
+			).Replace(base("")),
+			want: `row "A": page 1 is listed twice in parts`,
 		},
 		{
 			// A DEPARTMENT IS NOT A SUBSTITUTE FOR A CATEGORY, and until
@@ -840,8 +845,8 @@ func TestLoadDirRejectsGridsDisagreeingAcrossFiles(t *testing.T) {
 
 // TestCellPublishes is the predicate the decisions about the facts a row
 // does publish read, over each clause: a skipped row or column, a
-// non-amount row or column, a row the part omits, and a cell it declares
-// blank.
+// non-amount row or column, a row another page prints, and a cell the part
+// declares blank.
 func TestCellPublishes(t *testing.T) {
 	const src = `schema_version: 1
 doc_id: d
@@ -854,13 +859,12 @@ rules:
     rows:
       - {label: "Alpha", category: a}
       - {label: "Beta", category: b}
-      - {label: "Gamma", category: c}
+      - {label: "Gamma", category: c, page: 2}
       - {label: "Delta", skip: true}
       - {label: "Epsilon", category: e, quantity: percentage}
     parts:
       - page: 1
         column_headers: ["FY A", "FY B", "TOTAL", "Share"]
-        omitted_rows: ["Gamma"]
         omitted_cells:
           - {label: "Beta", column: "FY B", note: "blank"}
         columns:
@@ -895,7 +899,7 @@ rules:
 	for _, c := range []cell{
 		{"Alpha", 1, 0}, {"Alpha", 1, 1}, {"Alpha", 2, 0},
 		{"Beta", 1, 0}, {"Beta", 2, 0}, // not {Beta, 1, 1}: declared blank
-		{"Gamma", 2, 0}, // omitted from page 1
+		{"Gamma", 2, 0}, // placed on page 2
 	} {
 		want[c] = true
 	}

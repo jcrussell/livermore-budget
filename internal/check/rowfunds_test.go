@@ -606,9 +606,8 @@ func TestTheFundNumberArmHoldsBothEndsOfAP222Row(t *testing.T) {
 // never runs.
 //
 // It cannot be proved by mutating the published file, which is why it is here.
-// Renaming a row label breaks the page anchor first -- and on funding-public-works
-// it breaks the omitted_rows declaration before even that -- so the resolver
-// refuses long before this check runs. Mutating the loaded rules reaches it.
+// Renaming a row label breaks the page anchor first, so the resolver refuses
+// long before this check runs. Mutating the loaded rules reaches it.
 func TestABareLabelThatResolvesToNoFundIsAFinding(t *testing.T) {
 	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
 	if err != nil {

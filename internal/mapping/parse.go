@@ -123,8 +123,8 @@ func parse(r io.Reader, p string) (*File, error) {
 	var f File
 	dec := yaml.NewDecoder(r)
 	// Unknown fields are errors: a typo'd key would otherwise be silently
-	// ignored, and a rule that quietly lost its `omitted_rows` is exactly the
-	// silent mismapping this schema exists to prevent.
+	// ignored, and a row that quietly lost its `page` is exactly the silent
+	// mismapping this schema exists to prevent.
 	dec.KnownFields(true)
 	if err := dec.Decode(&f); err != nil {
 		if errors.Is(err, io.EOF) {
@@ -487,16 +487,38 @@ func validateRule(r *Rule, errf errFunc) error {
 	// either, and rows are matched in the order the rule lists them, so each
 	// reads its own line. Budget Book p230 prints fund 611's projects twice,
 	// once under its federal grant and once under its state grant, on lines
-	// identical but for the figures. An omitted_rows entry naming such a row
+	// identical but for the figures. An omitted_cells entry naming such a row
 	// could not say which one, so it is refused below.
 	rowIndex := map[string]bool{}
 	tailed := map[string][]string{}
 	printed := map[string]bool{}
 	skipped := map[string]bool{}
 	repeated := map[string]bool{}
+	// A row's page must name exactly one part. Naming none would place the
+	// row nowhere, so every part would read the page without it and nothing
+	// would hold the count against the row; naming two would place it on both
+	// and on neither. Counted here so the refusal is the row's, before the
+	// parts loop refuses the repeated page as its own defect.
+	partsOnPage := map[int]int{}
+	for i := range r.Parts {
+		partsOnPage[r.Parts[i].Page]++
+	}
 	for i, row := range r.Rows {
 		if row.Label == "" {
 			return errf(r.ID, "rows", "row %d has no label", i)
+		}
+		if row.Page != 0 {
+			switch n := partsOnPage[row.Page]; {
+			case n == 0:
+				return cmdutil.WithHint(
+					errf(r.ID, "rows", "row %q: page %d is not a part of this rule",
+						row.PrintedLabel(), row.Page),
+					"page places a row on the one part that prints it; "+
+						"omit it on a row every part prints")
+			case n > 1:
+				return errf(r.ID, "rows", "row %q: page %d is listed twice in parts, "+
+					"so it names no single part", row.PrintedLabel(), row.Page)
+			}
 		}
 		if row.LabelTail != "" {
 			// Blank first: a whitespace-only tail IS blank, and reporting it
@@ -656,8 +678,8 @@ func validateRule(r *Rule, errf errFunc) error {
 		// which never reads this field and never staleness-checks it, so a
 		// declaration was ACCEPTED AND INERT -- the one shape a declaration in
 		// this repository must not have. Every other one fails when it stops
-		// being true: a stated_total_delta that now ties exactly, an omitted-row
-		// count that no longer matches, a wrapped label the page stopped
+		// being true: a stated_total_delta that now ties exactly, a placed
+		// row's count that no longer matches, a wrapped label the page stopped
 		// wrapping. Measured on the production mapping (fisc-ekj): adding a
 		// fragment that appears nowhere on p67 built cleanly with byte-identical
 		// facts, and five parts of the shipped rule file take labels_from.
@@ -840,13 +862,11 @@ func validateRule(r *Rule, errf errFunc) error {
 			return err
 		}
 
-		// An omitted_rows entry must name EXACTLY ONE row. Naming none is the
-		// stale declaration this has always refused; naming more than one
-		// would drop every row sharing a label, which is the same silent
-		// mismapping the declaration exists to prevent, one page later. An
-		// omitted_cells entry names its row the same way, and is held to the
-		// same rule by the same function.
-		namesOneRow := func(field string, j int, o omittedRow, notARow string) error {
+		// An omitted_cells entry must name EXACTLY ONE row. Naming none is a
+		// stale declaration; naming more than one would blank a cell of every
+		// row sharing a label, which is the silent mismapping the declaration
+		// exists to prevent, one row over.
+		namesOneRow := func(field string, j int, o Row, notARow string) error {
 			switch {
 			case strings.TrimSpace(o.Label) == "":
 				return errf(r.ID, field, "entry %d has no label", j)
@@ -855,11 +875,11 @@ func validateRule(r *Rule, errf errFunc) error {
 					"entry %d: label_tail %q has leading or trailing whitespace",
 					j, o.LabelTail)
 			}
-			if repeated[o.identity()] {
+			if repeated[o.Identity()] {
 				return errf(r.ID, field, "%q names rows the rule lists more than once, "+
-					"so it cannot say which one the page omits", o.printedLabel())
+					"so it cannot say which one the page leaves blank", o.PrintedLabel())
 			}
-			if rowIndex[o.identity()] {
+			if rowIndex[o.Identity()] {
 				return nil
 			}
 			if o.LabelTail == "" && len(tailed[o.Label]) > 0 {
@@ -871,20 +891,8 @@ func validateRule(r *Rule, errf errFunc) error {
 						"- {label: ..., label_tail: ...}")
 			}
 			return cmdutil.WithHint(
-				errf(r.ID, field, "%q is not one of this rule's rows", o.printedLabel()),
+				errf(r.ID, field, "%q is not one of this rule's rows", o.PrintedLabel()),
 				notARow)
-		}
-		field := fmt.Sprintf("parts[page %d].omitted_rows", p.Page)
-		declared := map[string]bool{}
-		for j, o := range p.OmittedRows {
-			if err := namesOneRow(field, j, o, "omitted_rows names rows that exist "+
-				"in the rule but are absent from this page"); err != nil {
-				return err
-			}
-			if declared[o.identity()] {
-				return errf(r.ID, field, "%q is declared twice", o.printedLabel())
-			}
-			declared[o.identity()] = true
 		}
 		if err := validateOmittedCells(r, p, namesOneRow, errf); err != nil {
 			return err
@@ -1007,16 +1015,14 @@ func validateClass(r *Rule, field, owner, category string, kind Kind, publishes 
 // On the row axis EVERY ROW CARRIES A CATEGORY, and a department is a SECOND
 // AXIS and not a substitute for one: pp.167-170 cross department against
 // object category, so a department row still says what KIND of spending the
-// figure is. A row publishesIfPrinted finds no cell for is exempt: skipped,
-// non-amount, or under columns that all skip, it publishes nothing however
-// the page prints it, so there is no fact for a category to classify. A row
-// the parts OMIT is not exempt: omission is a fact about the page, not
-// about the row's meaning, and a blank declared on the row needs the address
-// its figure would have.
+// figure is. A row RowPublishes finds no cell for is exempt: skipped,
+// non-amount, under columns that all skip, or blank in every amount cell of
+// the one part that prints it, it publishes nothing, so there is no fact for
+// a category to classify.
 func validateRowClass(r *Rule, row Row, byColumn bool, errf errFunc) error {
 	if !byColumn {
 		return validateClass(r, "rows", fmt.Sprintf("row %q", row.Label), row.Category,
-			row.Kind, r.publishesIfPrinted(row), errf,
+			row.Kind, r.RowPublishes(row), errf,
 			"every row needs one, including a row that declares a department: "+
 				"department is a second axis, not a substitute. Use skip: true if "+
 				"the row is a subtotal that would double-count. On a page whose "+
@@ -1115,7 +1121,7 @@ func validateGrain(r *Rule, errf errFunc) error {
 	case !r.publishes() && r.Grain != "":
 		return cmdutil.WithHint(
 			errf(r.ID, "grain", "is %q, but every row or every column of this rule is "+
-				"skipped, non-amount or omitted, so it publishes no fact", r.Grain),
+				"skipped, non-amount or declared blank, so it publishes no fact", r.Grain),
 			"a grain declared over zero facts cannot be checked against the store; "+
 				"remove it until the rule publishes")
 	}
@@ -1323,16 +1329,12 @@ func validateRowLabelFunds(r *Rule, errf errFunc) error {
 	// clean, and row-funds-match-their-anchors drops skipped rows from every
 	// arm, so the declaration stood over zero checked rows and the rule was
 	// named nowhere in the summary.
-	// A ROW IS COVERED ONLY IF SOME PART READS IT, and there are TWO ways not to
-	// be: skip: true, and being omitted from every part that could carry it. The
-	// first version of this guard counted only the first, so a rule whose every
-	// row appears in each part's omitted_rows parsed clean and the check read
-	// none of them -- reproducing exactly the vacuous declaration the guard was
-	// added to refuse, one omission mechanism over.
-	//
-	// ActiveRows is the same function row-funds-match-their-anchors reaches
-	// through activeInAnyPart, so this counts what the check will actually read
-	// rather than a second opinion about it.
+	// A ROW IS COVERED ONLY IF SOME PART READS IT. A row's page names a part
+	// of the rule, so every row is read by some part and skip: true is the one
+	// way not to be; the count still goes through ActiveRows, the same
+	// function row-funds-match-their-anchors reaches through
+	// activeInAnyPart, so it counts what the check will actually read rather
+	// than a second opinion about it.
 	covered := 0
 	seen := map[string]bool{}
 	for i := range r.Parts {
@@ -1349,9 +1351,8 @@ func validateRowLabelFunds(r *Rule, errf errFunc) error {
 			errf(r.ID, "row_labels_name_funds",
 				"no part of this rule reads any of its rows, so the declaration "+
 					"covers none of them"),
-			"a row that is skipped, or omitted from every part, is never read "+
-				"from the page, so nothing reads its label and nothing checks "+
-				"the fund typed on it")
+			"a skipped row is never read from the page, so nothing reads its "+
+				"label and nothing checks the fund typed on it")
 	}
 	for _, row := range r.Rows {
 		if row.Skip {
@@ -1811,7 +1812,7 @@ func checkCounterpart(r *Rule, row Row, errf errFunc) error {
 	// every column of every part, so "the row's effective fund group" is not
 	// one value: a collision on ANY cell cellPublishes admits is a collision,
 	// because that cell's figure publishes both legs, and a cell it refuses
-	// -- omitted, blank, skipped or non-amount -- publishes neither leg, so a
+	// -- on another page, blank, skipped or non-amount -- publishes neither leg, so a
 	// counterpart naming its fund is no collision. The row's own fund and
 	// group with no printed column behind them are compared nowhere: no
 	// published rule declares a group on the row, so that comparison can
@@ -1846,7 +1847,7 @@ func checkCounterpart(r *Rule, row Row, errf errFunc) error {
 // because the guard is what checks a row's figures sit under the columns they
 // are filed under once one of them is blank.
 func validateOmittedCells(r *Rule, p *Part,
-	namesOneRow func(field string, j int, o omittedRow, notARow string) error, errf errFunc) error {
+	namesOneRow func(field string, j int, o Row, notARow string) error, errf errFunc) error {
 	if len(p.OmittedCells) == 0 {
 		return nil
 	}
@@ -1858,20 +1859,25 @@ func validateOmittedCells(r *Rule, p *Part,
 				"prints, and only the column guard can say each figure is under "+
 				"the column it is filed under")
 	}
-	omitted := omittedSet(p)
+	// The rule's row, not the entry's: the entry names the row by its anchors
+	// and the row carries its page.
+	rows := map[string]Row{}
+	for _, row := range r.Rows {
+		rows[row.Identity()] = row
+	}
 	declared := map[string]map[string]bool{}
 	for j, o := range p.OmittedCells {
 		if err := namesOneRow(field, j, o.row(), "omitted_cells names a cell of a "+
 			"row the rule lists"); err != nil {
 			return err
 		}
-		id := o.row().identity()
+		id := o.row().Identity()
 		switch {
-		case omitted[id]:
-			return errf(r.ID, field, "%q is omitted from this part by omitted_rows, "+
-				"so it has no cell to leave blank", o.row().printedLabel())
+		case !rows[id].OnPart(p):
+			return errf(r.ID, field, "%q is printed by page %d, not by this part, "+
+				"so it has no cell to leave blank", o.row().PrintedLabel(), rows[id].Page)
 		case o.Column == "":
-			return errf(r.ID, field, "%q names no column", o.row().printedLabel())
+			return errf(r.ID, field, "%q names no column", o.row().PrintedLabel())
 		case strings.TrimSpace(o.Note) == "":
 			return cmdutil.WithHint(
 				errf(r.ID, field, "%s has no note", o.describe()),
@@ -1917,8 +1923,9 @@ func validateOmittedCells(r *Rule, p *Part,
 		if printed == 0 {
 			return cmdutil.WithHint(
 				errf(r.ID, field, "declares every column of %q blank",
-					o.row().printedLabel()),
-				"a row the page prints no figure of is declared in omitted_rows")
+					o.row().PrintedLabel()),
+				"a row the page prints no figure of is placed on the page that "+
+					"prints it, by page on the row")
 		}
 	}
 	return nil

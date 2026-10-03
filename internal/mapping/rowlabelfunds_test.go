@@ -83,7 +83,7 @@ func TestRowLabelsNameFundsRefusesARowItWouldSayNothingAbout(t *testing.T) {
 	// A SKIPPED ROW IS NOT READ, so the declaration is not about it. Refusing
 	// one would force an author to put a fund number on a row the resolver never
 	// reaches, which is a figure typed to satisfy a validator -- the shape
-	// Part.OmittedRows' comment refuses by name.
+	// Part.OmittedCells' comment refuses by name.
 	t.Run("a skipped row declares none", func(t *testing.T) {
 		rows := fundedRows + "\n      - {label: \"Grants\", skip: true}"
 		if err := parseRowLabelFunds(t, decl, rows); err != nil {
@@ -102,26 +102,6 @@ func TestRowLabelsNameFundsRefusesARowItWouldSayNothingAbout(t *testing.T) {
 		err := parseRowLabelFunds(t, decl, rows)
 		if err == nil {
 			t.Fatal("accepted a declaration covering no row at all")
-		}
-		if !strings.Contains(err.Error(), "covers none of them") {
-			t.Errorf("error = %v, want it to say the declaration covers no row", err)
-		}
-	})
-
-	// OMITTED FROM EVERY PART IS THE OTHER WAY NOT TO BE READ, and the first
-	// version of the guard above counted only skip: true. A rule whose rows are
-	// all in each part's omitted_rows parsed clean and the check read none of
-	// them -- the same vacuous declaration, one omission mechanism over. The
-	// guard now counts what ActiveRows returns, which is what the check reads.
-	t.Run("every row is omitted from the only part", func(t *testing.T) {
-		src := strings.Replace(rowLabelFundsRule, "#DECL",
-			"    row_labels_name_funds: true", 1)
-		src = strings.Replace(src, "#ROWS", fundedRows, 1)
-		src = strings.Replace(src, "        columns:",
-			"        omitted_rows: [\"General Fund\", \"General Liability\"]\n        columns:", 1)
-		_, err := parse(strings.NewReader(src), "funding.yaml")
-		if err == nil {
-			t.Fatal("accepted a declaration whose every row is omitted from every part")
 		}
 		if !strings.Contains(err.Error(), "covers none of them") {
 			t.Errorf("error = %v, want it to say the declaration covers no row", err)

@@ -147,7 +147,6 @@ func placedCells(p *Part, vals []Value) []placedCell {
 type omittedCellAt struct {
 	Row    string
 	Page   int
-	Cell   bool
 	Column int
 	Header string
 }
@@ -155,7 +154,7 @@ type omittedCellAt struct {
 func omittedCellsAt(omissions []Omission) []omittedCellAt {
 	var out []omittedCellAt
 	for _, o := range omissions {
-		out = append(out, omittedCellAt{o.Row.Label, o.Page, o.Cell, o.ColumnIndex, o.Header})
+		out = append(out, omittedCellAt{o.Row.Label, o.Page, o.ColumnIndex, o.Header})
 	}
 	return out
 }
@@ -177,7 +176,7 @@ func TestABlankCellIsReadAsAbsent(t *testing.T) {
 	if diff := cmp.Diff(want, placedCells(p, cells)); diff != "" {
 		t.Errorf("cells (-want +got):\n%s", diff)
 	}
-	if diff := cmp.Diff([]omittedCellAt{{"Beta", 2, true, 1, "FY C"}}, omittedCellsAt(omissions)); diff != "" {
+	if diff := cmp.Diff([]omittedCellAt{{"Beta", 2, 1, "FY C"}}, omittedCellsAt(omissions)); diff != "" {
 		t.Errorf("omissions (-want +got):\n%s", diff)
 	}
 }
@@ -199,7 +198,7 @@ func TestALabelledBlankCellIsReadAsAbsent(t *testing.T) {
 	if diff := cmp.Diff(want, placedCells(p, cells)); diff != "" {
 		t.Errorf("cells (-want +got):\n%s", diff)
 	}
-	if diff := cmp.Diff([]omittedCellAt{{"Beta", 1, true, 1, "FY B"}}, omittedCellsAt(omissions)); diff != "" {
+	if diff := cmp.Diff([]omittedCellAt{{"Beta", 1, 1, "FY B"}}, omittedCellsAt(omissions)); diff != "" {
 		t.Errorf("omissions (-want +got):\n%s", diff)
 	}
 
@@ -285,9 +284,9 @@ func TestParseRefusesABadOmittedCell(t *testing.T) {
 		{"a skipped column", pair(`          - {label: "Beta", column: "TOTAL", note: n}` + "\n"),
 			`"TOTAL" is a skipped column`},
 		{"declared twice", pair(blankEntry + blankEntry), `"Beta" under "FY C" is declared twice`},
-		{"a row the part omits", with(blankPair, "        omitted_cells:\n",
-			"        omitted_rows: [\"Beta\"]\n        omitted_cells:\n"),
-			`"Beta" is omitted from this part by omitted_rows`},
+		{"a row another page prints", with(blankPair, `{label: "Beta", category: taxes/sales}`,
+			`{label: "Beta", category: taxes/sales, page: 1}`),
+			`"Beta" is printed by page 1, not by this part`},
 		{"an unknown key", pair(`          - {label: "Beta", colum: "FY C", note: n}` + "\n"),
 			"field colum not found"},
 		{"no column_headers", with(blankPair,
@@ -340,7 +339,7 @@ func TestABlankAmountBesideAPrintedPercentageIsRead(t *testing.T) {
 	if diff := cmp.Diff(want, placedCells(p, cells)); diff != "" {
 		t.Errorf("cells (-want +got):\n%s", diff)
 	}
-	if diff := cmp.Diff([]omittedCellAt{{"Beta", 1, true, 1, "FY B"}}, omittedCellsAt(omissions)); diff != "" {
+	if diff := cmp.Diff([]omittedCellAt{{"Beta", 1, 1, "FY B"}}, omittedCellsAt(omissions)); diff != "" {
 		t.Errorf("omissions (-want +got):\n%s", diff)
 	}
 }
@@ -454,7 +453,7 @@ func TestP207ReadsCountyMeasureDWithItsBlankReserveCell(t *testing.T) {
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("cells (-want +got):\n%s", diff)
 	}
-	if diff := cmp.Diff([]omittedCellAt{{"County Measure D", 207, true, 3, "Increase/(Use)"}},
+	if diff := cmp.Diff([]omittedCellAt{{"County Measure D", 207, 3, "Increase/(Use)"}},
 		omitted); diff != "" {
 		t.Errorf("omissions (-want +got):\n%s", diff)
 	}

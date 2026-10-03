@@ -1,7 +1,7 @@
 # A block whose rows straddle a page break, so its printed total covers rows on
-# two parts. Modelled on Budget Book pp.169-170, where Environmental Services
-# prints Wages & Benefits on p169 and Services & Supplies plus its Total on
-# p170 (fisc-w0o).
+# two parts and each row is placed on the page that prints it. Modelled on
+# Budget Book pp.169-170, where Environmental Services prints Wages & Benefits
+# on p169 and Services & Supplies plus its Total on p170 (fisc-w0o).
 #
 # The point of the fixture is the REPORT. Before total_spans_parts a rule like
 # this had no working exit: keeping total_row failed the build on the head
@@ -21,18 +21,16 @@ rules:
     total_row: "Total Services"
     total_spans_parts: true
     rows:
-      - {label: "Wages & Benefits", category: wages-and-benefits}
-      - {label: "Services & Supplies", category: services-and-supplies}
+      - {label: "Wages & Benefits", page: 81, category: wages-and-benefits}
+      - {label: "Services & Supplies", page: 82, category: services-and-supplies}
     parts:
       - page: 81
         section: "SERVICES:"
         stop_at: "END OF PAGE"
-        omitted_rows: ["Services & Supplies"]
         columns:
           - {fund_group: general, fiscal_year: 2026}
       - page: 82
         section: "SERVICES:"
         stop_at: "Total Services"
-        omitted_rows: ["Wages & Benefits"]
         columns:
           - {fund_group: general, fiscal_year: 2026}

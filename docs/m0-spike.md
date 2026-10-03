@@ -70,7 +70,7 @@ Declared omissions: []
 ```
 
 This was originally written up as "p67 omits rows that are all-zero across its
-four fund groups," and `Licenses & Permits` was declared in `omitted_rows` to
+four fund groups," and `Licenses & Permits` was declared absent from p67 to
 make the count work. **That reading was wrong.** `pdftotext -bbox` puts ten
 revenue rows on p67, at the same ten y-positions as p66's ten labelled rows —
 the document omits nothing. Rows 8–10 (`Sales Taxes`, `Fines & Forfeitures`,

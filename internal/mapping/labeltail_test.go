@@ -60,9 +60,11 @@ func resolveTwoAnchor(t *testing.T, src string) ([]Value, error) {
 
 // omissionRule lists THREE transfers out of one fund against the two-row page
 // above, so the middle one -- "to Wastewater" -- is a row the rule carries and
-// the page does not print. All three share a Label, which is the point: the
-// declaration has to name one of them without naming the other two.
-func omissionRule(omitted string) string {
+// p76 does not print: wastewater is the fields after its category, and
+// "page: 77" places it on the rule's second part. All three share a Label,
+// which is the point: the row's identity is its two anchors. extra is lines
+// added to the p76 part, for the omitted_cells cases.
+func omissionRule(wastewater, extra string) string {
 	return `schema_version: 1
 doc_id: livermore-budget-fy2026-2027
 
@@ -75,28 +77,30 @@ rules:
     units: dollars
     rows:
       - {label: "Transfer From General Fund", label_tail: "to Stormwater", category: "transfers/in"}
-      - {label: "Transfer From General Fund", label_tail: "to Wastewater", category: "transfers/in"}
+      - {label: "Transfer From General Fund", label_tail: "to Wastewater", category: "transfers/in"` + wastewater + `}
       - {label: "Transfer From General Fund", label_tail: "to Airport", category: "transfers/in"}
     parts:
       - page: 76
         section: "Header A   B"
-        omitted_rows: [` + omitted + `]
+` + extra + `        columns:
+          - {fund_group: general, fiscal_year: 2026}
+          - {fund_group: general, fiscal_year: 2027}
+      - page: 77
+        section: "Header A   B"
         columns:
           - {fund_group: general, fiscal_year: 2026}
           - {fund_group: general, fiscal_year: 2027}
 `
 }
 
-const omitWastewater = `{label: "Transfer From General Fund", label_tail: "to Wastewater"}`
+const placeWastewater = `, page: 77`
 
-// TestATwoAnchorRowIsOmittedByNamingBothAnchors is fisc-gtv (1) and (2).
-//
-// The row index is keyed on Row.Identity(), which joins the two anchors on a
-// \x1f. While omitted_rows was a list of bare labels, NO value an author could
-// type matched a two-anchor row: the declaration OmittedRows calls mandatory
-// could not be written at all for the pages label_tail exists to map.
-func TestATwoAnchorRowIsOmittedByNamingBothAnchors(t *testing.T) {
-	vals, omitted, err := readTwoAnchor(t, omissionRule(omitWastewater))
+// TestATwoAnchorRowIsPlacedOnItsPage is fisc-gtv (1) and (2) under row
+// placement: a row's page sits on the row itself, so a two-anchor row is
+// placed without being named, and reading p76 yields the other two rows at
+// the rule's own indices and declares no blank.
+func TestATwoAnchorRowIsPlacedOnItsPage(t *testing.T) {
+	vals, omitted, err := readTwoAnchor(t, omissionRule(placeWastewater, ""))
 	if err != nil {
 		t.Fatalf("Values: %v", err)
 	}
@@ -116,31 +120,22 @@ func TestATwoAnchorRowIsOmittedByNamingBothAnchors(t *testing.T) {
 		}
 		// RowIndex indexes the RULE's rows, so the surviving second row is 2
 		// and not 1. Pairing active rows to rule rows on the bare Label gives
-		// it the OMITTED row's position, and a consumer laying values and
-		// omissions out together then puts two rows in one slot.
+		// it the placed row's position, and a consumer laying two parts'
+		// values out together then puts two rows in one slot.
 		if v.RowIndex != want.rowIndex {
 			t.Errorf("value %d has RowIndex %d, want %d", want.at, v.RowIndex, want.rowIndex)
 		}
 	}
-	if len(omitted) != 1 {
-		t.Fatalf("got %d omissions, want 1: %+v", len(omitted), omitted)
-	}
-	if got := omitted[0].Row.PrintedLabel(); got != "Transfer From General Fund to Wastewater" {
-		t.Errorf("omitted row is %q", got)
-	}
-	// The omission indexes the RULE's rows, and the omitted row is the middle
-	// one. A Label-keyed pairing in canonicalRows would have handed the
-	// surviving rows the wrong indices too.
-	if omitted[0].RowIndex != 1 {
-		t.Errorf("omitted RowIndex = %d, want 1", omitted[0].RowIndex)
+	if len(omitted) != 0 {
+		t.Errorf("got %d omissions, want none: a row p77 prints is no blank on p76: %+v", len(omitted), omitted)
 	}
 }
 
-// TestActiveRowsDropOnlyTheRowNamed is the trap under the obvious fix for the
-// test above: ActiveRows filtered on the bare Label, so one declaration would
-// have dropped every row sharing it -- here, the whole rule.
-func TestActiveRowsDropOnlyTheRowNamed(t *testing.T) {
-	f, err := parse(strings.NewReader(omissionRule(omitWastewater)), "two-anchor.yaml")
+// TestActiveRowsDropOnlyTheRowPlaced: three rows share a Label and one is
+// placed on p77, so p76's active rows are the other two and nothing keyed on
+// the bare Label can drop them with it.
+func TestActiveRowsDropOnlyTheRowPlaced(t *testing.T) {
+	f, err := parse(strings.NewReader(omissionRule(placeWastewater, "")), "two-anchor.yaml")
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
@@ -158,48 +153,51 @@ func TestActiveRowsDropOnlyTheRowNamed(t *testing.T) {
 	}
 }
 
-// TestOmittedRowMustNameExactlyOneRow is the fail-closed direction. An entry
-// that names no row has always been refused; an entry that names more than one
-// has to be refused for the same reason, since silently dropping the rows an
-// author did not mean to omit is the mismapping the declaration exists to
-// prevent.
-func TestOmittedRowMustNameExactlyOneRow(t *testing.T) {
+// TestABlankCellMustNameExactlyOneRow is the fail-closed direction of naming
+// a two-anchor row. An omitted_cells entry that names no row is refused as
+// stale; one that names more than one has to be refused for the same reason,
+// since silently blanking a cell of the rows an author did not mean is the
+// mismapping the declaration exists to prevent.
+func TestABlankCellMustNameExactlyOneRow(t *testing.T) {
+	const wastewater = `label: "Transfer From General Fund", label_tail: "to Wastewater", column: "A", note: n`
 	tests := []struct {
-		name    string
-		omitted string
-		want    []string
+		name  string
+		blank string
+		want  []string
 	}{
 		{
-			name:    "the bare label names all three",
-			omitted: `"Transfer From General Fund"`,
-			want:    []string{"names 3 rows", "label_tail"},
+			name:  "the bare label names all three",
+			blank: `{label: "Transfer From General Fund", column: "A", note: n}`,
+			want:  []string{"names 3 rows", "label_tail"},
 		},
 		{
-			name:    "a pair that is not a row",
-			omitted: `{label: "Transfer From General Fund", label_tail: "to Nowhere"}`,
-			want:    []string{"Transfer From General Fund to Nowhere", "not one of this rule's rows"},
+			name:  "a pair that is not a row",
+			blank: `{label: "Transfer From General Fund", label_tail: "to Nowhere", column: "A", note: n}`,
+			want:  []string{"Transfer From General Fund to Nowhere", "not one of this rule's rows"},
 		},
 		{
-			name:    "declared twice",
-			omitted: omitWastewater + ", " + omitWastewater,
-			want:    []string{"declared twice"},
+			name:  "declared twice",
+			blank: `{` + wastewater + `}, {` + wastewater + `}`,
+			want:  []string{"declared twice"},
 		},
 		{
-			name:    "a typo'd key is not silently dropped",
-			omitted: `{label: "Transfer From General Fund", label_tial: "to Wastewater"}`,
-			want:    []string{"label_tial"},
+			name:  "a typo'd key is not silently dropped",
+			blank: `{label: "Transfer From General Fund", label_tial: "to Wastewater", column: "A", note: n}`,
+			want:  []string{"label_tial"},
 		},
 		{
-			name:    "an entry with no label",
-			omitted: `{label_tail: "to Wastewater"}`,
-			want:    []string{"has no label"},
+			name:  "an entry with no label",
+			blank: `{label_tail: "to Wastewater", column: "A", note: n}`,
+			want:  []string{"has no label"},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := parse(strings.NewReader(omissionRule(tt.omitted)), "two-anchor.yaml")
+			src := omissionRule("", "        column_headers: [\"A\", \"B\"]\n"+
+				"        omitted_cells: ["+tt.blank+"]\n")
+			_, err := parse(strings.NewReader(src), "two-anchor.yaml")
 			if err == nil {
-				t.Fatal("parsed; an omitted_rows entry must name exactly one row")
+				t.Fatal("parsed; an omitted_cells entry must name exactly one row")
 			}
 			for _, want := range tt.want {
 				if !strings.Contains(err.Error(), want) {
@@ -217,7 +215,7 @@ func TestOmittedRowMustNameExactlyOneRow(t *testing.T) {
 // is matched against the page text as a plain substring, so the Label is what
 // it collides with.
 func TestTotalRowInRowsIsRefusedForATwoAnchorRow(t *testing.T) {
-	src := strings.Replace(omissionRule(omitWastewater),
+	src := strings.Replace(omissionRule(placeWastewater, ""),
 		"    units: dollars\n",
 		"    units: dollars\n    total_row: \"Transfer From General Fund\"\n", 1)
 	_, err := parse(strings.NewReader(src), "two-anchor.yaml")

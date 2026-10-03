@@ -510,7 +510,7 @@ type Rule struct {
 	// than once per part — so it holds a rule and no part at the point it needs
 	// this, and a per-part spelling would not be reachable there. (Not because
 	// of labels_from: no rule carrying this declares one. Budget Book pp.85-125
-	// straddles two parts with omitted_rows instead.)
+	// straddles two parts, each row placed on its page by Row.Page.)
 	//
 	// A BARE FUND NAME NAMES A FUND AND NAMES NO DIRECTION, which is why this is
 	// a separate declaration from the "Transfer From X to Y" anchors p76 prints.
@@ -551,7 +551,7 @@ type Part struct {
 	// that wants to assert its anchor ends a line says so by putting the "\n"
 	// in the anchor, which is how the p67 parts pin their column header.
 	// Declaring the ordinal states which occurrence the rule's author looked
-	// at, which is the same discipline OmittedRows uses.
+	// at, which is the same discipline OmittedCells uses.
 	SectionOrdinal int `yaml:"section_ordinal"`
 
 	// StopAtOrdinal picks which occurrence of StopAt, counted from the block's
@@ -572,35 +572,22 @@ type Part struct {
 	// identity is positional against p66's order.
 	LabelsFrom int `yaml:"labels_from"`
 
-	// OmittedRows lists rows THE DOCUMENT does not print on this part although
-	// they are present in the rule's row order. Declaring them is mandatory:
-	// without it a positional read shifts every label after the gap, which is a
-	// silent mismapping rather than an error. The parser cannot detect this for
-	// you — the count assertion at apply time can, and only if the declaration
-	// is here to check against.
-	//
-	// It is about the DOCUMENT, never about our pipeline. This field once
-	// carried "Licenses & Permits" for Budget Book p67, on the belief that the
-	// page omits an all-zero row; `pdftotext -bbox` showed the page prints all
-	// ten rows and that our extractor was deleting one (fisc-c00). Using this
-	// field to absorb an extraction defect would launder a pipeline bug into a
-	// permanent published claim about the city's budget — and RowLabel is part
-	// of the fact id, so the mislabelled facts would be citable. If rows go
-	// missing between the PDF and the artifact, fix extraction; do not declare
-	// them here.
-	//
-	// Each entry names exactly one row, as a bare label or as the pair of
-	// anchors that identifies it; see OmittedRow. An entry that names no row
-	// is refused, and so is one that names more than one.
-	OmittedRows []omittedRow `yaml:"omitted_rows"`
-
-	// OmittedCells lists cells THE DOCUMENT leaves blank in rows it prints:
-	// OmittedRows' declaration one cell wide, about the document in the same
-	// way. Budget Book p207 prints five figures on each of County Measure D's,
+	// OmittedCells lists cells THE DOCUMENT leaves blank in rows it prints.
+	// Budget Book p207 prints five figures on each of County Measure D's,
 	// Wastewater's and Water's lines and nothing under Reserve
 	// Increase/(Use), where every other row prints a figure or a "-". A blank
 	// is absent, not zero, so the cell yields no Value and is reported as an
-	// Omission with Cell set.
+	// Omission.
+	//
+	// It is about the DOCUMENT, never about our pipeline. A declaration that
+	// absorbed an extraction defect would launder a pipeline bug into a
+	// permanent published claim about the city's budget -- and RowLabel is
+	// part of the fact id, so the mislabelled facts would be citable. If cells
+	// go missing between the PDF and the artifact, fix extraction; do not
+	// declare them here.
+	//
+	// A row the page does not print at all is not a blank: it is printed by
+	// another page of the same table, and Row.Page says which.
 	//
 	// The row is read with its tokens filed left to right under the columns
 	// it does print, so this part must declare column_headers: the guard is
@@ -1001,6 +988,22 @@ type Row struct {
 	// "600 Airport" without spelling the kerning.
 	LabelTail string `yaml:"label_tail"`
 
+	// Page is the one part that prints this row, for a table whose rows run
+	// across a page break: Budget Book p167 prints General Services' Wages &
+	// Benefits and p168 its Services & Supplies, Debt Services and Total.
+	// Zero means every part prints the row, which is the ordinary case and
+	// the only one for a rule with one part. The parser refuses a page that
+	// names no part of the rule.
+	//
+	// It is on the row and not a row range on the part because a part may
+	// print no row at all: Budget Book p130 prints Contributions Outsourced's
+	// one row on p129 and only its Total on p130.
+	//
+	// It is about the DOCUMENT, never about our pipeline. Placing a row on
+	// one page because extraction lost it from another launders a pipeline
+	// bug into a published claim about the city's budget; fix extraction.
+	Page int `yaml:"page"`
+
 	Category   string `yaml:"category"`
 	Department string `yaml:"department"`
 	Sign       Sign   `yaml:"sign"`
@@ -1171,40 +1174,24 @@ func (r *Rule) categoryOnColumns() bool {
 	return false
 }
 
-// cellPublishes says whether row's cell in this part's j'th column becomes
-// a fact: the part prints the row (it is not in omitted_rows) and the cell
+// cellPublishes is THE predicate for whether row's cell in this part's j'th
+// column becomes a fact: the part prints the row (Row.OnPart) and the cell
 // (it is not in omitted_cells), and Row.Publishes holds for the column.
-// The decisions about the facts a row DOES publish read it: kindsOf, and
-// through it a sign, a counterpart, a grain and RowPublishes; and
-// checkCounterpart's collision loop. Three decisions deliberately read
-// something else. A row's category requirement (validateRowClass, by
-// publishesIfPrinted) ignores omissions, since an omission is a fact about
-// the page and not about the row's meaning, and a blank declared on the row
-// needs the address its figure would have. validateOmittedCells counts the
-// columns a row PRINTS, since a blank is a claim about the page. And a
-// column's class (validateColumnClass) is about the column alone.
+// Every decision about the facts a row publishes reads it and nothing
+// re-filters after it: kindsOf, and through it a sign, a counterpart, a
+// grain, a row's category requirement and RowPublishes; checkCounterpart's
+// collision loop; and Resolver.Values. Two decisions deliberately read
+// something else. validateOmittedCells counts the columns a row PRINTS,
+// since a blank is a claim about the page. And a column's class
+// (validateColumnClass) is about the column alone.
 func (p *Part) cellPublishes(j int, row Row) bool {
-	return !omittedSet(p)[row.Identity()] && !blankColumns(p)[row.Identity()][j] &&
+	return row.OnPart(p) && !blankColumns(p)[row.Identity()][j] &&
 		row.Publishes(p.Columns[j])
 }
 
 // RowPublishes says whether any cell of this rule publishes row.
 func (r *Rule) RowPublishes(row Row) bool {
 	return len(r.kindsOf(row)) > 0
-}
-
-// publishesIfPrinted says whether row would publish some cell were every
-// part to print it whole: Row.Publishes holds on some column of some part,
-// with omitted_rows and omitted_cells set aside.
-func (r *Rule) publishesIfPrinted(row Row) bool {
-	for i := range r.Parts {
-		for _, c := range r.Parts[i].Columns {
-			if row.Publishes(c) {
-				return true
-			}
-		}
-	}
-	return false
 }
 
 // kindsOf is every kind a row's facts carry: one per cell cellPublishes
@@ -1253,6 +1240,12 @@ func (r Row) Publishes(c Column) bool {
 	return !r.Skip && c.publishes()
 }
 
+// OnPart says whether p prints this row: every part does unless the row
+// names its page. It is the only reading of Row.Page.
+func (r Row) OnPart(p *Part) bool {
+	return r.Page == 0 || r.Page == p.Page
+}
+
 // EffectiveColumn is the column a row's own fact is filed under: the printed
 // column, with the row's fund overrides applied where it declares them.
 //
@@ -1282,82 +1275,19 @@ func (r Row) PrintedLabel() string {
 	return r.Label + " " + r.LabelTail
 }
 
-// omittedRow names one of the rule's rows that a part does not print. It is
-// written the way the row itself is written, and for the same reason:
-//
-//	omitted_rows: ["Licenses & Permits"]
-//	omitted_rows:
-//	  - {label: "Transfer From Wastewater", label_tail: "to Stormwater"}
-//
-// A bare string names a row identified by one anchor; the pair names a row
-// identified by two (see Row.LabelTail). The pair is not optional sugar. Row
-// identity within a rule is Row.Identity(), which joins the two anchors on a
-// \x1f no author would type — YAML "\x1f" produces one, and such an entry does
-// match, so this is a convention rather than an impossibility — and spelling
-// the pair as one string instead would
-// mean asserting the run of spaces the page prints between the fields — the
-// one thing Row.LabelTail exists in order not to do. Before this form existed,
-// a row carrying a label_tail could not be named here at all, while
-// OmittedRows' own doc called the declaration mandatory (fisc-gtv).
-type omittedRow struct {
-	Label     string `yaml:"label"`
-	LabelTail string `yaml:"label_tail"`
-}
-
-// UnmarshalYAML accepts either spelling.
-func (o *omittedRow) UnmarshalYAML(n *yaml.Node) error {
-	if n.Kind == yaml.ScalarNode {
-		return n.Decode(&o.Label)
-	}
-	if n.Kind != yaml.MappingNode {
-		return fmt.Errorf("line %d: an omitted_rows entry is a label, or a "+
-			"{label, label_tail} pair naming a row's two anchors", n.Line)
-	}
-	// The decoder's KnownFields does not reach a custom unmarshaler, so
-	// unknown keys are refused here instead. A typo'd `label_tial` would
-	// otherwise be dropped, and the entry would name a different row than the
-	// author wrote — silently, since the label alone may well match one.
-	for i := 0; i+1 < len(n.Content); i += 2 {
-		switch k := n.Content[i].Value; k {
-		case "label", "label_tail":
-		default:
-			return fmt.Errorf("line %d: unknown field %q in an omitted_rows "+
-				"entry; it takes label and label_tail", n.Content[i].Line, k)
-		}
-	}
-	// The alias sheds this method, so the struct tags above do the decoding
-	// rather than being decoration.
-	type entry omittedRow
-	var e entry
-	if err := n.Decode(&e); err != nil {
-		return err
-	}
-	*o = omittedRow(e)
-	return nil
-}
-
-// row is the Row this entry names, so identity and printed form are computed
-// by Row's own methods and cannot drift from them.
-func (o omittedRow) row() Row { return Row{Label: o.Label, LabelTail: o.LabelTail} }
-
-// identity is the row identity this entry claims, in the same key space the
-// rule's rows are indexed by.
-func (o omittedRow) identity() string { return o.row().Identity() }
-
-// printedLabel is how the entry reads in a message, matching what the row
-// would have published had the page printed it.
-func (o omittedRow) printedLabel() string { return o.row().PrintedLabel() }
-
-// omittedCell names one blank cell: a row, written as an omitted_rows entry's
-// pair is, and the column_headers entry printed over the cell.
+// omittedCell names one blank cell: a row, by the anchors the row itself is
+// written with, and the column_headers entry printed over the cell.
 //
 //	omitted_cells:
 //	  - {label: "County Measure D", column: "Increase/(Use)", note: "..."}
 //
-// The row's two fields are spelled out rather than an omittedRow inlined:
-// yaml.v3 hands an inlined field's mapping to that type's UnmarshalYAML, which
-// refuses column and note, and a type with no unmarshaler of its own keeps the
-// decoder's KnownFields refusing a typo'd key.
+// A bare label names a row identified by one anchor; with label_tail it names
+// a row identified by two (see Row.LabelTail). The pair is not optional sugar:
+// row identity within a rule is Row.Identity(), which joins the two anchors on
+// a \x1f no author would type, and spelling the pair as one string would mean
+// asserting the run of spaces the page prints between the fields -- the one
+// thing Row.LabelTail exists in order not to do. A typo'd key is refused by
+// the decoder's KnownFields, which this type keeps by having no unmarshaler.
 type omittedCell struct {
 	Label     string `yaml:"label"`
 	LabelTail string `yaml:"label_tail"`
@@ -1365,13 +1295,13 @@ type omittedCell struct {
 	Note      string `yaml:"note"`
 }
 
-// row is the omitted_rows entry naming the same row, so the row is identified
-// and validated exactly as an omitted row is.
-func (o omittedCell) row() omittedRow { return omittedRow{Label: o.Label, LabelTail: o.LabelTail} }
+// row is the Row this entry names, so identity and printed form are computed
+// by Row's own methods and cannot drift from them.
+func (o omittedCell) row() Row { return Row{Label: o.Label, LabelTail: o.LabelTail} }
 
 // describe is how the entry reads in a message.
 func (o omittedCell) describe() string {
-	return fmt.Sprintf("%q under %q", o.row().printedLabel(), o.Column)
+	return fmt.Sprintf("%q under %q", o.row().PrintedLabel(), o.Column)
 }
 
 // blankColumns is the part's declared blank cells as row identity to the
@@ -1384,10 +1314,10 @@ func blankColumns(p *Part) map[string]map[int]bool {
 	for _, o := range p.OmittedCells {
 		for c, h := range p.ColumnHeaders {
 			if !h.Unheaded && h.Text == o.Column {
-				if out[o.row().identity()] == nil {
-					out[o.row().identity()] = map[int]bool{}
+				if out[o.row().Identity()] == nil {
+					out[o.row().Identity()] = map[int]bool{}
 				}
-				out[o.row().identity()][c] = true
+				out[o.row().Identity()][c] = true
 			}
 		}
 	}
@@ -1420,39 +1350,22 @@ func (r *Rule) labelledPart(p *Part) *Part {
 	return nil
 }
 
-// ActiveRows returns the rule's rows minus those omitted on this part, in
+// ActiveRows returns the rule's rows this part prints, by Row.OnPart, in
 // order. This is the sequence a positional read of the part must line up
-// against.
+// against, and the only place a row's page is applied.
 //
-// The result is always a fresh slice. Returning r.Rows directly on the
-// no-omissions path would alias the rule, so a caller that wrote through the
-// result would mutate the rule on pages without omissions and not on pages
-// with them — a difference that only shows up on some pages.
+// The result is always a fresh slice. Returning r.Rows directly when every
+// row is on the part would alias the rule, so a caller that wrote through the
+// result would mutate the rule on some pages and not on others — a difference
+// that only shows up on some pages.
 func (r *Rule) ActiveRows(p *Part) []Row {
-	if len(p.OmittedRows) == 0 {
-		return append([]Row(nil), r.Rows...)
-	}
-	omitted := omittedSet(p)
 	out := make([]Row, 0, len(r.Rows))
 	for _, row := range r.Rows {
-		if !omitted[row.Identity()] {
+		if row.OnPart(p) {
 			out = append(out, row)
 		}
 	}
 	return out
-}
-
-// omittedSet is the part's declared omissions as a set of row identities. It
-// is keyed on Identity() and not on Label because a Label is not unique within
-// a rule once a row may carry a second anchor: filtering on the bare label
-// would drop EVERY row sharing it, so declaring one of p76's two "Transfer
-// From Wastewater" rows absent would silently delete the other as well.
-func omittedSet(p *Part) map[string]bool {
-	set := make(map[string]bool, len(p.OmittedRows))
-	for _, o := range p.OmittedRows {
-		set[o.identity()] = true
-	}
-	return set
 }
 
 // expectedValues is how many numbers a positional read of this part must find:

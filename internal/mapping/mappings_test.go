@@ -131,12 +131,15 @@ func readSpine(t *testing.T) spineRead {
 		for j := range ru.Parts {
 			p := &ru.Parts[j]
 
-			// pp.66-67 print every row of every block. A declaration here would
-			// be a claim about what the city printed, and the one time this
-			// project made it, it was laundering an extractor defect (fisc-c00).
-			if len(p.OmittedRows) != 0 {
-				t.Errorf("rule %s p%d declares omitted_rows %q, want none: "+
-					"pp.66-67 print every row", ru.ID, p.Page, p.OmittedRows)
+			// pp.66-67 print every row of every block. A row placed on one
+			// page would be a claim about what the city printed, and the one
+			// time this project made it, it was laundering an extractor
+			// defect (fisc-c00).
+			for _, row := range ru.Rows {
+				if row.Page != 0 {
+					t.Errorf("rule %s places %q on page %d, want every row on both: "+
+						"pp.66-67 print every row", ru.ID, row.Label, row.Page)
+				}
 			}
 
 			values, omitted, err := r.Values(ru, p)

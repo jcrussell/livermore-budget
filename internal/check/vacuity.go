@@ -11,7 +11,7 @@ import (
 // work no mapping lane reaches would hold that gate red until it was commented
 // out. A declaration is loud, carries its reason and the bead that retires it,
 // and FAILS WHEN IT GOES STALE -- the shape of uncheckedDocuments,
-// mapping.StatedTotalDeltas and mapping.Part.OmittedRows.
+// mapping.StatedTotalDeltas and mapping.Part.OmittedCells.
 //
 // It weakens nothing: a declared check is still reported VACUOUS, still counted
 // in Counts.Vacuous, and still printed with its reason.

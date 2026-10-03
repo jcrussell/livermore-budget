@@ -596,8 +596,8 @@ func TestASubjectBuiltByHandCarriesNoException(t *testing.T) {
 }
 
 // rowSplitChange is p41's identity printed across two pages, beginning and
-// ending on the first and change on the second: each part omits the rows the
-// other prints, and neither omission says the document leaves a cell blank.
+// ending on the first and change on the second: each row is placed on the page
+// that prints it, and a placement says nothing about a blank cell.
 func rowSplitChange(t *testing.T) *mapping.File {
 	t.Helper()
 	src := `schema_version: 1
@@ -610,18 +610,16 @@ rules:
     grain: category
     units: dollars
     rows:
-      - {label: "Beginning", category: ` + structure.CategoryFundBalanceBeginning + `}
-      - {label: "Change", category: ` + structure.CategoryFundBalanceChange + `}
-      - {label: "Ending", category: ` + structure.CategoryFundBalanceEnding + `}
+      - {label: "Beginning", category: ` + structure.CategoryFundBalanceBeginning + `, page: 1}
+      - {label: "Change", category: ` + structure.CategoryFundBalanceChange + `, page: 2}
+      - {label: "Ending", category: ` + structure.CategoryFundBalanceEnding + `, page: 1}
     parts:
       - page: 1
         section: "S"
-        omitted_rows: ["Change"]
         columns:
           - {fund_group: general, fiscal_year: 2026}
       - page: 2
         section: "S"
-        omitted_rows: ["Beginning", "Ending"]
         columns:
           - {fund_group: general, fiscal_year: 2026}
 `
@@ -632,11 +630,11 @@ rules:
 	return files[0]
 }
 
-// TestARowOmittedFromAPartIsNoBlank: omitted_rows places a row on another
-// page, and only omitted_cells says the page leaves a cell blank. So a balance
-// missing its change is missing it, not exempted, and a fact printed on that
-// line is no printed figure against a declared blank.
-func TestARowOmittedFromAPartIsNoBlank(t *testing.T) {
+// TestARowOnAnotherPageIsNoBlank: a row's page places it on one part, and
+// only omitted_cells says the page leaves a cell blank. So a balance missing
+// its change is missing it, not exempted, and a fact printed on that line is
+// no printed figure against a declared blank.
+func TestARowOnAnotherPageIsNoBlank(t *testing.T) {
 	general := balanceAt{structure.ScopeACFRGeneralFundSummary, "general", 0, 2026, mapping.BasisAdopted}
 	lines := []balanceLine{
 		{mapping.KindFundBalance, structure.CategoryFundBalanceBeginning, 100_000},

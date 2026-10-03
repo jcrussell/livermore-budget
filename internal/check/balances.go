@@ -20,13 +20,13 @@ func lineOf(b structure.Balance, f *fact.Fact) (structure.Line, bool) {
 // blank: absent, not zero, and not a line a rule stopped publishing.
 type blankLines map[structure.BalanceAt]map[structure.Line]bool
 
-// declaredBlanks reads every cell omission a rule in a balance scope
-// declares, on a cell mapping.Row.Publishes says would become a fact were the
-// page to print it, and finds every fact the store prints on a line its rule
-// declares blank: both balance checks read their blanks here, so neither can
-// let a printed figure override one. A ROW OMISSION MARKS NOTHING: it says
-// which page a row falls on, and the row is printed by another part, so the
-// cells it names are missing when absent and never blank.
+// declaredBlanks reads every blank cell a rule in a balance scope declares,
+// from mapping.Omissions and with no matching of its own, on a cell
+// mapping.Row.Publishes says would become a fact were the page to print it,
+// and finds every fact the store prints on a line its rule declares blank:
+// both balance checks read their blanks here, so neither can let a printed
+// figure override one. A row another page prints is no blank: its cells are
+// missing when absent, and mapping.Omissions never names one.
 //
 // THE ADDRESS IS fact.FromValues', fed the cell the page leaves blank, so the
 // blank lands on exactly the balance and line its figure would have. The
@@ -44,9 +44,6 @@ func declaredBlanks(s *Subject, balances []structure.Balance) (blankLines, []Fin
 			for j := range rule.Parts {
 				p := &rule.Parts[j]
 				for _, o := range mapping.Omissions(rule, p) {
-					if !o.Cell {
-						continue
-					}
 					col := p.Columns[o.ColumnIndex]
 					if !o.Row.Publishes(col) {
 						continue

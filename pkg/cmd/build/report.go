@@ -120,16 +120,16 @@ type uncheckedPart struct {
 	Reason string `json:"reason"`
 }
 
-// declaredOmission is a row the rule says the page does not print, or with
-// Column set, the cell under that header the page leaves blank on a row it
-// prints. It is reported because it is a claim about the document that nothing
-// else surfaces: it produces no fact, so its absence is invisible in
-// facts.jsonl.
+// declaredOmission is one cell the rule says the page leaves blank, under
+// Column's header, on a row it prints. It is reported because it is a claim
+// about the document that nothing else surfaces: it produces no fact, so its
+// absence is invisible in facts.jsonl. A row another page prints is not one:
+// its facts are in facts.jsonl, cited to that page.
 type declaredOmission struct {
 	RuleID   string `json:"rule_id"`
 	Page     int    `json:"page"`
 	RowLabel string `json:"row_label"`
-	Column   string `json:"column,omitempty"`
+	Column   string `json:"column"`
 }
 
 // Reasons a part could not be checked. They are distinct because they call for
@@ -254,11 +254,8 @@ func (rep *report) unchecked(rule *mapping.Rule, p *mapping.Part, reason string)
 
 func (rep *report) addOmissions(rule *mapping.Rule, omissions []mapping.Omission) {
 	for _, o := range omissions {
-		d := declaredOmission{RuleID: rule.ID, Page: o.Page, RowLabel: o.Row.PrintedLabel()}
-		if o.Cell {
-			d.Column = o.Header
-		}
-		rep.Omissions = append(rep.Omissions, d)
+		rep.Omissions = append(rep.Omissions, declaredOmission{
+			RuleID: rule.ID, Page: o.Page, RowLabel: o.Row.PrintedLabel(), Column: o.Header})
 	}
 }
 
@@ -333,13 +330,8 @@ func (rep *report) print(ios *iostreams.IOStreams, asJSON bool) error {
 		fmt.Fprintf(w, "UNCHECKED %s p%d: %s\n", u.RuleID, u.Page, u.Reason)
 	}
 	for _, o := range rep.Omissions {
-		if o.Column != "" {
-			fmt.Fprintf(w, "DECLARED OMISSION %s p%d: the page leaves row %q blank under %q\n",
-				o.RuleID, o.Page, o.RowLabel, o.Column)
-			continue
-		}
-		fmt.Fprintf(w, "DECLARED OMISSION %s p%d: the page does not print row %q\n",
-			o.RuleID, o.Page, o.RowLabel)
+		fmt.Fprintf(w, "DECLARED OMISSION %s p%d: the page leaves row %q blank under %q\n",
+			o.RuleID, o.Page, o.RowLabel, o.Column)
 	}
 	return nil
 }

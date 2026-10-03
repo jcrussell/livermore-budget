@@ -522,9 +522,9 @@ categories:
           conjunction "and" where the Budget Book prints "&"; same two nouns,
           same line, so no derivation.
     note: >-
-      Zero in all six non-General fund groups, which is why spine.yaml has to
-      declare it in `omitted_rows` for p67 — extraction emits no row for it
-      there. See internal/mapping/testdata/spine.yaml.
+      Zero in all six non-General fund groups, and printed on p67 all the
+      same: three consecutive all-dash lines, which an extractor can mistake
+      for boilerplate. See internal/mapping/testdata/spine.yaml.
 
   #@cite p0128 "Animal Licenses $37,385 $44,000 $39,628 $40,817"
   - slug: licenses-and-permits/animal-licenses

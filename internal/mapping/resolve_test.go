@@ -378,7 +378,9 @@ func TestSpineTiesToTheDocumentsOwnTotals(t *testing.T) {
 }
 
 // omittedRowFixture builds a two-page document whose continuation page really
-// does omit a row, plus the rule that reads it.
+// does omit a row, plus the rule that reads it. beta is the fields Beta's row
+// carries after its category: "page: 1" places it on the labelled page alone,
+// and "" places it on both.
 //
 // It is synthetic on purpose. The spine used to serve as this fixture, on the
 // belief that Budget Book p67 omits its all-zero "Licenses & Permits" row; the
@@ -387,19 +389,18 @@ func TestSpineTiesToTheDocumentsOwnTotals(t *testing.T) {
 // declaration against a real one would mean waiting for a case that may not
 // exist — while the machinery still has to work the day one turns up.
 //
-// The omitted row is deliberately in the MIDDLE. A trailing omission makes a
-// Value's RowIndex and an Omission's agree by accident, which is exactly the
-// bug the indices exist to prevent.
-func omittedRowFixture(t *testing.T, declared string) (*Resolver, *Rule) {
+// The placed row is deliberately in the MIDDLE. A trailing one makes a
+// Value's RowIndex and the part's position agree by accident, which is exactly
+// the bug the indices exist to prevent.
+func omittedRowFixture(t *testing.T, beta string) (*Resolver, *Rule) {
 	t.Helper()
 
 	const labelled = "REVENUES: Alpha 10 11 Beta 20 21 Gamma 30 31 TOTAL: 60 63\n"
 	// The continuation carries no labels and prints nothing for Beta.
 	const continuation = "HEADER 100 101 300 301 TOTAL: 400 402\n"
 
-	omitted := ""
-	if declared != "" {
-		omitted = fmt.Sprintf("        omitted_rows: [%q]\n", declared)
+	if beta != "" {
+		beta = ", " + beta
 	}
 	src := fmt.Sprintf(`schema_version: 1
 doc_id: omission-fixture
@@ -422,14 +423,14 @@ rules:
         labels_from: 1
         section: "HEADER"
         stop_at: "TOTAL:"
-%s        columns:
+        columns:
           - {fund_group: enterprise, fiscal_year: 2026}
           - {fund_group: enterprise, fiscal_year: 2027}
     rows:
       - {label: "Alpha", category: alpha}
-      - {label: "Beta", category: beta}
+      - {label: "Beta", category: beta%s}
       - {label: "Gamma", category: gamma}
-`, omitted)
+`, beta)
 
 	f, err := parse(strings.NewReader(src), "omission-fixture.yaml")
 	if err != nil {
@@ -443,11 +444,12 @@ rules:
 	return r, &f.Rules[0]
 }
 
-// TestOmittedRowIsReportedNotInvented guards the "absent is not zero"
-// invariant: where a page does not print a row, resolution says so rather than
-// manufacturing zero facts pointing at a line the page has no line for.
-func TestOmittedRowIsReportedNotInvented(t *testing.T) {
-	r, ru := omittedRowFixture(t, "Beta")
+// TestAPlacedRowIsNotInvented guards the "absent is not zero" invariant: where
+// a row is placed on another page, reading this one yields no figure for it
+// rather than manufacturing zero facts pointing at a line the page has no line
+// for, and a row's page is not a blank cell, so the part declares no omission.
+func TestAPlacedRowIsNotInvented(t *testing.T) {
+	r, ru := omittedRowFixture(t, "page: 1")
 	p := partOn(t, ru, 2)
 
 	values, omitted, err := r.Values(ru, p)
@@ -457,11 +459,8 @@ func TestOmittedRowIsReportedNotInvented(t *testing.T) {
 	if want := 4; len(values) != want {
 		t.Errorf("read %d values, want %d (2 rows × 2 columns)", len(values), want)
 	}
-	if len(omitted) != 1 {
-		t.Fatalf("got %d declared omissions, want 1", len(omitted))
-	}
-	if got, want := omitted[0].Row.Label, "Beta"; got != want {
-		t.Errorf("omitted row = %q, want %q", got, want)
+	if len(omitted) != 0 {
+		t.Errorf("got %d declared omissions, want none: a row on another page is not a blank", len(omitted))
 	}
 	for _, v := range values {
 		if v.Row.Label == "Beta" {
@@ -526,8 +525,8 @@ func TestUndeclaredOmissionFailsLoudly(t *testing.T) {
 //
 // xberg's strip_repeating_text deleted the third of three identical all-dash
 // rows from Budget Book p67, and the project recorded the loss as a property
-// of the document by declaring it in omitted_rows. That is the one thing
-// OmittedRows must never be used for: it is a claim about what the city
+// of the document by declaring the row absent from p67. That is the one thing
+// a row's page must never be used for: it is a claim about what the city
 // printed, and RowLabel is part of the fact id, so the mislabelled facts would
 // have been citable. This asserts the page carries all ten rows, so a
 // re-extraction that silently loses one fails here rather than downstream.
@@ -642,20 +641,18 @@ func TestResolveRejectsWhatItCannotRead(t *testing.T) {
 	})
 }
 
-// TestRowIndexIsStableAcrossAnOmission: a Value's RowIndex and an Omission's
-// must index the same list, or a caller rebuilding the grid collides at one
-// slot and leaves another empty. They agree by accident when the omitted row
-// is last, as it is in the spine, so the check moves it to the middle.
-func TestRowIndexIsStableAcrossAnOmission(t *testing.T) {
-	r, ru := omittedRowFixture(t, "Beta")
+// TestRowIndexIsStableAcrossAPlacedRow: a Value's RowIndex indexes the rule's
+// rows, not the part's active ones, or a caller laying two parts' values out
+// together collides at one slot and leaves another empty. The two agree by
+// accident when the row another page prints is last, as it is in the spine,
+// so the check moves it to the middle.
+func TestRowIndexIsStableAcrossAPlacedRow(t *testing.T) {
+	r, ru := omittedRowFixture(t, "page: 1")
 	p := partOn(t, ru, 2)
 
-	values, omitted, err := r.Values(ru, p)
+	values, _, err := r.Values(ru, p)
 	if err != nil {
 		t.Fatalf("Values: %v", err)
-	}
-	if len(omitted) != 1 || omitted[0].RowIndex != 1 {
-		t.Fatalf("omission = %+v, want RowIndex 1 (Beta)", omitted)
 	}
 
 	seen := map[int]string{}
@@ -669,9 +666,58 @@ func TestRowIndexIsStableAcrossAnOmission(t *testing.T) {
 				v.RowIndex, got, v.Row.Label)
 		}
 	}
-	if _, collided := seen[omitted[0].RowIndex]; collided {
-		t.Errorf("a value claims RowIndex %d, which the omission also claims",
-			omitted[0].RowIndex)
+	if _, collided := seen[1]; collided {
+		t.Error("a value claims RowIndex 1, which is Beta's, a row this page does not print")
+	}
+}
+
+// TestResolvedCellsAreCellsThePartPrints: every cell a read yields is of a row
+// the part prints and under a column the part does not declare blank on it,
+// and every value is a cell cellPublishes admits. Values' filter relies on
+// the read upholding the first two, so this is where they are asserted.
+func TestResolvedCellsAreCellsThePartPrints(t *testing.T) {
+	blankR, blankRule := blankResolver(t, blankPair, blankPairPages())
+	placedR, placedRule := omittedRowFixture(t, "page: 1")
+	for _, tc := range []struct {
+		name string
+		r    *Resolver
+		rule *Rule
+	}{
+		{"a row placed on the other page", placedR, placedRule},
+		{"a cell declared blank", blankR, blankRule},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			p := partOn(t, tc.rule, 2)
+			active := map[string]bool{}
+			for _, row := range tc.rule.ActiveRows(p) {
+				active[row.Identity()] = true
+			}
+			blank := blankColumns(p)
+			cells, err := tc.r.Cells(tc.rule, p)
+			if err != nil {
+				t.Fatalf("Cells: %v", err)
+			}
+			if len(cells) == 0 {
+				t.Fatal("read no cells; the fixture is hiding the assertion")
+			}
+			for _, c := range cells {
+				if !active[c.Row.Identity()] {
+					t.Errorf("cell %q column %d is of a row this part does not print", c.Row.Label, c.ColumnIndex)
+				}
+				if blank[c.Row.Identity()][c.ColumnIndex] {
+					t.Errorf("cell %q column %d is declared blank", c.Row.Label, c.ColumnIndex)
+				}
+			}
+			values, _, err := tc.r.Values(tc.rule, p)
+			if err != nil {
+				t.Fatalf("Values: %v", err)
+			}
+			for _, v := range values {
+				if !p.cellPublishes(v.ColumnIndex, v.Row) {
+					t.Errorf("value %q column %d is a cell that publishes nothing", v.Row.Label, v.ColumnIndex)
+				}
+			}
+		})
 	}
 }
 
@@ -845,7 +891,7 @@ func TestAFailedPartFailsTheSameWayEveryTime(t *testing.T) {
 // Value and Omission hold no slices, so a shallow copy is a whole one — this
 // asserts that claim rather than restating it.
 func TestValuesReturnsCopies(t *testing.T) {
-	r, ru := omittedRowFixture(t, "Beta")
+	r, ru := blankResolver(t, blankPair, blankPairPages())
 	p := partOn(t, ru, 2)
 
 	values, omitted, err := r.Values(ru, p)

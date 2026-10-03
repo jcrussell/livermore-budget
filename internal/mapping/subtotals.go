@@ -128,9 +128,9 @@ func (r *Resolver) CheckSubtotals(chain []*Rule) (*SubtotalsResult, error) {
 						sums[l][k] += c.Cents
 					}
 				}
-				// A row no part prints -- omitted on every page -- adds
-				// nothing, and counting it would let a subtotal over it pass
-				// with nothing summed.
+				// A row with no amount cell -- a non-amount quantity row --
+				// adds nothing, and counting it would let a subtotal over it
+				// pass with nothing summed.
 				if len(figures[i]) > 0 {
 					for l := 1; l <= levels; l++ {
 						rows[l]++

@@ -33,21 +33,19 @@ rules:
     total_row: "Total Environmental Services"
     #SPANS
     rows:
-      - {label: "Wages & Benefits", category: wages-and-benefits}
-      - {label: "Services & Supplies", category: services-and-supplies}
+      - {label: "Wages & Benefits", category: wages-and-benefits, page: 169}
+      - {label: "Services & Supplies", category: services-and-supplies, page: 170}
     parts:
       - page: 169
         section: "ENVIRONMENTAL SERVICES"
         stop_at: "END OF PAGE"
         columns:
           - {fund_group: general, fiscal_year: 2024, basis: actual}
-        omitted_rows: ["Services & Supplies"]
       - page: 170
         section: "ENVIRONMENTAL SERVICES"
         stop_at: "Total Environmental Services"
         columns:
           - {fund_group: general, fiscal_year: 2024, basis: actual}
-        omitted_rows: ["Wages & Benefits"]
 `
 
 func spanningDoc(t *testing.T) map[int]string {
@@ -165,8 +163,8 @@ func TestSpanningTotalsHonourTheDeclarationOnTheTotalsPage(t *testing.T) {
 func TestADeltaOnTheWrongPageIsRefused(t *testing.T) {
 	src := strings.Replace(spanningPages, "    #SPANS", "    total_spans_parts: true", 1)
 	src = strings.Replace(src,
-		`        omitted_rows: ["Services & Supplies"]`,
-		`        omitted_rows: ["Services & Supplies"]
+		`        stop_at: "END OF PAGE"`,
+		`        stop_at: "END OF PAGE"
         stated_total_deltas:
           - column: 1
             delta_cents: 100
@@ -301,17 +299,19 @@ func TestTotalSpansPartsRefusesWhatItCannotMean(t *testing.T) {
 			// file that parses, so the subtest fails on its own "accepted"
 			// assertion — a red test either way, and a legible one.
 			head, _, _ := strings.Cut(src, "      - page: 170")
-			return head
+			// The row p170 printed goes with it, or the placement is refused
+			// first for naming no part.
+			return strings.Replace(head, ", page: 170", "", 1)
 		},
 	}, {
 		name: "on parts whose columns differ",
 		want: "must be identical",
 		mutate: func(src string) string {
 			return strings.Replace(src,
-				"          - {fund_group: general, fiscal_year: 2024, basis: actual}\n"+
-					`        omitted_rows: ["Wages & Benefits"]`,
-				"          - {fund_group: general, fiscal_year: 2025, basis: actual}\n"+
-					`        omitted_rows: ["Wages & Benefits"]`, 1)
+				"        stop_at: \"Total Environmental Services\"\n        columns:\n"+
+					"          - {fund_group: general, fiscal_year: 2024, basis: actual}",
+				"        stop_at: \"Total Environmental Services\"\n        columns:\n"+
+					"          - {fund_group: general, fiscal_year: 2025, basis: actual}", 1)
 		},
 	}, {
 		name: "with a delta declared on two parts",

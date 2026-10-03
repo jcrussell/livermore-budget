@@ -52,15 +52,6 @@ func TestGrainIsRequiredExactlyWhereARulePublishes(t *testing.T) {
 			grainRule(grain, amountRow, skippedCol), `grain: is "category", but every row or every column`},
 		{"a rule whose every column is a non-amount quantity may not declare one",
 			grainRule(grain, amountRow, ratioCol), `grain: is "category", but every row or every column`},
-		// The part omits the only row that could publish, so the rule
-		// publishes no fact, the same as if the row were skipped.
-		{"a rule whose only publishing row is omitted may not declare one",
-			strings.Replace(grainRule(grain, amountRow, amountCol), "        columns:\n",
-				"        omitted_rows: [\"Taxes\"]\n        columns:\n", 1),
-			`grain: is "category", but every row or every column`},
-		{"a rule whose only publishing row is omitted and declares none is accepted",
-			strings.Replace(grainRule("", amountRow, amountCol), "        columns:\n",
-				"        omitted_rows: [\"Taxes\"]\n        columns:\n", 1), ""},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

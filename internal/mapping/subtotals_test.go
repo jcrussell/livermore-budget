@@ -294,7 +294,8 @@ func TestSubtotalDeclarationsAreRefusedWhereTheyCannotMean(t *testing.T) {
 
 // TestTwoSkippedRowsMayShareALabel is p230's fund 611, printed once under its
 // federal grant and once under its state grant on lines identical but for
-// the figures. Skipped, the pair reads; omitted, it cannot say which.
+// the figures. Skipped, the pair reads; a blank cell declared on it cannot
+// say which.
 func TestTwoSkippedRowsMayShareALabel(t *testing.T) {
 	src := strings.Replace(subtotalRules,
 		`      - {label: "P2 Beta", category: capital-projects}`,
@@ -307,10 +308,11 @@ func TestTwoSkippedRowsMayShareALabel(t *testing.T) {
 	if _, err := subtotalCheck(t, src, pages); err != nil {
 		t.Errorf("two skipped rows sharing a label: %v", err)
 	}
-	omitted := strings.Replace(src, "        column_headers: [\"FY A\"]\n", "        omitted_rows: [\"P1 Alpha\"]\n        column_headers: [\"FY A\"]\n", 1)
-	if _, err := parse(strings.NewReader(omitted), "subtotal.yaml"); err == nil ||
+	blank := strings.Replace(src, "        column_headers: [\"FY A\"]\n",
+		"        omitted_cells: [{label: \"P1 Alpha\", column: \"FY A\", note: n}]\n        column_headers: [\"FY A\"]\n", 1)
+	if _, err := parse(strings.NewReader(blank), "subtotal.yaml"); err == nil ||
 		!strings.Contains(err.Error(), "more than once") {
-		t.Errorf("an omission naming a repeated row: got %v, want it refused", err)
+		t.Errorf("a blank cell naming a repeated row: got %v, want it refused", err)
 	}
 }
 
@@ -401,26 +403,23 @@ func TestAChainWhoseColumnsMeanDifferentThingsIsRefused(t *testing.T) {
 	}
 }
 
-// TestASubtotalOverARowNoPagePrintsIsRefused: a row omitted from every part
-// adds nothing, so a subtotal over it alone sums nothing, and a printed dash
-// there would tie against an empty sum.
-func TestASubtotalOverARowNoPagePrintsIsRefused(t *testing.T) {
+// TestASubtotalOverARowWithNoAmountIsRefused: a non-amount row is read and
+// yields no cell, so it adds nothing, a subtotal over it alone sums nothing,
+// and a printed dash there would tie against an empty sum.
+func TestASubtotalOverARowWithNoAmountIsRefused(t *testing.T) {
 	src := strings.Replace(subtotalRules,
 		"      - {label: \"SUBTOTAL X\", skip: true, subtotal: 1}\n",
 		"      - {label: \"SUBTOTAL X\", skip: true, subtotal: 1}\n"+
-			"      - {label: \"P9 Ghost\", category: capital-projects}\n"+
+			"      - {label: \"P9 Count\", quantity: number}\n"+
 			"      - {label: \"ZERO TOTAL\", skip: true, subtotal: 1}\n", 1)
-	src = strings.Replace(src, "        column_headers: [\"FY A\"]\n",
-		"        omitted_rows: [\"P9 Ghost\"]\n        column_headers: [\"FY A\"]\n", 1)
-	src = strings.Replace(src, "        column_headers: [\"FY B\", \"TOTAL\"]\n",
-		"        omitted_rows: [\"P9 Ghost\"]\n        column_headers: [\"FY B\", \"TOTAL\"]\n", 1)
 	pages := subtotalPages()
-	pages[1] = strings.Replace(pages[1], "P3 Gamma", fmt.Sprintf("%-12s%10s\nP3 Gamma", "  ZERO TOTAL", "-"), 1)
+	pages[1] = strings.Replace(pages[1], "P3 Gamma", fmt.Sprintf("%-12s%10s\n%-12s%10s\nP3 Gamma",
+		"P9 Count", "7", "  ZERO TOTAL", "-"), 1)
 	pages[2] = strings.Replace(pages[2], fmt.Sprintf("%10s%10s\n", "2", "3"),
-		fmt.Sprintf("%10s%10s\n%10s%10s\n", "-", "-", "2", "3"), 1)
+		fmt.Sprintf("%10s%10s\n%10s%10s\n%10s%10s\n", "7", "7", "-", "-", "2", "3"), 1)
 	_, err := subtotalCheck(t, src, pages)
 	if err == nil || !strings.Contains(err.Error(), `"ZERO TOTAL"`) || !strings.Contains(err.Error(), "over no row") {
-		t.Errorf("a subtotal over a row no page prints: got %v, want it refused", err)
+		t.Errorf("a subtotal over a row with no amount cell: got %v, want it refused", err)
 	}
 }
 

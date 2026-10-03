@@ -66,7 +66,7 @@ func TestACounterpartIsRefusedWhenItCouldNotBeToldApart(t *testing.T) {
 			// validateRule refuses a partless rule before it ever calls this,
 			// so a no-part fixture was testing a state the parser cannot
 			// produce -- and the row-only fallback that made it pass was itself
-			// a false refusal on omitted rows and skipped columns.
+			// a false refusal on rows another page prints and skipped columns.
 			rule := &Rule{ID: "r", Kind: KindTransferIn,
 				Parts: []Part{{Page: 76, Columns: []Column{{FiscalYear: 2026}}}}}
 			err := checkCounterpart(rule, row, errfLike)
@@ -302,8 +302,8 @@ func errfLike(ruleID, field, format string, args ...any) error {
 //
 // That fix made the arm compare the counterpart against every column of every
 // part. "Every" was too many: a skip: true column consumes its position and
-// yields no fact, and a part whose omitted_rows drop this row prints no cell for
-// it at all. Neither can collide with anything, because neither publishes
+// yields no fact, and a part other than the row's page prints no cell for it
+// at all. Neither can collide with anything, because neither publishes
 // anything -- so refusing on one is a refusal against a cell the document does
 // not have.
 //
@@ -371,9 +371,9 @@ rules:
 	// THE OTHER EXEMPTION: a part that does not print this row. Its columns are
 	// live, and the row has no cell under any of them, so a counterpart matching
 	// one of them collides with nothing. Written separately because the two arms
-	// are independent -- removing the omitted-rows arm left the whole package
+	// are independent -- removing the placement arm left the whole package
 	// green until this case existed.
-	const omitted = `schema_version: 1
+	const placed = `schema_version: 1
 doc_id: livermore-budget-fy2026-2027
 rules:
   - id: r
@@ -390,26 +390,25 @@ rules:
       - page: 77
         section: "S"
         stop_at: "E"
-        omitted_rows: [{label: "Transfer From Low Income Hsng"}]
         columns:
           - {fund_group: special-revenue, fund: 200, fiscal_year: 2026}
     rows:
       - label: "Transfer From Low Income Hsng"
+        page: 76
         category: transfers/in
         counterpart: {category: transfers/in, kind: transfer_out, fund: 200, fund_group: special-revenue}
       - label: "Transfer From Water"
         category: transfers/in
 `
-	if _, err := parse(strings.NewReader(omitted), "omitted.yaml"); err != nil {
-		t.Errorf("a counterpart colliding only with a column of a part that OMITS "+
-			"this row was refused: %v\nthe row has no cell there to collide with", err)
+	if _, err := parse(strings.NewReader(placed), "placed.yaml"); err != nil {
+		t.Errorf("a counterpart colliding only with a column of a part that does not "+
+			"print this row was refused: %v\nthe row has no cell there to collide with", err)
 	}
 
-	// And with the omission removed, p77's column is live for this row and the
-	// same counterpart is refused -- so the exemption turns on the declaration
-	// rather than on the second part existing at all.
-	present := strings.Replace(omitted,
-		"        omitted_rows: [{label: \"Transfer From Low Income Hsng\"}]\n", "", 1)
+	// And with the placement removed, p77's column is live for this row and
+	// the same counterpart is refused -- so the exemption turns on the
+	// declaration rather than on the second part existing at all.
+	present := strings.Replace(placed, "        page: 76\n", "", 1)
 	_, presentErr := parse(strings.NewReader(present), "present.yaml")
 	if presentErr == nil {
 		t.Fatal("a counterpart duplicating a column of a part that PRINTS this row " +

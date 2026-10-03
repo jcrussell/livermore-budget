@@ -19,9 +19,8 @@
 #                  no stop_at, so there is no anchor to read totals from and
 #                  the part is unchecked rather than failed.
 #
-# transfers-out p77 also declares an omitted row, which is the only way a row
-# absent from a page becomes visible: it produces no fact, so facts.jsonl
-# cannot show it.
+# transfers-out's Enterprise Funds row is placed on p76 alone, so p77 is read
+# without it and its one fact is cited to p76.
 schema_version: 1
 doc_id: livermore-budget-fy2026-2027
 
@@ -43,13 +42,12 @@ rules:
         labels_from: 76
         section: "TRANSFERS OUT:"
         stop_at: "END OF SCHEDULE"
-        omitted_rows: ["Enterprise Funds"]
         columns:
           - {fund_group: capital, fiscal_year: 2026}
           - {fund_group: capital, fiscal_year: 2027}
     rows:
       - {label: "General Fund", category: transfers/general-fund}
-      - {label: "Enterprise Funds", category: transfers/enterprise-funds}
+      - {label: "Enterprise Funds", page: 76, category: transfers/enterprise-funds}
 
   - id: transfers-in
     kind: transfer_in

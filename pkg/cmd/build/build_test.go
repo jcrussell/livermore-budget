@@ -358,9 +358,9 @@ func TestBuildReportsWhatItCouldNotCheck(t *testing.T) {
 		// key must still round-trip as [] rather than null.
 		ToleranceSlack:    []amount.Cents{},
 		RollupsUnasserted: []unassertedRollup{},
-		Omissions: []declaredOmission{
-			{RuleID: "transfers-out", Page: 77, RowLabel: "Enterprise Funds"},
-		},
+		// Empty for the same reason: transfers-out places Enterprise Funds
+		// on p76, and a row another page prints is not a blank cell.
+		Omissions: []declaredOmission{},
 	}
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("report mismatch (-want +got):\n%s", diff)
@@ -427,11 +427,15 @@ func TestBuildNamesEveryUncheckedPart(t *testing.T) {
 		"UNCHECKED transfers-out p76: " + reasonNoTotalRow,
 		"UNCHECKED transfers-out p77: " + reasonNoTotalRow,
 		"UNCHECKED transfers-in p79: " + reasonNoStatedTotals,
-		`DECLARED OMISSION transfers-out p77: the page does not print row "Enterprise Funds"`,
 	} {
 		if !strings.Contains(errOut.String(), want) {
 			t.Errorf("summary %q does not contain %q", errOut, want)
 		}
+	}
+	// transfers-out places Enterprise Funds on p76. The row is printed there
+	// and cited there, so p77 has nothing to declare about it.
+	if strings.Contains(errOut.String(), "DECLARED OMISSION") {
+		t.Errorf("summary %q reports an omission; a row another page prints is not one", errOut)
 	}
 }
 
@@ -441,11 +445,9 @@ func TestABlankCellIsReportedAsOneCell(t *testing.T) {
 	rep := newReport()
 	rule := &mapping.Rule{ID: "r"}
 	rep.addOmissions(rule, []mapping.Omission{
-		{Row: mapping.Row{Label: "Gone"}, Page: 7},
-		{Row: mapping.Row{Label: "Water"}, Page: 7, Cell: true, ColumnIndex: 3, Header: "Increase/(Use)"},
+		{Row: mapping.Row{Label: "Water"}, Page: 7, ColumnIndex: 3, Header: "Increase/(Use)"},
 	})
 	want := []declaredOmission{
-		{RuleID: "r", Page: 7, RowLabel: "Gone"},
 		{RuleID: "r", Page: 7, RowLabel: "Water", Column: "Increase/(Use)"},
 	}
 	if diff := cmp.Diff(want, rep.Omissions); diff != "" {
@@ -456,7 +458,6 @@ func TestABlankCellIsReportedAsOneCell(t *testing.T) {
 		t.Fatalf("print: %v", err)
 	}
 	for _, line := range []string{
-		`DECLARED OMISSION r p7: the page does not print row "Gone"`,
 		`DECLARED OMISSION r p7: the page leaves row "Water" blank under "Increase/(Use)"`,
 	} {
 		if !strings.Contains(errOut.String(), line) {

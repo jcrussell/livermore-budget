@@ -125,14 +125,15 @@ func (*rowFundsMatchTheirAnchors) Run(_ context.Context, s *Subject) (Result, er
 			// ONCE PER ROW, NOT ONCE PER PART. A rule's rows are shared by
 			// every part it declares -- that is what labels_from is for -- so
 			// iterating parts would report a multi-part schedule's every row
-			// twice and inflate the subject count with it. Omissions are still
-			// per part, so the union of what any part reads is the right set.
+			// twice and inflate the subject count with it. A row's page is
+			// still per part, so the union of what any part reads is the
+			// right set.
 			for _, row := range activeInAnyPart(ru) {
 				// A SKIPPED ROW IS NOT READ FROM THE PAGE, so this check has
 				// nothing to say about it in ANY arm -- not as a subject, not as
 				// a fund the page prints no anchor for. ActiveRows filters
-				// omitted rows and not skipped ones, so without this they arrive
-				// here.
+				// rows other pages print and not skipped ones, so without this
+				// they arrive here.
 				//
 				// IT SITS AT THE TOP OF THE LOOP AND NOT INSIDE ONE ARM, which
 				// is the second attempt. The first put `!row.Skip` on the

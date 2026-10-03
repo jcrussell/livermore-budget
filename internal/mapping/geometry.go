@@ -681,9 +681,9 @@ func (r *Resolver) checkLineAccounting(rule *Rule, p *Part, blk *block, rows []R
 	if printed != len(rows) {
 		return fail(fmt.Sprintf(
 			"the block covers %d printed %s but the rule has %d %s here; "+
-				"rows declared absent from this page: %s",
+				"rows placed on other pages: %s",
 			printed, cmdutil.Plural(printed, "line", "lines"),
-			len(rows), cmdutil.Plural(len(rows), "row", "rows"), declaredOmissions(p)),
+			len(rows), cmdutil.Plural(len(rows), "row", "rows"), declaredOmissions(rule, p)),
 			"a label-less page is read positionally, one row per printed line, "+
 				"so a line the rule has no row for would mismap every row below it")
 	}
