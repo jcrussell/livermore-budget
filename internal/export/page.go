@@ -702,8 +702,10 @@ func tilesFor(meta projectionMetadata) (figure, []figure) {
 	return hero, []figure{{
 		Label: "Naive column total",
 		Value: amount.Cents(h.NaiveExpenditureCents).Dollars(),
+		// The inflation is the transfers out the naive total counts a second time,
+		// cited from the field rather than recomputed as naive minus gross.
 		Note: "The wrong answer: summing the expenditure column counts transfers between funds twice, inflating the total by " +
-			amount.Cents(h.NaiveExpenditureCents-h.AllFundsGrossExpenditureCents).Dollars() + ".",
+			amount.Cents(h.InternalTransferOutCents).Dollars() + ".",
 		Kind: "error",
 	}, {
 		Label: "All-funds gross revenue",

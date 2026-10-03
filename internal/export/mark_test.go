@@ -8,6 +8,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
+	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/site"
 )
 
@@ -368,5 +369,24 @@ func TestTheHeroNoteNamesItsColumnAsTheLedeDoes(t *testing.T) {
 	hero, _ := tilesFor(meta)
 	if want := ledeOf(meta.FiscalYearLabel, meta.Basis); !strings.Contains(hero.Note, want) {
 		t.Errorf("hero note %q does not name its column as the lede does, %q", hero.Note, want)
+	}
+}
+
+// TestTheNaiveNoteCitesTheTransfersOut holds the naive tile's inflation to the
+// published internal_transfer_out_cents rather than to a difference export
+// computes: given a headline whose naive total is not gross plus transfers out,
+// the note still quotes the transfers out. headline-naive-expenditure holds the
+// identity on published documents. Mutation: print naive minus gross, and it
+// goes red.
+func TestTheNaiveNoteCitesTheTransfersOut(t *testing.T) {
+	meta := projectionMetadata{FiscalYear: 2026, FiscalYearLabel: "FY 2025-26", Basis: "adopted",
+		Headline: project.Headline{
+			AllFundsGrossExpenditureCents: 100_00,
+			InternalTransferOutCents:      7_00,
+			NaiveExpenditureCents:         150_00,
+		}}
+	_, tiles := tilesFor(meta)
+	if want := amount.Cents(7_00).Dollars(); !strings.HasSuffix(tiles[0].Note, "by "+want+".") {
+		t.Errorf("naive note = %q, want it to end by quoting the transfers out, %s", tiles[0].Note, want)
 	}
 }
