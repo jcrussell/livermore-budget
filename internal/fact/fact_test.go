@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -909,14 +911,14 @@ func TestACounterpartWithNoRowPathIsRefused(t *testing.T) {
 	}
 }
 
-// TestMakeSeriesIDIsTheFactIDWithoutTheColumn is the relationship the revenue
-// trends contract publishes, checked rather than asserted in prose: a series id
-// is MakeID's tuple minus the fiscal year and the basis.
+// TestMakeSeriesIDIsTheFactIDWithoutRuleOrColumn is the relationship the
+// revenue trends contract publishes, checked rather than asserted in prose: a
+// series id is MakeID's tuple minus the rule id, the fiscal year and the basis.
 //
 // The consequence a reader depends on is the second half: two facts of the SAME
 // printed row in different columns share a series id, and two facts of different
 // rows never do.
-func TestMakeSeriesIDIsTheFactIDWithoutTheColumn(t *testing.T) {
+func TestMakeSeriesIDIsTheFactIDWithoutRuleOrColumn(t *testing.T) {
 	const (
 		doc  = "livermore-budget-fy2026-2027"
 		rule = "gf-rev-other-taxes"
@@ -925,7 +927,7 @@ func TestMakeSeriesIDIsTheFactIDWithoutTheColumn(t *testing.T) {
 	)
 	row := "Industrial Construction Tax"
 
-	base := makeSeriesID(doc, rule, path, row, col)
+	base := makeSeriesID(doc, path, row, col)
 	// Every column of one row agrees.
 	for _, c := range []struct {
 		year  int
@@ -948,13 +950,21 @@ func TestMakeSeriesIDIsTheFactIDWithoutTheColumn(t *testing.T) {
 		}
 	}
 
+	// One row printed under a different rule each year, as pp.186-209 are
+	// mapped, is still one series.
+	other := Fact{DocID: doc, RuleID: "fund-balances-fy2027-p0204", RowPath: path,
+		RowLabel: row, ColumnPath: col, FiscalYear: 2027, Basis: mapping.BasisAdopted}
+	if got := other.SeriesID(); got != base {
+		t.Errorf("the same row under another rule is series %s, want %s", got, base)
+	}
+
 	// A different row of the same fund, and the same row in a different fund,
 	// are different series. The second is the case the document exists for:
 	// "Property Taxes" is printed by four funds.
-	if makeSeriesID(doc, rule, path, "Other Row", col) == base {
+	if makeSeriesID(doc, path, "Other Row", col) == base {
 		t.Error("two different printed rows share a series id")
 	}
-	if makeSeriesID(doc, rule, path, row, "special-revenue/fund/310") == base {
+	if makeSeriesID(doc, path, row, "special-revenue/fund/310") == base {
 		t.Error("one row label in two funds shares a series id")
 	}
 
@@ -965,6 +975,69 @@ func TestMakeSeriesIDIsTheFactIDWithoutTheColumn(t *testing.T) {
 	}
 	if !strings.HasPrefix(base, seriesIDPrefix) {
 		t.Errorf("series id %q does not carry %q", base, seriesIDPrefix)
+	}
+}
+
+// committedFacts reads the fact store this repository publishes.
+func committedFacts(t *testing.T) []Fact {
+	t.Helper()
+	f, err := os.Open(filepath.Join("..", "..", "facts", "facts.jsonl"))
+	if err != nil {
+		t.Fatalf("open the committed fact store: %v", err)
+	}
+	defer f.Close()
+	facts, err := Read(f)
+	if err != nil {
+		t.Fatalf("read the committed fact store: %v", err)
+	}
+	return facts
+}
+
+// TestASeriesIsOneCellPerYearAndBasis is what lets makeSeriesID leave the rule
+// out: over the committed store, no two facts share a series, a fiscal year and
+// a basis, so no series stacks two cells in one column.
+func TestASeriesIsOneCellPerYearAndBasis(t *testing.T) {
+	type cell struct {
+		series string
+		year   int
+		basis  mapping.Basis
+	}
+	seen := map[cell]string{}
+	for _, f := range committedFacts(t) {
+		c := cell{f.SeriesID(), f.FiscalYear, f.Basis}
+		if prev, ok := seen[c]; ok {
+			t.Errorf("%s and %s are both series %s in FY%d %s", prev, f.ID, c.series, c.year, c.basis)
+			continue
+		}
+		seen[c] = f.ID
+	}
+}
+
+// TestAFundBalancesRowIsOneSeriesAcrossItsYears reads the General Fund's
+// Revenues on Budget Book pp.186, 192, 198 and 204: four rules, one per year,
+// and one series of four points.
+func TestAFundBalancesRowIsOneSeriesAcrossItsYears(t *testing.T) {
+	series := map[string][]int{}
+	rules := map[string]bool{}
+	for _, f := range committedFacts(t) {
+		if f.Scope != "fund-balances-by-fund" || f.RowPath != "revenues" ||
+			f.Fund == nil || *f.Fund != 100 {
+			continue
+		}
+		series[f.SeriesID()] = append(series[f.SeriesID()], f.FiscalYear)
+		rules[f.RuleID] = true
+	}
+	if len(rules) != 4 {
+		t.Fatalf("the General Fund's Revenues are read by %d rules, want one per year (4)", len(rules))
+	}
+	if len(series) != 1 {
+		t.Fatalf("the General Fund's Revenues are %d series, want 1: %v", len(series), series)
+	}
+	for id, years := range series {
+		slices.Sort(years)
+		if diff := cmp.Diff([]int{2024, 2025, 2026, 2027}, years); diff != "" {
+			t.Errorf("series %s years (-want +got):\n%s", id, diff)
+		}
 	}
 }
 

@@ -137,11 +137,11 @@ func TestTrendsPointsFollowTheDocumentsColumnOrder(t *testing.T) {
 	}
 }
 
-// TestTrendsSeriesIDIsTheFactIDWithoutTheColumn is the contract's identity claim
-// checked against the code rather than quoted: a series id is fact.MakeID's
-// tuple minus the fiscal year and the basis, so every point of a series
+// TestTrendsSeriesIDIsTheFactIDWithoutRuleOrColumn is the contract's identity
+// claim checked against the code rather than quoted: a series id is
+// fact.MakeID's tuple minus the rule id, the fiscal year and the basis, so every point of a series
 // recomputes to the same one and no fact id can be mistaken for it.
-func TestTrendsSeriesIDIsTheFactIDWithoutTheColumn(t *testing.T) {
+func TestTrendsSeriesIDIsTheFactIDWithoutRuleOrColumn(t *testing.T) {
 	facts := trendsFixture(t)
 	d := buildTrends(t, facts)
 

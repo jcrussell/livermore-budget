@@ -83,16 +83,19 @@ JSON tags have not drifted apart, since nothing else couples them.
 ## series_id
 
 ```
-sha256(doc_id \x1f rule_id \x1f row_path \x1f row_label \x1f column_path)[:12], prefixed "fisc-s-"
+sha256(doc_id \x1f row_path \x1f row_label \x1f column_path)[:12], prefixed "fisc-s-"
 ```
 
-That is `fact.MakeID`'s tuple **minus** `fiscal_year` and `basis`, and the
-relationship is not a coincidence: two facts are the same printed row at
-different times exactly when they agree on everything the fact id hashes except
-the year and the basis. So the series identity is derivable by anyone holding
-`facts.jsonl`, and it is stable when a fifth year is mapped.
+That is `fact.MakeID`'s tuple **minus** `rule_id`, `fiscal_year` and `basis`.
+Two facts are the same printed row at different times exactly when one document
+prints them on one line of one schedule; a schedule mapped one rule per year
+(Budget Book pp.186-209) prints a row under a different rule each year, so the
+rule is not part of a row's identity. The series identity is derivable by anyone
+holding `facts.jsonl`, and it is stable when a fifth year is mapped.
+`fact`'s `TestASeriesIsOneCellPerYearAndBasis` holds that no two committed facts
+share a series, a year and a basis.
 
-The five-component join cannot collide with a fact id: the arity differs, the
+The four-component join cannot collide with a fact id: the arity differs, the
 prefix differs (`fisc-s-` against `fisc-f-`), and `\x1f` is the separator in both
 precisely because every component can contain `/` and some can contain `-`.
 

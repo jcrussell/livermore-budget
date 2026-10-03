@@ -226,14 +226,19 @@ const seriesIDPrefix = "fisc-s-"
 
 // makeSeriesID identifies one printed ROW across the columns it appears in.
 //
-// It is [MakeID]'s tuple MINUS the fiscal year and the basis, and that is not a
-// convenience: two facts are the same printed row at different times exactly
-// when they agree on everything the fact id hashes except those two components.
-// So a series identity is derivable by anyone holding facts.jsonl, and it is
-// stable when a fifth year is mapped -- which a positional or ordinal id would
-// not be.
+// It is [MakeID]'s tuple MINUS the rule id, the fiscal year and the basis. Two
+// facts are the same printed row at different times exactly when one document
+// prints them on one line of one schedule, and the rule is not part of that: a
+// schedule mapped one rule per year, as Budget Book pp.186-209 are, prints a
+// fund's line once a year under four rules. So a series identity is derivable
+// by anyone holding facts.jsonl, and it is stable when a fifth year is mapped
+// -- which a positional or ordinal id would not be.
 //
-// IT CANNOT COLLIDE WITH A FACT ID. The arity differs (five components against
+// What keeps two rows of one document apart is the row path, the printed label
+// and the column path together; TestASeriesIsOneCellPerYearAndBasis holds that
+// no two committed facts share a series, a year and a basis.
+//
+// IT CANNOT COLLIDE WITH A FACT ID. The arity differs (four components against
 // seven), the prefix differs, and \x1f is the separator in both for MakeID's
 // reason: every component can contain "/" and some can contain "-", so joining
 // on a character that occurs in the data would let two different tuples hash
@@ -241,16 +246,16 @@ const seriesIDPrefix = "fisc-s-"
 //
 // rowLabel is mapping.Row.PrintedLabel(), the same string the fact record
 // publishes, for every reason MakeID's doc comment gives about it.
-func makeSeriesID(docID, ruleID, rowPath, rowLabel, columnPath string) string {
+func makeSeriesID(docID, rowPath, rowLabel, columnPath string) string {
 	h := sha256.Sum256([]byte(strings.Join([]string{
-		docID, ruleID, rowPath, rowLabel, columnPath,
+		docID, rowPath, rowLabel, columnPath,
 	}, "\x1f")))
 	return seriesIDPrefix + hex.EncodeToString(h[:])[:idHexLen]
 }
 
 // SeriesID is the series this fact is one point of.
 func (f Fact) SeriesID() string {
-	return makeSeriesID(f.DocID, f.RuleID, f.RowPath, f.RowLabel, f.ColumnPath)
+	return makeSeriesID(f.DocID, f.RowPath, f.RowLabel, f.ColumnPath)
 }
 
 // RowPath is the classification a row asserts, as a path.
