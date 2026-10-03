@@ -222,13 +222,30 @@ func (c Comparison) Finding(cell Cell) string {
 type restriction struct {
 	kinds      []mapping.Kind
 	fundGroups []string
+	// lines is every declared Lines of the pair; a fact is compared only on
+	// a line each of them names.
+	lines [][]Line
 }
 
 func (r restriction) admits(f *fact.Fact) bool {
 	if len(r.fundGroups) > 0 && !contains(r.fundGroups, f.FundGroup) {
 		return false
 	}
+	for _, ls := range r.lines {
+		if !onLine(ls, f) {
+			return false
+		}
+	}
 	return containsKind(r.kinds, f.Kind)
+}
+
+func onLine(lines []Line, f *fact.Fact) bool {
+	for _, l := range lines {
+		if l.Matches(f) {
+			return true
+		}
+	}
+	return false
 }
 
 // restrict is the slice of the store a pair may be compared over at a level.
@@ -366,6 +383,19 @@ func compareAt(facts []fact.Fact, c, against Cut, at Level) (Comparison, error) 
 	r, err := restrict(c, against, at)
 	if err != nil {
 		return Comparison{}, fmt.Errorf("compare %q against %q: %w", c.Name, against.Name, err)
+	}
+	for _, side := range []Cut{c, against} {
+		if len(side.Lines) == 0 {
+			continue
+		}
+		for i := range facts {
+			if f := &facts[i]; side.admits(f) && !onLine(side.Lines, f) {
+				return Comparison{}, fmt.Errorf("compare %q against %q: fact %s (%s %s) is on no line %q "+
+					"declares, so the comparison would not see it", c.Name, against.Name, f.ID, f.Kind,
+					f.Category, side.Name)
+			}
+		}
+		r.lines = append(r.lines, side.Lines)
 	}
 	cells, err := project(facts, c, at, r)
 	if err != nil {

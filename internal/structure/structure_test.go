@@ -535,3 +535,40 @@ func TestTallyCountsWithoutWording(t *testing.T) {
 		t.Errorf("Tally worded %q; its caller words its own findings", c.Findings)
 	}
 }
+
+// TestACutIsComparedOnlyOnTheLinesItsPagesPrint holds pp.186-209 to the spine
+// without the spine's CHANGE IN WORKING CAPITAL, which pp.186-209 print no
+// line for, and refuses a comparison once a fact of the cut sits on no line it
+// declares: leaving a line off the list must not drop it from the gate.
+func TestACutIsComparedOnlyOnTheLinesItsPagesPrint(t *testing.T) {
+	facts := committedFacts(t)
+	flows, spine := allCutNamed(t, structure.CutFundBalanceFlows), allCutNamed(t, structure.CutSpine)
+	c, err := structure.Compare(facts, flows, spine)
+	if err != nil {
+		t.Fatalf("Compare: %v", err)
+	}
+	held := 0
+	for _, cell := range c.Cells {
+		if strings.Contains(cell.Key.String(), "fund-balance/change") {
+			t.Errorf("%s is compared; pp.186-209 print no change line", cell.Key)
+		}
+		if strings.Contains(cell.Key.String(), "fund-balance/ending") {
+			held++
+		}
+	}
+	if held == 0 {
+		t.Error("no ending balance is compared; the change is held through beginning and ending, so both must be")
+	}
+
+	var short []structure.Line
+	for _, l := range flows.Lines {
+		if l != structure.LineEnding {
+			short = append(short, l)
+		}
+	}
+	flows.Lines = short
+	if _, err := structure.Compare(facts, flows, spine); err == nil ||
+		!strings.Contains(err.Error(), "is on no line") {
+		t.Errorf("Compare with the ending line undeclared = %v, want refused", err)
+	}
+}

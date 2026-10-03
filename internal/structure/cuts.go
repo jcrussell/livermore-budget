@@ -107,11 +107,25 @@ func BudgetBookCuts() []Cut {
 		{
 			// pp.186-209, each fund's transfers and balances. The Capital
 			// Improvement Program Funds block is p222's money, and residue.
+			//
+			// The pages print each fund's balances and Reserve
+			// Increase/(Use) and no change line, so the spine's CHANGE IN
+			// WORKING CAPITAL is not compared here. It is held through
+			// fund-balance-identity on pp.66-67 (beginning + change = ending)
+			// and this cut's beginning and ending, which are.
 			Name:  CutFundBalanceFlows,
 			Scope: ScopeFundBalancesByFund,
 			Rules: fundBalancesRules(false),
 			Level: LevelFundByCategory,
 			Kinds: []mapping.Kind{mapping.KindTransferIn, mapping.KindTransferOut, mapping.KindFundBalance},
+			Lines: []Line{
+				{mapping.KindTransferIn, "transfers/in"},
+				{mapping.KindTransferOut, "transfers/out"},
+				{mapping.KindTransferOut, "transfers/out-to-cip"},
+				LineBeginning,
+				{mapping.KindFundBalance, CategoryFundBalanceReserveIncrease},
+				LineEnding,
+			},
 			Bases: budgetBookDetail,
 		},
 		{
@@ -453,17 +467,6 @@ func fundBalanceExceptions() []Exception {
 		carriesADollar("special-revenue-ending-2027", 2027, registry.FundTypeSpecialRevenue, "fund-balance/ending", 9518699500, 9518699400, -100,
 			"p0067.txt:42 ENDING WORKING CAPITAL and p0207.txt:10, Total Special Revenue Funds' line, both 95,186,994"),
 
-		printsNoChangeLine(2026, registry.FundTypeGeneral, -103415400, -103415400, "p0066.txt:39, (1,034,154)"),
-		printsNoChangeLine(2026, registry.FundTypeEnterprise, 389438400, 389438400, "p0066.txt:39, 3,894,384"),
-		printsNoChangeLine(2026, registry.FundTypeCapital, -250021300, -250021300, "p0067.txt:41, (2,500,213)"),
-		printsNoChangeLine(2026, registry.FundTypeInternalService, -614753300, -614753300, "p0067.txt:41, (6,147,533)"),
-		printsNoChangeLine(2026, registry.FundTypeSpecialRevenue, 887494900, 887494900, "p0067.txt:41, 8,874,949"),
-		printsNoChangeLine(2027, registry.FundTypeGeneral, 235109800, 235109800, "p0066.txt:39, 2,351,098"),
-		printsNoChangeLine(2027, registry.FundTypeEnterprise, 141028000, 141028000, "p0066.txt:39, 1,410,280"),
-		printsNoChangeLine(2027, registry.FundTypeCapital, -1012941600, -1012941600, "p0067.txt:41, (10,129,416)"),
-		printsNoChangeLine(2027, registry.FundTypeInternalService, -716064500, -716064500, "p0067.txt:41, (7,160,645)"),
-		printsNoChangeLine(2027, registry.FundTypeSpecialRevenue, 902197200, 902197200, "p0067.txt:41, 9,021,972"),
-
 		{
 			Name: "p0067-internal-service-ending-is-250000-low",
 			Cut:  CutFundBalanceFlows, Against: CutSpine, At: LevelFundGroupByCategory,
@@ -652,25 +655,6 @@ func roundsAnActual(name, cut, against string, g, number string, c, a, residual 
 	return roundsADollar(name, cut, against, LevelFund, 2024, "actual", map[Axis]string{AxisFundGroup: g, AxisFund: number},
 		c, a, residual, printed+"; the rows under it miss it by the dollar their rules' stated_total_deltas declare",
 		"the two schedules print one fund total in the FY2023-24 Actual column and round the rows under it differently")
-}
-
-// printsNoChangeLine is the change line pp.66-67 print as CHANGE IN WORKING
-// CAPITAL and pp.186-209 do not. Its residual is the printed figure, declared
-// rather than taken from the pin, so ValidateExceptions holds a mistyped pin
-// to it.
-func printsNoChangeLine(year int, g string, a, residual int64, printed string) Exception {
-	return Exception{
-		Name: fmt.Sprintf("pp.186-209-print-no-change-line-%s-%d", g, year),
-		Cut:  CutFundBalanceFlows, Against: CutSpine, At: LevelFundGroupByCategory,
-		Cells: []Pin{{Year: year, Basis: "adopted", Coords: map[Axis]string{AxisFundGroup: g, AxisCategory: "fund-balance/change"},
-			Against: Sum{Cents: a, Present: true}}},
-		Residual: residual,
-		Printed:  printed + " CHANGE IN WORKING CAPITAL; pp.186-209 print each fund's balances and Reserve Increase/(Use) and no change line",
-		Reason: "pp.66-67 print a fund group's change in balance on a line of its own, and pp.186-209 print " +
-			"no such line: a fund's change is its ending balance less its beginning, each of which this " +
-			"comparison holds",
-		Bead: "fisc-qnn5",
-	}
 }
 
 // printsNoGFTransferIn is the General Fund transfer in pp.186-209 print and

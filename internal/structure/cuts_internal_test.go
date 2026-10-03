@@ -28,9 +28,6 @@ func TestAHelpersMistypedPinIsCaught(t *testing.T) {
 			return roundsAnActual("actual", CutRevenueDetail, CutFundBalanceRevenues, registry.FundTypeEnterprise, "600",
 				488652400+off, 488652500, 100, "p")
 		}},
-		{"printsNoChangeLine", func(off int64) Exception {
-			return printsNoChangeLine(2026, registry.FundTypeEnterprise, 389438400+off, 389438400, "p")
-		}},
 		{"printsNoGFTransferIn", func(off int64) Exception {
 			return printsNoGFTransferIn("gf", 2024, "actual", 73745500+off, 73745500, "p")
 		}},

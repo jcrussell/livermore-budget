@@ -157,6 +157,12 @@ type Cut struct {
 	// ValidateOutside holds the claim to the store: every fact carries a fund,
 	// and no fund it carries is carried by a fact of any other cut.
 	Outside string
+	// Lines are the lines the pages print, where they print fewer than a
+	// coarser cut's: a lattice comparison then holds the coarser side only on
+	// these. Empty means every line of the cut's kinds. A comparison refuses a
+	// fact of this cut on no declared line, so a line cannot be dropped from
+	// the comparison by being left off the list. Peers does not read Lines.
+	Lines []Line
 }
 
 // DerivedLevel is the level this cut's facts put it at, before its declared
@@ -261,6 +267,11 @@ func ValidateCuts(facts []fact.Fact, byRule map[string]Level, cuts []Cut) (empty
 		case c.DepartmentTier != "" && c.DepartmentTier != TierDivision && c.DepartmentTier != TierDepartment:
 			return nil, fmt.Errorf("cut %q declares department tier %q; the tiers are division and department",
 				c.Name, c.DepartmentTier)
+		}
+		for _, l := range c.Lines {
+			if !containsKind(c.Kinds, l.Kind) {
+				return nil, fmt.Errorf("cut %q declares line %s, whose kind it does not print", c.Name, l)
+			}
 		}
 		for _, g := range c.FundGroups {
 			if !hasAxis(c.Level, AxisFundGroup) {

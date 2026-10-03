@@ -48,7 +48,7 @@ func TestTheCommittedCutsTieAlongTheLattice(t *testing.T) {
 		// as a containment on transfers in and balances; their two totals
 		// cuts meet it at the fund group, and every per-fund schedule at the
 		// fund.
-		"fund-balance-flows -> spine at fund-group-by-category: 49 cells over FY2026 adopted, FY2027 adopted",
+		"fund-balance-flows -> spine at fund-group-by-category: 47 cells over FY2026 adopted, FY2027 adopted",
 		"a-fund-transfers-out-or-to-the-cip -> spine at fund-group: 14 cells over FY2026 adopted, FY2027 adopted, 2 one-sided at zero",
 		"fund-balance-revenues ~ spine at fund-group: 14 cells over FY2026 adopted, FY2027 adopted",
 		"fund-balance-expenses ~ spine at fund-group: 13 cells over FY2026 adopted, FY2027 adopted",
