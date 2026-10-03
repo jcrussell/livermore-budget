@@ -95,9 +95,11 @@ func (*fundGroupsAreTheirPrintedRows) Run(_ context.Context, s *Subject) (Result
 		// summary prints no figure for is as much a disagreement as the
 		// reverse.
 		inColumn := map[groupCell]bool{}
+		seen := map[string]bool{}
 		for k := range printed {
 			if k.year == col.FiscalYear && k.basis == string(col.Basis) {
 				inColumn[k] = true
+				seen[k.group] = true
 			}
 		}
 		for k, v := range sums {
@@ -106,12 +108,6 @@ func (*fundGroupsAreTheirPrintedRows) Run(_ context.Context, s *Subject) (Result
 			}
 		}
 		keys := slices.Collect(maps.Keys(inColumn))
-		seen := map[string]bool{}
-		for k := range printed {
-			if k.year == col.FiscalYear && k.basis == string(col.Basis) {
-				seen[k.group] = true
-			}
-		}
 		for _, g := range slices.Sorted(maps.Values(structure.FundBalanceGroupRows())) {
 			if g != "" && !seen[g] {
 				findings = append(findings, finding(p.Name, "no %s row is read for %s, so its funds "+
@@ -176,7 +172,7 @@ func printedGroupRows(s *Subject) (printed, rounded map[groupCell]int64, finding
 				for _, c := range cells {
 					if group, ok := totals[c.Row.Label]; ok && c.Category() != "" {
 						if d, ok := c.Row.SubtotalDeltaAt(part, c.ColumnIndex); ok {
-							rounded[groupCell{c.Column.FiscalYear, string(rule.Basis), group, c.Category()}] += int64(d)
+							rounded[groupCell{c.Column.FiscalYear, string(c.Column.EffectiveBasis(rule)), group, c.Category()}] += int64(d)
 						}
 						continue
 					}
@@ -188,7 +184,7 @@ func printedGroupRows(s *Subject) (printed, rounded map[groupCell]int64, finding
 						// The CIP funds' row: residue, held to p222 instead.
 						continue
 					}
-					k := groupCell{c.Column.FiscalYear, string(rule.Basis), group, c.Category()}
+					k := groupCell{c.Column.FiscalYear, string(c.Column.EffectiveBasis(rule)), group, c.Category()}
 					if _, dup := printed[k]; dup {
 						findings = append(findings, finding(rule.ID, "%s is printed twice", k))
 						continue

@@ -24,6 +24,10 @@ type Restatement struct {
 	// At is the level both sides are summed to.
 	At    Level
 	Lines []RestatedLine
+	// Unrestated are the residue's lines Against prints no counterpart of. A
+	// residue fact on neither a restated line nor one of these refuses the
+	// hold, so a line the residue adds is not left out unseen.
+	Unrestated []Line
 	// Reason is why the residue is the Against cut's money, about the pages.
 	Reason string
 }
@@ -50,6 +54,14 @@ func BudgetBookRestatements() []Restatement {
 			// print its opening and closing balances.
 			{Plus: []Line{LineBeginning}, Minus: []Line{LineEnding},
 				Against: Line{mapping.KindFundBalance, "fund-balance/use-for-cip"}},
+		},
+		// p222 prints what a CIP fund receives and the balance it draws; what
+		// it spends and transfers on is not on p222 fund by fund.
+		Unrestated: []Line{
+			{mapping.KindExpenditure, "expenses"},
+			{mapping.KindTransferOut, "transfers/out"},
+			{mapping.KindTransferOut, "transfers/out-to-cip"},
+			{mapping.KindFundBalance, CategoryFundBalanceReserveIncrease},
 		},
 		Reason: cipFundsBlockResidue,
 	}}
@@ -108,6 +120,19 @@ func HoldRestatement(facts []fact.Fact, cuts []Cut, r Restatement) ([]Comparison
 	}
 	if against.Name == "" {
 		return nil, fmt.Errorf("restatement %q: %q is not a declared cut", r.Name, r.Against)
+	}
+	for i := range facts {
+		f := &facts[i]
+		if f.Scope != r.Scope || !slices.Contains(r.Rules, f.RuleID) || onLine(r.Unrestated, f) {
+			continue
+		}
+		restated := slices.ContainsFunc(r.Lines, func(l RestatedLine) bool {
+			return onLine(l.Plus, f) || onLine(l.Minus, f)
+		})
+		if !restated {
+			return nil, fmt.Errorf("restatement %q: fact %s (%s %s) is on no line it restates or "+
+				"declares unrestated, so the hold would leave it out unseen", r.Name, f.ID, f.Kind, f.Category)
+		}
 	}
 	var out []Comparison
 	for _, l := range r.Lines {

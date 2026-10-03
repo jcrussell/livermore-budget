@@ -60,6 +60,15 @@ func TestTheCIPFundsBlockIsHeldToP222LineByLine(t *testing.T) {
 	if n < 0 {
 		t.Fatal("no non-zero FY2026 transfer in in the CIP block to move")
 	}
+	t.Run("a residue line neither restated nor declared unrestated", func(t *testing.T) {
+		r := rs[0]
+		r.Unrestated = r.Unrestated[1:]
+		if _, err := structure.HoldRestatement(facts, cuts, r); err == nil ||
+			!strings.Contains(err.Error(), "is on no line it restates or declares unrestated") {
+			t.Errorf("HoldRestatement with the expenses line undeclared = %v, want refused", err)
+		}
+	})
+
 	got := hold(moved)
 	if len(got) != 1 || !strings.Contains(got[0], "fund="+strconv.Itoa(n)) {
 		t.Errorf("moving fund %d's transfer in by a dollar gave %q, want one finding naming it", n, got)

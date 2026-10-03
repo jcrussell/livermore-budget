@@ -1116,6 +1116,11 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 				v.Steps[0].Sankey.Side, v.Steps[0].Sankey.Tiers = export.SideBoth, []int{0, 2}
 			})},
 			"so the opened tier must be neither end"},
+		{"a both-sided step drawn backwards", []export.View{ok,
+			chartView(func(v *export.View) {
+				v.Steps[0].Sankey.Side, v.Steps[0].Sankey.Tiers = export.SideBoth, []int{3, 2, 0}
+			})},
+			"with lower tiers before it and higher after"},
 		{"a both-sided step widening", []export.View{ok,
 			chartView(func(v *export.View) {
 				v.Steps[0].Sankey.Side, v.Steps[0].Sankey.Tiers = export.SideBoth, []int{0, 2, 3, 4}

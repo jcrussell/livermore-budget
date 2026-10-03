@@ -281,7 +281,8 @@ one fund that prints a reserve increase, the General Fund. Those ends are GROSS
 where the spine is net: pp.66-67 net each fund group's change in working capital
 into one signed row, and pp.186-209 print each fund's own balances, so the funds
 an end opens into sum to more than the spine's mark (the document's
-`each-fund-change-is-gross` caveat carries both sums). `transfers/in` and
+`each-fund-change-is-gross` caveat carries the gross sum and the group-netted one;
+the spine's mark is pp.66-67's own figure). `transfers/in` and
 `fund-balance/draw` open a SOURCE, and `DrillStep.Side` says so rather than
 letting a client infer it from the tier numbers.
 

@@ -2120,9 +2120,7 @@ func firstDifferingColumn(a, b []Column) (idx int, comparable bool) {
 func effectiveColumns(rule *Rule, p *Part) []Column {
 	out := make([]Column, len(p.Columns))
 	for i, c := range p.Columns {
-		if c.Basis == "" {
-			c.Basis = rule.Basis
-		}
+		c.Basis = c.EffectiveBasis(rule)
 		if c.Category != "" {
 			c.Kind = c.EffectiveKind(rule)
 		}

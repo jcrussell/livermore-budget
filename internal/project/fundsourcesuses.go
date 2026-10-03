@@ -442,10 +442,11 @@ func fundSourcesUsesCaveats(links []Link, nodes []Node) []Caveat {
 			Text: fmt.Sprintf("Budget Book pp.186-209 print each fund's beginning and ending "+
 				"balance, and this chart draws the difference fund by fund: a fund whose balance "+
 				"falls draws on it, and one whose balance rises contributes to it. Summed here, "+
-				"%s draw %s and %s contribute %s. Netted within each fund group, as pp.66-67 "+
-				"print a group's CHANGE IN WORKING CAPITAL as one signed row, the same changes "+
-				"come to draws of %s and contributions of %s, which is why the citywide chart's "+
-				"Fund Balance Draw and Contribution are smaller than these.",
+				"%s draw %s and %s contribute %s. Netted within each fund group, the same "+
+				"changes come to draws of %s and contributions of %s. pp.66-67, in the years "+
+				"they print, show a group's CHANGE IN WORKING CAPITAL as one signed row, so the "+
+				"citywide chart's Fund Balance Draw and Contribution are net in this way and read "+
+				"from pp.66-67's own figures, not from these.",
 				counted(drawn, "fund"), amount.Cents(draws).Dollars(),
 				counted(contributed, "fund"), amount.Cents(contributions).Dollars(),
 				amount.Cents(netDraws).Dollars(), amount.Cents(netContributions).Dollars()),

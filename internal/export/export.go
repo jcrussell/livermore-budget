@@ -533,10 +533,21 @@ const SideSource = "source"
 // screen, and this takes it from the document.
 const SideBoth = "both"
 
-// interior reports whether tier is drawn with a column on each side of it.
+// interior reports whether tier is drawn with a column on each side of it,
+// every column before it a lower tier and every column after a higher one: a
+// link runs from a lower tier to a higher, so the left half is what flows in
+// and the right half what flows out.
 func interior(tiers []int, tier int) bool {
 	i := slices.Index(tiers, tier)
-	return i > 0 && i < len(tiers)-1
+	if i <= 0 || i >= len(tiers)-1 {
+		return false
+	}
+	for j, t := range tiers {
+		if (j < i && t >= tier) || (j > i && t <= tier) {
+			return false
+		}
+	}
+	return true
 }
 
 // drawnTiers is the column order a chart of this form draws, or nil for a
@@ -1129,7 +1140,8 @@ func (v View) validateSankeyStep(i int, s DrillStep, parents []parentChart, doc 
 		return fmt.Errorf(
 			"view %q's step %d opens tier %d on both sides and draws tiers %v; a node drawn "+
 				"between what enters it and what leaves it is a column with one on each side, "+
-				"so the opened tier must be neither end", v.Path, i, s.From, h.Tiers)
+				"so the opened tier must be neither end, with lower tiers before it and higher "+
+				"after", v.Path, i, s.From, h.Tiers)
 	case len(h.Keep) > 0 && h.Side != "":
 		return fmt.Errorf(
 			"view %q's step %d keeps tier(s) %v and opens side %q; a window's opened node "+

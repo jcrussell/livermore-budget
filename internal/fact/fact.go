@@ -317,12 +317,7 @@ func ColumnPath(c mapping.Column, scope string) string {
 func FromValues(f *mapping.File, rule *mapping.Rule, values []mapping.Value) ([]Fact, error) {
 	out := make([]Fact, 0, len(values))
 	for _, v := range values {
-		basis := rule.Basis
-		if v.Column.Basis != "" {
-			// A four-column revenue schedule carries actual, revised and two
-			// adopted years side by side, so the column overrides the rule.
-			basis = v.Column.Basis
-		}
+		basis := v.Column.EffectiveBasis(rule)
 		sign := v.Row.Sign
 		if sign == "" {
 			sign = mapping.SignPositive

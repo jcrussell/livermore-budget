@@ -16013,7 +16013,7 @@
     {
      "id": "each-fund-change-is-gross",
      "summary": "Each fund's draw on or contribution to its balance is its own, so these sum to more than a fund group's net change.",
-     "text": "Budget Book pp.186-209 print each fund's beginning and ending balance, and this chart draws the difference fund by fund: a fund whose balance falls draws on it, and one whose balance rises contributes to it. Summed here, 36 funds draw $23,235,743 and 25 funds contribute $26,323,176. Netted within each fund group, as pp.66-67 print a group's CHANGE IN WORKING CAPITAL as one signed row, the same changes come to draws of $9,681,900 and contributions of $12,769,333, which is why the citywide chart's Fund Balance Draw and Contribution are smaller than these.",
+     "text": "Budget Book pp.186-209 print each fund's beginning and ending balance, and this chart draws the difference fund by fund: a fund whose balance falls draws on it, and one whose balance rises contributes to it. Summed here, 36 funds draw $23,235,743 and 25 funds contribute $26,323,176. Netted within each fund group, the same changes come to draws of $9,681,900 and contributions of $12,769,333. pp.66-67, in the years they print, show a group's CHANGE IN WORKING CAPITAL as one signed row, so the citywide chart's Fund Balance Draw and Contribution are net in this way and read from pp.66-67's own figures, not from these.",
      "applies_to": [
       "fund-balance/draw",
       "fund-balance/contribution"

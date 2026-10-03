@@ -381,8 +381,10 @@ const fundingNoSpineColumn = "a published column of pp.85-125's Department Fundi
 	"document drawing that block, and two of the four columns would be half a schedule with " +
 	"nothing saying which half. caveats.html lists its caveats but does not render it"
 
-// The fund-balance steps' tier-3 caps, measured as the fund-group step's
-// are: site/drill.test.mjs pins what each leaves under a pixel.
+// The fund-balance steps' tier-3 caps, the fund-group step's fund-column cap.
+// site/drill.test.mjs holds each capped column to at most cap+1 marks; what a
+// cap leaves under a pixel on these rungs is printed by that test and pinned
+// by none.
 const (
 	balanceDrawCap         = 8
 	balanceContributionCap = 8

@@ -1239,6 +1239,16 @@ func (c Column) EffectiveKind(rule *Rule) Kind {
 	return rule.Kind
 }
 
+// EffectiveBasis is the basis this column's facts are published on: its own
+// where it declares one -- a four-column schedule carries actual, revised and
+// two adopted years side by side -- the rule's otherwise.
+func (c Column) EffectiveBasis(rule *Rule) Basis {
+	if c.Basis != "" {
+		return c.Basis
+	}
+	return rule.Basis
+}
+
 // EffectiveQuantity is the grammar this row's cell in c must satisfy: the
 // row's override where it declares one, the column's otherwise, amounts by
 // default. Only a QuantityAmount cell can become a fact.
