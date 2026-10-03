@@ -61,6 +61,13 @@ export const CHART_CUSHION = 56;
 export const SIDE_SOURCE = "source";
 
 /**
+ * DrillStep.Side for a step drawing the opened node between what its document
+ * sends into it and what it sends out: the TARGET of one half and the SOURCE
+ * of the other, both off the step's own document.
+ */
+export const SIDE_BOTH = "both";
+
+/**
  * Whether a window step keeps its flank at the LEFT end of its columns: the
  * kept tier is drawn before the opened one. Declared by position, as
  * validateSteps holds it, so the two halves' sides are read off one list.
@@ -84,21 +91,62 @@ export function freshTiers(step) {
 }
 
 /**
+ * The halves a step draws out of its own document, each a run of columns and
+ * whether the opened node is the end its ribbons come FROM: one for a window
+ * (the kept flank is not the document's) and for a source or target step, and
+ * two for a step opening both sides, which meet on the opened column. The one
+ * answer freshHalf, decomposable and SANKEY.shape read.
+ * @param {FiscDrillStep} step
+ * @param {number[]} [tiers] the fresh columns on screen; the declared ones by default
+ * @returns {{tiers: number[], nearIsSource: boolean}[]}
+ */
+export function freshHalves(step, tiers = freshTiers(step)) {
+  if (step.sankey.keep && step.sankey.keep.length) return [{ tiers, nearIsSource: flankIsLeft(step) }];
+  if (step.sankey.side !== SIDE_BOTH) return [{ tiers, nearIsSource: step.sankey.side === SIDE_SOURCE }];
+  const at = tiers.indexOf(step.from);
+  if (at <= 0 || at >= tiers.length - 1) {
+    throw new Error("cannot draw step " + step.key + ": it opens tier " + step.from + " on both sides " +
+      "and the columns on screen are " + tiers.join(", ") + ", which put nothing on one side of it");
+  }
+  return [
+    { tiers: tiers.slice(0, at + 1), nearIsSource: false },
+    { tiers: tiers.slice(at), nearIsSource: true },
+  ];
+}
+
+/**
+ * Two charts joined on the nodes they share: the first's nodes in its order,
+ * the second's it lacks after them, and both sets of ribbons. The second is
+ * the document the result is OF. A node both hold is drawn once, so the
+ * opened node a window or a two-sided step meets on is one mark.
+ * @param {FiscProjection} first
+ * @param {FiscProjection} second
+ * @returns {FiscProjection}
+ */
+export function splice(first, second) {
+  const have = new Set(first.nodes.map((n) => n.id));
+  return Object.assign({}, second, {
+    nodes: first.nodes.concat(second.nodes.filter((n) => !have.has(n.id))),
+    links: first.links.concat(second.links),
+  });
+}
+
+/**
  * What a step's document draws for one node at the tiers the step declares,
- * unfolded: the reach the chart is drawn with (reaching), asked at every
- * declared column rather than at the columns a budget draws. The answer to
- * whether a node opens (decomposable) and to whether its residual's leaving
- * legs exist (carryResidual), which must not move with the viewport.
+ * unfolded, every half spliced: the reach the chart is drawn with (reaching),
+ * asked at every declared column rather than at the columns a budget draws.
+ * The answer to whether a node opens (decomposable) and to whether its
+ * residual's leaving legs exist (carryResidual), which must not move with the
+ * viewport.
  * @param {FiscDrillStep} step
  * @param {FiscProjection} doc
  * @param {string} id
  * @returns {FiscProjection}
  */
 export function freshHalf(step, doc, id) {
-  const window = Boolean(step.sankey.keep && step.sankey.keep.length);
-  const tiers = freshTiers(step);
-  const nearIsSource = window ? flankIsLeft(step) : step.sankey.side === SIDE_SOURCE;
-  return filterLinks(doc, id, tiers, reaching(doc, id, nearIsSource, tiers));
+  return freshHalves(step)
+    .map((h) => filterLinks(doc, id, h.tiers, reaching(doc, id, h.nearIsSource, h.tiers)))
+    .reduce(splice);
 }
 
 /**
@@ -179,7 +227,8 @@ export function filterLinks(doc, id, tiers, holds) {
 
 /**
  * One filtered, capped and folded chart of a node: a whole rung on a step that
- * keeps no flank, and one half of a window on a step that does.
+ * keeps no flank and opens one side, and one half of a window or of a step
+ * opening both sides.
  *
  * THE ORDER IS filter, cap, fold, AND IT IS NOT INTERCHANGEABLE: the cap must
  * rank sizes inside the opened node, and the fold is what merges the cap's
@@ -280,8 +329,7 @@ export function windowFor(onScreen, stepDoc, rung, tiers) {
   // land in a column of the other. With the flank on the left the opened node
   // is the TARGET of the kept half and the SOURCE of the fresh one; on the
   // right, the reverse.
-  const keptLeft = flankIsLeft(step);
-  const freshOnScreen = tiers.filter((t) => !keep.has(t));
+  const [half] = freshHalves(step, tiers.filter((t) => !keep.has(t)));
   const kept = keptFlank(onScreen, rung);
   // A RESIDUAL OR A GAP ON THE FLANK IS REFUSED: it is a mark this page drew
   // and no schedule prints, so the fresh half never computed its figure and
@@ -292,7 +340,7 @@ export function windowFor(onScreen, stepDoc, rung, tiers) {
       ", a mark this page drew and no schedule prints, so the window would show a figure " +
       "the document it draws never computed");
   }
-  const fresh = sideOf(stepDoc, rung, freshOnScreen, keptLeft);
+  const fresh = sideOf(stepDoc, rung, half.tiers, half.nearIsSource);
   // THE KEPT CENTRE MUST HOLD THE OPENED NODE: a window whose flank sends
   // nothing into it is refused rather than drawn as its fresh half alone.
   if (!kept.nodes.some((n) => n.id === rung.id)) {
@@ -303,26 +351,13 @@ export function windowFor(onScreen, stepDoc, rung, tiers) {
   // carried_from IS SET WHERE ABSENT AND NEVER CLEARED: a node keeps the stem
   // whose figure and caveats it carries, however many rungs down.
   const stem = onScreen.projection || "";
-  /** @type {Set<string>} */
-  const have = new Set();
-  /** @type {FiscNode[]} */
-  const nodes = [];
-  for (const n of kept.nodes) {
-    have.add(n.id);
-    nodes.push(n.id === rung.id || n.carried_from
+  const carried = Object.assign({}, kept, {
+    nodes: kept.nodes.map((n) => (n.id === rung.id || n.carried_from
       ? n
-      : Object.assign({}, n, { carried_from: stem }));
-  }
-  for (const n of fresh.nodes) {
-    if (have.has(n.id)) continue;
-    have.add(n.id);
-    nodes.push(n);
-  }
-  // The spliced document is the step document's; the kept flank is a guest.
-  return Object.assign({}, fresh, {
-    nodes: nodes,
-    links: kept.links.concat(fresh.links),
+      : Object.assign({}, n, { carried_from: stem }))),
   });
+  // The spliced document is the step document's; the kept flank is a guest.
+  return splice(carried, fresh);
 }
 
 /**
@@ -1179,7 +1214,7 @@ export const SANKEY = Object.freeze({
 
   /**
    * Fits a document to the columns on screen. On the overview, the fold and
-   * the reductions flipped. On a rung, the window or the side, then THE
+   * the reductions flipped. On a rung, the window or the side or sides, then THE
    * MARKS AFTER THE CAP AND THE FOLD, which must not touch them, in this
    * order: the amount a node prints net of reductions is read off the fresh
    * ribbons before any mark is added, then the residual, then the gap over
@@ -1188,9 +1223,11 @@ export const SANKEY = Object.freeze({
   shape(doc, rung, from, tiers) {
     if (!rung) return markContra(foldDocument(doc, tiers));
     const step = rung.step;
+    // A step opening both sides draws each half of its document as a side of
+    // its own, spliced on the opened node as a window is.
     const drawn = (step.sankey.keep && step.sankey.keep.length)
       ? windowFor(rung.chart, doc, rung, tiers)
-      : sideOf(doc, rung, tiers, step.sankey.side === SIDE_SOURCE);
+      : freshHalves(step, tiers).map((h) => sideOf(doc, rung, h.tiers, h.nearIsSource)).reduce(splice);
     return markContra(markGap(carryResidual(markAmounts(drawn, rung), from, rung, tiers), from, rung));
   },
 

@@ -263,7 +263,7 @@ for (const year of YEARS) {
   describe(`${year.label}: the category windows`, () => {
     const PROPERTY = "revenue/taxes/property";
 
-    test(`${year.label} category: every revenue category opens from the spine, and of the two tier-0 flow ends only transfers/in does`, async (t) => {
+    test(`${year.label} category: every revenue category opens from the spine, and so do both tier-0 flow ends`, async (t) => {
       const { app } = await onYear(year.stem);
       const categories = app.projection.nodes
         .filter((n) => n.tier === 0 && n.role === "revenue_source").map((n) => n.id);
@@ -280,7 +280,7 @@ for (const year of YEARS) {
       assert.ok(categories.length > 0);
       assert.equal(opensAt0.categories, categories.length);
       assert.equal(opensAt0.transfersIn, true, "transfers/in does not open");
-      assert.equal(opensAt0.draw, false, "fund-balance/draw opens");
+      assert.equal(opensAt0.draw, true, "fund-balance/draw does not open");
       assert.equal(opensAt0.general, true);
       assert.equal(underGroup, false, "under an opened group the category opens");
     });
@@ -400,12 +400,14 @@ for (const year of YEARS) {
 
   describe(`${year.label}: the object-category windows`, () => {
     const ENDS = ["fund-balance/contribution", "fund-balance/reserve-increase"];
+    /** The steps that open them, which are not object-category's. */
+    const BALANCE_STEPS = ["balance-contribution", "reserve"];
 
     /** The spine's object categories: its tier-5 nodes in the role the step opens. */
     const objectCategories = (app, config) => app.docAt(0).nodes
       .filter((n) => n.tier === 5 && n.role === stepByKey(config, "object-category").role).map((n) => n.id).sort();
 
-    test(`${year.label} object: the spine's four object categories and its transfers out open, and its two fund-balance ends do not`, async (t) => {
+    test(`${year.label} object: the spine's four object categories, its transfers out and its two fund-balance ends open, each into its own step`, async (t) => {
       const { app, config } = await onYear(year.stem);
       const ids = objectCategories(app, config);
       const out = ["transfers/out"];
@@ -414,8 +416,9 @@ for (const year of YEARS) {
         `${ids.filter((id) => offers(app, id)).length} of ${ids.length} object categories open`);
       assert.equal(ids.length, 4);
       assert.equal(at5.length, ids.length + out.length + ENDS.length);
-      for (const id of ids.concat(out)) assert.equal(offers(app, id), true, id + " does not open");
-      for (const id of ENDS) assert.equal(offers(app, id), false, id + " opens");
+      for (const id of ids.concat(out, ENDS)) assert.equal(offers(app, id), true, id + " does not open");
+      const into = ENDS.map((id) => app.stepFor(app.projection.nodes.find((n) => n.id === id)).key);
+      assert.deepEqual(into, BALANCE_STEPS);
     });
 
     test(`${year.label} object: all four categories draw as three columns -- the groups that fund it, the category, the divisions that spend it`, async (t) => {
@@ -436,6 +439,105 @@ for (const year of YEARS) {
           id + " draws a division carrying a fund group");
       }
       t.diagnostic(`${year.label} object: ${shapes.join("; ")}`);
+    });
+  });
+}
+
+// THE FUND-BALANCE RUNGS: the spine's three fund-balance ends open into
+// pp.186-209's funds, and each fund there into its own sources and uses, drawn
+// on both sides of it out of the one document. What each fund draws is read
+// off the unfolded schedule in the pinned column, never off app.js.
+for (const year of YEARS) {
+  describe(`${year.label}: the fund-balance rungs`, () => {
+    const OPENERS = [
+      ["balance-draw", "fund-balance/draw"],
+      ["balance-contribution", "fund-balance/contribution"],
+      ["reserve", "fund-balance/reserve-increase"],
+    ];
+
+    test(`${year.label} balances: every fund an end reaches opens between its sources and its uses, which are equal and are the document's own lines`, async (t) => {
+      const { app, config } = await onYear(year.stem);
+      const step = stepByKey(config, "fund-balance");
+      const doc = schedule(app, stepByKey(config, "balance-draw").projection);
+      const spine = app.docAt(0);
+      const spineSum = (end, side) => spine.links.filter((l) => l[side] === end).reduce((a, l) => a + l.value_cents, 0);
+      const docSum = (end, side) => doc.links.filter((l) => l[side] === end).reduce((a, l) => a + l.value_cents, 0);
+      const wrong = [];
+      const seen = [];
+      for (const [key, end] of OPENERS) {
+        app.drillUp(0);
+        await settle();
+        await opened(app, end);
+        assert.deepEqual(placedTiers(app), stepByKey(config, key).sankey.tiers, end);
+        expandAll(app);
+        const funds = app.projection.nodes.filter((n) => n.tier === 3).map((n) => n.id).sort();
+        // EVERY FUND THE DOCUMENT CONNECTS TO THE END, drawn out whole.
+        assert.deepEqual(funds, [...new Set(doc.links.filter((l) => l.source === end || l.target === end)
+          .map((l) => (l.source === end ? l.target : l.source)))].sort(), end);
+        for (const fund of funds) {
+          app.drillUp(1);
+          await settle();
+          expandAll(app);
+          await opened(app, fund);
+          seen.push(`${end} > ${fund}`);
+          const d = app.projection;
+          const into = d.links.filter((l) => l.target === fund).reduce((a, l) => a + l.value_cents, 0);
+          const out = d.links.filter((l) => l.source === fund).reduce((a, l) => a + l.value_cents, 0);
+          const drawnFacts = [...new Set(d.links.flatMap((l) => l.fact_ids))].sort();
+          const docFacts = [...new Set(doc.links.filter((l) => l.source === fund || l.target === fund)
+            .flatMap((l) => l.fact_ids))].sort();
+          if (into !== out) wrong.push(`${end} > ${fund}: ${into} in, ${out} out`);
+          if (drawnFacts.join() !== docFacts.join()) wrong.push(`${end} > ${fund}: cites ${drawnFacts.length} fact(s), the document ${docFacts.length}`);
+          if (d.nodes.filter((n) => n.id === fund).length !== 1) wrong.push(`${end} > ${fund}: drawn ${d.nodes.filter((n) => n.id === fund).length} time(s)`);
+          if (placedTiers(app).join() !== step.sankey.tiers.join()) wrong.push(`${end} > ${fund}: columns ${placedTiers(app)}`);
+          if (!d.links.some((l) => l.target === fund) || !d.links.some((l) => l.source === fund)) wrong.push(`${end} > ${fund}: one side is empty`);
+        }
+      }
+      // THE MEASUREMENT, NOT A PIN: the funds' own changes, gross, beside the
+      // spine's net figures they were opened from.
+      t.diagnostic(`${year.label} balances: ${seen.length} fund rung(s) opened; per-fund draws sum to ` +
+        `${docSum("fund-balance/draw", "source")} cents against the spine's ${spineSum("fund-balance/draw", "source")}, ` +
+        `contributions to ${docSum("fund-balance/contribution", "target")} against ${spineSum("fund-balance/contribution", "target")}, ` +
+        `reserve increases to ${docSum("fund-balance/reserve-increase", "target")} against ${spineSum("fund-balance/reserve-increase", "target")}`);
+      assert.ok(seen.length > 0);
+      assert.deepEqual(wrong, []);
+    });
+
+    test(`${year.label} balances: a fund's balances are shown with the pages that print them`, async (t) => {
+      const { app, document, config } = await onYear(year.stem);
+      const doc = schedule(app, stepByKey(config, "reserve").projection);
+      await opened(app, "fund-balance/reserve-increase", "fund/100");
+      const node = doc.nodes.find((n) => n.id === "fund/100");
+      assert.ok(node && node.balances && node.balances.beginning && node.balances.ending, "fund/100 prints no balances");
+      const chart = document.getElementById("chart");
+      const m = [...chart.querySelectorAll("g.node")].find((g) => g.__data__ && g.__data__.id === "fund/100");
+      assert.ok(m, "fund/100 is not drawn");
+      app.showTip({ target: chart, clientX: 0, clientY: 0 }, m.__data__);
+      const tip = document.getElementById("tooltip").textContent;
+      app.pin(m.__data__);
+      const panel = document.getElementById("detail");
+      const said = [];
+      for (const which of ["beginning", "ending"]) {
+        const b = node.balances[which];
+        const words = app.say("balance_" + which, { figure: app.fmtSigned(b.value_cents) });
+        said.push(words);
+        assert.ok(tip.includes(words), `the tooltip lacks "${words}": ${tip}`);
+        // CITED AT THE BALANCE ITSELF, not by the document's sources below it,
+        // which name the same pages and would hide a balance citing none.
+        const own = [...panel.querySelectorAll("p")].find((e) => e.textContent.startsWith(words));
+        assert.ok(own, `the panel lacks "${words}"`);
+        assert.ok(own.textContent.includes(b.fact_id), `"${words}" does not cite ${b.fact_id}`);
+        const hrefs = [...own.querySelectorAll("a")].map((e) => e.getAttribute("href"));
+        const want = app.citations(b.locators).map((c) => c.href);
+        assert.ok(want.length > 0);
+        assert.deepEqual(hrefs, want, `"${words}" links other pages than the balance's`);
+      }
+      // A NODE THAT CARRIES NO BALANCES SAYS NONE.
+      const end = [...chart.querySelectorAll("g.node")].find((g) => g.__data__ && g.__data__.id !== "fund/100");
+      app.pin(end.__data__);
+      const bare = document.getElementById("detail").textContent;
+      t.diagnostic(`${year.label} balances: fund/100 says ${JSON.stringify(said)}; ${end.__data__.id} says neither`);
+      for (const w of said) assert.ok(!bare.includes(w), `${end.__data__.id} says "${w}"`);
     });
   });
 }
@@ -767,13 +869,17 @@ describe("the refusal a drill can still meet", () => {
 
   // THE GESTURES ASK drillable FIRST, so a reader meets these two only when
   // the chart changed under the gesture; the page's own callers meet them by
-  // name.
-  for (const [what, id, names] of [
-    ["an id the chart does not draw", "fund/999", "fund/999"],
-    ["a drawn mark no step opens", "fund-balance/draw", "Fund Balance Draw"],
+  // name. Every mark the spine draws opens, so the closed one is on the
+  // transfers rung, where nothing does.
+  for (const [what, path, id, names] of [
+    ["an id the chart does not draw", [], "fund/999", "fund/999"],
+    ["a drawn mark no step opens", ["transfers/in"], "fund/100", "General Fund"],
   ]) {
     test(`the drill refuses ${what}, in words that name it, and leaves the chart alone`, async (t) => {
       const { app, document } = await bootedApp({});
+      await opened(app, ...path);
+      const depth = app.drilled.length;
+      const top = topOf(app);
       const drawn = app.projection.nodes.some((n) => n.id === id);
       assert.equal(drawn, id !== "fund/999");
       if (drawn) assert.equal(app.drillable(app.projection.nodes.find((n) => n.id === id)), false);
@@ -782,15 +888,17 @@ describe("the refusal a drill can still meet", () => {
       const outcome = await app.drillDown(id);
       await settle();
       const banners = refusals(document).map((b) => b.textContent);
-      t.diagnostic(`drillDown(${id}) came to "${outcome}" with ${banners.length} banner(s)` +
+      t.diagnostic(`drillDown(${id}) at depth ${depth} came to "${outcome}" with ${banners.length} banner(s)` +
         `${banners.length ? `, reading "${banners[0]}"` : ""}`);
       assert.equal(outcome, "failed");
-      assert.equal(app.drilled.length, 0);
-      assert.equal(topOf(app), "");
+      assert.equal(app.drilled.length, depth);
+      assert.equal(topOf(app), top);
       assert.equal(banners.length, 1);
       assert.ok(banners[0].includes(names), banners[0]);
       assert.deepEqual(words(app, document), before);
       // AND THE BANNER DOES NOT OUTLIVE THE NEXT OPEN THAT DRAWS.
+      app.drillUp(0);
+      await settle();
       await opened(app, "fund-group/general");
       assert.equal(refusals(document).length, 0);
     });

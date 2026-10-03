@@ -474,7 +474,9 @@
         "gap_lead_over",
         "gap_rationale",
         "gap_note",
-        "contra_orphan"
+        "contra_orphan",
+        "balance_beginning",
+        "balance_ending"
       ],
       "additionalProperties": false,
       "properties": {
@@ -670,6 +672,16 @@
           "type": "string",
           "minLength": 1,
           "description": "The sentence a ribbon carries when a fold nets it negative with no printed reduction behind it; project.ContraOrphan."
+        },
+        "balance_beginning": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A fund's printed beginning balance, column.schema.json's balances.beginning: {figure}, formatted."
+        },
+        "balance_ending": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A fund's printed ending balance, column.schema.json's balances.ending: {figure}, formatted."
         }
       }
     }

@@ -24,7 +24,7 @@
 
 import * as core from "./core.js";
 import {
-  SCHEMA_VERSION, say, kindLabel, money, fmt, fmtSigned, fmtShortSigned, joinOr, el, maybeEl, cssVar, h, link, citations, ledeOf, PARTITION_NOTE, isFundGroup, scheduleOf, withinNode, scoped, foldTarget, regroupLocators, FOLD_REFUSES_MIXED, capColumn, tailFigure, isAggregate, residualID, isResidual, gapID, isGap, tableRows,
+  SCHEMA_VERSION, say, kindLabel, money, fmt, fmtSigned, fmtShortSigned, joinOr, el, maybeEl, cssVar, h, link, citations, balancesOf, ledeOf, PARTITION_NOTE, isFundGroup, scheduleOf, withinNode, scoped, foldTarget, regroupLocators, FOLD_REFUSES_MIXED, capColumn, tailFigure, isAggregate, residualID, isResidual, gapID, isGap, tableRows,
 } from "./core.js";
 import * as sankey from "./sankey.js";
 import {
@@ -1591,6 +1591,7 @@ export function showTip(event, d) {
     tip.append(meta);
     const flows = residualFlows(n);
     if (flows) tip.append(h("div", "tip-meta", flows));
+    for (const b of balancesOf(n)) tip.append(h("div", "tip-meta", b.words));
     if (n.rationale) tip.append(h("div", "tip-meta", n.rationale));
     const note = contraNote(n);
     if (note) tip.append(h("div", "tip-meta", note));
@@ -1666,6 +1667,17 @@ export function pin(d) {
     panel.append(chips);
     const flows = residualFlows(n);
     if (flows) panel.append(h("p", "subtle", flows));
+    // A PRINTED BALANCE IS CITED AT ITSELF, as a link is: its fact and its
+    // pages, not the document's.
+    for (const b of balancesOf(n)) {
+      const said = h("p", "subtle", b.words + " ");
+      said.append(h("span", "facts", "Fact: " + b.fact_id));
+      for (const c of citations(b.locators)) {
+        said.append(document.createTextNode(" "));
+        said.append(link(c.label, c.href));
+      }
+      panel.append(said);
+    }
     if (n.rationale) panel.append(h("p", "why", n.rationale));
     if (n.source_note) panel.append(h("p", "subtle", n.source_note));
     const note = contraNote(n);

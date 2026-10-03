@@ -253,8 +253,8 @@ each states its own below rather than inheriting the spine's.
 which is the whole of its 25. Tiers 3 and 4 are empty, because pp.66-67 publish
 neither a fund nor a department axis.
 
-**All three of the spine's drawn columns open, and every rung but one is a
-WINDOW** — the node the reader clicked in the middle, with three columns the
+**All three of the spine's drawn columns open, every node in them opens, and
+every rung opened from a container is a WINDOW** — the node the reader clicked in the middle, with three columns the
 narrowest such window; what each rung draws at what width is stated in
 `docs/general-fund-drilldown-contract.md`. The steps form a tree, not a chain:
 the six tier-2 fund groups
@@ -268,21 +268,34 @@ itself, and the divisions that spend it. From an opened fund group the General
 Fund opens into its divisions and a division into its object categories, three
 rungs deep.
 
-**`transfers/in` opens too, and it is the one rung that is not a window.** It is
-a flow END rather than a container on the spine, so it has no parts to put a
-window around; the step keeps no flank and draws `transfers-by-fund`'s two
-columns alone — the funds that pay each transfer on the left, the funds that
-receive them on the right; the only flank it could keep is tier 2, which its own
-left-hand column already draws. It is also the only rung that opens a SOURCE, and
-`DrillStep.Side` says so rather than letting a client infer it from the tier
-numbers.
+**The five flow ENDS open too, and none of their rungs is a window.** A flow end
+is not a container on the spine, so it has no parts to put a window around; each
+step keeps no flank and draws its own document's columns alone. `transfers/in`
+opens into `transfers-by-fund` — the funds that pay each transfer on the left,
+the funds that receive them on the right — and `transfers/out` into
+`transfers-out`, p76's paying legs and p222's transfers to the CIP. The three
+fund-balance ends open into `fund-sources-uses`, pp.186-209 fund by fund:
+`fund-balance/draw` into the funds whose balance falls, `fund-balance/contribution`
+into the funds whose balance rises, and `fund-balance/reserve-increase` into the
+one fund that prints a reserve increase, the General Fund. Those ends are GROSS
+where the spine is net: pp.66-67 net each fund group's change in working capital
+into one signed row, and pp.186-209 print each fund's own balances, so the funds
+an end opens into sum to more than the spine's mark (the document's
+`each-fund-change-is-gross` caveat carries both sums). `transfers/in` and
+`fund-balance/draw` open a SOURCE, and `DrillStep.Side` says so rather than
+letting a client infer it from the tier numbers.
 
-The remaining tier-0 node and the three tier-5 nodes that are flow ENDS rather
-than containers do not open, and the `Role` on each step is what closes them. The
-sixty funds pp.167-170 do not decompose are closed to the DIVISION step by a
-`Role` in the same way and opened by a step of their own into pp.85-125's
+**A fund on a fund-balance rung opens between its two sides.** Its step draws
+the same document again, the fund's sources on the left and its uses on the
+right, with `Side` `both`: the opened node is the TARGET of one half and the
+SOURCE of the other, both read off pp.186-209, so nothing of the chart above is
+kept at its share of the fund. Every rung of it ends the drill.
+
+Every step names the nodes it opens by `Role`, so steps sharing a tier partition
+it. The sixty funds pp.167-170 do not decompose are closed to the DIVISION step
+by a `Role` in the same way and opened by a step of their own into pp.85-125's
 departments; which of them that step can open is read off each year's document
-by the client (`decomposable` in `site/app.js`), stated in
+by the client (`decomposable` in `site/sankey.js`), stated in
 `docs/general-fund-drilldown-contract.md`. Depth 0 is this document drawn whole.
 
 Those counts are per TIER and include the flow endpoints, which is why they are

@@ -513,6 +513,7 @@ describe("the fold preserves what it folds, on every rung at every width", () =>
       let rungs = 0;
       let capped = 0;
       let merged = 0;
+      let both = 0;
       /** The schedule a step draws: its own, or the one the step before it draws. */
       const drawsFrom = (step) => {
         for (let s = step, hops = 0; s && hops < 9; hops++) {
@@ -526,7 +527,6 @@ describe("the fold preserves what it folds, on every rung at every width", () =>
         const doc = app.scheduleOf(column, key);
         assert.ok(doc, `${stem} carries no schedule ${key} for step ${step.key}`);
         const window = Boolean(step.sankey.keep && step.sankey.keep.length);
-        const nearIsSource = window ? app.flankIsLeft(step) : step.sankey.side === app.SIDE_SOURCE;
         const opens = [...app.decomposable(step, doc)].sort();
         assert.ok(opens.length > 0, `${stem}: step ${step.key} decomposes no node of ${key}`);
         for (const id of opens) {
@@ -534,14 +534,30 @@ describe("the fold preserves what it folds, on every rung at every width", () =>
             rungs++;
             const where = `${stem} ${step.key} ${id} at {${tiers}}`;
             const rung = { id, step, doc };
-            const raw = app.filterLinks(doc, id, tiers, app.reaching(doc, id, nearIsSource, tiers));
-            const drawn = app.sideOf(doc, rung, tiers, nearIsSource);
-            // A ribbon whose two ends fold to one node is drawn by nothing,
-            // and the fold drops it: it is money inside one drawn mark.
-            const byID = new Map(raw.nodes.map((n) => [n.id, n]));
-            const set = new Set(tiers);
-            const folds = (end) => app.foldTarget(byID, byID.get(end), set);
-            const kept = raw.links.filter((l) => folds(l.source) !== folds(l.target));
+            // EVERY HALF THE STEP DRAWS, filtered unfolded: a window's fresh
+            // half, a one-sided step's whole chart, or a two-sided step's two.
+            const halves = app.freshHalves(step, tiers);
+            if (halves.length > 1) both++;
+            /** @type {any[]} */
+            const kept = [];
+            /** @type {any[]} */
+            const members = [];
+            for (const h of halves) {
+              const raw = app.filterLinks(doc, id, h.tiers, app.reaching(doc, id, h.nearIsSource, h.tiers));
+              // A ribbon whose two ends fold to one node is drawn by nothing,
+              // and the fold drops it: it is money inside one drawn mark.
+              const byID = new Map(raw.nodes.map((n) => [n.id, n]));
+              const set = new Set(h.tiers);
+              const folds = (end) => app.foldTarget(byID, byID.get(end), set);
+              kept.push(...raw.links.filter((l) => folds(l.source) !== folds(l.target)));
+              members.push(...raw.nodes);
+            }
+            // A window's flank is the chart on screen's, so its fresh half is
+            // what this holds; every other step is drawn as the page draws it,
+            // with its reductions read back at their printed sign.
+            const drawn = window
+              ? app.sideOf(doc, rung, halves[0].tiers, halves[0].nearIsSource)
+              : app.unmarkContra(app.SANKEY.shape(doc, rung, null, tiers));
             // (a) SUMS, in total and at the opened node.
             const want = totals(kept);
             const got = totals(drawn.links);
@@ -551,6 +567,7 @@ describe("the fold preserves what it folds, on every rung at every width", () =>
             if (drawn.nodes.some((n) => n.id === id) && at(kept, id) !== at(drawn.links, id)) {
               wrong.push(`${where}: ${at(kept, id)} cents touch ${id} unfolded, ${at(drawn.links, id)} drawn`);
             }
+            if (drawn.nodes.filter((n) => n.id === id).length > 1) wrong.push(`${where}: ${id} is drawn twice`);
             // (b) NO RIBBON LOST OR DUPLICATED: the same facts cited, and the
             // same cents -- a ribbon dropped loses its facts, one drawn twice
             // doubles its cents.
@@ -569,7 +586,7 @@ describe("the fold preserves what it folds, on every rung at every width", () =>
               if (own.length > cap.cap + 1) wrong.push(`${where}: ${own.length} marks at tier ${cap.tier}, capped at ${cap.cap}`);
               if (!tail) continue;
               capped++;
-              const whole = raw.nodes.filter((n) => n.tier === cap.tier).map((n) => n.id).sort();
+              const whole = [...new Set(members.filter((n) => n.tier === cap.tier).map((n) => n.id))].sort();
               const stood = own.filter((n) => n !== tail).map((n) => n.id).concat(tail.folds).sort();
               if (whole.join() !== stood.join()) wrong.push(`${where}: the column holds ${whole.length} and the tail plus the kept stand for ${stood.length}`);
               if (tail.folds.length < 2) wrong.push(`${where}: a tail of ${tail.folds.length}`);
@@ -577,8 +594,9 @@ describe("the fold preserves what it folds, on every rung at every width", () =>
           }
         }
       }
-      t.diagnostic(`${stem}: ${rungs} rung-widths, ${capped} folded tails, ${merged} ribbons merged or dropped by the fold`);
-      assert.ok(rungs > 0 && capped > 0 && merged > 0);
+      t.diagnostic(`${stem}: ${rungs} rung-widths, ${both} of them two-sided, ${capped} folded tails, ` +
+        `${merged} ribbons merged or dropped by the fold`);
+      assert.ok(rungs > 0 && both > 0 && capped > 0 && merged > 0);
       assert.deepEqual(wrong, []);
     });
   }

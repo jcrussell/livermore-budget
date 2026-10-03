@@ -1,6 +1,6 @@
 // pins.test.mjs — every literal the client shares with Go or with the
 // stylesheet is held to the other party's copy, so neither can move alone:
-// the side a step opens from, the fund-group role, the viewport cushion, and
+// the sides a step opens from, the fund-group role, the viewport cushion, and
 // the hue slots a column's fund groups are numbered into.
 
 import { describe, test } from "node:test";
@@ -12,11 +12,14 @@ import { loadApp, stylesheet, columnFixture, publishedColumns, repoRoot } from "
 const read = (name) => JSON.parse(fs.readFileSync(path.join(repoRoot, "schema", name), "utf8"));
 
 describe("the literals the client shares", () => {
-  test("SIDE_SOURCE is one of page.schema.json's sides", async (t) => {
+  test("SIDE_SOURCE and SIDE_BOTH are page.schema.json's sides", async (t) => {
     const { app } = await loadApp();
     const sides = read("page.schema.json").$defs.sankey_hints.properties.side.enum;
-    t.diagnostic(`the schema's sides are ${JSON.stringify(sides)}; the client's is ${JSON.stringify(app.SIDE_SOURCE)}`);
+    t.diagnostic(`the schema's sides are ${JSON.stringify(sides)}; the client's are ` +
+      `${JSON.stringify([app.SIDE_SOURCE, app.SIDE_BOTH])}`);
     assert.ok(sides.includes(app.SIDE_SOURCE));
+    assert.ok(sides.includes(app.SIDE_BOTH));
+    assert.notEqual(app.SIDE_SOURCE, app.SIDE_BOTH);
   });
 
   test("isFundGroup answers to exactly the fund_group role of enums.schema.json", async (t) => {

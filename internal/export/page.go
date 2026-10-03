@@ -553,6 +553,10 @@ type wording struct {
 	// when no printed line explains it, shipped so a fold that nets a ribbon
 	// negative names it in the producer's words.
 	ContraOrphan string `json:"contra_orphan"`
+	// A fund's printed balances, schema/column.schema.json's balances, each
+	// said beside the node's figure with the fact and pages it cites.
+	BalanceBeginning string `json:"balance_beginning"`
+	BalanceEnding    string `json:"balance_ending"`
 }
 
 // kindLabels is project's words for every link kind, keyed as a link names it.
@@ -629,7 +633,9 @@ func defaultWording() wording {
 		GapNote: "Derived, not published: one document's total for this cell less the other's. Each total is built from " +
 			"figures `fisc verify` ties to the pages the city printed, and the difference is the one declared for this " +
 			"column; no page prints it as a figure of its own.",
-		ContraOrphan: project.ContraOrphan,
+		ContraOrphan:     project.ContraOrphan,
+		BalanceBeginning: "Balance at the start of the year, as printed: {figure}",
+		BalanceEnding:    "Balance at the end of the year, as printed: {figure}",
 	}
 }
 

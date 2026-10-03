@@ -32,9 +32,14 @@ function stepByKey(config, key) {
  */
 const CATEGORY_TIER = stepByKey(PAGE, "fund").sankey.caps.find((c) => c.tail === "object rows").tier;
 
-/** A mark that opens on the spine, and a flow end that opens into nothing. */
+/**
+ * A mark that opens on the spine; the rung whose marks open into nothing,
+ * since every mark the spine draws opens; and two of that rung's marks.
+ */
 const OPENS = "fund-group/general";
-const CLOSED = "fund-balance/draw";
+const SHUT = "transfers/in";
+const CLOSED = "fund/100";
+const SEED = "fund/610";
 /** The group whose window draws a folded tail, and the division that opens nothing. */
 const WORST = "fund-group/special-revenue";
 const INERT = "dept/patrol";
@@ -140,6 +145,8 @@ describe("the two keys", () => {
     const space = state();
     app.drillUp(0);
     await settle();
+    await opened(app, SHUT);
+    const shut = app.projection.nodes.find((n) => n.id === CLOSED);
     // Enter still activates a mark with nothing to open: a role="button"
     // whose Enter does nothing is worse than one whose two keys agree.
     fire(markOf(app, document, CLOSED), "keydown", { key: "Enter", timeStamp: 9000 });
@@ -148,8 +155,9 @@ describe("the two keys", () => {
 
     assert.deepEqual(enter, { depth: 1, top: OPENS, isolated: "" });
     assert.deepEqual(space, { depth: 0, top: "", isolated: OPENS });
-    assert.deepEqual(closedEnter, { depth: 0, top: "", isolated: CLOSED });
-    t.diagnostic(`Enter on ${OPENS} opened it; Space on it followed it; Enter on ${CLOSED} followed it`);
+    assert.equal(app.drillable(shut), false, `${CLOSED} opens on ${SHUT}'s rung`);
+    assert.deepEqual(closedEnter, { depth: 1, top: SHUT, isolated: CLOSED });
+    t.diagnostic(`Enter on ${OPENS} opened it; Space on it followed it; Enter on ${CLOSED} under ${SHUT} followed it`);
   });
 
   test("a double click opens, and leaves the isolation the reader had", async (t) => {
@@ -158,8 +166,9 @@ describe("the two keys", () => {
     // isolation on and off and land back on "" without any help. It starts
     // from a mark the reader was already following, the only state in which
     // the two answers differ.
-    const seed = "revenue/taxes/sales";
+    const seed = SEED;
     const { app, document } = await bootedApp();
+    await opened(app, SHUT);
     fire(markOf(app, document, seed), "click", { timeStamp: 0 });
     const seeded = app.isolated;
     fire(markOf(app, document, CLOSED), "click", { timeStamp: 1000 });
@@ -174,7 +183,8 @@ describe("the two keys", () => {
     // again on a chart still following it clears the seed.
     const second = await bootedApp();
     const m2 = (id) => markOf(second.app, second.document, id);
-    fire(m2(seed), "click", { timeStamp: 0 });
+    const spineSeed = "revenue/taxes/sales";
+    fire(m2(spineSeed), "click", { timeStamp: 0 });
     const reseeded = second.app.isolated;
     fire(m2(OPENS), "click", { timeStamp: 1000 });
     fire(m2(OPENS), "click", { timeStamp: 1050 });
@@ -185,12 +195,12 @@ describe("the two keys", () => {
     assert.equal(seeded, seed);
     assert.equal(firstClick, CLOSED);
     assert.equal(secondClick, "");
-    assert.deepEqual(closedDouble, { depth: 0, isolated: seed });
-    assert.equal(reseeded, seed);
+    assert.deepEqual(closedDouble, { depth: 1, isolated: seed });
+    assert.equal(reseeded, spineSeed);
     assert.deepEqual(opensDouble, { depth: 1, top: OPENS, isolated: "" });
     t.diagnostic(`following "${seed}", a double click on ${CLOSED} went "${firstClick}" then ` +
       `"${secondClick}" under the reader and came back to "${closedDouble.isolated}"; the same ` +
-      `gesture on ${OPENS} opened it, and the redraw cleared the isolation on the way`);
+      `gesture on ${OPENS}, following "${spineSeed}", opened it, and the redraw cleared the isolation on the way`);
   });
 });
 

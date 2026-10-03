@@ -194,6 +194,23 @@ export function citations(sources) {
 }
 
 /**
+ * A node's printed balances, beginning then ending, each in the page's words
+ * with the fact and the pages it cites; none for a node carrying none, and
+ * none for a balance the page leaves blank, which is absent and not zero.
+ * @param {FiscNode} node
+ * @returns {{words: string, fact_id: string, locators: FiscSource[]}[]}
+ */
+export function balancesOf(node) {
+  const b = node.balances;
+  if (!b) return [];
+  return ["beginning", "ending"].filter((which) => b[which]).map((which) => ({
+    words: say("balance_" + which, { figure: fmtSigned(b[which].value_cents) }),
+    fact_id: b[which].fact_id,
+    locators: b[which].locators,
+  }));
+}
+
+/**
  * A drawn document's column, named as the page's lede names that year: the
  * published year the export shipped the name for.
  * @param {any} meta
@@ -282,15 +299,17 @@ function assembleSchedule(column, key) {
 
   const nodes = sched.nodes.map((n) => {
     const base = table[n.node] || {};
-    return {
+    const node = {
       id: base.id, label: base.label, tier: base.tier,
       role: base.role || "", derived: Boolean(base.derived),
       constraint_tier: base.constraint_tier || "",
       rationale: base.rationale || "", source_note: base.source_note || "",
-      // The one field a schedule states for itself: where the node hangs in
-      // its own hierarchy.
+      // The fields a schedule states for itself: where the node hangs in its
+      // own hierarchy, and a fund's printed balances where it cites them.
       parent: n.parent || "",
     };
+    // Not defaulted: an absent balance is a blank on the page, not a zero.
+    return n.balances ? Object.assign(node, { balances: n.balances }) : node;
   });
   const links = sched.links.map((l) => {
     const from = table[l.from] || {};

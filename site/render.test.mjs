@@ -538,12 +538,13 @@ describe("the drill's drawing", () => {
     const visited = Object.values(walks).map((w) => w.visited).reduce((a, b) => a + b, 0);
     t.diagnostic(`over the overview and ${visited} opened view(s) of both columns, ${tally.nodes} mark(s): ` +
       `${tally.opens} carry "opens" and the triangle, ${tally.derivedOnly} the diamond alone, ` +
-      `${tally.both} both (the diamond-and-triangle pair is latent while this is 0), ` +
+      `${tally.both} both (the spine's derived fund-balance ends, which open), ` +
       `${tally.expands} carry "expands" and the plus`);
     for (const w of Object.values(walks)) assert.equal(w.refused, "");
     assert.deepEqual(wrong.slice(0, 5), [], `${wrong.length} of ${tally.nodes} mark(s) are drawn as something they are not`);
     assert.ok(tally.opens > 0 && tally.expands > 0 && tally.derivedOnly > 0, "the corpus puts marks on both sides of each question");
-    assert.equal(tally.both, 0, "a mark that is an inference and also opens: the composed marker is no longer latent");
+    // THE DIAMOND-AND-TRIANGLE PAIR IS DRAWN, so `wrong` above holds it too.
+    assert.ok(tally.both > 0, "no mark is both an inference and one that opens, so nothing here draws the composed marker");
   });
 
   test("the flag tspan a mark draws carries exactly nodeFlags", (t) => {

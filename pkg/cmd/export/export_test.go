@@ -1501,6 +1501,92 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 				"opens into — five names belong to both tiers, so do not read one " +
 				"as the other.",
 		},
+		{
+			// A source, as transfers is, and capped as the fund-group step's
+			// fund column is.
+			Key:        "balance-draw",
+			After:      []string{""},
+			From:       0,
+			Role:       "fund_balance_draw",
+			Projection: project.FundSourcesUsesProjection,
+			Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
+				Side:  export.SideSource,
+				Tiers: []int{0, 3},
+				Caps:  []export.TierCap{{Tier: 3, Cap: 8}},
+			}},
+			Noun: "draw on fund balances",
+			Back: "All money coming in",
+			Tail: "funds",
+			Description: "Budget Book pp.186-209 print each fund's balance at the start and the " +
+				"end of the year, and the funds on the right are those whose balance falls, each " +
+				"drawn at its own fall: the beginning balance less the ending one, which the city " +
+				"prints as two figures and not as one. These are each fund's own draw, gross, " +
+				"where the citywide chart's Fund Balance Draw is net within each fund group, so " +
+				"the funds here sum to more than the mark they were opened from; the caveats say " +
+				"by how much. Every fund opens into where its own money comes from and goes.",
+		},
+		{
+			// Shares (After, From) with object-category and transfers-out, told
+			// apart by role.
+			Key:        "balance-contribution",
+			After:      []string{""},
+			From:       5,
+			Role:       "fund_balance_contribution",
+			Projection: project.FundSourcesUsesProjection,
+			Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
+				Tiers: []int{3, 5},
+				Caps:  []export.TierCap{{Tier: 3, Cap: 8}},
+			}},
+			Noun: "contribution to fund balances",
+			Back: "All money going out",
+			Tail: "funds",
+			Description: "Budget Book pp.186-209 print each fund's balance at the start and the " +
+				"end of the year, and the funds on the left are those whose balance rises, each " +
+				"drawn at its own rise: the ending balance less the beginning one, which the city " +
+				"prints as two figures and not as one. These are each fund's own contribution, " +
+				"gross, where the citywide chart's Fund Balance Contribution is net within each " +
+				"fund group, so the funds here sum to more than the mark they were opened from; " +
+				"the caveats say by how much. Every fund opens into where its own money comes " +
+				"from and goes.",
+		},
+		{
+			// One ribbon, the General Fund's: no cap.
+			Key:        "reserve",
+			After:      []string{""},
+			From:       5,
+			Role:       "reserve_increase",
+			Projection: project.FundSourcesUsesProjection,
+			Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
+				Tiers: []int{3, 5},
+			}},
+			Noun: "addition to reserves",
+			Back: "All money going out",
+			Tail: "funds",
+			Description: "The funds on the left are those Budget Book pp.186-209 print an " +
+				"increase in reserves for, each at the figure its own page prints. Every fund " +
+				"opens into where its own money comes from and goes.",
+		},
+		{
+			// Both sides of the opened fund, off the document before it: no
+			// projection, no role, no flank.
+			Key:   "fund-balance",
+			After: []string{"balance-draw", "balance-contribution", "reserve"},
+			From:  3,
+			Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
+				Side:  export.SideBoth,
+				Tiers: []int{0, 3, 5},
+			}},
+			Noun: "fund",
+			Back: "All funds",
+			Tail: "lines",
+			Description: "Where this fund's money comes from is on the left and where it goes is " +
+				"on the right, each ribbon one line its page of Budget Book pp.186-209 prints. " +
+				"The page prints the fund's balance at the start and the end of the year rather " +
+				"than the change between them, so the draw on its balance or the contribution to " +
+				"it is the difference of those two printed figures, drawn as one ribbon and " +
+				"marked as ours. That difference is what makes the two sides of the fund one " +
+				"figure.",
+		},
 	}
 	if diff := cmp.Diff(want, spine.Steps); diff != "" {
 		t.Errorf("the spine's steps (-want +got):\n%s\nthe client's tests measure "+
@@ -1587,24 +1673,28 @@ func TestOpensIntoJoinsOnColumnNotOnDeclaredOrder(t *testing.T) {
 	}{
 		// fund-departments needs both pp.85-125 and the pp.127-140 chart it opens from.
 		{"no fund-flows", []string{project.FundFlowsProjection},
-			[]string{"object-category", "transfers", "transfers-out"}},
+			[]string{"object-category", "transfers", "transfers-out", "balance-draw", "balance-contribution", "reserve", "fund-balance"}},
 		{"no department-spending", []string{project.DepartmentSpendingProjection},
 			[]string{"fund-group", "fund", "division", "revenue-category", "transfers",
-				"transfers-out", "fund-departments"}},
+				"transfers-out", "fund-departments", "balance-draw", "balance-contribution", "reserve", "fund-balance"}},
 		{"no transfers-by-fund", []string{project.TransfersByFundProjection},
 			[]string{"fund-group", "fund", "division", "revenue-category", "object-category",
-				"transfers-out", "fund-departments"}},
+				"transfers-out", "fund-departments", "balance-draw", "balance-contribution", "reserve", "fund-balance"}},
 		{"no transfers-out", []string{project.TransfersOutProjection},
 			[]string{"fund-group", "fund", "division", "revenue-category", "object-category",
-				"transfers", "fund-departments"}},
+				"transfers", "fund-departments", "balance-draw", "balance-contribution", "reserve", "fund-balance"}},
 		{"no department-funding", []string{project.DepartmentFundingProjection},
 			[]string{"fund-group", "fund", "division", "revenue-category", "object-category",
-				"transfers", "transfers-out"}},
+				"transfers", "transfers-out", "balance-draw", "balance-contribution", "reserve", "fund-balance"}},
 		{"neither detail document", []string{project.FundFlowsProjection,
-			project.DepartmentSpendingProjection}, []string{"transfers", "transfers-out"}},
+			project.DepartmentSpendingProjection}, []string{"transfers", "transfers-out", "balance-draw", "balance-contribution", "reserve", "fund-balance"}},
+		{"no fund-sources-uses", []string{project.FundSourcesUsesProjection},
+			[]string{"fund-group", "fund", "division", "revenue-category", "object-category",
+				"transfers", "transfers-out", "fund-departments"}},
 		{"no step document at all", []string{project.FundFlowsProjection,
 			project.DepartmentSpendingProjection, project.TransfersByFundProjection,
-			project.TransfersOutProjection, project.DepartmentFundingProjection}, nil},
+			project.TransfersOutProjection, project.DepartmentFundingProjection,
+			project.FundSourcesUsesProjection}, nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			got := stepKeys(mustViews(t, result{Projections: without(tc.drop...)})[0].Steps)

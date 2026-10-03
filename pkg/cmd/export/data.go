@@ -340,9 +340,6 @@ func yearStems(name string, projections map[string][]byte) []string {
 // unviewedDocuments are documents the site publishes and no page renders, each
 // with its reason. The build gates never ask whether a reader can reach a
 // document, so this declaration is what makes an unreachable one a decision;
-// unviewedDocuments are documents the site publishes and no page renders, each
-// with its reason. The build gates never ask whether a reader can reach a
-// document, so this declaration is what makes an unreachable one a decision;
 // assertPublishedReachable refuses an entry a view renders or that names no
 // published document. Each entry is a column pp.66-67 print no year for, so no
 // spine year opens into it.
@@ -358,16 +355,12 @@ var unviewedDocuments = map[string]string{
 
 	publishedStem(project.FundSourcesUsesProjection, actual2024):  sourcesUsesNoSpineColumn,
 	publishedStem(project.FundSourcesUsesProjection, revised2025): sourcesUsesNoSpineColumn,
-	publishedStem(project.FundSourcesUsesProjection, adopted2026): sourcesUsesNoStep,
-	publishedStem(project.FundSourcesUsesProjection, adopted2027): sourcesUsesNoStep,
 }
 
-// The two columns pp.66-67 print no year for, and the two they print.
+// The two columns pp.66-67 print no year for.
 var (
 	actual2024  = project.Column{FiscalYear: 2024, Basis: mapping.BasisActual}
 	revised2025 = project.Column{FiscalYear: 2025, Basis: mapping.BasisRevised}
-	adopted2026 = project.Column{FiscalYear: 2026, Basis: mapping.BasisAdopted}
-	adopted2027 = project.Column{FiscalYear: 2027, Basis: mapping.BasisAdopted}
 )
 
 // publishedStem is the stem project.PublishedDocuments gives a projection's
@@ -388,15 +381,18 @@ const fundingNoSpineColumn = "a published column of pp.85-125's Department Fundi
 	"document drawing that block, and two of the four columns would be half a schedule with " +
 	"nothing saying which half. caveats.html lists its caveats but does not render it"
 
-const sourcesUsesNoSpineColumn = "a published column of pp.186-209's per-fund sources and " +
-	"uses with no spine year to open it from, and no step opens the document in any year. It " +
-	"is published because this is the only document drawing those pages, and two of the four " +
-	"columns would be half a schedule with nothing saying which half. caveats.html lists its " +
-	"caveats but does not render it"
+// The fund-balance steps' tier-3 caps, measured as the fund-group step's
+// are: site/drill.test.mjs pins what each leaves under a pixel.
+const (
+	balanceDrawCap         = 8
+	balanceContributionCap = 8
+)
 
-const sourcesUsesNoStep = "a column of pp.186-209's per-fund sources and uses that no step " +
-	"opens yet: the spine's fund-balance nodes are where a reader will open it, and that step " +
-	"and its client are a later commit. caveats.html lists its caveats but does not render it"
+const sourcesUsesNoSpineColumn = "a published column of pp.186-209's per-fund sources and " +
+	"uses with no spine year to open it from: the fund-balance steps join on Column and " +
+	"pp.66-67 print no actual or revised column. It is published because this is the only " +
+	"document drawing those pages, and two of the four columns would be half a schedule with " +
+	"nothing saying which half. caveats.html lists its caveats but does not render it"
 
 const spendingNoSpineColumn = "a published column of the departmentwide cross-tab with no " +
 	"spine year to open it from: the object-category step joins on Column and pp.66-67 " +
@@ -826,6 +822,106 @@ func views(built result) ([]export.View, error) {
 					"pays it, which is a coarser thing than the divisions the General Fund " +
 					"opens into \u2014 five names belong to both tiers, so do not read one " +
 					"as the other.",
+			},
+		}...)
+	}
+	// The spine's three fund-balance ends open into pp.186-209, and any fund
+	// they reach opens into its own sources and uses there. Roles
+	// fund_balance_draw, fund_balance_contribution and reserve_increase
+	// partition tiers 0 and 5 with the steps above.
+	//
+	// The ends are gross where the spine is net: each fund's change in balance
+	// is its own ribbon, so the funds sum to more than the spine's figure, and
+	// the document's each-fund-change-is-gross caveat carries both sums. No gap
+	// is declared, because the two are different quantities and not one cell
+	// two schedules print at two figures.
+	//
+	// The reserve rung is one ribbon: only the General Fund prints a reserve
+	// increase. It is declared anyway, as the only way to the General Fund's
+	// own sources and uses from the spine.
+	if opensInto(export.PrimaryProjection, project.FundSourcesUsesProjection, projections) {
+		spine.Steps = append(spine.Steps, []export.DrillStep{
+			{
+				// A source, like transfers/in: the draw is where the ribbons come FROM.
+				Key:        "balance-draw",
+				After:      []string{""},
+				From:       0,
+				Role:       project.RoleFundBalanceDraw,
+				Projection: project.FundSourcesUsesProjection,
+				Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
+					Side:  export.SideSource,
+					Tiers: []int{0, 3},
+					Caps:  []export.TierCap{{Tier: 3, Cap: balanceDrawCap}},
+				}},
+				Noun: "draw on fund balances",
+				Back: "All money coming in",
+				Tail: "funds",
+				Description: "Budget Book pp.186-209 print each fund's balance at the start and the " +
+					"end of the year, and the funds on the right are those whose balance falls, each " +
+					"drawn at its own fall: the beginning balance less the ending one, which the city " +
+					"prints as two figures and not as one. These are each fund's own draw, gross, " +
+					"where the citywide chart's Fund Balance Draw is net within each fund group, so " +
+					"the funds here sum to more than the mark they were opened from; the caveats say " +
+					"by how much. Every fund opens into where its own money comes from and goes.",
+			},
+			{
+				Key:        "balance-contribution",
+				After:      []string{""},
+				From:       5,
+				Role:       project.RoleFundBalanceContribution,
+				Projection: project.FundSourcesUsesProjection,
+				Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
+					Tiers: []int{3, 5},
+					Caps:  []export.TierCap{{Tier: 3, Cap: balanceContributionCap}},
+				}},
+				Noun: "contribution to fund balances",
+				Back: "All money going out",
+				Tail: "funds",
+				Description: "Budget Book pp.186-209 print each fund's balance at the start and the " +
+					"end of the year, and the funds on the left are those whose balance rises, each " +
+					"drawn at its own rise: the ending balance less the beginning one, which the city " +
+					"prints as two figures and not as one. These are each fund's own contribution, " +
+					"gross, where the citywide chart's Fund Balance Contribution is net within each " +
+					"fund group, so the funds here sum to more than the mark they were opened from; " +
+					"the caveats say by how much. Every fund opens into where its own money comes " +
+					"from and goes.",
+			},
+			{
+				Key:        "reserve",
+				After:      []string{""},
+				From:       5,
+				Role:       project.RoleReserveIncrease,
+				Projection: project.FundSourcesUsesProjection,
+				Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
+					Tiers: []int{3, 5},
+				}},
+				Noun: "addition to reserves",
+				Back: "All money going out",
+				Tail: "funds",
+				Description: "The funds on the left are those Budget Book pp.186-209 print an " +
+					"increase in reserves for, each at the figure its own page prints. Every fund " +
+					"opens into where its own money comes from and goes.",
+			},
+			{
+				// The opened fund between its two sides, both read off pp.186-209: no flank
+				// is kept, so nothing of the chart above is drawn at its share of the fund.
+				Key:   "fund-balance",
+				After: []string{"balance-draw", "balance-contribution", "reserve"},
+				From:  3,
+				Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
+					Side:  export.SideBoth,
+					Tiers: []int{0, 3, 5},
+				}},
+				Noun: "fund",
+				Back: "All funds",
+				Tail: "lines",
+				Description: "Where this fund's money comes from is on the left and where it goes is " +
+					"on the right, each ribbon one line its page of Budget Book pp.186-209 prints. " +
+					"The page prints the fund's balance at the start and the end of the year rather " +
+					"than the change between them, so the draw on its balance or the contribution to " +
+					"it is the difference of those two printed figures, drawn as one ribbon and " +
+					"marked as ours. That difference is what makes the two sides of the fund one " +
+					"figure.",
 			},
 		}...)
 	}

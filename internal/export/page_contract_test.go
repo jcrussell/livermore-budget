@@ -94,6 +94,8 @@ func TestTheWordingFillsEveryPlaceholderTheClientHands(t *testing.T) {
 		"residual_note":          {"flows", "where", "withheld"},
 		"residual_withheld_many": {"n"},
 		"residual_flows":         {"in", "out"},
+		"balance_beginning":      {"figure"},
+		"balance_ending":         {"figure"},
 		"gap_lead_short":         {"column", "into", "centre", "out", "gap"},
 		"gap_lead_over":          {"column", "out", "centre", "gap", "into"},
 		"gap_rationale":          {"lead", "reason", "gap"},

@@ -357,9 +357,12 @@ No view draws this document whole. It is drawn as rungs opened from
 `index.html`, the site's one chart page, declared once in `views()`; the
 client's tests spell none of it a second time.
 
-Every rung of that chain is a WINDOW: the node the reader clicked in the middle,
-one flank kept off the chart they clicked it on, and its own decomposition on
-the other side. **Three columns is the narrowest such window** — the client's column budget
+Every rung opened from a container is a WINDOW: the node the reader clicked in
+the middle, one flank kept off the chart they clicked it on, and its own
+decomposition on the other side. A rung opened from a flow end keeps no flank,
+having no parts to put a window around, and draws its own document alone; a
+fund opened on a fund-balance rung is drawn between its two sides, both read off
+that same document (`side: "both"`). **Three columns is the narrowest such window** — the client's column budget
 starts at 3, and a window at least `chartWidth(4)` plus the stylesheet's cushion
 wide buys a fourth. The tier sets in the table below are what a narrow reader
 sees.
@@ -377,7 +380,7 @@ Each step's tiers, kept flank, widening and caps are declared once, in
 
 | depth | document | draws | opening a node draws |
 |---|---|---|---|
-| 0 | `sankey` | the spine, whole | a fund group; or a revenue category; or an object category |
+| 0 | `sankey` | the spine, whole | a fund group; or a revenue category; or an object category; or a flow end |
 | 1 | `fund-flows` | the spine's own revenue categories on the left, the opened group in the middle, its funds on the right, with the money pp.127-140 split by no fund carried past the centre onto one derived mark beside them — and, where there is room, the General Fund's divisions and the object categories every fund spends on, through its divisions for the General Fund and straight from pp.173-183 for every other | a fund — the General Fund into its divisions, every other fund pp.85-125 name into its departments |
 | 2 | `fund-flows` | the group, the opened fund, the divisions that spend it — and their object-category cells where there is room | a division |
 | 3 | `fund-flows` | the fund, the opened division, its object categories | nothing |
@@ -386,6 +389,8 @@ Each step's tiers, kept flank, widening and caps are declared once, in
 | 1 | `department-spending` | the fund groups that fund the opened object category, the category, and the divisions pp.85-125 print spending it | nothing |
 | 1 | `transfers-by-fund` | the funds p76 prints paying each transfer on the left, the funds receiving them on the right | nothing |
 | 1 | `transfers-out` | the funds p76 and p222 print paying each transfer out on the left, the operating and CIP funds receiving them on the right | nothing |
+| 1 | `fund-sources-uses` | the funds pp.186-209 print drawing on their balance, on the right of the opened draw; or those adding to their balance or to reserves, on the left of the opened contribution or reserve increase; each at its own change, so the funds sum to more than the spine's net mark | a fund |
+| 2 | `fund-sources-uses` | the opened fund's sources on the left, the fund, and its uses on the right, its change in balance drawn as the one ribbon of ours | nothing |
 
 The steps are a tree and not a chain: several open from the spine's chart, told
 apart by the tier they open from and, where two share a tier, by the node's role.
