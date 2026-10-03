@@ -908,6 +908,75 @@ func TestAViewTakesTheOtherReadingWhereItsOwnIsDeclaredAbsent(t *testing.T) {
 	}
 }
 
+// TestReadingsOfOneFigureMustNameOneCut joins pp.127-140, p76 and
+// pp.186-209, each pair by an identity over a fund's Transfers In. Readings
+// that decline each cut in turn leave no reading of the figure, and are
+// refused; readings that agree on one cut count each transfer in once.
+func TestReadingsOfOneFigureMustNameOneCut(t *testing.T) {
+	facts := committedFacts(t)
+	identities := structure.BudgetBookIdentities()
+	rd, td := allCutNamed(t, structure.CutRevenueDetail), allCutNamed(t, "transfers-detail")
+	flows := allCutNamed(t, structure.CutFundBalanceFlows)
+	cuts := []structure.Cut{rd, td, flows}
+	const (
+		rdTD    = "a-transfer-in-is-printed-at-both-ends"
+		flowsRD = "a-fund-balance-transfer-in-is-the-revenue-schedules"
+		flowsTD = "a-fund-balance-transfer-is-p76s"
+	)
+
+	// rd~td declines rd, td~flows declines td, flows~rd declines flows.
+	cyclic := map[string]string{rdTD: td.Name, flowsTD: flows.Name, flowsRD: rd.Name}
+	_, err := structure.NewView("cycle", cuts, identities, structure.BudgetBookExceptions(), cyclic)
+	if err == nil || !strings.Contains(err.Error(), "declines every reading of transfer_in") {
+		t.Fatalf("NewView over cyclic readings = %v, want refused: every reading of a transfer in is declined", err)
+	}
+
+	// Without the identity joining pp.127-140 and pp.186-209, readings that
+	// both decline p76 keep two readings of one transfer in.
+	var withoutFlowsRD []structure.Identity
+	for _, id := range identities {
+		if id.Name != flowsRD {
+			withoutFlowsRD = append(withoutFlowsRD, id)
+		}
+	}
+	_, err = structure.NewView("twice", cuts, withoutFlowsRD, nil,
+		map[string]string{rdTD: rd.Name, flowsTD: flows.Name})
+	if err == nil || !strings.Contains(err.Error(), "keeps 2 readings of transfer_in under transfers/in") {
+		t.Errorf("NewView keeping pp.127-140's and pp.186-209's readings = %v, want refused", err)
+	}
+
+	agreed := map[string]string{rdTD: rd.Name, flowsRD: rd.Name, flowsTD: flows.Name}
+	v, err := structure.NewView("agreed", cuts, identities, structure.BudgetBookExceptions(), agreed)
+	if err != nil {
+		t.Fatalf("NewView over readings naming pp.127-140 = %v, want admitted", err)
+	}
+	type cell struct {
+		fund  int
+		year  int
+		basis mapping.Basis
+	}
+	by := map[cell][]string{}
+	for i := range facts {
+		f := &facts[i]
+		if f.Kind != mapping.KindTransferIn || f.Category != "transfers/in" || f.Fund == nil || !v.Admits(f, identities) {
+			continue
+		}
+		c := cell{*f.Fund, f.FiscalYear, f.Basis}
+		if !slices.Contains(by[c], f.Scope) {
+			by[c] = append(by[c], f.Scope)
+		}
+	}
+	if len(by) == 0 {
+		t.Fatal("the view admits no transfer in at all")
+	}
+	for c, scopes := range by {
+		if len(scopes) > 1 {
+			t.Errorf("fund %d FY%d %s's transfers in are counted from %d schedules, %v", c.fund, c.year, c.basis,
+				len(scopes), scopes)
+		}
+	}
+}
+
 // TestOnlyAnExceptionOnThePeerPairExcusesAPeerAbsence: pp.127-130's missing
 // General Fund Transfers In, declared against the spine at the fund-group
 // level, is not an absence between pp.127-130 and p76; the same pin declared

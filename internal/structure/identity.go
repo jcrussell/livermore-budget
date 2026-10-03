@@ -477,6 +477,9 @@ func NewView(name string, cuts []Cut, identities []Identity, exceptions []Except
 				"of its cuts", name, idName)
 		}
 	}
+	if err := oneReadingPerCell(name, identities, joined, readings); err != nil {
+		return View{}, err
+	}
 	absent := map[string]map[Key]bool{}
 	for _, id := range identities {
 		if !joined[id.Name] {
@@ -508,6 +511,80 @@ func NewView(name string, cuts []Cut, identities []Identity, exceptions []Except
 		}
 	}
 	return View{Name: name, Cuts: cuts, Readings: readings, absent: absent}, nil
+}
+
+// anyOtherCategory stands for every category an identity with no Categories
+// covers and no identity names; no category is spelled with a NUL.
+const anyOtherCategory = "\x00"
+
+// oneReadingPerCell refuses readings that do not agree around the view: for
+// each cell the joined identities cover, the cuts they join less every cut a
+// covering identity's reading declines must be exactly one. Three cuts joined
+// pairwise can be read in a cycle, each identity declining a different cut,
+// and then every reading of the figure is declined and a total counts it
+// zero times; two left over count it twice.
+func oneReadingPerCell(name string, identities []Identity, joined map[string]bool,
+	readings map[string]string) error {
+	type cell struct {
+		kind     mapping.Kind
+		category string
+	}
+	var cells []cell
+	seen := map[cell]bool{}
+	add := func(c cell) {
+		if !seen[c] {
+			seen[c] = true
+			cells = append(cells, c)
+		}
+	}
+	for _, id := range identities {
+		if !joined[id.Name] {
+			continue
+		}
+		if len(id.Categories) == 0 {
+			for _, k := range id.Kinds {
+				add(cell{k, anyOtherCategory})
+			}
+		}
+		for _, kc := range id.Categories {
+			add(cell{kc.Kind, kc.Category})
+		}
+	}
+	for _, c := range cells {
+		var printed, declined []string
+		for _, id := range identities {
+			if !joined[id.Name] || !id.coversCell(c.kind, c.category) {
+				continue
+			}
+			other := id.A
+			if readings[id.Name] == id.A {
+				other = id.B
+			}
+			printed = append(printed, id.A, id.B)
+			declined = append(declined, other)
+		}
+		var left []string
+		for _, cut := range printed {
+			if !contains(declined, cut) && !contains(left, cut) {
+				left = append(left, cut)
+			}
+		}
+		if len(left) == 1 {
+			continue
+		}
+		where := string(c.kind)
+		if c.category != anyOtherCategory {
+			where += " under " + c.category
+		}
+		if len(left) == 0 {
+			return fmt.Errorf("view %q declines every reading of %s: its readings decline each of "+
+				"%v in turn, so a total over it counts that figure zero times; the readings of one "+
+				"figure must name one cut", name, where, declined)
+		}
+		return fmt.Errorf("view %q keeps %d readings of %s, %v, so a total over it counts that "+
+			"figure more than once; the readings of one figure must name one cut", name, len(left), where, left)
+	}
+	return nil
 }
 
 // Admits says whether a fact is counted by the view: it falls in one of the
