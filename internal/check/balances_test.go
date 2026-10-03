@@ -595,40 +595,10 @@ func TestASubjectBuiltByHandCarriesNoException(t *testing.T) {
 	}
 }
 
-// TestARowOmittedFromEveryPartIsRefusedWithoutACategory is the parser and the
-// balance checks agreeing on a row omitted from every part: the row needs
-// the category its figure would carry were it printed, so declaredBlanks can
-// always hand it to fact.FromValues, which refuses a row with none.
-func TestARowOmittedFromEveryPartIsRefusedWithoutACategory(t *testing.T) {
-	src := `schema_version: 1
-doc_id: ` + testDoc + `
-rules:
-  - id: spine
-    kind: fund_balance
-    basis: adopted
-    scope: ` + structure.ScopeAllFundsGross + `
-    grain: category
-    units: dollars
-    rows:
-      - {label: "Beginning", category: ` + structure.CategoryFundBalanceBeginning + `}
-      - {label: "Ghost"}
-    parts:
-      - page: 1
-        section: "S"
-        omitted_rows: ["Ghost"]
-        columns:
-          - {fund_group: general, fiscal_year: 2026}
-`
-	_, err := mapping.LoadDir(fstest.MapFS{"mappings/spine.yaml": &fstest.MapFile{Data: []byte(src)}}, "mappings")
-	if err == nil || !strings.Contains(err.Error(), `row "Ghost" has no category`) {
-		t.Fatalf("parse: %v; want the row refused for having no category: omitted from every part, "+
-			"it would still publish were it printed", err)
-	}
-}
-
-// omittedChange is p41's identity with its change line omitted from the only
-// part, so the rule declares that line blank on general's FY2026 balance.
-func omittedChange(t *testing.T) *mapping.File {
+// rowSplitChange is p41's identity printed across two pages, beginning and
+// ending on the first and change on the second: each part omits the rows the
+// other prints, and neither omission says the document leaves a cell blank.
+func rowSplitChange(t *testing.T) *mapping.File {
 	t.Helper()
 	src := `schema_version: 1
 doc_id: ` + testDoc + `
@@ -649,6 +619,11 @@ rules:
         omitted_rows: ["Change"]
         columns:
           - {fund_group: general, fiscal_year: 2026}
+      - page: 2
+        section: "S"
+        omitted_rows: ["Beginning", "Ending"]
+        columns:
+          - {fund_group: general, fiscal_year: 2026}
 `
 	files, err := mapping.LoadDir(fstest.MapFS{"mappings/summary.yaml": &fstest.MapFile{Data: []byte(src)}}, "mappings")
 	if err != nil {
@@ -657,24 +632,19 @@ rules:
 	return files[0]
 }
 
-// TestARowOmittedFromEveryPartMarksItsBlank: a categorised row no part
-// prints is a blank on every balance its cells would have landed on, so the
-// identity over beginning and ending alone is checked for completeness only
-// rather than failed for the missing change line, and a fact another rule
-// prints on that line is a printed figure against a declared blank.
-func TestARowOmittedFromEveryPartMarksItsBlank(t *testing.T) {
+// TestARowOmittedFromAPartIsNoBlank: omitted_rows places a row on another
+// page, and only omitted_cells says the page leaves a cell blank. So a balance
+// missing its change is missing it, not exempted, and a fact printed on that
+// line is no printed figure against a declared blank.
+func TestARowOmittedFromAPartIsNoBlank(t *testing.T) {
 	general := balanceAt{structure.ScopeACFRGeneralFundSummary, "general", 0, 2026, mapping.BasisAdopted}
 	lines := []balanceLine{
 		{mapping.KindFundBalance, structure.CategoryFundBalanceBeginning, 100_000},
 		{mapping.KindFundBalance, structure.CategoryFundBalanceEnding, 120_000},
 	}
-	res := runBalance(t, &fundBalanceIdentity{}, general.facts(lines), omittedChange(t))
-	wantPass(t, res, 1)
-	if !strings.Contains(res.Summary, "0 of them beginning + change equal to ending to the cent, and 1 checked for completeness only") {
-		t.Errorf("summary %q, want the balance checked for completeness only: its change line is declared blank", res.Summary)
-	}
+	wantFail(t, runBalance(t, &fundBalanceIdentity{}, general.facts(lines), rowSplitChange(t)),
+		"missing "+structure.CategoryFundBalanceChange)
 
 	printed := general.facts(append(lines, balanceLine{mapping.KindFundBalance, structure.CategoryFundBalanceChange, 20_000}))
-	wantFail(t, runBalance(t, &fundBalanceIdentity{}, printed, omittedChange(t)),
-		printed[2].ID, "declares that cell blank")
+	wantPass(t, runBalance(t, &fundBalanceIdentity{}, printed, rowSplitChange(t)), 1)
 }

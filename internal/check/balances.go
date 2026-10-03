@@ -20,13 +20,13 @@ func lineOf(b structure.Balance, f *fact.Fact) (structure.Line, bool) {
 // blank: absent, not zero, and not a line a rule stopped publishing.
 type blankLines map[structure.BalanceAt]map[structure.Line]bool
 
-// declaredBlanks reads every omission a rule in a balance scope declares, on
-// a cell mapping.Row.Publishes says would become a fact were the page to
-// print it, and finds every fact the store prints on a line its rule
+// declaredBlanks reads every cell omission a rule in a balance scope
+// declares, on a cell mapping.Row.Publishes says would become a fact were the
+// page to print it, and finds every fact the store prints on a line its rule
 // declares blank: both balance checks read their blanks here, so neither can
-// let a printed figure override one. A row omitted from every part is a
-// blank on every balance its cells would have landed on, and the parser
-// demands a category of it, so fact.FromValues always has an address.
+// let a printed figure override one. A ROW OMISSION MARKS NOTHING: it says
+// which page a row falls on, and the row is printed by another part, so the
+// cells it names are missing when absent and never blank.
 //
 // THE ADDRESS IS fact.FromValues', fed the cell the page leaves blank, so the
 // blank lands on exactly the balance and line its figure would have. The
@@ -44,28 +44,30 @@ func declaredBlanks(s *Subject, balances []structure.Balance) (blankLines, []Fin
 			for j := range rule.Parts {
 				p := &rule.Parts[j]
 				for _, o := range mapping.Omissions(rule, p) {
-					for c, col := range p.Columns {
-						if !o.Row.Publishes(col) || (o.Cell && c != o.ColumnIndex) {
+					if !o.Cell {
+						continue
+					}
+					col := p.Columns[o.ColumnIndex]
+					if !o.Row.Publishes(col) {
+						continue
+					}
+					blanks, err := fact.FromValues(file, rule, []mapping.Value{{
+						Row: o.Row, Column: col, RowIndex: o.RowIndex, ColumnIndex: o.ColumnIndex, Page: o.Page,
+					}})
+					if err != nil {
+						findings = append(findings, finding(file.Path, "%v", err))
+						continue
+					}
+					for k := range blanks {
+						l, ok := lineOf(b, &blanks[k])
+						if !ok {
 							continue
 						}
-						blanks, err := fact.FromValues(file, rule, []mapping.Value{{
-							Row: o.Row, Column: col, RowIndex: o.RowIndex, ColumnIndex: c, Page: o.Page,
-						}})
-						if err != nil {
-							findings = append(findings, finding(file.Path, "%v", err))
-							continue
+						at := structure.BalanceAtOf(&blanks[k])
+						if out[at] == nil {
+							out[at] = map[structure.Line]bool{}
 						}
-						for k := range blanks {
-							l, ok := lineOf(b, &blanks[k])
-							if !ok {
-								continue
-							}
-							at := structure.BalanceAtOf(&blanks[k])
-							if out[at] == nil {
-								out[at] = map[structure.Line]bool{}
-							}
-							out[at][l] = true
-						}
+						out[at][l] = true
 					}
 				}
 			}
