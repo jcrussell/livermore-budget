@@ -1522,8 +1522,8 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 				"drawn at its own fall: the beginning balance less the ending one, which the city " +
 				"prints as two figures and not as one. These are each fund's own draw, gross, " +
 				"where the citywide chart's Fund Balance Draw is net within each fund group, so " +
-				"the funds here sum to more than the mark they were opened from; a caveat gives " +
-				"their gross sum and their sum netted within each group. Every fund opens into where its own money comes from and goes.",
+				"the funds here can sum to more than the mark they were opened from; a caveat gives " +
+				"their gross sum and their sum netted within each group. Every fund drawn here opens into where its own money comes from and goes.",
 		},
 		{
 			// Shares (After, From) with object-category and transfers-out, told
@@ -1545,8 +1545,8 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 				"drawn at its own rise: the ending balance less the beginning one, which the city " +
 				"prints as two figures and not as one. These are each fund's own contribution, " +
 				"gross, where the citywide chart's Fund Balance Contribution is net within each " +
-				"fund group, so the funds here sum to more than the mark they were opened from; " +
-				"a caveat gives their gross sum and their sum netted within each group. Every fund opens into where its own money comes " +
+				"fund group, so the funds here can sum to more than the mark they were opened from; " +
+				"a caveat gives their gross sum and their sum netted within each group. Every fund drawn here opens into where its own money comes " +
 				"from and goes.",
 		},
 		{
@@ -1564,7 +1564,7 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 			Tail: "funds",
 			Description: "The funds on the left are those Budget Book pp.186-209 print an " +
 				"increase in reserves for, each at the figure its own page prints. Every fund " +
-				"opens into where its own money comes from and goes.",
+				"drawn here opens into where its own money comes from and goes.",
 		},
 		{
 			// Both sides of the opened fund, off the document before it: no

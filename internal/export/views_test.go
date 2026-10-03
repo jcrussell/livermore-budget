@@ -1116,6 +1116,15 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 				v.Steps[0].Sankey.Side, v.Steps[0].Sankey.Tiers = export.SideBoth, []int{0, 2}
 			})},
 			"so the opened tier must be neither end"},
+		{"a both-sided step carrying a residual", []export.View{ok,
+			chartView(func(v *export.View) {
+				v.Nav = "Extra"
+				v.Steps[0].Projection = "sankey"
+				v.Steps[0].Sankey.Side, v.Steps[0].Sankey.Tiers = export.SideBoth, []int{0, 2, 3}
+				v.Steps[0].ResidualGrain = "fund"
+				v.Steps[0].Residual = map[string]string{"transfers/in": "A reason."}
+			})},
+			"opens a node on both sides and declares a gap or a residual"},
 		{"a both-sided step drawn backwards", []export.View{ok,
 			chartView(func(v *export.View) {
 				v.Steps[0].Sankey.Side, v.Steps[0].Sankey.Tiers = export.SideBoth, []int{3, 2, 0}
