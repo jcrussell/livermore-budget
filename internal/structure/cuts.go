@@ -411,8 +411,8 @@ func BudgetBookExceptions() []Exception {
 				"both sums are arithmetic and the entry is grounded by differing by exactly what the fund-group " +
 				"cut, whose figures are printed, holds apart",
 			Reason: "Budget Book pp.85-125 print this spending by department, division and object with no " +
-				"fund at all, and they differ from p.67 in this object category by $250,000 and in no " +
-				"other. The chart draws p.67 as printed",
+				"fund at all, and they differ from p.67 in this object category and in no other. The " +
+				"chart draws p.67 as printed",
 			Bead: "fisc-av0w",
 		},
 	}, fundBalanceExceptions()...)
