@@ -352,7 +352,6 @@ func vocabularyWithDepartments(t *testing.T, departments string) *registry.Regis
 // path Load uses. The facts default to the whole fixture.
 func testSubject(t *testing.T, facts ...fact.Fact) *Subject {
 	t.Helper()
-	withoutTreeBalanceExceptions(t)
 	if len(facts) == 0 {
 		facts = testFacts()
 	}

@@ -189,7 +189,7 @@ func (*fundBalanceIdentity) Run(_ context.Context, s *Subject) (Result, error) {
 		}
 	}
 
-	carried, carriedApart, carryFindings := carryForward(balances, order, balanceExceptions())
+	carried, carriedApart, carryFindings := carryForward(balances, order, s.BalanceExceptions)
 	findings = append(findings, carryFindings...)
 
 	docs := map[string]bool{}

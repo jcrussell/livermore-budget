@@ -1,6 +1,7 @@
 package structure_test
 
 import (
+	"fmt"
 	"slices"
 	"strings"
 	"testing"
@@ -574,9 +575,10 @@ func TestAnIdentityCoversAKindOnlyUnderItsOwnCategory(t *testing.T) {
 		t.Fatal("no transfer out both sides print under p76's identity")
 	}
 	// relabel files every named side's transfer out at key under transfers/in,
-	// zeroing it too when zero is set.
-	relabel := func(t *testing.T, key structure.Key, zero bool, sides ...structure.Cut) []fact.Fact {
-		t.Helper()
+	// zeroing it too when zero is set. Each fact counts toward exactly one
+	// side: one both sides admit would satisfy both counts alone, so it is
+	// refused rather than counted.
+	relabel := func(key structure.Key, zero bool, sides ...structure.Cut) ([]fact.Fact, error) {
 		moved := slices.Clone(facts)
 		n := make([]int, len(sides))
 		for i := range moved {
@@ -584,14 +586,18 @@ func TestAnIdentityCoversAKindOnlyUnderItsOwnCategory(t *testing.T) {
 			if f.Kind != mapping.KindTransferOut || structure.KeyOf(f, key.Level) != key {
 				continue
 			}
-			admitted := false
+			side := -1
 			for j, c := range sides {
-				if c.Admits(f) {
-					n[j]++
-					admitted = true
+				if !c.Admits(f) {
+					continue
 				}
+				if side >= 0 {
+					return nil, fmt.Errorf("%s is admitted by both %q and %q at %s", f.ID, sides[side].Name, c.Name, key)
+				}
+				side = j
 			}
-			if admitted {
+			if side >= 0 {
+				n[side]++
 				f.Category = "transfers/in"
 				if zero {
 					f.AmountCents = 0
@@ -600,18 +606,35 @@ func TestAnIdentityCoversAKindOnlyUnderItsOwnCategory(t *testing.T) {
 		}
 		for j, c := range sides {
 			if n[j] == 0 {
-				t.Fatalf("relabelled no fact of %q at %s", c.Name, key)
+				return nil, fmt.Errorf("relabelled no fact of %q at %s", c.Name, key)
 			}
+		}
+		return moved, nil
+	}
+	// relabelled is relabel, or the test fails.
+	relabelled := func(t *testing.T, key structure.Key, zero bool, sides ...structure.Cut) []fact.Fact {
+		t.Helper()
+		moved, err := relabel(key, zero, sides...)
+		if err != nil {
+			t.Fatal(err)
 		}
 		return moved
 	}
+
+	// The helper's own premise: the same cut on both sides admits every fact
+	// at key on both, and is refused rather than counted for each.
+	t.Run("relabel refuses a fact both sides admit", func(t *testing.T) {
+		if _, err := relabel(key, false, flows, flows); err == nil {
+			t.Fatalf("relabel counted a fact of %q toward both sides", flows.Name)
+		}
+	})
 	misfiled := func(f string) bool {
 		return strings.Contains(f, "category=transfers/in") && strings.Contains(f, "] transfer_out:") &&
 			strings.Contains(f, `pairs "transfers/in" with [transfer_in]`)
 	}
 
 	t.Run("both sides under another kind's category", func(t *testing.T) {
-		o, err := structure.Peers(relabel(t, key, false, flows, td), flows, td, identities, structure.BudgetBookExceptions())
+		o, err := structure.Peers(relabelled(t, key, false, flows, td), flows, td, identities, structure.BudgetBookExceptions())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -626,7 +649,7 @@ func TestAnIdentityCoversAKindOnlyUnderItsOwnCategory(t *testing.T) {
 	// with another kind, is a misfiled column, not a figure the other side
 	// may simply not print.
 	t.Run("one side under another kind's category", func(t *testing.T) {
-		o, err := structure.Peers(relabel(t, key, false, flows), flows, td, identities, structure.BudgetBookExceptions())
+		o, err := structure.Peers(relabelled(t, key, false, flows), flows, td, identities, structure.BudgetBookExceptions())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -637,7 +660,7 @@ func TestAnIdentityCoversAKindOnlyUnderItsOwnCategory(t *testing.T) {
 
 	// A misfile is a mapping error whatever the figure, "-" included.
 	t.Run("one side's zero under another kind's category", func(t *testing.T) {
-		o, err := structure.Peers(relabel(t, key, true, flows), flows, td, identities, structure.BudgetBookExceptions())
+		o, err := structure.Peers(relabelled(t, key, true, flows), flows, td, identities, structure.BudgetBookExceptions())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -654,7 +677,7 @@ func TestAnIdentityCoversAKindOnlyUnderItsOwnCategory(t *testing.T) {
 		if i < 0 {
 			t.Fatalf("no transfer out %q prints on a basis %q does not", flows.Name, td.Name)
 		}
-		o, err := structure.Peers(relabel(t, structure.KeyOf(&facts[i], key.Level), false, flows), flows, td, identities,
+		o, err := structure.Peers(relabelled(t, structure.KeyOf(&facts[i], key.Level), false, flows), flows, td, identities,
 			structure.BudgetBookExceptions())
 		if err != nil {
 			t.Fatal(err)

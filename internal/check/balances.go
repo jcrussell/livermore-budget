@@ -6,10 +6,6 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/structure"
 )
 
-// balanceExceptions is a seam so a test can declare an exception the tree
-// does not.
-var balanceExceptions = structure.BalanceExceptions
-
 // lineOf is the line of its scope's declaration a fact is printed on.
 func lineOf(b structure.Balance, f *fact.Fact) (structure.Line, bool) {
 	for _, l := range b.Lines {

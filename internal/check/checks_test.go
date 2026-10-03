@@ -1368,7 +1368,6 @@ func TestAConstraintTierWithoutItsDisclosureIsAFinding(t *testing.T) {
 // projection rather than about the vocabulary.
 func factsSubject(t *testing.T, facts []fact.Fact) *Subject {
 	t.Helper()
-	withoutTreeBalanceExceptions(t)
 	return &Subject{Facts: facts, Vocabulary: testVocabulary(t)}
 }
 

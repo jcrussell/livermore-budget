@@ -80,11 +80,22 @@ func (at balanceAt) facts(lines []balanceLine) []fact.Fact {
 var fund101 = balanceAt{structure.ScopeFundBalancesByFund, "capital", 101, 2026, mapping.BasisAdopted}
 
 // runBalance runs one check over hand-built facts and nothing else: both
-// balance checks read the facts and the rule files and no other input.
+// balance checks read the facts, the rule files and the subject's exceptions,
+// and a hand-built subject declares none.
 func runBalance(t *testing.T, c Check, facts []fact.Fact, files ...*mapping.File) Result {
 	t.Helper()
-	withoutTreeBalanceExceptions(t)
-	res, err := c.Run(t.Context(), &Subject{Facts: facts, Files: files})
+	return runBalanceExcepting(t, c, nil, facts, files...)
+}
+
+// runBalanceExcepting is runBalance with the exceptions one test declares,
+// validated as the tree's are.
+func runBalanceExcepting(t *testing.T, c Check, exceptions []structure.BalanceException,
+	facts []fact.Fact, files ...*mapping.File) Result {
+	t.Helper()
+	if err := structure.ValidateBalanceExceptions(structure.FundBalances(), exceptions); err != nil {
+		t.Fatal(err)
+	}
+	res, err := c.Run(t.Context(), &Subject{Facts: facts, Files: files, BalanceExceptions: exceptions})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -250,35 +261,6 @@ func TestABalanceInAnUndeclaredScopeFails(t *testing.T) {
 	wantFail(t, runBalance(t, &fundBalanceIdentity{}, at.facts(byFundRow())), `"some-new-schedule"`)
 }
 
-// withoutTreeBalanceExceptions withholds the tree's balance exceptions for one
-// test over a hand-built store, unless the test declares its own: they name
-// pp.186-209's balances, so over a store that does not publish them every one
-// of them is stale and a finding.
-func withoutTreeBalanceExceptions(t *testing.T) {
-	t.Helper()
-	if declaredBalanceExceptions {
-		return
-	}
-	prev := balanceExceptions
-	balanceExceptions = func() []structure.BalanceException { return nil }
-	t.Cleanup(func() { balanceExceptions = prev })
-}
-
-// withBalanceExceptions declares exceptions the tree does not, for one test.
-func withBalanceExceptions(t *testing.T, exceptions ...structure.BalanceException) {
-	t.Helper()
-	if err := structure.ValidateBalanceExceptions(structure.FundBalances(), exceptions); err != nil {
-		t.Fatal(err)
-	}
-	prev := balanceExceptions
-	balanceExceptions = func() []structure.BalanceException { return exceptions }
-	declaredBalanceExceptions = true
-	t.Cleanup(func() { balanceExceptions, declaredBalanceExceptions = prev, false })
-}
-
-// declaredBalanceExceptions says a test has declared its own exceptions.
-var declaredBalanceExceptions bool
-
 // carryBreak is the shape of fund 101's real break, ending one year and
 // beginning the next at different figures, declared.
 func carryBreak(left, right int64) structure.BalanceException {
@@ -292,8 +274,8 @@ func carryBreak(left, right int64) structure.BalanceException {
 }
 
 func TestADeclaredCarryForwardBreakPasses(t *testing.T) {
-	withBalanceExceptions(t, carryBreak(120_000, 120_001))
-	wantPass(t, runBalance(t, &fundBalanceIdentity{}, twoYears(120_001)), 2)
+	e := []structure.BalanceException{carryBreak(120_000, 120_001)}
+	wantPass(t, runBalanceExcepting(t, &fundBalanceIdentity{}, e, twoYears(120_001)), 2)
 }
 
 func TestACarryForwardExceptionMustStillDescribeTheStore(t *testing.T) {
@@ -308,8 +290,7 @@ func TestACarryForwardExceptionMustStillDescribeTheStore(t *testing.T) {
 		{"a balance the scope does not print", fund101.facts(byFundRow()), carryBreak(120_000, 120_001), "matches no balance"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			withBalanceExceptions(t, tt.e)
-			wantFail(t, runBalance(t, &fundBalanceIdentity{}, tt.facts), tt.want)
+			wantFail(t, runBalanceExcepting(t, &fundBalanceIdentity{}, []structure.BalanceException{tt.e}, tt.facts), tt.want)
 		})
 	}
 }
@@ -318,7 +299,7 @@ func TestACarryForwardExceptionMustStillDescribeTheStore(t *testing.T) {
 // pp.186-209 over a store carrying none of them, as a renamed scope would
 // leave it, matches no balance.
 func TestAnExceptionOnAScopeTheStoreDoesNotCarryIsStale(t *testing.T) {
-	withBalanceExceptions(t, carryBreak(120_000, 120_001))
+	e := []structure.BalanceException{carryBreak(120_000, 120_001)}
 	spine := fund101
 	spine.scope, spine.fund = structure.ScopeAllFundsGross, 0
 	lines := []balanceLine{
@@ -326,7 +307,7 @@ func TestAnExceptionOnAScopeTheStoreDoesNotCarryIsStale(t *testing.T) {
 		{mapping.KindFundBalance, structure.CategoryFundBalanceChange, 20_000},
 		{mapping.KindFundBalance, structure.CategoryFundBalanceEnding, 120_000},
 	}
-	wantFail(t, runBalance(t, &fundBalanceIdentity{}, spine.facts(lines)), "matches no balance")
+	wantFail(t, runBalanceExcepting(t, &fundBalanceIdentity{}, e, spine.facts(lines)), "matches no balance")
 }
 
 // rowDelta is a FY2024 row the document rounds a dollar off its identity.
@@ -342,9 +323,9 @@ func rowDelta(net, change int64) structure.BalanceException {
 
 func TestADeclaredRowDeltaPassesAndAStaleOneFails(t *testing.T) {
 	off := fund101.facts(replace(byFundRow(), structure.CategoryFundBalanceEnding, 120_100))
-	withBalanceExceptions(t, rowDelta(20_000, 20_100))
-	wantPass(t, runBalance(t, &fundGroupSourcesEqualUses{}, off), 1)
-	wantFail(t, runBalance(t, &fundGroupSourcesEqualUses{}, fund101.facts(byFundRow())), "holds at $200.00")
+	e := []structure.BalanceException{rowDelta(20_000, 20_100)}
+	wantPass(t, runBalanceExcepting(t, &fundGroupSourcesEqualUses{}, e, off), 1)
+	wantFail(t, runBalanceExcepting(t, &fundGroupSourcesEqualUses{}, e, fund101.facts(byFundRow())), "holds at $200.00")
 }
 
 // blankCells is a pp.186-209 rule reading County Measure D's FY2027 row on
@@ -527,13 +508,13 @@ func TestABlankChangeIsNotCountedAsHeld(t *testing.T) {
 // balance an exception holds apart breaks the identity, so it is named
 // apart from the balances that satisfy it.
 func TestABalanceHeldApartIsNotCountedAsHolding(t *testing.T) {
-	withBalanceExceptions(t, carryBreak(120_000, 120_001), rowDelta(20_000, 20_100))
+	e := []structure.BalanceException{carryBreak(120_000, 120_001), rowDelta(20_000, 20_100)}
 	t.Run("carry-forward", func(t *testing.T) {
 		fy2028 := fund101
 		fy2028.year = 2028
 		facts := append(twoYears(120_001), fy2028.facts(replace(replace(byFundRow(),
 			structure.CategoryFundBalanceBeginning, 140_001), structure.CategoryFundBalanceEnding, 160_001))...)
-		res := runBalance(t, &fundBalanceIdentity{}, facts)
+		res := runBalanceExcepting(t, &fundBalanceIdentity{}, e, facts)
 		wantPass(t, res, 3)
 		const want = "1 carry-forward(s) each ending where the next year begins, and 1 held apart by declared exceptions"
 		if !strings.Contains(res.Summary, want) {
@@ -545,7 +526,7 @@ func TestABalanceHeldApartIsNotCountedAsHolding(t *testing.T) {
 		fund102.fund = 102
 		facts := append(fund101.facts(replace(byFundRow(), structure.CategoryFundBalanceEnding, 120_100)),
 			fund102.facts(byFundRow())...)
-		res := runBalance(t, &fundGroupSourcesEqualUses{}, facts)
+		res := runBalanceExcepting(t, &fundGroupSourcesEqualUses{}, e, facts)
 		wantPass(t, res, 2)
 		const want = "1 balances, each with sources minus uses equal to its change, 1 held apart by declared " +
 			"exceptions, and 0 exempted by declared blank cells"
@@ -596,5 +577,20 @@ func TestTwoFactsOnOneLineOfSourcesUsesFail(t *testing.T) {
 	wantFail(t, res, facts[1].ID, facts[len(facts)-1].ID, "revenue twice")
 	if res.Subjects != 0 {
 		t.Errorf("examined %d balances, want 0: a balance with no single revenue is not compared", res.Subjects)
+	}
+}
+
+// TestASubjectBuiltByHandCarriesNoException: a subject built directly, over a
+// store printing none of pp.186-209, runs both balance checks clean. The
+// tree's exceptions reach a check only on the subject Load builds.
+func TestASubjectBuiltByHandCarriesNoException(t *testing.T) {
+	for _, c := range []Check{&fundBalanceIdentity{}, &fundGroupSourcesEqualUses{}} {
+		res, err := c.Run(t.Context(), &Subject{Facts: testFacts()})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if res.Status != StatusPass {
+			t.Errorf("%s over a hand-built subject: %s, findings %s", c.ID(), res.Status, said(res))
+		}
 	}
 }

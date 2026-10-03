@@ -17,6 +17,7 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/project"
+	"github.com/jcrussell/livermore-budget/internal/structure"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
@@ -332,6 +333,22 @@ func TestLoadWiresOneResolverPerRuleFile(t *testing.T) {
 			t.Errorf("%s %s resolved differently the second time (-first +second):\n%s",
 				f.Path, rule.ID, diff)
 		}
+	}
+}
+
+// TestLoadCarriesTheTreesBalanceExceptions: Load is the one constructor
+// `fisc verify` runs, so an exception the tree declares reaches both balance
+// checks through it or not at all.
+func TestLoadCarriesTheTreesBalanceExceptions(t *testing.T) {
+	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if len(s.BalanceExceptions) == 0 {
+		t.Fatal("the subject carries no balance exception")
+	}
+	if diff := cmp.Diff(structure.BalanceExceptions(), s.BalanceExceptions); diff != "" {
+		t.Errorf("balance exceptions (-tree +subject):\n%s", diff)
 	}
 }
 

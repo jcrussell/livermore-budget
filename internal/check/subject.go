@@ -19,6 +19,7 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/internal/registry"
+	"github.com/jcrussell/livermore-budget/internal/structure"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 	"github.com/jcrussell/livermore-budget/schema"
 )
@@ -281,6 +282,17 @@ type Subject struct {
 	// four columns and no year, so under the old field it was published and
 	// unguarded. See project.PublishedDocument.
 	Published []project.PublishedDocument
+	// BalanceExceptions is every balance the documents print apart from an
+	// identity, which both balance checks hold the store to and report stale
+	// where it matches no balance.
+	//
+	// [Load] fills it from structure.BalanceExceptions, and it is a FIELD for
+	// the reason Published is: they name pp.186-209's balances, so over a
+	// fixture that prints none of them every one would be stale, and a check
+	// reading the package declaration could not tell that fixture from a
+	// corpus whose schedule had been renamed. A subject built by hand carries
+	// only the exceptions its builder declares, and a nil list means none.
+	BalanceExceptions []structure.BalanceException
 }
 
 // graphs is every projection whose document publishes a headline: the
@@ -419,6 +431,7 @@ func Load(o LoadOptions) (*Subject, error) {
 		}
 	}
 	s.Published = project.PublishedDocuments()
+	s.BalanceExceptions = structure.BalanceExceptions()
 	registry := project.Registry(reg)
 	if s.Projections, s.ProjectionFailures, err = buildProjections(
 		registry, s.Facts, o.Version); err != nil {
