@@ -392,7 +392,7 @@ describe("a year switch and an open drill", () => {
     const g = [...document.querySelectorAll("#chart g.node")].find((m) => m.__data__.id === "fund-group/general");
     app.pin(g.__data__);
     const read = () => ({
-      share: app.columnShare(g.__data__), laid: app.laidNodes, groups: app.groupIndex,
+      share: app.shareOf(g.__data__), laid: app.laidNodes, groups: app.groupIndex,
       table: document.querySelector("#flow-table tbody").innerHTML, projection: app.projection,
       year: app.column.column.fiscal_year,
     });

@@ -77,30 +77,50 @@ it folds; Go precomputes no closure. The declaration's syntax is `fisc-l8s5`.
 
 ## The renderer interface
 
-A form module exports one object:
+A form module exports one object, and `app.js` reaches a form through it and
+in no other way: it imports no helper of a form's, and reads no hint. The
+members, as `FormRenderer` in `site/app.js` types them:
 
 ```js
 /** @typedef {{
  *  form: string,
  *  tiersOf(chart): number[],                    // the declared tiers, from its own hints
+ *  caps(chart): {tier, tail?}[],                // the tiers it folds under a cap, each with the noun its tail is counted in where the cap names one
  *  columns(chart, rung, budget): number[],      // the tiers drawn at this budget
- *  offers(step, doc, rung, id): boolean,        // whether this form can draw `id` opened here
+ *  width(columns): number,                      // the px a chart of this many columns is laid out at
+ *  offers(step, doc, onScreen, id): boolean,    // whether this form can draw `id` opened here, out of `doc`, off the chart on screen
  *  shape(doc, rung, from, tiers): FiscProjection, // filter, cap, fold, marks; throws to refuse
  *  refit(drawn, rung, tiers): boolean,          // true when the drawn chart must be shaped again
  *  layOut(drawn, ctx): Laid,                    // pure of the page
  *  render(laid, ctx): void,                     // writes the DOM
  *  paint(ctx): void,                            // repaints on a theme change
- *  widest(steps): number                        // the columns the page may offer
+ *  widest(steps): number,                       // the columns the page may offer
+ *  cents(d): number,                            // the figure a laid mark prints, signed
+ *  share(d, laid): string,                      // a laid node's share of what it is drawn among, in words; "" where none
+ *  reduction(d): boolean,                       // whether a laid node's every ribbon is a printed reduction
+ *  crossTab(d): boolean,                        // whether a laid node's whole figure is a cross-tab total
+ *  reductionNote(d): string,                    // how much of a laid node's figure is printed as reductions, in words; ""
  * }} FormRenderer */
 ```
+
+`Laid` is `{nodes: LaidNode[], links: LaidLink[]}` as `app.js` types them: a
+node with `x0, x1, y0, y1, value, layer, depth, sourceLinks, targetLinks`, a
+link with its `source` and `target` resolved to nodes and a `width`. The page
+reads a laid mark's geometry and its ribbons itself, for emphasis, focus and
+the table; what a laid mark's figure and ribbons MEAN -- its signed cents
+after the form has flipped a reduction to draw it, its share of a column, a
+note on what is printed as reductions -- it asks of the form that laid it,
+through the readings of a laid mark above, because only that layout knows. What is the
+mark's own and no form's -- whether it is a ribbon (`isLink`), a residual's
+two figures (`residualFlows`), the pages it cites -- the core answers.
 
 A renderer calls the core for every figure (`foldDocument`, `capColumn`,
 `printedNet`, `reducedOf`, `carriedResidual`, `licensedGap`) and computes none
 of its own; it hands the core what only it knows, which is where a mark
 stands, whether this width draws a column, and whether the step's document
 decomposes the opened node at the columns the step declares, read off its
-own halves. `app.js` registers renderers
-by form in `FORMS` and refuses, with a banner, a chart whose form it does not
-hold. `site/form.test.mjs` registers a stub form that ships nothing and drills
-through it, which is what shows the seam carries a second renderer without a
-second model.
+own halves. `app.js` registers renderers by form in `FORMS` and refuses, with
+a banner, a chart whose form it does not hold. `site/form.test.mjs` registers
+a stub form that ships nothing and drills through it, pinning the panel and
+the tooltip to the stub's `cents`, which is what shows the seam carries a
+second renderer without a second model.

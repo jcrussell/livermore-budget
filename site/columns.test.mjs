@@ -414,7 +414,7 @@ describe("a widened step", () => {
         const panel = document.getElementById("detail");
         // THE NOTE AND THE SHARE DIFFER BY WIDTH, saying which legs are held
         // back and how the drawn column divides; the figures do not.
-        const words = (e) => e.textContent.replace(g.__data__.source_note, "").replace(app.columnShare(g.__data__), "");
+        const words = (e) => e.textContent.replace(g.__data__.source_note, "").replace(app.shareOf(g.__data__), "");
         said[budget] = {
           label: g.textContent, aria: g.getAttribute("aria-label"),
           tipValue: tip.querySelector(".tip-value").textContent, tip: words(tip),
@@ -424,7 +424,7 @@ describe("a widened step", () => {
         const height = (d) => d.y1 - d.y0;
         const column = [...chart.querySelectorAll("g.node")].map((m) => m.__data__).filter((d) => d.x0 === g.__data__.x0);
         const pct = (100 * height(g.__data__)) / column.reduce((a, d) => a + height(d), 0);
-        shares[budget] = { share: app.columnShare(g.__data__), drawn: "\u25c7 our " + pct.toFixed(1) + "% of this column" };
+        shares[budget] = { share: app.shareOf(g.__data__), drawn: "\u25c7 our " + pct.toFixed(1) + "% of this column" };
       }
       const flows = `${dollars(mark.in_cents)} in, ${dollars(mark.out_cents)} out`;
       t.diagnostic(`the mark carries ${mark.in_cents} in and ${mark.out_cents} out; at 3 columns "${said[3].aria}", ` +

@@ -24,12 +24,11 @@
 
 import * as core from "./core.js";
 import {
-  SCHEMA_VERSION, say, kindLabel, money, fmt, fmtSigned, fmtShortSigned, joinOr, el, maybeEl, cssVar, h, link, citations, balancesOf, ledeOf, PARTITION_NOTE, isFundGroup, scheduleOf, withinNode, scoped, foldTarget, regroupLocators, capColumn, tailFigure, isAggregate, residualID, isResidual, gapID, isGap, tableRows,
+  SCHEMA_VERSION, say, kindLabel, fmt, fmtSigned, joinOr, el, maybeEl, cssVar, h, link, citations, balancesOf, PARTITION_NOTE, isFundGroup, scheduleOf, isAggregate, isResidual, isGap, isLink, residualFlows, tableRows,
 } from "./core.js";
-import * as sankey from "./sankey.js";
-import {
-  NODE_WIDTH, NODE_PADDING, RIBBON_GAP, CHART_HEIGHT, LABEL_GUTTER, chartWidth, CHART_CUSHION, SIDE_SOURCE, reaching, sideOf, flankHolds, decomposable, markAmounts, markContra, isContraNode, isPartitionNode, isLink, markCents, contraBand, residualFlows, contraNote, markGap, restackLinks, alignFor, labelLineShift, SANKEY,
-} from "./sankey.js";
+import { SANKEY } from "./sankey.js";
+// Re-exported so the tests reach the shipped modules through the one file
+// they import; this file calls a form only through the renderer it registers.
 export * from "./core.js";
 export * from "./sankey.js";
 
@@ -63,7 +62,7 @@ export * from "./sankey.js";
 
 /**
  * A node after d3-sankey has laid it out (d3 mutates what it is given).
- * layer is the column d3 put it in, which is not depth; columnShare needs layer.
+ * layer is the column d3 put it in, which is not depth; the form's share reads layer.
  * @typedef {FiscNode & {x0:number, x1:number, y0:number, y1:number, value:number,
  *   sourceLinks:LaidLink[], targetLinks:LaidLink[], depth:number,
  *   layer:number}} LaidNode
@@ -101,45 +100,20 @@ export function fundGroupOf(node) {
   return core.fundGroupOf(groupIndex, node);
 }
 
-/** sankey.windowFor over the columns on screen. */
-export function windowFor(onScreen, stepDoc, rung) {
-  return sankey.windowFor(onScreen, stepDoc, rung, activeTiers());
-}
-
-/** sankey.carryResidual over the columns on screen. */
-export function carryResidual(drawn, from, rung) {
-  return sankey.carryResidual(drawn, from, rung, activeTiers());
-}
-
-/** sankey.dropEmptyColumns over the innermost rung and the columns on screen. */
+/** The form's refit over the innermost rung and the columns on screen. */
 export function dropEmptyColumns(drawn) {
   const rung = drilled.length ? drilled[drilled.length - 1] : null;
   return rung ? formFor(rung.step).refit(drawn, rung, activeTiers()) : false;
 }
 
-/** sankey.columnOf over the columns on screen. */
-export function columnOf(d) {
-  return sankey.columnOf(activeTiers(), d);
-}
-
-/** sankey.labelPlacement over the columns on screen. */
-export function labelPlacement(d, last) {
-  return sankey.labelPlacement(activeTiers(), d, last);
-}
-
-/** sankey.labelQualifiers over the document on screen and its columns. */
-export function labelQualifiers(nodes) {
-  return sankey.labelQualifiers(projection, activeTiers(), nodes);
-}
-
-/** sankey.columnShare over the chart's laid nodes. */
-export function columnShare(d) {
-  return sankey.columnShare(laidNodes, d);
-}
-
-/** sankey.nodeRank over the drawn index and the column's fund-group order. */
-export function nodeRank(node) {
-  return sankey.nodeRank(fundGroupOf, fundGroupPlace, node);
+/**
+ * A laid mark's share of what it is drawn among, in the form's words, over
+ * the chart's laid nodes; "" where the form states none.
+ * @param {LaidNode} d
+ * @returns {string}
+ */
+export function shareOf(d) {
+  return formOnScreen().share(d, laidNodes);
 }
 
 /**
@@ -153,13 +127,18 @@ export function homeOf(l) {
 
 /**
  * What a form module exports: one object app.js hands every chart of that
- * form to. A renderer reads of a step the generic fields and its own hints,
- * calls core.js for every figure, and computes none of its own.
+ * form to, and the only way this file reaches a form. A renderer reads of a
+ * step the generic fields and its own hints, calls core.js for every figure,
+ * and computes none of its own. Each member is set out in
+ * docs/chart-model.md; the readings over a laid mark (cents, share,
+ * reduction, crossTab, reductionNote) are the form's because only the
+ * layout that drew the mark knows what its drawn figure and ribbons mean.
  * @typedef {{
  *   form: string,
  *   tiersOf(chart: FiscChart | FiscDrillStep): number[],
  *   caps(chart: FiscChart | FiscDrillStep): FiscTierCap[],
  *   columns(chart: FiscDrillStep, rung: Rung | null, budget: number): number[],
+ *   width(columns: number): number,
  *   offers(step: FiscDrillStep, doc: FiscProjection, onScreen: FiscProjection | null, id: string): boolean,
  *   shape(doc: FiscProjection, rung: Rung | null, from: FiscProjection | null, tiers: number[]): FiscProjection,
  *   refit(drawn: FiscProjection, rung: Rung | null, tiers: number[]): boolean,
@@ -167,6 +146,11 @@ export function homeOf(l) {
  *   render(graph: {nodes: LaidNode[], links: LaidLink[]}, ctx: Record<string, any>): void,
  *   paint(ctx: {svg: any, colour: {link: (d: LaidLink) => string, node: (d: LaidNode) => string}}): void,
  *   widest(steps: FiscDrillStep[]): number,
+ *   cents(d: LaidLink | LaidNode): number,
+ *   share(d: LaidNode, laid: LaidNode[]): string,
+ *   reduction(d: LaidNode): boolean,
+ *   crossTab(d: LaidNode): boolean,
+ *   reductionNote(d: LaidNode): string,
  * }} FormRenderer
  */
 
@@ -371,15 +355,32 @@ export const OFFERED_COLUMNS = Math.max(NARROW_COLUMNS,
   ...Array.from(FORMS.values(), (r) => r.widest(STEPS.filter((s) => s.form === r.form))));
 
 /**
+ * The px `100vw` counts that the window does not: body padding plus a classic
+ * scrollbar. The page's, not a form's; style.css records it independently as
+ * --chart-cushion.
+ */
+export const CHART_CUSHION = 56;
+
+/**
+ * How wide the widest form here lays `n` columns out, in px: the width at
+ * which the nth column fits whichever chart the page draws.
+ * @param {number} n
+ * @returns {number}
+ */
+export function widthOf(n) {
+  return Math.max(...Array.from(FORMS.values(), (r) => r.width(n)));
+}
+
+/**
  * The viewport widths that buy a column beyond the floor. Each threshold is
- * chartWidth(n) plus CHART_CUSHION, computed so it is the width at which the
+ * widthOf(n) plus CHART_CUSHION, computed so it is the width at which the
  * nth column fits. Only ever adds columns; never below NARROW_COLUMNS.
  * @type {{query: string, columns: number}[]}
  */
 export const COLUMN_QUERIES = (() => {
   const out = [];
   for (let n = NARROW_COLUMNS + 1; n <= OFFERED_COLUMNS; n++) {
-    out.push({ query: "(min-width: " + (chartWidth(n) + CHART_CUSHION) + "px)", columns: n });
+    out.push({ query: "(min-width: " + (widthOf(n) + CHART_CUSHION) + "px)", columns: n });
   }
   return out;
 })();
@@ -388,7 +389,7 @@ export const COLUMN_QUERIES = (() => {
  * The widest chart this page can be asked to draw, in px, handed to style.css
  * as --chart-max so the stylesheet holds no second spelling of it.
  */
-export const CHART_MAX = chartWidth(OFFERED_COLUMNS);
+export const CHART_MAX = widthOf(OFFERED_COLUMNS);
 
 /**
  * How many columns the chart may draw (activeTiers). Per reader, not per view:
@@ -457,7 +458,7 @@ export let baseDescription = "";
  */
 export let tablePointer = "";
 /**
- * The nodes as laid out, so columnShare can total a mark's column. Separate
+ * The nodes as laid out, so shareOf can hand the form a mark's column. Separate
  * from projection because columns are d3-sankey's answer, not the file's.
  * @type {LaidNode[]}
  */
@@ -1054,13 +1055,11 @@ export function paintChartName() {
   }
   // THE TABLE POINTER CLOSES EVERY DEPTH'S DESCRIPTION: the closed flow table
   // is out of the accessibility tree, so this sentence is the only route to it.
-  // What the columns are is the step's own description, from Go.
+  // What the columns are is the step's own description, from Go, which
+  // requires one on every step.
   if (drilled.length) {
     const step = drilled[drilled.length - 1].step;
-    const said = step && typeof step.description === "string" && step.description
-      ? step.description
-      : trail + " on the left, and what it is made of on the right.";
-    desc.textContent = "Opened into " + trail + ". " + said + " " + say("go_back") + " " + tablePointer;
+    desc.textContent = "Opened into " + trail + ". " + step.description + " " + say("go_back") + " " + tablePointer;
     return;
   }
   desc.textContent = baseDescription;
@@ -1183,15 +1182,16 @@ export function columnSize(tier) {
 
 /**
  * What this rung's step calls the rows of one capped column: the cap's own
- * word where it has one, since one step can cap two columns under two nouns.
+ * word where it has one, since one step can cap two columns under two nouns,
+ * else the step's, which Go requires. "" on the overview, which caps nothing.
  * @param {number} tier
  * @returns {string}
  */
 export function tailNoun(tier) {
   const rung = drilled.length ? drilled[drilled.length - 1] : null;
-  if (!rung) return "items";
+  if (!rung) return "";
   const cap = formFor(rung.step).caps(rung.step).find((c) => c.tier === tier);
-  return (cap && cap.tail) || rung.step.tail || "items";
+  return (cap && cap.tail) || rung.step.tail;
 }
 
 /**
@@ -1234,7 +1234,7 @@ export function trailOfRungs() {
 export function shapeFor(doc) {
   const rung = drilled.length ? drilled[drilled.length - 1] : null;
   const from = rung ? docAt(drilled.length - 1) : null;
-  return formFor(chartOnScreen()).shape(doc, rung, from, activeTiers());
+  return formOnScreen().shape(doc, rung, from, activeTiers());
 }
 
 /**
@@ -1244,6 +1244,15 @@ export function shapeFor(doc) {
  */
 export function chartOnScreen() {
   return drilled.length ? drilled[drilled.length - 1].step : CONFIG.overview;
+}
+
+/**
+ * The renderer that drew the chart on screen: what every reading of a laid
+ * mark -- its figure, its share, what its ribbons say -- is asked of.
+ * @returns {FormRenderer}
+ */
+export function formOnScreen() {
+  return formFor(chartOnScreen());
 }
 
 /**
@@ -1264,7 +1273,7 @@ export function linkClass(d) {
  * @returns {string}
  */
 export function nodeClass(d) {
-  return "node" + (d.derived ? " derived" : "") + (isContraNode(d) ? " contra" : "") +
+  return "node" + (d.derived ? " derived" : "") + (formOnScreen().reduction(d) ? " contra" : "") +
     (drillable(d) ? " opens" : "") + (expandable(d) ? " expands" : "");
 }
 
@@ -1318,14 +1327,14 @@ export function layOut(doc) {
   if (source) {
     for (const n of source.nodes) index.set(n.id, n);
   }
-  const graph = formFor(chartOnScreen()).layOut(doc, {
+  const graph = formOnScreen().layOut(doc, {
     tiers: activeTiers(),
     columns: drawnColumns(),
     groupOf: (/** @type {FiscNode | LaidNode} */ n) => core.fundGroupOf(index, n),
     placeOf: fundGroupPlace,
   });
   groupIndex = index;
-  // For columnShare: only the laid graph knows a mark's column.
+  // For shareOf: only the laid graph knows a mark's column.
   laidNodes = graph.nodes;
   return graph;
 }
@@ -1339,7 +1348,7 @@ export function layOut(doc) {
 export function render(laid) {
   if (!projection) return;
   const graph = laid || layOut(projection);
-  formFor(chartOnScreen()).render(graph, {
+  formOnScreen().render(graph, {
     svg: D3.select("#chart"),
     tiers: activeTiers(),
     columns: drawnColumns(),
@@ -1363,7 +1372,7 @@ export function render(laid) {
  */
 export function paint() {
   if (!CONFIG || !CONFIG.overview || undrawableForm()) return;
-  formFor(chartOnScreen()).paint({
+  formOnScreen().paint({
     svg: D3.select("#chart"),
     colour: { link: linkColor, node: nodeColor },
   });
@@ -1433,7 +1442,7 @@ export function provenanceOf(derived, ontoOurs) {
  */
 export function linkDescription(d) {
   const kind = kindLabel(d.kind);
-  return d.source.label + " to " + d.target.label + ", " + fmtSigned(markCents(d)) +
+  return d.source.label + " to " + d.target.label + ", " + fmtSigned(formOnScreen().cents(d)) +
     (kind ? ", " + kind : "") +
     (d.contra ? ", " + d.contra : "") +
     (d.partition ? ", " + PARTITION_NOTE : "") +
@@ -1449,12 +1458,13 @@ export function nodeDescription(d) {
   // named only where it differs from Enter; the folded tail's sentence uses the
   // words of the chip that undoes it, since it opens nothing.
   const what = drillable(d) ? say("desc_opens") : expandable(d) ? say("desc_expands") : say("desc_follows");
-  const note = contraNote(d);
+  const form = formOnScreen();
+  const note = form.reductionNote(d);
   // The cross-tab qualification, for a reader who cannot see the ribbons.
   const flows = residualFlows(d);
-  return d.label + (flows ? ", " + flows : ", total " + fmtSigned(markCents(d))) +
+  return d.label + (flows ? ", " + flows : ", total " + fmtSigned(form.cents(d))) +
     ", " + say(d.derived ? "inferred_by_us" : "printed_by_city") +
-    (isPartitionNode(d) ? ", " + PARTITION_NOTE : "") +
+    (form.crossTab(d) ? ", " + PARTITION_NOTE : "") +
     (note ? ", " + note.replace(/^\u25c7 /, "") : "") + what;
 }
 
@@ -1553,9 +1563,10 @@ export function showTip(event, d) {
   tip.replaceChildren();
 
   const asLink = isLink(d);
+  const form = formOnScreen();
   const color = asLink ? linkColor(/** @type {LaidLink} */ (d)) : nodeColor(/** @type {LaidNode} */ (d));
 
-  tip.append(h("div", "tip-value", fmtSigned(markCents(d))));
+  tip.append(h("div", "tip-value", fmtSigned(form.cents(d))));
 
   const label = h("div", "tip-label");
   const key = h("span", "line-key");
@@ -1600,7 +1611,7 @@ export function showTip(event, d) {
     }
     meta.append(document.createTextNode(" "));
     meta.append(h("span", n.derived ? "chip derived" : "chip", say(n.derived ? "inferred_chip" : "printed_chip")));
-    const share = columnShare(n);
+    const share = shareOf(n);
     if (share) {
       meta.append(document.createTextNode(" "));
       // chip derived: a share is computed, never printed.
@@ -1618,7 +1629,7 @@ export function showTip(event, d) {
     if (flows) tip.append(h("div", "tip-meta", flows));
     for (const b of balancesOf(n)) tip.append(h("div", "tip-meta", b.words));
     if (n.rationale) tip.append(h("div", "tip-meta", n.rationale));
-    const note = contraNote(n);
+    const note = form.reductionNote(n);
     if (note) tip.append(h("div", "tip-meta", note));
     for (const c of cavs) tip.append(h("div", "tip-meta", "\u26a0 " + c.summary));
   }
@@ -1659,8 +1670,9 @@ export function pin(d) {
   if (!projection) return;
 
   const asLink = isLink(d);
+  const form = formOnScreen();
 
-  panel.append(h("div", "amount", fmtSigned(markCents(d))));
+  panel.append(h("div", "amount", fmtSigned(form.cents(d))));
   panel.append(h("div", "", asLink
     ? /** @type {LaidLink} */ (d).source.label + " → " + /** @type {LaidLink} */ (d).target.label
     : /** @type {LaidNode} */ (d).label));
@@ -1687,7 +1699,7 @@ export function pin(d) {
     chips.append(h("span", "chip", n.role.replace(/_/g, " ")));
     if (n.constraint_tier) chips.append(h("span", "chip", "constraint: " + n.constraint_tier));
     chips.append(h("span", n.derived ? "chip derived" : "chip", say(n.derived ? "our_inference" : "printed_by_city")));
-    const share = columnShare(n);
+    const share = shareOf(n);
     if (share) chips.append(h("span", "chip derived", share));
     panel.append(chips);
     const flows = residualFlows(n);
@@ -1705,7 +1717,7 @@ export function pin(d) {
     }
     if (n.rationale) panel.append(h("p", "why", n.rationale));
     if (n.source_note) panel.append(h("p", "subtle", n.source_note));
-    const note = contraNote(n);
+    const note = form.reductionNote(n);
     if (note) panel.append(h("p", "why", note));
     for (const c of caveatsFor(n.id)) {
       const why = h("p", "why");

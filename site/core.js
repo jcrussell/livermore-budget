@@ -633,8 +633,7 @@ export function capColumn(doc, tier, cap, opened, noun) {
   const folded = ranked.slice(cap);
 
   // The noun is the view's, plural: the threshold above folds two or more.
-  const word = noun || "items";
-  const aggregate = aggregateMark(tier, opened, folded.map((n) => n.id), atTier.length, cap, word);
+  const aggregate = aggregateMark(tier, opened, folded.map((n) => n.id), atTier.length, cap, noun);
   const tail = new Set(folded.map((n) => n.id));
   const remap = (/** @type {string} */ id) => (tail.has(id) ? aggregateID(tier) : id);
 
@@ -742,11 +741,6 @@ export function gapID(opened) {
 }
 
 /**
- * Whether an id names a gap node.
- * @param {string} id
- * @returns {boolean}
- */
-/**
  * Whether an id is a mark this client makes: an aggregate, a residual or a
  * gap. The declared set is export.MarkPrefixes.
  * @param {string} id
@@ -754,6 +748,29 @@ export function gapID(opened) {
  */
 export function isMark(id) {
   return isAggregate(id) || isResidual(id) || isGap(id);
+}
+
+/**
+ * Whether a mark is a ribbon rather than a node: a ribbon cites facts and a
+ * node does not, which is schema/projection.schema.json's shape and no
+ * form's.
+ * @param {LaidLink | LaidNode | FiscLink | FiscNode} d
+ * @returns {boolean}
+ */
+export function isLink(d) {
+  return Object.prototype.hasOwnProperty.call(d, "fact_ids");
+}
+
+/**
+ * A residual's two figures, where money both enters and leaves it; "" for
+ * every other mark. Read off the mark carriedResidual made, so every form
+ * says it in the same words.
+ * @param {FiscNode | LaidNode} d
+ * @returns {string}
+ */
+export function residualFlows(d) {
+  if (!isResidual(d.id) || !d.in_cents || !d.out_cents) return "";
+  return say("residual_flows", { in: fmt(d.in_cents), out: fmt(d.out_cents) });
 }
 
 /**

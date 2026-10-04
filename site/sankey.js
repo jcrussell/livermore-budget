@@ -14,7 +14,7 @@
  */
 
 import {
-  FoldRefusal, capColumn, carriedResidual, fmt, fmtShortSigned, foldDocument, foldTarget, isAggregate, isFundGroup, isGap, isResidual, licensedGap, printedNet, reducedOf, say, scoped, tailFigure, withinNode,
+  FoldRefusal, capColumn, carriedResidual, fmt, fmtShortSigned, foldDocument, foldTarget, isAggregate, isFundGroup, isGap, isLink, isResidual, licensedGap, printedNet, reducedOf, say, scoped, tailFigure, withinNode,
 } from "./core.js";
 
 export const NODE_WIDTH = 14;
@@ -50,12 +50,6 @@ export function chartWidth(n) {
   const columns = Math.max(1, n);
   return 2 * LABEL_GUTTER + BAND * (columns - 1) + NODE_WIDTH * columns;
 }
-
-/**
- * The px `100vw` counts that the window does not: body padding plus a classic
- * scrollbar. style.css records it independently as --chart-cushion.
- */
-export const CHART_CUSHION = 56;
 
 /** DrillStep.Side for a step opening the node its chart's links come FROM. */
 export const SIDE_SOURCE = "source";
@@ -572,14 +566,6 @@ export function isPartitionNode(d) {
 }
 
 /**
- * @param {LaidLink | LaidNode} d
- * @returns {boolean}
- */
-export function isLink(d) {
-  return Object.prototype.hasOwnProperty.call(d, "fact_ids");
-}
-
-/**
  * The figure a laid mark prints: negative for a contra ribbon and for a line
  * whose every ribbon is one, the larger of a residual's two sides, and d3's
  * value otherwise. A residual's is carryResidual's sum even where the width
@@ -614,17 +600,6 @@ export function contraBand(d) {
   const excess = arriving - (d.y1 - d.y0);
   // Half a pixel, not zero: no hairline band for reductions that round away.
   return excess > 0.5 ? { y: d.y1, height: excess } : null;
-}
-
-/**
- * A residual's two figures, where money both enters and leaves it; "" for
- * every other mark.
- * @param {LaidNode} d
- * @returns {string}
- */
-export function residualFlows(d) {
-  if (!isResidual(d.id) || !d.in_cents || !d.out_cents) return "";
-  return say("residual_flows", { in: fmt(d.in_cents), out: fmt(d.out_cents) });
 }
 
 /**
@@ -942,6 +917,36 @@ export const SANKEY = Object.freeze({
   /** The caps a chart declares, one per tier that needs one. */
   caps(chart) {
     return (chart.sankey && chart.sankey.caps) || [];
+  },
+
+  /** How wide a chart of this many columns is laid out, in px. */
+  width(columns) {
+    return chartWidth(columns);
+  },
+
+  /** The figure a laid mark prints: markCents. */
+  cents(d) {
+    return markCents(d);
+  },
+
+  /** A laid node's share of its column, as a sentence: columnShare. */
+  share(d, laid) {
+    return columnShare(laid, d);
+  },
+
+  /** Whether a laid node's every ribbon is a printed reduction: isContraNode. */
+  reduction(d) {
+    return isContraNode(d);
+  },
+
+  /** Whether a laid node's whole figure is a cross-tab total: isPartitionNode. */
+  crossTab(d) {
+    return isPartitionNode(d);
+  },
+
+  /** How much of a laid node's figure is printed as reductions, in words: contraNote. */
+  reductionNote(d) {
+    return contraNote(d);
   },
 
   /**

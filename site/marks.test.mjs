@@ -176,7 +176,7 @@ describe("the marks this client makes", () => {
     });
     const rung = { id: "fund/100", step: fund, doc: stepDoc };
     let message = "";
-    try { app.windowFor(planted, stepDoc, rung); } catch (e) { message = e.message; }
+    try { app.windowFor(planted, stepDoc, rung, fund.sankey.tiers); } catch (e) { message = e.message; }
     // AND THE NODE IS NOT OFFERED: what the window refuses, the flank does not
     // hold, so the mark is not classed as opening.
     const offered = app.SANKEY.offers(fund, stepDoc, planted, "fund/100");

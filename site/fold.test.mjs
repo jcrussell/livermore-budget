@@ -639,7 +639,7 @@ describe("a window's kept flank", () => {
     assert.ok(i >= 0, "the spine sends nothing into fund-group/general, so no flank ribbon was planted");
     planted.links[i] = Object.assign({}, planted.links[i], { contra: "printed as a reduction of Test" });
     const want = -planted.links[i].value_cents;
-    const window = app.windowFor(planted, rung.doc, Object.assign({}, rung, { chart: planted }));
+    const window = app.windowFor(planted, rung.doc, Object.assign({}, rung, { chart: planted }), app.activeTiers());
     const kept = window.links.find((l) => l.source === planted.links[i].source && l.target === "fund-group/general");
     assert.ok(kept, "the planted ribbon is not in the window's flank");
     assert.equal(kept.value_cents, want, "a reduction in the kept flank is read at the screen's sign, not its printed one");

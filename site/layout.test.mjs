@@ -182,11 +182,11 @@ function boxAt(anchor, x, width) {
   return { left, right: left + width };
 }
 
-/** Every column the graph drew, as an x-range, keyed by app.js's own index. */
+/** Every column the graph drew, as an x-range, keyed by the form's own index. */
 function columnsOf(app, graph) {
   const out = new Map();
   for (const n of graph.nodes) {
-    const c = app.columnOf(n);
+    const c = app.columnOf(app.activeTiers(), n);
     if (!out.has(c)) out.set(c, { x0: n.x0, x1: n.x1 });
   }
   return out;
@@ -214,19 +214,20 @@ function roomFor(app, columns, col) {
 
 /**
  * Every label of a laid graph, boxed where app.js puts it, against its room.
- * MEASURED WITH THE VIEW ON SCREEN: columnOf and nodeFlags read the drill state.
+ * MEASURED WITH THE VIEW ON SCREEN: the columns handed to columnOf and the
+ * flags nodeFlags reads are the drill state's.
  */
 function labelFit(app, graph) {
   const columns = columnsOf(app, graph);
   const last = Math.max(...columns.keys());
   // The words the page would draw, qualifier included.
-  const qualifiers = app.labelQualifiers(graph.nodes);
+  const qualifiers = app.labelQualifiers(app.projection, app.activeTiers(), graph.nodes);
   return graph.nodes.map((n) => {
-    const place = app.labelPlacement(n, last);
+    const place = app.labelPlacement(app.activeTiers(), n, last);
     const qualifier = qualifiers.get(n.id) || "";
     const width = labelWidth(app, n, qualifier);
     const box = boxAt(place.anchor, place.x, width);
-    const col = app.columnOf(n);
+    const col = app.columnOf(app.activeTiers(), n);
     const room = roomFor(app, columns, col);
     return { node: n, id: n.id, col, last, place, width, box, room, qualifier,
              words: (qualifier ? qualifier + " / " : "") + n.label,
@@ -349,7 +350,10 @@ function spineApp() {
 }
 
 /** The node sort app.js draws the spine under. */
-const byRank = (app) => (a, b) => app.nodeRank(a) - app.nodeRank(b) || b.value - a.value;
+const byRank = (app) => {
+  const rank = (n) => app.nodeRank(app.fundGroupOf, app.fundGroupPlace, n);
+  return (a, b) => rank(a) - rank(b) || b.value - a.value;
+};
 
 describe("the spine's layout, against the figures nodeRank was chosen on", () => {
   let app, graph, justified, widths, before_, after_, measured;
@@ -679,7 +683,7 @@ describe("the four-column window", () => {
  * @param {any} laid the same chart's nodes, as laid out
  */
 function drawnPlacement(app, document, laid) {
-  const last = Math.max(...laid.nodes.map((n) => app.columnOf(n)));
+  const last = Math.max(...laid.nodes.map((n) => app.columnOf(app.activeTiers(), n)));
   const chart = document.getElementById("chart");
   const marks = chart ? [...chart.querySelectorAll("g.node")] : [];
   const wrong = [];
@@ -692,7 +696,7 @@ function drawnPlacement(app, document, laid) {
       wrong.push(`${d && d.id}: the mark has no text.halo to place`);
       continue;
     }
-    const want = app.labelPlacement(d, last);
+    const want = app.labelPlacement(app.activeTiers(), d, last);
     const got = {
       x: text.getAttribute("x"), y: text.getAttribute("y"),
       dy: text.getAttribute("dy"), anchor: text.getAttribute("text-anchor"),
@@ -735,7 +739,7 @@ describe("where a label is anchored, on the windows that can tell the rules apar
     await settle();
     await opened(app, FUND_GROUP_WINDOW);
     groupLaid = app.layOut(app.projection);
-    disagree = groupLaid.nodes.filter((n) => app.columnOf(n) !== n.depth).map((n) => n.id);
+    disagree = groupLaid.nodes.filter((n) => app.columnOf(app.activeTiers(), n) !== n.depth).map((n) => n.id);
   });
 
   // Mutation: anchor labelPlacement's interior branch outward and this goes

@@ -516,7 +516,7 @@ describe("the drill's drawing", () => {
             rule: app.nodeClass(d), flags: app.nodeFlags(d),
             opens, expands, derived: Boolean(d.derived),
           });
-          const share = app.columnShare(d);
+          const share = app.shareOf(d);
           if (share.includes("100.0%") || share.includes("100%")) hundreds.push(`${year.label} ${where} ${d.id}: ${share}`);
         }
       };
@@ -564,7 +564,7 @@ describe("the drill's drawing", () => {
     l.value_cents = l.value_cents * 1000000;
     const { app, document } = await bootedApp({ checkedStem: YEARS[0].stem, plan: { [YEARS[0].path]: { doc } } });
     const big = marksIn(document.getElementById("chart")).find((m) => m.__data__.id === doc.nodes[l.from].id);
-    const rounded = big ? app.columnShare(big.__data__) : "(the mark is not drawn)";
+    const rounded = big ? app.shareOf(big.__data__) : "(the mark is not drawn)";
     t.diagnostic(`every share across the overview and ${Object.values(walks).map((w) => w.visited).join(" + ")} ` +
       `opened views is under 100%; ${doc.nodes[l.from].id} scaled to all but the whole of its column reads "${rounded}"`);
     assert.deepEqual(hundreds.slice(0, 3), [], `${hundreds.length} share(s) read 100%`);

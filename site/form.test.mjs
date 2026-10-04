@@ -8,7 +8,7 @@
 
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { loadApp, settle, opened, refusals, pageFixture } from "./testlib.mjs";
+import { loadApp, settle, opened, refusals, pageFixture, dollars } from "./testlib.mjs";
 
 /** The shipped step this file redeclares in the stub form. */
 const STEP = "division";
@@ -19,14 +19,25 @@ const PATH = ["fund-group/general", "fund/100", "dept/city-attorney"];
  * The stub renderer over the shipped app's exports. Every member app.js
  * calls on a renderer is here; every figure is core.js's (withinNode and
  * foldDocument, reached through app), and the layout is one row per node.
+ * The readings of a laid mark are the stub's own: a mark's figure is the
+ * cents its ribbons carry, and it states no share, no reduction and no
+ * cross-tab, so the page's words over a stub rung are what those answers
+ * make them.
  * @param {any} app
+ * @param {{cents: number}} asked how many times the page asked the stub for a figure
  */
-function stubRenderer(app) {
+function stubRenderer(app, asked) {
   const STUB = Object.freeze({
     form: "stub",
     tiersOf(chart) { return (chart.stub && chart.stub.depth) || []; },
     caps() { return []; },
     columns(chart) { return STUB.tiersOf(chart); },
+    width(columns) { return 300 * columns; },
+    cents(d) { asked.cents++; return app.isLink(d) ? d.value_cents : d.value; },
+    share() { return ""; },
+    reduction() { return false; },
+    crossTab() { return false; },
+    reductionNote() { return ""; },
     offers(step, doc, onScreen, id) {
       const inside = app.withinNode(doc, id);
       return doc.links.some((l) => inside.has(l.source) && inside.has(l.target));
@@ -113,7 +124,8 @@ describe("a second form fits the seam", () => {
       },
     }));
     const { app, document, fetch } = await loadApp({ config });
-    app.FORMS.set("stub", stubRenderer(app));
+    const asked = { cents: 0 };
+    app.FORMS.set("stub", stubRenderer(app, asked));
     await app.boot();
     await settle();
     assert.deepEqual(refusals(document), [], "the page boots with the stub registered");
@@ -150,6 +162,32 @@ describe("a second form fits the seam", () => {
     assert.equal(w.marks, drawn.nodes.length);
     assert.equal(w.ribbons, 0);
     assert.equal(app.activeTiers().length, 2);
+
+    // THE FIGURE A MARK SHOWS IS THE STUB'S cents, asked through the
+    // renderer: the panel, the tooltip and the aria label print what the stub
+    // answers, and none of them carries a share chip or a reduction note,
+    // which the stub states none of.
+    const paying = [...document.querySelectorAll("#chart g.node")].find((g) => g.__data__.sourceLinks.length > 0);
+    assert.ok(paying, "no stub mark sends a ribbon, so no figure is summed");
+    const d = paying.__data__;
+    const cents = d.sourceLinks.reduce((s, l) => s + l.value_cents, 0);
+    const before = asked.cents;
+    app.pin(d);
+    app.showTip({ target: document.getElementById("chart"), clientX: 0, clientY: 0 }, d);
+    const shown = {
+      panel: document.querySelector("#detail .amount").textContent,
+      tip: document.querySelector("#tooltip .tip-value").textContent,
+      aria: paying.getAttribute("aria-label"),
+      chips: [...document.querySelectorAll("#detail .chip.derived, #tooltip .chip.derived")].map((c) => c.textContent),
+    };
+    t.diagnostic(`${d.id} carries ${cents} cents by the stub's reading; the panel says ${JSON.stringify(shown.panel)}, ` +
+      `the aria label ${JSON.stringify(shown.aria)}; the stub's cents was asked ${asked.cents - before} time(s) for the pin and tip`);
+    assert.ok(cents > 0);
+    assert.equal(shown.panel, dollars(cents));
+    assert.equal(shown.tip, dollars(cents));
+    assert.ok(shown.aria.includes(`, total ${dollars(cents)},`), shown.aria);
+    assert.ok(asked.cents - before >= 2, "the pin and the tip read the figure without asking the stub");
+    assert.deepEqual(shown.chips.filter((c) => c.includes("%")), [], "a share chip the stub never stated");
 
     // Only the stub reads the stub's hints.
     const outside = reads.filter((r) => !r.frame.includes("form.test.mjs"));
