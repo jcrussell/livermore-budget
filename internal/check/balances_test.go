@@ -528,7 +528,7 @@ func TestABalanceHeldApartIsNotCountedAsHolding(t *testing.T) {
 			fund102.facts(byFundRow())...)
 		res := runBalanceExcepting(t, &fundGroupSourcesEqualUses{}, e, facts)
 		wantPass(t, res, 2)
-		const want = "1 balances, each with sources minus uses equal to its change, 1 held apart by declared " +
+		const want = "2 balances, 1 of them with sources minus uses equal to its change, 1 held apart by declared " +
 			"exceptions, and 0 exempted by declared blank cells"
 		if res.Summary != want {
 			t.Errorf("summary %q, want %q", res.Summary, want)
@@ -561,10 +561,27 @@ func TestABalanceExemptedByABlankIsCounted(t *testing.T) {
 		structure.CategoryFundBalanceEnding))
 	res := runBalance(t, &fundGroupSourcesEqualUses{}, append(noEnding, fund101.facts(byFundRow())...),
 		blankCells(t, true))
-	const want = "1 balances, each with sources minus uses equal to its change, 0 held apart by declared " +
+	wantPass(t, res, 2)
+	const want = "2 balances, 1 of them with sources minus uses equal to its change, 0 held apart by declared " +
 		"exceptions, and 1 exempted by declared blank cells"
 	if res.Summary != want {
 		t.Errorf("summary %q, want %q", res.Summary, want)
+	}
+}
+
+// TestAStoreEveryBalanceOfWhichIsExemptedPasses: a balance a blank exempts
+// was examined, line by line against its declaration, so a store holding
+// only such balances passes over them rather than reading as one printing no
+// sources and uses.
+func TestAStoreEveryBalanceOfWhichIsExemptedPasses(t *testing.T) {
+	noEnding := measureD.facts(without(without(byFundRow(), structure.CategoryFundBalanceReserveIncrease),
+		structure.CategoryFundBalanceEnding))
+	only := runBalance(t, &fundGroupSourcesEqualUses{}, noEnding, blankCells(t, true))
+	wantPass(t, only, 1)
+	const wantOnly = "1 balances, 0 of them with sources minus uses equal to its change, 0 held apart by " +
+		"declared exceptions, and 1 exempted by declared blank cells"
+	if only.Summary != wantOnly {
+		t.Errorf("summary %q, want %q", only.Summary, wantOnly)
 	}
 }
 

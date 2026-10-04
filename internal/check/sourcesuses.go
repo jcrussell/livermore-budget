@@ -159,11 +159,13 @@ func (*fundGroupSourcesEqualUses) Run(_ context.Context, s *Subject) (Result, er
 	}
 	return conclusion{
 		// An exception's balance is examined, both its sides compared to what
-		// it pins, and is no balance that holds.
-		subjects: len(sides),
+		// it pins, and is no balance that holds. So is one a declared blank
+		// exempts: every line it prints was held to its scope's declaration.
+		subjects: len(sides) + exempted,
 		unit:     "balances",
-		held: fmt.Sprintf("%d balances, each with sources minus uses equal to its change, %d held "+
-			"apart by declared exceptions, and %d exempted by declared blank cells", holding, heldApart, exempted),
+		held: fmt.Sprintf("%d balances, %d of them with sources minus uses equal to its change, %d held "+
+			"apart by declared exceptions, and %d exempted by declared blank cells",
+			len(sides)+exempted, holding, heldApart, exempted),
 		nothing:  "no balance prints its sources and uses",
 		findings: findings,
 	}.result(), nil
