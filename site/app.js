@@ -24,7 +24,7 @@
 
 import * as core from "./core.js";
 import {
-  SCHEMA_VERSION, say, kindLabel, money, fmt, fmtSigned, fmtShortSigned, joinOr, el, maybeEl, cssVar, h, link, citations, balancesOf, ledeOf, PARTITION_NOTE, isFundGroup, scheduleOf, withinNode, scoped, foldTarget, regroupLocators, FOLD_REFUSES_MIXED, capColumn, tailFigure, isAggregate, residualID, isResidual, gapID, isGap, tableRows,
+  SCHEMA_VERSION, say, kindLabel, money, fmt, fmtSigned, fmtShortSigned, joinOr, el, maybeEl, cssVar, h, link, citations, balancesOf, ledeOf, PARTITION_NOTE, isFundGroup, scheduleOf, withinNode, scoped, foldTarget, regroupLocators, capColumn, tailFigure, isAggregate, residualID, isResidual, gapID, isGap, tableRows,
 } from "./core.js";
 import * as sankey from "./sankey.js";
 import {

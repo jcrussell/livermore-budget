@@ -14,7 +14,7 @@
  */
 
 import {
-  FOLD_REFUSES_MIXED, capColumn, carriedResidual, fmt, fmtShortSigned, foldDocument, foldTarget, isAggregate, isFundGroup, isGap, isResidual, licensedGap, printedNet, reducedOf, say, scoped, tailFigure, withinNode,
+  FoldRefusal, capColumn, carriedResidual, fmt, fmtShortSigned, foldDocument, foldTarget, isAggregate, isFundGroup, isGap, isResidual, licensedGap, printedNet, reducedOf, say, scoped, tailFigure, withinNode,
 } from "./core.js";
 
 export const NODE_WIDTH = 14;
@@ -370,10 +370,11 @@ const flanks = new WeakMap();
 
 /**
  * Whether a window step's kept flank off the chart on screen holds the node,
- * and carries no residual or gap, which windowFor refuses: the offer and the
- * draw are one rule. A flank the fold refuses is offered rather than thrown
- * here: this is asked per mark per paint, and the drill that opens it says
- * why it cannot draw.
+ * carries no residual or gap, and folds: each is a refusal of windowFor's,
+ * so the offer and the draw are one rule and no mark is classed as opening
+ * whose window would banner. Asked per mark per paint, which is why the
+ * fold's refusal is an answer here rather than a throw; any other error is a
+ * defect and is thrown.
  * @param {FiscProjection} onScreen
  * @param {FiscDrillStep} step
  * @param {string} id
@@ -392,9 +393,8 @@ export function flankHolds(onScreen, step, id) {
       const kept = keptFlank(onScreen, { id: id, step: step }).nodes;
       holds = kept.some((n) => n.id === id) && !kept.some((n) => isResidual(n.id) || isGap(n.id));
     } catch (e) {
-      // Only the fold's refusal; anything else is a defect and is thrown.
-      if (!(e instanceof Error && e.message.includes(FOLD_REFUSES_MIXED))) throw e;
-      holds = true;
+      if (!(e instanceof FoldRefusal)) throw e;
+      holds = false;
     }
     byStep.set(at, holds);
   }

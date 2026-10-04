@@ -462,8 +462,14 @@ export function regroupLocators(keys) {
   }));
 }
 
-/** The fold's refusal to merge two ribbons one mark cannot draw as one. */
-export const FOLD_REFUSES_MIXED = "folding merges ribbons one mark cannot draw as one";
+/**
+ * The fold's refusal to merge two ribbons one mark cannot draw as one: a
+ * printed leg with an inferred one, or a cross-tab slice with a flow that
+ * is not one. A type and not a message, so a caller that decides by it
+ * (flankHolds) matches the refusal itself and never an error that quotes
+ * or wraps its words.
+ */
+export class FoldRefusal extends Error {}
 
 /**
  * Folds a document to the tiers this page draws: each node to its nearest
@@ -539,8 +545,8 @@ export function foldDocument(doc, tiers) {
       : Boolean(at.partition) !== Boolean(l.partition) ? "a cross-tab slice and a flow that is not one"
         : "";
     if (mixed) {
-      throw new Error("cannot draw " + doc.projection + ": " + FOLD_REFUSES_MIXED + ", " + mixed +
-        ", from " + source + " to " + target + " (" + l.kind + ")");
+      throw new FoldRefusal("cannot draw " + doc.projection + ": folding merges ribbons one mark cannot draw as one, " +
+        mixed + ", from " + source + " to " + target + " (" + l.kind + ")");
     }
     // One leg's reduction words cannot name the sum; markContra names what
     // the merged ribbon nets to.

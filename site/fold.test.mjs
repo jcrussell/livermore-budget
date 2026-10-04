@@ -688,6 +688,7 @@ describe("a printed flow and an inferred one", () => {
     assert.doesNotThrow(() => app.foldDocument(doc, [0, 2, 3, 4, 5]), "the printed document folds");
     planted.derived = true;
     assert.throws(() => app.foldDocument(doc, [0, 2, 3, 4, 5]), /cannot draw as one, a printed flow and an inferred one/);
+    assert.throws(() => app.foldDocument(doc, [0, 2, 3, 4, 5]), app.FoldRefusal, "the refusal is not the fold's own type");
     planted.derived = false;
     planted.partition = true;
     assert.throws(() => app.foldDocument(doc, [0, 2, 3, 4, 5]), /cannot draw as one, a cross-tab slice and a flow that is not one/);
@@ -720,19 +721,29 @@ describe("a printed flow and an inferred one", () => {
 
 describe("a kept flank the fold refuses", () => {
   // stepDecomposes asks this per mark per paint, so a flank whose fold throws
-  // must answer, not throw: planted, a second ribbon of one kind between one
-  // revenue category and the group, inferred where the first is printed.
-  test("is offered rather than thrown while the chart paints", async () => {
-    const app = (await loadApp()).app;
-    const step = pageFixture().config.steps.find((s) => s.key === "fund-group");
+  // must answer, not throw; and what windowFor would refuse the chart must
+  // not offer, or the mark is classed as opening and banners on activation.
+  // Planted: a second ribbon of one kind between one revenue category and the
+  // group, inferred where the first is printed.
+  test("is not offered, and the refusal is the fold's own type and not its words", async (t) => {
+    const { app, config } = await loadApp();
+    const step = config.steps.find((s) => s.key === "fund-group");
     const chart = structuredClone(goldenGraph());
+    const stepDoc = app.scheduleOf(columnFixture("fy2026-adopted"), step.projection);
+    // Its own copy: flankHolds memoises per chart object.
+    const control = app.SANKEY.offers(step, stepDoc, structuredClone(chart), "fund-group/general");
     const i = chart.links.findIndex((l) => l.target === "fund-group/general" && !l.derived);
     assert.ok(i >= 0, "the spine sends no printed ribbon into fund-group/general");
     chart.links.push(Object.assign({}, chart.links[i], { derived: true, fact_ids: [], value_cents: 1 }));
-    assert.throws(() => app.keptFlank(chart, { id: "fund-group/general", step }), /cannot draw as one, a printed flow and an inferred one/,
+    assert.throws(() => app.keptFlank(chart, { id: "fund-group/general", step }), app.FoldRefusal,
       "the planted flank does not make the fold refuse, so this test holds nothing");
     assert.doesNotThrow(() => app.flankHolds(chart, step, "fund-group/general"));
-    assert.equal(app.flankHolds(chart, step, "fund-group/general"), true);
+    const held = app.flankHolds(chart, step, "fund-group/general");
+    const offered = app.SANKEY.offers(step, stepDoc, chart, "fund-group/general");
+    t.diagnostic(`offered without the planted ribbon: ${control}; with it, flankHolds ${held} and offers ${offered}`);
+    assert.equal(control, true, "the unplanted flank is not offered, so the planted one's refusal proves nothing");
+    assert.equal(held, false);
+    assert.equal(offered, false);
   });
 });
 
