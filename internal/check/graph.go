@@ -198,7 +198,11 @@ func (*linkValuesTieToFacts) Run(_ context.Context, s *Subject) (Result, error) 
 	var findings []Finding
 	links := 0
 	for _, p := range s.linkedDocuments() {
-		selected := factIndex(project.SelectFacts(s.Facts, p.Options))
+		slice, err := p.slice(s.Facts)
+		if err != nil {
+			return Result{}, err
+		}
+		selected := factIndex(slice)
 		for _, l := range p.Links {
 			links++
 			subject := fmt.Sprintf("%s %s -> %s", p, l.Source, l.Target)
@@ -280,7 +284,11 @@ func (*linkLocatorsMatchTheirFacts) Run(_ context.Context, s *Subject) (Result, 
 	var findings []Finding
 	links := 0
 	for _, p := range s.linkedDocuments() {
-		selected := factIndex(project.SelectFacts(s.Facts, p.Options))
+		slice, err := p.slice(s.Facts)
+		if err != nil {
+			return Result{}, err
+		}
+		selected := factIndex(slice)
 		for _, l := range p.Links {
 			links++
 			subject := fmt.Sprintf("%s %s -> %s", p, l.Source, l.Target)
@@ -381,7 +389,10 @@ func (*countsReconcile) Run(_ context.Context, s *Subject) (Result, error) {
 
 	for _, p := range s.linkedDocuments() {
 		c := p.Graph.Metadata.Counts
-		slice := project.SelectFacts(s.Facts, p.Options)
+		slice, err := p.slice(s.Facts)
+		if err != nil {
+			return Result{}, err
+		}
 		times := map[string]int{}
 		for _, l := range p.Links {
 			for _, id := range l.FactIDs {

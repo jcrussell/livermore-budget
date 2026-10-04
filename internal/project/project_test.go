@@ -266,6 +266,25 @@ func TestTierOfRefusesACoinedForm(t *testing.T) {
 	}
 }
 
+// TestSelectFactsRefusesAViewThatCannotBuild: a ThroughCuts selection over a
+// scope no cut reads is an error, not an empty slice a caller that skipped
+// validate would draw as an empty chart or pass a check over. The fact is in
+// every other selector, so an empty answer is the swallow and not the filter.
+func TestSelectFactsRefusesAViewThatCannotBuild(t *testing.T) {
+	col := Column{FiscalYear: 2026, Basis: mapping.BasisAdopted}
+	facts := []fact.Fact{{ID: "in", Scope: "no-such-scope", Kind: mapping.KindRevenue,
+		FiscalYear: col.FiscalYear, Basis: col.Basis}}
+	o := Options{Columns: []Column{col}, Scopes: []string{"no-such-scope"}, ThroughCuts: true}
+	got, err := SelectFacts(facts, o)
+	if err == nil || !strings.Contains(err.Error(), "which no declared cut reads") {
+		t.Fatalf("SelectFacts = %v, %v; want a refusal naming the scope no cut reads", got, err)
+	}
+	o.ThroughCuts = false
+	if got, err := SelectFacts(facts, o); err != nil || len(got) != 1 {
+		t.Errorf("SelectFacts without ThroughCuts = %v, %v; want the one fact", got, err)
+	}
+}
+
 // TestSelectFactsAppliesEverySelector holds the one fact selection the
 // builders and the checks share to its three selectors: a fact outside the
 // scopes, the kinds or the columns is not selected, and one inside all three
@@ -282,8 +301,12 @@ func TestSelectFactsAppliesEverySelector(t *testing.T) {
 		mk("other-column", TransfersByFundScope, mapping.KindTransferIn, 2027),
 	}
 	o := Options{Columns: []Column{col}, Scopes: []string{TransfersByFundScope}, Kinds: transferKinds}
+	selected, err := SelectFacts(facts, o)
+	if err != nil {
+		t.Fatalf("SelectFacts: %v", err)
+	}
 	var got []string
-	for _, f := range SelectFacts(facts, o) {
+	for _, f := range selected {
 		got = append(got, f.ID)
 	}
 	if !slices.Equal(got, []string{"in"}) {

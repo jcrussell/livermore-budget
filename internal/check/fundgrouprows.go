@@ -59,7 +59,11 @@ func (*fundGroupsAreTheirPrintedRows) Run(_ context.Context, s *Subject) (Result
 	cells := 0
 	for _, p := range docs {
 		sums := map[groupCell]int64{}
-		for _, f := range project.SelectFacts(s.Facts, p.Options) {
+		slice, err := p.slice(s.Facts)
+		if err != nil {
+			return Result{}, err
+		}
+		for _, f := range slice {
 			if f.Fund == nil {
 				continue
 			}

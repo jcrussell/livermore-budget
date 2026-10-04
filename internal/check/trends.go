@@ -100,7 +100,11 @@ func (*trendPointsTieToFacts) Run(_ context.Context, s *Subject) (Result, error)
 		// not. Iterating the facts the projection was BUILT over rather than the
 		// whole store is what keeps this a statement about the document rather
 		// than about every schedule in the corpus.
-		for _, f := range project.SelectFacts(s.Facts, p.Options) {
+		slice, err := p.slice(s.Facts)
+		if err != nil {
+			return Result{}, err
+		}
+		for _, f := range slice {
 			if published[f.ID] {
 				continue
 			}

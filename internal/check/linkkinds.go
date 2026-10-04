@@ -65,7 +65,11 @@ func (*linkKindsMatchTheirFacts) Run(_ context.Context, s *Subject) (Result, err
 	links := 0
 
 	for _, p := range s.linkedDocuments() {
-		byID := factIndex(project.SelectFacts(s.Facts, p.Options))
+		slice, err := p.slice(s.Facts)
+		if err != nil {
+			return Result{}, err
+		}
+		byID := factIndex(slice)
 		for _, l := range p.Links {
 			links++
 			subject := fmt.Sprintf("%s %s -> %s", p, l.Source, l.Target)

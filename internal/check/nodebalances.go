@@ -37,7 +37,11 @@ func (*nodeBalancesTieToFacts) Run(_ context.Context, s *Subject) (Result, error
 	var findings []Finding
 	balances := 0
 	for _, p := range s.linkedDocuments() {
-		selected := factIndex(project.SelectFacts(s.Facts, p.Options))
+		slice, err := p.slice(s.Facts)
+		if err != nil {
+			return Result{}, err
+		}
+		selected := factIndex(slice)
 		if p.Name == project.FundSourcesUsesProjection {
 			findings = append(findings, unpublishedBalances(p, selected)...)
 		}

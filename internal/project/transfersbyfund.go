@@ -146,7 +146,10 @@ func (t *transfersByFund) Document(facts []fact.Fact, o Options) (*Document, err
 			"two budget years in one network add every movement to its own successor")
 	}
 	col := o.Columns[0]
-	selected := SelectFacts(facts, o)
+	selected, err := SelectFacts(facts, o)
+	if err != nil {
+		return nil, fmt.Errorf("transfers-by-fund: %w", err)
+	}
 
 	rows, err := pairTransferLegs(selected, o)
 	if err != nil {

@@ -122,7 +122,11 @@ func TestTheCIPBlockIsNotSelected(t *testing.T) {
 		}
 	}
 	for _, o := range (&fundSourcesUses{}).Slices(store.facts, "test") {
-		for _, f := range SelectFacts(store.facts, o) {
+		selected, err := SelectFacts(store.facts, o)
+		if err != nil {
+			t.Fatalf("SelectFacts(%s): %v", o.Columns[0], err)
+		}
+		for _, f := range selected {
 			if !cip[f.RuleID] {
 				t.Errorf("%s selects fact %s of rule %s, which no cut of its scope reads", o.Columns[0], f.ID, f.RuleID)
 			}

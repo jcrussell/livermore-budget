@@ -614,7 +614,10 @@ func (s *sankey) Document(facts []fact.Fact, o Options) (*Document, error) {
 	}
 	col := o.Columns[0]
 
-	selected := SelectFacts(facts, o)
+	selected, err := SelectFacts(facts, o)
+	if err != nil {
+		return nil, fmt.Errorf("sankey: %w", err)
+	}
 	h := headlineOver(view, selected)
 
 	// Net first, link second. A contra row (Budget Book p127 prints ERAF as
@@ -818,18 +821,21 @@ func headlineOver(v structure.View, facts []fact.Fact) Headline {
 // of several columns. What it is not is a wildcard: an Options with no columns
 // selects NOTHING here, and [Options.Validate] refuses one before it can.
 //
-// With ThroughCuts set a fact must also be one the scopes' view admits; a
-// view that does not build selects nothing, which validate refuses first.
-func SelectFacts(facts []fact.Fact, o Options) []fact.Fact {
+// With ThroughCuts set a fact must also be one the scopes' view admits, and a
+// view that does not build is an error rather than an empty selection: a
+// caller that skipped validate would otherwise draw an empty chart, or run a
+// check over nothing and pass it.
+func SelectFacts(facts []fact.Fact, o Options) ([]fact.Fact, error) {
 	var view *structure.View
+	var identities []structure.Identity
 	if o.ThroughCuts {
 		v, err := o.view()
 		if err != nil {
-			return []fact.Fact{}
+			return nil, fmt.Errorf("selecting through the cuts: %w", err)
 		}
 		view = &v
+		identities = structure.BudgetBookIdentities()
 	}
-	identities := structure.BudgetBookIdentities()
 	out := make([]fact.Fact, 0, len(facts))
 	for i := range facts {
 		f := &facts[i]
@@ -844,7 +850,7 @@ func SelectFacts(facts []fact.Fact, o Options) []fact.Fact {
 		}
 		out = append(out, *f)
 	}
-	return out
+	return out, nil
 }
 
 // netCells sums the facts of each printed cell and collects their ids.

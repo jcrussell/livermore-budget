@@ -149,7 +149,10 @@ func (u *fundSourcesUses) Document(facts []fact.Fact, o Options) (*Document, err
 				"cannot be built without one")
 	}
 	col := o.Columns[0]
-	selected := SelectFacts(facts, o)
+	selected, err := SelectFacts(facts, o)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", u.Name(), err)
+	}
 
 	funds, err := u.fundBlocks(selected)
 	if err != nil {

@@ -43,7 +43,11 @@ func TestEveryPublishedDocumentSelectsExactlyItsCutsFootprint(t *testing.T) {
 		}
 		documents++
 		chosen := map[string]bool{}
-		for _, f := range project.SelectFacts(facts, o) {
+		slice, err := project.SelectFacts(facts, o)
+		if err != nil {
+			t.Fatalf("%s: %v", d.Stem, err)
+		}
+		for _, f := range slice {
 			chosen[f.ID] = true
 		}
 		selected, drawnResidue := 0, 0

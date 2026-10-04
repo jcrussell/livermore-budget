@@ -173,6 +173,16 @@ func (p projection) String() string {
 	return fmt.Sprintf("%s %s %s", p.Name, project.Describe(p.Options.Columns), p.Options.ScopeList())
 }
 
+// slice is the facts p was built over: project.SelectFacts under p's own
+// Options, refused by the document's name when the selection cannot be made.
+func (p projection) slice(facts []fact.Fact) ([]fact.Fact, error) {
+	out, err := project.SelectFacts(facts, p.Options)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", p, err)
+	}
+	return out, nil
+}
+
 // projectionFailure is one slice a projection refused to build, with the
 // refusal.
 //
