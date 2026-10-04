@@ -262,12 +262,15 @@ func TestEveryCitationTheClientComposesResolves(t *testing.T) {
 // anything -- a field renamed, a default filled in -- would still name a
 // message and still pass, and nothing would say which arm had gone quiet.
 //
-// It is a second SankeyTemplate view, at a path the site does not open on.
+// It is a second SankeyTemplate view, at a path the site does not open on,
+// whose step opens the spine into fund-flows: a harness handing it to Write
+// builds both goldens. A case about a step that switches no document breaks
+// the chain's second step (chainView) or names the view's own document.
 func chartView(breaks func(*export.View)) export.View {
 	v := export.View{
 		Path: "extra.html", Template: export.SankeyTemplate, Projection: "sankey",
 		Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{0, 2}}},
-		Steps: []export.DrillStep{{Key: "groups", After: []string{""}, From: 2,
+		Steps: []export.DrillStep{{Key: "groups", After: []string{""}, From: 2, Projection: "fund-flows",
 			Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
 				Tiers: []int{0, 3}, Caps: []export.TierCap{{Tier: 3, Cap: 8}},
 			}}, Back: "All groups", Noun: "thing",
@@ -900,6 +903,10 @@ func TestASingleViewSiteRendersNoNav(t *testing.T) {
 // package a set of pages it must not write. Each one would fail in the browser
 // and nowhere else.
 func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
+	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
+	if err != nil {
+		t.Fatalf("read fund-flows golden: %v", err)
+	}
 	ok := export.View{Path: export.IndexPath, Nav: "Budget flows",
 		Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "sankey"}
 	cases := []struct {
@@ -1008,6 +1015,14 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 		{"a step that redraws the tiers it opened from", []export.View{ok,
 			chainView(func(v *export.View) { v.Steps[1].Sankey.Tiers = []int{0, 3}; v.Steps[1].Sankey.Caps = nil })},
 			"the set step \"groups\" already draws"},
+		// The first hop is placed against the view's own chart the same way: the
+		// overview's own columns of its own document is the chart the reader left.
+		{"a first hop that redraws the overview", []export.View{ok,
+			chartView(func(v *export.View) {
+				v.Steps[0].Projection = ""
+				v.Steps[0].Sankey.Tiers, v.Steps[0].Sankey.Caps = []int{0, 2}, nil
+			})},
+			"the set the view's own chart already draws"},
 		// The tree's own arms: a step nothing can name, two steps answering to one
 		// name, a parent that does not exist, a parent declared later, and two steps
 		// one node would match.
@@ -1119,7 +1134,6 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 		{"a both-sided step carrying a residual", []export.View{ok,
 			chartView(func(v *export.View) {
 				v.Nav = "Extra"
-				v.Steps[0].Projection = "sankey"
 				v.Steps[0].Sankey.Side, v.Steps[0].Sankey.Tiers = export.SideBoth, []int{0, 2, 3}
 				v.Steps[0].ResidualGrain = "fund"
 				v.Steps[0].Residual = map[string]string{"transfers/in": "A reason."}
@@ -1139,7 +1153,6 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 		{"a both-sided step carrying a gap", []export.View{ok,
 			chartView(func(v *export.View) {
 				v.Nav = "Extra"
-				v.Steps[0].Projection = "sankey"
 				v.Steps[0].Sankey.Side, v.Steps[0].Sankey.Tiers = export.SideBoth, []int{0, 2, 3}
 				v.Steps[0].Gaps = map[string][]project.Gap{"expenditure/services-and-supplies": {{FiscalYear: 2026, Basis: "adopted", Cents: 1, Reason: "A reason."}}}
 			})},
@@ -1208,17 +1221,41 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 					}}, Back: "b", Noun: "thing", Tail: "t",
 					Description: "d."}}}},
 			"drills and declares no render tiers"},
-		// A residual needs a second document and a reason: the first case declares one
-		// on a same-document step, the second gives an endpoint no reason.
+		// A residual needs a second document and a reason. Whether a step
+		// switches document is which file it resolves to against the chart it
+		// opens from, not whether Projection is spelled: the second and third
+		// cases name the document the chart above draws, on the first hop and
+		// on a chain's.
 		{"a residual on a step that switches no document", []export.View{ok,
 			chainView(func(v *export.View) {
 				v.Steps[1].Residual = map[string]string{"transfers/in": "a reason"}
 			})},
 			"a step that switches no document has no second grain"},
+		{"a residual on a first hop naming the view's own document", []export.View{ok,
+			chartView(func(v *export.View) {
+				v.Steps[0].Projection = "sankey"
+				v.Steps[0].Sankey.Tiers, v.Steps[0].Sankey.Caps = []int{0, 5}, nil
+				v.Steps[0].Residual = map[string]string{"transfers/in": "a reason"}
+				v.Steps[0].ResidualGrain = "fund"
+			})},
+			`draws "sankey", the document the view's own chart draws`},
+		{"a residual on a second step naming its parent's document", []export.View{ok,
+			chainView(func(v *export.View) {
+				v.Steps[1].Projection = "fund-flows"
+				v.Steps[1].Residual = map[string]string{"transfers/in": "a reason"}
+				v.Steps[1].ResidualGrain = "fund"
+			})},
+			`draws "fund-flows", the document step "groups" draws`},
+		{"a gap on a first hop naming the view's own document", []export.View{ok,
+			chartView(func(v *export.View) {
+				v.Steps[0].Projection = "sankey"
+				v.Steps[0].Sankey.Tiers, v.Steps[0].Sankey.Caps = []int{0, 5}, nil
+				v.Steps[0].Gaps = map[string][]project.Gap{"expenditure/services-and-supplies": {{FiscalYear: 2026, Basis: "adopted", Cents: 1, Reason: "A reason."}}}
+			})},
+			"a step that switches no document has only one"},
 		{"a residual endpoint with no reason", []export.View{ok,
 			chartView(func(v *export.View) {
 				v.Nav = "Extra"
-				v.Steps[0].Projection = "sankey"
 				v.Steps[0].Residual = map[string]string{"transfers/in": ""}
 				v.Steps[0].ResidualGrain = "fund"
 			})},
@@ -1226,7 +1263,6 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 		{"a residual endpoint whose reason is only whitespace", []export.View{ok,
 			chartView(func(v *export.View) {
 				v.Nav = "Extra"
-				v.Steps[0].Projection = "sankey"
 				v.Steps[0].Residual = map[string]string{"transfers/in": "  "}
 				v.Steps[0].ResidualGrain = "fund"
 			})},
@@ -1234,14 +1270,12 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 		{"a residual with no grain to name its mark", []export.View{ok,
 			chartView(func(v *export.View) {
 				v.Nav = "Extra"
-				v.Steps[0].Projection = "sankey"
 				v.Steps[0].Residual = map[string]string{"transfers/in": "the reason"}
 			})},
 			`dependentRequired["residual"]: missing properties ["residual_grain"]`},
 		{"a grain naming a mark the step never draws", []export.View{ok,
 			chartView(func(v *export.View) {
 				v.Nav = "Extra"
-				v.Steps[0].Projection = "sankey"
 				v.Steps[0].ResidualGrain = "fund"
 			})},
 			`dependentRequired["residual_grain"]: missing properties ["residual"]`},
@@ -1252,7 +1286,6 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 		{"a residual on a mark", []export.View{ok,
 			chartView(func(v *export.View) {
 				v.Nav = "Extra"
-				v.Steps[0].Projection = "sankey"
 				v.Steps[0].ResidualGrain = "fund"
 				v.Steps[0].Residual = map[string]string{"residual/transfers/in": "A reason."}
 			})},
@@ -1260,7 +1293,6 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 		{"a gap on a mark", []export.View{ok,
 			chartView(func(v *export.View) {
 				v.Nav = "Extra"
-				v.Steps[0].Projection = "sankey"
 				v.Steps[0].Gaps = map[string][]project.Gap{"gap/expenditure/services-and-supplies": {{FiscalYear: 2026, Basis: "adopted", Cents: 1, Reason: "A reason."}}}
 			})},
 			`licenses a gap on "gap/expenditure/services-and-supplies", which is a mark`},
@@ -1272,28 +1304,24 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 		{"a gap with no reason", []export.View{ok,
 			chartView(func(v *export.View) {
 				v.Nav = "Extra"
-				v.Steps[0].Projection = "sankey"
 				v.Steps[0].Gaps = map[string][]project.Gap{"expenditure/services-and-supplies": {{FiscalYear: 2026, Basis: "adopted", Cents: 1}}}
 			})},
 			"items/properties/reason: minLength"},
 		{"a gap licensing zero cents", []export.View{ok,
 			chartView(func(v *export.View) {
 				v.Nav = "Extra"
-				v.Steps[0].Projection = "sankey"
 				v.Steps[0].Gaps = map[string][]project.Gap{"expenditure/services-and-supplies": {{FiscalYear: 2026, Basis: "adopted", Reason: "A reason."}}}
 			})},
 			"items/properties/cents: not"},
 		{"a gap on a step that widens", []export.View{ok,
 			windowView(func(v *export.View) {
 				v.Nav = "Extra"
-				v.Steps[0].Projection = "sankey"
 				v.Steps[0].Sankey.Tiers, v.Steps[0].Sankey.Widen = []int{0, 2, 3, 4}, []int{4}
 				v.Steps[0].Gaps = map[string][]project.Gap{"expenditure/services-and-supplies": {{FiscalYear: 2026, Basis: "adopted", Cents: 1, Reason: "A reason."}}}
 			})},
 			"declares a gap on 1 node(s) and widens tiers"},
 		{"two gap licences for one column", []export.View{ok,
 			chartView(func(v *export.View) {
-				v.Steps[0].Projection = "sankey"
 				v.Steps[0].Gaps = map[string][]project.Gap{"expenditure/services-and-supplies": {
 					{FiscalYear: 2026, Basis: "adopted", Cents: 1, Reason: "A reason."},
 					{FiscalYear: 2026, Basis: "adopted", Cents: 2, Reason: "Another."}}}
@@ -1301,7 +1329,6 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 			"declares two gaps on node \"expenditure/services-and-supplies\" for FY2026 adopted"},
 		{"a gap licensing a column the view lists no year of", []export.View{ok,
 			chartView(func(v *export.View) {
-				v.Steps[0].Projection = "sankey"
 				v.Steps[0].Gaps = map[string][]project.Gap{"expenditure/services-and-supplies": {
 					{FiscalYear: 2027, Basis: "adopted", Cents: 1, Reason: "A reason."}}}
 			})},
@@ -1357,8 +1384,10 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			_, err := writeSite(export.Options{
-				Dir:         t.TempDir(),
-				Projections: map[string][]byte{"sankey": goldenSankey(t)},
+				Dir: t.TempDir(),
+				Projections: map[string][]byte{
+					"sankey": goldenSankey(t), "fund-flows": builtLike(t, goldenSankey(t), fundFlows),
+				},
 				Views:       c.views,
 				Docs:        budgetDocs(),
 				GeneratedBy: "fisc test",
@@ -3733,8 +3762,12 @@ func TestThePageOpensOnTheYearItDeclaresWhileListingThemOldestFirst(t *testing.T
 // The mutations: json:"-" back on DrillStep.ResidualGrain and the grain comes
 // back ""; Gaps marshalled as its reasons joined and the steps do not decode.
 func TestTheServedStepsCarryTheirLicences(t *testing.T) {
+	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
+	if err != nil {
+		t.Fatalf("read fund-flows golden: %v", err)
+	}
 	declared := []export.DrillStep{{
-		Key: "group", After: []string{""}, From: 2, Projection: "sankey",
+		Key: "group", After: []string{""}, From: 2, Projection: "fund-flows",
 		Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
 			Tiers: []int{0, 2},
 		}}, Back: "All fund groups", Noun: "fund group", Tail: "funds",
@@ -3751,6 +3784,8 @@ func TestTheServedStepsCarryTheirLicences(t *testing.T) {
 		Dir: dir,
 		Projections: map[string][]byte{
 			"sankey": goldenSankey(t), "sankey-2027": reyeared(t, goldenSankey(t), 2027, "FY 2027-28"),
+			"fund-flows":      builtLike(t, goldenSankey(t), fundFlows),
+			"fund-flows-2027": builtLike(t, goldenSankey(t), reyeared(t, fundFlows, 2027, "FY 2027-28")),
 		},
 		Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
 			Template: export.SankeyTemplate, Projection: "sankey", YearStems: []string{"sankey", "sankey-2027"},

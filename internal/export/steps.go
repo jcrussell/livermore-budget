@@ -31,6 +31,14 @@ type parentChart struct {
 	keep []int
 }
 
+// name is the chart as a refusal names it.
+func (p parentChart) name() string {
+	if p.key == "" {
+		return "the view's own chart"
+	}
+	return fmt.Sprintf("step %q", p.key)
+}
+
 // validateSteps refuses a drill tree a reader could not walk, and a step that
 // would fold nothing, say nothing, draw a schedule some listed year's column
 // does not carry, or draw one year's document under another year's chart.
@@ -120,6 +128,10 @@ func (v View) validateSteps(ix ColumnIndex) error {
 			}
 		}
 		doc := docs[i]
+		// A chart this step opens from that draws the document this step
+		// draws, or -1: against it, the step switches no document, whatever
+		// Projection spells.
+		same := slices.IndexFunc(parents, func(p parentChart) bool { return p.doc == doc })
 		switch {
 		case !slices.Contains(ChartForms(), s.Form):
 			return fmt.Errorf(
@@ -159,17 +171,18 @@ func (v View) validateSteps(ix ColumnIndex) error {
 			return fmt.Errorf(
 				"view %q's step %d licenses a gap on %q, which is a mark the client makes "+
 					"and no document prints a total for", v.Path, i, markKey(s.Gaps))
-		case s.Projection == "" && len(s.Residual) > 0:
+		case same >= 0 && len(s.Residual) > 0:
 			return fmt.Errorf(
-				"view %q's step %d carries a residual of %d endpoint(s) and draws the "+
-					"document before it; a residual is what one document prints at a grain "+
+				"view %q's step %d carries a residual of %d endpoint(s) and draws %q, the "+
+					"document %s draws; a residual is what one document prints at a grain "+
 					"the other does not, and a step that switches no document has no second "+
-					"grain", v.Path, i, len(s.Residual))
-		case s.Projection == "" && len(s.Gaps) > 0:
+					"grain", v.Path, i, len(s.Residual), doc, parents[same].name())
+		case same >= 0 && len(s.Gaps) > 0:
 			return fmt.Errorf(
-				"view %q's step %d declares a gap on %d node(s) and draws the document "+
-					"before it; a gap is one cell two documents print at two figures, and a "+
-					"step that switches no document has only one", v.Path, i, len(s.Gaps))
+				"view %q's step %d declares a gap on %d node(s) and draws %q, the document "+
+					"%s draws; a gap is one cell two documents print at two figures, and a "+
+					"step that switches no document has only one", v.Path, i, len(s.Gaps), doc,
+				parents[same].name())
 		}
 		// Every parent draws the tier this step opens from, whatever the form.
 		for _, p := range parents {
@@ -202,9 +215,9 @@ func (v View) validateSteps(ix ColumnIndex) error {
 			if !found {
 				continue
 			}
-			where := "the view's own chart"
+			where := parentChart{key: shared}.name()
 			if shared != "" {
-				where = fmt.Sprintf("step %q's chart", shared)
+				where += "'s chart"
 			}
 			if o.Role == s.Role {
 				return fmt.Errorf(
@@ -380,17 +393,16 @@ func (v View) validateSankeyStep(i int, s DrillStep, parents []parentChart, doc 
 	}
 	// Every parent places this step, not the first one that fits.
 	for _, p := range parents {
-		where := "the view's own chart"
-		if p.key != "" {
-			where = fmt.Sprintf("step %q", p.key)
-		}
+		where := p.name()
 		// Same document only, and equality not containment (fisc-ke1f): a
-		// strict subset of a widened parent's tiers is a narrower chart.
-		if p.key != "" && doc == p.doc && slices.Equal(p.tiers, h.Tiers) {
+		// strict subset of a widened parent's tiers is a narrower chart. The
+		// view's own chart is a parent like any other here: a first hop
+		// drawing the overview's own columns of its own document redraws it.
+		if doc == p.doc && slices.Equal(p.tiers, h.Tiers) {
 			return fmt.Errorf(
-				"view %q's step %d draws tiers %v of %q, the set step %q "+
+				"view %q's step %d draws tiers %v of %q, the set %s "+
 					"already draws; opening a node would redraw the chart it was opened "+
-					"from", v.Path, i, h.Tiers, doc, p.key)
+					"from", v.Path, i, h.Tiers, doc, where)
 		}
 		// A kept flank is drawn at its share of the centre, not whole, so
 		// nothing on one may open: the node would take one figure in and
