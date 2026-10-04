@@ -70,6 +70,7 @@ func revenue(category, label string) revenueRow {
 
 // TestRevenueRowsAndLinesAreOneSet is the check's own table.
 func TestRevenueRowsAndLinesAreOneSet(t *testing.T) {
+	t.Parallel()
 	plan := revenue("charges-for-services", "Plan Check Fees")
 	library := revenue("charges-for-services", "Library Fees")
 
@@ -196,10 +197,8 @@ func TestRevenueRowsAndLinesAreOneSet(t *testing.T) {
 // Mutation: move taxes/property/eraf to taxes/other/eraf; this fails twice,
 // naming the line no rule row carries and the rule row no line resolves.
 func TestEveryRevenueLineIsARowOfTheMapping(t *testing.T) {
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	t.Parallel()
+	s := committed(t)
 
 	type row struct{ category, label string }
 	rows := map[row]int{} // distinct (category, printed label) over the rule files
@@ -265,10 +264,8 @@ func TestEveryRevenueLineIsARowOfTheMapping(t *testing.T) {
 // registry that a line is a child of an assignable category, told apart by the
 // flag and never by depth.
 func TestRevenueLinesAreDistinctFromRollupChildren(t *testing.T) {
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	t.Parallel()
+	s := committed(t)
 	var lines, rollupChildren []string
 	for _, c := range s.Vocabulary.Categories() {
 		switch {

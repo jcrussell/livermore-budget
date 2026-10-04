@@ -30,6 +30,7 @@ import (
 // This test runs the two hardest cases: the one that changes fund group and the
 // one that does not.
 func TestRowFundsCatchesTheTwinSwapNothingElseSees(t *testing.T) {
+	t.Parallel()
 	for _, tt := range []struct {
 		name          string
 		anchor        string
@@ -50,10 +51,7 @@ func TestRowFundsCatchesTheTwinSwapNothingElseSees(t *testing.T) {
 		alsoSetGroup: "capital", printedFundNo: 200,
 	}} {
 		t.Run(tt.name, func(t *testing.T) {
-			s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-			if err != nil {
-				t.Fatalf("Load: %v", err)
-			}
+			s := isolated(t)
 			swapped := 0
 			for _, f := range s.Files {
 				for i := range f.Rules {
@@ -100,10 +98,8 @@ func TestRowFundsCatchesTheTwinSwapNothingElseSees(t *testing.T) {
 // including what it does NOT, because the summary is printed on every run and a
 // reader counting rows would otherwise have to guess.
 func TestTheCommittedCorpusRowAnchorsHold(t *testing.T) {
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	t.Parallel()
+	s := committed(t)
 	res, err := (&rowFundsMatchTheirAnchors{}).Run(t.Context(), s)
 	if err != nil {
 		t.Fatalf("Run: %v", err)
@@ -196,10 +192,8 @@ func TestTheCommittedCorpusRowAnchorsHold(t *testing.T) {
 // subjects -- pp.85-125's 78 and pp.186-209's 444 -- and the clause naming
 // those rows as unread returns.
 func TestTheBareLabelArmIsWhatTheDeclarationTurnsOn(t *testing.T) {
-	base, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	t.Parallel()
+	base := committed(t)
 	s := withoutRowLabelFunds(base)
 	res, err := (&rowFundsMatchTheirAnchors{}).Run(t.Context(), s)
 	if err != nil {
@@ -261,10 +255,8 @@ func withoutRowLabelFunds(base *Subject) *Subject {
 // declares a fund" while 78 did. Reverting the guard to `unanchored > 0` makes
 // this red.
 func TestAVacuousRowFundsSummaryCannotDenyTheRowsItSaw(t *testing.T) {
-	base, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	t.Parallel()
+	base := committed(t)
 	// Only the funding-source rules, whose row labels carry no verb phrase, so
 	// every declared fund is unphrased and none is unanchored.
 	//
@@ -329,6 +321,7 @@ func TestAVacuousRowFundsSummaryCannotDenyTheRowsItSaw(t *testing.T) {
 // verbatim. Reverting anchorHasVerbPhrase to a constant true collapses the two
 // lists back into one and makes this test red on the count.
 func TestABareFundLabelIsNotReportedAsAnUnprintedAnchor(t *testing.T) {
+	t.Parallel()
 	if anchorHasVerbPhrase("General Fund") {
 		t.Error(`"General Fund" carries no verb phrase, so it cannot be evidence of direction`)
 	}
@@ -344,6 +337,7 @@ func TestABareFundLabelIsNotReportedAsAnUnprintedAnchor(t *testing.T) {
 // registered: the shared fixture is a miniature of the spine, whose fund
 // dimension is per column.
 func TestRowFundsIsVacuousWithoutAPerRowSchedule(t *testing.T) {
+	t.Parallel()
 	res, err := (&rowFundsMatchTheirAnchors{}).Run(t.Context(), testSubject(t))
 	if err != nil {
 		t.Fatalf("Run: %v", err)
@@ -362,10 +356,8 @@ func TestRowFundsIsVacuousWithoutAPerRowSchedule(t *testing.T) {
 // of "Transfer From Water  to Water Replacement" (640/642, both enterprise)
 // moves no group sum, so cuts-tie-along-the-lattice cannot see it.
 func TestRowFundsCatchesASameGroupEndSwap(t *testing.T) {
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	t.Parallel()
+	s := isolated(t)
 	swapped := 0
 	for _, f := range s.Files {
 		for i := range f.Rules {
@@ -434,10 +426,8 @@ func TestRowFundsCatchesASameGroupEndSwap(t *testing.T) {
 // the two gated on ru.RowLabelsNameFunds, not the phrased-label refusal above it
 // -- returns it to green.
 func TestRowFundsCatchesABareLabelTwin(t *testing.T) {
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	t.Parallel()
+	s := isolated(t)
 	// Water 640 -> Water Replacement 642, with the fund group left alone.
 	swapped := 0
 	for _, f := range s.Files {
@@ -549,6 +539,7 @@ func TestRowFundsCatchesABareLabelTwin(t *testing.T) {
 // receiving fund and, separately, its transferring fund, each to another fund
 // of the same type, which moves no sum any check reads.
 func TestTheFundNumberArmHoldsBothEndsOfAP222Row(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name   string
 		label  string
@@ -563,10 +554,7 @@ func TestTheFundNumberArmHoldsBothEndsOfAP222Row(t *testing.T) {
 		{"a grant row's fund dropped", "816", func(r *mapping.Row) { r.Fund = 0 }, "the fund which receives is 0"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-			if err != nil {
-				t.Fatalf("Load: %v", err)
-			}
+			s := isolated(t)
 			hit := 0
 			for _, f := range s.Files {
 				for i := range f.Rules {
@@ -609,10 +597,8 @@ func TestTheFundNumberArmHoldsBothEndsOfAP222Row(t *testing.T) {
 // Renaming a row label breaks the page anchor first, so the resolver refuses
 // long before this check runs. Mutating the loaded rules reaches it.
 func TestABareLabelThatResolvesToNoFundIsAFinding(t *testing.T) {
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	t.Parallel()
+	s := isolated(t)
 	renamed := 0
 	for _, f := range s.Files {
 		for i := range f.Rules {
@@ -674,19 +660,14 @@ func TestABareLabelThatResolvesToNoFundIsAFinding(t *testing.T) {
 // The corpus cannot exercise it: all 29 skip: true rows carry no fund, measured.
 // So the row is built here.
 func TestASkippedRowIsInvisibleToThisCheck(t *testing.T) {
-	base, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	t.Parallel()
+	base := isolated(t)
 	before, err := (&rowFundsMatchTheirAnchors{}).Run(t.Context(), base)
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
 
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	s := isolated(t)
 	// A skipped row carrying a fund, inside a rule that declares
 	// row_labels_name_funds, with a label no fund in the registry answers to.
 	// If the guard is missing this is either a finding (the label resolves to
@@ -733,6 +714,7 @@ func TestASkippedRowIsInvisibleToThisCheck(t *testing.T) {
 // movement" reports the absence of a whole arm as though it were a result, and
 // the direction claim in it is about no row at all.
 func TestTheHeldLineNeverReportsAnEmptyArm(t *testing.T) {
+	t.Parallel()
 	// wantNot ARE REGEXPS AND NOT SUBSTRINGS, and that is the third attempt at
 	// this test rather than a flourish. "0 " matches inside "40 printed", and so
 	// does "0 printed with a verb phrase" -- a substring test over a formatted
@@ -802,19 +784,14 @@ func TestTheHeldLineNeverReportsAnEmptyArm(t *testing.T) {
 // ATTEMPT THREE is this: refuse. The author has said something untrue about
 // their own page, and saying so is what the declaration is for.
 func TestAVerbPhrasedLabelUnderTheDeclarationIsRefused(t *testing.T) {
-	base, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	t.Parallel()
+	base := isolated(t)
 	before, err := (&rowFundsMatchTheirAnchors{}).Run(t.Context(), base)
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
 
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	s := isolated(t)
 	flagged := 0
 	for _, f := range s.Files {
 		for i := range f.Rules {
@@ -858,6 +835,7 @@ func TestAVerbPhrasedLabelUnderTheDeclarationIsRefused(t *testing.T) {
 // TestTheRowFundsSummaryStatesNoZeroClause: a corpus whose only fund-declaring
 // rule prints fund numbers reports that arm alone.
 func TestTheRowFundsSummaryStatesNoZeroClause(t *testing.T) {
+	t.Parallel()
 	if got := heldLines(62, 0, 62); strings.Contains(got, "0 row anchors") ||
 		!strings.HasPrefix(got, "62 printed fund numbers") {
 		t.Errorf("heldLines(62, 0, 62) = %q", got)

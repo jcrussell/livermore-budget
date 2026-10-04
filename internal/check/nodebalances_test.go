@@ -12,10 +12,8 @@ import (
 // the balance plants moves a link, so only node-balances-tie-to-facts sees
 // them.
 func TestFundChangesAndBalancesAreFailable(t *testing.T) {
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatal(err)
-	}
+	t.Parallel()
+	s := isolated(t)
 	var doc *linked
 	for _, p := range s.linkedDocuments() {
 		if p.Name == project.FundSourcesUsesProjection && p.Options.Columns[0].FiscalYear == 2026 {

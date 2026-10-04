@@ -34,6 +34,7 @@ func citeFact(id, rule, label string, kind mapping.Kind, cents int64) fact.Fact 
 // p41's, where two rules read one section anchor and can publish its single
 // printed figure twice with every other check satisfied.
 func TestOnePrintedFigureIsTwoFactsOnlyWhenARowDeclaresIt(t *testing.T) {
+	t.Parallel()
 	withCounterpart := []mapping.Rule{{
 		ID: "p76-transfers",
 		Rows: []mapping.Row{{
@@ -131,6 +132,7 @@ func TestOnePrintedFigureIsTwoFactsOnlyWhenARowDeclaresIt(t *testing.T) {
 // sixteen negative facts; the sixteenth is the netted transfer_out, which such a
 // rule would not redden because it declares.
 func TestATransferPrintedAgainstItsKindMustSaySo(t *testing.T) {
+	t.Parallel()
 	f := func(kind mapping.Kind, sign mapping.Sign, cents int64) fact.Fact {
 		return fact.Fact{
 			ID: "f", DocID: "doc", Page: 41, Token: "(25.72)",
@@ -181,6 +183,7 @@ func TestATransferPrintedAgainstItsKindMustSaySo(t *testing.T) {
 // where the one netted row has no zero column, which is why it needs a test
 // rather than a run.
 func TestTheOrientationSummaryDoesNotCountAZeroAsNetted(t *testing.T) {
+	t.Parallel()
 	nettedAt := func(cents int64) fact.Fact {
 		return fact.Fact{
 			ID: "f", DocID: "doc", Page: 41, Token: "-", RowLabel: "Transfers (out)",

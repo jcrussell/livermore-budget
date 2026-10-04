@@ -50,10 +50,8 @@ func aStatedTotalLine(t *testing.T, s *Subject, want func(*mapping.Rule, *mappin
 // check had something to look at as well as that it held. A pass over zero
 // stated-total lines would be the vacuous result wearing a pass's summary.
 func TestNoCommittedFactCitesAStatedTotal(t *testing.T) {
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	t.Parallel()
+	s := committed(t)
 	res := runStatedTotals(t, s)
 	if res.Status != StatusPass {
 		t.Fatalf("fact-offset-is-not-a-stated-total = %s: %s (%v)",
@@ -107,10 +105,8 @@ func TestNoCommittedFactCitesAStatedTotal(t *testing.T) {
 // The fact is planted at a REAL resolved total offset rather than a made-up one,
 // so the test fails the same way the corpus would.
 func TestARepublishedTotalIsCaught(t *testing.T) {
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	t.Parallel()
+	s := mutable(t)
 	doc, page, off, ruleID := aStatedTotalLine(t, s, func(r *mapping.Rule, _ *mapping.Part) bool {
 		return r.TotalRow != ""
 	})
@@ -167,10 +163,8 @@ func pageOf(t *testing.T, s *Subject, docID string, page int) string {
 // department. Delete the rollup loop from the check and this is the only test
 // that reddens.
 func TestARepublishedRollupTotalIsCaught(t *testing.T) {
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	t.Parallel()
+	s := mutable(t)
 	var docID, id string
 	var page, off int
 	for _, f := range s.Files {
@@ -228,10 +222,8 @@ func TestARepublishedRollupTotalIsCaught(t *testing.T) {
 // route instead. Restore `if rule.TotalSpansParts { continue }` ahead of the
 // bearer lookup and this names every spanning rule no rollup covers.
 func TestLosingASpanningRulesTotalIsCaught(t *testing.T) {
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	t.Parallel()
+	s := isolated(t)
 	if res := runStatedTotals(t, s); res.Status != StatusPass {
 		t.Fatalf("the unbent corpus reported %s: %s", res.Status, res.Summary)
 	}
@@ -282,10 +274,8 @@ func TestLosingASpanningRulesTotalIsCaught(t *testing.T) {
 // Excuse label-less parts from the per-part arm -- `if mapping.AnchorOf(p) ==
 // mapping.AnchorStopAt { continue }` after the error -- and this goes red.
 func TestALabelLessPartThatLosesItsTotalLineIsCaught(t *testing.T) {
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	t.Parallel()
+	s := isolated(t)
 	var bentRule *mapping.Rule
 	var bentPart *mapping.Part
 	var footer string
@@ -353,10 +343,8 @@ func TestALabelLessPartThatLosesItsTotalLineIsCaught(t *testing.T) {
 // parts, a declared total_row, and not total_spans_parts. The spanning shape,
 // whose head parts print no total, has its own test above.
 func TestOneLostPartIsCaughtEvenWhenOthersResolve(t *testing.T) {
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	t.Parallel()
+	s := isolated(t)
 	// The shape wanted is a rule that keeps SOME span after its total_row is
 	// broken, because that is exactly what `resolved == 0` forgave. It is found
 	// by simulation rather than by naming a rule, so the test follows the corpus
@@ -437,10 +425,8 @@ func TestOneLostPartIsCaughtEvenWhenOthersResolve(t *testing.T) {
 // Delete the amountRun test from statedTotalLine and this goes red, naming
 // every terminator line verbatim.
 func TestNoTotalLurksAtAnUndeclaredLabelLessTerminator(t *testing.T) {
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	t.Parallel()
+	s := committed(t)
 	seen := 0
 	for _, f := range s.Files {
 		r := s.Resolvers[f.Path]
@@ -494,10 +480,8 @@ func TestNoTotalLurksAtAnUndeclaredLabelLessTerminator(t *testing.T) {
 // Restore `label := rule.TotalRow` ahead of the LabelsFrom test and this goes
 // red while every other test in this file still passes.
 func TestALabelLessPartWithATotalRowNamesItsRealAnchor(t *testing.T) {
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	t.Parallel()
+	s := mutable(t)
 	doc, page, off, ruleID := aStatedTotalLine(t, s, func(r *mapping.Rule, p *mapping.Part) bool {
 		return r.TotalRow != "" && p.LabelsFrom != 0
 	})
@@ -544,10 +528,8 @@ func TestALabelLessPartWithATotalRowNamesItsRealAnchor(t *testing.T) {
 // block's total line can ever be refused. The spanning shape has its own test
 // above and its own finding.
 func TestARuleWhoseTotalResolvesNowhereIsCaught(t *testing.T) {
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	t.Parallel()
+	s := isolated(t)
 	var bent *mapping.Rule
 	for _, f := range s.Files {
 		for i := range f.Rules {
@@ -585,10 +567,8 @@ func TestARuleWhoseTotalResolvesNowhereIsCaught(t *testing.T) {
 // Mutation: drop the ordinal from the label, and the finding names stop_at
 // "$" alone.
 func TestALineFoundByOrdinalIsNamedWithIt(t *testing.T) {
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	t.Parallel()
+	s := mutable(t)
 	doc, page, off, ruleID := aStatedTotalLine(t, s, func(_ *mapping.Rule, p *mapping.Part) bool {
 		return p.StopAtOrdinal > 0
 	})
@@ -611,10 +591,8 @@ func TestALineFoundByOrdinalIsNamedWithIt(t *testing.T) {
 //
 // Mutation: always say "after the block's start", and this is red.
 func TestAnOrdinalWithNoSectionCountsFromThePage(t *testing.T) {
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	t.Parallel()
+	s := isolated(t)
 	cleared := 0
 	for _, f := range s.Files {
 		for i := range f.Rules {

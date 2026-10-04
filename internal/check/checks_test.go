@@ -27,6 +27,7 @@ import (
 // is the failure this package exists to prevent, and only the number says which
 // one happened.
 func TestFixtureVerdicts(t *testing.T) {
+	t.Parallel()
 	rep := runChecks(t, testSubject(t))
 
 	want := map[string]string{
@@ -152,6 +153,7 @@ func TestFixtureVerdicts(t *testing.T) {
 // that is red until the corpus is finished gets commented out; --strict is how a
 // run demands that nothing be left unchecked.
 func TestVacuousFailsOnlyUnderStrict(t *testing.T) {
+	t.Parallel()
 	s := testSubject(t)
 	lenient := Run(t.Context(), s, All(), ReportOptions{})
 	strict := Run(t.Context(), s, All(), ReportOptions{Strict: true})
@@ -175,6 +177,7 @@ func TestVacuousFailsOnlyUnderStrict(t *testing.T) {
 // TestVacuousChecksSayWhatIsAbsent covers the other half of legibility: the
 // number says "nothing", and the sentence has to say what.
 func TestVacuousChecksSayWhatIsAbsent(t *testing.T) {
+	t.Parallel()
 	rep := runChecks(t, testSubject(t))
 	for id, want := range map[string]string{
 		"transfer-legs-pair":                    "no link carries a transfer_id",
@@ -203,6 +206,7 @@ func TestVacuousChecksSayWhatIsAbsent(t *testing.T) {
 // makes on the way out. A hand-edited or differently-ordered facts.jsonl is
 // caught here and nowhere else.
 func TestUnsortedFactStoreFails(t *testing.T) {
+	t.Parallel()
 	facts := testFacts()
 	slices.Reverse(facts)
 	res := resultFor(t, runChecks(t, testSubject(t, facts...)), "facts-sorted")
@@ -234,6 +238,7 @@ func TestUnsortedFactStoreFails(t *testing.T) {
 // sentence was unreachable in any test at all, which means the wording a
 // reader sees when the check has nothing to say had never been read.
 func TestKindMatchesCategorySummariesArePinned(t *testing.T) {
+	t.Parallel()
 	t.Run("pass", func(t *testing.T) {
 		res := resultFor(t, runChecks(t, testSubject(t)), "fact-kind-matches-category")
 		if res.Status != StatusPass {
@@ -280,6 +285,7 @@ func TestKindMatchesCategorySummariesArePinned(t *testing.T) {
 // vacuous: this package distinguishes "checked and held" from "had nothing to
 // check", and collapsing the two is how a hole gets reported as a pass.
 func TestAnUnassignableCategoryReddensOneVocabularyCheck(t *testing.T) {
+	t.Parallel()
 	facts := testFacts()
 	// BOTH FIELDS, and the kind is the load-bearing one. The fixture taxonomy
 	// declares taxes with kinds: [revenue] and facts[0] is a revenue cell, so
@@ -309,6 +315,7 @@ func TestAnUnassignableCategoryReddensOneVocabularyCheck(t *testing.T) {
 // TestCollidingIDsFail covers the other fact-store check. Two facts with one id
 // mean two rules claim the same cell of the same document.
 func TestCollidingIDsFail(t *testing.T) {
+	t.Parallel()
 	facts := testFacts()
 	facts[1].ID = facts[0].ID
 	res := resultFor(t, runChecks(t, testSubject(t, facts...)), "fact-ids-unique")
@@ -331,6 +338,7 @@ func TestCollidingIDsFail(t *testing.T) {
 // the record does not contain, which on a file whose whole purpose is to be
 // addressable is the silent failure fisc-28h's decision was made to prevent.
 func TestARelabelledFactNoLongerAddressesItself(t *testing.T) {
+	t.Parallel()
 	facts := testFacts()
 	stale := facts[0].ID
 	facts[0].RowLabel = "Property Taxes (restated)"
@@ -362,6 +370,7 @@ func TestARelabelledFactNoLongerAddressesItself(t *testing.T) {
 // a rule that writes `tax/property` where the taxonomy says `taxes/property`
 // produces a fact that is confidently wrong and joins to nothing.
 func TestVocabularyCatchesAnUnknownCategory(t *testing.T) {
+	t.Parallel()
 	cells := slices.Clone(fixtureCells)
 	cells[0].category = "tax/property"
 	res := resultFor(t, runChecks(t, cellsSubject(t, cells)), "fact-vocabulary")
@@ -387,6 +396,7 @@ func TestVocabularyCatchesAnUnknownCategory(t *testing.T) {
 // "unassignable" would leave the reader to work out which of the two problems
 // they have.
 func TestVocabularyCatchesARollupCategory(t *testing.T) {
+	t.Parallel()
 	cells := slices.Clone(fixtureCells)
 	cells[0].category = "taxes"
 	res := resultFor(t, runChecks(t, cellsSubject(t, cells)), "fact-vocabulary")
@@ -409,6 +419,7 @@ func TestVocabularyCatchesARollupCategory(t *testing.T) {
 // comes from the file rather than from a list in Go, so a group no fund is
 // recorded under is not a group.
 func TestVocabularyCatchesAnUnknownFundGroup(t *testing.T) {
+	t.Parallel()
 	cells := slices.Clone(fixtureCells)
 	cells[0].group = "permanent"
 	res := resultFor(t, runChecks(t, cellsSubject(t, cells)), "fact-vocabulary")
@@ -430,6 +441,7 @@ func TestVocabularyCatchesAnUnknownFundGroup(t *testing.T) {
 // assignable, so fact-vocabulary passes over it — which is asserted here, because
 // the whole reason this check exists is that the two halves are each valid alone.
 func TestATransferCountedAsRevenueIsCaughtAtTheFact(t *testing.T) {
+	t.Parallel()
 	cells := slices.Clone(fixtureCells)
 	if cells[4].category != "transfers/in" || cells[4].kind != mapping.KindTransferIn {
 		t.Fatalf("fixture cell 4 is %+v, want the transfers/in row", cells[4])
@@ -466,6 +478,7 @@ func TestATransferCountedAsRevenueIsCaughtAtTheFact(t *testing.T) {
 // TestEveryKindIsWrongSomewhere walks the whole cross product the fixture taxonomy
 // permits, so the check is not shown failable by one lucky pair.
 func TestEveryKindIsWrongSomewhere(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		category string
 		wrong    mapping.Kind
@@ -514,6 +527,7 @@ func TestEveryKindIsWrongSomewhere(t *testing.T) {
 // a transfer counted as revenue (fisc-f0k) and a transfer pointing the wrong way
 // (fisc-ttq), the latter being what a declared `transfer` family could never see.
 func TestTheCommittedTaxonomyTellsTheTransferDirectionsApart(t *testing.T) {
+	t.Parallel()
 	reg, err := registry.Load(os.DirFS(filepath.Join(repoRoot(t), "data")))
 	if err != nil {
 		t.Fatalf("load the committed registries: %v", err)
@@ -579,6 +593,7 @@ func TestTheCommittedTaxonomyTellsTheTransferDirectionsApart(t *testing.T) {
 // department-carrying fact outright, which is a different and also correct answer
 // to the same problem, and it would otherwise stop this test at Load.
 func TestDepartmentsResolveAgainstTheRegistry(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		dept   string
@@ -625,6 +640,7 @@ func TestDepartmentsResolveAgainstTheRegistry(t *testing.T) {
 // rule when it loads, so it could not be there — and reporting both would put two
 // findings and one fix against one fact. The specific diagnosis wins.
 func TestAMalformedDepartmentIsNotAlsoReportedAsUnlisted(t *testing.T) {
+	t.Parallel()
 	facts := testFacts()
 	facts[0].Department = "Patrol"
 	res := resultFor(t, runChecks(t, factsSubject(t, facts)), "fact-departments-resolve")
@@ -654,6 +670,7 @@ func TestAMalformedDepartmentIsNotAlsoReportedAsUnlisted(t *testing.T) {
 // and not against that one implementation, and an assertion implied by a loader is
 // not the same thing as one nobody makes.
 func TestDepartmentsAreCheckedForWhatIsCheckable(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name  string
 		first string
@@ -689,6 +706,7 @@ func TestDepartmentsAreCheckedForWhatIsCheckable(t *testing.T) {
 // beside it. An absent fund is null, so a 0 is refused before the registry is
 // asked.
 func TestFundNumbersResolveAgainstTheRegistry(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		fund   int
@@ -725,6 +743,7 @@ func TestFundNumbersResolveAgainstTheRegistry(t *testing.T) {
 // provenance. A wrong value with a working citation is worse than a broken link:
 // the reader follows it and lands on rows that do not add up to what they saw.
 func TestLinkValueMustEqualItsFacts(t *testing.T) {
+	t.Parallel()
 	s := testSubject(t)
 	link := &s.Projections[0].Graph.Links[0]
 	link.ValueCents += 1_00
@@ -754,6 +773,7 @@ func TestLinkValueMustEqualItsFacts(t *testing.T) {
 // could not fail, a mark on the chart could send a reader to a page its figure
 // was never printed on and every gate would stay green.
 func TestLinkLocatorsMustBeThePagesOfItsFacts(t *testing.T) {
+	t.Parallel()
 	t.Run("a page the facts did not come from", func(t *testing.T) {
 		s := testSubject(t)
 		link := &s.Projections[0].Graph.Links[0]
@@ -820,6 +840,7 @@ func TestLinkLocatorsMustBeThePagesOfItsFacts(t *testing.T) {
 // link-values-tie-to-facts's finding, with the fix; repeating it here would
 // send a reader to chase one edit twice.
 func TestALinkCitingAnUnresolvableFactIsNamedOnce(t *testing.T) {
+	t.Parallel()
 	s := testSubject(t)
 	link := &s.Projections[0].Graph.Links[0]
 	link.FactIDs = []string{"fisc-f-notafact"}
@@ -840,6 +861,7 @@ func TestALinkCitingAnUnresolvableFactIsNamedOnce(t *testing.T) {
 // a check written as "value equals the absolute sum" would accept a leg pointing
 // the wrong way — which is the error the decomposition can actually make.
 func TestFundBalanceDrawKeepsItsSign(t *testing.T) {
+	t.Parallel()
 	s := testSubject(t)
 	draw := linkFrom(t, s.Projections[0].Graph, project.NodeFundBalanceDraw)
 	if draw.ValueCents != 20_000 {
@@ -861,6 +883,7 @@ func TestFundBalanceDrawKeepsItsSign(t *testing.T) {
 // graph. A cycle is money funding itself, d3-sankey renders one without
 // complaint, so nothing downstream would notice.
 func TestCycleIsFoundAndNamed(t *testing.T) {
+	t.Parallel()
 	s := testSubject(t)
 	g := s.Projections[0].Graph
 	// Send an expenditure category's money back to the fund group it came from.
@@ -885,6 +908,7 @@ func TestCycleIsFoundAndNamed(t *testing.T) {
 // figure the city printed and a classification we inferred must not be presented
 // alike.
 func TestDerivedNodeNeedsItsProvenance(t *testing.T) {
+	t.Parallel()
 	for _, tt := range []struct {
 		name string
 		drop func(*project.Node)
@@ -917,6 +941,7 @@ func TestDerivedNodeNeedsItsProvenance(t *testing.T) {
 // of, how many its links cite, and that the difference is exactly the stocks plus
 // the zero-valued cells.
 func TestCountsMustAccountForEveryFact(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		tamper func(*project.Document)
@@ -952,6 +977,7 @@ func TestCountsMustAccountForEveryFact(t *testing.T) {
 // TestCountsReconcileNamesTheArithmetic keeps the passing case legible: the whole
 // value of publishing both counts is that a reader can see where the gap went.
 func TestCountsReconcileNamesTheArithmetic(t *testing.T) {
+	t.Parallel()
 	res := resultFor(t, runChecks(t, testSubject(t)), "counts-reconcile")
 	if want := "(12 = 7 cited + 5 uncited, 0 cited twice)"; !strings.Contains(res.Summary, want) {
 		t.Errorf("summary %q does not contain %q", res.Summary, want)
@@ -962,6 +988,7 @@ func TestCountsReconcileNamesTheArithmetic(t *testing.T) {
 // links the document draws rather than against itself, which is the only way a
 // headline check means anything.
 func TestTransferHeadlineIsTheLinks(t *testing.T) {
+	t.Parallel()
 	res := resultFor(t, runChecks(t, testSubject(t)), "headline-transfer-residual")
 	if res.Status != StatusPass || res.Subjects != 2 {
 		t.Fatalf("status = %s over %d, want pass over 2", res.Status, res.Subjects)
@@ -982,6 +1009,7 @@ func TestTransferHeadlineIsTheLinks(t *testing.T) {
 // deliberately wrong. It is worth publishing only while it differs from the real
 // one; the day they agree, the page is illustrating nothing.
 func TestNaiveExpenditureMustStayWrong(t *testing.T) {
+	t.Parallel()
 	s := testSubject(t)
 	h := s.Projections[0].Graph.Metadata.Headline
 	if h.NaiveExpenditureCents != h.AllFundsGrossExpenditureCents+h.InternalTransferOutCents {
@@ -1003,6 +1031,7 @@ func TestNaiveExpenditureMustStayWrong(t *testing.T) {
 // internal service charges, so a graph with neither makes the claim one about
 // nothing — and a check that failed there would fail a correct projection.
 func TestNaiveExpenditureIsVacuousWithoutADoubleCount(t *testing.T) {
+	t.Parallel()
 	cells := []testCell{
 		{mapping.KindRevenue, "taxes/property", "general", 100_000},
 		{mapping.KindExpenditure, "wages-and-benefits", "general", 70_000},
@@ -1024,6 +1053,7 @@ func TestNaiveExpenditureIsVacuousWithoutADoubleCount(t *testing.T) {
 // shipped graph. It has to work the day a link can carry a transfer_id, and the
 // only way to know that today is to hand it legs.
 func TestTransferLegsPairWhenLegsExist(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		values []int64
@@ -1087,6 +1117,7 @@ func TestTransferLegsPairWhenLegsExist(t *testing.T) {
 // leg, so one carrying no transfer_id is half a movement the pairing would
 // otherwise skip, leaving the check vacuous over a document that drew legs.
 func TestTransferLegsPairSeesALegWithNoID(t *testing.T) {
+	t.Parallel()
 	res, err := (&transferLegsPair{}).Run(t.Context(), scheduleSubject())
 	if err != nil {
 		t.Fatalf("Run: %v", err)
@@ -1109,6 +1140,7 @@ func TestTransferLegsPairSeesALegWithNoID(t *testing.T) {
 // The fixture's spine carries no hierarchy, so each case builds one, which is
 // also what proves the check is not merely counting nothing.
 func TestNodeHierarchyWellFormedIsFailable(t *testing.T) {
+	t.Parallel()
 	const id = "node-hierarchy-well-formed"
 
 	// A well-formed two-level hierarchy over the fixture: an object-category
@@ -1255,6 +1287,7 @@ func tierNode(t *testing.T, g *project.Document, tier int) string {
 // uses are the floor, and a node may only carry the latter — the same reading
 // Registry.FundGroup takes of a fund type.
 func TestConstraintTierComesFromTheFile(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name, tier string
 		status     Status
@@ -1305,6 +1338,7 @@ func tierNodeWithDisclosure(t *testing.T, s *Subject, tier string) {
 // would publish an editorial classification unmarked, which is the single
 // thing this project's premise refuses.
 func TestAConstraintTierWithoutItsDisclosureIsAFinding(t *testing.T) {
+	t.Parallel()
 	const id = "constraint-tier-vocabulary"
 	cases := []struct {
 		name  string
@@ -1448,6 +1482,7 @@ var internalServiceCells = []testCell{
 // differ. Getting this wrong is the error the projection exists to prevent, one
 // order of magnitude smaller than the transfer double count.
 func TestHeadlineExternalFiguresExcludeInternalService(t *testing.T) {
+	t.Parallel()
 	s := testSubject(t, testFacts(internalServiceCells...)...)
 	h := s.Projections[0].Graph.Metadata.Headline
 
@@ -1475,6 +1510,7 @@ func TestHeadlineExternalFiguresExcludeInternalService(t *testing.T) {
 // without reading the chart. Each is accumulated inside internal/project, and
 // before this check nothing at all would have noticed one of them being wrong.
 func TestEveryHeadlineFigureIsTiedToTheFacts(t *testing.T) {
+	t.Parallel()
 	for _, tt := range []struct {
 		key   string
 		shift func(*project.Headline)
@@ -1510,6 +1546,7 @@ func TestEveryHeadlineFigureIsTiedToTheFacts(t *testing.T) {
 // expenditure double count at all — so a correct graph was failed for publishing a
 // naive figure that legitimately equals the external one.
 func TestNaiveExpenditureIgnoresInternalServiceRevenue(t *testing.T) {
+	t.Parallel()
 	cells := []testCell{
 		{mapping.KindRevenue, "charges-for-services", "internal-service", 5_000},
 		{mapping.KindRevenue, "taxes/property", "general", 100_000},
@@ -1536,6 +1573,7 @@ func TestNaiveExpenditureIgnoresInternalServiceRevenue(t *testing.T) {
 // belongs to another fiscal year is not provenance for this graph, and it would be
 // accepted by anything that looked the id up in the whole fact store.
 func TestALinkMayOnlyCiteItsOwnSlice(t *testing.T) {
+	t.Parallel()
 	s := testSubject(t)
 	// A fact of the same shape from the other budget year: in the store, not in
 	// this projection's slice.
@@ -1562,6 +1600,7 @@ func TestALinkMayOnlyCiteItsOwnSlice(t *testing.T) {
 // failures apart: an id from another slice and an id from nowhere at all need
 // different fixes.
 func TestALinkCitingNothingInTheStoreIsADifferentProblem(t *testing.T) {
+	t.Parallel()
 	s := testSubject(t)
 	s.Projections[0].Graph.Links[0].FactIDs = []string{"fisc-f-doesnotexist"}
 	res := resultFor(t, runChecks(t, s), "link-values-tie-to-facts")
@@ -1593,6 +1632,7 @@ func hasLinkKind(g *project.Document, k project.LinkKind) bool {
 // right to reject a department-bearing fact, because the citywide spine has no
 // department tier — and what changed is that a check now owns saying so.
 func TestARefusedProjectionIsReportedAndNotFatal(t *testing.T) {
+	t.Parallel()
 	facts := testFacts()
 	facts[0].Department = "patrol"
 	rep := runChecks(t, testSubject(t, facts...))
@@ -1623,6 +1663,7 @@ func TestARefusedProjectionIsReportedAndNotFatal(t *testing.T) {
 // mechanism pointless if it regressed, so it is asserted by name rather than
 // left to the status assertions above.
 func TestProjectionsBuildIsNeverVacuousWithARefusalRecorded(t *testing.T) {
+	t.Parallel()
 	facts := testFacts()
 	facts[0].Department = "patrol"
 	s := testSubject(t, facts...)
@@ -1643,6 +1684,7 @@ func TestProjectionsBuildIsNeverVacuousWithARefusalRecorded(t *testing.T) {
 // A denominator that is not the thing the unit says is a denominator a reader
 // cannot use.
 func TestProjectionsBuildCountsSlicesNotProjections(t *testing.T) {
+	t.Parallel()
 	s := &Subject{Projections: []projection{{
 		Name:  "trends",
 		Graph: &project.Document{},
@@ -1706,6 +1748,7 @@ func fundRule(id string, fund int, group, totalRow string) mapping.Rule {
 // hazard it was filed about: a fund mis-assigned WITHIN its own fund type, which
 // changes no column sum and which every other check passes.
 func TestRuleFundsMatchTheirHeadings(t *testing.T) {
+	t.Parallel()
 	const id = "rule-funds-match-their-headings"
 	// data/funds.yaml's fixture: 100 General Fund (general), 500 Water Utility
 	// Fund (enterprise), 700 Information Technology Fund (internal-service).
@@ -1896,14 +1939,12 @@ func TestRuleFundsMatchTheirHeadings(t *testing.T) {
 // corpus because testSubject builds no transfers-by-fund document, and a case
 // there would be green because the shape never arrived.
 func TestAnEndpointCarryingNoFlowMayBeAParent(t *testing.T) {
+	t.Parallel()
 	const id = "node-hierarchy-well-formed"
 	// Spelled rather than imported, so the two cannot agree by construction.
 	const endpoint = "transfers/in"
 
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("load the committed corpus: %v", err)
-	}
+	s := isolated(t)
 	var doc *project.Document
 	for i := range s.Projections {
 		if d := s.Projections[i].Graph; d != nil && s.Projections[i].Name == project.TransfersByFundProjection {

@@ -30,6 +30,7 @@ func runDepartments(t *testing.T, facts ...fact.Fact) Result {
 // Sources block is printed per department, and `police-department` in the
 // fixture is a department that names no division.
 func TestDepartmentsResolveAcceptsEitherTier(t *testing.T) {
+	t.Parallel()
 	res := runDepartments(t,
 		departmentFact("f1", "patrol"),
 		departmentFact("f2", "police-department"))
@@ -44,6 +45,7 @@ func TestDepartmentsResolveAcceptsEitherTier(t *testing.T) {
 // TestDepartmentsResolveArmsAreEachReachable: the arms are ordered and one
 // continues, so a relaxation can make a later arm unreachable.
 func TestDepartmentsResolveArmsAreEachReachable(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name       string
 		department string

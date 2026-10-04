@@ -24,6 +24,7 @@ func vacant(id string) *fake {
 // Whether an id names a real check is a claim about All(), so it is asserted
 // here, once, against the canonical registry.
 func TestEveryDeclarationNamesACheckThatExists(t *testing.T) {
+	t.Parallel()
 	real := map[string]bool{}
 	for _, c := range All() {
 		real[c.ID()] = true
@@ -45,6 +46,7 @@ func TestEveryDeclarationNamesACheckThatExists(t *testing.T) {
 // evidence, and would equally make every wave that ADDS a vacant check able to
 // pass by editing the same number.
 func TestEveryDeclarationCarriesItsReasonAndItsBead(t *testing.T) {
+	t.Parallel()
 	seen := map[string]string{}
 	for id, v := range declaredVacuous {
 		switch {
@@ -72,6 +74,7 @@ func TestEveryDeclarationCarriesItsReasonAndItsBead(t *testing.T) {
 // point in one test: --strict stops being a gate on how much is mapped and
 // becomes a gate on whether anyone has looked.
 func TestADeclaredVacancyPassesStrictAndAnUndeclaredOneDoesNot(t *testing.T) {
+	t.Parallel()
 	declared, s := testVacancy(t)
 
 	rep := run(t, s, ReportOptions{Strict: true}, passed("a"), vacant(declared))
@@ -111,6 +114,7 @@ func TestADeclaredVacancyPassesStrictAndAnUndeclaredOneDoesNot(t *testing.T) {
 // should pass on one -- otherwise the entry outlives the work it was waiting
 // for, which is exactly the failure mode a declaration is supposed to prevent.
 func TestAStaleDeclarationFailsWithOrWithoutStrict(t *testing.T) {
+	t.Parallel()
 	declared, s := testVacancy(t)
 
 	for _, strict := range []bool{false, true} {
@@ -159,10 +163,8 @@ func TestAStaleDeclarationFailsWithOrWithoutStrict(t *testing.T) {
 //
 // Like its pair, it deliberately pins no count.
 func TestTheCommittedCorpusIsStrictClean(t *testing.T) {
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	t.Parallel()
+	s := committed(t)
 	rep := Run(t.Context(), s, All(), ReportOptions{GeneratedBy: testVersion, Strict: true})
 
 	if len(rep.Undeclared) > 0 {
@@ -209,6 +211,7 @@ func TestTheCommittedCorpusIsStrictClean(t *testing.T) {
 // A genuine error still fails the run. That is Counts.Error's job in Failed(),
 // and it says the checker could not tell rather than claiming a bead landed.
 func TestADeclarationSurvivesACheckThatReachedNoVerdict(t *testing.T) {
+	t.Parallel()
 	declared, s := testVacancy(t)
 
 	t.Run("errored", func(t *testing.T) {

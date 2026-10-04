@@ -77,10 +77,8 @@ func readObjectFigures(t *testing.T, tail string) []amount.Cents {
 // here, so this test states the discrepancy independently of the check that
 // declares it.
 func TestThePrintedDepartmentwideRowsSumToTheSpineByObjectCategory(t *testing.T) {
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	t.Parallel()
+	s := committed(t)
 	doc, ok := s.Docs[budgetDoc]
 	if !ok {
 		t.Fatalf("no extraction for %s", budgetDoc)
@@ -210,10 +208,8 @@ func TestThePrintedDepartmentwideRowsSumToTheSpineByObjectCategory(t *testing.T)
 // absent from the extracted pages, and the entry is grounded (SameResidualAs)
 // in an exception whose figures ARE printed and hold the same residual apart.
 func TestDepartmentwideExceptionFiguresAreNotPrintedAndTheirDifferenceIs(t *testing.T) {
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	t.Parallel()
+	s := committed(t)
 	docIDs := make([]string, 0, len(s.Docs))
 	for id := range s.Docs {
 		docIDs = append(docIDs, id)

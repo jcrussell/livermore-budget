@@ -13,15 +13,8 @@ import (
 // typed enterprise and internal-service -- and then with one declared
 // rounding dollar taken off a block total.
 func TestFundGroupsAreTheirPrintedRowsCanFail(t *testing.T) {
-	load := func() *Subject {
-		t.Helper()
-		s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-		if err != nil {
-			t.Fatalf("Load: %v", err)
-		}
-		return s
-	}
-	s := load()
+	t.Parallel()
+	s := committed(t)
 	res := resultFor(t, runOne(t, s, &fundGroupsAreTheirPrintedRows{}), "fund-groups-are-their-printed-rows")
 	if res.Status != StatusPass || res.Subjects != 4*7*8 {
 		t.Fatalf("status %s over %d cells (%s), want a pass over 4 columns x 7 groups x 8 lines",
@@ -29,7 +22,7 @@ func TestFundGroupsAreTheirPrintedRowsCanFail(t *testing.T) {
 	}
 
 	t.Run("selecting without the cuts", func(t *testing.T) {
-		s := load()
+		s := mutable(t)
 		for i := range s.Projections {
 			if s.Projections[i].Name == project.FundSourcesUsesProjection {
 				s.Projections[i].Options.ThroughCuts = false
@@ -44,7 +37,9 @@ func TestFundGroupsAreTheirPrintedRowsCanFail(t *testing.T) {
 	})
 
 	t.Run("a declared rounding dollar dropped", func(t *testing.T) {
-		s := load()
+		// The delta is dropped from the rule's own row, and the resolver
+		// memoizes rows, so this is a fresh load rather than a copy.
+		s := isolated(t)
 		dropped := false
 		for _, f := range s.Files {
 			for i := range f.Rules {
@@ -72,12 +67,10 @@ func TestFundGroupsAreTheirPrintedRowsCanFail(t *testing.T) {
 // comparison over the printed cells alone would miss: a fund node parented
 // to another group, and a fund line the summary prints no figure for.
 func TestAFundGroupFoldIsHeldToItsParentAndEveryLine(t *testing.T) {
+	t.Parallel()
 	run := func(t *testing.T, plant func(s *Subject)) Result {
 		t.Helper()
-		s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-		if err != nil {
-			t.Fatalf("Load: %v", err)
-		}
+		s := isolated(t)
 		plant(s)
 		return resultFor(t, runOne(t, s, &fundGroupsAreTheirPrintedRows{}), "fund-groups-are-their-printed-rows")
 	}

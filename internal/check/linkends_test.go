@@ -15,6 +15,7 @@ import (
 // TestEveryIdFormSaysWhatItNames holds endNames to project.IDForms, so a form
 // added to project is declared here rather than passed by omission.
 func TestEveryIdFormSaysWhatItNames(t *testing.T) {
+	t.Parallel()
 	if diff := cmp.Diff(project.IDForms(), slices.Sorted(maps.Keys(endNames))); diff != "" {
 		t.Errorf("project's id forms and endNames differ (-project +names):\n%s", diff)
 	}
@@ -23,10 +24,8 @@ func TestEveryIdFormSaysWhatItNames(t *testing.T) {
 // TestLinkEndsMatchTheirFactsIsFailable re-points one link per plant over the
 // committed corpus. None moves a cent, so every other link check stays green.
 func TestLinkEndsMatchTheirFactsIsFailable(t *testing.T) {
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatal(err)
-	}
+	t.Parallel()
+	s := isolated(t)
 	c := &linkEndsMatchTheirFacts{}
 	res, err := c.Run(t.Context(), s)
 	if err != nil {
@@ -260,6 +259,7 @@ func TestLinkEndsMatchTheirFactsIsFailable(t *testing.T) {
 // TestDepartmentTiersRefusesAScopeTwoCutsDisagreeOn: a scope declared at both
 // tiers matches neither form.
 func TestDepartmentTiersRefusesAScopeTwoCutsDisagreeOn(t *testing.T) {
+	t.Parallel()
 	got := departmentTiers([]structure.Cut{
 		{Scope: "a", DepartmentTier: "division"},
 		{Scope: "a", DepartmentTier: "department"},

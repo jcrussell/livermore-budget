@@ -47,6 +47,7 @@ func runExcessIdentity(t *testing.T, facts []fact.Fact) Result {
 }
 
 func TestExcessIdentityHoldsOverTheBaseline(t *testing.T) {
+	t.Parallel()
 	res := runExcessIdentity(t, excessBaseline())
 	if res.Status != StatusPass {
 		t.Fatalf("status = %s (%s), want pass", res.Status, res.Summary)
@@ -61,6 +62,7 @@ func TestExcessIdentityHoldsOverTheBaseline(t *testing.T) {
 // tie at zero, so a discrepancy of any size is a wrong figure rather than
 // rounding.
 func TestExcessIdentityCatchesAWrongExcess(t *testing.T) {
+	t.Parallel()
 	facts := excessBaseline()
 	for i := range facts {
 		if facts[i].ID == "x-2016" {
@@ -93,6 +95,7 @@ func TestExcessIdentityCatchesAWrongExcess(t *testing.T) {
 // stopped publishing any of the three sides is a finding, never a skip,
 // because with the excess line gone there is nothing left to violate.
 func TestExcessIdentityCatchesADroppedSide(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name string
 		drop func(fact.Fact) bool
@@ -128,6 +131,7 @@ func TestExcessIdentityCatchesADroppedSide(t *testing.T) {
 // duplicate arm: two excess facts on one column leave no single value to
 // check, and picking either would be a guess.
 func TestExcessIdentityRefusesADuplicatedExcessLine(t *testing.T) {
+	t.Parallel()
 	facts := append(excessBaseline(),
 		excessFact("x-2016-dup", mapping.KindFundBalance, categoryExcessOfRevenues, 2016, 601))
 	res := runExcessIdentity(t, facts)
@@ -143,6 +147,7 @@ func TestExcessIdentityRefusesADuplicatedExcessLine(t *testing.T) {
 // another scope must not enter these sums, or the spine would redden a check
 // about one ACFR schedule.
 func TestExcessIdentityIgnoresOtherScopes(t *testing.T) {
+	t.Parallel()
 	stray := excessFact("stray", mapping.KindRevenue, "taxes/property", 2016, 5_000)
 	stray.Scope = "all-funds-gross"
 	res := runExcessIdentity(t, append(excessBaseline(), stray))
@@ -152,6 +157,7 @@ func TestExcessIdentityIgnoresOtherScopes(t *testing.T) {
 }
 
 func TestExcessIdentityIsVacuousOverAnEmptyScope(t *testing.T) {
+	t.Parallel()
 	res := runExcessIdentity(t, nil)
 	if res.Status != StatusVacuous {
 		t.Fatalf("status = %s (%s), want vacuous", res.Status, res.Summary)

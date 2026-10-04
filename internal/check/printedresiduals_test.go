@@ -16,10 +16,8 @@ import (
 // TestDepartmentwideExceptionFiguresAreNotPrintedAndTheirDifferenceIs. An
 // exception this test does not know is a failure.
 func TestEveryExceptionResidualIsPrintedWhereItSaysItIs(t *testing.T) {
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	t.Parallel()
+	s := committed(t)
 	doc, ok := s.Docs[budgetDoc]
 	if !ok {
 		t.Fatalf("no extraction for %s", budgetDoc)

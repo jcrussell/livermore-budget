@@ -12,10 +12,8 @@ import (
 // row_labels_name_funds that reads a row by an alias on a page the alias does
 // not list is a binding whose stated evidence never mentions where it was used.
 func TestAnAliasListsEveryPageARuleReadsItOn(t *testing.T) {
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	t.Parallel()
+	s := committed(t)
 	checked := 0
 	for _, f := range s.Files {
 		doc := s.Docs[f.DocID]

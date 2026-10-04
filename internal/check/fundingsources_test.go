@@ -150,10 +150,8 @@ func fundingCents(t *testing.T, tok string) amount.Cents {
 // different decomposition -- by paying fund rather than by object category --
 // and lands on the same number six times over is not agreeing by construction.
 func TestThePrintedFundingSourcesSumToTheSpineByFundGroup(t *testing.T) {
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	t.Parallel()
+	s := committed(t)
 	doc, ok := s.Docs[budgetDoc]
 	if !ok {
 		t.Fatalf("no extraction for %s", budgetDoc)
@@ -254,10 +252,8 @@ func TestThePrintedFundingSourcesSumToTheSpineByFundGroup(t *testing.T) {
 // wrong column -- a mistake that leaves the printed page untouched and every
 // group sum intact if two columns were swapped in every rule at once.
 func TestEveryFundingSourceFactMatchesThePrintedRow(t *testing.T) {
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	t.Parallel()
+	s := committed(t)
 	doc, ok := s.Docs[budgetDoc]
 	if !ok {
 		t.Fatalf("no extraction for %s", budgetDoc)
@@ -365,10 +361,8 @@ func TestEveryFundingSourceFactMatchesThePrintedRow(t *testing.T) {
 //	p0209:20  Fund Balances detail, five funds     26,294,515
 //	p0061:39  Table 1 Total Uses, + 612,000 to CIP 26,906,515
 func TestP0067IsTheOutlierAndFivePagesDisagree(t *testing.T) {
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	t.Parallel()
+	s := committed(t)
 	doc, ok := s.Docs[budgetDoc]
 	if !ok {
 		t.Fatalf("no extraction for %s", budgetDoc)
@@ -453,10 +447,8 @@ func TestP0067IsTheOutlierAndFivePagesDisagree(t *testing.T) {
 // without an error. structure.ValidateCuts refuses it before any cell is
 // summed: the moved facts put a second grain under the spine cut's scope.
 func TestTheScopeIsWhatStopsTheDoubling(t *testing.T) {
-	base, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	t.Parallel()
+	base := committed(t)
 	s := *base
 	s.Facts = append([]fact.Fact(nil), base.Facts...)
 	moved := 0

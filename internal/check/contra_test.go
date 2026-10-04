@@ -11,6 +11,7 @@ import (
 // biconditional and the sentence itself. The fixture publishes no negative
 // link, so this test makes one.
 func TestContraLinksNameTheirScheduleIsFailable(t *testing.T) {
+	t.Parallel()
 	const id = "contra-links-name-their-schedule"
 
 	// Vacuous, not a pass over an empty set.

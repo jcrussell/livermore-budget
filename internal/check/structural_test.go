@@ -82,6 +82,7 @@ func pagesOfDocWithout(t *testing.T) int {
 // artifacts -- a diagnosis one step removed from the cause. This fails with the
 // cause instead.
 func TestDocWithoutIsMappedByNothing(t *testing.T) {
+	t.Parallel()
 	files, err := mapping.LoadDir(os.DirFS("../.."), "mappings")
 	if err != nil {
 		t.Fatalf("LoadDir: %v", err)
@@ -198,11 +199,9 @@ func anArtifactOf(t *testing.T, root, docID string) (string, corpus.Artifact) {
 // there are files is a check that swept part of the corpus and said it swept all of
 // it, which is the specific dishonesty Result.Subjects exists to prevent.
 func TestTheStructuralChecksPassOverTheCommittedCorpus(t *testing.T) {
+	t.Parallel()
 	root := repoRoot(t)
-	s, err := Load(LoadOptions{Root: root, Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	s := committed(t)
 	rep := Run(t.Context(), s, All(), ReportOptions{GeneratedBy: testVersion})
 
 	files := extractedFiles(t, root)
@@ -275,6 +274,7 @@ func dropArtifact(t *testing.T, root, docID, rel string) {
 // failure mode: a poppler run that fails on a page writes no artifact for it, and
 // the manifest it writes afterwards does not list one.
 func TestAnEmptiedExtractionFails(t *testing.T) {
+	t.Parallel()
 	root := repoWithoutPDFs(t)
 	before := loadAndRun(t, root)
 	if before.Failed() {
@@ -335,6 +335,7 @@ func TestAnEmptiedExtractionFails(t *testing.T) {
 // TestAMissingPageFails is the same failure at the scale it actually happens: one
 // page, dropped from both sides, the way a poppler failure on page 5 leaves it.
 func TestAMissingPageFails(t *testing.T) {
+	t.Parallel()
 	for _, tt := range []struct {
 		name, rel, want string
 	}{
@@ -371,6 +372,7 @@ func TestAMissingPageFails(t *testing.T) {
 // what a re-extraction of a shorter document would leave if extract.py stopped
 // clearing its output directories.
 func TestAnArtifactForNoPageFails(t *testing.T) {
+	t.Parallel()
 	root := repoWithoutPDFs(t)
 	const stray = "pages/p9999.txt"
 	body := []byte("a page the document does not have\n")
@@ -408,6 +410,7 @@ func TestAnArtifactForNoPageFails(t *testing.T) {
 // that says so — data/sources.yaml records the same count, written by hand from the
 // document, and registry.LoadSources refuses a source with no page count at all.
 func TestZeroingThePageCountIsCaughtByTheRegistry(t *testing.T) {
+	t.Parallel()
 	root := repoWithoutPDFs(t)
 	for rel := range manifestArtifacts(t, root, docWithout) {
 		if err := os.Remove(repoPath(root, artifactPath(docWithout, rel))); err != nil {
@@ -440,6 +443,7 @@ func TestZeroingThePageCountIsCaughtByTheRegistry(t *testing.T) {
 // see it, and until this check existed nothing read the field. A run that failed on
 // fifty pages exited 1 and still verified clean.
 func TestARecordedExtractionErrorFails(t *testing.T) {
+	t.Parallel()
 	for _, tt := range []struct {
 		name  string
 		entry map[string]any
@@ -489,6 +493,7 @@ func TestARecordedExtractionErrorFails(t *testing.T) {
 // decoding them and then saying nothing is how "reading the warnings is the human's
 // job" becomes nobody's. They are counted into the passing summary.
 func TestWarningsAreCountedAndNotFailures(t *testing.T) {
+	t.Parallel()
 	root := repoWithoutPDFs(t)
 	before := resultFor(t, loadAndRun(t, root), "extractor-reported-no-errors")
 	if before.Status != StatusPass {
@@ -522,6 +527,7 @@ func TestWarningsAreCountedAndNotFailures(t *testing.T) {
 // "pages/../geometry/p0001.json" would print an existing, readable path and call it
 // unreadable.
 func TestAManifestKeyThatIsNotACleanPathIsNamedAsWritten(t *testing.T) {
+	t.Parallel()
 	root := repoWithoutPDFs(t)
 	const key = "pages/../geometry/p0001.json"
 	mutateArtifacts(t, root, docWithout, func(artifacts map[string]any) {
@@ -550,6 +556,7 @@ func TestAManifestKeyThatIsNotACleanPathIsNamedAsWritten(t *testing.T) {
 // repository and is reported per file; a directory it cannot LIST means it cannot say
 // what is or is not there, which is a claim about the machine and not the corpus.
 func TestAnUnreadableExtractionDirectoryIsAnError(t *testing.T) {
+	t.Parallel()
 	if os.Geteuid() == 0 {
 		t.Skip("running as root, which ignores the permission bits this test sets")
 	}
@@ -585,11 +592,8 @@ func TestAnUnreadableExtractionDirectoryIsAnError(t *testing.T) {
 // emitted per page, say — the check above becomes wrong rather than merely red, and
 // this is the test that says which of the two happened.
 func TestTheCommittedExtractionsAreComplete(t *testing.T) {
-	root := repoRoot(t)
-	s, err := Load(LoadOptions{Root: root, Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	t.Parallel()
+	s := committed(t)
 	if len(s.Extractions) != 3 {
 		t.Fatalf("%d extractions loaded, want the 3 committed documents", len(s.Extractions))
 	}
@@ -622,6 +626,7 @@ func TestTheCommittedExtractionsAreComplete(t *testing.T) {
 // TestACorruptedArtifactFails is the drift this tier is named for: one byte of one
 // committed artifact, changed, with the manifest untouched.
 func TestACorruptedArtifactFails(t *testing.T) {
+	t.Parallel()
 	root := repoWithoutPDFs(t)
 	rel, want := anArtifactOf(t, root, docWithFacts)
 	body := readRepoFile(t, root, artifactPath(docWithFacts, rel))
@@ -661,6 +666,7 @@ func TestACorruptedArtifactFails(t *testing.T) {
 // the two — a hand-edited manifest is one keystroke, a corrupted page is an event —
 // and neither side can be trusted to police itself.
 func TestAnEditedManifestHashFails(t *testing.T) {
+	t.Parallel()
 	root := repoWithoutPDFs(t)
 	rel, want := anArtifactOf(t, root, docWithFacts)
 	const wrong = "0000000000000000000000000000000000000000000000000000000000000000"
@@ -694,6 +700,7 @@ func TestAnEditedManifestHashFails(t *testing.T) {
 // recorded origin, and a future rule reading it would produce provenance that
 // resolves to bytes nobody hashed.
 func TestAnUnlistedArtifactFails(t *testing.T) {
+	t.Parallel()
 	root := repoWithoutPDFs(t)
 	before := resultFor(t, loadAndRun(t, root), "artifacts-match-manifest")
 	if before.Status != StatusPass {
@@ -726,6 +733,7 @@ func TestAnUnlistedArtifactFails(t *testing.T) {
 // for it, which is a failure of whatever was being built; this is what says so about
 // the whole corpus, including the 1,300 artifacts no rule reads yet.
 func TestADeletedArtifactFails(t *testing.T) {
+	t.Parallel()
 	root := repoWithoutPDFs(t)
 	rel, want := anArtifactOf(t, root, docWithout)
 	if err := os.Remove(repoPath(root, artifactPath(docWithout, rel))); err != nil {
@@ -751,6 +759,7 @@ func TestADeletedArtifactFails(t *testing.T) {
 // happens when they stop agreeing. Each field is its own case, because each says a
 // different thing about what went wrong.
 func TestAManifestSkewedFromTheRegistryFails(t *testing.T) {
+	t.Parallel()
 	const wrongSHA = "1111111111111111111111111111111111111111111111111111111111111111"
 	tests := []struct {
 		name  string
@@ -800,6 +809,7 @@ func TestAManifestSkewedFromTheRegistryFails(t *testing.T) {
 // document the registry lists and nobody has extracted is a document the site can
 // cite, with a URL and a retrieval date, that no fact can ever come from.
 func TestASourceWithNoExtractionFails(t *testing.T) {
+	t.Parallel()
 	root := repoWithoutPDFs(t)
 	if err := os.RemoveAll(repoPath(root, extractedDir+"/"+docWithout)); err != nil {
 		t.Fatalf("remove the extraction of %s: %v", docWithout, err)
@@ -829,6 +839,7 @@ func TestASourceWithNoExtractionFails(t *testing.T) {
 // provenance chain broken at its first link. A renamed document leaves exactly this
 // behind.
 func TestAnExtractionWithNoSourceFails(t *testing.T) {
+	t.Parallel()
 	root := repoWithoutPDFs(t)
 	const orphan = "livermore-budget-fy2024-2025"
 	writeSyntheticExtraction(t, root, orphan, nil)
@@ -878,6 +889,7 @@ func writeSyntheticExtraction(t *testing.T, root, docID string, overrides map[st
 // versions, so this is the difference between the artifacts that were reviewed and
 // artifacts that merely parse.
 func TestAnUnpinnedToolchainFails(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name  string
 		key   string
@@ -927,6 +939,7 @@ func TestAnUnpinnedToolchainFails(t *testing.T) {
 // reader cannot read it. That is a failure of the harness, and internal/corpus,
 // internal/registry and internal/mapping all draw it in the same place.
 func TestAnUnreadableManifestSchemaRefusesToLoad(t *testing.T) {
+	t.Parallel()
 	for _, version := range []json.Number{"1", "3"} {
 		t.Run("schema "+string(version), func(t *testing.T) {
 			root := repoWithoutPDFs(t)
@@ -1030,6 +1043,7 @@ func loadAndRunFull(t *testing.T, root string) *Report {
 // SKIPPED reachable: this check is the first in the report to need an input --full
 // supplies, so this is the run in which it stops being skipped and does something.
 func TestFullHashesEverySourceDocument(t *testing.T) {
+	t.Parallel()
 	root := repoWithPDFs(t)
 	rep := loadAndRunFull(t, root)
 	if rep.Counts.Fail > 0 || rep.Counts.Error > 0 {
@@ -1057,6 +1071,7 @@ func TestFullHashesEverySourceDocument(t *testing.T) {
 // all pass — and the bytes they describe are not the bytes on disk. Nothing but
 // hashing the file can see it.
 func TestACorruptedSourceDocumentFails(t *testing.T) {
+	t.Parallel()
 	root := repoWithPDFs(t)
 	rel := "data/pdf/" + docWithFacts + ".pdf"
 	body := readRepoFile(t, root, rel)
@@ -1092,6 +1107,7 @@ func TestACorruptedSourceDocumentFails(t *testing.T) {
 // only ever names the hashes. A truncated download is the likelier real event of the
 // two, and the size is what says so in one number.
 func TestATruncatedSourceDocumentFails(t *testing.T) {
+	t.Parallel()
 	root := repoWithPDFs(t)
 	rel := "data/pdf/" + docWithFacts + ".pdf"
 	body := readRepoFile(t, root, rel)
@@ -1121,6 +1137,7 @@ func TestATruncatedSourceDocumentFails(t *testing.T) {
 // one. Counting one subject per document would print "3 documents, each matching
 // both" over a document that was compared once.
 func TestOnlyTheRecordsThatExistAreCounted(t *testing.T) {
+	t.Parallel()
 	root := repoWithPDFs(t)
 	full := resultFor(t, loadAndRunFull(t, root), "source-pdfs-match-both-records")
 	if full.Subjects != 6 {
@@ -1157,6 +1174,7 @@ func TestOnlyTheRecordsThatExistAreCounted(t *testing.T) {
 // column of the report from a corpus that is wrong. And the message carries the
 // command, because the fix is one command.
 func TestAnUnfetchedPointerIsAnErrorAndSaysHowToFetchIt(t *testing.T) {
+	t.Parallel()
 	root := repoWithPDFs(t)
 	sources, err := registry.LoadSources(os.DirFS(repoPath(root, dataDir)))
 	if err != nil {
@@ -1206,6 +1224,7 @@ func TestAnUnfetchedPointerIsAnErrorAndSaysHowToFetchIt(t *testing.T) {
 // no fetch can reconcile them. Both are errors; only one of them is fixable by
 // fetching.
 func TestAPointerThatDisagreesWithTheRegistrySaysSo(t *testing.T) {
+	t.Parallel()
 	root := repoWithPDFs(t)
 	rel := "data/pdf/" + docWithFacts + ".pdf"
 	const other = "2222222222222222222222222222222222222222222222222222222222222222"
@@ -1225,6 +1244,7 @@ func TestAPointerThatDisagreesWithTheRegistrySaysSo(t *testing.T) {
 // TestAMissingSourceDocumentIsAnError is the third state, and it is a different
 // thing to do about it: a pointer needs fetching, an absent file needs restoring.
 func TestAMissingSourceDocumentIsAnError(t *testing.T) {
+	t.Parallel()
 	root := repoWithPDFs(t)
 	rel := "data/pdf/" + docWithout + ".pdf"
 	if err := os.Remove(repoPath(root, rel)); err != nil {
@@ -1258,6 +1278,7 @@ func lfsPointer(oid string, size int64) []byte {
 // negative would hash 130 bytes of pointer text and report the document as
 // corrupted.
 func TestParseLFSPointer(t *testing.T) {
+	t.Parallel()
 	const oid = "1176ab87130ba5ddc73f13bf97e8d9d44f1dc049d16334a124afe00fdfbdd1e8"
 	tests := []struct {
 		name     string
@@ -1291,6 +1312,7 @@ func TestParseLFSPointer(t *testing.T) {
 // TestReadSourcePDFClassifiesWhatItFinds covers the loader that decides which of the
 // three states a file is in, over a tree it can be pointed at directly.
 func TestReadSourcePDFClassifiesWhatItFinds(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	body := fakePDF("probe")
 	sum := sha256.Sum256(body)

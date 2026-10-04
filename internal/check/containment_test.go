@@ -17,10 +17,8 @@ import (
 // committed corpus compares and at which grain, and why the others are refused:
 // a comparison turned into a refusal leaves the check green with one fewer.
 func TestTheCommittedCutsTieAlongTheLattice(t *testing.T) {
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	t.Parallel()
+	s := committed(t)
 	res := resultFor(t, runOne(t, s, &cutsTieAlongTheLattice{}), "cuts-tie-along-the-lattice")
 	if res.Status != StatusPass {
 		t.Fatalf("status = %s, findings:\n  %v", res.Status, res.Findings)
@@ -101,10 +99,8 @@ func TestTheCommittedCutsTieAlongTheLattice(t *testing.T) {
 // TestTheCutsCheckGoesRed runs the mutations through the registered check, so
 // what is proven is the line fisc verify prints.
 func TestTheCutsCheckGoesRed(t *testing.T) {
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	t.Parallel()
+	s := committed(t)
 	facts := s.Facts
 
 	run := func(t *testing.T, facts []fact.Fact) Result {
@@ -251,10 +247,8 @@ func runOne(t *testing.T, s *Subject, c Check) *Report {
 // TestTheCutsCheckHoldsTheStoreToEveryCut plants what each arm beyond the
 // comparison exists for.
 func TestTheCutsCheckHoldsTheStoreToEveryCut(t *testing.T) {
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	t.Parallel()
+	s := mutable(t)
 	subjectsNamed := func(res Result, subject, want string) bool {
 		for _, f := range res.Findings {
 			if f.Subject == subject && strings.Contains(f.Detail, want) {
@@ -358,10 +352,8 @@ func withExceptions(t *testing.T, s *Subject, exceptions []structure.Exception) 
 // TestTheDepartmentSchedulesTieInEveryColumn plants in the actual and revised
 // columns, which the spine does not print and only the ties reach.
 func TestTheDepartmentSchedulesTieInEveryColumn(t *testing.T) {
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	t.Parallel()
+	s := committed(t)
 	for _, tc := range []struct {
 		name, pair, cell string
 		plant            func(facts []fact.Fact) []fact.Fact
@@ -422,10 +414,8 @@ func TestTheDepartmentSchedulesTieInEveryColumn(t *testing.T) {
 // split then holds nothing, so p76 is compared with the spine on transfers out
 // again and the CIP's share is a finding rather than a pair compared by nothing.
 func TestASplitWithAnEmptySideLeavesItsPairsToTheLattice(t *testing.T) {
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	t.Parallel()
+	s := mutable(t)
 	kept := s.Facts[:0:0]
 	for _, f := range s.Facts {
 		if f.Scope != "cip-funding-sources" {

@@ -143,6 +143,7 @@ func without(lines []balanceLine, c string) []balanceLine {
 }
 
 func TestAFundRowThatBalancesPassesBothIdentities(t *testing.T) {
+	t.Parallel()
 	facts := fund101.facts(byFundRow())
 	wantPass(t, runBalance(t, &fundGroupSourcesEqualUses{}, facts), 1)
 	wantPass(t, runBalance(t, &fundBalanceIdentity{}, facts), 1)
@@ -151,6 +152,7 @@ func TestAFundRowThatBalancesPassesBothIdentities(t *testing.T) {
 // TestAFundRowOffByACentFails is the arithmetic of a scope that prints no
 // change line: the change is ending - beginning, two printed figures.
 func TestAFundRowOffByACentFails(t *testing.T) {
+	t.Parallel()
 	facts := fund101.facts(replace(byFundRow(), structure.CategoryFundBalanceEnding, 120_001))
 	wantFail(t, runBalance(t, &fundGroupSourcesEqualUses{}, facts), "capital fund 101 FY2026 adopted", "(off by -$0.01)")
 }
@@ -159,16 +161,19 @@ func TestAFundRowOffByACentFails(t *testing.T) {
 // transfers/out-to-cip as a transfer out: drop it from the ending and the row
 // is off by exactly its 20.00.
 func TestTransfersOutToCIPIsAUse(t *testing.T) {
+	t.Parallel()
 	facts := fund101.facts(replace(byFundRow(), structure.CategoryFundBalanceEnding, 122_000))
 	wantFail(t, runBalance(t, &fundGroupSourcesEqualUses{}, facts), "(off by -$20.00)")
 }
 
 func TestAFundRowCarryingAChangeLineFails(t *testing.T) {
+	t.Parallel()
 	lines := append(byFundRow(), balanceLine{mapping.KindFundBalance, structure.CategoryFundBalanceChange, 20_000})
 	wantFail(t, runBalance(t, &fundBalanceIdentity{}, fund101.facts(lines)), structure.CategoryFundBalanceChange)
 }
 
 func TestAFundRowMissingAStockFails(t *testing.T) {
+	t.Parallel()
 	for _, c := range []string{structure.CategoryFundBalanceBeginning, structure.CategoryFundBalanceEnding} {
 		t.Run(c, func(t *testing.T) {
 			facts := fund101.facts(without(byFundRow(), c))
@@ -182,6 +187,7 @@ func TestAFundRowMissingAStockFails(t *testing.T) {
 // flow: a dropped Transfers Out to CIP column leaves the arithmetic holding
 // wherever the page prints a dash, so absence itself is the finding.
 func TestAFundRowMissingAFlowFails(t *testing.T) {
+	t.Parallel()
 	facts := fund101.facts(without(byFundRow(), "transfers/out-to-cip"))
 	wantFail(t, runBalance(t, &fundGroupSourcesEqualUses{}, facts), "missing transfer_out transfers/out-to-cip")
 }
@@ -189,6 +195,7 @@ func TestAFundRowMissingAFlowFails(t *testing.T) {
 // TestTwoFundsOfOneGroupAreTwoBalances is why the fund is in the key: fund
 // 101 a cent long and fund 102 a cent short net to nothing as one group.
 func TestTwoFundsOfOneGroupAreTwoBalances(t *testing.T) {
+	t.Parallel()
 	fund102 := fund101
 	fund102.fund = 102
 	facts := append(fund101.facts(replace(byFundRow(), structure.CategoryFundBalanceEnding, 120_001)),
@@ -212,6 +219,7 @@ func twoYears(next int64) []fact.Fact {
 }
 
 func TestACarryForwardThatTiesPasses(t *testing.T) {
+	t.Parallel()
 	res := runBalance(t, &fundBalanceIdentity{}, twoYears(120_000))
 	wantPass(t, res, 2)
 	if !strings.Contains(res.Summary, "1 carry-forward") {
@@ -222,6 +230,7 @@ func TestACarryForwardThatTiesPasses(t *testing.T) {
 // TestAYearOnTwoBasesHasNoSingleEnding is the carry-forward's fail-closed
 // arm: FY2026 printed both revised and adopted leaves no one ending to carry.
 func TestAYearOnTwoBasesHasNoSingleEnding(t *testing.T) {
+	t.Parallel()
 	revised := fund101
 	revised.basis = mapping.BasisRevised
 	facts := append(twoYears(120_000), revised.facts(byFundRow())...)
@@ -229,6 +238,7 @@ func TestAYearOnTwoBasesHasNoSingleEnding(t *testing.T) {
 }
 
 func TestACarryForwardBreakFails(t *testing.T) {
+	t.Parallel()
 	wantFail(t, runBalance(t, &fundBalanceIdentity{}, twoYears(120_001)),
 		"capital fund 101", "FY2026 adopted ends at $1,200.00", "FY2027 adopted begins at $1,200.01")
 }
@@ -236,6 +246,7 @@ func TestACarryForwardBreakFails(t *testing.T) {
 // TestTheSpineStillPrintsItsChange is the spine's behaviour under the
 // generalised checks: a column with its stocks and no change line fails both.
 func TestTheSpineStillPrintsItsChange(t *testing.T) {
+	t.Parallel()
 	spine := balanceAt{structure.ScopeAllFundsGross, "general", 0, 2026, mapping.BasisAdopted}
 	lines := []balanceLine{
 		{mapping.KindFundBalance, structure.CategoryFundBalanceBeginning, 100_000},
@@ -256,6 +267,7 @@ func TestTheSpineStillPrintsItsChange(t *testing.T) {
 // scope printing a balance line that structure.FundBalances does not declare
 // has no identity to hold it to, and is a finding rather than a skip.
 func TestABalanceInAnUndeclaredScopeFails(t *testing.T) {
+	t.Parallel()
 	at := fund101
 	at.scope = "some-new-schedule"
 	wantFail(t, runBalance(t, &fundBalanceIdentity{}, at.facts(byFundRow())), `"some-new-schedule"`)
@@ -274,11 +286,13 @@ func carryBreak(left, right int64) structure.BalanceException {
 }
 
 func TestADeclaredCarryForwardBreakPasses(t *testing.T) {
+	t.Parallel()
 	e := []structure.BalanceException{carryBreak(120_000, 120_001)}
 	wantPass(t, runBalanceExcepting(t, &fundBalanceIdentity{}, e, twoYears(120_001)), 2)
 }
 
 func TestACarryForwardExceptionMustStillDescribeTheStore(t *testing.T) {
+	t.Parallel()
 	for _, tt := range []struct {
 		name  string
 		facts []fact.Fact
@@ -299,6 +313,7 @@ func TestACarryForwardExceptionMustStillDescribeTheStore(t *testing.T) {
 // pp.186-209 over a store carrying none of them, as a renamed scope would
 // leave it, matches no balance.
 func TestAnExceptionOnAScopeTheStoreDoesNotCarryIsStale(t *testing.T) {
+	t.Parallel()
 	e := []structure.BalanceException{carryBreak(120_000, 120_001)}
 	spine := fund101
 	spine.scope, spine.fund = structure.ScopeAllFundsGross, 0
@@ -322,6 +337,7 @@ func rowDelta(net, change int64) structure.BalanceException {
 }
 
 func TestADeclaredRowDeltaPassesAndAStaleOneFails(t *testing.T) {
+	t.Parallel()
 	off := fund101.facts(replace(byFundRow(), structure.CategoryFundBalanceEnding, 120_100))
 	e := []structure.BalanceException{rowDelta(20_000, 20_100)}
 	wantPass(t, runBalanceExcepting(t, &fundGroupSourcesEqualUses{}, e, off), 1)
@@ -411,6 +427,7 @@ var measureD = balanceAt{structure.ScopeFundBalancesByFund, "capital", 305, 2027
 // omitted_cells declaration. The blank flow is summed as absent, not as zero,
 // and not as a finding; an undeclared one is still a finding.
 func TestADeclaredBlankCellIsAbsentAndNotMissing(t *testing.T) {
+	t.Parallel()
 	noReserve := measureD.facts(replace(without(byFundRow(), structure.CategoryFundBalanceReserveIncrease),
 		structure.CategoryFundBalanceEnding, 123_000))
 	wantPass(t, runBalance(t, &fundGroupSourcesEqualUses{}, noReserve, blankCells(t, false)), 1)
@@ -438,6 +455,7 @@ func TestADeclaredBlankCellIsAbsentAndNotMissing(t *testing.T) {
 // predicate the mapping publishes by: a cell of a non-amount row or column
 // yields no fact, so a blank declared there marks no line of the balance.
 func TestABlankOnACellThatNeverPublishesIsNoBlank(t *testing.T) {
+	t.Parallel()
 	t.Run("a quantity row", func(t *testing.T) {
 		// The percentage row shares County Measure D's fund, so a blank on
 		// its ending cell, read as an amount, would skip a wrong ending.
@@ -468,6 +486,7 @@ func TestABlankOnACellThatNeverPublishesIsNoBlank(t *testing.T) {
 // identity is fund-balance-identity's alone, and a printed fact on a line its
 // rule declares blank must not pass there by the printed figure winning.
 func TestADeclaredBlankThatIsPrintedFailsOnEveryBalanceScope(t *testing.T) {
+	t.Parallel()
 	acfr := measureD
 	acfr.scope = structure.ScopeACFRGeneralFundSummary
 	file := blankRule(t, acfr.scope, blankShape{
@@ -486,6 +505,7 @@ func TestADeclaredBlankThatIsPrintedFailsOnEveryBalanceScope(t *testing.T) {
 // change == ending was never evaluated on it, so the summary counts it apart
 // from the balances that held the identity.
 func TestABlankChangeIsNotCountedAsHeld(t *testing.T) {
+	t.Parallel()
 	acfr := measureD
 	acfr.scope = structure.ScopeACFRGeneralFundSummary
 	file := blankRule(t, acfr.scope, blankShape{
@@ -508,6 +528,7 @@ func TestABlankChangeIsNotCountedAsHeld(t *testing.T) {
 // balance an exception holds apart breaks the identity, so it is named
 // apart from the balances that satisfy it.
 func TestABalanceHeldApartIsNotCountedAsHolding(t *testing.T) {
+	t.Parallel()
 	e := []structure.BalanceException{carryBreak(120_000, 120_001), rowDelta(20_000, 20_100)}
 	t.Run("carry-forward", func(t *testing.T) {
 		fy2028 := fund101
@@ -540,6 +561,7 @@ func TestABalanceHeldApartIsNotCountedAsHolding(t *testing.T) {
 // prints its change, so a blank beginning leaves the flows a printed figure
 // to net to, and a misfiled flow is still a finding.
 func TestABlankStockOnAScopePrintingItsChangeStillHoldsSourcesUses(t *testing.T) {
+	t.Parallel()
 	spine := measureD
 	spine.scope = structure.ScopeAllFundsGross
 	file := blankRule(t, spine.scope, blankShape{
@@ -557,6 +579,7 @@ func TestABlankStockOnAScopePrintingItsChangeStillHoldsSourcesUses(t *testing.T)
 // no change to hold, and the summary names the balance it set aside, so a
 // rule wrongly declaring a stock blank cannot shrink the population unseen.
 func TestABalanceExemptedByABlankIsCounted(t *testing.T) {
+	t.Parallel()
 	noEnding := measureD.facts(without(without(byFundRow(), structure.CategoryFundBalanceReserveIncrease),
 		structure.CategoryFundBalanceEnding))
 	res := runBalance(t, &fundGroupSourcesEqualUses{}, append(noEnding, fund101.facts(byFundRow())...),
@@ -574,6 +597,7 @@ func TestABalanceExemptedByABlankIsCounted(t *testing.T) {
 // only such balances passes over them rather than reading as one printing no
 // sources and uses.
 func TestAStoreEveryBalanceOfWhichIsExemptedPasses(t *testing.T) {
+	t.Parallel()
 	noEnding := measureD.facts(without(without(byFundRow(), structure.CategoryFundBalanceReserveIncrease),
 		structure.CategoryFundBalanceEnding))
 	only := runBalance(t, &fundGroupSourcesEqualUses{}, noEnding, blankCells(t, true))
@@ -589,6 +613,7 @@ func TestAStoreEveryBalanceOfWhichIsExemptedPasses(t *testing.T) {
 // fund's year would be summed into its revenue, here to the revenue that
 // balances, so sources = uses refuses the balance and names both facts.
 func TestTwoFactsOnOneLineOfSourcesUsesFail(t *testing.T) {
+	t.Parallel()
 	facts := measureD.facts(append(replace(byFundRow(), "taxes", 49_999), balanceLine{mapping.KindRevenue, "fees", 1}))
 	res := runBalance(t, &fundGroupSourcesEqualUses{}, facts)
 	wantFail(t, res, facts[1].ID, facts[len(facts)-1].ID, "revenue twice")
@@ -601,6 +626,7 @@ func TestTwoFactsOnOneLineOfSourcesUsesFail(t *testing.T) {
 // store printing none of pp.186-209, runs both balance checks clean. The
 // tree's exceptions reach a check only on the subject Load builds.
 func TestASubjectBuiltByHandCarriesNoException(t *testing.T) {
+	t.Parallel()
 	for _, c := range []Check{&fundBalanceIdentity{}, &fundGroupSourcesEqualUses{}} {
 		res, err := c.Run(t.Context(), &Subject{Facts: testFacts()})
 		if err != nil {
@@ -652,6 +678,7 @@ rules:
 // its change is missing it, not exempted, and a fact printed on that line is
 // no printed figure against a declared blank.
 func TestARowOnAnotherPageIsNoBlank(t *testing.T) {
+	t.Parallel()
 	general := balanceAt{structure.ScopeACFRGeneralFundSummary, "general", 0, 2026, mapping.BasisAdopted}
 	lines := []balanceLine{
 		{mapping.KindFundBalance, structure.CategoryFundBalanceBeginning, 100_000},

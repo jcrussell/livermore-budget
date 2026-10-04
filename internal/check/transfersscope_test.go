@@ -25,10 +25,8 @@ import (
 // General Fund Transfers In row -- and that is the same key a doubled leg would
 // land on.
 func TestTheGeneralFundTransferInLegIsNotDoubled(t *testing.T) {
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	t.Parallel()
+	s := committed(t)
 
 	type cell struct {
 		scope string
@@ -81,10 +79,8 @@ func TestTheGeneralFundTransferInLegIsNotDoubled(t *testing.T) {
 // every p76 payer as fund 999 and changes nothing. What is asserted here is the
 // weaker structural claim the fact store CAN make: every leg is addressable.
 func TestEveryP76LegNamesAFundOrSaysWhyNot(t *testing.T) {
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	t.Parallel()
+	s := committed(t)
 
 	legs := map[mapping.Kind]int{}
 	noFund := map[string]int{}

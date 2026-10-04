@@ -58,6 +58,7 @@ func nodeIndex(t *testing.T, g *project.Document, prefix string) int {
 // green; the counts are unchanged, so counts-reconcile is green. The only thing
 // that moves is where the client draws the box and which parent it folds into.
 func TestNodeTiersAreDeclaredIsFailable(t *testing.T) {
+	t.Parallel()
 	// The undamaged fixture passes, or the cases below prove nothing.
 	if res := runNodeTiers(t, tieredSubject(t)); res.Status != StatusPass {
 		t.Fatalf("the undamaged fixture is %s, want PASS: %v", res.Status, res.Findings)
@@ -166,6 +167,7 @@ func TestNodeTiersAreDeclaredIsFailable(t *testing.T) {
 // one test: proving the exemption alone would pass a check that had stopped
 // looking at direction.
 func TestARollupIsTheOnlyDescendingLinkAllowed(t *testing.T) {
+	t.Parallel()
 	rolled := func(t *testing.T, target string) *Subject {
 		t.Helper()
 		s := tieredSubject(t)
@@ -229,6 +231,7 @@ func TestARollupIsTheOnlyDescendingLinkAllowed(t *testing.T) {
 // descends between parentless nodes and passes only on the flag, so the same
 // link with the flag cleared must be refused by name.
 func TestAPartitionIsTheOTHERDescendingLinkAllowed(t *testing.T) {
+	t.Parallel()
 	crossTab := func(t *testing.T, partition bool) *Subject {
 		t.Helper()
 		col := project.Column{FiscalYear: testYear, Basis: project.PublishedBasis}
@@ -281,10 +284,8 @@ func TestAPartitionIsTheOTHERDescendingLinkAllowed(t *testing.T) {
 // TestAReversedRollupIsRefused reverses one revenue-line rollup in every
 // document that draws one, over the committed corpus.
 func TestAReversedRollupIsRefused(t *testing.T) {
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatal(err)
-	}
+	t.Parallel()
+	s := isolated(t)
 	if res := runNodeTiers(t, s); res.Status != StatusPass {
 		t.Fatalf("the committed corpus is %s: %v", res.Status, res.Findings)
 	}
@@ -318,6 +319,7 @@ func TestAReversedRollupIsRefused(t *testing.T) {
 // TestEachRollupClauseIsNeeded plants one link per clause of isRollup that
 // satisfies the other two, so dropping that clause lets it through.
 func TestEachRollupClauseIsNeeded(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name           string
 		source, target project.Node

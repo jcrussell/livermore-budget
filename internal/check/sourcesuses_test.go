@@ -12,10 +12,8 @@ import (
 
 // TestFundGroupSourcesEqualUsesIsFailable plants over the committed corpus.
 func TestFundGroupSourcesEqualUsesIsFailable(t *testing.T) {
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatal(err)
-	}
+	t.Parallel()
+	s := mutable(t)
 	c := &fundGroupSourcesEqualUses{}
 	res, err := c.Run(t.Context(), s)
 	if err != nil {

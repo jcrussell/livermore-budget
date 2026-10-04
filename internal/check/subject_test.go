@@ -3,6 +3,7 @@ package check
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io/fs"
 	"math"
 	"os"
@@ -10,6 +11,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -25,14 +27,76 @@ import (
 // from. Nothing here runs the extractor or opens a PDF.
 func repoRoot(t *testing.T) string {
 	t.Helper()
-	root, err := filepath.Abs(filepath.Join("..", ".."))
+	root, err := repoRootDir()
 	if err != nil {
-		t.Fatalf("resolve the repository root: %v", err)
-	}
-	if _, err := os.Stat(filepath.Join(root, "data", "sources.yaml")); err != nil {
-		t.Fatalf("%q does not look like the repository root: %v", root, err)
+		t.Fatal(err)
 	}
 	return root
+}
+
+func repoRootDir() (string, error) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		return "", fmt.Errorf("resolve the repository root: %w", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "data", "sources.yaml")); err != nil {
+		return "", fmt.Errorf("%q does not look like the repository root: %w", root, err)
+	}
+	return root, nil
+}
+
+// loadCommitted loads the committed corpus once per test binary. The load is
+// the whole cost of a test over the corpus, and the subject is read-only once
+// built, so one serves every reader.
+var loadCommitted = sync.OnceValues(func() (*Subject, error) {
+	root, err := repoRootDir()
+	if err != nil {
+		return nil, err
+	}
+	return Load(LoadOptions{Root: root, Version: testVersion})
+})
+
+// committed is the committed corpus, loaded once and shared by every test
+// that reads it. IT IS SHARED AND THE TESTS RUN IN PARALLEL, so a test
+// writes nothing it reaches through this subject: one that reassigns a field
+// or edits a fact takes [mutable], and one that writes through a pointer the
+// subject holds -- a rule file's rules, a document's nodes or links -- takes
+// [isolated]. A test that forgets is caught by `go test -race` where its
+// write coincides with a read, and by the assertions over the committed
+// corpus where it does not.
+func committed(t *testing.T) *Subject {
+	t.Helper()
+	s, err := loadCommitted()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	return s
+}
+
+// mutable is the committed corpus with its own Facts, Files and Projections
+// slices, so a test can reassign a field or edit an element and reach no
+// other test. The rule files, documents, docs and resolvers behind those
+// slices are still the shared ones, and a write through any of them is
+// [isolated]'s.
+func mutable(t *testing.T) *Subject {
+	t.Helper()
+	s := *committed(t)
+	s.Facts = slices.Clone(s.Facts)
+	s.Files = slices.Clone(s.Files)
+	s.Projections = slices.Clone(s.Projections)
+	return &s
+}
+
+// isolated is a fresh load of the committed corpus for one test that writes
+// through a pointer the subject holds, so its rule files and documents are
+// read by no other test.
+func isolated(t *testing.T) *Subject {
+	t.Helper()
+	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	return s
 }
 
 // copyRepoFile copies one repository-relative file into dst, creating parents.
@@ -175,6 +239,7 @@ func loadAndRun(t *testing.T, root string) *Report {
 // the reason, and the run still exits clean. A --full check that failed on a
 // PDF-less tree would make this property impossible to state.
 func TestVerifyNeedsNoPDFs(t *testing.T) {
+	t.Parallel()
 	s, err := Load(LoadOptions{Root: repoWithoutPDFs(t), Version: testVersion})
 	if err != nil {
 		t.Fatalf("Load over a tree with no data/pdf: %v", err)
@@ -221,10 +286,8 @@ func TestVerifyNeedsNoPDFs(t *testing.T) {
 // mapping's size; which checks have something to look at is the durable claim, and
 // it is the one fisc-1wr.1.1's acceptance criteria are written against.
 func TestTheCommittedCorpusVacuitySplit(t *testing.T) {
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	t.Parallel()
+	s := committed(t)
 	rep := Run(t.Context(), s, All(), ReportOptions{GeneratedBy: testVersion})
 
 	want := map[string]Status{
@@ -304,6 +367,7 @@ func TestTheCommittedCorpusVacuitySplit(t *testing.T) {
 // behavioural: asking twice gives the same answer, so a check that corroborates a
 // figure corroborates the read the build published rather than a second one.
 func TestLoadWiresOneResolverPerRuleFile(t *testing.T) {
+	t.Parallel()
 	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
 	if err != nil {
 		t.Fatalf("Load: %v", err)
@@ -346,6 +410,7 @@ func TestLoadWiresOneResolverPerRuleFile(t *testing.T) {
 // A hand-built subject is the other half: it carries only what its builder
 // sets, and the checks that read these fields see none.
 func TestLoadCarriesTheTreesDeclarations(t *testing.T) {
+	t.Parallel()
 	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
 	if err != nil {
 		t.Fatalf("Load: %v", err)
@@ -385,6 +450,7 @@ func TestLoadCarriesTheTreesDeclarations(t *testing.T) {
 // harness, not a failed check, so it comes back as an error rather than as a
 // report full of red.
 func TestLoadRefusesAnUnreadableCorpus(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		opts LoadOptions
@@ -410,6 +476,7 @@ func TestLoadRefusesAnUnreadableCorpus(t *testing.T) {
 // TestLoadHintsAtBuildWhenTheFactStoreIsMissing: the fact store is a build
 // product, and the fix for a missing one is a command.
 func TestLoadHintsAtBuildWhenTheFactStoreIsMissing(t *testing.T) {
+	t.Parallel()
 	_, err := Load(LoadOptions{Root: t.TempDir(), Version: testVersion})
 	var hint *cmdutil.ErrHint
 	if !errors.As(err, &hint) {
@@ -425,10 +492,8 @@ func TestLoadHintsAtBuildWhenTheFactStoreIsMissing(t *testing.T) {
 // one facts.jsonl, and a graph built over both doubles every figure and still
 // balances, so each year gets its own graph and each is checked.
 func TestProjectionsCoverEveryYearTheFactsCarry(t *testing.T) {
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	t.Parallel()
+	s := committed(t)
 
 	years := map[int]bool{}
 	for _, f := range s.Facts {
@@ -483,6 +548,7 @@ func TestProjectionsCoverEveryYearTheFactsCarry(t *testing.T) {
 // them together, so the link, headline and counts checks all still pass; the token
 // is the only witness that does not move.
 func TestAWrongAmountFails(t *testing.T) {
+	t.Parallel()
 	root := repoWithoutPDFs(t)
 	var victim fact.Fact
 	mutateFacts(t, root, func(facts []fact.Fact) []fact.Fact {
@@ -517,6 +583,7 @@ func TestAWrongAmountFails(t *testing.T) {
 // passed ten checks, because every one of them was summing the same corrupted
 // number.
 func TestACentsValueUnderADollarsUnitFails(t *testing.T) {
+	t.Parallel()
 	root := repoWithoutPDFs(t)
 	mutateFacts(t, root, func(facts []fact.Fact) []fact.Fact {
 		facts[0].AmountCents += 69
@@ -535,6 +602,7 @@ func TestACentsValueUnderADollarsUnitFails(t *testing.T) {
 // TestACorruptedTokenFails is the same check from the other side: the amount is
 // untouched and the text it claims to come from is not.
 func TestACorruptedTokenFails(t *testing.T) {
+	t.Parallel()
 	root := repoWithoutPDFs(t)
 	mutateFacts(t, root, func(facts []fact.Fact) []fact.Fact {
 		facts[3].Token = "1,234"
@@ -560,6 +628,7 @@ func TestACorruptedTokenFails(t *testing.T) {
 // the token is right, and the citation lands somewhere else on the page — which no
 // other check in the report can see.
 func TestAMovedOffsetFails(t *testing.T) {
+	t.Parallel()
 	root := repoWithoutPDFs(t)
 	var victim fact.Fact
 	mutateFacts(t, root, func(facts []fact.Fact) []fact.Fact {
@@ -593,6 +662,7 @@ func TestAMovedOffsetFails(t *testing.T) {
 // negative offset before fact-offset-points-at-token sees it. That check's
 // remaining-length subtraction guards a LARGE offset, still driven below.
 func TestANegativeOffsetIsRefusedBeforeTheChecksRun(t *testing.T) {
+	t.Parallel()
 	root := repoWithoutPDFs(t)
 	mutateFacts(t, root, func(facts []fact.Fact) []fact.Fact {
 		facts[0].Offset = -1
@@ -619,6 +689,7 @@ func TestANegativeOffsetIsRefusedBeforeTheChecksRun(t *testing.T) {
 // MaxInt64, passes, and panics one line later. Found in code review of this
 // package, which is why the comparison is a remaining-length subtraction.
 func TestAnOffsetPastTheEndOfThePageFails(t *testing.T) {
+	t.Parallel()
 	for _, tt := range []struct {
 		name   string
 		offset int
@@ -649,6 +720,7 @@ func TestAnOffsetPastTheEndOfThePageFails(t *testing.T) {
 // cuts-tie-along-the-lattice's coverage arm names each fact in no cut and no
 // declared residue.
 func TestFactsMovedOutOfEveryProjectionFail(t *testing.T) {
+	t.Parallel()
 	root := repoWithoutPDFs(t)
 	const otherScope = "all-funds-gross-detail"
 	moved := map[string]bool{}
@@ -702,6 +774,7 @@ func TestFactsMovedOutOfEveryProjectionFail(t *testing.T) {
 // to read, they would all go vacuous at once, and the run would exit 0 having
 // checked the fact store and nothing else.
 func TestEveryFactMovedOutOfScopeRefusesToLoad(t *testing.T) {
+	t.Parallel()
 	root := repoWithoutPDFs(t)
 	mutateFacts(t, root, func(facts []fact.Fact) []fact.Fact {
 		for i := range facts {
@@ -727,6 +800,7 @@ func TestEveryFactMovedOutOfScopeRefusesToLoad(t *testing.T) {
 // store can carry facts, project them, and pass every graph check over a slice the
 // site does not publish.
 func TestTheYearTheSitePublishesMustBeBuilt(t *testing.T) {
+	t.Parallel()
 	root := repoWithoutPDFs(t)
 	mutateFacts(t, root, func(facts []fact.Fact) []fact.Fact {
 		out := facts[:0]
@@ -768,10 +842,8 @@ func TestTheYearTheSitePublishesMustBeBuilt(t *testing.T) {
 // the state this test refuses: the report would be green and only the
 // projection count in the summary would move.
 func TestASpineDocumentWithoutAHeadlineIsAFinding(t *testing.T) {
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	t.Parallel()
+	s := isolated(t)
 	docs, findings := s.spine()
 	if len(findings) != 0 {
 		t.Fatalf("the committed spine is not whole: %+v", findings)
@@ -811,6 +883,7 @@ func TestASpineDocumentWithoutAHeadlineIsAFinding(t *testing.T) {
 // cuts-tie-along-the-lattice's coverage arm, so this asserts on
 // published-projection-built's own result rather than on rep.Failed().
 func TestARetargetedScopeUnbuildsThePublishedTrendsDocument(t *testing.T) {
+	t.Parallel()
 	root := repoWithoutPDFs(t)
 	moved := 0
 	mutateFacts(t, root, func(facts []fact.Fact) []fact.Fact {
@@ -896,6 +969,7 @@ func TestARetargetedScopeUnbuildsThePublishedTrendsDocument(t *testing.T) {
 // stem it would take. The two beads landed in that order on purpose -- b8o's
 // test is what proved rmx's fix reached this far.
 func TestASliceNoDocumentClaimsIsReported(t *testing.T) {
+	t.Parallel()
 	root := repoWithoutPDFs(t)
 	added := 0
 	mutateFacts(t, root, func(facts []fact.Fact) []fact.Fact {
@@ -955,6 +1029,7 @@ func TestASliceNoDocumentClaimsIsReported(t *testing.T) {
 // SITE PUBLISHES, which is not a claim about what the corpus used to hold, and a
 // corpus that no longer covers it goes red here naming the column.
 func TestAPublishedDocumentShortAColumnIsReported(t *testing.T) {
+	t.Parallel()
 	dropped := project.TrendsColumns()[0]
 	root := repoWithoutPDFs(t)
 	gone := 0
@@ -1031,6 +1106,7 @@ func TestAPublishedDocumentShortAColumnIsReported(t *testing.T) {
 // project.ContestedTotals() rather than a second copy of the figures -- two
 // copies agreeing is not the claim worth making.
 func TestContestedTotalsAreStillContested(t *testing.T) {
+	t.Parallel()
 	entries, err := project.ContestedTotals()
 	if err != nil {
 		t.Fatal(err)
@@ -1040,10 +1116,7 @@ func TestContestedTotalsAreStillContested(t *testing.T) {
 			"if fisc-av0w was decided, remove this test with the last entry")
 	}
 
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	s := committed(t)
 
 	// One graph per published (fiscal year, basis) of the spine, keyed so a
 	// missing column is reported as a missing column rather than as a zero sum.

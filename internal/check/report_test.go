@@ -58,6 +58,7 @@ func run(t *testing.T, s *Subject, o ReportOptions, checks ...Check) *Report {
 // report that collapsed them would send someone looking for a bad figure when the
 // bug is here.
 func TestAnErrorIsNotAFailure(t *testing.T) {
+	t.Parallel()
 	broke := &fake{id: "broke", err: errors.New("the manifest is unreadable")}
 	rep := run(t, nil, ReportOptions{}, failed("claim"), broke)
 
@@ -86,6 +87,7 @@ func TestAnErrorIsNotAFailure(t *testing.T) {
 // path has to be wired end to end now, or the first check that needs --full will
 // be the one discovering whether the wiring works.
 func TestFullOnlyChecksAreSkippedNotFailed(t *testing.T) {
+	t.Parallel()
 	needsPDFs := &fake{id: "needs-pdfs", full: true,
 		res: Result{Status: StatusPass, Subjects: 1, Summary: "read the PDFs"}}
 
@@ -117,6 +119,7 @@ func TestFullOnlyChecksAreSkippedNotFailed(t *testing.T) {
 // in the corpus, while a skipped one is the documented consequence of not passing
 // a flag, and failing on it would make --strict impossible to use in CI.
 func TestSkippedNeverFailsEvenUnderStrict(t *testing.T) {
+	t.Parallel()
 	rep := run(t, &Subject{}, ReportOptions{Strict: true},
 		&fake{id: "needs-pdfs", full: true, res: Result{Status: StatusPass, Subjects: 1}})
 	if rep.Counts.Skipped != 1 {
@@ -131,6 +134,7 @@ func TestSkippedNeverFailsEvenUnderStrict(t *testing.T) {
 // all — a zero Result, whose status is the empty string. Counting it anywhere but
 // the error column would let a broken check read as a passing one.
 func TestABrokenCheckCannotBeGreen(t *testing.T) {
+	t.Parallel()
 	rep := run(t, nil, ReportOptions{}, &fake{id: "silent"})
 
 	res := resultFor(t, rep, "silent")
@@ -149,6 +153,7 @@ func TestABrokenCheckCannotBeGreen(t *testing.T) {
 // check does not answer to, which matters because the id is what a reader greps
 // for and what a vacuity declaration names.
 func TestResultsAreStampedFromTheCheck(t *testing.T) {
+	t.Parallel()
 	liar := &fake{id: "honest", res: Result{
 		CheckID: "some-other-check", Tier: 4, Description: "not mine",
 		Status: StatusPass, Subjects: 1,
@@ -163,6 +168,7 @@ func TestResultsAreStampedFromTheCheck(t *testing.T) {
 // TestCancellationStillReportsEveryCheck: a report with checks missing from it
 // reads as a shorter list of checks rather than as an interrupted run.
 func TestCancellationStillReportsEveryCheck(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 
@@ -183,6 +189,7 @@ func TestCancellationStillReportsEveryCheck(t *testing.T) {
 // TestFindingsAreNeverNull keeps the JSON shape stable. A key that becomes null
 // when a list is empty makes a consumer handle two shapes for one meaning.
 func TestFindingsAreNeverNull(t *testing.T) {
+	t.Parallel()
 	rep := run(t, nil, ReportOptions{}, passed("a"), &fake{id: "b", err: errors.New("x")})
 	if rep.Results == nil {
 		t.Error("Results is nil")
@@ -203,6 +210,7 @@ func TestFindingsAreNeverNull(t *testing.T) {
 // be appended to — or truncated — by any importer, which would silently change
 // what `fisc verify` checks.
 func TestAllIsNotAppendable(t *testing.T) {
+	t.Parallel()
 	first := All()
 	first[0] = passed("hijacked")
 	first = append(first, passed("extra"))
@@ -220,6 +228,7 @@ func TestAllIsNotAppendable(t *testing.T) {
 // vacuity declaration names and what a reader greps for, so they have to be
 // unique and stable, and every check has to be able to say what it claims.
 func TestEveryCheckIsWellFormed(t *testing.T) {
+	t.Parallel()
 	kebab := regexp.MustCompile(`^[a-z][a-z0-9-]*[a-z0-9]$`)
 	seen := map[string]bool{}
 	for _, c := range All() {

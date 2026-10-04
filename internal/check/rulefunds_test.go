@@ -27,6 +27,7 @@ import (
 // trailing noun, never a fragment of a fund name: the caller then resolves the
 // whole candidate through FundByLabel, which answers or does not.
 func TestFundNameInReadsBothPrintedShapes(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name  string
 		total string
@@ -81,6 +82,7 @@ func TestFundNameInReadsBothPrintedShapes(t *testing.T) {
 // SEEN (so a real unclaimed one is reported) and it is CLAIMABLE under the label
 // as printed (so the mapped one does not become a false finding).
 func TestUnclaimedFundTotalsSeesBothPrintedShapes(t *testing.T) {
+	t.Parallel()
 	const docID = "livermore-budget-fy2026-2027"
 	// Two printed totals naming one fund, one in each shape, plus a bare
 	// `Total` of the kind pp.167-170 actually print.
@@ -135,6 +137,7 @@ func TestUnclaimedFundTotalsSeesBothPrintedShapes(t *testing.T) {
 
 // TestPrintedTotalLabelSplitsOnTheColumnGrid pins what makes a line a row.
 func TestPrintedTotalLabelSplitsOnTheColumnGrid(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		line string
 		want string
@@ -173,6 +176,7 @@ func TestPrintedTotalLabelSplitsOnTheColumnGrid(t *testing.T) {
 // this cannot be shown against committed pages: it is shown against two inline
 // pages printing the same line, one of them claimed.
 func TestAClaimOnOnePageDoesNotSilenceAnotherPage(t *testing.T) {
+	t.Parallel()
 	const docID = "livermore-budget-fy2026-2027"
 	const printed = "Total General Fund                  $1,000         $2,000\n"
 
@@ -215,10 +219,8 @@ func TestAClaimOnOnePageDoesNotSilenceAnotherPage(t *testing.T) {
 // Meas BB-" and wraps "Bike/Pedestrian" onto the next line, so the truncated
 // label names no fund and the rule is reported as anchored to nothing.
 func TestAWrappedTotalNamesItsFundWithItsTail(t *testing.T) {
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	t.Parallel()
+	s := isolated(t)
 	const id = "fund-exp-county-meas-bb-bike-pedestrian"
 	res := resultFor(t, runOne(t, s, &ruleFundsMatchTheirHeadings{}), "rule-funds-match-their-headings")
 	if res.Status != StatusPass {
@@ -254,10 +256,8 @@ func TestAWrappedTotalNamesItsFundWithItsTail(t *testing.T) {
 // the committed corpus. p181 prints "Total Open Space Acquisition &" and wraps
 // "Mgmt" beneath it, so clause 2 finds the fund only by rejoining the two.
 func TestAWrappedTotalNobodyMapsIsReported(t *testing.T) {
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	t.Parallel()
+	s := isolated(t)
 	const id = "fund-exp-open-space-acquisition-mgmt"
 	removed := false
 	for _, f := range s.Files {
@@ -286,11 +286,9 @@ func TestAWrappedTotalNobodyMapsIsReported(t *testing.T) {
 // with the figures and "Replacement" beneath: the head alone names fund 640,
 // the whole line 642. A 640 rule's claim must not silence the 642 section.
 func TestAWrappedTotalWhoseHeadIsAFundNamesTheWholeFund(t *testing.T) {
+	t.Parallel()
 	const docID = "livermore-budget-fy2026-2027"
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	s := committed(t)
 	inline := &Subject{
 		Vocabulary: s.Vocabulary,
 		Docs: map[string]*corpus.Doc{docID: inlinePagesDoc(t, docID, map[int]string{
@@ -312,11 +310,9 @@ func TestAWrappedTotalWhoseHeadIsAFundNamesTheWholeFund(t *testing.T) {
 // TestAWrappedTotalWhoseTailCarriesDigitsIsRead: a fund name may hold digits,
 // so a tail is refused as a row only where it also has a column gap.
 func TestAWrappedTotalWhoseTailCarriesDigitsIsRead(t *testing.T) {
+	t.Parallel()
 	const docID = "livermore-budget-fy2026-2027"
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	s := committed(t)
 	inline := &Subject{
 		Vocabulary: s.Vocabulary,
 		Docs: map[string]*corpus.Doc{docID: inlinePagesDoc(t, docID, map[int]string{
@@ -334,11 +330,9 @@ func TestAWrappedTotalWhoseTailCarriesDigitsIsRead(t *testing.T) {
 // fund name before " Total", so a caption beneath it is no part of the label
 // the rule claims.
 func TestTheTrailingShapeIsNotRejoined(t *testing.T) {
+	t.Parallel()
 	const docID = "livermore-budget-fy2026-2027"
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	s := committed(t)
 	inline := &Subject{
 		Vocabulary: s.Vocabulary,
 		Docs: map[string]*corpus.Doc{docID: inlinePagesDoc(t, docID, map[int]string{
@@ -354,6 +348,7 @@ func TestTheTrailingShapeIsNotRejoined(t *testing.T) {
 // TestIsFigureRowTellsARowFromAFragment: a row has cells set off by a gap,
 // one a figure; a fragment may hold a digit or a gap and not both.
 func TestIsFigureRowTellsARowFromAFragment(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		line string
 		want bool
@@ -374,11 +369,9 @@ func TestIsFigureRowTellsARowFromAFragment(t *testing.T) {
 // not part of the name, on the claim side or the page side, and a claim of the
 // head alone is not a claim of the wrapped total.
 func TestAWrappedTotalIsClaimedUnderItsWholeLabel(t *testing.T) {
+	t.Parallel()
 	const docID = "livermore-budget-fy2026-2027"
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	s := committed(t)
 	spaced := &Subject{Vocabulary: s.Vocabulary, Docs: map[string]*corpus.Doc{docID: inlinePagesDoc(t, docID,
 		map[int]string{175: "      Total County Meas BB-            $1,000         $2,000\n      Local St &  Rd\n"})}}
 	pages := map[string]map[int]bool{docID: {175: true}}

@@ -27,6 +27,7 @@ func fundBalanceResult(t *testing.T, cells []testCell) Result {
 // cells, so a discrepancy of any size is a wrong figure rather than the
 // document's rounding.
 func TestFundBalanceIdentityCatchesAnEndingThatDoesNotFollow(t *testing.T) {
+	t.Parallel()
 	cells := slices.Clone(fixtureCells)
 	for i := range cells {
 		if cells[i].category == project.CategoryFundBalanceEnding && cells[i].group == "general" {
@@ -66,6 +67,7 @@ func TestFundBalanceIdentityCatchesAnEndingThatDoesNotFollow(t *testing.T) {
 // `change` line and there is nothing left to violate, so the identity would go
 // quietly from thirteen subjects to twelve and still report a pass.
 func TestFundBalanceIdentityCatchesADroppedLine(t *testing.T) {
+	t.Parallel()
 	var cells []testCell
 	for _, c := range fixtureCells {
 		if c.category == project.CategoryFundBalanceChange && c.group == "general" {
@@ -105,6 +107,7 @@ func TestFundBalanceIdentityCatchesADroppedLine(t *testing.T) {
 // which would fail the check against a corpus that is not wrong, and is what
 // makes the exclusion worth a test.
 func TestFundBalanceIdentityIgnoresReserveIncrease(t *testing.T) {
+	t.Parallel()
 	cells := append(slices.Clone(fixtureCells), testCell{
 		mapping.KindFundBalance, "fund-balance/reserve-increase", "general", 33_000,
 	})
@@ -131,10 +134,8 @@ func TestFundBalanceIdentityIgnoresReserveIncrease(t *testing.T) {
 // years. If a coverage lane adds a fund balance, this number moves and the
 // mover has to decide whether the new balance really does tie.
 func TestFundBalanceIdentityIsNotVacuousOverTheCommittedCorpus(t *testing.T) {
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	t.Parallel()
+	s := committed(t)
 	res := resultFor(t, Run(t.Context(), s, All(), ReportOptions{}), "fund-balance-identity")
 
 	if res.Status != StatusPass {
@@ -177,6 +178,7 @@ func TestFundBalanceIdentityIsNotVacuousOverTheCommittedCorpus(t *testing.T) {
 // p41, where two rules over one page section can publish one printed figure
 // twice.
 func TestFundBalanceIdentityReportsADuplicateWithoutAbandoningTheRest(t *testing.T) {
+	t.Parallel()
 	cells := slices.Clone(fixtureCells)
 	for _, c := range fixtureCells {
 		if c.category == project.CategoryFundBalanceEnding && c.group == "general" {
@@ -239,6 +241,7 @@ func TestFundBalanceIdentityReportsADuplicateWithoutAbandoningTheRest(t *testing
 // So the two shapes are separate cases now, and each is reachable only through
 // the arm it is named for.
 func TestFundBalanceFindingsAlwaysNameASubject(t *testing.T) {
+	t.Parallel()
 	// Both cases drop general's BEGINNING line, which is the id both arms used
 	// to reach for; a balance that still has one cannot show the defect.
 	withoutBeginning := func() []testCell {

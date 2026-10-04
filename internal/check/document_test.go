@@ -48,6 +48,7 @@ func spineFacts() []fact.Fact {
 // failure ProjectionFailure's doc comment says was fixed once already for a
 // refusing projection, wearing a second face.
 func TestANonGraphProjectionDoesNotKillTheRun(t *testing.T) {
+	t.Parallel()
 	built, failed, err := buildProjections(
 		[]project.Projection{&seriesOnly{}}, spineFacts(), "test")
 	if err != nil {
@@ -70,6 +71,7 @@ func TestANonGraphProjectionDoesNotKillTheRun(t *testing.T) {
 // a graph of another projection carrying a headline block reaches only the
 // structural checks, because the spine is a declaration and not a pointer.
 func TestSpineIsSelectedByPublication(t *testing.T) {
+	t.Parallel()
 	column := project.Options{
 		Columns: []project.Column{{FiscalYear: 2026, Basis: project.PublishedBasis}},
 		Scopes:  []string{project.PublishedScope},
@@ -113,6 +115,7 @@ func TestSpineIsSelectedByPublication(t *testing.T) {
 // becoming a hole: a document no structural check reads must be reported, not
 // published quietly.
 func TestAnUncheckedDocumentIsReported(t *testing.T) {
+	t.Parallel()
 	s := &Subject{Projections: []projection{
 		{Name: "sankey", Graph: &project.Document{}},
 		{Name: "series-only"},
@@ -135,6 +138,7 @@ func TestAnUncheckedDocumentIsReported(t *testing.T) {
 // every slice, so a projection of a different schedule was handed slices
 // containing none of its facts.
 func TestEachProjectionIsBuiltOverItsOwnSlices(t *testing.T) {
+	t.Parallel()
 	built, _, err := buildProjections(
 		[]project.Projection{&seriesOnly{}}, spineFacts(), "test")
 	if err != nil {
@@ -185,6 +189,7 @@ func (*silent) Slices(_ []fact.Fact, _ string) []project.Options { return nil }
 // publishedProjectionBuilt, which compares against one projection name. That is
 // filed as fisc-w7d rather than left implied by a test that no longer exists.
 func TestAProjectionThatProducesNothingIsNotADefect(t *testing.T) {
+	t.Parallel()
 	built, failed, err := buildProjections(
 		[]project.Projection{&silent{}}, spineFacts(), "test")
 	if err != nil {
@@ -219,6 +224,7 @@ func TestAProjectionThatProducesNothingIsNotADefect(t *testing.T) {
 // — and the check would go on passing, over the first year, reporting a number
 // that looked like coverage. It iterates the published set now.
 func TestAPublishedYearNothingBuiltIsReported(t *testing.T) {
+	t.Parallel()
 	s := &Subject{
 		Published: spineDocuments(2026, 2027),
 		Projections: []projection{{
@@ -247,6 +253,7 @@ func TestAPublishedYearNothingBuiltIsReported(t *testing.T) {
 // that came with per-projection slices: matching the triple is no longer the
 // same as having built the document the page renders.
 func TestAPublishedYearBuiltByAnotherProjectionIsNotEnough(t *testing.T) {
+	t.Parallel()
 	s := &Subject{
 		Published: spineDocuments(2026),
 		Projections: []projection{{
@@ -272,6 +279,7 @@ func TestAPublishedYearBuiltByAnotherProjectionIsNotEnough(t *testing.T) {
 // coming back; the committed corpus needs none, and a future entry should be a
 // deliberate act rather than something that accumulated.
 func TestUncheckedDocumentsIsEmpty(t *testing.T) {
+	t.Parallel()
 	if len(uncheckedDocuments) != 0 {
 		t.Errorf("uncheckedDocuments carries %d entries: %v",
 			len(uncheckedDocuments), uncheckedDocuments)
@@ -287,6 +295,7 @@ func TestUncheckedDocumentsIsEmpty(t *testing.T) {
 // check's own doc comment calls the one thing this package exists to prevent.
 // The `nothing:` branch was unreachable while any declaration was live.
 func TestADeclaredDocumentIsNotCountedAsExamined(t *testing.T) {
+	t.Parallel()
 	s := &Subject{
 		Projections:        []projection{{Name: "blob"}},
 		UncheckedDocuments: map[string]string{"blob": "no checks yet (bead id goes here)"},
@@ -317,6 +326,7 @@ func TestADeclaredDocumentIsNotCountedAsExamined(t *testing.T) {
 // would report "2 findings over 0 projections": a numerator with no denominator
 // under it, which is as unreadable as the pass over zero the narrowing fixed.
 func TestAnUnreadProjectionIsInItsOwnDenominator(t *testing.T) {
+	t.Parallel()
 	s := &Subject{Projections: []projection{{Name: "blob"}, {Name: "blob-two"}}}
 
 	res, err := (&documentsAreChecked{}).Run(t.Context(), s)
@@ -337,6 +347,7 @@ func TestAnUnreadProjectionIsInItsOwnDenominator(t *testing.T) {
 // invisible, because a growing exemption read as a shrinking one is how a
 // document stays unchecked forever.
 func TestADeclaredDocumentDoesNotHideAnExaminedOne(t *testing.T) {
+	t.Parallel()
 	s := &Subject{
 		Projections: []projection{
 			{Name: "sankey", Graph: &project.Document{}},
@@ -367,6 +378,7 @@ func TestADeclaredDocumentDoesNotHideAnExaminedOne(t *testing.T) {
 // widened precisely so a document need not be a graph. A reader would go looking
 // for a graph that does not exist.
 func TestAStaleUncheckedDocumentDeclarationIsCaught(t *testing.T) {
+	t.Parallel()
 	t.Run("no projection of that name", func(t *testing.T) {
 		s := &Subject{
 			Projections:        []projection{{Name: "sankey", Graph: &project.Document{}}},

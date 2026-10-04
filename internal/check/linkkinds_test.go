@@ -16,6 +16,7 @@ import (
 // because a kind is not an amount: values tied to their facts, counts
 // reconciled, the graph was acyclic. Nothing in the tree read Link.Kind.
 func TestLinkKindsMatchTheirFactsIsFailable(t *testing.T) {
+	t.Parallel()
 	const id = "link-kinds-match-their-facts"
 
 	if res := resultFor(t, runChecks(t, testSubject(t)), id); res.Status != StatusPass {
@@ -74,6 +75,7 @@ func TestLinkKindsMatchTheirFactsIsFailable(t *testing.T) {
 // second copy of every projection's classification rules, and two copies of a
 // rule agree by construction rather than by evidence.
 func TestAnExternalLinkIsNotAssertedToBeExternal(t *testing.T) {
+	t.Parallel()
 	s := testSubject(t)
 	// Relabel a genuinely external revenue link as an internal transfer. The
 	// check does not object, and that is the documented limit.

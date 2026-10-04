@@ -175,6 +175,7 @@ func lineLink(t *testing.T, s *Subject, source, target string) *project.Link {
 }
 
 func TestRevenueLinesTieOverTheFixture(t *testing.T) {
+	t.Parallel()
 	res, err := (&revenueLinesTieToTheirCategories{}).Run(t.Context(), lineTieSubject(t))
 	if err != nil {
 		t.Fatalf("Run: %v", err)
@@ -205,6 +206,7 @@ func TestRevenueLinesTieOverTheFixture(t *testing.T) {
 // TestRevenueLinesTieIsFailable is the mutation table. The first row is green
 // under every other check in this package.
 func TestRevenueLinesTieIsFailable(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name         string
 		damage       func(t *testing.T, s *Subject)
@@ -402,6 +404,7 @@ func TestRevenueLinesTieIsFailable(t *testing.T) {
 // TestRevenueLinesTieIsVacuousWithoutADrillDown pins that no drill-down is
 // vacuous, not a pass.
 func TestRevenueLinesTieIsVacuousWithoutADrillDown(t *testing.T) {
+	t.Parallel()
 	s := lineTieSubject(t)
 	s.Projections = nil
 	res, err := (&revenueLinesTieToTheirCategories{}).Run(t.Context(), s)
@@ -419,6 +422,7 @@ func TestRevenueLinesTieIsVacuousWithoutADrillDown(t *testing.T) {
 // TestRevenueLinesTieRefusesATwoColumnDrillDown covers a shape internal/project
 // never builds: links that cannot be keyed to a fiscal year.
 func TestRevenueLinesTieRefusesATwoColumnDrillDown(t *testing.T) {
+	t.Parallel()
 	s := lineTieSubject(t)
 	s.Projections[0].Options.Columns = []project.Column{
 		{FiscalYear: testYear, Basis: testBasis},
@@ -439,6 +443,7 @@ func TestRevenueLinesTieRefusesATwoColumnDrillDown(t *testing.T) {
 // TestRevenueLinesTieReadsTheFactsItIsGiven: the spine side is the fact store,
 // not the spine graph.
 func TestRevenueLinesTieReadsTheFactsItIsGiven(t *testing.T) {
+	t.Parallel()
 	s := lineTieSubject(t)
 	s.Facts = slices.DeleteFunc(s.Facts, func(f fact.Fact) bool {
 		return f.Kind == mapping.KindRevenue && f.Category == "taxes/property" &&

@@ -14,10 +14,8 @@ import (
 // pairs at one level the committed corpus compares, the one overlap and its
 // figure, and which pairs are refused with which reason.
 func TestTheCommittedPeersOverlapOnlyByDeclaredIdentity(t *testing.T) {
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	t.Parallel()
+	s := committed(t)
 	res := resultFor(t, runOne(t, s, &peersOverlapOnlyByDeclaredIdentity{}), "peers-overlap-only-by-declared-identity")
 	if res.Status != StatusPass {
 		t.Fatalf("status = %s, findings:\n  %v", res.Status, res.Findings)
@@ -60,10 +58,8 @@ func TestTheCommittedPeersOverlapOnlyByDeclaredIdentity(t *testing.T) {
 // TestThePeerCheckGoesRed runs the amount mutation through the registered
 // check, so what is proven is the line fisc verify prints.
 func TestThePeerCheckGoesRed(t *testing.T) {
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	t.Parallel()
+	s := committed(t)
 	planted := make([]fact.Fact, len(s.Facts))
 	copy(planted, s.Facts)
 	moved := 0
@@ -103,10 +99,8 @@ func TestThePeerCheckGoesRed(t *testing.T) {
 // holds both readings of one figure, or a cut beside its decomposition, is
 // refused as a view.
 func TestADocumentSelectingBothReadingsIsAFinding(t *testing.T) {
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	t.Parallel()
+	s := committed(t)
 	mutated := *s
 	mutated.Projections = append([]projection{{
 		Name: "both-readings",
@@ -138,10 +132,8 @@ func TestADocumentSelectingBothReadingsIsAFinding(t *testing.T) {
 // TestThePeerCheckReportsItsDeclarations drives the arms that read the
 // declarations rather than the store, through the seam.
 func TestThePeerCheckReportsItsDeclarations(t *testing.T) {
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	t.Parallel()
+	s := mutable(t)
 	run := func(t *testing.T, ids []structure.Identity) Result {
 		t.Helper()
 		prev := s.Identities
@@ -182,10 +174,8 @@ func TestThePeerCheckReportsItsDeclarations(t *testing.T) {
 // fund 610 to fund 621: every cell stays one-sided, none is shared, and
 // without the one-sided arm the check is green.
 func TestAOneSidedCellUnderAnIdentityGoesRed(t *testing.T) {
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	t.Parallel()
+	s := committed(t)
 	mutated := *s
 	mutated.Facts = make([]fact.Fact, len(s.Facts))
 	copy(mutated.Facts, s.Facts)
@@ -215,10 +205,8 @@ func TestAOneSidedCellUnderAnIdentityGoesRed(t *testing.T) {
 // cuts at one level is read by the peer check alone, which refuses one that
 // excuses no absence; the lattice check, which compares no peers, leaves it be.
 func TestAnExceptionBetweenPeersIsThePeerChecks(t *testing.T) {
-	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	t.Parallel()
+	s := mutable(t)
 	stale := structure.Exception{
 		Name: "a-plant-between-peers", Cut: structure.CutRevenueDetail, Against: structure.CutFundBalanceFlows,
 		At: structure.LevelFundByCategory,

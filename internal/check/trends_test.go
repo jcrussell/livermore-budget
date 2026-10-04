@@ -79,6 +79,7 @@ func trendsTestFacts(t *testing.T) []fact.Fact {
 // TestTrendPointsTieToFactsPasses is the baseline: the real producer over a
 // clean store reports every point examined and nothing wrong.
 func TestTrendPointsTieToFactsPasses(t *testing.T) {
+	t.Parallel()
 	res := runTrendPoints(t, trendsSubject(t, trendsTestFacts(t)))
 	if res.Status != StatusPass {
 		t.Fatalf("trend-points-tie-to-facts = %s: %s (%v)", res.Status, res.Summary, res.Findings)
@@ -93,6 +94,7 @@ func TestTrendPointsTieToFactsPasses(t *testing.T) {
 // the right figure off the wrong page would be a broken provenance link that
 // every arithmetic check passes.
 func TestAMutatedPointIsCaught(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name string
 		bend func(p *project.Point)
@@ -128,6 +130,7 @@ func TestAMutatedPointIsCaught(t *testing.T) {
 // with its fact is loud; a fact the document simply left out publishes nothing
 // to disagree with, and counts.facts would fall with nothing to say so.
 func TestAFactNoPointPublishesIsCaught(t *testing.T) {
+	t.Parallel()
 	s := trendsSubject(t, trendsTestFacts(t))
 	// Drop a whole series from the published document while leaving its facts in
 	// the store: exactly what a resolver that stopped emitting a row looks like.
@@ -144,6 +147,7 @@ func TestAFactNoPointPublishesIsCaught(t *testing.T) {
 // TestAFactPublishedTwiceIsCaught: a duplicated point is counted twice by
 // anything summing the document, and the two copies need not even agree.
 func TestAFactPublishedTwiceIsCaught(t *testing.T) {
+	t.Parallel()
 	s := trendsSubject(t, trendsTestFacts(t))
 	series := &s.Projections[0].Trends.Series[0]
 	series.Points = append(series.Points, series.Points[0])
@@ -161,6 +165,7 @@ func TestAFactPublishedTwiceIsCaught(t *testing.T) {
 // agrees with its fact; only the row it is grouped under is wrong, and the
 // result is a row that reads as another row's history.
 func TestAPointFiledUnderTheWrongSeriesIsCaught(t *testing.T) {
+	t.Parallel()
 	s := trendsSubject(t, trendsTestFacts(t))
 	series := s.Projections[0].Trends.Series
 	if len(series) != 2 {
@@ -180,6 +185,7 @@ func TestAPointFiledUnderTheWrongSeriesIsCaught(t *testing.T) {
 // document has nothing to examine, and a pass over zero subjects is the one
 // thing this package exists to prevent.
 func TestTrendChecksAreVacuousWithoutADocument(t *testing.T) {
+	t.Parallel()
 	s := &Subject{}
 	if res := runTrendPoints(t, s); res.Status != StatusVacuous {
 		t.Errorf("trend-points-tie-to-facts = %s over no document, want vacuous", res.Status)
@@ -198,6 +204,7 @@ func TestTrendChecksAreVacuousWithoutADocument(t *testing.T) {
 // carry. Neither is visible to trend-points-tie-to-facts, because every point
 // that IS published is correct.
 func TestASeriesShortAColumnIsCaught(t *testing.T) {
+	t.Parallel()
 	s := trendsSubject(t, trendsTestFacts(t))
 	series := &s.Projections[0].Trends.Series[0]
 	dropped := series.Points[1]
@@ -245,6 +252,7 @@ func TestASeriesShortAColumnIsCaught(t *testing.T) {
 // declaration nobody can see expiring is a declaration that outlives its reason,
 // which is the same argument uncheckedDocuments makes.
 func TestAStaleIncompleteSeriesDeclarationIsCaught(t *testing.T) {
+	t.Parallel()
 	s := trendsSubject(t, trendsTestFacts(t))
 	id := s.Projections[0].Trends.Series[0].SeriesID
 
@@ -279,6 +287,7 @@ func TestAStaleIncompleteSeriesDeclarationIsCaught(t *testing.T) {
 // is a promise that a gap is real; the committed corpus has none, and a future
 // entry should be a deliberate act rather than something that accumulated.
 func TestIncompleteSeriesIsEmpty(t *testing.T) {
+	t.Parallel()
 	if len(incompleteSeries) != 0 {
 		t.Errorf("incompleteSeries carries %d entries: %v", len(incompleteSeries), incompleteSeries)
 	}
@@ -317,6 +326,7 @@ func runTrendPoints(t *testing.T, s *Subject) Result {
 // The test asserts the OTHER two conclusions as well, because a new arm that
 // reddens everything is not a check, it is a broken one.
 func TestAPointInAnUndeclaredColumnIsCaught(t *testing.T) {
+	t.Parallel()
 	facts := trendsTestFacts(t)
 
 	// A one-column document, so FY2027's facts are outside it entirely.
