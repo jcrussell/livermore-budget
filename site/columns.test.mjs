@@ -544,3 +544,81 @@ describe("the residual mark's reasons", () => {
     }
   });
 });
+
+// A NODE PRINTED NET OF REDUCTIONS IS SIZED AT ITS PRINTED FIGURE AT EVERY
+// WIDTH. The figure is read off the step's document at every declared
+// column and not off the drawn chart: a reduction whose line stands at a
+// widened tier would otherwise fold onto the node it reduces and vanish when
+// the budget drops that tier, leaving the node at its gross. No shipped step
+// widens a reduction's tier, so the property-tax reductions are moved to one.
+describe("a node printed net of reductions", () => {
+  test("is sized at its printed figure at every budget, with its reductions planted at a widened tier", async (t) => {
+    const config = structuredClone(pageFixture().config);
+    const step = config.steps.find((s) => s.key === "revenue-category");
+    assert.deepEqual(step.sankey.tiers, [1, 0, 2]);
+    step.sankey.tiers = [6, 1, 0, 2];
+    step.sankey.widen = [6];
+    const column = columnFixture("fy2026-adopted");
+    const centre = "revenue/taxes/property";
+    const at = column.nodes.findIndex((n) => n.id === centre);
+    const flows = column.schedules["fund-flows"];
+    const reductions = flows.links.filter((l) => l.to === at && l.contra);
+    assert.ok(reductions.length > 0, "no reduction is printed under " + centre);
+    for (const l of reductions) column.nodes[l.from].tier = 6;
+    // The figure the citywide chart labels the node with, off the pinned column.
+    const printed = column.schedules.sankey.links.filter((l) => l.from === at).reduce((a, l) => a + l.value_cents, 0);
+    const gross = flows.links.filter((l) => l.to === at && !l.contra).reduce((a, l) => a + l.value_cents, 0);
+    assert.ok(gross > printed, "the reductions reduce nothing");
+    const sized = {};
+    for (const budget of [3, 4]) {
+      const { app, document } = await bootedApp({ checkedStem: "sankey", config, plan: { "fy2026-adopted.json": { doc: column } } });
+      app.setColumnBudget(budget);
+      await opened(app, centre);
+      assert.equal(refusals(document).length, 0);
+      const laid = app.layOut(app.projection);
+      const node = laid.nodes.find((n) => n.id === centre);
+      sized[budget] = { tiers: app.activeTiers().join(","), value: node.value };
+    }
+    t.diagnostic(`printed ${printed}, gross ${gross}; sized ${JSON.stringify(sized)}`);
+    assert.equal(sized[4].tiers, "6,1,0,2");
+    assert.equal(sized[3].tiers, "1,0,2");
+    for (const budget of [3, 4]) assert.equal(sized[budget].value, printed, `at ${budget} columns`);
+  });
+});
+
+// A RIGHT-FLANK STEP CARRIES A LEAVING LEG OFF ITS KEPT FLANK: the opened
+// node's parts stand to its left and the flank to its right, and a flow the
+// chart above sends out of the node that the step's document does not carry
+// from inside it moves off the centre onto the residual, its figure and
+// citation unchanged. No shipped step on a right flank declares a residual,
+// so the revenue-category step is redeclared with one leaving endpoint.
+describe("a residual on a right-flank step", () => {
+  test("carries the leaving leg off the kept flank onto the mark, and the centre keeps nothing of it", async (t) => {
+    const config = structuredClone(pageFixture().config);
+    const step = config.steps.find((s) => s.key === "revenue-category");
+    assert.ok(!step.residual, "revenue-category declares a residual now; plant one on another right-flank step");
+    assert.ok(step.sankey.tiers.indexOf(step.sankey.keep[0]) > step.sankey.tiers.indexOf(step.from), "the flank is not on the right");
+    const centre = "revenue/taxes/property";
+    const e = "fund-group/general";
+    step.residual = { [e]: "planted: the schedule prints this category's lines and no group" };
+    step.residual_grain = "line";
+    const { app, document } = await bootedApp({ config });
+    const spine = app.docAt(0);
+    const leg = spine.links.filter((l) => l.source === centre && l.target === e);
+    assert.equal(leg.length, 1);
+    await opened(app, centre);
+    assert.equal(refusals(document).length, 0);
+    const p = app.projection;
+    const mark = p.nodes.find((n) => app.isResidual(n.id));
+    assert.ok(mark, "no residual is drawn");
+    const carried = p.links.filter((l) => l.source === mark.id);
+    const tierOf = new Map(p.nodes.map((n) => [n.id, n.tier]));
+    t.diagnostic(`columns {${app.activeTiers()}}; the mark at tier ${mark.tier} carries ${mark.in_cents} in and ${mark.out_cents} out; ` +
+      `${carried.length} leg(s) leave it to ${carried.map((l) => `${l.target}@${tierOf.get(l.target)}`).join(", ")}`);
+    assert.equal(mark.in_cents, 0);
+    assert.equal(mark.out_cents, leg[0].value_cents);
+    assert.deepEqual(carried.map((l) => [l.target, l.value_cents, l.fact_ids]), [[e, leg[0].value_cents, leg[0].fact_ids]]);
+    assert.equal(tierOf.get(e), step.sankey.keep[0]);
+    assert.ok(!p.links.some((l) => l.source === centre && l.target === e), "the centre still sends the carried leg to " + e);
+  });
+});

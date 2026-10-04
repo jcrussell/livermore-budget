@@ -470,9 +470,15 @@ export function dropEmptyColumns(drawn, rung, tiers) {
  * Draws the opened node at the figure it prints where its drawn ribbons do
  * not add up to it: a node a schedule prints a reduction under, the reduction
  * drawn forward at its magnitude by markContra. The figure is printedNet
- * over the ribbons arriving from the columns the step opens into -- the
- * same one the citywide chart labels the node with -- read before any mark
- * is added or any sign is flipped.
+ * over what the step's document sends into the node -- the same one the
+ * citywide chart labels the node with -- read before any mark is added or
+ * any sign is flipped.
+ *
+ * READ AT EVERY DECLARED COLUMN, NOT AT THE COLUMNS ON SCREEN: a reduction
+ * whose line stands at a widened tier folds onto the node it reduces when
+ * the budget drops that tier, and the drawn chart then nets to the gross. A
+ * step's document does not change with the viewport, so neither does this
+ * figure.
  *
  * d3-sankey would otherwise size the node at the gross its forward-drawn
  * ribbons add to, a figure no page prints. Setting the value here means every
@@ -480,15 +486,16 @@ export function dropEmptyColumns(drawn, rung, tiers) {
  *
  * @param {FiscProjection} drawn  shaped and folded, before any mark
  * @param {Rung} rung
- * @returns {FiscProjection} drawn itself when no arriving ribbon is a reduction
+ * @returns {FiscProjection} drawn itself when no ribbon into the node is a reduction
  */
 export function markAmounts(drawn, rung) {
-  const keep = new Set(rung.step.sankey.keep || []);
-  const tierOf = new Map(drawn.nodes.map((n) => [n.id, n.tier]));
-  const fresh = Object.assign({}, drawn, {
-    links: drawn.links.filter((l) => !keep.has(tierOf.get(l.source))),
-  });
-  const printed = printedNet(fresh, rung.id);
+  const step = rung.step;
+  const half = freshHalf(step, rung.doc, rung.id);
+  // Nothing to net where no ribbon is printed negative, so the half is
+  // folded only then: a document is read whole at a width that draws part
+  // of it only where a reduction is in it.
+  if (!half.links.some((l) => l.value_cents < 0)) return drawn;
+  const printed = printedNet(foldDocument(half, freshTiers(step)), rung.id);
   if (!printed.reduced) return drawn;
   return Object.assign({}, drawn, {
     nodes: drawn.nodes.map((n) => (n.id === rung.id ? Object.assign({}, n, { fixedValue: printed.net }) : n)),

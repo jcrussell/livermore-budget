@@ -937,3 +937,39 @@ describe("the form seam", () => {
     assert.deepEqual([...new Set(outside.map((r) => `${r.chart}.${r.prop} read at ${r.frame}`))], []);
   });
 });
+
+// A GAP'S FIGURES ARE CENTS, AND ITS SENTENCE IS STATED TO THE CENT WHERE ANY
+// OF THEM CARRIES CENTS, so the arithmetic it prints adds up. Every figure
+// the city prints is whole dollars, so every shipped gap is: 50 cents are
+// taken off one of pp.85-125's rows and the licence moved with them.
+describe("a gap whose figures carry cents", () => {
+  test("is stated to the cent, so the sentence's arithmetic adds up", async (t) => {
+    const config = structuredClone(PAGE);
+    const step = config.steps.find((s) => s.key === "object-category");
+    const centre = "expenditure/services-and-supplies";
+    const licence = step.gaps[centre].find((g) => g.fiscal_year === 2027 && g.basis === "adopted");
+    assert.ok(licence && licence.cents % 100 === 0, JSON.stringify(licence));
+    licence.cents += 50;
+    const column = columnFixture("fy2027-adopted");
+    const at = column.nodes.findIndex((n) => n.id === centre);
+    const rows = column.schedules["department-spending"].links.filter((l) => l.from === at);
+    assert.ok(rows.length > 0);
+    rows[0].value_cents -= 50;
+    const into = column.schedules.sankey.links.filter((l) => l.to === at).reduce((a, l) => a + l.value_cents, 0);
+    const outOf = rows.reduce((a, l) => a + l.value_cents, 0);
+    assert.equal(into - outOf, licence.cents);
+    // Formatted here, so the expectation cannot move with app.js's formatter.
+    const exact = (cents) => new Intl.NumberFormat("en-US",
+      { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(cents / 100);
+    const { app, document } = await bootedApp({ checkedStem: "sankey-2027", config, plan: { "fy2027-adopted.json": { doc: column } } });
+    await opened(app, centre);
+    assert.equal(refusals(document).length, 0);
+    const gap = app.projection.nodes.find((n) => app.isGap(n.id));
+    assert.ok(gap, "no gap is drawn");
+    t.diagnostic(`into ${into}, out ${outOf}, gap ${licence.cents}; the mark says: ${gap.rationale.slice(0, 220)}`);
+    assert.equal(gap.in_cents, licence.cents);
+    for (const figure of [into, outOf, licence.cents]) {
+      assert.ok(gap.rationale.includes(exact(figure)), `${exact(figure)} is not in: ${gap.rationale}`);
+    }
+  });
+});

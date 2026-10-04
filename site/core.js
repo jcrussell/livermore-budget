@@ -97,6 +97,22 @@ export function fmtShortSigned(cents) {
   return (cents < 0 ? "\u2212" : "") + fmtShort(Math.abs(cents));
 }
 
+const moneyExact = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+/**
+ * A figure to the cent, for a sentence that subtracts one figure from
+ * another: fmt rounds to the dollar, and rounded figures need not add up.
+ * @param {number} cents
+ */
+export function fmtExact(cents) {
+  return moneyExact.format(cents / 100);
+}
+
 /**
  * A list of phrases as English: "a", "a or b", "a, b or c" (no serial comma).
  * @param {string[]} parts
@@ -1144,12 +1160,15 @@ export function licensedGap(drawn, from, rung, standAt) {
   const centreNode = drawn.nodes.find((n) => n.id === opened && n.label);
   const centre = centreNode ? centreNode.label : opened;
   const column = where;
+  // TO THE CENT WHERE ANY FIGURE CARRIES CENTS: the sentence subtracts one
+  // figure from another, and rounded figures would not add up on the page.
+  const f = [into, outOf, gap].some((cents) => cents % 100 !== 0) ? fmtExact : fmt;
   const lead = gap > 0
-    ? say("gap_lead_short", { column: column, into: fmt(into), centre: centre, out: fmt(outOf), gap: fmt(gap) })
-    : say("gap_lead_over", { column: column, out: fmt(outOf), centre: centre, gap: fmt(-gap), into: fmt(into) });
+    ? say("gap_lead_short", { column: column, into: f(into), centre: centre, out: f(outOf), gap: f(gap) })
+    : say("gap_lead_over", { column: column, out: f(outOf), centre: centre, gap: f(-gap), into: f(into) });
   const id = gapID(opened);
   const node = gapMark(opened, standAt(gap), gap,
-    say("gap_rationale", { lead: lead, reason: licence.reason, gap: fmt(Math.abs(gap)) }),
+    say("gap_rationale", { lead: lead, reason: licence.reason, gap: f(Math.abs(gap)) }),
     say("gap_note"),
     locators);
   // THE SIDE THE FIGURE IS ON IS THE SIDE THE MARK STANDS ON: too little
