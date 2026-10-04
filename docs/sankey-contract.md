@@ -93,7 +93,7 @@ sentence. A document repeating an id is refused at build time by
 id alone does not identify a caveat: it identifies a caveat *in a document*, and
 the same id carries different text in different documents (see below). The site
 has one spelling of that composition, `caveatAnchor` in
-`internal/export/page.go`, and `buildCaveatsPage` refuses two entries claiming
+`internal/export/caveats.go`, and `buildCaveatsPage` refuses two entries claiming
 one anchor. An anchor collision fails silently — the page renders, the anchor
 resolves, and the reader is shown a sentence about something else — which is why
 it is refused rather than left to a reader to notice.

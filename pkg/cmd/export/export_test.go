@@ -358,7 +358,7 @@ func TestEveryCaveatSummaryLinksToAnAnchorThatExists(t *testing.T) {
 // TestSankeyReproducesGoldenFile is what fails then -- it rebuilds the document
 // from the facts and compares those same bytes -- so the caveat is pinned, one
 // package over. The tile note IS live code on this path and this test is its
-// only guard: reverting internal/export/page.go's old wording reddens exactly
+// only guard: reverting tilesFor's old wording reddens exactly
 // this test and nothing else. Proved both ways by mutation, 2026-08-27.
 //
 // WHICH PAGE IT READS CHANGED, AND IT HAD TO. The caveat's full text moved to

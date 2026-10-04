@@ -114,7 +114,7 @@ bytes rather than bytes passed between packages.
 
 The seam they were written for has no compiler behind it: `internal/export`
 decodes these documents without importing `internal/project`, so `decoded` and
-the decoders in `page.go` are joined to them by json tags alone. A tag renamed
+the decoders in `internal/export` are joined to them by json tags alone. A tag renamed
 on one side reads as a zero value with no error anywhere -- the page renders,
 the figure is absent, nothing is red. `internal/project` is held to the schemas
 by equality and `internal/export` by containment, because a decoder may read a
