@@ -236,7 +236,7 @@ const (
 //
 // The key is a data/taxonomy.yaml category slug, never a node id, because a
 // node id is prefixed by the axis it sits on and the taxonomy has no such
-// prefixes. Nodes with no category behind them — the six fund groups, whose
+// prefixes. Nodes with no category behind them — the fund groups, whose
 // names are data/funds.yaml fund types, and the two nodes we inferred — are
 // never looked up here at all, so the two vocabularies never share a key
 // space. That matters more than it looks: "debt-service" is a fund type and
@@ -340,17 +340,16 @@ var derivedNodes = map[string]derived{
 
 // builtinLabels covers the nodes no category registry answers for.
 //
-// The six fund groups are here because data/funds.yaml binds a fund to a type
+// The fund groups are here because data/funds.yaml binds a fund to a type
 // and stops: it records no label for the type itself. These are the column
 // headers Budget Book pp.66-67 print over the columns this projection reads,
 // so they are the city's words rather than ours, and hard-coding them here
-// beats leaving six of the diagram's central boxes labelled "General" and
+// beats leaving the diagram's central boxes labelled "General" and
 // "Internal Service".
 //
 // The last two exist in no data file at all, because we inferred them.
 //
-// A registry label wins over any of these, which can only happen for a node
-// that has a category slug.
+// A built-in wins over the registry; nodeLabel says why.
 var builtinLabels = map[string]string{
 	PrefixFundGroup + registry.FundTypeGeneral:         "General Fund",
 	PrefixFundGroup + registry.FundTypeSpecialRevenue:  "Special Revenue Funds",
@@ -371,8 +370,7 @@ var builtinLabels = map[string]string{
 	// The third disagrees: p66 prints ADDITION TO RESERVES over the figures
 	// this projection reads, while data/taxonomy.yaml labels the category
 	// "Reserve Increase / (Use)" — the p75 column header it was merged with.
-	// testdata/sankey.golden.json shows p66's words; a build with a registry
-	// attached shows the taxonomy's.
+	// The built-in wins, so every build shows p66's words.
 	"transfers/in":                     "Transfers In",
 	"transfers/out":                    "Transfers Out",
 	CategoryFundBalanceReserveIncrease: "Addition to Reserves",
@@ -970,29 +968,51 @@ func (s *sankey) addNode(nodes map[string]Node, e endpoint) {
 	nodes[e.id] = n
 }
 
-// label resolves a node to the words a reader sees: the registry's if it has
-// any for the node's category, this package's if the node is one of the fixed
-// boxes in builtinLabels, and otherwise a readable transform of the id. The
-// last case is a placeholder, not a translation — the point of the registry is
-// that the site shows the city's words rather than ours.
-func (s *sankey) label(id, slug string) string {
-	// builtinLabels wins over the registry, which is the opposite of what you
-	// would expect from a curated data file and is deliberate.
-	//
-	// A taxonomy label names a CATEGORY, which may span several schedules; the
-	// words on a node have to be the words on the page this projection read.
-	// fund-balance/reserve-increase is the case: the taxonomy calls it "Reserve
-	// Increase / (Use)", after the p75 column header the category was merged
-	// with, while p66 — the page these figures come from — prints ADDITION TO
-	// RESERVES. Letting the registry win would also mean the rendered site and
-	// testdata/sankey.golden.json disagreed for any node listed both places,
-	// which would quietly retire the golden file as a contract test.
-	if l, ok := builtinLabels[id]; ok {
-		return l
+// label is nodeLabel over this document's registry.
+func (s *sankey) label(id, slug string) string { return nodeLabel(s.Labels, id, slug) }
+
+// nodeLabel resolves a node to the words a reader sees, by one cascade for
+// every document: a built-in, then a fund's name, then a division's or a
+// department's, then the registry's words for the node's category, and
+// otherwise a readable transform of the id. The last case is a placeholder,
+// not a translation — the point of the registry is that the site shows the
+// city's words rather than ours.
+//
+// builtinLabels wins over the registry, which is the opposite of what you
+// would expect from a curated data file and is deliberate. A taxonomy label
+// names a CATEGORY, which may span several schedules; the words on a node have
+// to be the words on the page this projection read.
+// fund-balance/reserve-increase is the case: the taxonomy calls it "Reserve
+// Increase / (Use)", after the p75 column header the category was merged with,
+// while p66 — the page these figures come from — prints ADDITION TO RESERVES.
+// Letting the registry win would also mean the rendered site and
+// testdata/sankey.golden.json disagreed for any node listed both places, which
+// would quietly retire the golden file as a contract test.
+func nodeLabel(l labels, id, slug string) string {
+	if b, ok := builtinLabels[id]; ok {
+		return b
 	}
-	if s.Labels != nil && slug != "" {
-		if l, ok := s.Labels.Label(slug); ok && l != "" {
-			return l
+	if l == nil {
+		return slugLabel(id)
+	}
+	if n, ok := transferFundNumber(id); ok {
+		if name, ok := l.FundName(n); ok && name != "" {
+			return name
+		}
+	}
+	if division, ok := strings.CutPrefix(id, PrefixDept); ok {
+		if w, ok := l.DivisionLabel(division); ok && w != "" {
+			return w
+		}
+	}
+	if department, ok := strings.CutPrefix(id, PrefixDepartment); ok {
+		if w, ok := l.DepartmentLabel(department); ok && w != "" {
+			return w
+		}
+	}
+	if slug != "" {
+		if w, ok := l.Label(slug); ok && w != "" {
+			return w
 		}
 	}
 	return slugLabel(id)

@@ -248,25 +248,8 @@ func (d *departmentSpending) addNode(nodes map[string]Node, e endpoint) {
 	nodes[e.id] = Node{ID: e.id, Label: d.label(e), Tier: e.tier(), Role: e.role}
 }
 
-// label resolves a node's words: a built-in, then the registry, then the id.
-func (d *departmentSpending) label(e endpoint) string {
-	if l, ok := builtinLabels[e.id]; ok {
-		return l
-	}
-	if d.Labels != nil {
-		if e.tier() == tierDepartment {
-			if l, ok := d.Labels.DivisionLabel(e.id[len(PrefixDept):]); ok && l != "" {
-				return l
-			}
-		}
-		if e.slug != "" {
-			if l, ok := d.Labels.Label(e.slug); ok && l != "" {
-				return l
-			}
-		}
-	}
-	return slugLabel(e.id)
-}
+// label is nodeLabel over this document's registry.
+func (d *departmentSpending) label(e endpoint) string { return nodeLabel(d.Labels, e.id, e.slug) }
 
 // departmentSpendingCaveats are the things a reader of this file has to be told.
 // Each is about the whole schedule, so none names a node.

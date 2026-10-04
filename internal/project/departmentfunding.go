@@ -287,26 +287,8 @@ func (d *departmentFunding) addFundGroups(nodes map[string]Node) error {
 	return nil
 }
 
-// label resolves a node's words: a built-in, then the registry, then the id.
-func (d *departmentFunding) label(e endpoint) string {
-	if l, ok := builtinLabels[e.id]; ok {
-		return l
-	}
-	if d.Labels != nil {
-		switch e.tier() {
-		case tierFund:
-			if n, err := strconv.Atoi(e.id[len(PrefixFund):]); err == nil {
-				if name, ok := d.Labels.FundName(n); ok && name != "" {
-					return name
-				}
-			}
-		case tierDepartment:
-			l, _ := d.Labels.DepartmentLabel(e.id[len(PrefixDepartment):])
-			return l
-		}
-	}
-	return slugLabel(e.id)
-}
+// label is nodeLabel over this document's registry.
+func (d *departmentFunding) label(e endpoint) string { return nodeLabel(d.Labels, e.id, e.slug) }
 
 // departmentFundingCaveats are the things a reader of this file has to be told.
 // Each is about the whole schedule, so none names a node.

@@ -369,9 +369,8 @@ func (r *Registry) Category(slug string) (Category, bool) {
 // Label returns the human label for slug — the city's printed words, which is
 // what a reader should see in place of our machine identifier.
 //
-// It is one of the six methods `internal/project`'s Labels interface declares
-// over this package, so a change to its signature is a change to the site's
-// contract.
+// internal/project's labels interface declares it over this package, so a
+// change to its signature is a change to the site's contract.
 func (r *Registry) Label(slug string) (string, bool) {
 	c, ok := r.categories[slug]
 	if !ok {

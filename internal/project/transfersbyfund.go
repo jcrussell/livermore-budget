@@ -423,27 +423,10 @@ func (t *transfersByFund) addNode(nodes map[string]Node, e endpoint) {
 	nodes[e.id] = n
 }
 
-// label resolves a node's words: a built-in, then the registry, then the id.
-// The three fund-bearing forms deliberately take the same words; the
-// a-fund-is-drawn-once-per-end caveat tells the reader why.
-func (t *transfersByFund) label(e endpoint) string {
-	if l, ok := builtinLabels[e.id]; ok {
-		return l
-	}
-	if t.Labels != nil {
-		if n, ok := transferFundNumber(e.id); ok {
-			if name, ok := t.Labels.FundName(n); ok && name != "" {
-				return name
-			}
-		}
-		if e.slug != "" {
-			if l, ok := t.Labels.Label(e.slug); ok && l != "" {
-				return l
-			}
-		}
-	}
-	return slugLabel(e.id)
-}
+// label is nodeLabel over this document's registry. The three fund-bearing
+// forms take the same words; the a-fund-is-drawn-once-per-end caveat tells the
+// reader why.
+func (t *transfersByFund) label(e endpoint) string { return nodeLabel(t.Labels, e.id, e.slug) }
 
 // transferFundNumber is the fund a node id names, for the three forms that name
 // one. It returns false for transfers/in, which names no fund.

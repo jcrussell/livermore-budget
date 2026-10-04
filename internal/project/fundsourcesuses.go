@@ -354,26 +354,8 @@ func (u *fundSourcesUses) addEndpoint(nodes map[string]Node, e endpoint) {
 	nodes[e.id] = n
 }
 
-// label resolves a node's words: a built-in, then a fund's name, then the
-// registry's words for the slug, then the id.
-func (u *fundSourcesUses) label(e endpoint) string {
-	if l, ok := builtinLabels[e.id]; ok {
-		return l
-	}
-	if n, ok := strings.CutPrefix(e.id, PrefixFund); ok {
-		if number, err := strconv.Atoi(n); err == nil {
-			if name, ok := u.Labels.FundName(number); ok && name != "" {
-				return name
-			}
-		}
-	}
-	if e.slug != "" {
-		if l, ok := u.Labels.Label(e.slug); ok && l != "" {
-			return l
-		}
-	}
-	return slugLabel(e.id)
-}
+// label is nodeLabel over this document's registry.
+func (u *fundSourcesUses) label(e endpoint) string { return nodeLabel(u.Labels, e.id, e.slug) }
 
 // sortedFundNumbers is the funds in ascending order.
 func sortedFundNumbers(m map[int]fundLines) []int {
@@ -502,14 +484,6 @@ func fundSourcesUsesCaveats(links []Link, nodes []Node) []Caveat {
 		})
 	}
 	return out
-}
-
-// counted writes "1 fund" and "5 funds".
-func counted(n int, noun string) string {
-	if n == 1 {
-		return fmt.Sprintf("%d %s", n, noun)
-	}
-	return fmt.Sprintf("%d %ss", n, noun)
 }
 
 // changeEnds is the change endpoints the links draw, sorted.

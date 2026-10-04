@@ -446,12 +446,14 @@ func fundFlowsCaveats(twice int, nodes []Node) []Caveat {
 	return out
 }
 
-// plural writes "1 group's" and "5 groups'".
+// plural writes "1 group's" and "5 groups'": counted, possessive.
 func plural(n int, noun string) string {
-	if n == 1 {
-		return fmt.Sprintf("%d %s's", n, noun)
-	}
-	return fmt.Sprintf("%d %ss'", n, noun)
+	return counted(n, noun) + cmdutil.Plural(n, "'s", "'")
+}
+
+// counted writes "1 fund" and "5 funds".
+func counted(n int, noun string) string {
+	return fmt.Sprintf("%d %s", n, cmdutil.Plural(n, noun, noun+"s"))
 }
 
 // spendingSides is the fund groups this document draws spending for:
@@ -901,30 +903,8 @@ func (f *fundFlows) addParents(nodes map[string]Node) error {
 	return nil
 }
 
-// label resolves a node's words: a built-in, then the registry, then the id.
-func (f *fundFlows) label(e endpoint) string {
-	if l, ok := builtinLabels[e.id]; ok {
-		return l
-	}
-	if e.tier() == tierFund {
-		if n, err := strconv.Atoi(e.id[len(PrefixFund):]); err == nil {
-			if name, ok := f.Labels.FundName(n); ok && name != "" {
-				return name
-			}
-		}
-	}
-	if e.tier() == tierDepartment {
-		if l, ok := f.Labels.DivisionLabel(e.id[len(PrefixDept):]); ok && l != "" {
-			return l
-		}
-	}
-	if e.slug != "" {
-		if l, ok := f.Labels.Label(e.slug); ok && l != "" {
-			return l
-		}
-	}
-	return slugLabel(e.id)
-}
+// label is nodeLabel over this document's registry.
+func (f *fundFlows) label(e endpoint) string { return nodeLabel(f.Labels, e.id, e.slug) }
 
 // ContraPrefix and ContraOrphan are the two sentences a negative link carries:
 // the first followed by the label of the node its source is printed under.
