@@ -381,10 +381,11 @@ type DrillStep struct {
 	// "" for all of them. This package gives it no meaning beyond requiring
 	// (After, From, Role) to name at most one step.
 	Role string `json:"role,omitempty"`
-	// Projection is the SCHEDULE this step draws, or "" to draw the same
-	// document as the step before it. Every column the view lists must carry
-	// it. A schedule key and not a filename stem: the year is carried by the
-	// column file the reader fetched ([ColumnIndex]).
+	// Projection is the SCHEDULE this step draws, or "" to draw the document
+	// of the chart it opens from, which every parent in After must then agree
+	// on. Every column the view lists must carry it. A schedule key and not a
+	// filename stem: the year is carried by the column file the reader fetched
+	// ([ColumnIndex]), and [StepStems] is the join.
 	Projection string `json:"projection,omitempty"`
 	// Chart is the form this step draws once a node has opened, and that
 	// form's hints. Inlined on the wire: `form` and the form's own key.
@@ -837,7 +838,7 @@ func (v View) validate(built map[string][]byte, ix ColumnIndex) error {
 		return fmt.Errorf("view %q renders projection %q, which is not among its year stems %v",
 			v.Path, v.Projection, v.YearStems)
 	}
-	return v.validateSteps(built, ix)
+	return v.validateSteps(ix)
 }
 
 // templateRendersLede answers whether a template has a {{.Lede}} to render.

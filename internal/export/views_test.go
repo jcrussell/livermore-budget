@@ -1314,9 +1314,9 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 				v.Steps[0].Sankey.Caps = []export.TierCap{{Tier: 3, Cap: 8}, {Tier: 3, Cap: 24}}
 			})},
 			"caps tier 3 twice"},
-		{"a step naming a projection that was not built", []export.View{ok,
+		{"a step naming a schedule no column carries", []export.View{ok,
 			chartView(func(v *export.View) { v.Steps[0].Projection = "nope" })},
-			"step 0 renders projection \"nope\", which was not built"},
+			"step 0 opens into schedule \"nope\" and column fy2026-adopted.json (year \"sankey\") carries no such schedule"},
 		{"a projection that was not built", []export.View{ok, {Path: "trends.html",
 			Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "nope"}}, "which was not built"},
 		{"no template", []export.View{ok, {Path: "trends.html", Projection: "sankey"}},
@@ -3349,6 +3349,58 @@ func TestAStepThatSwitchesDocumentMayRepeatTierNumbers(t *testing.T) {
 			"would redraw the chart it was opened from")
 	} else if !strings.Contains(err.Error(), "already draws") {
 		t.Errorf("got %v, want the same-tiers refusal", err)
+	}
+}
+
+// TestAStepDrawsItsParentsDocumentNotItsPredecessors: a step naming no
+// schedule draws the document of the chart it opens from, wherever it sits in
+// the list. "sibling" is declared between "group" and its child and switches
+// back to the view's own document by name; the child repeats "group"'s tiers,
+// which redraws the chart it opened from only if it resolves to "group"'s
+// document. Resolved from the step declared before it, the child would draw
+// the spine at fund-flows' tiers and be accepted.
+func TestAStepDrawsItsParentsDocumentNotItsPredecessors(t *testing.T) {
+	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
+	if err != nil {
+		t.Fatalf("read fund-flows golden: %v", err)
+	}
+	write := func(childTiers []int) error {
+		_, werr := writeSite(export.Options{
+			Dir: t.TempDir(),
+			Projections: map[string][]byte{
+				"sankey": goldenSankey(t), "fund-flows": builtLike(t, goldenSankey(t), fundFlows),
+			},
+			Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
+				Template: export.SankeyTemplate, Projection: "sankey",
+				Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{0, 2, 5}}},
+				Steps: []export.DrillStep{
+					{Key: "group", After: []string{""}, From: 2, Projection: "fund-flows",
+						Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{0, 3, 4}}},
+						Back:  "All fund groups", Noun: "thing", Tail: "funds", Description: "One."},
+					{Key: "sibling", After: []string{""}, From: 0, Projection: "sankey",
+						Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Side: export.SideSource, Tiers: []int{0, 2}}},
+						Back:  "All sources", Noun: "thing", Tail: "lines", Description: "Aside."},
+					{Key: "fund", After: []string{"group"}, From: 3,
+						Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: childTiers}},
+						Back:  "All funds", Noun: "thing", Tail: "divisions", Description: "Two."},
+				}}},
+			Docs:        budgetDocs(),
+			GeneratedBy: "fisc test",
+		})
+		return werr
+	}
+	if cerr := write([]int{3, 4}); cerr != nil {
+		t.Fatalf("the control chain was refused, so the case below is no evidence: %v", cerr)
+	}
+	err = write([]int{0, 3, 4})
+	if err == nil {
+		t.Fatal("a child repeating its parent's tiers was accepted; it resolved to a document " +
+			"other than its parent's")
+	}
+	for _, want := range []string{"already draws", `of "fund-flows"`} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error %q does not contain %q", err, want)
+		}
 	}
 }
 

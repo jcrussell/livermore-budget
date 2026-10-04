@@ -336,7 +336,7 @@
           },
           "projection": {
             "type": "string",
-            "description": "The schedule this step draws, selected out of the year's own column; absent means the same document as the step before it."
+            "description": "The schedule this step draws, selected out of the year's own column; absent means the document of the chart it opens from."
           },
           "form": {
             "description": "Which renderer draws the chart once a node has opened; enums.schema.json chart_form.",

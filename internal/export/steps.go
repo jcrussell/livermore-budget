@@ -32,11 +32,11 @@ type parentChart struct {
 }
 
 // validateSteps refuses a drill tree a reader could not walk, and a step that
-// would fold nothing, say nothing, draw a document that was not built, or draw
-// one year's document under another year's chart. Every step is placed
-// against every parent it names. A cycle cannot be declared, since After names
-// only earlier steps, so nothing here detects one.
-func (v View) validateSteps(built map[string][]byte, ix ColumnIndex) error {
+// would fold nothing, say nothing, draw a schedule some listed year's column
+// does not carry, or draw one year's document under another year's chart.
+// Every step is placed against every parent it names. A cycle cannot be
+// declared, since After names only earlier steps, so nothing here detects one.
+func (v View) validateSteps(ix ColumnIndex) error {
 	// Keys first, as a pass of their own, so After resolves against a set
 	// already known to name one step each.
 	index := make(map[string]int, len(v.Steps))
@@ -62,9 +62,10 @@ func (v View) validateSteps(built map[string][]byte, ix ColumnIndex) error {
 			years[col] = true
 		}
 	}
-	// The document each step draws, filled in declaration order: a step naming
-	// no projection draws its parent's, and a parent is always earlier.
-	docs := make([]string, len(v.Steps))
+	// The charts each step opens from, as a pass of their own, so the document
+	// each draws can be asked of [StepStems] over a tree it will not refuse
+	// for its shape. "" is the view's own chart, whose From validate places.
+	parentsOf := make([][]parentChart, len(v.Steps))
 	for i, s := range v.Steps {
 		if len(s.After) == 0 {
 			return fmt.Errorf(
@@ -72,7 +73,6 @@ func (v View) validateSteps(built map[string][]byte, ix ColumnIndex) error {
 					"from the view's own chart says so with \"\", and an empty list is a rung "+
 					"hanging off nothing", v.Path, i)
 		}
-		// "" is the view's own chart, whose From validate places.
 		parents := make([]parentChart, 0, len(s.After))
 		for k, a := range s.After {
 			if slices.Contains(s.After[:k], a) {
@@ -82,7 +82,7 @@ func (v View) validateSteps(built map[string][]byte, ix ColumnIndex) error {
 						"other parents once", v.Path, i, a)
 			}
 			if a == "" {
-				parents = append(parents, parentChart{tiers: v.Overview.drawnTiers(), doc: v.Projection})
+				parents = append(parents, parentChart{tiers: v.Overview.drawnTiers()})
 				continue
 			}
 			j, ok := index[a]
@@ -98,24 +98,28 @@ func (v View) validateSteps(built map[string][]byte, ix ColumnIndex) error {
 						"step, and that is what makes a cycle undeclarable rather than something "+
 						"this has to detect", v.Path, i, a, j)
 			}
-			parents = append(parents, parentChart{key: a, tiers: v.Steps[j].drawnTiers(), doc: docs[j],
+			parents = append(parents, parentChart{key: a, tiers: v.Steps[j].drawnTiers(),
 				keep: v.Steps[j].keptFlank()})
 		}
-		doc := s.Projection
-		if doc == "" {
-			// One document before it, or name one: otherwise the rung's file
-			// would depend on the route the reader took.
-			doc = parents[0].doc
-			for _, p := range parents[1:] {
-				if p.doc != doc {
-					return fmt.Errorf(
-						"view %q's step %d names no projection and opens from charts drawing "+
-							"%q and %q; a step that draws the document before it needs ONE "+
-							"document before it", v.Path, i, doc, p.doc)
-				}
+		parentsOf[i] = parents
+	}
+	// The document each step draws, in every year the view lists, is one
+	// answer: the one the page builder opens the rungs with. Nothing here
+	// derives it a second way.
+	byYear, err := v.stepStemsByYear(ix)
+	if err != nil {
+		return err
+	}
+	docs := byYear[v.Projection]
+	for i, s := range v.Steps {
+		parents := parentsOf[i]
+		for k := range parents {
+			parents[k].doc = v.Projection
+			if parents[k].key != "" {
+				parents[k].doc = docs[index[parents[k].key]]
 			}
 		}
-		docs[i] = doc
+		doc := docs[i]
 		switch {
 		case !slices.Contains(ChartForms(), s.Form):
 			return fmt.Errorf(
@@ -238,31 +242,28 @@ func (v View) validateSteps(built map[string][]byte, ix ColumnIndex) error {
 				seen[col] = true
 			}
 		}
-		// Every year the view lists carries the schedule the step draws, asked
-		// of the column the reader will fetch. Whether any node of it opens is
-		// the client's to answer, and site/*.test.mjs walks every rung.
-		if s.Projection != "" {
-			for _, stem := range v.YearStems {
-				col, folded := ix.Column(stem)
-				if !folded {
-					return fmt.Errorf(
-						"view %q lists year stem %q, whose document folded into no column, "+
-							"so step %d has no column to open into", v.Path, stem, i)
-				}
-				if _, ok := ix.Stem(col, s.Projection); !ok {
-					return fmt.Errorf(
-						"view %q's step %d opens into schedule %q, and column %s (year stem "+
-							"%q) carries no such schedule; a reader on that year would open "+
-							"a node into nothing", v.Path, i, s.Projection, col, stem)
-				}
-			}
-		}
-		if _, ok := built[doc]; s.Projection != "" && !ok {
-			return fmt.Errorf("view %q's step %d renders projection %q, which was not built",
-				v.Path, i, s.Projection)
-		}
 	}
 	return nil
+}
+
+// stepStemsByYear is [StepStems] over every year the view lists, keyed by
+// year stem: the view's own document where it lists none. Whether any node
+// of a rung's document opens is the client's to answer, and site/*.test.mjs
+// walks every rung.
+func (v View) stepStemsByYear(ix ColumnIndex) (map[string][]string, error) {
+	years := v.YearStems
+	if len(years) == 0 {
+		years = []string{v.Projection}
+	}
+	out := make(map[string][]string, len(years))
+	for _, year := range years {
+		stems, err := StepStems(v.Steps, year, ix)
+		if err != nil {
+			return nil, fmt.Errorf("view %q, year stem %q: %w", v.Path, year, err)
+		}
+		out[year] = stems
+	}
+	return out, nil
 }
 
 // validateSankeyStep is the Sankey form's half of a step's validation: the

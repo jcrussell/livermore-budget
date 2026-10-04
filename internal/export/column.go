@@ -397,9 +397,11 @@ func encodeColumn(doc ColumnDoc) ([]byte, error) {
 // StepStems is the document each declared step draws for one year, in
 // declaration order: the step's own schedule where it names one, else the
 // document of the chart its After opens from (`year` itself for ""), as
-// site/app.js's stepDocument resolves it. A schedule the year's column does
-// not carry is refused by name; a year in no column fails only a step that
-// selects a schedule.
+// site/app.js's stepDocument resolves it. It is the one resolution of that
+// question: validateSteps places every step against it and stepDocuments
+// opens the rungs with it. A schedule the year's column does not carry is
+// refused by name; a year in no column fails only a step that selects a
+// schedule.
 func StepStems(steps []DrillStep, year string, ix ColumnIndex) ([]string, error) {
 	out := make([]string, len(steps))
 	index := make(map[string]int, len(steps))
@@ -419,7 +421,10 @@ func StepStems(steps []DrillStep, year string, ix ColumnIndex) ([]string, error)
 					parent = out[j]
 				}
 				if doc != "" && parent != doc {
-					return nil, fmt.Errorf("step %d names no schedule and opens from charts drawing %q and %q", i, doc, parent)
+					return nil, fmt.Errorf(
+						"step %d names no schedule and opens from charts drawing %q and %q; a "+
+							"step that draws the document before it needs ONE document before it",
+						i, doc, parent)
 				}
 				doc = parent
 			}
