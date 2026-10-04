@@ -466,19 +466,30 @@ func opensInto(opening, step string, projections map[string][]byte) bool {
 	if _, ok := projections[opening]; !ok {
 		return false
 	}
+	for _, stem := range publishedInto(opening, step) {
+		if _, ok := projections[stem]; ok {
+			return true
+		}
+	}
+	return false
+}
+
+// publishedInto is every stem PublishedDocuments declares of the step's
+// projection over the opening document's column, built or not: the join
+// opensInto asks of the built set. Empty is a step the opening document can
+// never open, however much is built.
+func publishedInto(opening, step string) []string {
+	var out []string
 	docs := project.PublishedDocuments()
 	for _, d := range docs {
 		if d.Stem != opening {
 			continue
 		}
 		for _, e := range docs {
-			if e.Projection != step || !slices.Equal(d.Columns, e.Columns) {
-				continue
-			}
-			if _, ok := projections[e.Stem]; ok {
-				return true
+			if e.Projection == step && slices.Equal(d.Columns, e.Columns) {
+				out = append(out, e.Stem)
 			}
 		}
 	}
-	return false
+	return out
 }

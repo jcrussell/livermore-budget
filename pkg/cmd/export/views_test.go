@@ -160,37 +160,60 @@ func TestTheHistoryRowLabelIsTheRegistrys(t *testing.T) {
 	}
 }
 
-// TestAStepOpeningFromAnUndeclaredKeyIsRefusedNotDropped holds declaredSteps
-// to dropping a step only for a parent IT dropped: a document that was not
-// built. An After naming a key no step declares is a fault in the file, and
-// `fisc export` must refuse it by name rather than ship the view without the
-// step and everything below it.
-func TestAStepOpeningFromAnUndeclaredKeyIsRefusedNotDropped(t *testing.T) {
-	opts, _, _, _ := testOptions(t)
-	root, err := opts.RepoRoot()
-	if err != nil {
-		t.Fatal(err)
-	}
-	path := filepath.Join(root, "data", viewsFile)
-	b, err := os.ReadFile(path) // #nosec G304 -- the test's own fake repository.
-	if err != nil {
-		t.Fatal(err)
-	}
-	const old, typo = "after: [fund]\n", "after: [fnud]\n"
-	if strings.Count(string(b), old) != 1 {
-		t.Fatalf("the committed %s has %d of %q, want one, so this case edits nothing certain",
-			viewsFile, strings.Count(string(b), old), old)
-	}
-	if werr := os.WriteFile(path, []byte(strings.Replace(string(b), old, typo, 1)), 0o600); werr != nil {
-		t.Fatal(werr)
-	}
+// TestADeclarationFaultInAStepIsRefusedNotDropped holds declaredSteps to
+// dropping a step only for what was not built: a parent it dropped, or a
+// schedule published for the view's column that the build did not write.
+// Every other fault is the file's, and `fisc export` must refuse it by name
+// rather than ship the view without the step and everything below it. Each
+// case is the committed file with one edit, exported over the real build.
+func TestADeclarationFaultInAStepIsRefusedNotDropped(t *testing.T) {
 	built := builtStemsForTest(t)
-	opts.Build = func(string) (result, error) { return result{Projections: built}, nil }
-	err = exportRun(opts)
-	if err == nil {
-		t.Fatal("exportRun wrote a site whose step opens from a key no step declares")
-	}
-	if !strings.Contains(err.Error(), `opens from "fnud", which no step declares as its key`) {
-		t.Errorf("got %v, want the refusal naming the undeclared key", err)
+	for _, tc := range []struct {
+		name, old, edit, want string
+	}{
+		{"an After naming a key no step declares", "after: [fund]\n", "after: [fnud]\n",
+			`opens from "fnud", which no step declares as its key`},
+		{"a schedule never published for the view's column",
+			"\n  # The tables come after the charts they belong to.\n",
+			"      - key: stray\n        after: [\"\"]\n        from: 0\n" +
+				"        projection: revenue-trends\n        form: sankey\n        sankey: {tiers: [0, 2]}\n" +
+				"        noun: n\n        back: b\n        tail: t\n        description: d.\n" +
+				"\n  # The tables come after the charts they belong to.\n",
+			`opens into schedule "revenue-trends"`},
+		{"a drill chain on a view that draws no chart",
+			"      are intentions adopted together.\n",
+			"      are intentions adopted together.\n    steps:\n      - key: stray\n" +
+				"        after: [\"\"]\n        from: 0\n        projection: fund-flows\n" +
+				"        form: sankey\n        sankey: {tiers: [0, 2]}\n        noun: n\n" +
+				"        back: b\n        tail: t\n        description: d.\n",
+			`declares a drill chain and renders template "trends.html.tmpl"`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			opts, _, _, _ := testOptions(t)
+			root, err := opts.RepoRoot()
+			if err != nil {
+				t.Fatal(err)
+			}
+			path := filepath.Join(root, "data", viewsFile)
+			b, err := os.ReadFile(path) // #nosec G304 -- the test's own fake repository.
+			if err != nil {
+				t.Fatal(err)
+			}
+			if n := strings.Count(string(b), tc.old); n != 1 {
+				t.Fatalf("the committed %s has %d of %q, want one, so this case edits nothing certain",
+					viewsFile, n, tc.old)
+			}
+			if werr := os.WriteFile(path, []byte(strings.Replace(string(b), tc.old, tc.edit, 1)), 0o600); werr != nil {
+				t.Fatal(werr)
+			}
+			opts.Build = func(string) (result, error) { return result{Projections: built}, nil }
+			err = exportRun(opts)
+			if err == nil {
+				t.Fatalf("exportRun wrote a site with %q in place of %q", tc.edit, tc.old)
+			}
+			if !strings.Contains(err.Error(), tc.want) {
+				t.Errorf("got %v, want the refusal saying %q", err, tc.want)
+			}
+		})
 	}
 }

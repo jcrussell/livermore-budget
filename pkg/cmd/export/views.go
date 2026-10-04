@@ -277,13 +277,14 @@ func views(repoRoot string, built result) ([]export.View, error) {
 
 // declaredSteps is the steps of one view the built documents can open, in
 // declared order: a step is dropped when a chart it opens from was dropped or
-// the schedule it draws was not built for the column the view's own document
-// is of (opensInto). A step drawing no schedule of its own draws its
-// parents', so it is dropped exactly when they are. Steps are looked up by
-// key, never index, because the list is filtered.
+// the schedule it draws is published for the column the view's own document
+// is of and was not built (opensInto). A step drawing no schedule of its own
+// draws its parents', so it is dropped exactly when they are. Steps are
+// looked up by key, never index, because the list is filtered.
 //
-// ONLY A DROPPED PARENT DROPS A STEP. An After naming a key no earlier step
-// declares is kept, so validateSteps refuses it by name; dropping it here
+// ONLY WHAT WAS NOT BUILT DROPS A STEP. An After naming a key no earlier step
+// declares, and a schedule PublishedDocuments never publishes for the view's
+// column, are kept, so the write refuses each by name; dropping them here
 // would ship the view without that step and everything below it, in silence.
 func declaredSteps(d viewDecl, projections map[string][]byte) ([]export.DrillStep, error) {
 	draws := map[string][]string{"": {d.Projection}}
@@ -305,7 +306,7 @@ func declaredSteps(d viewDecl, projections map[string][]byte) ([]export.DrillSte
 			}
 		}
 		for _, sched := range schedules {
-			if !opensInto(d.Projection, sched, projections) {
+			if len(publishedInto(d.Projection, sched)) > 0 && !opensInto(d.Projection, sched, projections) {
 				declared = false
 			}
 		}
