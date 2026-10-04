@@ -173,6 +173,8 @@ func TestADeclarationFaultInAStepIsRefusedNotDropped(t *testing.T) {
 	}{
 		{"an After naming a key no step declares", "after: [fund]\n", "after: [fnud]\n",
 			`opens from "fnud", which no step declares as its key`},
+		{"a role no node at the opened tier carries", "role: transfer_in\n", "role: object_category\n",
+			`opens role "object_category" at tier 0 of the view's own chart`},
 		{"a schedule never published for the view's column",
 			"\n  # The tables come after the charts they belong to.\n",
 			"      - key: stray\n        after: [\"\"]\n        from: 0\n" +

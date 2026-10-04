@@ -40,8 +40,9 @@ func (p parentChart) name() string {
 }
 
 // validateSteps refuses a drill tree a reader could not walk, and a step that
-// would fold nothing, say nothing, draw a schedule some listed year's column
-// does not carry, or draw one year's document under another year's chart.
+// would open nothing, fold nothing, say nothing, draw a schedule some listed
+// year's column does not carry, or draw one year's document under another
+// year's chart.
 // Every step is placed against every parent it names. A cycle cannot be
 // declared, since After names only earlier steps, so nothing here detects one.
 //
@@ -261,6 +262,9 @@ func (v View) validateStep(i int, s DrillStep, t drillTree, ix ColumnIndex) erro
 	if err := v.validateParentsDrawFrom(i, s, parents); err != nil {
 		return err
 	}
+	if err := v.validateRoleCarried(i, s, t, parents, ix); err != nil {
+		return err
+	}
 	// One arm per form; a second form adds its own here.
 	if s.Form == SankeyForm {
 		if err := v.validateSankeyStep(i, s, parents, doc); err != nil {
@@ -393,6 +397,28 @@ func (v View) validateParentsDrawFrom(i int, s DrillStep, parents []parentChart)
 				"view %q's step %d opens from tier %d, and step %q draws tiers "+
 					"%v, which do not include it; the breadcrumb would carry a rung nothing "+
 					"on the chart can reach", v.Path, i, s.From, p.key, p.tiers)
+		}
+	}
+	return nil
+}
+
+// validateRoleCarried refuses a step naming a role that no node at the tier
+// it opens carries, in what some chart it opens from draws in any year the
+// view lists.
+//
+// The client opens a node on a step only where the node's role is the step's,
+// so such a step is a rung no reader can reach, shipped in silence.
+func (v View) validateRoleCarried(i int, s DrillStep, t drillTree, parents []parentChart, ix ColumnIndex) error {
+	if s.Role == "" {
+		return nil
+	}
+	for _, p := range parents {
+		stems := t.above([]parentChart{p})
+		if !slices.ContainsFunc(stems, func(stem string) bool { return ix.CarriesRole(stem, s.From, s.Role) }) {
+			return fmt.Errorf(
+				"view %q's step %d opens role %q at tier %d of %s, and %v carries no node "+
+					"in that role at that tier in any year the view lists; no node there "+
+					"would open on this step", v.Path, i, s.Role, s.From, p.name(), stems)
 		}
 	}
 	return nil

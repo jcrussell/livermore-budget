@@ -159,14 +159,15 @@ type decoded struct {
 // [ColumnPath] -> the document's own projection name -> filename stem. It is the same join
 // site/app.js makes, and is built in [ColumnsOf]'s own loop so the fold and
 // the index cannot disagree. It also answers what each built document
-// carries -- the tiers its nodes stand at and the node ids it states -- read
-// off the same decode, so a declaration is held against the document and not
-// against a second reading of it.
+// carries -- the tiers its nodes stand at, the node ids it states and the
+// roles at each tier -- read off the same decode, so a declaration is held
+// against the document and not against a second reading of it.
 type ColumnIndex struct {
 	schedules map[string]map[string]string
 	columns   map[string]string
 	tiers     map[string][]int
 	nodes     map[string]map[string]bool
+	roles     map[string]map[int]map[string]bool
 }
 
 // Tiers is every tier a built document carries a node at, ascending, or nil
@@ -178,6 +179,12 @@ func (ix ColumnIndex) Tiers(stem string) []int {
 // CarriesNode answers whether a built document states a node with this id.
 func (ix ColumnIndex) CarriesNode(stem, id string) bool {
 	return ix.nodes[stem][id]
+}
+
+// CarriesRole answers whether a built document states a node in this role at
+// this tier.
+func (ix ColumnIndex) CarriesRole(stem string, tier int, role string) bool {
+	return ix.roles[stem][tier][role]
 }
 
 // Stem answers the document at one schedule of one column, and whether the
@@ -231,6 +238,7 @@ func ColumnsOf(projections map[string][]byte, generatedBy string) (map[string]Co
 	ix := ColumnIndex{
 		schedules: map[string]map[string]string{}, columns: map[string]string{},
 		tiers: map[string][]int{}, nodes: map[string]map[string]bool{},
+		roles: map[string]map[int]map[string]bool{},
 	}
 
 	stems := make([]string, 0, len(projections))
@@ -254,14 +262,20 @@ func ColumnsOf(projections map[string][]byte, generatedBy string) (map[string]Co
 		// document that folded into no column.
 		if len(d.Nodes) > 0 {
 			ids := make(map[string]bool, len(d.Nodes))
+			roles := map[int]map[string]bool{}
 			for _, n := range d.Nodes {
 				ids[n.ID] = true
+				if roles[n.Tier] == nil {
+					roles[n.Tier] = map[string]bool{}
+				}
+				roles[n.Tier][n.Role] = true
 				if !slices.Contains(ix.tiers[stem], n.Tier) {
 					ix.tiers[stem] = append(ix.tiers[stem], n.Tier)
 				}
 			}
 			slices.Sort(ix.tiers[stem])
 			ix.nodes[stem] = ids
+			ix.roles[stem] = roles
 		}
 		if d.Metadata.FiscalYear == 0 || d.Metadata.Basis == "" || len(d.Nodes) == 0 {
 			continue

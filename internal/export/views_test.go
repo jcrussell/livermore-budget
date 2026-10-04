@@ -1097,10 +1097,16 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 			"a node there would open into two different charts"},
 		{"a role-less step beside one that names a role", []export.View{ok,
 			chainView(func(v *export.View) {
-				v.Steps[1].After, v.Steps[1].From, v.Steps[1].Role = []string{""}, 2, "revenue"
+				v.Steps[1].After, v.Steps[1].From, v.Steps[1].Role = []string{""}, 2, "fund_group"
 				v.Steps[1].Projection = "fund-flows"
 			})},
 			"a step with no role opens EVERY node at its tier"},
+		{"a step in a role no node at its tier carries", []export.View{ok,
+			chainView(func(v *export.View) {
+				v.Steps[1].After, v.Steps[1].From, v.Steps[1].Role = []string{""}, 2, "revenue_source"
+				v.Steps[1].Projection = "fund-flows"
+			})},
+			`opens role "revenue_source" at tier 2 of the view's own chart`},
 		{"a step opening a side this package does not declare", []export.View{ok,
 			chartView(func(v *export.View) { v.Steps[0].Sankey.Side = "Source" })},
 			"opens side \"Source\""},
