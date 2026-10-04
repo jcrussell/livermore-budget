@@ -641,16 +641,15 @@ func (r *Resolver) checkGap(rule *Rule, p *Part, gap string, rows []Row, i int,
 		// block starts too early" keeps its whole meaning for a rule that
 		// starts two lines early instead of one.
 		//
-		// IT RUNS BEFORE THE wrapped_labels TEST AND NOT AFTER, which is the
-		// order the first draft got wrong. Matching a wrapped label against the
-		// whole gap first meant that under total_row_above the label had to be
-		// declared WITH the total's figures glued to the front of it, which no
-		// author would write -- so a page wrapping a label between the total's
-		// line and the first row had a fragment that was refused if undeclared
-		// and stale if declared. That is fisc-2jk's failure mode exactly,
-		// reintroduced under a new flag. Skipping first leaves every check below
-		// looking at the same shape it sees on every other rule, and for a rule
-		// without the flag the skip is a no-op, so nothing else changes.
+		// THE SKIP RUNS BEFORE THE wrapped_labels TEST. Matched against the
+		// whole gap, a label wrapped between the total's line and the first
+		// row could be declared only with the total's figures glued to the
+		// front of it, which no author writes, so the declaration would never
+		// be marked used and would fail as stale -- while the same fragment
+		// undeclared is accepted, as any undeclared words before the first
+		// row are. Skipping first leaves every check below looking at the
+		// same shape it sees on every other rule, and for a rule without the
+		// flag the skip is a no-op.
 		//
 		// IndexByte-guarded, deliberately, and not strings.Cut: Cut returns an
 		// empty remainder when there is no newline at all, which would make the

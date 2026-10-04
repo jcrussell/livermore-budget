@@ -803,16 +803,13 @@ func TestTotalRowAboveRefusals(t *testing.T) {
 	})
 }
 
-// TestTotalRowAboveAllowsAWrappedLabelAfterTheTotalsLine covers a latent bug:
-// the wrapped_labels test ran against the WHOLE leading gap, before the total's
-// line was skipped.
-//
-// Under total_row_above that meant a wrapped label between the total's line and
-// the first row could only be declared with the total's own figures glued to
-// the front of it -- so declared as printed, the fragment went stale, which is
-// fisc-2jk's failure mode reintroduced under a new flag. No
-// page in the corpus has the shape, which is why nothing went red; a test that
-// waits for one to appear is a test that arrives after the bug.
+// TestTotalRowAboveAllowsAWrappedLabelAfterTheTotalsLine holds checkGap to
+// skipping the total's line BEFORE the wrapped_labels test. Tested against
+// the whole gap, a label wrapped between the total's line and the first row
+// could be declared only with the total's own figures glued to the front of
+// it, so the declaration would fail as stale; and undeclared, the fragment is
+// accepted as any words before the first row are, so no corpus page can show
+// the order wrong.
 //
 // IT CALLS checkGap DIRECTLY rather than building a page-shaped probe, because
 // the claim is about the ORDER of two tests inside that function and a probe
@@ -837,13 +834,16 @@ func TestTotalRowAboveAllowsAWrappedLabelAfterTheTotalsLine(t *testing.T) {
 			"fail later as a stale declaration")
 	}
 
-	// Undeclared, the same fragment is accepted, as leading words are on a rule
-	// without the flag: the skip leaves the gap in the shape every other rule
-	// sees, and refusing it here would demand a declaration only this flag asks
-	// for.
-	if err := res.checkGap(rule, &Part{Page: 41}, gap, rows, 0, map[string]bool{}, nil); err != nil {
-		t.Errorf("undeclared words after the total's line were refused, though "+
-			"checkGap permits leading words undeclared on every rule: %v", err)
+	// Undeclared, the same fragment is accepted and nothing is marked used:
+	// words before the first row are where column headers live, and the
+	// digit refusal below is the only guard over them, with or without the
+	// flag.
+	used = map[string]bool{}
+	if err := res.checkGap(rule, &Part{Page: 41}, gap, rows, 0, used, nil); err != nil {
+		t.Errorf("undeclared words after the total's line were refused: %v", err)
+	}
+	if len(used) != 0 {
+		t.Errorf("undeclared words were marked used: %v", used)
 	}
 	if err := res.checkGap(&Rule{TotalRow: "Total Revenues"}, &Part{Page: 41},
 		"      Current:\n   ", rows, 0, map[string]bool{}, nil); err != nil {
