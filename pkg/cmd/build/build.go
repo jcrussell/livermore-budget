@@ -22,7 +22,9 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/corpus"
 	"github.com/jcrussell/livermore-budget/internal/fact"
+	"github.com/jcrussell/livermore-budget/internal/hint"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/internal/repo"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 	"github.com/jcrussell/livermore-budget/pkg/iostreams"
 )
@@ -31,8 +33,8 @@ import (
 // any working directory, which is what lets CI and a developer's shell produce
 // byte-identical output.
 const (
-	defaultOutput   = cmdutil.FactsPath
-	defaultMappings = cmdutil.MappingsDir
+	defaultOutput   = repo.FactsPath
+	defaultMappings = repo.MappingsDir
 )
 
 // factsPerm is the mode of the written fact store. It is world-readable
@@ -157,7 +159,7 @@ func buildRun(o *Options) error {
 	files, err := mapping.LoadDir(os.DirFS(root), dir)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
-			return cmdutil.Hintf(err,
+			return hint.Withf(err,
 				"--mappings is resolved against the repository root %q", root)
 		}
 		return err
@@ -173,7 +175,7 @@ func buildRun(o *Options) error {
 	// store on the way to reporting success is the most expensive way this
 	// command could fail.
 	if len(facts) == 0 {
-		return cmdutil.WithHint(
+		return hint.With(
 			fmt.Errorf("%d rule files in %q produced no facts", len(files), dir),
 			"check that --mappings points at the rule files")
 	}

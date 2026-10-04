@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/jcrussell/livermore-budget/internal/hint"
 	"github.com/jcrussell/livermore-budget/internal/vocab"
-	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
 // rollupSpanFile is two rules that agree on everything a rollup already
@@ -108,7 +108,7 @@ func TestARollupMayNotCoverTwoScopes(t *testing.T) {
 		// because ErrHint keeps it out of Error() -- a message that read
 		// "scope X and scope Y" with no reason attached would tell an author
 		// what the parser noticed and not why it is refused.
-		var h *cmdutil.ErrHint
+		var h *hint.ErrHint
 		if !errors.As(err, &h) {
 			t.Fatalf("got %T, want an *ErrHint saying why two scopes are refused", err)
 		}
@@ -217,7 +217,7 @@ rollups:
 	if !strings.Contains(err.Error(), "is declared alongside unassertable") {
 		t.Errorf("error = %v, want it to name the pairing it refuses", err)
 	}
-	var h *cmdutil.ErrHint
+	var h *hint.ErrHint
 	if !errors.As(err, &h) || !strings.Contains(h.Hint, "covers none") {
 		t.Errorf("hint = %+v, want it to say an unassertable rollup covers no rules", h)
 	}

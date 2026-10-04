@@ -9,6 +9,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/spf13/cobra"
 
+	"github.com/jcrussell/livermore-budget/internal/hint"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 	"github.com/jcrussell/livermore-budget/pkg/iostreams"
 )
@@ -59,7 +60,7 @@ func TestClassify(t *testing.T) {
 		},
 		{
 			name:     "hint is printed after the error",
-			err:      cmdutil.WithHint(errors.New("no manifest"), "run make extract"),
+			err:      hint.With(errors.New("no manifest"), "run make extract"),
 			wantCode: 1, wantErr: "hint: run make extract",
 		},
 	}
@@ -136,9 +137,9 @@ func TestHintIsNotPrintedWithoutAnError(t *testing.T) {
 		err      error
 		wantCode int
 	}{
-		{"silent", cmdutil.WithHint(cmdutil.ErrSilent, "run make extract"), 1},
-		{"explicit exit code", cmdutil.WithHint(&cmdutil.ExitCodeError{Code: 3}, "see the log"), 3},
-		{"cancel", cmdutil.WithHint(cmdutil.ErrCancel, "nothing to undo"), 130},
+		{"silent", hint.With(cmdutil.ErrSilent, "run make extract"), 1},
+		{"explicit exit code", hint.With(&cmdutil.ExitCodeError{Code: 3}, "see the log"), 3},
+		{"cancel", hint.With(cmdutil.ErrCancel, "nothing to undo"), 130},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

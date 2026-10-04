@@ -41,7 +41,7 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/corpus"
 	"github.com/jcrussell/livermore-budget/internal/project"
-	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
+
 	"github.com/jcrussell/livermore-budget/site"
 )
 
@@ -77,12 +77,6 @@ const dataDir = "data"
 // p76 today -- would be published as records sitting beside a 404, and the set
 // would change silently as views were added.
 const PageTextDir = "extracted"
-
-// markerName is the sentinel written into a generated site. It is what tells
-// a later --clean run that the directory is fisc's to delete. The name is
-// cmdutil's, not this package's: the writer and the deleter agreeing on it by
-// coincidence is how a --clean starts refusing to clean.
-const markerName = cmdutil.ExportMarkerName
 
 // DefaultSourceBrowseURL is where the committed page text is browsable when
 // the site does not ship it itself — that is, when the caller supplies neither
@@ -189,7 +183,7 @@ type Doc struct {
 // Options is a call to Write.
 type Options struct {
 	// Dir is the output directory. The caller resolves and screens it
-	// (cmdutil.ResolveOutputDir) before getting here.
+	// (ResolveOutputDir) before getting here.
 	Dir string
 
 	// Projections maps a filename stem to a projection's JSON document, which
@@ -701,7 +695,7 @@ func (o *Options) validate(ix ColumnIndex) error {
 // fixedPaths are the output paths Write owns whatever the caller asked for.
 // The views' own paths are added per Options by reservedPaths.
 var fixedPaths = func() map[string]bool {
-	m := map[string]bool{markerName: true}
+	m := map[string]bool{MarkerName: true}
 	for _, name := range verbatimAssets {
 		m[name] = true
 	}
@@ -987,7 +981,7 @@ func Prepare(o Options) (*plan, error) {
 	// dies midway then leaves a directory that --clean recognises as ours;
 	// writing it last would dead-end the retry, because index.html is not
 	// there either and SafeCleanDir would refuse to touch the debris.
-	if err := add(markerName, []byte("fisc export\n")); err != nil {
+	if err := add(MarkerName, []byte("fisc export\n")); err != nil {
 		return nil, err
 	}
 	for _, name := range verbatimAssets {
@@ -1057,7 +1051,7 @@ func Prepare(o Options) (*plan, error) {
 // could have known in advance will stop it.
 //
 // It does not clean the directory: destroying files is a separate decision with
-// its own guard rail (cmdutil.SafeCleanDir), and burying it in a writer would
+// its own guard rail (SafeCleanDir), and burying it in a writer would
 // make every caller of Write a caller of RemoveAll.
 func (p *plan) Write() ([]string, error) {
 	// #nosec G301 -- the output is a web root; a directory a server running as

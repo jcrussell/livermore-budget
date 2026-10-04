@@ -7,11 +7,12 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/jcrussell/livermore-budget/internal/english"
 	"github.com/jcrussell/livermore-budget/internal/fact"
+	"github.com/jcrussell/livermore-budget/internal/hint"
 	"github.com/jcrussell/livermore-budget/internal/registry"
 	"github.com/jcrussell/livermore-budget/internal/structure"
 	"github.com/jcrussell/livermore-budget/internal/vocab"
-	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 	"github.com/jcrussell/livermore-budget/schema"
 )
 
@@ -136,7 +137,7 @@ func (f *fundFlows) Document(facts []fact.Fact, o Options) (*Document, error) {
 		return nil, fmt.Errorf("fund-flows options: %w", err)
 	}
 	if !sameScopes(o.Scopes, FundFlowsScopes()) {
-		return nil, cmdutil.WithHint(
+		return nil, hint.With(
 			fmt.Errorf("fund-flows: scopes are %q, want %q", o.ScopeList(),
 				Options{Scopes: FundFlowsScopes()}.ScopeList()),
 			"this document is of three schedules, and a set of any others is a different "+
@@ -144,12 +145,12 @@ func (f *fundFlows) Document(facts []fact.Fact, o Options) (*Document, error) {
 				"Fund's divisions, and pp.173-183 every other fund's spending")
 	}
 	if len(o.Columns) != 1 {
-		return nil, cmdutil.WithHint(
+		return nil, hint.With(
 			fmt.Errorf("fund-flows: a graph is of one column, got %d", len(o.Columns)),
 			"two budget years in one flow diagram add every figure to its own successor")
 	}
 	if f.Labels == nil {
-		return nil, cmdutil.WithHint(
+		return nil, hint.With(
 			fmt.Errorf("fund-flows: no registry is attached"),
 			"a fund node's parent comes from data/funds.yaml's type:, so this document "+
 				"cannot be built without one")
@@ -258,7 +259,7 @@ func (f *fundFlows) Document(facts []fact.Fact, o Options) (*Document, error) {
 		// one is refused rather than published as a link from "".
 		group := nodes[dst.id].Parent
 		if group == "" {
-			return nil, cmdutil.WithHint(
+			return nil, hint.With(
 				fmt.Errorf("fund-flows: fund %d is in no fund group", k.fund),
 				"the tier-2 link that lets a group be drawn between the categories and "+
 					"its funds runs from that group, so a fund with none has no source end")
@@ -450,12 +451,12 @@ func fundFlowsCaveats(twice int, nodes []Node) []Caveat {
 
 // plural writes "1 group's" and "5 groups'": counted, possessive.
 func plural(n int, noun string) string {
-	return counted(n, noun) + cmdutil.Plural(n, "'s", "'")
+	return counted(n, noun) + english.Plural(n, "'s", "'")
 }
 
 // counted writes "1 fund" and "5 funds".
 func counted(n int, noun string) string {
-	return fmt.Sprintf("%d %s", n, cmdutil.Plural(n, noun, noun+"s"))
+	return fmt.Sprintf("%d %s", n, english.Plural(n, noun, noun+"s"))
 }
 
 // spendingSides is the fund groups this document draws spending for:
@@ -566,18 +567,18 @@ func (f *fundFlows) netFundFlows(facts []fact.Fact) (map[revKey]*cellSum, map[ex
 		switch fa.Scope {
 		case ScopeRevenueByFund:
 			if fa.Category == "" {
-				return nil, nil, nil, cmdutil.WithHint(
+				return nil, nil, nil, hint.With(
 					fmt.Errorf("fund-flows: fact %s carries no category", fa.ID),
 					"a revenue node is a category, so a fact without one has no source end")
 			}
 			if fa.Fund == nil {
-				return nil, nil, nil, cmdutil.WithHint(
+				return nil, nil, nil, hint.With(
 					fmt.Errorf("fund-flows: fact %s (%s) names no fund", fa.ID, fa.Category),
 					"this document's tier 3 IS the fund, and a fact without one has no box "+
 						"to land in")
 			}
 			if fa.FundGroup == "" {
-				return nil, nil, nil, cmdutil.WithHint(
+				return nil, nil, nil, hint.With(
 					fmt.Errorf("fund-flows: fact %s (%s) names no fund group", fa.ID, fa.Category),
 					"the fund group decides whether a flow crosses the city's boundary")
 			}
@@ -588,19 +589,19 @@ func (f *fundFlows) netFundFlows(facts []fact.Fact) (map[revKey]*cellSum, map[ex
 			add(rev, revKey{fa.Kind, fa.Category, line, fa.FundGroup, *fa.Fund}, fa)
 		case scopeExpenditureByDepartment:
 			if fa.Department == "" {
-				return nil, nil, nil, cmdutil.WithHint(
+				return nil, nil, nil, hint.With(
 					fmt.Errorf("fund-flows: fact %s carries no department", fa.ID),
 					"this document's tier 4 IS the department")
 			}
 			if fa.Category == "" {
-				return nil, nil, nil, cmdutil.WithHint(
+				return nil, nil, nil, hint.With(
 					fmt.Errorf("fund-flows: fact %s (%s) carries no category", fa.ID, fa.Department),
 					"an object-category node is a category")
 			}
 			// A fundless fact would be attributed to the General Fund on no
 			// evidence, and no downstream check would see it.
 			if fa.Fund == nil {
-				return nil, nil, nil, cmdutil.WithHint(
+				return nil, nil, nil, hint.With(
 					fmt.Errorf("fund-flows: fact %s (%s) names no fund", fa.ID, fa.Department),
 					"this document parents every department to the fund that pays it, and "+
 						"a fact naming none has no parent to give it")
@@ -611,7 +612,7 @@ func (f *fundFlows) netFundFlows(facts []fact.Fact) (map[revKey]*cellSum, map[ex
 				expFund = fa.Fund
 			}
 			if *fa.Fund != *expFund {
-				return nil, nil, nil, cmdutil.WithHint(
+				return nil, nil, nil, hint.With(
 					fmt.Errorf("fund-flows: the expenditure side names funds %d and %d",
 						*expFund, *fa.Fund),
 					"pp.167-170 are a General Fund schedule and this document's department "+
@@ -621,7 +622,7 @@ func (f *fundFlows) netFundFlows(facts []fact.Fact) (map[revKey]*cellSum, map[ex
 			add(exp, expKey{fa.Department, fa.Category}, fa)
 		case scopeExpenditureByFund:
 			if fa.Category == "" || fa.Fund == nil || fa.FundGroup == "" {
-				return nil, nil, nil, cmdutil.WithHint(
+				return nil, nil, nil, hint.With(
 					fmt.Errorf("fund-flows: fact %s names no category, fund or fund group", fa.ID),
 					"pp.173-183 draw a fund into its object categories, so a fact missing "+
 						"either end has no link to be")
@@ -629,7 +630,7 @@ func (f *fundFlows) netFundFlows(facts []fact.Fact) (map[revKey]*cellSum, map[ex
 			// The General Fund is drawn through its divisions; a second
 			// reading of it here would draw its spending twice.
 			if *fa.Fund == generalFund {
-				return nil, nil, nil, cmdutil.WithHint(
+				return nil, nil, nil, hint.With(
 					fmt.Errorf("fund-flows: fact %s draws fund %d from expenditure-by-fund", fa.ID, generalFund),
 					"pp.167-170 decompose the General Fund, and p172's block of it is "+
 						"general-fund-by-category, which this document does not read")
@@ -658,7 +659,7 @@ func (f *fundFlows) revenueLine(fa *fact.Fact) (string, error) {
 		return "", nil
 	}
 	if fa.RowLabel == "" {
-		return "", cmdutil.WithHint(
+		return "", hint.With(
 			fmt.Errorf("fund-flows: fact %s (%s) carries no row label", fa.ID, fa.Category),
 			"a revenue line IS the printed row, and a fact with no row label names no row "+
 				"for the registry to resolve")
@@ -668,14 +669,14 @@ func (f *fundFlows) revenueLine(fa *fact.Fact) (string, error) {
 	case 1:
 		return lines[0], nil
 	case 0:
-		return "", cmdutil.WithHint(
+		return "", hint.With(
 			fmt.Errorf("fund-flows: fact %s: no data/taxonomy.yaml line under %q is printed as %q",
 				fa.ID, fa.Category, fa.RowLabel),
 			"every revenue row of pp.127-140 is a node of this document, so a row the "+
 				"taxonomy does not declare has nowhere to go; fact-revenue-lines-resolve "+
 				"reports the same gap over the whole store")
 	default:
-		return "", cmdutil.WithHint(
+		return "", hint.With(
 			fmt.Errorf("fund-flows: fact %s: %q under %q is printed by %d lines, %s",
 				fa.ID, fa.RowLabel, fa.Category, len(lines), strings.Join(lines, ", ")),
 			"one printed row is one node, so two lines claiming one spelling is an "+
@@ -715,7 +716,7 @@ func (*fundFlows) revenueEndpoint(k revKey) (endpoint, error) {
 	switch k.kind {
 	case vocab.KindRevenue:
 		if k.line == "" {
-			return endpoint{}, cmdutil.WithHint(
+			return endpoint{}, hint.With(
 				fmt.Errorf("fund-flows: a revenue cell of %q carries no line", k.category),
 				"pp.127-140 print revenue as rows and this document draws the rows, so a "+
 					"cell with no line has no source end")
@@ -727,7 +728,7 @@ func (*fundFlows) revenueEndpoint(k revKey) (endpoint, error) {
 		return endpoint{id: NodeTransfersIn, slug: k.category,
 			role: RoleTransferIn}, nil
 	default:
-		return endpoint{}, cmdutil.WithHint(
+		return endpoint{}, hint.With(
 			fmt.Errorf("fund-flows: kind %q has no source end in this document", k.kind),
 			"pp.127-140 print revenue and transfers in; a third kind means the schedule "+
 				"or the taxonomy changed under this projection")
@@ -739,7 +740,7 @@ func (*fundFlows) revenueEndpoint(k revKey) (endpoint, error) {
 // Fund 100 takes the General Fund role whatever any column holds.
 func (f *fundFlows) fundEndpoint(number int) (endpoint, error) {
 	if _, ok := f.Labels.FundType(number); !ok {
-		return endpoint{}, cmdutil.WithHint(
+		return endpoint{}, hint.With(
 			fmt.Errorf("fund-flows: fund %d is in no data/funds.yaml entry", number),
 			"a fund node's parent is its type, so a fund the registry does not list "+
 				"cannot be placed in the hierarchy")

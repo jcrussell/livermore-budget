@@ -17,6 +17,7 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/corpus"
 	"github.com/jcrussell/livermore-budget/internal/fact"
+	"github.com/jcrussell/livermore-budget/internal/hint"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/vocab"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
@@ -605,8 +606,8 @@ func TestBuildWithNoMappingDirectory(t *testing.T) {
 	if err == nil {
 		t.Fatal("buildRun = nil error, want a failure")
 	}
-	var hint *cmdutil.ErrHint
-	if !errors.As(err, &hint) {
+	var h *hint.ErrHint
+	if !errors.As(err, &h) {
 		t.Errorf("error %q carries no hint, and the user needs to know the path is repo-relative", err)
 	}
 }

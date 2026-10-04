@@ -1,4 +1,4 @@
-package cmdutil
+package repo
 
 import (
 	"errors"
@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/jcrussell/livermore-budget/internal/hint"
 )
 
 // chdir moves into dir for the duration of the test. t.Chdir handles the
@@ -23,7 +25,7 @@ func newRepo(t *testing.T) string {
 	if err := os.MkdirAll(filepath.Join(root, "data"), 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(root, repoMarker), []byte("schema_version: 1\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, marker), []byte("schema_version: 1\n"), 0o644); err != nil {
 		t.Fatalf("write marker: %v", err)
 	}
 	// t.TempDir may sit behind a symlink (/tmp -> /private/tmp on macOS), and
@@ -35,22 +37,22 @@ func newRepo(t *testing.T) string {
 	return resolved
 }
 
-func TestFindRepoRootFromRoot(t *testing.T) {
+func TestRootFromRoot(t *testing.T) {
 	root := newRepo(t)
 	chdir(t, root)
 
-	got, err := findRepoRoot()
+	got, err := Root()
 	if err != nil {
-		t.Fatalf("findRepoRoot: %v", err)
+		t.Fatalf("Root: %v", err)
 	}
 	if got != root {
 		t.Errorf("got %q, want %q", got, root)
 	}
 }
 
-// TestFindRepoRootFromSubdirectory is the behavior that matters: fisc should
+// TestRootFromSubdirectory is the behavior that matters: fisc should
 // work from anywhere in the tree, the way git does.
-func TestFindRepoRootFromSubdirectory(t *testing.T) {
+func TestRootFromSubdirectory(t *testing.T) {
 	root := newRepo(t)
 	deep := filepath.Join(root, "internal", "mapping", "testdata")
 	if err := os.MkdirAll(deep, 0o755); err != nil {
@@ -58,27 +60,27 @@ func TestFindRepoRootFromSubdirectory(t *testing.T) {
 	}
 	chdir(t, deep)
 
-	got, err := findRepoRoot()
+	got, err := Root()
 	if err != nil {
-		t.Fatalf("findRepoRoot: %v", err)
+		t.Fatalf("Root: %v", err)
 	}
 	if got != root {
 		t.Errorf("got %q, want %q", got, root)
 	}
 }
 
-func TestFindRepoRootOutsideRepoIsHinted(t *testing.T) {
+func TestRootOutsideRepoIsHinted(t *testing.T) {
 	chdir(t, t.TempDir())
 
-	_, err := findRepoRoot()
+	_, err := Root()
 	if err == nil {
 		t.Fatal("got nil error, want a failure outside any repository")
 	}
-	var hint *ErrHint
-	if !errors.As(err, &hint) {
+	var h *hint.ErrHint
+	if !errors.As(err, &h) {
 		t.Fatalf("got %T, want an *ErrHint so the user is told what to do", err)
 	}
-	if !strings.Contains(err.Error(), repoMarker) {
-		t.Errorf("got %q, want it to name the missing marker %q", err, repoMarker)
+	if !strings.Contains(err.Error(), marker) {
+		t.Errorf("got %q, want it to name the missing marker %q", err, marker)
 	}
 }

@@ -25,7 +25,8 @@ import (
 	"strings"
 
 	"github.com/jcrussell/livermore-budget/internal/geom"
-	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
+	"github.com/jcrussell/livermore-budget/internal/hint"
+	"github.com/jcrussell/livermore-budget/internal/repo"
 )
 
 // SchemaVersion is the only manifest version this package understands.
@@ -189,18 +190,18 @@ func OpenDoc(root, docID string) (*Doc, error) {
 	// likes and would agree with itself. A document id names one directory, so
 	// it may not contain a separator or a parent reference at all.
 	if !fs.ValidPath(docID) || docID == "." || strings.ContainsAny(docID, `/\`) {
-		return nil, cmdutil.WithHint(
+		return nil, hint.With(
 			fmt.Errorf("document id %q is not a single directory name", docID),
-			"doc_id names one directory under "+cmdutil.ExtractedDir+
+			"doc_id names one directory under "+repo.ExtractedDir+
 				"; it may not contain a path separator or \"..\"")
 	}
-	dir := filepath.Join(root, cmdutil.ExtractedDir, docID)
+	dir := filepath.Join(root, repo.ExtractedDir, docID)
 	d, err := Open(os.DirFS(dir))
 	if err != nil {
 		return nil, fmt.Errorf("open extraction %q: %w", dir, err)
 	}
 	if d.DocID() != docID {
-		return nil, cmdutil.WithHint(
+		return nil, hint.With(
 			fmt.Errorf("extraction %q declares doc_id %q, want %q", dir, d.DocID(), docID),
 			"an extraction directory is named for the document it holds; "+
 				"re-run make extract rather than renaming or copying the directory")
@@ -339,12 +340,12 @@ func (d *Doc) Geometry(n int) (*geom.Page, error) {
 		return nil, fmt.Errorf("%s (%s): %w", d.man.DocID, p, err)
 	}
 	if g.DocID != d.man.DocID || g.Number != n {
-		return nil, cmdutil.WithHint(
+		return nil, hint.With(
 			fmt.Errorf("%s declares doc_id %q page %d, but was read as %s page %d",
 				p, g.DocID, g.Number, d.man.DocID, n),
 			"a geometry artifact was copied or renamed between extractions; "+
 				"re-run make extract rather than moving files between "+
-				cmdutil.ExtractedDir+" directories")
+				repo.ExtractedDir+" directories")
 	}
 	return g, nil
 }

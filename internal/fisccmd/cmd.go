@@ -14,6 +14,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/jcrussell/livermore-budget/internal/hint"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 	"github.com/jcrussell/livermore-budget/pkg/iostreams"
 )
@@ -62,7 +63,7 @@ func classify(err error, ios *iostreams.IOStreams) int {
 	// line with no preceding error would be worse than none.
 	printed := false
 	defer func() {
-		var h *cmdutil.ErrHint
+		var h *hint.ErrHint
 		if printed && errors.As(err, &h) && h.Hint != "" {
 			fmt.Fprintln(ios.ErrOut, "hint:", h.Hint)
 		}

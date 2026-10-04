@@ -46,9 +46,9 @@ import (
 	"strings"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
+	"github.com/jcrussell/livermore-budget/internal/hint"
 	"github.com/jcrussell/livermore-budget/internal/structure"
 	"github.com/jcrussell/livermore-budget/internal/vocab"
-	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
 // SchemaVersion is the version stamped on every projection document. A
@@ -625,7 +625,7 @@ func (o Options) view() (structure.View, error) {
 // own words.
 func (o Options) onlyScope() (string, error) {
 	if len(o.Scopes) != 1 {
-		return "", cmdutil.WithHint(
+		return "", hint.With(
 			fmt.Errorf("this document is of one schedule, and these options name %d: %s",
 				len(o.Scopes), o.ScopeList()),
 			"a document spanning schedules needs its own projection type; the ones that "+

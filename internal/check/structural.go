@@ -12,8 +12,8 @@ import (
 	"strings"
 
 	"github.com/jcrussell/livermore-budget/internal/corpus"
+	"github.com/jcrussell/livermore-budget/internal/english"
 	"github.com/jcrussell/livermore-budget/internal/registry"
-	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
 // The structural checks: tier 0, because they are not about arithmetic.
@@ -154,7 +154,7 @@ func (*artifactsMatchManifest) Run(_ context.Context, s *Subject) (Result, error
 		unit:     "artifacts",
 		held: fmt.Sprintf("%d artifacts across %d %s, each hashing to the sha256 its "+
 			"manifest records, and nothing present that is unlisted",
-			subjects, len(s.Extractions), cmdutil.Plural(len(s.Extractions), "extraction", "extractions")),
+			subjects, len(s.Extractions), english.Plural(len(s.Extractions), "extraction", "extractions")),
 		nothing:  "no extraction is committed under " + extractedDir,
 		findings: findings,
 	}.result(), nil
@@ -312,7 +312,7 @@ func (*extractionEmittedEveryPage) Run(_ context.Context, s *Subject) (Result, e
 		}
 		if len(unexpected) > 0 {
 			says = append(says, fmt.Sprintf("%d %s for no page of a %d-page document (%s)",
-				len(unexpected), cmdutil.Plural(len(unexpected), "artifact", "artifacts"), pages,
+				len(unexpected), english.Plural(len(unexpected), "artifact", "artifacts"), pages,
 				strings.Join(capped(unexpected, 5), ", ")))
 		}
 		if len(says) > 0 {
@@ -434,7 +434,7 @@ func (*extractorReportedNoErrors) Run(_ context.Context, s *Subject) (Result, er
 			"the extractor recorded %d %s and wrote no artifact for what failed, so this "+
 				"extraction is incomplete: %s. Re-run `make extract` for this document; it "+
 				"exits non-zero when this happens", len(errs),
-			cmdutil.Plural(len(errs), "failure", "failures"), strings.Join(capped(says, 5), ", ")))
+			english.Plural(len(errs), "failure", "failures"), strings.Join(capped(says, 5), ", ")))
 	}
 
 	return conclusion{
@@ -443,8 +443,8 @@ func (*extractorReportedNoErrors) Run(_ context.Context, s *Subject) (Result, er
 		held: fmt.Sprintf("%d extractions, none recording a failure; %d poppler %s and %d "+
 			"blank %s across them, which poppler did not treat as fatal and which are "+
 			"recorded in each manifest.json for a human to read",
-			len(s.Extractions), warnings, cmdutil.Plural(warnings, "warning", "warnings"),
-			blank, cmdutil.Plural(blank, "page", "pages")),
+			len(s.Extractions), warnings, english.Plural(warnings, "warning", "warnings"),
+			blank, english.Plural(blank, "page", "pages")),
 		nothing:  "no extraction is committed under " + extractedDir,
 		findings: findings,
 	}.result(), nil
@@ -727,7 +727,7 @@ func (*sourcePDFsMatchBothRecords) Run(_ context.Context, s *Subject) (Result, e
 	}
 
 	if len(unavailable) > 0 {
-		// The remediation is in the message rather than in a cmdutil hint: a check's
+		// The remediation is in the message rather than in a hint: a check's
 		// error becomes this result's Summary, and ErrHint.Error() does not carry the
 		// hint, so a hint here would be printed by nobody.
 		return Result{}, fmt.Errorf("%d of %d source %s could not be read, so there were no "+
@@ -735,16 +735,16 @@ func (*sourcePDFsMatchBothRecords) Run(_ context.Context, s *Subject) (Result, e
 			"in Git LFS — run `git lfs pull` to fetch them, or drop --full, which every "+
 			"other check runs without",
 			len(unavailable), len(s.Sources),
-			cmdutil.Plural(len(s.Sources), "document", "documents"), strings.Join(unavailable, ", "))
+			english.Plural(len(s.Sources), "document", "documents"), strings.Join(unavailable, ", "))
 	}
 	return conclusion{
 		subjects: registryRecords + manifestRecords,
 		unit:     "records",
 		held: fmt.Sprintf("%d records over %d source %s hashed: %d %s %s and %d extraction "+
 			"%s, every one of them the hash of the bytes on disk",
-			registryRecords+manifestRecords, hashed, cmdutil.Plural(hashed, "document", "documents"),
-			registryRecords, sourcesFile, cmdutil.Plural(registryRecords, "entry", "entries"),
-			manifestRecords, cmdutil.Plural(manifestRecords, "manifest", "manifests")),
+			registryRecords+manifestRecords, hashed, english.Plural(hashed, "document", "documents"),
+			registryRecords, sourcesFile, english.Plural(registryRecords, "entry", "entries"),
+			manifestRecords, english.Plural(manifestRecords, "manifest", "manifests")),
 		nothing:  "no source document is listed in " + sourcesFile,
 		findings: findings,
 	}.result(), nil

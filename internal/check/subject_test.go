@@ -17,10 +17,10 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
+	"github.com/jcrussell/livermore-budget/internal/hint"
 	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/internal/structure"
 	"github.com/jcrussell/livermore-budget/internal/vocab"
-	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
 // repoRoot is this repository, which the tests below read committed artifacts
@@ -478,12 +478,12 @@ func TestLoadRefusesAnUnreadableCorpus(t *testing.T) {
 func TestLoadHintsAtBuildWhenTheFactStoreIsMissing(t *testing.T) {
 	t.Parallel()
 	_, err := Load(LoadOptions{Root: t.TempDir(), Version: testVersion})
-	var hint *cmdutil.ErrHint
-	if !errors.As(err, &hint) {
+	var h *hint.ErrHint
+	if !errors.As(err, &h) {
 		t.Fatalf("error %v carries no hint", err)
 	}
-	if !strings.Contains(hint.Hint, "fisc build") {
-		t.Errorf("hint %q does not name the command that writes the fact store", hint.Hint)
+	if !strings.Contains(h.Hint, "fisc build") {
+		t.Errorf("hint %q does not name the command that writes the fact store", h.Hint)
 	}
 }
 
@@ -790,8 +790,8 @@ func TestEveryFactMovedOutOfScopeRefusesToLoad(t *testing.T) {
 	if !strings.Contains(err.Error(), spineScope) {
 		t.Errorf("error %q does not name the scope nothing was found in", err)
 	}
-	var hint *cmdutil.ErrHint
-	if !errors.As(err, &hint) {
+	var h *hint.ErrHint
+	if !errors.As(err, &h) {
 		t.Errorf("error %v carries no hint, and the fix is to look at a rule's scope", err)
 	}
 }

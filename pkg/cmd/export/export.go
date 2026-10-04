@@ -15,6 +15,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/jcrussell/livermore-budget/internal/export"
+	"github.com/jcrussell/livermore-budget/internal/hint"
+	"github.com/jcrussell/livermore-budget/internal/repo"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 	"github.com/jcrussell/livermore-budget/pkg/iostreams"
 )
@@ -83,7 +85,7 @@ type Options struct {
 	OutputDir string
 
 	// Clean empties OutputDir first. It refuses to empty a directory that
-	// does not look like a generated site; see cmdutil.SafeCleanDir.
+	// does not look like a generated site; see export.SafeCleanDir.
 	Clean bool
 
 	// SourceBrowseURL cites the committed page text at a remote — a forge's
@@ -117,11 +119,11 @@ func (o *Options) Validate() error {
 	if o.OutputDir == "" {
 		return cmdutil.FlagErrorf("--output requires a directory")
 	}
-	resolved, err := cmdutil.ResolveOutputDir(o.OutputDir)
+	resolved, err := export.ResolveOutputDir(o.OutputDir)
 	if err != nil {
 		return cmdutil.FlagErrorf("%s", err)
 	}
-	if err := cmdutil.WritableDir(resolved); err != nil {
+	if err := export.WritableDir(resolved); err != nil {
 		return cmdutil.FlagErrorf("%s", err)
 	}
 	if o.SourceBrowseURL != "" {
@@ -209,7 +211,7 @@ func (o *Options) extractionTree(repoRoot string) string {
 	if o.extractedDir != "" {
 		return o.extractedDir
 	}
-	return filepath.Join(repoRoot, filepath.FromSlash(cmdutil.ExtractedDir))
+	return filepath.Join(repoRoot, filepath.FromSlash(repo.ExtractedDir))
 }
 
 func exportRun(o *Options) error {
@@ -304,8 +306,8 @@ func exportRun(o *Options) error {
 	}
 
 	if o.Clean {
-		if cerr := cmdutil.SafeCleanDir(o.OutputDir); cerr != nil {
-			return cmdutil.WithHint(cerr, "pass a different --output, or empty that directory yourself")
+		if cerr := export.SafeCleanDir(o.OutputDir); cerr != nil {
+			return hint.With(cerr, "pass a different --output, or empty that directory yourself")
 		}
 	}
 

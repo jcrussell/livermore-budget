@@ -5,8 +5,9 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/jcrussell/livermore-budget/internal/english"
 	"github.com/jcrussell/livermore-budget/internal/geom"
-	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
+	"github.com/jcrussell/livermore-budget/internal/hint"
 )
 
 // This file is the column-position guard: the second witness that says a figure
@@ -316,14 +317,14 @@ func (r *Resolver) guard(rule *Rule, p *Part) (*columnGuard, error) {
 	if len(p.ColumnHeaders) == 0 {
 		return nil, nil
 	}
-	fail := func(err error, msg, hint string) (*columnGuard, error) {
-		return nil, cmdutil.WithHint(&resolveError{DocID: r.file.DocID, RuleID: rule.ID,
-			Page: p.Page, Field: "column_headers", Msg: msg, Err: err}, hint)
+	fail := func(err error, msg, remedy string) (*columnGuard, error) {
+		return nil, hint.With(&resolveError{DocID: r.file.DocID, RuleID: rule.ID,
+			Page: p.Page, Field: "column_headers", Msg: msg, Err: err}, remedy)
 	}
 
 	pr, err := r.pairing(p.Page)
 	if err != nil {
-		return nil, cmdutil.WithHint(&resolveError{DocID: r.file.DocID, RuleID: rule.ID,
+		return nil, hint.With(&resolveError{DocID: r.file.DocID, RuleID: rule.ID,
 			Page: p.Page, Field: "geometry", Msg: err.Error(), Err: err},
 			"this part declares column_headers, so it is read against "+
 				"geometry/pNNNN.json as well as the page text; a page whose two "+
@@ -526,9 +527,9 @@ func describeLines(pr *pairing, matched []headerMatch) string {
 // filed one column over.
 func (g *columnGuard) checkRow(r *Resolver, rule *Rule, p *Part, row Row, toks []token,
 	cols []int) error {
-	fail := func(field, msg, hint string) error {
-		return cmdutil.WithHint(&resolveError{DocID: r.file.DocID, RuleID: rule.ID,
-			Page: p.Page, Field: field, Msg: msg, Err: ErrNotFound}, hint)
+	fail := func(field, msg, remedy string) error {
+		return hint.With(&resolveError{DocID: r.file.DocID, RuleID: rule.ID,
+			Page: p.Page, Field: field, Msg: msg, Err: ErrNotFound}, remedy)
 	}
 
 	if len(cols) < len(p.Columns) && len(toks) > 0 {
@@ -667,9 +668,9 @@ func (r *Resolver) checkLineAccounting(rule *Rule, p *Part, blk *block, rows []R
 	// is the end of the header line, and its stop_at is the "$" of the totals
 	// row. A partial line still counts if it carries anything printed, because
 	// what is being counted is the printed lines the block covers.
-	fail := func(msg, hint string) error {
-		return cmdutil.WithHint(&resolveError{DocID: r.file.DocID, RuleID: rule.ID,
-			Page: p.Page, Field: "parts", Msg: msg, Err: ErrNotFound}, hint)
+	fail := func(msg, remedy string) error {
+		return hint.With(&resolveError{DocID: r.file.DocID, RuleID: rule.ID,
+			Page: p.Page, Field: "parts", Msg: msg, Err: ErrNotFound}, remedy)
 	}
 
 	printed := 0
@@ -682,8 +683,8 @@ func (r *Resolver) checkLineAccounting(rule *Rule, p *Part, blk *block, rows []R
 		return fail(fmt.Sprintf(
 			"the block covers %d printed %s but the rule has %d %s here; "+
 				"rows placed on other pages: %s",
-			printed, cmdutil.Plural(printed, "line", "lines"),
-			len(rows), cmdutil.Plural(len(rows), "row", "rows"), declaredOmissions(rule, p)),
+			printed, english.Plural(printed, "line", "lines"),
+			len(rows), english.Plural(len(rows), "row", "rows"), declaredOmissions(rule, p)),
 			"a label-less page is read positionally, one row per printed line, "+
 				"so a line the rule has no row for would mismap every row below it")
 	}

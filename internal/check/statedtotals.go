@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/jcrussell/livermore-budget/internal/english"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
-	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
 // factOffsetIsNotAStatedTotal asserts that no fact cites a figure the document
@@ -236,7 +236,7 @@ func (*factOffsetIsNotAStatedTotal) Run(_ context.Context, s *Subject) (Result, 
 		subjects: examined,
 		unit:     "facts",
 		held: fmt.Sprintf("%d facts, none citing a figure printed on any of the %d resolved stated-total %s (rule totals and rollups)",
-			examined, lines, cmdutil.Plural(lines, "line", "lines")),
+			examined, lines, english.Plural(lines, "line", "lines")),
 		nothing:  nothing,
 		findings: findings,
 	}.result(), nil

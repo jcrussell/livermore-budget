@@ -5,9 +5,9 @@ import (
 	"sort"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
+	"github.com/jcrussell/livermore-budget/internal/hint"
 	"github.com/jcrussell/livermore-budget/internal/structure"
 	"github.com/jcrussell/livermore-budget/internal/vocab"
-	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 	"github.com/jcrussell/livermore-budget/schema"
 )
 
@@ -74,14 +74,14 @@ func (d *departmentSpending) Document(facts []fact.Fact, o Options) (*Document, 
 		return nil, fmt.Errorf("department-spending options: %w", err)
 	}
 	if !sameScopes(o.Scopes, DepartmentSpendingScopes()) {
-		return nil, cmdutil.WithHint(
+		return nil, hint.With(
 			fmt.Errorf("department-spending: scopes are %q, want %q", o.ScopeList(),
 				Options{Scopes: DepartmentSpendingScopes()}.ScopeList()),
 			"this document is of pp.85-125's upper block alone; the lower block carries no "+
 				"department, and the two together are the city's expenditure twice")
 	}
 	if len(o.Columns) != 1 {
-		return nil, cmdutil.WithHint(
+		return nil, hint.With(
 			fmt.Errorf("department-spending: a cross-tab is of one column, got %d", len(o.Columns)),
 			"two budget years in one matrix add every cell to its own successor")
 	}
@@ -185,13 +185,13 @@ func netDepartmentSpending(facts []fact.Fact) (map[spendKey]*cellSum, error) {
 				"document does not select", fa.ID, fa.Scope)
 		}
 		if fa.Department == "" {
-			return nil, cmdutil.WithHint(
+			return nil, hint.With(
 				fmt.Errorf("department-spending: fact %s carries no department", fa.ID),
 				"this document's tier 4 IS the division, and pp.85-125's upper block prints "+
 					"every row under one")
 		}
 		if fa.Category == "" {
-			return nil, cmdutil.WithHint(
+			return nil, hint.With(
 				fmt.Errorf("department-spending: fact %s (%s) carries no category", fa.ID,
 					fa.Department),
 				"this document's tier 5 IS the object category the row is printed under")
@@ -199,7 +199,7 @@ func netDepartmentSpending(facts []fact.Fact) (map[spendKey]*cellSum, error) {
 		// A fund is refused rather than required: these rows have no fund
 		// axis, so a fact carrying one belongs to another schedule.
 		if fa.Fund != nil || fa.FundGroup != "" {
-			return nil, cmdutil.WithHint(
+			return nil, hint.With(
 				fmt.Errorf("department-spending: fact %s (%s) names fund %s and fund group %q",
 					fa.ID, fa.Department, fact.FundString(fa.Fund), fa.FundGroup),
 				"pp.85-125's upper block prints what a division spends whatever pays for it, "+
@@ -222,7 +222,7 @@ func spendingObjectEndpoint(k spendKey) (endpoint, error) {
 		return endpoint{id: k.category, slug: k.category,
 			role: RoleTransferOut}, nil
 	default:
-		return endpoint{}, cmdutil.WithHint(
+		return endpoint{}, hint.With(
 			fmt.Errorf("department-spending: kind %q has no object end in this document", k.kind),
 			"pp.85-125's upper block prints expenditure rows and one Transfers Out row; a "+
 				"third kind means the schedule or the mapping changed under this projection")

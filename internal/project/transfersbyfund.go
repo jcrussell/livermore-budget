@@ -8,9 +8,9 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/fact"
+	"github.com/jcrussell/livermore-budget/internal/hint"
 	"github.com/jcrussell/livermore-budget/internal/structure"
 	"github.com/jcrussell/livermore-budget/internal/vocab"
-	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 	"github.com/jcrussell/livermore-budget/schema"
 )
 
@@ -133,14 +133,14 @@ func (t *transfersByFund) Document(facts []fact.Fact, o Options) (*Document, err
 		return nil, fmt.Errorf("transfers-by-fund options: %w", err)
 	}
 	if !sameScopes(o.Scopes, t.scopes()) || !slices.Equal(o.Kinds, t.kinds()) {
-		return nil, cmdutil.WithHint(
+		return nil, hint.With(
 			fmt.Errorf("%s: scopes are %q and kinds %v, want %q and %v", t.Name(), o.ScopeList(),
 				o.Kinds, Options{Scopes: t.scopes()}.ScopeList(), t.kinds()),
 			"p76 restates money pp.66-67 and pp.127-140 already publish, so a document "+
 				"holding this schedule beside either of them doubles the city's transfers")
 	}
 	if len(o.Columns) != 1 {
-		return nil, cmdutil.WithHint(
+		return nil, hint.With(
 			fmt.Errorf("transfers-by-fund: a transfer network is of one column, got %d",
 				len(o.Columns)),
 			"two budget years in one network add every movement to its own successor")
@@ -282,7 +282,7 @@ func (r transferRow) endpoints() (transferEnds, transferEnds, error) {
 // transferFundEnds is the three id forms one leg's fund takes.
 func transferFundEnds(fa *fact.Fact) (transferEnds, error) {
 	if fa.Fund == nil {
-		return transferEnds{}, cmdutil.WithHint(
+		return transferEnds{}, hint.With(
 			fmt.Errorf("transfers-by-fund: fact %s (%s p%d %q) is a %s leg naming no fund",
 				fa.ID, fa.DocID, fa.Page, fa.RowLabel, fa.Kind),
 			"both ends of a movement are fund nodes here, and a leg naming none has no "+
@@ -342,7 +342,7 @@ func pairTransferLegs(facts []fact.Fact, o Options) (map[transferKey]transferRow
 	for _, k := range order {
 		pair := legs[k]
 		if len(pair) != 2 {
-			return nil, cmdutil.WithHint(
+			return nil, hint.With(
 				fmt.Errorf("transfers-by-fund: %s cites %d facts, want 2",
 					transferID(k), len(pair)),
 				"p76 prints one figure per movement and the store carries a leg for each "+
@@ -360,7 +360,7 @@ func pairTransferLegs(facts []fact.Fact, o Options) (map[transferKey]transferRow
 				outs++
 				row.out = fa
 			default:
-				return nil, cmdutil.WithHint(
+				return nil, hint.With(
 					fmt.Errorf("transfers-by-fund: fact %s at %s is kind %q",
 						fa.ID, transferID(k), fa.Kind),
 					"this schedule prints transfers and nothing else; a third kind means "+
@@ -368,14 +368,14 @@ func pairTransferLegs(facts []fact.Fact, o Options) (map[transferKey]transferRow
 			}
 		}
 		if in != 1 || outs != 1 {
-			return nil, cmdutil.WithHint(
+			return nil, hint.With(
 				fmt.Errorf("transfers-by-fund: %s has %d receiving and %d paying leg(s), "+
 					"want one of each", transferID(k), in, outs),
 				"a movement is drawn from both ends, so two legs in the same direction "+
 					"would draw one end twice and the other not at all")
 		}
 		if row.in.AmountCents != row.out.AmountCents {
-			return nil, cmdutil.WithHint(
+			return nil, hint.With(
 				fmt.Errorf("transfers-by-fund: %s has legs of %d and %d cents",
 					transferID(k), row.in.AmountCents, row.out.AmountCents),
 				"one printed figure is the evidence for both directions, so two legs "+

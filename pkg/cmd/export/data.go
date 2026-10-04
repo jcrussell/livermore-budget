@@ -14,16 +14,17 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/build"
 	"github.com/jcrussell/livermore-budget/internal/export"
 	"github.com/jcrussell/livermore-budget/internal/fact"
+	"github.com/jcrussell/livermore-budget/internal/hint"
 	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/internal/registry"
+	"github.com/jcrussell/livermore-budget/internal/repo"
 	"github.com/jcrussell/livermore-budget/internal/vocab"
-	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
-// factsPath is the fact store this export reads. It is cmdutil's rather than
+// factsPath is the fact store this export reads. It is repo's rather than
 // this package's: `fisc build` writes that path and `fisc verify` checks it, and
 // a site built from a different file than either would still export cleanly.
-const factsPath = cmdutil.FactsPath
+const factsPath = repo.FactsPath
 
 // buildAll is the default Builder: everything the site ships.
 //
@@ -94,7 +95,7 @@ func readFactStore(repoRoot string) ([]byte, []fact.Fact, error) {
 	// from the working directory, joined to a constant; it is not user input.
 	raw, err := os.ReadFile(path)
 	if err != nil {
-		return nil, nil, cmdutil.Hintf(fmt.Errorf("read the fact store: %w", err),
+		return nil, nil, hint.Withf(fmt.Errorf("read the fact store: %w", err),
 			"run `fisc build` to generate %s", factsPath)
 	}
 	facts, err := fact.Read(bytes.NewReader(raw))

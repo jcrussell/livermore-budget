@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
+	"github.com/jcrussell/livermore-budget/internal/english"
 )
 
 // uncheckedDocuments are the projection shapes no structural check reads yet,
@@ -153,10 +153,10 @@ func (*documentsAreChecked) Run(_ context.Context, s *Subject) (Result, error) {
 	// projections structurally checked ()". The count is the fix; there is
 	// nothing left for a guard here to catch.
 	held := fmt.Sprintf("%d %s, each read by the structural checks: %s",
-		checked, cmdutil.Plural(checked, "projection", "projections"), describeShapes(shapes))
+		checked, english.Plural(checked, "projection", "projections"), describeShapes(shapes))
 	if len(declared) > 0 {
 		held = fmt.Sprintf("%d %s structurally checked (%s), plus %s declared unchecked",
-			checked, cmdutil.Plural(checked, "projection", "projections"),
+			checked, english.Plural(checked, "projection", "projections"),
 			describeShapes(shapes), describeUnchecked(s.UncheckedDocuments, declared))
 	}
 	return conclusion{

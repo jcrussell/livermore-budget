@@ -5,7 +5,7 @@ import (
 	"sort"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
-	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
+	"github.com/jcrussell/livermore-budget/internal/hint"
 	"github.com/jcrussell/livermore-budget/schema"
 )
 
@@ -67,7 +67,7 @@ func (sp seriesSpec) document(facts []fact.Fact, o Options) (*TrendsDocument, er
 		return nil, fmt.Errorf("%s: %w", sp.name, err)
 	}
 	if scope != sp.scope {
-		return nil, cmdutil.WithHint(
+		return nil, hint.With(
 			fmt.Errorf("%s: scope is %q, want %q", sp.name, scope, sp.scope),
 			"this document is of one schedule; a projection built over another "+
 				"schedule's facts would publish them under this one's contract")

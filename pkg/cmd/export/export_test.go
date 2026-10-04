@@ -18,6 +18,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/jcrussell/livermore-budget/internal/export"
+	"github.com/jcrussell/livermore-budget/internal/hint"
 	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/internal/vocab"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
@@ -196,7 +197,7 @@ func TestNewCmdExportFlags(t *testing.T) {
 			}
 			// Validate canonicalises the path, so compare against the
 			// resolved form of what was asked for.
-			want, err := cmdutil.ResolveOutputDir(tc.want.OutputDir)
+			want, err := export.ResolveOutputDir(tc.want.OutputDir)
 			if err != nil {
 				t.Fatalf("resolve expectation: %v", err)
 			}
@@ -599,9 +600,9 @@ func TestExportRunCleanRefusesSomebodyElsesDirectory(t *testing.T) {
 	if err == nil {
 		t.Fatal("got nil error, want a refusal to delete")
 	}
-	var hint *cmdutil.ErrHint
-	if !errors.As(err, &hint) {
-		t.Errorf("got %T, want a *cmdutil.ErrHint so the user is told what to do", err)
+	var h *hint.ErrHint
+	if !errors.As(err, &h) {
+		t.Errorf("got %T, want a *hint.ErrHint so the user is told what to do", err)
 	}
 	if _, serr := os.Stat(keep); serr != nil {
 		t.Errorf("the file was removed anyway: %v", serr)
@@ -878,8 +879,8 @@ func TestBuildProjectionsNeedsTheFactStore(t *testing.T) {
 	if err == nil {
 		t.Fatal("buildProjections with no fact store = nil error, want a failure")
 	}
-	var hint *cmdutil.ErrHint
-	if !errors.As(err, &hint) || !strings.Contains(hint.Hint, "fisc build") {
+	var h *hint.ErrHint
+	if !errors.As(err, &h) || !strings.Contains(h.Hint, "fisc build") {
 		t.Errorf("error %v carries no hint naming `fisc build`", err)
 	}
 }

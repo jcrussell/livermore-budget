@@ -3,6 +3,7 @@ package cmdutil
 import (
 	"sync"
 
+	"github.com/jcrussell/livermore-budget/internal/repo"
 	"github.com/jcrussell/livermore-budget/pkg/iostreams"
 )
 
@@ -25,6 +26,6 @@ type Factory struct {
 func New() *Factory {
 	return &Factory{
 		IOStreams: iostreams.System(),
-		RepoRoot:  sync.OnceValues(findRepoRoot),
+		RepoRoot:  sync.OnceValues(repo.Root),
 	}
 }

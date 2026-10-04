@@ -9,8 +9,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
+	"github.com/jcrussell/livermore-budget/internal/hint"
 	"github.com/jcrussell/livermore-budget/internal/vocab"
-	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
 // TestLoadSpine parses the real citywide spine rule. If the schema cannot
@@ -447,7 +447,7 @@ func TestParseErrorNamesTheRule(t *testing.T) {
 // file the user is looking at.
 func TestFutureSchemaVersionHasAHint(t *testing.T) {
 	_, err := parse(strings.NewReader("schema_version: 99\ndoc_id: d\nrules: []\n"), "x.yaml")
-	var h *cmdutil.ErrHint
+	var h *hint.ErrHint
 	if !errors.As(err, &h) {
 		t.Fatalf("got %T, want an *ErrHint telling the user to upgrade", err)
 	}

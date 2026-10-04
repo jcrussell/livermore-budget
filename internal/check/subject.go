@@ -16,27 +16,28 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/corpus"
 	"github.com/jcrussell/livermore-budget/internal/fact"
+	"github.com/jcrussell/livermore-budget/internal/hint"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/internal/registry"
+	"github.com/jcrussell/livermore-budget/internal/repo"
 	"github.com/jcrussell/livermore-budget/internal/structure"
 	"github.com/jcrussell/livermore-budget/internal/vocab"
-	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 	"github.com/jcrussell/livermore-budget/schema"
 )
 
 // What verify reads, all of it committed, and none of it a user's choice: verify
 // checks the repository, and a verify pointed at a different fact store than the
 // one `fisc build` writes would be checking something nobody reads. The paths are
-// cmdutil's single declaration of the layout, not this package's.
+// repo's single declaration of the layout, not this package's.
 const (
-	factsFile    = cmdutil.FactsPath
-	mappingsDir  = cmdutil.MappingsDir
-	dataDir      = cmdutil.DataDir
-	extractedDir = cmdutil.ExtractedDir
+	factsFile    = repo.FactsPath
+	mappingsDir  = repo.MappingsDir
+	dataDir      = repo.DataDir
+	extractedDir = repo.ExtractedDir
 	// sourcesFile is the source registry, composed from the two packages that
 	// already name its parts rather than spelled a third time: the directory is
-	// cmdutil's, the file name is the registry's.
+	// repo's, the file name is the registry's.
 	sourcesFile = dataDir + "/" + registry.SourcesFile
 	// departmentsFile is named in findings rather than only read, because
 	// "department %q is not a division departments.yaml lists" tells the reader
@@ -532,7 +533,7 @@ func Load(o LoadOptions) (*Subject, error) {
 func loadFacts(fsys fs.FS) ([]fact.Fact, error) {
 	f, err := fsys.Open(factsFile)
 	if err != nil {
-		return nil, cmdutil.Hintf(fmt.Errorf("read the fact store: %w", err),
+		return nil, hint.Withf(fmt.Errorf("read the fact store: %w", err),
 			"run `fisc build` to generate %s", factsFile)
 	}
 	defer f.Close() //nolint:errcheck // read-only file; nothing to flush
@@ -547,7 +548,7 @@ func loadFacts(fsys fs.FS) ([]fact.Fact, error) {
 		return nil, fmt.Errorf("read %s: %w", factsFile, err)
 	}
 	if err = schema.ValidateJSONL(bytes.NewReader(raw), schema.Fact); err != nil {
-		return nil, cmdutil.WithHint(fmt.Errorf("%s: %w", factsFile, err),
+		return nil, hint.With(fmt.Errorf("%s: %w", factsFile, err),
 			"the fact store does not match schema/fact.schema.json, so no check over it "+
 				"would mean anything; run `fisc build` to regenerate it")
 	}
@@ -557,7 +558,7 @@ func loadFacts(fsys fs.FS) ([]fact.Fact, error) {
 		return nil, fmt.Errorf("read %s: %w", factsFile, err)
 	}
 	if len(facts) == 0 {
-		return nil, cmdutil.WithHint(fmt.Errorf("%s has no facts in it", factsFile),
+		return nil, hint.With(fmt.Errorf("%s has no facts in it", factsFile),
 			"run `fisc build` to regenerate the fact store")
 	}
 	return facts, nil
@@ -615,7 +616,7 @@ func (s *Subject) openExtractions(root string) error {
 	dir := filepath.Join(root, filepath.FromSlash(extractedDir))
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return cmdutil.Hintf(fmt.Errorf("read the extraction directory: %w", err),
+		return hint.Withf(fmt.Errorf("read the extraction directory: %w", err),
 			"%s holds one directory per document; run `make extract` to write it", extractedDir)
 	}
 	for _, e := range entries {
@@ -795,7 +796,7 @@ func buildProjections(ps []project.Projection, facts []fact.Fact, version string
 	// reach, and recording it would put the run back in the state where every
 	// graph check is vacuous and the exit code is 0.
 	if len(slices) == 0 {
-		return nil, nil, cmdutil.Hintf(
+		return nil, nil, hint.Withf(
 			fmt.Errorf("no fact is in scope %q, so there is nothing to project and nothing "+
 				"to check", spineScope),
 			"the scope on every fact comes from its mapping rule; `fisc verify` checks the "+

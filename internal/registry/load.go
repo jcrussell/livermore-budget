@@ -13,8 +13,8 @@ import (
 
 	yaml "go.yaml.in/yaml/v3"
 
+	"github.com/jcrussell/livermore-budget/internal/hint"
 	"github.com/jcrussell/livermore-budget/internal/vocab"
-	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
 // schemaVersionErr reports a version this package cannot read. A file written
@@ -25,7 +25,7 @@ func schemaVersionErr(file string, got, want int) error {
 	err := &Error{File: file, Field: "schema_version",
 		Msg: fmt.Sprintf("got %d, want %d", got, want)}
 	if got > want {
-		return cmdutil.WithHint(err,
+		return hint.With(err,
 			"this registry was written for a newer fisc; upgrade the binary")
 	}
 	return err

@@ -1,4 +1,4 @@
-package cmdutil_test
+package export_test
 
 import (
 	"errors"
@@ -7,12 +7,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
+	"github.com/jcrussell/livermore-budget/internal/export"
 )
 
 func TestResolveOutputDirCanonicalises(t *testing.T) {
 	dir := t.TempDir()
-	got, err := cmdutil.ResolveOutputDir(filepath.Join(dir, "a", "..", "site"))
+	got, err := export.ResolveOutputDir(filepath.Join(dir, "a", "..", "site"))
 	if err != nil {
 		t.Fatalf("ResolveOutputDir: %v", err)
 	}
@@ -28,17 +28,17 @@ func TestResolveOutputDirCanonicalises(t *testing.T) {
 }
 
 func TestResolveOutputDirRefusesDangerousTargets(t *testing.T) {
-	if _, err := cmdutil.ResolveOutputDir(""); err == nil {
+	if _, err := export.ResolveOutputDir(""); err == nil {
 		t.Error("got nil error for an empty path, want a refusal")
 	}
-	if _, err := cmdutil.ResolveOutputDir(string(os.PathSeparator)); err == nil {
+	if _, err := export.ResolveOutputDir(string(os.PathSeparator)); err == nil {
 		t.Error("got nil error for the filesystem root, want a refusal")
 	}
 	home, err := os.UserHomeDir()
 	if err != nil || home == "" {
 		t.Skip("no home directory to test against")
 	}
-	if _, err := cmdutil.ResolveOutputDir(home); err == nil {
+	if _, err := export.ResolveOutputDir(home); err == nil {
 		t.Error("got nil error for the home directory, want a refusal")
 	}
 }
@@ -52,7 +52,7 @@ func TestSafeCleanDirRefusesADirectoryItDidNotWrite(t *testing.T) {
 		t.Fatalf("seed: %v", err)
 	}
 
-	err := cmdutil.SafeCleanDir(dir)
+	err := export.SafeCleanDir(dir)
 	if err == nil {
 		t.Fatal("got nil error, want a refusal to delete")
 	}
@@ -67,7 +67,7 @@ func TestSafeCleanDirRefusesADirectoryItDidNotWrite(t *testing.T) {
 func TestSafeCleanDirEmptiesASiteItRecognises(t *testing.T) {
 	cases := map[string]string{
 		"a finished site":  "index.html",
-		"a partial export": cmdutil.ExportMarkerName,
+		"a partial export": export.MarkerName,
 	}
 	for name, sentinel := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -77,7 +77,7 @@ func TestSafeCleanDirEmptiesASiteItRecognises(t *testing.T) {
 					t.Fatalf("seed: %v", err)
 				}
 			}
-			if err := cmdutil.SafeCleanDir(dir); err != nil {
+			if err := export.SafeCleanDir(dir); err != nil {
 				t.Fatalf("SafeCleanDir: %v", err)
 			}
 			entries, err := os.ReadDir(dir)
@@ -93,11 +93,11 @@ func TestSafeCleanDirEmptiesASiteItRecognises(t *testing.T) {
 
 func TestSafeCleanDirAcceptsEmptyAndMissingDirectories(t *testing.T) {
 	dir := t.TempDir()
-	if err := cmdutil.SafeCleanDir(dir); err != nil {
+	if err := export.SafeCleanDir(dir); err != nil {
 		t.Errorf("empty directory: %v", err)
 	}
 	missing := filepath.Join(dir, "nested", "site")
-	if err := cmdutil.SafeCleanDir(missing); err != nil {
+	if err := export.SafeCleanDir(missing); err != nil {
 		t.Errorf("missing directory: %v", err)
 	}
 	info, err := os.Stat(missing)
@@ -115,7 +115,7 @@ func TestSafeCleanDirRefusesAFile(t *testing.T) {
 	if err := os.WriteFile(file, []byte("x"), 0o600); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
-	err := cmdutil.SafeCleanDir(file)
+	err := export.SafeCleanDir(file)
 	if err == nil {
 		t.Fatal("got nil error, want a refusal")
 	}
@@ -126,12 +126,12 @@ func TestSafeCleanDirRefusesAFile(t *testing.T) {
 
 func TestWritableDir(t *testing.T) {
 	dir := t.TempDir()
-	if err := cmdutil.WritableDir(dir); err != nil {
+	if err := export.WritableDir(dir); err != nil {
 		t.Errorf("existing directory: %v", err)
 	}
 	// A path that does not exist yet is answered by its nearest existing
 	// ancestor, because that is where the first mkdir will land.
-	if err := cmdutil.WritableDir(filepath.Join(dir, "not", "yet")); err != nil {
+	if err := export.WritableDir(filepath.Join(dir, "not", "yet")); err != nil {
 		t.Errorf("missing directory: %v", err)
 	}
 
@@ -139,7 +139,7 @@ func TestWritableDir(t *testing.T) {
 	if err := os.WriteFile(file, []byte("x"), 0o600); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
-	if err := cmdutil.WritableDir(file); err == nil {
+	if err := export.WritableDir(file); err == nil {
 		t.Error("got nil error for a file, want a refusal")
 	}
 
@@ -150,7 +150,7 @@ func TestWritableDir(t *testing.T) {
 	if err := os.Mkdir(locked, 0o500); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
-	err := cmdutil.WritableDir(locked)
+	err := export.WritableDir(locked)
 	if err == nil {
 		t.Fatal("got nil error for a read-only directory, want a refusal")
 	}
@@ -166,13 +166,13 @@ func TestWritableDir(t *testing.T) {
 // with it. A generated site contains no source, so any source is the signal.
 func TestSafeCleanDirRefusesASourceDirectory(t *testing.T) {
 	dir := t.TempDir()
-	for _, name := range []string{"embed.go", "index.html", cmdutil.ExportMarkerName} {
+	for _, name := range []string{"embed.go", "index.html", export.MarkerName} {
 		if err := os.WriteFile(filepath.Join(dir, name), []byte("x"), 0o600); err != nil {
 			t.Fatalf("seed %s: %v", name, err)
 		}
 	}
 
-	err := cmdutil.SafeCleanDir(dir)
+	err := export.SafeCleanDir(dir)
 	if err == nil {
 		t.Fatal("SafeCleanDir on a directory holding .go files = nil error, want a refusal")
 	}

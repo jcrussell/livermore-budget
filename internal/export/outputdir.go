@@ -1,4 +1,4 @@
-package cmdutil
+package export
 
 import (
 	"errors"
@@ -7,13 +7,13 @@ import (
 	"path/filepath"
 )
 
-// ExportMarkerName is the sentinel file `fisc export` writes at the very start
+// MarkerName is the sentinel file `fisc export` writes at the very start
 // of a run to mark the output directory as fisc's, and therefore safe to
 // clean. index.html is written last, so a run that fails midway would
 // otherwise leave a non-empty tree with no index.html — which SafeCleanDir
 // refuses to delete, dead-ending the retry. The early marker keeps a partial
 // export recoverable with --clean.
-const ExportMarkerName = ".fisc-export"
+const MarkerName = ".fisc-export"
 
 // ResolveOutputDir abs-resolves a user-supplied output directory, follows
 // symlinks on its existing prefix, and refuses the two locations where a
@@ -40,7 +40,7 @@ func ResolveOutputDir(outputDir string) (string, error) {
 	// Both sides are symlink-resolved before comparing. Comparing a resolved
 	// target against a raw $HOME silently disarms the guard wherever the home
 	// directory traverses a symlink, which is the normal case on NFS-mounted
-	// homes and on macOS -- path_test.go already works around the same thing
+	// homes and on macOS -- outputdir_test.go already works around the same thing
 	// for /tmp.
 	if home, herr := os.UserHomeDir(); herr == nil && home != "" {
 		if rhome, rerr := evalExistingSymlinks(home); rerr == nil && resolved == rhome {
@@ -78,7 +78,7 @@ func looksLikeSource(dir string) bool {
 
 // SafeCleanDir removes outputDir and recreates it empty, but only when the
 // directory is empty or looks like one fisc generated — one holding either a
-// finished site's index.html or the ExportMarkerName sentinel. It refuses to
+// finished site's index.html or the MarkerName sentinel. It refuses to
 // delete a non-empty directory with neither, so `fisc export --clean -o
 // ~/documents` cannot wipe the documents. The path is canonicalised and
 // screened by ResolveOutputDir first.
@@ -118,7 +118,7 @@ func SafeCleanDir(outputDir string) error {
 	if len(entries) > 0 {
 		managed := false
 		for _, e := range entries {
-			if e.Name() == "index.html" || e.Name() == ExportMarkerName {
+			if e.Name() == "index.html" || e.Name() == MarkerName {
 				managed = true
 				break
 			}
@@ -126,7 +126,7 @@ func SafeCleanDir(outputDir string) error {
 		if !managed {
 			return fmt.Errorf(
 				"output directory %q is not empty and does not look like a generated site (no index.html and no %s marker); refusing to delete it",
-				resolved, ExportMarkerName)
+				resolved, MarkerName)
 		}
 	}
 

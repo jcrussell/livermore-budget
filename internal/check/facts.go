@@ -7,10 +7,10 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/corpus"
+	"github.com/jcrussell/livermore-budget/internal/english"
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/vocab"
-	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
 // factsSorted asserts the committed fact store is in canonical order.
@@ -280,7 +280,7 @@ func (*factOffsetPointsAtToken) Run(_ context.Context, s *Subject) (Result, erro
 		subjects: len(s.Facts),
 		unit:     "facts",
 		held: fmt.Sprintf("%d facts, each offset landing on its own token in %d %s",
-			len(s.Facts), pages.read, cmdutil.Plural(pages.read, "page", "pages")),
+			len(s.Facts), pages.read, english.Plural(pages.read, "page", "pages")),
 		nothing:  "the fact store is empty",
 		findings: findings,
 	}.result(), nil
@@ -410,7 +410,7 @@ func (*factCitationsAreDeclared) Run(_ context.Context, s *Subject) (Result, err
 		subjects: len(s.Facts),
 		unit:     "facts",
 		held: fmt.Sprintf("%d facts over %d printed figures; %d %s shared by a row and its declared counterpart",
-			len(s.Facts), len(order), declared, cmdutil.Plural(declared, "figure", "figures")),
+			len(s.Facts), len(order), declared, english.Plural(declared, "figure", "figures")),
 		nothing:  "the fact store is empty",
 		findings: findings,
 	}.result(), nil

@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/jcrussell/livermore-budget/internal/english"
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/internal/vocab"
-	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
 // trendPointsTieToFacts asserts every published point IS the fact it cites.
@@ -121,7 +121,7 @@ func (*trendPointsTieToFacts) Run(_ context.Context, s *Subject) (Result, error)
 		held: fmt.Sprintf("%d points across %d trends %s, each equal to the fact it cites and "+
 			"each fact in the slice published exactly once",
 			points, len(s.trendDocuments()),
-			cmdutil.Plural(len(s.trendDocuments()), "document", "documents")),
+			english.Plural(len(s.trendDocuments()), "document", "documents")),
 		nothing:  "no projection built a trends document, so no point has been compared",
 		findings: findings,
 	}.result(), nil

@@ -14,8 +14,8 @@ import (
 	yaml "go.yaml.in/yaml/v3"
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
+	"github.com/jcrussell/livermore-budget/internal/hint"
 	"github.com/jcrussell/livermore-budget/internal/vocab"
-	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
 // parseError reports a problem in a rule file, located precisely enough to fix
@@ -78,7 +78,7 @@ func LoadDir(fsys fs.FS, dir string) ([]*File, error) {
 		case strings.HasPrefix(name, "."), name == "README.md":
 			// editor swap files and docs are fine to ignore
 		default:
-			return nil, cmdutil.WithHint(
+			return nil, hint.With(
 				fmt.Errorf("%s: unexpected file in the mapping directory", path.Join(dir, name)),
 				"mapping files must end in .yaml or .yml, or they are never read")
 		}
@@ -139,7 +139,7 @@ func parse(r io.Reader, p string) (*File, error) {
 	// quiet loss that KnownFields exists to prevent, one level up.
 	var extra File
 	if err := dec.Decode(&extra); err == nil {
-		return nil, cmdutil.WithHint(
+		return nil, hint.With(
 			&parseError{Path: p, Msg: "file contains more than one YAML document"},
 			"put each document in its own file; every rule in a file must "+
 				"belong to the doc_id declared at the top")
@@ -168,7 +168,7 @@ func (f *File) validate() error {
 	case f.SchemaVersion == 0:
 		return errf("", "schema_version", "is required (want %d)", SchemaVersion)
 	case f.SchemaVersion > SchemaVersion:
-		return cmdutil.WithHint(
+		return hint.With(
 			errf("", "schema_version", "got %d, want %d", f.SchemaVersion, SchemaVersion),
 			"this rule file was written for a newer fisc; upgrade the binary")
 	case f.SchemaVersion != SchemaVersion:
@@ -226,7 +226,7 @@ func validateRollups(f *File, errf errFunc) error {
 		}
 		seen[ro.ID] = true
 		if byID[ro.ID] != nil {
-			return cmdutil.WithHint(
+			return hint.With(
 				errf("", "rollups", "%q is also a rule id", ro.ID),
 				"a rollup and a rule are reported side by side, so one id must "+
 					"not name both")
@@ -252,7 +252,7 @@ func validateRollups(f *File, errf errFunc) error {
 		// most likely place for the field to be typed is the one place nothing
 		// read it.
 		if len(ro.Kinds) > 0 && declines {
-			return cmdutil.WithHint(
+			return hint.With(
 				errf("", field("kinds"), "is declared alongside unassertable"),
 				"kinds says what a rollup's covered rules span, and an "+
 					"unassertable rollup covers none; the reason text is where "+
@@ -263,7 +263,7 @@ func validateRollups(f *File, errf errFunc) error {
 			return errf("", field("unassertable"),
 				"is declared alongside covers; a rollup either asserts or says why it cannot")
 		case !asserts && !declines:
-			return cmdutil.WithHint(
+			return hint.With(
 				errf("", field("covers"), "is empty and no reason is declared"),
 				"say which rules the printed total covers, or declare "+
 					"unassertable with the reason it cannot be checked")
@@ -302,7 +302,7 @@ func validateRollups(f *File, errf errFunc) error {
 				return errf("", field("covers"), "no rule %q in this file", id)
 			}
 			if covered[id] {
-				return cmdutil.WithHint(
+				return hint.With(
 					errf("", field("covers"), "%q is listed twice", id),
 					"a rule counted twice inflates the sum by its own total")
 			}
@@ -311,13 +311,13 @@ func validateRollups(f *File, errf errFunc) error {
 			// covered rule contributes nothing to sum, and the rollup would
 			// silently be a check over fewer rules than it names.
 			if rule.TotalRow == "" {
-				return cmdutil.WithHint(
+				return hint.With(
 					errf("", field("covers"), "rule %q declares no total_row", id),
 					"a rollup sums the totals its covered rules PRINT, so every "+
 						"one of them must print one")
 			}
 			if rule.TotalRow == ro.TotalRow {
-				return cmdutil.WithHint(
+				return hint.With(
 					errf("", field("total_row"), "is also rule %q's total_row", id),
 					"the rollup's anchor must name the line printing the ROLLUP, "+
 						"not one of the totals it covers")
@@ -345,7 +345,7 @@ func validateRollups(f *File, errf errFunc) error {
 			// It needs no pages and no registry, so it is refused here rather
 			// than in CheckRollup.
 			if first.Scope != rule.Scope {
-				return cmdutil.WithHint(
+				return hint.With(
 					errf("", field("covers"),
 						"rule %q is scope %q and rule %q is scope %q",
 						first.ID, first.Scope, id, rule.Scope),
@@ -354,7 +354,7 @@ func validateRollups(f *File, errf errFunc) error {
 						"counted twice, which ties and still misstates the city")
 			}
 			if !slices.Equal(first.Parts[0].Columns, rule.Parts[0].Columns) {
-				return cmdutil.WithHint(
+				return hint.With(
 					errf("", field("covers"),
 						"rules %q and %q do not declare the same columns", first.ID, id),
 					"the rollup adds these totals column by column, which is "+
@@ -399,7 +399,7 @@ func validateRollupKinds(ro *Rollup, byID map[string]*Rule, field func(string) s
 	}
 	if len(span) == 1 {
 		if len(ro.Kinds) > 0 {
-			return cmdutil.WithHint(
+			return hint.With(
 				errf("", field("kinds"), "is declared and every covered rule is kind %q",
 					sortedKinds(span)[0]),
 				"the list exists to say that a printed total spans more than one "+
@@ -408,7 +408,7 @@ func validateRollupKinds(ro *Rollup, byID map[string]*Rule, field func(string) s
 		return nil
 	}
 	if len(ro.Kinds) == 0 {
-		return cmdutil.WithHint(
+		return hint.With(
 			errf("", field("kinds"),
 				"is required: the covered rules span %s", describeKinds(sortedKinds(span))),
 			"a printed total over two kinds is a real line -- p140's \"Total "+
@@ -451,7 +451,7 @@ func validateRule(r *Rule, errf errFunc) error {
 		return errf(r.ID, "basis", "got %q, want one of %s", r.Basis, vocab.BasisList())
 	}
 	if r.Units == "" {
-		return cmdutil.WithHint(
+		return hint.With(
 			errf(r.ID, "units", "is required"),
 			"units come from the table's caption, not the token: \"71.8\" is "+
 				"meaningless until you know the schedule is printed in millions")
@@ -519,7 +519,7 @@ func validateRule(r *Rule, errf errFunc) error {
 		if row.Page != 0 {
 			switch n := partsOnPage[row.Page]; {
 			case n == 0:
-				return cmdutil.WithHint(
+				return hint.With(
 					errf(r.ID, "rows", "row %q: page %d is not a part of this rule",
 						row.PrintedLabel(), row.Page),
 					"page places a row on the one part that prints it; "+
@@ -528,7 +528,7 @@ func validateRule(r *Rule, errf errFunc) error {
 				return errf(r.ID, "rows", "row %q: page %d is listed twice in parts, "+
 					"so it names no single part", row.PrintedLabel(), row.Page)
 			case len(r.Parts) == 1:
-				return cmdutil.WithHint(
+				return hint.With(
 					errf(r.ID, "rows", "row %q: page places nothing in a rule of one part",
 						row.PrintedLabel()),
 					"every row of a one-part rule is on that part; omit page")
@@ -551,12 +551,12 @@ func validateRule(r *Rule, errf errFunc) error {
 		case rowIndex[row.Identity()] && row.Skip && skipped[row.Identity()]:
 			repeated[row.Identity()] = true
 		case rowIndex[row.Identity()]:
-			return cmdutil.WithHint(
+			return hint.With(
 				errf(r.ID, "rows", "duplicate row label %q", row.PrintedLabel()),
 				"row labels are positional identities; two rows cannot share one "+
 					"unless both are skip: true")
 		case printed[row.PrintedLabel()]:
-			return cmdutil.WithHint(
+			return hint.With(
 				errf(r.ID, "rows", "two rows print as %q", row.PrintedLabel()),
 				"the two rows split that text differently between label and "+
 					"label_tail, so they are two identities to the resolver "+
@@ -580,7 +580,7 @@ func validateRule(r *Rule, errf errFunc) error {
 		}
 		if row.Quantity != "" {
 			if row.Quantity == QuantityAmount {
-				return cmdutil.WithHint(
+				return hint.With(
 					errf(r.ID, "rows", "row %q: quantity %q is the default",
 						row.Label, row.Quantity),
 					"an undeclared row already parses amounts; remove the declaration")
@@ -604,7 +604,7 @@ func validateRule(r *Rule, errf errFunc) error {
 				declared = "counterpart"
 			}
 			if declared != "" {
-				return cmdutil.WithHint(
+				return hint.With(
 					errf(r.ID, "rows", "row %q: %s on a row that publishes no cell",
 						row.Label, declared),
 					"a sign says how a row's facts are printed and a counterpart "+
@@ -645,7 +645,7 @@ func validateRule(r *Rule, errf errFunc) error {
 				if k == vocab.KindTransferIn || k == vocab.KindTransferOut {
 					continue
 				}
-				return cmdutil.WithHint(
+				return hint.With(
 					errf(r.ID, "rows", "row %q: sign netted on kind %q", row.Label, k),
 					"netted says the document prints this row against its kind's "+
 						"direction, which only transfer_in and transfer_out have; "+
@@ -665,7 +665,7 @@ func validateRule(r *Rule, errf errFunc) error {
 			if r.TotalRow != row.Label && r.TotalRow != row.PrintedLabel() {
 				continue
 			}
-			return cmdutil.WithHint(
+			return hint.With(
 				errf(r.ID, "total_row", "%q is also listed in rows", r.TotalRow),
 				"the total row is what the mapped rows are checked against; "+
 					"including it in rows would double-count it")
@@ -748,7 +748,7 @@ func validateRule(r *Rule, errf errFunc) error {
 		// would be accepted and inert). The one INVERTED arm is amount.Parse:
 		// a wrapped label must not be a figure and this must be one.
 		if p.LabelsFrom != 0 && len(p.UnmappedText) > 0 {
-			return cmdutil.WithHint(
+			return hint.With(
 				errf(r.ID, fmt.Sprintf("parts[page %d].unmapped_text", p.Page),
 					"is declared on a part whose labels_from takes its row labels from page %d",
 					p.LabelsFrom),
@@ -768,13 +768,13 @@ func validateRule(r *Rule, errf errFunc) error {
 						"the trimmed text of the gap", u.Text)
 			}
 			if strings.TrimSpace(u.Note) == "" {
-				return cmdutil.WithHint(
+				return hint.With(
 					errf(r.ID, field, "%q has no note", u.Text),
 					"the note is why this is a declaration and not a silent skip; "+
 						"say what the page prints there and why it belongs to no row")
 			}
 			if _, err := amount.Parse(u.Text, r.Units); err != nil {
-				return cmdutil.WithHint(
+				return hint.With(
 					errf(r.ID, field, "%q is not a figure: %v", u.Text, err),
 					"unmapped_text declares a FIGURE the page prints that belongs "+
 						"to no row; text the page wrapped from a row's label is "+
@@ -803,7 +803,7 @@ func validateRule(r *Rule, errf errFunc) error {
 			}
 			if c.Quantity != "" {
 				if c.Quantity == QuantityAmount {
-					return cmdutil.WithHint(
+					return hint.With(
 						errf(r.ID, fmt.Sprintf("parts[page %d].columns[%d]", p.Page, j),
 							"quantity %q is the default", c.Quantity),
 						"an undeclared column already parses amounts; remove the declaration")
@@ -817,7 +817,7 @@ func validateRule(r *Rule, errf errFunc) error {
 				// all amounts prints no such line. Refused here so the
 				// mismatch cannot surface later as a missing-anchor error.
 				if r.TotalRow != "" {
-					return cmdutil.WithHint(
+					return hint.With(
 						errf(r.ID, fmt.Sprintf("parts[page %d].columns[%d]", p.Page, j),
 							"parses %s, but the rule declares total_row %q",
 							c.Quantity, r.TotalRow),
@@ -840,7 +840,7 @@ func validateRule(r *Rule, errf errFunc) error {
 			key := c
 			key.Kind = ""
 			if cols[key] {
-				return cmdutil.WithHint(
+				return hint.With(
 					errf(r.ID, fmt.Sprintf("parts[page %d].columns[%d]", p.Page, j),
 						"duplicates an earlier column (fund_group=%q fund=%d fiscal_year=%d "+
 							"basis=%q category=%q)",
@@ -863,7 +863,7 @@ func validateRule(r *Rule, errf errFunc) error {
 				continue
 			}
 			if _, err := amount.Parse(field.val, r.Units); err == nil {
-				return cmdutil.WithHint(
+				return hint.With(
 					errf(r.ID, fmt.Sprintf("parts[page %d].%s", p.Page, field.name),
 						"%q is a currency amount", field.val),
 					"anchor the block on a label such as \"TOTAL REVENUES:\"; "+
@@ -897,14 +897,14 @@ func validateRule(r *Rule, errf errFunc) error {
 				return nil
 			}
 			if o.LabelTail == "" && len(tailed[o.Label]) > 0 {
-				return cmdutil.WithHint(
+				return hint.With(
 					errf(r.ID, field, "%q names %d rows, which differ only in "+
 						"their label_tail: %q", o.Label, len(tailed[o.Label]),
 						tailed[o.Label]),
 					"a row named by two anchors is named by both: "+
 						"- {label: ..., label_tail: ...}")
 			}
-			return cmdutil.WithHint(
+			return hint.With(
 				errf(r.ID, field, "%q is not one of this rule's rows", o.PrintedLabel()),
 				notARow)
 		}
@@ -923,13 +923,13 @@ func validateRule(r *Rule, errf errFunc) error {
 					d.Column, len(p.Columns))
 			}
 			if p.Columns[d.Column-1].Skip {
-				return cmdutil.WithHint(
+				return hint.With(
 					errf(r.ID, field, "column %d is skipped", d.Column),
 					"a skipped column produces no facts and is never totalled, "+
 						"so there is nothing for a delta to describe")
 			}
 			if q := p.Columns[d.Column-1].Quantity; q != "" {
-				return cmdutil.WithHint(
+				return hint.With(
 					errf(r.ID, field, "column %d parses %s, not amounts", d.Column, q),
 					"a non-amount column produces no facts and is never totalled, "+
 						"so there is nothing for a delta to describe")
@@ -939,13 +939,13 @@ func validateRule(r *Rule, errf errFunc) error {
 			}
 			deltas[d.Column] = true
 			if d.Cents == 0 {
-				return cmdutil.WithHint(
+				return hint.With(
 					errf(r.ID, field, "delta_cents is zero"),
 					"a zero delta is what an undeclared column already asserts; "+
 						"remove the entry")
 			}
 			if strings.TrimSpace(d.Note) == "" {
-				return cmdutil.WithHint(
+				return hint.With(
 					errf(r.ID, field, "note is required"),
 					"the note is why this is a declaration and not a tolerance: "+
 						"say what was checked and why the difference is the "+
@@ -967,7 +967,7 @@ func validateRule(r *Rule, errf errFunc) error {
 		}
 		src := r.labelledPart(p)
 		if src == nil {
-			return cmdutil.WithHint(
+			return hint.With(
 				errf(r.ID, fmt.Sprintf("parts[page %d].labels_from", p.Page),
 					"page %d is not a part of this rule", p.LabelsFrom),
 				"a continuation page borrows row labels from another page in "+
@@ -1014,12 +1014,12 @@ func validateRule(r *Rule, errf errFunc) error {
 // needs a category, which internal/check declines to require on purpose ("an
 // absent value is the mapping's business").
 func validateClass(r *Rule, field, owner, category string, kind vocab.Kind, publishes bool,
-	errf errFunc, hint string) error {
+	errf errFunc, remedy string) error {
 	if kind != "" && !kind.Valid() {
 		return errf(r.ID, field, "%s: kind %q is not one of the five", owner, kind)
 	}
 	if publishes && category == "" {
-		return cmdutil.WithHint(errf(r.ID, field, "%s has no category", owner), hint)
+		return hint.With(errf(r.ID, field, "%s has no category", owner), remedy)
 	}
 	return nil
 }
@@ -1046,7 +1046,7 @@ func validateRowClass(r *Rule, row Row, byColumn bool, errf errFunc) error {
 		{"category", row.Category}, {"kind", string(row.Kind)},
 	} {
 		if d.val != "" {
-			return cmdutil.WithHint(
+			return hint.With(
 				errf(r.ID, "rows", "row %q declares %s %q, but this rule's columns "+
 					"carry the category", row.Label, d.key, d.val),
 				"exactly one axis classifies a rule's figures, so that no cell "+
@@ -1066,7 +1066,7 @@ func validateColumnClass(r *Rule, p *Part, j int, byColumn bool, errf errFunc) e
 	owner := fmt.Sprintf("columns[%d]", j)
 	if !c.publishes() {
 		if c.Category != "" || c.Kind != "" {
-			return cmdutil.WithHint(
+			return hint.With(
 				errf(r.ID, field, "%s publishes no fact and declares a category or kind", owner),
 				"a skipped or non-amount column publishes no fact, so nothing it "+
 					"classifies is ever read; remove the declaration")
@@ -1079,7 +1079,7 @@ func validateColumnClass(r *Rule, p *Part, j int, byColumn bool, errf errFunc) e
 				"publishes must; skip: true a column the rule does not map")
 	}
 	if c.Kind != "" {
-		return cmdutil.WithHint(
+		return hint.With(
 			errf(r.ID, field, "%s declares kind %q and no category", owner, c.Kind),
 			"a column's kind follows its category; on a rule whose rows carry the "+
 				"category, the row's kind overrides the rule's")
@@ -1095,7 +1095,7 @@ func validateGapLines(r *Rule, p *Part, key string, entries []string, errf errFu
 	labelsFromHint, amountHint string) error {
 	field := fmt.Sprintf("parts[page %d].%s", p.Page, key)
 	if p.LabelsFrom != 0 && len(entries) > 0 {
-		return cmdutil.WithHint(
+		return hint.With(
 			errf(r.ID, field,
 				"is declared on a part whose labels_from takes its row labels from page %d",
 				p.LabelsFrom),
@@ -1115,7 +1115,7 @@ func validateGapLines(r *Rule, p *Part, key string, entries []string, errf errFu
 			return errf(r.ID, field, "%q is listed twice", e)
 		}
 		if _, err := amount.Parse(e, r.Units); err == nil {
-			return cmdutil.WithHint(errf(r.ID, field, "%q is a currency amount", e), amountHint)
+			return hint.With(errf(r.ID, field, "%q is a currency amount", e), amountHint)
 		}
 		seen[e] = true
 	}
@@ -1127,13 +1127,13 @@ func validateGapLines(r *Rule, p *Part, key string, entries []string, errf errFu
 func validateGrain(r *Rule, errf errFunc) error {
 	switch {
 	case r.publishes() && r.Grain == "":
-		return cmdutil.WithHint(
+		return hint.With(
 			errf(r.ID, "grain", "is required on a rule that publishes facts"),
 			"name the lattice level the table is printed at -- which of fund_group, "+
 				"fund, department and category it has an axis for; internal/structure "+
 				"checks the name against the facts the rule publishes")
 	case !r.publishes() && r.Grain != "":
-		return cmdutil.WithHint(
+		return hint.With(
 			errf(r.ID, "grain", "is %q, but every row or every column of this rule is "+
 				"skipped, non-amount or declared blank, so it publishes no fact", r.Grain),
 			"a grain declared over zero facts cannot be checked against the store; "+
@@ -1175,14 +1175,14 @@ func validatePrintedDecimals(r *Rule, errf errFunc) error {
 		return errf(r.ID, "printed_decimals", "cannot be checked against unknown units %q", string(r.Units))
 	}
 	if d > max {
-		return cmdutil.WithHint(
+		return hint.With(
 			errf(r.ID, "printed_decimals", "is %d, but %s can represent only %d decimal places exactly",
 				d, string(r.Units), max),
 			"the tolerance is a whole number of cents derived from this count; "+
 				"a finer one would not be")
 	}
 	if r.Units == amount.Dollars {
-		return cmdutil.WithHint(
+		return hint.With(
 			errf(r.ID, "printed_decimals", "declared on a rule printed in dollars"),
 			"a dollar-precision tolerance has no consumer in this corpus, and the "+
 				"dollar-level discrepancies it looks like it would cover are the "+
@@ -1191,13 +1191,13 @@ func validatePrintedDecimals(r *Rule, errf errFunc) error {
 				"and this must not absorb silently (fisc-2sd)")
 	}
 	if r.TotalRow == "" {
-		return cmdutil.WithHint(
+		return hint.With(
 			errf(r.ID, "printed_decimals", "declared without a total_row"),
 			"the tolerance applies to the comparison between the mapped rows and "+
 				"a printed total; with no total there is nothing for it to loosen")
 	}
 	if len(r.Parts) > 1 && !r.TotalSpansParts {
-		return cmdutil.WithHint(
+		return hint.With(
 			errf(r.ID, "printed_decimals", "declared on a %d-part rule whose total does not span its parts", len(r.Parts)),
 			"such a rule is compared once PER PART, so the refusal of a tolerance "+
 				"no column needed would fire on whichever page happens to tie "+
@@ -1207,7 +1207,7 @@ func validatePrintedDecimals(r *Rule, errf errFunc) error {
 	for i := range r.Parts {
 		p := &r.Parts[i]
 		if len(p.StatedTotalDeltas) > 0 {
-			return cmdutil.WithHint(
+			return hint.With(
 				errf(r.ID, fmt.Sprintf("parts[page %d].stated_total_deltas", p.Page),
 					"declared on a rule that also declares printed_decimals"),
 				"the two are disjoint on purpose: a delta names one exact figure the "+
@@ -1228,7 +1228,7 @@ func validatePrintedDecimals(r *Rule, errf errFunc) error {
 		// and ties EXACTLY, and its General Government rule declares the
 		// tolerance and has no orphan.
 		if len(p.UnmappedText) > 0 {
-			return cmdutil.WithHint(
+			return hint.With(
 				errf(r.ID, fmt.Sprintf("parts[page %d].unmapped_text", p.Page),
 					"declared on a rule that also declares printed_decimals"),
 				"a figure declared out of the read is checked by nothing but the "+
@@ -1283,13 +1283,13 @@ func validateTotalRowAbove(r *Rule, errf errFunc) error {
 		return nil
 	}
 	if r.TotalRow == "" {
-		return cmdutil.WithHint(
+		return hint.With(
 			errf(r.ID, "total_row_above", "declared without a total_row"),
 			"total_row_above says WHERE the printed total is; total_row says "+
 				"which line it is, and there is nothing to find without it")
 	}
 	if r.TotalSpansParts {
-		return cmdutil.WithHint(
+		return hint.With(
 			errf(r.ID, "total_row_above", "declared with total_spans_parts"),
 			"a total printed above its own rows is on the same page as them by "+
 				"construction, so it cannot also be the one total of a block "+
@@ -1298,14 +1298,14 @@ func validateTotalRowAbove(r *Rule, errf errFunc) error {
 	for i := range r.Parts {
 		p := &r.Parts[i]
 		if p.LabelsFrom != 0 {
-			return cmdutil.WithHint(
+			return hint.With(
 				errf(r.ID, fmt.Sprintf("parts[page %d].labels_from", p.Page),
 					"declared on a rule with total_row_above"),
 				"a label-less part finds its totals from stop_at and reads no "+
 					"section anchor, so it has nowhere to print a total above")
 		}
 		if p.Section != r.TotalRow {
-			return cmdutil.WithHint(
+			return hint.With(
 				errf(r.ID, fmt.Sprintf("parts[page %d].section", p.Page),
 					"is %q, but total_row_above requires it to be the total_row %q",
 					p.Section, r.TotalRow),
@@ -1361,7 +1361,7 @@ func validateRowLabelFunds(r *Rule, errf errFunc) error {
 		}
 	}
 	if covered == 0 {
-		return cmdutil.WithHint(
+		return hint.With(
 			errf(r.ID, "row_labels_name_funds",
 				"no part of this rule reads any of its rows, so the declaration "+
 					"covers none of them"),
@@ -1375,7 +1375,7 @@ func validateRowLabelFunds(r *Rule, errf errFunc) error {
 			continue
 		}
 		if row.Fund == 0 {
-			return cmdutil.WithHint(
+			return hint.With(
 				errf(r.ID, "row_labels_name_funds",
 					"row %q declares no fund, so the declaration says nothing about it",
 					row.PrintedLabel()),
@@ -1396,7 +1396,7 @@ func validateRowLabelFunds(r *Rule, errf errFunc) error {
 		// that does not declare row_labels_name_funds while it did. Latent --
 		// no rule declares both today.
 		if row.Counterpart != nil {
-			return cmdutil.WithHint(
+			return hint.With(
 				errf(r.ID, "row_labels_name_funds",
 					"row %q declares a counterpart, whose fund the printed label "+
 						"cannot name", row.PrintedLabel()),
@@ -1420,7 +1420,7 @@ func validateTotalRowKinds(r *Rule, errf errFunc) error {
 		return nil
 	}
 	if r.TotalRow == "" {
-		return cmdutil.WithHint(
+		return hint.With(
 			errf(r.ID, "total_row_kinds", "is declared but the rule has no total_row"),
 			"the list says which of the rule's kinds the PRINTED total covers, "+
 				"so there must be a printed total for it to describe")
@@ -1449,14 +1449,14 @@ func validateTotalRowKinds(r *Rule, errf errFunc) error {
 	}
 	for _, k := range r.TotalRowKinds {
 		if !have[k] {
-			return cmdutil.WithHint(
+			return hint.With(
 				errf(r.ID, "total_row_kinds", "no row of this rule has kind %q", k),
 				"the list names the kinds the printed total covers, and every "+
 					"one of them must be a kind this rule maps")
 		}
 	}
 	if len(seen) == len(have) {
-		return cmdutil.WithHint(
+		return hint.With(
 			errf(r.ID, "total_row_kinds", "names every kind the rule maps, so it excludes nothing"),
 			"a total that covers all of its rows needs no declaration; remove "+
 				"it, and the check stays kind-blind as the mixed fund blocks "+
@@ -1478,7 +1478,7 @@ func validateTotalSpansParts(r *Rule, errf errFunc) error {
 		return nil
 	}
 	if r.TotalRow == "" {
-		return cmdutil.WithHint(
+		return hint.With(
 			errf(r.ID, "total_spans_parts", "is set but the rule declares no total_row"),
 			"the flag says WHICH rows the printed total covers; with no total "+
 				"row declared there is nothing for it to say that about")
@@ -1487,7 +1487,7 @@ func validateTotalSpansParts(r *Rule, errf errFunc) error {
 	// -- and a declaration that cannot fail is the shape this repo refuses
 	// everywhere else (a stale wrapped_label, a delta that now ties).
 	if len(r.Parts) < 2 {
-		return cmdutil.WithHint(
+		return hint.With(
 			errf(r.ID, "total_spans_parts", "is set on a rule with %d part", len(r.Parts)),
 			"the flag exists for a block whose rows straddle a page break; on "+
 				"a single part it is the per-part check already, so remove it")
@@ -1502,7 +1502,7 @@ func validateTotalSpansParts(r *Rule, errf errFunc) error {
 		if slices.Equal(first.Columns, p.Columns) {
 			continue
 		}
-		return cmdutil.WithHint(
+		return hint.With(
 			errf(r.ID, "total_spans_parts",
 				"page %d declares %d columns and page %d declares %d, and they must be identical",
 				first.Page, len(first.Columns), p.Page, len(p.Columns)),
@@ -1520,7 +1520,7 @@ func validateTotalSpansParts(r *Rule, errf errFunc) error {
 		}
 	}
 	if len(declaring) > 1 {
-		return cmdutil.WithHint(
+		return hint.With(
 			errf(r.ID, "stated_total_deltas",
 				"pages %v each declare a delta, but this rule has one printed total", declaring),
 			"declare the discrepancy on the part whose page prints the total row")
@@ -1540,7 +1540,7 @@ func validatePartAnchors(r *Rule, p *Part, errf errFunc) error {
 			p.SectionOrdinal)
 	}
 	if p.SectionOrdinal > 0 && p.Section == "" {
-		return cmdutil.WithHint(
+		return hint.With(
 			errf(r.ID, field("section_ordinal"), "is set but section is empty"),
 			"section_ordinal picks which occurrence of section starts the "+
 				"block, so it means nothing without one")
@@ -1550,7 +1550,7 @@ func validatePartAnchors(r *Rule, p *Part, errf errFunc) error {
 			p.StopAtOrdinal)
 	}
 	if p.StopAtOrdinal > 0 && p.StopAt == "" {
-		return cmdutil.WithHint(
+		return hint.With(
 			errf(r.ID, field("stop_at_ordinal"), "is set but stop_at is empty"),
 			"stop_at_ordinal picks which occurrence of stop_at ends the block, "+
 				"so it means nothing without one")
@@ -1563,7 +1563,7 @@ func validatePartAnchors(r *Rule, p *Part, errf errFunc) error {
 	// missing column one place left -- silently, with the value count still
 	// matching.
 	if len(p.ColumnHeaders) != len(p.Columns) {
-		return cmdutil.WithHint(
+		return hint.With(
 			errf(r.ID, field("column_headers"), "has %d entries but the part has %d columns",
 				len(p.ColumnHeaders), len(p.Columns)),
 			"name the printed header of every column left to right, including "+
@@ -1577,7 +1577,7 @@ func validatePartAnchors(r *Rule, p *Part, errf errFunc) error {
 	// thing: a part whose every column is headerless has not opted into the
 	// guard, it has asked for one that cannot exist.
 	if !slices.ContainsFunc(p.ColumnHeaders, func(h columnHeader) bool { return !h.Unheaded }) {
-		return cmdutil.WithHint(
+		return hint.With(
 			errf(r.ID, field("column_headers"), "every entry is null"),
 			"the grid is built from the headers the page prints, so at least one "+
 				"column must name one; a part that can name none declares no "+
@@ -1590,7 +1590,7 @@ func validatePartAnchors(r *Rule, p *Part, errf errFunc) error {
 			// declaration is asking for a figure to be filed under a band that
 			// does not exist.
 			if !p.Columns[i].Skip {
-				return cmdutil.WithHint(
+				return hint.With(
 					errf(r.ID, field("column_headers"), "entry %d is null but column %d "+
 						"is not skipped", i+1, i+1),
 					"null says the page prints no header over this column, which "+
@@ -1602,7 +1602,7 @@ func validatePartAnchors(r *Rule, p *Part, errf errFunc) error {
 			// known bounds, which the grid would have checked. Allowing a null
 			// there would silently decline a check that was available.
 			if i != len(p.ColumnHeaders)-1 {
-				return cmdutil.WithHint(
+				return hint.With(
 					errf(r.ID, field("column_headers"), "entry %d is null but is not "+
 						"the last of %d", i+1, len(p.ColumnHeaders)),
 					"a headerless column is only unplaceable past the last printed "+
@@ -1613,7 +1613,7 @@ func validatePartAnchors(r *Rule, p *Part, errf errFunc) error {
 			continue
 		}
 		if strings.TrimSpace(h.Text) == "" {
-			return cmdutil.WithHint(
+			return hint.With(
 				errf(r.ID, field("column_headers"), "entry %d is empty", i+1),
 				"a header is matched by joining the words printed on the header "+
 					"line, so no page can produce an empty one; write null, not "+
@@ -1624,7 +1624,7 @@ func validatePartAnchors(r *Rule, p *Part, errf errFunc) error {
 		// a DATA row, and a grid built from a data row files that row perfectly
 		// and every other row by luck.
 		if _, err := amount.Parse(h.Text, r.Units); err == nil {
-			return cmdutil.WithHint(
+			return hint.With(
 				errf(r.ID, field("column_headers"), "entry %d is a currency amount: %q",
 					i+1, h.Text),
 				"name more of the printed header -- \"FY 2026\" rather than "+
@@ -1687,7 +1687,7 @@ func checkColumnGrids(files []*File) error {
 					continue
 				}
 				if !slices.Equal(prev.headers, p.ColumnHeaders) {
-					return cmdutil.WithHint(
+					return hint.With(
 						&parseError{Path: f.Path, RuleID: r.ID,
 							Field: fmt.Sprintf("parts[page %d].column_headers", p.Page),
 							Msg: fmt.Sprintf("is %s, but rule %q in %s declares %s for the same page",
@@ -1715,7 +1715,7 @@ func checkColumnGrids(files []*File) error {
 				if !ok {
 					continue
 				}
-				return cmdutil.WithHint(
+				return hint.With(
 					&parseError{Path: f.Path, RuleID: r.ID,
 						Field: fmt.Sprintf("parts[page %d]", p.Page),
 						Msg: fmt.Sprintf("declares no column_headers, but rule %q in %s "+
@@ -1758,7 +1758,7 @@ func checkCounterpart(r *Rule, row Row, errf errFunc) error {
 		return nil
 	}
 	if r.categoryOnColumns() {
-		return cmdutil.WithHint(
+		return hint.With(
 			errf(r.ID, "rows", "row %q declares a counterpart, but this rule's columns "+
 				"carry the category", row.Label),
 			"a counterpart names ONE far end for every figure of its row, and a row "+
@@ -1767,7 +1767,7 @@ func checkCounterpart(r *Rule, row Row, errf errFunc) error {
 				"side of")
 	}
 	if cp.Category == "" {
-		return cmdutil.WithHint(
+		return hint.With(
 			errf(r.ID, "rows", "row %q: counterpart has no category", row.Label),
 			"the far leg classifies on its own account -- a transfer OUT of the "+
 				"paying fund, where the near leg is a transfer IN to the receiving "+
@@ -1778,7 +1778,7 @@ func checkCounterpart(r *Rule, row Row, errf errFunc) error {
 			row.Label, cp.Kind)
 	}
 	if cp.FundGroup == "" {
-		return cmdutil.WithHint(
+		return hint.With(
 			errf(r.ID, "rows", "row %q: counterpart has no fund_group", row.Label),
 			"without one the leg's column_path falls back to the rule's scope, "+
 				"where it is indistinguishable from any other scope-filed fact")
@@ -1797,7 +1797,7 @@ func checkCounterpart(r *Rule, row Row, errf errFunc) error {
 	// out to be similarly unnameable, that needs a decision rather than this
 	// arm being relaxed: the far leg's whole purpose is the payer.
 	if cp.Fund == 0 {
-		return cmdutil.WithHint(
+		return hint.With(
 			errf(r.ID, "rows", "row %q: counterpart declares fund_group %q and no fund",
 				row.Label, cp.FundGroup),
 			"a counterpart names the fund at the far end of the movement; a group "+
@@ -1811,7 +1811,7 @@ func checkCounterpart(r *Rule, row Row, errf errFunc) error {
 	// leg's, and a schedule crossing departments with transfers needs a
 	// decision, not a default.
 	if row.Department != "" {
-		return cmdutil.WithHint(
+		return hint.With(
 			errf(r.ID, "rows", "row %q carries department %q and declares a counterpart",
 				row.Label, row.Department),
 			"the far leg has no department of its own to declare, and inheriting "+
@@ -1843,7 +1843,7 @@ func checkCounterpart(r *Rule, row Row, errf errFunc) error {
 			}
 			near := row.EffectiveColumn(p.Columns[j])
 			if cp.Fund == near.Fund && cp.FundGroup == near.FundGroup {
-				return cmdutil.WithHint(
+				return hint.With(
 					errf(r.ID, "rows", "row %q: counterpart is the same category and the "+
 						"same fund as the row itself in column %d of the part on page %d",
 						row.Label, j+1, p.Page),
@@ -1866,7 +1866,7 @@ func resolveOmittedCells(r *Rule, p *Part, errf errFunc) error {
 	}
 	field := fmt.Sprintf("parts[page %d].omitted_cells", p.Page)
 	if len(p.ColumnHeaders) == 0 {
-		return cmdutil.WithHint(
+		return hint.With(
 			errf(r.ID, field, "omitted_cells needs column_headers on the same part"),
 			"a row with a blank cell is read left to right under the columns it "+
 				"prints, and only the column guard can say each figure is under "+
@@ -1921,7 +1921,7 @@ func validateOmittedCells(r *Rule, p *Part,
 			return errf(r.ID, field, "%q is printed by page %d, not by this part, "+
 				"so it has no cell to leave blank", o.row().PrintedLabel(), rows[id].Page)
 		case strings.TrimSpace(o.Note) == "":
-			return cmdutil.WithHint(
+			return hint.With(
 				errf(r.ID, field, "%s has no note", o.describe()),
 				"say what the page prints on the row and that this cell is blank")
 		}
@@ -1940,7 +1940,7 @@ func validateOmittedCells(r *Rule, p *Part,
 		for c, col := range p.Columns {
 			switch {
 			case p.blank[id][c] && col.Skip:
-				return cmdutil.WithHint(
+				return hint.With(
 					errf(r.ID, field, "%q is a skipped column", p.ColumnHeaders[c].Text),
 					"a skipped column yields no figure to be absent; no page needs a "+
 						"blank declared there yet, so the read refuses one")
@@ -1949,7 +1949,7 @@ func validateOmittedCells(r *Rule, p *Part,
 			}
 		}
 		if printed == 0 {
-			return cmdutil.WithHint(
+			return hint.With(
 				errf(r.ID, field, "declares every column of %q blank",
 					row.PrintedLabel()),
 				"a row this part prints no figure of is not a row of this part: "+
@@ -1984,7 +1984,7 @@ func validateSubtotals(r *Rule, errf errFunc) error {
 			return errf(r.ID, "rows", "row %q: subtotal is %d; levels count from 1",
 				row.PrintedLabel(), row.Subtotal)
 		case row.Subtotal > 0 && !row.Skip:
-			return cmdutil.WithHint(
+			return hint.With(
 				errf(r.ID, "rows", "row %q is a subtotal and is not skip: true", row.PrintedLabel()),
 				"a printed subtotal publishes nothing; publishing it would count its rows twice")
 		case row.Subtotal > 0:
@@ -2032,7 +2032,7 @@ func validateSubtotals(r *Rule, errf errFunc) error {
 	}
 	for _, p := range r.Parts {
 		if len(p.ColumnHeaders) == 0 {
-			return cmdutil.WithHint(
+			return hint.With(
 				errf(r.ID, fmt.Sprintf("parts[page %d].column_headers", p.Page),
 					"is empty, and this rule's subtotals compare figures by column header"),
 				"declare the headers the page prints over each column")

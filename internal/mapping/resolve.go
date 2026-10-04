@@ -11,9 +11,9 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/geom"
+	"github.com/jcrussell/livermore-budget/internal/hint"
 	"github.com/jcrussell/livermore-budget/internal/quantity"
 	"github.com/jcrussell/livermore-budget/internal/vocab"
-	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
 // doc is the view of an extracted document a resolver needs. It is declared
@@ -137,7 +137,7 @@ type resolvedPart struct {
 // NewResolver pairs a rule file with the document it maps.
 func NewResolver(d doc, f *File) (*Resolver, error) {
 	if f.DocID != d.DocID() {
-		return nil, cmdutil.WithHint(
+		return nil, hint.With(
 			fmt.Errorf("%s declares doc_id %q but the extraction is %q",
 				f.Path, f.DocID, d.DocID()),
 			"a rule file maps exactly one document; check which extraction "+
@@ -287,9 +287,9 @@ func (r *Resolver) anchor(rule *Rule, p *Part, field, text string, from int, nee
 	if from > 0 {
 		where = "after the block's start"
 	}
-	fail := func(err error, msg, hint string) (int, error) {
-		return 0, cmdutil.WithHint(&resolveError{DocID: r.file.DocID, RuleID: rule.ID,
-			Page: p.Page, Field: field, Msg: msg, Err: err}, hint)
+	fail := func(err error, msg, remedy string) (int, error) {
+		return 0, hint.With(&resolveError{DocID: r.file.DocID, RuleID: rule.ID,
+			Page: p.Page, Field: field, Msg: msg, Err: err}, remedy)
 	}
 
 	switch {
@@ -500,9 +500,9 @@ func Omissions(rule *Rule, p *Part) []Omission {
 
 func (r *Resolver) labelledValues(rule *Rule, p *Part, blk *block, guard *columnGuard) ([]Value, error) {
 	rows, rowIndex := rule.activeRows(p)
-	fail := func(field, msg, hint string) error {
-		return cmdutil.WithHint(&resolveError{DocID: r.file.DocID, RuleID: rule.ID,
-			Page: p.Page, Field: field, Msg: msg, Err: ErrNotFound}, hint)
+	fail := func(field, msg, remedy string) error {
+		return hint.With(&resolveError{DocID: r.file.DocID, RuleID: rule.ID,
+			Page: p.Page, Field: field, Msg: msg, Err: ErrNotFound}, remedy)
 	}
 
 	values := make([]Value, 0, rule.expectedValues(p))
@@ -662,7 +662,7 @@ func (r *Resolver) checkGap(rule *Rule, p *Part, gap string, rows []Row, i int,
 		if rule.TotalRowAbove {
 			nl := strings.IndexByte(gap, '\n')
 			if nl < 0 {
-				return cmdutil.WithHint(&resolveError{DocID: r.file.DocID, RuleID: rule.ID,
+				return hint.With(&resolveError{DocID: r.file.DocID, RuleID: rule.ID,
 					Page: p.Page, Field: "section", Err: ErrNotFound,
 					Msg: fmt.Sprintf("row %q is on the same printed line as the total %q",
 						rows[0].Label, rule.TotalRow)},
@@ -683,7 +683,7 @@ func (r *Resolver) checkGap(rule *Rule, p *Part, gap string, rows []Row, i int,
 		// before the first row therefore still cannot be declared -- a real gap,
 		// and fisc-0cff rather than an oversight. No page in the corpus needs it.
 		if strings.ContainsFunc(gap, unicode.IsDigit) {
-			return cmdutil.WithHint(&resolveError{DocID: r.file.DocID, RuleID: rule.ID,
+			return hint.With(&resolveError{DocID: r.file.DocID, RuleID: rule.ID,
 				Page: p.Page, Field: "section", Err: ErrNotFound,
 				Msg: fmt.Sprintf("figures appear before the first row %q: %q",
 					rows[0].Label, strings.TrimSpace(gap))},
@@ -700,7 +700,7 @@ func (r *Resolver) checkGap(rule *Rule, p *Part, gap string, rows []Row, i int,
 	if declaredGap(p, gap, used, true, raised) {
 		return nil
 	}
-	return cmdutil.WithHint(&resolveError{DocID: r.file.DocID, RuleID: rule.ID,
+	return hint.With(&resolveError{DocID: r.file.DocID, RuleID: rule.ID,
 		Page: p.Page, Field: "rows", Err: ErrNotFound,
 		Msg: fmt.Sprintf("%q sits between rows %q and %q but is not mapped",
 			trimmed, rows[i-1].PrintedLabel(), rows[i].PrintedLabel())},
@@ -898,13 +898,13 @@ func (r *Resolver) positionalValues(rule *Rule, p *Part, blk *block, guard *colu
 	// subtotals print "$" detached from each figure, inside the block.
 	toks, err := dropCurrencyMarks(tokens(blk.Text, blk.Start))
 	if err != nil {
-		return nil, cmdutil.WithHint(&resolveError{DocID: r.file.DocID, RuleID: rule.ID,
+		return nil, hint.With(&resolveError{DocID: r.file.DocID, RuleID: rule.ID,
 			Page: p.Page, Field: "parts", Err: ErrNotFound, Msg: err.Error()}, currencyHint)
 	}
 	want := rule.expectedValues(p)
 
 	if len(toks) != want {
-		return nil, cmdutil.WithHint(&resolveError{DocID: r.file.DocID, RuleID: rule.ID,
+		return nil, hint.With(&resolveError{DocID: r.file.DocID, RuleID: rule.ID,
 			Page: p.Page, Field: "parts", Err: ErrNotFound,
 			Msg: fmt.Sprintf("read %d values, want %d (%d rows × %d columns, "+
 				"less %d declared blank); rows placed on other pages: %s",
@@ -1016,7 +1016,7 @@ func (r *Resolver) statedTotalLine(rule *Rule, p *Part) (lo, hi int, totals []am
 	line := text[from:to]
 	totals, ok := amountRun(line, len(p.Columns), rule.Units)
 	if !ok {
-		return 0, 0, nil, cmdutil.WithHint(&resolveError{DocID: r.file.DocID, RuleID: rule.ID,
+		return 0, 0, nil, hint.With(&resolveError{DocID: r.file.DocID, RuleID: rule.ID,
 			Page: p.Page, Field: field, Err: ErrNotFound,
 			Msg: fmt.Sprintf("no run of %d consecutive amounts follows the anchor on %q",
 				len(p.Columns), strings.TrimSpace(line))},
@@ -1261,7 +1261,7 @@ func (r *Resolver) CheckSpanningTotals(rule *Rule) (*totalsResult, error) {
 		if len(p.StatedTotalDeltas) == 0 || p.Page == bearer.Page {
 			continue
 		}
-		return nil, cmdutil.WithHint(
+		return nil, hint.With(
 			&resolveError{DocID: r.file.DocID, RuleID: rule.ID, Page: p.Page,
 				Field: "stated_total_deltas", Err: ErrNotFound,
 				Msg: fmt.Sprintf("declared here, but page %d is the page that prints %q",
@@ -1333,7 +1333,7 @@ func (r *Resolver) TotalBearingPart(rule *Rule) (*Part, error) {
 		for i, p := range rule.Parts {
 			pages[i] = p.Page
 		}
-		return nil, cmdutil.WithHint(
+		return nil, hint.With(
 			&resolveError{DocID: r.file.DocID, RuleID: rule.ID, Page: rule.Parts[0].Page,
 				Field: "total_row", Err: ErrNotFound,
 				Msg: fmt.Sprintf("%q occurs after the block on none of pages %v",
@@ -1346,7 +1346,7 @@ func (r *Resolver) TotalBearingPart(rule *Rule) (*Part, error) {
 		for i, p := range found {
 			pages[i] = p.Page
 		}
-		return nil, cmdutil.WithHint(
+		return nil, hint.With(
 			&resolveError{DocID: r.file.DocID, RuleID: rule.ID, Page: found[0].Page,
 				Field: "total_row", Err: ErrNotFound,
 				Msg: fmt.Sprintf("%q occurs after the block on pages %v; it must identify one",
@@ -1385,7 +1385,7 @@ func (r *Resolver) CheckRollup(ro *Rollup) (*rollupResult, error) {
 	// panic by doing nothing wrong. Same class as the Parts[0] panic fisc-3bl
 	// already fixed here, one caller further away.
 	if len(rules) == 0 {
-		return nil, cmdutil.WithHint(
+		return nil, hint.With(
 			&resolveError{DocID: r.file.DocID, Page: ro.Page, RuleID: ro.ID,
 				Field: "covers", Err: ErrNotFound, Msg: "names no rule to sum"},
 			"a rollup either lists the rules its printed total covers or "+
@@ -1434,7 +1434,7 @@ func (r *Resolver) CheckRollup(ro *Rollup) (*rollupResult, error) {
 			cols, sums, first = bearer.Columns, make([]amount.Cents, len(stated)), rule
 		}
 		if len(stated) != len(sums) {
-			return nil, cmdutil.WithHint(
+			return nil, hint.With(
 				&resolveError{DocID: r.file.DocID, Page: ro.Page, RuleID: ro.ID,
 					Field: "covers", Err: ErrNotFound,
 					Msg: fmt.Sprintf("rule %q states %d columns and rule %q states %d",
@@ -1450,7 +1450,7 @@ func (r *Resolver) CheckRollup(ro *Rollup) (*rollupResult, error) {
 		i, comparable := firstDifferingColumn(
 			effectiveColumns(first, bearers[0]), effectiveColumns(rule, bearer))
 		if !comparable {
-			return nil, cmdutil.WithHint(
+			return nil, hint.With(
 				&resolveError{DocID: r.file.DocID, Page: ro.Page, RuleID: ro.ID,
 					Field: "covers", Err: ErrNotFound,
 					Msg: fmt.Sprintf("rule %q states %d columns on p%d and rule %q states %d on p%d",
@@ -1460,7 +1460,7 @@ func (r *Resolver) CheckRollup(ro *Rollup) (*rollupResult, error) {
 					"rule must state the same number of them")
 		}
 		if i >= 0 {
-			return nil, cmdutil.WithHint(
+			return nil, hint.With(
 				&resolveError{DocID: r.file.DocID, Page: ro.Page, RuleID: ro.ID,
 					Field: "covers", Err: ErrNotFound,
 					Msg: fmt.Sprintf("rule %q states column %d on p%d as %s and rule %q states it on p%d as %s",
@@ -1501,7 +1501,7 @@ func (r *Resolver) CheckRollup(ro *Rollup) (*rollupResult, error) {
 	if len(bad) == 0 {
 		return res, nil
 	}
-	return nil, cmdutil.WithHint(
+	return nil, hint.With(
 		&resolveError{DocID: r.file.DocID, Page: ro.Page, RuleID: ro.ID,
 			Field: "rollups", Msg: strings.Join(bad, "; ")},
 		"a rollup sums the totals its covered rules PRINT, each already tied "+
@@ -1551,7 +1551,7 @@ func (r *Resolver) ruleStatedTotals(rule *Rule) ([]amount.Cents, *Part, error) {
 		}
 	}
 	if len(bearing) != 1 {
-		return nil, nil, cmdutil.WithHint(
+		return nil, nil, hint.With(
 			&resolveError{DocID: r.file.DocID, RuleID: rule.ID, Page: rule.Parts[0].Page,
 				Field: "total_row", Err: ErrNotFound,
 				Msg: fmt.Sprintf("%d of this rule's parts print a total, and a rollup needs one",
@@ -1582,7 +1582,7 @@ func (r *Resolver) rollupStatedTotals(ro *Rollup, n int, units amount.Units) ([]
 			Msg: fmt.Sprintf("%q does not occur on the page", ro.TotalRow)}
 	}
 	if strings.Contains(text[first+len(ro.TotalRow):], ro.TotalRow) {
-		return nil, 0, cmdutil.WithHint(
+		return nil, 0, hint.With(
 			&resolveError{DocID: r.file.DocID, Page: ro.Page, RuleID: ro.ID,
 				Field: "total_row", Err: ErrNotFound,
 				Msg: fmt.Sprintf("%q occurs more than once on the page", ro.TotalRow)},
@@ -1594,7 +1594,7 @@ func (r *Resolver) rollupStatedTotals(ro *Rollup, n int, units amount.Units) ([]
 	}
 	totals, ok := amountRun(line, n, units)
 	if !ok {
-		return nil, 0, cmdutil.WithHint(
+		return nil, 0, hint.With(
 			&resolveError{DocID: r.file.DocID, Page: ro.Page, RuleID: ro.ID,
 				Field: "total_row", Err: ErrNotFound,
 				Msg: fmt.Sprintf("no run of %d consecutive amounts follows %q on %q",
@@ -1646,7 +1646,7 @@ func (r *Resolver) rollupNamesItsOwnLine(ro *Rollup, rules []*Rule, bearers []*P
 			continue
 		}
 		if lineAt(text, from) == want {
-			return cmdutil.WithHint(
+			return hint.With(
 				&resolveError{DocID: r.file.DocID, Page: ro.Page, RuleID: ro.ID,
 					Field: "total_row", Err: ErrNotFound,
 					Msg: fmt.Sprintf("names the same printed line as rule %q's total_row %q",
@@ -1858,7 +1858,7 @@ func (w *decimalsWitness) settle(rule *Rule) error {
 
 // decimalsError wraps a witness complaint as a resolve error.
 func (r *Resolver) decimalsError(rule *Rule, p *Part, err error) error {
-	return cmdutil.WithHint(&resolveError{DocID: r.file.DocID, RuleID: rule.ID, Page: p.Page,
+	return hint.With(&resolveError{DocID: r.file.DocID, RuleID: rule.ID, Page: p.Page,
 		Field: "printed_decimals", Err: ErrNotFound, Msg: err.Error()},
 		"printed_decimals says how finely THIS page prints, and the tolerance is "+
 			"derived from it; a count the page does not bear out would size that "+
@@ -1950,7 +1950,7 @@ func (r *Resolver) compareTotals(rule *Rule, cols, dec *Part, stated, sums []amo
 	// pass quietly, because a tolerance nobody notices is how a global epsilon
 	// arrives one rule at a time.
 	if len(bad) == 0 && rule.PrintedDecimals != nil && res.Tolerated == 0 {
-		return nil, cmdutil.WithHint(&resolveError{DocID: r.file.DocID, RuleID: rule.ID, Page: p.Page,
+		return nil, hint.With(&resolveError{DocID: r.file.DocID, RuleID: rule.ID, Page: p.Page,
 			Field: "printed_decimals",
 			Msg: fmt.Sprintf("declares %d printed decimal places, but all %d compared column(s) tie exactly",
 				*rule.PrintedDecimals, res.Columns)},
@@ -1961,7 +1961,7 @@ func (r *Resolver) compareTotals(rule *Rule, cols, dec *Part, stated, sums []amo
 	if len(bad) == 0 {
 		return res, nil
 	}
-	return nil, cmdutil.WithHint(&resolveError{DocID: r.file.DocID, RuleID: rule.ID, Page: p.Page,
+	return nil, hint.With(&resolveError{DocID: r.file.DocID, RuleID: rule.ID, Page: p.Page,
 		Field: "total_row", Msg: strings.Join(bad, "; ")},
 		"a mapped column that does not tie means a row was missed, "+
 			"double-counted, or read from the wrong column -- unless the "+

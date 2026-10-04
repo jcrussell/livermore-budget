@@ -15,7 +15,7 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/corpus"
-	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
+	"github.com/jcrussell/livermore-budget/internal/hint"
 )
 
 // The spine's headline figures, as the Budget Book prints them on p66 and p67.
@@ -286,7 +286,7 @@ func diagnosis(t *testing.T, err error) string {
 	if err == nil {
 		t.Fatal("no error to diagnose")
 	}
-	var h *cmdutil.ErrHint
+	var h *hint.ErrHint
 	if errors.As(err, &h) {
 		return err.Error() + "\nhint: " + h.Hint
 	}

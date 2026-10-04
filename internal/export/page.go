@@ -16,9 +16,9 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/corpus"
 	"github.com/jcrussell/livermore-budget/internal/fact"
+	"github.com/jcrussell/livermore-budget/internal/hint"
 	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/internal/vocab"
-	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 	"github.com/jcrussell/livermore-budget/schema"
 )
 
@@ -69,10 +69,10 @@ func checkSchemaVersion(stem string, got int) error {
 		stem, ErrSchemaVersion, got, SchemaVersion)
 	switch {
 	case got > SchemaVersion:
-		return cmdutil.WithHint(err,
+		return hint.With(err,
 			"this projection was written by a newer fisc; upgrade the binary")
 	case got == 0:
-		return cmdutil.WithHint(err,
+		return hint.With(err,
 			"schema_version is absent or zero; this may not be a fisc projection")
 	default:
 		return err
@@ -905,7 +905,7 @@ func buildSite(o *Options, ix ColumnIndex, pageTextBase func(docID string) strin
 		case CaveatsTemplate:
 			data, err = buildCaveatsPage(o, v, here, byID, ix, pageTextBase)
 		default:
-			return nil, nil, cmdutil.WithHint(
+			return nil, nil, hint.With(
 				fmt.Errorf("view %q renders template %q, which this package has no builder for",
 					v.Path, v.Template),
 				"every template needs an arm in buildSite naming the page data it is built from")

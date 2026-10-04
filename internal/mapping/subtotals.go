@@ -5,7 +5,7 @@ import (
 	"slices"
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
-	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
+	"github.com/jcrussell/livermore-budget/internal/hint"
 )
 
 // SubtotalsResult is what [Resolver.CheckSubtotals] compared.
@@ -86,7 +86,7 @@ func (r *Resolver) CheckSubtotals(chain []*Rule) (*SubtotalsResult, error) {
 		}
 	}
 	if levels == 0 {
-		return nil, cmdutil.WithHint(&resolveError{DocID: r.file.DocID, RuleID: first.ID,
+		return nil, hint.With(&resolveError{DocID: r.file.DocID, RuleID: first.ID,
 			Page: first.Parts[0].Page, Field: "subtotal_chain", Err: ErrNotFound,
 			Msg: fmt.Sprintf("names chain %q, and no rule in it declares a subtotal row",
 				first.SubtotalChain)},
@@ -208,7 +208,7 @@ func (r *Resolver) CheckSubtotals(chain []*Rule) (*SubtotalsResult, error) {
 	}
 	if rows[1] > 0 {
 		last := chain[len(chain)-1]
-		return nil, cmdutil.WithHint(&resolveError{DocID: r.file.DocID, RuleID: last.ID,
+		return nil, hint.With(&resolveError{DocID: r.file.DocID, RuleID: last.ID,
 			Page: last.Parts[len(last.Parts)-1].Page, Field: "rows", Err: ErrNotFound,
 			Msg: fmt.Sprintf("%d row(s) after the chain's last subtotal are inside no printed total",
 				rows[1])},

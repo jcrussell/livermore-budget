@@ -6,9 +6,9 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/jcrussell/livermore-budget/internal/english"
 	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/internal/vocab"
-	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
 // projectionsBuild asserts every slice of the fact store that a projection was
@@ -73,7 +73,7 @@ func (*projectionsBuild) Run(_ context.Context, s *Subject) (Result, error) {
 		subjects: slicesBuilt + slicesRefused,
 		unit:     "projection slices",
 		held: fmt.Sprintf("%d %s built, none refused",
-			slicesBuilt, cmdutil.Plural(slicesBuilt, "projection slice", "projection slices")),
+			slicesBuilt, english.Plural(slicesBuilt, "projection slice", "projection slices")),
 		nothing:  "no projection was asked for at all",
 		findings: findings,
 	}.result(), nil

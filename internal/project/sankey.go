@@ -11,10 +11,10 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/fact"
+	"github.com/jcrussell/livermore-budget/internal/hint"
 	"github.com/jcrussell/livermore-budget/internal/registry"
 	"github.com/jcrussell/livermore-budget/internal/structure"
 	"github.com/jcrussell/livermore-budget/internal/vocab"
-	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 	"github.com/jcrussell/livermore-budget/schema"
 )
 
@@ -593,7 +593,7 @@ func (s *sankey) Document(facts []fact.Fact, o Options) (*Document, error) {
 		return nil, fmt.Errorf("sankey: %w", err)
 	}
 	if scope != PublishedScope {
-		return nil, cmdutil.WithHint(
+		return nil, hint.With(
 			fmt.Errorf("sankey: scope is %q, want %q", scope, PublishedScope),
 			"this document is of one schedule; a projection built over another "+
 				"schedule's facts would publish them under this one's contract")
@@ -604,7 +604,7 @@ func (s *sankey) Document(facts []fact.Fact, o Options) (*Document, error) {
 	// balanced schedule are also balanced, so nothing downstream would notice
 	// -- every figure would simply be twice what the city printed.
 	if len(o.Columns) != 1 {
-		return nil, cmdutil.WithHint(
+		return nil, hint.With(
 			fmt.Errorf("sankey: a graph is of one column, got %d (%s)",
 				len(o.Columns), Describe(o.Columns)),
 			"build one document per column; a Sankey of two budgets sums them and "+
@@ -857,13 +857,13 @@ func netCells(facts []fact.Fact) (map[cellKey]*cell, error) {
 	for i := range facts {
 		f := facts[i]
 		if f.Category == "" {
-			return nil, cmdutil.WithHint(
+			return nil, hint.With(
 				fmt.Errorf("sankey: fact %s (%s p%d %q) has no category", f.ID, f.DocID, f.Page, f.RowLabel),
 				"every node id in this projection is a data/taxonomy.yaml slug, so a "+
 					"fact with no category has nowhere to go")
 		}
 		if f.Department != "" {
-			return nil, cmdutil.WithHint(
+			return nil, hint.With(
 				fmt.Errorf("sankey: fact %s (%s p%d %q) carries department %q",
 					f.ID, f.DocID, f.Page, f.RowLabel, f.Department),
 				"this projection has no department tier yet (fisc-gxa.2), and adding "+
@@ -871,7 +871,7 @@ func netCells(facts []fact.Fact) (map[cellKey]*cell, error) {
 					"check the scope the projection was asked for")
 		}
 		if f.FundGroup == "" {
-			return nil, cmdutil.WithHint(
+			return nil, hint.With(
 				fmt.Errorf("sankey: fact %s (%s p%d %q) has no fund group", f.ID, f.DocID, f.Page, f.RowLabel),
 				"the spine is a fund-group graph: every flow has to start or end at one")
 		}

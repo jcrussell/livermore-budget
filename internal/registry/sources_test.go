@@ -9,7 +9,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
-	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
+	"github.com/jcrussell/livermore-budget/internal/hint"
 )
 
 // validSource is one well-formed entry, as the smallest thing that loads. The
@@ -168,12 +168,12 @@ func TestLoadSourcesRejects(t *testing.T) {
 // registry.
 func TestLoadSourcesHintsAtANewerSchema(t *testing.T) {
 	_, err := LoadSources(sourcesFS("schema_version: 2\nsources: []\n"))
-	var hint *cmdutil.ErrHint
-	if !errors.As(err, &hint) {
+	var h *hint.ErrHint
+	if !errors.As(err, &h) {
 		t.Fatalf("error %v carries no hint", err)
 	}
-	if !strings.Contains(hint.Hint, "upgrade the binary") {
-		t.Errorf("hint %q does not say what to do", hint.Hint)
+	if !strings.Contains(h.Hint, "upgrade the binary") {
+		t.Errorf("hint %q does not say what to do", h.Hint)
 	}
 }
 

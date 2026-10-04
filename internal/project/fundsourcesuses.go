@@ -8,9 +8,9 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/fact"
+	"github.com/jcrussell/livermore-budget/internal/hint"
 	"github.com/jcrussell/livermore-budget/internal/structure"
 	"github.com/jcrussell/livermore-budget/internal/vocab"
-	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 	"github.com/jcrussell/livermore-budget/schema"
 )
 
@@ -130,7 +130,7 @@ func (u *fundSourcesUses) Document(facts []fact.Fact, o Options) (*Document, err
 		return nil, fmt.Errorf("%s options: %w", u.Name(), err)
 	}
 	if !sameScopes(o.Scopes, FundSourcesUsesScopes()) || len(o.Kinds) != 0 || !o.ThroughCuts {
-		return nil, cmdutil.WithHint(
+		return nil, hint.With(
 			fmt.Errorf("%s: scopes are %q, kinds %v and through-cuts %v, want %q, every kind and true",
 				u.Name(), o.ScopeList(), o.Kinds, o.ThroughCuts, FundSourcesUsesScope),
 			"pp.190, 196, 202 and 208 print the Capital Improvement Program funds, p222's money, "+
@@ -138,12 +138,12 @@ func (u *fundSourcesUses) Document(facts []fact.Fact, o Options) (*Document, err
 				"that block out")
 	}
 	if len(o.Columns) != 1 {
-		return nil, cmdutil.WithHint(
+		return nil, hint.With(
 			fmt.Errorf("%s: a graph is of one column, got %d", u.Name(), len(o.Columns)),
 			"two budget years in one flow diagram add every figure to its own successor")
 	}
 	if u.Labels == nil {
-		return nil, cmdutil.WithHint(
+		return nil, hint.With(
 			fmt.Errorf("%s: no registry is attached", u.Name()),
 			"a fund node's parent comes from data/funds.yaml's type:, so this document "+
 				"cannot be built without one")
@@ -174,7 +174,7 @@ func (u *fundSourcesUses) Document(facts []fact.Fact, o Options) (*Document, err
 				continue
 			}
 			if f.AmountCents < 0 {
-				return nil, cmdutil.WithHint(
+				return nil, hint.With(
 					fmt.Errorf("%s: fact %s (%s p%d, fund %d) prints %s as %s",
 						u.Name(), f.ID, f.DocID, f.Page, number, c.category, amount.Cents(f.AmountCents)),
 					"a negative flow has no direction this document declares, so it is refused "+
@@ -271,7 +271,7 @@ func (u *fundSourcesUses) fundBlocks(selected []fact.Fact) (map[int]fundLines, e
 			out[*f.Fund] = lines
 		}
 		if was, dup := lines[line]; dup {
-			return nil, cmdutil.WithHint(
+			return nil, hint.With(
 				fmt.Errorf("%s: fund %d prints %s twice, facts %s and %s",
 					u.Name(), *f.Fund, f.Category, was.ID, f.ID),
 				"one fund's block prints each line once; two facts for one line is a rule "+
@@ -288,7 +288,7 @@ func (u *fundSourcesUses) fundBlocks(selected []fact.Fact) (map[int]fundLines, e
 func (u *fundSourcesUses) fundNode(number int, lines fundLines) (Node, string, error) {
 	group, ok := u.Labels.FundType(number)
 	if !ok {
-		return Node{}, "", cmdutil.WithHint(
+		return Node{}, "", hint.With(
 			fmt.Errorf("%s: fund %d is in no data/funds.yaml entry", u.Name(), number),
 			"a fund node's parent is its type, so a fund the registry does not list "+
 				"cannot be placed in the hierarchy")

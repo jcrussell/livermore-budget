@@ -21,9 +21,9 @@ import (
 	"strings"
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
+	"github.com/jcrussell/livermore-budget/internal/hint"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/vocab"
-	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
 // IDPrefix marks a fact id. It exists so an id is recognizable on sight in a
@@ -350,7 +350,7 @@ func FromValues(f *mapping.File, rule *mapping.Rule, values []mapping.Value) ([]
 			missing = "column path (the column has no fund and the rule no scope)"
 		}
 		if missing != "" {
-			return nil, cmdutil.WithHint(
+			return nil, hint.With(
 				fmt.Errorf("%s: rule %q p%d: row %q has no addressable %s",
 					f.Path, rule.ID, v.Page, v.Row.PrintedLabel(), missing),
 				"a fact's id is built from its row and column paths; without "+
@@ -417,7 +417,7 @@ func FromValues(f *mapping.File, rule *mapping.Rule, values []mapping.Value) ([]
 				"names no payer and no check can reach it"
 		}
 		if cpMissing != "" {
-			return nil, cmdutil.WithHint(
+			return nil, hint.With(
 				fmt.Errorf("%s: rule %q p%d: row %q counterpart has no addressable %s",
 					f.Path, rule.ID, v.Page, v.Row.PrintedLabel(), cpMissing),
 				cpHint)
@@ -498,7 +498,7 @@ func Sort(facts []Fact) {
 func CheckSorted(facts []Fact) error {
 	for i := 1; i < len(facts); i++ {
 		if less(facts[i], facts[i-1]) {
-			return cmdutil.WithHint(
+			return hint.With(
 				fmt.Errorf("facts are out of order at line %d: %s (%s p%d %s) sorts before "+
 					"line %d: %s (%s p%d %s)",
 					i+1, facts[i].ID, facts[i].RowPath, facts[i].Page, facts[i].ColumnPath,
@@ -524,7 +524,7 @@ func CheckUniqueIDs(facts []Fact) error {
 			seen[f.ID] = f
 			continue
 		}
-		return cmdutil.WithHint(
+		return hint.With(
 			fmt.Errorf("id %s is claimed twice: rule %q p%d says %s, rule %q p%d says %s "+
 				"(both are %s %s %s %s)",
 				f.ID, prev.RuleID, prev.Page, amount.Cents(prev.AmountCents),

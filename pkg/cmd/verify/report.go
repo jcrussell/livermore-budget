@@ -6,7 +6,7 @@ import (
 	"io"
 
 	"github.com/jcrussell/livermore-budget/internal/check"
-	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
+	"github.com/jcrussell/livermore-budget/internal/english"
 	"github.com/jcrussell/livermore-budget/pkg/iostreams"
 )
 
@@ -68,7 +68,7 @@ func printText(w io.Writer, rep *check.Report) {
 		// structural checks landed the first check that needs --full, and it read
 		// "1 check need --full" the first time anything printed it.
 		fmt.Fprintf(w, "%d %s --full and did not run\n", c.Skipped,
-			cmdutil.Plural(c.Skipped, "check needs", "checks need"))
+			english.Plural(c.Skipped, "check needs", "checks need"))
 	}
 	printDeclarations(w, rep)
 
@@ -78,21 +78,21 @@ func printText(w io.Writer, rep *check.Report) {
 		fmt.Fprintln(w, "verify failed")
 	case len(stale) > 0:
 		fmt.Fprintf(w, "verify failed: %d vacuity %s no longer describes this run\n",
-			len(stale), cmdutil.Plural(len(stale), "declaration", "declarations"))
+			len(stale), english.Plural(len(stale), "declaration", "declarations"))
 	case rep.Strict && len(rep.Undeclared) > 0:
 		fmt.Fprintf(w, "verify failed: --strict, and %d vacuous %s undeclared\n",
-			len(rep.Undeclared), cmdutil.Plural(len(rep.Undeclared), "check is", "checks are"))
+			len(rep.Undeclared), english.Plural(len(rep.Undeclared), "check is", "checks are"))
 	case c.Vacuous > 0 && len(rep.Undeclared) > 0:
 		// NOT a green summary. --strict was not asked for, so the run passes,
 		// but saying only "N had nothing to check" here would read as the
 		// declared-and-accounted-for case below.
 		fmt.Fprintf(w, "%d %s had nothing to check, %d of them undeclared; --strict "+
-			"fails on those\n", c.Vacuous, cmdutil.Plural(c.Vacuous, "check", "checks"),
+			"fails on those\n", c.Vacuous, english.Plural(c.Vacuous, "check", "checks"),
 			len(rep.Undeclared))
 	case c.Vacuous > 0:
 		fmt.Fprintf(w, "%d %s had nothing to check; every one is declared with the bead "+
 			"that retires it, so --strict passes\n",
-			c.Vacuous, cmdutil.Plural(c.Vacuous, "check", "checks"))
+			c.Vacuous, english.Plural(c.Vacuous, "check", "checks"))
 	}
 }
 

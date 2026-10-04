@@ -7,7 +7,7 @@ import (
 	"sort"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
-	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
+	"github.com/jcrussell/livermore-budget/internal/hint"
 	"github.com/jcrussell/livermore-budget/schema"
 )
 
@@ -126,7 +126,7 @@ func refuseUncited(name string, uncited []*fact.Fact, allow func(*fact.Fact) boo
 		if f.AmountCents == 0 || (allow != nil && allow(f)) {
 			continue
 		}
-		return cmdutil.WithHint(
+		return hint.With(
 			fmt.Errorf("%s: fact %s is carried by no link and is not a printed zero", name, f.ID),
 			"facts = facts_cited + facts_uncited is every document's published identity "+
 				"and every uncited fact is a cell the city printed as nothing; a fact reaching "+

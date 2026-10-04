@@ -12,7 +12,7 @@ import (
 	"testing"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
-	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
+	"github.com/jcrussell/livermore-budget/internal/repo"
 	"github.com/jcrussell/livermore-budget/pkg/iostreams"
 )
 
@@ -544,7 +544,7 @@ func TestEveryShardedPageHasItsExtractedText(t *testing.T) {
 			"would otherwise keep passing over the remainder", len(docs))
 	}
 	for _, p := range assets.Pages {
-		rel := filepath.Join(root, filepath.FromSlash(cmdutil.ExtractedDir),
+		rel := filepath.Join(root, filepath.FromSlash(repo.ExtractedDir),
 			p.DocID, "pages", fmt.Sprintf("p%04d.txt", p.Page))
 		if _, err := os.Stat(rel); err != nil {
 			t.Errorf("%s p%d carries %d facts and its extracted text is not committed: %v",
@@ -770,7 +770,7 @@ func TestCleanDoesNotDestroyASiteOverAFaultItCouldHaveSeen(t *testing.T) {
 	// covers. The real tree is never touched -- a test that moved a committed
 	// file aside would take the repository down with it if it failed midway.
 	tree := t.TempDir()
-	src := filepath.Join(root, filepath.FromSlash(cmdutil.ExtractedDir))
+	src := filepath.Join(root, filepath.FromSlash(repo.ExtractedDir))
 	if cerr := os.CopyFS(tree, os.DirFS(src)); cerr != nil {
 		t.Fatalf("copy the extraction: %v", cerr)
 	}

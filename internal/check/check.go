@@ -72,7 +72,7 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
+	"github.com/jcrussell/livermore-budget/internal/english"
 )
 
 // Status is what a check concluded. There are five, because "it passed" and
@@ -327,7 +327,7 @@ func (c conclusion) result() Result {
 			Status:   StatusFail,
 			Subjects: c.subjects,
 			Summary: fmt.Sprintf("%d %s over %d %s", len(c.findings),
-				cmdutil.Plural(len(c.findings), "finding", "findings"), c.subjects, c.unit),
+				english.Plural(len(c.findings), "finding", "findings"), c.subjects, c.unit),
 			Findings: c.findings,
 		}
 	case c.subjects == 0:

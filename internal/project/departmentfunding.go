@@ -6,8 +6,8 @@ import (
 	"strconv"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
+	"github.com/jcrussell/livermore-budget/internal/hint"
 	"github.com/jcrussell/livermore-budget/internal/structure"
-	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 	"github.com/jcrussell/livermore-budget/schema"
 )
 
@@ -76,14 +76,14 @@ func (d *departmentFunding) Document(facts []fact.Fact, o Options) (*Document, e
 		return nil, fmt.Errorf("department-funding options: %w", err)
 	}
 	if !sameScopes(o.Scopes, DepartmentFundingScopes()) {
-		return nil, cmdutil.WithHint(
+		return nil, hint.With(
 			fmt.Errorf("department-funding: scopes are %q, want %q", o.ScopeList(),
 				Options{Scopes: DepartmentFundingScopes()}.ScopeList()),
 			"this document is of pp.85-125's lower block alone; the upper block carries no "+
 				"fund, and the two together are the city's expenditure twice")
 	}
 	if len(o.Columns) != 1 {
-		return nil, cmdutil.WithHint(
+		return nil, hint.With(
 			fmt.Errorf("department-funding: a column is one budget year, got %d", len(o.Columns)),
 			"two budget years in one graph add every cell to its own successor")
 	}
@@ -196,7 +196,7 @@ func netDepartmentFunding(facts []fact.Fact) (map[fundingCell]*cellSum, error) {
 				"document does not select", fa.ID, fa.Scope)
 		}
 		if fa.Department == "" {
-			return nil, cmdutil.WithHint(
+			return nil, hint.With(
 				fmt.Errorf("department-funding: fact %s carries no department", fa.ID),
 				"this document's tier 4 IS the department, and pp.85-125 print one funding "+
 					"schedule per department")
@@ -204,7 +204,7 @@ func netDepartmentFunding(facts []fact.Fact) (map[fundingCell]*cellSum, error) {
 		// A fund is required: this block IS the fund axis, the inverse of
 		// departmentSpending's guard.
 		if fa.Fund == nil || fa.FundGroup == "" {
-			return nil, cmdutil.WithHint(
+			return nil, hint.With(
 				fmt.Errorf("department-funding: fact %s (%s) names fund %s and fund group %q",
 					fa.ID, fa.Department, fact.FundString(fa.Fund), fa.FundGroup),
 				"pp.85-125's lower block prints one row per paying fund, so a fact of this "+
@@ -214,7 +214,7 @@ func netDepartmentFunding(facts []fact.Fact) (map[fundingCell]*cellSum, error) {
 		// One fund group per cell, refused rather than last-wins: the group
 		// decides the link's kind.
 		if g, ok := groups[k]; ok && g != fa.FundGroup {
-			return nil, cmdutil.WithHint(
+			return nil, hint.With(
 				fmt.Errorf("department-funding: fund %d under %s is printed under fund group "+
 					"%q and %q", *fa.Fund, fa.Department, g, fa.FundGroup),
 				"the fund group at the paying end decides whether a ribbon is an internal "+
@@ -239,7 +239,7 @@ func (d *departmentFunding) fundEndpoint(number int) (endpoint, error) {
 	// A fund the registry does not know is refused, not drawn parentless.
 	t, ok := d.Labels.FundType(number)
 	if !ok || t == "" {
-		return endpoint{}, cmdutil.WithHint(
+		return endpoint{}, hint.With(
 			fmt.Errorf("department-funding: data/funds.yaml records no type for fund %d", number),
 			"a fund's fund group is its parent edge, and a node parented to `fund-group/` is "+
 				"parented to nothing")

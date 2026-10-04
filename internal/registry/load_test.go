@@ -10,7 +10,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
-	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
+	"github.com/jcrussell/livermore-budget/internal/hint"
 )
 
 // TestLoadRejects covers every way a registry file can be wrong. Each case
@@ -610,18 +610,18 @@ categories:
 // upgrade rather than to go hunting for a typo is the difference.
 func TestLoadHintsAtANewerSchema(t *testing.T) {
 	_, err := Load(registryFS(t, "schema_version: 2\nfunds: []\n", "", ""))
-	var hint *cmdutil.ErrHint
-	if !errors.As(err, &hint) {
+	var h *hint.ErrHint
+	if !errors.As(err, &h) {
 		t.Fatalf("Load error = %v (%T), want a hinted error", err, err)
 	}
-	if !strings.Contains(hint.Hint, "upgrade") {
-		t.Errorf("hint = %q, want it to mention upgrading", hint.Hint)
+	if !strings.Contains(h.Hint, "upgrade") {
+		t.Errorf("hint = %q, want it to mention upgrading", h.Hint)
 	}
 
 	// An older or missing version is a broken file, not an old binary.
 	_, err = Load(registryFS(t, "funds: []\n", "", ""))
-	if errors.As(err, &hint) {
-		t.Errorf("Load error = %q carries hint %q, want none", err, hint.Hint)
+	if errors.As(err, &h) {
+		t.Errorf("Load error = %q carries hint %q, want none", err, h.Hint)
 	}
 }
 
