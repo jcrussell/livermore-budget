@@ -12,19 +12,12 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  bootedApp, opened, settle, fire, topOf, pageFixture, clickYear,
+  bootedApp, opened, settle, fire, topOf, pageFixture, clickYear, stepByKey,
 } from "./testlib.mjs";
 
 const PAGE = pageFixture().config;
 /** The published years, newest last as the page lists them. */
 const YEARS = PAGE.years;
-
-/** The step the pinned config declares under `key`. */
-function stepByKey(config, key) {
-  const s = config.steps.find((x) => x.key === key);
-  if (!s) throw new Error("the pinned config declares no step " + key);
-  return s;
-}
 
 /**
  * The tier the fund window folds its object categories at, read off the step

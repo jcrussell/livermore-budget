@@ -95,16 +95,29 @@ for (const year of YEARS) {
       assert.equal(row.children[2].textContent, year.eraf);
     });
 
-    test(`${year.column}: a node's share of its column is its drawn figure over the column's`, async (t) => {
+    test(`${year.column}: a node's share of its column is its cited cents over the column's, and each mark is laid at its cents`, async (t) => {
       const { app, document } = await onYear(year.stem);
       const chart = document.getElementById("chart");
       const d = markOf(chart, PROPERTY).__data__;
       const column = [...chart.querySelectorAll("g.node")].map((g) => g.__data__).filter((n) => n.layer === d.layer);
       assert.ok(column.length >= 2);
       assert.ok(!column.some((n) => app.isResidual(n.id)), "a residual is sized by its own figure");
-      const total = column.reduce((s, n) => s + n.value, 0);
-      const want = `◇ our ${((100 * d.value) / total).toFixed(1)}% of this column`;
-      t.diagnostic(`${PROPERTY} is ${d.value} of ${total} over ${column.length} drawn marks: "${want}"`);
+      // The share is defined over the drawn values, so the expectation is
+      // taken from the pinned column's cents and each drawn value is held to
+      // its mark's: the larger side of its ribbons, which is how a mark is
+      // sized.
+      const centsOf = (id) => {
+        const side = (end) => columnLinks(year.column, "sankey", (from, to) => (end === "from" ? from : to) === id)
+          .reduce((s, l) => s + l.value_cents, 0);
+        return Math.max(side("from"), side("to"));
+      };
+      for (const n of column) {
+        assert.equal(n.value, centsOf(n.id), `${n.id} is laid at ${n.value}, not the cents its ribbons add to`);
+      }
+      const cents = centsOf(PROPERTY);
+      const total = column.reduce((s, n) => s + centsOf(n.id), 0);
+      const want = `◇ our ${((100 * cents) / total).toFixed(1)}% of this column`;
+      t.diagnostic(`${PROPERTY} is ${cents} of ${total} cents over ${column.length} drawn marks: "${want}"`);
       app.pin(d);
       const chips = [...document.querySelectorAll("#detail .chip.derived")].map((c) => c.textContent);
       assert.ok(chips.includes(want), JSON.stringify(chips));

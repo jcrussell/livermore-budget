@@ -52,6 +52,16 @@ export function pageFixture() {
 }
 
 /**
+ * The step a page config declares under `key`, throwing where it declares
+ * none: a test on a step that is gone fails by name, not on an undefined.
+ */
+export function stepByKey(config, key) {
+  const s = config.steps.find((x) => x.key === key);
+  if (!s) throw new Error("the pinned config declares no step " + key);
+  return s;
+}
+
+/**
  * Every column the pinned page publishes, by the fixture stem each is pinned
  * under: a year's served path with .json dropped.
  * @returns {string[]}

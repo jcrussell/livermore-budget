@@ -8,7 +8,7 @@
 
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { loadApp, settle, opened, refusals, pageFixture, dollars } from "./testlib.mjs";
+import { loadApp, settle, opened, refusals, pageFixture, dollars, stepByKey } from "./testlib.mjs";
 
 /** The shipped step this file redeclares in the stub form. */
 const STEP = "division";
@@ -89,8 +89,7 @@ function stubRenderer(app, asked) {
 /** The pinned config with the division step redeclared in the stub form. */
 function stubConfig(record) {
   const config = structuredClone(pageFixture().config);
-  const step = config.steps.find((s) => s.key === STEP);
-  if (!step) throw new Error("the pinned config declares no step " + STEP);
+  const step = stepByKey(config, STEP);
   delete step.sankey;
   step.form = "stub";
   step.stub = record ? record({ depth: [4, 5] }) : { depth: [4, 5] };

@@ -9,19 +9,12 @@ import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import {
   bootedApp, opened, settle, expandAll, everyOffer, pageFixture,
-  columnFixture, clickYear, refusals, topOf,
+  columnFixture, clickYear, refusals, topOf, stepByKey,
 } from "./testlib.mjs";
 
 const PAGE = pageFixture().config;
 /** The published years, newest last as the page lists them. */
 const YEARS = PAGE.years;
-
-/** The step the pinned config declares under `key`. */
-function stepByKey(config, key) {
-  const s = config.steps.find((x) => x.key === key);
-  if (!s) throw new Error("the pinned config declares no step " + key);
-  return s;
-}
 
 /**
  * One schedule of the year on screen, unfolded, as the page rehydrates it:
@@ -166,26 +159,21 @@ for (const year of YEARS) {
       const { app, config, fetch } = await onYear(year.stem);
       const step = stepByKey(config, "transfers");
       const asked = fetch.asked.length;
-      // Transfers In is a SOURCE on the spine: what it sends into the groups.
-      const spineIn = app.docAt(0).links.filter((l) => l.source === "transfers/in")
-        .reduce((a, l) => a + l.value_cents, 0);
       await opened(app, "transfers/in");
       const d = app.projection;
       const tierOf = new Map(d.nodes.map((n) => [n.id, n.tier]));
       const payers = d.links.map((l) => tierOf.get(l.source));
       const receivers = d.links.map((l) => tierOf.get(l.target));
-      const drawnCents = d.links.reduce((a, l) => a + l.value_cents, 0);
       t.diagnostic(`${year.label} transfers: ${d.nodes.length} nodes, ${d.links.length} links in columns ` +
-        `${JSON.stringify(placedTiers(app))}, ${drawnCents} cents against the spine's ${spineIn}`);
+        `${JSON.stringify(placedTiers(app))}`);
       assert.equal(app.drilled.length, 1);
       assert.equal(d.projection, step.projection);
       assert.equal(fetch.asked.length, asked, "the drill fetched");
       assert.deepEqual(placedTiers(app), step.sankey.tiers);
       assert.ok(d.links.length > 0, "no receiving leg drawn");
-      // EVERY LEG RUNS PAYER TO RECEIVER, and the legs are the spine's
-      // Transfers In to the cent: p76's receiving side is what that mark counts.
+      // EVERY LEG RUNS PAYER TO RECEIVER. That the legs add to the spine's
+      // Transfers In is Go's, under cuts-tie-along-the-lattice.
       assert.ok(payers.every((tier) => tier === step.sankey.tiers[0]) && receivers.every((tier) => tier === step.sankey.tiers[1]));
-      assert.equal(drawnCents, spineIn);
       assert.ok(!app.projection.nodes.some((n) => app.drillable(n)), "something on it opens further");
     });
   });

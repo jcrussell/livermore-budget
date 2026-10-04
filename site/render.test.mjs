@@ -13,7 +13,7 @@ import { join } from "node:path";
 
 import {
   bootedApp, opened, expandAll, everyOffer, settle, refusals, columnFixture, pageFixture, fire, repoRoot,
-  dollars, shortDollars,
+  dollars, shortDollars, stepByKey,
 } from "./testlib.mjs";
 
 const CONFIG = pageFixture().config;
@@ -81,7 +81,7 @@ function tailPromise(mark) {
  * @param {any} app
  */
 function worstOf(app) {
-  const doc = app.scheduleOf(app.column, stepByKey("fund-group").projection);
+  const doc = app.scheduleOf(app.column, stepByKey(CONFIG, "fund-group").projection);
   if (!doc) throw new Error("the column on screen carries no fund-flows schedule");
   const tierOf = new Map(doc.nodes.map((n) => [n.id, n.tier]));
   const funds = new Map();
@@ -144,14 +144,6 @@ async function goTo(app, path) {
     expandAll(app);
     await opened(app, id);
   }
-}
-
-
-/** The step the pinned page declares under one key. */
-function stepByKey(key) {
-  const found = CONFIG.steps.find((s) => s.key === key);
-  if (!found) throw new Error(`the pinned page declares no step keyed ${key}`);
-  return found;
 }
 
 /** The breadcrumb's children as class:text. */
@@ -611,7 +603,7 @@ describe("the drill's drawing", () => {
     t.diagnostic(said.join("; "));
   });
   test("a partition ribbon says it is a cross-tab in its class, its two labels and the flow table", async (t) => {
-    const step = stepByKey("object-category");
+    const step = stepByKey(CONFIG, "object-category");
     const { app, document } = await bootedApp({ checkedStem: YEARS[0].stem });
     const chart = document.getElementById("chart");
     const category = marksIn(chart).find((m) => m.__data__.tier === step.from && app.drillable(m.__data__));
@@ -655,7 +647,7 @@ describe("the drill's drawing", () => {
   });
 
   test("the opened chart says what it is, in this step's own words", async (t) => {
-    const step = stepByKey("transfers");
+    const step = stepByKey(CONFIG, "transfers");
     const year = YEARS[0];
     const { app, document } = await bootedApp({ checkedStem: year.stem });
     const chart = document.getElementById("chart");
@@ -770,7 +762,7 @@ describe("the drill's drawing", () => {
       const links = app.projection.links.filter((l) => l.source === rid || l.target === rid);
       const carriedEnds = links.map((l) => (l.target === rid ? l.source : l.target));
       const citedPages = [...new Set(links.flatMap((l) => l.locators.flatMap((s) => s.pages)))];
-      const declared = stepByKey("fund-group").residual;
+      const declared = stepByKey(CONFIG, "fund-group").residual;
       const missingReasons = carriedEnds.filter((e) => !node.rationale.includes(declared[e]));
       const listed = document.getElementById("derived-list").textContent;
       app.showTip({ target: chart, clientX: 0, clientY: 0 }, node);
@@ -780,7 +772,7 @@ describe("the drill's drawing", () => {
       const opens = app.projection.nodes.filter((n) => app.isCarried(n.id) && app.drillable(n)).map((n) => n.id);
       // THE WORDS ARE THE DECLARATION'S: the mark is named for the step's grain
       // and carries the step's reason for every endpoint it took a flow from.
-      const grain = stepByKey("fund-group").residual_grain;
+      const grain = stepByKey(CONFIG, "fund-group").residual_grain;
       assert.ok(grain, "the fund-group step declares no residual_grain");
       const carriedPrinted = node.targetLinks.filter((l) => !l.derived);
       const wrongProvenance = carriedPrinted.filter((l) => {
@@ -882,7 +874,7 @@ describe("the drill's drawing", () => {
       const foldedID = foldedTail.folds[0];
       const CAVEAT = { id: "a-folded-row", summary: "A caveat about a row the cap folds.", text: "", applies_to: [foldedID] };
       const doc = columnFixture(year.fixture);
-      doc.schedules[stepByKey("fund-group").projection].caveats.push(CAVEAT);
+      doc.schedules[stepByKey(CONFIG, "fund-group").projection].caveats.push(CAVEAT);
       const { app, document } = await bootedApp({ checkedStem: year.stem, plan: { [year.path]: { doc } } });
       const chart = document.getElementById("chart");
       await opened(app, worst);
@@ -905,8 +897,8 @@ describe("the drill's drawing", () => {
       await opened(app, "fund-group/general", "fund/100");
       const words = [app.labelOfRung(0), app.labelOfRung(1)];
       const rungWords = app.trailOfRungs();
-      const groupNoun = stepByKey("fund-group").noun;
-      const fundNoun = stepByKey("fund").noun;
+      const groupNoun = stepByKey(CONFIG, "fund-group").noun;
+      const fundNoun = stepByKey(CONFIG, "fund").noun;
       const title = document.getElementById("chart-title").textContent.replace(/\s+/g, " ").trim();
       const desc = document.getElementById("chart-desc").textContent.replace(/\s+/g, " ").trim();
       t.diagnostic(`the column labels the two rungs ${JSON.stringify(words)}, and the trail reads ` +
