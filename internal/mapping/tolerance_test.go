@@ -809,8 +809,8 @@ func TestTotalRowAboveRefusals(t *testing.T) {
 //
 // Under total_row_above that meant a wrapped label between the total's line and
 // the first row could only be declared with the total's own figures glued to
-// the front of it -- so the fragment was refused if undeclared and stale if
-// declared, which is fisc-2jk's failure mode reintroduced under a new flag. No
+// the front of it -- so declared as printed, the fragment went stale, which is
+// fisc-2jk's failure mode reintroduced under a new flag. No
 // page in the corpus has the shape, which is why nothing went red; a test that
 // waits for one to appear is a test that arrives after the bug.
 //
@@ -818,7 +818,9 @@ func TestTotalRowAboveRefusals(t *testing.T) {
 // the claim is about the ORDER of two tests inside that function and a probe
 // would be asserting it through whatever shape the page happens to have. The
 // two gaps below differ only in whether the text after the total's line is
-// declared.
+// declared, and both are accepted: words before the first row are where column
+// headers live, and checkGap permits them undeclared on every rule. What the
+// declaration changes is that it is marked used.
 func TestTotalRowAboveAllowsAWrappedLabelAfterTheTotalsLine(t *testing.T) {
 	rule := &Rule{TotalRow: "Total Revenues", TotalRowAbove: true}
 	rows := []Row{{Label: "General Government:"}}
@@ -835,11 +837,18 @@ func TestTotalRowAboveAllowsAWrappedLabelAfterTheTotalsLine(t *testing.T) {
 			"fail later as a stale declaration")
 	}
 
-	// Undeclared, the same fragment is still refused -- so the arm above is
-	// about the declaration and not about the skip swallowing everything.
+	// Undeclared, the same fragment is accepted, as leading words are on a rule
+	// without the flag: the skip leaves the gap in the shape every other rule
+	// sees, and refusing it here would demand a declaration only this flag asks
+	// for.
 	if err := res.checkGap(rule, &Part{Page: 41}, gap, rows, 0, map[string]bool{}, nil); err != nil {
-		t.Logf("undeclared non-digit text is permitted here, as on every other "+
-			"rule: %v", err)
+		t.Errorf("undeclared words after the total's line were refused, though "+
+			"checkGap permits leading words undeclared on every rule: %v", err)
+	}
+	if err := res.checkGap(&Rule{TotalRow: "Total Revenues"}, &Part{Page: 41},
+		"      Current:\n   ", rows, 0, map[string]bool{}, nil); err != nil {
+		t.Errorf("undeclared leading words were refused on a rule without "+
+			"total_row_above, so the arm above compares against nothing: %v", err)
 	}
 	// FIGURES on the line after the total's are refused, which is the guard the
 	// skip must not clear.

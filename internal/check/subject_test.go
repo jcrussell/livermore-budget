@@ -1009,7 +1009,8 @@ func TestContestedTotalsAreStillContested(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(entries) == 0 {
-		t.Skip("no contested totals are declared, so there is nothing to keep honest")
+		t.Fatal("project.ContestedTotals() declares nothing, so this test holds nothing; " +
+			"if fisc-av0w was decided, remove this test with the last entry")
 	}
 
 	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})

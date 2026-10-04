@@ -254,6 +254,7 @@ describe("the drill-down is drawable only folded", () => {
       const folded = wide.foldDocument(raw);
       const before_ = cited(raw), after = cited(folded);
       t.diagnostic(`${before_.size} facts cited by ${raw.links.length} links before the fold, ${after.size} by ${folded.links.length} after`);
+      assert.ok(before_.size > 0, `${col.stem}: the schedule cites no fact, so none can be cited away`);
       assert.equal(after.size, before_.size);
       for (const id of before_) assert.ok(after.has(id), `${id} cited away`);
     });
@@ -352,6 +353,7 @@ describe("the spine's fund groups", () => {
     const whole = await drawing([]);
     const spine = goldenGraph();
     t.diagnostic(`all ${spine.nodes.length} spine nodes are parentless`);
+    assert.ok(spine.nodes.length > 0, "the spine golden carries no node, so no parent is walked");
     for (const n of spine.nodes) {
       assert.equal(n.parent, "", n.id);
       assert.equal(whole.fundGroupOf(n), whole.isFundGroup(n) ? n.id : "", n.id);
@@ -439,6 +441,8 @@ describe("the cap is what makes a fund group's column drawable", () => {
     const sr = await measure("fund-group/special-revenue");
     const cap = await measure("fund-group/capital");
     t.diagnostic(`special-revenue ${sr.capped.ribbons} ribbons / ${sr.capped.sub} sub-pixel / ${sr.capped.min}px capped, ${sr.whole.ribbons} / ${sr.whole.sub} / ${sr.whole.min}px whole, largest fund ${sr.top}% and smallest ${sr.bottom}% of the column; capital ${cap.capped.ribbons} / ${cap.capped.sub} capped, ${cap.whole.ribbons} / ${cap.whole.sub} whole`);
+    // No ribbon drawn is no sub-pixel ribbon drawn.
+    assert.ok(sr.capped.ribbons > 0 && cap.capped.ribbons > 0, "a capped column draws no ribbon, so its cap is held to nothing");
     assert.equal(sr.capped.sub, 0);
     assert.equal(cap.capped.sub, 0);
     assert.ok(sr.whole.sub > 0);
