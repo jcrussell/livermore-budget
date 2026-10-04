@@ -1438,13 +1438,12 @@ func (r *Rule) expectedValues(p *Part) int {
 }
 
 // SubtotalDeltaAt is the delta this row declares for the column a part
-// prints at index ci, matched by the header the page prints over it.
+// prints at index ci, matched by the header the page prints over it, through
+// the part's one header-to-column resolution. A delta naming a header this
+// part does not print belongs to another part of the rule.
 func (r Row) SubtotalDeltaAt(p *Part, ci int) (amount.Cents, bool) {
-	if ci < 0 || ci >= len(p.ColumnHeaders) || p.ColumnHeaders[ci].Unheaded {
-		return 0, false
-	}
 	for _, d := range r.SubtotalDeltas {
-		if d.Column == p.ColumnHeaders[ci].Text {
+		if c, err := p.columnHeaded(d.Column); err == nil && c == ci {
 			return d.Cents, true
 		}
 	}
