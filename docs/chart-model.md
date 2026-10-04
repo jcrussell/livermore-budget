@@ -13,8 +13,8 @@ are, what each may compute, and the measurements that fixed the seams.
 | Projection | `internal/project` | one graph per printed schedule: nodes `(id, label, tier, parent, role, derived)` and links `(value_cents, kind, fact_ids, locators, derived, partition, contra)`, every figure cited | `schema/projection.schema.json` |
 | Column | `internal/export` | one node table per `(fiscal_year, basis)` and, per schedule, its parent edges and links indexed into that table; re-keys and orders, computes no new figure | `schema/column.schema.json` |
 | Declarations | `internal/export`, declared in `pkg/cmd/export` | the drill DAG (what opens from where, into which schedule), the licences (residual endpoints with reasons, gap cents per column), every sentence the page says, and per chart a **form** with that form's hints under its own key | `schema/page.schema.json`, as `window.FISC_CONFIG` |
-| Client core | `site/core.js` | sums over cited figures: schedule assembly, hierarchy by parent chain, the fold, the cap, the drill DAG, provenance union, the three client marks, years, wording. Reads no form hint. | `schema/mark.schema.json` for the marks it makes |
-| Form renderers | `site/sankey.js`; a treemap or bar list later | what depends on the screen and the mark type: which tiers fit a budget, which ribbons a window holds, where a mark stands, layout, paint. Reads only its own hints and the generic step. | nothing: a renderer emits pixels |
+| Client core | `site/core.js` | sums over cited figures: schedule assembly, hierarchy by parent chain, the fold, the cap, the drill DAG, provenance union, years, wording, and the three client marks with their figures: which ribbons a residual carries and their two sums, a gap's difference held to the licence Go shipped, a node's figure net of its printed reductions, the reductions among a mark's ribbons, the pages cited around a node. Reads no form hint. | `schema/mark.schema.json` for the marks it makes |
+| Form renderers | `site/sankey.js`; a treemap or bar list later | what depends on the screen and the mark type: which tiers fit a budget, which ribbons a window holds and which half of a step's document it draws, whether a width draws a column, where a mark stands, layout, paint. Reads only its own hints and the generic step. | nothing: a renderer emits pixels |
 
 A figure the client shows is one Go cited, or a sum, difference or union of
 such figures under a licence Go shipped. A client mark is derived, says so,
@@ -30,7 +30,7 @@ Measured against `schema/column.schema.json` for a treemap of one schedule:
 | A node's figure | the sum of the links at the node, or of its subtree's leaves; the core sums, under the licence every merged ribbon already has |
 | Provenance of a cell | the union of `fact_ids` and `locators` over the links summed |
 | Which cells open, and into what | the generic step: `after`, `from`, `role`, `projection` |
-| A residual or a gap in that view | the core's mark constructors; a treemap draws them as cells |
+| A residual or a gap in that view | the core's `carriedResidual` and `licensedGap`, stood where the form says; a treemap draws them as cells |
 | Colour | `fund_groups[].slot` |
 | Which tiers to tile; figure direction | absent by design: the form's own hint object |
 
@@ -94,8 +94,12 @@ A form module exports one object:
  * }} FormRenderer */
 ```
 
-A renderer calls the core for every figure (`foldDocument`, `capColumn`, the
-mark constructors) and computes none of its own. `app.js` registers renderers
+A renderer calls the core for every figure (`foldDocument`, `capColumn`,
+`printedNet`, `reducedOf`, `carriedResidual`, `licensedGap`) and computes none
+of its own; it hands the core what only it knows, which is where a mark
+stands, whether this width draws a column, and whether the step's document
+decomposes the opened node at the columns the step declares, read off its
+own halves. `app.js` registers renderers
 by form in `FORMS` and refuses, with a banner, a chart whose form it does not
 hold. `site/form.test.mjs` registers a stub form that ships nothing and drills
 through it, which is what shows the seam carries a second renderer without a

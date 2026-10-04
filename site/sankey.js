@@ -14,7 +14,7 @@
  */
 
 import {
-  FOLD_REFUSES_MIXED, capColumn, citations, config, fmt, fmtShortSigned, foldDocument, foldTarget, gapID, gapMark, isAggregate, isFundGroup, isGap, isResidual, ledeOf, link, regroupLocators, residualID, residualMark, say, scoped, tailFigure, withinNode,
+  FOLD_REFUSES_MIXED, capColumn, carriedResidual, fmt, fmtShortSigned, foldDocument, foldTarget, isAggregate, isFundGroup, isGap, isResidual, licensedGap, printedNet, reducedOf, say, scoped, tailFigure, withinNode,
 } from "./core.js";
 
 export const NODE_WIDTH = 14;
@@ -469,15 +469,14 @@ export function dropEmptyColumns(drawn, rung, tiers) {
 /**
  * Draws the opened node at the figure it prints where its drawn ribbons do
  * not add up to it: a node a schedule prints a reduction under, the reduction
- * drawn forward at its magnitude by markContra. The figure is the signed sum
- * of the ribbons arriving at it from the columns the step opens into --
- * the same one the citywide chart labels the node with -- and is read before
- * any mark is added or any sign is flipped.
+ * drawn forward at its magnitude by markContra. The figure is printedNet
+ * over the ribbons arriving from the columns the step opens into -- the
+ * same one the citywide chart labels the node with -- read before any mark
+ * is added or any sign is flipped.
  *
  * d3-sankey would otherwise size the node at the gross its forward-drawn
  * ribbons add to, a figure no page prints. Setting the value here means every
- * surface reads one figure. A sum at or below zero would rescale its whole
- * column silently, so it is refused.
+ * surface reads one figure.
  *
  * @param {FiscProjection} drawn  shaped and folded, before any mark
  * @param {Rung} rung
@@ -486,20 +485,13 @@ export function dropEmptyColumns(drawn, rung, tiers) {
 export function markAmounts(drawn, rung) {
   const keep = new Set(rung.step.sankey.keep || []);
   const tierOf = new Map(drawn.nodes.map((n) => [n.id, n.tier]));
-  let sum = 0;
-  let contra = false;
-  for (const l of drawn.links) {
-    if (l.target !== rung.id || keep.has(tierOf.get(l.source))) continue;
-    sum += l.value_cents;
-    if (l.value_cents < 0) contra = true;
-  }
-  if (!contra) return drawn;
-  if (sum <= 0) {
-    throw new Error("cannot draw " + drawn.projection + ": the ribbons into " + rung.id +
-      " net to " + sum + " cents, which is no height to draw it at");
-  }
+  const fresh = Object.assign({}, drawn, {
+    links: drawn.links.filter((l) => !keep.has(tierOf.get(l.source))),
+  });
+  const printed = printedNet(fresh, rung.id);
+  if (!printed.reduced) return drawn;
   return Object.assign({}, drawn, {
-    nodes: drawn.nodes.map((n) => (n.id === rung.id ? Object.assign({}, n, { fixedValue: sum }) : n)),
+    nodes: drawn.nodes.map((n) => (n.id === rung.id ? Object.assign({}, n, { fixedValue: printed.net }) : n)),
   });
 }
 
@@ -637,38 +629,36 @@ export function residualFlows(d) {
  */
 export function contraNote(d) {
   if (isContraNode(d)) return "";
-  const arriving = d.targetLinks.reduce((sum, l) => sum + l.value, 0);
-  const leaving = d.sourceLinks.reduce((sum, l) => sum + l.value, 0);
-  const side = arriving >= leaving ? d.targetLinks : d.sourceLinks;
-  const reduced = side.filter((l) => l.contra).reduce((sum, l) => sum + l.value_cents, 0);
+  const reduced = reducedOf(d.targetLinks, d.sourceLinks);
   if (!reduced) return "";
   return "\u25c7 our reading: " + fmt(reduced) + " of this category is printed as reductions, " +
     "drawn here at their size";
 }
 
 /**
- * Adds to a rung's drawn document the flows the chart it was opened from
- * prints for the opened node and the document it draws does not decompose,
- * copied verbatim onto one derived node beside the node's parts.
+ * carriedResidual over this form's answers: whether the step's document
+ * decomposes the opened node, read at every declared column so the figures
+ * do not move with the viewport; whether this width draws the column a
+ * leaving endpoint stands in; and where the mark and a carried endpoint
+ * stand.
  *
- * CARRIED, NOT COMPUTED: every link added is a link of the chart above with
- * only its group end re-pointed, so its figure and provenance are untouched.
- * The endpoints are the step's declaration, whole or nothing each, in sorted
- * id order: an endpoint's inflow is carried only where the drawn document
- * carries nothing from it into the opened node, its outflow only where the
- * step's document decomposes the node at the tiers the step declares and
- * carries nothing from inside to it; where both, the outflow's placement
- * wins. An endpoint's ribbons come off
- * the chart on screen where it draws any, else off the file, never both: the
- * window's flank is already on screen, and taking both would count
- * transfers/in twice against what p0067 prints. The mark's two figures are the sums of the
- * ribbons carried each way, the leaving ones counted whether or not this width
- * draws their column, so the figures do not move with the viewport. Its
- * inflow and outflow differ by construction, and d3-sankey shows that on the
- * mark.
+ * DECOMPOSED IS THE STEP'S DECLARATION, NOT THIS WIDTH: whether the document
+ * sends anything out of a part of the opened node at a tier the step
+ * declares, each part read at the column it folds to there. Asked of the
+ * drawn window instead, a budget that drops the parts' outward column would
+ * drop the leaving legs from the mark's figure as well as from the chart.
  *
- * Only across a document switch: a step that draws the document before it has
- * no second grain to be residual by.
+ * A LEAVING LEG IS DROPPED WHERE THE BUDGET DROPS ITS COLUMN, as every other
+ * ribbon of that column is; placed in the last column the chart has, it
+ * would draw a ribbon of no length.
+ *
+ * THE MARK STANDS AT THE SHALLOWEST DECLARED TIER OF ANY PART OF THE OPENED
+ * NODE, read off the step's unfolded document; a node with no part at a
+ * declared tier has nowhere to stand it. ENDPOINTS STAND AT THE FIRST DRAWN
+ * TIER WHEN THEIR FLOW ARRIVES AND THE LAST WHEN IT LEAVES -- drawn, not
+ * declared: an undrawn declared tier is clamped to the first column and the
+ * ribbon runs backwards. Filtered in the step's own order, which is a column
+ * order and not a sorted set.
  *
  * @param {FiscProjection} drawn  the rung's document, shaped and folded
  * @param {FiscProjection | null} from  the document of the chart the rung was
@@ -679,21 +669,10 @@ export function contraNote(d) {
  */
 export function carryResidual(drawn, from, rung, onScreen) {
   const step = rung.step;
-  const residual = step.residual;
-  if (!residual || !from || !step.projection) return drawn;
+  if (!step.residual || !from || !step.projection) return drawn;
   const opened = rung.id;
   const doc = rung.doc;
-  const id = residualID(opened);
   const inside = withinNode(doc, opened);
-  if (!inside.has(opened)) {
-    throw new Error("cannot draw " + doc.projection + ": it does not carry " + opened +
-      ", so nothing can be residual beside its parts");
-  }
-  // DECOMPOSED IS THE STEP'S DECLARATION, NOT THIS WIDTH: whether the document
-  // sends anything out of a part of the opened node at a tier the step
-  // declares, each part read at the column it folds to there. Asked of the
-  // drawn window instead, a budget that drops the parts' outward column would
-  // drop the leaving legs from the mark's figure as well as from the chart.
   const declared = freshHalf(step, doc, opened);
   const byDocID = new Map(doc.nodes.map((n) => [n.id, n]));
   const declaredTiers = new Set(freshTiers(step));
@@ -701,259 +680,33 @@ export function carryResidual(drawn, from, rung, onScreen) {
     const part = foldTarget(byDocID, /** @type {FiscNode} */ (byDocID.get(l.source)), declaredTiers);
     return part !== "" && part !== opened && inside.has(part);
   });
-  const carriesFrom = (/** @type {string} */ e) => doc.links.some((l) => l.source === e && inside.has(l.target));
-  const carriesTo = (/** @type {string} */ e) => doc.links.some((l) => l.target === e && inside.has(l.source));
-  /** @type {FiscLink[]} */
-  const links = [];
-  /**
-   * The chart's own copy of each link re-pointed below, dropped: a window's
-   * flank already draws them, and keeping both would double-count.
-   * @type {Set<FiscLink>}
-   */
-  const spliced = new Set();
-  /**
-   * One endpoint's links off the chart above: this rung's own where it draws
-   * them, else the file's. Never both.
-   * @param {(l: FiscLink) => boolean} want
-   * @returns {FiscLink[]}
-   */
-  const above = (want) => {
-    const here = drawn.links.filter(want);
-    return here.length ? here : from.links.filter(want);
-  };
-  /** @type {Map<string, boolean>} endpoint id to whether its flow arrives */
-  const ends = new Map();
-  // A LEAVING LEG IS DROPPED WHERE THE BUDGET DROPS ITS COLUMN, as every other
-  // ribbon of that column is; placed in the last column the chart has, it
-  // would draw a ribbon of no length.
-  const leaves = leavingLegDrawn(step, onScreen);
-  // Counted, not inferred from the endpoints: a mark with no leaving flow
-  // holds nothing back and its note must not say otherwise.
-  let withheld = 0;
-  let inCents = 0;
-  let outCents = 0;
-  // The endpoints whose flow the mark carries, drawn or withheld: the ones
-  // its rationale gives a reason for.
-  /** @type {Set<string>} */
-  const touched = new Set();
-  for (const e of Object.keys(residual).sort()) {
-    if (!carriesFrom(e)) {
-      for (const l of above((l) => l.source === e && l.target === opened)) {
-        links.push(Object.assign({}, l, { target: id }));
-        inCents += l.value_cents;
-        ends.set(e, true);
-        touched.add(e);
-        spliced.add(l);
-      }
-    }
-    if (!decomposed || carriesTo(e)) continue;
-    const leaving = above((l) => l.source === opened && l.target === e);
-    if (leaving.length) touched.add(e);
-    for (const l of leaving) outCents += l.value_cents;
-    if (!leaves) {
-      withheld += leaving.length;
-      continue;
-    }
-    for (const l of leaving) {
-      links.push(Object.assign({}, l, { source: id }));
-      ends.set(e, false);
-      spliced.add(l);
-    }
-  }
-
-  // A MARK NONE OF WHOSE FLOWS THIS WIDTH DRAWS IS NOT DRAWN: every flow of an
-  // enterprise or special revenue residual leaves through the widened column,
-  // and at three columns it would be a box of no height citing nothing.
-  if (!links.length) return drawn;
-
-  // THE MARK STANDS AT THE SHALLOWEST DECLARED TIER OF ANY PART OF THE OPENED
-  // NODE, read off the step's unfolded document; a node with no part at a
-  // declared tier has nowhere to stand it.
-  let tier = -1;
+  let mark = -1;
   for (const n of doc.nodes) {
-    if (n.id !== opened && inside.has(n.id) && step.sankey.tiers.includes(n.tier) && (tier < 0 || n.tier < tier)) {
-      tier = n.tier;
+    if (n.id !== opened && inside.has(n.id) && step.sankey.tiers.includes(n.tier) && (mark < 0 || n.tier < mark)) {
+      mark = n.tier;
     }
   }
-  if (tier < 0) {
-    throw new Error("cannot draw " + doc.projection + ": " + opened +
-      " has no part at a tier this step draws to stand the residual beside");
-  }
-
-  // ENDPOINTS STAND AT THE FIRST DRAWN TIER WHEN THEIR FLOW ARRIVES AND THE
-  // LAST WHEN IT LEAVES -- drawn, not declared: an undrawn declared tier is
-  // clamped to the first column and the ribbon runs backwards. Filtered in the
-  // step's own order, which is a column order and not a sorted set.
   const tiers = step.sankey.tiers.filter((t) => drawn.nodes.some((n) => n.tier === t));
-  const have = new Set(drawn.nodes.map((n) => n.id));
-  const fromByID = new Map(from.nodes.map((n) => [n.id, n]));
-  /** @type {FiscNode[]} */
-  const added = [];
-  for (const [e, arrives] of ends) {
-    const node = fromByID.get(e);
-    if (!node || have.has(e)) continue;
-    added.push(Object.assign({}, node, {
-      tier: arrives ? tiers[0] : tiers[tiers.length - 1], parent: "",
-      // Its caveats belong to the chart it was carried from; caveatsFor,
-      // caveatHref and carriedSource resolve this stem against the stack.
-      carried_from: from.projection || "",
-    }));
-  }
-
-  /** @type {Map<string, Set<number>>} */
-  const cited = new Map();
-  for (const l of links) {
-    for (const s of l.locators || []) {
-      const pages = cited.get(s.doc_id) || new Set();
-      for (const p of s.pages) pages.add(p);
-      cited.set(s.doc_id, pages);
-    }
-  }
-  const where = Array.from(cited.keys()).sort().map((docID) => {
-    const d = config() && config().docs ? config().docs[docID] : undefined;
-    const pages = Array.from(cited.get(docID) || []).sort((a, b) => a - b);
-    return (d && d.title ? d.title : docID) + " " +
-      (pages.length === 1 ? "p." : "pp.") + pages.join(", ");
-  }).join("; ");
-
-  // The words: the label names the grain, the rationale carries the step's
-  // reason for every endpoint in sorted order, whichever legs this width draws.
-  const label = (/** @type {string} */ n) => {
-    const own = doc.nodes.find((g) => g.id === n && g.label);
-    if (own) return own.label;
-    const theirs = from.nodes.find((g) => g.id === n && g.label);
-    return theirs ? theirs.label : n;
-  };
-  const grain = step.residual_grain || "";
-  const reasons = Object.keys(residual).sort().filter((e) => touched.has(e))
-    .map((e) => label(e) + ": " + residual[e] + ".");
-
-  // No plural is formed from the grain. The note cites the ribbons carried
-  // at this width.
-  const node = residualMark(opened, tier, grain, inCents, outCents,
-    say("residual_rationale", { opened: label(opened), grain: grain, reasons: reasons.join(" ") }),
-    say("residual_note", {
-      flows: links.length, where: where,
-      withheld: !withheld ? ""
-        : " " + (withheld === 1 ? say("residual_withheld_one") : say("residual_withheld_many", { n: withheld })),
-    }));
-  return Object.assign({}, drawn, {
-    nodes: drawn.nodes.concat(added, [node]),
-    links: drawn.links.filter((l) => !spliced.has(l)).concat(links),
-  });
+  return carriedResidual(drawn, from, rung, decomposed, leavingLegDrawn(step, onScreen),
+    { mark: mark, arriving: tiers[0], leaving: tiers[tiers.length - 1] });
 }
 
 /**
- * States as a mark of its own the difference between what the chart above
- * sends into the opened node and what the document this rung draws breaks that
- * node into, where the step licenses exactly that difference in this column.
- *
- * Without it d3-sankey absorbs the difference into node height with no ribbon
- * against it, and the chart looks balanced. A gap has no published link to
- * copy, so unlike carryResidual's mark this one is derived. The sums are
- * signed, reductions negative, as they stand before markContra; after that
- * pass a centre would read short by twice the reductions. Too little leaving
- * stands the mark at the last declared tier, too little arriving at the
- * first. It carries no kind: the difference crosses no printed boundary.
- *
- * FAILS CLOSED: a difference no licence accounts for, one licensed in another
- * column or at another figure, and a licence for a centre that balances are
- * each a throw, so the two documents drifting apart is a banner and not a
- * chart. The licence's cents is structure's, shipped on the step.
- *
+ * licensedGap with the mark stood where its figure is: too little leaving
+ * at the last declared tier, too little arriving at the first.
  * @param {FiscProjection} drawn  the rung's chart, shaped, folded and spliced
  * @param {FiscProjection | null} from  the document of the chart the rung was
- *   opened from, which the mark cites alongside the drawn one
+ *   opened from
  * @param {Rung} rung
- * @returns {FiscProjection} drawn itself where the step declares no gap at all,
- *   or the node it opened balances unlicensed
+ * @returns {FiscProjection}
  */
 export function markGap(drawn, from, rung) {
-  const step = rung.step;
-  const gaps = step.gaps;
-  if (!gaps || typeof gaps !== "object") return drawn;
-  const opened = rung.id;
-  if (!drawn.nodes.some((n) => n.id === opened)) {
-    throw new Error("cannot draw " + drawn.projection + ": " + opened + " is not a mark of the " +
-      "drawn chart, so the gap this step declares has nothing to be stated against");
-  }
-  let into = 0;
-  let outOf = 0;
-  for (const l of drawn.links) {
-    if (l.target === opened) into += l.value_cents;
-    if (l.source === opened) outOf += l.value_cents;
-  }
-  const gap = into - outOf;
-  const meta = drawn.metadata || /** @type {any} */ ({});
-  const licence = (gaps[opened] || [])
-    .find((g) => g.fiscal_year === meta.fiscal_year && g.basis === meta.basis);
-  if (gap === 0 && !licence) return drawn;
-  // Named only once there is something to say about the column.
-  const where = ledeOf(meta);
-  if (gap === 0) {
-    throw new Error("cannot draw " + drawn.projection + ": the step declares a gap of " + licence.cents +
-      " cents on " + opened + " in " + where + " and the chart balances there");
-  }
-  if (!licence) {
-    throw new Error("cannot draw " + drawn.projection + ": the chart above sends " + into + " into " +
-      opened + " and this one draws " + outOf + " of it, a difference of " + Math.abs(gap) +
-      " cents that no declaration on this step accounts for in " + where +
-      "; the two documents have drifted apart");
-  }
-  if (licence.cents !== gap) {
-    throw new Error("cannot draw " + drawn.projection + ": the step declares a gap of " + licence.cents +
-      " cents on " + opened + " in " + where + " and the charts differ there by " + gap);
-  }
-  const tiers = step.sankey.tiers;
-  const locators = citedAround(opened, from ? [from, rung.doc] : [rung.doc]);
-  if (!locators.length) {
-    throw new Error("cannot draw " + drawn.projection + ": no ribbon touching " + opened +
-      " cites a page, so the gap on it could cite none");
-  }
-  const centreNode = drawn.nodes.find((n) => n.id === opened && n.label);
-  const centre = centreNode ? centreNode.label : opened;
-  const column = where;
-  const lead = gap > 0
-    ? say("gap_lead_short", { column: column, into: fmt(into), centre: centre, out: fmt(outOf), gap: fmt(gap) })
-    : say("gap_lead_over", { column: column, out: fmt(outOf), centre: centre, gap: fmt(-gap), into: fmt(into) });
-  const id = gapID(opened);
-  // THE SIDE THE FIGURE IS ON IS THE SIDE THE MARK STANDS ON: too little
-  // leaving arrives at the mark, too little arriving leaves it.
-  const node = gapMark(opened, gap > 0 ? tiers[tiers.length - 1] : tiers[0], gap,
-    say("gap_rationale", { lead: lead, reason: licence.reason, gap: fmt(Math.abs(gap)) }),
-    say("gap_note"),
-    locators);
-  const link = gap > 0
-    ? { source: opened, target: id, value_cents: gap }
-    : { source: id, target: opened, value_cents: -gap };
-  return Object.assign({}, drawn, {
-    nodes: drawn.nodes.concat([node]),
-    links: drawn.links.concat([Object.assign({
-      kind: "", transfer_id: "", fact_ids: [], locators: locators, derived: true,
-    }, link)]),
+  // The hint is read only once there is a mark to stand: a balanced chart
+  // with no licence is returned as drawn, whatever the step declares.
+  return licensedGap(drawn, from, rung, (gap) => {
+    const tiers = rung.step.sankey.tiers;
+    return gap > 0 ? tiers[tiers.length - 1] : tiers[0];
   });
-}
-
-/**
- * Every page cited by a ribbon of any of `docs` with an end at `opened` or
- * inside it, merged per document, documents and pages sorted: the pages of
- * the two totals a gap subtracts.
- * @param {string} opened
- * @param {FiscProjection[]} docs
- * @returns {FiscSource[]}
- */
-export function citedAround(opened, docs) {
-  const keys = new Set();
-  for (const doc of docs) {
-    const inside = withinNode(doc, opened);
-    for (const l of doc.links) {
-      if (!inside.has(l.source) && !inside.has(l.target)) continue;
-      for (const s of l.locators || []) {
-        for (const p of s.pages) keys.add(s.doc_id + "\u001f" + p);
-      }
-    }
-  }
-  return regroupLocators(keys);
 }
 
 /**
