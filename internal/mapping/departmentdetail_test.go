@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // The department schedule's scope, and the four pages it covers.
@@ -269,7 +270,7 @@ func spineGeneralFundExpenditure(t *testing.T) map[catYear]amount.Cents {
 	out := map[catYear]amount.Cents{}
 	for i := range f.Rules {
 		ru := &f.Rules[i]
-		if ru.Scope != publishedSpineScope || ru.Kind != KindExpenditure {
+		if ru.Scope != publishedSpineScope || ru.Kind != vocab.KindExpenditure {
 			continue
 		}
 		for j := range ru.Parts {

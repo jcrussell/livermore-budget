@@ -8,9 +8,9 @@ import (
 	"strings"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
-	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/registry"
 	"github.com/jcrussell/livermore-budget/internal/structure"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 	"github.com/jcrussell/livermore-budget/schema"
 )
@@ -509,7 +509,7 @@ type cellSum struct {
 // line is a data/taxonomy.yaml line slug (`taxes/property/eraf`), empty for a
 // transfer, whose node is a flow endpoint rather than a line.
 type revKey struct {
-	kind      mapping.Kind
+	kind      vocab.Kind
 	category  string
 	line      string
 	fundGroup string
@@ -654,7 +654,7 @@ func (f *fundFlows) netFundFlows(facts []fact.Fact) (map[revKey]*cellSum, map[ex
 // category, which every amount check would pass. Absence and ambiguity are
 // refused separately because they are different taxonomy defects.
 func (f *fundFlows) revenueLine(fa *fact.Fact) (string, error) {
-	if fa.Kind != mapping.KindRevenue {
+	if fa.Kind != vocab.KindRevenue {
 		return "", nil
 	}
 	if fa.RowLabel == "" {
@@ -700,7 +700,7 @@ func add[K comparable](m map[K]*cellSum, k K, fa *fact.Fact) {
 // The fact's kind decides first: a transfer crosses no boundary whatever group
 // receives it, so boundaryKind applies to revenue only.
 func revenueLinkKind(k revKey) LinkKind {
-	if k.kind == mapping.KindTransferIn {
+	if k.kind == vocab.KindTransferIn {
 		return KindInternalTransfer
 	}
 	return boundaryKind(k.fundGroup)
@@ -713,7 +713,7 @@ func revenueLinkKind(k revKey) LinkKind {
 // line slug: a category slug is itself one or two segments.
 func (*fundFlows) revenueEndpoint(k revKey) (endpoint, error) {
 	switch k.kind {
-	case mapping.KindRevenue:
+	case vocab.KindRevenue:
 		if k.line == "" {
 			return endpoint{}, cmdutil.WithHint(
 				fmt.Errorf("fund-flows: a revenue cell of %q carries no line", k.category),
@@ -723,7 +723,7 @@ func (*fundFlows) revenueEndpoint(k revKey) (endpoint, error) {
 		return endpoint{id: PrefixRevenueLine + k.line, slug: k.line,
 			role:   RoleRevenueLine,
 			parent: PrefixRevenue + k.category}, nil
-	case mapping.KindTransferIn:
+	case vocab.KindTransferIn:
 		return endpoint{id: NodeTransfersIn, slug: k.category,
 			role: RoleTransferIn}, nil
 	default:

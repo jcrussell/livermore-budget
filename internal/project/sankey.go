@@ -11,9 +11,9 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/fact"
-	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/registry"
 	"github.com/jcrussell/livermore-budget/internal/structure"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 	"github.com/jcrussell/livermore-budget/schema"
 )
@@ -557,7 +557,7 @@ func (s *sankey) Build(facts []fact.Fact, o Options) ([]byte, error) {
 // The fund keeps a fund-level row and a fund-group cell apart; the headline's
 // view is what keeps both from being summed.
 type cellKey struct {
-	kind      mapping.Kind
+	kind      vocab.Kind
 	category  string
 	fundGroup string
 	// fund is fact.FundString's rendering: "(absent)" on every spine row.
@@ -642,29 +642,29 @@ func (s *sankey) Document(facts []fact.Fact, o Options) (*Document, error) {
 		isDerived := false
 
 		switch k.kind {
-		case mapping.KindRevenue:
+		case vocab.KindRevenue:
 			src = endpoint{id: PrefixRevenue + k.category, slug: k.category,
 				role: RoleRevenueSource}
 			dst = group
 			kind = boundaryKind(k.fundGroup)
 
-		case mapping.KindExpenditure:
+		case vocab.KindExpenditure:
 			src = group
 			dst = endpoint{id: PrefixExpenditure + k.category, slug: k.category,
 				role: RoleObjectCategory}
 			kind = boundaryKind(k.fundGroup)
 
-		case mapping.KindTransferIn:
+		case vocab.KindTransferIn:
 			src = endpoint{id: k.category, slug: k.category, role: RoleTransferIn}
 			dst = group
 			kind = KindInternalTransfer
 
-		case mapping.KindTransferOut:
+		case vocab.KindTransferOut:
 			src = group
 			dst = endpoint{id: k.category, slug: k.category, role: RoleTransferOut}
 			kind = KindInternalTransfer
 
-		case mapping.KindFundBalance:
+		case vocab.KindFundBalance:
 			switch k.category {
 			case CategoryFundBalanceBeginning, CategoryFundBalanceEnding:
 				// A stock, not a flow. The fact stays; the link never exists.
@@ -771,7 +771,7 @@ func (s *sankey) Document(facts []fact.Fact, o Options) (*Document, error) {
 // isStock is whether a fact is one of the two balance rows pp.66-67 print,
 // which are recorded and drawn as no flow.
 func isStock(f *fact.Fact) bool {
-	return f.Kind == mapping.KindFundBalance &&
+	return f.Kind == vocab.KindFundBalance &&
 		(f.Category == CategoryFundBalanceBeginning || f.Category == CategoryFundBalanceEnding)
 }
 
@@ -787,19 +787,19 @@ func headlineOver(v structure.View, facts []fact.Fact) Headline {
 		}
 		external := boundaryKind(f.FundGroup) == KindExternal
 		switch f.Kind {
-		case mapping.KindRevenue:
+		case vocab.KindRevenue:
 			h.AllFundsGrossRevenueCents += f.AmountCents
 			if external {
 				h.ExternalRevenueCents += f.AmountCents
 			}
-		case mapping.KindExpenditure:
+		case vocab.KindExpenditure:
 			h.AllFundsGrossExpenditureCents += f.AmountCents
 			if external {
 				h.ExternalExpenditureCents += f.AmountCents
 			}
-		case mapping.KindTransferIn:
+		case vocab.KindTransferIn:
 			h.InternalTransferInCents += f.AmountCents
-		case mapping.KindTransferOut:
+		case vocab.KindTransferOut:
 			h.InternalTransferOutCents += f.AmountCents
 		default:
 		}
@@ -1230,7 +1230,7 @@ func resolveContestedTotals() ([]contestedTotal, error) {
 			return nil, fmt.Errorf("project: contested total names exception %q, which is not one fund-group cell against %q", c.Exception, reference.Name)
 		}
 		p := e.Cells[0]
-		c.Column = Column{FiscalYear: p.Year, Basis: mapping.Basis(p.Basis)}
+		c.Column = Column{FiscalYear: p.Year, Basis: vocab.Basis(p.Basis)}
 		c.FundGroup = p.Coords[structure.AxisFundGroup]
 		c.Published, c.Elsewhere = p.Against.Cents, p.Cut.Cents
 		c.Bead = e.Bead
@@ -1380,7 +1380,7 @@ func toCIP(facts []fact.Fact, col Column) cipTransfers {
 	var out cipTransfers
 	for i := range facts {
 		f := &facts[i]
-		if f.Scope != CIPFundingScope || f.Kind != mapping.KindTransferOut ||
+		if f.Scope != CIPFundingScope || f.Kind != vocab.KindTransferOut ||
 			f.FiscalYear != col.FiscalYear || f.Basis != col.Basis {
 			continue
 		}

@@ -2,7 +2,7 @@ package structure
 
 import (
 	"github.com/jcrussell/livermore-budget/internal/fact"
-	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // The four fund-balance rows pp.66-67 print, by category. Change is a flow;
@@ -29,13 +29,13 @@ type SourcesUses struct {
 // of the identity; a stock is a term of nothing and is booked as a stock.
 func (s *SourcesUses) Add(f *fact.Fact) bool {
 	switch {
-	case f.Kind == mapping.KindRevenue:
+	case f.Kind == vocab.KindRevenue:
 		s.Revenue += f.AmountCents
-	case f.Kind == mapping.KindExpenditure:
+	case f.Kind == vocab.KindExpenditure:
 		s.Expenditure += f.AmountCents
-	case f.Kind == mapping.KindTransferIn:
+	case f.Kind == vocab.KindTransferIn:
 		s.TransfersIn += f.AmountCents
-	case f.Kind == mapping.KindTransferOut:
+	case f.Kind == vocab.KindTransferOut:
 		s.TransfersOut += f.AmountCents
 	case f.Category == CategoryFundBalanceReserveIncrease:
 		s.Reserve += f.AmountCents

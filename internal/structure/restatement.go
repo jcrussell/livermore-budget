@@ -5,7 +5,7 @@ import (
 	"slices"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
-	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // A Restatement declares that a residue prints, line by line, the money of a
@@ -48,20 +48,20 @@ func BudgetBookRestatements() []Restatement {
 		Against: "cip-funds",
 		At:      LevelFund,
 		Lines: []RestatedLine{
-			{Plus: []Line{{mapping.KindTransferIn, "transfers/in"}}, Against: Line{mapping.KindTransferIn, "transfers/in"}},
-			{Plus: []Line{{mapping.KindRevenue, "revenues"}}, Against: Line{Kind: mapping.KindRevenue}},
+			{Plus: []Line{{vocab.KindTransferIn, "transfers/in"}}, Against: Line{vocab.KindTransferIn, "transfers/in"}},
+			{Plus: []Line{{vocab.KindRevenue, "revenues"}}, Against: Line{Kind: vocab.KindRevenue}},
 			// p222 prints the balance a CIP fund draws, positive; pp.186-209
 			// print its opening and closing balances.
 			{Plus: []Line{LineBeginning}, Minus: []Line{LineEnding},
-				Against: Line{mapping.KindFundBalance, "fund-balance/use-for-cip"}},
+				Against: Line{vocab.KindFundBalance, "fund-balance/use-for-cip"}},
 		},
 		// p222 prints what a CIP fund receives and the balance it draws; what
 		// it spends and transfers on is not on p222 fund by fund.
 		Unrestated: []Line{
-			{mapping.KindExpenditure, "expenses"},
-			{mapping.KindTransferOut, "transfers/out"},
-			{mapping.KindTransferOut, "transfers/out-to-cip"},
-			{mapping.KindFundBalance, CategoryFundBalanceReserveIncrease},
+			{vocab.KindExpenditure, "expenses"},
+			{vocab.KindTransferOut, "transfers/out"},
+			{vocab.KindTransferOut, "transfers/out-to-cip"},
+			{vocab.KindFundBalance, CategoryFundBalanceReserveIncrease},
 		},
 		Reason: cipFundsBlockResidue,
 	}}

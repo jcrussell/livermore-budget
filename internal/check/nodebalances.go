@@ -8,8 +8,8 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/fact"
-	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/project"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // nodeBalancesTieToFacts asserts every balance a node publishes is the figure
@@ -95,7 +95,7 @@ func unpublishedBalances(p linked, selected map[string]fact.Fact) []Finding {
 	var out []Finding
 	for _, id := range slices.Sorted(maps.Keys(selected)) {
 		f := selected[id]
-		if f.Kind != mapping.KindFundBalance || published[id] ||
+		if f.Kind != vocab.KindFundBalance || published[id] ||
 			(f.Category != project.CategoryFundBalanceBeginning && f.Category != project.CategoryFundBalanceEnding) {
 			continue
 		}
@@ -112,7 +112,7 @@ func balanceMismatch(node string, b *project.NodeBalance, category string, selec
 	switch {
 	case !ok:
 		return fmt.Sprintf("cites fact %s, which is not in this projection's slice", b.FactID)
-	case f.Kind != mapping.KindFundBalance || f.Category != category:
+	case f.Kind != vocab.KindFundBalance || f.Category != category:
 		return fmt.Sprintf("cites fact %s, which is %s under %q", f.ID, f.Kind, f.Category)
 	case project.PrefixFund+fact.FundString(f.Fund) != node:
 		return fmt.Sprintf("cites fact %s, which is fund %s's", f.ID, fact.FundString(f.Fund))

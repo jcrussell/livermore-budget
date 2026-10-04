@@ -8,8 +8,8 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/fact"
-	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/structure"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 	"github.com/jcrussell/livermore-budget/schema"
 )
@@ -39,7 +39,7 @@ func TransfersOutScopes() []string { return []string{TransfersByFundScope, CIPFu
 
 // transferKinds is the transfers-out network's kind set: p222 also prints the
 // CIP funds' grants and a balance draw, which are not transfers.
-var transferKinds = []mapping.Kind{mapping.KindTransferIn, mapping.KindTransferOut}
+var transferKinds = []vocab.Kind{vocab.KindTransferIn, vocab.KindTransferOut}
 
 // transfersByFund draws Budget Book p76, Summary of Transfers: which fund pays
 // each transfer the city makes and which fund receives it.
@@ -102,7 +102,7 @@ func (t *transfersByFund) scopes() []string {
 }
 
 // kinds is the kind set this network selects, empty for every kind.
-func (t *transfersByFund) kinds() []mapping.Kind {
+func (t *transfersByFund) kinds() []vocab.Kind {
 	if t.Out {
 		return transferKinds
 	}
@@ -353,10 +353,10 @@ func pairTransferLegs(facts []fact.Fact, o Options) (map[transferKey]transferRow
 		var in, outs int
 		for _, fa := range pair {
 			switch fa.Kind {
-			case mapping.KindTransferIn:
+			case vocab.KindTransferIn:
 				in++
 				row.in = fa
-			case mapping.KindTransferOut:
+			case vocab.KindTransferOut:
 				outs++
 				row.out = fa
 			default:

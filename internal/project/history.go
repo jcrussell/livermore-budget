@@ -2,8 +2,8 @@ package project
 
 import (
 	"github.com/jcrussell/livermore-budget/internal/fact"
-	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/structure"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // FundBalancesScope is the schedule [FundBalances] draws: ACFR p167, Fund
@@ -34,7 +34,7 @@ const ChangesProjection = "changes-in-fund-balances"
 func HistoryColumns() []Column {
 	out := make([]Column, 0, 10)
 	for year := 2016; year <= 2025; year++ {
-		out = append(out, Column{FiscalYear: year, Basis: mapping.BasisAudited})
+		out = append(out, Column{FiscalYear: year, Basis: vocab.BasisAudited})
 	}
 	return out
 }

@@ -8,6 +8,7 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // ruleAxes is the axis union each rule's facts populate. It is a union over
@@ -130,7 +131,7 @@ type Cut struct {
 	Level Level
 	// Kinds are the fact kinds the pages print. Required: a cut admitting every
 	// kind compares a revenue schedule against fund balances.
-	Kinds []mapping.Kind
+	Kinds []vocab.Kind
 	// FundGroups pins the cut to the groups its pages cover. Empty means all.
 	FundGroups []string
 	// DepartmentTier is the tier of data/departments.yaml the pages name on
@@ -142,7 +143,7 @@ type Cut struct {
 	Reference bool
 	// Bases are the column bases the pages print. Required: an ACFR cut and a
 	// Budget Book cut can be a lattice containment with no column both print.
-	Bases []mapping.Basis
+	Bases []vocab.Basis
 	// Rules selects the rules this cut reads, for a scope whose pages print
 	// two grains. Empty means every rule of the scope.
 	Rules []string
@@ -215,7 +216,7 @@ func (c Cut) admits(f *fact.Fact) bool {
 }
 
 // prints says whether the cut declares a basis.
-func (c Cut) prints(b mapping.Basis) bool {
+func (c Cut) prints(b vocab.Basis) bool {
 	for _, have := range c.Bases {
 		if have == b {
 			return true
@@ -233,7 +234,7 @@ func contains(haystack []string, needle string) bool {
 	return false
 }
 
-func containsKind(haystack []mapping.Kind, needle mapping.Kind) bool {
+func containsKind(haystack []vocab.Kind, needle vocab.Kind) bool {
 	for _, k := range haystack {
 		if k == needle {
 			return true
@@ -316,10 +317,10 @@ func ValidateCuts(facts []fact.Fact, byRule map[string]Level, cuts []Cut) (empty
 		// silently, and a declared one no fact carries is unfounded.
 		type column struct {
 			year  int
-			basis mapping.Basis
+			basis vocab.Basis
 		}
-		seen := map[mapping.Basis]bool{}
-		kinds := map[column]map[mapping.Kind]bool{}
+		seen := map[vocab.Basis]bool{}
+		kinds := map[column]map[vocab.Kind]bool{}
 		var columns []column
 		for i := range facts {
 			f := &facts[i]
@@ -332,7 +333,7 @@ func ValidateCuts(facts []fact.Fact, byRule map[string]Level, cuts []Cut) (empty
 			seen[f.Basis] = true
 			col := column{f.FiscalYear, f.Basis}
 			if kinds[col] == nil {
-				kinds[col] = map[mapping.Kind]bool{}
+				kinds[col] = map[vocab.Kind]bool{}
 				columns = append(columns, col)
 			}
 			kinds[col][f.Kind] = true

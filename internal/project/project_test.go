@@ -7,16 +7,16 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/fact"
-	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 func TestOptionsValidate(t *testing.T) {
 	ok := Options{
-		Columns: []Column{{FiscalYear: 2026, Basis: mapping.BasisAdopted}},
+		Columns: []Column{{FiscalYear: 2026, Basis: vocab.BasisAdopted}},
 		Scopes:  []string{"all-funds-gross"},
 		Version: "dev",
 	}
-	col := func(o Options, year int, basis mapping.Basis) Options {
+	col := func(o Options, year int, basis vocab.Basis) Options {
 		o.Columns = []Column{{FiscalYear: year, Basis: basis}}
 		return o
 	}
@@ -28,8 +28,8 @@ func TestOptionsValidate(t *testing.T) {
 	}{
 		{"valid", ok, ""},
 		{"no columns", Options{Scopes: ok.Scopes, Version: ok.Version}, "at least one column is required"},
-		{"no fiscal year", col(ok, 0, mapping.BasisAdopted), "fiscal year is required"},
-		{"negative fiscal year", col(ok, -1, mapping.BasisAdopted), "fiscal year is required"},
+		{"no fiscal year", col(ok, 0, vocab.BasisAdopted), "fiscal year is required"},
+		{"negative fiscal year", col(ok, -1, vocab.BasisAdopted), "fiscal year is required"},
 		{"no basis", col(ok, 2026, ""), `basis "" is not one of`},
 		{"unknown basis", col(ok, 2026, "guessed"), `basis "guessed" is not one of`},
 		// A repeated column is refused because anything summing the document
@@ -37,7 +37,7 @@ func TestOptionsValidate(t *testing.T) {
 		// reached from inside one document instead of across two.
 		{"duplicate column", func() Options {
 			o := ok
-			o.Columns = []Column{{2026, mapping.BasisAdopted}, {2026, mapping.BasisAdopted}}
+			o.Columns = []Column{{2026, vocab.BasisAdopted}, {2026, vocab.BasisAdopted}}
 			return o
 		}(), "column FY2026 adopted is listed twice"},
 		// Several DISTINCT columns are valid at this level. Options is the type
@@ -46,7 +46,7 @@ func TestOptionsValidate(t *testing.T) {
 		// Sankey.Graph that refuses to be of two.
 		{"several columns", func() Options {
 			o := ok
-			o.Columns = []Column{{2026, mapping.BasisAdopted}, {2027, mapping.BasisAdopted}}
+			o.Columns = []Column{{2026, vocab.BasisAdopted}, {2027, vocab.BasisAdopted}}
 			return o
 		}(), ""},
 		{"no scope", func() Options { o := ok; o.Scopes = nil; return o }(),
@@ -181,7 +181,7 @@ func TestSlugLabel(t *testing.T) {
 // The refusal is written once, here, and the three call it.
 func TestOnlyScopeRefusesASetItCannotDescribe(t *testing.T) {
 	one := Options{
-		Columns: []Column{{FiscalYear: 2026, Basis: mapping.BasisAdopted}},
+		Columns: []Column{{FiscalYear: 2026, Basis: vocab.BasisAdopted}},
 		Scopes:  []string{PublishedScope},
 		Version: "test",
 	}
@@ -271,8 +271,8 @@ func TestTierOfRefusesACoinedForm(t *testing.T) {
 // validate would draw as an empty chart or pass a check over. The fact is in
 // every other selector, so an empty answer is the swallow and not the filter.
 func TestSelectFactsRefusesAViewThatCannotBuild(t *testing.T) {
-	col := Column{FiscalYear: 2026, Basis: mapping.BasisAdopted}
-	facts := []fact.Fact{{ID: "in", Scope: "no-such-scope", Kind: mapping.KindRevenue,
+	col := Column{FiscalYear: 2026, Basis: vocab.BasisAdopted}
+	facts := []fact.Fact{{ID: "in", Scope: "no-such-scope", Kind: vocab.KindRevenue,
 		FiscalYear: col.FiscalYear, Basis: col.Basis}}
 	o := Options{Columns: []Column{col}, Scopes: []string{"no-such-scope"}, ThroughCuts: true}
 	got, err := SelectFacts(facts, o)
@@ -290,15 +290,15 @@ func TestSelectFactsRefusesAViewThatCannotBuild(t *testing.T) {
 // scopes, the kinds or the columns is not selected, and one inside all three
 // is.
 func TestSelectFactsAppliesEverySelector(t *testing.T) {
-	col := Column{FiscalYear: 2026, Basis: mapping.BasisAdopted}
-	mk := func(id, scope string, kind mapping.Kind, year int) fact.Fact {
+	col := Column{FiscalYear: 2026, Basis: vocab.BasisAdopted}
+	mk := func(id, scope string, kind vocab.Kind, year int) fact.Fact {
 		return fact.Fact{ID: id, Scope: scope, Kind: kind, FiscalYear: year, Basis: col.Basis}
 	}
 	facts := []fact.Fact{
-		mk("in", TransfersByFundScope, mapping.KindTransferIn, 2026),
-		mk("other-scope", PublishedScope, mapping.KindTransferIn, 2026),
-		mk("other-kind", TransfersByFundScope, mapping.KindRevenue, 2026),
-		mk("other-column", TransfersByFundScope, mapping.KindTransferIn, 2027),
+		mk("in", TransfersByFundScope, vocab.KindTransferIn, 2026),
+		mk("other-scope", PublishedScope, vocab.KindTransferIn, 2026),
+		mk("other-kind", TransfersByFundScope, vocab.KindRevenue, 2026),
+		mk("other-column", TransfersByFundScope, vocab.KindTransferIn, 2027),
 	}
 	o := Options{Columns: []Column{col}, Scopes: []string{TransfersByFundScope}, Kinds: transferKinds}
 	selected, err := SelectFacts(facts, o)

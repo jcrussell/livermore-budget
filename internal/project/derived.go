@@ -7,8 +7,8 @@ import (
 	"sort"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
-	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/structure"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // This file is where a cross-schedule licence the client carries -- a
@@ -21,7 +21,7 @@ import (
 // the category whose cell draws it, and whether the citywide spine draws it.
 type flowEndpoint struct {
 	id       string
-	kind     mapping.Kind
+	kind     vocab.Kind
 	category string
 	tier     int
 	// spine is whether sankey.Document draws this endpoint; the others are
@@ -34,12 +34,12 @@ type flowEndpoint struct {
 // the two halves of a change in balance. A test holds the spine's to the
 // spine's golden.
 var flowEndpoints = []flowEndpoint{
-	{NodeTransfersIn, mapping.KindTransferIn, NodeTransfersIn, tierRevenueSource, true},
-	{NodeTransfersOut, mapping.KindTransferOut, NodeTransfersOut, tierObjectCategory, true},
-	{CategoryFundBalanceReserveIncrease, mapping.KindFundBalance, CategoryFundBalanceReserveIncrease, tierObjectCategory, true},
-	{NodeFundBalanceDraw, mapping.KindFundBalance, CategoryFundBalanceChange, tierRevenueSource, true},
-	{NodeFundBalanceContribution, mapping.KindFundBalance, CategoryFundBalanceChange, tierObjectCategory, true},
-	{NodeTransfersOutToCIP, mapping.KindTransferOut, NodeTransfersOutToCIP, tierObjectCategory, false},
+	{NodeTransfersIn, vocab.KindTransferIn, NodeTransfersIn, tierRevenueSource, true},
+	{NodeTransfersOut, vocab.KindTransferOut, NodeTransfersOut, tierObjectCategory, true},
+	{CategoryFundBalanceReserveIncrease, vocab.KindFundBalance, CategoryFundBalanceReserveIncrease, tierObjectCategory, true},
+	{NodeFundBalanceDraw, vocab.KindFundBalance, CategoryFundBalanceChange, tierRevenueSource, true},
+	{NodeFundBalanceContribution, vocab.KindFundBalance, CategoryFundBalanceChange, tierObjectCategory, true},
+	{NodeTransfersOutToCIP, vocab.KindTransferOut, NodeTransfersOutToCIP, tierObjectCategory, false},
 }
 
 // spineEndpoints is the flow endpoints the citywide spine draws.
@@ -95,7 +95,7 @@ func LinkCents(source, target string, facts []fact.Fact) int64 {
 func ChangeCents(facts []fact.Fact) int64 {
 	var sum int64
 	for i := range facts {
-		if facts[i].Kind == mapping.KindFundBalance && facts[i].Category == CategoryFundBalanceBeginning {
+		if facts[i].Kind == vocab.KindFundBalance && facts[i].Category == CategoryFundBalanceBeginning {
 			sum -= facts[i].AmountCents
 			continue
 		}

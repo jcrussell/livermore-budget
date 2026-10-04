@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
-	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // A Split is a coarse cut whose money, in some kinds, no finer cut decomposes
@@ -25,7 +25,7 @@ type Split struct {
 	// refine it, and it may drop an axis on which the Parts name the money
 	// differently from the Whole.
 	At    Level
-	Kinds []mapping.Kind
+	Kinds []vocab.Kind
 }
 
 // BudgetBookSplits are the Budget Book's splits.
@@ -38,7 +38,7 @@ func BudgetBookSplits() []Split {
 		Whole: CutSpine,
 		Parts: []string{CutFundBalanceFlows},
 		At:    LevelFundGroup,
-		Kinds: []mapping.Kind{mapping.KindTransferOut},
+		Kinds: []vocab.Kind{vocab.KindTransferOut},
 	}, {
 		// Category is not an axis of the level: the spine prints TRANSFER OUT
 		// and p222's rows are the "Transfers Out to CIP" pp.69-75 print beside
@@ -47,7 +47,7 @@ func BudgetBookSplits() []Split {
 		Whole: CutSpine,
 		Parts: []string{"transfers-detail", "cip-transfers-out"},
 		At:    LevelFundGroup,
-		Kinds: []mapping.Kind{mapping.KindTransferOut},
+		Kinds: []vocab.Kind{vocab.KindTransferOut},
 	}}
 }
 
@@ -152,8 +152,8 @@ func SplitPair(a, b Cut, splits []Split) (Cut, Cut, bool) {
 	return a, b, split && !kindsMeet(a, b)
 }
 
-func withoutKinds(have, drop []mapping.Kind) []mapping.Kind {
-	var out []mapping.Kind
+func withoutKinds(have, drop []vocab.Kind) []vocab.Kind {
+	var out []vocab.Kind
 	for _, k := range have {
 		if !containsKind(drop, k) {
 			out = append(out, k)

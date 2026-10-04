@@ -16,8 +16,8 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/corpus"
 	"github.com/jcrussell/livermore-budget/internal/fact"
-	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/project"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 	"github.com/jcrussell/livermore-budget/schema"
 )
@@ -1294,7 +1294,7 @@ func pageTextFile(page int) string { return path.Base(corpus.PagePath(page)) }
 // basisLabelFor is the word a column chip and a cell tooltip print for a basis.
 //
 // It is deliberately NOT the basis itself. Basis is component 7 of fact.MakeID,
-// so every figure in the ACFR's ten-year schedules carries mapping.BasisAudited
+// so every figure in the ACFR's ten-year schedules carries vocab.BasisAudited
 // in its identity and cannot be re-based without rewriting every one of those
 // fact ids and moving facts/facts.jsonl. The page is a different question from
 // the identity: those schedules sit in the section the document's own caveat
@@ -1307,7 +1307,7 @@ func pageTextFile(page int) string { return path.Base(corpus.PagePath(page)) }
 // column on some other basis, and relabelling that one would be the same defect
 // pointing the other way.
 func basisLabelFor(caveats []caveatMeta, basis string) string {
-	if basis != string(mapping.BasisAudited) {
+	if basis != string(vocab.BasisAudited) {
 		return basis
 	}
 	for _, c := range caveats {

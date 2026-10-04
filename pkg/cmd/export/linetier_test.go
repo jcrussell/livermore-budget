@@ -11,8 +11,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
-	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/project"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // The revenue categories and the funds they flow into. Folding to {0,3}
@@ -279,7 +279,7 @@ func foldTo(doc *project.Document, tiers ...int) ([]project.Link, []project.Link
 // nets to zero earns no link.
 func netByCategory(facts []fact.Fact, year int, basis string) []project.Link {
 	type key struct {
-		kind     mapping.Kind
+		kind     vocab.Kind
 		category string
 		group    string
 		fund     string
@@ -315,7 +315,7 @@ func netByCategory(facts []fact.Fact, year int, basis string) []project.Link {
 	for _, k := range order {
 		source := "revenue/" + k.category
 		kind := project.KindExternal
-		if k.kind == mapping.KindTransferIn {
+		if k.kind == vocab.KindTransferIn {
 			source = k.category
 			kind = project.KindInternalTransfer
 		} else if k.group == "internal-service" {

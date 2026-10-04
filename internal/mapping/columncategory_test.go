@@ -7,6 +7,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // TestAColumnCarriesTheCategoryAndKind reads Budget Book pp.186-187's first
@@ -26,7 +27,7 @@ func TestAColumnCarriesTheCategoryAndKind(t *testing.T) {
 
 	type cell struct {
 		Category string
-		Kind     Kind
+		Kind     vocab.Kind
 		Cents    amount.Cents
 	}
 	var got []cell
@@ -40,14 +41,14 @@ func TestAColumnCarriesTheCategoryAndKind(t *testing.T) {
 		}
 	}
 	want := []cell{
-		{"fund-balance/beginning", KindFundBalance, 1444069000},
-		{"taxes", KindRevenue, 14202800200},
-		{"transfers/in", KindTransferIn, 73745500},
-		{"wages-and-benefits", KindExpenditure, 12322819000},
-		{"transfers/out", KindTransferOut, 1450739800},
-		{"transfers/out-to-cip", KindTransferOut, 44084600},
-		{"fund-balance/reserve-increase", KindFundBalance, 428893300},
-		{"fund-balance/ending", KindFundBalance, 1474078000},
+		{"fund-balance/beginning", vocab.KindFundBalance, 1444069000},
+		{"taxes", vocab.KindRevenue, 14202800200},
+		{"transfers/in", vocab.KindTransferIn, 73745500},
+		{"wages-and-benefits", vocab.KindExpenditure, 12322819000},
+		{"transfers/out", vocab.KindTransferOut, 1450739800},
+		{"transfers/out-to-cip", vocab.KindTransferOut, 44084600},
+		{"fund-balance/reserve-increase", vocab.KindFundBalance, 428893300},
+		{"fund-balance/ending", vocab.KindFundBalance, 1474078000},
 	}
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("General Fund's cells (-want +got):\n%s", diff)
@@ -58,19 +59,19 @@ func TestAColumnCarriesTheCategoryAndKind(t *testing.T) {
 // a value's category and kind through: the row's on a row-category rule, the
 // column's on a column-category rule, the rule's kind where neither says.
 func TestValueClassificationFollowsOneAxis(t *testing.T) {
-	rule := &Rule{Kind: KindRevenue}
+	rule := &Rule{Kind: vocab.KindRevenue}
 	tests := []struct {
 		name     string
 		v        Value
 		category string
-		kind     Kind
+		kind     vocab.Kind
 	}{
-		{"row axis, rule kind", Value{Row: Row{Category: "taxes"}}, "taxes", KindRevenue},
-		{"row axis, row kind", Value{Row: Row{Category: "transfers/in", Kind: KindTransferIn}},
-			"transfers/in", KindTransferIn},
-		{"column axis, rule kind", Value{Column: Column{Category: "taxes"}}, "taxes", KindRevenue},
+		{"row axis, rule kind", Value{Row: Row{Category: "taxes"}}, "taxes", vocab.KindRevenue},
+		{"row axis, row kind", Value{Row: Row{Category: "transfers/in", Kind: vocab.KindTransferIn}},
+			"transfers/in", vocab.KindTransferIn},
+		{"column axis, rule kind", Value{Column: Column{Category: "taxes"}}, "taxes", vocab.KindRevenue},
 		{"column axis, column kind", Value{Column: Column{Category: "transfers/in",
-			Kind: KindTransferIn}}, "transfers/in", KindTransferIn},
+			Kind: vocab.KindTransferIn}}, "transfers/in", vocab.KindTransferIn},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -188,23 +189,23 @@ func TestParseAcceptsAColumnCategoryAxis(t *testing.T) {
 // TestColumnIdentityNamesTheCategoryAndKind: two rules whose columns differ only
 // in category or kind are not laid out alike, and the message must say which.
 func TestColumnIdentityNamesTheCategoryAndKind(t *testing.T) {
-	a := Column{FiscalYear: 2024, Category: "transfers/in", Kind: KindTransferIn}
+	a := Column{FiscalYear: 2024, Category: "transfers/in", Kind: vocab.KindTransferIn}
 	b := a
 	b.Category = "transfers/out"
 	if i, ok := firstDifferingColumn([]Column{a}, []Column{b}); !ok || i != 0 {
 		t.Errorf("firstDifferingColumn = %d, %v; want 0, true", i, ok)
 	}
-	for _, want := range []string{"transfers/in", string(KindTransferIn)} {
+	for _, want := range []string{"transfers/in", string(vocab.KindTransferIn)} {
 		if got := columnIdentity(a); !strings.Contains(got, want) {
 			t.Errorf("columnIdentity = %q, want it to name %q", got, want)
 		}
 	}
 	// The kind in force is the rule's where the column states none, as the
 	// basis is, so a rule that writes it out is laid out like one that does not.
-	rule := &Rule{Kind: KindFundBalance, Basis: BasisActual}
+	rule := &Rule{Kind: vocab.KindFundBalance, Basis: vocab.BasisActual}
 	bare := &Part{Columns: []Column{{FiscalYear: 2024, Category: "fund-balance/ending"}}}
 	spelt := &Part{Columns: []Column{{FiscalYear: 2024, Category: "fund-balance/ending",
-		Kind: KindFundBalance, Basis: BasisActual}}}
+		Kind: vocab.KindFundBalance, Basis: vocab.BasisActual}}}
 	if i, ok := firstDifferingColumn(effectiveColumns(rule, bare), effectiveColumns(rule, spelt)); !ok || i != -1 {
 		t.Errorf("firstDifferingColumn over effective columns = %d, %v; want -1, true", i, ok)
 	}

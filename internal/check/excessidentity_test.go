@@ -6,18 +6,18 @@ import (
 	"testing"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
-	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/project"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // excessFact is one fact of the fields this check reads. The subjects here are
 // hand-built rather than run through the whole suite because the miniature
 // spine fixture carries no ACFR statistical fact, and grafting one onto it
 // reddens the provenance checks on the unmutated baseline.
-func excessFact(id string, kind mapping.Kind, category string, year int, cents int64) fact.Fact {
+func excessFact(id string, kind vocab.Kind, category string, year int, cents int64) fact.Fact {
 	return fact.Fact{
 		ID: id, DocID: "livermore-acfr-fy2025", Scope: project.ChangesScope,
-		Kind: kind, Category: category, Basis: mapping.BasisAudited,
+		Kind: kind, Category: category, Basis: vocab.BasisAudited,
 		FiscalYear: year, AmountCents: cents,
 	}
 }
@@ -26,14 +26,14 @@ func excessFact(id string, kind mapping.Kind, category string, year int, cents i
 // rows minus two expenditure rows equals the printed excess, per year.
 func excessBaseline() []fact.Fact {
 	return []fact.Fact{
-		excessFact("r1-2016", mapping.KindRevenue, "taxes/property", 2016, 700),
-		excessFact("r2-2016", mapping.KindRevenue, "taxes/sales", 2016, 300),
-		excessFact("e1-2016", mapping.KindExpenditure, "fire", 2016, 250),
-		excessFact("e2-2016", mapping.KindExpenditure, "police", 2016, 150),
-		excessFact("x-2016", mapping.KindFundBalance, categoryExcessOfRevenues, 2016, 600),
-		excessFact("r1-2017", mapping.KindRevenue, "taxes/property", 2017, 900),
-		excessFact("e1-2017", mapping.KindExpenditure, "fire", 2017, 1000),
-		excessFact("x-2017", mapping.KindFundBalance, categoryExcessOfRevenues, 2017, -100),
+		excessFact("r1-2016", vocab.KindRevenue, "taxes/property", 2016, 700),
+		excessFact("r2-2016", vocab.KindRevenue, "taxes/sales", 2016, 300),
+		excessFact("e1-2016", vocab.KindExpenditure, "fire", 2016, 250),
+		excessFact("e2-2016", vocab.KindExpenditure, "police", 2016, 150),
+		excessFact("x-2016", vocab.KindFundBalance, categoryExcessOfRevenues, 2016, 600),
+		excessFact("r1-2017", vocab.KindRevenue, "taxes/property", 2017, 900),
+		excessFact("e1-2017", vocab.KindExpenditure, "fire", 2017, 1000),
+		excessFact("x-2017", vocab.KindFundBalance, categoryExcessOfRevenues, 2017, -100),
 	}
 }
 
@@ -106,7 +106,7 @@ func TestExcessIdentityCatchesADroppedSide(t *testing.T) {
 		want: "missing the printed excess line",
 	}, {
 		name: "every expenditure row",
-		drop: func(f fact.Fact) bool { return f.Kind == mapping.KindExpenditure && f.FiscalYear == 2016 },
+		drop: func(f fact.Fact) bool { return f.Kind == vocab.KindExpenditure && f.FiscalYear == 2016 },
 		want: "missing expenditure rows",
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -133,7 +133,7 @@ func TestExcessIdentityCatchesADroppedSide(t *testing.T) {
 func TestExcessIdentityRefusesADuplicatedExcessLine(t *testing.T) {
 	t.Parallel()
 	facts := append(excessBaseline(),
-		excessFact("x-2016-dup", mapping.KindFundBalance, categoryExcessOfRevenues, 2016, 601))
+		excessFact("x-2016-dup", vocab.KindFundBalance, categoryExcessOfRevenues, 2016, 601))
 	res := runExcessIdentity(t, facts)
 	if res.Status != StatusFail {
 		t.Fatalf("status = %s (%s), want fail", res.Status, res.Summary)
@@ -148,7 +148,7 @@ func TestExcessIdentityRefusesADuplicatedExcessLine(t *testing.T) {
 // about one ACFR schedule.
 func TestExcessIdentityIgnoresOtherScopes(t *testing.T) {
 	t.Parallel()
-	stray := excessFact("stray", mapping.KindRevenue, "taxes/property", 2016, 5_000)
+	stray := excessFact("stray", vocab.KindRevenue, "taxes/property", 2016, 5_000)
 	stray.Scope = "all-funds-gross"
 	res := runExcessIdentity(t, append(excessBaseline(), stray))
 	if res.Status != StatusPass {

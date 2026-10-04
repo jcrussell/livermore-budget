@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
-	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/project"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // TestFundGroupSourcesEqualUsesIsFailable plants over the committed corpus.
@@ -38,7 +38,7 @@ func TestFundGroupSourcesEqualUsesIsFailable(t *testing.T) {
 		return func() []fact.Fact {
 			facts := slices.Clone(orig)
 			i := slices.IndexFunc(facts, func(f fact.Fact) bool {
-				return general2027(f) && f.Kind == mapping.KindRevenue
+				return general2027(f) && f.Kind == vocab.KindRevenue
 			})
 			facts[i].AmountCents += by
 			return facts
@@ -58,10 +58,10 @@ func TestFundGroupSourcesEqualUsesIsFailable(t *testing.T) {
 				return general2027(f) && f.RuleID == "spine-fund-balance"
 			})
 		}, noChange},
-		{"only revenue printed", only(func(f fact.Fact) bool { return f.Kind == mapping.KindRevenue }), noChange},
-		{"only expenditure printed", only(func(f fact.Fact) bool { return f.Kind == mapping.KindExpenditure }), noChange},
-		{"only transfers in printed", only(func(f fact.Fact) bool { return f.Kind == mapping.KindTransferIn }), noChange},
-		{"only transfers out printed", only(func(f fact.Fact) bool { return f.Kind == mapping.KindTransferOut }), noChange},
+		{"only revenue printed", only(func(f fact.Fact) bool { return f.Kind == vocab.KindRevenue }), noChange},
+		{"only expenditure printed", only(func(f fact.Fact) bool { return f.Kind == vocab.KindExpenditure }), noChange},
+		{"only transfers in printed", only(func(f fact.Fact) bool { return f.Kind == vocab.KindTransferIn }), noChange},
+		{"only transfers out printed", only(func(f fact.Fact) bool { return f.Kind == vocab.KindTransferOut }), noChange},
 		{"only the reserve increase printed", only(func(f fact.Fact) bool { return f.Category == project.CategoryFundBalanceReserveIncrease }), noChange},
 		{"one cent moved into a revenue row", nudge(1), "(off by $0.01)"},
 		{"one cent moved out of a revenue row", nudge(-1), "(off by -$0.01)"},

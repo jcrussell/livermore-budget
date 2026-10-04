@@ -16,6 +16,7 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/internal/registry"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // TestFixtureVerdicts is the one test that states what every check concludes over
@@ -293,7 +294,7 @@ func TestAnUnassignableCategoryReddensOneVocabularyCheck(t *testing.T) {
 	// emitted no finding either, and this test passed in both. It has to be a
 	// kind `taxes` does NOT declare for the double-redden to exist at all.
 	facts[0].Category = "taxes"
-	facts[0].Kind = mapping.KindExpenditure
+	facts[0].Kind = vocab.KindExpenditure
 	results := runChecks(t, testSubject(t, facts...))
 
 	if res := resultFor(t, results, "fact-vocabulary"); res.Status != StatusFail {
@@ -443,10 +444,10 @@ func TestVocabularyCatchesAnUnknownFundGroup(t *testing.T) {
 func TestATransferCountedAsRevenueIsCaughtAtTheFact(t *testing.T) {
 	t.Parallel()
 	cells := slices.Clone(fixtureCells)
-	if cells[4].category != "transfers/in" || cells[4].kind != mapping.KindTransferIn {
+	if cells[4].category != "transfers/in" || cells[4].kind != vocab.KindTransferIn {
 		t.Fatalf("fixture cell 4 is %+v, want the transfers/in row", cells[4])
 	}
-	cells[4].kind = mapping.KindRevenue
+	cells[4].kind = vocab.KindRevenue
 	rep := runChecks(t, cellsSubject(t, cells))
 
 	res := resultFor(t, rep, "fact-kind-matches-category")
@@ -481,13 +482,13 @@ func TestEveryKindIsWrongSomewhere(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		category string
-		wrong    mapping.Kind
+		wrong    vocab.Kind
 		declares string
 	}{
-		{"taxes/property", mapping.KindExpenditure, "revenue"},
-		{"wages-and-benefits", mapping.KindRevenue, "expenditure"},
-		{"transfers/out", mapping.KindFundBalance, "transfer_out"},
-		{"fund-balance/beginning", mapping.KindTransferIn, "fund_balance"},
+		{"taxes/property", vocab.KindExpenditure, "revenue"},
+		{"wages-and-benefits", vocab.KindRevenue, "expenditure"},
+		{"transfers/out", vocab.KindFundBalance, "transfer_out"},
+		{"fund-balance/beginning", vocab.KindTransferIn, "fund_balance"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.category+"/"+string(tt.wrong), func(t *testing.T) {
@@ -517,7 +518,7 @@ func TestEveryKindIsWrongSomewhere(t *testing.T) {
 // TestTheCommittedTaxonomyTellsTheTransferDirectionsApart reads data/taxonomy.yaml
 // itself rather than the fixture, because the two used to disagree and the
 // disagreement was the defect. Every transfer category declared `kinds: [transfer]`
-// — a string that is not one of the five mapping.Kind values — and the `transfers`
+// — a string that is not one of the five vocab.Kind values — and the `transfers`
 // rationale asserted that 'a transfer\'s `kind` is only "transfer"'. That was false
 // when it was written: transfer_in and transfer_out predate the file (2e514fb
 // against 0c43404). The check had been widened to accept the family; the file is
@@ -535,15 +536,15 @@ func TestTheCommittedTaxonomyTellsTheTransferDirectionsApart(t *testing.T) {
 	cells := []testCell{
 		// Correct: each direction under its own category, and out-to-cip, which
 		// is a sibling of transfers/out and carries the same kind.
-		{mapping.KindTransferIn, "transfers/in", "general", 10_000},
-		{mapping.KindTransferOut, "transfers/out", "enterprise", 30_000},
-		{mapping.KindTransferOut, "transfers/out-to-cip", "general", 5_000},
+		{vocab.KindTransferIn, "transfers/in", "general", 10_000},
+		{vocab.KindTransferOut, "transfers/out", "enterprise", 30_000},
+		{vocab.KindTransferOut, "transfers/out-to-cip", "general", 5_000},
 		// Wrong family: the p131 Stormwater trap, a Transfers In row called
 		// revenue so the printed Total <fund> ties.
-		{mapping.KindRevenue, "transfers/in", "enterprise", 3_247_000},
+		{vocab.KindRevenue, "transfers/in", "enterprise", 3_247_000},
 		// Wrong direction: fisc-ttq. This pair resolved clean while transfers/in
 		// declared `transfer`, because both directions satisfied the family.
-		{mapping.KindTransferOut, "transfers/in", "general", 7_000},
+		{vocab.KindTransferOut, "transfers/in", "general", 7_000},
 	}
 	res := resultFor(t, runChecks(t, &Subject{Facts: testFacts(cells...), Vocabulary: reg}),
 		"fact-kind-matches-category")
@@ -1033,8 +1034,8 @@ func TestNaiveExpenditureMustStayWrong(t *testing.T) {
 func TestNaiveExpenditureIsVacuousWithoutADoubleCount(t *testing.T) {
 	t.Parallel()
 	cells := []testCell{
-		{mapping.KindRevenue, "taxes/property", "general", 100_000},
-		{mapping.KindExpenditure, "wages-and-benefits", "general", 70_000},
+		{vocab.KindRevenue, "taxes/property", "general", 100_000},
+		{vocab.KindExpenditure, "wages-and-benefits", "general", 70_000},
 	}
 	s := testSubject(t, testFacts(cells...)...)
 	res := resultFor(t, runChecks(t, s), "headline-naive-expenditure")
@@ -1471,10 +1472,10 @@ func findingDetails(res Result) string {
 // billed by one city department to another, so it is inside the city and the
 // external headline figures exclude it.
 var internalServiceCells = []testCell{
-	{mapping.KindRevenue, "taxes/property", "general", 100_000},
-	{mapping.KindRevenue, "charges-for-services", "internal-service", 5_000},
-	{mapping.KindExpenditure, "wages-and-benefits", "general", 70_000},
-	{mapping.KindExpenditure, "wages-and-benefits", "internal-service", 3_000},
+	{vocab.KindRevenue, "taxes/property", "general", 100_000},
+	{vocab.KindRevenue, "charges-for-services", "internal-service", 5_000},
+	{vocab.KindExpenditure, "wages-and-benefits", "general", 70_000},
+	{vocab.KindExpenditure, "wages-and-benefits", "internal-service", 3_000},
 }
 
 // TestHeadlineExternalFiguresExcludeInternalService is the arithmetic behind the
@@ -1548,9 +1549,9 @@ func TestEveryHeadlineFigureIsTiedToTheFacts(t *testing.T) {
 func TestNaiveExpenditureIgnoresInternalServiceRevenue(t *testing.T) {
 	t.Parallel()
 	cells := []testCell{
-		{mapping.KindRevenue, "charges-for-services", "internal-service", 5_000},
-		{mapping.KindRevenue, "taxes/property", "general", 100_000},
-		{mapping.KindExpenditure, "wages-and-benefits", "general", 70_000},
+		{vocab.KindRevenue, "charges-for-services", "internal-service", 5_000},
+		{vocab.KindRevenue, "taxes/property", "general", 100_000},
+		{vocab.KindExpenditure, "wages-and-benefits", "general", 70_000},
 	}
 	s := testSubject(t, testFacts(cells...)...)
 	if !hasLinkKind(s.Projections[0].Graph, project.KindInternalService) {
@@ -1736,7 +1737,7 @@ func fundRuleSubject(t *testing.T, page string, rules []mapping.Rule,
 // naming it, and a printed `Total <fund>` of its own.
 func fundRule(id string, fund int, group, totalRow string) mapping.Rule {
 	return mapping.Rule{
-		ID: id, Kind: mapping.KindRevenue, Basis: mapping.BasisAdopted,
+		ID: id, Kind: vocab.KindRevenue, Basis: vocab.BasisAdopted,
 		Scope: project.ScopeRevenueByFund, Units: "dollars", TotalRow: totalRow,
 		Parts: []mapping.Part{{Page: 1, Columns: []mapping.Column{
 			{FundGroup: group, Fund: fund, FiscalYear: 2026},
@@ -1997,9 +1998,9 @@ func TestAnEndpointCarryingNoFlowMayBeAParent(t *testing.T) {
 // over one cited fact and one uncited printed zero. Hand-assembled, because
 // every producer would build more than the check under test needs.
 func scheduleSubject() *Subject {
-	col := project.Column{FiscalYear: 2026, Basis: mapping.BasisAdopted}
+	col := project.Column{FiscalYear: 2026, Basis: vocab.BasisAdopted}
 	mk := func(id, scope string, cents int64) fact.Fact {
-		return fact.Fact{ID: id, Scope: scope, Kind: mapping.KindRevenue,
+		return fact.Fact{ID: id, Scope: scope, Kind: vocab.KindRevenue,
 			RowLabel: "Police", Category: "wages-and-benefits", FiscalYear: col.FiscalYear,
 			Basis: col.Basis, AmountCents: cents}
 	}

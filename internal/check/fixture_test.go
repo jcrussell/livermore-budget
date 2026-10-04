@@ -13,6 +13,7 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/internal/registry"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // The fixture is a miniature of the citywide spine: two fund groups, one row of
@@ -28,7 +29,7 @@ const (
 	testDoc     = "livermore-budget-fy2026-2027"
 	testScope   = "all-funds-gross"
 	testYear    = 2026
-	testBasis   = mapping.BasisAdopted
+	testBasis   = vocab.BasisAdopted
 	testVersion = "fisc test (fixture)"
 )
 
@@ -102,7 +103,7 @@ categories:
 
 // testCell is one printed cell of the fixture schedule.
 type testCell struct {
-	kind     mapping.Kind
+	kind     vocab.Kind
 	category string
 	group    string
 	cents    int64
@@ -115,20 +116,20 @@ type testCell struct {
 // Each group holds both identities a printed column does: beginning + change
 // == ending, and revenue + transfers in - expenditure - transfers out == change.
 var fixtureCells = []testCell{
-	{mapping.KindRevenue, "taxes/property", "general", 100_000},
-	{mapping.KindRevenue, "taxes/property", "enterprise", 0},
-	{mapping.KindRevenue, "charges-for-services", "enterprise", 50_000},
-	{mapping.KindExpenditure, "wages-and-benefits", "general", 130_000},
-	{mapping.KindTransferIn, "transfers/in", "general", 10_000},
-	{mapping.KindTransferOut, "transfers/out", "enterprise", 30_000},
+	{vocab.KindRevenue, "taxes/property", "general", 100_000},
+	{vocab.KindRevenue, "taxes/property", "enterprise", 0},
+	{vocab.KindRevenue, "charges-for-services", "enterprise", 50_000},
+	{vocab.KindExpenditure, "wages-and-benefits", "general", 130_000},
+	{vocab.KindTransferIn, "transfers/in", "general", 10_000},
+	{vocab.KindTransferOut, "transfers/out", "enterprise", 30_000},
 	// Negative and positive, so both nodes the projection infers exist.
-	{mapping.KindFundBalance, "fund-balance/change", "general", -20_000},
-	{mapping.KindFundBalance, "fund-balance/change", "enterprise", 20_000},
+	{vocab.KindFundBalance, "fund-balance/change", "general", -20_000},
+	{vocab.KindFundBalance, "fund-balance/change", "enterprise", 20_000},
 	// Stocks. Facts the city printed that carry no link.
-	{mapping.KindFundBalance, "fund-balance/beginning", "general", 500_000},
-	{mapping.KindFundBalance, "fund-balance/ending", "general", 480_000},
-	{mapping.KindFundBalance, "fund-balance/beginning", "enterprise", 200_000},
-	{mapping.KindFundBalance, "fund-balance/ending", "enterprise", 220_000},
+	{vocab.KindFundBalance, "fund-balance/beginning", "general", 500_000},
+	{vocab.KindFundBalance, "fund-balance/ending", "general", 480_000},
+	{vocab.KindFundBalance, "fund-balance/beginning", "enterprise", 200_000},
+	{vocab.KindFundBalance, "fund-balance/ending", "enterprise", 220_000},
 }
 
 // printed renders cents the way these schedules print the figure, so that the
@@ -169,7 +170,7 @@ func (c testCell) fact() fact.Fact {
 		Category:    c.category,
 		ColumnPath:  columnPath,
 		FundGroup:   c.group,
-		Sign:        mapping.SignPositive,
+		Sign:        vocab.SignPositive,
 		Units:       "dollars",
 		AmountCents: c.cents,
 		Token:       printed(c.cents),

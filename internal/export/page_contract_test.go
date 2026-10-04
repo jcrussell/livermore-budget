@@ -11,8 +11,8 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
-	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/project"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 	"github.com/jcrussell/livermore-budget/schema"
 	"github.com/jcrussell/livermore-budget/site"
 )
@@ -56,9 +56,9 @@ func TestBasisLabelForRewritesOnlyTheAuditedBasisOfAnUnauditedDocument(t *testin
 		basis   string
 		want    string
 	}{
-		{name: "audited under the caveat", caveats: unaudited, basis: string(mapping.BasisAudited), want: "unaudited"},
-		{name: "audited without the caveat", caveats: other, basis: string(mapping.BasisAudited), want: string(mapping.BasisAudited)},
-		{name: "audited with no caveats at all", caveats: nil, basis: string(mapping.BasisAudited), want: string(mapping.BasisAudited)},
+		{name: "audited under the caveat", caveats: unaudited, basis: string(vocab.BasisAudited), want: "unaudited"},
+		{name: "audited without the caveat", caveats: other, basis: string(vocab.BasisAudited), want: string(vocab.BasisAudited)},
+		{name: "audited with no caveats at all", caveats: nil, basis: string(vocab.BasisAudited), want: string(vocab.BasisAudited)},
 		{name: "another basis under the caveat", caveats: unaudited, basis: "adopted", want: "adopted"},
 	}
 	for _, tc := range cases {

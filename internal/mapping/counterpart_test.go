@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // A counterpart is the far end of a figure that moves money between two funds:
@@ -28,7 +29,7 @@ func TestACounterpartIsRefusedWhenItCouldNotBeToldApart(t *testing.T) {
 			Label: "Transfer From Low Income Hsng", LabelTail: "to General Fund",
 			Category: "transfers/in", Fund: 100, FundGroup: "general",
 			Counterpart: &Counterpart{
-				Category: "transfers/out", Kind: KindTransferOut,
+				Category: "transfers/out", Kind: vocab.KindTransferOut,
 				Fund: 200, FundGroup: "special-revenue",
 			},
 		}
@@ -67,7 +68,7 @@ func TestACounterpartIsRefusedWhenItCouldNotBeToldApart(t *testing.T) {
 			// so a no-part fixture was testing a state the parser cannot
 			// produce -- and the row-only fallback that made it pass was itself
 			// a false refusal on rows another page prints and skipped columns.
-			rule := &Rule{ID: "r", Kind: KindTransferIn,
+			rule := &Rule{ID: "r", Kind: vocab.KindTransferIn,
 				Parts: []Part{{Page: 76, Columns: []Column{{FiscalYear: 2026}}}}}
 			err := checkCounterpart(rule, row, errfLike)
 			if err == nil {
@@ -108,7 +109,7 @@ func TestACounterpartIsRefusedWhenItCouldNotBeToldApart(t *testing.T) {
 func TestTheIdenticalLegsArmFiresOnTheShapeEveryPublishedRuleUses(t *testing.T) {
 	// Group on the COLUMN, fund on the ROW -- p76 exactly.
 	rule := &Rule{
-		ID: "p76-transfers-in-general", Kind: KindTransferIn,
+		ID: "p76-transfers-in-general", Kind: vocab.KindTransferIn,
 		Parts: []Part{{
 			Page: 76,
 			Columns: []Column{
@@ -125,7 +126,7 @@ func TestTheIdenticalLegsArmFiresOnTheShapeEveryPublishedRuleUses(t *testing.T) 
 		Label: "Transfer From Low Income Hsng", LabelTail: "to General Fund",
 		Category: "transfers/in", Fund: 100,
 		Counterpart: &Counterpart{
-			Category: "transfers/in", Kind: KindTransferOut,
+			Category: "transfers/in", Kind: vocab.KindTransferOut,
 			Fund: 100, FundGroup: "general",
 		},
 	}
@@ -187,7 +188,7 @@ func TestTheIdenticalLegsArmFiresOnTheShapeEveryPublishedRuleUses(t *testing.T) 
 	// figure, and a check that compared against the first column alone would
 	// miss it.
 	twoGroups := &Rule{
-		ID: "r", Kind: KindTransferIn,
+		ID: "r", Kind: vocab.KindTransferIn,
 		Parts: []Part{{Page: 76, Columns: []Column{
 			{FundGroup: "enterprise", FiscalYear: 2026},
 			{FundGroup: "general", FiscalYear: 2026},
@@ -231,7 +232,7 @@ func TestTheDocumentCannotCheckACounterpart(t *testing.T) {
 					// the same wrong fund. If the document could see a
 					// counterpart at all, this would be caught.
 					f.Rules[i].Rows[j].Counterpart = &Counterpart{
-						Category: "transfers/out", Kind: KindTransferOut,
+						Category: "transfers/out", Kind: vocab.KindTransferOut,
 						Fund: 999, FundGroup: "internal-service",
 					}
 				}

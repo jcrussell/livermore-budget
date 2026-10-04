@@ -7,7 +7,7 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/fact"
-	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // An Identity says that two cuts at one level print the same figures for the
@@ -20,7 +20,7 @@ type Identity struct {
 	A, B string
 	// Kinds are the fact kinds the two readings share. A cell of another kind
 	// both cuts produce is an overlap the identity does not cover.
-	Kinds []mapping.Kind
+	Kinds []vocab.Kind
 	// Categories narrows Kinds to the categories both readings print each
 	// kind under, where one side prints a kind under a category the other
 	// never does: a cell outside them is not this identity's, shared or
@@ -34,7 +34,7 @@ type Identity struct {
 
 // A KindCategory is one kind under one category.
 type KindCategory struct {
-	Kind     mapping.Kind
+	Kind     vocab.Kind
 	Category string
 }
 
@@ -42,7 +42,7 @@ func (id Identity) joins(a, b string) bool {
 	return (id.A == a && id.B == b) || (id.A == b && id.B == a)
 }
 
-func (id Identity) covers(a, b string, k mapping.Kind, category string) bool {
+func (id Identity) covers(a, b string, k vocab.Kind, category string) bool {
 	return id.joins(a, b) && id.coversCell(k, category)
 }
 
@@ -51,11 +51,11 @@ func (id Identity) covers(a, b string, k mapping.Kind, category string) bool {
 // and pairs category with other kinds only. Such a cell is a mis-mapped
 // column, or an overlap no identity covers, and never a figure one peer may
 // simply not print. It is empty for every other cell.
-func (id Identity) misfiles(a, b string, k mapping.Kind, category string) []mapping.Kind {
+func (id Identity) misfiles(a, b string, k vocab.Kind, category string) []vocab.Kind {
 	if !id.joins(a, b) || !containsKind(id.Kinds, k) || id.coversCell(k, category) {
 		return nil
 	}
-	var out []mapping.Kind
+	var out []vocab.Kind
 	for _, c := range id.Categories {
 		if c.Category == category {
 			out = append(out, c.Kind)
@@ -64,7 +64,7 @@ func (id Identity) misfiles(a, b string, k mapping.Kind, category string) []mapp
 	return out
 }
 
-func (id Identity) coversCell(k mapping.Kind, category string) bool {
+func (id Identity) coversCell(k vocab.Kind, category string) bool {
 	if !containsKind(id.Kinds, k) {
 		return false
 	}
@@ -141,7 +141,7 @@ func ValidateIdentities(cuts []Cut, identities []Identity) error {
 // A Shared cell is one key both peers produced.
 type Shared struct {
 	Key  Key
-	Kind mapping.Kind
+	Kind vocab.Kind
 	A, B Sum
 	// Identity is the declared identity covering this cell, or "" for an
 	// overlap nothing declares.
@@ -182,7 +182,7 @@ func Peers(facts []fact.Fact, a, b Cut, identities []Identity, exceptions []Exce
 	borne := map[string]bool{}
 	met := map[string]map[int]bool{}
 	for _, k := range r.kinds {
-		one := restriction{kinds: []mapping.Kind{k}, fundGroups: r.fundGroups}
+		one := restriction{kinds: []vocab.Kind{k}, fundGroups: r.fundGroups}
 		as, err := project(facts, a, at, one)
 		if err != nil {
 			return Overlap{}, err
@@ -218,7 +218,7 @@ func Peers(facts []fact.Fact, a, b Cut, identities []Identity, exceptions []Exce
 			}
 			sa, sb := as[key], bs[key]
 			if !sa.Present || !sb.Present {
-				both := a.prints(mapping.Basis(key.Basis)) && b.prints(mapping.Basis(key.Basis))
+				both := a.prints(vocab.Basis(key.Basis)) && b.prints(vocab.Basis(key.Basis))
 				if identity == "" {
 					for _, id := range identities {
 						others := id.misfiles(a.Name, b.Name, k, category)
@@ -526,7 +526,7 @@ const anyOtherCategory = "\x00"
 func oneReadingPerCell(name string, identities []Identity, joined map[string]bool,
 	readings map[string]string) error {
 	type cell struct {
-		kind     mapping.Kind
+		kind     vocab.Kind
 		category string
 	}
 	var cells []cell
@@ -659,8 +659,8 @@ func footprintsMeet(a, b Cut) bool {
 	return false
 }
 
-func sharedKinds(a, b Cut) []mapping.Kind {
-	var out []mapping.Kind
+func sharedKinds(a, b Cut) []vocab.Kind {
+	var out []vocab.Kind
 	for _, k := range a.Kinds {
 		if containsKind(b.Kinds, k) {
 			out = append(out, k)

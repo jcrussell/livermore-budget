@@ -5,17 +5,17 @@
   "description": "Each closed set a published document draws a value from, stated once; the document schemas $ref these. Each is held to the Go set it mirrors, both ways.",
   "$defs": {
     "basis": {
-      "description": "Which column of a schedule a figure is from; mapping.Bases.",
+      "description": "Which column of a schedule a figure is from; vocab.Bases.",
       "type": "string",
       "enum": ["adopted", "revised", "actual", "audited", "projected"]
     },
     "kind": {
-      "description": "What kind of money a fact is; mapping.Kinds.",
+      "description": "What kind of money a fact is; vocab.Kinds.",
       "type": "string",
       "enum": ["revenue", "expenditure", "transfer_in", "transfer_out", "fund_balance"]
     },
     "sign": {
-      "description": "How a row relates to its category; mapping.Signs.",
+      "description": "How a row relates to its category; vocab.Signs.",
       "type": "string",
       "enum": ["positive", "contra", "netted"]
     },

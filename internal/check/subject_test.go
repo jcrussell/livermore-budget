@@ -17,9 +17,9 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
-	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/internal/structure"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
@@ -982,7 +982,7 @@ func TestASliceNoDocumentClaimsIsReported(t *testing.T) {
 			// A second BASIS for the same year, which is the whole scenario.
 			// The id is recomputed because it hashes the basis, and two facts
 			// sharing one id is a different failure that would mask this one.
-			f.Basis = mapping.BasisRevised
+			f.Basis = vocab.BasisRevised
 			f.ID = fact.MakeID(f.DocID, f.RuleID, f.RowPath, f.RowLabel, f.ColumnPath,
 				f.FiscalYear, f.Basis)
 			out = append(out, f)

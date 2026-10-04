@@ -7,8 +7,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/project"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // linkKindsMatchTheirFacts asserts a link's kind does not contradict the facts
@@ -79,7 +79,7 @@ func (*linkKindsMatchTheirFacts) Run(_ context.Context, s *Subject) (Result, err
 					"kind is %q, which is not one of %s", l.Kind, describeLinkKinds()))
 			}
 
-			kinds := map[mapping.Kind]bool{}
+			kinds := map[vocab.Kind]bool{}
 			for _, id := range l.FactIDs {
 				if f, ok := byID[id]; ok {
 					kinds[f.Kind] = true
@@ -89,7 +89,7 @@ func (*linkKindsMatchTheirFacts) Run(_ context.Context, s *Subject) (Result, err
 				continue
 			}
 			switch {
-			case allOf(kinds, mapping.KindTransferIn, mapping.KindTransferOut):
+			case allOf(kinds, vocab.KindTransferIn, vocab.KindTransferOut):
 				if l.Kind == project.KindExternal {
 					findings = append(findings, finding(subject,
 						"every fact this link cites is a transfer and it is published as %q. "+
@@ -97,7 +97,7 @@ func (*linkKindsMatchTheirFacts) Run(_ context.Context, s *Subject) (Result, err
 							"boundary, so a reader summing the external links to get "+
 							"external revenue counts it twice over", project.KindExternal))
 				}
-			case allOf(kinds, mapping.KindFundBalance):
+			case allOf(kinds, vocab.KindFundBalance):
 				if l.Kind == project.KindExternal {
 					findings = append(findings, finding(subject,
 						"every fact this link cites is a fund-balance row and it is "+
@@ -125,11 +125,11 @@ func (*linkKindsMatchTheirFacts) Run(_ context.Context, s *Subject) (Result, err
 }
 
 // allOf reports whether the set is non-empty and drawn only from want.
-func allOf(got map[mapping.Kind]bool, want ...mapping.Kind) bool {
+func allOf(got map[vocab.Kind]bool, want ...vocab.Kind) bool {
 	if len(got) == 0 {
 		return false
 	}
-	allowed := map[mapping.Kind]bool{}
+	allowed := map[vocab.Kind]bool{}
 	for _, w := range want {
 		allowed[w] = true
 	}
@@ -150,7 +150,7 @@ func describeLinkKinds() string {
 	return strings.Join(out, ", ")
 }
 
-func describeFactKinds(got map[mapping.Kind]bool) string {
+func describeFactKinds(got map[vocab.Kind]bool) string {
 	out := make([]string, 0, len(got))
 	for k := range got {
 		out = append(out, string(k))

@@ -9,6 +9,7 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/corpus"
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
@@ -469,25 +470,25 @@ func (*factTransferOrientationIsDeclared) Run(_ context.Context, s *Subject) (Re
 	var findings []Finding
 	transfers, netted := 0, 0
 	for _, f := range s.Facts {
-		if f.Kind != mapping.KindTransferIn && f.Kind != mapping.KindTransferOut {
+		if f.Kind != vocab.KindTransferIn && f.Kind != vocab.KindTransferOut {
 			continue
 		}
 		transfers++
 		switch {
-		case f.AmountCents < 0 && f.Sign != mapping.SignNetted:
+		case f.AmountCents < 0 && f.Sign != vocab.SignNetted:
 			findings = append(findings, finding(f.ID,
 				"%s p%d prints %q for row %q, a %s of %d cents, and the row declares sign %q; "+
 					"a transfer against its kind's direction must declare %q or a consumer cannot "+
 					"tell it from money flowing the other way",
-				f.DocID, f.Page, f.Token, f.RowLabel, f.Kind, f.AmountCents, f.Sign, mapping.SignNetted))
+				f.DocID, f.Page, f.Token, f.RowLabel, f.Kind, f.AmountCents, f.Sign, vocab.SignNetted))
 		// > 0 and not >= 0: a netted row's `-` cells publish a zero, and zero
 		// runs with every direction, so >= would redden a correctly declared
 		// multi-column row.
-		case f.AmountCents > 0 && f.Sign == mapping.SignNetted:
+		case f.AmountCents > 0 && f.Sign == vocab.SignNetted:
 			findings = append(findings, finding(f.ID,
 				"%s p%d prints %q for row %q as %d cents, which already runs with its kind %s, "+
 					"but the row declares sign %q",
-				f.DocID, f.Page, f.Token, f.RowLabel, f.AmountCents, f.Kind, mapping.SignNetted))
+				f.DocID, f.Page, f.Token, f.RowLabel, f.AmountCents, f.Kind, vocab.SignNetted))
 		case f.AmountCents < 0:
 			// Counted here rather than on `Sign == netted`, so the summary says
 			// what it means: a zero declares no direction, and counting one as

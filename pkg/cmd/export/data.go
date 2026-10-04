@@ -14,9 +14,9 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/build"
 	"github.com/jcrussell/livermore-budget/internal/export"
 	"github.com/jcrussell/livermore-budget/internal/fact"
-	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/internal/registry"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
@@ -359,8 +359,8 @@ var unviewedDocuments = map[string]string{
 
 // The two columns pp.66-67 print no year for.
 var (
-	actual2024  = project.Column{FiscalYear: 2024, Basis: mapping.BasisActual}
-	revised2025 = project.Column{FiscalYear: 2025, Basis: mapping.BasisRevised}
+	actual2024  = project.Column{FiscalYear: 2024, Basis: vocab.BasisActual}
+	revised2025 = project.Column{FiscalYear: 2025, Basis: vocab.BasisRevised}
 )
 
 // publishedStem is the stem project.PublishedDocuments gives a projection's

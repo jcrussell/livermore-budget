@@ -3,7 +3,7 @@ package structure
 import (
 	"sort"
 
-	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // Reference is the cut declared the reference among cuts: the one whose
@@ -20,14 +20,14 @@ func Reference(cuts []Cut) (Cut, bool) {
 // Undecomposed is the kinds the reference prints and no cut of the view
 // prints, sorted: money a document drawn over the view can carry from the
 // reference's chart only whole, since no page it reads splits it any finer.
-func Undecomposed(view []Cut, reference Cut) []mapping.Kind {
-	printed := map[mapping.Kind]bool{}
+func Undecomposed(view []Cut, reference Cut) []vocab.Kind {
+	printed := map[vocab.Kind]bool{}
 	for _, c := range view {
 		for _, k := range c.Kinds {
 			printed[k] = true
 		}
 	}
-	var out []mapping.Kind
+	var out []vocab.Kind
 	for _, k := range reference.Kinds {
 		if !printed[k] {
 			out = append(out, k)

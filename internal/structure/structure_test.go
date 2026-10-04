@@ -11,6 +11,7 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/structure"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // committedFacts reads the fact store this repository publishes.
@@ -500,7 +501,7 @@ func TestTheSpineBalancesAtThePrintedControlTotals(t *testing.T) {
 			for i := range facts {
 				f := &facts[i]
 				if f.Scope == structure.ScopeAllFundsGross && f.FundGroup == tt.group &&
-					f.FiscalYear == year && f.Basis == mapping.BasisAdopted && !su.Add(f) {
+					f.FiscalYear == year && f.Basis == vocab.BasisAdopted && !su.Add(f) {
 					t.Errorf("%s FY%d: fact %s is no term of sources = uses", tt.group, year, f.ID)
 				}
 			}

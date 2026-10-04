@@ -9,12 +9,13 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/structure"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // balanceLine is one printed cell of a hand-built balance: its kind, its
 // category, and what it says.
 type balanceLine struct {
-	kind     mapping.Kind
+	kind     vocab.Kind
 	category string
 	cents    int64
 }
@@ -24,14 +25,14 @@ type balanceLine struct {
 // 1,000 + 500 + 100 - 300 - 50 - 20 - 30 = 1,200.
 func byFundRow() []balanceLine {
 	return []balanceLine{
-		{mapping.KindFundBalance, structure.CategoryFundBalanceBeginning, 100_000},
-		{mapping.KindRevenue, "taxes", 50_000},
-		{mapping.KindTransferIn, "transfers/in", 10_000},
-		{mapping.KindExpenditure, "capital-projects", 30_000},
-		{mapping.KindTransferOut, "transfers/out", 5_000},
-		{mapping.KindTransferOut, "transfers/out-to-cip", 2_000},
-		{mapping.KindFundBalance, structure.CategoryFundBalanceReserveIncrease, 3_000},
-		{mapping.KindFundBalance, structure.CategoryFundBalanceEnding, 120_000},
+		{vocab.KindFundBalance, structure.CategoryFundBalanceBeginning, 100_000},
+		{vocab.KindRevenue, "taxes", 50_000},
+		{vocab.KindTransferIn, "transfers/in", 10_000},
+		{vocab.KindExpenditure, "capital-projects", 30_000},
+		{vocab.KindTransferOut, "transfers/out", 5_000},
+		{vocab.KindTransferOut, "transfers/out-to-cip", 2_000},
+		{vocab.KindFundBalance, structure.CategoryFundBalanceReserveIncrease, 3_000},
+		{vocab.KindFundBalance, structure.CategoryFundBalanceEnding, 120_000},
 	}
 }
 
@@ -40,7 +41,7 @@ type balanceAt struct {
 	scope, group string
 	fund         int
 	year         int
-	basis        mapping.Basis
+	basis        vocab.Basis
 }
 
 // facts renders lines at one place, each with an id from the tuple `fisc
@@ -77,7 +78,7 @@ func (at balanceAt) facts(lines []balanceLine) []fact.Fact {
 }
 
 // fund101 is General Fund CIP Reserves' FY2026 row.
-var fund101 = balanceAt{structure.ScopeFundBalancesByFund, "capital", 101, 2026, mapping.BasisAdopted}
+var fund101 = balanceAt{structure.ScopeFundBalancesByFund, "capital", 101, 2026, vocab.BasisAdopted}
 
 // runBalance runs one check over hand-built facts and nothing else: both
 // balance checks read the facts, the rule files and the subject's exceptions,
@@ -168,7 +169,7 @@ func TestTransfersOutToCIPIsAUse(t *testing.T) {
 
 func TestAFundRowCarryingAChangeLineFails(t *testing.T) {
 	t.Parallel()
-	lines := append(byFundRow(), balanceLine{mapping.KindFundBalance, structure.CategoryFundBalanceChange, 20_000})
+	lines := append(byFundRow(), balanceLine{vocab.KindFundBalance, structure.CategoryFundBalanceChange, 20_000})
 	wantFail(t, runBalance(t, &fundBalanceIdentity{}, fund101.facts(lines)), structure.CategoryFundBalanceChange)
 }
 
@@ -232,7 +233,7 @@ func TestACarryForwardThatTiesPasses(t *testing.T) {
 func TestAYearOnTwoBasesHasNoSingleEnding(t *testing.T) {
 	t.Parallel()
 	revised := fund101
-	revised.basis = mapping.BasisRevised
+	revised.basis = vocab.BasisRevised
 	facts := append(twoYears(120_000), revised.facts(byFundRow())...)
 	wantFail(t, runBalance(t, &fundBalanceIdentity{}, facts), "prints FY2026 on 2 bases")
 }
@@ -247,13 +248,13 @@ func TestACarryForwardBreakFails(t *testing.T) {
 // generalised checks: a column with its stocks and no change line fails both.
 func TestTheSpineStillPrintsItsChange(t *testing.T) {
 	t.Parallel()
-	spine := balanceAt{structure.ScopeAllFundsGross, "general", 0, 2026, mapping.BasisAdopted}
+	spine := balanceAt{structure.ScopeAllFundsGross, "general", 0, 2026, vocab.BasisAdopted}
 	lines := []balanceLine{
-		{mapping.KindFundBalance, structure.CategoryFundBalanceBeginning, 100_000},
-		{mapping.KindRevenue, "taxes/property", 50_000},
-		{mapping.KindExpenditure, "wages-and-benefits", 30_000},
-		{mapping.KindFundBalance, structure.CategoryFundBalanceChange, 20_000},
-		{mapping.KindFundBalance, structure.CategoryFundBalanceEnding, 120_000},
+		{vocab.KindFundBalance, structure.CategoryFundBalanceBeginning, 100_000},
+		{vocab.KindRevenue, "taxes/property", 50_000},
+		{vocab.KindExpenditure, "wages-and-benefits", 30_000},
+		{vocab.KindFundBalance, structure.CategoryFundBalanceChange, 20_000},
+		{vocab.KindFundBalance, structure.CategoryFundBalanceEnding, 120_000},
 	}
 	wantPass(t, runBalance(t, &fundBalanceIdentity{}, spine.facts(lines)), 1)
 	wantPass(t, runBalance(t, &fundGroupSourcesEqualUses{}, spine.facts(lines)), 1)
@@ -279,7 +280,7 @@ func carryBreak(left, right int64) structure.BalanceException {
 	return structure.BalanceException{
 		Identity: structure.BalanceCarryForward,
 		At: structure.BalanceAt{DocID: testDoc, Scope: structure.ScopeFundBalancesByFund,
-			FundGroup: "capital", Fund: "101", Year: 2026, Basis: mapping.BasisAdopted},
+			FundGroup: "capital", Fund: "101", Year: 2026, Basis: vocab.BasisAdopted},
 		Left: left, Right: right,
 		Printed: "fixture", Reason: "fixture", Bead: "fisc-3eh2",
 	}
@@ -318,9 +319,9 @@ func TestAnExceptionOnAScopeTheStoreDoesNotCarryIsStale(t *testing.T) {
 	spine := fund101
 	spine.scope, spine.fund = structure.ScopeAllFundsGross, 0
 	lines := []balanceLine{
-		{mapping.KindFundBalance, structure.CategoryFundBalanceBeginning, 100_000},
-		{mapping.KindFundBalance, structure.CategoryFundBalanceChange, 20_000},
-		{mapping.KindFundBalance, structure.CategoryFundBalanceEnding, 120_000},
+		{vocab.KindFundBalance, structure.CategoryFundBalanceBeginning, 100_000},
+		{vocab.KindFundBalance, structure.CategoryFundBalanceChange, 20_000},
+		{vocab.KindFundBalance, structure.CategoryFundBalanceEnding, 120_000},
 	}
 	wantFail(t, runBalanceExcepting(t, &fundBalanceIdentity{}, e, spine.facts(lines)), "matches no balance")
 }
@@ -330,7 +331,7 @@ func rowDelta(net, change int64) structure.BalanceException {
 	return structure.BalanceException{
 		Identity: structure.BalanceSourcesUses,
 		At: structure.BalanceAt{DocID: testDoc, Scope: structure.ScopeFundBalancesByFund,
-			FundGroup: "capital", Fund: "101", Year: 2026, Basis: mapping.BasisAdopted},
+			FundGroup: "capital", Fund: "101", Year: 2026, Basis: vocab.BasisAdopted},
 		Left: net, Right: change,
 		Printed: "fixture", Reason: "fixture", Bead: "fisc-3eh2",
 	}
@@ -420,7 +421,7 @@ rules:
 }
 
 // measureD is County Measure D's FY2027 balance in the scope.
-var measureD = balanceAt{structure.ScopeFundBalancesByFund, "capital", 305, 2027, mapping.BasisAdopted}
+var measureD = balanceAt{structure.ScopeFundBalancesByFund, "capital", 305, 2027, vocab.BasisAdopted}
 
 // TestADeclaredBlankCellIsAbsentAndNotMissing is how the checks tell a cell
 // the page leaves blank from a line a rule stopped publishing: the rule's own
@@ -493,9 +494,9 @@ func TestADeclaredBlankThatIsPrintedFailsOnEveryBalanceScope(t *testing.T) {
 		cells: []string{`{label: "County Measure D", column: "6/30/27", note: "the page leaves it blank"}`},
 	})
 	facts := acfr.facts([]balanceLine{
-		{mapping.KindFundBalance, structure.CategoryFundBalanceBeginning, 100_000},
-		{mapping.KindFundBalance, structure.CategoryFundBalanceChange, 20_000},
-		{mapping.KindFundBalance, structure.CategoryFundBalanceEnding, 120_000},
+		{vocab.KindFundBalance, structure.CategoryFundBalanceBeginning, 100_000},
+		{vocab.KindFundBalance, structure.CategoryFundBalanceChange, 20_000},
+		{vocab.KindFundBalance, structure.CategoryFundBalanceEnding, 120_000},
 	})
 	wantFail(t, runBalance(t, &fundBalanceIdentity{}, facts, file), "declares that cell blank")
 }
@@ -513,8 +514,8 @@ func TestABlankChangeIsNotCountedAsHeld(t *testing.T) {
 		cells: []string{`{label: "County Measure D", column: "Change", note: "the page leaves it blank"}`},
 	})
 	facts := acfr.facts([]balanceLine{
-		{mapping.KindFundBalance, structure.CategoryFundBalanceBeginning, 100_000},
-		{mapping.KindFundBalance, structure.CategoryFundBalanceEnding, 120_000},
+		{vocab.KindFundBalance, structure.CategoryFundBalanceBeginning, 100_000},
+		{vocab.KindFundBalance, structure.CategoryFundBalanceEnding, 120_000},
 	})
 	res := runBalance(t, &fundBalanceIdentity{}, facts, file)
 	wantPass(t, res, 1)
@@ -569,7 +570,7 @@ func TestABlankStockOnAScopePrintingItsChangeStillHoldsSourcesUses(t *testing.T)
 		cells: []string{`{label: "County Measure D", column: "7/1/26", note: "the page leaves it blank"}`},
 	})
 	lines := append(without(byFundRow(), structure.CategoryFundBalanceBeginning),
-		balanceLine{mapping.KindFundBalance, structure.CategoryFundBalanceChange, 20_000})
+		balanceLine{vocab.KindFundBalance, structure.CategoryFundBalanceChange, 20_000})
 	wantPass(t, runBalance(t, &fundGroupSourcesEqualUses{}, spine.facts(lines), file), 1)
 	misfiled := spine.facts(replace(lines, "taxes", 50_001))
 	wantFail(t, runBalance(t, &fundGroupSourcesEqualUses{}, misfiled, file), "(off by $0.01)")
@@ -614,7 +615,7 @@ func TestAStoreEveryBalanceOfWhichIsExemptedPasses(t *testing.T) {
 // balances, so sources = uses refuses the balance and names both facts.
 func TestTwoFactsOnOneLineOfSourcesUsesFail(t *testing.T) {
 	t.Parallel()
-	facts := measureD.facts(append(replace(byFundRow(), "taxes", 49_999), balanceLine{mapping.KindRevenue, "fees", 1}))
+	facts := measureD.facts(append(replace(byFundRow(), "taxes", 49_999), balanceLine{vocab.KindRevenue, "fees", 1}))
 	res := runBalance(t, &fundGroupSourcesEqualUses{}, facts)
 	wantFail(t, res, facts[1].ID, facts[len(facts)-1].ID, "revenue twice")
 	if res.Subjects != 0 {
@@ -679,14 +680,14 @@ rules:
 // no printed figure against a declared blank.
 func TestARowOnAnotherPageIsNoBlank(t *testing.T) {
 	t.Parallel()
-	general := balanceAt{structure.ScopeACFRGeneralFundSummary, "general", 0, 2026, mapping.BasisAdopted}
+	general := balanceAt{structure.ScopeACFRGeneralFundSummary, "general", 0, 2026, vocab.BasisAdopted}
 	lines := []balanceLine{
-		{mapping.KindFundBalance, structure.CategoryFundBalanceBeginning, 100_000},
-		{mapping.KindFundBalance, structure.CategoryFundBalanceEnding, 120_000},
+		{vocab.KindFundBalance, structure.CategoryFundBalanceBeginning, 100_000},
+		{vocab.KindFundBalance, structure.CategoryFundBalanceEnding, 120_000},
 	}
 	wantFail(t, runBalance(t, &fundBalanceIdentity{}, general.facts(lines), rowSplitChange(t)),
 		"missing "+structure.CategoryFundBalanceChange)
 
-	printed := general.facts(append(lines, balanceLine{mapping.KindFundBalance, structure.CategoryFundBalanceChange, 20_000}))
+	printed := general.facts(append(lines, balanceLine{vocab.KindFundBalance, structure.CategoryFundBalanceChange, 20_000}))
 	wantPass(t, runBalance(t, &fundBalanceIdentity{}, printed, rowSplitChange(t)), 1)
 }

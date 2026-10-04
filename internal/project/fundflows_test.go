@@ -9,7 +9,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
-	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // stubFundFlows answers the four methods a fund- and department-keyed document
@@ -101,7 +101,7 @@ func factID(tag string) string { return fmt.Sprintf("fisc-f-%012x", tag[0]) }
 // fundFlowsFact builds one fact of this file's fixture. tag is a handle and
 // the id is built from it, so the id has the shape
 // schema/fact-id.schema.json requires.
-func fundFlowsFact(scope string, kind mapping.Kind, category, department, group string,
+func fundFlowsFact(scope string, kind vocab.Kind, category, department, group string,
 	fund *int, cents int64, tag string) fact.Fact {
 	id := factID(tag)
 	return fact.Fact{
@@ -114,12 +114,12 @@ func fundFlowsFact(scope string, kind mapping.Kind, category, department, group 
 func fundFlowsFacts() []fact.Fact {
 	const rev, exp = ScopeRevenueByFund, scopeExpenditureByDepartment
 	return []fact.Fact{
-		fundFlowsFact(rev, mapping.KindRevenue, "taxes/property", "", "general", fact.FundNumber(100), 1000, "a"),
-		fundFlowsFact(rev, mapping.KindRevenue, "taxes/property", "", "enterprise", fact.FundNumber(500), 2000, "b"),
+		fundFlowsFact(rev, vocab.KindRevenue, "taxes/property", "", "general", fact.FundNumber(100), 1000, "a"),
+		fundFlowsFact(rev, vocab.KindRevenue, "taxes/property", "", "enterprise", fact.FundNumber(500), 2000, "b"),
 		// A printed zero: a fact that earns no link.
-		fundFlowsFact(rev, mapping.KindTransferIn, "transfers/in", "", "general", fact.FundNumber(100), 0, "c"),
-		fundFlowsFact(exp, mapping.KindExpenditure, "wages-and-benefits", "police", "general", fact.FundNumber(100), 600, "d"),
-		fundFlowsFact(exp, mapping.KindExpenditure, "services-and-supplies", "police", "general", fact.FundNumber(100), 400, "e"),
+		fundFlowsFact(rev, vocab.KindTransferIn, "transfers/in", "", "general", fact.FundNumber(100), 0, "c"),
+		fundFlowsFact(exp, vocab.KindExpenditure, "wages-and-benefits", "police", "general", fact.FundNumber(100), 600, "d"),
+		fundFlowsFact(exp, vocab.KindExpenditure, "services-and-supplies", "police", "general", fact.FundNumber(100), 400, "e"),
 	}
 }
 
@@ -172,7 +172,7 @@ func TestTheFundParentComesFromTheRegistryAndNotTheFact(t *testing.T) {
 // Mutation: parent a fund node by the fact's fund_group, and it goes red.
 func TestTheSpendingFundsParentComesFromTheRegistryToo(t *testing.T) {
 	facts := append(fundFlowsFacts(), fundFlowsFact(scopeExpenditureByFund,
-		mapping.KindExpenditure, "wages-and-benefits", "", "capital", fact.FundNumber(500), 300, "s"))
+		vocab.KindExpenditure, "wages-and-benefits", "", "capital", fact.FundNumber(500), 300, "s"))
 	doc := buildFundFlows(t, facts, fundFlowsLabels()) // the registry says enterprise
 	var got string
 	for _, n := range doc.Nodes {
@@ -387,7 +387,7 @@ func TestALineRollsUpIntoItsCategoryOncePerKind(t *testing.T) {
 	labels := fundFlowsLabels()
 	labels.names[700] = "Fleet Maintenance"
 	labels.types[700] = "internal-service"
-	facts := append(fundFlowsFacts(), fundFlowsFact(ScopeRevenueByFund, mapping.KindRevenue,
+	facts := append(fundFlowsFacts(), fundFlowsFact(ScopeRevenueByFund, vocab.KindRevenue,
 		"taxes/property", "", "internal-service", fact.FundNumber(700), 500, "f"))
 
 	got := map[LinkKind]Link{}
@@ -434,7 +434,7 @@ func TestAPrintedZeroIsNotInItsLinesRollup(t *testing.T) {
 	labels := fundFlowsLabels()
 	labels.names[600] = "Capital Projects"
 	labels.types[600] = "capital"
-	facts := append(fundFlowsFacts(), fundFlowsFact(ScopeRevenueByFund, mapping.KindRevenue,
+	facts := append(fundFlowsFacts(), fundFlowsFact(ScopeRevenueByFund, vocab.KindRevenue,
 		"taxes/property", "", "capital", fact.FundNumber(600), 0, "z"))
 
 	doc := buildFundFlows(t, facts, labels)
@@ -512,14 +512,14 @@ func TestFundFlowsRefusesWhatItCannotPlace(t *testing.T) {
 		{
 			name: "a revenue fact naming no fund",
 			facts: []fact.Fact{
-				fundFlowsFact(rev, mapping.KindRevenue, "taxes/property", "", "general", nil, 1, "z"),
+				fundFlowsFact(rev, vocab.KindRevenue, "taxes/property", "", "general", nil, 1, "z"),
 			},
 			want: "names no fund",
 		},
 		{
 			name: "an expenditure fact naming no department",
 			facts: []fact.Fact{
-				fundFlowsFact(exp, mapping.KindExpenditure, "wages-and-benefits", "", "general", fact.FundNumber(100), 1, "z"),
+				fundFlowsFact(exp, vocab.KindExpenditure, "wages-and-benefits", "", "general", fact.FundNumber(100), 1, "z"),
 			},
 			want: "carries no department",
 		},
@@ -528,14 +528,14 @@ func TestFundFlowsRefusesWhatItCannotPlace(t *testing.T) {
 			// reading of it from expenditure-by-fund would draw it twice.
 			name: "the General Fund from expenditure-by-fund",
 			facts: []fact.Fact{
-				fundFlowsFact(scopeExpenditureByFund, mapping.KindExpenditure, "wages-and-benefits", "", "general", fact.FundNumber(100), 1, "z"),
+				fundFlowsFact(scopeExpenditureByFund, vocab.KindExpenditure, "wages-and-benefits", "", "general", fact.FundNumber(100), 1, "z"),
 			},
 			want: "draws fund 100 from expenditure-by-fund",
 		},
 		{
 			name: "a fund the registry does not list, spending",
 			facts: []fact.Fact{
-				fundFlowsFact(scopeExpenditureByFund, mapping.KindExpenditure, "wages-and-benefits", "", "capital", fact.FundNumber(999), 1, "z"),
+				fundFlowsFact(scopeExpenditureByFund, vocab.KindExpenditure, "wages-and-benefits", "", "capital", fact.FundNumber(999), 1, "z"),
 			},
 			want: "fund 999 is in no data/funds.yaml entry",
 		},
@@ -543,7 +543,7 @@ func TestFundFlowsRefusesWhatItCannotPlace(t *testing.T) {
 			// A printed dash is a fact and not a flow, and its fund is still placed.
 			name: "a fund the registry does not list, spending a printed dash",
 			facts: []fact.Fact{
-				fundFlowsFact(scopeExpenditureByFund, mapping.KindExpenditure, "wages-and-benefits", "", "capital", fact.FundNumber(999), 0, "z"),
+				fundFlowsFact(scopeExpenditureByFund, vocab.KindExpenditure, "wages-and-benefits", "", "capital", fact.FundNumber(999), 0, "z"),
 			},
 			want: "fund 999 is in no data/funds.yaml entry",
 		},
@@ -552,8 +552,8 @@ func TestFundFlowsRefusesWhatItCannotPlace(t *testing.T) {
 			// spending on one division/object would collide on one link.
 			name: "two funds on the expenditure side",
 			facts: []fact.Fact{
-				fundFlowsFact(exp, mapping.KindExpenditure, "wages-and-benefits", "police", "general", fact.FundNumber(100), 1, "y"),
-				fundFlowsFact(exp, mapping.KindExpenditure, "wages-and-benefits", "police", "enterprise", fact.FundNumber(500), 1, "z"),
+				fundFlowsFact(exp, vocab.KindExpenditure, "wages-and-benefits", "police", "general", fact.FundNumber(100), 1, "y"),
+				fundFlowsFact(exp, vocab.KindExpenditure, "wages-and-benefits", "police", "enterprise", fact.FundNumber(500), 1, "z"),
 			},
 			want: "names funds",
 		},
@@ -562,7 +562,7 @@ func TestFundFlowsRefusesWhatItCannotPlace(t *testing.T) {
 			// its category.
 			name: "a revenue row no line is printed as",
 			facts: []fact.Fact{
-				fundFlowsFact(rev, mapping.KindRevenue, "taxes/sales", "", "general", fact.FundNumber(100), 1, "z"),
+				fundFlowsFact(rev, vocab.KindRevenue, "taxes/sales", "", "general", fact.FundNumber(100), 1, "z"),
 			},
 			want: "no data/taxonomy.yaml line under",
 		},
@@ -571,7 +571,7 @@ func TestFundFlowsRefusesWhatItCannotPlace(t *testing.T) {
 			// its parent is refused, not built as a tier-0 box.
 			name: "a line parented to a category the taxonomy does not declare",
 			facts: []fact.Fact{
-				fundFlowsFact(rev, mapping.KindRevenue, "typo", "", "general", fact.FundNumber(100), 1, "z"),
+				fundFlowsFact(rev, vocab.KindRevenue, "typo", "", "general", fact.FundNumber(100), 1, "z"),
 			},
 			labels: func(l stubFundFlows) stubFundFlows {
 				l.lines[lineKey{"typo", printedRow("typo"), "revenue"}] = []string{lineOf("typo")}
@@ -582,7 +582,7 @@ func TestFundFlowsRefusesWhatItCannotPlace(t *testing.T) {
 		{
 			name: "a revenue row two lines claim",
 			facts: []fact.Fact{
-				fundFlowsFact(rev, mapping.KindRevenue, "taxes/property", "", "general", fact.FundNumber(100), 1, "z"),
+				fundFlowsFact(rev, vocab.KindRevenue, "taxes/property", "", "general", fact.FundNumber(100), 1, "z"),
 			},
 			labels: func(l stubFundFlows) stubFundFlows {
 				l.lines = map[lineKey][]string{
@@ -597,7 +597,7 @@ func TestFundFlowsRefusesWhatItCannotPlace(t *testing.T) {
 			name: "a revenue fact carrying no row label",
 			facts: []fact.Fact{
 				func() fact.Fact {
-					f := fundFlowsFact(rev, mapping.KindRevenue, "taxes/property", "", "general", fact.FundNumber(100), 1, "z")
+					f := fundFlowsFact(rev, vocab.KindRevenue, "taxes/property", "", "general", fact.FundNumber(100), 1, "z")
 					f.RowLabel = ""
 					return f
 				}(),
@@ -607,14 +607,14 @@ func TestFundFlowsRefusesWhatItCannotPlace(t *testing.T) {
 		{
 			name: "a fund the registry does not list",
 			facts: []fact.Fact{
-				fundFlowsFact(rev, mapping.KindRevenue, "taxes/property", "", "general", fact.FundNumber(999), 1, "z"),
+				fundFlowsFact(rev, vocab.KindRevenue, "taxes/property", "", "general", fact.FundNumber(999), 1, "z"),
 			},
 			want: "is in no data/funds.yaml entry",
 		},
 		{
 			name: "a division the registry does not list",
 			facts: []fact.Fact{
-				fundFlowsFact(exp, mapping.KindExpenditure, "wages-and-benefits", "police-department", "general", fact.FundNumber(100), 1, "z"),
+				fundFlowsFact(exp, vocab.KindExpenditure, "wages-and-benefits", "police-department", "general", fact.FundNumber(100), 1, "z"),
 			},
 			want: `lists no division "police-department"`,
 		},
@@ -699,7 +699,7 @@ func TestFundFlowsIsDeterministic(t *testing.T) {
 func TestFundFlowsSlicesDeclareOnlyColumnsBothSchedulesCarry(t *testing.T) {
 	facts := fundFlowsFacts()
 	// A second column, revenue only.
-	extra := fundFlowsFact(ScopeRevenueByFund, mapping.KindRevenue, "taxes/property", "",
+	extra := fundFlowsFact(ScopeRevenueByFund, vocab.KindRevenue, "taxes/property", "",
 		"general", fact.FundNumber(100), 5, "x")
 	extra.FiscalYear = testYear + 1
 	facts = append(facts, extra)
@@ -726,7 +726,7 @@ func TestFundFlowsSlicesDeclareOnlyColumnsBothSchedulesCarry(t *testing.T) {
 func TestATransferInLinkIsNotExternal(t *testing.T) {
 	facts := fundFlowsFacts()
 	for i := range facts {
-		if facts[i].Kind == mapping.KindTransferIn {
+		if facts[i].Kind == vocab.KindTransferIn {
 			facts[i].AmountCents = 5000 // a printed zero earns no link at all
 		}
 	}
@@ -763,7 +763,7 @@ func TestATransferInLinkIsNotExternal(t *testing.T) {
 // see it.
 func TestTheExpenditureSideRefusesAFundlessFact(t *testing.T) {
 	facts := []fact.Fact{
-		fundFlowsFact(scopeExpenditureByDepartment, mapping.KindExpenditure,
+		fundFlowsFact(scopeExpenditureByDepartment, vocab.KindExpenditure,
 			"wages-and-benefits", "police", "general", nil, 600, "d"),
 	}
 	_, err := (&fundFlows{Labels: fundFlowsLabels()}).Document(facts, fundFlowsOptions())
@@ -780,8 +780,8 @@ func TestATierFiveParentIsCutAtTheFirstSlash(t *testing.T) {
 	labels := fundFlowsLabels()
 	labels.stubLabels["fund-balance/ending"] = "Ending Balance"
 	facts := []fact.Fact{
-		fundFlowsFact(ScopeRevenueByFund, mapping.KindRevenue, "taxes/property", "", "general", fact.FundNumber(100), 1, "a"),
-		fundFlowsFact(scopeExpenditureByDepartment, mapping.KindExpenditure,
+		fundFlowsFact(ScopeRevenueByFund, vocab.KindRevenue, "taxes/property", "", "general", fact.FundNumber(100), 1, "a"),
+		fundFlowsFact(scopeExpenditureByDepartment, vocab.KindExpenditure,
 			"fund-balance/ending", "police", "general", fact.FundNumber(100), 600, "d"),
 	}
 	doc := buildFundFlows(t, facts, labels)
@@ -806,7 +806,7 @@ func TestAReductionNamesTheCategoryTheSchedulePrintsItUnder(t *testing.T) {
 	// and hide the defect.
 	labels.lines[lineKey{"taxes/property", eraf, "revenue"}] = []string{
 		PrefixRevenueLine + "taxes/property/eraf"}
-	reduction := fundFlowsFact(ScopeRevenueByFund, mapping.KindRevenue,
+	reduction := fundFlowsFact(ScopeRevenueByFund, vocab.KindRevenue,
 		"taxes/property", "", "general", fact.FundNumber(100), -250, "r")
 	reduction.RowLabel = eraf
 	facts := append(fundFlowsFacts(), reduction)

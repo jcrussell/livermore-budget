@@ -18,8 +18,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/jcrussell/livermore-budget/internal/export"
-	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/project"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 	"github.com/jcrussell/livermore-budget/pkg/iostreams"
 )
@@ -1950,11 +1950,11 @@ func TestPublishedDocumentsAreWhatTheCorpusBuilds(t *testing.T) {
 		shipped := make([]project.Column, 0, len(doc.Metadata.Columns))
 		for _, c := range doc.Metadata.Columns {
 			shipped = append(shipped, project.Column{
-				FiscalYear: c.FiscalYear, Basis: mapping.Basis(c.Basis)})
+				FiscalYear: c.FiscalYear, Basis: vocab.Basis(c.Basis)})
 		}
 		if len(shipped) == 0 && doc.Metadata.FiscalYear != 0 {
 			shipped = append(shipped, project.Column{
-				FiscalYear: doc.Metadata.FiscalYear, Basis: mapping.Basis(doc.Metadata.Basis)})
+				FiscalYear: doc.Metadata.FiscalYear, Basis: vocab.Basis(doc.Metadata.Basis)})
 		}
 		if diff := cmp.Diff(d.Columns, shipped); diff != "" {
 			t.Errorf("%s: the declared columns and the shipped ones differ (-declared +shipped)"+
@@ -2219,7 +2219,7 @@ func TestEveryPageALinkCitesHasItsLinksInTheConfig(t *testing.T) {
 		}
 		for key, sched := range column.Schedules {
 			stem := publishedStem(key, project.Column{FiscalYear: column.Column.FiscalYear,
-				Basis: mapping.Basis(column.Column.Basis)})
+				Basis: vocab.Basis(column.Column.Basis)})
 			if _, unviewed := unviewedDocuments[stem]; unviewed {
 				continue
 			}

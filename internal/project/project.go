@@ -46,8 +46,8 @@ import (
 	"strings"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
-	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/structure"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
@@ -72,7 +72,7 @@ const (
 	// year published — see [PublishedFiscalYears] — and the distinction is the
 	// difference between a default and a limit.
 	PublishedFiscalYear = 2026
-	PublishedBasis      = mapping.BasisAdopted
+	PublishedBasis      = vocab.BasisAdopted
 	PublishedScope      = structure.ScopeAllFundsGross
 	// PublishedProjection is the stem of the document the page is built from.
 	//
@@ -141,7 +141,7 @@ type PublishedDocument struct {
 	Scopes []string
 	// Kinds is the kind set it selects out of those schedules, matching
 	// [Options.Kinds]: empty for every kind the schedules carry.
-	Kinds []mapping.Kind
+	Kinds []vocab.Kind
 	// ThroughCuts is [Options.ThroughCuts]: a caller rebuilding the document's
 	// selection from this declaration selects what the document drew.
 	ThroughCuts bool
@@ -222,7 +222,7 @@ func PublishedDocuments() []PublishedDocument {
 type publishedGraph struct {
 	projection  string
 	scopes      []string
-	kinds       []mapping.Kind
+	kinds       []vocab.Kind
 	throughCuts bool
 	columns     []Column
 }
@@ -269,10 +269,10 @@ func adoptedColumns() []Column {
 // schedules print, oldest first.
 func budgetBookDetailColumns() []Column {
 	return []Column{
-		{FiscalYear: 2024, Basis: mapping.BasisActual},
-		{FiscalYear: 2025, Basis: mapping.BasisRevised},
-		{FiscalYear: 2026, Basis: mapping.BasisAdopted},
-		{FiscalYear: 2027, Basis: mapping.BasisAdopted},
+		{FiscalYear: 2024, Basis: vocab.BasisActual},
+		{FiscalYear: 2025, Basis: vocab.BasisRevised},
+		{FiscalYear: 2026, Basis: vocab.BasisAdopted},
+		{FiscalYear: 2027, Basis: vocab.BasisAdopted},
 	}
 }
 
@@ -285,7 +285,7 @@ func budgetBookDetailColumns() []Column {
 // checks without anyone remembering to add it here. ONE OPTIONS PER COLUMN:
 // every fiscal year the city publishes lives in the same facts.jsonl, and a
 // graph built over two of them doubles every figure while still balancing.
-func columnsCarrying(facts []fact.Fact, required, scopes []string, kinds []mapping.Kind, version string) []Options {
+func columnsCarrying(facts []fact.Fact, required, scopes []string, kinds []vocab.Kind, version string) []Options {
 	sel := Options{Scopes: required, Kinds: kinds}
 	seen := map[Column]map[string]bool{}
 	for i := range facts {
@@ -499,7 +499,7 @@ type Options struct {
 	// kind the scopes carry. A document of one kind of money over a scope
 	// printing several needs it: p222 prints transfers, grants and a balance
 	// draw under one total, and the transfer network draws the transfers.
-	Kinds []mapping.Kind
+	Kinds []vocab.Kind
 	// ThroughCuts narrows the slice to the facts the view over Scopes admits
 	// (structure.ViewOf): a scope whose pages print a block no cut admits
 	// leaves that block out. It is opt-in, because a document may draw a
@@ -523,7 +523,7 @@ type Options struct {
 // second half, which is why the pair is stored rather than derived.
 type Column struct {
 	FiscalYear int
-	Basis      mapping.Basis
+	Basis      vocab.Basis
 }
 
 // String renders a column the way a report should name one.
@@ -556,7 +556,7 @@ func (o Options) validate() error {
 			return fmt.Errorf("fiscal year is required (got %d)", c.FiscalYear)
 		}
 		if !c.Basis.Valid() {
-			return fmt.Errorf("basis %q is not one of %v", c.Basis, mapping.Bases())
+			return fmt.Errorf("basis %q is not one of %v", c.Basis, vocab.Bases())
 		}
 		// A repeated column would be counted twice by anything summing the
 		// document, which is the same doubling the field's doc comment is
@@ -584,7 +584,7 @@ func (o Options) validate() error {
 		}
 		scopes[s] = true
 	}
-	kinds := make(map[mapping.Kind]bool, len(o.Kinds))
+	kinds := make(map[vocab.Kind]bool, len(o.Kinds))
 	for _, k := range o.Kinds {
 		if kinds[k] {
 			return fmt.Errorf("kind %q is listed twice", k)
@@ -640,7 +640,7 @@ func (o Options) HasScope(scope string) bool {
 }
 
 // HasKind reports whether a fact of this kind is in the slice.
-func (o Options) HasKind(k mapping.Kind) bool {
+func (o Options) HasKind(k vocab.Kind) bool {
 	return len(o.Kinds) == 0 || slices.Contains(o.Kinds, k)
 }
 

@@ -26,7 +26,7 @@ Column counts exclude the row-label column. "Years" is the table's year shape:
 "Current Year and Nine Years Ago" two-column convention, **snap** a single-date
 snapshot. Quantities use the closed vocabulary proposed below. "Money" is yes
 when the table prints dollar figures a rule could publish as integer cents (the
-`amount` quantity); it does not claim a `mapping.Kind` fits — see fisc-7jtl.
+`amount` quantity); it does not claim a `vocab.Kind` fits — see fisc-7jtl.
 
 | Pages | Table | Years | Cols | Column quantities | Money | Unit | Arithmetic guard |
 |---|---|---|---|---|---|---|---|
@@ -242,7 +242,7 @@ Two constraints the implementation inherits, both measured:
 
 ## The closed vocabulary: `quantity`, four values
 
-`kind` is taken by `mapping.Kind`. The set is closed: a token that fits no
+`kind` is taken by `vocab.Kind`. The set is closed: a token that fits no
 declared quantity's grammar is an error, never a guess — that is what p182's
 ranges, p185's "NA" and p186's "exempt" are the test of.
 

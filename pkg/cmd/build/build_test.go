@@ -18,6 +18,7 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/corpus"
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 	"github.com/jcrussell/livermore-budget/pkg/iostreams"
 )
@@ -303,7 +304,7 @@ func TestBuildTiesToTheDocumentsOwnTotals(t *testing.T) {
 
 	var revenues int64
 	for _, f := range facts {
-		if f.Kind == mapping.KindRevenue && f.FiscalYear == 2026 {
+		if f.Kind == vocab.KindRevenue && f.FiscalYear == 2026 {
 			revenues += f.AmountCents
 		}
 	}

@@ -12,8 +12,8 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/fact"
-	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/registry"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // goldenPath is the hand-derived worked example: real FY2026 figures read out
@@ -73,7 +73,7 @@ func TestSankeyReproducesGoldenFile(t *testing.T) {
 func withCIPLeg(t *testing.T, facts []fact.Fact) []fact.Fact {
 	t.Helper()
 	leg := facts[0]
-	leg.ID, leg.Scope, leg.Kind, leg.AmountCents = "p222-leg", CIPFundingScope, mapping.KindTransferOut, 3808673700
+	leg.ID, leg.Scope, leg.Kind, leg.AmountCents = "p222-leg", CIPFundingScope, vocab.KindTransferOut, 3808673700
 	return append(facts, leg)
 }
 
@@ -111,7 +111,7 @@ func TestBasisAndScopeFilter(t *testing.T) {
 	other := make([]fact.Fact, 0, len(spine)*2)
 	for _, f := range spine {
 		revised := f
-		revised.Basis = mapping.BasisRevised
+		revised.Basis = vocab.BasisRevised
 		revised.ID += "-revised"
 		elsewhere := f
 		elsewhere.Scope = "general-fund"
@@ -133,7 +133,7 @@ func TestBasisAndScopeFilter(t *testing.T) {
 func TestChangeInWorkingCapitalSign(t *testing.T) {
 	change := func(group string, cents int64) cellSpec {
 		return cellSpec{
-			kind:     mapping.KindFundBalance,
+			kind:     vocab.KindFundBalance,
 			category: CategoryFundBalanceChange,
 			label:    "CHANGE IN WORKING CAPITAL",
 			group:    group,
@@ -222,11 +222,11 @@ func TestDerivedNodesCarryProvenance(t *testing.T) {
 // so they are not flows.
 func TestStocksAreExcluded(t *testing.T) {
 	g := buildGraph(t, facts(t,
-		cellSpec{kind: mapping.KindRevenue, category: "taxes/property", label: "Property Taxes",
+		cellSpec{kind: vocab.KindRevenue, category: "taxes/property", label: "Property Taxes",
 			group: "general", cents: 6414376200},
-		cellSpec{kind: mapping.KindFundBalance, category: CategoryFundBalanceBeginning,
+		cellSpec{kind: vocab.KindFundBalance, category: CategoryFundBalanceBeginning,
 			label: "BEGINNING WORKING CAPITAL", group: "general", cents: 176661300},
-		cellSpec{kind: mapping.KindFundBalance, category: CategoryFundBalanceEnding,
+		cellSpec{kind: vocab.KindFundBalance, category: CategoryFundBalanceEnding,
 			label: "ENDING WORKING CAPITAL", group: "general", cents: 73245900},
 	), testOptions())
 
@@ -251,9 +251,9 @@ func TestStocksAreExcluded(t *testing.T) {
 // order, and a zero the city printed is still a fact.
 func TestZeroValuedCellKeepsFactAndDropsLink(t *testing.T) {
 	g := buildGraph(t, facts(t,
-		cellSpec{kind: mapping.KindRevenue, category: "taxes/property", label: "Property Taxes",
+		cellSpec{kind: vocab.KindRevenue, category: "taxes/property", label: "Property Taxes",
 			group: "general", cents: 6414376200},
-		cellSpec{kind: mapping.KindRevenue, category: "taxes/property", label: "Property Taxes",
+		cellSpec{kind: vocab.KindRevenue, category: "taxes/property", label: "Property Taxes",
 			group: "enterprise", cents: 0},
 	), testOptions())
 
@@ -274,13 +274,13 @@ func TestZeroValuedCellKeepsFactAndDropsLink(t *testing.T) {
 // expenditure double-counts them.
 func TestInternalServiceClassification(t *testing.T) {
 	g := buildGraph(t, facts(t,
-		cellSpec{kind: mapping.KindRevenue, category: "intergovernmental", label: "Intergovernmental",
+		cellSpec{kind: vocab.KindRevenue, category: "intergovernmental", label: "Intergovernmental",
 			group: "internal-service", cents: 1884483400},
-		cellSpec{kind: mapping.KindRevenue, category: "intergovernmental", label: "Intergovernmental",
+		cellSpec{kind: vocab.KindRevenue, category: "intergovernmental", label: "Intergovernmental",
 			group: "general", cents: 432816400},
-		cellSpec{kind: mapping.KindExpenditure, category: "wages-and-benefits", label: "Wages & Benefits",
+		cellSpec{kind: vocab.KindExpenditure, category: "wages-and-benefits", label: "Wages & Benefits",
 			group: "internal-service", cents: 597065400},
-		cellSpec{kind: mapping.KindExpenditure, category: "wages-and-benefits", label: "Wages & Benefits",
+		cellSpec{kind: vocab.KindExpenditure, category: "wages-and-benefits", label: "Wages & Benefits",
 			group: "general", cents: 8180101100},
 	), testOptions())
 
@@ -379,12 +379,12 @@ func TestContraRowNetsIntoParent(t *testing.T) {
 	rpttf := int64(-189180400)
 
 	g := buildGraph(t, facts(t,
-		cellSpec{kind: mapping.KindRevenue, category: "taxes/property",
+		cellSpec{kind: vocab.KindRevenue, category: "taxes/property",
 			label: "Current Year - Secured", group: "general", cents: gross},
-		cellSpec{kind: mapping.KindRevenue, category: "taxes/property",
-			label: "ERAF", group: "general", cents: eraf, sign: mapping.SignContra},
-		cellSpec{kind: mapping.KindRevenue, category: "taxes/property",
-			label: "RPTTF Reduction", group: "general", cents: rpttf, sign: mapping.SignContra},
+		cellSpec{kind: vocab.KindRevenue, category: "taxes/property",
+			label: "ERAF", group: "general", cents: eraf, sign: vocab.SignContra},
+		cellSpec{kind: vocab.KindRevenue, category: "taxes/property",
+			label: "RPTTF Reduction", group: "general", cents: rpttf, sign: vocab.SignContra},
 	), testOptions())
 
 	l := linkBetween(t, g, "revenue/taxes/property", "fund-group/general")
@@ -470,9 +470,9 @@ func TestLabelFallback(t *testing.T) {
 	spine := func(t *testing.T) []fact.Fact {
 		t.Helper()
 		return facts(t,
-			cellSpec{kind: mapping.KindRevenue, category: "taxes/property",
+			cellSpec{kind: vocab.KindRevenue, category: "taxes/property",
 				label: "Property Taxes", group: "general", cents: 100},
-			cellSpec{kind: mapping.KindTransferIn, category: "transfers/in",
+			cellSpec{kind: vocab.KindTransferIn, category: "transfers/in",
 				label: "TRANSFER IN:", group: "general", cents: 100})
 	}
 
@@ -558,7 +558,7 @@ func TestGraphRejects(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			fs := facts(t, cellSpec{kind: mapping.KindRevenue, category: "taxes/property",
+			fs := facts(t, cellSpec{kind: vocab.KindRevenue, category: "taxes/property",
 				label: "Property Taxes", group: "general", cents: 100})
 			c.mutate(&fs[0])
 
@@ -663,9 +663,9 @@ func TestNodesAndLinksAreSorted(t *testing.T) {
 // equal totals are not evidence that the legs pair up.
 func TestTransferCaveatWhenLegsMatch(t *testing.T) {
 	g := buildGraph(t, facts(t,
-		cellSpec{kind: mapping.KindTransferIn, category: "transfers/in", label: "TRANSFER IN:",
+		cellSpec{kind: vocab.KindTransferIn, category: "transfers/in", label: "TRANSFER IN:",
 			group: "general", cents: 100000},
-		cellSpec{kind: mapping.KindTransferOut, category: "transfers/out", label: "TRANSFER OUT:",
+		cellSpec{kind: vocab.KindTransferOut, category: "transfers/out", label: "TRANSFER OUT:",
 			group: "enterprise", cents: 100000},
 	), testOptions())
 
@@ -903,7 +903,7 @@ func TestContestedCaveatIsEmittedOnlyForTheColumnThatDrawsIt(t *testing.T) {
 		t.Errorf("caveat emitted for %s, which the entry does not name:\n%s", other, cav.Text)
 	}
 	// So is a different basis on the same year.
-	if cav, ok := contestedCaveat(c, Column{FiscalYear: c.Column.FiscalYear, Basis: mapping.BasisActual}, links); ok {
+	if cav, ok := contestedCaveat(c, Column{FiscalYear: c.Column.FiscalYear, Basis: vocab.BasisActual}, links); ok {
 		t.Errorf("caveat emitted for a basis the entry does not name:\n%s", cav.Text)
 	}
 }

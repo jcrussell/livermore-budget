@@ -6,8 +6,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/project"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
@@ -85,7 +85,7 @@ func (*projectionsBuild) Run(_ context.Context, s *Subject) (Result, error) {
 // transfers and not the grants beside them (fisc-jyjn).
 type sliceKey struct {
 	year  int
-	basis mapping.Basis
+	basis vocab.Basis
 	scope string
 }
 

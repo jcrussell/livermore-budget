@@ -8,8 +8,8 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/fact"
-	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/project"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // categoryExcessOfRevenues is the printed subtotal this identity recomputes.
@@ -57,7 +57,7 @@ func (*excessOfRevenuesIdentity) Description() string {
 // governmental funds combined and its facts carry no fund group.
 type excessColumn struct {
 	year  int
-	basis mapping.Basis
+	basis vocab.Basis
 }
 
 func (k excessColumn) String() string {
@@ -104,13 +104,13 @@ func (*excessOfRevenuesIdentity) Run(_ context.Context, s *Subject) (Result, err
 			}
 			excess[k] = excessSide{amount.Cents(f.AmountCents), 1}
 			excessID[k] = f.ID
-		case f.Kind == mapping.KindRevenue:
+		case f.Kind == vocab.KindRevenue:
 			note(k)
 			side := rev[k]
 			side.cents += amount.Cents(f.AmountCents)
 			side.rows++
 			rev[k] = side
-		case f.Kind == mapping.KindExpenditure:
+		case f.Kind == vocab.KindExpenditure:
 			note(k)
 			side := exp[k]
 			side.cents += amount.Cents(f.AmountCents)

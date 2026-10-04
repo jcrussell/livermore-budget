@@ -7,6 +7,7 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/project"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // trendsTestScope is the scope the trends document is of, spelled here for the
@@ -14,8 +15,8 @@ import (
 const trendsTestScope = "revenue-by-fund"
 
 var trendsTestColumns = []project.Column{
-	{FiscalYear: 2026, Basis: mapping.BasisAdopted},
-	{FiscalYear: 2027, Basis: mapping.BasisAdopted},
+	{FiscalYear: 2026, Basis: vocab.BasisAdopted},
+	{FiscalYear: 2027, Basis: vocab.BasisAdopted},
 }
 
 // trendsSubject is a Subject carrying one trends document over two columns of
@@ -57,7 +58,7 @@ func trendsTestFacts(t *testing.T) []fact.Fact {
 				Offset:      500 + 40*len(out) + i,
 				Token:       "tok",
 				RuleID:      r.rule,
-				Kind:        mapping.KindRevenue,
+				Kind:        vocab.KindRevenue,
 				Basis:       c.Basis,
 				Scope:       trendsTestScope,
 				FiscalYear:  c.FiscalYear,
@@ -67,7 +68,7 @@ func trendsTestFacts(t *testing.T) []fact.Fact {
 				ColumnPath:  columnPath,
 				FundGroup:   "general",
 				Fund:        fact.FundNumber(100),
-				Sign:        mapping.SignPositive,
+				Sign:        vocab.SignPositive,
 				Units:       "dollars",
 				AmountCents: r.cents[i],
 			})

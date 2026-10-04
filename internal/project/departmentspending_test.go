@@ -9,6 +9,7 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // spendingCell is one printed cell of Budget Book pp.85-125's upper block: a
@@ -19,17 +20,17 @@ import (
 var spendingCells = []struct {
 	division string
 	category string
-	kind     mapping.Kind
+	kind     vocab.Kind
 	label    string
 	page     int
 	cents    int64
 }{
-	{"city-council", "wages-and-benefits", mapping.KindExpenditure, "Wages & Benefits", 85, 7_470_100},
-	{"city-council", "services-and-supplies", mapping.KindExpenditure, "Services & Supplies", 85, 7_808_000},
-	{"general-services", "wages-and-benefits", mapping.KindExpenditure, "Wages & Benefits", 89, 0},
-	{"general-services", "services-and-supplies", mapping.KindExpenditure, "Services & Supplies", 89, 1_200_000},
-	{"maintenance", "services-and-supplies", mapping.KindExpenditure, "Services & Supplies", 124, 3_000_000},
-	{"maintenance", "transfers/out", mapping.KindTransferOut, "Transfers Out", 124, 26_679_800},
+	{"city-council", "wages-and-benefits", vocab.KindExpenditure, "Wages & Benefits", 85, 7_470_100},
+	{"city-council", "services-and-supplies", vocab.KindExpenditure, "Services & Supplies", 85, 7_808_000},
+	{"general-services", "wages-and-benefits", vocab.KindExpenditure, "Wages & Benefits", 89, 0},
+	{"general-services", "services-and-supplies", vocab.KindExpenditure, "Services & Supplies", 89, 1_200_000},
+	{"maintenance", "services-and-supplies", vocab.KindExpenditure, "Services & Supplies", 124, 3_000_000},
+	{"maintenance", "transfers/out", vocab.KindTransferOut, "Transfers Out", 124, 26_679_800},
 }
 
 // spendingFacts renders the fixture at the scope this document selects, with

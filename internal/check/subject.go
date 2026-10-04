@@ -20,6 +20,7 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/internal/registry"
 	"github.com/jcrussell/livermore-budget/internal/structure"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 	"github.com/jcrussell/livermore-budget/schema"
 )
@@ -861,7 +862,7 @@ func buildProjections(ps []project.Projection, facts []fact.Fact, version string
 func factSlices(facts []fact.Fact, version string) []project.Options {
 	type key struct {
 		year  int
-		basis mapping.Basis
+		basis vocab.Basis
 	}
 	seen := map[key]bool{}
 	for _, f := range facts {

@@ -6,8 +6,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/registry"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // factVocabulary asserts every category and fund group a fact carries resolves in
@@ -120,7 +120,7 @@ func unassignable(v Vocabulary, slug string) string {
 // transfer_out, so a transfer filed under the wrong one carries a kind its
 // category does not declare. That was fisc-ttq, and it was open only for as long
 // as all four transfer categories declared a `transfer` family — a string that is
-// not one of the five mapping.Kind values and never was, which is why correcting
+// not one of the five vocab.Kind values and never was, which is why correcting
 // the file closed the hole rather than widening the check.
 //
 // A category factVocabulary ALREADY NAMES is not counted here, and that is two
@@ -191,12 +191,12 @@ func (*factKindMatchesCategory) Run(_ context.Context, s *Subject) (Result, erro
 
 // declaresKind reports whether c permits a fact of kind k.
 //
-// The comparison is literal: the `kinds:` list holds mapping.Kind values and a
+// The comparison is literal: the `kinds:` list holds vocab.Kind values and a
 // fact's kind is one, so nothing here resolves a family or widens a match. A
 // category that means to admit two kinds says both — the `transfers` rollup
 // declares transfer_in and transfer_out — because a list that had to be
 // interpreted could not be read as the file's own answer.
-func declaresKind(c registry.Category, k mapping.Kind) bool {
+func declaresKind(c registry.Category, k vocab.Kind) bool {
 	return slices.Contains(c.Kinds, string(k))
 }
 

@@ -5,8 +5,8 @@ import (
 	"sort"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
-	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/structure"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 	"github.com/jcrussell/livermore-budget/schema"
 )
@@ -169,7 +169,7 @@ func (d *departmentSpending) Document(facts []fact.Fact, o Options) (*Document, 
 // it for p124's Transfers Out row under Maintenance, the one row that is not an
 // expenditure.
 type spendKey struct {
-	kind     mapping.Kind
+	kind     vocab.Kind
 	division string
 	category string
 }
@@ -215,10 +215,10 @@ func netDepartmentSpending(facts []fact.Fact) (map[spendKey]*cellSum, error) {
 // `expenditure/<slug>`, or `transfers/out` for the Transfers Out row.
 func spendingObjectEndpoint(k spendKey) (endpoint, error) {
 	switch k.kind {
-	case mapping.KindExpenditure:
+	case vocab.KindExpenditure:
 		return endpoint{id: PrefixExpenditure + k.category, slug: k.category,
 			role: RoleObjectCategory}, nil
-	case mapping.KindTransferOut:
+	case vocab.KindTransferOut:
 		return endpoint{id: k.category, slug: k.category,
 			role: RoleTransferOut}, nil
 	default:
@@ -233,8 +233,8 @@ func spendingObjectEndpoint(k spendKey) (endpoint, error) {
 //
 // A transfer is internal; everything else is `external`, because these rows
 // carry no fund group to ask boundaryKind with. A caveat says so.
-func spendingLinkKind(k mapping.Kind) LinkKind {
-	if k == mapping.KindTransferOut {
+func spendingLinkKind(k vocab.Kind) LinkKind {
+	if k == vocab.KindTransferOut {
 		return KindInternalTransfer
 	}
 	return KindExternal

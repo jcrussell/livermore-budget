@@ -477,7 +477,7 @@ rules:
       measured blocker, not a preference. The eight amount columns cannot be
       facts: the year lives in the ROW label and Fact.FiscalYear has no row
       channel, and the seven debt columns share one (fund_group, fund,
-      fiscal_year, basis) identity (fisc-xmh2); no mapping.Kind states
+      fiscal_year, basis) identity (fisc-xmh2); no vocab.Kind states
       outstanding debt truthfully (fisc-7jtl) -- the kind above is the
       schema's required field, inert while every row is skipped. When
       publication lands, the page's check lands with it: cols 1-7 sum to col 8

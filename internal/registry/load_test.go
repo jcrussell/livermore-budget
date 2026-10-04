@@ -209,7 +209,7 @@ categories:
 		}, {
 			// The defect this whole arm exists for. Before it landed this
 			// file loaded clean and `fisc verify` was fully green.
-			name: "category kind that mapping.Kind has never defined",
+			name: "category kind that vocab.Kind has never defined",
 			taxonomy: `
 schema_version: 1
 categories:

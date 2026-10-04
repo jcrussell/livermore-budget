@@ -16,6 +16,7 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/corpus"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // budgetDoc builds an extraction of the Budget Book holding only the pages a
@@ -121,9 +122,9 @@ func TestSpineFacts(t *testing.T) {
 			continue
 		}
 		switch {
-		case f.Kind == mapping.KindExpenditure && f.FundGroup == "general":
+		case f.Kind == vocab.KindExpenditure && f.FundGroup == "general":
 			gfExpenditure += f.AmountCents
-		case f.Kind == mapping.KindRevenue:
+		case f.Kind == vocab.KindRevenue:
 			allFundsRevenue += f.AmountCents
 		}
 	}
@@ -206,8 +207,8 @@ func propertyTaxRule(t *testing.T) (*mapping.File, *mapping.Rule) {
 	rows := []mapping.Row{
 		{Label: "Current Year - Secured", Category: "taxes/property"},
 		{Label: "Prior Year - Secured", Category: "taxes/property"},
-		{Label: "ERAF", Category: "taxes/property", Sign: mapping.SignContra},
-		{Label: "RPTTF Reduction", Category: "taxes/property", Sign: mapping.SignContra},
+		{Label: "ERAF", Category: "taxes/property", Sign: vocab.SignContra},
+		{Label: "RPTTF Reduction", Category: "taxes/property", Sign: vocab.SignContra},
 		{Label: "Current Year - Unsecured", Category: "taxes/property"},
 		{Label: "Prior Year - Unsecured", Category: "taxes/property"},
 		{Label: "Supple - Sec Roll Current", Category: "taxes/property"},
@@ -224,7 +225,7 @@ func propertyTaxRule(t *testing.T) (*mapping.File, *mapping.Rule) {
 		Path:          "inline.yaml",
 		Rules: []mapping.Rule{{
 			ID:   "gf-property-tax-detail",
-			Kind: mapping.KindRevenue, Basis: mapping.BasisAdopted,
+			Kind: vocab.KindRevenue, Basis: vocab.BasisAdopted,
 			Scope: "general-fund", Grain: "fund-group-by-category", Units: amount.Dollars,
 			TotalRow: "Total Property Taxes",
 			Rows:     rows,
@@ -243,10 +244,10 @@ func propertyTaxRule(t *testing.T) (*mapping.File, *mapping.Rule) {
 				StopAt:  "Total Property Taxes",
 				// This schedule prints four years on three bases side by side.
 				Columns: []mapping.Column{
-					{FundGroup: "general", FiscalYear: 2024, Basis: mapping.BasisActual},
-					{FundGroup: "general", FiscalYear: 2025, Basis: mapping.BasisRevised},
-					{FundGroup: "general", FiscalYear: 2026, Basis: mapping.BasisAdopted},
-					{FundGroup: "general", FiscalYear: 2027, Basis: mapping.BasisAdopted},
+					{FundGroup: "general", FiscalYear: 2024, Basis: vocab.BasisActual},
+					{FundGroup: "general", FiscalYear: 2025, Basis: vocab.BasisRevised},
+					{FundGroup: "general", FiscalYear: 2026, Basis: vocab.BasisAdopted},
+					{FundGroup: "general", FiscalYear: 2027, Basis: vocab.BasisAdopted},
 				},
 			}},
 		}},
@@ -303,7 +304,7 @@ func TestContraRowsAndSharedCategories(t *testing.T) {
 		if !isContra {
 			continue
 		}
-		if f.Sign != mapping.SignContra {
+		if f.Sign != vocab.SignContra {
 			t.Errorf("fact %s (%s) has sign %q, want contra", f.ID, f.RowLabel, f.Sign)
 		}
 		if f.AmountCents != want {
@@ -313,15 +314,15 @@ func TestContraRowsAndSharedCategories(t *testing.T) {
 	}
 
 	// Basis comes from the column, not the rule, on this schedule.
-	byYear := map[int]mapping.Basis{}
+	byYear := map[int]vocab.Basis{}
 	sums := map[int]int64{}
 	for _, f := range facts {
 		byYear[f.FiscalYear] = f.Basis
 		sums[f.FiscalYear] += f.AmountCents
 	}
-	for year, want := range map[int]mapping.Basis{
-		2024: mapping.BasisActual, 2025: mapping.BasisRevised,
-		2026: mapping.BasisAdopted, 2027: mapping.BasisAdopted,
+	for year, want := range map[int]vocab.Basis{
+		2024: vocab.BasisActual, 2025: vocab.BasisRevised,
+		2026: vocab.BasisAdopted, 2027: vocab.BasisAdopted,
 	} {
 		if byYear[year] != want {
 			t.Errorf("FY%d basis = %q, want %q", year, byYear[year], want)
@@ -366,13 +367,13 @@ func TestContraRowsAndSharedCategories(t *testing.T) {
 // corrected figure must be a modified line, and an inserted row must not
 // renumber anything.
 func TestIDIsIdentityNotContent(t *testing.T) {
-	id := MakeID("doc", "rule", "taxes/property", "Property Taxes", "general", 2026, mapping.BasisAdopted)
+	id := MakeID("doc", "rule", "taxes/property", "Property Taxes", "general", 2026, vocab.BasisAdopted)
 
 	t.Run("stable across a corrected amount", func(t *testing.T) {
 		// The amount is not an input at all, so this is really a statement
 		// about the signature: if a future change adds it, this test is where
 		// the intent is written down.
-		again := MakeID("doc", "rule", "taxes/property", "Property Taxes", "general", 2026, mapping.BasisAdopted)
+		again := MakeID("doc", "rule", "taxes/property", "Property Taxes", "general", 2026, vocab.BasisAdopted)
 		if again != id {
 			t.Errorf("MakeID is not deterministic: %s then %s", id, again)
 		}
@@ -381,13 +382,13 @@ func TestIDIsIdentityNotContent(t *testing.T) {
 	t.Run("distinct on every identity component", func(t *testing.T) {
 		seen := map[string]string{id: "the original"}
 		for name, other := range map[string]string{
-			"doc":         MakeID("other", "rule", "taxes/property", "Property Taxes", "general", 2026, mapping.BasisAdopted),
-			"rule":        MakeID("doc", "other", "taxes/property", "Property Taxes", "general", 2026, mapping.BasisAdopted),
-			"row path":    MakeID("doc", "rule", "taxes/other", "Property Taxes", "general", 2026, mapping.BasisAdopted),
-			"column path": MakeID("doc", "rule", "taxes/property", "Property Taxes", "enterprise", 2026, mapping.BasisAdopted),
-			"fiscal year": MakeID("doc", "rule", "taxes/property", "Property Taxes", "general", 2027, mapping.BasisAdopted),
-			"basis":       MakeID("doc", "rule", "taxes/property", "Property Taxes", "general", 2026, mapping.BasisRevised),
-			"row label":   MakeID("doc", "rule", "taxes/property", "Prior Year - Secured", "general", 2026, mapping.BasisAdopted),
+			"doc":         MakeID("other", "rule", "taxes/property", "Property Taxes", "general", 2026, vocab.BasisAdopted),
+			"rule":        MakeID("doc", "other", "taxes/property", "Property Taxes", "general", 2026, vocab.BasisAdopted),
+			"row path":    MakeID("doc", "rule", "taxes/other", "Property Taxes", "general", 2026, vocab.BasisAdopted),
+			"column path": MakeID("doc", "rule", "taxes/property", "Property Taxes", "enterprise", 2026, vocab.BasisAdopted),
+			"fiscal year": MakeID("doc", "rule", "taxes/property", "Property Taxes", "general", 2027, vocab.BasisAdopted),
+			"basis":       MakeID("doc", "rule", "taxes/property", "Property Taxes", "general", 2026, vocab.BasisRevised),
+			"row label":   MakeID("doc", "rule", "taxes/property", "Prior Year - Secured", "general", 2026, vocab.BasisAdopted),
 		} {
 			if prev, dup := seen[other]; dup {
 				t.Errorf("changing the %s collides with %s", name, prev)
@@ -400,8 +401,8 @@ func TestIDIsIdentityNotContent(t *testing.T) {
 		// Joining on a character that occurs in the data would make these two
 		// hash identically. row_path routinely contains "/" and doc ids
 		// contain "-", so this is not hypothetical.
-		a := MakeID("doc", "rule", "a/b", "L", "c", 2026, mapping.BasisAdopted)
-		b := MakeID("doc", "rule", "a", "L", "b/c", 2026, mapping.BasisAdopted)
+		a := MakeID("doc", "rule", "a/b", "L", "c", 2026, vocab.BasisAdopted)
+		b := MakeID("doc", "rule", "a", "L", "b/c", 2026, vocab.BasisAdopted)
 		if a == b {
 			t.Errorf("component boundary is ambiguous: both hash to %s", a)
 		}
@@ -460,7 +461,7 @@ func TestIDIsBuiltFromTheLabelTheFactPublishes(t *testing.T) {
 	row := mapping.Row{Label: "Transfer From Wastewater",
 		LabelTail: "to Stormwater", Category: "transfers/in"}
 	f := &mapping.File{DocID: "doc"}
-	rule := &mapping.Rule{ID: "rule", Basis: mapping.BasisAdopted, Scope: "s"}
+	rule := &mapping.Rule{ID: "rule", Basis: vocab.BasisAdopted, Scope: "s"}
 	got, err := FromValues(f, rule, []mapping.Value{{
 		Row: row, Column: mapping.Column{FundGroup: "enterprise", FiscalYear: 2026},
 	}})
@@ -468,7 +469,7 @@ func TestIDIsBuiltFromTheLabelTheFactPublishes(t *testing.T) {
 		t.Fatalf("FromValues: %v", err)
 	}
 	want := MakeID("doc", "rule", RowPath(row), got[0].RowLabel,
-		"enterprise", 2026, mapping.BasisAdopted)
+		"enterprise", 2026, vocab.BasisAdopted)
 	if got[0].ID != want {
 		t.Errorf("id = %s, want %s: the id must be a function of the published "+
 			"row_label %q", got[0].ID, want, got[0].RowLabel)
@@ -568,7 +569,7 @@ func TestCheckUniqueIDsRejectsTwoClaimsOnOneCell(t *testing.T) {
 	// Two rules reading the same cell: the second is double-counting.
 	a := Fact{ID: "fisc-f-abc", DocID: "d", RuleID: "spine", Page: 66,
 		RowPath: "taxes/property", ColumnPath: "general", FiscalYear: 2026,
-		Basis: mapping.BasisAdopted, AmountCents: 100}
+		Basis: vocab.BasisAdopted, AmountCents: 100}
 	b := a
 	b.RuleID = "detail"
 	b.Page = 127
@@ -707,22 +708,22 @@ func contains(s []string, want string) bool {
 // while the rule says revenue.
 func TestARowKindOverridesTheRulesKind(t *testing.T) {
 	f := &mapping.File{DocID: "doc"}
-	rule := &mapping.Rule{ID: "stormwater", Kind: mapping.KindRevenue,
-		Basis: mapping.BasisAdopted, Scope: "all-funds-gross"}
+	rule := &mapping.Rule{ID: "stormwater", Kind: vocab.KindRevenue,
+		Basis: vocab.BasisAdopted, Scope: "all-funds-gross"}
 	col := mapping.Column{FundGroup: "enterprise", FiscalYear: 2026}
 
 	got, err := FromValues(f, rule, []mapping.Value{
 		{Row: mapping.Row{Label: "Charges for Services", Category: "charges-for-services"}, Column: col},
 		{Row: mapping.Row{Label: "Transfers In", Category: "transfers/in",
-			Kind: mapping.KindTransferIn}, Column: col},
+			Kind: vocab.KindTransferIn}, Column: col},
 	})
 	if err != nil {
 		t.Fatalf("FromValues: %v", err)
 	}
-	if got[0].Kind != mapping.KindRevenue {
-		t.Errorf("row with no kind = %q, want the rule's %q", got[0].Kind, mapping.KindRevenue)
+	if got[0].Kind != vocab.KindRevenue {
+		t.Errorf("row with no kind = %q, want the rule's %q", got[0].Kind, vocab.KindRevenue)
 	}
-	if got[1].Kind != mapping.KindTransferIn {
+	if got[1].Kind != vocab.KindTransferIn {
 		t.Errorf("row declaring transfer_in = %q, want its own kind; without this the "+
 			"transfer is published as revenue and double-counts the fund's income",
 			got[1].Kind)
@@ -745,15 +746,15 @@ func TestARowKindOverridesTheRulesKind(t *testing.T) {
 // difference, rather than on a discriminator added to avoid a hash clash.
 func TestACounterpartPublishesTheFarLegFromTheSameFigure(t *testing.T) {
 	f := &mapping.File{DocID: "doc"}
-	rule := &mapping.Rule{ID: "p76-transfers-in-general", Kind: mapping.KindTransferIn,
-		Basis: mapping.BasisAdopted, Scope: "transfers-by-fund", Units: "dollars"}
+	rule := &mapping.Rule{ID: "p76-transfers-in-general", Kind: vocab.KindTransferIn,
+		Basis: vocab.BasisAdopted, Scope: "transfers-by-fund", Units: "dollars"}
 
 	got, err := FromValues(f, rule, []mapping.Value{{
 		Row: mapping.Row{
 			Label: "Transfer From Low Income Hsng", LabelTail: "to General Fund",
 			Category: "transfers/in", Fund: 100,
 			Counterpart: &mapping.Counterpart{
-				Category: "transfers/out", Kind: mapping.KindTransferOut,
+				Category: "transfers/out", Kind: vocab.KindTransferOut,
 				Fund: 200, FundGroup: "special-revenue",
 			},
 		},
@@ -798,7 +799,7 @@ func TestACounterpartPublishesTheFarLegFromTheSameFigure(t *testing.T) {
 		t.Fatalf("both legs published as %s; one figure would be one fact and the "+
 			"payer would be unpublishable", near.ID)
 	}
-	if far.Kind != mapping.KindTransferOut || far.FundGroup != "special-revenue" ||
+	if far.Kind != vocab.KindTransferOut || far.FundGroup != "special-revenue" ||
 		!SameFund(far.Fund, FundNumber(200)) {
 		t.Errorf("far leg = %s %s fund %s, want transfer_out special-revenue 200",
 			far.Kind, far.FundGroup, FundString(far.Fund))
@@ -821,12 +822,12 @@ func TestACounterpartPublishesTheFarLegFromTheSameFigure(t *testing.T) {
 // place no fund-group check would ever compare it against the spine.
 func TestACounterpartWithNoFundIsRefusedRatherThanFiledUnderTheScope(t *testing.T) {
 	f := &mapping.File{DocID: "doc"}
-	rule := &mapping.Rule{ID: "r", Kind: mapping.KindTransferIn,
-		Basis: mapping.BasisAdopted, Scope: "transfers-by-fund"}
+	rule := &mapping.Rule{ID: "r", Kind: vocab.KindTransferIn,
+		Basis: vocab.BasisAdopted, Scope: "transfers-by-fund"}
 
 	_, err := FromValues(f, rule, []mapping.Value{{
 		Row: mapping.Row{Label: "Transfer From X", LabelTail: "to Y", Category: "transfers/in",
-			Counterpart: &mapping.Counterpart{Category: "transfers/out", Kind: mapping.KindTransferOut}},
+			Counterpart: &mapping.Counterpart{Category: "transfers/out", Kind: vocab.KindTransferOut}},
 		Column: mapping.Column{FiscalYear: 2026},
 		Cents:  100, Page: 76, Offset: 1, Token: "1",
 	}})
@@ -862,8 +863,8 @@ func TestACounterpartWithNoFundIsRefusedRatherThanFiledUnderTheScope(t *testing.
 // the only FromValues caller and the guard beside it already says so.
 func TestARowWithADepartmentAndNoCategoryIsRefused(t *testing.T) {
 	f := &mapping.File{DocID: "doc"}
-	rule := &mapping.Rule{ID: "r", Kind: mapping.KindExpenditure,
-		Basis: mapping.BasisAdopted, Scope: "expenditure-by-department"}
+	rule := &mapping.Rule{ID: "r", Kind: vocab.KindExpenditure,
+		Basis: vocab.BasisAdopted, Scope: "expenditure-by-department"}
 
 	_, err := FromValues(f, rule, []mapping.Value{{
 		Row:    mapping.Row{Label: "Wages & Benefits", Department: "city-manager"},
@@ -885,15 +886,15 @@ func TestARowWithADepartmentAndNoCategoryIsRefused(t *testing.T) {
 // FromValues caller, and the parser is not the only thing that will ever be one.
 func TestACounterpartWithNoRowPathIsRefused(t *testing.T) {
 	f := &mapping.File{DocID: "doc"}
-	rule := &mapping.Rule{ID: "r", Kind: mapping.KindTransferIn,
-		Basis: mapping.BasisAdopted, Scope: "transfers-by-fund"}
+	rule := &mapping.Rule{ID: "r", Kind: vocab.KindTransferIn,
+		Basis: vocab.BasisAdopted, Scope: "transfers-by-fund"}
 
 	_, err := FromValues(f, rule, []mapping.Value{{
 		Row: mapping.Row{Label: "Transfer From X", LabelTail: "to Y", Category: "transfers/in",
 			Fund: 100,
 			// A counterpart naming its fund but no category: the column path
 			// resolves, so the existing guard passes it straight through.
-			Counterpart: &mapping.Counterpart{Kind: mapping.KindTransferOut,
+			Counterpart: &mapping.Counterpart{Kind: vocab.KindTransferOut,
 				Fund: 200, FundGroup: "special-revenue"}},
 		Column: mapping.Column{FundGroup: "general", FiscalYear: 2026},
 		Cents:  100, Page: 76, Offset: 1, Token: "1",
@@ -931,12 +932,12 @@ func TestMakeSeriesIDIsTheFactIDWithoutRuleOrColumn(t *testing.T) {
 	// Every column of one row agrees.
 	for _, c := range []struct {
 		year  int
-		basis mapping.Basis
+		basis vocab.Basis
 	}{
-		{2024, mapping.BasisActual},
-		{2025, mapping.BasisRevised},
-		{2026, mapping.BasisAdopted},
-		{2027, mapping.BasisAdopted},
+		{2024, vocab.BasisActual},
+		{2025, vocab.BasisRevised},
+		{2026, vocab.BasisAdopted},
+		{2027, vocab.BasisAdopted},
 	} {
 		f := Fact{DocID: doc, RuleID: rule, RowPath: path, RowLabel: row, ColumnPath: col,
 			FiscalYear: c.year, Basis: c.basis}
@@ -953,7 +954,7 @@ func TestMakeSeriesIDIsTheFactIDWithoutRuleOrColumn(t *testing.T) {
 	// One row printed under a different rule each year, as pp.186-209 are
 	// mapped, is still one series.
 	other := Fact{DocID: doc, RuleID: "fund-balances-fy2027-p0204", RowPath: path,
-		RowLabel: row, ColumnPath: col, FiscalYear: 2027, Basis: mapping.BasisAdopted}
+		RowLabel: row, ColumnPath: col, FiscalYear: 2027, Basis: vocab.BasisAdopted}
 	if got := other.SeriesID(); got != base {
 		t.Errorf("the same row under another rule is series %s, want %s", got, base)
 	}
@@ -1000,7 +1001,7 @@ func TestASeriesIsOneCellPerYearAndBasis(t *testing.T) {
 	type cell struct {
 		series string
 		year   int
-		basis  mapping.Basis
+		basis  vocab.Basis
 	}
 	seen := map[cell]string{}
 	for _, f := range committedFacts(t) {
@@ -1052,7 +1053,7 @@ func TestAColumnCategoryReachesTheFact(t *testing.T) {
 	}
 	type cell struct {
 		RowPath, Category string
-		Kind              mapping.Kind
+		Kind              vocab.Kind
 		FundGroup         string
 		Fund              int
 		Cents             int64
@@ -1069,14 +1070,14 @@ func TestAColumnCategoryReachesTheFact(t *testing.T) {
 		got = append(got, cell{f.RowPath, f.Category, f.Kind, f.FundGroup, *f.Fund, f.AmountCents})
 	}
 	want := []cell{
-		{"fund-balance/beginning", "fund-balance/beginning", mapping.KindFundBalance, "general", 100, 1444069000},
-		{"taxes", "taxes", mapping.KindRevenue, "general", 100, 14202800200},
-		{"transfers/in", "transfers/in", mapping.KindTransferIn, "general", 100, 73745500},
-		{"wages-and-benefits", "wages-and-benefits", mapping.KindExpenditure, "general", 100, 12322819000},
-		{"transfers/out", "transfers/out", mapping.KindTransferOut, "general", 100, 1450739800},
-		{"transfers/out-to-cip", "transfers/out-to-cip", mapping.KindTransferOut, "general", 100, 44084600},
-		{"fund-balance/reserve-increase", "fund-balance/reserve-increase", mapping.KindFundBalance, "general", 100, 428893300},
-		{"fund-balance/ending", "fund-balance/ending", mapping.KindFundBalance, "general", 100, 1474078000},
+		{"fund-balance/beginning", "fund-balance/beginning", vocab.KindFundBalance, "general", 100, 1444069000},
+		{"taxes", "taxes", vocab.KindRevenue, "general", 100, 14202800200},
+		{"transfers/in", "transfers/in", vocab.KindTransferIn, "general", 100, 73745500},
+		{"wages-and-benefits", "wages-and-benefits", vocab.KindExpenditure, "general", 100, 12322819000},
+		{"transfers/out", "transfers/out", vocab.KindTransferOut, "general", 100, 1450739800},
+		{"transfers/out-to-cip", "transfers/out-to-cip", vocab.KindTransferOut, "general", 100, 44084600},
+		{"fund-balance/reserve-increase", "fund-balance/reserve-increase", vocab.KindFundBalance, "general", 100, 428893300},
+		{"fund-balance/ending", "fund-balance/ending", vocab.KindFundBalance, "general", 100, 1474078000},
 	}
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("General Fund's facts (-want +got):\n%s", diff)

@@ -7,6 +7,7 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // detailScope is the scope Budget Book pp.167-170 are mapped at (fisc-brx).
@@ -79,7 +80,7 @@ func detailFacts(t *testing.T, scope string, withDepartment bool) []fact.Fact {
 			DocID:       testDoc,
 			Page:        167,
 			RuleID:      "div-" + d.division,
-			Kind:        mapping.KindExpenditure,
+			Kind:        vocab.KindExpenditure,
 			Basis:       testBasis,
 			Scope:       scope,
 			FiscalYear:  testYear,
@@ -89,7 +90,7 @@ func detailFacts(t *testing.T, scope string, withDepartment bool) []fact.Fact {
 			Department:  row.Department,
 			ColumnPath:  columnPath,
 			FundGroup:   "general",
-			Sign:        mapping.SignPositive,
+			Sign:        vocab.SignPositive,
 			Units:       "dollars",
 			AmountCents: d.cents,
 		})

@@ -7,6 +7,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // fundBalancePages is Budget Book pp.186-209, the fund-balance schedule's
@@ -24,7 +25,7 @@ func fundBalancePages() []int {
 type fundBalanceCell struct {
 	Page     int
 	Category string
-	Kind     Kind
+	Kind     vocab.Kind
 	Token    string
 }
 
@@ -77,16 +78,16 @@ func fundBalanceRow(t *testing.T, r *Resolver, f *File, ruleID, label string) (R
 func fundBalanceLine(even int, tokens ...string) []fundBalanceCell {
 	lines := []struct {
 		category string
-		kind     Kind
+		kind     vocab.Kind
 	}{
-		{"fund-balance/beginning", KindFundBalance},
-		{"revenues", KindRevenue},
-		{"transfers/in", KindTransferIn},
-		{"expenses", KindExpenditure},
-		{"transfers/out", KindTransferOut},
-		{"transfers/out-to-cip", KindTransferOut},
-		{"fund-balance/reserve-increase", KindFundBalance},
-		{"fund-balance/ending", KindFundBalance},
+		{"fund-balance/beginning", vocab.KindFundBalance},
+		{"revenues", vocab.KindRevenue},
+		{"transfers/in", vocab.KindTransferIn},
+		{"expenses", vocab.KindExpenditure},
+		{"transfers/out", vocab.KindTransferOut},
+		{"transfers/out-to-cip", vocab.KindTransferOut},
+		{"fund-balance/reserve-increase", vocab.KindFundBalance},
+		{"fund-balance/ending", vocab.KindFundBalance},
 	}
 	var out []fundBalanceCell
 	for i, tok := range tokens {

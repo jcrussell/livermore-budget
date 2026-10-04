@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // These tests read the PUBLISHED rule file — mappings/, not testdata/ — against
@@ -58,7 +59,7 @@ const spineTiedColumns = 24
 // the year, while a beginning balance is a stock that must never be summed
 // with a flow at all.
 type cell struct {
-	kind     Kind
+	kind     vocab.Kind
 	category string
 	group    string
 	year     int
@@ -67,7 +68,7 @@ type cell struct {
 // spineTotals is every figure the rule file yields, summed by cell.
 type spineTotals map[cell]amount.Cents
 
-func (s spineTotals) kind(k Kind, group string, year int) amount.Cents {
+func (s spineTotals) kind(k vocab.Kind, group string, year int) amount.Cents {
 	var sum amount.Cents
 	for c, v := range s {
 		if c.kind == k && c.group == group && c.year == year {
@@ -77,7 +78,7 @@ func (s spineTotals) kind(k Kind, group string, year int) amount.Cents {
 	return sum
 }
 
-func (s spineTotals) allFunds(k Kind, year int) amount.Cents {
+func (s spineTotals) allFunds(k vocab.Kind, year int) amount.Cents {
 	var sum amount.Cents
 	for c, v := range s {
 		if c.kind == k && c.year == year {
@@ -209,19 +210,19 @@ func TestPublishedSpineHeadlineFigures(t *testing.T) {
 		want int64
 	}{
 		{"General Fund FY2025-26 revenues",
-			totals.kind(KindRevenue, "general", 2026), generalFundFY2026Revenues},
+			totals.kind(vocab.KindRevenue, "general", 2026), generalFundFY2026Revenues},
 		{"General Fund FY2025-26 expenditures",
-			totals.kind(KindExpenditure, "general", 2026), generalFundFY2026Expenditures},
+			totals.kind(vocab.KindExpenditure, "general", 2026), generalFundFY2026Expenditures},
 		{"enterprise FY2025-26 revenues",
-			totals.kind(KindRevenue, "enterprise", 2026), enterpriseFY2026Revenues},
+			totals.kind(vocab.KindRevenue, "enterprise", 2026), enterpriseFY2026Revenues},
 		{"all-funds FY2025-26 revenues",
-			totals.allFunds(KindRevenue, 2026), allFundsFY2026Revenues},
+			totals.allFunds(vocab.KindRevenue, 2026), allFundsFY2026Revenues},
 		{"all-funds FY2025-26 expenditures",
-			totals.allFunds(KindExpenditure, 2026), allFundsFY2026Expenditures},
+			totals.allFunds(vocab.KindExpenditure, 2026), allFundsFY2026Expenditures},
 		{"all-funds FY2025-26 transfers in",
-			totals.allFunds(KindTransferIn, 2026), transfersInFY2026},
+			totals.allFunds(vocab.KindTransferIn, 2026), transfersInFY2026},
 		{"all-funds FY2025-26 transfers out",
-			totals.allFunds(KindTransferOut, 2026), transfersOutFY2026},
+			totals.allFunds(vocab.KindTransferOut, 2026), transfersOutFY2026},
 	}
 	for _, tt := range tests {
 		if want := dollars(tt.want); tt.got != want {
@@ -262,30 +263,30 @@ func TestPublishedSpineDoesNotDoubleCount(t *testing.T) {
 func TestPublishedSpineMatchesTheSankeyContract(t *testing.T) {
 	totals := readSpine(t).totals
 
-	want := map[string]Kind{
-		"taxes/property":                KindRevenue,
-		"taxes/other":                   KindRevenue,
-		"taxes/sales":                   KindRevenue,
-		"intergovernmental":             KindRevenue,
-		"charges-for-services":          KindRevenue,
-		"use-of-money-and-property":     KindRevenue,
-		"contributions-outsourced":      KindRevenue,
-		"miscellaneous-revenue":         KindRevenue,
-		"fines-and-forfeitures":         KindRevenue,
-		"licenses-and-permits":          KindRevenue,
-		"wages-and-benefits":            KindExpenditure,
-		"services-and-supplies":         KindExpenditure,
-		"capital-outlay":                KindExpenditure,
-		"debt-services":                 KindExpenditure,
-		"transfers/in":                  KindTransferIn,
-		"transfers/out":                 KindTransferOut,
-		"fund-balance/reserve-increase": KindFundBalance,
-		"fund-balance/change":           KindFundBalance,
-		"fund-balance/beginning":        KindFundBalance,
-		"fund-balance/ending":           KindFundBalance,
+	want := map[string]vocab.Kind{
+		"taxes/property":                vocab.KindRevenue,
+		"taxes/other":                   vocab.KindRevenue,
+		"taxes/sales":                   vocab.KindRevenue,
+		"intergovernmental":             vocab.KindRevenue,
+		"charges-for-services":          vocab.KindRevenue,
+		"use-of-money-and-property":     vocab.KindRevenue,
+		"contributions-outsourced":      vocab.KindRevenue,
+		"miscellaneous-revenue":         vocab.KindRevenue,
+		"fines-and-forfeitures":         vocab.KindRevenue,
+		"licenses-and-permits":          vocab.KindRevenue,
+		"wages-and-benefits":            vocab.KindExpenditure,
+		"services-and-supplies":         vocab.KindExpenditure,
+		"capital-outlay":                vocab.KindExpenditure,
+		"debt-services":                 vocab.KindExpenditure,
+		"transfers/in":                  vocab.KindTransferIn,
+		"transfers/out":                 vocab.KindTransferOut,
+		"fund-balance/reserve-increase": vocab.KindFundBalance,
+		"fund-balance/change":           vocab.KindFundBalance,
+		"fund-balance/beginning":        vocab.KindFundBalance,
+		"fund-balance/ending":           vocab.KindFundBalance,
 	}
 
-	got := map[string]Kind{}
+	got := map[string]vocab.Kind{}
 	for c := range totals {
 		if prev, seen := got[c.category]; seen && prev != c.kind {
 			t.Errorf("category %q is mapped as both %q and %q", c.category, prev, c.kind)

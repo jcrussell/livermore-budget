@@ -9,8 +9,8 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/fact"
-	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/project"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // This file is the arithmetic behind pp.85-125, and it is deliberately NOT a
@@ -482,7 +482,7 @@ func TestTheScopeIsWhatStopsTheDoubling(t *testing.T) {
 	var general amount.Cents
 	for i := range s.Facts {
 		f := &s.Facts[i]
-		if f.Scope == spineScope && f.Kind == mapping.KindExpenditure &&
+		if f.Scope == spineScope && f.Kind == vocab.KindExpenditure &&
 			f.FundGroup == "general" && f.FiscalYear == 2026 {
 			general += amount.Cents(f.AmountCents)
 		}

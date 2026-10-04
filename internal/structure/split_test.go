@@ -7,8 +7,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
-	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/structure"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 func splitNamed(t *testing.T, name string) structure.Split {
@@ -71,7 +71,7 @@ func TestTheSpineTransferOutIsP76PlusTheCIP(t *testing.T) {
 		n := 0
 		for i := range moved {
 			f := &moved[i]
-			if f.Scope == "cip-funding-sources" && f.Kind == mapping.KindTransferOut &&
+			if f.Scope == "cip-funding-sources" && f.Kind == vocab.KindTransferOut &&
 				f.FundGroup == "capital" && f.FiscalYear == 2026 && f.AmountCents > 0 {
 				f.FundGroup = "special-revenue"
 				n++
@@ -101,11 +101,11 @@ func TestAPairASplitRelatesDropsItsKinds(t *testing.T) {
 	for _, tc := range []struct {
 		a, b  string
 		held  bool
-		kinds []mapping.Kind
+		kinds []vocab.Kind
 	}{
-		{"transfers-detail", "spine", false, []mapping.Kind{mapping.KindTransferIn}},
+		{"transfers-detail", "spine", false, []vocab.Kind{vocab.KindTransferIn}},
 		{"spine", "cip-transfers-out", true, nil},
-		{"revenue-detail", "cip-transfers-out", false, []mapping.Kind{mapping.KindRevenue, mapping.KindTransferIn}},
+		{"revenue-detail", "cip-transfers-out", false, []vocab.Kind{vocab.KindRevenue, vocab.KindTransferIn}},
 	} {
 		a, _, held := structure.SplitPair(cutNamed(t, tc.a), cutNamed(t, tc.b), splits)
 		if held != tc.held {
@@ -139,7 +139,7 @@ func TestASplitIsRefusedWhenItsSidesCannotBearIt(t *testing.T) {
 		{"a part twice", func(s *structure.Split) { s.Parts = []string{s.Parts[0], s.Parts[0]} }, "twice"},
 		{"no kind", func(s *structure.Split) { s.Kinds = nil }, "names no kind"},
 		{"a kind a part does not print", func(s *structure.Split) {
-			s.Kinds = []mapping.Kind{mapping.KindRevenue}
+			s.Kinds = []vocab.Kind{vocab.KindRevenue}
 		}, "does not print revenue"},
 		{"a level a side does not refine", func(s *structure.Split) {
 			s.At = structure.LevelDepartment
@@ -168,7 +168,7 @@ func TestASplitIsRefusedWhenItsSidesCannotBearIt(t *testing.T) {
 // meet has none to drop.
 func TestAOnePartSplitTheLatticeCannotPlaceIsRefused(t *testing.T) {
 	cuts := append(structure.AllCuts(), structure.Cut{Name: "by-department",
-		Level: structure.LevelDepartment, Kinds: []mapping.Kind{mapping.KindTransferOut}})
+		Level: structure.LevelDepartment, Kinds: []vocab.Kind{vocab.KindTransferOut}})
 	s := splitNamed(t, transferOutSplit)
 	s.Parts = []string{"by-department"}
 	err := structure.ValidateSplits(cuts, []structure.Split{s})
@@ -187,7 +187,7 @@ func TestACutOutsideTheReferenceIsHeldToItsFunds(t *testing.T) {
 	}
 	cipFund := func(fs []fact.Fact) *fact.Fact {
 		for i := range fs {
-			if fs[i].Scope == "cip-funding-sources" && fs[i].Kind == mapping.KindRevenue {
+			if fs[i].Scope == "cip-funding-sources" && fs[i].Kind == vocab.KindRevenue {
 				return &fs[i]
 			}
 		}

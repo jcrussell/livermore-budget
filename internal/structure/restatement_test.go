@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
-	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/structure"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // TestTheCIPFundsBlockIsHeldToP222LineByLine holds pp.186-209's Capital
@@ -51,7 +51,7 @@ func TestTheCIPFundsBlockIsHeldToP222LineByLine(t *testing.T) {
 	for i := range moved {
 		f := &moved[i]
 		if f.Scope == structure.ScopeFundBalancesByFund && f.RuleID == "fund-balances-fy2026-p0202" &&
-			f.Kind == mapping.KindTransferIn && f.AmountCents != 0 {
+			f.Kind == vocab.KindTransferIn && f.AmountCents != 0 {
 			f.AmountCents += 100
 			n = *f.Fund
 			break
@@ -63,7 +63,7 @@ func TestTheCIPFundsBlockIsHeldToP222LineByLine(t *testing.T) {
 	t.Run("a column where p222 prints nothing on a line", func(t *testing.T) {
 		var without []fact.Fact
 		for _, f := range facts {
-			if f.Scope == structure.ScopeCIPFundingSources && f.Kind == mapping.KindFundBalance && f.FiscalYear == 2025 {
+			if f.Scope == structure.ScopeCIPFundingSources && f.Kind == vocab.KindFundBalance && f.FiscalYear == 2025 {
 				continue
 			}
 			without = append(without, f)

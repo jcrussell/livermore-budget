@@ -12,9 +12,9 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
-	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/registry"
 	"github.com/jcrussell/livermore-budget/internal/structure"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // committedStore is facts/facts.jsonl and the registry beside it, read once.
@@ -39,7 +39,7 @@ var committedStore = sync.OnceValues(func() (struct {
 })
 
 // fundSourcesUsesOf builds the committed store's document of one column.
-func fundSourcesUsesOf(t *testing.T, year int, basis mapping.Basis) *Document {
+func fundSourcesUsesOf(t *testing.T, year int, basis vocab.Basis) *Document {
 	t.Helper()
 	store, err := committedStore()
 	if err != nil {
@@ -66,7 +66,7 @@ func fundSourcesUsesOf(t *testing.T, year int, basis mapping.Basis) *Document {
 // Budget Book p186-p187 and p66: its draw is p66's printed CHANGE IN WORKING
 // CAPITAL (1,034,154), beginning 1,766,613 less ending 732,459.
 func TestTheGeneralFundReadsAsPrinted(t *testing.T) {
-	doc := fundSourcesUsesOf(t, 2026, mapping.BasisAdopted)
+	doc := fundSourcesUsesOf(t, 2026, vocab.BasisAdopted)
 	got := map[string]int64{}
 	for _, l := range doc.Links {
 		if l.Source == "fund/100" {
@@ -133,7 +133,7 @@ func TestTheCIPBlockIsNotSelected(t *testing.T) {
 		}
 	}
 
-	doc := fundSourcesUsesOf(t, 2026, mapping.BasisAdopted)
+	doc := fundSourcesUsesOf(t, 2026, vocab.BasisAdopted)
 	parent := map[string]string{}
 	for _, n := range doc.Nodes {
 		parent[n.ID] = n.Parent
@@ -153,7 +153,7 @@ func TestTheCIPBlockIsNotSelected(t *testing.T) {
 // print every balance and no rounding.
 func TestEveryFundsSourcesEqualItsUses(t *testing.T) {
 	for _, year := range []int{2026, 2027} {
-		doc := fundSourcesUsesOf(t, year, mapping.BasisAdopted)
+		doc := fundSourcesUsesOf(t, year, vocab.BasisAdopted)
 		if got := FundImbalance(doc.Links); len(got) != 0 {
 			t.Errorf("FY%d: funds whose sources and uses differ: %v", year, got)
 		}
@@ -170,7 +170,7 @@ func TestEveryFundsSourcesEqualItsUses(t *testing.T) {
 // beginning still rides on its node. FY2024's other funds miss the page
 // identity by the city's rounding, which the document names fund by fund.
 func TestABlankBalanceDrawsNoChange(t *testing.T) {
-	doc := fundSourcesUsesOf(t, 2024, mapping.BasisActual)
+	doc := fundSourcesUsesOf(t, 2024, vocab.BasisActual)
 	var blank []string
 	for _, n := range doc.Nodes {
 		if n.Balances == nil || (n.Balances.Beginning != nil && n.Balances.Ending != nil) {
@@ -208,7 +208,7 @@ func TestABlankBalanceDrawsNoChange(t *testing.T) {
 // TestTheGrossChangeCaveatSumsTheDocumentsOwnLinks: FY2026's per-fund draws
 // and contributions, gross, and netted by group to the spine's figures.
 func TestTheGrossChangeCaveatSumsTheDocumentsOwnLinks(t *testing.T) {
-	doc := fundSourcesUsesOf(t, 2026, mapping.BasisAdopted)
+	doc := fundSourcesUsesOf(t, 2026, vocab.BasisAdopted)
 	for _, c := range doc.Metadata.Caveats {
 		if c.ID != "each-fund-change-is-gross" {
 			continue
@@ -231,7 +231,7 @@ func TestFundSourcesUsesRefusesASelectionNotThroughTheCuts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	o := Options{Columns: []Column{{2026, mapping.BasisAdopted}}, Scopes: FundSourcesUsesScopes(), Version: "test"}
+	o := Options{Columns: []Column{{2026, vocab.BasisAdopted}}, Scopes: FundSourcesUsesScopes(), Version: "test"}
 	if _, err := (&fundSourcesUses{Labels: store.reg}).Document(store.facts, o); err == nil ||
 		!strings.Contains(err.Error(), "through-cuts false") {
 		t.Errorf("Document without ThroughCuts = %v, want a refusal", err)
@@ -245,10 +245,10 @@ func TestFundSourcesUsesRefusesASelectionNotThroughTheCuts(t *testing.T) {
 
 // TestChangeCentsSubtractsTheBeginning is the one spelling of a change.
 func TestChangeCentsSubtractsTheBeginning(t *testing.T) {
-	b := fact.Fact{Kind: mapping.KindFundBalance, Category: CategoryFundBalanceBeginning, AmountCents: 500}
-	e := fact.Fact{Kind: mapping.KindFundBalance, Category: CategoryFundBalanceEnding, AmountCents: 200}
-	c := fact.Fact{Kind: mapping.KindFundBalance, Category: CategoryFundBalanceChange, AmountCents: -300}
-	r := fact.Fact{Kind: mapping.KindRevenue, Category: "revenues", AmountCents: 70}
+	b := fact.Fact{Kind: vocab.KindFundBalance, Category: CategoryFundBalanceBeginning, AmountCents: 500}
+	e := fact.Fact{Kind: vocab.KindFundBalance, Category: CategoryFundBalanceEnding, AmountCents: 200}
+	c := fact.Fact{Kind: vocab.KindFundBalance, Category: CategoryFundBalanceChange, AmountCents: -300}
+	r := fact.Fact{Kind: vocab.KindRevenue, Category: "revenues", AmountCents: 70}
 	for _, tc := range []struct {
 		facts []fact.Fact
 		want  int64

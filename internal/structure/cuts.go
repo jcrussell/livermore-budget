@@ -3,8 +3,8 @@ package structure
 import (
 	"fmt"
 
-	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/registry"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // The cut names other packages select by.
@@ -24,7 +24,7 @@ const (
 func BudgetBookCuts() []Cut {
 	// The detail schedules print an actual, a revised and two adopted columns;
 	// pp.66-67 and p76 print the two adopted columns only.
-	budgetBookDetail := []mapping.Basis{mapping.BasisActual, mapping.BasisRevised, mapping.BasisAdopted}
+	budgetBookDetail := []vocab.Basis{vocab.BasisActual, vocab.BasisRevised, vocab.BasisAdopted}
 	return []Cut{
 		{
 			// pp.66-67, the citywide control totals every other Budget Book
@@ -34,14 +34,14 @@ func BudgetBookCuts() []Cut {
 			Level:     LevelFundGroupByCategory,
 			Kinds:     everyKind,
 			Reference: true,
-			Bases:     []mapping.Basis{mapping.BasisAdopted},
+			Bases:     []vocab.Basis{vocab.BasisAdopted},
 		},
 		{
 			// pp.127-140, revenue and transfers in per fund.
 			Name:  CutRevenueDetail,
 			Scope: ScopeRevenueByFund,
 			Level: LevelFundByCategory,
-			Kinds: []mapping.Kind{mapping.KindRevenue, mapping.KindTransferIn},
+			Kinds: []vocab.Kind{vocab.KindRevenue, vocab.KindTransferIn},
 			Bases: budgetBookDetail,
 		},
 		{
@@ -49,8 +49,8 @@ func BudgetBookCuts() []Cut {
 			Name:  "transfers-detail",
 			Scope: ScopeTransfersByFund,
 			Level: LevelFundByCategory,
-			Kinds: []mapping.Kind{mapping.KindTransferIn, mapping.KindTransferOut},
-			Bases: []mapping.Basis{mapping.BasisAdopted},
+			Kinds: []vocab.Kind{vocab.KindTransferIn, vocab.KindTransferOut},
+			Bases: []vocab.Basis{vocab.BasisAdopted},
 		},
 		{
 			// p222, what each operating fund transfers to the CIP. Part of the
@@ -58,8 +58,8 @@ func BudgetBookCuts() []Cut {
 			Name:  "cip-transfers-out",
 			Scope: ScopeCIPFundingSources,
 			Level: LevelFundByCategory,
-			Kinds: []mapping.Kind{mapping.KindTransferOut},
-			Bases: []mapping.Basis{mapping.BasisRevised, mapping.BasisAdopted},
+			Kinds: []vocab.Kind{vocab.KindTransferOut},
+			Bases: []vocab.Basis{vocab.BasisRevised, vocab.BasisAdopted},
 		},
 		{
 			// p222, what each CIP fund receives: those transfers, its grants,
@@ -67,8 +67,8 @@ func BudgetBookCuts() []Cut {
 			Name:  "cip-funds",
 			Scope: ScopeCIPFundingSources,
 			Level: LevelFundByCategory,
-			Kinds: []mapping.Kind{mapping.KindTransferIn, mapping.KindRevenue, mapping.KindFundBalance},
-			Bases: []mapping.Basis{mapping.BasisRevised, mapping.BasisAdopted},
+			Kinds: []vocab.Kind{vocab.KindTransferIn, vocab.KindRevenue, vocab.KindFundBalance},
+			Bases: []vocab.Basis{vocab.BasisRevised, vocab.BasisAdopted},
 			Outside: "p0204 prints the Capital Improvement Program Funds on a line of their own, " +
 				"beside Total Operating Budget, and pp.66-67 total the operating budget alone",
 		},
@@ -78,7 +78,7 @@ func BudgetBookCuts() []Cut {
 			Name:           "general-fund-departments",
 			Scope:          ScopeExpenditureByDepartment,
 			Level:          LevelFundByDepartmentByCategory,
-			Kinds:          []mapping.Kind{mapping.KindExpenditure},
+			Kinds:          []vocab.Kind{vocab.KindExpenditure},
 			FundGroups:     []string{registry.FundTypeGeneral},
 			DepartmentTier: TierDivision,
 			Bases:          budgetBookDetail,
@@ -89,7 +89,7 @@ func BudgetBookCuts() []Cut {
 			Name:       "general-fund-by-category",
 			Scope:      ScopeGeneralFundByCategory,
 			Level:      LevelFundByCategory,
-			Kinds:      []mapping.Kind{mapping.KindExpenditure},
+			Kinds:      []vocab.Kind{vocab.KindExpenditure},
 			FundGroups: []string{registry.FundTypeGeneral},
 			Bases:      budgetBookDetail,
 		},
@@ -100,7 +100,7 @@ func BudgetBookCuts() []Cut {
 			Name:       "fund-expenditures",
 			Scope:      ScopeExpenditureByFund,
 			Level:      LevelFundByCategory,
-			Kinds:      []mapping.Kind{mapping.KindExpenditure},
+			Kinds:      []vocab.Kind{vocab.KindExpenditure},
 			FundGroups: allFundTypesBut(registry.FundTypeGeneral),
 			Bases:      budgetBookDetail,
 		},
@@ -117,13 +117,13 @@ func BudgetBookCuts() []Cut {
 			Scope: ScopeFundBalancesByFund,
 			Rules: fundBalancesRules(false),
 			Level: LevelFundByCategory,
-			Kinds: []mapping.Kind{mapping.KindTransferIn, mapping.KindTransferOut, mapping.KindFundBalance},
+			Kinds: []vocab.Kind{vocab.KindTransferIn, vocab.KindTransferOut, vocab.KindFundBalance},
 			Lines: []Line{
-				{mapping.KindTransferIn, "transfers/in"},
-				{mapping.KindTransferOut, "transfers/out"},
-				{mapping.KindTransferOut, "transfers/out-to-cip"},
+				{vocab.KindTransferIn, "transfers/in"},
+				{vocab.KindTransferOut, "transfers/out"},
+				{vocab.KindTransferOut, "transfers/out-to-cip"},
 				LineBeginning,
-				{mapping.KindFundBalance, CategoryFundBalanceReserveIncrease},
+				{vocab.KindFundBalance, CategoryFundBalanceReserveIncrease},
 				LineEnding,
 			},
 			Unprinted: []Line{LineChange},
@@ -137,7 +137,7 @@ func BudgetBookCuts() []Cut {
 			Scope:        ScopeFundBalancesByFund,
 			Rules:        fundBalancesRules(false),
 			Level:        LevelFund,
-			Kinds:        []mapping.Kind{mapping.KindRevenue},
+			Kinds:        []vocab.Kind{vocab.KindRevenue},
 			Placeholders: []Axis{AxisCategory},
 			Bases:        budgetBookDetail,
 		},
@@ -147,7 +147,7 @@ func BudgetBookCuts() []Cut {
 			Scope:        ScopeFundBalancesByFund,
 			Rules:        fundBalancesRules(false),
 			Level:        LevelFund,
-			Kinds:        []mapping.Kind{mapping.KindExpenditure},
+			Kinds:        []vocab.Kind{vocab.KindExpenditure},
 			Placeholders: []Axis{AxisCategory},
 			Bases:        budgetBookDetail,
 		},
@@ -157,7 +157,7 @@ func BudgetBookCuts() []Cut {
 			Name:           CutDepartmentwide,
 			Scope:          ScopeDepartmentwideExpenditures,
 			Level:          LevelDepartmentByCategory,
-			Kinds:          []mapping.Kind{mapping.KindExpenditure},
+			Kinds:          []vocab.Kind{vocab.KindExpenditure},
 			DepartmentTier: TierDivision,
 			Bases:          budgetBookDetail,
 		},
@@ -167,7 +167,7 @@ func BudgetBookCuts() []Cut {
 			Name:           CutFundingSources,
 			Scope:          ScopeDepartmentFundingSources,
 			Level:          LevelFundByDepartment,
-			Kinds:          []mapping.Kind{mapping.KindExpenditure},
+			Kinds:          []vocab.Kind{vocab.KindExpenditure},
 			Placeholders:   []Axis{AxisCategory},
 			DepartmentTier: TierDepartment,
 			Bases:          budgetBookDetail,
@@ -176,16 +176,16 @@ func BudgetBookCuts() []Cut {
 }
 
 // everyKind is the kind set of a schedule that prints all five.
-var everyKind = []mapping.Kind{
-	mapping.KindRevenue, mapping.KindExpenditure,
-	mapping.KindTransferIn, mapping.KindTransferOut, mapping.KindFundBalance,
+var everyKind = []vocab.Kind{
+	vocab.KindRevenue, vocab.KindExpenditure,
+	vocab.KindTransferIn, vocab.KindTransferOut, vocab.KindFundBalance,
 }
 
 // ACFRCuts are the ACFR's schedules as cuts of the same hierarchy. Their
 // audited bases are what keep them from comparing against the Budget Book, and
 // p167's one scope prints two grains, so it is two cuts selected by rule.
 func ACFRCuts() []Cut {
-	audited := []mapping.Basis{mapping.BasisAudited}
+	audited := []vocab.Basis{vocab.BasisAudited}
 	return []Cut{
 		{
 			// p41, the General Fund's revenues, expenditures, transfers and
@@ -203,7 +203,7 @@ func ACFRCuts() []Cut {
 			Name:  "acfr-changes-in-fund-balances",
 			Scope: ScopeACFRChangesInFundBalances,
 			Level: LevelCategory,
-			Kinds: []mapping.Kind{mapping.KindRevenue, mapping.KindExpenditure, mapping.KindFundBalance},
+			Kinds: []vocab.Kind{vocab.KindRevenue, vocab.KindExpenditure, vocab.KindFundBalance},
 			Bases: audited,
 		},
 		{
@@ -212,7 +212,7 @@ func ACFRCuts() []Cut {
 			Scope:      ScopeACFRFundBalances,
 			Rules:      []string{"acfr-p0167-general-fund-balances"},
 			Level:      LevelFundGroupByCategory,
-			Kinds:      []mapping.Kind{mapping.KindFundBalance},
+			Kinds:      []vocab.Kind{vocab.KindFundBalance},
 			FundGroups: []string{registry.FundTypeGeneral},
 			Bases:      audited,
 		},
@@ -222,7 +222,7 @@ func ACFRCuts() []Cut {
 			Scope: ScopeACFRFundBalances,
 			Rules: []string{"acfr-p0167-other-governmental-fund-balances"},
 			Level: LevelCategory,
-			Kinds: []mapping.Kind{mapping.KindFundBalance},
+			Kinds: []vocab.Kind{vocab.KindFundBalance},
 			Bases: audited,
 		},
 	}
@@ -241,31 +241,31 @@ func BudgetBookIdentities() []Identity {
 		Name:  "a-transfer-in-is-printed-at-both-ends",
 		A:     CutRevenueDetail,
 		B:     "transfers-detail",
-		Kinds: []mapping.Kind{mapping.KindTransferIn},
+		Kinds: []vocab.Kind{vocab.KindTransferIn},
 		Reason: "pp.127-140 print a fund's Transfers In at the receiving fund and p76 prints the " +
 			"same movements at the paying end; one figure, two schedules, two provenance chains",
 	}, {
 		Name:  "a-fund-balance-transfer-in-is-the-revenue-schedules",
 		A:     CutFundBalanceFlows,
 		B:     CutRevenueDetail,
-		Kinds: []mapping.Kind{mapping.KindTransferIn},
+		Kinds: []vocab.Kind{vocab.KindTransferIn},
 		Reason: "pp.186-209 print each fund's Transfers In in a column of its sources, and " +
 			"pp.127-140 print the same figure as a row of the fund's revenue section",
 	}, {
 		Name:  "a-fund-balance-transfer-is-p76s",
 		A:     CutFundBalanceFlows,
 		B:     "transfers-detail",
-		Kinds: []mapping.Kind{mapping.KindTransferIn, mapping.KindTransferOut},
+		Kinds: []vocab.Kind{vocab.KindTransferIn, vocab.KindTransferOut},
 		Categories: []KindCategory{
-			{mapping.KindTransferIn, "transfers/in"}, {mapping.KindTransferOut, "transfers/out"}},
+			{vocab.KindTransferIn, "transfers/in"}, {vocab.KindTransferOut, "transfers/out"}},
 		Reason: "pp.198-209 print each fund's Transfers In and Transfers Out as columns, and " +
 			"p76 lists the same movements one by one, at both ends",
 	}, {
 		Name:       "a-fund-balance-transfer-to-the-cip-is-p222s",
 		A:          CutFundBalanceFlows,
 		B:          "cip-transfers-out",
-		Kinds:      []mapping.Kind{mapping.KindTransferOut},
-		Categories: []KindCategory{{mapping.KindTransferOut, "transfers/out-to-cip"}},
+		Kinds:      []vocab.Kind{vocab.KindTransferOut},
+		Categories: []KindCategory{{vocab.KindTransferOut, "transfers/out-to-cip"}},
 		Reason: "pp.192-209 print each fund's Transfers Out to CIP as a column, and p222 " +
 			"prints the same figure as the fund's row of the CIP's funding sources",
 	}}

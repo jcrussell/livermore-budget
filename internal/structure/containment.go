@@ -8,7 +8,7 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/fact"
-	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // Key is one cell two cuts must agree on: a column, plus a value for each axis
@@ -220,7 +220,7 @@ func (c Comparison) Finding(cell Cell) string {
 // restriction is the slice of the store one comparison may look at: the two
 // cuts' footprints intersected.
 type restriction struct {
-	kinds      []mapping.Kind
+	kinds      []vocab.Kind
 	fundGroups []string
 	// lines is every declared Lines of the pair; a fact is compared only on
 	// a line each of them names.
@@ -504,7 +504,7 @@ func HoldTie(facts []fact.Fact, cuts []Cut, t Tie, department func(division stri
 	}
 	out := Comparison{Cut: a, Against: b, Relation: Agreement, At: t.At}
 	out.tally(as, bs, func(k Key) bool {
-		return a.prints(mapping.Basis(k.Basis)) && b.prints(mapping.Basis(k.Basis))
+		return a.prints(vocab.Basis(k.Basis)) && b.prints(vocab.Basis(k.Basis))
 	})
 	return out, nil
 }

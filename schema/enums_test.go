@@ -11,8 +11,8 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/export"
 	"github.com/jcrussell/livermore-budget/internal/fact"
-	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/project"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 	"github.com/jcrussell/livermore-budget/schema"
 )
 
@@ -63,9 +63,9 @@ func enumAt(t *testing.T, file string, path ...string) []string {
 // never writes is a promise about nothing.
 func TestEverySharedEnumIsItsGoSet(t *testing.T) {
 	for def, want := range map[string][]string{
-		"basis":      strs(mapping.Bases()),
-		"kind":       strs(mapping.Kinds()),
-		"sign":       strs(mapping.Signs()),
+		"basis":      strs(vocab.Bases()),
+		"kind":       strs(vocab.Kinds()),
+		"sign":       strs(vocab.Signs()),
 		"units":      strs(amount.AllUnits()),
 		"link_kind":  strs(project.LinkKinds()),
 		"role":       strs(project.Roles()),

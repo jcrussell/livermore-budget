@@ -6,14 +6,14 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/fact"
-	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/registry"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // A Line is one row a fund balance prints: a kind, narrowed to a category
 // where the kind alone names more than one row.
 type Line struct {
-	Kind     mapping.Kind
+	Kind     vocab.Kind
 	Category string
 }
 
@@ -26,7 +26,7 @@ func (l Line) String() string {
 	if l.Category == "" {
 		return string(l.Kind)
 	}
-	if l.Kind == mapping.KindFundBalance {
+	if l.Kind == vocab.KindFundBalance {
 		return l.Category
 	}
 	return string(l.Kind) + " " + l.Category
@@ -34,9 +34,9 @@ func (l Line) String() string {
 
 // The three lines of a balance's own identity.
 var (
-	LineBeginning = Line{mapping.KindFundBalance, CategoryFundBalanceBeginning}
-	LineChange    = Line{mapping.KindFundBalance, CategoryFundBalanceChange}
-	LineEnding    = Line{mapping.KindFundBalance, CategoryFundBalanceEnding}
+	LineBeginning = Line{vocab.KindFundBalance, CategoryFundBalanceBeginning}
+	LineChange    = Line{vocab.KindFundBalance, CategoryFundBalanceChange}
+	LineEnding    = Line{vocab.KindFundBalance, CategoryFundBalanceEnding}
 )
 
 // A Balance is a scope that prints a fund balance per fund group, fund and
@@ -80,12 +80,12 @@ func FundBalances() []Balance {
 			Scope: ScopeFundBalancesByFund,
 			Lines: []Line{
 				LineBeginning,
-				{Kind: mapping.KindRevenue},
-				{Kind: mapping.KindTransferIn, Category: "transfers/in"},
-				{Kind: mapping.KindExpenditure},
-				{Kind: mapping.KindTransferOut, Category: "transfers/out"},
-				{Kind: mapping.KindTransferOut, Category: "transfers/out-to-cip"},
-				{Kind: mapping.KindFundBalance, Category: CategoryFundBalanceReserveIncrease},
+				{Kind: vocab.KindRevenue},
+				{Kind: vocab.KindTransferIn, Category: "transfers/in"},
+				{Kind: vocab.KindExpenditure},
+				{Kind: vocab.KindTransferOut, Category: "transfers/out"},
+				{Kind: vocab.KindTransferOut, Category: "transfers/out-to-cip"},
+				{Kind: vocab.KindFundBalance, Category: CategoryFundBalanceReserveIncrease},
 				LineEnding,
 			},
 			SourcesUses: true,
@@ -143,7 +143,7 @@ func BalanceOf(balances []Balance, scope string) (Balance, bool) {
 type BalanceAt struct {
 	DocID, Scope, FundGroup, Fund string
 	Year                          int
-	Basis                         mapping.Basis
+	Basis                         vocab.Basis
 }
 
 // BalanceAtOf is the balance a fact is a line of.
@@ -200,7 +200,7 @@ func BalanceExceptions() []BalanceException {
 	return append([]BalanceException{{
 		Identity: BalanceCarryForward,
 		At: BalanceAt{DocID: budgetBookDocID, Scope: ScopeFundBalancesByFund, FundGroup: "capital",
-			Fund: "101", Year: 2024, Basis: mapping.BasisActual},
+			Fund: "101", Year: 2024, Basis: vocab.BasisActual},
 		Left:    0,
 		Right:   3_495_436_300,
 		Printed: "Budget Book p189 (General Fund CIP Reserves ends FY2023-24 at -) and p194 (begins FY2024-25 at 34,954,363)",
@@ -249,7 +249,7 @@ func fy2024RoundingExceptions() []BalanceException {
 		out = append(out, BalanceException{
 			Identity: BalanceSourcesUses,
 			At: BalanceAt{DocID: budgetBookDocID, Scope: ScopeFundBalancesByFund, FundGroup: r.group,
-				Fund: strconv.Itoa(r.fund), Year: 2024, Basis: mapping.BasisActual},
+				Fund: strconv.Itoa(r.fund), Year: 2024, Basis: vocab.BasisActual},
 			Left:    r.net * 100,
 			Right:   r.change * 100,
 			Printed: fmt.Sprintf("Budget Book pp.%d-%d, fund %d's line", r.page, r.page+1, r.fund),

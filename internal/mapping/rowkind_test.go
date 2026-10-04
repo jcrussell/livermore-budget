@@ -3,6 +3,8 @@ package mapping
 import (
 	"strings"
 	"testing"
+
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // stormwaterPage is Budget Book p131's Stormwater block, transcribed with its
@@ -153,11 +155,11 @@ func TestARowKindThatIsNotOneOfTheFiveIsRefused(t *testing.T) {
 // TestEffectiveKindPrefersTheRow states the override's precedence directly,
 // the same shape internal/fact states for Column.Basis over Rule.Basis.
 func TestEffectiveKindPrefersTheRow(t *testing.T) {
-	rule := &Rule{Kind: KindRevenue}
-	if got := (Row{Label: "Charges"}).EffectiveKind(rule); got != KindRevenue {
-		t.Errorf("a row declaring no kind = %q, want the rule's %q", got, KindRevenue)
+	rule := &Rule{Kind: vocab.KindRevenue}
+	if got := (Row{Label: "Charges"}).EffectiveKind(rule); got != vocab.KindRevenue {
+		t.Errorf("a row declaring no kind = %q, want the rule's %q", got, vocab.KindRevenue)
 	}
-	if got := (Row{Label: "Transfers In", Kind: KindTransferIn}).EffectiveKind(rule); got != KindTransferIn {
-		t.Errorf("a row declaring a kind = %q, want its own %q", got, KindTransferIn)
+	if got := (Row{Label: "Transfers In", Kind: vocab.KindTransferIn}).EffectiveKind(rule); got != vocab.KindTransferIn {
+		t.Errorf("a row declaring a kind = %q, want its own %q", got, vocab.KindTransferIn)
 	}
 }

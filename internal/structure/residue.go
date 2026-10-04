@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
-	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // A Residue is a set of facts no cut admits, declared with the reason the
@@ -13,7 +13,7 @@ import (
 type Residue struct {
 	Scope  string
 	Rule   string
-	Kind   mapping.Kind
+	Kind   vocab.Kind
 	Reason string
 }
 
@@ -29,7 +29,7 @@ func BudgetBookResidue() []Residue {
 	return append([]Residue{{
 		Scope: ScopeDepartmentwideExpenditures,
 		Rule:  "dw-maintenance",
-		Kind:  mapping.KindTransferOut,
+		Kind:  vocab.KindTransferOut,
 		Reason: "pp.85-125 print one Transfers Out row, under Maintenance, and no other: 266,798 in " +
 			"FY2023-24 actual and a printed dash in every later column. It is one division's " +
 			"transfer and not a decomposition of pp.66-67's citywide TRANSFER OUT, so the " +
@@ -37,12 +37,12 @@ func BudgetBookResidue() []Residue {
 	}, {
 		Scope:  ScopeDebtServiceByIssue,
 		Rule:   "debt-service-principal",
-		Kind:   mapping.KindExpenditure,
+		Kind:   vocab.KindExpenditure,
 		Reason: debtServiceByIssueResidue,
 	}, {
 		Scope:  ScopeDebtServiceByIssue,
 		Rule:   "debt-service-interest",
-		Kind:   mapping.KindExpenditure,
+		Kind:   vocab.KindExpenditure,
 		Reason: debtServiceByIssueResidue,
 	}}, append(cipProjectListingResidue(), fundBalancesByFundResidue()...)...)
 }
@@ -52,8 +52,8 @@ func BudgetBookResidue() []Residue {
 func fundBalancesByFundResidue() []Residue {
 	var out []Residue
 	for _, rule := range fundBalancesRules(true) {
-		for _, kind := range []mapping.Kind{mapping.KindFundBalance, mapping.KindRevenue,
-			mapping.KindTransferIn, mapping.KindExpenditure, mapping.KindTransferOut} {
+		for _, kind := range []vocab.Kind{vocab.KindFundBalance, vocab.KindRevenue,
+			vocab.KindTransferIn, vocab.KindExpenditure, vocab.KindTransferOut} {
 			out = append(out, Residue{
 				Scope:  ScopeFundBalancesByFund,
 				Rule:   rule,
@@ -84,7 +84,7 @@ func cipProjectListingResidue() []Residue {
 		out = append(out, Residue{
 			Scope: ScopeCIPProjectListing,
 			Rule:  fmt.Sprintf("cip-listing-p%04d", page),
-			Kind:  mapping.KindExpenditure,
+			Kind:  vocab.KindExpenditure,
 			Reason: "pp.224-235 list CIP spending by project, an axis no other schedule " +
 				"has, and their FY2025-26 and FY2026-27 totals include carried-forward " +
 				"appropriations, so they are not p222's new appropriations: 70,765,450 and " +

@@ -8,8 +8,8 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/fact"
-	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/structure"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 	"github.com/jcrussell/livermore-budget/schema"
 )
@@ -81,7 +81,7 @@ func (u *fundSourcesUses) Build(facts []fact.Fact, o Options) ([]byte, error) {
 // fundCell is one line pp.186-209 print per fund that this document draws as
 // a flow: which end of the fund it is on, the endpoint, and the link's kind.
 type fundCell struct {
-	kind     mapping.Kind
+	kind     vocab.Kind
 	category string
 	// into is whether the money flows into the fund.
 	into bool
@@ -94,17 +94,17 @@ type fundCell struct {
 
 // fundCells are the flows, in the order the page prints them.
 var fundCells = []fundCell{
-	{mapping.KindRevenue, "revenues", true,
+	{vocab.KindRevenue, "revenues", true,
 		endpoint{id: PrefixRevenue + "revenues", slug: "revenues", role: RoleRevenueSource}, true, ""},
-	{mapping.KindTransferIn, NodeTransfersIn, true,
+	{vocab.KindTransferIn, NodeTransfersIn, true,
 		endpoint{id: NodeTransfersIn, slug: NodeTransfersIn, role: RoleTransferIn}, false, KindInternalTransfer},
-	{mapping.KindExpenditure, "expenses", false,
+	{vocab.KindExpenditure, "expenses", false,
 		endpoint{id: PrefixExpenditure + "expenses", slug: "expenses", role: RoleObjectCategory}, true, ""},
-	{mapping.KindTransferOut, NodeTransfersOut, false,
+	{vocab.KindTransferOut, NodeTransfersOut, false,
 		endpoint{id: NodeTransfersOut, slug: NodeTransfersOut, role: RoleTransferOut}, false, KindInternalTransfer},
-	{mapping.KindTransferOut, NodeTransfersOutToCIP, false,
+	{vocab.KindTransferOut, NodeTransfersOutToCIP, false,
 		endpoint{id: NodeTransfersOutToCIP, slug: NodeTransfersOutToCIP, role: RoleTransferOut}, false, KindInternalTransfer},
-	{mapping.KindFundBalance, CategoryFundBalanceReserveIncrease, false,
+	{vocab.KindFundBalance, CategoryFundBalanceReserveIncrease, false,
 		endpoint{id: CategoryFundBalanceReserveIncrease, slug: CategoryFundBalanceReserveIncrease,
 			role: RoleReserveIncrease}, false, KindFundBalance},
 }
@@ -114,13 +114,13 @@ type fundLines map[cellLine]*fact.Fact
 
 // cellLine is one printed line of a fund's block.
 type cellLine struct {
-	kind     mapping.Kind
+	kind     vocab.Kind
 	category string
 }
 
 var (
-	lineBeginning = cellLine{mapping.KindFundBalance, CategoryFundBalanceBeginning}
-	lineEnding    = cellLine{mapping.KindFundBalance, CategoryFundBalanceEnding}
+	lineBeginning = cellLine{vocab.KindFundBalance, CategoryFundBalanceBeginning}
+	lineEnding    = cellLine{vocab.KindFundBalance, CategoryFundBalanceEnding}
 )
 
 // Document builds the per-fund sources and uses and returns it, so `fisc

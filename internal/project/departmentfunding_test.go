@@ -8,6 +8,7 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // fundingCell is one printed row of Budget Book pp.85-125's lower block: the
@@ -52,7 +53,7 @@ func fundingFacts(t *testing.T, mutate func(f *fact.Fact)) []fact.Fact {
 			DocID:       testDoc,
 			Page:        c.page,
 			RuleID:      "funding-" + c.department,
-			Kind:        mapping.KindExpenditure,
+			Kind:        vocab.KindExpenditure,
 			Basis:       testBasis,
 			Scope:       DepartmentFundingScope,
 			FiscalYear:  testYear,
@@ -334,8 +335,8 @@ func TestNetDepartmentFundingRefusesAFactOfAnotherScope(t *testing.T) {
 // TestSlicesDeclaresEveryPrintedColumn: all four printed columns.
 func TestSlicesDeclaresEveryPrintedColumn(t *testing.T) {
 	facts := fundingFacts(t, nil)
-	for _, c := range []Column{{FiscalYear: 2024, Basis: mapping.BasisActual},
-		{FiscalYear: 2025, Basis: mapping.BasisRevised}, {FiscalYear: 2027, Basis: testBasis}} {
+	for _, c := range []Column{{FiscalYear: 2024, Basis: vocab.BasisActual},
+		{FiscalYear: 2025, Basis: vocab.BasisRevised}, {FiscalYear: 2027, Basis: testBasis}} {
 		more := fundingFacts(t, func(f *fact.Fact) {
 			f.FiscalYear = c.FiscalYear
 			f.Basis = c.Basis
@@ -348,8 +349,8 @@ func TestSlicesDeclaresEveryPrintedColumn(t *testing.T) {
 		t.Fatalf("Slices declared %d columns, want the four the schedule prints", len(got))
 	}
 	// Ordered by fiscal year then basis.
-	want := []Column{{FiscalYear: 2024, Basis: mapping.BasisActual},
-		{FiscalYear: 2025, Basis: mapping.BasisRevised},
+	want := []Column{{FiscalYear: 2024, Basis: vocab.BasisActual},
+		{FiscalYear: 2025, Basis: vocab.BasisRevised},
 		{FiscalYear: 2026, Basis: testBasis}, {FiscalYear: 2027, Basis: testBasis}}
 	for i, o := range got {
 		if diff := cmp.Diff([]Column{want[i]}, o.Columns); diff != "" {

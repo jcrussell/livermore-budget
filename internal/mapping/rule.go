@@ -20,6 +20,7 @@ import (
 	yaml "go.yaml.in/yaml/v3"
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // SchemaVersion is the rule-file version this package understands, declared in
@@ -35,53 +36,6 @@ import (
 // does the day-to-day work is KnownFields(true) in the parser, which makes a
 // misspelled key fatal; this constant only guards a change of meaning.
 const SchemaVersion = 1
-
-// Kind is what a fact represents in the flow model.
-type Kind string
-
-// The kinds of fact a rule can produce.
-const (
-	KindRevenue     Kind = "revenue"
-	KindExpenditure Kind = "expenditure"
-	KindTransferIn  Kind = "transfer_in"
-	KindTransferOut Kind = "transfer_out"
-	KindFundBalance Kind = "fund_balance"
-)
-
-// kinds is the closed set, in the order the constants declare it. It is the one
-// list: Kinds and valid both read it, so a sixth kind cannot be added to one
-// spelling and missed by the other.
-var kinds = []Kind{
-	KindRevenue,
-	KindExpenditure,
-	KindTransferIn,
-	KindTransferOut,
-	KindFundBalance,
-}
-
-// Kinds returns the closed set of kinds a rule can produce, in declaration
-// order.
-//
-// It is exported for readers OUTSIDE this package that must agree with this
-// vocabulary -- data/taxonomy.yaml declares kinds per category, and
-// internal/registry has to refuse a member that is not one of these. Without
-// it that package would re-spell the five values, which is the second copy the
-// taxonomy's own header argues against. The returned slice is a copy: a caller
-// that sorts or appends must not be able to move the vocabulary.
-func Kinds() []Kind { return slices.Clone(kinds) }
-
-func (k Kind) valid() bool { return slices.Contains(kinds, k) }
-
-// kindList spells the closed set for an error message, comma separated in
-// declaration order. It exists so no message re-types the five values: one
-// such literal had already drifted out of sight in validateRule.
-func kindList() string {
-	s := make([]string, len(kinds))
-	for i, k := range kinds {
-		s[i] = string(k)
-	}
-	return strings.Join(s, ", ")
-}
 
 // Quantity is the grammar a cell must satisfy, and it is not Kind: a Kind
 // classifies a published fact in the flow model, a Quantity says what a CELL
@@ -99,8 +53,8 @@ const (
 )
 
 // quantities is the closed set, in the order the constants declare it — the
-// same one-list discipline as kinds, so a fifth value cannot be added to one
-// spelling and missed by the other.
+// same one-list discipline as vocab.Kinds, so a fifth value cannot be added to
+// one spelling and missed by the other.
 var quantities = []Quantity{
 	QuantityAmount,
 	QuantityAmountPerUnit,
@@ -123,84 +77,6 @@ func quantityList() string {
 	}
 	return strings.Join(s, ", ")
 }
-
-// Basis distinguishes a budgeted figure from an audited one. Mixing them in a
-// single view is the most common way a civic budget chart misleads, so it is
-// carried on every fact rather than assumed per document.
-type Basis string
-
-// The bases a figure can be stated on.
-const (
-	BasisAdopted   Basis = "adopted"
-	BasisRevised   Basis = "revised"
-	BasisActual    Basis = "actual"
-	BasisAudited   Basis = "audited"
-	BasisProjected Basis = "projected"
-)
-
-var bases = []Basis{BasisAdopted, BasisRevised, BasisActual, BasisAudited, BasisProjected}
-
-// Bases is every basis a column may be of.
-func Bases() []Basis { return slices.Clone(bases) }
-
-func basisList() string {
-	s := make([]string, len(bases))
-	for i, b := range bases {
-		s[i] = string(b)
-	}
-	return strings.Join(s, ", ")
-}
-
-// Valid reports whether b is one of [Bases].
-func (b Basis) Valid() bool { return slices.Contains(bases, b) }
-
-// Sign says how a row relates to its category, and it is never an instruction
-// to negate: AmountCents is always the figure as the document printed it.
-//
-// Two things need saying and they are different. SignContra marks a row that
-// REDUCES its category rather than adding to it. SignNetted marks a row the
-// document prints against its KIND's direction. Both leave the amount alone.
-type Sign string
-
-const (
-	// SignPositive is the default.
-	SignPositive Sign = "positive"
-	// SignContra marks a deduction booked as negative revenue — the ERAF and
-	// RPTTF property-tax shifts on Budget Book p127 are ~26% of gross
-	// property tax. Where the negative goes is the consumer's: a category-grain
-	// view nets it into its parent, a view drawing the printed row carries it
-	// as a negative value on that row's own link.
-	SignContra Sign = "contra"
-	// SignNetted marks a row the document prints with the OPPOSITE ORIENTATION
-	// to its kind's convention, because it sits inside a block that sums to a
-	// net figure.
-	//
-	// It is not SignContra one more time, and the difference is the one this
-	// field exists to carry. A contra row is a deduction INSIDE its own
-	// category: p127's ERAF reduces property tax, and summing it with its
-	// siblings is exactly right. A netted row is the SAME quantity pointing the
-	// other way: ACFR p41 prints Transfers (out) as (25.72) because its block
-	// sums to a net Other Financing Sources (Uses), while Budget Book p66 prints
-	// TRANSFER OUT as a positive magnitude in a uses column. Both are the money
-	// leaving, both are published exactly as printed, and summing the two
-	// together cancels rather than accumulates.
-	//
-	// SignContra's own comment anticipated this: "If a document ever prints a
-	// deduction as a positive number under a 'Less:' heading, that convention
-	// needs its own field rather than an overload of this one." This is that
-	// sentence's mirror image (fisc-fdxx).
-	//
-	// IT IS STILL NOT AN INSTRUCTION TO NEGATE. AmountCents remains the figure
-	// as the document printed it; this says which way the document was facing.
-	SignNetted Sign = "netted"
-)
-
-var signs = []Sign{SignPositive, SignContra, SignNetted}
-
-// Signs is every sign a row may declare; a row declaring none is positive.
-func Signs() []Sign { return slices.Clone(signs) }
-
-func (s Sign) valid() bool { return s == "" || slices.Contains(signs, s) }
 
 // File is one rule file, covering one source document.
 type File struct {
@@ -306,7 +182,7 @@ type Rollup struct {
 	// statement of intent rather than a measurement of the corpus.
 	//
 	// Like Rule.TotalRowKinds, nothing in mappings/ declares it yet.
-	Kinds []Kind `yaml:"kinds"`
+	Kinds []vocab.Kind `yaml:"kinds"`
 
 	// Note records why this rollup looks the way it does.
 	Note string `yaml:"note"`
@@ -314,10 +190,10 @@ type Rollup struct {
 
 // Rule maps a contiguous block of rows into facts.
 type Rule struct {
-	ID    string `yaml:"id"`
-	Kind  Kind   `yaml:"kind"`
-	Basis Basis  `yaml:"basis"`
-	Scope string `yaml:"scope"`
+	ID    string      `yaml:"id"`
+	Kind  vocab.Kind  `yaml:"kind"`
+	Basis vocab.Basis `yaml:"basis"`
+	Scope string      `yaml:"scope"`
 	// Grain names the lattice level this rule's figures are totals at: which
 	// of fund_group, fund, department and category the table has an axis for.
 	// Required on a rule that publishes a fact and refused on one that
@@ -476,7 +352,7 @@ type Rule struct {
 	// only the revenue rows of a block it shares with transfers and fund
 	// balance. Declaring that is what would let those five rules become three
 	// (fisc-56f); nothing does so yet.
-	TotalRowKinds []Kind `yaml:"total_row_kinds"`
+	TotalRowKinds []vocab.Kind `yaml:"total_row_kinds"`
 
 	// RowLabelsNameFunds declares that every row of this rule is labelled with
 	// the printed name of the fund it carries, so row-funds-match-their-anchors
@@ -917,7 +793,7 @@ type Column struct {
 	// Basis overrides the rule's basis for this column, which the four-column
 	// revenue schedules need: the same row carries FY23-24 actual, FY24-25
 	// revised, and two adopted years side by side.
-	Basis Basis `yaml:"basis"`
+	Basis vocab.Basis `yaml:"basis"`
 
 	// Skip marks a column that is present in the text but should not produce
 	// facts, so column positions still line up.
@@ -939,8 +815,8 @@ type Column struct {
 	// In, Expenses, Transfers Out and the rest across. Kind falls back to the
 	// rule's, as Row.Kind does. A rule carries its category on its rows or on
 	// its columns and never both; see Value.Category.
-	Category string `yaml:"category"`
-	Kind     Kind   `yaml:"kind"`
+	Category string     `yaml:"category"`
+	Kind     vocab.Kind `yaml:"kind"`
 }
 
 // Counterpart is the far end of a figure that moves money between two funds.
@@ -951,10 +827,10 @@ type Column struct {
 // second fact saying the same thing about the same fund, which is a
 // double-count wearing a different id.
 type Counterpart struct {
-	Category  string `yaml:"category"`
-	Kind      Kind   `yaml:"kind"`
-	Fund      int    `yaml:"fund"`
-	FundGroup string `yaml:"fund_group"`
+	Category  string     `yaml:"category"`
+	Kind      vocab.Kind `yaml:"kind"`
+	Fund      int        `yaml:"fund"`
+	FundGroup string     `yaml:"fund_group"`
 }
 
 // Column returns the column the counterpart leg's fact is filed under: the
@@ -1012,9 +888,9 @@ type Row struct {
 	// bug into a published claim about the city's budget; fix extraction.
 	Page int `yaml:"page"`
 
-	Category   string `yaml:"category"`
-	Department string `yaml:"department"`
-	Sign       Sign   `yaml:"sign"`
+	Category   string     `yaml:"category"`
+	Department string     `yaml:"department"`
+	Sign       vocab.Sign `yaml:"sign"`
 
 	// Fund and FundGroup override the column's fund dimension for this row,
 	// exactly as Kind overrides the rule's kind: the thing that knows says so.
@@ -1075,7 +951,7 @@ type Row struct {
 	// kinds beneath it, the rule says so on the total_row declaration -- see
 	// TotalRowKinds -- because the total row is the thing that knows which
 	// rows it covers.
-	Kind Kind `yaml:"kind"`
+	Kind vocab.Kind `yaml:"kind"`
 
 	// Skip marks a row that occupies a position but produces no facts, such
 	// as a subtotal that would double-count.
@@ -1147,7 +1023,7 @@ func JoinWrapped(head, tail string) string {
 // totalCovers says whether a row of this kind is one the printed total_row
 // covers. With no TotalRowKinds declared every row is, which is the kind-blind
 // reading the mixed fund blocks on Budget Book pp.131-140 depend on.
-func (r *Rule) totalCovers(k Kind) bool {
+func (r *Rule) totalCovers(k vocab.Kind) bool {
 	if len(r.TotalRowKinds) == 0 {
 		return true
 	}
@@ -1156,7 +1032,7 @@ func (r *Rule) totalCovers(k Kind) bool {
 
 // EffectiveKind is the kind this row's facts carry: its own override where it
 // declares one, the rule's otherwise.
-func (r Row) EffectiveKind(rule *Rule) Kind {
+func (r Row) EffectiveKind(rule *Rule) vocab.Kind {
 	if r.Kind != "" {
 		return r.Kind
 	}
@@ -1225,8 +1101,8 @@ func (r *Rule) RowPublishes(row Row) bool {
 
 // kindsOf is every kind a row's facts carry: one per cell cellPublishes
 // admits, read through Value.Kind.
-func (r *Rule) kindsOf(row Row) []Kind {
-	var out []Kind
+func (r *Rule) kindsOf(row Row) []vocab.Kind {
+	var out []vocab.Kind
 	for i := range r.Parts {
 		p := &r.Parts[i]
 		for j, c := range p.Columns {
@@ -1240,7 +1116,7 @@ func (r *Rule) kindsOf(row Row) []Kind {
 
 // EffectiveKind is the kind this column's facts carry on a rule whose columns
 // carry the category: its own where it declares one, the rule's otherwise.
-func (c Column) EffectiveKind(rule *Rule) Kind {
+func (c Column) EffectiveKind(rule *Rule) vocab.Kind {
 	if c.Kind != "" {
 		return c.Kind
 	}
@@ -1250,7 +1126,7 @@ func (c Column) EffectiveKind(rule *Rule) Kind {
 // EffectiveBasis is the basis this column's facts are published on: its own
 // where it declares one -- a four-column schedule carries actual, revised and
 // two adopted years side by side -- the rule's otherwise.
-func (c Column) EffectiveBasis(rule *Rule) Basis {
+func (c Column) EffectiveBasis(rule *Rule) vocab.Basis {
 	if c.Basis != "" {
 		return c.Basis
 	}

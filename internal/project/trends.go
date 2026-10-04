@@ -4,8 +4,8 @@ import (
 	"sort"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
-	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/structure"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // TrendsScope is the schedule this projection draws: Budget Book pp.127-140,
@@ -42,7 +42,7 @@ const TrendsProjection = "revenue-trends"
 // The bases are the ones the schedule prints and are NOT one measurement: an
 // actual, a mid-year re-forecast, and two years of one adopted two-year budget.
 // docs/revenue-trends-contract.md carries the table. FY2024 here is the Budget
-// Book's own restatement, never [mapping.BasisAudited], which is a different
+// Book's own restatement, never [vocab.BasisAudited], which is a different
 // basis and is fisc-4ua.4's business.
 //
 // A fifth mapped column is a change to what the site publishes, so it belongs
@@ -50,10 +50,10 @@ const TrendsProjection = "revenue-trends"
 // is what refuses to let one arrive silently.
 func TrendsColumns() []Column {
 	return []Column{
-		{FiscalYear: 2024, Basis: mapping.BasisActual},
-		{FiscalYear: 2025, Basis: mapping.BasisRevised},
-		{FiscalYear: 2026, Basis: mapping.BasisAdopted},
-		{FiscalYear: 2027, Basis: mapping.BasisAdopted},
+		{FiscalYear: 2024, Basis: vocab.BasisActual},
+		{FiscalYear: 2025, Basis: vocab.BasisRevised},
+		{FiscalYear: 2026, Basis: vocab.BasisAdopted},
+		{FiscalYear: 2027, Basis: vocab.BasisAdopted},
 	}
 }
 
@@ -312,7 +312,7 @@ func sortPoints(points []Point, cols []Column) {
 		rank[c] = i
 	}
 	at := func(p Point) int {
-		if r, ok := rank[Column{FiscalYear: p.FiscalYear, Basis: mapping.Basis(p.Basis)}]; ok {
+		if r, ok := rank[Column{FiscalYear: p.FiscalYear, Basis: vocab.Basis(p.Basis)}]; ok {
 			return r
 		}
 		return len(cols)

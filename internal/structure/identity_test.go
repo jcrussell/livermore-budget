@@ -9,8 +9,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
-	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/structure"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 func allCutNamed(t *testing.T, name string) structure.Cut {
@@ -92,7 +92,7 @@ func TestEveryScopeInTheStoreIsACut(t *testing.T) {
 				"fund-balance facts named, and none above the block:\n  %s", joined)
 		}
 		findings, _ = structure.Covered(facts, cuts, append(structure.BudgetBookResidue(),
-			structure.Residue{Scope: "revenue-by-fund", Rule: "nothing", Kind: mapping.KindRevenue, Reason: "invented"}))
+			structure.Residue{Scope: "revenue-by-fund", Rule: "nothing", Kind: vocab.KindRevenue, Reason: "invented"}))
 		if len(findings) != 1 || !strings.Contains(findings[0], "matches no fact") {
 			t.Errorf("an invented residue was not refused:\n  %s", strings.Join(findings, "\n  "))
 		}
@@ -132,7 +132,7 @@ func TestThePeersSharingCellsAreOneMovementReadFromTwoEnds(t *testing.T) {
 	}
 	var a, b int64
 	for _, sh := range o.Shared {
-		if sh.Kind != mapping.KindTransferIn || sh.Identity != "a-transfer-in-is-printed-at-both-ends" {
+		if sh.Kind != vocab.KindTransferIn || sh.Identity != "a-transfer-in-is-printed-at-both-ends" {
 			t.Errorf("%s: kind %s under identity %q", sh.Key, sh.Kind, sh.Identity)
 		}
 		if sh.Key.Basis != "adopted" {
@@ -159,7 +159,7 @@ func TestAPeerOverlapGoesRed(t *testing.T) {
 		var key string
 		for i := range planted {
 			f := &planted[i]
-			if f.Scope == "transfers-by-fund" && f.Kind == mapping.KindTransferIn && f.FiscalYear == 2026 &&
+			if f.Scope == "transfers-by-fund" && f.Kind == vocab.KindTransferIn && f.FiscalYear == 2026 &&
 				f.Fund != nil && *f.Fund == 400 {
 				f.AmountCents += 100
 				key = structure.KeyOf(f, structure.LevelFundByCategory).String()
@@ -272,7 +272,7 @@ func TestAPeerOverlapGoesRed(t *testing.T) {
 	t.Run("an identity over a pair sharing no cell is refused", func(t *testing.T) {
 		gf, fb := allCutNamed(t, "acfr-general-fund-summary"), allCutNamed(t, "acfr-fund-balances/general")
 		id := structure.Identity{Name: "invented", A: gf.Name, B: fb.Name,
-			Kinds: []mapping.Kind{mapping.KindFundBalance}, Reason: "a claim nothing bears out"}
+			Kinds: []vocab.Kind{vocab.KindFundBalance}, Reason: "a claim nothing bears out"}
 		o, err := structure.Peers(facts, gf, fb, []structure.Identity{id}, nil)
 		if err != nil {
 			t.Fatal(err)
@@ -346,10 +346,10 @@ func TestAViewThatWouldTraverseBothReadingsIsRefused(t *testing.T) {
 	declined := 0
 	for i := range facts {
 		f := &facts[i]
-		if f.FiscalYear != 2026 || f.Basis != mapping.BasisAdopted {
+		if f.FiscalYear != 2026 || f.Basis != vocab.BasisAdopted {
 			continue
 		}
-		if f.Scope == "transfers-by-fund" && f.Kind == mapping.KindTransferIn {
+		if f.Scope == "transfers-by-fund" && f.Kind == vocab.KindTransferIn {
 			if v.Admits(f, identities) {
 				t.Errorf("p76's receiving leg %s is counted by a view that took pp.127-140's reading", f.ID)
 			}
@@ -360,9 +360,9 @@ func TestAViewThatWouldTraverseBothReadingsIsRefused(t *testing.T) {
 			continue
 		}
 		switch f.Kind {
-		case mapping.KindTransferIn:
+		case vocab.KindTransferIn:
 			in += f.AmountCents
-		case mapping.KindTransferOut:
+		case vocab.KindTransferOut:
 			out += f.AmountCents
 		default:
 		}
@@ -499,8 +499,8 @@ func TestAnIdentityCoversOnlyTheCategoriesItNames(t *testing.T) {
 			p76 = id
 		}
 	}
-	in, out := structure.KindCategory{Kind: mapping.KindTransferIn, Category: "transfers/in"},
-		structure.KindCategory{Kind: mapping.KindTransferOut, Category: "transfers/out"}
+	in, out := structure.KindCategory{Kind: vocab.KindTransferIn, Category: "transfers/in"},
+		structure.KindCategory{Kind: vocab.KindTransferOut, Category: "transfers/out"}
 	if diff := cmp.Diff([]structure.KindCategory{in, out}, p76.Categories); diff != "" {
 		t.Fatalf("p76's identity with pp.186-209 covers (-want +got):\n%s", diff)
 	}
@@ -539,7 +539,7 @@ func TestAnIdentityCoversOnlyTheCategoriesItNames(t *testing.T) {
 		// transfers/out cells uncovered.
 		narrow := p76
 		narrow.Categories = []structure.KindCategory{in,
-			{Kind: mapping.KindTransferOut, Category: "transfers/out-to-cip"}}
+			{Kind: vocab.KindTransferOut, Category: "transfers/out-to-cip"}}
 		o, err := structure.Peers(facts, flows, td, []structure.Identity{narrow}, structure.BudgetBookExceptions())
 		if err != nil {
 			t.Fatal(err)
@@ -552,7 +552,7 @@ func TestAnIdentityCoversOnlyTheCategoriesItNames(t *testing.T) {
 
 	t.Run("a category no shared cell bears is named", func(t *testing.T) {
 		wide := p76
-		wide.Categories = append([]structure.KindCategory{{Kind: mapping.KindTransferOut, Category: "transfers/out-to-cip"}},
+		wide.Categories = append([]structure.KindCategory{{Kind: vocab.KindTransferOut, Category: "transfers/out-to-cip"}},
 			p76.Categories...)
 		o, err := structure.Peers(facts, flows, td, []structure.Identity{wide}, structure.BudgetBookExceptions())
 		if err != nil {
@@ -567,7 +567,7 @@ func TestAnIdentityCoversOnlyTheCategoriesItNames(t *testing.T) {
 		twin := allCutNamed(t, structure.CutFundBalanceRevenues)
 		twin.Name = "twin"
 		totals := structure.Identity{Name: "totals", A: structure.CutFundBalanceRevenues, B: twin.Name,
-			Kinds: []mapping.Kind{mapping.KindRevenue}, Categories: []structure.KindCategory{{Kind: mapping.KindRevenue, Category: "revenues"}},
+			Kinds: []vocab.Kind{vocab.KindRevenue}, Categories: []structure.KindCategory{{Kind: vocab.KindRevenue, Category: "revenues"}},
 			Reason: "a plant"}
 		err := structure.ValidateIdentities(append(structure.AllCuts(), twin), []structure.Identity{totals})
 		if err == nil || !strings.Contains(err.Error(), "no category axis") {
@@ -578,8 +578,8 @@ func TestAnIdentityCoversOnlyTheCategoriesItNames(t *testing.T) {
 	t.Run("a category named twice, empty, for a kind not covered or leaving a kind out is refused", func(t *testing.T) {
 		for _, cats := range [][]structure.KindCategory{
 			{in, out, out},
-			{in, {Kind: mapping.KindTransferOut}},
-			{in, out, {Kind: mapping.KindRevenue, Category: "revenues"}},
+			{in, {Kind: vocab.KindTransferOut}},
+			{in, out, {Kind: vocab.KindRevenue, Category: "revenues"}},
 			{in},
 		} {
 			bad := p76
@@ -608,7 +608,7 @@ func TestAnIdentityCoversAKindOnlyUnderItsOwnCategory(t *testing.T) {
 	}
 	var key structure.Key
 	for _, sh := range o.Shared {
-		if sh.Kind == mapping.KindTransferOut && sh.Identity == "a-fund-balance-transfer-is-p76s" {
+		if sh.Kind == vocab.KindTransferOut && sh.Identity == "a-fund-balance-transfer-is-p76s" {
 			key = sh.Key
 			break
 		}
@@ -625,7 +625,7 @@ func TestAnIdentityCoversAKindOnlyUnderItsOwnCategory(t *testing.T) {
 		n := make([]int, len(sides))
 		for i := range moved {
 			f := &moved[i]
-			if f.Kind != mapping.KindTransferOut || structure.KeyOf(f, key.Level) != key {
+			if f.Kind != vocab.KindTransferOut || structure.KeyOf(f, key.Level) != key {
 				continue
 			}
 			side := -1
@@ -715,7 +715,7 @@ func TestAnIdentityCoversAKindOnlyUnderItsOwnCategory(t *testing.T) {
 	// On a basis only one cut prints, the other's having no cell says nothing.
 	t.Run("one side under another kind's category on a basis the other does not print is still misfiled", func(t *testing.T) {
 		i := slices.IndexFunc(facts, func(f fact.Fact) bool {
-			return f.Kind == mapping.KindTransferOut && flows.Admits(&f) && !slices.Contains(td.Bases, f.Basis)
+			return f.Kind == vocab.KindTransferOut && flows.Admits(&f) && !slices.Contains(td.Bases, f.Basis)
 		})
 		if i < 0 {
 			t.Fatalf("no transfer out %q prints on a basis %q does not", flows.Name, td.Name)
@@ -843,7 +843,7 @@ func TestAViewDeclinesAReadingOnlyInItsIdentitysCategories(t *testing.T) {
 	admitted := map[string]int{}
 	for i := range facts {
 		f := &facts[i]
-		if flows.Admits(f) && f.Kind != mapping.KindFundBalance && v.Admits(f, identities) {
+		if flows.Admits(f) && f.Kind != vocab.KindFundBalance && v.Admits(f, identities) {
 			admitted[f.Category]++
 		}
 	}
@@ -871,7 +871,7 @@ func TestAViewTakesTheOtherReadingWhereItsOwnIsDeclaredAbsent(t *testing.T) {
 		got := map[string]int64{}
 		for i := range facts {
 			f := &facts[i]
-			if f.Kind == mapping.KindTransferIn && flows.Admits(f) && v.Admits(f, identities) {
+			if f.Kind == vocab.KindTransferIn && flows.Admits(f) && v.Admits(f, identities) {
 				got[fmt.Sprintf("fund %d FY%d %s", *f.Fund, f.FiscalYear, f.Basis)] = f.AmountCents
 			}
 		}
@@ -969,12 +969,12 @@ func TestReadingsOfOneFigureMustNameOneCut(t *testing.T) {
 	type cell struct {
 		fund  int
 		year  int
-		basis mapping.Basis
+		basis vocab.Basis
 	}
 	by := map[cell][]string{}
 	for i := range facts {
 		f := &facts[i]
-		if f.Kind != mapping.KindTransferIn || f.Category != "transfers/in" || f.Fund == nil || !v.Admits(f, identities) {
+		if f.Kind != vocab.KindTransferIn || f.Category != "transfers/in" || f.Fund == nil || !v.Admits(f, identities) {
 			continue
 		}
 		c := cell{*f.Fund, f.FiscalYear, f.Basis}

@@ -5,9 +5,9 @@ import (
 	"testing"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
-	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/internal/structure"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // TestTheCommittedPeersOverlapOnlyByDeclaredIdentity pins, by name, which
@@ -65,7 +65,7 @@ func TestThePeerCheckGoesRed(t *testing.T) {
 	moved := 0
 	for i := range planted {
 		f := &planted[i]
-		if f.Scope == "transfers-by-fund" && f.Kind == mapping.KindTransferIn && f.FiscalYear == 2027 &&
+		if f.Scope == "transfers-by-fund" && f.Kind == vocab.KindTransferIn && f.FiscalYear == 2027 &&
 			f.Fund != nil && *f.Fund == 610 {
 			f.AmountCents += 100
 			moved++
@@ -105,14 +105,14 @@ func TestADocumentSelectingBothReadingsIsAFinding(t *testing.T) {
 	mutated.Projections = append([]projection{{
 		Name: "both-readings",
 		Options: project.Options{
-			Columns: []project.Column{{FiscalYear: 2026, Basis: mapping.BasisAdopted}},
+			Columns: []project.Column{{FiscalYear: 2026, Basis: vocab.BasisAdopted}},
 			Scopes:  []string{"revenue-by-fund", "transfers-by-fund"},
 			Version: testVersion,
 		},
 	}, {
 		Name: "spine-beside-its-decomposition",
 		Options: project.Options{
-			Columns: []project.Column{{FiscalYear: 2026, Basis: mapping.BasisAdopted}},
+			Columns: []project.Column{{FiscalYear: 2026, Basis: vocab.BasisAdopted}},
 			Scopes:  []string{project.PublishedScope, "revenue-by-fund"},
 			Version: testVersion,
 		},
@@ -145,7 +145,7 @@ func TestThePeerCheckReportsItsDeclarations(t *testing.T) {
 	t.Run("an identity ValidateIdentities refuses is reported", func(t *testing.T) {
 		res := run(t, append(structure.BudgetBookIdentities(), structure.Identity{
 			Name: "unnamed-cut", A: "no-such-cut", B: "spine",
-			Kinds: []mapping.Kind{mapping.KindRevenue}, Reason: "a plant",
+			Kinds: []vocab.Kind{vocab.KindRevenue}, Reason: "a plant",
 		}))
 		var reported bool
 		for _, f := range res.Findings {
@@ -161,7 +161,7 @@ func TestThePeerCheckReportsItsDeclarations(t *testing.T) {
 	t.Run("an identity between peers that were never compared covers nothing", func(t *testing.T) {
 		res := run(t, append(structure.BudgetBookIdentities(), structure.Identity{
 			Name: "never-compared", A: "spine", B: "acfr-general-fund-summary",
-			Kinds: []mapping.Kind{mapping.KindRevenue}, Reason: "a plant",
+			Kinds: []vocab.Kind{vocab.KindRevenue}, Reason: "a plant",
 		}))
 		if len(res.Findings) != 1 || res.Findings[0].Subject != "never-compared" ||
 			!strings.Contains(res.Findings[0].Detail, "covers nothing") {
@@ -182,7 +182,7 @@ func TestAOneSidedCellUnderAnIdentityGoesRed(t *testing.T) {
 	moved := 0
 	for i := range mutated.Facts {
 		f := &mutated.Facts[i]
-		if f.Scope == "revenue-by-fund" && f.Kind == mapping.KindTransferIn && f.Fund != nil && *f.Fund == 610 {
+		if f.Scope == "revenue-by-fund" && f.Kind == vocab.KindTransferIn && f.Fund != nil && *f.Fund == 610 {
 			f.Fund = fact.FundNumber(621)
 			moved++
 		}

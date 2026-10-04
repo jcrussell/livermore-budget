@@ -3,7 +3,7 @@ package check
 import (
 	"testing"
 
-	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // TestTheGeneralFundTransferInLegIsNotDoubled is fisc-5gk.3.1's acceptance
@@ -36,8 +36,8 @@ func TestTheGeneralFundTransferInLegIsNotDoubled(t *testing.T) {
 	scopes := map[string]int{}
 	for _, f := range s.Facts {
 		scopes[f.Scope]++
-		if f.Kind == mapping.KindTransferIn && f.Category == "transfers/in" &&
-			f.FundGroup == "general" && f.Basis == mapping.BasisAdopted {
+		if f.Kind == vocab.KindTransferIn && f.Category == "transfers/in" &&
+			f.FundGroup == "general" && f.Basis == vocab.BasisAdopted {
 			got[cell{f.Scope, f.FiscalYear}] += f.AmountCents
 		}
 	}
@@ -82,7 +82,7 @@ func TestEveryP76LegNamesAFundOrSaysWhyNot(t *testing.T) {
 	t.Parallel()
 	s := committed(t)
 
-	legs := map[mapping.Kind]int{}
+	legs := map[vocab.Kind]int{}
 	noFund := map[string]int{}
 	for _, f := range s.Facts {
 		if f.Scope != "transfers-by-fund" {
@@ -100,10 +100,10 @@ func TestEveryP76LegNamesAFundOrSaysWhyNot(t *testing.T) {
 	}
 
 	// One in-leg and one out-leg from every printed figure.
-	if legs[mapping.KindTransferIn] != 44 || legs[mapping.KindTransferOut] != 44 {
+	if legs[vocab.KindTransferIn] != 44 || legs[vocab.KindTransferOut] != 44 {
 		t.Errorf("legs = %d in / %d out, want 44 each; every printed figure is "+
-			"evidence for both directions of one movement", legs[mapping.KindTransferIn],
-			legs[mapping.KindTransferOut])
+			"evidence for both directions of one movement", legs[vocab.KindTransferIn],
+			legs[vocab.KindTransferOut])
 	}
 
 	// EXACTLY ONE ROW HAS NO FUND AT ITS RECEIVING END, and it is named.

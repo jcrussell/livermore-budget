@@ -1,22 +1,15 @@
 package registry_test
 
-// This file is package registry_test, not package registry, and that is the
-// whole point of it: it is the only place in the tree that may import BOTH
-// internal/registry and internal/mapping.
+// This file pins registry.Load to the vocabulary: a data/taxonomy.yaml
+// kinds: member is accepted exactly when it is a vocab.Kind, and the refusal
+// offers the whole set.
 //
-// internal/registry cannot import internal/mapping. Every test file in that
-// package is `package mapping` and transfers_p76_test.go imports registry, so
-// the edge closes a cycle in the TEST build -- `go build ./...` passes and
-// `go vet ./...` fails with "import cycle not allowed in test", which is the
-// worst way to find out. So registry re-spells the five kinds, and this file
-// is the pin that keeps the copy honest.
-//
-// THE PIN IS BEHAVIOURAL, NOT A SLICE COMPARISON. registry.factKinds is
-// unexported and invisible from here, and exporting it purely to be compared
-// would widen the API for a test. Driving Load with each mapping.Kind is
-// strictly better anyway: it pins the error message too, and it fails in the
-// terms a reader hits -- a file that will not load -- rather than in terms of
-// two slices.
+// THE PIN IS BEHAVIOURAL, NOT A SLICE COMPARISON. Load reads the set from
+// internal/vocab, so there is no second list to compare; what can still go
+// wrong is a filter in front of that set, a refusal that stops naming the
+// alternatives, or an arm that accepts an empty list. Driving Load with each
+// vocab.Kind pins all three, and fails in the terms a reader hits -- a file
+// that will not load -- rather than in terms of two slices.
 
 import (
 	"fmt"
@@ -25,8 +18,8 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/registry"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 const (
@@ -62,28 +55,28 @@ func loadWithKinds(t *testing.T, kinds string) error {
 	return err
 }
 
-// TestLoadAcceptsEveryKindMappingDefines is one half of the pin: adding a
-// sixth mapping.Kind without adding it to registry.factKinds makes a taxonomy
-// that internal/mapping would happily produce facts for unloadable.
-func TestLoadAcceptsEveryKindMappingDefines(t *testing.T) {
-	for _, k := range mapping.Kinds() {
+// TestLoadAcceptsEveryKindVocabDefines is one half of the pin: a vocab.Kind
+// the registry would not accept makes a taxonomy that the rule parser would
+// happily produce facts for unloadable.
+func TestLoadAcceptsEveryKindVocabDefines(t *testing.T) {
+	for _, k := range vocab.Kinds() {
 		t.Run(string(k), func(t *testing.T) {
 			if err := loadWithKinds(t, string(k)); err != nil {
-				t.Errorf("Load with kinds: [%s] = %v, want nil; internal/mapping defines "+
+				t.Errorf("Load with kinds: [%s] = %v, want nil; internal/vocab defines "+
 					"that kind and internal/registry does not accept it", k, err)
 			}
 		})
 	}
 }
 
-// TestLoadRefusesAKindMappingDoesNotDefine is the other half. It also pins the
+// TestLoadRefusesAKindVocabDoesNotDefine is the other half. It also pins the
 // message, because a reader hitting this has a typo in a YAML file and the
 // list of what they could have meant is the whole remedy.
 //
 // "transfer" is not an arbitrary bad string: it is the exact value all four
 // transfer categories carried until 6216eda, and it was reported as a pass for
 // as long as it was there (fisc-ttq).
-func TestLoadRefusesAKindMappingDoesNotDefine(t *testing.T) {
+func TestLoadRefusesAKindVocabDoesNotDefine(t *testing.T) {
 	for _, bad := range []string{"transfer", "banana", "Revenue", "transfers_in"} {
 		t.Run(bad, func(t *testing.T) {
 			err := loadWithKinds(t, bad)
@@ -94,7 +87,7 @@ func TestLoadRefusesAKindMappingDoesNotDefine(t *testing.T) {
 			if !strings.Contains(got, fmt.Sprintf("got %q", bad)) {
 				t.Errorf("Load error = %q, want it to name the offending value %q", got, bad)
 			}
-			for _, k := range mapping.Kinds() {
+			for _, k := range vocab.Kinds() {
 				if !strings.Contains(got, string(k)) {
 					t.Errorf("Load error = %q, want it to offer %q as an alternative", got, k)
 				}
@@ -103,22 +96,22 @@ func TestLoadRefusesAKindMappingDoesNotDefine(t *testing.T) {
 	}
 }
 
-// TestRegistryOffersNoKindMappingLacks closes the pin's other direction, and
+// TestRegistryOffersNoKindVocabLacks closes the pin's other direction, and
 // it is not symmetry for its own sake.
 //
-// The two tests above prove registry ACCEPTS every mapping.Kind. They say
-// nothing about a member of registry.factKinds that mapping has never defined:
-// adding "grant" there leaves the whole suite green, and `kinds: [grant]`
-// would then load as a category NO FACT CAN EVER MATCH -- silently, because
-// fact-kind-matches-category only consults a category some fact reached. That
-// is the fisc-ttq shape from the other side, and it is exactly what this file
-// exists to prevent.
+// The two tests above prove registry ACCEPTS every vocab.Kind. They say
+// nothing about a value registry would offer that vocab has never defined:
+// an extra "grant" accepted here leaves the whole suite green, and
+// `kinds: [grant]` would then load as a category NO FACT CAN EVER MATCH --
+// silently, because fact-kind-matches-category only consults a category some
+// fact reached. That is the fisc-ttq shape from the other side, and it is
+// exactly what this file exists to prevent.
 //
 // The refusal message is the only view of the list from out here, and it
 // already has to enumerate the alternatives for the reader's sake, so this
 // reads the set back off it. Coupling the test to that wording is deliberate:
 // the message IS the remedy, and it should not be free to change silently.
-func TestRegistryOffersNoKindMappingLacks(t *testing.T) {
+func TestRegistryOffersNoKindVocabLacks(t *testing.T) {
 	err := loadWithKinds(t, "banana")
 	if err == nil {
 		t.Fatal("Load with kinds: [banana] = nil error, want a refusal")
@@ -133,22 +126,22 @@ func TestRegistryOffersNoKindMappingLacks(t *testing.T) {
 		offered = append(offered, strings.TrimSpace(k))
 	}
 	var want []string
-	for _, k := range mapping.Kinds() {
+	for _, k := range vocab.Kinds() {
 		want = append(want, string(k))
 	}
 	slices.Sort(offered)
 	slices.Sort(want)
 	if !slices.Equal(offered, want) {
-		t.Errorf("registry offers kinds %v, want exactly mapping.Kinds() %v; a kind "+
-			"registry accepts and mapping never defines loads as a category no fact "+
+		t.Errorf("registry offers kinds %v, want exactly vocab.Kinds() %v; a kind "+
+			"registry accepts and vocab never defines loads as a category no fact "+
 			"can match", offered, want)
 	}
 }
 
 // TestTheRefusalIsNotJustAnEmptyCheck guards the way this could go quietly
-// wrong: a factKinds that had drifted to hold every string would accept
-// everything, and the test above would still pass on the five real kinds. An
-// empty kinds: list must still be refused by its own separate arm.
+// wrong: a membership arm that accepted every string would pass the test
+// above on the five real kinds. An empty kinds: list must still be refused by
+// its own separate arm.
 func TestTheRefusalIsNotJustAnEmptyCheck(t *testing.T) {
 	err := loadWithKinds(t, "")
 	if err == nil {

@@ -7,9 +7,9 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
-	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/internal/registry"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // linesTaxonomyYAML is the fixture taxonomy with two lines under
@@ -34,7 +34,7 @@ const linesTaxonomyYAML = testTaxonomyYAML + `  - slug: charges-for-services/pla
 // revenueRow is one printed row of pp.127-140 as the check sees it: the
 // category a rule classified it as, and the label the page prints.
 type revenueRow struct {
-	kind     mapping.Kind
+	kind     vocab.Kind
 	category string
 	label    string
 }
@@ -65,7 +65,7 @@ func revenueLinesSubject(t *testing.T, taxonomy string, rows ...revenueRow) *Sub
 }
 
 func revenue(category, label string) revenueRow {
-	return revenueRow{mapping.KindRevenue, category, label}
+	return revenueRow{vocab.KindRevenue, category, label}
 }
 
 // TestRevenueRowsAndLinesAreOneSet is the check's own table.
@@ -147,7 +147,7 @@ func TestRevenueRowsAndLinesAreOneSet(t *testing.T) {
 		}, {
 			// Scope and kind are both required.
 			name: "rows outside the scope or kind are not subjects", taxonomy: testTaxonomyYAML,
-			rows:   []revenueRow{{mapping.KindTransferIn, "transfers/in", "Transfers In"}},
+			rows:   []revenueRow{{vocab.KindTransferIn, "transfers/in", "Transfers In"}},
 			status: StatusVacuous, subjects: 0,
 			summary: "no fact is a revenue row of scope revenue-by-fund and data/taxonomy.yaml declares no line",
 		},
@@ -209,7 +209,7 @@ func TestEveryRevenueLineIsARowOfTheMapping(t *testing.T) {
 				continue
 			}
 			for _, rw := range r.Rows {
-				if rw.EffectiveKind(r) != mapping.KindRevenue {
+				if rw.EffectiveKind(r) != vocab.KindRevenue {
 					continue
 				}
 				rows[row{rw.Category, rw.PrintedLabel()}]++
@@ -220,7 +220,7 @@ func TestEveryRevenueLineIsARowOfTheMapping(t *testing.T) {
 	resolved := map[row][]string{} // rule row -> the lines claiming it
 	var lines int
 	for _, c := range s.Vocabulary.Categories() {
-		if c.Parent == "" || !s.Vocabulary.Assignable(c.Parent) || !declaresKind(c, mapping.KindRevenue) {
+		if c.Parent == "" || !s.Vocabulary.Assignable(c.Parent) || !declaresKind(c, vocab.KindRevenue) {
 			continue
 		}
 		lines++

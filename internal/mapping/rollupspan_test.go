@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
@@ -241,7 +242,7 @@ func TestTheCommittedRollupsSpanOneKindAndOneScope(t *testing.T) {
 			continue
 		}
 		assertable++
-		kinds, scopes := map[Kind]bool{}, map[string]bool{}
+		kinds, scopes := map[vocab.Kind]bool{}, map[string]bool{}
 		for _, id := range ro.Covers {
 			kinds[byID[id].Kind] = true
 			scopes[byID[id].Scope] = true

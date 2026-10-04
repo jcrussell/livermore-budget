@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
-	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // jsonTags is the JSON key each field of a struct publishes, in declaration
@@ -186,9 +186,9 @@ func TestEncodeLeavesHTMLAlone(t *testing.T) {
 // else is refused unless the builder's allow names it, as the spine's does for
 // its two stock rows.
 func TestRefuseUncitedAdmitsOnlyPrintedZeros(t *testing.T) {
-	zero := &fact.Fact{ID: "z", Kind: mapping.KindRevenue, Category: "taxes/property"}
-	money := &fact.Fact{ID: "m", Kind: mapping.KindRevenue, Category: "taxes/property", AmountCents: 100}
-	stock := &fact.Fact{ID: "s", Kind: mapping.KindFundBalance, Category: CategoryFundBalanceBeginning, AmountCents: 100}
+	zero := &fact.Fact{ID: "z", Kind: vocab.KindRevenue, Category: "taxes/property"}
+	money := &fact.Fact{ID: "m", Kind: vocab.KindRevenue, Category: "taxes/property", AmountCents: 100}
+	stock := &fact.Fact{ID: "s", Kind: vocab.KindFundBalance, Category: CategoryFundBalanceBeginning, AmountCents: 100}
 	for _, tt := range []struct {
 		name    string
 		uncited []*fact.Fact

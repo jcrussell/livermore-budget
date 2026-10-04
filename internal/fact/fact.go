@@ -22,6 +22,7 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
@@ -56,9 +57,9 @@ type Fact struct {
 	Token  string `json:"token"`
 	RuleID string `json:"rule_id"`
 
-	Kind  mapping.Kind  `json:"kind"`
-	Basis mapping.Basis `json:"basis"`
-	Scope string        `json:"scope"`
+	Kind  vocab.Kind  `json:"kind"`
+	Basis vocab.Basis `json:"basis"`
+	Scope string      `json:"scope"`
 
 	FiscalYear int `json:"fiscal_year"`
 
@@ -93,7 +94,7 @@ type Fact struct {
 	// Nothing re-signs a value between the parser and this record. That last
 	// value is what the paragraph this one replaced anticipated when it said a
 	// new convention "needs its own field rather than an overload of this one".
-	Sign  mapping.Sign `json:"sign"`
+	Sign  vocab.Sign   `json:"sign"`
 	Units amount.Units `json:"units"`
 	// AmountCents is integer cents, always, whatever scale the source table was
 	// printed in. Units records that scale for provenance; it is not a
@@ -208,7 +209,7 @@ func SameFund(a, b *int) bool {
 // right trade: the label is also what the resolver anchors on, so a re-wording
 // already forces a rule change, and a rule change is the reviewable event where
 // an id shift belongs.
-func MakeID(docID, ruleID, rowPath, rowLabel, columnPath string, fiscalYear int, basis mapping.Basis) string {
+func MakeID(docID, ruleID, rowPath, rowLabel, columnPath string, fiscalYear int, basis vocab.Basis) string {
 	// The separator is a unit separator rather than a printable character
 	// because every component here can contain "/" and some can contain "-".
 	// Joining on a character that occurs in the data would let two different
@@ -320,7 +321,7 @@ func FromValues(f *mapping.File, rule *mapping.Rule, values []mapping.Value) ([]
 		basis := v.Column.EffectiveBasis(rule)
 		sign := v.Row.Sign
 		if sign == "" {
-			sign = mapping.SignPositive
+			sign = vocab.SignPositive
 		}
 
 		// row is the printed row classified as this figure is: on a rule whose

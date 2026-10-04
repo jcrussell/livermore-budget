@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/project"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // fundBalanceResult runs the whole suite over a fixture whose cells have been
@@ -109,7 +109,7 @@ func TestFundBalanceIdentityCatchesADroppedLine(t *testing.T) {
 func TestFundBalanceIdentityIgnoresReserveIncrease(t *testing.T) {
 	t.Parallel()
 	cells := append(slices.Clone(fixtureCells), testCell{
-		mapping.KindFundBalance, "fund-balance/reserve-increase", "general", 33_000,
+		vocab.KindFundBalance, "fund-balance/reserve-increase", "general", 33_000,
 	})
 
 	res := fundBalanceResult(t, cells)

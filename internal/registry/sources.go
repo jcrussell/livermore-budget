@@ -45,9 +45,9 @@ type Source struct {
 	// CIP's tables run to FY2030 as planning intent (see the file's own note).
 	FiscalYears             []int `yaml:"fiscal_years"`
 	AppropriatedFiscalYears []int `yaml:"appropriated_fiscal_years"`
-	// Basis is adopted or audited. It is not validated here against
-	// mapping.Basis: this package would then have to import the mapping engine
-	// to read a registry, and the basis a fact carries comes from its rule.
+	// Basis is adopted or audited. It is the registry's description of the
+	// document and is not validated against vocab.Bases: the basis a fact
+	// carries comes from its rule, never from here.
 	Basis string `yaml:"basis"`
 	// DocumentID is the city CMS's numeric id, which both URLs are built from.
 	DocumentID int `yaml:"document_id"`

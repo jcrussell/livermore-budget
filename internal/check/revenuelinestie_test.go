@@ -9,10 +9,10 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
-	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/internal/registry"
 	"github.com/jcrussell/livermore-budget/internal/structure"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // lineTieTaxonomyYAML puts lines under two categories of one fund group, so
@@ -37,8 +37,8 @@ const lineTieTaxonomyYAML = linesTaxonomyYAML + `  - slug: taxes/property/curren
 // enterprise transfer in, so a transfers/in flow can be drawn and reconciled
 // without touching the General Fund one the shared exception holds apart.
 var lineTieCells = append(slices.Clone(fixtureCells),
-	testCell{mapping.KindRevenue, "charges-for-services", "general", 40_000},
-	testCell{mapping.KindTransferIn, "transfers/in", "enterprise", 20_000},
+	testCell{vocab.KindRevenue, "charges-for-services", "general", 40_000},
+	testCell{vocab.KindTransferIn, "transfers/in", "enterprise", 20_000},
 )
 
 const (
@@ -106,7 +106,7 @@ func lineTieSubject(t *testing.T) *Subject {
 		Vocabulary: reg,
 		Projections: []projection{
 			drill(project.Column{FiscalYear: testYear, Basis: testBasis}),
-			drill(project.Column{FiscalYear: 2024, Basis: mapping.BasisActual}),
+			drill(project.Column{FiscalYear: 2024, Basis: vocab.BasisActual}),
 		},
 		// The fixture's General Fund transfer in is the cell the tree's
 		// exception holds apart (generalTransferInException), so the subject
@@ -446,7 +446,7 @@ func TestRevenueLinesTieReadsTheFactsItIsGiven(t *testing.T) {
 	t.Parallel()
 	s := lineTieSubject(t)
 	s.Facts = slices.DeleteFunc(s.Facts, func(f fact.Fact) bool {
-		return f.Kind == mapping.KindRevenue && f.Category == "taxes/property" &&
+		return f.Kind == vocab.KindRevenue && f.Category == "taxes/property" &&
 			f.FundGroup == "general"
 	})
 	res, err := (&revenueLinesTieToTheirCategories{}).Run(t.Context(), s)

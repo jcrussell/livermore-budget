@@ -13,6 +13,7 @@ import (
 
 	yaml "go.yaml.in/yaml/v3"
 
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
@@ -582,12 +583,11 @@ func validateCategory(c Category, catf errFunc) error {
 	// the typo would surface years later as a mass failure instead of now as a
 	// one-line file error. It is the shape fisc-ttq already cost this repo once,
 	// when all four transfer categories declared a `transfer` kind that
-	// mapping.Kind has never defined.
+	// vocab.Kind has never defined.
 	seen := make(map[string]bool, len(c.Kinds))
 	for _, k := range c.Kinds {
-		if !slices.Contains(factKinds, k) {
-			return catf(c.Slug, "kinds", "got %q, want one of %s",
-				k, strings.Join(factKinds, ", "))
+		if !vocab.Kind(k).Valid() {
+			return catf(c.Slug, "kinds", "got %q, want one of %s", k, vocab.KindList())
 		}
 		if seen[k] {
 			return catf(c.Slug, "kinds", "%q is listed twice", k)

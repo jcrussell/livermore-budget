@@ -5,6 +5,7 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // The fixture is the citywide spine, Budget Book pp.66-67, because a
@@ -22,7 +23,7 @@ const (
 	testDoc   = "livermore-budget-fy2026-2027"
 	testScope = "all-funds-gross"
 	testYear  = 2026
-	testBasis = mapping.BasisAdopted
+	testBasis = vocab.BasisAdopted
 )
 
 // testOptions are the options the golden file was derived under.
@@ -59,7 +60,7 @@ func spinePage(group string) int {
 // stock rows. That gap is the whole reason counts.facts and counts.facts_cited
 // are both published.
 type spineRow struct {
-	kind     mapping.Kind
+	kind     vocab.Kind
 	rule     string
 	category string
 	label    string
@@ -67,32 +68,32 @@ type spineRow struct {
 }
 
 var spineRows = []spineRow{
-	{mapping.KindRevenue, "spine-revenues", "taxes/property", "Property Taxes", [6]int64{6414376200, 0, 0, 0, 531565200, 0}},
-	{mapping.KindRevenue, "spine-revenues", "taxes/other", "Other Taxes", [6]int64{2380019600, 0, 0, 0, 17000000, 0}},
-	{mapping.KindRevenue, "spine-revenues", "intergovernmental", "Intergovernmental", [6]int64{432816400, 0, 818845300, 0, 682483500, 1884483400}},
-	{mapping.KindRevenue, "spine-revenues", "charges-for-services", "Charges for Services", [6]int64{613020700, 6225082400, 152942900, 0, 212929700, 0}},
-	{mapping.KindRevenue, "spine-revenues", "use-of-money-and-property", "Use of Money And Property", [6]int64{848816800, 483653700, 134600000, 0, 74113200, 12500000}},
-	{mapping.KindRevenue, "spine-revenues", "contributions-outsourced", "Contributions Outsourced", [6]int64{7636000, 0, 0, 0, 193400000, 0}},
-	{mapping.KindRevenue, "spine-revenues", "miscellaneous-revenue", "Miscellaneous Revenue", [6]int64{218070800, 42690000, 1608200000, 0, 1135064400, 0}},
-	{mapping.KindRevenue, "spine-revenues", "taxes/sales", "Sales Taxes", [6]int64{4108660600, 0, 0, 0, 0, 0}},
-	{mapping.KindRevenue, "spine-revenues", "fines-and-forfeitures", "Fines & Forfeitures", [6]int64{38650000, 0, 0, 0, 0, 0}},
-	{mapping.KindRevenue, "spine-revenues", "licenses-and-permits", "Licenses & Permits", [6]int64{725279900, 0, 0, 0, 0, 0}},
-	{mapping.KindExpenditure, "spine-expenditures", "wages-and-benefits", "Wages & Benefits", [6]int64{8180101100, 1606653600, 18620500, 0, 371671700, 597065400}},
-	{mapping.KindExpenditure, "spine-expenditures", "services-and-supplies", "Services & Supplies", [6]int64{6284979100, 3959324000, 87515000, 0, 1471493900, 1548918900}},
-	{mapping.KindExpenditure, "spine-expenditures", "capital-outlay", "Capital Outlay", [6]int64{0, 69990000, 0, 0, 60000000, 254702400}},
-	{mapping.KindExpenditure, "spine-expenditures", "debt-services", "Debt Services", [6]int64{0, 69405400, 0, 698459700, 23590500, 107050000}},
-	{mapping.KindTransferIn, "spine-transfers-in", "transfers/in", "TRANSFER IN:", [6]int64{48040000, 1324700000, 0, 698459700, 81400000, 0}},
-	{mapping.KindTransferOut, "spine-transfers-out", "transfers/out", "TRANSFER OUT:", [6]int64{1003779700, 1981314700, 2858474000, 0, 113705000, 4000000}},
-	{mapping.KindFundBalance, "spine-fund-balance", "fund-balance/reserve-increase", "ADDITION TO RESERVES", [6]int64{469942500, 0, 0, 0, 0, 0}},
+	{vocab.KindRevenue, "spine-revenues", "taxes/property", "Property Taxes", [6]int64{6414376200, 0, 0, 0, 531565200, 0}},
+	{vocab.KindRevenue, "spine-revenues", "taxes/other", "Other Taxes", [6]int64{2380019600, 0, 0, 0, 17000000, 0}},
+	{vocab.KindRevenue, "spine-revenues", "intergovernmental", "Intergovernmental", [6]int64{432816400, 0, 818845300, 0, 682483500, 1884483400}},
+	{vocab.KindRevenue, "spine-revenues", "charges-for-services", "Charges for Services", [6]int64{613020700, 6225082400, 152942900, 0, 212929700, 0}},
+	{vocab.KindRevenue, "spine-revenues", "use-of-money-and-property", "Use of Money And Property", [6]int64{848816800, 483653700, 134600000, 0, 74113200, 12500000}},
+	{vocab.KindRevenue, "spine-revenues", "contributions-outsourced", "Contributions Outsourced", [6]int64{7636000, 0, 0, 0, 193400000, 0}},
+	{vocab.KindRevenue, "spine-revenues", "miscellaneous-revenue", "Miscellaneous Revenue", [6]int64{218070800, 42690000, 1608200000, 0, 1135064400, 0}},
+	{vocab.KindRevenue, "spine-revenues", "taxes/sales", "Sales Taxes", [6]int64{4108660600, 0, 0, 0, 0, 0}},
+	{vocab.KindRevenue, "spine-revenues", "fines-and-forfeitures", "Fines & Forfeitures", [6]int64{38650000, 0, 0, 0, 0, 0}},
+	{vocab.KindRevenue, "spine-revenues", "licenses-and-permits", "Licenses & Permits", [6]int64{725279900, 0, 0, 0, 0, 0}},
+	{vocab.KindExpenditure, "spine-expenditures", "wages-and-benefits", "Wages & Benefits", [6]int64{8180101100, 1606653600, 18620500, 0, 371671700, 597065400}},
+	{vocab.KindExpenditure, "spine-expenditures", "services-and-supplies", "Services & Supplies", [6]int64{6284979100, 3959324000, 87515000, 0, 1471493900, 1548918900}},
+	{vocab.KindExpenditure, "spine-expenditures", "capital-outlay", "Capital Outlay", [6]int64{0, 69990000, 0, 0, 60000000, 254702400}},
+	{vocab.KindExpenditure, "spine-expenditures", "debt-services", "Debt Services", [6]int64{0, 69405400, 0, 698459700, 23590500, 107050000}},
+	{vocab.KindTransferIn, "spine-transfers-in", "transfers/in", "TRANSFER IN:", [6]int64{48040000, 1324700000, 0, 698459700, 81400000, 0}},
+	{vocab.KindTransferOut, "spine-transfers-out", "transfers/out", "TRANSFER OUT:", [6]int64{1003779700, 1981314700, 2858474000, 0, 113705000, 4000000}},
+	{vocab.KindFundBalance, "spine-fund-balance", "fund-balance/reserve-increase", "ADDITION TO RESERVES", [6]int64{469942500, 0, 0, 0, 0, 0}},
 	// Signed as printed: the General Fund's FY2026 CHANGE IN WORKING CAPITAL
 	// is "(1,034,154)". Three of the six columns are negative, which is what
 	// makes the fund-balance/draw side of the decomposition testable here.
-	{mapping.KindFundBalance, "spine-fund-balance", "fund-balance/change", "CHANGE IN WORKING CAPITAL", [6]int64{-103415400, 389438400, -250021300, 0, 887494900, -614753300}},
+	{vocab.KindFundBalance, "spine-fund-balance", "fund-balance/change", "CHANGE IN WORKING CAPITAL", [6]int64{-103415400, 389438400, -250021300, 0, 887494900, -614753300}},
 	// Stocks, not flows. They are facts the city printed and they must survive
 	// into facts.jsonl, but a balance carried into the year is not money moving
 	// and gets no link. Debt Service carries a literal $2.
-	{mapping.KindFundBalance, "spine-fund-balance", "fund-balance/beginning", "BEGINNING WORKING CAPITAL", [6]int64{176661300, 10339445000, 11071354500, 200, 7729007300, 2183726500}},
-	{mapping.KindFundBalance, "spine-fund-balance", "fund-balance/ending", "ENDING WORKING CAPITAL", [6]int64{73245900, 10728883400, 10821333200, 200, 8616502200, 1568973200}},
+	{vocab.KindFundBalance, "spine-fund-balance", "fund-balance/beginning", "BEGINNING WORKING CAPITAL", [6]int64{176661300, 10339445000, 11071354500, 200, 7729007300, 2183726500}},
+	{vocab.KindFundBalance, "spine-fund-balance", "fund-balance/ending", "ENDING WORKING CAPITAL", [6]int64{73245900, 10728883400, 10821333200, 200, 8616502200, 1568973200}},
 }
 
 // spineFacts renders the fixture as facts for one fiscal year.
@@ -119,14 +120,14 @@ func spineFacts(t *testing.T, year int) []fact.Fact {
 // this package defaulted. Zero year means testYear and zero sign means
 // positive, so a test states only what it is about.
 type cellSpec struct {
-	kind     mapping.Kind
+	kind     vocab.Kind
 	rule     string
 	category string
 	label    string
 	group    string
 	cents    int64
 	year     int
-	sign     mapping.Sign
+	sign     vocab.Sign
 	page     int
 }
 
@@ -136,7 +137,7 @@ func (c cellSpec) fact(t *testing.T) fact.Fact {
 		c.year = testYear
 	}
 	if c.sign == "" {
-		c.sign = mapping.SignPositive
+		c.sign = vocab.SignPositive
 	}
 	if c.rule == "" {
 		c.rule = ruleFor(t, c.kind)
@@ -171,18 +172,18 @@ func (c cellSpec) fact(t *testing.T) fact.Fact {
 
 // ruleFor is the rule id the spine uses for each kind. It is part of the fact
 // id, so the golden file's ids only reproduce with these exact strings.
-func ruleFor(t *testing.T, k mapping.Kind) string {
+func ruleFor(t *testing.T, k vocab.Kind) string {
 	t.Helper()
 	switch k {
-	case mapping.KindRevenue:
+	case vocab.KindRevenue:
 		return "spine-revenues"
-	case mapping.KindExpenditure:
+	case vocab.KindExpenditure:
 		return "spine-expenditures"
-	case mapping.KindTransferIn:
+	case vocab.KindTransferIn:
 		return "spine-transfers-in"
-	case mapping.KindTransferOut:
+	case vocab.KindTransferOut:
 		return "spine-transfers-out"
-	case mapping.KindFundBalance:
+	case vocab.KindFundBalance:
 		return "spine-fund-balance"
 	default:
 		t.Fatalf("no fixture rule for kind %q", k)

@@ -9,6 +9,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
@@ -167,9 +168,9 @@ func TestParseRejects(t *testing.T) {
 			want: "units",
 		},
 		{
-			name: "bad kind",
+			name: "bad kind names every kind",
 			yaml: strings.Replace(base(""), "kind: revenue", "kind: income", 1),
-			want: "kind",
+			want: "want one of revenue, expenditure, transfer_in, transfer_out, fund_balance",
 		},
 		{
 			name: "bad basis names every basis",
@@ -418,8 +419,8 @@ func TestSignNettedIsAcceptedOnATransferRow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("netted on a transfer_out row was refused: %v", err)
 	}
-	if got := f.Rules[0].Rows[0].Sign; got != SignNetted {
-		t.Errorf("row sign = %q, want %q", got, SignNetted)
+	if got := f.Rules[0].Rows[0].Sign; got != vocab.SignNetted {
+		t.Errorf("row sign = %q, want %q", got, vocab.SignNetted)
 	}
 }
 

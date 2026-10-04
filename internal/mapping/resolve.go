@@ -12,6 +12,7 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/geom"
 	"github.com/jcrussell/livermore-budget/internal/quantity"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
@@ -205,7 +206,7 @@ func (v Value) Category() string {
 
 // Kind is the kind this figure's facts carry, following the same axis as
 // Category: the column's or the row's override, the rule's where it states none.
-func (v Value) Kind(rule *Rule) Kind {
+func (v Value) Kind(rule *Rule) vocab.Kind {
 	if v.Column.Category != "" {
 		return v.Column.EffectiveKind(rule)
 	}

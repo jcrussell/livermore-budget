@@ -14,13 +14,14 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 const acfrDoc = "livermore-acfr-fy2025"
 
 // historyFacts renders one printed row of an ACFR ten-year schedule across
 // every column of [HistoryColumns].
-func historyFacts(t *testing.T, scope, rule, label string, kind mapping.Kind,
+func historyFacts(t *testing.T, scope, rule, label string, kind vocab.Kind,
 	category, group string, cents int64,
 ) []fact.Fact {
 	t.Helper()
@@ -47,7 +48,7 @@ func historyFacts(t *testing.T, scope, rule, label string, kind mapping.Kind,
 			Category:    category,
 			ColumnPath:  columnPath,
 			FundGroup:   group,
-			Sign:        mapping.SignPositive,
+			Sign:        vocab.SignPositive,
 			Units:       "dollars",
 			AmountCents: cents + int64(i),
 		})
@@ -63,9 +64,9 @@ func balancesFixture(t *testing.T) []fact.Fact {
 	t.Helper()
 	var out []fact.Fact
 	out = append(out, historyFacts(t, FundBalancesScope, "gf-balances", "Committed",
-		mapping.KindFundBalance, "fund-balance/committed", "general", 100)...)
+		vocab.KindFundBalance, "fund-balance/committed", "general", 100)...)
 	out = append(out, historyFacts(t, FundBalancesScope, "other-balances", "Committed",
-		mapping.KindFundBalance, "fund-balance/committed", "", 200)...)
+		vocab.KindFundBalance, "fund-balance/committed", "", 200)...)
 	return out
 }
 
@@ -107,7 +108,7 @@ func TestFundBalancesKeepsTheTwoBlocksApart(t *testing.T) {
 func TestHistorySlicesTakeTheWholeScope(t *testing.T) {
 	balances := balancesFixture(t)
 	changes := historyFacts(t, ChangesScope, "revenues", "Sales taxes",
-		mapping.KindRevenue, "taxes/sales", "", 300)
+		vocab.KindRevenue, "taxes/sales", "", 300)
 
 	for _, tc := range []struct {
 		p     Sliced
@@ -154,7 +155,7 @@ func TestHistoryRefusesAnotherSchedulesScope(t *testing.T) {
 // row, so the sign ships rather than being netted away.
 func TestChangesKeepsANegativeExcessSigned(t *testing.T) {
 	facts := historyFacts(t, ChangesScope, "excess", "over (under) expenditures",
-		mapping.KindFundBalance, "fund-balance/excess-of-revenues", "", 0)
+		vocab.KindFundBalance, "fund-balance/excess-of-revenues", "", 0)
 	facts[3].AmountCents = -1_261_509_800
 	d, err := (&FundBalanceChanges{}).Document(facts, historyOptions(ChangesScope))
 	if err != nil {
@@ -186,9 +187,9 @@ func TestHistoryDocumentsShareTheTrendsShape(t *testing.T) {
 	// One comparable group: every column is audited, so unlike the trends
 	// document a comparison may be carried across any pair of them.
 	for _, c := range d.Metadata.Columns {
-		if c.ComparableGroup != string(mapping.BasisAudited) {
+		if c.ComparableGroup != string(vocab.BasisAudited) {
 			t.Errorf("column FY%d comparable_group = %q, want %q",
-				c.FiscalYear, c.ComparableGroup, mapping.BasisAudited)
+				c.FiscalYear, c.ComparableGroup, vocab.BasisAudited)
 		}
 	}
 	for _, name := range []string{"FundBalances", "FundBalanceChanges"} {

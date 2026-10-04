@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/internal/registry"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // factRevenueLinesResolve asserts that the revenue rows pp.127-140 print and
@@ -40,7 +40,7 @@ func (*factRevenueLinesResolve) Run(_ context.Context, s *Subject) (Result, erro
 	lines := map[string][]registry.Category{} // category slug -> the lines under it
 	var declared []string
 	for _, c := range s.Vocabulary.Categories() {
-		if c.Parent == "" || !s.Vocabulary.Assignable(c.Parent) || !declaresKind(c, mapping.KindRevenue) {
+		if c.Parent == "" || !s.Vocabulary.Assignable(c.Parent) || !declaresKind(c, vocab.KindRevenue) {
 			continue
 		}
 		lines[c.Parent] = append(lines[c.Parent], c)
@@ -50,7 +50,7 @@ func (*factRevenueLinesResolve) Run(_ context.Context, s *Subject) (Result, erro
 	printed := map[string]bool{}
 	rows := 0
 	for _, f := range s.Facts {
-		if f.Scope != project.ScopeRevenueByFund || f.Kind != mapping.KindRevenue {
+		if f.Scope != project.ScopeRevenueByFund || f.Kind != vocab.KindRevenue {
 			continue
 		}
 		rows++
@@ -82,7 +82,7 @@ func (*factRevenueLinesResolve) Run(_ context.Context, s *Subject) (Result, erro
 		if !printed[slug] {
 			findings = append(findings, finding(taxonomyFile,
 				"line %q is printed by no fact of scope %s and kind %s; a node nothing can draw",
-				slug, project.ScopeRevenueByFund, mapping.KindRevenue))
+				slug, project.ScopeRevenueByFund, vocab.KindRevenue))
 		}
 	}
 

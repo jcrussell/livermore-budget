@@ -8,6 +8,7 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // trendColumnsFixture are the four columns Budget Book pp.127-140 print, with
@@ -17,10 +18,10 @@ import (
 // share a basis and no two share a year, so neither field alone identifies a
 // column.
 var trendColumnsFixture = []Column{
-	{FiscalYear: 2024, Basis: mapping.BasisActual},
-	{FiscalYear: 2025, Basis: mapping.BasisRevised},
-	{FiscalYear: 2026, Basis: mapping.BasisAdopted},
-	{FiscalYear: 2027, Basis: mapping.BasisAdopted},
+	{FiscalYear: 2024, Basis: vocab.BasisActual},
+	{FiscalYear: 2025, Basis: vocab.BasisRevised},
+	{FiscalYear: 2026, Basis: vocab.BasisAdopted},
+	{FiscalYear: 2027, Basis: vocab.BasisAdopted},
 }
 
 // trendFacts renders one printed row across the four columns, in a fund.
@@ -39,7 +40,7 @@ func trendFacts(t *testing.T, rule, label string, fund int, group string, cents 
 			Offset:      100*(fund%1000) + 10*i,
 			Token:       "x",
 			RuleID:      rule,
-			Kind:        mapping.KindRevenue,
+			Kind:        vocab.KindRevenue,
 			Basis:       c.Basis,
 			Scope:       TrendsScope,
 			FiscalYear:  c.FiscalYear,
@@ -49,7 +50,7 @@ func trendFacts(t *testing.T, rule, label string, fund int, group string, cents 
 			ColumnPath:  columnPath,
 			FundGroup:   group,
 			Fund:        fact.FundNumber(fund),
-			Sign:        mapping.SignPositive,
+			Sign:        vocab.SignPositive,
 			Units:       "dollars",
 			AmountCents: cents[i],
 		})
@@ -240,7 +241,7 @@ func TestTrendsKeepsContraRowsSigned(t *testing.T) {
 	facts := trendFacts(t, "gf-rev", "ERAF", 100, "general",
 		[4]int64{-1_408_643_800, -1_466_183_600, -1_517_500_000, -1_585_787_500})
 	for i := range facts {
-		facts[i].Sign = mapping.SignContra
+		facts[i].Sign = vocab.SignContra
 	}
 	d := buildTrends(t, facts)
 	if len(d.Series) != 1 {

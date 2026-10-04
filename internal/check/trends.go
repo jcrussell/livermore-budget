@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
-	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/project"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
@@ -86,7 +86,7 @@ func (*trendPointsTieToFacts) Run(_ context.Context, s *Subject) (Result, error)
 				// (fisc-4j5). The packager now refuses that document too; this is
 				// the half that names WHICH point, and which is reached first
 				// because `fisc verify` runs before `fisc export`.
-				if col := (project.Column{FiscalYear: pt.FiscalYear, Basis: mapping.Basis(pt.Basis)}); !declared[col] {
+				if col := (project.Column{FiscalYear: pt.FiscalYear, Basis: vocab.Basis(pt.Basis)}); !declared[col] {
 					findings = append(findings, finding(
 						fmt.Sprintf("%s %s %s", p.Name, series.SeriesID, fact.ColumnLabel(pt.FiscalYear, pt.Basis)),
 						"this point publishes %s, which is not one of the %d columns %q "+
@@ -300,7 +300,7 @@ func (*trendSeriesAreComplete) Run(_ context.Context, s *Subject) (Result, error
 func missingColumns(s project.Series, cols []project.Column) []project.Column {
 	have := make(map[project.Column]bool, len(s.Points))
 	for _, p := range s.Points {
-		have[project.Column{FiscalYear: p.FiscalYear, Basis: mapping.Basis(p.Basis)}] = true
+		have[project.Column{FiscalYear: p.FiscalYear, Basis: vocab.Basis(p.Basis)}] = true
 	}
 	var out []project.Column
 	for _, c := range cols {

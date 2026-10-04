@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // revenueDetailScope is the scope Budget Book pp.127-140 are mapped at (fisc-u2v).
@@ -83,7 +84,7 @@ func readSpineRevenue(t *testing.T) map[groupCatYear]amount.Cents {
 		if ru.Scope != publishedSpineScope {
 			continue
 		}
-		if ru.Kind != KindRevenue && ru.Kind != KindTransferIn {
+		if ru.Kind != vocab.KindRevenue && ru.Kind != vocab.KindTransferIn {
 			continue
 		}
 		for j := range ru.Parts {

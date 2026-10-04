@@ -7,6 +7,7 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // revenueScope is the scope Budget Book pp.127-140 are mapped at (fisc-u2v).
@@ -58,9 +59,9 @@ func revenueDetailFacts(t *testing.T, scope string) []fact.Fact {
 		row := mapping.Row{Category: "taxes/property"}
 		rowPath := fact.RowPath(row)
 		columnPath := fact.ColumnPath(mapping.Column{FundGroup: "general", Fund: 100}, scope)
-		sign := mapping.SignPositive
+		sign := vocab.SignPositive
 		if r.cents < 0 {
-			sign = mapping.SignContra
+			sign = vocab.SignContra
 		}
 		out = append(out, fact.Fact{
 			ID: fact.MakeID(testDoc, "gf-rev-property-taxes", rowPath, r.label, columnPath,
@@ -68,7 +69,7 @@ func revenueDetailFacts(t *testing.T, scope string) []fact.Fact {
 			DocID:       testDoc,
 			Page:        127,
 			RuleID:      "gf-rev-property-taxes",
-			Kind:        mapping.KindRevenue,
+			Kind:        vocab.KindRevenue,
 			Basis:       testBasis,
 			Scope:       scope,
 			FiscalYear:  testYear,

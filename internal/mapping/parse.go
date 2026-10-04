@@ -14,6 +14,7 @@ import (
 	yaml "go.yaml.in/yaml/v3"
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
@@ -382,13 +383,13 @@ func validateRollups(f *File, errf errFunc) error {
 func validateRollupKinds(ro *Rollup, byID map[string]*Rule, field func(string) string,
 	errf errFunc) error {
 
-	span := map[Kind]bool{}
+	span := map[vocab.Kind]bool{}
 	for _, id := range ro.Covers {
 		span[byID[id].Kind] = true
 	}
-	declared := map[Kind]bool{}
+	declared := map[vocab.Kind]bool{}
 	for _, k := range ro.Kinds {
-		if !k.valid() {
+		if !k.Valid() {
 			return errf("", field("kinds"), "%q is not one of the five kinds", k)
 		}
 		if declared[k] {
@@ -423,8 +424,8 @@ func validateRollupKinds(ro *Rollup, byID map[string]*Rule, field func(string) s
 	return nil
 }
 
-func sortedKinds(set map[Kind]bool) []Kind {
-	out := make([]Kind, 0, len(set))
+func sortedKinds(set map[vocab.Kind]bool) []vocab.Kind {
+	out := make([]vocab.Kind, 0, len(set))
 	for k := range set {
 		out = append(out, k)
 	}
@@ -432,7 +433,7 @@ func sortedKinds(set map[Kind]bool) []Kind {
 	return out
 }
 
-func describeKinds(ks []Kind) string {
+func describeKinds(ks []vocab.Kind) string {
 	parts := make([]string, len(ks))
 	for i, k := range ks {
 		parts[i] = fmt.Sprintf("%q", k)
@@ -443,11 +444,11 @@ func describeKinds(ks []Kind) string {
 type errFunc func(ruleID, field, format string, args ...any) error
 
 func validateRule(r *Rule, errf errFunc) error {
-	if !r.Kind.valid() {
-		return errf(r.ID, "kind", "got %q, want one of %s", r.Kind, kindList())
+	if !r.Kind.Valid() {
+		return errf(r.ID, "kind", "got %q, want one of %s", r.Kind, vocab.KindList())
 	}
 	if !r.Basis.Valid() {
-		return errf(r.ID, "basis", "got %q, want one of %s", r.Basis, basisList())
+		return errf(r.ID, "basis", "got %q, want one of %s", r.Basis, vocab.BasisList())
 	}
 	if r.Units == "" {
 		return cmdutil.WithHint(
@@ -570,7 +571,7 @@ func validateRule(r *Rule, errf errFunc) error {
 		if row.LabelTail != "" {
 			tailed[row.Label] = append(tailed[row.Label], row.PrintedLabel())
 		}
-		if !row.Sign.valid() {
+		if !row.Sign.Valid() {
 			return errf(r.ID, "rows", "row %q: sign %q, want positive, contra or netted",
 				row.Label, row.Sign)
 		}
@@ -635,13 +636,13 @@ func validateRule(r *Rule, errf errFunc) error {
 		// the five. Above either, {sign: netted, kind: income} is reported as a sign
 		// on kind "income" and a mistyped counterpart kind as `sign netted on kind
 		// "incom"` -- both naming the wrong field to whoever has to fix the YAML.
-		if row.Sign == SignNetted {
+		if row.Sign == vocab.SignNetted {
 			ends := publishes
 			if row.Counterpart != nil {
 				ends = append(ends, row.Counterpart.Kind)
 			}
 			for _, k := range ends {
-				if k == KindTransferIn || k == KindTransferOut {
+				if k == vocab.KindTransferIn || k == vocab.KindTransferOut {
 					continue
 				}
 				return cmdutil.WithHint(
@@ -1012,9 +1013,9 @@ func validateRule(r *Rule, errf errFunc) error {
 // rule carries them: on a row, or on a column. A declaration that publishes
 // needs a category, which internal/check declines to require on purpose ("an
 // absent value is the mapping's business").
-func validateClass(r *Rule, field, owner, category string, kind Kind, publishes bool,
+func validateClass(r *Rule, field, owner, category string, kind vocab.Kind, publishes bool,
 	errf errFunc, hint string) error {
-	if kind != "" && !kind.valid() {
+	if kind != "" && !kind.Valid() {
 		return errf(r.ID, field, "%s: kind %q is not one of the five", owner, kind)
 	}
 	if publishes && category == "" {
@@ -1424,9 +1425,9 @@ func validateTotalRowKinds(r *Rule, errf errFunc) error {
 			"the list says which of the rule's kinds the PRINTED total covers, "+
 				"so there must be a printed total for it to describe")
 	}
-	seen := map[Kind]bool{}
+	seen := map[vocab.Kind]bool{}
 	for _, k := range r.TotalRowKinds {
-		if !k.valid() {
+		if !k.Valid() {
 			return errf(r.ID, "total_row_kinds", "%q is not one of the five kinds", k)
 		}
 		if seen[k] {
@@ -1437,7 +1438,7 @@ func validateTotalRowKinds(r *Rule, errf errFunc) error {
 	// The kinds the rule's rows actually carry. A declaration naming a kind no
 	// row has would silently narrow the check to fewer rows than the author
 	// believed -- or, if it named ALL of them, to none.
-	have := map[Kind]bool{}
+	have := map[vocab.Kind]bool{}
 	for _, row := range r.Rows {
 		if row.Skip {
 			continue
@@ -1772,7 +1773,7 @@ func checkCounterpart(r *Rule, row Row, errf errFunc) error {
 				"paying fund, where the near leg is a transfer IN to the receiving "+
 				"one -- and nothing is inherited from the row")
 	}
-	if !cp.Kind.valid() {
+	if !cp.Kind.Valid() {
 		return errf(r.ID, "rows", "row %q: counterpart kind %q is not one of the five",
 			row.Label, cp.Kind)
 	}

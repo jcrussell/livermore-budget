@@ -6,6 +6,7 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // citationSubject is the smallest subject fact-citations-are-declared reads: the
@@ -17,7 +18,7 @@ func citationSubject(rules []mapping.Rule, facts []fact.Fact) *Subject {
 	}
 }
 
-func citeFact(id, rule, label string, kind mapping.Kind, cents int64) fact.Fact {
+func citeFact(id, rule, label string, kind vocab.Kind, cents int64) fact.Fact {
 	return fact.Fact{
 		ID: id, DocID: "doc", Page: 41, Offset: 4336, Token: "0.53",
 		RuleID: rule, RowLabel: label, Kind: kind, AmountCents: cents,
@@ -57,15 +58,15 @@ func TestOnePrintedFigureIsTwoFactsOnlyWhenARowDeclaresIt(t *testing.T) {
 		name:  "a row and its declared counterpart is what the mechanism is for",
 		rules: withCounterpart,
 		facts: []fact.Fact{
-			citeFact("a", "p76-transfers", "Transfer From Host Comm Impact", mapping.KindTransferIn, 54780000),
-			citeFact("b", "p76-transfers", "Transfer From Host Comm Impact", mapping.KindTransferOut, 54780000),
+			citeFact("a", "p76-transfers", "Transfer From Host Comm Impact", vocab.KindTransferIn, 54780000),
+			citeFact("b", "p76-transfers", "Transfer From Host Comm Impact", vocab.KindTransferOut, 54780000),
 		},
 	}, {
 		name:  "two rules over one section anchor is the ACFR p41 hazard",
 		rules: []mapping.Rule{{ID: "acfr-fund-balances"}, {ID: "acfr-other-financing"}},
 		facts: []fact.Fact{
-			citeFact("a", "acfr-fund-balances", "Transfers in", mapping.KindTransferIn, 53000000),
-			citeFact("b", "acfr-other-financing", "Transfers in", mapping.KindTransferIn, 53000000),
+			citeFact("a", "acfr-fund-balances", "Transfers in", vocab.KindTransferIn, 53000000),
+			citeFact("b", "acfr-other-financing", "Transfers in", vocab.KindTransferIn, 53000000),
 		},
 		wantFail: true,
 		wantText: "both publish token",
@@ -73,8 +74,8 @@ func TestOnePrintedFigureIsTwoFactsOnlyWhenARowDeclaresIt(t *testing.T) {
 		name:  "one rule twice on a row that declares nothing is still a double-publish",
 		rules: noCounterpart,
 		facts: []fact.Fact{
-			citeFact("a", "p76-transfers", "Transfer From Host Comm Impact", mapping.KindTransferIn, 54780000),
-			citeFact("b", "p76-transfers", "Transfer From Host Comm Impact", mapping.KindTransferOut, 54780000),
+			citeFact("a", "p76-transfers", "Transfer From Host Comm Impact", vocab.KindTransferIn, 54780000),
+			citeFact("b", "p76-transfers", "Transfer From Host Comm Impact", vocab.KindTransferOut, 54780000),
 		},
 		wantFail: true,
 		wantText: "declares no counterpart",
@@ -82,9 +83,9 @@ func TestOnePrintedFigureIsTwoFactsOnlyWhenARowDeclaresIt(t *testing.T) {
 		name:  "a third fact on one figure is not a pair however it is declared",
 		rules: withCounterpart,
 		facts: []fact.Fact{
-			citeFact("a", "p76-transfers", "Transfer From Host Comm Impact", mapping.KindTransferIn, 54780000),
-			citeFact("b", "p76-transfers", "Transfer From Host Comm Impact", mapping.KindTransferOut, 54780000),
-			citeFact("c", "p76-transfers", "Transfer From Host Comm Impact", mapping.KindTransferIn, 54780000),
+			citeFact("a", "p76-transfers", "Transfer From Host Comm Impact", vocab.KindTransferIn, 54780000),
+			citeFact("b", "p76-transfers", "Transfer From Host Comm Impact", vocab.KindTransferOut, 54780000),
+			citeFact("c", "p76-transfers", "Transfer From Host Comm Impact", vocab.KindTransferIn, 54780000),
 		},
 		wantFail: true,
 		wantText: "a counterpart pair is two",
@@ -95,8 +96,8 @@ func TestOnePrintedFigureIsTwoFactsOnlyWhenARowDeclaresIt(t *testing.T) {
 		name:  "a declared counterpart carrying a different amount is not one figure",
 		rules: withCounterpart,
 		facts: []fact.Fact{
-			citeFact("a", "p76-transfers", "Transfer From Host Comm Impact", mapping.KindTransferIn, 54780000),
-			citeFact("b", "p76-transfers", "Transfer From Host Comm Impact", mapping.KindTransferOut, 99900000),
+			citeFact("a", "p76-transfers", "Transfer From Host Comm Impact", vocab.KindTransferIn, 54780000),
+			citeFact("b", "p76-transfers", "Transfer From Host Comm Impact", vocab.KindTransferOut, 99900000),
 		},
 		wantFail: true,
 		wantText: "for one printed token",
@@ -133,7 +134,7 @@ func TestOnePrintedFigureIsTwoFactsOnlyWhenARowDeclaresIt(t *testing.T) {
 // rule would not redden because it declares.
 func TestATransferPrintedAgainstItsKindMustSaySo(t *testing.T) {
 	t.Parallel()
-	f := func(kind mapping.Kind, sign mapping.Sign, cents int64) fact.Fact {
+	f := func(kind vocab.Kind, sign vocab.Sign, cents int64) fact.Fact {
 		return fact.Fact{
 			ID: "f", DocID: "doc", Page: 41, Token: "(25.72)",
 			RowLabel: "Transfers (out)", Kind: kind, Sign: sign, AmountCents: cents,
@@ -145,21 +146,21 @@ func TestATransferPrintedAgainstItsKindMustSaySo(t *testing.T) {
 		wantFail bool
 	}{
 		{"a transfer_out printed as a positive magnitude, the Budget Book convention",
-			f(mapping.KindTransferOut, mapping.SignPositive, 1014659800), false},
+			f(vocab.KindTransferOut, vocab.SignPositive, 1014659800), false},
 		{"a transfer_out printed parenthesised and declaring it, the ACFR convention",
-			f(mapping.KindTransferOut, mapping.SignNetted, -2572000000), false},
+			f(vocab.KindTransferOut, vocab.SignNetted, -2572000000), false},
 		{"a transfer_out printed parenthesised and NOT declaring it is fisc-fdxx",
-			f(mapping.KindTransferOut, mapping.SignPositive, -2572000000), true},
+			f(vocab.KindTransferOut, vocab.SignPositive, -2572000000), true},
 		{"a transfer_in declaring netted while running with its kind is the reverse error",
-			f(mapping.KindTransferIn, mapping.SignNetted, 54780000), true},
+			f(vocab.KindTransferIn, vocab.SignNetted, 54780000), true},
 		// A transfer fact is zero where a column prints "-". Zero runs with
 		// every direction, so a netted row's zero cells are not the reverse error.
 		{"a netted transfer whose column is zero is not a contradiction",
-			f(mapping.KindTransferOut, mapping.SignNetted, 0), false},
+			f(vocab.KindTransferOut, vocab.SignNetted, 0), false},
 		{"a negative revenue is a magnitude, not an orientation: p127's (20,033)",
-			f(mapping.KindRevenue, mapping.SignPositive, -2003300), false},
+			f(vocab.KindRevenue, vocab.SignPositive, -2003300), false},
 		{"a negative fund_balance is a balance that fell, and the spine carries six",
-			f(mapping.KindFundBalance, mapping.SignPositive, -103415400), false},
+			f(vocab.KindFundBalance, vocab.SignPositive, -103415400), false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			res, err := (&factTransferOrientationIsDeclared{}).Run(
@@ -187,7 +188,7 @@ func TestTheOrientationSummaryDoesNotCountAZeroAsNetted(t *testing.T) {
 	nettedAt := func(cents int64) fact.Fact {
 		return fact.Fact{
 			ID: "f", DocID: "doc", Page: 41, Token: "-", RowLabel: "Transfers (out)",
-			Kind: mapping.KindTransferOut, Sign: mapping.SignNetted, AmountCents: cents,
+			Kind: vocab.KindTransferOut, Sign: vocab.SignNetted, AmountCents: cents,
 		}
 	}
 	run := func(f fact.Fact) string {

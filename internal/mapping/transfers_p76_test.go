@@ -8,6 +8,7 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/registry"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // p76PublishedScope is the scope the published p76 rules carry, decided by
@@ -350,9 +351,9 @@ func readSpineTransfers(t *testing.T) spineTransfers {
 		}
 		var dst map[groupYear]amount.Cents
 		switch rule.Kind {
-		case KindTransferIn:
+		case vocab.KindTransferIn:
 			dst = out.in
-		case KindTransferOut:
+		case vocab.KindTransferOut:
 			dst = out.out
 		default:
 			continue

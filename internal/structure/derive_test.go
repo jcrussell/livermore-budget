@@ -5,7 +5,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
-	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // TestUndecomposedIsTheKindsNoCutOfTheViewPrints holds the derivation to the
@@ -22,7 +22,7 @@ func TestUndecomposedIsTheKindsNoCutOfTheViewPrints(t *testing.T) {
 	if len(view) != 3 {
 		t.Fatalf("the drill-down's scopes select %d cuts, want 3", len(view))
 	}
-	want := []mapping.Kind{mapping.KindFundBalance, mapping.KindTransferOut}
+	want := []vocab.Kind{vocab.KindFundBalance, vocab.KindTransferOut}
 	if diff := cmp.Diff(want, Undecomposed(view, reference)); diff != "" {
 		t.Errorf("Undecomposed over the drill-down's cuts (-want +got):\n%s", diff)
 	}
@@ -30,8 +30,8 @@ func TestUndecomposedIsTheKindsNoCutOfTheViewPrints(t *testing.T) {
 	// A cut printing transfers out leaves only fund balances undecomposed.
 	widened := make([]Cut, len(view))
 	copy(widened, view)
-	widened[0].Kinds = append([]mapping.Kind{mapping.KindTransferOut}, widened[0].Kinds...)
-	if diff := cmp.Diff([]mapping.Kind{mapping.KindFundBalance}, Undecomposed(widened, reference)); diff != "" {
+	widened[0].Kinds = append([]vocab.Kind{vocab.KindTransferOut}, widened[0].Kinds...)
+	if diff := cmp.Diff([]vocab.Kind{vocab.KindFundBalance}, Undecomposed(widened, reference)); diff != "" {
 		t.Errorf("Undecomposed after widening one cut (-want +got):\n%s", diff)
 	}
 	// A view printing every kind the reference prints leaves nothing.

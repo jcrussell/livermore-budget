@@ -11,6 +11,7 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/structure"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // TestTheCommittedCutsTieAlongTheLattice pins, by name, which pairs the
@@ -363,9 +364,9 @@ func TestTheDepartmentSchedulesTieInEveryColumn(t *testing.T) {
 				for i := range facts {
 					f := &facts[i]
 					if f.RuleID == "funding-city-council" && f.FiscalYear == 2024 {
-						f.FiscalYear, f.Basis = 2025, mapping.BasisRevised
+						f.FiscalYear, f.Basis = 2025, vocab.BasisRevised
 					} else if f.RuleID == "funding-city-council" && f.FiscalYear == 2025 {
-						f.FiscalYear, f.Basis = 2024, mapping.BasisActual
+						f.FiscalYear, f.Basis = 2024, vocab.BasisActual
 					}
 				}
 				return facts

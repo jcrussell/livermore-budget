@@ -130,7 +130,7 @@ it therefore belongs to whatever renders this document rather than to the
 document.
 
 **FY2024 `actual` here is the Budget Book's own restatement, not the ACFR's
-audited figure.** `mapping.BasisAudited` exists and is a different basis. This
+audited figure.** `vocab.BasisAudited` exists and is a different basis. This
 document must never label a column `audited`; `fisc-4ua.4` is where audited
 actuals come from.
 
