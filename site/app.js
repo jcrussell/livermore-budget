@@ -238,10 +238,10 @@ export function stepFor(node) {
 }
 
 /**
- * Whether opening `id` on `step` would draw anything: the step's document
- * sends at least one ribbon between the node's parts and the columns the step
- * opens into, and on a window step the chart on screen sends a kept flank into
- * it. Asked with the reach the chart is drawn with (reaching), so what is
+ * Whether opening `id` on `step` would draw: the form's answer (offers). For
+ * the Sankey, the step's document decomposes the node into every column the
+ * step promises and does not keep, and on a window step the chart on screen
+ * sends a kept flank into it, each asked as the chart is drawn, so what is
  * offered and what draws are one rule. A node with no id is open too.
  *
  * @param {FiscDrillStep} step

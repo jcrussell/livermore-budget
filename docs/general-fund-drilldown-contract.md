@@ -420,13 +420,15 @@ document.** Six of the 61 funds this document draws in FY2025-26 and seven of
 the 60 in FY2026-27 are named by no row of those pages, and nothing about
 `fund/511` distinguishes it from `fund/512`; the set is different in every
 printed column — 13 funds in FY2023-24 against 6 in FY2025-26 — while a step is
-declared once for every year the view lists. So `site/app.js`'s `decomposable`
-reads, per year's document and per step, the node ids at its `from` that the
-document decomposes at the tiers the step declares, with the same reach the
-chart is drawn with (`reaching`); `stepFor` takes that as a fourth match beside
-the key, the tier and the role, and a window step further asks that the chart on
-screen send a kept flank into the node. Nothing ships the set: what is offered
-to open and what draws are one rule in one language. Measured without the
+declared once for every year the view lists. So `site/sankey.js`'s `decomposable`
+reads, per year's document and per step, the node ids at its `from` whose
+decomposition at the tiers the step declares, with the same reach the chart is
+drawn with (`reaching`), holds a node in every column `promisedTiers` names and
+the flank does not keep -- the columns `dropEmptyColumns` will not drop;
+`stepFor` takes that as a fourth match beside the key, the tier and the role,
+and a window step further asks that the chart on screen send a kept flank into
+the node. Nothing ships the set: what is offered to open and what draws are one
+rule in one language. Measured without the
 fourth match: `drillDown(fund/511)` failed and left the chart on
 `fund-group/capital`, over a mark drawn with the open affordance.
 

@@ -1004,3 +1004,49 @@ describe("a gap whose figures carry cents", () => {
     }
   });
 });
+
+// A NODE IS OFFERED ONLY WHERE ITS DRAWN CHART HOLDS A NODE IN EVERY COLUMN
+// ITS STEP PROMISES (promisedTiers), so the offer and the draw are one rule.
+// Planted: FY2027's fund-sources-uses less the ribbons from tier 0 into
+// fund/100, so opened from fund-balance/contribution the General Fund
+// decomposes only rightward and the fund-balance step's tier 0, which it does
+// not widen, would be drawn empty.
+describe("a node whose decomposition leaves a column its step promises empty", () => {
+  test("is not offered, and double-clicking it banners nothing and leaves the chart where it was", async (t) => {
+    const year = YEARS.find((y) => y.stem === "sankey-2027");
+    assert.ok(year, "the pinned page publishes no sankey-2027");
+    const FUND = "fund/100";
+    const CENTRE = "fund-balance/contribution";
+    const step = stepByKey(PAGE, "fund-balance");
+    // Through the real gesture path: a double click opens a node only when
+    // drillable says it does.
+    const activate = async (plant) => {
+      const column = structuredClone(columnFixture(year.path.replace(/\.json$/, "")));
+      const at = column.nodes.findIndex((n) => n.id === FUND);
+      const doc = column.schedules["fund-sources-uses"];
+      const before = doc.links.length;
+      if (plant) doc.links = doc.links.filter((l) => !(l.to === at && column.nodes[l.from].tier === step.sankey.tiers[0]));
+      const { app, document } = await bootedApp({ checkedStem: year.stem, plan: { [year.path]: { doc: column } } });
+      await opened(app, CENTRE);
+      const node = app.projection.nodes.find((n) => n.id === FUND);
+      assert.ok(node, `${FUND} is not on the chart, so whether it is offered proves nothing`);
+      const offered = app.drillable(node);
+      app.doubleClickNode(node, 0);
+      await settle();
+      const banners = refusals(document).map((b) => b.textContent);
+      return { dropped: before - doc.links.length, offered, banners, top: topOf(app) };
+    };
+    const control = await activate(false);
+    const planted = await activate(true);
+    t.diagnostic(`unplanted: ${FUND} offered ${control.offered}, opened onto ${control.top}; ${planted.dropped} ` +
+      `ribbon(s) from tier ${step.sankey.tiers[0]} dropped: offered ${planted.offered}, chart on ${planted.top}, ` +
+      `banner(s) ${JSON.stringify(planted.banners)}`);
+    assert.equal(control.offered, true, "the unplanted node is not offered, so the planted one's refusal proves nothing");
+    assert.equal(control.top, FUND);
+    assert.deepEqual(control.banners, []);
+    assert.ok(planted.dropped > 0, "nothing was dropped, so this test holds nothing");
+    assert.equal(planted.offered, false);
+    assert.deepEqual(planted.banners, []);
+    assert.equal(planted.top, CENTRE);
+  });
+});

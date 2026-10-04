@@ -85,6 +85,22 @@ export function freshTiers(step) {
 }
 
 /**
+ * The declared columns a rung's drawn chart must hold a node in: every one
+ * but a widened one, which dropEmptyColumns drops when it comes out empty.
+ * d3-sankey counts columns from depth while alignFor places nodes by
+ * declared index, so it throws on an empty leading or interior column and
+ * stretches the others across an empty trailing one. The kept
+ * ones are the flank's to fill (flankHolds); the rest, the fresh half's
+ * (decomposable). The one answer both read, so what is offered draws.
+ * @param {FiscDrillStep} step
+ * @returns {number[]}
+ */
+export function promisedTiers(step) {
+  const widen = new Set(step.sankey.widen || []);
+  return step.sankey.tiers.filter((t) => !widen.has(t));
+}
+
+/**
  * The halves a step draws out of its own document, each a run of columns and
  * whether the opened node is the end its ribbons come FROM: one for a window
  * (the kept flank is not the document's) and for a source or target step, and
@@ -397,8 +413,11 @@ export function flankHolds(onScreen, step, id) {
 
 /**
  * The ids at a step's opened tier that its document decomposes, computed once
- * per (document, step) because nodeClass asks per mark per paint. The fresh
- * half at every declared tier, widened ones included: the step promised them.
+ * per (document, step) because nodeClass asks per mark per paint: those whose
+ * fresh half, read at every declared tier, holds a node in each promised
+ * column the flank does not keep. A node whose decomposition misses one is
+ * not offered, since dropEmptyColumns would not drop that column and the
+ * chart could not be laid out at the columns it declares.
  * @type {WeakMap<FiscProjection, Map<string, Set<string>>>}
  */
 const decomposed = new WeakMap();
@@ -416,10 +435,16 @@ export function decomposable(step, doc) {
   }
   const have = byStep.get(step.key);
   if (have) return have;
+  const keep = new Set(step.sankey.keep || []);
+  const fill = promisedTiers(step).filter((t) => !keep.has(t));
   const out = new Set();
   for (const n of doc.nodes) {
     if (n.tier !== step.from || (step.role && n.role !== step.role)) continue;
-    if (freshHalf(step, doc, n.id).links.length) out.add(n.id);
+    const half = freshHalf(step, doc, n.id);
+    // A node at a drawn tier is in the half only as some ribbon end's
+    // nearest drawn ancestor-or-self: the column the fold puts it in.
+    const held = new Set(half.nodes.map((x) => x.tier));
+    if (half.links.length && fill.every((t) => held.has(t))) out.add(n.id);
   }
   byStep.set(step.key, out);
   return out;
@@ -443,7 +468,8 @@ export function leavingLegDrawn(step, tiers) {
  *
  * d3-sankey takes its column count from topology, so an empty declared column
  * would stretch the others rather than narrow the chart. DROPPED AND NOT
- * REFUSED, and only a widened column: the step promised the others.
+ * REFUSED, and only a column promisedTiers leaves out: decomposable offers no
+ * node that leaves a promised one empty.
  *
  * @param {FiscProjection} drawn
  * @param {Rung | null} rung the innermost rung, or null on the overview
@@ -451,10 +477,10 @@ export function leavingLegDrawn(step, tiers) {
  * @returns {boolean} whether anything was dropped
  */
 export function dropEmptyColumns(drawn, rung, tiers) {
-  const widen = rung && rung.step.sankey.widen ? rung.step.sankey.widen : [];
-  if (!widen.length) return false;
+  if (!rung) return false;
+  const promised = new Set(promisedTiers(rung.step));
   const has = new Set(drawn.nodes.map((n) => n.tier));
-  const gone = tiers.filter((t) => widen.indexOf(t) >= 0 && !has.has(t));
+  const gone = tiers.filter((t) => !promised.has(t) && !has.has(t));
   if (!gone.length) return false;
   rung.dropped = (rung.dropped || []).concat(gone);
   return true;
