@@ -496,7 +496,7 @@ type SankeyHints struct {
 	// opened, and a different declaration from the chart's before it; on the
 	// overview, the page's own column order, or empty to draw the document
 	// whole.
-	Tiers []int `json:"tiers,omitempty"`
+	Tiers []int `json:"tiers,omitempty" yaml:"tiers"`
 	// Keep is the flank of the chart on screen that stays drawn beside the
 	// opened node, NEAREST THE CENTRE FIRST, or empty for a step that draws the
 	// opened node's parts alone. A slice and not an int because tier 0 is a
@@ -506,20 +506,20 @@ type SankeyHints struct {
 	// into, plus one column per [SankeyHints.Widen] entry, with the flank at
 	// the end the parent's column order names. validateSteps checks that side
 	// against every chart this step opens from.
-	Keep []int `json:"keep,omitempty"`
+	Keep []int `json:"keep,omitempty" yaml:"keep"`
 	// Widen is the tier this step adds for each column beyond the window's own
 	// three, in the order they are added; a client with room for fewer drops
 	// them from the end. A widened column sits at the end of Tiers away from
 	// the kept flank, and validateSteps refuses a Tiers that disagrees.
 	// Refused on a step that keeps nothing.
-	Widen []int `json:"widen,omitempty"`
+	Widen []int `json:"widen,omitempty" yaml:"widen"`
 	// Caps bounds the columns this step draws, one per tier that needs one; a
 	// tier with no cap is drawn whole.
-	Caps []TierCap `json:"caps,omitempty"`
+	Caps []TierCap `json:"caps,omitempty" yaml:"caps"`
 	// Side is which end of a link the opened node sits on: "" for the node the
 	// links point AT, [SideSource] for the node they come FROM, [SideBoth] for
 	// a node drawn between the two. Declared, never inferred from tier numbers.
-	Side string `json:"side,omitempty"`
+	Side string `json:"side,omitempty" yaml:"side"`
 }
 
 // SideSource is [SankeyHints.Side] for a step opening the node its chart's
@@ -570,12 +570,12 @@ func (c Chart) keptFlank() []int {
 // is folded into one aggregate node. Rescaling alone does not make a group's
 // funds legible: the concentration is within the group.
 type TierCap struct {
-	Tier int `json:"tier"`
-	Cap  int `json:"cap"`
+	Tier int `json:"tier" yaml:"tier"`
+	Cap  int `json:"cap" yaml:"cap"`
 	// Tail is the plural noun this tier's folded tail is counted in, or "" to
 	// take the step's [DrillStep.Tail]. Per cap because one step may cap two
 	// tiers of different things.
-	Tail string `json:"tail,omitempty"`
+	Tail string `json:"tail,omitempty" yaml:"tail"`
 }
 
 // Download is one whole-store artifact a page offers.

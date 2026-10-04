@@ -65,46 +65,30 @@ type sectionDecl struct {
 }
 
 // chartDecl is an [export.Chart] as authored: the form and the form's hints
-// under its own key.
+// under its own key, which decode as [export.SankeyHints] itself.
 type chartDecl struct {
-	Form   string      `yaml:"form"`
-	Sankey *sankeyDecl `yaml:"sankey"`
-}
-
-// sankeyDecl is [export.SankeyHints] as authored.
-type sankeyDecl struct {
-	Tiers []int         `yaml:"tiers"`
-	Keep  []int         `yaml:"keep"`
-	Widen []int         `yaml:"widen"`
-	Caps  []tierCapDecl `yaml:"caps"`
-	Side  string        `yaml:"side"`
-}
-
-// tierCapDecl is an [export.TierCap] as authored.
-type tierCapDecl struct {
-	Tier int    `yaml:"tier"`
-	Cap  int    `yaml:"cap"`
-	Tail string `yaml:"tail"`
+	Form   string              `yaml:"form"`
+	Sankey *export.SankeyHints `yaml:"sankey"`
 }
 
 // stepDecl is one [export.DrillStep] as authored, its chart inlined as on the
 // wire. Residual and Gaps name a derivation rather than carry one: a figure
 // written here would be a second spelling of what internal/project derives.
 type stepDecl struct {
-	Key           string      `yaml:"key"`
-	After         []string    `yaml:"after"`
-	From          int         `yaml:"from"`
-	Role          string      `yaml:"role"`
-	Projection    string      `yaml:"projection"`
-	Form          string      `yaml:"form"`
-	Sankey        *sankeyDecl `yaml:"sankey"`
-	Noun          string      `yaml:"noun"`
-	Back          string      `yaml:"back"`
-	Tail          string      `yaml:"tail"`
-	Description   string      `yaml:"description"`
-	ResidualGrain string      `yaml:"residual_grain"`
-	Residual      string      `yaml:"residual"`
-	Gaps          string      `yaml:"gaps"`
+	Key           string              `yaml:"key"`
+	After         []string            `yaml:"after"`
+	From          int                 `yaml:"from"`
+	Role          string              `yaml:"role"`
+	Projection    string              `yaml:"projection"`
+	Form          string              `yaml:"form"`
+	Sankey        *export.SankeyHints `yaml:"sankey"`
+	Noun          string              `yaml:"noun"`
+	Back          string              `yaml:"back"`
+	Tail          string              `yaml:"tail"`
+	Description   string              `yaml:"description"`
+	ResidualGrain string              `yaml:"residual_grain"`
+	Residual      string              `yaml:"residual"`
+	Gaps          string              `yaml:"gaps"`
 }
 
 // residualDerivations is every derivation a step's `residual` may name, each
@@ -374,20 +358,7 @@ func (c *chartDecl) chart() export.Chart {
 	if c == nil {
 		return export.Chart{}
 	}
-	out := export.Chart{Form: c.Form}
-	if c.Sankey != nil {
-		hints := &export.SankeyHints{
-			Tiers: c.Sankey.Tiers,
-			Keep:  c.Sankey.Keep,
-			Widen: c.Sankey.Widen,
-			Side:  c.Sankey.Side,
-		}
-		for _, cap := range c.Sankey.Caps {
-			hints.Caps = append(hints.Caps, export.TierCap{Tier: cap.Tier, Cap: cap.Cap, Tail: cap.Tail})
-		}
-		out.Sankey = hints
-	}
-	return out
+	return export.Chart{Form: c.Form, Sankey: c.Sankey}
 }
 
 // section is the declaration as [export.Section], each row's category

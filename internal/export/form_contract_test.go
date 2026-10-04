@@ -3,9 +3,11 @@ package export_test
 import (
 	"encoding/json"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 
+	"github.com/jcrussell/livermore-budget/internal/export"
 	"github.com/jcrussell/livermore-budget/schema"
 )
 
@@ -56,4 +58,22 @@ func TestTheSchemaHoldsAChartToItsForm(t *testing.T) {
 // step is one of a decoded config's steps, as a map.
 func step(cfg map[string]any, i int) map[string]any {
 	return cfg["steps"].([]any)[i].(map[string]any)
+}
+
+// TestAHintIsSpelledOnceInTheFileAndOnTheWire holds every field of the
+// declared hints to one key: data/views.yaml decodes the hints as these types,
+// and the page config marshals them, so a field whose yaml and json keys
+// differed would be authored under one name and shipped under another.
+// Mutation: give SankeyHints.Keep the yaml key "kept", and it goes red.
+func TestAHintIsSpelledOnceInTheFileAndOnTheWire(t *testing.T) {
+	for _, typ := range []reflect.Type{reflect.TypeOf(export.SankeyHints{}), reflect.TypeOf(export.TierCap{})} {
+		for i := range typ.NumField() {
+			f := typ.Field(i)
+			j, _, _ := strings.Cut(f.Tag.Get("json"), ",")
+			y, _, _ := strings.Cut(f.Tag.Get("yaml"), ",")
+			if j == "" || j != y {
+				t.Errorf("%s.%s is %q on the wire and %q in data/views.yaml", typ.Name(), f.Name, j, y)
+			}
+		}
+	}
 }
