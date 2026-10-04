@@ -165,6 +165,27 @@ func TestTheFundParentComesFromTheRegistryAndNotTheFact(t *testing.T) {
 	}
 }
 
+// TestTheSpendingFundsParentComesFromTheRegistryToo is the same claim on the
+// pp.173-183 side: a fund drawn into its object categories hangs from the
+// registry's type, whatever group the fact files it under. Both sides leave the
+// two records' agreement to fact-funds-resolve, which holds it over the store.
+// Mutation: parent a fund node by the fact's fund_group, and it goes red.
+func TestTheSpendingFundsParentComesFromTheRegistryToo(t *testing.T) {
+	facts := append(fundFlowsFacts(), fundFlowsFact(scopeExpenditureByFund,
+		mapping.KindExpenditure, "wages-and-benefits", "", "capital", fact.FundNumber(500), 300, "s"))
+	doc := buildFundFlows(t, facts, fundFlowsLabels()) // the registry says enterprise
+	var got string
+	for _, n := range doc.Nodes {
+		if n.ID == "fund/500" {
+			got = n.Parent
+		}
+	}
+	if got != "fund-group/enterprise" {
+		t.Errorf("fund/500's parent is %q, want %q: the parent is the registry's type, "+
+			"never the fact's fund_group", got, "fund-group/enterprise")
+	}
+}
+
 // TestEveryFundNodeDisclosesItsConstraintTier is fisc-yor's requirement, checked
 // at the producer as well as by the check that reads the document.
 func TestEveryFundNodeDisclosesItsConstraintTier(t *testing.T) {
@@ -512,18 +533,19 @@ func TestFundFlowsRefusesWhatItCannotPlace(t *testing.T) {
 			want: "draws fund 100 from expenditure-by-fund",
 		},
 		{
-			name: "a fund filed under a group the registry does not put it in",
-			facts: []fact.Fact{
-				fundFlowsFact(scopeExpenditureByFund, mapping.KindExpenditure, "wages-and-benefits", "", "capital", fact.FundNumber(500), 1, "z"),
-			},
-			want: `files fund 500 under "capital"`,
-		},
-		{
-			name: "a fund the registry does not list",
+			name: "a fund the registry does not list, spending",
 			facts: []fact.Fact{
 				fundFlowsFact(scopeExpenditureByFund, mapping.KindExpenditure, "wages-and-benefits", "", "capital", fact.FundNumber(999), 1, "z"),
 			},
-			want: "names fund 999, which data/funds.yaml does not list",
+			want: "fund 999 is in no data/funds.yaml entry",
+		},
+		{
+			// A printed dash is a fact and not a flow, and its fund is still placed.
+			name: "a fund the registry does not list, spending a printed dash",
+			facts: []fact.Fact{
+				fundFlowsFact(scopeExpenditureByFund, mapping.KindExpenditure, "wages-and-benefits", "", "capital", fact.FundNumber(999), 0, "z"),
+			},
+			want: "fund 999 is in no data/funds.yaml entry",
 		},
 		{
 			// The tier-5 id carries the DIVISION and not the fund, so two funds

@@ -329,12 +329,14 @@ func (f *fundFlows) Document(facts []fact.Fact, o Options) (*Document, error) {
 	// Tier 3 -> 5, one link per pp.173-183 cell, from the fund itself.
 	for _, k := range sortedFundExpKeys(byFund) {
 		c := byFund[k]
-		if c.cents == 0 {
-			continue
-		}
+		// Placed before the dash is skipped, as the revenue side does, so a
+		// fund the registry does not list is refused on a zero cell too.
 		src, srcErr := f.fundEndpoint(k.fund)
 		if srcErr != nil {
 			return nil, srcErr
+		}
+		if c.cents == 0 {
+			continue
 		}
 		dst := fundObjectEndpoint(k.fund, k.category)
 		f.addFundFlowNode(nodes, src)
@@ -631,19 +633,6 @@ func (f *fundFlows) netFundFlows(facts []fact.Fact) (map[revKey]*cellSum, map[ex
 					fmt.Errorf("fund-flows: fact %s draws fund %d from expenditure-by-fund", fa.ID, generalFund),
 					"pp.167-170 decompose the General Fund, and p172's block of it is "+
 						"general-fund-by-category, which this document does not read")
-			}
-			// The node's group is the registry's; a fact filed under another
-			// would draw a link of the wrong kind under the right group.
-			t, ok := f.Labels.FundType(*fa.Fund)
-			if !ok {
-				return nil, nil, nil, cmdutil.WithHint(
-					fmt.Errorf("fund-flows: fact %s names fund %d, which data/funds.yaml does not list", fa.ID, *fa.Fund),
-					"a fund node's parent is its type, so a fund the registry does not list "+
-						"cannot be placed in the hierarchy")
-			}
-			if t != fa.FundGroup {
-				return nil, nil, nil, fmt.Errorf("fund-flows: fact %s files fund %d under %q and "+
-					"data/funds.yaml puts it in %q", fa.ID, *fa.Fund, fa.FundGroup, t)
 			}
 			add(byFund, fundExpKey{fundGroup: fa.FundGroup, fund: *fa.Fund, category: fa.Category}, fa)
 		default:
