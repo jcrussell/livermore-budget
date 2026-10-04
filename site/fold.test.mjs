@@ -606,6 +606,132 @@ describe("the fold preserves what it folds, on every rung at every width", () =>
   }
 });
 
+// A TAIL FOLDING A LINE PRINTED AS A REDUCTION is drawn as the lines() fixture
+// above pins it: netted where the merge takes the reduction, at its size and
+// disclosed by contraNote where it does not. No pinned column reaches either
+// case: the only reductions any schedule prints stand in a column one step
+// caps, and both outrank the cap. This walk holds that, and goes red the year
+// a reduction ranks below the cap, so whoever reads that red reads the tail's
+// note against the laid mark rather than trusting the fixture.
+describe("no capped tail folds a line printed as a reduction", () => {
+  const CONFIG = pageFixture().config;
+  const STEMS = publishedColumns();
+
+  /** The schedule a step draws: its own, or the one the step before it draws. */
+  function drawsFrom(step) {
+    for (let s = step, hops = 0; s && hops < 9; hops++) {
+      if (s.projection) return s.projection;
+      s = CONFIG.steps.find((x) => x.key === s.after[0]);
+    }
+    return "";
+  }
+
+  /**
+   * Every tail one opening folds at every budget the page offers: the tier
+   * set is the form's own answer for the budget, the chart is shaped as the
+   * page shapes it, the members are the tail's own `folds`, and each member's
+   * ribbons are read off the unfolded half, at their printed signs. `ranked`
+   * says whether the capped column held a reduction at all, folded or kept.
+   */
+  function tailsOf(app, doc, step, id) {
+    const out = [];
+    const keep = new Set(step.sankey.keep || []);
+    const seen = new Set();
+    for (let budget = app.NARROW_COLUMNS; budget <= app.OFFERED_COLUMNS; budget++) {
+      const rung = { id, step, doc };
+      const tiers = app.SANKEY.columns(step, rung, budget).filter((t) => !keep.has(t));
+      if (seen.has(tiers.join())) continue;
+      seen.add(tiers.join());
+      const halves = app.freshHalves(step, tiers);
+      const raw = { nodes: [], links: [] };
+      for (const h of halves) {
+        const half = app.filterLinks(doc, id, h.tiers, app.reaching(doc, id, h.nearIsSource, h.tiers));
+        raw.nodes.push(...half.nodes);
+        raw.links.push(...half.links);
+      }
+      const drawn = keep.size
+        ? app.sideOf(doc, rung, halves[0].tiers, halves[0].nearIsSource)
+        : app.SANKEY.shape(doc, rung, null, tiers);
+      const reduces = (l) => Boolean(l.contra) || l.value_cents < 0;
+      for (const tail of drawn.nodes.filter((n) => app.isAggregate(n.id))) {
+        const members = new Set(tail.folds);
+        const column = new Set(raw.nodes.filter((n) => n.tier === tail.tier).map((n) => n.id));
+        const ribbons = raw.links.filter((l) => members.has(l.source) || members.has(l.target));
+        out.push({
+          budget, tiers, tail, members: [...members],
+          reductions: ribbons.filter(reduces),
+          ranked: raw.links.some((l) => reduces(l) && (column.has(l.source) || column.has(l.target))),
+          folded: ribbons.reduce((s, l) => s + l.value_cents, 0),
+        });
+      }
+    }
+    return out;
+  }
+
+  for (const stem of STEMS) {
+    test(`${stem}: every capped tail at every offered budget folds no reduction`, async (t) => {
+      const app = (await loadApp({ config: CONFIG })).app;
+      const column = columnFixture(stem);
+      let tails = 0;
+      let members = 0;
+      let ranked = 0;
+      const folded = [];
+      for (const step of CONFIG.steps) {
+        const doc = app.scheduleOf(column, drawsFrom(step));
+        assert.ok(doc, `${stem} carries no schedule for step ${step.key}`);
+        for (const id of [...app.decomposable(step, doc)].sort()) {
+          for (const found of tailsOf(app, doc, step, id)) {
+            tails++;
+            members += found.members.length;
+            if (found.ranked) ranked++;
+            if (found.reductions.length) {
+              folded.push(`${stem} ${step.key} ${id} at ${found.budget} columns, tier ${found.tail.tier}: ` +
+                found.reductions.map((l) => `${l.source} -> ${l.target} ${l.value_cents}`).join(", "));
+            }
+          }
+        }
+      }
+      t.diagnostic(`${stem}: ${tails} capped tails over every opening at ${app.NARROW_COLUMNS}..${app.OFFERED_COLUMNS} columns, ` +
+        `${members} members folded, ${ranked} of the tails' columns ranked a reduction, ${folded.length} tails folded one`);
+      assert.ok(tails > 0, "no cap folded anything, so this walk holds nothing");
+      assert.ok(ranked > 0, "no capped column held a reduction, so this walk could not have folded one");
+      assert.deepEqual(folded, []);
+    });
+  }
+
+  // PLANTED: the lowest-ranked member of one tail has its ribbons turned into
+  // reductions, which leaves its rank where it was, and the walk above must
+  // name it. The diagnostic is what the page would then print: the tail's
+  // note, against the signed sum of the ribbons it folded.
+  test("the walk names a reduction the moment a cap folds one", async (t) => {
+    const app = (await loadApp({ config: CONFIG })).app;
+    const step = CONFIG.steps.find((s) => s.key === "revenue-category");
+    assert.ok(step, "the page declares no revenue-category step");
+    const doc = structuredClone(app.scheduleOf(columnFixture("fy2026-adopted"), drawsFrom(step)));
+    const id = "revenue/taxes/property";
+    assert.ok(app.decomposable(step, doc).has(id), `${step.key} does not open ${id}`);
+    const control = tailsOf(app, doc, step, id);
+    const before = control.find((f) => f.ranked && f.members.length);
+    assert.ok(before, `opening ${id} caps no column that holds a reduction`);
+    assert.equal(before.reductions.length, 0, "the unplanted tail folds a reduction, so the plant proves nothing");
+    const member = before.members[before.members.length - 1];
+    const ribbons = doc.links.filter((l) => l.source === member);
+    assert.ok(ribbons.length > 0, `${member} has no ribbon to plant on`);
+    for (const l of ribbons) {
+      l.value_cents = -l.value_cents;
+      l.contra = "printed as a reduction of Test";
+    }
+    const after = tailsOf(app, doc, step, id).find((f) => f.budget === before.budget);
+    assert.ok(after && after.members.includes(member), `${member} is no longer folded once planted`);
+    t.diagnostic(`planted on ${member}: the tail's note reads "${after.tail.source_note}" ` +
+      `where its folded ribbons sum to ${after.folded} cents; unplanted, ${before.folded}`);
+    // At least one: the half draws the member's ribbons to the opened node,
+    // not every ribbon the schedule gives it.
+    assert.ok(after.reductions.length > 0, "the planted reduction was folded and not named");
+    assert.ok(after.reductions.every((l) => l.source === member), "the walk named a reduction the plant did not make");
+  });
+});
+
 describe("a reduction read back off the chart on screen", () => {
   // windowFor takes a kept flank off the drawn chart, which markContra has
   // flipped; unmarkContra is what lets the flank be summed at its printed sign
