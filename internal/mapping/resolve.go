@@ -474,25 +474,6 @@ func (r *Resolver) readPart(rule *Rule, p *Part) ([]Value, []Omission, error) {
 	return values, Omissions(rule, p), nil
 }
 
-// canonicalRows returns the part's active rows paired with each one's index in
-// the rule's row list. Values and Omissions both index that list, so a caller
-// can lay them out together.
-//
-// It walks the rule's rows by position rather than pairing ActiveRows back by
-// identity: two skipped rows may share an identity on different pages, and
-// pairing would give one the other's index.
-func canonicalRows(rule *Rule, p *Part) ([]Row, []int) {
-	var active []Row
-	var idx []int
-	for i, row := range rule.Rows {
-		if row.OnPart(p) {
-			active = append(active, row)
-			idx = append(idx, i)
-		}
-	}
-	return active, idx
-}
-
 // Omissions is the cells a part declares the page leaves blank, in row order.
 // It reads the declaration alone, so a caller with no page in hand gets what
 // Values would, and internal/check reads its blanks from here and matches
@@ -517,7 +498,7 @@ func Omissions(rule *Rule, p *Part) []Omission {
 }
 
 func (r *Resolver) labelledValues(rule *Rule, p *Part, blk *block, guard *columnGuard) ([]Value, error) {
-	rows, rowIndex := canonicalRows(rule, p)
+	rows, rowIndex := rule.activeRows(p)
 	fail := func(field, msg, hint string) error {
 		return cmdutil.WithHint(&resolveError{DocID: r.file.DocID, RuleID: rule.ID,
 			Page: p.Page, Field: field, Msg: msg, Err: ErrNotFound}, hint)
@@ -911,7 +892,7 @@ func recognize(q Quantity, tok string) error {
 }
 
 func (r *Resolver) positionalValues(rule *Rule, p *Part, blk *block, guard *columnGuard) ([]Value, error) {
-	rows, rowIndex := canonicalRows(rule, p)
+	rows, rowIndex := rule.activeRows(p)
 	ncols := len(p.Columns)
 	// The marks are dropped here as on a labelled row: p81's first row and its
 	// subtotals print "$" detached from each figure, inside the block.

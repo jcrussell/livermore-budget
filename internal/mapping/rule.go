@@ -1394,21 +1394,36 @@ func (r *Rule) labelledPart(p *Part) *Part {
 }
 
 // ActiveRows returns the rule's rows this part prints, by Row.OnPart, in
-// order. This is the sequence a positional read of the part must line up
-// against.
+// order: the sequence a positional read of the part lines up against, and
+// the rows a labelled read matches in turn.
 //
 // The result is always a fresh slice. Returning r.Rows directly when every
 // row is on the part would alias the rule, so a caller that wrote through the
 // result would mutate the rule on some pages and not on others — a difference
 // that only shows up on some pages.
 func (r *Rule) ActiveRows(p *Part) []Row {
-	out := make([]Row, 0, len(r.Rows))
-	for _, row := range r.Rows {
+	rows, _ := r.activeRows(p)
+	return rows
+}
+
+// activeRows is ActiveRows paired with each row's index in r.Rows, which is
+// what a Value and an Omission carry as RowIndex. It is the one filter on
+// Row.OnPart, so the count expectedValues takes through ActiveRows and the
+// walk a read takes through the indexes cannot diverge.
+//
+// It walks r.Rows by position rather than pairing ActiveRows back by
+// identity: two skipped rows may share an identity on different pages, and
+// pairing would give one the other's index.
+func (r *Rule) activeRows(p *Part) ([]Row, []int) {
+	rows := make([]Row, 0, len(r.Rows))
+	idx := make([]int, 0, len(r.Rows))
+	for i, row := range r.Rows {
 		if row.OnPart(p) {
-			out = append(out, row)
+			rows = append(rows, row)
+			idx = append(idx, i)
 		}
 	}
-	return out
+	return rows, idx
 }
 
 // expectedValues is how many numbers a positional read of this part must find:

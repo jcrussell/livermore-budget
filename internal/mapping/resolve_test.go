@@ -917,12 +917,12 @@ func TestValuesReturnsCopies(t *testing.T) {
 	}
 }
 
-// TestCanonicalRowsIndexesByPositionNotIdentity: two skipped rows may share an
+// TestActiveRowsIndexByPositionNotIdentity: two skipped rows may share an
 // identity, and with page they may sit on different parts. Pairing a part's
 // rows with the rule's by identity gives the row on page 1 the index of its
 // namesake on page 2, and CheckSubtotals, keyed on RowIndex, then sums one row
 // twice and the other not at all.
-func TestCanonicalRowsIndexesByPositionNotIdentity(t *testing.T) {
+func TestActiveRowsIndexByPositionNotIdentity(t *testing.T) {
 	const src = `schema_version: 1
 doc_id: d
 rules:
@@ -951,9 +951,22 @@ rules:
 		{1, []int{0, 2}},
 		{2, []int{0, 1}},
 	} {
-		_, got := canonicalRows(ru, partOn(t, ru, tc.page))
+		p := partOn(t, ru, tc.page)
+		rows, got := ru.activeRows(p)
 		if diff := cmp.Diff(tc.want, got); diff != "" {
 			t.Errorf("page %d row indexes (-want +got):\n%s", tc.page, diff)
+		}
+		// One walk: the rows ActiveRows counts are the rows the indexes
+		// name, in the same order, so a read that consumes the page by the
+		// indexes consumes exactly what expectedValues counted.
+		if diff := cmp.Diff(ru.ActiveRows(p), rows); diff != "" {
+			t.Errorf("page %d ActiveRows differs from activeRows' rows (-want +got):\n%s", tc.page, diff)
+		}
+		for k, i := range got {
+			if diff := cmp.Diff(ru.Rows[i], rows[k]); diff != "" {
+				t.Errorf("page %d index %d names a row other than the %dth active one (-want +got):\n%s",
+					tc.page, i, k, diff)
+			}
 		}
 	}
 }
