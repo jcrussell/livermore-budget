@@ -274,6 +274,11 @@ describe("a switch that fails", () => {
         mutate: (c) => { for (const l of c.schedules.sankey.links) l.locators = [{ doc_id: DOC }]; } },
       { key: "links[].locators", mutate: (c) => { for (const l of c.schedules.sankey.links) delete l.locators; } },
       { key: "sources[].pages", mutate: (c) => { c.schedules.sankey.sources = [{ doc_id: DOC }]; } },
+      // A STEP schedule, not the spine's: the spine draws, and the first
+      // question asked of the fund-group step's document throws. Two of them,
+      // one every fund group asks for and one only Transfers In does.
+      { key: "schedules.fund-flows.nodes", mutate: (c) => { c.schedules["fund-flows"].nodes = null; } },
+      { key: "schedules.transfers-by-fund.links", mutate: (c) => { c.schedules["transfers-by-fund"].links = null; } },
     ];
     const split = [];
     const refused = [];
@@ -311,7 +316,10 @@ describe("a switch that fails", () => {
     // THE FOLD DEFAULTS NEITHER KEY. It reads fact_ids and locators off every
     // link it merges, so a column lacking either fails the draw and the page
     // says so with the first year still on it.
-    assert.deepEqual(refused, ["links[].fact_ids", "links[].locators[].pages", "links[].locators"]);
+    // A STEP SCHEDULE IS ASSEMBLED INSIDE THE ROLLBACK (askAffordances), so a
+    // malformed one is refused before a word of the new year is written.
+    assert.deepEqual(refused, ["links[].fact_ids", "links[].locators[].pages", "links[].locators",
+      "schedules.fund-flows.nodes", "schedules.transfers-by-fund.links"]);
     // The sources are first read at the pin, so a column lacking them draws.
     // Accepted: the client adds no shape check for a file the export cannot
     // write, and the pin is where the absence is met.

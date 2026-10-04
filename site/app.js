@@ -699,13 +699,35 @@ export async function stepDocument(step, from, superseded) {
 }
 
 /**
+ * Asks of every node of the chart on screen what the paints ask per mark
+ * and per paint -- whether it opens, and whether it expands -- so every step
+ * schedule those questions assemble, and every flank and decomposition they
+ * read, is met inside the caller's rollback rather than thrown from
+ * paintChartHint or render over a page already half repainted. Nothing is
+ * kept here: scheduleOf, decomposable and flankHolds memoise on the
+ * documents themselves, so the paints read what this asked.
+ *
+ * Called with `projection` already the chart being drawn, since the
+ * questions read it.
+ */
+export function askAffordances() {
+  if (!projection) return;
+  for (const n of projection.nodes) {
+    drillable(n);
+    expandable(n);
+  }
+}
+
+/**
  * Replaces the stack with `next` and repaints everything the shape decides,
  * or leaves the page exactly as it was and tells the reader why.
  *
- * Everything that can throw -- shape, lay-out, table rows -- runs in the try
- * while the page is still the reader's. The stack is swapped first because
- * shapeFor and layOut read it, and restored whole on a throw. Pin and
- * isolation are cleared because a drill can remove the node they name.
+ * Everything that can throw on a served document -- shape, lay-out, table
+ * rows, and what the paints ask of the other schedules (askAffordances) --
+ * runs in the try while the page is still the reader's. The stack and the
+ * chart are swapped first because shapeFor, layOut and the questions read
+ * them, and restored whole on a throw. Pin and isolation are cleared because
+ * a drill can remove the node they name.
  *
  * @param {Rung[]} next
  * @param {string} [refused] the banner's opening words when the redraw is refused
@@ -720,6 +742,7 @@ export function redrawStack(next, refused = "That could not be opened") {
   const popped = was.length > next.length ? was[next.length].id : "";
   const laidWas = laidNodes;
   const groupsWas = groupIndex;
+  const chartWas = projection;
   drilled = next;
   let drawn;
   let laid;
@@ -736,17 +759,19 @@ export function redrawStack(next, refused = "That could not be opened") {
     // Inside the try: building a row is the last step of a draw that can
     // throw on a document.
     rows = tableRows(drawn);
+    projection = drawn;
+    askAffordances();
   } catch (e) {
     // Back to where the reader was: a throw here is a fault in the view's
     // declaration, not in the reader's click.
     drilled = was;
     laidNodes = laidWas;
     groupIndex = groupsWas;
+    projection = chartWas;
     fail(refused + ": " + (e instanceof Error ? e.message : String(e)));
     return false;
   }
   clearRefusal();
-  projection = drawn;
   pinned = null;
   isolated = "";
   resetDetail();
@@ -2162,26 +2187,28 @@ export async function showYear(year) {
   const doc = selectSchedule(loaded, CONFIG.primary);
   if (!doc) return FAILED;
 
-  // Swapped because shapeFor reads them; swapped back on a throw.
-  const was = { column, fetched, drilled, laidNodes, groupIndex };
+  // Swapped because shapeFor and askAffordances read them; swapped back on a
+  // throw, so nothing below writes a word of this year over the last one's
+  // chart.
+  const was = { column, fetched, drilled, laidNodes, groupIndex, projection };
   column = loaded;
   fetched = doc;
   drilled = [];
-  let drawn;
   let laid;
   let rows;
   try {
-    drawn = shapeFor(doc);
+    // The folded document is the one the page describes; the fold unions the
+    // fact ids it merges, so nothing is lost.
+    const drawn = shapeFor(doc);
     laid = layOut(drawn);
     rows = tableRows(drawn);
+    projection = drawn;
+    askAffordances();
   } catch (e) {
-    ({ column, fetched, drilled, laidNodes, groupIndex } = was);
+    ({ column, fetched, drilled, laidNodes, groupIndex, projection } = was);
     throw e;
   }
 
-  // The folded document is the one the page describes; the fold unions the
-  // fact ids it merges, so nothing is lost.
-  projection = drawn;
   clearRefusal();
   // A pin and an isolation belong to the year they were made in.
   pinned = null;

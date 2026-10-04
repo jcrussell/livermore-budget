@@ -834,6 +834,49 @@ describe("the refusal a drill can still meet", () => {
     assert.equal(fetch.asked.length, asked);
   });
 
+  test("a rung whose marks ask a malformed step schedule whether they open is refused whole, not after the breadcrumb is painted", async (t) => {
+    // The fund-group rung draws fund-flows, which is well formed; a non-General
+    // group's funds ask the fund-departments step whether they open, and that
+    // step's schedule is served malformed. schema/column.schema.json refuses
+    // such a file at the write, so it is planted.
+    const GROUP = "fund-group/debt-service";
+    const newest = YEARS[YEARS.length - 1];
+    const schedule = stepByKey(PAGE, "fund-departments").projection;
+    const column = structuredClone(columnFixture(newest.path.replace(/\.json$/, "")));
+    assert.ok(Object.hasOwn(column.schedules, schedule));
+    column.schedules[schedule].nodes = null;
+    const { app, document } = await bootedApp({ plan: { [newest.path]: { doc: column } } });
+    assert.equal(app.shownYear.stem, newest.stem);
+    const before = words(app, document);
+    const chart = app.projection;
+    const marks = () => document.querySelectorAll("#chart g.node").length;
+    const drawnMarks = marks();
+    let outcome = "";
+    let rejected = "";
+    try {
+      outcome = await app.drillDown(GROUP);
+    } catch (e) {
+      rejected = String(e);
+    }
+    await settle();
+    const after = words(app, document);
+    const banners = refusals(document).map((b) => b.textContent);
+    t.diagnostic(`drillDown came to "${outcome}"${rejected ? ` and rejected with ${rejected}` : ""}; ` +
+      `${after.depth} rung(s), breadcrumb ${after.crumbHidden ? "hidden" : "shown"}, ${marks()} marks against ${drawnMarks}; ` +
+      `${banners.length} banner(s)${banners.length ? `, reading "${banners[0].slice(0, 90)}..."` : ""}`);
+    assert.equal(rejected, "", "the refusal reached nobody but the last-resort catch");
+    assert.equal(outcome, "failed");
+    assert.equal(after.depth, 0);
+    assert.equal(after.crumbHidden, true);
+    assert.equal(after.drawnIsYears, true);
+    assert.equal(app.projection, chart);
+    assert.equal(marks(), drawnMarks);
+    assert.equal(after.counts, before.counts);
+    assert.equal(after.title, before.title);
+    assert.equal(after.hint, before.hint);
+    assert.equal(banners.length, 1);
+  });
+
   // THE GAP IS HELD TO ITS LICENCE, and a licence at another figure is a
   // refusal that leaves the chart it was opened from: the one arm that keeps
   // two documents drifting apart from drawing as a balanced chart.
