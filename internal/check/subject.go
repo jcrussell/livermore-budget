@@ -310,6 +310,36 @@ type Subject struct {
 	// structure.BudgetBookResidue; a subject built by hand carries only what
 	// its builder sets, and nil means none.
 	Residue []structure.Residue
+	// Exceptions is every cell the documents print apart from the cut it should
+	// decompose, pinned on both sides to a printed residual. The lattice check,
+	// the peer check and revenue-lines-tie-to-their-categories read it. [Load]
+	// fills it from structure.BudgetBookExceptions; a subject built by hand
+	// carries only what its builder sets, and nil means none.
+	Exceptions []structure.Exception
+	// Splits is every cut the documents print as the sum of parts rather than
+	// against a coarser cut. [Load] fills it from structure.BudgetBookSplits;
+	// nil means none.
+	Splits []structure.Split
+	// Restatements is every residue the documents print as a restatement of a
+	// cut outside the reference, held to it line by line against Residue.
+	// [Load] fills it from structure.BudgetBookRestatements; nil means none.
+	Restatements []structure.Restatement
+	// Identities is every cell two cuts at one level both print, with the
+	// reading each takes. [Load] fills it from structure.BudgetBookIdentities;
+	// nil means none.
+	Identities []structure.Identity
+	// UncheckedDocuments is every projection shape no structural check reads
+	// yet, by projection name. [Load] fills it from uncheckedDocuments; nil
+	// means none.
+	UncheckedDocuments map[string]string
+	// IncompleteSeries is every trends series the documents legitimately leave
+	// short a column, by series id. [Load] fills it from incompleteSeries; nil
+	// means none.
+	IncompleteSeries map[string]string
+	// Vacancies is every check declared to have nothing to look at over this
+	// corpus, by check id. [Run] settles each against the verdict its check
+	// reached. [Load] fills it from declaredVacuous; nil means none.
+	Vacancies map[string]vacancy
 }
 
 // spine is the citywide spine as `fisc export` publishes it: for every column
@@ -481,6 +511,13 @@ func Load(o LoadOptions) (*Subject, error) {
 	s.Published = project.PublishedDocuments()
 	s.BalanceExceptions = structure.BalanceExceptions()
 	s.Residue = structure.BudgetBookResidue()
+	s.Exceptions = structure.BudgetBookExceptions()
+	s.Splits = structure.BudgetBookSplits()
+	s.Restatements = structure.BudgetBookRestatements()
+	s.Identities = structure.BudgetBookIdentities()
+	s.UncheckedDocuments = uncheckedDocuments
+	s.IncompleteSeries = incompleteSeries
+	s.Vacancies = declaredVacuous
 	registry := project.Registry(reg)
 	if s.Projections, s.ProjectionFailures, err = buildProjections(
 		registry, s.Facts, o.Version); err != nil {

@@ -26,7 +26,8 @@ type vacancy struct {
 }
 
 // declaredVacuous is the whole list, and every entry earns its place by naming
-// what would have to exist for the check to have a subject.
+// what would have to exist for the check to have a subject. [Run] reads it off
+// Subject.Vacancies, which [Load] fills from here.
 var declaredVacuous = map[string]vacancy{}
 
 // declaration is one declared vacancy and what its check actually reported on
@@ -91,27 +92,27 @@ func (d declaration) StaleReason() string {
 		"needs excusing", d.Status, d.Bead)
 }
 
-// resolveDeclarations settles every declaration against what this run found,
-// and lists the vacuous checks no declaration covers.
+// resolveDeclarations settles every declaration in declared against what this
+// run found, and lists the vacuous checks no declaration covers.
 //
 // Called once after every check has run, because it is a claim about the report
 // rather than about the corpus and no Check could reach it: a Check is handed a
 // Subject, not its siblings' verdicts.
-func (r *Report) resolveDeclarations() {
+func (r *Report) resolveDeclarations(declared map[string]vacancy) {
 	status := make(map[string]Status, len(r.Results))
 	for _, res := range r.Results {
 		status[res.CheckID] = res.Status
 	}
 
-	ids := make([]string, 0, len(declaredVacuous))
-	for id := range declaredVacuous {
+	ids := make([]string, 0, len(declared))
+	for id := range declared {
 		ids = append(ids, id)
 	}
 	sort.Strings(ids)
 
 	r.Declared = make([]declaration, 0, len(ids))
 	for _, id := range ids {
-		v := declaredVacuous[id]
+		v := declared[id]
 		r.Declared = append(r.Declared, declaration{
 			CheckID: id, Reason: v.reason, Bead: v.bead, Status: status[id],
 		})
@@ -122,7 +123,7 @@ func (r *Report) resolveDeclarations() {
 		if res.Status != StatusVacuous {
 			continue
 		}
-		if _, ok := declaredVacuous[res.CheckID]; !ok {
+		if _, ok := declared[res.CheckID]; !ok {
 			r.Undeclared = append(r.Undeclared, res.CheckID)
 		}
 	}

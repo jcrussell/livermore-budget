@@ -108,6 +108,10 @@ func lineTieSubject(t *testing.T) *Subject {
 			drill(project.Column{FiscalYear: testYear, Basis: testBasis}),
 			drill(project.Column{FiscalYear: 2024, Basis: mapping.BasisActual}),
 		},
+		// The fixture's General Fund transfer in is the cell the tree's
+		// exception holds apart (generalTransferInException), so the subject
+		// carries the tree's exceptions as Load would.
+		Exceptions: structure.BudgetBookExceptions(),
 	}
 }
 

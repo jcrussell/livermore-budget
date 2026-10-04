@@ -321,7 +321,7 @@ func TestTheCutsCheckHoldsTheStoreToEveryCut(t *testing.T) {
 	}
 
 	t.Run("an exception ValidateExceptions refuses is reported", func(t *testing.T) {
-		withExceptions(t, append(structure.BudgetBookExceptions(), structure.Exception{
+		withExceptions(t, s, append(structure.BudgetBookExceptions(), structure.Exception{
 			Name: "invalid", Cut: "revenue-detail", Against: "spine", At: structure.LevelFundGroupByCategory,
 		}))
 		res := resultFor(t, runOne(t, s, &cutsTieAlongTheLattice{}), "cuts-tie-along-the-lattice")
@@ -334,7 +334,7 @@ func TestTheCutsCheckHoldsTheStoreToEveryCut(t *testing.T) {
 		pin := structure.Pin{Year: 2026, Basis: "adopted",
 			Coords: map[structure.Axis]string{structure.AxisCategory: "transfers/in"},
 			Cut:    structure.Sum{Cents: 1, Present: true}, Against: structure.Sum{Cents: 2, Present: true}}
-		withExceptions(t, append(structure.BudgetBookExceptions(), structure.Exception{
+		withExceptions(t, s, append(structure.BudgetBookExceptions(), structure.Exception{
 			Name: "inert", Cut: "revenue-detail", Against: "departmentwide", At: structure.LevelCategory,
 			Cells: []structure.Pin{pin}, Residual: 1, Printed: "nowhere", Reason: "a plant", Bead: "none",
 		}))
@@ -346,12 +346,13 @@ func TestTheCutsCheckHoldsTheStoreToEveryCut(t *testing.T) {
 	})
 }
 
-// withExceptions declares exceptions in place of the tree's for one test.
-func withExceptions(t *testing.T, exceptions []structure.Exception) {
+// withExceptions declares exceptions on s in place of the ones it carries, for
+// one test.
+func withExceptions(t *testing.T, s *Subject, exceptions []structure.Exception) {
 	t.Helper()
-	prev := budgetBookExceptions
-	budgetBookExceptions = func() []structure.Exception { return exceptions }
-	t.Cleanup(func() { budgetBookExceptions = prev })
+	prev := s.Exceptions
+	s.Exceptions = exceptions
+	t.Cleanup(func() { s.Exceptions = prev })
 }
 
 // TestTheDepartmentSchedulesTieInEveryColumn plants in the actual and revised

@@ -249,7 +249,7 @@ func TestAStaleIncompleteSeriesDeclarationIsCaught(t *testing.T) {
 	id := s.Projections[0].Trends.Series[0].SeriesID
 
 	t.Run("the series is complete after all", func(t *testing.T) {
-		withIncompleteSeries(t, map[string]string{id: "declared, but nothing is missing"})
+		withIncompleteSeries(t, s, map[string]string{id: "declared, but nothing is missing"})
 		res, err := (&trendSeriesAreComplete{}).Run(t.Context(), s)
 		if err != nil {
 			t.Fatalf("Run: %v", err)
@@ -262,7 +262,7 @@ func TestAStaleIncompleteSeriesDeclarationIsCaught(t *testing.T) {
 	})
 
 	t.Run("no such series", func(t *testing.T) {
-		withIncompleteSeries(t, map[string]string{"fisc-s-000000000000": "typo'd or removed"})
+		withIncompleteSeries(t, s, map[string]string{"fisc-s-000000000000": "typo'd or removed"})
 		res, err := (&trendSeriesAreComplete{}).Run(t.Context(), s)
 		if err != nil {
 			t.Fatalf("Run: %v", err)
@@ -284,13 +284,13 @@ func TestIncompleteSeriesIsEmpty(t *testing.T) {
 	}
 }
 
-// withIncompleteSeries swaps the declaration map for one test and restores it,
-// so a table of cases cannot leak into the next.
-func withIncompleteSeries(t *testing.T, m map[string]string) {
+// withIncompleteSeries declares series on s in place of the ones it carries,
+// for one test, so a table of cases cannot leak into the next.
+func withIncompleteSeries(t *testing.T, s *Subject, m map[string]string) {
 	t.Helper()
-	prev := incompleteSeries
-	incompleteSeries = m
-	t.Cleanup(func() { incompleteSeries = prev })
+	prev := s.IncompleteSeries
+	s.IncompleteSeries = m
+	t.Cleanup(func() { s.IncompleteSeries = prev })
 }
 
 func runTrendPoints(t *testing.T, s *Subject) Result {

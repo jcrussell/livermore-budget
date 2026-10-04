@@ -338,19 +338,46 @@ func TestLoadWiresOneResolverPerRuleFile(t *testing.T) {
 	}
 }
 
-// TestLoadCarriesTheTreesBalanceExceptions: Load is the one constructor
-// `fisc verify` runs, so an exception the tree declares reaches both balance
-// checks through it or not at all.
-func TestLoadCarriesTheTreesBalanceExceptions(t *testing.T) {
+// TestLoadCarriesTheTreesDeclarations: Load is the one constructor `fisc
+// verify` runs, so a declaration the tree makes reaches the checks through it
+// or not at all. Each field is held to the producer's own list, so a field
+// Load stops filling, or fills from a second spelling, is the diff.
+//
+// A hand-built subject is the other half: it carries only what its builder
+// sets, and the checks that read these fields see none.
+func TestLoadCarriesTheTreesDeclarations(t *testing.T) {
 	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	if len(s.BalanceExceptions) == 0 {
-		t.Fatal("the subject carries no balance exception")
+	for _, tc := range []struct {
+		field     string
+		tree, got any
+	}{
+		{"BalanceExceptions", structure.BalanceExceptions(), s.BalanceExceptions},
+		{"Residue", structure.BudgetBookResidue(), s.Residue},
+		{"Exceptions", structure.BudgetBookExceptions(), s.Exceptions},
+		{"Splits", structure.BudgetBookSplits(), s.Splits},
+		{"Restatements", structure.BudgetBookRestatements(), s.Restatements},
+		{"Identities", structure.BudgetBookIdentities(), s.Identities},
+		{"UncheckedDocuments", uncheckedDocuments, s.UncheckedDocuments},
+		{"IncompleteSeries", incompleteSeries, s.IncompleteSeries},
+		{"Vacancies", declaredVacuous, s.Vacancies},
+	} {
+		if diff := cmp.Diff(tc.tree, tc.got, cmp.AllowUnexported(vacancy{})); diff != "" {
+			t.Errorf("%s (-tree +subject):\n%s", tc.field, diff)
+		}
 	}
-	if diff := cmp.Diff(structure.BalanceExceptions(), s.BalanceExceptions); diff != "" {
-		t.Errorf("balance exceptions (-tree +subject):\n%s", diff)
+	// The tree declares at least one of each list, so a subject carrying none
+	// is a subject Load did not fill rather than a tree with nothing to say.
+	for field, n := range map[string]int{
+		"BalanceExceptions": len(s.BalanceExceptions), "Residue": len(s.Residue),
+		"Exceptions": len(s.Exceptions), "Splits": len(s.Splits),
+		"Restatements": len(s.Restatements), "Identities": len(s.Identities),
+	} {
+		if n == 0 {
+			t.Errorf("the subject carries no %s", field)
+		}
 	}
 }
 

@@ -34,14 +34,10 @@ func (*peersOverlapOnlyByDeclaredIdentity) Description() string {
 		"whose two readings agree to the cent, and every declared identity covers a cell"
 }
 
-// budgetBookIdentities is a seam so a test can declare an identity the tree
-// does not.
-var budgetBookIdentities = structure.BudgetBookIdentities
-
 func (*peersOverlapOnlyByDeclaredIdentity) Run(_ context.Context, s *Subject) (Result, error) {
 	cuts := structure.AllCuts()
-	identities := budgetBookIdentities()
-	exceptions := budgetBookExceptions()
+	identities := s.Identities
+	exceptions := s.Exceptions
 
 	var findings []Finding
 	if err := structure.ValidateIdentities(cuts, identities); err != nil {

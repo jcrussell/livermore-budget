@@ -125,7 +125,7 @@ func (c *revenueLinesTieToTheirCategories) Run(_ context.Context, s *Subject) (R
 		return Result{}, err
 	}
 	reconcile, unmatched := reconciledColumns(detail, spine)
-	exempt, notes, exceptionFindings := lineExceptions(detail, spine, reconcile)
+	exempt, notes, exceptionFindings := lineExceptions(s.Exceptions, detail, spine, reconcile)
 	findings = append(findings, exceptionFindings...)
 
 	cmp := compareCells(detail, spine, reconcile, project.FundFlowsProjection, exempt)
@@ -228,14 +228,14 @@ func inflowCategory(byID map[string]project.Node, source string) (string, bool) 
 // cuts-tie-along-the-lattice uses, shared rather than restated. This check's
 // own arm refuses one the drill-down draws a link for; whether the spine's
 // figure matches the pin is the containment check's.
-func lineExceptions(detail, spine map[structure.Key]structure.Sum,
+func lineExceptions(exceptions []structure.Exception, detail, spine map[structure.Key]structure.Sum,
 	reconcile map[string]bool) (func(structure.Key) bool, []string, []Finding) {
 
 	var notes []string
 	var findings []Finding
 	exempted := map[structure.Key]bool{}
 
-	for _, e := range budgetBookExceptions() {
+	for _, e := range exceptions {
 		if e.Cut != structure.CutRevenueDetail || e.Against != structure.CutSpine || e.At != spineGrain {
 			continue
 		}

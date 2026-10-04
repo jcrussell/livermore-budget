@@ -72,9 +72,9 @@ func TestEveryDeclarationCarriesItsReasonAndItsBead(t *testing.T) {
 // point in one test: --strict stops being a gate on how much is mapped and
 // becomes a gate on whether anyone has looked.
 func TestADeclaredVacancyPassesStrictAndAnUndeclaredOneDoesNot(t *testing.T) {
-	declared, _ := testVacancy(t)
+	declared, s := testVacancy(t)
 
-	rep := run(t, nil, ReportOptions{Strict: true}, passed("a"), vacant(declared))
+	rep := run(t, s, ReportOptions{Strict: true}, passed("a"), vacant(declared))
 	if rep.Counts.Vacuous != 1 {
 		t.Fatalf("vacuous count = %d, want 1; a declaration must not change the "+
 			"verdict, only whether it fails the run", rep.Counts.Vacuous)
@@ -86,7 +86,7 @@ func TestADeclaredVacancyPassesStrictAndAnUndeclaredOneDoesNot(t *testing.T) {
 		t.Error("Failed() = true under --strict for a vacancy that is declared")
 	}
 
-	rep = run(t, nil, ReportOptions{Strict: true}, passed("a"), vacant("nothing-declares-this"))
+	rep = run(t, s, ReportOptions{Strict: true}, passed("a"), vacant("nothing-declares-this"))
 	if !slices.Contains(rep.Undeclared, "nothing-declares-this") {
 		t.Errorf("Undeclared = %v, want it to name the undeclared check", rep.Undeclared)
 	}
@@ -96,7 +96,7 @@ func TestADeclaredVacancyPassesStrictAndAnUndeclaredOneDoesNot(t *testing.T) {
 	}
 	// And without --strict it is reported and tolerated, which is the behaviour
 	// that keeps the default gate usable at 10% coverage.
-	rep = run(t, nil, ReportOptions{}, passed("a"), vacant("nothing-declares-this"))
+	rep = run(t, s, ReportOptions{}, passed("a"), vacant("nothing-declares-this"))
 	if rep.Failed() {
 		t.Error("Failed() = true without --strict for an undeclared vacancy")
 	}
@@ -111,12 +111,12 @@ func TestADeclaredVacancyPassesStrictAndAnUndeclaredOneDoesNot(t *testing.T) {
 // should pass on one -- otherwise the entry outlives the work it was waiting
 // for, which is exactly the failure mode a declaration is supposed to prevent.
 func TestAStaleDeclarationFailsWithOrWithoutStrict(t *testing.T) {
-	declared, _ := testVacancy(t)
+	declared, s := testVacancy(t)
 
 	for _, strict := range []bool{false, true} {
 		// The declared check now PASSES: the work landed and the entry did not
 		// go with it.
-		rep := run(t, nil, ReportOptions{Strict: strict}, passed(declared))
+		rep := run(t, s, ReportOptions{Strict: strict}, passed(declared))
 		stale := rep.StaleDeclarations()
 		if len(stale) != 1 || stale[0].CheckID != declared {
 			t.Fatalf("strict=%v: StaleDeclarations() = %v, want just %s",
@@ -129,13 +129,13 @@ func TestAStaleDeclarationFailsWithOrWithoutStrict(t *testing.T) {
 		if got := stale[0].StaleReason(); !strings.Contains(got, "remove the declaration") {
 			t.Errorf("strict=%v: stale reason %q does not say to remove it", strict, got)
 		}
-		if !strings.Contains(stale[0].StaleReason(), declaredVacuous[declared].bead) {
+		if !strings.Contains(stale[0].StaleReason(), s.Vacancies[declared].bead) {
 			t.Errorf("strict=%v: stale reason does not name the bead that landed", strict)
 		}
 	}
 
 	// A run that simply did not include the check is NOT stale.
-	rep := run(t, nil, ReportOptions{Strict: true}, passed("a"))
+	rep := run(t, s, ReportOptions{Strict: true}, passed("a"))
 	if len(rep.StaleDeclarations()) != 0 {
 		t.Errorf("StaleDeclarations() = %v for a run that held none of the declared "+
 			"checks; a subset run says nothing about a declaration",
@@ -209,16 +209,16 @@ func TestTheCommittedCorpusIsStrictClean(t *testing.T) {
 // A genuine error still fails the run. That is Counts.Error's job in Failed(),
 // and it says the checker could not tell rather than claiming a bead landed.
 func TestADeclarationSurvivesACheckThatReachedNoVerdict(t *testing.T) {
-	declared, _ := testVacancy(t)
+	declared, s := testVacancy(t)
 
 	t.Run("errored", func(t *testing.T) {
 		broke := &fake{id: declared, err: errors.New("the manifest is unreadable")}
-		rep := run(t, nil, ReportOptions{Strict: true}, broke)
+		rep := run(t, s, ReportOptions{Strict: true}, broke)
 
 		if got := rep.StaleDeclarations(); len(got) != 0 {
 			t.Errorf("StaleDeclarations() = %v for a check that errored; an error is "+
 				"not a verdict and says nothing about whether %s landed",
-				got, declaredVacuous[declared].bead)
+				got, s.Vacancies[declared].bead)
 		}
 		// It still fails -- through the arm that describes what happened.
 		if rep.Counts.Error != 1 {
@@ -232,7 +232,7 @@ func TestADeclarationSurvivesACheckThatReachedNoVerdict(t *testing.T) {
 	t.Run("skipped", func(t *testing.T) {
 		gated := &fake{id: declared, full: true,
 			res: Result{Status: StatusVacuous, Summary: "nothing to look at"}}
-		rep := run(t, nil, ReportOptions{Strict: true}, gated)
+		rep := run(t, s, ReportOptions{Strict: true}, gated)
 
 		if got := rep.StaleDeclarations(); len(got) != 0 {
 			t.Errorf("StaleDeclarations() = %v for a check that needed --full and did "+
@@ -247,7 +247,7 @@ func TestADeclarationSurvivesACheckThatReachedNoVerdict(t *testing.T) {
 	// And the verdicts that ARE verdicts still go stale, so the guard above is
 	// a whitelist rather than a hole.
 	for _, c := range []*fake{passed(declared), failed(declared)} {
-		rep := run(t, nil, ReportOptions{}, c)
+		rep := run(t, s, ReportOptions{}, c)
 		if len(rep.StaleDeclarations()) != 1 {
 			t.Errorf("%s: StaleDeclarations() = %v, want the declaration to be stale",
 				c.res.Status, rep.StaleDeclarations())
@@ -255,25 +255,12 @@ func TestADeclarationSurvivesACheckThatReachedNoVerdict(t *testing.T) {
 	}
 }
 
-// withDeclaredVacancy declares one vacancy for the duration of a test. A case
-// about the mechanism must not borrow a live declaration: it would retire with
-// the last thing the tree excuses.
-func withDeclaredVacancy(t *testing.T, id string, v vacancy) {
-	t.Helper()
-	prev := declaredVacuous
-	next := make(map[string]vacancy, len(prev)+1)
-	for k, val := range prev {
-		next[k] = val
-	}
-	next[id] = v
-	declaredVacuous = next
-	t.Cleanup(func() { declaredVacuous = prev })
-}
-
-// testVacancy is the declaration the cases below install. The id is a real
-// check, because Declaration.Ran distinguishes "this run had no such check"
-// from a stale entry and a made-up id would exercise the wrong arm.
-func testVacancy(t *testing.T) (string, vacancy) {
+// testVacancy is the one declaration the cases below run over, on a subject
+// carrying nothing else. A case about the mechanism must not borrow a live
+// declaration: it would retire with the last thing the tree excuses. The id is
+// a real check, because Declaration.Ran distinguishes "this run had no such
+// check" from a stale entry and a made-up id would exercise the wrong arm.
+func testVacancy(t *testing.T) (string, *Subject) {
 	t.Helper()
 	const id = "transfer-legs-pair"
 	// Not a fisc- id: `make beadrefs` refuses one naming no bead, and the
@@ -283,6 +270,5 @@ func testVacancy(t *testing.T) (string, vacancy) {
 		reason: "a fixture declaration, installed by the test that drives this mechanism " +
 			"rather than borrowed from the tree",
 	}
-	withDeclaredVacancy(t, id, v)
-	return id, v
+	return id, &Subject{Vacancies: map[string]vacancy{id: v}}
 }

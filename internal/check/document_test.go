@@ -278,15 +278,6 @@ func TestUncheckedDocumentsIsEmpty(t *testing.T) {
 	}
 }
 
-// withUncheckedDocuments swaps the declaration map for one test and restores it,
-// so a table of cases cannot leak into the next.
-func withUncheckedDocuments(t *testing.T, m map[string]string) {
-	t.Helper()
-	prev := uncheckedDocuments
-	uncheckedDocuments = m
-	t.Cleanup(func() { uncheckedDocuments = prev })
-}
-
 // TestADeclaredDocumentIsNotCountedAsExamined is the defect the missing test
 // let stand (fisc-rwo).
 //
@@ -296,8 +287,10 @@ func withUncheckedDocuments(t *testing.T, m map[string]string) {
 // check's own doc comment calls the one thing this package exists to prevent.
 // The `nothing:` branch was unreachable while any declaration was live.
 func TestADeclaredDocumentIsNotCountedAsExamined(t *testing.T) {
-	withUncheckedDocuments(t, map[string]string{"blob": "no checks yet (bead id goes here)"})
-	s := &Subject{Projections: []projection{{Name: "blob"}}}
+	s := &Subject{
+		Projections:        []projection{{Name: "blob"}},
+		UncheckedDocuments: map[string]string{"blob": "no checks yet (bead id goes here)"},
+	}
 
 	res, err := (&documentsAreChecked{}).Run(t.Context(), s)
 	if err != nil {
@@ -344,11 +337,13 @@ func TestAnUnreadProjectionIsInItsOwnDenominator(t *testing.T) {
 // invisible, because a growing exemption read as a shrinking one is how a
 // document stays unchecked forever.
 func TestADeclaredDocumentDoesNotHideAnExaminedOne(t *testing.T) {
-	withUncheckedDocuments(t, map[string]string{"blob": "no checks yet (bead id goes here)"})
-	s := &Subject{Projections: []projection{
-		{Name: "sankey", Graph: &project.Document{}},
-		{Name: "blob"},
-	}}
+	s := &Subject{
+		Projections: []projection{
+			{Name: "sankey", Graph: &project.Document{}},
+			{Name: "blob"},
+		},
+		UncheckedDocuments: map[string]string{"blob": "no checks yet (bead id goes here)"},
+	}
 
 	res, err := (&documentsAreChecked{}).Run(t.Context(), s)
 	if err != nil {
@@ -373,8 +368,10 @@ func TestADeclaredDocumentDoesNotHideAnExaminedOne(t *testing.T) {
 // for a graph that does not exist.
 func TestAStaleUncheckedDocumentDeclarationIsCaught(t *testing.T) {
 	t.Run("no projection of that name", func(t *testing.T) {
-		withUncheckedDocuments(t, map[string]string{"gone": "removed or typo'd"})
-		s := &Subject{Projections: []projection{{Name: "sankey", Graph: &project.Document{}}}}
+		s := &Subject{
+			Projections:        []projection{{Name: "sankey", Graph: &project.Document{}}},
+			UncheckedDocuments: map[string]string{"gone": "removed or typo'd"},
+		}
 
 		res, err := (&documentsAreChecked{}).Run(t.Context(), s)
 		if err != nil {
@@ -388,10 +385,12 @@ func TestAStaleUncheckedDocumentDeclarationIsCaught(t *testing.T) {
 	})
 
 	t.Run("the projection now carries a series", func(t *testing.T) {
-		withUncheckedDocuments(t, map[string]string{"revenue-trends": "no checks yet"})
-		s := &Subject{Projections: []projection{
-			{Name: "revenue-trends", Trends: &project.TrendsDocument{}},
-		}}
+		s := &Subject{
+			Projections: []projection{
+				{Name: "revenue-trends", Trends: &project.TrendsDocument{}},
+			},
+			UncheckedDocuments: map[string]string{"revenue-trends": "no checks yet"},
+		}
 
 		res, err := (&documentsAreChecked{}).Run(t.Context(), s)
 		if err != nil {

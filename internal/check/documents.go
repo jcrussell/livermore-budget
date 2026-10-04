@@ -22,7 +22,8 @@ import (
 // stays unchecked forever. staleDocumentDeclarations is the branch that refuses
 // the second, by failing an entry that no longer names a built projection.
 //
-// It is empty, and that is the state to keep it in.
+// It is empty, and that is the state to keep it in. The check reads it off
+// Subject.UncheckedDocuments, which [Load] fills from here.
 var uncheckedDocuments = map[string]string{}
 
 // documentsAreChecked asserts every built projection is one some check reads.
@@ -70,7 +71,7 @@ func (*documentsAreChecked) Run(_ context.Context, s *Subject) (Result, error) {
 			shapes[shape]++
 			continue
 		}
-		if _, ok := uncheckedDocuments[p.Name]; ok {
+		if _, ok := s.UncheckedDocuments[p.Name]; ok {
 			declared[p.Name]++
 			continue
 		}
@@ -124,7 +125,7 @@ func (*documentsAreChecked) Run(_ context.Context, s *Subject) (Result, error) {
 		}
 		built[p.Name][shape] = true
 	}
-	for _, name := range sortedStrings(uncheckedDocuments) {
+	for _, name := range sortedStrings(s.UncheckedDocuments) {
 		if declared[name] > 0 {
 			continue
 		}
@@ -156,7 +157,7 @@ func (*documentsAreChecked) Run(_ context.Context, s *Subject) (Result, error) {
 	if len(declared) > 0 {
 		held = fmt.Sprintf("%d %s structurally checked (%s), plus %s declared unchecked",
 			checked, cmdutil.Plural(checked, "projection", "projections"),
-			describeShapes(shapes), describeUnchecked(declared))
+			describeShapes(shapes), describeUnchecked(s.UncheckedDocuments, declared))
 	}
 	return conclusion{
 		// COUNTED OVER WHAT WAS EXAMINED, which is narrower than what was built
@@ -227,10 +228,10 @@ func describeShapes(byShape map[string]int) string {
 
 // describeUnchecked renders the declared-unchecked projections with their
 // reasons: a count alone would let a growing exemption pass unread.
-func describeUnchecked(byName map[string]int) string {
+func describeUnchecked(unchecked map[string]string, byName map[string]int) string {
 	out := make([]string, 0, len(byName))
 	for _, name := range sortedStrings(byName) {
-		out = append(out, fmt.Sprintf("%d of %q (%s)", byName[name], name, uncheckedDocuments[name]))
+		out = append(out, fmt.Sprintf("%d of %q (%s)", byName[name], name, unchecked[name]))
 	}
 	return strings.Join(out, ", ")
 }

@@ -213,7 +213,8 @@ func fyBasis(f fact.Fact) string { return fact.ColumnLabel(f.FiscalYear, f.Basis
 // see, because a missing point publishes nothing to disagree with.
 //
 // The key is the series id, because that is what identifies a printed row across
-// columns and is recomputable by anyone holding facts.jsonl.
+// columns and is recomputable by anyone holding facts.jsonl. The check reads it
+// off Subject.IncompleteSeries, which [Load] fills from here.
 var incompleteSeries = map[string]string{}
 
 // trendSeriesAreComplete asserts every series has a point in every column.
@@ -267,7 +268,7 @@ func (*trendSeriesAreComplete) Run(_ context.Context, s *Subject) (Result, error
 				// below, by the declaration exempting nothing.
 				continue
 			}
-			if _, ok := incompleteSeries[sr.SeriesID]; ok {
+			if _, ok := s.IncompleteSeries[sr.SeriesID]; ok {
 				declared[sr.SeriesID]++
 				continue
 			}
@@ -278,12 +279,12 @@ func (*trendSeriesAreComplete) Run(_ context.Context, s *Subject) (Result, error
 				p.Name, sr.Label, fact.FundString(sr.Fund), project.Describe(missing)))
 		}
 	}
-	findings = append(findings, staleSeriesDeclarations(seen, declared)...)
+	findings = append(findings, staleSeriesDeclarations(s.IncompleteSeries, seen, declared)...)
 
 	held := fmt.Sprintf("%d series, each with a point in every column its document covers", series)
 	if len(declared) > 0 {
 		held = fmt.Sprintf("%d series, each with a point in every column its document covers, "+
-			"or a declared gap: %s", series, describeIncomplete(declared))
+			"or a declared gap: %s", series, describeIncomplete(s.IncompleteSeries, declared))
 	}
 	return conclusion{
 		subjects: series,
@@ -316,9 +317,9 @@ func missingColumns(s project.Series, cols []project.Column) []project.Column {
 // Same shape and same argument as staleDocumentDeclarations over
 // uncheckedDocuments: a declaration nobody can see expiring is a declaration
 // that outlives its reason.
-func staleSeriesDeclarations(seen map[string]bool, declared map[string]int) []Finding {
+func staleSeriesDeclarations(incomplete map[string]string, seen map[string]bool, declared map[string]int) []Finding {
 	var out []Finding
-	for _, id := range sortedStrings(incompleteSeries) {
+	for _, id := range sortedStrings(incomplete) {
 		if declared[id] > 0 {
 			continue
 		}
@@ -337,10 +338,10 @@ func staleSeriesDeclarations(seen map[string]bool, declared map[string]int) []Fi
 
 // describeIncomplete renders the declared gaps with their reasons: a count alone
 // would let a growing exemption pass unread.
-func describeIncomplete(byID map[string]int) string {
+func describeIncomplete(incomplete map[string]string, byID map[string]int) string {
 	out := make([]string, 0, len(byID))
 	for _, id := range sortedStrings(byID) {
-		out = append(out, fmt.Sprintf("%s (%s)", id, incompleteSeries[id]))
+		out = append(out, fmt.Sprintf("%s (%s)", id, incomplete[id]))
 	}
 	return strings.Join(out, ", ")
 }

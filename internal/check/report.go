@@ -36,7 +36,7 @@ type Report struct {
 	// were skipped. A check that produced no entry would be indistinguishable
 	// from a check that does not exist.
 	Results []Result `json:"results"`
-	// Declared is every entry in declaredVacuous with what its check reported
+	// Declared is every entry in Subject.Vacancies with what its check reported
 	// here, in check-id order. Published rather than merely consulted, so a
 	// reader of the report can see the whole exemption surface without reading
 	// the source.
@@ -91,7 +91,7 @@ func Run(ctx context.Context, s *Subject, checks []Check, o ReportOptions) *Repo
 	for _, c := range checks {
 		rep.add(c, run1(ctx, c, s))
 	}
-	rep.resolveDeclarations()
+	rep.resolveDeclarations(s.Vacancies)
 	return rep
 }
 

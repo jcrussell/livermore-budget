@@ -36,21 +36,10 @@ func (*cutsTieAlongTheLattice) Description() string {
 		"and every residue declared to restate a cut outside the reference ties to it line by line"
 }
 
-// budgetBookExceptions is a seam so a test can declare an exception the tree
-// does not.
-var budgetBookExceptions = structure.BudgetBookExceptions
-
-// budgetBookSplits is a seam so a test can declare a split the tree does not.
-var budgetBookSplits = structure.BudgetBookSplits
-
-// budgetBookRestatements is a seam so a test can declare a restatement the
-// tree does not.
-var budgetBookRestatements = structure.BudgetBookRestatements
-
 func (*cutsTieAlongTheLattice) Run(_ context.Context, s *Subject) (Result, error) {
 	cuts := structure.AllCuts()
-	exceptions := budgetBookExceptions()
-	splits := budgetBookSplits()
+	exceptions := s.Exceptions
+	splits := s.Splits
 
 	var findings []Finding
 	if err := structure.ValidateExceptions(exceptions); err != nil {
@@ -206,10 +195,9 @@ func (*cutsTieAlongTheLattice) Run(_ context.Context, s *Subject) (Result, error
 	}
 
 	// A residue restating an Outside cut is held to it line by line; nothing
-	// else relates the two. The restatements are the tree's, so they are held
-	// to the tree's residue and not to what a hand-built subject declares.
-	restatements := budgetBookRestatements()
-	if err := structure.ValidateRestatements(cuts, structure.BudgetBookResidue(), restatements); err != nil {
+	// else relates the two.
+	restatements := s.Restatements
+	if err := structure.ValidateRestatements(cuts, s.Residue, restatements); err != nil {
 		findings = append(findings, finding("restatements", "%v", err))
 		restatements = nil
 	}
