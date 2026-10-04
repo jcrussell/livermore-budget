@@ -145,7 +145,7 @@ func (*ruleFundsMatchTheirHeadings) Run(_ context.Context, s *Subject) (Result, 
 			// THE CLAIM IS RECORDED ON EVERY PAGE OF THE RULE'S PARTS, which is an OVER-claim and is
 			// still strictly narrower than the document-wide claim it replaces.
 			// A rule's total is printed on ONE of its pages -- for a
-			// total_spans_parts rule, the one totalBearingPart finds -- and
+			// total_spans_parts rule, the one TotalBearingPart finds -- and
 			// establishing which needs the pages, i.e. a resolver this function
 			// does not have. Narrowing it to the bearing page is fisc-id8b; it
 			// is not folded in here because reaching for s.Resolvers to answer

@@ -1679,6 +1679,14 @@ func fundRuleSubject(t *testing.T, page string, rules []mapping.Rule,
 		Path: "testdata/fixture.yaml",
 	}}
 	s.Docs = map[string]*corpus.Doc{testDoc: inlinePageDoc(t, testDoc, 1, page)}
+	// A rule file carries a resolver, as Subject.Resolvers promises: the
+	// stated-total check indexes the map by the file's path and runs over this
+	// fixture with every other check.
+	r, err := mapping.NewResolver(s.Docs[testDoc], s.Files[0])
+	if err != nil {
+		t.Fatalf("build the fixture's resolver: %v", err)
+	}
+	s.Resolvers = map[string]*mapping.Resolver{s.Files[0].Path: r}
 	return s
 }
 

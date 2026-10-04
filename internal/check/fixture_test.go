@@ -361,7 +361,9 @@ func testSubject(t *testing.T, facts ...fact.Fact) *Subject {
 	if err != nil {
 		t.Fatalf("build the fixture projections: %v", err)
 	}
-	// Resolvers are left empty, and one tier-1 check DOES read them:
+	// Resolvers are left empty because Files is: Subject.Resolvers promises one
+	// per rule file, and a fixture that adds a file builds its resolver there
+	// (fundRuleSubject). One tier-1 check DOES read them:
 	// fact-offset-is-not-a-stated-total resolves each rule's stated-total line
 	// through them. That is why it is pinned "vacuous over 0" here and has no
 	// fixture coverage — with no rule files there are no stated-total lines, so

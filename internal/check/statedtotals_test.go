@@ -1,7 +1,7 @@
 package check
 
 import (
-	"strconv"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -217,76 +217,127 @@ func TestARepublishedRollupTotalIsCaught(t *testing.T) {
 	}
 }
 
-// TestLosingAnExemptSpanStillMovesThePublishedCount is what the check has
-// instead of a finding for the fourteen parts whose non-resolution is exempt,
-// and it is the half that no predicate can hide.
+// TestLosingASpanningRulesTotalIsCaught holds the spanning arm: a
+// total_spans_parts rule has ONE stated-total line, on the page
+// mapping.Resolver.TotalBearingPart finds, and losing it is a finding.
 //
-// The finding arm under-claims on purpose (fisc-xbvs): ten of the eleven
-// total_spans_parts rules can lose their only span with the check still
-// reporting pass, because `fisc build` refuses the same lost line first
-// (TestTheTotalRowMustIdentifyOnePage's "on no page" case).
-// Within verify, what makes the loss VISIBLE is the unresolved count, published
-// unconditionally, so breaking an exempt rule moves a number `fisc verify`
-// prints on every run.
-//
-// This asserts that count specifically and not merely that the summary changed
-// -- the RESOLVED count moves too, so a laxer assertion passes with the
-// unconditional `unresolved++` deleted. Delete it and this is the only test in
-// the package that reddens.
-func TestLosingAnExemptSpanStillMovesThePublishedCount(t *testing.T) {
+// EVERY committed spanning rule is bent in turn rather than one of them,
+// because the shape that goes wrong here is selective: a predicate that
+// excuses a spanning rule's non-resolution forgives all of them except the
+// ones a rollup happens to cover, which produce a finding by RollupTotalSpan's
+// route instead. Restore `if rule.TotalSpansParts { continue }` ahead of the
+// bearer lookup and this names every spanning rule no rollup covers.
+func TestLosingASpanningRulesTotalIsCaught(t *testing.T) {
 	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	before := runStatedTotals(t, s)
-	if before.Status != StatusPass {
-		t.Fatalf("the unbent corpus reported %s: %s", before.Status, before.Summary)
+	if res := runStatedTotals(t, s); res.Status != StatusPass {
+		t.Fatalf("the unbent corpus reported %s: %s", res.Status, res.Summary)
 	}
-	// A GENUINELY EXEMPT RULE, found by simulation rather than named. Not every
-	// spanning rule is exempt in practice: div-general-services is covered by a
-	// rollup, so breaking its total_row breaks RollupTotalSpan and produces a
-	// finding by that route instead. The subject wanted here is one whose loss
-	// the check really does forgive.
-	var bent *mapping.Rule
-	var after Result
+	bent := 0
 	for _, f := range s.Files {
 		for i := range f.Rules {
 			rule := &f.Rules[i]
-			if !rule.TotalSpansParts || rule.TotalRow == "" {
+			if !rule.TotalSpansParts {
 				continue
 			}
+			bent++
 			was := rule.TotalRow
 			rule.TotalRow = "No Page Prints This Row"
 			res := runStatedTotals(t, s)
-			if res.Status == StatusPass {
-				bent, after = rule, res
+			rule.TotalRow = was
+			if res.Status != StatusFail {
+				t.Errorf("spanning rule %q lost its only stated-total line and the check "+
+					"reported %s: %s", rule.ID, res.Status, res.Summary)
+				continue
+			}
+			got := findingDetails(res)
+			for _, want := range []string{rule.ID, "resolves it on no page", "No Page Prints This Row"} {
+				if !strings.Contains(got, want) {
+					t.Errorf("the finding for %q does not name %q: %s", rule.ID, want, got)
+				}
+			}
+		}
+	}
+	if bent == 0 {
+		t.Fatal("no committed rule declares total_spans_parts, so this test asserts nothing")
+	}
+	t.Logf("measured: %d spanning rules, each a finding when its total_row resolves on no page", bent)
+}
+
+// TestALabelLessPartThatLosesItsTotalLineIsCaught holds the stop_at arm for a
+// part that DECLARES a total: a label-less part of a total_row rule reads its
+// stated total at the block terminator, so a terminator that is no longer a
+// totals line is a lost span, exactly as a moved total_row is.
+//
+// The bend is to the LINE and not to the block. stop_at is moved onto the
+// page's running footer, which the block still resolves to -- the finding must
+// carry statedTotalLine's "no run of" message, which is the arm that says the
+// anchor was found and the line under it prints no totals. Setting stop_at to
+// text the page does not print would redden the test too, but through the
+// block failing, which is what every check over the store refuses and not what
+// this one is for.
+//
+// Excuse label-less parts from the per-part arm -- `if mapping.AnchorOf(p) ==
+// mapping.AnchorStopAt { continue }` after the error -- and this goes red.
+func TestALabelLessPartThatLosesItsTotalLineIsCaught(t *testing.T) {
+	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	var bentRule *mapping.Rule
+	var bentPart *mapping.Part
+	var footer string
+	for _, f := range s.Files {
+		r := s.Resolvers[f.Path]
+		for i := range f.Rules {
+			rule := &f.Rules[i]
+			if rule.TotalRow == "" || rule.TotalSpansParts {
+				continue
+			}
+			for j := range rule.Parts {
+				p := &rule.Parts[j]
+				if mapping.AnchorOf(p) != mapping.AnchorStopAt {
+					continue
+				}
+				if _, _, err := r.TotalRowSpan(rule, p); err != nil {
+					continue
+				}
+				// The page's last printed line. On every page of the Budget Book
+				// that is the running footer, and a footer prints no amounts.
+				text := strings.TrimRight(pageOf(t, s, f.DocID, p.Page), "\n ")
+				footer = strings.TrimSpace(text[strings.LastIndexByte(text, '\n')+1:])
+				bentRule, bentPart = rule, p
 				break
 			}
-			rule.TotalRow = was
+			if bentRule != nil {
+				break
+			}
 		}
-		if bent != nil {
+		if bentRule != nil {
 			break
 		}
 	}
-	if bent == nil {
-		t.Fatal("no committed spanning rule loses a span without producing a finding, so " +
-			"the exemption this test is about no longer bites -- assert the finding instead")
+	if bentRule == nil {
+		t.Fatal("no committed label-less part of a total_row rule resolves a stated total, " +
+			"so this test asserts nothing")
 	}
-	// THE UNRESOLVED COUNT SPECIFICALLY, not just "the summary changed": the
-	// RESOLVED count moves too, so the laxer assertion is green whether or not
-	// the unconditional counter is there.
-	wasUnresolved, nowUnresolved := unresolvedIn(t, before.Summary), unresolvedIn(t, after.Summary)
-	if nowUnresolved != wasUnresolved+1 {
-		t.Errorf("rule %q lost its stated-total span and the published unresolved count "+
-			"went %d -> %d, want %d: the loss is not visible as a loss.\n  before: %q\n  after:  %q",
-			bent.ID, wasUnresolved, nowUnresolved, wasUnresolved+1, before.Summary, after.Summary)
+	if res := runStatedTotals(t, s); res.Status != StatusPass {
+		t.Fatalf("the unbent corpus reported %s: %s", res.Status, res.Summary)
 	}
-	// It is exempt from the FINDING on purpose: the build refuses a spanning
-	// rule whose total no page prints. If this ever starts failing, the
-	// exemption has been tightened and this test should assert the finding.
-	if after.Status != StatusPass {
-		t.Logf("NOTE: breaking a spanning rule now reports %s -- the exemption has been "+
-			"tightened", after.Status)
+
+	bentPart.StopAt, bentPart.StopAtOrdinal = footer, 0
+	res := runStatedTotals(t, s)
+	if res.Status != StatusFail {
+		t.Fatalf("rule %q's p%d part stops at %q, a line printing no totals, and the check "+
+			"reported %s: %s", bentRule.ID, bentPart.Page, footer, res.Status, res.Summary)
+	}
+	got := findingDetails(res)
+	for _, want := range []string{bentRule.ID, fmt.Sprintf("p%d", bentPart.Page), "no run of"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("the finding does not name %q: %s", want, got)
+		}
 	}
 }
 
@@ -294,33 +345,13 @@ func TestLosingAnExemptSpanStillMovesThePublishedCount(t *testing.T) {
 //
 // Gate it on `resolved == 0` instead and a rule that loses ONE part's
 // stated-total span passes on the strength of its other parts: fisc verify
-// reports PASS over 161 lines rather than 162, with no finding, while a fact
-// planted on p66's real "TOTAL REVENUES:" line goes unrefused. Every span this
-// check loses is a line it can no longer refuse a fact on.
+// reports PASS over one line fewer, with no finding, while a fact planted on
+// p66's real "TOTAL REVENUES:" line goes unrefused. Every span this check
+// loses is a line it can no longer refuse a fact on.
 //
 // The rule bent here is chosen for the shape the arm must NOT excuse: labelled
-// parts, a declared total_row, and not total_spans_parts. The two shapes it MUST
-// excuse have their own tests above -- the eleven spanning parts whose total
-// prints on the block's last page, and the label-less parts anchoring on a block
-// terminator.
-// unresolvedIn reads the "N declared total(s) resolve to no line" figure out of
-// the check's published summary, so a test can assert the number a reader sees
-// rather than a number recomputed beside it.
-func unresolvedIn(t *testing.T, summary string) int {
-	t.Helper()
-	const tail = " declared total(s) resolve to no line"
-	i := strings.Index(summary, tail)
-	if i < 0 {
-		t.Fatalf("the summary does not publish an unresolved count: %q", summary)
-	}
-	j := strings.LastIndexByte(summary[:i], ' ') + 1
-	n, err := strconv.Atoi(summary[j:i])
-	if err != nil {
-		t.Fatalf("unreadable unresolved count in %q: %v", summary, err)
-	}
-	return n
-}
-
+// parts, a declared total_row, and not total_spans_parts. The spanning shape,
+// whose head parts print no total, has its own test above.
 func TestOneLostPartIsCaughtEvenWhenOthersResolve(t *testing.T) {
 	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
 	if err != nil {
@@ -388,20 +419,24 @@ func TestOneLostPartIsCaughtEvenWhenOthersResolve(t *testing.T) {
 	}
 }
 
-// TestALabelLessPartWithNoTotalsRunContributesNoSpan asserts that a label-less
-// part anchoring on a block TERMINATOR contributes no span.
+// TestNoTotalLurksAtAnUndeclaredLabelLessTerminator is the page claim behind
+// the check's first exit: a rule with no total_row is not asked for a span, and
+// that passes over no printed total only if the block terminators of such
+// rules' label-less parts -- the one place a label-less part reads a total from
+// -- print no totals run.
 //
-// Three committed parts are of that shape and none of the three lines is a
-// total: spine-transfers-in lands on p67's column-header line
-// `Capital Funds  Debt Service Funds ...`, and spine-transfers-out and
-// spine-fund-balance land on the running footer "BUDGET FY 2025-27 Page 63".
-// A check that took the anchor for a total would report a defect against a
-// header and a page number.
+// Held against the pages rather than assumed: spine-transfers-in's p67 part
+// ends on the fund-group header `Capital Funds  Debt Service Funds ...`,
+// spine-transfers-out's and spine-fund-balance's on the running footer "BUDGET
+// FY 2025-27 Page 63", pp.225-235's CIP continuations and pp.187-209's
+// fund-balance continuations on the same footer or on a blank run. A part that
+// stops failing here has a stated total its rule does not declare, and the fix
+// is a total_row on the rule, which is what makes the build tie it and this
+// check guard it.
 //
-// Delete the amountRun test from statedTotalLine and this goes red, naming all
-// three lines verbatim -- they come back as stated totals and the check's own
-// summary over-counts them.
-func TestALabelLessPartWithNoTotalsRunContributesNoSpan(t *testing.T) {
+// Delete the amountRun test from statedTotalLine and this goes red, naming
+// every terminator line verbatim.
+func TestNoTotalLurksAtAnUndeclaredLabelLessTerminator(t *testing.T) {
 	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
 	if err != nil {
 		t.Fatalf("Load: %v", err)
@@ -416,7 +451,7 @@ func TestALabelLessPartWithNoTotalsRunContributesNoSpan(t *testing.T) {
 			}
 			for j := range rule.Parts {
 				p := &rule.Parts[j]
-				if p.LabelsFrom == 0 {
+				if mapping.AnchorOf(p) != mapping.AnchorStopAt {
 					continue
 				}
 				seen++
@@ -431,10 +466,9 @@ func TestALabelLessPartWithNoTotalsRunContributesNoSpan(t *testing.T) {
 					if k := strings.IndexByte(line, '\n'); k >= 0 {
 						line = line[:k]
 					}
-					t.Errorf("rule %q p%d resolves a stated-total span at %d, and the line "+
-						"it names is %q -- if that is a printed totals row this test is "+
-						"stale; if it is a header or a footer the check will report a "+
-						"defect against a line the page never totalled",
+					t.Errorf("rule %q declares no total_row and its p%d part's terminator "+
+						"resolves a stated-total span at %d on the line %q -- a printed "+
+						"total the check is passing over; declare it on the rule",
 						rule.ID, p.Page, lo, line)
 				}
 			}
@@ -504,15 +538,11 @@ func TestALabelLessPartWithATotalRowNamesItsRealAnchor(t *testing.T) {
 	}
 }
 
-// TestARuleWhoseTotalResolvesNowhereIsCaught covers the check's other arm, which
-// is the one way it could quietly examine nothing: a declared total_row that
-// resolves on no part contributes no span, so nothing on that block's total line
-// can ever be refused.
-//
-// A SPANNING BLOCK IS NOT AN EXCEPTION and that is why the arm is per RULE. Eleven
-// committed parts fail to resolve their rule's total_row because the total is
-// printed on the block's LAST page; each of those rules resolves it there, so a
-// per-part arm would report eleven findings over a corpus with no defect in it.
+// TestARuleWhoseTotalResolvesNowhereIsCaught covers the per-part arm's plainest
+// case, which is the one way the check could quietly examine nothing: a declared
+// total_row that resolves on no part contributes no span, so nothing on that
+// block's total line can ever be refused. The spanning shape has its own test
+// above and its own finding.
 func TestARuleWhoseTotalResolvesNowhereIsCaught(t *testing.T) {
 	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
 	if err != nil {
@@ -521,7 +551,7 @@ func TestARuleWhoseTotalResolvesNowhereIsCaught(t *testing.T) {
 	var bent *mapping.Rule
 	for _, f := range s.Files {
 		for i := range f.Rules {
-			if f.Rules[i].TotalRow != "" && len(f.Rules[i].Parts) > 0 {
+			if f.Rules[i].TotalRow != "" && !f.Rules[i].TotalSpansParts && len(f.Rules[i].Parts) > 0 {
 				bent = &f.Rules[i]
 				break
 			}

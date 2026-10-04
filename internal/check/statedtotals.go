@@ -40,22 +40,27 @@ import (
 // different line, and many parts print theirs more than once.
 // [mapping.Resolver.TotalRowSpan] applies the block narrowing.
 //
-// WHAT IT DOES ABOUT LOSING A SPAN, precisely, because the boundary is narrow
-// and easy to read as wider than it is. A resolution failure is the one way this
-// check can quietly examine less than it did yesterday, and it cannot be refused
-// outright: some parts legitimately resolve no stated-total line at all. So
-// there are two mechanisms and only one of them is a finding:
+// WHICH LINES IT MUST RESOLVE is the build's own selection, read off the same
+// declarations the build reads, so that every line the build ties rows to is a
+// line this check guards and nothing stands in for a verdict:
 //
-//   - THE COUNT IS PUBLISHED UNCONDITIONALLY, exempt or not, which is what makes
-//     span loss VISIBLE rather than silent and is the half no exemption
-//     predicate can hide.
-//   - THE FINDING IS NARROW, and deliberately under-claims. It fires for a
-//     LABELLED part of a rule that declares a total_row and does not spread it
-//     across parts. Break a spanning rule's total_row or a label-less part's
-//     stop_at and this check still reports pass, with the counts moved -- but
-//     `fisc build` resolves the same lines and exits non-zero on either break
-//     (measured on div-special-operations and on spine-revenues' p67 part),
-//     so CI's rebuild refuses it before any fact is published.
+//   - A rule with no total_row declares no stated total, and no part of it is
+//     asked -- the build's pkg/cmd/build.reasonNoTotalRow. A label-less part of
+//     such a rule still has a stop_at, but its block terminator is a header, a
+//     footer or a blank run, never a totals line; the test that scans those
+//     terminators holds that against the pages.
+//   - A total_spans_parts rule prints its total on the one page
+//     [mapping.Resolver.TotalBearingPart] finds, and that page's line is the
+//     rule's only span. The rule's other parts print no total.
+//   - Every part of any other total_row rule resolves its own line: a labelled
+//     part through total_row after its block, a label-less one through the
+//     stop_at terminator, which is where [mapping.AnchorOf] says its total is.
+//
+// A line in that selection which does not resolve is a FINDING, per part,
+// because every span this check loses is a printed total it can no longer
+// refuse a fact on. The one failure that is not a finding is
+// [mapping.ErrNoStatedTotals], a label-less part with no stop_at, which the
+// build reports unchecked for the same reason.
 type factOffsetIsNotAStatedTotal struct{}
 
 var _ Check = (*factOffsetIsNotAStatedTotal)(nil)
@@ -88,31 +93,44 @@ func (*factOffsetIsNotAStatedTotal) Run(_ context.Context, s *Subject) (Result, 
 
 	// Keyed by document and page, which is how a fact addresses itself.
 	spans := map[string]map[int][]totalSpan{}
-	lines, unresolved := 0, 0
-	for _, f := range s.Files {
-		r, ok := s.Resolvers[f.Path]
-		if !ok {
-			findings = append(findings, finding(f.Path,
-				"no resolver was built for this rule file, so its totals cannot be located"))
-			continue
+	lines := 0
+	add := func(docID string, page int, sp totalSpan) {
+		lines++
+		if spans[docID] == nil {
+			spans[docID] = map[int][]totalSpan{}
 		}
-		// EVERY RULE AND EVERY PART, not only the rules declaring a total_row,
-		// because totalAnchor tests LabelsFrom BEFORE it tests TotalRow: a
-		// label-less part's stated total is wherever its block ends, via
-		// stop_at, whether or not its rule declares one.
-		//
-		// NO COMMITTED PART EXERCISES THIS, and the honest thing is to say so
-		// rather than claim a guard. The label-less parts that resolve a real
-		// stated total -- p67's spine-revenues and spine-expenditures, p81's
-		// debt-service-principal and debt-service-interest -- also DECLARE a
-		// total_row, so the narrow filter would reach them anyway; the rest
-		// anchor on a block terminator that prints no totals run: p67's other
-		// three on its fund-group header and running footer, pp.225-235's CIP
-		// continuation parts on the running footer. The widening is kept
-		// because it follows mapping.AnchorOf rather than second-guessing it; a
-		// witness for it needs a synthetic rule, which is fisc-loxx.
+		spans[docID][page] = append(spans[docID][page], sp)
+	}
+	for _, f := range s.Files {
+		r := s.Resolvers[f.Path]
 		for i := range f.Rules {
 			rule := &f.Rules[i]
+			if rule.TotalRow == "" {
+				continue
+			}
+			if rule.TotalSpansParts {
+				// ONE SPAN PER SPANNING RULE, on the bearing page. Asking every
+				// part would count the head parts, whose pages print no total,
+				// as losses -- and gating on "some part resolved" would let the
+				// bearing page's loss hide behind nothing at all, since no other
+				// part can resolve it.
+				bearer, err := r.TotalBearingPart(rule)
+				var lo, hi int
+				if err == nil {
+					lo, hi, err = r.TotalRowSpan(rule, bearer)
+				}
+				if err != nil {
+					findings = append(findings, finding(rule.ID,
+						"declares total_row %q across its parts and resolves it on no page, "+
+							"so this check contributes no span for the block and cannot "+
+							"refuse a fact published on that total's line: %v",
+						rule.TotalRow, err))
+					continue
+				}
+				add(f.DocID, bearer.Page,
+					totalSpan{lo: lo, hi: hi, ruleID: rule.ID, kind: "rule", label: rule.TotalRow})
+				continue
+			}
 			failures := []string{}
 			for j := range rule.Parts {
 				p := &rule.Parts[j]
@@ -121,24 +139,8 @@ func (*factOffsetIsNotAStatedTotal) Run(_ context.Context, s *Subject) (Result, 
 					continue
 				}
 				if err != nil {
-					// COUNTED WHATEVER THE ARM BELOW DOES WITH IT. The published
-					// summary carries this number, so a span that stops
-					// resolving moves a figure `fisc verify` prints on every run
-					// whether or not any predicate calls it a finding. It is the
-					// part of this that an over-broad exemption cannot hide.
-					unresolved++
-					// The two ordinary shapes, per the arm below: a spanning
-					// rule's total prints on the block's last page, and a
-					// label-less part anchors on the block terminator rather
-					// than on a totals row.
-					if !rule.TotalSpansParts && mapping.AnchorOf(p) == mapping.AnchorTotalRow && rule.TotalRow != "" {
-						failures = append(failures, fmt.Sprintf("p%d: %v", p.Page, err))
-					}
+					failures = append(failures, fmt.Sprintf("p%d: %v", p.Page, err))
 					continue
-				}
-				lines++
-				if spans[f.DocID] == nil {
-					spans[f.DocID] = map[int][]totalSpan{}
 				}
 				// THE LABEL NAMES THE ANCHOR mapping.AnchorOf SAYS the part reads,
 				// the branch totalAnchor takes. spine-revenues and spine-expenditures on
@@ -159,7 +161,7 @@ func (*factOffsetIsNotAStatedTotal) Run(_ context.Context, s *Subject) (Result, 
 				if mapping.AnchorOf(p) == mapping.AnchorTotalRow {
 					label = rule.TotalRow
 				}
-				spans[f.DocID][p.Page] = append(spans[f.DocID][p.Page],
+				add(f.DocID, p.Page,
 					totalSpan{lo: lo, hi: hi, ruleID: rule.ID, kind: "rule", label: label})
 			}
 			// PER PART, NOT PER RULE. Gating on "the rule resolved nothing"
@@ -168,24 +170,6 @@ func (*factOffsetIsNotAStatedTotal) Run(_ context.Context, s *Subject) (Result, 
 			// printed total line it can no longer refuse a fact on -- so a lost
 			// span has to be said even when its siblings resolve.
 			// TestOneLostPartIsCaughtEvenWhenOthersResolve holds this.
-			//
-			// TWO KINDS OF FAILURE ARE ORDINARY AND ARE NOT FINDINGS, which is
-			// why `len(failures) > 0` alone is the wrong gate:
-			//
-			//   - A total_spans_parts rule prints its total on the block's LAST
-			//     page, so the earlier parts cannot resolve it. All eleven
-			//     committed failures of that shape are exactly this.
-			//   - A LABEL-LESS part anchors on the block TERMINATOR rather than
-			//     a totals row, and committed parts land on text that is no
-			//     total at all -- spine-transfers-in on p67's fund-group header,
-			//     spine-transfers-out, spine-fund-balance and pp.225-235's CIP
-			//     continuation parts on the running footer. Resolving nothing
-			//     there is the corpus's normal shape: the build reports p67's
-			//     three unchecked, and mapping.Resolver.CheckSubtotals ties the
-			//     CIP parts' figures.
-			//
-			// So what must resolve is a LABELLED part of a rule that DECLARES a
-			// total_row and does not spread it across parts.
 			if len(failures) > 0 {
 				findings = append(findings, finding(rule.ID,
 					"declares total_row %q and fails to resolve it on %d of its %d "+
@@ -209,17 +193,12 @@ func (*factOffsetIsNotAStatedTotal) Run(_ context.Context, s *Subject) (Result, 
 				continue
 			}
 			if err != nil {
-				unresolved++
 				findings = append(findings, finding(ro.ID,
 					"prints a rollup total this check cannot locate, so a fact published "+
 						"on that line cannot be refused: %v", err))
 				continue
 			}
-			lines++
-			if spans[f.DocID] == nil {
-				spans[f.DocID] = map[int][]totalSpan{}
-			}
-			spans[f.DocID][ro.Page] = append(spans[f.DocID][ro.Page],
+			add(f.DocID, ro.Page,
 				totalSpan{lo: lo, hi: hi, ruleID: ro.ID, kind: "rollup", label: ro.TotalRow})
 		}
 	}
@@ -256,8 +235,8 @@ func (*factOffsetIsNotAStatedTotal) Run(_ context.Context, s *Subject) (Result, 
 	return conclusion{
 		subjects: examined,
 		unit:     "facts",
-		held: fmt.Sprintf("%d facts, none citing a figure printed on any of the %d resolved stated-total %s (rule totals and rollups); %d declared total(s) resolve to no line",
-			examined, lines, cmdutil.Plural(lines, "line", "lines"), unresolved),
+		held: fmt.Sprintf("%d facts, none citing a figure printed on any of the %d resolved stated-total %s (rule totals and rollups)",
+			examined, lines, cmdutil.Plural(lines, "line", "lines")),
 		nothing:  nothing,
 		findings: findings,
 	}.result(), nil

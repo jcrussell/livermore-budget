@@ -268,6 +268,11 @@ type Subject struct {
 	// structural sweep (fisc-1wr.5) and fact-offset-is-not-a-stated-total all
 	// resolve rules, and building them anywhere else would mean several runs of
 	// the same read in one command.
+	//
+	// EVERY ENTRY OF Files HAS ONE, OR Load FAILS: openDocs builds a resolver
+	// for each file in turn and returns the first error. So a lookup keyed by a
+	// File's Path cannot miss, and a check indexes the map directly rather than
+	// guarding a case no Subject can present.
 	Resolvers map[string]*mapping.Resolver
 	// Projections is every graph the facts support, one per (fiscal year, basis)
 	// the fact store carries within spineScope, in that order.

@@ -1265,7 +1265,7 @@ func (r *Resolver) CheckTotals(rule *Rule, p *Part) (*totalsResult, error) {
 // needs the pages: that exactly one part prints the total row, and that a
 // declared discrepancy sits on that part rather than on one of the others.
 func (r *Resolver) CheckSpanningTotals(rule *Rule) (*totalsResult, error) {
-	bearer, err := r.totalBearingPart(rule)
+	bearer, err := r.TotalBearingPart(rule)
 	if err != nil {
 		return nil, err
 	}
@@ -1318,7 +1318,7 @@ func (r *Resolver) CheckSpanningTotals(rule *Rule) (*totalsResult, error) {
 	return r.compareTotals(rule, bearer, bearer, stated, sums, terms)
 }
 
-// totalBearingPart finds the one part of a spanning rule whose page prints the
+// TotalBearingPart finds the one part of a spanning rule whose page prints the
 // total row.
 //
 // Exactly one, and the count is the point. Zero means the total row has moved
@@ -1327,7 +1327,11 @@ func (r *Resolver) CheckSpanningTotals(rule *Rule) (*totalsResult, error) {
 // taking the first would pick whichever page happens to come first in the part
 // list -- a total checked against the wrong page's figures is the confident
 // wrong answer this project exists to refuse.
-func (r *Resolver) totalBearingPart(rule *Rule) (*Part, error) {
+//
+// It is exported because the answer is the only one there is: a check asking
+// which page of a spanning block prints the total it must guard has to get the
+// page the build compared against, or the two drift into different lines.
+func (r *Resolver) TotalBearingPart(rule *Rule) (*Part, error) {
 	var found []*Part
 	for i := range rule.Parts {
 		p := &rule.Parts[i]
@@ -1554,7 +1558,7 @@ func (r *Resolver) coveredRules(ro *Rollup) ([]*Rule, error) {
 // break says so with total_spans_parts and has one total again.
 func (r *Resolver) ruleStatedTotals(rule *Rule) ([]amount.Cents, *Part, error) {
 	if rule.TotalSpansParts {
-		bearer, err := r.totalBearingPart(rule)
+		bearer, err := r.TotalBearingPart(rule)
 		if err != nil {
 			return nil, nil, err
 		}
