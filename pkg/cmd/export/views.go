@@ -127,9 +127,10 @@ func (e *viewsError) Error() string {
 // loadViews reads views.yaml from the root of fsys and resolves every name it
 // carries: a projection against the published projections, a role against
 // project.Roles, a residual or gaps derivation against the ones declared
-// here, and a section row against the registry's categories. It refuses an
-// unknown key and an unknown name, and nothing else; what a declared view must
-// satisfy is validated at the write.
+// here and against the projection of the step naming it, and a section row
+// against the registry's categories. It refuses an unknown key, an unknown
+// name and a derivation about another step's document, and nothing else; what
+// a declared view must satisfy is validated at the write.
 func loadViews(fsys fs.FS, reg *registry.Registry) ([]viewDecl, error) {
 	b, err := fs.ReadFile(fsys, viewsFile)
 	if err != nil {
@@ -199,6 +200,14 @@ func decodeViews(b []byte, reg *registry.Registry) ([]viewDecl, error) {
 				return nil, &viewsError{Entry: entry, Field: "gaps",
 					Msg: unknownName(s.Gaps, slices.Sorted(maps.Keys(gapDerivations)))}
 			}
+			// A step with no projection of its own draws its parents' document,
+			// and the write refuses a residual or a gap on it as switching none.
+			if s.Residual != "" && s.Projection != "" && s.Residual != s.Projection {
+				return nil, &viewsError{Entry: entry, Field: "residual", Msg: aboutAnother(s.Residual, s.Projection)}
+			}
+			if s.Gaps != "" && s.Projection != "" && s.Gaps != s.Projection {
+				return nil, &viewsError{Entry: entry, Field: "gaps", Msg: aboutAnother(s.Gaps, s.Projection)}
+			}
 		}
 	}
 	return doc.Views, nil
@@ -208,6 +217,15 @@ func decodeViews(b []byte, reg *registry.Registry) ([]viewDecl, error) {
 // it could have been.
 func unknownName(got string, known []string) string {
 	return fmt.Sprintf("%q is not one of %s", got, strings.Join(known, ", "))
+}
+
+// aboutAnother is the refusal for a derivation named on a step drawing a
+// document other than the one it is keyed by: its ids are that document's
+// endpoints and centres, which this step never opens or carries, so it would
+// ship inert.
+func aboutAnother(derivation, draws string) string {
+	return fmt.Sprintf("%q is the derivation about %q, and this step draws %q; "+
+		"what it derives would match nothing this step opens", derivation, derivation, draws)
 }
 
 // publishedProjections is every projection name the site publishes a

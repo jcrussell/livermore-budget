@@ -1,7 +1,8 @@
 # The site's pages, in nav order, the page it opens on first, and every step
 # by which a page's chart opens a node. `fisc export` loads this file through
 # the export command's loadViews, which refuses an unknown key, a projection,
-# role, residual or gaps name it cannot resolve against Go's constants, and a
+# role, residual or gaps name it cannot resolve against Go's constants, a
+# residual or gaps derivation about a projection other than its step's, and a
 # row naming no taxonomy.yaml category. What a declared step must satisfy is
 # validateSteps' (internal/export) and schema/page.schema.json's, not this
 # file's.
