@@ -394,6 +394,36 @@ func TestTheLedeSaysANodeOpensExactlyWhenAStepOpensOne(t *testing.T) {
 // TestAStepMayOpenANodeOnBothSides is the control for the both-sided
 // refusals: the opened tier drawn between a column on each side is accepted,
 // and the side reaches the page.
+// TestAKeptFlankIsHeldAgainstTheChartAbovesDocument: a window's kept flank is
+// drawn of the document the chart above draws, so it is not asked of the
+// document the step draws. The view is on fund-flows, the step keeps its tier
+// 3 and opens into the spine, which carries no node at tier 3 -- the shape of
+// the object-category step, which keeps the spine's fund groups and draws
+// department-spending.
+func TestAKeptFlankIsHeldAgainstTheChartAbovesDocument(t *testing.T) {
+	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
+	if err != nil {
+		t.Fatalf("read fund-flows golden: %v", err)
+	}
+	spine := headlined(t, fundFlows)
+	v := chartView(func(v *export.View) {
+		v.Nav, v.Projection = "Extra", "fund-flows"
+		v.Overview.Sankey.Tiers = []int{2, 3}
+		v.Steps[0].Projection = "sankey"
+		v.Steps[0].Sankey.Keep, v.Steps[0].Sankey.Tiers, v.Steps[0].Sankey.Caps = []int{3}, []int{0, 2, 3}, nil
+	})
+	if _, err := writeSite(export.Options{
+		Dir:         t.TempDir(),
+		Projections: map[string][]byte{"sankey": builtLike(t, spine, goldenSankey(t)), "fund-flows": spine},
+		Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
+			Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "sankey"}, v},
+		Docs:        budgetDocs(),
+		GeneratedBy: "fisc test",
+	}); err != nil {
+		t.Fatalf("Write refused a window keeping a tier its own document has no node at: %v", err)
+	}
+}
+
 func TestAStepMayOpenANodeOnBothSides(t *testing.T) {
 	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
 	if err != nil {
@@ -421,9 +451,11 @@ func TestAStepMayOpenANodeOnBothSides(t *testing.T) {
 
 // deepWindowView is a well-formed window whose flank is two columns deep: the
 // chart on screen draws tiers {1, 0, 2}, tier 2's nodes open, and tiers 0 and 1
-// stay drawn to their left, nearest the centre first.
+// stay drawn to their left, nearest the centre first. The view is on
+// fund-flows, the golden with a node at every tier it draws.
 func deepWindowView(breaks func(*export.View)) export.View {
 	return chartView(func(v *export.View) {
+		v.Projection = "fund-flows"
 		v.Overview.Sankey.Tiers = []int{1, 0, 2}
 		v.Steps[0].Sankey.Keep = []int{0, 1}
 		v.Steps[0].Sankey.Tiers = []int{1, 0, 2, 3}
@@ -445,7 +477,7 @@ func TestAWindowsFlankMayBeTwoColumnsDeep(t *testing.T) {
 		want []string
 	}{
 		{"a flank two columns deep",
-			deepWindowView(func(v *export.View) { v.Nav, v.Projection = "Extra", "fund-flows" }),
+			deepWindowView(func(v *export.View) { v.Nav = "Extra" }),
 			[]string{`"keep":[0,1]`, `"tiers":[1,0,2,3]`}},
 		// The widened column is the opened node's, at the end away from the kept
 		// flank; the narrow window above ships no `widen`.
@@ -1059,11 +1091,14 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 			chainView(func(v *export.View) { v.Steps[0], v.Steps[1] = v.Steps[1], v.Steps[0] })},
 			"After names an EARLIER step"},
 		{"two steps opening one tier of one chart", []export.View{ok,
-			chainView(func(v *export.View) { v.Steps[1].After = []string{""}; v.Steps[1].From = 2 })},
+			chainView(func(v *export.View) {
+				v.Steps[1].After, v.Steps[1].From, v.Steps[1].Projection = []string{""}, 2, "fund-flows"
+			})},
 			"a node there would open into two different charts"},
 		{"a role-less step beside one that names a role", []export.View{ok,
 			chainView(func(v *export.View) {
 				v.Steps[1].After, v.Steps[1].From, v.Steps[1].Role = []string{""}, 2, "revenue"
+				v.Steps[1].Projection = "fund-flows"
 			})},
 			"a step with no role opens EVERY node at its tier"},
 		{"a step opening a side this package does not declare", []export.View{ok,
@@ -1080,9 +1115,9 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 		// A flank is contiguous and runs out from the centre; these break each half.
 		{"a flank with a gap in it", []export.View{ok,
 			deepWindowView(func(v *export.View) {
-				v.Overview.Sankey.Tiers = []int{6, 1, 0, 2}
-				v.Steps[0].Sankey.Keep = []int{0, 6}
-				v.Steps[0].Sankey.Tiers = []int{6, 0, 2, 3}
+				v.Overview.Sankey.Tiers = []int{4, 1, 0, 2}
+				v.Steps[0].Sankey.Keep = []int{0, 4}
+				v.Steps[0].Sankey.Tiers = []int{4, 0, 2, 3}
 			})},
 			"a gap in it is a column the reader was looking at dropped out of the middle"},
 		{"a flank declared outermost first", []export.View{ok,
@@ -1094,7 +1129,7 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 			deepWindowView(func(v *export.View) {
 				v.Steps = append(v.Steps, export.DrillStep{Key: "outer", After: []string{"groups"},
 					From:  1,
-					Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{1, 6}}}, Back: "All of them", Noun: "thing", Tail: "things",
+					Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{1, 5}}}, Back: "All of them", Noun: "thing", Tail: "things",
 					Description: "Opened off the outer kept column."})
 			})},
 			"which KEEPS that tier"},
@@ -1176,7 +1211,7 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 			})},
 			"the flank the reader came from has to be a column they were looking at"},
 		{"a window keeping a tier that is not beside the opened one", []export.View{ok,
-			windowView(func(v *export.View) { v.Overview.Sankey.Tiers = []int{0, 1, 2} })},
+			windowView(func(v *export.View) { v.Overview.Sankey.Tiers = []int{0, 5, 2} })},
 			"a window slides by one column"},
 		// A well-formed window hanging off a well-formed window can still open the
 		// tier its parent kept, and would send that node's whole decomposition out the
@@ -1341,6 +1376,29 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 				v.Steps[0].Sankey.Caps = []export.TierCap{{Tier: 3, Cap: 8}, {Tier: 3, Cap: 24}}
 			})},
 			"caps tier 3 twice"},
+		// Against the documents: a tier no node of the document stands at is a
+		// column drawn empty, on the view's own chart (the step's From is placed
+		// on it, so the From arm cannot fire) and on a step's; a residual or gap
+		// id no node carries is a mark the client draws from nothing. The kept
+		// flank is the chart above's column, held by
+		// TestAKeptFlankIsHeldAgainstTheChartAbovesDocument.
+		{"a chart drawing a tier its document has no node at", []export.View{ok,
+			chartView(func(v *export.View) { v.Overview.Sankey.Tiers = []int{0, 7}; v.Steps[0].From = 7 })},
+			"chart draws tier 7, and [sankey] carries nodes at tiers [0 2 5]"},
+		{"a step drawing a tier its document has no node at", []export.View{ok,
+			chartView(func(v *export.View) { v.Steps[0].Sankey.Tiers = []int{0, 3, 99} })},
+			"step 0 draws tier 99, and [fund-flows] carries nodes at tiers [0 1 2 3 4 5]"},
+		{"a residual endpoint no node of the chart above carries", []export.View{ok,
+			chartView(func(v *export.View) {
+				v.Steps[0].Residual = map[string]string{"nope/x": "A reason."}
+				v.Steps[0].ResidualGrain = "fund"
+			})},
+			`declares a residual on "nope/x", which names no node of [sankey]`},
+		{"a gap on a node the chart above does not carry", []export.View{ok,
+			chartView(func(v *export.View) {
+				v.Steps[0].Gaps = map[string][]project.Gap{"nope/x": {{FiscalYear: 2026, Basis: "adopted", Cents: 1, Reason: "A reason."}}}
+			})},
+			`licenses a gap on "nope/x", which names no node of [sankey]`},
 		{"a step naming a schedule no column carries", []export.View{ok,
 			chartView(func(v *export.View) { v.Steps[0].Projection = "nope" })},
 			"step 0 opens into schedule \"nope\" and column fy2026-adopted.json (year \"sankey\") carries no such schedule"},

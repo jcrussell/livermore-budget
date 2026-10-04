@@ -119,6 +119,25 @@ func (v View) validateSteps(ix ColumnIndex) error {
 		return err
 	}
 	docs := byYear[v.Projection]
+	// A declaration is held against the documents it draws, in every year
+	// the view lists: the view's own for its chart, and for each step the
+	// one it resolves to, which the kept flank is not drawn of.
+	yearStems := v.yearStems()
+	if t := undrawnTier(v.Overview.drawnTiers(), nil, yearStems, ix); t >= 0 {
+		return fmt.Errorf(
+			"view %q's chart draws tier %d, and %v carries nodes at tiers %v and none "+
+				"at that one in any year the view lists; the column would be empty on "+
+				"every year's chart", v.Path, t, yearStems, tiersOf(yearStems, ix))
+	}
+	stemsOf := func(i int) []string {
+		var out []string
+		for _, year := range yearStems {
+			if stem := byYear[year][i]; !slices.Contains(out, stem) {
+				out = append(out, stem)
+			}
+		}
+		return out
+	}
 	for i, s := range v.Steps {
 		parents := parentsOf[i]
 		for k := range parents {
@@ -183,6 +202,39 @@ func (v View) validateSteps(ix ColumnIndex) error {
 					"%s draws; a gap is one cell two documents print at two figures, and a "+
 					"step that switches no document has only one", v.Path, i, len(s.Gaps), doc,
 				parents[same].name())
+		}
+		drawn := stemsOf(i)
+		if t := undrawnTier(s.drawnTiers(), s.keptFlank(), drawn, ix); t >= 0 {
+			return fmt.Errorf(
+				"view %q's step %d draws tier %d, and %v carries nodes at tiers %v and none "+
+					"at that one in any year the view lists; the column would be empty on "+
+					"every chart this step draws", v.Path, i, t, drawn, tiersOf(drawn, ix))
+		}
+		// A residual's endpoints and a gap's nodes are the chart above's, and
+		// the client draws an id matching nothing as nothing, in silence.
+		var above []string
+		for _, p := range parents {
+			if p.key == "" {
+				above = append(above, yearStems...)
+			} else {
+				above = append(above, stemsOf(index[p.key])...)
+			}
+		}
+		for _, id := range slices.Sorted(maps.Keys(s.Residual)) {
+			if !carried(above, id, ix) {
+				return fmt.Errorf(
+					"view %q's step %d declares a residual on %q, which names no node of %v in "+
+						"any year the view lists; the client would re-point nothing onto the "+
+						"mark and draw the rest as though the endpoint balanced", v.Path, i, id, above)
+			}
+		}
+		for _, id := range slices.Sorted(maps.Keys(s.Gaps)) {
+			if !carried(above, id, ix) {
+				return fmt.Errorf(
+					"view %q's step %d licenses a gap on %q, which names no node of %v in any "+
+						"year the view lists; the licence would match no node a reader can open",
+					v.Path, i, id, above)
+			}
 		}
 		// Every parent draws the tier this step opens from, whatever the form.
 		for _, p := range parents {
@@ -264,10 +316,7 @@ func (v View) validateSteps(ix ColumnIndex) error {
 // of a rung's document opens is the client's to answer, and site/*.test.mjs
 // walks every rung.
 func (v View) stepStemsByYear(ix ColumnIndex) (map[string][]string, error) {
-	years := v.YearStems
-	if len(years) == 0 {
-		years = []string{v.Projection}
-	}
+	years := v.yearStems()
 	out := make(map[string][]string, len(years))
 	for _, year := range years {
 		stems, err := StepStems(v.Steps, year, ix)
@@ -476,6 +525,49 @@ func (v View) validateSankeyStep(i int, s DrillStep, parents []parentChart, doc 
 		}
 	}
 	return nil
+}
+
+// yearStems is every document this view draws as a year: [View.YearStems],
+// or the view's own document where it lists none.
+func (v View) yearStems() []string {
+	if len(v.YearStems) == 0 {
+		return []string{v.Projection}
+	}
+	return v.YearStems
+}
+
+// tiersOf is every tier any of the documents carries a node at, ascending.
+func tiersOf(stems []string, ix ColumnIndex) []int {
+	var out []int
+	for _, stem := range stems {
+		for _, t := range ix.Tiers(stem) {
+			if !slices.Contains(out, t) {
+				out = append(out, t)
+			}
+		}
+	}
+	slices.Sort(out)
+	return out
+}
+
+// undrawnTier is the first of tiers, the kept ones aside, that none of the
+// documents carries a node at, or -1. A kept flank is the chart above's
+// column, drawn of that chart's document: the object-category step keeps
+// the spine's fund groups and draws department-spending, which has no
+// node at that tier.
+func undrawnTier(tiers, keep []int, stems []string, ix ColumnIndex) int {
+	has := tiersOf(stems, ix)
+	for _, t := range tiers {
+		if !slices.Contains(keep, t) && !slices.Contains(has, t) {
+			return t
+		}
+	}
+	return -1
+}
+
+// carried answers whether any of the documents states a node with this id.
+func carried(stems []string, id string, ix ColumnIndex) bool {
+	return slices.ContainsFunc(stems, func(stem string) bool { return ix.CarriesNode(stem, id) })
 }
 
 // repeatedTier returns a tier the list names twice, or -1.

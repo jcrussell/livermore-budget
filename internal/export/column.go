@@ -158,10 +158,26 @@ type decoded struct {
 // ColumnIndex answers which built document is one schedule of one column:
 // [ColumnPath] -> the document's own projection name -> filename stem. It is the same join
 // site/app.js makes, and is built in [ColumnsOf]'s own loop so the fold and
-// the index cannot disagree.
+// the index cannot disagree. It also answers what each built document
+// carries -- the tiers its nodes stand at and the node ids it states -- read
+// off the same decode, so a declaration is held against the document and not
+// against a second reading of it.
 type ColumnIndex struct {
 	schedules map[string]map[string]string
 	columns   map[string]string
+	tiers     map[string][]int
+	nodes     map[string]map[string]bool
+}
+
+// Tiers is every tier a built document carries a node at, ascending, or nil
+// for a stem that was not built or states no node.
+func (ix ColumnIndex) Tiers(stem string) []int {
+	return ix.tiers[stem]
+}
+
+// CarriesNode answers whether a built document states a node with this id.
+func (ix ColumnIndex) CarriesNode(stem, id string) bool {
+	return ix.nodes[stem][id]
 }
 
 // Stem answers the document at one schedule of one column, and whether the
@@ -212,7 +228,10 @@ func ColumnKeyOf(raw []byte) (ColumnKey, error) {
 func ColumnsOf(projections map[string][]byte, generatedBy string) (map[string]ColumnDoc, ColumnIndex, error) {
 	byColumn := map[string]*ColumnDoc{}
 	index := map[string]map[string]int{}
-	ix := ColumnIndex{schedules: map[string]map[string]string{}, columns: map[string]string{}}
+	ix := ColumnIndex{
+		schedules: map[string]map[string]string{}, columns: map[string]string{},
+		tiers: map[string][]int{}, nodes: map[string]map[string]bool{},
+	}
 
 	stems := make([]string, 0, len(projections))
 	for stem := range projections {
@@ -230,6 +249,19 @@ func ColumnsOf(projections map[string][]byte, generatedBy string) (map[string]Co
 		schedule := d.Projection
 		if schedule == "" && len(d.Nodes) > 0 {
 			return nil, ColumnIndex{}, fmt.Errorf("document %s states no projection, so it is no schedule of its column", stem)
+		}
+		// What the document carries, column or none: a view may draw a
+		// document that folded into no column.
+		if len(d.Nodes) > 0 {
+			ids := make(map[string]bool, len(d.Nodes))
+			for _, n := range d.Nodes {
+				ids[n.ID] = true
+				if !slices.Contains(ix.tiers[stem], n.Tier) {
+					ix.tiers[stem] = append(ix.tiers[stem], n.Tier)
+				}
+			}
+			slices.Sort(ix.tiers[stem])
+			ix.nodes[stem] = ids
 		}
 		if d.Metadata.FiscalYear == 0 || d.Metadata.Basis == "" || len(d.Nodes) == 0 {
 			continue
