@@ -692,7 +692,6 @@ func TestResolvedCellsAreCellsThePartPrints(t *testing.T) {
 			for _, row := range tc.rule.ActiveRows(p) {
 				active[row.Identity()] = true
 			}
-			blank := blankColumns(p)
 			cells, err := tc.r.Cells(tc.rule, p)
 			if err != nil {
 				t.Fatalf("Cells: %v", err)
@@ -704,7 +703,7 @@ func TestResolvedCellsAreCellsThePartPrints(t *testing.T) {
 				if !active[c.Row.Identity()] {
 					t.Errorf("cell %q column %d is of a row this part does not print", c.Row.Label, c.ColumnIndex)
 				}
-				if blank[c.Row.Identity()][c.ColumnIndex] {
+				if p.blank[c.Row.Identity()][c.ColumnIndex] {
 					t.Errorf("cell %q column %d is declared blank", c.Row.Label, c.ColumnIndex)
 				}
 			}

@@ -458,3 +458,40 @@ func TestP207ReadsCountyMeasureDWithItsBlankReserveCell(t *testing.T) {
 		t.Errorf("omissions (-want +got):\n%s", diff)
 	}
 }
+
+// TestAnOmittedCellIsResolvedToItsColumnOnce: the header an entry names is
+// resolved to a column index by Part.columnHeaded alone, at validation, and
+// a reader takes the blank from Part.blank. So a header printed over two
+// columns is refused before any reader can mark both, and a part read with
+// its validation forgotten declares no blank: the page then prints one
+// figure fewer than the rule expects, and the count refuses the row.
+func TestAnOmittedCellIsResolvedToItsColumnOnce(t *testing.T) {
+	twice := &Part{ColumnHeaders: columnHeaders{{Text: "FY C"}, {Text: "FY C"}, {Text: "TOTAL"}}}
+	if at, err := twice.columnHeaded("FY C"); err == nil ||
+		!strings.Contains(err.Error(), `"FY C" heads more than one of this part's columns`) {
+		t.Errorf("a header over two columns resolved to %d, %v; want the refusal", at, err)
+	}
+	if at, err := twice.columnHeaded("TOTAL"); at != 2 || err != nil {
+		t.Errorf("TOTAL resolved to %d, %v; want 2", at, err)
+	}
+	if at, err := twice.columnHeaded("FY D"); err == nil ||
+		!strings.Contains(err.Error(), `"FY D" is not one of this part's column_headers`) {
+		t.Errorf("an unprinted header resolved to %d, %v; want the refusal", at, err)
+	}
+
+	_, rule := blankResolver(t, blankPair, blankPairPages())
+	p := &rule.Parts[1]
+	if diff := cmp.Diff(map[string]map[int]bool{"Beta": {1: true}}, p.blank); diff != "" {
+		t.Errorf("validated blanks (-want +got):\n%s", diff)
+	}
+	if p.cellPublishes(1, rule.Rows[1]) || !p.cellPublishes(0, rule.Rows[1]) {
+		t.Error("cellPublishes does not read the validated blank")
+	}
+
+	r, rule := blankResolver(t, blankPair, blankPairPages())
+	rule.Parts[1].blank = nil
+	_, _, err := r.Values(rule, &rule.Parts[1])
+	if !strings.Contains(fmt.Sprint(err), "read 8 values, want 9") {
+		t.Errorf("an unvalidated part read as: %v; want the value count's refusal", err)
+	}
+}

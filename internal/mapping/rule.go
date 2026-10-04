@@ -595,6 +595,14 @@ type Part struct {
 	// what refuses a figure printed under a column declared blank.
 	OmittedCells []omittedCell `yaml:"omitted_cells"`
 
+	// blank is OmittedCells resolved, by resolveOmittedCells, to row identity
+	// and the index in Columns of the column each entry's header heads. It is
+	// the one place a header is resolved to a column for a blank; a reader
+	// takes a blank from here and matches no header itself. A part read
+	// before validation declares no blank, and the page's figure count
+	// refuses the row.
+	blank map[string]map[int]bool
+
 	// Columns describe the value columns, left to right.
 	Columns []Column `yaml:"columns"`
 
@@ -1186,7 +1194,7 @@ func (r *Rule) categoryOnColumns() bool {
 // blank is a claim about the page. And a column's class (validateColumnClass)
 // is about the column alone.
 func (p *Part) cellPublishes(j int, row Row) bool {
-	return p.cellAddressed(j, row) && !blankColumns(p)[row.Identity()][j]
+	return p.cellAddressed(j, row) && !p.blank[row.Identity()][j]
 }
 
 // cellAddressed is cellPublishes before omitted_cells: the cell is a fact's
@@ -1336,32 +1344,35 @@ func (o omittedCell) describe() string {
 	return fmt.Sprintf("%q under %q", o.row().PrintedLabel(), o.Column)
 }
 
-// blankColumns is the part's declared blank cells as row identity to the
-// columns blank on that row, each found by its header.
-func blankColumns(p *Part) map[string]map[int]bool {
-	if len(p.OmittedCells) == 0 {
-		return nil
-	}
-	out := map[string]map[int]bool{}
-	for _, o := range p.OmittedCells {
-		for c, h := range p.ColumnHeaders {
-			if !h.Unheaded && h.Text == o.Column {
-				if out[o.row().Identity()] == nil {
-					out[o.row().Identity()] = map[int]bool{}
-				}
-				out[o.row().Identity()][c] = true
-			}
+// columnHeaded is the index in Columns of the one column header heads. A
+// header no column prints is refused, and so is one printed over two
+// columns: Budget Book p67 prints "FY 2025-26" over four of its columns, and
+// a declaration naming that header cannot say which cell it means.
+func (p *Part) columnHeaded(header string) (int, error) {
+	at := -1
+	for c, h := range p.ColumnHeaders {
+		if h.Unheaded || h.Text != header {
+			continue
 		}
+		if at >= 0 {
+			return -1, fmt.Errorf("%q heads more than one of this part's "+
+				"columns, so it cannot say which cell is blank", header)
+		}
+		at = c
 	}
-	return out
+	if at < 0 {
+		return -1, fmt.Errorf("%q is not one of this part's column_headers: %s",
+			header, describeHeaders(p.ColumnHeaders))
+	}
+	return at, nil
 }
 
 // printedColumns is the columns a row prints on this part, left to right: all
 // of them, less any the part declares blank on it.
-func printedColumns(p *Part, blank map[string]map[int]bool, row Row) []int {
+func printedColumns(p *Part, row Row) []int {
 	cols := make([]int, 0, len(p.Columns))
 	for c := range p.Columns {
-		if !blank[row.Identity()][c] {
+		if !p.blank[row.Identity()][c] {
 			cols = append(cols, c)
 		}
 	}
@@ -1404,10 +1415,9 @@ func (r *Rule) ActiveRows(p *Part) []Row {
 // one per active row per column it prints. A mismatch means the page's shape
 // has changed and the rule can no longer be trusted.
 func (r *Rule) expectedValues(p *Part) int {
-	blank := blankColumns(p)
 	n := 0
 	for _, row := range r.ActiveRows(p) {
-		n += len(printedColumns(p, blank, row))
+		n += len(printedColumns(p, row))
 	}
 	return n
 }

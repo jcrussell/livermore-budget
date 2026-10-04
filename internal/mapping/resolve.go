@@ -504,11 +504,10 @@ func Omissions(rule *Rule, p *Part) []Omission {
 	// Keyed on Identity(), the key the rule's rows are unique on. Matching
 	// the bare Label here would report a blank on every row sharing it
 	// (fisc-gtv).
-	blank := blankColumns(p)
 	var out []Omission
 	for i, row := range rule.Rows {
 		for c, h := range p.ColumnHeaders {
-			if blank[row.Identity()][c] {
+			if p.blank[row.Identity()][c] {
 				out = append(out, Omission{Row: row, RowIndex: i, Page: p.Page,
 					ColumnIndex: c, Header: h.Text})
 			}
@@ -519,7 +518,6 @@ func Omissions(rule *Rule, p *Part) []Omission {
 
 func (r *Resolver) labelledValues(rule *Rule, p *Part, blk *block, guard *columnGuard) ([]Value, error) {
 	rows, rowIndex := canonicalRows(rule, p)
-	blank := blankColumns(p)
 	fail := func(field, msg, hint string) error {
 		return cmdutil.WithHint(&resolveError{DocID: r.file.DocID, RuleID: rule.ID,
 			Page: p.Page, Field: field, Msg: msg, Err: ErrNotFound}, hint)
@@ -567,7 +565,7 @@ func (r *Resolver) labelledValues(rule *Rule, p *Part, blk *block, guard *column
 		if err != nil {
 			return nil, fail("rows", fmt.Sprintf("row %q: %s", row.PrintedLabel(), err), currencyHint)
 		}
-		cols := printedColumns(p, blank, row)
+		cols := printedColumns(p, row)
 		if len(toks) < len(cols) {
 			return nil, fail("rows", fmt.Sprintf(
 				"row %q is followed by %d values, want %d (one per column it prints)",
@@ -915,7 +913,6 @@ func recognize(q Quantity, tok string) error {
 func (r *Resolver) positionalValues(rule *Rule, p *Part, blk *block, guard *columnGuard) ([]Value, error) {
 	rows, rowIndex := canonicalRows(rule, p)
 	ncols := len(p.Columns)
-	blank := blankColumns(p)
 	// The marks are dropped here as on a labelled row: p81's first row and its
 	// subtotals print "$" detached from each figure, inside the block.
 	toks, err := dropCurrencyMarks(tokens(blk.Text, blk.Start))
@@ -940,7 +937,7 @@ func (r *Resolver) positionalValues(rule *Rule, p *Part, blk *block, guard *colu
 	values := make([]Value, 0, want)
 	at := 0
 	for i, row := range rows {
-		cols := printedColumns(p, blank, row)
+		cols := printedColumns(p, row)
 		rowToks := toks[at : at+len(cols)]
 		at += len(cols)
 		vals, err := r.parseRow(rule, p, row, rowIndex[i], rowToks, cols, guard)

@@ -465,6 +465,14 @@ func validateRule(r *Rule, errf errFunc) error {
 		return errf(r.ID, "rows", "is empty")
 	}
 
+	// First, because the row checks below read cellPublishes, which reads
+	// what this stores.
+	for i := range r.Parts {
+		if err := resolveOmittedCells(r, &r.Parts[i], errf); err != nil {
+			return err
+		}
+	}
+
 	// The columns' categories and kinds are validated before any row, because
 	// the sign check below reads a column-category row's kinds off them.
 	byColumn := r.categoryOnColumns()
@@ -1846,13 +1854,12 @@ func checkCounterpart(r *Rule, row Row, errf errFunc) error {
 	return nil
 }
 
-// validateOmittedCells holds each omitted_cells entry to naming one cell the
-// part reads: one row, by namesOneRow, that the part prints, under one header
-// of a column the part does not skip. The part must declare column_headers,
-// because the guard is what checks a row's figures sit under the columns they
-// are filed under once one of them is blank.
-func validateOmittedCells(r *Rule, p *Part,
-	namesOneRow func(field string, j int, o Row, notARow string) error, errf errFunc) error {
+// resolveOmittedCells is the one place an omitted_cells entry's header is
+// resolved to a column, by Part.columnHeaded, and Part.blank is what it
+// stores. The part must declare column_headers, because the guard is what
+// checks a row's figures sit under the columns they are filed under once one
+// of them is blank.
+func resolveOmittedCells(r *Rule, p *Part, errf errFunc) error {
 	if len(p.OmittedCells) == 0 {
 		return nil
 	}
@@ -1864,13 +1871,44 @@ func validateOmittedCells(r *Rule, p *Part,
 				"prints, and only the column guard can say each figure is under "+
 				"the column it is filed under")
 	}
+	blank := map[string]map[int]bool{}
+	for _, o := range p.OmittedCells {
+		if o.Column == "" {
+			return errf(r.ID, field, "%q names no column", o.row().PrintedLabel())
+		}
+		at, err := p.columnHeaded(o.Column)
+		if err != nil {
+			return errf(r.ID, field, "%v", err)
+		}
+		id := o.row().Identity()
+		if blank[id][at] {
+			return errf(r.ID, field, "%s is declared twice", o.describe())
+		}
+		if blank[id] == nil {
+			blank[id] = map[int]bool{}
+		}
+		blank[id][at] = true
+	}
+	p.blank = blank
+	return nil
+}
+
+// validateOmittedCells holds each omitted_cells entry, resolved by
+// resolveOmittedCells, to naming one cell the part reads: one row, by
+// namesOneRow, that the part prints, under a column the part does not skip,
+// leaving the row a figure to print.
+func validateOmittedCells(r *Rule, p *Part,
+	namesOneRow func(field string, j int, o Row, notARow string) error, errf errFunc) error {
+	if len(p.OmittedCells) == 0 {
+		return nil
+	}
+	field := fmt.Sprintf("parts[page %d].omitted_cells", p.Page)
 	// The rule's row, not the entry's: the entry names the row by its anchors
 	// and the row carries its page.
 	rows := map[string]Row{}
 	for _, row := range r.Rows {
 		rows[row.Identity()] = row
 	}
-	declared := map[string]map[string]bool{}
 	for j, o := range p.OmittedCells {
 		if err := namesOneRow(field, j, o.row(), "omitted_cells names a cell of a "+
 			"row the rule lists"); err != nil {
@@ -1881,39 +1919,17 @@ func validateOmittedCells(r *Rule, p *Part,
 		case !rows[id].OnPart(p):
 			return errf(r.ID, field, "%q is printed by page %d, not by this part, "+
 				"so it has no cell to leave blank", o.row().PrintedLabel(), rows[id].Page)
-		case o.Column == "":
-			return errf(r.ID, field, "%q names no column", o.row().PrintedLabel())
 		case strings.TrimSpace(o.Note) == "":
 			return cmdutil.WithHint(
 				errf(r.ID, field, "%s has no note", o.describe()),
 				"say what the page prints on the row and that this cell is blank")
-		case declared[id][o.Column]:
-			return errf(r.ID, field, "%s is declared twice", o.describe())
 		}
-		at := -1
-		for c, h := range p.ColumnHeaders {
-			if !h.Unheaded && h.Text == o.Column {
-				if at >= 0 {
-					return errf(r.ID, field, "%q heads more than one of this part's "+
-						"columns, so it cannot say which cell is blank", o.Column)
-				}
-				at = c
-			}
+	}
+	for _, row := range r.Rows {
+		id := row.Identity()
+		if p.blank[id] == nil {
+			continue
 		}
-		switch {
-		case at < 0:
-			return errf(r.ID, field, "%q is not one of this part's column_headers: %s",
-				o.Column, describeHeaders(p.ColumnHeaders))
-		case p.Columns[at].Skip:
-			return cmdutil.WithHint(
-				errf(r.ID, field, "%q is a skipped column", o.Column),
-				"a skipped column yields no figure to be absent; no page needs a "+
-					"blank declared there yet, so the read refuses one")
-		}
-		if declared[id] == nil {
-			declared[id] = map[string]bool{}
-		}
-		declared[id][o.Column] = true
 		// Counted over the columns the row still PRINTS, not the cells it
 		// publishes: a blank is a claim about the page, and a row printing no
 		// figure leaves the read nothing to end on. A skipped column can
@@ -1921,14 +1937,20 @@ func validateOmittedCells(r *Rule, p *Part,
 		// figure blank pass as one with a cell blank.
 		printed := 0
 		for c, col := range p.Columns {
-			if !col.Skip && !declared[id][p.ColumnHeaders[c].Text] {
+			switch {
+			case p.blank[id][c] && col.Skip:
+				return cmdutil.WithHint(
+					errf(r.ID, field, "%q is a skipped column", p.ColumnHeaders[c].Text),
+					"a skipped column yields no figure to be absent; no page needs a "+
+						"blank declared there yet, so the read refuses one")
+			case !col.Skip && !p.blank[id][c]:
 				printed++
 			}
 		}
 		if printed == 0 {
 			return cmdutil.WithHint(
 				errf(r.ID, field, "declares every column of %q blank",
-					o.row().PrintedLabel()),
+					row.PrintedLabel()),
 				"a row this part prints no figure of is not a row of this part: "+
 					"place it with page on the part that prints it, or remove it")
 		}
