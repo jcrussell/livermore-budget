@@ -159,3 +159,38 @@ func TestTheHistoryRowLabelIsTheRegistrys(t *testing.T) {
 		}
 	}
 }
+
+// TestAStepOpeningFromAnUndeclaredKeyIsRefusedNotDropped holds declaredSteps
+// to dropping a step only for a parent IT dropped: a document that was not
+// built. An After naming a key no step declares is a fault in the file, and
+// `fisc export` must refuse it by name rather than ship the view without the
+// step and everything below it.
+func TestAStepOpeningFromAnUndeclaredKeyIsRefusedNotDropped(t *testing.T) {
+	opts, _, _, _ := testOptions(t)
+	root, err := opts.RepoRoot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(root, "data", viewsFile)
+	b, err := os.ReadFile(path) // #nosec G304 -- the test's own fake repository.
+	if err != nil {
+		t.Fatal(err)
+	}
+	const old, typo = "after: [fund]\n", "after: [fnud]\n"
+	if strings.Count(string(b), old) != 1 {
+		t.Fatalf("the committed %s has %d of %q, want one, so this case edits nothing certain",
+			viewsFile, strings.Count(string(b), old), old)
+	}
+	if werr := os.WriteFile(path, []byte(strings.Replace(string(b), old, typo, 1)), 0o600); werr != nil {
+		t.Fatal(werr)
+	}
+	built := builtStemsForTest(t)
+	opts.Build = func(string) (result, error) { return result{Projections: built}, nil }
+	err = exportRun(opts)
+	if err == nil {
+		t.Fatal("exportRun wrote a site whose step opens from a key no step declares")
+	}
+	if !strings.Contains(err.Error(), `opens from "fnud", which no step declares as its key`) {
+		t.Errorf("got %v, want the refusal naming the undeclared key", err)
+	}
+}
