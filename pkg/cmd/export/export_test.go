@@ -54,6 +54,18 @@ sources:
 	if err := os.WriteFile(filepath.Join(root, "data", "sources.yaml"), []byte(registry), 0o600); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
+	// The vocabulary and the views are the repository's own: views() reads
+	// both, and a fake of either would be a second declaration of what the
+	// site renders.
+	for _, name := range []string{"funds.yaml", "taxonomy.yaml", "departments.yaml", viewsFile} {
+		b, err := os.ReadFile(filepath.Join(repoRootForTest(t), "data", name)) // #nosec G304 -- the committed data registries.
+		if err != nil {
+			t.Fatalf("seed: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(root, "data", name), b, 0o600); err != nil {
+			t.Fatalf("seed: %v", err)
+		}
+	}
 	seedExtraction(t, root)
 	return root
 }
@@ -1305,292 +1317,116 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 		}
 	}
 
-	// The chain's actual values, because the client's tests measure against
-	// them. Which document each year draws is export.ColumnIndex's, measured by
-	// TestOpensIntoJoinsOnColumnNotOnDeclaredOrder.
-	want := []export.DrillStep{
-		{
-			Key:        "fund-group",
-			After:      []string{""},
-			From:       2,
-			Projection: project.FundFlowsProjection,
-			Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
-				Keep:  []int{0},
-				Tiers: []int{0, 2, 3, 4, 5},
-				Widen: []int{4, 5},
-				Caps: []export.TierCap{{Tier: 3, Cap: 8}, {Tier: 4, Cap: 24, Tail: "divisions"},
-					{Tier: 5, Cap: 8, Tail: "object rows"}},
-			}},
-			Noun: "fund group",
-			Back: "All fund groups",
-			Tail: "funds",
-			// Derived from the cuts and exceptions, which are the declaration.
-			Residual:      must[map[string]string](t)(project.FundFlowsResidual()),
-			ResidualGrain: "fund",
-			Description: "The revenue categories on the left are the citywide chart's own " +
-				"cells; this fund group is the mark in the middle, and its own funds are " +
-				"on the right, rescaled to the group's total \u2014 the citywide chart " +
-				"cannot show them, because the General Fund alone is half the fund column " +
-				"and the smallest fund is less than a thirty-thousandth of it. Money " +
-				"Budget Book pp.127-140 print for no fund at all passes the group's mark " +
-				"to a node of its own beside the funds, so what the group takes in here " +
-				"is what its funds take in. Every fund a department draws on opens " +
-				"further: the General Fund into the divisions that spend it, from Budget " +
-				"Book pp.167-170, and every other fund into the departments it pays for, " +
-				"from pp.85-125. Any other fund ends the drill. " +
-				"Where there is room for more columns, the General Fund's divisions " +
-				"from pp.167-170 are drawn beyond its funds, and beyond them the " +
-				"object categories each fund spends on: the General Fund's through " +
-				"its divisions, every other fund's straight from pp.173-183, which " +
-				"print no division.",
-		},
-		{
-			Key:   "fund",
-			After: []string{"fund-group"},
-			From:  3,
-			Role:  "general_fund",
-			Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
-				Keep:  []int{2},
-				Tiers: []int{2, 3, 4, 5},
-				Widen: []int{5},
-				Caps:  []export.TierCap{{Tier: 4, Cap: 24}, {Tier: 5, Cap: 8, Tail: "object rows"}},
-			}},
-			Noun: "fund",
-			Back: "All funds",
-			Tail: "divisions",
-			Description: "The fund group this fund belongs to is on the left and the " +
-				"divisions that spend it are on the right \u2014 that fund's rows of " +
-				"Budget Book pp.167-170, rescaled to its total. The two sides of the " +
-				"fund in the middle are not one figure: what it takes in is its revenue " +
-				"and what leaves it here is what its divisions spend. The difference is " +
-				"what pp.66-67 print for the fund group as a whole \u2014 the money the city " +
-				"transfers out and sets aside in its balances and reserves \u2014 less the " +
-				"money the group takes in that no fund receives, which the chart above " +
-				"carries to a node of its own beside the funds.",
-		},
-		{
-			Key:   "division",
-			After: []string{"fund"},
-			From:  4,
-			Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
-				Keep:  []int{3},
-				Tiers: []int{3, 4, 5},
-				Caps:  []export.TierCap{{Tier: 5, Cap: 8}},
-			}},
-			Noun: "division",
-			Back: "All divisions",
-			Tail: "categories",
-			Description: "The fund that pays for this division is on the left and the " +
-				"object categories it spends on are on the right \u2014 that division's " +
-				"cells of Budget Book pp.167-170, rescaled to its total.",
-		},
-		{
-			Key:        "revenue-category",
-			After:      []string{""},
-			From:       0,
-			Role:       "revenue_source",
-			Projection: project.FundFlowsProjection,
-			Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
-				Keep:  []int{2},
-				Tiers: []int{1, 0, 2},
-				Caps:  []export.TierCap{{Tier: 1, Cap: 8}},
-			}},
-			Noun: "revenue category",
-			Back: "All revenue categories",
-			Tail: "lines",
-			Description: "The lines Budget Book pp.127-140 print under this revenue " +
-				"category are on the left; the fund groups its money reaches are on the " +
-				"right, as the citywide chart draws them. The category itself is the mark " +
-				"in the middle, and the two sides of it are the same figure read from two " +
-				"schedules. A line the schedule prints as a reduction is drawn in red at " +
-				"its printed size and named as one, and the category's own mark is the " +
-				"figure net of them \u2014 the same one the citywide chart labels it with.",
-		},
-		{
-			Key:        "object-category",
-			After:      []string{""},
-			From:       5,
-			Role:       "object_category",
-			Projection: project.DepartmentSpendingProjection,
-			Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
-				Keep:  []int{2},
-				Tiers: []int{2, 5, 4},
-				Caps:  []export.TierCap{{Tier: 4, Cap: 8}},
-			}},
-			Noun: "object category",
-			Back: "All object categories",
-			Tail: "divisions",
-			// Derived from the exceptions cuts-tie-along-the-lattice pins.
-			Gaps: must[map[string][]project.Gap](t)(project.SpendingGaps()),
-			Description: "The fund groups that pay for this object category are on the " +
-				"left; the divisions that spend it are on the right \u2014 Budget Book " +
-				"pp.85-125's rows for this category, every division in the city that " +
-				"has one, rescaled to the category's total. The two columns are read " +
-				"from different schedules, and the right-hand one prints what a " +
-				"division spends whatever pays for it: it carries no fund at all, so " +
-				"no division here takes the colour of a fund group.",
-		},
-		{
-			// No flank because it opens a source: validateSteps refuses Keep
-			// and Side together.
-			Key:   "transfers",
-			After: []string{""},
-			From:  0,
-			Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
-				Side:  export.SideSource,
-				Tiers: []int{2, 3},
-			}},
-			Role:       "transfer_in",
-			Projection: project.TransfersByFundProjection,
-			Noun:       "money coming in",
-			Back:       "All money coming in",
-			Tail:       "funds",
-			Description: "Budget Book p76, Summary of Transfers: the funds that pay each " +
-				"transfer the city makes to itself are on the left, and the funds that " +
-				"receive them are on the right. One ribbon is one figure the page prints, " +
-				"and a fund that both pays and receives is drawn once on each side, under " +
-				"the same name. This is the money coming IN, which is what the mark on " +
-				"the citywide chart counts.",
-		},
-		{
-			// Shares (After, From) with object-category, which validateSteps
-			// admits because the roles differ.
-			Key:        "transfers-out",
-			After:      []string{""},
-			From:       5,
-			Role:       "transfer_out",
-			Projection: project.TransfersOutProjection,
-			Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
-				Tiers: []int{3, 5},
-				Caps:  []export.TierCap{{Tier: 3, Cap: 10}, {Tier: 5, Cap: 10}},
-			}},
-			Noun: "money going out",
-			Back: "All money going out",
-			Tail: "funds",
-			Description: "Budget Book p76 and p222: the funds that pay each transfer the " +
-				"city makes are on the left, and the funds that receive them are on the " +
-				"right. p76 lists the transfers between operating funds and p222 the " +
-				"transfers to the Capital Improvement Program, whose funds are not on the " +
-				"citywide chart; the two lists together are the Transfers Out it counts. " +
-				"One ribbon is one figure a page prints.",
-		},
-		{
-			// Shares (After, From) with `fund`, which validateSteps admits
-			// because the roles differ. No caps, measured: the widest fund it
-			// opens draws 5 departments (fund/240, FY2023-24 actual).
-			Key:        "fund-departments",
-			After:      []string{"fund-group"},
-			From:       3,
-			Role:       "fund",
-			Projection: project.DepartmentFundingProjection,
-			Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
-				Keep:  []int{2},
-				Tiers: []int{2, 3, 4},
-			}},
-			Noun: "fund",
-			Back: "All funds",
-			Tail: "departments",
-			Description: "The fund group this fund belongs to is on the left and the " +
-				"city departments it pays for are on the right — that fund's rows " +
-				"of Budget Book pp.85-125, rescaled to its total. The two sides of the " +
-				"fund in the middle are read from two different schedules and are not " +
-				"one figure: what it takes in, from pp.127-140, and what the " +
-				"departments draw on it here. Either side may be the larger. " +
-				"A department here is the WHOLE department across every fund that " +
-				"pays it, which is a coarser thing than the divisions the General Fund " +
-				"opens into — five names belong to both tiers, so do not read one " +
-				"as the other.",
-		},
-		{
-			// A source, as transfers is, and capped as the fund-group step's
-			// fund column is.
-			Key:        "balance-draw",
-			After:      []string{""},
-			From:       0,
-			Role:       "fund_balance_draw",
-			Projection: project.FundSourcesUsesProjection,
-			Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
-				Side:  export.SideSource,
-				Tiers: []int{0, 3},
-				Caps:  []export.TierCap{{Tier: 3, Cap: 8}},
-			}},
-			Noun: "draw on fund balances",
-			Back: "All money coming in",
-			Tail: "funds",
-			Description: "Budget Book pp.186-209 print each fund's balance at the start and the " +
-				"end of the year, and the funds on the right are those whose balance falls, each " +
-				"drawn at its own fall: the beginning balance less the ending one, which the city " +
-				"prints as two figures and not as one. These are each fund's own draw, gross, " +
-				"where the citywide chart's Fund Balance Draw is net within each fund group, so " +
-				"the funds here can sum to more than the mark they were opened from; a caveat gives " +
-				"their gross sum and their sum netted within each group. Every fund drawn here opens into where its own money comes from and goes.",
-		},
-		{
-			// Shares (After, From) with object-category and transfers-out, told
-			// apart by role.
-			Key:        "balance-contribution",
-			After:      []string{""},
-			From:       5,
-			Role:       "fund_balance_contribution",
-			Projection: project.FundSourcesUsesProjection,
-			Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
-				Tiers: []int{3, 5},
-				Caps:  []export.TierCap{{Tier: 3, Cap: 8}},
-			}},
-			Noun: "contribution to fund balances",
-			Back: "All money going out",
-			Tail: "funds",
-			Description: "Budget Book pp.186-209 print each fund's balance at the start and the " +
-				"end of the year, and the funds on the left are those whose balance rises, each " +
-				"drawn at its own rise: the ending balance less the beginning one, which the city " +
-				"prints as two figures and not as one. These are each fund's own contribution, " +
-				"gross, where the citywide chart's Fund Balance Contribution is net within each " +
-				"fund group, so the funds here can sum to more than the mark they were opened from; " +
-				"a caveat gives their gross sum and their sum netted within each group. Every fund drawn here opens into where its own money comes " +
-				"from and goes.",
-		},
-		{
-			// One ribbon, the General Fund's: no cap.
-			Key:        "reserve",
-			After:      []string{""},
-			From:       5,
-			Role:       "reserve_increase",
-			Projection: project.FundSourcesUsesProjection,
-			Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
-				Tiers: []int{3, 5},
-			}},
-			Noun: "addition to reserves",
-			Back: "All money going out",
-			Tail: "funds",
-			Description: "The funds on the left are those Budget Book pp.186-209 print an " +
-				"increase in reserves for, each at the figure its own page prints. Every fund " +
-				"drawn here opens into where its own money comes from and goes.",
-		},
-		{
-			// Both sides of the opened fund, off the document before it: no
-			// projection, no role, no flank.
-			Key:   "fund-balance",
-			After: []string{"balance-draw", "balance-contribution", "reserve"},
-			From:  3,
-			Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
-				Side:  export.SideBoth,
-				Tiers: []int{0, 3, 5},
-			}},
-			Noun: "fund",
-			Back: "All funds",
-			Tail: "lines",
-			Description: "Where this fund's money comes from is on the left and where it goes is " +
-				"on the right, each ribbon one line its page of Budget Book pp.186-209 prints. " +
-				"The page prints the fund's balance at the start and the end of the year rather " +
-				"than the change between them, so the draw on its balance or the contribution to " +
-				"it is the difference of those two printed figures, drawn as one ribbon and " +
-				"marked as ours. That difference is what makes the two sides of the fund one " +
-				"figure.",
-		},
+	// THE CHAIN'S SHAPE, because the client's tests measure against it: which
+	// steps, from which charts and tiers, which role opens, which schedule is
+	// drawn, and the Sankey hints. The words are data/views.yaml's and are
+	// held by property below, not restated. Which document each year draws is
+	// export.ColumnIndex's, measured by TestOpensIntoJoinsOnColumnNotOnDeclaredOrder.
+	type shape struct {
+		key, role, projection, side string
+		after                       []string
+		from                        int
+		keep, tiers, widen          []int
+		caps                        []export.TierCap
+		// residual and gaps say whether the step carries a derivation, which
+		// Go fills from internal/project; grain is the residual's.
+		residual, gaps bool
+		grain          string
 	}
-	if diff := cmp.Diff(want, spine.Steps); diff != "" {
+	want := []shape{
+		{key: "fund-group", after: []string{""}, from: 2, projection: project.FundFlowsProjection,
+			keep: []int{0}, tiers: []int{0, 2, 3, 4, 5}, widen: []int{4, 5},
+			caps: []export.TierCap{{Tier: 3, Cap: 8}, {Tier: 4, Cap: 24, Tail: "divisions"},
+				{Tier: 5, Cap: 8, Tail: "object rows"}},
+			residual: true, grain: "fund"},
+		{key: "fund", after: []string{"fund-group"}, from: 3, role: project.RoleGeneralFund,
+			keep: []int{2}, tiers: []int{2, 3, 4, 5}, widen: []int{5},
+			caps: []export.TierCap{{Tier: 4, Cap: 24}, {Tier: 5, Cap: 8, Tail: "object rows"}}},
+		{key: "division", after: []string{"fund"}, from: 4,
+			keep: []int{3}, tiers: []int{3, 4, 5}, caps: []export.TierCap{{Tier: 5, Cap: 8}}},
+		{key: "revenue-category", after: []string{""}, from: 0, role: project.RoleRevenueSource,
+			projection: project.FundFlowsProjection,
+			keep:       []int{2}, tiers: []int{1, 0, 2}, caps: []export.TierCap{{Tier: 1, Cap: 8}}},
+		{key: "object-category", after: []string{""}, from: 5, role: project.RoleObjectCategory,
+			projection: project.DepartmentSpendingProjection,
+			keep:       []int{2}, tiers: []int{2, 5, 4}, caps: []export.TierCap{{Tier: 4, Cap: 8}},
+			gaps: true},
+		{key: "transfers", after: []string{""}, from: 0, role: project.RoleTransferIn,
+			projection: project.TransfersByFundProjection,
+			side:       export.SideSource, tiers: []int{2, 3}},
+		// Shares (After, From) with object-category, which validateSteps
+		// admits because the roles differ.
+		{key: "transfers-out", after: []string{""}, from: 5, role: project.RoleTransferOut,
+			projection: project.TransfersOutProjection,
+			tiers:      []int{3, 5}, caps: []export.TierCap{{Tier: 3, Cap: 10}, {Tier: 5, Cap: 10}}},
+		// Shares (After, From) with `fund`, told apart by role. No caps,
+		// measured: the widest fund it opens draws 5 departments (fund/240,
+		// FY2023-24 actual).
+		{key: "fund-departments", after: []string{"fund-group"}, from: 3, role: project.RoleFund,
+			projection: project.DepartmentFundingProjection,
+			keep:       []int{2}, tiers: []int{2, 3, 4}},
+		// A source, as transfers is, and capped as the fund-group step's fund
+		// column is.
+		{key: "balance-draw", after: []string{""}, from: 0, role: project.RoleFundBalanceDraw,
+			projection: project.FundSourcesUsesProjection,
+			side:       export.SideSource, tiers: []int{0, 3}, caps: []export.TierCap{{Tier: 3, Cap: 8}}},
+		{key: "balance-contribution", after: []string{""}, from: 5, role: project.RoleFundBalanceContribution,
+			projection: project.FundSourcesUsesProjection,
+			tiers:      []int{3, 5}, caps: []export.TierCap{{Tier: 3, Cap: 8}}},
+		// One ribbon, the General Fund's: no cap.
+		{key: "reserve", after: []string{""}, from: 5, role: project.RoleReserveIncrease,
+			projection: project.FundSourcesUsesProjection,
+			tiers:      []int{3, 5}},
+		// Both sides of the opened fund, off the document before it: no
+		// projection, no role, no flank.
+		{key: "fund-balance", after: []string{"balance-draw", "balance-contribution", "reserve"}, from: 3,
+			side: export.SideBoth, tiers: []int{0, 3, 5}},
+	}
+	shapes := make([]shape, 0, len(spine.Steps))
+	for _, s := range spine.Steps {
+		if s.Form != export.SankeyForm || s.Sankey == nil {
+			t.Fatalf("step %q draws form %q with Sankey hints %v; every step is a Sankey", s.Key, s.Form, s.Sankey)
+		}
+		shapes = append(shapes, shape{
+			key: s.Key, role: s.Role, projection: s.Projection, side: s.Sankey.Side,
+			after: s.After, from: s.From,
+			keep: s.Sankey.Keep, tiers: s.Sankey.Tiers, widen: s.Sankey.Widen, caps: s.Sankey.Caps,
+			residual: len(s.Residual) > 0, gaps: len(s.Gaps) > 0, grain: s.ResidualGrain,
+		})
+	}
+	if diff := cmp.Diff(want, shapes, cmp.AllowUnexported(shape{})); diff != "" {
 		t.Errorf("the spine's steps (-want +got):\n%s\nthe client's tests measure "+
 			"against this", diff)
+	}
+	// The derivations are internal/project's, read not restated.
+	for _, s := range spine.Steps {
+		switch s.Key {
+		case "fund-group":
+			if diff := cmp.Diff(must[map[string]string](t)(project.FundFlowsResidual()), s.Residual); diff != "" {
+				t.Errorf("the fund-group step's residual (-want +got):\n%s", diff)
+			}
+		case "object-category":
+			if diff := cmp.Diff(must[map[string][]project.Gap](t)(project.SpendingGaps()), s.Gaps); diff != "" {
+				t.Errorf("the object-category step's gaps (-want +got):\n%s", diff)
+			}
+		}
+	}
+	// THE WORDS ARE HELD BY PROPERTY: each description is one terminated
+	// paragraph. A folded scalar in data/views.yaml that kept a newline, lost
+	// its full stop, or spelled a dash as "--" would land in the SVG's <desc>
+	// as written, and the client appends sentences to it.
+	for _, s := range spine.Steps {
+		d := s.Description
+		switch {
+		case d == "":
+			t.Errorf("step %q has no description", s.Key)
+		case !strings.HasSuffix(d, "."):
+			t.Errorf("step %q's description is not terminated: %q", s.Key, d[max(0, len(d)-20):])
+		case strings.ContainsAny(d, "\n\t") || strings.Contains(d, "  "):
+			t.Errorf("step %q's description carries a line break or doubled space: %q", s.Key, d)
+		case strings.Contains(d, "--"):
+			t.Errorf("step %q's description spells a dash as \"--\"; the prose uses an em dash", s.Key)
+		}
 	}
 	// Pinned by hand: every kept flank's adjacency is read against this order.
 	if diff := cmp.Diff([]int{0, 2, 5}, spine.Overview.Sankey.Tiers); diff != "" {
@@ -2305,7 +2141,7 @@ func TestEveryServedStampIsTheExportsOwn(t *testing.T) {
 // fatal setup error.
 func mustViews(t *testing.T, built result) []export.View {
 	t.Helper()
-	vs, err := views(built)
+	vs, err := views(repoRootForTest(t), built)
 	if err != nil {
 		t.Fatalf("views: %v", err)
 	}

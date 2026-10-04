@@ -246,7 +246,7 @@ func exportRun(o *Options) error {
 	// published an undeclared document EMPTIES the output directory and then
 	// refuses -- destroying a site to report a fault that was detectable before
 	// anything was touched.
-	siteViews, err := views(built)
+	siteViews, err := views(root, built)
 	if err != nil {
 		return err
 	}

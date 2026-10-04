@@ -1,0 +1,493 @@
+# The site's pages, in nav order, the page it opens on first, and every step
+# by which a page's chart opens a node. `fisc export` loads this file through
+# the export command's loadViews, which refuses an unknown key, a projection,
+# role, residual or gaps name it cannot resolve against Go's constants, and a
+# row naming no taxonomy.yaml category. What a declared step must satisfy is
+# validateSteps' (internal/export) and schema/page.schema.json's, not this
+# file's.
+#
+# Only what is authored is written here. A view's year control and which of
+# its steps are declared are filled by Go from the documents actually built;
+# a step's `residual` and `gaps` name a derivation Go fills from
+# internal/project, never a figure.
+#
+# Every tier set and cap below is measured against the committed goldens with
+# the shipped d3-sankey at app.js's constants; the client's tests pin the
+# figures. Caps are per tier: one cap on the finest tier leaves
+# special-revenue's fund column undrawable.
+schema_version: 1
+views:
+  - path: index.html
+    nav: Budget flows
+    template: index.html.tmpl
+    projection: sankey
+    # The year control lists every built document of this projection, oldest
+    # first; the page opens on the last of them.
+    year_control: true
+    # Declared rather than left to d3's inference so a step's kept flank has a
+    # column to be adjacent to. On both spine goldens the layout is identical
+    # either way, which the client's layout test pins.
+    overview:
+      form: sankey
+      sankey:
+        tiers: [0, 2, 5]
+    # The spine opens into fund-flows, and fund-flows into itself.
+    steps:
+      # After the spine's chart only: a group kept on a revenue- or
+      # object-category window is drawn at its share of that centre while this
+      # step draws its whole decomposition, leaving node height with no ribbon.
+      # validateSteps refuses it.
+      - key: fund-group
+        after: [""]
+        from: 2
+        projection: fund-flows
+        form: sankey
+        sankey:
+          # [revenue categories | this group | its funds]: the spine draws tier
+          # 0 left of tier 2, so the window pushes right.
+          keep: [0]
+          # Two more columns where there is room: the divisions that spend each
+          # fund, and the object categories they spend on. Only the General
+          # Fund fills tier 4 (pp.167-170), so other groups' windows draw
+          # nothing there and the client drops the column; every group fills
+          # tier 5, the General Fund through its divisions and every other fund
+          # from pp.173-183.
+          tiers: [0, 2, 3, 4, 5]
+          widen: [4, 5]
+          # Special-revenue's 31-32 funds fold to 8 with no sub-pixel ribbon;
+          # uncapped, up to 9 of its ribbons lie under a pixel. The tier-4 cap
+          # is the fund step's, inert against fund/100's 23 divisions, and the
+          # tier-5 cap is the fund step's too. Tier 5 is a fund's or a
+          # division's own object rows, not the four categories, so its tail
+          # counts rows.
+          caps:
+            - {tier: 3, cap: 8}
+            - {tier: 4, cap: 24, tail: divisions}
+            - {tier: 5, cap: 8, tail: object rows}
+        noun: fund group
+        # pp.127-140 print no fund-balance row, so a draw the spine sends into
+        # a group reaches no fund here.
+        residual_grain: fund
+        back: All fund groups
+        tail: funds
+        # The fund-flows residual is derived from the cuts and exceptions
+        # internal/structure declares, shipped rather than respelled so the
+        # client's set is one thing. Each such ribbon is re-pointed past the
+        # group onto one derived node, so the group takes in exactly what its
+        # funds take in.
+        residual: fund-flows
+        # The client's tests pin these figures per column: fund/100 is about
+        # half the fund column, and the smallest fund under 1/30,000 of it, in
+        # both years.
+        description: >-
+          The revenue categories on the left are the citywide chart's own
+          cells; this fund group is the mark in the middle, and its own funds
+          are on the right, rescaled to the group's total — the citywide chart
+          cannot show them, because the General Fund alone is half the fund
+          column and the smallest fund is less than a thirty-thousandth of it.
+          Money Budget Book pp.127-140 print for no fund at all passes the
+          group's mark to a node of its own beside the funds, so what the group
+          takes in here is what its funds take in. Every fund a department
+          draws on opens further: the General Fund into the divisions that
+          spend it, from Budget Book pp.167-170, and every other fund into the
+          departments it pays for, from pp.85-125. Any other fund ends the
+          drill. Where there is room for more columns, the General Fund's
+          divisions from pp.167-170 are drawn beyond its funds, and beyond them
+          the object categories each fund spends on: the General Fund's through
+          its divisions, every other fund's straight from pp.173-183, which
+          print no division.
+      # Role general_fund: pp.167-170 decompose fund 100 alone, so no other
+      # fund offers a click this step cannot answer.
+      - key: fund
+        after: [fund-group]
+        from: 3
+        role: general_fund
+        form: sankey
+        sankey:
+          # [the group | this fund | the divisions that spend it].
+          keep: [2]
+          # Tier 5 is the object categories each division spends on, drawn at
+          # the end away from the kept flank. Tiers is where columns are drawn,
+          # Widen which a narrow client drops first; validateSteps refuses
+          # either alone.
+          tiers: [2, 3, 4, 5]
+          widen: [5]
+          # The division cap is inert (23 divisions) and pinned so. The tier-5
+          # cap makes the widened column drawable: uncapped, its 44 cells leave
+          # 11 nodes of no height.
+          caps:
+            - {tier: 4, cap: 24}
+            - {tier: 5, cap: 8, tail: object rows}
+        noun: fund
+        back: All funds
+        tail: divisions
+        # The difference has two terms and the sentence names both: what leaves
+        # the group other than through its divisions, less the residual carried
+        # in above. TestTheFundStepsSentenceIsItsArithmetic holds the words to
+        # that identity.
+        description: >-
+          The fund group this fund belongs to is on the left and the divisions
+          that spend it are on the right — that fund's rows of Budget Book
+          pp.167-170, rescaled to its total. The two sides of the fund in the
+          middle are not one figure: what it takes in is its revenue and what
+          leaves it here is what its divisions spend. The difference is what
+          pp.66-67 print for the fund group as a whole — the money the city
+          transfers out and sets aside in its balances and reserves — less the
+          money the group takes in that no fund receives, which the chart above
+          carries to a node of its own beside the funds.
+      - key: division
+        after: [fund]
+        from: 4
+        form: sankey
+        sankey:
+          # [the fund | this division | what it spends on].
+          keep: [3]
+          tiers: [3, 4, 5]
+          caps:
+            - {tier: 5, cap: 8}
+        noun: division
+        back: All divisions
+        tail: categories
+        description: >-
+          The fund that pays for this division is on the left and the object
+          categories it spends on are on the right — that division's cells of
+          Budget Book pp.167-170, rescaled to its total.
+      # A second edge out of the spine's chart, told apart from fund-group by
+      # From. The role closes transfers/in and fund-balance/draw, which share
+      # tier 0 and open into nothing pp.127-140 print.
+      - key: revenue-category
+        after: [""]
+        from: 0
+        role: revenue_source
+        projection: fund-flows
+        form: sankey
+        sankey:
+          # A window centred on the category: its pp.127-140 lines on one side,
+          # the fund groups it reaches on the other. The spine draws tier 2
+          # right of tier 0, so the window pushes left.
+          keep: [2]
+          tiers: [1, 0, 2]
+          # Five of the ten categories print more than nine lines, so the line
+          # cap engages; no category reaches more than five of the six fund
+          # groups.
+          caps:
+            - {tier: 1, cap: 8}
+        noun: revenue category
+        back: All revenue categories
+        tail: lines
+        description: >-
+          The lines Budget Book pp.127-140 print under this revenue category
+          are on the left; the fund groups its money reaches are on the right,
+          as the citywide chart draws them. The category itself is the mark in
+          the middle, and the two sides of it are the same figure read from two
+          schedules. A line the schedule prints as a reduction is drawn in red
+          at its printed size and named as one, and the category's own mark is
+          the figure net of them — the same one the citywide chart labels it
+          with.
+      # The spine's right-hand column opens into department-spending. Role
+      # object_category closes transfers/out and the two fund-balance rows,
+      # which pp.85-125 do not decompose. The cap engages: services-and-supplies
+      # reaches 29 divisions. The gap is the department-spending derivation,
+      # read not copied: FY2026-27's services-and-supplies falls 250,000 short
+      # of p0067's figure, drawn as a mark of its own.
+      - key: object-category
+        after: [""]
+        from: 5
+        role: object_category
+        projection: department-spending
+        form: sankey
+        sankey:
+          keep: [2]
+          tiers: [2, 5, 4]
+          caps:
+            - {tier: 4, cap: 8}
+        noun: object category
+        back: All object categories
+        tail: divisions
+        gaps: department-spending
+        description: >-
+          The fund groups that pay for this object category are on the left;
+          the divisions that spend it are on the right — Budget Book pp.85-125's
+          rows for this category, every division in the city that has one,
+          rescaled to the category's total. The two columns are read from
+          different schedules, and the right-hand one prints what a division
+          spends whatever pays for it: it carries no fund at all, so no
+          division here takes the colour of a fund group.
+      # The spine's transfers/in opens into p76, keeping no flank: the column
+      # beside tier 0 on the spine is tier 2, which this step draws itself, and
+      # validateSteps refuses one tier at two columns.
+      #
+      # It opens a source, so side is declared and the client filters from the
+      # node; filtering to a source yields an empty graph d3-sankey dies on.
+      # Role transfer_in partitions tier 0 with revenue-category's
+      # revenue_source. Only p76's receiving legs are drawn; transfers-out
+      # draws the paying side. No cap and no gap: 8 payers and 9 receivers, and
+      # the legs sum to the spine's transfers/in to the cent.
+      - key: transfers
+        after: [""]
+        from: 0
+        role: transfer_in
+        projection: transfers-by-fund
+        form: sankey
+        sankey:
+          side: source
+          tiers: [2, 3]
+        noun: money coming in
+        back: All money coming in
+        tail: funds
+        description: >-
+          Budget Book p76, Summary of Transfers: the funds that pay each
+          transfer the city makes to itself are on the left, and the funds that
+          receive them are on the right. One ribbon is one figure the page
+          prints, and a fund that both pays and receives is drawn once on each
+          side, under the same name. This is the money coming IN, which is what
+          the mark on the citywide chart counts.
+      # The spine's transfers/out opens into the transfers-out network: p76's
+      # paying legs and p222's transfers to the CIP, which together are the
+      # spine's TRANSFER OUT by fund group (structure.BudgetBookSplits). The
+      # payers' funds are on the left and each receiver's end on the right,
+      # every one of them folded into transfers/out. Role transfer_out
+      # partitions tier 5 with object-category's object_category. No gap: the
+      # legs sum to the spine's figure. Both columns are capped.
+      - key: transfers-out
+        after: [""]
+        from: 5
+        role: transfer_out
+        projection: transfers-out
+        form: sankey
+        sankey:
+          tiers: [3, 5]
+          caps:
+            - {tier: 3, cap: 10}
+            - {tier: 5, cap: 10}
+        noun: money going out
+        back: All money going out
+        tail: funds
+        description: >-
+          Budget Book p76 and p222: the funds that pay each transfer the city
+          makes are on the left, and the funds that receive them are on the
+          right. p76 lists the transfers between operating funds and p222 the
+          transfers to the Capital Improvement Program, whose funds are not on
+          the citywide chart; the two lists together are the Transfers Out it
+          counts. One ribbon is one figure a page prints.
+      # Every other fund opens into the departments it pays for, from
+      # pp.85-125's lower block: a sibling of the fund step told apart by role,
+      # so fund 100 keeps opening into its divisions.
+      #
+      # No cap (the widest fund draws 5 departments), no gap (the two sides are
+      # two schedules and not meant to be equal), and no residual (the kept
+      # flank is carried verbatim).
+      - key: fund-departments
+        after: [fund-group]
+        from: 3
+        role: fund
+        projection: department-funding
+        form: sankey
+        sankey:
+          # [the group | this fund | the departments it pays for].
+          keep: [2]
+          tiers: [2, 3, 4]
+        noun: fund
+        back: All funds
+        tail: departments
+        # No direction and no account of the difference: either side is the
+        # larger on some fund in both committed columns.
+        description: >-
+          The fund group this fund belongs to is on the left and the city
+          departments it pays for are on the right — that fund's rows of Budget
+          Book pp.85-125, rescaled to its total. The two sides of the fund in
+          the middle are read from two different schedules and are not one
+          figure: what it takes in, from pp.127-140, and what the departments
+          draw on it here. Either side may be the larger. A department here is
+          the WHOLE department across every fund that pays it, which is a
+          coarser thing than the divisions the General Fund opens into — five
+          names belong to both tiers, so do not read one as the other.
+      # The spine's three fund-balance ends open into pp.186-209, and any fund
+      # they reach opens into its own sources and uses there. Roles
+      # fund_balance_draw, fund_balance_contribution and reserve_increase
+      # partition tiers 0 and 5 with the steps above.
+      #
+      # The ends are gross where the spine is net: each fund's change in
+      # balance is its own ribbon, so the funds sum to more than the spine's
+      # figure, and the document's each-fund-change-is-gross caveat carries
+      # both sums. No gap is declared, because the two are different
+      # quantities and not one cell two schedules print at two figures.
+      #
+      # The reserve rung is one ribbon: only the General Fund prints a reserve
+      # increase. It is declared anyway, as the only way to the General Fund's
+      # own sources and uses from the spine.
+      #
+      # The draw and contribution steps' tier-3 caps are the same 8 the
+      # fund-group step caps its fund column at. site/drill.test.mjs holds each
+      # capped column to at most cap+1 marks; what a cap leaves under a pixel
+      # on these rungs is printed by that test and pinned by none.
+      #
+      # A source, like transfers/in: the draw is where the ribbons come FROM.
+      - key: balance-draw
+        after: [""]
+        from: 0
+        role: fund_balance_draw
+        projection: fund-sources-uses
+        form: sankey
+        sankey:
+          side: source
+          tiers: [0, 3]
+          caps:
+            - {tier: 3, cap: 8}
+        noun: draw on fund balances
+        back: All money coming in
+        tail: funds
+        description: >-
+          Budget Book pp.186-209 print each fund's balance at the start and the
+          end of the year, and the funds on the right are those whose balance
+          falls, each drawn at its own fall: the beginning balance less the
+          ending one, which the city prints as two figures and not as one.
+          These are each fund's own draw, gross, where the citywide chart's
+          Fund Balance Draw is net within each fund group, so the funds here
+          can sum to more than the mark they were opened from; a caveat gives
+          their gross sum and their sum netted within each group. Every fund
+          drawn here opens into where its own money comes from and goes.
+      - key: balance-contribution
+        after: [""]
+        from: 5
+        role: fund_balance_contribution
+        projection: fund-sources-uses
+        form: sankey
+        sankey:
+          tiers: [3, 5]
+          caps:
+            - {tier: 3, cap: 8}
+        noun: contribution to fund balances
+        back: All money going out
+        tail: funds
+        description: >-
+          Budget Book pp.186-209 print each fund's balance at the start and the
+          end of the year, and the funds on the left are those whose balance
+          rises, each drawn at its own rise: the ending balance less the
+          beginning one, which the city prints as two figures and not as one.
+          These are each fund's own contribution, gross, where the citywide
+          chart's Fund Balance Contribution is net within each fund group, so
+          the funds here can sum to more than the mark they were opened from; a
+          caveat gives their gross sum and their sum netted within each group.
+          Every fund drawn here opens into where its own money comes from and
+          goes.
+      - key: reserve
+        after: [""]
+        from: 5
+        role: reserve_increase
+        projection: fund-sources-uses
+        form: sankey
+        sankey:
+          tiers: [3, 5]
+        noun: addition to reserves
+        back: All money going out
+        tail: funds
+        description: >-
+          The funds on the left are those Budget Book pp.186-209 print an
+          increase in reserves for, each at the figure its own page prints.
+          Every fund drawn here opens into where its own money comes from and
+          goes.
+      # The opened fund between its two sides, both read off pp.186-209: no
+      # flank is kept, so nothing of the chart above is drawn at its share of
+      # the fund.
+      - key: fund-balance
+        after: [balance-draw, balance-contribution, reserve]
+        from: 3
+        form: sankey
+        sankey:
+          side: both
+          tiers: [0, 3, 5]
+        noun: fund
+        back: All funds
+        tail: lines
+        description: >-
+          Where this fund's money comes from is on the left and where it goes
+          is on the right, each ribbon one line its page of Budget Book
+          pp.186-209 prints. The page prints the fund's balance at the start
+          and the end of the year rather than the change between them, so the
+          draw on its balance or the contribution to it is the difference of
+          those two printed figures, drawn as one ribbon and marked as ours.
+          That difference is what makes the two sides of the fund one figure.
+
+  # The tables come after the charts they belong to.
+  - path: trends.html
+    nav: Revenue tables
+    template: trends.html.tmpl
+    projection: revenue-trends
+    title: Where Livermore's revenue comes from, fund by fund
+    lede: >-
+      Every revenue line the city prints for each of its funds, across four
+      budget columns. The columns are not one measurement: FY 2023-24 is money
+      that moved, FY 2024-25 is a mid-year re-forecast, and the two later years
+      are intentions adopted together.
+
+  # The two ACFR ten-year tables, server-rendered like the trends page. The
+  # section headings are the blocks the schedules print, and each entry's
+  # kind/fund_group pair is what the document's own series carry;
+  # buildHistoryPage refuses a mismatch in either direction.
+  - path: history.html
+    nav: Ten-year history
+    template: history.html.tmpl
+    projection: changes-in-fund-balances
+    sections:
+      - heading: Revenues
+        kind: revenue
+      - heading: Expenditures
+        kind: expenditure
+      # Closed, unlike the two blocks above, because this heading names one
+      # printed row rather than a category: any other fund_balance series with
+      # no fund group reaching this projection must be refused, not absorbed
+      # under it. Each row maps the printed tail a fact's row_label carries to
+      # the taxonomy.yaml category whose document_term the Line cell displays
+      # (p168 wraps this label over three lines), or to nothing to display the
+      # printed label unchanged.
+      - heading: Excess of revenues over (under) expenditures
+        kind: fund_balance
+        rows:
+          "over (under) expenditures": fund-balance/excess-of-revenues
+    title: Ten years of Livermore's money, as the city reports it
+    lede: >-
+      What the city's governmental funds actually took in and spent, FY2015-16
+      through FY2024-25, from the ten-year schedules in the city's annual
+      financial report — not budgets or intentions, but the money that moved.
+  - path: balances.html
+    nav: Fund balances
+    template: history.html.tmpl
+    projection: fund-balances
+    sections:
+      - heading: General Fund
+        kind: fund_balance
+        fund_group: general
+      - heading: All Other Governmental Funds
+        kind: fund_balance
+    title: What Livermore's funds held at each year's end
+    lede: >-
+      The balance of the General Fund and of all other governmental funds at
+      each June 30, FY2015-16 through FY2024-25, split into the GASB 54
+      categories that say how spendable each dollar is.
+
+  # The caveats index names no projection, so no missing document drops it;
+  # buildCaveatsPage refuses an empty one rather than link a blank page. It
+  # comes before provenance so the two indexes end the nav.
+  - path: caveats.html
+    nav: Caveats
+    template: caveats.html.tmpl
+    title: What these figures do not say
+    lede: >-
+      Every page here shows figures the city printed, and every one of them has
+      edges: a schedule that stops short, a total the city's own book
+      contradicts, a classification that is ours rather than theirs. Those are
+      collected here in full, so the pages that draw the money can say them in
+      a line and point at this one. Nothing on this page is a hedge; each is a
+      specific thing a specific document does not do.
+
+  # The provenance index names no projection either; Go drops it when the
+  # export built no page index, for the reason every view is conditional on
+  # its document.
+  - path: provenance.html
+    nav: Sources and data
+    template: provenance.html.tmpl
+    title: Every figure this site publishes, and the page it came from
+    lede: >-
+      Every figure this site publishes, with the document, page and byte offset
+      it was read from — downloadable whole, or one page at a time.

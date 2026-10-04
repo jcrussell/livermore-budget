@@ -15,8 +15,9 @@ import (
 // Each committed file under data/ is strictly validated by a loader:
 // funds/taxonomy/departments.yaml by Load (and read off disk by
 // TestLoadRealRegistries), sources.yaml by LoadSources (and by
-// TestLoadSourcesReadsTheCommittedRegistry), and each extracted manifest by
-// five structural checks that fisc verify --strict runs over the real tree.
+// TestLoadSourcesReadsTheCommittedRegistry), views.yaml by the export
+// command's loadViews, and each extracted manifest by five structural checks
+// that fisc verify --strict runs over the real tree.
 // What NOTHING catches is a file appearing that no loader knows about.
 //
 // MEASURED, and it is not hypothetical: dropping data/reconciliations.yaml -- a
@@ -46,7 +47,7 @@ func TestEveryFileUnderDataIsValidatedBySomething(t *testing.T) {
 		// alphabetical by construction, and a fifth one -- which this test's
 		// own doc comment invites -- would otherwise fail with an ordering
 		// diff that reads as a data problem.
-		wantFiles := []string{DepartmentsFile, FundsFile, SourcesFile, TaxonomyFile}
+		wantFiles := []string{DepartmentsFile, FundsFile, SourcesFile, TaxonomyFile, "views.yaml"}
 		sort.Strings(wantFiles)
 		if diff := cmp.Diff(wantFiles, files); diff != "" {
 			t.Errorf("files directly under data/ (-want +got):\n%s\n%s", diff, hint)

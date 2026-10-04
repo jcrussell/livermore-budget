@@ -355,8 +355,8 @@ So the client folds. The rule, in full:
 ### One page draws it: the spine opens into it
 
 No view draws this document whole. It is drawn as rungs opened from
-`index.html`, the site's one chart page, declared once in `views()`; the
-client's tests spell none of it a second time.
+`index.html`, the site's one chart page, declared once in `data/views.yaml`;
+the client's tests spell none of it a second time.
 
 Every rung opened from a container is a WINDOW: the node the reader clicked in
 the middle, one flank kept off the chart they clicked it on, and its own
@@ -376,7 +376,7 @@ it has, rather than refused: five of the six fund groups have no tier-4 node,
 and a wide screen must not show a reader less than a narrow one.
 
 Each step's tiers, kept flank, widening and caps are declared once, in
-`views()` in `pkg/cmd/export`, and shipped as `FISC_CONFIG.steps` under
+`data/views.yaml`, and shipped as `FISC_CONFIG.steps` under
 `schema/page.schema.json`. What each draws, for a reader:
 
 | depth | document | draws | opening a node draws |
@@ -519,7 +519,7 @@ merged links still name every fact behind every ribbon.
 ## Go's half: the declarations
 
 **Go ships what only Go can know, and computes no rung.** A step is declared
-once in `views()` and reaches the page as `FISC_CONFIG.steps`, in the shape
+once in `data/views.yaml` and reaches the page as `FISC_CONFIG.steps`, in the shape
 `schema/page.schema.json` gives it: the generic drill fields the core reads
 (what opens from where, into which schedule, the words), the licences only the
 fact store can state (the residual endpoints each with its reason, and the gap
