@@ -227,7 +227,8 @@ func (v View) stepParents(index map[string]int) ([][]parentChart, error) {
 }
 
 // validateOverviewTiersCarried refuses a view's own chart drawing a tier no
-// document of any year the view lists carries a node at.
+// document of any year the view lists carries a node at, and then one that
+// some year's document does not.
 //
 // A declaration is held against the documents it draws, in every year
 // the view lists: the view's own for its chart, and for each step the
@@ -238,6 +239,14 @@ func (v View) validateOverviewTiersCarried(yearStems []string, ix ColumnIndex) e
 			"view %q's chart draws tier %d, and %v carries nodes at tiers %v and none "+
 				"at that one in any year the view lists; the column would be empty on "+
 				"every year's chart", v.Path, t, yearStems, tiersOf(yearStems, ix))
+	}
+	for _, year := range yearStems {
+		if t := undrawnTier(v.Overview.drawnTiers(), nil, []string{year}, ix); t >= 0 {
+			return fmt.Errorf(
+				"view %q's chart draws tier %d, and %q, its document in that year, carries "+
+					"nodes at tiers %v and none at that one; that year's chart would be laid "+
+					"out around an empty column", v.Path, t, year, ix.Tiers(year))
+		}
 	}
 	return nil
 }
@@ -253,7 +262,7 @@ func (v View) validateStep(i int, s DrillStep, t drillTree, ix ColumnIndex) erro
 	if err := v.validateStepMarks(i, s, parents, doc); err != nil {
 		return err
 	}
-	if err := v.validateStepTiersCarried(i, s, t.stemsOf(i), ix); err != nil {
+	if err := v.validateStepTiersCarried(i, s, t, ix); err != nil {
 		return err
 	}
 	if err := v.validateMarksCarried(i, s, t.above(parents), ix); err != nil {
@@ -350,13 +359,28 @@ func (v View) validateStepMarks(i int, s DrillStep, parents []parentChart, doc s
 
 // validateStepTiersCarried refuses a step drawing a tier, its kept flank
 // aside, that none of the documents it draws carries a node at in any year
-// the view lists.
-func (v View) validateStepTiersCarried(i int, s DrillStep, drawn []string, ix ColumnIndex) error {
-	if t := undrawnTier(s.drawnTiers(), s.keptFlank(), drawn, ix); t >= 0 {
+// the view lists, and then one, its widened tiers aside too, that the
+// document it draws in some year does not.
+//
+// The client drops a widened column it finds empty and no other.
+func (v View) validateStepTiersCarried(i int, s DrillStep, t drillTree, ix ColumnIndex) error {
+	drawn := t.stemsOf(i)
+	if tier := undrawnTier(s.drawnTiers(), s.keptFlank(), drawn, ix); tier >= 0 {
 		return fmt.Errorf(
 			"view %q's step %d draws tier %d, and %v carries nodes at tiers %v and none "+
 				"at that one in any year the view lists; the column would be empty on "+
-				"every chart this step draws", v.Path, i, t, drawn, tiersOf(drawn, ix))
+				"every chart this step draws", v.Path, i, tier, drawn, tiersOf(drawn, ix))
+	}
+	for _, year := range t.yearStems {
+		stem := t.byYear[year][i]
+		if tier := undrawnTier(s.drawnTiers(), slices.Concat(s.keptFlank(), s.widened()), []string{stem}, ix); tier >= 0 {
+			return fmt.Errorf(
+				"view %q's step %d draws tier %d, and %q, the document it draws in year %q, "+
+					"carries nodes at tiers %v and none at that one; every chart this step "+
+					"draws in that year would be laid out around an empty column, which the "+
+					"client drops only where the step widens by it", v.Path, i, tier, stem, year,
+				ix.Tiers(stem))
+		}
 	}
 	return nil
 }

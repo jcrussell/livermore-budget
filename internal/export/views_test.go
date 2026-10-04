@@ -3636,6 +3636,114 @@ func TestAStepsColumnJoinIsExactOrRefused(t *testing.T) {
 	}
 }
 
+// TestADeclaredTierIsCarriedInEveryYearTheViewLists: a chart is one year's,
+// so a column it declares is held against that year's document. One year of
+// two missing the tier passes an any-year check, and the client then offers
+// that year's nodes and lays each out around an empty column. A widened tier
+// is the client's to drop, so it needs carrying in only one year.
+func TestADeclaredTierIsCarriedInEveryYearTheViewLists(t *testing.T) {
+	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
+	if err != nil {
+		t.Fatalf("read fund-flows golden: %v", err)
+	}
+	spine := goldenSankey(t)
+	projections := func(stem string, tier int) map[string][]byte {
+		p := map[string][]byte{
+			"sankey":          spine,
+			"sankey-2027":     reyeared(t, spine, 2027, "FY 2026-27"),
+			"fund-flows":      builtLike(t, spine, fundFlows),
+			"fund-flows-2027": builtLike(t, spine, reyeared(t, fundFlows, 2027, "FY 2026-27")),
+		}
+		if stem != "" {
+			p[stem] = withoutTier(t, p[stem], tier)
+		}
+		return p
+	}
+	view := func(tiers, keep, widen []int) export.View {
+		return export.View{
+			Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate,
+			Projection: "sankey", YearStems: []string{"sankey", "sankey-2027"},
+			Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{0, 2, 5}}},
+			Steps: []export.DrillStep{{Key: "group", After: []string{""}, From: 2, Projection: "fund-flows",
+				Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
+					Tiers: tiers, Keep: keep, Widen: widen,
+				}}, Back: "All fund groups", Noun: "thing", Tail: "funds", Description: "One."}},
+		}
+	}
+	write := func(v export.View, projections map[string][]byte) error {
+		_, err := writeSite(export.Options{
+			Dir: t.TempDir(), Projections: projections, Views: []export.View{v},
+			Docs: budgetDocs(), GeneratedBy: "fisc test",
+		})
+		return err
+	}
+	if err := write(view([]int{0, 2, 3, 4}, []int{0}, []int{4}), projections("", 0)); err != nil {
+		t.Fatalf("the control was refused, so no case below is evidence: %v", err)
+	}
+	if err := write(view([]int{0, 2, 3, 4}, []int{0}, []int{4}), projections("fund-flows-2027", 4)); err != nil {
+		t.Errorf("a widened tier one year carries was refused; the client drops it where it is empty: %v", err)
+	}
+	for _, c := range []struct {
+		name  string
+		view  export.View
+		built map[string][]byte
+		want  string
+	}{
+		{"a step's tier the second year's document lacks", view([]int{0, 3, 4}, nil, nil),
+			projections("fund-flows-2027", 4),
+			`step 0 draws tier 4, and "fund-flows-2027", the document it draws in year "sankey-2027"`},
+		{"the view's own tier the second year's document lacks", view([]int{0, 3, 4}, nil, nil),
+			projections("sankey-2027", 5),
+			`chart draws tier 5, and "sankey-2027", its document in that year`},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			err := write(c.view, c.built)
+			if err == nil {
+				t.Fatalf("Write accepted %s", c.name)
+			}
+			if !strings.Contains(err.Error(), c.want) {
+				t.Errorf("error %q does not contain %q", err, c.want)
+			}
+		})
+	}
+}
+
+// withoutTier drops every node at one tier from a projection document, and
+// every link touching one.
+func withoutTier(t *testing.T, raw []byte, tier int) []byte {
+	t.Helper()
+	var doc map[string]any
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		t.Fatalf("withoutTier: %v", err)
+	}
+	gone := map[string]bool{}
+	var nodes []any
+	for _, n := range doc["nodes"].([]any) {
+		node := n.(map[string]any)
+		if int(node["tier"].(float64)) == tier {
+			gone[node["id"].(string)] = true
+			continue
+		}
+		nodes = append(nodes, n)
+	}
+	if len(gone) == 0 {
+		t.Fatalf("withoutTier: the document has no node at tier %d, so dropping it is no evidence", tier)
+	}
+	var links []any
+	for _, l := range doc["links"].([]any) {
+		link := l.(map[string]any)
+		if !gone[link["source"].(string)] && !gone[link["target"].(string)] {
+			links = append(links, l)
+		}
+	}
+	doc["nodes"], doc["links"] = nodes, links
+	out, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatalf("withoutTier: %v", err)
+	}
+	return out
+}
+
 // TestEachYearOpensIntoItsOwnStepDocumentWithItsOwnCaveatLinks is the per-year
 // join on the wire (fisc-ko1j.13). The caveat href reading
 // caveat-fund-flows-2027-- is the evidence that FY2026-27's rung resolved to its

@@ -560,6 +560,14 @@ func (c Chart) keptFlank() []int {
 	return nil
 }
 
+// widened is a Sankey chart's widened tiers, or nil.
+func (c Chart) widened() []int {
+	if c.Form == SankeyForm && c.Sankey != nil {
+		return c.Sankey.Widen
+	}
+	return nil
+}
+
 // TierCap is how many nodes one drawn tier may hold before its tail, by value,
 // is folded into one aggregate node. Rescaling alone does not make a group's
 // funds legible: the concentration is within the group.
