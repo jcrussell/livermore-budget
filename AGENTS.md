@@ -220,6 +220,16 @@ bd close <id> --reason "..."       # close with what actually happened
   where they came from.
 - **An epic closing does not make its dependents workable.** Check before
   planning around one.
+- **Priority is consequence, not effort or recency.** File and re-rank by it:
+  - **P1** — a figure the site publishes is wrong, or does not trace to the
+    page and cell it cites. Measured, not suspected.
+  - **P2** — a reader sees a defect (misleading label or sentence, broken
+    interaction, layout); a check could pass while a figure or a citation in
+    the PDF → fact → site chain is wrong; a feature under an open epic.
+  - **P3** — any other missing guard or vacuous test; a feature under no epic.
+  - **P4** — duplication, refactoring, performance, docs, comment and message
+    wording, tooling and process.
+  - A blocker ranks at least as high as what it blocks.
 - **Priority drifts.** Look for a bead whose `P1` contradicts its own note.
 - **A bead says what needs DOING, not what happened** — *History's home is git*
   applied to the tracker. A bead that reads as a changelog buries the work under
