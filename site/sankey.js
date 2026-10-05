@@ -714,7 +714,9 @@ export function contraNote(d) {
  *
  * THE MARK STANDS AT THE SHALLOWEST DECLARED TIER OF ANY PART OF THE OPENED
  * NODE, read off the step's unfolded document; a node with no part at a
- * declared tier has nowhere to stand it. ENDPOINTS STAND AT THE FIRST DRAWN
+ * declared tier has nowhere to stand it, and neither has one whose tier this
+ * width does not draw, by the budget or by columnsAt: d3 would clamp the mark
+ * into the first column. ENDPOINTS STAND AT THE FIRST DRAWN
  * TIER WHEN THEIR FLOW ARRIVES AND THE LAST WHEN IT LEAVES -- drawn, not
  * declared: an undrawn declared tier is clamped to the first column and the
  * ribbon runs backwards. Filtered in the step's own order, which is a column
@@ -746,6 +748,7 @@ export function carryResidual(drawn, from, rung, onScreen) {
       mark = n.tier;
     }
   }
+  if (!onScreen.includes(mark)) mark = -1;
   const tiers = step.sankey.tiers.filter((t) => drawn.nodes.some((n) => n.tier === t));
   return carriedResidual(drawn, from, rung, decomposed, leavingLegDrawn(step, onScreen),
     { mark: mark, arriving: tiers[0], leaving: tiers[tiers.length - 1] });

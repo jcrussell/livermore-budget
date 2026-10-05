@@ -379,6 +379,58 @@ describe("a widened step", () => {
     assert.equal(widened.label, "5 columns");
     assert.deepEqual(back, atFour);
   });
+  // A RESIDUAL STANDS ONLY IN A COLUMN THE WIDTH DRAWS. Planted: FY2027's
+  // fund-flows with Internal Service's funds reparented onto Capital and their
+  // object rows onto the group, so the group's only parts in the step's tiers
+  // sit in the widened tier 5, which its decomposition leaves empty at every
+  // width. Stood there, d3 would clamp the mark into the first column and its
+  // ribbon would run backwards.
+  test("a residual whose only parts sit in a widened column this width does not draw is refused, not stood in the first column", async (t) => {
+    const year = pageFixture().config.years.find((y) => y.stem === "sankey-2027");
+    const GROUP = "fund-group/internal-service";
+    const OTHER = "fund-group/capital";
+    const [FUNDS, ROWS] = [3, 5];
+    const open = async (planted, budget) => {
+      const column = structuredClone(columnFixture(year.path.replace(/\.json$/, "")));
+      const doc = column.schedules["fund-flows"];
+      const tierOf = (e) => column.nodes[e.node].tier;
+      const idOf = (e) => column.nodes[e.node].id;
+      const funds = new Set(planted ? doc.nodes.filter((e) => e.parent === GROUP && tierOf(e) === FUNDS).map(idOf) : []);
+      let rows = 0;
+      for (const e of doc.nodes) {
+        if (funds.has(idOf(e))) e.parent = OTHER;
+        else if (funds.has(e.parent) && tierOf(e) === ROWS) { e.parent = GROUP; rows++; }
+      }
+      const { app, document } = await bootedApp({ checkedStem: year.stem, plan: { [year.path]: { doc: column } } });
+      app.setColumnBudget(budget);
+      await settle();
+      const outcome = await app.drillDown(GROUP);
+      await settle();
+      const mark = app.projection.nodes.find((n) => app.isResidual(n.id));
+      const laid = app.layOut(app.projection);
+      return {
+        funds: funds.size, rows, outcome, top: topOf(app),
+        mark: mark ? app.activeTiers().indexOf(mark.tier) : null,
+        backwards: laid.links.filter((l) => l.source.x0 >= l.target.x0).length,
+        banners: refusals(document).map((b) => b.textContent),
+      };
+    };
+    for (const budget of [3, 4, 5]) {
+      const control = await open(false, budget);
+      const planted = await open(true, budget);
+      t.diagnostic(`at ${budget}: unplanted ${control.outcome}, mark in column ${control.mark}, ${control.backwards} ribbon(s) not running forward; ` +
+        `planted ${planted.funds} funds and ${planted.rows} rows: ${planted.outcome}, chart on ${planted.top || "the overview"}, mark in column ${planted.mark}, ` +
+        `${planted.backwards} ribbon(s) not running forward, banner(s) ${JSON.stringify(planted.banners)}`);
+      assert.equal(control.outcome, "drew");
+      assert.ok(control.mark >= 0, "the unplanted group draws no residual, so the planted refusal proves nothing");
+      assert.equal(control.backwards, 0);
+      assert.ok(planted.funds > 0 && planted.rows > 0, "nothing was planted, so this test holds nothing");
+      assert.equal(planted.banners.length, 1, "the mark was stood where this width draws no column");
+      assert.match(planted.banners[0], /has no part at a tier this step draws to stand the residual beside/);
+      assert.equal(planted.outcome, "failed");
+      assert.equal(planted.top, "");
+    }
+  });
   // A LEAVING LEG GOES WITH THE COLUMN ITS ENDPOINT STANDS IN. The General
   // Fund's residual carries flows out of the group as well as into it, and Go
   // stands the leaving endpoints at the step's last tier -- the widened one,
