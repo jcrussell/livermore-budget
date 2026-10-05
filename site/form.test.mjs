@@ -50,7 +50,6 @@ function stubRenderer(app, asked) {
         links: doc.links.filter((l) => inside.has(l.source) && inside.has(l.target)),
       }), tiers);
     },
-    refit() { return false; },
     layOut(drawn, ctx) {
       const nodes = drawn.nodes.map((n, i) => {
         const column = ctx.tiers.indexOf(n.tier);

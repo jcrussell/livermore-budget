@@ -100,12 +100,6 @@ export function fundGroupOf(node) {
   return core.fundGroupOf(groupIndex, node);
 }
 
-/** The form's refit over the innermost rung and the columns on screen. */
-export function dropEmptyColumns(drawn) {
-  const rung = drilled.length ? drilled[drilled.length - 1] : null;
-  return rung ? formFor(rung.step).refit(drawn, rung, activeTiers()) : false;
-}
-
 /**
  * A laid mark's share of what it is drawn among, in the form's words, over
  * the chart's laid nodes; "" where the form states none.
@@ -139,9 +133,8 @@ export function homeOf(l) {
  *   caps(chart: FiscChart | FiscDrillStep): FiscTierCap[],
  *   columns(chart: FiscDrillStep, rung: Rung | null, budget: number): number[],
  *   width(columns: number): number,
- *   offers(step: FiscDrillStep, doc: FiscProjection, onScreen: FiscProjection | null, id: string): boolean,
+ *   offers(step: FiscDrillStep, doc: FiscProjection, onScreen: FiscProjection | null, id: string, budgets: number[]): boolean,
  *   shape(doc: FiscProjection, rung: Rung | null, from: FiscProjection | null, tiers: number[]): FiscProjection,
- *   refit(drawn: FiscProjection, rung: Rung | null, tiers: number[]): boolean,
  *   layOut(drawn: FiscProjection, ctx: {tiers: number[], columns: number, groupOf: (n: FiscNode | LaidNode) => string, placeOf: (id: string) => number}): {nodes: LaidNode[], links: LaidLink[]},
  *   render(graph: {nodes: LaidNode[], links: LaidLink[]}, ctx: Record<string, any>): void,
  *   paint(ctx: {svg: any, colour: {link: (d: LaidLink) => string, node: (d: LaidNode) => string}}): void,
@@ -238,11 +231,12 @@ export function stepFor(node) {
 }
 
 /**
- * Whether opening `id` on `step` would draw: the form's answer (offers). For
- * the Sankey, the step's document decomposes the node into every column the
- * step promises and does not keep, and on a window step the chart on screen
- * sends a kept flank into it, each asked as the chart is drawn, so what is
- * offered and what draws are one rule. A node with no id is open too.
+ * Whether opening `id` on `step` would draw at every budget (BUDGETS): the
+ * form's answer (offers). For the Sankey, the step's document decomposes the
+ * node into every column the step promises and does not keep at the columns
+ * each budget draws, and on a window step the chart on screen sends a kept
+ * flank into it, each asked as the chart is drawn, so what is offered and
+ * what draws are one rule. A node with no id is open too.
  *
  * @param {FiscDrillStep} step
  * @param {string | undefined} id
@@ -254,7 +248,7 @@ export function stepDecomposes(step, id) {
   // A column carrying no such schedule offers the node, so the drill can say
   // which schedule is missing rather than the node silently not opening.
   if (!doc) return true;
-  return formFor(step).offers(step, doc, projection, id);
+  return formFor(step).offers(step, doc, projection, id, BUDGETS);
 }
 
 /**
@@ -333,8 +327,6 @@ export let isolated = "";
  * @property {Set<number>} [expanded]  the tiers of this rung's chart drawn
  *   whole rather than capped. Per rung, so it does not leak into a pop, the
  *   next window or the next year.
- * @property {number[]} [dropped]  widened tiers this rung's document left
- *   empty, so activeTiers stops asking for them; kept after the budget changes.
  */
 
 /**
@@ -353,6 +345,13 @@ export const NARROW_COLUMNS = 3;
  */
 export const OFFERED_COLUMNS = Math.max(NARROW_COLUMNS,
   ...Array.from(FORMS.values(), (r) => r.widest(STEPS.filter((s) => s.form === r.form))));
+/**
+ * Every budget the page can draw at, NARROW_COLUMNS to OFFERED_COLUMNS: what
+ * a node is offered at (stepDecomposes), since the reader can change the
+ * width with the node open.
+ */
+export const BUDGETS = Object.freeze(Array.from({ length: OFFERED_COLUMNS - NARROW_COLUMNS + 1 },
+  (_, k) => NARROW_COLUMNS + k));
 
 /**
  * The px `100vw` counts that the window does not: body padding plus a classic
@@ -520,11 +519,11 @@ export function drawnDoc() {
 }
 
 /**
- * The tier set the document on screen was shaped by: RENDER_TIERS on an
- * overview, the opening step's tiers on a rung, less the widened columns the
- * budget drops (from the END of `widen`, so a narrowed window has no hole) and
- * the columns the rung dropped as empty (dropEmptyColumns). A wrong answer
- * here throws inside d3-sankey's ordering pass.
+ * The tier set the document on screen is shaped by: RENDER_TIERS on an
+ * overview, and on a rung the form's columns for the opening step at this
+ * budget, which the rung keeps no record of: every budget is asked afresh,
+ * so a width the reader moves to draws what it would have drawn opened
+ * there. A wrong answer here throws inside d3-sankey's ordering pass.
  *
  * @returns {number[]}
  */
@@ -752,10 +751,6 @@ export function redrawStack(next, refused = "That could not be opened") {
     const doc = drawnDoc();
     if (!doc) throw new Error("no document to open");
     drawn = shapeFor(doc);
-    // Reshaped, not just re-laid: the fold, caps and placeability all take the
-    // tier set. Terminates: each pass adds an entry of the finite `widen` list
-    // to the dropped set and never removes one.
-    while (dropEmptyColumns(drawn)) drawn = shapeFor(doc);
     laid = layOut(drawn);
     // Inside the try: building a row is the last step of a draw that can
     // throw on a document.

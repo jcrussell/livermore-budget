@@ -179,8 +179,8 @@ describe("the marks this client makes", () => {
     try { app.windowFor(planted, stepDoc, rung, fund.sankey.tiers); } catch (e) { message = e.message; }
     // AND THE NODE IS NOT OFFERED: what the window refuses, the flank does not
     // hold, so the mark is not classed as opening.
-    const offered = app.SANKEY.offers(fund, stepDoc, planted, "fund/100");
-    const control = app.SANKEY.offers(fund, stepDoc, onScreen, "fund/100");
+    const offered = app.SANKEY.offers(fund, stepDoc, planted, "fund/100", app.BUDGETS);
+    const control = app.SANKEY.offers(fund, stepDoc, onScreen, "fund/100", app.BUDGETS);
     t.diagnostic(`the window said: ${message}; offered with the residual on the flank: ${offered}, without it: ${control}`);
     assert.match(message, /kept flank carries residual\//);
     assert.equal(offered, false);

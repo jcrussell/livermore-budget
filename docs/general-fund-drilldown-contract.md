@@ -371,9 +371,13 @@ sees.
 A step may declare more columns than that budget draws: `widen` names the
 columns of its own `tiers` a narrower client does without, and it drops them
 from the end of `widen`; they sit at the end away from the kept flank. A widened
-column the document leaves empty is dropped and the chart re-laid at the columns
-it has, rather than refused: five of the six fund groups have no tier-4 node,
-and a wide screen must not show a reader less than a narrow one.
+column the opened node's decomposition leaves empty at a width is dropped at
+that width, and the next widened column back takes its place, rather than
+refused: five of the six fund groups have no tier-4 node, and a wide screen must
+not show a reader less than a narrow one. Which column is empty depends on the
+width -- a ribbon into a widened tier folds back onto its own source where that
+tier is not drawn -- so it is worked out afresh at every budget
+(`columnsAt` in `site/sankey.js`) and recorded nowhere.
 
 Each step's tiers, kept flank, widening and caps are declared once, in
 `data/views.yaml`, and shipped as `FISC_CONFIG.steps` under
@@ -422,13 +426,15 @@ the 60 in FY2026-27 are named by no row of those pages, and nothing about
 printed column — 13 funds in FY2023-24 against 6 in FY2025-26 — while a step is
 declared once for every year the view lists. So `site/sankey.js`'s `decomposable`
 reads, per year's document and per step, the node ids at its `from` whose
-decomposition at the tiers the step declares, with the same reach the chart is
-drawn with (`reaching`), holds a node in every column `promisedTiers` names and
-the flank does not keep -- the columns `dropEmptyColumns` will not drop;
-`stepFor` takes that as a fourth match beside the key, the tier and the role,
-and a window step further asks that the chart on screen send a kept flank into
-the node. Nothing ships the set: what is offered to open and what draws are one
-rule in one language. Measured without the
+decomposition, with the same reach the chart is drawn with (`reaching`), holds a
+node in every column `promisedTiers` names and the flank does not keep -- the
+columns `columnsAt` never drops -- at the columns EVERY budget the page offers
+draws, `columnsAt` answering for each. A reader can change the width with the
+node open, so a node one width cannot draw is offered at none. `stepFor` takes
+that as a fourth match beside the key, the tier and the role, and a window step
+further asks that the chart on screen send a kept flank into the node. Nothing
+ships the set: what is offered to open and what draws are one rule in one
+language, at every width. Measured without the
 fourth match: `drillDown(fund/511)` failed and left the chart on
 `fund-group/capital`, over a mark drawn with the open affordance.
 
@@ -538,7 +544,8 @@ document.** The core sums: which nodes a parent chain holds, the fold, the cap,
 the marks and their figures. The Sankey renderer fits: which ribbons a rung
 holds (`reaching`: the near end inside the opened node by parent chain, both
 ends placeable, folded ends running forward in the step's column order), which
-nodes it offers to open (`decomposable`, the same reach), the roles of its
+nodes it offers to open (`decomposable`, the same reach at the columns every
+budget draws), the roles of its
 columns (`flankIsLeft`, by position), the figure a centre prints net of
 reductions (`markAmounts`), the residual's ribbons, ends, tier and figures
 (`carryResidual`), and the gap, held to the shipped licence and refused with a

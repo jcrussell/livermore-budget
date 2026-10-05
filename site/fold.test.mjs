@@ -531,7 +531,7 @@ describe("the fold preserves what it folds, on every rung at every width", () =>
         const doc = app.scheduleOf(column, key);
         assert.ok(doc, `${stem} carries no schedule ${key} for step ${step.key}`);
         const window = Boolean(step.sankey.keep && step.sankey.keep.length);
-        const opens = [...app.decomposable(step, doc)].sort();
+        const opens = [...app.decomposable(step, doc, app.BUDGETS)].sort();
         assert.ok(opens.length > 0, `${stem}: step ${step.key} decomposes no node of ${key}`);
         for (const id of opens) {
           for (const tiers of widths(step)) {
@@ -679,7 +679,7 @@ describe("no capped tail folds a line printed as a reduction", () => {
       for (const step of CONFIG.steps) {
         const doc = app.scheduleOf(column, drawsFrom(step));
         assert.ok(doc, `${stem} carries no schedule for step ${step.key}`);
-        for (const id of [...app.decomposable(step, doc)].sort()) {
+        for (const id of [...app.decomposable(step, doc, app.BUDGETS)].sort()) {
           for (const found of tailsOf(app, doc, step, id)) {
             tails++;
             members += found.members.length;
@@ -709,7 +709,7 @@ describe("no capped tail folds a line printed as a reduction", () => {
     assert.ok(step, "the page declares no revenue-category step");
     const doc = structuredClone(app.scheduleOf(columnFixture("fy2026-adopted"), drawsFrom(step)));
     const id = "revenue/taxes/property";
-    assert.ok(app.decomposable(step, doc).has(id), `${step.key} does not open ${id}`);
+    assert.ok(app.decomposable(step, doc, app.BUDGETS).has(id), `${step.key} does not open ${id}`);
     const control = tailsOf(app, doc, step, id);
     const before = control.find((f) => f.ranked && f.members.length);
     assert.ok(before, `opening ${id} caps no column that holds a reduction`);
@@ -782,13 +782,13 @@ describe("which nodes a step opens", () => {
     const step = pageFixture().config.steps.find((s) => s.key === "fund-group");
     const printed = fundFlows(app, "fy2026-adopted");
     const group = "fund-group/general";
-    assert.ok(app.decomposable(step, printed).has(group), `${group} does not open over the printed document`);
+    assert.ok(app.decomposable(step, printed, app.BUDGETS).has(group), `${group} does not open over the printed document`);
     const inside = app.withinNode(printed, group);
     const planted = structuredClone(printed);
     planted.links = planted.links.map((l) => inside.has(l.source)
       ? Object.assign({}, l, { source: l.target, target: l.source })
       : l);
-    assert.ok(!app.decomposable(step, planted).has(group),
+    assert.ok(!app.decomposable(step, planted, app.BUDGETS).has(group),
       `${group} is offered though every ribbon from its parts runs against the column order`);
   });
 });
@@ -857,7 +857,7 @@ describe("a kept flank the fold refuses", () => {
     const chart = structuredClone(goldenGraph());
     const stepDoc = app.scheduleOf(columnFixture("fy2026-adopted"), step.projection);
     // Its own copy: flankHolds memoises per chart object.
-    const control = app.SANKEY.offers(step, stepDoc, structuredClone(chart), "fund-group/general");
+    const control = app.SANKEY.offers(step, stepDoc, structuredClone(chart), "fund-group/general", app.BUDGETS);
     const i = chart.links.findIndex((l) => l.target === "fund-group/general" && !l.derived);
     assert.ok(i >= 0, "the spine sends no printed ribbon into fund-group/general");
     chart.links.push(Object.assign({}, chart.links[i], { derived: true, fact_ids: [], value_cents: 1 }));
@@ -865,7 +865,7 @@ describe("a kept flank the fold refuses", () => {
       "the planted flank does not make the fold refuse, so this test holds nothing");
     assert.doesNotThrow(() => app.flankHolds(chart, step, "fund-group/general"));
     const held = app.flankHolds(chart, step, "fund-group/general");
-    const offered = app.SANKEY.offers(step, stepDoc, chart, "fund-group/general");
+    const offered = app.SANKEY.offers(step, stepDoc, chart, "fund-group/general", app.BUDGETS);
     t.diagnostic(`offered without the planted ribbon: ${control}; with it, flankHolds ${held} and offers ${offered}`);
     assert.equal(control, true, "the unplanted flank is not offered, so the planted one's refusal proves nothing");
     assert.equal(held, false);

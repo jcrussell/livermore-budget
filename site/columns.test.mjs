@@ -326,6 +326,59 @@ describe("a widened step", () => {
     assert.equal(filled.bands.split("/").length, 3);
     assert.ok(filled.bands.split("/").every((b) => Number(b) > 0));
   });
+  // WHICH WIDENED COLUMN IS EMPTY DEPENDS ON THE WIDTH, so it is worked out
+  // again at every budget and kept nowhere. Planted: FY2027's fund-flows less
+  // fund/100's fund -> division ribbons. At four columns the General Fund's
+  // division -> row ribbons fold back onto the divisions and tier 4 comes out
+  // empty, so the fifth takes its place; at five they draw it.
+  test("a widened column one width leaves empty is drawn again at a width that fills it, and the + reaches that width", async (t) => {
+    const year = pageFixture().config.years.find((y) => y.stem === "sankey-2027");
+    const GROUP = "fund-group/general";
+    const FUND = "fund/100";
+    const DIVISIONS = 4;
+    const boot = async (budget) => {
+      const column = structuredClone(columnFixture(year.path.replace(/\.json$/, "")));
+      const doc = column.schedules["fund-flows"];
+      const fund = column.nodes.findIndex((n) => n.id === FUND);
+      const before = doc.links.length;
+      doc.links = doc.links.filter((l) => !(l.from === fund && column.nodes[l.to].tier === DIVISIONS));
+      const loaded = await bootedApp({ checkedStem: year.stem, plan: { [year.path]: { doc: column } } });
+      loaded.app.setColumnBudget(budget);
+      await opened(loaded.app, GROUP);
+      return Object.assign(loaded, { cut: before - doc.links.length });
+    };
+    const read = (app, document) => ({
+      tiers: app.activeTiers().join(","),
+      has: [...new Set(app.projection.nodes.map((n) => n.tier))].sort().join(","),
+      nodes: app.projection.nodes.length,
+      links: app.projection.links.length,
+      label: document.getElementById("column-count").textContent,
+      more: disabled(document.getElementById("column-more")),
+      banners: refusals(document).length,
+    });
+    const fresh = await boot(5);
+    const atFive = read(fresh.app, fresh.document);
+    const { app, document, cut } = await boot(4);
+    const atFour = read(app, document);
+    document.getElementById("column-more").click();
+    await settle();
+    const widened = read(app, document);
+    document.getElementById("column-fewer").click();
+    await settle();
+    const back = read(app, document);
+    t.diagnostic(`${cut} fund -> division ribbon(s) cut; opened at 4: {${atFour.tiers}} holding {${atFour.has}}, + ${atFour.more ? "disabled" : "live"}; ` +
+      `+ drew {${widened.tiers}} holding {${widened.has}}, ${widened.nodes}/${widened.links}, "${widened.label}"; opened at 5: {${atFive.tiers}}, ${atFive.nodes}/${atFive.links}; ` +
+      `- drew {${back.tiers}}`);
+    assert.ok(cut > 0, "nothing was cut, so this test holds nothing");
+    assert.equal(atFour.tiers, "0,2,3,5");
+    assert.equal(atFour.has, atFour.tiers);
+    assert.equal(atFour.more, false, "the + cannot reach the width that draws the dropped column");
+    assert.equal(atFive.tiers, "0,2,3,4,5");
+    // THE WIDTH DRAWS WHAT IT DRAWS OPENED THERE, whichever width came first.
+    assert.deepEqual(widened, atFive);
+    assert.equal(widened.label, "5 columns");
+    assert.deepEqual(back, atFour);
+  });
   // A LEAVING LEG GOES WITH THE COLUMN ITS ENDPOINT STANDS IN. The General
   // Fund's residual carries flows out of the group as well as into it, and Go
   // stands the leaving endpoints at the step's last tier -- the widened one,

@@ -86,12 +86,13 @@ export function freshTiers(step) {
 
 /**
  * The declared columns a rung's drawn chart must hold a node in: every one
- * but a widened one, which dropEmptyColumns drops when it comes out empty.
+ * but a widened one, which columnsAt leaves out where it comes out empty.
  * d3-sankey counts columns from depth while alignFor places nodes by
  * declared index, so it throws on an empty leading or interior column and
  * stretches the others across an empty trailing one. The kept
- * ones are the flank's to fill (flankHolds); the rest, the fresh half's
- * (decomposable). The one answer both read, so what is offered draws.
+ * ones are the flank's to fill (flankHolds); the rest, the fresh half's at
+ * every column set a budget draws (decomposable). The one answer columnsAt
+ * and decomposable read, so what is offered draws at every width.
  * @param {FiscDrillStep} step
  * @returns {number[]}
  */
@@ -142,19 +143,19 @@ export function splice(first, second) {
 }
 
 /**
- * What a step's document draws for one node at the tiers the step declares,
- * unfolded, every half spliced: the reach the chart is drawn with (reaching),
- * asked at every declared column rather than at the columns a budget draws.
- * The answer to whether a node opens (decomposable) and to whether its
- * residual's leaving legs exist (carryResidual), which must not move with the
- * viewport.
+ * What a step's document draws for one node, unfolded, every half spliced:
+ * the reach the chart is drawn with (reaching), at the fresh columns given.
+ * At every declared column by default, which is the answer to whether a
+ * residual's leaving legs exist (carryResidual) and must not move with the
+ * viewport; at the columns a budget draws, the answer heldAt reads.
  * @param {FiscDrillStep} step
  * @param {FiscProjection} doc
  * @param {string} id
+ * @param {number[]} [tiers] the fresh columns to read at; every declared one by default
  * @returns {FiscProjection}
  */
-export function freshHalf(step, doc, id) {
-  return freshHalves(step)
+export function freshHalf(step, doc, id, tiers = freshTiers(step)) {
+  return freshHalves(step, tiers)
     .map((h) => filterLinks(doc, id, h.tiers, reaching(doc, id, h.nearIsSource, h.tiers)))
     .reduce(splice);
 }
@@ -412,12 +413,84 @@ export function flankHolds(onScreen, step, id) {
 }
 
 /**
+ * heldAt's answers per document, per step, node and fresh column set:
+ * activeTiers asks per paint, nextBudget per width and decomposable per node
+ * per budget. Keyed on the frozen document, so nothing here is page state.
+ * @type {WeakMap<FiscProjection, Map<string, {links: number, tiers: Set<number>}>>}
+ */
+const helds = new WeakMap();
+
+/**
+ * Which of the fresh columns `tiers` the opened node's fresh half holds a
+ * node in, and how many ribbons it draws there. A node at a drawn tier is in
+ * the half only as some ribbon end's nearest drawn ancestor-or-self -- the
+ * column the fold puts it in -- and neither the cap nor the fold empties a
+ * column, so this is what the drawn half holds. The one reading columnsAt
+ * drops an empty widened column by and decomposable offers by.
+ * @param {FiscDrillStep} step
+ * @param {FiscProjection} doc
+ * @param {string} id
+ * @param {number[]} tiers the fresh columns, in order
+ * @returns {{links: number, tiers: Set<number>}}
+ */
+export function heldAt(step, doc, id, tiers) {
+  let byKey = helds.get(doc);
+  if (!byKey) {
+    byKey = new Map();
+    helds.set(doc, byKey);
+  }
+  const at = step.key + "\u001f" + id + "\u001f" + tiers.join(",");
+  let held = byKey.get(at);
+  if (!held) {
+    const half = freshHalf(step, doc, id, tiers);
+    held = { links: half.links.length, tiers: new Set(half.nodes.map((n) => n.tier)) };
+    byKey.set(at, held);
+  }
+  return held;
+}
+
+/**
+ * The columns a rung draws at a budget: the step's tiers, less the widened
+ * columns the budget drops (from the END of `widen`, so a narrowed window has
+ * no hole) and the widened columns the opened node's fresh half leaves empty
+ * at what is left (heldAt). A column dropped as empty frees a place the
+ * budget gives the next widened column back, so the set is asked again until
+ * it holds every column it keeps; each pass drops one more widened tier, so
+ * it ends. Asked afresh at every budget and kept nowhere: whether a widened
+ * column is empty depends on the tier set, since a ribbon into it folds onto
+ * an ancestor at a narrower one, which can be its own source or behind it.
+ * Without a rung, the budget's cut alone.
+ * @param {FiscDrillStep} step
+ * @param {{id: string, doc: FiscProjection} | null} rung
+ * @param {number} budget
+ * @returns {number[]}
+ */
+export function columnsAt(step, rung, budget) {
+  const tiers = step.sankey.tiers;
+  const widen = step.sankey.widen || [];
+  const keep = new Set(step.sankey.keep || []);
+  const promised = new Set(promisedTiers(step));
+  const empty = new Set();
+  for (;;) {
+    const drop = new Set(empty);
+    for (let k = widen.length - 1; k >= 0 && tiers.length - drop.size > budget; k--) drop.add(widen[k]);
+    const drawn = drop.size ? tiers.filter((t) => !drop.has(t)) : tiers;
+    if (!rung || !widen.length) return drawn;
+    const held = heldAt(step, rung.doc, rung.id, drawn.filter((t) => !keep.has(t)));
+    const gone = drawn.filter((t) => !promised.has(t) && !held.tiers.has(t));
+    if (!gone.length) return drawn;
+    for (const t of gone) empty.add(t);
+  }
+}
+
+/**
  * The ids at a step's opened tier that its document decomposes, computed once
- * per (document, step) because nodeClass asks per mark per paint: those whose
- * fresh half, read at every declared tier, holds a node in each promised
- * column the flank does not keep. A node whose decomposition misses one is
- * not offered, since dropEmptyColumns would not drop that column and the
- * chart could not be laid out at the columns it declares.
+ * per (document, step, budgets) because nodeClass asks per mark per paint:
+ * those whose fresh half holds a node in each promised column the flank does
+ * not keep at the columns EVERY budget draws (columnsAt). A node whose
+ * decomposition misses one at any width is not offered, since columnsAt
+ * drops only a widened column and the chart could not be laid out at the
+ * columns that width draws.
  * @type {WeakMap<FiscProjection, Map<string, Set<string>>>}
  */
 const decomposed = new WeakMap();
@@ -425,28 +498,31 @@ const decomposed = new WeakMap();
 /**
  * @param {FiscDrillStep} step
  * @param {FiscProjection} doc
+ * @param {number[]} budgets every budget the page can draw at
  * @returns {Set<string>}
  */
-export function decomposable(step, doc) {
+export function decomposable(step, doc, budgets) {
   let byStep = decomposed.get(doc);
   if (!byStep) {
     byStep = new Map();
     decomposed.set(doc, byStep);
   }
-  const have = byStep.get(step.key);
+  const key = step.key + "\u001f" + budgets.join(",");
+  const have = byStep.get(key);
   if (have) return have;
   const keep = new Set(step.sankey.keep || []);
   const fill = promisedTiers(step).filter((t) => !keep.has(t));
   const out = new Set();
   for (const n of doc.nodes) {
     if (n.tier !== step.from || (step.role && n.role !== step.role)) continue;
-    const half = freshHalf(step, doc, n.id);
-    // A node at a drawn tier is in the half only as some ribbon end's
-    // nearest drawn ancestor-or-self: the column the fold puts it in.
-    const held = new Set(half.nodes.map((x) => x.tier));
-    if (half.links.length && fill.every((t) => held.has(t))) out.add(n.id);
+    const rung = { id: n.id, doc: doc };
+    const draws = budgets.every((b) => {
+      const held = heldAt(step, doc, n.id, columnsAt(step, rung, b).filter((t) => !keep.has(t)));
+      return held.links > 0 && fill.every((t) => held.tiers.has(t));
+    });
+    if (draws) out.add(n.id);
   }
-  byStep.set(step.key, out);
+  byStep.set(key, out);
   return out;
 }
 
@@ -460,30 +536,6 @@ export function decomposable(step, doc) {
  */
 export function leavingLegDrawn(step, tiers) {
   return tiers.includes(step.sankey.tiers[step.sankey.tiers.length - 1]);
-}
-
-/**
- * Drops a widened column the drawn document left empty, so the chart is laid
- * out at the columns it has.
- *
- * d3-sankey takes its column count from topology, so an empty declared column
- * would stretch the others rather than narrow the chart. DROPPED AND NOT
- * REFUSED, and only a column promisedTiers leaves out: decomposable offers no
- * node that leaves a promised one empty.
- *
- * @param {FiscProjection} drawn
- * @param {Rung | null} rung the innermost rung, or null on the overview
- * @param {number[]} tiers the columns on screen
- * @returns {boolean} whether anything was dropped
- */
-export function dropEmptyColumns(drawn, rung, tiers) {
-  if (!rung) return false;
-  const promised = new Set(promisedTiers(rung.step));
-  const has = new Set(drawn.nodes.map((n) => n.tier));
-  const gone = tiers.filter((t) => !promised.has(t) && !has.has(t));
-  if (!gone.length) return false;
-  rung.dropped = (rung.dropped || []).concat(gone);
-  return true;
 }
 
 /**
@@ -975,30 +1027,18 @@ export const SANKEY = Object.freeze({
     return contraNote(d);
   },
 
-  /**
-   * The tier set a rung draws at a budget: the step's tiers, less the widened
-   * columns the budget drops (from the END of `widen`, so a narrowed window
-   * has no hole) and the columns the rung dropped as empty. Re-asked after
-   * every drop: a tier already dropped as empty is an entry of this same
-   * order, and a fixed shortfall would drop it twice.
-   */
+  /** The tier set a rung draws at a budget: columnsAt. */
   columns(chart, rung, budget) {
-    const tiers = SANKEY.tiersOf(chart);
-    const widen = (chart.sankey && chart.sankey.widen) || [];
-    const drop = new Set((rung && rung.dropped) || []);
-    for (let k = widen.length - 1; k >= 0 && tiers.length - drop.size > budget; k--) {
-      drop.add(widen[k]);
-    }
-    return drop.size ? tiers.filter((t) => !drop.has(t)) : tiers;
+    return columnsAt(chart, rung, budget);
   },
 
   /**
-   * Whether this form can draw `id` opened on `step` out of `doc`: the step's
-   * document decomposes it, and on a window step the kept flank of the chart
-   * on screen holds it.
+   * Whether this form can draw `id` opened on `step` out of `doc` at every
+   * budget the page draws: the step's document decomposes it, and on a window
+   * step the kept flank of the chart on screen holds it.
    */
-  offers(step, doc, onScreen, id) {
-    if (!decomposable(step, doc).has(id)) return false;
+  offers(step, doc, onScreen, id, budgets) {
+    if (!decomposable(step, doc, budgets).has(id)) return false;
     if (!step.sankey.keep || !step.sankey.keep.length || !onScreen) return true;
     return flankHolds(onScreen, step, id);
   },
@@ -1020,11 +1060,6 @@ export const SANKEY = Object.freeze({
       ? windowFor(rung.chart, doc, rung, tiers)
       : freshHalves(step, tiers).map((h) => sideOf(doc, rung, h.tiers, h.nearIsSource)).reduce(splice);
     return markContra(markGap(carryResidual(markAmounts(drawn, rung), from, rung, tiers), from, rung));
-  },
-
-  /** Whether the drawn chart must be shaped again at fewer columns. */
-  refit(drawn, rung, tiers) {
-    return rung ? dropEmptyColumns(drawn, rung, tiers) : false;
   },
 
   /**

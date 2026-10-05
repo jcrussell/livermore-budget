@@ -114,7 +114,7 @@ for (const year of YEARS) {
     // THE WALK IS THE GATE ON THE DECLARATIONS: a step whose document
     // decomposes nothing, or whose window a width cannot draw, is a refusal
     // here and nowhere else.
-    for (const budget of [3, 5]) {
+    for (const budget of [3, 4, 5]) {
       test(`${year.label}: every node the tree offers to open draws when opened, at every depth, at ${budget} columns`, async (t) => {
         const { app, fetch } = await onYear(year.stem);
         app.setColumnBudget(budget);
@@ -1048,5 +1048,78 @@ describe("a node whose decomposition leaves a column its step promises empty", (
     assert.equal(planted.offered, false);
     assert.deepEqual(planted.banners, []);
     assert.equal(planted.top, CENTRE);
+  });
+});
+
+// AND AT EVERY WIDTH THE PAGE DRAWS: a column a step promises can be held at
+// its declared tiers and empty at a budget's, since a ribbon into a widened
+// tier folds onto an ancestor when that tier is not drawn and can then run
+// backwards. Planted: FY2027's fund-flows with fund/100's tier-5 rows
+// reparented past its divisions onto the fund itself, as Go parents other
+// funds' rows, its fund -> division ribbons dropped and one fund -> row ribbon
+// added. At the fund step's declared tiers the divisions' ribbons into those
+// rows hold tier 4; at three columns the rows fold to the fund, those ribbons
+// run backwards, and tier 4 is empty.
+describe("a node whose decomposition leaves a promised column empty at a width the page draws", () => {
+  test("is not offered at any width, and double-clicking it banners nothing and leaves the chart where it was", async (t) => {
+    const year = YEARS.find((y) => y.stem === "sankey-2027");
+    assert.ok(year, "the pinned page publishes no sankey-2027");
+    const FUND = "fund/100";
+    const GROUP = "fund-group/general";
+    const step = stepByKey(PAGE, "fund");
+    // The fund step draws the document the group's step draws.
+    const schedule = step.projection || stepByKey(PAGE, step.after[0]).projection;
+    const keep = new Set(step.sankey.keep);
+    const fill = step.sankey.tiers.filter((tier) => !keep.has(tier) && !step.sankey.widen.includes(tier));
+    const [into, row] = [fill[fill.length - 1], step.sankey.widen[0]];
+    const plant = (column) => {
+      const doc = column.schedules[schedule];
+      const fund = column.nodes.findIndex((n) => n.id === FUND);
+      const divisions = new Set(doc.nodes.filter((e) => e.parent === FUND && column.nodes[e.node].tier === into)
+        .map((e) => column.nodes[e.node].id));
+      const rows = doc.nodes.filter((e) => divisions.has(e.parent) && column.nodes[e.node].tier === row);
+      for (const e of rows) e.parent = FUND;
+      const before = doc.links.length;
+      doc.links = doc.links.filter((l) => !(l.from === fund && column.nodes[l.to].tier === into));
+      const cut = before - doc.links.length;
+      doc.links.push({ from: fund, to: rows[0].node, value_cents: 100, kind: "external", fact_ids: [], locators: [] });
+      return { divisions: divisions.size, rows: rows.length, cut };
+    };
+    // Through the real gesture path at every budget the page draws.
+    const activate = async (planted, budget) => {
+      const column = structuredClone(columnFixture(year.path.replace(/\.json$/, "")));
+      const made = planted ? plant(column) : null;
+      const { app, document } = await bootedApp({ checkedStem: year.stem, plan: { [year.path]: { doc: column } } });
+      app.setColumnBudget(budget);
+      await opened(app, GROUP);
+      const node = app.projection.nodes.find((n) => n.id === FUND);
+      assert.ok(node, `${FUND} is not on the chart, so whether it is offered proves nothing`);
+      // The promised columns the fresh half holds at the declared tiers.
+      const doc = app.scheduleOf(app.column, schedule);
+      const declared = fill.filter((tier) => app.heldAt(step, doc, FUND, app.freshTiers(step)).tiers.has(tier));
+      const offered = app.drillable(node);
+      app.doubleClickNode(node, 0);
+      await settle();
+      const drawn = app.activeTiers();
+      const has = [...new Set(app.projection.nodes.map((n) => n.tier))].sort();
+      return { made, declared, offered, top: topOf(app), drawn, has, banners: refusals(document).map((b) => b.textContent) };
+    };
+    for (const budget of [3, 4, 5]) {
+      const control = await activate(false, budget);
+      const planted = await activate(true, budget);
+      t.diagnostic(`at ${budget}: unplanted ${FUND} offered ${control.offered}, opened onto ${control.top} at {${control.drawn}}; ` +
+        `planted ${JSON.stringify(planted.made)}, holding {${planted.declared}} of promised {${fill}} at the declared tiers: ` +
+        `offered ${planted.offered}, chart on ${planted.top} drawing {${planted.drawn}} holding {${planted.has}}, banner(s) ${JSON.stringify(planted.banners)}`);
+      assert.equal(control.offered, true, "the unplanted node is not offered, so the planted one's refusal proves nothing");
+      assert.equal(control.top, FUND);
+      assert.deepEqual(control.banners, []);
+      assert.ok(planted.made.rows > 0 && planted.made.cut > 0, "nothing was planted, so this test holds nothing");
+      // THE PLANT HOLDS EVERY PROMISED COLUMN AT THE DECLARED TIERS, so a rule
+      // read there alone would offer it at every width.
+      assert.deepEqual(planted.declared, fill);
+      assert.equal(planted.offered, false);
+      assert.deepEqual(planted.banners, []);
+      assert.equal(planted.top, GROUP);
+    }
   });
 });

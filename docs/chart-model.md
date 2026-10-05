@@ -88,9 +88,8 @@ members, as `FormRenderer` in `site/app.js` types them:
  *  caps(chart): {tier, tail?}[],                // the tiers it folds under a cap, each with the noun its tail is counted in where the cap names one
  *  columns(chart, rung, budget): number[],      // the tiers drawn at this budget
  *  width(columns): number,                      // the px a chart of this many columns is laid out at
- *  offers(step, doc, onScreen, id): boolean,    // whether this form can draw `id` opened here, out of `doc`, off the chart on screen
+ *  offers(step, doc, onScreen, id, budgets): boolean, // whether this form can draw `id` opened here, out of `doc`, off the chart on screen, at every budget
  *  shape(doc, rung, from, tiers): FiscProjection, // filter, cap, fold, marks; throws to refuse
- *  refit(drawn, rung, tiers): boolean,          // true when the drawn chart must be shaped again
  *  layOut(drawn, ctx): Laid,                    // pure of the page
  *  render(laid, ctx): void,                     // writes the DOM
  *  paint(ctx): void,                            // repaints on a theme change
