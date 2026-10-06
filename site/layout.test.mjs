@@ -243,13 +243,13 @@ function labelFit(app, graph) {
 function sameWords(fits) {
   const seen = new Map();
   for (const f of fits) {
-    const key = f.col + " " + f.words;
+    const key = f.col + "\0" + f.words;
     seen.set(key, (seen.get(key) || []).concat([f.id]));
   }
   return [...seen.entries()]
     .filter((e) => e[1].length > 1)
-    .map((e) => `column ${e[0].split(" ")[0]} draws ${e[1].length} marks ` +
-                `reading "${e[0].split(" ")[1]}" (${e[1].join(", ")})`);
+    .map((e) => `column ${e[0].split("\0")[0]} draws ${e[1].length} marks ` +
+                `reading "${e[0].split("\0")[1]}" (${e[1].join(", ")})`);
 }
 
 /** The tightest vertical gap between two label blocks of one column. */
