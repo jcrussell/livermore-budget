@@ -129,6 +129,9 @@ func (*fundBalanceIdentity) Run(_ context.Context, s *Subject) (Result, error) {
 		// beginning + change == ending is not held and carry-forward compares
 		// the balance's other stock alone.
 		if blanks[k][l] {
+			if _, seen := b.ids[f.Category]; !seen {
+				b.ids[f.Category] = f.ID
+			}
 			continue
 		}
 		// Two facts of one category on one balance leave the identity no
@@ -183,7 +186,7 @@ func (*fundBalanceIdentity) Run(_ context.Context, s *Subject) (Result, error) {
 				"%s publishes %d of the %d fund-balance lines its scope prints and is missing %s; "+
 					"a balance that publishes any of them must publish all, or a dropped line "+
 					"would leave this identity with nothing to violate",
-				k, len(b.amounts), len(required), strings.Join(missing, ", ")))
+				k, len(b.ids), len(required), strings.Join(missing, ", ")))
 			continue
 		}
 		if blank || !decl.PrintsChange() {

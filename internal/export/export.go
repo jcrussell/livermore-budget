@@ -45,9 +45,9 @@ import (
 	"github.com/jcrussell/livermore-budget/site"
 )
 
-// PrimaryProjection is the spine document, and the default view's projection.
-// It must be among the projections built (ErrNoPrimary). It is NOT required to
-// be the view at IndexPath: which document a site opens on is the caller's.
+// PrimaryProjection is the spine document. It must be among the projections
+// built (ErrNoPrimary). It is NOT required to be the view at IndexPath: which
+// document a site opens on is the caller's Views.
 const PrimaryProjection = project.PublishedProjection
 
 // IndexPath is the view the site opens on. It is the fixed entry point of the

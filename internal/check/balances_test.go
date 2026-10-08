@@ -467,6 +467,37 @@ func TestADeclaredBlankCellIsAbsentAndNotMissing(t *testing.T) {
 		t.Errorf("%s over %d (%s), findings %s; want the contradicted balance neither held, counted "+
 			"nor reported again", res.Status, res.Subjects, res.Summary, said(res))
 	}
+
+	// Printed twice on the declared-blank line, it is still the one
+	// contradiction: sources = uses reads it as nothing, not as a line
+	// printed twice.
+	var twice []fact.Fact
+	for _, f := range printed {
+		twice = append(twice, f)
+		if f.Category == structure.CategoryFundBalanceReserveIncrease {
+			f.ID += "-again"
+			twice = append(twice, f)
+		}
+	}
+	if got := said(runBalance(t, &fundGroupSourcesEqualUses{}, twice, blankCells(t, false))); got != "" {
+		t.Errorf("sources = uses findings %s; want none, the printed blank being fund-balance-identity's", got)
+	}
+
+	// A contradicted figure is still a line the balance prints, so the
+	// missing-lines finding counts it and addresses it.
+	var endingOnly []fact.Fact
+	for _, f := range printed {
+		if f.Category == structure.CategoryFundBalanceEnding {
+			endingOnly = append(endingOnly, f)
+		}
+	}
+	res = runBalance(t, &fundBalanceIdentity{}, endingOnly, blankCells(t, true))
+	wantFail(t, res, "publishes 1 of the 2 fund-balance lines")
+	for _, f := range res.Findings {
+		if strings.Contains(f.Detail, "publishes 1 of") && f.Subject != endingOnly[0].ID {
+			t.Errorf("the missing-lines finding addresses %q, want the printed ending %q", f.Subject, endingOnly[0].ID)
+		}
+	}
 }
 
 // TestABlankOnACellThatNeverPublishesIsNoBlank holds declaredBlanks to the

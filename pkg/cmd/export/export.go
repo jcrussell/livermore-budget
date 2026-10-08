@@ -244,9 +244,9 @@ func exportRun(o *Options) error {
 		Projections: projections,
 		// WHICH VIEWS THE SITE HAS IS STATED HERE, in the composition root, and
 		// not inferred by the packager from its stems. internal/export must not
-		// start guessing what a name means -- which document is a year of which, and which are separate
-		// views, are both facts about the projections and neither is legible
-		// from a filename.
+		// start guessing what a name means -- which document is a year of
+		// which, and which are separate views, are both facts about the
+		// projections and neither is legible from a filename.
 		Views:       siteViews,
 		Docs:        docs,
 		GeneratedBy: generatedBy(),

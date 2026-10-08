@@ -65,9 +65,15 @@ func (*fundGroupSourcesEqualUses) Run(_ context.Context, s *Subject) (Result, er
 			c = &sourcesUsesColumn{printed: map[structure.Line]string{}}
 			columns[k] = c
 		}
+		l, onLine := decl.LineOf(f)
+		// A figure on a declared-blank line is fund-balance-identity's one
+		// finding; its balance is set aside below, so it is read here as
+		// nothing, not as a term or a second figure.
+		if onLine && blanks[k][l] {
+			continue
+		}
 		// SourcesUses.Add sums what it is given, so a second fact on a line
 		// would be added to the first.
-		l, onLine := decl.LineOf(f)
 		if prev := c.printed[l]; onLine && prev != "" {
 			findings = append(findings, finding(f.ID,
 				"%s prints %s twice, as %s and %s; sources = uses has no single value for it, so this "+
