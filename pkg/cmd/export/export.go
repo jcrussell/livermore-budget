@@ -290,7 +290,7 @@ func exportRun(o *Options) error {
 	// published an undeclared document EMPTIES the output directory and then
 	// refuses -- destroying a site to report a fault that was detectable before
 	// anything was touched. It follows Prepare because it reads the steps'
-	// documents through export.View.DrawnStems, which refuses what Prepare's
+	// documents through export.View.ReachedStems, which refuses what Prepare's
 	// validation refuses, and validation's refusal names the declaration.
 	if err = assertPublishedReachable(siteViews, projections); err != nil {
 		return err

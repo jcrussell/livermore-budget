@@ -499,17 +499,22 @@ func StepStems(steps []DrillStep, year string, ix ColumnIndex) ([]string, error)
 	return out, nil
 }
 
-// DrawnStems is every document this view's steps draw, across every year it
-// lists, as [StepStems] resolves each year; it refuses what StepStems refuses.
-func (v View) DrawnStems(ix ColumnIndex) ([]string, error) {
+// ReachedStems is every document a reader of this view can reach, once each:
+// its projection, its year stems, and every document its steps draw across
+// every year it lists, as [StepStems] resolves each year. It refuses what
+// StepStems refuses. The caveats page's drawn set and `fisc export`'s
+// reachability gate both read it, so the two cannot disagree.
+func (v View) ReachedStems(ix ColumnIndex) ([]string, error) {
 	byYear, err := v.stepStemsByYear(ix)
 	if err != nil {
 		return nil, err
 	}
+	// v.yearStems() holds the projection: stepStemsByYear refuses a view
+	// whose list does not. A view rendering no document lists "".
 	var out []string
 	for _, year := range v.yearStems() {
-		for _, stem := range byYear[year] {
-			if !slices.Contains(out, stem) {
+		for _, stem := range append([]string{year}, byYear[year]...) {
+			if stem != "" && !slices.Contains(out, stem) {
 				out = append(out, stem)
 			}
 		}

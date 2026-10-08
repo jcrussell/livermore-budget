@@ -195,11 +195,12 @@ func TestStepStemsResolvesAStepWithNoScheduleThroughItsAfter(t *testing.T) {
 	}
 }
 
-// TestDrawnStemsIsStepStemsOverEveryYear: DrawnStems answers through
-// StepStems, so it draws what StepStems resolves in each year, the document a
-// schedule-less step opens from included, and refuses a year StepStems
-// refuses rather than reading it as drawing nothing.
-func TestDrawnStemsIsStepStemsOverEveryYear(t *testing.T) {
+// TestReachedStemsIsTheYearsAndStepStemsOverEach: ReachedStems answers
+// through StepStems, so it reaches each year the view lists and what
+// StepStems resolves in it, the document a schedule-less step opens from
+// included, and refuses a year StepStems refuses rather than reading it as
+// reaching nothing.
+func TestReachedStemsIsTheYearsAndStepStemsOverEach(t *testing.T) {
 	doc := func(schedule string, year int) []byte {
 		return []byte(fmt.Sprintf(`{"projection":%q,"nodes":[{"id":"n","label":"N","tier":0}],"links":[],`+
 			`"metadata":{"fiscal_year":%d,"basis":"adopted"}}`, schedule, year))
@@ -217,22 +218,31 @@ func TestDrawnStemsIsStepStemsOverEveryYear(t *testing.T) {
 		{Key: "b", After: []string{""}},
 	}
 	v := View{Path: "index.html", Projection: "year", YearStems: []string{"year", "year-2027"}, Steps: steps}
-	got, err := v.DrawnStems(ix)
+	got, err := v.ReachedStems(ix)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if diff := cmp.Diff([]string{"first", "year", "first-2027", "year-2027"}, got); diff != "" {
-		t.Errorf("DrawnStems (-want +got):\n%s", diff)
+	if diff := cmp.Diff([]string{"year", "first", "year-2027", "first-2027"}, got); diff != "" {
+		t.Errorf("ReachedStems (-want +got):\n%s", diff)
+	}
+	// A view with no steps reaches its years alone, the second only through
+	// the year control.
+	got, err = View{Path: "index.html", Projection: "year", YearStems: []string{"year", "year-2027"}}.ReachedStems(ix)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if diff := cmp.Diff([]string{"year", "year-2027"}, got); diff != "" {
+		t.Errorf("ReachedStems without steps (-want +got):\n%s", diff)
 	}
 	v.YearStems = append(v.YearStems, "trend")
-	if _, err := v.DrawnStems(ix); err == nil || !strings.Contains(err.Error(), "folded into no column") {
-		t.Errorf("DrawnStems over a year in no column: err = %v, want StepStems' refusal", err)
+	if _, err := v.ReachedStems(ix); err == nil || !strings.Contains(err.Error(), "folded into no column") {
+		t.Errorf("ReachedStems over a year in no column: err = %v, want StepStems' refusal", err)
 	}
 }
 
 // TestAProjectionOutsideItsYearStemsIsRefusedByEveryReader holds the rule's
 // one owner, stepStemsByYear, to every caller that reads a view's documents:
-// View.validate, and DrawnStems, which runs on views validate has not seen.
+// View.validate, and ReachedStems, which runs on views validate has not seen.
 func TestAProjectionOutsideItsYearStemsIsRefusedByEveryReader(t *testing.T) {
 	doc := []byte(`{"projection":"year","nodes":[{"id":"n","label":"N","tier":0}],"links":[],` +
 		`"metadata":{"fiscal_year":2026,"basis":"adopted"}}`)
@@ -251,8 +261,8 @@ func TestAProjectionOutsideItsYearStemsIsRefusedByEveryReader(t *testing.T) {
 			t.Errorf("validate, %d steps: err = %v, want the refusal of a projection outside its year stems",
 				len(steps), err)
 		}
-		if _, err := v.DrawnStems(ix); err == nil || !strings.Contains(err.Error(), "not among its year stems") {
-			t.Errorf("DrawnStems, %d steps: err = %v, want the same refusal", len(steps), err)
+		if _, err := v.ReachedStems(ix); err == nil || !strings.Contains(err.Error(), "not among its year stems") {
+			t.Errorf("ReachedStems, %d steps: err = %v, want the same refusal", len(steps), err)
 		}
 	}
 }

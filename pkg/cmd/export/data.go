@@ -402,9 +402,9 @@ const fundFlowsNoSpineColumn = "a published column of the General Fund drill-dow
 	"(fisc-zojk)"
 
 // assertPublishedReachable refuses a built published document no view can
-// reach unless unviewedDocuments declares it. A document is reached through a
-// view's projection, its year stems, or a step's drawn stems: the spine's second
-// year only through the year control, and fund-flows only by opening a node.
+// reach unless unviewedDocuments declares it, reached as
+// [export.View.ReachedStems] says: the spine's second year only through the
+// year control, and fund-flows only by opening a node.
 func assertPublishedReachable(vs []export.View, built map[string][]byte) error {
 	_, ix, err := export.ColumnsOf(built, "")
 	if err != nil {
@@ -412,11 +412,7 @@ func assertPublishedReachable(vs []export.View, built map[string][]byte) error {
 	}
 	reachable := make(map[string]struct{}, len(vs))
 	for _, v := range vs {
-		reachable[v.Projection] = struct{}{}
-		for _, stem := range v.YearStems {
-			reachable[stem] = struct{}{}
-		}
-		stems, err := v.DrawnStems(ix)
+		stems, err := v.ReachedStems(ix)
 		if err != nil {
 			return err
 		}

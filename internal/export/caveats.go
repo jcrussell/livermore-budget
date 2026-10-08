@@ -131,22 +131,15 @@ func buildCaveatsPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	ix ColumnIndex, pageTextBase func(string) string,
 ) (caveatsPageData, error) {
 	caveatsPath := caveatsPathOf(o)
-	// Which documents a chart actually draws: through a view's projection,
-	// its year stems, or its steps' documents.
+	// Which documents a chart actually draws: every one a view drawing a
+	// chart reaches.
 	drawn := map[string]bool{}
 	for _, v := range o.Views {
 		// A view that draws no chart flags nothing, whatever it renders.
 		if !templateDrawsAChart(v.Template) {
 			continue
 		}
-		if v.Projection != "" {
-			drawn[v.Projection] = true
-		}
-		for _, stem := range v.YearStems {
-			drawn[stem] = true
-		}
-		// A document a chart opens into is drawn too, resolved per year.
-		stems, err := v.DrawnStems(ix)
+		stems, err := v.ReachedStems(ix)
 		if err != nil {
 			return caveatsPageData{}, err
 		}
