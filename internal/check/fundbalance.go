@@ -162,7 +162,7 @@ func (*fundBalanceIdentity) Run(_ context.Context, s *Subject) (Result, error) {
 			switch {
 			case printed:
 			case blanks[k][l]:
-				blank = blank || decl.BlankExempts(structure.BalanceChange, l)
+				blank = blank || decl.BlankExemptsChange(l)
 			default:
 				missing = append(missing, l.Category)
 			}

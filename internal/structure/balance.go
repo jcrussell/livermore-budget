@@ -73,28 +73,24 @@ func (b Balance) LineOf(f *fact.Fact) (Line, bool) {
 	return Line{}, false
 }
 
-// BlankExempts says whether a cell its rule declares blank on line l leaves
-// identity no figure to hold, so the balance is set aside rather than held.
-// A blank is absent: a flow of sources = uses is one term of a sum and a blank
-// one is summed as nothing, while a stock or a change is the only figure on
-// its side. So sources = uses is exempted by a blank on its change -- the
-// printed one where the scope prints it, else either stock of ending -
-// beginning -- and beginning + change == ending by a blank on any of its three.
-// It panics on carry-forward, which consults no blank.
-func (b Balance) BlankExempts(identity BalanceIdentity, l Line) bool {
-	switch identity {
-	case BalanceChange:
-		return l == LineBeginning || l == LineChange || l == LineEnding
-	case BalanceSourcesUses:
-		if b.PrintsChange() {
-			return l == LineChange
-		}
-		return l == LineBeginning || l == LineEnding
-	case BalanceCarryForward:
-		// It compares two stocks where both years print them, and a blank one
-		// is simply not printed.
+// BlankExemptsChange says whether a cell its rule declares blank on line l
+// leaves beginning + change == ending no figure to hold, so the balance is set
+// aside rather than held. A blank is absent, and each of the three is the only
+// figure on its side. Carry-forward, which compares two stocks where both
+// years print them, reads no blank and has no such method.
+func (Balance) BlankExemptsChange(l Line) bool {
+	return l == LineBeginning || l == LineChange || l == LineEnding
+}
+
+// BlankExemptsSourcesUses says whether a cell its rule declares blank on line
+// l leaves sources = uses no change to hold its flows to: the printed change
+// where the scope prints one, else either stock of ending - beginning. A
+// blank flow is one term of a sum, summed as nothing, and exempts nothing.
+func (b Balance) BlankExemptsSourcesUses(l Line) bool {
+	if b.PrintsChange() {
+		return l == LineChange
 	}
-	panic(fmt.Sprintf("internal/structure: identity %q consults no blank", identity))
+	return l == LineBeginning || l == LineEnding
 }
 
 // FundBalances is every scope printing a fund balance, and how.

@@ -19,7 +19,7 @@ import (
 //
 // A balance carrying any line of its scope and missing another is a finding,
 // not a skip, unless its rule declares that cell blank, and
-// structure.Balance.BlankExempts says which blanks set the balance aside. Two
+// structure.Balance.BlankExemptsSourcesUses says which blanks set the balance aside. Two
 // facts on one line of a balance are a finding, and the balance is not held;
 // nor is one printing a figure on a line its rule declares blank, which
 // fund-balance-identity reports.
@@ -107,7 +107,7 @@ func (*fundGroupSourcesEqualUses) Run(_ context.Context, s *Subject) (Result, er
 			switch {
 			case c.printed[l] != "":
 			case blanks[k][l]:
-				blank = blank || decl.BlankExempts(structure.BalanceSourcesUses, l)
+				blank = blank || decl.BlankExemptsSourcesUses(l)
 			default:
 				missing = append(missing, l.String())
 			}

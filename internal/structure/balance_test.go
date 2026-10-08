@@ -105,26 +105,25 @@ func TestABlankExemptsTheIdentityWhoseFigureItIs(t *testing.T) {
 	byFund, _ := structure.BalanceOf(declared, structure.ScopeFundBalancesByFund)
 	revenue := structure.Line{Kind: vocab.KindRevenue}
 	for _, tt := range []struct {
-		name     string
-		b        structure.Balance
-		identity structure.BalanceIdentity
-		exempt   []structure.Line
-		not      []structure.Line
+		name    string
+		exempts func(structure.Line) bool
+		exempt  []structure.Line
+		not     []structure.Line
 	}{
-		{"change, spine", spine, structure.BalanceChange,
+		{"change, spine", spine.BlankExemptsChange,
 			[]structure.Line{structure.LineBeginning, structure.LineChange, structure.LineEnding}, nil},
-		{"sources = uses, spine", spine, structure.BalanceSourcesUses,
+		{"sources = uses, spine", spine.BlankExemptsSourcesUses,
 			[]structure.Line{structure.LineChange}, []structure.Line{structure.LineBeginning, structure.LineEnding, revenue}},
-		{"sources = uses, by fund", byFund, structure.BalanceSourcesUses,
+		{"sources = uses, by fund", byFund.BlankExemptsSourcesUses,
 			[]structure.Line{structure.LineBeginning, structure.LineEnding}, []structure.Line{revenue}},
 	} {
 		for _, l := range tt.exempt {
-			if !tt.b.BlankExempts(tt.identity, l) {
+			if !tt.exempts(l) {
 				t.Errorf("%s: a blank %s does not exempt it", tt.name, l)
 			}
 		}
 		for _, l := range tt.not {
-			if tt.b.BlankExempts(tt.identity, l) {
+			if tt.exempts(l) {
 				t.Errorf("%s: a blank %s exempts it", tt.name, l)
 			}
 		}
