@@ -108,7 +108,7 @@ func (*fundBalanceIdentity) Run(_ context.Context, s *Subject) (Result, error) {
 					"so no identity holds it", f.Scope, f.Category))
 			continue
 		}
-		if l, ok := lineOf(decl, f); !ok || l.Category != f.Category {
+		if l, ok := decl.LineOf(f); !ok || l.Category != f.Category {
 			findings = append(findings, finding(f.ID,
 				"%s prints a %s line, and scope %q is declared to print none; its change is ending - "+
 					"beginning, two printed figures, and a third would be a second answer",
@@ -161,7 +161,7 @@ func (*fundBalanceIdentity) Run(_ context.Context, s *Subject) (Result, error) {
 			switch {
 			case printed:
 			case blanks[k][l]:
-				blank = true
+				blank = blank || decl.BlankExempts(structure.BalanceChange, l)
 			default:
 				missing = append(missing, l.Category)
 			}

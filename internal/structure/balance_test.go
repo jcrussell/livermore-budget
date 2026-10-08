@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/jcrussell/livermore-budget/internal/structure"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // fund101Break is General Fund CIP Reserves' FY2024 -> FY2025 carry-forward
@@ -31,6 +32,9 @@ func TestValidateBalanceExceptionsRefusesWhatCouldHoldNothingApart(t *testing.T)
 		want string
 	}{
 		{"an unknown identity", func(e *structure.BalanceException) { e.Identity = "roll-forward" }, "not declared"},
+		{"beginning + change == ending", func(e *structure.BalanceException) {
+			e.Identity = structure.BalanceChange
+		}, "takes no exception"},
 		{"an undeclared scope", func(e *structure.BalanceException) { e.At.Scope = "revenue-by-fund" }, "does not declare"},
 		{"sources = uses on a scope that does not hold it", func(e *structure.BalanceException) {
 			e.Identity, e.At.Scope = structure.BalanceSourcesUses, structure.ScopeACFRGeneralFundSummary
@@ -87,5 +91,42 @@ func TestAnExceptionOnAScopeTheStoreDoesNotCarryIsStale(t *testing.T) {
 		map[structure.BalanceAt][2]int64{}, []structure.BalanceException{e})
 	if len(held) != 0 || len(findings) != 1 || !strings.Contains(findings[0], "matches no balance") {
 		t.Fatalf("held %v, findings %q; want the exception reported stale", held, findings)
+	}
+}
+
+// TestABlankExemptsTheIdentityWhoseFigureItIs: a blank flow is summed as
+// nothing, and a blank stock or change leaves its side no figure. Where the
+// spine prints its change, a blank stock still leaves sources = uses that
+// change to hold; where pp.186-209 print none, a blank stock is its change.
+func TestABlankExemptsTheIdentityWhoseFigureItIs(t *testing.T) {
+	t.Parallel()
+	declared := structure.FundBalances()
+	spine, _ := structure.BalanceOf(declared, structure.ScopeAllFundsGross)
+	byFund, _ := structure.BalanceOf(declared, structure.ScopeFundBalancesByFund)
+	revenue := structure.Line{Kind: vocab.KindRevenue}
+	for _, tt := range []struct {
+		name     string
+		b        structure.Balance
+		identity structure.BalanceIdentity
+		exempt   []structure.Line
+		not      []structure.Line
+	}{
+		{"change, spine", spine, structure.BalanceChange,
+			[]structure.Line{structure.LineBeginning, structure.LineChange, structure.LineEnding}, nil},
+		{"sources = uses, spine", spine, structure.BalanceSourcesUses,
+			[]structure.Line{structure.LineChange}, []structure.Line{structure.LineBeginning, structure.LineEnding, revenue}},
+		{"sources = uses, by fund", byFund, structure.BalanceSourcesUses,
+			[]structure.Line{structure.LineBeginning, structure.LineEnding}, []structure.Line{revenue}},
+	} {
+		for _, l := range tt.exempt {
+			if !tt.b.BlankExempts(tt.identity, l) {
+				t.Errorf("%s: a blank %s does not exempt it", tt.name, l)
+			}
+		}
+		for _, l := range tt.not {
+			if tt.b.BlankExempts(tt.identity, l) {
+				t.Errorf("%s: a blank %s exempts it", tt.name, l)
+			}
+		}
 	}
 }

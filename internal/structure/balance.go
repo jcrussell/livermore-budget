@@ -63,6 +63,40 @@ func (b Balance) PrintsChange() bool {
 	return false
 }
 
+// LineOf is the line of the scope a fact is printed on.
+func (b Balance) LineOf(f *fact.Fact) (Line, bool) {
+	for _, l := range b.Lines {
+		if l.Matches(f) {
+			return l, true
+		}
+	}
+	return Line{}, false
+}
+
+// BlankExempts says whether a cell its rule declares blank on line l leaves
+// identity no figure to hold, so the balance is set aside rather than held.
+// A blank is absent: a flow of sources = uses is one term of a sum and a blank
+// one is summed as nothing, while a stock or a change is the only figure on
+// its side. So sources = uses is exempted by a blank on its change -- the
+// printed one where the scope prints it, else either stock of ending -
+// beginning -- and beginning + change == ending by a blank on any of its three.
+// It panics on carry-forward, which consults no blank.
+func (b Balance) BlankExempts(identity BalanceIdentity, l Line) bool {
+	switch identity {
+	case BalanceChange:
+		return l == LineBeginning || l == LineChange || l == LineEnding
+	case BalanceSourcesUses:
+		if b.PrintsChange() {
+			return l == LineChange
+		}
+		return l == LineBeginning || l == LineEnding
+	case BalanceCarryForward:
+		// It compares two stocks where both years print them, and a blank one
+		// is simply not printed.
+	}
+	panic(fmt.Sprintf("internal/structure: identity %q consults no blank", identity))
+}
+
 // FundBalances is every scope printing a fund balance, and how.
 //
 // The spine and ACFR p41 print a change line, which witnesses their flows, so
@@ -179,6 +213,9 @@ const (
 	// BalanceSourcesUses is SourcesUses.Net() == the change. Left is the net
 	// and Right the change.
 	BalanceSourcesUses BalanceIdentity = "sources-uses"
+	// BalanceChange is beginning + change == ending, on a scope printing its
+	// change. It takes no exception.
+	BalanceChange BalanceIdentity = "change"
 )
 
 // A BalanceException holds one balance apart from one identity, pinned on
@@ -268,6 +305,8 @@ func ValidateBalanceExceptions(balances []Balance, exceptions []BalanceException
 	for _, e := range exceptions {
 		b, ok := BalanceOf(balances, e.At.Scope)
 		switch {
+		case e.Identity == BalanceChange:
+			return fmt.Errorf("balance exception at %s names identity %q, which takes no exception", e.At, e.Identity)
 		case e.Identity != BalanceCarryForward && e.Identity != BalanceSourcesUses:
 			return fmt.Errorf("balance exception at %s names identity %q, which is not declared", e.At, e.Identity)
 		case !ok:

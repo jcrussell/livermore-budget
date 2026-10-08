@@ -18,10 +18,8 @@ import (
 // ending - beginning, two printed figures, where it does not.
 //
 // A balance carrying any line of its scope and missing another is a finding,
-// not a skip, unless its rule declares that cell blank: a blank is absent and
-// summed as nothing. A blank change leaves no change to hold, and so does a
-// blank stock on a scope whose change is ending - beginning; where the scope
-// prints its change, a blank stock still leaves that figure to hold. Two
+// not a skip, unless its rule declares that cell blank, and
+// structure.Balance.BlankExempts says which blanks set the balance aside. Two
 // facts on one line of a balance are a finding, and the balance is not held.
 // The id names fund groups because the spine's balances are fund groups;
 // pp.186-209's are funds within them, keyed by both.
@@ -48,7 +46,9 @@ type sourcesUsesColumn struct {
 
 func (*fundGroupSourcesEqualUses) Run(_ context.Context, s *Subject) (Result, error) {
 	declared := structure.FundBalances()
-	blanks, findings := declaredBlanks(s, declared)
+	// fund-balance-identity reports what declaredBlanks finds.
+	blanks, _ := declaredBlanks(s, declared)
+	var findings []Finding
 	columns := map[structure.BalanceAt]*sourcesUsesColumn{}
 	for i := range s.Facts {
 		f := &s.Facts[i]
@@ -64,7 +64,7 @@ func (*fundGroupSourcesEqualUses) Run(_ context.Context, s *Subject) (Result, er
 		}
 		// SourcesUses.Add sums what it is given, so a second fact on a line
 		// would be added to the first.
-		l, onLine := lineOf(decl, f)
+		l, onLine := decl.LineOf(f)
 		if prev := c.printed[l]; onLine && prev != "" {
 			findings = append(findings, finding(f.ID,
 				"%s prints %s twice, as %s and %s; sources = uses has no single value for it, so this "+
@@ -101,10 +101,7 @@ func (*fundGroupSourcesEqualUses) Run(_ context.Context, s *Subject) (Result, er
 			switch {
 			case c.printed[l] != "":
 			case blanks[k][l]:
-				if l == structure.LineChange ||
-					!decl.PrintsChange() && (l == structure.LineBeginning || l == structure.LineEnding) {
-					blank = true
-				}
+				blank = blank || decl.BlankExempts(structure.BalanceSourcesUses, l)
 			default:
 				missing = append(missing, l.String())
 			}

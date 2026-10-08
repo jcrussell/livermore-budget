@@ -447,9 +447,17 @@ func TestADeclaredBlankCellIsAbsentAndNotMissing(t *testing.T) {
 		wantFail(t, runBalance(t, c, noEnding, blankCells(t, false)), "missing "+structure.CategoryFundBalanceEnding)
 	}
 
-	// And a declared blank the store prints anyway is a contradiction.
+	// And a declared blank the store prints anyway is a contradiction, one
+	// finding however many checks read the blank.
 	printed := measureD.facts(replace(byFundRow(), structure.CategoryFundBalanceEnding, 123_000))
-	wantFail(t, runBalance(t, &fundGroupSourcesEqualUses{}, printed, blankCells(t, false)), "declares that cell blank")
+	wantFail(t, runBalance(t, &fundBalanceIdentity{}, printed, blankCells(t, false)), "declares that cell blank")
+	n := 0
+	for _, c := range []Check{&fundGroupSourcesEqualUses{}, &fundBalanceIdentity{}} {
+		n += strings.Count(said(runBalance(t, c, printed, blankCells(t, false))), "declares that cell blank")
+	}
+	if n != 1 {
+		t.Errorf("the printed blank is reported %d times across both balance checks, want once", n)
+	}
 }
 
 // TestABlankOnACellThatNeverPublishesIsNoBlank holds declaredBlanks to the

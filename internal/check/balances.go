@@ -6,16 +6,6 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/structure"
 )
 
-// lineOf is the line of its scope's declaration a fact is printed on.
-func lineOf(b structure.Balance, f *fact.Fact) (structure.Line, bool) {
-	for _, l := range b.Lines {
-		if l.Matches(f) {
-			return l, true
-		}
-	}
-	return structure.Line{}, false
-}
-
 // blankLines is, per balance, the lines its rules declare the page leaves
 // blank: absent, not zero, and not a line a rule stopped publishing.
 type blankLines map[structure.BalanceAt]map[structure.Line]bool
@@ -23,10 +13,12 @@ type blankLines map[structure.BalanceAt]map[structure.Line]bool
 // declaredBlanks reads every blank cell a rule in a balance scope declares,
 // from mapping.Omissions and with no matching of its own, on a cell
 // mapping.Row.Publishes says would become a fact were the page to print it,
-// and finds every fact the store prints on a line its rule declares blank:
-// both balance checks read their blanks here, so neither can let a printed
-// figure override one. A row another page prints is no blank: its cells are
-// missing when absent, and mapping.Omissions never names one.
+// and finds every fact the store prints on a line its rule declares blank.
+// Both balance checks read their blanks here; fund-balance-identity, which
+// covers every declared scope, reports the findings, and
+// fund-group-sources-equal-uses discards them so one defect is one finding.
+// A row another page prints is no blank: its cells are missing when absent,
+// and mapping.Omissions never names one.
 //
 // THE ADDRESS IS fact.FromValues', fed the cell the page leaves blank, so the
 // blank lands on exactly the balance and line its figure would have. The
@@ -56,7 +48,7 @@ func declaredBlanks(s *Subject, balances []structure.Balance) (blankLines, []Fin
 						continue
 					}
 					for k := range blanks {
-						l, ok := lineOf(b, &blanks[k])
+						l, ok := b.LineOf(&blanks[k])
 						if !ok {
 							continue
 						}
@@ -76,7 +68,7 @@ func declaredBlanks(s *Subject, balances []structure.Balance) (blankLines, []Fin
 		if !ok {
 			continue
 		}
-		if l, ok := lineOf(b, f); ok && out[structure.BalanceAtOf(f)][l] {
+		if l, ok := b.LineOf(f); ok && out[structure.BalanceAtOf(f)][l] {
 			findings = append(findings, finding(f.ID,
 				"%s prints %s, and its rule declares that cell blank", structure.BalanceAtOf(f), l))
 		}
