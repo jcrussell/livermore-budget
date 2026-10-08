@@ -191,8 +191,7 @@ type Options struct {
 	Projections map[string][]byte
 
 	// Views are the site's pages, in nav order, the view the site opens on
-	// first. Empty means the single Sankey page, which is what every caller
-	// wanted before there were two documents.
+	// first. Empty is refused.
 	//
 	// The list is STATED BY THE CALLER, as YearStems was and for the same
 	// reason: which documents are views of what, and which are years of which,
@@ -611,14 +610,17 @@ func (o *Options) validate(ix ColumnIndex) error {
 			return fmt.Errorf("projection name %q is not a usable filename stem", name)
 		}
 	}
+	if len(o.Views) == 0 {
+		return errors.New("no views to export; the caller states every page the site has")
+	}
 	for i := range o.Views {
-		if err := o.views()[i].validate(o.Projections, ix); err != nil {
+		if err := o.Views[i].validate(o.Projections, ix); err != nil {
 			return err
 		}
 	}
 	seenPath := map[string]bool{}
 	index := 0
-	for _, v := range o.views() {
+	for _, v := range o.Views {
 		if seenPath[v.Path] {
 			return fmt.Errorf("two views claim the output path %q", v.Path)
 		}
@@ -632,8 +634,8 @@ func (o *Options) validate(ix ColumnIndex) error {
 	}
 	// A nav label is only owed when a nav is rendered, from two views up;
 	// without one the nav ships an empty link.
-	if len(o.views()) > 1 {
-		for _, v := range o.views() {
+	if len(o.Views) > 1 {
+		for _, v := range o.Views {
 			if v.Nav == "" && v.Title == "" {
 				return fmt.Errorf(
 					"view %q has neither a nav label nor a title; every page's nav "+
@@ -714,24 +716,10 @@ var fixedPaths = func() map[string]bool {
 func (o *Options) reservedPaths() map[string]bool {
 	m := make(map[string]bool, len(fixedPaths)+len(o.Views)+1)
 	maps.Copy(m, fixedPaths)
-	for _, v := range o.views() {
+	for _, v := range o.Views {
 		m[v.Path] = true
 	}
 	return m
-}
-
-// views is Views, or the single Sankey page a caller that named none meant.
-func (o *Options) views() []View {
-	if len(o.Views) > 0 {
-		return o.Views
-	}
-	return []View{{
-		Path:       IndexPath,
-		Nav:        "Budget flows",
-		Template:   SankeyTemplate,
-		Projection: PrimaryProjection,
-		Overview:   Chart{Form: SankeyForm, Sankey: &SankeyHints{}},
-	}}
 }
 
 // validate refuses a view that could not be rendered, or that would land on a

@@ -128,7 +128,7 @@ type navItem struct {
 // this file, decides between a remote browse view and the copy the site ships
 // -- see Write.
 func buildSite(o *Options, ix ColumnIndex, pageTextBase func(docID string) string) ([]sitePage, []Citation, error) {
-	views := o.views()
+	views := o.Views
 	nav := make([]navItem, 0, len(views))
 	for _, v := range views {
 		label := v.Nav

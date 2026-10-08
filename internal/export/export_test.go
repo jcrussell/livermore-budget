@@ -1170,6 +1170,7 @@ func TestAPageWithNoBuildStampIsRefused(t *testing.T) {
 	_, err := export.Prepare(export.Options{
 		Dir:         t.TempDir(),
 		Projections: map[string][]byte{"sankey": goldenSankey(t)},
+		Views:       spineOnly(),
 		Docs:        budgetDocs(),
 		PageText:    pageTextFS(),
 	})
@@ -1183,13 +1184,46 @@ func TestAPageWithNoBuildStampIsRefused(t *testing.T) {
 	}
 }
 
-// writeSite prepares and writes one site, stamping the build where the caller
-// did not. The binary cleans the directory between Prepare and Write, so a
-// failed render does not destroy the previous site; the one-step form lives
-// only here.
+// TestAnExportNamingNoViewIsRefused: the pages a site has are the caller's
+// to state, so an Options naming none is refused rather than given a page
+// this package would have to invent.
+func TestAnExportNamingNoViewIsRefused(t *testing.T) {
+	_, err := export.Prepare(export.Options{
+		Dir:         t.TempDir(),
+		Projections: map[string][]byte{"sankey": goldenSankey(t)},
+		Docs:        budgetDocs(),
+		GeneratedBy: "fisc test",
+	})
+	if err == nil || !strings.Contains(err.Error(), "no views to export") {
+		t.Fatalf("err = %v, want the refusal of an export naming no view", err)
+	}
+}
+
+// spineOnly is the one-page site most of these tests write: the spine's
+// Sankey, with no hint, no year control and no steps. data/views.yaml's index
+// view is far more than this, and export.Prepare refuses an Options naming no
+// view, so the fixture lives here and the tests that want it say so through
+// writeSite.
+func spineOnly() []export.View {
+	return []export.View{{
+		Path:       export.IndexPath,
+		Nav:        "Budget flows",
+		Template:   export.SankeyTemplate,
+		Projection: export.PrimaryProjection,
+		Overview:   export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}},
+	}}
+}
+
+// writeSite prepares and writes one site, stamping the build and naming
+// spineOnly where the caller did not. The binary cleans the directory between
+// Prepare and Write, so a failed render does not destroy the previous site;
+// the one-step form lives only here.
 func writeSite(o export.Options) ([]string, error) {
 	if o.GeneratedBy == "" {
 		o.GeneratedBy = "fisc (test)"
+	}
+	if len(o.Views) == 0 {
+		o.Views = spineOnly()
 	}
 	p, err := export.Prepare(o)
 	if err != nil {

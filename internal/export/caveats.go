@@ -63,7 +63,7 @@ func caveatAnchor(stem, id string) string { return "caveat-" + stem + "--" + id 
 //
 // Derived from the view set, so it cannot drift out of step with it.
 func caveatsPathOf(o *Options) string {
-	for _, v := range o.views() {
+	for _, v := range o.Views {
 		if v.Template == CaveatsTemplate {
 			return v.Path
 		}
@@ -134,7 +134,7 @@ func buildCaveatsPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	// Which documents a chart actually draws: through a view's projection,
 	// its year stems, or its steps' documents.
 	drawn := map[string]bool{}
-	for _, v := range o.views() {
+	for _, v := range o.Views {
 		// A view that draws no chart flags nothing, whatever it renders.
 		if !templateDrawsAChart(v.Template) {
 			continue
