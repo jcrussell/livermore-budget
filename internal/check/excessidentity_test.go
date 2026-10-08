@@ -153,6 +153,21 @@ func TestExcessIdentityRefusesADuplicatedExcessLine(t *testing.T) {
 		t.Errorf("status %s, findings %v; want the duplicate alone, its column held to nothing",
 			res.Status, res.Findings)
 	}
+
+	// Excluded from the identity is not excused from completeness: a
+	// duplicated column whose revenue rows are gone still names them.
+	var noRevenue []fact.Fact
+	for _, f := range excessBaseline() {
+		if f.FiscalYear != 2016 || f.Kind != vocab.KindRevenue {
+			noRevenue = append(noRevenue, f)
+		}
+	}
+	noRevenue = append(noRevenue,
+		excessFact("x-2016-dup", vocab.KindFundBalance, categoryExcessOfRevenues, 2016, 601))
+	res = runExcessIdentity(t, noRevenue)
+	if !strings.Contains(findingDetails(res), "missing revenue rows") {
+		t.Errorf("findings %v do not name the duplicated column's missing revenue rows", res.Findings)
+	}
 }
 
 // TestExcessIdentityIgnoresOtherScopes pins the restriction: a revenue fact in

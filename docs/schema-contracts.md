@@ -55,9 +55,10 @@ A schema here states a record's SHAPE and a DECLARED code set. It never closes
 an open data set.
 
 The two look alike and are not, and the fund column is where the difference was
-measured. `role` is a declared vocabulary: `project.Roles` is the set, the
-steps `data/views.yaml` declares name its members as strings `pkg/cmd/export`
-holds to it, `internal/export`'s fund-group selection names its constants, and
+measured. `role` is a declared vocabulary: `project.Roles` is the set. The
+steps `data/views.yaml` declares name its members as strings, and
+`pkg/cmd/export` holds those strings to the set. `internal/export`'s fund-group
+selection names its constants, and
 `enums.schema.json` states it once for every document that carries a role,
 held to `project.Roles` both ways by `schema/enums_test.go`.
 The other closed sets (basis, kind, sign, units, link kind) are stated there

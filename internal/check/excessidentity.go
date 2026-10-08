@@ -125,9 +125,6 @@ func (*excessOfRevenuesIdentity) Run(_ context.Context, s *Subject) (Result, err
 
 	complete := 0
 	for _, k := range order {
-		if duplicated[k] {
-			continue
-		}
 		var missing []string
 		for _, side := range []struct {
 			name string
@@ -150,6 +147,11 @@ func (*excessOfRevenuesIdentity) Run(_ context.Context, s *Subject) (Result, err
 				"%s carries part of this identity and is missing %s; a column that "+
 					"publishes any side must publish all three, or a dropped rule would "+
 					"leave the identity nothing to violate", k, strings.Join(missing, ", ")))
+			continue
+		}
+		// A duplicated column still answers for its missing sides above; only
+		// the identity, which has no single excess to hold, is not asked of it.
+		if duplicated[k] {
 			continue
 		}
 		complete++

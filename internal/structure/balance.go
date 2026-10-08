@@ -213,8 +213,9 @@ const (
 	// BalanceSourcesUses is SourcesUses.Net() == the change. Left is the net
 	// and Right the change.
 	BalanceSourcesUses BalanceIdentity = "sources-uses"
-	// BalanceChange is beginning + change == ending, on a scope printing its
-	// change. It takes no exception.
+	// BalanceChange is beginning + change == ending. It is asked of every
+	// scope, and one printing no change holds only its completeness. It takes
+	// no exception.
 	BalanceChange BalanceIdentity = "change"
 )
 
