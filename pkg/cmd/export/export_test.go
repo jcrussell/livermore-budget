@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -1542,6 +1543,36 @@ func TestOpensIntoJoinsOnColumnNotOnDeclaredOrder(t *testing.T) {
 				t.Errorf("the spine's steps (-want +got):\n%s", diff)
 			}
 		})
+	}
+}
+
+// TestADocumentOutsideTheColumnItIsPublishedForIsRefused: publishedInto joins
+// on PublishedDocuments' columns and export.ColumnIndex on each built
+// document's own metadata. Where the two disagree, declaredSteps keeps the
+// step, because a document it promised was built, and the write refuses it by
+// the column's name rather than shipping the spine without that step.
+func TestADocumentOutsideTheColumnItIsPublishedForIsRefused(t *testing.T) {
+	built := builtStemsForTest(t)
+	var doc map[string]any
+	if err := json.Unmarshal(built[project.FundFlowsProjection], &doc); err != nil {
+		t.Fatalf("decode %s: %v", project.FundFlowsProjection, err)
+	}
+	doc["metadata"].(map[string]any)["fiscal_year"] = 2099
+	moved, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	elsewhere := maps.Clone(built)
+	elsewhere[project.FundFlowsProjection] = moved
+	if !opensInto(export.PrimaryProjection, project.FundFlowsProjection, elsewhere) {
+		t.Fatal("opensInto drops the step, so the refusal below is no evidence")
+	}
+	opts, _, _, _ := testOptions(t)
+	opts.Build = func(string) (result, error) { return result{Projections: elsewhere}, nil }
+	if err := exportRun(opts); err == nil {
+		t.Error("exportRun accepted a spine whose opening column carries no fund-flows document")
+	} else if !strings.Contains(err.Error(), "carries no such schedule") {
+		t.Errorf("got %v, want the refusal naming the opening year's column", err)
 	}
 }
 

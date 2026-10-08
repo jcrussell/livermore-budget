@@ -235,27 +235,10 @@ func exportRun(o *Options) error {
 		return err
 	}
 
-	// EVERY PUBLISHED DOCUMENT IS EITHER RENDERED OR DECLARED UNRENDERED. It
-	// lives here rather than inside export.Write because internal/export does
-	// not know what the site publishes -- PublishedDocuments lives in
-	// internal/project, which that package deliberately does not import.
-	// assertPublishedBuilt above says the document exists; this says a reader
-	// can get to it.
-	//
-	// AND IT RUNS BEFORE --clean, with every other validation, rather than
-	// between Clean and Write. It needs nothing Clean produces, and running it
-	// after would mean `fisc export --clean` over a corpus that has just
-	// published an undeclared document EMPTIES the output directory and then
-	// refuses -- destroying a site to report a fault that was detectable before
-	// anything was touched.
 	siteViews, err := views(root, built)
 	if err != nil {
 		return err
 	}
-	if err = assertPublishedReachable(siteViews, projections); err != nil {
-		return err
-	}
-
 	site := export.Options{
 		Dir:         o.OutputDir,
 		Projections: projections,
@@ -285,23 +268,32 @@ func exportRun(o *Options) error {
 		RecordsBase: built.RecordsBase,
 	}
 
-	// AND THE WHOLE SITE IS RESOLVED BEFORE --clean, for the reason spelled out
-	// above assertPublishedReachable and now applying to every remaining class
-	// of input. Prepare validates, renders every page, and resolves the cited
-	// page text out of the extraction tree; after it returns, only I/O can
-	// fail. A caller that learns any of that from Write has already emptied the
-	// reader's site to find out.
-	//
-	// THIS REPLACED A NARROWER HOIST, and the gap is worth recording. An
-	// earlier version of this hunk called a validate-only method here and left
-	// withPageText inside Write, so an export whose fact store covers a page
-	// the extraction does not still destroyed the output and then refused --
-	// and this command's own PageIndex seeding widened that class, because it
-	// makes pages cited that no projection names. Reproduced by moving one
-	// committed page text aside. Resolving everything is the only
-	// version of this that stays true as more is added to Write.
+	// THE WHOLE SITE IS RESOLVED BEFORE --clean. Prepare validates, renders
+	// every page, and resolves the cited page text out of the extraction tree,
+	// this command's PageIndex seeding included; after it returns, only I/O
+	// can fail. A caller that learns any of that from Write has already
+	// emptied the reader's site to find out.
 	plan, err := export.Prepare(site)
 	if err != nil {
+		return err
+	}
+
+	// EVERY PUBLISHED DOCUMENT IS EITHER RENDERED OR DECLARED UNRENDERED. It
+	// lives here rather than inside export.Write because internal/export does
+	// not know what the site publishes -- PublishedDocuments lives in
+	// internal/project, which that package deliberately does not import.
+	// assertPublishedBuilt above says the document exists; this says a reader
+	// can get to it.
+	//
+	// AND IT RUNS BEFORE --clean, with every other validation, rather than
+	// between Clean and Write. It needs nothing Clean produces, and running it
+	// after would mean `fisc export --clean` over a corpus that has just
+	// published an undeclared document EMPTIES the output directory and then
+	// refuses -- destroying a site to report a fault that was detectable before
+	// anything was touched. It follows Prepare because it reads the steps'
+	// documents through export.View.DrawnStems, which refuses what Prepare's
+	// validation refuses, and validation's refusal names the declaration.
+	if err = assertPublishedReachable(siteViews, projections); err != nil {
 		return err
 	}
 

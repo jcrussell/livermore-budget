@@ -146,7 +146,11 @@ func buildCaveatsPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			drawn[stem] = true
 		}
 		// A document a chart opens into is drawn too, resolved per year.
-		for _, stem := range v.DrawnStems(ix) {
+		stems, err := v.DrawnStems(ix)
+		if err != nil {
+			return caveatsPageData{}, err
+		}
+		for _, stem := range stems {
 			drawn[stem] = true
 		}
 	}

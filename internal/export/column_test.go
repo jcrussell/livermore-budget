@@ -2,6 +2,7 @@ package export
 
 import (
 	"bytes"
+	"fmt"
 	"reflect"
 	"slices"
 	"sort"
@@ -191,6 +192,41 @@ func TestStepStemsResolvesAStepWithNoScheduleThroughItsAfter(t *testing.T) {
 	steps = append(steps, DrillStep{Key: "e", After: []string{"a", "b"}})
 	if _, err := StepStems(steps, "year", ix); err == nil || !strings.Contains(err.Error(), "opens from charts drawing") {
 		t.Errorf("StepStems with two parents drawing two documents: err = %v", err)
+	}
+}
+
+// TestDrawnStemsIsStepStemsOverEveryYear: DrawnStems answers through
+// StepStems, so it draws what StepStems resolves in each year, the document a
+// schedule-less step opens from included, and refuses a year StepStems
+// refuses rather than reading it as drawing nothing.
+func TestDrawnStemsIsStepStemsOverEveryYear(t *testing.T) {
+	doc := func(schedule string, year int) []byte {
+		return []byte(fmt.Sprintf(`{"projection":%q,"nodes":[{"id":"n","label":"N","tier":0}],"links":[],`+
+			`"metadata":{"fiscal_year":%d,"basis":"adopted"}}`, schedule, year))
+	}
+	_, ix, err := ColumnsOf(map[string][]byte{
+		"year": doc("year", 2026), "year-2027": doc("year", 2027),
+		"first": doc("first", 2026), "first-2027": doc("first", 2027),
+		"trend": []byte(`{"projection":"trend","nodes":[{"id":"n","label":"N","tier":0}],"links":[],"metadata":{}}`),
+	}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	steps := []DrillStep{
+		{Key: "a", After: []string{""}, Projection: "first"},
+		{Key: "b", After: []string{""}},
+	}
+	v := View{Path: "index.html", Projection: "year", YearStems: []string{"year", "year-2027"}, Steps: steps}
+	got, err := v.DrawnStems(ix)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if diff := cmp.Diff([]string{"first", "year", "first-2027", "year-2027"}, got); diff != "" {
+		t.Errorf("DrawnStems (-want +got):\n%s", diff)
+	}
+	v.YearStems = append(v.YearStems, "trend")
+	if _, err := v.DrawnStems(ix); err == nil || !strings.Contains(err.Error(), "folded into no column") {
+		t.Errorf("DrawnStems over a year in no column: err = %v, want StepStems' refusal", err)
 	}
 }
 

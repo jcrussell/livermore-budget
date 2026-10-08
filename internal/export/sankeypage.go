@@ -294,12 +294,9 @@ func stepDocuments(v View, year, builtBy string, fiscalYear int, basis string,
 	)
 	for i := range v.Steps {
 		stem := stems[i]
-		raw, ok := projections[stem]
-		if !ok {
-			return nil, nil, fmt.Errorf(
-				"view %q's step %d renders projection %q for year stem %q, which was not built",
-				v.Path, i, stem, year)
-		}
+		// StepStems answers a year stem validate found built, or a document
+		// ColumnIndex folded out of the built set.
+		raw := projections[stem]
 		if _, err := decodeDocument(stem, raw); err != nil {
 			return nil, nil, err
 		}

@@ -500,27 +500,19 @@ func StepStems(steps []DrillStep, year string, ix ColumnIndex) ([]string, error)
 }
 
 // DrawnStems is every document this view's steps draw, across every year it
-// lists: the schedule each step names, resolved in each year's own column.
-// A year in no column contributes nothing; [StepStems] refuses that.
-func (v View) DrawnStems(ix ColumnIndex) []string {
+// lists, as [StepStems] resolves each year; it refuses what StepStems refuses.
+func (v View) DrawnStems(ix ColumnIndex) ([]string, error) {
+	byYear, err := v.stepStemsByYear(ix)
+	if err != nil {
+		return nil, err
+	}
 	var out []string
-	seen := map[string]bool{}
-	for _, s := range v.Steps {
-		if s.Projection == "" {
-			continue
-		}
-		for _, year := range slices.Concat([]string{v.Projection}, v.YearStems) {
-			column, folded := ix.Column(year)
-			if !folded {
-				continue
+	for _, year := range v.yearStems() {
+		for _, stem := range byYear[year] {
+			if !slices.Contains(out, stem) {
+				out = append(out, stem)
 			}
-			stem, ok := ix.Stem(column, s.Projection)
-			if !ok || seen[stem] {
-				continue
-			}
-			seen[stem] = true
-			out = append(out, stem)
 		}
 	}
-	return out
+	return out, nil
 }

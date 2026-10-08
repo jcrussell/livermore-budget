@@ -3497,6 +3497,46 @@ func TestAStepDrawsItsParentsDocumentNotItsPredecessors(t *testing.T) {
 	}
 }
 
+// TestAStepDocumentBuiltByAnotherProjectionIsRefused is
+// TestAYearStemBuiltByAnotherProjectionIsRefused for a step's document: the
+// footer credits the opening document's builder for every figure the page
+// draws, a step's included, and only stepDocuments compares them.
+func TestAStepDocumentBuiltByAnotherProjectionIsRefused(t *testing.T) {
+	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
+	if err != nil {
+		t.Fatalf("read fund-flows golden: %v", err)
+	}
+	write := func(stepDoc []byte) error {
+		_, werr := writeSite(export.Options{
+			Dir:         t.TempDir(),
+			Projections: map[string][]byte{"sankey": goldenSankey(t), "fund-flows": stepDoc},
+			Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
+				Template: export.SankeyTemplate, Projection: "sankey",
+				Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{0, 2, 5}}},
+				Steps: []export.DrillStep{{Key: "group", After: []string{""}, From: 2, Projection: "fund-flows",
+					Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{0, 2}}},
+					Back:  "All fund groups", Noun: "thing", Tail: "funds", Description: "One."}},
+			}},
+			Docs:        budgetDocs(),
+			GeneratedBy: "fisc test",
+		})
+		return werr
+	}
+	if cerr := write(builtLike(t, goldenSankey(t), fundFlows)); cerr != nil {
+		t.Fatalf("the control was refused, so the case below is no evidence: %v", cerr)
+	}
+	err = write(builtLike(t, []byte(`{"metadata": {"generated_by": "fisc some-other-build"}}`), fundFlows))
+	if err == nil {
+		t.Fatal("a step document built by another projection was exported; the footer " +
+			"credits one builder for figures drawn from two documents")
+	}
+	for _, want := range []string{"fund-flows", "fisc some-other-build", "footer credits one projection"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("the refusal does not name %q: %v", want, err)
+		}
+	}
+}
+
 // builtLike restamps a document's generated_by to another's, so two committed
 // goldens can be paired on one page: the footer credits a single builder.
 func builtLike(t *testing.T, like, raw []byte) []byte {

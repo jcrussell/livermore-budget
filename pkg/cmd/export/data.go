@@ -416,7 +416,11 @@ func assertPublishedReachable(vs []export.View, built map[string][]byte) error {
 		for _, stem := range v.YearStems {
 			reachable[stem] = struct{}{}
 		}
-		for _, stem := range v.DrawnStems(ix) {
+		stems, err := v.DrawnStems(ix)
+		if err != nil {
+			return err
+		}
+		for _, stem := range stems {
 			reachable[stem] = struct{}{}
 		}
 	}
@@ -478,6 +482,14 @@ func opensInto(opening, step string, projections map[string][]byte) bool {
 // projection over the opening document's column, built or not: the join
 // opensInto asks of the built set. Empty is a step the opening document can
 // never open, however much is built.
+//
+// IT JOINS ON THE DECLARATION, NOT ON export.ColumnIndex, because the question
+// is what was promised: ColumnIndex knows only what was built, so it cannot
+// tell a document that was not built, whose step is dropped, from one never
+// published for the column, whose step is kept for the write to refuse. Which
+// built document a year draws is ColumnIndex's alone, and a built document
+// whose metadata places it outside the column declared for it keeps the step
+// here and is refused there by name.
 func publishedInto(opening, step string) []string {
 	var out []string
 	docs := project.PublishedDocuments()
