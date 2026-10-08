@@ -141,6 +141,18 @@ func TestExcessIdentityRefusesADuplicatedExcessLine(t *testing.T) {
 	if !strings.Contains(findingDetails(res), "twice") {
 		t.Errorf("findings %v do not name the duplicate", res.Findings)
 	}
+
+	// The column is excluded as the finding says: a wrong excess read first
+	// is not then held to the identity, which would be a second finding
+	// quoting one of the two values as if it were the column's.
+	wrongFirst := append([]fact.Fact{
+		excessFact("x-2016-dup", vocab.KindFundBalance, categoryExcessOfRevenues, 2016, 601),
+	}, excessBaseline()...)
+	res = runExcessIdentity(t, wrongFirst)
+	if res.Status != StatusFail || len(res.Findings) != 1 || !strings.Contains(findingDetails(res), "twice") {
+		t.Errorf("status %s, findings %v; want the duplicate alone, its column held to nothing",
+			res.Status, res.Findings)
+	}
 }
 
 // TestExcessIdentityIgnoresOtherScopes pins the restriction: a revenue fact in

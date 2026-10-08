@@ -75,6 +75,7 @@ func (*excessOfRevenuesIdentity) Run(_ context.Context, s *Subject) (Result, err
 	exp := map[excessColumn]excessSide{}
 	excess := map[excessColumn]excessSide{}
 	excessID := map[excessColumn]string{}
+	duplicated := map[excessColumn]bool{}
 	var order []excessColumn
 	seen := map[excessColumn]bool{}
 	var findings []Finding
@@ -100,6 +101,7 @@ func (*excessOfRevenuesIdentity) Run(_ context.Context, s *Subject) (Result, err
 					"%s publishes the excess line twice, as %s and %s; the identity has "+
 						"no single value to check, so this column is excluded from it",
 					k, prev.cents, amount.Cents(f.AmountCents)))
+				duplicated[k] = true
 				continue
 			}
 			excess[k] = excessSide{amount.Cents(f.AmountCents), 1}
@@ -123,6 +125,9 @@ func (*excessOfRevenuesIdentity) Run(_ context.Context, s *Subject) (Result, err
 
 	complete := 0
 	for _, k := range order {
+		if duplicated[k] {
+			continue
+		}
 		var missing []string
 		for _, side := range []struct {
 			name string
