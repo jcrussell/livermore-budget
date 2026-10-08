@@ -65,12 +65,17 @@ func (v View) validateSteps(ix ColumnIndex) error {
 	if err != nil {
 		return err
 	}
+	docs, ok := byYear[v.Projection]
+	if !ok {
+		return fmt.Errorf("view %q renders projection %q, which is not among its year stems %v, "+
+			"so its steps have no documents to be placed against", v.Path, v.Projection, v.YearStems)
+	}
 	t := drillTree{
 		index:     index,
 		columns:   v.openableColumns(ix),
 		parentsOf: parentsOf,
 		byYear:    byYear,
-		docs:      byYear[v.Projection],
+		docs:      docs,
 		yearStems: v.yearStems(),
 	}
 	if err := v.validateOverviewTiersCarried(t.yearStems, ix); err != nil {

@@ -230,6 +230,24 @@ func TestDrawnStemsIsStepStemsOverEveryYear(t *testing.T) {
 	}
 }
 
+// TestValidateStepsRefusesAProjectionOutsideItsYearStems calls validateSteps
+// past View.validate, which refuses this view first: the precondition is
+// validateSteps' own, an error and not an index out of range.
+func TestValidateStepsRefusesAProjectionOutsideItsYearStems(t *testing.T) {
+	doc := []byte(`{"projection":"year","nodes":[{"id":"n","label":"N","tier":0}],"links":[],` +
+		`"metadata":{"fiscal_year":2026,"basis":"adopted"}}`)
+	_, ix, err := ColumnsOf(map[string][]byte{"year": doc}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	v := View{Path: "index.html", Projection: "elsewhere", YearStems: []string{"year"},
+		Steps: []DrillStep{{Key: "a", After: []string{""}}}}
+	err = v.validateSteps(ix)
+	if err == nil || !strings.Contains(err.Error(), "not among its year stems") {
+		t.Fatalf("err = %v, want the refusal of a projection outside its year stems", err)
+	}
+}
+
 // columnTestDoc is one schedule's document for the refusal tests below: a
 // printed ribbon a -> b and the nodes named by nodes, spliced in verbatim.
 func columnTestDoc(nodes, links string) []byte {
