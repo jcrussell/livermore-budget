@@ -92,7 +92,8 @@ func (b *balance) subject(k structure.BalanceAt) string {
 
 func (*fundBalanceIdentity) Run(_ context.Context, s *Subject) (Result, error) {
 	declared := structure.FundBalances()
-	blanks, findings := declaredBlanks(s, declared)
+	read := declaredBlanks(s, declared)
+	blanks, findings := read.lines, read.findings
 	balances := map[structure.BalanceAt]*balance{}
 	var order []structure.BalanceAt
 

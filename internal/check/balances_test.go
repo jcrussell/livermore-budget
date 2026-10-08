@@ -458,6 +458,15 @@ func TestADeclaredBlankCellIsAbsentAndNotMissing(t *testing.T) {
 	if n != 1 {
 		t.Errorf("the printed blank is reported %d times across both balance checks, want once", n)
 	}
+
+	// A printed blank whose figure would hold is still no balance sources =
+	// uses holds: the line has two answers, the figure and the declaration.
+	holds := measureD.facts(byFundRow())
+	res := runBalance(t, &fundGroupSourcesEqualUses{}, holds, blankCells(t, false))
+	if res.Subjects != 0 || strings.Contains(said(res), "declares that cell blank") {
+		t.Errorf("%s over %d (%s), findings %s; want the contradicted balance neither held, counted "+
+			"nor reported again", res.Status, res.Subjects, res.Summary, said(res))
+	}
 }
 
 // TestABlankOnACellThatNeverPublishesIsNoBlank holds declaredBlanks to the

@@ -20,7 +20,9 @@ import (
 // A balance carrying any line of its scope and missing another is a finding,
 // not a skip, unless its rule declares that cell blank, and
 // structure.Balance.BlankExempts says which blanks set the balance aside. Two
-// facts on one line of a balance are a finding, and the balance is not held.
+// facts on one line of a balance are a finding, and the balance is not held;
+// nor is one printing a figure on a line its rule declares blank, which
+// fund-balance-identity reports.
 // The id names fund groups because the spine's balances are fund groups;
 // pp.186-209's are funds within them, keyed by both.
 type fundGroupSourcesEqualUses struct{}
@@ -47,7 +49,8 @@ type sourcesUsesColumn struct {
 func (*fundGroupSourcesEqualUses) Run(_ context.Context, s *Subject) (Result, error) {
 	declared := structure.FundBalances()
 	// fund-balance-identity reports what declaredBlanks finds.
-	blanks, _ := declaredBlanks(s, declared)
+	read := declaredBlanks(s, declared)
+	blanks := read.lines
 	var findings []Finding
 	columns := map[structure.BalanceAt]*sourcesUsesColumn{}
 	for i := range s.Facts {
@@ -91,7 +94,10 @@ func (*fundGroupSourcesEqualUses) Run(_ context.Context, s *Subject) (Result, er
 	exempted := 0
 	for _, k := range keys {
 		c := columns[k]
-		if c.twice {
+		// A figure on a declared-blank line is fund-balance-identity's
+		// finding, and the balance has no single value for that line here
+		// either, so it is neither held nor counted.
+		if c.twice || read.contradicted[k] {
 			continue
 		}
 		decl, _ := structure.BalanceOf(declared, k.Scope)
