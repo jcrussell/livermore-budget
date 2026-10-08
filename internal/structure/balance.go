@@ -73,15 +73,6 @@ func (b Balance) LineOf(f *fact.Fact) (Line, bool) {
 	return Line{}, false
 }
 
-// BlankExemptsChange says whether a cell its rule declares blank on line l
-// leaves beginning + change == ending no figure to hold, so the balance is set
-// aside rather than held. A blank is absent, and each of the three is the only
-// figure on its side. Carry-forward, which compares two stocks where both
-// years print them, reads no blank and has no such method.
-func (Balance) BlankExemptsChange(l Line) bool {
-	return l == LineBeginning || l == LineChange || l == LineEnding
-}
-
 // BlankExemptsSourcesUses says whether a cell its rule declares blank on line
 // l leaves sources = uses no change to hold its flows to: the printed change
 // where the scope prints one, else either stock of ending - beginning. A
@@ -209,10 +200,6 @@ const (
 	// BalanceSourcesUses is SourcesUses.Net() == the change. Left is the net
 	// and Right the change.
 	BalanceSourcesUses BalanceIdentity = "sources-uses"
-	// BalanceChange is beginning + change == ending. It is asked of every
-	// scope, and one printing no change holds only its completeness. It takes
-	// no exception.
-	BalanceChange BalanceIdentity = "change"
 )
 
 // A BalanceException holds one balance apart from one identity, pinned on
@@ -302,8 +289,6 @@ func ValidateBalanceExceptions(balances []Balance, exceptions []BalanceException
 	for _, e := range exceptions {
 		b, ok := BalanceOf(balances, e.At.Scope)
 		switch {
-		case e.Identity == BalanceChange:
-			return fmt.Errorf("balance exception at %s names identity %q, which takes no exception", e.At, e.Identity)
 		case e.Identity != BalanceCarryForward && e.Identity != BalanceSourcesUses:
 			return fmt.Errorf("balance exception at %s names identity %q, which is not declared", e.At, e.Identity)
 		case !ok:

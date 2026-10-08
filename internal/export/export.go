@@ -289,8 +289,10 @@ type Options struct {
 	Assets fs.FS
 
 	// Gate is the caller's own refusal of a site this package would accept,
-	// handed the ColumnIndex validation folded. Prepare runs it after every
-	// refusal of its own and before any page renders. Nil is none.
+	// handed the ColumnIndex validation folded. Prepare runs it once the fold
+	// and Options.validate have accepted, and before buildSite: a step
+	// document buildSite refuses, a page text it cannot resolve and every page
+	// render come after it. Nil is none.
 	Gate func(ix ColumnIndex) error
 }
 

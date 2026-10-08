@@ -518,6 +518,76 @@ func TestADeclaredBlankThatIsPrintedFailsOnEveryBalanceScope(t *testing.T) {
 	wantFail(t, runBalance(t, &fundBalanceIdentity{}, facts, file), "declares that cell blank")
 }
 
+// TestAPrintedBlankIsOneFinding: a figure on a line its rule declares blank
+// is read as the blank, so neither the beginning + change == ending it breaks
+// nor the carry-forward it breaks is a second finding, and the balance's
+// other stock still carries.
+func TestAPrintedBlankIsOneFinding(t *testing.T) {
+	t.Parallel()
+	acfr := measureD
+	acfr.scope = structure.ScopeACFRGeneralFundSummary
+	file := blankRule(t, acfr.scope, blankShape{
+		cells: []string{`{label: "County Measure D", column: "6/30/27", note: "the page leaves it blank"}`},
+	})
+	years := func(fy2026Ending int64) []fact.Fact {
+		var out []fact.Fact
+		for _, y := range []struct {
+			year                      int
+			beginning, change, ending int64
+		}{
+			{2026, fy2026Ending - 20_000, 20_000, fy2026Ending},
+			{2027, 100_000, 20_000, 123_000}, // the ending its rule declares blank, off by $30.00
+			{2028, 120_000, 0, 120_000},
+		} {
+			at := acfr
+			at.year = y.year
+			out = append(out, at.facts([]balanceLine{
+				{vocab.KindFundBalance, structure.CategoryFundBalanceBeginning, y.beginning},
+				{vocab.KindFundBalance, structure.CategoryFundBalanceChange, y.change},
+				{vocab.KindFundBalance, structure.CategoryFundBalanceEnding, y.ending},
+			})...)
+		}
+		return out
+	}
+	res := runBalance(t, &fundBalanceIdentity{}, years(100_000), file)
+	wantFail(t, res, "declares that cell blank")
+	if len(res.Findings) != 1 {
+		t.Errorf("findings %s; want the printed blank alone", said(res))
+	}
+	wantFail(t, runBalance(t, &fundBalanceIdentity{}, years(99_999), file), "begins at $1,000.00")
+}
+
+// TestABlankStockOnAScopePrintingItsChangeSetsTheIdentityAside: beginning,
+// change and ending are each the only figure on their side, so a blank stock
+// leaves beginning + change == ending nothing to hold even where the scope
+// prints its change, as sources = uses does not.
+func TestABlankStockOnAScopePrintingItsChangeSetsTheIdentityAside(t *testing.T) {
+	t.Parallel()
+	acfr := measureD
+	acfr.scope = structure.ScopeACFRGeneralFundSummary
+	lines := []balanceLine{
+		{vocab.KindFundBalance, structure.CategoryFundBalanceBeginning, 100_000},
+		{vocab.KindFundBalance, structure.CategoryFundBalanceChange, 20_000},
+		{vocab.KindFundBalance, structure.CategoryFundBalanceEnding, 120_000},
+	}
+	for _, tt := range []struct{ column, line string }{
+		{"7/1/26", structure.CategoryFundBalanceBeginning},
+		{"6/30/27", structure.CategoryFundBalanceEnding},
+	} {
+		t.Run(tt.line, func(t *testing.T) {
+			file := blankRule(t, acfr.scope, blankShape{
+				cells: []string{`{label: "County Measure D", column: "` + tt.column + `", note: "the page leaves it blank"}`},
+			})
+			res := runBalance(t, &fundBalanceIdentity{}, acfr.facts(without(lines, tt.line)), file)
+			wantPass(t, res, 1)
+			const want = "0 of them beginning + change equal to ending to the cent, and 1 checked for completeness only"
+			if !strings.Contains(res.Summary, want) {
+				t.Errorf("summary %q, want %q", res.Summary, want)
+			}
+		})
+	}
+}
+
 // TestABlankChangeIsNotCountedAsHeld: a balance whose scope prints a change
 // line and whose rule declares that cell blank is complete, and beginning +
 // change == ending was never evaluated on it, so the summary counts it apart

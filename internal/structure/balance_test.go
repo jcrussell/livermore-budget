@@ -32,9 +32,9 @@ func TestValidateBalanceExceptionsRefusesWhatCouldHoldNothingApart(t *testing.T)
 		want string
 	}{
 		{"an unknown identity", func(e *structure.BalanceException) { e.Identity = "roll-forward" }, "not declared"},
-		{"beginning + change == ending", func(e *structure.BalanceException) {
-			e.Identity = structure.BalanceChange
-		}, "takes no exception"},
+		{"beginning + change == ending, which takes no exception", func(e *structure.BalanceException) {
+			e.Identity = "change"
+		}, "not declared"},
 		{"an undeclared scope", func(e *structure.BalanceException) { e.At.Scope = "revenue-by-fund" }, "does not declare"},
 		{"sources = uses on a scope that does not hold it", func(e *structure.BalanceException) {
 			e.Identity, e.At.Scope = structure.BalanceSourcesUses, structure.ScopeACFRGeneralFundSummary
@@ -110,8 +110,6 @@ func TestABlankExemptsTheIdentityWhoseFigureItIs(t *testing.T) {
 		exempt  []structure.Line
 		not     []structure.Line
 	}{
-		{"change, spine", spine.BlankExemptsChange,
-			[]structure.Line{structure.LineBeginning, structure.LineChange, structure.LineEnding}, nil},
 		{"sources = uses, spine", spine.BlankExemptsSourcesUses,
 			[]structure.Line{structure.LineChange}, []structure.Line{structure.LineBeginning, structure.LineEnding, revenue}},
 		{"sources = uses, by fund", byFund.BlankExemptsSourcesUses,

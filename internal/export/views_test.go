@@ -822,17 +822,16 @@ func TestTheCaveatsPagePromisesAChartFlagOnAStepsDocument(t *testing.T) {
 }
 
 // TestASingleViewSiteShowsCaveatsWithNoLink is the configuration the caveat
-// summaries have to survive, and it is a real one rather than a hypothetical:
-// Options.views()'s default is a single view at IndexPath, and writeGolden
-// exports exactly that.
+// summaries have to survive: a site of one view at IndexPath, which is
+// spineOnly, the fixture writeGolden exports.
 //
 // THE FAILURE IT PREVENTS IS A LINK INTO A FILE THAT WAS NEVER WRITTEN. If
 // index.html linked unconditionally, this site would ship
 // href="caveats.html#..." with no caveats.html beside it --
 // TestEveryAssetThePageAsksForWasWritten would say so, but only because that
-// walk now strips the fragment before it stats, which is a fix landed in the
-// same commit. Asserting the intent directly means the guard does not depend on
-// another test's implementation detail staying the way it is.
+// walk strips the fragment before it stats. Asserting the intent directly means
+// the guard does not depend on another test's implementation detail staying
+// the way it is.
 //
 // AND THE SUMMARIES ARE STILL THERE. A page that dropped them when it could not
 // link them would be quietly worse than the wall it replaced: the caveats would

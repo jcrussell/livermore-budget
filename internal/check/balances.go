@@ -15,8 +15,9 @@ type blankLines map[structure.BalanceAt]map[structure.Line]bool
 type balanceBlanks struct {
 	lines blankLines
 	// contradicted is every balance a fact prints on a line its rule declares
-	// blank. Neither identity has one value for that line, so neither check
-	// holds the balance.
+	// blank. fund-balance-identity reads that line as the declared blank, and
+	// fund-group-sources-equal-uses holds no such balance, so the figure is
+	// this finding and no second one.
 	contradicted map[structure.BalanceAt]bool
 	findings     []Finding
 }

@@ -109,7 +109,8 @@ func (*fundBalanceIdentity) Run(_ context.Context, s *Subject) (Result, error) {
 					"so no identity holds it", f.Scope, f.Category))
 			continue
 		}
-		if l, ok := decl.LineOf(f); !ok || l.Category != f.Category {
+		l, ok := decl.LineOf(f)
+		if !ok || l.Category != f.Category {
 			findings = append(findings, finding(f.ID,
 				"%s prints a %s line, and scope %q is declared to print none; its change is ending - "+
 					"beginning, two printed figures, and a third would be a second answer",
@@ -122,6 +123,13 @@ func (*fundBalanceIdentity) Run(_ context.Context, s *Subject) (Result, error) {
 			b = &balance{amounts: map[string]amount.Cents{}, ids: map[string]string{}}
 			balances[k] = b
 			order = append(order, k)
+		}
+		// A figure on a line its rule declares blank is declaredBlanks'
+		// finding, and only that: the line is read as the blank declared, so
+		// beginning + change == ending is not held and carry-forward compares
+		// the balance's other stock alone.
+		if blanks[k][l] {
+			continue
 		}
 		// Two facts of one category on one balance leave the identity no
 		// single answer. A finding, not an error: an error would leave every
@@ -162,7 +170,10 @@ func (*fundBalanceIdentity) Run(_ context.Context, s *Subject) (Result, error) {
 			switch {
 			case printed:
 			case blanks[k][l]:
-				blank = blank || decl.BlankExemptsChange(l)
+				// Beginning, change and ending are each the only figure on
+				// their side, so a blank on any of them leaves beginning +
+				// change == ending nothing to hold.
+				blank = true
 			default:
 				missing = append(missing, l.Category)
 			}
