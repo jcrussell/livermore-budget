@@ -240,6 +240,27 @@ func TestReachedStemsIsTheYearsAndStepStemsOverEach(t *testing.T) {
 	}
 }
 
+// TestStepDocumentsNamesAStepDocumentThatWasNotBuilt: an index folded from
+// more projections than stepDocuments is handed resolves a step to a stem it
+// has no bytes for, which is a refusal naming the stem and not a JSON decode
+// error over nil bytes.
+func TestStepDocumentsNamesAStepDocumentThatWasNotBuilt(t *testing.T) {
+	doc := func(schedule string) []byte {
+		return []byte(fmt.Sprintf(`{"projection":%q,"nodes":[{"id":"n","label":"N","tier":0}],"links":[],`+
+			`"metadata":{"fiscal_year":2026,"basis":"adopted"}}`, schedule))
+	}
+	_, ix, err := ColumnsOf(map[string][]byte{"year": doc("year"), "first": doc("first")}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	v := View{Path: "index.html", Projection: "year",
+		Steps: []DrillStep{{Key: "a", After: []string{""}, Projection: "first"}}}
+	_, _, err = stepDocuments(v, "year", "", 2026, "adopted", map[string][]byte{"year": doc("year")}, ix, "")
+	if err == nil || !strings.Contains(err.Error(), `draws "first" for year stem "year", which was not built`) {
+		t.Fatalf("err = %v, want the refusal naming the unbuilt step document", err)
+	}
+}
+
 // TestAProjectionOutsideItsYearStemsIsRefusedByEveryReader holds the rule's
 // one owner, stepStemsByYear, to every caller that reads a view's documents:
 // View.validate, and ReachedStems, which runs on views validate has not seen.
