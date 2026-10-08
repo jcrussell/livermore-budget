@@ -461,12 +461,19 @@ func TestADeclaredBlankCellIsAbsentAndNotMissing(t *testing.T) {
 
 	// A printed blank whose figure would hold is still no balance sources =
 	// uses holds: the line has two answers, the figure and the declaration.
+	// It is counted as set aside, so the population does not shrink unseen.
 	holds := measureD.facts(byFundRow())
 	res := runBalance(t, &fundGroupSourcesEqualUses{}, holds, blankCells(t, false))
-	if res.Subjects != 0 || strings.Contains(said(res), "declares that cell blank") {
-		t.Errorf("%s over %d (%s), findings %s; want the contradicted balance neither held, counted "+
-			"nor reported again", res.Status, res.Subjects, res.Summary, said(res))
+	if res.Subjects != 1 || !strings.Contains(res.Summary, "1 set aside") ||
+		strings.Contains(said(res), "declares that cell blank") {
+		t.Errorf("%s over %d (%s), findings %s; want the contradicted balance set aside, counted, "+
+			"and not reported again", res.Status, res.Subjects, res.Summary, said(res))
 	}
+
+	// Set aside from the identity is not excused from completeness: a
+	// contradicted balance whose expenditure rule was dropped names it.
+	dropped := measureD.facts(without(byFundRow(), "capital-projects"))
+	wantFail(t, runBalance(t, &fundGroupSourcesEqualUses{}, dropped, blankCells(t, false)), "is missing")
 
 	// Printed twice on the declared-blank line, it is still the one
 	// contradiction: sources = uses reads it as nothing, not as a line
@@ -669,7 +676,7 @@ func TestABalanceHeldApartIsNotCountedAsHolding(t *testing.T) {
 		res := runBalanceExcepting(t, &fundGroupSourcesEqualUses{}, e, facts)
 		wantPass(t, res, 2)
 		const want = "2 balances, 1 of them with sources minus uses equal to its change, 1 held apart by declared " +
-			"exceptions, and 0 exempted by declared blank cells"
+			"exceptions, 0 exempted by declared blank cells, and 0 set aside for printing a figure on a declared-blank line"
 		if res.Summary != want {
 			t.Errorf("summary %q, want %q", res.Summary, want)
 		}
@@ -705,7 +712,7 @@ func TestABalanceExemptedByABlankIsCounted(t *testing.T) {
 		blankCells(t, true))
 	wantPass(t, res, 2)
 	const want = "2 balances, 1 of them with sources minus uses equal to its change, 0 held apart by declared " +
-		"exceptions, and 1 exempted by declared blank cells"
+		"exceptions, 1 exempted by declared blank cells, and 0 set aside for printing a figure on a declared-blank line"
 	if res.Summary != want {
 		t.Errorf("summary %q, want %q", res.Summary, want)
 	}
@@ -722,7 +729,8 @@ func TestAStoreEveryBalanceOfWhichIsExemptedPasses(t *testing.T) {
 	only := runBalance(t, &fundGroupSourcesEqualUses{}, noEnding, blankCells(t, true))
 	wantPass(t, only, 1)
 	const wantOnly = "1 balances, 0 of them with sources minus uses equal to its change, 0 held apart by " +
-		"declared exceptions, and 1 exempted by declared blank cells"
+		"declared exceptions, 1 exempted by declared blank cells, and 0 set aside for printing a figure on a " +
+		"declared-blank line"
 	if only.Summary != wantOnly {
 		t.Errorf("summary %q, want %q", only.Summary, wantOnly)
 	}

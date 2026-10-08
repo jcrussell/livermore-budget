@@ -97,13 +97,10 @@ func (*fundGroupSourcesEqualUses) Run(_ context.Context, s *Subject) (Result, er
 	sort.Slice(keys, func(i, j int) bool { return keys[i].String() < keys[j].String() })
 
 	sides := map[structure.BalanceAt][2]int64{}
-	exempted := 0
+	exempted, setAside := 0, 0
 	for _, k := range keys {
 		c := columns[k]
-		// A figure on a declared-blank line is fund-balance-identity's
-		// finding, and the balance has no single value for that line here
-		// either, so it is neither held nor counted.
-		if c.twice || read.contradicted[k] {
+		if c.twice {
 			continue
 		}
 		decl, _ := structure.BalanceOf(declared, k.Scope)
@@ -122,6 +119,13 @@ func (*fundGroupSourcesEqualUses) Run(_ context.Context, s *Subject) (Result, er
 			findings = append(findings, finding(k.String(),
 				"prints a line of sources = uses and is missing %s, so its sources and uses balance "+
 					"against less than the page prints", strings.Join(missing, ", ")))
+			continue
+		}
+		// A balance printing a figure on a declared-blank line still answers
+		// for its missing lines above; it has no single value for that line,
+		// so sources = uses is not held of it.
+		if read.contradicted[k] {
+			setAside++
 			continue
 		}
 		if blank {
@@ -170,11 +174,12 @@ func (*fundGroupSourcesEqualUses) Run(_ context.Context, s *Subject) (Result, er
 		// An exception's balance is examined, both its sides compared to what
 		// it pins, and is no balance that holds. So is one a declared blank
 		// exempts: every line it prints was held to its scope's declaration.
-		subjects: len(sides) + exempted,
+		subjects: len(sides) + exempted + setAside,
 		unit:     "balances",
 		held: fmt.Sprintf("%d balances, %d of them with sources minus uses equal to its change, %d held "+
-			"apart by declared exceptions, and %d exempted by declared blank cells",
-			len(sides)+exempted, holding, heldApart, exempted),
+			"apart by declared exceptions, %d exempted by declared blank cells, and %d set aside for "+
+			"printing a figure on a declared-blank line",
+			len(sides)+exempted+setAside, holding, heldApart, exempted, setAside),
 		nothing:  "no balance prints its sources and uses",
 		findings: findings,
 	}.result(), nil
