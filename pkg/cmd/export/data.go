@@ -403,13 +403,9 @@ const fundFlowsNoSpineColumn = "a published column of the General Fund drill-dow
 
 // assertPublishedReachable refuses a built published document no view can
 // reach unless unviewedDocuments declares it, reached as
-// [export.View.ReachedStems] says: the spine's second year only through the
+// [export.View.ReachedStems] says over ix, the index folded from built: the spine's second year only through the
 // year control, and fund-flows only by opening a node.
-func assertPublishedReachable(vs []export.View, built map[string][]byte) error {
-	_, ix, err := export.ColumnsOf(built, "")
-	if err != nil {
-		return err
-	}
+func assertPublishedReachable(vs []export.View, built map[string][]byte, ix export.ColumnIndex) error {
 	reachable := make(map[string]struct{}, len(vs))
 	for _, v := range vs {
 		stems, err := v.ReachedStems(ix)

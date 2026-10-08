@@ -287,6 +287,11 @@ type Options struct {
 	// Assets is the site source tree. Empty means the embedded one; a test
 	// can substitute an fstest.MapFS.
 	Assets fs.FS
+
+	// Gate is the caller's own refusal of a site this package would accept,
+	// handed the ColumnIndex validation folded. Prepare runs it after every
+	// refusal of its own and before any page renders. Nil is none.
+	Gate func(ix ColumnIndex) error
 }
 
 // Citation is one (document, page) pair the site cites.
@@ -929,6 +934,11 @@ func Prepare(o Options) (*plan, error) {
 	}
 	if err := o.validate(ix); err != nil {
 		return nil, err
+	}
+	if o.Gate != nil {
+		if err := o.Gate(ix); err != nil {
+			return nil, err
+		}
 	}
 	// An explicit remote wins, otherwise the site cites what it ships, and
 	// only a caller that offers neither falls back to the constant.

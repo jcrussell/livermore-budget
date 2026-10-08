@@ -1184,14 +1184,18 @@ func TestBuildProjectionsDoesNotRefuseASecondSchedule(t *testing.T) {
 // document was built; neither asks whether a page renders it.
 func TestEveryPublishedDocumentIsRenderedOrDeclaredUnrendered(t *testing.T) {
 	built := builtStemsForTest(t)
-	if err := assertPublishedReachable(mustViews(t, result{Projections: built}), built); err != nil {
+	_, ix, err := export.ColumnsOf(built, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := assertPublishedReachable(mustViews(t, result{Projections: built}), built, ix); err != nil {
 		t.Fatalf("the committed corpus: %v", err)
 	}
 
 	// A published document that is neither rendered nor declared must be
 	// refused. Driving it through a view set with the spine removed is the
 	// cheapest way to reach that state without inventing a document.
-	if err := assertPublishedReachable(nil, built); err == nil {
+	if err := assertPublishedReachable(nil, built, ix); err == nil {
 		t.Error("no views at all was accepted; every published document is then " +
 			"unreachable and only the declared ones may be")
 	} else if !strings.Contains(err.Error(), "no view renders it") {
@@ -1210,7 +1214,7 @@ func TestEveryPublishedDocumentIsRenderedOrDeclaredUnrendered(t *testing.T) {
 		stale = append(stale, export.View{Path: "x.html", Projection: stem})
 		break
 	}
-	if err := assertPublishedReachable(stale, built); err == nil {
+	if err := assertPublishedReachable(stale, built, ix); err == nil {
 		t.Error("a view rendering a document unviewedDocuments still declares unrendered " +
 			"was accepted; the declaration is then a false statement about the site")
 	} else if !strings.Contains(err.Error(), "delete that entry") {
@@ -1224,7 +1228,7 @@ func TestEveryPublishedDocumentIsRenderedOrDeclaredUnrendered(t *testing.T) {
 	// refuse.
 	unviewedDocuments["no-such-document"] = "left behind"
 	t.Cleanup(func() { delete(unviewedDocuments, "no-such-document") })
-	if err := assertPublishedReachable(mustViews(t, result{Projections: built}), built); err == nil {
+	if err := assertPublishedReachable(mustViews(t, result{Projections: built}), built, ix); err == nil {
 		t.Error("a declaration naming no published document was accepted")
 	} else if !strings.Contains(err.Error(), "publishes no such document") {
 		t.Errorf("got %v, want a refusal naming the leftover entry", err)

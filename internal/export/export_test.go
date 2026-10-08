@@ -1199,6 +1199,38 @@ func TestAnExportNamingNoViewIsRefused(t *testing.T) {
 	}
 }
 
+// TestTheGateRunsAfterValidationAndBeforeAnyPageRenders: a caller's refusal
+// is never reported over a site validation refuses, whose refusal names the
+// declaration, and is reported before a page renders. Rendering an unstamped
+// page is refused (TestAPageWithNoBuildStampIsRefused), so a gate whose error
+// wins over that one ran first.
+func TestTheGateRunsAfterValidationAndBeforeAnyPageRenders(t *testing.T) {
+	gated := errors.New("the caller's gate")
+	called := false
+	gate := func(export.ColumnIndex) error { called = true; return gated }
+	_, err := export.Prepare(export.Options{
+		Dir:         t.TempDir(),
+		Projections: map[string][]byte{"sankey": goldenSankey(t)},
+		Docs:        budgetDocs(),
+		GeneratedBy: "fisc test",
+		Gate:        gate,
+	})
+	if called || err == nil || !strings.Contains(err.Error(), "no views to export") {
+		t.Errorf("gate called %t, err = %v; want validation's refusal and no gate", called, err)
+	}
+	_, err = export.Prepare(export.Options{
+		Dir:         t.TempDir(),
+		Projections: map[string][]byte{"sankey": goldenSankey(t)},
+		Views:       spineOnly(),
+		Docs:        budgetDocs(),
+		PageText:    pageTextFS(),
+		Gate:        gate,
+	})
+	if !errors.Is(err, gated) {
+		t.Errorf("err = %v; want the gate's refusal ahead of the unstamped page's", err)
+	}
+}
+
 // spineOnly is the one-page site most of these tests write: the spine's
 // Sankey, with no hint, no year control and no steps. data/views.yaml's index
 // view is far more than this, and export.Prepare refuses an Options naming no

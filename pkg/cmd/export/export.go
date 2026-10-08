@@ -265,34 +265,31 @@ func exportRun(o *Options) error {
 		PageIndex:   built.PageIndex,
 		Downloads:   built.Downloads,
 		RecordsBase: built.RecordsBase,
+		// EVERY PUBLISHED DOCUMENT IS EITHER RENDERED OR DECLARED UNRENDERED.
+		// It is this command's gate rather than internal/export's because what
+		// the site publishes, project.PublishedDocuments, is this command's to
+		// hold the views to; internal/export lays out the views it is handed.
+		// assertPublishedBuilt above says the document exists; this says a
+		// reader can get to it.
+		//
+		// A GATE, SO IT RUNS AFTER VALIDATION AND BEFORE ANY PAGE RENDERS: it
+		// reads the steps' documents through export.View.ReachedStems, which
+		// refuses what validation refuses, and validation's refusal names the
+		// declaration.
+		Gate: func(ix export.ColumnIndex) error {
+			return assertPublishedReachable(siteViews, projections, ix)
+		},
 	}
 
-	// THE WHOLE SITE IS RESOLVED BEFORE --clean. Prepare validates, renders
-	// every page, and resolves the cited page text out of the extraction tree,
-	// this command's PageIndex seeding included; after it returns, only I/O
-	// can fail. A caller that learns any of that from Write has already
-	// emptied the reader's site to find out.
+	// THE WHOLE SITE IS RESOLVED BEFORE --clean. Prepare validates, runs the
+	// gate above, renders every page, and resolves the cited page text out of
+	// the extraction tree, this command's PageIndex seeding included; after it
+	// returns, only I/O can fail. A caller that learns any of that from Write
+	// has already emptied the reader's site to find out -- `fisc export
+	// --clean` over a corpus that has just published an undeclared document
+	// would empty the output directory and then refuse.
 	plan, err := export.Prepare(site)
 	if err != nil {
-		return err
-	}
-
-	// EVERY PUBLISHED DOCUMENT IS EITHER RENDERED OR DECLARED UNRENDERED. It
-	// lives here rather than inside export.Write because what the site
-	// publishes, project.PublishedDocuments, is this command's to hold the views
-	// to; internal/export lays out the views it is handed.
-	// assertPublishedBuilt above says the document exists; this says a reader
-	// can get to it.
-	//
-	// AND IT RUNS BEFORE --clean, with every other validation, rather than
-	// between Clean and Write. It needs nothing Clean produces, and running it
-	// after would mean `fisc export --clean` over a corpus that has just
-	// published an undeclared document EMPTIES the output directory and then
-	// refuses -- destroying a site to report a fault that was detectable before
-	// anything was touched. It follows Prepare because it reads the steps'
-	// documents through export.View.ReachedStems, which refuses what Prepare's
-	// validation refuses, and validation's refusal names the declaration.
-	if err = assertPublishedReachable(siteViews, projections); err != nil {
 		return err
 	}
 
