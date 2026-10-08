@@ -821,13 +821,6 @@ func (v View) validate(built map[string][]byte, ix ColumnIndex) error {
 			}
 		}
 	}
-	// The projection is one of the years, not necessarily the first; outside
-	// the list, the page's non-per-year metadata would come from a document
-	// the reader can never select.
-	if len(v.YearStems) > 0 && !slices.Contains(v.YearStems, v.Projection) {
-		return fmt.Errorf("view %q renders projection %q, which is not among its year stems %v",
-			v.Path, v.Projection, v.YearStems)
-	}
 	return v.validateSteps(ix)
 }
 

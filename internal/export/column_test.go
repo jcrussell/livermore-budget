@@ -230,21 +230,30 @@ func TestDrawnStemsIsStepStemsOverEveryYear(t *testing.T) {
 	}
 }
 
-// TestValidateStepsRefusesAProjectionOutsideItsYearStems calls validateSteps
-// past View.validate, which refuses this view first: the precondition is
-// validateSteps' own, an error and not an index out of range.
-func TestValidateStepsRefusesAProjectionOutsideItsYearStems(t *testing.T) {
+// TestAProjectionOutsideItsYearStemsIsRefusedByEveryReader holds the rule's
+// one owner, stepStemsByYear, to every caller that reads a view's documents:
+// View.validate, and DrawnStems, which runs on views validate has not seen.
+func TestAProjectionOutsideItsYearStemsIsRefusedByEveryReader(t *testing.T) {
 	doc := []byte(`{"projection":"year","nodes":[{"id":"n","label":"N","tier":0}],"links":[],` +
 		`"metadata":{"fiscal_year":2026,"basis":"adopted"}}`)
-	_, ix, err := ColumnsOf(map[string][]byte{"year": doc}, "")
+	elsewhere := []byte(`{"projection":"elsewhere","nodes":[{"id":"n","label":"N","tier":0}],"links":[],` +
+		`"metadata":{"fiscal_year":2026,"basis":"adopted"}}`)
+	built := map[string][]byte{"year": doc, "elsewhere": elsewhere}
+	_, ix, err := ColumnsOf(built, "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	v := View{Path: "index.html", Projection: "elsewhere", YearStems: []string{"year"},
-		Steps: []DrillStep{{Key: "a", After: []string{""}}}}
-	err = v.validateSteps(ix)
-	if err == nil || !strings.Contains(err.Error(), "not among its year stems") {
-		t.Fatalf("err = %v, want the refusal of a projection outside its year stems", err)
+	for _, steps := range [][]DrillStep{nil, {{Key: "a", After: []string{""}}}} {
+		v := View{Path: "index.html", Template: SankeyTemplate, Projection: "elsewhere",
+			YearStems: []string{"year"}, Steps: steps,
+			Overview: Chart{Form: SankeyForm, Sankey: &SankeyHints{Tiers: []int{0}}}}
+		if err := v.validate(built, ix); err == nil || !strings.Contains(err.Error(), "not among its year stems") {
+			t.Errorf("validate, %d steps: err = %v, want the refusal of a projection outside its year stems",
+				len(steps), err)
+		}
+		if _, err := v.DrawnStems(ix); err == nil || !strings.Contains(err.Error(), "not among its year stems") {
+			t.Errorf("DrawnStems, %d steps: err = %v, want the same refusal", len(steps), err)
+		}
 	}
 }
 

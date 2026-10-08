@@ -65,11 +65,7 @@ func (v View) validateSteps(ix ColumnIndex) error {
 	if err != nil {
 		return err
 	}
-	docs, ok := byYear[v.Projection]
-	if !ok {
-		return fmt.Errorf("view %q renders projection %q, which is not among its year stems %v, "+
-			"so its steps have no documents to be placed against", v.Path, v.Projection, v.YearStems)
-	}
+	docs := byYear[v.Projection]
 	t := drillTree{
 		index:     index,
 		columns:   v.openableColumns(ix),
@@ -527,8 +523,17 @@ func (v View) validateGapColumns(i int, s DrillStep, columns map[string]bool) er
 // year stem: the view's own document where it lists none. Whether any node
 // of a rung's document opens is the client's to answer, and site/*.test.mjs
 // walks every rung.
+//
+// It owns the refusal of a projection outside the year stems, so the map it
+// returns always carries the view's own document. Outside the list, the
+// page's non-per-year metadata would come from a document the reader can
+// never select.
 func (v View) stepStemsByYear(ix ColumnIndex) (map[string][]string, error) {
 	years := v.yearStems()
+	if !slices.Contains(years, v.Projection) {
+		return nil, fmt.Errorf("view %q renders projection %q, which is not among its year stems %v",
+			v.Path, v.Projection, v.YearStems)
+	}
 	out := make(map[string][]string, len(years))
 	for _, year := range years {
 		stems, err := StepStems(v.Steps, year, ix)
