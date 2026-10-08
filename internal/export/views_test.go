@@ -1261,7 +1261,7 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 						Keep: []int{0}, Tiers: []int{0, 2, 3},
 					}}, Back: "b", Noun: "thing", Tail: "t",
 					Description: "d."}}}},
-			"drills and declares no render tiers"},
+			"drills and its overview declares no sankey tiers"},
 		// A residual needs a second document and a reason. Whether a step
 		// switches document is which file it resolves to against the chart it
 		// opens from, not whether Projection is spelled: the second and third

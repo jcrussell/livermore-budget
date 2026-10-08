@@ -51,11 +51,11 @@ export function chartWidth(n) {
   return 2 * LABEL_GUTTER + BAND * (columns - 1) + NODE_WIDTH * columns;
 }
 
-/** DrillStep.Side for a step opening the node its chart's links come FROM. */
+/** SankeyHints.Side for a step opening the node its chart's links come FROM. */
 export const SIDE_SOURCE = "source";
 
 /**
- * DrillStep.Side for a step drawing the opened node between what its document
+ * SankeyHints.Side for a step drawing the opened node between what its document
  * sends into it and what it sends out: the TARGET of one half and the SOURCE
  * of the other, both off the step's own document.
  */

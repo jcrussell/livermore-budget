@@ -152,8 +152,8 @@ type View struct {
 	// chart and refused on one that does not. A Sankey overview with no tiers
 	// draws the document whole.
 	//
-	// THE SANKEY'S TIERS ARE A COLUMN ORDER AND NOT ONLY A SET: site/app.js
-	// aligns a node on the list's indexOf, so adjacency is declared.
+	// THE SANKEY'S TIERS ARE A COLUMN ORDER AND NOT ONLY A SET: site/sankey.js's
+	// alignFor aligns a node on the list's indexOf, so adjacency is declared.
 	// validateSteps refuses a kept flank against a parent that declares none.
 	// The fold is the client's.
 	Overview Chart
@@ -801,8 +801,8 @@ func (v View) validate(built map[string][]byte, ix ColumnIndex) error {
 	// adjacent to anything, and a kept flank has no side.
 	case len(v.Steps) > 0 && len(v.Overview.drawnTiers()) == 0 && templateDrawsAChart(v.Template):
 		return fmt.Errorf(
-			"view %q drills and declares no render tiers on template %q, which publishes "+
-				"them; the page would ship the breadcrumb over a chart whose columns are "+
+			"view %q drills and its overview declares no sankey tiers on template %q, which "+
+				"draws a chart; the page would ship the breadcrumb over a chart whose columns are "+
 				"d3's own inference, so no tier is adjacent to any other and a document "+
 				"that needs folding lays every node out at zero height",
 			v.Path, v.Template)

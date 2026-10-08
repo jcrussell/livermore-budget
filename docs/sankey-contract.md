@@ -283,7 +283,7 @@ into one signed row, and pp.186-209 print each fund's own balances, so the funds
 an end opens into sum to more than the spine's mark (the document's
 `each-fund-change-is-gross` caveat carries the gross sum and the group-netted one;
 the spine's mark is pp.66-67's own figure). `transfers/in` and
-`fund-balance/draw` open a SOURCE, and `DrillStep.Side` says so rather than
+`fund-balance/draw` open a SOURCE, and `SankeyHints.Side` says so rather than
 letting a client infer it from the tier numbers.
 
 **A fund on a fund-balance rung opens between its two sides.** Its step draws

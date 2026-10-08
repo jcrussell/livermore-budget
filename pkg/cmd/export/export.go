@@ -243,9 +243,8 @@ func exportRun(o *Options) error {
 		Dir:         o.OutputDir,
 		Projections: projections,
 		// WHICH VIEWS THE SITE HAS IS STATED HERE, in the composition root, and
-		// not inferred by the packager from its stems. internal/export does not
-		// import internal/project and must not start guessing what a name
-		// means -- which document is a year of which, and which are separate
+		// not inferred by the packager from its stems. internal/export must not
+		// start guessing what a name means -- which document is a year of which, and which are separate
 		// views, are both facts about the projections and neither is legible
 		// from a filename.
 		Views:       siteViews,
@@ -279,9 +278,9 @@ func exportRun(o *Options) error {
 	}
 
 	// EVERY PUBLISHED DOCUMENT IS EITHER RENDERED OR DECLARED UNRENDERED. It
-	// lives here rather than inside export.Write because internal/export does
-	// not know what the site publishes -- PublishedDocuments lives in
-	// internal/project, which that package deliberately does not import.
+	// lives here rather than inside export.Write because what the site
+	// publishes, project.PublishedDocuments, is this command's to hold the views
+	// to; internal/export lays out the views it is handed.
 	// assertPublishedBuilt above says the document exists; this says a reader
 	// can get to it.
 	//

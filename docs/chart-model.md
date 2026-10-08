@@ -4,7 +4,7 @@ Evidence for the rule in AGENTS.md, "Go vets, JavaScript renders", and the
 contract the decision bead `fisc-c2v6` froze. This file holds what the layers
 are, what each may compute, and the measurements that fixed the seams.
 
-## Six layers, each computing only what the one below cannot
+## Seven layers, each computing only what the one below cannot
 
 | Layer | Where | May compute | Crosses the seam as |
 |---|---|---|---|
@@ -12,8 +12,8 @@ are, what each may compute, and the measurements that fixed the seams.
 | Structure | `internal/structure` | which cells exist; which differences between two schedules are licensed (a residue, a gap in cents) | Go only |
 | Projection | `internal/project` | one graph per printed schedule: nodes `(id, label, tier, parent, role, derived)` and links `(value_cents, kind, fact_ids, locators, derived, partition, contra)`, every figure cited | `schema/projection.schema.json` |
 | Column | `internal/export` | one node table per `(fiscal_year, basis)` and, per schedule, its parent edges and links indexed into that table; re-keys and orders, computes no new figure | `schema/column.schema.json` |
-| Declarations | `internal/export`, declared in `pkg/cmd/export` | the drill DAG (what opens from where, into which schedule), the licences (residual endpoints with reasons, gap cents per column), every sentence the page says, and per chart a **form** with that form's hints under its own key | `schema/page.schema.json`, as `window.FISC_CONFIG` |
-| Client core | `site/core.js` | sums over cited figures: schedule assembly, hierarchy by parent chain, the fold, the cap, the drill DAG, provenance union, years, wording, and the three client marks with their figures: which ribbons a residual carries and their two sums, a gap's difference held to the licence Go shipped, a node's figure net of its printed reductions, the reductions among a mark's ribbons, the pages cited around a node. Reads no form hint. | `schema/mark.schema.json` for the marks it makes |
+| Declarations | `internal/export`, authored in `data/views.yaml` and loaded by `pkg/cmd/export` | the drill DAG (what opens from where, into which schedule; `site/app.js` walks it), the licences (residual endpoints with reasons, gap cents per column), every sentence the page says, and per chart a **form** with that form's hints under its own key | `schema/page.schema.json`, as `window.FISC_CONFIG` |
+| Client core | `site/core.js` | sums over cited figures: schedule assembly, hierarchy by parent chain, the fold, the cap, provenance union, years, wording, and the three client marks with their figures: which ribbons a residual carries and their two sums, a gap's difference held to the licence Go shipped, a node's figure net of its printed reductions, the reductions among a mark's ribbons, the pages cited around a node. Reads no form hint. | `schema/mark.schema.json` for the marks it makes |
 | Form renderers | `site/sankey.js`; a treemap or bar list later | what depends on the screen and the mark type: which tiers fit a budget, which ribbons a window holds and which half of a step's document it draws, whether a width draws a column, where a mark stands, layout, paint. Reads only its own hints and the generic step. | nothing: a renderer emits pixels |
 
 A figure the client shows is one Go cited, or a sum, difference or union of
