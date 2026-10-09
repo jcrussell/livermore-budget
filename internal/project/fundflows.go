@@ -804,6 +804,12 @@ func (f *fundFlows) addFundFlowNode(nodes map[string]Node, e endpoint) {
 		return
 	}
 	n := Node{ID: e.id, Label: f.label(e), Tier: e.tier(), Role: e.role, Parent: e.parent}
+	if e.role == RoleObjectCategory && strings.HasPrefix(e.parent, PrefixFund) {
+		// A fund's object cell is named for its fund as well as its category:
+		// a fund group's window draws one per fund, and the category alone
+		// reads the same on every box.
+		n.Label = f.label(endpoint{id: e.parent}) + ": " + n.Label
+	}
 	if e.tier() == tierFund {
 		number, err := strconv.Atoi(e.id[len(PrefixFund):])
 		if err == nil {

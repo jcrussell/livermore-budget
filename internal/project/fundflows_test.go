@@ -839,3 +839,33 @@ func TestAReductionNamesTheCategoryTheSchedulePrintsItUnder(t *testing.T) {
 			"its line's rollup into the category: %v", len(named), named)
 	}
 }
+
+// TestAFundsObjectCellIsNamedForItsFund: a fund group's window draws one
+// object cell per fund, so a label that is the category alone reads the same
+// on every box. Two funds spending on one category must be told apart by
+// label, each naming its fund, and a division's cell is left as it is.
+func TestAFundsObjectCellIsNamedForItsFund(t *testing.T) {
+	labels := fundFlowsLabels()
+	labels.names[501] = "Water Replacement"
+	labels.types[501] = "enterprise"
+	labels.stubLabels["services-and-supplies"] = "Services & Supplies"
+	facts := append(fundFlowsFacts(),
+		fundFlowsFact(scopeExpenditureByFund, vocab.KindExpenditure, "services-and-supplies", "", "enterprise", fact.FundNumber(500), 700, "f"),
+		fundFlowsFact(scopeExpenditureByFund, vocab.KindExpenditure, "services-and-supplies", "", "enterprise", fact.FundNumber(501), 300, "g"))
+	doc := buildFundFlows(t, facts, labels)
+	got := map[string]string{}
+	for _, n := range doc.Nodes {
+		if n.Tier == 5 {
+			got[n.ID] = n.Label
+		}
+	}
+	want := map[string]string{
+		"expenditure/fund/500/services-and-supplies": "Water: Services & Supplies",
+		"expenditure/fund/501/services-and-supplies": "Water Replacement: Services & Supplies",
+		"expenditure/police/wages-and-benefits":      "Wages & Benefits",
+		"expenditure/police/services-and-supplies":   "Services & Supplies",
+	}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("tier-5 labels (-want +got):\n%s", diff)
+	}
+}

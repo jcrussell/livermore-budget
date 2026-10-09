@@ -1635,523 +1635,523 @@
   },
   {
    "id": "expenditure/fund/200/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Low Income Housing Fund: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/200/wages-and-benefits",
-   "label": "Wages \u0026 Benefits",
+   "label": "Low Income Housing Fund: Wages \u0026 Benefits",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/201/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Housing Successor Agency: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/202/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "SOEF (Social Op Endowment): Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/203/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Mortgage Assistance: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/204/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "HHS Loan Fund: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/205/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "CAL Home Reuse: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/206/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Calif Begin Program: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/207/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Local Housing Trust: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/210/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Horizons: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/210/wages-and-benefits",
-   "label": "Wages \u0026 Benefits",
+   "label": "Horizons: Wages \u0026 Benefits",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/221/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Asset Seizure - Dept of Justice: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/222/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Asset Seizure - Treasury: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/223/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Grant - HUD EDI Special Grant: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/224/debt-services",
-   "label": "Debt Services",
+   "label": "Grant - CDBG: Debt Services",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/224/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Grant - CDBG: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/224/wages-and-benefits",
-   "label": "Wages \u0026 Benefits",
+   "label": "Grant - CDBG: Wages \u0026 Benefits",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/225/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Grant - Home Grant: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/240/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Grant - State Grant Fund: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/240/wages-and-benefits",
-   "label": "Wages \u0026 Benefits",
+   "label": "Grant - State Grant Fund: Wages \u0026 Benefits",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/241/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Opioid Settlement: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/242/capital-outlay",
-   "label": "Capital Outlay",
+   "label": "PD COPS Grant: Capital Outlay",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/282/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Host Community Impact Fee: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/283/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "City Street Sweeping Fee: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/283/wages-and-benefits",
-   "label": "Wages \u0026 Benefits",
+   "label": "City Street Sweeping Fee: Wages \u0026 Benefits",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/284/capital-outlay",
-   "label": "Capital Outlay",
+   "label": "Public Art Fee: Capital Outlay",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/284/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Public Art Fee: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/285/wages-and-benefits",
-   "label": "Wages \u0026 Benefits",
+   "label": "Vehicle Impound Fee: Wages \u0026 Benefits",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/286/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Accessibility Compliance: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/287/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "PEG Capital Fees: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/288/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Import Mitigation Fee: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/289/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Solid Waste \u0026 Recycling Fee: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/289/wages-and-benefits",
-   "label": "Wages \u0026 Benefits",
+   "label": "Solid Waste \u0026 Recycling Fee: Wages \u0026 Benefits",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/290/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Human Services Facility Fee: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/310/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Downtown LMD: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/310/wages-and-benefits",
-   "label": "Wages \u0026 Benefits",
+   "label": "Downtown LMD: Wages \u0026 Benefits",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/311/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Other LMD: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/311/wages-and-benefits",
-   "label": "Wages \u0026 Benefits",
+   "label": "Other LMD: Wages \u0026 Benefits",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/320/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "El Charro CFD 2009-1 Maint: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/321/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Other Maintenance CFDs: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/330/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Library Donations: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/331/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Police Donations: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/400/debt-services",
-   "label": "Debt Services",
+   "label": "2020 COPS Series A: Debt Services",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/401/debt-services",
-   "label": "Debt Services",
+   "label": "2020 COPS Series B: Debt Services",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/402/debt-services",
-   "label": "Debt Services",
+   "label": "2022 COPS: Debt Services",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/510/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Traffic Impact Fee (TIF): Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/512/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Park Fee - AB 1600: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/550/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "County Measure D: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/550/wages-and-benefits",
-   "label": "Wages \u0026 Benefits",
+   "label": "County Measure D: Wages \u0026 Benefits",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/551/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "County Meas BB-Bike/Pedestrian: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/552/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "County Meas BB-Local St \u0026 Rd: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/553/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "County Measure F Veh Reg Fee: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/560/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "State - Gas Tax: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/561/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "State - SB1: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/600/debt-services",
-   "label": "Debt Services",
+   "label": "Airport: Debt Services",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/600/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Airport: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/600/wages-and-benefits",
-   "label": "Wages \u0026 Benefits",
+   "label": "Airport: Wages \u0026 Benefits",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/610/capital-outlay",
-   "label": "Capital Outlay",
+   "label": "Stormwater: Capital Outlay",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/610/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Stormwater: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/610/wages-and-benefits",
-   "label": "Wages \u0026 Benefits",
+   "label": "Stormwater: Wages \u0026 Benefits",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/612/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Storm Drain: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/620/capital-outlay",
-   "label": "Capital Outlay",
+   "label": "Wastewater: Capital Outlay",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/620/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Wastewater: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/620/wages-and-benefits",
-   "label": "Wages \u0026 Benefits",
+   "label": "Wastewater: Wages \u0026 Benefits",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/622/capital-outlay",
-   "label": "Capital Outlay",
+   "label": "Wastewater Replacement: Capital Outlay",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/622/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Wastewater Replacement: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/623/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Wastewater Connection Fees: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/640/debt-services",
-   "label": "Debt Services",
+   "label": "Water: Debt Services",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/640/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Water: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/640/wages-and-benefits",
-   "label": "Wages \u0026 Benefits",
+   "label": "Water: Wages \u0026 Benefits",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/642/capital-outlay",
-   "label": "Capital Outlay",
+   "label": "Water Replacement: Capital Outlay",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/642/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Water Replacement: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/643/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Water Connection Fees: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/700/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "General Liability: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/700/wages-and-benefits",
-   "label": "Wages \u0026 Benefits",
+   "label": "General Liability: Wages \u0026 Benefits",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/710/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Workers Comp Insurance: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/710/wages-and-benefits",
-   "label": "Wages \u0026 Benefits",
+   "label": "Workers Comp Insurance: Wages \u0026 Benefits",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/720/capital-outlay",
-   "label": "Capital Outlay",
+   "label": "Information Technology: Capital Outlay",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/720/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Information Technology: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/720/wages-and-benefits",
-   "label": "Wages \u0026 Benefits",
+   "label": "Information Technology: Wages \u0026 Benefits",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/730/capital-outlay",
-   "label": "Capital Outlay",
+   "label": "Fleet \u0026 Equipment Services: Capital Outlay",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/730/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Fleet \u0026 Equipment Services: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/730/wages-and-benefits",
-   "label": "Wages \u0026 Benefits",
+   "label": "Fleet \u0026 Equipment Services: Wages \u0026 Benefits",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/740/capital-outlay",
-   "label": "Capital Outlay",
+   "label": "Facilities Rehab Program: Capital Outlay",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/740/debt-services",
-   "label": "Debt Services",
+   "label": "Facilities Rehab Program: Debt Services",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/740/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Facilities Rehab Program: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fund/740/wages-and-benefits",
-   "label": "Wages \u0026 Benefits",
+   "label": "Facilities Rehab Program: Wages \u0026 Benefits",
    "tier": 5,
    "role": "object_category"
   },

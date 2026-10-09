@@ -2492,7 +2492,7 @@
     },
     {
       "id": "expenditure/fund/200/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Low Income Housing Fund: Services & Supplies",
       "tier": 5,
       "parent": "fund/200",
       "constraint_tier": "",
@@ -2503,7 +2503,7 @@
     },
     {
       "id": "expenditure/fund/200/wages-and-benefits",
-      "label": "Wages & Benefits",
+      "label": "Low Income Housing Fund: Wages & Benefits",
       "tier": 5,
       "parent": "fund/200",
       "constraint_tier": "",
@@ -2514,7 +2514,7 @@
     },
     {
       "id": "expenditure/fund/201/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Housing Successor Agency: Services & Supplies",
       "tier": 5,
       "parent": "fund/201",
       "constraint_tier": "",
@@ -2525,7 +2525,7 @@
     },
     {
       "id": "expenditure/fund/202/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "SOEF (Social Op Endowment): Services & Supplies",
       "tier": 5,
       "parent": "fund/202",
       "constraint_tier": "",
@@ -2536,7 +2536,7 @@
     },
     {
       "id": "expenditure/fund/203/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Mortgage Assistance: Services & Supplies",
       "tier": 5,
       "parent": "fund/203",
       "constraint_tier": "",
@@ -2547,7 +2547,7 @@
     },
     {
       "id": "expenditure/fund/204/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "HHS Loan Fund: Services & Supplies",
       "tier": 5,
       "parent": "fund/204",
       "constraint_tier": "",
@@ -2558,7 +2558,7 @@
     },
     {
       "id": "expenditure/fund/205/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "CAL Home Reuse: Services & Supplies",
       "tier": 5,
       "parent": "fund/205",
       "constraint_tier": "",
@@ -2569,7 +2569,7 @@
     },
     {
       "id": "expenditure/fund/206/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Calif Begin Program: Services & Supplies",
       "tier": 5,
       "parent": "fund/206",
       "constraint_tier": "",
@@ -2580,7 +2580,7 @@
     },
     {
       "id": "expenditure/fund/207/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Local Housing Trust: Services & Supplies",
       "tier": 5,
       "parent": "fund/207",
       "constraint_tier": "",
@@ -2591,7 +2591,7 @@
     },
     {
       "id": "expenditure/fund/210/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Horizons: Services & Supplies",
       "tier": 5,
       "parent": "fund/210",
       "constraint_tier": "",
@@ -2602,7 +2602,7 @@
     },
     {
       "id": "expenditure/fund/210/wages-and-benefits",
-      "label": "Wages & Benefits",
+      "label": "Horizons: Wages & Benefits",
       "tier": 5,
       "parent": "fund/210",
       "constraint_tier": "",
@@ -2613,7 +2613,7 @@
     },
     {
       "id": "expenditure/fund/221/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Asset Seizure - Dept of Justice: Services & Supplies",
       "tier": 5,
       "parent": "fund/221",
       "constraint_tier": "",
@@ -2624,7 +2624,7 @@
     },
     {
       "id": "expenditure/fund/222/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Asset Seizure - Treasury: Services & Supplies",
       "tier": 5,
       "parent": "fund/222",
       "constraint_tier": "",
@@ -2635,7 +2635,7 @@
     },
     {
       "id": "expenditure/fund/223/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Grant - HUD EDI Special Grant: Services & Supplies",
       "tier": 5,
       "parent": "fund/223",
       "constraint_tier": "",
@@ -2646,7 +2646,7 @@
     },
     {
       "id": "expenditure/fund/224/debt-services",
-      "label": "Debt Services",
+      "label": "Grant - CDBG: Debt Services",
       "tier": 5,
       "parent": "fund/224",
       "constraint_tier": "",
@@ -2657,7 +2657,7 @@
     },
     {
       "id": "expenditure/fund/224/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Grant - CDBG: Services & Supplies",
       "tier": 5,
       "parent": "fund/224",
       "constraint_tier": "",
@@ -2668,7 +2668,7 @@
     },
     {
       "id": "expenditure/fund/224/wages-and-benefits",
-      "label": "Wages & Benefits",
+      "label": "Grant - CDBG: Wages & Benefits",
       "tier": 5,
       "parent": "fund/224",
       "constraint_tier": "",
@@ -2679,7 +2679,7 @@
     },
     {
       "id": "expenditure/fund/225/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Grant - Home Grant: Services & Supplies",
       "tier": 5,
       "parent": "fund/225",
       "constraint_tier": "",
@@ -2690,7 +2690,7 @@
     },
     {
       "id": "expenditure/fund/240/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Grant - State Grant Fund: Services & Supplies",
       "tier": 5,
       "parent": "fund/240",
       "constraint_tier": "",
@@ -2701,7 +2701,7 @@
     },
     {
       "id": "expenditure/fund/240/wages-and-benefits",
-      "label": "Wages & Benefits",
+      "label": "Grant - State Grant Fund: Wages & Benefits",
       "tier": 5,
       "parent": "fund/240",
       "constraint_tier": "",
@@ -2712,7 +2712,7 @@
     },
     {
       "id": "expenditure/fund/241/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Opioid Settlement: Services & Supplies",
       "tier": 5,
       "parent": "fund/241",
       "constraint_tier": "",
@@ -2723,7 +2723,7 @@
     },
     {
       "id": "expenditure/fund/242/capital-outlay",
-      "label": "Capital Outlay",
+      "label": "PD COPS Grant: Capital Outlay",
       "tier": 5,
       "parent": "fund/242",
       "constraint_tier": "",
@@ -2734,7 +2734,7 @@
     },
     {
       "id": "expenditure/fund/282/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Host Community Impact Fee: Services & Supplies",
       "tier": 5,
       "parent": "fund/282",
       "constraint_tier": "",
@@ -2745,7 +2745,7 @@
     },
     {
       "id": "expenditure/fund/283/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "City Street Sweeping Fee: Services & Supplies",
       "tier": 5,
       "parent": "fund/283",
       "constraint_tier": "",
@@ -2756,7 +2756,7 @@
     },
     {
       "id": "expenditure/fund/283/wages-and-benefits",
-      "label": "Wages & Benefits",
+      "label": "City Street Sweeping Fee: Wages & Benefits",
       "tier": 5,
       "parent": "fund/283",
       "constraint_tier": "",
@@ -2767,7 +2767,7 @@
     },
     {
       "id": "expenditure/fund/284/capital-outlay",
-      "label": "Capital Outlay",
+      "label": "Public Art Fee: Capital Outlay",
       "tier": 5,
       "parent": "fund/284",
       "constraint_tier": "",
@@ -2778,7 +2778,7 @@
     },
     {
       "id": "expenditure/fund/284/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Public Art Fee: Services & Supplies",
       "tier": 5,
       "parent": "fund/284",
       "constraint_tier": "",
@@ -2789,7 +2789,7 @@
     },
     {
       "id": "expenditure/fund/285/wages-and-benefits",
-      "label": "Wages & Benefits",
+      "label": "Vehicle Impound Fee: Wages & Benefits",
       "tier": 5,
       "parent": "fund/285",
       "constraint_tier": "",
@@ -2800,7 +2800,7 @@
     },
     {
       "id": "expenditure/fund/286/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Accessibility Compliance: Services & Supplies",
       "tier": 5,
       "parent": "fund/286",
       "constraint_tier": "",
@@ -2811,7 +2811,7 @@
     },
     {
       "id": "expenditure/fund/287/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "PEG Capital Fees: Services & Supplies",
       "tier": 5,
       "parent": "fund/287",
       "constraint_tier": "",
@@ -2822,7 +2822,7 @@
     },
     {
       "id": "expenditure/fund/288/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Import Mitigation Fee: Services & Supplies",
       "tier": 5,
       "parent": "fund/288",
       "constraint_tier": "",
@@ -2833,7 +2833,7 @@
     },
     {
       "id": "expenditure/fund/289/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Solid Waste & Recycling Fee: Services & Supplies",
       "tier": 5,
       "parent": "fund/289",
       "constraint_tier": "",
@@ -2844,7 +2844,7 @@
     },
     {
       "id": "expenditure/fund/289/wages-and-benefits",
-      "label": "Wages & Benefits",
+      "label": "Solid Waste & Recycling Fee: Wages & Benefits",
       "tier": 5,
       "parent": "fund/289",
       "constraint_tier": "",
@@ -2855,7 +2855,7 @@
     },
     {
       "id": "expenditure/fund/290/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Human Services Facility Fee: Services & Supplies",
       "tier": 5,
       "parent": "fund/290",
       "constraint_tier": "",
@@ -2866,7 +2866,7 @@
     },
     {
       "id": "expenditure/fund/310/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Downtown LMD: Services & Supplies",
       "tier": 5,
       "parent": "fund/310",
       "constraint_tier": "",
@@ -2877,7 +2877,7 @@
     },
     {
       "id": "expenditure/fund/310/wages-and-benefits",
-      "label": "Wages & Benefits",
+      "label": "Downtown LMD: Wages & Benefits",
       "tier": 5,
       "parent": "fund/310",
       "constraint_tier": "",
@@ -2888,7 +2888,7 @@
     },
     {
       "id": "expenditure/fund/311/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Other LMD: Services & Supplies",
       "tier": 5,
       "parent": "fund/311",
       "constraint_tier": "",
@@ -2899,7 +2899,7 @@
     },
     {
       "id": "expenditure/fund/311/wages-and-benefits",
-      "label": "Wages & Benefits",
+      "label": "Other LMD: Wages & Benefits",
       "tier": 5,
       "parent": "fund/311",
       "constraint_tier": "",
@@ -2910,7 +2910,7 @@
     },
     {
       "id": "expenditure/fund/320/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "El Charro CFD 2009-1 Maint: Services & Supplies",
       "tier": 5,
       "parent": "fund/320",
       "constraint_tier": "",
@@ -2921,7 +2921,7 @@
     },
     {
       "id": "expenditure/fund/321/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Other Maintenance CFDs: Services & Supplies",
       "tier": 5,
       "parent": "fund/321",
       "constraint_tier": "",
@@ -2932,7 +2932,7 @@
     },
     {
       "id": "expenditure/fund/330/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Library Donations: Services & Supplies",
       "tier": 5,
       "parent": "fund/330",
       "constraint_tier": "",
@@ -2943,7 +2943,7 @@
     },
     {
       "id": "expenditure/fund/331/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Police Donations: Services & Supplies",
       "tier": 5,
       "parent": "fund/331",
       "constraint_tier": "",
@@ -2954,7 +2954,7 @@
     },
     {
       "id": "expenditure/fund/400/debt-services",
-      "label": "Debt Services",
+      "label": "2020 COPS Series A: Debt Services",
       "tier": 5,
       "parent": "fund/400",
       "constraint_tier": "",
@@ -2965,7 +2965,7 @@
     },
     {
       "id": "expenditure/fund/401/debt-services",
-      "label": "Debt Services",
+      "label": "2020 COPS Series B: Debt Services",
       "tier": 5,
       "parent": "fund/401",
       "constraint_tier": "",
@@ -2976,7 +2976,7 @@
     },
     {
       "id": "expenditure/fund/402/debt-services",
-      "label": "Debt Services",
+      "label": "2022 COPS: Debt Services",
       "tier": 5,
       "parent": "fund/402",
       "constraint_tier": "",
@@ -2987,7 +2987,7 @@
     },
     {
       "id": "expenditure/fund/510/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Traffic Impact Fee (TIF): Services & Supplies",
       "tier": 5,
       "parent": "fund/510",
       "constraint_tier": "",
@@ -2998,7 +2998,7 @@
     },
     {
       "id": "expenditure/fund/512/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Park Fee - AB 1600: Services & Supplies",
       "tier": 5,
       "parent": "fund/512",
       "constraint_tier": "",
@@ -3009,7 +3009,7 @@
     },
     {
       "id": "expenditure/fund/550/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "County Measure D: Services & Supplies",
       "tier": 5,
       "parent": "fund/550",
       "constraint_tier": "",
@@ -3020,7 +3020,7 @@
     },
     {
       "id": "expenditure/fund/550/wages-and-benefits",
-      "label": "Wages & Benefits",
+      "label": "County Measure D: Wages & Benefits",
       "tier": 5,
       "parent": "fund/550",
       "constraint_tier": "",
@@ -3031,7 +3031,7 @@
     },
     {
       "id": "expenditure/fund/551/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "County Meas BB-Bike/Pedestrian: Services & Supplies",
       "tier": 5,
       "parent": "fund/551",
       "constraint_tier": "",
@@ -3042,7 +3042,7 @@
     },
     {
       "id": "expenditure/fund/552/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "County Meas BB-Local St & Rd: Services & Supplies",
       "tier": 5,
       "parent": "fund/552",
       "constraint_tier": "",
@@ -3053,7 +3053,7 @@
     },
     {
       "id": "expenditure/fund/553/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "County Measure F Veh Reg Fee: Services & Supplies",
       "tier": 5,
       "parent": "fund/553",
       "constraint_tier": "",
@@ -3064,7 +3064,7 @@
     },
     {
       "id": "expenditure/fund/560/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "State - Gas Tax: Services & Supplies",
       "tier": 5,
       "parent": "fund/560",
       "constraint_tier": "",
@@ -3075,7 +3075,7 @@
     },
     {
       "id": "expenditure/fund/561/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "State - SB1: Services & Supplies",
       "tier": 5,
       "parent": "fund/561",
       "constraint_tier": "",
@@ -3086,7 +3086,7 @@
     },
     {
       "id": "expenditure/fund/600/debt-services",
-      "label": "Debt Services",
+      "label": "Airport: Debt Services",
       "tier": 5,
       "parent": "fund/600",
       "constraint_tier": "",
@@ -3097,7 +3097,7 @@
     },
     {
       "id": "expenditure/fund/600/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Airport: Services & Supplies",
       "tier": 5,
       "parent": "fund/600",
       "constraint_tier": "",
@@ -3108,7 +3108,7 @@
     },
     {
       "id": "expenditure/fund/600/wages-and-benefits",
-      "label": "Wages & Benefits",
+      "label": "Airport: Wages & Benefits",
       "tier": 5,
       "parent": "fund/600",
       "constraint_tier": "",
@@ -3119,7 +3119,7 @@
     },
     {
       "id": "expenditure/fund/610/capital-outlay",
-      "label": "Capital Outlay",
+      "label": "Stormwater: Capital Outlay",
       "tier": 5,
       "parent": "fund/610",
       "constraint_tier": "",
@@ -3130,7 +3130,7 @@
     },
     {
       "id": "expenditure/fund/610/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Stormwater: Services & Supplies",
       "tier": 5,
       "parent": "fund/610",
       "constraint_tier": "",
@@ -3141,7 +3141,7 @@
     },
     {
       "id": "expenditure/fund/610/wages-and-benefits",
-      "label": "Wages & Benefits",
+      "label": "Stormwater: Wages & Benefits",
       "tier": 5,
       "parent": "fund/610",
       "constraint_tier": "",
@@ -3152,7 +3152,7 @@
     },
     {
       "id": "expenditure/fund/612/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Storm Drain: Services & Supplies",
       "tier": 5,
       "parent": "fund/612",
       "constraint_tier": "",
@@ -3163,7 +3163,7 @@
     },
     {
       "id": "expenditure/fund/620/capital-outlay",
-      "label": "Capital Outlay",
+      "label": "Wastewater: Capital Outlay",
       "tier": 5,
       "parent": "fund/620",
       "constraint_tier": "",
@@ -3174,7 +3174,7 @@
     },
     {
       "id": "expenditure/fund/620/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Wastewater: Services & Supplies",
       "tier": 5,
       "parent": "fund/620",
       "constraint_tier": "",
@@ -3185,7 +3185,7 @@
     },
     {
       "id": "expenditure/fund/620/wages-and-benefits",
-      "label": "Wages & Benefits",
+      "label": "Wastewater: Wages & Benefits",
       "tier": 5,
       "parent": "fund/620",
       "constraint_tier": "",
@@ -3196,7 +3196,7 @@
     },
     {
       "id": "expenditure/fund/622/capital-outlay",
-      "label": "Capital Outlay",
+      "label": "Wastewater Replacement: Capital Outlay",
       "tier": 5,
       "parent": "fund/622",
       "constraint_tier": "",
@@ -3207,7 +3207,7 @@
     },
     {
       "id": "expenditure/fund/622/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Wastewater Replacement: Services & Supplies",
       "tier": 5,
       "parent": "fund/622",
       "constraint_tier": "",
@@ -3218,7 +3218,7 @@
     },
     {
       "id": "expenditure/fund/623/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Wastewater Connection Fees: Services & Supplies",
       "tier": 5,
       "parent": "fund/623",
       "constraint_tier": "",
@@ -3229,7 +3229,7 @@
     },
     {
       "id": "expenditure/fund/640/debt-services",
-      "label": "Debt Services",
+      "label": "Water: Debt Services",
       "tier": 5,
       "parent": "fund/640",
       "constraint_tier": "",
@@ -3240,7 +3240,7 @@
     },
     {
       "id": "expenditure/fund/640/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Water: Services & Supplies",
       "tier": 5,
       "parent": "fund/640",
       "constraint_tier": "",
@@ -3251,7 +3251,7 @@
     },
     {
       "id": "expenditure/fund/640/wages-and-benefits",
-      "label": "Wages & Benefits",
+      "label": "Water: Wages & Benefits",
       "tier": 5,
       "parent": "fund/640",
       "constraint_tier": "",
@@ -3262,7 +3262,7 @@
     },
     {
       "id": "expenditure/fund/642/capital-outlay",
-      "label": "Capital Outlay",
+      "label": "Water Replacement: Capital Outlay",
       "tier": 5,
       "parent": "fund/642",
       "constraint_tier": "",
@@ -3273,7 +3273,7 @@
     },
     {
       "id": "expenditure/fund/642/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Water Replacement: Services & Supplies",
       "tier": 5,
       "parent": "fund/642",
       "constraint_tier": "",
@@ -3284,7 +3284,7 @@
     },
     {
       "id": "expenditure/fund/643/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Water Connection Fees: Services & Supplies",
       "tier": 5,
       "parent": "fund/643",
       "constraint_tier": "",
@@ -3295,7 +3295,7 @@
     },
     {
       "id": "expenditure/fund/700/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "General Liability: Services & Supplies",
       "tier": 5,
       "parent": "fund/700",
       "constraint_tier": "",
@@ -3306,7 +3306,7 @@
     },
     {
       "id": "expenditure/fund/700/wages-and-benefits",
-      "label": "Wages & Benefits",
+      "label": "General Liability: Wages & Benefits",
       "tier": 5,
       "parent": "fund/700",
       "constraint_tier": "",
@@ -3317,7 +3317,7 @@
     },
     {
       "id": "expenditure/fund/710/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Workers Comp Insurance: Services & Supplies",
       "tier": 5,
       "parent": "fund/710",
       "constraint_tier": "",
@@ -3328,7 +3328,7 @@
     },
     {
       "id": "expenditure/fund/710/wages-and-benefits",
-      "label": "Wages & Benefits",
+      "label": "Workers Comp Insurance: Wages & Benefits",
       "tier": 5,
       "parent": "fund/710",
       "constraint_tier": "",
@@ -3339,7 +3339,7 @@
     },
     {
       "id": "expenditure/fund/720/capital-outlay",
-      "label": "Capital Outlay",
+      "label": "Information Technology: Capital Outlay",
       "tier": 5,
       "parent": "fund/720",
       "constraint_tier": "",
@@ -3350,7 +3350,7 @@
     },
     {
       "id": "expenditure/fund/720/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Information Technology: Services & Supplies",
       "tier": 5,
       "parent": "fund/720",
       "constraint_tier": "",
@@ -3361,7 +3361,7 @@
     },
     {
       "id": "expenditure/fund/720/wages-and-benefits",
-      "label": "Wages & Benefits",
+      "label": "Information Technology: Wages & Benefits",
       "tier": 5,
       "parent": "fund/720",
       "constraint_tier": "",
@@ -3372,7 +3372,7 @@
     },
     {
       "id": "expenditure/fund/730/capital-outlay",
-      "label": "Capital Outlay",
+      "label": "Fleet & Equipment Services: Capital Outlay",
       "tier": 5,
       "parent": "fund/730",
       "constraint_tier": "",
@@ -3383,7 +3383,7 @@
     },
     {
       "id": "expenditure/fund/730/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Fleet & Equipment Services: Services & Supplies",
       "tier": 5,
       "parent": "fund/730",
       "constraint_tier": "",
@@ -3394,7 +3394,7 @@
     },
     {
       "id": "expenditure/fund/730/wages-and-benefits",
-      "label": "Wages & Benefits",
+      "label": "Fleet & Equipment Services: Wages & Benefits",
       "tier": 5,
       "parent": "fund/730",
       "constraint_tier": "",
@@ -3405,7 +3405,7 @@
     },
     {
       "id": "expenditure/fund/740/capital-outlay",
-      "label": "Capital Outlay",
+      "label": "Facilities Rehab Program: Capital Outlay",
       "tier": 5,
       "parent": "fund/740",
       "constraint_tier": "",
@@ -3416,7 +3416,7 @@
     },
     {
       "id": "expenditure/fund/740/debt-services",
-      "label": "Debt Services",
+      "label": "Facilities Rehab Program: Debt Services",
       "tier": 5,
       "parent": "fund/740",
       "constraint_tier": "",
@@ -3427,7 +3427,7 @@
     },
     {
       "id": "expenditure/fund/740/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Facilities Rehab Program: Services & Supplies",
       "tier": 5,
       "parent": "fund/740",
       "constraint_tier": "",
@@ -3438,7 +3438,7 @@
     },
     {
       "id": "expenditure/fund/740/wages-and-benefits",
-      "label": "Wages & Benefits",
+      "label": "Facilities Rehab Program: Wages & Benefits",
       "tier": 5,
       "parent": "fund/740",
       "constraint_tier": "",
