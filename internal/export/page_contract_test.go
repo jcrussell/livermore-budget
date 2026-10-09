@@ -93,6 +93,7 @@ func TestTheWordingFillsEveryPlaceholderTheClientHands(t *testing.T) {
 		"residual_rationale":     {"opened", "grain", "reasons"},
 		"residual_note":          {"flows", "where", "withheld"},
 		"residual_withheld_many": {"n"},
+		"residual_held_back":     {"opened", "cents", "ends", "flows"},
 		"residual_flows":         {"in", "out"},
 		"balance_beginning":      {"figure"},
 		"balance_ending":         {"figure"},

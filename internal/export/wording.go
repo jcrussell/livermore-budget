@@ -56,12 +56,15 @@ type wording struct {
 	ResidualNote         string `json:"residual_note"`
 	ResidualWithheldOne  string `json:"residual_withheld_one"`
 	ResidualWithheldMany string `json:"residual_withheld_many"`
-	ResidualFlows        string `json:"residual_flows"`
-	GapLabel             string `json:"gap_label"`
-	GapLeadShort         string `json:"gap_lead_short"`
-	GapLeadOver          string `json:"gap_lead_over"`
-	GapRationale         string `json:"gap_rationale"`
-	GapNote              string `json:"gap_note"`
+	// ResidualHeldBack is said beside the chart where a residual has flows
+	// and this width draws none of them, so no mark carries its note.
+	ResidualHeldBack string `json:"residual_held_back"`
+	ResidualFlows    string `json:"residual_flows"`
+	GapLabel         string `json:"gap_label"`
+	GapLeadShort     string `json:"gap_lead_short"`
+	GapLeadOver      string `json:"gap_lead_over"`
+	GapRationale     string `json:"gap_rationale"`
+	GapNote          string `json:"gap_note"`
 	// GapKind is the Kind a gap's ribbon is said to be, which project.LinkKinds
 	// has no member for: the difference between two schedules crosses no
 	// boundary either of them printed.
@@ -141,8 +144,10 @@ func defaultWording() wording {
 		ResidualNote:         "Carried, not computed: {flows:flow|flows} of the chart above with figures and citations unchanged \u2014 {where}.{withheld}",
 		ResidualWithheldOne:  "The flow leaving it is drawn where there is room for a further column.",
 		ResidualWithheldMany: "The {n} flows leaving it are drawn where there is room for a further column.",
-		ResidualFlows:        "{in} in, {out} out",
-		GapLabel:             "Difference between the two schedules",
+		ResidualHeldBack: "{cents} leaves {opened} for {ends}, in {flows:flow|flows} drawn where there is room " +
+			"for a further column.",
+		ResidualFlows: "{in} in, {out} out",
+		GapLabel:      "Difference between the two schedules",
 		GapLeadShort: "In {column}, the chart above puts {into} through {centre} and the schedule this chart is drawn from " +
 			"accounts for {out} of it, {gap} less.",
 		GapLeadOver: "In {column}, the schedule this chart is drawn from accounts for {out} through {centre}, {gap} more " +

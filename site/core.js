@@ -125,6 +125,15 @@ export function joinOr(parts) {
 }
 
 /**
+ * @param {string[]} parts
+ * @returns {string}
+ */
+export function joinAnd(parts) {
+  if (parts.length < 3) return parts.join(" and ");
+  return parts.slice(0, -1).join(", ") + " and " + parts[parts.length - 1];
+}
+
+/**
  * @param {string} id
  * @returns {HTMLElement}
  */
@@ -975,7 +984,9 @@ export function citedAround(opened, docs) {
  * @param {{mark: number, arriving: number, leaving: number}} stand the tiers
  *   the form stands the mark and a carried endpoint at; mark below zero
  *   where the form finds no part to stand it beside
- * @returns {FiscProjection}
+ * @returns {FiscProjection} with the mark; or, where this width draws none
+ *   of the residual's flows, with no mark and a held_back sentence saying
+ *   what leaves and where it is drawn
  */
 export function carriedResidual(drawn, from, rung, decomposed, draws, stand) {
   const step = rung.step;
@@ -1045,10 +1056,24 @@ export function carriedResidual(drawn, from, rung, decomposed, draws, stand) {
     }
   }
 
+  const label = (/** @type {string} */ n) => {
+    const own = doc.nodes.find((g) => g.id === n && g.label);
+    if (own) return own.label;
+    const theirs = from.nodes.find((g) => g.id === n && g.label);
+    return theirs ? theirs.label : n;
+  };
+
   // A MARK NONE OF WHOSE FLOWS THIS WIDTH DRAWS IS NOT DRAWN: every flow of an
   // enterprise or special revenue residual leaves through the widened column,
-  // and at three columns it would be a box of no height citing nothing.
-  if (!links.length) return drawn;
+  // and at three columns it would be a box of no height citing nothing. What
+  // it would have carried is still said, as held_back, beside the chart.
+  if (!links.length) {
+    if (!withheld) return drawn;
+    const ends = Object.keys(residual).sort().filter((e) => touched.has(e)).map(label);
+    return Object.assign({}, drawn, {
+      held_back: say("residual_held_back", { opened: label(opened), cents: fmt(outCents), ends: joinAnd(ends), flows: withheld }),
+    });
+  }
 
   if (stand.mark < 0) {
     throw new Error("cannot draw " + doc.projection + ": " + opened +
@@ -1088,12 +1113,6 @@ export function carriedResidual(drawn, from, rung, decomposed, draws, stand) {
 
   // The words: the label names the grain, the rationale carries the step's
   // reason for every endpoint in sorted order, whichever legs this width draws.
-  const label = (/** @type {string} */ n) => {
-    const own = doc.nodes.find((g) => g.id === n && g.label);
-    if (own) return own.label;
-    const theirs = from.nodes.find((g) => g.id === n && g.label);
-    return theirs ? theirs.label : n;
-  };
   const grain = step.residual_grain || "";
   const reasons = Object.keys(residual).sort().filter((e) => touched.has(e))
     .map((e) => label(e) + ": " + residual[e] + ".");

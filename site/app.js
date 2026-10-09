@@ -1075,10 +1075,20 @@ export function paintChartName() {
   // requires one on every step.
   if (drilled.length) {
     const step = drilled[drilled.length - 1].step;
-    desc.textContent = "Opened into " + trail + ". " + step.description + " " + say("go_back") + " " + tablePointer;
+    desc.textContent = "Opened into " + trail + ". " + step.description + heldBack() + " " + say("go_back") + " " + tablePointer;
     return;
   }
   desc.textContent = baseDescription;
+}
+
+/**
+ * The sentence the chart on screen holds back for want of a column, led by a
+ * space, or "": a residual this width draws no flow of has no mark to carry
+ * its note, so the hint and the description say it.
+ * @returns {string}
+ */
+function heldBack() {
+  return projection && projection.held_back ? " " + projection.held_back : "";
 }
 
 /**
@@ -1103,7 +1113,7 @@ export function paintChartHint() {
   const expands = tails ? " " + say("expand") : "";
   if (drilled.length) {
     hint.textContent = say("opened_hint", { label: labelOfRung(drilled.length - 1) }) + " " +
-      (anyOpens ? say("open_further", { where }) : say("nothing_further")) + follows + expands;
+      (anyOpens ? say("open_further", { where }) : say("nothing_further")) + follows + expands + heldBack();
     return;
   }
   const swatches = buildLegendCount();

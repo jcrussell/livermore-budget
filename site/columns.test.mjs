@@ -5,7 +5,7 @@ import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  bootedApp, opened, settle, pageFixture, columnFixture, refusals, fire, topOf,
+  bootedApp, opened, settle, pageFixture, columnFixture, refusals, fire, topOf, dollars,
 } from "./testlib.mjs";
 
 const disabled = (b) => !b || b.hasAttribute("disabled");
@@ -585,6 +585,43 @@ describe("a widened step", () => {
         else assert.ok(residual && leaving > 0, "the leaving legs are not drawn where their column is");
       }
       t.diagnostic(seen.join("; "));
+    });
+  }
+
+  // WHAT A RESIDUAL NOT DRAWN WOULD HAVE CARRIED IS STILL SAID: at three
+  // columns the enterprise group's money leaving through the widened column
+  // has no mark, so the hint and the chart's description say it, figures
+  // summed here off the pinned column.
+  for (const [stem, column] of [["sankey", "fy2026-adopted"], ["sankey-2027", "fy2027-adopted"]]) {
+    test(`${stem}: a residual this width draws no flow of is said beside the chart, and only there`, async (t) => {
+      const GROUP = "fund-group/enterprise";
+      const step = pageFixture().config.steps.find((s) => s.key === "fund-group");
+      const col = columnFixture(column);
+      const id = (i) => col.nodes[i].id;
+      const leaving = col.schedules.sankey.links.filter((l) => id(l.from) === GROUP && step.residual[id(l.to)]);
+      assert.ok(leaving.length > 0, `${GROUP} sends nothing to a residual endpoint, so this asserts nothing`);
+      const cents = leaving.reduce((s, l) => s + l.value_cents, 0);
+      const labelOf = (nid) => col.nodes.find((n) => n.id === nid).label;
+      const ends = [...new Set(leaving.map((l) => id(l.to)))].sort().map(labelOf);
+      const said = {};
+      for (const budget of [3, 4]) {
+        const { app, document } = await bootedApp({ checkedStem: stem });
+        app.setColumnBudget(budget);
+        await opened(app, GROUP);
+        said[budget] = {
+          hint: document.getElementById("chart-hint").textContent,
+          desc: document.getElementById("chart-desc").textContent,
+          residual: Boolean(app.projection.nodes.find((n) => app.isResidual(n.id))),
+        };
+      }
+      const want = `${dollars(cents)} leaves ${labelOf(GROUP)} for ${ends.join(" and ")}, in ${leaving.length} flow${leaving.length === 1 ? "" : "s"}`;
+      t.diagnostic(`at 3 columns the hint reads: "${said[3].hint}"`);
+      assert.equal(said[3].residual, false);
+      assert.ok(said[3].hint.includes(want), `${want} | ${said[3].hint}`);
+      assert.ok(said[3].desc.includes(want), `${want} | ${said[3].desc}`);
+      assert.equal(said[4].residual, true);
+      assert.ok(!said[4].hint.includes(" leaves " + labelOf(GROUP)) && !said[4].desc.includes(" leaves " + labelOf(GROUP)),
+        "with the mark drawn its note carries the flows, and the chart must not say them twice");
     });
   }
 

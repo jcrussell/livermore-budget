@@ -468,6 +468,7 @@
         "residual_note",
         "residual_withheld_one",
         "residual_withheld_many",
+        "residual_held_back",
         "residual_flows",
         "gap_label",
         "gap_lead_short",
@@ -638,6 +639,11 @@
           "type": "string",
           "minLength": 1,
           "description": "The residual note's clause for {n} leaving flows a narrower chart holds back."
+        },
+        "residual_held_back": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Said beside a chart whose residual this width draws no flow of: {opened}, {cents} formatted, {ends} the endpoints joined, {flows} the count held back."
         },
         "residual_flows": {
           "type": "string",
