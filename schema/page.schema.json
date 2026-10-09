@@ -492,7 +492,9 @@
         "search_count",
         "search_none",
         "search_opens",
-        "search_expands"
+        "search_expands",
+        "full_screen",
+        "full_screen_exit"
       ],
       "additionalProperties": false,
       "properties": {
@@ -778,6 +780,16 @@
           "type": "string",
           "minLength": 1,
           "description": "Said on a search option whose mark is a folded tail the chart draws out."
+        },
+        "full_screen": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The chart card's full-screen control, while the card is not full screen."
+        },
+        "full_screen_exit": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The same control while the card is full screen."
         }
       }
     }

@@ -98,6 +98,9 @@ type wording struct {
 	SearchNone    string `json:"search_none"`
 	SearchOpens   string `json:"search_opens"`
 	SearchExpands string `json:"search_expands"`
+	// The full-screen control on the chart's card, in each of its two states.
+	FullScreen     string `json:"full_screen"`
+	FullScreenExit string `json:"full_screen_exit"`
 }
 
 // kindLabels is project's words for every link kind, keyed as a link names it.
@@ -196,5 +199,7 @@ func defaultWording() wording {
 		SearchNone:       "No mark drawn on this chart has “{query}” in its name.",
 		SearchOpens:      "Enter opens it",
 		SearchExpands:    "Enter draws out every one it folds",
+		FullScreen:       "Full screen",
+		FullScreenExit:   "Exit full screen",
 	}
 }

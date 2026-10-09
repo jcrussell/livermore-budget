@@ -764,6 +764,21 @@ button[aria-pressed="true"] {
   margin-inline: calc(50% - var(--chart-room) / 2);
 }
 
+.chart-tools {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+/* Full screen shows the whole card, scrolled, on its own surface. */
+.card:fullscreen {
+  overflow: auto;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+}
+
 svg.sankey {
   display: block;
   width: 100%;

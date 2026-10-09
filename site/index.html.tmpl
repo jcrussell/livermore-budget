@@ -114,7 +114,9 @@
 
 <h2>The flow</h2>
 
-<div class="card">
+{{- /* THE CARD IS WHAT FULL SCREEN SHOWS, so the legend, the search, the
+       filters, the trail and the provenance panel come with the chart. */}}
+<div class="card" id="chart-card">
   <div class="controls">
     <div class="legend" id="legend" aria-label="Fund groups"></div>
     {{- /* SHIPPED HIDDEN AND EMPTY, as the filters are: what the chart draws
@@ -167,6 +169,11 @@
   {{- /* Shipped empty and hidden on every page: the trail is where the reader
          has walked, which the server cannot know. */}}
   <nav class="breadcrumb" id="breadcrumb" aria-label="Chart depth" hidden></nav>
+  {{- /* SHIPPED HIDDEN: app.js unhides it where the browser offers full
+         screen, and names it in the wording's words for each state. */}}
+  <div class="chart-tools" id="chart-tools">
+    <button type="button" id="chart-fullscreen" hidden>{{.Wording.FullScreen}}</button>
+  </div>
   <div class="chart-wrap">
     <!-- role="group", not "img": an img is a leaf, and the marks inside carry
          tabindex and aria-label so a keyboard reader can walk the flows. Under

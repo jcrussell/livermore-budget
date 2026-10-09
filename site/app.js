@@ -2695,7 +2695,8 @@ export function syncColumns() {
 export function applyColumns(redraw) {
   const before = drawnColumns();
   const budget = columnBudget;
-  const moved = setColumnBudget(columnOverride === null ? viewportColumns() : columnOverride);
+  const moved = setColumnBudget(fullscreenColumns !== null ? fullscreenColumns
+    : columnOverride === null ? viewportColumns() : columnOverride);
   let drew = true;
   // A REFUSED REDRAW LEAVES THE OLD CHART, so the budget goes back with it.
   if (moved && redraw && projection && drawnColumns() !== before &&
@@ -2776,6 +2777,82 @@ export function wireColumns() {
     }
   }
   applyColumns(false);
+}
+
+/* ------------------------------------------------------------------ *
+ * Full screen
+ * ------------------------------------------------------------------ */
+
+/**
+ * The column budget the chart's card was given on going full screen, asked
+ * of the full-screen width, or null while it is not full screen. While set it
+ * wins over the reader's choice and the viewport's (applyColumns); leaving
+ * full screen clears it, which puts theirs back.
+ * @type {number | null}
+ */
+export let fullscreenColumns = null;
+
+/**
+ * The most columns, NARROW_COLUMNS to OFFERED_COLUMNS, that fit `px` of
+ * width: COLUMN_QUERIES' thresholds asked of a width rather than of a media
+ * query, since a full-screen element has no query of its own.
+ * @param {number} px
+ * @returns {number}
+ */
+export function columnsForWidth(px) {
+  let most = NARROW_COLUMNS;
+  for (const q of COLUMN_QUERIES) {
+    if (q.columns > most && px >= widthOf(q.columns) + CHART_CUSHION) most = q.columns;
+  }
+  return most;
+}
+
+/**
+ * Whether the chart's card is the element the document shows full screen.
+ * @returns {boolean}
+ */
+export function isFullscreen() {
+  const card = maybeEl("chart-card");
+  return Boolean(card) && document.fullscreenElement === card;
+}
+
+/**
+ * Follows the document in or out of full screen, however it got there: the
+ * button, Escape, or the browser's own control. In, the budget is re-asked at
+ * the full-screen width; out, it is given back; either way the chart redraws
+ * where that moves it, and the button says which way it goes now.
+ */
+export function onFullscreenChange() {
+  fullscreenColumns = isFullscreen() ? columnsForWidth(window.innerWidth) : null;
+  const button = maybeEl("chart-fullscreen");
+  if (button) button.textContent = say(isFullscreen() ? "full_screen_exit" : "full_screen");
+  applyColumns(true);
+}
+
+/**
+ * The button's gesture: the card into full screen, or the document out of it.
+ * A refusal by the browser changes nothing, and fullscreenchange never fires.
+ * @returns {Promise<void>}
+ */
+export function toggleFullscreen() {
+  const card = maybeEl("chart-card");
+  if (!card) return Promise.resolve();
+  const asked = isFullscreen() ? document.exitFullscreen() : card.requestFullscreen();
+  return Promise.resolve(asked).catch(() => {});
+}
+
+/**
+ * Shows the full-screen button where the browser offers full screen and wires
+ * it; elsewhere it stays hidden, as the template ships it.
+ */
+export function wireFullscreen() {
+  const button = maybeEl("chart-fullscreen");
+  const card = maybeEl("chart-card");
+  if (!button || !card || !document.fullscreenEnabled || typeof card.requestFullscreen !== "function") return;
+  button.textContent = say("full_screen");
+  button.removeAttribute("hidden");
+  button.addEventListener("click", () => { void toggleFullscreen(); });
+  document.addEventListener("fullscreenchange", onFullscreenChange);
 }
 
 /* ------------------------------------------------------------------ *
@@ -3389,6 +3466,7 @@ export async function main() {
   wireYears(years);
   wireFilters();
   wireSearch();
+  wireFullscreen();
 
   // Wired before the first fetch (fisc-8cg): a superseded or failed opening
   // year can still be followed by one that draws, and it needs these.
