@@ -219,6 +219,12 @@ func (v View) stepParents(index map[string]int) ([][]parentChart, error) {
 						"step, and that is what makes a cycle undeclarable rather than something "+
 						"this has to detect", v.Path, i, a, j)
 			}
+			if v.Steps[j].Form == BarsForm {
+				return nil, fmt.Errorf(
+					"view %q's step %d opens from %q, which is drawn as bars; no step opens "+
+						"from a bars chart, because what a window would keep of it is a "+
+						"flank no client test draws", v.Path, i, a)
+			}
 			parents = append(parents, parentChart{key: a, tiers: v.Steps[j].drawnTiers(),
 				keep: v.Steps[j].keptFlank()})
 		}
@@ -275,9 +281,14 @@ func (v View) validateStep(i int, s DrillStep, t drillTree, ix ColumnIndex) erro
 	if err := v.validateRoleCarried(i, s, t, parents, ix); err != nil {
 		return err
 	}
-	// One arm per form; a second form adds its own here.
-	if s.Form == SankeyForm {
+	// One arm per form.
+	switch s.Form {
+	case SankeyForm:
 		if err := v.validateSankeyStep(i, s, parents, doc); err != nil {
+			return err
+		}
+	case BarsForm:
+		if err := v.validateBarsStep(i, s, parents); err != nil {
 			return err
 		}
 	}
@@ -299,6 +310,10 @@ func (v View) validateStepDeclares(i int, s DrillStep) error {
 	case s.Form == SankeyForm && s.Sankey == nil:
 		return fmt.Errorf(
 			"view %q declares step %d as a sankey with no sankey hints; what it draws "+
+				"once a node opens is a declaration and not an inference", v.Path, i)
+	case s.Form == BarsForm && s.Bars == nil:
+		return fmt.Errorf(
+			"view %q declares step %d as bars with no bars hints; which tier it lists "+
 				"once a node opens is a declaration and not an inference", v.Path, i)
 	case s.Tail == "":
 		return fmt.Errorf(
@@ -545,6 +560,41 @@ func (v View) stepStemsByYear(ix ColumnIndex) (map[string][]string, error) {
 	return out, nil
 }
 
+// validateBarsStep is the bars form's half of a step's validation: a listed
+// tier that is not the opened one, no residual or gap, which the form draws
+// no mark for, and no parent keeping the opened tier.
+func (v View) validateBarsStep(i int, s DrillStep, parents []parentChart) error {
+	switch {
+	case s.Bars.Tier == s.From:
+		return fmt.Errorf(
+			"view %q's step %d lists tier %d as bars and opens tier %d; a bar is a part "+
+				"of the opened node, and the opened node is not a part of itself",
+			v.Path, i, s.Bars.Tier, s.From)
+	case len(s.Residual) > 0 || len(s.Gaps) > 0:
+		return fmt.Errorf(
+			"view %q's step %d is drawn as bars and declares a residual or a gap; the "+
+				"bars form draws neither mark, so the licence would be shipped and the "+
+				"money it accounts for drawn nowhere", v.Path, i)
+	}
+	for _, p := range parents {
+		if slices.Contains(p.keep, s.From) {
+			return keptOpens(v.Path, i, s.From, p)
+		}
+	}
+	return nil
+}
+
+// keptOpens is the refusal of a step opening a tier the chart it opens from
+// keeps as its flank.
+func keptOpens(path string, i, from int, p parentChart) error {
+	return fmt.Errorf(
+		"view %q's step %d opens tier %d of %s, which KEEPS that tier; a kept "+
+			"flank is drawn at its share of that chart's centre rather than whole, "+
+			"so this step would draw a node taking one figure in and sending its "+
+			"whole decomposition out, with the difference left as node height "+
+			"nothing accounts for", path, i, from, p.name())
+}
+
 // validateSankeyStep is the Sankey form's half of a step's validation: the
 // window's shape, its placement against every chart it opens from, and its
 // caps. The generic half is validateSteps'.
@@ -748,12 +798,7 @@ func (v View) validateSankeyParent(i int, s DrillStep, p parentChart, doc string
 	// nothing on one may open: the node would take one figure in and
 	// send its whole decomposition out. Per parent, every flank column.
 	if slices.Contains(p.keep, s.From) {
-		return fmt.Errorf(
-			"view %q's step %d opens tier %d of %s, which KEEPS that tier; a kept "+
-				"flank is drawn at its share of that chart's centre rather than whole, "+
-				"so this step would draw a node taking one figure in and sending its "+
-				"whole decomposition out, with the difference left as node height "+
-				"nothing accounts for", v.Path, i, s.From, where)
+		return keptOpens(v.Path, i, s.From, p)
 	}
 	if len(h.Keep) == 0 {
 		return nil

@@ -526,7 +526,8 @@ describe("the fold preserves what it folds, on every rung at every width", () =>
         }
         return "";
       };
-      for (const step of CONFIG.steps) {
+      // The cap and the fold are the Sankey's; a bars step has neither.
+      for (const step of CONFIG.steps.filter((s) => s.form === "sankey")) {
         const key = drawsFrom(step);
         const doc = app.scheduleOf(column, key);
         assert.ok(doc, `${stem} carries no schedule ${key} for step ${step.key}`);
@@ -676,7 +677,8 @@ describe("no capped tail folds a line printed as a reduction", () => {
       let members = 0;
       let ranked = 0;
       const folded = [];
-      for (const step of CONFIG.steps) {
+      // The cap and the fold are the Sankey's; a bars step has neither.
+      for (const step of CONFIG.steps.filter((s) => s.form === "sankey")) {
         const doc = app.scheduleOf(column, drawsFrom(step));
         assert.ok(doc, `${stem} carries no schedule for step ${step.key}`);
         for (const id of [...app.decomposable(step, doc, app.BUDGETS)].sort()) {

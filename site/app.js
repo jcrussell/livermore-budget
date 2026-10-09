@@ -27,10 +27,12 @@ import {
   SCHEMA_VERSION, say, kindLabel, fmt, fmtSigned, joinOr, el, maybeEl, cssVar, h, link, citations, balancesOf, PARTITION_NOTE, isFundGroup, scheduleOf, isMark, isResidual, isGap, isLink, residualFlows, tableRows,
 } from "./core.js";
 import { SANKEY } from "./sankey.js";
+import { BARS } from "./bars.js";
 // Re-exported so the tests reach the shipped modules through the one file
 // they import; this file calls a form only through the renderer it registers.
 export * from "./core.js";
 export * from "./sankey.js";
+export * from "./bars.js";
 
 /**
  * A node as schema/projection.schema.json#/properties/nodes/items has it,
@@ -154,7 +156,7 @@ export function homeOf(l) {
  * that fails. A second form registers here and nowhere else.
  * @type {Map<string, FormRenderer>}
  */
-export const FORMS = new Map([["sankey", SANKEY]]);
+export const FORMS = new Map([["sankey", SANKEY], ["bars", BARS]]);
 
 /**
  * The renderer for a chart, by its declared form.

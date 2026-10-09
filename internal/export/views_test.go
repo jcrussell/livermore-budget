@@ -305,6 +305,49 @@ func windowView(breaks func(*export.View)) export.View {
 	})
 }
 
+// barsView is windowView with a bars step after it: the window's centre, tier
+// 2, opens again into its tier-3 parts listed as bars.
+// TestABarsStepListsTheNodeAWindowOpened is its control.
+func barsView(breaks func(*export.View)) export.View {
+	return windowView(func(v *export.View) {
+		v.Steps = append(v.Steps, export.DrillStep{Key: "list", After: []string{"groups"},
+			From:  2,
+			Chart: export.Chart{Form: export.BarsForm, Bars: &export.BarsHints{Tier: 3}},
+			Back:  "Back", Noun: "every part", Tail: "funds",
+			Description: "Listed."})
+		breaks(v)
+	})
+}
+
+// TestABarsStepListsTheNodeAWindowOpened is the control for the bars
+// refusals: the step is written, under its own key and no other form's.
+func TestABarsStepListsTheNodeAWindowOpened(t *testing.T) {
+	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
+	if err != nil {
+		t.Fatalf("read fund-flows golden: %v", err)
+	}
+	dir := t.TempDir()
+	v := barsView(func(v *export.View) { v.Nav, v.Projection = "Extra", "fund-flows" })
+	if _, err := writeSite(export.Options{
+		Dir:         dir,
+		Projections: map[string][]byte{"sankey": goldenSankey(t), "fund-flows": headlined(t, fundFlows)},
+		Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
+			Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "sankey"}, v},
+		Docs:        budgetDocs(),
+		GeneratedBy: "fisc test",
+	}); err != nil {
+		t.Fatalf("Write refused a bars step: %v", err)
+	}
+	page := readFile(t, dir, "extra.html")
+	if !strings.Contains(page, `"form":"bars","bars":{"tier":3}`) {
+		t.Errorf("the config carries no bars step with its hints under its own key")
+	}
+	if got := strings.Count(page, `"sankey":{`); got != 2 {
+		t.Errorf("the config carries %d `sankey` keys over a Sankey overview, a Sankey step "+
+			"and a bars step; the bars step must carry none", got)
+	}
+}
+
 // TestAStepMayKeepOneFlankOfTheChartItOpensFrom is the control for the window
 // refusals, and pins that a step keeping nothing ships no `keep` key: `keep: 0`
 // would say "keep tier 0".
@@ -994,6 +1037,37 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 		{"an overview in a form no renderer draws", []export.View{ok,
 			chartView(func(v *export.View) { v.Overview.Form = "stub"; v.Overview.Sankey = nil })},
 			"declares chart form \"stub\", which is not one of"},
+		// The bars arms.
+		{"a bars step with no bars hints", []export.View{ok,
+			barsView(func(v *export.View) { v.Steps[1].Bars = nil })},
+			"as bars with no bars hints"},
+		{"a bars step listing the tier it opens", []export.View{ok,
+			barsView(func(v *export.View) { v.Steps[1].Bars.Tier = 2 })},
+			"not a part of itself"},
+		{"a bars step carrying a residual", []export.View{ok,
+			barsView(func(v *export.View) {
+				// Opened off the spine, so the step switches document.
+				v.Steps[1].After, v.Steps[1].Projection = []string{""}, "fund-flows"
+				v.Steps[1].Residual = map[string]string{"transfers/in": "why"}
+				v.Steps[1].ResidualGrain = "fund"
+			})},
+			"the bars form draws neither mark"},
+		{"a bars step opening the tier a window keeps", []export.View{ok,
+			barsView(func(v *export.View) { v.Steps[1].From = 0 })},
+			"which KEEPS that tier"},
+		{"a step opening from a bars chart", []export.View{ok,
+			barsView(func(v *export.View) {
+				v.Steps = append(v.Steps, export.DrillStep{Key: "after-list", After: []string{"list"},
+					From:  3,
+					Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{3, 4}}},
+					Back:  "b", Noun: "thing", Tail: "t", Description: "d."})
+			})},
+			"which is drawn as bars"},
+		{"an overview drawn as bars", []export.View{ok,
+			chartView(func(v *export.View) {
+				v.Overview = export.Chart{Form: export.BarsForm, Bars: &export.BarsHints{Tier: 3}}
+			})},
+			"declares a bars chart as its own"},
 		{"a drill with no tiers", []export.View{ok,
 			chartView(func(v *export.View) { v.Steps[0].Sankey.Tiers = nil })},
 			"drawn by the same tier set it was closed under"},

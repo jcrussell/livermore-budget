@@ -287,7 +287,12 @@ async function drive(year) {
       // (d) what a gesture DOES, by dispatch: a click isolates and a second
       // releases; Space isolates and the click it synthesises does not undo
       // it; a held key does nothing; a double click and Enter each open.
-      const opener = marks.find((m) => app.drillable(m.__data__));
+      // NOT THE OPENED NODE WHERE ANOTHER MARK OPENS: a group's centre opens
+      // into its list, and every ribbon of its own window is its own, so
+      // following it dims nothing by construction.
+      const top = app.drilled.length ? app.drilled[app.drilled.length - 1].id : "";
+      const opener = marks.find((m) => app.drillable(m.__data__) && m.__data__.id !== top) ||
+        marks.find((m) => app.drillable(m.__data__));
       const subject = opener || marks[0];
       if (subject) {
         const id = subject.__data__.id;
@@ -589,8 +594,12 @@ describe("the drill's drawing", () => {
   test("on a chart of four or five columns the hint names an inner column by its place, not as the middle", async (t) => {
     const w = CONFIG.wording;
     const said = [];
-    // The General Fund's group window is five columns and its fund window four.
-    for (const [path, width] of [[["fund-group/general"], 5], [["fund-group/general", "fund/100"], 4]]) {
+    // The General Fund's group window is five columns, whose centre opens into
+    // its list of funds and whose funds open further, and its fund window four.
+    for (const [path, width, at, names] of [
+      [["fund-group/general"], 5, [1, 2], [w.column_second, w.column_third]],
+      [["fund-group/general", "fund/100"], 4, [2], [w.column_third]],
+    ]) {
       const { app, document } = await bootedApp({ checkedStem: YEARS[0].stem, viewport: 2000 });
       await opened(app, ...path);
       const tiers = app.activeTiers();
@@ -598,9 +607,9 @@ describe("the drill's drawing", () => {
       const hint = document.getElementById("chart-hint").textContent;
       said.push(`${path[path.length - 1]} at {${tiers}} opens from {${[...opening]}}: "${hint}"`);
       assert.equal(tiers.length, width);
-      assert.deepEqual([...opening].map((tier) => tiers.indexOf(tier)), [2]);
-      assert.deepEqual(app.openableColumns(), [w.column_third]);
-      assert.ok(hint.includes(app.say("in_column", { columns: w.column_third })), hint);
+      assert.deepEqual([...opening].map((tier) => tiers.indexOf(tier)).sort(), at);
+      assert.deepEqual(app.openableColumns(), names);
+      assert.ok(hint.includes(app.say("in_column", { columns: app.joinOr(names) })), hint);
     }
     t.diagnostic(said.join("; "));
   });

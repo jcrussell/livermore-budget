@@ -97,7 +97,7 @@ const DefaultSourceBrowseURL = "https://github.com/jcrussell/livermore-budget/bl
 
 // verbatimAssets are copied from the embedded site tree byte for byte. The
 // page template is not in this list: it is rendered, and vendor/ is walked.
-var verbatimAssets = []string{"app.js", "core.js", "sankey.js", "style.css", ".nojekyll"}
+var verbatimAssets = []string{"app.js", "core.js", "sankey.js", "bars.js", "style.css", ".nojekyll"}
 
 // View is one HTML page of the site: one document, rendered by one template.
 //
@@ -445,15 +445,23 @@ type Chart struct {
 	// Sankey is the Sankey form's hints, present exactly when Form is
 	// [SankeyForm].
 	Sankey *SankeyHints `json:"sankey,omitempty"`
+	// Bars is the bars form's hints, present exactly when Form is
+	// [BarsForm].
+	Bars *BarsHints `json:"bars,omitempty"`
 }
 
 // SankeyForm is the form site/sankey.js draws: columns of tiers joined by
 // ribbons.
 const SankeyForm = "sankey"
 
+// BarsForm is the form site/bars.js draws: the parts of an opened node, one
+// ranked bar each. A step form only: it lists what a node opened into, and an
+// overview has opened none.
+const BarsForm = "bars"
+
 // ChartForms is the declared set of forms, which schema/enums.schema.json
 // states as chart_form and schema/enums_test.go holds to this.
-func ChartForms() []string { return []string{SankeyForm} }
+func ChartForms() []string { return []string{SankeyForm, BarsForm} }
 
 // MarkRoles is the declared set of roles a node the CLIENT makes may wear:
 // the aggregate a cap folds a column's tail into, the residual carrying flow
@@ -523,6 +531,14 @@ type SankeyHints struct {
 	Side string `json:"side,omitempty" yaml:"side"`
 }
 
+// BarsHints is what the bars form lists. Go declares the tier; the client
+// sums each bar's cited links and ranks them.
+type BarsHints struct {
+	// Tier is the tier whose nodes inside the opened node are drawn, one bar
+	// each, at the sum of the cited links joining it to the opened node.
+	Tier int `json:"tier" yaml:"tier"`
+}
+
 // SideSource is [SankeyHints.Side] for a step opening the node its chart's
 // links come FROM.
 const SideSource = "source"
@@ -557,6 +573,15 @@ func (c Chart) drawnTiers() []int {
 		return c.Sankey.Tiers
 	}
 	return nil
+}
+
+// drawnTiers is the tiers a step draws once a node has opened: its chart's,
+// and for the bars form the opened tier and the tier it lists.
+func (s DrillStep) drawnTiers() []int {
+	if s.Form == BarsForm && s.Bars != nil {
+		return []int{s.From, s.Bars.Tier}
+	}
+	return s.Chart.drawnTiers()
 }
 
 // keptFlank is a Sankey chart's kept flank, or nil.
@@ -787,6 +812,10 @@ func (v View) validate(built map[string][]byte, ix ColumnIndex) error {
 		return fmt.Errorf(
 			"view %q declares chart form %q, which is not one of %v",
 			v.Path, v.Overview.Form, ChartForms())
+	case v.Overview.Form == BarsForm:
+		return fmt.Errorf(
+			"view %q declares a bars chart as its own; the bars form lists the parts "+
+				"of a node the reader opened, and the view's own chart has opened none", v.Path)
 	case v.Overview.Form == SankeyForm && v.Overview.Sankey == nil:
 		return fmt.Errorf(
 			"view %q declares a sankey chart with no sankey hints; the column order "+

@@ -1723,3 +1723,15 @@ noscript p {
     display: none;
   }
 }
+
+/* The bars form (site/bars.js): the opened node's own row heads the list, and
+   a bar's share is the page's arithmetic, muted as the figure is. */
+svg.sankey tspan.total {
+  font-weight: 600;
+}
+
+svg.sankey tspan.share {
+  fill: var(--muted);
+  font-size: calc(11px * var(--label-scale, 1));
+  font-variant-numeric: tabular-nums;
+}

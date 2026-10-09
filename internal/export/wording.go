@@ -103,6 +103,10 @@ type wording struct {
 	FullScreenExit string `json:"full_screen_exit"`
 	// ZoomReset is the control that puts a zoomed or panned chart back whole.
 	ZoomReset string `json:"zoom_reset"`
+	// BarsShare is a bar's share of the opened node the bars form lists the
+	// parts of: a ratio of two client sums over cited cents, which no page
+	// prints, so it is said as the page's.
+	BarsShare string `json:"bars_share"`
 }
 
 // kindLabels is project's words for every link kind, keyed as a link names it.
@@ -204,5 +208,6 @@ func defaultWording() wording {
 		FullScreen:       "Full screen",
 		FullScreenExit:   "Exit full screen",
 		ZoomReset:        "Reset view",
+		BarsShare:        "\u25c7 our {share}% of {whole}",
 	}
 }

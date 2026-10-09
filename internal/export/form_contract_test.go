@@ -37,6 +37,16 @@ func TestTheSchemaHoldsAChartToItsForm(t *testing.T) {
 			}},
 		{"a hint outside the form's own key", "widen",
 			func(cfg map[string]any) { step(cfg, 0)["widen"] = []any{4.0} }},
+		{"a bars step with no bars hints", "bars",
+			func(cfg map[string]any) { delete(barsStep(t, cfg), "bars") }},
+		{"a bars step carrying sankey hints", "sankey",
+			func(cfg map[string]any) { barsStep(t, cfg)["sankey"] = map[string]any{"tiers": []any{2.0, 3.0}} }},
+		{"a sankey step carrying bars hints", "bars",
+			func(cfg map[string]any) { step(cfg, 0)["bars"] = map[string]any{"tier": 3.0} }},
+		{"bars hints naming no tier", "tier",
+			func(cfg map[string]any) { delete(barsStep(t, cfg)["bars"].(map[string]any), "tier") }},
+		{"a key the bars hints do not declare", "caps",
+			func(cfg map[string]any) { barsStep(t, cfg)["bars"].(map[string]any)["caps"] = []any{} }},
 	} {
 		var cfg map[string]any
 		if err := json.Unmarshal(blob, &cfg); err != nil {
@@ -55,6 +65,20 @@ func TestTheSchemaHoldsAChartToItsForm(t *testing.T) {
 	}
 }
 
+// barsStep is the first step of a decoded config drawn as bars, failing the
+// test where the served config declares none: a control that broke nothing
+// would pass as a refusal the schema never made.
+func barsStep(t *testing.T, cfg map[string]any) map[string]any {
+	t.Helper()
+	for _, s := range cfg["steps"].([]any) {
+		if m := s.(map[string]any); m["form"] == export.BarsForm {
+			return m
+		}
+	}
+	t.Fatal("the served config declares no bars step")
+	return nil
+}
+
 // step is one of a decoded config's steps, as a map.
 func step(cfg map[string]any, i int) map[string]any {
 	return cfg["steps"].([]any)[i].(map[string]any)
@@ -66,7 +90,7 @@ func step(cfg map[string]any, i int) map[string]any {
 // differed would be authored under one name and shipped under another.
 // Mutation: give SankeyHints.Keep the yaml key "kept", and it goes red.
 func TestAHintIsSpelledOnceInTheFileAndOnTheWire(t *testing.T) {
-	for _, typ := range []reflect.Type{reflect.TypeOf(export.SankeyHints{}), reflect.TypeOf(export.TierCap{})} {
+	for _, typ := range []reflect.Type{reflect.TypeOf(export.SankeyHints{}), reflect.TypeOf(export.TierCap{}), reflect.TypeOf(export.BarsHints{})} {
 		for i := range typ.NumField() {
 			f := typ.Field(i)
 			j, _, _ := strings.Cut(f.Tag.Get("json"), ",")

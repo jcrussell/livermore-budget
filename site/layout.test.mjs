@@ -859,6 +859,8 @@ for (const label of Object.keys(OVER_GUTTER)) {
       alike = [];
       views = 0;
       walk = await everyOffer(app, () => {
+        // The gutter is the Sankey's; a bar list's labels are site/bars.test.mjs's.
+        if (app.formOnScreen().form !== "sankey") return;
         views++;
         const fits = labelFit(app, app.layOut(app.projection));
         for (const f of fits) if (f.clearance < 0) over.add(f.id);

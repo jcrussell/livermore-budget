@@ -266,6 +266,10 @@
         "sankey": {
           "$ref": "https://jcrussell.github.io/livermore-budget/schema/page.schema.json#/$defs/sankey_hints",
           "properties": { "keep": false, "widen": false, "caps": false, "side": false }
+        },
+        "bars": {
+          "description": "The bars form's hints, present exactly when form is bars. The shape admits them; Go's validate refuses a bars overview, which has opened no node to list the parts of.",
+          "$ref": "https://jcrussell.github.io/livermore-budget/schema/page.schema.json#/$defs/bars_hints"
         }
       },
       "allOf": [
@@ -274,6 +278,12 @@
           "if": { "properties": { "form": { "const": "sankey" } } },
           "then": { "required": ["sankey"] },
           "else": { "properties": { "sankey": false } }
+        },
+        {
+          "description": "A chart of form bars carries its bars hints, and no other form does.",
+          "if": { "properties": { "form": { "const": "bars" } } },
+          "then": { "required": ["bars"] },
+          "else": { "properties": { "bars": false } }
         }
       ]
     },
@@ -299,6 +309,12 @@
             "description": "A step's Sankey names the tiers it draws once a node has opened.",
             "if": { "properties": { "form": { "const": "sankey" } } },
             "then": { "properties": { "sankey": { "required": ["tiers"] } } }
+          },
+          {
+            "description": "A chart of form bars carries its bars hints, and no other form does.",
+            "if": { "properties": { "form": { "const": "bars" } } },
+            "then": { "required": ["bars"] },
+            "else": { "properties": { "bars": false } }
           }
         ],
         "required": [
@@ -345,6 +361,10 @@
           "sankey": {
             "description": "The Sankey form's hints, present exactly when form is sankey; a step's names its tiers.",
             "$ref": "https://jcrussell.github.io/livermore-budget/schema/page.schema.json#/$defs/sankey_hints"
+          },
+          "bars": {
+            "description": "The bars form's hints, present exactly when form is bars.",
+            "$ref": "https://jcrussell.github.io/livermore-budget/schema/page.schema.json#/$defs/bars_hints"
           },
           "back": {
             "type": "string"
@@ -495,7 +515,8 @@
         "search_expands",
         "full_screen",
         "full_screen_exit",
-        "zoom_reset"
+        "zoom_reset",
+        "bars_share"
       ],
       "additionalProperties": false,
       "properties": {
@@ -796,11 +817,29 @@
           "type": "string",
           "minLength": 1,
           "description": "The control that puts a zoomed or panned chart back whole."
+        },
+        "bars_share": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A bar's share of the node the bars form lists the parts of: {share}, the percentage formatted, and {whole}, that node's label."
         }
       }
     }
   },
   "$defs": {
+    "bars_hints": {
+      "description": "What the bars form lists: one bar per node at `tier` inside the opened node, each the sum of the cited links joining it to that node.",
+      "type": "object",
+      "required": ["tier"],
+      "additionalProperties": false,
+      "properties": {
+        "tier": {
+          "description": "The tier whose nodes inside the opened node are drawn as bars.",
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
     "sankey_hints": {
       "description": "What the Sankey form may fold and where, which the client's capColumn and foldDocument spend.",
       "type": "object",

@@ -409,6 +409,30 @@ views:
           draw on its balance or the contribution to it is the difference of
           those two printed figures, drawn as one ribbon and marked as ours.
           That difference is what makes the two sides of the fund one figure.
+      # The group in the middle of a fund-group window opens again into every
+      # fund it holds, one ranked bar each: the list the fund column's cap
+      # folds into "N smaller funds", since a ranked bar is legible at any
+      # share where a Sankey ribbon is not. The bars are the same group-to-fund
+      # links of pp.127-140 the window's fund column draws, so they sum to
+      # that column. No step opens from it; validateSteps refuses one.
+      - key: fund-list
+        after: [fund-group]
+        from: 2
+        role: fund_group
+        form: bars
+        bars:
+          tier: 3
+        noun: every fund
+        back: All of this group's flows
+        tail: funds
+        description: >-
+          Every fund in this fund group, one bar each and largest first, at
+          what Budget Book pp.127-140 print coming into it. Each bar is drawn
+          in the pieces those pages print it in, and every piece cites its own
+          lines; a bar's share of the group is this page's arithmetic over
+          those figures and not a figure the city printed. The funds are the
+          ones the group's own chart draws in its fund column, which folds the
+          smallest of a long column into one mark; here none are folded.
 
   # The tables come after the charts they belong to.
   - path: trends.html

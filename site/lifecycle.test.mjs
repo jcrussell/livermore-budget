@@ -83,7 +83,7 @@ describe("the form handshake", () => {
       return { fetched: fetch.asked.length, banners: said(document), forms: Array.from(app.FORMS.keys()) };
     };
     const overview = await asked((c) => { c.overview.form = "treemap"; });
-    const step = await asked((c) => { c.steps[c.steps.length - 1].form = "bars"; });
+    const step = await asked((c) => { c.steps[c.steps.length - 1].form = "treemap"; });
     const good = await asked(() => {});
     // THE REFUSED PAGE STILL HAS A THEME TOGGLE, wired before the refusal; its
     // repaint must not reach for the renderer the page has none of.
@@ -100,7 +100,7 @@ describe("the form handshake", () => {
       return { errors, was, now: loaded.document.documentElement.dataset.theme };
     })();
     t.diagnostic(`this script draws ${overview.forms.join(", ")}; a treemap overview fetches ${overview.fetched} file(s) ` +
-      `and says ${JSON.stringify(overview.banners)}; a bars step fetches ${step.fetched}; ` +
+      `and says ${JSON.stringify(overview.banners)}; a treemap step fetches ${step.fetched}; ` +
       `the theme toggle on the refused page went ${toggled.was} -> ${toggled.now} with ${toggled.errors.length} listener error(s)`);
     assert.deepEqual(toggled.errors, []);
     assert.notEqual(toggled.now, toggled.was);
@@ -109,7 +109,7 @@ describe("the form handshake", () => {
     assert.equal(overview.banners.length, 1);
     assert.match(overview.banners[0], /declares a treemap chart/);
     assert.equal(step.fetched, 0);
-    assert.match(step.banners[0], /declares a bars chart/);
+    assert.match(step.banners[0], /declares a treemap chart/);
   });
 });
 

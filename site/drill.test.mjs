@@ -128,20 +128,24 @@ for (const year of YEARS) {
           const has = new Set(app.projection.nodes.map((n) => n.tier));
           const missing = app.activeTiers().filter((tier) => !has.has(tier));
           if (missing.length) short.push(`${where.join(" > ")} draws no tier ${missing.join(", ")}`);
-          // A WINDOW DRAWS THE NODE IT OPENED; a step that keeps no flank draws
-          // the node's parts alone.
+          // A WINDOW DRAWS THE NODE IT OPENED, and so does a bar list, whose
+          // first row it is; a step that keeps no flank draws the node's parts
+          // alone.
           const rung = app.drilled[app.drilled.length - 1];
-          if ((rung.step.sankey.keep || []).length && !app.projection.nodes.some((n) => n.id === where[where.length - 1])) {
+          const hints = rung.step.sankey || {};
+          const heads = rung.step.form === "bars" || (hints.keep || []).length;
+          if (heads && !app.projection.nodes.some((n) => n.id === where[where.length - 1])) {
             short.push(`${where.join(" > ")} does not draw the node it opened`);
           }
           // CAPS RESPECTED: a capped column holds at most cap + 1 marks of its
           // own -- a tail of one is drawn whole -- unless the reader drew it out.
-          for (const cap of rung.step.sankey.caps || []) {
+          for (const cap of hints.caps || []) {
             if (rung.expanded && rung.expanded.has(cap.tier)) continue;
             const own = app.projection.nodes.filter((n) => n.tier === cap.tier && !app.isCarried(n.id) && !n.carried_from);
             if (own.length > cap.cap + 1) overCap.push(`${where.join(" > ")} draws ${own.length} at tier ${cap.tier}, capped at ${cap.cap}`);
           }
-          for (const l of app.layOut(app.projection).links) smallest = Math.min(smallest, l.width);
+          // A bar's piece is drawn the bar's height, so only a ribbon measures.
+          if (rung.step.form === "sankey") for (const l of app.layOut(app.projection).links) smallest = Math.min(smallest, l.width);
         });
         t.diagnostic(`${year.label} at ${budget}: ${walk.visited} views opened; smallest ribbon over all of them ` +
           `${smallest.toFixed(3)}px; ${fetch.asked.length - asked} fetch(es) added by the walk`);
@@ -708,7 +712,8 @@ for (const year of YEARS) {
       assert.deepEqual(at.legendIDs, [CHAIN[0]]);
       assert.ok(at.desc.includes(label) && at.desc.includes(step.description), at.desc);
       assert.ok(at.desc.endsWith(pointerOf(served)), "the table pointer is dropped");
-      assert.deepEqual(opens, ["fund/100"]);
+      // The group's own mark opens again, into the list of its funds.
+      assert.deepEqual(opens, [CHAIN[0], "fund/100"]);
       assert.deepEqual(muted, []);
     });
 

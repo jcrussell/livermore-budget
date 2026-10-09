@@ -69,6 +69,7 @@ type sectionDecl struct {
 type chartDecl struct {
 	Form   string              `yaml:"form"`
 	Sankey *export.SankeyHints `yaml:"sankey"`
+	Bars   *export.BarsHints   `yaml:"bars"`
 }
 
 // stepDecl is one [export.DrillStep] as authored, its chart inlined as on the
@@ -82,6 +83,7 @@ type stepDecl struct {
 	Projection    string              `yaml:"projection"`
 	Form          string              `yaml:"form"`
 	Sankey        *export.SankeyHints `yaml:"sankey"`
+	Bars          *export.BarsHints   `yaml:"bars"`
 	Noun          string              `yaml:"noun"`
 	Back          string              `yaml:"back"`
 	Tail          string              `yaml:"tail"`
@@ -352,7 +354,7 @@ func (s stepDecl) step() (export.DrillStep, error) {
 		From:          s.From,
 		Role:          s.Role,
 		Projection:    s.Projection,
-		Chart:         (&chartDecl{Form: s.Form, Sankey: s.Sankey}).chart(),
+		Chart:         (&chartDecl{Form: s.Form, Sankey: s.Sankey, Bars: s.Bars}).chart(),
 		Back:          s.Back,
 		Tail:          s.Tail,
 		Noun:          s.Noun,
@@ -382,7 +384,7 @@ func (c *chartDecl) chart() export.Chart {
 	if c == nil {
 		return export.Chart{}
 	}
-	return export.Chart{Form: c.Form, Sankey: c.Sankey}
+	return export.Chart{Form: c.Form, Sankey: c.Sankey, Bars: c.Bars}
 }
 
 // section is the declaration as [export.Section], each row's category

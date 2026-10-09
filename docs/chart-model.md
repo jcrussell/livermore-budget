@@ -14,7 +14,7 @@ are, what each may compute, and the measurements that fixed the seams.
 | Column | `internal/export` | one node table per `(fiscal_year, basis)` and, per schedule, its parent edges and links indexed into that table; re-keys and orders, computes no new figure | `schema/column.schema.json` |
 | Declarations | `internal/export`, authored in `data/views.yaml` and loaded by `pkg/cmd/export` | the drill DAG (what opens from where, into which schedule; `site/app.js` walks it), the licences (residual endpoints with reasons, gap cents per column), every sentence the page says, and per chart a **form** with that form's hints under its own key | `schema/page.schema.json`, as `window.FISC_CONFIG` |
 | Client core | `site/core.js` | sums over cited figures: schedule assembly, hierarchy by parent chain, the fold, the cap, provenance union, years, wording, and the three client marks with their figures: which ribbons a residual carries and their two sums, a gap's difference held to the licence Go shipped, a node's figure net of its printed reductions, the reductions among a mark's ribbons, the pages cited around a node. Reads no form hint. | `schema/mark.schema.json` for the marks it makes |
-| Form renderers | `site/sankey.js`; a treemap or bar list later | what depends on the screen and the mark type: which tiers fit a budget, which ribbons a window holds and which half of a step's document it draws, whether a width draws a column, where a mark stands, layout, paint. Reads only its own hints and the generic step. | nothing: a renderer emits pixels |
+| Form renderers | `site/sankey.js`, `site/bars.js` | what depends on the screen and the mark type: which tiers fit a budget, which ribbons a window holds and which half of a step's document it draws, whether a width draws a column, where a mark stands, layout, paint. Reads only its own hints and the generic step. | nothing: a renderer emits pixels |
 
 A figure the client shows is one Go cited, or a sum, difference or union of
 such figures under a licence Go shipped. A count of drawn members or a share of
@@ -38,7 +38,10 @@ Measured against `schema/column.schema.json` for a treemap of one schedule:
 
 So a second form adds one value to `chart_form` in `schema/enums.schema.json`,
 one closed hint object under its own key in `schema/page.schema.json`, and one
-renderer module. The column document does not change.
+renderer module, which `site/embed.go` embeds and the export ships as a
+verbatim asset. The column document does not change. The bars form cost
+exactly that plus one wording key, `bars_share`, for the one sentence it says
+that the Sankey does not.
 
 ## Why hints nest under the form's key
 

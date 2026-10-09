@@ -217,7 +217,7 @@ func TestExportRunWritesASiteAndSaysHowToServeIt(t *testing.T) {
 	}
 
 	// A document stating a year and basis ships as its column, not as data/sankey.json.
-	for _, rel := range []string{"index.html", "app.js", "core.js", "sankey.js", "style.css", ".nojekyll",
+	for _, rel := range []string{"index.html", "app.js", "core.js", "sankey.js", "bars.js", "style.css", ".nojekyll",
 		"vendor/d3.min.js", "fy2026-adopted.json"} {
 		if _, err := os.Stat(filepath.Join(opts.OutputDir, filepath.FromSlash(rel))); err != nil {
 			t.Errorf("missing %s: %v", rel, err)
@@ -1329,11 +1329,13 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 	// held by property below, not restated. Which document each year draws is
 	// export.ColumnIndex's, measured by TestOpensIntoJoinsOnColumnNotOnDeclaredOrder.
 	type shape struct {
-		key, role, projection, side string
-		after                       []string
-		from                        int
-		keep, tiers, widen          []int
-		caps                        []export.TierCap
+		key, role, projection, side, form string
+		after                             []string
+		from                              int
+		keep, tiers, widen                []int
+		caps                              []export.TierCap
+		// bars is the tier a bars step lists, or -1 on a Sankey.
+		bars int
 		// residual and gaps say whether the step carries a derivation, which
 		// Go fills from internal/project; grain is the residual's.
 		residual, gaps bool
@@ -1387,18 +1389,29 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 		// projection, no role, no flank.
 		{key: "fund-balance", after: []string{"balance-draw", "balance-contribution", "reserve"}, from: 3,
 			side: export.SideBoth, tiers: []int{0, 3, 5}},
+		// The group a fund-group window opens, listed as one bar per fund.
+		{key: "fund-list", form: export.BarsForm, after: []string{"fund-group"}, from: 2,
+			role: project.RoleFundGroup, bars: 3},
+	}
+	for k := range want {
+		if want[k].form == "" {
+			want[k].form, want[k].bars = export.SankeyForm, -1
+		}
 	}
 	shapes := make([]shape, 0, len(spine.Steps))
 	for _, s := range spine.Steps {
-		if s.Form != export.SankeyForm || s.Sankey == nil {
-			t.Fatalf("step %q draws form %q with Sankey hints %v; every step is a Sankey", s.Key, s.Form, s.Sankey)
+		got := shape{key: s.Key, role: s.Role, projection: s.Projection, form: s.Form,
+			after: s.After, from: s.From, bars: -1,
+			residual: len(s.Residual) > 0, gaps: len(s.Gaps) > 0, grain: s.ResidualGrain}
+		switch {
+		case s.Form == export.SankeyForm && s.Sankey != nil && s.Bars == nil:
+			got.side, got.keep, got.tiers, got.widen, got.caps = s.Sankey.Side, s.Sankey.Keep, s.Sankey.Tiers, s.Sankey.Widen, s.Sankey.Caps
+		case s.Form == export.BarsForm && s.Bars != nil && s.Sankey == nil:
+			got.bars = s.Bars.Tier
+		default:
+			t.Fatalf("step %q draws form %q with Sankey hints %v and bars hints %v", s.Key, s.Form, s.Sankey, s.Bars)
 		}
-		shapes = append(shapes, shape{
-			key: s.Key, role: s.Role, projection: s.Projection, side: s.Sankey.Side,
-			after: s.After, from: s.From,
-			keep: s.Sankey.Keep, tiers: s.Sankey.Tiers, widen: s.Sankey.Widen, caps: s.Sankey.Caps,
-			residual: len(s.Residual) > 0, gaps: len(s.Gaps) > 0, grain: s.ResidualGrain,
-		})
+		shapes = append(shapes, got)
 	}
 	if diff := cmp.Diff(want, shapes, cmp.AllowUnexported(shape{})); diff != "" {
 		t.Errorf("the spine's steps (-want +got):\n%s\nthe client's tests measure "+
@@ -1518,21 +1531,21 @@ func TestOpensIntoJoinsOnColumnNotOnDeclaredOrder(t *testing.T) {
 			[]string{"object-category", "transfers", "transfers-out", "balance-draw", "balance-contribution", "reserve", "fund-balance"}},
 		{"no department-spending", []string{project.DepartmentSpendingProjection},
 			[]string{"fund-group", "fund", "division", "revenue-category", "transfers",
-				"transfers-out", "fund-departments", "balance-draw", "balance-contribution", "reserve", "fund-balance"}},
+				"transfers-out", "fund-departments", "balance-draw", "balance-contribution", "reserve", "fund-balance", "fund-list"}},
 		{"no transfers-by-fund", []string{project.TransfersByFundProjection},
 			[]string{"fund-group", "fund", "division", "revenue-category", "object-category",
-				"transfers-out", "fund-departments", "balance-draw", "balance-contribution", "reserve", "fund-balance"}},
+				"transfers-out", "fund-departments", "balance-draw", "balance-contribution", "reserve", "fund-balance", "fund-list"}},
 		{"no transfers-out", []string{project.TransfersOutProjection},
 			[]string{"fund-group", "fund", "division", "revenue-category", "object-category",
-				"transfers", "fund-departments", "balance-draw", "balance-contribution", "reserve", "fund-balance"}},
+				"transfers", "fund-departments", "balance-draw", "balance-contribution", "reserve", "fund-balance", "fund-list"}},
 		{"no department-funding", []string{project.DepartmentFundingProjection},
 			[]string{"fund-group", "fund", "division", "revenue-category", "object-category",
-				"transfers", "transfers-out", "balance-draw", "balance-contribution", "reserve", "fund-balance"}},
+				"transfers", "transfers-out", "balance-draw", "balance-contribution", "reserve", "fund-balance", "fund-list"}},
 		{"neither detail document", []string{project.FundFlowsProjection,
 			project.DepartmentSpendingProjection}, []string{"transfers", "transfers-out", "balance-draw", "balance-contribution", "reserve", "fund-balance"}},
 		{"no fund-sources-uses", []string{project.FundSourcesUsesProjection},
 			[]string{"fund-group", "fund", "division", "revenue-category", "object-category",
-				"transfers", "transfers-out", "fund-departments"}},
+				"transfers", "transfers-out", "fund-departments", "fund-list"}},
 		{"no step document at all", []string{project.FundFlowsProjection,
 			project.DepartmentSpendingProjection, project.TransfersByFundProjection,
 			project.TransfersOutProjection, project.DepartmentFundingProjection,
