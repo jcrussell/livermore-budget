@@ -950,7 +950,8 @@ export function columnShare(laid, d) {
 
 /**
  * Sort key inside a column. A fund group is its own place; anything else is
- * the value-weighted mean place of the fund groups it touches (a barycentre).
+ * the value-weighted mean place of the fund groups it touches (a barycentre),
+ * or, touching none, its own group's place.
  * Supplying a nodeSort is what pins the fund column to the palette's order.
  * The layout tests under site/ measure the alternatives and pin this one.
  * Ties fall to the caller's tie-break on value.
@@ -975,9 +976,12 @@ export function nodeRank(groupOf, placeOf, node) {
     place += at * l.value;
     weight += l.value;
   }
-  // A node whose links were all dropped as zero-valued has no position to
-  // average. It sorts to the top and its own value breaks the tie.
-  return weight === 0 ? 0 : place / weight;
+  if (weight) return place / weight;
+  // NO NEIGHBOUR IN A GROUP: the residual, whose neighbours are all
+  // endpoints, rests at its own group's place, which its parent names. A node
+  // in no group either sorts to the top, and its own value breaks the tie.
+  const own = groupOf(node);
+  return own ? placeOf(own) : 0;
 }
 
 /**

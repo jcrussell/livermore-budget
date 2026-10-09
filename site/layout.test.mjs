@@ -1117,3 +1117,37 @@ describe("the focus indicator is painted as focus and not as text", () => {
     t.diagnostic(`the ribbon's focus rule is ${rule.trim().replace(/\s+/g, " ")}`);
   });
 });
+
+describe("the residual's place in its column", () => {
+  test("a residual, whose neighbours are all endpoints, ranks at its own group's place and sorts by value among that group's funds", async (t) => {
+    const { app } = await bootedApp();
+    app.setColumnBudget(app.OFFERED_COLUMNS);
+    const rank = (n) => app.nodeRank(app.fundGroupOf, app.fundGroupPlace, n);
+    const groups = app.projection.nodes.filter((n) => app.isFundGroup(n) && app.drillable(n)).map((n) => n.id);
+    const seen = [];
+    for (const g of groups) {
+      await opened(app, g);
+      const laid = app.layOut(app.projection);
+      const residual = laid.nodes.find((n) => app.isResidual(n.id));
+      if (residual) {
+        const column = laid.nodes.filter((n) => n.layer === residual.layer).sort((a, b) => a.y0 - b.y0);
+        const at = column.indexOf(residual);
+        seen.push(`${g.replace("fund-group/", "")}: rank ${rank(residual)}, ${at + 1} of ${column.length}`);
+        assert.ok(residual.sourceLinks.concat(residual.targetLinks).every((l) =>
+          !app.fundGroupOf(l.source === residual ? l.target : l.source)), `${residual.id} has a neighbour in a group`);
+        assert.equal(rank(residual), app.fundGroupPlace(g), `${residual.id} does not rank at ${g}'s place`);
+        // Every mark beside it in the column is the group's, so equal rank
+        // leaves the order to value.
+        for (let k = 1; k < column.length; k++) {
+          if (rank(column[k - 1]) !== rank(column[k])) continue;
+          assert.ok(column[k - 1].value >= column[k].value, `${g}: ${column[k - 1].id} sits above the larger ${column[k].id}`);
+        }
+      }
+      app.drillUp(0);
+      await settle();
+    }
+    t.diagnostic(seen.join("; "));
+    assert.ok(seen.length > 0, "no fund group's window draws a residual, so its rank is never asked");
+    assert.ok(seen.some((s) => !/rank 0,/.test(s)), "every residual's group is at place 0, which the old rank also gave");
+  });
+});
