@@ -650,6 +650,63 @@ button[aria-pressed="true"] {
   display: none;
 }
 
+/* ---------- search ---------- */
+
+/* The search box and its list: chrome, in the filter panel's type and inks.
+   The list hangs under the box rather than pushing the chart down. */
+.search {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.search[hidden],
+.search-list[hidden] {
+  display: none;
+}
+
+.search input {
+  min-height: 28px;
+  min-width: 16em;
+  font: inherit;
+  color: var(--ink-1);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 2px 8px;
+}
+
+.search-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 5;
+  margin: 2px 0 0;
+  padding: 2px 0;
+  list-style: none;
+  max-height: 16em;
+  overflow-y: auto;
+  min-width: 20em;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.search-option {
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+.search-option[aria-selected="true"] {
+  background: var(--wash);
+  outline: 1px solid var(--rule);
+}
+
 /* ---------- column control ---------- */
 
 /* The year toggle's pill, holding steppers: a count has a next value, which a

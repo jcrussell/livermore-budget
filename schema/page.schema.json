@@ -487,7 +487,12 @@
         "smaller_label",
         "smaller_rationale",
         "smaller_note",
-        "smaller_flow"
+        "smaller_flow",
+        "search_label",
+        "search_count",
+        "search_none",
+        "search_opens",
+        "search_expands"
       ],
       "additionalProperties": false,
       "properties": {
@@ -748,6 +753,31 @@
           "type": "string",
           "minLength": 1,
           "description": "A merged ribbon's sentence, said wherever the ribbon is described: {flows} and {threshold}."
+        },
+        "search_label": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The search box's label."
+        },
+        "search_count": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The search's status where marks match: {n}, how many."
+        },
+        "search_none": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The search's status where no mark drawn matches: {query}, what the reader typed."
+        },
+        "search_opens": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Said on a search option whose mark opens into a step."
+        },
+        "search_expands": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Said on a search option whose mark is a folded tail the chart draws out."
         }
       }
     }

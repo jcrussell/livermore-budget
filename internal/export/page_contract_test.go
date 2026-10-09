@@ -108,6 +108,8 @@ func TestTheWordingFillsEveryPlaceholderTheClientHands(t *testing.T) {
 		"smaller_rationale":      {"flows", "threshold"},
 		"smaller_note":           {"flows", "figure"},
 		"smaller_flow":           {"flows", "threshold"},
+		"search_count":           {"n"},
+		"search_none":            {"query"},
 	}
 	blob, err := json.Marshal(defaultWording())
 	if err != nil {

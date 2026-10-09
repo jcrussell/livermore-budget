@@ -1012,8 +1012,27 @@ export function doubleClickNode(d, at) {
     setIsolated(clickIsolate.was);
   }
   clickIsolate = { id: "", at: -Infinity, was: "" };
-  if (drillable(d)) openNode(d.id);
-  else if (expandable(d)) expandTier(d);
+  openOffered(d);
+}
+
+/**
+ * Opens what activating a node offers, and says whether it offered anything:
+ * the step it opens into (drillable), else the folded tail it draws out
+ * (expandable). The one rule Enter on a mark, a double click and the
+ * search's Enter share.
+ * @param {LaidNode} d
+ * @returns {boolean}
+ */
+export function openOffered(d) {
+  if (drillable(d)) {
+    openNode(d.id);
+    return true;
+  }
+  if (expandable(d)) {
+    expandTier(d);
+    return true;
+  }
+  return false;
 }
 
 /**
@@ -1032,14 +1051,7 @@ export function keyNode(d, key, at) {
   // Escape unpins while leaving focus where it was, so the panel can be
   // empty here even though focus already pinned this node once.
   pin(d);
-  if (key === "Enter" && drillable(d)) {
-    openNode(d.id);
-    return;
-  }
-  if (key === "Enter" && expandable(d)) {
-    expandTier(d);
-    return;
-  }
+  if (key === "Enter" && openOffered(d)) return;
   setIsolated(filter.isolated === d.id ? "" : d.id);
 }
 
@@ -1615,6 +1627,8 @@ export function render(laid) {
   });
   paint();
   applyEmphasis();
+  // The options name marks of the chart just replaced.
+  closeSearch();
 }
 
 /**
@@ -2199,7 +2213,7 @@ export function pin(d) {
 
   panel.append(h("div", "amount", fmtSigned(markFigure(d))));
   const drawn = drawnAt(d);
-  if (drawn) panel.append(h("p", "subtle drawn", drawn));
+  if (drawn) panel.append(h("p", "subtle", drawn));
   panel.append(h("div", "", asLink
     ? /** @type {LaidLink} */ (d).source.label + " → " + /** @type {LaidLink} */ (d).target.label
     : /** @type {LaidNode} */ (d).label));
@@ -2386,6 +2400,177 @@ export function buildTable(rows) {
   const body = el("flow-table").querySelector("tbody");
   if (!body) return;
   body.replaceChildren(...rows);
+}
+
+/* ------------------------------------------------------------------ *
+ * Search
+ * ------------------------------------------------------------------ */
+
+/**
+ * The marks of the chart drawn whose label holds `query`, case-folded: those
+ * whose label starts with it first, then in label order. Only what is laid
+ * out, so a mark the view does not draw -- another rung's, or one the filters
+ * removed -- is never offered. None for a blank query.
+ * @param {string} query
+ * @returns {LaidNode[]}
+ */
+export function searchMatches(query) {
+  const q = String(query).trim().toLocaleLowerCase();
+  if (!q) return [];
+  const folded = (/** @type {LaidNode} */ n) => String(n.label).toLocaleLowerCase();
+  return laidNodes.filter((n) => folded(n).includes(q)).sort((a, b) =>
+    Number(!folded(a).startsWith(q)) - Number(!folded(b).startsWith(q)) ||
+    folded(a).localeCompare(folded(b)) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+}
+
+/**
+ * What one option says: the mark's label, its role where another option reads
+ * alike, and what Enter does where the chart offers more than following it.
+ * @param {LaidNode} n
+ * @param {LaidNode[]} hits every option listed
+ * @returns {string}
+ */
+export function searchOptionWords(n, hits) {
+  const alike = hits.some((o) => o !== n && o.label === n.label);
+  const offer = drillable(n) ? say("search_opens") : expandable(n) ? say("search_expands") : "";
+  return n.label + (alike ? " (" + String(n.role).replace(/_/g, " ") + ")" : "") + (offer ? ", " + offer : "");
+}
+
+/** The search's options as listed, and the one the arrows are on (-1 for none). */
+export let searchState = { hits: /** @type {LaidNode[]} */ ([]), active: -1 };
+
+/**
+ * Lists the marks matching the search box's text, says how many, and puts the
+ * arrows on none of them.
+ */
+export function paintSearch() {
+  const input = /** @type {HTMLInputElement | null} */ (maybeEl("search-input"));
+  const list = maybeEl("search-list");
+  const status = maybeEl("search-status");
+  if (!input || !list) return;
+  const hits = searchMatches(input.value);
+  searchState = { hits, active: -1 };
+  list.replaceChildren(...hits.map((n, k) => {
+    const option = h("li", "search-option", searchOptionWords(n, hits));
+    option.id = "search-option-" + k;
+    option.setAttribute("role", "option");
+    option.setAttribute("aria-selected", "false");
+    option.dataset.id = n.id;
+    option.addEventListener("click", () => guarded("find this mark", () => chooseSearch(n.id, false)));
+    return option;
+  }));
+  const open = hits.length > 0;
+  if (open) list.removeAttribute("hidden");
+  else list.setAttribute("hidden", "");
+  input.setAttribute("aria-expanded", String(open));
+  input.removeAttribute("aria-activedescendant");
+  if (status) {
+    status.textContent = !input.value.trim() ? ""
+      : open ? say("search_count", { n: hits.length }) : say("search_none", { query: input.value.trim() });
+  }
+}
+
+/**
+ * Moves the arrows one option along, wrapping, and opens the list where it is
+ * closed.
+ * @param {number} delta 1 or -1
+ */
+export function moveSearch(delta) {
+  const input = maybeEl("search-input");
+  const list = maybeEl("search-list");
+  if (!input || !list) return;
+  if (list.hasAttribute("hidden")) paintSearch();
+  const n = searchState.hits.length;
+  if (!n) return;
+  const at = searchState.active < 0 ? (delta > 0 ? 0 : n - 1) : (searchState.active + delta + n) % n;
+  searchState = { hits: searchState.hits, active: at };
+  Array.from(list.children).forEach((option, k) => option.setAttribute("aria-selected", String(k === at)));
+  const chosen = list.children[at];
+  input.setAttribute("aria-activedescendant", chosen.id);
+  const scroll = /** @type {any} */ (chosen).scrollIntoView;
+  if (typeof scroll === "function") scroll.call(chosen, { block: "nearest" });
+}
+
+/** Closes the search's list, leaving the text the reader typed. */
+export function closeSearch() {
+  const input = maybeEl("search-input");
+  const list = maybeEl("search-list");
+  if (!input || !list) return;
+  list.replaceChildren();
+  list.setAttribute("hidden", "");
+  input.setAttribute("aria-expanded", "false");
+  input.removeAttribute("aria-activedescendant");
+  searchState = { hits: [], active: -1 };
+}
+
+/**
+ * Takes the reader to one mark of the chart drawn. With `open`, the search's
+ * Enter, it opens what activating the mark offers (openOffered), the rule
+ * the chart's own Enter and double click use; otherwise, or where nothing
+ * opens, it follows the mark's money and focuses it, which scrolls it into
+ * view and pins it. Says whether the mark was on the chart.
+ * @param {string} id
+ * @param {boolean} open
+ * @returns {boolean}
+ */
+export function chooseSearch(id, open) {
+  const input = /** @type {HTMLInputElement | null} */ (maybeEl("search-input"));
+  const d = laidNodes.find((n) => n.id === id);
+  closeSearch();
+  if (!d) return false;
+  if (input) input.value = d.label;
+  if (open && openOffered(d)) {
+    if (input) input.value = "";
+    return true;
+  }
+  setIsolated(d.id);
+  const chart = maybeEl("chart");
+  const mark = chart ? D3.select(chart).selectAll("g.node").filter(/** @param {LaidNode} n */ (n) => n.id === d.id).node() : null;
+  if (mark && typeof mark.scrollIntoView === "function") mark.scrollIntoView({ block: "nearest", inline: "nearest" });
+  if (mark && typeof mark.focus === "function") mark.focus();
+  return true;
+}
+
+/**
+ * Wires the search box the template ships hidden: typing lists the marks of
+ * the chart drawn, the arrows move along them, Enter takes the reader to the
+ * one the arrows are on, and Escape closes the list, then clears the box,
+ * without closing a rung.
+ */
+export function wireSearch() {
+  const box = maybeEl("search");
+  const input = /** @type {HTMLInputElement | null} */ (maybeEl("search-input"));
+  const list = maybeEl("search-list");
+  if (!box || !input || !list) return;
+  box.removeAttribute("hidden");
+  input.addEventListener("input", () => paintSearch());
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      moveSearch(e.key === "ArrowDown" ? 1 : -1);
+      return;
+    }
+    if (e.key === "Enter") {
+      const chosen = searchState.hits[searchState.active];
+      if (!chosen) return;
+      e.preventDefault();
+      guarded("open this mark", () => chooseSearch(chosen.id, true));
+      return;
+    }
+    if (e.key === "Escape") {
+      // The document's Escape closes a rung; in the search box it closes the
+      // list, then empties the box.
+      e.stopPropagation();
+      if (!list.hasAttribute("hidden")) closeSearch();
+      else {
+        input.value = "";
+        paintSearch();
+      }
+    }
+  });
+  // A click on an option would blur the box first and close the list under it.
+  list.addEventListener("mousedown", (e) => e.preventDefault());
+  input.addEventListener("blur", () => closeSearch());
 }
 
 /* ------------------------------------------------------------------ *
@@ -2952,6 +3137,7 @@ export async function main() {
   }
   wireYears(years);
   wireFilters();
+  wireSearch();
 
   // Wired before the first fetch (fisc-8cg): a superseded or failed opening
   // year can still be followed by one that draws, and it needs these.

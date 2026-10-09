@@ -12,7 +12,7 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  bootedApp, opened, settle, fire, topOf, pageFixture, clickYear, stepByKey,
+  bootedApp, opened, settle, fire, topOf, pageFixture, clickYear, stepByKey, columnFixture,
 } from "./testlib.mjs";
 
 const PAGE = pageFixture().config;
@@ -524,4 +524,129 @@ for (const year of YEARS) {
       t.diagnostic(`focus landed on ${JSON.stringify(landed)}`);
     });
   });
+}
+
+describe("the search box", () => {
+  /** Types `text` into the search box as a reader does: the value, then input. */
+  const type = (document, text) => {
+    const input = document.getElementById("search-input");
+    input.focus();
+    input.value = text;
+    input.dispatchEvent(new globalThis.Event("input", { bubbles: true }));
+    return input;
+  };
+  /** One key on the search box. */
+  const key = (input, k) => fire(input, "keydown", { key: k });
+  /** The options listed, as the ids of the marks they name. */
+  const options = (document) => [...document.querySelectorAll("#search-list [role=option]")].map((o) => o.dataset.id);
+  /** Arrows down until the option naming `id` is the active one. */
+  const arrowTo = (document, input, id) => {
+    const at = options(document).indexOf(id);
+    assert.ok(at >= 0, `no option names ${id}: ${options(document).join(", ")}`);
+    for (let k = 0; k <= at; k++) key(input, "ArrowDown");
+    const active = document.getElementById(input.getAttribute("aria-activedescendant"));
+    assert.equal(active.dataset.id, id);
+    assert.equal(active.getAttribute("aria-selected"), "true");
+    return active;
+  };
+  const banners = (document) => [...document.querySelectorAll("main .refusal")].map((b) => b.textContent);
+
+  test("typing lists the marks drawn whose label holds it, the arrows move along them, and Enter opens one the chart's own Enter opens", async (t) => {
+    const { app, document } = await bootedApp();
+    assert.equal(document.getElementById("search").hasAttribute("hidden"), false);
+    const input = type(document, "general");
+    const listed = options(document);
+    const status = document.getElementById("search-status").textContent;
+    t.diagnostic(`"general" lists ${JSON.stringify(listed)}; the status says "${status}"`);
+    assert.ok(listed.includes(OPENS));
+    assert.equal(input.getAttribute("role"), "combobox");
+    assert.equal(input.getAttribute("aria-expanded"), "true");
+    assert.equal(status, app.say("search_count", { n: listed.length }));
+    for (const id of listed) {
+      const n = app.laidNodes.find((x) => x.id === id);
+      assert.ok(n && n.label.toLowerCase().includes("general"), `${id} is listed and is not a drawn mark holding "general"`);
+    }
+    const active = arrowTo(document, input, OPENS);
+    assert.ok(active.textContent.includes(app.say("search_opens")), active.textContent);
+    // Up and back down lands on it again, wrapping through the last option where it is the first.
+    key(input, "ArrowUp");
+    key(input, "ArrowDown");
+    assert.equal(document.getElementById(input.getAttribute("aria-activedescendant")).dataset.id, OPENS);
+    key(input, "Enter");
+    await settle();
+    assert.equal(topOf(app), OPENS);
+    assert.deepEqual(banners(document), []);
+    assert.equal(input.value, "");
+    assert.equal(input.getAttribute("aria-expanded"), "false");
+  });
+
+  test("Enter on a mark that opens nothing follows its money and focuses it, as the chart's own Enter does", async (t) => {
+    const { app, document } = await bootedApp();
+    await opened(app, SHUT);
+    const closed = app.laidNodes.find((n) => n.id === CLOSED);
+    assert.equal(app.drillable(closed) || app.expandable(closed), false, `${CLOSED} opens on ${SHUT}'s rung`);
+    const input = type(document, closed.label);
+    const active = arrowTo(document, input, CLOSED);
+    assert.ok(!active.textContent.includes(app.say("search_opens")), active.textContent);
+    key(input, "Enter");
+    await settle();
+    const focused = document.activeElement && document.activeElement.__data__;
+    t.diagnostic(`Enter on "${active.textContent}" left the chart on ${topOf(app)}, following ${app.filter.isolated}, focus on ${focused ? focused.id : "nothing"}`);
+    assert.equal(topOf(app), SHUT);
+    assert.equal(app.drilled.length, 1);
+    assert.equal(app.filter.isolated, CLOSED);
+    assert.equal(focused && focused.id, CLOSED);
+    assert.equal(app.pinned && app.pinned.id, CLOSED);
+    assert.deepEqual(banners(document), []);
+  });
+
+  test("a label the chart does not draw offers nothing, Enter on it does nothing, and Escape in the box closes no rung", async (t) => {
+    const { app, document } = await bootedApp();
+    const patrol = columnLabel(INERT);
+    const input = type(document, patrol);
+    const status = document.getElementById("search-status").textContent;
+    t.diagnostic(`"${patrol}" on the overview: ${options(document).length} option(s); the status says "${status}"`);
+    assert.deepEqual(options(document), []);
+    assert.equal(input.getAttribute("aria-expanded"), "false");
+    assert.equal(document.getElementById("search-list").hasAttribute("hidden"), true);
+    assert.equal(status, app.say("search_none", { query: patrol }));
+    key(input, "ArrowDown");
+    key(input, "Enter");
+    await settle();
+    assert.equal(app.drilled.length, 0);
+    assert.equal(app.filter.isolated, "");
+    // A mark the filters removed is not drawn either.
+    app.setFilter({ groups: new Set([OPENS]) });
+    type(document, "general");
+    assert.ok(!options(document).includes(OPENS), "a mark the filters removed is offered");
+    await opened(app, SHUT);
+    type(document, "fund");
+    assert.equal(input.getAttribute("aria-expanded"), "true");
+    key(input, "Escape");
+    assert.equal(input.getAttribute("aria-expanded"), "false");
+    assert.equal(input.value, "fund");
+    key(input, "Escape");
+    assert.equal(input.value, "");
+    await settle();
+    assert.equal(app.drilled.length, 1, "Escape in the search box closed a rung");
+    assert.deepEqual(banners(document), []);
+  });
+
+  test("a click on an option follows that mark without opening it", async () => {
+    const { app, document } = await bootedApp();
+    type(document, "general");
+    const option = [...document.querySelectorAll("#search-list [role=option]")].find((o) => o.dataset.id === OPENS);
+    fire(option, "click");
+    await settle();
+    assert.equal(app.drilled.length, 0);
+    assert.equal(app.filter.isolated, OPENS);
+    assert.equal(document.activeElement.__data__ && document.activeElement.__data__.id, OPENS);
+  });
+});
+
+/** A node's printed label in the pinned newest column. */
+function columnLabel(id) {
+  const n = columnFixture(YEARS[YEARS.length - 1].path.replace(/\.json$/, "")).nodes.find((x) => x.id === id);
+  if (!n) throw new Error(`the pinned column carries no ${id}`);
+  return n.label;
 }

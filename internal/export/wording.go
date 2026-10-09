@@ -91,6 +91,13 @@ type wording struct {
 	SmallerRationale string `json:"smaller_rationale"`
 	SmallerNote      string `json:"smaller_note"`
 	SmallerFlow      string `json:"smaller_flow"`
+	// The search box over the marks of the chart drawn: its label, what it
+	// found, and what Enter does to an option beyond following it.
+	SearchLabel   string `json:"search_label"`
+	SearchCount   string `json:"search_count"`
+	SearchNone    string `json:"search_none"`
+	SearchOpens   string `json:"search_opens"`
+	SearchExpands string `json:"search_expands"`
 }
 
 // kindLabels is project's words for every link kind, keyed as a link names it.
@@ -184,5 +191,10 @@ func defaultWording() wording {
 		SmallerRationale: "Our grouping, not a line the city printed: {flows:flow|flows} each under {threshold}, the smallest flow your filters draw as itself, are drawn as one mark. Every figure inside it is printed; the merge is this page's.",
 		SmallerNote:      "Merged by this page from {flows:flow|flows} the city printed, together {figure}; its ribbons cite every fact and page they merge.",
 		SmallerFlow:      "{flows:flow|flows} under {threshold}, each printed by the city, merged by this page",
+		SearchLabel:      "Find a mark on this chart",
+		SearchCount:      "{n:mark matches|marks match}; the arrow keys move between them, and Enter goes to one.",
+		SearchNone:       "No mark drawn on this chart has “{query}” in its name.",
+		SearchOpens:      "Enter opens it",
+		SearchExpands:    "Enter draws out every one it folds",
 	}
 }

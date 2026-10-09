@@ -117,6 +117,16 @@
 <div class="card">
   <div class="controls">
     <div class="legend" id="legend" aria-label="Fund groups"></div>
+    {{- /* SHIPPED HIDDEN AND EMPTY, as the filters are: what the chart draws
+           is the client's, so app.js unhides the box and lists the marks. A
+           combobox over a listbox, the ARIA 1.2 pattern. */}}
+    <div class="search" id="search" hidden>
+      <label for="search-input" id="search-label">{{.Wording.SearchLabel}}</label>
+      <input type="text" id="search-input" role="combobox" aria-autocomplete="list"
+             aria-expanded="false" aria-controls="search-list" autocomplete="off" spellcheck="false">
+      <ul class="search-list" id="search-list" role="listbox" aria-labelledby="search-label" hidden></ul>
+      <span id="search-status" role="status"></span>
+    </div>
   </div>
   {{- /* SHIPPED HIDDEN AND EMPTY: what to show is the client's, so with
          JavaScript off these controls would change nothing. app.js fills the

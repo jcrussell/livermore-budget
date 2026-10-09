@@ -1122,6 +1122,7 @@ describe("the classes the client sets and the rules the stylesheet carries", () 
     nodes: "the <g> the marks are drawn into",
     opens: "the drillable mark; its affordance is the flag tspan, not a style",
     expands: "the folded tail, likewise",
+    "tip-drawn": "the tooltip's drawn-part line, worn as a tip-meta",
   };
   /** Styled, set by nothing anywhere: dead ink, declared with its bead until it goes. */
   const DEAD = {};
@@ -1169,6 +1170,15 @@ describe("the classes the client sets and the rules the stylesheet carries", () 
     app.pin(ribbon.__data__); snap();
     app.pin(mark.__data__); snap();
     fire(mark, "keydown", { key: " " }); await settle(); snap();
+    // A search listing its options, and a filter leaving part of a mark drawn.
+    const search = document.getElementById("search-input");
+    search.value = String(mark.__data__.label).slice(0, 3);
+    search.dispatchEvent(new globalThis.Event("input", { bubbles: true })); snap();
+    app.setFilter({ groups: new Set(["fund-group/general"]) });
+    const part = marksIn(chart).find((m) => app.drawnAt(m.__data__));
+    assert.ok(part, "no mark is drawn at less than its figure under the filter");
+    app.showTip({ target: chart, clientX: 0, clientY: 0 }, part.__data__); app.pin(part.__data__); snap();
+    app.resetFilters();
     let expandedAt = "";
     const walked = await everyOffer(app, async (path) => {
       snap();
