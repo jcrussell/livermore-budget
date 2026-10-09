@@ -8,8 +8,8 @@
 import { before, describe, test } from "node:test";
 import assert from "node:assert/strict";
 
-import { bootedApp, goldenGraph, pageFixture, stylesheet, opened, expandAll, everyOffer,
-  settle } from "./testlib.mjs";
+import { bootedApp, goldenGraph, pageFixture, stylesheet, opened, expandAll, everyOffer, clickYear,
+  dollars, settle } from "./testlib.mjs";
 
 /**
  * Lays the golden graph out as layOut() does, under a given node sort.
@@ -1149,5 +1149,114 @@ describe("the residual's place in its column", () => {
     t.diagnostic(seen.join("; "));
     assert.ok(seen.length > 0, "no fund group's window draws a residual, so its rank is never asked");
     assert.ok(seen.some((s) => !/rank 0,/.test(s)), "every residual's group is at place 0, which the old rank also gave");
+  });
+});
+
+// THE WHOLE CITY IN ONE SANKEY (fisc-yj4w.23): fund-flows at every tier
+// it draws a column of, uncapped, shaped by the page's own shapeFor and laid
+// out by the form's own layOutAt at each candidate canvas height. No view
+// declares this chart yet, so its config is the pinned page's with the
+// primary schedule, the overview and the steps replaced: what a whole-city
+// page would hand the client, and nothing the page does not already read.
+const WHOLE_TIERS = [0, 2, 3, 4, 5];
+const WHOLE_HEIGHTS = [820, 1600, 2400, 3200, 4800];
+
+/**
+ * Each pinned year's whole-city chart at every height, and at the tallest
+ * under every smallest-flow stop: nodes, links, ribbons under a pixel, the
+ * narrowest ribbon, and how many of those under a pixel are under the stop,
+ * as a lone leg or as a merge.
+ * PINNED, not bounded, as CLAIMED is: the decision in the bead is read off
+ * these figures, and a drift would leave it standing on figures that moved.
+ */
+const WHOLE_CLAIMED = {
+  "FY 2025-26": {
+    heights: [
+      "820: 235 nodes, 328 links, 328 under 1px, narrowest 0.0000px",
+      "1600: 235 nodes, 328 links, 328 under 1px, narrowest 0.0000px",
+      "2400: 235 nodes, 328 links, 216 under 1px, narrowest 0.0000px",
+      "3200: 235 nodes, 328 links, 141 under 1px, narrowest 0.0000px",
+      "4800: 235 nodes, 328 links, 95 under 1px, narrowest 0.0001px",
+    ],
+    stops: [
+      "$0: 235 nodes, 328 links, 95 under 1px, 0 lone legs and 0 merges under the stop",
+      "$10,000: 235 nodes, 322 links, 89 under 1px, 7 lone legs and 1 merges under the stop",
+      "$100,000: 233 nodes, 293 links, 57 under 1px, 26 lone legs and 2 merges under the stop",
+      "$1,000,000: 207 nodes, 222 links, 27 under 1px, 26 lone legs and 1 merges under the stop",
+      "$10,000,000: 144 nodes, 124 links, 26 under 1px, 24 lone legs and 2 merges under the stop",
+    ],
+  },
+  "FY 2026-27": {
+    heights: [
+      "820: 230 nodes, 322 links, 322 under 1px, narrowest 0.0000px",
+      "1600: 230 nodes, 322 links, 322 under 1px, narrowest 0.0000px",
+      "2400: 230 nodes, 322 links, 203 under 1px, narrowest 0.0000px",
+      "3200: 230 nodes, 322 links, 137 under 1px, narrowest 0.0001px",
+      "4800: 230 nodes, 322 links, 98 under 1px, narrowest 0.0001px",
+    ],
+    stops: [
+      "$0: 230 nodes, 322 links, 98 under 1px, 0 lone legs and 0 merges under the stop",
+      "$10,000: 231 nodes, 318 links, 94 under 1px, 9 lone legs and 1 merges under the stop",
+      "$100,000: 229 nodes, 289 links, 62 under 1px, 29 lone legs and 2 merges under the stop",
+      "$1,000,000: 200 nodes, 215 links, 31 under 1px, 31 lone legs and 0 merges under the stop",
+      "$10,000,000: 139 nodes, 119 links, 30 under 1px, 29 lone legs and 1 merges under the stop",
+    ],
+  },
+};
+
+describe("the whole city in one Sankey, measured before it is declared", () => {
+  /** @type {Map<string, {heights: string[], stops: string[]}>} */
+  const measured = new Map();
+
+  before(async () => {
+    const config = structuredClone(pageFixture().config);
+    config.primary = "fund-flows";
+    config.overview = { form: "sankey", sankey: { tiers: WHOLE_TIERS } };
+    delete config.steps;
+    const { app, document } = await bootedApp({ config });
+    const at = (doc, height) => app.layOutAt(doc, {
+      tiers: app.layoutTiers(doc),
+      columns: app.layoutColumns(doc),
+      groupOf: app.fundGroupOf,
+      placeOf: app.fundGroupPlace,
+    }, height);
+    const tallest = WHOLE_HEIGHTS[WHOLE_HEIGHTS.length - 1];
+    for (const year of config.years) {
+      clickYear(document, year.stem);
+      await settle();
+      assert.equal(app.shownYear.stem, year.stem, `the page did not switch to ${year.label}`);
+      const heights = WHOLE_HEIGHTS.map((h) => {
+        const laid = at(app.shown.doc, h);
+        const widths = laid.links.map((l) => l.width);
+        return `${h}: ${laid.nodes.length} nodes, ${laid.links.length} links, ` +
+          `${widths.filter((w) => w < 1).length} under 1px, narrowest ${Math.min(...widths).toFixed(4)}px`;
+      });
+      const stops = app.SMALLEST_STOPS.map((stop) => {
+        app.setFilter({ smallest: stop });
+        const laid = at(app.shown.doc, tallest);
+        const under = laid.links.filter((l) => l.width < 1);
+        // Under the stop and still drawn: a lone leg, which foldSmaller draws
+        // as itself rather than merge one, or a merge of legs whose sum is
+        // itself under the stop.
+        const below = under.filter((l) => Math.abs(l.value_cents) < stop);
+        const merged = below.filter((l) => l.merged).length;
+        return `${dollars(stop)}: ${laid.nodes.length} nodes, ${laid.links.length} links, ` +
+          `${under.length} under 1px, ${below.length - merged} lone legs and ${merged} merges under the stop`;
+      });
+      app.setFilter({ smallest: 0 });
+      measured.set(year.label, { heights, stops });
+    }
+  });
+
+  test("no candidate height draws every printed ribbon at a pixel or more, in either adopted year", (t) => {
+    for (const [label, m] of measured) t.diagnostic(`${label} by height: ${m.heights.join("; ")}`);
+    assert.deepEqual(Object.fromEntries([...measured].map(([k, m]) => [k, m.heights])),
+      Object.fromEntries(Object.entries(WHOLE_CLAIMED).map(([k, m]) => [k, m.heights])));
+  });
+
+  test("at the tallest height, from the $1,000,000 stop up every ribbon left under a pixel is under the stop: a lone leg, or a merge that sums under it", (t) => {
+    for (const [label, m] of measured) t.diagnostic(`${label} at ${WHOLE_HEIGHTS[WHOLE_HEIGHTS.length - 1]}px by stop: ${m.stops.join("; ")}`);
+    assert.deepEqual(Object.fromEntries([...measured].map(([k, m]) => [k, m.stops])),
+      Object.fromEntries(Object.entries(WHOLE_CLAIMED).map(([k, m]) => [k, m.stops])));
   });
 });

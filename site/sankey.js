@@ -985,6 +985,35 @@ export function nodeRank(groupOf, placeOf, node) {
 }
 
 /**
+ * SANKEY.layOut at a stated canvas height, in px: what the layout test
+ * measures a chart at heights the chart does not declare with.
+ * @param {FiscProjection} drawn
+ * @param {{tiers: number[], columns: number, groupOf: (n: any) => string, placeOf: (id: string) => number}} ctx
+ * @param {number} height
+ * @returns {{nodes: LaidNode[], links: LaidLink[]}}
+ */
+export function layOutAt(drawn, ctx, height) {
+  const d3 = /** @type {any} */ (globalThis).d3;
+  const sankey = d3.sankey()
+    .nodeId(/** @param {LaidNode} d */ (d) => d.id)
+    .nodeWidth(NODE_WIDTH)
+    .nodePadding(NODE_PADDING)
+    .nodeAlign(alignFor(ctx.tiers))
+    // Supplying this switches d3's own ordering pass off.
+    .nodeSort(/** @param {LaidNode} a @param {LaidNode} b */ (a, b) =>
+      nodeRank(ctx.groupOf, ctx.placeOf, a) - nodeRank(ctx.groupOf, ctx.placeOf, b) || b.value - a.value)
+    // The same column count render() sizes the viewBox from.
+    .extent([[LABEL_GUTTER, 12],
+      [chartWidth(ctx.columns) - LABEL_GUTTER, height - 12]]);
+  const graph = sankey({
+    nodes: drawn.nodes.map((n) => Object.assign({}, n)),
+    links: drawn.links.map((l) => Object.assign({}, l, { value: l.value_cents })),
+  });
+  restackLinks(graph);
+  return graph;
+}
+
+/**
  * The Sankey form's renderer, as app.js's FORMS holds it under "sankey".
  * Every method takes what it needs: the chart's declaration, the rung, the
  * columns on screen, the document on screen. It reads of a step the generic
@@ -1078,24 +1107,7 @@ export const SANKEY = Object.freeze({
    * stays the thing the table and the detail panel read from.
    */
   layOut(drawn, ctx) {
-    const d3 = /** @type {any} */ (globalThis).d3;
-    const sankey = d3.sankey()
-      .nodeId(/** @param {LaidNode} d */ (d) => d.id)
-      .nodeWidth(NODE_WIDTH)
-      .nodePadding(NODE_PADDING)
-      .nodeAlign(alignFor(ctx.tiers))
-      // Supplying this switches d3's own ordering pass off.
-      .nodeSort(/** @param {LaidNode} a @param {LaidNode} b */ (a, b) =>
-        nodeRank(ctx.groupOf, ctx.placeOf, a) - nodeRank(ctx.groupOf, ctx.placeOf, b) || b.value - a.value)
-      // The same column count render() sizes the viewBox from.
-      .extent([[LABEL_GUTTER, 12],
-        [chartWidth(ctx.columns) - LABEL_GUTTER, CHART_HEIGHT - 12]]);
-    const graph = sankey({
-      nodes: drawn.nodes.map((n) => Object.assign({}, n)),
-      links: drawn.links.map((l) => Object.assign({}, l, { value: l.value_cents })),
-    });
-    restackLinks(graph);
-    return graph;
+    return layOutAt(drawn, ctx, CHART_HEIGHT);
   },
 
   /**
