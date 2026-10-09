@@ -494,7 +494,8 @@
         "search_opens",
         "search_expands",
         "full_screen",
-        "full_screen_exit"
+        "full_screen_exit",
+        "zoom_reset"
       ],
       "additionalProperties": false,
       "properties": {
@@ -790,6 +791,11 @@
           "type": "string",
           "minLength": 1,
           "description": "The same control while the card is full screen."
+        },
+        "zoom_reset": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The control that puts a zoomed or panned chart back whole."
         }
       }
     }

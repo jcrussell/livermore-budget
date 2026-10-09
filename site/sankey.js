@@ -1111,7 +1111,8 @@ export const SANKEY = Object.freeze({
   },
 
   /**
-   * Draws a laid graph into ctx.svg: ribbons, marks, bands and labels, with
+   * Draws a laid graph into ctx.layer, an empty group the page made inside
+   * ctx.svg and moves as the reader zooms: ribbons, marks, bands and labels, with
    * the classes, descriptions, gestures and the figure each label says
    * (ctx.figure) the page hands it. Paints nothing: the page paints after, so
    * a theme change repaints without redrawing.
@@ -1125,10 +1126,9 @@ export const SANKEY = Object.freeze({
 
     // No width or height attributes: the viewBox makes the drawing scale.
     svg.attr("viewBox", "0 0 " + width + " " + height);
-    svg.selectAll("g").remove();
 
-    const gLinks = svg.append("g").attr("class", "links");
-    const gNodes = svg.append("g").attr("class", "nodes");
+    const gLinks = ctx.layer.append("g").attr("class", "links");
+    const gNodes = ctx.layer.append("g").attr("class", "nodes");
 
     gLinks.selectAll("path")
       .data(graph.links)

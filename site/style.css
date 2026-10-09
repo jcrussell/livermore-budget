@@ -786,9 +786,16 @@ svg.sankey {
   overflow: visible;
 }
 
+/* Zoomed, the marks may be pushed past the canvas, so it clips them. */
+svg.sankey.zoomed {
+  overflow: hidden;
+}
+
+/* --label-scale is 1/k under a zoom of k (app.js applyZoom), so a label
+   keeps its own size while the marks grow under it. */
 svg.sankey text {
   font-family: var(--font);
-  font-size: 12px;
+  font-size: calc(12px * var(--label-scale, 1));
   fill: var(--ink-1);
 }
 
@@ -797,7 +804,7 @@ svg.sankey text {
 svg.sankey text.halo {
   paint-order: stroke;
   stroke: var(--surface-1);
-  stroke-width: 3px;
+  stroke-width: calc(3px * var(--label-scale, 1));
   stroke-linejoin: round;
 }
 
@@ -805,7 +812,7 @@ svg.sankey text.halo {
    text elements, so they share the label's position and halo. */
 svg.sankey tspan.value {
   fill: var(--muted);
-  font-size: 11px;
+  font-size: calc(11px * var(--label-scale, 1));
   font-variant-numeric: tabular-nums;
 }
 

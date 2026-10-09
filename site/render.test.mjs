@@ -196,7 +196,9 @@ async function drive(year) {
       // (e) no banner -- first, and on every state: every arm below reads a
       // DOM that app.js only fills when render() ran to the end.
       const banners = refusals(document);
-      const groups = [...chart.children].map((c) => c.getAttribute("class"));
+      // The form draws into the zoom's layer, the one group the page makes.
+      const layer = chart.querySelector(":scope > g.zoom-layer");
+      const groups = layer ? [...layer.children].map((c) => c.getAttribute("class")) : [];
       if (banners.length) {
         wrong.banner.push(`${where}: the page drew ${banners.length} refusal banner(s): ${banners[0].textContent}`);
       }
@@ -1120,6 +1122,7 @@ describe("the classes the client sets and the rules the stylesheet carries", () 
   const HOOKS = {
     links: "the <g> the ribbons are drawn into",
     nodes: "the <g> the marks are drawn into",
+    "zoom-layer": "the <g> the page makes for the form to draw into, which the zoom transforms",
     opens: "the drillable mark; its affordance is the flag tspan, not a style",
     expands: "the folded tail, likewise",
     "tip-drawn": "the tooltip's drawn-part line, worn as a tip-meta",
@@ -1160,8 +1163,8 @@ describe("the classes the client sets and the rules the stylesheet carries", () 
       for (const el of document.querySelectorAll("*")) for (const c of classesIn(el.getAttribute("class"))) worn.add(c);
     };
     // The overview, the tooltip on a mark and on a ribbon, the panel on a
-    // ribbon, a pin, an isolation, every view the drill offers, an expanded
-    // tail, and a refusal.
+    // ribbon, a pin, an isolation, a zoom, every view the drill offers, an
+    // expanded tail, and a refusal.
     snap();
     const mark = marksIn(chart)[0];
     const ribbon = ribbonsIn(chart)[0];
@@ -1179,6 +1182,8 @@ describe("the classes the client sets and the rules the stylesheet carries", () 
     assert.ok(part, "no mark is drawn at less than its figure under the filter");
     app.showTip({ target: chart, clientX: 0, clientY: 0 }, part.__data__); app.pin(part.__data__); snap();
     app.resetFilters();
+    // A zoomed chart, for the class that clips it.
+    app.zoomBy(2); snap(); app.resetZoom();
     let expandedAt = "";
     const walked = await everyOffer(app, async (path) => {
       snap();

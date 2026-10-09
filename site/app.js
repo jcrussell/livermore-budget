@@ -1614,8 +1614,14 @@ export function render(laid) {
   const doc = chartDrawn();
   if (!doc) return;
   const graph = laid || layOut(doc);
+  const svg = D3.select("#chart");
+  // The form draws into a fresh group, which is what the zoom moves: never
+  // the svg, whose viewBox is the chart's own coordinates.
+  svg.selectAll("g").remove();
+  const layer = svg.append("g").attr("class", "zoom-layer");
   formOnScreen().render(graph, {
-    svg: D3.select("#chart"),
+    svg: svg,
+    layer: layer,
     tiers: layoutTiers(doc),
     columns: layoutColumns(doc),
     doc: doc,
@@ -1630,6 +1636,8 @@ export function render(laid) {
   });
   paint();
   applyEmphasis();
+  // A new chart starts unzoomed: the transform was about the marks it replaced.
+  bindZoom();
   // The options name marks of the chart just replaced.
   closeSearch();
 }
@@ -2529,6 +2537,7 @@ export function chooseSearch(id, open) {
     return true;
   }
   setIsolated(d.id);
+  revealMark(d);
   const chart = maybeEl("chart");
   const mark = chart ? D3.select(chart).selectAll("g.node").filter(/** @param {LaidNode} n */ (n) => n.id === d.id).node() : null;
   if (mark && typeof mark.scrollIntoView === "function") mark.scrollIntoView({ block: "nearest", inline: "nearest" });
@@ -2853,6 +2862,153 @@ export function wireFullscreen() {
   button.removeAttribute("hidden");
   button.addEventListener("click", () => { void toggleFullscreen(); });
   document.addEventListener("fullscreenchange", onFullscreenChange);
+}
+
+/* ------------------------------------------------------------------ *
+ * Zoom and pan
+ * ------------------------------------------------------------------ */
+
+/** The furthest the chart zooms in; 1 is the chart whole, and it zooms out no further. */
+export const ZOOM_MAX = 8;
+
+/** How far one press of + or - zooms. */
+export const ZOOM_STEP = 1.5;
+
+/**
+ * The d3.zoom behaviour bound to the chart drawn, or null before one is.
+ * Rebound by every render, which is what resets the transform.
+ * @type {any}
+ */
+export let zoomer = null;
+
+/**
+ * The chart's zoom transform now, the identity before any zoom.
+ * @returns {{k: number, x: number, y: number, invert: (p: number[]) => number[], apply: (p: number[]) => number[]}}
+ */
+export function zoomOf() {
+  const svg = maybeEl("chart");
+  return svg ? D3.zoomTransform(svg) : D3.zoomIdentity;
+}
+
+/**
+ * Whether d3.zoom takes this event. A wheel zooms only with Ctrl or Cmd held
+ * (a trackpad's pinch arrives as one) or in full screen, and one finger pans
+ * only once zoomed or in full screen, so the page still scrolls past a chart
+ * nobody asked to zoom. Two fingers always pinch. Otherwise d3's own rule: no
+ * secondary button, no Ctrl-click.
+ * @param {any} event
+ * @returns {boolean}
+ */
+export function zoomFilter(event) {
+  if (event.type === "wheel") return Boolean(event.ctrlKey || event.metaKey) || isFullscreen();
+  if (event.type === "touchstart") {
+    return (event.touches && event.touches.length > 1) || zoomOf().k > 1 || isFullscreen();
+  }
+  return !event.ctrlKey && !event.button;
+}
+
+/**
+ * Moves the chart's layer to a transform: the marks scale and pan, the labels
+ * counter-scale through --label-scale so they stay their own size, the svg
+ * clips what the zoom pushes past its edge, and Reset view is offered only
+ * where there is something to reset.
+ * @param {{k: number, toString: () => string}} t
+ */
+export function applyZoom(t) {
+  const svg = D3.select("#chart");
+  svg.select("g.zoom-layer").attr("transform", t.toString());
+  const node = svg.node();
+  if (!node) return;
+  node.style.setProperty("--label-scale", String(1 / t.k));
+  node.classList.toggle("zoomed", t.k !== 1 || t.x !== 0 || t.y !== 0);
+  const reset = maybeEl("chart-zoom-reset");
+  if (reset) {
+    if (t.k === 1 && t.x === 0 && t.y === 0) reset.setAttribute("disabled", "");
+    else reset.removeAttribute("disabled");
+  }
+}
+
+/**
+ * Binds d3.zoom to the chart just drawn, over its viewBox, and puts it at the
+ * identity. The extent is stated, not d3's default, which reads the viewBox
+ * through SVG geometry; the translate extent keeps the chart on the canvas.
+ * A double click opens or follows a node, so it never zooms.
+ */
+export function bindZoom() {
+  const svg = D3.select("#chart");
+  const box = String(svg.attr("viewBox") || "").split(/\s+/).map(Number);
+  if (box.length !== 4 || !box.every(Number.isFinite)) return;
+  const extent = [[box[0], box[1]], [box[0] + box[2], box[1] + box[3]]];
+  zoomer = D3.zoom()
+    .scaleExtent([1, ZOOM_MAX])
+    .extent(extent)
+    .translateExtent(extent)
+    .filter(zoomFilter)
+    .on("zoom", (/** @type {any} */ e) => applyZoom(e.transform));
+  svg.call(zoomer).on("dblclick.zoom", null);
+  zoomer.transform(svg, D3.zoomIdentity);
+}
+
+/**
+ * Zooms by a factor about the chart's centre; a no-op before a chart is drawn.
+ * @param {number} factor
+ */
+export function zoomBy(factor) {
+  if (zoomer) zoomer.scaleBy(D3.select("#chart"), factor);
+}
+
+/** Puts the chart back whole: Reset view, and the 0 key. */
+export function resetZoom() {
+  if (zoomer) zoomer.transform(D3.select("#chart"), D3.zoomIdentity);
+}
+
+/**
+ * Pans a laid node to the centre of the view where the zoom has left it out
+ * of sight, and leaves the view alone where it is in sight, so a click on a
+ * visible mark never moves the chart under the pointer.
+ * @param {LaidNode} d
+ */
+export function revealMark(d) {
+  if (!zoomer) return;
+  const svg = maybeEl("chart");
+  if (!svg) return;
+  const t = zoomOf();
+  if (t.k === 1 && t.x === 0 && t.y === 0) return;
+  const extent = zoomer.extent().call(svg);
+  const [left, top] = t.invert(extent[0]);
+  const [right, bottom] = t.invert(extent[1]);
+  const cx = (d.x0 + d.x1) / 2;
+  const cy = (d.y0 + d.y1) / 2;
+  if (cx >= left && cx <= right && cy >= top && cy <= bottom) return;
+  zoomer.translateTo(D3.select(svg), cx, cy);
+}
+
+/**
+ * Wires what zooms the chart besides the pointer: + and - and 0 while focus
+ * is in the chart, the Reset view button, and a mark the keyboard focuses
+ * panned into sight. Once, at boot: the svg outlives every render.
+ */
+export function wireZoom() {
+  const svg = maybeEl("chart");
+  if (!svg) return;
+  svg.addEventListener("keydown", (e) => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key === "+" || e.key === "=") zoomBy(ZOOM_STEP);
+    else if (e.key === "-" || e.key === "_") zoomBy(1 / ZOOM_STEP);
+    else if (e.key === "0") resetZoom();
+    else return;
+    e.preventDefault();
+  });
+  svg.addEventListener("focusin", (e) => {
+    const d = /** @type {any} */ (e.target).__data__;
+    if (d && typeof d.x0 === "number" && d.sourceLinks) revealMark(d);
+  });
+  const reset = maybeEl("chart-zoom-reset");
+  if (reset) {
+    reset.textContent = say("zoom_reset");
+    reset.removeAttribute("hidden");
+    reset.addEventListener("click", resetZoom);
+  }
 }
 
 /* ------------------------------------------------------------------ *
@@ -3467,6 +3623,7 @@ export async function main() {
   wireFilters();
   wireSearch();
   wireFullscreen();
+  wireZoom();
 
   // Wired before the first fetch (fisc-8cg): a superseded or failed opening
   // year can still be followed by one that draws, and it needs these.

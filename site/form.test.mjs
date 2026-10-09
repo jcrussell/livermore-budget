@@ -71,8 +71,7 @@ function stubRenderer(app, asked) {
       return { nodes, links };
     },
     render(graph, ctx) {
-      ctx.svg.selectAll("g").remove();
-      ctx.svg.append("g").attr("class", "nodes").selectAll("g")
+      ctx.layer.append("g").attr("class", "nodes").selectAll("g")
         .data(graph.nodes)
         .join("g")
         .attr("class", (d) => ctx.classes.node(d))

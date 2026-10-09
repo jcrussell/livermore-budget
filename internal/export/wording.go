@@ -101,6 +101,8 @@ type wording struct {
 	// The full-screen control on the chart's card, in each of its two states.
 	FullScreen     string `json:"full_screen"`
 	FullScreenExit string `json:"full_screen_exit"`
+	// ZoomReset is the control that puts a zoomed or panned chart back whole.
+	ZoomReset string `json:"zoom_reset"`
 }
 
 // kindLabels is project's words for every link kind, keyed as a link names it.
@@ -201,5 +203,6 @@ func defaultWording() wording {
 		SearchExpands:    "Enter draws out every one it folds",
 		FullScreen:       "Full screen",
 		FullScreenExit:   "Exit full screen",
+		ZoomReset:        "Reset view",
 	}
 }
