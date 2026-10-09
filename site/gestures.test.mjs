@@ -236,6 +236,33 @@ for (const year of YEARS) {
       t.diagnostic(`${WORST} capped lays ${capped} ribbon(s); Enter on "${tail.label}" expanded it to ${expanded}`);
     });
 
+    test(`${year.label}: Enter on the folded tail lands focus on the column's first new mark, not on the return control`, async (t) => {
+      const { app, document } = await onYear(year.stem);
+      await opened(app, WORST);
+      const tail = app.projection.nodes.find((n) => app.isAggregate(n.id));
+      assert.ok(tail, `${WORST} drew no folded tail`);
+      const before = new Set([...document.querySelectorAll("#chart g.node")].map((g) => g.__data__)
+        .filter((n) => n.tier === tail.tier).map((n) => n.id));
+      const m = markOf(app, document, tail.id);
+      m.focus();
+      fire(m, "keydown", { key: "Enter", timeStamp: app.ACTIVATION_WINDOW * 10 });
+      await settle();
+      assert.equal(tails(app), 0, "Enter left the tail drawn, so where focus went proves nothing");
+      // Read off the drawn DOM: the topmost mark in the tail's tier the capped chart did not lay.
+      const fresh = [...document.querySelectorAll("#chart g.node")].map((g) => g.__data__)
+        .filter((n) => n.tier === tail.tier && !before.has(n.id)).sort((a, b) => a.y0 - b.y0);
+      assert.ok(fresh.length > 0, "the expansion drew no new mark");
+      const active = document.activeElement;
+      const on = active && active.__data__ ? active.__data__.id : (active ? active.tagName + "." + active.getAttribute("class") : "nothing");
+      t.diagnostic(`after Enter on "${tail.label}" focus is on ${on}; ${fresh.length} mark(s) are new in tier ${tail.tier}`);
+      assert.equal(on, fresh[0].id);
+      assert.ok(app.pinned === null, "restoring focus pinned the mark");
+      // THE NEXT ENTER ACTS IN THE COLUMN, so the rung the reader is on stays open.
+      fire(active, "keydown", { key: "Enter", timeStamp: app.ACTIVATION_WINDOW * 20 });
+      await settle();
+      assert.ok(app.drilled.length >= 1 && app.drilled[0].id === WORST, `the next Enter left the chart on ${topOf(app) || "the overview"}`);
+    });
+
     test(`${year.label}: an expansion is a property of the chart it was made on, not of the page`, async (t) => {
       const { app, document } = await onYear(year.stem);
       const fundStep = stepByKey(PAGE, "fund");

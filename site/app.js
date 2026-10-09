@@ -731,9 +731,11 @@ export function askAffordances() {
  *
  * @param {Rung[]} next
  * @param {string} [refused] the banner's opening words when the redraw is refused
+ * @param {() => string} [landOn] the mark focus goes to on the redrawn chart,
+ *   asked after it is laid out, where the redraw closes no rung
  * @returns {boolean} whether the new depth is on screen
  */
-export function redrawStack(next, refused = "That could not be opened") {
+export function redrawStack(next, refused = "That could not be opened", landOn) {
   // Asked before the repaint removes the element focus is on.
   const hadFocus = focusInChart();
   const was = drilled;
@@ -782,7 +784,7 @@ export function redrawStack(next, refused = "That could not be opened") {
   buildDerivedList();
   buildTable(rows);
   render(laid);
-  restoreFocus(hadFocus, popped);
+  restoreFocus(hadFocus, popped || (landOn ? landOn() : ""));
   return true;
 }
 
@@ -863,7 +865,24 @@ export function expandTier(d) {
   if (!rung) return;
   const expanded = new Set(rung.expanded || []);
   expanded.add(d.tier);
-  redrawStack(drilled.slice(0, at).concat([Object.assign({}, rung, { expanded: expanded })]));
+  const before = new Set(laidNodes.filter((n) => n.tier === d.tier).map((n) => n.id));
+  redrawStack(drilled.slice(0, at).concat([Object.assign({}, rung, { expanded: expanded })]),
+    undefined, () => firstNewAt(d.tier, before));
+}
+
+/**
+ * The topmost laid mark at `tier` that `before` does not hold, else the
+ * topmost at `tier`, else "": where focus goes after a tail is drawn out, so
+ * the next key acts in the column the reader expanded rather than on the
+ * rung's return control.
+ * @param {number} tier
+ * @param {Set<string>} before the ids laid at `tier` before the expansion
+ * @returns {string}
+ */
+export function firstNewAt(tier, before) {
+  const column = laidNodes.filter((n) => n.tier === tier).sort((a, b) => a.y0 - b.y0);
+  const fresh = column.find((n) => !before.has(n.id));
+  return fresh ? fresh.id : column.length ? column[0].id : "";
 }
 
 /**
@@ -976,12 +995,14 @@ export function keyNode(d, key, at) {
  *
  * Up a rung, focus returns to the mark the reader opened; where that mark is
  * folded away, to the innermost return control, then the first mark. Down a
- * rung, to the rung's own return control.
+ * rung, to the rung's own return control. On the same rung, to the mark the
+ * redraw names (a column drawn out of its tail names its first new mark).
  *
  * @param {boolean} hadFocus whether focus was inside the chart before the
  *   repaint that just replaced it.
- * @param {string} [popped] the id of the node whose rung this repaint closed,
- *   or "" where it opened one
+ * @param {string} [popped] the id of the mark focus lands on first: the node
+ *   whose rung this repaint closed, or the one a same-rung redraw names; ""
+ *   where it opened a rung
  */
 export function restoreFocus(hadFocus, popped = "") {
   if (!hadFocus) return;
