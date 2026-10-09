@@ -103,6 +103,7 @@ func TestTheWordingFillsEveryPlaceholderTheClientHands(t *testing.T) {
 		"filter_hidden":          {"cents", "flows"},
 		"filter_folded":          {"flows", "ribbons", "threshold"},
 		"filter_hidden_at":       {"cents", "flows"},
+		"filter_drawn_at":        {"cents"},
 		"smaller_label":          {"flows", "threshold"},
 		"smaller_rationale":      {"flows", "threshold"},
 		"smaller_note":           {"flows", "figure"},

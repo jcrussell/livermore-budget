@@ -80,9 +80,12 @@ type wording struct {
 	// The filter panel's sentences: what the filters leave out of the chart,
 	// said beside it as a client sum over cited cents, and the smaller-flows
 	// mark and merged ribbon the smallest-flow filter draws.
-	FilterHidden     string `json:"filter_hidden"`
-	FilterFolded     string `json:"filter_folded"`
-	FilterHiddenAt   string `json:"filter_hidden_at"`
+	FilterHidden   string `json:"filter_hidden"`
+	FilterFolded   string `json:"filter_folded"`
+	FilterHiddenAt string `json:"filter_hidden_at"`
+	// FilterDrawnAt is said beside a node's figure, which is the view's
+	// whatever the filters leave drawn, where they leave part of it.
+	FilterDrawnAt    string `json:"filter_drawn_at"`
 	SmallestAll      string `json:"smallest_all"`
 	SmallerLabel     string `json:"smaller_label"`
 	SmallerRationale string `json:"smaller_rationale"`
@@ -172,9 +175,10 @@ func defaultWording() wording {
 		ContraOrphan:     project.ContraOrphan,
 		BalanceBeginning: "Balance at the start of the year, as printed: {figure}",
 		BalanceEnding:    "Balance at the end of the year, as printed: {figure}",
-		FilterHidden:     "Hidden by your filters: {cents} in {flows:flow|flows}. Marks are sized to what is drawn, and the flow table still lists every flow of this view.",
+		FilterHidden:     "Hidden by your filters: {cents} in {flows:flow|flows}. Marks are sized to what is drawn, each mark's figure is still this view's, and the flow table still lists every flow of this view.",
 		FilterFolded:     "{flows:flow|flows} under {threshold} are drawn merged by this page into {ribbons:ribbon|ribbons} of smaller flows.",
 		FilterHiddenAt:   "Your filters hide {cents} of this mark's flows, in {flows:flow|flows}.",
+		FilterDrawnAt:    "{cents} of it drawn under your filters",
 		SmallestAll:      "every flow",
 		SmallerLabel:     "{flows:flow|flows} under {threshold}",
 		SmallerRationale: "Our grouping, not a line the city printed: {flows:flow|flows} each under {threshold}, the smallest flow your filters draw as itself, are drawn as one mark. Every figure inside it is printed; the merge is this page's.",

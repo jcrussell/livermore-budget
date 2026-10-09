@@ -1100,8 +1100,9 @@ export const SANKEY = Object.freeze({
 
   /**
    * Draws a laid graph into ctx.svg: ribbons, marks, bands and labels, with
-   * the classes, descriptions and gestures the page hands it. Paints nothing:
-   * the page paints after, so a theme change repaints without redrawing.
+   * the classes, descriptions, gestures and the figure each label says
+   * (ctx.figure) the page hands it. Paints nothing: the page paints after, so
+   * a theme change repaints without redrawing.
    */
   render(graph, ctx) {
     const d3 = /** @type {any} */ (globalThis).d3;
@@ -1228,7 +1229,7 @@ export const SANKEY = Object.freeze({
       .text(/** @param {LaidNode} d */ (d) => d.label);
     label.append("tspan")
       .attr("class", "value")
-      .text(/** @param {LaidNode} d */ (d) => "  " + fmtShortSigned(markCents(d)));
+      .text(/** @param {LaidNode} d */ (d) => "  " + fmtShortSigned(ctx.figure(d)));
     label.append("tspan")
       .attr("class", "flag")
       .text(/** @param {LaidNode} d */ (d) => ctx.classes.flags(d));

@@ -307,3 +307,56 @@ describe("the filter panel", () => {
     assert.ok(app.hiddenTally().flows > 0);
   });
 });
+
+describe("a filter never restates a mark's figure", () => {
+  for (const year of YEARS) {
+    test(`${year.label}: with a fund group hidden, a node's tooltip, panel, label and accessible name headline the unfiltered figure, and say the drawn part beside it`, async (t) => {
+      const { app, document } = await bootedApp({ checkedStem: year.stem });
+      const chart = document.getElementById("chart");
+      const marks = () => new Map([...chart.querySelectorAll("g.node")].map((g) => [g.__data__.id, g]));
+      const read = (g) => {
+        const d = g.__data__;
+        app.showTip({ target: chart, clientX: 0, clientY: 0 }, d);
+        const tip = document.getElementById("tooltip");
+        app.pin(d);
+        return {
+          cents: app.formOnScreen().cents(d),
+          tip: tip.querySelector(".tip-value").textContent,
+          tipText: tip.textContent,
+          tipDrawn: tip.querySelector(".tip-drawn") !== null,
+          panel: document.querySelector("#detail .amount").textContent,
+          panelText: document.getElementById("detail").textContent,
+          aria: g.getAttribute("aria-label"),
+          value: g.querySelector("tspan.value").textContent,
+        };
+      };
+      // THE UNFILTERED VIEW, read off the page before any filter: what each
+      // mark says when nothing is hidden.
+      const before = new Map([...marks()].map(([id, g]) => [id, read(g)]));
+      app.setFilter({ groups: new Set(["fund-group/general"]) });
+      const after = marks();
+      let changed = 0;
+      for (const [id, g] of after) {
+        const was = before.get(id);
+        if (!was) continue;
+        const now = read(g);
+        assert.equal(now.tip, was.tip, `${id}'s tooltip headlines ${now.tip}, the unfiltered view ${was.tip}`);
+        assert.equal(now.panel, was.panel, `${id}'s panel headlines ${now.panel}, the unfiltered view ${was.panel}`);
+        assert.equal(now.value, was.value, `${id}'s label says ${now.value}, the unfiltered view ${was.value}`);
+        const drawn = app.say("filter_drawn_at", { cents: dollars(now.cents) });
+        if (now.cents === was.cents) {
+          assert.equal(now.tipDrawn, false, `${id} says a drawn part where all of it is drawn`);
+          continue;
+        }
+        changed++;
+        const label = g.__data__.label;
+        assert.ok(now.aria.startsWith(`${label}, total ${dollars(was.cents)}, ${drawn},`), now.aria);
+        assert.ok(now.tipDrawn && now.tipText.includes(drawn), `${id}'s tooltip does not say the drawn part: ${now.tipText}`);
+        assert.ok(now.panelText.includes(drawn), `${id}'s panel does not say the drawn part`);
+      }
+      t.diagnostic(`${year.label}: ${after.size} mark(s) drawn with the General Fund group hidden, ${changed} of them drawn at less than their figure`);
+      assert.ok(changed > 0, "no mark lost part of its figure to the filter, so nothing here is tested");
+      assert.equal(refusals(document).length, 0);
+    });
+  }
+});

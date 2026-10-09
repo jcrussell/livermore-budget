@@ -482,6 +482,7 @@
         "filter_hidden",
         "filter_folded",
         "filter_hidden_at",
+        "filter_drawn_at",
         "smallest_all",
         "smaller_label",
         "smaller_rationale",
@@ -717,6 +718,11 @@
           "type": "string",
           "minLength": 1,
           "description": "Said of one mark the filters removed ribbons of: {cents} formatted and {flows}, how many."
+        },
+        "filter_drawn_at": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Said beside a node's figure, which is the view's, where the filters leave part of it drawn: {cents}, the drawn part, formatted."
         },
         "smallest_all": {
           "type": "string",

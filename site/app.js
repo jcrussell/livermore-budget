@@ -347,6 +347,14 @@ export let filter = NO_FILTER;
  */
 export let shown = null;
 /**
+ * The chart on screen laid out with no filter, where the filters change what
+ * is drawn, else null: what a node's figure is read off (markFigure), so a
+ * filter chooses which cited marks are drawn and never restates a mark's
+ * figure. Moved with `shown`, inside the same rollback.
+ * @type {{nodes: LaidNode[], links: LaidLink[]} | null}
+ */
+export let whole = null;
+/**
  * The smallest-flow control's stops, in cents: every flow, then $10,000 up
  * to $10,000,000 by tens, a scale of magnitudes rather than of dollars.
  */
@@ -785,6 +793,7 @@ export function redrawStack(next, refused = "That could not be opened", landOn) 
   const groupsWas = groupIndex;
   const chartWas = projection;
   const shownWas = shown;
+  const wholeWas = whole;
   drilled = next;
   let drawn;
   let laid;
@@ -794,6 +803,7 @@ export function redrawStack(next, refused = "That could not be opened", landOn) 
     if (!doc) throw new Error("no document to open");
     drawn = shapeFor(doc);
     const filtered = filterFor(drawn);
+    const unfiltered = wholeOf(drawn, filtered);
     laid = layOut(filtered.doc);
     // Inside the try: building a row is the last step of a draw that can
     // throw on a document. The table is the view's every flow, filtered or
@@ -801,6 +811,7 @@ export function redrawStack(next, refused = "That could not be opened", landOn) 
     rows = tableRows(drawn);
     projection = drawn;
     shown = filtered;
+    whole = unfiltered;
     askAffordances();
   } catch (e) {
     // Back to where the reader was: a throw here is a fault in the view's
@@ -810,6 +821,7 @@ export function redrawStack(next, refused = "That could not be opened", landOn) 
     groupIndex = groupsWas;
     projection = chartWas;
     shown = shownWas;
+    whole = wholeWas;
     fail(refused + ": " + (e instanceof Error ? e.message : String(e)));
     return false;
   }
@@ -1395,6 +1407,20 @@ export function isCarried(id) {
  * @returns {{nodes:LaidNode[], links:LaidLink[]}}
  */
 export function layOut(doc) {
+  const { graph, index } = laidOf(doc);
+  groupIndex = index;
+  // For shareOf: only the laid graph knows a mark's column.
+  laidNodes = graph.nodes;
+  return graph;
+}
+
+/**
+ * layOut's layout, assigning nothing: the graph the form lays `doc` out as,
+ * and the hue index it was laid against.
+ * @param {FiscProjection} doc
+ * @returns {{graph: {nodes:LaidNode[], links:LaidLink[]}, index: Map<string, FiscNode>}}
+ */
+function laidOf(doc) {
   const index = hueIndex(doc);
   // Nothing to lay out where the filters removed every ribbon; d3-sankey
   // throws on an empty graph.
@@ -1404,10 +1430,7 @@ export function layOut(doc) {
     groupOf: (/** @type {FiscNode | LaidNode} */ n) => core.fundGroupOf(index, n),
     placeOf: fundGroupPlace,
   });
-  groupIndex = index;
-  // For shareOf: only the laid graph knows a mark's column.
-  laidNodes = graph.nodes;
-  return graph;
+  return { graph, index };
 }
 
 /**
@@ -1520,6 +1543,53 @@ export function hiddenAt(id) {
 }
 
 /**
+ * A shaped chart laid out as its view draws it with no filter, where the
+ * filters change what is drawn of it, else null: `whole` for that chart.
+ * @param {FiscProjection} drawn the shaped chart
+ * @param {{doc: FiscProjection}} filtered filterFor's answer over it
+ * @returns {{nodes: LaidNode[], links: LaidLink[]} | null}
+ */
+export function wholeOf(drawn, filtered) {
+  return filtered.doc === drawn ? null : laidOf(drawn).graph;
+}
+
+/**
+ * The laid mark a reading of `d`'s figure is asked of: the same node in the
+ * chart laid with no filter (whole), else `d` -- a link, a chart the filters
+ * do not touch, or a mark only the filters draw.
+ * @template {LaidLink | LaidNode} T
+ * @param {T} d
+ * @returns {T}
+ */
+export function markOfView(d) {
+  if (!whole || isLink(d)) return d;
+  const found = whole.nodes.find((n) => n.id === d.id);
+  return found ? /** @type {T} */ (/** @type {unknown} */ (found)) : d;
+}
+
+/**
+ * The figure a mark is said at: the form's reading of it over the view's every
+ * ribbon (markOfView), whatever the filters leave drawn.
+ * @param {LaidLink | LaidNode} d
+ * @returns {number}
+ */
+export function markFigure(d) {
+  return formOnScreen().cents(markOfView(d));
+}
+
+/**
+ * The part of a node's figure the filters leave drawn, in the page's words,
+ * or "" where they draw all of it: said beside the figure, never in its slot.
+ * @param {LaidLink | LaidNode} d
+ * @returns {string}
+ */
+export function drawnAt(d) {
+  const drawn = formOnScreen().cents(d);
+  if (isLink(d) || drawn === markFigure(d)) return "";
+  return say("filter_drawn_at", { cents: fmtSigned(drawn) });
+}
+
+/**
  * Draws the chart on screen through its form, then paints it and applies the
  * emphasis. The gestures, descriptions and classes are this file's: they read
  * the page's state, which a renderer never holds.
@@ -1536,6 +1606,7 @@ export function render(laid) {
     doc: doc,
     classes: { link: linkClass, node: nodeClass, flags: nodeFlags },
     describe: { link: linkDescription, node: nodeDescription },
+    figure: markFigure,
     on: {
       tip: showTip, hide: hideTip, pin: pin, guarded: guarded,
       click: clickNode, dblclick: doubleClickNode, key: keyNode,
@@ -1676,9 +1747,11 @@ export function setFilter(next) {
   }
   const hadFocus = focusInChart();
   let filtered;
+  let unfiltered;
   let laid;
   try {
     filtered = filterFor(projection);
+    unfiltered = wholeOf(projection, filtered);
     laid = layOut(filtered.doc);
   } catch (e) {
     filter = was;
@@ -1687,6 +1760,7 @@ export function setFilter(next) {
     return false;
   }
   shown = filtered;
+  whole = unfiltered;
   pinned = null;
   resetDetail();
   hideTip();
@@ -1901,13 +1975,16 @@ export function nodeDescription(d) {
   // words of the chip that undoes it, since it opens nothing.
   const what = drillable(d) ? say("desc_opens") : expandable(d) ? say("desc_expands") : say("desc_follows");
   const form = formOnScreen();
-  const note = form.reductionNote(d);
+  const mark = markOfView(d);
+  const note = form.reductionNote(mark);
   // The cross-tab qualification, for a reader who cannot see the ribbons.
   const flows = residualFlows(d);
+  const drawn = drawnAt(d);
   const gone = hiddenAt(d.id);
-  return d.label + (flows ? ", " + flows : ", total " + fmtSigned(form.cents(d))) +
+  return d.label + (flows ? ", " + flows : ", total " + fmtSigned(markFigure(d))) +
+    (drawn ? ", " + drawn : "") +
     ", " + say(d.derived ? "inferred_by_us" : "printed_by_city") +
-    (form.crossTab(d) ? ", " + PARTITION_NOTE : "") +
+    (form.crossTab(mark) ? ", " + PARTITION_NOTE : "") +
     (note ? ", " + note.replace(/^\u25c7 /, "") : "") + (gone ? ", " + gone : "") + what;
 }
 
@@ -2009,7 +2086,9 @@ export function showTip(event, d) {
   const form = formOnScreen();
   const color = asLink ? linkColor(/** @type {LaidLink} */ (d)) : nodeColor(/** @type {LaidNode} */ (d));
 
-  tip.append(h("div", "tip-value", fmtSigned(form.cents(d))));
+  tip.append(h("div", "tip-value", fmtSigned(markFigure(d))));
+  const drawn = drawnAt(d);
+  if (drawn) tip.append(h("div", "tip-meta tip-drawn", drawn));
 
   const label = h("div", "tip-label");
   const key = h("span", "line-key");
@@ -2073,7 +2152,7 @@ export function showTip(event, d) {
     if (flows) tip.append(h("div", "tip-meta", flows));
     for (const b of balancesOf(n)) tip.append(h("div", "tip-meta", b.words));
     if (n.rationale) tip.append(h("div", "tip-meta", n.rationale));
-    const note = form.reductionNote(n);
+    const note = form.reductionNote(markOfView(n));
     if (note) tip.append(h("div", "tip-meta", note));
     for (const c of cavs) tip.append(h("div", "tip-meta", "\u26a0 " + c.summary));
     const gone = hiddenAt(n.id);
@@ -2118,7 +2197,9 @@ export function pin(d) {
   const asLink = isLink(d);
   const form = formOnScreen();
 
-  panel.append(h("div", "amount", fmtSigned(form.cents(d))));
+  panel.append(h("div", "amount", fmtSigned(markFigure(d))));
+  const drawn = drawnAt(d);
+  if (drawn) panel.append(h("p", "subtle drawn", drawn));
   panel.append(h("div", "", asLink
     ? /** @type {LaidLink} */ (d).source.label + " → " + /** @type {LaidLink} */ (d).target.label
     : /** @type {LaidNode} */ (d).label));
@@ -2164,7 +2245,7 @@ export function pin(d) {
     }
     if (n.rationale) panel.append(h("p", "why", n.rationale));
     if (n.source_note) panel.append(h("p", "subtle", n.source_note));
-    const note = form.reductionNote(n);
+    const note = form.reductionNote(markOfView(n));
     if (note) panel.append(h("p", "why", note));
     const gone = hiddenAt(n.id);
     if (gone) panel.append(h("p", "subtle", gone));
@@ -2674,7 +2755,7 @@ export async function showYear(year) {
   // Swapped because shapeFor and askAffordances read them; swapped back on a
   // throw, so nothing below writes a word of this year over the last one's
   // chart.
-  const was = { column, fetched, drilled, laidNodes, groupIndex, projection, shown };
+  const was = { column, fetched, drilled, laidNodes, groupIndex, projection, shown, whole };
   column = loaded;
   fetched = doc;
   drilled = [];
@@ -2685,13 +2766,15 @@ export async function showYear(year) {
     // fact ids it merges, so nothing is lost.
     const drawn = shapeFor(doc);
     const filtered = filterFor(drawn);
+    const unfiltered = wholeOf(drawn, filtered);
     laid = layOut(filtered.doc);
     rows = tableRows(drawn);
     projection = drawn;
     shown = filtered;
+    whole = unfiltered;
     askAffordances();
   } catch (e) {
-    ({ column, fetched, drilled, laidNodes, groupIndex, projection, shown } = was);
+    ({ column, fetched, drilled, laidNodes, groupIndex, projection, shown, whole } = was);
     throw e;
   }
 
