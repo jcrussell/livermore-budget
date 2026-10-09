@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://jcrussell.github.io/livermore-budget/schema/mark.schema.json",
   "title": "fisc client mark",
-  "description": "A node the client makes and no document carries: the aggregate a cap folds a column's tail into, the residual carrying flow a drawn document does not decompose, and the gap holding a licensed difference between two schedules. Go writes none and refuses a producer node wearing one; site/marks.test.mjs holds every mark the client builds to this shape. Every figure on one is a sum over cited ribbons, and it says so in its rationale and source note like any derived node.",
+  "description": "A node the client makes and no document carries: the aggregate a cap folds a column's tail into, the residual carrying flow a drawn document does not decompose, the gap holding a licensed difference between two schedules, and the smaller-flows mark the reader's smallest-flow filter folds small printed ribbons onto. Go writes none and refuses a producer node wearing one; site/marks.test.mjs holds every mark the client builds to this shape. Every figure on one is a sum over cited ribbons, and it says so in its rationale and source note like any derived node.",
   "type": "object",
   "required": [
     "id",
@@ -18,7 +18,7 @@
   "properties": {
     "id": {
       "type": "string",
-      "pattern": "^(aggregate/tail/|residual/|gap/)",
+      "pattern": "^(aggregate/tail/|residual/|gap/|smaller/)",
       "description": "The mark's prefix names its role; export.MarkPrefixes."
     },
     "label": {
@@ -31,7 +31,7 @@
     },
     "parent": {
       "type": "string",
-      "description": "The opened node an aggregate or a residual hangs under; empty for a gap, which belongs to neither document and is drawn muted."
+      "description": "The opened node an aggregate or a residual hangs under; empty for a gap, which belongs to neither document, and for a smaller-flows mark, which spans whatever its ribbons reach; both are drawn muted."
     },
     "constraint_tier": {
       "const": "",
@@ -73,7 +73,7 @@
       "items": {
         "$ref": "https://jcrussell.github.io/livermore-budget/schema/locator.schema.json"
       },
-      "description": "A gap's citations: the pages cited around the node it stands beside."
+      "description": "A gap's citations, the pages cited around the node it stands beside; a smaller-flows mark's, every page its merged ribbons cite."
     },
     "carried_from": {
       "type": "string",

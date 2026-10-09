@@ -24,7 +24,7 @@
 
 import * as core from "./core.js";
 import {
-  SCHEMA_VERSION, say, kindLabel, fmt, fmtSigned, joinOr, el, maybeEl, cssVar, h, link, citations, balancesOf, PARTITION_NOTE, isFundGroup, scheduleOf, isAggregate, isResidual, isGap, isLink, residualFlows, tableRows,
+  SCHEMA_VERSION, say, kindLabel, fmt, fmtSigned, joinOr, el, maybeEl, cssVar, h, link, citations, balancesOf, PARTITION_NOTE, isFundGroup, scheduleOf, isMark, isResidual, isGap, isLink, residualFlows, tableRows,
 } from "./core.js";
 import { SANKEY } from "./sankey.js";
 // Re-exported so the tests reach the shipped modules through the one file
@@ -325,14 +325,32 @@ export function fundColorVar(id) {
 /** @type {FiscProjection | null} */
 export let projection = null;
 /**
- * What the reader has asked the chart to emphasise. isolated: the node or
- * fund group whose money is followed, or "" for all of it. A fund group's id
- * follows the group (follows); any other id follows the node. Replaced
- * whole, never mutated, and moved only through setIsolated.
- * @typedef {{isolated: string}} FilterState
+ * What the reader has asked the chart to show. groups: the fund groups whose
+ * ribbons are removed; kinds: the link kinds removed; smallest: the smallest
+ * flow drawn as itself, in cents, 0 for every one (core.filterDocument);
+ * isolated: the node or fund group whose money is followed, or "" for all of
+ * it (follows). Replaced whole, never mutated, and moved only through
+ * setFilter and setIsolated. A group or kind the chart on screen does not
+ * draw is kept and is inert, so a drill or a year change carries it to
+ * wherever it applies again; the isolation alone is cleared by both, since
+ * either can remove the node it names.
+ * @typedef {{groups: ReadonlySet<string>, kinds: ReadonlySet<string>, smallest: number, isolated: string}} FilterState
  */
+/** The state that removes and follows nothing. @type {Readonly<FilterState>} */
+export const NO_FILTER = Object.freeze({ groups: new Set(), kinds: new Set(), smallest: 0, isolated: "" });
 /** @type {Readonly<FilterState>} */
-export let filter = Object.freeze({ isolated: "" });
+export let filter = NO_FILTER;
+/**
+ * The chart on screen as the filters leave it: the document laid out, and
+ * the ribbons of the shaped chart they removed. Null before the first draw.
+ * @type {{doc: FiscProjection, hidden: FiscLink[]} | null}
+ */
+export let shown = null;
+/**
+ * The smallest-flow control's stops, in cents: every flow, then $10,000 up
+ * to $10,000,000 by tens, a scale of magnitudes rather than of dollars.
+ */
+export const SMALLEST_STOPS = Object.freeze([0, 1000000, 10000000, 100000000, 1000000000]);
 /**
  * One opened node. The document is on the rung, not looked up, because a step
  * that names a projection opens a node of one file into a chart of another.
@@ -639,14 +657,15 @@ export function paintCounts() {
 
 /**
  * Whether activating this node opens it: a step opens from it (stepFor), and
- * it is neither an aggregate, which has no one node to open into, nor a
- * carried mark, which is a flow's end rather than a container.
+ * it is neither a mark this client made (an aggregate or a smaller-flows
+ * mark has no one node to open into) nor a carried mark, which is a flow's
+ * end rather than a container.
  *
  * @param {{id: string, tier: number, role?: string}} d
  * @returns {boolean}
  */
 export function drillable(d) {
-  return Boolean(stepFor(d)) && !isAggregate(d.id) && !isCarried(d.id);
+  return Boolean(stepFor(d)) && !isMark(d.id) && !isCarried(d.id);
 }
 
 /**
@@ -660,7 +679,7 @@ export function drillable(d) {
  */
 export function expandable(d) {
   const rung = drilled.length ? drilled[drilled.length - 1] : null;
-  if (!rung || !isAggregate(d.id)) return false;
+  if (!rung || !core.isAggregate(d.id)) return false;
   if (rung.expanded && rung.expanded.has(d.tier)) return false;
   return formFor(rung.step).caps(rung.step).some((c) => c.tier === d.tier);
 }
@@ -765,6 +784,7 @@ export function redrawStack(next, refused = "That could not be opened", landOn) 
   const laidWas = laidNodes;
   const groupsWas = groupIndex;
   const chartWas = projection;
+  const shownWas = shown;
   drilled = next;
   let drawn;
   let laid;
@@ -773,11 +793,14 @@ export function redrawStack(next, refused = "That could not be opened", landOn) 
     const doc = drawnDoc();
     if (!doc) throw new Error("no document to open");
     drawn = shapeFor(doc);
-    laid = layOut(drawn);
+    const filtered = filterFor(drawn);
+    laid = layOut(filtered.doc);
     // Inside the try: building a row is the last step of a draw that can
-    // throw on a document.
+    // throw on a document. The table is the view's every flow, filtered or
+    // not; the filter line says what the chart leaves out.
     rows = tableRows(drawn);
     projection = drawn;
+    shown = filtered;
     askAffordances();
   } catch (e) {
     // Back to where the reader was: a throw here is a fault in the view's
@@ -786,6 +809,7 @@ export function redrawStack(next, refused = "That could not be opened", landOn) 
     laidNodes = laidWas;
     groupIndex = groupsWas;
     projection = chartWas;
+    shown = shownWas;
     fail(refused + ": " + (e instanceof Error ? e.message : String(e)));
     return false;
   }
@@ -800,6 +824,7 @@ export function redrawStack(next, refused = "That could not be opened", landOn) 
   // The count and steppers describe the chart on screen, which a drill changes.
   syncColumns();
   buildLegend();
+  paintFilterLine();
   paintChartHint();
   buildDerivedList();
   buildTable(rows);
@@ -1116,12 +1141,13 @@ function heldBack() {
  *
  * WHETHER ANYTHING OPENS, AND IN WHICH COLUMN, IS ASKED OF THE DRAWN NODES,
  * not of the declared chain: a step can exist below this depth with no node
- * on screen at its `from` tier.
+ * on screen at its `from` tier, and the filters can remove every one there is.
  */
 export function paintChartHint() {
   const hint = maybeEl("chart-hint");
   if (!hint || !STEPS.length) return;
-  const anyOpens = Boolean(projection) && projection.nodes.some(drillable);
+  const chart = chartDrawn();
+  const anyOpens = Boolean(chart) && chart.nodes.some(drillable);
   const column = anyOpens ? joinOr(openableColumns()) : "";
   // An undeclared column order has no left or right to name: drop the clause.
   const where = column ? say("in_column", { columns: column }) : "";
@@ -1129,7 +1155,7 @@ export function paintChartHint() {
   // never opens against the role="button" convention.
   const follow = " " + say("follow");
   // A sentence of its own: the tail can be the only thing a chart offers.
-  const tails = Boolean(projection) && projection.nodes.some(expandable);
+  const tails = Boolean(chart) && chart.nodes.some(expandable);
   const expands = tails ? " " + say("expand") : "";
   const swatch = buildLegendCount() ? " " + say("swatch") : "";
   if (drilled.length) {
@@ -1146,15 +1172,17 @@ export function paintChartHint() {
  *
  * IN THE DECLARED ORDER AND NOT IN TIER ORDER: layOut aligns on the declared
  * set, and a window's ({2,5,4}) does not ascend. Narrowed to the tiers the
- * chart actually draws, because a declaration need not be filled.
+ * chart actually draws, because a declaration need not be filled and the
+ * filters can empty one.
  * @returns {string[]}
  */
 export function openableColumns() {
-  if (!projection) return [];
-  const drawn = new Set(projection.nodes.map((n) => n.tier));
+  const chart = chartDrawn();
+  if (!chart) return [];
+  const drawn = new Set(chart.nodes.map((n) => n.tier));
   const tiers = activeTiers().filter((t) => drawn.has(t));
   if (tiers.length < 2) return [];
-  const opening = new Set(projection.nodes.filter(drillable).map((n) => n.tier));
+  const opening = new Set(chart.nodes.filter(drillable).map((n) => n.tier));
   const inner = tiers.length === 3 ? ["column_middle"] : ["column_second", "column_third"];
   const names = tiers.map((tier, at) => {
     if (!opening.has(tier)) return "";
@@ -1367,14 +1395,12 @@ export function isCarried(id) {
  * @returns {{nodes:LaidNode[], links:LaidLink[]}}
  */
 export function layOut(doc) {
-  const index = new Map(doc.nodes.map((n) => [n.id, n]));
-  const source = drawnDoc();
-  if (source) {
-    for (const n of source.nodes) index.set(n.id, n);
-  }
-  const graph = formOnScreen().layOut(doc, {
-    tiers: activeTiers(),
-    columns: drawnColumns(),
+  const index = hueIndex(doc);
+  // Nothing to lay out where the filters removed every ribbon; d3-sankey
+  // throws on an empty graph.
+  const graph = !doc.links.length ? { nodes: [], links: [] } : formOnScreen().layOut(doc, {
+    tiers: layoutTiers(doc),
+    columns: layoutColumns(doc),
     groupOf: (/** @type {FiscNode | LaidNode} */ n) => core.fundGroupOf(index, n),
     placeOf: fundGroupPlace,
   });
@@ -1385,19 +1411,129 @@ export function layOut(doc) {
 }
 
 /**
+ * The columns a chart is laid out in: the tiers on screen (activeTiers), less
+ * any the filters emptied, since d3-sankey throws on an empty leading or
+ * interior column and a filter can empty any of them. A chart the filters
+ * did not touch keeps every tier on screen.
+ * @param {FiscProjection} doc
+ * @returns {number[]}
+ */
+export function layoutTiers(doc) {
+  const tiers = activeTiers();
+  if (!doc.filtered) return tiers;
+  const held = new Set(doc.nodes.map((n) => n.tier));
+  return tiers.filter((t) => held.has(t));
+}
+
+/**
+ * How many columns wide a chart is laid out: drawnColumns, or for a chart
+ * the filters touched, the columns it still fills.
+ * @param {FiscProjection} doc
+ * @returns {number}
+ */
+export function layoutColumns(doc) {
+  return doc.filtered ? (layoutTiers(doc).length || NARROW_COLUMNS) : drawnColumns();
+}
+
+/**
+ * layOut's hue index for a document: its nodes overwritten by the unfolded
+ * document the rung was shaped from (drawnDoc).
+ * @param {FiscProjection} doc
+ * @returns {Map<string, FiscNode>}
+ */
+export function hueIndex(doc) {
+  const index = new Map(doc.nodes.map((n) => [n.id, n]));
+  const source = drawnDoc();
+  if (source) {
+    for (const n of source.nodes) index.set(n.id, n);
+  }
+  return index;
+}
+
+/**
+ * A shaped chart under a filter state's removals: core.filterDocument with
+ * each node's fund group read through the index the chart is coloured by.
+ * @param {FiscProjection} doc
+ * @param {Readonly<FilterState>} [state]
+ * @returns {{doc: FiscProjection, hidden: FiscLink[]}}
+ */
+export function filterFor(doc, state = filter) {
+  const index = hueIndex(doc);
+  return core.filterDocument(doc, (n) => core.fundGroupOf(index, n), state);
+}
+
+/**
+ * The chart the filters leave on screen, or the shaped one where nothing has
+ * been drawn under them yet.
+ * @returns {FiscProjection | null}
+ */
+export function chartDrawn() {
+  return shown ? shown.doc : projection;
+}
+
+/**
+ * What the filters removed from the chart on screen: how many ribbons, their
+ * figures summed as each is stated (a reduction negative), and every fact
+ * they cite. A client sum over cited cents, and the only one the filter line
+ * states.
+ * @param {{hidden: FiscLink[]} | null} [result]
+ * @returns {{flows: number, cents: number, facts: Set<string>}}
+ */
+export function hiddenTally(result = shown) {
+  const facts = new Set();
+  let cents = 0;
+  const hidden = result ? result.hidden : [];
+  for (const l of hidden) {
+    cents += formOnScreen().cents(/** @type {any} */ (l));
+    for (const id of l.fact_ids) facts.add(id);
+  }
+  return { flows: hidden.length, cents: cents, facts: facts };
+}
+
+/**
+ * The ribbons the smallest-flow filter merged on the chart on screen: how
+ * many printed ribbons, and how many merged ribbons they are drawn as.
+ * @returns {{flows: number, ribbons: number}}
+ */
+export function foldedTally() {
+  let flows = 0;
+  let ribbons = 0;
+  for (const l of shown ? shown.doc.links : []) {
+    if (!Array.isArray(l.legs)) continue;
+    flows += l.legs.length;
+    ribbons++;
+  }
+  return { flows: flows, ribbons: ribbons };
+}
+
+/**
+ * What the filters removed that touched one mark, in the page's words, or ""
+ * where they removed nothing of it: a mark is sized by what is drawn, so a
+ * reader is told what it is not showing.
+ * @param {string} id
+ * @returns {string}
+ */
+export function hiddenAt(id) {
+  const touching = (shown ? shown.hidden : []).filter((l) => l.source === id || l.target === id);
+  if (!touching.length) return "";
+  return say("filter_hidden_at", { cents: fmtSigned(hiddenTally({ hidden: touching }).cents), flows: touching.length });
+}
+
+/**
  * Draws the chart on screen through its form, then paints it and applies the
  * emphasis. The gestures, descriptions and classes are this file's: they read
  * the page's state, which a renderer never holds.
  * @param {{nodes:LaidNode[], links:LaidLink[]}} [laid]
  */
 export function render(laid) {
-  if (!projection) return;
-  const graph = laid || layOut(projection);
+  const doc = chartDrawn();
+  if (!doc) return;
+  const graph = laid || layOut(doc);
   formOnScreen().render(graph, {
     svg: D3.select("#chart"),
-    tiers: activeTiers(),
-    columns: drawnColumns(),
-    doc: projection,
+    tiers: layoutTiers(doc),
+    columns: layoutColumns(doc),
+    doc: doc,
     classes: { link: linkClass, node: nodeClass, flags: nodeFlags },
     describe: { link: linkDescription, node: nodeDescription },
     on: {
@@ -1421,7 +1557,7 @@ export function paint() {
     svg: D3.select("#chart"),
     colour: { link: linkColor, node: nodeColor },
   });
-  for (const button of document.querySelectorAll("#legend button .key")) {
+  for (const button of document.querySelectorAll("#legend button .key, #filters .key")) {
     const swatch = /** @type {HTMLElement} */ (button);
     const name = swatch.dataset.var;
     if (name) swatch.style.background = cssVar(name);
@@ -1501,6 +1637,226 @@ export function applyEmphasis(state = filter) {
     String(on && d.id === id));
 }
 
+/**
+ * Whether two sets hold the same members.
+ * @param {ReadonlySet<string>} a
+ * @param {ReadonlySet<string>} b
+ * @returns {boolean}
+ */
+function sameSet(a, b) {
+  return a.size === b.size && Array.from(a).every((x) => b.has(x));
+}
+
+/**
+ * Moves the filter state to `next`, field by field over the state now: a
+ * change of what is removed re-lays-out the chart on screen with nothing
+ * fetched and no rung touched, and a change of the isolation alone repaints
+ * the emphasis. A redraw the chart refuses leaves the old state, chart and
+ * panel exactly as they were and says why.
+ * @param {Partial<FilterState>} next
+ * @returns {boolean} whether the state now on screen is `next`
+ */
+export function setFilter(next) {
+  const was = filter;
+  const smallest = next.smallest === undefined ? was.smallest : Math.max(0, Math.floor(Number(next.smallest)) || 0);
+  const state = Object.freeze({
+    groups: new Set(next.groups || was.groups),
+    kinds: new Set(next.kinds || was.kinds),
+    smallest: smallest,
+    isolated: next.isolated === undefined ? was.isolated : next.isolated,
+  });
+  if (sameSet(was.groups, state.groups) && sameSet(was.kinds, state.kinds) && was.smallest === state.smallest) {
+    setIsolated(state.isolated);
+    return true;
+  }
+  filter = state;
+  if (!projection) {
+    syncFilterPanel();
+    return true;
+  }
+  const hadFocus = focusInChart();
+  let filtered;
+  let laid;
+  try {
+    filtered = filterFor(projection);
+    laid = layOut(filtered.doc);
+  } catch (e) {
+    filter = was;
+    syncFilterPanel();
+    fail("The chart could not be filtered: " + (e instanceof Error ? e.message : String(e)));
+    return false;
+  }
+  shown = filtered;
+  pinned = null;
+  resetDetail();
+  hideTip();
+  buildLegend();
+  paintFilterLine();
+  syncFilterPanel();
+  paintChartHint();
+  render(laid);
+  restoreFocus(hadFocus);
+  return true;
+}
+
+/** Puts every removal and the isolation back: the filter line's Reset. */
+export function resetFilters() {
+  setFilter(NO_FILTER);
+}
+
+/**
+ * Says what the filters leave out of the chart on screen, beside it: the
+ * ribbons removed as a client sum over their cited cents, and the ribbons
+ * merged by the smallest-flow filter. Hidden where they leave out nothing.
+ */
+export function paintFilterLine() {
+  const line = maybeEl("filter-line");
+  const said = maybeEl("filter-said");
+  if (!line || !said) return;
+  const gone = hiddenTally();
+  const merged = foldedTally();
+  const parts = [];
+  if (gone.flows) parts.push(say("filter_hidden", { cents: fmtSigned(gone.cents), flows: gone.flows }));
+  if (merged.flows) {
+    parts.push(say("filter_folded", { flows: merged.flows, ribbons: merged.ribbons, threshold: fmt(filter.smallest) }));
+  }
+  said.textContent = parts.join(" ");
+  if (parts.length) line.removeAttribute("hidden");
+  else line.setAttribute("hidden", "");
+}
+
+/**
+ * The words a smallest-flow stop is said in.
+ * @param {number} cents
+ * @returns {string}
+ */
+export function smallestWords(cents) {
+  return cents > 0 ? fmt(cents) : say("smallest_all");
+}
+
+/**
+ * The stop at or below `cents`: where the control rests for a threshold set
+ * between stops.
+ * @param {number} cents
+ * @returns {number}
+ */
+export function smallestStop(cents) {
+  let at = 0;
+  SMALLEST_STOPS.forEach((stop, k) => {
+    if (stop <= cents) at = k;
+  });
+  return at;
+}
+
+/**
+ * One labelled checkbox of the filter panel, with a swatch when it is a fund
+ * group's. Checked means shown.
+ * @param {string} id
+ * @param {string} words
+ * @param {string} swatch the custom property its swatch wears, or ""
+ * @param {(shownNow: boolean) => void} onChange
+ * @returns {HTMLElement}
+ */
+function filterChoice(id, words, swatch, onChange) {
+  const label = h("label", "filter-choice");
+  const box = /** @type {HTMLInputElement} */ (document.createElement("input"));
+  box.type = "checkbox";
+  box.value = id;
+  box.checked = true;
+  box.addEventListener("change", () => onChange(box.checked));
+  label.append(box);
+  if (swatch) {
+    const key = h("span", "key");
+    key.dataset.var = swatch;
+    key.setAttribute("aria-hidden", "true");
+    label.append(key);
+  }
+  label.append(document.createTextNode(words));
+  return label;
+}
+
+/**
+ * Fills the filter panel's fund groups for the column on screen, in Go's
+ * fund_groups order with the hues the legend wears; a group with no hue is
+ * last and --muted, as in the legend. Per year, since the column is.
+ */
+export function buildFilterPanel() {
+  const list = maybeEl("filter-group-list");
+  if (!list) return;
+  list.replaceChildren(...fundGroups().map((g) => filterChoice(g.id, groupLabel(g.id), fundColorVar(g.id),
+    (on) => {
+      const groups = new Set(filter.groups);
+      if (on) groups.delete(g.id);
+      else groups.add(g.id);
+      setFilter({ groups });
+    })));
+  syncFilterPanel();
+  paint();
+}
+
+/**
+ * Brings every control of the filter panel back into agreement with the
+ * state, so a refused change or a Reset leaves no box saying otherwise.
+ */
+export function syncFilterPanel() {
+  const panel = maybeEl("filters");
+  if (!panel) return;
+  for (const box of panel.querySelectorAll("#filter-group-list input")) {
+    const input = /** @type {HTMLInputElement} */ (box);
+    input.checked = !filter.groups.has(input.value);
+  }
+  for (const box of panel.querySelectorAll("#filter-kind-list input")) {
+    const input = /** @type {HTMLInputElement} */ (box);
+    input.checked = !filter.kinds.has(input.value);
+  }
+  const range = /** @type {HTMLInputElement | null} */ (maybeEl("filter-smallest"));
+  if (range) {
+    range.value = String(smallestStop(filter.smallest));
+    range.setAttribute("aria-valuetext", smallestWords(filter.smallest));
+  }
+  const out = maybeEl("filter-smallest-value");
+  if (out) out.textContent = smallestWords(filter.smallest);
+}
+
+/**
+ * Wires the filter panel the template ships hidden: the flow kinds Go ships
+ * labels for, the All and None buttons, the smallest-flow stops and the
+ * Reset. Open by default where the viewport buys a column beyond the floor;
+ * the reader's own toggle wins after that.
+ */
+export function wireFilters() {
+  const panel = /** @type {HTMLDetailsElement | null} */ (maybeEl("filters"));
+  if (!panel) return;
+  panel.removeAttribute("hidden");
+  const wide = COLUMN_QUERIES.length && typeof window.matchMedia === "function" &&
+    window.matchMedia(COLUMN_QUERIES[0].query).matches;
+  if (wide) panel.open = true;
+  const kinds = maybeEl("filter-kind-list");
+  if (kinds) {
+    kinds.replaceChildren(...Object.keys(CONFIG.kind_labels || {}).map((k) => filterChoice(k, kindLabel(k), "",
+      (on) => {
+        const next = new Set(filter.kinds);
+        if (on) next.delete(k);
+        else next.add(k);
+        setFilter({ kinds: next });
+      })));
+  }
+  const all = maybeEl("filter-all");
+  if (all) all.addEventListener("click", () => setFilter({ groups: new Set() }));
+  const none = maybeEl("filter-none");
+  if (none) none.addEventListener("click", () => setFilter({ groups: new Set(fundGroups().map((g) => g.id)) }));
+  const range = /** @type {HTMLInputElement | null} */ (maybeEl("filter-smallest"));
+  if (range) {
+    range.min = "0";
+    range.max = String(SMALLEST_STOPS.length - 1);
+    range.step = "1";
+    range.addEventListener("input", () => setFilter({ smallest: SMALLEST_STOPS[Number(range.value)] || 0 }));
+  }
+  const reset = maybeEl("filter-reset");
+  if (reset) reset.addEventListener("click", resetFilters);
+  syncFilterPanel();
+}
+
 /* ------------------------------------------------------------------ *
  * Tooltip, detail panel
  * ------------------------------------------------------------------ */
@@ -1531,6 +1887,7 @@ export function linkDescription(d) {
     (kind ? ", " + kind : "") +
     (d.contra ? ", " + d.contra : "") +
     (d.partition ? ", " + PARTITION_NOTE : "") +
+    (d.merged ? ", " + d.merged : "") +
     ", " + provenanceOf(d.derived, Boolean(d.source.derived || d.target.derived));
 }
 
@@ -1547,10 +1904,11 @@ export function nodeDescription(d) {
   const note = form.reductionNote(d);
   // The cross-tab qualification, for a reader who cannot see the ribbons.
   const flows = residualFlows(d);
+  const gone = hiddenAt(d.id);
   return d.label + (flows ? ", " + flows : ", total " + fmtSigned(form.cents(d))) +
     ", " + say(d.derived ? "inferred_by_us" : "printed_by_city") +
     (form.crossTab(d) ? ", " + PARTITION_NOTE : "") +
-    (note ? ", " + note.replace(/^\u25c7 /, "") : "") + what;
+    (note ? ", " + note.replace(/^\u25c7 /, "") : "") + (gone ? ", " + gone : "") + what;
 }
 
 /**
@@ -1686,6 +2044,7 @@ export function showTip(event, d) {
     // The chip says what kind of row; the sentence says what it reduces.
     if (l.contra) tip.append(h("div", "tip-meta", l.contra));
     if (l.partition) tip.append(h("div", "tip-meta", PARTITION_NOTE));
+    if (l.merged) tip.append(h("div", "tip-meta", l.merged));
     tip.append(h("div", "facts", l.fact_ids.join(" ")));
   } else {
     const n = /** @type {LaidNode} */ (d);
@@ -1717,6 +2076,8 @@ export function showTip(event, d) {
     const note = form.reductionNote(n);
     if (note) tip.append(h("div", "tip-meta", note));
     for (const c of cavs) tip.append(h("div", "tip-meta", "\u26a0 " + c.summary));
+    const gone = hiddenAt(n.id);
+    if (gone) tip.append(h("div", "tip-meta", gone));
   }
   tip.append(h("div", "tip-meta", "Select for sources."));
 
@@ -1775,6 +2136,7 @@ export function pin(d) {
     panel.append(chips);
     if (l.contra) panel.append(h("p", "why", l.contra));
     if (l.partition) panel.append(h("p", "why", PARTITION_NOTE));
+    if (l.merged) panel.append(h("p", "why", l.merged));
     // A derived ribbon with no fact of its own speaks in its derived end's words.
     const end = l.source.derived ? l.source : l.target;
     if (l.fact_ids.length) panel.append(h("div", "facts", "Facts: " + l.fact_ids.join(" ")));
@@ -1804,6 +2166,8 @@ export function pin(d) {
     if (n.source_note) panel.append(h("p", "subtle", n.source_note));
     const note = form.reductionNote(n);
     if (note) panel.append(h("p", "why", note));
+    const gone = hiddenAt(n.id);
+    if (gone) panel.append(h("p", "subtle", gone));
     for (const c of caveatsFor(n.id)) {
       const why = h("p", "why");
       why.append(document.createTextNode("\u26a0 " + c.summary + " "));
@@ -2310,7 +2674,7 @@ export async function showYear(year) {
   // Swapped because shapeFor and askAffordances read them; swapped back on a
   // throw, so nothing below writes a word of this year over the last one's
   // chart.
-  const was = { column, fetched, drilled, laidNodes, groupIndex, projection };
+  const was = { column, fetched, drilled, laidNodes, groupIndex, projection, shown };
   column = loaded;
   fetched = doc;
   drilled = [];
@@ -2320,12 +2684,14 @@ export async function showYear(year) {
     // The folded document is the one the page describes; the fold unions the
     // fact ids it merges, so nothing is lost.
     const drawn = shapeFor(doc);
-    laid = layOut(drawn);
+    const filtered = filterFor(drawn);
+    laid = layOut(filtered.doc);
     rows = tableRows(drawn);
     projection = drawn;
+    shown = filtered;
     askAffordances();
   } catch (e) {
-    ({ column, fetched, drilled, laidNodes, groupIndex, projection } = was);
+    ({ column, fetched, drilled, laidNodes, groupIndex, projection, shown } = was);
     throw e;
   }
 
@@ -2340,6 +2706,8 @@ export async function showYear(year) {
   paintBreadcrumb();
   syncColumns();
   buildLegend();
+  buildFilterPanel();
+  paintFilterLine();
   paintChartHint();
   buildDerivedList();
   buildTable(rows);
@@ -2500,6 +2868,7 @@ export async function main() {
     return;
   }
   wireYears(years);
+  wireFilters();
 
   // Wired before the first fetch (fisc-8cg): a superseded or failed opening
   // year can still be followed by one that draws, and it needs these.

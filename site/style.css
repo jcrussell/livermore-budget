@@ -14,11 +14,12 @@
  *
  * SIX IS THE PALETTE'S CAPACITY, NOT THE CITY'S GROUP COUNT. A column can
  * ship a group with slot 0 -- fund-group/permanent, in every column's
- * fund_groups -- and it draws --muted, last, in the legend. There is no
- * seventh hue: the six were chosen by enumerating all 720 orderings against
- * the CVD validator, a seventh slot means re-running all 5040 to keep the
- * measured worst pair above, and the group it would colour draws a figure in
- * the FY2023-24 actual column only (fisc-zojk).
+ * fund_groups -- and it draws --muted, last, in the legend and in the
+ * filter panel. There is no seventh hue: the six were chosen by enumerating
+ * all 720 orderings against the CVD validator, a seventh slot means
+ * re-running all 5040 to keep the measured worst pair above, and the group
+ * it would colour draws a figure in the FY2023-24 actual column only
+ * (fisc-zojk).
  *
  * Three light-mode slots sit below 3:1 against the light surface, which the
  * validator reports as a relief obligation rather than a pass: every node
@@ -566,6 +567,87 @@ button[aria-pressed="true"] {
 .legend .key.published {
   background: none;
   border: 1.5px solid var(--muted);
+}
+
+/* ---------- filters ---------- */
+
+/* The filter panel and its line: chrome, in the legend's type and inks. The
+   swatch on a fund group's box is the legend's .key. */
+.filters {
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.filters summary {
+  cursor: pointer;
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+}
+
+.filters[open] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  align-items: flex-start;
+}
+
+.filters[open] summary {
+  flex-basis: 100%;
+}
+
+.filter-set {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px 10px 8px;
+  margin: 0;
+}
+
+.filter-set legend {
+  padding: 0 4px;
+}
+
+.filter-list,
+.filter-bulk {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 14px;
+}
+
+.filter-bulk {
+  margin-bottom: 4px;
+}
+
+.filter-choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+}
+
+.filter-choice .key {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex: none;
+}
+
+.filter-smallest {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+}
+
+.filter-line {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.filter-line[hidden] {
+  display: none;
 }
 
 /* ---------- column control ---------- */
@@ -1259,6 +1341,7 @@ noscript p {
   }
 
   .controls,
+  .filters,
   .tooltip {
     display: none;
   }

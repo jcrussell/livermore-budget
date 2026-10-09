@@ -34,9 +34,10 @@ describe("the literals the client shares", () => {
     const { app } = await loadApp();
     const pattern = read("mark.schema.json").properties.id.pattern;
     const m = /^\^\(([^()|]+(?:\|[^()|]+)*)\)$/.exec(pattern);
-    t.diagnostic(`the schema's id pattern is ${pattern}; the client's prefixes are ${JSON.stringify([app.AGGREGATE_PREFIX, app.RESIDUAL_PREFIX, app.GAP_PREFIX])}`);
+    const prefixes = [app.AGGREGATE_PREFIX, app.RESIDUAL_PREFIX, app.GAP_PREFIX, app.SMALLER_PREFIX];
+    t.diagnostic(`the schema's id pattern is ${pattern}; the client's prefixes are ${JSON.stringify(prefixes)}`);
     assert.ok(m, `the id pattern ${pattern} is not ^(a|b|c)`);
-    assert.deepEqual(m[1].split("|"), [app.AGGREGATE_PREFIX, app.RESIDUAL_PREFIX, app.GAP_PREFIX]);
+    assert.deepEqual(m[1].split("|"), prefixes);
   });
 
   test("CHART_CUSHION is the stylesheet's --chart-cushion", async (t) => {

@@ -44,7 +44,7 @@ type wording struct {
 	FlowInferred      string `json:"flow_inferred"`
 	NoneInferred      string `json:"none_inferred"`
 	TablePointer      string `json:"table_pointer"`
-	// The three marks the client makes, schema/mark.schema.json: their
+	// The aggregate, residual and gap marks, schema/mark.schema.json: their
 	// labels, rationales and source notes are templates the constructors
 	// fill, so no sentence about what a mark IS is spelled in JavaScript.
 	AggregateLabel       string `json:"aggregate_label"`
@@ -77,6 +77,17 @@ type wording struct {
 	// said beside the node's figure with the fact and pages it cites.
 	BalanceBeginning string `json:"balance_beginning"`
 	BalanceEnding    string `json:"balance_ending"`
+	// The filter panel's sentences: what the filters leave out of the chart,
+	// said beside it as a client sum over cited cents, and the smaller-flows
+	// mark and merged ribbon the smallest-flow filter draws.
+	FilterHidden     string `json:"filter_hidden"`
+	FilterFolded     string `json:"filter_folded"`
+	FilterHiddenAt   string `json:"filter_hidden_at"`
+	SmallestAll      string `json:"smallest_all"`
+	SmallerLabel     string `json:"smaller_label"`
+	SmallerRationale string `json:"smaller_rationale"`
+	SmallerNote      string `json:"smaller_note"`
+	SmallerFlow      string `json:"smaller_flow"`
 }
 
 // kindLabels is project's words for every link kind, keyed as a link names it.
@@ -161,5 +172,13 @@ func defaultWording() wording {
 		ContraOrphan:     project.ContraOrphan,
 		BalanceBeginning: "Balance at the start of the year, as printed: {figure}",
 		BalanceEnding:    "Balance at the end of the year, as printed: {figure}",
+		FilterHidden:     "Hidden by your filters: {cents} in {flows:flow|flows}. Marks are sized to what is drawn, and the flow table still lists every flow of this view.",
+		FilterFolded:     "{flows:flow|flows} under {threshold} are drawn merged by this page into {ribbons:ribbon|ribbons} of smaller flows.",
+		FilterHiddenAt:   "Your filters hide {cents} of this mark's flows, in {flows:flow|flows}.",
+		SmallestAll:      "every flow",
+		SmallerLabel:     "{flows:flow|flows} under {threshold}",
+		SmallerRationale: "Our grouping, not a line the city printed: {flows:flow|flows} each under {threshold}, the smallest flow your filters draw as itself, are drawn as one mark. Every figure inside it is printed; the merge is this page's.",
+		SmallerNote:      "Merged by this page from {flows:flow|flows} the city printed, together {figure}; its ribbons cite every fact and page they merge.",
+		SmallerFlow:      "{flows:flow|flows} under {threshold}, each printed by the city, merged by this page",
 	}
 }

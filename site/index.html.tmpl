@@ -118,6 +118,38 @@
   <div class="controls">
     <div class="legend" id="legend" aria-label="Fund groups"></div>
   </div>
+  {{- /* SHIPPED HIDDEN AND EMPTY: what to show is the client's, so with
+         JavaScript off these controls would change nothing. app.js fills the
+         fund groups from the column on screen and the kinds from the page's
+         kind labels, unhides the panel, and opens it where the viewport buys
+         a column beyond the floor. Above the chart rather than beside it:
+         the chart takes the width the column budget measures. */}}
+  <details class="filters" id="filters" hidden>
+    <summary>Show and hide</summary>
+    <fieldset class="filter-set">
+      <legend>Fund groups</legend>
+      <div class="filter-bulk">
+        <button type="button" id="filter-all" aria-label="Show every fund group">All</button>
+        <button type="button" id="filter-none" aria-label="Hide every fund group">None</button>
+      </div>
+      <div class="filter-list" id="filter-group-list"></div>
+    </fieldset>
+    <fieldset class="filter-set">
+      <legend>Flow kinds</legend>
+      <div class="filter-list" id="filter-kind-list"></div>
+    </fieldset>
+    <div class="filter-set filter-smallest">
+      <label for="filter-smallest">Smallest flow drawn as itself</label>
+      <input type="range" id="filter-smallest" min="0" max="0" step="1" value="0">
+      <output id="filter-smallest-value" for="filter-smallest"></output>
+    </div>
+  </details>
+  {{- /* WHAT THE FILTERS LEAVE OUT IS SAID BESIDE THE CHART, outside the
+         panel, so a closed panel cannot hide that the chart is filtered. */}}
+  <p class="filter-line" id="filter-line" aria-live="polite" hidden>
+    <span id="filter-said"></span>
+    <button type="button" id="filter-reset">Reset</button>
+  </p>
   <div class="legend" aria-label="How to read the marks">
     <span><span class="key published" aria-hidden="true"></span> {{.Wording.PrintedByCity}}</span>
     <span><span class="key derived" aria-hidden="true"></span> {{.Wording.OurInference}} (dashed)</span>

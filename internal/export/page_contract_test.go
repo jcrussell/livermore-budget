@@ -100,6 +100,13 @@ func TestTheWordingFillsEveryPlaceholderTheClientHands(t *testing.T) {
 		"gap_lead_short":         {"column", "into", "centre", "out", "gap"},
 		"gap_lead_over":          {"column", "out", "centre", "gap", "into"},
 		"gap_rationale":          {"lead", "reason", "gap"},
+		"filter_hidden":          {"cents", "flows"},
+		"filter_folded":          {"flows", "ribbons", "threshold"},
+		"filter_hidden_at":       {"cents", "flows"},
+		"smaller_label":          {"flows", "threshold"},
+		"smaller_rationale":      {"flows", "threshold"},
+		"smaller_note":           {"flows", "figure"},
+		"smaller_flow":           {"flows", "threshold"},
 	}
 	blob, err := json.Marshal(defaultWording())
 	if err != nil {

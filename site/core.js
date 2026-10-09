@@ -473,6 +473,20 @@ export function regroupLocators(keys) {
 }
 
 /**
+ * One doc\u001fpage key per page a set of locators cites, the form
+ * regroupLocators reads back.
+ * @param {FiscSource[]} ss
+ * @returns {string[]}
+ */
+export function locatorKeys(ss) {
+  const out = [];
+  for (const s of ss) {
+    for (const p of s.pages) out.push(s.doc_id + "\u001f" + p);
+  }
+  return out;
+}
+
+/**
  * The fold's refusal to merge two ribbons one mark cannot draw as one: a
  * printed leg with an inferred one, or a cross-tab slice with a flow that
  * is not one. A type and not a message, so a caller that decides by it
@@ -521,14 +535,6 @@ export function foldDocument(doc, tiers) {
   // ribbon cites only its first leg's pages.
   /** @type {Map<string, Set<string>>} */
   const located = new Map();
-  /** @param {FiscSource[]} ss @returns {string[]} */
-  const locatorKeys = (ss) => {
-    const out = [];
-    for (const s of ss) {
-      for (const p of s.pages) out.push(s.doc_id + "\u001f" + p);
-    }
-    return out;
-  };
   for (const l of doc.links) {
     const source = foldsTo.get(l.source);
     const target = foldsTo.get(l.target);
@@ -751,13 +757,45 @@ export function gapID(opened) {
 }
 
 /**
- * Whether an id is a mark this client makes: an aggregate, a residual or a
- * gap. The declared set is export.MarkPrefixes.
+ * The prefix a smaller-flows mark's id carries, followed by its side and
+ * tier.
+ */
+export const SMALLER_PREFIX = "smaller/";
+
+/** smallerMark's side for the mark the folded ribbons run TO. */
+export const SMALLER_TO = "to";
+
+/** smallerMark's side for the mark the folded ribbons run FROM. */
+export const SMALLER_FROM = "from";
+
+/**
+ * The id of the mark one column's folded ribbons on one side end at. Per
+ * side, so a mark either receives or sends and never reads as money passing
+ * through it.
+ * @param {string} side SMALLER_TO or SMALLER_FROM
+ * @param {number} tier
+ * @returns {string}
+ */
+export function smallerID(side, tier) {
+  return SMALLER_PREFIX + side + "/" + tier;
+}
+
+/**
+ * @param {string} id
+ * @returns {boolean}
+ */
+export function isSmaller(id) {
+  return id.startsWith(SMALLER_PREFIX);
+}
+
+/**
+ * Whether an id is a mark this client makes: an aggregate, a residual, a gap
+ * or a smaller-flows mark. The declared set is export.MarkPrefixes.
  * @param {string} id
  * @returns {boolean}
  */
 export function isMark(id) {
-  return isAggregate(id) || isResidual(id) || isGap(id);
+  return isAggregate(id) || isResidual(id) || isGap(id) || isSmaller(id);
 }
 
 /**
@@ -877,6 +915,198 @@ export function gapMark(opened, tier, gap, rationale, sourceNote, locators) {
  */
 export function isGap(id) {
   return id.startsWith(GAP_PREFIX);
+}
+
+/**
+ * The mark the smallest-flow filter folds one column's small ribbons onto:
+ * schema/mark.schema.json, role smaller, worded by the page's smaller_*
+ * templates. derived: true, because the city printed no line called "flows
+ * under $10,000"; every cent inside is printed and the ribbons into or out of
+ * it cite every fact and page they merge.
+ * @param {string} side SMALLER_TO or SMALLER_FROM
+ * @param {number} tier
+ * @param {number} flows how many printed ribbons it stands for
+ * @param {number} smallest the threshold they are under, in cents
+ * @param {number} cents what they add up to
+ * @param {FiscSource[]} locators every page those ribbons cite
+ * @returns {FiscMark}
+ */
+export function smallerMark(side, tier, flows, smallest, cents, locators) {
+  return {
+    id: smallerID(side, tier),
+    label: say("smaller_label", { flows: flows, threshold: fmt(smallest) }),
+    tier: tier,
+    parent: "",
+    constraint_tier: "",
+    role: "smaller",
+    derived: true,
+    rationale: say("smaller_rationale", { flows: flows, threshold: fmt(smallest) }),
+    source_note: say("smaller_note", { flows: flows, figure: fmt(cents) }),
+    locators: locators,
+  };
+}
+
+/**
+ * What the reader has asked the chart to leave out: the fund groups and link
+ * kinds to hide, and the smallest flow drawn as itself, in cents. app.js's
+ * FilterState is this plus the isolation.
+ * @typedef {{groups: ReadonlySet<string>, kinds: ReadonlySet<string>, smallest: number}} Removals
+ */
+
+/**
+ * A shaped chart with the reader's removals applied: ribbons in a hidden
+ * fund group or of a hidden kind REMOVED, then every printed ribbon under
+ * the smallest flow folded onto a smaller-flows mark, then every node no
+ * ribbon touches dropped. Figures are untouched: a ribbon is drawn as it
+ * came, merged with others by summing cents and unioning facts and pages,
+ * or listed in `hidden`, and exactly one of the three.
+ *
+ * A RIBBON IS IN A GROUP WHEN EITHER END IS, so hiding a group hides every
+ * ribbon touching it, whatever the other end. A node keeps fixedValue only
+ * while every ribbon arriving at it is drawn: the figure it fixes is the net
+ * of those ribbons.
+ *
+ * @param {FiscProjection} doc  a shaped chart, reductions already drawn forward
+ * @param {(n: FiscNode) => string} groupOf  a node's fund group, "" for none
+ * @param {Removals} state
+ * @returns {{doc: FiscProjection, hidden: FiscLink[]}} doc itself where the
+ *   state removes and folds nothing; otherwise a new chart marked filtered
+ */
+export function filterDocument(doc, groupOf, state) {
+  const byID = new Map(doc.nodes.map((n) => [n.id, n]));
+  const inHidden = (/** @type {string} */ id) => {
+    const n = byID.get(id);
+    const g = n ? groupOf(n) : "";
+    return g !== "" && state.groups.has(g);
+  };
+  /** @type {FiscLink[]} */
+  const hidden = [];
+  /** @type {FiscLink[]} */
+  const kept = [];
+  for (const l of doc.links) {
+    if (state.kinds.has(l.kind) || inHidden(l.source) || inHidden(l.target)) hidden.push(l);
+    else kept.push(l);
+  }
+  if (!hidden.length && !(state.smallest > 0)) return { doc: doc, hidden: hidden };
+  const folded = foldSmaller(kept, byID, state.smallest);
+  /** @type {Set<string>} the nodes a ribbon that arrived at them no longer reaches as itself */
+  const arrivingChanged = new Set(hidden.map((l) => l.target).concat(folded.cut));
+  const touched = new Set();
+  for (const l of folded.links) {
+    touched.add(l.source);
+    touched.add(l.target);
+  }
+  const nodes = doc.nodes.filter((n) => touched.has(n.id)).map((n) => {
+    if (n.fixedValue === undefined || !arrivingChanged.has(n.id)) return n;
+    const out = Object.assign({}, n);
+    delete out.fixedValue;
+    return out;
+  });
+  return {
+    // filtered: a column the shaped chart filled may be empty now.
+    doc: Object.assign({}, doc, { nodes: nodes.concat(folded.marks), links: folded.links, filtered: true }),
+    hidden: hidden,
+  };
+}
+
+/**
+ * Folds every printed ribbon under `smallest` cents onto a smaller-flows
+ * mark: each is kept at its LARGER end, sized as capColumn sizes a node, and
+ * its other end becomes the mark at that end's column, one per column and
+ * side. Ribbons sharing both ends, kind and cross-tab flag after that are one
+ * ribbon, summed and unioned as foldDocument merges; one leg alone is drawn
+ * as itself, since a merge of one is worse than none.
+ *
+ * ONLY A PRINTED RIBBON BETWEEN PRINTED NODES FOLDS: an inferred ribbon, a
+ * reduction, and a ribbon touching a mark this client made are drawn
+ * whatever their size, because one merged ribbon cannot be drawn as both a
+ * printed flow and one of those.
+ *
+ * @param {FiscLink[]} links
+ * @param {Map<string, FiscNode>} byID
+ * @param {number} smallest cents; 0 folds nothing
+ * @returns {{links: FiscLink[], marks: FiscMark[], cut: string[]}} cut: the
+ *   ids a folded ribbon no longer arrives at
+ */
+export function foldSmaller(links, byID, smallest) {
+  if (!(smallest > 0)) return { links: links, marks: [], cut: [] };
+  /** @type {Map<string, number>} */
+  const inflow = new Map();
+  /** @type {Map<string, number>} */
+  const outflow = new Map();
+  for (const l of links) {
+    inflow.set(l.target, (inflow.get(l.target) || 0) + Math.abs(l.value_cents));
+    outflow.set(l.source, (outflow.get(l.source) || 0) + Math.abs(l.value_cents));
+  }
+  const size = (/** @type {string} */ id) => Math.max(inflow.get(id) || 0, outflow.get(id) || 0);
+  const folds = (/** @type {FiscLink} */ l) => Math.abs(l.value_cents) < smallest && !l.derived && !l.contra &&
+    !isMark(l.source) && !isMark(l.target) && byID.has(l.source) && byID.has(l.target);
+  /** @type {Map<string, {source: string, target: string, far: string, legs: FiscLink[]}>} */
+  const merges = new Map();
+  /** @type {(FiscLink | string)[]} a link drawn as itself, or the key of a merge, in first-seen order */
+  const order = [];
+  for (const l of links) {
+    if (!folds(l)) {
+      order.push(l);
+      continue;
+    }
+    // THE LARGER END KEEPS THE RIBBON; ties by id, so the fold is stable.
+    const keepSource = size(l.source) > size(l.target) ||
+      (size(l.source) === size(l.target) && l.source < l.target);
+    const far = keepSource ? l.target : l.source;
+    const tier = /** @type {FiscNode} */ (byID.get(far)).tier;
+    const source = keepSource ? l.source : smallerID(SMALLER_FROM, tier);
+    const target = keepSource ? smallerID(SMALLER_TO, tier) : l.target;
+    const key = source + "\u001f" + target + "\u001f" + l.kind + "\u001f" + Boolean(l.partition);
+    const at = merges.get(key);
+    if (at) {
+      at.legs.push(l);
+      continue;
+    }
+    merges.set(key, { source, target, far, legs: [l] });
+    order.push(key);
+  }
+  /** @type {Map<string, {flows: number, cents: number, pages: Set<string>, tier: number, side: string}>} */
+  const marks = new Map();
+  /** @type {string[]} */
+  const cut = [];
+  const out = order.map((entry) => {
+    if (typeof entry !== "string") return entry;
+    const m = /** @type {{source: string, target: string, far: string, legs: FiscLink[]}} */ (merges.get(entry));
+    if (m.legs.length < 2) return m.legs[0];
+    const ids = new Set();
+    const pages = new Set();
+    let cents = 0;
+    let transfer = m.legs[0].transfer_id;
+    for (const l of m.legs) {
+      cents += l.value_cents;
+      for (const id of l.fact_ids) ids.add(id);
+      for (const k of locatorKeys(l.locators || [])) pages.add(k);
+      if (l.transfer_id !== transfer) transfer = "";
+      // Kept at its source, a leg no longer arrives at its own target.
+      if (!isSmaller(m.target)) continue;
+      cut.push(l.target);
+    }
+    const markID = isSmaller(m.source) ? m.source : m.target;
+    const side = isSmaller(m.source) ? SMALLER_FROM : SMALLER_TO;
+    const mark = marks.get(markID) || { flows: 0, cents: 0, pages: new Set(), tier: /** @type {FiscNode} */ (byID.get(m.far)).tier, side };
+    mark.flows += m.legs.length;
+    mark.cents += cents;
+    for (const k of pages) mark.pages.add(k);
+    marks.set(markID, mark);
+    return Object.assign({}, m.legs[0], {
+      source: m.source, target: m.target, value_cents: cents, transfer_id: transfer,
+      fact_ids: Array.from(ids).sort(), locators: regroupLocators(pages),
+      merged: say("smaller_flow", { flows: m.legs.length, threshold: fmt(smallest) }),
+      legs: m.legs.slice(),
+    });
+  });
+  return {
+    links: out,
+    marks: Array.from(marks.values()).map((m) =>
+      smallerMark(m.side, m.tier, m.flows, smallest, m.cents, regroupLocators(m.pages))),
+    cut: cut,
+  };
 }
 
 /* ------------------------------------------------------------------ *

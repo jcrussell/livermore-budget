@@ -478,7 +478,15 @@
         "gap_kind",
         "contra_orphan",
         "balance_beginning",
-        "balance_ending"
+        "balance_ending",
+        "filter_hidden",
+        "filter_folded",
+        "filter_hidden_at",
+        "smallest_all",
+        "smaller_label",
+        "smaller_rationale",
+        "smaller_note",
+        "smaller_flow"
       ],
       "additionalProperties": false,
       "properties": {
@@ -694,6 +702,46 @@
           "type": "string",
           "minLength": 1,
           "description": "A fund's printed ending balance, column.schema.json's balances.ending: {figure}, formatted."
+        },
+        "filter_hidden": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The filter line's sentence for the ribbons the filters removed: {cents}, their figures summed and formatted, and {flows}, how many."
+        },
+        "filter_folded": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The filter line's sentence for the ribbons the smallest-flow filter merged: {flows} printed ribbons, {ribbons} merged ones, {threshold} formatted."
+        },
+        "filter_hidden_at": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Said of one mark the filters removed ribbons of: {cents} formatted and {flows}, how many."
+        },
+        "smallest_all": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The smallest-flow control's words where it draws every flow."
+        },
+        "smaller_label": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A smaller-flows mark's label: {flows}, how many printed ribbons it stands for, and {threshold} formatted."
+        },
+        "smaller_rationale": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A smaller-flows mark's rationale: {flows} and {threshold}."
+        },
+        "smaller_note": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A smaller-flows mark's source note: {flows} and {figure}, their sum formatted."
+        },
+        "smaller_flow": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A merged ribbon's sentence, said wherever the ribbon is described: {flows} and {threshold}."
         }
       }
     }

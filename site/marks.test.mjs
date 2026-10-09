@@ -55,13 +55,25 @@ function check(schema, value, at, out) {
   return out;
 }
 
+/**
+ * Every mark on screen, once: the shaped chart's, and the ones the filters
+ * draw on top of it.
+ */
+function marksOnScreen(app) {
+  const byID = new Map();
+  for (const n of app.projection.nodes.concat(app.chartDrawn().nodes)) if (app.isMark(n.id)) byID.set(n.id, n);
+  return [...byID.values()];
+}
+
 describe("the marks this client makes", () => {
-  test("every mark on every rung the page offers matches schema/mark.schema.json, and all three roles are drawn", async (t) => {
+  test("every mark on every rung the page offers matches schema/mark.schema.json, and every role is drawn", async (t) => {
     const { app } = await bootedApp();
+    // A smallest flow, so the smaller-flows marks are drawn beside the rest.
+    app.setFilter({ smallest: app.SMALLEST_STOPS[3] });
     /** @type {Map<string, {role: string, where: string, faults: string[]}>} */
     const seen = new Map();
     const walked = await everyOffer(app, async (path) => {
-      for (const n of app.projection.nodes) {
+      for (const n of marksOnScreen(app)) {
         if (!app.isMark(n.id)) continue;
         const key = path.join(" > ") + " :: " + n.id;
         seen.set(key, { role: n.role, where: path.join(" > "), faults: check(MARK, n, n.id, []) });
@@ -85,6 +97,8 @@ describe("the marks this client makes", () => {
     assert.deepEqual(check(MARK, Object.assign({}, gap, { extra: 1 }), "gap", []), ["gap: extra is not a declared property"]);
     const residual = app.residualMark("fund-group/general", 3, "fund", 10, 20, "Why.", "Where from.");
     assert.deepEqual(check(MARK, residual, "residual", []), []);
+    const smaller = app.smallerMark(app.SMALLER_TO, 5, 3, 1000000, 120000, [{ doc_id: "d", pages: [1] }]);
+    assert.deepEqual(check(MARK, smaller, "smaller", []), []);
     const one = app.aggregateMark(3, "fund-group/general", ["fund/1"], 9, 8, "funds");
     assert.deepEqual(check(MARK, one, "aggregate", []), ["aggregate.folds: fewer than 2 items"]);
   });
@@ -96,17 +110,18 @@ describe("the marks this client makes", () => {
     const config = structuredClone(pageFixture().config);
     for (const key of Object.keys(config.wording)) config.wording[key] = `«${key}» ` + config.wording[key];
     const { app } = await bootedApp({ config });
+    app.setFilter({ smallest: app.SMALLEST_STOPS[3] });
     const wordsOf = { aggregate: ["aggregate_label", "aggregate_rationale", "aggregate_note"],
       residual: ["residual_label", "residual_rationale", "residual_note"],
-      gap: ["gap_label", "gap_rationale", "gap_note"] };
+      gap: ["gap_label", "gap_rationale", "gap_note"],
+      smaller: ["smaller_label", "smaller_rationale", "smaller_note"] };
     /** @type {string[]} */
     const faults = [];
     const roles = new Map();
     let flows = 0;
     let together = 0;
     const walked = await everyOffer(app, async (path) => {
-      for (const n of app.projection.nodes) {
-        if (!app.isMark(n.id)) continue;
+      for (const n of marksOnScreen(app)) {
         roles.set(n.role, (roles.get(n.role) || 0) + 1);
         const [label, rationale, note] = wordsOf[n.role];
         const at = path.join(" > ") + " :: " + n.id;
