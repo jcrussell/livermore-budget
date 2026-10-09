@@ -272,7 +272,10 @@ export function fundGroupPlace(id) {
 
 /**
  * The fund group a link is drawn in: the fund group at either end, else the
- * group both ends share, else "" (--muted) rather than picking one of two.
+ * group both ends share, else the group of the one end that has one -- a
+ * revenue line or an endpoint is in none, and the fund it reaches says
+ * which group the money is in -- else "" (--muted) rather than picking one
+ * of two.
  * @param {LaidLink} link
  * @returns {string}
  */
@@ -282,6 +285,8 @@ export function linkGroup(link) {
   return isFundGroup(link.source) ? link.source.id
     : isFundGroup(link.target) ? link.target.id
     : source === target ? source
+    : !target ? source
+    : !source ? target
     : "";
 }
 

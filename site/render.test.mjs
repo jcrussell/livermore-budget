@@ -678,6 +678,43 @@ describe("the drill's drawing", () => {
     assert.equal(lit(marks).length, marks.length);
   });
 
+  test("a ribbon with one group-less end wears the other end's hue, and one between two groups stays muted", async (t) => {
+    const { app, document } = await bootedApp({ checkedStem: YEARS[0].stem });
+    const chart = document.getElementById("chart");
+    const muted = app.cssVar("--muted");
+    let recoloured = 0;
+    const rungs = new Set();
+    const wrong = [];
+    const walked = await everyOffer(app, async (path) => {
+      for (const r of ribbonsIn(chart)) {
+        const d = r.__data__;
+        const a = app.fundGroupOf(d.source);
+        const b = app.fundGroupOf(d.target);
+        if (Boolean(a) === Boolean(b) || app.isFundGroup(d.source) || app.isFundGroup(d.target)) continue;
+        const g = a || b;
+        const want = app.cssVar(app.fundColorVar(g));
+        if (r.getAttribute("stroke") !== want) wrong.push(`${keyOf(path)}: ${d.source.id} -> ${d.target.id} is ${r.getAttribute("stroke")}, not ${g}'s ${want}`);
+        if (want !== muted) {
+          recoloured++;
+          rungs.add(keyOf(path));
+        }
+      }
+    });
+    assert.equal(walked.refused, "", walked.refused);
+    t.diagnostic(`${YEARS[0].label}: ${recoloured} ribbon(s) with one group-less end on ${rungs.size} of ` +
+      `${walked.visited} rung(s) wear their other end's hue rather than --muted`);
+    assert.deepEqual(wrong, [], firstOf(wrong));
+    assert.ok(recoloured > 0, "no ribbon has one group-less end, so the arm is never drawn");
+
+    // Two groups, neither of them a group node: picking one would be a guess.
+    await opened(app, "fund-balance/draw");
+    const funds = marksIn(chart).map((m) => m.__data__).filter((n) => app.fundGroupOf(n) && !app.isFundGroup(n));
+    const other = funds.find((n) => app.fundGroupOf(n) !== app.fundGroupOf(funds[0]));
+    assert.ok(other, "fund-balance/draw draws funds of one group only");
+    assert.equal(app.linkGroup({ source: funds[0], target: other }), "");
+    assert.equal(app.linkColor({ source: funds[0], target: other }), muted);
+  });
+
   test("the opened chart says what it is, in this step's own words", async (t) => {
     const step = stepByKey(CONFIG, "transfers");
     const year = YEARS[0];
