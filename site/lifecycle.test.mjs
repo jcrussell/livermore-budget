@@ -4,7 +4,7 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  loadApp, settle, refusals, pageFixture, columnFixture, clickYear, keydownListeners, listenerErrors,
+  loadApp, settle, refusals, pageFixture, columnFixture, clickYear, keydownListeners, listenerErrors, everyOffer,
 } from "./testlib.mjs";
 
 const FIRST = "sankey";
@@ -440,5 +440,166 @@ describe("refusals nothing drove", () => {
     assert.match(banners[0], /packaged without any published year/);
     assert.equal(app.shownYear, null);
     assert.equal(marks(document), 0);
+  });
+});
+
+describe("the view in the URL", () => {
+  const YEARS = pageFixture().config.years;
+  const NEWEST = YEARS[YEARS.length - 1];
+  const OLDEST = YEARS[0];
+
+  /** A fresh page whose URL carries `hash`, booted to rest. */
+  async function bootAt(hash, o = {}) {
+    const loaded = await loadApp(o);
+    loaded.window.history.replaceState(null, "", hash);
+    await loaded.app.boot();
+    await settle();
+    return loaded;
+  }
+  /** What a booted page shows, comparable across two pages. */
+  const view = (app) => ({
+    year: app.shownYear ? app.shownYear.stem : "",
+    open: app.drilled.map((r) => r.id),
+    groups: [...app.filter.groups].sort(),
+    kinds: [...app.filter.kinds].sort(),
+    smallest: app.filter.smallest,
+    isolated: app.filter.isolated,
+  });
+  /** The page's opening view: the newest year's overview, nothing filtered. */
+  const opening = { year: NEWEST.stem, open: [], groups: [], kinds: [], smallest: 0, isolated: "" };
+
+  for (const year of YEARS) {
+    test(`${year.label}: every rung the page offers is written to the hash as it opens, and a page loaded at that hash draws it`, async (t) => {
+      const { app, document, window } = await loadApp({ checkedStem: year.stem });
+      await app.boot();
+      await settle();
+      const hashes = [];
+      const faults = [];
+      const walked = await everyOffer(app, async (path) => {
+        const hash = window.location.hash;
+        if (hash !== app.hashOf(app.viewState())) faults.push(`${path.join(" > ")}: the URL says ${hash}`);
+        hashes.push({ path, hash });
+      });
+      assert.equal(walked.refused, "", walked.refused);
+      for (const { path, hash } of hashes) {
+        const again = await bootAt(hash);
+        const got = view(again.app);
+        const banners = said(again.document);
+        if (banners.length) faults.push(`${hash}: refused, ${banners[0]}`);
+        else if (got.year !== year.stem || got.open.join(">") !== path.join(">")) {
+          faults.push(`${hash}: drew ${got.year} at ${got.open.join(" > ") || "the overview"}`);
+        } else if (again.window.location.hash !== hash) faults.push(`${hash}: the URL now says ${again.window.location.hash}`);
+      }
+      t.diagnostic(`${year.label}: ${hashes.length} rung(s) round-tripped through the hash, e.g. ${hashes.length ? hashes[hashes.length - 1].hash : "none"}; ${faults.length} fault(s)`);
+      assert.ok(hashes.length > 0, "the page offers no rung, so nothing here is tested");
+      assert.equal(said(document).length, 0);
+      assert.deepEqual(faults.slice(0, 5), []);
+    });
+  }
+
+  test("the filters and the isolation round-trip with the year and the path", async (t) => {
+    const { app, window } = await loadApp({ checkedStem: OLDEST.stem });
+    await app.boot();
+    await settle();
+    await app.drillDown("fund-group/general");
+    await settle();
+    app.setFilter({ kinds: new Set(["internal_transfer"]), smallest: 1000000, groups: new Set(["fund-group/permanent"]) });
+    const follow = app.laidNodes.find((n) => !app.isSmaller(n.id) && n.id !== "fund-group/general").id;
+    app.setIsolated(follow);
+    const hash = window.location.hash;
+    const want = view(app);
+    const again = await bootAt(hash);
+    t.diagnostic(`${hash}`);
+    assert.equal(hash, app.hashOf(app.viewState()));
+    assert.deepEqual(view(again.app), want);
+    assert.deepEqual(said(again.document), []);
+    // The hash names the year by its column file and the smallest flow in cents.
+    assert.ok(/[#&]min=1000000(&|$)/.test(hash) && hash.includes("y=" + OLDEST.path.replace(/\.json$/, "")), hash);
+  });
+
+  test("Back and Forward walk the drill and the year; a filter change adds no step", async (t) => {
+    const { app, document, window } = await loadApp();
+    await app.boot();
+    await settle();
+    const popped = () => new Promise((resolve) => window.addEventListener("popstate", () => resolve(), { once: true }));
+    const start = window.history.length;
+    await app.drillDown("fund-group/general");
+    await settle();
+    await app.drillDown("fund/100");
+    await settle();
+    app.setFilter({ kinds: new Set(["internal_transfer"]) });
+    const deep = view(app);
+    assert.equal(window.history.length, start + 2, "a drill pushed no entry, or a filter pushed one");
+    let wait = popped();
+    window.history.back();
+    await wait;
+    await settle();
+    const one = view(app);
+    wait = popped();
+    window.history.back();
+    await wait;
+    await settle();
+    const none = view(app);
+    wait = popped();
+    window.history.forward();
+    await wait;
+    await settle();
+    const forward = view(app);
+    clickYear(document, OLDEST.stem);
+    await settle();
+    const switched = view(app);
+    wait = popped();
+    window.history.back();
+    await wait;
+    await settle();
+    const unswitched = view(app);
+    t.diagnostic(`deep ${deep.open.join(" > ")}; back ${one.open.join(" > ")}; back ${none.open.join(" > ") || "(overview)"}; ` +
+      `forward ${forward.open.join(" > ")}; year ${switched.year}; back ${unswitched.year} ${unswitched.open.join(" > ")}`);
+    assert.deepEqual(deep.open, ["fund-group/general", "fund/100"]);
+    assert.deepEqual(one.open, ["fund-group/general"]);
+    assert.deepEqual(none.open, []);
+    assert.deepEqual(forward.open, ["fund-group/general"]);
+    assert.equal(switched.year, OLDEST.stem);
+    assert.equal(unswitched.year, NEWEST.stem);
+    assert.deepEqual(unswitched.open, ["fund-group/general"]);
+    assert.equal(document.querySelector("#year-toggle input:checked").value, NEWEST.stem);
+    assert.deepEqual(said(document), []);
+  });
+
+  test("a hash naming a year, a node, a kind or a group the page does not publish or offer is refused with the banner, and the page shows its opening view", async (t) => {
+    const key = NEWEST.path.replace(/\.json$/, "");
+    const cases = [
+      ["#y=fy1999-adopted", "fy1999-adopted"],
+      [`#y=${key}&open=dept/patrol`, "dept/patrol"],
+      [`#y=${key}&open=fund-group/general,dept/no-such`, "dept/no-such"],
+      [`#y=${key}&hidekind=no_such_kind`, "no_such_kind"],
+      [`#y=${key}&hide=fund-group/no-such`, "fund-group/no-such"],
+      [`#y=${key}&iso=dept/patrol`, "dept/patrol"],
+      [`#y=${key}&min=1.5`, "1.5"],
+      [`#open=fund-group/general`, "no year"],
+      [`#y=${key}&zoom=2`, "zoom"],
+    ];
+    for (const [hash, names] of cases) {
+      const { app, document, window } = await bootAt(hash);
+      const banners = said(document);
+      t.diagnostic(`${hash}: ${banners[0] || "(no banner)"}`);
+      assert.equal(banners.length, 1, `${hash} drew without a banner`);
+      assert.ok(banners[0].includes(names), banners[0]);
+      assert.deepEqual(view(app), opening, `${hash} did not show the opening view`);
+      assert.ok(document.querySelectorAll("#chart g.node").length > 0, `${hash} drew no chart`);
+      assert.equal(window.location.hash, "#y=" + key);
+    }
+  });
+
+  test("a group or kind the view does not draw is inert, not refused, and an in-page anchor names no view", async () => {
+    const key = NEWEST.path.replace(/\.json$/, "");
+    const inert = await bootAt(`#y=${key}&hide=fund-group/permanent`);
+    assert.deepEqual(said(inert.document), []);
+    assert.deepEqual([...inert.app.filter.groups], ["fund-group/permanent"]);
+    assert.equal(inert.app.shown.hidden.length, 0);
+    const anchor = await bootAt("#flows");
+    assert.deepEqual(said(anchor.document), []);
+    assert.deepEqual(view(anchor.app), opening);
+    assert.equal(anchor.window.location.hash, "#flows");
   });
 });

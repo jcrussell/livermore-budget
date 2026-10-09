@@ -842,6 +842,9 @@ export function redrawStack(next, refused = "That could not be opened", landOn) 
   buildTable(rows);
   render(laid);
   restoreFocus(hadFocus, popped || (landOn ? landOn() : ""));
+  // A drill or a pop is a step a reader walks back with Back; a redraw on
+  // the same path (a width, a tail) leaves the hash as it was.
+  recordView("push");
   return true;
 }
 
@@ -1665,6 +1668,7 @@ export function setIsolated(id) {
     button.setAttribute("aria-pressed", String(pressed));
   }
   applyEmphasis();
+  recordView("replace");
 }
 
 /**
@@ -1784,6 +1788,7 @@ export function setFilter(next) {
   paintChartHint();
   render(laid);
   restoreFocus(hadFocus);
+  recordView("replace");
   return true;
 }
 
@@ -2774,6 +2779,244 @@ export function wireColumns() {
 }
 
 /* ------------------------------------------------------------------ *
+ * The view in the URL
+ * ------------------------------------------------------------------ */
+
+/**
+ * The view on screen as location.hash says it: the year by its column's file
+ * name, the opened path outermost first, the fund groups and link kinds the
+ * filters remove, the smallest flow drawn as itself in cents, and the
+ * isolation. A folded tail drawn out is not in it.
+ * @typedef {{year: string, open: string[], hide: string[], hidekind: string[], min: number, iso: string}} ViewState
+ */
+
+/** The hash's fields, in the order hashOf writes them. */
+export const HASH_FIELDS = Object.freeze(["y", "open", "hide", "hidekind", "min", "iso"]);
+
+/**
+ * The year the page opens on where the URL names no view: the control's,
+ * read once at boot. A refused hash shows this year's overview.
+ * @type {FiscYear | null}
+ */
+export let openingYear = null;
+
+/** Whether restoreView is moving the page, so nothing it draws writes the URL. */
+let restoringView = false;
+
+/**
+ * A year's name in the hash: its column's file name less .json, unique per
+ * year because each year is one column file.
+ * @param {FiscYear} year
+ * @returns {string}
+ */
+export function yearKey(year) {
+  return String(year.path).replace(/\.json$/, "");
+}
+
+/**
+ * The view on screen, or null before a year has drawn. Lists are sorted, so
+ * one view has one hash.
+ * @returns {ViewState | null}
+ */
+export function viewState() {
+  if (!shownYear) return null;
+  return {
+    year: yearKey(shownYear),
+    open: drilled.map((r) => r.id),
+    hide: Array.from(filter.groups).sort(),
+    hidekind: Array.from(filter.kinds).sort(),
+    min: filter.smallest,
+    iso: filter.isolated,
+  };
+}
+
+/**
+ * One value of the hash, escaped except for the slashes every id holds, so
+ * the hash stays readable.
+ * @param {string} v
+ * @returns {string}
+ */
+function hashValue(v) {
+  return encodeURIComponent(v).replace(/%2F/g, "/");
+}
+
+/**
+ * A view as a hash: `#y=<year>`, then each field not at its default --
+ * `open`, `hide` and `hidekind` comma-separated, `min` in cents, `iso`.
+ * @param {ViewState} st
+ * @returns {string}
+ */
+export function hashOf(st) {
+  const parts = ["y=" + hashValue(st.year)];
+  if (st.open.length) parts.push("open=" + st.open.map(hashValue).join(","));
+  if (st.hide.length) parts.push("hide=" + st.hide.map(hashValue).join(","));
+  if (st.hidekind.length) parts.push("hidekind=" + st.hidekind.map(hashValue).join(","));
+  if (st.min) parts.push("min=" + st.min);
+  if (st.iso) parts.push("iso=" + hashValue(st.iso));
+  return "#" + parts.join("&");
+}
+
+/**
+ * A hash read back into a view. "none" for an empty one and for an in-page
+ * anchor (no "="), which name no view; "refused", with why, for one this
+ * file cannot read whole: a field it does not write or one written twice, no
+ * year, an empty id, or a smallest flow that is not whole cents. Nothing is
+ * guessed.
+ * @param {string} hash
+ * @returns {{kind: "none"} | {kind: "refused", why: string} | {kind: "view", state: ViewState}}
+ */
+export function parseHash(hash) {
+  const body = String(hash || "").replace(/^#/, "");
+  if (!body || body.indexOf("=") < 0) return { kind: "none" };
+  /** @type {Map<string, string>} */
+  const fields = new Map();
+  for (const part of body.split("&")) {
+    const at = part.indexOf("=");
+    const name = at < 0 ? part : part.slice(0, at);
+    if (!HASH_FIELDS.includes(name)) return { kind: "refused", why: "it carries a field, " + name + ", this page does not write" };
+    if (fields.has(name)) return { kind: "refused", why: "it names " + name + " twice" };
+    fields.set(name, at < 0 ? "" : part.slice(at + 1));
+  }
+  /** @type {(raw: string) => string} */
+  const text = (raw) => {
+    try {
+      return decodeURIComponent(raw);
+    } catch (e) {
+      return "";
+    }
+  };
+  const list = (/** @type {string} */ name) => {
+    const raw = fields.get(name);
+    return raw === undefined || raw === "" ? [] : raw.split(",").map(text);
+  };
+  const year = text(fields.get("y") || "");
+  if (!year) return { kind: "refused", why: "it names no year" };
+  const open = list("open");
+  const hide = list("hide");
+  const hidekind = list("hidekind");
+  if ([...open, ...hide, ...hidekind].some((id) => !id)) return { kind: "refused", why: "it holds an empty name" };
+  const min = fields.has("min") ? fields.get("min") || "" : "0";
+  if (!/^\d+$/.test(min) || !Number.isSafeInteger(Number(min))) {
+    return { kind: "refused", why: "its smallest flow, " + min + ", is not a whole number of cents" };
+  }
+  return {
+    kind: "view",
+    state: { year, open, hide: hide.sort(), hidekind: hidekind.sort(), min: Number(min), iso: text(fields.get("iso") || "") },
+  };
+}
+
+/**
+ * Writes the view on screen into the URL: a new history entry for a drill, a
+ * pop or a year ("push"), the entry on screen rewritten for a filter or an
+ * isolation ("replace"). Nothing where the hash already says it, while a
+ * restore is moving the page, or before a year has drawn.
+ * @param {"push" | "replace"} how
+ */
+export function recordView(how) {
+  if (restoringView) return;
+  const st = viewState();
+  if (!st) return;
+  const hash = hashOf(st);
+  if (window.location.hash === hash) return;
+  try {
+    if (how === "push") window.history.pushState(null, "", hash);
+    else window.history.replaceState(null, "", hash);
+  } catch (e) { /* a sandboxed frame refuses history; the view still draws */ }
+}
+
+/**
+ * Moves the page to a view, field by field, and says why where it cannot: a
+ * year the page does not publish, a flow kind it names no label for, a fund
+ * group the year's column does not carry, a mark on the path that the chart
+ * it would open from does not offer, or an isolation naming a mark the chart
+ * does not draw. A group or kind the view does not draw is inert, as the
+ * panel's are. The opened path is walked through drillDown from the deepest
+ * rung the page already shares with it, so each rung is offered by the one
+ * rule the chart's own gestures use.
+ * @param {ViewState} st
+ * @returns {Promise<{outcome: string, why?: string}>} DREW, SUPERSEDED, or FAILED with why
+ */
+async function moveTo(st) {
+  const refuse = (/** @type {string} */ why) => ({ outcome: FAILED, why });
+  const year = (CONFIG.years || []).find((/** @type {FiscYear} */ y) => yearKey(y) === st.year);
+  if (!year) return refuse("this page publishes no year " + st.year);
+  const kinds = CONFIG.kind_labels || {};
+  const kind = st.hidekind.find((k) => !Object.prototype.hasOwnProperty.call(kinds, k));
+  if (kind !== undefined) return refuse("this page names no flow kind " + kind);
+  const removals = { groups: new Set(st.hide), kinds: new Set(st.hidekind), smallest: st.min };
+  if (!shownYear || shownYear !== year || !projection) {
+    filter = Object.freeze(Object.assign({}, removals, { isolated: "" }));
+    const got = await showYear(year);
+    if (got !== DREW) return { outcome: got, why: "the year " + st.year + " could not be drawn" };
+    syncYearControl();
+  } else if (!setFilter(Object.assign({}, removals, { isolated: "" }))) {
+    return refuse("the chart could not be filtered as it names");
+  }
+  const group = st.hide.find((g) => fundGroupPlace(g) < 0);
+  if (group !== undefined) return refuse(year.label + " carries no fund group " + group);
+  let shared = 0;
+  while (shared < drilled.length && shared < st.open.length && drilled[shared].id === st.open[shared]) shared++;
+  if (shared < drilled.length) {
+    drillUp(shared);
+    if (drilled.length !== shared) return refuse("the chart could not be closed to its opened path");
+  }
+  for (const id of st.open.slice(shared)) {
+    const node = projection ? projection.nodes.find((n) => n.id === id) : undefined;
+    if (!node || !drillable(node)) {
+      return refuse((drilled.length ? labelOfRung(drilled.length - 1) : "the overview") + " offers no mark " + id + " to open");
+    }
+    const got = await drillDown(id);
+    if (got !== DREW) return { outcome: got, why: id + " could not be opened" };
+  }
+  if (st.iso && !laidNodes.some((n) => isolates(st.iso, n))) return refuse("the chart draws no mark " + st.iso + " to follow");
+  setIsolated(st.iso);
+  return { outcome: DREW };
+}
+
+/**
+ * Shows the view a hash names, or refuses it: the reader is told why in the
+ * refusal banner and shown the page's opening view (openingYear's overview,
+ * nothing filtered), never the nearest view the hash might have meant. A
+ * hash naming no view shows the opening view. The URL is then rewritten to
+ * say the view on screen.
+ * @param {string} hash
+ * @returns {Promise<string>} DREW, SUPERSEDED or FAILED
+ */
+export async function restoreView(hash) {
+  const read = parseHash(hash);
+  const opening = openingYear || (CONFIG.years || [])[(CONFIG.years || []).length - 1];
+  /** @type {ViewState} */
+  const fallback = { year: yearKey(opening), open: [], hide: [], hidekind: [], min: 0, iso: "" };
+  const named = read.kind !== "none";
+  let moved = /** @type {{outcome: string, why?: string}} */ ({ outcome: FAILED, why: read.kind === "refused" ? read.why : "" });
+  restoringView = true;
+  try {
+    if (read.kind !== "refused") moved = await moveTo(read.kind === "view" ? read.state : fallback);
+  } finally {
+    restoringView = false;
+  }
+  if (moved.outcome === SUPERSEDED) return SUPERSEDED;
+  if (moved.outcome === DREW) {
+    if (named) recordView("replace");
+    return DREW;
+  }
+  if (!named) return FAILED;
+  // REFUSED: the opening view, then the banner, since a year drawing clears it.
+  restoringView = true;
+  let back;
+  try {
+    back = await moveTo(fallback);
+  } finally {
+    restoringView = false;
+  }
+  if (back.outcome === SUPERSEDED) return SUPERSEDED;
+  fail("This link names a view this page does not draw: " + moved.why +
+    ". The page shows its opening view instead.");
+  if (back.outcome === DREW) recordView("replace");
+  return FAILED;
+}
+
+/* ------------------------------------------------------------------ *
  * Boot
  * ------------------------------------------------------------------ */
 
@@ -2980,6 +3223,7 @@ export async function showYear(year) {
   buildDerivedList();
   buildTable(rows);
   render(laid);
+  recordView("push");
   return DREW;
 }
 
@@ -3076,6 +3320,16 @@ export function checkedYear(years) {
   return years[years.length - 1];
 }
 
+/** Moves the year control to the year on screen. */
+export function syncYearControl() {
+  const group = maybeEl("year-toggle");
+  if (!group || !shownYear) return;
+  for (const r of group.querySelectorAll("input[type=radio]")) {
+    const radio = /** @type {HTMLInputElement} */ (r);
+    radio.checked = radio.value === shownYear.stem;
+  }
+}
+
 /**
  * Wires the server-rendered year radio group. A year that fails to load moves
  * the radio back to the year still on screen.
@@ -3092,10 +3346,7 @@ export function wireYears(years) {
     if (!year) return;
     // A refused switch leaves the page on the year it was, so the control goes
     // back to it; the banner says what failed.
-    const back = () => {
-      if (!shownYear) return;
-      for (const r of group.querySelectorAll("input[type=radio]")) r.checked = r.value === shownYear.stem;
-    };
+    const back = syncYearControl;
     void showYear(year).then((got) => { if (got === FAILED) back(); }, (e) => {
       back();
       fail("The chart failed to draw: " + String(e));
@@ -3164,8 +3415,14 @@ export async function main() {
     });
   }
 
-  // The outcome is deliberately ignored: showYear has told the reader.
-  await showYear(checkedYear(years));
+  openingYear = checkedYear(years);
+  // Back and Forward walk the views this page recorded (recordView).
+  window.addEventListener("popstate", () => {
+    void restoreView(window.location.hash).catch((e) => fail("The chart failed to draw: " + String(e)));
+  });
+  // The outcome is deliberately ignored: restoreView and showYear have told
+  // the reader.
+  await restoreView(window.location.hash);
 }
 
 /**
