@@ -29,7 +29,7 @@ type stepGraph struct {
 // to the identity it states in every published column: what fund/100 takes in
 // less what its divisions draw equals what pp.66-67 print leaving the general
 // group other than through its divisions, less the money the group takes in
-// that no fund receives -- every spine ribbon into the group whose source
+// that pp.127-140 print for no fund -- every spine ribbon into the group whose source
 // sends nothing into any node under the group in the document the group opens
 // into. Read off the two documents, not off a drawn chart. The words and the
 // arithmetic are pinned together.
@@ -52,7 +52,7 @@ func TestTheFundStepsSentenceIsItsArithmetic(t *testing.T) {
 	if si < 0 {
 		t.Fatal("no fund step on the spine")
 	}
-	const twoTerms = "less the money the group takes in that no fund receives"
+	const twoTerms = "less the money the group takes in that pp.127-140 print for no fund"
 	if !strings.Contains(spine.Steps[si].Description, twoTerms) {
 		t.Fatalf("the fund step's description does not say %q, so the arithmetic below is not what the reader is told", twoTerms)
 	}
@@ -124,7 +124,7 @@ func TestTheFundStepsSentenceIsItsArithmetic(t *testing.T) {
 		if in == 0 || out == 0 || leaving == 0 || unreceived == 0 {
 			t.Fatalf("%s: in %d, out %d, leaving %d, unreceived %d; a zero term proves nothing", d.Stem, in, out, leaving, unreceived)
 		}
-		t.Logf("%s: fund/100 takes %d and its divisions draw %d, a difference of %d; the group's transfers out and fund-balance rows come to %d less %d no fund receives, which is %d",
+		t.Logf("%s: fund/100 takes %d and its divisions draw %d, a difference of %d; the group's transfers out and fund-balance rows come to %d less %d pp.127-140 print for no fund, which is %d",
 			d.Stem, in, out, in-out, leaving, unreceived, leaving-unreceived)
 		if in-out != leaving-unreceived {
 			t.Errorf("%s: the fund step's sentence states in - out = leaving - unreceived, and %d - %d != %d - %d",

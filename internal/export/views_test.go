@@ -3983,7 +3983,7 @@ func TestTheServedStepsCarryTheirLicences(t *testing.T) {
 			Tiers: []int{0, 2},
 		}}, Back: "All fund groups", Noun: "fund group", Tail: "funds",
 		Description:   "One.",
-		Residual:      map[string]string{"transfers/in": "no fund receives it"},
+		Residual:      map[string]string{"transfers/in": "pp.127-140 print it for no fund"},
 		ResidualGrain: "fund",
 		Gaps: map[string][]project.Gap{"fund-group/general": {
 			{FiscalYear: 2026, Basis: "adopted", Cents: -25000000, Reason: "The pages disagree."},

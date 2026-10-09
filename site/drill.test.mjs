@@ -732,7 +732,7 @@ for (const year of YEARS) {
       assert.deepEqual(at.crumbControls, [app.say("back_control", { back: groupStep.back }), app.say("back_control", { back: fundStep.back })]);
       assert.ok(at.desc.includes(label) && at.desc.includes(fundStep.description), at.desc);
       assert.ok(fundStep.description.includes("what it takes in is its revenue"));
-      assert.ok(fundStep.description.includes("less the money the group takes in that no fund receives"));
+      assert.ok(fundStep.description.includes("less the money the group takes in that pp.127-140 print for no fund"));
     });
 
     test(`${year.label} chain: depth 3 draws Patrol at {3,4,5}, names all three rungs, keeps the table pointer, and opens nothing further`, async (t) => {
