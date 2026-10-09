@@ -123,6 +123,38 @@ for (const year of YEARS) {
       assert.ok(chips.includes(want), JSON.stringify(chips));
     });
 
+    test(`${year.column}: a printed reduction states no share of its column and is in no other mark's total`, async (t) => {
+      const { app, document } = await onYear(year.stem);
+      await opened(app, PROPERTY);
+      const chart = document.getElementById("chart");
+      const eraf = markOf(chart, ERAF).__data__;
+      // A reduction is read off the pinned column: every ribbon it leaves by is printed negative.
+      const reduces = (id) => {
+        const out = columnLinks(year.column, "fund-flows", (from) => from === id);
+        return out.length > 0 && out.every((l) => l.value_cents < 0);
+      };
+      assert.ok(reduces(ERAF));
+      const column = [...chart.querySelectorAll("g.node")].map((g) => g.__data__).filter((n) => n.layer === eraf.layer);
+      const reductions = column.filter((n) => reduces(n.id));
+      const parts = column.filter((n) => !reduces(n.id));
+      const total = parts.reduce((s, n) => s + n.value, 0);
+      t.diagnostic(`${reductions.length} reduction(s) and ${parts.length} part(s) in ERAF's column; the parts total ${total} cents`);
+      assert.ok(parts.length >= 2);
+      for (const n of reductions) {
+        assert.equal(app.shareOf(n), "", `${n.id} states a share`);
+        app.showTip({ target: chart, clientX: 0, clientY: 0 }, n);
+        const tip = document.getElementById("tooltip").textContent;
+        app.pin(n);
+        const panel = document.getElementById("detail").textContent;
+        assert.ok(!tip.includes("of this column") && !panel.includes("of this column"), `${n.id}: ${tip} | ${panel}`);
+      }
+      for (const n of parts) {
+        const pct = (100 * n.value) / total;
+        const shown = pct < 0.1 ? "<0.1" : pct > 99.9 ? ">99.9" : pct.toFixed(1);
+        assert.equal(app.shareOf(n), `◇ our ${shown}% of this column`, n.id);
+      }
+    });
+
     test(`${year.column}: the inferred list totals every inferred flow it lists`, async (t) => {
       const { document } = await onYear(year.stem);
       const items = [...document.querySelectorAll("#derived-list li")];

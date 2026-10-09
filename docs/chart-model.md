@@ -17,7 +17,9 @@ are, what each may compute, and the measurements that fixed the seams.
 | Form renderers | `site/sankey.js`; a treemap or bar list later | what depends on the screen and the mark type: which tiers fit a budget, which ribbons a window holds and which half of a step's document it draws, whether a width draws a column, where a mark stands, layout, paint. Reads only its own hints and the generic step. | nothing: a renderer emits pixels |
 
 A figure the client shows is one Go cited, or a sum, difference or union of
-such figures under a licence Go shipped. A client mark is derived, says so,
+such figures under a licence Go shipped. A count of drawn members or a share of
+one drawn sum in another is a sentence about what is drawn, not a figure: the
+paint count and the column share are of this kind. A client mark is derived, says so,
 and carries its rationale and source note like any derived node.
 
 ## What a second form needs, and where it already is

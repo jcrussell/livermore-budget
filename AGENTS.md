@@ -38,6 +38,15 @@ rung; a Go function that replays the client's shaping to cross-check it is a
 second implementation of one rule, which is the defect this boundary exists to
 name.
 
+**The client's arithmetic licence is sums, and two readings of a membership.**
+Over figures Go cited, at a membership Go declared or the fold drew, the client
+may add cents, take a difference Go licensed, union cited ids and count members,
+and may state one such sum as a share of another, in no unit but a percentage.
+A count or a share is the client's sentence about what is drawn, never a
+figure in cents, and is marked as its own (`◇`, "our"). A printed reduction
+takes no share and is in no share's total: it is not a part of the column it is
+drawn in.
+
 **What MOVES goes in JavaScript** too: d3-sankey positions, tooltips, focus,
 transitions, the year control.
 
@@ -50,7 +59,8 @@ reads a global at import; a global is read at call time or passed in.
 
 So the stitching, the auditing and the cross-checking of the fact store are
 Go's, and a figure the client shows is either one Go cited or a sum or
-difference of such figures under a licence Go shipped.
+difference of such figures under a licence Go shipped; a count or share over
+them is marked as the client's.
 
 Why, measured: [`docs/chart-model.md`](docs/chart-model.md).
 

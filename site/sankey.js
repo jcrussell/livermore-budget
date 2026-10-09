@@ -920,18 +920,20 @@ export function labelLineShift(anchor) {
  * The share one mark is of the money in its column, as a percentage.
  *
  * IT IS ARITHMETIC AND SAYS SO: no page prints it. Computed from the DRAWN
- * values, a residual's included.
+ * values, a residual's included. A printed reduction (isContraNode) is drawn
+ * at its size but is no part of the column's money, so it has no share and
+ * is left out of every other mark's total.
  *
  * @param {LaidNode} d
  * @param {LaidNode[]} laid every laid node of the chart
  * @returns {string}
  */
 export function columnShare(laid, d) {
-  if (!d.value) return "";
+  if (!d.value || isContraNode(d)) return "";
   let total = 0;
   let siblings = 0;
   for (const other of laid) {
-    if (other.layer === d.layer) {
+    if (other.layer === d.layer && !isContraNode(other)) {
       total += other.value;
       siblings++;
     }
