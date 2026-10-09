@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strings"
 )
 
 // historyPageData is the history template's input. Like trendsPageData it
@@ -125,10 +126,18 @@ func buildHistoryPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			return historyPageData{}, fmt.Errorf("%s series %q: %w", v.Projection, s.Label, err)
 		}
 		rendered += placed
+		// A Category cell repeating its section's heading is the third reading
+		// of one phrase in a row (heading, row header, cell), so it is left
+		// empty; the case is the documents' and is compared folded, never
+		// rewritten.
+		category := s.CategoryLabel
+		if strings.EqualFold(category, v.Sections[i].Heading) {
+			category = ""
+		}
 		sections[i].Series = append(sections[i].Series, seriesRef{
 			Label:    label,
 			Group:    s.FundGroup,
-			Category: s.CategoryLabel,
+			Category: category,
 			Cells:    cells,
 			Mark:     buildMark(cells, columns),
 		})
