@@ -368,9 +368,9 @@ describe("the spine's fund groups", () => {
     const col = columnFixture("fy2026-adopted");
     if (alter) alter(col);
     const { app, document } = await bootedApp({ checkedStem: "sankey", plan: { "fy2026-adopted.json": { doc: col } } });
-    const buttons = [...document.querySelectorAll("#legend [data-node]")];
+    const buttons = [...document.querySelectorAll("#legend [data-group]")];
     return {
-      ids: buttons.map((b) => b.dataset.node),
+      ids: buttons.map((b) => b.dataset.group),
       vars: buttons.map((b) => b.querySelector("[data-var]")?.dataset.var),
       column: app.layOut(app.shapeFor(app.projection)).nodes.filter(app.isFundGroup).sort((a, b) => a.y0 - b.y0).map((n) => n.id),
       served: app.fundGroups().map((g) => g.id),

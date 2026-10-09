@@ -291,7 +291,7 @@ async function drive(year) {
         const id = subject.__data__.id;
         const note = (what) => wrong.gestures.push(`${where}: ${id} ${what}`);
         seen.gestures++; fire(subject, "click", { timeStamp: t0 + 1000 });
-        if (app.isolated !== id) note(`does not isolate on a click (isolated is ${JSON.stringify(app.isolated)})`);
+        if (app.filter.isolated !== id) note(`does not isolate on a click (isolated is ${JSON.stringify(app.filter.isolated)})`);
         // The dimming, stated as invariants rather than recomputing the predicate.
         const lit = ribbonsIn(chart).filter((p) => p.__data__.source.id === id || p.__data__.target.id === id);
         const dimmedRibbons = ribbonsIn(chart).filter((p) => p.classList.contains("dim"));
@@ -305,23 +305,23 @@ async function drive(year) {
         if (subject.classList.contains("dim")) note("dims itself while isolated");
 
         seen.gestures++; fire(subject, "click", { timeStamp: t0 + 2000 });
-        if (app.isolated !== "") note(`does not release on a second click (isolated is ${JSON.stringify(app.isolated)})`);
+        if (app.filter.isolated !== "") note(`does not release on a second click (isolated is ${JSON.stringify(app.filter.isolated)})`);
         const stuck = ribbonsIn(chart).filter((p) => p.classList.contains("dim")).length +
           marksIn(chart).filter((m) => m.classList.contains("dim")).length;
         if (stuck > 0) note(`leaves ${stuck} mark(s) and ribbon(s) dimmed after the isolation is released`);
 
         seen.gestures++; fire(subject, "keydown", { key: " ", timeStamp: t0 + 3000 });
-        if (app.isolated !== id) note(`does not isolate on Space (isolated is ${JSON.stringify(app.isolated)})`);
+        if (app.filter.isolated !== id) note(`does not isolate on Space (isolated is ${JSON.stringify(app.filter.isolated)})`);
         seen.gestures++; fire(subject, "click", { timeStamp: t0 + 3000 });
-        if (app.isolated !== id) note("is un-isolated by the click its own Space synthesised");
+        if (app.filter.isolated !== id) note("is un-isolated by the click its own Space synthesised");
         seen.gestures++; fire(subject, "keydown", { key: " ", timeStamp: t0 + 9000 });
-        if (app.isolated !== "") note(`does not release on a second Space (isolated is ${JSON.stringify(app.isolated)})`);
+        if (app.filter.isolated !== "") note(`does not release on a second Space (isolated is ${JSON.stringify(app.filter.isolated)})`);
 
         const before = app.drilled.length;
         seen.gestures++; fire(subject, "keydown", { key: "Enter", timeStamp: t0 + 9500, repeat: true });
         await settle();
-        if (app.isolated !== "" || app.drilled.length !== before) {
-          note(`acts on a held key (isolated ${JSON.stringify(app.isolated)}, ${app.drilled.length} rung(s))`);
+        if (app.filter.isolated !== "" || app.drilled.length !== before) {
+          note(`acts on a held key (isolated ${JSON.stringify(app.filter.isolated)}, ${app.drilled.length} rung(s))`);
         }
 
         if (opener) {
@@ -628,22 +628,54 @@ describe("the drill's drawing", () => {
     assert.equal(cells, ribbons.length);
   });
 
-  test("an opened view draws no legend even where a fund-group node survives the filter", async (t) => {
+  test("an opened view's legend is the fund groups its marks are in, in Go's order, and a swatch follows the group", async (t) => {
     const { app, document } = await bootedApp({ checkedStem: YEARS[0].stem });
-    const legend = document.getElementById("legend");
     const chart = document.getElementById("chart");
-    const swatches0 = legend.children.length;
+    const swatches = () => [...document.querySelectorAll("#legend [data-group]")];
     await opened(app, "fund-group/general");
-    const groupDrawn = marksIn(chart).some((m) => m.__data__.id === "fund-group/general");
-    const swatches1 = legend.children.length;
-    t.diagnostic(`overview ${swatches0} swatch(es), one per fund group of the column; opened into the group, ` +
-      `its node is ${groupDrawn ? "drawn" : "NOT drawn"} and the legend holds ${swatches1}`);
-    // One swatch per group the spine draws; the column lists every schedule's.
-    const col = columnFixture(YEARS[0].fixture);
-    const onSpine = new Set(col.schedules.sankey.nodes.map((n) => col.nodes[n.node].id));
-    assert.equal(swatches0, col.fund_groups.filter((g) => onSpine.has(g.id)).length);
-    assert.ok(groupDrawn, "the group is not drawn on its own window, so this asserts nothing");
-    assert.equal(swatches1, 0);
+    const onGroup = swatches().map((b) => b.dataset.group);
+    app.drillUp(0);
+    await settle();
+    // AN ENDPOINT'S VIEW: funds of several groups and no group node on screen,
+    // so the swatch is the only key to the hues.
+    await opened(app, "fund-balance/contribution");
+    const marks = marksIn(chart);
+    const ribbons = ribbonsIn(chart);
+    const legend = swatches();
+    const ids = legend.map((b) => b.dataset.group);
+    const inMarks = new Set(marks.map((m) => app.fundGroupOf(m.__data__)).filter(Boolean));
+    t.diagnostic(`opened into the General Fund group the legend is ${JSON.stringify(onGroup)}; opened into ` +
+      `fund-balance/contribution it is ${JSON.stringify(ids.map((id) => id.replace("fund-group/", "")))} over ` +
+      `${marks.length} mark(s), none of them a group node`);
+    assert.deepEqual(onGroup, ["fund-group/general"]);
+    assert.ok(!marks.some((m) => app.isFundGroup(m.__data__)), "a group node is drawn, so a node toggle would do");
+    assert.ok(ids.length >= 2, `the view spans ${ids.length} group(s), so it tells a group from a node apart nowhere`);
+    assert.deepEqual(ids, app.fundGroups().map((g) => g.id).filter((id) => inMarks.has(id)));
+    for (const b of legend) {
+      assert.equal(b.querySelector(".key").dataset.var, app.fundColorVar(b.dataset.group), b.dataset.group);
+    }
+
+    const pick = legend[0];
+    const g = pick.dataset.group;
+    fire(pick, "click");
+    const lit = (els) => els.filter((e) => !e.classList.contains("dim")).map((e) => e.__data__);
+    const litMarks = lit(marks);
+    const litRibbons = lit(ribbons);
+    const ofGroup = (n) => app.fundGroupOf(n) === g;
+    t.diagnostic(`following ${g}: ${litMarks.length} of ${marks.length} mark(s) and ${litRibbons.length} of ` +
+      `${ribbons.length} ribbon(s) stay lit`);
+    assert.equal(pick.getAttribute("aria-pressed"), "true");
+    assert.equal(app.filter.isolated, g);
+    for (const m of marks) if (ofGroup(m.__data__)) assert.ok(litMarks.includes(m.__data__), `${m.__data__.id} is in ${g} and dimmed`);
+    for (const r of ribbons) {
+      const d = r.__data__;
+      const mine = ofGroup(d.source) || ofGroup(d.target);
+      assert.equal(litRibbons.includes(d), mine, `${d.source.id} -> ${d.target.id} is ${mine ? "" : "not "}${g}'s`);
+    }
+    assert.ok(litMarks.length < marks.length, "following the group dims no mark, so it follows nothing");
+    fire(pick, "click");
+    assert.equal(pick.getAttribute("aria-pressed"), "false");
+    assert.equal(lit(marks).length, marks.length);
   });
 
   test("the opened chart says what it is, in this step's own words", async (t) => {

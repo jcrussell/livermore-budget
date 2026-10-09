@@ -78,6 +78,7 @@ function words(app, document) {
     desc: text("chart-desc"),
     hint: text("chart-hint"),
     legend: legend ? legend.children.length : -1,
+    legendIDs: legend ? [...legend.children].map((b) => b.dataset.group) : [],
     crumbControls: kids.filter((c) => c.tagName === "BUTTON" && c.className === "crumb-back")
       .map((c) => c.textContent),
     crumbHere: kids.filter((c) => c.tagName === "SPAN").map((c) => c.textContent).join(""),
@@ -303,7 +304,8 @@ for (const year of YEARS) {
       assert.ok(at.title.endsWith(label), at.title);
       assert.deepEqual(at.crumbControls, [app.say("back_control", { back: step.back })]);
       assert.ok(at.crumbHere.includes(label), at.crumbHere);
-      assert.equal(at.legend, 0);
+      // The legend keys the kept flank's groups, in Go's order.
+      assert.deepEqual(at.legendIDs, app.fundGroups().map((g) => g.id).filter((id) => reaches.includes(id)));
       assert.ok(!app.projection.nodes.some((n) => app.drillable(n)), "something opens further");
       assert.ok(at.desc.includes(label), at.desc);
       assert.ok(at.desc.includes(step.description), "the description lacks the step's own");
@@ -703,7 +705,7 @@ for (const year of YEARS) {
       assert.ok(at.title.startsWith(year.chart_title) && at.title.endsWith(label), at.title);
       assert.deepEqual(at.crumbControls, [app.say("back_control", { back: step.back })]);
       assert.ok(at.crumbHere.includes(label), at.crumbHere);
-      assert.equal(at.legend, 0);
+      assert.deepEqual(at.legendIDs, [CHAIN[0]]);
       assert.ok(at.desc.includes(label) && at.desc.includes(step.description), at.desc);
       assert.ok(at.desc.endsWith(pointerOf(served)), "the table pointer is dropped");
       assert.deepEqual(opens, ["fund/100"]);
@@ -759,7 +761,7 @@ for (const year of YEARS) {
       assert.ok(at.desc.includes(steps[2].description), at.desc);
       assert.ok(at.desc.endsWith(pointerOf(served)), "the table pointer is dropped");
       assert.ok(!app.projection.nodes.some((n) => app.drillable(n)), "something still opens");
-      assert.equal(at.legend, 0);
+      assert.deepEqual(at.legendIDs, [CHAIN[0]]);
     });
 
     test(`${year.label} chain: a non-General group's funds open exactly where pp.85-125 print a row for them, and the rest are drawn as ends`, async (t) => {

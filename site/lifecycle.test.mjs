@@ -153,12 +153,12 @@ describe("a click during the opening fetch", () => {
     // Something for Escape to undo, so "ran" is observable and not just "did
     // not throw".
     app.setIsolated(app.projection.nodes[0].id);
-    assert.notEqual(app.isolated, "");
+    assert.notEqual(app.filter.isolated, "");
     document.dispatchEvent(new window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     t.diagnostic(`dispatching Escape ${errors.length ? "threw: " + errors.join("; ") : "threw nothing"}; ` +
-      `isolation is ${JSON.stringify(app.isolated)}, pin is ${app.pinned}`);
+      `isolation is ${JSON.stringify(app.filter.isolated)}, pin is ${app.pinned}`);
     assert.deepEqual(errors, []);
-    assert.equal(app.isolated, "");
+    assert.equal(app.filter.isolated, "");
     // A BOOLEAN, NOT THE PIN: a failing assert.equal hands node:test the laid
     // mark as `actual`, whose graph reaches the whole jsdom window, and
     // serializing it for the report takes every byte the machine has.

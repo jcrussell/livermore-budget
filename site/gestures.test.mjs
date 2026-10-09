@@ -126,7 +126,7 @@ function tails(app) {
 describe("the two keys", () => {
   test("Enter opens and Space isolates, and neither does the other", async (t) => {
     const { app, document } = await bootedApp();
-    const state = () => ({ depth: app.drilled.length, top: topOf(app), isolated: app.isolated });
+    const state = () => ({ depth: app.drilled.length, top: topOf(app), isolated: app.filter.isolated });
 
     fire(markOf(app, document, OPENS), "keydown", { key: "Enter", timeStamp: 1000 });
     await settle();
@@ -163,14 +163,14 @@ describe("the two keys", () => {
     const { app, document } = await bootedApp();
     await opened(app, SHUT);
     fire(markOf(app, document, seed), "click", { timeStamp: 0 });
-    const seeded = app.isolated;
+    const seeded = app.filter.isolated;
     fire(markOf(app, document, CLOSED), "click", { timeStamp: 1000 });
-    const firstClick = app.isolated;
+    const firstClick = app.filter.isolated;
     fire(markOf(app, document, CLOSED), "click", { timeStamp: 1050 });
-    const secondClick = app.isolated;
+    const secondClick = app.filter.isolated;
     fire(markOf(app, document, CLOSED), "dblclick", { timeStamp: 1060 });
     await settle();
-    const closedDouble = { depth: app.drilled.length, isolated: app.isolated };
+    const closedDouble = { depth: app.drilled.length, isolated: app.filter.isolated };
 
     // A SECOND PAGE AND NOT THE SAME ONE WOUND BACK: seeding the same mark
     // again on a chart still following it clears the seed.
@@ -178,12 +178,12 @@ describe("the two keys", () => {
     const m2 = (id) => markOf(second.app, second.document, id);
     const spineSeed = "revenue/taxes/sales";
     fire(m2(spineSeed), "click", { timeStamp: 0 });
-    const reseeded = second.app.isolated;
+    const reseeded = second.app.filter.isolated;
     fire(m2(OPENS), "click", { timeStamp: 1000 });
     fire(m2(OPENS), "click", { timeStamp: 1050 });
     fire(m2(OPENS), "dblclick", { timeStamp: 1060 });
     await settle();
-    const opensDouble = { depth: second.app.drilled.length, top: topOf(second.app), isolated: second.app.isolated };
+    const opensDouble = { depth: second.app.drilled.length, top: topOf(second.app), isolated: second.app.filter.isolated };
 
     assert.equal(seeded, seed);
     assert.equal(firstClick, CLOSED);
@@ -212,7 +212,7 @@ for (const year of YEARS) {
       // money on every other mark.
       fire(markOf(app, document, tail.id), "keydown", { key: " ", timeStamp: 0 });
       await settle();
-      const spaceFollowed = app.isolated;
+      const spaceFollowed = app.filter.isolated;
       const spaceLeft = tails(app);
       fire(markOf(app, document, tail.id), "keydown", { key: "Enter", timeStamp: app.ACTIVATION_WINDOW * 10 });
       await settle();

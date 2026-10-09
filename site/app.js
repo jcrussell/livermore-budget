@@ -271,19 +271,27 @@ export function fundGroupPlace(id) {
 }
 
 /**
- * A link's hue: the fund group at either end, else the group both ends share,
- * else "" (--muted) rather than picking one of two.
+ * The fund group a link is drawn in: the fund group at either end, else the
+ * group both ends share, else "" (--muted) rather than picking one of two.
+ * @param {LaidLink} link
+ * @returns {string}
+ */
+export function linkGroup(link) {
+  const source = fundGroupOf(link.source);
+  const target = fundGroupOf(link.target);
+  return isFundGroup(link.source) ? link.source.id
+    : isFundGroup(link.target) ? link.target.id
+    : source === target ? source
+    : "";
+}
+
+/**
+ * A link's hue: its group's (linkGroup).
  * @param {LaidLink} link
  * @returns {string}
  */
 export function linkColor(link) {
-  const source = fundGroupOf(link.source);
-  const target = fundGroupOf(link.target);
-  const group = isFundGroup(link.source) ? link.source.id
-    : isFundGroup(link.target) ? link.target.id
-    : source === target ? source
-    : "";
-  return cssVar(fundColorVar(group));
+  return cssVar(fundColorVar(linkGroup(link)));
 }
 
 /**
@@ -311,8 +319,15 @@ export function fundColorVar(id) {
 
 /** @type {FiscProjection | null} */
 export let projection = null;
-/** Node id whose flows are isolated, or "" for all of them. */
-export let isolated = "";
+/**
+ * What the reader has asked the chart to emphasise. isolated: the node or
+ * fund group whose money is followed, or "" for all of it. A fund group's id
+ * follows the group (follows); any other id follows the node. Replaced
+ * whole, never mutated, and moved only through setIsolated.
+ * @typedef {{isolated: string}} FilterState
+ */
+/** @type {Readonly<FilterState>} */
+export let filter = Object.freeze({ isolated: "" });
 /**
  * One opened node. The document is on the rung, not looked up, because a step
  * that names a projection opens a node of one file into a chart of another.
@@ -771,7 +786,7 @@ export function redrawStack(next, refused = "That could not be opened", landOn) 
   }
   clearRefusal();
   pinned = null;
-  isolated = "";
+  filter = Object.freeze(Object.assign({}, filter, { isolated: "" }));
   resetDetail();
   hideTip();
   paintBreadcrumb();
@@ -937,8 +952,8 @@ export function clickNode(d, at) {
   pin(d);
   if (d.id === keyActivation.id && at - keyActivation.at < ACTIVATION_WINDOW) return;
   const within = d.id === clickIsolate.id && at - clickIsolate.at < ACTIVATION_WINDOW;
-  clickIsolate = { id: d.id, at: at, was: within ? clickIsolate.was : isolated };
-  setIsolated(isolated === d.id ? "" : d.id);
+  clickIsolate = { id: d.id, at: at, was: within ? clickIsolate.was : filter.isolated };
+  setIsolated(filter.isolated === d.id ? "" : d.id);
 }
 
 /**
@@ -983,7 +998,7 @@ export function keyNode(d, key, at) {
     expandTier(d);
     return;
   }
-  setIsolated(isolated === d.id ? "" : d.id);
+  setIsolated(filter.isolated === d.id ? "" : d.id);
 }
 
 /**
@@ -1107,18 +1122,17 @@ export function paintChartHint() {
   const where = column ? say("in_column", { columns: column }) : "";
   // The isolate is named on every view, and Space with it, because Space
   // never opens against the role="button" convention.
-  const follows = " " + say("follow");
+  const follow = " " + say("follow");
   // A sentence of its own: the tail can be the only thing a chart offers.
   const tails = Boolean(projection) && projection.nodes.some(expandable);
   const expands = tails ? " " + say("expand") : "";
+  const swatch = buildLegendCount() ? " " + say("swatch") : "";
   if (drilled.length) {
     hint.textContent = say("opened_hint", { label: labelOfRung(drilled.length - 1) }) + " " +
-      (anyOpens ? say("open_further", { where }) : say("nothing_further")) + follows + expands + heldBack();
+      (anyOpens ? say("open_further", { where }) : say("nothing_further")) + follow + expands + swatch + heldBack();
     return;
   }
-  const swatches = buildLegendCount();
-  hint.textContent = (anyOpens ? say("open_into", { where }) : say("nothing_opens")) + follows +
-    (swatches ? " " + say("swatch") : "");
+  hint.textContent = (anyOpens ? say("open_into", { where }) : say("nothing_opens")) + follow + swatch;
 }
 
 /**
@@ -1410,36 +1424,76 @@ export function paint() {
 }
 
 /**
- * Isolates one node's flows, or clears the isolation for "".
+ * Follows one node's or one fund group's money, or clears the isolation for
+ * "".
  *
  * Every path into this state goes through here, so the legend's pressed button
  * and the dimming cannot drift apart.
  * @param {string} id
  */
 export function setIsolated(id) {
-  isolated = id;
+  filter = Object.freeze(Object.assign({}, filter, { isolated: id }));
   for (const element of el("legend").querySelectorAll("button")) {
     const button = /** @type {HTMLElement} */ (element);
-    const pressed = isolated !== "" && button.dataset.node === isolated;
+    const pressed = id !== "" && button.dataset.group === id;
     button.setAttribute("aria-pressed", String(pressed));
   }
   applyEmphasis();
 }
 
-/** Applies the isolation and the pinned selection to every mark. */
-export function applyEmphasis() {
+/**
+ * Whether an id names a fund group of the chart on screen, by its role.
+ * @param {string} id
+ * @returns {boolean}
+ */
+export function isGroupID(id) {
+  const n = groupIndex.get(id);
+  return Boolean(n) && isFundGroup(n);
+}
+
+/**
+ * Whether a laid ribbon carries the money isolating `id` follows: an end at
+ * that node, or, where `id` is a fund group, the group it is drawn in or the
+ * group of either end. ONE RULE FOR EVERY CALLER, swatch or mark: a group's
+ * own ribbons are always in it, so following the group never follows less
+ * than following its node.
+ * @param {string} id
+ * @param {LaidLink} l
+ * @returns {boolean}
+ */
+export function follows(id, l) {
+  if (l.source.id === id || l.target.id === id) return true;
+  if (!isGroupID(id)) return false;
+  return linkGroup(l) === id || fundGroupOf(l.source) === id || fundGroupOf(l.target) === id;
+}
+
+/**
+ * Whether a laid mark is one the isolation of `id` is ABOUT rather than one it
+ * reaches by a ribbon: the node itself, or a mark in the fund group `id` names.
+ * @param {string} id
+ * @param {LaidNode} d
+ * @returns {boolean}
+ */
+export function isolates(id, d) {
+  return d.id === id || (isGroupID(id) && fundGroupOf(d) === id);
+}
+
+/**
+ * Applies a filter state's isolation, and the pinned selection, to every
+ * mark. An isolation the chart on screen draws nothing of is inert, not a
+ * chart dimmed whole: a group the view lacks, or a node the redraw removed.
+ * @param {Readonly<FilterState>} [state]
+ */
+export function applyEmphasis(state = filter) {
   const svg = D3.select("#chart");
-  svg.selectAll("path.link").classed("dim", /** @param {LaidLink} d */ (d) =>
-    isolated !== "" && d.source.id !== isolated && d.target.id !== isolated);
+  const id = state.isolated;
+  const on = id !== "" && laidNodes.some((n) => isolates(id, n));
+  svg.selectAll("path.link").classed("dim", /** @param {LaidLink} d */ (d) => on && !follows(id, d));
   svg.selectAll("path.link").classed("hot", /** @param {LaidLink} d */ (d) => d === pinned);
-  svg.selectAll("g.node").classed("dim", /** @param {LaidNode} d */ (d) => {
-    if (isolated === "") return false;
-    if (d.id === isolated) return false;
-    return !d.sourceLinks.concat(d.targetLinks).some((l) =>
-      l.source.id === isolated || l.target.id === isolated);
-  });
+  svg.selectAll("g.node").classed("dim", /** @param {LaidNode} d */ (d) =>
+    on && !isolates(id, d) && !d.sourceLinks.concat(d.targetLinks).some((l) => follows(id, l)));
   svg.selectAll("g.node").attr("aria-pressed", /** @param {LaidNode} d */ (d) =>
-    String(d.id === isolated && isolated !== ""));
+    String(on && d.id === id));
 }
 
 /* ------------------------------------------------------------------ *
@@ -1779,32 +1833,55 @@ export function pin(d) {
  * ------------------------------------------------------------------ */
 
 /**
- * Draws one swatch per fund group on the chart, each a toggle for that group's
- * isolation.
- *
- * EMPTY ON EVERY OPENED VIEW, BY RULE: a swatch toggles a NODE id, and on an
- * opened view that would dim what the reader opened the node to see. A legend
- * meaning a group rather than a node is fisc-0jy9.
+ * The fund groups the laid marks are in, in Go's order; one the column does
+ * not order sorts last, by id.
+ * @returns {string[]}
+ */
+export function drawnGroups() {
+  const present = new Set();
+  for (const n of laidNodes) {
+    const g = fundGroupOf(n);
+    if (g) present.add(g);
+  }
+  const place = (/** @type {string} */ id) => {
+    const at = fundGroupPlace(id);
+    return at < 0 ? Infinity : at;
+  };
+  return Array.from(present).sort((a, b) => place(a) - place(b) || (a < b ? -1 : a > b ? 1 : 0));
+}
+
+/**
+ * A fund group's printed label: off the documents the chart was laid from,
+ * else the column's node table, else its id.
+ * @param {string} id
+ * @returns {string}
+ */
+export function groupLabel(id) {
+  const n = groupIndex.get(id) ||
+    (column && Array.isArray(column.nodes) ? column.nodes.find((x) => x && x.id === id) : null);
+  return n && n.label ? n.label : id;
+}
+
+/**
+ * Draws one swatch per fund group the chart on screen draws a mark in, each a
+ * toggle for following that GROUP's money (follows). On every view: a
+ * category window or an endpoint's view colours funds of several groups with
+ * no group node on screen, and the swatch is the only key to those hues.
  */
 export function buildLegend() {
   if (!projection) return;
   const legend = el("legend");
   legend.replaceChildren();
-  if (drilled.length) return;
-  // The document's groups in Go's order; an unnamed one sorts last.
-  const groups = projection.nodes.filter(isFundGroup).slice()
-    .sort((a, b) => fundGroupPlace(a.id) - fundGroupPlace(b.id) ||
-      (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
-  for (const node of groups) {
+  for (const id of drawnGroups()) {
     const button = document.createElement("button");
     button.type = "button";
-    button.dataset.node = node.id;
-    button.setAttribute("aria-pressed", "false");
+    button.dataset.group = id;
+    button.setAttribute("aria-pressed", String(filter.isolated === id));
     const key = h("span", "key");
-    key.dataset.var = fundColorVar(node.id);
+    key.dataset.var = fundColorVar(id);
     button.append(key);
-    button.append(document.createTextNode(node.label));
-    button.addEventListener("click", () => setIsolated(isolated === node.id ? "" : node.id));
+    button.append(document.createTextNode(groupLabel(id)));
+    button.addEventListener("click", () => setIsolated(filter.isolated === id ? "" : id));
     legend.append(button);
   }
 }
@@ -2250,7 +2327,7 @@ export async function showYear(year) {
   clearRefusal();
   // A pin and an isolation belong to the year they were made in.
   pinned = null;
-  isolated = "";
+  filter = Object.freeze(Object.assign({}, filter, { isolated: "" }));
   resetDetail();
   hideTip();
 
@@ -2425,7 +2502,7 @@ export async function main() {
     if (e.key === "Escape") {
       // Escape undoes one thing, innermost first: a pin or isolation, then one
       // rung. drillUp clears the pin and isolation itself.
-      if (!pinned && !isolated && drilled.length) {
+      if (!pinned && !filter.isolated && drilled.length) {
         drillUp(drilled.length - 1);
         return;
       }
