@@ -62,6 +62,10 @@ type wording struct {
 	GapLeadOver          string `json:"gap_lead_over"`
 	GapRationale         string `json:"gap_rationale"`
 	GapNote              string `json:"gap_note"`
+	// GapKind is the Kind a gap's ribbon is said to be, which project.LinkKinds
+	// has no member for: the difference between two schedules crosses no
+	// boundary either of them printed.
+	GapKind string `json:"gap_kind"`
 	// ContraOrphan is project.ContraOrphan, the sentence a reduction carries
 	// when no printed line explains it, shipped so a fold that nets a ribbon
 	// negative names it in the producer's words.
@@ -148,6 +152,7 @@ func defaultWording() wording {
 		GapNote: "Derived, not published: one document's total for this cell less the other's. Each total is built from " +
 			"figures `fisc verify` ties to the pages the city printed, and the difference is the one declared for this " +
 			"column; no page prints it as a figure of its own.",
+		GapKind:          "none: crosses no printed boundary",
 		ContraOrphan:     project.ContraOrphan,
 		BalanceBeginning: "Balance at the start of the year, as printed: {figure}",
 		BalanceEnding:    "Balance at the end of the year, as printed: {figure}",

@@ -474,6 +474,7 @@
         "gap_lead_over",
         "gap_rationale",
         "gap_note",
+        "gap_kind",
         "contra_orphan",
         "balance_beginning",
         "balance_ending"
@@ -667,6 +668,11 @@
           "type": "string",
           "minLength": 1,
           "description": "A gap's source note."
+        },
+        "gap_kind": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The kind a gap's ribbon is said to be, which no link kind names."
         },
         "contra_orphan": {
           "type": "string",

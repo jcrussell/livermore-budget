@@ -48,12 +48,13 @@ export function say(key, vars) {
 
 /**
  * A link kind in the page's words, as the export ships them. The empty kind
- * is a gap's, which crosses no printed boundary, and has no words.
+ * is a gap's, which crosses no printed boundary, and is said in the words
+ * the export ships for that.
  * @param {string} kind
  * @returns {string}
  */
 export function kindLabel(kind) {
-  if (kind === "") return "";
+  if (kind === "") return say("gap_kind");
   const label = config().kind_labels[kind];
   if (!label) throw new Error("cannot name link kind " + kind + ": the page publishes no label for it");
   return label;

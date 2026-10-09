@@ -1005,6 +1005,24 @@ describe("a gap whose figures carry cents", () => {
   });
 });
 
+// A GAP'S RIBBON HAS NO LINK KIND, and its row in the flow table says so in
+// the words the export ships rather than leaving the Kind cell empty.
+describe("a gap's row in the flow table", () => {
+  test("names its kind in the export's words, and no row's Kind cell is empty", async (t) => {
+    const { app, document } = await bootedApp({ checkedStem: "sankey-2027" });
+    await opened(app, "expenditure/services-and-supplies");
+    const gap = app.projection.nodes.find((n) => app.isGap(n.id));
+    assert.ok(gap, "no gap is drawn, so its row proves nothing");
+    const rows = [...document.querySelectorAll("#flow-table tbody tr")].map((tr) => [...tr.children].map((c) => c.textContent));
+    const gapRow = rows.find((r) => r[1] === gap.label || r[0] === gap.label);
+    assert.ok(gapRow, `the flow table has no row for ${gap.label}`);
+    t.diagnostic(`the gap's row: ${JSON.stringify(gapRow.slice(0, 5))}`);
+    assert.equal(gapRow[3], PAGE.wording.gap_kind);
+    assert.ok(PAGE.wording.gap_kind.trim());
+    assert.deepEqual(rows.filter((r) => !r[3].trim()), []);
+  });
+});
+
 // A NODE IS OFFERED ONLY WHERE ITS DRAWN CHART HOLDS A NODE IN EVERY COLUMN
 // ITS STEP PROMISES (promisedTiers), so the offer and the draw are one rule.
 // Planted: FY2027's fund-sources-uses less the ribbons from tier 0 into

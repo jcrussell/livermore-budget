@@ -213,12 +213,13 @@ describe("a figure whose words or pages the page does not carry", () => {
     assert.throws(() => app.citations(printed.locators), new RegExp(`cannot cite ${loc.doc_id} p${page}`));
   });
 
-  test("a link kind with no label is refused, and a gap's empty kind has no words", async () => {
+  test("a link kind with no label is refused, and a gap's empty kind is said in the export's words", async () => {
     const config = structuredClone(PAGE.config);
     const { app } = await bootedApp({ checkedStem: "sankey", config });
     const [kind] = Object.keys(config.kind_labels);
     assert.ok(app.kindLabel(kind));
-    assert.equal(app.kindLabel(""), "");
+    assert.ok(config.wording.gap_kind);
+    assert.equal(app.kindLabel(""), config.wording.gap_kind);
     delete config.kind_labels[kind];
     assert.throws(() => app.kindLabel(kind), new RegExp(`cannot name link kind ${kind}`));
   });
