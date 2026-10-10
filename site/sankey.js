@@ -14,7 +14,7 @@
  */
 
 import {
-  FoldRefusal, capColumn, carriedResidual, fmt, fmtShortSigned, foldDocument, foldTarget, isAggregate, isFundGroup, isGap, isLink, isResidual, licensedGap, printedNet, reducedOf, say, scoped, tailFigure, withinNode,
+  FoldRefusal, capColumn, carriedResidual, fmt, fmtShortSigned, foldDocument, foldTarget, isAggregate, isFundGroup, isGap, isLink, isResidual, licensedGap, printedNet, reducedOf, say, scoped, tailFigure, tierFrontier, withinNode,
 } from "./core.js";
 
 export const NODE_WIDTH = 14;
@@ -226,7 +226,7 @@ export function freshHalf(step, doc, id, tiers = freshTiers(step)) {
  * @param {string} opened
  * @param {boolean} nearIsSource
  * @param {number[]} tiers  the columns drawn, in order
- * @returns {(src: FiscNode, dst: FiscNode, byID: Map<string,FiscNode>, drawn: Set<number>) => boolean}
+ * @returns {(src: FiscNode, dst: FiscNode, byID: Map<string,FiscNode>, drawn: ReadonlySet<string>) => boolean}
  */
 export function reaching(doc, opened, nearIsSource, tiers) {
   const inside = withinNode(doc, opened);
@@ -250,12 +250,12 @@ export function reaching(doc, opened, nearIsSource, tiers) {
  * @param {FiscProjection} doc
  * @param {string} id
  * @param {number[]} tiers
- * @param {(src: FiscNode, dst: FiscNode, byID: Map<string,FiscNode>, drawn: Set<number>) => boolean} holds
+ * @param {(src: FiscNode, dst: FiscNode, byID: Map<string,FiscNode>, drawn: ReadonlySet<string>) => boolean} holds
  * @returns {FiscProjection}
  */
 export function filterLinks(doc, id, tiers, holds) {
   const byID = new Map(doc.nodes.map((n) => [n.id, n]));
-  const drawn = new Set(tiers);
+  const drawn = tierFrontier(doc, tiers);
   const placeable = scoped(doc, tiers);
   const links = doc.links.filter((l) => {
     const src = byID.get(l.source);
@@ -273,7 +273,7 @@ export function filterLinks(doc, id, tiers, holds) {
       let at = byID.get(end);
       for (let hops = 0; at && hops < 9; hops++) {
         keep.add(at.id);
-        if (drawn.has(at.tier)) break;
+        if (drawn.has(at.id)) break;
         at = at.parent ? byID.get(at.parent) : undefined;
       }
     }
@@ -323,7 +323,7 @@ export function sideOf(doc, rung, tiers, nearIsSource) {
     parentOf.set(tier, parent);
     shaped = capColumn(shaped, tier, cap.cap, parent, cap.tail || step.tail);
   }
-  const drawn = foldDocument(shaped, tiers);
+  const drawn = foldDocument(shaped, tierFrontier(shaped, tiers));
 
   // EVERY AGGREGATE THIS CALL MADE HAS ITS PARENT PUT BACK AFTER THE FOLD,
   // which blanks it because the opened node was filtered away. Its note is
@@ -615,7 +615,7 @@ export function markAmounts(drawn, rung) {
   // folded only then: a document is read whole at a width that draws part
   // of it only where a reduction is in it.
   if (!half.links.some((l) => l.value_cents < 0)) return drawn;
-  const printed = printedNet(foldDocument(half, freshTiers(step)), rung.id);
+  const printed = printedNet(foldDocument(half, tierFrontier(half, freshTiers(step))), rung.id);
   if (!printed.reduced) return drawn;
   return Object.assign({}, drawn, {
     nodes: drawn.nodes.map((n) => (n.id === rung.id ? Object.assign({}, n, { fixedValue: printed.net }) : n)),
@@ -785,9 +785,9 @@ export function carryResidual(drawn, from, rung, onScreen) {
   const inside = withinNode(doc, opened);
   const declared = freshHalf(step, doc, opened);
   const byDocID = new Map(doc.nodes.map((n) => [n.id, n]));
-  const declaredTiers = new Set(freshTiers(step));
+  const declaredFrontier = tierFrontier(doc, freshTiers(step));
   const decomposed = declared.links.some((l) => {
-    const part = foldTarget(byDocID, /** @type {FiscNode} */ (byDocID.get(l.source)), declaredTiers);
+    const part = foldTarget(byDocID, /** @type {FiscNode} */ (byDocID.get(l.source)), declaredFrontier);
     return part !== "" && part !== opened && inside.has(part);
   });
   let mark = -1;
@@ -1081,7 +1081,7 @@ export function overviewOf(doc, tiers, chart, expanded) {
     if (!cap || expanded.has(tier)) continue;
     shaped = capColumn(shaped, tier, cap.cap, "", cap.tail);
   }
-  const drawn = foldDocument(shaped, tiers);
+  const drawn = foldDocument(shaped, tierFrontier(shaped, tiers));
   if (!caps.length) return drawn;
   return Object.assign({}, drawn, {
     nodes: drawn.nodes.map((n) => (isAggregate(n.id)

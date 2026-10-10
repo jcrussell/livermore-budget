@@ -1,0 +1,260 @@
+// frontier.test.mjs — the one fold, read over the expansion schedule: a
+// frontier of node ids, opened and shut by the pure helpers core.js exports,
+// held to the spine Go printed beside it in the same column.
+//
+// EVERY ASSERT IS OVER KEYS AND NUMBERS. A failing assert over a folded
+// document formats the whole graph, which this host cannot hold.
+
+import { before, describe, test } from "node:test";
+import assert from "node:assert/strict";
+
+// core.js itself and not core.js: core.js binds its own foldDocument to the
+// page's tier set, and the frontier fold is core.js's.
+import * as core from "./core.js";
+import { columnFixture } from "./testlib.mjs";
+
+// `inferred`: the spine's printed cells the root frontier draws inferred,
+// because a remainder leg Go derives folds back into them (mergeInferred).
+const COLUMNS = [
+  { label: "FY 2025-26", stem: "fy2026-adopted", inferred: [] },
+  { label: "FY 2026-27", stem: "fy2027-adopted",
+    inferred: ["fund-group/internal-service > expenditure/services-and-supplies (internal_service)"] },
+];
+
+/** The expansion's fold: core.foldDocument as the expansion calls it. */
+const fold = (doc, frontier) => core.foldDocument(doc, frontier, { mergeInferred: true });
+
+const cell = (s, t, kind) => `${s} > ${t} (${kind})`;
+
+/** A frontier as one comparable string list. */
+const ids = (f) => [...f].sort();
+
+/**
+ * Every node opened by its declared split until nothing more opens: `alt`
+ * where the node offers that alternative, its primary split elsewhere.
+ */
+function expandAll(doc, alt) {
+  let f = core.rootFrontier(doc);
+  for (let changed = true; changed;) {
+    changed = false;
+    for (const id of [...f]) {
+      const splits = core.splitsOf(doc, id);
+      if (!splits.length || core.openSplitOf(doc, f, id) !== "") continue;
+      const pick = splits.find((sp) => sp.alternative && sp.key === alt) || splits.find((sp) => !sp.alternative);
+      f = core.expand(doc, f, id, pick.key);
+      changed = true;
+    }
+  }
+  return f;
+}
+
+/**
+ * What a folded document must keep of the document it folds, as lists of
+ * strings: empty lists when it keeps everything.
+ */
+function audit(doc, spine, frontier) {
+  const byID = new Map(doc.nodes.map((n) => [n.id, n]));
+  const rootOf = (id) => {
+    let at = byID.get(id);
+    while (at.parent) at = byID.get(at.parent);
+    return at.id;
+  };
+  const drawn = fold(doc, frontier);
+
+  // THE SPINE'S CELLS, EVERY ONE AT ITS CENTS: each ribbon summed onto the
+  // spine node it is drawn inside, ribbons inside one spine node aside.
+  const want = new Map();
+  for (const l of spine.links) {
+    const k = cell(l.source, l.target, l.kind);
+    want.set(k, (want.get(k) || 0) + l.value_cents);
+  }
+  const got = new Map();
+  for (const l of drawn.links) {
+    const [s, t] = [rootOf(l.source), rootOf(l.target)];
+    if (s === t) continue;
+    const k = cell(s, t, l.kind);
+    got.set(k, (got.get(k) || 0) + l.value_cents);
+  }
+  const sums = [];
+  for (const k of new Set([...want.keys(), ...got.keys()])) {
+    if (want.get(k) !== got.get(k)) sums.push(`${k}: spine ${want.get(k)}, drawn ${got.get(k)}`);
+  }
+
+  // EVERY DRAWN NODE'S SUMS: what a node draws in and out is the links that
+  // cross into and out of the part of the schedule it holds -- its subtree,
+  // less the subtrees of the drawn nodes inside it -- under the alternatives
+  // the frontier opens.
+  const within = new Map([...frontier].map((id) => [id, core.withinNode(doc, id)]));
+  const owner = new Map();
+  for (const [id, inside] of within) {
+    for (const x of inside) {
+      const held = owner.get(x);
+      if (!held || within.get(held).has(id)) owner.set(x, id);
+    }
+  }
+  const linked = { in: new Map(), out: new Map() };
+  const ribboned = { in: new Map(), out: new Map() };
+  const add = (m, k, v) => m.set(k, (m.get(k) || 0) + v);
+  for (const l of doc.links) {
+    if (l.alternative && core.openSplitOf(doc, frontier, l.source) !== l.alternative) continue;
+    const [s, t] = [owner.get(l.source), owner.get(l.target)];
+    if (!s || !t) {
+      sums.push(`${cell(l.source, l.target, l.kind)} is read and held by no drawn node`);
+      continue;
+    }
+    if (s === t) continue;
+    add(linked.out, s, l.value_cents);
+    add(linked.in, t, l.value_cents);
+  }
+  for (const l of drawn.links) {
+    add(ribboned.out, l.source, l.value_cents);
+    add(ribboned.in, l.target, l.value_cents);
+  }
+  for (const side of ["in", "out"]) {
+    for (const id of new Set([...linked[side].keys(), ...ribboned[side].keys()])) {
+      const [w, g] = [linked[side].get(id) || 0, ribboned[side].get(id) || 0];
+      if (w !== g) sums.push(`${id} ${side}: its links ${w}, drawn ${g}`);
+    }
+  }
+
+  const ribbon = new Map(drawn.links.map((l) => [cell(l.source, l.target, l.kind), l]));
+  const facts = [];
+  for (const l of drawn.links) {
+    const k = cell(l.source, l.target, l.kind);
+    if (!l.fact_ids.length || !l.locators.length) facts.push(`${k} cites nothing`);
+  }
+  // NO FACT LOST: a link whose two ends are drawn, and whose alternative is
+  // open, is cited whole by the ribbon between them.
+  for (const l of doc.links) {
+    if (l.source === l.target || !frontier.has(l.source) || !frontier.has(l.target)) continue;
+    if (l.alternative && core.openSplitOf(doc, frontier, l.source) !== l.alternative) continue;
+    const r = ribbon.get(cell(l.source, l.target, l.kind));
+    const cited = new Set(r ? r.fact_ids : []);
+    for (const f of l.fact_ids) if (!cited.has(f)) facts.push(`${f} of ${cell(l.source, l.target, l.kind)} cited by no ribbon`);
+  }
+  // NO FACT DUPLICATED: no fact is cited by more ribbons than links cite it.
+  const links = new Map();
+  for (const l of doc.links) for (const f of l.fact_ids) links.set(f, (links.get(f) || 0) + 1);
+  const ribbons = new Map();
+  for (const l of drawn.links) for (const f of l.fact_ids) ribbons.set(f, (ribbons.get(f) || 0) + 1);
+  for (const [f, n] of ribbons) if (n > (links.get(f) || 0)) facts.push(`${f} cited by ${n} ribbons and ${links.get(f) || 0} links`);
+
+  // NO NODE OF A SHUT ALTERNATIVE IS DRAWN, and every drawn node is one
+  // the frontier holds.
+  const nodes = [];
+  for (const n of drawn.nodes) {
+    if (!frontier.has(n.id)) nodes.push(`${n.id} is drawn and not in the frontier`);
+    if (n.alternative && core.openSplitOf(doc, frontier, n.parent) !== n.alternative) {
+      nodes.push(`${n.id} is drawn while ${n.parent}'s ${n.alternative} is shut`);
+    }
+  }
+  return { drawn, sums, facts, nodes };
+}
+
+/** The facts any ribbon cites. */
+const citedBy = (d) => new Set(d.links.flatMap((l) => l.fact_ids));
+
+describe("the expansion schedule, folded to a frontier", () => {
+
+  for (const col of COLUMNS) {
+    describe(col.label, () => {
+      let doc, spine;
+      before(() => {
+        const column = columnFixture(col.stem);
+        doc = core.scheduleOf(column, "expansion");
+        spine = core.scheduleOf(column, "sankey");
+        assert.ok(doc && spine, `${col.stem} carries no expansion or no spine`);
+      });
+
+      // CELLS AND CENTS, NOT CITATIONS: a leaf cites a finer page than the
+      // spine's group-grain cell, so the fact ids differ by design.
+      test("the root frontier draws the spine's nodes, cells and cents exactly", (t) => {
+        const root = core.rootFrontier(doc);
+        const drawn = fold(doc, root);
+        const mine = drawn.links.map((l) => `${cell(l.source, l.target, l.kind)} = ${l.value_cents}`).sort();
+        const theirs = spine.links.map((l) => `${cell(l.source, l.target, l.kind)} = ${l.value_cents}`).sort();
+        t.diagnostic(`root frontier: ${root.size} ids; drawn ${drawn.nodes.length} nodes and ${drawn.links.length} ribbons, ` +
+          `citing ${citedBy(drawn).size} facts; the spine ${spine.nodes.length} nodes and ${spine.links.length} links`);
+        assert.deepEqual(ids(drawn.nodes.map((n) => n.id)), ids(spine.nodes.map((n) => n.id)));
+        assert.deepEqual(mine, theirs);
+      });
+
+      // A PRINTED CELL A REMAINDER FOLDS BACK INTO is drawn inferred: the
+      // fold cannot tell the remainder's whole cell from part of one. Pinned
+      // so that Go shipping what tells them apart turns this red.
+      test("the root frontier draws inferred only the printed cells a remainder folds back into", (t) => {
+        const root = core.rootFrontier(doc);
+        const printed = new Map(spine.links.map((l) => [cell(l.source, l.target, l.kind), Boolean(l.derived)]));
+        const differ = fold(doc, root).links.map((l) => [cell(l.source, l.target, l.kind), Boolean(l.derived)])
+          .filter(([k, d]) => printed.get(k) !== d).map(([k, d]) => `${k}${d ? "" : " printed"}`);
+        t.diagnostic(`${differ.length} cell(s) drawn inferred where the spine prints them: ${differ.join("; ") || "none"}`);
+        assert.deepEqual(differ, col.inferred);
+        if (col.inferred.length) {
+          assert.throws(() => core.foldDocument(doc, root), core.FoldRefusal, "the drill's fold draws the mix");
+        } else {
+          assert.doesNotThrow(() => core.foldDocument(doc, root));
+        }
+      });
+
+      test("every split of every node keeps the spine's sums and its facts, and shuts back to where it opened", (t) => {
+        const root = core.rootFrontier(doc);
+        const rootFacts = citedBy(fold(doc, root));
+        let checked = 0;
+        for (const sp of doc.splits) {
+          const from = core.reveal(doc, root, sp.node);
+          const open = core.expand(doc, from, sp.node, sp.key);
+          const at = `${sp.node} by ${sp.key}`;
+          const { drawn, sums, facts, nodes } = audit(doc, spine, open);
+          assert.deepEqual(sums, [], `${at}: sums`);
+          assert.deepEqual(facts, [], `${at}: facts`);
+          assert.deepEqual(nodes, [], `${at}: nodes`);
+          const cited = citedBy(drawn);
+          assert.deepEqual([...rootFacts].filter((f) => !cited.has(f)), [], `${at}: the spine's facts cited away`);
+          const members = core.splitsOf(doc, sp.node).find((s) => s.key === sp.key).members;
+          assert.ok(members.length > 0, `${at} has no members`);
+          assert.ok(members.some((m) => drawn.nodes.some((n) => n.id === m)), `${at}: no member drawn`);
+          assert.equal(core.openSplitOf(doc, open, sp.node), sp.key, at);
+          assert.deepEqual(ids(core.collapse(doc, open, sp.node)), ids(from), `${at}: collapse does not invert expand`);
+          checked++;
+        }
+        t.diagnostic(`${checked} splits opened one at a time`);
+        assert.equal(checked, doc.splits.length);
+        assert.ok(checked > 0);
+      });
+
+      test("everything expanded keeps the spine's sums and its facts, one alternative at a time", (t) => {
+        const alts = [...new Set(doc.splits.filter((sp) => sp.alternative).map((sp) => sp.key))].sort();
+        assert.ok(alts.length > 0, "no alternative split to read");
+        for (const alt of ["", ...alts]) {
+          const all = expandAll(doc, alt);
+          const { drawn, sums, facts, nodes } = audit(doc, spine, all);
+          const at = alt ? `everything, by ${alt} where offered` : "everything, by primary splits";
+          t.diagnostic(`${at}: ${all.size} ids; drawn ${drawn.nodes.length} nodes and ${drawn.links.length} ribbons, ` +
+            `citing ${citedBy(drawn).size} facts`);
+          assert.deepEqual(sums, [], `${at}: sums`);
+          assert.deepEqual(facts, [], `${at}: facts`);
+          assert.deepEqual(nodes, [], `${at}: nodes`);
+          const withAlt = drawn.nodes.filter((n) => n.alternative).length;
+          if (alt) assert.ok(withAlt > 0, `${at}: no member of the alternative drawn`);
+          else assert.equal(withAlt, 0, `${at}: a member of an alternative drawn`);
+          let shut = all;
+          for (const id of core.rootFrontier(doc)) shut = core.collapse(doc, shut, id);
+          assert.deepEqual(ids(shut), ids(core.rootFrontier(doc)), `${at}: collapsing every root does not restore the spine`);
+        }
+      });
+
+      test("a node opens one way at a time, and refuses a split it does not have", () => {
+        const sp = doc.splits.find((s) => s.alternative);
+        const primary = core.splitsOf(doc, sp.node).find((s) => !s.alternative);
+        const root = core.rootFrontier(doc);
+        const one = core.expand(doc, root, sp.node, primary.key);
+        const other = core.expand(doc, one, sp.node, sp.key);
+        assert.equal(core.openSplitOf(doc, other, sp.node), sp.key);
+        assert.deepEqual(ids(other), ids(core.expand(doc, root, sp.node, sp.key)), "the first split is not shut");
+        assert.throws(() => core.expand(doc, root, sp.node, "no-such-split"), /has no split no-such-split/);
+        const both = new Set([...one, ...core.splitsOf(doc, sp.node).find((s) => s.key === sp.key).members]);
+        assert.throws(() => core.openSplitOf(doc, both, sp.node), /two ways/);
+      });
+    });
+  }
+});

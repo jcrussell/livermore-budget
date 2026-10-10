@@ -43,9 +43,9 @@ describe("the whole budget drawn out", () => {
       const raw = app.fetched;
       const drawn = app.unmarkContra(app.projection);
       const gone = droppedIn(app, raw);
-      const tiers = new Set(app.layoutTiers(drawn));
+      const frontier = app.tierFrontier(raw, app.layoutTiers(drawn));
       const byID = new Map(raw.nodes.map((n) => [n.id, n]));
-      const end = (id) => app.foldTarget(byID, byID.get(id), tiers);
+      const end = (id) => app.foldTarget(byID, byID.get(id), frontier);
       // Every kept link at its folded ends, summed by (source, target, kind):
       // what the drawn chart must hold, ribbon for ribbon.
       const want = new Map();

@@ -334,13 +334,15 @@ function assembleSchedule(column, key) {
       // own hierarchy, and a fund's printed balances where it cites them.
       parent: n.parent || "",
     };
-    // Not defaulted: an absent balance is a blank on the page, not a zero.
+    // Not defaulted: an absent balance is a blank on the page, not a zero,
+    // and an absent alternative is a member of its parent's primary split.
+    if (n.alternative) Object.assign(node, { alternative: n.alternative });
     return n.balances ? Object.assign(node, { balances: n.balances }) : node;
   });
   const links = sched.links.map((l) => {
     const from = table[l.from] || {};
     const to = table[l.to] || {};
-    return {
+    const link = {
       source: from.id, target: to.id,
       value_cents: l.value_cents, kind: l.kind,
       transfer_id: l.transfer_id || "",
@@ -350,9 +352,16 @@ function assembleSchedule(column, key) {
       // Defaulted: the schema carries contra only on a link printed negative.
       contra: l.contra || "",
     };
+    // Not defaulted: an absent alternative is a primary link, always read.
+    return l.alternative ? Object.assign(link, { alternative: l.alternative }) : link;
   });
+  const splits = Array.isArray(sched.splits)
+    ? sched.splits.map((sp) => ({
+      node: (table[sp.node] || {}).id, key: sp.key, form: sp.form, alternative: Boolean(sp.alternative),
+    }))
+    : null;
   const col = column.column || {};
-  return /** @type {any} */ ({
+  const doc = {
     schema_version: SCHEMA_VERSION,
     projection: key,
     nodes, links,
@@ -366,7 +375,9 @@ function assembleSchedule(column, key) {
       counts: sched.counts || {},
       caveats: sched.caveats || [],
     },
-  });
+  };
+  // The expansion schedule's alone, and absent rather than empty elsewhere.
+  return /** @type {any} */ (splits ? Object.assign(doc, { splits }) : doc);
 }
 
 /**
@@ -415,6 +426,21 @@ export function withinNode(doc, id) {
 }
 
 /**
+ * The frontier a tier set draws: every node at one of those tiers, so a fold
+ * to it places each node at its nearest ancestor-or-self at a drawn tier.
+ * Empty where no node is at any of them, which scoped() answers as "nothing
+ * is placed" and foldDocument refuses.
+ *
+ * @param {FiscProjection} doc
+ * @param {Iterable<number>} tiers
+ * @returns {Set<string>}
+ */
+export function tierFrontier(doc, tiers) {
+  const drawn = new Set(tiers);
+  return new Set(doc.nodes.filter((n) => drawn.has(n.tier)).map((n) => n.id));
+}
+
+/**
  * Whether a link end has a column in this tier set. A broken parent chain is
  * Go's to refuse at the write (node-hierarchy-well-formed), so a node with no
  * drawn ancestor is simply not placed.
@@ -425,22 +451,22 @@ export function withinNode(doc, id) {
  */
 export function scoped(doc, tiers) {
   const byID = new Map(doc.nodes.map((n) => [n.id, n]));
-  const drawn = new Set(tiers);
-  return (n) => foldTarget(byID, n, drawn) !== "";
+  const frontier = tierFrontier(doc, tiers);
+  return (n) => foldTarget(byID, n, frontier) !== "";
 }
 
 /**
- * The id a node folds to under a tier set, or "" when it has no drawn
- * ancestor. The non-throwing half of foldDocument's first loop: to filterLinks
- * an unplaceable end is an ordinary answer, not a fault.
+ * The id a node folds to under a frontier: itself or its nearest ancestor in
+ * it, or "" when it has neither. The non-throwing half of foldDocument's first
+ * loop: to filterLinks an unplaceable end is an ordinary answer, not a fault.
  * @param {Map<string,FiscNode>} byID
  * @param {FiscNode} n
- * @param {Set<number>} drawn
+ * @param {ReadonlySet<string>} frontier
  * @returns {string}
  */
-export function foldTarget(byID, n, drawn) {
+export function foldTarget(byID, n, frontier) {
   let at = n;
-  for (let hops = 0; !drawn.has(at.tier); hops++) {
+  for (let hops = 0; !frontier.has(at.id); hops++) {
     const up = at.parent ? byID.get(at.parent) : undefined;
     if (!up || hops > 8) return "";
     at = up;
@@ -496,33 +522,94 @@ export function locatorKeys(ss) {
 export class FoldRefusal extends Error {}
 
 /**
- * Folds a document to the tiers this page draws: each node to its nearest
- * drawn ancestor, links merged on the folded pair and kind with values summed
- * and fact ids unioned. A link folding onto one node is dropped; the link
- * that survives carries the same money and facts.
+ * The alternatives a frontier opens and the nodes it opens, both read off the
+ * parent chains of the nodes in it: an alternative of a node is open while a
+ * member of it, or a node inside one, is in the frontier, and a node is open
+ * while a node strictly inside it is.
+ * @param {Map<string,FiscNode>} byID
+ * @param {ReadonlySet<string>} frontier
+ * @returns {{alternatives: Set<string>, opened: Set<string>}} alternatives
+ *   keyed node\u001fkey
+ */
+function openedBy(byID, frontier) {
+  const alternatives = new Set();
+  const opened = new Set();
+  for (const id of frontier) {
+    let at = byID.get(id);
+    for (let hops = 0; at && hops < 9; hops++) {
+      if (at.alternative) alternatives.add(at.parent + "\u001f" + at.alternative);
+      if (at.parent) opened.add(at.parent);
+      at = at.parent ? byID.get(at.parent) : undefined;
+    }
+  }
+  return { alternatives, opened };
+}
+
+/**
+ * Whether a node is read under a frontier: every alternative on its parent
+ * chain, itself included, is open. A node under a shut alternative is not
+ * money this chart draws, since its parent's other split carries the same.
+ * @param {Map<string,FiscNode>} byID
+ * @param {FiscNode} n
+ * @param {ReadonlySet<string>} alternatives node\u001fkey
+ * @returns {boolean}
+ */
+function readUnder(byID, n, alternatives) {
+  /** @type {FiscNode | undefined} */
+  let at = n;
+  for (let hops = 0; at && hops < 9; hops++) {
+    if (at.alternative && !alternatives.has(at.parent + "\u001f" + at.alternative)) return false;
+    at = at.parent ? byID.get(at.parent) : undefined;
+  }
+  return true;
+}
+
+/**
+ * Folds a document to a frontier of node ids: each node to its nearest
+ * ancestor-or-self in the frontier, links merged on the folded pair and kind
+ * with values summed and fact ids and locators unioned. A link folding onto
+ * one node is dropped; the link that survives carries the same money and
+ * facts. A tier set is folded as tierFrontier's frontier of it.
  *
- * FAILS CLOSED on a node with no drawn ancestor: dropping it loses a column
- * silently, keeping it leaves it nowhere to draw.
+ * On the expansion schedule: a link carrying an alternative is read only
+ * while that alternative of the node it runs from is open, and a node under a
+ * shut alternative is not read. An extended node stays in the frontier beside
+ * its members, so its link to a member is a ribbon while they are drawn and a
+ * dropped self-loop while it is shut. A node the frontier opens -- one a node
+ * strictly inside it is drawn for -- is drawn as its members and folds to
+ * nothing.
+ *
+ * FAILS CLOSED on a read node that neither folds nor is opened, and on a read
+ * link with an end that does not fold: dropping either loses money silently,
+ * keeping it leaves it nowhere to draw.
  *
  * @param {FiscProjection} doc
- * @param {number[]} tiers the tier set to fold to: the overview's own on the
- *   page's chart, a step's once a node has opened.
- * @returns {FiscProjection} doc itself when the tier set draws every tier.
+ * @param {Iterable<string>} frontier the node ids drawn: the page's tier set's
+ *   tierFrontier, a step's once a node has opened, or an expansion's
+ * @param {{mergeInferred?: boolean}} [opts] mergeInferred draws a printed leg
+ *   and an inferred one as one inferred ribbon instead of refusing them. The
+ *   expansion's: Go's remainder leg is inferred where the cell it folds back
+ *   into is printed, and the client cannot tell a whole cell from part of
+ *   one, so the ribbon claims no more than its least-printed leg. The drill
+ *   decides a layout by the refusal (flankHolds) and keeps it.
+ * @returns {FiscProjection}
  */
-export function foldDocument(doc, tiers) {
-  const wanted = tiers;
-  if (!wanted.length) return doc;
+export function foldDocument(doc, frontier, opts) {
+  const mergeInferred = Boolean(opts && opts.mergeInferred);
+  const drawn = new Set(frontier);
   const byID = new Map(doc.nodes.map((n) => [n.id, n]));
-  const drawn = new Set(wanted);
+  const { alternatives, opened } = openedBy(byID, drawn);
 
   /** @type {Map<string,string>} */
   const foldsTo = new Map();
   for (const n of doc.nodes) {
+    if (!readUnder(byID, n, alternatives)) continue;
     const to = foldTarget(byID, n, drawn);
     if (!to) {
+      if (opened.has(n.id)) continue;
       throw new Error("cannot draw " + doc.projection + ": node " + n.id +
-        " is tier " + n.tier + " and no ancestor of it is a tier this page draws (" +
-        wanted.join(", ") + ")");
+        " is tier " + n.tier + " and neither it nor an ancestor of it is among the " +
+        drawn.size + " nodes this page draws");
     }
     foldsTo.set(n.id, to);
   }
@@ -536,8 +623,13 @@ export function foldDocument(doc, tiers) {
   /** @type {Map<string, Set<string>>} */
   const located = new Map();
   for (const l of doc.links) {
+    if (l.alternative && !alternatives.has(l.source + "\u001f" + l.alternative)) continue;
     const source = foldsTo.get(l.source);
     const target = foldsTo.get(l.target);
+    if (!source || !target) {
+      throw new Error("cannot draw " + doc.projection + ": the link from " + l.source + " to " + l.target +
+        " (" + l.kind + ") has an end this frontier draws no node for");
+    }
     if (source === target) continue;
     // ONE RIBBON PER KIND BETWEEN A FOLDED PAIR, so a ribbon's kind is true of
     // all of it.
@@ -557,7 +649,10 @@ export function foldDocument(doc, tiers) {
     // A PRINTED LEG AND AN INFERRED ONE, OR A PARTITION LEG AND ONE THAT IS
     // NOT, ARE NEVER ONE RIBBON: one mark cannot be drawn as both, so the fold
     // refuses rather than letting the first leg's flag speak for the other.
-    const mixed = Boolean(at.derived) !== Boolean(l.derived) ? "a printed flow and an inferred one"
+    // Under mergeInferred the inferred leg's flag speaks for both.
+    const inferredMix = Boolean(at.derived) !== Boolean(l.derived);
+    if (inferredMix && mergeInferred) at.derived = true;
+    const mixed = inferredMix && !mergeInferred ? "a printed flow and an inferred one"
       : Boolean(at.partition) !== Boolean(l.partition) ? "a cross-tab slice and a flow that is not one"
         : "";
     if (mixed) {
@@ -606,6 +701,136 @@ export function foldDocument(doc, tiers) {
   });
 
   return Object.assign({}, doc, { nodes: nodes, links: links });
+}
+
+/**
+ * The frontier the expansion schedule opens on: its roots, which are the
+ * spine's nodes.
+ * @param {FiscProjection} doc the expansion schedule
+ * @returns {Set<string>}
+ */
+export function rootFrontier(doc) {
+  return new Set(doc.nodes.filter((n) => !n.parent).map((n) => n.id));
+}
+
+/**
+ * Every way a node opens, as Go declared it, each with its members: the nodes
+ * parented to it whose alternative is the split's key on an alternative
+ * split, or absent on its primary one.
+ * @param {FiscProjection} doc the expansion schedule
+ * @param {string} id
+ * @returns {{key: string, form: string, alternative: boolean, members: string[]}[]}
+ */
+export function splitsOf(doc, id) {
+  return (doc.splits || []).filter((/** @type {any} */ sp) => sp.node === id).map((/** @type {any} */ sp) => ({
+    key: sp.key, form: sp.form, alternative: sp.alternative,
+    members: doc.nodes
+      .filter((n) => n.parent === id && (sp.alternative ? n.alternative === sp.key : !n.alternative))
+      .map((n) => n.id),
+  }));
+}
+
+/**
+ * The key of the split of a node a frontier has open, or "" when none is:
+ * read off the member of it each drawn node strictly inside it hangs from.
+ * FAILS CLOSED on a frontier drawing members of two of its splits, which
+ * would draw the same money twice.
+ * @param {FiscProjection} doc the expansion schedule
+ * @param {Iterable<string>} frontier
+ * @param {string} id
+ * @returns {string}
+ */
+export function openSplitOf(doc, frontier, id) {
+  const byID = new Map(doc.nodes.map((n) => [n.id, n]));
+  const splits = splitsOf(doc, id);
+  const primary = splits.find((sp) => !sp.alternative);
+  const keys = new Set();
+  for (const f of frontier) {
+    let at = byID.get(f);
+    for (let hops = 0; at && at.parent && hops < 9; hops++) {
+      if (at.parent === id) {
+        keys.add(at.alternative || (primary ? primary.key : ""));
+        break;
+      }
+      at = byID.get(at.parent);
+    }
+  }
+  if (keys.size > 1) {
+    throw new Error("cannot draw " + doc.projection + ": the frontier opens " + id + " two ways (" +
+      Array.from(keys).sort().join(", ") + ")");
+  }
+  return keys.size ? String(Array.from(keys)[0]) : "";
+}
+
+/**
+ * The frontier with a node shut: every node strictly inside it taken out and
+ * the node put back. A frontier drawing nothing inside it is returned as it
+ * was.
+ * @param {FiscProjection} doc the expansion schedule
+ * @param {Iterable<string>} frontier
+ * @param {string} id
+ * @returns {Set<string>} a new set
+ */
+export function collapse(doc, frontier, id) {
+  const inside = withinNode(doc, id);
+  const out = new Set();
+  let shut = false;
+  for (const f of frontier) {
+    if (f !== id && inside.has(f)) shut = true;
+    else out.add(f);
+  }
+  if (shut) out.add(id);
+  return out;
+}
+
+/**
+ * The frontier with one split of a drawn node open: a refine replaces the
+ * node with its members, an extend draws them beside it. A node open another
+ * way is shut first, so a frontier opens a node one way at a time.
+ * FAILS CLOSED on a split the node does not have and on a node the frontier
+ * does not draw.
+ * @param {FiscProjection} doc the expansion schedule
+ * @param {Iterable<string>} frontier
+ * @param {string} id
+ * @param {string} key the split to open, one of splitsOf(doc, id)
+ * @returns {Set<string>} a new set
+ */
+export function expand(doc, frontier, id, key) {
+  const split = splitsOf(doc, id).find((sp) => sp.key === key);
+  if (!split) throw new Error("cannot open " + id + ": it has no split " + key);
+  const open = openSplitOf(doc, frontier, id);
+  if (open === key) return new Set(frontier);
+  const out = open ? collapse(doc, frontier, id) : new Set(frontier);
+  if (!out.has(id)) throw new Error("cannot open " + id + ": the frontier does not draw it");
+  if (split.form === "refine") out.delete(id);
+  for (const m of split.members) out.add(m);
+  return out;
+}
+
+/**
+ * The frontier with a node drawn: each ancestor of it opened, from its root
+ * down, by the split the next node on the chain is a member of.
+ * @param {FiscProjection} doc the expansion schedule
+ * @param {Iterable<string>} frontier
+ * @param {string} id
+ * @returns {Set<string>} a new set
+ */
+export function reveal(doc, frontier, id) {
+  const byID = new Map(doc.nodes.map((n) => [n.id, n]));
+  const chain = [];
+  for (let at = byID.get(id), hops = 0; at && hops < 9; hops++) {
+    chain.unshift(at);
+    at = at.parent ? byID.get(at.parent) : undefined;
+  }
+  let out = new Set(frontier);
+  for (let i = 0; i + 1 < chain.length; i++) {
+    const at = chain[i].id;
+    const next = chain[i + 1];
+    const primary = splitsOf(doc, at).find((sp) => !sp.alternative);
+    const key = next.alternative || (primary ? primary.key : "");
+    if (openSplitOf(doc, out, at) !== key) out = expand(doc, out, at, key);
+  }
+  return out;
 }
 
 /**

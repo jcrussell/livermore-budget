@@ -54,7 +54,7 @@ describe("the shipped modules hold no state", () => {
     const { loadD3, goldenGraph } = await import("./testlib.mjs");
     loadD3();
     const tiers = [0, 2, 5];
-    const drawn = sankey.markContra(core.foldDocument(goldenGraph(), tiers));
+    const drawn = sankey.markContra(core.foldDocument(goldenGraph(), core.tierFrontier(goldenGraph(), tiers)));
     const groups = [...new Set(drawn.nodes.filter((n) => n.role === "fund_group").map((n) => n.id))].sort();
     const index = new Map(drawn.nodes.map((n) => [n.id, n]));
     assert.equal(typeof globalThis.document, "undefined", "no DOM is installed for the layout");

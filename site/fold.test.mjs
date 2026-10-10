@@ -552,7 +552,7 @@ describe("the fold preserves what it folds, on every rung at every width", () =>
               // A ribbon whose two ends fold to one node is drawn by nothing,
               // and the fold drops it: it is money inside one drawn mark.
               const byID = new Map(raw.nodes.map((n) => [n.id, n]));
-              const set = new Set(h.tiers);
+              const set = app.tierFrontier(raw, h.tiers);
               const folds = (end) => app.foldTarget(byID, byID.get(end), set);
               kept.push(...raw.links.filter((l) => folds(l.source) !== folds(l.target)));
               members.push(...raw.nodes);

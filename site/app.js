@@ -83,14 +83,15 @@ export const D3 = /** @type {any} */ (/** @type {any} */ (globalThis).d3);
 export const CONFIG = /** @type {any} */ (globalThis).FISC_CONFIG;
 
 /**
- * core.foldDocument over the page's own tier set unless a drill passes its
- * own. The state-free rule is core.js's; this binds the overview.
+ * core.foldDocument over the frontier of the page's own tier set unless a
+ * drill passes its own tiers. The state-free rule is core.js's; this binds the
+ * overview.
  * @param {FiscProjection} doc
  * @param {number[]} [tiers]
  * @returns {FiscProjection}
  */
 export function foldDocument(doc, tiers) {
-  return core.foldDocument(doc, tiers || RENDER_TIERS);
+  return core.foldDocument(doc, core.tierFrontier(doc, tiers || RENDER_TIERS));
 }
 
 /**
