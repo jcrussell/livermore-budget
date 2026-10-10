@@ -13,12 +13,20 @@ import assert from "node:assert/strict";
 import * as core from "./core.js";
 import { columnFixture } from "./testlib.mjs";
 
-// `inferred`: the spine's printed cells the root frontier draws inferred,
-// because a remainder leg Go derives folds back into them (mergeInferred).
+// `inferred`: the spine's printed cells the root frontier draws inferred.
+// None: where a remainder leg Go derives folds back into a printed cell, Go
+// names the cell in `completes` on every leg of it, and the whole set is
+// drawn printed. `completing`: the cells Go declares so, each drawn whole at
+// the root and, once its fund group opens, its remainder a derived ribbon of
+// its own at the cents named.
 const COLUMNS = [
-  { label: "FY 2025-26", stem: "fy2026-adopted", inferred: [] },
-  { label: "FY 2026-27", stem: "fy2027-adopted",
-    inferred: ["fund-group/internal-service > expenditure/services-and-supplies (internal_service)"] },
+  { label: "FY 2025-26", stem: "fy2026-adopted", inferred: [], completing: [] },
+  { label: "FY 2026-27", stem: "fy2027-adopted", inferred: [],
+    completing: [{
+      cell: "fund-group/internal-service -> expenditure/services-and-supplies internal_service",
+      group: "fund-group/internal-service",
+      remainder: "fund-group-only/internal-service > expenditure/services-and-supplies (internal_service) = 25000000 inferred",
+    }] },
 ];
 
 /** The expansion's fold: core.foldDocument as the expansion calls it. */
@@ -179,20 +187,32 @@ describe("the expansion schedule, folded to a frontier", () => {
         assert.deepEqual(mine, theirs);
       });
 
-      // A PRINTED CELL A REMAINDER FOLDS BACK INTO is drawn inferred: the
-      // fold cannot tell the remainder's whole cell from part of one. Pinned
-      // so that Go shipping what tells them apart turns this red.
-      test("the root frontier draws inferred only the printed cells a remainder folds back into", (t) => {
+      // A PRINTED CELL A REMAINDER FOLDS BACK INTO is drawn printed, because
+      // its legs are exactly the set Go names it on. Without mergeInferred
+      // too: the declaration, not the option, settles it.
+      test("the root frontier draws every cell printed where the spine prints it", (t) => {
         const root = core.rootFrontier(doc);
         const printed = new Map(spine.links.map((l) => [cell(l.source, l.target, l.kind), Boolean(l.derived)]));
         const differ = fold(doc, root).links.map((l) => [cell(l.source, l.target, l.kind), Boolean(l.derived)])
           .filter(([k, d]) => printed.get(k) !== d).map(([k, d]) => `${k}${d ? "" : " printed"}`);
         t.diagnostic(`${differ.length} cell(s) drawn inferred where the spine prints them: ${differ.join("; ") || "none"}`);
         assert.deepEqual(differ, col.inferred);
-        if (col.inferred.length) {
-          assert.throws(() => core.foldDocument(doc, root), core.FoldRefusal, "the drill's fold draws the mix");
-        } else {
-          assert.doesNotThrow(() => core.foldDocument(doc, root));
+        assert.doesNotThrow(() => core.foldDocument(doc, root));
+        const named = [...new Set(doc.links.filter((l) => l.completes).map((l) => l.completes))].sort();
+        assert.deepEqual(named, col.completing.map((c) => c.cell), "the cells Go declares completing sets on");
+      });
+
+      // ANY PART OF A COMPLETING SET IS NOT THE CELL: with its fund group
+      // open, the remainder is drawn as its own derived ribbon, and its
+      // funds' legs printed.
+      test("a completing set's remainder draws inferred once its fund group opens", (t) => {
+        for (const c of col.completing) {
+          const open = core.expand(doc, core.rootFrontier(doc), c.group, "funds");
+          const drawn = fold(doc, open).links.filter((l) => l.completes === c.cell)
+            .map((l) => `${cell(l.source, l.target, l.kind)} = ${l.value_cents}${l.derived ? " inferred" : ""}`);
+          t.diagnostic(`${c.group} open: ${drawn.length} ribbons of ${c.cell}`);
+          assert.deepEqual(drawn.filter((d) => d.endsWith(" inferred")), [c.remainder]);
+          assert.doesNotThrow(() => core.foldDocument(doc, open), "the legs drawn apart mix nothing");
         }
       });
 
@@ -214,6 +234,7 @@ describe("the expansion schedule, folded to a frontier", () => {
           assert.ok(members.length > 0, `${at} has no members`);
           assert.ok(members.some((m) => drawn.nodes.some((n) => n.id === m)), `${at}: no member drawn`);
           assert.equal(core.openSplitOf(doc, open, sp.node), sp.key, at);
+          assert.doesNotThrow(() => core.foldDocument(doc, open), `${at}: an uncapped split mixes a printed leg and an inferred one`);
           assert.deepEqual(ids(core.collapse(doc, open, sp.node)), ids(from), `${at}: collapse does not invert expand`);
           checked++;
         }

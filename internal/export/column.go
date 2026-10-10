@@ -130,6 +130,8 @@ type ColumnLink struct {
 	// Alternative is the expansion schedule's: the key of the alternative
 	// split this is a leaf link of.
 	Alternative string `json:"alternative,omitempty"`
+	// Completes is the expansion schedule's: project.Link's.
+	Completes string `json:"completes,omitempty"`
 }
 
 // decoded is a published document, read far enough to fold into a column.
@@ -161,6 +163,7 @@ type decoded struct {
 		Partition   bool            `json:"partition"`
 		Contra      string          `json:"contra"`
 		Alternative string          `json:"alternative"`
+		Completes   string          `json:"completes"`
 	} `json:"links"`
 	Splits []struct {
 		Node        string `json:"node"`
@@ -372,7 +375,7 @@ func ColumnsOf(projections map[string][]byte, generatedBy string) (map[string]Co
 				From: from, To: to, ValueCents: l.ValueCents, Kind: l.Kind,
 				TransferID: l.TransferID, FactIDs: l.FactIDs, Locators: l.Locators,
 				Derived: l.Derived, Partition: l.Partition, Contra: l.Contra,
-				Alternative: l.Alternative,
+				Alternative: l.Alternative, Completes: l.Completes,
 			})
 		}
 		var splits []ColumnSplit

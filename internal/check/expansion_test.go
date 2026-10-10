@@ -63,6 +63,7 @@ func spineFact(t *testing.T, s *Subject, source, target string) string {
 const (
 	isRemainder = "fund-group-only/internal-service"
 	isRow       = "expenditure/fund-group/internal-service/services-and-supplies"
+	isCell      = "fund-group/internal-service -> expenditure/services-and-supplies internal_service"
 )
 
 // TestTheExpansionChecksCanFail holds each check green over the committed
@@ -102,6 +103,27 @@ func TestTheExpansionChecksCanFail(t *testing.T) {
 				d.Links[i].FactIDs = []string{spineFact(t, s, "fund-group/enterprise", project.NodeFundBalanceContribution)}
 			},
 			want: "a figure of pp.66-67 this cell does not print",
+		},
+		{
+			name: "a leg of a printed cell a derived leg completes naming nothing", check: &expansionOpensAsTheSpine{},
+			edit: func(t *testing.T, _ *Subject, d *project.Document) {
+				d.Links[linkAt(t, d, "fund/700", "expenditure/fund/700/services-and-supplies")].Completes = ""
+			},
+			want: isCell + ": a derived leg folds into this printed cell and 5 of its 6 legs name it in completes",
+		},
+		{
+			name: "a leg completing a printed cell a cent short", check: &expansionOpensAsTheSpine{},
+			edit: func(t *testing.T, _ *Subject, d *project.Document) {
+				d.Links[linkAt(t, d, isRemainder, isRow)].ValueCents--
+			},
+			want: isCell + ": the legs completing it carry",
+		},
+		{
+			name: "a leg naming a cell it does not fold to", check: &expansionOpensAsTheSpine{},
+			edit: func(t *testing.T, _ *Subject, d *project.Document) {
+				d.Links[linkAt(t, d, "fund/600", "expenditure/fund/600/services-and-supplies")].Completes = isCell
+			},
+			want: "names \"" + isCell + "\" in completes and folds to",
 		},
 		{
 			name: "a division's link a cent short of its rows", check: &expansionSplitsTie{},

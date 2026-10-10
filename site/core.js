@@ -352,7 +352,9 @@ function assembleSchedule(column, key) {
       // Defaulted: the schema carries contra only on a link printed negative.
       contra: l.contra || "",
     };
-    // Not defaulted: an absent alternative is a primary link, always read.
+    // Not defaulted: an absent alternative is a primary link, always read,
+    // and an absent completes is a leg of no set Go declares.
+    if (l.completes) Object.assign(link, { completes: l.completes });
     return l.alternative ? Object.assign(link, { alternative: l.alternative }) : link;
   });
   const splits = Array.isArray(sched.splits)
@@ -579,6 +581,10 @@ function readUnder(byID, n, alternatives) {
  * strictly inside it is drawn for -- is drawn as its members and folds to
  * nothing.
  *
+ * A ribbon whose legs are exactly the links naming one cell in `completes` is
+ * that printed cell, and is drawn printed whichever of its legs Go derived:
+ * a membership Go declared. Any part of such a set is not the cell.
+ *
  * FAILS CLOSED on a read node that neither folds nor is opened, and on a read
  * link with an end that does not fold: dropping either loses money silently,
  * keeping it leaves it nowhere to draw.
@@ -587,11 +593,11 @@ function readUnder(byID, n, alternatives) {
  * @param {Iterable<string>} frontier the node ids drawn: the page's tier set's
  *   tierFrontier, a step's once a node has opened, or an expansion's
  * @param {{mergeInferred?: boolean}} [opts] mergeInferred draws a printed leg
- *   and an inferred one as one inferred ribbon instead of refusing them. The
- *   expansion's: Go's remainder leg is inferred where the cell it folds back
- *   into is printed, and the client cannot tell a whole cell from part of
- *   one, so the ribbon claims no more than its least-printed leg. The drill
- *   decides a layout by the refusal (flankHolds) and keeps it.
+ *   and an inferred one, other than a completing set, as one inferred ribbon
+ *   instead of refusing them. The expansion's: a capped split's tail can
+ *   hold a remainder beside printed members, and the ribbon claims no more
+ *   than its least-printed leg. The drill decides a layout by the refusal
+ *   (flankHolds) and keeps it.
  * @returns {FiscProjection}
  */
 export function foldDocument(doc, frontier, opts) {
@@ -599,6 +605,9 @@ export function foldDocument(doc, frontier, opts) {
   const drawn = new Set(frontier);
   const byID = new Map(doc.nodes.map((n) => [n.id, n]));
   const { alternatives, opened } = openedBy(byID, drawn);
+  /** @type {Map<string, number>} each completing set's links */
+  const sets = new Map();
+  for (const l of doc.links) if (l.completes) sets.set(l.completes, (sets.get(l.completes) || 0) + 1);
 
   /** @type {Map<string,string>} */
   const foldsTo = new Map();
@@ -622,6 +631,8 @@ export function foldDocument(doc, frontier, opts) {
   // ribbon cites only its first leg's pages.
   /** @type {Map<string, Set<string>>} */
   const located = new Map();
+  /** @type {Map<string, {completes: string, legs: number, mixed: boolean}>} */
+  const legsOf = new Map();
   for (const l of doc.links) {
     if (l.alternative && !alternatives.has(l.source + "\u001f" + l.alternative)) continue;
     const source = foldsTo.get(l.source);
@@ -644,21 +655,21 @@ export function foldDocument(doc, frontier, opts) {
       for (const id of l.fact_ids) first.add(id);
       cited.set(key, first);
       located.set(key, new Set(locatorKeys(l.locators)));
+      legsOf.set(key, { completes: l.completes || "", legs: 1, mixed: false });
       continue;
     }
-    // A PRINTED LEG AND AN INFERRED ONE, OR A PARTITION LEG AND ONE THAT IS
-    // NOT, ARE NEVER ONE RIBBON: one mark cannot be drawn as both, so the fold
-    // refuses rather than letting the first leg's flag speak for the other.
-    // Under mergeInferred the inferred leg's flag speaks for both.
-    const inferredMix = Boolean(at.derived) !== Boolean(l.derived);
-    if (inferredMix && mergeInferred) at.derived = true;
-    const mixed = inferredMix && !mergeInferred ? "a printed flow and an inferred one"
-      : Boolean(at.partition) !== Boolean(l.partition) ? "a cross-tab slice and a flow that is not one"
-        : "";
-    if (mixed) {
+    // A PARTITION LEG AND ONE THAT IS NOT ARE NEVER ONE RIBBON: one mark
+    // cannot be drawn as both, so the fold refuses rather than letting the
+    // first leg's flag speak for the other.
+    if (Boolean(at.partition) !== Boolean(l.partition)) {
       throw new FoldRefusal("cannot draw " + doc.projection + ": folding merges ribbons one mark cannot draw as one, " +
-        mixed + ", from " + source + " to " + target + " (" + l.kind + ")");
+        "a cross-tab slice and a flow that is not one, from " + source + " to " + target + " (" + l.kind + ")");
     }
+    const legs = /** @type {{completes: string, legs: number, mixed: boolean}} */ (legsOf.get(key));
+    legs.legs++;
+    if (legs.completes !== (l.completes || "")) legs.completes = "";
+    legs.mixed = legs.mixed || Boolean(at.derived) !== Boolean(l.derived);
+    at.derived = Boolean(at.derived) || Boolean(l.derived);
     // One leg's reduction words cannot name the sum; markContra names what
     // the merged ribbon nets to.
     if ((at.contra || "") !== (l.contra || "")) at.contra = "";
@@ -668,6 +679,22 @@ export function foldDocument(doc, frontier, opts) {
     for (const id of l.fact_ids) ids.add(id);
     const locs = located.get(key);
     if (locs) for (const k of locatorKeys(l.locators)) locs.add(k);
+  }
+
+  // A PRINTED LEG AND AN INFERRED ONE ARE ONE RIBBON ONLY AS A COMPLETING SET,
+  // drawn printed; otherwise the fold refuses rather than letting one leg's
+  // flag speak for the other, or under mergeInferred draws the ribbon
+  // inferred.
+  for (const [key, l] of merged) {
+    const legs = /** @type {{completes: string, legs: number, mixed: boolean}} */ (legsOf.get(key));
+    if (legs.completes && legs.legs === sets.get(legs.completes)) {
+      l.derived = false;
+    } else if (legs.mixed && !mergeInferred) {
+      throw new FoldRefusal("cannot draw " + doc.projection + ": folding merges ribbons one mark cannot draw as one, " +
+        "a printed flow and an inferred one, from " + l.source + " to " + l.target + " (" + l.kind + ")");
+    }
+    if (legs.completes) l.completes = legs.completes;
+    else delete l.completes;
   }
 
   const links = Array.from(merged.entries())

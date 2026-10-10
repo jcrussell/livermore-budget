@@ -1527,6 +1527,40 @@ describe("the expansion schedule laid out in slots, at the root, one group open 
     assert.deepEqual(got, want);
   });
 
+  // WHY THE EXPANSION FOLDS WITH mergeInferred: a capped split's tail can
+  // hold a remainder beside printed members, a part of no completing set, so
+  // the ribbon into it is drawn inferred. Pinned per year over every split
+  // opened alone from the root and capped.
+  test("the inferred ribbons into or out of a tail are the ones a remainder shares with printed members", (t) => {
+    const want = {
+      "FY 2025-26": [],
+      "FY 2026-27": [
+        "expenditure/services-and-supplies by divisions: expenditure/services-and-supplies > " +
+          "aggregate/tail/divisions/expenditure/services-and-supplies (external)",
+        "expenditure/services-and-supplies by object-rows: fund-group/internal-service > " +
+          "aggregate/tail/object-rows/expenditure/services-and-supplies (internal_service)",
+      ],
+    };
+    const got = {};
+    const { config } = pageFixture();
+    for (const year of config.years) {
+      const doc = core.scheduleOf(columnFixture(year.path.replace(/\.json$/, "")), "expansion");
+      const root = core.rootFrontier(doc);
+      const found = new Set();
+      for (const sp of doc.splits) {
+        const open = core.expand(doc, core.reveal(doc, root, sp.node), sp.node, sp.key);
+        for (const l of sankey.expansionOf(doc, open, config.overview, new Set()).links) {
+          if (l.derived && (core.isAggregate(l.source) || core.isAggregate(l.target))) {
+            found.add(`${sp.node} by ${sp.key}: ${l.source} > ${l.target} (${l.kind})`);
+          }
+        }
+      }
+      got[year.label] = [...found].sort();
+      t.diagnostic(`${year.label}: ${got[year.label].length} inferred tail ribbon(s)`);
+    }
+    assert.deepEqual(got, want);
+  });
+
   test("everything open with every tail drawn out draws every General Fund division-by-object cell as a ribbon of its own", (t) => {
     for (const [at, c] of divisionCells) {
       t.diagnostic(`${at}: ${c.ribbons} of ${c.cells} division-by-object cells drawn as their own ribbon, ${c.folded} folded into a tail or a merge`);

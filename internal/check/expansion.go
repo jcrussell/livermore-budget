@@ -108,11 +108,15 @@ func (x stitched) printedSide(l project.Link) (printed, rest []string) {
 // expansionOpensAsTheSpine asserts the expansion's root frontier is the spine:
 // its roots are the spine's nodes, and its primary leaf links, each end
 // folded to its root, draw exactly the spine's cells at the spine's cents, a
-// figure of pp.66-67 a leaf cites being one its own cell prints.
+// figure of pp.66-67 a leaf cites being one its own cell prints. A printed
+// cell a derived leg folds into is drawn printed only as the whole set of
+// legs naming it in Completes, so every leg of it names it, and the legs
+// naming a cell fold to it, sum to its cents and cite its printed figures.
 //
 // MUTATION: re-parent fund/101 (capital) to fund-group/general in the stitch
 // and this check names the two groups' moved cells; drop the 250,000
-// remainder and it names FY2026-27's internal service Services & Supplies.
+// remainder and it names FY2026-27's internal service Services & Supplies;
+// drop Completes from one of that cell's legs and it names the cell.
 type expansionOpensAsTheSpine struct{}
 
 var _ Check = (*expansionOpensAsTheSpine)(nil)
@@ -123,7 +127,8 @@ func (*expansionOpensAsTheSpine) Full() bool { return false }
 func (*expansionOpensAsTheSpine) Description() string {
 	return "the expansion schedule's roots are the spine's nodes, and its leaf links folded to " +
 		"their roots draw exactly the spine's cells at the spine's cents, citing no figure of " +
-		"pp.66-67 another cell prints"
+		"pp.66-67 another cell prints, and every leg of a printed cell a derived leg folds into " +
+		"names it as the set completing it"
 }
 
 func (*expansionOpensAsTheSpine) Run(_ context.Context, s *Subject) (Result, error) {
@@ -153,11 +158,25 @@ func (*expansionOpensAsTheSpine) Run(_ context.Context, s *Subject) (Result, err
 		type cell struct {
 			cents   int64
 			printed []string
+			legs    int
+			derived bool
 		}
 		drawn := map[string]*cell{}
-		key := func(src, tgt string, kind project.LinkKind) string { return src + " -> " + tgt + " " + string(kind) }
+		// completing is each cell a leg names in Completes, over the legs
+		// naming it, wherever they fold.
+		completing := map[string]*cell{}
+		at := func(m map[string]*cell, k string) *cell {
+			if m[k] == nil {
+				m[k] = &cell{}
+			}
+			return m[k]
+		}
 		for _, l := range x.doc.Links {
 			if l.Alternative != "" {
+				if l.Completes != "" {
+					findings = append(findings, finding(subject, "%s -> %s is a link of the %s alternative and names %q in completes",
+						l.Source, l.Target, l.Alternative, l.Completes))
+				}
 				continue
 			}
 			src, tgt := x.rootOf(l.Source), x.rootOf(l.Target)
@@ -165,22 +184,29 @@ func (*expansionOpensAsTheSpine) Run(_ context.Context, s *Subject) (Result, err
 				findings = append(findings, finding(subject, "%s -> %s has an end whose parents reach no root", l.Source, l.Target))
 				continue
 			}
+			k := project.CellKey(src, tgt, l.Kind)
+			if l.Completes != "" && l.Completes != k {
+				findings = append(findings, finding(subject, "%s -> %s names %q in completes and folds to %s",
+					l.Source, l.Target, l.Completes, k))
+			}
 			if src == tgt {
 				continue
 			}
-			k := key(src, tgt, l.Kind)
-			c := drawn[k]
-			if c == nil {
-				c = &cell{}
-				drawn[k] = c
-			}
-			c.cents += l.ValueCents
 			printed, _ := x.printedSide(l)
-			c.printed = append(c.printed, printed...)
+			add := func(c *cell) {
+				c.cents += l.ValueCents
+				c.printed = append(c.printed, printed...)
+				c.legs++
+				c.derived = c.derived || l.Derived
+			}
+			add(at(drawn, k))
+			if l.Completes != "" {
+				add(at(completing, l.Completes))
+			}
 		}
 		for _, l := range x.spine.Links {
 			cells++
-			k := key(l.Source, l.Target, l.Kind)
+			k := project.CellKey(l.Source, l.Target, l.Kind)
 			c := drawn[k]
 			delete(drawn, k)
 			if c == nil {
@@ -198,6 +224,31 @@ func (*expansionOpensAsTheSpine) Run(_ context.Context, s *Subject) (Result, err
 						k, id))
 				}
 			}
+			whole := completing[k]
+			delete(completing, k)
+			named := 0
+			if whole != nil {
+				named = whole.legs
+			}
+			if c.derived && !l.Derived && named != c.legs {
+				findings = append(findings, finding(subject, "%s: a derived leg folds into this printed cell and %d of its %d legs name it in completes",
+					k, named, c.legs))
+			}
+			if whole == nil {
+				continue
+			}
+			if whole.cents != l.ValueCents {
+				findings = append(findings, finding(subject, "%s: the legs completing it carry %s and the spine draws %s",
+					k, amount.Cents(whole.cents), amount.Cents(l.ValueCents)))
+			}
+			if !slices.Equal(sortedCopy(slices.Compact(sortedCopy(whole.printed))), sortedCopy(l.FactIDs)) {
+				findings = append(findings, finding(subject, "%s: the legs completing it cite %v of pp.66-67 and the cell prints %v",
+					k, slices.Compact(sortedCopy(whole.printed)), l.FactIDs))
+			}
+		}
+		for _, k := range sortedStrings(completing) {
+			findings = append(findings, finding(subject, "%d leg(s) name %s in completes, a cell the spine does not draw",
+				completing[k].legs, k))
 		}
 		for _, k := range sortedStrings(drawn) {
 			findings = append(findings, finding(subject, "the leaves fold to %s at %s, a cell the spine does not draw",

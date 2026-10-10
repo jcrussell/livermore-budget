@@ -273,6 +273,11 @@
                   "description": "On the expansion schedule alone: the key of the alternative split this is a leaf link of, drawn only while a reader has that split open.",
                   "type": "string",
                   "minLength": 1
+                },
+                "completes": {
+                  "description": "On the expansion schedule alone: the spine cell this primary link re-forms with every other link naming it, spelt '<source> -> <target> <kind>', where a derived leg folds into a printed cell. Exactly that set of legs is the printed figure, and any part of it is not. Absent on every other link.",
+                  "type": "string",
+                  "pattern": "^\\S+ -> \\S+ \\S+$"
                 }
               },
               "allOf": [

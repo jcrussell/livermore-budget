@@ -521,6 +521,12 @@ type Link struct {
 	// split's node and one of its members, and a reader of any other split
 	// of the node does not draw it. "" is a primary link.
 	Alternative string `json:"alternative,omitempty"`
+	// Completes is, on the expansion schedule alone, the [CellKey] of the
+	// spine cell this primary link and every other link naming it re-form,
+	// where a derived leg folds into a printed cell: exactly that set of legs
+	// is the printed figure, and any part of it is not. "" on every other
+	// link. expansion-opens-as-the-spine holds the set to the cell.
+	Completes string `json:"completes,omitempty"`
 }
 
 // sankey projects the citywide spine as a flow diagram.

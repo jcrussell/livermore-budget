@@ -420,6 +420,8 @@ func (e *expansion) Document(facts []fact.Fact, o Options) (*Document, error) {
 		return nil, err
 	}
 
+	declareCompleting(st, spine)
+
 	splits, splitErr := splitsOf(st.nodes, st.links)
 	if splitErr != nil {
 		return nil, splitErr
@@ -457,6 +459,44 @@ func (e *expansion) Document(facts []fact.Fact, o Options) (*Document, error) {
 		Links:  st.links,
 		Splits: splits,
 	}, nil
+}
+
+// CellKey names the spine cell from source to target of kind, as a link's
+// Completes spells it.
+func CellKey(source, target string, kind LinkKind) string {
+	return source + " -> " + target + " " + string(kind)
+}
+
+// declareCompleting names, on every primary link of a printed spine cell a
+// derived leg folds into, the cell they re-form together: all of them is the
+// printed figure, so no fewer may be drawn as it.
+func declareCompleting(st *stitch, spine *Document) {
+	rootOf := func(id string) string {
+		for hops := 0; st.nodes[id].Parent != "" && hops <= len(st.nodes); hops++ {
+			id = st.nodes[id].Parent
+		}
+		return id
+	}
+	legs := map[string][]int{}
+	derived := map[string]bool{}
+	for i, l := range st.links {
+		src, tgt := rootOf(l.Source), rootOf(l.Target)
+		if l.Alternative != "" || src == tgt {
+			continue
+		}
+		k := CellKey(src, tgt, l.Kind)
+		legs[k] = append(legs[k], i)
+		derived[k] = derived[k] || l.Derived
+	}
+	for _, l := range spine.Links {
+		k := CellKey(l.Source, l.Target, l.Kind)
+		if l.Derived || !derived[k] {
+			continue
+		}
+		for _, i := range legs[k] {
+			st.links[i].Completes = k
+		}
+	}
 }
 
 // cuts builds each document the stitch reads, over the same column.
