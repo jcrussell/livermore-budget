@@ -160,6 +160,9 @@
   {{- /* Shipped empty and hidden on every page: what the reader has split
          open is the client's, which the server cannot know. */}}
   <div class="breadcrumb" id="breadcrumb" role="group" aria-label="What the chart has split open" hidden></div>
+  {{- /* SHIPPED HIDDEN AND EMPTY: which splits a year switch folds back is
+         the client's, since only it knows what the reader had split. */}}
+  <p class="hairline-line" id="splits-line" aria-live="polite" hidden></p>
   {{- /* SHIPPED HIDDEN: app.js unhides full screen where the browser offers
          it, and Reset view wherever the zoom is wired, naming each in the
          wording's words. Wheel with Ctrl or Cmd, a pinch, drag, and + - 0

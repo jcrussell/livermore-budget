@@ -276,22 +276,23 @@ describe("a year switch and the splits on screen", () => {
     assert.deepEqual(unique, ["fy2026-adopted.json", "fy2027-adopted.json"]);
     assert.equal(label, "General Fund, the other year");
   });
-  test("a year switch folds every split back, and the next split draws the new year's schedule", async (t) => {
+  test("a year switch keeps every split the new year draws, drawn from the new year's schedule", async (t) => {
     const { app, document } = await bootedApp({ checkedStem: "sankey" });
     await split(app, "fund-group/general");
-    const before = app.expansions.length;
+    const before = app.expansions.slice();
     clickYear(document, "sankey-2027");
     await settle();
     const chips = [...document.querySelectorAll("#breadcrumb .crumb-expanded")].length;
-    const after = app.expansions.length;
+    const after = app.expansions.slice();
     const lede = document.getElementById("lede-year").textContent;
-    await split(app, "fund-group/general");
-    t.diagnostic(`split ${before} node(s), switched year and read "${lede}" with ${after} split(s) and ${chips} chip(s)`);
-    assert.equal(before, 1);
-    assert.equal(after, 0);
-    assert.equal(chips, 0);
+    await split(app, "fund/100");
+    t.diagnostic(`split [${before.join(", ")}], switched year and read "${lede}" with [${after.join(", ")}] split and ${chips} chip(s)`);
+    assert.deepEqual(before, ["fund-group/general"]);
+    assert.deepEqual(after, ["fund-group/general"]);
+    assert.equal(chips, 1);
     assert.equal(lede, "FY 2026-27 adopted");
     assert.equal(app.fetched.metadata.fiscal_year, 2027);
+    assert.ok(document.getElementById("splits-line").hidden, "a switch that dropped nothing says it did");
     assert.equal(refusals(document).length, 0);
   });
   test("a split made while a year is fetched is replaced whole when the year lands", async (t) => {
@@ -381,7 +382,7 @@ describe("a year switch and the splits on screen", () => {
     assert.equal(after.table, before.table);
     assert.equal(after.projection, before.projection);
   });
-  test("a year switch folds back a tail drawn out with the split it was drawn out of", async (t) => {
+  test("a year switch keeps a tail drawn out, drawing the new year's members whole", async (t) => {
     const { app, document } = await bootedApp({ checkedStem: "sankey" });
     const group = "fund-group/special-revenue";
     const funds = () => app.projection.nodes.filter((n) => n.tier === 3).length;
@@ -393,15 +394,15 @@ describe("a year switch and the splits on screen", () => {
     const expanded = { funds: funds(), tail: tail() ? tail().label : "" };
     clickYear(document, "sankey-2027");
     await settle();
-    const between = app.expansions.length;
-    await split(app, group);
-    const after = { funds: funds(), tail: tail() ? tail().label : "" };
-    t.diagnostic(`FY 2025-26 drew ${folded.funds} fund mark(s) with a tail "${folded.tail}"; drawn out, ${expanded.funds} and ${expanded.tail ? "a tail" : "no tail"}; the switch left ${between} split(s); FY 2026-27 drew ${after.funds} with a tail "${after.tail}"`);
+    const after = { funds: funds(), tail: tail() ? tail().label : "", x: app.expansions.length };
+    const members = app.splitsHere({ id: group })[0].members.length;
+    t.diagnostic(`FY 2025-26 drew ${folded.funds} fund mark(s) with a tail "${folded.tail}"; drawn out, ${expanded.funds}; ` +
+      `FY 2026-27 kept ${after.x} expansion(s) and drew ${after.funds} of the group's ${members} funds with ${after.tail ? "a tail" : "no tail"}`);
     assert.ok(folded.tail !== "" && expanded.tail === "");
     assert.ok(expanded.funds > folded.funds);
-    assert.equal(between, 0);
-    assert.ok(after.tail !== "");
-    assert.notEqual(after.tail, folded.tail);
+    assert.equal(after.x, 2);
+    assert.equal(after.tail, "");
+    assert.equal(after.funds, members);
   });
 });
 

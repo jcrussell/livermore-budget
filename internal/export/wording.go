@@ -111,6 +111,9 @@ type wording struct {
 	// canvas: they are drawn a screen pixel wide, which overstates them, and
 	// the sentence says so.
 	Hairline string `json:"hairline"`
+	// SplitsDropped is said when a year switch folds back the splits of
+	// nodes the new year's expansion schedule does not carry.
+	SplitsDropped string `json:"splits_dropped"`
 }
 
 // splitLabels is the words for what a node splits into, keyed by every split
@@ -227,5 +230,6 @@ func defaultWording() wording {
 		Hairline: "{n:flow is|flows are} under a pixel wide on this chart's canvas, and each is drawn as a " +
 			"hairline one screen pixel wide, which is wider than its share; every other flow is drawn to scale. " +
 			"Zoom in, go full screen, search, or open the table below to read them.",
+		SplitsDropped: "{year} has no {nodes} to split, so {n:split was|splits were} folded back.",
 	}
 }

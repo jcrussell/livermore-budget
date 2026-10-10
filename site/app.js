@@ -663,6 +663,8 @@ export function redraw(next, refused = "That could not be drawn", landOn) {
     return false;
   }
   clearRefusal();
+  // What the last year switch folded back is said until the reader moves.
+  paintSplitsLine(null, [], null);
   pinned = null;
   if (filter.isolated && !laidNodes.some((n) => isolates(filter.isolated, n))) {
     filter = Object.freeze(Object.assign({}, filter, { isolated: "" }));
@@ -2619,12 +2621,13 @@ export function wireZoom() {
 /**
  * The view on screen as location.hash says it: the year by its column's file
  * name, the fund groups and link kinds the filters remove, the smallest flow
- * drawn as itself in cents, and the isolation.
- * @typedef {{year: string, hide: string[], hidekind: string[], min: number, iso: string}} ViewState
+ * drawn as itself in cents, the isolation, and the expansions in the order
+ * the reader made them.
+ * @typedef {{year: string, hide: string[], hidekind: string[], min: number, iso: string, x: string[]}} ViewState
  */
 
 /** The hash's fields, in the order hashOf writes them. */
-export const HASH_FIELDS = Object.freeze(["y", "hide", "hidekind", "min", "iso"]);
+export const HASH_FIELDS = Object.freeze(["y", "hide", "hidekind", "min", "iso", "x"]);
 
 /**
  * The year the page opens on where the URL names no view: the control's,
@@ -2659,6 +2662,9 @@ export function viewState() {
     hidekind: Array.from(filter.kinds).sort(),
     min: filter.smallest,
     iso: filter.isolated,
+    // In order and not sorted: each entry is applied to the frontier the
+    // ones before it leave (expansionState).
+    x: expansions.slice(),
   };
 }
 
@@ -2674,7 +2680,8 @@ function hashValue(v) {
 
 /**
  * A view as a hash: `#y=<year>`, then each field not at its default --
- * `hide` and `hidekind` comma-separated, `min` in cents, `iso`.
+ * `hide` and `hidekind` comma-separated, `min` in cents, `iso`, and `x`, the
+ * expansions comma-separated in the order they were made.
  * @param {ViewState} st
  * @returns {string}
  */
@@ -2684,6 +2691,7 @@ export function hashOf(st) {
   if (st.hidekind.length) parts.push("hidekind=" + st.hidekind.map(hashValue).join(","));
   if (st.min) parts.push("min=" + st.min);
   if (st.iso) parts.push("iso=" + hashValue(st.iso));
+  if (st.x.length) parts.push("x=" + st.x.map(hashValue).join(","));
   return "#" + parts.join("&");
 }
 
@@ -2724,14 +2732,15 @@ export function parseHash(hash) {
   if (!year) return { kind: "refused", why: "it names no year" };
   const hide = list("hide");
   const hidekind = list("hidekind");
-  if ([...hide, ...hidekind].some((id) => !id)) return { kind: "refused", why: "it holds an empty name" };
+  const x = list("x");
+  if ([...hide, ...hidekind, ...x].some((id) => !id)) return { kind: "refused", why: "it holds an empty name" };
   const min = fields.has("min") ? fields.get("min") || "" : "0";
   if (!/^\d+$/.test(min) || !Number.isSafeInteger(Number(min))) {
     return { kind: "refused", why: "its smallest flow, " + min + ", is not a whole number of cents" };
   }
   return {
     kind: "view",
-    state: { year, hide: hide.sort(), hidekind: hidekind.sort(), min: Number(min), iso: text(fields.get("iso") || "") },
+    state: { year, hide: hide.sort(), hidekind: hidekind.sort(), min: Number(min), iso: text(fields.get("iso") || ""), x },
   };
 }
 
@@ -2757,9 +2766,11 @@ export function recordView(how) {
 /**
  * Moves the page to a view, field by field, and says why where it cannot: a
  * year the page does not publish, a flow kind it names no label for, a fund
- * group the year's column does not carry, or an isolation naming a mark the
- * chart does not draw. A group or kind the view does not draw is inert, as
- * the panel's are.
+ * group the year's column does not carry, an expansion the year's schedule
+ * cannot make (expansionState), or an isolation naming a mark the chart does
+ * not draw. A group or kind the view does not draw is inert, as the panel's
+ * are. Expansions are applied before the isolation, which can name a member
+ * only a split draws.
  * @param {ViewState} st
  * @returns {Promise<{outcome: string, why?: string}>} DREW, SUPERSEDED, or FAILED with why
  */
@@ -2781,6 +2792,15 @@ async function moveTo(st) {
   }
   const group = st.hide.find((g) => fundGroupPlace(g) < 0);
   if (group !== undefined) return refuse(year.label + " carries no fund group " + group);
+  if (st.x.join("\n") !== expansions.join("\n")) {
+    if (!expanding() || !fetched) return refuse("this chart splits nothing");
+    try {
+      expansionState(fetched, st.x);
+    } catch (e) {
+      return refuse(year.label + " cannot draw it: " + (e instanceof Error ? e.message : String(e)));
+    }
+    if (!redraw(st.x)) return refuse("the chart could not be split as it names");
+  }
   if (st.iso && !laidNodes.some((n) => isolates(st.iso, n))) return refuse("the chart draws no mark " + st.iso + " to follow");
   setIsolated(st.iso);
   return { outcome: DREW };
@@ -2799,7 +2819,7 @@ export async function restoreView(hash) {
   const read = parseHash(hash);
   const opening = openingYear || (CONFIG.years || [])[(CONFIG.years || []).length - 1];
   /** @type {ViewState} */
-  const fallback = { year: yearKey(opening), hide: [], hidekind: [], min: 0, iso: "" };
+  const fallback = { year: yearKey(opening), hide: [], hidekind: [], min: 0, iso: "", x: [] };
   const named = read.kind !== "none";
   let moved = /** @type {{outcome: string, why?: string}} */ ({ outcome: FAILED, why: read.kind === "refused" ? read.why : "" });
   restoringView = true;
@@ -2972,6 +2992,58 @@ export const DREW = "drew";
 export const SUPERSEDED = "superseded";
 export const FAILED = "failed";
 
+/**
+ * Which of a list of expansions a year's expansion schedule can make, each
+ * applied in order to what the ones kept before it leave: kept, and the
+ * rest dropped -- a split of a node the year does not carry, and everything
+ * made inside it.
+ * @param {FiscProjection} doc the new year's expansion schedule
+ * @param {readonly string[]} entries
+ * @returns {{kept: string[], dropped: string[]}}
+ */
+export function carriedOver(doc, entries) {
+  /** @type {string[]} */
+  const kept = [];
+  /** @type {string[]} */
+  const dropped = [];
+  for (const entry of entries) {
+    try {
+      expansionState(doc, kept.concat([entry]));
+      kept.push(entry);
+    } catch (e) {
+      dropped.push(entry);
+    }
+  }
+  return { kept, dropped };
+}
+
+/**
+ * Says which splits a year switch folded back, in the words of the year
+ * they were made on, or hides the line where it folded none.
+ * @param {FiscYear | null} year the year switched to
+ * @param {readonly string[]} dropped carriedOver's
+ * @param {FiscProjection | null} from the schedule they were made on
+ */
+export function paintSplitsLine(year, dropped, from) {
+  const line = maybeEl("splits-line");
+  if (!line) return;
+  if (!year || !dropped.length || !from) {
+    line.textContent = "";
+    line.setAttribute("hidden", "");
+    return;
+  }
+  const labels = [];
+  for (const entry of dropped) {
+    const e = parseEntry(from, entry);
+    const id = e.kind === "tail" ? e.node : e.id;
+    const n = from.nodes.find((x) => x.id === id);
+    const label = n ? n.label : id;
+    if (!labels.includes(label)) labels.push(label);
+  }
+  line.textContent = say("splits_dropped", { year: year.label, nodes: core.joinAnd(labels), n: dropped.length });
+  line.removeAttribute("hidden");
+}
+
 /** The latest switch token; an attempt holding an older one stands down. */
 export let switching = 0;
 
@@ -2980,9 +3052,12 @@ export let switching = 0;
  * this composes no figure or caveat of its own.
  *
  * @param {FiscYear} year
+ * @param {readonly string[]} [carry] expansions made on the year on screen,
+ *   kept where the new year's schedule can make them (carriedOver), the rest
+ *   folded back and named in #splits-line
  * @returns {Promise<string>} DREW, SUPERSEDED or FAILED
  */
-export async function showYear(year) {
+export async function showYear(year, carry = []) {
   // Without the token, the slower of two in-flight fetches wins.
   const token = ++switching;
   const superseded = () => token !== switching;
@@ -2997,15 +3072,26 @@ export async function showYear(year) {
   // throw, so nothing below writes a word of this year over the last one's
   // chart.
   const was = { column, fetched, expansions, frontier, wholeSplits, overviewExpanded, laidNodes, groupIndex, projection, shown, whole };
+  const before = fetched;
   column = loaded;
   fetched = doc;
   expansions = [];
   frontier = core.isExpansionSchedule(doc) ? core.rootFrontier(doc) : null;
   wholeSplits = new Set();
   overviewExpanded = new Set();
+  /** @type {string[]} */
+  let dropped = [];
   let laid;
   let rows;
   try {
+    if (frontier && carry.length) {
+      const over = carriedOver(doc, carry);
+      const state = expansionState(doc, over.kept);
+      expansions = over.kept;
+      frontier = state.frontier;
+      wholeSplits = state.whole;
+      dropped = over.dropped;
+    }
     // The folded document is the one the page describes; the fold unions the
     // fact ids it merges, so nothing is lost.
     const drawn = shapeFor(doc);
@@ -3030,6 +3116,7 @@ export async function showYear(year) {
   hideTip();
 
   paintYearWords(year);
+  paintSplitsLine(year, dropped, before);
   paintChips();
   buildLegend();
   buildFilterPanel();
@@ -3162,7 +3249,8 @@ export function wireYears(years) {
     // A refused switch leaves the page on the year it was, so the control goes
     // back to it; the banner says what failed.
     const back = syncYearControl;
-    void showYear(year).then((got) => { if (got === FAILED) back(); }, (e) => {
+    // The splits the reader made go with them where the year can make them.
+    void showYear(year, expansions).then((got) => { if (got === FAILED) back(); }, (e) => {
       back();
       fail("The chart failed to draw: " + String(e));
     });

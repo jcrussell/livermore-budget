@@ -111,6 +111,7 @@ func TestTheWordingFillsEveryPlaceholderTheClientHands(t *testing.T) {
 		"search_none":            {"query"},
 		"bars_share":             {"share", "whole"},
 		"hairline":               {"n"},
+		"splits_dropped":         {"year", "nodes", "n"},
 	}
 	blob, err := json.Marshal(defaultWording())
 	if err != nil {

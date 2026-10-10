@@ -334,7 +334,8 @@
         "full_screen_exit",
         "zoom_reset",
         "bars_share",
-        "hairline"
+        "hairline",
+        "splits_dropped"
       ],
       "additionalProperties": false,
       "properties": {
@@ -620,6 +621,11 @@
           "type": "string",
           "minLength": 1,
           "description": "Said beside a chart drawing ribbons under a pixel of its canvas, which are drawn a screen pixel wide: {n}, how many."
+        },
+        "splits_dropped": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Said when a year switch folds back splits of nodes the new year does not carry: {year}, its label; {nodes}, their labels joined; {n}, how many splits."
         }
       }
     }

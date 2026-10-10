@@ -4,7 +4,7 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  loadApp, settle, refusals, pageFixture, columnFixture, clickYear, keydownListeners, listenerErrors,
+  loadApp, settle, refusals, pageFixture, columnFixture, clickYear, keydownListeners, listenerErrors, split,
 } from "./testlib.mjs";
 
 const FIRST = "sankey";
@@ -508,6 +508,10 @@ describe("the view in the URL", () => {
       [`#y=${key}&min=1.5`, "1.5"],
       [`#hide=fund-group/general`, "no year"],
       [`#y=${key}&zoom=2`, "zoom"],
+      // A split of a node the root does not draw, and one the node lacks: no
+      // guessing at the parent that would draw it, or at another split.
+      [`#y=${key}&x=fund/100`, "fund/100"],
+      [`#y=${key}&x=fund-group/general~no-such`, "no-such"],
     ];
     for (const [hash, names] of cases) {
       const { app, document, window } = await bootAt(hash);
@@ -519,6 +523,83 @@ describe("the view in the URL", () => {
       assert.ok(document.querySelectorAll("#chart g.node").length > 0, `${hash} drew no chart`);
       assert.equal(window.location.hash, "#y=" + key);
     }
+  });
+
+  test("the splits round-trip with the year, in the order they were made, a tail and an alternative included", async (t) => {
+    const { app, window } = await loadApp({ checkedStem: OLDEST.stem });
+    await app.boot();
+    await settle();
+    await split(app, "fund-group/general", "fund-group/special-revenue", "expenditure/capital-outlay~divisions");
+    const tail = app.projection.nodes.find((n) => n.id === app.splitTailID("fund-group/special-revenue", "funds"));
+    assert.ok(tail, "the special-revenue split folds no tail");
+    assert.ok(app.expandTier(tail), "the tail would not draw out");
+    await settle();
+    const member = app.splitsHere({ id: "fund-group/special-revenue" })[0].members.find((m) => app.laidNodes.some((n) => n.id === m));
+    app.setIsolated(member);
+    const hash = window.location.hash;
+    const want = { x: app.expansions.slice(), view: view(app) };
+    const again = await bootAt(hash);
+    t.diagnostic(hash);
+    assert.equal(hash, app.hashOf(app.viewState()));
+    assert.deepEqual(want.x, ["fund-group/general", "fund-group/special-revenue",
+      "expenditure/capital-outlay~divisions", tail.id]);
+    assert.deepEqual({ x: again.app.expansions.slice(), view: view(again.app) }, want);
+    assert.deepEqual(said(again.document), []);
+  });
+
+  test("Back and Forward walk the splits", async (t) => {
+    const { app, document, window } = await loadApp();
+    await app.boot();
+    await settle();
+    const popped = () => new Promise((resolve) => window.addEventListener("popstate", () => resolve(), { once: true }));
+    const walk = async (go) => {
+      const wait = popped();
+      go();
+      await wait;
+      await settle();
+      return app.expansions.join(",");
+    };
+    await split(app, "fund-group/general", "fund/100");
+    const back1 = await walk(() => window.history.back());
+    const back2 = await walk(() => window.history.back());
+    const forward = await walk(() => window.history.forward());
+    t.diagnostic(`split to fund/100; back ${back1}; back ${back2 || "(the root)"}; forward ${forward}`);
+    assert.equal(back1, "fund-group/general");
+    assert.equal(back2, "");
+    assert.equal(forward, "fund-group/general");
+    assert.deepEqual(said(document), []);
+  });
+
+  test("a year switch keeps every split the new year can make, and says which it folded back", async (t) => {
+    // PLANTED: every node either pinned year's expansion splits is in both,
+    // so the oldest year's capital group is renamed, in its node table and
+    // in every parent edge naming it.
+    const planted = structuredClone(columnFixture(OLDEST.path.replace(/\.json$/, "")));
+    const capital = planted.nodes.findIndex((n) => n.id === "fund-group/capital");
+    planted.nodes[capital].id = "fund-group/capital-planted";
+    for (const sched of Object.values(planted.schedules)) {
+      for (const n of sched.nodes) if (n.parent === "fund-group/capital") n.parent = "fund-group/capital-planted";
+    }
+    const { app, document } = await loadApp({ plan: { [OLDEST.path]: { doc: planted } } });
+    await app.boot();
+    await settle();
+    assert.equal(app.shownYear.stem, NEWEST.stem);
+    const line = document.getElementById("splits-line");
+    assert.ok(line.hidden, "the line is shown before any switch");
+    await split(app, "fund-group/general", "fund-group/capital", "fund/100");
+    clickYear(document, OLDEST.stem);
+    await settle();
+    const there = { year: app.shownYear.stem, x: app.expansions.slice(), words: line.textContent, hidden: line.hidden };
+    clickYear(document, NEWEST.stem);
+    await settle();
+    const back = { x: app.expansions.slice(), hidden: line.hidden };
+    t.diagnostic(`on ${there.year}: kept [${there.x.join(", ")}]; "${there.words}"; back on ${NEWEST.label}: [${back.x.join(", ")}]`);
+    assert.equal(there.year, OLDEST.stem);
+    assert.deepEqual(there.x, ["fund-group/general", "fund/100"]);
+    assert.equal(there.hidden, false);
+    assert.equal(there.words, app.say("splits_dropped", { year: OLDEST.label, nodes: planted.nodes[capital].label, n: 1 }));
+    assert.deepEqual(back, { x: ["fund-group/general", "fund/100"], hidden: true });
+    assert.deepEqual(said(document), []);
   });
 
   test("a group or kind the view does not draw is inert, not refused, and an in-page anchor names no view", async () => {
