@@ -238,12 +238,38 @@ lint-if-available: ## Run lint, warning rather than failing if golangci-lint is 
 # MODULE_NOT_FOUND, which reads like a broken suite rather than a wrong
 # argument; and an unquoted pattern matching nothing would reach node as the
 # literal string.
+#
+# THE RUN IS CAPPED BY A CGROUP, NOT BY V8. A failing assert whose operand is
+# a mark of a booted app formats the laid graph behind it, and that growth is
+# off the V8 heap: a child with a 2 GB heap_size_limit reached 7.2 GB RSS and
+# the kernel OOM-killed it on this 7.8 GiB host (render.test.mjs, 2026-10-10),
+# so --max-old-space-size caps nothing here. Under systemd-run the cgroup kills
+# the whole run instead, which TAP reports as a bare `exit 1`, so the scope's
+# Result is read back and an oom-kill is named. Where no user systemd answers
+# (CI's disposable runners) the run is uncapped. JS_FILES narrows the run to
+# one file. Measured at concurrency 2, 2026-10-10: every file but render peaks
+# at 735 MB of summed node RSS and render alone at about 915 MB.
+JS_FILES ?= "site/*.test.mjs"
+JS_MEM ?= 3G
+JS_JOBS ?= 2
+
 node_modules/.package-lock.json: package-lock.json
 	npm ci --ignore-scripts --no-audit --no-fund
 
 .PHONY: js
-js: node_modules/.package-lock.json ## Run the client's tests under node and jsdom (needs node and npm; nothing else does)
-	node --test "site/*.test.mjs"
+js: node_modules/.package-lock.json ## Run the client's tests under node and jsdom, memory-capped (needs node and npm; nothing else does)
+	@if systemd-run --user --scope -q true 2>/dev/null; then \
+		unit=fisc-js-$$$$; \
+		systemd-run --user --scope -q --unit=$$unit -p MemoryMax=$(JS_MEM) -p MemorySwapMax=0 \
+			node --test --test-concurrency=$(JS_JOBS) $(JS_FILES); status=$$?; \
+		if [ "$$(systemctl --user show -p Result --value $$unit.scope 2>/dev/null)" = oom-kill ]; then \
+			echo "js: the run was killed at the $(JS_MEM) memory cap; look for an assert whose operand is a mark or a laid node (see AGENTS.md, The node boundary)" >&2; \
+			systemctl --user reset-failed $$unit.scope 2>/dev/null; \
+		fi; \
+		exit $$status; \
+	else \
+		node --test --test-concurrency=$(JS_JOBS) $(JS_FILES); \
+	fi
 
 # js-if-available is to `js` what lint-if-available is to `lint`, and for the
 # same reason: node must not become mandatory to commit.

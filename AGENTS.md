@@ -529,6 +529,13 @@ rather than inferring from the code.
   is the only npm command in the tree and `make js` runs it only when the
   lockfile changes. `make build`, `make site` and `fisc export` never run node.
   A contributor with only Go can still build, test and land a change.
+- **Run the client tests only through `make js`**, narrowed with
+  `JS_FILES=site/<file>.test.mjs`, never as a bare `node --test`: the target
+  runs them under a cgroup memory cap. `--max-old-space-size` is not a cap.
+- **Never hand an assertion a mark or a laid node as its operand.** A failing
+  `assert.equal` over one formats the whole laid graph and grows until the
+  host kills it. Assert on an id or a boolean: `assert.ok(m === undefined,
+  m && m.__data__.id)`.
 - **A JavaScript test tests what the client does** — fitting, layout, class and
   label derivation, rendering, gestures, the year control, refusal banners — over
   the fixtures under `testdata/`: the hand-derived spine golden, and the page
