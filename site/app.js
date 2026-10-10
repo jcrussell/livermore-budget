@@ -2205,37 +2205,83 @@ export function buildTable(rows) {
  * ------------------------------------------------------------------ */
 
 /**
- * The marks of the chart drawn whose label holds `query`, case-folded: those
- * whose label starts with it first, then in label order. Only what is laid
- * out, so a mark the view does not draw -- one inside a node not split, or
- * one the filters removed -- is never offered. None for a blank query.
+ * The marks and nodes whose label holds the query, case-folded, those that
+ * start with it first: every mark drawn, and on the expansion every node of
+ * the schedule the chart does not draw, which Enter reveals. A node the
+ * filters remove is offered by neither, drawn or not.
  * @param {string} query
- * @returns {LaidNode[]}
+ * @returns {(LaidNode | FiscNode)[]}
  */
 export function searchMatches(query) {
   const q = String(query).trim().toLocaleLowerCase();
   if (!q) return [];
-  const folded = (/** @type {LaidNode} */ n) => String(n.label).toLocaleLowerCase();
-  return laidNodes.filter((n) => folded(n).includes(q)).sort((a, b) =>
+  const folded = (/** @type {{label: string}} */ n) => String(n.label).toLocaleLowerCase();
+  /** @type {(LaidNode | FiscNode)[]} */
+  const pool = laidNodes.slice();
+  if (expanding() && fetched) {
+    const drawn = new Set(laidNodes.map((n) => n.id));
+    const index = new Map(fetched.nodes.map((n) => [n.id, n]));
+    for (const n of fetched.nodes) {
+      if (drawn.has(n.id) || filter.groups.has(core.fundGroupOf(index, n)) || filter.groups.has(n.id)) continue;
+      pool.push(n);
+    }
+  }
+  return pool.filter((n) => folded(n).includes(q)).sort((a, b) =>
     Number(!folded(a).startsWith(q)) - Number(!folded(b).startsWith(q)) ||
     folded(a).localeCompare(folded(b)) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 }
 
 /**
+ * The expansions that draw `id`: the ones on screen, with each node above it
+ * split, root first, by the split the next node down is a member of (a node
+ * split another way is folded back first, as expandNode does), and the tail
+ * of its own split drawn out where the cap would fold it. core.reveal's
+ * chain, as a list of expansions so Back can walk it.
+ * @param {string} id
+ * @returns {string[]}
+ */
+export function revealEntries(id) {
+  if (!fetched) return expansions.slice();
+  const doc = fetched;
+  const chain = [];
+  for (let at = nodeOf(id), hops = 0; at && at.parent && hops < 9; at = nodeOf(at.parent), hops++) chain.unshift(at);
+  let next = expansions.slice();
+  for (const member of chain) {
+    const splits = core.splitsOf(doc, member.parent);
+    const key = member.alternative || (splits.length ? splits[0].key : "");
+    const open = expansionState(doc, next).frontier;
+    if (core.openSplitOf(doc, open, member.parent) === key) continue;
+    const inside = core.withinNode(doc, member.parent);
+    next = next.filter((e) => !entryInside(e, inside)).concat([entryOf(member.parent, key)]);
+  }
+  const own = chain[chain.length - 1];
+  if (own) {
+    const state = expansionState(doc, next);
+    const drawn = formOnScreen().shape(doc, { chart: CONFIG.overview, frontier: state.frontier, whole: state.whole, expanded: overviewExpanded });
+    const splits = core.splitsOf(doc, own.parent);
+    const key = own.alternative || (splits.length ? splits[0].key : "");
+    const tail = core.splitTailID(own.parent, key);
+    if (!drawn.nodes.some((n) => n.id === id) && drawn.nodes.some((n) => n.id === tail)) next.push(tail);
+  }
+  return next;
+}
+
+/**
  * What one option says: the mark's label, its role where another option reads
  * alike, and what Enter does where the chart offers more than following it.
- * @param {LaidNode} n
- * @param {LaidNode[]} hits every option listed
+ * @param {LaidNode | FiscNode} n
+ * @param {(LaidNode | FiscNode)[]} hits every option listed
  * @returns {string}
  */
 export function searchOptionWords(n, hits) {
   const alike = hits.some((o) => o !== n && o.label === n.label);
-  const offer = splittable(n) ? say("search_opens") : expandable(n) ? say("search_expands") : "";
+  const laid = laidNodes.some((x) => x.id === n.id);
+  const offer = !laid ? say("search_reveals") : splittable(n) ? say("search_opens") : expandable(n) ? say("search_expands") : "";
   return n.label + (alike ? " (" + String(n.role).replace(/_/g, " ") + ")" : "") + (offer ? ", " + offer : "");
 }
 
 /** The search's options as listed, and the one the arrows are on (-1 for none). */
-export let searchState = { hits: /** @type {LaidNode[]} */ ([]), active: -1 };
+export let searchState = { hits: /** @type {(LaidNode | FiscNode)[]} */ ([]), active: -1 };
 
 /**
  * Lists the marks matching the search box's text, says how many, and puts the
@@ -2302,26 +2348,38 @@ export function closeSearch() {
 }
 
 /**
- * Takes the reader to one mark of the chart drawn. With `open`, the search's
- * Enter, it does what activating the mark offers (openOffered), the rule
- * the chart's own Enter and double click use; otherwise, or where nothing
+ * Takes the reader to one mark of the chart drawn, or to a node of the
+ * expansion it does not draw, splitting the nodes above it until it is
+ * (revealEntries). With `open`, the search's Enter, it does what activating
+ * a drawn mark offers (openOffered), the rule the chart's own Enter and
+ * double click use, and focuses a revealed node; otherwise, or where nothing
  * splits, it follows the mark's money and focuses it, which scrolls it into
- * view and pins it. Says whether the mark was on the chart.
+ * view and pins it. Says whether the mark is on the chart.
  * @param {string} id
  * @param {boolean} open
  * @returns {boolean}
  */
 export function chooseSearch(id, open) {
   const input = /** @type {HTMLInputElement | null} */ (maybeEl("search-input"));
-  const d = laidNodes.find((n) => n.id === id);
+  let d = laidNodes.find((n) => n.id === id);
   closeSearch();
+  let revealed = false;
+  if (!d && expanding() && nodeOf(id)) {
+    if (!redraw(revealEntries(id), "That could not be found")) return false;
+    d = laidNodes.find((n) => n.id === id);
+    revealed = true;
+  }
   if (!d) return false;
   if (input) input.value = d.label;
-  if (open && openOffered(d)) {
+  if (!revealed && open && openOffered(d)) {
     if (input) input.value = "";
     return true;
   }
-  setIsolated(d.id);
+  if (revealed && open) {
+    if (input) input.value = "";
+  } else {
+    setIsolated(d.id);
+  }
   revealMark(d);
   const chart = maybeEl("chart");
   const mark = chart ? D3.select(chart).selectAll("g.node").filter(/** @param {LaidNode} n */ (n) => n.id === d.id).node() : null;

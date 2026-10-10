@@ -330,6 +330,7 @@
         "search_none",
         "search_opens",
         "search_expands",
+        "search_reveals",
         "full_screen",
         "full_screen_exit",
         "zoom_reset",
@@ -596,6 +597,11 @@
           "type": "string",
           "minLength": 1,
           "description": "Said on a search option whose mark is a folded tail the chart draws out."
+        },
+        "search_reveals": {
+          "type": "string",
+          "minLength": 1,
+          "description": "What Enter does on a search option naming a node the chart does not draw: it splits the nodes above it until it is drawn."
         },
         "full_screen": {
           "type": "string",

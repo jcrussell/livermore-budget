@@ -407,6 +407,58 @@ describe("the search box", () => {
     assert.deepEqual(banners(document), []);
   });
 
+  test("a node the chart does not draw is offered, and Enter splits the nodes above it until it is drawn, and focuses it", async (t) => {
+    const { app, document } = await bootedApp();
+    const id = "dept/patrol";
+    const input = type(document, app.nodeOf(id).label);
+    const active = arrowTo(document, input, id);
+    assert.ok(active.textContent.includes(app.say("search_reveals")), active.textContent);
+    key(input, "Enter");
+    await settle();
+    const on = focusedID(document);
+    t.diagnostic(`Enter on "${active.textContent}" split [${app.expansions.join(", ")}]; focus on ${on}`);
+    assert.deepEqual(app.expansions.slice(0, 2), ["fund-group/general", "fund/100"]);
+    assert.ok(app.laidNodes.some((n) => n.id === id), `${id} is not drawn`);
+    assert.equal(on, id);
+    assert.equal(input.value, "");
+    assert.deepEqual(banners(document), []);
+  });
+
+  test("a node folded into a tail is revealed with the tail drawn out, and an alternative's member by its split", async (t) => {
+    const { app, document } = await bootedApp();
+    await split(app, WORST);
+    const folded = app.splitsHere({ id: WORST })[0].members.find((m) => !app.laidNodes.some((n) => n.id === m));
+    assert.ok(folded, `${WORST}'s split folds no member`);
+    app.collapseAll();
+    await settle();
+    assert.ok(app.chooseSearch(folded, true), `${folded} was not revealed`);
+    await settle();
+    const tailed = app.expansions.slice();
+    const alternative = "dept/information-technology/capital-outlay";
+    app.collapseAll();
+    await settle();
+    assert.ok(app.chooseSearch(alternative, true), `${alternative} was not revealed`);
+    await settle();
+    t.diagnostic(`${folded}: [${tailed.join(", ")}]; ${alternative}: [${app.expansions.join(", ")}]`);
+    assert.deepEqual(tailed, [WORST, app.splitTailID(WORST, "funds")]);
+    assert.deepEqual(app.expansions, ["expenditure/capital-outlay" + app.ALTERNATIVE_MARK + "divisions"]);
+    assert.ok(app.laidNodes.some((n) => n.id === alternative));
+    assert.deepEqual(banners(document), []);
+  });
+
+  test("a label nothing in the schedule carries offers nothing, and Enter on it does nothing", async () => {
+    const { app, document } = await bootedApp();
+    const input = type(document, "no such label anywhere");
+    assert.deepEqual(options(document), []);
+    assert.equal(input.getAttribute("aria-expanded"), "false");
+    assert.equal(document.getElementById("search-status").textContent, app.say("search_none", { query: "no such label anywhere" }));
+    key(input, "ArrowDown");
+    key(input, "Enter");
+    await settle();
+    assert.deepEqual(app.expansions, []);
+    assert.equal(app.filter.isolated, "");
+  });
+
   test("a click on an option follows that mark without splitting it", async () => {
     const { app, document } = await bootedApp();
     type(document, "general");
