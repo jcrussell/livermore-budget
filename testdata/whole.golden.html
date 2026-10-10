@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Every flow in Livermore&#39;s budget, at once</title>
+<meta name="description" content="Every figure on this page is traced to a page of the City of Livermore's published budget, and what we inferred is marked as inferred.">
+<meta name="color-scheme" content="light dark">
+<link rel="stylesheet" href="style.css">
+<script>
+  
+  
+  try {
+    var t = localStorage.getItem("fisc-theme");
+    if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+  } catch (e) {   }
+</script>
+</head>
+<body>
+
+<div class="wip-banner" role="status">⚠️ Work in progress — early preview, coverage is incomplete.</div>
+
+<nav class="site-nav" aria-label="Views">
+  <ul>
+    <li><a href="index.html">Budget flows</a></li>
+    <li><span aria-current="page">Whole budget</span></li>
+    <li><a href="trends.html">Revenue tables</a></li>
+    <li><a href="history.html">Ten-year history</a></li>
+    <li><a href="balances.html">Fund balances</a></li>
+    <li><a href="caveats.html">Caveats</a></li>
+    <li><a href="provenance.html">Sources and data</a></li>
+  </ul>
+</nav>
+
+<header class="page-head">
+  <div>
+    <h1>Where Livermore's money comes from, and where it goes</h1>
+    <p class="lede">
+      
+      The <span id="lede-year">FY 2026-27 adopted</span> budget, all funds, gross — read out of the city's
+      published schedule and traced back to it. Figures the city printed are drawn solid;
+      the two things we inferred are drawn dashed and labelled.
+      <span id="chart-hint"></span>
+    </p>
+  </div>
+  <div class="head-controls">
+    
+    <fieldset class="year-toggle" id="year-toggle" disabled>
+      <legend>Budget year</legend>
+      <input type="radio" name="fisc-year" id="year-sankey" value="sankey"
+             >
+      <label for="year-sankey">FY 2025-26</label>
+      <input type="radio" name="fisc-year" id="year-sankey-2027" value="sankey-2027"
+             checked>
+      <label for="year-sankey-2027">FY 2026-27</label>
+    </fieldset>
+    <div class="column-control" role="group" aria-label="Chart columns">
+      <button type="button" id="column-fewer" aria-label="Fewer columns" disabled>&minus;</button>
+      <span id="column-count" aria-live="polite"></span>
+      <button type="button" id="column-more" aria-label="More columns" disabled>+</button>
+    </div>
+    <button type="button" id="theme-toggle" aria-pressed="false">Dark mode</button>
+  </div>
+</header>
+
+<main>
+<section class="figures" id="hero" aria-label="What the city spends">
+  <div class="tile hero">
+    <div class="label">What the city actually spends</div>
+    <div class="value">$252,854,896</div>
+    <div class="note">All funds, gross, FY 2026-27 adopted budget</div>
+  </div>
+</section>
+
+<h2>The flow</h2>
+<div class="card" id="chart-card">
+  <div class="controls">
+    <div class="legend" id="legend" aria-label="Fund groups"></div>
+    <div class="search" id="search" hidden>
+      <label for="search-input" id="search-label">Find a mark on this chart</label>
+      <input type="text" id="search-input" role="combobox" aria-autocomplete="list"
+             aria-expanded="false" aria-controls="search-list" autocomplete="off" spellcheck="false">
+      <ul class="search-list" id="search-list" role="listbox" aria-labelledby="search-label" hidden></ul>
+      <span id="search-status" role="status"></span>
+    </div>
+  </div>
+  <details class="filters" id="filters" hidden>
+    <summary>Show and hide</summary>
+    <fieldset class="filter-set">
+      <legend>Fund groups</legend>
+      <div class="filter-bulk">
+        <button type="button" id="filter-all" aria-label="Show every fund group">All</button>
+        <button type="button" id="filter-none" aria-label="Hide every fund group">None</button>
+      </div>
+      <div class="filter-list" id="filter-group-list"></div>
+    </fieldset>
+    <fieldset class="filter-set">
+      <legend>Flow kinds</legend>
+      <div class="filter-list" id="filter-kind-list"></div>
+    </fieldset>
+    <div class="filter-set filter-smallest">
+      <label for="filter-smallest">Smallest flow drawn as itself</label>
+      <input type="range" id="filter-smallest" min="0" max="0" step="1" value="0">
+      <output id="filter-smallest-value" for="filter-smallest"></output>
+    </div>
+  </details>
+  <p class="filter-line" id="filter-line" aria-live="polite" hidden>
+    <span id="filter-said"></span>
+    <button type="button" id="filter-reset">Reset</button>
+  </p>
+  <div class="legend" aria-label="How to read the marks">
+    <span><span class="key published" aria-hidden="true"></span> printed by the city</span>
+    <span><span class="key derived" aria-hidden="true"></span> ◇ our inference (dashed)</span>
+  </div>
+  <nav class="breadcrumb" id="breadcrumb" aria-label="Chart depth" hidden></nav>
+  <div class="chart-tools" id="chart-tools">
+    <button type="button" id="chart-zoom-reset" disabled hidden>Reset view</button>
+    <button type="button" id="chart-fullscreen" hidden>Full screen</button>
+  </div>
+  <p class="hairline-line" id="hairline-line" aria-live="polite" hidden></p>
+  <div class="chart-wrap">
+    
+    <svg class="sankey" id="chart" role="group" aria-labelledby="chart-title chart-desc">
+      <title id="chart-title">Sankey diagram of the FY 2026-27 adopted budget</title>
+      <desc id="chart-desc">
+        Revenue categories and the money transferred in from other funds on the left, every fund that money reaches, the divisions that spend the General Fund, and on the right the object rows each fund or division spends on: the flows of Budget Book pp.127-140, pp.167-170 and pp.173-183, drawn at once and to scale. The smallest funds and object rows start folded into one mark per column, and a double click on it draws every one of them. A category&#39;s lines are drawn as the category. Fund groups are the colours rather than a column: a group&#39;s figure is the sum of its funds&#39;, and drawing both would show each fund&#39;s revenue twice. The same figures are in the flow table below, which opens from the &#34;Every flow, as a table&#34; heading.
+      </desc>
+    </svg>
+    <div class="tooltip" id="tooltip" role="status" aria-live="polite" hidden></div>
+  </div>
+  <div class="detail" id="detail" aria-live="polite">
+    <p class="subtle">Select a flow or a node to pin its provenance here.</p>
+  </div>
+  <noscript>
+    <p>
+      This page draws its chart in the browser from
+      <a href="fy2027-adopted.json">fy2027-adopted.json</a>. With JavaScript off, that file and the
+      figures on this page are still the whole story: every amount, fact id and source page
+      is in it. The panels below open without a script, but two of them are FILLED by one:
+      "Every flow, as a table" will be empty and "What we inferred" will still say it is
+      loading. The file has both.
+    </p>
+  </noscript>
+</div>
+<p class="lede">
+  Revenue categories and the money transferred in from other funds on the left, every fund that money reaches, the divisions that spend the General Fund, and on the right the object rows each fund or division spends on: the flows of Budget Book pp.127-140, pp.167-170 and pp.173-183, drawn at once and to scale. The smallest funds and object rows start folded into one mark per column, and a double click on it draws every one of them. A category&#39;s lines are drawn as the category. Fund groups are the colours rather than a column: a group&#39;s figure is the sum of its funds&#39;, and drawing both would show each fund&#39;s revenue twice.
+</p>
+<p class="lede subtle">
+  Hover, tap or tab to a flow for its amount, fact ids and sources.
+  Click a node or a fund swatch to follow only that money; Escape puts the
+  rest back.
+</p>
+
+
+<details class="apparatus" id="figures-view">
+  <summary>
+    <h2>The figures behind it</h2>
+    <span class="apparatus-hint">the working, including the column total that counts
+      transfers twice</span>
+  </summary>
+  <section class="figures" id="figures" aria-label="The figures behind the headline">
+    <div class="tile error">
+      <div class="label">Naive column total</div>
+      <div class="value">$325,241,780</div>
+      <div class="note">The wrong answer: summing the expenditure column counts transfers between funds twice, inflating the total by $72,386,884.</div>
+    </div>
+    <div class="tile">
+      <div class="label">All-funds gross revenue</div>
+      <div class="value">$302,443,043</div>
+      <div class="note">Ties to the printed schedule; includes internal service charges.</div>
+    </div>
+    <div class="tile">
+      <div class="label">External revenue</div>
+      <div class="value">$282,447,173</div>
+      <div class="note">Net of internal service charges billed between city departments.</div>
+    </div>
+    <div class="tile">
+      <div class="label">External spending</div>
+      <div class="value">$226,310,381</div>
+      <div class="note">Net of internal service charges.</div>
+    </div>
+    <div class="tile">
+      <div class="label">Transfers in / out</div>
+      <div class="value">$21,624,633 / $72,386,884</div>
+      <div class="note">Money moving between the city&#39;s own funds.</div>
+    </div>
+    <div class="tile">
+      <div class="label">Unmatched transfers</div>
+      <div class="value">$50,762,251</div>
+      <div class="note">Transfers out minus transfers in. No link in this chart pairs a transfer&#39;s two legs.</div>
+    </div>
+  </section>
+</details>
+
+<details class="apparatus" id="derived-view">
+  <summary>
+    <h2>What we inferred</h2>
+    <span class="apparatus-hint">the classifications that are ours, not the city's</span>
+  </summary>
+  <p class="lede">
+    A figure the city printed and a classification we made are different things, so they are
+    never drawn alike. Everything listed here is ours, with the reasoning and the row it came
+    from.
+  </p>
+  <ul class="derived-list" id="derived-list">
+    <li class="subtle">Loading from fy2027-adopted.json…</li>
+  </ul>
+</details>
+<details class="apparatus" id="caveats-view">
+  <summary>
+    <h2>Caveats</h2>
+    <span class="apparatus-hint"><span id="caveats-count">9</span> reasons this
+      chart will not reconcile row-for-row against the printed schedule</span>
+  </summary>
+  <p class="lede">
+    Every one of these ships with the data rather than in a footnote, so a reader who
+    downloads <a href="fy2027-adopted.json">fy2027-adopted.json</a> gets them too. The full text of each is on
+    <a href="caveats.html">the caveats page</a>, beside every other document's.
+  </p>
+  <ul class="caveats" id="caveats">
+    <li><a href="caveats.html#caveat-sankey-2027--transfer-legs-unpaired">No link pairs a transfer&#39;s two legs; transfers out exceed transfers in by $50,762,251, the transfers to the Capital Improvement Program.</a></li>
+    <li><a href="caveats.html#caveat-sankey-2027--internal-service-is-outside-the-external-headline">Internal Service charges are billed between city departments, so they are outside the external headline.</a></li>
+    <li><a href="caveats.html#caveat-sankey-2027--contested-total-internal-service">The city&#39;s own book prints two different figures for Internal Service Funds expenditure, $250,000 apart; this chart draws the one on pp.66-67.</a></li>
+    <li><a href="caveats.html#caveat-sankey-2027--working-capital-is-a-stock">Beginning and ending working capital are stocks, not flows, so the chart carries no link for them.</a></li>
+    <li><a href="caveats.html#caveat-sankey-2027--permanent-funds-have-no-column">Permanent Funds are a seventh fund type, and this schedule prints no column for them.</a></li>
+    <li><a href="caveats.html#caveat-fund-flows-2027--constraint-tier-is-our-reading">A fund&#39;s constraint tier is our reading of the Description of Funds narrative, not a figure the city printed.</a></li>
+    <li><a href="caveats.html#caveat-fund-flows-2027--the-revenue-schedule-is-published-twice">Budget Book pp.127-140 are published twice on this site: the chart draws their adopted columns one year at a time, and the Revenue tables print all four.</a></li>
+    <li><a href="caveats.html#caveat-fund-flows-2027--mixed-grain-double-counts">This document holds the same money at two grains, so summing every link double-counts.</a></li>
+    <li><a href="caveats.html#caveat-fund-flows-2027--only-the-general-fund-has-divisions">Only the General Fund opens into divisions; every other fund&#39;s spending goes straight to its object categories.</a></li>
+  </ul>
+</details>
+<details class="apparatus" id="table-view">
+  <summary>
+    <h2>Every flow, as a table</h2>
+    <span class="apparatus-hint">the chart's twin, same numbers —
+      <span id="counts-line">493 flows between 323 nodes, from 380 facts</span></span>
+  </summary>
+  <div class="table-scroll">
+    <table id="flow-table">
+      <thead>
+        <tr>
+          <th scope="col">From</th>
+          <th scope="col">To</th>
+          <th scope="col">Amount</th>
+          <th scope="col">Kind</th>
+          <th scope="col">Basis</th>
+          <th scope="col">Fact ids</th>
+          <th scope="col">Source</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</details>
+
+</main>
+
+<footer>
+  
+  <details class="apparatus" id="sources-view">
+    <summary>
+      <h3>Sources for every year this page can show</h3>
+      <span class="apparatus-hint">1 document,
+        every page this view cites, and 7 data files</span>
+    </summary>
+    <ul>
+      <li>
+        <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813">FY 2025-2027 Budget Book</a>, City of Livermore, California —
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=66">p66 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0066.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=67">p67 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0067.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=127">p127 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0127.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=128">p128 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0128.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=129">p129 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0129.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=130">p130 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0130.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=131">p131 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0131.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=132">p132 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0132.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=133">p133 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0133.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=134">p134 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0134.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=135">p135 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0135.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=136">p136 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0136.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=137">p137 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0137.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=138">p138 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0138.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=139">p139 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0139.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=140">p140 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0140.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=167">p167 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0167.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=168">p168 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0168.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=169">p169 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0169.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=170">p170 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0170.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=173">p173 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0173.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=174">p174 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0174.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=175">p175 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0175.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=176">p176 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0176.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=178">p178 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0178.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=179">p179 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0179.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=180">p180 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0180.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=181">p181 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0181.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=182">p182 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0182.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=183">p183 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0183.txt">extracted text</a>
+      </li>
+    </ul>
+    <p class="subtle">
+      Every data file the site publishes, each fetchable on its own: <a href="data/changes-in-fund-balances.json">data/changes-in-fund-balances.json</a>, <a href="data/fund-balances.json">data/fund-balances.json</a>, <a href="data/revenue-trends.json">data/revenue-trends.json</a>, <a href="fy2024-actual.json">fy2024-actual.json</a>, <a href="fy2025-revised.json">fy2025-revised.json</a>, <a href="fy2026-adopted.json">fy2026-adopted.json</a>, <a href="fy2027-adopted.json">fy2027-adopted.json</a>.
+    </p>
+  </details>
+  <p class="subtle">
+    Scope all-funds-gross, basis <span id="page-basis">adopted</span>. Projection: dev. Packaged by fisc dev.
+    
+    <span data-year-path>This chart is drawn from <a href="fy2027-adopted.json">fy2027-adopted.json</a>.</span>
+  </p>
+</footer>
+
+<script src="vendor/d3.min.js"></script>
+<script src="vendor/d3-sankey.min.js"></script>
+<script>window.FISC_CONFIG = {"schema_version":1,"exported_by":"fisc dev","primary":"fund-flows","years":[{"year":2026,"label":"FY 2025-26","stem":"sankey","path":"fy2026-adopted.json","basis":"adopted","title":"Every flow in Livermore's budget, at once","hero":{"label":"What the city actually spends","value":"$254,095,412","note":"All funds, gross, FY 2025-26 adopted budget","kind":"hero"},"figures":[{"label":"Naive column total","value":"$313,708,146","note":"The wrong answer: summing the expenditure column counts transfers between funds twice, inflating the total by $59,612,734.","kind":"error"},{"label":"All-funds gross revenue","value":"$299,969,007","note":"Ties to the printed schedule; includes internal service charges.","kind":""},{"label":"External revenue","value":"$280,999,173","note":"Net of internal service charges billed between city departments.","kind":""},{"label":"External spending","value":"$229,018,045","note":"Net of internal service charges.","kind":""},{"label":"Transfers in / out","value":"$21,525,997 / $59,612,734","note":"Money moving between the city's own funds.","kind":""},{"label":"Unmatched transfers","value":"$38,086,737","note":"Transfers out minus transfers in. No link in this chart pairs a transfer's two legs.","kind":""}],"caveats":[{"id":"transfer-legs-unpaired","summary":"No link pairs a transfer's two legs; transfers out exceed transfers in by $38,086,737, the transfers to the Capital Improvement Program.","href":"caveats.html#caveat-sankey--transfer-legs-unpaired"},{"id":"internal-service-is-outside-the-external-headline","summary":"Internal Service charges are billed between city departments, so they are outside the external headline.","href":"caveats.html#caveat-sankey--internal-service-is-outside-the-external-headline"},{"id":"working-capital-is-a-stock","summary":"Beginning and ending working capital are stocks, not flows, so the chart carries no link for them.","href":"caveats.html#caveat-sankey--working-capital-is-a-stock"},{"id":"permanent-funds-have-no-column","summary":"Permanent Funds are a seventh fund type, and this schedule prints no column for them.","href":"caveats.html#caveat-sankey--permanent-funds-have-no-column"},{"id":"constraint-tier-is-our-reading","summary":"A fund's constraint tier is our reading of the Description of Funds narrative, not a figure the city printed.","href":"caveats.html#caveat-fund-flows--constraint-tier-is-our-reading"},{"id":"the-revenue-schedule-is-published-twice","summary":"Budget Book pp.127-140 are published twice on this site: the chart draws their adopted columns one year at a time, and the Revenue tables print all four.","href":"caveats.html#caveat-fund-flows--the-revenue-schedule-is-published-twice"},{"id":"mixed-grain-double-counts","summary":"This document holds the same money at two grains, so summing every link double-counts.","href":"caveats.html#caveat-fund-flows--mixed-grain-double-counts"},{"id":"only-the-general-fund-has-divisions","summary":"Only the General Fund opens into divisions; every other fund's spending goes straight to its object categories.","href":"caveats.html#caveat-fund-flows--only-the-general-fund-has-divisions"}],"counts":{"facts":380,"nodes":328,"links":499},"chart_title":"Sankey diagram of the FY 2025-26 adopted budget","lede":"FY 2025-26 adopted"},{"year":2027,"label":"FY 2026-27","stem":"sankey-2027","path":"fy2027-adopted.json","basis":"adopted","title":"Every flow in Livermore's budget, at once","hero":{"label":"What the city actually spends","value":"$252,854,896","note":"All funds, gross, FY 2026-27 adopted budget","kind":"hero"},"figures":[{"label":"Naive column total","value":"$325,241,780","note":"The wrong answer: summing the expenditure column counts transfers between funds twice, inflating the total by $72,386,884.","kind":"error"},{"label":"All-funds gross revenue","value":"$302,443,043","note":"Ties to the printed schedule; includes internal service charges.","kind":""},{"label":"External revenue","value":"$282,447,173","note":"Net of internal service charges billed between city departments.","kind":""},{"label":"External spending","value":"$226,310,381","note":"Net of internal service charges.","kind":""},{"label":"Transfers in / out","value":"$21,624,633 / $72,386,884","note":"Money moving between the city's own funds.","kind":""},{"label":"Unmatched transfers","value":"$50,762,251","note":"Transfers out minus transfers in. No link in this chart pairs a transfer's two legs.","kind":""}],"caveats":[{"id":"transfer-legs-unpaired","summary":"No link pairs a transfer's two legs; transfers out exceed transfers in by $50,762,251, the transfers to the Capital Improvement Program.","href":"caveats.html#caveat-sankey-2027--transfer-legs-unpaired"},{"id":"internal-service-is-outside-the-external-headline","summary":"Internal Service charges are billed between city departments, so they are outside the external headline.","href":"caveats.html#caveat-sankey-2027--internal-service-is-outside-the-external-headline"},{"id":"contested-total-internal-service","summary":"The city's own book prints two different figures for Internal Service Funds expenditure, $250,000 apart; this chart draws the one on pp.66-67.","href":"caveats.html#caveat-sankey-2027--contested-total-internal-service"},{"id":"working-capital-is-a-stock","summary":"Beginning and ending working capital are stocks, not flows, so the chart carries no link for them.","href":"caveats.html#caveat-sankey-2027--working-capital-is-a-stock"},{"id":"permanent-funds-have-no-column","summary":"Permanent Funds are a seventh fund type, and this schedule prints no column for them.","href":"caveats.html#caveat-sankey-2027--permanent-funds-have-no-column"},{"id":"constraint-tier-is-our-reading","summary":"A fund's constraint tier is our reading of the Description of Funds narrative, not a figure the city printed.","href":"caveats.html#caveat-fund-flows-2027--constraint-tier-is-our-reading"},{"id":"the-revenue-schedule-is-published-twice","summary":"Budget Book pp.127-140 are published twice on this site: the chart draws their adopted columns one year at a time, and the Revenue tables print all four.","href":"caveats.html#caveat-fund-flows-2027--the-revenue-schedule-is-published-twice"},{"id":"mixed-grain-double-counts","summary":"This document holds the same money at two grains, so summing every link double-counts.","href":"caveats.html#caveat-fund-flows-2027--mixed-grain-double-counts"},{"id":"only-the-general-fund-has-divisions","summary":"Only the General Fund opens into divisions; every other fund's spending goes straight to its object categories.","href":"caveats.html#caveat-fund-flows-2027--only-the-general-fund-has-divisions"}],"counts":{"facts":380,"nodes":323,"links":493},"chart_title":"Sankey diagram of the FY 2026-27 adopted budget","lede":"FY 2026-27 adopted"}],"docs":{"livermore-budget-fy2026-2027":{"title":"FY 2025-2027 Budget Book","publisher":"City of Livermore, California","pages":{"127":{"pdf":"https://www.livermoreca.gov/home/showpublisheddocument/12813#page=127","text":"extracted/livermore-budget-fy2026-2027/pages/p0127.txt","records":"facts/livermore-budget-fy2026-2027/pages/p0127.jsonl"},"128":{"pdf":"https://www.livermoreca.gov/home/showpublisheddocument/12813#page=128","text":"extracted/livermore-budget-fy2026-2027/pages/p0128.txt","records":"facts/livermore-budget-fy2026-2027/pages/p0128.jsonl"},"129":{"pdf":"https://www.livermoreca.gov/home/showpublisheddocument/12813#page=129","text":"extracted/livermore-budget-fy2026-2027/pages/p0129.txt","records":"facts/livermore-budget-fy2026-2027/pages/p0129.jsonl"},"130":{"pdf":"https://www.livermoreca.gov/home/showpublisheddocument/12813#page=130","text":"extracted/livermore-budget-fy2026-2027/pages/p0130.txt","records":"facts/livermore-budget-fy2026-2027/pages/p0130.jsonl"},"131":{"pdf":"https://www.livermoreca.gov/home/showpublisheddocument/12813#page=131","text":"extracted/livermore-budget-fy2026-2027/pages/p0131.txt","records":"facts/livermore-budget-fy2026-2027/pages/p0131.jsonl"},"132":{"pdf":"https://www.livermoreca.gov/home/showpublisheddocument/12813#page=132","text":"extracted/livermore-budget-fy2026-2027/pages/p0132.txt","records":"facts/livermore-budget-fy2026-2027/pages/p0132.jsonl"},"133":{"pdf":"https://www.livermoreca.gov/home/showpublisheddocument/12813#page=133","text":"extracted/livermore-budget-fy2026-2027/pages/p0133.txt","records":"facts/livermore-budget-fy2026-2027/pages/p0133.jsonl"},"134":{"pdf":"https://www.livermoreca.gov/home/showpublisheddocument/12813#page=134","text":"extracted/livermore-budget-fy2026-2027/pages/p0134.txt","records":"facts/livermore-budget-fy2026-2027/pages/p0134.jsonl"},"135":{"pdf":"https://www.livermoreca.gov/home/showpublisheddocument/12813#page=135","text":"extracted/livermore-budget-fy2026-2027/pages/p0135.txt","records":"facts/livermore-budget-fy2026-2027/pages/p0135.jsonl"},"136":{"pdf":"https://www.livermoreca.gov/home/showpublisheddocument/12813#page=136","text":"extracted/livermore-budget-fy2026-2027/pages/p0136.txt","records":"facts/livermore-budget-fy2026-2027/pages/p0136.jsonl"},"137":{"pdf":"https://www.livermoreca.gov/home/showpublisheddocument/12813#page=137","text":"extracted/livermore-budget-fy2026-2027/pages/p0137.txt","records":"facts/livermore-budget-fy2026-2027/pages/p0137.jsonl"},"138":{"pdf":"https://www.livermoreca.gov/home/showpublisheddocument/12813#page=138","text":"extracted/livermore-budget-fy2026-2027/pages/p0138.txt","records":"facts/livermore-budget-fy2026-2027/pages/p0138.jsonl"},"139":{"pdf":"https://www.livermoreca.gov/home/showpublisheddocument/12813#page=139","text":"extracted/livermore-budget-fy2026-2027/pages/p0139.txt","records":"facts/livermore-budget-fy2026-2027/pages/p0139.jsonl"},"140":{"pdf":"https://www.livermoreca.gov/home/showpublisheddocument/12813#page=140","text":"extracted/livermore-budget-fy2026-2027/pages/p0140.txt","records":"facts/livermore-budget-fy2026-2027/pages/p0140.jsonl"},"167":{"pdf":"https://www.livermoreca.gov/home/showpublisheddocument/12813#page=167","text":"extracted/livermore-budget-fy2026-2027/pages/p0167.txt","records":"facts/livermore-budget-fy2026-2027/pages/p0167.jsonl"},"168":{"pdf":"https://www.livermoreca.gov/home/showpublisheddocument/12813#page=168","text":"extracted/livermore-budget-fy2026-2027/pages/p0168.txt","records":"facts/livermore-budget-fy2026-2027/pages/p0168.jsonl"},"169":{"pdf":"https://www.livermoreca.gov/home/showpublisheddocument/12813#page=169","text":"extracted/livermore-budget-fy2026-2027/pages/p0169.txt","records":"facts/livermore-budget-fy2026-2027/pages/p0169.jsonl"},"170":{"pdf":"https://www.livermoreca.gov/home/showpublisheddocument/12813#page=170","text":"extracted/livermore-budget-fy2026-2027/pages/p0170.txt","records":"facts/livermore-budget-fy2026-2027/pages/p0170.jsonl"},"173":{"pdf":"https://www.livermoreca.gov/home/showpublisheddocument/12813#page=173","text":"extracted/livermore-budget-fy2026-2027/pages/p0173.txt","records":"facts/livermore-budget-fy2026-2027/pages/p0173.jsonl"},"174":{"pdf":"https://www.livermoreca.gov/home/showpublisheddocument/12813#page=174","text":"extracted/livermore-budget-fy2026-2027/pages/p0174.txt","records":"facts/livermore-budget-fy2026-2027/pages/p0174.jsonl"},"175":{"pdf":"https://www.livermoreca.gov/home/showpublisheddocument/12813#page=175","text":"extracted/livermore-budget-fy2026-2027/pages/p0175.txt","records":"facts/livermore-budget-fy2026-2027/pages/p0175.jsonl"},"176":{"pdf":"https://www.livermoreca.gov/home/showpublisheddocument/12813#page=176","text":"extracted/livermore-budget-fy2026-2027/pages/p0176.txt","records":"facts/livermore-budget-fy2026-2027/pages/p0176.jsonl"},"178":{"pdf":"https://www.livermoreca.gov/home/showpublisheddocument/12813#page=178","text":"extracted/livermore-budget-fy2026-2027/pages/p0178.txt","records":"facts/livermore-budget-fy2026-2027/pages/p0178.jsonl"},"179":{"pdf":"https://www.livermoreca.gov/home/showpublisheddocument/12813#page=179","text":"extracted/livermore-budget-fy2026-2027/pages/p0179.txt","records":"facts/livermore-budget-fy2026-2027/pages/p0179.jsonl"},"180":{"pdf":"https://www.livermoreca.gov/home/showpublisheddocument/12813#page=180","text":"extracted/livermore-budget-fy2026-2027/pages/p0180.txt","records":"facts/livermore-budget-fy2026-2027/pages/p0180.jsonl"},"181":{"pdf":"https://www.livermoreca.gov/home/showpublisheddocument/12813#page=181","text":"extracted/livermore-budget-fy2026-2027/pages/p0181.txt","records":"facts/livermore-budget-fy2026-2027/pages/p0181.jsonl"},"182":{"pdf":"https://www.livermoreca.gov/home/showpublisheddocument/12813#page=182","text":"extracted/livermore-budget-fy2026-2027/pages/p0182.txt","records":"facts/livermore-budget-fy2026-2027/pages/p0182.jsonl"},"183":{"pdf":"https://www.livermoreca.gov/home/showpublisheddocument/12813#page=183","text":"extracted/livermore-budget-fy2026-2027/pages/p0183.txt","records":"facts/livermore-budget-fy2026-2027/pages/p0183.jsonl"},"66":{"pdf":"https://www.livermoreca.gov/home/showpublisheddocument/12813#page=66","text":"extracted/livermore-budget-fy2026-2027/pages/p0066.txt","records":"facts/livermore-budget-fy2026-2027/pages/p0066.jsonl"},"67":{"pdf":"https://www.livermoreca.gov/home/showpublisheddocument/12813#page=67","text":"extracted/livermore-budget-fy2026-2027/pages/p0067.txt","records":"facts/livermore-budget-fy2026-2027/pages/p0067.jsonl"}}}},"kind_labels":{"external":"external money","fund_balance":"fund balance movement","internal_service":"internal service charge","internal_transfer":"transfer between funds"},"wording":{"counts":"{links:flow|flows} between {nodes:node|nodes}, from {facts:fact|facts}","counts_partial":"{links:flow|flows} between {nodes:node|nodes}, from {cited} of the document's {facts:fact|facts}","counts_carried":"{links:flow|flows} between {nodes:node|nodes}: {own} citing {cited} of the document's {facts:fact|facts}, and {carried} carried unchanged from the chart above","counts_carried_from":", citing {above} of its {theirs:fact|facts}","opened_hint":"This is {label}, broken into its parts.","open_further":"Double click a node{where} to open it further, or tab to one and press Enter.","open_into":"Double click a node{where} to open it into its parts, or tab to one and press Enter.","nothing_further":"Nothing here opens further; go back to open another.","nothing_opens":"Nothing on this chart opens.","follow":"A single click, or Space, follows one node's money.","expand":"The folded mark is several of them drawn as one; double click it, or tab to it and press Enter, to draw them separately.","swatch":"A fund swatch follows one group's money without opening anything.","in_column":" in the {columns} column","column_left":"left-hand","column_middle":"middle","column_second":"second","column_third":"third","column_right":"right-hand","go_back":"Use the breadcrumb above the chart, or press Escape, to go back.","back_control":"← {back}","printed_by_city":"printed by the city","inferred_by_us":"inferred by us","our_inference":"◇ our inference","inferred_chip":"◇ inferred","printed_chip":"printed","carried_note":"figure printed by the city, re-pointed onto a mark of ours","carried_chip":"◇ re-pointed by us","desc_opens":", opens into its parts on a double click or Enter; a single click or Space follows this money","desc_expands":", draws all of them separately on a double click or Enter; a single click or Space follows this money","desc_follows":", follow this money","flow_inferred":"This flow is inferred; both endpoints are printed by the city.","none_inferred":"Nothing on this chart is inferred: every node and flow is printed by the city.","table_pointer":"The same figures are in the flow table below, which opens from the \"Every flow, as a table\" heading.","aggregate_label":"{folded} smaller {word}","aggregate_rationale":"Our grouping, not a line the city printed: the {folded} smallest {word} in this column are drawn as one mark because they cannot be drawn separately. Every figure inside it is printed; the box around them is ours.","aggregate_note":"The {folded} smallest of {total} by value, at this page's cap of {cap}","aggregate_together":", together {figure}.","residual_label":"Not split by {grain} here","residual_rationale":"Money the chart above prints for {opened} as a whole and that the schedule this chart is drawn from does not split by {grain}, so no {grain} here receives or pays it. It is drawn beside the opened node's parts rather than attributed to one of them, and what flows in and what flows out need not balance: the difference is what that schedule does not break down. {reasons}","residual_note":"Carried, not computed: {flows:flow|flows} of the chart above with figures and citations unchanged — {where}.{withheld}","residual_withheld_one":"The flow leaving it is drawn where there is room for a further column.","residual_withheld_many":"The {n} flows leaving it are drawn where there is room for a further column.","residual_held_back":"{cents} leaves {opened} for {ends}, in {flows:flow|flows} drawn where there is room for a further column.","residual_flows":"{in} in, {out} out","gap_label":"Difference between the two schedules","gap_lead_short":"In {column}, the chart above puts {into} through {centre} and the schedule this chart is drawn from accounts for {out} of it, {gap} less.","gap_lead_over":"In {column}, the schedule this chart is drawn from accounts for {out} through {centre}, {gap} more than the {into} the chart above puts through it.","gap_rationale":"{lead} {reason} This mark is that {gap}, drawn so that the ribbons and the node agree; no page prints it as a figure of its own.","gap_note":"Derived, not published: one document's total for this cell less the other's. Each total is built from figures `fisc verify` ties to the pages the city printed, and the difference is the one declared for this column; no page prints it as a figure of its own.","gap_kind":"none: crosses no printed boundary","contra_orphan":"printed rows netting to a reduction","balance_beginning":"Balance at the start of the year, as printed: {figure}","balance_ending":"Balance at the end of the year, as printed: {figure}","filter_hidden":"Hidden by your filters: {cents} in {flows:flow|flows}. Marks are sized to what is drawn, each mark's figure is still this view's, and the flow table still lists every flow of this view.","filter_folded":"{flows:flow|flows} under {threshold} are drawn merged by this page into {ribbons:ribbon|ribbons} of smaller flows.","filter_hidden_at":"Your filters hide {cents} of this mark's flows, in {flows:flow|flows}.","filter_drawn_at":"{cents} of it drawn under your filters","smallest_all":"every flow","smaller_label":"{flows:flow|flows} under {threshold}","smaller_rationale":"Our grouping, not a line the city printed: {flows:flow|flows} each under {threshold}, the smallest flow your filters draw as itself, are drawn as one mark. Every figure inside it is printed; the merge is this page's.","smaller_note":"Merged by this page from {flows:flow|flows} the city printed, together {figure}; its ribbons cite every fact and page they merge.","smaller_flow":"{flows:flow|flows} under {threshold}, each printed by the city, merged by this page","search_label":"Find a mark on this chart","search_count":"{n:mark matches|marks match}; the arrow keys move between them, and Enter goes to one.","search_none":"No mark drawn on this chart has “{query}” in its name.","search_opens":"Enter opens it","search_expands":"Enter draws out every one it folds","full_screen":"Full screen","full_screen_exit":"Exit full screen","zoom_reset":"Reset view","bars_share":"◇ our {share}% of {whole}","hairline":"{n:flow is|flows are} under a pixel wide on this chart's canvas, and each is drawn as a hairline one screen pixel wide, which is wider than its share; every other flow is drawn to scale. Zoom in, go full screen, search, or open the table below to read them."},"overview":{"form":"sankey","sankey":{"tiers":[0,3,4,5],"caps":[{"tier":3,"cap":8,"tail":"funds"},{"tier":4,"cap":24,"tail":"divisions"},{"tier":5,"cap":8,"tail":"object rows"}],"height":4800,"drop":[2]}}};</script>
+
+<script type="module">import { boot } from "./app.js"; boot();</script>
+</body>
+</html>

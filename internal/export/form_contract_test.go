@@ -47,10 +47,65 @@ func TestTheSchemaHoldsAChartToItsForm(t *testing.T) {
 			func(cfg map[string]any) { delete(barsStep(t, cfg)["bars"].(map[string]any), "tier") }},
 		{"a key the bars hints do not declare", "caps",
 			func(cfg map[string]any) { barsStep(t, cfg)["bars"].(map[string]any)["caps"] = []any{} }},
+		// The canvas and the drop are Sankey hints, and the overview's only.
+		{"a canvas height on a bars chart", "height",
+			func(cfg map[string]any) { barsStep(t, cfg)["bars"].(map[string]any)["height"] = 4800.0 }},
+		{"a canvas height on a step", "height",
+			func(cfg map[string]any) { step(cfg, 0)["sankey"].(map[string]any)["height"] = 4800.0 }},
+		{"a dropped tier on a step", "drop",
+			func(cfg map[string]any) { step(cfg, 0)["sankey"].(map[string]any)["drop"] = []any{2.0} }},
 	} {
 		var cfg map[string]any
 		if err := json.Unmarshal(blob, &cfg); err != nil {
 			t.Fatal(err)
+		}
+		c.breaks(cfg)
+		err := schema.Validate(schema.Page, cfg)
+		switch {
+		case c.want == "" && err != nil:
+			t.Errorf("%s: refused: %v", c.name, err)
+		case c.want != "" && err == nil:
+			t.Errorf("%s: accepted, and the schema should have named %q", c.name, c.want)
+		case c.want != "" && !strings.Contains(err.Error(), c.want):
+			t.Errorf("%s: refused without naming %q: %v", c.name, c.want, err)
+		}
+	}
+}
+
+// TestTheSchemaHoldsTheWholePagesCanvas is the same arm over
+// testdata/whole.golden.html's overview, which declares a canvas height and a
+// dropped tier: a malformed one of either is refused at the write.
+func TestTheSchemaHoldsTheWholePagesCanvas(t *testing.T) {
+	page, err := os.ReadFile("../../testdata/whole.golden.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	blob := configBlob(t, string(page))
+	hints := func(cfg map[string]any) map[string]any {
+		return cfg["overview"].(map[string]any)["sankey"].(map[string]any)
+	}
+	for _, c := range []struct {
+		name, want string
+		breaks     func(cfg map[string]any)
+	}{
+		{"the served config", "", func(map[string]any) {}},
+		{"a canvas of no height", "height", func(cfg map[string]any) { hints(cfg)["height"] = 0.0 }},
+		{"a canvas of negative height", "height", func(cfg map[string]any) { hints(cfg)["height"] = -4800.0 }},
+		{"a canvas of fractional height", "height", func(cfg map[string]any) { hints(cfg)["height"] = 4800.5 }},
+		{"a canvas height as a string", "height", func(cfg map[string]any) { hints(cfg)["height"] = "4800" }},
+		{"an empty drop", "drop", func(cfg map[string]any) { hints(cfg)["drop"] = []any{} }},
+		{"a tier dropped twice", "drop", func(cfg map[string]any) { hints(cfg)["drop"] = []any{2.0, 2.0} }},
+		{"a negative tier dropped", "drop", func(cfg map[string]any) { hints(cfg)["drop"] = []any{-2.0} }},
+		{"an overview cap naming no tail", "tail", func(cfg map[string]any) {
+			delete(hints(cfg)["caps"].([]any)[0].(map[string]any), "tail")
+		}},
+	} {
+		var cfg map[string]any
+		if err := json.Unmarshal(blob, &cfg); err != nil {
+			t.Fatal(err)
+		}
+		if _, ok := hints(cfg)["height"]; !ok {
+			t.Fatal("the whole page's overview declares no canvas height, so no row below breaks one")
 		}
 		c.breaks(cfg)
 		err := schema.Validate(schema.Page, cfg)

@@ -858,6 +858,30 @@ svg.sankey .link.hot {
   stroke-opacity: 0.78;
 }
 
+/* A ribbon under a pixel of its canvas (sankey.js HAIRLINE) is drawn one
+   screen pixel wide at every zoom, wider than its share, which
+   #hairline-line says; its hit target is a wider transparent stroke above
+   it, so the pointer finds it. */
+svg.sankey .link.hairline {
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+}
+
+svg.sankey .link-hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 9px;
+  vector-effect: non-scaling-stroke;
+  pointer-events: stroke;
+  cursor: pointer;
+}
+
+.hairline-line {
+  margin: 0 0 6px;
+  font-size: 0.9em;
+  color: var(--ink-2);
+}
+
 svg.sankey .node rect {
   /* The 2px surface gap between stacked ribbons is the separator; the node's
      own hairline is a hairline, not a data-weight border. */

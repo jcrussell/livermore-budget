@@ -8,7 +8,7 @@
 import { before, describe, test } from "node:test";
 import assert from "node:assert/strict";
 
-import { bootedApp, goldenGraph, pageFixture, stylesheet, opened, expandAll, everyOffer, clickYear,
+import { bootedApp, goldenGraph, pageFixture, wholeFixture, stylesheet, opened, expandAll, everyOffer, clickYear,
   dollars, settle } from "./testlib.mjs";
 
 /**
@@ -1154,111 +1154,131 @@ describe("the residual's place in its column", () => {
   });
 });
 
-// THE WHOLE CITY IN ONE SANKEY (fisc-yj4w.23): fund-flows at every tier
-// it draws a column of, uncapped, shaped by the page's own shapeFor and laid
-// out by the form's own layOutAt at each candidate canvas height. No view
-// declares this chart yet, so its config is the pinned page's with the
-// primary schedule, the overview and the steps replaced: what a whole-city
-// page would hand the client, and nothing the page does not already read.
-const WHOLE_TIERS = [0, 2, 3, 4, 5];
+// THE WHOLE CITY IN ONE SANKEY (fisc-yj4w.23): the whole-budget page,
+// testdata/whole.golden.html, shaped by the page's own shapeFor and laid out
+// by the form's own layOutAt at each candidate canvas height, folded as it
+// opens and with every tail drawn out. The declared height is read off the
+// page's own layOut, which is what the hint reaches.
 const WHOLE_HEIGHTS = [820, 1600, 2400, 3200, 4800];
 
 /**
- * Each pinned year's whole-city chart at every height, and at the tallest
- * under every smallest-flow stop: nodes, links, ribbons under a pixel, the
- * narrowest ribbon, and how many of those under a pixel are under the stop,
- * as a lone leg or as a merge.
- * PINNED, not bounded, as CLAIMED is: the decision in the bead is read off
- * these figures, and a drift would leave it standing on figures that moved.
+ * Each pinned year's whole-budget chart at every candidate height, folded and
+ * drawn out: nodes, links, ribbons under a pixel and the narrowest ribbon;
+ * then the chart the page lays out at its declared canvas, folded.
+ * PINNED, not bounded: the height in data/views.yaml is read off these.
  */
 const WHOLE_CLAIMED = {
   "FY 2025-26": {
-    heights: [
-      "820: 235 nodes, 328 links, 328 under 1px, narrowest 0.0000px",
-      "1600: 235 nodes, 328 links, 328 under 1px, narrowest 0.0000px",
-      "2400: 235 nodes, 328 links, 216 under 1px, narrowest 0.0000px",
-      "3200: 235 nodes, 328 links, 141 under 1px, narrowest 0.0000px",
-      "4800: 235 nodes, 328 links, 95 under 1px, narrowest 0.0001px",
+    folded: [
+      "820: 52 nodes, 96 links, 15 under 1px, narrowest 0.0112px",
+      "1600: 52 nodes, 96 links, 8 under 1px, narrowest 0.0246px",
+      "2400: 52 nodes, 96 links, 6 under 1px, narrowest 0.0383px",
+      "3200: 52 nodes, 96 links, 5 under 1px, narrowest 0.0520px",
+      "4800: 52 nodes, 96 links, 2 under 1px, narrowest 0.0793px",
     ],
-    stops: [
-      "$0: 235 nodes, 328 links, 95 under 1px, 0 lone legs and 0 merges under the stop",
-      "$10,000: 235 nodes, 322 links, 89 under 1px, 7 lone legs and 1 merges under the stop",
-      "$100,000: 233 nodes, 293 links, 57 under 1px, 26 lone legs and 2 merges under the stop",
-      "$1,000,000: 207 nodes, 222 links, 27 under 1px, 26 lone legs and 1 merges under the stop",
-      "$10,000,000: 144 nodes, 124 links, 26 under 1px, 24 lone legs and 2 merges under the stop",
+    drawnOut: [
+      "820: 229 nodes, 262 links, 262 under 1px, narrowest 0.0000px",
+      "1600: 229 nodes, 262 links, 262 under 1px, narrowest 0.0000px",
+      "2400: 229 nodes, 262 links, 123 under 1px, narrowest 0.0000px",
+      "3200: 229 nodes, 262 links, 82 under 1px, narrowest 0.0001px",
+      "4800: 229 nodes, 262 links, 51 under 1px, narrowest 0.0002px",
     ],
+    declared: "52 nodes, 96 links, 2 under 1px, narrowest 0.0793px",
   },
   "FY 2026-27": {
-    heights: [
-      "820: 230 nodes, 322 links, 322 under 1px, narrowest 0.0000px",
-      "1600: 230 nodes, 322 links, 322 under 1px, narrowest 0.0000px",
-      "2400: 230 nodes, 322 links, 203 under 1px, narrowest 0.0000px",
-      "3200: 230 nodes, 322 links, 137 under 1px, narrowest 0.0001px",
-      "4800: 230 nodes, 322 links, 98 under 1px, narrowest 0.0001px",
+    folded: [
+      "820: 52 nodes, 95 links, 16 under 1px, narrowest 0.0112px",
+      "1600: 52 nodes, 95 links, 8 under 1px, narrowest 0.0244px",
+      "2400: 52 nodes, 95 links, 7 under 1px, narrowest 0.0380px",
+      "3200: 52 nodes, 95 links, 4 under 1px, narrowest 0.0516px",
+      "4800: 52 nodes, 95 links, 1 under 1px, narrowest 0.0786px",
     ],
-    stops: [
-      "$0: 230 nodes, 322 links, 98 under 1px, 0 lone legs and 0 merges under the stop",
-      "$10,000: 231 nodes, 318 links, 94 under 1px, 9 lone legs and 1 merges under the stop",
-      "$100,000: 229 nodes, 289 links, 62 under 1px, 29 lone legs and 2 merges under the stop",
-      "$1,000,000: 200 nodes, 215 links, 31 under 1px, 31 lone legs and 0 merges under the stop",
-      "$10,000,000: 139 nodes, 119 links, 30 under 1px, 29 lone legs and 1 merges under the stop",
+    drawnOut: [
+      "820: 224 nodes, 257 links, 257 under 1px, narrowest 0.0000px",
+      "1600: 224 nodes, 257 links, 257 under 1px, narrowest 0.0000px",
+      "2400: 224 nodes, 257 links, 119 under 1px, narrowest 0.0000px",
+      "3200: 224 nodes, 257 links, 83 under 1px, narrowest 0.0001px",
+      "4800: 224 nodes, 257 links, 50 under 1px, narrowest 0.0002px",
     ],
+    declared: "52 nodes, 95 links, 1 under 1px, narrowest 0.0786px",
   },
 };
 
-describe("the whole city in one Sankey, measured before it is declared", () => {
-  /** @type {Map<string, {heights: string[], stops: string[]}>} */
+/**
+ * One laid chart in the pins' words.
+ * @param {{nodes: any[], links: any[]}} laid
+ */
+function laidFigures(laid) {
+  const widths = laid.links.map((l) => l.width);
+  return `${laid.nodes.length} nodes, ${laid.links.length} links, ` +
+    `${widths.filter((w) => w < 1).length} under 1px, narrowest ${Math.min(...widths).toFixed(4)}px`;
+}
+
+describe("the whole city in one Sankey, folded as it opens and drawn out", () => {
+  /** @type {Map<string, {folded: string[], drawnOut: string[], declared: string, doubled: string}>} */
   const measured = new Map();
 
   before(async () => {
-    const config = structuredClone(pageFixture().config);
-    config.primary = "fund-flows";
-    config.overview = { form: "sankey", sankey: { tiers: WHOLE_TIERS } };
-    delete config.steps;
-    const { app, document } = await bootedApp({ config });
+    const page = wholeFixture();
+    const { app, document } = await bootedApp({ html: page.html, config: page.config });
     const at = (doc, height) => app.layOutAt(doc, {
       tiers: app.layoutTiers(doc),
       columns: app.layoutColumns(doc),
       groupOf: app.fundGroupOf,
       placeOf: app.fundGroupPlace,
     }, height);
-    const tallest = WHOLE_HEIGHTS[WHOLE_HEIGHTS.length - 1];
-    for (const year of config.years) {
+    for (const year of page.config.years) {
       clickYear(document, year.stem);
       await settle();
       assert.equal(app.shownYear.stem, year.stem, `the page did not switch to ${year.label}`);
-      const heights = WHOLE_HEIGHTS.map((h) => {
-        const laid = at(app.shown.doc, h);
-        const widths = laid.links.map((l) => l.width);
-        return `${h}: ${laid.nodes.length} nodes, ${laid.links.length} links, ` +
-          `${widths.filter((w) => w < 1).length} under 1px, narrowest ${Math.min(...widths).toFixed(4)}px`;
-      });
-      const stops = app.SMALLEST_STOPS.map((stop) => {
-        app.setFilter({ smallest: stop });
-        const laid = at(app.shown.doc, tallest);
-        const under = laid.links.filter((l) => l.width < 1);
-        // Under the stop and still drawn: a lone leg, which foldSmaller draws
-        // as itself rather than merge one, or a merge of legs whose sum is
-        // itself under the stop.
-        const below = under.filter((l) => Math.abs(l.value_cents) < stop);
-        const merged = below.filter((l) => l.merged).length;
-        return `${dollars(stop)}: ${laid.nodes.length} nodes, ${laid.links.length} links, ` +
-          `${under.length} under 1px, ${below.length - merged} lone legs and ${merged} merges under the stop`;
-      });
-      app.setFilter({ smallest: 0 });
-      measured.set(year.label, { heights, stops });
+      const folded = WHOLE_HEIGHTS.map((h) => `${h}: ${laidFigures(at(app.shown.doc, h))}`);
+      const declared = laidFigures(app.layOut(app.shown.doc));
+      expandAll(app);
+      await settle();
+      const drawnOut = WHOLE_HEIGHTS.map((h) => `${h}: ${laidFigures(at(app.shown.doc, h))}`);
+      // The tier set the group tier is dropped from, drawn with it: each
+      // fund's inflow arrives once from its revenue lines and once from its
+      // group, so the fund's mark is drawn at the sum of the two.
+      const withGroups = app.foldDocument(app.fetched, [0, 2, 3, 4, 5]);
+      const into = new Map();
+      for (const l of withGroups.links) {
+        const n = withGroups.nodes.find((x) => x.id === l.target);
+        if (n && n.tier === 3) into.set(l.target, (into.get(l.target) || 0) + l.value_cents);
+      }
+      const own = new Map();
+      for (const l of app.fetched.links) {
+        if (app.fetched.nodes.some((x) => x.id === l.source && x.tier === 2)) own.set(l.target, (own.get(l.target) || 0) + l.value_cents);
+      }
+      const twice = [...own].filter(([id, c]) => into.get(id) === 2 * c).length;
+      measured.set(year.label, { folded, drawnOut, declared, doubled: `${twice} of ${own.size} funds drawn at twice their inflow` });
+      app.collapseTier(3); app.collapseTier(4); app.collapseTier(5);
+      await settle();
     }
   });
 
-  test("no candidate height draws every printed ribbon at a pixel or more, in either adopted year", (t) => {
-    for (const [label, m] of measured) t.diagnostic(`${label} by height: ${m.heights.join("; ")}`);
-    assert.deepEqual(Object.fromEntries([...measured].map(([k, m]) => [k, m.heights])),
-      Object.fromEntries(Object.entries(WHOLE_CLAIMED).map(([k, m]) => [k, m.heights])));
+  test("folded as it opens, no candidate height draws every printed ribbon at a pixel, and the tallest leaves the fewest under one", (t) => {
+    for (const [label, m] of measured) t.diagnostic(`${label} folded by height: ${m.folded.join("; ")}`);
+    assert.deepEqual(Object.fromEntries([...measured].map(([k, m]) => [k, m.folded])),
+      Object.fromEntries(Object.entries(WHOLE_CLAIMED).map(([k, m]) => [k, m.folded])));
   });
 
-  test("at the tallest height, from the $1,000,000 stop up every ribbon left under a pixel is under the stop: a lone leg, or a merge that sums under it", (t) => {
-    for (const [label, m] of measured) t.diagnostic(`${label} at ${WHOLE_HEIGHTS[WHOLE_HEIGHTS.length - 1]}px by stop: ${m.stops.join("; ")}`);
-    assert.deepEqual(Object.fromEntries([...measured].map(([k, m]) => [k, m.stops])),
-      Object.fromEntries(Object.entries(WHOLE_CLAIMED).map(([k, m]) => [k, m.stops])));
+  test("with every tail drawn out, every candidate height leaves ribbons under a pixel, the hairlines the page says it draws", (t) => {
+    for (const [label, m] of measured) t.diagnostic(`${label} drawn out by height: ${m.drawnOut.join("; ")}`);
+    assert.deepEqual(Object.fromEntries([...measured].map(([k, m]) => [k, m.drawnOut])),
+      Object.fromEntries(Object.entries(WHOLE_CLAIMED).map(([k, m]) => [k, m.drawnOut])));
+  });
+
+  test("the page lays its chart out on the canvas its sankey hint declares", (t) => {
+    for (const [label, m] of measured) t.diagnostic(`${label} at the declared canvas, folded: ${m.declared}`);
+    assert.deepEqual(Object.fromEntries([...measured].map(([k, m]) => [k, m.declared])),
+      Object.fromEntries(Object.entries(WHOLE_CLAIMED).map(([k, m]) => [k, m.declared])));
+  });
+
+  test("drawn with its group tier, every fund's inflow would be drawn twice, which is why the page drops it", (t) => {
+    for (const [label, m] of measured) {
+      t.diagnostic(`${label}: ${m.doubled}`);
+      const [twice, , all] = m.doubled.split(" ");
+      assert.equal(twice, all, `${label}: ${m.doubled}`);
+    }
   });
 });

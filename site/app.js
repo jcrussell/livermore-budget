@@ -136,8 +136,9 @@ export function homeOf(l) {
  *   columns(chart: FiscDrillStep, rung: Rung | null, budget: number): number[],
  *   width(columns: number): number,
  *   offers(step: FiscDrillStep, doc: FiscProjection, onScreen: FiscProjection | null, id: string, budgets: number[]): boolean,
- *   shape(doc: FiscProjection, rung: Rung | null, from: FiscProjection | null, tiers: number[]): FiscProjection,
- *   layOut(drawn: FiscProjection, ctx: {tiers: number[], columns: number, groupOf: (n: FiscNode | LaidNode) => string, placeOf: (id: string) => number}): {nodes: LaidNode[], links: LaidLink[]},
+ *   shape(doc: FiscProjection, rung: Rung | null, from: FiscProjection | null, tiers: number[], view: {chart: FiscChart, expanded: Set<number>}): FiscProjection,
+ *   layOut(drawn: FiscProjection, ctx: {tiers: number[], columns: number, groupOf: (n: FiscNode | LaidNode) => string, placeOf: (id: string) => number, chart: FiscChart | FiscDrillStep}): {nodes: LaidNode[], links: LaidLink[]},
+ *   hairlines(graph: {nodes: LaidNode[], links: LaidLink[]}, chart: FiscChart | FiscDrillStep): number,
  *   render(graph: {nodes: LaidNode[], links: LaidLink[]}, ctx: Record<string, any>): void,
  *   paint(ctx: {svg: any, colour: {link: (d: LaidLink) => string, node: (d: LaidNode) => string}}): void,
  *   widest(steps: FiscDrillStep[]): number,
@@ -382,6 +383,12 @@ export const SMALLEST_STOPS = Object.freeze([0, 1000000, 10000000, 100000000, 10
  * @type {Rung[]}
  */
 export let drilled = [];
+/**
+ * The tiers of the overview drawn whole rather than capped, as a rung's
+ * `expanded` is for its chart. Cleared by a year switch, as the rungs are.
+ * @type {Set<number>}
+ */
+export let overviewExpanded = new Set();
 /**
  * The fewest columns a window is laid out in: kept flank, opened node and what
  * it opens into. A floor, not a default.
@@ -688,10 +695,12 @@ export function drillable(d) {
  * @returns {boolean}
  */
 export function expandable(d) {
+  if (!core.isAggregate(d.id)) return false;
   const rung = drilled.length ? drilled[drilled.length - 1] : null;
-  if (!rung || !core.isAggregate(d.id)) return false;
-  if (rung.expanded && rung.expanded.has(d.tier)) return false;
-  return formFor(rung.step).caps(rung.step).some((c) => c.tier === d.tier);
+  const expanded = rung ? rung.expanded : overviewExpanded;
+  if (expanded && expanded.has(d.tier)) return false;
+  const chart = chartOnScreen();
+  return formFor(chart).caps(chart).some((c) => c.tier === d.tier);
 }
 
 /**
@@ -700,8 +709,9 @@ export function expandable(d) {
  */
 export function expandedTiers() {
   const rung = drilled.length ? drilled[drilled.length - 1] : null;
-  if (!rung || !rung.expanded) return [];
-  return activeTiers().filter((t) => rung.expanded.has(t));
+  const expanded = rung ? rung.expanded : overviewExpanded;
+  if (!expanded) return [];
+  return activeTiers().filter((t) => expanded.has(t));
 }
 
 /**
@@ -924,12 +934,28 @@ export function openNode(id) {
 export function expandTier(d) {
   const at = drilled.length - 1;
   const rung = drilled[at];
-  if (!rung) return;
+  const before = new Set(laidNodes.filter((n) => n.tier === d.tier).map((n) => n.id));
+  if (!rung) {
+    redrawOverview(new Set(overviewExpanded).add(d.tier), undefined, () => firstNewAt(d.tier, before));
+    return;
+  }
   const expanded = new Set(rung.expanded || []);
   expanded.add(d.tier);
-  const before = new Set(laidNodes.filter((n) => n.tier === d.tier).map((n) => n.id));
   redrawStack(drilled.slice(0, at).concat([Object.assign({}, rung, { expanded: expanded })]),
     undefined, () => firstNewAt(d.tier, before));
+}
+
+/**
+ * Redraws the overview with these of its tiers drawn whole, putting the
+ * last set back where the redraw is refused.
+ * @param {Set<number>} expanded
+ * @param {string} [refused]
+ * @param {() => string} [landOn]
+ */
+function redrawOverview(expanded, refused, landOn) {
+  const was = overviewExpanded;
+  overviewExpanded = expanded;
+  if (!redrawStack([], refused, landOn)) overviewExpanded = was;
 }
 
 /**
@@ -956,7 +982,14 @@ export function firstNewAt(tier, before) {
 export function collapseTier(tier) {
   const at = drilled.length - 1;
   const rung = drilled[at];
-  if (!rung || !rung.expanded || !rung.expanded.has(tier)) return;
+  if (!rung) {
+    if (!overviewExpanded.has(tier)) return;
+    const expanded = new Set(overviewExpanded);
+    expanded.delete(tier);
+    redrawOverview(expanded, "That column could not be folded back");
+    return;
+  }
+  if (!rung.expanded || !rung.expanded.has(tier)) return;
   const expanded = new Set(rung.expanded);
   expanded.delete(tier);
   redrawStack(drilled.slice(0, at).concat([Object.assign({}, rung, { expanded: expanded })]),
@@ -1174,8 +1207,9 @@ function heldBack() {
  */
 export function paintChartHint() {
   const hint = maybeEl("chart-hint");
-  if (!hint || !STEPS.length) return;
+  if (!hint) return;
   const chart = chartDrawn();
+  if (!STEPS.length && !overviewCaps()) return;
   const anyOpens = Boolean(chart) && chart.nodes.some(drillable);
   const column = anyOpens ? joinOr(openableColumns()) : "";
   // An undeclared column order has no left or right to name: drop the clause.
@@ -1192,7 +1226,13 @@ export function paintChartHint() {
       (anyOpens ? say("open_further", { where }) : say("nothing_further")) + follow + expands + swatch + heldBack();
     return;
   }
-  hint.textContent = (anyOpens ? say("open_into", { where }) : say("nothing_opens")) + follow + swatch;
+  hint.textContent = (anyOpens ? say("open_into", { where }) : say("nothing_opens")) + follow + expands + swatch;
+}
+
+/** Whether the page's own chart declares a cap, so a tail on it draws out. */
+function overviewCaps() {
+  return Boolean(CONFIG.overview) && FORMS.has(CONFIG.overview.form) &&
+    formFor(CONFIG.overview).caps(CONFIG.overview).length > 0;
 }
 
 /**
@@ -1237,9 +1277,12 @@ export function buildLegendCount() {
 export function paintBreadcrumb() {
   const bar = maybeEl("breadcrumb");
   if (!bar) return;
+  const chips = expandedTiers().map(foldBackChip);
   if (!drilled.length) {
-    bar.replaceChildren();
-    bar.setAttribute("hidden", "");
+    // The overview has no way back, only its drawn-out columns' chips.
+    bar.replaceChildren(...chips);
+    if (chips.length) bar.removeAttribute("hidden");
+    else bar.setAttribute("hidden", "");
     return;
   }
   bar.removeAttribute("hidden");
@@ -1253,21 +1296,26 @@ export function paintBreadcrumb() {
     return back;
   });
   const here = h("span", "crumb-here", labelOfRung(drilled.length - 1));
-  // One chip per expanded column, the only way to fold it back. Its count is
-  // what is drawn, read off the chart, not what the tail said it hid.
-  const chips = expandedTiers().map((tier) => {
-    const n = columnSize(tier);
-    const chip = h("button", "crumb-expanded",
-      "showing all " + n + " " + tailNoun(tier) + " ×");
-    chip.setAttribute("type", "button");
-    // THE GLYPH IS NOT THE LABEL: a screen reader reads "×" as "times".
-    chip.setAttribute("aria-label",
-      "Showing all " + n + " " + tailNoun(tier) + "; fold the smallest back into one mark");
-    chip.addEventListener("click", () => collapseTier(tier));
-    return chip;
-  });
   // Chips are buttons too, which is why restoreFocus asks by class.
   bar.replaceChildren(...controls, here, ...chips);
+}
+
+/**
+ * One expanded column's chip, the only way to fold it back. Its count is what
+ * is drawn, read off the chart, not what the tail said it hid.
+ * @param {number} tier
+ * @returns {HTMLElement}
+ */
+function foldBackChip(tier) {
+  const n = columnSize(tier);
+  const chip = h("button", "crumb-expanded",
+    "showing all " + n + " " + tailNoun(tier) + " ×");
+  chip.setAttribute("type", "button");
+  // THE GLYPH IS NOT THE LABEL: a screen reader reads "×" as "times".
+  chip.setAttribute("aria-label",
+    "Showing all " + n + " " + tailNoun(tier) + "; fold the smallest back into one mark");
+  chip.addEventListener("click", () => collapseTier(tier));
+  return chip;
 }
 
 /**
@@ -1283,17 +1331,18 @@ export function columnSize(tier) {
 }
 
 /**
- * What this rung's step calls the rows of one capped column: the cap's own
+ * What the chart on screen calls the rows of one capped column: the cap's own
  * word where it has one, since one step can cap two columns under two nouns,
- * else the step's, which Go requires. "" on the overview, which caps nothing.
+ * else the step's, which Go requires. The overview has no step, and Go
+ * requires the word on each of its caps.
  * @param {number} tier
  * @returns {string}
  */
 export function tailNoun(tier) {
   const rung = drilled.length ? drilled[drilled.length - 1] : null;
-  if (!rung) return "";
-  const cap = formFor(rung.step).caps(rung.step).find((c) => c.tier === tier);
-  return (cap && cap.tail) || rung.step.tail;
+  const chart = chartOnScreen();
+  const cap = formFor(chart).caps(chart).find((c) => c.tier === tier);
+  return (cap && cap.tail) || (rung ? rung.step.tail : "");
 }
 
 /**
@@ -1336,7 +1385,7 @@ export function trailOfRungs() {
 export function shapeFor(doc) {
   const rung = drilled.length ? drilled[drilled.length - 1] : null;
   const from = rung ? docAt(drilled.length - 1) : null;
-  return formOnScreen().shape(doc, rung, from, activeTiers());
+  return formOnScreen().shape(doc, rung, from, activeTiers(), { chart: CONFIG.overview, expanded: overviewExpanded });
 }
 
 /**
@@ -1446,6 +1495,7 @@ function laidOf(doc) {
     columns: layoutColumns(doc),
     groupOf: (/** @type {FiscNode | LaidNode} */ n) => core.fundGroupOf(index, n),
     placeOf: fundGroupPlace,
+    chart: chartOnScreen(),
   });
   return { graph, index };
 }
@@ -1626,6 +1676,7 @@ export function render(laid) {
     layer: layer,
     tiers: layoutTiers(doc),
     columns: layoutColumns(doc),
+    chart: chartOnScreen(),
     doc: doc,
     classes: { link: linkClass, node: nodeClass, flags: nodeFlags },
     describe: { link: linkDescription, node: nodeDescription },
@@ -1636,12 +1687,26 @@ export function render(laid) {
       restoring: () => restoring,
     },
   });
+  paintHairlines(graph);
   paint();
   applyEmphasis();
   // A new chart starts unzoomed: the transform was about the marks it replaced.
   bindZoom();
   // The options name marks of the chart just replaced.
   closeSearch();
+}
+
+/**
+ * Says beside the chart how many of its ribbons the form draws as hairlines,
+ * wider than their share, and hides the sentence where it draws none.
+ * @param {{nodes: LaidNode[], links: LaidLink[]}} graph
+ */
+export function paintHairlines(graph) {
+  const line = maybeEl("hairline-line");
+  if (!line) return;
+  const n = formOnScreen().hairlines(graph, chartOnScreen());
+  line.hidden = n === 0;
+  line.textContent = n ? say("hairline", { n }) : "";
 }
 
 /**
@@ -3418,10 +3483,11 @@ export async function showYear(year) {
   // Swapped because shapeFor and askAffordances read them; swapped back on a
   // throw, so nothing below writes a word of this year over the last one's
   // chart.
-  const was = { column, fetched, drilled, laidNodes, groupIndex, projection, shown, whole };
+  const was = { column, fetched, drilled, overviewExpanded, laidNodes, groupIndex, projection, shown, whole };
   column = loaded;
   fetched = doc;
   drilled = [];
+  overviewExpanded = new Set();
   let laid;
   let rows;
   try {
@@ -3437,7 +3503,7 @@ export async function showYear(year) {
     whole = unfiltered;
     askAffordances();
   } catch (e) {
-    ({ column, fetched, drilled, laidNodes, groupIndex, projection, shown, whole } = was);
+    ({ column, fetched, drilled, overviewExpanded, laidNodes, groupIndex, projection, shown, whole } = was);
     throw e;
   }
 

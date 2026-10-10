@@ -603,7 +603,7 @@ func TestTheSiteLinksEveryShardItShips(t *testing.T) {
 }
 
 // TestTheProvenanceViewIsPublishedWhenThereIsAStore pins the fourth view into
-// the real view set, which TestViewsOpensOnTheSpineAndGivesYearsToItAlone
+// the real view set, which TestViewsOpensOnTheSpineAndGivesYearsToItsCharts
 // deliberately does not (it passes a Result with no page index).
 func TestTheProvenanceViewIsPublishedWhenThereIsAStore(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))

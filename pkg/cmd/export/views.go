@@ -46,8 +46,10 @@ type viewDecl struct {
 	Projection string `yaml:"projection"`
 	// YearControl lists every built document of Projection as a year, oldest
 	// first, which is [export.View.YearStems].
-	YearControl bool          `yaml:"year_control"`
-	Title       string        `yaml:"title"`
+	YearControl bool   `yaml:"year_control"`
+	Title       string `yaml:"title"`
+	// Description is [export.View.Description].
+	Description string        `yaml:"description"`
 	Lede        string        `yaml:"lede"`
 	Sections    []sectionDecl `yaml:"sections"`
 	Overview    *chartDecl    `yaml:"overview"`
@@ -65,11 +67,14 @@ type sectionDecl struct {
 }
 
 // chartDecl is an [export.Chart] as authored: the form and the form's hints
-// under its own key, which decode as [export.SankeyHints] itself.
+// under its own key, which decode as [export.SankeyHints] itself. Projection
+// is the overview's [export.View.Draws]; a step names its schedule on the
+// step.
 type chartDecl struct {
-	Form   string              `yaml:"form"`
-	Sankey *export.SankeyHints `yaml:"sankey"`
-	Bars   *export.BarsHints   `yaml:"bars"`
+	Form       string              `yaml:"form"`
+	Projection string              `yaml:"projection"`
+	Sankey     *export.SankeyHints `yaml:"sankey"`
+	Bars       *export.BarsHints   `yaml:"bars"`
 }
 
 // stepDecl is one [export.DrillStep] as authored, its chart inlined as on the
@@ -172,6 +177,10 @@ func decodeViews(b []byte, reg *registry.Registry) ([]viewDecl, error) {
 			return nil, &viewsError{Entry: entry, Field: "projection",
 				Msg: unknownName(v.Projection, projections)}
 		}
+		if v.Overview != nil && v.Overview.Projection != "" && !slices.Contains(projections, v.Overview.Projection) {
+			return nil, &viewsError{Entry: entry, Field: "overview.projection",
+				Msg: unknownName(v.Overview.Projection, projections)}
+		}
 		for _, s := range v.Sections {
 			for printed, slug := range s.Rows {
 				if slug == "" {
@@ -272,13 +281,20 @@ func views(repoRoot string, built result) ([]export.View, error) {
 			continue
 		}
 		v := export.View{
-			Path:       d.Path,
-			Nav:        d.Nav,
-			Template:   d.Template,
-			Projection: d.Projection,
-			Title:      d.Title,
-			Lede:       d.Lede,
-			Overview:   d.Overview.chart(),
+			Path:        d.Path,
+			Nav:         d.Nav,
+			Template:    d.Template,
+			Projection:  d.Projection,
+			Title:       d.Title,
+			Lede:        d.Lede,
+			Overview:    d.Overview.chart(),
+			Description: d.Description,
+		}
+		if d.Overview != nil {
+			v.Draws = d.Overview.Projection
+		}
+		if !drawsBuilt(v, projections) {
+			continue
 		}
 		if d.YearControl {
 			v.YearStems = yearStems(d.Projection, projections)
@@ -293,6 +309,27 @@ func views(repoRoot string, built result) ([]export.View, error) {
 		out = append(out, v)
 	}
 	return out, nil
+}
+
+// drawsBuilt reports whether the schedule a view's own chart draws was built
+// for every year the view lists, where it is published for that year's
+// column at all. A view drawing a schedule that was not built is dropped, as
+// one whose own document was not built is; one never published for a year's
+// column is kept for the write to refuse by name.
+func drawsBuilt(v export.View, projections map[string][]byte) bool {
+	if v.Draws == "" {
+		return true
+	}
+	years := v.YearStems
+	if len(years) == 0 {
+		years = []string{v.Projection}
+	}
+	for _, year := range years {
+		if len(publishedInto(year, v.Draws)) > 0 && !opensInto(year, v.Draws, projections) {
+			return false
+		}
+	}
+	return true
 }
 
 // declaredSteps is the steps of one view the built documents can open, in

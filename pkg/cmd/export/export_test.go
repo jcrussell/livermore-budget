@@ -1250,16 +1250,17 @@ func builtStemsForTest(t *testing.T) map[string][]byte {
 	return built
 }
 
-// TestViewsOpensOnTheSpineAndGivesYearsToItAlone pins the shape of the view
+// TestViewsOpensOnTheSpineAndGivesYearsToItsCharts pins the shape of the view
 // list: which page the site opens on, that the year control belongs to the
-// spine and to no other view, and that the spine is the one chart page.
-func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
+// spine's documents and to no other view's, and that the spine and the whole
+// budget drawn out of its columns are the two chart pages.
+func TestViewsOpensOnTheSpineAndGivesYearsToItsCharts(t *testing.T) {
 	built := builtStemsForTest(t)
 	got := mustViews(t, result{Projections: built})
 
-	if len(got) != 5 {
-		t.Fatalf("got %d views over %v, want the spine, the revenue trends, the two ACFR "+
-			"history tables and the caveats index", len(got), keys(built))
+	if len(got) != 6 {
+		t.Fatalf("got %d views over %v, want the spine, the whole budget, the revenue trends, "+
+			"the two ACFR history tables and the caveats index", len(got), keys(built))
 	}
 	spine := got[0]
 	if spine.Path != export.IndexPath || spine.Projection != export.PrimaryProjection {
@@ -1311,7 +1312,10 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 	}
 
 	// fund-flows is drawn by opening the spine; a page of its own would publish
-	// the same money twice.
+	// the same money twice. THE ONE EXCEPTION IS THE WHOLE BUDGET, which no
+	// rung of the chain draws, since each opens one node: it is the spine's
+	// page, its figures and its years, with fund-flows drawn out of each
+	// year's column whole, uncapped and opening nothing.
 	for _, path := range []string{"revenue.html", "spending.html", "drilldown.html"} {
 		if _, ok := byPath[path]; ok {
 			t.Errorf("%s is in the nav; the spine's chain is where that document is drawn now", path)
@@ -1320,6 +1324,36 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 	for _, v := range got {
 		if v.Projection == project.FundFlowsProjection {
 			t.Errorf("view %q renders fund-flows as its own page; it is drawn by opening the spine", v.Path)
+		}
+		if v.Draws != "" && v.Path != "whole.html" {
+			t.Errorf("view %q draws %q out of its columns; only the whole budget does", v.Path, v.Draws)
+		}
+		if len(v.YearStems) > 0 && v.Projection != export.PrimaryProjection {
+			t.Errorf("view %q lists years of %q; the year control is the spine's documents'", v.Path, v.Projection)
+		}
+	}
+	whole, ok := byPath["whole.html"]
+	switch {
+	case !ok:
+		t.Error("no view at whole.html draws the whole budget")
+	case whole.Projection != export.PrimaryProjection || whole.Draws != project.FundFlowsProjection:
+		t.Errorf("whole.html renders %q and draws %q, want the spine's page drawing fund-flows",
+			whole.Projection, whole.Draws)
+	case !slices.Equal(whole.YearStems, spine.YearStems):
+		t.Errorf("whole.html lists years %v and the spine %v; one column is one year on both",
+			whole.YearStems, spine.YearStems)
+	case len(whole.Steps) > 0:
+		t.Errorf("whole.html declares %d steps; it opens nothing", len(whole.Steps))
+	case whole.Overview.Sankey == nil:
+		t.Error("whole.html declares no Sankey hints")
+	default:
+		// The client's tests measure against this: the four columns, the
+		// dropped group tier, the caps it starts folded at and the canvas.
+		if diff := cmp.Diff(export.SankeyHints{Tiers: []int{0, 3, 4, 5}, Drop: []int{2}, Height: 4800,
+			Caps: []export.TierCap{{Tier: 3, Cap: 8, Tail: "funds"}, {Tier: 4, Cap: 24, Tail: "divisions"},
+				{Tier: 5, Cap: 8, Tail: "object rows"}}},
+			*whole.Overview.Sankey); diff != "" {
+			t.Errorf("whole.html's Sankey hints (-want +got):\n%s", diff)
 		}
 	}
 

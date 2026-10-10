@@ -41,7 +41,23 @@ export function loadD3() {
  * testdata/index.golden.html, so there is one copy of the config.
  */
 export function pageFixture() {
-  const html = readFileSync(join(repoRoot, "testdata", "index.golden.html"), "utf8");
+  return servedPage("index.golden.html");
+}
+
+/**
+ * The whole-budget page, testdata/whole.golden.html, as pageFixture gives the
+ * spine's: fund-flows drawn out of the same columns at every tier.
+ */
+export function wholeFixture() {
+  return servedPage("whole.golden.html");
+}
+
+/**
+ * One pinned page under testdata/ and the config cut out of it.
+ * @param {string} name
+ */
+function servedPage(name) {
+  const html = readFileSync(join(repoRoot, "testdata", name), "utf8");
   const open = "window.FISC_CONFIG = ";
   const i = html.indexOf(open);
   if (i < 0) throw new Error("the pinned page carries no window.FISC_CONFIG");

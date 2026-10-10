@@ -319,6 +319,70 @@ func barsView(breaks func(*export.View)) export.View {
 	})
 }
 
+// wholeView is a well-formed view drawing another schedule of its column:
+// the spine's figures and years, fund-flows' chart at every tier it draws a
+// column of, its group tier dropped and its canvas declared.
+// TestAViewDrawsAnotherScheduleOfItsColumn is its control.
+func wholeView(breaks func(*export.View)) export.View {
+	v := export.View{
+		Path: "whole.html", Nav: "Whole budget", Template: export.SankeyTemplate, Projection: "sankey",
+		Draws: "fund-flows",
+		Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
+			Tiers: []int{0, 3, 4, 5}, Drop: []int{2}, Height: 4800,
+		}},
+		Description: "Every flow at once.",
+	}
+	breaks(&v)
+	return v
+}
+
+// TestAViewDrawsAnotherScheduleOfItsColumn is the control for the whole-page
+// refusals: the page ships fund-flows as its primary schedule with the
+// overview's height and drop under the Sankey's key, its counts line is
+// fund-flows' and its description replaces the spine's.
+func TestAViewDrawsAnotherScheduleOfItsColumn(t *testing.T) {
+	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
+	if err != nil {
+		t.Fatalf("read fund-flows golden: %v", err)
+	}
+	dir := t.TempDir()
+	if _, err := writeSite(export.Options{
+		Dir:         dir,
+		Projections: map[string][]byte{"sankey": goldenSankey(t), "fund-flows": builtLike(t, goldenSankey(t), fundFlows)},
+		Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
+			Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "sankey"},
+			wholeView(func(*export.View) {})},
+		Docs:        budgetDocs(),
+		GeneratedBy: "fisc test",
+	}); err != nil {
+		t.Fatalf("Write refused a view drawing another schedule: %v", err)
+	}
+	page := readFile(t, dir, "whole.html")
+	for _, want := range []string{
+		`"primary":"fund-flows"`,
+		`"overview":{"form":"sankey","sankey":{"tiers":[0,3,4,5],"height":4800,"drop":[2]}}`,
+		`<desc id="chart-desc">` + "\n        Every flow at once. ",
+	} {
+		if !strings.Contains(page, want) {
+			t.Errorf("the whole page carries no %s", want)
+		}
+	}
+	var doc struct {
+		Metadata struct {
+			Counts struct{ Links int } `json:"counts"`
+		} `json:"metadata"`
+	}
+	if err := json.Unmarshal(fundFlows, &doc); err != nil {
+		t.Fatal(err)
+	}
+	if want := fmt.Sprintf(`"links":%d`, doc.Metadata.Counts.Links); !strings.Contains(page, want) {
+		t.Errorf("the whole page's year counts no %s, fund-flows' own link count", want)
+	}
+	if strings.Contains(page, "Revenue categories flow into fund groups") {
+		t.Error("the whole page describes the spine's chart")
+	}
+}
+
 // TestABarsStepListsTheNodeAWindowOpened is the control for the bars
 // refusals: the step is written, under its own key and no other form's.
 func TestABarsStepListsTheNodeAWindowOpened(t *testing.T) {
@@ -1517,6 +1581,59 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 			{Path: "extra.html", Nav: "Extra", Template: export.HistoryTemplate,
 				Projection: "sankey"}},
 			"under no printed heading"},
+		// The canvas and the drop are the overview's: a rung is one node's
+		// window on its page's canvas.
+		{"a step declaring a canvas height", []export.View{ok,
+			chartView(func(v *export.View) { v.Steps[0].Sankey.Height = 4800 })},
+			"declares a canvas height or dropped tiers"},
+		{"a step dropping a tier", []export.View{ok,
+			chartView(func(v *export.View) { v.Steps[0].Sankey.Drop = []int{2} })},
+			"declares a canvas height or dropped tiers"},
+		// The whole-page arms: wholeView breaks one thing each.
+		{"a canvas of negative height", []export.View{ok,
+			wholeView(func(v *export.View) { v.Overview.Sankey.Height = -1 })},
+			"on a canvas -1px tall"},
+		{"a tier both drawn and dropped", []export.View{ok,
+			wholeView(func(v *export.View) { v.Overview.Sankey.Drop = []int{3} })},
+			"both draws and drops tier 3"},
+		{"a tier dropped twice", []export.View{ok,
+			wholeView(func(v *export.View) { v.Overview.Sankey.Drop = []int{2, 2} })},
+			"drops tier 2 twice"},
+		{"a dropped tier carrying no node", []export.View{ok,
+			wholeView(func(v *export.View) { v.Overview.Sankey.Drop = []int{2, 9} })},
+			"drops tier 9, at which"},
+		// pp.173-183's rows reach the chart only through tier 5, so dropping
+		// it takes figures off the chart: not a restatement.
+		{"a dropped tier that restates nothing", []export.View{ok,
+			wholeView(func(v *export.View) {
+				v.Overview.Sankey.Tiers, v.Overview.Sankey.Drop = []int{0, 3, 4}, []int{2, 5}
+			})},
+			"which no link the chart keeps cites"},
+		{"an overview cap naming no tail", []export.View{ok,
+			wholeView(func(v *export.View) { v.Overview.Sankey.Caps = []export.TierCap{{Tier: 3, Cap: 8}} })},
+			"with no tail"},
+		{"an overview cap on a tier it does not draw", []export.View{ok,
+			wholeView(func(v *export.View) {
+				v.Overview.Sankey.Caps = []export.TierCap{{Tier: 1, Cap: 8, Tail: "lines"}}
+			})},
+			"caps tier 1 and draws tiers"},
+		{"another schedule on a view that drills", []export.View{ok,
+			wholeView(func(v *export.View) {
+				v.Steps = chartView(func(*export.View) {}).Steps
+				v.Steps[0].From = 3
+			})},
+			"declares 1 step(s)"},
+		{"a schedule no year's column carries", []export.View{ok,
+			wholeView(func(v *export.View) { v.Draws = "revenue-trends" })},
+			"is of a column that carries none"},
+		{"a schedule drawn with no chart", []export.View{ok,
+			{Path: "trends.html", Nav: "Revenue tables", Template: export.TrendsTemplate,
+				Projection: "sankey", Draws: "fund-flows"}},
+			"declares no chart to draw it in"},
+		{"a description on a template that draws no chart", []export.View{ok,
+			{Path: "trends.html", Nav: "Revenue tables", Template: export.TrendsTemplate,
+				Projection: "sankey", Description: "Words."}},
+			"describes its chart"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

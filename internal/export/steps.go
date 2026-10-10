@@ -74,7 +74,11 @@ func (v View) validateSteps(ix ColumnIndex) error {
 		docs:      docs,
 		yearStems: v.yearStems(),
 	}
-	if err := v.validateOverviewTiersCarried(t.yearStems, ix); err != nil {
+	drawn, err := v.drawnStems(ix)
+	if err != nil {
+		return err
+	}
+	if err := v.validateOverviewTiersCarried(drawn, ix); err != nil {
 		return err
 	}
 	for i, s := range v.Steps {
@@ -638,6 +642,11 @@ func (v View) validateSankeyColumns(i int, s DrillStep) error {
 		return fmt.Errorf(
 			"view %q declares step %d with no tiers, so a node opened on it would be "+
 				"drawn by the same tier set it was closed under", v.Path, i)
+	case h.Height != 0 || len(h.Drop) > 0:
+		return fmt.Errorf(
+			"view %q's step %d declares a canvas height or dropped tiers, which are the "+
+				"view's own chart's; a rung draws one node's window on its page's canvas",
+			v.Path, i)
 	case len(s.Gaps) > 0 && len(h.Widen) > 0:
 		return fmt.Errorf(
 			"view %q's step %d declares a gap on %d node(s) and widens tiers %v; the "+

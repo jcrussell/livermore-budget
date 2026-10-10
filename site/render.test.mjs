@@ -12,7 +12,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 import {
-  bootedApp, opened, expandAll, everyOffer, settle, refusals, columnFixture, pageFixture, fire, repoRoot,
+  bootedApp, opened, expandAll, everyOffer, settle, refusals, columnFixture, pageFixture, wholeFixture, fire, repoRoot,
   dollars, shortDollars, stepByKey,
 } from "./testlib.mjs";
 
@@ -1132,6 +1132,7 @@ describe("the classes the client sets and the rules the stylesheet carries", () 
     links: "the <g> the ribbons are drawn into",
     nodes: "the <g> the marks are drawn into",
     "zoom-layer": "the <g> the page makes for the form to draw into, which the zoom transforms",
+    "link-hits": "the <g> a hairline's hit targets are drawn into",
     opens: "the drillable mark; its affordance is the flag tspan, not a style",
     expands: "the folded tail, likewise",
     "tip-drawn": "the tooltip's drawn-part line, worn as a tip-meta",
@@ -1207,6 +1208,12 @@ describe("the classes the client sets and the rules the stylesheet carries", () 
     assert.equal(walked.refused, "");
     assert.ok(expandedAt, "no view offered a column to expand");
     app.fail("probe: a refusal, for its class"); snap();
+    // The whole budget drawn out, for the hairlines no spine view draws.
+    const wholePage = wholeFixture();
+    const whole = await bootedApp({ html: wholePage.html, config: wholePage.config });
+    for (const el of whole.document.querySelectorAll("*")) for (const c of classesIn(el.getAttribute("class"))) worn.add(c);
+    expandAll(whole.app); await settle();
+    for (const el of whole.document.querySelectorAll("*")) for (const c of classesIn(el.getAttribute("class"))) worn.add(c);
 
     const rules = ruleClasses(document);
     const templates = templateClasses();

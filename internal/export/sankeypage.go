@@ -1,6 +1,7 @@
 package export
 
 import (
+	"cmp"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -127,6 +128,8 @@ type pageData struct {
 	// Drill is whether this page's chart opens a node, which the lede's
 	// sentence about a click depends on.
 	Drill bool
+	// Description is [View.Description].
+	Description string
 	// ConfigJSON is window.FISC_CONFIG. json.Marshal escapes <, > and & to
 	// their \u form, so the blob cannot close the script element it sits in.
 	ConfigJSON template.JS
@@ -270,6 +273,7 @@ type stepDocument struct {
 		Basis       string       `json:"basis"`
 		Sources     []sourceMeta `json:"sources"`
 		Caveats     []caveatMeta `json:"caveats"`
+		Counts      countsRef    `json:"counts"`
 	} `json:"metadata"`
 }
 
@@ -327,6 +331,41 @@ func stepDocuments(v View, year, builtBy string, fiscalYear int, basis string,
 	return out, cited, nil
 }
 
+// drawn is the document a view's own chart draws in one year, by stem.
+type drawn struct {
+	stem string
+	doc  stepDocument
+}
+
+// drawnDocument is the document a view's own chart draws in one year, where
+// [View.Draws] names a schedule other than the view's: the year's column's
+// document of it, refused where the column carries none or another
+// projection built it.
+func drawnDocument(v View, year, builtBy string, projections map[string][]byte, ix ColumnIndex) (drawn, error) {
+	var out drawn
+	col, folded := ix.Column(year)
+	stem, ok := ix.Stem(col, v.Draws)
+	raw, built := projections[stem]
+	if !folded || !ok || !built {
+		return out, fmt.Errorf("view %q draws schedule %q and year stem %q's column carries none",
+			v.Path, v.Draws, year)
+	}
+	if _, err := decodeDocument(stem, raw); err != nil {
+		return out, err
+	}
+	if err := json.Unmarshal(raw, &out.doc); err != nil {
+		return out, fmt.Errorf("decode %s metadata: %w", stem, err)
+	}
+	if out.doc.Metadata.GeneratedBy != builtBy {
+		return out, fmt.Errorf(
+			"view %q opens on %q built by %q and draws %q, built by %q; the footer credits "+
+				"one projection for figures drawn from both", v.Path, v.Projection, builtBy, stem,
+			out.doc.Metadata.GeneratedBy)
+	}
+	out.stem = stem
+	return out, nil
+}
+
 func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	ix ColumnIndex, pageTextBase func(string) string,
 ) (pageData, error) {
@@ -378,6 +417,20 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		}
 		cited = append(cited, stepped...)
 		hero, figures := tilesFor(m)
+		counts := countsRef{Facts: m.Counts.Facts, Nodes: m.Counts.Nodes, Links: m.Counts.Links}
+		caveats := caveatRefs(m.Caveats, stem, caveatsPath)
+		if v.Draws != "" {
+			chart, chartErr := drawnDocument(v, stem, meta.GeneratedBy, o.Projections, ix)
+			if chartErr != nil {
+				return pageData{}, chartErr
+			}
+			// The chart, its counts line and its caveats are the drawn
+			// schedule's; the tiles above it stay the spine's, whose caveats
+			// come first.
+			cited = append(cited, chart.doc.Metadata.Sources...)
+			counts = chart.doc.Metadata.Counts
+			caveats = append(caveats, caveatRefs(chart.doc.Metadata.Caveats, chart.stem, caveatsPath)...)
+		}
 		years = append(years, yearView{
 			Year:       m.FiscalYear,
 			Label:      m.FiscalYearLabel,
@@ -389,11 +442,9 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			Lede:       ledeOf(m.FiscalYearLabel, m.Basis),
 			Hero:       hero,
 			Figures:    figures,
-			Caveats:    caveatRefs(m.Caveats, stem, caveatsPath),
-			Counts: countsRef{
-				Facts: m.Counts.Facts, Nodes: m.Counts.Nodes, Links: m.Counts.Links,
-			},
-			Steps: steps,
+			Caveats:    caveats,
+			Counts:     counts,
+			Steps:      steps,
 		})
 	}
 	// The page opens on the newest year, the last of them; everything
@@ -405,7 +456,7 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	cfg := clientConfig{
 		SchemaVersion: doc.SchemaVersion,
 		ExportedBy:    o.GeneratedBy,
-		Primary:       v.Projection,
+		Primary:       cmp.Or(v.Draws, v.Projection),
 		Years:         years,
 		Docs:          clientDocs,
 		KindLabels:    kindLabels(),
@@ -445,6 +496,7 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		Nodes:        open.Counts.Nodes,
 		Links:        open.Counts.Links,
 		Drill:        len(v.Steps) > 0,
+		Description:  v.Description,
 		// #nosec G203 -- blob is encoding/json's output, which escapes <, >
 		// and & to their \u form, so it cannot terminate the script element
 		// or inject markup. The alternative, letting html/template escape a

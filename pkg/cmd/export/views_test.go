@@ -184,11 +184,11 @@ func TestADeclarationFaultInAStepIsRefusedNotDropped(t *testing.T) {
 		{"a role no node at the opened tier carries", "role: transfer_in\n", "role: object_category\n",
 			`opens role "object_category" at tier 0 of the view's own chart`},
 		{"a schedule never published for the view's column",
-			"\n  # The tables come after the charts they belong to.\n",
+			"\n  # Every flow fund-flows prints,",
 			"      - key: stray\n        after: [\"\"]\n        from: 0\n" +
 				"        projection: revenue-trends\n        form: sankey\n        sankey: {tiers: [0, 2]}\n" +
 				"        noun: n\n        back: b\n        tail: t\n        description: d.\n" +
-				"\n  # The tables come after the charts they belong to.\n",
+				"\n  # Every flow fund-flows prints,",
 			`opens into schedule "revenue-trends"`},
 		{"a drill chain on a view that draws no chart",
 			"      are intentions adopted together.\n",

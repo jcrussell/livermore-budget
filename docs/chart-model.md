@@ -94,7 +94,7 @@ members, as `FormRenderer` in `site/app.js` types them:
  *  columns(chart, rung, budget): number[],      // the tiers drawn at this budget
  *  width(columns): number,                      // the px a chart of this many columns is laid out at
  *  offers(step, doc, onScreen, id, budgets): boolean, // whether this form can draw `id` opened here, out of `doc`, off the chart on screen, at every budget
- *  shape(doc, rung, from, tiers): FiscProjection, // filter, cap, fold, marks; throws to refuse
+ *  shape(doc, rung, from, tiers, view): FiscProjection, // filter, cap, fold, marks; throws to refuse; view is the overview's {chart, expanded}
  *  layOut(drawn, ctx): Laid,                    // pure of the page
  *  render(laid, ctx): void,                     // writes the DOM
  *  paint(ctx): void,                            // repaints on a theme change
@@ -104,6 +104,7 @@ members, as `FormRenderer` in `site/app.js` types them:
  *  reduction(d): boolean,                       // whether a laid node's every ribbon is a printed reduction
  *  crossTab(d): boolean,                        // whether a laid node's whole figure is a cross-tab total
  *  reductionNote(d): string,                    // how much of a laid node's figure is printed as reductions, in words; ""
+ *  hairlines(laid, chart): number,              // how many laid ribbons it draws as hairlines, wider than their share
  * }} FormRenderer */
 ```
 

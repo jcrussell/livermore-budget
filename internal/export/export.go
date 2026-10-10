@@ -158,6 +158,18 @@ type View struct {
 	// The fold is the client's.
 	Overview Chart
 
+	// Draws is the schedule the view's own chart draws out of each year's
+	// column, or "" for Projection's own. The page's figures, year control
+	// and footer stay Projection's; the chart, its counts line and its
+	// caveats are this schedule's, shipped as FISC_CONFIG.primary. A view
+	// that sets it declares no steps: a step's "" parent is Projection's
+	// chart.
+	Draws string
+	// Description is the view's own chart said in words: the SVG's <desc>
+	// and the paragraph under the chart, or "" for the template's own, which
+	// describes the spine. Only a template that draws a chart renders it.
+	Description string
+
 	// Steps is how this view's chart opens a node, one hop per step, or empty
 	// for a chart that does not open; a node click then isolates instead.
 	// Shipped as FISC_CONFIG.steps.
@@ -522,13 +534,25 @@ type SankeyHints struct {
 	// the kept flank, and validateSteps refuses a Tiers that disagrees.
 	// Refused on a step that keeps nothing.
 	Widen []int `json:"widen,omitempty" yaml:"widen"`
-	// Caps bounds the columns this step draws, one per tier that needs one; a
-	// tier with no cap is drawn whole.
+	// Caps bounds the columns this chart draws, one per tier that needs one; a
+	// tier with no cap is drawn whole. On the overview each names its own
+	// [TierCap.Tail].
 	Caps []TierCap `json:"caps,omitempty" yaml:"caps"`
 	// Side is which end of a link the opened node sits on: "" for the node the
 	// links point AT, [SideSource] for the node they come FROM, [SideBoth] for
 	// a node drawn between the two. Declared, never inferred from tier numbers.
 	Side string `json:"side,omitempty" yaml:"side"`
+	// Height is the canvas the chart is laid out on, in px, or 0 for the
+	// form's own. Overview only: a rung is a window onto one node, drawn on
+	// the canvas its page reads at.
+	Height int `json:"height,omitempty" yaml:"height"`
+	// Drop is the tiers whose nodes, and every link touching one, the chart
+	// does not draw: a tier the document emits as a restatement of what the
+	// drawn tiers already carry, which drawn beside them would show the same
+	// money twice. Overview only, disjoint from Tiers, and refused unless
+	// every fact a dropped link cites is cited by a link the chart keeps
+	// (validateDrop), so the flow table still lists every figure.
+	Drop []int `json:"drop,omitempty" yaml:"drop"`
 }
 
 // BarsHints is what the bars form lists. Go declares the tier; the client
@@ -857,6 +881,9 @@ func (v View) validate(built map[string][]byte, ix ColumnIndex) error {
 				return fmt.Errorf("view %q lists year stem %q twice", v.Path, stem)
 			}
 		}
+	}
+	if err := v.validateOverview(built, ix); err != nil {
+		return err
 	}
 	return v.validateSteps(ix)
 }

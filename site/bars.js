@@ -273,6 +273,11 @@ export const BARS = Object.freeze({
     return listed;
   },
 
+  /** A bar's pieces are drawn at the bar's thickness, so none is a hairline. */
+  hairlines() {
+    return 0;
+  },
+
   /** layOutBars at the opened tier, the first of the columns on screen. */
   layOut(drawn, ctx) {
     return layOutBars(drawn, ctx.tiers[0]);

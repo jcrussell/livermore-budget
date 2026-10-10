@@ -27,6 +27,54 @@ export const RIBBON_GAP = 2;
 export const CHART_HEIGHT = 820;
 
 /**
+ * The canvas a chart is laid out on, in px: its declared sankey.height, or
+ * CHART_HEIGHT where it declares none.
+ * @param {FiscChart | FiscDrillStep | null | undefined} chart
+ * @returns {number}
+ */
+export function canvasHeight(chart) {
+  return (chart && chart.sankey && chart.sankey.height) || CHART_HEIGHT;
+}
+
+/**
+ * A ribbon under this width on a declared canvas, in px, is drawn as a
+ * hairline: a stroke one screen pixel wide whatever the zoom, which style.css
+ * sets, under a wider transparent hit target the pointer can find.
+ */
+export const HAIRLINE = 1;
+
+/**
+ * Whether a ribbon is drawn as a hairline: under HAIRLINE on a chart that
+ * declares its canvas (sankey.height), the one kind of chart whose thin
+ * ribbons are accepted rather than folded away. On the form's own canvas a
+ * ribbon keeps the stroke floor every chart has.
+ * @param {FiscChart | FiscDrillStep | null | undefined} chart
+ * @param {LaidLink} d
+ * @returns {boolean}
+ */
+export function isHairline(chart, d) {
+  return Boolean(chart && chart.sankey && chart.sankey.height) && d.width < HAIRLINE;
+}
+
+/**
+ * The document less the tiers a chart declares as dropped (sankey.drop): their
+ * nodes and every link touching one. Go refuses a drop whose links cite a
+ * fact no kept link cites, so what leaves is a restatement.
+ * @param {FiscProjection} doc
+ * @param {FiscChart | FiscDrillStep | null | undefined} chart
+ * @returns {FiscProjection} doc itself where nothing is dropped
+ */
+export function dropTiers(doc, chart) {
+  const drop = (chart && chart.sankey && chart.sankey.drop) || [];
+  if (!drop.length) return doc;
+  const gone = new Set(doc.nodes.filter((n) => drop.indexOf(n.tier) >= 0).map((n) => n.id));
+  return Object.assign({}, doc, {
+    nodes: doc.nodes.filter((n) => !gone.has(n.id)),
+    links: doc.links.filter((l) => !gone.has(l.source) && !gone.has(l.target)),
+  });
+}
+
+/**
  * Room either side of the plot for node labels, in px. Only the two end
  * columns anchor labels outward, so it does not grow with the column count.
  */
@@ -1014,6 +1062,38 @@ export function layOutAt(drawn, ctx, height) {
 }
 
 /**
+ * The overview as drawn: its dropped tiers gone, each capped tier the reader
+ * has not drawn out folded into its tail, in the order the chart draws its
+ * tiers as a rung's are (sideOf), then the fold. Each tail spans the whole
+ * column, so its parent is "" and its note is finished with the figure only
+ * the folded document knows.
+ * @param {FiscProjection} doc
+ * @param {number[]} tiers
+ * @param {FiscChart} chart
+ * @param {Set<number>} expanded the tiers drawn whole rather than capped
+ * @returns {FiscProjection}
+ */
+export function overviewOf(doc, tiers, chart, expanded) {
+  const caps = (chart.sankey && chart.sankey.caps) || [];
+  let shaped = dropTiers(doc, chart);
+  for (const tier of tiers) {
+    const cap = caps.find((c) => c.tier === tier);
+    if (!cap || expanded.has(tier)) continue;
+    shaped = capColumn(shaped, tier, cap.cap, "", cap.tail);
+  }
+  const drawn = foldDocument(shaped, tiers);
+  if (!caps.length) return drawn;
+  return Object.assign({}, drawn, {
+    nodes: drawn.nodes.map((n) => (isAggregate(n.id)
+      ? Object.assign({}, n, {
+        parent: "",
+        source_note: n.source_note + say("aggregate_together", { figure: fmt(tailFigure(drawn, n.id)) }),
+      })
+      : n)),
+  });
+}
+
+/**
  * The Sankey form's renderer, as app.js's FORMS holds it under "sankey".
  * Every method takes what it needs: the chart's declaration, the rung, the
  * columns on screen, the document on screen. It reads of a step the generic
@@ -1089,8 +1169,8 @@ export const SANKEY = Object.freeze({
    * ribbons before any mark is added, then the residual, then the gap over
    * what the residual left, then markContra over what the fold left negative.
    */
-  shape(doc, rung, from, tiers) {
-    if (!rung) return markContra(foldDocument(doc, tiers));
+  shape(doc, rung, from, tiers, view) {
+    if (!rung) return markContra(overviewOf(doc, tiers, view.chart, view.expanded));
     const step = rung.step;
     // A step opening both sides draws each half of its document as a side of
     // its own, spliced on the opened node as a window is.
@@ -1107,7 +1187,12 @@ export const SANKEY = Object.freeze({
    * stays the thing the table and the detail panel read from.
    */
   layOut(drawn, ctx) {
-    return layOutAt(drawn, ctx, CHART_HEIGHT);
+    return layOutAt(drawn, ctx, canvasHeight(ctx.chart));
+  },
+
+  /** How many laid ribbons of this chart are drawn as hairlines: isHairline. */
+  hairlines(graph, chart) {
+    return graph.links.filter((l) => isHairline(chart, l)).length;
   },
 
   /**
@@ -1121,19 +1206,22 @@ export const SANKEY = Object.freeze({
     const d3 = /** @type {any} */ (globalThis).d3;
     const svg = ctx.svg;
     const width = chartWidth(ctx.columns);
-    const height = CHART_HEIGHT;
+    const height = canvasHeight(ctx.chart);
     const on = ctx.on;
 
     // No width or height attributes: the viewBox makes the drawing scale.
     svg.attr("viewBox", "0 0 " + width + " " + height);
 
     const gLinks = ctx.layer.append("g").attr("class", "links");
+    const gHits = ctx.layer.append("g").attr("class", "link-hits");
     const gNodes = ctx.layer.append("g").attr("class", "nodes");
+    /** @param {LaidLink} d */
+    const hairline = (d) => isHairline(ctx.chart, d);
 
     gLinks.selectAll("path")
       .data(graph.links)
       .join("path")
-      .attr("class", /** @param {LaidLink} d */ (d) => ctx.classes.link(d))
+      .attr("class", /** @param {LaidLink} d */ (d) => ctx.classes.link(d) + (hairline(d) ? " hairline" : ""))
       .attr("d", d3.sankeyLinkHorizontal())
       // The surface gap, not a stroke, separates stacked ribbons.
       .attr("stroke-width", /** @param {LaidLink} d */ (d) => Math.max(1, d.width - RIBBON_GAP))
@@ -1145,6 +1233,20 @@ export const SANKEY = Object.freeze({
       .on("pointerleave", on.hide)
       .on("focus", /** @param {FocusEvent} e @param {LaidLink} d */ (e, d) => on.guarded("show this flow", () => { if (on.restoring()) return; on.tip(e, d); on.pin(d); }))
       .on("blur", on.hide)
+      .on("click", /** @param {MouseEvent} e @param {LaidLink} d */ (e, d) => on.guarded("pin this flow", () => { e.stopPropagation(); on.pin(d); }));
+
+    // A HAIRLINE'S HIT TARGET IS WIDER THAN ITS STROKE: the ribbon keeps its
+    // focus and its description, and this transparent stroke above it takes
+    // the pointer's hover and click.
+    gHits.selectAll("path")
+      .data(graph.links.filter(hairline))
+      .join("path")
+      .attr("class", "link-hit")
+      .attr("d", d3.sankeyLinkHorizontal())
+      .attr("aria-hidden", "true")
+      .on("pointerenter", /** @param {PointerEvent} e @param {LaidLink} d */ (e, d) => on.tip(e, d))
+      .on("pointermove", /** @param {PointerEvent} e @param {LaidLink} d */ (e, d) => on.tip(e, d))
+      .on("pointerleave", on.hide)
       .on("click", /** @param {MouseEvent} e @param {LaidLink} d */ (e, d) => on.guarded("pin this flow", () => { e.stopPropagation(); on.pin(d); }));
 
     const node = gNodes.selectAll("g")

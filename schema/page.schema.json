@@ -255,7 +255,7 @@
       }
     },
     "overview": {
-      "description": "The page's own chart: its form and that form's hints. An overview keeps no flank, widens nothing and caps nothing, because no node has opened.",
+      "description": "The page's own chart: its form and that form's hints. An overview keeps no flank and widens nothing, because no node has opened; a cap on it names its own tail, because it has no step to take one from.",
       "type": "object",
       "required": ["form"],
       "additionalProperties": false,
@@ -265,7 +265,12 @@
         },
         "sankey": {
           "$ref": "https://jcrussell.github.io/livermore-budget/schema/page.schema.json#/$defs/sankey_hints",
-          "properties": { "keep": false, "widen": false, "caps": false, "side": false }
+          "properties": {
+            "keep": false,
+            "widen": false,
+            "side": false,
+            "caps": { "items": { "required": ["tail"] } }
+          }
         },
         "bars": {
           "description": "The bars form's hints, present exactly when form is bars. The shape admits them; Go's validate refuses a bars overview, which has opened no node to list the parts of.",
@@ -359,8 +364,9 @@
             "$ref": "https://jcrussell.github.io/livermore-budget/schema/enums.schema.json#/$defs/chart_form"
           },
           "sankey": {
-            "description": "The Sankey form's hints, present exactly when form is sankey; a step's names its tiers.",
-            "$ref": "https://jcrussell.github.io/livermore-budget/schema/page.schema.json#/$defs/sankey_hints"
+            "description": "The Sankey form's hints, present exactly when form is sankey; a step's names its tiers, and draws on its page's canvas with every tier it reaches.",
+            "$ref": "https://jcrussell.github.io/livermore-budget/schema/page.schema.json#/$defs/sankey_hints",
+            "properties": { "height": false, "drop": false }
           },
           "bars": {
             "description": "The bars form's hints, present exactly when form is bars.",
@@ -516,7 +522,8 @@
         "full_screen",
         "full_screen_exit",
         "zoom_reset",
-        "bars_share"
+        "bars_share",
+        "hairline"
       ],
       "additionalProperties": false,
       "properties": {
@@ -822,6 +829,11 @@
           "type": "string",
           "minLength": 1,
           "description": "A bar's share of the node the bars form lists the parts of: {share}, the percentage formatted, and {whole}, that node's label."
+        },
+        "hairline": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Said beside a chart drawing ribbons under a pixel of its canvas, which are drawn a screen pixel wide: {n}, how many."
         }
       }
     }
@@ -903,6 +915,21 @@
             "both"
           ],
           "description": "Which end of a link the opened node is; absent for the end links point at, both for a node drawn between what comes into it and what leaves it."
+        },
+        "height": {
+          "description": "The canvas the chart is laid out on, in px; absent lays it out on the form's own. The overview's only.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "drop": {
+          "description": "Tiers whose nodes, and every link touching one, the chart does not draw: a tier the document emits as a restatement of the tiers drawn. The overview's only, and disjoint from tiers.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
         }
       }
     }

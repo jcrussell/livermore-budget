@@ -38,6 +38,7 @@ function stubRenderer(app, asked) {
     reduction() { return false; },
     crossTab() { return false; },
     reductionNote() { return ""; },
+    hairlines() { return 0; },
     offers(step, doc, onScreen, id) {
       const inside = app.withinNode(doc, id);
       return doc.links.some((l) => inside.has(l.source) && inside.has(l.target));

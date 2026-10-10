@@ -107,6 +107,10 @@ type wording struct {
 	// parts of: a ratio of two client sums over cited cents, which no page
 	// prints, so it is said as the page's.
 	BarsShare string `json:"bars_share"`
+	// Hairline is said beside a chart drawing ribbons under a pixel of its
+	// canvas: they are drawn a screen pixel wide, which overstates them, and
+	// the sentence says so.
+	Hairline string `json:"hairline"`
 }
 
 // kindLabels is project's words for every link kind, keyed as a link names it.
@@ -209,5 +213,8 @@ func defaultWording() wording {
 		FullScreenExit:   "Exit full screen",
 		ZoomReset:        "Reset view",
 		BarsShare:        "\u25c7 our {share}% of {whole}",
+		Hairline: "{n:flow is|flows are} under a pixel wide on this chart's canvas, and each is drawn as a " +
+			"hairline one screen pixel wide, which is wider than its share; every other flow is drawn to scale. " +
+			"Zoom in, go full screen, search, or open the table below to read them.",
 	}
 }
