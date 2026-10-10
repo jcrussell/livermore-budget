@@ -1101,8 +1101,8 @@ svg.sankey .node {
    do the right thing, so a `color: inherit` here would be a duplicate of that
    rule pretending to be a decision. Only the hover state is stated.
 
-   SCOPED TO .caveats li, index.html's linked caveats; trends.html's and
-   history.html's are plain <li>s in a <section class="caveats">. */
+   SCOPED TO .caveats li, the caveat lists index.html, trends.html and
+   history.html fold. */
 .caveats li a:hover,
 .caveats li a:focus {
   color: var(--ink-1);
@@ -1460,8 +1460,9 @@ noscript p {
 
   /* AND THE DISCLOSURES OPEN, for the banner's own reason one paragraph up. A
      reader holding a sheet of paper cannot click, so a closed <details> takes
-     the sources, the caveats, the derived list, the flow table and index.html's
-     tile row off the copy without saying it did.
+     the sources, the caveats, the derived list, the flow table, index.html's
+     tile row and provenance.html's page table off the copy without saying it
+     did.
 
      TWO RULES BECAUSE ENGINES USE TWO MECHANISMS: one hides the non-summary
      children with a UA display:none, the other hides a ::details-content slot

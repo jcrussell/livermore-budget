@@ -66,7 +66,16 @@
   {{- end}}
 </ul>
 
-<h2>By page</h2>
+{{- /* THE PAGE TABLE FOLDS AND THE DOWNLOADS DO NOT: the downloads are what
+       this page is for, and the locator paragraph above is what makes every
+       link in the table citable. The table is an index a reader opens to find
+       one page. */}}
+<details class="apparatus" id="pages-view">
+  <summary>
+    <h2>By page</h2>
+    <span class="apparatus-hint">{{len .Rows}} page{{if ne (len .Rows) 1}}s{{end}}, each linked
+      to its extracted text and its records</span>
+  </summary>
 <div class="table-scroll">
 <table>
   <thead>
@@ -94,6 +103,7 @@
   </tbody>
 </table>
 </div>
+</details>
 
 </main>
 

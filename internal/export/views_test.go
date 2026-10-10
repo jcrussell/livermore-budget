@@ -3502,6 +3502,95 @@ func TestTheSankeyPageNamesItsSourcesForEveryYear(t *testing.T) {
 	}
 }
 
+// detailsDepth is how many <details> elements are open at byte i of page.
+func detailsDepth(page string, i int) int {
+	return strings.Count(page[:i], "<details") - strings.Count(page[:i], "</details>")
+}
+
+// TestTheTablePagesFoldTheirApparatusAndNotTheirWarnings holds trends.html,
+// history.html and provenance.html to fisc-yj4w.16's line: each page's
+// apparatus ships in a CLOSED disclosure whose heading stays in the <summary>
+// and whose content is inside it, the caveats sit below the table they
+// qualify, and the text a reader needs before the first mark -- the Shape
+// paragraph, the locator rule, the downloads -- is inside no <details> at all.
+func TestTheTablePagesFoldTheirApparatusAndNotTheirWarnings(t *testing.T) {
+	trends := readFile(t, twoViews(t, 127, 128), "trends.html")
+
+	var hdoc map[string]any
+	if err := json.Unmarshal(historyDoc(balancesFixture()...), &hdoc); err != nil {
+		t.Fatal(err)
+	}
+	hdoc["metadata"].(map[string]any)["caveats"] = []map[string]any{{
+		"id": "a-caveat-the-balances-carry", "summary": "a caveat the balances carry",
+		"text": "a caveat the balances carry, at length",
+	}}
+	hbytes, err := json.Marshal(hdoc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	hdir, err := writeHistorySite(t, hbytes, balancesSections())
+	if err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	history := readFile(t, hdir, "balances.html")
+
+	pdir, err := provenanceSite(t, nil)
+	if err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	provenance := readFile(t, pdir, "provenance.html")
+
+	for _, tc := range []struct {
+		page, html, id, heading, folded string
+		// below is what the disclosure must follow; "" for none.
+		below string
+		open  []string
+	}{
+		{"trends.html", trends, "caveats-view", "What this table does not say",
+			"a caveat this document carries", "</table>",
+			[]string{"marks in different rows are not comparable"}},
+		{"balances.html", history, "caveats-view", "What this table does not say",
+			"a caveat the balances carry", "</table>",
+			[]string{"<strong>Shape</strong> column"}},
+		{"provenance.html", provenance, "pages-view", "By page",
+			"property taxes", "",
+			[]string{"<strong>locator</strong>", "<h2>Download</h2>", "Every figure as CSV"}},
+	} {
+		tag := `<details class="apparatus" id="` + tc.id + `">`
+		start := strings.Index(tc.html, tag)
+		if start < 0 {
+			t.Errorf("%s has no closed %s disclosure", tc.page, tc.id)
+			continue
+		}
+		end := start + strings.Index(tc.html[start:], "</details>")
+		panel := tc.html[start:end]
+		summary, _, _ := strings.Cut(panel, "</summary>")
+		if !strings.Contains(summary, "<h2>"+tc.heading+"</h2>") {
+			t.Errorf("%s's %s summary does not carry <h2>%s</h2>, so the heading leaves "+
+				"the outline while the panel is closed", tc.page, tc.id, tc.heading)
+		}
+		if !strings.Contains(panel, tc.folded) {
+			t.Errorf("%s's %s disclosure does not hold %q", tc.page, tc.id, tc.folded)
+		}
+		if n := strings.Count(tc.html, tc.folded); n != 1 {
+			t.Errorf("%s prints %q %d times, want once, inside the disclosure", tc.page, tc.folded, n)
+		}
+		if tc.below != "" && strings.Index(tc.html, tc.below) > start {
+			t.Errorf("%s's %s opens above %s; it belongs below the table", tc.page, tc.id, tc.below)
+		}
+		for _, want := range tc.open {
+			i := strings.Index(tc.html, want)
+			switch {
+			case i < 0:
+				t.Errorf("%s does not print %q", tc.page, want)
+			case detailsDepth(tc.html, i) != 0:
+				t.Errorf("%s folds %q behind a <details>; it is stated where a reader meets it",
+					tc.page, want)
+			}
+		}
+	}
+}
+
 // TestAStepsDocumentIsCitedByThePageThatOpensIt: a step that switches document
 // draws figures from pages the view's year loop never decodes, and both the
 // footer and the client's docs map must carry them. citations() in site/app.js
