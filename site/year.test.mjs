@@ -407,8 +407,10 @@ describe("a year switch and an open drill", () => {
     assert.ok(before.share !== "");
     assert.equal(after.year, before.year);
     assert.equal(after.share, before.share);
-    assert.equal(after.laid, before.laid);
-    assert.equal(after.groups, before.groups);
+    // Identity, by ===: a failing assert.equal formats both operands, and a
+    // laid node reaches the whole laid graph.
+    assert.ok(after.laid === before.laid, "the refusal left another lay-out bound");
+    assert.ok(after.groups === before.groups, "the refusal left another hue index bound");
     assert.equal(after.table, before.table);
     assert.equal(after.projection, before.projection);
   });

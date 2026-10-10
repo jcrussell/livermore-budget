@@ -157,6 +157,14 @@ describe("the whole budget folded as it opens", () => {
   });
 });
 
+/**
+ * A laid link as a string. KEYS, NOT THE LAID LINKS: a laid link reaches the
+ * whole graph through its nodes, and a failing assert over one formats that
+ * graph until the host runs out of memory.
+ * @param {any} d
+ */
+const key = (d) => (d ? `${d.source.id} > ${d.target.id} #${d.index}` : String(d));
+
 describe("hairlines", () => {
   test("every ribbon under a pixel of the canvas is drawn as a hairline under a wider hit target, and the page says how many", async (t) => {
     const { app, document } = await wholePage();
@@ -167,10 +175,6 @@ describe("hairlines", () => {
     const check = (state) => {
       const laid = [...chart.querySelectorAll("path.link")].map((p) => p.__data__);
       const thin = laid.filter((d) => d.width < app.HAIRLINE);
-      // KEYS, NOT THE LAID LINKS: a laid link reaches the whole graph through
-      // its nodes, and a failing deepEqual over it renders that graph until
-      // the host runs out of memory.
-      const key = (d) => `${d.source.id} > ${d.target.id} #${d.index}`;
       assert.ok(thin.every((d) => app.isHairline(app.CONFIG.overview, d)));
       const hairlines = [...chart.querySelectorAll("path.link.hairline")];
       const hits = [...chart.querySelectorAll("g.link-hits path.link-hit")];
@@ -195,11 +199,11 @@ describe("hairlines", () => {
     const tip = document.getElementById("tooltip");
     assert.ok(!tip.hidden && tip.textContent.length > 0, "hovering a hairline's hit target shows no tooltip");
     fire(hit, "click");
-    assert.equal(app.pinned, hit.__data__, "a click on a hairline's hit target pins another flow");
+    assert.equal(key(app.pinned), key(hit.__data__), "a click on a hairline's hit target pins another flow");
     // Focus is on the ribbon itself.
     const ribbon = out.hairlines[out.hairlines.length - 1];
     ribbon.focus();
-    assert.equal(app.pinned, ribbon.__data__, "focusing a hairline does not pin it");
+    assert.equal(key(app.pinned), key(ribbon.__data__), "focusing a hairline does not pin it");
   });
 
   test("the spine, on the form's own canvas, draws none and says nothing, though some of its ribbons are under a pixel", async (t) => {
