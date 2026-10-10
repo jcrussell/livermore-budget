@@ -89,6 +89,8 @@ var idFormTiers = map[string]int{
 	PrefixDepartment:   tierDepartment,
 	PrefixExpenditure:  tierObjectCategory,
 	PrefixTransferTo:   tierObjectCategory,
+	PrefixGroupOnly:    tierFund,
+	PrefixNoDivision:   tierDepartment,
 }
 
 // endpointTiers are the flow endpoints' tiers, read off flowEndpoints: they
@@ -158,6 +160,9 @@ const (
 	RoleReserveIncrease         = "reserve_increase"
 	RoleFundBalanceDraw         = "fund_balance_draw"
 	RoleFundBalanceContribution = "fund_balance_contribution"
+	// RoleGroupRemainder is the expansion's node for money pp.66-67 print in
+	// a fund group's column and no fund's own page carries, beside its funds.
+	RoleGroupRemainder = "group_remainder"
 )
 
 // Roles is every node role a document may carry.
@@ -166,7 +171,7 @@ func Roles() []string {
 		RoleRevenueSource, RoleRevenueLine, RoleFundGroup, RoleFund, RoleGeneralFund,
 		RoleDepartment, RoleWholeDepartment, RoleObjectCategory, RoleTransferIn,
 		RoleTransferOut, RoleTransferSource, RoleTransferSink, RoleReserveIncrease,
-		RoleFundBalanceDraw, RoleFundBalanceContribution,
+		RoleFundBalanceDraw, RoleFundBalanceContribution, RoleGroupRemainder,
 	}
 }
 
@@ -431,6 +436,10 @@ type Node struct {
 	// pp.186-209 alone: absent on every other node, as the headline is on
 	// every document but the spine's.
 	Balances *NodeBalances `json:"balances,omitempty"`
+	// Alternative is, on the expansion schedule alone, the key of the
+	// alternative split this node is a member of, its Parent being that
+	// split's node; "" is a member of the parent's primary split.
+	Alternative string `json:"alternative,omitempty"`
 }
 
 // NodeBalances is a fund's printed beginning and ending balance in one
@@ -507,6 +516,11 @@ type Link struct {
 	// non-empty exactly when ValueCents is negative. It is on the wire because
 	// the client folds away the parent it names.
 	Contra string `json:"contra"`
+	// Alternative is, on the expansion schedule alone, the key of the
+	// alternative split this link is a leaf link of: it runs between that
+	// split's node and one of its members, and a reader of any other split
+	// of the node does not draw it. "" is a primary link.
+	Alternative string `json:"alternative,omitempty"`
 }
 
 // sankey projects the citywide spine as a flow diagram.

@@ -34,6 +34,11 @@
       "type": "string",
       "enum": ["aggregate", "residual", "gap", "smaller"]
     },
+    "split_form": {
+      "description": "How a node of the expansion schedule opens: in place of itself, or into a column after it; project.SplitForms.",
+      "type": "string",
+      "enum": ["refine", "extend"]
+    },
     "chart_form": {
       "description": "Which renderer draws a chart; export.ChartForms.",
       "type": "string",
@@ -46,7 +51,7 @@
         "revenue_source", "revenue_line", "fund_group", "fund", "general_fund",
         "department", "whole_department", "object_category", "transfer_in",
         "transfer_out", "transfer_source", "transfer_destination", "reserve_increase",
-        "fund_balance_draw", "fund_balance_contribution"
+        "fund_balance_draw", "fund_balance_contribution", "group_remainder"
       ]
     }
   }

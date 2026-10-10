@@ -89,8 +89,12 @@ func TestEveryPublishedDocumentSelectsExactlyItsCutsFootprint(t *testing.T) {
 		t.Fatal("no published document is a single column, so nothing above compared")
 	}
 	// department-spending draws pp.85-125's one Transfers Out row, which sits
-	// in no cut: the residue is drawn, and it is the only one.
-	if residueDrawers != 4 {
-		t.Errorf("%d documents draw a declared residue, want the four department-spending columns", residueDrawers)
+	// in no cut: the residue is drawn, and it is the only one. The expansion
+	// selects every scope it stitches whole, that row and pp.186-209's CIP
+	// block with them, and cites neither: it reads only reserves and balances
+	// off pp.186-209, and the row prints a dash in both budget years.
+	if residueDrawers != 6 {
+		t.Errorf("%d documents select a declared residue, want the four department-spending columns "+
+			"and the expansion's two", residueDrawers)
 	}
 }

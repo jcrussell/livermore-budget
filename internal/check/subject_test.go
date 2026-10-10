@@ -340,6 +340,8 @@ func TestTheCommittedCorpusVacuitySplit(t *testing.T) {
 		"transfer-legs-pair":               StatusPass,
 		"node-hierarchy-well-formed":       StatusPass,
 		"constraint-tier-vocabulary":       StatusPass,
+		"expansion-opens-as-the-spine":     StatusPass,
+		"expansion-splits-tie":             StatusPass,
 		"contra-links-name-their-schedule": StatusPass,
 		"fact-departments-resolve":         StatusPass,
 		"fact-funds-resolve":               StatusPass,

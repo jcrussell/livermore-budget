@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
+	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/internal/structure"
 )
 
@@ -155,6 +156,12 @@ func (*peersOverlapOnlyByDeclaredIdentity) Run(_ context.Context, s *Subject) (R
 	seen := map[string]bool{}
 	for _, p := range s.Projections {
 		if p.Trends != nil {
+			continue
+		}
+		// The stitch is not a view: its scopes are the spine and the cuts
+		// decomposing it, every link a leaf of one hierarchy, and what it sums
+		// is held to the spine by expansion-opens-as-the-spine.
+		if p.Name == project.ExpansionProjection {
 			continue
 		}
 		key := p.Name + " " + p.Options.ScopeList()

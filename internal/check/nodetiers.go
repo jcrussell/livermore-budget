@@ -73,8 +73,11 @@ func (*nodeTiersAreDeclared) Run(_ context.Context, s *Subject) (Result, error) 
 			}
 		}
 
-		partitioned, plain := 0, 0
-		axes := map[[2]int]bool{}
+		// The partition is claimed per split: on the expansion schedule an
+		// alternative's links read one matrix while the primary links follow
+		// money, so each alternative is held as a document of its own.
+		partitioned, plain := map[string]int{}, map[string]int{}
+		axes := map[string]map[[2]int]bool{}
 		for _, l := range p.Links {
 			links++
 			src, sok := tierOf[l.Source]
@@ -96,10 +99,13 @@ func (*nodeTiersAreDeclared) Run(_ context.Context, s *Subject) (Result, error) 
 			}
 			if l.Partition {
 				partitions++
-				partitioned++
-				axes[[2]int{src, dst}] = true
+				partitioned[l.Alternative]++
+				if axes[l.Alternative] == nil {
+					axes[l.Alternative] = map[[2]int]bool{}
+				}
+				axes[l.Alternative][[2]int{src, dst}] = true
 			} else {
-				plain++
+				plain[l.Alternative]++
 			}
 			if src < dst && !isRollup(l.Target, l.Source, parentOf) {
 				continue
@@ -127,23 +133,29 @@ func (*nodeTiersAreDeclared) Run(_ context.Context, s *Subject) (Result, error) 
 		}
 
 		// The partition is the document's claim, held across its links.
-		if partitioned > 0 && plain > 0 {
+		for alt := range partitioned {
+			if plain[alt] == 0 {
+				continue
+			}
 			findings = append(findings, finding(p.String(),
-				"this document declares a partition on %d of its %d links and none on the "+
+				"this document declares a partition on %d of its %d links%s and none on the "+
 					"other %d; one printed matrix has no cell that is a flow",
-				partitioned, partitioned+plain, plain))
+				partitioned[alt], partitioned[alt]+plain[alt], ofAlternative(alt), plain[alt]))
 		}
-		if len(axes) > 1 {
-			pairs := make([]string, 0, len(axes))
-			for a := range axes {
+		for alt, pairsAt := range axes {
+			if len(pairsAt) < 2 {
+				continue
+			}
+			pairs := make([]string, 0, len(pairsAt))
+			for a := range pairsAt {
 				pairs = append(pairs, fmt.Sprintf("%d -> %d", a[0], a[1]))
 			}
 			sort.Strings(pairs)
 			findings = append(findings, finding(p.String(),
-				"this document's partition links run between %d pairs of tiers (%s). One "+
+				"this document's partition links%s run between %d pairs of tiers (%s). One "+
 					"printed matrix has two axes, so its cells run between one pair; links "+
 					"partitioning across more tiers than that are flows wearing the flag",
-				len(axes), strings.Join(pairs, ", ")))
+				ofAlternative(alt), len(pairsAt), strings.Join(pairs, ", ")))
 		}
 	}
 
@@ -156,6 +168,15 @@ func (*nodeTiersAreDeclared) Run(_ context.Context, s *Subject) (Result, error) 
 		nothing:  "no projection carries a node, so no tier has been read",
 		findings: findings,
 	}.result(), nil
+}
+
+// ofAlternative names an alternative split's links in a finding, or nothing
+// for a document's primary ones.
+func ofAlternative(alt string) string {
+	if alt == "" {
+		return ""
+	}
+	return fmt.Sprintf(" of alternative %q", alt)
 }
 
 // isRollup is a revenue line added into the category it is printed under, the

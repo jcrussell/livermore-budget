@@ -48,6 +48,8 @@ var endNames = map[string]endName{
 	project.PrefixDepartment:   namesDepartment,
 	project.PrefixExpenditure:  namesCategory,
 	project.PrefixTransferTo:   namesPartnerFund,
+	project.PrefixGroupOnly:    namesFundGroup,
+	project.PrefixNoDivision:   namesCategory,
 }
 
 // linkEndsMatchTheirFacts asserts a link's ends name the fund, fund group,
@@ -96,7 +98,7 @@ func (*linkEndsMatchTheirFacts) Run(_ context.Context, s *Subject) (Result, erro
 				}
 			}
 			e := linkEnd{link: l, facts: facts, vocab: s.Vocabulary, tiers: tiers,
-				divisionExpenditure: p.Name == project.FundFlowsProjection}
+				divisionExpenditure: p.Name == project.FundFlowsProjection || p.Name == project.ExpansionProjection}
 			for _, j := range legs[l.TransferID] {
 				if j != i {
 					e.others = append(e.others, p.Links[j])
@@ -173,10 +175,24 @@ type linkEnd struct {
 // "", and whether the end was held to anything.
 func (e linkEnd) mismatch(id string, source bool) (string, bool) {
 	if readings, ok := project.EndpointCategories(id); ok {
-		if msg := outsideEveryReading(id, readings, e.facts); msg != "" {
-			return msg, true
+		// A remainder's facts are a printed cell and the members it is the
+		// difference of, each one reading of the endpoint.
+		parts := [][]fact.Fact{e.facts}
+		if project.IsRemainder(e.link.Source) || project.IsRemainder(e.link.Target) {
+			parts = splitPrinted(e.facts)
+		}
+		for i, part := range parts {
+			// The members a remainder subtracts are read fund by fund.
+			for _, one := range byFundIf(part, i > 0) {
+				if msg := outsideEveryReading(id, readings, one); msg != "" {
+					return msg, true
+				}
+			}
 		}
 		sum := project.ChangeCents(e.facts)
+		if len(parts) > 1 {
+			sum = project.ChangeCents(parts[0]) - project.ChangeCents(parts[1])
+		}
 		// A draw and a contribution cite the same categories, told apart by
 		// sign; a zero change is neither.
 		if len(e.facts) > 0 && ((id == project.NodeFundBalanceDraw && sum >= 0) ||
@@ -202,6 +218,10 @@ func (e linkEnd) mismatch(id string, source bool) (string, bool) {
 			carried = f.FundGroup
 		case namesDivision, namesDepartment:
 			carried = f.Department
+			// The expansion's division of one object category, every fund.
+			if strings.Contains(value, "/") {
+				carried = f.Department + "/" + f.Category
+			}
 			tier := map[endName]string{namesDivision: structure.TierDivision, namesDepartment: structure.TierDepartment}[name]
 			if e.tiers[f.Scope] != tier {
 				return fmt.Sprintf("%s names a %s and fact %s is from %s, which no cut declares at that tier",
@@ -209,7 +229,13 @@ func (e linkEnd) mismatch(id string, source bool) (string, bool) {
 			}
 		case namesCategory:
 			carried = f.Category
-			if e.divisionExpenditure && form+"/" == project.PrefixExpenditure {
+			switch {
+			case form+"/" != project.PrefixExpenditure || !strings.Contains(value, "/"):
+			case strings.HasPrefix(value, project.PrefixFundGroup):
+				// A fund group's own row: every fact behind it, printed or
+				// summed, is of that group and that category.
+				carried = project.PrefixFundGroup + f.FundGroup + "/" + f.Category
+			case e.divisionExpenditure:
 				carried = strings.TrimPrefix(project.ExpenditureIDOf(&f), project.PrefixExpenditure)
 			}
 		case namesLine:
@@ -240,6 +266,45 @@ func (e linkEnd) mismatch(id string, source bool) (string, bool) {
 		}
 	}
 	return "", true
+}
+
+// splitPrinted is a remainder's facts as the spine's and the rest, in that
+// order, dropping a side with none.
+func splitPrinted(facts []fact.Fact) [][]fact.Fact {
+	var printed, rest []fact.Fact
+	for _, f := range facts {
+		if f.Scope == project.PublishedScope {
+			printed = append(printed, f)
+		} else {
+			rest = append(rest, f)
+		}
+	}
+	if len(rest) == 0 {
+		return [][]fact.Fact{printed}
+	}
+	return [][]fact.Fact{printed, rest}
+}
+
+// byFundIf is facts grouped by fund in first-seen order when split is set,
+// and the facts whole otherwise.
+func byFundIf(facts []fact.Fact, split bool) [][]fact.Fact {
+	if !split {
+		return [][]fact.Fact{facts}
+	}
+	var order []string
+	by := map[string][]fact.Fact{}
+	for _, f := range facts {
+		k := fact.FundString(f.Fund)
+		if _, ok := by[k]; !ok {
+			order = append(order, k)
+		}
+		by[k] = append(by[k], f)
+	}
+	out := make([][]fact.Fact, 0, len(order))
+	for _, k := range order {
+		out = append(out, by[k])
+	}
+	return out
 }
 
 // outsideEveryReading is why the facts behind a flow endpoint are not one of

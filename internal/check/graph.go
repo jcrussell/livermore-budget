@@ -714,6 +714,11 @@ func (*transferLegsPair) Run(_ context.Context, s *Subject) (Result, error) {
 	roles := map[string]map[string]string{}
 	var ids []string
 	var findings []Finding
+	scopeOf := map[string]string{}
+	for i := range s.Facts {
+		scopeOf[s.Facts[i].ID] = s.Facts[i].Scope
+	}
+	outside := 0
 	for _, p := range s.linkedDocuments() {
 		role := map[string]string{}
 		for _, n := range p.Nodes {
@@ -728,6 +733,12 @@ func (*transferLegsPair) Run(_ context.Context, s *Subject) (Result, error) {
 					findings = append(findings, finding(p.String(),
 						"%s -> %s carries no transfer_id, and every link of this document is a leg", l.Source, l.Target))
 				}
+				continue
+			}
+			// The stitch draws the operating budget alone, so of a transfer
+			// p222 prints into a CIP fund it draws the paying leg only.
+			if p.Name == project.ExpansionProjection && citesOnly(l, scopeOf, project.CIPFundingScope) {
+				outside++
 				continue
 			}
 			key := p.String() + " transfer " + l.TransferID
@@ -766,10 +777,21 @@ func (*transferLegsPair) Run(_ context.Context, s *Subject) (Result, error) {
 	return conclusion{
 		subjects: len(ids),
 		unit:     "transfer ids",
-		held:     fmt.Sprintf("%d transfer ids, each with two equal legs", len(ids)),
+		held: fmt.Sprintf("%d transfer ids, each with two equal legs; %d paying legs the expansion "+
+			"draws into the CIP funds outside the operating budget alone", len(ids), outside),
 		nothing:  "no link carries a transfer_id, so no pairing has been checked",
 		findings: findings,
 	}.result(), nil
+}
+
+// citesOnly answers whether every fact a link cites is of one scope.
+func citesOnly(l project.Link, scopeOf map[string]string, scope string) bool {
+	for _, id := range l.FactIDs {
+		if scopeOf[id] != scope {
+			return false
+		}
+	}
+	return len(l.FactIDs) > 0
 }
 
 func describeLegs(legs []project.Link) string {
@@ -854,6 +876,18 @@ func (*nodeHierarchyWellFormed) Run(_ context.Context, s *Subject) (Result, erro
 		for _, n := range p.Nodes {
 			byID[n.ID] = n
 		}
+		// A split the document declares places its members, in the parent's
+		// column or one after it, whatever their id forms' tiers say.
+		declared := map[[2]string]bool{}
+		if p.Graph != nil {
+			for _, sp := range p.Graph.Splits {
+				alt := ""
+				if sp.Alternative {
+					alt = sp.Key
+				}
+				declared[[2]string{sp.Node, alt}] = true
+			}
+		}
 		flowing := make(map[string]bool, 2*len(p.Links))
 		for _, l := range p.Links {
 			flowing[l.Source] = true
@@ -890,7 +924,8 @@ func (*nodeHierarchyWellFormed) Run(_ context.Context, s *Subject) (Result, erro
 				form, ok := sameTierContainers[n.Parent]
 				sameTier = ok && strings.HasPrefix(n.ID, form)
 			}
-			if parent.Tier > n.Tier || (parent.Tier == n.Tier && !sameTier) {
+			member := declared[[2]string{n.Parent, n.Alternative}]
+			if !member && (parent.Tier > n.Tier || (parent.Tier == n.Tier && !sameTier)) {
 				findings = append(findings, finding(p.String(),
 					"node %q is at tier %d and its parent %q is at tier %d. A parent is "+
 						"strictly coarser than its child, or the fold runs the wrong way "+

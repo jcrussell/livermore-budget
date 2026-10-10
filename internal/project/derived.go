@@ -76,7 +76,26 @@ func EndpointCategories(id string) ([][]string, bool) {
 // ([ChangeCents]), negated on a draw. Only those links may subtract a balance,
 // so a link elsewhere citing a beginning balance beside its own fact does not
 // tie by netting it off.
+//
+// A link at a remainder node carries the difference of a printed cell and the
+// members it is not: the spine's facts it cites, read so, less the rest.
 func LinkCents(source, target string, facts []fact.Fact) int64 {
+	if IsRemainder(source) || IsRemainder(target) {
+		var printed, members []fact.Fact
+		for i := range facts {
+			if facts[i].Scope == PublishedScope {
+				printed = append(printed, facts[i])
+			} else {
+				members = append(members, facts[i])
+			}
+		}
+		return endCents(source, target, printed) - endCents(source, target, members)
+	}
+	return endCents(source, target, facts)
+}
+
+// endCents is LinkCents' reading of one set of facts at a link's ends.
+func endCents(source, target string, facts []fact.Fact) int64 {
 	switch {
 	case source == NodeFundBalanceDraw:
 		return -ChangeCents(facts)

@@ -1,0 +1,207 @@
+package check
+
+import (
+	"slices"
+	"strings"
+	"testing"
+
+	"github.com/jcrussell/livermore-budget/internal/project"
+)
+
+// withExpansion is the committed corpus with the FY2026-27 expansion document
+// replaced by a copy edit has changed.
+func withExpansion(t *testing.T, edit func(d *project.Document)) *Subject {
+	t.Helper()
+	s := mutable(t)
+	for i, p := range s.Projections {
+		if p.Name != project.ExpansionProjection || p.Graph == nil || p.Options.Columns[0].FiscalYear != 2027 {
+			continue
+		}
+		d := *p.Graph
+		d.Nodes = slices.Clone(d.Nodes)
+		d.Links = slices.Clone(d.Links)
+		for j := range d.Links {
+			d.Links[j].FactIDs = slices.Clone(d.Links[j].FactIDs)
+		}
+		edit(&d)
+		s.Projections[i].Graph = &d
+		return s
+	}
+	t.Fatal("the committed corpus builds no FY2026-27 expansion")
+	return nil
+}
+
+// linkAt is the index of the link from source to target.
+func linkAt(t *testing.T, d *project.Document, source, target string) int {
+	t.Helper()
+	for i, l := range d.Links {
+		if l.Source == source && l.Target == target {
+			return i
+		}
+	}
+	t.Fatalf("no link %s -> %s", source, target)
+	return -1
+}
+
+// spineFact is the one fact the FY2026-27 spine cites from source to target.
+func spineFact(t *testing.T, s *Subject, source, target string) string {
+	t.Helper()
+	for _, p := range s.documentsNamed(project.PublishedProjection) {
+		if p.Options.Columns[0].FiscalYear != 2027 {
+			continue
+		}
+		for _, l := range p.Graph.Links {
+			if l.Source == source && l.Target == target {
+				return l.FactIDs[0]
+			}
+		}
+	}
+	t.Fatalf("the spine draws no %s -> %s", source, target)
+	return ""
+}
+
+const (
+	isRemainder = "fund-group-only/internal-service"
+	isRow       = "expenditure/fund-group/internal-service/services-and-supplies"
+)
+
+// TestTheExpansionChecksCanFail holds each check green over the committed
+// corpus and red under each edit a stitch could make, naming what it reads.
+func TestTheExpansionChecksCanFail(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct {
+		name  string
+		check Check
+		edit  func(t *testing.T, s *Subject, d *project.Document)
+		bare  func(s *Subject)
+		want  string
+	}{
+		{
+			name: "a fund under another group moves two groups' cells", check: &expansionOpensAsTheSpine{},
+			edit: func(t *testing.T, _ *Subject, d *project.Document) {
+				for i := range d.Nodes {
+					if d.Nodes[i].ID == "fund/101" {
+						d.Nodes[i].Parent = "fund-group/general"
+					}
+				}
+			},
+			want: "fund-group/general",
+		},
+		{
+			name: "the 250,000 dropped leaves the cell short", check: &expansionOpensAsTheSpine{},
+			edit: func(t *testing.T, _ *Subject, d *project.Document) {
+				i := linkAt(t, d, isRemainder, isRow)
+				d.Links = slices.Delete(d.Links, i, i+1)
+			},
+			want: "fund-group/internal-service -> expenditure/services-and-supplies",
+		},
+		{
+			name: "a leaf citing another cell's printed figure", check: &expansionOpensAsTheSpine{},
+			edit: func(t *testing.T, s *Subject, d *project.Document) {
+				i := linkAt(t, d, project.NodeFundBalanceDraw, "fund-group-only/capital")
+				d.Links[i].FactIDs = []string{spineFact(t, s, "fund-group/enterprise", project.NodeFundBalanceContribution)}
+			},
+			want: "a figure of pp.66-67 this cell does not print",
+		},
+		{
+			name: "a division's link a cent short of its rows", check: &expansionSplitsTie{},
+			edit: func(t *testing.T, _ *Subject, d *project.Document) {
+				d.Links[linkAt(t, d, "fund/100", "dept/police-administration")].ValueCents--
+			},
+			want: "fund/100 -> dept/police-administration",
+		},
+		{
+			name: "the remainder citing another group's cell", check: &expansionSplitsTie{},
+			edit: func(t *testing.T, s *Subject, d *project.Document) {
+				i := linkAt(t, d, isRemainder, isRow)
+				own := spineFact(t, s, "fund-group/internal-service", "expenditure/services-and-supplies")
+				other := spineFact(t, s, "fund-group/enterprise", "expenditure/services-and-supplies")
+				for j, id := range d.Links[i].FactIDs {
+					if id == own {
+						d.Links[i].FactIDs[j] = other
+					}
+				}
+			},
+			want: "the remainder " + isRemainder + " -> " + isRow + " cites",
+		},
+		{
+			name: "a refined root carrying a link of its own", check: &expansionSplitsTie{},
+			edit: func(t *testing.T, _ *Subject, d *project.Document) {
+				l := d.Links[linkAt(t, d, isRemainder, isRow)]
+				l.Source = "fund-group/internal-service"
+				d.Links = append(d.Links, l)
+			},
+			want: "the node is replaced by its members and carries",
+		},
+		{
+			name: "a difference no declared exception holds apart", check: &expansionSplitsTie{},
+			edit: func(*testing.T, *Subject, *project.Document) {},
+			bare: func(s *Subject) { s.Exceptions = nil },
+			want: "no declared exception holds this cell apart",
+		},
+		{
+			name: "a division dropped from the alternative", check: &expansionSplitsTie{},
+			edit: func(t *testing.T, _ *Subject, d *project.Document) {
+				i := linkAt(t, d, "expenditure/wages-and-benefits", "dept/patrol/wages-and-benefits")
+				d.Links = slices.Delete(d.Links, i, i+1)
+			},
+			want: "into expenditure/wages-and-benefits",
+		},
+		// The exemptions the stitch is given elsewhere reach no further than
+		// what it declares.
+		{
+			name: "members of a split the document does not declare", check: &nodeHierarchyWellFormed{},
+			edit: func(_ *testing.T, _ *Subject, d *project.Document) { d.Splits = nil },
+			want: "expenditure/wages-and-benefits",
+		},
+		{
+			name: "a primary link wearing the partition flag", check: &nodeTiersAreDeclared{},
+			edit: func(t *testing.T, _ *Subject, d *project.Document) {
+				d.Links[linkAt(t, d, "fund/100", "dept/police-administration")].Partition = true
+			},
+			want: "declares a partition",
+		},
+		{
+			name: "a p76 transfer missing its receiving leg", check: &transferLegsPair{},
+			edit: func(t *testing.T, _ *Subject, d *project.Document) {
+				i := linkAt(t, d, "transfer-from/100", "fund/210")
+				d.Links = slices.Delete(d.Links, i, i+1)
+			},
+			want: "names 1 legs, want 2",
+		},
+		{
+			name: "a division's alternative row named for another division", check: &linkEndsMatchTheirFacts{},
+			edit: func(t *testing.T, _ *Subject, d *project.Document) {
+				d.Links[linkAt(t, d, "expenditure/wages-and-benefits", "dept/patrol/wages-and-benefits")].Target =
+					"dept/finance/wages-and-benefits"
+			},
+			want: "dept/finance/wages-and-benefits",
+		},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			green, err := c.check.Run(t.Context(), committed(t))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if green.Status != StatusPass {
+				t.Fatalf("%s over the committed corpus is %s: %v", c.check.ID(), green.Status, green.Findings)
+			}
+			s := withExpansion(t, func(d *project.Document) { c.edit(t, committed(t), d) })
+			if c.bare != nil {
+				c.bare(s)
+			}
+			red, err := c.check.Run(t.Context(), s)
+			if err != nil {
+				t.Fatal(err)
+			}
+			named := false
+			for _, f := range red.Findings {
+				named = named || strings.Contains(f.Subject+" "+f.Detail, c.want)
+			}
+			if red.Status != StatusFail || !named {
+				t.Errorf("%s is %s with findings %v, want a failure naming %q", c.check.ID(), red.Status, red.Findings, c.want)
+			}
+		})
+	}
+}

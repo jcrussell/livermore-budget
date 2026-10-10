@@ -22,6 +22,8 @@ type Document struct {
 	Metadata      Metadata `json:"metadata"`
 	Nodes         []Node   `json:"nodes"`
 	Links         []Link   `json:"links"`
+	// Splits is the expansion schedule's alone: what each node splits into.
+	Splits []Split `json:"splits,omitempty"`
 }
 
 // Metadata is what a reader needs to know which slice of the budget the graph

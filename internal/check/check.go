@@ -224,6 +224,8 @@ func All() []Check {
 		&transferLegsPair{},
 		&nodeHierarchyWellFormed{},
 		&constraintTierVocabulary{},
+		&expansionOpensAsTheSpine{},
+		&expansionSplitsTie{},
 	}
 }
 

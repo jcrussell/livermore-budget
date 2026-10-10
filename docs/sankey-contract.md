@@ -222,6 +222,23 @@ no flow of its own, and a container alone may hold a node at its own tier: on
 the spine the same ids are the ends of the city's transfers, and a node parented
 to one there is still refused.
 
+**The expansion schedule adds four forms, each naming what its facts carry.**
+`expansion` stitches the spine's cells out of the schedules that decompose
+them (`project.expansion`'s doc comment is its shape). Two of the forms extend
+a declared prefix with a longer tail. `dept/<division>/<object>` is one
+division's spending on one object category across every fund, pp.85-125's
+cell, a member of that category's alternative split; it cannot be
+`dept/<division>`, which on the same chart is the General Fund's division
+beneath `fund/100`. `expenditure/fund-group/<type>/<object>` is an object
+category's money a fund group's column of pp.66-67 prints and its funds' rows
+do not, beside `expenditure/fund/<n>/<object>`; it is derived. The other two
+are new prefixes for derived remainders: `fund-group-only/<type>` at tier 3, money
+pp.66-67 print in a group's column and no fund's own page carries, and
+`no-division/<object>` at tier 4, an object category's money no division on
+pp.85-125 prints. A remainder's link cites the printed cell and the members
+it is the difference of, and `project.LinkCents` reads it as the first less
+the second.
+
 **Tier 1 is a printed row, not a constraint layer.** A constraint tier is a
 property of a **fund**, and the fund groups do not partition along it. Counting `data/funds.yaml` by `type` x `constraint_tier`, `capital`
 holds 3 committed funds and 43 restricted-by-law; `special-revenue` holds 37

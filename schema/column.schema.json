@@ -268,6 +268,11 @@
                   "description": "The schedule this link is printed as a reduction of, in the words the page shows beside it. Present only on a link the document prints negative.",
                   "type": "string",
                   "minLength": 1
+                },
+                "alternative": {
+                  "description": "On the expansion schedule alone: the key of the alternative split this is a leaf link of, drawn only while a reader has that split open.",
+                  "type": "string",
+                  "minLength": 1
                 }
               },
               "allOf": [
@@ -349,6 +354,11 @@
                 "parent": {
                   "type": "string"
                 },
+                "alternative": {
+                  "description": "On the expansion schedule alone: the key of the alternative split this node is a member of, its parent being that split's node.",
+                  "type": "string",
+                  "minLength": 1
+                },
                 "balances": {
                   "description": "A fund's printed beginning and ending balance, on fund-sources-uses alone: the document's figure, carried with the schedule that cites it. A blank balance is absent, not zero.",
                   "type": "object",
@@ -386,6 +396,37 @@
                       }
                     }
                   }
+                }
+              }
+            }
+          },
+          "splits": {
+            "description": "The expansion schedule's alone: each way a node opens. A split's members are the nodes parented to its node whose alternative is its key on an alternative split, or absent on the primary one.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "node",
+                "key",
+                "form",
+                "alternative"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "node": {
+                  "description": "An index into the column's node table.",
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "key": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "form": {
+                  "$ref": "https://jcrussell.github.io/livermore-budget/schema/enums.schema.json#/$defs/split_form"
+                },
+                "alternative": {
+                  "type": "boolean"
                 }
               }
             }

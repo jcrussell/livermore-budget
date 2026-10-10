@@ -10,7 +10,7 @@
     "schema_version": { "const": 1 },
     "projection": {
       "description": "A declared set, not an open one: each value is an internal/project constant the export's steps name.",
-      "enum": ["sankey", "fund-flows", "department-spending", "department-funding", "transfers-by-fund", "transfers-out", "fund-sources-uses"]
+      "enum": ["sankey", "fund-flows", "department-spending", "department-funding", "transfers-by-fund", "transfers-out", "fund-sources-uses", "expansion"]
     },
     "metadata": {
       "type": "object",
@@ -90,6 +90,10 @@
           "derived": { "type": "boolean" },
           "rationale": { "type": "string" },
           "source_note": { "type": "string" },
+          "alternative": {
+            "description": "On the expansion schedule alone: the key of the alternative split this node is a member of, its parent being that split's node. Absent on a member of the parent's primary split.",
+            "type": "string", "minLength": 1
+          },
           "balances": {
             "description": "A fund's printed beginning and ending balance in this column, on fund-sources-uses alone. A balance the page leaves blank is absent, not zero, so a node printing neither carries no key at all.",
             "type": "object",
@@ -131,6 +135,21 @@
         }
       }
     },
+    "splits": {
+      "description": "The expansion schedule's alone: each way a node opens. A node's members are the nodes parented to it whose alternative is the split's key on an alternative split, or absent on its primary one.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["node", "key", "form", "alternative"],
+        "additionalProperties": false,
+        "properties": {
+          "node": { "type": "string", "minLength": 1 },
+          "key": { "type": "string", "minLength": 1 },
+          "form": { "$ref": "https://jcrussell.github.io/livermore-budget/schema/enums.schema.json#/$defs/split_form" },
+          "alternative": { "type": "boolean" }
+        }
+      }
+    },
     "links": {
       "type": "array",
       "items": {
@@ -162,6 +181,10 @@
           "contra": {
             "description": "The schedule this link is printed as a reduction of, in the words the page shows beside it. Empty on every link the document does not print negative.",
             "type": "string"
+          },
+          "alternative": {
+            "description": "On the expansion schedule alone: the key of the alternative split this is a leaf link of, drawn only while a reader has that split open. Absent on a primary link.",
+            "type": "string", "minLength": 1
           }
         },
         "allOf": [

@@ -70,6 +70,7 @@ func TestEverySharedEnumIsItsGoSet(t *testing.T) {
 		"link_kind":  strs(project.LinkKinds()),
 		"role":       strs(project.Roles()),
 		"chart_form": strs(export.ChartForms()),
+		"split_form": strs(project.SplitForms()),
 		"mark_role":  strs(export.MarkRoles()),
 	} {
 		if diff := cmp.Diff(want, enumAt(t, "enums.schema.json", "$defs", def)); diff != "" {

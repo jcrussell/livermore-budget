@@ -253,6 +253,7 @@ func publishedGraphs() []publishedGraph {
 		{projection: TransfersByFundProjection, scopes: TransfersByFundScopes(), columns: adoptedColumns()},
 		{projection: TransfersOutProjection, scopes: TransfersOutScopes(), kinds: (&transfersByFund{Out: true}).kinds(), columns: adoptedColumns()},
 		{projection: FundSourcesUsesProjection, scopes: FundSourcesUsesScopes(), throughCuts: true, columns: budgetBookDetailColumns()},
+		{projection: ExpansionProjection, scopes: ExpansionScopes(), columns: adoptedColumns()},
 	}
 }
 
@@ -710,6 +711,7 @@ func Registry(l labels) []Projection {
 		&transfersByFund{Labels: l},
 		&transfersByFund{Labels: l, Out: true},
 		&fundSourcesUses{Labels: l},
+		&expansion{Labels: l},
 		&FundBalanceChanges{Labels: l},
 		&FundBalances{Labels: l},
 	}

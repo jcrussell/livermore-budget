@@ -62,6 +62,9 @@ type ColumnSchedNode struct {
 	Parent string `json:"parent,omitempty"`
 	// Balances is a fund's printed balances where the schedule cites them.
 	Balances *ColumnBalances `json:"balances,omitempty"`
+	// Alternative is the expansion schedule's: the key of the alternative
+	// split this node is a member of.
+	Alternative string `json:"alternative,omitempty"`
 }
 
 // ColumnBalances is a fund's printed beginning and ending balance, carried
@@ -96,6 +99,17 @@ type ColumnSched struct {
 	Sources json.RawMessage   `json:"sources,omitempty"`
 	Nodes   []ColumnSchedNode `json:"nodes"`
 	Links   []ColumnLink      `json:"links"`
+	// Splits is the expansion schedule's: each way a node opens.
+	Splits []ColumnSplit `json:"splits,omitempty"`
+}
+
+// ColumnSplit is one way a node of the expansion schedule opens, its node by
+// index into the node table; project.Split says what each field means.
+type ColumnSplit struct {
+	Node        int    `json:"node"`
+	Key         string `json:"key"`
+	Form        string `json:"form"`
+	Alternative bool   `json:"alternative"`
 }
 
 // ColumnLink references its ends by index into the node table, which is why
@@ -113,6 +127,9 @@ type ColumnLink struct {
 	// Contra is carried from the projection so the page never composes it
 	// from a parent the fold has already blanked.
 	Contra string `json:"contra,omitempty"`
+	// Alternative is the expansion schedule's: the key of the alternative
+	// split this is a leaf link of.
+	Alternative string `json:"alternative,omitempty"`
 }
 
 // decoded is a published document, read far enough to fold into a column.
@@ -129,20 +146,28 @@ type decoded struct {
 		Rationale      string `json:"rationale"`
 		SourceNote     string `json:"source_note"`
 		// Balances is a fund's printed balances, carried with the schedule.
-		Balances *ColumnBalances `json:"balances"`
+		Balances    *ColumnBalances `json:"balances"`
+		Alternative string          `json:"alternative"`
 	} `json:"nodes"`
 	Links []struct {
-		Source     string          `json:"source"`
-		Target     string          `json:"target"`
-		ValueCents int64           `json:"value_cents"`
-		Kind       string          `json:"kind"`
-		TransferID string          `json:"transfer_id"`
-		FactIDs    []string        `json:"fact_ids"`
-		Locators   json.RawMessage `json:"locators"`
-		Derived    bool            `json:"derived"`
-		Partition  bool            `json:"partition"`
-		Contra     string          `json:"contra"`
+		Source      string          `json:"source"`
+		Target      string          `json:"target"`
+		ValueCents  int64           `json:"value_cents"`
+		Kind        string          `json:"kind"`
+		TransferID  string          `json:"transfer_id"`
+		FactIDs     []string        `json:"fact_ids"`
+		Locators    json.RawMessage `json:"locators"`
+		Derived     bool            `json:"derived"`
+		Partition   bool            `json:"partition"`
+		Contra      string          `json:"contra"`
+		Alternative string          `json:"alternative"`
 	} `json:"links"`
+	Splits []struct {
+		Node        string `json:"node"`
+		Key         string `json:"key"`
+		Form        string `json:"form"`
+		Alternative bool   `json:"alternative"`
+	} `json:"splits"`
 	Metadata struct {
 		FiscalYear      int             `json:"fiscal_year"`
 		FiscalYearLabel string          `json:"fiscal_year_label"`
@@ -331,7 +356,8 @@ func ColumnsOf(projections map[string][]byte, generatedBy string) (map[string]Co
 					"column %s: %q disagrees between schedules about the same node: %+v and %+v",
 					key, n.ID, col.Nodes[i], node)
 			}
-			drawn = append(drawn, ColumnSchedNode{Node: i, Parent: n.Parent, Balances: n.Balances})
+			drawn = append(drawn, ColumnSchedNode{Node: i, Parent: n.Parent, Balances: n.Balances,
+				Alternative: n.Alternative})
 		}
 
 		links := make([]ColumnLink, 0, len(d.Links))
@@ -346,7 +372,17 @@ func ColumnsOf(projections map[string][]byte, generatedBy string) (map[string]Co
 				From: from, To: to, ValueCents: l.ValueCents, Kind: l.Kind,
 				TransferID: l.TransferID, FactIDs: l.FactIDs, Locators: l.Locators,
 				Derived: l.Derived, Partition: l.Partition, Contra: l.Contra,
+				Alternative: l.Alternative,
 			})
+		}
+		var splits []ColumnSplit
+		for _, sp := range d.Splits {
+			i, ok := at[sp.Node]
+			if !ok {
+				return nil, ColumnIndex{}, fmt.Errorf("column %s, schedule %s: split of %s names a node the document does not carry",
+					key, schedule, sp.Node)
+			}
+			splits = append(splits, ColumnSplit{Node: i, Key: sp.Key, Form: sp.Form, Alternative: sp.Alternative})
 		}
 		col.Schedules[schedule] = ColumnSched{
 			Nodes:   drawn,
@@ -355,6 +391,7 @@ func ColumnsOf(projections map[string][]byte, generatedBy string) (map[string]Co
 			Caveats: d.Metadata.Caveats,
 			Sources: d.Metadata.Sources,
 			Links:   links,
+			Splits:  splits,
 		}
 	}
 
@@ -500,10 +537,11 @@ func StepStems(steps []DrillStep, year string, ix ColumnIndex) ([]string, error)
 }
 
 // ReachedStems is every document a reader of this view can reach, once each:
-// its projection, its year stems, and every document its steps draw across
-// every year it lists, as [StepStems] resolves each year. It refuses what
-// StepStems refuses. The caveats page's drawn set and `fisc export`'s
-// reachability gate both read it, so the two cannot disagree.
+// its projection, its year stems, the expansion schedule of each year's
+// column, and every document its steps draw across every year it lists, as
+// [StepStems] resolves each year. It refuses what StepStems refuses. The
+// caveats page's drawn set and `fisc export`'s reachability gate both read
+// it, so the two cannot disagree.
 func (v View) ReachedStems(ix ColumnIndex) ([]string, error) {
 	byYear, err := v.stepStemsByYear(ix)
 	if err != nil {
@@ -513,7 +551,13 @@ func (v View) ReachedStems(ix ColumnIndex) ([]string, error) {
 	// whose list does not. A view rendering no document lists "".
 	var out []string
 	for _, year := range v.yearStems() {
-		for _, stem := range append([]string{year}, byYear[year]...) {
+		reached := []string{year}
+		if column, folded := ix.Column(year); folded && v.Overview.Form == SankeyForm {
+			if stem, ok := ix.Stem(column, project.ExpansionProjection); ok {
+				reached = append(reached, stem)
+			}
+		}
+		for _, stem := range append(reached, byYear[year]...) {
 			if stem != "" && !slices.Contains(out, stem) {
 				out = append(out, stem)
 			}

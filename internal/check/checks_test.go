@@ -132,11 +132,15 @@ func TestFixtureVerdicts(t *testing.T) {
 		"rule-funds-match-their-headings": "vacuous over 0",
 		// The fixture's funds are per column, which is the other check's case.
 		"row-funds-match-their-anchors": "vacuous over 0",
+		// The fixture prints none of the schedules the expansion stitches, so
+		// none is built.
+		"expansion-opens-as-the-spine": "vacuous over 0",
+		"expansion-splits-tie":         "vacuous over 0",
 	}
 	if diff := cmp.Diff(want, statuses(rep)); diff != "" {
 		t.Errorf("verdicts mismatch (-want +got):\n%s", diff)
 	}
-	if got := (counts{Pass: 25, Vacuous: 23, Skipped: 1}); got != rep.Counts {
+	if got := (counts{Pass: 25, Vacuous: 25, Skipped: 1}); got != rep.Counts {
 		t.Errorf("counts = %+v, want %+v", rep.Counts, got)
 	}
 	// The counts are pinned as numbers above rather than spelled in words here,
@@ -159,8 +163,8 @@ func TestVacuousFailsOnlyUnderStrict(t *testing.T) {
 	lenient := Run(t.Context(), s, All(), ReportOptions{})
 	strict := Run(t.Context(), s, All(), ReportOptions{Strict: true})
 
-	if lenient.Counts.Vacuous != 23 {
-		t.Fatalf("vacuous count = %d, want 23", lenient.Counts.Vacuous)
+	if lenient.Counts.Vacuous != 25 {
+		t.Fatalf("vacuous count = %d, want 25", lenient.Counts.Vacuous)
 	}
 	if lenient.Failed() {
 		t.Error("a run with vacuous checks failed without --strict")
@@ -189,6 +193,8 @@ func TestVacuousChecksSayWhatIsAbsent(t *testing.T) {
 		"fact-funds-resolve":                    "no fact names a fund",
 		"fact-revenue-lines-resolve":            "no fact is a revenue row of scope revenue-by-fund",
 		"revenue-lines-tie-to-their-categories": "no projection built a drill-down",
+		"expansion-opens-as-the-spine":          "no expansion schedule is built",
+		"expansion-splits-tie":                  "no expansion schedule declares a split",
 	} {
 		res := resultFor(t, rep, id)
 		if res.Status != StatusVacuous {

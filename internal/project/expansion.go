@@ -1,0 +1,971 @@
+package project
+
+import (
+	"fmt"
+	"slices"
+	"sort"
+	"strconv"
+	"strings"
+
+	"github.com/jcrussell/livermore-budget/internal/fact"
+	"github.com/jcrussell/livermore-budget/internal/hint"
+	"github.com/jcrussell/livermore-budget/internal/structure"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
+	"github.com/jcrussell/livermore-budget/schema"
+)
+
+// ExpansionProjection is the stitched schedule's name and file stem.
+const ExpansionProjection = "expansion"
+
+// ExpansionScopes is every schedule the stitch reads, the spine first.
+func ExpansionScopes() []string {
+	return []string{
+		PublishedScope, ScopeRevenueByFund, scopeExpenditureByDepartment, scopeExpenditureByFund,
+		TransfersByFundScope, CIPFundingScope, FundSourcesUsesScope, DepartmentSpendingScope,
+	}
+}
+
+// The two forms a split takes. A refined node is replaced by its members in
+// its own column; an extended node stays where it is and its members are
+// drawn in a column of their own after it, each reached by a leaf link from
+// the node.
+const (
+	SplitRefine = "refine"
+	SplitExtend = "extend"
+)
+
+// SplitForms is the closed set of split forms.
+func SplitForms() []string { return []string{SplitRefine, SplitExtend} }
+
+// Split is one way a node of the expansion schedule opens. Its members are
+// the nodes whose Parent is Node and whose Alternative is Key on an
+// alternative split, or "" on the primary one.
+type Split struct {
+	Node string `json:"node"`
+	Key  string `json:"key"`
+	Form string `json:"form"`
+	// Alternative is false on the one primary split a node has, whose
+	// members and links are read whenever the node is opened by it, and
+	// true on a split a reader chooses instead of it, whose members and
+	// links carry its Key.
+	Alternative bool `json:"alternative"`
+}
+
+// splitDecl is what a node of one role splits into.
+type splitDecl struct {
+	role        string
+	key         string
+	form        string
+	alternative bool
+}
+
+// expansionSplits is every split the stitch declares, by the role of the node
+// that splits. Each is declared once, here; the builder attaches the members.
+var expansionSplits = []splitDecl{
+	{RoleRevenueSource, "lines", SplitRefine, false},
+	{RoleTransferIn, "payers", SplitRefine, false},
+	{RoleFundGroup, "funds", SplitRefine, false},
+	{RoleGeneralFund, "divisions", SplitExtend, false},
+	{RoleObjectCategory, "object-rows", SplitRefine, false},
+	{RoleObjectCategory, "divisions", SplitExtend, true},
+	{RoleTransferOut, "receivers", SplitRefine, false},
+}
+
+// splitOf is the declaration for a role's primary split, or its alternative
+// named key.
+func splitOf(role, key string, alternative bool) (splitDecl, bool) {
+	for _, d := range expansionSplits {
+		if d.role == role && d.alternative == alternative && (!alternative || d.key == key) {
+			return d, true
+		}
+	}
+	return splitDecl{}, false
+}
+
+// alternativeDivisions is the key of the object categories' alternative split
+// into pp.85-125's divisions.
+const alternativeDivisions = "divisions"
+
+// PrefixGroupOnly is a node carrying money pp.66-67 print for a fund group and
+// no fund page attributes to a fund; PrefixNoDivision one carrying an object
+// category's money pp.66-67 print and no division on pp.85-125 does. Both
+// are derived.
+const (
+	PrefixGroupOnly  = "fund-group-only/"
+	PrefixNoDivision = "no-division/"
+)
+
+// groupObjectID is an object category's money a fund group's column of
+// pp.66-67 prints and its funds' rows do not, beside the funds' own rows.
+func groupObjectID(group, category string) string {
+	return PrefixExpenditure + PrefixFundGroup + group + "/" + category
+}
+
+// IsRemainder answers whether a node id is one the stitch derives to carry a
+// difference between a printed cell and its members.
+func IsRemainder(id string) bool {
+	return strings.HasPrefix(id, PrefixGroupOnly) || strings.HasPrefix(id, PrefixNoDivision) ||
+		strings.HasPrefix(id, PrefixExpenditure+PrefixFundGroup)
+}
+
+// expansion stitches one schedule per spine column out of the cuts that
+// decompose the spine, for the client to fold to a frontier of node ids.
+//
+// # The shape
+//
+//	roots     the spine's nodes, parent ""
+//	revenue/<category>    <- revenue-line/<line>            refine, lines
+//	transfers/in          <- transfer-from/<payer>          refine, payers
+//	fund-group/<type>     <- fund/<n>, fund-group-only/<type> refine, funds
+//	fund/100              <- dept/<division>                extend, divisions
+//	expenditure/<object>  <- expenditure/<division>/<object>,
+//	                         expenditure/fund/<n>/<object>,
+//	                         expenditure/fund-group/<type>/<object>
+//	                                                         refine, object rows
+//	                      <- dept/<division>/<object>, no-division/<object>
+//	                                                         extend, divisions (alternative)
+//	transfers/out         <- transfer-to/<receiver>         refine, receivers
+//
+// Every primary link is a leaf link: both ends are nodes no primary split
+// opens further, except an extended node's link to its own member. The roots'
+// cells are the leaves summed, which expansion-opens-as-the-spine holds to the
+// spine, and each split's members are held to their parent's printed cells by
+// expansion-splits-tie.
+//
+// A remainder node carries money a parent's printed cell holds and no member's
+// does. A fund group whose funds' balances move in opposite directions draws
+// its change in working capital on one, citing pp.66-67's row, since netting
+// fund by fund is a ribbon from a fund to its own column. Any other remainder
+// is derived from the structure.Exception declaring its cell, which is the
+// one source of its existence; its value is the difference of the printed
+// facts it cites, and the build refuses one that is not the exception's.
+type expansion struct {
+	Labels labels
+}
+
+var (
+	_ Projection = (*expansion)(nil)
+	_ Sliced     = (*expansion)(nil)
+)
+
+// Name is [Projection]'s, and it is this document's file stem.
+func (*expansion) Name() string { return ExpansionProjection }
+
+// Slices is one Options per column every schedule it stitches prints: a
+// column missing one would leave a spine cell its leaves do not reach.
+func (*expansion) Slices(facts []fact.Fact, version string) []Options {
+	return columnsCarrying(facts, ExpansionScopes(), ExpansionScopes(), nil, version)
+}
+
+// Build is [Projection]'s entry point.
+func (e *expansion) Build(facts []fact.Fact, o Options) ([]byte, error) {
+	doc, err := e.Document(facts, o)
+	if err != nil {
+		return nil, err
+	}
+	return encode(doc, e.Name(), schema.Projection)
+}
+
+// stitch is one column's schedule under construction.
+type stitch struct {
+	nodes map[string]Node
+	links []Link
+}
+
+// add records a node under a parent and an alternative, refusing a second
+// placement of one id: every node has one parent per split.
+func (s *stitch) add(n Node, parent, alternative string) error {
+	n.Parent = parent
+	n.Alternative = alternative
+	// A fund's balances are pp.186-209's, on fund-sources-uses; the stitch
+	// cites the ones it draws on links.
+	n.Balances = nil
+	if have, ok := s.nodes[n.ID]; ok {
+		if have != n {
+			return fmt.Errorf("expansion: node %q is placed twice: %+v and %+v", n.ID, have, n)
+		}
+		return nil
+	}
+	s.nodes[n.ID] = n
+	return nil
+}
+
+// Document builds the stitched schedule and returns it, so `fisc verify`
+// reads the same structure `fisc export` writes.
+func (e *expansion) Document(facts []fact.Fact, o Options) (*Document, error) {
+	if err := o.validate(); err != nil {
+		return nil, fmt.Errorf("expansion options: %w", err)
+	}
+	if !sameScopes(o.Scopes, ExpansionScopes()) || len(o.Kinds) != 0 || o.ThroughCuts {
+		return nil, hint.With(
+			fmt.Errorf("expansion: scopes are %q, kinds %v and through-cuts %v, want %q, every kind and false",
+				o.ScopeList(), o.Kinds, o.ThroughCuts, Options{Scopes: ExpansionScopes()}.ScopeList()),
+			"the stitch reads each schedule through the document already built over it, and "+
+				"selects every fact any of them cites")
+	}
+	if len(o.Columns) != 1 {
+		return nil, fmt.Errorf("expansion: a stitch is of one column, got %d", len(o.Columns))
+	}
+	if e.Labels == nil {
+		return nil, fmt.Errorf("expansion: no registry is attached, and a fund's group is data/funds.yaml's")
+	}
+	col := o.Columns[0]
+	selected, selErr := SelectFacts(facts, o)
+	if selErr != nil {
+		return nil, fmt.Errorf("expansion: %w", selErr)
+	}
+	byID := factIndexOf(selected)
+
+	docs, cutErr := e.cuts(facts, o)
+	if cutErr != nil {
+		return nil, cutErr
+	}
+	st := &stitch{nodes: map[string]Node{}}
+	spine := docs[PublishedProjection]
+	roots := map[string]Node{}
+	for _, n := range spine.Nodes {
+		roots[n.ID] = n
+		if err := st.add(n, "", ""); err != nil {
+			return nil, err
+		}
+	}
+	nodesOf := func(d *Document) map[string]Node {
+		out := make(map[string]Node, len(d.Nodes))
+		for _, n := range d.Nodes {
+			out[n.ID] = n
+		}
+		return out
+	}
+	// A fund hangs from the group data/funds.yaml types it, which must be a
+	// root: a fund whose group the spine does not draw has nowhere to fold.
+	addFund := func(n Node) error {
+		number, convErr := strconv.Atoi(strings.TrimPrefix(n.ID, PrefixFund))
+		if convErr != nil {
+			return fmt.Errorf("expansion: %q is no fund id", n.ID)
+		}
+		t, ok := e.Labels.FundType(number)
+		if !ok {
+			return fmt.Errorf("expansion: fund %d is in no data/funds.yaml entry", number)
+		}
+		group := PrefixFundGroup + t
+		if _, ok := roots[group]; !ok {
+			return hint.With(fmt.Errorf("expansion: fund %d is in %s, which the spine does not draw in %s",
+				number, group, col),
+				"every leaf folds to a spine node, so a fund of a group pp.66-67 give no column has no root")
+		}
+		return st.add(n, group, "")
+	}
+	link := func(l Link) { st.links = append(st.links, l) }
+
+	// Revenue: pp.127-140's lines into their funds. The transfers in they
+	// print are p76's legs below, which print the General Fund's too.
+	ff := docs[FundFlowsProjection]
+	ffNodes := nodesOf(ff)
+	for _, l := range ff.Links {
+		switch {
+		case strings.HasPrefix(l.Source, PrefixRevenueLine) && strings.HasPrefix(l.Target, PrefixFund):
+			line := ffNodes[l.Source]
+			if err := st.add(line, line.Parent, ""); err != nil {
+				return nil, err
+			}
+			if err := addFund(ffNodes[l.Target]); err != nil {
+				return nil, err
+			}
+			link(l)
+		case strings.HasPrefix(l.Source, PrefixDept) && strings.HasPrefix(l.Target, PrefixExpenditure),
+			strings.HasPrefix(l.Source, PrefixFund) && strings.HasPrefix(l.Target, PrefixExpenditure):
+			// An object row hangs from its object category, its owner kept
+			// as the link's source.
+			category, catErr := categoryOf(l, byID)
+			if catErr != nil {
+				return nil, catErr
+			}
+			parent := PrefixExpenditure + category
+			if _, ok := roots[parent]; !ok {
+				return nil, fmt.Errorf("expansion: %s spends on %q, which the spine draws no node for", l.Source, parent)
+			}
+			owner := ffNodes[l.Source]
+			if strings.HasPrefix(l.Source, PrefixDept) {
+				if err := st.add(owner, owner.Parent, ""); err != nil {
+					return nil, err
+				}
+			} else if err := addFund(owner); err != nil {
+				return nil, err
+			}
+			row := ffNodes[l.Target]
+			if err := st.add(row, parent, ""); err != nil {
+				return nil, err
+			}
+			link(l)
+		case strings.HasPrefix(l.Source, PrefixFund) && strings.HasPrefix(l.Target, PrefixDept):
+			// fund/100 extends into its divisions: the link carrying each
+			// division's total is the one an opened fund draws.
+			if err := addFund(ffNodes[l.Source]); err != nil {
+				return nil, err
+			}
+			division := ffNodes[l.Target]
+			if err := st.add(division, l.Source, ""); err != nil {
+				return nil, err
+			}
+			link(l)
+		}
+	}
+
+	// Transfers in, by the fund paying them: p76's receiving legs.
+	tin := docs[TransfersByFundProjection]
+	tinNodes := nodesOf(tin)
+	for _, l := range tin.Links {
+		if !strings.HasPrefix(l.Source, PrefixTransferFrom) {
+			continue
+		}
+		payer := tinNodes[l.Source]
+		if err := st.add(payer, NodeTransfersIn, ""); err != nil {
+			return nil, err
+		}
+		if err := addFund(tinNodes[l.Target]); err != nil {
+			return nil, err
+		}
+		link(l)
+	}
+
+	// Transfers out, by the fund receiving them: p76's paying legs and p222's
+	// transfers to the CIP.
+	tout := docs[TransfersOutProjection]
+	toutNodes := nodesOf(tout)
+	for _, l := range tout.Links {
+		if !strings.HasPrefix(l.Target, PrefixTransferTo) {
+			continue
+		}
+		if err := addFund(toutNodes[l.Source]); err != nil {
+			return nil, err
+		}
+		receiver := toutNodes[l.Target]
+		if err := st.add(receiver, NodeTransfersOut, ""); err != nil {
+			return nil, err
+		}
+		link(l)
+	}
+
+	// pp.186-209: each fund's addition to reserves, and each fund's change in
+	// balance where its group's funds all move one way.
+	fsu := docs[FundSourcesUsesProjection]
+	fsuNodes := nodesOf(fsu)
+	changes := map[string][]Link{}
+	for _, l := range fsu.Links {
+		switch {
+		case l.Target == CategoryFundBalanceReserveIncrease:
+			if err := addFund(fsuNodes[l.Source]); err != nil {
+				return nil, err
+			}
+			link(l)
+		case l.Source == NodeFundBalanceDraw:
+			changes[e.groupOf(l.Target)] = append(changes[e.groupOf(l.Target)], l)
+		case l.Target == NodeFundBalanceContribution:
+			changes[e.groupOf(l.Source)] = append(changes[e.groupOf(l.Source)], l)
+		}
+	}
+	remainders := &groupRemainders{roots: roots, st: st}
+	for _, l := range spine.Links {
+		var group string
+		switch {
+		case l.Source == NodeFundBalanceDraw:
+			group = l.Target
+		case l.Target == NodeFundBalanceContribution:
+			group = l.Source
+		default:
+			continue
+		}
+		if err := e.changeOf(st, remainders, l, group, changes[group], fsuNodes, byID, col, addFund); err != nil {
+			return nil, err
+		}
+		delete(changes, group)
+	}
+	// A group the spine prints no change for draws none fund by fund either,
+	// so its funds' changes must net to nothing.
+	for _, group := range sortedKeys(changes) {
+		var net int64
+		for _, l := range changes[group] {
+			if l.Source == NodeFundBalanceDraw {
+				net -= l.ValueCents
+			} else {
+				net += l.ValueCents
+			}
+		}
+		if net != 0 {
+			return nil, fmt.Errorf("expansion: %q's funds change by %d cents in %s and pp.66-67 print no change for it",
+				group, net, col)
+		}
+	}
+
+	// An object category's cell a fund group's own rows do not reach, held
+	// apart by an exception.
+	if err := e.objectRemainders(st, remainders, spine, byID, col); err != nil {
+		return nil, err
+	}
+
+	// The alternative: pp.85-125's divisions extending each object category.
+	if err := e.divisionsAlternative(st, docs[DepartmentSpendingProjection], spine, roots, byID, col); err != nil {
+		return nil, err
+	}
+
+	splits, splitErr := splitsOf(st.nodes, st.links)
+	if splitErr != nil {
+		return nil, splitErr
+	}
+	sortLinks(st.links)
+	if err := checkDistinctAlternativeLinks(st.links); err != nil {
+		return nil, err
+	}
+	out := sortedNodes(st.nodes)
+
+	c, uncited := tally(selected, st.links, out)
+	if err := refuseUncited(e.Name(), uncited, drawnElsewhere); err != nil {
+		return nil, err
+	}
+	cavs := expansionCaveats(c.FactsCitedTwice, out)
+	if err := validateCaveats(cavs, nodeIDs(out)); err != nil {
+		return nil, fmt.Errorf("%s: %w", col, err)
+	}
+	return &Document{
+		SchemaVersion: SchemaVersion,
+		Projection:    e.Name(),
+		Metadata: Metadata{
+			GeneratedBy:     o.Version,
+			FiscalYear:      col.FiscalYear,
+			FiscalYearLabel: fiscalYearLabel(col.FiscalYear),
+			Basis:           string(col.Basis),
+			Scopes:          ExpansionScopes(),
+			Currency:        "USD",
+			Units:           "cents",
+			Sources:         SourcesOf(selected),
+			Counts:          c,
+			Caveats:         cavs,
+		},
+		Nodes:  out,
+		Links:  st.links,
+		Splits: splits,
+	}, nil
+}
+
+// cuts builds each document the stitch reads, over the same column.
+func (e *expansion) cuts(facts []fact.Fact, o Options) (map[string]*Document, error) {
+	type built interface {
+		Name() string
+		Document([]fact.Fact, Options) (*Document, error)
+	}
+	parts := []struct {
+		p    built
+		opts Options
+	}{
+		{&sankey{Labels: e.Labels}, Options{Scopes: []string{PublishedScope}}},
+		{&fundFlows{Labels: e.Labels}, Options{Scopes: FundFlowsScopes()}},
+		{&transfersByFund{Labels: e.Labels}, Options{Scopes: TransfersByFundScopes()}},
+		{&transfersByFund{Labels: e.Labels, Out: true}, Options{Scopes: TransfersOutScopes(), Kinds: transferKinds}},
+		{&fundSourcesUses{Labels: e.Labels}, Options{Scopes: FundSourcesUsesScopes(), ThroughCuts: true}},
+		{&departmentSpending{Labels: e.Labels}, Options{Scopes: DepartmentSpendingScopes()}},
+	}
+	out := map[string]*Document{}
+	for _, part := range parts {
+		opts := part.opts
+		opts.Columns = o.Columns
+		opts.Version = o.Version
+		d, err := part.p.Document(facts, opts)
+		if err != nil {
+			return nil, fmt.Errorf("expansion: the %s it stitches: %w", part.p.Name(), err)
+		}
+		out[part.p.Name()] = d
+	}
+	return out, nil
+}
+
+// groupOf is the fund-group id of a fund id, or "" for one data/funds.yaml
+// does not type.
+func (e *expansion) groupOf(id string) string {
+	number, err := strconv.Atoi(strings.TrimPrefix(id, PrefixFund))
+	if err != nil {
+		return ""
+	}
+	t, ok := e.Labels.FundType(number)
+	if !ok {
+		return ""
+	}
+	return PrefixFundGroup + t
+}
+
+// changeOf stitches one fund group's change in working capital: fund by fund
+// where every fund's change runs the group's way, with any difference from
+// pp.66-67 carried by a remainder an exception licenses; whole, on the
+// group's remainder, where they do not.
+func (*expansion) changeOf(st *stitch, rem *groupRemainders, spineLink Link, group string, funds []Link,
+	fsuNodes map[string]Node, byID map[string]fact.Fact, col Column, addFund func(Node) error) error {
+	draw := spineLink.Source == NodeFundBalanceDraw
+	oneWay := len(funds) > 0
+	var sum int64
+	for _, l := range funds {
+		oneWay = oneWay && (l.Source == NodeFundBalanceDraw) == draw
+		sum += l.ValueCents
+	}
+	if !oneWay {
+		r, err := rem.node(group)
+		if err != nil {
+			return err
+		}
+		l := spineLink
+		if draw {
+			l.Target = r
+		} else {
+			l.Source = r
+		}
+		st.links = append(st.links, l)
+		return nil
+	}
+	for _, l := range funds {
+		fund := l.Target
+		if !draw {
+			fund = l.Source
+		}
+		if err := addFund(fsuNodes[fund]); err != nil {
+			return err
+		}
+		st.links = append(st.links, l)
+	}
+	diff := spineLink.ValueCents - sum
+	if diff == 0 {
+		return nil
+	}
+	// The spine's ending balance differs from the funds' pages; the change
+	// differs by the same figure, a draw by its negation.
+	pin, ex, err := licensed(structure.CutFundBalanceFlows, structure.LevelFundGroupByCategory, col,
+		map[structure.Axis]string{
+			structure.AxisFundGroup: strings.TrimPrefix(group, PrefixFundGroup),
+			structure.AxisCategory:  CategoryFundBalanceEnding,
+		})
+	if err != nil {
+		return hint.With(fmt.Errorf("expansion: %s's funds change by %d cents and pp.66-67 print %d in %s: %w",
+			group, sum, spineLink.ValueCents, col, err),
+			"a difference no exception declares is not stitched; measure it and file it")
+	}
+	want := pin.Against.Cents - pin.Cut.Cents
+	if draw {
+		want = -want
+	}
+	if diff != want {
+		return fmt.Errorf("expansion: %s's change differs from its funds' by %d cents in %s and exception %q holds %d apart",
+			group, diff, col, ex.Name, want)
+	}
+	r, err := rem.node(group, ex)
+	if err != nil {
+		return err
+	}
+	ids := slices.Clone(spineLink.FactIDs)
+	for _, l := range funds {
+		ids = append(ids, l.FactIDs...)
+	}
+	l := remainderLink(ids, byID, spineLink.Kind)
+	if draw {
+		l.Source, l.Target = NodeFundBalanceDraw, r
+	} else {
+		l.Source, l.Target = r, NodeFundBalanceContribution
+	}
+	l.ValueCents = diff
+	st.links = append(st.links, l)
+	return nil
+}
+
+// objectRemainders stitches each fund group's object-category cell its funds'
+// rows fall short of, as an exception on pp.172-183 against the spine
+// declares it: a row of the group's own beside its funds', from the group's
+// remainder.
+func (e *expansion) objectRemainders(st *stitch, rem *groupRemainders, spine *Document,
+	byID map[string]fact.Fact, col Column) error {
+	for _, ex := range structure.ExceptionsOn(structure.BudgetBookExceptions(), "fund-expenditures",
+		structure.CutSpine, structure.LevelFundGroupByCategory) {
+		for _, p := range ex.Cells {
+			if p.Year != col.FiscalYear || p.Basis != string(col.Basis) {
+				continue
+			}
+			group := PrefixFundGroup + p.Coords[structure.AxisFundGroup]
+			category := PrefixExpenditure + p.Coords[structure.AxisCategory]
+			var cell *Link
+			for i := range spine.Links {
+				if spine.Links[i].Source == group && spine.Links[i].Target == category {
+					cell = &spine.Links[i]
+				}
+			}
+			if cell == nil {
+				return fmt.Errorf("expansion: exception %q pins %s -> %s in %s, which the spine draws no link for",
+					ex.Name, group, category, col)
+			}
+			ids := slices.Clone(cell.FactIDs)
+			var rows int64
+			for _, l := range st.links {
+				if st.nodes[l.Target].Parent == category && e.ownerGroup(st, l.Source) == group {
+					ids = append(ids, l.FactIDs...)
+					rows += l.ValueCents
+				}
+			}
+			diff := cell.ValueCents - rows
+			if want := p.Against.Cents - p.Cut.Cents; diff != want {
+				return fmt.Errorf("expansion: %s -> %s differs from its funds' rows by %d cents in %s and exception %q holds %d apart",
+					group, category, diff, col, ex.Name, want)
+			}
+			r, err := rem.node(group, ex)
+			if err != nil {
+				return err
+			}
+			row := Node{
+				ID:    groupObjectID(p.Coords[structure.AxisFundGroup], p.Coords[structure.AxisCategory]),
+				Label: rem.label(group) + ": " + st.nodes[category].Label,
+				Tier:  tierObjectCategory, Role: RoleObjectCategory,
+				Derived: true, Rationale: remainderRationale(objectRemainderRationale, ex),
+				SourceNote: ex.Printed,
+			}
+			if err := st.add(row, category, ""); err != nil {
+				return err
+			}
+			l := remainderLink(ids, byID, cell.Kind)
+			l.Source, l.Target, l.ValueCents = r, row.ID, diff
+			st.links = append(st.links, l)
+		}
+	}
+	return nil
+}
+
+// ownerGroup is the fund group a link's owner end belongs to.
+func (*expansion) ownerGroup(st *stitch, id string) string {
+	for at := id; at != ""; at = st.nodes[at].Parent {
+		if strings.HasPrefix(at, PrefixFundGroup) {
+			return at
+		}
+	}
+	return ""
+}
+
+// divisionsAlternative stitches each object category's alternative split into
+// the divisions pp.85-125 print spending it, every fund together.
+func (*expansion) divisionsAlternative(st *stitch, ds, spine *Document, roots map[string]Node,
+	byID map[string]fact.Fact, col Column) error {
+	dsNodes := map[string]Node{}
+	for _, n := range ds.Nodes {
+		dsNodes[n.ID] = n
+	}
+	for _, l := range ds.Links {
+		category := l.Source
+		root, ok := roots[category]
+		if !ok || root.Role != RoleObjectCategory {
+			return fmt.Errorf("expansion: pp.85-125 spend from %q in %s, which is no object category the spine draws",
+				category, col)
+		}
+		division := dsNodes[l.Target]
+		member := Node{
+			ID:    division.ID + "/" + strings.TrimPrefix(category, PrefixExpenditure),
+			Label: division.Label + ": " + root.Label,
+			Tier:  tierDepartment, Role: RoleDepartment,
+		}
+		if err := st.add(member, category, alternativeDivisions); err != nil {
+			return err
+		}
+		l.Target = member.ID
+		l.Alternative = alternativeDivisions
+		st.links = append(st.links, l)
+	}
+	for _, ex := range structure.ExceptionsOn(structure.BudgetBookExceptions(), structure.CutDepartmentwide,
+		structure.CutSpine, structure.LevelCategory) {
+		for _, p := range ex.Cells {
+			if p.Year != col.FiscalYear || p.Basis != string(col.Basis) {
+				continue
+			}
+			category := PrefixExpenditure + p.Coords[structure.AxisCategory]
+			var ids []string
+			var printed, divided int64
+			for _, l := range spine.Links {
+				if l.Target == category {
+					ids = append(ids, l.FactIDs...)
+					printed += l.ValueCents
+				}
+			}
+			for _, l := range ds.Links {
+				if l.Source == category {
+					ids = append(ids, l.FactIDs...)
+					divided += l.ValueCents
+				}
+			}
+			diff := printed - divided
+			if want := p.Against.Cents - p.Cut.Cents; diff != want {
+				return fmt.Errorf("expansion: %s's divisions fall %d cents short of the spine in %s and exception %q holds %d apart",
+					category, diff, col, ex.Name, want)
+			}
+			root := roots[category]
+			member := Node{
+				ID:    PrefixNoDivision + p.Coords[structure.AxisCategory],
+				Label: root.Label + ", by no division",
+				Tier:  tierDepartment, Role: RoleDepartment,
+				Derived: true, Rationale: remainderRationale(noDivisionRationale, ex), SourceNote: ex.Printed,
+			}
+			if err := st.add(member, category, alternativeDivisions); err != nil {
+				return err
+			}
+			l := remainderLink(ids, byID, spendingLinkKind(vocab.KindExpenditure))
+			l.Source, l.Target, l.ValueCents = category, member.ID, diff
+			l.Partition = true
+			l.Alternative = alternativeDivisions
+			st.links = append(st.links, l)
+		}
+	}
+	return nil
+}
+
+// groupRemainders builds each fund group's remainder node once, its words the
+// union of every reason it carries money for.
+type groupRemainders struct {
+	roots map[string]Node
+	st    *stitch
+}
+
+// label is a fund group's words.
+func (g *groupRemainders) label(group string) string { return g.roots[group].Label }
+
+// node is the remainder of group, created or extended with the reason it
+// carries money for: the group's netted change, or each exception it
+// carries a difference for.
+func (g *groupRemainders) node(group string, ex ...structure.Exception) (string, error) {
+	if _, ok := g.roots[group]; !ok {
+		return "", fmt.Errorf("expansion: %q is no fund group the spine draws", group)
+	}
+	id := PrefixGroupOnly + strings.TrimPrefix(group, PrefixFundGroup)
+	n, ok := g.st.nodes[id]
+	if !ok {
+		n = Node{ID: id, Label: g.label(group) + ", as a group", Tier: tierFund, Role: RoleGroupRemainder,
+			Parent: group, Derived: true}
+	}
+	reason, note := groupChangeRationale, groupChangeSourceNote
+	for _, e := range ex {
+		reason, note = remainderRationale(groupExceptionRationale, e), e.Printed
+	}
+	n.Rationale = joinOnce(n.Rationale, reason)
+	n.SourceNote = joinOnce(n.SourceNote, note)
+	g.st.nodes[id] = n
+	return id, nil
+}
+
+// joinOnce appends s to a space-joined list of sentences unless it is
+// already there.
+func joinOnce(list, s string) string {
+	switch {
+	case list == "":
+		return s
+	case strings.Contains(list, s):
+		return list
+	}
+	return list + " " + s
+}
+
+// The words a remainder carries. Each exception-derived one quotes its
+// exception's Reason, the remainder's single source.
+const (
+	groupChangeRationale = "Our node for the fund group's change in working capital, which " +
+		"Budget Book pp.66-67 print for the group as one signed figure: pp.186-209 print each " +
+		"fund's balances, and within this group some rise and some fall, so the group's figure " +
+		"is their net and no fund carries it. Netting fund by fund would draw a ribbon from one " +
+		"fund to another in the same column."
+	groupChangeSourceNote   = "Budget Book PDF pp.66-67, CHANGE IN WORKING CAPITAL"
+	groupExceptionRationale = "Our node for money Budget Book pp.66-67 print in this fund " +
+		"group's column and its funds' own pages do not: "
+	objectRemainderRationale = "Our row for the part of this fund group's object category " +
+		"that pp.66-67 print and its funds' rows on pp.172-183 do not: "
+	noDivisionRationale = "Our node for the part of this object category that pp.66-67 print " +
+		"and no division on pp.85-125 does: "
+)
+
+// remainderRationale is a remainder's words, ending with its exception's
+// reason.
+func remainderRationale(lead string, ex structure.Exception) string {
+	return lead + ex.Reason + " (" + ex.Name + ")."
+}
+
+// remainderLink is a derived link citing the facts a remainder is the
+// difference of, each once.
+func remainderLink(ids []string, byID map[string]fact.Fact, kind LinkKind) Link {
+	slices.Sort(ids)
+	ids = slices.Compact(ids)
+	var locs locatorSet
+	for _, id := range ids {
+		f := byID[id]
+		locs.add(&f)
+	}
+	return Link{Kind: kind, FactIDs: ids, Locators: locs.sources(), Derived: true}
+}
+
+// licensed is the one exception on (cut -> spine) at level pinning coords in
+// col, or an error naming why there is not exactly one.
+func licensed(cut string, at structure.Level, col Column, coords map[structure.Axis]string) (structure.Pin, structure.Exception, error) {
+	var found []struct {
+		p  structure.Pin
+		ex structure.Exception
+	}
+	for _, ex := range structure.ExceptionsOn(structure.BudgetBookExceptions(), cut, structure.CutSpine, at) {
+		for _, p := range ex.Cells {
+			if p.Year != col.FiscalYear || p.Basis != string(col.Basis) || len(p.Coords) != len(coords) {
+				continue
+			}
+			match := true
+			for a, v := range coords {
+				match = match && p.Coords[a] == v
+			}
+			if match {
+				found = append(found, struct {
+					p  structure.Pin
+					ex structure.Exception
+				}{p, ex})
+			}
+		}
+	}
+	if len(found) != 1 {
+		return structure.Pin{}, structure.Exception{}, fmt.Errorf("%d exceptions on %s against %s pin %v", len(found), cut, structure.CutSpine, coords)
+	}
+	return found[0].p, found[0].ex, nil
+}
+
+// categoryOf is the one category an object row's facts carry.
+func categoryOf(l Link, byID map[string]fact.Fact) (string, error) {
+	category := ""
+	for _, id := range l.FactIDs {
+		c := byID[id].Category
+		if category != "" && c != category {
+			return "", fmt.Errorf("expansion: %s -> %s cites categories %q and %q", l.Source, l.Target, category, c)
+		}
+		category = c
+	}
+	if category == "" {
+		return "", fmt.Errorf("expansion: %s -> %s cites no category", l.Source, l.Target)
+	}
+	return category, nil
+}
+
+// factIndexOf indexes facts by id.
+func factIndexOf(facts []fact.Fact) map[string]fact.Fact {
+	out := make(map[string]fact.Fact, len(facts))
+	for _, f := range facts {
+		out[f.ID] = f
+	}
+	return out
+}
+
+// drawnElsewhere is a fact the stitch selects and draws through another
+// schedule's figure, or decomposes: the spine's cells, which the leaves under
+// them sum to; pp.127-140's transfers in, which are p76's; pp.186-209's
+// columns, of which it draws reserves and balances only; and p222's receipts
+// at the CIP funds, outside the operating budget.
+func drawnElsewhere(f *fact.Fact) bool {
+	switch f.Scope {
+	case PublishedScope, FundSourcesUsesScope, CIPFundingScope:
+		return true
+	case ScopeRevenueByFund:
+		return f.Kind == vocab.KindTransferIn
+	}
+	return false
+}
+
+// splitsOf is every split a node of the stitch has members in, in node order,
+// refusing members under a node whose role declares no such split, and an
+// extended node with no link to a member or a refined one with one.
+func splitsOf(nodes map[string]Node, links []Link) ([]Split, error) {
+	type key struct{ node, alternative string }
+	members := map[key][]string{}
+	for _, n := range nodes {
+		if n.Parent != "" {
+			members[key{n.Parent, n.Alternative}] = append(members[key{n.Parent, n.Alternative}], n.ID)
+		}
+	}
+	reaches := map[key]bool{}
+	for _, l := range links {
+		if p, ok := nodes[l.Target]; ok && p.Parent == l.Source {
+			reaches[key{l.Source, p.Alternative}] = true
+		}
+	}
+	var out []Split
+	for k := range members {
+		parent, ok := nodes[k.node]
+		if !ok {
+			return nil, fmt.Errorf("expansion: %v are parented to %q, which is no node", members[k], k.node)
+		}
+		d, ok := splitOf(parent.Role, k.alternative, k.alternative != "")
+		if !ok {
+			return nil, fmt.Errorf("expansion: %q (role %s) has members %v and no split of its role declares them",
+				k.node, parent.Role, members[k])
+		}
+		if (d.form == SplitExtend) != reaches[k] {
+			return nil, fmt.Errorf("expansion: %q splits by %s into %s and a link from it to a member is %v",
+				k.node, d.form, d.key, reaches[k])
+		}
+		out = append(out, Split{Node: k.node, Key: d.key, Form: d.form, Alternative: d.alternative})
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Node != out[j].Node {
+			return out[i].Node < out[j].Node
+		}
+		return !out[i].Alternative && out[j].Alternative
+	})
+	return out, nil
+}
+
+// checkDistinctAlternativeLinks is checkDistinctLinks within each split's
+// links: two alternatives may each draw a pair once.
+func checkDistinctAlternativeLinks(links []Link) error {
+	by := map[string][]Link{}
+	for _, l := range links {
+		by[l.Alternative] = append(by[l.Alternative], l)
+	}
+	for _, ls := range by {
+		if err := checkDistinctLinks(ls); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// expansionCaveats are the things a reader of the stitch has to be told.
+func expansionCaveats(twice int, nodes []Node) []Caveat {
+	out := []Caveat{
+		ConstraintTierCaveat(),
+		revenueSchedulePublishedTwiceCaveat(),
+		{
+			ID: "the-expansion-is-the-spine-at-finer-grain",
+			Summary: "Every cell of the citywide chart opens into the finer schedules that print it, " +
+				"and they sum back to it to the cent.",
+			Text: fmt.Sprintf("This document is the citywide chart's cells read from the finer "+
+				"schedules that decompose each one: a revenue category from the lines Budget Book "+
+				"pp.127-140 print, a fund group from its funds, the General Fund from its divisions "+
+				"on pp.167-170, an object category from the rows pp.167-183 print or, instead, from "+
+				"the divisions on pp.85-125, transfers from p76 and p222, and reserves and balances "+
+				"from pp.186-209. Summed to the citywide chart's cells they equal pp.66-67. A node "+
+				"marked derived carries money a page prints for a group or a category and no finer "+
+				"page attributes. An opened fund's link to each of its divisions totals the rows "+
+				"drawn beyond it, and a remainder cites the members it is the difference of, so "+
+				"%d fact(s) are behind more than one link and summing every link double-counts.", twice),
+			AppliesTo: []string{},
+		},
+	}
+	var netted []string
+	for _, n := range nodes {
+		if strings.HasPrefix(n.ID, PrefixGroupOnly) {
+			netted = append(netted, n.ID)
+		}
+	}
+	if len(netted) > 0 {
+		out = append(out, Caveat{
+			ID: "some-fund-group-money-is-not-by-fund",
+			Summary: fmt.Sprintf("%s money pp.66-67 print that no fund's own page carries, drawn "+
+				"on a node of the group's own.", plural(len(netted), "fund group")),
+			Text: "Budget Book pp.66-67 print each fund group's change in working capital as one " +
+				"figure. Where some of the group's funds draw on their balances and others add to " +
+				"them, pp.186-209 print each fund's own change and the group's is their net, which " +
+				"no single fund carries; it is drawn on a node of the group's own, and each of those " +
+				"funds is drawn with what it takes in and spends and not its own change. Where " +
+				"pp.66-67 print more for a group than its funds' pages do, the difference is on the " +
+				"same node, with the exception declaring it named in the node's note.",
+			AppliesTo: netted,
+		})
+	}
+	return out
+}
