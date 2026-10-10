@@ -3,47 +3,47 @@ package export
 import "github.com/jcrussell/livermore-budget/internal/project"
 
 // wording is every sentence site/app.js composes about the chart on screen,
-// as templates the client fills in: the counts line, the chart hint, the way
-// back and the breadcrumb's control. `{name}` is a variable's value and
+// as templates the client fills in: the counts line, the chart hint and the
+// chip row above the chart. `{name}` is a variable's value and
 // `{name:one|many}` is the value followed by the singular or the plural word,
 // by whether the value is 1.
 //
 // Declared here and formatted there, so the words are the packager's and the
 // numbers the chart's.
 type wording struct {
-	Counts            string `json:"counts"`
-	CountsPartial     string `json:"counts_partial"`
-	CountsCarried     string `json:"counts_carried"`
-	CountsCarriedFrom string `json:"counts_carried_from"`
-	OpenedHint        string `json:"opened_hint"`
-	OpenFurther       string `json:"open_further"`
-	OpenInto          string `json:"open_into"`
-	NothingFurther    string `json:"nothing_further"`
-	NothingOpens      string `json:"nothing_opens"`
-	Follow            string `json:"follow"`
-	Expand            string `json:"expand"`
-	Swatch            string `json:"swatch"`
-	InColumn          string `json:"in_column"`
-	ColumnLeft        string `json:"column_left"`
-	ColumnMiddle      string `json:"column_middle"`
-	ColumnSecond      string `json:"column_second"`
-	ColumnThird       string `json:"column_third"`
-	ColumnRight       string `json:"column_right"`
-	GoBack            string `json:"go_back"`
-	BackControl       string `json:"back_control"`
-	PrintedByCity     string `json:"printed_by_city"`
-	InferredByUs      string `json:"inferred_by_us"`
-	OurInference      string `json:"our_inference"`
-	InferredChip      string `json:"inferred_chip"`
-	PrintedChip       string `json:"printed_chip"`
-	CarriedNote       string `json:"carried_note"`
-	CarriedChip       string `json:"carried_chip"`
-	DescOpens         string `json:"desc_opens"`
-	DescExpands       string `json:"desc_expands"`
-	DescFollows       string `json:"desc_follows"`
-	FlowInferred      string `json:"flow_inferred"`
-	NoneInferred      string `json:"none_inferred"`
-	TablePointer      string `json:"table_pointer"`
+	Counts        string `json:"counts"`
+	CountsPartial string `json:"counts_partial"`
+	OpenInto      string `json:"open_into"`
+	NothingOpens  string `json:"nothing_opens"`
+	// FoldBack is said beside a chart with a node split open: the ways to
+	// fold one back.
+	FoldBack string `json:"fold_back"`
+	Follow   string `json:"follow"`
+	Expand   string `json:"expand"`
+	Swatch   string `json:"swatch"`
+	// The chip row above the chart: one chip per node split open, the chooser
+	// beside a node that splits more than one way, a tail drawn out, and the
+	// two controls over every split at once.
+	ChipFold      string `json:"chip_fold"`
+	ChipFoldLabel string `json:"chip_fold_label"`
+	SplitChooser  string `json:"split_chooser"`
+	TailChip      string `json:"tail_chip"`
+	TailChipLabel string `json:"tail_chip_label"`
+	ExpandAll     string `json:"expand_all"`
+	CollapseAll   string `json:"collapse_all"`
+	PrintedByCity string `json:"printed_by_city"`
+	InferredByUs  string `json:"inferred_by_us"`
+	OurInference  string `json:"our_inference"`
+	InferredChip  string `json:"inferred_chip"`
+	PrintedChip   string `json:"printed_chip"`
+	CarriedNote   string `json:"carried_note"`
+	CarriedChip   string `json:"carried_chip"`
+	DescOpens     string `json:"desc_opens"`
+	DescExpands   string `json:"desc_expands"`
+	DescFollows   string `json:"desc_follows"`
+	FlowInferred  string `json:"flow_inferred"`
+	NoneInferred  string `json:"none_inferred"`
+	TablePointer  string `json:"table_pointer"`
 	// The aggregate, residual and gap marks, schema/mark.schema.json: their
 	// labels, rationales and source notes are templates the constructors
 	// fill, so no sentence about what a mark IS is spelled in JavaScript.
@@ -113,6 +113,20 @@ type wording struct {
 	Hairline string `json:"hairline"`
 }
 
+// splitLabels is the words for what a node splits into, keyed by every split
+// key the expansion schedule declares ([project.SplitKeys]): what the chip row
+// and the chooser call a node's members.
+func splitLabels() map[string]string {
+	return map[string]string{
+		"lines":       "its lines",
+		"payers":      "the funds that pay it",
+		"funds":       "its funds",
+		"divisions":   "its divisions",
+		"object-rows": "its object rows",
+		"receivers":   "the funds it pays",
+	}
+}
+
 // kindLabels is project's words for every link kind, keyed as a link names it.
 func kindLabels() map[string]string {
 	out := make(map[string]string, len(project.LinkKinds()))
@@ -132,40 +146,37 @@ const flowTableHeading = "Every flow, as a table"
 // runs, and a test holds that line to Counts.
 func defaultWording() wording {
 	return wording{
-		Counts:            "{links:flow|flows} between {nodes:node|nodes}, from {facts:fact|facts}",
-		CountsPartial:     "{links:flow|flows} between {nodes:node|nodes}, from {cited} of the document's {facts:fact|facts}",
-		CountsCarried:     "{links:flow|flows} between {nodes:node|nodes}: {own} citing {cited} of the document's {facts:fact|facts}, and {carried} carried unchanged from the chart above",
-		CountsCarriedFrom: ", citing {above} of its {theirs:fact|facts}",
-		OpenedHint:        "This is {label}, broken into its parts.",
-		OpenFurther:       "Double click a node{where} to open it further, or tab to one and press Enter.",
-		OpenInto:          "Double click a node{where} to open it into its parts, or tab to one and press Enter.",
-		NothingFurther:    "Nothing here opens further; go back to open another.",
-		NothingOpens:      "Nothing on this chart opens.",
-		Follow:            "A single click, or Space, follows one node's money.",
-		Expand:            "The folded mark is several of them drawn as one; double click it, or tab to it and press Enter, to draw them separately.",
-		Swatch:            "A fund swatch follows one group's money without opening anything.",
-		InColumn:          " in the {columns} column",
-		ColumnLeft:        "left-hand",
-		ColumnMiddle:      "middle",
-		ColumnSecond:      "second",
-		ColumnThird:       "third",
-		ColumnRight:       "right-hand",
-		GoBack:            "Use the breadcrumb above the chart, or press Escape, to go back.",
-		BackControl:       "\u2190 {back}",
-		PrintedByCity:     "printed by the city",
-		InferredByUs:      "inferred by us",
-		OurInference:      "◇ our inference",
-		InferredChip:      "◇ inferred",
-		PrintedChip:       "printed",
-		CarriedNote:       "figure printed by the city, re-pointed onto a mark of ours",
-		CarriedChip:       "◇ re-pointed by us",
-		DescOpens:         ", opens into its parts on a double click or Enter; a single click or Space follows this money",
-		DescExpands:       ", draws all of them separately on a double click or Enter; a single click or Space follows this money",
-		DescFollows:       ", follow this money",
-		FlowInferred:      "This flow is inferred; both endpoints are printed by the city.",
-		NoneInferred:      "Nothing on this chart is inferred: every node and flow is printed by the city.",
-		TablePointer:      "The same figures are in the flow table below, which opens from the \"" + flowTableHeading + "\" heading.",
-		AggregateLabel:    "{folded} smaller {word}",
+		Counts:        "{links:flow|flows} between {nodes:node|nodes}, from {facts:fact|facts}",
+		CountsPartial: "{links:flow|flows} between {nodes:node|nodes}, from {cited} of the document's {facts:fact|facts}",
+		OpenInto: "Double click a node, or tab to one and press Enter, to split it in place into its parts; " +
+			"every other node stays where it is.",
+		NothingOpens: "Nothing on this chart opens.",
+		FoldBack: "A chip above the chart folds a split node back, Escape undoes the last split, and a double " +
+			"click with Alt or Shift held folds back the node a mark was split out of.",
+		Follow:         "A single click, or Space, follows one node's money.",
+		Expand:         "The folded mark is several of them drawn as one; double click it, or tab to it and press Enter, to draw them separately.",
+		Swatch:         "A fund swatch follows one group's money without opening anything.",
+		ChipFold:       "{label} \u25be",
+		ChipFoldLabel:  "{label}, split into {split}: fold it back into one mark",
+		SplitChooser:   "Split {label} into",
+		TailChip:       "{label}: showing all {n} {word} \u00d7",
+		TailChipLabel:  "{label}: showing all {n} {word}; fold the smallest back into one mark",
+		ExpandAll:      "Expand all",
+		CollapseAll:    "Collapse all",
+		PrintedByCity:  "printed by the city",
+		InferredByUs:   "inferred by us",
+		OurInference:   "◇ our inference",
+		InferredChip:   "◇ inferred",
+		PrintedChip:    "printed",
+		CarriedNote:    "figure printed by the city, re-pointed onto a mark of ours",
+		CarriedChip:    "◇ re-pointed by us",
+		DescOpens:      ", splits in place into its parts on a double click or Enter; a single click or Space follows this money",
+		DescExpands:    ", draws all of them separately on a double click or Enter; a single click or Space follows this money",
+		DescFollows:    ", follow this money",
+		FlowInferred:   "This flow is inferred; both endpoints are printed by the city.",
+		NoneInferred:   "Nothing on this chart is inferred: every node and flow is printed by the city.",
+		TablePointer:   "The same figures are in the flow table below, which opens from the \"" + flowTableHeading + "\" heading.",
+		AggregateLabel: "{folded} smaller {word}",
 		AggregateRationale: "Our grouping, not a line the city printed: the {folded} smallest {word} in this column are drawn as one " +
 			"mark because they cannot be drawn separately. Every figure inside it is printed; the box around them is ours.",
 		AggregateNote:     "The {folded} smallest of {total} by value, at this page's cap of {cap}",
@@ -207,7 +218,7 @@ func defaultWording() wording {
 		SearchLabel:      "Find a mark on this chart",
 		SearchCount:      "{n:mark matches|marks match}; the arrow keys move between them, and Enter goes to one.",
 		SearchNone:       "No mark drawn on this chart has “{query}” in its name.",
-		SearchOpens:      "Enter opens it",
+		SearchOpens:      "Enter splits it in place",
 		SearchExpands:    "Enter draws out every one it folds",
 		FullScreen:       "Full screen",
 		FullScreenExit:   "Exit full screen",

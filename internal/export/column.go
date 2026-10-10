@@ -480,87 +480,31 @@ func encodeColumn(doc ColumnDoc) ([]byte, error) {
 	return b, nil
 }
 
-// StepStems is the document each declared step draws for one year, in
-// declaration order: the step's own schedule where it names one, else the
-// document of the chart its After opens from (`year` itself for ""), as
-// site/app.js's stepDocument resolves it. It is the one resolution of that
-// question: validateSteps places every step against it and stepDocuments
-// opens the rungs with it. A schedule the year's column does not carry is
-// refused by name; a year in no column fails only a step that selects a
-// schedule.
-func StepStems(steps []DrillStep, year string, ix ColumnIndex) ([]string, error) {
-	out := make([]string, len(steps))
-	index := make(map[string]int, len(steps))
-	for i, s := range steps {
-		index[s.Key] = i
-	}
-	for i, s := range steps {
-		if s.Projection == "" {
-			doc := ""
-			for _, a := range s.After {
-				parent := year
-				if a != "" {
-					j, ok := index[a]
-					if !ok || j >= i {
-						return nil, fmt.Errorf("step %d opens from %q, which names no earlier step", i, a)
-					}
-					parent = out[j]
-				}
-				if doc != "" && parent != doc {
-					return nil, fmt.Errorf(
-						"step %d names no schedule and opens from charts drawing %q and %q; a "+
-							"step that draws the document before it needs ONE document before it",
-						i, doc, parent)
-				}
-				doc = parent
-			}
-			if doc == "" {
-				return nil, fmt.Errorf("step %d names no schedule and opens from no chart", i)
-			}
-			out[i] = doc
-			continue
-		}
-		column, folded := ix.Column(year)
-		if !folded {
-			return nil, fmt.Errorf(
-				"step %d opens into schedule %q and year %q folded into no column, so "+
-					"there is nothing to select that schedule out of",
-				i, s.Projection, year)
-		}
-		stem, ok := ix.Stem(column, s.Projection)
-		if !ok {
-			return nil, fmt.Errorf(
-				"step %d opens into schedule %q and column %s (year %q) carries no such "+
-					"schedule; a reader on that year would open a node into nothing",
-				i, s.Projection, column, year)
-		}
-		out[i] = stem
-	}
-	return out, nil
-}
-
 // ReachedStems is every document a reader of this view can reach, once each:
-// its projection, its year stems, the expansion schedule of each year's
-// column, and every document its steps draw across every year it lists, as
-// [StepStems] resolves each year. It refuses what StepStems refuses. The
-// caveats page's drawn set and `fisc export`'s reachability gate both read
-// it, so the two cannot disagree.
+// its projection, its year stems, and the expansion schedule of each year's
+// column with every document of that column the expansion is stitched from
+// ([project.ExpansionStitches]), whose links are the expansion's leaves. It
+// refuses a projection outside the year stems, as validate does, since it
+// runs on views validate has not seen. The caveats page's drawn set and
+// `fisc export`'s reachability gate both read it, so the two cannot disagree.
 func (v View) ReachedStems(ix ColumnIndex) ([]string, error) {
-	byYear, err := v.stepStemsByYear(ix)
-	if err != nil {
+	if err := v.projectionAmongYears(); err != nil {
 		return nil, err
 	}
-	// v.yearStems() holds the projection: stepStemsByYear refuses a view
-	// whose list does not. A view rendering no document lists "".
 	var out []string
 	for _, year := range v.yearStems() {
 		reached := []string{year}
 		if column, folded := ix.Column(year); folded && v.Overview.Form == SankeyForm {
 			if stem, ok := ix.Stem(column, project.ExpansionProjection); ok {
 				reached = append(reached, stem)
+				for _, p := range project.ExpansionStitches() {
+					if stitched, ok := ix.Stem(column, p); ok {
+						reached = append(reached, stitched)
+					}
+				}
 			}
 		}
-		for _, stem := range append(reached, byYear[year]...) {
+		for _, stem := range reached {
 			if stem != "" && !slices.Contains(out, stem) {
 				out = append(out, stem)
 			}

@@ -1995,127 +1995,127 @@
   },
   {
    "id": "expenditure/administrative-services/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Administrative Services: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/administrative-services/wages-and-benefits",
-   "label": "Wages \u0026 Benefits",
+   "label": "Administrative Services: Wages \u0026 Benefits",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/building-and-safety/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Building \u0026 Safety: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/building-and-safety/wages-and-benefits",
-   "label": "Wages \u0026 Benefits",
+   "label": "Building \u0026 Safety: Wages \u0026 Benefits",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/city-attorney/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "City Attorney: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/city-attorney/wages-and-benefits",
-   "label": "Wages \u0026 Benefits",
+   "label": "City Attorney: Wages \u0026 Benefits",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/city-clerk/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "City Clerk: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/city-clerk/wages-and-benefits",
-   "label": "Wages \u0026 Benefits",
+   "label": "City Clerk: Wages \u0026 Benefits",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/city-council/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "City Council: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/city-council/wages-and-benefits",
-   "label": "Wages \u0026 Benefits",
+   "label": "City Council: Wages \u0026 Benefits",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/city-manager/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "City Manager: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/city-manager/wages-and-benefits",
-   "label": "Wages \u0026 Benefits",
+   "label": "City Manager: Wages \u0026 Benefits",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/community-development-admin/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Community Development Admin: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/community-development-admin/wages-and-benefits",
-   "label": "Wages \u0026 Benefits",
+   "label": "Community Development Admin: Wages \u0026 Benefits",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/engineering/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Engineering: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/engineering/wages-and-benefits",
-   "label": "Wages \u0026 Benefits",
+   "label": "Engineering: Wages \u0026 Benefits",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/environmental-services/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Environmental Services: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/environmental-services/wages-and-benefits",
-   "label": "Wages \u0026 Benefits",
+   "label": "Environmental Services: Wages \u0026 Benefits",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/finance/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Finance: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/finance/wages-and-benefits",
-   "label": "Wages \u0026 Benefits",
+   "label": "Finance: Wages \u0026 Benefits",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/fire-administration/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Fire Administration: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
@@ -2634,139 +2634,139 @@
   },
   {
    "id": "expenditure/general-services/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "General Services: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/housing-and-human-services/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Housing \u0026 Human Services: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/housing-and-human-services/wages-and-benefits",
-   "label": "Wages \u0026 Benefits",
+   "label": "Housing \u0026 Human Services: Wages \u0026 Benefits",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/human-resources/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Human Resources: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/human-resources/wages-and-benefits",
-   "label": "Wages \u0026 Benefits",
+   "label": "Human Resources: Wages \u0026 Benefits",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/innovation-and-economic-devel/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Innovation \u0026 Economic Devel: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/innovation-and-economic-devel/wages-and-benefits",
-   "label": "Wages \u0026 Benefits",
+   "label": "Innovation \u0026 Economic Devel: Wages \u0026 Benefits",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/library/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Library: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/library/wages-and-benefits",
-   "label": "Wages \u0026 Benefits",
+   "label": "Library: Wages \u0026 Benefits",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/maintenance/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Maintenance: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/maintenance/wages-and-benefits",
-   "label": "Wages \u0026 Benefits",
+   "label": "Maintenance: Wages \u0026 Benefits",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/patrol/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Patrol: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/patrol/wages-and-benefits",
-   "label": "Wages \u0026 Benefits",
+   "label": "Patrol: Wages \u0026 Benefits",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/planning/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Planning: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/planning/wages-and-benefits",
-   "label": "Wages \u0026 Benefits",
+   "label": "Planning: Wages \u0026 Benefits",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/police-administration/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Police Administration: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/police-administration/wages-and-benefits",
-   "label": "Wages \u0026 Benefits",
+   "label": "Police Administration: Wages \u0026 Benefits",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/public-works-administration/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Public Works Administration: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/public-works-administration/wages-and-benefits",
-   "label": "Wages \u0026 Benefits",
+   "label": "Public Works Administration: Wages \u0026 Benefits",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/special-operations/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Special Operations: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/special-operations/wages-and-benefits",
-   "label": "Wages \u0026 Benefits",
+   "label": "Special Operations: Wages \u0026 Benefits",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/support-services/services-and-supplies",
-   "label": "Services \u0026 Supplies",
+   "label": "Support Services: Services \u0026 Supplies",
    "tier": 5,
    "role": "object_category"
   },
   {
    "id": "expenditure/support-services/wages-and-benefits",
-   "label": "Wages \u0026 Benefits",
+   "label": "Support Services: Wages \u0026 Benefits",
    "tier": 5,
    "role": "object_category"
   },

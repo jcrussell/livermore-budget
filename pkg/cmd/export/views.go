@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -19,11 +18,9 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/registry"
 )
 
-// viewsFile is the site's views and drill steps, read from the root of the
-// same filesystem registry.Load reads the vocabulary from. It is the one
-// source of every authored field of an [export.View]; what Go fills is the
-// year control, which steps the built documents can open, and the residual
-// and gap derivations a step names.
+// viewsFile is the site's views, read from the root of the same filesystem
+// registry.Load reads the vocabulary from. It is the one source of every
+// authored field of an [export.View]; what Go fills is the year control.
 const viewsFile = "views.yaml"
 
 // viewsSchemaVersion is the only views.yaml version this command reads.
@@ -53,7 +50,6 @@ type viewDecl struct {
 	Lede        string        `yaml:"lede"`
 	Sections    []sectionDecl `yaml:"sections"`
 	Overview    *chartDecl    `yaml:"overview"`
-	Steps       []stepDecl    `yaml:"steps"`
 }
 
 // sectionDecl is one [export.Section] as authored. Rows maps a printed row
@@ -68,8 +64,7 @@ type sectionDecl struct {
 
 // chartDecl is an [export.Chart] as authored: the form and the form's hints
 // under its own key, which decode as [export.SankeyHints] itself. Projection
-// is the overview's [export.View.Draws]; a step names its schedule on the
-// step.
+// is the overview's [export.View.Draws].
 type chartDecl struct {
 	Form       string              `yaml:"form"`
 	Projection string              `yaml:"projection"`
@@ -77,41 +72,8 @@ type chartDecl struct {
 	Bars       *export.BarsHints   `yaml:"bars"`
 }
 
-// stepDecl is one [export.DrillStep] as authored, its chart inlined as on the
-// wire. Residual and Gaps name a derivation rather than carry one: a figure
-// written here would be a second spelling of what internal/project derives.
-type stepDecl struct {
-	Key           string              `yaml:"key"`
-	After         []string            `yaml:"after"`
-	From          int                 `yaml:"from"`
-	Role          string              `yaml:"role"`
-	Projection    string              `yaml:"projection"`
-	Form          string              `yaml:"form"`
-	Sankey        *export.SankeyHints `yaml:"sankey"`
-	Bars          *export.BarsHints   `yaml:"bars"`
-	Noun          string              `yaml:"noun"`
-	Back          string              `yaml:"back"`
-	Tail          string              `yaml:"tail"`
-	Description   string              `yaml:"description"`
-	ResidualGrain string              `yaml:"residual_grain"`
-	Residual      string              `yaml:"residual"`
-	Gaps          string              `yaml:"gaps"`
-}
-
-// residualDerivations is every derivation a step's `residual` may name, each
-// keyed by the projection whose document it is about.
-var residualDerivations = map[string]func() (map[string]string, error){
-	project.FundFlowsProjection: project.FundFlowsResidual,
-}
-
-// gapDerivations is every derivation a step's `gaps` may name, keyed as
-// residualDerivations is.
-var gapDerivations = map[string]func() (map[string][]project.Gap, error){
-	project.DepartmentSpendingProjection: project.SpendingGaps,
-}
-
 // viewsError reports a views.yaml this command cannot load. Entry names the
-// view or step, already rendered; it is empty for a file-level problem.
+// view, already rendered; it is empty for a file-level problem.
 type viewsError struct {
 	Entry string
 	Field string
@@ -132,12 +94,10 @@ func (e *viewsError) Error() string {
 }
 
 // loadViews reads views.yaml from the root of fsys and resolves every name it
-// carries: a projection against the published projections, a role against
-// project.Roles, a residual or gaps derivation against the ones declared
-// here and against the projection of the step naming it, and a section row
-// against the registry's categories. It refuses an unknown key, an unknown
-// name and a derivation about another step's document, and nothing else; what
-// a declared view must satisfy is validated at the write.
+// carries: a projection against the published projections and a section row
+// against the registry's categories. It refuses an unknown key and an unknown
+// name, and nothing else; what a declared view must satisfy is validated at
+// the write.
 func loadViews(fsys fs.FS, reg *registry.Registry) ([]viewDecl, error) {
 	b, err := fs.ReadFile(fsys, viewsFile)
 	if err != nil {
@@ -151,8 +111,8 @@ func decodeViews(b []byte, reg *registry.Registry) ([]viewDecl, error) {
 	var doc viewsDoc
 	dec := yaml.NewDecoder(bytes.NewReader(b))
 	// An unknown key is a hard error, as in internal/registry and
-	// internal/mapping: a misspelled `widen:` that decoded quietly would ship
-	// a step with no widened column and nothing to say so.
+	// internal/mapping: a misspelled `split_caps:` that decoded quietly would
+	// ship every split uncapped and nothing to say so.
 	dec.KnownFields(true)
 	if err := dec.Decode(&doc); err != nil {
 		if errors.Is(err, io.EOF) {
@@ -193,33 +153,6 @@ func decodeViews(b []byte, reg *registry.Registry) ([]viewDecl, error) {
 				}
 			}
 		}
-		for _, s := range v.Steps {
-			entry := fmt.Sprintf("view %q step %q", v.Path, s.Key)
-			if s.Projection != "" && !slices.Contains(projections, s.Projection) {
-				return nil, &viewsError{Entry: entry, Field: "projection",
-					Msg: unknownName(s.Projection, projections)}
-			}
-			if s.Role != "" && !slices.Contains(project.Roles(), s.Role) {
-				return nil, &viewsError{Entry: entry, Field: "role",
-					Msg: unknownName(s.Role, project.Roles())}
-			}
-			if _, ok := residualDerivations[s.Residual]; s.Residual != "" && !ok {
-				return nil, &viewsError{Entry: entry, Field: "residual",
-					Msg: unknownName(s.Residual, slices.Sorted(maps.Keys(residualDerivations)))}
-			}
-			if _, ok := gapDerivations[s.Gaps]; s.Gaps != "" && !ok {
-				return nil, &viewsError{Entry: entry, Field: "gaps",
-					Msg: unknownName(s.Gaps, slices.Sorted(maps.Keys(gapDerivations)))}
-			}
-			// A step with no projection of its own draws its parents' document,
-			// and the write refuses a residual or a gap on it as switching none.
-			if s.Residual != "" && s.Projection != "" && s.Residual != s.Projection {
-				return nil, &viewsError{Entry: entry, Field: "residual", Msg: aboutAnother(s.Residual, s.Projection)}
-			}
-			if s.Gaps != "" && s.Projection != "" && s.Gaps != s.Projection {
-				return nil, &viewsError{Entry: entry, Field: "gaps", Msg: aboutAnother(s.Gaps, s.Projection)}
-			}
-		}
 	}
 	return doc.Views, nil
 }
@@ -228,15 +161,6 @@ func decodeViews(b []byte, reg *registry.Registry) ([]viewDecl, error) {
 // it could have been.
 func unknownName(got string, known []string) string {
 	return fmt.Sprintf("%q is not one of %s", got, strings.Join(known, ", "))
-}
-
-// aboutAnother is the refusal for a derivation named on a step drawing a
-// document other than the one it is keyed by: its ids are that document's
-// endpoints and centres, which this step never opens or carries, so it would
-// ship inert.
-func aboutAnother(derivation, draws string) string {
-	return fmt.Sprintf("%q is the derivation about %q, and this step draws %q; "+
-		"what it derives would match nothing this step opens", derivation, derivation, draws)
 }
 
 // publishedProjections is every projection name the site publishes a
@@ -294,17 +218,19 @@ func views(repoRoot string, built result) ([]export.View, error) {
 			v.Draws = d.Overview.Projection
 		}
 		if !drawsBuilt(v, projections) {
-			continue
+			// THE SITE OPENS ON EXACTLY ONE INDEX, so where the schedule its
+			// chart draws was not built it draws the view's own document, the
+			// spine, with nothing to split; any other view is dropped.
+			if v.Path != export.IndexPath {
+				continue
+			}
+			v.Draws = ""
 		}
 		if d.YearControl {
 			v.YearStems = yearStems(d.Projection, projections)
 		}
 		for _, s := range d.Sections {
 			v.Sections = append(v.Sections, s.section(reg))
-		}
-		v.Steps, err = declaredSteps(d, projections)
-		if err != nil {
-			return nil, err
 		}
 		out = append(out, v)
 	}
@@ -314,8 +240,9 @@ func views(repoRoot string, built result) ([]export.View, error) {
 // drawsBuilt reports whether the schedule a view's own chart draws was built
 // for every year the view lists, where it is published for that year's
 // column at all. A view drawing a schedule that was not built is dropped, as
-// one whose own document was not built is; one never published for a year's
-// column is kept for the write to refuse by name.
+// one whose own document was not built is, but for the index, which draws its
+// own document instead; one never published for a year's column is kept for
+// the write to refuse by name.
 func drawsBuilt(v export.View, projections map[string][]byte) bool {
 	if v.Draws == "" {
 		return true
@@ -330,89 +257,6 @@ func drawsBuilt(v export.View, projections map[string][]byte) bool {
 		}
 	}
 	return true
-}
-
-// declaredSteps is the steps of one view the built documents can open, in
-// declared order: a step is dropped when a chart it opens from was dropped or
-// the schedule it draws is published for the column the view's own document
-// is of and was not built (opensInto). A step drawing no schedule of its own
-// draws its parents', so it is dropped exactly when they are. Steps are
-// looked up by key, never index, because the list is filtered.
-//
-// ONLY WHAT WAS NOT BUILT DROPS A STEP. An After naming a key no earlier step
-// declares, and a schedule PublishedDocuments never publishes for the view's
-// column, are kept, so the write refuses each by name; dropping them here
-// would ship the view without that step and everything below it, in silence.
-func declaredSteps(d viewDecl, projections map[string][]byte) ([]export.DrillStep, error) {
-	draws := map[string][]string{"": {d.Projection}}
-	dropped := map[string]bool{}
-	var out []export.DrillStep
-	for _, s := range d.Steps {
-		var schedules []string
-		if s.Projection != "" {
-			schedules = []string{s.Projection}
-		}
-		declared := true
-		for _, parent := range s.After {
-			if dropped[parent] {
-				declared = false
-				break
-			}
-			if s.Projection == "" {
-				schedules = append(schedules, draws[parent]...)
-			}
-		}
-		for _, sched := range schedules {
-			if len(publishedInto(d.Projection, sched)) > 0 && !opensInto(d.Projection, sched, projections) {
-				declared = false
-			}
-		}
-		if !declared {
-			dropped[s.Key] = true
-			continue
-		}
-		draws[s.Key] = schedules
-		step, err := s.step()
-		if err != nil {
-			return nil, fmt.Errorf("%s: view %q step %q: %w", viewsFile, d.Path, s.Key, err)
-		}
-		out = append(out, step)
-	}
-	return out, nil
-}
-
-// step is the declaration as [export.DrillStep], its residual and gaps
-// derived by the functions they name; decodeViews has already refused a name
-// that is no derivation.
-func (s stepDecl) step() (export.DrillStep, error) {
-	step := export.DrillStep{
-		Key:           s.Key,
-		After:         s.After,
-		From:          s.From,
-		Role:          s.Role,
-		Projection:    s.Projection,
-		Chart:         (&chartDecl{Form: s.Form, Sankey: s.Sankey, Bars: s.Bars}).chart(),
-		Back:          s.Back,
-		Tail:          s.Tail,
-		Noun:          s.Noun,
-		Description:   s.Description,
-		ResidualGrain: s.ResidualGrain,
-	}
-	if s.Residual != "" {
-		residual, err := residualDerivations[s.Residual]()
-		if err != nil {
-			return export.DrillStep{}, err
-		}
-		step.Residual = residual
-	}
-	if s.Gaps != "" {
-		gaps, err := gapDerivations[s.Gaps]()
-		if err != nil {
-			return export.DrillStep{}, err
-		}
-		step.Gaps = gaps
-	}
-	return step, nil
 }
 
 // chart is the declaration as [export.Chart]; a nil declaration is a view

@@ -152,32 +152,20 @@ type View struct {
 	// chart and refused on one that does not. A Sankey overview with no tiers
 	// draws the document whole.
 	//
-	// THE SANKEY'S TIERS ARE A COLUMN ORDER AND NOT ONLY A SET: site/sankey.js's
-	// alignFor aligns a node on the list's indexOf, so adjacency is declared.
-	// validateSteps refuses a kept flank against a parent that declares none.
-	// The fold is the client's.
+	// THE SANKEY'S TIERS ARE A COLUMN ORDER AND NOT ONLY A SET: site/sankey.js
+	// places a node by its slot, and a root of the expansion schedule by its
+	// tier's place in this list. The fold is the client's.
 	Overview Chart
 
 	// Draws is the schedule the view's own chart draws out of each year's
 	// column, or "" for Projection's own. The page's figures, year control
 	// and footer stay Projection's; the chart, its counts line and its
-	// caveats are this schedule's, shipped as FISC_CONFIG.primary. A view
-	// that sets it declares no steps: a step's "" parent is Projection's
-	// chart.
+	// caveats are this schedule's, shipped as FISC_CONFIG.primary.
 	Draws string
 	// Description is the view's own chart said in words: the SVG's <desc>
 	// and the paragraph under the chart, or "" for the template's own, which
 	// describes the spine. Only a template that draws a chart renders it.
 	Description string
-
-	// Steps is how this view's chart opens a node, one hop per step, or empty
-	// for a chart that does not open; a node click then isolates instead.
-	// Shipped as FISC_CONFIG.steps.
-	//
-	// THE LIST IS FLAT AND THE SHAPE IS A DAG: a step names the charts it opens
-	// from ([DrillStep.After]). What a declared tree must satisfy is
-	// validateSteps'.
-	Steps []DrillStep
 }
 
 // Doc describes one source document the page cites. The caller supplies these
@@ -302,8 +290,8 @@ type Options struct {
 
 	// Gate is the caller's own refusal of a site this package would accept,
 	// handed the ColumnIndex validation folded. Prepare runs it once the fold
-	// and Options.validate have accepted, and before buildSite: a step
-	// document buildSite refuses, a page text it cannot resolve and every page
+	// and Options.validate have accepted, and before buildSite: a drawn
+	// schedule buildSite refuses, a page text it cannot resolve and every page
 	// render come after it. Nil is none.
 	Gate func(ix ColumnIndex) error
 }
@@ -362,93 +350,10 @@ type Section struct {
 	Rows map[string]string
 }
 
-// DrillStep is one hop of a view's chart opening a node into its parts, by
-// filtering and rescaling rather than expanding in place (fisc-ppkq records
-// why d3-sankey cannot lay out the latter).
-//
-// FROM AND THE FORM'S TIERS ARE NOT NECESSARILY TIERS OF THE SAME DOCUMENT.
-// From is a tier of the chart on screen; a Sankey's tiers are tiers of the
-// document THIS step draws. On a step that switches document the two
-// hierarchies are unrelated, so validateSteps never relates From to them.
-//
-// The fields here are the step's generic half, read by the client core and by
-// validateStep whatever the form. What the form may fold is the embedded
-// [Chart]'s, under the form's own key.
-type DrillStep struct {
-	// Key names this step for [DrillStep.After]. Required and unique within a
-	// view.
-	Key string `json:"key"`
-	// After is the Keys of the steps whose charts this one opens from, and ""
-	// is the view's own chart.
-	//
-	// EVERY ENTRY NAMES AN EARLIER STEP, so a cycle is undeclarable rather than
-	// detected. A root says so with "", not with an empty list, which
-	// validateSteps refuses.
-	After []string `json:"after"`
-	// From is the tier whose nodes open, in the chart on screen before they do.
-	// One tier rather than a set: a step is one hop, and a second tier of the
-	// same chart is a second step sharing this one's After.
-	From int `json:"from"`
-	// Role is which of the nodes at From open, in the caller's vocabulary, or
-	// "" for all of them. This package gives it no meaning beyond requiring
-	// (After, From, Role) to name at most one step.
-	Role string `json:"role,omitempty"`
-	// Projection is the SCHEDULE this step draws, or "" to draw the document
-	// of the chart it opens from, which every parent in After must then agree
-	// on. Every column the view lists must carry it. A schedule key and not a
-	// filename stem: the year is carried by the column file the reader fetched
-	// ([ColumnIndex]), and [StepStems] is the join.
-	Projection string `json:"projection,omitempty"`
-	// Chart is the form this step draws once a node has opened, and that
-	// form's hints. Inlined on the wire: `form` and the form's own key.
-	Chart
-	// Back is what the breadcrumb's return control says, e.g. "All fund
-	// groups". Declared rather than derived from From, because a tier number
-	// does not know what the reader calls the things in it.
-	Back string `json:"back"`
-	// Tail is the plural noun the capped aggregate is counted in -- "funds",
-	// "categories" -- so its label reads "24 smaller funds". A cap naming its
-	// own [TierCap.Tail] takes that instead. Declared for Back's reason.
-	Tail string `json:"tail"`
-	// Noun is the singular noun for a node opened on this step -- "fund group",
-	// "division" -- which the client uses only to tell two rungs of one trail
-	// apart when the documents print them in the same words (Budget Book p66
-	// and p255 both print "General Fund"). Required, though most trails never
-	// draw it.
-	Noun string `json:"noun"`
-	// Description is the chart's long description once a node has opened on
-	// this step, in the caller's words; the client writes it into the SVG's
-	// <desc>. Required, and terminated because the client appends sentences.
-	Description string `json:"description"`
-	// Residual is the set of endpoints of the chart this step opens FROM whose
-	// flow into or out of the opened node the document this step DRAWS does
-	// not decompose: node id to reason. The client copies those links onto one
-	// derived node beside the opened node's parts.
-	//
-	// Only on a step that switches document. The caller derives it from the
-	// cuts and exceptions internal/structure declares.
-	Residual map[string]string `json:"residual,omitempty"`
-	// ResidualGrain is the grain the document this step draws does NOT split
-	// that money by, in the city's singular word -- "fund". The client's
-	// carryResidual names the mark for it. Required wherever Residual is
-	// non-empty.
-	ResidualGrain string `json:"residual_grain,omitempty"`
-	// Gaps is the set of nodes this step OPENS whose total the document it
-	// draws does not reach: node id to the licences for each column it differs
-	// in, by how much, and why. The client's markGap holds the difference the
-	// drawn chart comes to against the licence for its column and draws the
-	// shortfall as one derived node, or refuses the chart.
-	//
-	// A gap key is the opened node itself; a [DrillStep.Residual] key is an
-	// endpoint of the chart above. A step declaring a gap claims every other
-	// node it opens balances. Only on a step that switches document.
-	Gaps map[string][]project.Gap `json:"gaps,omitempty"`
-}
-
 // Chart is one drawn chart's form and that form's hints under the form's own
-// key: the overview's on [View.Overview], a step's embedded in [DrillStep]. A
-// hint foreign to the declared form is refused by schema/page.schema.json at
-// the write, and the client core reads none of them. A second form adds one
+// key, as [View.Overview] declares it. A hint foreign to the declared form is
+// refused by schema/page.schema.json at the write, and the client core reads
+// none of them. A second form adds one
 // value to [ChartForms], one hint type here, one closed object in the schema
 // and one renderer module under site/.
 type Chart struct {
@@ -467,8 +372,8 @@ type Chart struct {
 const SankeyForm = "sankey"
 
 // BarsForm is the form site/bars.js draws: the parts of an opened node, one
-// ranked bar each. A step form only: it lists what a node opened into, and an
-// overview has opened none.
+// ranked bar each. validate refuses it on a view's own chart, which has
+// opened no node to list the parts of.
 const BarsForm = "bars"
 
 // ChartForms is the declared set of forms, which schema/enums.schema.json
@@ -500,68 +405,33 @@ func markPrefixOf(id string) string {
 	return ""
 }
 
-// markKey is the first key of a licence map that names a mark, or "".
-func markKey[V any](m map[string]V) string {
-	for _, id := range slices.Sorted(maps.Keys(m)) {
-		if markPrefixOf(id) != "" {
-			return id
-		}
-	}
-	return ""
-}
-
 // SankeyHints is what the Sankey form may fold and where. Go declares; the
 // client's capColumn and foldDocument spend the declaration.
 type SankeyHints struct {
-	// Tiers is the tier set drawn, left to right: on a step, once a node has
-	// opened, and a different declaration from the chart's before it; on the
-	// overview, the page's own column order, or empty to draw the document
+	// Tiers is the page's own column order, or empty to draw the document
 	// whole.
 	Tiers []int `json:"tiers,omitempty" yaml:"tiers"`
-	// Keep is the flank of the chart on screen that stays drawn beside the
-	// opened node, NEAREST THE CENTRE FIRST, or empty for a step that draws the
-	// opened node's parts alone. A slice and not an int because tier 0 is a
-	// real tier. The entries are contiguous and on one side of the opened tier.
-	//
-	// With an entry, Tiers is the flank, the opened node and what it opens
-	// into, plus one column per [SankeyHints.Widen] entry, with the flank at
-	// the end the parent's column order names. validateSteps checks that side
-	// against every chart this step opens from.
-	Keep []int `json:"keep,omitempty" yaml:"keep"`
-	// Widen is the tier this step adds for each column beyond the window's own
-	// three, in the order they are added; a client with room for fewer drops
-	// them from the end. A widened column sits at the end of Tiers away from
-	// the kept flank, and validateSteps refuses a Tiers that disagrees.
-	// Refused on a step that keeps nothing.
-	Widen []int `json:"widen,omitempty" yaml:"widen"`
 	// Caps bounds the columns this chart draws, one per tier that needs one; a
-	// tier with no cap is drawn whole. On the overview each names its own
-	// [TierCap.Tail].
+	// tier with no cap is drawn whole. Each names its own [TierCap.Tail].
 	Caps []TierCap `json:"caps,omitempty" yaml:"caps"`
-	// Side is which end of a link the opened node sits on: "" for the node the
-	// links point AT, [SideSource] for the node they come FROM, [SideBoth] for
-	// a node drawn between the two. Declared, never inferred from tier numbers.
-	Side string `json:"side,omitempty" yaml:"side"`
 	// Height is the canvas the chart is laid out on, in px, or 0 for the
-	// form's own. Overview only: a rung is a window onto one node, drawn on
-	// the canvas its page reads at.
+	// form's own.
 	Height int `json:"height,omitempty" yaml:"height"`
 	// Drop is the tiers whose nodes, and every link touching one, the chart
 	// does not draw: a tier the document emits as a restatement of what the
 	// drawn tiers already carry, which drawn beside them would show the same
-	// money twice. Overview only, disjoint from Tiers, and refused unless
+	// money twice. Disjoint from Tiers, and refused unless
 	// every fact a dropped link cites is cited by a link the chart keeps
 	// (validateDrop), so the flow table still lists every figure.
 	Drop []int `json:"drop,omitempty" yaml:"drop"`
 	// Grow lays the chart out on a canvas sized by the busiest column the
-	// client draws, in place of a fixed [SankeyHints.Height]. Overview only,
-	// and refused beside a Height.
+	// client draws, in place of a fixed [SankeyHints.Height], and is refused
+	// beside a Height.
 	Grow *CanvasGrowth `json:"grow,omitempty" yaml:"grow"`
 	// SplitCaps bounds how many members of one split of the expansion
 	// schedule the chart draws before the rest fold into a tail inside the
 	// node they split; a split with no cap is drawn whole. Keyed by the
-	// split's key, so one cap holds every node's split of that key. Overview
-	// only.
+	// split's key, so one cap holds every node's split of that key.
 	SplitCaps []SplitCap `json:"split_caps,omitempty" yaml:"split_caps"`
 }
 
@@ -589,63 +459,11 @@ type BarsHints struct {
 	Tier int `json:"tier" yaml:"tier"`
 }
 
-// SideSource is [SankeyHints.Side] for a step opening the node its chart's
-// links come FROM.
-const SideSource = "source"
-
-// SideBoth is [SankeyHints.Side] for a step drawing the opened node between
-// what its document sends into it and what it sends out, both read off the
-// step's own document: a window takes its second side from the chart on
-// screen, and this takes it from the document.
-const SideBoth = "both"
-
-// interior reports whether tier is drawn with a column on each side of it,
-// every column before it a lower tier and every column after a higher one: a
-// link runs from a lower tier to a higher, so the left half is what flows in
-// and the right half what flows out.
-func interior(tiers []int, tier int) bool {
-	i := slices.Index(tiers, tier)
-	if i <= 0 || i >= len(tiers)-1 {
-		return false
-	}
-	for j, t := range tiers {
-		if (j < i && t >= tier) || (j > i && t <= tier) {
-			return false
-		}
-	}
-	return true
-}
-
 // drawnTiers is the column order a chart of this form draws, or nil for a
 // Sankey drawing its document whole.
 func (c Chart) drawnTiers() []int {
 	if c.Form == SankeyForm && c.Sankey != nil {
 		return c.Sankey.Tiers
-	}
-	return nil
-}
-
-// drawnTiers is the tiers a step draws once a node has opened: its chart's,
-// and for the bars form the opened tier and the tier it lists.
-func (s DrillStep) drawnTiers() []int {
-	if s.Form == BarsForm && s.Bars != nil {
-		return []int{s.From, s.Bars.Tier}
-	}
-	return s.Chart.drawnTiers()
-}
-
-// keptFlank is a Sankey chart's kept flank, or nil.
-func (c Chart) keptFlank() []int {
-	if c.Form == SankeyForm && c.Sankey != nil {
-		return c.Sankey.Keep
-	}
-	return nil
-}
-
-// widened is a Sankey chart's widened tiers, or nil.
-func (c Chart) widened() []int {
-	if c.Form == SankeyForm && c.Sankey != nil {
-		return c.Sankey.Widen
 	}
 	return nil
 }
@@ -656,9 +474,8 @@ func (c Chart) widened() []int {
 type TierCap struct {
 	Tier int `json:"tier" yaml:"tier"`
 	Cap  int `json:"cap" yaml:"cap"`
-	// Tail is the plural noun this tier's folded tail is counted in, or "" to
-	// take the step's [DrillStep.Tail]. Per cap because one step may cap two
-	// tiers of different things.
+	// Tail is the plural noun this tier's folded tail is counted in. Per cap
+	// because one chart may cap two tiers of different things.
 	Tail string `json:"tail,omitempty" yaml:"tail"`
 }
 
@@ -808,7 +625,6 @@ func (o *Options) reservedPaths() map[string]bool {
 // validate refuses a view that could not be rendered, or that would land on a
 // path the site owns.
 func (v View) validate(built map[string][]byte, ix ColumnIndex) error {
-	badRoot := v.rootOutsideOverview()
 	switch {
 	case v.Path == "":
 		return errors.New("a view has no output path")
@@ -871,28 +687,6 @@ func (v View) validate(built map[string][]byte, ix ColumnIndex) error {
 			"view %q declares a sankey chart with no sankey hints; the column order "+
 				"is a declaration, and an absent one is not the same as an empty one",
 			v.Path)
-	case len(v.Steps) > 0 && !templateDrawsAChart(v.Template):
-		return fmt.Errorf(
-			"view %q declares a drill chain and renders template %q, which draws no "+
-				"chart; the chain would be dropped in silence", v.Path, v.Template)
-	// Two arms: a Sankey with no tiers draws the document whole, so every
-	// root's From is drawn; the next arm refuses a drilling view with no tier
-	// set.
-	case len(v.Overview.drawnTiers()) > 0 && badRoot >= 0:
-		return fmt.Errorf(
-			"view %q's step %d drills from tier %d and draws tiers %v, which do not include "+
-				"it; the page would ship the breadcrumb and the words about opening a node "+
-				"while no node on it is ever openable",
-			v.Path, badRoot, v.Steps[badRoot].From, v.Overview.drawnTiers())
-	// A chart that opens declares its column order: without one nothing is
-	// adjacent to anything, and a kept flank has no side.
-	case len(v.Steps) > 0 && len(v.Overview.drawnTiers()) == 0 && templateDrawsAChart(v.Template):
-		return fmt.Errorf(
-			"view %q drills and its overview declares no sankey tiers on template %q, which "+
-				"draws a chart; the page would ship the breadcrumb over a chart whose columns are "+
-				"d3's own inference, so no tier is adjacent to any other and a document "+
-				"that needs folding lays every node out at zero height",
-			v.Path, v.Template)
 	}
 	if _, ok := built[v.Projection]; !ok && v.Projection != "" {
 		return fmt.Errorf("view %q renders projection %q, which was not built", v.Path, v.Projection)
@@ -908,10 +702,17 @@ func (v View) validate(built map[string][]byte, ix ColumnIndex) error {
 			}
 		}
 	}
+	if err := v.projectionAmongYears(); err != nil {
+		return err
+	}
 	if err := v.validateOverview(built, ix); err != nil {
 		return err
 	}
-	return v.validateSteps(ix)
+	drawn, err := v.drawnStems(ix)
+	if err != nil {
+		return err
+	}
+	return v.validateOverviewTiersCarried(drawn, ix)
 }
 
 // templateRendersLede answers whether a template has a {{.Lede}} to render.
@@ -938,7 +739,7 @@ func templateRendersAYearControl(name string) bool {
 }
 
 // templateDrawsAChart answers whether a template ships app.js and an SVG for it
-// to draw into, and with them [View.Overview] and [View.Steps]. Not the same
+// to draw into, and with it [View.Overview]. Not the same
 // as rendering a document: trends.html renders one as a server-side table with
 // no app.js.
 func templateDrawsAChart(name string) bool {

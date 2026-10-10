@@ -33,19 +33,13 @@ func (v View) drawnStems(ix ColumnIndex) ([]string, error) {
 }
 
 // validateOverview refuses what the view's own chart declares and could not
-// draw: a schedule of its own on a view that drills, or on one that draws no
-// chart, and a canvas height, canvas growth, cap, split cap or dropped tier it
-// could not honour.
+// draw: a schedule of its own on a view that draws no chart, and a canvas
+// height, canvas growth, cap, split cap or dropped tier it could not honour.
 func (v View) validateOverview(built map[string][]byte, ix ColumnIndex) error {
 	switch {
 	case v.Draws != "" && v.Overview.Form == "":
 		return fmt.Errorf(
 			"view %q draws schedule %q and declares no chart to draw it in", v.Path, v.Draws)
-	case v.Draws != "" && len(v.Steps) > 0:
-		return fmt.Errorf(
-			"view %q draws schedule %q and declares %d step(s); a step opening from the "+
-				"view's own chart is placed against %q's document, which this chart does not draw",
-			v.Path, v.Draws, len(v.Steps), v.Projection)
 	case v.Description != "" && !templateDrawsAChart(v.Template):
 		return fmt.Errorf(
 			"view %q describes its chart and renders template %q, which draws none; "+
@@ -95,7 +89,7 @@ func (v View) validateOverview(built map[string][]byte, ix ColumnIndex) error {
 				v.Path, t)
 		}
 	}
-	if t := undrawnTier(h.Drop, nil, stems, ix); t >= 0 {
+	if t := undrawnTier(h.Drop, stems, ix); t >= 0 {
 		return fmt.Errorf(
 			"view %q drops tier %d, at which %v carry no node; a drop of nothing "+
 				"declares a restatement the documents do not make", v.Path, t, stems)

@@ -81,15 +81,6 @@
       {{- end}}
     </fieldset>
     {{- end}}
-    {{- /* SHIPS DISABLED AND EMPTY: the column count is the client's, so
-           with JavaScript off these buttons would change nothing. app.js
-           enables them and re-disables whichever is at its bound. The count
-           is itself the live region, so there is one element to keep true. */}}
-    <div class="column-control" role="group" aria-label="Chart columns">
-      <button type="button" id="column-fewer" aria-label="Fewer columns" disabled>&minus;</button>
-      <span id="column-count" aria-live="polite"></span>
-      <button type="button" id="column-more" aria-label="More columns" disabled>+</button>
-    </div>
     <button type="button" id="theme-toggle" aria-pressed="false">Dark mode</button>
   </div>
 </header>
@@ -133,9 +124,9 @@
   {{- /* SHIPPED HIDDEN AND EMPTY: what to show is the client's, so with
          JavaScript off these controls would change nothing. app.js fills the
          fund groups from the column on screen and the kinds from the page's
-         kind labels, unhides the panel, and opens it where the viewport buys
-         a column beyond the floor. Above the chart rather than beside it:
-         the chart takes the width the column budget measures. */}}
+         kind labels, unhides the panel, and opens it where the viewport has
+         room for a chart one column wider than the spine. Above the chart
+         rather than beside it: the chart takes the width it is laid out at. */}}
   <details class="filters" id="filters" hidden>
     <summary>Show and hide</summary>
     <fieldset class="filter-set">
@@ -166,9 +157,9 @@
     <span><span class="key published" aria-hidden="true"></span> {{.Wording.PrintedByCity}}</span>
     <span><span class="key derived" aria-hidden="true"></span> {{.Wording.OurInference}} (dashed)</span>
   </div>
-  {{- /* Shipped empty and hidden on every page: the trail is where the reader
-         has walked, which the server cannot know. */}}
-  <nav class="breadcrumb" id="breadcrumb" aria-label="Chart depth" hidden></nav>
+  {{- /* Shipped empty and hidden on every page: what the reader has split
+         open is the client's, which the server cannot know. */}}
+  <div class="breadcrumb" id="breadcrumb" role="group" aria-label="What the chart has split open" hidden></div>
   {{- /* SHIPPED HIDDEN: app.js unhides full screen where the browser offers
          it, and Reset view wherever the zoom is wired, naming each in the
          wording's words. Wheel with Ctrl or Cmd, a pinch, drag, and + - 0
@@ -243,9 +234,9 @@
   Hover, tap or tab to a flow for its amount, fact ids and sources.
   {{- /* Says only what is true of every node; which nodes open is
          #chart-hint's, from the chart on screen. */}}
-  {{if .Drill}}Double click a node that opens to see its parts; a single click on any node, or
-  on a fund swatch, follows only that money. Escape closes an opened node, or puts the rest
-  back.{{else}}Click a node or a fund swatch to follow only that money; Escape puts the
+  {{if .Expands}}Double click a node to split it in place into its parts, and every other node
+  stays; a single click on any node, or on a fund swatch, follows only that money. Escape
+  undoes the last split, or puts the rest back.{{else}}Click a node or a fund swatch to follow only that money; Escape puts the
   rest back.{{end}}
 </p>
 

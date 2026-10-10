@@ -1,10 +1,10 @@
 // What render() put in the SVG, read back off the DOM after a state is
 // driven, held against the chart the client laid. What a mark should read is
 // asked of the shipped nodeClass and nodeFlags; which states to drive is read
-// off the pinned columns and the steps the page declares.
+// off the pinned columns and the splits the expansion declares.
 //
-// The first block drives a handful of states per published column at two
-// column budgets; the second is the drill's own rendering claims.
+// The first block drives a handful of states per published column; the
+// second is the expansion's own rendering claims.
 
 import { describe, test, before } from "node:test";
 import assert from "node:assert/strict";
@@ -12,8 +12,8 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 import {
-  bootedApp, opened, expandAll, everyOffer, settle, refusals, columnFixture, pageFixture, wholeFixture, fire, repoRoot,
-  dollars, shortDollars, stepByKey,
+  bootedApp, split, expandAll, everySplit, settle, refusals, columnFixture, pageFixture, wholeFixture, fire, repoRoot,
+  dollars, shortDollars,
 } from "./testlib.mjs";
 
 const CONFIG = pageFixture().config;
@@ -23,8 +23,8 @@ const YEARS = CONFIG.years.map((y) => ({
   fixture: y.path.replace(/\.json$/, ""), config: y,
 }));
 
-/** @param {string[]} path */
-const keyOf = (path) => (path.length ? path.join(" > ") : "(the overview)");
+/** @param {readonly string[]} entries a list of expansions */
+const keyOf = (entries) => (entries.length ? entries.join(" > ") : "(the root)");
 
 /**
  * A failure list as a detail line: the count whole and the list cut, so one
@@ -75,349 +75,289 @@ function tailPromise(mark) {
 }
 
 /**
- * The fund group whose fund column is widest in the fund-flows schedule of
- * the column on screen: the view the fund cap is for. Read off the unfolded
- * schedule, by the group's own ribbons into the fund tier.
+ * The fund group that splits into the most funds in the expansion of the
+ * column on screen: the split the fund cap is for.
  * @param {any} app
  */
 function worstOf(app) {
-  const doc = app.scheduleOf(app.column, stepByKey(CONFIG, "fund-group").projection);
-  if (!doc) throw new Error("the column on screen carries no fund-flows schedule");
-  const tierOf = new Map(doc.nodes.map((n) => [n.id, n.tier]));
-  const funds = new Map();
-  for (const l of doc.links) {
-    if (tierOf.get(l.source) === 2 && tierOf.get(l.target) === 3) {
-      (funds.get(l.source) || funds.set(l.source, new Set()).get(l.source)).add(l.target);
-    }
-  }
-  return [...funds.entries()].reduce((a, b) => (b[1].size > a[1].size ? b : a))[0];
+  const groups = app.fetched.splits.filter((sp) => sp.key === "funds").map((sp) => sp.node);
+  return groups.reduce((a, b) => (app.splitsHere({ id: b })[0].members.length > app.splitsHere({ id: a })[0].members.length ? b : a));
 }
 
 /**
- * The paths a step's declared gaps name for one year: every opened node
- * licensed to differ in this year's column.
- * @param {{year: number, basis: string}} year
+ * The states driven in one column, each a list of expansions: the root, the
+ * first node the root splits, the group whose fund column is widest, the
+ * General Fund group and its one fund, an object category by its divisions,
+ * and everything by its first split (Expand all).
+ * @param {any} app  booted and on the year
  * @returns {string[][]}
  */
-function gapPaths(year) {
-  const out = [];
-  for (const s of CONFIG.steps) {
-    for (const [id, licences] of Object.entries(s.gaps || {})) {
-      if (licences.some((g) => g.fiscal_year === year.year && g.basis === year.basis)) out.push([id]);
-    }
-  }
-  return out;
-}
-
-/**
- * The states driven in one column: the overview, the first node the overview
- * offers, the group whose fund column is widest, the General Fund (which
- * carries a residual), each node a step licenses a gap on in this year, and
- * the chain three rungs deep.
- * @param {any} app  booted and on the year
- * @returns {Promise<string[][]>}
- */
-async function statesFor(app) {
+function statesFor(app) {
   const chosen = [[]];
-  const first = app.projection.nodes.filter((n) => app.drillable(n)).map((n) => n.id).sort()[0];
-  const add = (path) => { if (path && !chosen.some((p) => keyOf(p) === keyOf(path))) chosen.push(path); };
-  add([first]);
+  const add = (entries) => { if (!chosen.some((p) => keyOf(p) === keyOf(entries))) chosen.push(entries); };
+  add([app.projection.nodes.filter((n) => app.splittable(n)).map((n) => n.id).sort()[0]]);
   add([worstOf(app)]);
-  add(["fund-group/general"]);
-  for (const path of gapPaths(app.shownYear)) add(path);
-  await opened(app, "fund-group/general", "fund/100");
-  const division = app.projection.nodes.filter((n) => app.drillable(n)).map((n) => n.id).sort()[0];
-  app.drillUp(0);
-  await settle();
-  add(["fund-group/general", "fund/100", division]);
+  add(["fund-group/general", "fund/100"]);
+  add(["expenditure/services-and-supplies" + app.ALTERNATIVE_MARK + "divisions"]);
+  app.collapseAll();
+  app.expandAll();
+  add(app.expansions.slice());
+  app.collapseAll();
   return chosen;
 }
 
-/**
- * Puts the app on the chart one path names, expanding on the way in (a folded
- * node cannot be clicked) and not at the end, so the state is fold and all.
- */
-async function goTo(app, path) {
-  app.drillUp(0);
+/** Puts the app on the chart one list of expansions names. */
+async function goTo(app, entries) {
+  if (!app.redraw(entries)) throw new Error(`the chart at ${keyOf(entries)} did not draw`);
   await settle();
-  for (const id of path) {
-    expandAll(app);
-    await opened(app, id);
-  }
 }
 
-/** The breadcrumb's children as class:text. */
+/** The chip row's children as class:text. */
 const crumbs = (document) =>
   [...document.getElementById("breadcrumb").children].map((c) => `${c.className}:${c.textContent}`);
 
 /**
- * Drives every chosen state of one column at two budgets and reads six things
- * off each, returning what disagreed and what was counted.
+ * Drives every chosen state of one column and reads six things off each,
+ * returning what disagreed and what was counted.
  */
 async function drive(year) {
   const wrong = { reach: [], ribbons: [], written: [], gestures: [], banner: [], tails: [] };
   const seen = {
     states: 0, marks: 0, attributes: 0, ribbons: 0, gestures: 0,
-    tails: 0, ownMarks: 0, expansions: 0, revealed: 0, refused: 0,
+    tails: 0, expansions: 0, revealed: 0, refused: 0,
     emphasis: 0, focus: 0,
   };
-  /** @type {string[][] | null} */
-  let states = null;
+  const { app, document } = await bootedApp({ checkedStem: year.stem });
+  const chart = document.getElementById("chart");
+  const content = document.querySelector("main");
+  if (!content) throw new Error("the page has no <main>, so a refusal banner would have nowhere to be");
 
-  for (const width of [3, 4]) {
-    const { app, document } = await bootedApp({ checkedStem: year.stem });
-    app.setColumnBudget(width);
-    await settle();
-    const chart = document.getElementById("chart");
-    const content = document.querySelector("main");
-    if (!content) throw new Error("the page has no <main>, so a refusal banner would have nowhere to be");
+  for (const entries of statesFor(app)) {
+    const where = `${year.label}, ${keyOf(entries)}`;
+    seen.states++;
+    // THE PLANTED CLOCK ONLY MOVES FORWARD across states, as a real one does:
+    // the activation guard compares timestamps, and one earlier than the last
+    // state's Enter on the same node would read as the click it synthesised.
+    const t0 = seen.states * 100000;
+    // A STATE THAT THROWS IS A STATE THAT DID NOT DRAW, reported as one
+    // rather than left to take the file down.
+    try {
+      await goTo(app, entries);
+    } catch (e) {
+      wrong.banner.push(`${where}: redrawing it threw -- ${e && e.message ? e.message : String(e)}`);
+      continue;
+    }
 
-    if (!states) states = await statesFor(app);
-    for (const path of states) {
-      const where = `${year.label} at ${width} columns, ${keyOf(path)}`;
-      seen.states++;
-      // THE PLANTED CLOCK ONLY MOVES FORWARD across states, as a real one does:
-      // the activation guard compares timestamps, and one earlier than the last
-      // state's Enter on the same node would read as the click it synthesised.
-      const t0 = seen.states * 100000;
-      // A STATE THAT THROWS IS A STATE THAT DID NOT DRAW, reported as one
-      // rather than left to take the file down.
-      try {
-        await goTo(app, path);
-      } catch (e) {
-        wrong.banner.push(`${where}: redrawing it threw -- ${e && e.message ? e.message : String(e)}`);
-        try { app.drillUp(0); } catch { /* reported above */ }
-        continue;
+    const marks = marksIn(chart);
+    const ribbons = ribbonsIn(chart);
+
+    // (e) no banner -- first, and on every state: every arm below reads a
+    // DOM that app.js only fills when render() ran to the end.
+    const banners = refusals(document);
+    // The form draws into the zoom's layer, the one group the page makes.
+    const layer = chart.querySelector(":scope > g.zoom-layer");
+    const groups = layer ? [...layer.children].map((c) => c.getAttribute("class")) : [];
+    if (banners.length) {
+      wrong.banner.push(`${where}: the page drew ${banners.length} refusal banner(s): ${banners[0].textContent}`);
+    }
+    if (!groups.includes("links") || !groups.includes("nodes") || !marks.length) {
+      wrong.banner.push(`${where}: #chart holds [${groups.join(", ")}] and ` +
+        `${marks.length} mark(s), which is not a chart that drew`);
+    }
+
+    // (a) every node reaches a mark: DOM against the laid graph.
+    const drawn = marks.map((m) => m.__data__.id);
+    const laid = app.projection.nodes.map((n) => n.id);
+    const missing = laid.filter((id) => !drawn.includes(id));
+    const extra = drawn.filter((id) => !laid.includes(id));
+    const twice = drawn.length !== new Set(drawn).size;
+    if (missing.length || extra.length || twice) {
+      wrong.reach.push(`${where}: ${laid.length} node(s) laid and ${drawn.length} drawn` +
+        (missing.length ? `; laid and never drawn: ${missing.join(", ")}` : "") +
+        (extra.length ? `; drawn and never laid: ${extra.join(", ")}` : "") +
+        (twice ? `; only ${new Set(drawn).size} of the marks are distinct` : ""));
+    }
+    seen.marks += marks.length;
+    seen.tails += marks.filter((m) => app.isAggregate(m.__data__.id)).length;
+
+    // (b) every link reaches a ribbon, and both its ends are marks here.
+    const laidLinks = app.projection.links.length;
+    if (ribbons.length !== laidLinks) {
+      wrong.ribbons.push(`${where}: ${laidLinks} link(s) laid, ${ribbons.length} ribbon(s) drawn`);
+    }
+    for (const p of ribbons) {
+      seen.ribbons++;
+      const d = p.getAttribute("d");
+      const stroke = Number(p.getAttribute("stroke-width"));
+      const label = p.getAttribute("aria-label") || "";
+      const ends = [p.__data__.source.id, p.__data__.target.id];
+      const orphan = ends.filter((id) => !drawn.includes(id));
+      if (!d || !(stroke > 0) || !label || orphan.length) {
+        wrong.ribbons.push(`${where}: the ribbon ${ends.join(" -> ")} is drawn ` +
+          `d=${JSON.stringify(d)} stroke-width=${JSON.stringify(p.getAttribute("stroke-width"))} ` +
+          `aria-label=${JSON.stringify(label)}` +
+          (orphan.length ? `, between ${orphan.join(" and ")}, which no mark draws` : ""));
+      }
+    }
+
+    // (c) what is written on a mark. The class attribute carries two
+    // claims checked apart: every token nodeClass composes is there, and
+    // anything else is one of the two the emphasis owns.
+    for (const m of marks) {
+      const d = m.__data__;
+      const rect = [...m.children].find((c) => c.tagName === "rect");
+      const tspans = tspansOf(m);
+      const want = { role: "button", tabindex: "0", "aria-keyshortcuts": "Enter Space" };
+      const bad = Object.keys(want).filter((k) => m.getAttribute(k) !== want[k]);
+      const drawnClass = (m.getAttribute("class") || "").split(/\s+/).filter(Boolean);
+      const rule = app.nodeClass(d).split(/\s+/).filter(Boolean);
+      const missingClass = rule.filter((c) => !drawnClass.includes(c));
+      const extraClass = drawnClass.filter((c) => !rule.includes(c) && c !== "dim" && c !== "hot");
+      if (missingClass.length) bad.push(`class is missing ${missingClass.join(" ")}`);
+      if (extraClass.length) bad.push(`class carries ${extraClass.join(" ")}, which is neither nodeClass's nor the emphasis's`);
+      seen.attributes += rule.length;
+      if (m.getAttribute("aria-pressed") === null) bad.push("aria-pressed");
+      if (!(m.getAttribute("aria-label") || "")) bad.push("aria-label");
+      seen.attributes += Object.keys(want).length + 2;
+      const w = rect ? Number(rect.getAttribute("width")) : 0;
+      const h = rect ? Number(rect.getAttribute("height")) : 0;
+      if (!(w > 0) || !(h > 0)) bad.push(`rect ${w}x${h}`);
+      // Read off the tspans, not the composing functions, or d.label would
+      // be compared with itself.
+      if (!tspans.includes(d.label)) bad.push(`no tspan reading ${JSON.stringify(d.label)}`);
+      const amount = "  " + shortDollars(app.markCents(d));
+      if (!tspans.includes(amount)) bad.push(`no tspan reading ${JSON.stringify(amount)}`);
+      seen.attributes += 3;
+      if (bad.length) {
+        const attrs = [...m.attributes].map((a) => `${a.name}=${JSON.stringify(a.value)}`).join(" ");
+        wrong.written.push(`${where}: ${d.id} is drawn class=${JSON.stringify(m.getAttribute("class"))} ` +
+          `with ${attrs} and tspans ${JSON.stringify(tspans)}; wrong or missing: ${bad.join(", ")}`);
+      }
+    }
+
+    // (d) what a gesture DOES, by dispatch: a click isolates and a second
+    // releases; Space isolates and the click it synthesises does not undo
+    // it; a held key does nothing; a double click and Enter each split.
+    const opener = marks.find((m) => app.splittable(m.__data__));
+    const subject = opener || marks[0];
+    if (subject) {
+      const id = subject.__data__.id;
+      const note = (what) => wrong.gestures.push(`${where}: ${id} ${what}`);
+      seen.gestures++; fire(subject, "click", { timeStamp: t0 + 1000 });
+      if (app.filter.isolated !== id) note(`does not isolate on a click (isolated is ${JSON.stringify(app.filter.isolated)})`);
+      // The dimming, stated as invariants rather than recomputing the predicate.
+      const lit = ribbonsIn(chart).filter((p) => p.__data__.source.id === id || p.__data__.target.id === id);
+      const dimmedRibbons = ribbonsIn(chart).filter((p) => p.classList.contains("dim"));
+      const dimmedMarks = marksIn(chart).filter((m) => m.classList.contains("dim"));
+      seen.emphasis += dimmedRibbons.length + dimmedMarks.length;
+      if (dimmedRibbons.length === 0) note("isolates and dims no ribbon at all");
+      if (dimmedMarks.length === 0) note("isolates and dims no other mark at all");
+      if (lit.some((p) => p.classList.contains("dim"))) {
+        note(`dims ${lit.filter((p) => p.classList.contains("dim")).length} of its own ${lit.length} ribbon(s)`);
+      }
+      if (subject.classList.contains("dim")) note("dims itself while isolated");
+
+      seen.gestures++; fire(subject, "click", { timeStamp: t0 + 2000 });
+      if (app.filter.isolated !== "") note(`does not release on a second click (isolated is ${JSON.stringify(app.filter.isolated)})`);
+      const stuck = ribbonsIn(chart).filter((p) => p.classList.contains("dim")).length +
+        marksIn(chart).filter((m) => m.classList.contains("dim")).length;
+      if (stuck > 0) note(`leaves ${stuck} mark(s) and ribbon(s) dimmed after the isolation is released`);
+
+      seen.gestures++; fire(subject, "keydown", { key: " ", timeStamp: t0 + 3000 });
+      if (app.filter.isolated !== id) note(`does not isolate on Space (isolated is ${JSON.stringify(app.filter.isolated)})`);
+      seen.gestures++; fire(subject, "click", { timeStamp: t0 + 3000 });
+      if (app.filter.isolated !== id) note("is un-isolated by the click its own Space synthesised");
+      seen.gestures++; fire(subject, "keydown", { key: " ", timeStamp: t0 + 9000 });
+      if (app.filter.isolated !== "") note(`does not release on a second Space (isolated is ${JSON.stringify(app.filter.isolated)})`);
+
+      const before = app.expansions.length;
+      seen.gestures++; fire(subject, "keydown", { key: "Enter", timeStamp: t0 + 9500, repeat: true });
+      await settle();
+      if (app.filter.isolated !== "" || app.expansions.length !== before) {
+        note(`acts on a held key (isolated ${JSON.stringify(app.filter.isolated)}, ${app.expansions.length} split(s))`);
       }
 
-      const marks = marksIn(chart);
-      const ribbons = ribbonsIn(chart);
-
-      // (e) no banner -- first, and on every state: every arm below reads a
-      // DOM that app.js only fills when render() ran to the end.
-      const banners = refusals(document);
-      // The form draws into the zoom's layer, the one group the page makes.
-      const layer = chart.querySelector(":scope > g.zoom-layer");
-      const groups = layer ? [...layer.children].map((c) => c.getAttribute("class")) : [];
-      if (banners.length) {
-        wrong.banner.push(`${where}: the page drew ${banners.length} refusal banner(s): ${banners[0].textContent}`);
-      }
-      if (!groups.includes("links") || !groups.includes("nodes") || !marks.length) {
-        wrong.banner.push(`${where}: #chart holds [${groups.join(", ")}] and ` +
-          `${marks.length} mark(s), which is not a chart that drew`);
-      }
-
-      // (a) every node reaches a mark: DOM against the laid graph.
-      const drawn = marks.map((m) => m.__data__.id);
-      const laid = app.projection.nodes.map((n) => n.id);
-      const missing = laid.filter((id) => !drawn.includes(id));
-      const extra = drawn.filter((id) => !laid.includes(id));
-      const twice = drawn.length !== new Set(drawn).size;
-      if (missing.length || extra.length || twice) {
-        wrong.reach.push(`${where}: ${laid.length} node(s) laid and ${drawn.length} drawn` +
-          (missing.length ? `; laid and never drawn: ${missing.join(", ")}` : "") +
-          (extra.length ? `; drawn and never laid: ${extra.join(", ")}` : "") +
-          (twice ? `; only ${new Set(drawn).size} of the marks are distinct` : ""));
-      }
-      seen.marks += marks.length;
-      seen.tails += marks.filter((m) => app.isAggregate(m.__data__.id)).length;
-      seen.ownMarks += marks.filter((m) => app.isResidual(m.__data__.id) || app.isGap(m.__data__.id)).length;
-      // EVERY DRAWN MARK STANDS AT A COLUMN THIS WIDTH DRAWS, or is a mark the
-      // rung added beside them.
-      const columns = new Set(app.activeTiers());
-      const astray = marks.map((m) => m.__data__).filter((d) => path.length && !columns.has(d.tier))
-        .map((d) => `${d.id}@${d.tier}`);
-      if (astray.length) wrong.reach.push(`${where}: drawn at a column this budget does not lay out: ${astray.join(", ")}`);
-
-      // (b) every link reaches a ribbon, and both its ends are marks here.
-      const laidLinks = app.projection.links.length;
-      if (ribbons.length !== laidLinks) {
-        wrong.ribbons.push(`${where}: ${laidLinks} link(s) laid, ${ribbons.length} ribbon(s) drawn`);
-      }
-      for (const p of ribbons) {
-        seen.ribbons++;
-        const d = p.getAttribute("d");
-        const stroke = Number(p.getAttribute("stroke-width"));
-        const label = p.getAttribute("aria-label") || "";
-        const ends = [p.__data__.source.id, p.__data__.target.id];
-        const orphan = ends.filter((id) => !drawn.includes(id));
-        if (!d || !(stroke > 0) || !label || orphan.length) {
-          wrong.ribbons.push(`${where}: the ribbon ${ends.join(" -> ")} is drawn ` +
-            `d=${JSON.stringify(d)} stroke-width=${JSON.stringify(p.getAttribute("stroke-width"))} ` +
-            `aria-label=${JSON.stringify(label)}` +
-            (orphan.length ? `, between ${orphan.join(" and ")}, which no mark draws` : ""));
-        }
-      }
-
-      // (c) what is written on a mark. The class attribute carries two
-      // claims checked apart: every token nodeClass composes is there, and
-      // anything else is one of the two the emphasis owns.
-      for (const m of marks) {
-        const d = m.__data__;
-        const rect = [...m.children].find((c) => c.tagName === "rect");
-        const tspans = tspansOf(m);
-        const want = { role: "button", tabindex: "0", "aria-keyshortcuts": "Enter Space" };
-        const bad = Object.keys(want).filter((k) => m.getAttribute(k) !== want[k]);
-        const drawnClass = (m.getAttribute("class") || "").split(/\s+/).filter(Boolean);
-        const rule = app.nodeClass(d).split(/\s+/).filter(Boolean);
-        const missingClass = rule.filter((c) => !drawnClass.includes(c));
-        const extraClass = drawnClass.filter((c) => !rule.includes(c) && c !== "dim" && c !== "hot");
-        if (missingClass.length) bad.push(`class is missing ${missingClass.join(" ")}`);
-        if (extraClass.length) bad.push(`class carries ${extraClass.join(" ")}, which is neither nodeClass's nor the emphasis's`);
-        seen.attributes += rule.length;
-        if (m.getAttribute("aria-pressed") === null) bad.push("aria-pressed");
-        if (!(m.getAttribute("aria-label") || "")) bad.push("aria-label");
-        seen.attributes += Object.keys(want).length + 2;
-        const w = rect ? Number(rect.getAttribute("width")) : 0;
-        const h = rect ? Number(rect.getAttribute("height")) : 0;
-        if (!(w > 0) || !(h > 0)) bad.push(`rect ${w}x${h}`);
-        // Read off the tspans, not the composing functions, or d.label would
-        // be compared with itself.
-        if (!tspans.includes(d.label)) bad.push(`no tspan reading ${JSON.stringify(d.label)}`);
-        const amount = "  " + shortDollars(app.markCents(d));
-        if (!tspans.includes(amount)) bad.push(`no tspan reading ${JSON.stringify(amount)}`);
-        seen.attributes += 3;
-        if (bad.length) {
-          const attrs = [...m.attributes].map((a) => `${a.name}=${JSON.stringify(a.value)}`).join(" ");
-          wrong.written.push(`${where}: ${d.id} is drawn class=${JSON.stringify(m.getAttribute("class"))} ` +
-            `with ${attrs} and tspans ${JSON.stringify(tspans)}; wrong or missing: ${bad.join(", ")}`);
-        }
-      }
-
-      // (d) what a gesture DOES, by dispatch: a click isolates and a second
-      // releases; Space isolates and the click it synthesises does not undo
-      // it; a held key does nothing; a double click and Enter each open.
-      // NOT THE OPENED NODE WHERE ANOTHER MARK OPENS: a group's centre opens
-      // into its list, and every ribbon of its own window is its own, so
-      // following it dims nothing by construction.
-      const top = app.drilled.length ? app.drilled[app.drilled.length - 1].id : "";
-      const opener = marks.find((m) => app.drillable(m.__data__) && m.__data__.id !== top) ||
-        marks.find((m) => app.drillable(m.__data__));
-      const subject = opener || marks[0];
-      if (subject) {
-        const id = subject.__data__.id;
-        const note = (what) => wrong.gestures.push(`${where}: ${id} ${what}`);
-        seen.gestures++; fire(subject, "click", { timeStamp: t0 + 1000 });
-        if (app.filter.isolated !== id) note(`does not isolate on a click (isolated is ${JSON.stringify(app.filter.isolated)})`);
-        // The dimming, stated as invariants rather than recomputing the predicate.
-        const lit = ribbonsIn(chart).filter((p) => p.__data__.source.id === id || p.__data__.target.id === id);
-        const dimmedRibbons = ribbonsIn(chart).filter((p) => p.classList.contains("dim"));
-        const dimmedMarks = marksIn(chart).filter((m) => m.classList.contains("dim"));
-        seen.emphasis += dimmedRibbons.length + dimmedMarks.length;
-        if (dimmedRibbons.length === 0) note("isolates and dims no ribbon at all");
-        if (dimmedMarks.length === 0) note("isolates and dims no other mark at all");
-        if (lit.some((p) => p.classList.contains("dim"))) {
-          note(`dims ${lit.filter((p) => p.classList.contains("dim")).length} of its own ${lit.length} ribbon(s)`);
-        }
-        if (subject.classList.contains("dim")) note("dims itself while isolated");
-
-        seen.gestures++; fire(subject, "click", { timeStamp: t0 + 2000 });
-        if (app.filter.isolated !== "") note(`does not release on a second click (isolated is ${JSON.stringify(app.filter.isolated)})`);
-        const stuck = ribbonsIn(chart).filter((p) => p.classList.contains("dim")).length +
-          marksIn(chart).filter((m) => m.classList.contains("dim")).length;
-        if (stuck > 0) note(`leaves ${stuck} mark(s) and ribbon(s) dimmed after the isolation is released`);
-
-        seen.gestures++; fire(subject, "keydown", { key: " ", timeStamp: t0 + 3000 });
-        if (app.filter.isolated !== id) note(`does not isolate on Space (isolated is ${JSON.stringify(app.filter.isolated)})`);
-        seen.gestures++; fire(subject, "click", { timeStamp: t0 + 3000 });
-        if (app.filter.isolated !== id) note("is un-isolated by the click its own Space synthesised");
-        seen.gestures++; fire(subject, "keydown", { key: " ", timeStamp: t0 + 9000 });
-        if (app.filter.isolated !== "") note(`does not release on a second Space (isolated is ${JSON.stringify(app.filter.isolated)})`);
-
-        const before = app.drilled.length;
-        seen.gestures++; fire(subject, "keydown", { key: "Enter", timeStamp: t0 + 9500, repeat: true });
+      if (opener) {
+        // A split replaces the mark, so restoreFocus must land focus somewhere real.
+        subject.focus();
+        seen.gestures++; fire(subject, "dblclick", { timeStamp: t0 + 10000 });
         await settle();
-        if (app.filter.isolated !== "" || app.drilled.length !== before) {
-          note(`acts on a held key (isolated ${JSON.stringify(app.filter.isolated)}, ${app.drilled.length} rung(s))`);
+        const landed = document.activeElement;
+        seen.focus++;
+        if (!landed || landed === document.body || !landed.classList.contains("node")) {
+          note(`left focus on ${landed && landed !== document.body ? JSON.stringify(landed.getAttribute("class")) : "nothing"} after splitting`);
         }
-
-        if (opener) {
-          // A drill replaces the chart, so restoreFocus must land focus somewhere real.
-          subject.focus();
-          seen.gestures++; fire(subject, "dblclick", { timeStamp: t0 + 10000 });
+        if (app.expansions.length !== before + 1) {
+          note(`does not split on a double click (${app.expansions.length} split(s), was ${before})`);
+        }
+        await goTo(app, entries);
+        const again = marksIn(chart).find((m) => m.__data__.id === id);
+        if (!again) note("is gone from the chart it was just split from");
+        else {
+          seen.gestures++; fire(again, "keydown", { key: "Enter", timeStamp: t0 + 11000 });
           await settle();
-          const landed = document.activeElement;
-          seen.focus++;
-          if (!landed || landed === subject || landed === document.body) {
-            note(`left focus ${landed && landed !== document.body ? "on the mark the drill replaced" : "nowhere"} after opening`);
-          } else if (!landed.classList.contains("crumb-back") && !landed.classList.contains("node")) {
-            note(`put focus on ${JSON.stringify(landed.getAttribute("class"))} after opening, ` +
-              "which is neither the rung's own return control nor a mark of the chart it drew");
+          if (app.expansions.length !== before + 1) {
+            note(`does not split on Enter (${app.expansions.length} split(s), was ${before})`);
           }
-          if (app.drilled.length !== before + 1) {
-            note(`does not open on a double click (${app.drilled.length} rung(s), was ${before})`);
-          }
-          await goTo(app, path);
-          const again = marksIn(chart).find((m) => m.__data__.id === id);
-          if (!again) note("is gone from the chart it was just opened from");
-          else {
-            seen.gestures++; fire(again, "keydown", { key: "Enter", timeStamp: t0 + 11000 });
-            await settle();
-            if (app.drilled.length !== before + 1) {
-              note(`does not open on Enter (${app.drilled.length} rung(s), was ${before})`);
-            }
-          }
-        }
-      }
-
-      // (f) what a folded tail stands for: Enter on the tail the way a reader
-      // asks, and then the DOM again. The label is part of the claim, and so
-      // is the tail's own `folds`: what it says it stands for is what drawing
-      // it out reveals, no more and no fewer.
-      if (path.length) {
-        await goTo(app, path);
-        let refused = [];
-        const LIMIT = 32;
-        let done = 0;
-        for (; done < LIMIT; done++) {
-          const before = marksIn(chart);
-          const shown = before.filter((m) => app.isAggregate(m.__data__.id));
-          const tail = shown.find((m) => app.expandable(m.__data__));
-          if (!tail) { refused = shown; break; }
-          const tier = tail.__data__.tier;
-          const drawnBefore = before.map((m) => m.__data__.id);
-          const hidden = (tail.__data__.folds || []).filter((id) => !drawnBefore.includes(id));
-          const promised = tailPromise(tail);
-          seen.expansions++;
-          const note = (what) => wrong.tails.push(`${where}: the tail at column ${tier} ${what}`);
-          fire(tail, "keydown", { key: "Enter", timeStamp: t0 + 20000 + done });
-          await settle();
-          const out = marksIn(chart)
-            .filter((m) => m.__data__.tier === tier && !app.isAggregate(m.__data__.id))
-            .map((m) => m.__data__.id);
-          const revealed = out.filter((id) => !drawnBefore.includes(id));
-          seen.revealed += revealed.length;
-          const stillHidden = hidden.filter((id) => !out.includes(id));
-          const strangers = revealed.filter((id) => !hidden.includes(id));
-          if (stillHidden.length) {
-            note(`stood for ${hidden.length} id(s) and drew no mark for ` +
-              `${stillHidden.length} of them: ${stillHidden.join(", ")}`);
-          }
-          if (strangers.length) note(`drew ${strangers.join(", ")}, which it did not say it stood for`);
-          if (promised !== revealed.length) {
-            note(`says "${promised}" in its own words and drew ${revealed.length} mark(s) the chart did not already carry`);
-          }
-        }
-        if (done === LIMIT) {
-          wrong.tails.push(`${where}: the chart still offered a tail to expand after ${LIMIT} expansions, ` +
-            "so what it was left holding was never read");
-        }
-        // SHOWN AND COULD NOT IS NOT THE SAME AS NOT SHOWN: a tail the reader
-        // can see whose members no gesture on this chart draws out.
-        const drawnNow = marksIn(chart).map((m) => m.__data__.id);
-        for (const m of refused) {
-          seen.refused++;
-          const tier = m.__data__.tier;
-          const behind = (m.__data__.folds || []).filter((id) => !drawnNow.includes(id));
-          wrong.tails.push(`${where}: the tail at column ${tier} (${m.__data__.id}, ` +
-            `${JSON.stringify(m.__data__.label)}) is drawn and the page offers no gesture ` +
-            `that draws it out, so what it stands for is unaskable here -- ` +
-            `${behind.length} id(s) it stands for reach no mark: ${behind.join(", ") || "(none)"}`);
         }
       }
     }
-    try { app.drillUp(0); } catch { /* a repaint that throws is reported by the state that hit it */ }
+
+    // (f) what a folded tail stands for: Enter on the tail the way a reader
+    // asks, and then the DOM again. The label is part of the claim, and so
+    // is the tail's own `folds`: what it says it stands for is what drawing
+    // it out reveals, no more and no fewer.
+    if (entries.length) {
+      await goTo(app, entries);
+      let refused = [];
+      const LIMIT = 64;
+      let done = 0;
+      for (; done < LIMIT; done++) {
+        const before = marksIn(chart);
+        const shown = before.filter((m) => app.isAggregate(m.__data__.id));
+        const tail = shown.find((m) => app.expandable(m.__data__));
+        if (!tail) { refused = shown; break; }
+        const tier = tail.__data__.tier;
+        const drawnBefore = before.map((m) => m.__data__.id);
+        const hidden = (tail.__data__.folds || []).filter((id) => !drawnBefore.includes(id));
+        const promised = tailPromise(tail);
+        seen.expansions++;
+        const note = (what) => wrong.tails.push(`${where}: the tail ${tail.__data__.id} ${what}`);
+        fire(tail, "keydown", { key: "Enter", timeStamp: t0 + 20000 + done });
+        await settle();
+        const out = marksIn(chart)
+          .filter((m) => m.__data__.tier === tier && !app.isAggregate(m.__data__.id))
+          .map((m) => m.__data__.id);
+        const revealed = out.filter((id) => !drawnBefore.includes(id));
+        seen.revealed += revealed.length;
+        const stillHidden = hidden.filter((id) => !out.includes(id));
+        const strangers = revealed.filter((id) => !hidden.includes(id));
+        if (stillHidden.length) {
+          note(`stood for ${hidden.length} id(s) and drew no mark for ` +
+            `${stillHidden.length} of them: ${stillHidden.join(", ")}`);
+        }
+        if (strangers.length) note(`drew ${strangers.join(", ")}, which it did not say it stood for`);
+        if (promised !== revealed.length) {
+          note(`says "${promised}" in its own words and drew ${revealed.length} mark(s) the chart did not already carry`);
+        }
+      }
+      if (done === LIMIT) {
+        wrong.tails.push(`${where}: the chart still offered a tail to draw out after ${LIMIT} of them, ` +
+          "so what it was left holding was never read");
+      }
+      // SHOWN AND COULD NOT IS NOT THE SAME AS NOT SHOWN: a tail the reader
+      // can see whose members no gesture on this chart draws out.
+      const drawnNow = marksIn(chart).map((m) => m.__data__.id);
+      for (const m of refused) {
+        seen.refused++;
+        const behind = (m.__data__.folds || []).filter((id) => !drawnNow.includes(id));
+        wrong.tails.push(`${where}: the tail ${m.__data__.id} (${JSON.stringify(m.__data__.label)}) is drawn ` +
+          `and the page offers no gesture that draws it out -- ${behind.length} id(s) it stands for ` +
+          `reach no mark: ${behind.join(", ") || "(none)"}`);
+      }
+    }
   }
+  app.collapseAll();
   return { wrong, seen };
 }
 
@@ -430,12 +370,11 @@ for (const year of YEARS) {
     // Each arm carries the counter that could vanish under it alone.
     const drove = () => seen.states > 0 && seen.marks > 0;
 
-    test(`${year.label}: every node the chart lays out reaches a mark, at a column the width draws`, (t) => {
-      const detail = `${seen.marks} mark(s) over ${seen.states} state(s), ${seen.tails} of them folded ` +
-        `tail(s) and ${seen.ownMarks} mark(s) the rung adds of its own`;
+    test(`${year.label}: every node the chart lays out reaches a mark`, (t) => {
+      const detail = `${seen.marks} mark(s) over ${seen.states} state(s), ${seen.tails} of them folded tail(s)`;
       t.diagnostic(detail);
       assert.equal(wrong.reach.length, 0, `${wrong.reach.length} disagreement(s), ${firstOf(wrong.reach)}`);
-      assert.ok(drove() && seen.tails > 0 && seen.ownMarks > 0, detail);
+      assert.ok(drove() && seen.tails > 0, detail);
     });
 
     test(`${year.label}: every link the chart lays out reaches a ribbon with a path, a width and a name`, (t) => {
@@ -458,10 +397,10 @@ for (const year of YEARS) {
     test(`${year.label}: a gesture on a drawn mark does what the page says it does`, (t) => {
       const detail = `${seen.gestures} event(s) fired over ${seen.states} state(s): a click isolates and ` +
         "a second releases, Space isolates, the click that Space synthesises does not undo it, " +
-        "a held key does nothing, and a double click and Enter each open a node that opens a " +
-        `rung for; the isolation dims ${seen.emphasis} mark(s) and ribbon(s), none of them the ` +
-        "isolated node or a flow of its own, and none left dimmed once released; and from focus " +
-        `on a mark a drill moved it to the rung's own return control ${seen.focus} time(s)`;
+        "a held key does nothing, and a double click and Enter each split a node that splits; " +
+        `the isolation dims ${seen.emphasis} mark(s) and ribbon(s), none of them the isolated node or ` +
+        "a flow of its own, and none left dimmed once released; and from focus on a mark a split " +
+        `moved it to a mark of the chart it drew ${seen.focus} time(s)`;
       t.diagnostic(detail);
       assert.equal(wrong.gestures.length, 0, `${wrong.gestures.length} gesture(s) that did something else, ${firstOf(wrong.gestures)}`);
       assert.ok(drove() && seen.gestures > 0 && seen.emphasis > 0 && seen.focus > 0, detail);
@@ -475,8 +414,8 @@ for (const year of YEARS) {
       assert.ok(drove(), detail);
     });
 
-    test(`${year.label}: a folded tail expands into the ids Go accounts for and no others, and no tail is drawn that the page will not draw out`, (t) => {
-      const detail = `${seen.expansions} tail(s) expanded by Enter on the mark itself, drawing ` +
+    test(`${year.label}: a folded tail draws out into the ids Go accounts for and no others, and no tail is drawn that the page will not draw out`, (t) => {
+      const detail = `${seen.expansions} tail(s) drawn out by Enter on the mark itself, drawing ` +
         `${seen.revealed} mark(s) that were behind one, each tail drawing as many as the words in ` +
         `it promised; ${seen.refused} tail(s) were drawn that the page offered no way to draw out`;
       t.diagnostic(detail);
@@ -486,12 +425,12 @@ for (const year of YEARS) {
   });
 }
 
-describe("the drill's drawing", () => {
-  /** Every drawn mark of the overview and every offered view, both columns. */
+describe("the expansion's drawing", () => {
+  /** Every drawn mark of the root and every split the page offers, both columns. */
   const records = [];
   const walks = {};
   const hundreds = [];
-  const tally = { nodes: 0, opens: 0, derivedOnly: 0, both: 0, expands: 0 };
+  const tally = { nodes: 0, opens: 0, derivedOnly: 0, expands: 0 };
 
   before(async () => {
     for (const year of YEARS) {
@@ -501,12 +440,11 @@ describe("the drill's drawing", () => {
         for (const m of marksIn(chart)) {
           const d = m.__data__;
           const flag = flagOf(m);
-          const opens = app.drillable(d);
+          const opens = app.splittable(d);
           const expands = app.expandable(d);
           tally.nodes++;
           if (opens) tally.opens++;
           if (d.derived && !opens) tally.derivedOnly++;
-          if (d.derived && opens) tally.both++;
           if (expands) tally.expands++;
           records.push({
             where: `${year.label} ${where}`, id: d.id,
@@ -519,12 +457,12 @@ describe("the drill's drawing", () => {
           if (share.includes("100.0%") || share.includes("100%")) hundreds.push(`${year.label} ${where} ${d.id}: ${share}`);
         }
       };
-      look("the overview");
-      walks[year.stem] = await everyOffer(app, (path) => look(keyOf(path)));
+      look("the root");
+      walks[year.stem] = await everySplit(app, (where) => look(where));
     }
   });
 
-  test("a node that opens is drawn as one, a node that expands is drawn as one, and a node that does neither is drawn as neither", (t) => {
+  test("a node that splits is drawn as one, a tail that draws out is drawn as one, and a node that does neither is drawn as neither", (t) => {
     const wrong = records.filter((r) =>
       r.classes.includes("opens") !== r.opens ||
       r.classes.includes("expands") !== r.expands ||
@@ -533,17 +471,14 @@ describe("the drill's drawing", () => {
       (r.flag || "").includes("▸") !== r.opens ||
       (r.flag || "").includes("◇") !== r.derived)
       .map((r) => `${r.where} > ${r.id} is drawn "${r.classes.join(" ")}" / "${r.flag}" but ` +
-        `${r.opens ? "opens" : "does not open"}`);
+        `${r.opens ? "splits" : "does not split"}`);
     const visited = Object.values(walks).map((w) => w.visited).reduce((a, b) => a + b, 0);
-    t.diagnostic(`over the overview and ${visited} opened view(s) of both columns, ${tally.nodes} mark(s): ` +
+    t.diagnostic(`over the root and ${visited} split chart(s) of both columns, ${tally.nodes} mark(s): ` +
       `${tally.opens} carry "opens" and the triangle, ${tally.derivedOnly} the diamond alone, ` +
-      `${tally.both} both (the spine's derived fund-balance ends, which open), ` +
       `${tally.expands} carry "expands" and the plus`);
     for (const w of Object.values(walks)) assert.equal(w.refused, "");
     assert.deepEqual(wrong.slice(0, 5), [], `${wrong.length} of ${tally.nodes} mark(s) are drawn as something they are not`);
     assert.ok(tally.opens > 0 && tally.expands > 0 && tally.derivedOnly > 0, "the corpus puts marks on both sides of each question");
-    // THE DIAMOND-AND-TRIANGLE PAIR IS DRAWN, so `wrong` above holds it too.
-    assert.ok(tally.both > 0, "no mark is both an inference and one that opens, so nothing here draws the composed marker");
   });
 
   test("the flag tspan a mark draws carries exactly nodeFlags", (t) => {
@@ -555,71 +490,31 @@ describe("the drill's drawing", () => {
     assert.ok(flagged > 0);
   });
 
-  test("no share on any view claims 100% of a column that has more than one mark", async (t) => {
-    // The case no pinned view reaches: a column divided where toFixed(1)
-    // would round to 100, by scaling one printed link a millionfold.
+  test("no share on any chart claims 100% of a column that has more than one mark", async (t) => {
+    // The case no pinned chart reaches: a column divided where toFixed(1)
+    // would round to 100, by scaling one printed line's link a millionfold
+    // and so its revenue category's.
     const doc = columnFixture(YEARS[0].fixture);
-    const l = doc.schedules.sankey.links.find((x) => doc.nodes[x.from].tier === 0 && x.kind === "external");
+    const sched = doc.schedules.expansion;
+    const parentOf = new Map(sched.nodes.map((n) => [doc.nodes[n.node].id, n.parent]));
+    const l = sched.links.find((x) => doc.nodes[x.from].id.startsWith("revenue-line/") && x.kind === "external" && !x.alternative);
     l.value_cents = l.value_cents * 1000000;
+    const category = parentOf.get(doc.nodes[l.from].id);
     const { app, document } = await bootedApp({ checkedStem: YEARS[0].stem, plan: { [YEARS[0].path]: { doc } } });
-    const big = marksIn(document.getElementById("chart")).find((m) => m.__data__.id === doc.nodes[l.from].id);
+    const big = marksIn(document.getElementById("chart")).find((m) => m.__data__.id === category);
     const rounded = big ? app.shareOf(big.__data__) : "(the mark is not drawn)";
-    t.diagnostic(`every share across the overview and ${Object.values(walks).map((w) => w.visited).join(" + ")} ` +
-      `opened views is under 100%; ${doc.nodes[l.from].id} scaled to all but the whole of its column reads "${rounded}"`);
+    t.diagnostic(`every share across the root and ${Object.values(walks).map((w) => w.visited).join(" + ")} ` +
+      `split charts is under 100%; ${category} scaled to all but the whole of its column reads "${rounded}"`);
     assert.deepEqual(hundreds.slice(0, 3), [], `${hundreds.length} share(s) read 100%`);
     assert.ok(big, "the scaled mark is drawn");
     assert.ok(rounded.includes("of this column") && !rounded.includes("100"), rounded);
   });
 
-  test("every declared step names the noun a rung of its own is qualified with", (t) => {
-    t.diagnostic(CONFIG.steps.map((st) => `${st.key}=${JSON.stringify(st.noun)}`).join(", "));
-    for (const st of CONFIG.steps) assert.ok(typeof st.noun === "string" && st.noun !== "", `step ${st.key} declares no noun`);
-  });
-
-  test("three openable columns are joined as a list, and joinOr is that rule at every length", async (t) => {
-    const { app, document } = await bootedApp({ checkedStem: YEARS[0].stem });
-    const hint = document.getElementById("chart-hint").textContent;
-    t.diagnostic(`hint "${hint}"; joinOr over one, two and three reads "${app.joinOr(["a"])}", ` +
-      `"${app.joinOr(["a", "b"])}", "${app.joinOr(["a", "b", "c"])}"`);
-    const w = CONFIG.wording;
-    assert.deepEqual(app.openableColumns(), [w.column_left, w.column_middle, w.column_right]);
-    const where = app.say("in_column", { columns: app.joinOr([w.column_left, w.column_middle, w.column_right]) });
-    assert.ok(hint.startsWith(app.say("open_into", { where })), hint);
-    assert.equal(app.joinOr([]), "");
-    assert.equal(app.joinOr(["a"]), "a");
-    assert.equal(app.joinOr(["a", "b"]), "a or b");
-    assert.equal(app.joinOr(["a", "b", "c"]), "a, b or c");
-  });
-
-  test("on a chart of four or five columns the hint names an inner column by its place, not as the middle", async (t) => {
-    const w = CONFIG.wording;
-    const said = [];
-    // The General Fund's group window is five columns, whose centre opens into
-    // its list of funds and whose funds open further, and its fund window four.
-    for (const [path, width, at, names] of [
-      [["fund-group/general"], 5, [1, 2], [w.column_second, w.column_third]],
-      [["fund-group/general", "fund/100"], 4, [2], [w.column_third]],
-    ]) {
-      const { app, document } = await bootedApp({ checkedStem: YEARS[0].stem, viewport: 2000 });
-      await opened(app, ...path);
-      const tiers = app.activeTiers();
-      const opening = new Set(app.projection.nodes.filter(app.drillable).map((n) => n.tier));
-      const hint = document.getElementById("chart-hint").textContent;
-      said.push(`${path[path.length - 1]} at {${tiers}} opens from {${[...opening]}}: "${hint}"`);
-      assert.equal(tiers.length, width);
-      assert.deepEqual([...opening].map((tier) => tiers.indexOf(tier)).sort(), at);
-      assert.deepEqual(app.openableColumns(), names);
-      assert.ok(hint.includes(app.say("in_column", { columns: app.joinOr(names) })), hint);
-    }
-    t.diagnostic(said.join("; "));
-  });
   test("a partition ribbon says it is a cross-tab in its class, its two labels and the flow table", async (t) => {
-    const step = stepByKey(CONFIG, "object-category");
     const { app, document } = await bootedApp({ checkedStem: YEARS[0].stem });
     const chart = document.getElementById("chart");
-    const category = marksIn(chart).find((m) => m.__data__.tier === step.from && app.drillable(m.__data__));
-    assert.ok(category, `no mark at tier ${step.from} opens`);
-    await opened(app, category.__data__.id);
+    const category = app.fetched.splits.find((sp) => sp.key === "divisions" && sp.alternative).node;
+    await split(app, category + app.ALTERNATIVE_MARK + "divisions");
     const ribbons = ribbonsIn(chart).filter((p) => p.classList.contains("partition"));
     const ribbon = ribbons[0];
     const marks = marksIn(chart);
@@ -628,7 +523,7 @@ describe("the drill's drawing", () => {
       (m.getAttribute("aria-label") || "").includes(app.PARTITION_NOTE)).map((m) => m.__data__.id);
     const rows = [...document.getElementById("flow-table").querySelector("tbody").children];
     const cells = rows.filter((tr) => tr.children[4].textContent === app.PARTITION_NOTE).length;
-    t.diagnostic(`opened into ${category.__data__.id}: ${ribbons.length} of ${ribbonsIn(chart).length} ribbon(s) ` +
+    t.diagnostic(`${category} split by its divisions: ${ribbons.length} of ${ribbonsIn(chart).length} ribbon(s) ` +
       `carry "partition"; ${noted.length} of ${marks.length} mark(s) carry the sentence in their label; ` +
       `${cells} of ${rows.length} table row(s) read it in the provenance column`);
     assert.ok(ribbon, "no drawn ribbon carries the partition class");
@@ -639,28 +534,25 @@ describe("the drill's drawing", () => {
     assert.equal(cells, ribbons.length);
   });
 
-  test("an opened view's legend is the fund groups its marks are in, in Go's order, and a swatch follows the group", async (t) => {
+  test("the legend is the fund groups the marks are in, in Go's order, and a swatch follows the group where no group node is drawn", async (t) => {
     const { app, document } = await bootedApp({ checkedStem: YEARS[0].stem });
     const chart = document.getElementById("chart");
     const swatches = () => [...document.querySelectorAll("#legend [data-group]")];
-    await opened(app, "fund-group/general");
-    const onGroup = swatches().map((b) => b.dataset.group);
-    app.drillUp(0);
-    await settle();
-    // AN ENDPOINT'S VIEW: funds of several groups and no group node on screen,
-    // so the swatch is the only key to the hues.
-    await opened(app, "fund-balance/contribution");
+    const atRoot = swatches().map((b) => b.dataset.group);
+    // EVERY GROUP SPLIT INTO ITS FUNDS: funds of every group and no group
+    // node on screen, so the swatch is the only key to the hues.
+    for (const sp of app.fetched.splits.filter((x) => x.key === "funds")) await split(app, sp.node);
     const marks = marksIn(chart);
     const ribbons = ribbonsIn(chart);
     const legend = swatches();
     const ids = legend.map((b) => b.dataset.group);
     const inMarks = new Set(marks.map((m) => app.fundGroupOf(m.__data__)).filter(Boolean));
-    t.diagnostic(`opened into the General Fund group the legend is ${JSON.stringify(onGroup)}; opened into ` +
-      `fund-balance/contribution it is ${JSON.stringify(ids.map((id) => id.replace("fund-group/", "")))} over ` +
+    t.diagnostic(`at the root the legend is ${JSON.stringify(atRoot.map((id) => id.replace("fund-group/", "")))}; ` +
+      `with every group split it is ${JSON.stringify(ids.map((id) => id.replace("fund-group/", "")))} over ` +
       `${marks.length} mark(s), none of them a group node`);
-    assert.deepEqual(onGroup, ["fund-group/general"]);
+    assert.deepEqual(atRoot, app.fundGroups().map((g) => g.id).filter((id) => atRoot.includes(id)));
     assert.ok(!marks.some((m) => app.isFundGroup(m.__data__)), "a group node is drawn, so a node toggle would do");
-    assert.ok(ids.length >= 2, `the view spans ${ids.length} group(s), so it tells a group from a node apart nowhere`);
+    assert.ok(ids.length >= 2, `the chart spans ${ids.length} group(s), so it tells a group from a node apart nowhere`);
     assert.deepEqual(ids, app.fundGroups().map((g) => g.id).filter((id) => inMarks.has(id)));
     for (const b of legend) {
       assert.equal(b.querySelector(".key").dataset.var, app.fundColorVar(b.dataset.group), b.dataset.group);
@@ -694,9 +586,9 @@ describe("the drill's drawing", () => {
     const chart = document.getElementById("chart");
     const muted = app.cssVar("--muted");
     let recoloured = 0;
-    const rungs = new Set();
+    const charts = new Set();
     const wrong = [];
-    const walked = await everyOffer(app, async (path) => {
+    const walked = await everySplit(app, async (where) => {
       for (const r of ribbonsIn(chart)) {
         const d = r.__data__;
         const a = app.fundGroupOf(d.source);
@@ -704,56 +596,40 @@ describe("the drill's drawing", () => {
         if (Boolean(a) === Boolean(b) || app.isFundGroup(d.source) || app.isFundGroup(d.target)) continue;
         const g = a || b;
         const want = app.cssVar(app.fundColorVar(g));
-        if (r.getAttribute("stroke") !== want) wrong.push(`${keyOf(path)}: ${d.source.id} -> ${d.target.id} is ${r.getAttribute("stroke")}, not ${g}'s ${want}`);
+        if (r.getAttribute("stroke") !== want) wrong.push(`${where}: ${d.source.id} -> ${d.target.id} is ${r.getAttribute("stroke")}, not ${g}'s ${want}`);
         if (want !== muted) {
           recoloured++;
-          rungs.add(keyOf(path));
+          charts.add(where);
         }
       }
     });
     assert.equal(walked.refused, "", walked.refused);
-    t.diagnostic(`${YEARS[0].label}: ${recoloured} ribbon(s) with one group-less end on ${rungs.size} of ` +
-      `${walked.visited} rung(s) wear their other end's hue rather than --muted`);
+    t.diagnostic(`${YEARS[0].label}: ${recoloured} ribbon(s) with one group-less end on ${charts.size} of ` +
+      `${walked.visited} chart(s) wear their other end's hue rather than --muted`);
     assert.deepEqual(wrong, [], firstOf(wrong));
     assert.ok(recoloured > 0, "no ribbon has one group-less end, so the arm is never drawn");
 
     // Two groups, neither of them a group node: picking one would be a guess.
-    await opened(app, "fund-balance/draw");
+    app.expandAll();
+    await settle();
     const funds = marksIn(chart).map((m) => m.__data__).filter((n) => app.fundGroupOf(n) && !app.isFundGroup(n));
     const other = funds.find((n) => app.fundGroupOf(n) !== app.fundGroupOf(funds[0]));
-    assert.ok(other, "fund-balance/draw draws funds of one group only");
+    assert.ok(other, "everything split draws funds of one group only");
     assert.equal(app.linkGroup({ source: funds[0], target: other }), "");
     assert.equal(app.linkColor({ source: funds[0], target: other }), muted);
   });
 
-  test("the opened chart says what it is, in this step's own words", async (t) => {
-    const step = stepByKey(CONFIG, "transfers");
-    const year = YEARS[0];
-    const { app, document } = await bootedApp({ checkedStem: year.stem });
-    const chart = document.getElementById("chart");
-    const mark = marksIn(chart).find((m) => (app.stepFor(m.__data__) || {}).key === step.key);
-    assert.ok(mark, `no drawn mark opens under the ${step.key} step`);
-    const label = mark.__data__.label;
-    await opened(app, mark.__data__.id);
-    const desc = document.getElementById("chart-desc").textContent.replace(/\s+/g, " ").trim();
-    const title = document.getElementById("chart-title").textContent.replace(/\s+/g, " ").trim();
-    t.diagnostic(`title "${title}"; desc opens "${desc.slice(0, 60)}..."`);
-    assert.equal(title, `${year.chartTitle}, opened into ${label}`);
-    assert.ok(desc.startsWith(`Opened into ${label}. ${step.description}`), desc);
-  });
-
-  for (const [open, stem, sharesColumn] of [[[], "sankey", true], [["fund-group/general"], "fund-flows", true]]) {
-    const name = open.length ? "opened into " + open.join(" > ") : "the overview";
+  for (const [entries, stem] of [[[], "expansion"], [["fund-group/capital"], "expansion"]]) {
+    const name = entries.length ? "with " + entries.join(" > ") + " split" : "at the root";
     test(`${name}: a marked node reaches the tooltip and the panel, and links to its own document's caveat`, async (t) => {
       const { app, document } = await bootedApp({ checkedStem: YEARS[0].stem });
       const chart = document.getElementById("chart");
-      await opened(app, ...open);
-      // A drawn mark, not the centre: the opened node is alone in its column,
-      // so its share is suppressed by construction.
-      const centre = open.length ? open[open.length - 1] : "";
-      const marked = marksIn(chart).find((m) =>
-        !m.__data__.carried_from && m.__data__.id !== centre && app.caveatsFor(m.__data__.id).length > 0);
-      assert.ok(marked, "no drawn node at this depth carries a caveat, so this asserts nothing");
+      await split(app, ...entries);
+      const marked = marksIn(chart).find((m) => app.caveatsFor(m.__data__.id).length > 0);
+      // At the root a fund group carries the caveat its own remainder node
+      // is named in: the remainder is folded inside it, as a tail's members
+      // are inside the tail.
+      assert.ok(marked, "no drawn node carries a caveat, so this asserts nothing");
       const laid = marked.__data__;
       app.showTip({ target: chart, clientX: 0, clientY: 0 }, laid);
       const tip = document.getElementById("tooltip").textContent;
@@ -762,146 +638,52 @@ describe("the drill's drawing", () => {
       const caveat = app.caveatsFor(laid.id)[0].id;
       const href = app.caveatHref(caveat);
       const wantHref = `caveats.html#caveat-${stem}--${caveat}`;
-      t.diagnostic(`${laid.id}: tooltip mentions ${tip.includes("caveat") ? "a caveat" : "NO caveat"} and ` +
-        `${tip.includes("of this column") ? (tip.includes("◇ our ") ? "a share marked as ours" : "an UNMARKED share") : "no share"}; ` +
+      t.diagnostic(`${laid.id}: tooltip mentions ${tip.includes("caveat") ? "a caveat" : "NO caveat"}; ` +
         `panel ${panel.includes("Read it in full") ? "links to the full text" : "does NOT link"}; href "${href}"`);
       assert.ok(tip.includes("caveat"), tip);
-      if (sharesColumn) assert.ok(tip.includes("◇ our ") && tip.includes("of this column"), tip);
-      else assert.ok(!tip.includes("of this column"), tip);
       assert.ok(panel.includes("Read it in full"), panel);
       assert.equal(href, wantHref);
     });
   }
 
   for (const year of YEARS) {
-    const pages = (hs) => [...new Set(hs
-      .filter((h) => !h.startsWith("caveats"))
-      .map((h) => (h.match(/p(?:age=)?0*(\d+)/) || [])[1])
-      .filter(Boolean))].map(Number).sort((a, b) => a - b);
-
-    test(`${year.label}: a carried mark's panel links to the spine's copy of the caveat, and the drawn mark beside it still links to the step document's`, async (t) => {
+    test(`${year.label}: a remainder Go derives is marked as ours, says why in Go's words, and reaches the inferred list, the tooltip and the panel; it splits nothing`, async (t) => {
       const { app, document } = await bootedApp({ checkedStem: year.stem });
       const chart = document.getElementById("chart");
-      await opened(app, "fund-group/general");
-      const detail = document.getElementById("detail");
-      const carried = marksIn(chart).filter((m) => m.__data__.carried_from);
-      const withCaveat = carried.filter((m) => app.caveatsFor(m.__data__.id).length > 0);
-      const ids = withCaveat.map((m) => m.__data__.id).sort();
-      const hrefsIn = () => [...detail.querySelectorAll("a")].map((a) => a.getAttribute("href") || "");
-      // The rendered panel, not caveatHref: the only route red on the caller.
-      const panelFor = (id) => {
-        const m = marksIn(chart).find((x) => x.__data__.id === id);
-        assert.ok(m, `${id} is not drawn`);
-        app.pin(m.__data__);
-        return detail.textContent;
-      };
-      const first = withCaveat[0];
-      const caveat = first ? app.caveatsFor(first.__data__.id)[0].id : "";
-      const wantHref = (year.config.caveats.find((c) => c.id === caveat) || {}).href || "(the year declares no anchor)";
-      let carriedPanel = "";
-      let carriedHrefs = [];
-      if (first) {
-        carriedPanel = panelFor(first.__data__.id);
-        carriedHrefs = hrefsIn();
-      }
-      const drawnCaveat = app.caveatsFor("fund/100")[0];
-      const stepEntry = year.config.steps[CONFIG.steps.findIndex((s) => s.key === "fund-group")];
-      const wantDrawn = (drawnCaveat && (stepEntry.caveats || []).find((c) => c.id === drawnCaveat.id) || {}).href ||
-        "(the step declares no anchor)";
-      const drawnPanel = panelFor("fund/100");
-      const drawnHrefs = hrefsIn();
-      const carriedPages = first ? (panelFor(first.__data__.id), pages(hrefsIn())) : [];
-      panelFor("fund/100");
-      const drawnPages = pages(hrefsIn());
-      t.diagnostic(`${carried.length} carried mark(s), ${ids.length} with a caveat (${ids.join(", ")}); ` +
-        `the carried panel links to ${JSON.stringify(carriedHrefs.find((h) => h.startsWith("caveats.html")) || "")} ` +
-        `and cites pp.${carriedPages.join(",")}; fund/100's links to ` +
-        `${JSON.stringify(drawnHrefs.find((h) => h.startsWith("caveats.html")) || "")} and cites ` +
-        `${drawnPages.length} page(s) from p.${drawnPages[0]}`);
-      assert.ok(carried.length > 0);
-      assert.deepEqual(ids, ["transfers/in"]);
-      assert.equal(caveat, "transfer-legs-unpaired");
-      assert.ok(carriedPanel.includes("Read it in full"), carriedPanel);
-      assert.ok(carriedHrefs.includes(wantHref), `want ${wantHref} in ${JSON.stringify(carriedHrefs)}`);
-      assert.ok(drawnPanel.includes("Read it in full"), drawnPanel);
-      assert.ok(drawnHrefs.includes(wantDrawn), `want ${wantDrawn} in ${JSON.stringify(drawnHrefs)}`);
-      assert.notEqual(wantHref, wantDrawn, "the two anchors name one document, so this tells nothing apart");
-      assert.deepEqual(carriedPages, [66, 67]);
-      assert.ok(drawnPages.includes(127) && !drawnPages.includes(66), JSON.stringify(drawnPages));
-    });
-
-    test(`${year.label}: the residual is marked as ours, says why in the check's words, and reaches the inferred list, the tooltip and the panel; nothing carried opens`, async (t) => {
-      const { app, document } = await bootedApp({ checkedStem: year.stem });
-      const chart = document.getElementById("chart");
-      const general = "fund-group/general";
-      await opened(app, general);
-      const rid = app.residualID(general);
-      const mark = marksIn(chart).find((m) => m.__data__.id === rid);
-      assert.ok(mark, "no residual mark is drawn on the General Fund");
+      await split(app, "fund-group/capital");
+      const mark = marksIn(chart).find((m) => m.__data__.id === "fund-group-only/capital");
+      assert.ok(mark, "the capital group split draws no remainder of its own");
       const node = mark.__data__;
-      const links = app.projection.links.filter((l) => l.source === rid || l.target === rid);
-      const carriedEnds = links.map((l) => (l.target === rid ? l.source : l.target));
-      const citedPages = [...new Set(links.flatMap((l) => l.locators.flatMap((s) => s.pages)))];
-      const declared = stepByKey(CONFIG, "fund-group").residual;
-      const missingReasons = carriedEnds.filter((e) => !node.rationale.includes(declared[e]));
       const listed = document.getElementById("derived-list").textContent;
       app.showTip({ target: chart, clientX: 0, clientY: 0 }, node);
       const tip = document.getElementById("tooltip").textContent;
       app.pin(node);
       const panel = document.getElementById("detail").textContent;
-      const opens = app.projection.nodes.filter((n) => app.isCarried(n.id) && app.drillable(n)).map((n) => n.id);
-      // THE WORDS ARE THE DECLARATION'S: the mark is named for the step's grain
-      // and carries the step's reason for every endpoint it took a flow from.
-      const grain = stepByKey(CONFIG, "fund-group").residual_grain;
-      assert.ok(grain, "the fund-group step declares no residual_grain");
-      const carriedPrinted = node.targetLinks.filter((l) => !l.derived);
-      const wrongProvenance = carriedPrinted.filter((l) => {
-        const said = app.linkDescription(l);
-        return !said.includes("re-pointed onto a mark of ours") || said.includes(", printed by the city");
-      }).map((l) => l.source.id);
-      const rows = [...document.getElementById("flow-table").querySelector("tbody").children];
-      const carriedRow = rows.find((tr) => tr.children[1].textContent === node.label && tr.children[0].textContent === "Transfers In");
-      const carriedCell = carriedRow ? carriedRow.children[4].textContent : "";
-      const derivedLinks = app.projection.links.filter((l) => l.derived);
-      const wantFlowLines = new Set(derivedLinks.map((l) => app.homeOf(l)).filter((id) => id !== "")).size;
-      const listedFlows = (listed.match(/\d+ inferred flows? totalling/g) || []).length;
-      const labelOf = (id) => (app.projection.nodes.find((x) => x.id === id) || { label: id }).label;
-      const namedOnce = derivedLinks.every((l) => listed.split(labelOf(l.source) + " → " + labelOf(l.target)).length - 1 === 1);
-      const saysCarried = /\d+ flows? of the chart above/.test(listed);
-      t.diagnostic(`"${node.label}" derived=${node.derived}, drawn class "${mark.getAttribute("class")}", carries ` +
-        `${carriedEnds.length} declared reason(s), cites pp.${citedPages.join(",")}; inferred list has ` +
-        `${listedFlows} "N inferred flows" line(s) (want ${wantFlowLines}); ${carriedPrinted.length} printed ` +
-        `flow(s) re-pointed onto it, the table reading "${carriedCell}"`);
+      t.diagnostic(`"${node.label}" derived=${node.derived}, drawn class "${mark.getAttribute("class")}", ` +
+        `rationale "${node.rationale.slice(0, 60)}..."`);
       assert.equal(node.derived, true);
       assert.ok(mark.classList.contains("derived"), mark.getAttribute("class"));
-      assert.ok(node.label.includes(grain), node.label);
       assert.notEqual(node.rationale, "");
-      assert.deepEqual(missingReasons, []);
-      assert.ok(node.source_note.includes("Carried, not computed"), node.source_note);
-      assert.ok(citedPages.length > 0 && citedPages.every((pg) => node.source_note.includes(String(pg))), node.source_note);
+      assert.notEqual(node.source_note, "");
       assert.ok(listed.includes(node.label) && listed.includes(node.rationale), listed);
-      assert.equal(listedFlows, wantFlowLines);
-      assert.ok(namedOnce && saysCarried, listed);
-      assert.ok(carriedPrinted.length > 0);
-      assert.deepEqual(wrongProvenance, []);
-      assert.equal(carriedCell, app.say("carried_chip"));
       assert.ok(tip.includes("◇ inferred") && tip.includes(node.rationale), tip);
       assert.ok(panel.includes("◇ our inference") && panel.includes(node.rationale) && panel.includes(node.source_note), panel);
-      assert.deepEqual(opens, []);
+      assert.equal(app.splittable(node), false);
     });
 
     test(`${year.label}: the capped tail is marked as ours, not as something the city printed`, async (t) => {
       const { app, document } = await bootedApp({ checkedStem: year.stem });
       const chart = document.getElementById("chart");
       const worst = worstOf(app);
-      await opened(app, worst);
+      await split(app, worst);
       const tail = marksIn(chart).find((m) => app.isAggregate(m.__data__.id));
       assert.ok(tail, `no aggregate mark: the cap folded nothing on ${worst}`);
       const agg = tail.__data__;
-      const word = app.tailNoun(agg.tier);
+      const word = CONFIG.overview.sankey.split_caps.find((c) => c.split === "funds").tail;
       const count = Number((agg.label.match(/^(\d+) smaller /) || [])[1]);
       t.diagnostic(`${worst} draws "${agg.label}" as "${tail.getAttribute("class")}", derived=${agg.derived}, ` +
         `rationale "${agg.rationale.slice(0, 48)}...", source note ${agg.source_note ? "present" : "MISSING"}`);
+      assert.equal(agg.id, app.splitTailID(worst, "funds"));
       assert.equal(agg.derived, true);
       assert.ok(tail.classList.contains("derived"), tail.getAttribute("class"));
       assert.notEqual(agg.rationale, "");
@@ -915,32 +697,34 @@ describe("the drill's drawing", () => {
       assert.ok(agg.source_note.includes("together " + dollars(value)), `${agg.source_note} does not carry ${dollars(value)}`);
     });
 
-    test(`${year.label}: the breadcrumb says how many marks the expansion drew, and folds them back`, async (t) => {
+    test(`${year.label}: the chip row says how many marks a tail drew out, and folds them back`, async (t) => {
       const { app, document } = await bootedApp({ checkedStem: year.stem });
       const chart = document.getElementById("chart");
-      await opened(app, worstOf(app));
+      const worst = worstOf(app);
+      await split(app, worst);
       const capped = ribbonsIn(chart).length;
       const tail = marksIn(chart).find((m) => app.expandable(m.__data__));
-      assert.ok(tail, "no drawn mark offers to expand");
+      assert.ok(tail, "no drawn mark offers to draw out");
       const tier = tail.__data__.tier;
-      const word = app.tailNoun(tier);
+      const word = CONFIG.overview.sankey.split_caps.find((c) => c.split === "funds").tail;
       fire(tail, "keydown", { key: "Enter", timeStamp: 1000 });
       await settle();
-      const drawn = marksIn(chart).filter((m) => m.__data__.tier === tier && !app.isAggregate(m.__data__.id)).length;
+      const drawn = marksIn(chart).filter((m) => m.__data__.tier === tier && !app.isAggregate(m.__data__.id) &&
+        app.nodeOf(m.__data__.id).parent === worst).length;
       const chipCrumbs = crumbs(document);
-      const chip = document.getElementById("breadcrumb").querySelector(".crumb-expanded");
-      assert.ok(chip, `no chip in ${JSON.stringify(chipCrumbs)}`);
+      const chip = [...document.getElementById("breadcrumb").querySelectorAll(".crumb-expanded")].at(-1);
       const chipText = chip.textContent;
       fire(chip, "click");
       await settle();
       const folded = ribbonsIn(chart).length;
-      t.diagnostic(`expanded, the column draws ${drawn} ${word} and the breadcrumb reads ${JSON.stringify(chipCrumbs)}; ` +
-        `pressing the chip left ${folded} ribbon(s) (capped: ${capped}) under ${JSON.stringify(crumbs(document))}`);
-      assert.equal(chipText, `showing all ${drawn} ${word} ×`);
-      assert.equal(chipCrumbs.length, 3);
-      assert.ok(chipCrumbs[2].startsWith("crumb-expanded"), chipCrumbs[2]);
+      const label = app.nodeOf(worst).label;
+      t.diagnostic(`drawn out, ${worst} draws ${drawn} ${word} and the chips read ${JSON.stringify(chipCrumbs)}; ` +
+        `pressing the last left ${folded} ribbon(s) (capped: ${capped}) under ${JSON.stringify(crumbs(document))}`);
+      assert.equal(chipText, app.say("tail_chip", { label, n: drawn, word }));
+      assert.equal(chipCrumbs.length, 4);
+      assert.ok(chipCrumbs[3].startsWith("crumb-expanded"), chipCrumbs[3]);
       assert.equal(folded, capped);
-      assert.equal(crumbs(document).length, 2);
+      assert.equal(crumbs(document).length, 3);
     });
 
     test(`${year.label}: a caveat about a folded row marks the tail while it stands for it, and the row itself once it is drawn`, async (t) => {
@@ -948,16 +732,16 @@ describe("the drill's drawing", () => {
       // then a caveat naming that row is planted on a copy of the column.
       const plain = await bootedApp({ checkedStem: year.stem });
       const worst = worstOf(plain.app);
-      await opened(plain.app, worst);
+      await split(plain.app, worst);
       const foldedTail = plain.app.projection.nodes.find((n) => plain.app.isAggregate(n.id));
       assert.ok(foldedTail && foldedTail.folds && foldedTail.folds.length, "the cap folded nothing");
       const foldedID = foldedTail.folds[0];
       const CAVEAT = { id: "a-folded-row", summary: "A caveat about a row the cap folds.", text: "", applies_to: [foldedID] };
       const doc = columnFixture(year.fixture);
-      doc.schedules[stepByKey(CONFIG, "fund-group").projection].caveats.push(CAVEAT);
+      doc.schedules.expansion.caveats.push(CAVEAT);
       const { app, document } = await bootedApp({ checkedStem: year.stem, plan: { [year.path]: { doc } } });
       const chart = document.getElementById("chart");
-      await opened(app, worst);
+      await split(app, worst);
       const marksCarrying = () => marksIn(chart).map((m) => m.__data__.id)
         .filter((id) => app.caveatsFor(id).some((c) => c.id === CAVEAT.id)).sort();
       const cappedMarks = marksCarrying();
@@ -965,81 +749,25 @@ describe("the drill's drawing", () => {
       assert.ok(cappedTail, "no tail is drawn on the planted page");
       app.expandTier(cappedTail.__data__);
       await settle();
-      const expandedMarks = marksCarrying();
+      const drawnOut = marksCarrying();
       t.diagnostic(`a caveat naming ${foldedID}, which the cap folds, is carried by ${JSON.stringify(cappedMarks)} ` +
-        `on the capped chart and by ${JSON.stringify(expandedMarks)} on the expanded one`);
-      assert.deepEqual(cappedMarks, [app.aggregateID(cappedTail.__data__.tier), worst].sort());
-      assert.deepEqual(expandedMarks, [worst, foldedID].sort());
+        `on the capped chart and by ${JSON.stringify(drawnOut)} drawn out`);
+      assert.deepEqual(cappedMarks, [cappedTail.__data__.id]);
+      assert.deepEqual(drawnOut, [foldedID]);
     });
 
-    test(`${year.label}: no two rungs of one trail draw the same words, over the labels the site ships`, async (t) => {
+    test(`${year.label}: two chips the city prints in the same words are told apart by what each splits into`, async (t) => {
       const { app, document } = await bootedApp({ checkedStem: year.stem });
-      await opened(app, "fund-group/general", "fund/100");
-      const words = [app.labelOfRung(0), app.labelOfRung(1)];
-      const rungWords = app.trailOfRungs();
-      const groupNoun = stepByKey(CONFIG, "fund-group").noun;
-      const fundNoun = stepByKey(CONFIG, "fund").noun;
-      const title = document.getElementById("chart-title").textContent.replace(/\s+/g, " ").trim();
-      const desc = document.getElementById("chart-desc").textContent.replace(/\s+/g, " ").trim();
-      t.diagnostic(`the column labels the two rungs ${JSON.stringify(words)}, and the trail reads ` +
-        `${JSON.stringify(rungWords)}; title "${title}"`);
+      await split(app, "fund-group/general", "fund/100");
+      const words = [app.nodeOf("fund-group/general").label, app.nodeOf("fund/100").label];
+      const chips = [...document.querySelectorAll("#breadcrumb .crumb-expanded")].map((c) => c.textContent);
+      t.diagnostic(`the column labels the two ${JSON.stringify(words)}, and the chips read ${JSON.stringify(chips)}`);
       assert.equal(words[0], words[1], "the two labels no longer collide, so this asserts nothing");
-      assert.deepEqual(rungWords, [`${words[0]} (${groupNoun})`, `${words[1]} (${fundNoun})`]);
-      assert.equal(new Set(rungWords).size, rungWords.length);
-      assert.ok(title.endsWith(`, opened into ${rungWords[0]}, then ${rungWords[1]}`), title);
-      assert.ok(desc.startsWith(`Opened into ${rungWords[0]}, then ${rungWords[1]}. `), desc);
-    });
-  }
-});
-
-describe("a gap mark", () => {
-  // Every gap a step licenses, in whichever column licenses one.
-  const gaps = YEARS.flatMap((year) => gapPaths(year.config).map((path) => ({ year, path })));
-  test("the pinned page licenses a gap to drive", () => assert.ok(gaps.length > 0));
-  for (const { year, path } of gaps) {
-    test(`${year.stem} ${path.join(" > ")}: the gap and its ribbon cite the pages of both totals and say what they are, with no empty label`, async (t) => {
-      const { app, document } = await bootedApp({ checkedStem: year.stem });
-      const step = app.stepFor(app.projection.nodes.find((n) => n.id === path[0]));
-      const licence = step.gaps[path[0]].find((g) => g.fiscal_year === year.config.year && g.basis === year.config.basis);
-      // THE PAGES BOTH TOTALS WERE READ FROM: every page a ribbon touching the
-      // opened node cites, in the chart above's document and in the drawn one.
-      const above = app.docAt(0);
-      await opened(app, ...path);
-      const chart = document.getElementById("chart");
-      const detail = document.getElementById("detail");
-      const id = app.gapID(path[path.length - 1]);
-      const node = marksIn(chart).find((m) => m.__data__.id === id);
-      const ribbon = [...chart.querySelectorAll("path")].find((p) => p.__data__ && p.__data__.source &&
-        (p.__data__.source.id === id || p.__data__.target.id === id));
-      assert.ok(node && ribbon, `${id} or its ribbon is not drawn`);
-      const touching = (doc) => {
-        const inside = app.withinNode(doc, path[path.length - 1]);
-        return doc.links.filter((l) => inside.has(l.source) || inside.has(l.target))
-          .flatMap((l) => l.locators.flatMap((s) => s.pages));
-      };
-      const want = [...new Set(touching(above).concat(touching(app.drawnDoc())))].sort((a, b) => a - b);
-      const pdfPages = () => [...detail.querySelectorAll("a")].map((a) => a.getAttribute("href") || "")
-        .filter((href) => href.includes("#page=")).map((href) => Number(href.split("#page=")[1]));
-      app.pin(node.__data__);
-      const nodeCites = pdfPages();
-      const nodePanel = detail.textContent;
-      app.pin(ribbon.__data__);
-      const ribbonCites = pdfPages();
-      const panel = detail.textContent;
-      const chips = [...detail.querySelectorAll(".chip")].map((c) => c.textContent);
-      const aria = ribbon.getAttribute("aria-label") || "";
-      const figure = Math.max(node.__data__.in_cents || 0, node.__data__.out_cents || 0);
-      t.diagnostic(`the two documents cite pp.${want.join(",")}; the node's panel pp.${nodeCites.join(",")}, ` +
-        `the ribbon's pp.${ribbonCites.join(",")}; the mark stands for ${figure} cents against a licence of ` +
-        `${licence.cents}; chips ${JSON.stringify(chips)}; aria "${aria}"`);
-      assert.deepEqual(nodeCites, want);
-      assert.deepEqual(ribbonCites, want);
-      assert.equal(figure, Math.abs(licence.cents));
-      assert.ok(!panel.includes("Facts:"), panel);
-      assert.ok(panel.includes(node.__data__.source_note), panel);
-      assert.ok(nodePanel.includes(licence.reason), nodePanel);
-      assert.ok(chips.every((c) => c !== ""), JSON.stringify(chips));
-      assert.doesNotMatch(aria, /, ,/);
+      assert.deepEqual(chips, [
+        app.say("chip_fold", { label: `${words[0]} (${app.splitWords("funds")})` }),
+        app.say("chip_fold", { label: `${words[1]} (${app.splitWords("divisions")})` }),
+      ]);
+      assert.equal(new Set(chips).size, chips.length);
     });
   }
 });
@@ -1048,14 +776,41 @@ describe("a gap mark", () => {
 // a pinned column with one stated change, or a bare call.
 describe("arms no committed column reaches", () => {
   const newest = YEARS[YEARS.length - 1];
-  test("a derived flow between two published nodes is listed as inferred on its own, with both ends named", async (t) => {
+  /**
+   * A clone of the newest column with every leaf of one printed root cell
+   * marked derived, so the ribbon the root draws for it is derived and both
+   * its ends are printed; and a second printed cell left as it is.
+   */
+  const derivedCell = () => {
     const col = structuredClone(columnFixture(newest.fixture));
-    const link = col.schedules.sankey.links.find((l) =>
-      !l.derived && !col.nodes[l.from].derived && !col.nodes[l.to].derived);
-    assert.ok(link, "the pinned column has no printed flow between two published nodes");
-    link.derived = true;
-    const from = col.nodes[link.from].label;
-    const to = col.nodes[link.to].label;
+    const sched = col.schedules.expansion;
+    const parentOf = new Map(sched.nodes.map((n) => [col.nodes[n.node].id, n.parent]));
+    const rootOf = (id) => {
+      let at = id;
+      for (let hops = 0; parentOf.get(at) && hops < 9; hops++) at = parentOf.get(at);
+      return at;
+    };
+    const printedRoot = (id) => !col.nodes.find((n) => n.id === id).derived;
+    const cells = new Map();
+    for (const l of sched.links) {
+      if (l.alternative) continue;
+      const key = rootOf(col.nodes[l.from].id) + ">" + rootOf(col.nodes[l.to].id) + ":" + l.kind;
+      (cells.get(key) || cells.set(key, []).get(key)).push(l);
+    }
+    const printed = [...cells].filter(([key, legs]) => {
+      const [ends] = key.split(":");
+      const [from, to] = ends.split(">");
+      return from !== to && printedRoot(from) && printedRoot(to) && legs.every((l) => !l.derived && !l.completes);
+    });
+    const [[cell, legs], [other]] = printed;
+    for (const l of legs) l.derived = true;
+    const [ends] = cell.split(":");
+    const [from, to] = ends.split(">");
+    const label = (id) => col.nodes.find((n) => n.id === id).label;
+    return { col, cell: ends, other: other.split(":")[0], from: label(from), to: label(to) };
+  };
+  test("a derived flow between two published nodes is listed as inferred on its own, with both ends named", async (t) => {
+    const { col, from, to } = derivedCell();
     const { document } = await bootedApp({ checkedStem: newest.stem, plan: { [newest.path]: { doc: col } } });
     assert.equal(refusals(document).length, 0);
     const items = [...document.querySelectorAll("#derived-list li")];
@@ -1065,24 +820,19 @@ describe("arms no committed column reaches", () => {
     assert.ok(orphan.textContent.includes(from + " → " + to), orphan.textContent);
   });
   test("a derived flow between two published nodes wears the inference chip in its panel, and a published one does not", async (t) => {
-    const col = structuredClone(columnFixture(newest.fixture));
-    const printed = (l) => !l.derived && !col.nodes[l.from].derived && !col.nodes[l.to].derived;
-    const [link, other] = col.schedules.sankey.links.filter(printed);
-    assert.ok(link && other, "the pinned column has no two printed flows between published nodes");
-    link.derived = true;
-    const ids = (l) => [col.nodes[l.from].id, col.nodes[l.to].id].join(">");
+    const { col, cell, other } = derivedCell();
     const { app, document } = await bootedApp({ checkedStem: newest.stem, plan: { [newest.path]: { doc: col } } });
-    const ribbon = (l) => [...document.querySelectorAll("#chart path")].find((p) => p.__data__ && p.__data__.source &&
-      p.__data__.source.id + ">" + p.__data__.target.id === ids(l));
-    const chipsOf = (l) => {
-      const p = ribbon(l);
-      assert.ok(p, `${ids(l)} is not drawn`);
+    const ribbon = (ids) => [...document.querySelectorAll("#chart path")].find((p) => p.__data__ && p.__data__.source &&
+      p.__data__.source.id + ">" + p.__data__.target.id === ids);
+    const chipsOf = (ids) => {
+      const p = ribbon(ids);
+      assert.ok(p, `${ids} is not drawn`);
       app.pin(p.__data__);
       return [...document.querySelectorAll("#detail .chip")].map((c) => c.className + ":" + c.textContent);
     };
-    const derived = chipsOf(link);
+    const derived = chipsOf(cell);
     const published = chipsOf(other);
-    t.diagnostic(`derived ${ids(link)}: ${JSON.stringify(derived)}; printed ${ids(other)}: ${JSON.stringify(published)}`);
+    t.diagnostic(`derived ${cell}: ${JSON.stringify(derived)}; printed ${other}: ${JSON.stringify(published)}`);
     assert.ok(derived.includes("chip derived:\u25c7 our inference"), JSON.stringify(derived));
     assert.ok(published.includes("chip:printed by the city"), JSON.stringify(published));
   });
@@ -1091,7 +841,7 @@ describe("arms no committed column reaches", () => {
     const nodes = marksIn(document.getElementById("chart")).map((m) => m.__data__);
     const derived = nodes.find((n) => n.derived);
     const published = nodes.find((n) => !n.derived);
-    assert.ok(derived && published, "the overview draws no derived node beside a published one");
+    assert.ok(derived && published, "the root draws no derived node beside a published one");
     const chipsOf = (n) => {
       app.pin(n);
       return [...document.querySelectorAll("#detail .chip")].map((c) => c.className + ":" + c.textContent);
@@ -1104,7 +854,7 @@ describe("arms no committed column reaches", () => {
   });
   test("a schedule carrying no caveats gives every mark none, and the page still draws", async (t) => {
     const col = structuredClone(columnFixture(newest.fixture));
-    delete col.schedules.sankey.caveats;
+    delete col.schedules.expansion.caveats;
     const { app, document } = await bootedApp({ checkedStem: newest.stem, plan: { [newest.path]: { doc: col } } });
     assert.equal(refusals(document).length, 0);
     const marks = document.querySelectorAll("#chart g.node").length;
@@ -1133,12 +883,15 @@ describe("the classes the client sets and the rules the stylesheet carries", () 
     nodes: "the <g> the marks are drawn into",
     "zoom-layer": "the <g> the page makes for the form to draw into, which the zoom transforms",
     "link-hits": "the <g> a hairline's hit targets are drawn into",
-    opens: "the drillable mark; its affordance is the flag tspan, not a style",
+    opens: "the mark that splits; its affordance is the flag tspan, not a style",
     expands: "the folded tail, likewise",
     "tip-drawn": "the tooltip's drawn-part line, worn as a tip-meta",
   };
   /** Styled, set by nothing anywhere: dead ink, declared with its bead until it goes. */
-  const DEAD = {};
+  const DEAD = {
+    total: "site/bars.js's opened row, drawn on no page since the drill went; goes with bars.js (fisc-yj4w.34.4)",
+    share: "site/bars.js's share tspan, likewise",
+  };
 
   const classesIn = (attr) => (attr || "").split(/\s+/).filter(Boolean);
   const templateClasses = () => {
@@ -1172,9 +925,9 @@ describe("the classes the client sets and the rules the stylesheet carries", () 
     const snap = () => {
       for (const el of document.querySelectorAll("*")) for (const c of classesIn(el.getAttribute("class"))) worn.add(c);
     };
-    // The overview, the tooltip on a mark and on a ribbon, the panel on a
-    // ribbon, a pin, an isolation, a zoom, every view the drill offers, an
-    // expanded tail, and a refusal.
+    // The root, the tooltip on a mark and on a ribbon, the panel on a
+    // ribbon, a pin, an isolation, a zoom, every split the page offers with
+    // the chooser and the chips, a tail drawn out, and a refusal.
     snap();
     const mark = marksIn(chart)[0];
     const ribbon = ribbonsIn(chart)[0];
@@ -1195,18 +948,18 @@ describe("the classes the client sets and the rules the stylesheet carries", () 
     // A zoomed chart, for the class that clips it.
     app.zoomBy(2); snap(); app.resetZoom();
     let expandedAt = "";
-    const walked = await everyOffer(app, async (path) => {
+    const walked = await everySplit(app, async (where) => {
       snap();
       const laidRibbon = ribbonsIn(chart)[0];
       if (laidRibbon) { app.showTip({ target: chart, clientX: 0, clientY: 0 }, laidRibbon.__data__); app.pin(laidRibbon.__data__); snap(); }
-      // The first view that folds a column is expanded once, for the chip.
+      // The first chart that folds a split is drawn out once, for its chip.
       if (!expandedAt && app.projection.nodes.some((n) => app.expandable(n))) {
         expandAll(app); await settle(); snap();
-        expandedAt = path.join(" > ");
+        expandedAt = where;
       }
     });
     assert.equal(walked.refused, "");
-    assert.ok(expandedAt, "no view offered a column to expand");
+    assert.ok(expandedAt, "no chart offered a tail to draw out");
     app.fail("probe: a refusal, for its class"); snap();
     // The whole budget drawn out, for the hairlines no spine view draws.
     const wholePage = wholeFixture();
@@ -1219,7 +972,7 @@ describe("the classes the client sets and the rules the stylesheet carries", () 
     const templates = templateClasses();
     const unstyled = [...worn].filter((c) => !rules.has(c) && !(c in HOOKS)).sort();
     const unworn = [...rules].filter((c) => !worn.has(c) && !templates.has(c) && !(c in DEAD)).sort();
-    t.diagnostic(`${worn.size} classes worn across ${walked.visited} views and the states above (expanded at ${expandedAt}); ${rules.size} classes styled; ` +
+    t.diagnostic(`${worn.size} classes worn across ${walked.visited} charts and the states above (drawn out at ${expandedAt}); ${rules.size} classes styled; ` +
       `${[...rules].filter((c) => !worn.has(c) && templates.has(c)).length} styled classes are other pages' templates'; ` +
       `hooks ${Object.keys(HOOKS).join(", ")}; dead ${Object.keys(DEAD).join(", ")}`);
     assert.deepEqual(unstyled, [], "set by the client and styled by no rule");
@@ -1240,26 +993,28 @@ describe("the wording is the packager's", () => {
     const { app } = await bootedApp({ config });
     assert.equal(app.say("counts", { links: 1, nodes: 2 }), "1 flow over 2 nodes; {unfilled} stays");
     assert.equal(app.say("counts", { links: 3, nodes: 1 }), "3 flows over 1 node; {unfilled} stays");
-    assert.equal(app.say("go_back"), config.wording.go_back);
+    assert.equal(app.say("fold_back"), config.wording.fold_back);
   });
-  test("a reworded config is followed by the counts line, the hint, the description and the breadcrumb", async (t) => {
+  test("a reworded config is followed by the counts line, the hint, the description and the chip row", async (t) => {
     const config = structuredClone(pageFixture().config);
     for (const key of Object.keys(config.wording)) config.wording[key] = `«${key}» ` + config.wording[key];
     const { app, document } = await bootedApp({ config, checkedStem: YEARS[0].stem });
     const text = (id) => document.getElementById(id).textContent;
-    const hintWhole = text("chart-hint");
-    await opened(app, "fund-group/general");
+    const hintRoot = text("chart-hint");
+    await split(app, "fund-group/general", "expenditure/services-and-supplies");
     const counts = text("counts-line");
     const hint = text("chart-hint");
-    const desc = text("chart-desc");
-    const crumbs = [...document.querySelectorAll("#breadcrumb button.crumb-back")].map((b) => b.textContent);
-    t.diagnostic(`counts "${counts}"; hint "${hint.slice(0, 80)}…"; crumbs ${JSON.stringify(crumbs)}`);
-    assert.ok(hintWhole.startsWith("«open_into» ") && hintWhole.includes("«in_column» ") &&
-      hintWhole.includes("«column_left»") && hintWhole.includes(" «follow» "), hintWhole);
-    assert.ok(counts.startsWith("«counts_carried» ") || counts.startsWith("«counts_partial» "), counts);
+    const chips = [...document.querySelectorAll("#breadcrumb button")].map((b) => b.textContent);
+    const named = [...document.querySelectorAll("#breadcrumb [aria-label]")].map((b) => b.getAttribute("aria-label"));
+    t.diagnostic(`counts "${counts}"; hint "${hint.slice(0, 80)}…"; chips ${JSON.stringify(chips)}; named ${JSON.stringify(named)}`);
+    assert.ok(hintRoot.startsWith("«open_into» ") && hintRoot.includes(" «follow» ") && !hintRoot.includes("«fold_back»"), hintRoot);
+    assert.ok(counts.startsWith("«counts_partial» "), counts);
     assert.match(counts, /\d+ (flow|flows) between \d+ (node|nodes)/);
-    assert.ok(hint.startsWith("«opened_hint» This is "), hint);
-    assert.ok(desc.includes(" «go_back» Use the breadcrumb"), desc);
-    assert.deepEqual(crumbs, [`«back_control» \u2190 ${config.steps.find((s) => s.key === app.drilled[0].step.key).back}`]);
+    assert.ok(hint.includes(" «fold_back» "), hint);
+    assert.deepEqual(chips.slice(0, 2), ["«expand_all» Expand all", "«collapse_all» Collapse all"]);
+    assert.ok(chips[2].startsWith("«chip_fold» General Fund"), chips[2]);
+    assert.ok(chips.includes("«split_labels» object rows") || chips.some((c) => c === app.splitWords("object-rows")), JSON.stringify(chips));
+    assert.ok(named.some((n) => n.startsWith("«chip_fold_label» General Fund")), JSON.stringify(named));
+    assert.ok(named.some((n) => n.startsWith("«split_chooser» Split Services")), JSON.stringify(named));
   });
 });

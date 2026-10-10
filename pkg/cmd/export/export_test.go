@@ -1313,39 +1313,57 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItsCharts(t *testing.T) {
 		}
 	}
 
-	// fund-flows is drawn by opening the spine; a page of its own would publish
-	// the same money twice. THE ONE EXCEPTION IS THE WHOLE BUDGET, which no
-	// rung of the chain draws, since each opens one node: it is the spine's
-	// page, its figures and its years, with fund-flows drawn out of each
-	// year's column whole, uncapped and opening nothing.
+	// fund-flows is drawn inside the expansion, which is stitched from it; a
+	// page of its own would publish the same money twice. THE ONE EXCEPTION IS
+	// THE WHOLE BUDGET: it is the spine's page, its figures and its years, with
+	// fund-flows drawn out of each year's column whole and opening nothing.
 	for _, path := range []string{"revenue.html", "spending.html", "drilldown.html"} {
 		if _, ok := byPath[path]; ok {
-			t.Errorf("%s is in the nav; the spine's chain is where that document is drawn now", path)
+			t.Errorf("%s is in the nav; the expansion is where that document is drawn now", path)
 		}
 	}
 	for _, v := range got {
 		if v.Projection == project.FundFlowsProjection {
-			t.Errorf("view %q renders fund-flows as its own page; it is drawn by opening the spine", v.Path)
-		}
-		if v.Draws != "" && v.Path != "whole.html" {
-			t.Errorf("view %q draws %q out of its columns; only the whole budget does", v.Path, v.Draws)
+			t.Errorf("view %q renders fund-flows as its own page; it is drawn inside the expansion", v.Path)
 		}
 		if len(v.YearStems) > 0 && v.Projection != export.PrimaryProjection {
 			t.Errorf("view %q lists years of %q; the year control is the spine's documents'", v.Path, v.Projection)
 		}
 	}
+	draws := map[string]string{}
+	for _, v := range got {
+		if v.Draws != "" {
+			draws[v.Path] = v.Draws
+		}
+	}
+	if diff := cmp.Diff(map[string]string{
+		export.IndexPath: project.ExpansionProjection,
+		"whole.html":     project.FundFlowsProjection,
+	}, draws); diff != "" {
+		t.Errorf("the schedules the views draw out of their columns (-want +got):\n%s", diff)
+	}
+	// THE SPINE'S CHART IS THE EXPANSION, read in the spine's column order:
+	// the client places a root by these tiers and caps a split by its key.
+	if spine.Overview.Sankey == nil {
+		t.Fatal("the spine declares no Sankey hints")
+	}
+	if diff := cmp.Diff(export.SankeyHints{Tiers: []int{0, 2, 5},
+		Grow: &export.CanvasGrowth{NodePx: 40, Floor: 820, Ceiling: 4800},
+		SplitCaps: []export.SplitCap{{Split: "funds", Cap: 8, Tail: "funds"}, {Split: "divisions", Cap: 24, Tail: "divisions"},
+			{Split: "object-rows", Cap: 8, Tail: "object rows"}, {Split: "lines", Cap: 8, Tail: "lines"},
+			{Split: "receivers", Cap: 8, Tail: "funds"}}},
+		*spine.Overview.Sankey); diff != "" {
+		t.Errorf("the spine's Sankey hints (-want +got):\n%s", diff)
+	}
 	whole, ok := byPath["whole.html"]
 	switch {
 	case !ok:
 		t.Error("no view at whole.html draws the whole budget")
-	case whole.Projection != export.PrimaryProjection || whole.Draws != project.FundFlowsProjection:
-		t.Errorf("whole.html renders %q and draws %q, want the spine's page drawing fund-flows",
-			whole.Projection, whole.Draws)
+	case whole.Projection != export.PrimaryProjection:
+		t.Errorf("whole.html renders %q, want the spine's page", whole.Projection)
 	case !slices.Equal(whole.YearStems, spine.YearStems):
 		t.Errorf("whole.html lists years %v and the spine %v; one column is one year on both",
 			whole.YearStems, spine.YearStems)
-	case len(whole.Steps) > 0:
-		t.Errorf("whole.html declares %d steps; it opens nothing", len(whole.Steps))
 	case whole.Overview.Sankey == nil:
 		t.Error("whole.html declares no Sankey hints")
 	default:
@@ -1358,140 +1376,12 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItsCharts(t *testing.T) {
 			t.Errorf("whole.html's Sankey hints (-want +got):\n%s", diff)
 		}
 	}
-
-	// THE CHAIN'S SHAPE, because the client's tests measure against it: which
-	// steps, from which charts and tiers, which role opens, which schedule is
-	// drawn, and the Sankey hints. The words are data/views.yaml's and are
-	// held by property below, not restated. Which document each year draws is
-	// export.ColumnIndex's, measured by TestOpensIntoJoinsOnColumnNotOnDeclaredOrder.
-	type shape struct {
-		key, role, projection, side, form string
-		after                             []string
-		from                              int
-		keep, tiers, widen                []int
-		caps                              []export.TierCap
-		// bars is the tier a bars step lists, or -1 on a Sankey.
-		bars int
-		// residual and gaps say whether the step carries a derivation, which
-		// Go fills from internal/project; grain is the residual's.
-		residual, gaps bool
-		grain          string
-	}
-	want := []shape{
-		{key: "fund-group", after: []string{""}, from: 2, projection: project.FundFlowsProjection,
-			keep: []int{0}, tiers: []int{0, 2, 3, 4, 5}, widen: []int{4, 5},
-			caps: []export.TierCap{{Tier: 3, Cap: 8}, {Tier: 4, Cap: 24, Tail: "divisions"},
-				{Tier: 5, Cap: 8, Tail: "object rows"}},
-			residual: true, grain: "fund"},
-		{key: "fund", after: []string{"fund-group"}, from: 3, role: project.RoleGeneralFund,
-			keep: []int{2}, tiers: []int{2, 3, 4, 5}, widen: []int{5},
-			caps: []export.TierCap{{Tier: 4, Cap: 24}, {Tier: 5, Cap: 8, Tail: "object rows"}}},
-		{key: "division", after: []string{"fund"}, from: 4,
-			keep: []int{3}, tiers: []int{3, 4, 5}, caps: []export.TierCap{{Tier: 5, Cap: 8}}},
-		{key: "revenue-category", after: []string{""}, from: 0, role: project.RoleRevenueSource,
-			projection: project.FundFlowsProjection,
-			keep:       []int{2}, tiers: []int{1, 0, 2}, caps: []export.TierCap{{Tier: 1, Cap: 8}}},
-		{key: "object-category", after: []string{""}, from: 5, role: project.RoleObjectCategory,
-			projection: project.DepartmentSpendingProjection,
-			keep:       []int{2}, tiers: []int{2, 5, 4}, caps: []export.TierCap{{Tier: 4, Cap: 8}},
-			gaps: true},
-		{key: "transfers", after: []string{""}, from: 0, role: project.RoleTransferIn,
-			projection: project.TransfersByFundProjection,
-			side:       export.SideSource, tiers: []int{2, 3}},
-		// Shares (After, From) with object-category, which validateSteps
-		// admits because the roles differ.
-		{key: "transfers-out", after: []string{""}, from: 5, role: project.RoleTransferOut,
-			projection: project.TransfersOutProjection,
-			tiers:      []int{3, 5}, caps: []export.TierCap{{Tier: 3, Cap: 10}, {Tier: 5, Cap: 10}}},
-		// Shares (After, From) with `fund`, told apart by role. No caps,
-		// measured: the widest fund it opens draws 5 departments (fund/240,
-		// FY2023-24 actual).
-		{key: "fund-departments", after: []string{"fund-group"}, from: 3, role: project.RoleFund,
-			projection: project.DepartmentFundingProjection,
-			keep:       []int{2}, tiers: []int{2, 3, 4}},
-		// A source, as transfers is, and capped as the fund-group step's fund
-		// column is.
-		{key: "balance-draw", after: []string{""}, from: 0, role: project.RoleFundBalanceDraw,
-			projection: project.FundSourcesUsesProjection,
-			side:       export.SideSource, tiers: []int{0, 3}, caps: []export.TierCap{{Tier: 3, Cap: 8}}},
-		{key: "balance-contribution", after: []string{""}, from: 5, role: project.RoleFundBalanceContribution,
-			projection: project.FundSourcesUsesProjection,
-			tiers:      []int{3, 5}, caps: []export.TierCap{{Tier: 3, Cap: 8}}},
-		// One ribbon, the General Fund's: no cap.
-		{key: "reserve", after: []string{""}, from: 5, role: project.RoleReserveIncrease,
-			projection: project.FundSourcesUsesProjection,
-			tiers:      []int{3, 5}},
-		// Both sides of the opened fund, off the document before it: no
-		// projection, no role, no flank.
-		{key: "fund-balance", after: []string{"balance-draw", "balance-contribution", "reserve"}, from: 3,
-			side: export.SideBoth, tiers: []int{0, 3, 5}},
-		// The group a fund-group window opens, listed as one bar per fund.
-		{key: "fund-list", form: export.BarsForm, after: []string{"fund-group"}, from: 2,
-			role: project.RoleFundGroup, bars: 3},
-	}
-	for k := range want {
-		if want[k].form == "" {
-			want[k].form, want[k].bars = export.SankeyForm, -1
-		}
-	}
-	shapes := make([]shape, 0, len(spine.Steps))
-	for _, s := range spine.Steps {
-		got := shape{key: s.Key, role: s.Role, projection: s.Projection, form: s.Form,
-			after: s.After, from: s.From, bars: -1,
-			residual: len(s.Residual) > 0, gaps: len(s.Gaps) > 0, grain: s.ResidualGrain}
-		switch {
-		case s.Form == export.SankeyForm && s.Sankey != nil && s.Bars == nil:
-			got.side, got.keep, got.tiers, got.widen, got.caps = s.Sankey.Side, s.Sankey.Keep, s.Sankey.Tiers, s.Sankey.Widen, s.Sankey.Caps
-		case s.Form == export.BarsForm && s.Bars != nil && s.Sankey == nil:
-			got.bars = s.Bars.Tier
-		default:
-			t.Fatalf("step %q draws form %q with Sankey hints %v and bars hints %v", s.Key, s.Form, s.Sankey, s.Bars)
-		}
-		shapes = append(shapes, got)
-	}
-	if diff := cmp.Diff(want, shapes, cmp.AllowUnexported(shape{})); diff != "" {
-		t.Errorf("the spine's steps (-want +got):\n%s\nthe client's tests measure "+
-			"against this", diff)
-	}
-	// The derivations are internal/project's, read not restated.
-	for _, s := range spine.Steps {
-		switch s.Key {
-		case "fund-group":
-			if diff := cmp.Diff(must[map[string]string](t)(project.FundFlowsResidual()), s.Residual); diff != "" {
-				t.Errorf("the fund-group step's residual (-want +got):\n%s", diff)
-			}
-		case "object-category":
-			if diff := cmp.Diff(must[map[string][]project.Gap](t)(project.SpendingGaps()), s.Gaps); diff != "" {
-				t.Errorf("the object-category step's gaps (-want +got):\n%s", diff)
-			}
-		}
-	}
-	// THE WORDS ARE HELD BY PROPERTY: each description is one terminated
-	// paragraph. A folded scalar in data/views.yaml that kept a newline, lost
-	// its full stop, or spelled a dash as "--" would land in the SVG's <desc>
-	// as written, and the client appends sentences to it.
-	for _, s := range spine.Steps {
-		d := s.Description
-		switch {
-		case d == "":
-			t.Errorf("step %q has no description", s.Key)
-		case !strings.HasSuffix(d, "."):
-			t.Errorf("step %q's description is not terminated: %q", s.Key, d[max(0, len(d)-20):])
-		case strings.ContainsAny(d, "\n\t") || strings.Contains(d, "  "):
-			t.Errorf("step %q's description carries a line break or doubled space: %q", s.Key, d)
-		case strings.Contains(d, "--"):
-			t.Errorf("step %q's description spells a dash as \"--\"; the prose uses an em dash", s.Key)
-		}
-	}
-	// Pinned by hand: every kept flank's adjacency is read against this order.
-	if diff := cmp.Diff([]int{0, 2, 5}, spine.Overview.Sankey.Tiers); diff != "" {
-		t.Errorf("the spine's render tiers (-want +got):\n%s", diff)
-	}
 }
 
-// TestOpensIntoJoinsOnColumnNotOnDeclaredOrder (fisc-zojk): a year's step
-// document is joined on Column, not on its position in PublishedDocuments. A
-// join on declared order pairs sankey with fund-flows-2024-actual.
+// TestOpensIntoJoinsOnColumnNotOnDeclaredOrder (fisc-zojk): the schedule a
+// year's chart draws is joined on Column, not on its position in
+// PublishedDocuments. A join on declared order pairs sankey with
+// fund-flows-2024-actual.
 func TestOpensIntoJoinsOnColumnNotOnDeclaredOrder(t *testing.T) {
 	built := builtStemsForTest(t)
 
@@ -1529,25 +1419,27 @@ func TestOpensIntoJoinsOnColumnNotOnDeclaredOrder(t *testing.T) {
 			stem, ok, position)
 	}
 
-	// A year whose step document was not built is refused by name, not dropped.
+	// A year whose drawn schedule was not built is refused by name, not dropped.
 	short := map[string][]byte{}
 	for k, v := range built {
-		if k != "fund-flows-2027" {
+		if k != "expansion-2027" {
 			short[k] = v
 		}
 	}
-	if !opensInto(export.PrimaryProjection, project.FundFlowsProjection, short) {
-		t.Error("dropping the SECOND year's document must not undeclare the step")
+	if !opensInto(export.PrimaryProjection, project.ExpansionProjection, short) {
+		t.Error("dropping the SECOND year's expansion must not undeclare the index's chart")
 	}
 	opts, _, _, _ := testOptions(t)
 	opts.Build = func(string) (result, error) { return result{Projections: short}, nil }
 	if err := exportRun(opts); err == nil {
-		t.Error("exportRun accepted a spine whose second year has no step document")
-	} else if !strings.Contains(err.Error(), `carries no such schedule`) {
+		t.Error("exportRun accepted a spine whose second year has no expansion")
+	} else if !strings.Contains(err.Error(), `carries none`) {
 		t.Errorf("got %v, want the refusal naming the year's column", err)
 	}
 
-	// No drill into a document that was not built, guarded per projection.
+	// No chart draws a document that was not built, guarded per projection:
+	// the index draws its own document where its expansion is gone, and any
+	// other view drawing one is dropped.
 	without := func(prefixes ...string) map[string][]byte {
 		out := map[string][]byte{}
 		for k, v := range built {
@@ -1560,40 +1452,26 @@ func TestOpensIntoJoinsOnColumnNotOnDeclaredOrder(t *testing.T) {
 	for _, tc := range []struct {
 		name string
 		drop []string
-		want []string
+		want map[string]string
 	}{
-		// fund-departments needs both pp.85-125 and the pp.127-140 chart it opens from.
+		{"everything built", nil,
+			map[string]string{export.IndexPath: project.ExpansionProjection, "whole.html": project.FundFlowsProjection}},
+		{"no expansion", []string{project.ExpansionProjection},
+			map[string]string{export.IndexPath: "", "whole.html": project.FundFlowsProjection}},
 		{"no fund-flows", []string{project.FundFlowsProjection},
-			[]string{"object-category", "transfers", "transfers-out", "balance-draw", "balance-contribution", "reserve", "fund-balance"}},
-		{"no department-spending", []string{project.DepartmentSpendingProjection},
-			[]string{"fund-group", "fund", "division", "revenue-category", "transfers",
-				"transfers-out", "fund-departments", "balance-draw", "balance-contribution", "reserve", "fund-balance", "fund-list"}},
-		{"no transfers-by-fund", []string{project.TransfersByFundProjection},
-			[]string{"fund-group", "fund", "division", "revenue-category", "object-category",
-				"transfers-out", "fund-departments", "balance-draw", "balance-contribution", "reserve", "fund-balance", "fund-list"}},
-		{"no transfers-out", []string{project.TransfersOutProjection},
-			[]string{"fund-group", "fund", "division", "revenue-category", "object-category",
-				"transfers", "fund-departments", "balance-draw", "balance-contribution", "reserve", "fund-balance", "fund-list"}},
-		{"no department-funding", []string{project.DepartmentFundingProjection},
-			[]string{"fund-group", "fund", "division", "revenue-category", "object-category",
-				"transfers", "transfers-out", "balance-draw", "balance-contribution", "reserve", "fund-balance", "fund-list"}},
-		{"neither detail document", []string{project.FundFlowsProjection,
-			project.DepartmentSpendingProjection}, []string{"transfers", "transfers-out", "balance-draw", "balance-contribution", "reserve", "fund-balance"}},
-		{"no fund-sources-uses", []string{project.FundSourcesUsesProjection},
-			[]string{"fund-group", "fund", "division", "revenue-category", "object-category",
-				"transfers", "transfers-out", "fund-departments", "fund-list"}},
-		{"no step document at all", []string{project.FundFlowsProjection,
-			project.DepartmentSpendingProjection, project.TransfersByFundProjection,
-			project.TransfersOutProjection, project.DepartmentFundingProjection,
-			project.FundSourcesUsesProjection}, nil},
+			map[string]string{export.IndexPath: project.ExpansionProjection}},
+		{"neither", []string{project.ExpansionProjection, project.FundFlowsProjection},
+			map[string]string{export.IndexPath: ""}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got := stepKeys(mustViews(t, result{Projections: without(tc.drop...)})[0].Steps)
-			if len(got) == 0 {
-				got = nil
+			got := map[string]string{}
+			for _, v := range mustViews(t, result{Projections: without(tc.drop...)}) {
+				if v.Template == export.SankeyTemplate {
+					got[v.Path] = v.Draws
+				}
 			}
 			if diff := cmp.Diff(tc.want, got); diff != "" {
-				t.Errorf("the spine's steps (-want +got):\n%s", diff)
+				t.Errorf("the chart pages and the schedules they draw (-want +got):\n%s", diff)
 			}
 		})
 	}
@@ -1601,14 +1479,14 @@ func TestOpensIntoJoinsOnColumnNotOnDeclaredOrder(t *testing.T) {
 
 // TestADocumentOutsideTheColumnItIsPublishedForIsRefused: publishedInto joins
 // on PublishedDocuments' columns and export.ColumnIndex on each built
-// document's own metadata. Where the two disagree, declaredSteps keeps the
-// step, because a document it promised was built, and the write refuses it by
-// the column's name rather than shipping the spine without that step.
+// document's own metadata. Where the two disagree, drawsBuilt keeps the view's
+// chart, because a document it promised was built, and the write refuses it
+// by the column's name rather than shipping the index drawing something else.
 func TestADocumentOutsideTheColumnItIsPublishedForIsRefused(t *testing.T) {
 	built := builtStemsForTest(t)
 	var doc map[string]any
-	if err := json.Unmarshal(built[project.FundFlowsProjection], &doc); err != nil {
-		t.Fatalf("decode %s: %v", project.FundFlowsProjection, err)
+	if err := json.Unmarshal(built[project.ExpansionProjection], &doc); err != nil {
+		t.Fatalf("decode %s: %v", project.ExpansionProjection, err)
 	}
 	doc["metadata"].(map[string]any)["fiscal_year"] = 2099
 	moved, err := json.Marshal(doc)
@@ -1616,26 +1494,17 @@ func TestADocumentOutsideTheColumnItIsPublishedForIsRefused(t *testing.T) {
 		t.Fatalf("encode: %v", err)
 	}
 	elsewhere := maps.Clone(built)
-	elsewhere[project.FundFlowsProjection] = moved
-	if !opensInto(export.PrimaryProjection, project.FundFlowsProjection, elsewhere) {
-		t.Fatal("opensInto drops the step, so the refusal below is no evidence")
+	elsewhere[project.ExpansionProjection] = moved
+	if !opensInto(export.PrimaryProjection, project.ExpansionProjection, elsewhere) {
+		t.Fatal("opensInto drops the index's chart, so the refusal below is no evidence")
 	}
 	opts, _, _, _ := testOptions(t)
 	opts.Build = func(string) (result, error) { return result{Projections: elsewhere}, nil }
 	if err := exportRun(opts); err == nil {
-		t.Error("exportRun accepted a spine whose opening column carries no fund-flows document")
-	} else if !strings.Contains(err.Error(), "carries no such schedule") {
+		t.Error("exportRun accepted a spine whose opening column carries no expansion")
+	} else if !strings.Contains(err.Error(), "carries none") {
 		t.Errorf("got %v, want the refusal naming the opening year's column", err)
 	}
-}
-
-// stepKeys names a step list for a failure message.
-func stepKeys(steps []export.DrillStep) []string {
-	out := make([]string, 0, len(steps))
-	for _, s := range steps {
-		out = append(out, s.Key)
-	}
-	return out
 }
 
 // TestAPageThatDisclaimsAuditAssuranceDoesNotClaimItInItsProse couples the two
@@ -2231,17 +2100,6 @@ func mustViews(t *testing.T, built result) []export.View {
 		t.Fatalf("views: %v", err)
 	}
 	return vs
-}
-
-// must unwraps a declaration a test cannot proceed without.
-func must[T any](t *testing.T) func(T, error) T {
-	return func(v T, err error) T {
-		t.Helper()
-		if err != nil {
-			t.Fatal(err)
-		}
-		return v
-	}
 }
 
 // TestEveryPageALinkCitesHasItsLinksInTheConfig holds the config's per-page

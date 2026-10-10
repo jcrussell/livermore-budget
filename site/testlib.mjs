@@ -68,16 +68,6 @@ function servedPage(name) {
 }
 
 /**
- * The step a page config declares under `key`, throwing where it declares
- * none: a test on a step that is gone fails by name, not on an undefined.
- */
-export function stepByKey(config, key) {
-  const s = config.steps.find((x) => x.key === key);
-  if (!s) throw new Error("the pinned config declares no step " + key);
-  return s;
-}
-
-/**
  * Every column the pinned page publishes, by the fixture stem each is pinned
  * under: a year's served path with .json dropped.
  * @returns {string[]}
@@ -251,72 +241,91 @@ export async function bootedApp(o = {}) {
   return loaded;
 }
 
-/** The node on top of the drill stack, or "" on the overview. */
-export function topOf(app) {
-  return app.drilled.length ? app.drilled[app.drilled.length - 1].id : "";
-}
-
 /**
- * Opens nodes in turn through drillDown, throwing by name where one does not
- * open.
+ * Splits nodes in turn, each by its first declared split or by the key given
+ * as "id~key", through the page's own expandNode, throwing by name where one
+ * does not split.
  *
- * THE RETURN VALUE IS CHECKED AS WELL AS THE STACK: drillDown swallows its
- * throw and leaves the stack as it was.
+ * THE RETURN VALUE IS CHECKED AS WELL AS THE LIST: expandNode swallows its
+ * throw into a banner and leaves the chart as it was.
  */
-export async function opened(app, ...ids) {
-  for (const id of ids) {
-    const outcome = await app.drillDown(id);
+export async function split(app, ...entries) {
+  for (const entry of entries) {
+    const at = entry.indexOf(app.ALTERNATIVE_MARK);
+    const id = at < 0 ? entry : entry.slice(0, at);
+    const key = at < 0 ? undefined : entry.slice(at + 1);
+    const drew = app.expandNode(id, key);
     await settle();
-    if (outcome !== "drew" || topOf(app) !== id) {
-      throw new Error(`drillDown(${id}) ${outcome} and left the chart on ${topOf(app) || "the overview"}`);
+    if (!drew || !app.expansions.includes(app.entryOf(id, key || app.splitsHere({ id })[0].key))) {
+      const banner = [...globalThis.document.querySelectorAll("main .refusal")].map((b) => b.textContent).join(" | ");
+      throw new Error(`expandNode(${entry}) left the chart split at [${app.expansions.join(", ")}]: ${banner}`);
     }
   }
 }
 
 /**
- * Opens every folded tail until none is left and returns how many columns it
- * opened. Not a loop over today's tiers: expanding one column can expose
- * another. The bound turns a re-engaging fold into a failure, not a hang.
+ * Splits every node above `id` in the expansion schedule, root first, by the
+ * split the next node down is a member of, so `id` is drawn: core.reveal's
+ * chain, walked through the page's gestures.
+ */
+export async function revealed(app, id) {
+  const chain = [];
+  for (let at = app.nodeOf(id); at && at.parent; at = app.nodeOf(at.parent)) chain.unshift(at);
+  for (const member of chain) {
+    if (app.frontier && app.frontier.has(member.id)) continue;
+    const first = app.splitsHere({ id: member.parent })[0];
+    const key = member.alternative || first.key;
+    await split(app, key === first.key ? member.parent : member.parent + app.ALTERNATIVE_MARK + key);
+  }
+}
+
+/**
+ * Draws out every folded tail until none is left and returns how many it
+ * drew out. Not a loop over today's tails: drawing one out can expose another.
+ * The bound turns a re-engaging fold into a failure, not a hang.
  */
 export function expandAll(app) {
-  for (let done = 0; done < 32; done++) {
+  for (let done = 0; done < 64; done++) {
     const tail = app.projection.nodes.find((n) => app.expandable(n));
     if (!tail) return done;
-    app.expandTier({ tier: tail.tier });
+    if (!app.expandTier(tail)) throw new Error(`${tail.id} would not draw out`);
   }
-  throw new Error("a chart still offers a column to expand after 32 expansions");
+  throw new Error("a chart still offers a tail to draw out after 64 of them");
 }
 
 /**
- * Walks every view the chart offers at every depth, reopening from the
- * overview for each. Returns how many were visited and the first refusal's
- * message, or "".
+ * Visits every chart the page draws one split at a time: each declared split
+ * opened alone from the root (its ancestors split to reveal it), then every
+ * node split by its first split (Expand all), then that with every tail drawn
+ * out. Returns how many were visited and the first refusal's message, or "".
  */
-export async function everyOffer(app, visit, maxDepth = 8) {
+export async function everySplit(app, visit) {
   let visited = 0;
-  const walk = async (path) => {
-    if (path.length > maxDepth) throw new Error(`the drill went ${path.length} rungs deep at ${path.join(" > ")}`);
-    app.drillUp(0);
-    await settle();
-    await opened(app, ...path);
-    const offers = app.projection.nodes.filter((n) => app.drillable(n)).map((n) => n.id);
-    for (const id of offers) {
-      app.drillUp(0);
-      await settle();
-      await opened(app, ...path, id);
-      visited++;
-      const next = path.concat([id]);
-      await visit(next, next.length);
-      await walk(next);
-    }
-  };
   try {
-    await walk([]);
+    for (const sp of app.fetched.splits) {
+      app.collapseAll();
+      await settle();
+      await revealed(app, sp.node);
+      await split(app, app.entryOf(sp.node, sp.key));
+      visited++;
+      await visit(`${sp.node} by ${sp.key}`);
+    }
+    app.collapseAll();
+    await settle();
+    if (!app.expandAll()) throw new Error("Expand all split nothing");
+    await settle();
+    visited++;
+    await visit("everything by primary splits");
+    expandAll(app);
+    await settle();
+    visited++;
+    await visit("everything by primary splits, every tail drawn out");
   } catch (e) {
-    app.drillUp(0);
+    app.collapseAll();
     return { visited, refused: e && e.message ? e.message : String(e) };
   }
-  app.drillUp(0);
+  app.collapseAll();
+  await settle();
   return { visited, refused: "" };
 }
 

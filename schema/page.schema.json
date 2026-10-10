@@ -11,6 +11,7 @@
     "years",
     "docs",
     "kind_labels",
+    "split_labels",
     "wording"
   ,
     "overview"],
@@ -180,44 +181,6 @@
               }
             }
           },
-          "steps": {
-            "type": "array",
-            "items": {
-              "description": "What one of this year's rungs draws, one entry per declared step.",
-              "type": "object",
-              "required": [
-                "caveats"
-              ],
-              "additionalProperties": false,
-              "properties": {
-                "caveats": {
-                  "type": "array",
-                  "items": {
-                    "description": "What a chart page is given about a caveat: its line and the link to its paragraph. NO `text`: the paragraph lives on the caveats page.",
-                    "type": "object",
-                    "required": [
-                      "id",
-                      "summary",
-                      "href"
-                    ],
-                    "additionalProperties": false,
-                    "properties": {
-                      "id": {
-                        "type": "string",
-                        "minLength": 1
-                      },
-                      "summary": {
-                        "type": "string"
-                      },
-                      "href": {
-                        "type": "string"
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
           "chart_title": {
             "type": "string"
           },
@@ -255,7 +218,7 @@
       }
     },
     "overview": {
-      "description": "The page's own chart: its form and that form's hints. An overview keeps no flank and widens nothing, because no node has opened; a cap on it names its own tail, because it has no step to take one from.",
+      "description": "The page's own chart: its form and that form's hints. A cap on it names its own tail.",
       "type": "object",
       "required": ["form"],
       "additionalProperties": false,
@@ -266,9 +229,6 @@
         "sankey": {
           "$ref": "https://jcrussell.github.io/livermore-budget/schema/page.schema.json#/$defs/sankey_hints",
           "properties": {
-            "keep": false,
-            "widen": false,
-            "side": false,
             "caps": { "items": { "required": ["tail"] } }
           }
         },
@@ -292,160 +252,16 @@
         }
       ]
     },
-    "steps": {
-      "description": "How the page opens a node. OMITTED, NEVER [], WHEN ABSENT: app.js then isolates on a click.",
-      "type": "array",
-      "minItems": 1,
-      "items": {
-        "description": "How the page opens a node, one hop per step.",
-        "type": "object",
-        "dependentRequired": {
-          "residual": ["residual_grain"],
-          "residual_grain": ["residual"]
-        },
-        "allOf": [
-          {
-            "description": "A chart of form sankey carries its sankey hints, and no other form does.",
-            "if": { "properties": { "form": { "const": "sankey" } } },
-            "then": { "required": ["sankey"] },
-            "else": { "properties": { "sankey": false } }
-          },
-          {
-            "description": "A step's Sankey names the tiers it draws once a node has opened.",
-            "if": { "properties": { "form": { "const": "sankey" } } },
-            "then": { "properties": { "sankey": { "required": ["tiers"] } } }
-          },
-          {
-            "description": "A chart of form bars carries its bars hints, and no other form does.",
-            "if": { "properties": { "form": { "const": "bars" } } },
-            "then": { "required": ["bars"] },
-            "else": { "properties": { "bars": false } }
-          }
-        ],
-        "required": [
-          "key",
-          "after",
-          "from",
-          "form",
-          "back",
-          "tail",
-          "noun",
-          "description"
-        ],
-        "additionalProperties": false,
-        "properties": {
-          "key": {
-            "type": "string",
-            "minLength": 1,
-            "description": "What other steps name this one by."
-          },
-          "after": {
-            "description": "The keys of the steps whose charts this one opens from. A root carries \"\" in the list, not an empty list.",
-            "type": "array",
-            "minItems": 1,
-            "items": {
-              "type": "string"
-            }
-          },
-          "from": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "role": {
-            "description": "Which nodes at `from` open, by node.role; absent opens every node at the tier.",
-            "$ref": "https://jcrussell.github.io/livermore-budget/schema/enums.schema.json#/$defs/role"
-          },
-          "projection": {
-            "type": "string",
-            "description": "The schedule this step draws, selected out of the year's own column; absent means the document of the chart it opens from."
-          },
-          "form": {
-            "description": "Which renderer draws the chart once a node has opened; enums.schema.json chart_form.",
-            "$ref": "https://jcrussell.github.io/livermore-budget/schema/enums.schema.json#/$defs/chart_form"
-          },
-          "sankey": {
-            "description": "The Sankey form's hints, present exactly when form is sankey; a step's names its tiers, and draws on its page's canvas with every tier it reaches.",
-            "$ref": "https://jcrussell.github.io/livermore-budget/schema/page.schema.json#/$defs/sankey_hints",
-            "properties": { "height": false, "drop": false, "grow": false, "split_caps": false }
-          },
-          "bars": {
-            "description": "The bars form's hints, present exactly when form is bars.",
-            "$ref": "https://jcrussell.github.io/livermore-budget/schema/page.schema.json#/$defs/bars_hints"
-          },
-          "back": {
-            "type": "string"
-          },
-          "tail": {
-            "type": "string"
-          },
-          "noun": {
-            "type": "string"
-          },
-          "description": {
-            "type": "string"
-          },
-          "residual": {
-            "description": "Endpoints of the chart this step opens FROM whose flow the document it draws does not decompose, id to declared reason.",
-            "type": "object",
-            "propertyNames": { "minLength": 1 },
-            "additionalProperties": {
-              "type": "string",
-              "minLength": 1,
-              "pattern": "\\S"
-            }
-          },
-          "residual_grain": {
-            "type": "string",
-            "minLength": 1,
-            "description": "The grain the document this step draws does NOT split the residual's money by, in the city's singular word; the client names the residual mark for it."
-          },
-          "gaps": {
-            "propertyNames": { "minLength": 1 },
-            "description": "Nodes this step OPENS whose total the document it draws does not reach, id to the licences for each column it differs in: the signed cents the chart above carries over what the drawn document accounts for, and why. The client holds the difference its drawn chart comes to against the licence for its column and refuses any other.",
-            "type": "object",
-            "additionalProperties": {
-              "type": "array",
-              "minItems": 1,
-              "items": {
-                "type": "object",
-                "required": [
-                  "fiscal_year",
-                  "basis",
-                  "cents",
-                  "reason"
-                ],
-                "additionalProperties": false,
-                "properties": {
-                  "fiscal_year": {
-                    "type": "integer",
-                    "minimum": 1
-                  },
-                  "basis": {
-                    "$ref": "https://jcrussell.github.io/livermore-budget/schema/enums.schema.json#/$defs/basis"
-                  },
-                  "cents": {
-                    "type": "integer",
-                    "description": "Signed: positive where the chart above puts more through the node than the drawn document accounts for. Never zero: a licence for a node that balances is refused at the write.",
-                    "not": {
-                      "const": 0
-                    }
-                  },
-                  "reason": {
-                    "type": "string",
-                    "minLength": 1,
-                    "pattern": "\\S"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "kind_labels": {
       "description": "Each link kind in the page's words; project.LinkKindLabel.",
       "type": "object",
       "propertyNames": { "$ref": "https://jcrussell.github.io/livermore-budget/schema/enums.schema.json#/$defs/link_kind" },
+      "additionalProperties": { "type": "string", "minLength": 1 }
+    },
+    "split_labels": {
+      "description": "What each split key's members are called, in the page's words; the chip row and the chooser name a split by it.",
+      "type": "object",
+      "propertyNames": { "$ref": "https://jcrussell.github.io/livermore-budget/schema/enums.schema.json#/$defs/split_key" },
       "additionalProperties": { "type": "string", "minLength": 1 }
     },
     "wording": {
@@ -454,24 +270,19 @@
       "required": [
         "counts",
         "counts_partial",
-        "counts_carried",
-        "counts_carried_from",
-        "opened_hint",
-        "open_further",
         "open_into",
-        "nothing_further",
         "nothing_opens",
+        "fold_back",
+        "chip_fold",
+        "chip_fold_label",
+        "split_chooser",
+        "tail_chip",
+        "tail_chip_label",
+        "expand_all",
+        "collapse_all",
         "follow",
         "expand",
         "swatch",
-        "in_column",
-        "column_left",
-        "column_middle",
-        "column_second",
-        "column_third",
-        "column_right",
-        "go_back",
-        "back_control",
         "printed_by_city",
         "inferred_by_us",
         "our_inference",
@@ -537,40 +348,55 @@
           "minLength": 1,
           "description": "The counts line over a chart that draws some of its document's facts: {links}, {nodes}, {cited}, {facts}."
         },
-        "counts_carried": {
-          "type": "string",
-          "minLength": 1,
-          "description": "The counts line over a chart carrying ribbons from the chart above: {links}, {nodes}, {own}, {cited}, {facts}, {carried}."
-        },
-        "counts_carried_from": {
-          "type": "string",
-          "minLength": 1,
-          "description": "Appended to counts_carried when every carried ribbon came from one document: {above}, {theirs}."
-        },
-        "opened_hint": {
-          "type": "string",
-          "minLength": 1,
-          "description": "The chart hint's opening sentence on a rung: {label}."
-        },
-        "open_further": {
-          "type": "string",
-          "minLength": 1,
-          "description": "The hint on a rung whose nodes open: {where}, which is in_column or empty."
-        },
         "open_into": {
           "type": "string",
           "minLength": 1,
-          "description": "The hint on an overview whose nodes open: {where}."
-        },
-        "nothing_further": {
-          "type": "string",
-          "minLength": 1,
-          "description": "The hint on a rung nothing opens from."
+          "description": "The hint on a chart whose nodes split in place."
         },
         "nothing_opens": {
           "type": "string",
           "minLength": 1,
-          "description": "The hint on an overview nothing opens from."
+          "description": "The hint on a chart nothing opens from."
+        },
+        "fold_back": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The hint's sentence on a chart with a node split open: the ways to fold one back."
+        },
+        "chip_fold": {
+          "type": "string",
+          "minLength": 1,
+          "description": "One chip per node split open, which folds it back: {label}."
+        },
+        "chip_fold_label": {
+          "type": "string",
+          "minLength": 1,
+          "description": "That chip's accessible name: {label}, {split}."
+        },
+        "split_chooser": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The accessible name of the chooser beside a node that splits more than one way: {label}."
+        },
+        "tail_chip": {
+          "type": "string",
+          "minLength": 1,
+          "description": "One chip per tail drawn out, which folds it back: {label}, {n}, {word}."
+        },
+        "tail_chip_label": {
+          "type": "string",
+          "minLength": 1,
+          "description": "That chip's accessible name: {label}, {n}, {word}."
+        },
+        "expand_all": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The control that splits every node by its first split."
+        },
+        "collapse_all": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The control that folds every split back."
         },
         "follow": {
           "type": "string",
@@ -586,46 +412,6 @@
           "type": "string",
           "minLength": 1,
           "description": "The hint's sentence about the legend, where the overview draws one."
-        },
-        "in_column": {
-          "type": "string",
-          "minLength": 1,
-          "description": "The clause naming the openable columns: {columns}, already joined."
-        },
-        "column_left": {
-          "type": "string",
-          "minLength": 1,
-          "description": "The leftmost column's name in that clause."
-        },
-        "column_middle": {
-          "type": "string",
-          "minLength": 1,
-          "description": "The middle column's name, on a chart of three."
-        },
-        "column_second": {
-          "type": "string",
-          "minLength": 1,
-          "description": "The second column's name, on a chart of more than three."
-        },
-        "column_third": {
-          "type": "string",
-          "minLength": 1,
-          "description": "The third column's name, on a chart of more than three."
-        },
-        "column_right": {
-          "type": "string",
-          "minLength": 1,
-          "description": "The rightmost column's name."
-        },
-        "go_back": {
-          "type": "string",
-          "minLength": 1,
-          "description": "The description's sentence about the way back from a rung."
-        },
-        "back_control": {
-          "type": "string",
-          "minLength": 1,
-          "description": "A breadcrumb control's text: {back}, the step's back."
         },
         "printed_by_city": { "type": "string", "minLength": 1 },
         "inferred_by_us": { "type": "string", "minLength": 1 },
@@ -803,7 +589,7 @@
         "search_opens": {
           "type": "string",
           "minLength": 1,
-          "description": "Said on a search option whose mark opens into a step."
+          "description": "Said on a search option whose mark splits in place."
         },
         "search_expands": {
           "type": "string",
@@ -867,22 +653,6 @@
             "minimum": 0
           }
         },
-        "keep": {
-          "description": "The flank of the chart on screen kept beside the opened node, nearest the centre first.",
-          "type": "array",
-          "items": {
-            "type": "integer",
-            "minimum": 0
-          }
-        },
-        "widen": {
-          "description": "The tiers added beyond the window's own three, in the order they are added; a narrow client drops them from the end.",
-          "type": "array",
-          "items": {
-            "type": "integer",
-            "minimum": 0
-          }
-        },
         "caps": {
           "type": "array",
           "items": {
@@ -904,18 +674,10 @@
               },
               "tail": {
                 "type": "string",
-                "description": "The plural noun the folded tail is counted in; absent takes the step's own."
+                "description": "The plural noun the folded tail is counted in."
               }
             }
           }
-        },
-        "side": {
-          "type": "string",
-          "enum": [
-            "source",
-            "both"
-          ],
-          "description": "Which end of a link the opened node is; absent for the end links point at, both for a node drawn between what comes into it and what leaves it."
         },
         "height": {
           "description": "The canvas the chart is laid out on, in px; absent lays it out on the form's own. The overview's only.",

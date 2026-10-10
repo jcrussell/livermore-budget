@@ -39,6 +39,11 @@
       "type": "string",
       "enum": ["refine", "extend"]
     },
+    "split_key": {
+      "description": "What a node of the expansion schedule splits into, a split's key; project.SplitKeys.",
+      "type": "string",
+      "enum": ["lines", "payers", "funds", "divisions", "object-rows", "receivers"]
+    },
     "chart_form": {
       "description": "Which renderer draws a chart; export.ChartForms.",
       "type": "string",

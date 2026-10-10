@@ -12,48 +12,40 @@ import (
 )
 
 // TestTheSchemaHoldsAChartToItsForm is the arm Go's validate does not spell: a
-// hint foreign to the declared form, a Sankey step with no tiers, and a flank
-// on the overview are refused by schema/page.schema.json at the write. Over the
-// config of testdata/index.golden.html, the page this build writes over the
-// client subset, so the control is a shape this build produces.
+// hint foreign to the declared form, and a form's hints on a chart of another
+// form, are refused by schema/page.schema.json at the write. Over the config
+// of testdata/index.golden.html, the page this build writes over the client
+// subset, so the control is a shape this build produces.
 func TestTheSchemaHoldsAChartToItsForm(t *testing.T) {
 	page, err := os.ReadFile("../../testdata/index.golden.html")
 	if err != nil {
 		t.Fatal(err)
 	}
 	blob := configBlob(t, string(page))
+	overview := func(cfg map[string]any) map[string]any { return cfg["overview"].(map[string]any) }
+	hints := func(cfg map[string]any) map[string]any { return overview(cfg)["sankey"].(map[string]any) }
 	for _, c := range []struct {
 		name, want string
 		breaks     func(cfg map[string]any)
 	}{
 		{"the served config", "", func(map[string]any) {}},
-		{"a sankey step with no sankey hints", "sankey",
-			func(cfg map[string]any) { delete(step(cfg, 0), "sankey") }},
-		{"a sankey step whose hints name no tiers", "tiers",
-			func(cfg map[string]any) { delete(step(cfg, 0)["sankey"].(map[string]any), "tiers") }},
+		{"a sankey chart with no sankey hints", "sankey",
+			func(cfg map[string]any) { delete(overview(cfg), "sankey") }},
 		{"an overview keeping a flank", "keep",
-			func(cfg map[string]any) {
-				cfg["overview"].(map[string]any)["sankey"].(map[string]any)["keep"] = []any{0.0}
-			}},
-		{"a hint outside the form's own key", "widen",
-			func(cfg map[string]any) { step(cfg, 0)["widen"] = []any{4.0} }},
-		{"a bars step with no bars hints", "bars",
-			func(cfg map[string]any) { delete(barsStep(t, cfg), "bars") }},
-		{"a bars step carrying sankey hints", "sankey",
-			func(cfg map[string]any) { barsStep(t, cfg)["sankey"] = map[string]any{"tiers": []any{2.0, 3.0}} }},
-		{"a sankey step carrying bars hints", "bars",
-			func(cfg map[string]any) { step(cfg, 0)["bars"] = map[string]any{"tier": 3.0} }},
-		{"bars hints naming no tier", "tier",
-			func(cfg map[string]any) { delete(barsStep(t, cfg)["bars"].(map[string]any), "tier") }},
-		{"a key the bars hints do not declare", "caps",
-			func(cfg map[string]any) { barsStep(t, cfg)["bars"].(map[string]any)["caps"] = []any{} }},
-		// The canvas and the drop are Sankey hints, and the overview's only.
-		{"a canvas height on a bars chart", "height",
-			func(cfg map[string]any) { barsStep(t, cfg)["bars"].(map[string]any)["height"] = 4800.0 }},
-		{"a canvas height on a step", "height",
-			func(cfg map[string]any) { step(cfg, 0)["sankey"].(map[string]any)["height"] = 4800.0 }},
-		{"a dropped tier on a step", "drop",
-			func(cfg map[string]any) { step(cfg, 0)["sankey"].(map[string]any)["drop"] = []any{2.0} }},
+			func(cfg map[string]any) { hints(cfg)["keep"] = []any{0.0} }},
+		{"a hint no chart declares", "widen",
+			func(cfg map[string]any) { hints(cfg)["widen"] = []any{4.0} }},
+		{"a sankey chart carrying bars hints", "bars",
+			func(cfg map[string]any) { overview(cfg)["bars"] = map[string]any{"tier": 3.0} }},
+		{"a bars chart with no bars hints", "bars",
+			func(cfg map[string]any) { overview(cfg)["form"] = "bars"; delete(overview(cfg), "sankey") }},
+		{"bars hints naming no tier", "tier", func(cfg map[string]any) {
+			overview(cfg)["form"] = "bars"
+			delete(overview(cfg), "sankey")
+			overview(cfg)["bars"] = map[string]any{}
+		}},
+		{"a step, which no page declares", "steps",
+			func(cfg map[string]any) { cfg["steps"] = []any{map[string]any{"key": "group"}} }},
 	} {
 		var cfg map[string]any
 		if err := json.Unmarshal(blob, &cfg); err != nil {
@@ -122,8 +114,7 @@ func TestTheSchemaHoldsTheWholePagesCanvas(t *testing.T) {
 
 // TestTheSchemaHoldsTheExpansionsCanvasAndCaps: the index page's overview
 // grows its canvas and caps the expansion's splits, and schema/page.schema.json
-// refuses each hint broken one way, a growth beside a fixed height, and
-// either hint on a step.
+// refuses each hint broken one way, and a growth beside a fixed height.
 func TestTheSchemaHoldsTheExpansionsCanvasAndCaps(t *testing.T) {
 	page, err := os.ReadFile("../../testdata/index.golden.html")
 	if err != nil {
@@ -137,9 +128,6 @@ func TestTheSchemaHoldsTheExpansionsCanvasAndCaps(t *testing.T) {
 	firstCap := func(cfg map[string]any) map[string]any {
 		return hints(cfg)["split_caps"].([]any)[0].(map[string]any)
 	}
-	step := func(cfg map[string]any) map[string]any {
-		return cfg["steps"].([]any)[0].(map[string]any)["sankey"].(map[string]any)
-	}
 	for _, c := range []struct {
 		name, want string
 		breaks     func(cfg map[string]any)
@@ -151,8 +139,6 @@ func TestTheSchemaHoldsTheExpansionsCanvasAndCaps(t *testing.T) {
 		{"a split cap of no member", "cap", func(cfg map[string]any) { firstCap(cfg)["cap"] = 0.0 }},
 		{"a split cap naming no split", "split", func(cfg map[string]any) { delete(firstCap(cfg), "split") }},
 		{"a split cap naming no tail", "tail", func(cfg map[string]any) { delete(firstCap(cfg), "tail") }},
-		{"a step growing its canvas", "grow", func(cfg map[string]any) { step(cfg)["grow"] = grow(cfg) }},
-		{"a step capping a split", "split_caps", func(cfg map[string]any) { step(cfg)["split_caps"] = hints(cfg)["split_caps"] }},
 	} {
 		var cfg map[string]any
 		if err := json.Unmarshal(blob, &cfg); err != nil {
@@ -177,30 +163,11 @@ func TestTheSchemaHoldsTheExpansionsCanvasAndCaps(t *testing.T) {
 	}
 }
 
-// barsStep is the first step of a decoded config drawn as bars, failing the
-// test where the served config declares none: a control that broke nothing
-// would pass as a refusal the schema never made.
-func barsStep(t *testing.T, cfg map[string]any) map[string]any {
-	t.Helper()
-	for _, s := range cfg["steps"].([]any) {
-		if m := s.(map[string]any); m["form"] == export.BarsForm {
-			return m
-		}
-	}
-	t.Fatal("the served config declares no bars step")
-	return nil
-}
-
-// step is one of a decoded config's steps, as a map.
-func step(cfg map[string]any, i int) map[string]any {
-	return cfg["steps"].([]any)[i].(map[string]any)
-}
-
 // TestAHintIsSpelledOnceInTheFileAndOnTheWire holds every field of the
 // declared hints to one key: data/views.yaml decodes the hints as these types,
 // and the page config marshals them, so a field whose yaml and json keys
 // differed would be authored under one name and shipped under another.
-// Mutation: give SankeyHints.Keep the yaml key "kept", and it goes red.
+// Mutation: give SankeyHints.Drop the yaml key "dropped", and it goes red.
 func TestAHintIsSpelledOnceInTheFileAndOnTheWire(t *testing.T) {
 	for _, typ := range []reflect.Type{reflect.TypeOf(export.SankeyHints{}), reflect.TypeOf(export.TierCap{}), reflect.TypeOf(export.BarsHints{})} {
 		for i := range typ.NumField() {

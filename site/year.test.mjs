@@ -6,7 +6,7 @@ import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  loadApp, bootedApp, settle, opened, pageFixture, columnFixture, refusals, clickYear,
+  loadApp, bootedApp, settle, split, pageFixture, columnFixture, refusals, clickYear,
 } from "./testlib.mjs";
 
 /** The pinned page's newer year, which the tests below paint and repaint. */
@@ -261,120 +261,87 @@ describe("the theme control", () => {
   });
 });
 
-describe("a year switch and an open drill", () => {
-  test("the year on screen opens into its own step document, and a drill asks for nothing", async (t) => {
+describe("a year switch and the splits on screen", () => {
+  test("the year on screen splits its own expansion, and a split asks for nothing", async (t) => {
     const other = columnFixture("fy2027-adopted");
     other.nodes.find((n) => n.id === "fund/100").label = "General Fund, the other year";
     const { app, document, fetch } = await bootedApp({ checkedStem: "sankey", plan: { "fy2027-adopted.json": { doc: other } } });
-    await opened(app, "fund-group/general");
+    await split(app, "fund-group/general");
     clickYear(document, "sankey-2027");
     await settle();
-    await opened(app, "fund-group/general");
+    await split(app, "fund-group/general");
     const label = app.projection.nodes.find((n) => n.id === "fund/100")?.label;
     const unique = [...new Set(fetch.asked)].sort();
-    t.diagnostic(`two drills and a year switch asked for [${unique}] and drew fund/100 labelled "${label}"`);
+    t.diagnostic(`two splits and a year switch asked for [${unique}] and drew fund/100 labelled "${label}"`);
     assert.deepEqual(unique, ["fy2026-adopted.json", "fy2027-adopted.json"]);
     assert.equal(label, "General Fund, the other year");
   });
-  test("a year switch closes every rung, and the next drill draws the new year's schedule", async (t) => {
+  test("a year switch folds every split back, and the next split draws the new year's schedule", async (t) => {
     const { app, document } = await bootedApp({ checkedStem: "sankey" });
-    await opened(app, "fund-group/general");
-    const depthBefore = app.drilled.length;
+    await split(app, "fund-group/general");
+    const before = app.expansions.length;
     clickYear(document, "sankey-2027");
     await settle();
-    const crumbHidden = document.getElementById("breadcrumb").hasAttribute("hidden");
-    const depthAfter = app.drilled.length;
+    const chips = [...document.querySelectorAll("#breadcrumb .crumb-expanded")].length;
+    const after = app.expansions.length;
     const lede = document.getElementById("lede-year").textContent;
-    await opened(app, "fund-group/general");
-    t.diagnostic(`opened to depth ${depthBefore}, switched year and read "${lede}" at depth ${depthAfter} with the breadcrumb ${crumbHidden ? "hidden" : "SHOWING"}`);
-    assert.equal(depthBefore, 1);
-    assert.equal(depthAfter, 0);
-    assert.ok(crumbHidden);
+    await split(app, "fund-group/general");
+    t.diagnostic(`split ${before} node(s), switched year and read "${lede}" with ${after} split(s) and ${chips} chip(s)`);
+    assert.equal(before, 1);
+    assert.equal(after, 0);
+    assert.equal(chips, 0);
     assert.equal(lede, "FY 2026-27 adopted");
+    assert.equal(app.fetched.metadata.fiscal_year, 2027);
     assert.equal(refusals(document).length, 0);
   });
-  test("a drill overtaken by a year switch stands down rather than landing on the new year", async (t) => {
-    let release = null;
-    const { app, document } = await bootedApp({ checkedStem: "sankey", plan: { "fy2027-adopted.json": { settle: (pair) => { release = pair; } } } });
-    const inFlight = app.drillDown("fund-group/general");
-    clickYear(document, "sankey-2027");
-    await settle();
-    assert.ok(release, "the year fetch was never asked for");
-    release.resolve(columnFixture("fy2027-adopted"));
-    const outcome = await inFlight;
-    await settle();
-    const lede = document.getElementById("lede-year").textContent;
-    t.diagnostic(`the year switched to "${lede}"; the drill came to "${outcome}" and left ${app.drilled.length} rung(s)`);
-    assert.equal(lede, "FY 2026-27 adopted");
-    assert.equal(outcome, "superseded");
-    assert.equal(app.drilled.length, 0);
-  });
-  test("a drill begun after a year switch draws on the column it was begun on, and the switch replaces it whole", async (t) => {
+  test("a split made while a year is fetched is replaced whole when the year lands", async (t) => {
     let column = null;
     const { app, document } = await bootedApp({ checkedStem: "sankey", plan: { "fy2027-adopted.json": { settle: (pair) => { column = pair; } } } });
     clickYear(document, "sankey-2027");
     await settle();
     assert.ok(column, "the year fetch was never asked for");
-    const inFlight = app.drillDown("fund-group/general");
-    await settle();
+    await split(app, "fund-group/general");
+    const during = { year: app.fetched.metadata.fiscal_year, splits: app.expansions.length };
     column.resolve(columnFixture("fy2027-adopted"));
-    const outcome = await inFlight;
     await settle();
     const lede = document.getElementById("lede-year").textContent;
-    t.diagnostic(`the drill came to "${outcome}" and the landing year left ${app.drilled.length} rung(s), with the page reading "${lede}"`);
+    t.diagnostic(`split on FY${during.year} while the next year was fetched; it landed reading "${lede}" with ${app.expansions.length} split(s)`);
+    assert.deepEqual(during, { year: 2026, splits: 1 });
     assert.equal(lede, "FY 2026-27 adopted");
-    assert.equal(outcome, "drew");
-    assert.equal(app.drilled.length, 0);
+    assert.equal(app.fetched.metadata.fiscal_year, 2027);
+    assert.equal(app.expansions.length, 0);
   });
-  test("a year switch from a four-column rung says the width the overview draws", async (t) => {
-    const { app, document } = await bootedApp({ checkedStem: "sankey", viewport: 2000 });
-    const control = () => ["column-count", "column-more", "column-fewer"].map((id) => {
-      const el = document.getElementById(id);
-      return id === "column-count" ? el.textContent : (el.hasAttribute("disabled") ? "disabled" : "live");
-    }).join(" / ");
-    const overview = control();
-    await opened(app, "fund-group/general", "fund/100");
-    const drilled = control();
-    clickYear(document, "sankey-2027");
-    await settle();
-    const switched = control();
-    t.diagnostic(`count / more / fewer: overview "${overview}", fund/100 "${drilled}", after the switch "${switched}" over ${app.drawnColumns()} drawn column(s)`);
-    assert.equal(drilled, "4 columns / disabled / live");
-    assert.equal(app.drilled.length, 0);
-    assert.equal(switched, overview);
-    assert.equal(switched, app.drawnColumns() + " columns / disabled / disabled");
-  });
-  test("a year whose chart will not lay out leaves the page on the year it was, stack and all", async (t) => {
+  test("a year whose chart will not lay out leaves the page on the year it was, splits and all", async (t) => {
     // A link whose target is past the end of the node table: selectSchedule
     // takes it, and the lay-out throws on it.
     const broken = structuredClone(columnFixture("fy2027-adopted"));
-    broken.schedules.sankey.links[0].to = broken.nodes.length;
+    broken.schedules.expansion.links[0].to = broken.nodes.length;
     const { app, document } = await bootedApp({ checkedStem: "sankey", plan: { "fy2027-adopted.json": { doc: broken } } });
     const cents = () => app.projection.links.reduce((a, l) => a + l.value_cents, 0);
-    const overview = cents();
-    await opened(app, "fund-group/general");
+    const root = cents();
+    await split(app, "fund-group/general");
     const title = document.title;
     clickYear(document, "sankey-2027");
     await settle();
     const after = {
-      path: app.drilled.map((r) => r.id).join(" > "), title: document.title,
-      year: app.column.column.fiscal_year, crumb: !document.getElementById("breadcrumb").hasAttribute("hidden"),
+      splits: app.expansions.join(" > "), title: document.title,
+      year: app.column.column.fiscal_year, chips: [...document.querySelectorAll("#breadcrumb .crumb-expanded")].length,
       banners: refusals(document).map((b) => b.textContent),
     };
-    document.querySelector("#breadcrumb button").click();
+    document.querySelector("#breadcrumb .crumb-expanded").click();
     await settle();
-    t.diagnostic(`after the refused switch: stack "${after.path}", title "${after.title}", column FY${after.year}, breadcrumb ${after.crumb ? "shown" : "hidden"}, banners ${JSON.stringify(after.banners)}; back to the overview drew ${cents()} cents against ${overview} at boot`);
+    t.diagnostic(`after the refused switch: splits "${after.splits}", title "${after.title}", column FY${after.year}, ${after.chips} chip(s), banners ${JSON.stringify(after.banners)}; folded back, the chart draws ${cents()} cents against ${root} at boot`);
     assert.equal(after.banners.length, 1);
-    assert.equal(after.path, "fund-group/general");
+    assert.equal(after.splits, "fund-group/general");
     assert.equal(after.title, title);
     assert.equal(after.year, 2026);
-    assert.ok(after.crumb);
-    assert.equal(app.drilled.length, 0);
-    assert.equal(cents(), overview);
+    assert.equal(after.chips, 1);
+    assert.equal(app.expansions.length, 0);
+    assert.equal(cents(), root);
   });
   test("a refused year switch puts the year control back on the year still shown", async (t) => {
     const broken = structuredClone(columnFixture("fy2027-adopted"));
-    broken.schedules.sankey.links[0].to = broken.nodes.length;
+    broken.schedules.expansion.links[0].to = broken.nodes.length;
     const checked = (document) => document.querySelector("#year-toggle input[type=radio]:checked").value;
     for (const [how, entry] of [["a 404", null], ["a lay-out that throws", { doc: broken }]]) {
       const { document } = await bootedApp({ checkedStem: "sankey", plan: { "fy2027-adopted.json": entry } });
@@ -414,22 +381,22 @@ describe("a year switch and an open drill", () => {
     assert.equal(after.table, before.table);
     assert.equal(after.projection, before.projection);
   });
-  test("a year switch drops the expansion with the rung it was made on", async (t) => {
+  test("a year switch folds back a tail drawn out with the split it was drawn out of", async (t) => {
     const { app, document } = await bootedApp({ checkedStem: "sankey" });
     const group = "fund-group/special-revenue";
     const funds = () => app.projection.nodes.filter((n) => n.tier === 3).length;
     const tail = () => app.projection.nodes.find((n) => app.isAggregate(n.id));
-    await opened(app, group);
+    await split(app, group);
     const folded = { funds: funds(), tail: tail() ? tail().label : "" };
     app.expandTier(tail());
     await settle();
     const expanded = { funds: funds(), tail: tail() ? tail().label : "" };
     clickYear(document, "sankey-2027");
     await settle();
-    const between = app.drilled.length;
-    await opened(app, group);
+    const between = app.expansions.length;
+    await split(app, group);
     const after = { funds: funds(), tail: tail() ? tail().label : "" };
-    t.diagnostic(`FY 2025-26 drew ${folded.funds} fund mark(s) with a tail "${folded.tail}"; expanded, ${expanded.funds} and ${expanded.tail ? "a tail" : "no tail"}; the switch left ${between} rung(s); FY 2026-27 drew ${after.funds} with a tail "${after.tail}"`);
+    t.diagnostic(`FY 2025-26 drew ${folded.funds} fund mark(s) with a tail "${folded.tail}"; drawn out, ${expanded.funds} and ${expanded.tail ? "a tail" : "no tail"}; the switch left ${between} split(s); FY 2026-27 drew ${after.funds} with a tail "${after.tail}"`);
     assert.ok(folded.tail !== "" && expanded.tail === "");
     assert.ok(expanded.funds > folded.funds);
     assert.equal(between, 0);

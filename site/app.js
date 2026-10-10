@@ -9,8 +9,7 @@
  * Go validates every artifact against schema/ before writing it, so nothing
  * here re-checks a shape. What this file refuses is what only it can answer:
  * a 200 carrying an error page, a file cached from before the last deploy,
- * and a chart its own sums contradict -- a gap that drifts from its licence,
- * a window with no flank, a reduction's node that sums to nothing.
+ * and a chart its own sums contradict.
  */
 
 /* global d3 */
@@ -24,7 +23,7 @@
 
 import * as core from "./core.js";
 import {
-  SCHEMA_VERSION, say, kindLabel, fmt, fmtSigned, joinOr, el, maybeEl, cssVar, h, link, citations, balancesOf, PARTITION_NOTE, isFundGroup, scheduleOf, isMark, isResidual, isGap, isLink, residualFlows, tableRows,
+  SCHEMA_VERSION, say, kindLabel, fmt, fmtSigned, el, maybeEl, cssVar, h, link, citations, balancesOf, PARTITION_NOTE, isFundGroup, scheduleOf, isLink, residualFlows, tableRows,
 } from "./core.js";
 import { SANKEY } from "./sankey.js";
 import { BARS } from "./bars.js";
@@ -37,13 +36,12 @@ export * from "./bars.js";
 /**
  * A node as schema/projection.schema.json#/properties/nodes/items has it,
  * which scheduleOf assembles from a column document's node table and a
- * schedule's parent edges, plus what the client sets on it. carried_from: the
- * stem of the document a node was carried from into a window. fixedValue: the
+ * schedule's parent edges, plus what the client sets on it. fixedValue: the
  * figure d3-sankey sizes the node at where its drawn ribbons do not add up to
- * it.
- * @typedef {Record<string, any> & {carried_from?: string, fixedValue?: number}} FiscNode
+ * it; slot: the column its shaping placed it in.
+ * @typedef {Record<string, any> & {fixedValue?: number, slot?: number}} FiscNode
  */
-/** schema/mark.schema.json, a node this client makes: an aggregate, a residual or a gap. @typedef {Record<string, any>} FiscMark */
+/** schema/mark.schema.json, a node this client makes: an aggregate or a smaller-flows mark. @typedef {Record<string, any>} FiscMark */
 
 /** schema/projection.schema.json#/properties/links/items. @typedef {Record<string, any>} FiscLink */
 /** schema/locator.schema.json. @typedef {Record<string, any>} FiscSource */
@@ -53,13 +51,10 @@ export * from "./bars.js";
 /** schema/page.schema.json#/properties/docs/additionalProperties. @typedef {Record<string, any>} FiscDoc */
 /** schema/page.schema.json#/properties/years/items/properties/hero. @typedef {Record<string, any>} FiscFigure */
 /** schema/page.schema.json#/properties/years/items. @typedef {Record<string, any>} FiscYear */
-/** schema/page.schema.json#/properties/years/items/properties/steps/items. @typedef {Record<string, any>} FiscStepDoc */
 /** schema/page.schema.json, the page's window.FISC_CONFIG. @typedef {Record<string, any>} FiscConfig */
 /** schema/page.schema.json#/$defs/sankey_hints, a chart's Sankey hints. @typedef {Record<string, any>} FiscSankeyHints */
 /** schema/page.schema.json#/$defs/sankey_hints/properties/caps/items. @typedef {Record<string, any>} FiscTierCap */
 /** schema/page.schema.json#/properties/overview, the page's own chart: its form and hints. @typedef {Record<string, any>} FiscChart */
-/** schema/page.schema.json#/properties/steps/items, one step of the drill tree. @typedef {Record<string, any>} FiscDrillStep */
-/** schema/page.schema.json#/properties/steps/items/properties/gaps/additionalProperties/items. @typedef {Record<string, any>} FiscGap */
 /** schema/projection.schema.json, as scheduleOf assembles it from a column document. @typedef {Record<string, any>} FiscProjection */
 
 /**
@@ -81,18 +76,6 @@ export const D3 = /** @type {any} */ (/** @type {any} */ (globalThis).d3);
 
 /** @type {FiscConfig} */
 export const CONFIG = /** @type {any} */ (globalThis).FISC_CONFIG;
-
-/**
- * core.foldDocument over the frontier of the page's own tier set unless a
- * drill passes its own tiers. The state-free rule is core.js's; this binds the
- * overview.
- * @param {FiscProjection} doc
- * @param {number[]} [tiers]
- * @returns {FiscProjection}
- */
-export function foldDocument(doc, tiers) {
-  return core.foldDocument(doc, core.tierFrontier(doc, tiers || RENDER_TIERS));
-}
 
 /**
  * core.fundGroupOf over the drawn document's index.
@@ -123,26 +106,33 @@ export function homeOf(l) {
 }
 
 /**
+ * What the page is drawing a chart of: the schedule folded and fitted, and
+ * the state it is fitted to. frontier: the expansion schedule's node ids
+ * drawn; whole: its splits drawn whole rather than capped, node\u001fkey;
+ * expanded: the tiers of any other document drawn whole rather than capped.
+ * @typedef {{chart: FiscChart, frontier: ReadonlySet<string> | null, whole: ReadonlySet<string>, expanded: ReadonlySet<number>}} ShapeView
+ */
+
+/**
  * What a form module exports: one object app.js hands every chart of that
  * form to, and the only way this file reaches a form. A renderer reads of a
- * step the generic fields and its own hints, calls core.js for every figure,
- * and computes none of its own. Each member is set out in
- * docs/chart-model.md; the readings over a laid mark (cents, share,
- * reduction, crossTab, reductionNote) are the form's because only the
- * layout that drew the mark knows what its drawn figure and ribbons mean.
+ * chart its own hints, calls core.js for every figure, and computes none of
+ * its own. Each member is set out in docs/chart-model.md; the readings over a
+ * laid mark (cents, share, reduction, crossTab, reductionNote) are the form's
+ * because only the layout that drew the mark knows what its drawn figure and
+ * ribbons mean.
  * @typedef {{
  *   form: string,
- *   tiersOf(chart: FiscChart | FiscDrillStep): number[],
- *   caps(chart: FiscChart | FiscDrillStep): FiscTierCap[],
- *   columns(chart: FiscDrillStep, rung: Rung | null, budget: number): number[],
+ *   tiersOf(chart: FiscChart): number[],
+ *   caps(chart: FiscChart): FiscTierCap[],
+ *   splitCaps(chart: FiscChart): {split: string, cap: number, tail: string}[],
  *   width(columns: number): number,
- *   offers(step: FiscDrillStep, doc: FiscProjection, onScreen: FiscProjection | null, id: string, budgets: number[]): boolean,
- *   shape(doc: FiscProjection, rung: Rung | null, from: FiscProjection | null, tiers: number[], view: {chart: FiscChart, expanded: Set<number>}): FiscProjection,
- *   layOut(drawn: FiscProjection, ctx: {tiers: number[], columns: number, groupOf: (n: FiscNode | LaidNode) => string, placeOf: (id: string) => number, chart: FiscChart | FiscDrillStep}): {nodes: LaidNode[], links: LaidLink[]},
- *   hairlines(graph: {nodes: LaidNode[], links: LaidLink[]}, chart: FiscChart | FiscDrillStep): number,
+ *   columnsOf(drawn: FiscProjection, tiers: number[]): number,
+ *   shape(doc: FiscProjection, view: ShapeView): FiscProjection,
+ *   layOut(drawn: FiscProjection, ctx: {tiers: number[], columns: number, groupOf: (n: FiscNode | LaidNode) => string, placeOf: (id: string) => number, chart: FiscChart}): {nodes: LaidNode[], links: LaidLink[]},
+ *   hairlines(graph: {nodes: LaidNode[], links: LaidLink[]}, chart: FiscChart): number,
  *   render(graph: {nodes: LaidNode[], links: LaidLink[]}, ctx: Record<string, any>): void,
  *   paint(ctx: {svg: any, colour: {link: (d: LaidLink) => string, node: (d: LaidNode) => string}}): void,
- *   widest(steps: FiscDrillStep[]): number,
  *   cents(d: LaidLink | LaidNode): number,
  *   share(d: LaidNode, laid: LaidNode[]): string,
  *   reduction(d: LaidNode): boolean,
@@ -158,11 +148,11 @@ export function homeOf(l) {
  * that fails. A second form registers here and nowhere else.
  * @type {Map<string, FormRenderer>}
  */
-export const FORMS = new Map([["sankey", SANKEY], ["bars", BARS]]);
+export const FORMS = new Map([["sankey", SANKEY], ["bars", /** @type {any} */ (BARS)]]);
 
 /**
  * The renderer for a chart, by its declared form.
- * @param {FiscChart | FiscDrillStep} chart
+ * @param {FiscChart} chart
  * @returns {FormRenderer}
  */
 export function formFor(chart) {
@@ -172,10 +162,9 @@ export function formFor(chart) {
 }
 
 /**
- * The node tiers this page's own Sankey draws, coarsest first: the overview's
- * hints. Per view and never a constant here: the spine and the drill-down
- * have different hierarchies, and one's set over the other throws. Absent
- * skips the fold entirely.
+ * The node tiers this page's own chart draws, coarsest first: the overview's
+ * hints, the spine's column order a root of the expansion is placed by. Per
+ * view and never a constant here. Absent skips the fold entirely.
  * @type {number[]}
  */
 export const RENDER_TIERS = (() => {
@@ -184,75 +173,14 @@ export const RENDER_TIERS = (() => {
   return renderer ? renderer.tiersOf(overview) : [];
 })();
 
-
 /**
- * The form of the first chart this page declares that no renderer here draws,
- * or "" when every one is drawable. The overview and every step declare one.
+ * The form of the page's chart when no renderer here draws it, or "" when
+ * one does.
  * @returns {string}
  */
 export function undrawableForm() {
-  const charts = [CONFIG.overview || {}].concat(STEPS);
-  const missing = charts.find((c) => !FORMS.has(c.form));
-  return missing ? String(missing.form) : "";
-}
-
-/**
- * The steps this page drills through, read by key; empty opens nothing.
- * Not filtered here: the packager validates the tree and a filter would drop
- * a step silently, leaving nodes that will not open and no banner.
- * @type {FiscDrillStep[]}
- */
-export const STEPS = (CONFIG && CONFIG.steps) || [];
-
-/**
- * The key of the step whose chart is on screen, "" on the overview.
- * @returns {string}
- */
-export function openedKey() {
-  return drilled.length ? drilled[drilled.length - 1].step.key : "";
-}
-
-/**
- * The step this node of the chart on screen opens into, or null.
- *
- * Four matches, not a depth: `after` contains the rung's key, `from` is the
- * node's tier, `role` (when named) is the node's, and the year's document
- * decomposes this node. The role is matched, never inferred from an id.
- *
- * @param {{id?: string, tier: number, role?: string}} node
- * @returns {FiscDrillStep | null}
- */
-export function stepFor(node) {
-  const key = openedKey();
-  for (const s of STEPS) {
-    if (!s.after.includes(key)) continue;
-    if (s.from !== node.tier) continue;
-    if (s.role && s.role !== node.role) continue;
-    if (!stepDecomposes(s, node.id)) continue;
-    return s;
-  }
-  return null;
-}
-
-/**
- * Whether opening `id` on `step` would draw at every budget (BUDGETS): the
- * form's answer (offers). For the Sankey, the step's document decomposes the
- * node into every column the step promises and does not keep at the columns
- * each budget draws, and on a window step the chart on screen sends a kept
- * flank into it, each asked as the chart is drawn, so what is offered and
- * what draws are one rule. A node with no id is open too.
- *
- * @param {FiscDrillStep} step
- * @param {string | undefined} id
- * @returns {boolean}
- */
-export function stepDecomposes(step, id) {
-  if (!id) return true;
-  const doc = step.projection ? scheduleOf(column, step.projection) : drawnDoc();
-  // A column carrying no such schedule offers the node, so the drill can say
-  // which schedule is missing rather than the node silently not opening.
-  if (!doc) return true;
-  return formFor(step).offers(step, doc, projection, id, BUDGETS);
+  const overview = CONFIG.overview || {};
+  return FORMS.has(overview.form) ? "" : String(overview.form);
 }
 
 /**
@@ -335,9 +263,9 @@ export let projection = null;
  * isolated: the node or fund group whose money is followed, or "" for all of
  * it (follows). Replaced whole, never mutated, and moved only through
  * setFilter and setIsolated. A group or kind the chart on screen does not
- * draw is kept and is inert, so a drill or a year change carries it to
- * wherever it applies again; the isolation alone is cleared by both, since
- * either can remove the node it names.
+ * draw is kept and is inert, so a split or a year change carries it to
+ * wherever it applies again; the isolation is cleared where the redraw no
+ * longer draws what it names.
  * @typedef {{groups: ReadonlySet<string>, kinds: ReadonlySet<string>, smallest: number, isolated: string}} FilterState
  */
 /** The state that removes and follows nothing. @type {Readonly<FilterState>} */
@@ -363,51 +291,30 @@ export let whole = null;
  * to $10,000,000 by tens, a scale of magnitudes rather than of dollars.
  */
 export const SMALLEST_STOPS = Object.freeze([0, 1000000, 10000000, 100000000, 1000000000]);
-/**
- * One opened node. The document is on the rung, not looked up, because a step
- * that names a projection opens a node of one file into a chart of another.
- * @typedef {Object} Rung
- * @property {string} id  the node opened
- * @property {FiscProjection} doc  the document this rung's chart is shaped
- *   from, unfolded
- * @property {FiscDrillStep} step  the step that opened it
- * @property {FiscProjection} chart  the chart on screen when this rung was
- *   opened, as the reader saw it. Recorded, not recomputed: a pop reshapes a
- *   rung whose parent chart is gone.
- * @property {Set<number>} [expanded]  the tiers of this rung's chart drawn
- *   whole rather than capped. Per rung, so it does not leak into a pop, the
- *   next window or the next year.
- */
 
 /**
- * The nodes the chart is opened into, outermost first; empty on the overview.
- * @type {Rung[]}
+ * What the reader has split open on the expansion schedule, in the order they
+ * did it: a node split by its first declared split ("id"), by another
+ * ("id~key", ALTERNATIVE_MARK), or a split's tail drawn out (the tail's own
+ * id, core.splitTailID). The frontier and the splits drawn whole are read off
+ * it (expansionState), so it is the view, and the hash's `x`. Replaced whole,
+ * never mutated, and moved only through redraw.
+ * @type {readonly string[]}
  */
-export let drilled = [];
+export let expansions = [];
+/** The expansion schedule's node ids drawn, read off `expansions`; null on any other document. @type {ReadonlySet<string> | null} */
+export let frontier = null;
+/** The splits drawn whole rather than capped, node\u001fkey, read off `expansions`. @type {ReadonlySet<string>} */
+export let wholeSplits = new Set();
 /**
- * The tiers of the overview drawn whole rather than capped, as a rung's
- * `expanded` is for its chart. Cleared by a year switch, as the rungs are.
+ * The tiers of a document that is no expansion schedule drawn whole rather
+ * than capped. Cleared by a year switch.
  * @type {Set<number>}
  */
 export let overviewExpanded = new Set();
-/**
- * The fewest columns a window is laid out in: kept flank, opened node and what
- * it opens into. A floor, not a default.
- */
-export const NARROW_COLUMNS = 3;
-/**
- * The most columns any step this page declares can ask for: the longest
- * `tiers`. COLUMN_QUERIES answers the room; the reader gets the smaller.
- */
-export const OFFERED_COLUMNS = Math.max(NARROW_COLUMNS,
-  ...Array.from(FORMS.values(), (r) => r.widest(STEPS.filter((s) => s.form === r.form))));
-/**
- * Every budget the page can draw at, NARROW_COLUMNS to OFFERED_COLUMNS: what
- * a node is offered at (stepDecomposes), since the reader can change the
- * width with the node open.
- */
-export const BUDGETS = Object.freeze(Array.from({ length: OFFERED_COLUMNS - NARROW_COLUMNS + 1 },
-  (_, k) => NARROW_COLUMNS + k));
+
+/** What separates a node from the split key it was split by, in an entry of `expansions`. */
+export const ALTERNATIVE_MARK = "~";
 
 /**
  * The px `100vw` counts that the window does not: body padding plus a classic
@@ -417,8 +324,7 @@ export const BUDGETS = Object.freeze(Array.from({ length: OFFERED_COLUMNS - NARR
 export const CHART_CUSHION = 56;
 
 /**
- * How wide the widest form here lays `n` columns out, in px: the width at
- * which the nth column fits whichever chart the page draws.
+ * How wide the widest form here lays `n` columns out, in px.
  * @param {number} n
  * @returns {number}
  */
@@ -427,72 +333,24 @@ export function widthOf(n) {
 }
 
 /**
- * The viewport widths that buy a column beyond the floor. Each threshold is
- * widthOf(n) plus CHART_CUSHION, computed so it is the width at which the
- * nth column fits. Only ever adds columns; never below NARROW_COLUMNS.
- * @type {{query: string, columns: number}[]}
+ * The viewport the filter panel opens by default on: room for a chart one
+ * column wider than the spine's three.
  */
-export const COLUMN_QUERIES = (() => {
-  const out = [];
-  for (let n = NARROW_COLUMNS + 1; n <= OFFERED_COLUMNS; n++) {
-    out.push({ query: "(min-width: " + (widthOf(n) + CHART_CUSHION) + "px)", columns: n });
-  }
-  return out;
-})();
+export const WIDE_QUERY = "(min-width: " + (widthOf(4) + CHART_CUSHION) + "px)";
 
 /**
- * The widest chart this page can be asked to draw, in px, handed to style.css
- * as --chart-max so the stylesheet holds no second spelling of it.
- */
-export const CHART_MAX = widthOf(OFFERED_COLUMNS);
-
-/**
- * How many columns the chart may draw (activeTiers). Per reader, not per view:
- * it never names a tier, only how many of a step's declared tiers to take.
- * Moved only through setColumnBudget.
- */
-export let columnBudget = NARROW_COLUMNS;
-
-/**
- * The column count the reader asked for, or null when they have not asked.
- *
- * While set, a media query firing changes nothing. Separate from columnBudget
- * because the two are equal exactly when the reader has NOT chosen.
- */
-export let columnOverride = null;
-
-/**
- * Sets how many columns the chart may draw, and says whether that moved. The
- * caller redraws. Clamped rather than refused, because the caller is a media
- * query.
- *
- * @param {number} n
- * @returns {boolean} whether the budget changed
- */
-export function setColumnBudget(n) {
-  const want = Math.max(NARROW_COLUMNS, Math.floor(Number(n)) || NARROW_COLUMNS);
-  if (want === columnBudget) return false;
-  columnBudget = want;
-  return true;
-}
-
-/**
- * The year's document as fetched, before any fold. A drill reshapes from this,
- * never from the folded document on screen, whose deeper tiers are gone.
+ * The year's document as fetched, before any fold: the schedule the page's
+ * chart draws, CONFIG.primary out of the year's column. What a split's
+ * members and a node's parent are read off.
  * @type {FiscProjection | null}
  */
 export let fetched = null;
 /**
  * The column document the year on screen was fetched from, one per (fiscal
- * year, basis). A drill selects schedules out of it and fetches nothing.
+ * year, basis).
  * @type {any}
  */
 export let column = null;
-/**
- * The drill's gesture token, bumped by every push and pop, so a drill whose
- * fetch was overtaken stands down after the await.
- */
-export let opening = 0;
 /**
  * The year on screen, so paintCounts can be called without one in hand.
  * @type {FiscYear | null}
@@ -504,14 +362,6 @@ export let shownYear = null;
  * @type {string}
  */
 export let baseDescription = "";
-/**
- * The pointer to the flow table, lifted off the shipped description so a drill
- * keeps it: the table sits in a closed <details>, out of the accessibility
- * tree, and this sentence is a screen reader's only route to it. Taken by
- * position (the template puts it last), not by its words.
- * @type {string}
- */
-export let tablePointer = "";
 /**
  * The nodes as laid out, so shareOf can hand the form a mark's column. Separate
  * from projection because columns are d3-sankey's answer, not the file's.
@@ -556,60 +406,9 @@ export let groupIndex = new Map();
  * ------------------------------------------------------------------ */
 
 /**
- * The document the chart at one depth is shaped from: the year's at depth 0,
- * the rung's own below. By depth because rung k's label lives in the document
- * one depth up, where the clicked node still exists (paintBreadcrumb).
- * @param {number} depth
- * @returns {FiscProjection | null}
- */
-export function docAt(depth) {
-  return depth <= 0 ? fetched : (drilled[depth - 1] ? drilled[depth - 1].doc : null);
-}
-
-/**
- * The document the chart on screen is shaped from.
- * @returns {FiscProjection | null}
- */
-export function drawnDoc() {
-  return docAt(drilled.length);
-}
-
-/**
- * The tier set the document on screen is shaped by: RENDER_TIERS on an
- * overview, and on a rung the form's columns for the opening step at this
- * budget, which the rung keeps no record of: every budget is asked afresh,
- * so a width the reader moves to draws what it would have drawn opened
- * there. A wrong answer here throws inside d3-sankey's ordering pass.
- *
- * @returns {number[]}
- */
-export function activeTiers(budget) {
-  if (!drilled.length) return RENDER_TIERS;
-  const at = budget === undefined ? columnBudget : budget;
-  const rung = drilled[drilled.length - 1];
-  return formFor(rung.step).columns(rung.step, rung, at);
-}
-
-/**
- * How many columns wide the chart on screen is laid out. A chart declaring no
- * column order is laid out at NARROW_COLUMNS: d3 infers its columns only after
- * the layout the width feeds.
- *
- * @param {number} [budget] the width to ask about; the current one by default
- * @returns {number}
- */
-export function drawnColumns(budget) {
-  return activeTiers(budget).length || NARROW_COLUMNS;
-}
-
-/**
  * Writes the flow count: the marks drawn, not the rows the file holds, and the
  * facts those ribbons cite against the drawn document's own total -- both
  * stated, so the gap the chart cannot show stays visible.
- *
- * A window's carried ribbons cite another document and are counted apart,
- * partitioned by the stem a carried mark records rather than by the flag: the
- * fund and division windows keep a flank of the document they draw.
  *
  * A document with no metadata.counts is counted by its ribbons alone rather
  * than dereferenced: a throw here, mid-repaint, splits the page (fisc-bsg).
@@ -619,104 +418,177 @@ export function paintCounts() {
   if (!counts || !shownYear) return;
   const links = projection ? projection.links.length : shownYear.counts.links;
   const nodes = projection ? projection.nodes.length : shownYear.counts.nodes;
-  // PLURALS ARE THE WORDING'S: a drilled division can draw one ribbon.
+  // PLURALS ARE THE WORDING'S: a filtered chart can draw one ribbon.
   let text = say("counts", { links, nodes, facts: shownYear.counts.facts });
   if (projection) {
-    const doc = drawnDoc();
-    const drawnStem = doc ? doc.projection : "";
-    const byID = new Map(projection.nodes.map((n) => [n.id, n]));
-    // The stem of a mark this document has never heard of, "" for one it has:
-    // carried_from alone cannot tell the fund window's own-document flank from
-    // the object category's, which is the spine's.
-    const guestOf = (/** @type {string} */ id) => {
-      const n = byID.get(id);
-      const of = n && n.carried_from ? n.carried_from : "";
-      return of && of !== drawnStem ? of : "";
-    };
     const cited = new Set();
-    const above = new Set();
-    /** @type {Set<string>} the documents the carried ribbons came from */
-    const stems = new Set();
-    let carried = 0;
-    for (const l of projection.links) {
-      // A carried flow cites the chart above, not this document.
-      const of = guestOf(l.source) || guestOf(l.target);
-      if (of || isResidual(l.source) || isResidual(l.target)) {
-        carried++;
-        if (of) stems.add(of);
-        for (const id of l.fact_ids) above.add(id);
-        continue;
-      }
-      for (const id of l.fact_ids) cited.add(id);
-    }
-    const factsIn = (/** @type {FiscProjection | null} */ d, /** @type {number} */ fallback) =>
-      !d || d === fetched ? shownYear.counts.facts
-        : d.metadata && d.metadata.counts && typeof d.metadata.counts.facts === "number"
-          ? d.metadata.counts.facts : fallback;
-    const total = factsIn(doc, cited.size);
-    if (!carried) {
-      text = cited.size === total
-        ? say("counts", { links, nodes, facts: cited.size })
-        : say("counts_partial", { links, nodes, cited: cited.size, facts: total });
-    } else {
-      // Split before either fact count is given, so neither number is attached
-      // to the whole chart.
-      text = say("counts_carried", { links, nodes, own: projection.links.length - carried,
-        cited: cited.size, facts: total, carried });
-      // Named only where one document with a counts block is nameable;
-      // otherwise the clause is the count of ribbons alone.
-      const src = stems.size === 1 ? carriedSource(Array.from(stems)[0]) : null;
-      const theirs = src ? factsIn(src, 0) : 0;
-      if (theirs) text += say("counts_carried_from", { above: above.size, theirs });
-    }
+    for (const l of projection.links) for (const id of l.fact_ids) cited.add(id);
+    const total = shownYear.counts.facts;
+    text = cited.size === total
+      ? say("counts", { links, nodes, facts: cited.size })
+      : say("counts_partial", { links, nodes, cited: cited.size, facts: total });
   }
   counts.textContent = text;
 }
 
 /**
- * Whether activating this node opens it: a step opens from it (stepFor), and
- * it is neither a mark this client made (an aggregate or a smaller-flows
- * mark has no one node to open into) nor a carried mark, which is a flow's
- * end rather than a container.
- *
- * @param {{id: string, tier: number, role?: string}} d
+ * Whether the year's document is the expansion schedule, which splits a node
+ * in place, rather than a document drawn at a tier set.
  * @returns {boolean}
  */
-export function drillable(d) {
-  return Boolean(stepFor(d)) && !isMark(d.id) && !isCarried(d.id);
+export function expanding() {
+  return core.isExpansionSchedule(fetched);
 }
 
 /**
- * Whether a mark is a folded tail this rung can draw out at full length: a
- * redraw of the chart the reader is on, not a rung, so disjoint from
- * drillable. By the cap THIS rung declares, not the prefix alone, since an
- * aggregate in a kept flank was folded by the chart above.
- *
+ * One node of the year's document, unfolded, or undefined.
+ * @param {string} id
+ * @returns {FiscNode | undefined}
+ */
+export function nodeOf(id) {
+  return fetched ? fetched.nodes.find((n) => n.id === id) : undefined;
+}
+
+/**
+ * Every way a drawn node splits, as Go declared it, first declared first;
+ * none for a tail, for a node of any other document, and before a year has
+ * drawn.
+ * @param {{id: string}} d
+ * @returns {{key: string, form: string, alternative: boolean, members: string[]}[]}
+ */
+export function splitsHere(d) {
+  if (!expanding() || !fetched || core.isAggregate(d.id)) return [];
+  return core.splitsOf(fetched, d.id);
+}
+
+/**
+ * The words a split's members are called in, from the page's split_labels.
+ * Refused, not guessed, for a key the page publishes none for.
+ * @param {string} key
+ * @returns {string}
+ */
+export function splitWords(key) {
+  const words = (CONFIG.split_labels || {})[key];
+  if (!words) throw new Error("cannot name split " + key + ": the page publishes no words for it");
+  return words;
+}
+
+/**
+ * The entry of `expansions` that splits `id` by `key`: the id alone for its
+ * first declared split, so the hash of an ordinary split carries no key.
+ * @param {string} id
+ * @param {string} key
+ * @returns {string}
+ */
+export function entryOf(id, key) {
+  const splits = fetched ? core.splitsOf(fetched, id) : [];
+  return splits.length && splits[0].key === key ? id : id + ALTERNATIVE_MARK + key;
+}
+
+/**
+ * What one entry of `expansions` says, against the expansion schedule: a node
+ * split by a declared split, or a split's tail drawn out. Refused, naming the
+ * entry, where it names a node with no such split, or a tail of no split.
+ * @param {FiscProjection} doc
+ * @param {string} entry
+ * @returns {{kind: "split", id: string, key: string} | {kind: "tail", id: string, node: string, key: string}}
+ */
+export function parseEntry(doc, entry) {
+  const tail = core.splitTailOf(entry);
+  if (tail) {
+    if (!core.splitsOf(doc, tail.node).some((sp) => sp.key === tail.key)) {
+      throw new Error(entry + " is the tail of no split " + doc.projection + " declares");
+    }
+    return { kind: "tail", id: entry, node: tail.node, key: tail.key };
+  }
+  const at = entry.indexOf(ALTERNATIVE_MARK);
+  const id = at < 0 ? entry : entry.slice(0, at);
+  const splits = core.splitsOf(doc, id);
+  const key = at < 0 ? (splits.length ? splits[0].key : "") : entry.slice(at + 1);
+  if (!splits.some((sp) => sp.key === key)) {
+    throw new Error(doc.projection + " declares no split of " + id + (at < 0 ? "" : " by " + key));
+  }
+  return { kind: "split", id, key };
+}
+
+/**
+ * The frontier and the splits drawn whole that a list of expansions comes to
+ * on the expansion schedule, each entry applied in order from the root
+ * frontier (core.expand). Refused, naming the entry, where one names a node
+ * the frontier before it does not draw, or a tail of a split not open.
+ * @param {FiscProjection} doc
+ * @param {readonly string[]} entries
+ * @returns {{frontier: Set<string>, whole: Set<string>}}
+ */
+export function expansionState(doc, entries) {
+  let open = core.rootFrontier(doc);
+  const drawnWhole = new Set();
+  for (const entry of entries) {
+    const e = parseEntry(doc, entry);
+    if (e.kind === "tail") {
+      if (core.openSplitOf(doc, open, e.node) !== e.key) {
+        throw new Error(entry + " draws out a split of " + e.node + " the chart does not have open");
+      }
+      drawnWhole.add(e.node + "\u001f" + e.key);
+      continue;
+    }
+    if (!open.has(e.id)) throw new Error(e.id + " is not drawn where it is split");
+    open = core.expand(doc, open, e.id, e.key);
+  }
+  return { frontier: open, whole: drawnWhole };
+}
+
+/**
+ * Whether an entry of `expansions` is about `id` or a node inside it: what
+ * folding `id` back, or splitting it another way, takes off the list.
+ * @param {string} entry
+ * @param {Set<string>} inside core.withinNode of the node
+ * @returns {boolean}
+ */
+function entryInside(entry, inside) {
+  if (!fetched) return false;
+  const e = parseEntry(fetched, entry);
+  return inside.has(e.kind === "tail" ? e.node : e.id);
+}
+
+/**
+ * Whether activating this node splits it: the expansion schedule declares a
+ * split of it, and the chart draws it with none open. A tail draws out
+ * instead (expandable), so the two are disjoint.
+ * @param {{id: string}} d
+ * @returns {boolean}
+ */
+export function splittable(d) {
+  if (!frontier || !fetched || !frontier.has(d.id) || !splitsHere(d).length) return false;
+  return core.openSplitOf(fetched, frontier, d.id) === "";
+}
+
+/**
+ * Whether a mark is a folded tail this chart can draw out at full length: on
+ * the expansion, a split's tail; on any other document, a tier the chart caps
+ * and the reader has not drawn out.
  * @param {{id: string, tier: number}} d
  * @returns {boolean}
  */
 export function expandable(d) {
   if (!core.isAggregate(d.id)) return false;
-  const rung = drilled.length ? drilled[drilled.length - 1] : null;
-  const expanded = rung ? rung.expanded : overviewExpanded;
-  if (expanded && expanded.has(d.tier)) return false;
+  if (expanding()) return Boolean(core.splitTailOf(d.id));
+  if (overviewExpanded.has(d.tier)) return false;
   const chart = chartOnScreen();
   return formFor(chart).caps(chart).some((c) => c.tier === d.tier);
 }
 
 /**
  * The tiers of the chart on screen the reader has drawn out, in column order
- * so the breadcrumb's chips do not swap between redraws.
+ * so the chip row does not swap between redraws.
+ * @returns {number[]}
  */
 export function expandedTiers() {
-  const rung = drilled.length ? drilled[drilled.length - 1] : null;
-  const expanded = rung ? rung.expanded : overviewExpanded;
-  if (!expanded) return [];
-  return activeTiers().filter((t) => expanded.has(t));
+  return RENDER_TIERS.filter((t) => overviewExpanded.has(t));
 }
 
 /**
- * Whether focus is in the chart or its breadcrumb, asked while its element
+ * Whether focus is in the chart or its chip row, asked while its element
  * still exists. Not merely "not the body": Escape from the flow table or the
  * footer must not pull focus into the chart.
  * @returns {boolean}
@@ -730,91 +602,50 @@ export function focusInChart() {
 }
 
 /**
- * The year's entry for a step -- the caveat refs its marks link to -- or null
- * when the year on screen was packaged with none. Indexed by the step's place
- * in the declaration, not by depth: two steps open from depth 0.
- * @param {FiscDrillStep} step
- * @returns {FiscStepDoc | null}
- */
-export function stepDocFor(step) {
-  const steps = (shownYear && shownYear.steps) || [];
-  const at = STEPS.indexOf(step);
-  const entry = at >= 0 ? steps[at] : undefined;
-  return entry || null;
-}
-
-/**
- * The document a step draws: a schedule selected out of the year's column, or
- * the document it opened from where it names none. Null when the column
- * carries no such schedule (the reader is told) or the drill was superseded.
- * @param {FiscDrillStep} step
- * @param {FiscProjection} from  the document of the chart the step opens from
- * @param {() => boolean} superseded
- * @returns {Promise<FiscProjection | null>}
- */
-export async function stepDocument(step, from, superseded) {
-  if (!step.projection) return from;
-  if (superseded()) return null;
-  return selectSchedule(column, step.projection);
-}
-
-/**
- * Asks of every node of the chart on screen what the paints ask per mark
- * and per paint -- whether it opens, and whether it expands -- so every step
- * schedule those questions assemble, and every flank and decomposition they
- * read, is met inside the caller's rollback rather than thrown from
- * paintChartHint or render over a page already half repainted. Nothing is
- * kept here: scheduleOf, decomposable and flankHolds memoise on the
- * documents themselves, so the paints read what this asked.
- *
- * Called with `projection` already the chart being drawn, since the
- * questions read it.
+ * Asks of every node of the chart on screen what the paints ask per mark --
+ * whether it splits, and whether it draws out -- so a declaration those
+ * questions would throw on is met inside the caller's rollback rather than
+ * thrown from paintChartHint or render over a page already half repainted.
  */
 export function askAffordances() {
   if (!projection) return;
   for (const n of projection.nodes) {
-    drillable(n);
+    splittable(n);
     expandable(n);
   }
 }
 
 /**
- * Replaces the stack with `next` and repaints everything the shape decides,
- * or leaves the page exactly as it was and tells the reader why.
+ * Draws the chart at `next`, a list of expansions, and repaints everything it
+ * decides, or leaves the page exactly as it was and tells the reader why.
  *
- * Everything that can throw on a served document -- shape, lay-out, table
- * rows, and what the paints ask of the other schedules (askAffordances) --
- * runs in the try while the page is still the reader's. The stack and the
- * chart are swapped first because shapeFor, layOut and the questions read
- * them, and restored whole on a throw. Pin and isolation are cleared because
- * a drill can remove the node they name.
+ * Everything that can throw on a served document -- the expansions read back,
+ * shape, lay-out, table rows and what the paints ask (askAffordances) -- runs
+ * in the try while the page is still the reader's, and the state is restored
+ * whole on a throw. The pin is cleared because the panel holds a mark of the
+ * chart replaced, and the isolation where the redraw draws nothing it names.
  *
- * @param {Rung[]} next
+ * @param {readonly string[]} next
  * @param {string} [refused] the banner's opening words when the redraw is refused
  * @param {() => string} [landOn] the mark focus goes to on the redrawn chart,
- *   asked after it is laid out, where the redraw closes no rung
- * @returns {boolean} whether the new depth is on screen
+ *   asked after it is laid out
+ * @returns {boolean} whether `next` is on screen
  */
-export function redrawStack(next, refused = "That could not be opened", landOn) {
+export function redraw(next, refused = "That could not be drawn", landOn) {
   // Asked before the repaint removes the element focus is on.
   const hadFocus = focusInChart();
-  const was = drilled;
-  // THE RUNG THIS REDRAW CLOSES, if it closes one: the mark that opened it is
-  // on the chart being returned to, and is where focus goes back to.
-  const popped = was.length > next.length ? was[next.length].id : "";
-  const laidWas = laidNodes;
-  const groupsWas = groupIndex;
-  const chartWas = projection;
-  const shownWas = shown;
-  const wholeWas = whole;
-  drilled = next;
-  let drawn;
+  const was = { expansions, frontier, wholeSplits, laidNodes, groupIndex, projection, shown, whole };
   let laid;
   let rows;
   try {
-    const doc = drawnDoc();
-    if (!doc) throw new Error("no document to open");
-    drawn = shapeFor(doc);
+    if (!fetched) throw new Error("there is no chart on screen");
+    if (expanding()) {
+      const state = expansionState(fetched, next);
+      frontier = state.frontier;
+      wholeSplits = state.whole;
+    }
+    expansions = next;
+    const drawn = shapeFor(fetched);
     const filtered = filterFor(drawn);
     const unfiltered = wholeOf(drawn, filtered);
     laid = layOut(filtered.doc);
@@ -827,174 +658,186 @@ export function redrawStack(next, refused = "That could not be opened", landOn) 
     whole = unfiltered;
     askAffordances();
   } catch (e) {
-    // Back to where the reader was: a throw here is a fault in the view's
-    // declaration, not in the reader's click.
-    drilled = was;
-    laidNodes = laidWas;
-    groupIndex = groupsWas;
-    projection = chartWas;
-    shown = shownWas;
-    whole = wholeWas;
+    ({ expansions, frontier, wholeSplits, laidNodes, groupIndex, projection, shown, whole } = was);
     fail(refused + ": " + (e instanceof Error ? e.message : String(e)));
     return false;
   }
   clearRefusal();
   pinned = null;
-  filter = Object.freeze(Object.assign({}, filter, { isolated: "" }));
+  if (filter.isolated && !laidNodes.some((n) => isolates(filter.isolated, n))) {
+    filter = Object.freeze(Object.assign({}, filter, { isolated: "" }));
+  }
   resetDetail();
   hideTip();
-  paintBreadcrumb();
+  paintChips();
   paintChartName();
   paintCounts();
-  // The count and steppers describe the chart on screen, which a drill changes.
-  syncColumns();
   buildLegend();
   paintFilterLine();
   paintChartHint();
   buildDerivedList();
   buildTable(rows);
   render(laid);
-  restoreFocus(hadFocus, popped || (landOn ? landOn() : ""));
-  // A drill or a pop is a step a reader walks back with Back; a redraw on
-  // the same path (a width, a tail) leaves the hash as it was.
+  restoreFocus(hadFocus, landOn ? landOn() : "");
+  // A split and its undoing are steps a reader walks back with Back.
   recordView("push");
   return true;
 }
 
 /**
- * Opens one node of the chart on screen, one rung deeper.
- *
- * After the await it stands down if overtaken: the tokens catch a gesture
- * that started later, the document identity a year switch already in flight
- * when this one started.
- *
+ * Splits a drawn node in place by one of its declared splits, its first by
+ * default: the members drawn where the node stood (refine) or beside it
+ * (extend), and every other node left as it is. A node split another way is
+ * folded back first, so the list holds one way per node. Focus goes to the
+ * topmost new member.
  * @param {string} id
- * @returns {Promise<string>} DREW, SUPERSEDED or FAILED
+ * @param {string} [key]
+ * @returns {boolean} whether the split is on screen
  */
-export async function drillDown(id) {
-  const depth = drilled.length;
-  const from = docAt(depth);
-  // The node comes off the chart the reader activated it on: a kept flank's
-  // nodes need not exist in the rung's file. Every refusal is said, because an
-  // unexplained FAILED looks like a page that did nothing.
-  const chart = projection;
-  if (!chart || !from) {
-    fail("That could not be opened: there is no chart on screen to open it from.");
-    return FAILED;
-  }
-  const node = chart.nodes.find((n) => n.id === id);
-  if (!node) {
-    fail("That could not be opened: the chart on screen draws no mark called " + id + ".");
-    return FAILED;
-  }
-  const step = drillable(node) ? stepFor(node) : null;
-  if (!step) {
-    fail("That could not be opened: no step on this page opens " + node.label + ".");
-    return FAILED;
-  }
-  const mine = ++opening;
-  const token = switching;
-  const overtaken = () => mine !== opening || token !== switching;
-  const doc = await stepDocument(step, from, overtaken);
-  // `switching` is bumped when showYear STARTS, so a drill begun during a year
-  // fetch compares equal when the new spine lands; asking whether the document
-  // it was opened against is still at this depth catches that ordering.
-  if (overtaken() || docAt(depth) !== from) return SUPERSEDED;
-  if (!doc) return FAILED;
-  return redrawStack(drilled.concat([{ id: id, doc: doc, step: step, chart: chart }]))
-    ? DREW : FAILED;
+export function expandNode(id, key) {
+  if (!fetched) return false;
+  const splits = core.splitsOf(fetched, id);
+  const split = key === undefined ? splits[0] : splits.find((sp) => sp.key === key);
+  if (!split) return false;
+  const inside = core.withinNode(fetched, id);
+  const next = expansions.filter((e) => !entryInside(e, inside)).concat([entryOf(id, split.key)]);
+  const before = new Set(laidNodes.map((n) => n.id));
+  const members = new Set(split.members.concat([core.splitTailID(id, split.key)]));
+  return redraw(next, "That could not be split", () => firstNewAt((n) => members.has(n.id), before));
 }
 
 /**
- * Closes rungs until `depth` remain: 0 is the overview. Bumps the drill token
- * so a drill in flight from a closed rung stands down.
- * @param {number} depth
- */
-export function drillUp(depth) {
-  if (depth < 0 || depth >= drilled.length) return;
-  opening++;
-  redrawStack(drilled.slice(0, depth), "That chart could not be closed");
-}
-
-/**
- * What a click or key does to a node that opens: drills, and banners whatever
- * drillDown did not catch itself.
+ * Folds a split node back into one mark: its entry and every entry inside it
+ * taken off the list. Focus goes back to the node.
  * @param {string} id
+ * @returns {boolean} whether anything was folded
  */
-export function openNode(id) {
-  void drillDown(id).catch((e) => fail("The chart failed to draw: " + String(e)));
+export function collapseNode(id) {
+  if (!fetched) return false;
+  const inside = core.withinNode(fetched, id);
+  const next = expansions.filter((e) => !entryInside(e, inside));
+  if (next.length === expansions.length) return false;
+  return redraw(next, "That could not be folded back", () => id);
 }
 
 /**
- * Draws the column a folded tail was cut out of at every mark it holds: the
- * rung reshaped, with no fetch and no new rung. Replaced rather than mutated,
- * so redrawStack's restore on a throw undoes it.
- *
- * @param {{tier: number}} d
+ * Folds back the node a mark was split out of: its parent, or the node a
+ * tail's split belongs to. The Alt or Shift double click.
+ * @param {{id: string}} d
+ * @returns {boolean} whether anything was folded
+ */
+export function collapseParentOf(d) {
+  const tail = core.splitTailOf(d.id);
+  const own = nodeOf(d.id);
+  const parent = tail ? tail.node : own ? own.parent : "";
+  return Boolean(parent) && collapseNode(parent);
+}
+
+/**
+ * Undoes the last expansion the reader made: Escape. Focus goes to the node
+ * it split, or to the tail it drew out.
+ * @returns {boolean} whether anything was undone
+ */
+export function undoLast() {
+  if (!expansions.length || !fetched) return false;
+  const last = parseEntry(fetched, expansions[expansions.length - 1]);
+  return redraw(expansions.slice(0, -1), "That could not be undone", () => last.id);
+}
+
+/**
+ * Splits every node the chart draws unsplit by its first declared split, and
+ * every node that exposes, until none is left: the whole budget at its finest
+ * grain, its tails still folded.
+ * @returns {boolean} whether the chart moved
+ */
+export function expandAll() {
+  if (!fetched || !frontier) return false;
+  let open = frontier;
+  const next = expansions.slice();
+  for (let pass = 0; pass < 16; pass++) {
+    const shut = fetched.nodes.filter((n) => open.has(n.id) && core.splitsOf(fetched, n.id).length &&
+      core.openSplitOf(fetched, open, n.id) === "");
+    if (!shut.length) break;
+    for (const n of shut) {
+      const key = core.splitsOf(fetched, n.id)[0].key;
+      next.push(entryOf(n.id, key));
+      open = core.expand(fetched, open, n.id, key);
+    }
+  }
+  if (next.length === expansions.length) return false;
+  return redraw(next, "That could not be split");
+}
+
+/**
+ * Folds every split back: the chart as the page opens.
+ * @returns {boolean} whether the chart moved
+ */
+export function collapseAll() {
+  if (!expansions.length) return false;
+  return redraw([], "That could not be folded back");
+}
+
+/**
+ * Draws out a folded tail at every mark it holds: on the expansion, its split
+ * drawn whole; on any other document, its tier. Focus goes to the topmost
+ * mark it drew.
+ * @param {{id: string, tier: number}} d
+ * @returns {boolean} whether it is drawn out
  */
 export function expandTier(d) {
-  const at = drilled.length - 1;
-  const rung = drilled[at];
-  const before = new Set(laidNodes.filter((n) => n.tier === d.tier).map((n) => n.id));
-  if (!rung) {
-    redrawOverview(new Set(overviewExpanded).add(d.tier), undefined, () => firstNewAt(d.tier, before));
-    return;
+  const tail = core.splitTailOf(d.id);
+  if (expanding() && tail && fetched) {
+    const split = core.splitsOf(fetched, tail.node).find((sp) => sp.key === tail.key);
+    const members = new Set(split ? split.members : []);
+    const before = new Set(laidNodes.map((n) => n.id));
+    return redraw(expansions.concat([d.id]), "That could not be drawn out",
+      () => firstNewAt((n) => members.has(n.id), before));
   }
-  const expanded = new Set(rung.expanded || []);
-  expanded.add(d.tier);
-  redrawStack(drilled.slice(0, at).concat([Object.assign({}, rung, { expanded: expanded })]),
-    undefined, () => firstNewAt(d.tier, before));
+  const before = new Set(laidNodes.filter((n) => n.tier === d.tier).map((n) => n.id));
+  return redrawOverview(new Set(overviewExpanded).add(d.tier), undefined,
+    () => firstNewAt((n) => n.tier === d.tier, before));
 }
 
 /**
- * Redraws the overview with these of its tiers drawn whole, putting the
- * last set back where the redraw is refused.
- * @param {Set<number>} expanded
+ * Redraws a document that is no expansion schedule with these of its tiers
+ * drawn whole, putting the last set back where the redraw is refused.
+ * @param {Set<number>} drawnOut
  * @param {string} [refused]
  * @param {() => string} [landOn]
+ * @returns {boolean}
  */
-function redrawOverview(expanded, refused, landOn) {
+function redrawOverview(drawnOut, refused, landOn) {
   const was = overviewExpanded;
-  overviewExpanded = expanded;
-  if (!redrawStack([], refused, landOn)) overviewExpanded = was;
+  overviewExpanded = drawnOut;
+  const drew = redraw(expansions, refused, landOn);
+  if (!drew) overviewExpanded = was;
+  return drew;
 }
 
 /**
- * The topmost laid mark at `tier` that `before` does not hold, else the
- * topmost at `tier`, else "": where focus goes after a tail is drawn out, so
- * the next key acts in the column the reader expanded rather than on the
- * rung's return control.
- * @param {number} tier
- * @param {Set<string>} before the ids laid at `tier` before the expansion
+ * The topmost laid mark `among` holds that `before` does not, else the
+ * topmost `among` holds, else "": where focus goes after a split or a tail is
+ * drawn out, so the next key acts on what the reader asked for.
+ * @param {(n: LaidNode) => boolean} among
+ * @param {Set<string>} before the ids laid before the redraw
  * @returns {string}
  */
-export function firstNewAt(tier, before) {
-  const column = laidNodes.filter((n) => n.tier === tier).sort((a, b) => a.y0 - b.y0);
-  const fresh = column.find((n) => !before.has(n.id));
-  return fresh ? fresh.id : column.length ? column[0].id : "";
+export function firstNewAt(among, before) {
+  const marks = laidNodes.filter(among).sort((a, b) => a.y0 - b.y0);
+  const fresh = marks.find((n) => !before.has(n.id));
+  return fresh ? fresh.id : marks.length ? marks[0].id : "";
 }
 
 /**
- * Folds an expanded column back into its tail: the breadcrumb chip's action.
- * A control rather than a gesture because expanding removed the mark a reader
- * would click, and Escape already means "pop one rung".
+ * Folds a drawn-out tier back into its tail: its chip's action, on a document
+ * that is no expansion schedule.
  * @param {number} tier
  */
 export function collapseTier(tier) {
-  const at = drilled.length - 1;
-  const rung = drilled[at];
-  if (!rung) {
-    if (!overviewExpanded.has(tier)) return;
-    const expanded = new Set(overviewExpanded);
-    expanded.delete(tier);
-    redrawOverview(expanded, "That column could not be folded back");
-    return;
-  }
-  if (!rung.expanded || !rung.expanded.has(tier)) return;
-  const expanded = new Set(rung.expanded);
-  expanded.delete(tier);
-  redrawStack(drilled.slice(0, at).concat([Object.assign({}, rung, { expanded: expanded })]),
-    "That column could not be folded back");
+  if (!overviewExpanded.has(tier)) return;
+  const drawnOut = new Set(overviewExpanded);
+  drawnOut.delete(tier);
+  redrawOverview(drawnOut, "That column could not be folded back");
 }
 
 /**
@@ -1021,7 +864,7 @@ export function guarded(gesture, run) {
 }
 
 /**
- * One click on a node: it follows that node's money, whether or not it opens.
+ * One click on a node: it follows that node's money, whether or not it splits.
  *
  * THE ECHO GUARD IS ON THE ACTIVATION AND NOT ON THE DEVICE: a click on the
  * node a key has just activated is that key's own click, synthesised by
@@ -1038,33 +881,39 @@ export function clickNode(d, at) {
 }
 
 /**
- * A double click on a node: it opens the node, having first put back whatever
- * the two clicks underneath it isolated.
+ * A double click on a node: it splits the node, or with Alt or Shift held
+ * folds back the node it was split out of, having first put back whatever the
+ * two clicks underneath it isolated.
  *
- * THE RECORD IS SPENT WHETHER OR NOT ANYTHING OPENED, so a later double click
+ * THE RECORD IS SPENT WHETHER OR NOT ANYTHING SPLIT, so a later double click
  * cannot restore a state two gestures old.
  * @param {LaidNode} d
  * @param {number} at the event's timestamp
+ * @param {boolean} [fold] Alt or Shift was held
  */
-export function doubleClickNode(d, at) {
+export function doubleClickNode(d, at, fold = false) {
   if (d.id === clickIsolate.id && at - clickIsolate.at < ACTIVATION_WINDOW) {
     setIsolated(clickIsolate.was);
   }
   clickIsolate = { id: "", at: -Infinity, was: "" };
+  if (fold) {
+    collapseParentOf(d);
+    return;
+  }
   openOffered(d);
 }
 
 /**
- * Opens what activating a node offers, and says whether it offered anything:
- * the step it opens into (drillable), else the folded tail it draws out
- * (expandable). The one rule Enter on a mark, a double click and the
- * search's Enter share.
- * @param {LaidNode} d
+ * Does what activating a node offers, and says whether it offered anything:
+ * the node split by its first declared split (splittable), else the folded
+ * tail drawn out (expandable). The one rule Enter on a mark, a double click
+ * and the search's Enter share.
+ * @param {{id: string, tier: number}} d
  * @returns {boolean}
  */
 export function openOffered(d) {
-  if (drillable(d)) {
-    openNode(d.id);
+  if (splittable(d)) {
+    expandNode(d.id);
     return true;
   }
   if (expandable(d)) {
@@ -1075,12 +924,12 @@ export function openOffered(d) {
 }
 
 /**
- * Enter or Space on a node: Enter opens a node that opens, and Space follows
+ * Enter or Space on a node: Enter splits a node that splits, and Space follows
  * the money.
  *
- * SPACE NEVER OPENS, against the role="button" convention, so nodeDescription,
+ * SPACE NEVER SPLITS, against the role="button" convention, so nodeDescription,
  * paintChartHint and aria-keyshortcuts all announce it. Enter falls back to
- * the isolate on a node that does not open, so no button has a dead Enter.
+ * the isolate on a node that does not split, so no button has a dead Enter.
  * @param {LaidNode} d
  * @param {string} key
  * @param {number} at the event's timestamp
@@ -1095,30 +944,24 @@ export function keyNode(d, key, at) {
 }
 
 /**
- * Puts focus somewhere real after a drill has replaced the focused element.
+ * Puts focus somewhere real after a redraw has replaced the focused element.
  *
  * ONLY IF FOCUS WAS ALREADY IN THE CHART, and the caller must say so: by the
  * time this runs the repaint has detached the focused element, so
  * document.activeElement no longer knows.
  *
- * Up a rung, focus returns to the mark the reader opened; where that mark is
- * folded away, to the innermost return control, then the first mark. Down a
- * rung, to the rung's own return control. On the same rung, to the mark the
- * redraw names (a column drawn out of its tail names its first new mark).
- *
  * @param {boolean} hadFocus whether focus was inside the chart before the
  *   repaint that just replaced it.
- * @param {string} [popped] the id of the mark focus lands on first: the node
- *   whose rung this repaint closed, or the one a same-rung redraw names; ""
- *   where it opened a rung
+ * @param {string} [onto] the id of the mark focus lands on, or "" for the
+ *   first mark
  */
-export function restoreFocus(hadFocus, popped = "") {
+export function restoreFocus(hadFocus, onto = "") {
   if (!hadFocus) return;
   // WITHOUT PINNING: otherwise the next Escape spends itself clearing that pin
-  // instead of closing the next rung. The focus handlers ask `restoring`.
+  // instead of undoing the next split. The focus handlers ask `restoring`.
   restoring = true;
   try {
-    restoreFocusTo(popped);
+    restoreFocusTo(onto);
   } finally {
     restoring = false;
   }
@@ -1129,9 +972,9 @@ let restoring = false;
 
 /**
  * restoreFocus's choice of target, made while `restoring` is set.
- * @param {string} popped
+ * @param {string} onto
  */
-function restoreFocusTo(popped) {
+function restoreFocusTo(onto) {
   // focus() is on HTMLElement and SVGElement, not Element; the SVG <g> marks
   // are not obliged to have it, so the runtime test stays.
   const focus = (/** @type {Element | null} */ target) => {
@@ -1140,129 +983,54 @@ function restoreFocusTo(popped) {
     el.focus();
     return true;
   };
-  // THE INNERMOST RUNG'S CONTROL, asked for by class: the bar also holds
-  // expansion chips, which do not go back.
   const chart = maybeEl("chart");
-  const left = popped && chart
-    ? D3.select(chart).selectAll("g.node").filter(/** @param {LaidNode} d */ (d) => d.id === popped).node()
+  const named = onto && chart
+    ? D3.select(chart).selectAll("g.node").filter(/** @param {LaidNode} d */ (d) => d.id === onto).node()
     : null;
-  if (focus(left)) return;
-  const bar = maybeEl("breadcrumb");
-  if (drilled.length && bar) {
-    const controls = Array.from(bar.children || []).filter((c) =>
-      String(/** @type {any} */ (c).className || "").split(" ").indexOf("crumb-back") >= 0);
-    if (focus(controls[controls.length - 1] || null)) return;
-  }
+  if (focus(named)) return;
   focus(chart ? chart.querySelector("g.node") : null);
 }
 
 /**
- * Names the chart for a screen reader, for the rung it is actually on.
- *
- * IT APPENDS TO the served name rather than replacing it; the overview puts
- * both back.
+ * Names the chart for a screen reader: the year's own title, and the
+ * description the page shipped.
  */
 export function paintChartName() {
-  // Every rung, outermost first: "opened into General Fund, then Patrol".
-  const trail = trailOfRungs().join(", then ");
   const title = maybeEl("chart-title");
-  if (title && shownYear && shownYear.chart_title) {
-    title.textContent = drilled.length
-      ? shownYear.chart_title + ", opened into " + trail
-      : shownYear.chart_title;
-  }
+  if (title && shownYear && shownYear.chart_title) title.textContent = shownYear.chart_title;
   const desc = maybeEl("chart-desc");
   if (!desc) return;
-  if (!baseDescription) {
-    baseDescription = desc.textContent;
-    tablePointer = say("table_pointer");
-  }
-  // THE TABLE POINTER CLOSES EVERY DEPTH'S DESCRIPTION: the closed flow table
-  // is out of the accessibility tree, so this sentence is the only route to it.
-  // What the columns are is the step's own description, from Go, which
-  // requires one on every step.
-  if (drilled.length) {
-    const step = drilled[drilled.length - 1].step;
-    desc.textContent = "Opened into " + trail + ". " + step.description + heldBack() + " " + say("go_back") + " " + tablePointer;
-    return;
-  }
+  if (!baseDescription) baseDescription = desc.textContent;
   desc.textContent = baseDescription;
-}
-
-/**
- * The sentence the chart on screen holds back for want of a column, led by a
- * space, or "": a residual this width draws no flow of has no mark to carry
- * its note, so the hint and the description say it.
- * @returns {string}
- */
-function heldBack() {
-  return projection && projection.held_back ? " " + projection.held_back : "";
 }
 
 /**
  * Says what a click does, for the chart on screen.
  *
- * WHETHER ANYTHING OPENS, AND IN WHICH COLUMN, IS ASKED OF THE DRAWN NODES,
- * not of the declared chain: a step can exist below this depth with no node
- * on screen at its `from` tier, and the filters can remove every one there is.
+ * WHETHER ANYTHING SPLITS IS ASKED OF THE DRAWN NODES, not of the declared
+ * splits: the filters can remove every node that would.
  */
 export function paintChartHint() {
   const hint = maybeEl("chart-hint");
   if (!hint) return;
+  if (!expanding() && !overviewCaps()) return;
   const chart = chartDrawn();
-  if (!STEPS.length && !overviewCaps()) return;
-  const anyOpens = Boolean(chart) && chart.nodes.some(drillable);
-  const column = anyOpens ? joinOr(openableColumns()) : "";
-  // An undeclared column order has no left or right to name: drop the clause.
-  const where = column ? say("in_column", { columns: column }) : "";
+  const anyOpens = Boolean(chart) && chart.nodes.some(splittable);
   // The isolate is named on every view, and Space with it, because Space
-  // never opens against the role="button" convention.
+  // never splits against the role="button" convention.
   const follow = " " + say("follow");
   // A sentence of its own: the tail can be the only thing a chart offers.
   const tails = Boolean(chart) && chart.nodes.some(expandable);
   const expands = tails ? " " + say("expand") : "";
+  const folds = expansions.length || overviewExpanded.size ? " " + say("fold_back") : "";
   const swatch = buildLegendCount() ? " " + say("swatch") : "";
-  if (drilled.length) {
-    hint.textContent = say("opened_hint", { label: labelOfRung(drilled.length - 1) }) + " " +
-      (anyOpens ? say("open_further", { where }) : say("nothing_further")) + follow + expands + swatch + heldBack();
-    return;
-  }
-  hint.textContent = (anyOpens ? say("open_into", { where }) : say("nothing_opens")) + follow + expands + swatch;
+  hint.textContent = (anyOpens ? say("open_into") : say("nothing_opens")) + follow + expands + folds + swatch;
 }
 
 /** Whether the page's own chart declares a cap, so a tail on it draws out. */
 function overviewCaps() {
   return Boolean(CONFIG.overview) && FORMS.has(CONFIG.overview.form) &&
     formFor(CONFIG.overview).caps(CONFIG.overview).length > 0;
-}
-
-/**
- * Which columns of the chart on screen hold a node that opens, named left to
- * right, or none when nothing here opens.
- *
- * IN THE DECLARED ORDER AND NOT IN TIER ORDER: layOut aligns on the declared
- * set, and a window's ({2,5,4}) does not ascend. Narrowed to the tiers the
- * chart actually draws, because a declaration need not be filled and the
- * filters can empty one.
- * @returns {string[]}
- */
-export function openableColumns() {
-  const chart = chartDrawn();
-  if (!chart) return [];
-  const drawn = new Set(chart.nodes.map((n) => n.tier));
-  const tiers = activeTiers().filter((t) => drawn.has(t));
-  if (tiers.length < 2) return [];
-  const opening = new Set(chart.nodes.filter(drillable).map((n) => n.tier));
-  const inner = tiers.length === 3 ? ["column_middle"] : ["column_second", "column_third"];
-  const names = tiers.map((tier, at) => {
-    if (!opening.has(tier)) return "";
-    const key = at === 0 ? "column_left" : at === tiers.length - 1 ? "column_right" : inner[at - 1];
-    return key ? say(key) : null;
-  });
-  // A COLUMN THE WORDING HAS NO NAME FOR DROPS THE CLAUSE, rather than leave a
-  // list that reads as every column that opens.
-  if (names.includes(null)) return [];
-  return /** @type {string[]} */ (names.filter(Boolean));
 }
 
 /** How many fund-group swatches the legend is showing. */
@@ -1272,130 +1040,153 @@ export function buildLegendCount() {
 }
 
 /**
- * Draws the trail back out of a drill: the only way back that is always
- * visible, since opening can remove the node that was clicked.
+ * Draws the chip row above the chart: on the expansion, Expand all and
+ * Collapse all, then one chip per node split open, in the order the reader
+ * split them, each folding its node back, with a chooser beside a node that
+ * splits more than one way, and one chip per tail drawn out; on any other
+ * document, one chip per tier drawn out. The only always-visible way to fold
+ * a split back, since splitting can remove the node that was clicked.
  */
-export function paintBreadcrumb() {
+export function paintChips() {
   const bar = maybeEl("breadcrumb");
   if (!bar) return;
-  const chips = expandedTiers().map(foldBackChip);
-  if (!drilled.length) {
-    // The overview has no way back, only its drawn-out columns' chips.
-    bar.replaceChildren(...chips);
-    if (chips.length) bar.removeAttribute("hidden");
-    else bar.setAttribute("hidden", "");
-    return;
+  /** @type {HTMLElement[]} */
+  const items = [];
+  if (expanding() && fetched) {
+    const bulk = (/** @type {string} */ words, /** @type {boolean} */ live, /** @type {() => void} */ act) => {
+      const b = h("button", "crumb-bulk", words);
+      b.setAttribute("type", "button");
+      if (!live) b.setAttribute("disabled", "");
+      b.addEventListener("click", () => guarded("redraw the chart", act));
+      return b;
+    };
+    const shut = Boolean(projection) && /** @type {FiscProjection} */ (projection).nodes.some(splittable);
+    items.push(bulk(say("expand_all"), shut, expandAll), bulk(say("collapse_all"), expansions.length > 0, collapseAll));
+    const doc = fetched;
+    const entries = expansions.map((entry) => parseEntry(doc, entry));
+    const labelOf = (/** @type {string} */ id) => {
+      const n = nodeOf(id);
+      return n ? n.label : id;
+    };
+    // THE COLLISION IS THE CITY'S: two nodes split open that it prints in the
+    // same words -- a fund group and its one fund -- are each told apart by
+    // what they split into.
+    const splitLabels = entries.filter((e) => e.kind === "split").map((e) => labelOf(e.id));
+    for (const e of entries) {
+      if (e.kind === "tail") {
+        items.push(tailChip(e.node, e.key));
+        continue;
+      }
+      const label = labelOf(e.id);
+      const twice = splitLabels.filter((l) => l === label).length > 1;
+      items.push(splitChip(e.id, e.key, twice ? label + " (" + splitWords(e.key) + ")" : label));
+    }
+  } else {
+    for (const tier of expandedTiers()) items.push(tierChip(tier));
   }
-  bar.removeAttribute("hidden");
-  // One return control per rung, popping to its own depth, in the step's own
-  // `back` words rather than any mapping from tier number.
-  const controls = drilled.map((rung, k) => {
-    const back = h("button", "crumb-back");
-    back.textContent = say("back_control", { back: rung.step.back });
-    back.setAttribute("type", "button");
-    back.addEventListener("click", () => drillUp(k));
-    return back;
-  });
-  const here = h("span", "crumb-here", labelOfRung(drilled.length - 1));
-  // Chips are buttons too, which is why restoreFocus asks by class.
-  bar.replaceChildren(...controls, here, ...chips);
+  bar.replaceChildren(...items);
+  if (items.length) bar.removeAttribute("hidden");
+  else bar.setAttribute("hidden", "");
 }
 
 /**
- * One expanded column's chip, the only way to fold it back. Its count is what
- * is drawn, read off the chart, not what the tail said it hid.
- * @param {number} tier
+ * One chip of the chip row: a button saying `text`, named `label` for a
+ * screen reader since the glyph is not the label, doing `act`.
+ * @param {string} text
+ * @param {string} label
+ * @param {() => void} act
  * @returns {HTMLElement}
  */
-function foldBackChip(tier) {
-  const n = columnSize(tier);
-  const chip = h("button", "crumb-expanded",
-    "showing all " + n + " " + tailNoun(tier) + " ×");
+export function foldBackChip(text, label, act) {
+  const chip = h("button", "crumb-expanded", text);
   chip.setAttribute("type", "button");
-  // THE GLYPH IS NOT THE LABEL: a screen reader reads "×" as "times".
-  chip.setAttribute("aria-label",
-    "Showing all " + n + " " + tailNoun(tier) + "; fold the smallest back into one mark");
-  chip.addEventListener("click", () => collapseTier(tier));
+  chip.setAttribute("aria-label", label);
+  chip.addEventListener("click", () => guarded("fold this back", act));
   return chip;
 }
 
 /**
- * How many marks of its own a drawn column holds: not the carried residual,
- * gap or kept flank placed at that tier.
- * @param {number} tier
- * @returns {number}
+ * A node split open's chip, which folds it back, and beside a node that
+ * splits more than one way the chooser between its splits, each a button
+ * pressed for the split drawn.
+ * @param {string} id
+ * @param {string} key
+ * @param {string} label what the chip calls the node
+ * @returns {HTMLElement}
  */
-export function columnSize(tier) {
-  if (!projection) return 0;
-  return projection.nodes.filter((n) =>
-    n.tier === tier && !isCarried(n.id) && !n.carried_from).length;
+function splitChip(id, key, label) {
+  const chip = foldBackChip(say("chip_fold", { label }),
+    say("chip_fold_label", { label, split: splitWords(key) }), () => collapseNode(id));
+  const splits = fetched ? core.splitsOf(fetched, id) : [];
+  if (splits.length < 2) return chip;
+  const group = h("span", "crumb-group");
+  group.setAttribute("role", "group");
+  group.setAttribute("aria-label", say("split_chooser", { label }));
+  group.append(chip, ...splits.map((sp) => {
+    const choice = h("button", "crumb-choice", splitWords(sp.key));
+    choice.setAttribute("type", "button");
+    choice.setAttribute("aria-pressed", String(sp.key === key));
+    choice.addEventListener("click", () => guarded("split this mark", () => {
+      if (sp.key !== key) expandNode(id, sp.key);
+    }));
+    return choice;
+  }));
+  return group;
 }
 
 /**
- * What the chart on screen calls the rows of one capped column: the cap's own
- * word where it has one, since one step can cap two columns under two nouns,
- * else the step's, which Go requires. The overview has no step, and Go
- * requires the word on each of its caps.
- * @param {number} tier
- * @returns {string}
+ * A split drawn out of its tail's chip, which folds the smallest back into
+ * the tail. Its count is what is drawn, read off the chart.
+ * @param {string} node
+ * @param {string} key
+ * @returns {HTMLElement}
  */
-export function tailNoun(tier) {
-  const rung = drilled.length ? drilled[drilled.length - 1] : null;
+function tailChip(node, key) {
+  const n = nodeOf(node);
+  const label = n ? n.label : node;
+  const split = fetched ? core.splitsOf(fetched, node).find((sp) => sp.key === key) : undefined;
+  const drawn = new Set(projection ? projection.nodes.map((x) => x.id) : []);
+  const count = split ? split.members.filter((m) => drawn.has(m)).length : 0;
+  const chart = chartOnScreen();
+  const cap = formFor(chart).splitCaps(chart).find((c) => c.split === key);
+  const word = cap ? cap.tail : splitWords(key);
+  const id = core.splitTailID(node, key);
+  return foldBackChip(say("tail_chip", { label, n: count, word }), say("tail_chip_label", { label, n: count, word }),
+    () => redraw(expansions.filter((e) => e !== id), "That could not be folded back", () => id));
+}
+
+/**
+ * A tier drawn out of its tail's chip, on a document that is no expansion
+ * schedule. Its count is what is drawn, read off the chart.
+ * @param {number} tier
+ * @returns {HTMLElement}
+ */
+function tierChip(tier) {
+  const n = projection ? projection.nodes.filter((x) => x.tier === tier).length : 0;
   const chart = chartOnScreen();
   const cap = formFor(chart).caps(chart).find((c) => c.tier === tier);
-  return (cap && cap.tail) || (rung ? rung.step.tail : "");
+  const word = cap ? cap.tail : "";
+  return foldBackChip("showing all " + n + " " + word + " ×",
+    "Showing all " + n + " " + word + "; fold the smallest back into one mark", () => collapseTier(tier));
 }
 
 /**
- * The printed label of the node rung k opened, from the document it was opened
- * FROM, not the rung's own: across a document switch both may carry the id
- * under different words, and the reader clicked the first.
- * @param {number} k
- * @returns {string}
- */
-export function labelOfRung(k) {
-  const rung = drilled[k];
-  if (!rung) return "";
-  const doc = docAt(k);
-  const n = doc ? doc.nodes.find((x) => x.id === rung.id) : null;
-  return n ? n.label : rung.id;
-}
-
-/**
- * The rungs' names, outermost first, with any two that read alike told apart.
- *
- * THE COLLISION IS THE CITY'S: the printed labels cannot change, so every
- * member of a colliding set is qualified with its step's declared noun.
- * @returns {string[]}
- */
-export function trailOfRungs() {
-  const words = drilled.map((_, k) => labelOfRung(k));
-  return words.map((w, k) => {
-    if (!words.some((other, j) => j !== k && other === w)) return w;
-    const noun = drilled[k].step && drilled[k].step.noun;
-    return noun ? w + " (" + noun + ")" : w;
-  });
-}
-
-/**
- * The document as this page draws it: the overview, or one node opened.
+ * The document as this page draws it, through its form: the expansion folded
+ * to the frontier, or another document folded to the page's tier set.
  *
  * @param {FiscProjection} doc
  * @returns {FiscProjection}
  */
 export function shapeFor(doc) {
-  const rung = drilled.length ? drilled[drilled.length - 1] : null;
-  const from = rung ? docAt(drilled.length - 1) : null;
-  return formOnScreen().shape(doc, rung, from, activeTiers(), { chart: CONFIG.overview, expanded: overviewExpanded });
+  return formOnScreen().shape(doc, { chart: CONFIG.overview, frontier, whole: wholeSplits, expanded: overviewExpanded });
 }
 
 /**
- * The chart on screen's declaration: the innermost rung's step, or the
- * overview.
- * @returns {FiscChart | FiscDrillStep}
+ * The chart on screen's declaration: the page's own.
+ * @returns {FiscChart}
  */
 export function chartOnScreen() {
-  return drilled.length ? drilled[drilled.length - 1].step : CONFIG.overview;
+  return CONFIG.overview;
 }
 
 /**
@@ -1419,57 +1210,37 @@ export function linkClass(d) {
 
 /**
  * The classes a node is drawn with. `opens` and `expands` are affordances,
- * answered by drillable and expandable rather than read off the node; the two
- * predicates are disjoint, which the class does not enforce.
+ * answered by splittable and expandable rather than read off the node; the
+ * two predicates are disjoint, which the class does not enforce.
  * @param {LaidNode} d
  * @returns {string}
  */
 export function nodeClass(d) {
   return "node" + (d.derived ? " derived" : "") + (formOnScreen().reduction(d) ? " contra" : "") +
-    (drillable(d) ? " opens" : "") + (expandable(d) ? " expands" : "");
+    (splittable(d) ? " opens" : "") + (expandable(d) ? " expands" : "");
 }
 
 /**
  * The glyphs one node's label carries in its flag tspan: glyphs, not words,
  * because the label is at the edge of its gutter, and a glyph survives
- * forced-colors and greyscale. They compose, so a pair costs two glyph widths,
- * which the layout test fits by calling this; drillable and expandable are
- * disjoint, so no mark carries three.
+ * forced-colors and greyscale. They compose, so a pair costs two glyph widths;
+ * splittable and expandable are disjoint, so no mark carries three.
  * @param {LaidNode} d
  * @returns {string}
  */
 export function nodeFlags(d) {
-  const marks = (d.derived ? "\u25c7" : "") + (drillable(d) ? "\u25b8" : "") +
-    (expandable(d) ? "\u229e" : "");
+  const marks = (d.derived ? "◇" : "") + (splittable(d) ? "▸" : "") +
+    (expandable(d) ? "⊞" : "");
   return marks ? "  " + marks : "";
 }
 
 /**
- * Whether an id names the residual node, the gap node, or an endpoint carried
- * with the residual: a mark the rung on screen added beside the opened node's
- * parts, which is not one of them and opens into nothing.
- *
- * KEYED ON THE STEP'S DECLARED RESIDUAL ENDPOINTS, NOT carried_from: a
- * window's kept flank is carried too and must still open. Widening this to
- * "anything carried" would refuse every click in a window.
- * @param {string} id
- * @returns {boolean}
- */
-export function isCarried(id) {
-  if (isResidual(id) || isGap(id)) return true;
-  const rung = drilled.length ? drilled[drilled.length - 1] : null;
-  return Boolean(rung && rung.step.residual &&
-    Object.prototype.hasOwnProperty.call(rung.step.residual, id));
-}
-
-/**
  * Lays a shaped document out through its form, binding the page: the hue
- * index is the drawn nodes overwritten by the unfolded document this rung was
+ * index is the drawn nodes overwritten by the unfolded document the chart was
  * shaped from, because a colour is where a node really sits and the fold
  * re-points parents; the drawn set contributes only what the file lacks, such
- * as the aggregate. Assigned only once the layout has not thrown, or the next
- * paint() would recolour the chart on screen against a document it was not
- * drawn from.
+ * as a tail. Assigned only once the layout has not thrown, or the next paint()
+ * would recolour the chart on screen against a document it was not drawn from.
  * @param {FiscProjection} doc
  * @returns {{nodes:LaidNode[], links:LaidLink[]}}
  */
@@ -1492,7 +1263,7 @@ function laidOf(doc) {
   // Nothing to lay out where the filters removed every ribbon; d3-sankey
   // throws on an empty graph.
   const graph = !doc.links.length ? { nodes: [], links: [] } : formOnScreen().layOut(doc, {
-    tiers: layoutTiers(doc),
+    tiers: RENDER_TIERS,
     columns: layoutColumns(doc),
     groupOf: (/** @type {FiscNode | LaidNode} */ n) => core.fundGroupOf(index, n),
     placeOf: fundGroupPlace,
@@ -1502,41 +1273,25 @@ function laidOf(doc) {
 }
 
 /**
- * The columns a chart is laid out in: the tiers on screen (activeTiers), less
- * any the filters emptied, since d3-sankey throws on an empty leading or
- * interior column and a filter can empty any of them. A chart the filters
- * did not touch keeps every tier on screen.
- * @param {FiscProjection} doc
- * @returns {number[]}
- */
-export function layoutTiers(doc) {
-  const tiers = activeTiers();
-  if (!doc.filtered) return tiers;
-  const held = new Set(doc.nodes.map((n) => n.tier));
-  return tiers.filter((t) => held.has(t));
-}
-
-/**
- * How many columns wide a chart is laid out: drawnColumns, or for a chart
- * the filters touched, the columns it still fills.
+ * How many columns wide a shaped chart is laid out: the form's count of the
+ * columns its nodes are placed in, which a filter can lower.
  * @param {FiscProjection} doc
  * @returns {number}
  */
 export function layoutColumns(doc) {
-  return doc.filtered ? (layoutTiers(doc).length || NARROW_COLUMNS) : drawnColumns();
+  return formOnScreen().columnsOf(doc, RENDER_TIERS);
 }
 
 /**
  * layOut's hue index for a document: its nodes overwritten by the unfolded
- * document the rung was shaped from (drawnDoc).
+ * document it was shaped from (fetched).
  * @param {FiscProjection} doc
  * @returns {Map<string, FiscNode>}
  */
 export function hueIndex(doc) {
   const index = new Map(doc.nodes.map((n) => [n.id, n]));
-  const source = drawnDoc();
-  if (source) {
-    for (const n of source.nodes) index.set(n.id, n);
+  if (fetched) {
+    for (const n of fetched.nodes) index.set(n.id, n);
   }
   return index;
 }
@@ -1672,13 +1427,19 @@ export function render(laid) {
   // the svg, whose viewBox is the chart's own coordinates.
   svg.selectAll("g").remove();
   const layer = svg.append("g").attr("class", "zoom-layer");
+  const columns = layoutColumns(doc);
+  // style.css's --chart-room reads this: the chart breaks out of main to the
+  // width it is laid out at, and no wider.
+  document.documentElement.style.setProperty("--chart-max", widthOf(columns) + "px");
   formOnScreen().render(graph, {
     svg: svg,
     layer: layer,
-    tiers: layoutTiers(doc),
-    columns: layoutColumns(doc),
+    tiers: RENDER_TIERS,
+    columns: columns,
     chart: chartOnScreen(),
-    doc: doc,
+    // The unfolded nodes the chart was folded from, which a same-word mark's
+    // qualifier is read off (labelQualifiers).
+    doc: { nodes: Array.from(groupIndex.values()) },
     classes: { link: linkClass, node: nodeClass, flags: nodeFlags },
     describe: { link: linkDescription, node: nodeDescription },
     figure: markFigure,
@@ -1815,9 +1576,11 @@ function sameSet(a, b) {
 /**
  * Moves the filter state to `next`, field by field over the state now: a
  * change of what is removed re-lays-out the chart on screen with nothing
- * fetched and no rung touched, and a change of the isolation alone repaints
- * the emphasis. A redraw the chart refuses leaves the old state, chart and
- * panel exactly as they were and says why.
+ * fetched and nothing split or folded, and a change of the isolation alone
+ * repaints the emphasis. A redraw the chart refuses -- a filter that cuts
+ * every ribbon into a column the expansion placed after another, which
+ * layOutAt refuses -- leaves the old state, chart and panel exactly as they
+ * were and says why.
  * @param {Partial<FilterState>} next
  * @returns {boolean} whether the state now on screen is `next`
  */
@@ -1990,15 +1753,14 @@ export function syncFilterPanel() {
 /**
  * Wires the filter panel the template ships hidden: the flow kinds Go ships
  * labels for, the All and None buttons, the smallest-flow stops and the
- * Reset. Open by default where the viewport buys a column beyond the floor;
- * the reader's own toggle wins after that.
+ * Reset. Open by default on a viewport WIDE_QUERY matches; the reader's own
+ * toggle wins after that.
  */
 export function wireFilters() {
   const panel = /** @type {HTMLDetailsElement | null} */ (maybeEl("filters"));
   if (!panel) return;
   panel.removeAttribute("hidden");
-  const wide = COLUMN_QUERIES.length && typeof window.matchMedia === "function" &&
-    window.matchMedia(COLUMN_QUERIES[0].query).matches;
+  const wide = typeof window.matchMedia === "function" && window.matchMedia(WIDE_QUERY).matches;
   if (wide) panel.open = true;
   const kinds = maybeEl("filter-kind-list");
   if (kinds) {
@@ -2067,8 +1829,8 @@ export function linkDescription(d) {
 export function nodeDescription(d) {
   // WHAT EACH GESTURE DOES, for a reader who cannot see the triangle. Space is
   // named only where it differs from Enter; the folded tail's sentence uses the
-  // words of the chip that undoes it, since it opens nothing.
-  const what = drillable(d) ? say("desc_opens") : expandable(d) ? say("desc_expands") : say("desc_follows");
+  // words of the chip that undoes it, since it splits nothing.
+  const what = splittable(d) ? say("desc_opens") : expandable(d) ? say("desc_expands") : say("desc_follows");
   const form = formOnScreen();
   const mark = markOfView(d);
   const note = form.reductionNote(mark);
@@ -2087,22 +1849,14 @@ export function nodeDescription(d) {
  * Where a caveat's full text is, or "" when this site has no caveats page.
  *
  * LOOKED UP IN THE REFS GO HANDED THE PAGE, never rebuilt from the id: the
- * anchor is per (document, caveat). The refs are the drawn document's -- the
- * step's below depth 0 -- except for a carried mark, whose caveat is the
- * document it was carried from. A stem no document on the stack carries gets
+ * anchor is per (document, caveat). A caveat the year carries no ref for gets
  * no anchor: a missing link is visible, a link to the wrong document is not.
  *
  * @param {string} id
- * @param {string} [carried]  the projection stem the mark this caveat was read
- *   off was carried from, so its anchors are that document's
  * @returns {string}
  */
-export function caveatHref(id, carried) {
-  const at = carried ? depthOfDocument(carried) : drilled.length;
-  if (at < 0) return "";
-  const refs = at > 0
-    ? (stepDocFor(drilled[at - 1].step) || { caveats: [] }).caveats
-    : shownYear ? shownYear.caveats : [];
+export function caveatHref(id) {
+  const refs = shownYear ? shownYear.caveats : [];
   if (!Array.isArray(refs)) return "";
   const ref = refs.find((c) => c.id === id);
   return ref && ref.href ? ref.href : "";
@@ -2120,11 +1874,6 @@ export function caveatHref(id, carried) {
  */
 export function caveatsFor(id) {
   if (!projection) return [];
-  // A carried mark's caveats are the document it was carried from.
-  const carried = projection.nodes.find((n) => n.id === id && n.carried_from);
-  const source = carried ? carriedSource(carried.carried_from) : projection;
-  // Every document is scheduleOf's, which gives metadata a caveats list.
-  if (!source) return [];
   // The aggregate folds by value, not ancestry, so the walk cannot reach its ids.
   const drawnNode = projection.nodes.find((n) => n.id === id);
   const swallowed = drawnNode && Array.isArray(drawnNode.folds) ? drawnNode.folds : [];
@@ -2137,36 +1886,9 @@ export function caveatsFor(id) {
     }
     return false;
   };
-  return source.metadata.caveats.filter((c) =>
+  // Every document is scheduleOf's, which gives metadata a caveats list.
+  return projection.metadata.caveats.filter((c) =>
     Array.isArray(c.applies_to) && c.applies_to.some(reaches));
-}
-
-/**
- * Where on the stack the document named by a projection stem sits, or -1.
- * Deepest first: a chain may draw one document at several depths.
- *
- * @param {string} stem
- * @returns {number}
- */
-export function depthOfDocument(stem) {
-  for (let depth = drilled.length; depth >= 0; depth--) {
-    const doc = docAt(depth);
-    if (doc && doc.projection === stem) return depth;
-  }
-  return -1;
-}
-
-/**
- * The document a carried mark came from, resolved by the stem it records --
- * not the spine, since a mark two rungs down was carried from the rung above.
- * Null rather than a guess when no document on the stack carries that stem.
- *
- * @param {string} stem
- * @returns {FiscProjection | null}
- */
-export function carriedSource(stem) {
-  const at = depthOfDocument(stem);
-  return at < 0 ? null : docAt(at);
 }
 
 /**
@@ -2347,25 +2069,18 @@ export function pin(d) {
     for (const c of caveatsFor(n.id)) {
       const why = h("p", "why");
       why.append(document.createTextNode("\u26a0 " + c.summary + " "));
-      const href = caveatHref(c.id, n.carried_from);
+      const href = caveatHref(c.id);
       if (href) why.append(link("Read it in full", href));
       panel.append(why);
     }
   }
 
   // THE CITATIONS ARE THE MARK'S OWN WHEN IT HAS ANY: a link's locators, else
-  // the sources of the document the mark is OF -- for a carried mark or the
-  // residual, the chart above, not the drawn one.
+  // a mark's, else the sources of the document drawn.
   const prov = h("div", "prov");
   prov.append(h("span", "subtle", "Sources:"));
   const mark = asLink ? null : /** @type {LaidNode} */ (d);
-  // The residual records no stem; its links came from the chart the rung was
-  // opened from.
-  const of = mark && mark.carried_from ? carriedSource(mark.carried_from)
-    : mark && isResidual(mark.id) ? docAt(drilled.length - 1)
-      : null;
-  const ofDocument = (of && of.metadata && of.metadata.sources) || projection.metadata.sources;
-  const cited = asLink ? /** @type {LaidLink} */ (d).locators : (mark && mark.locators) || ofDocument;
+  const cited = asLink ? /** @type {LaidLink} */ (d).locators : (mark && mark.locators) || projection.metadata.sources;
   for (const c of citations(cited)) {
     prov.append(link(c.label, c.href));
   }
@@ -2490,8 +2205,8 @@ export function buildTable(rows) {
 /**
  * The marks of the chart drawn whose label holds `query`, case-folded: those
  * whose label starts with it first, then in label order. Only what is laid
- * out, so a mark the view does not draw -- another rung's, or one the filters
- * removed -- is never offered. None for a blank query.
+ * out, so a mark the view does not draw -- one inside a node not split, or
+ * one the filters removed -- is never offered. None for a blank query.
  * @param {string} query
  * @returns {LaidNode[]}
  */
@@ -2513,7 +2228,7 @@ export function searchMatches(query) {
  */
 export function searchOptionWords(n, hits) {
   const alike = hits.some((o) => o !== n && o.label === n.label);
-  const offer = drillable(n) ? say("search_opens") : expandable(n) ? say("search_expands") : "";
+  const offer = splittable(n) ? say("search_opens") : expandable(n) ? say("search_expands") : "";
   return n.label + (alike ? " (" + String(n.role).replace(/_/g, " ") + ")" : "") + (offer ? ", " + offer : "");
 }
 
@@ -2586,9 +2301,9 @@ export function closeSearch() {
 
 /**
  * Takes the reader to one mark of the chart drawn. With `open`, the search's
- * Enter, it opens what activating the mark offers (openOffered), the rule
+ * Enter, it does what activating the mark offers (openOffered), the rule
  * the chart's own Enter and double click use; otherwise, or where nothing
- * opens, it follows the mark's money and focuses it, which scrolls it into
+ * splits, it follows the mark's money and focuses it, which scrolls it into
  * view and pins it. Says whether the mark was on the chart.
  * @param {string} id
  * @param {boolean} open
@@ -2617,7 +2332,7 @@ export function chooseSearch(id, open) {
  * Wires the search box the template ships hidden: typing lists the marks of
  * the chart drawn, the arrows move along them, Enter takes the reader to the
  * one the arrows are on, and Escape closes the list, then clears the box,
- * without closing a rung.
+ * without undoing a split.
  */
 export function wireSearch() {
   const box = maybeEl("search");
@@ -2640,7 +2355,7 @@ export function wireSearch() {
       return;
     }
     if (e.key === "Escape") {
-      // The document's Escape closes a rung; in the search box it closes the
+      // The document's Escape undoes a split; in the search box it closes the
       // list, then empties the box.
       e.stopPropagation();
       if (!list.hasAttribute("hidden")) closeSearch();
@@ -2700,189 +2415,9 @@ export function wireTheme() {
   sync();
 }
 
-/**
- * How many columns the reader's window has room for, never fewer than the
- * floor; without matchMedia, the floor.
- * @returns {number}
- */
-export function viewportColumns() {
-  if (typeof window.matchMedia !== "function") return NARROW_COLUMNS;
-  let most = NARROW_COLUMNS;
-  for (const q of COLUMN_QUERIES) {
-    if (q.columns > most && window.matchMedia(q.query).matches) most = q.columns;
-  }
-  return most;
-}
-
-/**
- * The reader's saved choice, or null when there is none this build can honour.
- *
- * An out-of-range value is discarded, not clamped: clamping would deafen the
- * page to the viewport on behalf of a reader who never chose that width.
- * localStorage throws in some privacy modes.
- * @returns {number | null}
- */
-export function savedColumns() {
-  try {
-    const raw = localStorage.getItem("fisc-columns");
-    if (raw === null) return null;
-    const n = Math.floor(Number(raw));
-    if (!Number.isFinite(n) || n < NARROW_COLUMNS || n > OFFERED_COLUMNS) return null;
-    return n;
-  } catch (e) {
-    return null;
-  }
-}
-
-/**
- * Brings the +/- control back into agreement with the budget. Disabled at the
- * bounds is how the floor is discoverable.
- */
-export function syncColumns() {
-  const count = maybeEl("column-count");
-  if (count) count.textContent = drawnColumns() + " columns";
-  const bound = (/** @type {string} */ id, /** @type {boolean} */ atBound) => {
-    const button = maybeEl(id);
-    if (!button) return;
-    if (atBound) button.setAttribute("disabled", "");
-    else button.removeAttribute("disabled");
-  };
-  // Would it move THIS CHART, not the budget: only a step declaring `widen`
-  // has a second width.
-  const had = document.activeElement;
-  bound("column-fewer", nextBudget(-1) === null);
-  bound("column-more", nextBudget(1) === null);
-  // A disabled button drops focus to <body>, so the sibling takes it.
-  const pair = [maybeEl("column-fewer"), maybeEl("column-more")];
-  const at = had ? pair.indexOf(/** @type {HTMLElement} */ (had)) : -1;
-  const other = at < 0 ? null : pair[1 - at];
-  if (at >= 0 && had.hasAttribute("disabled") && other && !other.hasAttribute("disabled")) other.focus();
-}
-
-/**
- * Puts the wanted budget into effect and repaints the chart if that moved it.
- *
- * It asks drawnColumns, not columnBudget, whether to redraw: the overview is
- * drawn at RENDER_TIERS whatever the budget, and a needless redraw clears the
- * reader's pin and isolation.
- *
- * @param {boolean} redraw false during boot, where there is no document yet
- * @returns {boolean} false when the redraw was refused
- */
-export function applyColumns(redraw) {
-  const before = drawnColumns();
-  const budget = columnBudget;
-  const moved = setColumnBudget(fullscreenColumns !== null ? fullscreenColumns
-    : columnOverride === null ? viewportColumns() : columnOverride);
-  let drew = true;
-  // A REFUSED REDRAW LEAVES THE OLD CHART, so the budget goes back with it.
-  if (moved && redraw && projection && drawnColumns() !== before &&
-      !redrawStack(drilled, "The chart could not be redrawn at " + drawnColumns() + " columns")) {
-    columnBudget = budget;
-    drew = false;
-  }
-  syncColumns();
-  return drew;
-}
-
-/**
- * The nearest budget in the direction of `delta` at which the chart on screen
- * draws a different number of columns, or null. A budget wider than the chart
- * draws what the chart's own width does, so one step of the budget can move
- * nothing: a reader on a four-column window at a budget of five would find
- * the minus doing nothing.
- *
- * @param {number} delta -1 or 1
- * @returns {number | null}
- */
-export function nextBudget(delta) {
-  const now = drawnColumns();
-  for (let want = columnBudget + delta; want >= NARROW_COLUMNS && want <= OFFERED_COLUMNS; want += delta) {
-    if (drawnColumns(want) !== now) return want;
-  }
-  return null;
-}
-
-/**
- * Takes the reader's step, records it as theirs so the next media change does
- * not undo it, and repaints.
- *
- * @param {number} delta
- */
-export function stepColumns(delta) {
-  const want = nextBudget(delta);
-  if (want === null) return;
-  // Stepping back to the viewport's own budget releases the override. The
-  // budget and not what this chart draws: a four-column chart draws the same
-  // at four and five, and the reader's four still matters on a wider one.
-  const released = want === viewportColumns();
-  const override = columnOverride;
-  columnOverride = released ? null : want;
-  // A REFUSED STEP IS NOT THE READER'S CHOICE: kept, it would fail on every visit.
-  if (!applyColumns(true)) {
-    columnOverride = override;
-    return;
-  }
-  try {
-    if (released) localStorage.removeItem("fisc-columns");
-    else localStorage.setItem("fisc-columns", String(want));
-  } catch (e) { /* private mode: the choice still holds for this visit */ }
-}
-
-/**
- * Wires the column control and the viewport queries that move it.
- *
- * It sets the budget and does not draw: main() calls it before the first
- * fetch, when a redraw would banner "no document to open" at a reader who has
- * done nothing.
- */
-export function wireColumns() {
-  // style.css's --chart-room reads this; unset, it falls back to 100%.
-  document.documentElement.style.setProperty("--chart-max", CHART_MAX + "px");
-  columnOverride = savedColumns();
-  const fewer = maybeEl("column-fewer");
-  const more = maybeEl("column-more");
-  if (fewer && more) {
-    fewer.removeAttribute("disabled");
-    more.removeAttribute("disabled");
-    fewer.addEventListener("click", () => stepColumns(-1));
-    more.addEventListener("click", () => stepColumns(1));
-  }
-  if (typeof window.matchMedia === "function") {
-    for (const q of COLUMN_QUERIES) {
-      window.matchMedia(q.query).addEventListener("change", () => applyColumns(true));
-    }
-  }
-  applyColumns(false);
-}
-
 /* ------------------------------------------------------------------ *
  * Full screen
  * ------------------------------------------------------------------ */
-
-/**
- * The column budget the chart's card was given on going full screen, asked
- * of the full-screen width, or null while it is not full screen. While set it
- * wins over the reader's choice and the viewport's (applyColumns); leaving
- * full screen clears it, which puts theirs back.
- * @type {number | null}
- */
-export let fullscreenColumns = null;
-
-/**
- * The most columns, NARROW_COLUMNS to OFFERED_COLUMNS, that fit `px` of
- * width: COLUMN_QUERIES' thresholds asked of a width rather than of a media
- * query, since a full-screen element has no query of its own.
- * @param {number} px
- * @returns {number}
- */
-export function columnsForWidth(px) {
-  let most = NARROW_COLUMNS;
-  for (const q of COLUMN_QUERIES) {
-    if (q.columns > most && px >= widthOf(q.columns) + CHART_CUSHION) most = q.columns;
-  }
-  return most;
-}
 
 /**
  * Whether the chart's card is the element the document shows full screen.
@@ -2895,15 +2430,13 @@ export function isFullscreen() {
 
 /**
  * Follows the document in or out of full screen, however it got there: the
- * button, Escape, or the browser's own control. In, the budget is re-asked at
- * the full-screen width; out, it is given back; either way the chart redraws
- * where that moves it, and the button says which way it goes now.
+ * button, Escape, or the browser's own control. The button says which way it
+ * goes now; the zoom's wheel and pan rules read the state when asked
+ * (zoomFilter).
  */
 export function onFullscreenChange() {
-  fullscreenColumns = isFullscreen() ? columnsForWidth(window.innerWidth) : null;
   const button = maybeEl("chart-fullscreen");
   if (button) button.textContent = say(isFullscreen() ? "full_screen_exit" : "full_screen");
-  applyColumns(true);
 }
 
 /**
@@ -3000,7 +2533,7 @@ export function applyZoom(t) {
  * Binds d3.zoom to the chart just drawn, over its viewBox, and puts it at the
  * identity. The extent is stated, not d3's default, which reads the viewBox
  * through SVG geometry; the translate extent keeps the chart on the canvas.
- * A double click opens or follows a node, so it never zooms.
+ * A double click splits or follows a node, so it never zooms.
  */
 export function bindZoom() {
   const svg = D3.select("#chart");
@@ -3085,14 +2618,13 @@ export function wireZoom() {
 
 /**
  * The view on screen as location.hash says it: the year by its column's file
- * name, the opened path outermost first, the fund groups and link kinds the
- * filters remove, the smallest flow drawn as itself in cents, and the
- * isolation. A folded tail drawn out is not in it.
- * @typedef {{year: string, open: string[], hide: string[], hidekind: string[], min: number, iso: string}} ViewState
+ * name, the fund groups and link kinds the filters remove, the smallest flow
+ * drawn as itself in cents, and the isolation.
+ * @typedef {{year: string, hide: string[], hidekind: string[], min: number, iso: string}} ViewState
  */
 
 /** The hash's fields, in the order hashOf writes them. */
-export const HASH_FIELDS = Object.freeze(["y", "open", "hide", "hidekind", "min", "iso"]);
+export const HASH_FIELDS = Object.freeze(["y", "hide", "hidekind", "min", "iso"]);
 
 /**
  * The year the page opens on where the URL names no view: the control's,
@@ -3123,7 +2655,6 @@ export function viewState() {
   if (!shownYear) return null;
   return {
     year: yearKey(shownYear),
-    open: drilled.map((r) => r.id),
     hide: Array.from(filter.groups).sort(),
     hidekind: Array.from(filter.kinds).sort(),
     min: filter.smallest,
@@ -3143,13 +2674,12 @@ function hashValue(v) {
 
 /**
  * A view as a hash: `#y=<year>`, then each field not at its default --
- * `open`, `hide` and `hidekind` comma-separated, `min` in cents, `iso`.
+ * `hide` and `hidekind` comma-separated, `min` in cents, `iso`.
  * @param {ViewState} st
  * @returns {string}
  */
 export function hashOf(st) {
   const parts = ["y=" + hashValue(st.year)];
-  if (st.open.length) parts.push("open=" + st.open.map(hashValue).join(","));
   if (st.hide.length) parts.push("hide=" + st.hide.map(hashValue).join(","));
   if (st.hidekind.length) parts.push("hidekind=" + st.hidekind.map(hashValue).join(","));
   if (st.min) parts.push("min=" + st.min);
@@ -3192,24 +2722,23 @@ export function parseHash(hash) {
   };
   const year = text(fields.get("y") || "");
   if (!year) return { kind: "refused", why: "it names no year" };
-  const open = list("open");
   const hide = list("hide");
   const hidekind = list("hidekind");
-  if ([...open, ...hide, ...hidekind].some((id) => !id)) return { kind: "refused", why: "it holds an empty name" };
+  if ([...hide, ...hidekind].some((id) => !id)) return { kind: "refused", why: "it holds an empty name" };
   const min = fields.has("min") ? fields.get("min") || "" : "0";
   if (!/^\d+$/.test(min) || !Number.isSafeInteger(Number(min))) {
     return { kind: "refused", why: "its smallest flow, " + min + ", is not a whole number of cents" };
   }
   return {
     kind: "view",
-    state: { year, open, hide: hide.sort(), hidekind: hidekind.sort(), min: Number(min), iso: text(fields.get("iso") || "") },
+    state: { year, hide: hide.sort(), hidekind: hidekind.sort(), min: Number(min), iso: text(fields.get("iso") || "") },
   };
 }
 
 /**
- * Writes the view on screen into the URL: a new history entry for a drill, a
- * pop or a year ("push"), the entry on screen rewritten for a filter or an
- * isolation ("replace"). Nothing where the hash already says it, while a
+ * Writes the view on screen into the URL: a new history entry for a split or
+ * its undoing, or a year ("push"), the entry on screen rewritten for a filter
+ * or an isolation ("replace"). Nothing where the hash already says it, while a
  * restore is moving the page, or before a year has drawn.
  * @param {"push" | "replace"} how
  */
@@ -3228,12 +2757,9 @@ export function recordView(how) {
 /**
  * Moves the page to a view, field by field, and says why where it cannot: a
  * year the page does not publish, a flow kind it names no label for, a fund
- * group the year's column does not carry, a mark on the path that the chart
- * it would open from does not offer, or an isolation naming a mark the chart
- * does not draw. A group or kind the view does not draw is inert, as the
- * panel's are. The opened path is walked through drillDown from the deepest
- * rung the page already shares with it, so each rung is offered by the one
- * rule the chart's own gestures use.
+ * group the year's column does not carry, or an isolation naming a mark the
+ * chart does not draw. A group or kind the view does not draw is inert, as
+ * the panel's are.
  * @param {ViewState} st
  * @returns {Promise<{outcome: string, why?: string}>} DREW, SUPERSEDED, or FAILED with why
  */
@@ -3255,20 +2781,6 @@ async function moveTo(st) {
   }
   const group = st.hide.find((g) => fundGroupPlace(g) < 0);
   if (group !== undefined) return refuse(year.label + " carries no fund group " + group);
-  let shared = 0;
-  while (shared < drilled.length && shared < st.open.length && drilled[shared].id === st.open[shared]) shared++;
-  if (shared < drilled.length) {
-    drillUp(shared);
-    if (drilled.length !== shared) return refuse("the chart could not be closed to its opened path");
-  }
-  for (const id of st.open.slice(shared)) {
-    const node = projection ? projection.nodes.find((n) => n.id === id) : undefined;
-    if (!node || !drillable(node)) {
-      return refuse((drilled.length ? labelOfRung(drilled.length - 1) : "the overview") + " offers no mark " + id + " to open");
-    }
-    const got = await drillDown(id);
-    if (got !== DREW) return { outcome: got, why: id + " could not be opened" };
-  }
   if (st.iso && !laidNodes.some((n) => isolates(st.iso, n))) return refuse("the chart draws no mark " + st.iso + " to follow");
   setIsolated(st.iso);
   return { outcome: DREW };
@@ -3287,7 +2799,7 @@ export async function restoreView(hash) {
   const read = parseHash(hash);
   const opening = openingYear || (CONFIG.years || [])[(CONFIG.years || []).length - 1];
   /** @type {ViewState} */
-  const fallback = { year: yearKey(opening), open: [], hide: [], hidekind: [], min: 0, iso: "" };
+  const fallback = { year: yearKey(opening), hide: [], hidekind: [], min: 0, iso: "" };
   const named = read.kind !== "none";
   let moved = /** @type {{outcome: string, why?: string}} */ ({ outcome: FAILED, why: read.kind === "refused" ? read.why : "" });
   restoringView = true;
@@ -3387,7 +2899,7 @@ export function isDocument(doc, what) {
  * why -- unless `superseded` says nobody is waiting, in which case nothing is
  * painted and null is returned without a word.
  *
- * One fetch per year; a drill selects a schedule out of what it accepted.
+ * One fetch per year; the page selects its schedule out of what it accepted.
  * `superseded` is consulted before every banner, so a failure the reader has
  * switched away from never alerts over a year that drew. Both awaits are
  * inside the try, so a malformed body is refused here rather than rejecting.
@@ -3444,7 +2956,7 @@ export async function loadColumn(path, superseded) {
 export function selectSchedule(col, key) {
   const doc = scheduleOf(col, key);
   if (!doc) {
-    fail("That could not be opened: the year on screen carries no schedule " +
+    fail("This page will not draw: the year on screen carries no schedule " +
       "called " + key + ".");
     return null;
   }
@@ -3484,10 +2996,12 @@ export async function showYear(year) {
   // Swapped because shapeFor and askAffordances read them; swapped back on a
   // throw, so nothing below writes a word of this year over the last one's
   // chart.
-  const was = { column, fetched, drilled, overviewExpanded, laidNodes, groupIndex, projection, shown, whole };
+  const was = { column, fetched, expansions, frontier, wholeSplits, overviewExpanded, laidNodes, groupIndex, projection, shown, whole };
   column = loaded;
   fetched = doc;
-  drilled = [];
+  expansions = [];
+  frontier = core.isExpansionSchedule(doc) ? core.rootFrontier(doc) : null;
+  wholeSplits = new Set();
   overviewExpanded = new Set();
   let laid;
   let rows;
@@ -3504,7 +3018,7 @@ export async function showYear(year) {
     whole = unfiltered;
     askAffordances();
   } catch (e) {
-    ({ column, fetched, drilled, overviewExpanded, laidNodes, groupIndex, projection, shown, whole } = was);
+    ({ column, fetched, expansions, frontier, wholeSplits, overviewExpanded, laidNodes, groupIndex, projection, shown, whole } = was);
     throw e;
   }
 
@@ -3516,8 +3030,7 @@ export async function showYear(year) {
   hideTip();
 
   paintYearWords(year);
-  paintBreadcrumb();
-  syncColumns();
+  paintChips();
   buildLegend();
   buildFilterPanel();
   paintFilterLine();
@@ -3581,7 +3094,7 @@ export function paintYearWords(year) {
   shownYear = year;
   paintCounts();
 
-  // Shared with the drill, so the two cannot name the chart differently.
+  // Shared with every redraw, so the two cannot name the chart differently.
   paintChartName();
 
   // The footer's basis is per year; its scope is not repainted (see the
@@ -3658,7 +3171,6 @@ export function wireYears(years) {
 
 export async function main() {
   wireTheme();
-  wireColumns();
   // This script against the page it was served in: app.js is cached
   // separately and carries no stamp, so a constant is the only handshake. It
   // holds the page to core.js; nothing yet holds the three modules to each
@@ -3698,10 +3210,10 @@ export async function main() {
   // year can still be followed by one that draws, and it needs these.
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
-      // Escape undoes one thing, innermost first: a pin or isolation, then one
-      // rung. drillUp clears the pin and isolation itself.
-      if (!pinned && !filter.isolated && drilled.length) {
-        drillUp(drilled.length - 1);
+      // Escape undoes one thing, innermost first: a pin or isolation, then the
+      // last split. The redraw clears the pin itself.
+      if (!pinned && !filter.isolated && expansions.length) {
+        guarded("undo the last split", undoLast);
         return;
       }
       hideTip();

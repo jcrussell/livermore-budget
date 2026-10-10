@@ -10,7 +10,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -262,61 +261,14 @@ func TestEveryCitationTheClientComposesResolves(t *testing.T) {
 // anything -- a field renamed, a default filled in -- would still name a
 // message and still pass, and nothing would say which arm had gone quiet.
 //
-// It is a second SankeyTemplate view, at a path the site does not open on,
-// whose step opens the spine into fund-flows: a harness handing it to Write
-// builds both goldens. A case about a step that switches no document breaks
-// the chain's second step (chainView) or names the view's own document.
+// It is a second SankeyTemplate view, at a path the site does not open on.
 func chartView(breaks func(*export.View)) export.View {
 	v := export.View{
 		Path: "extra.html", Template: export.SankeyTemplate, Projection: "sankey",
 		Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{0, 2}}},
-		Steps: []export.DrillStep{{Key: "groups", After: []string{""}, From: 2, Projection: "fund-flows",
-			Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
-				Tiers: []int{0, 3}, Caps: []export.TierCap{{Tier: 3, Cap: 8}},
-			}}, Back: "All groups", Noun: "thing",
-			Tail: "funds", Description: "Opened."}},
 	}
 	breaks(&v)
 	return v
-}
-
-// chainView is chartView with a second step: tier 3's nodes open into {3, 4},
-// on the same document. The chain's cases break the second step, so the
-// refusal is the chain's and not the first hop's.
-func chainView(breaks func(*export.View)) export.View {
-	return chartView(func(v *export.View) {
-		v.Steps = append(v.Steps, export.DrillStep{Key: "funds", After: []string{"groups"},
-			From:  3,
-			Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{3, 4}, Caps: []export.TierCap{{Tier: 4, Cap: 8}}}},
-			Back:  "All funds", Noun: "thing", Tail: "divisions",
-			Description: "Opened again."})
-		breaks(v)
-	})
-}
-
-// windowView is chartView's step turned into a well-formed window: the chart on
-// screen draws tiers {0, 2}, tier 2's nodes open, and tier 0 stays drawn to
-// their left. TestAStepMayKeepOneFlankOfTheChartItOpensFrom is its control.
-func windowView(breaks func(*export.View)) export.View {
-	return chartView(func(v *export.View) {
-		v.Steps[0].Sankey.Keep = []int{0}
-		v.Steps[0].Sankey.Tiers = []int{0, 2, 3}
-		breaks(v)
-	})
-}
-
-// barsView is windowView with a bars step after it: the window's centre, tier
-// 2, opens again into its tier-3 parts listed as bars.
-// TestABarsStepListsTheNodeAWindowOpened is its control.
-func barsView(breaks func(*export.View)) export.View {
-	return windowView(func(v *export.View) {
-		v.Steps = append(v.Steps, export.DrillStep{Key: "list", After: []string{"groups"},
-			From:  2,
-			Chart: export.Chart{Form: export.BarsForm, Bars: &export.BarsHints{Tier: 3}},
-			Back:  "Back", Noun: "every part", Tail: "funds",
-			Description: "Listed."})
-		breaks(v)
-	})
 }
 
 // wholeView is a well-formed view drawing another schedule of its column:
@@ -383,96 +335,32 @@ func TestAViewDrawsAnotherScheduleOfItsColumn(t *testing.T) {
 	}
 }
 
-// TestABarsStepListsTheNodeAWindowOpened is the control for the bars
-// refusals: the step is written, under its own key and no other form's.
-func TestABarsStepListsTheNodeAWindowOpened(t *testing.T) {
+// TestTheLedeSaysANodeSplitsExactlyWhereTheChartIsTheExpansion renders a view
+// drawing the expansion schedule beside one drawing its own spine, and reads
+// the lede of each. The sentence telling a reader to double click a node is
+// server-rendered from the schedule the view draws, so it is held here rather
+// than by a client test.
+func TestTheLedeSaysANodeSplitsExactlyWhereTheChartIsTheExpansion(t *testing.T) {
 	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
 	if err != nil {
 		t.Fatalf("read fund-flows golden: %v", err)
 	}
-	dir := t.TempDir()
-	v := barsView(func(v *export.View) { v.Nav, v.Projection = "Extra", "fund-flows" })
-	if _, err := writeSite(export.Options{
-		Dir:         dir,
-		Projections: map[string][]byte{"sankey": goldenSankey(t), "fund-flows": headlined(t, fundFlows)},
-		Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
-			Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "sankey"}, v},
-		Docs:        budgetDocs(),
-		GeneratedBy: "fisc test",
-	}); err != nil {
-		t.Fatalf("Write refused a bars step: %v", err)
+	// The fund-flows golden under the expansion's name: the lede reads which
+	// schedule a view draws, not what is in it.
+	var doc map[string]any
+	if err = json.Unmarshal(builtLike(t, goldenSankey(t), fundFlows), &doc); err != nil {
+		t.Fatal(err)
 	}
-	page := readFile(t, dir, "extra.html")
-	if !strings.Contains(page, `"form":"bars","bars":{"tier":3}`) {
-		t.Errorf("the config carries no bars step with its hints under its own key")
-	}
-	if got := strings.Count(page, `"sankey":{`); got != 2 {
-		t.Errorf("the config carries %d `sankey` keys over a Sankey overview, a Sankey step "+
-			"and a bars step; the bars step must carry none", got)
-	}
-}
-
-// TestAStepMayKeepOneFlankOfTheChartItOpensFrom is the control for the window
-// refusals, and pins that a step keeping nothing ships no `keep` key: `keep: 0`
-// would say "keep tier 0".
-func TestAStepMayKeepOneFlankOfTheChartItOpensFrom(t *testing.T) {
-	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
+	doc["projection"] = project.ExpansionProjection
+	expansion, err := json.Marshal(doc)
 	if err != nil {
-		t.Fatalf("read fund-flows golden: %v", err)
+		t.Fatal(err)
 	}
 	dir := t.TempDir()
-	// Only the document changes: a rendered chart page needs a drilldown
-	// document's metadata, which the spine golden does not carry.
-	v := windowView(func(v *export.View) { v.Nav, v.Projection = "Extra", "fund-flows" })
-	v.Steps = append(v.Steps,
-		// A window the other way up: tier 0 opens and tier 2 is the flank that stays.
-		export.DrillStep{Key: "cats", After: []string{""}, From: 0,
-			Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Keep: []int{2},
-				Tiers: []int{1, 0, 2},
-			}}, Back: "All categories", Noun: "thing", Tail: "lines",
-			Description: "Opened the other way."},
-		export.DrillStep{Key: "funds", After: []string{"groups"},
-			From:  3,
-			Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{3, 4}}}, Back: "All funds", Noun: "thing", Tail: "divisions",
-			Description: "Opened again."})
+	v := chartView(func(v *export.View) { v.Nav, v.Draws = "Extra", project.ExpansionProjection })
 	if _, err := writeSite(export.Options{
 		Dir:         dir,
-		Projections: map[string][]byte{"sankey": goldenSankey(t), "fund-flows": headlined(t, fundFlows)},
-		Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
-			Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "sankey"}, v},
-		Docs:        budgetDocs(),
-		GeneratedBy: "fisc test",
-	}); err != nil {
-		t.Fatalf("Write refused a window: %v", err)
-
-	}
-	page := readFile(t, dir, "extra.html")
-	for _, want := range []string{`"keep":[0]`, `"keep":[2]`} {
-		if !strings.Contains(page, want) {
-			t.Errorf("the config carries no %s; the step that draws that window is on the "+
-				"wire and the tier it keeps is not", want)
-		}
-	}
-	if got := strings.Count(page, `"keep"`); got != 2 {
-		t.Errorf("the config carries %d `keep` keys over three steps, one of which keeps "+
-			"nothing; an absent flank must be absent and not tier 0", got)
-	}
-}
-
-// TestTheLedeSaysANodeOpensExactlyWhenAStepOpensOne renders a chart view with
-// steps beside one without, and reads the lede of each. The sentence telling a
-// reader to double click a node is server-rendered from the view's steps, so it
-// is held here rather than by a client test.
-func TestTheLedeSaysANodeOpensExactlyWhenAStepOpensOne(t *testing.T) {
-	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
-	if err != nil {
-		t.Fatalf("read fund-flows golden: %v", err)
-	}
-	dir := t.TempDir()
-	v := chartView(func(v *export.View) { v.Nav, v.Projection = "Extra", "fund-flows" })
-	if _, err := writeSite(export.Options{
-		Dir:         dir,
-		Projections: map[string][]byte{"sankey": goldenSankey(t), "fund-flows": headlined(t, fundFlows)},
+		Projections: map[string][]byte{"sankey": goldenSankey(t), "expansion": expansion},
 		Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
 			Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "sankey"}, v},
 		Docs:        budgetDocs(),
@@ -480,13 +368,13 @@ func TestTheLedeSaysANodeOpensExactlyWhenAStepOpensOne(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("Write: %v", err)
 	}
-	const opens, follows = "Double click a node that opens", "Click a node or a fund swatch"
+	const splits, follows = "Double click a node to split it in place", "Click a node or a fund swatch"
 	for _, c := range []struct {
 		path      string
 		want, not string
 	}{
-		{"extra.html", opens, follows},
-		{export.IndexPath, follows, opens},
+		{"extra.html", splits, follows},
+		{export.IndexPath, follows, splits},
 	} {
 		page := readFile(t, dir, c.path)
 		if !strings.Contains(page, c.want) {
@@ -498,229 +386,6 @@ func TestTheLedeSaysANodeOpensExactlyWhenAStepOpensOne(t *testing.T) {
 	}
 }
 
-// TestAStepMayOpenANodeOnBothSides is the control for the both-sided
-// refusals: the opened tier drawn between a column on each side is accepted,
-// and the side reaches the page.
-// TestAKeptFlankIsHeldAgainstTheChartAbovesDocument: a window's kept flank is
-// drawn of the document the chart above draws, so it is not asked of the
-// document the step draws. The view is on fund-flows, the step keeps its tier
-// 3 and opens into the spine, which carries no node at tier 3 -- the shape of
-// the object-category step, which keeps the spine's fund groups and draws
-// department-spending.
-func TestAKeptFlankIsHeldAgainstTheChartAbovesDocument(t *testing.T) {
-	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
-	if err != nil {
-		t.Fatalf("read fund-flows golden: %v", err)
-	}
-	spine := headlined(t, fundFlows)
-	v := chartView(func(v *export.View) {
-		v.Nav, v.Projection = "Extra", "fund-flows"
-		v.Overview.Sankey.Tiers = []int{2, 3}
-		v.Steps[0].Projection = "sankey"
-		v.Steps[0].Sankey.Keep, v.Steps[0].Sankey.Tiers, v.Steps[0].Sankey.Caps = []int{3}, []int{0, 2, 3}, nil
-	})
-	if _, err := writeSite(export.Options{
-		Dir:         t.TempDir(),
-		Projections: map[string][]byte{"sankey": builtLike(t, spine, goldenSankey(t)), "fund-flows": spine},
-		Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
-			Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "sankey"}, v},
-		Docs:        budgetDocs(),
-		GeneratedBy: "fisc test",
-	}); err != nil {
-		t.Fatalf("Write refused a window keeping a tier its own document has no node at: %v", err)
-	}
-}
-
-func TestAStepMayOpenANodeOnBothSides(t *testing.T) {
-	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
-	if err != nil {
-		t.Fatalf("read fund-flows golden: %v", err)
-	}
-	dir := t.TempDir()
-	v := chartView(func(v *export.View) {
-		v.Nav, v.Projection = "Extra", "fund-flows"
-		v.Steps[0].Sankey.Side, v.Steps[0].Sankey.Tiers = export.SideBoth, []int{0, 2, 3}
-	})
-	if _, err := writeSite(export.Options{
-		Dir:         dir,
-		Projections: map[string][]byte{"sankey": goldenSankey(t), "fund-flows": headlined(t, fundFlows)},
-		Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
-			Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "sankey"}, v},
-		Docs:        budgetDocs(),
-		GeneratedBy: "fisc test",
-	}); err != nil {
-		t.Fatalf("Write refused a both-sided step: %v", err)
-	}
-	if page := readFile(t, dir, "extra.html"); !strings.Contains(page, `"side":"both"`) {
-		t.Error("the config carries no \"side\":\"both\"")
-	}
-}
-
-// deepWindowView is a well-formed window whose flank is two columns deep: the
-// chart on screen draws tiers {1, 0, 2}, tier 2's nodes open, and tiers 0 and 1
-// stay drawn to their left, nearest the centre first. The view is on
-// fund-flows, the golden with a node at every tier it draws.
-func deepWindowView(breaks func(*export.View)) export.View {
-	return chartView(func(v *export.View) {
-		v.Projection = "fund-flows"
-		v.Overview.Sankey.Tiers = []int{1, 0, 2}
-		v.Steps[0].Sankey.Keep = []int{0, 1}
-		v.Steps[0].Sankey.Tiers = []int{1, 0, 2, 3}
-		breaks(v)
-	})
-}
-
-// TestAWindowsFlankMayBeTwoColumnsDeep is the control for the deep window and
-// the widened one. A widened column ships in both `tiers` (where it is drawn)
-// and `widen` (that it is the one to drop).
-func TestAWindowsFlankMayBeTwoColumnsDeep(t *testing.T) {
-	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
-	if err != nil {
-		t.Fatalf("read fund-flows golden: %v", err)
-	}
-	for _, tc := range []struct {
-		name string
-		view export.View
-		want []string
-	}{
-		{"a flank two columns deep",
-			deepWindowView(func(v *export.View) { v.Nav = "Extra" }),
-			[]string{`"keep":[0,1]`, `"tiers":[1,0,2,3]`}},
-		// The widened column is the opened node's, at the end away from the kept
-		// flank; the narrow window above ships no `widen`.
-		{"a window widened by one column",
-			windowView(func(v *export.View) {
-				v.Nav, v.Projection = "Extra", "fund-flows"
-				v.Steps[0].Sankey.Tiers, v.Steps[0].Sankey.Widen = []int{0, 2, 3, 4}, []int{4}
-			}),
-			[]string{`"keep":[0]`, `"tiers":[0,2,3,4]`, `"widen":[4]`}},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			dir := t.TempDir()
-			if _, err := writeSite(export.Options{
-				Dir:         dir,
-				Projections: map[string][]byte{"sankey": goldenSankey(t), "fund-flows": headlined(t, fundFlows)},
-				Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
-					Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "sankey"}, tc.view},
-				Docs:        budgetDocs(),
-				GeneratedBy: "fisc test",
-			}); err != nil {
-				t.Fatalf("Write refused it: %v", err)
-			}
-			page := readFile(t, dir, "extra.html")
-			for _, want := range tc.want {
-				if !strings.Contains(page, want) {
-					t.Errorf("the config carries no %s", want)
-				}
-			}
-		})
-	}
-	// A step that widens by nothing ships no key: a client reading the length of
-	// `"widen":[]` would ask for a column the packager never named.
-	dir := t.TempDir()
-	if _, err := writeSite(export.Options{
-		Dir:         dir,
-		Projections: map[string][]byte{"sankey": goldenSankey(t), "fund-flows": headlined(t, fundFlows)},
-		Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
-			Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "sankey"},
-			windowView(func(v *export.View) { v.Nav, v.Projection = "Extra", "fund-flows" })},
-		Docs:        budgetDocs(),
-		GeneratedBy: "fisc test",
-	}); err != nil {
-		t.Fatalf("Write refused a window that widens by nothing: %v", err)
-	}
-	if page := readFile(t, dir, "extra.html"); strings.Contains(page, `"widen"`) {
-		t.Error("the config carries a `widen` key over a step that declares none; an absent " +
-			"widening must be absent on the wire")
-	}
-}
-
-// TestAStepIsPlacedAgainstEveryChartItOpensFrom is the list's own arms over a
-// step with two parents: accepted when both place it, refused when the SECOND
-// cannot reach its From, and refused when they draw different documents and it
-// names none of its own. A loop stopping at the first parent accepts the middle
-// case.
-func TestAStepIsPlacedAgainstEveryChartItOpensFrom(t *testing.T) {
-	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
-	if err != nil {
-		t.Fatalf("read fund-flows golden: %v", err)
-	}
-	// Two parents drawing different documents: "a" switches to fund-flows and "b"
-	// draws the view's own.
-	steps := func(breaks func([]export.DrillStep)) []export.DrillStep {
-		s := []export.DrillStep{
-			{Key: "a", After: []string{""}, From: 2, Projection: "fund-flows",
-				Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
-					Tiers: []int{0, 3, 4},
-				}}, Back: "Back", Noun: "thing", Tail: "funds", Description: "One."},
-			{Key: "b", After: []string{""}, From: 0,
-				Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Side: export.SideSource, Tiers: []int{0, 2}}},
-				Back:  "Back", Noun: "thing", Tail: "lines", Description: "Two."},
-			{Key: "c", After: []string{"a", "b"}, From: 0,
-				Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Side: export.SideSource,
-					Tiers: []int{0, 3},
-				}}, Projection: "fund-flows", Back: "Back", Noun: "thing", Tail: "divisions", Description: "Three."},
-		}
-		breaks(s)
-		return s
-	}
-	write := func(s []export.DrillStep) error {
-		_, err := writeSite(export.Options{
-			Dir: t.TempDir(),
-			Projections: map[string][]byte{
-				"sankey":     goldenSankey(t),
-				"fund-flows": builtLike(t, goldenSankey(t), fundFlows),
-			},
-			Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
-				Template: export.SankeyTemplate, Projection: "sankey",
-				Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{0, 2, 5}}}, Steps: s}},
-			Docs:        budgetDocs(),
-			GeneratedBy: "fisc test",
-		})
-		return err
-	}
-	if err := write(steps(func([]export.DrillStep) {})); err != nil {
-		t.Fatalf("Write refused a step with two parents that both place it: %v", err)
-	}
-	for _, c := range []struct {
-		name   string
-		breaks func([]export.DrillStep)
-		want   string
-	}{
-		{"the second parent cannot reach it", func(s []export.DrillStep) {
-			// Tier 4 is a column of "a" and not of "b".
-			s[2].From, s[2].Sankey.Tiers = 4, []int{4, 5}
-		}, "step \"b\" draws tiers [0 2]"},
-		{"the two parents draw different documents", func(s []export.DrillStep) {
-			s[2].Projection = ""
-		}, "needs ONE document before it"},
-	} {
-		t.Run(c.name, func(t *testing.T) {
-			err := write(steps(c.breaks))
-			if err == nil {
-				t.Fatal("Write accepted it")
-			}
-			if !strings.Contains(err.Error(), c.want) {
-				t.Errorf("error %q does not contain %q", err, c.want)
-			}
-		})
-	}
-}
-
-// TestTheCaveatsPageRefusesWhatWouldRender covers buildCaveatsPage's five
-// refusals, none of which any test reached.
-//
-// THEY WERE UNFALSIFIABLE: neutering all five left both ./internal/export and
-// ./pkg/cmd/export green. No test in this package had ever constructed a
-// CaveatsTemplate view at all, so the page's whole error path was reachable only
-// by a real export.
-//
-// THE DUPLICATE-ANCHOR CASE IS THE ONE WORTH HAVING. project.ValidateCaveats
-// catches a repeated id WITHIN one document at build time; this catches it
-// ACROSS the site, which is a different claim and the one caveats.html actually
-// needs, because that page renders every document at once. It is also the only
-// refusal here whose failure a reader could not see: the page renders, the
-// anchor resolves, and they are shown a paragraph about something else.
 func TestTheCaveatsPageRefusesWhatWouldRender(t *testing.T) {
 	// THE CAVEATS VIEW IS THE INDEX HERE, which is not how the site is
 	// configured and is the smallest thing that reaches the builder. Options
@@ -871,60 +536,6 @@ func TestTheCaveatsPagePromisesAChartFlagOnlyWhereThereIsAChart(t *testing.T) {
 	}
 	if strings.Contains(section("unviewed"), promise) {
 		t.Error("a document no view renders promises a chart flag; there is no chart")
-	}
-}
-
-// TestTheCaveatsPagePromisesAChartFlagOnAStepsDocument: a document a chart
-// opens into is drawn, so its marks are flagged. The second year's document is
-// named only by the per-year join, so a drawn set reading Projection alone
-// would withhold the flag on it.
-func TestTheCaveatsPagePromisesAChartFlagOnAStepsDocument(t *testing.T) {
-	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
-	if err != nil {
-		t.Fatalf("read fund-flows golden: %v", err)
-	}
-	spine := goldenSankey(t)
-	dir := t.TempDir()
-	if _, err := writeSite(export.Options{
-		Dir: dir,
-		Projections: map[string][]byte{
-			"sankey":          spine,
-			"sankey-2027":     reyeared(t, spine, 2027, "FY 2026-27"),
-			"fund-flows":      builtLike(t, spine, fundFlows),
-			"fund-flows-2027": builtLike(t, spine, reyeared(t, fundFlows, 2027, "FY 2026-27")),
-		},
-		Views: []export.View{
-			{Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate,
-				Projection: "sankey", YearStems: []string{"sankey", "sankey-2027"},
-				Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{0, 2, 5}}},
-				Steps: []export.DrillStep{{Key: "group", After: []string{""}, From: 2,
-					Projection: "fund-flows",
-					Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
-						Tiers: []int{0, 3, 4},
-					}}, Back: "All fund groups", Noun: "thing", Tail: "funds", Description: "One."}}},
-			{Path: "caveats.html", Nav: "Caveats", Template: export.CaveatsTemplate,
-				Title: "Caveats", Lede: "A lede."},
-		},
-		Docs:        budgetDocs(),
-		GeneratedBy: "fisc test",
-	}); err != nil {
-		t.Fatalf("Write: %v", err)
-	}
-	page := readFile(t, dir, "caveats.html")
-	const promise = "the charts flag these marks"
-	for _, stem := range []string{"fund-flows", "fund-flows-2027"} {
-		i := strings.Index(page, "<h2>"+stem)
-		if i < 0 {
-			t.Fatalf("caveats.html carries no section for %q", stem)
-		}
-		section := page[i+1:]
-		if j := strings.Index(section, "<section"); j >= 0 {
-			section = section[:j]
-		}
-		if !strings.Contains(section, promise) {
-			t.Errorf("the %s section does not promise a chart flag, and the spine opens into "+
-				"that document -- its marks are chipped at depth 1", stem)
-		}
 	}
 }
 
@@ -1079,472 +690,19 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 			{Path: "extra.html", Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "sankey",
 				Lede: "a sentence that would go nowhere"}},
 			"has no {{.Lede}}"},
-		// The drill family, every arm: `chart` below is a well-formed chart view and
-		// each case breaks exactly one thing about it, so the message named is the one
-		// that arm produces rather than whichever fires first.
-		// On the trends template, which has no breadcrumb to come back by.
-		{"a drill on a template that publishes none", []export.View{ok,
-			{Path: "trends.html", Nav: "Revenue tables", Template: export.TrendsTemplate,
-				Projection: "sankey",
-				Steps: []export.DrillStep{{Key: "g", After: []string{""}, From: 2,
-					Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
-						Tiers: []int{0, 3},
-					}}, Back: "b", Noun: "thing", Tail: "t",
-					Description: "d."}}}},
-			"the chain would be dropped in silence"},
-		// The form arms: a form outside ChartForms() on a step and on the
-		// overview. A test-only second form lives on the client
-		// (site/form.test.mjs), and Go refusing it here is why.
-		{"a step in a form no renderer draws", []export.View{ok,
-			chartView(func(v *export.View) { v.Steps[0].Form = "stub"; v.Steps[0].Sankey = nil })},
-			"step 0 in form \"stub\", which is not one of"},
 		{"an overview in a form no renderer draws", []export.View{ok,
 			chartView(func(v *export.View) { v.Overview.Form = "stub"; v.Overview.Sankey = nil })},
 			"declares chart form \"stub\", which is not one of"},
-		// The bars arms.
-		{"a bars step with no bars hints", []export.View{ok,
-			barsView(func(v *export.View) { v.Steps[1].Bars = nil })},
-			"as bars with no bars hints"},
-		{"a bars step listing the tier it opens", []export.View{ok,
-			barsView(func(v *export.View) { v.Steps[1].Bars.Tier = 2 })},
-			"not a part of itself"},
-		{"a bars step carrying a residual", []export.View{ok,
-			barsView(func(v *export.View) {
-				// Opened off the spine, so the step switches document.
-				v.Steps[1].After, v.Steps[1].Projection = []string{""}, "fund-flows"
-				v.Steps[1].Residual = map[string]string{"transfers/in": "why"}
-				v.Steps[1].ResidualGrain = "fund"
-			})},
-			"the bars form draws neither mark"},
-		{"a bars step opening the tier a window keeps", []export.View{ok,
-			barsView(func(v *export.View) { v.Steps[1].From = 0 })},
-			"which KEEPS that tier"},
-		{"a step opening from a bars chart", []export.View{ok,
-			barsView(func(v *export.View) {
-				v.Steps = append(v.Steps, export.DrillStep{Key: "after-list", After: []string{"list"},
-					From:  3,
-					Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{3, 4}}},
-					Back:  "b", Noun: "thing", Tail: "t", Description: "d."})
-			})},
-			"which is drawn as bars"},
 		{"an overview drawn as bars", []export.View{ok,
 			chartView(func(v *export.View) {
 				v.Overview = export.Chart{Form: export.BarsForm, Bars: &export.BarsHints{Tier: 3}}
 			})},
 			"declares a bars chart as its own"},
-		{"a drill with no tiers", []export.View{ok,
-			chartView(func(v *export.View) { v.Steps[0].Sankey.Tiers = nil })},
-			"drawn by the same tier set it was closed under"},
-		{"a drill with no tail noun", []export.View{ok,
-			chartView(func(v *export.View) { v.Steps[0].Tail = "" })},
-			"labelled \"24 smaller\" and stop there"},
-		{"a drill with no back label", []export.View{ok,
-			chartView(func(v *export.View) { v.Steps[0].Back = "" })},
-			"a button with no words in it"},
-		// The noun is what tells two rungs apart when the documents collide: Budget
-		// Book p66 prints "General Fund" over a fund-group column and p255 as fund
-		// 100's name.
-		{"a drill with no noun", []export.View{ok,
-			chartView(func(v *export.View) { v.Steps[0].Noun = "" })},
-			"two rungs of one trail drawing the same words"},
-		// Without it the <desc> a screen reader hears at depth 1 is the opening
-		// state's, over a chart that no longer draws it.
-		{"a drill with no description", []export.View{ok,
-			chartView(func(v *export.View) { v.Steps[0].Description = "" })},
-			"told the opening state's over a chart it no longer draws"},
-		{"a drill whose description does not close its sentence", []export.View{ok,
-			chartView(func(v *export.View) { v.Steps[0].Description = "Opened" })},
-			"an unterminated one runs into them"},
-		{"a drill from a tier the page does not draw", []export.View{ok,
-			chartView(func(v *export.View) { v.Steps[0].From = 5 })},
-			"no node on it is ever openable"},
-		// Its own arm: an empty tier set draws every tier, so the From arm cannot
-		// refuse it, and the chart would lay every node out at zero height.
-		{"a drill on a page that declares no tiers", []export.View{ok,
-			chartView(func(v *export.View) { v.Overview.Sankey.Tiers = nil })},
-			"lays every node out at zero height"},
-		{"a drill with no cap", []export.View{ok,
-			chartView(func(v *export.View) { v.Steps[0].Sankey.Caps[0].Cap = 0 })},
-			"a column of one node is not a chart"},
-		// The chain's own arms, each broken on the second step.
-		{"a second step with no tiers", []export.View{ok,
-			chainView(func(v *export.View) { v.Steps[1].Sankey.Tiers = nil })},
-			"step 1 with no tiers"},
-		{"a second step with no tail noun", []export.View{ok,
-			chainView(func(v *export.View) { v.Steps[1].Tail = "" })},
-			"step 1 with no tail noun"},
-		{"a second step with no back label", []export.View{ok,
-			chainView(func(v *export.View) { v.Steps[1].Back = "" })},
-			"step 1 with no back label"},
-		// A rung nothing can reach: the first step draws {0, 3} and the second
-		// opens from tier 5, so no node the reader can see is openable.
-		{"a chain that cannot be walked", []export.View{ok,
-			chainView(func(v *export.View) { v.Steps[1].From = 5 })},
-			"a rung nothing on the chart can reach"},
-		{"a step that redraws the tiers it opened from", []export.View{ok,
-			chainView(func(v *export.View) { v.Steps[1].Sankey.Tiers = []int{0, 3}; v.Steps[1].Sankey.Caps = nil })},
-			"the set step \"groups\" already draws"},
-		// The first hop is placed against the view's own chart the same way: the
-		// overview's own columns of its own document is the chart the reader left.
-		{"a first hop that redraws the overview", []export.View{ok,
-			chartView(func(v *export.View) {
-				v.Steps[0].Projection = ""
-				v.Steps[0].Sankey.Tiers, v.Steps[0].Sankey.Caps = []int{0, 2}, nil
-			})},
-			"the set the view's own chart already draws"},
-		// The tree's own arms: a step nothing can name, two steps answering to one
-		// name, a parent that does not exist, a parent declared later, and two steps
-		// one node would match.
-		{"a step with no key", []export.View{ok,
-			chartView(func(v *export.View) { v.Steps[0].Key = "" })},
-			"a step nothing can name"},
-		{"two steps keyed the same", []export.View{ok,
-			chainView(func(v *export.View) { v.Steps[1].Key = "groups" })},
-			"declares steps 0 and 1 both keyed \"groups\""},
-		{"a step opening from a key no step declares", []export.View{ok,
-			chainView(func(v *export.View) { v.Steps[1].After = []string{"nope"} })},
-			"which no step declares as its key"},
-		// The list's own arms: a step hanging off nothing, one naming the same chart
-		// twice, and a collision on a shared parent between two steps whose parent
-		// lists are not equal, which a comparison of the lists whole would let through.
-		{"a step opening from no chart at all", []export.View{ok,
-			chartView(func(v *export.View) { v.Steps[0].After = nil })},
-			"opening from no chart at all"},
-		{"a step naming one chart twice", []export.View{ok,
-			chainView(func(v *export.View) { v.Steps[1].After = []string{"groups", "groups"} })},
-			"opens from \"groups\" twice"},
-		{"two steps colliding on one of several parents", []export.View{ok,
-			chainView(func(v *export.View) {
-				// A third step whose parent list is not step 1's, both opening tier 3 of
-				// "groups" in no role.
-				v.Steps = append(v.Steps, export.DrillStep{Key: "x",
-					After: []string{"funds", "groups"}, From: 3,
-					Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{0, 4}}},
-					Back:  "Back", Noun: "thing", Tail: "things", Description: "Opened a third time."})
-			})},
-			"both opening tier 3 of step \"groups\"'s chart"},
-		// This arm is what keeps a cycle undeclarable.
-		{"a step opening from a step declared after it", []export.View{ok,
-			chainView(func(v *export.View) { v.Steps[0], v.Steps[1] = v.Steps[1], v.Steps[0] })},
-			"After names an EARLIER step"},
-		{"two steps opening one tier of one chart", []export.View{ok,
-			chainView(func(v *export.View) {
-				v.Steps[1].After, v.Steps[1].From, v.Steps[1].Projection = []string{""}, 2, "fund-flows"
-			})},
-			"a node there would open into two different charts"},
-		{"a role-less step beside one that names a role", []export.View{ok,
-			chainView(func(v *export.View) {
-				v.Steps[1].After, v.Steps[1].From, v.Steps[1].Role = []string{""}, 2, "fund_group"
-				v.Steps[1].Projection = "fund-flows"
-			})},
-			"a step with no role opens EVERY node at its tier"},
-		{"a step in a role no node at its tier carries", []export.View{ok,
-			chainView(func(v *export.View) {
-				v.Steps[1].After, v.Steps[1].From, v.Steps[1].Role = []string{""}, 2, "revenue_source"
-				v.Steps[1].Projection = "fund-flows"
-			})},
-			`opens role "revenue_source" at tier 2 of the view's own chart`},
-		{"a step opening a side this package does not declare", []export.View{ok,
-			chartView(func(v *export.View) { v.Steps[0].Sankey.Side = "Source" })},
-			"opens side \"Source\""},
-		// Every root is placed, not only the first step: the second is made a root.
-		{"a second root from a tier the page does not draw", []export.View{ok,
-			chainView(func(v *export.View) { v.Steps[1].After = []string{""}; v.Steps[1].From = 5 })},
-			"step 1 drills from tier 5"},
-		// The window's own arms, each breaking one clause of a well-formed window.
-		{"a window keeping a second flank where its centre is", []export.View{ok,
-			windowView(func(v *export.View) { v.Steps[0].Sankey.Keep = []int{0, 2} })},
-			"one column each and one more for every widening -- 4 columns here, and not 3"},
-		// A flank is contiguous and runs out from the centre; these break each half.
-		{"a flank with a gap in it", []export.View{ok,
-			deepWindowView(func(v *export.View) {
-				v.Overview.Sankey.Tiers = []int{4, 1, 0, 2}
-				v.Steps[0].Sankey.Keep = []int{0, 4}
-				v.Steps[0].Sankey.Tiers = []int{4, 0, 2, 3}
-			})},
-			"a gap in it is a column the reader was looking at dropped out of the middle"},
-		{"a flank declared outermost first", []export.View{ok,
-			deepWindowView(func(v *export.View) { v.Steps[0].Sankey.Keep = []int{1, 0} })},
-			"the kept columns are the ones at ONE end of what the step draws, outermost first"},
-		// A parent keeping two columns tells a membership test from a test of the
-		// first entry: the child opens the outermost kept column.
-		{"a step opening the outer tier of a two-deep flank above it", []export.View{ok,
-			deepWindowView(func(v *export.View) {
-				v.Steps = append(v.Steps, export.DrillStep{Key: "outer", After: []string{"groups"},
-					From:  1,
-					Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{1, 5}}}, Back: "All of them", Noun: "thing", Tail: "things",
-					Description: "Opened off the outer kept column."})
-			})},
-			"which KEEPS that tier"},
-		// A tier is a column: two columns of one tier draw the same nodes twice.
-		{"a step drawing one tier twice", []export.View{ok,
-			chartView(func(v *export.View) { v.Steps[0].Sankey.Tiers = []int{0, 3, 0} })},
-			"which name tier 0 twice"},
-		// The widening's own arms. A widened column is declared in both Tiers and
-		// Widen so the two can be held against each other, and a step with no flank
-		// has no centre to widen out from.
-		{"a widening on a step that keeps nothing", []export.View{ok,
-			windowView(func(v *export.View) { v.Steps[0].Sankey.Keep, v.Steps[0].Sankey.Widen = nil, []int{4} })},
-			"has no centre to add a column out from"},
-		{"a widening the step draws no column for", []export.View{ok,
-			windowView(func(v *export.View) { v.Steps[0].Sankey.Widen = []int{4} })},
-			"one column each and one more for every widening -- 4 columns here, and not 3"},
-		{"a widening drawn somewhere other than the end away from the flank", []export.View{ok,
-			windowView(func(v *export.View) {
-				v.Steps[0].Sankey.Tiers, v.Steps[0].Sankey.Widen = []int{0, 2, 3, 4}, []int{3}
-			})},
-			"a widened column is on the opened node's side"},
-		{"a widening on the kept flank's own side", []export.View{ok,
-			windowView(func(v *export.View) {
-				v.Steps[0].Sankey.Tiers, v.Steps[0].Sankey.Widen = []int{1, 0, 2, 3}, []int{1}
-			})},
-			"a widening on the flank's side would push them off it"},
-		{"a both-sided step opening its first column", []export.View{ok,
-			chartView(func(v *export.View) {
-				v.Steps[0].Sankey.Side, v.Steps[0].Sankey.Tiers = export.SideBoth, []int{2, 3}
-			})},
-			"so the opened tier must be neither end"},
-		{"a both-sided step opening its last column", []export.View{ok,
-			chartView(func(v *export.View) {
-				v.Steps[0].Sankey.Side, v.Steps[0].Sankey.Tiers = export.SideBoth, []int{0, 2}
-			})},
-			"so the opened tier must be neither end"},
-		{"a both-sided step carrying a residual", []export.View{ok,
-			chartView(func(v *export.View) {
-				v.Nav = "Extra"
-				v.Steps[0].Sankey.Side, v.Steps[0].Sankey.Tiers = export.SideBoth, []int{0, 2, 3}
-				v.Steps[0].ResidualGrain = "fund"
-				v.Steps[0].Residual = map[string]string{"transfers/in": "A reason."}
-			})},
-			"opens a node on both sides and declares a gap or a residual"},
-		{"a both-sided step drawn backwards", []export.View{ok,
-			chartView(func(v *export.View) {
-				v.Steps[0].Sankey.Side, v.Steps[0].Sankey.Tiers = export.SideBoth, []int{3, 2, 0}
-			})},
-			"with lower tiers before it and higher after"},
-		{"a both-sided step widening", []export.View{ok,
-			chartView(func(v *export.View) {
-				v.Steps[0].Sankey.Side, v.Steps[0].Sankey.Tiers = export.SideBoth, []int{0, 2, 3, 4}
-				v.Steps[0].Sankey.Widen = []int{4}
-			})},
-			"keeps no flank"},
-		{"a both-sided step carrying a gap", []export.View{ok,
-			chartView(func(v *export.View) {
-				v.Nav = "Extra"
-				v.Steps[0].Sankey.Side, v.Steps[0].Sankey.Tiers = export.SideBoth, []int{0, 2, 3}
-				v.Steps[0].Gaps = map[string][]project.Gap{"expenditure/services-and-supplies": {{FiscalYear: 2026, Basis: "adopted", Cents: 1, Reason: "A reason."}}}
-			})},
-			"opens a node on both sides and declares a gap or a residual"},
-		{"a window that is also both-sided", []export.View{ok,
-			windowView(func(v *export.View) { v.Steps[0].Sankey.Side = export.SideBoth })},
-			"is the TARGET of one half and the SOURCE of the other"},
-		{"a window that also declares a side", []export.View{ok,
-			windowView(func(v *export.View) { v.Steps[0].Sankey.Side = export.SideSource })},
-			"is the TARGET of one half and the SOURCE of the other"},
-		{"a window that is not three columns", []export.View{ok,
-			windowView(func(v *export.View) { v.Steps[0].Sankey.Tiers = []int{0, 2} })},
-			"one column each and one more for every widening -- 3 columns here, and not 2"},
-		{"a window whose centre is not the opened tier", []export.View{ok,
-			windowView(func(v *export.View) { v.Steps[0].Sankey.Tiers = []int{0, 3, 2} })},
-			"the node the reader clicked is the centre of a window"},
-		{"a window keeping a tier the chart it opens from does not draw", []export.View{ok,
-			windowView(func(v *export.View) {
-				v.Steps[0].Sankey.Keep = []int{5}
-				v.Steps[0].Sankey.Tiers = []int{5, 2, 3}
-			})},
-			"the flank the reader came from has to be a column they were looking at"},
-		{"a window keeping a tier that is not beside the opened one", []export.View{ok,
-			windowView(func(v *export.View) { v.Overview.Sankey.Tiers = []int{0, 5, 2} })},
-			"a window slides by one column"},
-		// A well-formed window hanging off a well-formed window can still open the
-		// tier its parent kept, and would send that node's whole decomposition out the
-		// other side of a flank drawn at its share of the centre.
-		{"a step opening the tier the chart above kept", []export.View{ok,
-			windowView(func(v *export.View) {
-				v.Steps = append(v.Steps, export.DrillStep{Key: "cats", After: []string{"groups"},
-					From:  0,
-					Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Keep: []int{2}, Tiers: []int{1, 0, 2}}}, Back: "All categories", Noun: "thing",
-					Tail: "lines", Description: "Opened off the kept flank."})
-			})},
-			"which KEEPS that tier"},
-		{"a window keeping its flank on the side the reader did not see it on",
-			[]export.View{ok, windowView(func(v *export.View) {
-				v.Steps[0].Sankey.Tiers = []int{3, 2, 0}
-			})},
-			"draws to the LEFT of the opened tier 2, and draws tiers [3 2 0]"},
-		// The other direction: tier 0 opens and tier 2, drawn to its right, stays. An
-		// arm that only ever sees one sign is half a rule.
-		{"a window pushing the other way and keeping its flank on the wrong side",
-			[]export.View{ok, windowView(func(v *export.View) {
-				v.Steps[0].From, v.Steps[0].Sankey.Keep = 0, []int{2}
-				v.Steps[0].Sankey.Tiers = []int{2, 0, 3}
-			})},
-			"draws to the RIGHT of the opened tier 0, and draws tiers [2 0 3]"},
-		// A cap on the flank: the kept columns are the chart above's, already
-		// capped by the rung that drew them, and flankHolds computes the flank
-		// without this rung's expansions while windowFor computes it with them.
-		{"a window capping a tier it keeps", []export.View{ok,
-			windowView(func(v *export.View) {
-				v.Steps[0].Sankey.Caps = append(v.Steps[0].Sankey.Caps, export.TierCap{Tier: 0, Cap: 8})
-			})},
-			"caps tier 0, which it keeps"},
-		// A window on a chart drawn whole: refused for declaring no render tiers
-		// before any step is placed, since the chart template publishes them.
-		{"a window on a page whose chart is drawn whole", []export.View{ok,
-			{Path: "extra.html", Nav: "Extra", Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}},
-				Projection: "sankey",
-				Steps: []export.DrillStep{{Key: "g", After: []string{""}, From: 2,
-					Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
-						Keep: []int{0}, Tiers: []int{0, 2, 3},
-					}}, Back: "b", Noun: "thing", Tail: "t",
-					Description: "d."}}}},
-			"drills and its overview declares no sankey tiers"},
-		// A residual needs a second document and a reason. Whether a step
-		// switches document is which file it resolves to against the chart it
-		// opens from, not whether Projection is spelled: the second and third
-		// cases name the document the chart above draws, on the first hop and
-		// on a chain's.
-		{"a residual on a step that switches no document", []export.View{ok,
-			chainView(func(v *export.View) {
-				v.Steps[1].Residual = map[string]string{"transfers/in": "a reason"}
-			})},
-			"a step that switches no document has no second grain"},
-		{"a residual on a first hop naming the view's own document", []export.View{ok,
-			chartView(func(v *export.View) {
-				v.Steps[0].Projection = "sankey"
-				v.Steps[0].Sankey.Tiers, v.Steps[0].Sankey.Caps = []int{0, 5}, nil
-				v.Steps[0].Residual = map[string]string{"transfers/in": "a reason"}
-				v.Steps[0].ResidualGrain = "fund"
-			})},
-			`draws "sankey", the document the view's own chart draws`},
-		{"a residual on a second step naming its parent's document", []export.View{ok,
-			chainView(func(v *export.View) {
-				v.Steps[1].Projection = "fund-flows"
-				v.Steps[1].Residual = map[string]string{"transfers/in": "a reason"}
-				v.Steps[1].ResidualGrain = "fund"
-			})},
-			`draws "fund-flows", the document step "groups" draws`},
-		{"a gap on a first hop naming the view's own document", []export.View{ok,
-			chartView(func(v *export.View) {
-				v.Steps[0].Projection = "sankey"
-				v.Steps[0].Sankey.Tiers, v.Steps[0].Sankey.Caps = []int{0, 5}, nil
-				v.Steps[0].Gaps = map[string][]project.Gap{"expenditure/services-and-supplies": {{FiscalYear: 2026, Basis: "adopted", Cents: 1, Reason: "A reason."}}}
-			})},
-			"a step that switches no document has only one"},
-		{"a residual endpoint with no reason", []export.View{ok,
-			chartView(func(v *export.View) {
-				v.Nav = "Extra"
-				v.Steps[0].Residual = map[string]string{"transfers/in": ""}
-				v.Steps[0].ResidualGrain = "fund"
-			})},
-			"residual/additionalProperties: minLength"},
-		{"a residual endpoint whose reason is only whitespace", []export.View{ok,
-			chartView(func(v *export.View) {
-				v.Nav = "Extra"
-				v.Steps[0].Residual = map[string]string{"transfers/in": "  "}
-				v.Steps[0].ResidualGrain = "fund"
-			})},
-			"residual/additionalProperties: pattern"},
-		{"a residual with no grain to name its mark", []export.View{ok,
-			chartView(func(v *export.View) {
-				v.Nav = "Extra"
-				v.Steps[0].Residual = map[string]string{"transfers/in": "the reason"}
-			})},
-			`dependentRequired["residual"]: missing properties ["residual_grain"]`},
-		{"a grain naming a mark the step never draws", []export.View{ok,
-			chartView(func(v *export.View) {
-				v.Nav = "Extra"
-				v.Steps[0].ResidualGrain = "fund"
-			})},
-			`dependentRequired["residual_grain"]: missing properties ["residual"]`},
-		// A gap needs the same two things: a same-document step names a cell one file
-		// prints once, and a gap with no reason is indistinguishable from drift.
-		// A licence may not name a mark: the client draws marks, no chart
-		// above sends flow from one and no document prints a total for one.
-		{"a residual on a mark", []export.View{ok,
-			chartView(func(v *export.View) {
-				v.Nav = "Extra"
-				v.Steps[0].ResidualGrain = "fund"
-				v.Steps[0].Residual = map[string]string{"residual/transfers/in": "A reason."}
-			})},
-			`declares a residual on "residual/transfers/in", which is a mark`},
-		{"a gap on a mark", []export.View{ok,
-			chartView(func(v *export.View) {
-				v.Nav = "Extra"
-				v.Steps[0].Gaps = map[string][]project.Gap{"gap/expenditure/services-and-supplies": {{FiscalYear: 2026, Basis: "adopted", Cents: 1, Reason: "A reason."}}}
-			})},
-			`licenses a gap on "gap/expenditure/services-and-supplies", which is a mark`},
-		{"a gap on a step that switches no document", []export.View{ok,
-			chainView(func(v *export.View) {
-				v.Steps[1].Gaps = map[string][]project.Gap{"expenditure/services-and-supplies": {{FiscalYear: 2026, Basis: "adopted", Cents: 1, Reason: "A reason."}}}
-			})},
-			"a step that switches no document has only one"},
-		{"a gap with no reason", []export.View{ok,
-			chartView(func(v *export.View) {
-				v.Nav = "Extra"
-				v.Steps[0].Gaps = map[string][]project.Gap{"expenditure/services-and-supplies": {{FiscalYear: 2026, Basis: "adopted", Cents: 1}}}
-			})},
-			"items/properties/reason: minLength"},
-		{"a gap licensing zero cents", []export.View{ok,
-			chartView(func(v *export.View) {
-				v.Nav = "Extra"
-				v.Steps[0].Gaps = map[string][]project.Gap{"expenditure/services-and-supplies": {{FiscalYear: 2026, Basis: "adopted", Reason: "A reason."}}}
-			})},
-			"items/properties/cents: not"},
-		{"a gap on a step that widens", []export.View{ok,
-			windowView(func(v *export.View) {
-				v.Nav = "Extra"
-				v.Steps[0].Sankey.Tiers, v.Steps[0].Sankey.Widen = []int{0, 2, 3, 4}, []int{4}
-				v.Steps[0].Gaps = map[string][]project.Gap{"expenditure/services-and-supplies": {{FiscalYear: 2026, Basis: "adopted", Cents: 1, Reason: "A reason."}}}
-			})},
-			"declares a gap on 1 node(s) and widens tiers"},
-		{"two gap licences for one column", []export.View{ok,
-			chartView(func(v *export.View) {
-				v.Steps[0].Gaps = map[string][]project.Gap{"expenditure/services-and-supplies": {
-					{FiscalYear: 2026, Basis: "adopted", Cents: 1, Reason: "A reason."},
-					{FiscalYear: 2026, Basis: "adopted", Cents: 2, Reason: "Another."}}}
-			})},
-			"declares two gaps on node \"expenditure/services-and-supplies\" for FY2026 adopted"},
-		{"a gap licensing a column the view lists no year of", []export.View{ok,
-			chartView(func(v *export.View) {
-				v.Steps[0].Gaps = map[string][]project.Gap{"expenditure/services-and-supplies": {
-					{FiscalYear: 2027, Basis: "adopted", Cents: 1, Reason: "A reason."}}}
-			})},
-			"licenses a gap on node \"expenditure/services-and-supplies\" for FY2027 adopted, a column the view lists no year of"},
-		{"a cap on a tier the step does not draw", []export.View{ok,
-			chartView(func(v *export.View) { v.Steps[0].Sankey.Caps = []export.TierCap{{Tier: 4, Cap: 8}} })},
-			"the cap would fold nothing, in silence"},
-		{"a cap declared twice for one tier", []export.View{ok,
-			chartView(func(v *export.View) {
-				v.Steps[0].Sankey.Caps = []export.TierCap{{Tier: 3, Cap: 8}, {Tier: 3, Cap: 24}}
-			})},
-			"caps tier 3 twice"},
 		// Against the documents: a tier no node of the document stands at is a
-		// column drawn empty, on the view's own chart (the step's From is placed
-		// on it, so the From arm cannot fire) and on a step's; a residual or gap
-		// id no node carries is a mark the client draws from nothing. The kept
-		// flank is the chart above's column, held by
-		// TestAKeptFlankIsHeldAgainstTheChartAbovesDocument.
+		// column drawn empty.
 		{"a chart drawing a tier its document has no node at", []export.View{ok,
-			chartView(func(v *export.View) { v.Overview.Sankey.Tiers = []int{0, 7}; v.Steps[0].From = 7 })},
+			chartView(func(v *export.View) { v.Overview.Sankey.Tiers = []int{0, 7} })},
 			"chart draws tier 7, and [sankey] carries nodes at tiers [0 2 5]"},
-		{"a step drawing a tier its document has no node at", []export.View{ok,
-			chartView(func(v *export.View) { v.Steps[0].Sankey.Tiers = []int{0, 3, 99} })},
-			"step 0 draws tier 99, and [fund-flows] carries nodes at tiers [0 1 2 3 4 5]"},
-		{"a residual endpoint no node of the chart above carries", []export.View{ok,
-			chartView(func(v *export.View) {
-				v.Steps[0].Residual = map[string]string{"nope/x": "A reason."}
-				v.Steps[0].ResidualGrain = "fund"
-			})},
-			`declares a residual on "nope/x", which names no node of [sankey]`},
-		{"a gap on a node the chart above does not carry", []export.View{ok,
-			chartView(func(v *export.View) {
-				v.Steps[0].Gaps = map[string][]project.Gap{"nope/x": {{FiscalYear: 2026, Basis: "adopted", Cents: 1, Reason: "A reason."}}}
-			})},
-			`licenses a gap on "nope/x", which names no node of [sankey]`},
-		{"a step naming a schedule no column carries", []export.View{ok,
-			chartView(func(v *export.View) { v.Steps[0].Projection = "nope" })},
-			"step 0 opens into schedule \"nope\" and column fy2026-adopted.json (year \"sankey\") carries no such schedule"},
 		{"a projection that was not built", []export.View{ok, {Path: "trends.html",
 			Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "nope"}}, "which was not built"},
 		{"no template", []export.View{ok, {Path: "trends.html", Projection: "sankey"}},
@@ -1581,24 +739,6 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 			{Path: "extra.html", Nav: "Extra", Template: export.HistoryTemplate,
 				Projection: "sankey"}},
 			"under no printed heading"},
-		// The canvas and the drop are the overview's: a rung is one node's
-		// window on its page's canvas.
-		{"a step declaring a canvas height", []export.View{ok,
-			chartView(func(v *export.View) { v.Steps[0].Sankey.Height = 4800 })},
-			"split caps or dropped tiers, which are the view's own chart's"},
-		{"a step dropping a tier", []export.View{ok,
-			chartView(func(v *export.View) { v.Steps[0].Sankey.Drop = []int{2} })},
-			"split caps or dropped tiers, which are the view's own chart's"},
-		{"a step growing its canvas", []export.View{ok,
-			chartView(func(v *export.View) {
-				v.Steps[0].Sankey.Grow = &export.CanvasGrowth{NodePx: 40, Floor: 820, Ceiling: 4800}
-			})},
-			"split caps or dropped tiers, which are the view's own chart's"},
-		{"a step capping a split", []export.View{ok,
-			chartView(func(v *export.View) {
-				v.Steps[0].Sankey.SplitCaps = []export.SplitCap{{Split: "funds", Cap: 8, Tail: "funds"}}
-			})},
-			"split caps or dropped tiers, which are the view's own chart's"},
 		// The growth and the split caps are the expansion's: chartView's
 		// overview breaks one thing each.
 		{"a canvas both fixed and growing", []export.View{ok,
@@ -1664,12 +804,6 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 				v.Overview.Sankey.Caps = []export.TierCap{{Tier: 1, Cap: 8, Tail: "lines"}}
 			})},
 			"caps tier 1 and draws tiers"},
-		{"another schedule on a view that drills", []export.View{ok,
-			wholeView(func(v *export.View) {
-				v.Steps = chartView(func(*export.View) {}).Steps
-				v.Steps[0].From = 3
-			})},
-			"declares 1 step(s)"},
 		{"a schedule no year's column carries", []export.View{ok,
 			wholeView(func(v *export.View) { v.Draws = "revenue-trends" })},
 			"is of a column that carries none"},
@@ -1812,7 +946,8 @@ func readFile(t *testing.T, dir, name string) string {
 
 // TestTheSpineTemplatePublishesTheColumnOrderItDeclares: the chart template
 // publishes the overview's hints, and only a rendered page can say it does. A
-// spine whose order was dropped aligns on d3's justify and nothing reports it.
+// spine whose order was dropped places no root of the expansion, and nothing
+// reports it.
 //
 // The mutation: drop Overview from buildSankeyPage's clientConfig.
 func TestTheSpineTemplatePublishesTheColumnOrderItDeclares(t *testing.T) {
@@ -1822,12 +957,7 @@ func TestTheSpineTemplatePublishesTheColumnOrderItDeclares(t *testing.T) {
 		Projections: map[string][]byte{"sankey": goldenSankey(t)},
 		Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
 			Template: export.SankeyTemplate, Projection: "sankey",
-			Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{0, 2, 5}}},
-			Steps: []export.DrillStep{{Key: "group", After: []string{""}, From: 2,
-				Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
-					Tiers: []int{0, 2},
-				}},
-				Back: "All fund groups", Noun: "thing", Tail: "funds", Description: "One."}}}},
+			Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{0, 2, 5}}}}},
 		Docs:        budgetDocs(),
 		GeneratedBy: "fisc test",
 	}); err != nil {
@@ -3165,27 +2295,6 @@ func TestTheApparatusShipsClosedOnEveryChartPage(t *testing.T) {
 	}
 }
 
-// TestTheColumnControlShipsInertOnEveryChartPage: if the templates stop
-// rendering the column control, wireColumns' `if (fewer && more)` swallows it in
-// silence. It asserts `disabled` too, so a reader without JavaScript is not
-// handed two buttons that do nothing.
-func TestTheColumnControlShipsInertOnEveryChartPage(t *testing.T) {
-	dir := chartAndSpine(t)
-	for _, page := range []string{export.IndexPath} {
-		html := readFile(t, dir, page)
-		for _, want := range []string{
-			`<button type="button" id="column-fewer" aria-label="Fewer columns" disabled>`,
-			`<button type="button" id="column-more" aria-label="More columns" disabled>`,
-			`<span id="column-count" aria-live="polite">`,
-		} {
-			if !strings.Contains(html, want) {
-				t.Errorf("%s does not render %s, so the column control is either absent or "+
-					"ships live; app.js enables it either way", page, want)
-			}
-		}
-	}
-}
-
 // TestAClosedFlowTableIsNotDescribedAsListedBelow is the a11y claim
 // index.html.tmpl's disclosure comment argues, enforced rather than restated: a
 // closed <details> is collapsed for assistive technology as well as visually,
@@ -3418,52 +2527,6 @@ func TestTheCaveatsPageFoldsItsFileListAndNotItsReason(t *testing.T) {
 	}
 }
 
-// TestAStepDescriptionMayCloseWithAnyTerminatorAppJsSplitsOn: validate refuses
-// an unterminated DrillStep.Description because app.js appends sentences after
-// it. The accepting half is what keeps validate from narrowing to "." alone.
-func TestAStepDescriptionMayCloseWithAnyTerminatorAppJsSplitsOn(t *testing.T) {
-	for _, tc := range []struct {
-		desc   string
-		accept bool
-	}{
-		{"A description.", true},
-		{"What does it draw?", true},
-		{"Look at this!", true},
-		{"A description", false},
-		{"A description;", false},
-		{"A description ", false},
-	} {
-		fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
-		if err != nil {
-			t.Fatalf("read fund-flows golden: %v", err)
-		}
-		_, err = writeSite(export.Options{
-			Dir:         t.TempDir(),
-			Projections: map[string][]byte{"sankey": goldenSankey(t), "fund-flows": headlined(t, fundFlows)},
-			Views: []export.View{
-				{Path: export.IndexPath, Nav: "Budget flows",
-					Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "sankey"},
-				{Path: "spending.html", Nav: "Spending", Template: export.SankeyTemplate,
-					Projection: "fund-flows", Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{0, 2, 4}}},
-					Steps: []export.DrillStep{{Key: "groups", After: []string{""}, From: 2,
-						Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
-							Tiers: []int{0, 3},
-							Caps:  []export.TierCap{{Tier: 3, Cap: 8}},
-						}}, Back: "All groups", Noun: "thing", Tail: "funds", Description: tc.desc}}},
-			},
-			Docs:        budgetDocs(),
-			GeneratedBy: "fisc test",
-		})
-		switch {
-		case tc.accept && err != nil:
-			t.Errorf("Write refused the description %q: %v", tc.desc, err)
-		case !tc.accept && err == nil:
-			t.Errorf("Write accepted the description %q, which does not close a "+
-				"sentence; app.js would run the template's pointer into it", tc.desc)
-		}
-	}
-}
-
 // TestEveryFooterDisclosureKeepsItsHeadingInTheOutline asserts the rule on the
 // TEMPLATES rather than on rendered pages: the four pages that cite a figure
 // execute one sources partial, and caveats.html.tmpl folds its own file list,
@@ -3638,90 +2701,10 @@ func TestTheTablePagesFoldTheirApparatusAndNotTheirWarnings(t *testing.T) {
 	}
 }
 
-// TestAStepsDocumentIsCitedByThePageThatOpensIt: a step that switches document
-// draws figures from pages the view's year loop never decodes, and both the
-// footer and the client's docs map must carry them. citations() in site/app.js
-// skips a doc_id the map lacks, silently; the fixture restamps the step's
-// doc_id because the site's two documents share one.
-func TestAStepsDocumentIsCitedByThePageThatOpensIt(t *testing.T) {
-	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
-	if err != nil {
-		t.Fatalf("read fund-flows golden: %v", err)
-	}
-	steps := []export.DrillStep{
-		{Key: "group", After: []string{""}, From: 2, Projection: "fund-flows",
-			Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
-				Tiers: []int{0, 3, 4},
-				Caps:  []export.TierCap{{Tier: 3, Cap: 8}, {Tier: 4, Cap: 24, Tail: "divisions"}},
-			}},
-			Back: "All fund groups", Noun: "thing", Tail: "funds", Description: "Opened."},
-		// A second root, on the other side and in a role, so every walked field is
-		// non-zero on the wire.
-		{Key: "category", After: []string{""}, From: 0,
-			Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Side: export.SideSource, Tiers: []int{1, 3},
-				Caps: []export.TierCap{{Tier: 1, Cap: 8}, {Tier: 3, Cap: 8, Tail: "funds"}},
-			}}, Role: "revenue_source",
-			Projection: "fund-flows",
-			Back:       "All revenue categories", Noun: "thing", Tail: "lines", Description: "Opened a category."},
-		// And a child, because both roots carry After [""]: without After on the wire,
-		// app.js's STEPS drops every step.
-		{Key: "division", After: []string{"group"}, From: 4,
-			Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{4, 5},
-				Caps: []export.TierCap{{Tier: 5, Cap: 8}},
-			}},
-			Back: "All divisions", Noun: "thing", Tail: "categories", Description: "Opened a division."},
-	}
-	dir := t.TempDir()
-	if _, err := writeSite(export.Options{
-		Dir: dir,
-		Projections: map[string][]byte{
-			"sankey":     goldenSankey(t),
-			"fund-flows": builtLike(t, goldenSankey(t), recited(t, fundFlows, "another-doc")),
-		},
-		Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
-			Template: export.SankeyTemplate, Projection: "sankey",
-			Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{0, 2, 5}}}, Steps: steps}},
-		Docs:        budgetDocs(),
-		GeneratedBy: "fisc test",
-	}); err != nil {
-		t.Fatalf("Write refused a spine that opens into a second document: %v", err)
-	}
-	page := readPage(t, dir)
-	if _, ok := configDocs(t, page)["another-doc"]; !ok {
-		t.Error("the client's docs map has no entry for the step's document, so app.js " +
-			"would drop every citation drawn from it without a word")
-	}
-	if !strings.Contains(readerVisible(t, page), "another-doc") {
-		t.Error("the footer does not cite the step's document; the page advertises the " +
-			"spine's pages under a chart drawn from another document's")
-	}
-
-	// Decoded back through the same type, so the round trip is the claim.
-	var cfg struct {
-		Steps []export.DrillStep `json:"steps"`
-	}
-	if err := json.Unmarshal(configBlob(t, page), &cfg); err != nil {
-		t.Fatalf("decode window.FISC_CONFIG: %v", err)
-	}
-	// Key, After, Side, Role and per-cap Tail are what site/app.js matches and
-	// labels a step by; each is non-zero on the declaration, so a tag dropped to
-	// `json:"-"` is a diff here.
-	wantOnWire := slices.Clone(steps)
-	second := steps[1]
-	if second.Key == "" || second.Sankey.Side == "" || second.Role == "" || second.Sankey.Caps[1].Tail == "" ||
-		len(steps[2].After) == 0 || steps[2].After[0] == "" {
-		t.Fatal("the declared steps carry no key, after, side, role or cap tail, so the " +
-			"comparison below asserts nothing")
-	}
-	if diff := cmp.Diff(wantOnWire, cfg.Steps); diff != "" {
-		t.Errorf("FISC_CONFIG.steps (-want +got):\n%s", diff)
-	}
-}
-
-// TestTheSpineShipsAChainOnlyWhenItDeclaresOne: a spine with no steps ships no
-// steps key, which app.js reads as "this page isolates on a click", and the
-// chain's elements are in the page either way, hidden and empty.
-func TestTheSpineShipsAChainOnlyWhenItDeclaresOne(t *testing.T) {
+// TestTheSpineShipsItsChipRowHiddenAndEmpty: the page config carries no steps
+// key, and the chip row and the hint are in the page, hidden and empty, for
+// app.js to fill with what the reader splits open.
+func TestTheSpineShipsItsChipRowHiddenAndEmpty(t *testing.T) {
 	dir := t.TempDir()
 	if _, err := writeSite(export.Options{
 		Dir:         dir,
@@ -3739,156 +2722,16 @@ func TestTheSpineShipsAChainOnlyWhenItDeclaresOne(t *testing.T) {
 		t.Fatalf("decode window.FISC_CONFIG: %v", err)
 	}
 	if _, ok := cfg["steps"]; ok {
-		t.Errorf("a spine with no steps ships %s, want no steps key at all", cfg["steps"])
+		t.Errorf("the spine ships steps %s, want no steps key at all", cfg["steps"])
 	}
 	visible := readerVisible(t, page)
 	for _, want := range []string{
-		`<nav class="breadcrumb" id="breadcrumb" aria-label="Chart depth" hidden></nav>`,
+		`<div class="breadcrumb" id="breadcrumb" role="group" aria-label="What the chart has split open" hidden></div>`,
 		`<span id="chart-hint"></span>`,
 	} {
 		if !strings.Contains(visible, want) {
-			t.Errorf("the spine does not carry %s; a chain declared on it would have "+
-				"nowhere to paint its way back out of a node", want)
-		}
-	}
-}
-
-// TestAStepThatSwitchesDocumentMayRepeatTierNumbers: tier numbers belong to a
-// document, so {0, 3} of another document is a different chart, while the same
-// numbers of the same document would redraw what the reader just left.
-func TestAStepThatSwitchesDocumentMayRepeatTierNumbers(t *testing.T) {
-	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
-	if err != nil {
-		t.Fatalf("read fund-flows golden: %v", err)
-	}
-	// {0, 2} are tiers both documents decompose a node into, so stepDocuments'
-	// refusal of a step whose document decomposes nothing does not fire first.
-	write := func(secondStepDoc string) error {
-		_, err := writeSite(export.Options{
-			Dir: t.TempDir(),
-			Projections: map[string][]byte{
-				"sankey": goldenSankey(t), "fund-flows": builtLike(t, goldenSankey(t), fundFlows),
-			},
-			Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
-				Template: export.SankeyTemplate, Projection: "sankey",
-				Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{0, 2, 5}}},
-				Steps: []export.DrillStep{
-					{Key: "group", After: []string{""}, From: 2, Projection: "fund-flows",
-						Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
-							Tiers: []int{0, 2},
-						}},
-						Back: "All fund groups", Noun: "thing", Tail: "funds", Description: "One."},
-					{Key: "fund", After: []string{"group"}, From: 2, Projection: secondStepDoc,
-						Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
-							Tiers: []int{0, 2},
-						}},
-						Back: "All funds", Noun: "thing", Tail: "things", Description: "Two."},
-				}}},
-			Docs:        budgetDocs(),
-			GeneratedBy: "fisc test",
-		})
-		return err
-	}
-	if err := write("sankey"); err != nil {
-		t.Errorf("a step switching back to the spine at tiers {0, 2} was refused: %v; "+
-			"the numbers are fund-flows' too, and validate cannot relate one document's to another's", err)
-	}
-	if err := write(""); err == nil {
-		t.Error("a step redrawing fund-flows' own {0, 2} was accepted; opening a node " +
-			"would redraw the chart it was opened from")
-	} else if !strings.Contains(err.Error(), "already draws") {
-		t.Errorf("got %v, want the same-tiers refusal", err)
-	}
-}
-
-// TestAStepDrawsItsParentsDocumentNotItsPredecessors: a step naming no
-// schedule draws the document of the chart it opens from, wherever it sits in
-// the list. "sibling" is declared between "group" and its child and switches
-// back to the view's own document by name; the child repeats "group"'s tiers,
-// which redraws the chart it opened from only if it resolves to "group"'s
-// document. Resolved from the step declared before it, the child would draw
-// the spine at fund-flows' tiers and be accepted.
-func TestAStepDrawsItsParentsDocumentNotItsPredecessors(t *testing.T) {
-	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
-	if err != nil {
-		t.Fatalf("read fund-flows golden: %v", err)
-	}
-	write := func(childTiers []int) error {
-		_, werr := writeSite(export.Options{
-			Dir: t.TempDir(),
-			Projections: map[string][]byte{
-				"sankey": goldenSankey(t), "fund-flows": builtLike(t, goldenSankey(t), fundFlows),
-			},
-			Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
-				Template: export.SankeyTemplate, Projection: "sankey",
-				Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{0, 2, 5}}},
-				Steps: []export.DrillStep{
-					{Key: "group", After: []string{""}, From: 2, Projection: "fund-flows",
-						Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{0, 3, 4}}},
-						Back:  "All fund groups", Noun: "thing", Tail: "funds", Description: "One."},
-					{Key: "sibling", After: []string{""}, From: 0, Projection: "sankey",
-						Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Side: export.SideSource, Tiers: []int{0, 2}}},
-						Back:  "All sources", Noun: "thing", Tail: "lines", Description: "Aside."},
-					{Key: "fund", After: []string{"group"}, From: 3,
-						Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: childTiers}},
-						Back:  "All funds", Noun: "thing", Tail: "divisions", Description: "Two."},
-				}}},
-			Docs:        budgetDocs(),
-			GeneratedBy: "fisc test",
-		})
-		return werr
-	}
-	if cerr := write([]int{3, 4}); cerr != nil {
-		t.Fatalf("the control chain was refused, so the case below is no evidence: %v", cerr)
-	}
-	err = write([]int{0, 3, 4})
-	if err == nil {
-		t.Fatal("a child repeating its parent's tiers was accepted; it resolved to a document " +
-			"other than its parent's")
-	}
-	for _, want := range []string{"already draws", `of "fund-flows"`} {
-		if !strings.Contains(err.Error(), want) {
-			t.Errorf("error %q does not contain %q", err, want)
-		}
-	}
-}
-
-// TestAStepDocumentBuiltByAnotherProjectionIsRefused is
-// TestAYearStemBuiltByAnotherProjectionIsRefused for a step's document: the
-// footer credits the opening document's builder for every figure the page
-// draws, a step's included, and only stepDocuments compares them.
-func TestAStepDocumentBuiltByAnotherProjectionIsRefused(t *testing.T) {
-	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
-	if err != nil {
-		t.Fatalf("read fund-flows golden: %v", err)
-	}
-	write := func(stepDoc []byte) error {
-		_, werr := writeSite(export.Options{
-			Dir:         t.TempDir(),
-			Projections: map[string][]byte{"sankey": goldenSankey(t), "fund-flows": stepDoc},
-			Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
-				Template: export.SankeyTemplate, Projection: "sankey",
-				Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{0, 2, 5}}},
-				Steps: []export.DrillStep{{Key: "group", After: []string{""}, From: 2, Projection: "fund-flows",
-					Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{0, 2}}},
-					Back:  "All fund groups", Noun: "thing", Tail: "funds", Description: "One."}},
-			}},
-			Docs:        budgetDocs(),
-			GeneratedBy: "fisc test",
-		})
-		return werr
-	}
-	if cerr := write(builtLike(t, goldenSankey(t), fundFlows)); cerr != nil {
-		t.Fatalf("the control was refused, so the case below is no evidence: %v", cerr)
-	}
-	err = write(builtLike(t, []byte(`{"metadata": {"generated_by": "fisc some-other-build"}}`), fundFlows))
-	if err == nil {
-		t.Fatal("a step document built by another projection was exported; the footer " +
-			"credits one builder for figures drawn from two documents")
-	}
-	for _, want := range []string{"fund-flows", "fisc some-other-build", "footer credits one projection"} {
-		if !strings.Contains(err.Error(), want) {
-			t.Errorf("the refusal does not name %q: %v", want, err)
+			t.Errorf("the spine does not carry %s; a node split open would have "+
+				"nowhere to paint the way to fold it back", want)
 		}
 	}
 }
@@ -3913,194 +2756,40 @@ func builtLike(t *testing.T, like, raw []byte) []byte {
 	return out
 }
 
-// columnless strips fiscal_year and basis from a document's metadata, a shape
-// neither decodeSankey nor stepDocument refuses.
-func columnless(t *testing.T, raw []byte) []byte {
-	t.Helper()
-	var doc map[string]any
-	if err := json.Unmarshal(raw, &doc); err != nil {
-		t.Fatalf("columnless: %v", err)
-	}
-	meta, ok := doc["metadata"].(map[string]any)
-	if !ok {
-		t.Fatalf("columnless: no metadata object")
-	}
-	delete(meta, "fiscal_year")
-	delete(meta, "basis")
-	out, err := json.Marshal(doc)
-	if err != nil {
-		t.Fatalf("columnless: %v", err)
-	}
-	return out
-}
-
-// TestAStepsColumnJoinIsExactOrRefused covers every arm that refuses a step
-// whose schedule its year's column cannot answer, each broken on its own from
-// one well-formed two-year chain whose control passes first.
-func TestAStepsColumnJoinIsExactOrRefused(t *testing.T) {
-	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
-	if err != nil {
-		t.Fatalf("read fund-flows golden: %v", err)
-	}
-	spine := goldenSankey(t)
-	projections := func() map[string][]byte {
-		return map[string][]byte{
-			"sankey":          spine,
-			"sankey-2027":     reyeared(t, spine, 2027, "FY 2026-27"),
-			"fund-flows":      builtLike(t, spine, fundFlows),
-			"fund-flows-2027": builtLike(t, spine, reyeared(t, fundFlows, 2027, "FY 2026-27")),
-		}
-	}
-	chain := func(breaks func(*export.View)) export.View {
-		v := export.View{
-			Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate,
-			Projection: "sankey", YearStems: []string{"sankey", "sankey-2027"},
-			Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{0, 2, 5}}},
-			Steps: []export.DrillStep{
-				{Key: "group", After: []string{""}, From: 2, Projection: "fund-flows",
-					Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
-						Tiers: []int{0, 3, 4},
-					}}, Back: "All fund groups", Noun: "thing", Tail: "funds", Description: "One."},
-				{Key: "division", After: []string{"group"}, From: 4,
-					Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{4, 5}}},
-					Back:  "All divisions", Noun: "thing", Tail: "categories", Description: "Two."},
-			},
-		}
-		breaks(&v)
-		return v
-	}
-	write := func(v export.View, projections map[string][]byte) error {
-		_, err := writeSite(export.Options{
-			Dir: t.TempDir(), Projections: projections, Views: []export.View{v},
-			Docs: budgetDocs(), GeneratedBy: "fisc test",
-		})
-		return err
-	}
-	if err := write(chain(func(*export.View) {}), projections()); err != nil {
-		t.Fatalf("the control chain was refused, so no case below is evidence: %v", err)
-	}
-	for _, c := range []struct {
-		name   string
-		breaks func(*export.View)
-		built  map[string][]byte
-		want   string
-	}{
-		// The schedule a year cannot answer: the document it resolves to must have
-		// folded into the column a reader fetches.
-		{"a step naming a schedule no column carries", func(v *export.View) {
-			v.Steps[0].Projection = "nope"
-		}, projections(), `opens into schedule "nope"`},
-		// One year of two: only the 2027 document is dropped.
-		{"a schedule missing from the second year's column only", func(*export.View) {},
-			func() map[string][]byte {
-				p := projections()
-				delete(p, "fund-flows-2027")
-				return p
-			}(), `carries no such schedule`},
-		// A document in no column is in no index, so it is the same refusal as above.
-		{"a step document that does not say which column it is of", func(*export.View) {},
-			func() map[string][]byte {
-				p := projections()
-				p["fund-flows-2027"] = builtLike(t, goldenSankey(t),
-					columnless(t, reyeared(t, fundFlows, 2027, "FY 2026-27")))
-				return p
-			}(), `carries no such schedule`},
-		{"a year that does not state its own column", func(*export.View) {},
-			func() map[string][]byte {
-				p := projections()
-				p["sankey-2027"] = columnless(t, reyeared(t, spine, 2027, "FY 2026-27"))
-				return p
-			}(), "folded into no column"},
-		// A step document built by another projection would have the footer credit
-		// one builder for figures drawn from two.
-		{"a year's step document built by another projection", func(*export.View) {},
-			func() map[string][]byte {
-				p := projections()
-				p["fund-flows-2027"] = reyeared(t, fundFlows, 2027, "FY 2026-27")
-				return p
-			}(), "the footer credits one projection for figures drawn from both"},
-	} {
-		t.Run(c.name, func(t *testing.T) {
-			err := write(chain(c.breaks), c.built)
-			if err == nil {
-				t.Fatalf("Write accepted %s", c.name)
-			}
-			if !strings.Contains(err.Error(), c.want) {
-				t.Errorf("error %q does not contain %q", err, c.want)
-			}
-		})
-	}
-}
-
 // TestADeclaredTierIsCarriedInEveryYearTheViewLists: a chart is one year's,
 // so a column it declares is held against that year's document. One year of
-// two missing the tier passes an any-year check, and the client then offers
-// that year's nodes and lays each out around an empty column. A widened tier
-// is the client's to drop, so it needs carrying in only one year.
+// two missing the tier passes an any-year check, and the client then lays
+// that year's chart out around an empty column.
 func TestADeclaredTierIsCarriedInEveryYearTheViewLists(t *testing.T) {
-	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
-	if err != nil {
-		t.Fatalf("read fund-flows golden: %v", err)
-	}
 	spine := goldenSankey(t)
 	projections := func(stem string, tier int) map[string][]byte {
 		p := map[string][]byte{
-			"sankey":          spine,
-			"sankey-2027":     reyeared(t, spine, 2027, "FY 2026-27"),
-			"fund-flows":      builtLike(t, spine, fundFlows),
-			"fund-flows-2027": builtLike(t, spine, reyeared(t, fundFlows, 2027, "FY 2026-27")),
+			"sankey":      spine,
+			"sankey-2027": reyeared(t, spine, 2027, "FY 2026-27"),
 		}
 		if stem != "" {
 			p[stem] = withoutTier(t, p[stem], tier)
 		}
 		return p
 	}
-	view := func(tiers, keep, widen []int) export.View {
-		return export.View{
-			Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate,
-			Projection: "sankey", YearStems: []string{"sankey", "sankey-2027"},
-			Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{0, 2, 5}}},
-			Steps: []export.DrillStep{{Key: "group", After: []string{""}, From: 2, Projection: "fund-flows",
-				Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
-					Tiers: tiers, Keep: keep, Widen: widen,
-				}}, Back: "All fund groups", Noun: "thing", Tail: "funds", Description: "One."}},
-		}
+	view := export.View{
+		Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate,
+		Projection: "sankey", YearStems: []string{"sankey", "sankey-2027"},
+		Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{0, 2, 5}}},
 	}
-	write := func(v export.View, projections map[string][]byte) error {
+	write := func(projections map[string][]byte) error {
 		_, err := writeSite(export.Options{
-			Dir: t.TempDir(), Projections: projections, Views: []export.View{v},
+			Dir: t.TempDir(), Projections: projections, Views: []export.View{view},
 			Docs: budgetDocs(), GeneratedBy: "fisc test",
 		})
 		return err
 	}
-	if err := write(view([]int{0, 2, 3, 4}, []int{0}, []int{4}), projections("", 0)); err != nil {
-		t.Fatalf("the control was refused, so no case below is evidence: %v", err)
+	if err := write(projections("", 0)); err != nil {
+		t.Fatalf("the control was refused, so the case below is evidence of nothing: %v", err)
 	}
-	if err := write(view([]int{0, 2, 3, 4}, []int{0}, []int{4}), projections("fund-flows-2027", 4)); err != nil {
-		t.Errorf("a widened tier one year carries was refused; the client drops it where it is empty: %v", err)
-	}
-	for _, c := range []struct {
-		name  string
-		view  export.View
-		built map[string][]byte
-		want  string
-	}{
-		{"a step's tier the second year's document lacks", view([]int{0, 3, 4}, nil, nil),
-			projections("fund-flows-2027", 4),
-			`step 0 draws tier 4, and "fund-flows-2027", the document it draws in year "sankey-2027"`},
-		{"the view's own tier the second year's document lacks", view([]int{0, 3, 4}, nil, nil),
-			projections("sankey-2027", 5),
-			`chart draws tier 5, and "sankey-2027", its document in that year`},
-	} {
-		t.Run(c.name, func(t *testing.T) {
-			err := write(c.view, c.built)
-			if err == nil {
-				t.Fatalf("Write accepted %s", c.name)
-			}
-			if !strings.Contains(err.Error(), c.want) {
-				t.Errorf("error %q does not contain %q", err, c.want)
-			}
-		})
+	err := write(projections("sankey-2027", 5))
+	if want := `chart draws tier 5, and "sankey-2027", its document in that year`; err == nil || !strings.Contains(err.Error(), want) {
+		t.Errorf("the view's own tier the second year's document lacks: err = %v, want it to say %q", err, want)
 	}
 }
 
@@ -4136,119 +2825,6 @@ func withoutTier(t *testing.T, raw []byte, tier int) []byte {
 	out, err := json.Marshal(doc)
 	if err != nil {
 		t.Fatalf("withoutTier: %v", err)
-	}
-	return out
-}
-
-// TestEachYearOpensIntoItsOwnStepDocumentWithItsOwnCaveatLinks is the per-year
-// join on the wire (fisc-ko1j.13). The caveat href reading
-// caveat-fund-flows-2027-- is the evidence that FY2026-27's rung resolved to its
-// own document and that a depth-1 mark links that document's paragraph. The
-// same-document second step resolves to the first's document, and the second
-// year's step document must reach the docs map and the footer, or app.js drops
-// its citations.
-func TestEachYearOpensIntoItsOwnStepDocumentWithItsOwnCaveatLinks(t *testing.T) {
-	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
-	if err != nil {
-		t.Fatalf("read fund-flows golden: %v", err)
-	}
-	const secondYearDoc = "another-doc-2027"
-	spine := goldenSankey(t)
-	dir := t.TempDir()
-	if _, err := writeSite(export.Options{
-		Dir: dir,
-		Projections: map[string][]byte{
-			"sankey":      spine,
-			"sankey-2027": reyeared(t, spine, 2027, "FY 2026-27"),
-			"fund-flows":  builtLike(t, spine, fundFlows),
-			"fund-flows-2027": builtLike(t, spine,
-				recited(t, reyeared(t, fundFlows, 2027, "FY 2026-27"), secondYearDoc)),
-		},
-		Views: []export.View{
-			{Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate,
-				Projection: "sankey", YearStems: []string{"sankey", "sankey-2027"},
-				Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{0, 2, 5}}},
-				Steps: []export.DrillStep{
-					{Key: "group", After: []string{""}, From: 2, Projection: "fund-flows",
-						Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
-							Tiers: []int{0, 3, 4},
-						}}, Back: "All fund groups", Noun: "thing", Tail: "funds", Description: "One."},
-					{Key: "division", After: []string{"group"}, From: 4,
-						Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{4, 5}}},
-						Back:  "All divisions", Noun: "thing", Tail: "categories", Description: "Two."},
-				}},
-			{Path: "caveats.html", Nav: "Caveats", Template: export.CaveatsTemplate,
-				Title: "What these figures do not say", Lede: "A lede."},
-		},
-		Docs: append(budgetDocs(), export.Doc{ID: secondYearDoc, Title: "Another document",
-			Publisher: "City of Livermore"}),
-		GeneratedBy: "fisc test",
-	}); err != nil {
-		t.Fatalf("Write: %v", err)
-	}
-	page := readPage(t, dir)
-	var cfg struct {
-		Years []struct {
-			Stem  string `json:"stem"`
-			Steps []struct {
-				Caveats []struct {
-					ID   string `json:"id"`
-					Href string `json:"href"`
-				} `json:"caveats"`
-			} `json:"steps"`
-		} `json:"years"`
-	}
-	if err := json.Unmarshal(configBlob(t, page), &cfg); err != nil {
-		t.Fatalf("decode window.FISC_CONFIG: %v", err)
-	}
-	if len(cfg.Years) != 2 {
-		t.Fatalf("got %d years, want 2", len(cfg.Years))
-	}
-	const caveat = "only-the-general-fund-has-divisions"
-	for i, want := range []string{"fund-flows", "fund-flows-2027"} {
-		y := cfg.Years[i]
-		if len(y.Steps) != 2 {
-			t.Fatalf("year %s carries %d step entries, want one per declared step", y.Stem, len(y.Steps))
-		}
-		for k, s := range y.Steps {
-			href := ""
-			for _, c := range s.Caveats {
-				if c.ID == caveat {
-					href = c.Href
-				}
-			}
-			if wantHref := "caveats.html#caveat-" + want + "--" + caveat; href != wantHref {
-				t.Errorf("year %s step %d links %s to %q, want %q: a caveat on a depth-%d "+
-					"mark would land on the wrong document's paragraph, or on none",
-					y.Stem, k, caveat, href, wantHref, k+1)
-			}
-		}
-	}
-	if _, ok := configDocs(t, page)[secondYearDoc]; !ok {
-		t.Errorf("the client's docs map has no entry for the second year's step document %q, "+
-			"so app.js would drop every citation drawn from it under that year", secondYearDoc)
-	}
-	if !strings.Contains(readerVisible(t, page), "Another document") {
-		t.Error("the footer does not cite the second year's step document")
-	}
-}
-
-// recited restamps every source a projection cites onto one document id, so a
-// fixture can cite a document the rest of the site does not.
-func recited(t *testing.T, raw []byte, docID string) []byte {
-	t.Helper()
-	var doc map[string]any
-	if err := json.Unmarshal(raw, &doc); err != nil {
-		t.Fatalf("decode: %v", err)
-	}
-	meta := doc["metadata"].(map[string]any)
-	srcs := meta["sources"].([]any)
-	for _, s := range srcs {
-		s.(map[string]any)["doc_id"] = docID
-	}
-	out, err := json.Marshal(doc)
-	if err != nil {
-		t.Fatalf("encode: %v", err)
 	}
 	return out
 }
@@ -4318,60 +2894,5 @@ func TestThePageOpensOnTheYearItDeclaresWhileListingThemOldestFirst(t *testing.T
 	}
 	if !strings.Contains(page, "<title>City of Livermore budget flows — FY 2026-27</title>") {
 		t.Error("the document title is not the opening year's")
-	}
-}
-
-// TestTheServedStepsCarryTheirLicences pins the two declarations the client
-// draws its marks from to the wire: a residual's grain, which names the mark,
-// and a gap's licence -- the column, the signed cents and the reason -- which
-// the client holds its drawn difference to. Decoded back into the declaring
-// type, so a field neither side names is a difference here.
-//
-// The mutations: json:"-" back on DrillStep.ResidualGrain and the grain comes
-// back ""; Gaps marshalled as its reasons joined and the steps do not decode.
-func TestTheServedStepsCarryTheirLicences(t *testing.T) {
-	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
-	if err != nil {
-		t.Fatalf("read fund-flows golden: %v", err)
-	}
-	declared := []export.DrillStep{{
-		Key: "group", After: []string{""}, From: 2, Projection: "fund-flows",
-		Chart: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
-			Tiers: []int{0, 2},
-		}}, Back: "All fund groups", Noun: "fund group", Tail: "funds",
-		Description:   "One.",
-		Residual:      map[string]string{"transfers/in": "pp.127-140 print it for no fund"},
-		ResidualGrain: "fund",
-		Gaps: map[string][]project.Gap{"fund-group/general": {
-			{FiscalYear: 2026, Basis: "adopted", Cents: -25000000, Reason: "The pages disagree."},
-			{FiscalYear: 2027, Basis: "adopted", Cents: 4200, Reason: "So do these."},
-		}},
-	}}
-	dir := t.TempDir()
-	if _, err := writeSite(export.Options{
-		Dir: dir,
-		Projections: map[string][]byte{
-			"sankey": goldenSankey(t), "sankey-2027": reyeared(t, goldenSankey(t), 2027, "FY 2027-28"),
-			"fund-flows":      builtLike(t, goldenSankey(t), fundFlows),
-			"fund-flows-2027": builtLike(t, goldenSankey(t), reyeared(t, fundFlows, 2027, "FY 2027-28")),
-		},
-		Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
-			Template: export.SankeyTemplate, Projection: "sankey", YearStems: []string{"sankey", "sankey-2027"},
-			Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{0, 2, 5}}}, Steps: declared}},
-		Docs:        budgetDocs(),
-		GeneratedBy: "fisc test",
-	}); err != nil {
-		t.Fatalf("Write: %v", err)
-	}
-	var served struct {
-		Steps []export.DrillStep `json:"steps"`
-	}
-	if err := json.Unmarshal(configBlob(t, readFile(t, dir, "index.html")), &served); err != nil {
-		t.Fatalf("decode window.FISC_CONFIG.steps: %v", err)
-	}
-	if diff := cmp.Diff(declared, served.Steps); diff != "" {
-		t.Errorf("the steps window.FISC_CONFIG carries are not the ones declared (-declared +served):\n%s\n"+
-			"the client names the residual mark for residual_grain and holds a gap to its "+
-			"licence's cents; a field dropped here is a mark drawn from nothing", diff)
 	}
 }

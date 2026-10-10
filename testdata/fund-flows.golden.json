@@ -2261,7 +2261,7 @@
     },
     {
       "id": "expenditure/administrative-services/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Administrative Services: Services & Supplies",
       "tier": 5,
       "parent": "dept/administrative-services",
       "constraint_tier": "",
@@ -2272,7 +2272,7 @@
     },
     {
       "id": "expenditure/administrative-services/wages-and-benefits",
-      "label": "Wages & Benefits",
+      "label": "Administrative Services: Wages & Benefits",
       "tier": 5,
       "parent": "dept/administrative-services",
       "constraint_tier": "",
@@ -2283,7 +2283,7 @@
     },
     {
       "id": "expenditure/building-and-safety/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Building & Safety: Services & Supplies",
       "tier": 5,
       "parent": "dept/building-and-safety",
       "constraint_tier": "",
@@ -2294,7 +2294,7 @@
     },
     {
       "id": "expenditure/building-and-safety/wages-and-benefits",
-      "label": "Wages & Benefits",
+      "label": "Building & Safety: Wages & Benefits",
       "tier": 5,
       "parent": "dept/building-and-safety",
       "constraint_tier": "",
@@ -2305,7 +2305,7 @@
     },
     {
       "id": "expenditure/city-attorney/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "City Attorney: Services & Supplies",
       "tier": 5,
       "parent": "dept/city-attorney",
       "constraint_tier": "",
@@ -2316,7 +2316,7 @@
     },
     {
       "id": "expenditure/city-attorney/wages-and-benefits",
-      "label": "Wages & Benefits",
+      "label": "City Attorney: Wages & Benefits",
       "tier": 5,
       "parent": "dept/city-attorney",
       "constraint_tier": "",
@@ -2327,7 +2327,7 @@
     },
     {
       "id": "expenditure/city-clerk/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "City Clerk: Services & Supplies",
       "tier": 5,
       "parent": "dept/city-clerk",
       "constraint_tier": "",
@@ -2338,7 +2338,7 @@
     },
     {
       "id": "expenditure/city-clerk/wages-and-benefits",
-      "label": "Wages & Benefits",
+      "label": "City Clerk: Wages & Benefits",
       "tier": 5,
       "parent": "dept/city-clerk",
       "constraint_tier": "",
@@ -2349,7 +2349,7 @@
     },
     {
       "id": "expenditure/city-council/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "City Council: Services & Supplies",
       "tier": 5,
       "parent": "dept/city-council",
       "constraint_tier": "",
@@ -2360,7 +2360,7 @@
     },
     {
       "id": "expenditure/city-council/wages-and-benefits",
-      "label": "Wages & Benefits",
+      "label": "City Council: Wages & Benefits",
       "tier": 5,
       "parent": "dept/city-council",
       "constraint_tier": "",
@@ -2371,7 +2371,7 @@
     },
     {
       "id": "expenditure/city-manager/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "City Manager: Services & Supplies",
       "tier": 5,
       "parent": "dept/city-manager",
       "constraint_tier": "",
@@ -2382,7 +2382,7 @@
     },
     {
       "id": "expenditure/city-manager/wages-and-benefits",
-      "label": "Wages & Benefits",
+      "label": "City Manager: Wages & Benefits",
       "tier": 5,
       "parent": "dept/city-manager",
       "constraint_tier": "",
@@ -2393,7 +2393,7 @@
     },
     {
       "id": "expenditure/community-development-admin/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Community Development Admin: Services & Supplies",
       "tier": 5,
       "parent": "dept/community-development-admin",
       "constraint_tier": "",
@@ -2404,7 +2404,7 @@
     },
     {
       "id": "expenditure/community-development-admin/wages-and-benefits",
-      "label": "Wages & Benefits",
+      "label": "Community Development Admin: Wages & Benefits",
       "tier": 5,
       "parent": "dept/community-development-admin",
       "constraint_tier": "",
@@ -2415,7 +2415,7 @@
     },
     {
       "id": "expenditure/engineering/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Engineering: Services & Supplies",
       "tier": 5,
       "parent": "dept/engineering",
       "constraint_tier": "",
@@ -2426,7 +2426,7 @@
     },
     {
       "id": "expenditure/engineering/wages-and-benefits",
-      "label": "Wages & Benefits",
+      "label": "Engineering: Wages & Benefits",
       "tier": 5,
       "parent": "dept/engineering",
       "constraint_tier": "",
@@ -2437,7 +2437,7 @@
     },
     {
       "id": "expenditure/environmental-services/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Environmental Services: Services & Supplies",
       "tier": 5,
       "parent": "dept/environmental-services",
       "constraint_tier": "",
@@ -2448,7 +2448,7 @@
     },
     {
       "id": "expenditure/environmental-services/wages-and-benefits",
-      "label": "Wages & Benefits",
+      "label": "Environmental Services: Wages & Benefits",
       "tier": 5,
       "parent": "dept/environmental-services",
       "constraint_tier": "",
@@ -2459,7 +2459,7 @@
     },
     {
       "id": "expenditure/finance/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Finance: Services & Supplies",
       "tier": 5,
       "parent": "dept/finance",
       "constraint_tier": "",
@@ -2470,7 +2470,7 @@
     },
     {
       "id": "expenditure/finance/wages-and-benefits",
-      "label": "Wages & Benefits",
+      "label": "Finance: Wages & Benefits",
       "tier": 5,
       "parent": "dept/finance",
       "constraint_tier": "",
@@ -2481,7 +2481,7 @@
     },
     {
       "id": "expenditure/fire-administration/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Fire Administration: Services & Supplies",
       "tier": 5,
       "parent": "dept/fire-administration",
       "constraint_tier": "",
@@ -3449,7 +3449,7 @@
     },
     {
       "id": "expenditure/general-services/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "General Services: Services & Supplies",
       "tier": 5,
       "parent": "dept/general-services",
       "constraint_tier": "",
@@ -3460,7 +3460,7 @@
     },
     {
       "id": "expenditure/housing-and-human-services/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Housing & Human Services: Services & Supplies",
       "tier": 5,
       "parent": "dept/housing-and-human-services",
       "constraint_tier": "",
@@ -3471,7 +3471,7 @@
     },
     {
       "id": "expenditure/housing-and-human-services/wages-and-benefits",
-      "label": "Wages & Benefits",
+      "label": "Housing & Human Services: Wages & Benefits",
       "tier": 5,
       "parent": "dept/housing-and-human-services",
       "constraint_tier": "",
@@ -3482,7 +3482,7 @@
     },
     {
       "id": "expenditure/human-resources/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Human Resources: Services & Supplies",
       "tier": 5,
       "parent": "dept/human-resources",
       "constraint_tier": "",
@@ -3493,7 +3493,7 @@
     },
     {
       "id": "expenditure/human-resources/wages-and-benefits",
-      "label": "Wages & Benefits",
+      "label": "Human Resources: Wages & Benefits",
       "tier": 5,
       "parent": "dept/human-resources",
       "constraint_tier": "",
@@ -3504,7 +3504,7 @@
     },
     {
       "id": "expenditure/innovation-and-economic-devel/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Innovation & Economic Devel: Services & Supplies",
       "tier": 5,
       "parent": "dept/innovation-and-economic-devel",
       "constraint_tier": "",
@@ -3515,7 +3515,7 @@
     },
     {
       "id": "expenditure/innovation-and-economic-devel/wages-and-benefits",
-      "label": "Wages & Benefits",
+      "label": "Innovation & Economic Devel: Wages & Benefits",
       "tier": 5,
       "parent": "dept/innovation-and-economic-devel",
       "constraint_tier": "",
@@ -3526,7 +3526,7 @@
     },
     {
       "id": "expenditure/library/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Library: Services & Supplies",
       "tier": 5,
       "parent": "dept/library",
       "constraint_tier": "",
@@ -3537,7 +3537,7 @@
     },
     {
       "id": "expenditure/library/wages-and-benefits",
-      "label": "Wages & Benefits",
+      "label": "Library: Wages & Benefits",
       "tier": 5,
       "parent": "dept/library",
       "constraint_tier": "",
@@ -3548,7 +3548,7 @@
     },
     {
       "id": "expenditure/maintenance/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Maintenance: Services & Supplies",
       "tier": 5,
       "parent": "dept/maintenance",
       "constraint_tier": "",
@@ -3559,7 +3559,7 @@
     },
     {
       "id": "expenditure/maintenance/wages-and-benefits",
-      "label": "Wages & Benefits",
+      "label": "Maintenance: Wages & Benefits",
       "tier": 5,
       "parent": "dept/maintenance",
       "constraint_tier": "",
@@ -3570,7 +3570,7 @@
     },
     {
       "id": "expenditure/patrol/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Patrol: Services & Supplies",
       "tier": 5,
       "parent": "dept/patrol",
       "constraint_tier": "",
@@ -3581,7 +3581,7 @@
     },
     {
       "id": "expenditure/patrol/wages-and-benefits",
-      "label": "Wages & Benefits",
+      "label": "Patrol: Wages & Benefits",
       "tier": 5,
       "parent": "dept/patrol",
       "constraint_tier": "",
@@ -3592,7 +3592,7 @@
     },
     {
       "id": "expenditure/planning/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Planning: Services & Supplies",
       "tier": 5,
       "parent": "dept/planning",
       "constraint_tier": "",
@@ -3603,7 +3603,7 @@
     },
     {
       "id": "expenditure/planning/wages-and-benefits",
-      "label": "Wages & Benefits",
+      "label": "Planning: Wages & Benefits",
       "tier": 5,
       "parent": "dept/planning",
       "constraint_tier": "",
@@ -3614,7 +3614,7 @@
     },
     {
       "id": "expenditure/police-administration/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Police Administration: Services & Supplies",
       "tier": 5,
       "parent": "dept/police-administration",
       "constraint_tier": "",
@@ -3625,7 +3625,7 @@
     },
     {
       "id": "expenditure/police-administration/wages-and-benefits",
-      "label": "Wages & Benefits",
+      "label": "Police Administration: Wages & Benefits",
       "tier": 5,
       "parent": "dept/police-administration",
       "constraint_tier": "",
@@ -3636,7 +3636,7 @@
     },
     {
       "id": "expenditure/public-works-administration/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Public Works Administration: Services & Supplies",
       "tier": 5,
       "parent": "dept/public-works-administration",
       "constraint_tier": "",
@@ -3647,7 +3647,7 @@
     },
     {
       "id": "expenditure/public-works-administration/wages-and-benefits",
-      "label": "Wages & Benefits",
+      "label": "Public Works Administration: Wages & Benefits",
       "tier": 5,
       "parent": "dept/public-works-administration",
       "constraint_tier": "",
@@ -3658,7 +3658,7 @@
     },
     {
       "id": "expenditure/special-operations/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Special Operations: Services & Supplies",
       "tier": 5,
       "parent": "dept/special-operations",
       "constraint_tier": "",
@@ -3669,7 +3669,7 @@
     },
     {
       "id": "expenditure/special-operations/wages-and-benefits",
-      "label": "Wages & Benefits",
+      "label": "Special Operations: Wages & Benefits",
       "tier": 5,
       "parent": "dept/special-operations",
       "constraint_tier": "",
@@ -3680,7 +3680,7 @@
     },
     {
       "id": "expenditure/support-services/services-and-supplies",
-      "label": "Services & Supplies",
+      "label": "Support Services: Services & Supplies",
       "tier": 5,
       "parent": "dept/support-services",
       "constraint_tier": "",
@@ -3691,7 +3691,7 @@
     },
     {
       "id": "expenditure/support-services/wages-and-benefits",
-      "label": "Wages & Benefits",
+      "label": "Support Services: Wages & Benefits",
       "tier": 5,
       "parent": "dept/support-services",
       "constraint_tier": "",

@@ -499,25 +499,42 @@ func declareCompleting(st *stitch, spine *Document) {
 	}
 }
 
-// cuts builds each document the stitch reads, over the same column.
-func (e *expansion) cuts(facts []fact.Fact, o Options) (map[string]*Document, error) {
-	type built interface {
+// stitchedCut is one document the stitch reads and the options it is built
+// over.
+type stitchedCut struct {
+	p interface {
 		Name() string
 		Document([]fact.Fact, Options) (*Document, error)
 	}
-	parts := []struct {
-		p    built
-		opts Options
-	}{
-		{&sankey{Labels: e.Labels}, Options{Scopes: []string{PublishedScope}}},
-		{&fundFlows{Labels: e.Labels}, Options{Scopes: FundFlowsScopes()}},
-		{&transfersByFund{Labels: e.Labels}, Options{Scopes: TransfersByFundScopes()}},
-		{&transfersByFund{Labels: e.Labels, Out: true}, Options{Scopes: TransfersOutScopes(), Kinds: transferKinds}},
-		{&fundSourcesUses{Labels: e.Labels}, Options{Scopes: FundSourcesUsesScopes(), ThroughCuts: true}},
-		{&departmentSpending{Labels: e.Labels}, Options{Scopes: DepartmentSpendingScopes()}},
+	opts Options
+}
+
+// stitchedCuts is every document the stitch reads, each once.
+func stitchedCuts(l labels) []stitchedCut {
+	return []stitchedCut{
+		{&sankey{Labels: l}, Options{Scopes: []string{PublishedScope}}},
+		{&fundFlows{Labels: l}, Options{Scopes: FundFlowsScopes()}},
+		{&transfersByFund{Labels: l}, Options{Scopes: TransfersByFundScopes()}},
+		{&transfersByFund{Labels: l, Out: true}, Options{Scopes: TransfersOutScopes(), Kinds: transferKinds}},
+		{&fundSourcesUses{Labels: l}, Options{Scopes: FundSourcesUsesScopes(), ThroughCuts: true}},
+		{&departmentSpending{Labels: l}, Options{Scopes: DepartmentSpendingScopes()}},
 	}
+}
+
+// ExpansionStitches is the projection of every document the expansion
+// schedule of a column is stitched from, in the order the stitch reads them.
+func ExpansionStitches() []string {
+	var out []string
+	for _, c := range stitchedCuts(nil) {
+		out = append(out, c.p.Name())
+	}
+	return out
+}
+
+// cuts builds each document the stitch reads, over the same column.
+func (e *expansion) cuts(facts []fact.Fact, o Options) (map[string]*Document, error) {
 	out := map[string]*Document{}
-	for _, part := range parts {
+	for _, part := range stitchedCuts(e.Labels) {
 		opts := part.opts
 		opts.Columns = o.Columns
 		opts.Version = o.Version

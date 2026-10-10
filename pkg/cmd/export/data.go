@@ -356,12 +356,17 @@ var unviewedDocuments = map[string]string{
 
 	publishedStem(project.FundSourcesUsesProjection, actual2024):  sourcesUsesNoSpineColumn,
 	publishedStem(project.FundSourcesUsesProjection, revised2025): sourcesUsesNoSpineColumn,
+
+	publishedStem(project.DepartmentFundingProjection, adopted2026): fundingNotStitched,
+	publishedStem(project.DepartmentFundingProjection, adopted2027): fundingNotStitched,
 }
 
-// The two columns pp.66-67 print no year for.
+// The two columns pp.66-67 print no year for, and the two they print.
 var (
 	actual2024  = project.Column{FiscalYear: 2024, Basis: vocab.BasisActual}
 	revised2025 = project.Column{FiscalYear: 2025, Basis: vocab.BasisRevised}
+	adopted2026 = project.Column{FiscalYear: 2026, Basis: vocab.BasisAdopted}
+	adopted2027 = project.Column{FiscalYear: 2027, Basis: vocab.BasisAdopted}
 )
 
 // publishedStem is the stem project.PublishedDocuments gives a projection's
@@ -377,35 +382,41 @@ func publishedStem(projection string, col project.Column) string {
 }
 
 const fundingNoSpineColumn = "a published column of pp.85-125's Department Funding Sources " +
-	"with no spine year to open it from: the fund-departments step joins on Column and " +
-	"pp.66-67 print no actual or revised column. It is published because this is the only " +
+	"with no spine year to stitch it into: the expansion schedule is stitched per spine " +
+	"column and pp.66-67 print no actual or revised column. It is published because this is the only " +
 	"document drawing that block, and two of the four columns would be half a schedule with " +
 	"nothing saying which half. caveats.html lists its caveats but does not render it"
 
 const sourcesUsesNoSpineColumn = "a published column of pp.186-209's per-fund sources and " +
-	"uses with no spine year to open it from: the fund-balance steps join on Column and " +
-	"pp.66-67 print no actual or revised column. It is published because this is the only " +
+	"uses with no spine year to stitch it into: the expansion schedule is stitched per spine " +
+	"column and pp.66-67 print no actual or revised column. It is published because this is the only " +
 	"document drawing those pages, and two of the four columns would be half a schedule with " +
 	"nothing saying which half. caveats.html lists its caveats but does not render it"
 
 const spendingNoSpineColumn = "a published column of the departmentwide cross-tab with no " +
-	"spine year to open it from: the object-category step joins on Column and pp.66-67 " +
-	"print no actual or revised column. It is published because this is the only document " +
+	"spine year to stitch it into: the expansion schedule is stitched per spine column and " +
+	"pp.66-67 print no actual or revised column. It is published because this is the only document " +
 	"drawing pp.85-125, and two of the four columns would be half a schedule with nothing " +
 	"saying which half. caveats.html lists its caveats but does not render it"
 
-const fundFlowsNoSpineColumn = "a published column of the General Fund drill-down with no " +
-	"spine year to open it from: index.html opens fund-flows joining on Column and pp.66-67 " +
-	"print no actual or revised column. caveats.html lists its caveats but does not render " +
+const fundFlowsNoSpineColumn = "a published column of pp.127-140, pp.167-170 and pp.173-183 with no " +
+	"spine year to stitch it into: the expansion schedule is stitched per spine column and " +
+	"pp.66-67 print no actual or revised column. caveats.html lists its caveats but does not render " +
 	"it. Reaching it means a spine-less way into fund-flows, and FY2023-24 also carries a " +
 	"seventh fund group, permanent, which the client draws muted rather than dropping " +
 	"(fisc-zojk)"
 
+const fundingNotStitched = "an adopted column of pp.85-125's Department Funding Sources, " +
+	"which the expansion schedule is not stitched from: it declares no fund -> departments " +
+	"split, since no page prints a department's rows by fund (fisc-yj4w.34.9). It is " +
+	"published because this is the only document drawing that block. caveats.html lists " +
+	"its caveats but does not render it"
+
 // assertPublishedReachable refuses a built published document no view can
 // reach unless unviewedDocuments declares it, reached as
 // [export.View.ReachedStems] says over ix, the index folded from built: the
-// spine's second year only through the year control, and fund-flows only by
-// opening a node.
+// spine's second year only through the year control, and a schedule the
+// expansion is stitched from only through the expansion.
 func assertPublishedReachable(vs []export.View, built map[string][]byte, ix export.ColumnIndex) error {
 	reachable := make(map[string]struct{}, len(vs))
 	for _, v := range vs {
@@ -454,16 +465,16 @@ func assertPublishedReachable(vs []export.View, built map[string][]byte, ix expo
 	return nil
 }
 
-// opensInto reports whether the opening document was built and the step's
-// projection built one for the same column, which decides whether the step is
-// declared at all. It matches on Column, not declared order: fund-flows' bare
-// stem is third in PublishedDocuments. Which document each year draws is
-// export.ColumnIndex's question.
-func opensInto(opening, step string, projections map[string][]byte) bool {
+// opensInto reports whether the opening document was built and the drawn
+// schedule's projection built one for the same column, which decides whether
+// a view's chart draws it at all. It matches on Column, not declared order:
+// fund-flows' bare stem is third in PublishedDocuments. Which document each
+// year draws is export.ColumnIndex's question.
+func opensInto(opening, drawn string, projections map[string][]byte) bool {
 	if _, ok := projections[opening]; !ok {
 		return false
 	}
-	for _, stem := range publishedInto(opening, step) {
+	for _, stem := range publishedInto(opening, drawn) {
 		if _, ok := projections[stem]; ok {
 			return true
 		}
@@ -471,19 +482,19 @@ func opensInto(opening, step string, projections map[string][]byte) bool {
 	return false
 }
 
-// publishedInto is every stem PublishedDocuments declares of the step's
-// projection over the opening document's column, built or not: the join
-// opensInto asks of the built set. Empty is a step the opening document can
-// never open, however much is built.
+// publishedInto is every stem PublishedDocuments declares of the drawn
+// schedule's projection over the opening document's column, built or not:
+// the join opensInto asks of the built set. Empty is a schedule the opening
+// document's column never carries, however much is built.
 //
 // IT JOINS ON THE DECLARATION, NOT ON export.ColumnIndex, because the question
 // is what was promised: ColumnIndex knows only what was built, so it cannot
-// tell a document that was not built, whose step is dropped, from one never
-// published for the column, whose step is kept for the write to refuse. Which
+// tell a document that was not built, which a view does not draw, from one
+// never published for the column, which the write refuses by name. Which
 // built document a year draws is ColumnIndex's alone, and a built document
-// whose metadata places it outside the column declared for it keeps the step
-// here and is refused there by name.
-func publishedInto(opening, step string) []string {
+// whose metadata places it outside the column declared for it is drawn here
+// and refused there by name.
+func publishedInto(opening, drawn string) []string {
 	var out []string
 	docs := project.PublishedDocuments()
 	for _, d := range docs {
@@ -491,7 +502,7 @@ func publishedInto(opening, step string) []string {
 			continue
 		}
 		for _, e := range docs {
-			if e.Projection == step && slices.Equal(d.Columns, e.Columns) {
+			if e.Projection == drawn && slices.Equal(d.Columns, e.Columns) {
 				out = append(out, e.Stem)
 			}
 		}

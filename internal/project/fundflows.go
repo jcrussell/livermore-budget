@@ -828,6 +828,10 @@ func (f *fundFlows) addFundFlowNode(nodes map[string]Node, e endpoint) {
 		rest := e.id[len(PrefixExpenditure):]
 		if i := strings.Index(rest, "/"); i > 0 {
 			n.Parent = PrefixDept + rest[:i]
+			// Named for its division as a fund's cell is for its fund: the
+			// expansion hangs every owner's row of one category under that
+			// category, where the category alone reads the same on each.
+			n.Label = f.label(endpoint{id: n.Parent}) + ": " + n.Label
 		}
 	}
 	nodes[e.id] = n

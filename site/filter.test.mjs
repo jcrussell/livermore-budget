@@ -7,7 +7,7 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 
-import { bootedApp, everyOffer, opened, settle, clickYear, fire, pageFixture, refusals, dollars } from "./testlib.mjs";
+import { bootedApp, everySplit, split, settle, clickYear, fire, pageFixture, refusals, dollars } from "./testlib.mjs";
 
 const CONFIG = pageFixture().config;
 const YEARS = CONFIG.years;
@@ -105,38 +105,47 @@ function faultsOf(app, doc, state, where) {
   const touched = new Set(r.doc.links.flatMap((l) => [l.source, l.target]));
   for (const id of touched) if (!ids.has(id)) faults.push(`${where}: a ribbon ends at ${id}, which is not drawn`);
   for (const id of ids) if (!touched.has(id)) faults.push(`${where}: ${id} is drawn and no ribbon touches it`);
+  // A FILTER THAT CUTS EVERY RIBBON INTO A SLOT IS REFUSED, not laid out a
+  // column early: layOutAt throws, and setFilter says so in its banner. Any
+  // other throw is a fault.
+  let refused = "";
   try {
     app.layOut(r.doc);
   } catch (e) {
-    faults.push(`${where}: the filtered chart does not lay out: ${e.message}`);
+    if (/no ribbon drawn reaches that far/.test(e.message)) refused = `${where}: ${e.message}`;
+    else faults.push(`${where}: the filtered chart does not lay out: ${e.message}`);
   }
-  return { faults, merged, hidden: r.hidden.length };
+  return { faults, merged, hidden: r.hidden.length, refused };
 }
 
 describe("drawn plus hidden is the chart", () => {
   for (const year of YEARS) {
-    test(`${year.label}: on every rung the page offers, at a sample of filters, no ribbon, cent or fact is lost, duplicated or invented`, async (t) => {
+    test(`${year.label}: on every split the page offers, at a sample of filters, no ribbon, cent or fact is lost, duplicated or invented`, async (t) => {
       const { app } = await bootedApp({ checkedStem: year.stem });
       const faults = [];
       let states = 0;
       let merged = 0;
       let hidden = 0;
-      const visit = (path) => {
+      const refused = [];
+      const visit = (where) => {
         const doc = app.projection;
         for (const state of samples(app, doc)) {
-          const got = faultsOf(app, doc, state, (path.join(" > ") || "(the overview)") +
+          const got = faultsOf(app, doc, state, where +
             ` [${[...state.groups, ...state.kinds].join(", ")}${state.smallest ? " <" + state.smallest : ""}]`);
           faults.push(...got.faults);
           merged += got.merged;
           hidden += got.hidden;
+          if (got.refused) refused.push(got.refused);
           states++;
         }
       };
-      visit([]);
-      const walked = await everyOffer(app, async (path) => visit(path));
+      visit("(the root)");
+      const walked = await everySplit(app, async (where) => visit(where));
       assert.equal(walked.refused, "", walked.refused);
       t.diagnostic(`${year.label}: ${walked.visited + 1} chart(s), ${states} filter state(s); ${hidden} ribbon(s) hidden ` +
-        `and ${merged} merged ribbon(s) drawn across them; ${faults.length} fault(s)`);
+        `and ${merged} merged ribbon(s) drawn across them; ${faults.length} fault(s); ${refused.length} state(s) ` +
+        `refused because no ribbon drawn reaches a slot:\n  ${refused.join("\n  ")}`);
+      assert.ok(refused.length < states / 10, `${refused.length} of ${states} states refused`);
       assert.ok(hidden > 0 && merged > 0, "no state hid or merged a ribbon, so nothing here is tested");
       assert.deepEqual(faults.slice(0, 5), []);
     });
@@ -177,7 +186,7 @@ describe("the filter panel", () => {
     assert.ok(document.querySelector("#filters > summary"), "the panel has no summary to open it by keyboard");
   });
 
-  test("it opens by default where the viewport buys a column beyond the floor, and not on a narrow one", async () => {
+  test("it opens by default where the viewport has room for a chart one column wider than the spine, and not on a narrow one", async () => {
     const wide = await bootedApp({ viewport: 2400 });
     const narrow = await bootedApp({ viewport: 900 });
     assert.equal(wide.document.getElementById("filters").open, true);
@@ -275,10 +284,10 @@ describe("the filter panel", () => {
     const panel = document.getElementById("detail").textContent;
     assert.ok(panel.includes(words), "the pinned ribbon does not say it is the page's merge");
     for (const leg of d.legs) for (const id of leg.fact_ids) assert.ok(panel.includes(id), `the pinned ribbon drops ${id}`);
-    for (const m of marks) assert.ok(!app.drillable(m) && !app.expandable(m), `${m.id} offers to open`);
+    for (const m of marks) assert.ok(!app.splittable(m) && !app.expandable(m), `${m.id} offers to split`);
   });
 
-  test("a filter survives a drill and a year change, and one naming a group the view does not draw is inert", async (t) => {
+  test("a filter survives a split and a year change, and one naming a group the view does not draw is inert", async (t) => {
     const { app, document } = await bootedApp({ checkedStem: YEARS[0].stem });
     const chart = document.getElementById("chart");
     const g = "fund-group/debt-service";
@@ -291,12 +300,12 @@ describe("the filter panel", () => {
     assert.equal(document.getElementById("filter-line").hasAttribute("hidden"), true);
     app.setFilter({ groups: new Set([g]) });
     assert.equal(drawsGroup(), false);
-    await opened(app, "fund-group/general");
+    await split(app, "fund-group/general");
     const opened1 = { groups: [...app.filter.groups], refused: refusals(document).length };
     clickYear(document, YEARS[1].stem);
     await settle();
     const box = [...document.querySelectorAll("#filter-group-list input")].find((b) => b.value === g);
-    t.diagnostic(`opened into the General Fund group the filter holds ${JSON.stringify(opened1.groups)}; ` +
+    t.diagnostic(`with the General Fund group split the filter holds ${JSON.stringify(opened1.groups)}; ` +
       `on ${YEARS[1].label} it holds ${JSON.stringify([...app.filter.groups])} and the box is ${box.checked ? "checked" : "unchecked"}`);
     assert.equal(opened1.refused, 0);
     assert.ok(opened1.groups.includes(g));
@@ -305,6 +314,29 @@ describe("the filter panel", () => {
     assert.equal(box.checked, false);
     assert.equal(drawsGroup(), false);
     assert.ok(app.hiddenTally().flows > 0);
+  });
+});
+
+describe("a filter the expansion's slots cannot lay out", () => {
+  // THE CLAMP (layOutAt): a division an object category is split into stands
+  // in a slot after the category's, and hiding every group that pays for the
+  // category leaves no ribbon reaching that far, so d3-sankey would draw the
+  // divisions a column early. The page refuses the filter instead.
+  test("is refused with the banner, and the chart, the filter and the panel stay as they were", async (t) => {
+    const { app, document } = await bootedApp({ checkedStem: YEARS[0].stem });
+    await split(app, "expenditure/capital-outlay~divisions");
+    const laid = app.laidNodes.map((n) => n.id).sort().join(",");
+    const hide = new Set(app.fundGroups().map((g) => g.id).filter((g) => g !== "fund-group/capital" && g !== "fund-group/permanent"));
+    const drew = app.setFilter({ groups: hide });
+    const banners = refusals(document).map((b) => b.textContent);
+    t.diagnostic(`hiding ${[...hide].join(", ")}: setFilter ${drew}; ${banners.join(" | ")}`);
+    assert.equal(drew, false);
+    assert.equal(banners.length, 1);
+    assert.ok(banners[0].startsWith("The chart could not be filtered: ") && banners[0].includes("no ribbon drawn reaches that far"), banners[0]);
+    assert.equal(app.filter.groups.size, 0);
+    assert.equal(app.laidNodes.map((n) => n.id).sort().join(","), laid);
+    const boxes = [...document.querySelectorAll("#filter-group-list input")];
+    assert.ok(boxes.every((b) => b.checked), "a box was left unchecked for a filter the page refused");
   });
 });
 

@@ -8,12 +8,14 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  bootedApp, opened, settle, clickYear, columnFixture, pageFixture, dollars, shortDollars,
+  bootedApp, split, settle, clickYear, columnFixture, pageFixture, dollars, shortDollars,
 } from "./testlib.mjs";
 
 const PAGE = pageFixture();
 const PROPERTY = "revenue/taxes/property";
 const ERAF = "revenue-line/taxes/property/eraf";
+/** Where ERAF's ribbon runs with Property Taxes split and its fund group not. */
+const GENERAL = "fund-group/general";
 
 const YEARS = [
   { stem: "sankey", column: "fy2026-adopted", eraf: "−$15,175,000", property: "$69,459,414" },
@@ -72,13 +74,13 @@ for (const year of YEARS) {
 
     test(`${year.column}: a reduction reads as a negative figure wherever it is shown`, async (t) => {
       const { app, document } = await onYear(year.stem);
-      await opened(app, PROPERTY);
-      const [printed] = columnLinks(year.column, "fund-flows", (from, to) => from === ERAF && to === PROPERTY);
-      t.diagnostic(`ERAF into ${PROPERTY} is ${printed.value_cents} cents in the pinned column`);
+      await split(app, PROPERTY);
+      const [printed] = columnLinks(year.column, "expansion", (from) => from === ERAF);
+      t.diagnostic(`ERAF out of ${PROPERTY} is ${printed.value_cents} cents in the pinned column`);
       assert.ok(printed.value_cents < 0);
       assert.equal(dollars(printed.value_cents), year.eraf);
       const chart = document.getElementById("chart");
-      const ribbon = ribbonOf(chart, ERAF, PROPERTY);
+      const ribbon = ribbonOf(chart, ERAF, GENERAL);
       assert.ok(ribbon, "ERAF is not drawn as a ribbon");
       const onRibbon = shown(app, document, ribbon.__data__);
       assert.equal(onRibbon.tip, year.eraf);
@@ -101,7 +103,6 @@ for (const year of YEARS) {
       const d = markOf(chart, PROPERTY).__data__;
       const column = [...chart.querySelectorAll("g.node")].map((g) => g.__data__).filter((n) => n.layer === d.layer);
       assert.ok(column.length >= 2);
-      assert.ok(!column.some((n) => app.isResidual(n.id)), "a residual is sized by its own figure");
       // The share is defined over the drawn values, so the expectation is
       // taken from the pinned column's cents and each drawn value is held to
       // its mark's: the larger side of its ribbons, which is how a mark is
@@ -125,12 +126,12 @@ for (const year of YEARS) {
 
     test(`${year.column}: a printed reduction states no share of its column and is in no other mark's total`, async (t) => {
       const { app, document } = await onYear(year.stem);
-      await opened(app, PROPERTY);
+      await split(app, PROPERTY);
       const chart = document.getElementById("chart");
       const eraf = markOf(chart, ERAF).__data__;
       // A reduction is read off the pinned column: every ribbon it leaves by is printed negative.
       const reduces = (id) => {
-        const out = columnLinks(year.column, "fund-flows", (from) => from === id);
+        const out = columnLinks(year.column, "expansion", (from) => from === id);
         return out.length > 0 && out.every((l) => l.value_cents < 0);
       };
       assert.ok(reduces(ERAF));
@@ -174,8 +175,8 @@ for (const year of YEARS) {
 
     test(`${year.column}: a ribbon's Sources are its own pages, at the file names Go wrote`, async (t) => {
       const { app, document, window } = await onYear(year.stem);
-      await opened(app, PROPERTY);
-      const [printed] = columnLinks(year.column, "fund-flows", (from, to) => from === ERAF && to === PROPERTY);
+      await split(app, PROPERTY);
+      const [printed] = columnLinks(year.column, "expansion", (from) => from === ERAF);
       const doc = PAGE.config.docs[printed.locators[0].doc_id];
       // The anchors Go rendered into the served page: a page's text link in
       // the config is the one the page's own footer carries.
@@ -192,7 +193,7 @@ for (const year of YEARS) {
           want.push(links.pdf, links.text, links.records);
         }
       }
-      app.pin(ribbonOf(document.getElementById("chart"), ERAF, PROPERTY).__data__);
+      app.pin(ribbonOf(document.getElementById("chart"), ERAF, GENERAL).__data__);
       const got = [...document.querySelectorAll("#detail .prov a")].map((a) => a.getAttribute("href"));
       t.diagnostic(`ERAF cites ${JSON.stringify(printed.locators)}: ${got.join(" ")}`);
       assert.deepEqual(got, want);

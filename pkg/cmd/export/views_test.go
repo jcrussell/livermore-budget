@@ -40,28 +40,14 @@ func TestLoadViewsRefusesWhatItCannotResolve(t *testing.T) {
 		name, old, edit string
 		want            []string
 	}{
-		{"a step's projection", "projection: fund-flows\n", "projection: fund-flow\n",
-			[]string{`step "fund-group"`, "projection", `"fund-flow" is not one of`}},
-		{"a step's role", "role: general_fund\n", "role: general-fund\n",
-			[]string{`step "fund"`, "role", `"general-fund" is not one of`}},
-		{"a residual derivation", "residual: fund-flows\n", "residual: fund-flow\n",
-			[]string{`step "fund-group"`, "residual", `"fund-flow" is not one of fund-flows`}},
-		{"a gaps derivation", "gaps: department-spending\n", "gaps: spending\n",
-			[]string{`step "object-category"`, "gaps", `"spending" is not one of department-spending`}},
-		{"a residual derivation about another step's document", "        noun: money going out\n",
-			"        noun: money going out\n        residual: fund-flows\n",
-			[]string{`step "transfers-out"`, "residual", `"fund-flows" is the derivation about "fund-flows"`,
-				`this step draws "transfers-out"`}},
-		{"a gaps derivation about another step's document", "        noun: revenue category\n",
-			"        noun: revenue category\n        gaps: department-spending\n",
-			[]string{`step "revenue-category"`, "gaps",
-				`"department-spending" is the derivation about "department-spending"`, `this step draws "fund-flows"`}},
+		{"an overview's projection", "projection: expansion\n", "projection: expansio\n",
+			[]string{`view "index.html"`, "overview.projection", `"expansio" is not one of`}},
 		{"a view's projection", "projection: revenue-trends\n", "projection: revenue-trend\n",
 			[]string{`view "trends.html"`, "projection", `"revenue-trend" is not one of`}},
 		{"a row's category", "fund-balance/excess-of-revenues\n", "fund-balance/excess\n",
 			[]string{`view "history.html"`, `section "Excess of revenues over (under) expenditures"`,
 				`row "over (under) expenditures"`, `"fund-balance/excess" names no category`}},
-		{"an unknown key", "widen: [4, 5]\n", "widne: [4, 5]\n", []string{"widne"}},
+		{"an unknown key", "grow: {node_px", "grwo: {node_px", []string{"grwo"}},
 		{"a schema version this command does not read", "schema_version: 1\n", "schema_version: 2\n",
 			[]string{"schema_version", "got 2, want 1"}},
 	} {
@@ -96,7 +82,7 @@ func TestLoadViewsRefusesWhatItCannotResolve(t *testing.T) {
 }
 
 // TestExportRefusesAViewsFileItCannotLoad is the loader's refusal as `fisc
-// export` reports it: before anything is written, naming the step.
+// export` reports it: before anything is written, naming the view.
 func TestExportRefusesAViewsFileItCannotLoad(t *testing.T) {
 	opts, _, _, _ := testOptions(t)
 	root, err := opts.RepoRoot()
@@ -108,7 +94,7 @@ func TestExportRefusesAViewsFileItCannotLoad(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	edited := strings.Replace(string(b), "projection: fund-flows\n", "projection: fund-flow\n", 1)
+	edited := strings.Replace(string(b), "projection: expansion\n", "projection: expansio\n", 1)
 	if edited == string(b) {
 		t.Fatal("the edit changed nothing")
 	}
@@ -119,7 +105,7 @@ func TestExportRefusesAViewsFileItCannotLoad(t *testing.T) {
 	if err == nil {
 		t.Fatal("exportRun wrote a site from a views file naming a projection that does not exist")
 	}
-	for _, w := range []string{viewsFile, `step "fund-group"`, `"fund-flow"`} {
+	for _, w := range []string{viewsFile, `view "index.html"`, `"expansio"`} {
 		if !strings.Contains(err.Error(), w) {
 			t.Errorf("got %v, want it to say %q", err, w)
 		}
@@ -168,35 +154,23 @@ func TestTheHistoryRowLabelIsTheRegistrys(t *testing.T) {
 	}
 }
 
-// TestADeclarationFaultInAStepIsRefusedNotDropped holds declaredSteps to
-// dropping a step only for what was not built: a parent it dropped, or a
-// schedule published for the view's column that the build did not write.
-// Every other fault is the file's, and `fisc export` must refuse it by name
-// rather than ship the view without the step and everything below it. Each
-// case is the committed file with one edit, exported over the real build.
-func TestADeclarationFaultInAStepIsRefusedNotDropped(t *testing.T) {
+// TestADeclarationFaultInAChartIsRefusedNotDropped holds views() to dropping
+// a view only for what was not built: a fault in what the file declares is
+// the file's, and `fisc export` must refuse it by name rather than ship the
+// site without it. Each case is the committed file with one edit, exported
+// over the real build.
+func TestADeclarationFaultInAChartIsRefusedNotDropped(t *testing.T) {
 	built := builtStemsForTest(t)
 	for _, tc := range []struct {
 		name, old, edit, want string
 	}{
-		{"an After naming a key no step declares", "after: [fund]\n", "after: [fnud]\n",
-			`opens from "fnud", which no step declares as its key`},
-		{"a role no node at the opened tier carries", "role: transfer_in\n", "role: object_category\n",
-			`opens role "object_category" at tier 0 of the view's own chart`},
-		{"a schedule never published for the view's column",
-			"\n  # Every flow fund-flows prints,",
-			"      - key: stray\n        after: [\"\"]\n        from: 0\n" +
-				"        projection: revenue-trends\n        form: sankey\n        sankey: {tiers: [0, 2]}\n" +
-				"        noun: n\n        back: b\n        tail: t\n        description: d.\n" +
-				"\n  # Every flow fund-flows prints,",
-			`opens into schedule "revenue-trends"`},
-		{"a drill chain on a view that draws no chart",
-			"      are intentions adopted together.\n",
-			"      are intentions adopted together.\n    steps:\n      - key: stray\n" +
-				"        after: [\"\"]\n        from: 0\n        projection: fund-flows\n" +
-				"        form: sankey\n        sankey: {tiers: [0, 2]}\n        noun: n\n" +
-				"        back: b\n        tail: t\n        description: d.\n",
-			`declares a drill chain and renders template "trends.html.tmpl"`},
+		{"a split cap on a split the stitch does not declare",
+			"{split: lines, cap: 8, tail: lines}", "{split: line, cap: 8, tail: lines}",
+			`caps split "line", and the expansion schedule declares splits`},
+		{"a drill step, which nothing reads",
+			"    year_control: true\n    overview:\n      form: sankey\n      # The chart is the expansion",
+			"    year_control: true\n    steps: []\n    overview:\n      form: sankey\n      # The chart is the expansion",
+			"field steps not found"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			opts, _, _, _ := testOptions(t)

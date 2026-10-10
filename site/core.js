@@ -981,6 +981,31 @@ export function splitTailID(node, key) {
 }
 
 /**
+ * The node and split key a split's tail id names (splitTailID), or null for
+ * an id that is no split's tail: a tier's tail (aggregateID) included.
+ * @param {string} id
+ * @returns {{node: string, key: string} | null}
+ */
+export function splitTailOf(id) {
+  if (!id.startsWith(AGGREGATE_PREFIX)) return null;
+  const rest = id.slice(AGGREGATE_PREFIX.length);
+  const cut = rest.indexOf("/");
+  if (cut <= 0 || cut === rest.length - 1) return null;
+  return { node: rest.slice(cut + 1), key: rest.slice(0, cut) };
+}
+
+/**
+ * Whether a document is an expansion schedule: one that declares how its
+ * nodes split (schema/projection.schema.json's splits), which scheduleOf
+ * carries on that schedule alone.
+ * @param {FiscProjection | null | undefined} doc
+ * @returns {boolean}
+ */
+export function isExpansionSchedule(doc) {
+  return Boolean(doc) && Array.isArray(/** @type {any} */ (doc).splits);
+}
+
+/**
  * Whether an id names a capped tail of any tier.
  * @param {string} id
  * @returns {boolean}
@@ -1042,13 +1067,15 @@ export const SMALLER_FROM = "from";
 /**
  * The id of the mark one column's folded ribbons on one side end at. Per
  * side, so a mark either receives or sends and never reads as money passing
- * through it.
+ * through it; per tier, and per slot where the shaping placed the far ends in
+ * slots (expansionOf), since one tier can stand in several columns.
  * @param {string} side SMALLER_TO or SMALLER_FROM
  * @param {number} tier
+ * @param {number} [slot]
  * @returns {string}
  */
-export function smallerID(side, tier) {
-  return SMALLER_PREFIX + side + "/" + tier;
+export function smallerID(side, tier, slot) {
+  return SMALLER_PREFIX + side + "/" + tier + (slot === undefined ? "" : "/" + slot);
 }
 
 /**
@@ -1201,11 +1228,13 @@ export function isGap(id) {
  * @param {number} smallest the threshold they are under, in cents
  * @param {number} cents what they add up to
  * @param {FiscSource[]} locators every page those ribbons cite
+ * @param {number} [slot] the slot of the column it stands in, where the
+ *   shaping placed the far ends in slots
  * @returns {FiscMark}
  */
-export function smallerMark(side, tier, flows, smallest, cents, locators) {
-  return {
-    id: smallerID(side, tier),
+export function smallerMark(side, tier, flows, smallest, cents, locators, slot) {
+  const mark = {
+    id: smallerID(side, tier, slot),
     label: say("smaller_label", { flows: flows, threshold: fmt(smallest) }),
     tier: tier,
     parent: "",
@@ -1216,6 +1245,7 @@ export function smallerMark(side, tier, flows, smallest, cents, locators) {
     source_note: say("smaller_note", { flows: flows, figure: fmt(cents) }),
     locators: locators,
   };
+  return slot === undefined ? mark : Object.assign(mark, { slot });
 }
 
 /**
@@ -1285,7 +1315,7 @@ export function filterDocument(doc, groupOf, state) {
  * Folds every printed ribbon under `smallest` cents onto a smaller-flows
  * mark: each is kept at its LARGER end, sized as capColumn sizes a node, and
  * its other end becomes the mark at that end's column, one per column and
- * side. Ribbons sharing both ends, kind and cross-tab flag after that are one
+ * side, standing in that end's slot where it has one. Ribbons sharing both ends, kind and cross-tab flag after that are one
  * ribbon, summed and unioned as foldDocument merges; one leg alone is drawn
  * as itself, since a merge of one is worse than none.
  *
@@ -1326,9 +1356,11 @@ export function foldSmaller(links, byID, smallest) {
     const keepSource = size(l.source) > size(l.target) ||
       (size(l.source) === size(l.target) && l.source < l.target);
     const far = keepSource ? l.target : l.source;
-    const tier = /** @type {FiscNode} */ (byID.get(far)).tier;
-    const source = keepSource ? l.source : smallerID(SMALLER_FROM, tier);
-    const target = keepSource ? smallerID(SMALLER_TO, tier) : l.target;
+    const farNode = /** @type {FiscNode} */ (byID.get(far));
+    const tier = farNode.tier;
+    const slot = typeof farNode.slot === "number" ? farNode.slot : undefined;
+    const source = keepSource ? l.source : smallerID(SMALLER_FROM, tier, slot);
+    const target = keepSource ? smallerID(SMALLER_TO, tier, slot) : l.target;
     const key = source + "\u001f" + target + "\u001f" + l.kind + "\u001f" + Boolean(l.partition);
     const at = merges.get(key);
     if (at) {
@@ -1338,7 +1370,7 @@ export function foldSmaller(links, byID, smallest) {
     merges.set(key, { source, target, far, legs: [l] });
     order.push(key);
   }
-  /** @type {Map<string, {flows: number, cents: number, pages: Set<string>, tier: number, side: string}>} */
+  /** @type {Map<string, {flows: number, cents: number, pages: Set<string>, tier: number, slot: number | undefined, side: string}>} */
   const marks = new Map();
   /** @type {string[]} */
   const cut = [];
@@ -1361,7 +1393,9 @@ export function foldSmaller(links, byID, smallest) {
     }
     const markID = isSmaller(m.source) ? m.source : m.target;
     const side = isSmaller(m.source) ? SMALLER_FROM : SMALLER_TO;
-    const mark = marks.get(markID) || { flows: 0, cents: 0, pages: new Set(), tier: /** @type {FiscNode} */ (byID.get(m.far)).tier, side };
+    const farNode = /** @type {FiscNode} */ (byID.get(m.far));
+    const mark = marks.get(markID) || { flows: 0, cents: 0, pages: new Set(), tier: farNode.tier,
+      slot: typeof farNode.slot === "number" ? farNode.slot : undefined, side };
     mark.flows += m.legs.length;
     mark.cents += cents;
     for (const k of pages) mark.pages.add(k);
@@ -1376,7 +1410,7 @@ export function foldSmaller(links, byID, smallest) {
   return {
     links: out,
     marks: Array.from(marks.values()).map((m) =>
-      smallerMark(m.side, m.tier, m.flows, smallest, m.cents, regroupLocators(m.pages))),
+      smallerMark(m.side, m.tier, m.flows, smallest, m.cents, regroupLocators(m.pages), m.slot)),
     cut: cut,
   };
 }

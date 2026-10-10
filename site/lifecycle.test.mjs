@@ -4,7 +4,7 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  loadApp, settle, refusals, pageFixture, columnFixture, clickYear, keydownListeners, listenerErrors, everyOffer,
+  loadApp, settle, refusals, pageFixture, columnFixture, clickYear, keydownListeners, listenerErrors,
 } from "./testlib.mjs";
 
 const FIRST = "sankey";
@@ -83,7 +83,6 @@ describe("the form handshake", () => {
       return { fetched: fetch.asked.length, banners: said(document), forms: Array.from(app.FORMS.keys()) };
     };
     const overview = await asked((c) => { c.overview.form = "treemap"; });
-    const step = await asked((c) => { c.steps[c.steps.length - 1].form = "treemap"; });
     const good = await asked(() => {});
     // THE REFUSED PAGE STILL HAS A THEME TOGGLE, wired before the refusal; its
     // repaint must not reach for the renderer the page has none of.
@@ -100,7 +99,7 @@ describe("the form handshake", () => {
       return { errors, was, now: loaded.document.documentElement.dataset.theme };
     })();
     t.diagnostic(`this script draws ${overview.forms.join(", ")}; a treemap overview fetches ${overview.fetched} file(s) ` +
-      `and says ${JSON.stringify(overview.banners)}; a treemap step fetches ${step.fetched}; ` +
+      `and says ${JSON.stringify(overview.banners)}; ` +
       `the theme toggle on the refused page went ${toggled.was} -> ${toggled.now} with ${toggled.errors.length} listener error(s)`);
     assert.deepEqual(toggled.errors, []);
     assert.notEqual(toggled.now, toggled.was);
@@ -108,8 +107,6 @@ describe("the form handshake", () => {
     assert.equal(overview.fetched, 0);
     assert.equal(overview.banners.length, 1);
     assert.match(overview.banners[0], /declares a treemap chart/);
-    assert.equal(step.fetched, 0);
-    assert.match(step.banners[0], /declares a treemap chart/);
   });
 });
 
@@ -213,10 +210,10 @@ describe("a switch that fails", () => {
   });
 
   test("a year document with no graph leaves the page whole and the reader told", async (t) => {
-    // The spine schedule's nodes and links nulled: a document that parses and
+    // The drawn schedule's nodes and links nulled: a document that parses and
     // carries no graph, which schema/column.schema.json refuses and nothing on
     // this side re-checks.
-    const col = secondColumn((c) => { c.schedules.sankey.nodes = null; c.schedules.sankey.links = null; });
+    const col = secondColumn((c) => { c.schedules.expansion.nodes = null; c.schedules.expansion.links = null; });
     const { document } = await onFirstYear({ plan: { "fy2027-adopted.json": { doc: col } } });
     clickYear(document, SECOND);
     await settle();
@@ -235,7 +232,7 @@ describe("a switch that fails", () => {
     // Shaped right and wrong only in its content: one link's `to` is an index
     // past the node table, which is what a truncated or mis-joined file looks
     // like. Nothing before layOut refuses it.
-    const col = secondColumn((c) => { c.schedules.sankey.links[0].to = c.nodes.length; });
+    const col = secondColumn((c) => { c.schedules.expansion.links[0].to = c.nodes.length; });
     const { document } = await onFirstYear({ plan: { "fy2027-adopted.json": { doc: col } } });
     clickYear(document, SECOND);
     await settle();
@@ -266,21 +263,16 @@ describe("a switch that fails", () => {
     // over another year's chart.
     const DOC = "livermore-budget-fy2026-2027";
     const fixtures = [
-      { key: "schedules.sankey.sources", mutate: (c) => { delete c.schedules.sankey.sources; } },
-      { key: "links[].fact_ids", mutate: (c) => { for (const l of c.schedules.sankey.links) delete l.fact_ids; } },
+      { key: "schedules.expansion.sources", mutate: (c) => { delete c.schedules.expansion.sources; } },
+      { key: "links[].fact_ids", mutate: (c) => { for (const l of c.schedules.expansion.links) delete l.fact_ids; } },
       // One deeper: a locator carrying a doc_id and no pages. The doc id must
       // be one CONFIG.docs carries, or citations() never reaches pages.
       { key: "links[].locators[].pages",
-        mutate: (c) => { for (const l of c.schedules.sankey.links) l.locators = [{ doc_id: DOC }]; } },
-      { key: "links[].locators", mutate: (c) => { for (const l of c.schedules.sankey.links) delete l.locators; } },
-      { key: "sources[].pages", mutate: (c) => { c.schedules.sankey.sources = [{ doc_id: DOC }]; } },
-      // A STEP schedule, not the spine's: the spine draws, and the first
-      // question asked of the fund-group step's document throws. Two of them,
-      // one every fund group asks for and one only Transfers In does.
-      { key: "schedules.fund-flows.nodes", mutate: (c) => { c.schedules["fund-flows"].nodes = null; } },
-      { key: "schedules.transfers-by-fund.links", mutate: (c) => { c.schedules["transfers-by-fund"].links = null; } },
+        mutate: (c) => { for (const l of c.schedules.expansion.links) l.locators = [{ doc_id: DOC }]; } },
+      { key: "links[].locators", mutate: (c) => { for (const l of c.schedules.expansion.links) delete l.locators; } },
+      { key: "sources[].pages", mutate: (c) => { c.schedules.expansion.sources = [{ doc_id: DOC }]; } },
     ];
-    const split = [];
+    const halves = [];
     const refused = [];
     const drewAnyway = [];
     for (const bad of fixtures) {
@@ -303,27 +295,24 @@ describe("a switch that fails", () => {
       if (banners.length && onFirst && tableFrozen) refused.push(bad.key);
       else if (!banners.length && !onFirst) drewAnyway.push(bad.key);
       else {
-        split.push(`${bad.key} (${banners.length} banner(s), lede "${lede(document)}", ` +
+        halves.push(`${bad.key} (${banners.length} banner(s), lede "${lede(document)}", ` +
           `${rows(document)} rows against ${rowsFirst})`);
       }
     }
-    t.diagnostic(split.length
-      ? `${split.length} fixture(s) half-repainted: ${split.join("; ")}`
+    t.diagnostic(halves.length
+      ? `${halves.length} fixture(s) half-repainted: ${halves.join("; ")}`
       : `${refused.length} refused with the page untouched [${refused}]; ` +
         `${drewAnyway.length} drew [${drewAnyway}] -- ` +
         "schema/column.schema.json requiring them is what stops such a file being written");
-    assert.deepEqual(split, []);
+    assert.deepEqual(halves, []);
     // THE FOLD DEFAULTS NEITHER KEY. It reads fact_ids and locators off every
     // link it merges, so a column lacking either fails the draw and the page
     // says so with the first year still on it.
-    // A STEP SCHEDULE IS ASSEMBLED INSIDE THE ROLLBACK (askAffordances), so a
-    // malformed one is refused before a word of the new year is written.
-    assert.deepEqual(refused, ["links[].fact_ids", "links[].locators[].pages", "links[].locators",
-      "schedules.fund-flows.nodes", "schedules.transfers-by-fund.links"]);
+    assert.deepEqual(refused, ["links[].fact_ids", "links[].locators[].pages", "links[].locators"]);
     // The sources are first read at the pin, so a column lacking them draws.
     // Accepted: the client adds no shape check for a file the export cannot
     // write, and the pin is where the absence is met.
-    assert.deepEqual(drewAnyway, ["schedules.sankey.sources", "sources[].pages"]);
+    assert.deepEqual(drewAnyway, ["schedules.expansion.sources", "sources[].pages"]);
   });
 });
 
@@ -376,7 +365,7 @@ describe("a gesture that throws", () => {
     // The shape is served rather than simulated: a schedule with no sources
     // draws, and the first mark a reader pins throws out of citations().
     const broken = structuredClone(columnFixture("fy2026-adopted"));
-    delete broken.schedules.sankey.sources;
+    delete broken.schedules.expansion.sources;
     const { app, document, window } = await onFirstYear({ plan: { "fy2026-adopted.json": { doc: broken } } });
     const errors = listenerErrors(window);
     const drewFirst = (app.projection && app.projection.nodes || []).length;
@@ -459,49 +448,17 @@ describe("the view in the URL", () => {
   /** What a booted page shows, comparable across two pages. */
   const view = (app) => ({
     year: app.shownYear ? app.shownYear.stem : "",
-    open: app.drilled.map((r) => r.id),
     groups: [...app.filter.groups].sort(),
     kinds: [...app.filter.kinds].sort(),
     smallest: app.filter.smallest,
     isolated: app.filter.isolated,
   });
-  /** The page's opening view: the newest year's overview, nothing filtered. */
-  const opening = { year: NEWEST.stem, open: [], groups: [], kinds: [], smallest: 0, isolated: "" };
+  /** The page's opening view: the newest year's root, nothing filtered. */
+  const opening = { year: NEWEST.stem, groups: [], kinds: [], smallest: 0, isolated: "" };
 
-  for (const year of YEARS) {
-    test(`${year.label}: every rung the page offers is written to the hash as it opens, and a page loaded at that hash draws it`, async (t) => {
-      const { app, document, window } = await loadApp({ checkedStem: year.stem });
-      await app.boot();
-      await settle();
-      const hashes = [];
-      const faults = [];
-      const walked = await everyOffer(app, async (path) => {
-        const hash = window.location.hash;
-        if (hash !== app.hashOf(app.viewState())) faults.push(`${path.join(" > ")}: the URL says ${hash}`);
-        hashes.push({ path, hash });
-      });
-      assert.equal(walked.refused, "", walked.refused);
-      for (const { path, hash } of hashes) {
-        const again = await bootAt(hash);
-        const got = view(again.app);
-        const banners = said(again.document);
-        if (banners.length) faults.push(`${hash}: refused, ${banners[0]}`);
-        else if (got.year !== year.stem || got.open.join(">") !== path.join(">")) {
-          faults.push(`${hash}: drew ${got.year} at ${got.open.join(" > ") || "the overview"}`);
-        } else if (again.window.location.hash !== hash) faults.push(`${hash}: the URL now says ${again.window.location.hash}`);
-      }
-      t.diagnostic(`${year.label}: ${hashes.length} rung(s) round-tripped through the hash, e.g. ${hashes.length ? hashes[hashes.length - 1].hash : "none"}; ${faults.length} fault(s)`);
-      assert.ok(hashes.length > 0, "the page offers no rung, so nothing here is tested");
-      assert.equal(said(document).length, 0);
-      assert.deepEqual(faults.slice(0, 5), []);
-    });
-  }
-
-  test("the filters and the isolation round-trip with the year and the path", async (t) => {
+  test("the filters and the isolation round-trip with the year", async (t) => {
     const { app, window } = await loadApp({ checkedStem: OLDEST.stem });
     await app.boot();
-    await settle();
-    await app.drillDown("fund-group/general");
     await settle();
     app.setFilter({ kinds: new Set(["internal_transfer"]), smallest: 1000000, groups: new Set(["fund-group/permanent"]) });
     const follow = app.laidNodes.find((n) => !app.isSmaller(n.id) && n.id !== "fund-group/general").id;
@@ -517,51 +474,25 @@ describe("the view in the URL", () => {
     assert.ok(/[#&]min=1000000(&|$)/.test(hash) && hash.includes("y=" + OLDEST.path.replace(/\.json$/, "")), hash);
   });
 
-  test("Back and Forward walk the drill and the year; a filter change adds no step", async (t) => {
+  test("Back and Forward walk the year; a filter change adds no step", async (t) => {
     const { app, document, window } = await loadApp();
     await app.boot();
     await settle();
     const popped = () => new Promise((resolve) => window.addEventListener("popstate", () => resolve(), { once: true }));
     const start = window.history.length;
-    await app.drillDown("fund-group/general");
-    await settle();
-    await app.drillDown("fund/100");
-    await settle();
     app.setFilter({ kinds: new Set(["internal_transfer"]) });
-    const deep = view(app);
-    assert.equal(window.history.length, start + 2, "a drill pushed no entry, or a filter pushed one");
-    let wait = popped();
-    window.history.back();
-    await wait;
-    await settle();
-    const one = view(app);
-    wait = popped();
-    window.history.back();
-    await wait;
-    await settle();
-    const none = view(app);
-    wait = popped();
-    window.history.forward();
-    await wait;
-    await settle();
-    const forward = view(app);
+    assert.equal(window.history.length, start, "a filter pushed an entry");
     clickYear(document, OLDEST.stem);
     await settle();
     const switched = view(app);
-    wait = popped();
+    const wait = popped();
     window.history.back();
     await wait;
     await settle();
     const unswitched = view(app);
-    t.diagnostic(`deep ${deep.open.join(" > ")}; back ${one.open.join(" > ")}; back ${none.open.join(" > ") || "(overview)"}; ` +
-      `forward ${forward.open.join(" > ")}; year ${switched.year}; back ${unswitched.year} ${unswitched.open.join(" > ")}`);
-    assert.deepEqual(deep.open, ["fund-group/general", "fund/100"]);
-    assert.deepEqual(one.open, ["fund-group/general"]);
-    assert.deepEqual(none.open, []);
-    assert.deepEqual(forward.open, ["fund-group/general"]);
+    t.diagnostic(`year ${switched.year}; back ${unswitched.year}`);
     assert.equal(switched.year, OLDEST.stem);
     assert.equal(unswitched.year, NEWEST.stem);
-    assert.deepEqual(unswitched.open, ["fund-group/general"]);
     assert.equal(document.querySelector("#year-toggle input:checked").value, NEWEST.stem);
     assert.deepEqual(said(document), []);
   });
@@ -570,13 +501,12 @@ describe("the view in the URL", () => {
     const key = NEWEST.path.replace(/\.json$/, "");
     const cases = [
       ["#y=fy1999-adopted", "fy1999-adopted"],
-      [`#y=${key}&open=dept/patrol`, "dept/patrol"],
-      [`#y=${key}&open=fund-group/general,dept/no-such`, "dept/no-such"],
+      [`#y=${key}&open=fund-group/general`, "open"],
       [`#y=${key}&hidekind=no_such_kind`, "no_such_kind"],
       [`#y=${key}&hide=fund-group/no-such`, "fund-group/no-such"],
       [`#y=${key}&iso=dept/patrol`, "dept/patrol"],
       [`#y=${key}&min=1.5`, "1.5"],
-      [`#open=fund-group/general`, "no year"],
+      [`#hide=fund-group/general`, "no year"],
       [`#y=${key}&zoom=2`, "zoom"],
     ];
     for (const [hash, names] of cases) {

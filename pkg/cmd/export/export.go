@@ -273,9 +273,8 @@ func exportRun(o *Options) error {
 		// reader can get to it.
 		//
 		// A GATE, SO IT RUNS AFTER VALIDATION AND BEFORE ANY PAGE RENDERS: it
-		// reads the steps' documents through export.View.ReachedStems, which
-		// refuses what validation refuses, and validation's refusal names the
-		// declaration.
+		// reads the documents a view reaches through export.View.ReachedStems,
+		// over the column index validation has accepted.
 		Gate: func(ix export.ColumnIndex) error {
 			return assertPublishedReachable(siteViews, projections, ix)
 		},

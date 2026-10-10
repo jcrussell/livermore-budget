@@ -14,7 +14,7 @@
  */
 
 import {
-  FoldRefusal, capColumn, carriedResidual, fmt, fmtShortSigned, foldDocument, foldTarget, isAggregate, isFundGroup, isGap, isLink, isResidual, licensedGap, openSplitOf, printedNet, reducedOf, say, scoped, splitTailID, splitsOf, tailFigure, tierFrontier, withinNode,
+  FoldRefusal, capColumn, carriedResidual, fmt, fmtShortSigned, foldDocument, foldTarget, isAggregate, isExpansionSchedule, isFundGroup, isGap, isLink, isResidual, licensedGap, openSplitOf, printedNet, reducedOf, say, scoped, splitTailID, splitsOf, tailFigure, tierFrontier, withinNode,
 } from "./core.js";
 
 export const NODE_WIDTH = 14;
@@ -1086,16 +1086,20 @@ export function labelPlacement(slots, d, last) {
  * column also carries; nothing elsewhere.
  *
  * AN AMBIGUITY IS A PROPERTY OF THE COLUMN, NOT THE NODE, so it is decided here
- * rather than in the document. The parent is looked up in the document, not the
- * laid graph, because a window routinely does not draw it. A duplicate whose
- * parent is unnameable gets "" and stays ambiguous rather than invented.
+ * rather than in the document. The parent is the one `doc` gives the mark, and
+ * is looked up there, not in the laid graph: the fold blanks the parent of a
+ * node whose parent is split open, and the chart does not draw it. A mark
+ * `doc` does not carry, a tail, keeps the parent it was laid with. A duplicate
+ * whose parent is unnameable gets "" and stays ambiguous rather than invented.
  *
  * @param {LaidNode[]} nodes
- * @param {FiscProjection | null} doc the document the nodes were laid from
+ * @param {{nodes: FiscNode[]} | null} doc the unfolded nodes the chart was
+ *   folded from
  * @param {Map<string, number>} slots the placement (slotsOf)
  * @returns {Map<string, string>}
  */
 export function labelQualifiers(doc, slots, nodes) {
+  const byID = new Map((doc ? doc.nodes : []).map((n) => [n.id, n]));
   /** @type {Map<string, LaidNode[]>} */
   const sharing = new Map();
   for (const n of nodes) {
@@ -1109,9 +1113,8 @@ export function labelQualifiers(doc, slots, nodes) {
   for (const shared of sharing.values()) {
     if (shared.length < 2) continue;
     for (const n of shared) {
-      const parent = doc
-        ? doc.nodes.find((p) => p.id === n.parent)
-        : null;
+      const own = byID.get(n.id) || n;
+      const parent = own.parent ? byID.get(own.parent) : undefined;
       out.set(n.id, parent ? parent.label : "");
     }
   }
@@ -1209,9 +1212,9 @@ export function nodeRank(groupOf, placeOf, node) {
  *
  * FAILS CLOSED on a node with a stamped slot (expansionOf) that d3 laid in
  * another column: d3 counts columns from the longest path and clamps a node
- * placed beyond it, which would draw it a column early in silence. A tier
- * set's drill is not held to this; its clamping goes with the drill
- * (fisc-yj4w.34.4).
+ * placed beyond it, which would draw it a column early in silence. A filter
+ * that cuts every ribbon into an inserted slot can do that, and the page says
+ * so in its refusal banner.
  * @param {FiscProjection} drawn
  * @param {{tiers: number[], columns: number, groupOf: (n: any) => string, placeOf: (id: string) => number}} ctx
  * @param {number} height
@@ -1238,8 +1241,8 @@ export function layOutAt(drawn, ctx, height) {
   for (const n of graph.nodes) {
     const at = slots.get(n.id);
     if (typeof n.slot === "number" && n.layer !== at) {
-      throw new Error("cannot lay out " + drawn.projection + ": " + n.id + " is placed in column " + at +
-        " and d3-sankey, whose longest path is shorter, drew it in column " + n.layer);
+      throw new Error("cannot lay out " + drawn.projection + ": " + n.id + " belongs in column " + at +
+        " and no ribbon drawn reaches that far, so d3-sankey would draw it in column " + n.layer);
     }
   }
   restackLinks(graph);
@@ -1280,11 +1283,10 @@ export function overviewOf(doc, tiers, chart, expanded) {
 
 /**
  * The Sankey form's renderer, as app.js's FORMS holds it under "sankey".
- * Every method takes what it needs: the chart's declaration, the rung, the
- * columns on screen, the document on screen. It reads of a step the generic
- * fields and `step.sankey`, and nothing of any other form's hints; the test
- * in site/drill.test.mjs wraps the hints in a recording Proxy and holds every
- * read to this file.
+ * Every method takes what it needs: the chart's declaration, the frontier,
+ * the document on screen. It reads of a chart `chart.sankey` and nothing of
+ * any other form's hints; site/layout.test.mjs and site/whole.test.mjs wrap
+ * the hints in a recording Proxy and hold every read to this file.
  * @type {FormRenderer}
  */
 export const SANKEY = Object.freeze({
@@ -1330,39 +1332,28 @@ export const SANKEY = Object.freeze({
     return contraNote(d);
   },
 
-  /** The tier set a rung draws at a budget: columnsAt. */
-  columns(chart, rung, budget) {
-    return columnsAt(chart, rung, budget);
+  /** The split caps a chart declares, one per split key that needs one. */
+  splitCaps(chart) {
+    return (chart.sankey && chart.sankey.split_caps) || [];
   },
 
   /**
-   * Whether this form can draw `id` opened on `step` out of `doc` at every
-   * budget the page draws: the step's document decomposes it, and on a window
-   * step the kept flank of the chart on screen holds it.
+   * How many columns a shaped chart is laid out in: its distinct slots
+   * (slotsOf), at least one.
    */
-  offers(step, doc, onScreen, id, budgets) {
-    if (!decomposable(step, doc, budgets).has(id)) return false;
-    if (!step.sankey.keep || !step.sankey.keep.length || !onScreen) return true;
-    return flankHolds(onScreen, step, id);
+  columnsOf(drawn, tiers) {
+    return Math.max(1, new Set(slotsOf(drawn.nodes, tiers).values()).size);
   },
 
   /**
-   * Fits a document to the columns on screen. On the overview, the fold and
-   * the reductions flipped. On a rung, the window or the side or sides, then THE
-   * MARKS AFTER THE CAP AND THE FOLD, which must not touch them, in this
-   * order: the amount a node prints net of reductions is read off the fresh
-   * ribbons before any mark is added, then the residual, then the gap over
-   * what the residual left, then markContra over what the fold left negative.
+   * Fits a document to the screen, then flips the reductions (markContra): an
+   * expansion schedule folded to the frontier and its open splits capped
+   * (expansionOf), any other document folded to the chart's tier set with its
+   * capped tiers folded (overviewOf).
    */
-  shape(doc, rung, from, tiers, view) {
-    if (!rung) return markContra(overviewOf(doc, tiers, view.chart, view.expanded));
-    const step = rung.step;
-    // A step opening both sides draws each half of its document as a side of
-    // its own, spliced on the opened node as a window is.
-    const drawn = (step.sankey.keep && step.sankey.keep.length)
-      ? windowFor(rung.chart, doc, rung, tiers)
-      : freshHalves(step, tiers).map((h) => sideOf(doc, rung, h.tiers, h.nearIsSource)).reduce(splice);
-    return markContra(markGap(carryResidual(markAmounts(drawn, rung), from, rung, tiers), from, rung));
+  shape(doc, view) {
+    if (isExpansionSchedule(doc)) return markContra(expansionOf(doc, view.frontier, view.chart, view.whole));
+    return markContra(overviewOf(doc, SANKEY.tiersOf(view.chart), view.chart, view.expanded));
   },
 
   /**
@@ -1440,9 +1431,10 @@ export const SANKEY = Object.freeze({
       .attr("class", /** @param {LaidNode} d */ (d) => ctx.classes.node(d))
       .attr("tabindex", 0)
       .attr("role", "button")
-      // aria-pressed is the isolation, on every node. OPENING IS NOT THE TOGGLE
-      // and must never be announced as one: it replaces the chart, leaving no
-      // pressed state to return to. The label announces what a node opens into.
+      // aria-pressed is the isolation, on every node. SPLITTING IS NOT THE
+      // TOGGLE and must never be announced as one: it replaces the node with
+      // its parts, leaving no pressed state to return to. The label announces
+      // what a node splits into.
       .attr("aria-pressed", "false")
       .attr("aria-label", /** @param {LaidNode} d */ (d) => ctx.describe.node(d))
       // Both keys activate every node; which one opens is the description's to say.
@@ -1453,7 +1445,8 @@ export const SANKEY = Object.freeze({
       .on("focus", /** @param {FocusEvent} e @param {LaidNode} d */ (e, d) => on.guarded("show this mark", () => { if (on.restoring()) return; on.tip(e, d); on.pin(d); }))
       .on("blur", on.hide)
       // TWO GESTURES, ONE MEANING EACH: a single click and Space isolate on every
-      // node; a double click and Enter open the nodes that open.
+      // node; a double click and Enter split the nodes that split, and a double
+      // click with Alt or Shift folds back the node a mark was split out of.
       //
       // Both click and keydown, because an SVG g[role=button] synthesises no click
       // from Enter, and some screen readers send both -- which would toggle twice.
@@ -1466,14 +1459,14 @@ export const SANKEY = Object.freeze({
           on.click(d, e.timeStamp);
         });
       })
-      // ON EVERY NODE, not only one that opens: its two clicks have already
+      // ON EVERY NODE, not only one that splits: its two clicks have already
       // toggled the isolation twice, and this restores what was isolated before.
       // preventDefault stops the double click selecting the label.
       .on("dblclick", /** @param {MouseEvent} e @param {LaidNode} d */ (e, d) => {
-        on.guarded("open this mark", () => {
+        on.guarded("split this mark", () => {
           e.stopPropagation();
           e.preventDefault();
-          on.dblclick(d, e.timeStamp);
+          on.dblclick(d, e.timeStamp, Boolean(e.altKey || e.shiftKey));
         });
       })
       .on("keydown", /** @param {KeyboardEvent} e @param {LaidNode} d */ (e, d) => {
@@ -1543,8 +1536,4 @@ export const SANKEY = Object.freeze({
       .attr("fill", /** @param {LaidNode} d */ (d) => ctx.colour.node(d));
   },
 
-  /** The most columns any of these steps declares. */
-  widest(steps) {
-    return steps.reduce((most, s) => Math.max(most, SANKEY.tiersOf(s).length), 0);
-  },
 });

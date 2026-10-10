@@ -75,23 +75,12 @@ type yearView struct {
 	Figures []figure    `json:"figures"`
 	Caveats []caveatRef `json:"caveats"`
 	Counts  countsRef   `json:"counts"`
-	// Steps is what this year's rungs disclose, one entry per [View.Steps]
-	// entry, resolved for THIS year. Omitted on a view that opens nothing.
-	Steps []stepView `json:"steps,omitempty"`
 	// ChartTitle is the <title> inside the SVG -- the chart's accessible name,
 	// and a different string from Title, which is the document's.
 	ChartTitle string `json:"chart_title"`
 	// Lede is the year and basis as the lede names them, "FY 2025-26 adopted";
 	// the template renders it and app.js repaints it and names a column by it.
 	Lede string `json:"lede"`
-}
-
-// stepView is what one rung's document discloses for one year: the caveats its
-// marks link to. Nothing here names a file: the client selects the schedule
-// out of its year's column, and which of its nodes open is read off that
-// document by the client's own reach (decomposable in site/app.js).
-type stepView struct {
-	Caveats []caveatRef `json:"caveats"`
 }
 
 // countsRef is the "N flows between M nodes, from K facts" line, per year.
@@ -125,9 +114,9 @@ type pageData struct {
 	Facts int
 	Nodes int
 	Links int
-	// Drill is whether this page's chart opens a node, which the lede's
-	// sentence about a click depends on.
-	Drill bool
+	// Expands is whether this page's chart splits a node in place, which the
+	// lede's sentence about a click depends on.
+	Expands bool
 	// Description is [View.Description].
 	Description string
 	// ConfigJSON is window.FISC_CONFIG. json.Marshal escapes <, > and & to
@@ -150,13 +139,13 @@ type clientConfig struct {
 	Docs  map[string]clientDoc `json:"docs"`
 	// KindLabels is each link kind in the page's words.
 	KindLabels map[string]string `json:"kind_labels"`
+	// SplitLabels is what each split key's members are called, in the page's
+	// words, keyed as the expansion schedule names a split.
+	SplitLabels map[string]string `json:"split_labels"`
 	// Wording is every sentence the client composes, as templates it fills.
 	Wording wording `json:"wording"`
 	// Overview is the page's own chart: its form and that form's hints.
 	Overview Chart `json:"overview"`
-	// Steps is how the page opens a node, one hop per step, omitted (not [])
-	// on a page that opens none.
-	Steps []DrillStep `json:"steps,omitempty"`
 }
 
 // encodeConfig renders window.FISC_CONFIG and refuses bytes that do not match
@@ -264,9 +253,10 @@ func sankeyTitle(callerTitle, yearLabel string) string {
 	return "City of Livermore budget flows — " + yearLabel
 }
 
-// stepDocument is as much of ANY document as a rung needs: who built it, what
-// it cites and what it discloses.
-type stepDocument struct {
+// scheduleDocument is as much of ANY document as a view's chart needs when it
+// draws a schedule other than the view's own: who built it, what it cites and
+// what it discloses.
+type scheduleDocument struct {
 	Metadata struct {
 		GeneratedBy string       `json:"generated_by"`
 		FiscalYear  int          `json:"fiscal_year"`
@@ -277,64 +267,10 @@ type stepDocument struct {
 	} `json:"metadata"`
 }
 
-// stepDocuments is what one year's rungs will draw: the document each step
-// resolves to for that year, with its own caveat refs, and the pages those
-// documents cite.
-//
-// The join is [StepStems]'. The pages feed the same union the years do, for
-// unionSources' reason. builtBy is the view's own projection's generated_by;
-// a step document built by another is refused, as a year's is.
-func stepDocuments(v View, year, builtBy string, fiscalYear int, basis string,
-	projections map[string][]byte, ix ColumnIndex, caveatsPath string,
-) ([]stepView, []sourceMeta, error) {
-	stems, serr := StepStems(v.Steps, year, ix)
-	if serr != nil {
-		return nil, nil, fmt.Errorf("view %q (year stem %q declares fiscal_year %d, basis %q): %w",
-			v.Path, year, fiscalYear, basis, serr)
-	}
-	var (
-		out   []stepView
-		cited []sourceMeta
-	)
-	for i := range v.Steps {
-		stem := stems[i]
-		// StepStems answers a year stem validate found built, or a document
-		// ColumnIndex folded out of the built set, so this refuses only an
-		// index folded from some other set than projections.
-		raw, ok := projections[stem]
-		if !ok {
-			return nil, nil, fmt.Errorf("view %q step %d draws %q for year stem %q, which was not built; "+
-				"the column index was folded from other projections than these",
-				v.Path, i, stem, year)
-		}
-		if _, err := decodeDocument(stem, raw); err != nil {
-			return nil, nil, err
-		}
-		var doc stepDocument
-		if err := json.Unmarshal(raw, &doc); err != nil {
-			return nil, nil, fmt.Errorf("decode %s metadata: %w", stem, err)
-		}
-		if doc.Metadata.GeneratedBy != builtBy {
-			return nil, nil, fmt.Errorf(
-				"view %q opens on %q built by %q but step %d's document %q for year stem %q "+
-					"was built by %q; the footer credits one projection for figures drawn "+
-					"from both", v.Path, v.Projection, builtBy, i, stem, year, doc.Metadata.GeneratedBy)
-		}
-		// No column guard here: [ColumnIndex] selects a document only under
-		// the column it itself declares, so it cannot be another year's.
-		cited = append(cited, doc.Metadata.Sources...)
-		out = append(out, stepView{
-			// Stem-keyed: two schedules of one column can carry one caveat id.
-			Caveats: caveatRefs(doc.Metadata.Caveats, stem, caveatsPath),
-		})
-	}
-	return out, cited, nil
-}
-
 // drawn is the document a view's own chart draws in one year, by stem.
 type drawn struct {
 	stem string
-	doc  stepDocument
+	doc  scheduleDocument
 }
 
 // drawnDocument is the document a view's own chart draws in one year, where
@@ -411,11 +347,6 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 				v.Path, v.Projection, meta.GeneratedBy, stem, m.GeneratedBy)
 		}
 		cited = append(cited, m.Sources...)
-		steps, stepped, stepErr := stepDocuments(v, stem, meta.GeneratedBy, m.FiscalYear, m.Basis, o.Projections, ix, caveatsPath)
-		if stepErr != nil {
-			return pageData{}, stepErr
-		}
-		cited = append(cited, stepped...)
 		hero, figures := tilesFor(m)
 		counts := countsRef{Facts: m.Counts.Facts, Nodes: m.Counts.Nodes, Links: m.Counts.Links}
 		caveats := caveatRefs(m.Caveats, stem, caveatsPath)
@@ -444,7 +375,6 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			Figures:    figures,
 			Caveats:    caveats,
 			Counts:     counts,
-			Steps:      steps,
 		})
 	}
 	// The page opens on the newest year, the last of them; everything
@@ -460,9 +390,9 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		Years:         years,
 		Docs:          clientDocs,
 		KindLabels:    kindLabels(),
+		SplitLabels:   splitLabels(),
 		Wording:       defaultWording(),
 		Overview:      v.Overview,
-		Steps:         v.Steps,
 	}
 	blob, err := encodeConfig(cfg)
 	if err != nil {
@@ -495,7 +425,7 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		Facts:        open.Counts.Facts,
 		Nodes:        open.Counts.Nodes,
 		Links:        open.Counts.Links,
-		Drill:        len(v.Steps) > 0,
+		Expands:      v.Draws == project.ExpansionProjection,
 		Description:  v.Description,
 		// #nosec G203 -- blob is encoding/json's output, which escapes <, >
 		// and & to their \u form, so it cannot terminate the script element

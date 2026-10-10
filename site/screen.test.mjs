@@ -1,11 +1,11 @@
 // screen.test.mjs -- the chart's card full screen: the button the page shows
-// only where the browser offers it, the column budget re-asked at the
-// full-screen width, and the reader's budget given back on leaving. jsdom has
-// no Fullscreen API, so each test stubs the one the page calls.
+// only where the browser offers it, and the chart laid out at its own width
+// in and out of it; and the zoom. jsdom has no Fullscreen API, so each test
+// stubs the one the page calls.
 
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { loadApp, bootedApp, opened, settle, fire, topOf } from "./testlib.mjs";
+import { loadApp, bootedApp, split, settle, fire } from "./testlib.mjs";
 
 /**
  * Stubs the Fullscreen API on a loaded page, as a browser offering it does:
@@ -39,7 +39,7 @@ describe("full screen on the chart's card", () => {
     assert.ok(document.getElementById("chart-fullscreen").hasAttribute("hidden"));
   });
 
-  test("going full screen re-asks the column budget at the full-screen width, and leaving gives the reader's back", async (t) => {
+  test("going full screen shows the card and says the way back, and the chart keeps the width it is laid out at", async (t) => {
     const loaded = await loadApp({ viewport: 1000 });
     const { app, window, document, config } = loaded;
     stubFullscreen(window, document, 4000);
@@ -48,34 +48,26 @@ describe("full screen on the chart's card", () => {
     const button = document.getElementById("chart-fullscreen");
     assert.ok(!button.hasAttribute("hidden"), "the browser offers full screen and the button is hidden");
     assert.equal(button.textContent, config.wording.full_screen);
-    // A window that widens: on the overview the budget moves nothing.
-    await opened(app, "fund-group/general");
-    const before = { columns: app.drawnColumns(), width: viewBoxWidth(document) };
+    // A split that inserts a column: fund/100's divisions after the funds.
+    await split(app, "fund-group/general", "fund/100");
+    const before = viewBoxWidth(document);
+    const max = document.documentElement.style.getPropertyValue("--chart-max");
 
     fire(button, "click");
     await settle();
-    const full = { columns: app.drawnColumns(), width: viewBoxWidth(document) };
+    const full = viewBoxWidth(document);
     assert.ok(app.isFullscreen(), "the card is not the full-screen element");
     assert.equal(button.textContent, config.wording.full_screen_exit);
 
     fire(button, "click");
     await settle();
-    const after = { columns: app.drawnColumns(), width: viewBoxWidth(document) };
-    t.diagnostic(`fund-group/general at a 1000px viewport: ${before.columns} columns, ${before.width}px; ` +
-      `full screen at 4000px: ${full.columns} columns, ${full.width}px; after: ${after.columns} columns, ${after.width}px`);
-    assert.equal(before.columns, app.NARROW_COLUMNS);
-    assert.equal(full.columns, app.OFFERED_COLUMNS, "full screen did not draw the chart at the full-screen budget");
-    assert.equal(full.width, app.chartWidth(app.OFFERED_COLUMNS));
-    assert.deepEqual(after, before, "leaving full screen did not give the reader's budget back");
+    t.diagnostic(`fund/100 split: ${before}px laid, --chart-max ${max}; full screen ${full}px; after ${viewBoxWidth(document)}px`);
+    assert.equal(before, app.chartWidth(4));
+    assert.equal(max, app.chartWidth(4) + "px");
+    assert.equal(full, before);
+    assert.equal(viewBoxWidth(document), before);
+    assert.equal(app.isFullscreen(), false);
     assert.equal(button.textContent, config.wording.full_screen);
-  });
-
-  test("columnsForWidth answers what COLUMN_QUERIES would at that viewport", async () => {
-    const { app } = await loadApp();
-    for (const px of [0, 1000, app.widthOf(4) + app.CHART_CUSHION - 1, app.widthOf(4) + app.CHART_CUSHION, 10000]) {
-      const want = app.COLUMN_QUERIES.reduce((most, q) => (px >= Number(/(\d+)px/.exec(q.query)[1]) ? Math.max(most, q.columns) : most), app.NARROW_COLUMNS);
-      assert.equal(app.columnsForWidth(px), want, `at ${px}px`);
-    }
   });
 });
 
@@ -94,7 +86,7 @@ function inSight(app) {
 }
 
 describe("zoom and pan on the chart", () => {
-  test("the zoom moves the layer the form drew into and never the svg, labels counter-scale, and a mark still opens at any transform", async (t) => {
+  test("the zoom moves the layer the form drew into and never the svg, labels counter-scale, and a mark still splits at any transform", async (t) => {
     const { app, document, config } = await bootedApp();
     const svg = document.getElementById("chart");
     const layer = () => svg.querySelector(":scope > g.zoom-layer");
@@ -112,7 +104,7 @@ describe("zoom and pan on the chart", () => {
     assert.ok(svg.classList.contains("zoomed"));
     assert.ok(!reset.hasAttribute("disabled"));
 
-    // A tooltip and an isolation at the transform, then a double click opens.
+    // A tooltip and an isolation at the transform, then a double click splits.
     const mark = markOf(document, "fund-group/general");
     fire(mark, "pointerenter");
     assert.ok(!document.getElementById("tooltip").hasAttribute("hidden"), "no tooltip at the transform");
@@ -120,7 +112,7 @@ describe("zoom and pan on the chart", () => {
     assert.equal(app.filter.isolated, "fund-group/general");
     fire(mark, "dblclick", { timeStamp: 10100 });
     await settle();
-    assert.equal(topOf(app), "fund-group/general", "a double click at the transform did not open the mark");
+    assert.deepEqual(app.expansions, ["fund-group/general"], "a double click at the transform did not split the mark");
     // The new chart is drawn whole.
     assert.equal(app.zoomOf().k, 1);
     assert.equal(layer().getAttribute("transform"), "translate(0,0) scale(1)");

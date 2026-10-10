@@ -3,6 +3,7 @@ package export
 import (
 	"encoding/json"
 	"io/fs"
+	"maps"
 	"reflect"
 	"regexp"
 	"slices"
@@ -23,8 +24,8 @@ import (
 // silent until a reader switches year. The schema's additionalProperties: false
 // is also what refuses a `text` on caveatRef.
 func TestTheSchemaStatesWhatThePageConfigCarries(t *testing.T) {
-	// Deep, because the Sankey hints are one $def the overview and every step
-	// share, and a $ref is a leaf to Names.
+	// Deep, because the Sankey hints are a $def, and a $ref is a leaf to
+	// Names.
 	stated, err := schema.NamesDeep(schema.Page)
 	if err != nil {
 		t.Fatalf("read %s: %v", schema.Page, err)
@@ -78,13 +79,11 @@ func TestTheWordingFillsEveryPlaceholderTheClientHands(t *testing.T) {
 	hands := map[string][]string{
 		"counts":                 {"links", "nodes", "facts"},
 		"counts_partial":         {"links", "nodes", "cited", "facts"},
-		"counts_carried":         {"links", "nodes", "own", "cited", "facts", "carried"},
-		"counts_carried_from":    {"above", "theirs"},
-		"opened_hint":            {"label"},
-		"open_further":           {"where"},
-		"open_into":              {"where"},
-		"in_column":              {"columns"},
-		"back_control":           {"back"},
+		"chip_fold":              {"label"},
+		"chip_fold_label":        {"label", "split"},
+		"split_chooser":          {"label"},
+		"tail_chip":              {"label", "n", "word"},
+		"tail_chip_label":        {"label", "n", "word"},
 		"aggregate_label":        {"folded", "word"},
 		"aggregate_rationale":    {"folded", "word"},
 		"aggregate_note":         {"folded", "total", "cap"},
@@ -141,6 +140,24 @@ func TestTheWordingFillsEveryPlaceholderTheClientHands(t *testing.T) {
 			if !want[v] {
 				t.Errorf("wording %q names {%s}, which the client never hands it; the page would print the placeholder", key, v)
 			}
+		}
+	}
+}
+
+// TestEverySplitKeyHasItsWords holds the page's words for what a node splits
+// into to the split keys the expansion schedule declares, both ways: a key
+// with no words is a chooser button the client cannot name, and words for no
+// key are a promise about a split that is never drawn.
+func TestEverySplitKeyHasItsWords(t *testing.T) {
+	labels := splitLabels()
+	got := slices.Sorted(maps.Keys(labels))
+	want := slices.Sorted(slices.Values(project.SplitKeys()))
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("the page's split words and project.SplitKeys differ (-keys +words):\n%s", diff)
+	}
+	for k, w := range labels {
+		if strings.TrimSpace(w) == "" {
+			t.Errorf("split %q is said in no words", k)
 		}
 	}
 }

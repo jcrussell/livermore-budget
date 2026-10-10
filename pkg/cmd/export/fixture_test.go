@@ -551,15 +551,6 @@ func TestTheClientFixtureChecksCanFail(t *testing.T) {
 		}
 		return slices.Concat(before, []byte(configOpen), enc, []byte(configClose), after)
 	}
-	stepOf := func(cfg map[string]any, key string) map[string]any {
-		for _, s := range cfg["steps"].([]any) {
-			if s.(map[string]any)["key"] == key {
-				return s.(map[string]any)
-			}
-		}
-		t.Fatalf("the config declares no %s step", key)
-		return nil
-	}
 	firstPage := func(cfg map[string]any) map[string]any {
 		docs := cfg["docs"].(map[string]any)
 		for _, id := range slices.Sorted(maps.Keys(docs)) {
@@ -579,11 +570,11 @@ func TestTheClientFixtureChecksCanFail(t *testing.T) {
 			return bytes.Replace(fixturePage, []byte(`id="year-toggle"`), []byte(`id="year-toggl"`), 1)
 		}},
 		{"a wording key dropped", "not the one Go writes", func(t *testing.T) []byte {
-			return reconfigured(t, func(cfg map[string]any) { delete(cfg["wording"].(map[string]any), "opened_hint") })
+			return reconfigured(t, func(cfg map[string]any) { delete(cfg["wording"].(map[string]any), "open_into") })
 		}},
 		{"a cap moved", "not the one Go writes", func(t *testing.T) []byte {
 			return reconfigured(t, func(cfg map[string]any) {
-				caps := stepOf(cfg, "fund-group")["sankey"].(map[string]any)["caps"].([]any)
+				caps := cfg["overview"].(map[string]any)["sankey"].(map[string]any)["split_caps"].([]any)
 				caps[0].(map[string]any)["cap"] = 9.0
 			})
 		}},
@@ -591,7 +582,7 @@ func TestTheClientFixtureChecksCanFail(t *testing.T) {
 			return reconfigured(t, func(cfg map[string]any) { firstPage(cfg)["pdf"] = "https://example.invalid/" })
 		}},
 		{"a config the schema refuses", "does not match", func(t *testing.T) []byte {
-			return reconfigured(t, func(cfg map[string]any) { delete(stepOf(cfg, "fund-group"), "sankey") })
+			return reconfigured(t, func(cfg map[string]any) { cfg["overview"].(map[string]any)["form"] = "pie" })
 		}},
 		{"a hero figure changed", "not the one Go writes", func(t *testing.T) []byte {
 			return reconfigured(t, func(cfg map[string]any) {
@@ -796,16 +787,11 @@ func TestTheClientFixtureChecksCanFail(t *testing.T) {
 	}
 }
 
-// wholeSchedules are the schedules a step's gap licence or residual is stated
-// against, which the subset must leave figure for figure as the store has them.
-var wholeSchedules = []string{"sankey", "department-spending", "transfers-by-fund", "transfers-out"}
-
-// TestTheClientSubsetLeavesTheLicensedSchedulesWhole exports the store and the
-// subset and requires every schedule a licence is stated against to be the
-// same in both: a fund the subset drops from one of them is a difference the
-// client refuses, or worse, one it is licensed to draw. The page config is the
-// same in both too, but for the pages it links.
-func TestTheClientSubsetLeavesTheLicensedSchedulesWhole(t *testing.T) {
+// TestTheClientSubsetServesThePageConfigTheStoreDoes exports the store and the
+// subset and requires the page config to be the same in both, but for the
+// pages it links and each year's counts: those count and cite the facts no
+// link draws, which is all the subset drops (TestTheClientSubsetDrawsEveryGroupWhole).
+func TestTheClientSubsetServesThePageConfigTheStoreDoes(t *testing.T) {
 	full, subset := exportedSite(t), clientExport(t)
 	config := func(dir string) map[string]any {
 		t.Helper()
@@ -822,31 +808,17 @@ func TestTheClientSubsetLeavesTheLicensedSchedulesWhole(t *testing.T) {
 			t.Fatal(err)
 		}
 		delete(cfg, "docs")
+		years, _ := cfg["years"].([]any)
+		if len(years) == 0 {
+			t.Fatal("the page config lists no year, so the comparison below holds nothing")
+		}
+		for _, y := range years {
+			delete(y.(map[string]any), "counts")
+		}
 		return cfg
 	}
 	if diff := cmp.Diff(config(full), config(subset)); diff != "" {
-		t.Errorf("the page config differs over the subset beyond the pages it links (-store +subset):\n%s", diff)
-	}
-	for _, stem := range clientFixtureColumns {
-		f, s := servedColumn(t, full, stem), servedColumn(t, subset, stem)
-		for _, name := range wholeSchedules {
-			if _, ok := f.Schedules[name]; !ok {
-				t.Fatalf("%s serves no %s, so this test holds nothing of it", stem, name)
-			}
-			fIDs, fLinks := scheduleOf(f, f.Schedules[name], true)
-			sIDs, sLinks := scheduleOf(s, s.Schedules[name], true)
-			if diff := cmp.Diff(fIDs, sIDs); diff != "" {
-				t.Errorf("%s %s draws other marks over the subset (-store +subset):\n%s", stem, name, diff)
-			}
-			if diff := cmp.Diff(fLinks, sLinks); diff != "" {
-				t.Errorf("%s %s draws other links over the subset (-store +subset):\n%s", stem, name, diff)
-			}
-			fs, ss := f.Schedules[name], s.Schedules[name]
-			fs.Nodes, fs.Links, ss.Nodes, ss.Links = nil, nil, nil, nil
-			if diff := cmp.Diff(fs, ss); diff != "" {
-				t.Errorf("%s %s states other scopes, counts, caveats or sources over the subset (-store +subset):\n%s", stem, name, diff)
-			}
-		}
+		t.Errorf("the page config differs over the subset beyond the pages it links and its counts (-store +subset):\n%s", diff)
 	}
 }
 

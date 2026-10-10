@@ -6,7 +6,7 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 
-import { bootedApp, wholeFixture, pageFixture, expandAll, clickYear, settle, fire, opened } from "./testlib.mjs";
+import { bootedApp, wholeFixture, pageFixture, expandAll, clickYear, settle, fire } from "./testlib.mjs";
 
 /** Every pinned year's whole-budget chart, booted once per test. */
 async function wholePage(config) {
@@ -43,7 +43,7 @@ describe("the whole budget drawn out", () => {
       const raw = app.fetched;
       const drawn = app.unmarkContra(app.projection);
       const gone = droppedIn(app, raw);
-      const frontier = app.tierFrontier(raw, app.layoutTiers(drawn));
+      const frontier = app.tierFrontier(raw, app.RENDER_TIERS);
       const byID = new Map(raw.nodes.map((n) => [n.id, n]));
       const end = (id) => app.foldTarget(byID, byID.get(id), frontier);
       // Every kept link at its folded ends, summed by (source, target, kind):
@@ -221,17 +221,6 @@ describe("hairlines", () => {
     assert.equal(document.getElementById("hairline-line").textContent, app.say("hairline", { n: thin.length }));
     assert.equal(height, String(pageFixture().config.overview.sankey.grow.floor));
     assert.ok(pageFixture().config.overview.sankey.height === undefined);
-  });
-
-  test("a window, on the form's own canvas, draws none and says nothing, though some of its ribbons are under a pixel", async (t) => {
-    const { app, document } = await bootedApp();
-    await opened(app, "fund-group/general");
-    const thin = [...document.querySelectorAll("#chart path.link")].filter((p) => p.__data__.width < 1).length;
-    t.diagnostic(`the General Fund group's window draws ${thin} ribbons under a pixel at its stroke floor`);
-    assert.ok(thin > 0, "the window draws no ribbon under a pixel, so this proves less than it says");
-    assert.equal(document.querySelectorAll("#chart path.link.hairline").length, 0);
-    assert.equal(document.querySelectorAll("#chart path.link-hit").length, 0);
-    assert.ok(document.getElementById("hairline-line").hidden);
   });
 });
 

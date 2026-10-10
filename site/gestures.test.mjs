@@ -1,41 +1,27 @@
 // gestures.test.mjs -- the SEQUENCES a reader's gestures make on the drawn
-// chart: which key opens and which follows the money, an isolation surviving
-// the two clicks under a double click, Escape closing one rung at a time and
-// each breadcrumb control closing to its own depth, an expansion staying on
-// the chart it was made on, a kept flank that nothing opens, and where focus
-// lands after a keyboard drill has replaced the element it was on.
+// chart: which key splits and which follows the money, an isolation surviving
+// the two clicks under a double click, the chooser between a node's two
+// splits, the chip, Alt or Shift with a double click and Escape folding a
+// split back, Expand all and Collapse all, a tail drawn out, and where focus
+// lands after a split has replaced the element it was on.
 //
 // Every gesture is a dispatched event with a planted timeStamp, because the
 // activation guard compares a click's stamp against the key that may have
-// synthesised it.
+// synthesised it. Every assertion is over ids, counts and booleans: a failing
+// assertion over a laid mark formats the whole graph (fisc-yj4w.33).
 
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import {
-  bootedApp, opened, settle, fire, topOf, pageFixture, clickYear, stepByKey, columnFixture,
-} from "./testlib.mjs";
+import { bootedApp, split, settle, fire, pageFixture, clickYear, refusals } from "./testlib.mjs";
 
 const PAGE = pageFixture().config;
 /** The published years, newest last as the page lists them. */
 const YEARS = PAGE.years;
 
-/**
- * The tier the fund window folds its object categories at, read off the step
- * the packager ships rather than spelled here.
- */
-const CATEGORY_TIER = stepByKey(PAGE, "fund").sankey.caps.find((c) => c.tail === "object rows").tier;
-
-/**
- * A mark that opens on the spine; the rung whose marks open into nothing,
- * since every mark the spine draws opens; and two of that rung's marks.
- */
+/** A root that splits one way; a root that splits two ways; the group whose split folds a tail. */
 const OPENS = "fund-group/general";
-const SHUT = "transfers/in";
-const CLOSED = "fund/100";
-const SEED = "fund/610";
-/** The group whose window draws a folded tail, and the division that opens nothing. */
+const TWO_WAYS = "expenditure/capital-outlay";
 const WORST = "fund-group/special-revenue";
-const INERT = "dept/patrol";
 
 /**
  * A page booted and switched to `stem`. The page opens on the newest year, so
@@ -51,22 +37,29 @@ async function onYear(stem, o = {}) {
   return loaded;
 }
 
-/** The drawn mark for one node id, or a throw naming the chart it is not on. */
+/** The drawn mark for one node id, or a throw naming what the chart has split. */
 function markOf(app, document, id) {
   const m = [...document.querySelectorAll("#chart g.node")]
     .find((g) => g.__data__ && g.__data__.id === id);
-  if (!m) throw new Error(`${id} is not drawn on ${topOf(app) || "the overview"}`);
+  if (!m) throw new Error(`${id} is not drawn with [${app.expansions.join(", ")}] split`);
   return m;
 }
 
-/** The breadcrumb's return controls, outermost first. */
-function backControls(document) {
-  return [...document.querySelectorAll("#breadcrumb button.crumb-back")];
+/** The id of the mark focus is on, or what else it is on. */
+function focusedID(document) {
+  const a = document.activeElement;
+  if (!a) return "nothing";
+  return a.__data__ && typeof a.__data__.id === "string" ? a.__data__.id : a.tagName + "." + a.getAttribute("class");
 }
 
-/** The breadcrumb's expansion chips. */
+/** The chip row's fold-back chips, as their words. */
 function chips(document) {
   return [...document.querySelectorAll("#breadcrumb button.crumb-expanded")];
+}
+
+/** The chip row's Expand all and Collapse all buttons, in that order. */
+function bulk(document) {
+  return [...document.querySelectorAll("#breadcrumb button.crumb-bulk")];
 }
 
 /** Escape, dispatched on the document the way a keyboard delivers it. */
@@ -74,457 +67,258 @@ function escape(document) {
   fire(document, "keydown", { key: "Escape" });
 }
 
-/**
- * Opens `id` the way a keyboard reader does: focus lands on the mark, then
- * Enter. Focusing pins the mark, which is what a reader's focus does too.
- */
-async function keyOpen(app, document, id, at) {
-  const m = markOf(app, document, id);
-  m.focus();
-  fire(m, "keydown", { key: "Enter", timeStamp: at });
-  await settle();
-  assert.equal(topOf(app), id, `Enter on ${id} left the chart on ${topOf(app) || "the overview"}`);
+/** How many drawn nodes split or draw out: what Expand all leaves none of. */
+function offers(app) {
+  return app.projection.nodes.filter((n) => app.splittable(n)).length;
 }
 
-/** The page's words about the chart on screen, read off the real DOM. */
-function words(app, document) {
-  const text = (id) => {
-    const e = document.getElementById(id);
-    return e ? String(e.textContent).replace(/\s+/g, " ").trim() : "";
-  };
-  const crumb = document.getElementById("breadcrumb");
-  const kids = crumb ? [...crumb.children] : [];
-  const legend = document.getElementById("legend");
-  return {
-    counts: text("counts-line"),
-    title: text("chart-title"),
-    desc: text("chart-desc"),
-    hint: text("chart-hint"),
-    legend: legend ? legend.children.length : -1,
-    crumbControls: kids.filter((c) => c.tagName === "BUTTON" && c.className === "crumb-back")
-      .map((c) => c.textContent),
-    crumbHere: kids.filter((c) => c.tagName === "SPAN").map((c) => c.textContent).join(""),
-    crumbHidden: crumb ? crumb.hasAttribute("hidden") : true,
-    depth: app.drilled.length,
-    drawnIsYears: app.drawnDoc() === app.fetched,
-  };
-}
-
-/** The whole of a drawn chart as two sorted lists, so two charts can be compared mark for mark. */
-function wholeOf(doc) {
-  return {
-    nodes: doc.nodes.map((n) => n.id).sort().join(","),
-    links: doc.links.map((l) => `${l.source}>${l.target}:${l.kind}=${l.value_cents}`).sort().join(","),
-  };
-}
-
-/** How many folded tails the chart on screen draws. */
-function tails(app) {
-  return app.projection.nodes.filter((n) => app.isAggregate(n.id)).length;
+/** A member of a split node's first split that neither splits nor draws out. */
+function inertMember(app, id) {
+  const members = app.splitsHere({ id })[0].members;
+  const n = app.projection.nodes.find((x) => members.includes(x.id) && !app.splittable(x) && !app.expandable(x));
+  if (!n) throw new Error(`every member of ${id} drawn splits or draws out`);
+  return n.id;
 }
 
 describe("the two keys", () => {
-  test("Enter opens and Space isolates, and neither does the other", async (t) => {
+  test("Enter splits and Space isolates, and neither does the other", async (t) => {
     const { app, document } = await bootedApp();
-    const state = () => ({ depth: app.drilled.length, top: topOf(app), isolated: app.filter.isolated });
+    const state = () => ({ split: app.expansions.join(","), isolated: app.filter.isolated });
 
     fire(markOf(app, document, OPENS), "keydown", { key: "Enter", timeStamp: 1000 });
     await settle();
     const enter = state();
-    app.drillUp(0);
+    const kept = app.laidNodes.filter((n) => n.id === "revenue/taxes/property" || n.id === "transfers/in").length;
+    app.collapseAll();
     await settle();
     fire(markOf(app, document, OPENS), "keydown", { key: " ", timeStamp: 5000 });
     await settle();
     const space = state();
-    app.drillUp(0);
-    await settle();
-    await opened(app, SHUT);
-    const shut = app.projection.nodes.find((n) => n.id === CLOSED);
-    // Enter still activates a mark with nothing to open: a role="button"
+    app.setIsolated("");
+    app.collapseAll();
+    await split(app, WORST);
+    const inert = inertMember(app, WORST);
+    // Enter still activates a mark with nothing to split: a role="button"
     // whose Enter does nothing is worse than one whose two keys agree.
-    fire(markOf(app, document, CLOSED), "keydown", { key: "Enter", timeStamp: 9000 });
+    fire(markOf(app, document, inert), "keydown", { key: "Enter", timeStamp: 9000 });
     await settle();
-    const closedEnter = state();
+    const inertEnter = state();
 
-    assert.deepEqual(enter, { depth: 1, top: OPENS, isolated: "" });
-    assert.deepEqual(space, { depth: 0, top: "", isolated: OPENS });
-    assert.equal(app.drillable(shut), false, `${CLOSED} opens on ${SHUT}'s rung`);
-    assert.deepEqual(closedEnter, { depth: 1, top: SHUT, isolated: CLOSED });
-    t.diagnostic(`Enter on ${OPENS} opened it; Space on it followed it; Enter on ${CLOSED} under ${SHUT} followed it`);
+    assert.deepEqual(enter, { split: OPENS, isolated: "" });
+    assert.equal(kept, 2, "splitting the General Fund group took another root off the chart");
+    assert.deepEqual(space, { split: "", isolated: OPENS });
+    assert.deepEqual(inertEnter, { split: WORST, isolated: inert });
+    t.diagnostic(`Enter on ${OPENS} split it in place; Space on it followed it; Enter on ${inert} followed it`);
   });
 
-  test("a double click opens, and leaves the isolation the reader had", async (t) => {
+  test("a double click splits, and leaves the isolation the reader had", async (t) => {
     // THE SEED IS THE WHOLE TEST. A double click delivers click, click,
     // dblclick, and on a chart following nothing those two clicks toggle an
     // isolation on and off and land back on "" without any help. It starts
     // from a mark the reader was already following, the only state in which
     // the two answers differ.
-    const seed = SEED;
     const { app, document } = await bootedApp();
-    await opened(app, SHUT);
+    await split(app, WORST);
+    const inert = inertMember(app, WORST);
+    const seed = "revenue/taxes/sales";
     fire(markOf(app, document, seed), "click", { timeStamp: 0 });
     const seeded = app.filter.isolated;
-    fire(markOf(app, document, CLOSED), "click", { timeStamp: 1000 });
+    fire(markOf(app, document, inert), "click", { timeStamp: 1000 });
     const firstClick = app.filter.isolated;
-    fire(markOf(app, document, CLOSED), "click", { timeStamp: 1050 });
+    fire(markOf(app, document, inert), "click", { timeStamp: 1050 });
     const secondClick = app.filter.isolated;
-    fire(markOf(app, document, CLOSED), "dblclick", { timeStamp: 1060 });
+    fire(markOf(app, document, inert), "dblclick", { timeStamp: 1060 });
     await settle();
-    const closedDouble = { depth: app.drilled.length, isolated: app.filter.isolated };
+    const inertDouble = { split: app.expansions.join(","), isolated: app.filter.isolated };
 
     // A SECOND PAGE AND NOT THE SAME ONE WOUND BACK: seeding the same mark
     // again on a chart still following it clears the seed.
     const second = await bootedApp();
     const m2 = (id) => markOf(second.app, second.document, id);
-    const spineSeed = "revenue/taxes/sales";
-    fire(m2(spineSeed), "click", { timeStamp: 0 });
-    const reseeded = second.app.filter.isolated;
+    fire(m2(seed), "click", { timeStamp: 0 });
     fire(m2(OPENS), "click", { timeStamp: 1000 });
     fire(m2(OPENS), "click", { timeStamp: 1050 });
     fire(m2(OPENS), "dblclick", { timeStamp: 1060 });
     await settle();
-    const opensDouble = { depth: second.app.drilled.length, top: topOf(second.app), isolated: second.app.filter.isolated };
+    const opensDouble = { split: second.app.expansions.join(","), isolated: second.app.filter.isolated };
 
     assert.equal(seeded, seed);
-    assert.equal(firstClick, CLOSED);
+    assert.equal(firstClick, inert);
     assert.equal(secondClick, "");
-    assert.deepEqual(closedDouble, { depth: 1, isolated: seed });
-    assert.equal(reseeded, spineSeed);
-    assert.deepEqual(opensDouble, { depth: 1, top: OPENS, isolated: "" });
-    t.diagnostic(`following "${seed}", a double click on ${CLOSED} went "${firstClick}" then ` +
-      `"${secondClick}" under the reader and came back to "${closedDouble.isolated}"; the same ` +
-      `gesture on ${OPENS}, following "${spineSeed}", opened it, and the redraw cleared the isolation on the way`);
+    assert.deepEqual(inertDouble, { split: WORST, isolated: seed });
+    // The seed survives the split too: the sales tax is still drawn.
+    assert.deepEqual(opensDouble, { split: OPENS, isolated: seed });
+    t.diagnostic(`following "${seed}", a double click on ${inert} went "${firstClick}" then ` +
+      `"${secondClick}" under the reader and came back to "${inertDouble.isolated}"; the same gesture on ${OPENS} split it`);
+  });
+});
+
+describe("a node that splits two ways", () => {
+  test("Enter and a double click take the first declared split, and the chooser in its chip draws the other", async (t) => {
+    const { app, document } = await bootedApp();
+    const splits = app.splitsHere({ id: TWO_WAYS }).map((sp) => sp.key);
+    assert.ok(splits.length === 2, `${TWO_WAYS} splits ${splits.length} way(s)`);
+    fire(markOf(app, document, TWO_WAYS), "dblclick", { timeStamp: 0 });
+    await settle();
+    assert.deepEqual(app.expansions, [TWO_WAYS]);
+    const group = document.querySelector("#breadcrumb .crumb-group");
+    assert.ok(group, "no chooser beside the chip of a node that splits two ways");
+    assert.equal(group.getAttribute("role"), "group");
+    assert.ok(group.getAttribute("aria-label").includes(app.nodeOf(TWO_WAYS).label), group.getAttribute("aria-label"));
+    const choices = () => [...group.ownerDocument.querySelectorAll("#breadcrumb .crumb-choice")]
+      .map((b) => ({ words: b.textContent, pressed: b.getAttribute("aria-pressed") }));
+    const before = choices();
+    assert.deepEqual(before, splits.map((k, i) => ({ words: app.splitWords(k), pressed: String(i === 0) })));
+    // The chooser's other split replaces the first: one way per node.
+    const other = [...document.querySelectorAll("#breadcrumb .crumb-choice")][1];
+    other.click();
+    await settle();
+    assert.deepEqual(app.expansions, [TWO_WAYS + app.ALTERNATIVE_MARK + splits[1]]);
+    const after = choices();
+    assert.deepEqual(after.map((c) => c.pressed), ["false", "true"]);
+    t.diagnostic(`${TWO_WAYS}: the chooser offers ${JSON.stringify(before.map((c) => c.words))}; ` +
+      `pressing the second split it ${splits[1]}`);
+    assert.deepEqual(refusals(document).map((b) => b.textContent), []);
+  });
+});
+
+describe("folding a split back", () => {
+  test("the node's chip folds it, and every split inside it, back into one mark", async (t) => {
+    const { app, document } = await bootedApp();
+    await split(app, OPENS, "fund/100", WORST);
+    const chipWords = chips(document).map((c) => c.textContent);
+    assert.equal(chipWords.length, 3);
+    assert.ok(chipWords[0].includes(app.nodeOf(OPENS).label), chipWords[0]);
+    chips(document)[0].click();
+    await settle();
+    t.diagnostic(`chips ${JSON.stringify(chipWords)}; the first folded the General Fund group and fund/100 with it`);
+    assert.deepEqual(app.expansions, [WORST]);
+    assert.ok(app.laidNodes.some((n) => n.id === OPENS), "the folded node is not drawn again");
+  });
+
+  test("Alt or Shift with a double click on a member folds back the node it was split out of", async () => {
+    const { app, document } = await bootedApp();
+    for (const held of ["altKey", "shiftKey"]) {
+      await split(app, WORST);
+      const member = inertMember(app, WORST);
+      fire(markOf(app, document, member), "dblclick", { timeStamp: 0, [held]: true });
+      await settle();
+      assert.deepEqual(app.expansions, [], `${held} with a double click on ${member}`);
+      assert.ok(app.laidNodes.some((n) => n.id === WORST), `${held}: ${WORST} is not drawn again`);
+    }
+    // On a root it folds nothing and splits nothing.
+    fire(markOf(app, document, OPENS), "dblclick", { timeStamp: 5000, altKey: true });
+    await settle();
+    assert.deepEqual(app.expansions, []);
+  });
+
+  test("Escape undoes the last split, innermost first, after a pin and an isolation", async (t) => {
+    const { app, document } = await bootedApp();
+    await split(app, OPENS, "fund/100");
+    app.setIsolated("revenue/taxes/sales");
+    escape(document);
+    await settle();
+    const first = { split: app.expansions.join(","), isolated: app.filter.isolated };
+    escape(document);
+    await settle();
+    const second = app.expansions.join(",");
+    escape(document);
+    await settle();
+    const third = app.expansions.join(",");
+    escape(document);
+    await settle();
+    assert.deepEqual(first, { split: OPENS + ",fund/100", isolated: "" });
+    assert.equal(second, OPENS);
+    assert.equal(third, "");
+    assert.deepEqual(refusals(document).map((b) => b.textContent), []);
+    t.diagnostic("Escape cleared the isolation, then undid fund/100, then the General Fund group, then did nothing");
+  });
+
+  test("Expand all splits every node to its finest grain by its first split, and Collapse all folds everything back", async (t) => {
+    const { app, document } = await bootedApp();
+    const [all, none] = bulk(document);
+    assert.ok(all && none, "the chip row carries no Expand all and Collapse all");
+    assert.equal(document.getElementById("breadcrumb").hasAttribute("hidden"), false);
+    assert.deepEqual([all.textContent, none.textContent], [app.say("expand_all"), app.say("collapse_all")]);
+    assert.deepEqual([all.disabled, none.disabled], [false, true]);
+    const roots = app.laidNodes.length;
+    all.click();
+    await settle();
+    const opened = { split: app.expansions.length, offers: offers(app), laid: app.laidNodes.length };
+    const [all2, none2] = bulk(document);
+    assert.deepEqual([all2.disabled, none2.disabled], [true, false]);
+    none2.click();
+    await settle();
+    t.diagnostic(`the root lays ${roots} marks; Expand all made ${opened.split} split(s) and lays ${opened.laid}`);
+    assert.ok(opened.split > 0 && opened.laid > roots);
+    assert.equal(opened.offers, 0, "Expand all left a node that splits unsplit");
+    assert.deepEqual(app.expansions, []);
+    assert.equal(app.laidNodes.length, roots);
   });
 });
 
 for (const year of YEARS) {
   describe(`${year.label}: the folded tail`, () => {
-    test(`${year.label}: Enter on the folded tail draws its column uncapped, and Space still follows its money`, async (t) => {
+    test(`${year.label}: Enter on a split's tail draws its members out, Space still follows its money, and its chip folds them back`, async (t) => {
       const { app, document } = await onYear(year.stem);
-      await opened(app, WORST);
+      await split(app, WORST);
       const tail = app.projection.nodes.find((n) => app.isAggregate(n.id));
       assert.ok(tail, `${WORST} drew no folded tail`);
       const offered = app.projection.nodes.filter((n) => app.expandable(n)).map((n) => n.id);
-      assert.deepEqual(offered, [tail.id], "the tail is the one mark the chart offers to expand");
-      const capped = app.projection.links.length;
+      assert.deepEqual(offered, [tail.id], "the tail is the one mark the chart offers to draw out");
+      const capped = app.projection.nodes.length;
 
-      // SPACE GOES FIRST AND MUST NOT EXPAND: it is the key that follows the
+      // SPACE GOES FIRST AND MUST NOT DRAW OUT: it is the key that follows the
       // money on every other mark.
       fire(markOf(app, document, tail.id), "keydown", { key: " ", timeStamp: 0 });
       await settle();
       const spaceFollowed = app.filter.isolated;
-      const spaceLeft = tails(app);
-      fire(markOf(app, document, tail.id), "keydown", { key: "Enter", timeStamp: app.ACTIVATION_WINDOW * 10 });
-      await settle();
-      const left = tails(app);
-      const expanded = app.projection.links.length;
-      // THE TWO MARKS THIS CHART WOULD REFUSE, asked of the predicate directly
-      // because no committed document draws either: a tail at a tier this
-      // rung declares no cap for, and the tier already expanded.
-      const group = stepByKey(PAGE, "fund-group");
-      const uncapped = group.sankey.tiers.find((tier) => !group.sankey.caps.some((c) => c.tier === tier));
-      const foreign = app.expandable({ id: app.aggregateID(uncapped), tier: uncapped });
-      const twice = app.expandable({ id: tail.id, tier: tail.tier });
-
-      assert.equal(spaceFollowed, tail.id, "Space follows the tail's money");
-      assert.equal(spaceLeft, 1, "Space leaves the tail drawn");
-      assert.equal(app.drilled.length, 1, "expanding opens no rung");
-      assert.equal(left, 0, "Enter leaves no tail drawn");
-      assert.equal(chips(document).length, 1, "the breadcrumb carries one chip for the expansion");
-      assert.equal(foreign, false);
-      assert.equal(twice, false);
-      t.diagnostic(`${WORST} capped lays ${capped} ribbon(s); Enter on "${tail.label}" expanded it to ${expanded}`);
-    });
-
-    test(`${year.label}: Enter on the folded tail lands focus on the column's first new mark, not on the return control`, async (t) => {
-      const { app, document } = await onYear(year.stem);
-      await opened(app, WORST);
-      const tail = app.projection.nodes.find((n) => app.isAggregate(n.id));
-      assert.ok(tail, `${WORST} drew no folded tail`);
-      const before = new Set([...document.querySelectorAll("#chart g.node")].map((g) => g.__data__)
-        .filter((n) => n.tier === tail.tier).map((n) => n.id));
+      app.setIsolated("");
       const m = markOf(app, document, tail.id);
       m.focus();
+      const before = new Set(app.laidNodes.map((n) => n.id));
       fire(m, "keydown", { key: "Enter", timeStamp: app.ACTIVATION_WINDOW * 10 });
       await settle();
-      assert.equal(tails(app), 0, "Enter left the tail drawn, so where focus went proves nothing");
-      // Read off the drawn DOM: the topmost mark in the tail's tier the capped chart did not lay.
-      const fresh = [...document.querySelectorAll("#chart g.node")].map((g) => g.__data__)
-        .filter((n) => n.tier === tail.tier && !before.has(n.id)).sort((a, b) => a.y0 - b.y0);
-      assert.ok(fresh.length > 0, "the expansion drew no new mark");
-      const active = document.activeElement;
-      const on = active && active.__data__ ? active.__data__.id : (active ? active.tagName + "." + active.getAttribute("class") : "nothing");
-      t.diagnostic(`after Enter on "${tail.label}" focus is on ${on}; ${fresh.length} mark(s) are new in tier ${tail.tier}`);
-      assert.equal(on, fresh[0].id);
+      const drawnOut = app.projection.nodes.length;
+      const members = new Set(app.splitsHere({ id: WORST })[0].members);
+      const fresh = app.laidNodes.filter((n) => members.has(n.id) && !before.has(n.id)).sort((a, b) => a.y0 - b.y0);
+      const on = focusedID(document);
+      assert.equal(spaceFollowed, tail.id, "Space follows the tail's money");
+      assert.deepEqual(app.expansions, [WORST, tail.id]);
+      assert.ok(fresh.length > 0, "drawing the tail out drew no new member");
+      assert.equal(on, fresh[0].id, "focus is not on the topmost member the tail drew out");
       assert.ok(app.pinned === null, "restoring focus pinned the mark");
-      // THE NEXT ENTER ACTS IN THE COLUMN, so the rung the reader is on stays open.
-      fire(active, "keydown", { key: "Enter", timeStamp: app.ACTIVATION_WINDOW * 20 });
+      const tailChip = chips(document).find((c) => c.textContent.includes(app.nodeOf(WORST).label) && c !== chips(document)[0]);
+      assert.ok(tailChip, "no chip for the tail drawn out");
+      tailChip.click();
       await settle();
-      assert.ok(app.drilled.length >= 1 && app.drilled[0].id === WORST, `the next Enter left the chart on ${topOf(app) || "the overview"}`);
-    });
-
-    test(`${year.label}: an expansion is a property of the chart it was made on, not of the page`, async (t) => {
-      const { app, document } = await onYear(year.stem);
-      const fundStep = stepByKey(PAGE, "fund");
-      app.setColumnBudget(4);
-      await opened(app, OPENS, "fund/100");
-      const narrow = app.projection.links.length;
-      const categoryTail = app.projection.nodes
-        .find((n) => app.isAggregate(n.id) && n.tier === CATEGORY_TIER);
-      assert.ok(categoryTail, "the fund window at four columns draws a folded category tail");
-      fire(markOf(app, document, categoryTail.id), "dblclick", { timeStamp: 0 });
-      await settle();
-      const wide = app.projection.links.length;
-      const wideWhole = wholeOf(app.projection);
-      const categories = app.projection.nodes.filter((n) => n.tier === CATEGORY_TIER).length;
-      assert.equal(chips(document).length, 1, "expanded, the breadcrumb carries one chip");
-      assert.equal(tails(app), 0);
-
-      // THE RUNG BELOW IT IS A FRESH ONE: opening a division from an expanded
-      // chart must not carry "draw every category" into a chart whose
-      // categories are a different column of a different step. What the new
-      // rung RECORDED is asserted too, because a kept flank is a filter of it.
-      await keyOpen(app, document, INERT, 1000);
-      const inner = { chip: chips(document).length, depth: app.drilled.length, tails: tails(app),
-        recorded: wholeOf(app.drilled[2].chart) };
-      assert.deepEqual(inner, { chip: 0, depth: 3, tails: 0, recorded: wideWhole });
-
-      // AND THE WAY BACK LANDS ON THE EXPANDED CHART, with focus on the return
-      // control rather than the chip.
-      assert.ok(app.focusInChart(), "a keyboard drill leaves focus in the chart");
-      escape(document);
-      await settle();
-      const back = app.projection.links.length;
-      const controls = backControls(document);
-      assert.equal(app.drilled.length, 2);
-      assert.equal(back, wide, "Escape comes back to the expanded chart");
-      // ON THE MARK THAT OPENED THE RUNG JUST CLOSED, not on the chip and not
-      // on a return control, and without pinning it.
-      assert.ok(controls.length > 0);
-      assert.equal(document.activeElement.__data__ ? document.activeElement.__data__.id : "", INERT,
-        `focus is on ${document.activeElement.tagName}.${document.activeElement.getAttribute("class")}`);
-      assert.ok(app.pinned === null, "restoring focus pinned the mark");
-
-      // AND A RUNG OPENED AFRESH IS CAPPED AFRESH.
-      escape(document);
-      await settle();
-      assert.equal(app.drilled.length, 1);
-      await opened(app, "fund/100");
-      assert.equal(app.projection.links.length, narrow, "reopening the fund draws it capped again");
-      t.diagnostic(`the fund window at four columns lays ${narrow} ribbon(s) capped, ${wide} with its ` +
-        `${categories} categories drawn out; opened from there, ${INERT} recorded that expanded chart`);
+      assert.deepEqual(app.expansions, [WORST]);
+      assert.equal(app.projection.nodes.length, capped);
+      t.diagnostic(`${WORST} capped draws ${capped} node(s); Enter on "${tail.label}" drew ${drawnOut}, focus on ${on}`);
     });
   });
 }
 
-describe("the kept flank", () => {
-  test("nothing on a kept flank opens, and a residual's declared endpoint does not either", async (t) => {
+describe("focus after a split", () => {
+  test("lands on the topmost new member, unpinned, and the next Enter acts on it", async (t) => {
     const { app, document } = await bootedApp();
-    await opened(app, OPENS);
-    const drawn = app.projection;
-    const category = drawn.nodes.find((n) => n.tier === 0 && n.role === "revenue_source");
-    const endpoint = drawn.nodes.find((n) => n.carried_from && app.isCarried(n.id));
-    const fund = drawn.nodes.find((n) => n.id === "fund/100");
-    assert.ok(category, "the window keeps a revenue category on its flank");
-    assert.ok(endpoint, "the window draws a carried endpoint");
-    assert.ok(fund, "the window draws fund/100");
-
-    // NO STEP NAMES EITHER on the shipped config; the carried gate is the
-    // next test's.
-    assert.equal(category.carried_from, "sankey");
-    assert.equal(app.isCarried(category.id), false);
-    assert.equal(app.stepFor(category), null);
-    assert.equal(app.drillable(category), false);
-    assert.equal(app.isCarried(endpoint.id), true);
-    assert.equal(app.stepFor(endpoint), null);
-    assert.equal(app.drillable(endpoint), false);
-    assert.equal(Boolean(fund.carried_from), false);
-    assert.equal(app.drillable(fund), true);
-
-    // AND THE GESTURES AGREE WITH THE PREDICATES: a double click and Enter on
-    // either refused mark open nothing, and on the fund the double click opens.
-    let at = 1000;
-    for (const id of [category.id, endpoint.id]) {
-      fire(markOf(app, document, id), "dblclick", { timeStamp: (at += 1000) });
-      await settle();
-      fire(markOf(app, document, id), "keydown", { key: "Enter", timeStamp: (at += 1000) });
-      await settle();
-      assert.equal(topOf(app), OPENS, `a gesture on ${id} opened something`);
-    }
-    fire(markOf(app, document, fund.id), "dblclick", { timeStamp: (at += 1000) });
+    const m = markOf(app, document, OPENS);
+    m.focus();
+    fire(m, "keydown", { key: "Enter", timeStamp: 1000 });
     await settle();
-    assert.equal(topOf(app), fund.id);
-    assert.equal(app.drilled.length, 2);
-    t.diagnostic(`${category.id} is kept from "${category.carried_from}" and no step names its chart; ` +
-      `${endpoint.id} is carried; the one mark that opens is ${fund.id}`);
+    const members = new Set(app.splitsHere({ id: OPENS })[0].members);
+    const top = app.laidNodes.filter((n) => members.has(n.id)).sort((a, b) => a.y0 - b.y0)[0];
+    const on = focusedID(document);
+    t.diagnostic(`after Enter on ${OPENS} focus is on ${on}`);
+    assert.equal(on, top.id);
+    assert.ok(app.pinned === null, "restoring focus pinned the mark");
+    // Escape undoes the split, and focus goes back to the node it split.
+    escape(document);
+    await settle();
+    assert.deepEqual(app.expansions, []);
+    assert.equal(focusedID(document), OPENS);
   });
 });
-
-describe("a carried mark under a step that would open it", () => {
-  test("a residual stays closed under a step at its tier with neither role nor flank: no document carries it, and it is carried", async (t) => {
-    // The fund step stripped to the most permissive declaration the packager
-    // could ship, no role and no kept flank: only the decomposition rule and
-    // the carried gate then stand between the residual beside fund/100 and
-    // the step at its tier.
-    const config = structuredClone(PAGE);
-    const at = config.steps.findIndex((s) => s.key === "fund");
-    delete config.steps[at].role;
-    delete config.steps[at].sankey.keep;
-    const { app, document } = await bootedApp({ config });
-    await opened(app, OPENS);
-    const residual = app.projection.nodes.find((n) => app.isResidual(n.id));
-    assert.ok(residual, `${OPENS} draws no residual`);
-    const step = config.steps[at];
-    assert.equal(residual.tier, step.from, "the residual does not stand at the fund step's tier");
-    // TWO GATES, EACH REFUSING ON ITS OWN. The mark is a node of no document,
-    // so the step decomposes it into nothing and no step answers for it; and
-    // it is carried, so drillable would refuse it under a step that did.
-    const decomposes = app.stepDecomposes(step, residual.id);
-    const answered = app.stepFor(residual);
-    t.diagnostic(`${residual.id} at tier ${residual.tier}: the ${step.key} step decomposes it ${decomposes}, ` +
-      `stepFor answers ${answered ? answered.key : "nothing"}, carried ${app.isCarried(residual.id)}, drillable ${app.drillable(residual)}`);
-    assert.equal(decomposes, false, "a step decomposes a mark no document carries");
-    assert.ok(answered === null, "a step answers for the residual");
-    assert.equal(app.isCarried(residual.id), true);
-    assert.equal(app.drillable(residual), false);
-    fire(markOf(app, document, residual.id), "dblclick", { timeStamp: 1000 });
-    await settle();
-    assert.equal(topOf(app), OPENS);
-  });
-});
-
-for (const year of YEARS) {
-  describe(`${year.label}: the way back`, () => {
-    test(`${year.label} transfers: Escape leaves the rung and the spine is drawn whole again`, async (t) => {
-      const { app, document } = await onYear(year.stem);
-      const at0 = words(app, document);
-      await keyOpen(app, document, "transfers/in", 1000);
-      assert.equal(app.drilled.length, 1);
-      // THE ONLY ROUTE OFF A RUNG THAT OPENS NOTHING.
-      escape(document);
-      await settle();
-      const back0 = words(app, document);
-      assert.equal(back0.depth, 0);
-      assert.equal(back0.counts, at0.counts);
-      assert.equal(back0.crumbHidden, true, "the breadcrumb is hidden on the overview");
-      t.diagnostic(`Escape from transfers/in came back to depth ${back0.depth} reading "${back0.counts}"`);
-    });
-
-    test(`${year.label} chain: Escape closes one rung at a time, and each depth comes back as it was`, async (t) => {
-      const { app, document, fetch } = await onYear(year.stem);
-      const fundStep = stepByKey(PAGE, "fund");
-      const at0 = words(app, document);
-      await keyOpen(app, document, OPENS, 1000);
-      const at1 = words(app, document);
-      const asked1 = fetch.asked.length;
-      await keyOpen(app, document, "fund/100", 2000);
-      const at2 = words(app, document);
-      await keyOpen(app, document, INERT, 3000);
-      assert.equal(app.drilled.length, 3);
-
-      // ESCAPE, ONE RUNG AT A TIME, through the handler main() attached: the
-      // route whose "innermost first" rule is the claim.
-      escape(document);
-      await settle();
-      const back2 = words(app, document);
-      const controls2 = backControls(document);
-      const focusBack2 = document.activeElement;
-      escape(document);
-      await settle();
-      const back1 = words(app, document);
-      escape(document);
-      await settle();
-      const back0 = words(app, document);
-
-      assert.equal(back2.depth, 2);
-      assert.equal(back2.counts, at2.counts);
-      assert.equal(back2.title, at2.title);
-      // ON THE MARK THAT OPENED THE RUNG JUST CLOSED, which is drawn again
-      // on the chart returned to; the return control would undo a different
-      // rung.
-      assert.ok(controls2.length > 0);
-      assert.equal(focusBack2 && focusBack2.__data__ ? focusBack2.__data__.id : "", INERT,
-        `focus is on ${focusBack2 ? focusBack2.tagName + "." + focusBack2.getAttribute("class") : "nothing"}`);
-      assert.equal(back1.depth, 1);
-      assert.deepEqual(
-        { counts: back1.counts, title: back1.title, controls: back1.crumbControls, hint: back1.hint, desc: back1.desc },
-        { counts: at1.counts, title: at1.title, controls: at1.crumbControls, hint: at1.hint, desc: at1.desc });
-      assert.equal(back0.depth, 0);
-      assert.deepEqual(
-        { counts: back0.counts, title: back0.title, hidden: back0.crumbHidden, legend: back0.legend,
-          hint: back0.hint, desc: back0.desc, drawnIsYears: back0.drawnIsYears },
-        { counts: at0.counts, title: at0.title, hidden: true, legend: at0.legend,
-          hint: at0.hint, desc: at0.desc, drawnIsYears: true });
-      assert.equal(fetch.asked.length, asked1, "the way down and back added no fetch");
-      t.diagnostic(`after one Escape: depth ${back2.depth}, counts "${back2.counts}", focus on ` +
-        `"${focusBack2.textContent}"; after two: depth ${back1.depth}; after three: depth ${back0.depth}, ` +
-        `legend ${back0.legend}, breadcrumb hidden`);
-    });
-
-    test(`${year.label} chain: each breadcrumb control closes to its own depth`, async (t) => {
-      const { app, document } = await onYear(year.stem);
-      const at0 = words(app, document);
-      await opened(app, OPENS, "fund/100");
-      const at2 = words(app, document);
-      await opened(app, INERT);
-      // ONE CONTROL PER RUNG, EACH SAYING WHAT THE CHART IT CLOSES TO IS, in
-      // the step's own `back`.
-      const controls = backControls(document);
-      assert.equal(controls.length, 3);
-      controls.forEach((c, k) => assert.ok(c.textContent.endsWith(app.drilled[k].step.back),
-        `control ${k} reads "${c.textContent}"`));
-      // FROM DEPTH 3 THE INNERMOST CONTROL LANDS ON DEPTH 2 AND THE OUTERMOST
-      // ON THE OVERVIEW: a bar whose every control went to the overview would
-      // pass the Escape test unnoticed.
-      fire(controls[2], "click");
-      await settle();
-      const inner = words(app, document);
-      assert.equal(inner.depth, 2);
-      assert.equal(inner.counts, at2.counts);
-      await opened(app, INERT);
-      fire(backControls(document)[0], "click");
-      await settle();
-      const back0 = words(app, document);
-      assert.equal(back0.depth, 0);
-      assert.equal(back0.counts, at0.counts);
-      assert.equal(back0.crumbHidden, true);
-      t.diagnostic(`the innermost control left depth ${inner.depth} reading "${inner.counts}"; ` +
-        `the outermost left depth ${back0.depth} reading "${back0.counts}"`);
-    });
-
-    test(`${year.label}: closing the only rung by keyboard puts focus back on the mark that opened it`, async (t) => {
-      const { app, document } = await onYear(year.stem);
-      const first = document.querySelector("#chart g.node").__data__.id;
-      assert.notEqual(first, OPENS, "the mark opened is the first in document order, so the test cannot tell the two apart");
-      await keyOpen(app, document, OPENS, 1000);
-      assert.equal(app.drilled.length, 1);
-      escape(document);
-      await settle();
-      const active = document.activeElement;
-      const on = active && active.__data__ ? active.__data__.id : (active ? active.tagName : "nothing");
-      t.diagnostic(`after Escape focus is on ${on}; the first mark in document order is ${first}`);
-      assert.equal(app.drilled.length, 0);
-      assert.equal(on, OPENS);
-      // AND IT IS NOT PINNED: the reader did not tab onto it.
-      assert.ok(app.pinned === null, "restoring focus pinned the mark");
-    });
-
-    test(`${year.label} chain: a keyboard drill lands focus on the rung's return control, at every depth`, async (t) => {
-      const { app, document } = await onYear(year.stem);
-      const landed = [];
-      for (const [k, id] of [OPENS, "fund/100", INERT].entries()) {
-        await keyOpen(app, document, id, 1000 * (k + 1));
-        const controls = backControls(document);
-        const active = document.activeElement;
-        assert.equal(active, controls[controls.length - 1],
-          `after opening ${id} focus is on ${active ? active.tagName + "." + active.getAttribute("class") : "nothing"}`);
-        assert.ok(active.textContent.endsWith(app.drilled[k].step.back));
-        landed.push(active.textContent);
-      }
-      t.diagnostic(`focus landed on ${JSON.stringify(landed)}`);
-    });
-  });
-}
 
 describe("the search box", () => {
   /** Types `text` into the search box as a reader does: the value, then input. */
@@ -549,9 +343,9 @@ describe("the search box", () => {
     assert.equal(active.getAttribute("aria-selected"), "true");
     return active;
   };
-  const banners = (document) => [...document.querySelectorAll("main .refusal")].map((b) => b.textContent);
+  const banners = (document) => refusals(document).map((b) => b.textContent);
 
-  test("typing lists the marks drawn whose label holds it, the arrows move along them, and Enter opens one the chart's own Enter opens", async (t) => {
+  test("typing lists the marks drawn whose label holds it, the arrows move along them, and Enter splits one the chart's own Enter splits", async (t) => {
     const { app, document } = await bootedApp();
     assert.equal(document.getElementById("search").hasAttribute("hidden"), false);
     const input = type(document, "general");
@@ -562,10 +356,6 @@ describe("the search box", () => {
     assert.equal(input.getAttribute("role"), "combobox");
     assert.equal(input.getAttribute("aria-expanded"), "true");
     assert.equal(status, app.say("search_count", { n: listed.length }));
-    for (const id of listed) {
-      const n = app.laidNodes.find((x) => x.id === id);
-      assert.ok(n && n.label.toLowerCase().includes("general"), `${id} is listed and is not a drawn mark holding "general"`);
-    }
     const active = arrowTo(document, input, OPENS);
     assert.ok(active.textContent.includes(app.say("search_opens")), active.textContent);
     // Up and back down lands on it again, wrapping through the last option where it is the first.
@@ -574,52 +364,37 @@ describe("the search box", () => {
     assert.equal(document.getElementById(input.getAttribute("aria-activedescendant")).dataset.id, OPENS);
     key(input, "Enter");
     await settle();
-    assert.equal(topOf(app), OPENS);
+    assert.deepEqual(app.expansions, [OPENS]);
     assert.deepEqual(banners(document), []);
     assert.equal(input.value, "");
     assert.equal(input.getAttribute("aria-expanded"), "false");
   });
 
-  test("Enter on a mark that opens nothing follows its money and focuses it, as the chart's own Enter does", async (t) => {
+  test("Enter on a mark that splits nothing follows its money and focuses it, as the chart's own Enter does", async (t) => {
     const { app, document } = await bootedApp();
-    await opened(app, SHUT);
-    const closed = app.laidNodes.find((n) => n.id === CLOSED);
-    assert.equal(app.drillable(closed) || app.expandable(closed), false, `${CLOSED} opens on ${SHUT}'s rung`);
-    const input = type(document, closed.label);
-    const active = arrowTo(document, input, CLOSED);
+    await split(app, WORST);
+    const inert = inertMember(app, WORST);
+    const input = type(document, app.nodeOf(inert).label);
+    const active = arrowTo(document, input, inert);
     assert.ok(!active.textContent.includes(app.say("search_opens")), active.textContent);
     key(input, "Enter");
     await settle();
-    const focused = document.activeElement && document.activeElement.__data__;
-    t.diagnostic(`Enter on "${active.textContent}" left the chart on ${topOf(app)}, following ${app.filter.isolated}, focus on ${focused ? focused.id : "nothing"}`);
-    assert.equal(topOf(app), SHUT);
-    assert.equal(app.drilled.length, 1);
-    assert.equal(app.filter.isolated, CLOSED);
-    assert.equal(focused && focused.id, CLOSED);
-    assert.equal(app.pinned && app.pinned.id, CLOSED);
+    const on = focusedID(document);
+    t.diagnostic(`Enter on "${active.textContent}" left [${app.expansions.join(", ")}] split, following ${app.filter.isolated}, focus on ${on}`);
+    assert.deepEqual(app.expansions, [WORST]);
+    assert.equal(app.filter.isolated, inert);
+    assert.equal(on, inert);
+    assert.equal(app.pinned && app.pinned.id, inert);
     assert.deepEqual(banners(document), []);
   });
 
-  test("a label the chart does not draw offers nothing, Enter on it does nothing, and Escape in the box closes no rung", async (t) => {
+  test("a mark the filters removed is not offered, and Escape in the box undoes no split", async () => {
     const { app, document } = await bootedApp();
-    const patrol = columnLabel(INERT);
-    const input = type(document, patrol);
-    const status = document.getElementById("search-status").textContent;
-    t.diagnostic(`"${patrol}" on the overview: ${options(document).length} option(s); the status says "${status}"`);
-    assert.deepEqual(options(document), []);
-    assert.equal(input.getAttribute("aria-expanded"), "false");
-    assert.equal(document.getElementById("search-list").hasAttribute("hidden"), true);
-    assert.equal(status, app.say("search_none", { query: patrol }));
-    key(input, "ArrowDown");
-    key(input, "Enter");
-    await settle();
-    assert.equal(app.drilled.length, 0);
-    assert.equal(app.filter.isolated, "");
-    // A mark the filters removed is not drawn either.
     app.setFilter({ groups: new Set([OPENS]) });
-    type(document, "general");
+    const input = type(document, "general");
     assert.ok(!options(document).includes(OPENS), "a mark the filters removed is offered");
-    await opened(app, SHUT);
+    app.resetFilters();
+    await split(app, OPENS);
     type(document, "fund");
     assert.equal(input.getAttribute("aria-expanded"), "true");
     key(input, "Escape");
@@ -628,25 +403,19 @@ describe("the search box", () => {
     key(input, "Escape");
     assert.equal(input.value, "");
     await settle();
-    assert.equal(app.drilled.length, 1, "Escape in the search box closed a rung");
+    assert.deepEqual(app.expansions, [OPENS], "Escape in the search box undid a split");
     assert.deepEqual(banners(document), []);
   });
 
-  test("a click on an option follows that mark without opening it", async () => {
+  test("a click on an option follows that mark without splitting it", async () => {
     const { app, document } = await bootedApp();
     type(document, "general");
     const option = [...document.querySelectorAll("#search-list [role=option]")].find((o) => o.dataset.id === OPENS);
     fire(option, "click");
     await settle();
-    assert.equal(app.drilled.length, 0);
+    assert.deepEqual(app.expansions, []);
     assert.equal(app.filter.isolated, OPENS);
-    assert.equal(document.activeElement.__data__ && document.activeElement.__data__.id, OPENS);
+    assert.equal(focusedID(document), OPENS);
   });
 });
 
-/** A node's printed label in the pinned newest column. */
-function columnLabel(id) {
-  const n = columnFixture(YEARS[YEARS.length - 1].path.replace(/\.json$/, "")).nodes.find((x) => x.id === id);
-  if (!n) throw new Error(`the pinned column carries no ${id}`);
-  return n.label;
-}

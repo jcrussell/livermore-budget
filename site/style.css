@@ -707,53 +707,12 @@ button[aria-pressed="true"] {
   outline: 1px solid var(--rule);
 }
 
-/* ---------- column control ---------- */
-
-/* The year toggle's pill, holding steppers: a count has a next value, which a
-   row of peers would not say. */
-.column-control {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 2px;
-  background: var(--surface-1);
-}
-
-.column-control button {
-  border: 0;
-  background: none;
-  border-radius: 999px;
-  padding: 5px 12px;
-  min-height: 32px;
-  line-height: 1;
-}
-
-/* THE OPACITY INVALIDATES NO MEASURED RATIO: WCAG 1.4.3 exempts an inactive
-   component, and the count between the buttons stays at full strength.
-   (0,2,1) beats `button:hover`'s (0,1,1), so a disabled stepper does not light
-   up under the pointer. */
-.column-control button:disabled {
-  opacity: 0.55;
-  background: none;
-  cursor: default;
-}
-
-#column-count {
-  font-size: 13px;
-  color: var(--ink-2);
-  /* Wide enough for the widest count, so stepping does not move the buttons. */
-  min-width: 78px;
-  text-align: center;
-}
-
 /* THE CHART BREAKS OUT OF main's 1180px AND NOTHING ELSE DOES: a viewBox inside
    a narrower box shrinks every label on the wide viewport that was the reason
    to draw another column. The negative margin centres the wider box on main;
    where the viewport is narrow, min() collapses both to the room there is.
 
-   The cap is app.js's --chart-max, from chartWidth() over the declared steps;
+   The cap is app.js's --chart-max, the width of the columns the chart draws;
    100% is the no-script state. --chart-cushion must equal sankey.js's
    CHART_CUSHION (40px body padding plus 16px for a classic scrollbar). */
 .chart-wrap {
@@ -1182,13 +1141,13 @@ details > summary {
   padding: 6px 0;
 }
 
-/* ---------- the breadcrumb out of an opened node ---------- */
+/* ---------- the chip row of what the chart has split open ---------- */
 
 /* Above the chart rather than beside it, because it is the only always-visible
-   way back: the node a reader clicked is gone from the chart -- opening a fund
-   group removes the group -- so there is nothing left to click again. Escape
-   also closes one, but a reader who arrived by clicking has no reason to expect
-   a keystroke. */
+   way to fold a split back: splitting a node can remove the mark the reader
+   double clicked, so there is nothing left to click again. Escape also undoes
+   one, but a reader who arrived by clicking has no reason to expect a
+   keystroke. */
 .breadcrumb {
   display: flex;
   align-items: baseline;
@@ -1202,10 +1161,14 @@ details > summary {
   display: none;
 }
 
-/* A real <button>: it does something on this page rather than going somewhere,
-   and it has to be reachable by keyboard without any of the tabindex and
-   role work the SVG marks need. */
-.crumb-back {
+/* Real <button>s: they do something on this page rather than going somewhere,
+   and have to be reachable by keyboard without any of the tabindex and role
+   work the SVG marks need. Expand all and Collapse all are solid; a chip that
+   folds one split back is dashed, because it undoes our grouping, not a
+   printed figure. */
+.crumb-bulk,
+.crumb-expanded,
+.crumb-choice {
   cursor: pointer;
   font: inherit;
   color: var(--ink-2);
@@ -1215,32 +1178,38 @@ details > summary {
   padding: 4px 10px;
 }
 
-.crumb-back:hover,
-.crumb-back:focus {
+.crumb-expanded {
+  border-style: dashed;
+}
+
+.crumb-bulk:hover,
+.crumb-bulk:focus,
+.crumb-expanded:hover,
+.crumb-expanded:focus,
+.crumb-choice:hover,
+.crumb-choice:focus {
   color: var(--ink-1);
   border-color: var(--rule);
 }
 
-.crumb-here {
+.crumb-bulk[disabled] {
+  cursor: default;
+  opacity: 0.5;
+}
+
+/* A node that splits more than one way: its chip and the chooser between its
+   splits, kept together when the row wraps. */
+.crumb-group {
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* The split drawn, which the button's aria-pressed already says. */
+.crumb-choice[aria-pressed="true"] {
   color: var(--ink-1);
   font-weight: 600;
-}
-
-/* The way back out of an expanded column, since expanding removes the mark.
-   Dashed: it undoes our grouping, not a printed figure. */
-.crumb-expanded {
-  cursor: pointer;
-  font: inherit;
-  color: var(--ink-2);
-  background: var(--surface-1);
-  border: 1px dashed var(--border);
-  border-radius: var(--radius);
-  padding: 4px 10px;
-}
-
-.crumb-expanded:hover,
-.crumb-expanded:focus {
-  color: var(--ink-1);
   border-color: var(--rule);
 }
 

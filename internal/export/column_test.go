@@ -163,107 +163,64 @@ func keysOf(m map[string]ColumnDoc) []string {
 	return out
 }
 
-// TestStepStemsResolvesAStepWithNoScheduleThroughItsAfter is a step that names
-// no schedule declared after a sibling that does: it draws the document of
-// the chart its After names, as validateSteps and site/app.js's stepDocument
-// resolve it, and not the document of the step declared just before it.
-func TestStepStemsResolvesAStepWithNoScheduleThroughItsAfter(t *testing.T) {
-	doc := func() []byte {
-		return []byte(`{"nodes":[{"id":"n","label":"N","tier":0}],"links":[],` +
-			`"metadata":{"fiscal_year":2026,"basis":"adopted"}}`)
-	}
-	_, ix, err := ColumnsOf(named(map[string][]byte{"year": doc(), "first": doc(), "second": doc()}), "")
-	if err != nil {
-		t.Fatal(err)
-	}
-	steps := []DrillStep{
-		{Key: "a", After: []string{""}, Projection: "first"},
-		{Key: "b", After: []string{""}, Projection: "second"},
-		{Key: "c", After: []string{"a"}},
-		{Key: "d", After: []string{""}},
-	}
-	got, err := StepStems(steps, "year", ix)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if diff := cmp.Diff([]string{"first", "second", "first", "year"}, got); diff != "" {
-		t.Errorf("StepStems (-want +got):\n%s", diff)
-	}
-	steps = append(steps, DrillStep{Key: "e", After: []string{"a", "b"}})
-	if _, err := StepStems(steps, "year", ix); err == nil || !strings.Contains(err.Error(), "opens from charts drawing") {
-		t.Errorf("StepStems with two parents drawing two documents: err = %v", err)
-	}
-}
-
-// TestReachedStemsIsTheYearsAndStepStemsOverEach: ReachedStems answers
-// through StepStems, so it reaches each year the view lists and what
-// StepStems resolves in it, the document a schedule-less step opens from
-// included, and refuses a year StepStems refuses rather than reading it as
-// reaching nothing.
-func TestReachedStemsIsTheYearsAndStepStemsOverEach(t *testing.T) {
+// TestReachedStemsIsTheYearsAndWhatTheirExpansionIsStitchedFrom: a chart
+// view reaches each year the view lists, and in each year's column the
+// expansion schedule and every document it is stitched from; a view whose
+// column carries no expansion reaches its years alone, the second only
+// through the year control; and a projection outside the year stems is
+// refused rather than read as reaching nothing.
+func TestReachedStemsIsTheYearsAndWhatTheirExpansionIsStitchedFrom(t *testing.T) {
 	doc := func(schedule string, year int) []byte {
 		return []byte(fmt.Sprintf(`{"projection":%q,"nodes":[{"id":"n","label":"N","tier":0}],"links":[],`+
 			`"metadata":{"fiscal_year":%d,"basis":"adopted"}}`, schedule, year))
 	}
-	_, ix, err := ColumnsOf(map[string][]byte{
-		"year": doc("year", 2026), "year-2027": doc("year", 2027),
-		"first": doc("first", 2026), "first-2027": doc("first", 2027),
-		"trend": []byte(`{"projection":"trend","nodes":[{"id":"n","label":"N","tier":0}],"links":[],"metadata":{}}`),
-	}, "")
+	chart := Chart{Form: SankeyForm, Sankey: &SankeyHints{Tiers: []int{0}}}
+	years := []string{"year", "year-2027"}
+	_, bare, err := ColumnsOf(map[string][]byte{"year": doc("year", 2026), "year-2027": doc("year", 2027)}, "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	steps := []DrillStep{
-		{Key: "a", After: []string{""}, Projection: "first"},
-		{Key: "b", After: []string{""}},
-	}
-	v := View{Path: "index.html", Projection: "year", YearStems: []string{"year", "year-2027"}, Steps: steps}
-	got, err := v.ReachedStems(ix)
+	got, err := View{Path: "index.html", Projection: "year", YearStems: years, Overview: chart}.ReachedStems(bare)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if diff := cmp.Diff([]string{"year", "first", "year-2027", "first-2027"}, got); diff != "" {
+	if diff := cmp.Diff(years, got); diff != "" {
+		t.Errorf("ReachedStems with no expansion (-want +got):\n%s", diff)
+	}
+
+	built := map[string][]byte{"year": doc("year", 2026), "year-2027": doc("year", 2027),
+		"expansion": doc(project.ExpansionProjection, 2026), "fund-flows": doc(project.FundFlowsProjection, 2026),
+		"department-funding": doc(project.DepartmentFundingProjection, 2026)}
+	_, ix, err := ColumnsOf(built, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Contains(project.ExpansionStitches(), project.FundFlowsProjection) ||
+		slices.Contains(project.ExpansionStitches(), project.DepartmentFundingProjection) {
+		t.Fatalf("the expansion is stitched from %v, so the stems below prove nothing", project.ExpansionStitches())
+	}
+	v := View{Path: "index.html", Projection: "year", YearStems: years, Overview: chart}
+	got, err = v.ReachedStems(ix)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if diff := cmp.Diff([]string{"year", "expansion", "fund-flows", "year-2027"}, got); diff != "" {
 		t.Errorf("ReachedStems (-want +got):\n%s", diff)
 	}
-	// A view with no steps reaches its years alone, the second only through
-	// the year control.
-	got, err = View{Path: "index.html", Projection: "year", YearStems: []string{"year", "year-2027"}}.ReachedStems(ix)
+	// A view drawing no chart reaches no expansion.
+	got, err = View{Path: "trends.html", Projection: "year", YearStems: years}.ReachedStems(ix)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if diff := cmp.Diff([]string{"year", "year-2027"}, got); diff != "" {
-		t.Errorf("ReachedStems without steps (-want +got):\n%s", diff)
-	}
-	v.YearStems = append(v.YearStems, "trend")
-	if _, err := v.ReachedStems(ix); err == nil || !strings.Contains(err.Error(), "folded into no column") {
-		t.Errorf("ReachedStems over a year in no column: err = %v, want StepStems' refusal", err)
-	}
-}
-
-// TestStepDocumentsNamesAStepDocumentThatWasNotBuilt: an index folded from
-// more projections than stepDocuments is handed resolves a step to a stem it
-// has no bytes for, which is a refusal naming the stem and not a JSON decode
-// error over nil bytes.
-func TestStepDocumentsNamesAStepDocumentThatWasNotBuilt(t *testing.T) {
-	doc := func(schedule string) []byte {
-		return []byte(fmt.Sprintf(`{"projection":%q,"nodes":[{"id":"n","label":"N","tier":0}],"links":[],`+
-			`"metadata":{"fiscal_year":2026,"basis":"adopted"}}`, schedule))
-	}
-	_, ix, err := ColumnsOf(map[string][]byte{"year": doc("year"), "first": doc("first")}, "")
-	if err != nil {
-		t.Fatal(err)
-	}
-	v := View{Path: "index.html", Projection: "year",
-		Steps: []DrillStep{{Key: "a", After: []string{""}, Projection: "first"}}}
-	_, _, err = stepDocuments(v, "year", "", 2026, "adopted", map[string][]byte{"year": doc("year")}, ix, "")
-	if err == nil || !strings.Contains(err.Error(), `draws "first" for year stem "year", which was not built`) {
-		t.Fatalf("err = %v, want the refusal naming the unbuilt step document", err)
+	if diff := cmp.Diff(years, got); diff != "" {
+		t.Errorf("ReachedStems of a view with no chart (-want +got):\n%s", diff)
 	}
 }
 
 // TestAProjectionOutsideItsYearStemsIsRefusedByEveryReader holds the rule's
-// one owner, stepStemsByYear, to every caller that reads a view's documents:
-// View.validate, and ReachedStems, which runs on views validate has not seen.
+// one owner, projectionAmongYears, to every caller that reads a view's
+// documents: View.validate, and ReachedStems, which runs on views validate
+// has not seen.
 func TestAProjectionOutsideItsYearStemsIsRefusedByEveryReader(t *testing.T) {
 	doc := []byte(`{"projection":"year","nodes":[{"id":"n","label":"N","tier":0}],"links":[],` +
 		`"metadata":{"fiscal_year":2026,"basis":"adopted"}}`)
@@ -274,17 +231,14 @@ func TestAProjectionOutsideItsYearStemsIsRefusedByEveryReader(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, steps := range [][]DrillStep{nil, {{Key: "a", After: []string{""}}}} {
-		v := View{Path: "index.html", Template: SankeyTemplate, Projection: "elsewhere",
-			YearStems: []string{"year"}, Steps: steps,
-			Overview: Chart{Form: SankeyForm, Sankey: &SankeyHints{Tiers: []int{0}}}}
-		if err := v.validate(built, ix); err == nil || !strings.Contains(err.Error(), "not among its year stems") {
-			t.Errorf("validate, %d steps: err = %v, want the refusal of a projection outside its year stems",
-				len(steps), err)
-		}
-		if _, err := v.ReachedStems(ix); err == nil || !strings.Contains(err.Error(), "not among its year stems") {
-			t.Errorf("ReachedStems, %d steps: err = %v, want the same refusal", len(steps), err)
-		}
+	v := View{Path: "index.html", Template: SankeyTemplate, Projection: "elsewhere",
+		YearStems: []string{"year"},
+		Overview:  Chart{Form: SankeyForm, Sankey: &SankeyHints{Tiers: []int{0}}}}
+	if err := v.validate(built, ix); err == nil || !strings.Contains(err.Error(), "not among its year stems") {
+		t.Errorf("validate: err = %v, want the refusal of a projection outside its year stems", err)
+	}
+	if _, err := v.ReachedStems(ix); err == nil || !strings.Contains(err.Error(), "not among its year stems") {
+		t.Errorf("ReachedStems: err = %v, want the same refusal", err)
 	}
 }
 
