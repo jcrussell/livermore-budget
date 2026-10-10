@@ -19,16 +19,16 @@ import (
 	"io/fs"
 )
 
-// assets is the site source tree: the page templates, the client script, the
-// stylesheet, the vendored d3 bundles with their licences, and the zero-byte
-// .nojekyll that stops GitHub Pages running the output through Jekyll.
+// assets is the site source tree: the page templates and the partial they
+// share, the client script, the stylesheet, the vendored d3 bundles with their
+// licences, and the zero-byte .nojekyll that stops GitHub Pages running the output through Jekyll.
 //
 // .nojekyll is named explicitly because //go:embed skips names beginning with
 // a dot unless they are matched literally or the pattern carries the `all:`
 // prefix — a silently missing sentinel would only show up as a 404 on the
 // published site.
 //
-//go:embed index.html.tmpl trends.html.tmpl history.html.tmpl provenance.html.tmpl caveats.html.tmpl app.js core.js sankey.js bars.js style.css
+//go:embed index.html.tmpl trends.html.tmpl history.html.tmpl provenance.html.tmpl caveats.html.tmpl sources.html.tmpl app.js core.js sankey.js bars.js style.css
 //go:embed all:vendor
 //go:embed .nojekyll
 var assets embed.FS

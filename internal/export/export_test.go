@@ -881,10 +881,11 @@ func TestWriteReportsAMissingAsset(t *testing.T) {
 	// A hand-built asset tree missing app.js stands in for a botched embed:
 	// the failure has to be an error, not a site that 404s in the browser.
 	assets := fstest.MapFS{
-		"index.html.tmpl":  {Data: []byte(`<!doctype html><title>{{.Title}}</title>`)},
-		"style.css":        {Data: []byte(`body{}`)},
-		".nojekyll":        {Data: []byte{}},
-		"vendor/d3.min.js": {Data: []byte(`/* d3 */`)},
+		"index.html.tmpl":     {Data: []byte(`<!doctype html><title>{{.Title}}</title>`)},
+		export.SourcesPartial: {Data: []byte(`{{define "sources"}}{{end}}`)},
+		"style.css":           {Data: []byte(`body{}`)},
+		".nojekyll":           {Data: []byte{}},
+		"vendor/d3.min.js":    {Data: []byte(`/* d3 */`)},
 	}
 	_, err := writeSite(export.Options{
 		Dir:         t.TempDir(),

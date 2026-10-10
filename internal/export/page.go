@@ -255,9 +255,14 @@ type chrome struct {
 	CaveatsPath string
 }
 
+// SourcesPartial defines the "sources" footer the page templates execute.
+// renderPage parses it BEFORE the page, so a page's own "sources-heading"
+// replaces the partial's default rather than being replaced by it.
+const SourcesPartial = "sources.html.tmpl"
+
 // renderPage executes one view's template against its assembled data.
 func renderPage(assets fs.FS, name string, data any) ([]byte, error) {
-	tmpl, err := template.New(name).ParseFS(assets, name)
+	tmpl, err := template.New(name).ParseFS(assets, SourcesPartial, name)
 	if err != nil {
 		return nil, fmt.Errorf("parse page template %q: %w", name, err)
 	}

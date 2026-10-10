@@ -2585,8 +2585,9 @@ func TestATemplateWithNoArmIsRefusedRatherThanRenderedAsASpine(t *testing.T) {
 	// worthless the moment its template is handled.
 	const orphan = "unclaimed.html.tmpl"
 	assets := fstest.MapFS{
-		"index.html.tmpl":  {Data: []byte(`<!doctype html><title>{{.Title}}</title>`)},
-		"trends.html.tmpl": {Data: []byte(`<!doctype html><title>{{.Title}}</title>`)},
+		"index.html.tmpl":     {Data: []byte(`<!doctype html><title>{{.Title}}</title>`)},
+		"trends.html.tmpl":    {Data: []byte(`<!doctype html><title>{{.Title}}</title>`)},
+		export.SourcesPartial: {Data: []byte(`{{define "sources"}}{{end}}`)},
 		// Reads nothing. That is the point: it is what a page of blanks is.
 		orphan:             {Data: []byte(`<!doctype html><title>unclaimed</title>`)},
 		"app.js":           {Data: []byte(`/* app */`)},
@@ -3417,11 +3418,11 @@ func TestAStepDescriptionMayCloseWithAnyTerminatorAppJsSplitsOn(t *testing.T) {
 }
 
 // TestEveryFooterDisclosureKeepsItsHeadingInTheOutline asserts the rule on the
-// TEMPLATES rather than on two rendered pages, which is where it belongs: five
-// of them carry a byte-identical sources footer (fisc-yj4w.17) and the rendered
-// assertions reached two of the six. Measured before this test existed: moving
-// <h3>Sources...</h3> past </summary> in chart, provenance and history at once
-// left the package green.
+// TEMPLATES rather than on rendered pages: the four pages that cite a figure
+// execute one sources partial, and caveats.html.tmpl folds its own file list,
+// so two files hold every footer disclosure the site renders. A page that
+// grows its own copy of the footer again is refused here, because a copy is
+// one this walk would have to find to hold to the rule.
 //
 // WHY IT MATTERS AT ALL. A <summary> stays in the accessibility tree when the
 // panel is closed and its content does not, so a heading inside the summary is
@@ -3433,7 +3434,7 @@ func TestEveryFooterDisclosureKeepsItsHeadingInTheOutline(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read embedded site: %v", err)
 	}
-	found := 0
+	var folding, calling []string
 	for _, e := range entries {
 		name := e.Name()
 		if !strings.HasSuffix(name, ".html.tmpl") {
@@ -3444,6 +3445,9 @@ func TestEveryFooterDisclosureKeepsItsHeadingInTheOutline(t *testing.T) {
 			t.Fatalf("read %s: %v", name, err)
 		}
 		src := string(b)
+		if strings.Contains(src, `{{template "sources" .}}`) {
+			calling = append(calling, name)
+		}
 		disclosure := strings.Index(src, `<details class="apparatus" id="sources-view">`)
 		if disclosure < 0 {
 			disclosure = strings.Index(src, `<details class="apparatus" id="data-view">`)
@@ -3451,7 +3455,7 @@ func TestEveryFooterDisclosureKeepsItsHeadingInTheOutline(t *testing.T) {
 		if disclosure < 0 {
 			continue
 		}
-		found++
+		folding = append(folding, name)
 		rest := src[disclosure:]
 		summary := strings.Index(rest, "<summary>")
 		summaryEnd := strings.Index(rest, "</summary>")
@@ -3466,9 +3470,35 @@ func TestEveryFooterDisclosureKeepsItsHeadingInTheOutline(t *testing.T) {
 				"out of the outline while the panel is closed", name)
 		}
 	}
-	// Anti-vacuity: every template folds a footer list.
-	if found != 5 {
-		t.Errorf("found %d templates folding a footer list, want 5", found)
+	// Anti-vacuity, and the one-copy rule: the partial and caveats.html.tmpl
+	// hold the only disclosures, and every page that cites a figure reaches
+	// the partial's.
+	if diff := cmp.Diff([]string{export.CaveatsTemplate, export.SourcesPartial}, folding); diff != "" {
+		t.Errorf("templates folding a footer list (-want +got):\n%s", diff)
+	}
+	if diff := cmp.Diff([]string{export.HistoryTemplate, export.SankeyTemplate,
+		export.ProvenanceTemplate, export.TrendsTemplate}, calling); diff != "" {
+		t.Errorf("templates executing the sources partial (-want +got):\n%s", diff)
+	}
+}
+
+// TestTheSankeyPageNamesItsSourcesForEveryYear: index.html.tmpl's
+// "sources-heading" replaces the partial's default only because renderPage
+// parses the partial first. Parsed the other way round, the partial's block
+// replaces the page's and every page reads "Sources" with no error.
+func TestTheSankeyPageNamesItsSourcesForEveryYear(t *testing.T) {
+	dir, _ := writeGolden(t)
+	page := readPage(t, dir)
+	_, footer, ok := strings.Cut(page, `<details class="apparatus" id="sources-view">`)
+	if !ok {
+		t.Fatal("index.html renders no sources disclosure")
+	}
+	summary, _, ok := strings.Cut(footer, "</summary>")
+	if !ok {
+		t.Fatal("index.html's sources disclosure has no summary")
+	}
+	if want := "<h3>Sources for every year this page can show</h3>"; !strings.Contains(summary, want) {
+		t.Errorf("index.html's sources summary = %q, want it to carry %q", summary, want)
 	}
 }
 
