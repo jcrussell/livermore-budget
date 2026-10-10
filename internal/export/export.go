@@ -97,7 +97,7 @@ const DefaultSourceBrowseURL = "https://github.com/jcrussell/livermore-budget/bl
 
 // verbatimAssets are copied from the embedded site tree byte for byte. The
 // page template is not in this list: it is rendered, and vendor/ is walked.
-var verbatimAssets = []string{"app.js", "core.js", "sankey.js", "bars.js", "style.css", ".nojekyll"}
+var verbatimAssets = []string{"app.js", "core.js", "sankey.js", "style.css", ".nojekyll"}
 
 // View is one HTML page of the site: one document, rendered by one template.
 //
@@ -362,23 +362,15 @@ type Chart struct {
 	// Sankey is the Sankey form's hints, present exactly when Form is
 	// [SankeyForm].
 	Sankey *SankeyHints `json:"sankey,omitempty"`
-	// Bars is the bars form's hints, present exactly when Form is
-	// [BarsForm].
-	Bars *BarsHints `json:"bars,omitempty"`
 }
 
 // SankeyForm is the form site/sankey.js draws: columns of tiers joined by
 // ribbons.
 const SankeyForm = "sankey"
 
-// BarsForm is the form site/bars.js draws: the parts of an opened node, one
-// ranked bar each. validate refuses it on a view's own chart, which has
-// opened no node to list the parts of.
-const BarsForm = "bars"
-
 // ChartForms is the declared set of forms, which schema/enums.schema.json
 // states as chart_form and schema/enums_test.go holds to this.
-func ChartForms() []string { return []string{SankeyForm, BarsForm} }
+func ChartForms() []string { return []string{SankeyForm} }
 
 // MarkRoles is the declared set of roles a node the CLIENT makes may wear:
 // the aggregate a cap folds a column's tail into, the residual carrying flow
@@ -411,22 +403,8 @@ type SankeyHints struct {
 	// Tiers is the page's own column order, or empty to draw the document
 	// whole.
 	Tiers []int `json:"tiers,omitempty" yaml:"tiers"`
-	// Caps bounds the columns this chart draws, one per tier that needs one; a
-	// tier with no cap is drawn whole. Each names its own [TierCap.Tail].
-	Caps []TierCap `json:"caps,omitempty" yaml:"caps"`
-	// Height is the canvas the chart is laid out on, in px, or 0 for the
-	// form's own.
-	Height int `json:"height,omitempty" yaml:"height"`
-	// Drop is the tiers whose nodes, and every link touching one, the chart
-	// does not draw: a tier the document emits as a restatement of what the
-	// drawn tiers already carry, which drawn beside them would show the same
-	// money twice. Disjoint from Tiers, and refused unless
-	// every fact a dropped link cites is cited by a link the chart keeps
-	// (validateDrop), so the flow table still lists every figure.
-	Drop []int `json:"drop,omitempty" yaml:"drop"`
 	// Grow lays the chart out on a canvas sized by the busiest column the
-	// client draws, in place of a fixed [SankeyHints.Height], and is refused
-	// beside a Height.
+	// client draws, or nil for the form's own canvas.
 	Grow *CanvasGrowth `json:"grow,omitempty" yaml:"grow"`
 	// SplitCaps bounds how many members of one split of the expansion
 	// schedule the chart draws before the rest fold into a tail inside the
@@ -451,14 +429,6 @@ type SplitCap struct {
 	Tail  string `json:"tail" yaml:"tail"`
 }
 
-// BarsHints is what the bars form lists. Go declares the tier; the client
-// sums each bar's cited links and ranks them.
-type BarsHints struct {
-	// Tier is the tier whose nodes inside the opened node are drawn, one bar
-	// each, at the sum of the cited links joining it to the opened node.
-	Tier int `json:"tier" yaml:"tier"`
-}
-
 // drawnTiers is the column order a chart of this form draws, or nil for a
 // Sankey drawing its document whole.
 func (c Chart) drawnTiers() []int {
@@ -466,17 +436,6 @@ func (c Chart) drawnTiers() []int {
 		return c.Sankey.Tiers
 	}
 	return nil
-}
-
-// TierCap is how many nodes one drawn tier may hold before its tail, by value,
-// is folded into one aggregate node. Rescaling alone does not make a group's
-// funds legible: the concentration is within the group.
-type TierCap struct {
-	Tier int `json:"tier" yaml:"tier"`
-	Cap  int `json:"cap" yaml:"cap"`
-	// Tail is the plural noun this tier's folded tail is counted in. Per cap
-	// because one chart may cap two tiers of different things.
-	Tail string `json:"tail,omitempty" yaml:"tail"`
 }
 
 // Download is one whole-store artifact a page offers.
@@ -678,10 +637,6 @@ func (v View) validate(built map[string][]byte, ix ColumnIndex) error {
 		return fmt.Errorf(
 			"view %q declares chart form %q, which is not one of %v",
 			v.Path, v.Overview.Form, ChartForms())
-	case v.Overview.Form == BarsForm:
-		return fmt.Errorf(
-			"view %q declares a bars chart as its own; the bars form lists the parts "+
-				"of a node the reader opened, and the view's own chart has opened none", v.Path)
 	case v.Overview.Form == SankeyForm && v.Overview.Sankey == nil:
 		return fmt.Errorf(
 			"view %q declares a sankey chart with no sankey hints; the column order "+

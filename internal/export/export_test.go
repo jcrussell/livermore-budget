@@ -103,7 +103,6 @@ func TestWriteProducesTheSiteLayout(t *testing.T) {
 	want := []string{
 		".fisc-export",
 		"app.js",
-		"bars.js",
 		"core.js",
 		// One document per published column, not also one per schedule.
 		"fy2026-adopted.json",

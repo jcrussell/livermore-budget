@@ -218,7 +218,7 @@
       }
     },
     "overview": {
-      "description": "The page's own chart: its form and that form's hints. A cap on it names its own tail.",
+      "description": "The page's own chart: its form and that form's hints.",
       "type": "object",
       "required": ["form"],
       "additionalProperties": false,
@@ -227,14 +227,7 @@
           "$ref": "https://jcrussell.github.io/livermore-budget/schema/enums.schema.json#/$defs/chart_form"
         },
         "sankey": {
-          "$ref": "https://jcrussell.github.io/livermore-budget/schema/page.schema.json#/$defs/sankey_hints",
-          "properties": {
-            "caps": { "items": { "required": ["tail"] } }
-          }
-        },
-        "bars": {
-          "description": "The bars form's hints, present exactly when form is bars. The shape admits them; Go's validate refuses a bars overview, which has opened no node to list the parts of.",
-          "$ref": "https://jcrussell.github.io/livermore-budget/schema/page.schema.json#/$defs/bars_hints"
+          "$ref": "https://jcrussell.github.io/livermore-budget/schema/page.schema.json#/$defs/sankey_hints"
         }
       },
       "allOf": [
@@ -243,12 +236,6 @@
           "if": { "properties": { "form": { "const": "sankey" } } },
           "then": { "required": ["sankey"] },
           "else": { "properties": { "sankey": false } }
-        },
-        {
-          "description": "A chart of form bars carries its bars hints, and no other form does.",
-          "if": { "properties": { "form": { "const": "bars" } } },
-          "then": { "required": ["bars"] },
-          "else": { "properties": { "bars": false } }
         }
       ]
     },
@@ -334,7 +321,6 @@
         "full_screen",
         "full_screen_exit",
         "zoom_reset",
-        "bars_share",
         "hairline",
         "splits_dropped"
       ],
@@ -618,11 +604,6 @@
           "minLength": 1,
           "description": "The control that puts a zoomed or panned chart back whole."
         },
-        "bars_share": {
-          "type": "string",
-          "minLength": 1,
-          "description": "A bar's share of the node the bars form lists the parts of: {share}, the percentage formatted, and {whole}, that node's label."
-        },
         "hairline": {
           "type": "string",
           "minLength": 1,
@@ -637,24 +618,10 @@
     }
   },
   "$defs": {
-    "bars_hints": {
-      "description": "What the bars form lists: one bar per node at `tier` inside the opened node, each the sum of the cited links joining it to that node.",
-      "type": "object",
-      "required": ["tier"],
-      "additionalProperties": false,
-      "properties": {
-        "tier": {
-          "description": "The tier whose nodes inside the opened node are drawn as bars.",
-          "type": "integer",
-          "minimum": 0
-        }
-      }
-    },
     "sankey_hints": {
       "description": "What the Sankey form may fold and where, which the client's capColumn and foldDocument spend.",
       "type": "object",
       "additionalProperties": false,
-      "not": { "description": "One canvas: a fixed height or a growth, never both.", "required": ["height", "grow"] },
       "properties": {
         "tiers": {
           "description": "The tier set drawn, left to right: a column order and not only a set. Absent on the overview draws the document whole.",
@@ -665,49 +632,8 @@
             "minimum": 0
           }
         },
-        "caps": {
-          "type": "array",
-          "items": {
-            "description": "How many marks one tier draws before the rest fold into a tail. THE PERMISSION, NOT THE FOLD: which members fold is the client's.",
-            "type": "object",
-            "required": [
-              "tier",
-              "cap"
-            ],
-            "additionalProperties": false,
-            "properties": {
-              "tier": {
-                "type": "integer",
-                "minimum": 0
-              },
-              "cap": {
-                "type": "integer",
-                "minimum": 1
-              },
-              "tail": {
-                "type": "string",
-                "description": "The plural noun the folded tail is counted in."
-              }
-            }
-          }
-        },
-        "height": {
-          "description": "The canvas the chart is laid out on, in px; absent lays it out on the form's own. The overview's only.",
-          "type": "integer",
-          "minimum": 1
-        },
-        "drop": {
-          "description": "Tiers whose nodes, and every link touching one, the chart does not draw: a tier the document emits as a restatement of the tiers drawn. The overview's only, and disjoint from tiers.",
-          "type": "array",
-          "minItems": 1,
-          "uniqueItems": true,
-          "items": {
-            "type": "integer",
-            "minimum": 0
-          }
-        },
         "grow": {
-          "description": "A canvas sized by the busiest column drawn: node_px px for each of its nodes, held between floor and ceiling. The overview's only, and never beside a height.",
+          "description": "A canvas sized by the busiest column drawn: node_px px for each of its nodes, held between floor and ceiling. The overview's only.",
           "type": "object",
           "required": ["node_px", "floor", "ceiling"],
           "additionalProperties": false,

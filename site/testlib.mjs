@@ -45,14 +45,6 @@ export function pageFixture() {
 }
 
 /**
- * The whole-budget page, testdata/whole.golden.html, as pageFixture gives the
- * spine's: fund-flows drawn out of the same columns at every tier.
- */
-export function wholeFixture() {
-  return servedPage("whole.golden.html");
-}
-
-/**
  * One pinned page under testdata/ and the config cut out of it.
  * @param {string} name
  */

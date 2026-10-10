@@ -69,7 +69,6 @@ type chartDecl struct {
 	Form       string              `yaml:"form"`
 	Projection string              `yaml:"projection"`
 	Sankey     *export.SankeyHints `yaml:"sankey"`
-	Bars       *export.BarsHints   `yaml:"bars"`
 }
 
 // viewsError reports a views.yaml this command cannot load. Entry names the
@@ -265,7 +264,7 @@ func (c *chartDecl) chart() export.Chart {
 	if c == nil {
 		return export.Chart{}
 	}
-	return export.Chart{Form: c.Form, Sankey: c.Sankey, Bars: c.Bars}
+	return export.Chart{Form: c.Form, Sankey: c.Sankey}
 }
 
 // section is the declaration as [export.Section], each row's category

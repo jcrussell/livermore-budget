@@ -21,8 +21,8 @@ import (
 	"github.com/jcrussell/livermore-budget/schema"
 )
 
-// The client fixtures are testdata/index.golden.html, testdata/whole.golden.html
-// and the column files both pages fetch: what `fisc export` writes over clientSubset rather than over
+// The client fixtures are testdata/index.golden.html and the column files
+// the page fetches: what `fisc export` writes over clientSubset rather than over
 // the whole store, held decoded rather than byte for byte. The page's markup
 // and config and each column are the ones Go writes over the subset, build
 // stamps aside; each column also validates, resolves, and carries figures equal
@@ -459,7 +459,7 @@ func TestTheClientFixturesHoldWhatTheClientReads(t *testing.T) {
 			t.Error(err)
 			return
 		}
-		files := map[string]string{"index.html": "index.golden.html", "whole.html": "whole.golden.html"}
+		files := map[string]string{"index.html": "index.golden.html"}
 		for _, stem := range clientFixtureColumns {
 			files[stem+".json"] = stem + ".column.json"
 		}
@@ -489,14 +489,6 @@ func TestTheClientFixturesHoldWhatTheClientReads(t *testing.T) {
 	servedPage := read(filepath.Join(dir, "index.html"))
 	fixturePage := read(filepath.Join(root, "testdata", "index.golden.html"))
 	faults := pageFixtureFaults(servedPage, fixturePage)
-	// The whole-city page draws fund-flows out of the same columns.
-	wholePage := read(filepath.Join(root, "testdata", "whole.golden.html"))
-	for _, f := range pageFixtureFaults(read(filepath.Join(dir, "whole.html")), wholePage) {
-		faults = append(faults, "whole.html: "+f)
-	}
-	if got := pageColumns(t, wholePage); !slices.Equal(got, clientFixtureColumns) {
-		faults = append(faults, fmt.Sprintf("the whole page fixture's years fetch %v and testdata/ carries %v", got, clientFixtureColumns))
-	}
 
 	if got := pageColumns(t, fixturePage); !slices.Equal(got, clientFixtureColumns) {
 		faults = append(faults, fmt.Sprintf("the page fixture's years fetch %v and testdata/ carries %v", got, clientFixtureColumns))

@@ -109,7 +109,6 @@ func TestTheWordingFillsEveryPlaceholderTheClientHands(t *testing.T) {
 		"smaller_flow":           {"flows", "threshold"},
 		"search_count":           {"n"},
 		"search_none":            {"query"},
-		"bars_share":             {"share", "whole"},
 		"hairline":               {"n"},
 		"splits_dropped":         {"year", "nodes", "n"},
 	}

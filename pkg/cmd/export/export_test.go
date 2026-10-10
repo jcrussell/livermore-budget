@@ -217,7 +217,7 @@ func TestExportRunWritesASiteAndSaysHowToServeIt(t *testing.T) {
 	}
 
 	// A document stating a year and basis ships as its column, not as data/sankey.json.
-	for _, rel := range []string{"index.html", "app.js", "core.js", "sankey.js", "bars.js", "style.css", ".nojekyll",
+	for _, rel := range []string{"index.html", "app.js", "core.js", "sankey.js", "style.css", ".nojekyll",
 		"vendor/d3.min.js", "fy2026-adopted.json"} {
 		if _, err := os.Stat(filepath.Join(opts.OutputDir, filepath.FromSlash(rel))); err != nil {
 			t.Errorf("missing %s: %v", rel, err)
@@ -1254,14 +1254,14 @@ func builtStemsForTest(t *testing.T) map[string][]byte {
 
 // TestViewsOpensOnTheSpineAndGivesYearsToItsCharts pins the shape of the view
 // list: which page the site opens on, that the year control belongs to the
-// spine's documents and to no other view's, and that the spine and the whole
-// budget drawn out of its columns are the two chart pages.
+// spine's documents and to no other view's, and that the spine is the one
+// chart page.
 func TestViewsOpensOnTheSpineAndGivesYearsToItsCharts(t *testing.T) {
 	built := builtStemsForTest(t)
 	got := mustViews(t, result{Projections: built})
 
-	if len(got) != 6 {
-		t.Fatalf("got %d views over %v, want the spine, the whole budget, the revenue trends, "+
+	if len(got) != 5 {
+		t.Fatalf("got %d views over %v, want the spine, the revenue trends, "+
 			"the two ACFR history tables and the caveats index", len(got), keys(built))
 	}
 	spine := got[0]
@@ -1314,10 +1314,9 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItsCharts(t *testing.T) {
 	}
 
 	// fund-flows is drawn inside the expansion, which is stitched from it; a
-	// page of its own would publish the same money twice. THE ONE EXCEPTION IS
-	// THE WHOLE BUDGET: it is the spine's page, its figures and its years, with
-	// fund-flows drawn out of each year's column whole and opening nothing.
-	for _, path := range []string{"revenue.html", "spending.html", "drilldown.html"} {
+	// page of its own would publish the same money twice. Expanding node by
+	// node reaches the whole budget, so no page draws it at once.
+	for _, path := range []string{"revenue.html", "spending.html", "drilldown.html", "whole.html"} {
 		if _, ok := byPath[path]; ok {
 			t.Errorf("%s is in the nav; the expansion is where that document is drawn now", path)
 		}
@@ -1338,7 +1337,6 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItsCharts(t *testing.T) {
 	}
 	if diff := cmp.Diff(map[string]string{
 		export.IndexPath: project.ExpansionProjection,
-		"whole.html":     project.FundFlowsProjection,
 	}, draws); diff != "" {
 		t.Errorf("the schedules the views draw out of their columns (-want +got):\n%s", diff)
 	}
@@ -1354,27 +1352,6 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItsCharts(t *testing.T) {
 			{Split: "receivers", Cap: 8, Tail: "funds"}}},
 		*spine.Overview.Sankey); diff != "" {
 		t.Errorf("the spine's Sankey hints (-want +got):\n%s", diff)
-	}
-	whole, ok := byPath["whole.html"]
-	switch {
-	case !ok:
-		t.Error("no view at whole.html draws the whole budget")
-	case whole.Projection != export.PrimaryProjection:
-		t.Errorf("whole.html renders %q, want the spine's page", whole.Projection)
-	case !slices.Equal(whole.YearStems, spine.YearStems):
-		t.Errorf("whole.html lists years %v and the spine %v; one column is one year on both",
-			whole.YearStems, spine.YearStems)
-	case whole.Overview.Sankey == nil:
-		t.Error("whole.html declares no Sankey hints")
-	default:
-		// The client's tests measure against this: the four columns, the
-		// dropped group tier, the caps it starts folded at and the canvas.
-		if diff := cmp.Diff(export.SankeyHints{Tiers: []int{0, 3, 4, 5}, Drop: []int{2}, Height: 4800,
-			Caps: []export.TierCap{{Tier: 3, Cap: 8, Tail: "funds"}, {Tier: 4, Cap: 24, Tail: "divisions"},
-				{Tier: 5, Cap: 8, Tail: "object rows"}}},
-			*whole.Overview.Sankey); diff != "" {
-			t.Errorf("whole.html's Sankey hints (-want +got):\n%s", diff)
-		}
 	}
 }
 
@@ -1437,9 +1414,8 @@ func TestOpensIntoJoinsOnColumnNotOnDeclaredOrder(t *testing.T) {
 		t.Errorf("got %v, want the refusal naming the year's column", err)
 	}
 
-	// No chart draws a document that was not built, guarded per projection:
-	// the index draws its own document where its expansion is gone, and any
-	// other view drawing one is dropped.
+	// No chart draws a document that was not built: the index draws its own
+	// document where its expansion is gone.
 	without := func(prefixes ...string) map[string][]byte {
 		out := map[string][]byte{}
 		for k, v := range built {
@@ -1455,12 +1431,8 @@ func TestOpensIntoJoinsOnColumnNotOnDeclaredOrder(t *testing.T) {
 		want map[string]string
 	}{
 		{"everything built", nil,
-			map[string]string{export.IndexPath: project.ExpansionProjection, "whole.html": project.FundFlowsProjection}},
-		{"no expansion", []string{project.ExpansionProjection},
-			map[string]string{export.IndexPath: "", "whole.html": project.FundFlowsProjection}},
-		{"no fund-flows", []string{project.FundFlowsProjection},
 			map[string]string{export.IndexPath: project.ExpansionProjection}},
-		{"neither", []string{project.ExpansionProjection, project.FundFlowsProjection},
+		{"no expansion", []string{project.ExpansionProjection},
 			map[string]string{export.IndexPath: ""}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

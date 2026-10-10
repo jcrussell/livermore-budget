@@ -12,7 +12,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 import {
-  bootedApp, split, expandAll, everySplit, settle, refusals, columnFixture, pageFixture, wholeFixture, fire, repoRoot,
+  bootedApp, split, expandAll, everySplit, settle, refusals, columnFixture, pageFixture, fire, repoRoot,
   dollars, shortDollars,
 } from "./testlib.mjs";
 
@@ -888,10 +888,7 @@ describe("the classes the client sets and the rules the stylesheet carries", () 
     "tip-drawn": "the tooltip's drawn-part line, worn as a tip-meta",
   };
   /** Styled, set by nothing anywhere: dead ink, declared with its bead until it goes. */
-  const DEAD = {
-    total: "site/bars.js's opened row, drawn on no page since the drill went; goes with bars.js (fisc-yj4w.34.4)",
-    share: "site/bars.js's share tspan, likewise",
-  };
+  const DEAD = {};
 
   const classesIn = (attr) => (attr || "").split(/\s+/).filter(Boolean);
   const templateClasses = () => {
@@ -961,12 +958,6 @@ describe("the classes the client sets and the rules the stylesheet carries", () 
     assert.equal(walked.refused, "");
     assert.ok(expandedAt, "no chart offered a tail to draw out");
     app.fail("probe: a refusal, for its class"); snap();
-    // The whole budget drawn out, for the hairlines no spine view draws.
-    const wholePage = wholeFixture();
-    const whole = await bootedApp({ html: wholePage.html, config: wholePage.config });
-    for (const el of whole.document.querySelectorAll("*")) for (const c of classesIn(el.getAttribute("class"))) worn.add(c);
-    expandAll(whole.app); await settle();
-    for (const el of whole.document.querySelectorAll("*")) for (const c of classesIn(el.getAttribute("class"))) worn.add(c);
 
     const rules = ruleClasses(document);
     const templates = templateClasses();

@@ -71,15 +71,3 @@ func undrawnTier(tiers []int, stems []string, ix ColumnIndex) int {
 	}
 	return -1
 }
-
-// repeatedTier returns a tier the list names twice, or -1.
-func repeatedTier(tiers []int) int {
-	seen := make(map[int]bool, len(tiers))
-	for _, t := range tiers {
-		if seen[t] {
-			return t
-		}
-		seen[t] = true
-	}
-	return -1
-}

@@ -29,8 +29,7 @@ export const CHART_HEIGHT = 820;
 /**
  * The canvas a chart is laid out on, in px: under a declared sankey.grow,
  * node_px for each node of the busiest slot of `nodes`, held between its
- * floor and its ceiling; else its declared sankey.height, or CHART_HEIGHT
- * where it declares neither.
+ * floor and its ceiling; else CHART_HEIGHT.
  * @param {FiscChart | FiscDrillStep | null | undefined} chart
  * @param {{id: string, tier: number, slot?: number}[]} [nodes] what is drawn on it
  * @returns {number}
@@ -41,7 +40,7 @@ export function canvasHeight(chart, nodes) {
     const g = hints.grow;
     return Math.min(g.ceiling, Math.max(g.floor, g.node_px * busiestSlot(nodes || [], hints.tiers || [])));
   }
-  return (hints && hints.height) || CHART_HEIGHT;
+  return CHART_HEIGHT;
 }
 
 /**
@@ -66,7 +65,7 @@ export const HAIRLINE = 1;
 
 /**
  * Whether a ribbon is drawn as a hairline: under HAIRLINE on a chart that
- * declares its canvas (sankey.height or sankey.grow), the one kind of chart
+ * declares its canvas (sankey.grow), the one kind of chart
  * whose thin ribbons are accepted rather than folded away. On the form's own
  * canvas a ribbon keeps the stroke floor every chart has.
  * @param {FiscChart | FiscDrillStep | null | undefined} chart
@@ -75,25 +74,7 @@ export const HAIRLINE = 1;
  */
 export function isHairline(chart, d) {
   const hints = chart && chart.sankey;
-  return Boolean(hints && (hints.height || hints.grow)) && d.width < HAIRLINE;
-}
-
-/**
- * The document less the tiers a chart declares as dropped (sankey.drop): their
- * nodes and every link touching one. Go refuses a drop whose links cite a
- * fact no kept link cites, so what leaves is a restatement.
- * @param {FiscProjection} doc
- * @param {FiscChart | FiscDrillStep | null | undefined} chart
- * @returns {FiscProjection} doc itself where nothing is dropped
- */
-export function dropTiers(doc, chart) {
-  const drop = (chart && chart.sankey && chart.sankey.drop) || [];
-  if (!drop.length) return doc;
-  const gone = new Set(doc.nodes.filter((n) => drop.indexOf(n.tier) >= 0).map((n) => n.id));
-  return Object.assign({}, doc, {
-    nodes: doc.nodes.filter((n) => !gone.has(n.id)),
-    links: doc.links.filter((l) => !gone.has(l.source) && !gone.has(l.target)),
-  });
+  return Boolean(hints && hints.grow) && d.width < HAIRLINE;
 }
 
 /**
@@ -1250,43 +1231,11 @@ export function layOutAt(drawn, ctx, height) {
 }
 
 /**
- * The overview as drawn: its dropped tiers gone, each capped tier the reader
- * has not drawn out folded into its tail, in the order the chart draws its
- * tiers as a rung's are (sideOf), then the fold. Each tail spans the whole
- * column, so its parent is "" and its note is finished with the figure only
- * the folded document knows.
- * @param {FiscProjection} doc
- * @param {number[]} tiers
- * @param {FiscChart} chart
- * @param {Set<number>} expanded the tiers drawn whole rather than capped
- * @returns {FiscProjection}
- */
-export function overviewOf(doc, tiers, chart, expanded) {
-  const caps = (chart.sankey && chart.sankey.caps) || [];
-  let shaped = dropTiers(doc, chart);
-  for (const tier of tiers) {
-    const cap = caps.find((c) => c.tier === tier);
-    if (!cap || expanded.has(tier)) continue;
-    shaped = capColumn(shaped, tier, cap.cap, "", cap.tail);
-  }
-  const drawn = foldDocument(shaped, tierFrontier(shaped, tiers));
-  if (!caps.length) return drawn;
-  return Object.assign({}, drawn, {
-    nodes: drawn.nodes.map((n) => (isAggregate(n.id)
-      ? Object.assign({}, n, {
-        parent: "",
-        source_note: n.source_note + say("aggregate_together", { figure: fmt(tailFigure(drawn, n.id)) }),
-      })
-      : n)),
-  });
-}
-
-/**
  * The Sankey form's renderer, as app.js's FORMS holds it under "sankey".
  * Every method takes what it needs: the chart's declaration, the frontier,
  * the document on screen. It reads of a chart `chart.sankey` and nothing of
- * any other form's hints; site/layout.test.mjs and site/whole.test.mjs wrap
- * the hints in a recording Proxy and hold every read to this file.
+ * any other form's hints; site/layout.test.mjs wraps
+ * the hints in a recording Proxy and holds every read to this file.
  * @type {FormRenderer}
  */
 export const SANKEY = Object.freeze({
@@ -1295,11 +1244,6 @@ export const SANKEY = Object.freeze({
   /** The declared tiers of an overview or a step, left to right. */
   tiersOf(chart) {
     return (chart.sankey && chart.sankey.tiers) || [];
-  },
-
-  /** The caps a chart declares, one per tier that needs one. */
-  caps(chart) {
-    return (chart.sankey && chart.sankey.caps) || [];
   },
 
   /** How wide a chart of this many columns is laid out, in px. */
@@ -1348,12 +1292,11 @@ export const SANKEY = Object.freeze({
   /**
    * Fits a document to the screen, then flips the reductions (markContra): an
    * expansion schedule folded to the frontier and its open splits capped
-   * (expansionOf), any other document folded to the chart's tier set with its
-   * capped tiers folded (overviewOf).
+   * (expansionOf), any other document folded to the chart's tier set.
    */
   shape(doc, view) {
     if (isExpansionSchedule(doc)) return markContra(expansionOf(doc, view.frontier, view.chart, view.whole));
-    return markContra(overviewOf(doc, SANKEY.tiersOf(view.chart), view.chart, view.expanded));
+    return markContra(foldDocument(doc, tierFrontier(doc, SANKEY.tiersOf(view.chart))));
   },
 
   /**

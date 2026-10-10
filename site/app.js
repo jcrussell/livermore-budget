@@ -26,12 +26,10 @@ import {
   SCHEMA_VERSION, say, kindLabel, fmt, fmtSigned, el, maybeEl, cssVar, h, link, citations, balancesOf, PARTITION_NOTE, isFundGroup, scheduleOf, isLink, residualFlows, tableRows,
 } from "./core.js";
 import { SANKEY } from "./sankey.js";
-import { BARS } from "./bars.js";
 // Re-exported so the tests reach the shipped modules through the one file
 // they import; this file calls a form only through the renderer it registers.
 export * from "./core.js";
 export * from "./sankey.js";
-export * from "./bars.js";
 
 /**
  * A node as schema/projection.schema.json#/properties/nodes/items has it,
@@ -53,7 +51,6 @@ export * from "./bars.js";
 /** schema/page.schema.json#/properties/years/items. @typedef {Record<string, any>} FiscYear */
 /** schema/page.schema.json, the page's window.FISC_CONFIG. @typedef {Record<string, any>} FiscConfig */
 /** schema/page.schema.json#/$defs/sankey_hints, a chart's Sankey hints. @typedef {Record<string, any>} FiscSankeyHints */
-/** schema/page.schema.json#/$defs/sankey_hints/properties/caps/items. @typedef {Record<string, any>} FiscTierCap */
 /** schema/page.schema.json#/properties/overview, the page's own chart: its form and hints. @typedef {Record<string, any>} FiscChart */
 /** schema/projection.schema.json, as scheduleOf assembles it from a column document. @typedef {Record<string, any>} FiscProjection */
 
@@ -108,9 +105,8 @@ export function homeOf(l) {
 /**
  * What the page is drawing a chart of: the schedule folded and fitted, and
  * the state it is fitted to. frontier: the expansion schedule's node ids
- * drawn; whole: its splits drawn whole rather than capped, node\u001fkey;
- * expanded: the tiers of any other document drawn whole rather than capped.
- * @typedef {{chart: FiscChart, frontier: ReadonlySet<string> | null, whole: ReadonlySet<string>, expanded: ReadonlySet<number>}} ShapeView
+ * drawn; whole: its splits drawn whole rather than capped, node\u001fkey.
+ * @typedef {{chart: FiscChart, frontier: ReadonlySet<string> | null, whole: ReadonlySet<string>}} ShapeView
  */
 
 /**
@@ -124,7 +120,6 @@ export function homeOf(l) {
  * @typedef {{
  *   form: string,
  *   tiersOf(chart: FiscChart): number[],
- *   caps(chart: FiscChart): FiscTierCap[],
  *   splitCaps(chart: FiscChart): {split: string, cap: number, tail: string}[],
  *   width(columns: number): number,
  *   columnsOf(drawn: FiscProjection, tiers: number[]): number,
@@ -148,7 +143,7 @@ export function homeOf(l) {
  * that fails. A second form registers here and nowhere else.
  * @type {Map<string, FormRenderer>}
  */
-export const FORMS = new Map([["sankey", SANKEY], ["bars", /** @type {any} */ (BARS)]]);
+export const FORMS = new Map([["sankey", SANKEY]]);
 
 /**
  * The renderer for a chart, by its declared form.
@@ -306,13 +301,6 @@ export let expansions = [];
 export let frontier = null;
 /** The splits drawn whole rather than capped, node\u001fkey, read off `expansions`. @type {ReadonlySet<string>} */
 export let wholeSplits = new Set();
-/**
- * The tiers of a document that is no expansion schedule drawn whole rather
- * than capped. Cleared by a year switch.
- * @type {Set<number>}
- */
-export let overviewExpanded = new Set();
-
 /** What separates a node from the split key it was split by, in an entry of `expansions`. */
 export const ALTERNATIVE_MARK = "~";
 
@@ -571,20 +559,7 @@ export function splittable(d) {
  * @returns {boolean}
  */
 export function expandable(d) {
-  if (!core.isAggregate(d.id)) return false;
-  if (expanding()) return Boolean(core.splitTailOf(d.id));
-  if (overviewExpanded.has(d.tier)) return false;
-  const chart = chartOnScreen();
-  return formFor(chart).caps(chart).some((c) => c.tier === d.tier);
-}
-
-/**
- * The tiers of the chart on screen the reader has drawn out, in column order
- * so the chip row does not swap between redraws.
- * @returns {number[]}
- */
-export function expandedTiers() {
-  return RENDER_TIERS.filter((t) => overviewExpanded.has(t));
+  return core.isAggregate(d.id) && expanding() && Boolean(core.splitTailOf(d.id));
 }
 
 /**
@@ -780,40 +755,19 @@ export function collapseAll() {
 }
 
 /**
- * Draws out a folded tail at every mark it holds: on the expansion, its split
- * drawn whole; on any other document, its tier. Focus goes to the topmost
- * mark it drew.
+ * Draws out a split's folded tail at every member it holds: the split drawn
+ * whole. Focus goes to the topmost member it drew.
  * @param {{id: string, tier: number}} d
  * @returns {boolean} whether it is drawn out
  */
 export function expandTier(d) {
   const tail = core.splitTailOf(d.id);
-  if (expanding() && tail && fetched) {
-    const split = core.splitsOf(fetched, tail.node).find((sp) => sp.key === tail.key);
-    const members = new Set(split ? split.members : []);
-    const before = new Set(laidNodes.map((n) => n.id));
-    return redraw(expansions.concat([d.id]), "That could not be drawn out",
-      () => firstNewAt((n) => members.has(n.id), before));
-  }
-  const before = new Set(laidNodes.filter((n) => n.tier === d.tier).map((n) => n.id));
-  return redrawOverview(new Set(overviewExpanded).add(d.tier), undefined,
-    () => firstNewAt((n) => n.tier === d.tier, before));
-}
-
-/**
- * Redraws a document that is no expansion schedule with these of its tiers
- * drawn whole, putting the last set back where the redraw is refused.
- * @param {Set<number>} drawnOut
- * @param {string} [refused]
- * @param {() => string} [landOn]
- * @returns {boolean}
- */
-function redrawOverview(drawnOut, refused, landOn) {
-  const was = overviewExpanded;
-  overviewExpanded = drawnOut;
-  const drew = redraw(expansions, refused, landOn);
-  if (!drew) overviewExpanded = was;
-  return drew;
+  if (!expanding() || !tail || !fetched) return false;
+  const split = core.splitsOf(fetched, tail.node).find((sp) => sp.key === tail.key);
+  const members = new Set(split ? split.members : []);
+  const before = new Set(laidNodes.map((n) => n.id));
+  return redraw(expansions.concat([d.id]), "That could not be drawn out",
+    () => firstNewAt((n) => members.has(n.id), before));
 }
 
 /**
@@ -828,18 +782,6 @@ export function firstNewAt(among, before) {
   const marks = laidNodes.filter(among).sort((a, b) => a.y0 - b.y0);
   const fresh = marks.find((n) => !before.has(n.id));
   return fresh ? fresh.id : marks.length ? marks[0].id : "";
-}
-
-/**
- * Folds a drawn-out tier back into its tail: its chip's action, on a document
- * that is no expansion schedule.
- * @param {number} tier
- */
-export function collapseTier(tier) {
-  if (!overviewExpanded.has(tier)) return;
-  const drawnOut = new Set(overviewExpanded);
-  drawnOut.delete(tier);
-  redrawOverview(drawnOut, "That column could not be folded back");
 }
 
 /**
@@ -1015,7 +957,7 @@ export function paintChartName() {
 export function paintChartHint() {
   const hint = maybeEl("chart-hint");
   if (!hint) return;
-  if (!expanding() && !overviewCaps()) return;
+  if (!expanding()) return;
   const chart = chartDrawn();
   const anyOpens = Boolean(chart) && chart.nodes.some(splittable);
   // The isolate is named on every view, and Space with it, because Space
@@ -1024,15 +966,9 @@ export function paintChartHint() {
   // A sentence of its own: the tail can be the only thing a chart offers.
   const tails = Boolean(chart) && chart.nodes.some(expandable);
   const expands = tails ? " " + say("expand") : "";
-  const folds = expansions.length || overviewExpanded.size ? " " + say("fold_back") : "";
+  const folds = expansions.length ? " " + say("fold_back") : "";
   const swatch = buildLegendCount() ? " " + say("swatch") : "";
   hint.textContent = (anyOpens ? say("open_into") : say("nothing_opens")) + follow + expands + folds + swatch;
-}
-
-/** Whether the page's own chart declares a cap, so a tail on it draws out. */
-function overviewCaps() {
-  return Boolean(CONFIG.overview) && FORMS.has(CONFIG.overview.form) &&
-    formFor(CONFIG.overview).caps(CONFIG.overview).length > 0;
 }
 
 /** How many fund-group swatches the legend is showing. */
@@ -1083,8 +1019,6 @@ export function paintChips() {
       const twice = splitLabels.filter((l) => l === label).length > 1;
       items.push(splitChip(e.id, e.key, twice ? label + " (" + splitWords(e.key) + ")" : label));
     }
-  } else {
-    for (const tier of expandedTiers()) items.push(tierChip(tier));
   }
   bar.replaceChildren(...items);
   if (items.length) bar.removeAttribute("hidden");
@@ -1158,21 +1092,6 @@ function tailChip(node, key) {
 }
 
 /**
- * A tier drawn out of its tail's chip, on a document that is no expansion
- * schedule. Its count is what is drawn, read off the chart.
- * @param {number} tier
- * @returns {HTMLElement}
- */
-function tierChip(tier) {
-  const n = projection ? projection.nodes.filter((x) => x.tier === tier).length : 0;
-  const chart = chartOnScreen();
-  const cap = formFor(chart).caps(chart).find((c) => c.tier === tier);
-  const word = cap ? cap.tail : "";
-  return foldBackChip("showing all " + n + " " + word + " ×",
-    "Showing all " + n + " " + word + "; fold the smallest back into one mark", () => collapseTier(tier));
-}
-
-/**
  * The document as this page draws it, through its form: the expansion folded
  * to the frontier, or another document folded to the page's tier set.
  *
@@ -1180,7 +1099,7 @@ function tierChip(tier) {
  * @returns {FiscProjection}
  */
 export function shapeFor(doc) {
-  return formOnScreen().shape(doc, { chart: CONFIG.overview, frontier, whole: wholeSplits, expanded: overviewExpanded });
+  return formOnScreen().shape(doc, { chart: CONFIG.overview, frontier, whole: wholeSplits });
 }
 
 /**
@@ -2257,7 +2176,7 @@ export function revealEntries(id) {
   const own = chain[chain.length - 1];
   if (own) {
     const state = expansionState(doc, next);
-    const drawn = formOnScreen().shape(doc, { chart: CONFIG.overview, frontier: state.frontier, whole: state.whole, expanded: overviewExpanded });
+    const drawn = formOnScreen().shape(doc, { chart: CONFIG.overview, frontier: state.frontier, whole: state.whole });
     const splits = core.splitsOf(doc, own.parent);
     const key = own.alternative || (splits.length ? splits[0].key : "");
     const tail = core.splitTailID(own.parent, key);
@@ -3129,14 +3048,13 @@ export async function showYear(year, carry = []) {
   // Swapped because shapeFor and askAffordances read them; swapped back on a
   // throw, so nothing below writes a word of this year over the last one's
   // chart.
-  const was = { column, fetched, expansions, frontier, wholeSplits, overviewExpanded, laidNodes, groupIndex, projection, shown, whole };
+  const was = { column, fetched, expansions, frontier, wholeSplits, laidNodes, groupIndex, projection, shown, whole };
   const before = fetched;
   column = loaded;
   fetched = doc;
   expansions = [];
   frontier = core.isExpansionSchedule(doc) ? core.rootFrontier(doc) : null;
   wholeSplits = new Set();
-  overviewExpanded = new Set();
   /** @type {string[]} */
   let dropped = [];
   let laid;
@@ -3162,7 +3080,7 @@ export async function showYear(year, carry = []) {
     whole = unfiltered;
     askAffordances();
   } catch (e) {
-    ({ column, fetched, expansions, frontier, wholeSplits, overviewExpanded, laidNodes, groupIndex, projection, shown, whole } = was);
+    ({ column, fetched, expansions, frontier, wholeSplits, laidNodes, groupIndex, projection, shown, whole } = was);
     throw e;
   }
 

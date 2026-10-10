@@ -271,16 +271,16 @@ func chartView(breaks func(*export.View)) export.View {
 	return v
 }
 
-// wholeView is a well-formed view drawing another schedule of its column:
-// the spine's figures and years, fund-flows' chart at every tier it draws a
-// column of, its group tier dropped and its canvas declared.
+// drawsView is a well-formed view drawing another schedule of its column, as
+// the index draws the expansion: the spine's figures and years, fund-flows'
+// chart at tiers it draws a column of.
 // TestAViewDrawsAnotherScheduleOfItsColumn is its control.
-func wholeView(breaks func(*export.View)) export.View {
+func drawsView(breaks func(*export.View)) export.View {
 	v := export.View{
-		Path: "whole.html", Nav: "Whole budget", Template: export.SankeyTemplate, Projection: "sankey",
+		Path: "other.html", Nav: "Other", Template: export.SankeyTemplate, Projection: "sankey",
 		Draws: "fund-flows",
 		Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{
-			Tiers: []int{0, 3, 4, 5}, Drop: []int{2}, Height: 4800,
+			Tiers: []int{0, 3, 4, 5},
 		}},
 		Description: "Every flow at once.",
 	}
@@ -288,10 +288,10 @@ func wholeView(breaks func(*export.View)) export.View {
 	return v
 }
 
-// TestAViewDrawsAnotherScheduleOfItsColumn is the control for the whole-page
-// refusals: the page ships fund-flows as its primary schedule with the
-// overview's height and drop under the Sankey's key, its counts line is
-// fund-flows' and its description replaces the spine's.
+// TestAViewDrawsAnotherScheduleOfItsColumn is the control for the drawn-
+// schedule refusals: the page ships fund-flows as its primary schedule with
+// the overview's hints under the Sankey's key, its counts line is fund-flows'
+// and its description replaces the spine's.
 func TestAViewDrawsAnotherScheduleOfItsColumn(t *testing.T) {
 	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
 	if err != nil {
@@ -303,20 +303,20 @@ func TestAViewDrawsAnotherScheduleOfItsColumn(t *testing.T) {
 		Projections: map[string][]byte{"sankey": goldenSankey(t), "fund-flows": builtLike(t, goldenSankey(t), fundFlows)},
 		Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
 			Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "sankey"},
-			wholeView(func(*export.View) {})},
+			drawsView(func(*export.View) {})},
 		Docs:        budgetDocs(),
 		GeneratedBy: "fisc test",
 	}); err != nil {
 		t.Fatalf("Write refused a view drawing another schedule: %v", err)
 	}
-	page := readFile(t, dir, "whole.html")
+	page := readFile(t, dir, "other.html")
 	for _, want := range []string{
 		`"primary":"fund-flows"`,
-		`"overview":{"form":"sankey","sankey":{"tiers":[0,3,4,5],"height":4800,"drop":[2]}}`,
+		`"overview":{"form":"sankey","sankey":{"tiers":[0,3,4,5]}}`,
 		`<desc id="chart-desc">` + "\n        Every flow at once. ",
 	} {
 		if !strings.Contains(page, want) {
-			t.Errorf("the whole page carries no %s", want)
+			t.Errorf("the page carries no %s", want)
 		}
 	}
 	var doc struct {
@@ -328,10 +328,10 @@ func TestAViewDrawsAnotherScheduleOfItsColumn(t *testing.T) {
 		t.Fatal(err)
 	}
 	if want := fmt.Sprintf(`"links":%d`, doc.Metadata.Counts.Links); !strings.Contains(page, want) {
-		t.Errorf("the whole page's year counts no %s, fund-flows' own link count", want)
+		t.Errorf("the page's year counts no %s, fund-flows' own link count", want)
 	}
 	if strings.Contains(page, "Revenue categories flow into fund groups") {
-		t.Error("the whole page describes the spine's chart")
+		t.Error("the page describes the spine's chart")
 	}
 }
 
@@ -693,11 +693,6 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 		{"an overview in a form no renderer draws", []export.View{ok,
 			chartView(func(v *export.View) { v.Overview.Form = "stub"; v.Overview.Sankey = nil })},
 			"declares chart form \"stub\", which is not one of"},
-		{"an overview drawn as bars", []export.View{ok,
-			chartView(func(v *export.View) {
-				v.Overview = export.Chart{Form: export.BarsForm, Bars: &export.BarsHints{Tier: 3}}
-			})},
-			"declares a bars chart as its own"},
 		// Against the documents: a tier no node of the document stands at is a
 		// column drawn empty.
 		{"a chart drawing a tier its document has no node at", []export.View{ok,
@@ -741,11 +736,6 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 			"under no printed heading"},
 		// The growth and the split caps are the expansion's: chartView's
 		// overview breaks one thing each.
-		{"a canvas both fixed and growing", []export.View{ok,
-			wholeView(func(v *export.View) {
-				v.Overview.Sankey.Grow = &export.CanvasGrowth{NodePx: 40, Floor: 820, Ceiling: 4800}
-			})},
-			"both a 4800px canvas and a canvas that grows"},
 		{"a canvas growing by no px", []export.View{ok,
 			chartView(func(v *export.View) {
 				v.Overview.Sankey.Grow = &export.CanvasGrowth{NodePx: 0, Floor: 820, Ceiling: 4800}
@@ -776,36 +766,8 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 				v.Overview.Sankey.SplitCaps = []export.SplitCap{{Split: "funds", Cap: 8, Tail: "funds"}, {Split: "funds", Cap: 9, Tail: "funds"}}
 			})},
 			`caps split "funds" twice`},
-		// The whole-page arms: wholeView breaks one thing each.
-		{"a canvas of negative height", []export.View{ok,
-			wholeView(func(v *export.View) { v.Overview.Sankey.Height = -1 })},
-			"on a canvas -1px tall"},
-		{"a tier both drawn and dropped", []export.View{ok,
-			wholeView(func(v *export.View) { v.Overview.Sankey.Drop = []int{3} })},
-			"both draws and drops tier 3"},
-		{"a tier dropped twice", []export.View{ok,
-			wholeView(func(v *export.View) { v.Overview.Sankey.Drop = []int{2, 2} })},
-			"drops tier 2 twice"},
-		{"a dropped tier carrying no node", []export.View{ok,
-			wholeView(func(v *export.View) { v.Overview.Sankey.Drop = []int{2, 9} })},
-			"drops tier 9, at which"},
-		// pp.173-183's rows reach the chart only through tier 5, so dropping
-		// it takes figures off the chart: not a restatement.
-		{"a dropped tier that restates nothing", []export.View{ok,
-			wholeView(func(v *export.View) {
-				v.Overview.Sankey.Tiers, v.Overview.Sankey.Drop = []int{0, 3, 4}, []int{2, 5}
-			})},
-			"which no link the chart keeps cites"},
-		{"an overview cap naming no tail", []export.View{ok,
-			wholeView(func(v *export.View) { v.Overview.Sankey.Caps = []export.TierCap{{Tier: 3, Cap: 8}} })},
-			"with no tail"},
-		{"an overview cap on a tier it does not draw", []export.View{ok,
-			wholeView(func(v *export.View) {
-				v.Overview.Sankey.Caps = []export.TierCap{{Tier: 1, Cap: 8, Tail: "lines"}}
-			})},
-			"caps tier 1 and draws tiers"},
 		{"a schedule no year's column carries", []export.View{ok,
-			wholeView(func(v *export.View) { v.Draws = "revenue-trends" })},
+			drawsView(func(v *export.View) { v.Draws = "revenue-trends" })},
 			"is of a column that carries none"},
 		{"a schedule drawn with no chart", []export.View{ok,
 			{Path: "trends.html", Nav: "Revenue tables", Template: export.TrendsTemplate,

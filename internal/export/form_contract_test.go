@@ -37,12 +37,12 @@ func TestTheSchemaHoldsAChartToItsForm(t *testing.T) {
 			func(cfg map[string]any) { hints(cfg)["widen"] = []any{4.0} }},
 		{"a sankey chart carrying bars hints", "bars",
 			func(cfg map[string]any) { overview(cfg)["bars"] = map[string]any{"tier": 3.0} }},
-		{"a bars chart with no bars hints", "bars",
+		{"a bars chart, which no renderer draws", "form",
 			func(cfg map[string]any) { overview(cfg)["form"] = "bars"; delete(overview(cfg), "sankey") }},
-		{"bars hints naming no tier", "tier", func(cfg map[string]any) {
-			overview(cfg)["form"] = "bars"
-			delete(overview(cfg), "sankey")
-			overview(cfg)["bars"] = map[string]any{}
+		{"a dropped tier, which no chart declares", "drop",
+			func(cfg map[string]any) { hints(cfg)["drop"] = []any{2.0} }},
+		{"a tier cap, which no chart declares", "caps", func(cfg map[string]any) {
+			hints(cfg)["caps"] = []any{map[string]any{"tier": 3.0, "cap": 8.0, "tail": "funds"}}
 		}},
 		{"a step, which no page declares", "steps",
 			func(cfg map[string]any) { cfg["steps"] = []any{map[string]any{"key": "group"}} }},
@@ -50,54 +50,6 @@ func TestTheSchemaHoldsAChartToItsForm(t *testing.T) {
 		var cfg map[string]any
 		if err := json.Unmarshal(blob, &cfg); err != nil {
 			t.Fatal(err)
-		}
-		c.breaks(cfg)
-		err := schema.Validate(schema.Page, cfg)
-		switch {
-		case c.want == "" && err != nil:
-			t.Errorf("%s: refused: %v", c.name, err)
-		case c.want != "" && err == nil:
-			t.Errorf("%s: accepted, and the schema should have named %q", c.name, c.want)
-		case c.want != "" && !strings.Contains(err.Error(), c.want):
-			t.Errorf("%s: refused without naming %q: %v", c.name, c.want, err)
-		}
-	}
-}
-
-// TestTheSchemaHoldsTheWholePagesCanvas is the same arm over
-// testdata/whole.golden.html's overview, which declares a canvas height and a
-// dropped tier: a malformed one of either is refused at the write.
-func TestTheSchemaHoldsTheWholePagesCanvas(t *testing.T) {
-	page, err := os.ReadFile("../../testdata/whole.golden.html")
-	if err != nil {
-		t.Fatal(err)
-	}
-	blob := configBlob(t, string(page))
-	hints := func(cfg map[string]any) map[string]any {
-		return cfg["overview"].(map[string]any)["sankey"].(map[string]any)
-	}
-	for _, c := range []struct {
-		name, want string
-		breaks     func(cfg map[string]any)
-	}{
-		{"the served config", "", func(map[string]any) {}},
-		{"a canvas of no height", "height", func(cfg map[string]any) { hints(cfg)["height"] = 0.0 }},
-		{"a canvas of negative height", "height", func(cfg map[string]any) { hints(cfg)["height"] = -4800.0 }},
-		{"a canvas of fractional height", "height", func(cfg map[string]any) { hints(cfg)["height"] = 4800.5 }},
-		{"a canvas height as a string", "height", func(cfg map[string]any) { hints(cfg)["height"] = "4800" }},
-		{"an empty drop", "drop", func(cfg map[string]any) { hints(cfg)["drop"] = []any{} }},
-		{"a tier dropped twice", "drop", func(cfg map[string]any) { hints(cfg)["drop"] = []any{2.0, 2.0} }},
-		{"a negative tier dropped", "drop", func(cfg map[string]any) { hints(cfg)["drop"] = []any{-2.0} }},
-		{"an overview cap naming no tail", "tail", func(cfg map[string]any) {
-			delete(hints(cfg)["caps"].([]any)[0].(map[string]any), "tail")
-		}},
-	} {
-		var cfg map[string]any
-		if err := json.Unmarshal(blob, &cfg); err != nil {
-			t.Fatal(err)
-		}
-		if _, ok := hints(cfg)["height"]; !ok {
-			t.Fatal("the whole page's overview declares no canvas height, so no row below breaks one")
 		}
 		c.breaks(cfg)
 		err := schema.Validate(schema.Page, cfg)
@@ -135,7 +87,7 @@ func TestTheSchemaHoldsTheExpansionsCanvasAndCaps(t *testing.T) {
 		{"the served config", "", func(map[string]any) {}},
 		{"a growth of no px", "node_px", func(cfg map[string]any) { grow(cfg)["node_px"] = 0.0 }},
 		{"a growth with no ceiling", "ceiling", func(cfg map[string]any) { delete(grow(cfg), "ceiling") }},
-		{"a growth beside a height", "not", func(cfg map[string]any) { hints(cfg)["height"] = 4800.0 }},
+		{"a fixed height beside the growth, which no chart declares", "height", func(cfg map[string]any) { hints(cfg)["height"] = 4800.0 }},
 		{"a split cap of no member", "cap", func(cfg map[string]any) { firstCap(cfg)["cap"] = 0.0 }},
 		{"a split cap naming no split", "split", func(cfg map[string]any) { delete(firstCap(cfg), "split") }},
 		{"a split cap naming no tail", "tail", func(cfg map[string]any) { delete(firstCap(cfg), "tail") }},
@@ -167,9 +119,9 @@ func TestTheSchemaHoldsTheExpansionsCanvasAndCaps(t *testing.T) {
 // declared hints to one key: data/views.yaml decodes the hints as these types,
 // and the page config marshals them, so a field whose yaml and json keys
 // differed would be authored under one name and shipped under another.
-// Mutation: give SankeyHints.Drop the yaml key "dropped", and it goes red.
+// Mutation: give SankeyHints.Grow the yaml key "grows", and it goes red.
 func TestAHintIsSpelledOnceInTheFileAndOnTheWire(t *testing.T) {
-	for _, typ := range []reflect.Type{reflect.TypeOf(export.SankeyHints{}), reflect.TypeOf(export.TierCap{}), reflect.TypeOf(export.BarsHints{})} {
+	for _, typ := range []reflect.Type{reflect.TypeOf(export.SankeyHints{}), reflect.TypeOf(export.CanvasGrowth{}), reflect.TypeOf(export.SplitCap{})} {
 		for i := range typ.NumField() {
 			f := typ.Field(i)
 			j, _, _ := strings.Cut(f.Tag.Get("json"), ",")

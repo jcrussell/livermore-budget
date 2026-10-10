@@ -9,7 +9,7 @@
 import { before, describe, test } from "node:test";
 import assert from "node:assert/strict";
 
-import { bootedApp, goldenGraph, pageFixture, wholeFixture, stylesheet, expandAll, everySplit, clickYear,
+import { bootedApp, goldenGraph, pageFixture, stylesheet, everySplit,
   settle, columnFixture, loadD3 } from "./testlib.mjs";
 // core.js and sankey.js themselves for the expansion's layout at frontiers
 // no gesture is needed to reach.
@@ -727,135 +727,6 @@ describe("the focus indicator is painted as focus and not as text", () => {
     assert.doesNotMatch(rule, /stroke-width/,
       "the echo reuses stroke-width, which IS the ribbon's value");
     t.diagnostic(`the ribbon's focus rule is ${rule.trim().replace(/\s+/g, " ")}`);
-  });
-});
-
-// THE WHOLE CITY IN ONE SANKEY (fisc-yj4w.23): the whole-budget page,
-// testdata/whole.golden.html, shaped by the page's own shapeFor and laid out
-// by the form's own layOutAt at each candidate canvas height, folded as it
-// opens and with every tail drawn out. The declared height is read off the
-// page's own layOut, which is what the hint reaches.
-const WHOLE_HEIGHTS = [820, 1600, 2400, 3200, 4800];
-
-/**
- * Each pinned year's whole-budget chart at every candidate height, folded and
- * drawn out: nodes, links, ribbons under a pixel and the narrowest ribbon;
- * then the chart the page lays out at its declared canvas, folded.
- * PINNED, not bounded: the height in data/views.yaml is read off these.
- */
-const WHOLE_CLAIMED = {
-  "FY 2025-26": {
-    folded: [
-      "820: 52 nodes, 96 links, 15 under 1px, narrowest 0.0112px",
-      "1600: 52 nodes, 96 links, 8 under 1px, narrowest 0.0246px",
-      "2400: 52 nodes, 96 links, 6 under 1px, narrowest 0.0383px",
-      "3200: 52 nodes, 96 links, 5 under 1px, narrowest 0.0520px",
-      "4800: 52 nodes, 96 links, 2 under 1px, narrowest 0.0793px",
-    ],
-    drawnOut: [
-      "820: 229 nodes, 262 links, 262 under 1px, narrowest 0.0000px",
-      "1600: 229 nodes, 262 links, 262 under 1px, narrowest 0.0000px",
-      "2400: 229 nodes, 262 links, 123 under 1px, narrowest 0.0000px",
-      "3200: 229 nodes, 262 links, 82 under 1px, narrowest 0.0001px",
-      "4800: 229 nodes, 262 links, 51 under 1px, narrowest 0.0002px",
-    ],
-    declared: "52 nodes, 96 links, 2 under 1px, narrowest 0.0793px",
-  },
-  "FY 2026-27": {
-    folded: [
-      "820: 52 nodes, 95 links, 16 under 1px, narrowest 0.0112px",
-      "1600: 52 nodes, 95 links, 8 under 1px, narrowest 0.0244px",
-      "2400: 52 nodes, 95 links, 7 under 1px, narrowest 0.0380px",
-      "3200: 52 nodes, 95 links, 4 under 1px, narrowest 0.0516px",
-      "4800: 52 nodes, 95 links, 1 under 1px, narrowest 0.0786px",
-    ],
-    drawnOut: [
-      "820: 224 nodes, 257 links, 257 under 1px, narrowest 0.0000px",
-      "1600: 224 nodes, 257 links, 257 under 1px, narrowest 0.0000px",
-      "2400: 224 nodes, 257 links, 119 under 1px, narrowest 0.0000px",
-      "3200: 224 nodes, 257 links, 83 under 1px, narrowest 0.0001px",
-      "4800: 224 nodes, 257 links, 50 under 1px, narrowest 0.0002px",
-    ],
-    declared: "52 nodes, 95 links, 1 under 1px, narrowest 0.0786px",
-  },
-};
-
-/**
- * One laid chart in the pins' words.
- * @param {{nodes: any[], links: any[]}} laid
- */
-function laidFigures(laid) {
-  const widths = laid.links.map((l) => l.width);
-  return `${laid.nodes.length} nodes, ${laid.links.length} links, ` +
-    `${widths.filter((w) => w < 1).length} under 1px, narrowest ${Math.min(...widths).toFixed(4)}px`;
-}
-
-describe("the whole city in one Sankey, folded as it opens and drawn out", () => {
-  /** @type {Map<string, {folded: string[], drawnOut: string[], declared: string, doubled: string}>} */
-  const measured = new Map();
-
-  before(async () => {
-    const page = wholeFixture();
-    const { app, document } = await bootedApp({ html: page.html, config: page.config });
-    const at = (doc, height) => app.layOutAt(doc, {
-      tiers: app.RENDER_TIERS,
-      columns: app.layoutColumns(doc),
-      groupOf: app.fundGroupOf,
-      placeOf: app.fundGroupPlace,
-    }, height);
-    for (const year of page.config.years) {
-      clickYear(document, year.stem);
-      await settle();
-      assert.equal(app.shownYear.stem, year.stem, `the page did not switch to ${year.label}`);
-      const folded = WHOLE_HEIGHTS.map((h) => `${h}: ${laidFigures(at(app.shown.doc, h))}`);
-      const declared = laidFigures(app.layOut(app.shown.doc));
-      expandAll(app);
-      await settle();
-      const drawnOut = WHOLE_HEIGHTS.map((h) => `${h}: ${laidFigures(at(app.shown.doc, h))}`);
-      // The tier set the group tier is dropped from, drawn with it: each
-      // fund's inflow arrives once from its revenue lines and once from its
-      // group, so the fund's mark is drawn at the sum of the two.
-      const withGroups = app.foldDocument(app.fetched, app.tierFrontier(app.fetched, [0, 2, 3, 4, 5]));
-      const into = new Map();
-      for (const l of withGroups.links) {
-        const n = withGroups.nodes.find((x) => x.id === l.target);
-        if (n && n.tier === 3) into.set(l.target, (into.get(l.target) || 0) + l.value_cents);
-      }
-      const own = new Map();
-      for (const l of app.fetched.links) {
-        if (app.fetched.nodes.some((x) => x.id === l.source && x.tier === 2)) own.set(l.target, (own.get(l.target) || 0) + l.value_cents);
-      }
-      const twice = [...own].filter(([id, c]) => into.get(id) === 2 * c).length;
-      measured.set(year.label, { folded, drawnOut, declared, doubled: `${twice} of ${own.size} funds drawn at twice their inflow` });
-      app.collapseTier(3); app.collapseTier(4); app.collapseTier(5);
-      await settle();
-    }
-  });
-
-  test("folded as it opens, no candidate height draws every printed ribbon at a pixel, and the tallest leaves the fewest under one", (t) => {
-    for (const [label, m] of measured) t.diagnostic(`${label} folded by height: ${m.folded.join("; ")}`);
-    assert.deepEqual(Object.fromEntries([...measured].map(([k, m]) => [k, m.folded])),
-      Object.fromEntries(Object.entries(WHOLE_CLAIMED).map(([k, m]) => [k, m.folded])));
-  });
-
-  test("with every tail drawn out, every candidate height leaves ribbons under a pixel, the hairlines the page says it draws", (t) => {
-    for (const [label, m] of measured) t.diagnostic(`${label} drawn out by height: ${m.drawnOut.join("; ")}`);
-    assert.deepEqual(Object.fromEntries([...measured].map(([k, m]) => [k, m.drawnOut])),
-      Object.fromEntries(Object.entries(WHOLE_CLAIMED).map(([k, m]) => [k, m.drawnOut])));
-  });
-
-  test("the page lays its chart out on the canvas its sankey hint declares", (t) => {
-    for (const [label, m] of measured) t.diagnostic(`${label} at the declared canvas, folded: ${m.declared}`);
-    assert.deepEqual(Object.fromEntries([...measured].map(([k, m]) => [k, m.declared])),
-      Object.fromEntries(Object.entries(WHOLE_CLAIMED).map(([k, m]) => [k, m.declared])));
-  });
-
-  test("drawn with its group tier, every fund's inflow would be drawn twice, which is why the page drops it", (t) => {
-    for (const [label, m] of measured) {
-      t.diagnostic(`${label}: ${m.doubled}`);
-      const [twice, , all] = m.doubled.split(" ");
-      assert.equal(twice, all, `${label}: ${m.doubled}`);
-    }
   });
 });
 
