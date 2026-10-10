@@ -32,6 +32,20 @@ views:
       form: sankey
       sankey:
         tiers: [0, 2, 5]
+        # The expansion schedule's canvas: 40px a node of the busiest column,
+        # from today's 820px, so the spine lays out as it did, to whole.html's
+        # 4800px. site/layout.test.mjs pins what each frontier draws under a
+        # pixel at it.
+        grow: {node_px: 40, floor: 820, ceiling: 4800}
+        # Per split, so a tail stays inside the node it splits and splits back
+        # into that node's members alone. Divisions are inert on fund/100 (23)
+        # and fold an object category's 26-29.
+        split_caps:
+          - {split: funds, cap: 8, tail: funds}
+          - {split: divisions, cap: 24, tail: divisions}
+          - {split: object-rows, cap: 8, tail: object rows}
+          - {split: lines, cap: 8, tail: lines}
+          - {split: receivers, cap: 8, tail: funds}
     # The spine opens into fund-flows, and fund-flows into itself.
     steps:
       # After the spine's chart only: a group kept on a revenue- or

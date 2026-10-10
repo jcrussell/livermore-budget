@@ -90,6 +90,33 @@ describe("the marks this client makes", () => {
     }
   });
 
+  test("every tail the expansion's split caps fold, everything opened by its primary splits, matches too", async (t) => {
+    const { app } = await bootedApp();
+    const faults = [];
+    let tails = 0;
+    for (const year of pageFixture().config.years) {
+      const doc = app.scheduleOf(columnFixture(year.path.replace(/\.json$/, "")), "expansion");
+      let all = app.rootFrontier(doc);
+      for (let changed = true; changed;) {
+        changed = false;
+        for (const id of [...all]) {
+          const splits = app.splitsOf(doc, id);
+          if (!splits.length || app.openSplitOf(doc, all, id) !== "") continue;
+          all = app.expand(doc, all, id, splits.find((sp) => !sp.alternative).key);
+          changed = true;
+        }
+      }
+      for (const n of app.expansionOf(doc, all, app.CONFIG.overview, new Set()).nodes) {
+        if (!app.isMark(n.id)) continue;
+        tails++;
+        faults.push(...check(MARK, n, `${year.label} ${n.id}`, []));
+      }
+    }
+    t.diagnostic(`${tails} tail(s) over the pinned years; faults: ${faults.length}`);
+    assert.ok(tails > 0, "no split's tail was folded, so nothing here was checked");
+    assert.deepEqual(faults, []);
+  });
+
   test("a mark built outside the drawn page matches too, and a stray key is caught", async () => {
     const { app } = await bootedApp();
     const gap = app.gapMark("expenditure/x", 5, 25000000, "Why.", "Where from.", [{ doc_id: "d", pages: [1] }]);

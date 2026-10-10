@@ -6,7 +6,7 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 
-import { bootedApp, wholeFixture, pageFixture, expandAll, clickYear, settle, fire } from "./testlib.mjs";
+import { bootedApp, wholeFixture, pageFixture, expandAll, clickYear, settle, fire, opened } from "./testlib.mjs";
 
 /** Every pinned year's whole-budget chart, booted once per test. */
 async function wholePage(config) {
@@ -206,14 +206,32 @@ describe("hairlines", () => {
     assert.equal(key(app.pinned), key(ribbon.__data__), "focusing a hairline does not pin it");
   });
 
-  test("the spine, on the form's own canvas, draws none and says nothing, though some of its ribbons are under a pixel", async (t) => {
-    const { document } = await bootedApp();
+  // The spine's canvas grows (sankey.grow) from the 820px floor its busiest
+  // column does not reach, so it is laid out as on the form's own canvas and
+  // its thin ribbons are hairlines the page says it draws.
+  test("the spine, on the canvas it declares grows, draws its ribbons under a pixel as hairlines and says how many", async (t) => {
+    const { app, document } = await bootedApp();
+    const links = [...document.querySelectorAll("#chart path.link")];
+    const thin = links.filter((p) => p.__data__.width < 1).map((p) => key(p.__data__));
+    const height = document.getElementById("chart").getAttribute("viewBox").split(" ")[3];
+    t.diagnostic(`the spine draws ${thin.length} of ${links.length} ribbons under a pixel on a ${height}px canvas`);
+    assert.ok(thin.length > 0, "the spine draws no ribbon under a pixel, so this proves less than it says");
+    assert.deepEqual([...document.querySelectorAll("#chart path.link.hairline")].map((p) => key(p.__data__)), thin);
+    assert.deepEqual([...document.querySelectorAll("#chart path.link-hit")].map((p) => key(p.__data__)), thin);
+    assert.equal(document.getElementById("hairline-line").textContent, app.say("hairline", { n: thin.length }));
+    assert.equal(height, String(pageFixture().config.overview.sankey.grow.floor));
+    assert.ok(pageFixture().config.overview.sankey.height === undefined);
+  });
+
+  test("a window, on the form's own canvas, draws none and says nothing, though some of its ribbons are under a pixel", async (t) => {
+    const { app, document } = await bootedApp();
+    await opened(app, "fund-group/general");
     const thin = [...document.querySelectorAll("#chart path.link")].filter((p) => p.__data__.width < 1).length;
-    t.diagnostic(`the spine draws ${thin} ribbons under a pixel at its stroke floor`);
+    t.diagnostic(`the General Fund group's window draws ${thin} ribbons under a pixel at its stroke floor`);
+    assert.ok(thin > 0, "the window draws no ribbon under a pixel, so this proves less than it says");
     assert.equal(document.querySelectorAll("#chart path.link.hairline").length, 0);
     assert.equal(document.querySelectorAll("#chart path.link-hit").length, 0);
     assert.ok(document.getElementById("hairline-line").hidden);
-    assert.ok(pageFixture().config.overview.sankey.height === undefined);
   });
 });
 

@@ -847,10 +847,17 @@ export function reveal(doc, frontier, id) {
  * @param {string} opened  the node the aggregate is parented to: the opened
  *   node when the whole column is inside it, "" when it spans fund groups
  * @param {string} noun  the plural noun for the tier's rows
+ * @param {{members: ReadonlySet<string>, id: string}} [among] the column is
+ *   these ids rather than every node at the tier, and its tail is `id`: one
+ *   split's drawn members, which share a slot with other splits' members
  * @returns {FiscProjection} doc itself when the column fits whole
  */
-export function capColumn(doc, tier, cap, opened, noun) {
-  const atTier = doc.nodes.filter((n) => n.tier === tier);
+export function capColumn(doc, tier, cap, opened, noun, among) {
+  const inColumn = among
+    ? (/** @type {FiscNode} */ n) => among.members.has(n.id)
+    : (/** @type {FiscNode} */ n) => n.tier === tier;
+  const tailID = among ? among.id : aggregateID(tier);
+  const atTier = doc.nodes.filter(inColumn);
   // AN AGGREGATE OF ONE IS WORSE THAN NO AGGREGATE, so a column of cap + 1 is
   // drawn whole.
   if (atTier.length <= cap + 1) return doc;
@@ -874,17 +881,17 @@ export function capColumn(doc, tier, cap, opened, noun) {
   const folded = ranked.slice(cap);
 
   // The noun is the view's, plural: the threshold above folds two or more.
-  const aggregate = aggregateMark(tier, opened, folded.map((n) => n.id), atTier.length, cap, noun);
+  const aggregate = aggregateMark(tier, opened, folded.map((n) => n.id), atTier.length, cap, noun, tailID);
   const tail = new Set(folded.map((n) => n.id));
-  const remap = (/** @type {string} */ id) => (tail.has(id) ? aggregateID(tier) : id);
+  const remap = (/** @type {string} */ id) => (tail.has(id) ? tailID : id);
 
   // A FOLDED NODE'S CHILDREN HANG FROM THE TAIL: foldDocument refuses a child
   // naming a parent the document does not carry, and dropping the child would
   // drop the money it carries onward -- a folded fund's object categories, in
   // a fund group's window.
   const nodes = doc.nodes
-    .filter((n) => n.tier !== tier || kept.has(n.id))
-    .map((n) => (tail.has(n.parent) ? Object.assign({}, n, { parent: aggregateID(tier) }) : n))
+    .filter((n) => !inColumn(n) || kept.has(n.id))
+    .map((n) => (tail.has(n.parent) ? Object.assign({}, n, { parent: tailID }) : n))
     .concat([aggregate]);
   // And the links that named them, for the same refusal.
   const present = new Set(nodes.map((n) => n.id));
@@ -932,6 +939,18 @@ export const AGGREGATE_PREFIX = "aggregate/tail/";
  */
 export function aggregateID(tier) {
   return AGGREGATE_PREFIX + tier;
+}
+
+/**
+ * The id of the tail one split's capped members fold into. Per split, not per
+ * tier: one slot holds the members of many splits, and each tail stays inside
+ * the node it splits.
+ * @param {string} node
+ * @param {string} key the split's key
+ * @returns {string}
+ */
+export function splitTailID(node, key) {
+  return AGGREGATE_PREFIX + key + "/" + node;
 }
 
 /**
@@ -1058,11 +1077,12 @@ export function residualFlows(d) {
  * @param {number} total how many nodes the column held before the cap
  * @param {number} cap the cap it was folded at
  * @param {string} word the plural noun the tail is counted in
+ * @param {string} [id] the tail's id, aggregateID(tier) by default
  * @returns {FiscMark}
  */
-export function aggregateMark(tier, opened, folded, total, cap, word) {
+export function aggregateMark(tier, opened, folded, total, cap, word, id) {
   return {
-    id: aggregateID(tier),
+    id: id || aggregateID(tier),
     label: say("aggregate_label", { folded: folded.length, word: word }),
     tier: tier,
     parent: opened,

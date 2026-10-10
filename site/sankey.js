@@ -14,7 +14,7 @@
  */
 
 import {
-  FoldRefusal, capColumn, carriedResidual, fmt, fmtShortSigned, foldDocument, foldTarget, isAggregate, isFundGroup, isGap, isLink, isResidual, licensedGap, printedNet, reducedOf, say, scoped, tailFigure, tierFrontier, withinNode,
+  FoldRefusal, capColumn, carriedResidual, fmt, fmtShortSigned, foldDocument, foldTarget, isAggregate, isFundGroup, isGap, isLink, isResidual, licensedGap, openSplitOf, printedNet, reducedOf, say, scoped, splitTailID, splitsOf, tailFigure, tierFrontier, withinNode,
 } from "./core.js";
 
 export const NODE_WIDTH = 14;
@@ -27,13 +27,34 @@ export const RIBBON_GAP = 2;
 export const CHART_HEIGHT = 820;
 
 /**
- * The canvas a chart is laid out on, in px: its declared sankey.height, or
- * CHART_HEIGHT where it declares none.
+ * The canvas a chart is laid out on, in px: under a declared sankey.grow,
+ * node_px for each node of the busiest slot of `nodes`, held between its
+ * floor and its ceiling; else its declared sankey.height, or CHART_HEIGHT
+ * where it declares neither.
  * @param {FiscChart | FiscDrillStep | null | undefined} chart
+ * @param {{id: string, tier: number, slot?: number}[]} [nodes] what is drawn on it
  * @returns {number}
  */
-export function canvasHeight(chart) {
-  return (chart && chart.sankey && chart.sankey.height) || CHART_HEIGHT;
+export function canvasHeight(chart, nodes) {
+  const hints = chart && chart.sankey;
+  if (hints && hints.grow) {
+    const g = hints.grow;
+    return Math.min(g.ceiling, Math.max(g.floor, g.node_px * busiestSlot(nodes || [], hints.tiers || [])));
+  }
+  return (hints && hints.height) || CHART_HEIGHT;
+}
+
+/**
+ * How many nodes the fullest column of `nodes` holds, placed by slotsOf.
+ * @param {{id: string, tier: number, slot?: number}[]} nodes
+ * @param {number[]} tiers
+ * @returns {number}
+ */
+export function busiestSlot(nodes, tiers) {
+  /** @type {Map<number, number>} */
+  const held = new Map();
+  for (const at of slotsOf(nodes, tiers).values()) held.set(at, (held.get(at) || 0) + 1);
+  return Math.max(0, ...held.values());
 }
 
 /**
@@ -45,15 +66,16 @@ export const HAIRLINE = 1;
 
 /**
  * Whether a ribbon is drawn as a hairline: under HAIRLINE on a chart that
- * declares its canvas (sankey.height), the one kind of chart whose thin
- * ribbons are accepted rather than folded away. On the form's own canvas a
- * ribbon keeps the stroke floor every chart has.
+ * declares its canvas (sankey.height or sankey.grow), the one kind of chart
+ * whose thin ribbons are accepted rather than folded away. On the form's own
+ * canvas a ribbon keeps the stroke floor every chart has.
  * @param {FiscChart | FiscDrillStep | null | undefined} chart
  * @param {LaidLink} d
  * @returns {boolean}
  */
 export function isHairline(chart, d) {
-  return Boolean(chart && chart.sankey && chart.sankey.height) && d.width < HAIRLINE;
+  const hints = chart && chart.sankey;
+  return Boolean(hints && (hints.height || hints.grow)) && d.width < HAIRLINE;
 }
 
 /**
@@ -856,37 +878,186 @@ export function restackLinks(graph) {
 }
 
 /**
- * Which column d3-sankey puts a node in: the position of its tier in the
- * declared order, or d3's own justify when nothing was declared.
+ * How many extend splits deep one spine column's slots may run: a slot's
+ * order key is its spine column times this, plus its depth.
+ */
+export const SLOT_DEPTH = 10;
+
+/**
+ * THE PLACEMENT: the column each node is drawn in, by id, numbered from 0 with
+ * no column empty. A node's order key is its `slot` where its shaping stamped
+ * one (expansionOf), and otherwise its tier's place in `tiers`, the tier set
+ * on screen being one slot assignment among others. The keys present are
+ * ranked, so a column nothing is placed in is not one, and d3-sankey, which
+ * throws on an empty leading or interior column, is never handed one.
  *
- * Justify puts a link-less sink in the last column, wrong once tiers can be
- * skipped. The order may be non-monotonic, so it is indexOf, not a sort. The
- * tier set is the caller's: aligning a drilled document on the page's set
- * gives indexOf -1, and d3-sankey dies in its ordering pass.
+ * A node at a tier `tiers` does not hold, with no slot, is left out; with no
+ * tiers and no slots the map is empty and d3 justifies.
  *
- * @param {number[]} tiers
+ * @param {{id: string, tier: number, slot?: number}[]} nodes
+ * @param {number[]} tiers the columns on screen, in order
+ * @returns {Map<string, number>}
+ */
+export function slotsOf(nodes, tiers) {
+  /** @param {{tier: number, slot?: number}} n */
+  const key = (n) => (typeof n.slot === "number" ? n.slot : tiers.indexOf(n.tier));
+  const keys = Array.from(new Set(nodes.map(key).filter((k) => k >= 0))).sort((a, b) => a - b);
+  const at = new Map(keys.map((k, i) => [k, i]));
+  /** @type {Map<string, number>} */
+  const out = new Map();
+  for (const n of nodes) {
+    const k = key(n);
+    if (k >= 0) out.set(n.id, /** @type {number} */ (at.get(k)));
+  }
+  return out;
+}
+
+/**
+ * The slot order key of every node of the expansion schedule, read off its
+ * parent chain in the UNFOLDED schedule (the fold blanks a refine member's
+ * parent, which is opened and not drawn): a root at its tier's place in the
+ * spine's column order, a refine member in its parent's slot, and an extend
+ * member in the slot directly after its parent's. Every extend from one slot
+ * opens into the same next slot.
+ *
+ * FAILS CLOSED on a root at a tier the spine does not draw, a member of no
+ * split the schedule declares, and an extend chain deeper than SLOT_DEPTH.
+ *
+ * @param {FiscProjection} expansion
+ * @param {number[]} tiers the spine's column order
+ * @returns {Map<string, number>}
+ */
+export function expansionSlots(expansion, tiers) {
+  const byID = new Map(expansion.nodes.map((n) => [n.id, n]));
+  /** @type {Map<string, string>} */
+  const formOf = new Map();
+  /** @type {Map<string, string>} */
+  const primary = new Map();
+  for (const sp of /** @type {any[]} */ ((/** @type {any} */ (expansion)).splits || [])) {
+    formOf.set(sp.node + "\u001f" + sp.key, sp.form);
+    if (!sp.alternative) primary.set(sp.node, sp.key);
+  }
+  /** @type {Map<string, number>} */
+  const out = new Map();
+  /**
+   * @param {FiscNode} n
+   * @param {number} hops
+   * @returns {number}
+   */
+  const slotOf = (n, hops) => {
+    const have = out.get(n.id);
+    if (have !== undefined) return have;
+    let slot;
+    if (!n.parent) {
+      const column = tiers.indexOf(n.tier);
+      if (column < 0) {
+        throw new Error("cannot place " + n.id + ": it is a root of " + expansion.projection +
+          " at tier " + n.tier + ", which the spine's columns " + tiers.join(", ") + " do not draw");
+      }
+      slot = column * SLOT_DEPTH;
+    } else {
+      const up = byID.get(n.parent);
+      if (!up || hops > 8) throw new Error("cannot place " + n.id + ": its parent chain does not reach a root");
+      const key = n.alternative || primary.get(up.id) || "";
+      const form = formOf.get(up.id + "\u001f" + key);
+      const above = slotOf(up, hops + 1);
+      if (form === "refine") slot = above;
+      else if (form === "extend" && (above % SLOT_DEPTH) + 1 < SLOT_DEPTH) slot = above + 1;
+      else {
+        throw new Error("cannot place " + n.id + ": it is a member of " + up.id + "'s split " +
+          JSON.stringify(key) + ", " + (form ? "extended past " + SLOT_DEPTH + " slots" : "which the schedule does not declare"));
+      }
+    }
+    out.set(n.id, slot);
+    return slot;
+  };
+  for (const n of expansion.nodes) slotOf(n, 0);
+  return out;
+}
+
+/**
+ * The expansion schedule as drawn at a frontier: the one fold, each open
+ * split whose key sankey.split_caps caps and that is not in `whole` folded
+ * to its largest members and a tail (capColumn over that split's drawn
+ * members alone), the tails' parallel ribbons merged by folding again onto
+ * every node now drawn, and every node stamped with its slot. A tail sits in
+ * its members' slot, hangs from the node they split, and its note is finished
+ * with the figure only the folded document knows.
+ *
+ * @param {FiscProjection} expansion the expansion schedule
+ * @param {Iterable<string>} frontier
+ * @param {FiscChart} chart the overview, whose tiers are the spine's columns
+ * @param {ReadonlySet<string>} whole the splits drawn whole rather than
+ *   capped, each node\u001fkey
+ * @returns {FiscProjection}
+ */
+export function expansionOf(expansion, frontier, chart, whole) {
+  const hints = chart.sankey || {};
+  const caps = /** @type {{split: string, cap: number, tail: string}[]} */ (hints.split_caps || []);
+  const keys = expansionSlots(expansion, hints.tiers || []);
+  const open = new Set(frontier);
+  let drawn = foldDocument(expansion, open, { mergeInferred: true });
+  /** @type {Map<string, {node: string, slot: number}>} */
+  const tails = new Map();
+  for (const sp of /** @type {any[]} */ ((/** @type {any} */ (expansion)).splits || [])) {
+    const cap = caps.find((c) => c.split === sp.key);
+    if (!cap || whole.has(sp.node + "\u001f" + sp.key) || openSplitOf(expansion, open, sp.node) !== sp.key) continue;
+    const split = splitsOf(expansion, sp.node).find((s) => s.key === sp.key);
+    const members = new Set((split ? split.members : []).filter((m) => open.has(m)));
+    if (!members.size) continue;
+    const id = splitTailID(sp.node, sp.key);
+    const tier = /** @type {FiscNode} */ (expansion.nodes.find((n) => members.has(n.id))).tier;
+    const capped = capColumn(drawn, tier, cap.cap, sp.node, cap.tail, { members, id });
+    if (capped === drawn) continue;
+    drawn = capped;
+    tails.set(id, { node: sp.node, slot: /** @type {number} */ (keys.get(Array.from(members)[0])) });
+  }
+  if (tails.size) drawn = foldDocument(drawn, drawn.nodes.map((n) => n.id), { mergeInferred: true });
+  const folded = drawn;
+  return Object.assign({}, folded, {
+    nodes: folded.nodes.map((n) => {
+      const tail = tails.get(n.id);
+      if (!tail) return Object.assign({}, n, { slot: keys.get(n.id) });
+      return Object.assign({}, n, {
+        slot: tail.slot,
+        parent: tail.node,
+        source_note: n.source_note + say("aggregate_together", { figure: fmt(tailFigure(folded, n.id)) }),
+      });
+    }),
+  });
+}
+
+/**
+ * Which column d3-sankey puts a node in: its slot (slotsOf), or d3's own
+ * justify when nothing places any node.
+ *
+ * Justify puts a link-less sink in the last column, wrong once columns can be
+ * skipped. A node the slots do not place is answered -1, which d3 clamps
+ * into the first column.
+ *
+ * @param {Map<string, number>} slots
  * @returns {(d: LaidNode) => number}
  */
-export function alignFor(tiers) {
-  return tiers.length
-    ? /** @param {LaidNode} d */ (d) => tiers.indexOf(d.tier)
+export function alignFor(slots) {
+  return slots.size
+    ? /** @param {LaidNode} d */ (d) => { const at = slots.get(d.id); return at === undefined ? -1 : at; }
     : /** @type {any} */ (globalThis).d3.sankeyJustify;
 }
 
 /**
- * The column a node was drawn in, as an index into the declared order.
+ * The column a node was drawn in: its slot.
  *
  * NOT d.depth, the longest path to the node, which differs wherever no ribbon
  * reaches a node from the column before it. Not d.layer either, except in a
- * view that declares no column order, where sankeyJustify chose the columns.
+ * view that places nothing, where sankeyJustify chose the columns.
  *
+ * @param {Map<string, number>} slots
  * @param {LaidNode} d
- * @param {number[]} tiers the columns on screen
  * @returns {number}
  */
-export function columnOf(tiers, d) {
-  // d3 clamps an undeclared tier into column 0, so it is labelled as one.
-  return tiers.length ? Math.max(0, tiers.indexOf(d.tier)) : d.layer;
+export function columnOf(slots, d) {
+  // d3 clamps an unplaced node into column 0, so it is labelled as one.
+  return slots.size ? Math.max(0, slots.get(d.id) === undefined ? 0 : /** @type {number} */ (slots.get(d.id))) : d.layer;
 }
 
 /**
@@ -896,13 +1067,13 @@ export function columnOf(tiers, d) {
  * columns have one. An interior label is centred above its rect, in the
  * NODE_PADDING gap, rather than across the ribbons the next column receives.
  *
+ * @param {Map<string, number>} slots the placement (slotsOf)
  * @param {LaidNode} d
  * @param {number} last the largest column index this chart drew
- * @param {number[]} tiers the columns on screen
  * @returns {{anchor: string, x: number, y: number, dy: string|null}}
  */
-export function labelPlacement(tiers, d, last) {
-  const col = columnOf(tiers, d);
+export function labelPlacement(slots, d, last) {
+  const col = columnOf(slots, d);
   const middle = (d.y0 + d.y1) / 2;
   if (col === 0) return { anchor: "end", x: d.x0 - 10, y: middle, dy: "0.35em" };
   if (col >= last) return { anchor: "start", x: d.x1 + 10, y: middle, dy: "0.35em" };
@@ -921,14 +1092,14 @@ export function labelPlacement(tiers, d, last) {
  *
  * @param {LaidNode[]} nodes
  * @param {FiscProjection | null} doc the document the nodes were laid from
- * @param {number[]} tiers the columns on screen
+ * @param {Map<string, number>} slots the placement (slotsOf)
  * @returns {Map<string, string>}
  */
-export function labelQualifiers(doc, tiers, nodes) {
+export function labelQualifiers(doc, slots, nodes) {
   /** @type {Map<string, LaidNode[]>} */
   const sharing = new Map();
   for (const n of nodes) {
-    const key = columnOf(tiers, n) + "\u0000" + n.label;
+    const key = columnOf(slots, n) + "\u0000" + n.label;
     const seen = sharing.get(key);
     if (seen) seen.push(n);
     else sharing.set(key, [n]);
@@ -1035,6 +1206,12 @@ export function nodeRank(groupOf, placeOf, node) {
 /**
  * SANKEY.layOut at a stated canvas height, in px: what the layout test
  * measures a chart at heights the chart does not declare with.
+ *
+ * FAILS CLOSED on a node with a stamped slot (expansionOf) that d3 laid in
+ * another column: d3 counts columns from the longest path and clamps a node
+ * placed beyond it, which would draw it a column early in silence. A tier
+ * set's drill is not held to this; its clamping goes with the drill
+ * (fisc-yj4w.34.4).
  * @param {FiscProjection} drawn
  * @param {{tiers: number[], columns: number, groupOf: (n: any) => string, placeOf: (id: string) => number}} ctx
  * @param {number} height
@@ -1042,11 +1219,12 @@ export function nodeRank(groupOf, placeOf, node) {
  */
 export function layOutAt(drawn, ctx, height) {
   const d3 = /** @type {any} */ (globalThis).d3;
+  const slots = slotsOf(drawn.nodes, ctx.tiers);
   const sankey = d3.sankey()
     .nodeId(/** @param {LaidNode} d */ (d) => d.id)
     .nodeWidth(NODE_WIDTH)
     .nodePadding(NODE_PADDING)
-    .nodeAlign(alignFor(ctx.tiers))
+    .nodeAlign(alignFor(slots))
     // Supplying this switches d3's own ordering pass off.
     .nodeSort(/** @param {LaidNode} a @param {LaidNode} b */ (a, b) =>
       nodeRank(ctx.groupOf, ctx.placeOf, a) - nodeRank(ctx.groupOf, ctx.placeOf, b) || b.value - a.value)
@@ -1057,6 +1235,13 @@ export function layOutAt(drawn, ctx, height) {
     nodes: drawn.nodes.map((n) => Object.assign({}, n)),
     links: drawn.links.map((l) => Object.assign({}, l, { value: l.value_cents })),
   });
+  for (const n of graph.nodes) {
+    const at = slots.get(n.id);
+    if (typeof n.slot === "number" && n.layer !== at) {
+      throw new Error("cannot lay out " + drawn.projection + ": " + n.id + " is placed in column " + at +
+        " and d3-sankey, whose longest path is shorter, drew it in column " + n.layer);
+    }
+  }
   restackLinks(graph);
   return graph;
 }
@@ -1187,7 +1372,7 @@ export const SANKEY = Object.freeze({
    * stays the thing the table and the detail panel read from.
    */
   layOut(drawn, ctx) {
-    return layOutAt(drawn, ctx, canvasHeight(ctx.chart));
+    return layOutAt(drawn, ctx, canvasHeight(ctx.chart, drawn.nodes));
   },
 
   /** How many laid ribbons of this chart are drawn as hairlines: isHairline. */
@@ -1206,7 +1391,7 @@ export const SANKEY = Object.freeze({
     const d3 = /** @type {any} */ (globalThis).d3;
     const svg = ctx.svg;
     const width = chartWidth(ctx.columns);
-    const height = canvasHeight(ctx.chart);
+    const height = canvasHeight(ctx.chart, graph.nodes);
     const on = ctx.on;
 
     // No width or height attributes: the viewBox makes the drawing scale.
@@ -1318,9 +1503,10 @@ export const SANKEY = Object.freeze({
 
     // Every node is directly labelled: the relief the palette's contrast check
     // requires.
-    const place = (/** @type {LaidNode} */ d) => labelPlacement(ctx.tiers, d, lastColumn);
-    const lastColumn = Math.max(...graph.nodes.map((d) => columnOf(ctx.tiers, d)));
-    const qualified = labelQualifiers(ctx.doc, ctx.tiers, graph.nodes);
+    const slots = slotsOf(graph.nodes, ctx.tiers);
+    const place = (/** @type {LaidNode} */ d) => labelPlacement(slots, d, lastColumn);
+    const lastColumn = Math.max(...graph.nodes.map((d) => columnOf(slots, d)));
+    const qualified = labelQualifiers(ctx.doc, slots, graph.nodes);
     /** @param {LaidNode} d */
     const qualifierOf = (d) => qualified.get(d.id) || "";
     const label = node.append("text")

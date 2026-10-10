@@ -642,9 +642,9 @@ func (v View) validateSankeyColumns(i int, s DrillStep) error {
 		return fmt.Errorf(
 			"view %q declares step %d with no tiers, so a node opened on it would be "+
 				"drawn by the same tier set it was closed under", v.Path, i)
-	case h.Height != 0 || len(h.Drop) > 0:
+	case h.Height != 0 || len(h.Drop) > 0 || h.Grow != nil || len(h.SplitCaps) > 0:
 		return fmt.Errorf(
-			"view %q's step %d declares a canvas height or dropped tiers, which are the "+
+			"view %q's step %d declares a canvas height, a canvas growth, split caps or dropped tiers, which are the "+
 				"view's own chart's; a rung draws one node's window on its page's canvas",
 			v.Path, i)
 	case len(s.Gaps) > 0 && len(h.Widen) > 0:

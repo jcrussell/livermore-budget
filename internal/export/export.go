@@ -553,6 +553,32 @@ type SankeyHints struct {
 	// every fact a dropped link cites is cited by a link the chart keeps
 	// (validateDrop), so the flow table still lists every figure.
 	Drop []int `json:"drop,omitempty" yaml:"drop"`
+	// Grow lays the chart out on a canvas sized by the busiest column the
+	// client draws, in place of a fixed [SankeyHints.Height]. Overview only,
+	// and refused beside a Height.
+	Grow *CanvasGrowth `json:"grow,omitempty" yaml:"grow"`
+	// SplitCaps bounds how many members of one split of the expansion
+	// schedule the chart draws before the rest fold into a tail inside the
+	// node they split; a split with no cap is drawn whole. Keyed by the
+	// split's key, so one cap holds every node's split of that key. Overview
+	// only.
+	SplitCaps []SplitCap `json:"split_caps,omitempty" yaml:"split_caps"`
+}
+
+// CanvasGrowth is [SankeyHints.Grow]: NodePx px for each node of the busiest
+// column, held between Floor and Ceiling.
+type CanvasGrowth struct {
+	NodePx  int `json:"node_px" yaml:"node_px"`
+	Floor   int `json:"floor" yaml:"floor"`
+	Ceiling int `json:"ceiling" yaml:"ceiling"`
+}
+
+// SplitCap is one [SankeyHints.SplitCaps] entry: the split key, how many of
+// its members are drawn, and the plural noun its tail is counted in.
+type SplitCap struct {
+	Split string `json:"split" yaml:"split"`
+	Cap   int    `json:"cap" yaml:"cap"`
+	Tail  string `json:"tail" yaml:"tail"`
 }
 
 // BarsHints is what the bars form lists. Go declares the tier; the client

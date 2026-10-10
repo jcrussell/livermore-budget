@@ -9,7 +9,11 @@ import { before, describe, test } from "node:test";
 import assert from "node:assert/strict";
 
 import { bootedApp, goldenGraph, pageFixture, wholeFixture, stylesheet, opened, expandAll, everyOffer, clickYear,
-  dollars, settle } from "./testlib.mjs";
+  dollars, settle, columnFixture, loadD3 } from "./testlib.mjs";
+// core.js and sankey.js themselves for the expansion's layout, which no page
+// draws yet: app.js binds its own foldDocument to the page's tier set.
+import * as core from "./core.js";
+import * as sankey from "./sankey.js";
 
 /**
  * Lays the golden graph out as layOut() does, under a given node sort.
@@ -23,7 +27,7 @@ function layout(app, nodeSort, align) {
     .nodeId((d) => d.id)
     .nodeWidth(app.NODE_WIDTH)
     .nodePadding(app.NODE_PADDING)
-    .nodeAlign(align || app.alignFor(app.RENDER_TIERS))
+    .nodeAlign(align || app.alignFor(app.slotsOf(doc.nodes, app.RENDER_TIERS)))
     .extent([[app.LABEL_GUTTER, 12],
              [app.chartWidth(app.drawnColumns()) - app.LABEL_GUTTER,
               app.CHART_HEIGHT - 12]]);
@@ -185,8 +189,9 @@ function boxAt(anchor, x, width) {
 /** Every column the graph drew, as an x-range, keyed by the form's own index. */
 function columnsOf(app, graph) {
   const out = new Map();
+  const slots = app.slotsOf(graph.nodes, app.activeTiers());
   for (const n of graph.nodes) {
-    const c = app.columnOf(app.activeTiers(), n);
+    const c = app.columnOf(slots, n);
     if (!out.has(c)) out.set(c, { x0: n.x0, x1: n.x1 });
   }
   return out;
@@ -221,13 +226,14 @@ function labelFit(app, graph) {
   const columns = columnsOf(app, graph);
   const last = Math.max(...columns.keys());
   // The words the page would draw, qualifier included.
-  const qualifiers = app.labelQualifiers(app.projection, app.activeTiers(), graph.nodes);
+  const slots = app.slotsOf(graph.nodes, app.activeTiers());
+  const qualifiers = app.labelQualifiers(app.projection, slots, graph.nodes);
   return graph.nodes.map((n) => {
-    const place = app.labelPlacement(app.activeTiers(), n, last);
+    const place = app.labelPlacement(slots, n, last);
     const qualifier = qualifiers.get(n.id) || "";
     const width = labelWidth(app, n, qualifier);
     const box = boxAt(place.anchor, place.x, width);
-    const col = app.columnOf(app.activeTiers(), n);
+    const col = app.columnOf(slots, n);
     const room = roomFor(app, columns, col);
     return { node: n, id: n.id, col, last, place, width, box, room, qualifier,
              words: (qualifier ? qualifier + " / " : "") + n.label,
@@ -683,7 +689,8 @@ describe("the four-column window", () => {
  * @param {any} laid the same chart's nodes, as laid out
  */
 function drawnPlacement(app, document, laid) {
-  const last = Math.max(...laid.nodes.map((n) => app.columnOf(app.activeTiers(), n)));
+  const slots = app.slotsOf(laid.nodes, app.activeTiers());
+  const last = Math.max(...laid.nodes.map((n) => app.columnOf(slots, n)));
   const chart = document.getElementById("chart");
   const marks = chart ? [...chart.querySelectorAll("g.node")] : [];
   const wrong = [];
@@ -696,7 +703,7 @@ function drawnPlacement(app, document, laid) {
       wrong.push(`${d && d.id}: the mark has no text.halo to place`);
       continue;
     }
-    const want = app.labelPlacement(app.activeTiers(), d, last);
+    const want = app.labelPlacement(slots, d, last);
     const got = {
       x: text.getAttribute("x"), y: text.getAttribute("y"),
       dy: text.getAttribute("dy"), anchor: text.getAttribute("text-anchor"),
@@ -739,7 +746,8 @@ describe("where a label is anchored, on the windows that can tell the rules apar
     await settle();
     await opened(app, FUND_GROUP_WINDOW);
     groupLaid = app.layOut(app.projection);
-    disagree = groupLaid.nodes.filter((n) => app.columnOf(app.activeTiers(), n) !== n.depth).map((n) => n.id);
+    const slots = app.slotsOf(groupLaid.nodes, app.activeTiers());
+    disagree = groupLaid.nodes.filter((n) => app.columnOf(slots, n) !== n.depth).map((n) => n.id);
   });
 
   // Mutation: anchor labelPlacement's interior branch outward and this goes
@@ -1279,6 +1287,253 @@ describe("the whole city in one Sankey, folded as it opens and drawn out", () =>
       t.diagnostic(`${label}: ${m.doubled}`);
       const [twice, , all] = m.doubled.split(" ");
       assert.equal(twice, all, `${label}: ${m.doubled}`);
+    }
+  });
+});
+
+// THE EXPANSION, LAID OUT (fisc-yj4w.34.3): each pinned column's expansion
+// schedule folded to a frontier by core.foldDocument, capped per split and
+// stamped with its slots by sankey.js's expansionOf, and laid out by the
+// form's own layOutAt on the canvas the index overview's sankey.grow sizes.
+// No page draws it yet, so the page's state is not read: the hints are the
+// pinned index page's, the order of fund groups is the column's.
+//
+// EVERY ASSERT IS OVER KEYS AND NUMBERS. A failing assert over a laid d3
+// graph formats the whole of it, which this host cannot hold.
+
+/**
+ * Per year and frontier: the nodes in each slot, left to right; nodes and
+ * ribbons; the canvas and the ribbons under a pixel on it; the labels wider
+ * than their room (half the band either side, or the gutter at either end)
+ * at this file's ADVANCE_EM, value included and flags not (the expansion's
+ * flags are the interaction's); and the worst of them.
+ * PINNED, not bounded: data/views.yaml's grow is read off these.
+ */
+const EXPANSION_CLAIMED = {
+  "FY 2025-26": {
+    "root": { slots: "12/6/7", figures: "25 nodes, 58 ribbons; 820px canvas, 9 under 1px",
+      labels: "0 wider than their room" },
+    "fund-group/general by funds": { slots: "12/6/7", figures: "25 nodes, 58 ribbons; 820px canvas, 9 under 1px",
+      labels: "0 wider than their room" },
+    "everything by primary splits": { slots: "74/36/23/45",
+      figures: "178 nodes, 290 ribbons; 2960px canvas, 54 under 1px",
+      labels: "27 wider than their room: 10 in the first column, 0 inside, 17 in the last; " +
+        "worst expenditure/fund/720/services-and-supplies by -115.8px" },
+    "everything by primary splits, every tail drawn out": { slots: "102/69/23/162",
+      figures: "356 nodes, 389 ribbons; 4800px canvas, 116 under 1px",
+      labels: "99 wider than their room: 13 in the first column, 0 inside, 86 in the last; " +
+        "worst expenditure/fund/221/services-and-supplies by -187.2px" },
+  },
+  "FY 2026-27": {
+    "root": { slots: "12/6/7", figures: "25 nodes, 58 ribbons; 820px canvas, 11 under 1px",
+      labels: "0 wider than their room" },
+    "fund-group/general by funds": { slots: "12/6/7", figures: "25 nodes, 58 ribbons; 820px canvas, 11 under 1px",
+      labels: "0 wider than their room" },
+    "everything by primary splits": { slots: "74/37/23/44",
+      figures: "178 nodes, 286 ribbons; 2960px canvas, 55 under 1px",
+      labels: "27 wider than their room: 10 in the first column, 0 inside, 17 in the last; " +
+        "worst expenditure/fund/720/services-and-supplies by -115.8px" },
+    "everything by primary splits, every tail drawn out": { slots: "102/68/23/159",
+      figures: "352 nodes, 385 ribbons; 4800px canvas, 118 under 1px",
+      labels: "95 wider than their room: 13 in the first column, 0 inside, 82 in the last; " +
+        "worst expenditure/fund/221/services-and-supplies by -187.2px" },
+  },
+};
+
+/** The expansion's frontiers, each from the schedule's own helpers. */
+function expansionFrontiers(doc) {
+  const root = core.rootFrontier(doc);
+  let all = root;
+  for (let changed = true; changed;) {
+    changed = false;
+    for (const id of [...all]) {
+      const splits = core.splitsOf(doc, id);
+      if (!splits.length || core.openSplitOf(doc, all, id) !== "") continue;
+      all = core.expand(doc, all, id, splits.find((sp) => !sp.alternative).key);
+      changed = true;
+    }
+  }
+  const none = new Set();
+  const every = new Set(doc.splits.map((sp) => sp.node + "\u001f" + sp.key));
+  return [
+    { name: "root", frontier: root, whole: none },
+    { name: "fund-group/general by funds", frontier: core.expand(doc, root, "fund-group/general", "funds"), whole: none },
+    { name: "everything by primary splits", frontier: all, whole: none },
+    { name: "everything by primary splits, every tail drawn out", frontier: all, whole: every },
+  ];
+}
+
+/**
+ * Each label of a laid expansion against its room, as labelFit measures the
+ * page's: placed by labelPlacement over the same slots, anchored as drawn.
+ */
+function expansionLabels(laid, slots, columns) {
+  const xs = new Map();
+  for (const n of laid.nodes) if (!xs.has(slots.get(n.id))) xs.set(slots.get(n.id), { x0: n.x0, x1: n.x1 });
+  const last = Math.max(...xs.keys());
+  return laid.nodes.map((n) => {
+    const col = sankey.columnOf(slots, n);
+    const place = sankey.labelPlacement(slots, n, last);
+    const value = "  " + core.fmtShortSigned(sankey.markCents(n));
+    const box = boxAt(place.anchor, place.x, n.label.length * LABEL_PX * ADVANCE_EM + value.length * VALUE_PX * ADVANCE_EM);
+    const me = xs.get(col);
+    const before = xs.get(col - 1);
+    const after = xs.get(col + 1);
+    const room = {
+      from: col === 0 || !before ? 0 : (before.x1 + me.x0) / 2,
+      to: col >= last || !after ? sankey.chartWidth(columns) : (me.x1 + after.x0) / 2,
+    };
+    return { id: n.id, col, last, clearance: Math.min(box.left - room.from, room.to - box.right) };
+  });
+}
+
+describe("the expansion schedule laid out in slots, at the root, one group open and everything open", () => {
+  /** @type {Map<string, Record<string, any>>} */
+  const measured = new Map();
+  /** @type {Map<string, {cells: number, ribbons: number, folded: number, missing: string[]}>} */
+  const divisionCells = new Map();
+  before(() => {
+    loadD3();
+    const page = pageFixture();
+    globalThis.FISC_CONFIG = page.config;
+    const chart = page.config.overview;
+    for (const year of page.config.years) {
+      const column = columnFixture(year.path.replace(/\.json$/, ""));
+      const doc = core.scheduleOf(column, "expansion");
+      const index = new Map(doc.nodes.map((n) => [n.id, n]));
+      const groups = column.fund_groups.map((g) => g.id);
+      const out = {};
+      for (const f of expansionFrontiers(doc)) {
+        const drawn = sankey.markContra(sankey.expansionOf(doc, f.frontier, chart, f.whole));
+        const slots = sankey.slotsOf(drawn.nodes, chart.sankey.tiers);
+        const held = [];
+        for (const at of slots.values()) held[at] = (held[at] || 0) + 1;
+        const height = sankey.canvasHeight(chart, drawn.nodes);
+        // A layout d3 refuses is a measurement here, so the slots are still
+        // read against their pin rather than lost to the hook.
+        let laid = { nodes: [], links: [] };
+        let refused = "";
+        try {
+          laid = sankey.layOutAt(drawn, {
+            tiers: chart.sankey.tiers, columns: held.length,
+            groupOf: (n) => core.fundGroupOf(index, n), placeOf: (id) => groups.indexOf(id),
+          }, height);
+        } catch (e) {
+          refused = `d3-sankey refused the layout: ${e.message}`;
+        }
+        const over = expansionLabels(laid, slots, held.length).filter((l) => l.clearance < 0)
+          .sort((a, b) => a.clearance - b.clearance);
+        out[f.name] = {
+          slots: Array.from(held, (n) => n || 0).join("/"),
+          figures: refused || `${laid.nodes.length} nodes, ${laid.links.length} ribbons; ${height}px canvas, ` +
+            `${laid.links.filter((l) => l.width < 1).length} under 1px`,
+          labels: refused || `${over.length} wider than their room` + (over.length
+            ? `: ${over.filter((l) => l.col === 0).length} in the first column, ` +
+              `${over.filter((l) => l.col > 0 && l.col < l.last).length} inside, ` +
+              `${over.filter((l) => l.col >= l.last).length} in the last; worst ${over[0].id} by ${px(over[0].clearance)}`
+            : ""),
+          backward: drawn.links.filter((l) => !(slots.get(l.source) < slots.get(l.target)))
+            .map((l) => `${l.source} > ${l.target}`),
+          layers: laid.nodes.filter((n) => n.layer !== slots.get(n.id)).map((n) => n.id),
+          unplaced: drawn.nodes.filter((n) => !slots.has(n.id)).map((n) => n.id),
+          general: ["fund-group/general", "fund/100"].map((id) => `${id} ${slots.has(id) ? "in " + slots.get(id) : "not drawn"}`).join(", "),
+        };
+        // THE GENERAL FUND'S DIVISION-BY-OBJECT CELLS (fisc-yj4w.32): every
+        // link from one of fund/100's divisions to an object row, each a
+        // ribbon of its own at its cents and facts.
+        if (f.whole.size || f.name === "everything by primary splits") {
+          const divisions = new Set(core.splitsOf(doc, "fund/100").find((sp) => sp.key === "divisions").members);
+          const cells = doc.links.filter((l) => divisions.has(l.source) && !index.get(l.target).alternative &&
+            index.get(index.get(l.target).parent || "") && index.get(index.get(l.target).parent).role === "object_category");
+          const ribbons = new Map(drawn.links.map((l) => [`${l.source} > ${l.target} (${l.kind})`, l]));
+          const missing = cells.filter((l) => {
+            const r = ribbons.get(`${l.source} > ${l.target} (${l.kind})`);
+            return !r || r.value_cents !== l.value_cents || r.fact_ids.join() !== [...l.fact_ids].sort().join();
+          }).map((l) => `${l.source} > ${l.target}`);
+          divisionCells.set(`${year.label}, ${f.name}`, { cells: cells.length, ribbons: cells.length - missing.length, folded: missing.length, missing });
+        }
+      }
+      measured.set(year.label, out);
+    }
+  });
+
+  test("every node is placed, in a slot no ribbon runs backward into, and d3 lays each in its slot", (t) => {
+    for (const [label, m] of measured) {
+      for (const [name, f] of Object.entries(m)) {
+        t.diagnostic(`${label}, ${name}: slots ${f.slots}; ${f.backward.length} ribbon(s) not running forward`);
+        assert.deepEqual({ unplaced: f.unplaced, backward: f.backward, layers: f.layers, empty: f.slots.split("/").includes("0") },
+          { unplaced: [], backward: [], layers: [], empty: false }, `${label}, ${name}`);
+      }
+    }
+  });
+
+  // A refine member is drawn in its parent's slot: the group's one fund
+  // stands where the group stood.
+  test("the General Fund group opened by funds draws fund/100 in the group's slot, and the group not at all", (t) => {
+    for (const [label, m] of measured) {
+      t.diagnostic(`${label}: at the root ${m.root.general}; opened ${m["fund-group/general by funds"].general}`);
+      assert.equal(m.root.general, "fund-group/general in 1, fund/100 not drawn", label);
+      assert.equal(m["fund-group/general by funds"].general, "fund-group/general not drawn, fund/100 in 1", label);
+    }
+  });
+
+  test("only sankey.js reads the overview's canvas growth and split caps", async (t) => {
+    const config = structuredClone(pageFixture().config);
+    /** @type {{prop: string, frame: string}[]} */
+    const reads = [];
+    config.overview.sankey = new Proxy(config.overview.sankey, {
+      get(target, prop) {
+        const frame = ((new Error().stack || "").split("\n")[2] || "").trim();
+        reads.push({ prop: String(prop), frame });
+        return target[prop];
+      },
+    });
+    const { app } = await bootedApp({ config });
+    const doc = core.scheduleOf(columnFixture(config.years[0].path.replace(/\.json$/, "")), "expansion");
+    sankey.expansionOf(doc, expansionFrontiers(doc)[2].frontier, app.CONFIG.overview, new Set());
+    const props = new Set(reads.map((r) => r.prop));
+    t.diagnostic(`${reads.length} reads of ${[...props].join(", ")}`);
+    for (const p of ["grow", "split_caps"]) assert.ok(props.has(p), `nothing read ${p}`);
+    const outside = reads.filter((r) => (r.prop === "grow" || r.prop === "split_caps") && !r.frame.includes("site/sankey.js"));
+    assert.deepEqual([...new Set(outside.map((r) => `${r.prop} read at ${r.frame}`))], []);
+  });
+
+  test("each frontier draws the slots, nodes, ribbons and canvas pinned", (t) => {
+    const got = {};
+    for (const [label, m] of measured) {
+      got[label] = {};
+      for (const [name, f] of Object.entries(m)) {
+        t.diagnostic(`${label}, ${name}: slots ${f.slots}; ${f.figures}`);
+        got[label][name] = `slots ${f.slots}; ${f.figures}`;
+      }
+    }
+    const want = Object.fromEntries(Object.entries(EXPANSION_CLAIMED).map(([label, m]) =>
+      [label, Object.fromEntries(Object.entries(m).map(([name, f]) => [name, `slots ${f.slots}; ${f.figures}`]))]));
+    assert.deepEqual(got, want);
+  });
+
+  // fisc-2gyh: the labels a frontier draws wider than the room they have.
+  test("the labels wider than their room are the ones pinned", (t) => {
+    const got = {};
+    for (const [label, m] of measured) {
+      got[label] = {};
+      for (const [name, f] of Object.entries(m)) {
+        t.diagnostic(`${label}, ${name}: ${f.labels}`);
+        got[label][name] = f.labels;
+      }
+    }
+    const want = Object.fromEntries(Object.entries(EXPANSION_CLAIMED).map(([label, m]) =>
+      [label, Object.fromEntries(Object.entries(m).map(([name, f]) => [name, f.labels]))]));
+    assert.deepEqual(got, want);
+  });
+
+  test("everything open with every tail drawn out draws every General Fund division-by-object cell as a ribbon of its own", (t) => {
+    for (const [at, c] of divisionCells) {
+      t.diagnostic(`${at}: ${c.ribbons} of ${c.cells} division-by-object cells drawn as their own ribbon, ${c.folded} folded into a tail or a merge`);
+    }
+    for (const [at, c] of divisionCells) {
+      assert.ok(c.cells > 0, `${at}: no division-by-object cell to draw`);
+      if (at.endsWith("every tail drawn out")) assert.deepEqual(c.missing, [], at);
     }
   });
 });

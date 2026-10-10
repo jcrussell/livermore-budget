@@ -1585,10 +1585,57 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 		// window on its page's canvas.
 		{"a step declaring a canvas height", []export.View{ok,
 			chartView(func(v *export.View) { v.Steps[0].Sankey.Height = 4800 })},
-			"declares a canvas height or dropped tiers"},
+			"split caps or dropped tiers, which are the view's own chart's"},
 		{"a step dropping a tier", []export.View{ok,
 			chartView(func(v *export.View) { v.Steps[0].Sankey.Drop = []int{2} })},
-			"declares a canvas height or dropped tiers"},
+			"split caps or dropped tiers, which are the view's own chart's"},
+		{"a step growing its canvas", []export.View{ok,
+			chartView(func(v *export.View) {
+				v.Steps[0].Sankey.Grow = &export.CanvasGrowth{NodePx: 40, Floor: 820, Ceiling: 4800}
+			})},
+			"split caps or dropped tiers, which are the view's own chart's"},
+		{"a step capping a split", []export.View{ok,
+			chartView(func(v *export.View) {
+				v.Steps[0].Sankey.SplitCaps = []export.SplitCap{{Split: "funds", Cap: 8, Tail: "funds"}}
+			})},
+			"split caps or dropped tiers, which are the view's own chart's"},
+		// The growth and the split caps are the expansion's: chartView's
+		// overview breaks one thing each.
+		{"a canvas both fixed and growing", []export.View{ok,
+			wholeView(func(v *export.View) {
+				v.Overview.Sankey.Grow = &export.CanvasGrowth{NodePx: 40, Floor: 820, Ceiling: 4800}
+			})},
+			"both a 4800px canvas and a canvas that grows"},
+		{"a canvas growing by no px", []export.View{ok,
+			chartView(func(v *export.View) {
+				v.Overview.Sankey.Grow = &export.CanvasGrowth{NodePx: 0, Floor: 820, Ceiling: 4800}
+			})},
+			"grows its canvas 0px a node"},
+		{"a canvas ceiling below its floor", []export.View{ok,
+			chartView(func(v *export.View) {
+				v.Overview.Sankey.Grow = &export.CanvasGrowth{NodePx: 40, Floor: 820, Ceiling: 819}
+			})},
+			"819px ceiling below its 820px floor"},
+		{"a split cap of no member", []export.View{ok,
+			chartView(func(v *export.View) {
+				v.Overview.Sankey.SplitCaps = []export.SplitCap{{Split: "funds", Cap: 0, Tail: "funds"}}
+			})},
+			`caps split "funds" at 0`},
+		{"a split cap naming no tail", []export.View{ok,
+			chartView(func(v *export.View) {
+				v.Overview.Sankey.SplitCaps = []export.SplitCap{{Split: "funds", Cap: 8}}
+			})},
+			`caps split "funds" with no tail`},
+		{"a split cap on a split the stitch does not declare", []export.View{ok,
+			chartView(func(v *export.View) {
+				v.Overview.Sankey.SplitCaps = []export.SplitCap{{Split: "fund", Cap: 8, Tail: "funds"}}
+			})},
+			`caps split "fund", and the expansion schedule declares splits`},
+		{"a split capped twice", []export.View{ok,
+			chartView(func(v *export.View) {
+				v.Overview.Sankey.SplitCaps = []export.SplitCap{{Split: "funds", Cap: 8, Tail: "funds"}, {Split: "funds", Cap: 9, Tail: "funds"}}
+			})},
+			`caps split "funds" twice`},
 		// The whole-page arms: wholeView breaks one thing each.
 		{"a canvas of negative height", []export.View{ok,
 			wholeView(func(v *export.View) { v.Overview.Sankey.Height = -1 })},

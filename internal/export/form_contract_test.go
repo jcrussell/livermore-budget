@@ -120,6 +120,63 @@ func TestTheSchemaHoldsTheWholePagesCanvas(t *testing.T) {
 	}
 }
 
+// TestTheSchemaHoldsTheExpansionsCanvasAndCaps: the index page's overview
+// grows its canvas and caps the expansion's splits, and schema/page.schema.json
+// refuses each hint broken one way, a growth beside a fixed height, and
+// either hint on a step.
+func TestTheSchemaHoldsTheExpansionsCanvasAndCaps(t *testing.T) {
+	page, err := os.ReadFile("../../testdata/index.golden.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	blob := configBlob(t, string(page))
+	hints := func(cfg map[string]any) map[string]any {
+		return cfg["overview"].(map[string]any)["sankey"].(map[string]any)
+	}
+	grow := func(cfg map[string]any) map[string]any { return hints(cfg)["grow"].(map[string]any) }
+	firstCap := func(cfg map[string]any) map[string]any {
+		return hints(cfg)["split_caps"].([]any)[0].(map[string]any)
+	}
+	step := func(cfg map[string]any) map[string]any {
+		return cfg["steps"].([]any)[0].(map[string]any)["sankey"].(map[string]any)
+	}
+	for _, c := range []struct {
+		name, want string
+		breaks     func(cfg map[string]any)
+	}{
+		{"the served config", "", func(map[string]any) {}},
+		{"a growth of no px", "node_px", func(cfg map[string]any) { grow(cfg)["node_px"] = 0.0 }},
+		{"a growth with no ceiling", "ceiling", func(cfg map[string]any) { delete(grow(cfg), "ceiling") }},
+		{"a growth beside a height", "not", func(cfg map[string]any) { hints(cfg)["height"] = 4800.0 }},
+		{"a split cap of no member", "cap", func(cfg map[string]any) { firstCap(cfg)["cap"] = 0.0 }},
+		{"a split cap naming no split", "split", func(cfg map[string]any) { delete(firstCap(cfg), "split") }},
+		{"a split cap naming no tail", "tail", func(cfg map[string]any) { delete(firstCap(cfg), "tail") }},
+		{"a step growing its canvas", "grow", func(cfg map[string]any) { step(cfg)["grow"] = grow(cfg) }},
+		{"a step capping a split", "split_caps", func(cfg map[string]any) { step(cfg)["split_caps"] = hints(cfg)["split_caps"] }},
+	} {
+		var cfg map[string]any
+		if err := json.Unmarshal(blob, &cfg); err != nil {
+			t.Fatal(err)
+		}
+		if _, ok := hints(cfg)["grow"]; !ok {
+			t.Fatal("the index page's overview declares no canvas growth, so no row below breaks one")
+		}
+		if _, ok := hints(cfg)["split_caps"]; !ok {
+			t.Fatal("the index page's overview declares no split caps, so no row below breaks one")
+		}
+		c.breaks(cfg)
+		err := schema.Validate(schema.Page, cfg)
+		switch {
+		case c.want == "" && err != nil:
+			t.Errorf("%s: refused: %v", c.name, err)
+		case c.want != "" && err == nil:
+			t.Errorf("%s: accepted, and the schema should have named %q", c.name, c.want)
+		case c.want != "" && !strings.Contains(err.Error(), c.want):
+			t.Errorf("%s: refused without naming %q: %v", c.name, c.want, err)
+		}
+	}
+}
+
 // barsStep is the first step of a decoded config drawn as bars, failing the
 // test where the served config declares none: a control that broke nothing
 // would pass as a refusal the schema never made.

@@ -60,6 +60,11 @@
       },
       "description": "The ids an aggregate stands for, which no parent chain records."
     },
+    "slot": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "The order key of the column the expansion's shaping draws the mark in, as on every node it draws: a split's tail sits in its members' slot."
+    },
     "in_cents": {
       "type": "integer",
       "minimum": 0

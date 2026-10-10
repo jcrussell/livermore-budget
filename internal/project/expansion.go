@@ -71,6 +71,18 @@ var expansionSplits = []splitDecl{
 	{RoleTransferOut, "receivers", SplitRefine, false},
 }
 
+// SplitKeys is every split key the stitch declares, each once, in
+// declaration order.
+func SplitKeys() []string {
+	var out []string
+	for _, d := range expansionSplits {
+		if !slices.Contains(out, d.key) {
+			out = append(out, d.key)
+		}
+	}
+	return out
+}
+
 // splitOf is the declaration for a role's primary split, or its alternative
 // named key.
 func splitOf(role, key string, alternative bool) (splitDecl, bool) {

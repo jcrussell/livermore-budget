@@ -366,7 +366,7 @@
           "sankey": {
             "description": "The Sankey form's hints, present exactly when form is sankey; a step's names its tiers, and draws on its page's canvas with every tier it reaches.",
             "$ref": "https://jcrussell.github.io/livermore-budget/schema/page.schema.json#/$defs/sankey_hints",
-            "properties": { "height": false, "drop": false }
+            "properties": { "height": false, "drop": false, "grow": false, "split_caps": false }
           },
           "bars": {
             "description": "The bars form's hints, present exactly when form is bars.",
@@ -856,6 +856,7 @@
       "description": "What the Sankey form may fold and where, which the client's capColumn and foldDocument spend.",
       "type": "object",
       "additionalProperties": false,
+      "not": { "description": "One canvas: a fixed height or a growth, never both.", "required": ["height", "grow"] },
       "properties": {
         "tiers": {
           "description": "The tier set drawn, left to right: a column order and not only a set. Absent on the overview draws the document whole.",
@@ -929,6 +930,31 @@
           "items": {
             "type": "integer",
             "minimum": 0
+          }
+        },
+        "grow": {
+          "description": "A canvas sized by the busiest column drawn: node_px px for each of its nodes, held between floor and ceiling. The overview's only, and never beside a height.",
+          "type": "object",
+          "required": ["node_px", "floor", "ceiling"],
+          "additionalProperties": false,
+          "properties": {
+            "node_px": { "type": "integer", "minimum": 1 },
+            "floor": { "type": "integer", "minimum": 1 },
+            "ceiling": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "split_caps": {
+          "description": "How many members of each split of the expansion schedule, by split key, are drawn before the rest fold into a tail inside the node they split. THE PERMISSION, NOT THE FOLD: which members fold is the client's. The overview's only.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["split", "cap", "tail"],
+            "additionalProperties": false,
+            "properties": {
+              "split": { "type": "string", "minLength": 1 },
+              "cap": { "type": "integer", "minimum": 1 },
+              "tail": { "type": "string", "minLength": 1, "description": "The plural noun the folded tail is counted in." }
+            }
           }
         }
       }
