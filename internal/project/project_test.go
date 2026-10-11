@@ -91,7 +91,7 @@ func TestRegistry(t *testing.T) {
 	want := []string{PublishedProjection, TrendsProjection, FundFlowsProjection,
 		DepartmentSpendingProjection, DepartmentFundingProjection, TransfersByFundProjection,
 		TransfersOutProjection, FundSourcesUsesProjection, ExpansionProjection, ChangesProjection,
-		FundBalancesProjection}
+		FundBalancesProjection, CIPProjectsProjection}
 	if len(got) != len(want) {
 		t.Fatalf("got %d projections, want %d", len(got), len(want))
 	}

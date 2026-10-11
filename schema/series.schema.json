@@ -9,7 +9,7 @@
   "properties": {
     "schema_version": { "const": 1 },
     "projection": {
-      "enum": ["revenue-trends", "fund-balances", "changes-in-fund-balances"]
+      "enum": ["revenue-trends", "fund-balances", "changes-in-fund-balances", "cip-projects"]
     },
     "metadata": {
       "description": "The envelope only: no fiscal_year, fiscal_year_label, basis or headline, since a document of several columns has no singular one; `columns` carries them.",

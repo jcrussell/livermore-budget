@@ -165,7 +165,7 @@ func (d PublishedDocument) String() string {
 // package variable would let any caller reorder or extend the published set by
 // accident, and the point of this declaration is that `fisc export` and `fisc
 // verify` cannot disagree about what it contains. Every graph's entries come
-// from [publishedGraphs] in one loop; the three series
+// from [publishedGraphs] in one loop; the series
 // documents are stated, because nothing else states them.
 //
 // Nothing here is checked against the corpus at declaration time, deliberately.
@@ -208,6 +208,12 @@ func PublishedDocuments() []PublishedDocument {
 		Stem:       FundBalancesProjection,
 		Scopes:     []string{FundBalancesScope},
 		Columns:    HistoryColumns(),
+	})
+	out = append(out, PublishedDocument{
+		Projection: CIPProjectsProjection,
+		Stem:       CIPProjectsProjection,
+		Scopes:     []string{CIPProjectsScope},
+		Columns:    CIPProjectsColumns(),
 	})
 	return out
 }
@@ -731,5 +737,6 @@ func Registry(l labels) []Projection {
 		&expansion{Labels: l},
 		&FundBalanceChanges{Labels: l},
 		&FundBalances{Labels: l},
+		&CIPProjects{Labels: l},
 	}
 }

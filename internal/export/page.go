@@ -31,8 +31,8 @@ const (
 	ProvenanceTemplate = "provenance.html.tmpl"
 	CaveatsTemplate    = "caveats.html.tmpl"
 	// DepartmentTemplate, CapitalTemplate and DebtTemplate are server-rendered
-	// pages, one per subject, each loading its own client module. They render
-	// no projection document (templateRendersADocument).
+	// pages, one per subject, each loading its own client module.
+	// templateRendersADocument says which of them renders a projection document.
 	DepartmentTemplate = "department.html.tmpl"
 	CapitalTemplate    = "capital.html.tmpl"
 	DebtTemplate       = "debt.html.tmpl"

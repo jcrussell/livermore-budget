@@ -715,7 +715,8 @@ func templateDrawsAChart(name string) bool {
 // because the negated form fails open for a new document-less template.
 func templateRendersADocument(name string) bool {
 	switch name {
-	case SankeyTemplate, TrendsTemplate, HistoryTemplate:
+	case SankeyTemplate, TrendsTemplate, HistoryTemplate,
+		CapitalTemplate:
 		return true
 	default:
 		return false

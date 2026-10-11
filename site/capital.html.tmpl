@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{.Title}}</title>
-<meta name="description" content="The City of Livermore's capital projects.">
+<meta name="description" content="Every project in the City of Livermore's Capital Improvement Program, by the fund paying for it, each figure linked to the page it was read from.">
 <meta name="color-scheme" content="light dark">
 <link rel="stylesheet" href="style.css">
 <script>
@@ -15,7 +15,9 @@
     if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
   } catch (e) { /* private mode: fall back to the OS setting */ }
 </script>
-<script type="module" src="./capital.js"></script>
+<!-- A module is deferred, so it runs once the table below is parsed; importing
+     capital.js runs nothing, so boot() is called here. -->
+<script type="module">import { boot } from "./capital.js"; boot(document);</script>
 </head>
 <body>
 
@@ -39,12 +41,102 @@
 </header>
 
 <main>
+
+<p class="lede">
+  {{.Count}} printed project lines across {{len .Columns}} columns, {{.Facts}} figures in all,
+  from the Budget Book's project listing by fund. Every figure is one the city printed and
+  links to the extracted text of the page it was read from; a dash is a zero the page prints
+  as a dash.
+</p>
+
+<section class="capital-notes" aria-labelledby="capital-notes-heading">
+  <h2 id="capital-notes-heading">Read these before the table</h2>
+  <ul>
+    {{- range .Notes}}
+    <li><strong>{{.Summary}}</strong> {{.Text}}</li>
+    {{- end}}
+  </ul>
+  {{- if .CaveatsPath}}
+  <p class="subtle">Every page's caveats are collected on <a href="{{.CaveatsPath}}">the caveats page</a>.</p>
+  {{- end}}
+</section>
+
+<!-- Hidden until capital.js binds it: with no script the whole table shows,
+     and a control that does nothing is not offered. -->
+<form class="capital-filters" id="capital-filters" hidden>
+  <label>Fund
+    <select id="capital-fund">
+      <option value="">Every fund</option>
+      {{- range .Funds}}
+      <option value="{{.Number}}">{{.Label}}</option>
+      {{- end}}
+    </select>
+  </label>
+  <label>Year
+    <select id="capital-year">
+      <option value="">Every year</option>
+      {{- range $i, $c := .Columns}}
+      <option value="{{$i}}">{{$c.Label}} ({{$c.Basis}})</option>
+      {{- end}}
+    </select>
+  </label>
+  <label>Project
+    <input type="search" id="capital-search" placeholder="Search project names" autocomplete="off">
+  </label>
+  <p class="capital-shown" id="capital-shown" role="status"></p>
+</form>
+
+<div class="table-scroll">
+<table class="series-table capital-table" id="capital-table">
+  <caption>Capital projects by fund, {{.Scope}}</caption>
+  <thead>
+    <tr>
+      <th scope="col">Fund</th>
+      <th scope="col">Project</th>
+      {{- range $i, $c := .Columns}}
+      <th scope="col" class="num{{if $c.New}} group-start{{end}}" data-column="{{$i}}" data-comparable-group="{{$c.Group}}">
+        {{$c.Label}}<span class="basis">{{$c.Basis}}</span>
+      </th>
+      {{- end}}
+    </tr>
+  </thead>
+  <tbody>
+    {{- range .Rows}}
+    <tr data-fund="{{.Fund}}">
+      <td>{{.FundLabel}}</td>
+      <th scope="row">{{.Project}}</th>
+      {{- range $i, $c := .Cells}}
+      <td class="num{{if $c.New}} group-start{{end}}{{if $c.Missing}} missing{{end}}" data-column="{{$i}}"{{if not $c.Missing}} data-cents="{{$c.Cents}}"{{end}}>
+        {{- if $c.Missing}}
+        <span title="This row is not printed in this column">{{$c.Value}}</span>
+        {{- else}}
+        <a href="{{$c.Href}}" title="Read on page {{$c.Page}}">{{$c.Value}}</a>
+        {{- end}}
+      </td>
+      {{- end}}
+    </tr>
+    {{- end}}
+  </tbody>
+  <!-- Filled by capital.js: the sum of the rows shown, which is ours and is
+       not the listing's printed TOTAL. -->
+  <tfoot hidden>
+    <tr class="capital-sum">
+      <th scope="row" colspan="2">◇ Our sum of the rows shown</th>
+      {{- range $i, $c := .Columns}}
+      <td class="num{{if $c.New}} group-start{{end}}" data-column="{{$i}}"></td>
+      {{- end}}
+    </tr>
+  </tfoot>
+</table>
+</div>
+
 </main>
 
 <footer>
   {{template "sources" .}}
   <p class="subtle">
-    Packaged by {{.ExportedBy}}. This page publishes no figure yet, so it cites no page.
+    Scope {{.Scope}}. Projection: {{.ProjectionBy}}. Packaged by {{.ExportedBy}}.
+    This table is drawn from <a href="{{.DataPath}}">{{.DataPath}}</a>.
   </p>
 </footer>
 
