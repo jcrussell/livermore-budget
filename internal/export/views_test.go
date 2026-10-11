@@ -722,6 +722,10 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 			{Path: "trends.html", Nav: "Revenue tables", Template: export.TrendsTemplate,
 				Projection: "sankey", Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{Tiers: []int{0, 2, 4}}}}},
 			"draws none"},
+		{"sankey hints on a chart declaring no form", []export.View{ok,
+			{Path: "trends.html", Nav: "Revenue tables", Template: export.TrendsTemplate,
+				Projection: "sankey", Overview: export.Chart{Sankey: &export.SankeyHints{Tiers: []int{0, 2, 4}}}}},
+			"declares no sankey chart"},
 		// The sections family, both directions: headings dropped in silence
 		// lose the only thing telling p167's two same-labelled blocks apart,
 		// and a history table with none puts every row under no heading.

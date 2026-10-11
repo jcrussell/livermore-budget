@@ -296,7 +296,7 @@ describe("the filter panel", () => {
     // A group the spine does not draw: nothing hidden, the chart as shaped.
     app.setFilter({ groups: new Set(["fund-group/permanent"]) });
     assert.equal(app.shown.hidden.length, 0);
-    assert.equal(app.shown.doc, app.projection);
+    assert.ok(app.shown.doc === app.projection, "the filter reshaped a chart it hides nothing of");
     assert.equal(document.getElementById("filter-line").hasAttribute("hidden"), true);
     app.setFilter({ groups: new Set([g]) });
     assert.equal(drawsGroup(), false);

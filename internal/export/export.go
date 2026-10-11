@@ -635,6 +635,10 @@ func (v View) validate(built map[string][]byte, ix ColumnIndex) error {
 		return fmt.Errorf(
 			"view %q declares chart form %q, which is not one of %v",
 			v.Path, v.Overview.Form, ChartForms())
+	case v.Overview.Form != SankeyForm && v.Overview.Sankey != nil:
+		return fmt.Errorf(
+			"view %q carries sankey hints and declares no sankey chart; the hints "+
+				"would be dropped in silence", v.Path)
 	case v.Overview.Form == SankeyForm && v.Overview.Sankey == nil:
 		return fmt.Errorf(
 			"view %q declares a sankey chart with no sankey hints; the column order "+
