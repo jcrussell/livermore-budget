@@ -100,8 +100,8 @@ views:
       categories that say how spendable each dollar is.
 
   # One page per subject, each server-rendered by its own template and
-  # loading its own client module. They name no projection, so no missing
-  # document drops them.
+  # loading its own client module. A page naming no projection is never
+  # dropped for a missing document.
   - path: department.html
     nav: Departments
     template: department.html.tmpl
@@ -109,13 +109,17 @@ views:
     lede: >-
       This page will show what each of the city's departments is budgeted to
       spend, and on what.
+  # The capital page renders its document as a table and loads capital.js
+  # to filter it, so it is dropped when cip-projects is not built.
   - path: capital.html
     nav: Capital projects
     template: capital.html.tmpl
+    projection: cip-projects
     title: Livermore's capital projects
     lede: >-
-      This page will show the city's capital projects, what each is budgeted
-      to cost, and the funds that pay for them.
+      Every project in the city's Capital Improvement Program, under the fund
+      that pays for it: what the two-year budget gives each one, and what the
+      plan projects for the three years after.
   - path: debt.html
     nav: Debt
     template: debt.html.tmpl

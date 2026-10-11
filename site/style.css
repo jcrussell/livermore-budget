@@ -1724,6 +1724,36 @@ noscript p {
 /* end department.html */
 
 /* capital.html. Only that page's rules go in this block. */
+.capital-notes ul {
+  padding-left: 1.2em;
+}
+.capital-notes li {
+  margin-bottom: 0.5em;
+}
+.capital-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75em 1.5em;
+  align-items: end;
+  margin: 1em 0;
+}
+.capital-filters[hidden] {
+  display: none;
+}
+.capital-filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25em;
+}
+.capital-shown {
+  margin: 0;
+  color: var(--muted);
+}
+.capital-table tfoot .capital-sum th,
+.capital-table tfoot .capital-sum td {
+  border-top: 2px solid var(--rule);
+  font-weight: 600;
+}
 
 /* end capital.html */
 
