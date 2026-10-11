@@ -82,9 +82,10 @@ func TestEverySharedEnumIsItsGoSet(t *testing.T) {
 
 // TestEveryProjectionNameEnumIsTheRegistry holds the two documents' projection
 // enums to the registry: a graph's Document returns *project.Document, a
-// series' *project.TrendsDocument.
+// series' *project.TrendsDocument, and the debt schedule's
+// *project.DebtServiceDocument.
 func TestEveryProjectionNameEnumIsTheRegistry(t *testing.T) {
-	var graphs, series []string
+	var graphs, series, debt []string
 	for _, p := range project.Registry(nil) {
 		switch p.(type) {
 		case interface {
@@ -95,6 +96,10 @@ func TestEveryProjectionNameEnumIsTheRegistry(t *testing.T) {
 			Document([]fact.Fact, project.Options) (*project.TrendsDocument, error)
 		}:
 			series = append(series, p.Name())
+		case interface {
+			Document([]fact.Fact, project.Options) (*project.DebtServiceDocument, error)
+		}:
+			debt = append(debt, p.Name())
 		default:
 			t.Errorf("projection %q builds neither a graph nor a series", p.Name())
 		}
@@ -106,5 +111,8 @@ func TestEveryProjectionNameEnumIsTheRegistry(t *testing.T) {
 	}
 	if diff := cmp.Diff(series, enumAt(t, schema.Series, "properties", "projection")); diff != "" {
 		t.Errorf("%s's projection enum and the registry's series differ (-registry +schema):\n%s", schema.Series, diff)
+	}
+	if diff := cmp.Diff(debt, enumAt(t, schema.DebtService, "properties", "projection")); diff != "" {
+		t.Errorf("%s's projection enum and the registry's debt schedule differ (-registry +schema):\n%s", schema.DebtService, diff)
 	}
 }

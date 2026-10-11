@@ -1804,5 +1804,8 @@ noscript p {
 /* end capital.html */
 
 /* debt.html. Only that page's rules go in this block. */
+.debt-table td.debt-unprinted { color: var(--muted, #777); font-style: italic; font-size: 0.85em; }
+.debt-band th[scope="row"], .debt-band td { border-top: 1px dashed var(--rule, #bbb); }
+.debt-band-note { display: block; font-size: 0.8em; font-weight: normal; color: var(--muted, #777); }
 
 /* end debt.html */

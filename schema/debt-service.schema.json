@@ -1,0 +1,468 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jcrussell.github.io/livermore-budget/schema/debt-service.schema.json",
+  "title": "fisc debt service projection",
+  "description": "Budget Book pp.80-81 as one document: the debt service budget by issue, and the requirements schedule by fund type through 2055. Every figure is a fact, carrying its page, byte offset and token.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "projection",
+    "metadata",
+    "issue_columns",
+    "issues",
+    "requirements"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "projection": {
+      "enum": [
+        "debt-service"
+      ]
+    },
+    "metadata": {
+      "type": "object",
+      "required": [
+        "generated_by",
+        "scopes",
+        "currency",
+        "units",
+        "columns",
+        "sources",
+        "counts",
+        "caveats"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "generated_by": {
+          "type": "string",
+          "minLength": 1
+        },
+        "scopes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "currency": {
+          "const": "USD"
+        },
+        "units": {
+          "const": "cents"
+        },
+        "columns": {
+          "description": "Every column the document covers, both schedules', oldest first; a band carries its last year.",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "fiscal_year",
+              "fiscal_year_through",
+              "basis"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "fiscal_year": {
+                "type": "integer",
+                "minimum": 1900
+              },
+              "fiscal_year_through": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1901
+              },
+              "basis": {
+                "$ref": "https://jcrussell.github.io/livermore-budget/schema/enums.schema.json#/$defs/basis"
+              }
+            }
+          }
+        },
+        "sources": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "https://jcrussell.github.io/livermore-budget/schema/locator.schema.json"
+          }
+        },
+        "counts": {
+          "type": "object",
+          "required": [
+            "facts",
+            "figures"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "facts": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "figures": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "caveats": {
+          "type": "array",
+          "items": {
+            "$ref": "https://jcrussell.github.io/livermore-budget/schema/caveat.schema.json"
+          }
+        }
+      }
+    },
+    "issue_columns": {
+      "description": "The by-issue table's budget columns, oldest first, one per cell of every issue.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "fiscal_year",
+          "fiscal_year_label",
+          "basis"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "fiscal_year": {
+            "type": "integer",
+            "minimum": 1900
+          },
+          "fiscal_year_label": {
+            "type": "string",
+            "minLength": 1
+          },
+          "basis": {
+            "$ref": "https://jcrussell.github.io/livermore-budget/schema/enums.schema.json#/$defs/basis"
+          }
+        }
+      }
+    },
+    "issues": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "label",
+          "row_label",
+          "activity",
+          "payer",
+          "cells"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "label": {
+            "type": "string",
+            "minLength": 1
+          },
+          "row_label": {
+            "description": "The row as the page prints it, which is the facts' row_label.",
+            "type": "string",
+            "minLength": 1
+          },
+          "activity": {
+            "type": "string",
+            "minLength": 1
+          },
+          "payer": {
+            "type": "string"
+          },
+          "cells": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "principal",
+                "interest"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "principal": {
+                  "description": "One fact. Null where the page prints no cell: absent, not zero. A printed dash is a figure of 0.",
+                  "type": [
+                    "object",
+                    "null"
+                  ],
+                  "required": [
+                    "amount_cents",
+                    "fact_id",
+                    "doc_id",
+                    "page",
+                    "offset",
+                    "token"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "amount_cents": {
+                      "type": "integer"
+                    },
+                    "fact_id": {
+                      "$ref": "https://jcrussell.github.io/livermore-budget/schema/fact-id.schema.json"
+                    },
+                    "doc_id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "page": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "offset": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "token": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                },
+                "interest": {
+                  "description": "One fact. Null where the page prints no cell: absent, not zero. A printed dash is a figure of 0.",
+                  "type": [
+                    "object",
+                    "null"
+                  ],
+                  "required": [
+                    "amount_cents",
+                    "fact_id",
+                    "doc_id",
+                    "page",
+                    "offset",
+                    "token"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "amount_cents": {
+                      "type": "integer"
+                    },
+                    "fact_id": {
+                      "$ref": "https://jcrussell.github.io/livermore-budget/schema/fact-id.schema.json"
+                    },
+                    "doc_id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "page": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "offset": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "token": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "requirements": {
+      "type": "object",
+      "required": [
+        "fund_types",
+        "periods",
+        "totals"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "fund_types": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "key",
+              "label"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "key": {
+                "type": "string",
+                "minLength": 1
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        "periods": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "fiscal_year",
+              "fiscal_year_through",
+              "label",
+              "years",
+              "cells"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "fiscal_year": {
+                "type": "integer",
+                "minimum": 1900
+              },
+              "fiscal_year_through": {
+                "description": "The band's last year, and null for a period of one year.",
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1901
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1
+              },
+              "years": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "cells": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "principal",
+                    "interest"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "principal": {
+                      "description": "One fact. Null where the page prints no cell: absent, not zero. A printed dash is a figure of 0.",
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "required": [
+                        "amount_cents",
+                        "fact_id",
+                        "doc_id",
+                        "page",
+                        "offset",
+                        "token"
+                      ],
+                      "additionalProperties": false,
+                      "properties": {
+                        "amount_cents": {
+                          "type": "integer"
+                        },
+                        "fact_id": {
+                          "$ref": "https://jcrussell.github.io/livermore-budget/schema/fact-id.schema.json"
+                        },
+                        "doc_id": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "page": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "offset": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "token": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      }
+                    },
+                    "interest": {
+                      "description": "One fact. Null where the page prints no cell: absent, not zero. A printed dash is a figure of 0.",
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "required": [
+                        "amount_cents",
+                        "fact_id",
+                        "doc_id",
+                        "page",
+                        "offset",
+                        "token"
+                      ],
+                      "additionalProperties": false,
+                      "properties": {
+                        "amount_cents": {
+                          "type": "integer"
+                        },
+                        "fact_id": {
+                          "$ref": "https://jcrussell.github.io/livermore-budget/schema/fact-id.schema.json"
+                        },
+                        "doc_id": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "page": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "offset": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "token": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "totals": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "fund_type",
+              "principal_cents",
+              "interest_cents",
+              "fact_ids"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "fund_type": {
+                "type": "string",
+                "minLength": 1
+              },
+              "principal_cents": {
+                "type": "integer"
+              },
+              "interest_cents": {
+                "type": "integer"
+              },
+              "fact_ids": {
+                "type": "array",
+                "items": {
+                  "$ref": "https://jcrussell.github.io/livermore-budget/schema/fact-id.schema.json"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

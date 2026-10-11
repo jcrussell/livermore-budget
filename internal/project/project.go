@@ -215,6 +215,12 @@ func PublishedDocuments() []PublishedDocument {
 		Scopes:     []string{CIPProjectsScope},
 		Columns:    CIPProjectsColumns(),
 	})
+	out = append(out, PublishedDocument{
+		Projection: DebtServiceProjection,
+		Stem:       DebtServiceProjection,
+		Scopes:     DebtServiceScopes(),
+		Columns:    DebtServiceColumns(),
+	})
 	return out
 }
 
@@ -738,5 +744,6 @@ func Registry(l labels) []Projection {
 		&FundBalanceChanges{Labels: l},
 		&FundBalances{Labels: l},
 		&CIPProjects{Labels: l},
+		&DebtService{},
 	}
 }

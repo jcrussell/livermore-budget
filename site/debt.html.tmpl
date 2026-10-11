@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{.Title}}</title>
-<meta name="description" content="What the City of Livermore owes and pays on its debt.">
+<meta name="description" content="What the City of Livermore budgets to pay on each debt, and the principal and interest its debt agreements schedule through 2055, every figure linked to the budget page it was read from.">
 <meta name="color-scheme" content="light dark">
 <link rel="stylesheet" href="style.css">
 <script>
@@ -38,13 +38,123 @@
   </div>
 </header>
 
+{{- define "debt-cell"}}
+{{- if .Missing}}<td class="num debt-unprinted"><span title="The page prints no figure here">not printed</span></td>
+{{- else}}<td class="num"><a href="{{.Href}}" title="{{if .Dash}}Printed as a dash, which is zero; {{end}}read on page {{.Page}}">{{.Value}}</a></td>
+{{- end}}
+{{- end}}
 <main>
+
+<p class="lede">
+  {{.Facts}} figures, every one printed on Budget Book pages 80 and 81 and linked to the
+  page it was read from. A dash is the city's printed zero. "Not printed" is a cell the
+  page leaves blank, which is not a zero.
+</p>
+
+<h2 id="by-issue">Debt service budget, by issue</h2>
+<p class="subtle">
+  What the budget sets aside to pay on each debt: the FY 2024-25 revised budget and the two
+  adopted years.
+</p>
+<div class="table-scroll">
+<table class="series-table debt-table">
+  <caption>Debt service by issue, principal and interest</caption>
+  <thead>
+    <tr>
+      <th scope="col" rowspan="2">Issue</th>
+      {{- range .Columns}}
+      <th scope="colgroup" colspan="2" class="num">{{.}}</th>
+      {{- end}}
+    </tr>
+    <tr>
+      {{- range .Columns}}
+      <th scope="col" class="num">Principal</th><th scope="col" class="num">Interest</th>
+      {{- end}}
+    </tr>
+  </thead>
+  {{- $span := .HeadSpan}}
+  {{- range .Activities}}
+  <tbody>
+    <tr class="block-head"><th scope="colgroup" colspan="{{$span}}">{{.Heading}}</th></tr>
+    {{- range .Rows}}
+    <tr>
+      <th scope="row">{{.Label}}{{if .Payer}} <span class="subtle">· {{.Payer}}</span>{{end}}</th>
+      {{- range .Cells}}{{template "debt-cell" .Principal}}{{template "debt-cell" .Interest}}{{end}}
+    </tr>
+    {{- end}}
+  </tbody>
+  {{- end}}
+</table>
+</div>
+
+<h2 id="requirements">Debt service requirements through 2055</h2>
+<p class="subtle">
+  What the city's debt agreements schedule it to pay, by year ending June 30 and by fund type.
+  These are <strong>projected</strong>, not adopted: no council appropriates them. From 2031
+  each row is a <strong>five-year band</strong>, one figure for five years, and is never a
+  single year's payment.
+</p>
+<div class="table-scroll">
+<table class="series-table debt-table">
+  <caption>Debt service requirements, principal and interest, by fund type</caption>
+  <thead>
+    <tr>
+      <th scope="col" rowspan="2">Year ending June 30</th>
+      {{- range .FundTypes}}
+      <th scope="colgroup" colspan="2" class="num">{{.}}</th>
+      {{- end}}
+    </tr>
+    <tr>
+      {{- range .FundTypes}}
+      <th scope="col" class="num">Principal</th><th scope="col" class="num">Interest</th>
+      {{- end}}
+    </tr>
+  </thead>
+  <tbody>
+    {{- range .Periods}}
+    <tr{{if .Band}} class="debt-band"{{end}}>
+      <th scope="row">{{.Label}}{{if .Band}} <span class="debt-band-note">{{.Years}} years in one figure</span>{{end}}</th>
+      {{- range .Cells}}{{template "debt-cell" .Principal}}{{template "debt-cell" .Interest}}{{end}}
+    </tr>
+    {{- end}}
+  </tbody>
+  <tfoot>
+    <tr>
+      <th scope="row">Total, every row</th>
+      {{- range .Totals}}
+      <td class="num">{{.Principal.Value}}</td><td class="num">{{.Interest.Value}}</td>
+      {{- end}}
+    </tr>
+  </tfoot>
+</table>
+</div>
+<p class="subtle">
+  Each total adds the figures above it, and fisc verify holds it to the Total the page prints
+  beneath the column.
+</p>
+
+{{- if .Caveats}}
+<details class="apparatus" id="caveats-view">
+  <summary>
+    <h2>What these tables do not say</h2>
+    <span class="apparatus-hint">{{len .Caveats}} caveat{{if ne (len .Caveats) 1}}s{{end}}
+      the document ships with these figures</span>
+  </summary>
+  <ul class="caveats">
+    {{- range .Caveats}}
+    <li>{{if .Href}}<a href="{{.Href}}">{{.Summary}}</a>{{else}}{{.Summary}}{{end}}</li>
+    {{- end}}
+  </ul>
+</details>
+{{- end}}
+
 </main>
 
 <footer>
   {{template "sources" .}}
   <p class="subtle">
-    Packaged by {{.ExportedBy}}. This page publishes no figure yet, so it cites no page.
+    Projection: {{.ProjectionBy}}. Packaged by {{.ExportedBy}}.
+    These tables are drawn from <a href="{{.DataPath}}">{{.DataPath}}</a>.
   </p>
 </footer>
 

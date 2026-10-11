@@ -67,8 +67,11 @@ type Fact struct {
 	// of one: Budget Book p80 prints DEBT SERVICE REQUIREMENTS for 2031-2035
 	// as one figure, which is fiscal_year 2031 through 2035 and is no
 	// FY2031 figure. A reader taking fiscal_year alone takes a band for a
-	// year, so every reader in this tree either carries it or refuses a
-	// band (see BandOf). It is hashed into the id where it is set (MakeIDThrough).
+	// year: project.SelectFacts refuses one asked for as a year, and the
+	// readers keying by year that do not go through it (structure's
+	// containment cells among them) see no band only because the one scope
+	// printing bands is a declared residue no cut admits. It is hashed into
+	// the id where it is set (MakeIDThrough).
 	FiscalYearThrough *int `json:"fiscal_year_through"`
 
 	RowPath    string `json:"row_path"`

@@ -34,6 +34,11 @@ func TestTheSchemasStateWhatTheProjectionsCarry(t *testing.T) {
 			schema:  schema.Series,
 			emitted: []any{TrendsDocument{}},
 		},
+		{
+			name:    "the debt service projection",
+			schema:  schema.DebtService,
+			emitted: []any{DebtServiceDocument{}},
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			stated, err := schema.NamesDeep(tc.schema)

@@ -118,6 +118,7 @@ func TestFixtureVerdicts(t *testing.T) {
 		// neither a point nor a series to examine.
 		"trend-points-tie-to-facts":        "vacuous over 0",
 		"trend-series-are-complete":        "vacuous over 0",
+		"debt-service-ties-to-facts":       "vacuous over 0",
 		"node-hierarchy-well-formed":       "vacuous over 0",
 		"constraint-tier-vocabulary":       "vacuous over 0",
 		"contra-links-name-their-schedule": "vacuous over 0",
@@ -140,7 +141,7 @@ func TestFixtureVerdicts(t *testing.T) {
 	if diff := cmp.Diff(want, statuses(rep)); diff != "" {
 		t.Errorf("verdicts mismatch (-want +got):\n%s", diff)
 	}
-	if got := (counts{Pass: 25, Vacuous: 25, Skipped: 1}); got != rep.Counts {
+	if got := (counts{Pass: 25, Vacuous: 26, Skipped: 1}); got != rep.Counts {
 		t.Errorf("counts = %+v, want %+v", rep.Counts, got)
 	}
 	// The counts are pinned as numbers above rather than spelled in words here,
@@ -163,8 +164,8 @@ func TestVacuousFailsOnlyUnderStrict(t *testing.T) {
 	lenient := Run(t.Context(), s, All(), ReportOptions{})
 	strict := Run(t.Context(), s, All(), ReportOptions{Strict: true})
 
-	if lenient.Counts.Vacuous != 25 {
-		t.Fatalf("vacuous count = %d, want 25", lenient.Counts.Vacuous)
+	if lenient.Counts.Vacuous != 26 {
+		t.Fatalf("vacuous count = %d, want 26", lenient.Counts.Vacuous)
 	}
 	if lenient.Failed() {
 		t.Error("a run with vacuous checks failed without --strict")

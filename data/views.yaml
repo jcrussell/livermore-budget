@@ -129,10 +129,12 @@ views:
   - path: debt.html
     nav: Debt
     template: debt.html.tmpl
+    projection: debt-service
     title: What Livermore owes
     lede: >-
-      This page will show the city's outstanding debt, issue by issue, and
-      what it pays on each one every year.
+      What the city budgets to pay on each of its debts, and what its debt
+      agreements schedule it to pay each year through 2055, as the budget
+      book prints them.
 
   # The caveats index names no projection, so no missing document drops it;
   # buildCaveatsPage refuses an empty one rather than link a blank page. It

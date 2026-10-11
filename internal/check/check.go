@@ -204,6 +204,7 @@ func All() []Check {
 		&peersOverlapOnlyByDeclaredIdentity{},
 		&trendPointsTieToFacts{},
 		&trendSeriesAreComplete{},
+		&debtServiceTiesToFacts{},
 
 		&graphAcyclic{},
 		&nodeTiersAreDeclared{},

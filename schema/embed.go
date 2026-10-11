@@ -115,6 +115,8 @@ const (
 	Projection = "projection.schema.json"
 	// Series is one built as a series per printed row instead.
 	Series = "series.schema.json"
+	// DebtService is Budget Book pp.80-81 as one document.
+	DebtService = "debt-service.schema.json"
 	// Geometry is one page's word boxes, as tools/extract.py writes them.
 	Geometry = "geometry.schema.json"
 	// Mark is a node the client makes and no document carries; Go writes
