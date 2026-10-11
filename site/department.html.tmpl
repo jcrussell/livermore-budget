@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{.Title}}</title>
-<meta name="description" content="What each City of Livermore department spends.">
+<meta name="description" content="One City of Livermore department at a time: what it spends under each object heading, every fund together, and which funds pay for it, each figure linked to the Budget Book page it was read from.">
 <meta name="color-scheme" content="light dark">
 <link rel="stylesheet" href="style.css">
 <script>
@@ -15,7 +15,7 @@
     if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
   } catch (e) { /* private mode: fall back to the OS setting */ }
 </script>
-<script type="module" src="./department.js"></script>
+<script type="application/json" id="department-config">{{.ConfigJSON}}</script>
 </head>
 <body>
 
@@ -38,15 +38,124 @@
   </div>
 </header>
 
-<main>
+<main id="department-main">
+
+<form class="department-controls" id="department-controls">
+  <label>Department
+    <select id="department-select">
+      {{- range .Departments}}
+      <option value="{{.ID}}">{{.Label}}</option>
+      {{- end}}
+    </select>
+  </label>
+  <label>Budget column
+    <select id="year-select">
+      {{- range .Years}}
+      <option value="{{.Path}}"{{if eq .Path $.Opens}} selected{{end}}>{{.Lede}}</option>
+      {{- end}}
+    </select>
+  </label>
+</form>
+
+<h2 id="department-heading">Choose a department</h2>
+
+{{- /* The two sentences the client chooses between, worded here. Whether a
+       department's two blocks tie in a column is Go's declaration, carried
+       per year in the config; the client only picks which to print. */}}
+<p class="department-tie" id="department-tie"
+   data-ties="Both blocks of this department's page add up to the same sum in this column, to the cent; fisc verify fails if they stop doing so."
+   data-held="In this column the two blocks do not add up to the same sum, and the project's checks declare why: "></p>
+
+<div class="department-sides">
+
+<section class="department-side" aria-labelledby="funding-heading">
+  <h3 id="funding-heading">Who pays for it</h3>
+  <p id="funding-says">
+    Read from the department's <strong>Department Funding Sources</strong> block,
+    the lower half of its page in the Budget Book (pp.85-125): one row per fund.
+    <strong>Each figure is one fund's share</strong> of the department, not its
+    whole cost. The General Fund row is the General Fund's share alone; every other
+    row is a fund the city keeps apart from it.
+  </p>
+  <p id="internal-service-says">
+    A fund marked <em>internal service</em> is one the city fills by charging its own
+    departments, so the money it pays here was first charged to another department
+    and is counted in that department's cost as well.
+  </p>
+  <div class="table-scroll">
+    <table class="department-table" id="funding-table">
+      <thead><tr><th scope="col">Fund</th><th scope="col">Fund group</th><th scope="col" class="num">Amount</th><th scope="col" class="num">Share ◇</th><th scope="col">Page</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</section>
+
+<section class="department-side" aria-labelledby="spending-heading">
+  <h3 id="spending-heading">What it spends, every fund together</h3>
+  <p id="spending-says">
+    Read from the department's <strong>Expenditures by Category</strong> block, the
+    upper half of the same page: what each of its divisions spends under each object
+    heading, whatever fund pays. <strong>Each figure is the whole department's
+    cost</strong> under that heading, summed over every division the page prints
+    under the department.
+  </p>
+  <p id="transfers-says" hidden>
+    <strong>Transfers Out</strong> is money moved to another of the city's own funds,
+    not spent on anything. The page prints it inside the division's total, so it is
+    inside this side's sum too.
+  </p>
+  <div class="table-scroll">
+    <table class="department-table" id="spending-table">
+      <thead><tr><th scope="col">Object heading</th><th scope="col" class="num">Amount</th><th scope="col" class="num">Share ◇</th><th scope="col">Pages</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <h4>By division, as printed</h4>
+  <div class="table-scroll">
+    <table class="department-table" id="division-table">
+      <thead><tr><th scope="col">Division</th><th scope="col">Object heading</th><th scope="col" class="num">Amount</th><th scope="col">Page</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</section>
+
+</div>
+
+<p class="subtle">
+  Every amount links to the extracted text of the page it was read from. A row
+  marked <em>our sum</em> adds the cited rows above it and is ours, not the city's:
+  the page prints a department total of its own, which this site has not read as a
+  figure, so neither sum is presented as the department's total. A share marked ◇
+  is ours too: one row as a percentage of its side's sum.
+</p>
+
+{{- if .Caveats}}
+<details class="apparatus" id="caveats-view">
+  <summary>
+    <h2>What these figures do not say</h2>
+    <span class="apparatus-hint">{{len .Caveats}} caveat{{if ne (len .Caveats) 1}}s{{end}}
+      the two documents ship with these figures</span>
+  </summary>
+  <ul class="caveats">
+    {{- range .Caveats}}
+    <li>{{if .Href}}<a href="{{.Href}}">{{.Summary}}</a>{{else}}{{.Summary}}{{end}}</li>
+    {{- end}}
+  </ul>
+</details>
+{{- end}}
+
 </main>
 
 <footer>
   {{template "sources" .}}
   <p class="subtle">
-    Packaged by {{.ExportedBy}}. This page publishes no figure yet, so it cites no page.
+    Scope {{.Scope}}. Projection: {{.ProjectionBy}}. Packaged by {{.ExportedBy}}.
+    The column on screen is drawn from <a id="department-data-path" href="{{.DataPath}}">{{.DataPath}}</a>,
+    which holds both blocks.
   </p>
 </footer>
 
+<!-- department.js runs nothing on import, so boot() is called here. -->
+<script type="module">import { boot } from "./department.js"; boot();</script>
 </body>
 </html>

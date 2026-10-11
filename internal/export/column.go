@@ -490,11 +490,33 @@ func (v View) ReachedStems(ix ColumnIndex) ([]string, error) {
 				}
 			}
 		}
+		beside, err := v.readStems(year, ix)
+		if err != nil {
+			return nil, err
+		}
+		reached = append(reached, beside...)
 		for _, stem := range reached {
 			if stem != "" && !slices.Contains(out, stem) {
 				out = append(out, stem)
 			}
 		}
+	}
+	return out, nil
+}
+
+// readStems is the document of each of [View.Reads] in one year's column,
+// refusing a year whose column carries none of one: the page would read a
+// schedule that is not there.
+func (v View) readStems(year string, ix ColumnIndex) ([]string, error) {
+	out := make([]string, 0, len(v.Reads))
+	for _, schedule := range v.Reads {
+		col, folded := ix.Column(year)
+		stem, ok := ix.Stem(col, schedule)
+		if !folded || !ok {
+			return nil, fmt.Errorf("view %q reads schedule %q, and %q, a year it lists, is of a "+
+				"column that carries none", v.Path, schedule, year)
+		}
+		out = append(out, stem)
 	}
 	return out, nil
 }
