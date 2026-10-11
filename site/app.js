@@ -2126,8 +2126,9 @@ export function buildTable(rows) {
 /**
  * The marks and nodes whose label holds the query, case-folded, those that
  * start with it first: every mark drawn, and on the expansion every node of
- * the schedule the chart does not draw, which Enter reveals. A node the
- * filters remove is offered by neither, drawn or not.
+ * the schedule the chart does not draw, which Enter reveals. A node in a
+ * fund group the filters remove is not offered; one the kind or smallest
+ * filter would remove once revealed is, and Enter says so and draws nothing.
  * @param {string} query
  * @returns {(LaidNode | FiscNode)[]}
  */
@@ -2173,6 +2174,10 @@ export function revealEntries(id) {
     const inside = core.withinNode(doc, member.parent);
     next = next.filter((e) => !entryInside(e, inside)).concat([entryOf(member.parent, key)]);
   }
+  // A node a refine split opens is drawn as its members, so its own splits
+  // fold back first.
+  const self = core.withinNode(doc, id);
+  next = next.filter((e) => !entryInside(e, self));
   const own = chain[chain.length - 1];
   if (own) {
     const state = expansionState(doc, next);
@@ -2183,6 +2188,25 @@ export function revealEntries(id) {
     if (!drawn.nodes.some((n) => n.id === id) && drawn.nodes.some((n) => n.id === tail)) next.push(tail);
   }
   return next;
+}
+
+/**
+ * Whether the chart drawn at `next` under the filters on screen draws `id`,
+ * so a reveal the filters would undo leaves the chart as it is. True where
+ * the shape throws: redraw is what reports that.
+ * @param {string[]} next
+ * @param {string} id
+ * @returns {boolean}
+ */
+function revealedUnderFilter(next, id) {
+  if (!fetched) return false;
+  try {
+    const state = expansionState(fetched, next);
+    const drawn = formOnScreen().shape(fetched, { chart: CONFIG.overview, frontier: state.frontier, whole: state.whole });
+    return filterFor(drawn).doc.links.some((l) => l.source === id || l.target === id);
+  } catch {
+    return true;
+  }
 }
 
 /**
@@ -2284,7 +2308,12 @@ export function chooseSearch(id, open) {
   closeSearch();
   let revealed = false;
   if (!d && expanding() && nodeOf(id)) {
-    if (!redraw(revealEntries(id), "That could not be found")) return false;
+    const next = revealEntries(id);
+    if (!revealedUnderFilter(next, id)) {
+      fail("The filters leave " + /** @type {FiscNode} */ (nodeOf(id)).label + " out of the chart");
+      return false;
+    }
+    if (!redraw(next, "That could not be found")) return false;
     d = laidNodes.find((n) => n.id === id);
     revealed = true;
   }

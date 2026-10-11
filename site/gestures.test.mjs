@@ -446,6 +446,30 @@ describe("the search box", () => {
     assert.deepEqual(banners(document), []);
   });
 
+  test("a node its own refine split opens is revealed by folding that split back", async () => {
+    const { app, document } = await bootedApp();
+    await split(app, WORST);
+    assert.ok(!app.laidNodes.some((n) => n.id === WORST), `${WORST} is drawn while split`);
+    assert.ok(app.chooseSearch(WORST, true), `${WORST} was not revealed`);
+    await settle();
+    assert.deepEqual(app.expansions, []);
+    assert.ok(app.laidNodes.some((n) => n.id === WORST), `${WORST} is not drawn`);
+    assert.deepEqual(banners(document), []);
+  });
+
+  test("a node the smallest-flow filter would remove once revealed leaves the chart as it is, and says so", async () => {
+    const { app, document } = await bootedApp();
+    app.setFilter({ smallest: Number.MAX_SAFE_INTEGER });
+    await settle();
+    assert.deepEqual(banners(document), []);
+    const id = "dept/patrol";
+    assert.equal(app.chooseSearch(id, true), false, `${id} was revealed past the filter`);
+    await settle();
+    assert.deepEqual(app.expansions, []);
+    assert.equal(banners(document).length, 1, "the refusal is not said");
+    assert.ok(banners(document)[0].includes(app.nodeOf(id).label), banners(document)[0]);
+  });
+
   test("a label nothing in the schedule carries offers nothing, and Enter on it does nothing", async () => {
     const { app, document } = await bootedApp();
     const input = type(document, "no such label anywhere");

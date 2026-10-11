@@ -156,6 +156,19 @@ func TestTheExpansionChecksCanFail(t *testing.T) {
 			want: "the node is replaced by its members and carries",
 		},
 		{
+			name: "an alternative refine of a root, held to nothing", check: &expansionSplitsTie{},
+			edit: func(t *testing.T, _ *Subject, d *project.Document) {
+				const group, member = "fund-group/internal-service", "fund/again"
+				d.Splits = append(slices.Clone(d.Splits),
+					project.Split{Node: group, Key: "again", Form: project.SplitRefine, Alternative: true})
+				d.Nodes = append(d.Nodes, project.Node{ID: member, Label: "Again", Tier: 1, Parent: group, Alternative: "again"})
+				l := d.Links[linkAt(t, d, isRemainder, isRow)]
+				l.Source, l.Alternative, l.ValueCents = member, "again", l.ValueCents+1
+				d.Links = append(d.Links, l)
+			},
+			want: "no printed cell is declared for a refine split",
+		},
+		{
 			name: "a difference no declared exception holds apart", check: &expansionSplitsTie{},
 			edit: func(*testing.T, *Subject, *project.Document) {},
 			bare: func(s *Subject) { s.Exceptions = nil },

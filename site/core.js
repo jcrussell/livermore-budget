@@ -636,15 +636,27 @@ export function foldDocument(doc, frontier) {
     if (locs) for (const k of locatorKeys(l.locators)) locs.add(k);
   }
 
+  // A SET IS BROKEN where a leg of it is not in a ribbon of that set alone --
+  // merged with another leg, dropped onto one node or under a shut
+  // alternative -- and no later fold can make it whole again, so none of its
+  // ribbons keeps the name. Without this a fold of a folded document counts
+  // the set over the ribbons left naming it, and a lone derived leg of a
+  // broken set reads as the whole cell.
+  /** @type {Map<string, number>} */
+  const landed = new Map();
+  for (const legs of legsOf.values()) {
+    if (legs.completes) landed.set(legs.completes, (landed.get(legs.completes) || 0) + legs.legs);
+  }
   // A PRINTED LEG AND AN INFERRED ONE ARE A PRINTED RIBBON ONLY AS A
   // COMPLETING SET; otherwise the merge is drawn inferred, as at.derived
   // already says.
   for (const [key, l] of merged) {
     const legs = /** @type {{completes: string, legs: number}} */ (legsOf.get(key));
-    if (legs.completes && legs.legs === sets.get(legs.completes)) {
+    const whole = legs.completes !== "" && landed.get(legs.completes) === sets.get(legs.completes);
+    if (whole && legs.legs === sets.get(legs.completes)) {
       l.derived = false;
     }
-    if (legs.completes) l.completes = legs.completes;
+    if (whole) l.completes = legs.completes;
     else delete l.completes;
   }
 

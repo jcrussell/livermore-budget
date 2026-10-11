@@ -369,7 +369,9 @@ func (c *expansionSplitsTie) split(s *Subject, x stitched, sp project.Split, sub
 
 	var cells map[string]*tieCell
 	switch {
-	case node.Parent == "" && sp.Form == project.SplitRefine:
+	// rootCells reads the primary members alone, so an alternative refine
+	// would be held to its node's primary split.
+	case node.Parent == "" && sp.Form == project.SplitRefine && !sp.Alternative:
 		cells = c.rootCells(x, sp)
 	case node.Parent == "" && sp.Form == project.SplitExtend:
 		cells = c.extendedRootCells(x, sp, alt)

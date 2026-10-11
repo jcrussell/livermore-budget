@@ -276,3 +276,41 @@ describe("the expansion schedule, folded to a frontier", () => {
     });
   }
 });
+
+// A completing set one fold breaks stays broken through the next: the
+// capped expansion folds a folded document again, and there the ribbons
+// left naming a set are all that set's count could see.
+describe("a completing set a fold breaks", () => {
+  const node = (id, tier, parent = "") => ({ id, tier, parent, label: id, role: "r" });
+  const link = (id, source, value, extra = {}) => Object.assign(
+    { source, target: "t", kind: "k", value_cents: value, fact_ids: [id], locators: [] }, extra);
+  const doc = {
+    projection: "synthetic",
+    nodes: [node("g", 0), node("s1", 0, "g"), node("s2", 0, "g"), node("n", 0, "g"), node("s3", 0), node("t", 1)],
+    links: [
+      link("a", "s1", 100, { completes: "C" }),
+      link("b", "s2", 200, { completes: "C" }),
+      link("x", "n", 400),
+      link("c", "s3", 800, { completes: "C", derived: true }),
+    ],
+  };
+
+  test("its lone derived leg is drawn inferred, folded once or twice", () => {
+    const once = fold(doc, ["g", "s3", "t"]);
+    const twice = fold(once, once.nodes.map((n) => n.id));
+    for (const [name, d] of [["once", once], ["twice", twice]]) {
+      const c = d.links.find((l) => l.source === "s3");
+      assert.ok(c !== undefined, name + ": no ribbon from s3");
+      assert.equal(Boolean(c.derived), true, name + ": the derived leg of a broken set is drawn printed");
+      assert.equal(c.completes, undefined, name + ": a broken set's ribbon still names it");
+    }
+  });
+
+  test("a set every leg of which is a ribbon of its own keeps its name, and folds whole", () => {
+    const once = fold(doc, ["s1", "s2", "n", "s3", "t"]);
+    const named = once.links.filter((l) => l.completes === "C").map((l) => l.source).sort();
+    assert.deepEqual(named, ["s1", "s2", "s3"]);
+    assert.equal(Boolean(once.links.find((l) => l.source === "s3").derived), true,
+      "a part of the set is drawn printed");
+  });
+});
