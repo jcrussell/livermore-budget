@@ -35,7 +35,7 @@ func (sp seriesSpec) slices(facts []fact.Fact, version string) []Options {
 	seen := map[Column]bool{}
 	for _, f := range facts {
 		if f.Scope == sp.scope {
-			seen[Column{FiscalYear: f.FiscalYear, Basis: f.Basis}] = true
+			seen[ColumnOf(&f)] = true
 		}
 	}
 	if len(seen) == 0 {
@@ -76,6 +76,14 @@ func (sp seriesSpec) document(facts []fact.Fact, o Options) (*TrendsDocument, er
 	selected, err := SelectFacts(facts, o)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", sp.name, err)
+	}
+	// A point is one fiscal year, so a band has no point to be: refused
+	// rather than published at its first year.
+	for i := range selected {
+		if fact.BandOf(&selected[i]) != 0 {
+			return nil, fmt.Errorf("%s: fact %s is %s, a band, and a series point is one fiscal year",
+				sp.name, selected[i].ID, ColumnOf(&selected[i]))
+		}
 	}
 
 	// Grouped by series, then each series' points ordered by the COLUMN ORDER

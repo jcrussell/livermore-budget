@@ -56,12 +56,12 @@ func (*excessOfRevenuesIdentity) Description() string {
 // the scope. The fund dimension is deliberately absent — the schedule is all
 // governmental funds combined and its facts carry no fund group.
 type excessColumn struct {
-	year  int
-	basis vocab.Basis
+	year, through int
+	basis         vocab.Basis
 }
 
 func (k excessColumn) String() string {
-	return project.ChangesScope + " " + fact.ColumnLabel(k.year, k.basis)
+	return project.ChangesScope + " " + fact.BandLabel(k.year, k.through, k.basis)
 }
 
 // excessSide is what one column accumulated from one side of the identity.
@@ -90,7 +90,7 @@ func (*excessOfRevenuesIdentity) Run(_ context.Context, s *Subject) (Result, err
 		if f.Scope != project.ChangesScope {
 			continue
 		}
-		k := excessColumn{f.FiscalYear, f.Basis}
+		k := excessColumn{f.FiscalYear, fact.BandOf(&f), f.Basis}
 		switch {
 		case f.Category == categoryExcessOfRevenues:
 			note(k)

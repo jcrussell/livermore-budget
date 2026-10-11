@@ -208,6 +208,9 @@ func validateRows(r *Rule, byColumn bool, errf errFunc) (*rowNames, error) {
 			return nil, err
 		}
 		publishes := r.kindsOf(row)
+		if err := validateRowYears(r, row, len(publishes) > 0, errf); err != nil {
+			return nil, err
+		}
 		if err := validateUnpublishedRowDeclares(r, row, publishes, errf); err != nil {
 			return nil, err
 		}
@@ -556,7 +559,13 @@ func validatePartColumns(r *Rule, p *Part, errf errFunc) error {
 		if c.Skip {
 			continue
 		}
-		if c.FiscalYear == 0 {
+		switch {
+		case r.YearsOnRows() && c.FiscalYear != 0:
+			return hint.With(
+				errf(r.ID, fmt.Sprintf("parts[page %d].columns[%d]", p.Page, j),
+					"declares fiscal_year %d, and this rule's rows carry its years", c.FiscalYear),
+				"a figure's year is on its row or on its column, never both")
+		case !r.YearsOnRows() && c.FiscalYear == 0:
 			return errf(r.ID, fmt.Sprintf("parts[page %d].columns[%d]", p.Page, j),
 				"needs a fiscal_year (or skip: true)")
 		}
@@ -761,6 +770,39 @@ func validateFundLabelling(r *Rule, errf errFunc) error {
 	if r.RowLabelsNameFunds && r.RowLabelsAreFundNumbers {
 		return errf(r.ID, "row_labels_are_fund_numbers",
 			"is declared with row_labels_name_funds; a label is a fund's name or its number, not both")
+	}
+	return nil
+}
+
+// validateRowYears holds a row's fiscal years to the label the page prints
+// for it, so a year typed wrong is refused rather than published: "2026" is
+// fiscal_year 2026 and nothing else, and "2031-2035" is 2031 through 2035.
+// On a rule whose rows carry its years every publishing row declares one, and
+// a skipped row declares none, since nothing would read it.
+func validateRowYears(r *Rule, row Row, publishes bool, errf errFunc) error {
+	switch {
+	case row.FiscalYear == 0 && row.FiscalYearThrough != 0:
+		return errf(r.ID, "rows", "row %q: fiscal_year_through %d with no fiscal_year",
+			row.PrintedLabel(), row.FiscalYearThrough)
+	case row.FiscalYear == 0 && r.YearsOnRows() && publishes:
+		return hint.With(
+			errf(r.ID, "rows", "row %q publishes and declares no fiscal_year", row.PrintedLabel()),
+			"this rule's rows carry its years, so every row that publishes says which")
+	case row.FiscalYear == 0:
+		return nil
+	case !publishes:
+		return errf(r.ID, "rows", "row %q declares fiscal_year %d and publishes nothing",
+			row.PrintedLabel(), row.FiscalYear)
+	case row.FiscalYearThrough != 0 && row.FiscalYearThrough <= row.FiscalYear:
+		return hint.With(
+			errf(r.ID, "rows", "row %q: fiscal_year_through %d is not after fiscal_year %d",
+				row.PrintedLabel(), row.FiscalYearThrough, row.FiscalYear),
+			"a band is several years; a row of one year declares fiscal_year alone")
+	}
+	if want := YearLabel(row.FiscalYear, row.FiscalYearThrough); row.PrintedLabel() != want {
+		return hint.With(
+			errf(r.ID, "rows", "row %q declares the years %q", row.PrintedLabel(), want),
+			"a row's years are read off its printed label; the two must say the same thing")
 	}
 	return nil
 }

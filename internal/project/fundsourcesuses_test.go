@@ -231,7 +231,7 @@ func TestFundSourcesUsesRefusesASelectionNotThroughTheCuts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	o := Options{Columns: []Column{{2026, vocab.BasisAdopted}}, Scopes: FundSourcesUsesScopes(), Version: "test"}
+	o := Options{Columns: []Column{{FiscalYear: 2026, Basis: vocab.BasisAdopted}}, Scopes: FundSourcesUsesScopes(), Version: "test"}
 	if _, err := (&fundSourcesUses{Labels: store.reg}).Document(store.facts, o); err == nil ||
 		!strings.Contains(err.Error(), "through-cuts false") {
 		t.Errorf("Document without ThroughCuts = %v, want a refusal", err)

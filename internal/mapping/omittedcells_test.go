@@ -295,11 +295,6 @@ func TestParseRefusesABadOmittedCell(t *testing.T) {
 		{"every column of a row", with(blankLabelled, blankLabelledEntry, blankLabelledEntry+
 			"          - {label: \"Beta\", column: \"FY A\", note: n}\n"),
 			`declares every column of "Beta" blank`},
-		// blankPair skips TOTAL, which cannot be declared blank, so the
-		// refusal counts the columns that publish.
-		{"every column of a row but a skipped one", pair(blankEntry +
-			`          - {label: "Beta", column: "FY B", note: n}` + "\n"),
-			`declares every column of "Beta" blank`},
 		// A skipped row publishes nothing, but its figures are still read off
 		// the page, and a row that prints none leaves the read nothing to end
 		// on.

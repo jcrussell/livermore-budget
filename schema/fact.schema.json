@@ -16,6 +16,7 @@
     "basis",
     "scope",
     "fiscal_year",
+    "fiscal_year_through",
     "row_path",
     "row_label",
     "category",
@@ -67,8 +68,17 @@
       "minLength": 1
     },
     "fiscal_year": {
+      "description": "The fiscal year a figure is of, named by the year it ends: 2026 is FY 2025-26. For a band, its first year, and never to be read without fiscal_year_through.",
       "type": "integer",
       "minimum": 1900
+    },
+    "fiscal_year_through": {
+      "description": "The last fiscal year of a figure printed for several years at once (Budget Book p80's 2031-2035), and null for a figure of one year. Hashed into id where set.",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1901
     },
     "row_path": {
       "type": "string"

@@ -70,7 +70,7 @@ func TestTheSchemaAllowsDeclaredValuesTheCorpusHasNotReachedYet(t *testing.T) {
 	base := map[string]any{
 		"id": "fisc-f-000000000000", "doc_id": "d", "page": 1, "offset": 0,
 		"token": "1", "rule_id": "r", "kind": "revenue", "basis": "adopted",
-		"scope": "s", "fiscal_year": 2026, "row_path": "", "row_label": "",
+		"scope": "s", "fiscal_year": 2026, "fiscal_year_through": nil, "row_path": "", "row_label": "",
 		"category": "", "department": "", "column_path": "", "fund_group": "",
 		"fund": nil, "sign": "positive", "units": "dollars",
 		"amount_cents": 1, "derived": false,

@@ -862,13 +862,13 @@ func buildProjections(ps []project.Projection, facts []fact.Fact, version string
 // fiscal year and then basis so two runs report in the same order.
 func factSlices(facts []fact.Fact, version string) []project.Options {
 	type key struct {
-		year  int
-		basis vocab.Basis
+		year, through int
+		basis         vocab.Basis
 	}
 	seen := map[key]bool{}
 	for _, f := range facts {
 		if f.Scope == spineScope {
-			seen[key{f.FiscalYear, f.Basis}] = true
+			seen[key{f.FiscalYear, fact.BandOf(&f), f.Basis}] = true
 		}
 	}
 	keys := make([]key, 0, len(seen))
@@ -879,13 +879,16 @@ func factSlices(facts []fact.Fact, version string) []project.Options {
 		if keys[i].year != keys[j].year {
 			return keys[i].year < keys[j].year
 		}
+		if keys[i].through != keys[j].through {
+			return keys[i].through < keys[j].through
+		}
 		return keys[i].basis < keys[j].basis
 	})
 
 	out := make([]project.Options, 0, len(keys))
 	for _, k := range keys {
 		out = append(out, project.Options{
-			Columns: []project.Column{{FiscalYear: k.year, Basis: k.basis}},
+			Columns: []project.Column{{FiscalYear: k.year, Basis: k.basis, Through: k.through}},
 			Scopes:  []string{spineScope},
 			Version: version,
 		})

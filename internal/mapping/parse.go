@@ -1090,9 +1090,10 @@ func validatePartAnchors(r *Rule, p *Part, errf errFunc) error {
 // mapped by more than one file and nothing else compares them: LoadDir dedupes
 // rule ids and never looks at doc_id.
 //
-// A page that printed two schedules side by side with different grids would be
-// refused here. No page in this corpus does yet; when one appears, this is the
-// check to relax.
+// A page printing two schedules under different headers names them apart with
+// Part.Grid, and the comparison is per grid: Budget Book pp.80-81 print the
+// debt service budget and, below it, the requirements. Two grids of one page
+// declaring one list are refused, since a name is not a second grid.
 func checkColumnGrids(files []*File) error {
 	type declaration struct {
 		path    string
@@ -1102,6 +1103,7 @@ func checkColumnGrids(files []*File) error {
 	type key struct {
 		docID string
 		page  int
+		grid  string
 	}
 
 	declared := map[key]declaration{}
@@ -1110,7 +1112,7 @@ func checkColumnGrids(files []*File) error {
 			r := &f.Rules[i]
 			for j := range r.Parts {
 				p := &r.Parts[j]
-				k := key{docID: f.DocID, page: p.Page}
+				k := key{docID: f.DocID, page: p.Page, grid: p.Grid}
 				cur := declaration{path: f.Path, rule: r.ID, headers: p.ColumnHeaders}
 				if len(p.ColumnHeaders) == 0 {
 					continue
@@ -1135,6 +1137,20 @@ func checkColumnGrids(files []*File) error {
 		}
 	}
 
+	// Two names for one header list on one page are one grid named twice.
+	for a, da := range declared {
+		for b, db := range declared {
+			if a.docID == b.docID && a.page == b.page && a.grid < b.grid &&
+				slices.Equal(da.headers, db.headers) {
+				return &parseError{Path: db.path, RuleID: db.rule,
+					Field: fmt.Sprintf("parts[page %d].grid", b.page),
+					Msg: fmt.Sprintf("grid %q declares %s, as grid %q of rule %q does; "+
+						"one header list is one grid", b.grid, describeHeaders(db.headers),
+						a.grid, da.rule)}
+			}
+		}
+	}
+
 	// Second pass, because a part with no headers may be read before the part
 	// that declares them.
 	for _, f := range files {
@@ -1145,7 +1161,7 @@ func checkColumnGrids(files []*File) error {
 				if len(p.ColumnHeaders) != 0 {
 					continue
 				}
-				prev, ok := declared[key{docID: f.DocID, page: p.Page}]
+				prev, ok := declared[key{docID: f.DocID, page: p.Page, grid: p.Grid}]
 				if !ok {
 					continue
 				}
@@ -1311,7 +1327,7 @@ func resolveOmittedCells(r *Rule, p *Part, errf errFunc) error {
 		if o.Column == "" {
 			return errf(r.ID, field, "%q names no column", o.row().PrintedLabel())
 		}
-		at, err := p.columnHeaded(o.Column)
+		at, err := p.columnHeadedAt(o.Column, o.ColumnOrdinal)
 		if err != nil {
 			return errf(r.ID, field, "%v", err)
 		}
@@ -1365,11 +1381,12 @@ func validateOmittedCells(r *Rule, p *Part,
 		if p.blank[id] == nil {
 			continue
 		}
-		// Counted over the columns the row still PRINTS, not the cells it
-		// publishes: a blank is a claim about the page, and a row printing no
-		// figure leaves the read nothing to end on. A skipped column can
-		// never be declared blank, so counting it would let a row with every
-		// figure blank pass as one with a cell blank.
+		// Counted over the columns the row still PRINTS, skipped ones
+		// included: a blank is a claim about the page, and a row printing no
+		// figure leaves the read nothing to end on. A skipped column can never
+		// be declared blank, so its figure is one the read still demands.
+		// Budget Book p81 prints its 2046-2050 and 2051-2055 lines with a
+		// figure under Grand Total alone, which the rule skips.
 		printed := 0
 		for c, col := range p.Columns {
 			switch {
@@ -1378,7 +1395,7 @@ func validateOmittedCells(r *Rule, p *Part,
 					errf(r.ID, field, "%q is a skipped column", p.ColumnHeaders[c].Text),
 					"a skipped column yields no figure to be absent; no page needs a "+
 						"blank declared there yet, so the read refuses one")
-			case !col.Skip && !p.blank[id][c]:
+			case !p.blank[id][c]:
 				printed++
 			}
 		}

@@ -480,7 +480,7 @@ func (*expansionSplitsTie) fundCells(s *Subject, x stitched, sp project.Split, m
 	for _, f := range s.Facts {
 		if (f.Scope == structure.ScopeGeneralFundByCategory || f.Scope == structure.ScopeExpenditureByFund) &&
 			f.Fund != nil && *f.Fund == number && f.Kind == vocab.KindExpenditure &&
-			f.FiscalYear == col.FiscalYear && f.Basis == col.Basis && f.AmountCents != 0 {
+			project.ColumnOf(&f) == col && f.AmountCents != 0 {
 			t := at(f.Category)
 			t.printed += f.AmountCents
 			t.printedFacts = append(t.printedFacts, f.ID)

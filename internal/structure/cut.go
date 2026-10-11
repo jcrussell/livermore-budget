@@ -316,8 +316,8 @@ func ValidateCuts(facts []fact.Fact, byRule map[string]Level, cuts []Cut) (empty
 		// Bases are held from both sides: an undeclared one would be left out
 		// silently, and a declared one no fact carries is unfounded.
 		type column struct {
-			year  int
-			basis vocab.Basis
+			year, through int
+			basis         vocab.Basis
 		}
 		seen := map[vocab.Basis]bool{}
 		kinds := map[column]map[vocab.Kind]bool{}
@@ -331,7 +331,7 @@ func ValidateCuts(facts []fact.Fact, byRule map[string]Level, cuts []Cut) (empty
 				return nil, fmt.Errorf("cut %q carries a %q column and declares bases %v", c.Name, f.Basis, c.Bases)
 			}
 			seen[f.Basis] = true
-			col := column{f.FiscalYear, f.Basis}
+			col := column{f.FiscalYear, fact.BandOf(f), f.Basis}
 			if kinds[col] == nil {
 				kinds[col] = map[vocab.Kind]bool{}
 				columns = append(columns, col)
