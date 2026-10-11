@@ -96,8 +96,9 @@ func TestARowCarriesItsYearsAndABandStaysABand(t *testing.T) {
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("cells (-want +got):\n%s", diff)
 	}
-	if len(omitted) != 2 || omitted[0].ColumnIndex != 2 || omitted[1].ColumnIndex != 3 {
-		t.Errorf("omissions = %+v, want the band's cells in columns 2 and 3", omitted)
+	if len(omitted) != 2 || omitted[0].ColumnIndex != 2 || omitted[1].ColumnIndex != 3 ||
+		omitted[0].Header != "Principal #2" || omitted[1].Header != "Interest #2" {
+		t.Errorf("omissions = %+v, want the band's cells in columns 2 and 3, named by ordinal", omitted)
 	}
 	if _, err := r.CheckTotals(rule, p); err != nil {
 		t.Errorf("CheckTotals: %v", err)

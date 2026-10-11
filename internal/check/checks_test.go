@@ -1918,16 +1918,25 @@ func TestRuleFundsMatchTheirHeadings(t *testing.T) {
 		}
 	})
 
-	t.Run("a rule whose columns declare two funds fails", func(t *testing.T) {
-		ru := fundRule("mixed", 500, "enterprise", "Total Water Utility Fund")
+	// A rule whose columns declare two funds is held to a heading line that
+	// names them in column order, as Budget Book p81 heads "Airport Fund" and
+	// "Water Fund" over its requirements.
+	mixed := func(heading string) Result {
+		ru := fundRule("mixed", 500, "enterprise", "Total")
 		ru.Parts[0].Columns = append(ru.Parts[0].Columns,
-			mapping.Column{FundGroup: "enterprise", Fund: 600, FiscalYear: 2027})
-		res := resultFor(t, runChecks(t, fundRuleSubject(t, page, []mapping.Rule{ru}, nil)), id)
-		if res.Status != StatusFail {
-			t.Fatalf("status = %s (%s), want fail", res.Status, res.Summary)
+			mapping.Column{FundGroup: "internal-service", Fund: 700, FiscalYear: 2026})
+		return resultFor(t, runChecks(t, fundRuleSubject(t, heading+page, []mapping.Rule{ru}, nil)), id)
+	}
+	t.Run("a rule whose columns declare two funds its page heads in order passes", func(t *testing.T) {
+		if res := mixed("      Water Utility Fund     Information Technology Fund\n"); res.Status != StatusPass &&
+			strings.Contains(findingDetails(res), "more than one fund") {
+			t.Fatalf("status = %s, findings %v", res.Status, res.Findings)
 		}
-		if !strings.Contains(findingDetails(res), "more than one fund") {
-			t.Errorf("findings %v do not name the mixed columns", res.Findings)
+	})
+	t.Run("a rule whose columns declare two funds in the other order fails", func(t *testing.T) {
+		res := mixed("      Information Technology Fund     Water Utility Fund\n")
+		if res.Status != StatusFail || !strings.Contains(findingDetails(res), "more than one fund") {
+			t.Errorf("status = %s, findings %v; want the mixed columns named", res.Status, res.Findings)
 		}
 	})
 

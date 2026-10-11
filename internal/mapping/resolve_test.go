@@ -171,7 +171,7 @@ func fixtureCopies() []fixtureCopy {
 // there for a named failure mode; see testdata/README.md.
 var fixturePages = map[string][]int{
 	budgetFixtures.id: {
-		66, 67, 76,
+		66, 67, 76, 80, 81,
 		127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139, 140,
 		167, 168, 169, 170,
 		175,

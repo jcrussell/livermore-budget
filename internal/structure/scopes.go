@@ -16,6 +16,7 @@ const (
 	ScopeACFRChangesInFundBalances  = "acfr-changes-in-fund-balances"
 	ScopeACFRFundBalances           = "acfr-fund-balances"
 	ScopeDebtServiceByIssue         = "debt-service-by-issue"
+	ScopeDebtServiceRequirements    = "debt-service-requirements"
 	ScopeCIPProjectListing          = "cip-project-listing"
 	ScopeFundBalancesByFund         = "fund-balances-by-fund"
 )

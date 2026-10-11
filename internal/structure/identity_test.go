@@ -69,10 +69,11 @@ func TestEveryScopeInTheStoreIsACut(t *testing.T) {
 	if len(findings) != 0 {
 		t.Errorf("coverage:\n  %s", strings.Join(findings, "\n  "))
 	}
-	if uncovered != 4+54+1050+1120 {
+	if uncovered != 4+54+56+1050+1120 {
 		t.Errorf("%d facts under the declared residue, want dw-maintenance's 4 Transfers Out "+
 			"cells, pp.80-81's 54 debt-service cells (9 issues, principal and interest, "+
-			"three years), pp.224-235's 1,050 (210 projects, five years) and pp.186-209's "+
+			"three years) and 56 requirements cells (Governmental Funds 10 rows, Internal Service "+
+			"4, Airport 8 and Water 6, principal and interest), pp.224-235's 1,050 (210 projects, five years) and pp.186-209's "+
 			"Capital Improvement Program Funds block, 1,120 (35 funds, eight lines, four years)", uncovered)
 	}
 	if v, err := structure.NewView("everything", cuts, nil, nil, nil); err == nil {
@@ -82,13 +83,14 @@ func TestEveryScopeInTheStoreIsACut(t *testing.T) {
 	t.Run("a residue matching no fact is refused, and an undeclared fact is named", func(t *testing.T) {
 		findings, _ := structure.Covered(facts, cuts, nil)
 		joined := strings.Join(findings, "\n  ")
-		if len(findings) != 4+54+1050+1120 || !strings.Contains(joined, "dw-maintenance") ||
+		if len(findings) != 4+54+56+1050+1120 || !strings.Contains(joined, "dw-maintenance") ||
 			!strings.Contains(joined, "debt-service-principal") ||
+			!strings.Contains(joined, "debt-service-requirements") ||
 			!strings.Contains(joined, "cip-listing-p0224") ||
 			!strings.Contains(joined, "fund-balances-fy2024-p0190") ||
 			strings.Contains(joined, "fund-balances-fy2024-p0190-above-cip") {
 			t.Errorf("with no residue declared, want the 4 Transfers Out facts, the 54 "+
-				"debt-service facts, the 1,050 CIP listing facts and the 1,120 CIP-block "+
+				"debt-service facts, the 56 requirements facts, the 1,050 CIP listing facts and the 1,120 CIP-block "+
 				"fund-balance facts named, and none above the block:\n  %s", joined)
 		}
 		findings, _ = structure.Covered(facts, cuts, append(structure.BudgetBookResidue(),

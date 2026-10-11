@@ -158,9 +158,8 @@ func (*ruleFundsMatchTheirHeadings) Run(_ context.Context, s *Subject) (Result, 
 
 			fund, mixed := declaredFund(ru)
 			if mixed {
-				findings = append(findings, finding(ru.ID,
-					"this rule's columns declare more than one fund, so no single heading "+
-						"can name it and the figures beneath one label belong to two funds"))
+				subjects++
+				findings = append(findings, columnFundsNamed(s, f.DocID, ru)...)
 				continue
 			}
 			if fund == 0 {
@@ -440,4 +439,74 @@ func sortedPages(m map[int]bool) []int {
 	}
 	sort.Ints(out)
 	return out
+}
+
+// columnFundsNamed holds a rule whose columns declare more than one fund to
+// the page that prints them: every part reading a fund column prints, on one
+// line, the name data/funds.yaml gives each of its funds, left to right in
+// the order its columns declare them. Budget Book p81 heads its requirements
+// "Airport Fund", "Water Fund", "Grand Total", over columns declaring 600 and
+// 640. A rule whose funds no heading names, or names in another order, is two
+// funds' figures filed under each other's numbers.
+//
+// Mutation: swap fund 600 and 640 on p81's columns and this finds the page
+// prints them in the other order.
+func columnFundsNamed(s *Subject, docID string, ru *mapping.Rule) []Finding {
+	doc, ok := s.Docs[docID]
+	if !ok {
+		return []Finding{finding(ru.ID, "this rule's columns declare more than one fund, and %s "+
+			"cannot be read to find the headings naming them", docID)}
+	}
+	var findings []Finding
+	for i := range ru.Parts {
+		p := &ru.Parts[i]
+		var names []string
+		var funds []int
+		for _, c := range p.Columns {
+			if c.Skip || c.Fund == 0 || (len(funds) > 0 && funds[len(funds)-1] == c.Fund) {
+				continue
+			}
+			entry, ok := s.Vocabulary.Fund(c.Fund)
+			name := entry.Name
+			if !ok {
+				findings = append(findings, finding(ru.ID, "p%d declares fund %d, which data/funds.yaml "+
+					"does not list", p.Page, c.Fund))
+				return findings
+			}
+			names = append(names, name)
+			funds = append(funds, c.Fund)
+		}
+		if len(names) == 0 {
+			continue
+		}
+		text, err := doc.Page(p.Page)
+		if err != nil {
+			return append(findings, finding(ru.ID, "p%d cannot be read: %v", p.Page, err))
+		}
+		named := false
+		for _, line := range strings.Split(text, "\n") {
+			at := 0
+			inOrder := true
+			for _, n := range names {
+				if !strings.HasSuffix(n, " Fund") {
+					n += " Fund"
+				}
+				j := strings.Index(line[at:], n)
+				if j < 0 {
+					inOrder = false
+					break
+				}
+				at += j + len(n)
+			}
+			if inOrder {
+				named = true
+				break
+			}
+		}
+		if !named {
+			findings = append(findings, finding(ru.ID, "p%d's columns declare more than one fund, %v, "+
+				"and no line of the page heads them %q in that order", p.Page, funds, names))
+		}
+	}
+	return findings
 }

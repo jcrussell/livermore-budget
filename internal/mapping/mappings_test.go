@@ -354,13 +354,14 @@ func TestPublishedPartsDeclareColumnHeaders(t *testing.T) {
 	// omitting the list would be a hard parse error rather than a weaker read.
 	// And p222, the CIP funding bridge, one part; and 66 fund parts over
 	// pp.172-183, one per fund, of which three declare two because their rows
-	// straddle a page break. And pp.80-81's debt service, two rules of two
-	// parts each, principal and interest; and pp.224-235's CIP project
+	// straddle a page break. And pp.80-81's debt service, three rules of two
+	// parts each: principal and interest by issue, and the requirements
+	// schedule below them, on a grid of its own; and pp.224-235's CIP project
 	// listing, one rule per page pair. And pp.186-209's fund balances, sixteen
 	// rules of two parts each: one per page pair, and the four page pairs that
 	// print the Capital Improvement Program Funds block read it as a rule of
 	// its own, so a cut can select the funds above it and leave the block out.
-	if want := 283; parts != want {
+	if want := 285; parts != want {
 		t.Errorf("checked %d parts, want %d; the published file's shape changed",
 			parts, want)
 	}
