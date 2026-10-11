@@ -270,58 +270,40 @@ each states its own below rather than inheriting the spine's.
 which is the whole of its 25. Tiers 3 and 4 are empty, because pp.66-67 publish
 neither a fund nor a department axis.
 
-**All three of the spine's drawn columns open, every node in them opens, and
-every rung opened from a container is a WINDOW** — the node the reader clicked in the middle, with three columns the
-narrowest such window; what each rung draws at what width is stated in
-`docs/general-fund-drilldown-contract.md`. The steps form a tree, not a chain:
-the six tier-2 fund groups
-open into `fund-flows` for the same fiscal year, keeping this document's own
-revenue categories on the left and drawing the group's funds on the right; the
-ten tier-0 revenue categories open into a window of the same document — the
-lines it prints under the category, the category itself, and the spine's own
-fund groups for it; and the four tier-5 `expenditure/` nodes open into
-`department-spending` — the fund groups that fund the category, the category
-itself, and the divisions that spend it. From an opened fund group the General
-Fund opens into its divisions and a division into its object categories, three
-rungs deep.
-
-**The five flow ENDS open too, and none of their rungs is a window.** A flow end
-is not a container on the spine, so it has no parts to put a window around; each
-step keeps no flank and draws its own document's columns alone. `transfers/in`
-opens into `transfers-by-fund` — the funds that pay each transfer on the left,
-the funds that receive them on the right — and `transfers/out` into
-`transfers-out`, p76's paying legs and p222's transfers to the CIP. The three
-fund-balance ends open into `fund-sources-uses`, pp.186-209 fund by fund:
-`fund-balance/draw` into the funds whose balance falls, `fund-balance/contribution`
-into the funds whose balance rises, and `fund-balance/reserve-increase` into the
-one fund that prints a reserve increase, the General Fund. Those ends are GROSS
-where the spine is net: pp.66-67 net each fund group's change in working capital
-into one signed row, and pp.186-209 print each fund's own balances, so the funds
-an end opens into sum to more than the spine's mark (the document's
-`each-fund-change-is-gross` caveat carries the gross sum and the group-netted one;
-the spine's mark is pp.66-67's own figure). `transfers/in` and
-`fund-balance/draw` open a SOURCE, and `SankeyHints.Side` says so rather than
-letting a client infer it from the tier numbers.
-
-**A fund on a fund-balance rung opens between its two sides.** Its step draws
-the same document again, the fund's sources on the left and its uses on the
-right, with `Side` `both`: the opened node is the TARGET of one half and the
-SOURCE of the other, both read off pp.186-209, so nothing of the chart above is
-kept at its share of the fund. Every rung of it ends the drill.
-
-Steps sharing a tier of one chart partition it by `Role`; a step with no
-`Role` opens every node at its tier, and validateSteps refuses it beside a
-step on that tier that names one. The sixty funds pp.167-170 do not decompose are closed to the DIVISION step
-by a `Role` in the same way and opened by a step of their own into pp.85-125's
-departments; which of them that step can open is read off each year's document
-by the client (`decomposable` in `site/sankey.js`), stated in
-`docs/general-fund-drilldown-contract.md`. Depth 0 is this document drawn whole.
-
 Those counts are per TIER and include the flow endpoints, which is why they are
 larger than the id-form counts a reader might tally from the table above: tier 0
 is 10 `revenue/` nodes plus `transfers/in` and `fund-balance/draw`, and tier 5 is
 4 `expenditure/` nodes plus `transfers/out`, `fund-balance/reserve-increase` and
 `fund-balance/contribution`.
+
+**The page's chart is the expansion schedule, and a node splits where it
+stands.** At its root frontier the expansion draws the spine's three columns;
+`splits` says how each node opens: a revenue category into its lines,
+Transfers In into the funds that pay it, a fund group into its funds, the
+General Fund into its divisions, an object category into its object rows or,
+as the alternative a reader chooses instead, the divisions that spend it, and
+Transfers Out into the funds it pays. The fund-balance ends declare no split.
+A REFINE split draws the members where the node stood; an EXTEND split keeps
+the node and draws its members in a column of their own after it. Every node
+not split stays where it is, so expanding node by node reaches the finest
+grain the stitch carries without leaving the chart.
+
+**Every node the expansion draws carries `slot`**, the order key of the column
+it stands in: a root at its tier's place in the overview's `tiers`, a refine
+member in its parent's slot, an extend member in the slot after its parent's
+(`expansionSlots` in `site/sankey.js`). A split's tail sits in its members'
+slot (`schema/mark.schema.json`). The slots present are ranked into columns,
+and the client refuses, with a banner and the chart unchanged, a layout in
+which d3-sankey would draw a node in any column but its slot's.
+
+**Two hints fit it to a screen.** `sankey.grow` sizes the canvas: `node_px`
+for each node of the busiest column drawn, held between `floor` and
+`ceiling`. `sankey.split_caps` is per split key: how many members a split
+draws (`cap`) before the rest fold into one tail inside the node they split,
+and the word the tail counts them in (`tail`). Which members fold is the
+client's; a reader draws a tail out at full length, and the hash carries that
+as one more entry. `validateGrowth` and `validateSplitCaps` refuse at the
+write a canvas or a cap the client could not honour.
 
 `counts.facts` is the filtered input count — every fact matching the fiscal
 year, basis and scope. `counts.facts_cited` is how many of those a link

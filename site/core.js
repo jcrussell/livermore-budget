@@ -10,7 +10,10 @@
  * instance; a module app.js imports by relative path is instantiated once per
  * process and shared by every test, so anything held here would leak between
  * them. The page's config is read through config() at call time, and the DOM
- * through `document` inside the function that needs it.
+ * through `document` inside the function that needs it. The one module-level
+ * store is `schedules`, a memo keyed by the column object whose every entry is
+ * a pure function of its key, so a test sharing it shares nothing it would
+ * not recompute.
  *
  * A type named here is one of app.js's typedefs, generated from schema/.
  */
@@ -94,13 +97,6 @@ export function fmtSigned(cents) {
 export function fmtShortSigned(cents) {
   return (cents < 0 ? "\u2212" : "") + fmtShort(Math.abs(cents));
 }
-
-const moneyExact = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
 
 /**
  * @param {string[]} parts
@@ -366,7 +362,7 @@ function assembleSchedule(column, key) {
  * false booleans) filled in.
  *
  * @param {any} column
- * @param {string} key the schedule to read -- a step's `projection`
+ * @param {string} key the schedule to read: the page's `primary`
  * @returns {FiscProjection | null} null when the column carries no such schedule
  */
 export function scheduleOf(column, key) {
@@ -407,8 +403,7 @@ export function withinNode(doc, id) {
 /**
  * The frontier a tier set draws: every node at one of those tiers, so a fold
  * to it places each node at its nearest ancestor-or-self at a drawn tier.
- * Empty where no node is at any of them, which scoped() answers as "nothing
- * is placed" and foldDocument refuses.
+ * Empty where no node is at any of them, which foldDocument refuses.
  *
  * @param {FiscProjection} doc
  * @param {Iterable<number>} tiers
@@ -420,24 +415,9 @@ export function tierFrontier(doc, tiers) {
 }
 
 /**
- * Whether a link end has a column in this tier set. A broken parent chain is
- * Go's to refuse at the write (node-hierarchy-well-formed), so a node with no
- * drawn ancestor is simply not placed.
- *
- * @param {FiscProjection} doc
- * @param {number[]} tiers
- * @returns {(n: FiscNode) => boolean}
- */
-export function scoped(doc, tiers) {
-  const byID = new Map(doc.nodes.map((n) => [n.id, n]));
-  const frontier = tierFrontier(doc, tiers);
-  return (n) => foldTarget(byID, n, frontier) !== "";
-}
-
-/**
  * The id a node folds to under a frontier: itself or its nearest ancestor in
- * it, or "" when it has neither. The non-throwing half of foldDocument's first
- * loop: to filterLinks an unplaceable end is an ordinary answer, not a fault.
+ * it, or "" when it has neither, which foldDocument refuses unless the node
+ * is opened.
  * @param {Map<string,FiscNode>} byID
  * @param {FiscNode} n
  * @param {ReadonlySet<string>} frontier
@@ -833,7 +813,7 @@ export function reveal(doc, frontier, id) {
  * A cap, not a rescale: the concentration is within a column, and the fold
  * tests measure the sub-pixel ribbons it removes. Values sum and fact ids and
  * locators union, as in the fold, so the aggregate stays citable. What MAY
- * fold is Go's (DrillStep.Caps); which nodes it keeps is this page's.
+ * fold is Go's (sankey.split_caps); which nodes it keeps is this page's.
  *
  * @param {FiscProjection} doc
  * @param {number} tier
@@ -881,8 +861,8 @@ export function capColumn(doc, tier, cap, opened, noun, among) {
 
   // A FOLDED NODE'S CHILDREN HANG FROM THE TAIL: foldDocument refuses a child
   // naming a parent the document does not carry, and dropping the child would
-  // drop the money it carries onward -- a folded fund's object categories, in
-  // a fund group's window.
+  // drop the money it carries onward -- a folded member's own members, drawn
+  // beside it by an extend split.
   const nodes = doc.nodes
     .filter((n) => !inColumn(n) || kept.has(n.id))
     .map((n) => (tail.has(n.parent) ? Object.assign({}, n, { parent: tailID }) : n))
@@ -927,7 +907,7 @@ export const AGGREGATE_PREFIX = "aggregate/tail/";
 
 /**
  * The id of the node one tier's capped tail is folded into. Per tier, because
- * a step can cap two columns and d3-sankey and the fold both key by id.
+ * one chart can cap two columns and d3-sankey and the fold both key by id.
  * @param {number} tier
  * @returns {string}
  */
@@ -1266,10 +1246,9 @@ export function foldSmaller(links, byID, smallest) {
 }
 
 /* ------------------------------------------------------------------ *
- * The figures a mark carries: sums over cited ribbons, and a difference
- * held to a licence Go shipped. A form supplies what only it knows --
- * where a mark stands, and whether this width draws a column -- and
- * computes no figure of its own.
+ * The figures a mark carries: sums over cited ribbons. A form supplies
+ * what only it knows -- where a mark stands -- and computes no figure of
+ * its own.
  * ------------------------------------------------------------------ */
 
 /**

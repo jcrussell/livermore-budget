@@ -3,8 +3,12 @@
  * fisc — the published page's client script.
  *
  * Served exactly as committed; the page template boots it by importing [boot].
- * Every top-level binding is exported so the tests import the shipped file,
- * and nothing runs at import. Nothing runs tsc: `@ts-check` is for an editor.
+ * What the tests drive is exported, so they import the shipped file. At import
+ * it reads its two globals once, d3 (D3) and window.FISC_CONFIG (CONFIG), and
+ * derives RENDER_TIERS and WIDE_QUERY from the config; it draws nothing and
+ * binds no listener until [boot] runs. It holds the page's state, so the tests
+ * load it fresh for each page they build (site/testlib.mjs). Nothing runs
+ * tsc: `@ts-check` is for an editor.
  *
  * Go validates every artifact against schema/ before writing it, so nothing
  * here re-checks a shape. What this file refuses is what only it can answer:
@@ -50,7 +54,6 @@ export * from "./sankey.js";
 /** schema/page.schema.json#/properties/years/items/properties/hero. @typedef {Record<string, any>} FiscFigure */
 /** schema/page.schema.json#/properties/years/items. @typedef {Record<string, any>} FiscYear */
 /** schema/page.schema.json, the page's window.FISC_CONFIG. @typedef {Record<string, any>} FiscConfig */
-/** schema/page.schema.json#/$defs/sankey_hints, a chart's Sankey hints. @typedef {Record<string, any>} FiscSankeyHints */
 /** schema/page.schema.json#/properties/overview, the page's own chart: its form and hints. @typedef {Record<string, any>} FiscChart */
 /** schema/projection.schema.json, as scheduleOf assembles it from a column document. @typedef {Record<string, any>} FiscProjection */
 
@@ -120,7 +123,7 @@ export function homeOf(l) {
  * @typedef {{
  *   form: string,
  *   tiersOf(chart: FiscChart): number[],
- *   splitCaps(chart: FiscChart): {split: string, cap: number, tail: string}[],
+ *   tailWord(chart: FiscChart, key: string): string | null,
  *   width(columns: number): number,
  *   columnsOf(drawn: FiscProjection, tiers: number[]): number,
  *   shape(doc: FiscProjection, view: ShapeView): FiscProjection,
@@ -552,10 +555,9 @@ export function splittable(d) {
 }
 
 /**
- * Whether a mark is a folded tail this chart can draw out at full length: on
- * the expansion, a split's tail; on any other document, a tier the chart caps
- * and the reader has not drawn out.
- * @param {{id: string, tier: number}} d
+ * Whether a mark is a folded tail this chart can draw out at full length: a
+ * split's tail, on the expansion schedule.
+ * @param {{id: string}} d
  * @returns {boolean}
  */
 export function expandable(d) {
@@ -757,10 +759,10 @@ export function collapseAll() {
 /**
  * Draws out a split's folded tail at every member it holds: the split drawn
  * whole. Focus goes to the topmost member it drew.
- * @param {{id: string, tier: number}} d
+ * @param {{id: string}} d
  * @returns {boolean} whether it is drawn out
  */
-export function expandTier(d) {
+export function drawOutTail(d) {
   const tail = core.splitTailOf(d.id);
   if (!expanding() || !tail || !fetched) return false;
   const split = core.splitsOf(fetched, tail.node).find((sp) => sp.key === tail.key);
@@ -852,7 +854,7 @@ export function doubleClickNode(d, at, fold = false) {
  * the node split by its first declared split (splittable), else the folded
  * tail drawn out (expandable). The one rule Enter on a mark, a double click
  * and the search's Enter share.
- * @param {{id: string, tier: number}} d
+ * @param {{id: string}} d
  * @returns {boolean}
  */
 export function openOffered(d) {
@@ -861,7 +863,7 @@ export function openOffered(d) {
     return true;
   }
   if (expandable(d)) {
-    expandTier(d);
+    drawOutTail(d);
     return true;
   }
   return false;
@@ -982,8 +984,8 @@ export function buildLegendCount() {
  * Collapse all, then one chip per node split open, in the order the reader
  * split them, each folding its node back, with a chooser beside a node that
  * splits more than one way, and one chip per tail drawn out; on any other
- * document, one chip per tier drawn out. The only always-visible way to fold
- * a split back, since splitting can remove the node that was clicked.
+ * document, nothing. The only always-visible way to fold a split back, since
+ * splitting can remove the node that was clicked.
  */
 export function paintChips() {
   const bar = maybeEl("breadcrumb");
@@ -1083,9 +1085,7 @@ function tailChip(node, key) {
   const split = fetched ? core.splitsOf(fetched, node).find((sp) => sp.key === key) : undefined;
   const drawn = new Set(projection ? projection.nodes.map((x) => x.id) : []);
   const count = split ? split.members.filter((m) => drawn.has(m)).length : 0;
-  const chart = chartOnScreen();
-  const cap = formFor(chart).splitCaps(chart).find((c) => c.split === key);
-  const word = cap ? cap.tail : splitWords(key);
+  const word = formOnScreen().tailWord(chartOnScreen(), key) || splitWords(key);
   const id = core.splitTailID(node, key);
   return foldBackChip(say("tail_chip", { label, n: count, word }), say("tail_chip_label", { label, n: count, word }),
     () => redraw(expansions.filter((e) => e !== id), "That could not be folded back", () => id));
@@ -1881,8 +1881,7 @@ export function showTip(event, d) {
     const cavs = caveatsFor(n.id);
     if (cavs.length) {
       meta.append(document.createTextNode(" "));
-      meta.append(h("span", "chip caveat", cavs.length === 1
-        ? "\u26a0 1 caveat" : "\u26a0 " + cavs.length + " caveats"));
+      meta.append(h("span", "chip caveat", say("caveat_chip", { n: cavs.length })));
     }
     tip.append(meta);
     for (const b of balancesOf(n)) tip.append(h("div", "tip-meta", b.words));
@@ -2080,9 +2079,10 @@ export function buildDerivedList() {
       const total = flows.reduce((sum, l) => sum + l.value_cents, 0);
       // "inferred": a tail's own note counts the flows it FOLDS, a
       // different set, and an unqualified count would read as correcting it.
-      li.append(h("div", "subtle",
-        flows.length + " inferred flow" + (flows.length === 1 ? "" : "s") + " totalling " + fmt(total) + ": " +
-        flows.map((l) => (labels.get(l.source) || l.source) + " → " + (labels.get(l.target) || l.target)).join("; ")));
+      li.append(h("div", "subtle", say("inferred_flows", {
+        flows: flows.length, figure: fmt(total),
+        ends: flows.map((l) => (labels.get(l.source) || l.source) + " → " + (labels.get(l.target) || l.target)).join("; "),
+      })));
     }
     list.append(li);
   }
@@ -2958,7 +2958,7 @@ export function selectSchedule(col, key) {
 
 /**
  * What one showYear attempt came to. SUPERSEDED (a later switch took over) is
- * not FAILED (the reader has been told), and a boolean conflated them.
+ * not FAILED (the reader has been told).
  */
 export const DREW = "drew";
 export const SUPERSEDED = "superseded";
@@ -3119,8 +3119,6 @@ export function paintYearWords(year) {
     return el;
   };
 
-  // maybeEl: only index.html.tmpl renders these, since a page drawing one
-  // grain of one document must publish no total.
   const hero = maybeEl("hero");
   if (hero) hero.replaceChildren(tile(year.hero));
 
@@ -3302,7 +3300,7 @@ export async function main() {
 
 /**
  * Boots the page: [main], with its last-resort catch turned into a refusal.
- * The template calls this; nothing runs at import.
+ * The template calls this; importing the module draws nothing.
  */
 export function boot() {
   return main().catch((e) => fail("The chart failed to draw: " + String(e)));

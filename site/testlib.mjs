@@ -280,7 +280,7 @@ export function expandAll(app) {
   for (let done = 0; done < 64; done++) {
     const tail = app.projection.nodes.find((n) => app.expandable(n));
     if (!tail) return done;
-    if (!app.expandTier(tail)) throw new Error(`${tail.id} would not draw out`);
+    if (!app.drawOutTail(tail)) throw new Error(`${tail.id} would not draw out`);
   }
   throw new Error("a chart still offers a tail to draw out after 64 of them");
 }

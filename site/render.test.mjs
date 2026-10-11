@@ -12,8 +12,8 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 import {
-  bootedApp, split, expandAll, everySplit, settle, refusals, columnFixture, pageFixture, fire, repoRoot,
-  dollars, shortDollars,
+  bootedApp, loadApp, split, expandAll, everySplit, settle, refusals, columnFixture, pageFixture, fire, repoRoot,
+  dollars, shortDollars, clickYear,
 } from "./testlib.mjs";
 
 const CONFIG = pageFixture().config;
@@ -747,7 +747,7 @@ describe("the expansion's drawing", () => {
       const cappedMarks = marksCarrying();
       const cappedTail = marksIn(chart).find((m) => app.isAggregate(m.__data__.id));
       assert.ok(cappedTail, "no tail is drawn on the planted page");
-      app.expandTier(cappedTail.__data__);
+      app.drawOutTail(cappedTail.__data__);
       await settle();
       const drawnOut = marksCarrying();
       t.diagnostic(`a caveat naming ${foldedID}, which the cap folds, is carried by ${JSON.stringify(cappedMarks)} ` +
@@ -1007,5 +1007,102 @@ describe("the wording is the packager's", () => {
     assert.ok(chips.includes("«split_labels» object rows") || chips.some((c) => c === app.splitWords("object-rows")), JSON.stringify(chips));
     assert.ok(named.some((n) => n.startsWith("«chip_fold_label» General Fund")), JSON.stringify(named));
     assert.ok(named.some((n) => n.startsWith("«split_chooser» Split Services")), JSON.stringify(named));
+  });
+});
+
+// The words a tail chip counts in are the chart's declared tail, which the
+// form answers: app.js reads no hint.
+describe("the tail chip counts in the declared tail's words", () => {
+  test("each split's tail word is the one its split cap declares, on the chip a drawn-out tail leaves", async (t) => {
+    const config = structuredClone(CONFIG);
+    for (const c of config.overview.sankey.split_caps) c.tail = `tail-of-${c.split}`;
+    const { app, document } = await bootedApp({ config, checkedStem: YEARS[0].stem });
+    const chart = document.getElementById("chart");
+    const worst = worstOf(app);
+    await split(app, worst);
+    const tail = marksIn(chart).find((m) => app.expandable(m.__data__));
+    assert.ok(tail, "no drawn mark offers to draw out");
+    app.drawOutTail(tail.__data__);
+    await settle();
+    const chip = [...document.querySelectorAll("#breadcrumb .crumb-expanded")].at(-1);
+    const words = { text: chip.textContent, label: chip.getAttribute("aria-label") };
+    t.diagnostic(`the chip reads "${words.text}", named "${words.label}"`);
+    assert.ok(words.text.includes(" tail-of-funds "), words.text);
+    assert.ok(words.label.includes(" tail-of-funds"), words.label);
+    assert.equal(app.SANKEY.tailWord(config.overview, "lines"), "tail-of-lines");
+    assert.equal(app.SANKEY.tailWord(config.overview, "payers"), null);
+  });
+});
+
+// AGENTS.md, "Go vets, JavaScript renders": a count the client takes is
+// its sentence about what is drawn, marked as its own. Each sentence is read
+// off the page where it is painted, after the state that paints it.
+describe("a count the client takes is marked as its own", () => {
+  const MARK = "\u25c7";
+  const OLDEST = YEARS[0];
+  const NEWEST = YEARS[YEARS.length - 1];
+
+  test("every painted sentence carrying a count the client took carries the mark", async (t) => {
+    // PLANTED: a caveat on a root mark, so its tooltip carries a caveat count.
+    const col = structuredClone(columnFixture(OLDEST.fixture));
+    col.schedules.expansion.caveats.push({ id: "a-planted-caveat", summary: "A planted caveat.", text: "", applies_to: ["fund-group/general"] });
+    const { app, document } = await bootedApp({ checkedStem: OLDEST.stem, plan: { [OLDEST.path]: { doc: col } } });
+    const chart = document.getElementById("chart");
+    const text = (id) => document.getElementById(id).textContent;
+    /** @type {Record<string, string>} */
+    const said = {};
+    said.counts = text("counts-line");
+    said.caveats = document.getElementById("caveats-count").parentElement.textContent.replace(/\s+/g, " ").trim();
+    said.hairline = text("hairline-line");
+    const general = marksIn(chart).find((m) => m.__data__.id === "fund-group/general");
+    assert.ok(general, "the root draws no fund-group/general");
+    app.showTip({ target: chart, clientX: 0, clientY: 0 }, general.__data__);
+    said.caveatChip = [...document.querySelectorAll("#tooltip .chip.caveat")].map((c) => c.textContent).join(" | ");
+    const input = document.getElementById("search-input");
+    input.value = "general";
+    input.dispatchEvent(new globalThis.Event("input", { bubbles: true }));
+    said.search = text("search-status");
+    const worst = worstOf(app);
+    await split(app, worst);
+    const tail = marksIn(chart).find((m) => app.expandable(m.__data__));
+    assert.ok(tail, "no drawn mark offers to draw out");
+    app.drawOutTail(tail.__data__);
+    await settle();
+    said.tailChip = [...document.querySelectorAll("#breadcrumb .crumb-expanded")].at(-1).textContent;
+    app.expandAll();
+    await settle();
+    said.inferred = [...document.querySelectorAll("#derived-list li")]
+      .filter((li) => li.querySelector(".what").textContent.startsWith(MARK) && li.querySelectorAll(".subtle").length)
+      .map((li) => [...li.querySelectorAll(".subtle")].at(-1).textContent).find((w) => / totalling /.test(w)) || "";
+    const range = document.getElementById("filter-smallest");
+    range.value = "3";
+    fire(range, "input");
+    said.filter = text("filter-said");
+    for (const [what, words] of Object.entries(said)) t.diagnostic(`${what}: "${words}"`);
+    for (const [what, words] of Object.entries(said)) {
+      assert.ok(words !== "", `nothing is painted for ${what}, so nothing is tested`);
+      assert.ok(words.includes(MARK) || /\byour\b/i.test(words), `${what} counts without the mark: "${words}"`);
+    }
+  });
+
+  test("the sentence a year switch says about the splits it folded back carries the mark", async (t) => {
+    // PLANTED as the year-switch test plants it: the oldest year's capital
+    // group renamed, so a split of it cannot be kept.
+    const planted = structuredClone(columnFixture(OLDEST.fixture));
+    const capital = planted.nodes.findIndex((n) => n.id === "fund-group/capital");
+    planted.nodes[capital].id = "fund-group/capital-planted";
+    for (const sched of Object.values(planted.schedules)) {
+      for (const n of sched.nodes) if (n.parent === "fund-group/capital") n.parent = "fund-group/capital-planted";
+    }
+    const { app, document } = await loadApp({ plan: { [OLDEST.path]: { doc: planted } } });
+    await app.boot();
+    await settle();
+    await split(app, "fund-group/capital");
+    clickYear(document, OLDEST.stem);
+    await settle();
+    const line = document.getElementById("splits-line");
+    t.diagnostic(`"${line.textContent}"`);
+    assert.equal(line.hidden, false, "the switch folded nothing back, so nothing is tested");
+    assert.ok(line.textContent.includes(MARK), line.textContent);
   });
 });

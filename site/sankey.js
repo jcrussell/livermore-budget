@@ -30,7 +30,7 @@ export const CHART_HEIGHT = 820;
  * The canvas a chart is laid out on, in px: under a declared sankey.grow,
  * node_px for each node of the busiest slot of `nodes`, held between its
  * floor and its ceiling; else CHART_HEIGHT.
- * @param {FiscChart | FiscDrillStep | null | undefined} chart
+ * @param {FiscChart | null | undefined} chart
  * @param {{id: string, tier: number, slot?: number}[]} [nodes] what is drawn on it
  * @returns {number}
  */
@@ -68,7 +68,7 @@ export const HAIRLINE = 1;
  * declares its canvas (sankey.grow), the one kind of chart
  * whose thin ribbons are accepted rather than folded away. On the form's own
  * canvas a ribbon keeps the stroke floor every chart has.
- * @param {FiscChart | FiscDrillStep | null | undefined} chart
+ * @param {FiscChart | null | undefined} chart
  * @param {LaidLink} d
  * @returns {boolean}
  */
@@ -91,8 +91,7 @@ export const BAND = 319;
 
 /**
  * How wide a chart of `n` columns is laid out, in px. Labels do not reflow, so
- * the chart is laid out at a fixed width and scaled by the viewBox; the column
- * budget is asked of the viewport (COLUMN_QUERIES) for that reason.
+ * the chart is laid out at a fixed width and scaled by the viewBox.
  * @param {number} n
  * @returns {number}
  */
@@ -519,9 +518,9 @@ export function labelLineShift(anchor) {
  * The share one mark is of the money in its column, as a percentage.
  *
  * IT IS ARITHMETIC AND SAYS SO: no page prints it. Computed from the DRAWN
- * values, a residual's included. A printed reduction (isContraNode) is drawn
- * at its size but is no part of the column's money, so it has no share and
- * is left out of every other mark's total.
+ * values. A printed reduction (isContraNode) is drawn at its size but is no
+ * part of the column's money, so it has no share and is left out of every
+ * other mark's total.
  *
  * @param {LaidNode} d
  * @param {LaidNode[]} laid every laid node of the chart
@@ -576,9 +575,9 @@ export function nodeRank(groupOf, placeOf, node) {
     weight += l.value;
   }
   if (weight) return place / weight;
-  // NO NEIGHBOUR IN A GROUP: the residual, whose neighbours are all
-  // endpoints, rests at its own group's place, which its parent names. A node
-  // in no group either sorts to the top, and its own value breaks the tie.
+  // NO NEIGHBOUR IN A GROUP: a node whose every neighbour is in no fund
+  // group rests at its own group's place, which its parent chain names. A
+  // node in no group either sorts to the top, and its own value breaks the tie.
   const own = groupOf(node);
   return own ? placeOf(own) : 0;
 }
@@ -637,7 +636,10 @@ export function layOutAt(drawn, ctx, height) {
 export const SANKEY = Object.freeze({
   form: "sankey",
 
-  /** The declared tiers of an overview or a step, left to right. */
+  /**
+   * The overview's declared tiers, left to right: the spine's columns, which
+   * a root of the expansion is placed by.
+   */
   tiersOf(chart) {
     return (chart.sankey && chart.sankey.tiers) || [];
   },
@@ -672,9 +674,15 @@ export const SANKEY = Object.freeze({
     return contraNote(d);
   },
 
-  /** The split caps a chart declares, one per split key that needs one. */
-  splitCaps(chart) {
-    return (chart.sankey && chart.sankey.split_caps) || [];
+  /**
+   * The words a split's tail counts its members in, as the chart's
+   * sankey.split_caps declares them for that split key, or null where it
+   * caps no such split.
+   */
+  tailWord(chart, key) {
+    const caps = (chart.sankey && chart.sankey.split_caps) || [];
+    const cap = caps.find((/** @type {{split: string, tail: string}} */ c) => c.split === key);
+    return cap ? cap.tail : null;
   },
 
   /**

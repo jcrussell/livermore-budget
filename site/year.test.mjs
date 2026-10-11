@@ -389,7 +389,7 @@ describe("a year switch and the splits on screen", () => {
     const tail = () => app.projection.nodes.find((n) => app.isAggregate(n.id));
     await split(app, group);
     const folded = { funds: funds(), tail: tail() ? tail().label : "" };
-    app.expandTier(tail());
+    app.drawOutTail(tail());
     await settle();
     const expanded = { funds: funds(), tail: tail() ? tail().label : "" };
     clickYear(document, "sankey-2027");

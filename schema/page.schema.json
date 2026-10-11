@@ -277,6 +277,8 @@
         "printed_chip",
         "carried_note",
         "carried_chip",
+        "caveat_chip",
+        "inferred_flows",
         "desc_opens",
         "desc_expands",
         "desc_follows",
@@ -395,6 +397,16 @@
         "printed_chip": { "type": "string", "minLength": 1 },
         "carried_note": { "type": "string", "minLength": 1 },
         "carried_chip": { "type": "string", "minLength": 1 },
+        "caveat_chip": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Said beside a mark's figure where caveats are about the mark: {n}, how many."
+        },
+        "inferred_flows": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Said under a mark of ours in the list of what we inferred: {flows}, how many inferred flows are listed with it; {figure}, their sum formatted; {ends}, each flow's ends joined."
+        },
         "desc_opens": { "type": "string", "minLength": 1 },
         "desc_expands": { "type": "string", "minLength": 1 },
         "desc_follows": { "type": "string", "minLength": 1 },

@@ -21,27 +21,27 @@ looks.
 ### Go vets, JavaScript renders
 
 **What EXISTS goes in Go, emitted vetted**: which nodes, which links, which
-documents, which steps and their declarations -- role, residual endpoints and
-grain, gap licences in cents -- and for every chart its **form**, with that
-form's hints under the form's own key (the Sankey's tiers, flank, caps and
-widen). A hint foreign to the declared form is refused at the write. Every
-figure Go emits is cited and checked.
+documents, the expansion schedule and the splits it declares -- each split's
+node, key, form and whether it is an alternative, and the remainders that tie
+a split to its parent -- and for every chart its **form**, with that form's
+hints under the form's own key (the Sankey's tiers, grow and split_caps). A
+hint foreign to the declared form is refused at the write. Every figure Go
+emits is cited and checked.
 
 **Folding is JavaScript's.** Only the client knows the screen, and it is
-trusted with sums and lengths over figures Go has cited: which ribbons a rung
-holds, which nodes open, which of a column's members a cap folds, a merged
-ribbon's cents, a residual's two figures and a gap's difference held to its
-licence are all computed in the client, once, and held by property tests
-over the pinned artifacts (sums preserved, no ribbon lost or duplicated, caps
-respected), each with a stated mutation. Go implements no fold and answers no
-rung; a Go function that replays the client's shaping to cross-check it is a
-second implementation of one rule, which is the defect this boundary exists to
-name.
+trusted with sums and lengths over figures Go has cited: which nodes a
+frontier of splits draws, which slot each stands in, which of a split's
+members a cap folds into its tail and a merged ribbon's cents are all computed
+in the client, once, and held by property tests over the pinned artifacts
+(sums preserved, no ribbon lost or duplicated, caps respected), each with a
+stated mutation. Go implements no fold and answers no frontier; a Go function
+that replays the client's shaping to cross-check it is a second
+implementation of one rule, which is the defect this boundary exists to name.
 
 **The client's arithmetic licence is sums, and two readings of a membership.**
 Over figures Go cited, at a membership Go declared or the fold drew, the client
-may add cents, take a difference Go licensed, union cited ids and count members,
-and may state one such sum as a share of another, in no unit but a percentage.
+may add cents, union cited ids and count members, and may state one such sum
+as a share of another, in no unit but a percentage.
 A count or a share is the client's sentence about what is drawn, never a
 figure in cents, and is marked as its own (`◇`, "our"). A printed reduction
 takes no share and is in no share's total: it is not a part of the column it is
@@ -51,16 +51,15 @@ drawn in.
 transitions, the year control.
 
 **`site/core.js` computes figures and reads no form hint.** A form module
-fits them to the screen and reads of a step only the generic fields and its
-own hints; `site/app.js` hands every chart to the renderer registered for its
-form and reads no hint itself. Neither module holds module-level state or
+fits them to the screen and reads of a chart only its own hints;
+`site/app.js` hands every chart to the renderer registered for its form and
+reads no hint itself. Neither module holds module-level state or
 reads a global at import; a global is read at call time or passed in.
 `site/app.js` holds the page's state and binds it.
 
 So the stitching, the auditing and the cross-checking of the fact store are
-Go's, and a figure the client shows is either one Go cited or a sum or
-difference of such figures under a licence Go shipped; a count or share over
-them is marked as the client's.
+Go's, and a figure the client shows is either one Go cited or a sum of such
+figures; a count or share over them is marked as the client's.
 
 Why, measured: [`docs/chart-model.md`](docs/chart-model.md).
 

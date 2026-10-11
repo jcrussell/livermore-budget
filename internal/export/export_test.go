@@ -650,8 +650,8 @@ func TestPageConfigCarriesTheProjectionMetadataVerbatim(t *testing.T) {
 	if got.Primary != "sankey" {
 		t.Errorf("got primary %q, want %q", got.Primary, "sankey")
 	}
-	// No projections map: a year names its document by its column and a step by
-	// its schedule.
+	// No projections map: a year names its document by its column, and the
+	// page's chart names its schedule as primary.
 	if got.SchemaVersion != 1 {
 		t.Errorf("got schema_version %d, want 1", got.SchemaVersion)
 	}
@@ -1233,7 +1233,7 @@ func TestTheGateRunsAfterValidationAndBeforeAnyPageRenders(t *testing.T) {
 }
 
 // spineOnly is the one-page site most of these tests write: the spine's
-// Sankey, with no hint, no year control and no steps. data/views.yaml's index
+// Sankey, with no hint and no year control. data/views.yaml's index
 // view is far more than this, and export.Prepare refuses an Options naming no
 // view, so the fixture lives here and the tests that want it say so through
 // writeSite.

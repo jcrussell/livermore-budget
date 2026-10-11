@@ -88,7 +88,8 @@ side would ever have caught a key added or dropped. `additionalProperties: false
 is what makes a field added to one of those structs refused at the export,
 naming it, rather than shipped to a client that ignores it.
 
-Measured by adding `Grain []int` to `export.DrillStep` and to one step literal:
+Measured by adding a `Grain []int` field to one struct of the page config and
+setting it on one literal:
 `fisc export` refuses with `unexpected additional properties ["grain"]` and
 the two struct-to-schema parity tests go red. Before, both were green.
 
@@ -132,7 +133,7 @@ projection with nodes must cite a source, while an empty one may cite none.
 A column's schedules share node ids — `fund-group/capital` is in three of them —
 but their links differ, because each is a different printed schedule with its
 own provenance. Merging the links into one graph would silently reconcile the
-cells `DrillStep.Gaps` exists to keep visibly unreconciled, so a schedule keeps
+cells `structure.BudgetBookExceptions` declares two schedules to differ at, so a schedule keeps
 its own link set.
 
 What a node's table entry carries was measured rather than assumed, over

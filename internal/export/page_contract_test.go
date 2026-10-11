@@ -84,6 +84,8 @@ func TestTheWordingFillsEveryPlaceholderTheClientHands(t *testing.T) {
 		"split_chooser":       {"label"},
 		"tail_chip":           {"label", "n", "word"},
 		"tail_chip_label":     {"label", "n", "word"},
+		"caveat_chip":         {"n"},
+		"inferred_flows":      {"flows", "figure", "ends"},
 		"aggregate_label":     {"folded", "word"},
 		"aggregate_rationale": {"folded", "word"},
 		"aggregate_note":      {"folded", "total", "cap"},

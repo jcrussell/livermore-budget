@@ -8,6 +8,10 @@ import "github.com/jcrussell/livermore-budget/internal/project"
 // `{name:one|many}` is the value followed by the singular or the plural word,
 // by whether the value is 1.
 //
+// A sentence carrying a count the client takes carries the mark ◇ with it,
+// or says the count is the reader's ("your filters"): a count of what is
+// drawn is the page's sentence, never a figure the city printed.
+//
 // Declared here and formatted there, so the words are the packager's and the
 // numbers the chart's.
 type wording struct {
@@ -38,13 +42,19 @@ type wording struct {
 	PrintedChip   string `json:"printed_chip"`
 	CarriedNote   string `json:"carried_note"`
 	CarriedChip   string `json:"carried_chip"`
+	// CaveatChip is said beside a mark's figure: how many caveats are about
+	// the mark.
+	CaveatChip string `json:"caveat_chip"`
+	// InferredFlows is said under a mark of ours in the list of what we
+	// inferred: the inferred flows it is listed with, their sum and their ends.
+	InferredFlows string `json:"inferred_flows"`
 	DescOpens     string `json:"desc_opens"`
 	DescExpands   string `json:"desc_expands"`
 	DescFollows   string `json:"desc_follows"`
 	FlowInferred  string `json:"flow_inferred"`
 	NoneInferred  string `json:"none_inferred"`
 	TablePointer  string `json:"table_pointer"`
-	// The aggregate, residual and gap marks, schema/mark.schema.json: their
+	// The aggregate marks, schema/mark.schema.json: their
 	// labels, rationales and source notes are templates the constructors
 	// fill, so no sentence about what a mark IS is spelled in JavaScript.
 	AggregateLabel     string `json:"aggregate_label"`
@@ -130,8 +140,8 @@ const flowTableHeading = "Every flow, as a table"
 // runs, and a test holds that line to Counts.
 func defaultWording() wording {
 	return wording{
-		Counts:        "{links:flow|flows} between {nodes:node|nodes}, from {facts:fact|facts}",
-		CountsPartial: "{links:flow|flows} between {nodes:node|nodes}, from {cited} of the document's {facts:fact|facts}",
+		Counts:        "\u25c7 our count: {links:flow|flows} between {nodes:node|nodes}, from {facts:fact|facts}",
+		CountsPartial: "\u25c7 our count: {links:flow|flows} between {nodes:node|nodes}, from {cited} of the document's {facts:fact|facts}",
 		OpenInto: "Double click a node, or tab to one and press Enter, to split it in place into its parts; " +
 			"every other node stays where it is.",
 		NothingOpens: "Nothing on this chart opens.",
@@ -143,8 +153,8 @@ func defaultWording() wording {
 		ChipFold:       "{label} \u25be",
 		ChipFoldLabel:  "{label}, split into {split}: fold it back into one mark",
 		SplitChooser:   "Split {label} into",
-		TailChip:       "{label}: showing all {n} {word} \u00d7",
-		TailChipLabel:  "{label}: showing all {n} {word}; fold the smallest back into one mark",
+		TailChip:       "{label}: showing all \u25c7 {n} {word} \u00d7",
+		TailChipLabel:  "{label}: showing all {n} {word}, by our count; fold the smallest back into one mark",
 		ExpandAll:      "Expand all",
 		CollapseAll:    "Collapse all",
 		PrintedByCity:  "printed by the city",
@@ -154,6 +164,8 @@ func defaultWording() wording {
 		PrintedChip:    "printed",
 		CarriedNote:    "figure printed by the city, re-pointed onto a mark of ours",
 		CarriedChip:    "◇ re-pointed by us",
+		CaveatChip:     "\u26a0 \u25c7 {n:caveat|caveats}",
+		InferredFlows:  "\u25c7 {flows:inferred flow|inferred flows} totalling {figure}: {ends}",
 		DescOpens:      ", splits in place into its parts on a double click or Enter; a single click or Space follows this money",
 		DescExpands:    ", draws all of them separately on a double click or Enter; a single click or Space follows this money",
 		DescFollows:    ", follow this money",
@@ -169,7 +181,7 @@ func defaultWording() wording {
 		BalanceBeginning:  "Balance at the start of the year, as printed: {figure}",
 		BalanceEnding:     "Balance at the end of the year, as printed: {figure}",
 		FilterHidden:      "Hidden by your filters: {cents} in {flows:flow|flows}. Marks are sized to what is drawn, each mark's figure is still this view's, and the flow table still lists every flow of this view.",
-		FilterFolded:      "{flows:flow|flows} under {threshold} are drawn merged by this page into {ribbons:ribbon|ribbons} of smaller flows.",
+		FilterFolded:      "\u25c7 {flows:flow|flows} under {threshold} are drawn merged by this page into {ribbons:ribbon|ribbons} of smaller flows.",
 		FilterHiddenAt:    "Your filters hide {cents} of this mark's flows, in {flows:flow|flows}.",
 		FilterDrawnAt:     "{cents} of it drawn under your filters",
 		SmallestAll:       "every flow",
@@ -178,7 +190,7 @@ func defaultWording() wording {
 		SmallerNote:       "Merged by this page from {flows:flow|flows} the city printed, together {figure}; its ribbons cite every fact and page they merge.",
 		SmallerFlow:       "{flows:flow|flows} under {threshold}, each printed by the city, merged by this page",
 		SearchLabel:       "Find a mark on this chart",
-		SearchCount:       "{n:mark matches|marks match}; the arrow keys move between them, and Enter goes to one.",
+		SearchCount:       "\u25c7 {n:mark matches|marks match}; the arrow keys move between them, and Enter goes to one.",
 		SearchNone:        "No mark drawn on this chart has “{query}” in its name.",
 		SearchOpens:       "Enter splits it in place",
 		SearchExpands:     "Enter draws out every one it folds",
@@ -186,9 +198,9 @@ func defaultWording() wording {
 		FullScreen:        "Full screen",
 		FullScreenExit:    "Exit full screen",
 		ZoomReset:         "Reset view",
-		Hairline: "{n:flow is|flows are} under a pixel wide on this chart's canvas, and each is drawn as a " +
+		Hairline: "\u25c7 {n:flow is|flows are} under a pixel wide on this chart's canvas, and each is drawn as a " +
 			"hairline one screen pixel wide, which is wider than its share; every other flow is drawn to scale. " +
 			"Zoom in, go full screen, search, or open the table below to read them.",
-		SplitsDropped: "{year} has no {nodes} to split, so {n:split was|splits were} folded back.",
+		SplitsDropped: "{year} has no {nodes} to split, so \u25c7 {n:split was|splits were} folded back.",
 	}
 }

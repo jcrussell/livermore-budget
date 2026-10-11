@@ -47,7 +47,8 @@
       The <span id="lede-year">{{.Lede}}</span> budget, all funds, gross — read out of the city's
       published schedule and traced back to it. Figures the city printed are drawn solid;
       the two things we inferred are drawn dashed and labelled.
-      {{- /* Empty until the view declares steps; paintChartHint owns the words. */}}
+      {{- /* Empty until a year is drawn: what a node does on a double click or
+             Enter depends on the chart drawn, so paintChartHint owns the words. */}}
       <span id="chart-hint"></span>
     </p>
   </div>
@@ -318,7 +319,7 @@
 <details class="apparatus" id="caveats-view">
   <summary>
     <h2>Caveats</h2>
-    <span class="apparatus-hint"><span id="caveats-count">{{len .Caveats}}</span> reasons this
+    <span class="apparatus-hint">◇ <span id="caveats-count">{{len .Caveats}}</span> reasons this
       chart will not reconcile row-for-row against the printed schedule</span>
   </summary>
   <p class="lede">
@@ -350,7 +351,7 @@
   <summary>
     <h2>{{.TableHeading}}</h2>
     <span class="apparatus-hint">the chart's twin, same numbers —
-      <span id="counts-line">{{.Links}} flows between {{.Nodes}} nodes, from {{.Facts}} facts</span></span>
+      <span id="counts-line">◇ our count: {{.Links}} flows between {{.Nodes}} nodes, from {{.Facts}} facts</span></span>
   </summary>
   <div class="table-scroll">
     <table id="flow-table">

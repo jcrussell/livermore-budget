@@ -98,13 +98,16 @@ an internal service charge as money crossing the city's boundary.
 `checkDistinctLinks` and the client's fold allow two links on one pair exactly
 when the kinds differ.
 
-**The rollup is drawn in a category's own window and nowhere else.** That
-window is the chart it was published for: `{1,0,2}` puts the category between the
-lines printed under it and the fund groups it reaches, and the rollups are its
-whole left half. Every other tier set drops them, each for its own reason: where
-tier 1 folds to tier 0 both ends fold to the category and a link whose ends fold
-together is dropped, and at `{2,5,4}`, `{2,3,4}` and `{3,4,5}` neither end has a
-column. The client's tests assert both halves over every view the page opens.
+**The rollups are published and drawn nowhere.** The expansion schedule
+(`docs/sankey-contract.md`) takes this document's lines-into-funds links and
+its object rows, and hangs a line from its category and a fund from its group
+by `parent`, so splitting a category or a group in place needs no rollup; the
+rollups stay in this file for a reader of it. A tier set that draws them puts
+the category between the lines printed under it and the fund groups it
+reaches, `{1,0,2}`; every other tier set drops them, each for its own reason:
+where tier 1 folds to tier 0 both ends fold to the category and a link whose
+ends fold together is dropped, and at `{2,5,4}`, `{2,3,4}` and `{3,4,5}`
+neither end has a column.
 
 **A fund is rolled up under its group the same way, once per kind.** The `(2,3)`
 link runs from `fund-group/<type>` to `fund/<n>`, carries that fund's whole
@@ -112,8 +115,8 @@ inflow — every cell including a transfer's, unlike the `(1,0)` rollup, because
 fund takes its transfers in exactly as it takes its taxes — and cites every cell
 behind it. The categories reach the FUNDS directly at `(0,3)`, so without it a
 chart putting a fund group between them and its own funds draws the group at
-zero. That chart is the `{0,2,3}` window the spine's middle column
-opens into, and the rollups are its whole right half. Measured over both adopted
+zero. That chart is `{0,2,3}`, and the rollups are its whole right half.
+Measured over both adopted
 columns, each group's rollups sum to within the declared residual of the cell
 pp.66-67 print for it, and to the cent for the three groups that carry no
 residual.
@@ -269,18 +272,16 @@ carry.
   decompose that fund alone; pp.173-183 print every other fund by object and
   not by division, and this document draws them straight from the fund to its
   categories. pp.85-125's Department Funding Sources — which departments each
-  fund pays for — is drawn by `department-funding`, which is what the fund
-  column of this document opens into for every fund but 100.
+  fund pays for — is published as `department-funding`, and no split of the
+  expansion reaches it (`fisc-yj4w.34.9`).
 
   A fund pp.173-183 print spending for and pp.127-140 print no revenue for is
-  drawn with nothing flowing into it, and its window cannot keep a flank, so
-  it opens into nothing. Which funds those are differs by column; the client
-  finds them in the column document it draws, and drops a widened column the
-  document leaves empty.
+  drawn with nothing flowing into it. Which funds those are differs by
+  column.
 - **Transfers between funds.** p76's legs are scope `transfers-by-fund`, which
   this document does not select because the two overlap `revenue-by-fund` on
-  `transfer_in`. They have a document of their own, `transfers-by-fund`, which
-  the spine's Transfers In opens into.
+  `transfer_in`. They have a document of their own, `transfers-by-fund`, whose
+  payers the expansion splits Transfers In into.
 
 ## Drawing it: the fold
 
@@ -290,9 +291,7 @@ Sankey out in 796px of usable height at `NODE_PADDING = 14`; d3-sankey shrinks
 the padding to fit — `min(14, 796/60) = 13.267` — and then divides what is left
 among the values, and what is left is nothing. Every node height and every link
 width comes out at exactly **0.0000px**. A view added without the fold publishes
-a blank chart with every check in this repository green, which is why the
-document shipped as data for four days with `unviewedDocuments` declaring in
-writing that no page rendered it.
+a blank chart with every check in this repository green.
 
 Height does not fix it. At **zero** padding 24 of the 61 funds are still
 sub-pixel and 45 are under 8px, because the General Fund alone is 49% of the
@@ -300,21 +299,18 @@ column; the smallest fund reaches one pixel at a canvas 64,203px tall.
 
 So the client folds. The rule, in full:
 
-- **A page declares the tiers it draws**, as its overview's Sankey hints in `FISC_CONFIG`.
-  It is per view and never a constant in `app.js`: the spine and this document
-  are drawn by the same script from different hierarchies. Applying one page's
-  set to the other document **refuses** rather than corrupts — `{0,2,4}` over
-  the spine throws, because every spine node is parentless and a tier-5 node has
-  no drawn ancestor to fold to — which is the better of the two failures and
-  still a broken page. A page that declares nothing is drawn whole, by exactly the code that
-  drew it before the fold existed.
-- **Each node folds to its nearest ancestor whose tier the page draws**,
+- **The fold is to a frontier of node ids**: the expansion's, or a tier set's
+  (`tierFrontier`, every node at one of its tiers). A tier set applied to a
+  document it does not describe **refuses** rather than corrupts — `{0,2,4}`
+  over the spine throws, because every spine node is parentless and a tier-5
+  node has no drawn ancestor to fold to.
+- **Each node folds to its nearest ancestor-or-self in the frontier**,
   following `parent`.
 - **Links fold with their ends** and merge on the folded pair and the `kind`,
   summing `value_cents` and unioning both `fact_ids` and `locators`. One
   ribbon per kind, so a ribbon's kind is true of all of it: no fold through
-  `parent` puts two kinds on one pair in any published column, but a revenue
-  category's capped fund tail does, because its funds span every group and
+  `parent` puts two kinds on one pair in any published column, but a capped
+  tail can, where its members take one source's money as different kinds:
   the internal-service funds take a line's money as an internal service
   charge.
 
@@ -325,14 +321,13 @@ So the client folds. The rule, in full:
   shard holding part of the number they were shown. It de-duplicates on
   `(doc_id, page)`, which is something the fact-id union cannot express: two
   facts on one page are two ids and one locator. Measured on FY2025-26 at the
-  `{0,2,4}` set the page then drew: 52 folded rows carried 79 locators, at most
+  `{0,2,4}` set: 52 folded rows carried 79 locators, at most
   5 on any one row.
 
   This is what makes the flow table's `Source` column true. Without it, at that
   set, every row printed the document's own 18 pages — 1,872 anchors saying
   nothing about the row they sat in; with it, 237, each naming the pages that
-  row's figure came from. The chain's rungs fold differently and the client's
-  tests pin their own row counts.
+  row's figure came from.
 - **A link whose ends fold to the same node is dropped.** It was a flow inside
   what is now one box. This is the tier-4-to-5 case warned about above, and it
   **cites nothing away**: the fund-to-department link that survives carries the
@@ -340,7 +335,8 @@ So the client folds. The rule, in full:
   which is what `facts_cited_twice` counts. The `(1,0)` rollups are the same
   case on the revenue side — both ends fold to the category — and the line's own
   flows into the funds carry every fact they cited; `site/fold.test.mjs` holds
-  the citations equal before and after the fold on every rung at every width.
+  the citations equal before and after the fold at every split the page
+  offers.
 - **A retained node's `parent` is re-pointed at its own folded ancestor**, so
   the folded document satisfies client-side what `node-hierarchy-well-formed`
   asserts of the published one.
@@ -352,224 +348,67 @@ So the client folds. The rule, in full:
   loses a column silently, keeping it leaves a node with no column to be drawn
   in.
 
-### One page draws it: the spine opens into it
+### The page draws it through the expansion
 
-No view draws this document whole. It is drawn as rungs opened from
-`index.html`, the site's one chart page, declared once in `data/views.yaml`;
-the client's tests spell none of it a second time.
+No view draws this document. `index.html` draws the expansion schedule, which
+is stitched per spine column out of this document's lines-into-funds links,
+its object rows and the schedules beside it (`docs/sankey-contract.md`), and
+a reader reaches this document's grain by splitting nodes in place: a revenue
+category into its lines, a fund group into its funds, the General Fund into
+its divisions, an object category into its object rows or the divisions that
+spend it. `fund-flows-2024-actual` and `fund-flows-2025-revised` have no spine
+column to be stitched into, because pp.66-67 print no actual and no revised
+column; they stay declared in `unviewedDocuments`.
 
-Every rung opened from a container is a WINDOW: the node the reader clicked in
-the middle, one flank kept off the chart they clicked it on, and its own
-decomposition on the other side. A rung opened from a flow end keeps no flank,
-having no parts to put a window around, and draws its own document alone; a
-fund opened on a fund-balance rung is drawn between its two sides, both read off
-that same document (`side: "both"`). **Three columns is the narrowest such window** — the client's column budget
-starts at 3, and a window at least `chartWidth(4)` plus the stylesheet's cushion
-wide buys a fourth. The tier sets in the table below are what a narrow reader
-sees.
+**A split's members are capped, and its tail is ours.** `sankey.split_caps`
+declares, per split key, how many members are drawn before the rest fold into
+one tail inside the node they split; `capColumn` decides which, by value. The
+tail is `derived: true`, with a rationale and a source note: its *value* is
+every cent a printed figure, summed exactly as the fold sums a merged ribbon;
+what is inferred is the *grouping*. A reader draws a tail out at full length,
+and the chip row folds it back.
 
-A step may declare more columns than that budget draws: `widen` names the
-columns of its own `tiers` a narrower client does without, and it drops them
-from the end of `widen`; they sit at the end away from the kept flank. A widened
-column the opened node's decomposition leaves empty at a width is dropped at
-that width, and the next widened column back takes its place, rather than
-refused: five of the six fund groups have no tier-4 node, and a wide screen must
-not show a reader less than a narrow one. Which column is empty depends on the
-width -- a ribbon into a widened tier folds back onto its own source where that
-tier is not drawn -- so it is worked out afresh at every budget
-(`columnsAt` in `site/sankey.js`) and recorded nowhere.
-
-Each step's tiers, kept flank, widening and caps are declared once, in
-`data/views.yaml`, and shipped as `FISC_CONFIG.steps` under
-`schema/page.schema.json`. What each draws, for a reader:
-
-| depth | document | draws | opening a node draws |
-|---|---|---|---|
-| 0 | `sankey` | the spine, whole | a fund group; or a revenue category; or an object category; or a flow end |
-| 1 | `fund-flows` | the spine's own revenue categories on the left, the opened group in the middle, its funds on the right, with the money pp.127-140 split by no fund carried past the centre onto one derived mark beside them — and, where there is room, the General Fund's divisions and the object categories every fund spends on, through its divisions for the General Fund and straight from pp.173-183 for every other | a fund — the General Fund into its divisions, every other fund pp.85-125 name into its departments |
-| 2 | `fund-flows` | the group, the opened fund, the divisions that spend it — and their object-category cells where there is room | a division |
-| 3 | `fund-flows` | the fund, the opened division, its object categories | nothing |
-| 2 | `department-funding` | the group, the opened fund, the departments pp.85-125 print it paying for | nothing |
-| 1 | `fund-flows` | the lines pp.127-140 print under the opened category on the left, the category itself in the middle, and the spine's own fund groups for it on the right; a line printed as a reduction draws as a contra ribbon at its magnitude, into the centre | nothing |
-| 1 | `department-spending` | the fund groups that fund the opened object category, the category, and the divisions pp.85-125 print spending it | nothing |
-| 1 | `transfers-by-fund` | the funds p76 prints paying each transfer on the left, the funds receiving them on the right | nothing |
-| 1 | `transfers-out` | the funds p76 and p222 print paying each transfer out on the left, the operating and CIP funds receiving them on the right | nothing |
-| 1 | `fund-sources-uses` | the funds pp.186-209 print drawing on their balance, on the right of the opened draw; or those adding to their balance or to reserves, on the left of the opened contribution or reserve increase; each at its own change, so the funds sum to more than the spine's net mark | a fund |
-| 2 | `fund-sources-uses` | the opened fund's sources on the left, the fund, and its uses on the right, its change in balance drawn as the one ribbon of ours | nothing |
-
-The steps are a tree and not a chain: several open from the spine's chart, told
-apart by the tier they open from and, where two share a tier, by the node's role.
-The client walks it by key (`after` names the step whose chart a step opens
-from) and never by depth.
-
-**Nothing on a kept flank opens.** A window draws its kept column at that
-column's share of the CENTRE — the spine's cell for one revenue category into a
-fund group, not the group's own inflow — so a step opening one of those marks
-would draw a node taking one figure in and sending its whole decomposition out.
-Measured over both adopted columns with the revenue-category window declared
-among the fund-group step's parents: the Contributions & Outsourced window
-keeps `fund-group/general` at 76,360 and opening it drew 157,873,470 leaving —
-157,797,110 of node height with no ribbon under it. `export.validateSteps`
-refuses that declaration by name.
-
-**Only the General Fund opens into DIVISIONS, and every other fund a department
-draws on opens into DEPARTMENTS.** pp.167-170 decompose that fund alone, so the
-fund step declares `role: "general_fund"`; `fund-departments` is its sibling,
-declared with `role: "fund"` on the same `(after, from)` — the one place on the
-site where two steps open one tier of one chart, which `validateSteps` admits
-exactly when both name a role and the roles differ.
-
-**A role cannot say which funds pp.85-125 name, so the packager reads it off the
-document.** Six of the 61 funds this document draws in FY2025-26 and seven of
-the 60 in FY2026-27 are named by no row of those pages, and nothing about
-`fund/511` distinguishes it from `fund/512`; the set is different in every
-printed column — 13 funds in FY2023-24 against 6 in FY2025-26 — while a step is
-declared once for every year the view lists. So `site/sankey.js`'s `decomposable`
-reads, per year's document and per step, the node ids at its `from` whose
-decomposition, with the same reach the chart is drawn with (`reaching`), holds a
-node in every column `promisedTiers` names and the flank does not keep -- the
-columns `columnsAt` never drops -- at the columns EVERY budget the page offers
-draws, `columnsAt` answering for each. A reader can change the width with the
-node open, so a node one width cannot draw is offered at none. `stepFor` takes
-that as a fourth match beside the key, the tier and the role, and a window step
-further asks that the chart on screen send a kept flank into the node. Nothing
-ships the set: what is offered to open and what draws are one rule in one
-language, at every width. Measured without the
-fourth match: `drillDown(fund/511)` failed and left the chart on
-`fund-group/capital`, over a mark drawn with the open affordance.
-
-**The step document is the spine year's, joined on column.** A spine stem
-opens into the `fund-flows` stem carrying the same fiscal year on the same
-basis: `sankey` into `fund-flows`, `sankey-2027` into `fund-flows-2027`. The
-join is on `Columns`, not on the order `project.PublishedDocuments` declares,
-and the packager resolves it per year into the page's config, beside that document's own caveat
-links, so the client joins nothing. `fund-flows-2024-actual` and
-`fund-flows-2025-revised` have no spine year to be opened from, because
-pp.66-67 print no actual and no revised column; they stay declared in
-`unviewedDocuments`.
-
-**A rung places the document only because it filtered first**, and that is a
-refusal rather than a preference. This document carries eleven tier-0 revenue
-nodes with no ancestor at tier 3 or 4, and the fold refuses a node it cannot
-place — so `{4,5}` over the whole document draws *nothing*, not a partial
-chart. Filtering to the opened node is what leaves a set the fold can place.
-
-**A rung cites a slice, and says so — and a window cites two documents, which
-the sentence keeps apart.** At `{0,2,4}` the fold cites nothing away; a rung
-filtered to one node cannot, and a window also draws a flank of the chart it was
-opened from, whose ribbons cite that document and not this one. So the counts
-line partitions the ribbons before it gives either fact count. The drill tests
-under `site/` walk every node the page offers at every width and hold each
-opened view's drawn nodes and ribbons to the properties below.
-
-### Opening a node: filter, cap, fold
-
-**Expanding a node in place is not a per-node interaction on this d3-sankey**
-(`fisc-ppkq`). The vendored build takes the column count from topology and
-clamps the align into it, so expanding one group draws the funds and the
-divisions in the same column while the unexpanded ribbons span two — which
-the client's layout test refuses. The shape that works is
-filtering to one node and rescaling to its own total.
-
-**Rescaling alone is not enough, and `fisc-ppkq` says it is.** Measured:
-filtered to special revenue and rescaled to that group's own total, 22 of its 49
-ribbons still lay out under one pixel, because the concentration is *within* the
-group — `fund/200` alone is 34.9% of it and the smallest two are 0.034%.
-Rescaling cannot fix a distribution.
-
-**So a drill also caps its fine column.** Above the step's `TierCap.Cap` for
-that tier, the tail by value folds into one aggregate. At cap 8 special revenue
-draws 2 sub-pixel ribbons instead of 22, and capital 1 instead of 4. The cap is
-inert at depth 3, where the widest division spends on two object categories.
-
-**The aggregate node is `derived: true`**, with a rationale and a source note.
-Its *value* is every cent a printed figure, summed exactly as the fold sums a
-merged ribbon; what is inferred is the *grouping*, and the published-is-not-
-derived rule is about which of those the page claims. It shipped for one commit
-as `derived: false` — drawn solid, chipped "printed by the city", and absent
-from "what we inferred".
-
-**The order is filter, cap, fold, and it is not interchangeable.** Filter first,
-because the cap ranks a column by size and the sizes that matter are the ones
-inside the node being opened. Cap before fold, because the cap produces several
-ribbons from one source to the aggregate and the fold is what merges them,
-summing the values and unioning the fact ids and locators.
-
-The client's tests re-measure all of this on every `make js`, opening
-every node the chain offers — 6 fund groups and, under the General Fund, 23
-divisions — rather than a sample.
-
-**Tier 5 is not a one-constant alternative.** Drawing `{0,2,4,5}` puts 29 of the
-44 object nodes under one pixel (smallest 0.030px), and that column's labels are
-23× "Services & Supplies" and 21× "Wages & Benefits". The object grain is not
-*hidden* by the fold; it is unrenderable at this canvas, and offering it whole
-needs a view that rescales to one division, which the division step is; the fund
-step's fourth column shows it only capped. Measured over all 23 divisions, the smallest ribbon in any
-opened view is 51.38px, at Patrol; the drill tests under `site/` print the
-smallest ribbon of every view they open.
-
-**What the fold does not fix.** At the `{0,2,4}` set, seven of the 52 ribbons
-laid out under 1px and four of the 40 node rects under 2px, and `render()` floors
-both — `Math.max(1, width - RIBBON_GAP)` and `Math.max(2, y1 - y0)` — so those
-marks do not encode their values. The client's tests pin **both** counts,
-so neither can grow unnoticed. The chain's rungs are better on this and not
-free of it, and neither count is the same in both years: the General Fund at
-depth 1 draws 2 sub-pixel ribbons of 37 in FY2025-26 and 3 of 37 in FY2026-27,
-and special revenue, capped, 2 of 22 and then 1 of 22. The fold tests under
-`site/` print both counts per column.
+**The order is fold, cap, fold, and it is not interchangeable.** The first
+fold draws the frontier, so the cap ranks a split's members by what they carry
+on the chart drawn. The cap produces several ribbons from one source to the
+tail, and the second fold is what merges them, summing the values and unioning
+the fact ids and locators.
 
 **The page describes the folded document, not the fetched one.** The legend, the
 flow table, the inferred list and the flow count are all statements about what
-the reader is looking at; pointing them at the file would put a 175-row table
-beside a 52-ribbon chart. The footer still links the unfolded file, and the
+the reader is looking at. The footer still links the unfolded file, and the
 merged links still name every fact behind every ribbon.
 
 ## Go's half: the declarations
 
-**Go ships what only Go can know, and computes no rung.** A step is declared
-once in `data/views.yaml` and reaches the page as `FISC_CONFIG.steps`, in the shape
-`schema/page.schema.json` gives it: the generic drill fields the core reads
-(what opens from where, into which schedule, the words), the licences only the
-fact store can state (the residual endpoints each with its reason, and the gap
-cents per column from `structure.BudgetBookExceptions` that two schedules are
-declared to differ by at one node), and the chart's **form** with that form's
-hints under its own key, which is what may fold: the Sankey's tiers, kept
-flank, widened columns and caps. The schema refuses a hint foreign to the
-declared form; `validateSteps` refuses a declaration whose shape the form could
-not draw. The layers and the seams are in
+**Go ships what only Go can know, and computes no frontier.** The expansion
+schedule carries every node the stitch can draw, each split as `node`, `key`,
+`form` and `alternative`, and the derived remainders that tie a split to its
+parent, every figure cited. The page's chart declares its **form** with that
+form's hints under its own key, which is what may fold: the Sankey's `tiers`,
+`grow` and `split_caps`. The schema refuses a hint foreign to the declared
+form; `validateGrowth` and `validateSplitCaps` refuse a declaration the form
+could not honour. The layers and the seams are in
 [`chart-model.md`](chart-model.md).
 
-**The client computes everything a rung draws from that and the column
-document.** The core sums: which nodes a parent chain holds, the fold, the cap,
-the marks and their figures. The Sankey renderer fits: which ribbons a rung
-holds (`reaching`: the near end inside the opened node by parent chain, both
-ends placeable, folded ends running forward in the step's column order), which
-nodes it offers to open (`decomposable`, the same reach at the columns every
-budget draws), the roles of its
-columns (`flankIsLeft`, by position), the figure a centre prints net of
-reductions (`markAmounts`), the residual's ribbons, ends, tier and figures
-(`carryResidual`), and the gap, held to the shipped licence and refused with a
-banner and the chart unchanged where the two documents differ by any other
-figure (`markGap`). A residual's leaving legs exist by the step's declared
-tiers, not by the columns a budget draws, so its figures do not move with the
-viewport.
+**The client computes everything a frontier draws from that and the column
+document.** The core sums: the frontier a list of splits comes to (`expand`),
+which nodes a parent chain holds, the fold, the cap, the marks and their
+figures. The Sankey renderer fits: which open splits a cap folds, the slot
+each drawn node stands in, and how tall the canvas grows.
 
 **What licenses a client-side sum** is that every summand is a published
 figure: each unfolded ribbon's `value_cents` is in the column document the page
 has already fetched, with its own `fact_ids`, which `link-values-tie-to-facts`
-witnesses. A merged ribbon, a tail, a residual's two figures and a gap's
-difference are sums and differences over those and nothing else.
+witnesses. A merged ribbon and a tail are sums over those and nothing else.
 
 **What holds the fold** is the property tests in `site/fold.test.mjs`, over
-every rung the page offers at every width in both pinned columns, each with a
-mutation that reddens it: what arrives at and leaves the opened node is the
-same before and after the cap and the fold; the fact ids cited and the cents
-drawn are the filtered ribbons' exactly, so no ribbon is lost or drawn twice;
-and a capped column holds at most `cap + 1` marks, its tail's members and the
-kept marks together being the whole column. A step whose document decomposes
-nothing for a year is refused by the client walk in `site/*.test.mjs`, a
-CI-required check, and not at build.
+every split the page offers in both pinned columns, each with a mutation that
+reddens it: the cents drawn and the fact ids cited are the same before and
+after the cap and the fold, so no ribbon is lost or drawn twice; and an open
+split a cap names holds at most `cap + 1` marks, its tail's members and the
+kept marks together being the whole split.
 
 So, in one line: **Go declares what may fold and the client decides how much
-fits.** The `caps` column of the table under "One page draws it" and each step's
-`widen` are declarations; `capColumn` and `foldDocument` are what spend them.
+is drawn.** `split_caps` is a declaration; `capColumn` and `foldDocument` are
+what spend it.

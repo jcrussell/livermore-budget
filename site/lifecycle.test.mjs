@@ -532,7 +532,7 @@ describe("the view in the URL", () => {
     await split(app, "fund-group/general", "fund-group/special-revenue", "expenditure/capital-outlay~divisions");
     const tail = app.projection.nodes.find((n) => n.id === app.splitTailID("fund-group/special-revenue", "funds"));
     assert.ok(tail, "the special-revenue split folds no tail");
-    assert.ok(app.expandTier(tail), "the tail would not draw out");
+    assert.ok(app.drawOutTail(tail), "the tail would not draw out");
     await settle();
     const member = app.splitsHere({ id: "fund-group/special-revenue" })[0].members.find((m) => app.laidNodes.some((n) => n.id === m));
     app.setIsolated(member);
