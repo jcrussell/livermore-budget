@@ -44,6 +44,14 @@ func BudgetBookResidue() []Residue {
 		Rule:   "debt-service-interest",
 		Kind:   vocab.KindExpenditure,
 		Reason: debtServiceByIssueResidue,
+	}, {
+		Scope: ScopeDebtServiceRequirements,
+		Rule:  "debt-service-requirements",
+		Kind:  vocab.KindExpenditure,
+		Reason: "pp.80-81's DEBT SERVICE REQUIREMENTS are payments the city's debt agreements " +
+			"schedule through 2055, by fund type and by year or five-year band: projected, " +
+			"never an appropriation, and no other schedule prints their axis. Each column " +
+			"ties to the schedule's own printed Total",
 	}}, append(cipProjectListingResidue(), fundBalancesByFundResidue()...)...)
 }
 

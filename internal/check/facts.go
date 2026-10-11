@@ -111,11 +111,12 @@ func (*factIDsRecompute) ID() string { return "fact-ids-recompute" }
 func (*factIDsRecompute) Tier() int  { return 1 }
 func (*factIDsRecompute) Full() bool { return false }
 func (*factIDsRecompute) Description() string {
-	return "every fact's id is what fact.MakeID produces from that fact's own published fields, " +
-		"so one line of the audit trail re-derives its own address"
+	return "every fact's id is what fact.MakeIDThrough produces from that fact's own published fields, " +
+		"its band end included where one is set, so one line of the audit trail re-derives its own address"
 }
 
-// Run recomputes over the seven fields the record publishes, and no others.
+// Run recomputes over the seven fields the record publishes, and the band end
+// where the record sets one, and no others.
 //
 // Reading them off the FACT rather than off the mapping is the whole point. A
 // version that re-resolved the rule would be asking whether the builder is
@@ -125,7 +126,7 @@ func (*factIDsRecompute) Description() string {
 func (*factIDsRecompute) Run(_ context.Context, s *Subject) (Result, error) {
 	var findings []Finding
 	for _, f := range s.Facts {
-		want := fact.MakeID(f.DocID, f.RuleID, f.RowPath, f.RowLabel, f.ColumnPath, f.FiscalYear, f.Basis)
+		want := fact.MakeIDThrough(f.DocID, f.RuleID, f.RowPath, f.RowLabel, f.ColumnPath, f.FiscalYear, f.FiscalYearThrough, f.Basis)
 		if f.ID == want {
 			continue
 		}
@@ -133,7 +134,7 @@ func (*factIDsRecompute) Run(_ context.Context, s *Subject) (Result, error) {
 			"%s p%d %q: the published fields (rule %q, row_path %q, column_path %q, %s) "+
 				"hash to %s; an id that does not recompute addresses nothing",
 			f.DocID, f.Page, f.RowLabel, f.RuleID, f.RowPath, f.ColumnPath,
-			fact.ColumnLabel(f.FiscalYear, f.Basis), want))
+			fact.BandLabel(f.FiscalYear, fact.BandOf(&f), f.Basis), want))
 	}
 	return conclusion{
 		subjects: len(s.Facts),

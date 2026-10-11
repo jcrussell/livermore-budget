@@ -62,6 +62,17 @@ type Fact struct {
 	Scope string      `json:"scope"`
 
 	FiscalYear int `json:"fiscal_year"`
+	// FiscalYearThrough is the last fiscal year of a figure the page prints
+	// for several years at once, and null -- not FiscalYear -- for a figure
+	// of one: Budget Book p80 prints DEBT SERVICE REQUIREMENTS for 2031-2035
+	// as one figure, which is fiscal_year 2031 through 2035 and is no
+	// FY2031 figure. A reader taking fiscal_year alone takes a band for a
+	// year: project.SelectFacts refuses one asked for as a year, and the
+	// readers keying by year that do not go through it (structure's
+	// containment cells among them) see no band only because the one scope
+	// printing bands is a declared residue no cut admits. It is hashed into
+	// the id where it is set (MakeIDThrough).
+	FiscalYearThrough *int `json:"fiscal_year_through"`
 
 	RowPath    string `json:"row_path"`
 	RowLabel   string `json:"row_label"`
@@ -137,6 +148,16 @@ func ColumnLabel[B ~string](year int, basis B) string {
 	return fmt.Sprintf("FY%d %s", year, basis)
 }
 
+// BandLabel names a (fiscal year, band end, basis) column: ColumnLabel for a
+// one-year column, and the band spelled whole for a band, so no report prints
+// a band as its first year.
+func BandLabel[B ~string](year, through int, basis B) string {
+	if through == 0 {
+		return ColumnLabel(year, basis)
+	}
+	return fmt.Sprintf("FY%d-FY%d %s", year, through, basis)
+}
+
 // SameFund reports whether two fund coordinates agree: both absent, or both
 // the same number (not the same address).
 func SameFund(a, b *int) bool {
@@ -210,14 +231,36 @@ func SameFund(a, b *int) bool {
 // already forces a rule change, and a rule change is the reviewable event where
 // an id shift belongs.
 func MakeID(docID, ruleID, rowPath, rowLabel, columnPath string, fiscalYear int, basis vocab.Basis) string {
+	return MakeIDThrough(docID, ruleID, rowPath, rowLabel, columnPath, fiscalYear, nil, basis)
+}
+
+// MakeIDThrough is [MakeID] for a figure that may be of several years: a
+// band's last year joins the tuple, and a one-year figure's tuple is MakeID's
+// unchanged, so no id outside a band moves. It is hashed so that
+// fact-ids-recompute refuses a facts.jsonl line whose band was edited: the
+// parser ties the years to the printed label at build, and nothing else at
+// verify re-reads them.
+func MakeIDThrough(docID, ruleID, rowPath, rowLabel, columnPath string, fiscalYear int,
+	through *int, basis vocab.Basis) string {
 	// The separator is a unit separator rather than a printable character
 	// because every component here can contain "/" and some can contain "-".
 	// Joining on a character that occurs in the data would let two different
 	// tuples hash identically, which is the one thing an identity must not do.
-	h := sha256.Sum256([]byte(strings.Join([]string{
-		docID, ruleID, rowPath, rowLabel, columnPath, strconv.Itoa(fiscalYear), string(basis),
-	}, "\x1f")))
+	parts := []string{docID, ruleID, rowPath, rowLabel, columnPath, strconv.Itoa(fiscalYear), string(basis)}
+	if through != nil {
+		parts = append(parts, "through", strconv.Itoa(*through))
+	}
+	h := sha256.Sum256([]byte(strings.Join(parts, "\x1f")))
 	return IDPrefix + hex.EncodeToString(h[:])[:idHexLen]
+}
+
+// BandOf is the last year of a fact's band, or zero for a one-year figure:
+// the one place a reader turns FiscalYearThrough into a value it can compare.
+func BandOf(f *Fact) int {
+	if f.FiscalYearThrough == nil {
+		return 0
+	}
+	return *f.FiscalYearThrough
 }
 
 // seriesIDPrefix marks a series id. It is deliberately not [IDPrefix]: a series
@@ -357,30 +400,32 @@ func FromValues(f *mapping.File, rule *mapping.Rule, values []mapping.Value) ([]
 					"both it cannot be addressed, cited, or diffed")
 		}
 
+		through := yearsThrough(col)
 		out = append(out, Fact{
 			// PrintedLabel(), not Label and not Identity(): see MakeID.
-			ID: MakeID(f.DocID, rule.ID, rowPath, v.Row.PrintedLabel(),
-				columnPath, v.Column.FiscalYear, basis),
-			DocID:       f.DocID,
-			Page:        v.Page,
-			Offset:      v.Offset,
-			Token:       v.Token,
-			RuleID:      rule.ID,
-			Kind:        row.Kind,
-			Basis:       basis,
-			Scope:       rule.Scope,
-			FiscalYear:  v.Column.FiscalYear,
-			RowPath:     rowPath,
-			RowLabel:    v.Row.PrintedLabel(),
-			Category:    row.Category,
-			Department:  v.Row.Department,
-			ColumnPath:  columnPath,
-			FundGroup:   col.FundGroup,
-			Fund:        fundOfColumn(col.Fund),
-			Sign:        sign,
-			Units:       rule.Units,
-			AmountCents: int64(v.Cents),
-			Derived:     false,
+			ID: MakeIDThrough(f.DocID, rule.ID, rowPath, v.Row.PrintedLabel(),
+				columnPath, col.FiscalYear, through, basis),
+			DocID:             f.DocID,
+			Page:              v.Page,
+			Offset:            v.Offset,
+			Token:             v.Token,
+			RuleID:            rule.ID,
+			Kind:              row.Kind,
+			Basis:             basis,
+			Scope:             rule.Scope,
+			FiscalYear:        col.FiscalYear,
+			FiscalYearThrough: through,
+			RowPath:           rowPath,
+			RowLabel:          v.Row.PrintedLabel(),
+			Category:          row.Category,
+			Department:        v.Row.Department,
+			ColumnPath:        columnPath,
+			FundGroup:         col.FundGroup,
+			Fund:              fundOfColumn(col.Fund),
+			Sign:              sign,
+			Units:             rule.Units,
+			AmountCents:       int64(v.Cents),
+			Derived:           false,
 		})
 
 		if v.Row.Counterpart == nil {
@@ -424,34 +469,45 @@ func FromValues(f *mapping.File, rule *mapping.Rule, values []mapping.Value) ([]
 		}
 		cpPath := ColumnPath(cpCol, rule.Scope)
 		out = append(out, Fact{
-			ID: MakeID(f.DocID, rule.ID, cpRowPath, cpRow.PrintedLabel(),
-				cpPath, v.Column.FiscalYear, basis),
+			ID: MakeIDThrough(f.DocID, rule.ID, cpRowPath, cpRow.PrintedLabel(),
+				cpPath, col.FiscalYear, through, basis),
 			DocID: f.DocID,
 			// THE SAME PROVENANCE, DELIBERATELY. Both legs cite one printed
 			// figure, because that figure IS the evidence for both directions
 			// of one movement. fact-offset-points-at-token holds for both.
-			Page:        v.Page,
-			Offset:      v.Offset,
-			Token:       v.Token,
-			RuleID:      rule.ID,
-			Kind:        cp.Kind,
-			Basis:       basis,
-			Scope:       rule.Scope,
-			FiscalYear:  v.Column.FiscalYear,
-			RowPath:     cpRowPath,
-			RowLabel:    cpRow.PrintedLabel(),
-			Category:    cp.Category,
-			Department:  cpRow.Department,
-			ColumnPath:  cpPath,
-			FundGroup:   cpCol.FundGroup,
-			Fund:        fundOfColumn(cpCol.Fund),
-			Sign:        sign,
-			Units:       rule.Units,
-			AmountCents: int64(v.Cents),
-			Derived:     false,
+			Page:              v.Page,
+			Offset:            v.Offset,
+			Token:             v.Token,
+			RuleID:            rule.ID,
+			Kind:              cp.Kind,
+			Basis:             basis,
+			Scope:             rule.Scope,
+			FiscalYear:        col.FiscalYear,
+			FiscalYearThrough: through,
+			RowPath:           cpRowPath,
+			RowLabel:          cpRow.PrintedLabel(),
+			Category:          cp.Category,
+			Department:        cpRow.Department,
+			ColumnPath:        cpPath,
+			FundGroup:         cpCol.FundGroup,
+			Fund:              fundOfColumn(cpCol.Fund),
+			Sign:              sign,
+			Units:             rule.Units,
+			AmountCents:       int64(v.Cents),
+			Derived:           false,
 		})
 	}
 	return out, nil
+}
+
+// yearsThrough is a column's band end as the record publishes it: nil for a
+// one-year figure, which is every figure but a band's.
+func yearsThrough(c mapping.Column) *int {
+	if c.FiscalYearThrough == 0 {
+		return nil
+	}
+	n := c.FiscalYearThrough
+	return &n
 }
 
 // sortKey is the specified total order: (doc_id, page, row_path, column_path,
@@ -478,6 +534,8 @@ func less(a, b Fact) bool {
 		return a.RuleID < b.RuleID
 	case a.FiscalYear != b.FiscalYear:
 		return a.FiscalYear < b.FiscalYear
+	case BandOf(&a) != BandOf(&b):
+		return BandOf(&a) < BandOf(&b)
 	case a.Basis != b.Basis:
 		return a.Basis < b.Basis
 	default:
@@ -529,7 +587,7 @@ func CheckUniqueIDs(facts []Fact) error {
 				"(both are %s %s %s %s)",
 				f.ID, prev.RuleID, prev.Page, amount.Cents(prev.AmountCents),
 				f.RuleID, f.Page, amount.Cents(f.AmountCents),
-				f.DocID, f.RowPath, f.ColumnPath, ColumnLabel(f.FiscalYear, f.Basis)),
+				f.DocID, f.RowPath, f.ColumnPath, BandLabel(f.FiscalYear, BandOf(&f), f.Basis)),
 			"two rules assert a figure for the same cell; one is reading the "+
 				"wrong column or double-counting a subtotal, so check both "+
 				"before changing either")

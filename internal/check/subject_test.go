@@ -321,6 +321,7 @@ func TestTheCommittedCorpusVacuitySplit(t *testing.T) {
 		"peers-overlap-only-by-declared-identity": StatusPass,
 		"trend-points-tie-to-facts":               StatusPass,
 		"trend-series-are-complete":               StatusPass,
+		"debt-service-ties-to-facts":              StatusPass,
 		"row-funds-match-their-anchors":           StatusPass,
 		"fund-balance-identity":                   StatusPass,
 		"fund-group-sources-equal-uses":           StatusPass,

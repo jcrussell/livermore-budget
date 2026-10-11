@@ -745,6 +745,7 @@ func templateRendersADocument(name string) bool {
 	switch name {
 	case SankeyTemplate, TrendsTemplate, HistoryTemplate,
 		CapitalTemplate,
+		DebtTemplate,
 		DepartmentTemplate:
 		return true
 	default:

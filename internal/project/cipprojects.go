@@ -100,14 +100,14 @@ type cipListingColumn struct {
 // [CIPProjectsColumns] order.
 func cipListingColumns() []cipListingColumn {
 	return []cipListingColumn{
-		{Column: Column{2026, vocab.BasisAdopted}, GrandTotal: 70_765_450,
+		{Column: Column{FiscalYear: 2026, Basis: vocab.BasisAdopted}, GrandTotal: 70_765_450,
 			FederalStorm: 2_246_250, StateStorm: 1_486_563, TotalUnder: 1, NewAppropriations: 47_084_623},
-		{Column: Column{2027, vocab.BasisAdopted}, GrandTotal: 70_559_870,
+		{Column: Column{FiscalYear: 2027, Basis: vocab.BasisAdopted}, GrandTotal: 70_559_870,
 			FederalStorm: 2_912_750, StateStorm: 134_438, TotalUnder: 1, NewAppropriations: 58_988_871},
-		{Column: Column{2028, vocab.BasisProjected}, GrandTotal: 69_034_500,
+		{Column: Column{FiscalYear: 2028, Basis: vocab.BasisProjected}, GrandTotal: 69_034_500,
 			FederalStorm: 2_075_000, StateStorm: 518_750},
-		{Column: Column{2029, vocab.BasisProjected}, GrandTotal: 56_440_500},
-		{Column: Column{2030, vocab.BasisProjected}, GrandTotal: 51_891_000},
+		{Column: Column{FiscalYear: 2029, Basis: vocab.BasisProjected}, GrandTotal: 56_440_500},
+		{Column: Column{FiscalYear: 2030, Basis: vocab.BasisProjected}, GrandTotal: 51_891_000},
 	}
 }
 

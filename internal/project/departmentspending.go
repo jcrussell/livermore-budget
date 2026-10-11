@@ -325,6 +325,9 @@ func sortColumns(cols []Column) {
 		if cols[i].FiscalYear != cols[j].FiscalYear {
 			return cols[i].FiscalYear < cols[j].FiscalYear
 		}
+		if cols[i].Through != cols[j].Through {
+			return cols[i].Through < cols[j].Through
+		}
 		return cols[i].Basis < cols[j].Basis
 	})
 }

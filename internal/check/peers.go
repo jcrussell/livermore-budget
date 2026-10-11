@@ -151,11 +151,14 @@ func (*peersOverlapOnlyByDeclaredIdentity) Run(_ context.Context, s *Subject) (R
 
 	// Every document that sums is constructed as a view from its declared
 	// scope set, so one holding both readings of a figure is a finding here.
-	// Series documents publish no total and are not views.
+	// Series documents publish no total and are not views, and neither is the
+	// debt-service document: each total it publishes is one fund type's column
+	// of one schedule, held to the Total the page prints beneath it, and it
+	// adds nothing across its two schedules.
 	views := 0
 	seen := map[string]bool{}
 	for _, p := range s.Projections {
-		if p.Trends != nil {
+		if p.Trends != nil || p.Debt != nil {
 			continue
 		}
 		// The stitch is not a view: its scopes are the spine and the cuts

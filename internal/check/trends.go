@@ -195,7 +195,7 @@ func comparePoint(p projection, series project.Series, pt project.Point,
 }
 
 // fyBasis names a fact's column the way a finding should.
-func fyBasis(f fact.Fact) string { return fact.ColumnLabel(f.FiscalYear, f.Basis) }
+func fyBasis(f fact.Fact) string { return fact.BandLabel(f.FiscalYear, fact.BandOf(&f), f.Basis) }
 
 // incompleteSeries are the series a trends document legitimately cannot fill in
 // every column, each with the reason.

@@ -37,7 +37,7 @@ func TestOptionsValidate(t *testing.T) {
 		// reached from inside one document instead of across two.
 		{"duplicate column", func() Options {
 			o := ok
-			o.Columns = []Column{{2026, vocab.BasisAdopted}, {2026, vocab.BasisAdopted}}
+			o.Columns = []Column{{FiscalYear: 2026, Basis: vocab.BasisAdopted}, {FiscalYear: 2026, Basis: vocab.BasisAdopted}}
 			return o
 		}(), "column FY2026 adopted is listed twice"},
 		// Several DISTINCT columns are valid at this level. Options is the type
@@ -46,7 +46,7 @@ func TestOptionsValidate(t *testing.T) {
 		// Sankey.Graph that refuses to be of two.
 		{"several columns", func() Options {
 			o := ok
-			o.Columns = []Column{{2026, vocab.BasisAdopted}, {2027, vocab.BasisAdopted}}
+			o.Columns = []Column{{FiscalYear: 2026, Basis: vocab.BasisAdopted}, {FiscalYear: 2027, Basis: vocab.BasisAdopted}}
 			return o
 		}(), ""},
 		{"no scope", func() Options { o := ok; o.Scopes = nil; return o }(),
@@ -91,7 +91,7 @@ func TestRegistry(t *testing.T) {
 	want := []string{PublishedProjection, TrendsProjection, FundFlowsProjection,
 		DepartmentSpendingProjection, DepartmentFundingProjection, TransfersByFundProjection,
 		TransfersOutProjection, FundSourcesUsesProjection, ExpansionProjection, ChangesProjection,
-		FundBalancesProjection, CIPProjectsProjection}
+		FundBalancesProjection, CIPProjectsProjection, DebtServiceProjection}
 	if len(got) != len(want) {
 		t.Fatalf("got %d projections, want %d", len(got), len(want))
 	}

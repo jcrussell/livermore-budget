@@ -845,6 +845,7 @@ func TestBuildProjectionsRunsThePipeline(t *testing.T) {
 	if diff := cmp.Diff([]string{
 		"changes-in-fund-balances",
 		"cip-projects",
+		"debt-service",
 		"department-funding", "department-funding-2024-actual",
 		"department-funding-2025-revised", "department-funding-2027",
 		"department-spending", "department-spending-2024-actual",
@@ -936,6 +937,7 @@ func TestTheCommittedStemsAreUnchanged(t *testing.T) {
 	want := []string{
 		"changes-in-fund-balances",
 		"cip-projects",
+		"debt-service",
 		"department-funding", "department-funding-2024-actual",
 		"department-funding-2025-revised", "department-funding-2027",
 		"department-spending", "department-spending-2024-actual",
@@ -1044,6 +1046,7 @@ func TestTheSitePublishesOneFilePerColumnAndNothingTwice(t *testing.T) {
 	want := []string{
 		"data/changes-in-fund-balances.json",
 		"data/cip-projects.json",
+		"data/debt-service.json",
 		"data/fund-balances.json",
 		"data/revenue-trends.json",
 		"fy2024-actual.json",
@@ -1865,8 +1868,11 @@ func TestPublishedDocumentsAreWhatTheCorpusBuilds(t *testing.T) {
 				Scope   string   `json:"scope"`
 				Scopes  []string `json:"scopes"`
 				Columns []struct {
-					FiscalYear int    `json:"fiscal_year"`
-					Basis      string `json:"basis"`
+					FiscalYear int `json:"fiscal_year"`
+					// A band's last year, which the debt-service document
+					// publishes beside its first; absent everywhere else.
+					FiscalYearThrough int    `json:"fiscal_year_through"`
+					Basis             string `json:"basis"`
 				} `json:"columns"`
 			} `json:"metadata"`
 		}
@@ -1884,7 +1890,7 @@ func TestPublishedDocumentsAreWhatTheCorpusBuilds(t *testing.T) {
 		shipped := make([]project.Column, 0, len(doc.Metadata.Columns))
 		for _, c := range doc.Metadata.Columns {
 			shipped = append(shipped, project.Column{
-				FiscalYear: c.FiscalYear, Basis: vocab.Basis(c.Basis)})
+				FiscalYear: c.FiscalYear, Basis: vocab.Basis(c.Basis), Through: c.FiscalYearThrough})
 		}
 		if len(shipped) == 0 && doc.Metadata.FiscalYear != 0 {
 			shipped = append(shipped, project.Column{

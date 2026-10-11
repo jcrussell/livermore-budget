@@ -244,13 +244,23 @@ func distinctRules(group []fact.Fact) []string {
 	return out
 }
 
+// distinctYears is every fiscal year a page carries a figure for. A band
+// names every year it spans, so a page printing 2031-2035 as one figure lists
+// 2031 through 2035 rather than 2031 alone.
 func distinctYears(group []fact.Fact) []int {
 	seen := map[int]bool{}
 	out := []int{}
-	for _, f := range group {
-		if !seen[f.FiscalYear] {
-			seen[f.FiscalYear] = true
-			out = append(out, f.FiscalYear)
+	for i := range group {
+		f := &group[i]
+		last := f.FiscalYear
+		if b := fact.BandOf(f); b != 0 {
+			last = b
+		}
+		for y := f.FiscalYear; y <= last; y++ {
+			if !seen[y] {
+				seen[y] = true
+				out = append(out, y)
+			}
 		}
 	}
 	sort.Ints(out)

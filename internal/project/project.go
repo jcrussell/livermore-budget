@@ -215,6 +215,12 @@ func PublishedDocuments() []PublishedDocument {
 		Scopes:     []string{CIPProjectsScope},
 		Columns:    CIPProjectsColumns(),
 	})
+	out = append(out, PublishedDocument{
+		Projection: DebtServiceProjection,
+		Stem:       DebtServiceProjection,
+		Scopes:     DebtServiceScopes(),
+		Columns:    DebtServiceColumns(),
+	})
 	return out
 }
 
@@ -300,7 +306,7 @@ func columnsCarrying(facts []fact.Fact, required, scopes []string, kinds []vocab
 		if !sel.HasScope(f.Scope) || !sel.HasKind(f.Kind) {
 			continue
 		}
-		c := Column{FiscalYear: f.FiscalYear, Basis: f.Basis}
+		c := ColumnOf(f)
 		if seen[c] == nil {
 			seen[c] = map[string]bool{}
 		}
@@ -439,12 +445,15 @@ func Stem(name string, o Options, declared []Options) (string, error) {
 			"the %s projection declared %d documents and one of them has no columns, "+
 				"so there is nothing to tell it apart by", name, len(declared))
 	}
-	if len(o.Columns) == 1 && o.Columns[0] == (Column{PublishedFiscalYear, PublishedBasis}) {
+	if len(o.Columns) == 1 && o.Columns[0] == (Column{FiscalYear: PublishedFiscalYear, Basis: PublishedBasis}) {
 		return name, nil
 	}
 	parts := make([]string, 0, len(o.Columns))
 	for _, c := range o.Columns {
 		part := strconv.Itoa(c.FiscalYear)
+		if c.Through != 0 {
+			part += "-" + strconv.Itoa(c.Through)
+		}
 		if c.Basis != PublishedBasis {
 			part += "-" + string(c.Basis)
 		}
@@ -531,10 +540,21 @@ type Options struct {
 type Column struct {
 	FiscalYear int
 	Basis      vocab.Basis
+	// Through is the last year of a band, and zero for a column of one year.
+	// Budget Book p80 prints 2031-2035 as one figure, so a column naming
+	// FY2031 alone does not select it: a document draws a band only by
+	// naming the band (see SelectFacts).
+	Through int
+}
+
+// ColumnOf is the column a fact is printed in, its band included. Every
+// Column built from a fact is built here, so none can drop the band.
+func ColumnOf(f *fact.Fact) Column {
+	return Column{FiscalYear: f.FiscalYear, Basis: f.Basis, Through: fact.BandOf(f)}
 }
 
 // String renders a column the way a report should name one.
-func (c Column) String() string { return fact.ColumnLabel(c.FiscalYear, c.Basis) }
+func (c Column) String() string { return fact.BandLabel(c.FiscalYear, c.Through, c.Basis) }
 
 // Describe renders a set of columns for a message. It is here rather than at
 // each call site because three packages format the same list and a reader
@@ -561,6 +581,9 @@ func (o Options) validate() error {
 	for _, c := range o.Columns {
 		if c.FiscalYear <= 0 {
 			return fmt.Errorf("fiscal year is required (got %d)", c.FiscalYear)
+		}
+		if c.Through != 0 && c.Through <= c.FiscalYear {
+			return fmt.Errorf("column %s ends its band before it begins", c)
 		}
 		if !c.Basis.Valid() {
 			return fmt.Errorf("basis %q is not one of %v", c.Basis, vocab.Bases())
@@ -721,5 +744,6 @@ func Registry(l labels) []Projection {
 		&FundBalanceChanges{Labels: l},
 		&FundBalances{Labels: l},
 		&CIPProjects{Labels: l},
+		&DebtService{},
 	}
 }

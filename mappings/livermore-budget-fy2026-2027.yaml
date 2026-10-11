@@ -6334,8 +6334,8 @@ rules:
   # the first row is "$"-prefixed too, so stop_at_ordinal counts it: six "$" on
   # the first row, six on each subtotal, and the grand Total's is the 19th.
   #
-  # Not mapped: the DEBT SERVICE REQUIREMENTS schedule below each block, future
-  # years' printed requirements (fisc-5gk.10).
+  # The DEBT SERVICE REQUIREMENTS schedule below each block is
+  # debt-service-requirements, the next rule.
   # --------------------------------------------------------------------------
   - id: debt-service-principal
     kind: expenditure
@@ -6425,6 +6425,111 @@ rules:
       - {label: "Banc of America Equipment Lease/Purchase Loan", category: debt-services/interest}
       - {label: "Water\n2020B Certificates of Participation", category: debt-services/interest}
       - {label: "Total Business-Type Activities", skip: true, subtotal: 1}
+
+  # --------------------------------------------------------------------------
+  # DEBT SERVICE REQUIREMENTS, pp.80-81: the principal and interest the city
+  # owes on the issues above, by year ending June 30 and by fund type.
+  #
+  # ROWS ARE YEARS, so the year is on the row and not the column. "2026" is
+  # the year ending June 30, 2026, fiscal_year 2026 -- the FY2025-26 column of
+  # the issues above, whose Lease/Purchase Loan prints 989,284 and 81,073 there
+  # and whose Internal Service Funds row here prints the same. From 2031 the
+  # page prints five years as one figure, "2031-2035"; such a row is a BAND,
+  # fiscal_year its first year and fiscal_year_through its last, and no fact
+  # of it is a year. The last band is labelled 2051-2055; ACFR p86 prints the
+  # same two figures under 2051-2052.
+  #
+  # PROJECTED, NOT ADOPTED. These are payments scheduled under the city's debt
+  # agreements, printed beside the budget; no year of them is an
+  # appropriation.
+  #
+  # FUND TYPES ARE COLUMNS, two to a page. p80 prints Governmental Funds,
+  # which is no single fund type (the General Fund, special revenue and debt
+  # service funds together) and so carries no fund dimension, and Internal
+  # Service Funds. p81 continues the rows with nothing but figures, read
+  # positionally against p80, for the Airport Fund (600), the Water Fund (640)
+  # and a Grand Total, which is skipped: it is the four fund types summed,
+  # measured exact in every row, and publishing it would count each twice.
+  # TestDebtServiceRequirementsCrossFootToTheGrandTotal holds that sum.
+  #
+  # BLANKS ARE ABSENT. Internal Service prints nothing from 2030, Water from
+  # 2036 and Airport from 2046. Each blank is an omitted cell, named by its
+  # header's ordinal because each page prints "Principal" and "Interest" over
+  # every fund type. On p81 the 2046-2050 and 2051-2055 lines print a Grand
+  # Total figure and nothing else.
+  #
+  # Every column ties to the Total the page prints beneath it. p81's Total is
+  # its seventh "$": the first row prints six.
+  - id: debt-service-requirements
+    kind: expenditure
+    basis: projected
+    scope: debt-service-requirements
+    grain: fund-by-category
+    units: dollars
+    total_row: "Total"
+    parts:
+      - page: 80
+        # p80 prints the issues' grid above this one; see Part.Grid.
+        grid: requirements
+        section: "Ending June 30"
+        stop_at: "Total"
+        omitted_cells:
+          - {label: "2030", column: "Principal", column_ordinal: 2, note: "Internal Service Funds print nothing from 2030; the lease ends in 2029"}
+          - {label: "2031-2035", column: "Principal", column_ordinal: 2, note: "Internal Service Funds print nothing from 2030; the lease ends in 2029"}
+          - {label: "2036-2040", column: "Principal", column_ordinal: 2, note: "Internal Service Funds print nothing from 2030; the lease ends in 2029"}
+          - {label: "2041-2045", column: "Principal", column_ordinal: 2, note: "Internal Service Funds print nothing from 2030; the lease ends in 2029"}
+          - {label: "2046-2050", column: "Principal", column_ordinal: 2, note: "Internal Service Funds print nothing from 2030; the lease ends in 2029"}
+          - {label: "2051-2055", column: "Principal", column_ordinal: 2, note: "Internal Service Funds print nothing from 2030; the lease ends in 2029"}
+          - {label: "2030", column: "Interest", column_ordinal: 2, note: "Internal Service Funds print nothing from 2030; the lease ends in 2029"}
+          - {label: "2031-2035", column: "Interest", column_ordinal: 2, note: "Internal Service Funds print nothing from 2030; the lease ends in 2029"}
+          - {label: "2036-2040", column: "Interest", column_ordinal: 2, note: "Internal Service Funds print nothing from 2030; the lease ends in 2029"}
+          - {label: "2041-2045", column: "Interest", column_ordinal: 2, note: "Internal Service Funds print nothing from 2030; the lease ends in 2029"}
+          - {label: "2046-2050", column: "Interest", column_ordinal: 2, note: "Internal Service Funds print nothing from 2030; the lease ends in 2029"}
+          - {label: "2051-2055", column: "Interest", column_ordinal: 2, note: "Internal Service Funds print nothing from 2030; the lease ends in 2029"}
+        column_headers: ["Principal", "Interest", "Principal", "Interest"]
+        columns:
+          - {category: debt-services/principal}
+          - {category: debt-services/interest}
+          - {category: debt-services/principal, fund_group: internal-service}
+          - {category: debt-services/interest, fund_group: internal-service}
+      - page: 81
+        grid: requirements
+        labels_from: 80
+        section: "Interest\n"
+        stop_at: "$"
+        stop_at_ordinal: 7
+        omitted_cells:
+          - {label: "2046-2050", column: "Principal", column_ordinal: 1, note: "Airport Fund prints nothing from 2046"}
+          - {label: "2051-2055", column: "Principal", column_ordinal: 1, note: "Airport Fund prints nothing from 2046"}
+          - {label: "2046-2050", column: "Interest", column_ordinal: 1, note: "Airport Fund prints nothing from 2046"}
+          - {label: "2051-2055", column: "Interest", column_ordinal: 1, note: "Airport Fund prints nothing from 2046"}
+          - {label: "2036-2040", column: "Principal", column_ordinal: 2, note: "Water Fund prints nothing from 2036"}
+          - {label: "2041-2045", column: "Principal", column_ordinal: 2, note: "Water Fund prints nothing from 2036"}
+          - {label: "2046-2050", column: "Principal", column_ordinal: 2, note: "Water Fund prints nothing from 2036"}
+          - {label: "2051-2055", column: "Principal", column_ordinal: 2, note: "Water Fund prints nothing from 2036"}
+          - {label: "2036-2040", column: "Interest", column_ordinal: 2, note: "Water Fund prints nothing from 2036"}
+          - {label: "2041-2045", column: "Interest", column_ordinal: 2, note: "Water Fund prints nothing from 2036"}
+          - {label: "2046-2050", column: "Interest", column_ordinal: 2, note: "Water Fund prints nothing from 2036"}
+          - {label: "2051-2055", column: "Interest", column_ordinal: 2, note: "Water Fund prints nothing from 2036"}
+        column_headers: ["Principal", "Interest", "Principal", "Interest", "Principal", "Interest"]
+        columns:
+          - {category: debt-services/principal, fund_group: enterprise, fund: 600}
+          - {category: debt-services/interest, fund_group: enterprise, fund: 600}
+          - {category: debt-services/principal, fund_group: enterprise, fund: 640}
+          - {category: debt-services/interest, fund_group: enterprise, fund: 640}
+          - {skip: true}
+          - {skip: true}
+    rows:
+      - {label: "2026", fiscal_year: 2026}
+      - {label: "2027", fiscal_year: 2027}
+      - {label: "2028", fiscal_year: 2028}
+      - {label: "2029", fiscal_year: 2029}
+      - {label: "2030", fiscal_year: 2030}
+      - {label: "2031-2035", fiscal_year: 2031, fiscal_year_through: 2035}
+      - {label: "2036-2040", fiscal_year: 2036, fiscal_year_through: 2040}
+      - {label: "2041-2045", fiscal_year: 2041, fiscal_year_through: 2045}
+      - {label: "2046-2050", fiscal_year: 2046, fiscal_year_through: 2050}
+      - {label: "2051-2055", fiscal_year: 2051, fiscal_year_through: 2055}
 
   # ==========================================================================
   # CAPITAL IMPROVEMENT PROGRAM, PROJECT LISTING BY FUND, pp.224-235.

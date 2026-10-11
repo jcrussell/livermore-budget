@@ -874,7 +874,15 @@ func SelectFacts(facts []fact.Fact, o Options) ([]fact.Fact, error) {
 		if !o.HasScope(f.Scope) || !o.HasKind(f.Kind) {
 			continue
 		}
-		if !slices.Contains(o.Columns, Column{FiscalYear: f.FiscalYear, Basis: f.Basis}) {
+		col := ColumnOf(f)
+		if !slices.Contains(o.Columns, col) {
+			// A band its document asks for as a year is the one way a band
+			// could be read as its first year, so it is refused rather than
+			// passed over.
+			if col.Through != 0 && slices.Contains(o.Columns, Column{FiscalYear: col.FiscalYear, Basis: col.Basis}) {
+				return nil, fmt.Errorf("fact %s is %s, a band, and these options ask for %s as one year",
+					f.ID, col, Column{FiscalYear: col.FiscalYear, Basis: col.Basis})
+			}
 			continue
 		}
 		if view != nil && !view.Admits(f, identities) {

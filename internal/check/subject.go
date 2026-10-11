@@ -129,6 +129,11 @@ type trendsBuilder interface {
 	Document(facts []fact.Fact, o project.Options) (*project.TrendsDocument, error)
 }
 
+type debtBuilder interface {
+	Name() string
+	Document(facts []fact.Fact, o project.Options) (*project.DebtServiceDocument, error)
+}
+
 // projection is one built graph, with the options it was built under.
 //
 // The options are carried because they are the difference between a graph that
@@ -151,6 +156,9 @@ type projection struct {
 	// Trends is the built trends document, or nil for a projection that is not
 	// one. Read it through [Subject.trendDocuments], for Graph's reason.
 	Trends *project.TrendsDocument
+	// Debt is the built debt-service document, or nil for a projection that
+	// is not one. debt-service-ties-to-facts reads it.
+	Debt *project.DebtServiceDocument
 }
 
 // linked is one graph document's nodes and links.
@@ -831,6 +839,7 @@ func buildProjections(ps []project.Projection, facts []fact.Fact, version string
 		// with a report around it rather than a dead run.
 		g, isGraph := p.(graphBuilder)
 		t, isTrends := p.(trendsBuilder)
+		d, isDebt := p.(debtBuilder)
 
 		for _, o := range want {
 			built := projection{Name: p.Name(), Options: o}
@@ -840,6 +849,8 @@ func buildProjections(ps []project.Projection, facts []fact.Fact, version string
 				built.Graph, err = g.Document(facts, o)
 			case isTrends:
 				built.Trends, err = t.Document(facts, o)
+			case isDebt:
+				built.Debt, err = d.Document(facts, o)
 			}
 			if err != nil {
 				// Recorded, not returned: see ProjectionFailure. The loop goes
@@ -862,13 +873,13 @@ func buildProjections(ps []project.Projection, facts []fact.Fact, version string
 // fiscal year and then basis so two runs report in the same order.
 func factSlices(facts []fact.Fact, version string) []project.Options {
 	type key struct {
-		year  int
-		basis vocab.Basis
+		year, through int
+		basis         vocab.Basis
 	}
 	seen := map[key]bool{}
 	for _, f := range facts {
 		if f.Scope == spineScope {
-			seen[key{f.FiscalYear, f.Basis}] = true
+			seen[key{f.FiscalYear, fact.BandOf(&f), f.Basis}] = true
 		}
 	}
 	keys := make([]key, 0, len(seen))
@@ -879,13 +890,16 @@ func factSlices(facts []fact.Fact, version string) []project.Options {
 		if keys[i].year != keys[j].year {
 			return keys[i].year < keys[j].year
 		}
+		if keys[i].through != keys[j].through {
+			return keys[i].through < keys[j].through
+		}
 		return keys[i].basis < keys[j].basis
 	})
 
 	out := make([]project.Options, 0, len(keys))
 	for _, k := range keys {
 		out = append(out, project.Options{
-			Columns: []project.Column{{FiscalYear: k.year, Basis: k.basis}},
+			Columns: []project.Column{{FiscalYear: k.year, Basis: k.basis, Through: k.through}},
 			Scopes:  []string{spineScope},
 			Version: version,
 		})

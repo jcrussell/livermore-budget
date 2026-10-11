@@ -164,13 +164,16 @@ func BalanceOf(balances []Balance, scope string) (Balance, bool) {
 type BalanceAt struct {
 	DocID, Scope, FundGroup, Fund string
 	Year                          int
-	Basis                         vocab.Basis
+	// Through is the column's band end, zero for one year, so two bands
+	// starting in one year and a band and its first year are three balances.
+	Through int
+	Basis   vocab.Basis
 }
 
 // BalanceAtOf is the balance a fact is a line of.
 func BalanceAtOf(f *fact.Fact) BalanceAt {
 	return BalanceAt{DocID: f.DocID, Scope: f.Scope, FundGroup: f.FundGroup,
-		Fund: fact.FundString(f.Fund), Year: f.FiscalYear, Basis: f.Basis}
+		Fund: fact.FundString(f.Fund), Year: f.FiscalYear, Through: fact.BandOf(f), Basis: f.Basis}
 }
 
 // Series is the balance less its column: what carries forward from year to
@@ -187,7 +190,7 @@ func (a BalanceAt) Series() string {
 }
 
 func (a BalanceAt) String() string {
-	return a.Series() + " " + fact.ColumnLabel(a.Year, a.Basis)
+	return a.Series() + " " + fact.BandLabel(a.Year, a.Through, a.Basis)
 }
 
 // A BalanceIdentity names one identity a balance is held to.

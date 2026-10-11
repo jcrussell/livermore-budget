@@ -212,6 +212,9 @@ func documentShape(p projection) string {
 	case p.Trends != nil:
 		// trend-points-tie-to-facts and trend-series-are-complete.
 		return "series"
+	case p.Debt != nil:
+		// debt-service-ties-to-facts.
+		return "debt schedule"
 	default:
 		return ""
 	}

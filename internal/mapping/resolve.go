@@ -488,14 +488,34 @@ func Omissions(rule *Rule, p *Part) []Omission {
 	// (fisc-gtv).
 	var out []Omission
 	for i, row := range rule.Rows {
-		for c, h := range p.ColumnHeaders {
+		for c := range p.ColumnHeaders {
 			if p.blank[row.Identity()][c] {
 				out = append(out, Omission{Row: row, RowIndex: i, Page: p.Page,
-					ColumnIndex: c, Header: h.Text})
+					ColumnIndex: c, Header: headerAt(p, c)})
 			}
 		}
 	}
 	return out
+}
+
+// headerAt names column c by its header, and by the header's ordinal where
+// the part prints that header over several columns -- "Principal #2" -- the
+// way an omitted_cells entry with column_ordinal names it.
+func headerAt(p *Part, c int) string {
+	text := p.ColumnHeaders[c].Text
+	n, at := 0, 0
+	for j, h := range p.ColumnHeaders {
+		if !h.Unheaded && h.Text == text {
+			n++
+			if j == c {
+				at = n
+			}
+		}
+	}
+	if n < 2 {
+		return text
+	}
+	return fmt.Sprintf("%s #%d", text, at)
 }
 
 func (r *Resolver) labelledValues(rule *Rule, p *Part, blk *block, guard *columnGuard) ([]Value, error) {
@@ -1930,17 +1950,17 @@ func (r *Resolver) compareTotals(rule *Rule, cols, dec *Part, stated, sums []amo
 		}
 		switch {
 		case !isDeclared:
-			bad = append(bad, fmt.Sprintf("column %d (%s FY%d): mapped %s, document states %s, off by %s",
-				c+1, col.FundGroup, col.FiscalYear, sums[c], stated[c], diff))
+			bad = append(bad, fmt.Sprintf("column %d (%s): mapped %s, document states %s, off by %s",
+				c+1, totalsColumn(col), sums[c], stated[c], diff))
 		case diff == 0:
 			// The declaration has outlived the discrepancy. Failing is the
 			// point: a stale claim about the city's arithmetic that nothing
 			// ever retracts is exactly what a tolerance would have hidden.
-			bad = append(bad, fmt.Sprintf("column %d (%s FY%d): declares a delta of %s but now ties exactly; remove the declaration",
-				c+1, col.FundGroup, col.FiscalYear, want))
+			bad = append(bad, fmt.Sprintf("column %d (%s): declares a delta of %s but now ties exactly; remove the declaration",
+				c+1, totalsColumn(col), want))
 		default:
-			bad = append(bad, fmt.Sprintf("column %d (%s FY%d): mapped %s, document states %s, declared delta %s but the difference is %s",
-				c+1, col.FundGroup, col.FiscalYear, sums[c], stated[c], want, diff))
+			bad = append(bad, fmt.Sprintf("column %d (%s): mapped %s, document states %s, declared delta %s but the difference is %s",
+				c+1, totalsColumn(col), sums[c], stated[c], want, diff))
 		}
 	}
 	// A declaration that has stopped doing anything is the one shape a
@@ -2144,4 +2164,24 @@ func columnIdentity(c Column) string {
 		out += " (skipped)"
 	}
 	return out
+}
+
+// totalsColumn names a column in a totals message: its fund group and year,
+// as it always has, and for a column whose years are on its rows its fund and
+// category instead of a "FY0" naming no year.
+func totalsColumn(c Column) string {
+	if c.FiscalYear != 0 {
+		return strings.TrimSpace(fmt.Sprintf("%s FY%d", c.FundGroup, c.FiscalYear))
+	}
+	var parts []string
+	if c.FundGroup != "" {
+		parts = append(parts, c.FundGroup)
+	}
+	if c.Fund != 0 {
+		parts = append(parts, fmt.Sprintf("fund %d", c.Fund))
+	}
+	if c.Category != "" {
+		parts = append(parts, c.Category)
+	}
+	return strings.Join(parts, " ")
 }

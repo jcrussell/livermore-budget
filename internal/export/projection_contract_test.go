@@ -31,6 +31,16 @@ func TestEveryNameThisPackageDecodesIsOneAProjectionStates(t *testing.T) {
 				"sourceMeta":         sourceMeta{},
 			},
 		},
+		{
+			name:   "the debt service projection",
+			schema: schema.DebtService,
+			decoders: map[string]any{
+				"debtDoc":    debtDoc{},
+				"debtColumn": debtColumn{},
+				"debtPair":   debtPair{},
+				"debtFigure": debtFigure{},
+			},
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			stated, err := schema.NamesDeep(tc.schema)

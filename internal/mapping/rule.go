@@ -15,6 +15,7 @@ package mapping
 import (
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 
 	yaml "go.yaml.in/yaml/v3"
@@ -516,6 +517,15 @@ type Part struct {
 	// See ColumnHeader.
 	ColumnHeaders columnHeaders `yaml:"column_headers"`
 
+	// Grid names which of its page's column grids this part reads, for a
+	// page printing two schedules under different headers: Budget Book p80
+	// prints the debt service budget under Principal, Interest and Total and,
+	// below it, the requirements under two fund types' Principal and
+	// Interest. Parts naming one grid of one page declare one header list,
+	// and two grids of a page may not declare the same list. Absent, a part
+	// reads the page's one grid.
+	Grid string `yaml:"grid"`
+
 	// WrappedLabels are the printed fragments this part's page wraps onto a
 	// line of their own, each written out verbatim.
 	//
@@ -795,6 +805,12 @@ type Column struct {
 	// revised, and two adopted years side by side.
 	Basis vocab.Basis `yaml:"basis"`
 
+	// FiscalYearThrough is the last fiscal year of a figure printed over
+	// several, and zero for a figure of one. No column declares it: a row
+	// does (Row.FiscalYearThrough), and Row.EffectiveColumn carries it here,
+	// so a band reaches the fact with both of its ends.
+	FiscalYearThrough int `yaml:"-"`
+
 	// Skip marks a column that is present in the text but should not produce
 	// facts, so column positions still line up.
 	Skip bool `yaml:"skip"`
@@ -907,6 +923,20 @@ type Row struct {
 	// inserting a row re-partitions the rules.
 	Fund      int    `yaml:"fund"`
 	FundGroup string `yaml:"fund_group"`
+
+	// FiscalYear is the year this row's figures are of, for a table whose
+	// rows are years: Budget Book p80 prints DEBT SERVICE REQUIREMENTS one
+	// row per year ending June 30, so the row "2026" is fiscal_year 2026, the
+	// same convention as the FY 2025-26 column elsewhere. A rule carries its
+	// year on its columns or on its publishing rows, never both, and the
+	// parser holds the year to the printed label.
+	FiscalYear int `yaml:"fiscal_year"`
+
+	// FiscalYearThrough is the last year of a row printing several years as
+	// one figure: p80's "2031-2035" is fiscal_year 2031 through 2035, one
+	// figure for five years. It is a band and not a year, and it publishes
+	// as fact.Fact.FiscalYearThrough so no reader can take it for FY2031.
+	FiscalYearThrough int `yaml:"fiscal_year_through"`
 
 	// Counterpart is the other end of a figure that moves money between two
 	// funds, and it is what lets ONE printed figure be evidence for TWO facts.
@@ -1163,7 +1193,8 @@ func (r Row) OnPart(p *Part) bool {
 }
 
 // EffectiveColumn is the column a row's own fact is filed under: the printed
-// column, with the row's fund overrides applied where it declares them.
+// column, with the row's fund and fiscal-year overrides applied where it
+// declares them.
 //
 // The override is per FIELD and not all-or-nothing. A schedule may pin the
 // group on the column and vary only the fund number per row, or the reverse,
@@ -1176,7 +1207,31 @@ func (r Row) EffectiveColumn(printed Column) Column {
 	if r.Fund != 0 {
 		printed.Fund = r.Fund
 	}
+	if r.FiscalYear != 0 {
+		printed.FiscalYear = r.FiscalYear
+		printed.FiscalYearThrough = r.FiscalYearThrough
+	}
 	return printed
+}
+
+// YearsOnRows says whether this rule's rows carry its fiscal years rather
+// than its columns: some row declares one.
+func (r *Rule) YearsOnRows() bool {
+	for _, row := range r.Rows {
+		if row.FiscalYear != 0 || row.FiscalYearThrough != 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// YearLabel is how a page prints a row's years: "2026" for one fiscal year,
+// "2031-2035" for a band.
+func YearLabel(year, through int) string {
+	if through == 0 {
+		return strconv.Itoa(year)
+	}
+	return strconv.Itoa(year) + "-" + strconv.Itoa(through)
 }
 
 // PrintedLabel is what the document printed for this row, as the fact's
@@ -1208,7 +1263,12 @@ type omittedCell struct {
 	Label     string `yaml:"label"`
 	LabelTail string `yaml:"label_tail"`
 	Column    string `yaml:"column"`
-	Note      string `yaml:"note"`
+	// ColumnOrdinal says which column headed Column is meant, 1 based, where
+	// the part prints that header over several: p80 prints "Principal" and
+	// "Interest" over each of its two fund types. It is refused on a header
+	// printed once, where it could only restate the header.
+	ColumnOrdinal int    `yaml:"column_ordinal"`
+	Note          string `yaml:"note"`
 }
 
 // row is the Row this entry names, so identity and printed form are computed
@@ -1217,6 +1277,9 @@ func (o omittedCell) row() Row { return Row{Label: o.Label, LabelTail: o.LabelTa
 
 // describe is how the entry reads in a message.
 func (o omittedCell) describe() string {
+	if o.ColumnOrdinal > 0 {
+		return fmt.Sprintf("%q under %q #%d", o.row().PrintedLabel(), o.Column, o.ColumnOrdinal)
+	}
 	return fmt.Sprintf("%q under %q", o.row().PrintedLabel(), o.Column)
 }
 
@@ -1225,22 +1288,38 @@ func (o omittedCell) describe() string {
 // columns: Budget Book p67 prints "FY 2025-26" over four of its columns, and
 // a declaration naming that header cannot say which cell it means.
 func (p *Part) columnHeaded(header string) (int, error) {
-	at := -1
+	return p.columnHeadedAt(header, 0)
+}
+
+// columnHeadedAt is columnHeaded naming the ordinal-th column header heads,
+// for a header printed over several. An ordinal of zero requires the header
+// to head one column, and a non-zero one requires it to head several.
+func (p *Part) columnHeadedAt(header string, ordinal int) (int, error) {
+	var at []int
 	for c, h := range p.ColumnHeaders {
-		if h.Unheaded || h.Text != header {
-			continue
+		if !h.Unheaded && h.Text == header {
+			at = append(at, c)
 		}
-		if at >= 0 {
-			return -1, fmt.Errorf("%q heads more than one of this part's "+
-				"columns, so it cannot say which cell is blank", header)
-		}
-		at = c
 	}
-	if at < 0 {
+	switch {
+	case len(at) == 0:
 		return -1, fmt.Errorf("%q is not one of this part's column_headers: %s",
 			header, describeHeaders(p.ColumnHeaders))
+	case ordinal < 0:
+		return -1, fmt.Errorf("column_ordinal %d for %q; ordinals count from 1", ordinal, header)
+	case ordinal == 0 && len(at) > 1:
+		return -1, fmt.Errorf("%q heads more than one of this part's columns, so it "+
+			"cannot say which cell is blank; set column_ordinal (1 to %d)", header, len(at))
+	case ordinal == 0:
+		return at[0], nil
+	case len(at) == 1:
+		return -1, fmt.Errorf("column_ordinal %d for %q, which heads one column; "+
+			"remove the ordinal", ordinal, header)
+	case ordinal > len(at):
+		return -1, fmt.Errorf("column_ordinal %d for %q, which heads %d columns",
+			ordinal, header, len(at))
 	}
-	return at, nil
+	return at[ordinal-1], nil
 }
 
 // printedColumns is the columns a row prints on this part, left to right: all
