@@ -874,8 +874,9 @@ export function capColumn(doc, tier, cap, opened, noun, among) {
   if (folded.length < 2) return doc;
 
   // The noun is the view's, plural: the threshold above folds two or more.
-  const aggregate = aggregateMark(tier, opened, folded.map((n) => n.id), atTier.filter((n) => !n.derived).length,
-    cap, noun, tailID);
+  // Of the rows that ranked for the cap: a derived node ranked past it is
+  // drawn beside them and not among them.
+  const aggregate = aggregateMark(tier, opened, folded.map((n) => n.id), folded.length + cap, cap, noun, tailID);
   const tail = new Set(folded.map((n) => n.id));
   const remap = (/** @type {string} */ id) => (tail.has(id) ? tailID : id);
 

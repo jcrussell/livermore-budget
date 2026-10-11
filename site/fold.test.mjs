@@ -621,6 +621,9 @@ describe("the expansion's caps preserve what they fold, at every split the page 
           // fold after the cap knows.
           const figure = app.say("aggregate_together", { figure: app.fmt(app.tailFigure(drawn, tailID)) });
           if (!tail.source_note.endsWith(figure)) wrong.push(`${st.where}: ${tailID}'s note does not end "${figure}"`);
+          // ITS TOTAL LESS WHAT IT FOLDS IS THE CAP, read off the note.
+          const stated = app.say("aggregate_note", { folded: tail.folds.length, total: tail.folds.length + cap.cap, cap: cap.cap });
+          if (!tail.source_note.startsWith(stated)) wrong.push(`${st.where}: ${tailID}'s note reads "${tail.source_note}", not "${stated}"`);
         }
       }
       t.diagnostic(`${stem}: ${charts} charts, ${tails} folded tails, ${merged} ribbons merged by the cap`);
