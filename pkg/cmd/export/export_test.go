@@ -1260,9 +1260,10 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItsCharts(t *testing.T) {
 	built := builtStemsForTest(t)
 	got := mustViews(t, result{Projections: built})
 
-	if len(got) != 5 {
+	if len(got) != 8 {
 		t.Fatalf("got %d views over %v, want the spine, the revenue trends, "+
-			"the two ACFR history tables and the caveats index", len(got), keys(built))
+			"the two ACFR history tables, the department, capital and debt pages "+
+			"and the caveats index", len(got), keys(built))
 	}
 	spine := got[0]
 	if spine.Path != export.IndexPath || spine.Projection != export.PrimaryProjection {
@@ -1299,7 +1300,8 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItsCharts(t *testing.T) {
 	}
 
 	// Titles and ledes are the caller's, not the packager's.
-	for _, path := range []string{"trends.html", "history.html", "balances.html"} {
+	for _, path := range []string{"trends.html", "history.html", "balances.html",
+		"department.html", "capital.html", "debt.html"} {
 		v, ok := byPath[path]
 		if !ok {
 			paths := make([]string, 0, len(got))

@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.Title}}</title>
+<meta name="description" content="What the City of Livermore owes and pays on its debt.">
+<meta name="color-scheme" content="light dark">
+<link rel="stylesheet" href="style.css">
+<script>
+  // Stamp the saved theme before first paint, the same way index.html does, so
+  // a reader who chose dark there does not get a white flash here.
+  try {
+    var t = localStorage.getItem("fisc-theme");
+    if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+  } catch (e) { /* private mode: fall back to the OS setting */ }
+</script>
+<script type="module" src="./debt.js"></script>
+</head>
+<body>
+
+<div class="wip-banner" role="status">⚠️ Work in progress — early preview, coverage is incomplete.</div>
+
+{{- if gt (len .Nav) 1}}
+<nav class="site-nav" aria-label="Views">
+  <ul>
+    {{- range .Nav}}
+    <li>{{if .Current}}<span aria-current="page">{{.Label}}</span>{{else}}<a href="{{.Path}}">{{.Label}}</a>{{end}}</li>
+    {{- end}}
+  </ul>
+</nav>
+{{- end}}
+
+<header class="page-head">
+  <div>
+    <h1>{{.Title}}</h1>
+    <p class="lede">{{.Lede}}</p>
+  </div>
+</header>
+
+<main>
+</main>
+
+<footer>
+  {{template "sources" .}}
+  <p class="subtle">
+    Packaged by {{.ExportedBy}}. This page publishes no figure yet, so it cites no page.
+  </p>
+</footer>
+
+</body>
+</html>

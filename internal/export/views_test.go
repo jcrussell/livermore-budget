@@ -2494,7 +2494,7 @@ func TestTheCaveatsPageFoldsItsFileListAndNotItsReason(t *testing.T) {
 }
 
 // TestEveryFooterDisclosureKeepsItsHeadingInTheOutline asserts the rule on the
-// TEMPLATES rather than on rendered pages: the four pages that cite a figure
+// TEMPLATES rather than on rendered pages: the pages that cite a figure
 // execute one sources partial, and caveats.html.tmpl folds its own file list,
 // so two files hold every footer disclosure the site renders. A page that
 // grows its own copy of the footer again is refused here, because a copy is
@@ -2552,7 +2552,8 @@ func TestEveryFooterDisclosureKeepsItsHeadingInTheOutline(t *testing.T) {
 	if diff := cmp.Diff([]string{export.CaveatsTemplate, export.SourcesPartial}, folding); diff != "" {
 		t.Errorf("templates folding a footer list (-want +got):\n%s", diff)
 	}
-	if diff := cmp.Diff([]string{export.HistoryTemplate, export.SankeyTemplate,
+	if diff := cmp.Diff([]string{export.CapitalTemplate, export.DebtTemplate,
+		export.DepartmentTemplate, export.HistoryTemplate, export.SankeyTemplate,
 		export.ProvenanceTemplate, export.TrendsTemplate}, calling); diff != "" {
 		t.Errorf("templates executing the sources partial (-want +got):\n%s", diff)
 	}

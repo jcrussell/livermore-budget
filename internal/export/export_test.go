@@ -104,6 +104,11 @@ func TestWriteProducesTheSiteLayout(t *testing.T) {
 		".fisc-export",
 		"app.js",
 		"core.js",
+		// Every page's client module ships whatever views the site carries,
+		// as sankey.js does: verbatimAssets is not per view.
+		"department.js",
+		"capital.js",
+		"debt.js",
 		// One document per published column, not also one per schedule.
 		"fy2026-adopted.json",
 		"index.html",

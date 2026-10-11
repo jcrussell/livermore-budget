@@ -97,7 +97,8 @@ const DefaultSourceBrowseURL = "https://github.com/jcrussell/livermore-budget/bl
 
 // verbatimAssets are copied from the embedded site tree byte for byte. The
 // page template is not in this list: it is rendered, and vendor/ is walked.
-var verbatimAssets = []string{"app.js", "core.js", "sankey.js", "style.css", ".nojekyll"}
+var verbatimAssets = []string{"app.js", "core.js", "sankey.js",
+	"department.js", "capital.js", "debt.js", "style.css", ".nojekyll"}
 
 // View is one HTML page of the site: one document, rendered by one template.
 //
@@ -676,7 +677,8 @@ func (v View) validate(built map[string][]byte, ix ColumnIndex) error {
 // An allow-list: a template absent from it is refused a lede.
 func templateRendersLede(name string) bool {
 	switch name {
-	case TrendsTemplate, HistoryTemplate, ProvenanceTemplate, CaveatsTemplate:
+	case TrendsTemplate, HistoryTemplate, ProvenanceTemplate, CaveatsTemplate,
+		DepartmentTemplate, CapitalTemplate, DebtTemplate:
 		return true
 	default:
 		return false
@@ -726,7 +728,8 @@ func templateRendersADocument(name string) bool {
 // leads past validate. Drift against buildSite's switch is benign both ways.
 func templateIsKnown(name string) bool {
 	return templateRendersADocument(name) ||
-		name == ProvenanceTemplate || name == CaveatsTemplate
+		name == ProvenanceTemplate || name == CaveatsTemplate ||
+		name == DepartmentTemplate || name == CapitalTemplate || name == DebtTemplate
 }
 
 // templateRendersSections answers whether a template groups its rows under

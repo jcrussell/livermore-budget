@@ -99,6 +99,31 @@ views:
       each June 30, FY2015-16 through FY2024-25, split into the GASB 54
       categories that say how spendable each dollar is.
 
+  # One page per subject, each server-rendered by its own template and
+  # loading its own client module. They name no projection, so no missing
+  # document drops them.
+  - path: department.html
+    nav: Departments
+    template: department.html.tmpl
+    title: What each Livermore department spends
+    lede: >-
+      This page will show what each of the city's departments is budgeted to
+      spend, and on what.
+  - path: capital.html
+    nav: Capital projects
+    template: capital.html.tmpl
+    title: Livermore's capital projects
+    lede: >-
+      This page will show the city's capital projects, what each is budgeted
+      to cost, and the funds that pay for them.
+  - path: debt.html
+    nav: Debt
+    template: debt.html.tmpl
+    title: What Livermore owes
+    lede: >-
+      This page will show the city's outstanding debt, issue by issue, and
+      what it pays on each one every year.
+
   # The caveats index names no projection, so no missing document drops it;
   # buildCaveatsPage refuses an empty one rather than link a blank page. It
   # comes before provenance so the two indexes end the nav.

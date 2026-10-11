@@ -30,6 +30,12 @@ const (
 	// document (templateRendersADocument).
 	ProvenanceTemplate = "provenance.html.tmpl"
 	CaveatsTemplate    = "caveats.html.tmpl"
+	// DepartmentTemplate, CapitalTemplate and DebtTemplate are server-rendered
+	// pages, one per subject, each loading its own client module. They render
+	// no projection document (templateRendersADocument).
+	DepartmentTemplate = "department.html.tmpl"
+	CapitalTemplate    = "capital.html.tmpl"
+	DebtTemplate       = "debt.html.tmpl"
 )
 
 // SchemaVersion is the projection schema this packager understands, the
@@ -201,6 +207,12 @@ func buildSite(o *Options, ix ColumnIndex, pageTextBase func(docID string) strin
 			data, err = buildProvenancePage(o, v, here, byID, ix, pageTextBase)
 		case CaveatsTemplate:
 			data, err = buildCaveatsPage(o, v, here, byID, ix, pageTextBase)
+		case DepartmentTemplate:
+			data, err = buildDepartmentPage(o, v, here, byID, ix, pageTextBase)
+		case CapitalTemplate:
+			data, err = buildCapitalPage(o, v, here, byID, ix, pageTextBase)
+		case DebtTemplate:
+			data, err = buildDebtPage(o, v, here, byID, ix, pageTextBase)
 		default:
 			return nil, nil, hint.With(
 				fmt.Errorf("view %q renders template %q, which this package has no builder for",
