@@ -586,8 +586,10 @@ describe("the expansion's caps preserve what they fold, at every split the page 
           wrong.push(`${st.where}: ${lost.length} fact(s) cited away, ${invented.length} cited from nowhere`);
         }
         merged += raw.links.length - drawn.links.length;
-        // (c) CAPS: each open split a cap names holds at most cap + 1 marks,
-        // and where it folded, its tail's members and the kept are the split.
+        // (c) CAPS: each open split a cap names draws at most cap printed
+        // members and a tail, a derived remainder beside them, and where it
+        // folded, its tail's members and the kept are the split, the tail
+        // holding no derived node.
         const ids = new Set(drawn.nodes.map((n) => n.id));
         for (const sp of doc.splits) {
           const cap = caps.find((c) => c.split === sp.key);
@@ -596,9 +598,14 @@ describe("the expansion's caps preserve what they fold, at every split the page 
           const tailID = app.splitTailID(sp.node, sp.key);
           const tail = drawn.nodes.find((n) => n.id === tailID);
           const kept = members.filter((m) => ids.has(m));
+          const derived = new Set(doc.nodes.filter((n) => n.derived).map((n) => n.id));
+          const printed = kept.filter((m) => !derived.has(m));
           if (st.whole.size && tail) wrong.push(`${st.where}: ${tailID} is drawn with its split drawn out`);
-          if (!st.whole.size && kept.length + (tail ? 1 : 0) > cap.cap + 1) {
-            wrong.push(`${st.where}: ${sp.node} by ${sp.key} draws ${kept.length} members and a tail, capped at ${cap.cap}`);
+          if (!st.whole.size && printed.length + (tail ? 1 : 0) > cap.cap + 1) {
+            wrong.push(`${st.where}: ${sp.node} by ${sp.key} draws ${printed.length} printed members and a tail, capped at ${cap.cap}`);
+          }
+          if (tail && tail.folds.some((m) => derived.has(m))) {
+            wrong.push(`${st.where}: ${tailID} folds a derived node`);
           }
           if (!tail) {
             if (kept.length !== members.length) wrong.push(`${st.where}: ${sp.node} by ${sp.key} drops a member with no tail`);

@@ -1078,6 +1078,35 @@ describe("the tail chip counts in the declared tail's words", () => {
   });
 });
 
+// Services and supplies' divisions and object rows each hold a derived
+// remainder small enough to rank into the tail, in the year that draws one.
+describe("a capped tail folds no derived remainder", () => {
+  for (const year of YEARS) {
+    test(`${year.label}: services and supplies' remainders are drawn beside their tails, not counted in them`, async (t) => {
+      const { app } = await bootedApp({ checkedStem: year.stem });
+      const node = "expenditure/services-and-supplies";
+      const cases = [
+        { entry: node, remainder: "expenditure/fund-group/internal-service/services-and-supplies" },
+        { entry: node + app.ALTERNATIVE_MARK + "divisions", remainder: "no-division/services-and-supplies" },
+      ];
+      // FY 2025-26's schedule draws neither remainder; FY 2026-27's both.
+      const held = cases.filter((c) => app.nodeOf(c.remainder) !== undefined);
+      t.diagnostic(`${held.length} of ${cases.length} remainders in this year's schedule`);
+      assert.equal(held.length, year.label === "FY 2026-27" ? 2 : 0);
+      for (const c of held) {
+        app.collapseAll();
+        await split(app, c.entry);
+        const tail = app.projection.nodes.find((n) => app.isAggregate(n.id) && n.parent === node);
+        assert.ok(tail !== undefined, `${c.entry} draws no tail`);
+        t.diagnostic(`${c.entry}: "${tail.label}" folds ${tail.folds.length}`);
+        assert.ok(!tail.folds.includes(c.remainder), `${tail.id} folds ${c.remainder}`);
+        assert.ok(tail.folds.every((m) => !app.nodeOf(m).derived), `${tail.id} folds a derived node`);
+        assert.ok(app.projection.nodes.some((n) => n.id === c.remainder), `${c.remainder} is not drawn`);
+      }
+    });
+  }
+});
+
 // AGENTS.md, "Go vets, JavaScript renders": a count the client takes is
 // its sentence about what is drawn, marked as its own. Each sentence is read
 // off the page where it is painted, after the state that paints it.

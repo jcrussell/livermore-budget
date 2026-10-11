@@ -218,6 +218,40 @@ func TestTheExpansionChecksCanFail(t *testing.T) {
 			want: "names 1 legs, want 2",
 		},
 		{
+			name: "a p222 leg the expansion draws alone, drawn twice", check: &transferLegsPair{},
+			edit: func(t *testing.T, s *Subject, d *project.Document) {
+				scopeOf := map[string]string{}
+				for _, f := range s.Facts {
+					scopeOf[f.ID] = f.Scope
+				}
+				for _, l := range d.Links {
+					if l.TransferID != "" && citesOnly(l, scopeOf, project.CIPFundingScope) {
+						d.Links = append(d.Links, l)
+						return
+					}
+				}
+				t.Fatal("the expansion draws no p222 leg alone")
+			},
+			want: "a p222 leg the expansion draws alone names 2 legs, want 1",
+		},
+		{
+			name: "a p222 leg the expansion draws alone, drawn receiving", check: &transferLegsPair{},
+			edit: func(t *testing.T, s *Subject, d *project.Document) {
+				scopeOf := map[string]string{}
+				for _, f := range s.Facts {
+					scopeOf[f.ID] = f.Scope
+				}
+				for i, l := range d.Links {
+					if l.TransferID != "" && citesOnly(l, scopeOf, project.CIPFundingScope) {
+						d.Links[i].Source, d.Links[i].Target = l.Target, l.Source
+						return
+					}
+				}
+				t.Fatal("the expansion draws no p222 leg alone")
+			},
+			want: "cites p222 alone and is not a paying leg",
+		},
+		{
 			name: "a division's alternative row named for another division", check: &linkEndsMatchTheirFacts{},
 			edit: func(t *testing.T, _ *Subject, d *project.Document) {
 				d.Links[linkAt(t, d, "expenditure/wages-and-benefits", "dept/patrol/wages-and-benefits")].Target =

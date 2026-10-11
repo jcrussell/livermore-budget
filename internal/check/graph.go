@@ -719,6 +719,8 @@ func (*transferLegsPair) Run(_ context.Context, s *Subject) (Result, error) {
 		scopeOf[s.Facts[i].ID] = s.Facts[i].Scope
 	}
 	outside := 0
+	// lone is each p222-only leg's transfer: one leg, and no other.
+	lone := map[string]int{}
 	for _, p := range s.linkedDocuments() {
 		role := map[string]string{}
 		for _, n := range p.Nodes {
@@ -735,13 +737,19 @@ func (*transferLegsPair) Run(_ context.Context, s *Subject) (Result, error) {
 				}
 				continue
 			}
+			key := p.String() + " transfer " + l.TransferID
 			// The stitch draws the operating budget alone, so of a transfer
-			// p222 prints into a CIP fund it draws the paying leg only.
+			// p222 prints into a CIP fund it draws the paying leg only, and
+			// that leg is held to being one.
 			if p.Name == project.ExpansionProjection && citesOnly(l, scopeOf, project.CIPFundingScope) {
 				outside++
+				lone[key]++
+				if role[l.Target] != project.RoleTransferSink || role[l.Source] == project.RoleTransferSource {
+					findings = append(findings, finding(key, "%s -> %s cites p222 alone and is not a paying leg",
+						l.Source, l.Target))
+				}
 				continue
 			}
-			key := p.String() + " transfer " + l.TransferID
 			if _, seen := legs[key]; !seen {
 				ids = append(ids, key)
 			}
@@ -750,6 +758,11 @@ func (*transferLegsPair) Run(_ context.Context, s *Subject) (Result, error) {
 		}
 	}
 
+	for _, id := range sortedStrings(lone) {
+		if n := lone[id] + len(legs[id]); n != 1 {
+			findings = append(findings, finding(id, "a p222 leg the expansion draws alone names %d legs, want 1", n))
+		}
+	}
 	for _, id := range ids {
 		pair := legs[id]
 		if len(pair) != 2 {

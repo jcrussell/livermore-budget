@@ -788,8 +788,8 @@ const EXPANSION_CLAIMED = {
       labels: "0 wider than their room" },
     "fund-group/general by funds": { slots: "12/6/7", figures: "25 nodes, 58 ribbons; 820px canvas, 11 under 1px",
       labels: "0 wider than their room" },
-    "everything by primary splits": { slots: "74/37/23/44",
-      figures: "178 nodes, 286 ribbons; 2960px canvas, 55 under 1px",
+    "everything by primary splits": { slots: "74/37/23/45",
+      figures: "179 nodes, 286 ribbons; 2960px canvas, 55 under 1px",
       labels: "0 wider than their room" },
     "everything by primary splits, every tail drawn out": { slots: "102/68/23/159",
       figures: "352 nodes, 385 ribbons; 4800px canvas, 118 under 1px",
@@ -989,19 +989,12 @@ describe("the expansion schedule laid out in slots, at the root, one group open 
     assert.deepEqual(got, want);
   });
 
-  // A capped split's tail can hold a remainder beside printed members, a part
-  // of no completing set, so the fold draws the ribbon into it inferred. Pinned per year over every split
-  // opened alone from the root and capped.
-  test("the inferred ribbons into or out of a tail are the ones a remainder shares with printed members", (t) => {
-    const want = {
-      "FY 2025-26": [],
-      "FY 2026-27": [
-        "expenditure/services-and-supplies by divisions: expenditure/services-and-supplies > " +
-          "aggregate/tail/divisions/expenditure/services-and-supplies (external)",
-        "expenditure/services-and-supplies by object-rows: fund-group/internal-service > " +
-          "aggregate/tail/object-rows/expenditure/services-and-supplies (internal_service)",
-      ],
-    };
+  // A capped split's tail folds no remainder, so no ribbon into or out of a
+  // tail is drawn inferred. FY 2026-27's services and supplies ranks one
+  // remainder past the cap in each of its two splits, so this goes red where
+  // a tail folds one. Over every split opened alone from the root and capped.
+  test("no ribbon into or out of a tail is drawn inferred, since a tail folds no remainder", (t) => {
+    const want = { "FY 2025-26": [], "FY 2026-27": [] };
     const got = {};
     const { config } = pageFixture();
     for (const year of config.years) {

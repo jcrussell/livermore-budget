@@ -544,8 +544,7 @@ function readUnder(byID, n, alternatives) {
  * A ribbon whose legs are exactly the links naming one cell in `completes` is
  * that printed cell, and is drawn printed whichever of its legs Go derived:
  * a membership Go declared. Any part of such a set is not the cell. Any other
- * ribbon merging a printed leg and an inferred one is drawn inferred: a
- * capped split's tail can hold a remainder beside printed members, and the
+ * ribbon merging a printed leg and an inferred one is drawn inferred: the
  * ribbon claims no more than its least-printed leg.
  *
  * FAILS CLOSED on a read node that neither folds nor is opened, and on a read
@@ -867,11 +866,16 @@ export function capColumn(doc, tier, cap, opened, noun, among) {
   // Ties broken by id, so the kept set is stable across builds.
   const ranked = atTier.slice().sort((a, b) =>
     size(b.id) - size(a.id) || (a.id < b.id ? -1 : 1));
-  const kept = new Set(ranked.slice(0, cap).map((n) => n.id));
-  const folded = ranked.slice(cap);
+  // A DERIVED NODE IS NEVER FOLDED: a remainder is not one of the noun's
+  // rows, and the tail's words say every figure inside it is printed. One
+  // ranked past the cap is drawn beside the kept rows.
+  const kept = new Set(ranked.filter((n, i) => i < cap || n.derived).map((n) => n.id));
+  const folded = ranked.filter((n) => !kept.has(n.id));
+  if (folded.length < 2) return doc;
 
   // The noun is the view's, plural: the threshold above folds two or more.
-  const aggregate = aggregateMark(tier, opened, folded.map((n) => n.id), atTier.length, cap, noun, tailID);
+  const aggregate = aggregateMark(tier, opened, folded.map((n) => n.id), atTier.filter((n) => !n.derived).length,
+    cap, noun, tailID);
   const tail = new Set(folded.map((n) => n.id));
   const remap = (/** @type {string} */ id) => (tail.has(id) ? tailID : id);
 
