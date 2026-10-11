@@ -844,6 +844,7 @@ func TestBuildProjectionsRunsThePipeline(t *testing.T) {
 	// its projection's name.
 	if diff := cmp.Diff([]string{
 		"changes-in-fund-balances",
+		"cip-projects",
 		"department-funding", "department-funding-2024-actual",
 		"department-funding-2025-revised", "department-funding-2027",
 		"department-spending", "department-spending-2024-actual",
@@ -934,6 +935,7 @@ func TestTheCommittedStemsAreUnchanged(t *testing.T) {
 	}
 	want := []string{
 		"changes-in-fund-balances",
+		"cip-projects",
 		"department-funding", "department-funding-2024-actual",
 		"department-funding-2025-revised", "department-funding-2027",
 		"department-spending", "department-spending-2024-actual",
@@ -1041,6 +1043,7 @@ func TestTheSitePublishesOneFilePerColumnAndNothingTwice(t *testing.T) {
 	sort.Strings(got)
 	want := []string{
 		"data/changes-in-fund-balances.json",
+		"data/cip-projects.json",
 		"data/fund-balances.json",
 		"data/revenue-trends.json",
 		"fy2024-actual.json",
@@ -1707,6 +1710,7 @@ func TestAViewWhoseDocumentWasNotBuiltIsDropped(t *testing.T) {
 		project.FundFlowsProjection:    {},
 		project.ChangesProjection:      {},
 		project.FundBalancesProjection: {},
+		project.CIPProjectsProjection:  {},
 	}}) {
 		if v.Projection != "" && v.Projection != export.PrimaryProjection {
 			dropped[v.Path] = true
