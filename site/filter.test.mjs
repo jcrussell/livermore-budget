@@ -105,17 +105,14 @@ function faultsOf(app, doc, state, where) {
   const touched = new Set(r.doc.links.flatMap((l) => [l.source, l.target]));
   for (const id of touched) if (!ids.has(id)) faults.push(`${where}: a ribbon ends at ${id}, which is not drawn`);
   for (const id of ids) if (!touched.has(id)) faults.push(`${where}: ${id} is drawn and no ribbon touches it`);
-  // A FILTER THAT CUTS EVERY RIBBON INTO A SLOT IS REFUSED, not laid out a
-  // column early: layOutAt throws, and setFilter says so in its banner. Any
-  // other throw is a fault.
-  let refused = "";
+  // A FILTER THAT CUTS EVERY RIBBON INTO A SLOT STILL LAYS OUT: layOutAt's
+  // scaffold runs a path through every slot. Any throw is a fault.
   try {
     app.layOut(r.doc);
   } catch (e) {
-    if (/no ribbon drawn reaches that far/.test(e.message)) refused = `${where}: ${e.message}`;
-    else faults.push(`${where}: the filtered chart does not lay out: ${e.message}`);
+    faults.push(`${where}: the filtered chart does not lay out: ${e.message}`);
   }
-  return { faults, merged, hidden: r.hidden.length, refused };
+  return { faults, merged, hidden: r.hidden.length };
 }
 
 describe("drawn plus hidden is the chart", () => {
@@ -126,7 +123,6 @@ describe("drawn plus hidden is the chart", () => {
       let states = 0;
       let merged = 0;
       let hidden = 0;
-      const refused = [];
       const visit = (where) => {
         const doc = app.projection;
         for (const state of samples(app, doc)) {
@@ -135,7 +131,6 @@ describe("drawn plus hidden is the chart", () => {
           faults.push(...got.faults);
           merged += got.merged;
           hidden += got.hidden;
-          if (got.refused) refused.push(got.refused);
           states++;
         }
       };
@@ -143,9 +138,7 @@ describe("drawn plus hidden is the chart", () => {
       const walked = await everySplit(app, async (where) => visit(where));
       assert.equal(walked.refused, "", walked.refused);
       t.diagnostic(`${year.label}: ${walked.visited + 1} chart(s), ${states} filter state(s); ${hidden} ribbon(s) hidden ` +
-        `and ${merged} merged ribbon(s) drawn across them; ${faults.length} fault(s); ${refused.length} state(s) ` +
-        `refused because no ribbon drawn reaches a slot:\n  ${refused.join("\n  ")}`);
-      assert.ok(refused.length < states / 10, `${refused.length} of ${states} states refused`);
+        `and ${merged} merged ribbon(s) drawn across them; ${faults.length} fault(s)`);
       assert.ok(hidden > 0 && merged > 0, "no state hid or merged a ribbon, so nothing here is tested");
       assert.deepEqual(faults.slice(0, 5), []);
     });
@@ -317,26 +310,39 @@ describe("the filter panel", () => {
   });
 });
 
-describe("a filter the expansion's slots cannot lay out", () => {
-  // THE CLAMP (layOutAt): a division an object category is split into stands
-  // in a slot after the category's, and hiding every group that pays for the
-  // category leaves no ribbon reaching that far, so d3-sankey would draw the
-  // divisions a column early. The page refuses the filter instead.
-  test("is refused with the banner, and the chart, the filter and the panel stay as they were", async (t) => {
+describe("a filter that cuts every ribbon into an extend split's slot", () => {
+  // THE SCAFFOLD (layOutAt): a division an object category is split into
+  // stands in a slot after the category's, and hiding every group that pays
+  // for the category leaves no drawn ribbon reaching that far. d3-sankey
+  // alone would draw the divisions a column early; the scaffold keeps each
+  // node in its slot's column, so the page draws the filter.
+  test("lays out, each node in its slot's column, with no banner", async (t) => {
     const { app, document } = await bootedApp({ checkedStem: YEARS[0].stem });
     await split(app, "expenditure/capital-outlay~divisions");
-    const laid = app.laidNodes.map((n) => n.id).sort().join(",");
+    const divisions = new Set(app.splitsHere({ id: "expenditure/capital-outlay" }).find((sp) => sp.key === "divisions").members);
+    const columns = new Set(app.slotsOf(app.laidNodes, app.RENDER_TIERS).values()).size;
     const hide = new Set(app.fundGroups().map((g) => g.id).filter((g) => g !== "fund-group/capital" && g !== "fund-group/permanent"));
     const drew = app.setFilter({ groups: hide });
     const banners = refusals(document).map((b) => b.textContent);
-    t.diagnostic(`hiding ${[...hide].join(", ")}: setFilter ${drew}; ${banners.join(" | ")}`);
-    assert.equal(drew, false);
-    assert.equal(banners.length, 1);
-    assert.ok(banners[0].startsWith("The chart could not be filtered: ") && banners[0].includes("no ribbon drawn reaches that far"), banners[0]);
-    assert.equal(app.filter.groups.size, 0);
-    assert.equal(app.laidNodes.map((n) => n.id).sort().join(","), laid);
-    const boxes = [...document.querySelectorAll("#filter-group-list input")];
-    assert.ok(boxes.every((b) => b.checked), "a box was left unchecked for a filter the page refused");
+    const slots = app.slotsOf(app.laidNodes, app.RENDER_TIERS);
+    const misplaced = app.laidNodes.filter((n) => n.layer !== slots.get(n.id)).map((n) => n.id);
+    const last = app.laidNodes.filter((n) => divisions.has(n.id) && slots.get(n.id) === columns - 1).map((n) => n.id);
+    t.diagnostic(`hiding ${[...hide].join(", ")}: setFilter ${drew}; ${last.length} division(s) drawn in the last of ` +
+      `${columns} column(s); ${banners.length} banner(s)`);
+    assert.equal(drew, true);
+    assert.deepEqual(banners, []);
+    assert.equal(app.filter.groups.size, hide.size);
+    assert.deepEqual(misplaced, []);
+    assert.ok(last.length > 0, "no division is drawn in the last column, so nothing here is tested");
+    // The case the clamp refused: the longest drawn path is too short to
+    // reach the last column, so d3 counts fewer columns than the slots hold.
+    const steps = new Map();
+    for (const n of [...app.laidNodes].sort((a, b) => slots.get(a.id) - slots.get(b.id))) {
+      steps.set(n.id, Math.max(0, ...n.targetLinks.map((l) => steps.get(l.source.id) + 1)));
+    }
+    const longest = Math.max(...steps.values());
+    t.diagnostic(`the longest drawn path is ${longest} step(s) over ${columns} column(s)`);
+    assert.ok(longest + 1 < columns, "a drawn path spans every column, so the scaffold is not tested");
   });
 });
 

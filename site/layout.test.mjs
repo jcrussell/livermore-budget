@@ -1010,3 +1010,51 @@ describe("the expansion schedule laid out in slots, at the root, one group open 
     }
   });
 });
+
+// THE SCAFFOLD (layOutAt): d3-sankey draws one column per step of the longest
+// drawn path, plus one, and a slot two extend splits open can stand further
+// right than any drawn path reaches. Here no path runs A > B > C > D > E: the
+// longest is two steps, so d3 alone draws three columns for five slots.
+describe("a slot no drawn path reaches is laid out in its own column", () => {
+  before(() => loadD3());
+  const node = (id, slot) => ({ id, label: id, tier: 0, slot, role: "", source_note: "" });
+  const link = (source, target) => ({ source, target, value_cents: 100, kind: "external", fact_ids: [] });
+  const ctx = { tiers: [], columns: 5, groupOf: () => "", placeOf: () => 0 };
+
+  test("five slots over a longest path of two steps draw five columns, each node in its slot", (t) => {
+    const drawn = {
+      projection: "hand-built",
+      nodes: [node("A", 0), node("B", 10), node("C", 11), node("D", 20), node("E", 21)],
+      links: [link("A", "B"), link("B", "C"), link("A", "D"), link("D", "E")],
+    };
+    const laid = sankey.layOutAt(drawn, ctx, 400);
+    const layers = laid.nodes.map((n) => `${n.id}:${n.layer}`).join(" ");
+    t.diagnostic(`laid ${layers}; ${laid.links.length} ribbon(s)`);
+    assert.equal(layers, "A:0 B:1 C:2 D:3 E:4");
+    // The scaffold is gone once d3 has placed the nodes: no ribbon is drawn
+    // that the document does not hold, and no node keeps one in its lists.
+    assert.equal(laid.links.map((l) => `${l.source.id}>${l.target.id}`).join(" "), "A>B B>C A>D D>E");
+    assert.ok(laid.nodes.every((n) => n.sourceLinks.every((l) => laid.links.includes(l)) &&
+      n.targetLinks.every((l) => laid.links.includes(l))), "a node still holds a scaffold link");
+    assert.ok(laid.links.every((l) => l.width > 0), "a drawn ribbon has no width");
+  });
+
+  // A ribbon running backward against the slots leaves no forward path for a
+  // scaffold to complete: C's only way into the third column is through B,
+  // and B > C closes a cycle with C > B. The clamp check refuses it.
+  test("a ribbon running backward against the slots is still refused, by the clamp check", (t) => {
+    const drawn = {
+      projection: "hand-built",
+      nodes: [node("A", 0), node("B", 10), node("C", 20)],
+      links: [link("A", "B"), link("C", "B")],
+    };
+    let refused = "";
+    try {
+      sankey.layOutAt(drawn, ctx, 400);
+    } catch (e) {
+      refused = e.message;
+    }
+    t.diagnostic(refused);
+    assert.ok(refused.includes("C belongs in column 2 and no ribbon drawn reaches that far"), refused);
+  });
+});

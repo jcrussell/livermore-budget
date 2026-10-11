@@ -321,6 +321,39 @@ export async function everySplit(app, visit) {
   return { visited, refused: "" };
 }
 
+/**
+ * Visits every chart two extend splits draw together: each pair of the
+ * schedule's extend splits opened from the root, each with its ancestors
+ * split to reveal it, as everySplit opens one. Every pair is visited whether
+ * or not another refused; returns how many drew and each refusal's message.
+ */
+export async function everyExtendPair(app, visit) {
+  const extend = app.fetched.splits.filter((sp) => sp.form === "extend");
+  let visited = 0;
+  const refused = [];
+  for (let i = 0; i < extend.length; i++) {
+    for (let j = i + 1; j < extend.length; j++) {
+      const where = `${extend[i].node} by ${extend[i].key} with ${extend[j].node} by ${extend[j].key}`;
+      app.collapseAll();
+      await settle();
+      try {
+        for (const sp of [extend[i], extend[j]]) {
+          await revealed(app, sp.node);
+          await split(app, app.entryOf(sp.node, sp.key));
+        }
+      } catch (e) {
+        refused.push(`${where}: ${e && e.message ? e.message : String(e)}`);
+        continue;
+      }
+      visited++;
+      await visit(where);
+    }
+  }
+  app.collapseAll();
+  await settle();
+  return { pairs: extend.length * (extend.length - 1) / 2, visited, refused };
+}
+
 /** The refusal banners on the page's <main>. */
 export function refusals(document) {
   return [...document.querySelectorAll("main .refusal")];

@@ -12,7 +12,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 import {
-  bootedApp, loadApp, split, expandAll, everySplit, settle, refusals, columnFixture, pageFixture, fire, repoRoot,
+  bootedApp, loadApp, split, expandAll, everySplit, everyExtendPair, settle, refusals, columnFixture, pageFixture, fire, repoRoot,
   dollars, shortDollars, clickYear,
 } from "./testlib.mjs";
 
@@ -1105,4 +1105,45 @@ describe("a count the client takes is marked as its own", () => {
     assert.equal(line.hidden, false, "the switch folded nothing back, so nothing is tested");
     assert.ok(line.textContent.includes(MARK), line.textContent);
   });
+});
+
+// TWO EXTEND SPLITS DRAWN TOGETHER (fisc-yj4w.34.13): each opens its members
+// a slot after its parent's, so two open together can declare a slot further
+// right than any drawn ribbon reaches. Every node is still drawn in its slot.
+describe("two extend splits open together", () => {
+  /** Each laid node whose d3 layer is not its slot's rank, by id. */
+  const misplaced = (app) => {
+    const slots = app.slotsOf(app.laidNodes, app.RENDER_TIERS);
+    return app.laidNodes.filter((n) => n.layer !== slots.get(n.id)).map((n) => `${n.id} in ${n.layer}, slot ${slots.get(n.id)}`);
+  };
+
+  for (const year of YEARS) {
+    test(`${year.label}: every pair of extend splits draws, each node in its slot's column`, async (t) => {
+      const { app, document } = await bootedApp({ checkedStem: year.stem });
+      const faults = [];
+      const walked = await everyExtendPair(app, (where) => {
+        for (const m of misplaced(app)) faults.push(`${where}: ${m}`);
+        if (refusals(document).length) faults.push(`${where}: a refusal banner is up`);
+      });
+      t.diagnostic(`${year.label}: ${walked.visited} of ${walked.pairs} pair(s) drew; ${walked.refused.length} refused` +
+        (walked.refused.length ? ":\n  " + walked.refused.join("\n  ") : ""));
+      assert.ok(walked.pairs > 0, "the schedule declares no pair of extend splits, so nothing here is tested");
+      assert.deepEqual(walked.refused, []);
+      assert.equal(walked.visited, walked.pairs);
+      assert.deepEqual(faults.slice(0, 5), [], `${faults.length} fault(s)`);
+    });
+
+    // The sequence the bead measured the refusal on.
+    test(`${year.label}: the General Fund split by funds, fund/100 by divisions, then capital outlay by divisions draws`, async (t) => {
+      const { app, document } = await bootedApp({ checkedStem: year.stem });
+      await split(app, "fund-group/general", "fund/100" + app.ALTERNATIVE_MARK + "divisions",
+        "expenditure/capital-outlay" + app.ALTERNATIVE_MARK + "divisions");
+      const slots = app.slotsOf(app.laidNodes, app.RENDER_TIERS);
+      const columns = new Set(slots.values()).size;
+      t.diagnostic(`${year.label}: ${app.laidNodes.length} node(s) in ${columns} column(s)`);
+      assert.equal(refusals(document).length, 0);
+      assert.equal(columns, 5);
+      assert.deepEqual(misplaced(app), []);
+    });
+  }
 });

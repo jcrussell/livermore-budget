@@ -583,14 +583,68 @@ export function nodeRank(groupOf, placeOf, node) {
 }
 
 /**
+ * The links layOutAt hands d3-sankey beside the drawn ones so a path runs
+ * through every column the slots declare: none where the drawn ribbons
+ * already reach the last, and otherwise one zero-value link at each column
+ * no drawn path reaches, from a node the path does reach in the column before.
+ *
+ * d3-sankey draws one column per step of the longest path, plus one, and
+ * nodeAlign can pick among those columns but never add one; two extend splits
+ * open together can declare a slot further right than any ribbon reaches.
+ * A zero-value link adds no height and pulls no node in d3's relaxation, but
+ * d3 still spaces it among its ends' ribbons, so it can nudge where their
+ * other ribbons aim: none is added where a drawn path already spans the slots.
+ *
+ * NONE where a drawn ribbon does not run forward in the slots: a scaffold
+ * there could close a cycle, which d3 throws on, so the clamp check is left
+ * to refuse the layout.
+ *
+ * @param {FiscProjection} drawn
+ * @param {Map<string, number>} slots slotsOf
+ * @returns {{source: string, target: string, value: number, scaffold: true}[]}
+ */
+export function scaffoldOf(drawn, slots) {
+  const ranks = new Set(slots.values()).size;
+  if (ranks < 2 || drawn.links.some((l) => !(/** @type {number} */ (slots.get(l.source)) < /** @type {number} */ (slots.get(l.target))))) return [];
+  /** @type {{source: string, target: string, value: number, scaffold: true}[]} */
+  const out = [];
+  const placed = drawn.nodes.filter((n) => slots.has(n.id))
+    .sort((a, b) => /** @type {number} */ (slots.get(a.id)) - /** @type {number} */ (slots.get(b.id)));
+  // The longest path into each node, over every link so far: each link runs
+  // forward in the slots, so one pass in slot order is the whole answer.
+  const depths = () => {
+    /** @type {Map<string, number>} */
+    const depth = new Map();
+    /** @type {Map<string, string[]>} */
+    const into = new Map();
+    for (const l of [...drawn.links, ...out]) into.set(l.target, [...(into.get(l.target) || []), l.source]);
+    for (const n of placed) {
+      depth.set(n.id, Math.max(0, ...(into.get(n.id) || []).map((s) => /** @type {number} */ (depth.get(s)) + 1)));
+    }
+    return depth;
+  };
+  for (let r = 1; r < ranks; r++) {
+    const depth = depths();
+    const at = (/** @type {number} */ rank) => placed.filter((n) => slots.get(n.id) === rank);
+    if (at(r).some((n) => depth.get(n.id) === r)) continue;
+    const from = /** @type {FiscNode} */ (at(r - 1).find((n) => depth.get(n.id) === r - 1));
+    const to = at(r).reduce((a, b) => (/** @type {number} */ (depth.get(b.id)) > /** @type {number} */ (depth.get(a.id)) ? b : a));
+    out.push({ source: from.id, target: to.id, value: 0, scaffold: true });
+  }
+  return out;
+}
+
+/**
  * SANKEY.layOut at a stated canvas height, in px: what the layout test
  * measures a chart at heights the chart does not declare with.
  *
+ * d3 counts columns from the longest path, so the scaffold (scaffoldOf)
+ * runs a path through every slot first.
+ *
  * FAILS CLOSED on a node with a stamped slot (expansionOf) that d3 laid in
- * another column: d3 counts columns from the longest path and clamps a node
- * placed beyond it, which would draw it a column early in silence. A filter
- * that cuts every ribbon into an inserted slot can do that, and the page says
- * so in its refusal banner.
+ * another column: d3 clamps a node placed beyond its last column, which would
+ * draw it a column early in silence. Only a ribbon that does not run forward
+ * in the slots, which no scaffold is added beside, leaves that reachable.
  * @param {FiscProjection} drawn
  * @param {{tiers: number[], columns: number, groupOf: (n: any) => string, placeOf: (id: string) => number}} ctx
  * @param {number} height
@@ -612,8 +666,18 @@ export function layOutAt(drawn, ctx, height) {
       [chartWidth(ctx.columns) - LABEL_GUTTER, height - 12]]);
   const graph = sankey({
     nodes: drawn.nodes.map((n) => Object.assign({}, n)),
-    links: drawn.links.map((l) => Object.assign({}, l, { value: l.value_cents })),
+    links: drawn.links.map((l) => Object.assign({}, l, { value: l.value_cents }))
+      .concat(/** @type {any[]} */ (scaffoldOf(drawn, slots))),
   });
+  // THE SCAFFOLD LEAVES BEFORE ANYTHING READS A RIBBON: it is never drawn,
+  // stacked or counted.
+  /** @param {any} l */
+  const drawnLink = (l) => !l.scaffold;
+  graph.links = graph.links.filter(drawnLink);
+  for (const n of graph.nodes) {
+    n.sourceLinks = n.sourceLinks.filter(drawnLink);
+    n.targetLinks = n.targetLinks.filter(drawnLink);
+  }
   for (const n of graph.nodes) {
     const at = slots.get(n.id);
     if (typeof n.slot === "number" && n.layer !== at) {
