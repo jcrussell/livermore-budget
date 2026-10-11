@@ -184,3 +184,30 @@ func TestTheDepartmentPageDeclaresEveryDepartmentwideException(t *testing.T) {
 		t.Errorf("held-apart cells (-exceptions +page):\n%s", diff)
 	}
 }
+
+// TestTheHeldReasonIsTrueOfWhatThePageDraws: the department page draws
+// Maintenance's Transfers Out inside public works' spending sum, so the
+// reason it prints for FY2023-24's held cell must say the row is counted,
+// not that the spending side leaves it out.
+//
+// Mutation: restore the exception's reason to "the departmentwide cut leaves
+// out Maintenance's Transfers Out, ..." and this goes red.
+func TestTheHeldReasonIsTrueOfWhatThePageDraws(t *testing.T) {
+	var found bool
+	for _, h := range departmentsHeldApart() {
+		if h.Department != "department/public-works" || h.FiscalYear != 2024 {
+			continue
+		}
+		found = true
+		if strings.Contains(h.Reason, "leaves out") {
+			t.Errorf("public works FY2024 is held apart because the spending side %q, and the page draws "+
+				"Transfers Out inside that side's sum", h.Reason)
+		}
+		if !strings.Contains(h.Reason, "counted with it, as the department page counts it") {
+			t.Errorf("public works FY2024's reason %q does not say the page counts Transfers Out", h.Reason)
+		}
+	}
+	if !found {
+		t.Fatal("public works FY2024 is not held apart, so this test asserts nothing")
+	}
+}
