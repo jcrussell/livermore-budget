@@ -328,8 +328,9 @@ func BudgetBookExceptions() []Exception {
 		func() Exception {
 			e := rounded(CutDepartmentwide, "public-works", 6258673700, 6285353700,
 				"p0124.txt:45 and p0125.txt:33, both 62,853,536, and p0124.txt:25 Transfers Out 266,798")
-			e.Reason = "the departmentwide cut leaves out Maintenance's Transfers Out, a declared residue the " +
-				"funding sources include, and the two schedules round the rows under one total $2 apart"
+			e.Reason = "Maintenance's Transfers Out is a declared residue in no cut, so the check compares the " +
+				"funding sources with the expenditure rows without it; counted with it, as the department page " +
+				"counts it, the two schedules still round the rows under one printed total differently"
 			return e
 		}(),
 		rounded("general-fund-departments", "administrative-services", 631156300, 631156400,

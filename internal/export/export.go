@@ -167,6 +167,12 @@ type View struct {
 	// and the paragraph under the chart, or "" for the template's own, which
 	// describes the spine. Only a template that draws a chart renders it.
 	Description string
+
+	// Reads are schedules other than Projection's that the page reads out of
+	// each year's column, by projection name. Each year's column must carry
+	// every one, and a reader reaches each as it reaches the years. Only a
+	// template that reads a second schedule (templateReadsBeside) takes any.
+	Reads []string
 }
 
 // Doc describes one source document the page cites. The caller supplies these
@@ -288,6 +294,17 @@ type Options struct {
 	// Assets is the site source tree. Empty means the embedded one; a test
 	// can substitute an fstest.MapFS.
 	Assets fs.FS
+
+	// Departments is the department page's membership, stated by the caller
+	// from the department registry: each department and every division the
+	// Budget Book prints under it. Only [DepartmentTemplate] reads it.
+	Departments []Department
+
+	// DepartmentsHeldApart are the cells, one department in one column, where
+	// the caller's checks declare pp.85-125's two blocks do not tie, each with
+	// the declared reason. Every other cell of a department the page shows is
+	// one `fisc verify` holds to tie to the cent.
+	DepartmentsHeldApart []HeldApart
 
 	// Gate is the caller's own refusal of a site this package would accept,
 	// handed the ColumnIndex validation folded. Prepare runs it once the fold
@@ -614,6 +631,11 @@ func (v View) validate(built map[string][]byte, ix ColumnIndex) error {
 			"view %q lists %d year stems and renders template %q, which has no year "+
 				"control; the years would be dropped in silence",
 			v.Path, len(v.YearStems), v.Template)
+	case len(v.Reads) > 0 && !templateReadsBeside(v.Template):
+		return fmt.Errorf(
+			"view %q reads %v beside its own document and renders template %q, which "+
+				"reads no second schedule; the schedules would be dropped in silence",
+			v.Path, v.Reads, v.Template)
 	case len(v.Sections) > 0 && !templateRendersSections(v.Template):
 		return fmt.Errorf(
 			"view %q declares %d sections and renders template %q, which groups nothing; "+
@@ -666,6 +688,11 @@ func (v View) validate(built map[string][]byte, ix ColumnIndex) error {
 	if err := v.validateOverview(built, ix); err != nil {
 		return err
 	}
+	for _, year := range v.yearStems() {
+		if _, err := v.readStems(year, ix); err != nil {
+			return err
+		}
+	}
 	drawn, err := v.drawnStems(ix)
 	if err != nil {
 		return err
@@ -690,7 +717,8 @@ func templateRendersLede(name string) bool {
 // the two agree on every template today and guard different failures.
 func templateRendersAYearControl(name string) bool {
 	switch name {
-	case SankeyTemplate:
+	case SankeyTemplate,
+		DepartmentTemplate:
 		return true
 	default:
 		return false
@@ -716,7 +744,8 @@ func templateDrawsAChart(name string) bool {
 func templateRendersADocument(name string) bool {
 	switch name {
 	case SankeyTemplate, TrendsTemplate, HistoryTemplate,
-		CapitalTemplate:
+		CapitalTemplate,
+		DepartmentTemplate:
 		return true
 	default:
 		return false
@@ -731,6 +760,12 @@ func templateIsKnown(name string) bool {
 	return templateRendersADocument(name) ||
 		name == ProvenanceTemplate || name == CaveatsTemplate ||
 		name == DepartmentTemplate || name == CapitalTemplate || name == DebtTemplate
+}
+
+// templateReadsBeside answers whether a template reads [View.Reads], a
+// schedule beside its own out of each year's column.
+func templateReadsBeside(name string) bool {
+	return name == DepartmentTemplate
 }
 
 // templateRendersSections answers whether a template groups its rows under

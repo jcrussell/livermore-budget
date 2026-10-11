@@ -105,10 +105,16 @@ views:
   - path: department.html
     nav: Departments
     template: department.html.tmpl
-    title: What each Livermore department spends
+    # The funding side's document is the page's own, a year of it per column;
+    # the spending side is read beside it out of the same column.
+    projection: department-funding
+    year_control: true
+    reads: [department-spending]
+    title: What each Livermore department spends, and who pays for it
     lede: >-
-      This page will show what each of the city's departments is budgeted to
-      spend, and on what.
+      Pick one of the city's departments to see what it spends, every
+      fund together, and which funds pay for it, each read from the
+      department's own two-block page in the Budget Book.
   # The capital page renders its document as a table and loads capital.js
   # to filter it, so it is dropped when cip-projects is not built.
   - path: capital.html

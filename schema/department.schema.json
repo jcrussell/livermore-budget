@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jcrussell.github.io/livermore-budget/schema/department.schema.json",
+  "title": "fisc department page config",
+  "description": "What site/department.js reads from department.html before it fetches a column: the years, the departments and the divisions each is read over, and per year whether each department's two blocks tie. It carries no figure; every figure is a link of the column the year names. Every object is closed.",
+  "type": "object",
+  "required": ["schema_version", "exported_by", "spending", "funding", "years", "departments", "docs", "kind_labels"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"type": "integer", "minimum": 1},
+    "exported_by": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The export that wrote this page; each column it fetches carries the same string as generated_by."
+    },
+    "spending": {"const": "department-spending", "description": "The column schedule the spending side reads."},
+    "funding": {"const": "department-funding", "description": "The column schedule the funding side reads."},
+    "years": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Every column the page opens, oldest first; the page opens on the last.",
+      "items": {
+        "type": "object",
+        "required": ["path", "label", "basis", "lede", "sides"],
+        "additionalProperties": false,
+        "properties": {
+          "path": {"type": "string", "pattern": "^fy[0-9]{4}-[a-z]+\\.json$"},
+          "label": {"type": "string", "minLength": 1},
+          "basis": {"type": "string", "minLength": 1},
+          "lede": {"type": "string", "minLength": 1},
+          "sides": {
+            "type": "array",
+            "minItems": 1,
+            "description": "One entry per department, in the departments' order: whether its two blocks tie in this column, as fisc verify holds them, or are held apart by a declared exception with its reason.",
+            "items": {
+              "type": "object",
+              "required": ["department", "ties"],
+              "additionalProperties": false,
+              "properties": {
+                "department": {"type": "string", "pattern": "^department/"},
+                "ties": {"type": "boolean"},
+                "reason": {"type": "string", "minLength": 1}
+              },
+              "if": {"properties": {"ties": {"const": false}}},
+              "then": {"required": ["reason"]},
+              "else": {"not": {"required": ["reason"]}}
+            }
+          }
+        }
+      }
+    },
+    "departments": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "label", "divisions"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {"type": "string", "pattern": "^department/"},
+          "label": {"type": "string", "minLength": 1},
+          "divisions": {
+            "type": "array",
+            "minItems": 1,
+            "description": "Every division the Budget Book prints under the department, which the spending side sums over.",
+            "items": {
+              "type": "object",
+              "required": ["id", "label"],
+              "additionalProperties": false,
+              "properties": {
+                "id": {"type": "string", "pattern": "^dept/"},
+                "label": {"type": "string", "minLength": 1}
+              }
+            }
+          }
+        }
+      }
+    },
+    "docs": {"$ref": "https://jcrussell.github.io/livermore-budget/schema/page.schema.json#/properties/docs"},
+    "kind_labels": {"$ref": "https://jcrussell.github.io/livermore-budget/schema/page.schema.json#/properties/kind_labels"}
+  }
+}

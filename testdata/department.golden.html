@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What each Livermore department spends, and who pays for it</title>
+<meta name="description" content="One City of Livermore department at a time: what it spends under each object heading, every fund together, and which funds pay for it, each figure linked to the Budget Book page it was read from.">
+<meta name="color-scheme" content="light dark">
+<link rel="stylesheet" href="style.css">
+<script>
+  
+  
+  try {
+    var t = localStorage.getItem("fisc-theme");
+    if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+  } catch (e) {   }
+</script>
+<script type="application/json" id="department-config">{"schema_version":1,"exported_by":"fisc dev","spending":"department-spending","funding":"department-funding","years":[{"path":"fy2024-actual.json","label":"FY 2023-24","basis":"actual","lede":"FY 2023-24 actual","sides":[{"department":"department/administrative-services","ties":false,"reason":"the two schedules print one total and round the rows under it differently in the FY2023-24 Actual column"},{"department":"department/city-attorney","ties":true},{"department":"department/city-council","ties":true},{"department":"department/city-manager","ties":true},{"department":"department/community-development","ties":true},{"department":"department/fire-department","ties":true},{"department":"department/general-services","ties":true},{"department":"department/innovation-and-economic-development","ties":false,"reason":"the two schedules print one total and round the rows under it differently in the FY2023-24 Actual column"},{"department":"department/library-department","ties":false,"reason":"the two schedules print one total and round the rows under it differently in the FY2023-24 Actual column"},{"department":"department/police-department","ties":false,"reason":"the two schedules print one total and round the rows under it differently in the FY2023-24 Actual column"},{"department":"department/public-works","ties":false,"reason":"Maintenance's Transfers Out is a declared residue in no cut, so the check compares the funding sources with the expenditure rows without it; counted with it, as the department page counts it, the two schedules still round the rows under one printed total differently"}]},{"path":"fy2025-revised.json","label":"FY 2024-25","basis":"revised","lede":"FY 2024-25 revised","sides":[{"department":"department/administrative-services","ties":true},{"department":"department/city-attorney","ties":true},{"department":"department/city-council","ties":true},{"department":"department/city-manager","ties":true},{"department":"department/community-development","ties":true},{"department":"department/fire-department","ties":true},{"department":"department/general-services","ties":true},{"department":"department/innovation-and-economic-development","ties":true},{"department":"department/library-department","ties":true},{"department":"department/police-department","ties":true},{"department":"department/public-works","ties":true}]},{"path":"fy2026-adopted.json","label":"FY 2025-26","basis":"adopted","lede":"FY 2025-26 adopted","sides":[{"department":"department/administrative-services","ties":true},{"department":"department/city-attorney","ties":true},{"department":"department/city-council","ties":true},{"department":"department/city-manager","ties":true},{"department":"department/community-development","ties":true},{"department":"department/fire-department","ties":true},{"department":"department/general-services","ties":true},{"department":"department/innovation-and-economic-development","ties":true},{"department":"department/library-department","ties":true},{"department":"department/police-department","ties":true},{"department":"department/public-works","ties":true}]},{"path":"fy2027-adopted.json","label":"FY 2026-27","basis":"adopted","lede":"FY 2026-27 adopted","sides":[{"department":"department/administrative-services","ties":true},{"department":"department/city-attorney","ties":true},{"department":"department/city-council","ties":true},{"department":"department/city-manager","ties":true},{"department":"department/community-development","ties":true},{"department":"department/fire-department","ties":true},{"department":"department/general-services","ties":true},{"department":"department/innovation-and-economic-development","ties":true},{"department":"department/library-department","ties":true},{"department":"department/police-department","ties":true},{"department":"department/public-works","ties":true}]}],"departments":[{"id":"department/administrative-services","label":"Administrative Services","divisions":[{"id":"dept/administrative-services","label":"Administrative Services"},{"id":"dept/cybersecurity","label":"Cybersecurity"},{"id":"dept/finance","label":"Finance"},{"id":"dept/human-resources","label":"Human Resources"},{"id":"dept/information-technology","label":"Information Technology"}]},{"id":"department/city-attorney","label":"City Attorney","divisions":[{"id":"dept/city-attorney","label":"City Attorney"},{"id":"dept/risk-management","label":"Risk Management"}]},{"id":"department/city-council","label":"City Council","divisions":[{"id":"dept/city-council","label":"City Council"}]},{"id":"department/city-manager","label":"City Manager","divisions":[{"id":"dept/city-clerk","label":"City Clerk"},{"id":"dept/city-manager","label":"City Manager"}]},{"id":"department/community-development","label":"Community Development","divisions":[{"id":"dept/building-and-safety","label":"Building \u0026 Safety"},{"id":"dept/community-development-admin","label":"Community Development Admin"},{"id":"dept/engineering","label":"Engineering"},{"id":"dept/housing-and-human-services","label":"Housing \u0026 Human Services"},{"id":"dept/planning","label":"Planning"}]},{"id":"department/fire-department","label":"Fire Department","divisions":[{"id":"dept/fire-administration","label":"Fire Administration"}]},{"id":"department/general-services","label":"General Services","divisions":[{"id":"dept/general-services","label":"General Services"}]},{"id":"department/innovation-and-economic-development","label":"Innovation \u0026 Economic Development","divisions":[{"id":"dept/airport","label":"Airport"},{"id":"dept/innovation-and-economic-devel","label":"Innovation \u0026 Economic Devel"}]},{"id":"department/library-department","label":"Library Department","divisions":[{"id":"dept/library","label":"Library"}]},{"id":"department/police-department","label":"Police Department","divisions":[{"id":"dept/horizons","label":"Horizons"},{"id":"dept/patrol","label":"Patrol"},{"id":"dept/police-administration","label":"Police Administration"},{"id":"dept/special-operations","label":"Special Operations"},{"id":"dept/support-services","label":"Support Services"}]},{"id":"department/public-works","label":"Public Works","divisions":[{"id":"dept/environmental-services","label":"Environmental Services"},{"id":"dept/maintenance","label":"Maintenance"},{"id":"dept/public-works-administration","label":"Public Works Administration"},{"id":"dept/water-resources","label":"Water Resources"}]}],"docs":{"livermore-budget-fy2026-2027":{"title":"FY 2025-2027 Budget Book","publisher":"City of Livermore, California","pages":{"101":{"pdf":"https://www.livermoreca.gov/home/showpublisheddocument/12813#page=101","text":"extracted/livermore-budget-fy2026-2027/pages/p0101.txt","records":"facts/livermore-budget-fy2026-2027/pages/p0101.jsonl"},"102":{"pdf":"https://www.livermoreca.gov/home/showpublisheddocument/12813#page=102","text":"extracted/livermore-budget-fy2026-2027/pages/p0102.txt","records":"facts/livermore-budget-fy2026-2027/pages/p0102.jsonl"},"105":{"pdf":"https://www.livermoreca.gov/home/showpublisheddocument/12813#page=105","text":"extracted/livermore-budget-fy2026-2027/pages/p0105.txt","records":"facts/livermore-budget-fy2026-2027/pages/p0105.jsonl"},"108":{"pdf":"https://www.livermoreca.gov/home/showpublisheddocument/12813#page=108","text":"extracted/livermore-budget-fy2026-2027/pages/p0108.txt","records":"facts/livermore-budget-fy2026-2027/pages/p0108.jsonl"},"111":{"pdf":"https://www.livermoreca.gov/home/showpublisheddocument/12813#page=111","text":"extracted/livermore-budget-fy2026-2027/pages/p0111.txt","records":"facts/livermore-budget-fy2026-2027/pages/p0111.jsonl"},"115":{"pdf":"https://www.livermoreca.gov/home/showpublisheddocument/12813#page=115","text":"extracted/livermore-budget-fy2026-2027/pages/p0115.txt","records":"facts/livermore-budget-fy2026-2027/pages/p0115.jsonl"},"119":{"pdf":"https://www.livermoreca.gov/home/showpublisheddocument/12813#page=119","text":"extracted/livermore-budget-fy2026-2027/pages/p0119.txt","records":"facts/livermore-budget-fy2026-2027/pages/p0119.jsonl"},"120":{"pdf":"https://www.livermoreca.gov/home/showpublisheddocument/12813#page=120","text":"extracted/livermore-budget-fy2026-2027/pages/p0120.txt","records":"facts/livermore-budget-fy2026-2027/pages/p0120.jsonl"},"124":{"pdf":"https://www.livermoreca.gov/home/showpublisheddocument/12813#page=124","text":"extracted/livermore-budget-fy2026-2027/pages/p0124.txt","records":"facts/livermore-budget-fy2026-2027/pages/p0124.jsonl"},"125":{"pdf":"https://www.livermoreca.gov/home/showpublisheddocument/12813#page=125","text":"extracted/livermore-budget-fy2026-2027/pages/p0125.txt","records":"facts/livermore-budget-fy2026-2027/pages/p0125.jsonl"},"85":{"pdf":"https://www.livermoreca.gov/home/showpublisheddocument/12813#page=85","text":"extracted/livermore-budget-fy2026-2027/pages/p0085.txt","records":"facts/livermore-budget-fy2026-2027/pages/p0085.jsonl"},"89":{"pdf":"https://www.livermoreca.gov/home/showpublisheddocument/12813#page=89","text":"extracted/livermore-budget-fy2026-2027/pages/p0089.txt","records":"facts/livermore-budget-fy2026-2027/pages/p0089.jsonl"},"93":{"pdf":"https://www.livermoreca.gov/home/showpublisheddocument/12813#page=93","text":"extracted/livermore-budget-fy2026-2027/pages/p0093.txt","records":"facts/livermore-budget-fy2026-2027/pages/p0093.jsonl"},"97":{"pdf":"https://www.livermoreca.gov/home/showpublisheddocument/12813#page=97","text":"extracted/livermore-budget-fy2026-2027/pages/p0097.txt","records":"facts/livermore-budget-fy2026-2027/pages/p0097.jsonl"}}}},"kind_labels":{"external":"external money","fund_balance":"fund balance movement","internal_service":"internal service charge","internal_transfer":"transfer between funds"}}</script>
+</head>
+<body>
+
+<div class="wip-banner" role="status">⚠️ Work in progress — early preview, coverage is incomplete.</div>
+<nav class="site-nav" aria-label="Views">
+  <ul>
+    <li><a href="index.html">Budget flows</a></li>
+    <li><a href="trends.html">Revenue tables</a></li>
+    <li><a href="history.html">Ten-year history</a></li>
+    <li><a href="balances.html">Fund balances</a></li>
+    <li><span aria-current="page">Departments</span></li>
+    <li><a href="capital.html">Capital projects</a></li>
+    <li><a href="debt.html">Debt</a></li>
+    <li><a href="caveats.html">Caveats</a></li>
+    <li><a href="provenance.html">Sources and data</a></li>
+  </ul>
+</nav>
+
+<header class="page-head">
+  <div>
+    <h1>What each Livermore department spends, and who pays for it</h1>
+    <p class="lede">Pick one of the city&#39;s departments to see what it spends, every fund together, and which funds pay for it, each read from the department&#39;s own two-block page in the Budget Book.</p>
+  </div>
+</header>
+
+<main id="department-main">
+
+<form class="department-controls" id="department-controls">
+  <label>Department
+    <select id="department-select">
+      <option value="department/administrative-services">Administrative Services</option>
+      <option value="department/city-attorney">City Attorney</option>
+      <option value="department/city-council">City Council</option>
+      <option value="department/city-manager">City Manager</option>
+      <option value="department/community-development">Community Development</option>
+      <option value="department/fire-department">Fire Department</option>
+      <option value="department/general-services">General Services</option>
+      <option value="department/innovation-and-economic-development">Innovation &amp; Economic Development</option>
+      <option value="department/library-department">Library Department</option>
+      <option value="department/police-department">Police Department</option>
+      <option value="department/public-works">Public Works</option>
+    </select>
+  </label>
+  <label>Budget column
+    <select id="year-select">
+      <option value="fy2024-actual.json">FY 2023-24 actual</option>
+      <option value="fy2025-revised.json">FY 2024-25 revised</option>
+      <option value="fy2026-adopted.json">FY 2025-26 adopted</option>
+      <option value="fy2027-adopted.json" selected>FY 2026-27 adopted</option>
+    </select>
+  </label>
+</form>
+
+<h2 id="department-heading">Choose a department</h2>
+<p class="department-tie" id="department-tie"
+   data-ties="Both blocks of this department's page add up to the same sum in this column, to the cent; fisc verify fails if they stop doing so."
+   data-held="In this column the two blocks do not add up to the same sum, and the project's checks declare why: "></p>
+
+<div class="department-sides">
+
+<section class="department-side" aria-labelledby="funding-heading">
+  <h3 id="funding-heading">Who pays for it</h3>
+  <p id="funding-says">
+    Read from the department's <strong>Department Funding Sources</strong> block,
+    the lower half of its page in the Budget Book (pp.85-125): one row per fund.
+    <strong>Each figure is one fund's share</strong> of the department, not its
+    whole cost. The General Fund row is the General Fund's share alone; every other
+    row is a fund the city keeps apart from it.
+  </p>
+  <p id="internal-service-says">
+    A fund marked <em>internal service</em> is one the city fills by charging its own
+    departments, so the money it pays here was first charged to another department
+    and is counted in that department's cost as well.
+  </p>
+  <div class="table-scroll">
+    <table class="department-table" id="funding-table">
+      <thead><tr><th scope="col">Fund</th><th scope="col">Fund group</th><th scope="col" class="num">Amount</th><th scope="col" class="num">Share ◇</th><th scope="col">Page</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</section>
+
+<section class="department-side" aria-labelledby="spending-heading">
+  <h3 id="spending-heading">What it spends, every fund together</h3>
+  <p id="spending-says">
+    Read from the department's <strong>Expenditures by Category</strong> block, the
+    upper half of the same page: what each of its divisions spends under each object
+    heading, whatever fund pays. <strong>Each figure is the whole department's
+    cost</strong> under that heading, summed over every division the page prints
+    under the department.
+  </p>
+  <p id="transfers-says" hidden>
+    <strong>Transfers Out</strong> is money moved to another of the city's own funds,
+    not spent on anything. The page prints it inside the division's total, so it is
+    inside this side's sum too.
+  </p>
+  <div class="table-scroll">
+    <table class="department-table" id="spending-table">
+      <thead><tr><th scope="col">Object heading</th><th scope="col" class="num">Amount</th><th scope="col" class="num">Share ◇</th><th scope="col">Pages</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <h4>By division, as printed</h4>
+  <div class="table-scroll">
+    <table class="department-table" id="division-table">
+      <thead><tr><th scope="col">Division</th><th scope="col">Object heading</th><th scope="col" class="num">Amount</th><th scope="col">Page</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</section>
+
+</div>
+
+<p class="subtle">
+  Every amount links to the extracted text of the page it was read from. A row
+  marked <em>our sum</em> adds the cited rows above it and is ours, not the city's:
+  the page prints a department total of its own, which this site has not read as a
+  figure, so neither sum is presented as the department's total. A share marked ◇
+  is ours too: one row as a percentage of its side's sum.
+</p>
+<details class="apparatus" id="caveats-view">
+  <summary>
+    <h2>What these figures do not say</h2>
+    <span class="apparatus-hint">7 caveats
+      the two documents ship with these figures</span>
+  </summary>
+  <ul class="caveats">
+    <li><a href="caveats.html#caveat-department-funding-2027--constraint-tier-is-our-reading">A fund&#39;s constraint tier is our reading of the Description of Funds narrative, not a figure the city printed.</a></li>
+    <li><a href="caveats.html#caveat-department-funding-2027--a-department-here-is-not-a-division">These rows are printed once per DEPARTMENT; the divisions drawn elsewhere on this site are a finer tier, and five names belong to both.</a></li>
+    <li><a href="caveats.html#caveat-department-funding-2027--what-a-fund-pays-departments-is-not-what-it-takes-in">What a fund pays departments here is not what that fund takes in, and the two are printed by different schedules.</a></li>
+    <li><a href="caveats.html#caveat-department-funding-2027--two-of-the-four-columns-tie-to-no-citywide-total">The FY2023-24 actual and FY2024-25 revised columns reconcile to each department&#39;s own printed total and to nothing citywide.</a></li>
+    <li><a href="caveats.html#caveat-department-spending-2027--no-fund-axis-on-these-pages">These rows say what a division spends, not what pays for it: the schedule has no fund and no fund group.</a></li>
+    <li><a href="caveats.html#caveat-department-spending-2027--the-ribbons-are-a-cross-tab">Each ribbon is a cell of one printed table read along a second axis, not money moving in the direction drawn.</a></li>
+    <li><a href="caveats.html#caveat-department-spending-2027--the-boundary-is-not-classified-here">Every expenditure ribbon is published as external because these rows name no fund group to classify it by.</a></li>
+  </ul>
+</details>
+
+</main>
+
+<footer>
+  <details class="apparatus" id="sources-view">
+    <summary>
+      <h3>Sources</h3>
+      <span class="apparatus-hint">1 document,
+        every page this view cites, and 8 data files</span>
+    </summary>
+    <ul>
+      <li>
+        <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813">FY 2025-2027 Budget Book</a>, City of Livermore, California —
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=85">p85 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0085.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=89">p89 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0089.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=93">p93 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0093.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=97">p97 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0097.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=101">p101 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0101.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=102">p102 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0102.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=105">p105 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0105.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=108">p108 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0108.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=111">p111 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0111.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=115">p115 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0115.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=119">p119 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0119.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=120">p120 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0120.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=124">p124 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0124.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=125">p125 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0125.txt">extracted text</a>
+      </li>
+    </ul>
+    <p class="subtle">
+      Every data file the site publishes, each fetchable on its own: <a href="data/changes-in-fund-balances.json">data/changes-in-fund-balances.json</a>, <a href="data/cip-projects.json">data/cip-projects.json</a>, <a href="data/fund-balances.json">data/fund-balances.json</a>, <a href="data/revenue-trends.json">data/revenue-trends.json</a>, <a href="fy2024-actual.json">fy2024-actual.json</a>, <a href="fy2025-revised.json">fy2025-revised.json</a>, <a href="fy2026-adopted.json">fy2026-adopted.json</a>, <a href="fy2027-adopted.json">fy2027-adopted.json</a>.
+    </p>
+  </details>
+  <p class="subtle">
+    Scope department-funding-sources, departmentwide-expenditures. Projection: dev. Packaged by fisc dev.
+    The column on screen is drawn from <a id="department-data-path" href="fy2027-adopted.json">fy2027-adopted.json</a>,
+    which holds both blocks.
+  </p>
+</footer>
+
+
+<script type="module">import { boot } from "./department.js"; boot();</script>
+</body>
+</html>
