@@ -1721,6 +1721,52 @@ noscript p {
 
 /* department.html. Only that page's rules go in this block. */
 
+.department-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  margin: 8px 0 16px;
+}
+
+.department-controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--ink-2);
+  font-size: 14px;
+}
+
+.department-controls select {
+  max-width: 100%;
+  font: inherit;
+  color: var(--ink-1);
+}
+
+.department-tie {
+  color: var(--ink-2);
+}
+
+.department-sides {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+  gap: 24px;
+}
+
+.department-side {
+  min-width: 0;
+}
+
+.department-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.department-table tr[data-sum] th,
+.department-table tr[data-sum] td {
+  border-top: 2px solid var(--border);
+  font-weight: 600;
+}
+
 /* end department.html */
 
 /* capital.html. Only that page's rules go in this block. */

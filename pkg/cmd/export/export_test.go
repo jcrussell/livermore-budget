@@ -1330,8 +1330,10 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItsCharts(t *testing.T) {
 		if v.Projection == project.FundFlowsProjection {
 			t.Errorf("view %q renders fund-flows as its own page; it is drawn inside the expansion", v.Path)
 		}
-		if len(v.YearStems) > 0 && v.Projection != export.PrimaryProjection {
-			t.Errorf("view %q lists years of %q; the year control is the spine's documents'", v.Path, v.Projection)
+		if len(v.YearStems) > 0 && v.Projection != export.PrimaryProjection &&
+			(v.Path != "department.html" || v.Projection != project.DepartmentFundingProjection) {
+			t.Errorf("view %q lists years of %q; the year control is the spine's documents' and "+
+				"the department page's funding documents'", v.Path, v.Projection)
 		}
 	}
 	draws := map[string]string{}
@@ -2080,11 +2082,14 @@ func mustViews(t *testing.T, built result) []export.View {
 	return vs
 }
 
-// TestEveryPageALinkCitesHasItsLinksInTheConfig holds the config's per-page
-// links to every locator of every link the published columns carry: the
-// client shows a figure's citations by looking its pages up, so a cited page
-// with no entry is a figure shown without its provenance. A schedule
-// unviewedDocuments declares no page renders shows no figure, and is skipped.
+// TestEveryPageALinkCitesHasItsLinksInTheConfig holds each page's config's
+// per-page links to every locator of every link the published columns carry
+// in a schedule that page reaches: the client shows a figure's citations by
+// looking its pages up, so a cited page with no entry is a figure shown
+// without its provenance. A schedule no view reaches shows no figure.
+//
+// Mutation: make department.html's config carry the opening year's sources
+// alone, and the department page's rows on the other years' pages go red.
 func TestEveryPageALinkCitesHasItsLinksInTheConfig(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {
@@ -2092,73 +2097,97 @@ func TestEveryPageALinkCitesHasItsLinksInTheConfig(t *testing.T) {
 	}
 	opts, _, _, _ := testOptions(t)
 	opts.RepoRoot = func() (string, error) { return root, nil }
-	opts.Build = buildAll
-	if err := exportRun(opts); err != nil {
+	var built result
+	opts.Build = func(root string) (result, error) {
+		r, buildErr := buildAll(root)
+		built = r
+		return r, buildErr
+	}
+	if err = exportRun(opts); err != nil {
 		t.Fatalf("exportRun: %v", err)
 	}
-	page := readPage(t, opts.OutputDir)
-	_, rest, ok := strings.Cut(page, "window.FISC_CONFIG = ")
-	if !ok {
-		t.Fatal("the served page carries no FISC_CONFIG")
+	_, ix, err := export.ColumnsOf(built.Projections, "")
+	if err != nil {
+		t.Fatalf("ColumnsOf: %v", err)
 	}
-	body, _, _ := strings.Cut(rest, ";</script>")
-	var config struct {
-		Years []struct {
-			Path string `json:"path"`
-		} `json:"years"`
-		Docs map[string]struct {
-			Pages map[string]struct {
-				Text string `json:"text"`
-			} `json:"pages"`
-		} `json:"docs"`
+	// Each page that shows a column's figures, and where its config sits.
+	configs := map[string][2]string{
+		export.IndexPath:  {"window.FISC_CONFIG = ", ";</script>"},
+		"department.html": {`<script type="application/json" id="department-config">`, "</script>"},
 	}
-	if err := json.Unmarshal([]byte(body), &config); err != nil {
-		t.Fatalf("decode FISC_CONFIG: %v", err)
-	}
-	cited := 0
-	for _, y := range config.Years {
-		raw, err := os.ReadFile(filepath.Join(opts.OutputDir, filepath.FromSlash(y.Path)))
+	cited := map[string]int{}
+	for _, v := range mustViews(t, built) {
+		cut, ok := configs[v.Path]
+		if !ok {
+			continue
+		}
+		reached, err := v.ReachedStems(ix)
 		if err != nil {
-			t.Fatalf("read %s: %v", y.Path, err)
+			t.Fatalf("%s: %v", v.Path, err)
 		}
-		var column struct {
-			Column struct {
-				FiscalYear int    `json:"fiscal_year"`
-				Basis      string `json:"basis"`
-			} `json:"column"`
-			Schedules map[string]struct {
-				Links []struct {
-					Locators []struct {
-						DocID string `json:"doc_id"`
-						Pages []int  `json:"pages"`
-					} `json:"locators"`
-				} `json:"links"`
-			} `json:"schedules"`
+		page, err := os.ReadFile(filepath.Join(opts.OutputDir, v.Path))
+		if err != nil {
+			t.Fatal(err)
 		}
-		if err := json.Unmarshal(raw, &column); err != nil {
-			t.Fatalf("decode %s: %v", y.Path, err)
+		_, rest, ok := strings.Cut(string(page), cut[0])
+		if !ok {
+			t.Fatalf("the served %s carries no config", v.Path)
 		}
-		for key, sched := range column.Schedules {
-			stem := publishedStem(key, project.Column{FiscalYear: column.Column.FiscalYear,
-				Basis: vocab.Basis(column.Column.Basis)})
-			if _, unviewed := unviewedDocuments[stem]; unviewed {
-				continue
+		body, _, _ := strings.Cut(rest, cut[1])
+		var config struct {
+			Years []struct {
+				Path string `json:"path"`
+			} `json:"years"`
+			Docs map[string]struct {
+				Pages map[string]struct {
+					Text string `json:"text"`
+				} `json:"pages"`
+			} `json:"docs"`
+		}
+		if err := json.Unmarshal([]byte(body), &config); err != nil {
+			t.Fatalf("decode %s's config: %v", v.Path, err)
+		}
+		for _, y := range config.Years {
+			raw, err := os.ReadFile(filepath.Join(opts.OutputDir, filepath.FromSlash(y.Path)))
+			if err != nil {
+				t.Fatalf("read %s: %v", y.Path, err)
 			}
-			for _, l := range sched.Links {
-				for _, loc := range l.Locators {
-					for _, p := range loc.Pages {
-						cited++
-						if config.Docs[loc.DocID].Pages[strconv.Itoa(p)].Text == "" {
-							t.Errorf("%s's %s schedule cites %s p%d, and the config carries no links for it",
-								y.Path, key, loc.DocID, p)
+			var column struct {
+				Schedules map[string]struct {
+					Links []struct {
+						Locators []struct {
+							DocID string `json:"doc_id"`
+							Pages []int  `json:"pages"`
+						} `json:"locators"`
+					} `json:"links"`
+				} `json:"schedules"`
+			}
+			if err := json.Unmarshal(raw, &column); err != nil {
+				t.Fatalf("decode %s: %v", y.Path, err)
+			}
+			for key, sched := range column.Schedules {
+				stem, _ := ix.Stem(y.Path, key)
+				if !slices.Contains(reached, stem) {
+					continue
+				}
+				for _, l := range sched.Links {
+					for _, loc := range l.Locators {
+						for _, p := range loc.Pages {
+							cited[v.Path]++
+							if config.Docs[loc.DocID].Pages[strconv.Itoa(p)].Text == "" {
+								t.Errorf("%s: %s's %s schedule cites %s p%d, and the config carries no links for it",
+									v.Path, y.Path, key, loc.DocID, p)
+							}
 						}
 					}
 				}
 			}
 		}
 	}
-	if cited == 0 {
-		t.Fatal("no link cites a page, so this test asserts nothing")
+	for path := range configs {
+		if cited[path] == 0 {
+			t.Errorf("no link %s shows cites a page, so this test asserts nothing of it", path)
+		}
 	}
-	t.Logf("%d cited pages, each with its links in the config", cited)
+	t.Logf("cited pages, each with its links in its page's config: %v", cited)
 }

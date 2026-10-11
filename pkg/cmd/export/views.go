@@ -50,6 +50,8 @@ type viewDecl struct {
 	Lede        string        `yaml:"lede"`
 	Sections    []sectionDecl `yaml:"sections"`
 	Overview    *chartDecl    `yaml:"overview"`
+	// Reads is [export.View.Reads].
+	Reads []string `yaml:"reads"`
 }
 
 // sectionDecl is one [export.Section] as authored. Rows maps a printed row
@@ -136,6 +138,11 @@ func decodeViews(b []byte, reg *registry.Registry) ([]viewDecl, error) {
 			return nil, &viewsError{Entry: entry, Field: "projection",
 				Msg: unknownName(v.Projection, projections)}
 		}
+		for _, r := range v.Reads {
+			if !slices.Contains(projections, r) {
+				return nil, &viewsError{Entry: entry, Field: "reads", Msg: unknownName(r, projections)}
+			}
+		}
 		if v.Overview != nil && v.Overview.Projection != "" && !slices.Contains(projections, v.Overview.Projection) {
 			return nil, &viewsError{Entry: entry, Field: "overview.projection",
 				Msg: unknownName(v.Overview.Projection, projections)}
@@ -212,6 +219,7 @@ func views(repoRoot string, built result) ([]export.View, error) {
 			Lede:        d.Lede,
 			Overview:    d.Overview.chart(),
 			Description: d.Description,
+			Reads:       d.Reads,
 		}
 		if d.Overview != nil {
 			v.Draws = d.Overview.Projection

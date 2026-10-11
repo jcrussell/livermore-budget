@@ -120,4 +120,6 @@ const (
 	// Mark is a node the client makes and no document carries; Go writes
 	// none, and site/marks.test.mjs holds the client to it.
 	Mark = "mark.schema.json"
+	// Department is the department page's config.
+	Department = "department.schema.json"
 )

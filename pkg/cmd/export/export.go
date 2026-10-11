@@ -239,6 +239,10 @@ func exportRun(o *Options) error {
 	if err != nil {
 		return err
 	}
+	departments, err := departmentMembership(root)
+	if err != nil {
+		return err
+	}
 	site := export.Options{
 		Dir:         o.OutputDir,
 		Projections: projections,
@@ -265,6 +269,10 @@ func exportRun(o *Options) error {
 		PageIndex:   built.PageIndex,
 		Downloads:   built.Downloads,
 		RecordsBase: built.RecordsBase,
+		// The department page's membership and the cells pp.85-125's two
+		// blocks are declared not to tie in: both this command's to state.
+		Departments:          departments,
+		DepartmentsHeldApart: departmentsHeldApart(),
 		// EVERY PUBLISHED DOCUMENT IS EITHER RENDERED OR DECLARED UNRENDERED.
 		// It is this command's gate rather than internal/export's because what
 		// the site publishes, project.PublishedDocuments, is this command's to
