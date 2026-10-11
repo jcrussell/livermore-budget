@@ -199,8 +199,8 @@ func debtCaveats() []Caveat {
 			Summary: "The last band is printed as 2051-2055. The annual report prints the same figures as 2051-2052.",
 			Text: "The Budget Book labels its last row 2051-2055. The city's FY2025 annual financial " +
 				"report prints the same principal and interest, by activity, on p86 under " +
-				"2051-2052, which is when the 2022 Certificates of Participation mature. " +
-				"This site publishes the band the Budget Book prints.",
+				"2051-2052, and on p84 gives 2052 as the 2022 Certificates of Participation's " +
+				"maturity. This site publishes the band the Budget Book prints.",
 			AppliesTo: []string{},
 		},
 		{
@@ -225,13 +225,16 @@ func debtCaveats() []Caveat {
 		},
 		{
 			ID:      "the-equipment-lease-is-one-lender",
-			Summary: "Both Lease/Purchase rows are Banc of America's equipment lease, one paid by the Internal Service Fund and one by the Airport.",
+			Summary: "Both Lease/Purchase rows are one Banc of America equipment purchase agreement, paid by the Internal Service Fund and by the Airport.",
 			Text: "p80 prints the governmental lease across three lines: Internal Service Fund, then " +
 				"Banc of America Equipment with a dash in every column, then Lease/Purchase Loan " +
 				"with the figures. This site labels that row Banc of America Equipment " +
 				"Lease/Purchase Loan, which is how the business-type block prints the Airport's " +
-				"share of the same lender's lease. The Internal Service Funds' requirements for 2026 " +
-				"and 2027 are this lease's principal and interest to the dollar.",
+				"row. The city's FY2025 annual financial report, p86, describes one equipment " +
+				"purchase agreement with Bank of America, entered in 2012, whose payments are made " +
+				"by the Facilities Rehabilitation Internal Service Fund and the Airport Enterprise " +
+				"Fund. The Internal Service Funds' requirements for 2026 and 2027 are this row's " +
+				"principal and interest to the dollar.",
 			AppliesTo: []string{},
 		},
 	}
@@ -339,10 +342,14 @@ type DebtRequirements struct {
 	Totals    []DebtTotal    `json:"totals"`
 }
 
-// DebtFundType is one fund type, as the page heads it.
+// DebtFundType is one fund type, as the page heads it, with the fund
+// dimension every fact in its column carries: no group and no fund for
+// Governmental Funds, which is no single fund type.
 type DebtFundType struct {
-	Key   string `json:"key"`
-	Label string `json:"label"`
+	Key       string `json:"key"`
+	Label     string `json:"label"`
+	FundGroup string `json:"fund_group"`
+	Fund      *int   `json:"fund"`
 }
 
 // DebtPeriod is one printed row: a year, or a band of years.
@@ -560,7 +567,12 @@ func debtRequirementRows(facts []*fact.Fact) (DebtRequirements, error) {
 	at := map[string]int{}
 	for i, t := range debtFundTypes {
 		at[t.key] = i
-		out.FundTypes = append(out.FundTypes, DebtFundType{Key: t.key, Label: t.label})
+		ft := DebtFundType{Key: t.key, Label: t.label, FundGroup: t.fundGroup}
+		if t.fund != 0 {
+			n := t.fund
+			ft.Fund = &n
+		}
+		out.FundTypes = append(out.FundTypes, ft)
 		out.Totals = append(out.Totals, DebtTotal{FundType: t.key, FactIDs: []string{}})
 	}
 

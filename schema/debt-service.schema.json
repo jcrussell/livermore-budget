@@ -286,7 +286,9 @@
             "type": "object",
             "required": [
               "key",
-              "label"
+              "label",
+              "fund_group",
+              "fund"
             ],
             "additionalProperties": false,
             "properties": {
@@ -297,6 +299,18 @@
               "label": {
                 "type": "string",
                 "minLength": 1
+              },
+              "fund_group": {
+                "description": "The fund_group every fact in this column carries; empty for a column under no single fund type.",
+                "type": "string"
+              },
+              "fund": {
+                "description": "The fund every fact in this column carries, and null where it names none.",
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1
               }
             }
           }

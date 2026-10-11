@@ -3,18 +3,27 @@ package check
 import (
 	"context"
 	"fmt"
+	"maps"
 	"slices"
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/project"
+	"github.com/jcrussell/livermore-budget/internal/vocab"
+)
+
+const (
+	debtPrincipal = "debt-services/principal"
+	debtInterest  = "debt-services/interest"
 )
 
 // debtServiceTiesToFacts holds the debt-service document to the store: every
 // figure it publishes is the fact it cites, to the cent, page, offset and
-// token; every fact of its slice is published by exactly one figure; a
-// requirements period's years are its facts' years, band included; and each
-// fund type's total is the sum of exactly the facts it cites.
+// token, and sits in that fact's slot -- an issue cell its row, its column
+// and its side, a requirements cell its period, its fund type and its side;
+// every fact of its slice is published by exactly one figure; and each fund
+// type's total cites exactly the figures its column lays out and is their
+// sum.
 //
 // It is the check the debt page's figures rest on. A figure dropped, carried
 // twice or published under the wrong period goes red here before
@@ -44,7 +53,16 @@ func (*debtServiceTiesToFacts) Run(_ context.Context, s *Subject) (Result, error
 			continue
 		}
 		seen := map[string]int{}
-		check := func(where string, fig *project.DebtFigure, want *project.Column) {
+		// slot is where a figure is laid out: what its fact must be.
+		type slot struct {
+			column            project.Column
+			rowLabel          string
+			fundGroup         string
+			fund              *int
+			category          string
+			checkRow, checkFT bool
+		}
+		check := func(where string, fig *project.DebtFigure, want slot) {
 			if fig == nil {
 				return
 			}
@@ -60,28 +78,64 @@ func (*debtServiceTiesToFacts) Run(_ context.Context, s *Subject) (Result, error
 				findings = append(findings, finding(where, "publishes %s at %s p%d+%d %q, and fact %s is %s at %s p%d+%d %q",
 					amount.Cents(fig.AmountCents), fig.DocID, fig.Page, fig.Offset, fig.Token, f.ID,
 					amount.Cents(f.AmountCents), f.DocID, f.Page, f.Offset, f.Token))
-			case want != nil && project.ColumnOf(f) != *want:
+			case project.ColumnOf(f) != want.column:
 				findings = append(findings, finding(where, "sits in %s, and fact %s is %s",
-					want, f.ID, project.ColumnOf(f)))
+					want.column, f.ID, project.ColumnOf(f)))
+			case f.Category != want.category:
+				findings = append(findings, finding(where, "sits in the %s slot, and fact %s is %s",
+					want.category, f.ID, f.Category))
+			case want.checkRow && f.RowLabel != want.rowLabel:
+				findings = append(findings, finding(where, "sits in row %q, and fact %s prints %q",
+					want.rowLabel, f.ID, f.RowLabel))
+			case want.checkFT && (f.FundGroup != want.fundGroup || !fact.SameFund(f.Fund, want.fund)):
+				findings = append(findings, finding(where, "sits under fund group %q fund %s, and fact %s is %q fund %s",
+					want.fundGroup, fact.FundString(want.fund), f.ID, f.FundGroup, fact.FundString(f.Fund)))
 			}
 		}
 		d := p.Debt
 		for _, is := range d.Issues {
+			if len(is.Cells) != len(d.IssueColumns) {
+				findings = append(findings, finding(fmt.Sprintf("%s issue %q", p.Name, is.RowLabel),
+					"carries %d cells for %d columns", len(is.Cells), len(d.IssueColumns)))
+				continue
+			}
 			for i, c := range is.Cells {
 				where := fmt.Sprintf("%s issue %q column %d", p.Name, is.RowLabel, i)
-				check(where+" principal", c.Principal, nil)
-				check(where+" interest", c.Interest, nil)
+				col := project.Column{FiscalYear: d.IssueColumns[i].FiscalYear,
+					Basis: vocab.Basis(d.IssueColumns[i].Basis)}
+				check(where+" principal", c.Principal, slot{column: col, rowLabel: is.RowLabel,
+					category: debtPrincipal, checkRow: true})
+				check(where+" interest", c.Interest, slot{column: col, rowLabel: is.RowLabel,
+					category: debtInterest, checkRow: true})
 			}
 		}
+		// laid is each fund type's figures as its column lays them out.
+		laid := make([]map[string]bool, len(d.Requirements.FundTypes))
+		for i := range laid {
+			laid[i] = map[string]bool{}
+		}
 		for _, per := range d.Requirements.Periods {
-			col := project.Column{FiscalYear: per.FiscalYear, Basis: "projected"}
+			col := project.Column{FiscalYear: per.FiscalYear, Basis: vocab.BasisProjected}
 			if per.FiscalYearThrough != nil {
 				col.Through = *per.FiscalYearThrough
 			}
+			if len(per.Cells) != len(d.Requirements.FundTypes) {
+				findings = append(findings, finding(fmt.Sprintf("%s period %q", p.Name, per.Label),
+					"carries %d cells for %d fund types", len(per.Cells), len(d.Requirements.FundTypes)))
+				continue
+			}
 			for i, c := range per.Cells {
-				where := fmt.Sprintf("%s period %q fund type %d", p.Name, per.Label, i)
-				check(where+" principal", c.Principal, &col)
-				check(where+" interest", c.Interest, &col)
+				ft := d.Requirements.FundTypes[i]
+				where := fmt.Sprintf("%s period %q %s", p.Name, per.Label, ft.Label)
+				check(where+" principal", c.Principal, slot{column: col, fundGroup: ft.FundGroup,
+					fund: ft.Fund, category: debtPrincipal, checkFT: true})
+				check(where+" interest", c.Interest, slot{column: col, fundGroup: ft.FundGroup,
+					fund: ft.Fund, category: debtInterest, checkFT: true})
+				for _, fig := range []*project.DebtFigure{c.Principal, c.Interest} {
+					if fig != nil {
+						laid[i][fig.FactID] = true
+					}
+				}
 			}
 		}
 		slice, err := p.slice(s.Facts)
@@ -95,6 +149,29 @@ func (*debtServiceTiesToFacts) Run(_ context.Context, s *Subject) (Result, error
 			}
 		}
 		for _, t := range d.Requirements.Totals {
+			col := slices.IndexFunc(d.Requirements.FundTypes, func(ft project.DebtFundType) bool {
+				return ft.Key == t.FundType
+			})
+			if col < 0 {
+				findings = append(findings, finding(p.Name+" total "+t.FundType, "totals a fund type the document does not head"))
+				continue
+			}
+			// The total cites exactly its column's figures: one it leaves out
+			// is a row the printed Total covers and the page's total does not.
+			cited := map[string]bool{}
+			for _, id := range t.FactIDs {
+				cited[id] = true
+				if !laid[col][id] {
+					findings = append(findings, finding(p.Name+" total "+t.FundType,
+						"cites %s, which its column does not lay out", id))
+				}
+			}
+			for _, id := range slices.Sorted(maps.Keys(laid[col])) {
+				if !cited[id] {
+					findings = append(findings, finding(p.Name+" total "+t.FundType,
+						"leaves out %s, which its column lays out", id))
+				}
+			}
 			var pc, ic int64
 			for _, id := range t.FactIDs {
 				f, ok := byID[id]
@@ -102,7 +179,7 @@ func (*debtServiceTiesToFacts) Run(_ context.Context, s *Subject) (Result, error
 					findings = append(findings, finding(p.Name+" total "+t.FundType, "cites %s, which is no fact of pp.80-81", id))
 					continue
 				}
-				if f.Category == "debt-services/principal" {
+				if f.Category == debtPrincipal {
 					pc += f.AmountCents
 				} else {
 					ic += f.AmountCents

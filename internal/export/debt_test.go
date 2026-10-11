@@ -59,8 +59,8 @@ func debtDoc(t *testing.T, figures int) []byte {
 					"interest": debtFig(6803600, "68,036.00", 81)}}},
 		},
 		"requirements": map[string]any{
-			"fund_types": []map[string]any{{"key": "governmental", "label": "Governmental Funds"},
-				{"key": "internal-service", "label": "Internal Service Funds"}},
+			"fund_types": []map[string]any{{"key": "governmental", "label": "Governmental Funds", "fund_group": "", "fund": nil},
+				{"key": "internal-service", "label": "Internal Service Funds", "fund_group": "internal-service", "fund": nil}},
 			"periods": []map[string]any{
 				{"fiscal_year": 2026, "fiscal_year_through": nil, "label": "2026", "years": 1,
 					"cells": []map[string]any{
