@@ -30,7 +30,7 @@ const COLUMNS = [
 ];
 
 /** The expansion's fold: core.foldDocument as the expansion calls it. */
-const fold = (doc, frontier) => core.foldDocument(doc, frontier, { mergeInferred: true });
+const fold = (doc, frontier) => core.foldDocument(doc, frontier);
 
 const cell = (s, t, kind) => `${s} > ${t} (${kind})`;
 
@@ -188,8 +188,8 @@ describe("the expansion schedule, folded to a frontier", () => {
       });
 
       // A PRINTED CELL A REMAINDER FOLDS BACK INTO is drawn printed, because
-      // its legs are exactly the set Go names it on. Without mergeInferred
-      // too: the declaration, not the option, settles it.
+      // its legs are exactly the set Go names it on: the declaration settles
+      // it.
       test("the root frontier draws every cell printed where the spine prints it", (t) => {
         const root = core.rootFrontier(doc);
         const printed = new Map(spine.links.map((l) => [cell(l.source, l.target, l.kind), Boolean(l.derived)]));
@@ -197,7 +197,6 @@ describe("the expansion schedule, folded to a frontier", () => {
           .filter(([k, d]) => printed.get(k) !== d).map(([k, d]) => `${k}${d ? "" : " printed"}`);
         t.diagnostic(`${differ.length} cell(s) drawn inferred where the spine prints them: ${differ.join("; ") || "none"}`);
         assert.deepEqual(differ, col.inferred);
-        assert.doesNotThrow(() => core.foldDocument(doc, root));
         const named = [...new Set(doc.links.filter((l) => l.completes).map((l) => l.completes))].sort();
         assert.deepEqual(named, col.completing.map((c) => c.cell), "the cells Go declares completing sets on");
       });
@@ -212,7 +211,6 @@ describe("the expansion schedule, folded to a frontier", () => {
             .map((l) => `${cell(l.source, l.target, l.kind)} = ${l.value_cents}${l.derived ? " inferred" : ""}`);
           t.diagnostic(`${c.group} open: ${drawn.length} ribbons of ${c.cell}`);
           assert.deepEqual(drawn.filter((d) => d.endsWith(" inferred")), [c.remainder]);
-          assert.doesNotThrow(() => core.foldDocument(doc, open), "the legs drawn apart mix nothing");
         }
       });
 
@@ -234,7 +232,6 @@ describe("the expansion schedule, folded to a frontier", () => {
           assert.ok(members.length > 0, `${at} has no members`);
           assert.ok(members.some((m) => drawn.nodes.some((n) => n.id === m)), `${at}: no member drawn`);
           assert.equal(core.openSplitOf(doc, open, sp.node), sp.key, at);
-          assert.doesNotThrow(() => core.foldDocument(doc, open), `${at}: an uncapped split mixes a printed leg and an inferred one`);
           assert.deepEqual(ids(core.collapse(doc, open, sp.node)), ids(from), `${at}: collapse does not invert expand`);
           checked++;
         }

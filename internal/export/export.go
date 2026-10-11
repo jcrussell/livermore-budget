@@ -373,19 +373,17 @@ const SankeyForm = "sankey"
 func ChartForms() []string { return []string{SankeyForm} }
 
 // MarkRoles is the declared set of roles a node the CLIENT makes may wear:
-// the aggregate a cap folds a column's tail into, the residual carrying flow
-// a drawn document does not decompose, the gap holding a licensed
-// difference, and the smaller-flows mark the reader's smallest-flow filter
-// folds small ribbons onto. No document carries one: [ColumnsOf] refuses a producer node
-// wearing a mark's role or id, validateSteps refuses a licence naming one,
-// schema/enums.schema.json states the set as mark_role, and
+// the aggregate a split cap folds a split's tail into, and the smaller-flows
+// mark the reader's smallest-flow filter folds small ribbons onto. No
+// document carries one: [ColumnsOf] refuses a producer node wearing a mark's
+// role or id, schema/enums.schema.json states the set as mark_role, and
 // schema/mark.schema.json is the shape, held on the client by
 // site/marks.test.mjs.
-func MarkRoles() []string { return []string{"aggregate", "residual", "gap", "smaller"} }
+func MarkRoles() []string { return []string{"aggregate", "smaller"} }
 
 // MarkPrefixes is the id prefix each mark role's ids carry, in [MarkRoles]
 // order; schema/mark.schema.json's id pattern states the same set.
-func MarkPrefixes() []string { return []string{"aggregate/tail/", "residual/", "gap/", "smaller/"} }
+func MarkPrefixes() []string { return []string{"aggregate/tail/", "smaller/"} }
 
 // markPrefixOf is the mark prefix an id carries, or "".
 func markPrefixOf(id string) string {

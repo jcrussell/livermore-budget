@@ -47,14 +47,11 @@ export function say(key, vars) {
 }
 
 /**
- * A link kind in the page's words, as the export ships them. The empty kind
- * is a gap's, which crosses no printed boundary, and is said in the words
- * the export ships for that.
+ * A link kind in the page's words, as the export ships them.
  * @param {string} kind
  * @returns {string}
  */
 export function kindLabel(kind) {
-  if (kind === "") return say("gap_kind");
   const label = config().kind_labels[kind];
   if (!label) throw new Error("cannot name link kind " + kind + ": the page publishes no label for it");
   return label;
@@ -104,25 +101,6 @@ const moneyExact = new Intl.NumberFormat("en-US", {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 });
-
-/**
- * A figure to the cent, for a sentence that subtracts one figure from
- * another: fmt rounds to the dollar, and rounded figures need not add up.
- * @param {number} cents
- */
-export function fmtExact(cents) {
-  return moneyExact.format(cents / 100);
-}
-
-/**
- * A list of phrases as English: "a", "a or b", "a, b or c" (no serial comma).
- * @param {string[]} parts
- * @returns {string}
- */
-export function joinOr(parts) {
-  if (parts.length < 3) return parts.join(" or ");
-  return parts.slice(0, -1).join(", ") + " or " + parts[parts.length - 1];
-}
 
 /**
  * @param {string[]} parts
@@ -290,10 +268,9 @@ export function fundGroupOf(index, node) {
 }
 
 /**
- * Each column's schedules, assembled once: a document is read per mark per
- * paint (stepDecomposes), and caches keyed on it (decomposable) only hit if
- * one column's schedule is one object. Frozen, so a caller that would change
- * it throws rather than changing every later reader's copy.
+ * Each column's schedules, assembled once, so one column's schedule is one
+ * object however often a gesture reads it. Frozen, so a caller that would
+ * change it throws rather than changing every later reader's copy.
  * @type {WeakMap<object, Map<string, FiscProjection | null>>}
  */
 const schedules = new WeakMap();
@@ -479,7 +456,7 @@ export function foldTarget(byID, n, frontier) {
 /**
  * Rebuild doc\u001fpage keys as FiscSource[] in the packager's order:
  * documents ascending, pages ascending within each, each once. Any other order
- * would render one page as a different citation on the spine and in a drill.
+ * would render one page as a different citation on two charts.
  * @param {Set<string>|undefined} keys
  * @returns {FiscSource[]}
  */
@@ -516,10 +493,9 @@ export function locatorKeys(ss) {
 
 /**
  * The fold's refusal to merge two ribbons one mark cannot draw as one: a
- * printed leg with an inferred one, or a cross-tab slice with a flow that
- * is not one. A type and not a message, so a caller that decides by it
- * (flankHolds) matches the refusal itself and never an error that quotes
- * or wraps its words.
+ * cross-tab slice with a flow that is not one. A type and not a message, so
+ * a caller that decides by it matches the refusal itself and never an error
+ * that quotes or wraps its words.
  */
 export class FoldRefusal extends Error {}
 
@@ -583,25 +559,21 @@ function readUnder(byID, n, alternatives) {
  *
  * A ribbon whose legs are exactly the links naming one cell in `completes` is
  * that printed cell, and is drawn printed whichever of its legs Go derived:
- * a membership Go declared. Any part of such a set is not the cell.
+ * a membership Go declared. Any part of such a set is not the cell. Any other
+ * ribbon merging a printed leg and an inferred one is drawn inferred: a
+ * capped split's tail can hold a remainder beside printed members, and the
+ * ribbon claims no more than its least-printed leg.
  *
  * FAILS CLOSED on a read node that neither folds nor is opened, and on a read
  * link with an end that does not fold: dropping either loses money silently,
  * keeping it leaves it nowhere to draw.
  *
  * @param {FiscProjection} doc
- * @param {Iterable<string>} frontier the node ids drawn: the page's tier set's
- *   tierFrontier, a step's once a node has opened, or an expansion's
- * @param {{mergeInferred?: boolean}} [opts] mergeInferred draws a printed leg
- *   and an inferred one, other than a completing set, as one inferred ribbon
- *   instead of refusing them. The expansion's: a capped split's tail can
- *   hold a remainder beside printed members, and the ribbon claims no more
- *   than its least-printed leg. The drill decides a layout by the refusal
- *   (flankHolds) and keeps it.
+ * @param {Iterable<string>} frontier the node ids drawn: a tier set's
+ *   tierFrontier, or an expansion's
  * @returns {FiscProjection}
  */
-export function foldDocument(doc, frontier, opts) {
-  const mergeInferred = Boolean(opts && opts.mergeInferred);
+export function foldDocument(doc, frontier) {
   const drawn = new Set(frontier);
   const byID = new Map(doc.nodes.map((n) => [n.id, n]));
   const { alternatives, opened } = openedBy(byID, drawn);
@@ -631,7 +603,7 @@ export function foldDocument(doc, frontier, opts) {
   // ribbon cites only its first leg's pages.
   /** @type {Map<string, Set<string>>} */
   const located = new Map();
-  /** @type {Map<string, {completes: string, legs: number, mixed: boolean}>} */
+  /** @type {Map<string, {completes: string, legs: number}>} */
   const legsOf = new Map();
   for (const l of doc.links) {
     if (l.alternative && !alternatives.has(l.source + "\u001f" + l.alternative)) continue;
@@ -655,7 +627,7 @@ export function foldDocument(doc, frontier, opts) {
       for (const id of l.fact_ids) first.add(id);
       cited.set(key, first);
       located.set(key, new Set(locatorKeys(l.locators)));
-      legsOf.set(key, { completes: l.completes || "", legs: 1, mixed: false });
+      legsOf.set(key, { completes: l.completes || "", legs: 1 });
       continue;
     }
     // A PARTITION LEG AND ONE THAT IS NOT ARE NEVER ONE RIBBON: one mark
@@ -665,10 +637,9 @@ export function foldDocument(doc, frontier, opts) {
       throw new FoldRefusal("cannot draw " + doc.projection + ": folding merges ribbons one mark cannot draw as one, " +
         "a cross-tab slice and a flow that is not one, from " + source + " to " + target + " (" + l.kind + ")");
     }
-    const legs = /** @type {{completes: string, legs: number, mixed: boolean}} */ (legsOf.get(key));
+    const legs = /** @type {{completes: string, legs: number}} */ (legsOf.get(key));
     legs.legs++;
     if (legs.completes !== (l.completes || "")) legs.completes = "";
-    legs.mixed = legs.mixed || Boolean(at.derived) !== Boolean(l.derived);
     at.derived = Boolean(at.derived) || Boolean(l.derived);
     // One leg's reduction words cannot name the sum; markContra names what
     // the merged ribbon nets to.
@@ -681,17 +652,13 @@ export function foldDocument(doc, frontier, opts) {
     if (locs) for (const k of locatorKeys(l.locators)) locs.add(k);
   }
 
-  // A PRINTED LEG AND AN INFERRED ONE ARE ONE RIBBON ONLY AS A COMPLETING SET,
-  // drawn printed; otherwise the fold refuses rather than letting one leg's
-  // flag speak for the other, or under mergeInferred draws the ribbon
-  // inferred.
+  // A PRINTED LEG AND AN INFERRED ONE ARE A PRINTED RIBBON ONLY AS A
+  // COMPLETING SET; otherwise the merge is drawn inferred, as at.derived
+  // already says.
   for (const [key, l] of merged) {
-    const legs = /** @type {{completes: string, legs: number, mixed: boolean}} */ (legsOf.get(key));
+    const legs = /** @type {{completes: string, legs: number}} */ (legsOf.get(key));
     if (legs.completes && legs.legs === sets.get(legs.completes)) {
       l.derived = false;
-    } else if (legs.mixed && !mergeInferred) {
-      throw new FoldRefusal("cannot draw " + doc.projection + ": folding merges ribbons one mark cannot draw as one, " +
-        "a printed flow and an inferred one, from " + l.source + " to " + l.target + " (" + l.kind + ")");
     }
     if (legs.completes) l.completes = legs.completes;
     else delete l.completes;
@@ -1015,44 +982,6 @@ export function isAggregate(id) {
 }
 
 /**
- * The prefix the residual node's id carries, followed by the opened node's id.
- */
-export const RESIDUAL_PREFIX = "residual/";
-
-/**
- * The id of the node an opened node's undecomposed flows are carried onto.
- * @param {string} opened
- * @returns {string}
- */
-export function residualID(opened) {
-  return RESIDUAL_PREFIX + opened;
-}
-
-/**
- * Whether an id names a residual node.
- * @param {string} id
- * @returns {boolean}
- */
-export function isResidual(id) {
-  return id.startsWith(RESIDUAL_PREFIX);
-}
-
-/**
- * The prefix a gap node's id carries, followed by the opened node's id. Not
- * the residual's: a residual is carried, a gap is derived.
- */
-export const GAP_PREFIX = "gap/";
-
-/**
- * The id of the node an opened node's gap is drawn under.
- * @param {string} opened
- * @returns {string}
- */
-export function gapID(opened) {
-  return GAP_PREFIX + opened;
-}
-
-/**
  * The prefix a smaller-flows mark's id carries, followed by its side and
  * tier.
  */
@@ -1087,13 +1016,13 @@ export function isSmaller(id) {
 }
 
 /**
- * Whether an id is a mark this client makes: an aggregate, a residual, a gap
- * or a smaller-flows mark. The declared set is export.MarkPrefixes.
+ * Whether an id is a mark this client makes: an aggregate or a smaller-flows
+ * mark. The declared set is export.MarkPrefixes.
  * @param {string} id
  * @returns {boolean}
  */
 export function isMark(id) {
-  return isAggregate(id) || isResidual(id) || isGap(id) || isSmaller(id);
+  return isAggregate(id) || isSmaller(id);
 }
 
 /**
@@ -1105,18 +1034,6 @@ export function isMark(id) {
  */
 export function isLink(d) {
   return Object.prototype.hasOwnProperty.call(d, "fact_ids");
-}
-
-/**
- * A residual's two figures, where money both enters and leaves it; "" for
- * every other mark. Read off the mark carriedResidual made, so every form
- * says it in the same words.
- * @param {FiscNode | LaidNode} d
- * @returns {string}
- */
-export function residualFlows(d) {
-  if (!isResidual(d.id) || !d.in_cents || !d.out_cents) return "";
-  return say("residual_flows", { in: fmt(d.in_cents), out: fmt(d.out_cents) });
 }
 
 /**
@@ -1147,73 +1064,6 @@ export function aggregateMark(tier, opened, folded, total, cap, word, id) {
     rationale: say("aggregate_rationale", { folded: folded.length, word: word }),
     source_note: say("aggregate_note", { folded: folded.length, total: total, cap: cap }),
   };
-}
-
-/**
- * The residual carrying flow a drawn document does not decompose:
- * schema/mark.schema.json, role residual. Its two figures need not balance;
- * carriedResidual fills the rationale and note, which name what it carried,
- * from the page's residual_* templates.
- * @param {string} opened the node it stands beside
- * @param {number} tier
- * @param {string} grain the city's singular word for what is not split
- * @param {number} inCents
- * @param {number} outCents
- * @param {string} rationale
- * @param {string} sourceNote
- * @returns {FiscMark}
- */
-export function residualMark(opened, tier, grain, inCents, outCents, rationale, sourceNote) {
-  return {
-    id: residualID(opened),
-    label: say("residual_label", { grain: grain }),
-    tier: tier,
-    parent: opened,
-    constraint_tier: "",
-    role: "residual",
-    derived: true,
-    in_cents: inCents,
-    out_cents: outCents,
-    rationale: rationale,
-    source_note: sourceNote,
-  };
-}
-
-/**
- * The gap holding a licensed difference between two schedules:
- * schema/mark.schema.json, role gap. Parentless, so drawn muted: it belongs
- * to neither document. The difference stands on one side only.
- * @param {string} opened the node it stands beside
- * @param {number} tier
- * @param {number} gap the signed difference, positive where the chart above sends more
- * @param {string} rationale
- * @param {string} sourceNote
- * @param {FiscSource[]} locators the pages cited around the opened node
- * @returns {FiscMark}
- */
-export function gapMark(opened, tier, gap, rationale, sourceNote, locators) {
-  return {
-    id: gapID(opened),
-    label: say("gap_label"),
-    tier: tier,
-    parent: "",
-    constraint_tier: "",
-    role: "gap",
-    derived: true,
-    in_cents: gap > 0 ? gap : 0,
-    out_cents: gap > 0 ? 0 : -gap,
-    rationale: rationale,
-    source_note: sourceNote,
-    locators: locators,
-  };
-}
-
-/**
- * @param {string} id
- * @returns {boolean}
- */
-export function isGap(id) {
-  return id.startsWith(GAP_PREFIX);
 }
 
 /**
@@ -1423,34 +1273,6 @@ export function foldSmaller(links, byID, smallest) {
  * ------------------------------------------------------------------ */
 
 /**
- * The figure a node prints net of the reductions printed under it: the
- * signed sum of the ribbons arriving at it, and whether any of them is a
- * reduction. Read at the ribbons' printed signs, before a form flips a
- * reduction to draw it.
- *
- * A sum at or below zero is refused: no form can draw a node at it, and a
- * Sankey would rescale its whole column silently.
- *
- * @param {FiscProjection} doc
- * @param {string} id
- * @returns {{net: number, reduced: boolean}}
- */
-export function printedNet(doc, id) {
-  let net = 0;
-  let reduced = false;
-  for (const l of doc.links) {
-    if (l.target !== id) continue;
-    net += l.value_cents;
-    if (l.value_cents < 0) reduced = true;
-  }
-  if (reduced && net <= 0) {
-    throw new Error("cannot draw " + doc.projection + ": the ribbons into " + id +
-      " net to " + net + " cents, which is no figure to draw it at");
-  }
-  return { net: net, reduced: reduced };
-}
-
-/**
  * How much of a mark's figure is printed as reductions: the reductions among
  * the ribbons on the side its figure is read from, the larger of what
  * arrives and what leaves, each ribbon at its magnitude.
@@ -1462,305 +1284,6 @@ export function reducedOf(arriving, leaving) {
   const sum = (/** @type {{value_cents: number}[]} */ ls) => ls.reduce((s, l) => s + Math.abs(l.value_cents), 0);
   const side = sum(arriving) >= sum(leaving) ? arriving : leaving;
   return sum(side.filter((l) => l.contra));
-}
-
-/**
- * Every page cited by a ribbon of any of `docs` with an end at `opened` or
- * inside it, merged per document, documents and pages sorted: the pages of
- * the two totals a gap subtracts.
- * @param {string} opened
- * @param {FiscProjection[]} docs
- * @returns {FiscSource[]}
- */
-export function citedAround(opened, docs) {
-  const keys = new Set();
-  for (const doc of docs) {
-    const inside = withinNode(doc, opened);
-    for (const l of doc.links) {
-      if (!inside.has(l.source) && !inside.has(l.target)) continue;
-      for (const s of l.locators || []) {
-        for (const p of s.pages) keys.add(s.doc_id + "\u001f" + p);
-      }
-    }
-  }
-  return regroupLocators(keys);
-}
-
-/**
- * Adds to a rung's drawn document the flows the chart it was opened from
- * prints for the opened node and the document it draws does not decompose,
- * copied verbatim onto one derived node beside the node's parts.
- *
- * CARRIED, NOT COMPUTED: every link added is a link of the chart above with
- * only its group end re-pointed, so its figure and provenance are untouched.
- * The endpoints are the step's declaration, whole or nothing each, in sorted
- * id order: an endpoint's inflow is carried only where the drawn document
- * carries nothing from it into the opened node, its outflow only where the
- * document decomposes the node (`decomposed`, the form's answer at every
- * column the step declares) and carries nothing from inside to it; where
- * both, the outflow's placement wins. An endpoint's ribbons come off the
- * chart on screen where it draws any, else off the file, never both: the
- * window's flank is already on screen, and taking both would count
- * transfers/in twice against what p0067 prints. The mark's two figures are
- * the sums of the ribbons carried each way, the leaving ones counted whether
- * or not this width draws their column, so the figures do not move with the
- * viewport. Its inflow and outflow differ by construction.
- *
- * Only across a document switch: a step that draws the document before it has
- * no second grain to be residual by.
- *
- * @param {FiscProjection} drawn  the rung's document, shaped and folded
- * @param {FiscProjection | null} from  the document of the chart the rung was
- *   opened from
- * @param {Rung} rung
- * @param {boolean} decomposed whether the step's document sends anything out
- *   of a part of the opened node at a column the step declares
- * @param {boolean} draws whether this width draws the column a leaving
- *   endpoint stands in; a leg it does not is counted and held back
- * @param {{mark: number, arriving: number, leaving: number}} stand the tiers
- *   the form stands the mark and a carried endpoint at; mark below zero
- *   where the form finds no part to stand it beside
- * @returns {FiscProjection} with the mark; or, where this width draws none
- *   of the residual's flows, with no mark and a held_back sentence saying
- *   what leaves and where it is drawn
- */
-export function carriedResidual(drawn, from, rung, decomposed, draws, stand) {
-  const step = rung.step;
-  const residual = step.residual;
-  if (!residual || !from || !step.projection) return drawn;
-  const opened = rung.id;
-  const doc = rung.doc;
-  const id = residualID(opened);
-  const inside = withinNode(doc, opened);
-  if (!inside.has(opened)) {
-    throw new Error("cannot draw " + doc.projection + ": it does not carry " + opened +
-      ", so nothing can be residual beside its parts");
-  }
-  const carriesFrom = (/** @type {string} */ e) => doc.links.some((l) => l.source === e && inside.has(l.target));
-  const carriesTo = (/** @type {string} */ e) => doc.links.some((l) => l.target === e && inside.has(l.source));
-  /** @type {FiscLink[]} */
-  const links = [];
-  /**
-   * The chart's own copy of each link re-pointed below, dropped: a window's
-   * flank already draws them, and keeping both would double-count.
-   * @type {Set<FiscLink>}
-   */
-  const spliced = new Set();
-  /**
-   * One endpoint's links off the chart above: this rung's own where it draws
-   * them, else the file's. Never both.
-   * @param {(l: FiscLink) => boolean} want
-   * @returns {FiscLink[]}
-   */
-  const above = (want) => {
-    const here = drawn.links.filter(want);
-    return here.length ? here : from.links.filter(want);
-  };
-  /** @type {Map<string, boolean>} endpoint id to whether its flow arrives */
-  const ends = new Map();
-  // Counted, not inferred from the endpoints: a mark with no leaving flow
-  // holds nothing back and its note must not say otherwise.
-  let withheld = 0;
-  let inCents = 0;
-  let outCents = 0;
-  // The endpoints whose flow the mark carries, drawn or withheld: the ones
-  // its rationale gives a reason for.
-  /** @type {Set<string>} */
-  const touched = new Set();
-  for (const e of Object.keys(residual).sort()) {
-    if (!carriesFrom(e)) {
-      for (const l of above((l) => l.source === e && l.target === opened)) {
-        links.push(Object.assign({}, l, { target: id }));
-        inCents += l.value_cents;
-        ends.set(e, true);
-        touched.add(e);
-        spliced.add(l);
-      }
-    }
-    if (!decomposed || carriesTo(e)) continue;
-    const leaving = above((l) => l.source === opened && l.target === e);
-    if (leaving.length) touched.add(e);
-    for (const l of leaving) outCents += l.value_cents;
-    if (!draws) {
-      withheld += leaving.length;
-      continue;
-    }
-    for (const l of leaving) {
-      links.push(Object.assign({}, l, { source: id }));
-      ends.set(e, false);
-      spliced.add(l);
-    }
-  }
-
-  const label = (/** @type {string} */ n) => {
-    const own = doc.nodes.find((g) => g.id === n && g.label);
-    if (own) return own.label;
-    const theirs = from.nodes.find((g) => g.id === n && g.label);
-    return theirs ? theirs.label : n;
-  };
-
-  // A MARK NONE OF WHOSE FLOWS THIS WIDTH DRAWS IS NOT DRAWN: every flow of an
-  // enterprise or special revenue residual leaves through the widened column,
-  // and at three columns it would be a box of no height citing nothing. What
-  // it would have carried is still said, as held_back, beside the chart.
-  if (!links.length) {
-    if (!withheld) return drawn;
-    const ends = Object.keys(residual).sort().filter((e) => touched.has(e)).map(label);
-    return Object.assign({}, drawn, {
-      held_back: say("residual_held_back", { opened: label(opened), cents: fmt(outCents), ends: joinAnd(ends), flows: withheld }),
-    });
-  }
-
-  if (stand.mark < 0) {
-    throw new Error("cannot draw " + doc.projection + ": " + opened +
-      " has no part at a tier this step draws to stand the residual beside");
-  }
-
-  const have = new Set(drawn.nodes.map((n) => n.id));
-  const fromByID = new Map(from.nodes.map((n) => [n.id, n]));
-  /** @type {FiscNode[]} */
-  const added = [];
-  for (const [e, arrives] of ends) {
-    const node = fromByID.get(e);
-    if (!node || have.has(e)) continue;
-    added.push(Object.assign({}, node, {
-      tier: arrives ? stand.arriving : stand.leaving, parent: "",
-      // Its caveats belong to the chart it was carried from; caveatsFor,
-      // caveatHref and carriedSource resolve this stem against the stack.
-      carried_from: from.projection || "",
-    }));
-  }
-
-  /** @type {Map<string, Set<number>>} */
-  const cited = new Map();
-  for (const l of links) {
-    for (const s of l.locators || []) {
-      const pages = cited.get(s.doc_id) || new Set();
-      for (const p of s.pages) pages.add(p);
-      cited.set(s.doc_id, pages);
-    }
-  }
-  const where = Array.from(cited.keys()).sort().map((docID) => {
-    const d = config() && config().docs ? config().docs[docID] : undefined;
-    const pages = Array.from(cited.get(docID) || []).sort((a, b) => a - b);
-    return (d && d.title ? d.title : docID) + " " +
-      (pages.length === 1 ? "p." : "pp.") + pages.join(", ");
-  }).join("; ");
-
-  // The words: the label names the grain, the rationale carries the step's
-  // reason for every endpoint in sorted order, whichever legs this width draws.
-  const grain = step.residual_grain || "";
-  const reasons = Object.keys(residual).sort().filter((e) => touched.has(e))
-    .map((e) => label(e) + ": " + residual[e] + ".");
-
-  // No plural is formed from the grain. The note cites the ribbons carried
-  // at this width.
-  const node = residualMark(opened, stand.mark, grain, inCents, outCents,
-    say("residual_rationale", { opened: label(opened), grain: grain, reasons: reasons.join(" ") }),
-    say("residual_note", {
-      flows: links.length, where: where,
-      withheld: !withheld ? ""
-        : " " + (withheld === 1 ? say("residual_withheld_one") : say("residual_withheld_many", { n: withheld })),
-    }));
-  return Object.assign({}, drawn, {
-    nodes: drawn.nodes.concat(added, [node]),
-    links: drawn.links.filter((l) => !spliced.has(l)).concat(links),
-  });
-}
-
-/**
- * States as a mark of its own the difference between what the chart above
- * sends into the opened node and what the document this rung draws breaks that
- * node into, where the step licenses exactly that difference in this column.
- *
- * Without it a form absorbs the difference into the node with nothing
- * against it, and the chart looks balanced. A gap has no published link to
- * copy, so unlike carriedResidual's mark this one is derived. The sums are
- * signed, reductions negative, as they stand before a form flips them; after
- * that a centre would read short by twice the reductions. It carries no
- * kind: the difference crosses no printed boundary.
- *
- * FAILS CLOSED: a difference no licence accounts for, one licensed in another
- * column or at another figure, and a licence for a centre that balances are
- * each a throw, so the two documents drifting apart is a banner and not a
- * chart. The licence's cents is structure's, shipped on the step.
- *
- * @param {FiscProjection} drawn  the rung's chart, shaped, folded and spliced
- * @param {FiscProjection | null} from  the document of the chart the rung was
- *   opened from, which the mark cites alongside the drawn one
- * @param {Rung} rung
- * @param {(gap: number) => number} standAt the tier the form stands the mark
- *   at, given the signed difference: positive where the chart above sends
- *   more, so the difference arrives at the mark
- * @returns {FiscProjection} drawn itself where the step declares no gap at all,
- *   or the node it opened balances unlicensed
- */
-export function licensedGap(drawn, from, rung, standAt) {
-  const step = rung.step;
-  const gaps = step.gaps;
-  if (!gaps || typeof gaps !== "object") return drawn;
-  const opened = rung.id;
-  if (!drawn.nodes.some((n) => n.id === opened)) {
-    throw new Error("cannot draw " + drawn.projection + ": " + opened + " is not a mark of the " +
-      "drawn chart, so the gap this step declares has nothing to be stated against");
-  }
-  let into = 0;
-  let outOf = 0;
-  for (const l of drawn.links) {
-    if (l.target === opened) into += l.value_cents;
-    if (l.source === opened) outOf += l.value_cents;
-  }
-  const gap = into - outOf;
-  const meta = drawn.metadata || /** @type {any} */ ({});
-  const licence = (gaps[opened] || [])
-    .find((g) => g.fiscal_year === meta.fiscal_year && g.basis === meta.basis);
-  if (gap === 0 && !licence) return drawn;
-  // Named only once there is something to say about the column.
-  const where = ledeOf(meta);
-  if (gap === 0) {
-    throw new Error("cannot draw " + drawn.projection + ": the step declares a gap of " + licence.cents +
-      " cents on " + opened + " in " + where + " and the chart balances there");
-  }
-  if (!licence) {
-    throw new Error("cannot draw " + drawn.projection + ": the chart above sends " + into + " into " +
-      opened + " and this one draws " + outOf + " of it, a difference of " + Math.abs(gap) +
-      " cents that no declaration on this step accounts for in " + where +
-      "; the two documents have drifted apart");
-  }
-  if (licence.cents !== gap) {
-    throw new Error("cannot draw " + drawn.projection + ": the step declares a gap of " + licence.cents +
-      " cents on " + opened + " in " + where + " and the charts differ there by " + gap);
-  }
-  const locators = citedAround(opened, from ? [from, rung.doc] : [rung.doc]);
-  if (!locators.length) {
-    throw new Error("cannot draw " + drawn.projection + ": no ribbon touching " + opened +
-      " cites a page, so the gap on it could cite none");
-  }
-  const centreNode = drawn.nodes.find((n) => n.id === opened && n.label);
-  const centre = centreNode ? centreNode.label : opened;
-  const column = where;
-  // TO THE CENT WHERE ANY FIGURE CARRIES CENTS: the sentence subtracts one
-  // figure from another, and rounded figures would not add up on the page.
-  const f = [into, outOf, gap].some((cents) => cents % 100 !== 0) ? fmtExact : fmt;
-  const lead = gap > 0
-    ? say("gap_lead_short", { column: column, into: f(into), centre: centre, out: f(outOf), gap: f(gap) })
-    : say("gap_lead_over", { column: column, out: f(outOf), centre: centre, gap: f(-gap), into: f(into) });
-  const id = gapID(opened);
-  const node = gapMark(opened, standAt(gap), gap,
-    say("gap_rationale", { lead: lead, reason: licence.reason, gap: f(Math.abs(gap)) }),
-    say("gap_note"),
-    locators);
-  // THE SIDE THE FIGURE IS ON IS THE SIDE THE MARK STANDS ON: too little
-  // leaving arrives at the mark, too little arriving leaves it.
-  const link = gap > 0
-    ? { source: opened, target: id, value_cents: gap }
-    : { source: id, target: opened, value_cents: -gap };
-  return Object.assign({}, drawn, {
-    nodes: drawn.nodes.concat([node]),
-    links: drawn.links.concat([Object.assign({
-      kind: "", transfer_id: "", fact_ids: [], locators: locators, derived: true,
-    }, link)]),
-  });
 }
 
 /**

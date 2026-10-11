@@ -323,9 +323,9 @@ describe("foldDocument's clauses, on the miniature", () => {
     orphan.links.push({ source: "revenue/tax", target: "stray", value_cents: 1, kind: "external", transfer_id: "", fact_ids: ["z"], locators: [{ doc_id: "d", pages: [1] }], derived: false });
     assert.throws(() => foldAt(drill, orphan), (e) => /stray/.test(e.message) && /tier 9/.test(e.message));
   });
-  // The fold is the one place a printed leg and an inferred one could meet in
-  // one ribbon, so it is the fold that refuses them.
-  test("a merged ribbon sums and cites every leg, and refuses a printed leg beside an inferred one", () => {
+  // The fold is the one place a printed leg and an inferred one meet in one
+  // ribbon, so it is the fold that says the merge is ours.
+  test("a merged ribbon sums and cites every leg, and is drawn inferred where any leg is", () => {
     const leg = { source: "revenue/tax", target: "fund/101", value_cents: 7, kind: "external", transfer_id: "", fact_ids: ["y"], locators: [{ doc_id: "d", pages: [1] }], derived: false };
     const printed = miniature();
     printed.links.push(leg);
@@ -336,7 +336,11 @@ describe("foldDocument's clauses, on the miniature", () => {
     assert.deepEqual([...l.fact_ids].sort(), ["a", "b", "y"]);
     const mixed = miniature();
     mixed.links.push(Object.assign({}, leg, { derived: true }));
-    assert.throws(() => foldAt(drill, mixed), /cannot draw as one, a printed flow and an inferred one/);
+    const m = foldAt(drill, mixed).links.find((x) => x.source === "revenue/tax" && x.target === "fund-group/general");
+    assert.ok(m);
+    assert.equal(m.derived, true);
+    assert.equal(m.value_cents, 307);
+    assert.deepEqual([...m.fact_ids].sort(), ["a", "b", "y"]);
   });
 });
 
@@ -449,10 +453,10 @@ describe("a reduction read back off the chart on screen", () => {
 });
 
 describe("a printed flow and an inferred one", () => {
-  // No published fold merges the two, so one is planted: two lines of one
-  // category into one fund fold into one ribbon at the category grain, and
-  // one of them is marked inferred.
-  test("are never merged into one ribbon", async () => {
+  // Planted: two lines of one category into one fund fold into one ribbon at
+  // the category grain, and one of them is marked inferred. A cross-tab
+  // slice beside a flow is still refused, with the fold's own type.
+  test("merge into one ribbon drawn inferred, and a cross-tab slice beside a flow is refused", async () => {
     const app = (await loadApp()).app;
     const doc = structuredClone(fundFlows(app, "fy2026-adopted"));
     const byID = new Map(doc.nodes.map((n) => [n.id, n]));
@@ -466,13 +470,16 @@ describe("a printed flow and an inferred one", () => {
       pair.set(key, l);
     }
     assert.ok(planted, "no two lines of one category reach one fund, so nothing folds together");
-    assert.doesNotThrow(() => foldAt(app, doc, [0, 2, 3, 4, 5]), "the printed document folds");
+    const ribbon = () => foldAt(app, doc, [0, 2, 3, 4, 5]).links
+      .find((l) => l.source === byID.get(planted.source).parent && l.target === planted.target && l.kind === planted.kind);
+    assert.equal(ribbon().derived, false, "the printed legs fold to an inferred ribbon");
     planted.derived = true;
-    assert.throws(() => foldAt(app, doc, [0, 2, 3, 4, 5]), /cannot draw as one, a printed flow and an inferred one/);
-    assert.throws(() => foldAt(app, doc, [0, 2, 3, 4, 5]), app.FoldRefusal, "the refusal is not the fold's own type");
+    assert.equal(ribbon().derived, true, "a merge holding an inferred leg is drawn printed");
+    assert.ok(ribbon().fact_ids.includes(planted.fact_ids[0]), "the inferred leg's fact is cited away");
     planted.derived = false;
     planted.partition = true;
     assert.throws(() => foldAt(app, doc, [0, 2, 3, 4, 5]), /cannot draw as one, a cross-tab slice and a flow that is not one/);
+    assert.throws(() => foldAt(app, doc, [0, 2, 3, 4, 5]), app.FoldRefusal, "the refusal is not the fold's own type");
   });
 
   test("a reduction's words do not name a ribbon it was only one leg of", async (t) => {
@@ -565,7 +572,7 @@ describe("the expansion's caps preserve what they fold, at every split the page 
       let merged = 0;
       for (const st of expansionStates(app, doc)) {
         charts++;
-        const raw = app.foldDocument(doc, st.frontier, { mergeInferred: true });
+        const raw = app.foldDocument(doc, st.frontier);
         const drawn = app.unmarkContra(app.expansionOf(doc, st.frontier, chart, st.whole));
         // (a) SUMS, and (b) NO RIBBON LOST OR DUPLICATED: the same cents and
         // the same facts -- a ribbon dropped loses its facts, one drawn twice
@@ -635,7 +642,7 @@ describe("no capped tail of the expansion folds a line printed as a reduction", 
     const out = [];
     const reduces = (l) => Boolean(l.contra) || l.value_cents < 0;
     for (const st of expansionStates(app, doc).filter((x) => !x.whole.size)) {
-      const raw = app.foldDocument(doc, st.frontier, { mergeInferred: true });
+      const raw = app.foldDocument(doc, st.frontier);
       const drawn = app.expansionOf(doc, st.frontier, CONFIG.overview, st.whole);
       for (const tail of drawn.nodes.filter((n) => app.isAggregate(n.id))) {
         const own = app.splitTailOf(tail.id);

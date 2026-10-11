@@ -967,9 +967,8 @@ describe("the expansion schedule laid out in slots, at the root, one group open 
     assert.deepEqual(got, want);
   });
 
-  // WHY THE EXPANSION FOLDS WITH mergeInferred: a capped split's tail can
-  // hold a remainder beside printed members, a part of no completing set, so
-  // the ribbon into it is drawn inferred. Pinned per year over every split
+  // A capped split's tail can hold a remainder beside printed members, a part
+  // of no completing set, so the fold draws the ribbon into it inferred. Pinned per year over every split
   // opened alone from the root and capped.
   test("the inferred ribbons into or out of a tail are the ones a remainder shares with printed members", (t) => {
     const want = {

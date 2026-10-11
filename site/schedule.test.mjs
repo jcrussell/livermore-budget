@@ -73,9 +73,8 @@ describe("a node's annotations are the column's, its parent the schedule's", () 
 });
 
 describe("a column's schedules are assembled once", () => {
-  // stepDecomposes reads a step's schedule per mark per paint, and decomposable
-  // caches on the document object, so one column's schedule is one object --
-  // frozen, so no reader can change it under the others.
+  // Every gesture reads the year's schedule, so one column's schedule is one
+  // object -- frozen, so no reader can change it under the others.
   test("scheduleOf returns one frozen document per column and schedule", async () => {
     const app = (await loadApp()).app;
     const column = columnFixture("fy2026-adopted");

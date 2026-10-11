@@ -1,20 +1,20 @@
 // @ts-check
 /**
- * fisc — the Sankey form: what depends on the screen and on ribbons. Which
- * tiers fit a budget, which ribbons a window holds and in what column order,
- * the reductions flipped so d3-sankey can draw them, where a residual or a
- * gap stands, and the layout helpers. Every figure it draws is core.js's: a
- * fold, a cap, a sum over cited ribbons. It reads of a step the generic
- * fields and `step.sankey`, and nothing of any other form's.
+ * fisc — the Sankey form: what depends on the screen and on ribbons. The
+ * expansion folded to a frontier, capped per split and stamped with its
+ * slots, the reductions flipped so d3-sankey can draw them, and the layout
+ * helpers. Every figure it draws is core.js's: a fold, a cap, a sum over
+ * cited ribbons. It reads of a chart `chart.sankey`, and nothing of any
+ * other form's.
  *
  * STATELESS BY RULE, as core.js is: no module-level `let`, no global read at
  * import. d3 is read through globalThis when a layout asks for it; the
- * columns on screen and the rung stack are passed in by app.js, which holds
+ * frontier and the splits drawn whole are passed in by app.js, which holds
  * them. A type named here is one of app.js's typedefs.
  */
 
 import {
-  FoldRefusal, capColumn, carriedResidual, fmt, fmtShortSigned, foldDocument, foldTarget, isAggregate, isExpansionSchedule, isFundGroup, isGap, isLink, isResidual, licensedGap, openSplitOf, printedNet, reducedOf, say, scoped, splitTailID, splitsOf, tailFigure, tierFrontier, withinNode,
+  capColumn, fmt, fmtShortSigned, foldDocument, isExpansionSchedule, isFundGroup, isLink, openSplitOf, reducedOf, say, splitTailID, splitsOf, tailFigure, tierFrontier,
 } from "./core.js";
 
 export const NODE_WIDTH = 14;
@@ -102,529 +102,6 @@ export function chartWidth(n) {
   return 2 * LABEL_GUTTER + BAND * (columns - 1) + NODE_WIDTH * columns;
 }
 
-/** SankeyHints.Side for a step opening the node its chart's links come FROM. */
-export const SIDE_SOURCE = "source";
-
-/**
- * SankeyHints.Side for a step drawing the opened node between what its document
- * sends into it and what it sends out: the TARGET of one half and the SOURCE
- * of the other, both off the step's own document.
- */
-export const SIDE_BOTH = "both";
-
-/**
- * Whether a window step keeps its flank at the LEFT end of its columns: the
- * kept tier is drawn before the opened one. Declared by position, as
- * validateSteps holds it, so the two halves' sides are read off one list.
- * @param {FiscDrillStep} step
- * @returns {boolean}
- */
-export function flankIsLeft(step) {
-  return step.sankey.tiers.indexOf(step.sankey.keep[0]) < step.sankey.tiers.indexOf(step.from);
-}
-
-/**
- * The tiers a step opens into, in its column order: every declared tier but
- * the kept flank, widened ones included. Widen fits a viewport and does not
- * change what the document draws.
- * @param {FiscDrillStep} step
- * @returns {number[]}
- */
-export function freshTiers(step) {
-  const keep = new Set(step.sankey.keep || []);
-  return step.sankey.tiers.filter((t) => !keep.has(t));
-}
-
-/**
- * The declared columns a rung's drawn chart must hold a node in: every one
- * but a widened one, which columnsAt leaves out where it comes out empty.
- * d3-sankey counts columns from depth while alignFor places nodes by
- * declared index, so it throws on an empty leading or interior column and
- * stretches the others across an empty trailing one. The kept
- * ones are the flank's to fill (flankHolds); the rest, the fresh half's at
- * every column set a budget draws (decomposable). The one answer columnsAt
- * and decomposable read, so what is offered draws at every width.
- * @param {FiscDrillStep} step
- * @returns {number[]}
- */
-export function promisedTiers(step) {
-  const widen = new Set(step.sankey.widen || []);
-  return step.sankey.tiers.filter((t) => !widen.has(t));
-}
-
-/**
- * The halves a step draws out of its own document, each a run of columns and
- * whether the opened node is the end its ribbons come FROM: one for a window
- * (the kept flank is not the document's) and for a source or target step, and
- * two for a step opening both sides, which meet on the opened column. The one
- * answer freshHalf, decomposable and SANKEY.shape read.
- * @param {FiscDrillStep} step
- * @param {number[]} [tiers] the fresh columns on screen; the declared ones by default
- * @returns {{tiers: number[], nearIsSource: boolean}[]}
- */
-export function freshHalves(step, tiers = freshTiers(step)) {
-  if (step.sankey.keep && step.sankey.keep.length) return [{ tiers, nearIsSource: flankIsLeft(step) }];
-  if (step.sankey.side !== SIDE_BOTH) return [{ tiers, nearIsSource: step.sankey.side === SIDE_SOURCE }];
-  const at = tiers.indexOf(step.from);
-  if (at <= 0 || at >= tiers.length - 1) {
-    throw new Error("cannot draw step " + step.key + ": it opens tier " + step.from + " on both sides " +
-      "and the columns on screen are " + tiers.join(", ") + ", which put nothing on one side of it");
-  }
-  return [
-    { tiers: tiers.slice(0, at + 1), nearIsSource: false },
-    { tiers: tiers.slice(at), nearIsSource: true },
-  ];
-}
-
-/**
- * Two charts joined on the nodes they share: the first's nodes in its order,
- * the second's it lacks after them, and both sets of ribbons. The second is
- * the document the result is OF. A node both hold is drawn once, so the
- * opened node a window or a two-sided step meets on is one mark.
- * @param {FiscProjection} first
- * @param {FiscProjection} second
- * @returns {FiscProjection}
- */
-export function splice(first, second) {
-  const have = new Set(first.nodes.map((n) => n.id));
-  return Object.assign({}, second, {
-    nodes: first.nodes.concat(second.nodes.filter((n) => !have.has(n.id))),
-    links: first.links.concat(second.links),
-  });
-}
-
-/**
- * What a step's document draws for one node, unfolded, every half spliced:
- * the reach the chart is drawn with (reaching), at the fresh columns given.
- * At every declared column by default, which is the answer to whether a
- * residual's leaving legs exist (carryResidual) and must not move with the
- * viewport; at the columns a budget draws, the answer heldAt reads.
- * @param {FiscDrillStep} step
- * @param {FiscProjection} doc
- * @param {string} id
- * @param {number[]} [tiers] the fresh columns to read at; every declared one by default
- * @returns {FiscProjection}
- */
-export function freshHalf(step, doc, id, tiers = freshTiers(step)) {
-  return freshHalves(step, tiers)
-    .map((h) => filterLinks(doc, id, h.tiers, reaching(doc, id, h.nearIsSource, h.tiers)))
-    .reduce(splice);
-}
-
-/**
- * The filter every rung uses: a ribbon of `doc` is drawn when its near end --
- * the target, or the source where the opened node is the end links come FROM
- * -- is the opened node or one of its parts by parent chain, AND its folded
- * ends run forward in the drawn column order. Membership alone admits cycles:
- * a fund window's flank parents a department's rows under the fund, so
- * department -> row folds to department -> fund, which d3-sankey refuses as a
- * circular link. The rule is the hierarchy's, not the ribbons': a walk along
- * ribbons would miss transfers/in, which no ribbon touches and whose payers
- * are its children.
- *
- * An end that folds to nothing is passed through; placing it is scoped()'s
- * question.
- *
- * @param {FiscProjection} doc
- * @param {string} opened
- * @param {boolean} nearIsSource
- * @param {number[]} tiers  the columns drawn, in order
- * @returns {(src: FiscNode, dst: FiscNode, byID: Map<string,FiscNode>, drawn: ReadonlySet<string>) => boolean}
- */
-export function reaching(doc, opened, nearIsSource, tiers) {
-  const inside = withinNode(doc, opened);
-  const at = new Map(tiers.map((t, i) => [t, i]));
-  return (src, dst, byID, drawn) => {
-    if (!inside.has(nearIsSource ? src.id : dst.id)) return false;
-    const from = foldTarget(byID, src, drawn);
-    const to = foldTarget(byID, dst, drawn);
-    if (from === "" || to === "") return true;
-    const a = at.get((byID.get(from) || src).tier);
-    const b = at.get((byID.get(to) || dst).tier);
-    return a !== undefined && b !== undefined && a < b;
-  };
-}
-
-/**
- * The links `holds` admits whose ends this tier set can place, and the nodes
- * those links need. Refuses nothing: an id nothing flows for is an empty
- * answer, which decomposable reads as "does not open" and windowFor refuses.
- *
- * @param {FiscProjection} doc
- * @param {string} id
- * @param {number[]} tiers
- * @param {(src: FiscNode, dst: FiscNode, byID: Map<string,FiscNode>, drawn: ReadonlySet<string>) => boolean} holds
- * @returns {FiscProjection}
- */
-export function filterLinks(doc, id, tiers, holds) {
-  const byID = new Map(doc.nodes.map((n) => [n.id, n]));
-  const drawn = tierFrontier(doc, tiers);
-  const placeable = scoped(doc, tiers);
-  const links = doc.links.filter((l) => {
-    const src = byID.get(l.source);
-    const dst = byID.get(l.target);
-    if (!src || !dst) return false;
-    if (!holds(src, dst, byID, drawn)) return false;
-    return placeable(src) && placeable(dst);
-  });
-
-  // Only the nodes those links touch, up to the drawn tiers: any other node
-  // would make foldDocument refuse the document.
-  const keep = new Set();
-  for (const l of links) {
-    for (const end of [l.source, l.target]) {
-      let at = byID.get(end);
-      for (let hops = 0; at && hops < 9; hops++) {
-        keep.add(at.id);
-        if (drawn.has(at.id)) break;
-        at = at.parent ? byID.get(at.parent) : undefined;
-      }
-    }
-  }
-  return Object.assign({}, doc, {
-    nodes: doc.nodes.filter((n) => keep.has(n.id)),
-    links: links,
-  });
-}
-
-/**
- * One filtered, capped and folded chart of a node: a whole rung on a step that
- * keeps no flank and opens one side, and one half of a window or of a step
- * opening both sides.
- *
- * THE ORDER IS filter, cap, fold, AND IT IS NOT INTERCHANGEABLE: the cap must
- * rank sizes inside the opened node, and the fold is what merges the cap's
- * parallel ribbons and unions their citations.
- *
- * @param {FiscProjection} doc
- * @param {Rung} rung
- * @param {number[]} tiers the columns this chart draws, in order
- * @param {boolean} nearIsSource whether the opened node is the end the drawn
- *   ribbons come FROM
- * @returns {FiscProjection}
- */
-export function sideOf(doc, rung, tiers, nearIsSource) {
-  const step = rung.step;
-  let shaped = filterLinks(doc, rung.id, tiers, reaching(doc, rung.id, nearIsSource, tiers));
-  const inside = withinNode(doc, rung.id);
-  // An aggregate the chart above drew and this side reaches is finished
-  // already: its parent and note are left as they came.
-  const had = new Set(doc.nodes.filter((n) => isAggregate(n.id)).map((n) => n.id));
-  // CAPS RUN IN THE TIER ORDER THIS CHART DRAWS: folding a coarse node
-  // removes descendants a finer cap would otherwise rank.
-  //
-  // THE TAIL'S PARENT IS THE OPENED NODE ONLY WHEN THE WHOLE COLUMN IS INSIDE
-  // IT, asked of the document; otherwise "" (--muted).
-  /** @type {Map<number, string>} */
-  const parentOf = new Map();
-  for (const tier of tiers) {
-    const cap = (step.sankey.caps || []).find((c) => c.tier === tier);
-    // An expanded tier skips the cap and only the cap.
-    if (!cap || (rung.expanded && rung.expanded.has(tier))) continue;
-    const column = shaped.nodes.filter((n) => n.tier === tier);
-    const parent = column.every((n) => inside.has(n.id)) ? rung.id : "";
-    parentOf.set(tier, parent);
-    shaped = capColumn(shaped, tier, cap.cap, parent, cap.tail || step.tail);
-  }
-  const drawn = foldDocument(shaped, tierFrontier(shaped, tiers));
-
-  // EVERY AGGREGATE THIS CALL MADE HAS ITS PARENT PUT BACK AFTER THE FOLD,
-  // which blanks it because the opened node was filtered away. Its note is
-  // finished here with the figure only the folded document knows.
-  return Object.assign({}, drawn, {
-    nodes: drawn.nodes.map((n) => (isAggregate(n.id) && !had.has(n.id)
-      ? Object.assign({}, n, {
-        parent: parentOf.get(n.tier) || "",
-        source_note: n.source_note + say("aggregate_together", { figure: fmt(tailFigure(drawn, n.id)) }),
-      })
-      : n)),
-  });
-}
-
-/**
- * The tiers a window keeps from the chart on screen: its flank and its centre.
- * Never widened, so every viewport keeps the same ones.
- * @param {FiscDrillStep} step
- * @returns {number[]}
- */
-export function keptTiersOf(step) {
-  const keep = new Set(step.sankey.keep || []);
-  return step.sankey.tiers.filter((t) => keep.has(t) || t === step.from);
-}
-
-/**
- * A window's kept half: the chart on screen, read at its printed signs, at the
- * kept tiers, reaching the opened node. The one reading windowFor draws and
- * stepDecomposes offers by, so what is offered is what draws.
- * @param {FiscProjection} onScreen
- * @param {{id: string, step: FiscDrillStep, expanded?: Set<number>}} rung
- * @returns {FiscProjection}
- */
-export function keptFlank(onScreen, rung) {
-  return sideOf(unmarkContra(onScreen), /** @type {any} */ (rung), keptTiersOf(rung.step), !flankIsLeft(rung.step));
-}
-
-/**
- * A window on the node the reader clicked: the flank they came from on one
- * side, the step document's decomposition on the other, and that node between
- * them.
- *
- * TWO DOCUMENTS, SO TWO HALVES, spliced on the centre: folding them together
- * would hand foldDocument two parent chains. Which side is which is read off
- * the step: the kept tiers are the flank, the opened tier the centre, and the
- * rest is what the node opens into.
- *
- * THE KEPT FLANK COMES OFF THE CHART ON SCREEN, NOT OFF A FILE: its nodes need
- * not exist in the step's document at all. The centre's record is the
- * on-screen chart's too, and is not marked carried.
- *
- * @param {FiscProjection} onScreen the drawn chart the rung was opened from
- * @param {FiscProjection} stepDoc the document the step draws
- * @param {Rung} rung
- * @param {number[]} tiers the columns on screen, not the columns declared
- * @returns {FiscProjection}
- */
-export function windowFor(onScreen, stepDoc, rung, tiers) {
-  const step = rung.step;
-  const keep = new Set(step.sankey.keep);
-  // THE CENTRE IS THE ONLY COLUMN BOTH HALVES HOLD, so a ribbon of one cannot
-  // land in a column of the other. With the flank on the left the opened node
-  // is the TARGET of the kept half and the SOURCE of the fresh one; on the
-  // right, the reverse.
-  const [half] = freshHalves(step, tiers.filter((t) => !keep.has(t)));
-  const kept = keptFlank(onScreen, rung);
-  // A RESIDUAL OR A GAP ON THE FLANK IS REFUSED: it is a mark this page drew
-  // and no schedule prints, so the fresh half never computed its figure and
-  // the window would carry it as though the new document had.
-  const mark = kept.nodes.find((n) => isResidual(n.id) || isGap(n.id));
-  if (mark) {
-    throw new Error("cannot draw " + stepDoc.projection + ": the kept flank carries " + mark.id +
-      ", a mark this page drew and no schedule prints, so the window would show a figure " +
-      "the document it draws never computed");
-  }
-  const fresh = sideOf(stepDoc, rung, half.tiers, half.nearIsSource);
-  // THE KEPT CENTRE MUST HOLD THE OPENED NODE: a window whose flank sends
-  // nothing into it is refused rather than drawn as its fresh half alone.
-  if (!kept.nodes.some((n) => n.id === rung.id)) {
-    throw new Error("cannot draw " + stepDoc.projection + ": the chart on screen sends nothing " +
-      "between tiers " + keptTiersOf(step).join(", ") + " and " + rung.id + ", so there is no flank to keep");
-  }
-
-  // carried_from IS SET WHERE ABSENT AND NEVER CLEARED: a node keeps the stem
-  // whose figure and caveats it carries, however many rungs down.
-  const stem = onScreen.projection || "";
-  const carried = Object.assign({}, kept, {
-    nodes: kept.nodes.map((n) => (n.id === rung.id || n.carried_from
-      ? n
-      : Object.assign({}, n, { carried_from: stem }))),
-  });
-  // The spliced document is the step document's; the kept flank is a guest.
-  return splice(carried, fresh);
-}
-
-/**
- * flankHolds' answers per chart on screen, per step and node: nodeClass asks
- * per mark per paint. Keyed on the frozen document, so nothing here is page
- * state.
- * @type {WeakMap<FiscProjection, Map<string, boolean>>}
- */
-const flanks = new WeakMap();
-
-/**
- * Whether a window step's kept flank off the chart on screen holds the node,
- * carries no residual or gap, and folds: each is a refusal of windowFor's,
- * so the offer and the draw are one rule and no mark is classed as opening
- * whose window would banner. Asked per mark per paint, which is why the
- * fold's refusal is an answer here rather than a throw; any other error is a
- * defect and is thrown.
- * @param {FiscProjection} onScreen
- * @param {FiscDrillStep} step
- * @param {string} id
- * @returns {boolean}
- */
-export function flankHolds(onScreen, step, id) {
-  let byStep = flanks.get(onScreen);
-  if (!byStep) {
-    byStep = new Map();
-    flanks.set(onScreen, byStep);
-  }
-  const at = step.key + "\u001f" + id;
-  let holds = byStep.get(at);
-  if (holds === undefined) {
-    try {
-      const kept = keptFlank(onScreen, { id: id, step: step }).nodes;
-      holds = kept.some((n) => n.id === id) && !kept.some((n) => isResidual(n.id) || isGap(n.id));
-    } catch (e) {
-      if (!(e instanceof FoldRefusal)) throw e;
-      holds = false;
-    }
-    byStep.set(at, holds);
-  }
-  return holds;
-}
-
-/**
- * heldAt's answers per document, per step, node and fresh column set:
- * activeTiers asks per paint, nextBudget per width and decomposable per node
- * per budget. Keyed on the frozen document, so nothing here is page state.
- * @type {WeakMap<FiscProjection, Map<string, {links: number, tiers: Set<number>}>>}
- */
-const helds = new WeakMap();
-
-/**
- * Which of the fresh columns `tiers` the opened node's fresh half holds a
- * node in, and how many ribbons it draws there. A node at a drawn tier is in
- * the half only as some ribbon end's nearest drawn ancestor-or-self -- the
- * column the fold puts it in -- and neither the cap nor the fold empties a
- * column, so this is what the drawn half holds. The one reading columnsAt
- * drops an empty widened column by and decomposable offers by.
- * @param {FiscDrillStep} step
- * @param {FiscProjection} doc
- * @param {string} id
- * @param {number[]} tiers the fresh columns, in order
- * @returns {{links: number, tiers: Set<number>}}
- */
-export function heldAt(step, doc, id, tiers) {
-  let byKey = helds.get(doc);
-  if (!byKey) {
-    byKey = new Map();
-    helds.set(doc, byKey);
-  }
-  const at = step.key + "\u001f" + id + "\u001f" + tiers.join(",");
-  let held = byKey.get(at);
-  if (!held) {
-    const half = freshHalf(step, doc, id, tiers);
-    held = { links: half.links.length, tiers: new Set(half.nodes.map((n) => n.tier)) };
-    byKey.set(at, held);
-  }
-  return held;
-}
-
-/**
- * The columns a rung draws at a budget: the step's tiers, less the widened
- * columns the budget drops (from the END of `widen`, so a narrowed window has
- * no hole) and the widened columns the opened node's fresh half leaves empty
- * at what is left (heldAt). A column dropped as empty frees a place the
- * budget gives the next widened column back, so the set is asked again until
- * it holds every column it keeps; each pass drops one more widened tier, so
- * it ends. Asked afresh at every budget and kept nowhere: whether a widened
- * column is empty depends on the tier set, since a ribbon into it folds onto
- * an ancestor at a narrower one, which can be its own source or behind it.
- * Without a rung, the budget's cut alone.
- * @param {FiscDrillStep} step
- * @param {{id: string, doc: FiscProjection} | null} rung
- * @param {number} budget
- * @returns {number[]}
- */
-export function columnsAt(step, rung, budget) {
-  const tiers = step.sankey.tiers;
-  const widen = step.sankey.widen || [];
-  const keep = new Set(step.sankey.keep || []);
-  const promised = new Set(promisedTiers(step));
-  const empty = new Set();
-  for (;;) {
-    const drop = new Set(empty);
-    for (let k = widen.length - 1; k >= 0 && tiers.length - drop.size > budget; k--) drop.add(widen[k]);
-    const drawn = drop.size ? tiers.filter((t) => !drop.has(t)) : tiers;
-    if (!rung || !widen.length) return drawn;
-    const held = heldAt(step, rung.doc, rung.id, drawn.filter((t) => !keep.has(t)));
-    const gone = drawn.filter((t) => !promised.has(t) && !held.tiers.has(t));
-    if (!gone.length) return drawn;
-    for (const t of gone) empty.add(t);
-  }
-}
-
-/**
- * The ids at a step's opened tier that its document decomposes, computed once
- * per (document, step, budgets) because nodeClass asks per mark per paint:
- * those whose fresh half holds a node in each promised column the flank does
- * not keep at the columns EVERY budget draws (columnsAt). A node whose
- * decomposition misses one at any width is not offered, since columnsAt
- * drops only a widened column and the chart could not be laid out at the
- * columns that width draws.
- * @type {WeakMap<FiscProjection, Map<string, Set<string>>>}
- */
-const decomposed = new WeakMap();
-
-/**
- * @param {FiscDrillStep} step
- * @param {FiscProjection} doc
- * @param {number[]} budgets every budget the page can draw at
- * @returns {Set<string>}
- */
-export function decomposable(step, doc, budgets) {
-  let byStep = decomposed.get(doc);
-  if (!byStep) {
-    byStep = new Map();
-    decomposed.set(doc, byStep);
-  }
-  const key = step.key + "\u001f" + budgets.join(",");
-  const have = byStep.get(key);
-  if (have) return have;
-  const keep = new Set(step.sankey.keep || []);
-  const fill = promisedTiers(step).filter((t) => !keep.has(t));
-  const out = new Set();
-  for (const n of doc.nodes) {
-    if (n.tier !== step.from || (step.role && n.role !== step.role)) continue;
-    const rung = { id: n.id, doc: doc };
-    const draws = budgets.every((b) => {
-      const held = heldAt(step, doc, n.id, columnsAt(step, rung, b).filter((t) => !keep.has(t)));
-      return held.links > 0 && fill.every((t) => held.tiers.has(t));
-    });
-    if (draws) out.add(n.id);
-  }
-  byStep.set(key, out);
-  return out;
-}
-
-/**
- * Whether a residual's leaving leg is drawn at these columns: a leaving
- * endpoint stands at the step's last declared tier (carryResidual).
- *
- * @param {FiscDrillStep} step
- * @param {number[]} tiers the columns the chart draws
- * @returns {boolean}
- */
-export function leavingLegDrawn(step, tiers) {
-  return tiers.includes(step.sankey.tiers[step.sankey.tiers.length - 1]);
-}
-
-/**
- * Draws the opened node at the figure it prints where its drawn ribbons do
- * not add up to it: a node a schedule prints a reduction under, the reduction
- * drawn forward at its magnitude by markContra. The figure is printedNet
- * over what the step's document sends into the node -- the same one the
- * citywide chart labels the node with -- read before any mark is added or
- * any sign is flipped.
- *
- * READ AT EVERY DECLARED COLUMN, NOT AT THE COLUMNS ON SCREEN: a reduction
- * whose line stands at a widened tier folds onto the node it reduces when
- * the budget drops that tier, and the drawn chart then nets to the gross. A
- * step's document does not change with the viewport, so neither does this
- * figure.
- *
- * d3-sankey would otherwise size the node at the gross its forward-drawn
- * ribbons add to, a figure no page prints. Setting the value here means every
- * surface reads one figure.
- *
- * @param {FiscProjection} drawn  shaped and folded, before any mark
- * @param {Rung} rung
- * @returns {FiscProjection} drawn itself when no ribbon into the node is a reduction
- */
-export function markAmounts(drawn, rung) {
-  const step = rung.step;
-  const half = freshHalf(step, rung.doc, rung.id);
-  // Nothing to net where no ribbon is printed negative, so the half is
-  // folded only then: a document is read whole at a width that draws part
-  // of it only where a reduction is in it.
-  if (!half.links.some((l) => l.value_cents < 0)) return drawn;
-  const printed = printedNet(foldDocument(half, tierFrontier(half, freshTiers(step))), rung.id);
-  if (!printed.reduced) return drawn;
-  return Object.assign({}, drawn, {
-    nodes: drawn.nodes.map((n) => (n.id === rung.id ? Object.assign({}, n, { fixedValue: printed.net }) : n)),
-  });
-}
-
 /**
  * Draws every ribbon the schedule prints as a reduction forward, at its
  * magnitude, carrying the sentence the document put on it.
@@ -657,8 +134,7 @@ export function markContra(drawn) {
 /**
  * The chart as its documents print it, markContra undone: a link carrying a
  * contra sentence after markContra was printed negative, so it goes back to
- * its own sign. A kept flank is read off the chart on screen, which is marked,
- * and its reductions are summed and folded at the sign they were printed at.
+ * its own sign, so a chart as drawn can be summed at the signs printed.
  * @param {FiscProjection} drawn
  * @returns {FiscProjection}
  */
@@ -696,9 +172,7 @@ export function isPartitionNode(d) {
 
 /**
  * The figure a laid mark prints: negative for a contra ribbon and for a line
- * whose every ribbon is one, the larger of a residual's two sides, and d3's
- * value otherwise. A residual's is carryResidual's sum even where the width
- * holds legs back.
+ * whose every ribbon is one, and d3's value otherwise.
  * @param {LaidLink | LaidNode} d
  * @returns {number}
  */
@@ -708,7 +182,6 @@ export function markCents(d) {
     return l.contra ? -l.value_cents : l.value_cents;
   }
   const n = /** @type {LaidNode} */ (d);
-  if (isResidual(n.id)) return Math.max(n.in_cents || 0, n.out_cents || 0);
   return isContraNode(n) ? -n.value : n.value;
 }
 
@@ -744,83 +217,6 @@ export function contraNote(d) {
   if (!reduced) return "";
   return "\u25c7 our reading: " + fmt(reduced) + " of this category is printed as reductions, " +
     "drawn here at their size";
-}
-
-/**
- * carriedResidual over this form's answers: whether the step's document
- * decomposes the opened node, read at every declared column so the figures
- * do not move with the viewport; whether this width draws the column a
- * leaving endpoint stands in; and where the mark and a carried endpoint
- * stand.
- *
- * DECOMPOSED IS THE STEP'S DECLARATION, NOT THIS WIDTH: whether the document
- * sends anything out of a part of the opened node at a tier the step
- * declares, each part read at the column it folds to there. Asked of the
- * drawn window instead, a budget that drops the parts' outward column would
- * drop the leaving legs from the mark's figure as well as from the chart.
- *
- * A LEAVING LEG IS DROPPED WHERE THE BUDGET DROPS ITS COLUMN, as every other
- * ribbon of that column is; placed in the last column the chart has, it
- * would draw a ribbon of no length.
- *
- * THE MARK STANDS AT THE SHALLOWEST DECLARED TIER OF ANY PART OF THE OPENED
- * NODE, read off the step's unfolded document; a node with no part at a
- * declared tier has nowhere to stand it, and neither has one whose tier this
- * width does not draw, by the budget or by columnsAt: d3 would clamp the mark
- * into the first column. ENDPOINTS STAND AT THE FIRST DRAWN
- * TIER WHEN THEIR FLOW ARRIVES AND THE LAST WHEN IT LEAVES -- drawn, not
- * declared: an undrawn declared tier is clamped to the first column and the
- * ribbon runs backwards. Filtered in the step's own order, which is a column
- * order and not a sorted set.
- *
- * @param {FiscProjection} drawn  the rung's document, shaped and folded
- * @param {FiscProjection | null} from  the document of the chart the rung was
- *   opened from
- * @param {Rung} rung
- * @param {number[]} onScreen the columns on screen
- * @returns {FiscProjection}
- */
-export function carryResidual(drawn, from, rung, onScreen) {
-  const step = rung.step;
-  if (!step.residual || !from || !step.projection) return drawn;
-  const opened = rung.id;
-  const doc = rung.doc;
-  const inside = withinNode(doc, opened);
-  const declared = freshHalf(step, doc, opened);
-  const byDocID = new Map(doc.nodes.map((n) => [n.id, n]));
-  const declaredFrontier = tierFrontier(doc, freshTiers(step));
-  const decomposed = declared.links.some((l) => {
-    const part = foldTarget(byDocID, /** @type {FiscNode} */ (byDocID.get(l.source)), declaredFrontier);
-    return part !== "" && part !== opened && inside.has(part);
-  });
-  let mark = -1;
-  for (const n of doc.nodes) {
-    if (n.id !== opened && inside.has(n.id) && step.sankey.tiers.includes(n.tier) && (mark < 0 || n.tier < mark)) {
-      mark = n.tier;
-    }
-  }
-  if (!onScreen.includes(mark)) mark = -1;
-  const tiers = step.sankey.tiers.filter((t) => drawn.nodes.some((n) => n.tier === t));
-  return carriedResidual(drawn, from, rung, decomposed, leavingLegDrawn(step, onScreen),
-    { mark: mark, arriving: tiers[0], leaving: tiers[tiers.length - 1] });
-}
-
-/**
- * licensedGap with the mark stood where its figure is: too little leaving
- * at the last declared tier, too little arriving at the first.
- * @param {FiscProjection} drawn  the rung's chart, shaped, folded and spliced
- * @param {FiscProjection | null} from  the document of the chart the rung was
- *   opened from
- * @param {Rung} rung
- * @returns {FiscProjection}
- */
-export function markGap(drawn, from, rung) {
-  // The hint is read only once there is a mark to stand: a balanced chart
-  // with no licence is returned as drawn, whatever the step declares.
-  return licensedGap(drawn, from, rung, (gap) => {
-    const tiers = rung.step.sankey.tiers;
-    return gap > 0 ? tiers[tiers.length - 1] : tiers[0];
-  });
 }
 
 /**
@@ -977,7 +373,7 @@ export function expansionOf(expansion, frontier, chart, whole) {
   const caps = /** @type {{split: string, cap: number, tail: string}[]} */ (hints.split_caps || []);
   const keys = expansionSlots(expansion, hints.tiers || []);
   const open = new Set(frontier);
-  let drawn = foldDocument(expansion, open, { mergeInferred: true });
+  let drawn = foldDocument(expansion, open);
   /** @type {Map<string, {node: string, slot: number}>} */
   const tails = new Map();
   for (const sp of /** @type {any[]} */ ((/** @type {any} */ (expansion)).splits || [])) {
@@ -993,7 +389,7 @@ export function expansionOf(expansion, frontier, chart, whole) {
     drawn = capped;
     tails.set(id, { node: sp.node, slot: /** @type {number} */ (keys.get(Array.from(members)[0])) });
   }
-  if (tails.size) drawn = foldDocument(drawn, drawn.nodes.map((n) => n.id), { mergeInferred: true });
+  if (tails.size) drawn = foldDocument(drawn, drawn.nodes.map((n) => n.id));
   const folded = drawn;
   return Object.assign({}, folded, {
     nodes: folded.nodes.map((n) => {
@@ -1170,8 +566,8 @@ export function nodeRank(groupOf, placeOf, node) {
   let place = 0;
   for (const l of node.sourceLinks.concat(node.targetLinks)) {
     const other = l.source === node ? l.target : l.source;
-    // The neighbour's fund group, not the neighbour: on the drill-down the
-    // ends are funds and departments.
+    // The neighbour's fund group, not the neighbour: once a group splits, the
+    // ends are funds and divisions.
     const group = groupOf(other);
     // A node in no fund group is ignored rather than counted as position zero.
     if (!group) continue;

@@ -47,28 +47,10 @@ type wording struct {
 	// The aggregate, residual and gap marks, schema/mark.schema.json: their
 	// labels, rationales and source notes are templates the constructors
 	// fill, so no sentence about what a mark IS is spelled in JavaScript.
-	AggregateLabel       string `json:"aggregate_label"`
-	AggregateRationale   string `json:"aggregate_rationale"`
-	AggregateNote        string `json:"aggregate_note"`
-	AggregateTogether    string `json:"aggregate_together"`
-	ResidualLabel        string `json:"residual_label"`
-	ResidualRationale    string `json:"residual_rationale"`
-	ResidualNote         string `json:"residual_note"`
-	ResidualWithheldOne  string `json:"residual_withheld_one"`
-	ResidualWithheldMany string `json:"residual_withheld_many"`
-	// ResidualHeldBack is said beside the chart where a residual has flows
-	// and this width draws none of them, so no mark carries its note.
-	ResidualHeldBack string `json:"residual_held_back"`
-	ResidualFlows    string `json:"residual_flows"`
-	GapLabel         string `json:"gap_label"`
-	GapLeadShort     string `json:"gap_lead_short"`
-	GapLeadOver      string `json:"gap_lead_over"`
-	GapRationale     string `json:"gap_rationale"`
-	GapNote          string `json:"gap_note"`
-	// GapKind is the Kind a gap's ribbon is said to be, which project.LinkKinds
-	// has no member for: the difference between two schedules crosses no
-	// boundary either of them printed.
-	GapKind string `json:"gap_kind"`
+	AggregateLabel     string `json:"aggregate_label"`
+	AggregateRationale string `json:"aggregate_rationale"`
+	AggregateNote      string `json:"aggregate_note"`
+	AggregateTogether  string `json:"aggregate_together"`
 	// ContraOrphan is project.ContraOrphan, the sentence a reduction carries
 	// when no printed line explains it, shipped so a fold that nets a ribbon
 	// negative names it in the producer's words.
@@ -183,49 +165,27 @@ func defaultWording() wording {
 			"mark because they cannot be drawn separately. Every figure inside it is printed; the box around them is ours.",
 		AggregateNote:     "The {folded} smallest of {total} by value, at this page's cap of {cap}",
 		AggregateTogether: ", together {figure}.",
-		ResidualLabel:     "Not split by {grain} here",
-		ResidualRationale: "Money the chart above prints for {opened} as a whole and that the schedule this chart is drawn from " +
-			"does not split by {grain}, so no {grain} here receives or pays it. It is drawn beside the opened node's parts " +
-			"rather than attributed to one of them, and what flows in and what flows out need not balance: the difference " +
-			"is what that schedule does not break down. {reasons}",
-		ResidualNote:         "Carried, not computed: {flows:flow|flows} of the chart above with figures and citations unchanged \u2014 {where}.{withheld}",
-		ResidualWithheldOne:  "The flow leaving it is drawn where there is room for a further column.",
-		ResidualWithheldMany: "The {n} flows leaving it are drawn where there is room for a further column.",
-		ResidualHeldBack: "{cents} leaves {opened} for {ends}, in {flows:flow|flows} drawn where there is room " +
-			"for a further column.",
-		ResidualFlows: "{in} in, {out} out",
-		GapLabel:      "Difference between the two schedules",
-		GapLeadShort: "In {column}, the chart above puts {into} through {centre} and the schedule this chart is drawn from " +
-			"accounts for {out} of it, {gap} less.",
-		GapLeadOver: "In {column}, the schedule this chart is drawn from accounts for {out} through {centre}, {gap} more " +
-			"than the {into} the chart above puts through it.",
-		GapRationale: "{lead} {reason} This mark is that {gap}, drawn so that the ribbons and the node agree; no page prints " +
-			"it as a figure of its own.",
-		GapNote: "Derived, not published: one document's total for this cell less the other's. Each total is built from " +
-			"figures `fisc verify` ties to the pages the city printed, and the difference is the one declared for this " +
-			"column; no page prints it as a figure of its own.",
-		GapKind:          "none: crosses no printed boundary",
-		ContraOrphan:     project.ContraOrphan,
-		BalanceBeginning: "Balance at the start of the year, as printed: {figure}",
-		BalanceEnding:    "Balance at the end of the year, as printed: {figure}",
-		FilterHidden:     "Hidden by your filters: {cents} in {flows:flow|flows}. Marks are sized to what is drawn, each mark's figure is still this view's, and the flow table still lists every flow of this view.",
-		FilterFolded:     "{flows:flow|flows} under {threshold} are drawn merged by this page into {ribbons:ribbon|ribbons} of smaller flows.",
-		FilterHiddenAt:   "Your filters hide {cents} of this mark's flows, in {flows:flow|flows}.",
-		FilterDrawnAt:    "{cents} of it drawn under your filters",
-		SmallestAll:      "every flow",
-		SmallerLabel:     "{flows:flow|flows} under {threshold}",
-		SmallerRationale: "Our grouping, not a line the city printed: {flows:flow|flows} each under {threshold}, the smallest flow your filters draw as itself, are drawn as one mark. Every figure inside it is printed; the merge is this page's.",
-		SmallerNote:      "Merged by this page from {flows:flow|flows} the city printed, together {figure}; its ribbons cite every fact and page they merge.",
-		SmallerFlow:      "{flows:flow|flows} under {threshold}, each printed by the city, merged by this page",
-		SearchLabel:      "Find a mark on this chart",
-		SearchCount:      "{n:mark matches|marks match}; the arrow keys move between them, and Enter goes to one.",
-		SearchNone:       "No mark drawn on this chart has “{query}” in its name.",
-		SearchOpens:      "Enter splits it in place",
-		SearchExpands:    "Enter draws out every one it folds",
-		SearchReveals:    "Enter splits the chart until it is drawn",
-		FullScreen:       "Full screen",
-		FullScreenExit:   "Exit full screen",
-		ZoomReset:        "Reset view",
+		ContraOrphan:      project.ContraOrphan,
+		BalanceBeginning:  "Balance at the start of the year, as printed: {figure}",
+		BalanceEnding:     "Balance at the end of the year, as printed: {figure}",
+		FilterHidden:      "Hidden by your filters: {cents} in {flows:flow|flows}. Marks are sized to what is drawn, each mark's figure is still this view's, and the flow table still lists every flow of this view.",
+		FilterFolded:      "{flows:flow|flows} under {threshold} are drawn merged by this page into {ribbons:ribbon|ribbons} of smaller flows.",
+		FilterHiddenAt:    "Your filters hide {cents} of this mark's flows, in {flows:flow|flows}.",
+		FilterDrawnAt:     "{cents} of it drawn under your filters",
+		SmallestAll:       "every flow",
+		SmallerLabel:      "{flows:flow|flows} under {threshold}",
+		SmallerRationale:  "Our grouping, not a line the city printed: {flows:flow|flows} each under {threshold}, the smallest flow your filters draw as itself, are drawn as one mark. Every figure inside it is printed; the merge is this page's.",
+		SmallerNote:       "Merged by this page from {flows:flow|flows} the city printed, together {figure}; its ribbons cite every fact and page they merge.",
+		SmallerFlow:       "{flows:flow|flows} under {threshold}, each printed by the city, merged by this page",
+		SearchLabel:       "Find a mark on this chart",
+		SearchCount:       "{n:mark matches|marks match}; the arrow keys move between them, and Enter goes to one.",
+		SearchNone:        "No mark drawn on this chart has “{query}” in its name.",
+		SearchOpens:       "Enter splits it in place",
+		SearchExpands:     "Enter draws out every one it folds",
+		SearchReveals:     "Enter splits the chart until it is drawn",
+		FullScreen:        "Full screen",
+		FullScreenExit:    "Exit full screen",
+		ZoomReset:         "Reset view",
 		Hairline: "{n:flow is|flows are} under a pixel wide on this chart's canvas, and each is drawn as a " +
 			"hairline one screen pixel wide, which is wider than its share; every other flow is drawn to scale. " +
 			"Zoom in, go full screen, search, or open the table below to read them.",

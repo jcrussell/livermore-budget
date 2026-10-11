@@ -23,7 +23,7 @@
 
 import * as core from "./core.js";
 import {
-  SCHEMA_VERSION, say, kindLabel, fmt, fmtSigned, el, maybeEl, cssVar, h, link, citations, balancesOf, PARTITION_NOTE, isFundGroup, scheduleOf, isLink, residualFlows, tableRows,
+  SCHEMA_VERSION, say, kindLabel, fmt, fmtSigned, el, maybeEl, cssVar, h, link, citations, balancesOf, PARTITION_NOTE, isFundGroup, scheduleOf, isLink, tableRows,
 } from "./core.js";
 import { SANKEY } from "./sankey.js";
 // Re-exported so the tests reach the shipped modules through the one file
@@ -1756,10 +1756,9 @@ export function nodeDescription(d) {
   const mark = markOfView(d);
   const note = form.reductionNote(mark);
   // The cross-tab qualification, for a reader who cannot see the ribbons.
-  const flows = residualFlows(d);
   const drawn = drawnAt(d);
   const gone = hiddenAt(d.id);
-  return d.label + (flows ? ", " + flows : ", total " + fmtSigned(markFigure(d))) +
+  return d.label + ", total " + fmtSigned(markFigure(d)) +
     (drawn ? ", " + drawn : "") +
     ", " + say(d.derived ? "inferred_by_us" : "printed_by_city") +
     (form.crossTab(mark) ? ", " + PARTITION_NOTE : "") +
@@ -1886,8 +1885,6 @@ export function showTip(event, d) {
         ? "\u26a0 1 caveat" : "\u26a0 " + cavs.length + " caveats"));
     }
     tip.append(meta);
-    const flows = residualFlows(n);
-    if (flows) tip.append(h("div", "tip-meta", flows));
     for (const b of balancesOf(n)) tip.append(h("div", "tip-meta", b.words));
     if (n.rationale) tip.append(h("div", "tip-meta", n.rationale));
     const note = form.reductionNote(markOfView(n));
@@ -1968,8 +1965,6 @@ export function pin(d) {
     const share = shareOf(n);
     if (share) chips.append(h("span", "chip derived", share));
     panel.append(chips);
-    const flows = residualFlows(n);
-    if (flows) panel.append(h("p", "subtle", flows));
     // A PRINTED BALANCE IS CITED AT ITSELF, as a link is: its fact and its
     // pages, not the document's.
     for (const b of balancesOf(n)) {
@@ -2045,9 +2040,9 @@ export function groupLabel(id) {
 
 /**
  * Draws one swatch per fund group the chart on screen draws a mark in, each a
- * toggle for following that GROUP's money (follows). On every view: a
- * category window or an endpoint's view colours funds of several groups with
- * no group node on screen, and the swatch is the only key to those hues.
+ * toggle for following that GROUP's money (follows). Once a group splits, its
+ * funds are coloured with no group node on screen, and the swatch is the only
+ * key to their hue.
  */
 export function buildLegend() {
   if (!projection) return;
@@ -2083,7 +2078,7 @@ export function buildDerivedList() {
     const flows = links.filter((l) => homeOf(l) === n.id);
     if (flows.length) {
       const total = flows.reduce((sum, l) => sum + l.value_cents, 0);
-      // "inferred": a residual's own note counts the flows it CARRIES, a
+      // "inferred": a tail's own note counts the flows it FOLDS, a
       // different set, and an unqualified count would read as correcting it.
       li.append(h("div", "subtle",
         flows.length + " inferred flow" + (flows.length === 1 ? "" : "s") + " totalling " + fmt(total) + ": " +

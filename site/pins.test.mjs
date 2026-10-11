@@ -24,7 +24,7 @@ describe("the literals the client shares", () => {
     const { app } = await loadApp();
     const pattern = read("mark.schema.json").properties.id.pattern;
     const m = /^\^\(([^()|]+(?:\|[^()|]+)*)\)$/.exec(pattern);
-    const prefixes = [app.AGGREGATE_PREFIX, app.RESIDUAL_PREFIX, app.GAP_PREFIX, app.SMALLER_PREFIX];
+    const prefixes = [app.AGGREGATE_PREFIX, app.SMALLER_PREFIX];
     t.diagnostic(`the schema's id pattern is ${pattern}; the client's prefixes are ${JSON.stringify(prefixes)}`);
     assert.ok(m, `the id pattern ${pattern} is not ^(a|b|c)`);
     assert.deepEqual(m[1].split("|"), prefixes);

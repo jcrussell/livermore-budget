@@ -85,8 +85,7 @@ describe("the marks this client makes", () => {
     const faults = [...seen.values()].flatMap((m) => m.faults.map((f) => `${m.where}: ${f}`));
     t.diagnostic(`${walked.visited} chart(s) walked; marks by role: ${[...roles].map(([r, n]) => `${r} ${n}`).join(", ")}; faults: ${faults.length}`);
     assert.deepEqual(faults, []);
-    // The residual and the gap are built by no chart the page draws; the
-    // test below builds each outside it.
+    // The page builds no other kind of mark.
     assert.deepEqual([...roles.keys()].sort(), ["aggregate", "smaller"]);
   });
 
@@ -119,13 +118,9 @@ describe("the marks this client makes", () => {
 
   test("a mark built outside the drawn page matches too, and a stray key is caught", async () => {
     const { app } = await bootedApp();
-    const gap = app.gapMark("expenditure/x", 5, 25000000, "Why.", "Where from.", [{ doc_id: "d", pages: [1] }]);
-    assert.deepEqual(check(MARK, gap, "gap", []), []);
-    assert.deepEqual(check(MARK, Object.assign({}, gap, { extra: 1 }), "gap", []), ["gap: extra is not a declared property"]);
-    const residual = app.residualMark("fund-group/general", 3, "fund", 10, 20, "Why.", "Where from.");
-    assert.deepEqual(check(MARK, residual, "residual", []), []);
     const smaller = app.smallerMark(app.SMALLER_TO, 5, 3, 1000000, 120000, [{ doc_id: "d", pages: [1] }]);
     assert.deepEqual(check(MARK, smaller, "smaller", []), []);
+    assert.deepEqual(check(MARK, Object.assign({}, smaller, { extra: 1 }), "smaller", []), ["smaller: extra is not a declared property"]);
     const one = app.aggregateMark(3, "fund-group/general", ["fund/1"], 9, 8, "funds");
     assert.deepEqual(check(MARK, one, "aggregate", []), ["aggregate.folds: fewer than 2 items"]);
   });

@@ -38,7 +38,7 @@ describe("the shipped modules hold no state", () => {
     delete globalThis.FISC_CONFIG;
     delete globalThis.d3;
     const sankey = await import(pathToFileURL(path.join(HERE, "sankey.js")).href);
-    assert.equal(typeof sankey.reaching, "function");
+    assert.equal(typeof sankey.expansionOf, "function");
     const declared = sankey.alignFor(sankey.slotsOf([{ id: "a", tier: 0 }], [0, 2, 5]));
     assert.equal(typeof declared, "function", "a declared column order aligns without d3");
     // A module that took d3 at import holds undefined here and cannot answer.

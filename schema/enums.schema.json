@@ -32,7 +32,7 @@
     "mark_role": {
       "description": "What a node the client makes is for; export.MarkRoles. No document carries one.",
       "type": "string",
-      "enum": ["aggregate", "residual", "gap", "smaller"]
+      "enum": ["aggregate", "smaller"]
     },
     "split_form": {
       "description": "How a node of the expansion schedule opens: in place of itself, or into a column after it; project.SplitForms.",
