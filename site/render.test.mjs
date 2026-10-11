@@ -754,8 +754,9 @@ describe("the expansion's drawing", () => {
       const word = CONFIG.overview.sankey.split_caps.find((c) => c.split === "funds").tail;
       fire(tail, "keydown", { key: "Enter", timeStamp: 1000 });
       await settle();
+      // A group's derived remainder is drawn among its funds and is not one.
       const drawn = marksIn(chart).filter((m) => m.__data__.tier === tier && !app.isAggregate(m.__data__.id) &&
-        app.nodeOf(m.__data__.id).parent === worst).length;
+        app.nodeOf(m.__data__.id).parent === worst && !app.nodeOf(m.__data__.id).derived).length;
       const chipCrumbs = crumbs(document);
       const chip = [...document.getElementById("breadcrumb").querySelectorAll(".crumb-expanded")].at(-1);
       const chipText = chip.textContent;

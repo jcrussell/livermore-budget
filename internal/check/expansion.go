@@ -516,11 +516,20 @@ func (*expansionSplitsTie) fundCells(s *Subject, x stitched, sp project.Split, m
 	}
 	for _, m := range members {
 		for _, o := range onward[m] {
-			category := ""
+			// A link citing two categories has no one cell to sit in, and
+			// binning it whole under either can cancel against another.
+			var categories []string
 			for _, id := range o.FactIDs {
-				category = x.facts[id].Category
+				if c := x.facts[id].Category; !slices.Contains(categories, c) {
+					categories = append(categories, c)
+				}
 			}
-			at(category).add(o)
+			if len(categories) != 1 {
+				findings = append(findings, finding(subject, "%s -> %s cites facts of %d categories %q, want 1",
+					o.Source, o.Target, len(categories), categories))
+				continue
+			}
+			at(categories[0]).add(o)
 		}
 	}
 	return cells, findings

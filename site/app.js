@@ -1074,7 +1074,8 @@ function splitChip(id, key, label) {
 
 /**
  * A split drawn out of its tail's chip, which folds the smallest back into
- * the tail. Its count is what is drawn, read off the chart.
+ * the tail. Its count is the members drawn, read off the chart, less a
+ * derived remainder, which is not one of the split's word.
  * @param {string} node
  * @param {string} key
  * @returns {HTMLElement}
@@ -1084,7 +1085,7 @@ function tailChip(node, key) {
   const label = n ? n.label : node;
   const split = fetched ? core.splitsOf(fetched, node).find((sp) => sp.key === key) : undefined;
   const drawn = new Set(projection ? projection.nodes.map((x) => x.id) : []);
-  const count = split ? split.members.filter((m) => drawn.has(m)).length : 0;
+  const count = split ? split.members.filter((m) => drawn.has(m) && !(nodeOf(m) || {}).derived).length : 0;
   const word = formOnScreen().tailWord(chartOnScreen(), key) || splitWords(key);
   const id = core.splitTailID(node, key);
   return foldBackChip(say("tail_chip", { label, n: count, word }), say("tail_chip_label", { label, n: count, word }),
@@ -2174,10 +2175,14 @@ export function revealEntries(id) {
     const inside = core.withinNode(doc, member.parent);
     next = next.filter((e) => !entryInside(e, inside)).concat([entryOf(member.parent, key)]);
   }
-  // A node a refine split opens is drawn as its members, so its own splits
-  // fold back first.
-  const self = core.withinNode(doc, id);
-  next = next.filter((e) => !entryInside(e, self));
+  // A node a refine split opens is drawn as its members, so that split folds
+  // back first. An extend split leaves the node drawn and stays.
+  const opened = core.openSplitOf(doc, expansionState(doc, next).frontier, id);
+  const split = core.splitsOf(doc, id).find((sp) => sp.key === opened);
+  if (split && split.form === "refine") {
+    const self = core.withinNode(doc, id);
+    next = next.filter((e) => !entryInside(e, self));
+  }
   const own = chain[chain.length - 1];
   if (own) {
     const state = expansionState(doc, next);

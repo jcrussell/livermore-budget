@@ -457,6 +457,13 @@ describe("the search box", () => {
     assert.deepEqual(banners(document), []);
   });
 
+  test("a reveal of a node keeps its own extend split open", async () => {
+    const { app } = await bootedApp();
+    const entry = TWO_WAYS + app.ALTERNATIVE_MARK + "divisions";
+    await split(app, entry);
+    assert.deepEqual(app.revealEntries(TWO_WAYS), [entry]);
+  });
+
   test("a node the smallest-flow filter would remove once revealed leaves the chart as it is, and says so", async () => {
     const { app, document } = await bootedApp();
     app.setFilter({ smallest: Number.MAX_SAFE_INTEGER });

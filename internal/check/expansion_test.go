@@ -169,6 +169,19 @@ func TestTheExpansionChecksCanFail(t *testing.T) {
 			want: "no printed cell is declared for a refine split",
 		},
 		{
+			name: "two onward links each citing both categories, binned so they cancel", check: &expansionSplitsTie{},
+			edit: func(t *testing.T, _ *Subject, d *project.Document) {
+				in := linkAt(t, d, "fund/100", "dept/patrol")
+				svc := linkAt(t, d, "dept/patrol", "expenditure/patrol/services-and-supplies")
+				wages := linkAt(t, d, "dept/patrol", "expenditure/patrol/wages-and-benefits")
+				s, w := d.Links[svc].FactIDs[0], d.Links[wages].FactIDs[0]
+				d.Links[svc].FactIDs = []string{w, s}
+				d.Links[wages].FactIDs = []string{s, w}
+				d.Links[in].FactIDs = append(slices.Clone(d.Links[in].FactIDs), s, w)
+			},
+			want: "cites facts of 2 categories",
+		},
+		{
 			name: "a difference no declared exception holds apart", check: &expansionSplitsTie{},
 			edit: func(*testing.T, *Subject, *project.Document) {},
 			bare: func(s *Subject) { s.Exceptions = nil },
