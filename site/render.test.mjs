@@ -223,8 +223,13 @@ async function drive(year) {
       const h = rect ? Number(rect.getAttribute("height")) : 0;
       if (!(w > 0) || !(h > 0)) bad.push(`rect ${w}x${h}`);
       // Read off the tspans, not the composing functions, or d.label would
-      // be compared with itself.
-      if (!tspans.includes(d.label)) bad.push(`no tspan reading ${JSON.stringify(d.label)}`);
+      // be compared with itself. A label cut to its gutter (labelWords)
+      // carries an ellipsis and its full words in the mark's title.
+      const title = [...m.children].find((c) => c.tagName === "title");
+      if (title) {
+        if (!title.textContent.includes(d.label)) bad.push(`a title not reading ${JSON.stringify(d.label)}`);
+        if (!(tspans[0] + tspans[1]).includes("\u2026")) bad.push("a title on a label drawn whole");
+      } else if (!tspans.includes(d.label)) bad.push(`no tspan reading ${JSON.stringify(d.label)}`);
       const amount = "  " + shortDollars(app.markCents(d));
       if (!tspans.includes(amount)) bad.push(`no tspan reading ${JSON.stringify(amount)}`);
       seen.attributes += 3;
@@ -388,7 +393,8 @@ for (const year of YEARS) {
     test(`${year.label}: what render() wrote on a mark is what the mark's own rules say`, (t) => {
       const detail = `${seen.attributes} attribute(s) and word(s) read off ${seen.marks} drawn mark(s): the ` +
         "class nodeClass composes, role, tabindex, aria-pressed, aria-keyshortcuts, a non-empty " +
-        "aria-label, a rect with a positive box, and tspans carrying the label and the short signed amount";
+        "aria-label, a rect with a positive box, and tspans carrying the label (or, cut to its gutter, an " +
+        "ellipsis, with a title carrying the label) and the short signed amount";
       t.diagnostic(detail);
       assert.equal(wrong.written.length, 0, `${wrong.written.length} mark(s) drawn as something else, ${firstOf(wrong.written)}`);
       assert.ok(drove() && seen.attributes > 0, detail);
@@ -863,13 +869,11 @@ describe("arms no committed column reaches", () => {
     assert.ok(marks > 0);
     assert.ok(ids.every((id) => app.caveatsFor(id).length === 0));
   });
-  test("a label anchored at an end shifts its qualifier less than one anchored in the middle", async () => {
+  test("a label anchored at an end draws its qualifier inline, and one anchored in the middle lifts it a line", async () => {
     const { app } = await bootedApp({ checkedStem: newest.stem });
-    const middle = app.labelLineShift("middle");
-    const end = app.labelLineShift("end");
-    assert.deepEqual(app.labelLineShift("start"), end);
-    assert.notEqual(end.qualifier, middle.qualifier);
-    assert.equal(end.label, middle.label);
+    assert.equal(app.labelLineShift("end"), null);
+    assert.equal(app.labelLineShift("start"), null);
+    assert.deepEqual(app.labelLineShift("middle"), { qualifier: "-1.15em", label: "1.15em" });
   });
 });
 

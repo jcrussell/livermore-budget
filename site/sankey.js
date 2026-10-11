@@ -80,12 +80,14 @@ export function isHairline(chart, d) {
 /**
  * Room either side of the plot for node labels, in px. Only the two end
  * columns anchor labels outward, so it does not grow with the column count.
+ * labelWords fits an outward label to it; site/layout.test.mjs pins what
+ * that fit draws.
  */
-export const LABEL_GUTTER = 250;
+export const LABEL_GUTTER = 320;
 
 /**
  * The clear run between one column's rects and the next's, in px. Held fixed
- * as columns are added; 319 makes chartWidth(3) main's 1180px.
+ * as columns are added.
  */
 export const BAND = 319;
 
@@ -499,19 +501,125 @@ export function labelQualifiers(doc, slots, nodes) {
 
 /**
  * The dy each of a qualified label's two lines is drawn at, relative to the
- * line before it. The qualifier goes above: an outward pair straddles the
- * rect's middle; an interior label has nowhere below to go, so the qualifier
- * is lifted a whole line and the label stays put.
+ * line before it, or null where the qualifier is drawn inline. Only an
+ * interior label takes two lines: it has nowhere below to go, so the
+ * qualifier is lifted a whole line and the label stays put. An outward label
+ * is one line, "Qualifier: label", because d3 holds only NODE_PADDING between
+ * two marks and canvasHeight counts marks, not lines.
  *
  * NO COMMITTED VIEW DRAWS THE INTERIOR BRANCH, so no check sees it; fisc-xhqt.
  *
  * @param {string} anchor
- * @returns {{qualifier: string, label: string}}
+ * @returns {{qualifier: string, label: string} | null}
  */
 export function labelLineShift(anchor) {
-  return anchor === "middle"
-    ? { qualifier: "-1.15em", label: "1.15em" }
-    : { qualifier: "-0.6em", label: "1.15em" };
+  return anchor === "middle" ? { qualifier: "-1.15em", label: "1.15em" } : null;
+}
+
+/**
+ * The advance a label's words are fitted at, in em: an over-estimate on
+ * purpose, wider than any usual face sets `system-ui`, so the error runs
+ * toward cutting a label that would have fitted.
+ */
+export const ADVANCE_EM = 0.6;
+
+/** The px style.css sets a label's words and its flags at. */
+export const LABEL_PX = 12;
+
+/** The px style.css sets a label's value at. */
+export const VALUE_PX = 11;
+
+/**
+ * How wide `text` draws at `px` at most, by ADVANCE_EM.
+ * @param {string} text
+ * @param {number} px
+ * @returns {number}
+ */
+export function textAdvance(text, px) {
+  return text.length * px * ADVANCE_EM;
+}
+
+/**
+ * How wide a mark's label draws at most, by ADVANCE_EM: the qualifier and
+ * label tspans at LABEL_PX on one line, or the wider of the two lines where
+ * the qualifier is lifted above (labelLineShift), and the value and flags
+ * after the label.
+ * @param {{qualifier: string, label: string}} words what labelWords draws
+ * @param {string} anchor
+ * @param {string} value the value tspan's words
+ * @param {string} flags the flag tspan's words
+ * @returns {number}
+ */
+export function labelAdvance(words, anchor, value, flags) {
+  const after = textAdvance(value, VALUE_PX) + textAdvance(flags, LABEL_PX);
+  return labelLineShift(anchor) && words.qualifier
+    ? Math.max(textAdvance(words.label, LABEL_PX) + after, textAdvance(words.qualifier, LABEL_PX))
+    : textAdvance(words.qualifier + words.label, LABEL_PX) + after;
+}
+
+/**
+ * The run from a label's anchor to the edge of the chart, in px, for a label
+ * anchored outward; an interior label is centred in its band and not fitted.
+ * @param {{anchor: string, x: number}} place labelPlacement's answer
+ * @param {number} width the chart's width (chartWidth)
+ * @returns {number}
+ */
+export function labelRoom(place, width) {
+  return place.anchor === "end" ? place.x : place.anchor === "start" ? width - place.x : Infinity;
+}
+
+/**
+ * The words a mark's qualifier and label tspans draw, fitted to `room`.
+ *
+ * AN OUTWARD LABEL IS ONE LINE, its qualifier inline as "Qualifier: ". Where
+ * it is wider than its room by `measure`, the middle of its OWNER is cut for
+ * an ellipsis: the label's words before its last ": ", else the qualifier,
+ * else the whole label. The ": Category" after it and the value are kept,
+ * and so are the owner's first word and as much of its end as fits, since
+ * funds that share a prefix differ at the end ("County Meas BB-Bike/Pedestrian",
+ * "County Meas BB-Local St & Rd"). A label still too wide with its owner cut
+ * to two characters is drawn so; the gutter check under site/ sees it.
+ *
+ * The text stays Go's; this only fits it to the screen.
+ *
+ * @param {string} anchor labelPlacement's anchor
+ * @param {number} room labelRoom
+ * @param {string} qualifier labelQualifiers' answer for the mark, or ""
+ * @param {string} label
+ * @param {(words: {qualifier: string, label: string}) => number} measure how
+ *   wide the whole label draws in these words, value and flags included
+ * @returns {{qualifier: string, label: string, cut: boolean}}
+ */
+export function labelWords(anchor, room, qualifier, label, measure) {
+  if (labelLineShift(anchor)) return { qualifier, label, cut: false };
+  const lead = qualifier ? qualifier + ": " : "";
+  if (measure({ qualifier: lead, label }) <= room) return { qualifier: lead, label, cut: false };
+  const split = label.lastIndexOf(": ");
+  /** @type {(owner: string) => {qualifier: string, label: string}} */
+  const words = split > 0
+    ? (owner) => ({ qualifier: lead, label: owner + label.slice(split) })
+    : qualifier
+      ? (owner) => ({ qualifier: owner + ": ", label })
+      : (owner) => ({ qualifier: "", label: owner });
+  const owner = split > 0 ? label.slice(0, split) : qualifier || label;
+  // The owner's first word leads, and its end takes the rest: names here
+  // share a prefix ("Grant - ", "County Meas BB-") more than an end.
+  const word = owner.search(/[\s-]/);
+  /** @param {number} keep how many of the owner's characters stay */
+  const cutTo = (keep) => {
+    const front = Math.min(word > 0 ? word : keep, Math.ceil(keep / 2));
+    return words(owner.slice(0, front).trimEnd() + "\u2026" + owner.slice(owner.length - (keep - front)).trimStart());
+  };
+  // The most of the owner's characters that fit, by halving.
+  let lo = 2;
+  let hi = owner.length - 1;
+  if (hi < lo) return Object.assign(words(owner), { cut: false });
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2);
+    if (measure(cutTo(mid)) <= room) lo = mid;
+    else hi = mid - 1;
+  }
+  return Object.assign(cutTo(lo), { cut: true });
 }
 
 /**
@@ -921,22 +1029,47 @@ export const SANKEY = Object.freeze({
       .attr("text-anchor", /** @param {LaidNode} d */ (d) => place(d).anchor);
 
     // On an unqualified mark the qualifier tspan is empty with no x or dy, so it
-    // starts no line.
+    // starts no line; an outward qualifier is inline and starts none either.
+    /** @param {LaidNode} d */
+    const shift = (d) => (qualifierOf(d) ? labelLineShift(place(d).anchor) : null);
+    /** @param {LaidNode} d */
+    const value = (d) => "  " + fmtShortSigned(ctx.figure(d));
+    /** @type {Map<string, {qualifier: string, label: string, cut: boolean}>} */
+    const fitted = new Map();
+    // Fitted at ADVANCE_EM, not read off the browser: the words drawn are the
+    // words site/layout.test.mjs measures against the gutter.
+    /** @param {LaidNode} d */
+    const words = (d) => {
+      let w = fitted.get(d.id);
+      if (!w) {
+        const p = place(d);
+        w = labelWords(p.anchor, labelRoom(p, width), qualifierOf(d), d.label,
+          (ws) => labelAdvance(ws, p.anchor, value(d), ctx.classes.flags(d)));
+        fitted.set(d.id, w);
+      }
+      return w;
+    };
     label.append("tspan")
       .attr("class", "qualifier")
-      .attr("x", /** @param {LaidNode} d */ (d) => (qualifierOf(d) ? place(d).x : null))
-      .attr("dy", /** @param {LaidNode} d */ (d) => (qualifierOf(d) ? labelLineShift(place(d).anchor).qualifier : null))
-      .text(/** @param {LaidNode} d */ (d) => qualifierOf(d));
+      .attr("x", /** @param {LaidNode} d */ (d) => (shift(d) ? place(d).x : null))
+      .attr("dy", /** @param {LaidNode} d */ (d) => { const s = shift(d); return s ? s.qualifier : null; })
+      .text(/** @param {LaidNode} d */ (d) => words(d).qualifier);
     label.append("tspan")
-      .attr("x", /** @param {LaidNode} d */ (d) => (qualifierOf(d) ? place(d).x : null))
-      .attr("dy", /** @param {LaidNode} d */ (d) => (qualifierOf(d) ? labelLineShift(place(d).anchor).label : null))
-      .text(/** @param {LaidNode} d */ (d) => d.label);
+      .attr("x", /** @param {LaidNode} d */ (d) => (shift(d) ? place(d).x : null))
+      .attr("dy", /** @param {LaidNode} d */ (d) => { const s = shift(d); return s ? s.label : null; })
+      .text(/** @param {LaidNode} d */ (d) => words(d).label);
     label.append("tspan")
       .attr("class", "value")
-      .text(/** @param {LaidNode} d */ (d) => "  " + fmtShortSigned(ctx.figure(d)));
+      .text(value);
     label.append("tspan")
       .attr("class", "flag")
       .text(/** @param {LaidNode} d */ (d) => ctx.classes.flags(d));
+    // A cut label keeps its full words in a title.
+    node.each(/** @this {SVGGElement} @param {LaidNode} d */ function (d) {
+      if (!words(d).cut) return;
+      d3.select(this).insert("title", ":first-child")
+        .text((qualifierOf(d) ? qualifierOf(d) + ": " : "") + d.label + value(d));
+    });
   },
 
   /** Colours the drawn ribbons and marks; the colours are the page's. */

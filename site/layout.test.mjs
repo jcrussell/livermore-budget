@@ -142,26 +142,39 @@ const ALTERNATIVES = {
 
 const usd = (n) => "$" + Math.round(n).toLocaleString();
 
-// THE ADVANCE A LABEL IS MEASURED AT, an over-estimate on purpose: `system-ui`
-// differs per platform, so 0.6em is wider than any usual face sets, and the
-// error runs toward refusing a label that would have fitted.
-const ADVANCE_EM = 0.6;
-const LABEL_PX = 12;
-const VALUE_PX = 11;
-
 /**
- * How wide the three tspans of one node's label draw.
+ * The words one node's label draws and how wide they draw, at sankey.js's
+ * ADVANCE_EM. Read off the mark render() drew where `drawn` holds it, so this
+ * measures the page's fit; else fitted by the page's labelWords at that bound.
  *
  * THE WORDS COME OFF THE PAGE: markCents, fmtShortSigned and nodeFlags are what
  * render() draws. A copy of nodeFlags' markers here would under-measure every
  * label the day a marker is added.
  */
-function labelWidth(app, d, qualifier) {
-  const value = "  " + app.fmtShortSigned(app.markCents(d)) + app.nodeFlags(d);
-  const label = d.label.length * LABEL_PX * ADVANCE_EM + value.length * VALUE_PX * ADVANCE_EM;
-  // THE WIDEST LINE IS THE BOX, not the sum: a qualifier draws on its own line.
-  return Math.max(label, (qualifier || "").length * LABEL_PX * ADVANCE_EM);
+function labelWidth(app, d, place, room, qualifier, drawn) {
+  const value = "  " + app.fmtShortSigned(app.markCents(d));
+  const flags = app.nodeFlags(d);
+  const words = drawn && drawn.get(d.id) ||
+    app.labelWords(place.anchor, room, qualifier, d.label, (w) => app.labelAdvance(w, place.anchor, value, flags));
+  return { words, width: app.labelAdvance(words, place.anchor, value, flags) };
 }
+
+/**
+ * The words each drawn mark's qualifier and label tspans carry, by id.
+ * @param {Document} document
+ */
+function drawnWords(document) {
+  const out = new Map();
+  for (const m of document.querySelectorAll("#chart g.node")) {
+    const text = [...m.children].find((c) => c.tagName === "text" && c.getAttribute("class") === "halo");
+    if (!text) continue;
+    const [qualifier, label] = [...text.children];
+    out.set(m.__data__.id, { qualifier: qualifier.textContent, label: label.textContent });
+  }
+  return out;
+}
+
+const LABEL_PX = sankey.LABEL_PX;
 
 // THE INK ONE LINE CLAIMS ABOVE AND BELOW ITS BASELINE, over-estimated like
 // ADVANCE_EM: they sum to the full 12px font size.
@@ -175,8 +188,8 @@ const DESCENT_PX = 3;
 function labelBlock(app, place, qualifier) {
   const em = (v) => (v ? parseFloat(v) * LABEL_PX : 0);
   const first = place.y + em(place.dy);
-  if (!qualifier) return { top: first - ASCENT_PX, bottom: first + DESCENT_PX };
   const shift = app.labelLineShift(place.anchor);
+  if (!qualifier || !shift) return { top: first - ASCENT_PX, bottom: first + DESCENT_PX };
   const top = first + em(shift.qualifier);
   return { top: top - ASCENT_PX, bottom: top + em(shift.label) + DESCENT_PX };
 }
@@ -223,7 +236,8 @@ function roomFor(app, columns, col) {
  * MEASURED WITH THE VIEW ON SCREEN: the flags nodeFlags reads, and the
  * qualifiers, are the chart's on screen.
  */
-function labelFit(app, graph) {
+function labelFit(app, graph, document) {
+  const drawn = document ? drawnWords(document) : null;
   const columns = columnsOf(app, graph);
   const last = Math.max(...columns.keys());
   // The words the page would draw, qualifier included.
@@ -233,12 +247,12 @@ function labelFit(app, graph) {
   return graph.nodes.map((n) => {
     const place = app.labelPlacement(slots, n, last);
     const qualifier = qualifiers.get(n.id) || "";
-    const width = labelWidth(app, n, qualifier);
-    const box = boxAt(place.anchor, place.x, width);
     const col = app.columnOf(slots, n);
     const room = roomFor(app, columns, col);
+    const { words, width } = labelWidth(app, n, place, app.labelRoom(place, room.to), qualifier, drawn);
+    const box = boxAt(place.anchor, place.x, width);
     return { node: n, id: n.id, col, last, place, width, box, room, qualifier,
-             words: (qualifier ? qualifier + " / " : "") + n.label,
+             words: words.qualifier + (app.labelLineShift(place.anchor) && words.qualifier ? " / " : "") + words.label,
              block: labelBlock(app, place, qualifier),
              clearance: Math.min(box.left - room.from, room.to - box.right) };
   });
@@ -471,7 +485,7 @@ function bandWidth(laid) {
 
 // The one width this file pins, the THREE-column one every figure was
 // measured at. No wider width may be pinned: chartWidth(n) derives them.
-const NARROW_DESIGN_WIDTH = 1180;
+const NARROW_DESIGN_WIDTH = 1320;
 
 /**
  * Where a drawn label actually sits, read off the mark render() appended, so
@@ -599,39 +613,35 @@ const ALIKE = {
 /**
  * The labels a chart stacks on one another, at this file's line height, by
  * the chart that draws them. PINNED AND NOT BOUNDED: they are a measurement of
- * the canvas sankey.grow sizes, fisc-yj4w.34.12.
+ * the canvas sankey.grow sizes, which counts marks and not lines.
  */
 const OVERLAPPED = {
-  "FY 2025-26": {
-    "everything by primary splits": [
-      "aggregate/tail/lines/revenue/licenses-and-permits over revenue-line/charges-for-services/administrative-cost-recovery",
-      "revenue-line/intergovernmental/grant-state over aggregate/tail/lines/revenue/licenses-and-permits",
-    ],
-  },
-  "FY 2026-27": {
-    "everything by primary splits": [
-      "aggregate/tail/lines/revenue/licenses-and-permits over revenue-line/charges-for-services/administrative-cost-recovery",
-      "revenue-line/charges-for-services/fire-plan-check-and-inspct-fee over aggregate/tail/lines/revenue/licenses-and-permits",
-    ],
-  },
+  "FY 2025-26": {},
+  "FY 2026-27": {},
 };
 
 for (const label of Object.keys(ALIKE)) {
-  describe(`${label}: every split the page offers, measured for what a label does to its neighbours`, () => {
-    let walk, views, overlapped, alike;
+  describe(`${label}: the root and every split the page offers, measured for what a label does to its neighbours`, () => {
+    let walk, views, overlapped, alike, wider;
     before(async () => {
       // Found by label, so a year the page no longer ships fails by name.
       const year = pageFixture().config.years.find((y) => y.label === label);
       if (!year) throw new Error(`the pinned page ships no year labelled ${JSON.stringify(label)}`);
-      const { app } = await bootedApp({ checkedStem: year.stem });
+      const { app, document } = await bootedApp({ checkedStem: year.stem });
       overlapped = {};
       alike = {};
+      wider = {};
       views = 0;
-      walk = await everySplit(app, (where) => {
+      const visit = (where) => {
         views++;
-        const fits = labelFit(app, { nodes: app.laidNodes });
+        const fits = labelFit(app, { nodes: app.laidNodes }, document);
         const touching = touchingStacks(fits);
         if (touching.length) overlapped[where] = touching;
+        const over = fits.filter((f) => f.clearance < 0);
+        if (over.length) {
+          const worst = tightest(over);
+          wider[where] = `${over.length}, worst ${worst.id} by ${px(worst.clearance)} in ${JSON.stringify(worst.words)}`;
+        }
         const groups = new Map();
         for (const f of fits) groups.set(f.col + "\0" + f.words, (groups.get(f.col + "\0" + f.words) || 0) + 1);
         const same = [...groups.entries()].filter((e) => e[1] > 1);
@@ -639,7 +649,17 @@ for (const label of Object.keys(ALIKE)) {
           alike[where] = `${same.length} group(s), ${same.reduce((n, e) => n + e[1], 0)} mark(s): ` +
             same.map((e) => JSON.stringify(e[0].split("\0")[1])).sort().join(", ");
         }
-      });
+      };
+      visit("the root");
+      walk = await everySplit(app, visit);
+    });
+
+    // fisc-8cx0: every split's labels against their room, not four frontiers'.
+    test("no label is drawn wider than its room", (t) => {
+      const detail = `${views} chart(s) walked; ` + JSON.stringify(wider);
+      t.diagnostic(detail);
+      assert.deepEqual({ refused: walk.refused, walkedNothing: views === 0, wider },
+        { refused: "", walkedNothing: false, wider: {} }, detail);
     });
 
     test("the labels stacked on one another are the ones pinned", (t) => {
@@ -745,8 +765,9 @@ describe("the focus indicator is painted as focus and not as text", () => {
  * Per year and frontier: the nodes in each slot, left to right; nodes and
  * ribbons; the canvas and the ribbons under a pixel on it; the labels wider
  * than their room (half the band either side, or the gutter at either end)
- * at this file's ADVANCE_EM, value included and flags not (the expansion's
- * flags are the interaction's); and the worst of them.
+ * in the words labelWords fits them to at sankey.js's ADVANCE_EM, value
+ * included and flags not (the expansion's flags are the interaction's); and
+ * the worst of them.
  * PINNED, not bounded: data/views.yaml's grow is read off these.
  */
 const EXPANSION_CLAIMED = {
@@ -757,12 +778,10 @@ const EXPANSION_CLAIMED = {
       labels: "0 wider than their room" },
     "everything by primary splits": { slots: "74/36/23/45",
       figures: "178 nodes, 290 ribbons; 2960px canvas, 54 under 1px",
-      labels: "34 wider than their room: 10 in the first column, 0 inside, 24 in the last; " +
-        "worst expenditure/fund/720/services-and-supplies by -115.8px" },
+      labels: "0 wider than their room" },
     "everything by primary splits, every tail drawn out": { slots: "102/69/23/162",
       figures: "356 nodes, 389 ribbons; 4800px canvas, 116 under 1px",
-      labels: "139 wider than their room: 13 in the first column, 0 inside, 126 in the last; " +
-        "worst expenditure/fund/221/services-and-supplies by -187.2px" },
+      labels: "0 wider than their room" },
   },
   "FY 2026-27": {
     "root": { slots: "12/6/7", figures: "25 nodes, 58 ribbons; 820px canvas, 11 under 1px",
@@ -771,12 +790,10 @@ const EXPANSION_CLAIMED = {
       labels: "0 wider than their room" },
     "everything by primary splits": { slots: "74/37/23/44",
       figures: "178 nodes, 286 ribbons; 2960px canvas, 55 under 1px",
-      labels: "34 wider than their room: 10 in the first column, 0 inside, 24 in the last; " +
-        "worst expenditure/fund/720/services-and-supplies by -115.8px" },
+      labels: "0 wider than their room" },
     "everything by primary splits, every tail drawn out": { slots: "102/68/23/159",
       figures: "352 nodes, 385 ribbons; 4800px canvas, 118 under 1px",
-      labels: "135 wider than their room: 13 in the first column, 0 inside, 122 in the last; " +
-        "worst expenditure/fund/221/services-and-supplies by -187.2px" },
+      labels: "0 wider than their room" },
   },
 };
 
@@ -805,23 +822,28 @@ function expansionFrontiers(doc) {
 
 /**
  * Each label of a laid expansion against its room, as labelFit measures the
- * page's: placed by labelPlacement over the same slots, anchored as drawn.
+ * page's: placed by labelPlacement over the same slots, anchored as drawn,
+ * qualified by labelQualifiers over the unfolded `doc` and fitted by labelWords.
  */
-function expansionLabels(laid, slots, columns) {
+function expansionLabels(doc, laid, slots, columns) {
   const xs = new Map();
   for (const n of laid.nodes) if (!xs.has(slots.get(n.id))) xs.set(slots.get(n.id), { x0: n.x0, x1: n.x1 });
   const last = Math.max(...xs.keys());
+  const qualifiers = sankey.labelQualifiers(doc, slots, laid.nodes);
+  const width = sankey.chartWidth(columns);
   return laid.nodes.map((n) => {
     const col = sankey.columnOf(slots, n);
     const place = sankey.labelPlacement(slots, n, last);
     const value = "  " + core.fmtShortSigned(sankey.markCents(n));
-    const box = boxAt(place.anchor, place.x, n.label.length * LABEL_PX * ADVANCE_EM + value.length * VALUE_PX * ADVANCE_EM);
+    const measure = (w) => sankey.labelAdvance(w, place.anchor, value, "");
+    const words = sankey.labelWords(place.anchor, sankey.labelRoom(place, width), qualifiers.get(n.id) || "", n.label, measure);
+    const box = boxAt(place.anchor, place.x, measure(words));
     const me = xs.get(col);
     const before = xs.get(col - 1);
     const after = xs.get(col + 1);
     const room = {
       from: col === 0 || !before ? 0 : (before.x1 + me.x0) / 2,
-      to: col >= last || !after ? sankey.chartWidth(columns) : (me.x1 + after.x0) / 2,
+      to: col >= last || !after ? width : (me.x1 + after.x0) / 2,
     };
     return { id: n.id, col, last, clearance: Math.min(box.left - room.from, room.to - box.right) };
   });
@@ -861,7 +883,7 @@ describe("the expansion schedule laid out in slots, at the root, one group open 
         } catch (e) {
           refused = `d3-sankey refused the layout: ${e.message}`;
         }
-        const over = expansionLabels(laid, slots, held.length).filter((l) => l.clearance < 0)
+        const over = expansionLabels(doc, laid, slots, held.length).filter((l) => l.clearance < 0)
           .sort((a, b) => a.clearance - b.clearance);
         out[f.name] = {
           slots: Array.from(held, (n) => n || 0).join("/"),
@@ -1056,5 +1078,41 @@ describe("a slot no drawn path reaches is laid out in its own column", () => {
     }
     t.diagnostic(refused);
     assert.ok(refused.includes("C belongs in column 2 and no ribbon drawn reaches that far"), refused);
+  });
+});
+
+// labelWords over hand-built words, at the room an end column has: what
+// the walks above measure over the pinned columns, said of one label each.
+describe("an outward label fitted to its gutter", () => {
+  const room = sankey.LABEL_GUTTER - 10;
+  const fit = (anchor, qualifier, label) => sankey.labelWords(anchor, room, qualifier, label,
+    (w) => sankey.labelAdvance(w, anchor, "  $1.2M", ""));
+  const drawn = (w) => w.qualifier + w.label;
+
+  test("two owners that share a prefix are cut apart, each keeping its category", (t) => {
+    const a = fit("start", "", "County Meas BB-Bike/Pedestrian: Services & Supplies");
+    const b = fit("start", "", "County Meas BB-Local St & Rd: Services & Supplies");
+    t.diagnostic(`${JSON.stringify(drawn(a))} and ${JSON.stringify(drawn(b))}`);
+    assert.deepEqual({ cut: [a.cut, b.cut], apart: drawn(a) !== drawn(b),
+      kept: [drawn(a), drawn(b)].every((w) => w.endsWith(": Services & Supplies") && w.includes("…")) },
+    { cut: [true, true], apart: true, kept: true });
+  });
+
+  test("a qualifier is drawn inline on an end column and on its own line inside", (t) => {
+    const end = fit("end", "Licenses and Permits", "Lines");
+    const inside = fit("middle", "Licenses and Permits", "Lines");
+    t.diagnostic(`${JSON.stringify(end)} and ${JSON.stringify(inside)}`);
+    assert.deepEqual([end, inside], [
+      { qualifier: "Licenses and Permits: ", label: "Lines", cut: false },
+      { qualifier: "Licenses and Permits", label: "Lines", cut: false },
+    ]);
+  });
+
+  test("a label with no owner is cut in its middle and fits", (t) => {
+    const label = "An Unusually Long Revenue Line Without Any Owner Named Before It";
+    const w = fit("end", "", label);
+    t.diagnostic(JSON.stringify(w));
+    assert.deepEqual({ cut: w.cut, starts: w.label.startsWith("An"), ends: w.label.endsWith("It"),
+      fits: sankey.labelAdvance(w, "end", "  $1.2M", "") <= room }, { cut: true, starts: true, ends: true, fits: true });
   });
 });
