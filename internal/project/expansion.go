@@ -182,6 +182,9 @@ func (e *expansion) Build(facts []fact.Fact, o Options) ([]byte, error) {
 type stitch struct {
 	nodes map[string]Node
 	links []Link
+	// apart is every fund whose group's change is drawn whole on the group's
+	// remainder while the fund's own is not drawn: its in and out differ.
+	apart []string
 }
 
 // add records a node under a parent and an alternative, refusing a second
@@ -189,9 +192,6 @@ type stitch struct {
 func (s *stitch) add(n Node, parent, alternative string) error {
 	n.Parent = parent
 	n.Alternative = alternative
-	// A fund's balances are pp.186-209's, on fund-sources-uses; the stitch
-	// cites the ones it draws on links.
-	n.Balances = nil
 	if have, ok := s.nodes[n.ID]; ok {
 		if have != n {
 			return fmt.Errorf("expansion: node %q is placed twice: %+v and %+v", n.ID, have, n)
@@ -248,9 +248,14 @@ func (e *expansion) Document(facts []fact.Fact, o Options) (*Document, error) {
 		}
 		return out
 	}
+	fsu := docs[FundSourcesUsesProjection]
+	fsuNodes := nodesOf(fsu)
 	// A fund hangs from the group data/funds.yaml types it, which must be a
 	// root: a fund whose group the spine does not draw has nowhere to fold.
+	// It carries pp.186-209's balances from fund-sources-uses' node, the one
+	// pointer whichever schedule placed it, so the placements stay equal.
 	addFund := func(n Node) error {
+		n.Balances = fsuNodes[n.ID].Balances
 		number, convErr := strconv.Atoi(strings.TrimPrefix(n.ID, PrefixFund))
 		if convErr != nil {
 			return fmt.Errorf("expansion: %q is no fund id", n.ID)
@@ -360,8 +365,6 @@ func (e *expansion) Document(facts []fact.Fact, o Options) (*Document, error) {
 
 	// pp.186-209: each fund's addition to reserves, and each fund's change in
 	// balance where its group's funds all move one way.
-	fsu := docs[FundSourcesUsesProjection]
-	fsuNodes := nodesOf(fsu)
 	changes := map[string][]Link{}
 	for _, l := range fsu.Links {
 		switch {
@@ -436,7 +439,14 @@ func (e *expansion) Document(facts []fact.Fact, o Options) (*Document, error) {
 	if err := refuseUncited(e.Name(), uncited, drawnElsewhere); err != nil {
 		return nil, err
 	}
-	cavs := expansionCaveats(c.FactsCitedTwice, out)
+	var apart []string
+	for _, id := range st.apart {
+		if _, drawn := st.nodes[id]; drawn {
+			apart = append(apart, id)
+		}
+	}
+	slices.Sort(apart)
+	cavs := expansionCaveats(c.FactsCitedTwice, out, apart)
 	if err := validateCaveats(cavs, nodeIDs(out)); err != nil {
 		return nil, fmt.Errorf("%s: %w", col, err)
 	}
@@ -586,6 +596,13 @@ func (*expansion) changeOf(st *stitch, rem *groupRemainders, spineLink Link, gro
 			l.Source = r
 		}
 		st.links = append(st.links, l)
+		for _, f := range funds {
+			if f.Source == NodeFundBalanceDraw {
+				st.apart = append(st.apart, f.Target)
+			} else {
+				st.apart = append(st.apart, f.Source)
+			}
+		}
 		return nil
 	}
 	for _, l := range funds {
@@ -994,7 +1011,7 @@ func checkDistinctAlternativeLinks(links []Link) error {
 }
 
 // expansionCaveats are the things a reader of the stitch has to be told.
-func expansionCaveats(twice int, nodes []Node) []Caveat {
+func expansionCaveats(twice int, nodes []Node, apart []string) []Caveat {
 	out := []Caveat{
 		ConstraintTierCaveat(),
 		revenueSchedulePublishedTwiceCaveat(),
@@ -1022,18 +1039,26 @@ func expansionCaveats(twice int, nodes []Node) []Caveat {
 		}
 	}
 	if len(netted) > 0 {
+		summary := fmt.Sprintf("%s money pp.66-67 print that no fund's own page carries, drawn "+
+			"on a node of the group's own.", plural(len(netted), "fund group"))
+		if len(apart) > 0 {
+			summary += " A fund of such a group is drawn with what it takes in and spends, so its " +
+				"in and out differ by its own change in balance."
+		}
 		out = append(out, Caveat{
-			ID: "some-fund-group-money-is-not-by-fund",
-			Summary: fmt.Sprintf("%s money pp.66-67 print that no fund's own page carries, drawn "+
-				"on a node of the group's own.", plural(len(netted), "fund group")),
+			ID:      "some-fund-group-money-is-not-by-fund",
+			Summary: summary,
 			Text: "Budget Book pp.66-67 print each fund group's change in working capital as one " +
 				"figure. Where some of the group's funds draw on their balances and others add to " +
-				"them, pp.186-209 print each fund's own change and the group's is their net, which " +
-				"no single fund carries; it is drawn on a node of the group's own, and each of those " +
-				"funds is drawn with what it takes in and spends and not its own change. Where " +
-				"pp.66-67 print more for a group than its funds' pages do, the difference is on the " +
-				"same node, with the exception declaring it named in the node's note.",
-			AppliesTo: netted,
+				"them, pp.186-209 print each fund's own beginning and ending balance and the " +
+				"group's change is the net of the funds' changes, which no single fund carries; it " +
+				"is drawn on a node of the group's own. Each fund of such a group is drawn with " +
+				"what it takes in and spends and not its own change, so its in and out differ by " +
+				"that change: the fund states its two printed balances from pp.186-209 and our " +
+				"subtraction of them. Where pp.66-67 print more for a group than its funds' pages " +
+				"do, the difference is on the same node, with the exception declaring it named in " +
+				"the node's note.",
+			AppliesTo: append(netted, apart...),
 		})
 	}
 	return out

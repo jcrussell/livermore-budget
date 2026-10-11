@@ -194,19 +194,23 @@ export function citations(sources) {
 }
 
 /**
- * A node's printed balances, beginning then ending, each in the page's words
- * with the fact and the pages it cites; none for a node carrying none, and
- * none for a balance the page leaves blank, which is absent and not zero.
+ * A node's printed balances, beginning then ending, then the change Go
+ * derived from them, each in the page's words with the facts and the pages it
+ * cites; none for a node carrying none, and none for a balance the page leaves
+ * blank, which is absent and not zero. The change is Go's figure, read and
+ * never taken here, and is marked derived.
  * @param {FiscNode} node
- * @returns {{words: string, fact_id: string, locators: FiscSource[]}[]}
+ * @returns {{words: string, fact_ids: string[], locators: FiscSource[], derived: boolean, rationale: string}[]}
  */
 export function balancesOf(node) {
   const b = node.balances;
   if (!b) return [];
-  return ["beginning", "ending"].filter((which) => b[which]).map((which) => ({
+  return ["beginning", "ending", "change"].filter((which) => b[which]).map((which) => ({
     words: say("balance_" + which, { figure: fmtSigned(b[which].value_cents) }),
-    fact_id: b[which].fact_id,
+    fact_ids: b[which].fact_ids || [b[which].fact_id],
     locators: b[which].locators,
+    derived: Boolean(b[which].derived),
+    rationale: b[which].rationale || "",
   }));
 }
 

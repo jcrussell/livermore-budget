@@ -69,6 +69,8 @@ type wording struct {
 	// said beside the node's figure with the fact and pages it cites.
 	BalanceBeginning string `json:"balance_beginning"`
 	BalanceEnding    string `json:"balance_ending"`
+	// BalanceChange says Go's derived change beside the two it is taken from.
+	BalanceChange string `json:"balance_change"`
 	// The filter panel's sentences: what the filters leave out of the chart,
 	// said beside it as a client sum over cited cents, and the smaller-flows
 	// mark and merged ribbon the smallest-flow filter draws.
@@ -180,6 +182,7 @@ func defaultWording() wording {
 		ContraOrphan:      project.ContraOrphan,
 		BalanceBeginning:  "Balance at the start of the year, as printed: {figure}",
 		BalanceEnding:     "Balance at the end of the year, as printed: {figure}",
+		BalanceChange:     "Change in balance, the end of the year's less the start's: {figure}",
 		FilterHidden:      "Hidden by your filters: {cents} in {flows:flow|flows}. Marks are sized to what is drawn, each mark's figure is still this view's, and the flow table still lists every flow of this view.",
 		FilterFolded:      "\u25c7 {flows:flow|flows} under {threshold} are drawn merged by this page into {ribbons:ribbon|ribbons} of smaller flows.",
 		FilterHiddenAt:    "Your filters hide {cents} of this mark's flows, in {flows:flow|flows}.",

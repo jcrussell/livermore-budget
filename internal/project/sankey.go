@@ -432,9 +432,9 @@ type Node struct {
 	Derived    bool   `json:"derived"`
 	Rationale  string `json:"rationale"`
 	SourceNote string `json:"source_note"`
-	// Balances is the stock a fund node stands for, on the document of
-	// pp.186-209 alone: absent on every other node, as the headline is on
-	// every document but the spine's.
+	// Balances is the stock a fund node stands for, on fund-sources-uses and
+	// on the expansion's fund nodes, which carry fund-sources-uses' own:
+	// absent on every other node.
 	Balances *NodeBalances `json:"balances,omitempty"`
 	// Alternative is, on the expansion schedule alone, the key of the
 	// alternative split this node is a member of, its Parent being that
@@ -447,6 +447,20 @@ type Node struct {
 type NodeBalances struct {
 	Beginning *NodeBalance `json:"beginning,omitempty"`
 	Ending    *NodeBalance `json:"ending,omitempty"`
+	// Change is ending less beginning, stated only where both are printed:
+	// a blank balance is absent, and reading it as zero would invent it.
+	Change *NodeChange `json:"change,omitempty"`
+}
+
+// NodeChange is a fund's change in balance, derived from the two balances it
+// cites and never printed, so it carries its words as a derived node does.
+type NodeChange struct {
+	ValueCents int64    `json:"value_cents"`
+	Derived    bool     `json:"derived"`
+	Rationale  string   `json:"rationale"`
+	SourceNote string   `json:"source_note"`
+	FactIDs    []string `json:"fact_ids"`
+	Locators   []Source `json:"locators"`
 }
 
 // NodeBalance is one printed balance, cited as a link cites its figures.

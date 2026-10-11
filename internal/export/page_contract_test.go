@@ -92,6 +92,7 @@ func TestTheWordingFillsEveryPlaceholderTheClientHands(t *testing.T) {
 		"aggregate_together":  {"figure"},
 		"balance_beginning":   {"figure"},
 		"balance_ending":      {"figure"},
+		"balance_change":      {"figure"},
 		"filter_hidden":       {"cents", "flows"},
 		"filter_folded":       {"flows", "ribbons", "threshold"},
 		"filter_hidden_at":    {"cents", "flows"},

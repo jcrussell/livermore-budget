@@ -292,6 +292,7 @@
         "contra_orphan",
         "balance_beginning",
         "balance_ending",
+        "balance_change",
         "filter_hidden",
         "filter_folded",
         "filter_hidden_at",
@@ -447,6 +448,11 @@
           "type": "string",
           "minLength": 1,
           "description": "A fund's printed ending balance, column.schema.json's balances.ending: {figure}, formatted."
+        },
+        "balance_change": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A fund's derived change in balance, column.schema.json's balances.change, Go's figure and never the client's: {figure}, formatted."
         },
         "filter_hidden": {
           "type": "string",

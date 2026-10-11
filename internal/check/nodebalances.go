@@ -20,6 +20,10 @@ import (
 // it: re-pointing a fund's ending balance to its beginning, or to another
 // fund's, moved no link and left counts-reconcile green, which counts the
 // citation and not what it cites.
+//
+// A node's change is held the same way, as ending less beginning of the two
+// facts it cites, which must be the node's own balances: it is the one
+// figure on a node that no page prints, and nothing else reads it.
 type nodeBalancesTieToFacts struct{}
 
 var _ Check = (*nodeBalancesTieToFacts)(nil)
@@ -30,20 +34,30 @@ func (*nodeBalancesTieToFacts) Full() bool { return false }
 func (*nodeBalancesTieToFacts) Description() string {
 	return "every balance a node publishes equals the fact it cites, which is that fund's " +
 		"beginning or ending balance in the document's own slice, read from the pages its " +
-		"locators name; and on fund-sources-uses, every balance the slice prints is on its fund's node"
+		"locators name; every node printing both balances states their change, derived, as " +
+		"ending less beginning of those two facts, and none printing one states a change; and " +
+		"on fund-sources-uses, every balance the slice prints is on its fund's node, as on the " +
+		"expansion every balance of a fund it draws is"
 }
 
 func (*nodeBalancesTieToFacts) Run(_ context.Context, s *Subject) (Result, error) {
 	var findings []Finding
-	balances := 0
+	balances, changes := 0, 0
 	for _, p := range s.linkedDocuments() {
 		slice, err := p.slice(s.Facts)
 		if err != nil {
 			return Result{}, err
 		}
 		selected := factIndex(slice)
-		if p.Name == project.FundSourcesUsesProjection {
-			findings = append(findings, unpublishedBalances(p, selected)...)
+		switch p.Name {
+		case project.FundSourcesUsesProjection:
+			findings = append(findings, unpublishedBalances(p, selected, nil)...)
+		case project.ExpansionProjection:
+			drawn := map[string]bool{}
+			for _, n := range p.Nodes {
+				drawn[n.ID] = true
+			}
+			findings = append(findings, unpublishedBalances(p, selected, drawn)...)
 		}
 		for _, n := range p.Nodes {
 			if n.Balances == nil {
@@ -65,12 +79,19 @@ func (*nodeBalancesTieToFacts) Run(_ context.Context, s *Subject) (Result, error
 					findings = append(findings, finding(subject, "%s", msg))
 				}
 			}
+			if n.Balances.Change != nil {
+				changes++
+			}
+			if msg := changeMismatch(n.Balances, selected); msg != "" {
+				findings = append(findings, finding(fmt.Sprintf("%s %s change", p, n.ID), "%s", msg))
+			}
 		}
 	}
 	return conclusion{
 		subjects: balances,
 		unit:     "node balances",
-		held:     fmt.Sprintf("%d node balances, each the fund's own printed balance it cites", balances),
+		held: fmt.Sprintf("%d node balances, each the fund's own printed balance it cites, and %d "+
+			"changes, each ending less beginning of those two", balances, changes),
 		nothing:  "no node publishes a balance",
 		findings: findings,
 	}.result(), nil
@@ -79,8 +100,9 @@ func (*nodeBalancesTieToFacts) Run(_ context.Context, s *Subject) (Result, error
 // unpublishedBalances is every beginning or ending balance a fund-sources-uses
 // slice prints that its fund's node does not publish: a balance the change
 // ribbon cites is counted cited whether or not the node shows it, so nothing
-// else sees one dropped.
-func unpublishedBalances(p linked, selected map[string]fact.Fact) []Finding {
+// else sees one dropped. Where drawn is not nil, only a fund it holds is
+// asked: the expansion draws a fund only where money moves through it.
+func unpublishedBalances(p linked, selected map[string]fact.Fact, drawn map[string]bool) []Finding {
 	published := map[string]bool{}
 	for _, n := range p.Nodes {
 		if n.Balances == nil {
@@ -99,10 +121,55 @@ func unpublishedBalances(p linked, selected map[string]fact.Fact) []Finding {
 			(f.Category != project.CategoryFundBalanceBeginning && f.Category != project.CategoryFundBalanceEnding) {
 			continue
 		}
-		out = append(out, finding(fmt.Sprintf("%s %s%s %s", p, project.PrefixFund, fact.FundString(f.Fund), f.Category),
+		fund := project.PrefixFund + fact.FundString(f.Fund)
+		if drawn != nil && !drawn[fund] {
+			continue
+		}
+		out = append(out, finding(fmt.Sprintf("%s %s %s", p, fund, f.Category),
 			"fact %s prints this balance and the fund's node does not publish it", f.ID))
 	}
 	return out
+}
+
+// changeMismatch is why a node's change is not ending less beginning of its
+// own two printed balances, or is stated beside a blank one, or "".
+func changeMismatch(b *project.NodeBalances, selected map[string]fact.Fact) string {
+	c := b.Change
+	switch {
+	case b.Beginning == nil || b.Ending == nil:
+		if c != nil {
+			return fmt.Sprintf("states a change of %s and a balance is blank, which is absent and not zero",
+				amount.Cents(c.ValueCents))
+		}
+		return ""
+	case c == nil:
+		return "prints both balances and states no change"
+	case !c.Derived || c.Rationale == "" || c.SourceNote == "":
+		return "states a change not marked derived with a rationale and a source note, and no page prints it"
+	}
+	want := []string{b.Beginning.FactID, b.Ending.FactID}
+	slices.Sort(want)
+	if !slices.Equal(want, c.FactIDs) {
+		return fmt.Sprintf("change cites %v and the node's balances are facts %v", c.FactIDs, want)
+	}
+	beginning, okB := selected[b.Beginning.FactID]
+	ending, okE := selected[b.Ending.FactID]
+	if !okB || !okE {
+		return "change cites a fact not in this projection's slice"
+	}
+	if got := ending.AmountCents - beginning.AmountCents; c.ValueCents != got {
+		return fmt.Sprintf("change is %s and facts %s less %s come to %s", amount.Cents(c.ValueCents),
+			ending.ID, beginning.ID, amount.Cents(got))
+	}
+	wantLocators := project.SourcesOf([]fact.Fact{beginning, ending})
+	same := slices.EqualFunc(wantLocators, c.Locators, func(a, d project.Source) bool {
+		return a.DocID == d.DocID && slices.Equal(a.Pages, d.Pages)
+	})
+	if !same {
+		return fmt.Sprintf("change locators are %s and its facts were read from %s",
+			describeSources(c.Locators), describeSources(wantLocators))
+	}
+	return ""
 }
 
 // balanceMismatch is why one published balance is not the figure it cites,

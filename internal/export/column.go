@@ -72,6 +72,18 @@ type ColumnSchedNode struct {
 type ColumnBalances struct {
 	Beginning *ColumnBalance `json:"beginning,omitempty"`
 	Ending    *ColumnBalance `json:"ending,omitempty"`
+	Change    *ColumnChange  `json:"change,omitempty"`
+}
+
+// ColumnChange is a fund's derived change in balance, carried from the
+// projection with its words and the two facts it cites.
+type ColumnChange struct {
+	ValueCents int64           `json:"value_cents"`
+	Derived    bool            `json:"derived"`
+	Rationale  string          `json:"rationale"`
+	SourceNote string          `json:"source_note"`
+	FactIDs    []string        `json:"fact_ids"`
+	Locators   json.RawMessage `json:"locators"`
 }
 
 // ColumnBalance is one printed balance and the fact it cites, its locators

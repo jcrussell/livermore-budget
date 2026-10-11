@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/structure"
 	"github.com/jcrussell/livermore-budget/internal/vocab"
@@ -400,5 +402,134 @@ func TestTheContestedRemainderIsTheExceptions(t *testing.T) {
 				t.Errorf("FY%d %s is %d, want the exception's %d", c.year, k, got[k], v)
 			}
 		}
+	}
+}
+
+// TestAFundDrawnApartFromItsChangeIsToldSo holds the expansion's funds of a
+// group whose change is drawn whole on the group's remainder: each is a
+// target of the caveat saying so, its in less its out is its own change, and
+// it carries fund-sources-uses' balances and their derived change, the one
+// figure the pin states that no page prints.
+func TestAFundDrawnApartFromItsChangeIsToldSo(t *testing.T) {
+	for _, year := range []int{2026, 2027} {
+		docs := committedDocs(t, year)
+		exp, fsu := docs[ExpansionProjection], docs[FundSourcesUsesProjection]
+		drawn := map[string]Node{}
+		for _, n := range exp.Nodes {
+			drawn[n.ID] = n
+		}
+		fsuNodes := map[string]Node{}
+		for _, n := range fsu.Nodes {
+			fsuNodes[n.ID] = n
+		}
+		// A group is drawn whole where its change lands on its remainder and
+		// no fund of it draws its own: a one-way group's remainder carries
+		// only what pp.66-67 print beyond its funds' changes.
+		whole, byFund := map[string]bool{}, map[string]bool{}
+		for _, l := range exp.Links {
+			switch {
+			case l.Source == NodeFundBalanceDraw && strings.HasPrefix(l.Target, PrefixGroupOnly):
+				whole[PrefixFundGroup+strings.TrimPrefix(l.Target, PrefixGroupOnly)] = true
+			case l.Target == NodeFundBalanceContribution && strings.HasPrefix(l.Source, PrefixGroupOnly):
+				whole[PrefixFundGroup+strings.TrimPrefix(l.Source, PrefixGroupOnly)] = true
+			case l.Source == NodeFundBalanceDraw && strings.HasPrefix(l.Target, PrefixFund):
+				byFund[fundGroupOf(t, l.Target)] = true
+			case l.Target == NodeFundBalanceContribution && strings.HasPrefix(l.Source, PrefixFund):
+				byFund[fundGroupOf(t, l.Source)] = true
+			}
+		}
+		for g := range byFund {
+			delete(whole, g)
+		}
+		change := map[string]int64{}
+		var want []string
+		for _, l := range fsu.Links {
+			fund, signed := l.Source, l.ValueCents
+			switch {
+			case l.Source == NodeFundBalanceDraw:
+				fund, signed = l.Target, -l.ValueCents
+			case l.Target != NodeFundBalanceContribution:
+				continue
+			}
+			change[fund] = signed
+			if _, ok := drawn[fund]; ok && whole[fundGroupOf(t, fund)] {
+				want = append(want, fund)
+			}
+		}
+		slices.Sort(want)
+		if len(want) == 0 {
+			t.Fatalf("FY%d: no drawn fund is of a group drawn whole, so this asserts nothing", year)
+		}
+
+		var got []string
+		for _, c := range exp.Metadata.Caveats {
+			if c.ID != "some-fund-group-money-is-not-by-fund" {
+				continue
+			}
+			for _, id := range c.AppliesTo {
+				if strings.HasPrefix(id, PrefixFund) {
+					got = append(got, id)
+				}
+			}
+			if !strings.Contains(c.Summary, "in and out differ by its own change in balance") {
+				t.Errorf("FY%d: the caveat's summary does not say a fund's in and out differ: %q", year, c.Summary)
+			}
+		}
+		if !slices.Equal(want, got) {
+			t.Errorf("FY%d: the caveat reaches funds %v, want the drawn funds of the groups drawn whole %v", year, got, want)
+		}
+
+		flow := map[string]int64{}
+		for _, l := range exp.Links {
+			if l.Alternative != "" {
+				continue
+			}
+			flow[l.Target] += l.ValueCents
+			flow[l.Source] -= l.ValueCents
+		}
+		for _, id := range want {
+			if flow[id] != change[id] {
+				t.Errorf("FY%d %s: in less out is %d and its change is %d", year, id, flow[id], change[id])
+			}
+		}
+
+		balanced, changed := 0, 0
+		for _, n := range exp.Nodes {
+			if !strings.HasPrefix(n.ID, PrefixFund) {
+				continue
+			}
+			src := fsuNodes[n.ID].Balances
+			if diff := cmp.Diff(src, n.Balances); diff != "" {
+				t.Errorf("FY%d %s: balances are not fund-sources-uses' (-want +got):\n%s", year, n.ID, diff)
+				continue
+			}
+			if n.Balances == nil {
+				continue
+			}
+			balanced++
+			c := n.Balances.Change
+			if c == nil {
+				continue
+			}
+			changed++
+			if !c.Derived || c.Rationale == "" || c.SourceNote == "" {
+				t.Errorf("FY%d %s: change %+v is not marked derived with its words", year, n.ID, c)
+			}
+			if c.ValueCents != change[n.ID] {
+				t.Errorf("FY%d %s: change is %d and fund-sources-uses draws %d", year, n.ID, c.ValueCents, change[n.ID])
+			}
+			cites := []string{n.Balances.Beginning.FactID, n.Balances.Ending.FactID}
+			slices.Sort(cites)
+			if !slices.Equal(cites, c.FactIDs) {
+				t.Errorf("FY%d %s: change cites %v, want its balances' %v", year, n.ID, c.FactIDs, cites)
+			}
+		}
+		for _, id := range want {
+			if b := drawn[id].Balances; b == nil || b.Beginning == nil || b.Ending == nil || b.Change == nil {
+				t.Errorf("FY%d %s: drawn apart from its change and carries balances %+v", year, id, b)
+			}
+		}
+		t.Logf("FY%d: %d funds drawn apart from their change carry the caveat; %d drawn funds carry balances, %d a change",
+			year, len(want), balanced, changed)
 	}
 }

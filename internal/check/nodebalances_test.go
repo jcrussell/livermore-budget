@@ -1,6 +1,7 @@
 package check
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -143,6 +144,32 @@ func TestFundChangesAndBalancesAreFailable(t *testing.T) {
 			c.FactID = "fisc-f-000000000000"
 			b.Ending = &c
 		}, "not in this projection's slice"},
+		{"a change off by a cent", func(b *project.NodeBalances) {
+			c := *b.Change
+			c.ValueCents++
+			b.Change = &c
+		}, "come to -$1,034,154.00"},
+		{"a change taken the wrong way round", func(b *project.NodeBalances) {
+			c := *b.Change
+			c.ValueCents = -c.ValueCents
+			b.Change = &c
+		}, "come to -$1,034,154.00"},
+		{"a change not marked derived", func(b *project.NodeBalances) {
+			c := *b.Change
+			c.Derived = false
+			b.Change = &c
+		}, "not marked derived"},
+		{"a change citing another fund's balance", func(b *project.NodeBalances) {
+			c := *b.Change
+			c.FactIDs = []string{b.Beginning.FactID, other.Balances.Ending.FactID}
+			b.Change = &c
+		}, "the node's balances are facts"},
+		{"a change beside a blank balance", func(b *project.NodeBalances) {
+			b.Ending = nil
+		}, "a balance is blank"},
+		{"two printed balances and no change", func(b *project.NodeBalances) {
+			b.Change = nil
+		}, "states no change"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			was := *general.Balances
@@ -154,6 +181,93 @@ func TestFundChangesAndBalancesAreFailable(t *testing.T) {
 			if res.Status != StatusFail || !strings.Contains(findingDetails(res), tc.want) {
 				t.Fatalf("status %s, findings %v; want a fail saying %q", res.Status, res.Findings, tc.want)
 			}
+		})
+	}
+}
+
+// TestTheExpansionsFundBalancesAreFailable plants on a fund the expansion
+// draws apart from its change, so node-balances-tie-to-facts is shown to read
+// the expansion's nodes and not fund-sources-uses' alone, and to refuse a
+// drawn fund that drops the balances its slice prints.
+func TestTheExpansionsFundBalancesAreFailable(t *testing.T) {
+	t.Parallel()
+	s := isolated(t)
+	var node *project.Node
+	for _, p := range s.linkedDocuments() {
+		if p.Name != project.ExpansionProjection || p.Options.Columns[0].FiscalYear != 2026 {
+			continue
+		}
+		var apart []string
+		for _, c := range p.Graph.Metadata.Caveats {
+			if c.ID == "some-fund-group-money-is-not-by-fund" {
+				apart = c.AppliesTo
+			}
+		}
+		for i := range p.Nodes {
+			n := &p.Nodes[i]
+			if slices.Contains(apart, n.ID) && strings.HasPrefix(n.ID, project.PrefixFund) &&
+				n.Balances != nil && n.Balances.Change != nil {
+				node = n
+				break
+			}
+		}
+	}
+	if node == nil {
+		t.Fatal("no FY2026 expansion fund drawn apart from its change carries balances and a change")
+	}
+	run := func(t *testing.T) Result {
+		t.Helper()
+		res, err := (&nodeBalancesTieToFacts{}).Run(t.Context(), s)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return res
+	}
+	if res := run(t); res.Status != StatusPass {
+		t.Fatalf("over the committed corpus: %s %v", res.Status, res.Findings)
+	}
+	t.Run("a drawn fund carrying no balances", func(t *testing.T) {
+		was := node.Balances
+		node.Balances = nil
+		t.Cleanup(func() { node.Balances = was })
+		res := run(t)
+		if res.Status != StatusFail || len(res.Findings) != 2 ||
+			!strings.Contains(findingDetails(res), "the fund's node does not publish it") {
+			t.Fatalf("status %s, findings %v; want %s's two balances named unpublished", res.Status, res.Findings, node.ID)
+		}
+	})
+	for _, tc := range []struct {
+		name  string
+		plant func(b *project.NodeBalances)
+		want  string
+	}{
+		{"a change off by a cent", func(b *project.NodeBalances) {
+			c := *b.Change
+			c.ValueCents++
+			b.Change = &c
+		}, project.ExpansionProjection},
+		{"an ending balance off by a cent", func(b *project.NodeBalances) {
+			c := *b.Ending
+			c.ValueCents++
+			b.Ending = &c
+		}, project.ExpansionProjection},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			was := node.Balances
+			planted := *was
+			tc.plant(&planted)
+			node.Balances = &planted
+			t.Cleanup(func() { node.Balances = was })
+			res := run(t)
+			subjects := ""
+			for _, f := range res.Findings {
+				subjects += f.Subject + "\n"
+			}
+			if res.Status != StatusFail || len(res.Findings) != 1 ||
+				!strings.HasPrefix(subjects, tc.want+" ") || !strings.Contains(subjects, " "+node.ID+" ") {
+				t.Fatalf("status %s, findings %v; want %s on the expansion refused", res.Status, res.Findings, node.ID)
+			}
+			t.Logf("%s on %s: %v", tc.name, node.ID, res.Findings)
 		})
 	}
 }

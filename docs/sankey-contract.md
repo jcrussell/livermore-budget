@@ -67,8 +67,9 @@ structural change. Absent strings are `""`; the client writes `node.parent || nu
 if it wants nullish semantics. The keys a document may omit are `headline`,
 which the spine alone carries: eight zeros in its place on a document with no
 total to name would be absent-is-not-zero at document level; and a node's
-`balances`, which fund-sources-uses alone carries, holding only the balances
-its page prints.
+`balances`, which fund-sources-uses and the expansion's fund nodes carry,
+holding only the balances its page prints and, where both are printed, their
+`change`, which is derived and says so.
 
 Money is always an integer `value_cents`. Never a float, never a string. The
 largest figure here is 2.99e10 cents, exact in float64 and safe in JS.

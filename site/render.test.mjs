@@ -653,6 +653,45 @@ describe("the expansion's drawing", () => {
   }
 
   for (const year of YEARS) {
+    test(`${year.label}: a fund drawn apart from its own change says so at its pin, with its two printed balances and Go's change marked derived`, async (t) => {
+      const { app, document } = await bootedApp({ checkedStem: year.stem });
+      const chart = document.getElementById("chart");
+      await split(app, "fund-group/capital");
+      // The targets are read off the pinned column, not asked of caveatsFor.
+      const col = columnFixture(year.fixture);
+      const caveat = col.schedules.expansion.caveats.find((c) => c.id === "some-fund-group-money-is-not-by-fund");
+      assert.ok(caveat, "the expansion carries no caveat about money no fund carries");
+      const apart = new Set(caveat.applies_to.filter((id) => id.startsWith("fund/")));
+      const mark = marksIn(chart).find((m) => apart.has(m.__data__.id));
+      assert.ok(mark, "the capital split draws no fund the caveat names, so this asserts nothing");
+      const node = mark.__data__;
+      const b = node.balances;
+      assert.ok(b && b.beginning && b.ending && b.change, `${node.id} carries no balances and change`);
+      app.showTip({ target: chart, clientX: 0, clientY: 0 }, node);
+      const tip = document.getElementById("tooltip").textContent;
+      app.pin(node);
+      const detail = document.getElementById("detail");
+      const panel = detail.textContent;
+      const words = CONFIG.wording;
+      const said = (key, cents) => words[key].replace("{figure}", dollars(cents));
+      const changeLine = [...detail.querySelectorAll("p")].find((p) => p.textContent.startsWith(said("balance_change", b.change.value_cents)));
+      t.diagnostic(`${year.label} ${node.id}: ${apart.size} funds named; begins ${b.beginning.value_cents}, ends ${b.ending.value_cents}, ` +
+        `Go's change ${b.change.value_cents}; tooltip ${tip.includes(caveat.summary) ? "says" : "does NOT say"} the caveat`);
+      assert.ok(tip.includes(caveat.summary), tip);
+      assert.ok(panel.includes(caveat.summary), panel);
+      assert.ok(tip.includes(said("balance_beginning", b.beginning.value_cents)), tip);
+      assert.ok(tip.includes(said("balance_change", b.change.value_cents)), tip);
+      for (const key of ["beginning", "ending"]) {
+        assert.ok(panel.includes(said("balance_" + key, b[key].value_cents)) && panel.includes(b[key].fact_id), panel);
+      }
+      assert.ok(changeLine, panel);
+      assert.equal(changeLine.querySelector(".chip.derived")?.textContent, words.our_inference);
+      assert.ok(changeLine.textContent.includes(b.change.rationale), changeLine.textContent);
+      assert.ok(b.change.fact_ids.every((id) => changeLine.textContent.includes(id)), changeLine.textContent);
+    });
+  }
+
+  for (const year of YEARS) {
     test(`${year.label}: a remainder Go derives is marked as ours, says why in Go's words, and reaches the inferred list, the tooltip and the panel; it splits nothing`, async (t) => {
       const { app, document } = await bootedApp({ checkedStem: year.stem });
       const chart = document.getElementById("chart");

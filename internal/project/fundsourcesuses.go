@@ -303,12 +303,37 @@ func (u *fundSourcesUses) fundNode(number int, lines fundLines) (Node, string, e
 	n := Node{ID: e.id, Label: u.label(e), Tier: e.tier(), Role: e.role,
 		Parent: PrefixFundGroup + group}
 	annotateFund(&n, u.Labels, number)
-	b := &NodeBalances{Beginning: nodeBalance(lines[lineBeginning]), Ending: nodeBalance(lines[lineEnding])}
+	b := &NodeBalances{Beginning: nodeBalance(lines[lineBeginning]), Ending: nodeBalance(lines[lineEnding]),
+		Change: nodeChange(lines)}
 	if b.Beginning != nil || b.Ending != nil {
 		n.Balances = b
 	}
 	return n, group, nil
 }
+
+// nodeChange is a fund's change in balance citing both balances, nil where
+// either is blank. A zero change is stated: two printed balances that agree
+// are a change of nothing, where a blank is no change at all.
+func nodeChange(lines fundLines) *NodeChange {
+	beginning, ending := lines[lineBeginning], lines[lineEnding]
+	if beginning == nil || ending == nil {
+		return nil
+	}
+	cited := []fact.Fact{*beginning, *ending}
+	ids := []string{beginning.ID, ending.ID}
+	sort.Strings(ids)
+	return &NodeChange{ValueCents: ChangeCents(cited), Derived: true,
+		Rationale:  NodeChangeRationale,
+		SourceNote: NodeChangeSourceNote,
+		FactIDs:    ids, Locators: SourcesOf(cited)}
+}
+
+// NodeChangeRationale and NodeChangeSourceNote are every [NodeChange]'s words.
+const (
+	NodeChangeRationale = "Our subtraction of two printed figures: this fund's ending balance less " +
+		"its beginning balance. The city prints both balances and not their difference."
+	NodeChangeSourceNote = "Budget Book PDF pp.186-209, this fund's beginning and ending balance"
+)
 
 // nodeBalance cites one printed balance, nil when the page prints none.
 func nodeBalance(f *fact.Fact) *NodeBalance {

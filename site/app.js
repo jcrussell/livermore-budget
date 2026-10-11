@@ -1884,7 +1884,11 @@ export function showTip(event, d) {
       meta.append(h("span", "chip caveat", say("caveat_chip", { n: cavs.length })));
     }
     tip.append(meta);
-    for (const b of balancesOf(n)) tip.append(h("div", "tip-meta", b.words));
+    for (const b of balancesOf(n)) {
+      const said = h("div", "tip-meta", b.words);
+      if (b.derived) said.append(" ", h("span", "chip derived", say("inferred_chip")));
+      tip.append(said);
+    }
     if (n.rationale) tip.append(h("div", "tip-meta", n.rationale));
     const note = form.reductionNote(markOfView(n));
     if (note) tip.append(h("div", "tip-meta", note));
@@ -1965,10 +1969,11 @@ export function pin(d) {
     if (share) chips.append(h("span", "chip derived", share));
     panel.append(chips);
     // A PRINTED BALANCE IS CITED AT ITSELF, as a link is: its fact and its
-    // pages, not the document's.
+    // pages, not the document's. A derived change says so, and why.
     for (const b of balancesOf(n)) {
       const said = h("p", "subtle", b.words + " ");
-      said.append(h("span", "facts", "Fact: " + b.fact_id));
+      if (b.derived) said.append(h("span", "chip derived", say("our_inference")), " ", b.rationale + " ");
+      said.append(h("span", "facts", (b.fact_ids.length > 1 ? "Facts: " : "Fact: ") + b.fact_ids.join(" ")));
       for (const c of citations(b.locators)) {
         said.append(document.createTextNode(" "));
         said.append(link(c.label, c.href));

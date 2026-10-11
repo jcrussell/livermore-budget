@@ -95,7 +95,7 @@
             "type": "string", "minLength": 1
           },
           "balances": {
-            "description": "A fund's printed beginning and ending balance in this column, on fund-sources-uses alone. A balance the page leaves blank is absent, not zero, so a node printing neither carries no key at all.",
+            "description": "A fund's printed beginning and ending balance in this column, on fund-sources-uses and on the expansion's fund nodes, which carry fund-sources-uses' own, with their change where both are printed. A balance the page leaves blank is absent, not zero, so a node printing neither carries no key at all.",
             "type": "object",
             "minProperties": 1,
             "additionalProperties": false,
@@ -123,6 +123,29 @@
                 "properties": {
                   "value_cents": { "type": "integer" },
                   "fact_id": { "$ref": "https://jcrussell.github.io/livermore-budget/schema/fact-id.schema.json" },
+                  "locators": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": { "$ref": "https://jcrussell.github.io/livermore-budget/schema/locator.schema.json" }
+                  }
+                }
+              },
+              "change": {
+                "description": "Our subtraction, never printed: ending less beginning of the two balances beside it, stated only where both are printed, citing both facts. A zero is stated, and a blank balance states none.",
+                "type": "object",
+                "required": ["value_cents", "derived", "rationale", "source_note", "fact_ids", "locators"],
+                "additionalProperties": false,
+                "properties": {
+                  "value_cents": { "type": "integer" },
+                  "derived": { "const": true },
+                  "rationale": { "type": "string", "minLength": 1 },
+                  "source_note": { "type": "string", "minLength": 1 },
+                  "fact_ids": {
+                    "type": "array",
+                    "minItems": 2,
+                    "maxItems": 2,
+                    "items": { "$ref": "https://jcrussell.github.io/livermore-budget/schema/fact-id.schema.json" }
+                  },
                   "locators": {
                     "type": "array",
                     "minItems": 1,

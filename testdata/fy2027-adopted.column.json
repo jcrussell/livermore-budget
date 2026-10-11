@@ -6189,8 +6189,8 @@
    ],
    "counts": {
     "facts": 1564,
-    "facts_cited": 441,
-    "facts_uncited": 1123,
+    "facts_cited": 557,
+    "facts_uncited": 1007,
     "facts_cited_twice": 89,
     "nodes": 439,
     "links": 450
@@ -6216,13 +6216,66 @@
     },
     {
      "id": "some-fund-group-money-is-not-by-fund",
-     "summary": "4 fund groups' money pp.66-67 print that no fund's own page carries, drawn on a node of the group's own.",
-     "text": "Budget Book pp.66-67 print each fund group's change in working capital as one figure. Where some of the group's funds draw on their balances and others add to them, pp.186-209 print each fund's own change and the group's is their net, which no single fund carries; it is drawn on a node of the group's own, and each of those funds is drawn with what it takes in and spends and not its own change. Where pp.66-67 print more for a group than its funds' pages do, the difference is on the same node, with the exception declaring it named in the node's note.",
+     "summary": "4 fund groups' money pp.66-67 print that no fund's own page carries, drawn on a node of the group's own. A fund of such a group is drawn with what it takes in and spends, so its in and out differ by its own change in balance.",
+     "text": "Budget Book pp.66-67 print each fund group's change in working capital as one figure. Where some of the group's funds draw on their balances and others add to them, pp.186-209 print each fund's own beginning and ending balance and the group's change is the net of the funds' changes, which no single fund carries; it is drawn on a node of the group's own. Each fund of such a group is drawn with what it takes in and spends and not its own change, so its in and out differ by that change: the fund states its two printed balances from pp.186-209 and our subtraction of them. Where pp.66-67 print more for a group than its funds' pages do, the difference is on the same node, with the exception declaring it named in the node's note.",
      "applies_to": [
       "fund-group-only/capital",
       "fund-group-only/enterprise",
       "fund-group-only/internal-service",
-      "fund-group-only/special-revenue"
+      "fund-group-only/special-revenue",
+      "fund/101",
+      "fund/200",
+      "fund/201",
+      "fund/202",
+      "fund/203",
+      "fund/205",
+      "fund/206",
+      "fund/210",
+      "fund/211",
+      "fund/221",
+      "fund/222",
+      "fund/223",
+      "fund/224",
+      "fund/225",
+      "fund/240",
+      "fund/242",
+      "fund/280",
+      "fund/282",
+      "fund/283",
+      "fund/284",
+      "fund/285",
+      "fund/286",
+      "fund/287",
+      "fund/288",
+      "fund/289",
+      "fund/290",
+      "fund/300",
+      "fund/310",
+      "fund/311",
+      "fund/320",
+      "fund/321",
+      "fund/330",
+      "fund/331",
+      "fund/510",
+      "fund/511",
+      "fund/512",
+      "fund/513",
+      "fund/550",
+      "fund/551",
+      "fund/552",
+      "fund/553",
+      "fund/560",
+      "fund/561",
+      "fund/580",
+      "fund/600",
+      "fund/610",
+      "fund/612",
+      "fund/620",
+      "fund/622",
+      "fund/623",
+      "fund/640",
+      "fund/642",
+      "fund/643"
      ]
     }
    ],
@@ -6759,259 +6812,3139 @@
     },
     {
      "node": 6,
-     "parent": "fund-group/general"
+     "parent": "fund-group/general",
+     "balances": {
+      "beginning": {
+       "value_cents": 73245900,
+       "fact_id": "fisc-f-cebf83109988",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 308355700,
+       "fact_id": "fisc-f-7a8c5f4058bc",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          205
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": 235109800,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-7a8c5f4058bc",
+        "fisc-f-cebf83109988"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 222,
-     "parent": "fund-group/capital"
+     "parent": "fund-group/capital",
+     "balances": {
+      "beginning": {
+       "value_cents": 2137149000,
+       "fact_id": "fisc-f-f6751b9462af",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 1112623900,
+       "fact_id": "fisc-f-ab623fceb1f0",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          207
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -1024525100,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-ab623fceb1f0",
+        "fisc-f-f6751b9462af"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
+          207
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 7,
-     "parent": "fund-group/special-revenue"
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 4714868000,
+       "fact_id": "fisc-f-bf8ee58d79db",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 5386543200,
+       "fact_id": "fisc-f-1740c3e03e84",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          205
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": 671675200,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-1740c3e03e84",
+        "fisc-f-bf8ee58d79db"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 8,
-     "parent": "fund-group/special-revenue"
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 902828200,
+       "fact_id": "fisc-f-6ba78b888a79",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 920126300,
+       "fact_id": "fisc-f-46ffb695a281",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          205
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": 17298100,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-46ffb695a281",
+        "fisc-f-6ba78b888a79"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 9,
-     "parent": "fund-group/special-revenue"
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 165720200,
+       "fact_id": "fisc-f-bbad7d6c8240",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 150340400,
+       "fact_id": "fisc-f-d426401a01af",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          205
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -15379800,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-bbad7d6c8240",
+        "fisc-f-d426401a01af"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 10,
-     "parent": "fund-group/special-revenue"
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 185739900,
+       "fact_id": "fisc-f-50fd977fe3df",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 182024500,
+       "fact_id": "fisc-f-af9a483d3384",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          205
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -3715400,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-50fd977fe3df",
+        "fisc-f-af9a483d3384"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 11,
-     "parent": "fund-group/special-revenue"
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 23400000,
+       "fact_id": "fisc-f-60d32019b584",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 23400000,
+       "fact_id": "fisc-f-9dddca68cf85",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          205
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": 0,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-60d32019b584",
+        "fisc-f-9dddca68cf85"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 12,
-     "parent": "fund-group/special-revenue"
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 81054800,
+       "fact_id": "fisc-f-7d324ba3d7d3",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 63854800,
+       "fact_id": "fisc-f-f147eda0b072",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          205
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -17200000,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-7d324ba3d7d3",
+        "fisc-f-f147eda0b072"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 13,
-     "parent": "fund-group/special-revenue"
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 57233100,
+       "fact_id": "fisc-f-df84e1b60214",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 52033100,
+       "fact_id": "fisc-f-02fdd9a3b791",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          205
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -5200000,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-02fdd9a3b791",
+        "fisc-f-df84e1b60214"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 14,
-     "parent": "fund-group/special-revenue"
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 86418800,
+       "fact_id": "fisc-f-a41a93d1dcbc",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 95390400,
+       "fact_id": "fisc-f-0a7079111dee",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          205
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": 8971600,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-0a7079111dee",
+        "fisc-f-a41a93d1dcbc"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 223,
-     "parent": "fund-group/special-revenue"
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": -303800,
+       "fact_id": "fisc-f-501d736616de",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 2796200,
+       "fact_id": "fisc-f-f379a2c1171c",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          205
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": 3100000,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-501d736616de",
+        "fisc-f-f379a2c1171c"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 15,
-     "parent": "fund-group/special-revenue"
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 53765500,
+       "fact_id": "fisc-f-b785478583a7",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 50654200,
+       "fact_id": "fisc-f-188f4cdc31a3",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          205
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -3111300,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-188f4cdc31a3",
+        "fisc-f-b785478583a7"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 16,
-     "parent": "fund-group/special-revenue"
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 32789400,
+       "fact_id": "fisc-f-314f32fd8e84",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 29189400,
+       "fact_id": "fisc-f-b627921a4e74",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          205
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -3600000,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-314f32fd8e84",
+        "fisc-f-b627921a4e74"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 17,
-     "parent": "fund-group/special-revenue"
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": -5817300,
+       "fact_id": "fisc-f-3cad1d6fd4d5",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": -23847300,
+       "fact_id": "fisc-f-0d724501eb17",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          205
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -18030000,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-0d724501eb17",
+        "fisc-f-3cad1d6fd4d5"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 18,
-     "parent": "fund-group/special-revenue"
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 26943600,
+       "fact_id": "fisc-f-9a8eb19953b6",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 18413200,
+       "fact_id": "fisc-f-2fca06cd0876",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          205
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -8530400,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-2fca06cd0876",
+        "fisc-f-9a8eb19953b6"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 19,
-     "parent": "fund-group/special-revenue"
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 35638900,
+       "fact_id": "fisc-f-37a2fba69e6b",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 35135500,
+       "fact_id": "fisc-f-c968988fa9e4",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          205
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -503400,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-37a2fba69e6b",
+        "fisc-f-c968988fa9e4"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 20,
-     "parent": "fund-group/special-revenue"
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 58156100,
+       "fact_id": "fisc-f-322d5d134705",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 48440600,
+       "fact_id": "fisc-f-076b5fb347bc",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          205
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -9715500,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-076b5fb347bc",
+        "fisc-f-322d5d134705"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 21,
-     "parent": "fund-group/special-revenue"
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": -32143200,
+       "fact_id": "fisc-f-e25ee139a8e7",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": -32143200,
+       "fact_id": "fisc-f-50d0a95ef4a8",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          205
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": 0,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-50d0a95ef4a8",
+        "fisc-f-e25ee139a8e7"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 22,
-     "parent": "fund-group/special-revenue"
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": -8479200,
+       "fact_id": "fisc-f-c91a86934372",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 7520800,
+       "fact_id": "fisc-f-3f786bcb785c",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          205
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": 16000000,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-3f786bcb785c",
+        "fisc-f-c91a86934372"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 224,
-     "parent": "fund-group/special-revenue"
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": -347259500,
+       "fact_id": "fisc-f-4e6718387fec",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": -283459500,
+       "fact_id": "fisc-f-f60efc63c8fc",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          205
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": 63800000,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-4e6718387fec",
+        "fisc-f-f60efc63c8fc"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 23,
-     "parent": "fund-group/special-revenue"
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 125146200,
+       "fact_id": "fisc-f-5c256b53cbcb",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 121788800,
+       "fact_id": "fisc-f-f23403695bcf",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          205
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -3357400,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-5c256b53cbcb",
+        "fisc-f-f23403695bcf"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 24,
-     "parent": "fund-group/special-revenue"
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 81930500,
+       "fact_id": "fisc-f-b78f45388c7c",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 113110300,
+       "fact_id": "fisc-f-7807b7c004e2",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          205
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": 31179800,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-7807b7c004e2",
+        "fisc-f-b78f45388c7c"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 25,
-     "parent": "fund-group/special-revenue"
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 80278800,
+       "fact_id": "fisc-f-83e1f2120628",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 68919100,
+       "fact_id": "fisc-f-f3764cdb51db",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          205
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -11359700,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-83e1f2120628",
+        "fisc-f-f3764cdb51db"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 26,
-     "parent": "fund-group/special-revenue"
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 18204900,
+       "fact_id": "fisc-f-7843631edece",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 19052300,
+       "fact_id": "fisc-f-d8c958b669b1",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          205
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": 847400,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-7843631edece",
+        "fisc-f-d8c958b669b1"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 27,
-     "parent": "fund-group/special-revenue"
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": -4739200,
+       "fact_id": "fisc-f-21b801f0c566",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": -7364200,
+       "fact_id": "fisc-f-ae0e431e63f0",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          205
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -2625000,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-21b801f0c566",
+        "fisc-f-ae0e431e63f0"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 28,
-     "parent": "fund-group/special-revenue"
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 202437800,
+       "fact_id": "fisc-f-c2e75f9cb248",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 224297700,
+       "fact_id": "fisc-f-e8f0f1ba5d67",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          205
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": 21859900,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-c2e75f9cb248",
+        "fisc-f-e8f0f1ba5d67"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 29,
-     "parent": "fund-group/special-revenue"
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 208600,
+       "fact_id": "fisc-f-49d1df86df7e",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 108600,
+       "fact_id": "fisc-f-b265c24f88d3",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          205
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -100000,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-49d1df86df7e",
+        "fisc-f-b265c24f88d3"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 30,
-     "parent": "fund-group/special-revenue"
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": -4036000,
+       "fact_id": "fisc-f-2fcca9a5c0a9",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 279200,
+       "fact_id": "fisc-f-159839aa9101",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          205
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": 4315200,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-159839aa9101",
+        "fisc-f-2fcca9a5c0a9"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 225,
-     "parent": "fund-group/special-revenue"
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 12734200,
+       "fact_id": "fisc-f-b35ef3565c08",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 10234200,
+       "fact_id": "fisc-f-cd91b29ef0d7",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          205
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -2500000,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-b35ef3565c08",
+        "fisc-f-cd91b29ef0d7"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 226,
-     "parent": "fund-group/special-revenue"
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 215040300,
+       "fact_id": "fisc-f-2eef13c2e659",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 225140300,
+       "fact_id": "fisc-f-7ef16a9a8ce5",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          205
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": 10100000,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-2eef13c2e659",
+        "fisc-f-7ef16a9a8ce5"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 31,
-     "parent": "fund-group/special-revenue"
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 106568600,
+       "fact_id": "fisc-f-42733ee3af23",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 157181600,
+       "fact_id": "fisc-f-329fe6af4146",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          205
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": 50613000,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-329fe6af4146",
+        "fisc-f-42733ee3af23"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 32,
-     "parent": "fund-group/special-revenue"
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 1096048400,
+       "fact_id": "fisc-f-7e81db710b53",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 1174420200,
+       "fact_id": "fisc-f-c16a8af44c74",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          205
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": 78371800,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-7e81db710b53",
+        "fisc-f-c16a8af44c74"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 33,
-     "parent": "fund-group/special-revenue"
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 292407300,
+       "fact_id": "fisc-f-206a2a857983",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 304314300,
+       "fact_id": "fisc-f-ae29f0a09b00",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          205
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": 11907000,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-206a2a857983",
+        "fisc-f-ae29f0a09b00"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 34,
-     "parent": "fund-group/special-revenue"
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 227792700,
+       "fact_id": "fisc-f-bf47f7d1e030",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 250377800,
+       "fact_id": "fisc-f-9abc8bcb7ee1",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          205
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": 22585100,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-9abc8bcb7ee1",
+        "fisc-f-bf47f7d1e030"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 35,
-     "parent": "fund-group/special-revenue"
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 9389400,
+       "fact_id": "fisc-f-b2a89280b379",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 3955900,
+       "fact_id": "fisc-f-3bb78dfc24fb",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          205
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -5433500,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-3bb78dfc24fb",
+        "fisc-f-b2a89280b379"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 36,
-     "parent": "fund-group/special-revenue"
+     "parent": "fund-group/special-revenue",
+     "balances": {
+      "beginning": {
+       "value_cents": 4409900,
+       "fact_id": "fisc-f-66161bf6fd82",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 4344400,
+       "fact_id": "fisc-f-a44ed269b50a",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          207
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -65500,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-66161bf6fd82",
+        "fisc-f-a44ed269b50a"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
+          207
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 37,
-     "parent": "fund-group/debt-service"
+     "parent": "fund-group/debt-service",
+     "balances": {
+      "beginning": {
+       "value_cents": 0,
+       "fact_id": "fisc-f-001fb78e4af2",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 0,
+       "fact_id": "fisc-f-dfaaef825a9f",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          207
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": 0,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-001fb78e4af2",
+        "fisc-f-dfaaef825a9f"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
+          207
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 38,
-     "parent": "fund-group/debt-service"
+     "parent": "fund-group/debt-service",
+     "balances": {
+      "beginning": {
+       "value_cents": 0,
+       "fact_id": "fisc-f-4b09b1374943",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 0,
+       "fact_id": "fisc-f-3128b10fafd8",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          207
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": 0,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-3128b10fafd8",
+        "fisc-f-4b09b1374943"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
+          207
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 39,
-     "parent": "fund-group/debt-service"
+     "parent": "fund-group/debt-service",
+     "balances": {
+      "beginning": {
+       "value_cents": 200,
+       "fact_id": "fisc-f-9231c8093264",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 200,
+       "fact_id": "fisc-f-9781b36a0b7f",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          207
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": 0,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-9231c8093264",
+        "fisc-f-9781b36a0b7f"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
+          207
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 40,
-     "parent": "fund-group/capital"
+     "parent": "fund-group/capital",
+     "balances": {
+      "beginning": {
+       "value_cents": 2656086600,
+       "fact_id": "fisc-f-ca2c4de31324",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 3002129800,
+       "fact_id": "fisc-f-cae6d58e8bdf",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          207
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": 346043200,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-ca2c4de31324",
+        "fisc-f-cae6d58e8bdf"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
+          207
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 227,
-     "parent": "fund-group/capital"
+     "parent": "fund-group/capital",
+     "balances": {
+      "beginning": {
+       "value_cents": 1009086800,
+       "fact_id": "fisc-f-9a453d7befe8",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 1031186800,
+       "fact_id": "fisc-f-9f1d5324d6bd",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          207
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": 22100000,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-9a453d7befe8",
+        "fisc-f-9f1d5324d6bd"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
+          207
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 228,
-     "parent": "fund-group/capital"
+     "parent": "fund-group/capital",
+     "balances": {
+      "beginning": {
+       "value_cents": 534866400,
+       "fact_id": "fisc-f-6db00576a6be",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 909866400,
+       "fact_id": "fisc-f-e38abb4f5dbb",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          207
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": 375000000,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-6db00576a6be",
+        "fisc-f-e38abb4f5dbb"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
+          207
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 229,
-     "parent": "fund-group/capital"
+     "parent": "fund-group/capital",
+     "balances": {
+      "beginning": {
+       "value_cents": 398029400,
+       "fact_id": "fisc-f-f69977d2ea20",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 236060700,
+       "fact_id": "fisc-f-a92ec5e8a3e7",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          207
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -161968700,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-a92ec5e8a3e7",
+        "fisc-f-f69977d2ea20"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
+          207
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 41,
-     "parent": "fund-group/capital"
+     "parent": "fund-group/capital",
+     "balances": {
+      "beginning": {
+       "value_cents": -35866600,
+       "fact_id": "fisc-f-293fb3cd3962",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": -85845000,
+       "fact_id": "fisc-f-50152c03008b",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          207
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -49978400,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-293fb3cd3962",
+        "fisc-f-50152c03008b"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
+          207
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 42,
-     "parent": "fund-group/capital"
+     "parent": "fund-group/capital",
+     "balances": {
+      "beginning": {
+       "value_cents": 119153300,
+       "fact_id": "fisc-f-21b6e8a9e869",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 77189600,
+       "fact_id": "fisc-f-4231dc2212f7",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          207
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -41963700,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-21b6e8a9e869",
+        "fisc-f-4231dc2212f7"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
+          207
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 43,
-     "parent": "fund-group/capital"
+     "parent": "fund-group/capital",
+     "balances": {
+      "beginning": {
+       "value_cents": 520989200,
+       "fact_id": "fisc-f-2849fb4fa69f",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 375106500,
+       "fact_id": "fisc-f-a7a04750889c",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          207
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -145882700,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-2849fb4fa69f",
+        "fisc-f-a7a04750889c"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
+          207
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 44,
-     "parent": "fund-group/capital"
+     "parent": "fund-group/capital",
+     "balances": {
+      "beginning": {
+       "value_cents": 145115800,
+       "fact_id": "fisc-f-e0fcfd6aed8b",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 182613900,
+       "fact_id": "fisc-f-a2859c3efcdb",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          207
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": 37498100,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-a2859c3efcdb",
+        "fisc-f-e0fcfd6aed8b"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
+          207
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 45,
-     "parent": "fund-group/capital"
+     "parent": "fund-group/capital",
+     "balances": {
+      "beginning": {
+       "value_cents": 658783900,
+       "fact_id": "fisc-f-bebf47f374e3",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 464454500,
+       "fact_id": "fisc-f-cb4f7d553d36",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          207
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -194329400,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-bebf47f374e3",
+        "fisc-f-cb4f7d553d36"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
+          207
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 46,
-     "parent": "fund-group/capital"
+     "parent": "fund-group/capital",
+     "balances": {
+      "beginning": {
+       "value_cents": 115942700,
+       "fact_id": "fisc-f-b0c59465475e",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": -54992200,
+       "fact_id": "fisc-f-5bb92ff19466",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          207
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -170934900,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-5bb92ff19466",
+        "fisc-f-b0c59465475e"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
+          207
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 230,
-     "parent": "fund-group/capital"
+     "parent": "fund-group/capital",
+     "balances": {
+      "beginning": {
+       "value_cents": -3798500,
+       "fact_id": "fisc-f-7a29cc76b061",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": -7798500,
+       "fact_id": "fisc-f-a19d3cb06e77",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          207
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -4000000,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-7a29cc76b061",
+        "fisc-f-a19d3cb06e77"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
+          207
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 47,
-     "parent": "fund-group/enterprise"
+     "parent": "fund-group/enterprise",
+     "balances": {
+      "beginning": {
+       "value_cents": 941088400,
+       "fact_id": "fisc-f-d26aac680b58",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 1023473200,
+       "fact_id": "fisc-f-e8ff445dc378",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          207
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": 82384800,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-d26aac680b58",
+        "fisc-f-e8ff445dc378"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
+          207
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 48,
-     "parent": "fund-group/enterprise"
+     "parent": "fund-group/enterprise",
+     "balances": {
+      "beginning": {
+       "value_cents": 627042200,
+       "fact_id": "fisc-f-a0f3682b8aab",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 617692300,
+       "fact_id": "fisc-f-78cdb905e63f",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          207
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -9349900,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-78cdb905e63f",
+        "fisc-f-a0f3682b8aab"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
+          207
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 49,
-     "parent": "fund-group/enterprise"
+     "parent": "fund-group/enterprise",
+     "balances": {
+      "beginning": {
+       "value_cents": 651746800,
+       "fact_id": "fisc-f-dfc0ce34cc63",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 670409400,
+       "fact_id": "fisc-f-ddefa883dffa",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          207
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": 18662600,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-ddefa883dffa",
+        "fisc-f-dfc0ce34cc63"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
+          207
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 50,
-     "parent": "fund-group/enterprise"
+     "parent": "fund-group/enterprise",
+     "balances": {
+      "beginning": {
+       "value_cents": 2729985000,
+       "fact_id": "fisc-f-f21c3d22bf7e",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 2865156600,
+       "fact_id": "fisc-f-07270088bbe9",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          207
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": 135171600,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-07270088bbe9",
+        "fisc-f-f21c3d22bf7e"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
+          207
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 51,
-     "parent": "fund-group/enterprise"
+     "parent": "fund-group/enterprise",
+     "balances": {
+      "beginning": {
+       "value_cents": 2136664500,
+       "fact_id": "fisc-f-909589bcf362",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 1926729300,
+       "fact_id": "fisc-f-0784801f4941",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          207
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -209935200,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-0784801f4941",
+        "fisc-f-909589bcf362"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
+          207
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 52,
-     "parent": "fund-group/enterprise"
+     "parent": "fund-group/enterprise",
+     "balances": {
+      "beginning": {
+       "value_cents": 369777000,
+       "fact_id": "fisc-f-19a36bc265be",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 616283800,
+       "fact_id": "fisc-f-02a9b3815494",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          207
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": 246506800,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-02a9b3815494",
+        "fisc-f-19a36bc265be"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
+          207
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 53,
-     "parent": "fund-group/enterprise"
+     "parent": "fund-group/enterprise",
+     "balances": {
+      "beginning": {
+       "value_cents": 505072900,
+       "fact_id": "fisc-f-b4e06b89b551",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 384481300,
+       "fact_id": "fisc-f-a0b0a1239dde",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          207
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -120591600,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-a0b0a1239dde",
+        "fisc-f-b4e06b89b551"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
+          207
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 54,
-     "parent": "fund-group/enterprise"
+     "parent": "fund-group/enterprise",
+     "balances": {
+      "beginning": {
+       "value_cents": 2705469200,
+       "fact_id": "fisc-f-5ce527e2e637",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 2610411800,
+       "fact_id": "fisc-f-18526593a583",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          207
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -95057400,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-18526593a583",
+        "fisc-f-5ce527e2e637"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
+          207
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 55,
-     "parent": "fund-group/enterprise"
+     "parent": "fund-group/enterprise",
+     "balances": {
+      "beginning": {
+       "value_cents": 62037400,
+       "fact_id": "fisc-f-024c8e3fd1b8",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          208
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 155273700,
+       "fact_id": "fisc-f-4fe2c7662659",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          209
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": 93236300,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-024c8e3fd1b8",
+        "fisc-f-4fe2c7662659"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          208,
+          209
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 56,
-     "parent": "fund-group/internal-service"
+     "parent": "fund-group/internal-service",
+     "balances": {
+      "beginning": {
+       "value_cents": 477043300,
+       "fact_id": "fisc-f-d5abd90ad2a4",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          208
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 397248500,
+       "fact_id": "fisc-f-8fd54d32ee8e",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          209
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -79794800,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-8fd54d32ee8e",
+        "fisc-f-d5abd90ad2a4"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          208,
+          209
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 57,
-     "parent": "fund-group/internal-service"
+     "parent": "fund-group/internal-service",
+     "balances": {
+      "beginning": {
+       "value_cents": 377064100,
+       "fact_id": "fisc-f-a7771b12f3ea",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          208
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 233733400,
+       "fact_id": "fisc-f-b5bbd8e4650d",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          209
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -143330700,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-a7771b12f3ea",
+        "fisc-f-b5bbd8e4650d"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          208,
+          209
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 58,
-     "parent": "fund-group/internal-service"
+     "parent": "fund-group/internal-service",
+     "balances": {
+      "beginning": {
+       "value_cents": 46377900,
+       "fact_id": "fisc-f-b5bcb179b0d6",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          208
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": -134035000,
+       "fact_id": "fisc-f-691659ca9968",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          209
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -180412900,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-691659ca9968",
+        "fisc-f-b5bcb179b0d6"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          208,
+          209
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 59,
-     "parent": "fund-group/internal-service"
+     "parent": "fund-group/internal-service",
+     "balances": {
+      "beginning": {
+       "value_cents": 500777900,
+       "fact_id": "fisc-f-24e83626bafb",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          208
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 379322300,
+       "fact_id": "fisc-f-df567417a097",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          209
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -121455600,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-24e83626bafb",
+        "fisc-f-df567417a097"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          208,
+          209
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 60,
-     "parent": "fund-group/internal-service"
+     "parent": "fund-group/internal-service",
+     "balances": {
+      "beginning": {
+       "value_cents": 167710000,
+       "fact_id": "fisc-f-dd89b8d301e6",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          208
+         ]
+        }
+       ]
+      },
+      "ending": {
+       "value_cents": 1639500,
+       "fact_id": "fisc-f-aecedb83600e",
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          209
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -166070500,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-aecedb83600e",
+        "fisc-f-dd89b8d301e6"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          208,
+          209
+         ]
+        }
+       ]
+      }
+     }
     },
     {
      "node": 72,
@@ -26306,6 +29239,25 @@
          ]
         }
        ]
+      },
+      "change": {
+       "value_cents": 235109800,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-7a8c5f4058bc",
+        "fisc-f-cebf83109988"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
       }
      }
     },
@@ -26332,6 +29284,25 @@
         {
          "doc_id": "livermore-budget-fy2026-2027",
          "pages": [
+          207
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -1024525100,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-ab623fceb1f0",
+        "fisc-f-f6751b9462af"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
           207
          ]
         }
@@ -26366,6 +29337,25 @@
          ]
         }
        ]
+      },
+      "change": {
+       "value_cents": 671675200,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-1740c3e03e84",
+        "fisc-f-bf8ee58d79db"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
       }
      }
     },
@@ -26392,6 +29382,25 @@
         {
          "doc_id": "livermore-budget-fy2026-2027",
          "pages": [
+          205
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": 17298100,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-46ffb695a281",
+        "fisc-f-6ba78b888a79"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
           205
          ]
         }
@@ -26426,6 +29435,25 @@
          ]
         }
        ]
+      },
+      "change": {
+       "value_cents": -15379800,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-bbad7d6c8240",
+        "fisc-f-d426401a01af"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
       }
      }
     },
@@ -26452,6 +29480,25 @@
         {
          "doc_id": "livermore-budget-fy2026-2027",
          "pages": [
+          205
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -3715400,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-50fd977fe3df",
+        "fisc-f-af9a483d3384"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
           205
          ]
         }
@@ -26486,6 +29533,25 @@
          ]
         }
        ]
+      },
+      "change": {
+       "value_cents": 0,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-60d32019b584",
+        "fisc-f-9dddca68cf85"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
       }
      }
     },
@@ -26512,6 +29578,25 @@
         {
          "doc_id": "livermore-budget-fy2026-2027",
          "pages": [
+          205
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -17200000,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-7d324ba3d7d3",
+        "fisc-f-f147eda0b072"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
           205
          ]
         }
@@ -26546,6 +29631,25 @@
          ]
         }
        ]
+      },
+      "change": {
+       "value_cents": -5200000,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-02fdd9a3b791",
+        "fisc-f-df84e1b60214"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
       }
      }
     },
@@ -26572,6 +29676,25 @@
         {
          "doc_id": "livermore-budget-fy2026-2027",
          "pages": [
+          205
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": 0,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-87d9840f99af",
+        "fisc-f-9a17d2acfd7f"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
           205
          ]
         }
@@ -26606,6 +29729,25 @@
          ]
         }
        ]
+      },
+      "change": {
+       "value_cents": 8971600,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-0a7079111dee",
+        "fisc-f-a41a93d1dcbc"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
       }
      }
     },
@@ -26632,6 +29774,25 @@
         {
          "doc_id": "livermore-budget-fy2026-2027",
          "pages": [
+          205
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": 3100000,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-501d736616de",
+        "fisc-f-f379a2c1171c"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
           205
          ]
         }
@@ -26666,6 +29827,25 @@
          ]
         }
        ]
+      },
+      "change": {
+       "value_cents": 0,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-4c0d20533ec0",
+        "fisc-f-d86668ddeb58"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
       }
      }
     },
@@ -26692,6 +29872,25 @@
         {
          "doc_id": "livermore-budget-fy2026-2027",
          "pages": [
+          205
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -3111300,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-188f4cdc31a3",
+        "fisc-f-b785478583a7"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
           205
          ]
         }
@@ -26726,6 +29925,25 @@
          ]
         }
        ]
+      },
+      "change": {
+       "value_cents": -3600000,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-314f32fd8e84",
+        "fisc-f-b627921a4e74"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
       }
      }
     },
@@ -26752,6 +29970,25 @@
         {
          "doc_id": "livermore-budget-fy2026-2027",
          "pages": [
+          205
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -18030000,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-0d724501eb17",
+        "fisc-f-3cad1d6fd4d5"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
           205
          ]
         }
@@ -26786,6 +30023,25 @@
          ]
         }
        ]
+      },
+      "change": {
+       "value_cents": -8530400,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-2fca06cd0876",
+        "fisc-f-9a8eb19953b6"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
       }
      }
     },
@@ -26812,6 +30068,25 @@
         {
          "doc_id": "livermore-budget-fy2026-2027",
          "pages": [
+          205
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -503400,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-37a2fba69e6b",
+        "fisc-f-c968988fa9e4"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
           205
          ]
         }
@@ -26846,6 +30121,25 @@
          ]
         }
        ]
+      },
+      "change": {
+       "value_cents": 0,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-08ddc3df2747",
+        "fisc-f-5c9fabd146cf"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
       }
      }
     },
@@ -26872,6 +30166,25 @@
         {
          "doc_id": "livermore-budget-fy2026-2027",
          "pages": [
+          205
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -9715500,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-076b5fb347bc",
+        "fisc-f-322d5d134705"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
           205
          ]
         }
@@ -26906,6 +30219,25 @@
          ]
         }
        ]
+      },
+      "change": {
+       "value_cents": 0,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-50d0a95ef4a8",
+        "fisc-f-e25ee139a8e7"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
       }
      }
     },
@@ -26932,6 +30264,25 @@
         {
          "doc_id": "livermore-budget-fy2026-2027",
          "pages": [
+          205
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": 16000000,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-3f786bcb785c",
+        "fisc-f-c91a86934372"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
           205
          ]
         }
@@ -26966,6 +30317,25 @@
          ]
         }
        ]
+      },
+      "change": {
+       "value_cents": 0,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-144336cda80d",
+        "fisc-f-eeae4e6de5c7"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
       }
      }
     },
@@ -26992,6 +30362,25 @@
         {
          "doc_id": "livermore-budget-fy2026-2027",
          "pages": [
+          205
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": 63800000,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-4e6718387fec",
+        "fisc-f-f60efc63c8fc"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
           205
          ]
         }
@@ -27026,6 +30415,25 @@
          ]
         }
        ]
+      },
+      "change": {
+       "value_cents": 0,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-43649e292810",
+        "fisc-f-ee680575b7d5"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
       }
      }
     },
@@ -27052,6 +30460,25 @@
         {
          "doc_id": "livermore-budget-fy2026-2027",
          "pages": [
+          205
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -3357400,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-5c256b53cbcb",
+        "fisc-f-f23403695bcf"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
           205
          ]
         }
@@ -27086,6 +30513,25 @@
          ]
         }
        ]
+      },
+      "change": {
+       "value_cents": 31179800,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-7807b7c004e2",
+        "fisc-f-b78f45388c7c"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
       }
      }
     },
@@ -27112,6 +30558,25 @@
         {
          "doc_id": "livermore-budget-fy2026-2027",
          "pages": [
+          205
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -11359700,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-83e1f2120628",
+        "fisc-f-f3764cdb51db"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
           205
          ]
         }
@@ -27146,6 +30611,25 @@
          ]
         }
        ]
+      },
+      "change": {
+       "value_cents": 847400,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-7843631edece",
+        "fisc-f-d8c958b669b1"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
       }
      }
     },
@@ -27172,6 +30656,25 @@
         {
          "doc_id": "livermore-budget-fy2026-2027",
          "pages": [
+          205
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -2625000,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-21b801f0c566",
+        "fisc-f-ae0e431e63f0"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
           205
          ]
         }
@@ -27206,6 +30709,25 @@
          ]
         }
        ]
+      },
+      "change": {
+       "value_cents": 21859900,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-c2e75f9cb248",
+        "fisc-f-e8f0f1ba5d67"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
       }
      }
     },
@@ -27232,6 +30754,25 @@
         {
          "doc_id": "livermore-budget-fy2026-2027",
          "pages": [
+          205
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -100000,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-49d1df86df7e",
+        "fisc-f-b265c24f88d3"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
           205
          ]
         }
@@ -27266,6 +30807,25 @@
          ]
         }
        ]
+      },
+      "change": {
+       "value_cents": 4315200,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-159839aa9101",
+        "fisc-f-2fcca9a5c0a9"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
       }
      }
     },
@@ -27292,6 +30852,25 @@
         {
          "doc_id": "livermore-budget-fy2026-2027",
          "pages": [
+          205
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -2500000,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-b35ef3565c08",
+        "fisc-f-cd91b29ef0d7"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
           205
          ]
         }
@@ -27326,6 +30905,25 @@
          ]
         }
        ]
+      },
+      "change": {
+       "value_cents": 0,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-2f1ff08a3098",
+        "fisc-f-f2ed9945df7e"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
       }
      }
     },
@@ -27352,6 +30950,25 @@
         {
          "doc_id": "livermore-budget-fy2026-2027",
          "pages": [
+          205
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": 10100000,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-2eef13c2e659",
+        "fisc-f-7ef16a9a8ce5"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
           205
          ]
         }
@@ -27386,6 +31003,25 @@
          ]
         }
        ]
+      },
+      "change": {
+       "value_cents": 50613000,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-329fe6af4146",
+        "fisc-f-42733ee3af23"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
       }
      }
     },
@@ -27412,6 +31048,25 @@
         {
          "doc_id": "livermore-budget-fy2026-2027",
          "pages": [
+          205
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": 78371800,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-7e81db710b53",
+        "fisc-f-c16a8af44c74"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
           205
          ]
         }
@@ -27446,6 +31101,25 @@
          ]
         }
        ]
+      },
+      "change": {
+       "value_cents": 11907000,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-206a2a857983",
+        "fisc-f-ae29f0a09b00"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
       }
      }
     },
@@ -27472,6 +31146,25 @@
         {
          "doc_id": "livermore-budget-fy2026-2027",
          "pages": [
+          205
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": 22585100,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-9abc8bcb7ee1",
+        "fisc-f-bf47f7d1e030"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
           205
          ]
         }
@@ -27506,6 +31199,25 @@
          ]
         }
        ]
+      },
+      "change": {
+       "value_cents": -5433500,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-3bb78dfc24fb",
+        "fisc-f-b2a89280b379"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          204,
+          205
+         ]
+        }
+       ]
       }
      }
     },
@@ -27532,6 +31244,25 @@
         {
          "doc_id": "livermore-budget-fy2026-2027",
          "pages": [
+          207
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -65500,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-66161bf6fd82",
+        "fisc-f-a44ed269b50a"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
           207
          ]
         }
@@ -27566,6 +31297,25 @@
          ]
         }
        ]
+      },
+      "change": {
+       "value_cents": 0,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-001fb78e4af2",
+        "fisc-f-dfaaef825a9f"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
+          207
+         ]
+        }
+       ]
       }
      }
     },
@@ -27592,6 +31342,25 @@
         {
          "doc_id": "livermore-budget-fy2026-2027",
          "pages": [
+          207
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": 0,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-3128b10fafd8",
+        "fisc-f-4b09b1374943"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
           207
          ]
         }
@@ -27626,6 +31395,25 @@
          ]
         }
        ]
+      },
+      "change": {
+       "value_cents": 0,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-9231c8093264",
+        "fisc-f-9781b36a0b7f"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
+          207
+         ]
+        }
+       ]
       }
      }
     },
@@ -27652,6 +31440,25 @@
         {
          "doc_id": "livermore-budget-fy2026-2027",
          "pages": [
+          207
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": 0,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-510c697f1099",
+        "fisc-f-a7e47eb71525"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
           207
          ]
         }
@@ -27686,6 +31493,25 @@
          ]
         }
        ]
+      },
+      "change": {
+       "value_cents": 0,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-35427530da1c",
+        "fisc-f-863f684573ce"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
+          207
+         ]
+        }
+       ]
       }
      }
     },
@@ -27712,6 +31538,25 @@
         {
          "doc_id": "livermore-budget-fy2026-2027",
          "pages": [
+          207
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": 346043200,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-ca2c4de31324",
+        "fisc-f-cae6d58e8bdf"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
           207
          ]
         }
@@ -27746,6 +31591,25 @@
          ]
         }
        ]
+      },
+      "change": {
+       "value_cents": 22100000,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-9a453d7befe8",
+        "fisc-f-9f1d5324d6bd"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
+          207
+         ]
+        }
+       ]
       }
      }
     },
@@ -27772,6 +31636,25 @@
         {
          "doc_id": "livermore-budget-fy2026-2027",
          "pages": [
+          207
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": 375000000,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-6db00576a6be",
+        "fisc-f-e38abb4f5dbb"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
           207
          ]
         }
@@ -27806,6 +31689,25 @@
          ]
         }
        ]
+      },
+      "change": {
+       "value_cents": -161968700,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-a92ec5e8a3e7",
+        "fisc-f-f69977d2ea20"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
+          207
+         ]
+        }
+       ]
       }
      }
     },
@@ -27832,6 +31734,25 @@
         {
          "doc_id": "livermore-budget-fy2026-2027",
          "pages": [
+          207
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": 0,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-a64caa374d27",
+        "fisc-f-af67e5828c10"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
           207
          ]
         }
@@ -27866,6 +31787,25 @@
          ]
         }
        ]
+      },
+      "change": {
+       "value_cents": -49978400,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-293fb3cd3962",
+        "fisc-f-50152c03008b"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
+          207
+         ]
+        }
+       ]
       }
      }
     },
@@ -27892,6 +31832,25 @@
         {
          "doc_id": "livermore-budget-fy2026-2027",
          "pages": [
+          207
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -41963700,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-21b6e8a9e869",
+        "fisc-f-4231dc2212f7"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
           207
          ]
         }
@@ -27926,6 +31885,25 @@
          ]
         }
        ]
+      },
+      "change": {
+       "value_cents": -145882700,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-2849fb4fa69f",
+        "fisc-f-a7a04750889c"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
+          207
+         ]
+        }
+       ]
       }
      }
     },
@@ -27952,6 +31930,25 @@
         {
          "doc_id": "livermore-budget-fy2026-2027",
          "pages": [
+          207
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": 37498100,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-a2859c3efcdb",
+        "fisc-f-e0fcfd6aed8b"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
           207
          ]
         }
@@ -27986,6 +31983,25 @@
          ]
         }
        ]
+      },
+      "change": {
+       "value_cents": -194329400,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-bebf47f374e3",
+        "fisc-f-cb4f7d553d36"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
+          207
+         ]
+        }
+       ]
       }
      }
     },
@@ -28012,6 +32028,25 @@
         {
          "doc_id": "livermore-budget-fy2026-2027",
          "pages": [
+          207
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -170934900,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-5bb92ff19466",
+        "fisc-f-b0c59465475e"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
           207
          ]
         }
@@ -28046,6 +32081,25 @@
          ]
         }
        ]
+      },
+      "change": {
+       "value_cents": -4000000,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-7a29cc76b061",
+        "fisc-f-a19d3cb06e77"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
+          207
+         ]
+        }
+       ]
       }
      }
     },
@@ -28072,6 +32126,25 @@
         {
          "doc_id": "livermore-budget-fy2026-2027",
          "pages": [
+          207
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": 0,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-13702323ab42",
+        "fisc-f-31dc53badc0e"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
           207
          ]
         }
@@ -28106,6 +32179,25 @@
          ]
         }
        ]
+      },
+      "change": {
+       "value_cents": 0,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-2e09c46fd6e0",
+        "fisc-f-dd01817d8242"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
+          207
+         ]
+        }
+       ]
       }
      }
     },
@@ -28132,6 +32224,25 @@
         {
          "doc_id": "livermore-budget-fy2026-2027",
          "pages": [
+          207
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": 0,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-7feb16c90054",
+        "fisc-f-921dbe4024a6"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
           207
          ]
         }
@@ -28166,6 +32277,25 @@
          ]
         }
        ]
+      },
+      "change": {
+       "value_cents": 82384800,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-d26aac680b58",
+        "fisc-f-e8ff445dc378"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
+          207
+         ]
+        }
+       ]
       }
      }
     },
@@ -28192,6 +32322,25 @@
         {
          "doc_id": "livermore-budget-fy2026-2027",
          "pages": [
+          207
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -9349900,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-78cdb905e63f",
+        "fisc-f-a0f3682b8aab"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
           207
          ]
         }
@@ -28226,6 +32375,25 @@
          ]
         }
        ]
+      },
+      "change": {
+       "value_cents": 18662600,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-ddefa883dffa",
+        "fisc-f-dfc0ce34cc63"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
+          207
+         ]
+        }
+       ]
       }
      }
     },
@@ -28252,6 +32420,25 @@
         {
          "doc_id": "livermore-budget-fy2026-2027",
          "pages": [
+          207
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": 135171600,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-07270088bbe9",
+        "fisc-f-f21c3d22bf7e"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
           207
          ]
         }
@@ -28286,6 +32473,25 @@
          ]
         }
        ]
+      },
+      "change": {
+       "value_cents": -209935200,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-0784801f4941",
+        "fisc-f-909589bcf362"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
+          207
+         ]
+        }
+       ]
       }
      }
     },
@@ -28312,6 +32518,25 @@
         {
          "doc_id": "livermore-budget-fy2026-2027",
          "pages": [
+          207
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": 246506800,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-02a9b3815494",
+        "fisc-f-19a36bc265be"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
           207
          ]
         }
@@ -28346,6 +32571,25 @@
          ]
         }
        ]
+      },
+      "change": {
+       "value_cents": -120591600,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-a0b0a1239dde",
+        "fisc-f-b4e06b89b551"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
+          207
+         ]
+        }
+       ]
       }
      }
     },
@@ -28372,6 +32616,25 @@
         {
          "doc_id": "livermore-budget-fy2026-2027",
          "pages": [
+          207
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -95057400,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-18526593a583",
+        "fisc-f-5ce527e2e637"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          206,
           207
          ]
         }
@@ -28406,6 +32669,25 @@
          ]
         }
        ]
+      },
+      "change": {
+       "value_cents": 93236300,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-024c8e3fd1b8",
+        "fisc-f-4fe2c7662659"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          208,
+          209
+         ]
+        }
+       ]
       }
      }
     },
@@ -28432,6 +32714,25 @@
         {
          "doc_id": "livermore-budget-fy2026-2027",
          "pages": [
+          209
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -79794800,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-8fd54d32ee8e",
+        "fisc-f-d5abd90ad2a4"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          208,
           209
          ]
         }
@@ -28466,6 +32767,25 @@
          ]
         }
        ]
+      },
+      "change": {
+       "value_cents": -143330700,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-a7771b12f3ea",
+        "fisc-f-b5bbd8e4650d"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          208,
+          209
+         ]
+        }
+       ]
       }
      }
     },
@@ -28492,6 +32812,25 @@
         {
          "doc_id": "livermore-budget-fy2026-2027",
          "pages": [
+          209
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -180412900,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-691659ca9968",
+        "fisc-f-b5bcb179b0d6"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          208,
           209
          ]
         }
@@ -28526,6 +32865,25 @@
          ]
         }
        ]
+      },
+      "change": {
+       "value_cents": -121455600,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-24e83626bafb",
+        "fisc-f-df567417a097"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          208,
+          209
+         ]
+        }
+       ]
       }
      }
     },
@@ -28552,6 +32910,25 @@
         {
          "doc_id": "livermore-budget-fy2026-2027",
          "pages": [
+          209
+         ]
+        }
+       ]
+      },
+      "change": {
+       "value_cents": -166070500,
+       "derived": true,
+       "rationale": "Our subtraction of two printed figures: this fund's ending balance less its beginning balance. The city prints both balances and not their difference.",
+       "source_note": "Budget Book PDF pp.186-209, this fund's beginning and ending balance",
+       "fact_ids": [
+        "fisc-f-aecedb83600e",
+        "fisc-f-dd89b8d301e6"
+       ],
+       "locators": [
+        {
+         "doc_id": "livermore-budget-fy2026-2027",
+         "pages": [
+          208,
           209
          ]
         }
