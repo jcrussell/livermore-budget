@@ -752,11 +752,17 @@ describe("the expansion's drawing", () => {
       assert.ok(tail, "no drawn mark offers to draw out");
       const tier = tail.__data__.tier;
       const word = CONFIG.overview.sankey.split_caps.find((c) => c.split === "funds").tail;
+      // A group's derived remainder is one of its rows: the capped column
+      // counts it, so the chip's count is the tail note's total.
+      const rows = () => marksIn(chart).filter((m) => m.__data__.tier === tier && !app.isAggregate(m.__data__.id) &&
+        app.nodeOf(m.__data__.id).parent === worst).length;
+      const cap = CONFIG.overview.sankey.split_caps.find((c) => c.split === "funds").cap;
+      const note = tail.__data__.source_note;
       fire(tail, "keydown", { key: "Enter", timeStamp: 1000 });
       await settle();
-      // A group's derived remainder is drawn among its funds and is not one.
-      const drawn = marksIn(chart).filter((m) => m.__data__.tier === tier && !app.isAggregate(m.__data__.id) &&
-        app.nodeOf(m.__data__.id).parent === worst && !app.nodeOf(m.__data__.id).derived).length;
+      const drawn = rows();
+      const stated = app.say("aggregate_note", { folded: drawn - cap, total: drawn, cap });
+      assert.ok(note.startsWith(stated), `the chip counts ${drawn} and the tail's note reads "${note}"`);
       const chipCrumbs = crumbs(document);
       const chip = [...document.getElementById("breadcrumb").querySelectorAll(".crumb-expanded")].at(-1);
       const chipText = chip.textContent;

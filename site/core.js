@@ -823,7 +823,8 @@ export function reveal(doc, frontier, id) {
 }
 
 /**
- * Folds all but the largest `cap` nodes of one tier into a single node.
+ * Folds all but `cap` nodes of one tier into a single node: the column's
+ * derived remainders, and the largest printed rows in the places left.
  *
  * A cap, not a rescale: the concentration is within a column, and the fold
  * tests measure the sub-pixel ribbons it removes. Values sum and fact ids and
@@ -866,17 +867,17 @@ export function capColumn(doc, tier, cap, opened, noun, among) {
   // Ties broken by id, so the kept set is stable across builds.
   const ranked = atTier.slice().sort((a, b) =>
     size(b.id) - size(a.id) || (a.id < b.id ? -1 : 1));
-  // A DERIVED NODE IS NEVER FOLDED: a remainder is not one of the noun's
-  // rows, and the tail's words say every figure inside it is printed. One
-  // ranked past the cap is drawn beside the kept rows.
-  const kept = new Set(ranked.filter((n, i) => i < cap || n.derived).map((n) => n.id));
+  // A REMAINDER IS ONE OF THE COLUMN'S ROWS AND IS NEVER FOLDED: it holds a
+  // place under the cap wherever it ranks, because the tail's words say every
+  // figure inside it is printed. The printed rows take the places left.
+  const remainders = ranked.filter((n) => n.derived);
+  const printed = ranked.filter((n) => !n.derived);
+  const kept = new Set(remainders.concat(printed.slice(0, Math.max(0, cap - remainders.length))).map((n) => n.id));
   const folded = ranked.filter((n) => !kept.has(n.id));
   if (folded.length < 2) return doc;
 
   // The noun is the view's, plural: the threshold above folds two or more.
-  // Of the rows that ranked for the cap: a derived node ranked past it is
-  // drawn beside them and not among them.
-  const aggregate = aggregateMark(tier, opened, folded.map((n) => n.id), folded.length + cap, cap, noun, tailID);
+  const aggregate = aggregateMark(tier, opened, folded.map((n) => n.id), atTier.length, cap, noun, tailID);
   const tail = new Set(folded.map((n) => n.id));
   const remap = (/** @type {string} */ id) => (tail.has(id) ? tailID : id);
 

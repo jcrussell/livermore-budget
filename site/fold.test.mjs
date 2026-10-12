@@ -586,10 +586,10 @@ describe("the expansion's caps preserve what they fold, at every split the page 
           wrong.push(`${st.where}: ${lost.length} fact(s) cited away, ${invented.length} cited from nowhere`);
         }
         merged += raw.links.length - drawn.links.length;
-        // (c) CAPS: each open split a cap names draws at most cap printed
-        // members and a tail, a derived remainder beside them, and where it
-        // folded, its tail's members and the kept are the split, the tail
-        // holding no derived node.
+        // (c) CAPS: each open split a cap names draws at most cap members,
+        // its derived remainder among them, and a tail, and where it folded,
+        // its tail's members and the kept are the split, the tail holding no
+        // derived node.
         const ids = new Set(drawn.nodes.map((n) => n.id));
         for (const sp of doc.splits) {
           const cap = caps.find((c) => c.split === sp.key);
@@ -599,10 +599,9 @@ describe("the expansion's caps preserve what they fold, at every split the page 
           const tail = drawn.nodes.find((n) => n.id === tailID);
           const kept = members.filter((m) => ids.has(m));
           const derived = new Set(doc.nodes.filter((n) => n.derived).map((n) => n.id));
-          const printed = kept.filter((m) => !derived.has(m));
           if (st.whole.size && tail) wrong.push(`${st.where}: ${tailID} is drawn with its split drawn out`);
-          if (!st.whole.size && printed.length + (tail ? 1 : 0) > cap.cap + 1) {
-            wrong.push(`${st.where}: ${sp.node} by ${sp.key} draws ${printed.length} printed members and a tail, capped at ${cap.cap}`);
+          if (!st.whole.size && kept.length + (tail ? 1 : 0) > cap.cap + 1) {
+            wrong.push(`${st.where}: ${sp.node} by ${sp.key} draws ${kept.length} members${tail ? " and a tail" : ""}, capped at ${cap.cap}`);
           }
           if (tail && tail.folds.some((m) => derived.has(m))) {
             wrong.push(`${st.where}: ${tailID} folds a derived node`);
@@ -617,12 +616,33 @@ describe("the expansion's caps preserve what they fold, at every split the page 
             wrong.push(`${st.where}: ${sp.node} by ${sp.key} holds ${members.length} and the tail plus the kept stand for ${stood.length}`);
           }
           if (tail.folds.length < 2) wrong.push(`${st.where}: a tail of ${tail.folds.length}`);
+          // THE NOTE SAYS THE SMALLEST PRINTED ROWS: no printed row kept is
+          // smaller than one folded, sized as the cap ranks them. A kept
+          // remainder may be smaller than either.
+          const size = (id) => {
+            let into = 0;
+            let out = 0;
+            for (const l of raw.links) {
+              if (l.target === id) into += Math.abs(l.value_cents);
+              if (l.source === id) out += Math.abs(l.value_cents);
+            }
+            return Math.max(into, out);
+          };
+          const smallestKept = Math.min(...kept.filter((m) => !derived.has(m)).map(size));
+          const largestFolded = tail.folds.reduce((x, m) => (size(m) > size(x) ? m : x));
+          if (size(largestFolded) > smallestKept) {
+            wrong.push(`${st.where}: ${tailID} folds ${largestFolded}, larger than a printed row kept`);
+          }
           // THE NOTE CARRIES THE FIGURE THE TAIL IS DRAWN AT, which only the
           // fold after the cap knows.
           const figure = app.say("aggregate_together", { figure: app.fmt(app.tailFigure(drawn, tailID)) });
           if (!tail.source_note.endsWith(figure)) wrong.push(`${st.where}: ${tailID}'s note does not end "${figure}"`);
-          // ITS TOTAL LESS WHAT IT FOLDS IS THE CAP, read off the note.
-          const stated = app.say("aggregate_note", { folded: tail.folds.length, total: tail.folds.length + cap.cap, cap: cap.cap });
+          // ITS TOTAL IS THE SPLIT'S MEMBERS, remainder included, and less
+          // what it folds is the cap, read off the note.
+          if (members.length - tail.folds.length !== cap.cap) {
+            wrong.push(`${st.where}: ${tailID} folds ${tail.folds.length} of ${members.length}, leaving other than the cap of ${cap.cap}`);
+          }
+          const stated = app.say("aggregate_note", { folded: tail.folds.length, total: members.length, cap: cap.cap });
           if (!tail.source_note.startsWith(stated)) wrong.push(`${st.where}: ${tailID}'s note reads "${tail.source_note}", not "${stated}"`);
         }
       }

@@ -1085,7 +1085,7 @@ function tailChip(node, key) {
   const label = n ? n.label : node;
   const split = fetched ? core.splitsOf(fetched, node).find((sp) => sp.key === key) : undefined;
   const drawn = new Set(projection ? projection.nodes.map((x) => x.id) : []);
-  const count = split ? split.members.filter((m) => drawn.has(m) && !(nodeOf(m) || {}).derived).length : 0;
+  const count = split ? split.members.filter((m) => drawn.has(m)).length : 0;
   const word = formOnScreen().tailWord(chartOnScreen(), key) || splitWords(key);
   const id = core.splitTailID(node, key);
   return foldBackChip(say("tail_chip", { label, n: count, word }), say("tail_chip_label", { label, n: count, word }),

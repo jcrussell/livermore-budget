@@ -177,7 +177,7 @@ func defaultWording() wording {
 		AggregateLabel: "{folded} smaller {word}",
 		AggregateRationale: "Our grouping, not a line the city printed: the {folded} smallest {word} in this column are drawn as one " +
 			"mark because they cannot be drawn separately. Every figure inside it is printed; the box around them is ours.",
-		AggregateNote:     "The {folded} smallest of {total} by value, at this page's cap of {cap}",
+		AggregateNote:     "The {folded} smallest printed rows of {total} by value, at this page's cap of {cap}",
 		AggregateTogether: ", together {figure}.",
 		ContraOrphan:      project.ContraOrphan,
 		BalanceBeginning:  "Balance at the start of the year, as printed: {figure}",
