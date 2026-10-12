@@ -14,6 +14,13 @@
 /** @typedef {{doc_id: string, pages: number[]}} Locator */
 /** @typedef {{id: string, label: string, cents: number, factIds: string[], locators: Locator[]}} Row */
 
+/**
+ * The link kinds a spending row may declare, and whether each is a transfer
+ * drawn as not an expenditure.
+ * @type {Record<string, boolean>}
+ */
+const SPENDING_TRANSFER = { external: false, internal_transfer: true };
+
 /** The hash's fields. */
 const HASH_FIELDS = ["y", "d"];
 
@@ -160,8 +167,18 @@ export function departmentFigures(column, config, departmentId) {
     const group = parentOf.get(l.from) || "";
     return { ...r, kind: String(l.kind), group: String(labelOf.get(group) || group) };
   });
-  const objectRows = rowsBy(spendLinks, nodes, "from")
-    .map((r) => ({ ...r, transfer: !r.id.startsWith("expenditure/") }));
+  // Whether a spending row is an expenditure is its links' kind, as Go
+  // declares it; a kind the page does not name, or two on one row, is refused.
+  const objectRows = rowsBy(spendLinks, nodes, "from").map((r) => {
+    const kinds = new Set(spendLinks.filter((/** @type {any} */ l) => nodes[l.from].id === r.id)
+      .map((/** @type {any} */ l) => l.kind));
+    const [kind] = kinds;
+    if (kinds.size !== 1 || !Object.hasOwn(SPENDING_TRANSFER, kind)) {
+      throw new Error(`${config.spending} draws ${r.id} as ${[...kinds].map(String).join(" and ")}, ` +
+        `and the page says a spending row is ${Object.keys(SPENDING_TRANSFER).join(" or ")}`);
+    }
+    return { ...r, transfer: SPENDING_TRANSFER[kind] };
+  });
   const cells = spendLinks.map((/** @type {any} */ l) => ({
     division: String(nodes[l.to].id), divisionLabel: String(nodes[l.to].label),
     id: String(nodes[l.from].id), label: String(nodes[l.from].label),

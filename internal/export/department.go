@@ -105,9 +105,12 @@ type departmentDocument struct {
 	Nodes      []struct {
 		ID    string `json:"id"`
 		Label string `json:"label"`
+		Role  string `json:"role"`
 	} `json:"nodes"`
 	Links []struct {
-		Target string `json:"target"`
+		Source string           `json:"source"`
+		Target string           `json:"target"`
+		Kind   project.LinkKind `json:"kind"`
 	} `json:"links"`
 	Metadata struct {
 		GeneratedBy     string       `json:"generated_by"`
@@ -329,10 +332,19 @@ func departmentEntries(ds []Department) ([]departmentEntry, map[string]string, e
 	return out, ofDivision, nil
 }
 
+// spendingKindOf is the kind a spending link must declare, by its object
+// end's role. site/department.js labels a spending row by its links' kind, so
+// a Transfers Out row declared external would be drawn as an expenditure.
+var spendingKindOf = map[string]project.LinkKind{
+	project.RoleObjectCategory: project.KindExternal,
+	project.RoleTransferOut:    project.KindInternalTransfer,
+}
+
 // vetDepartmentColumn holds one year's two documents to the membership: every
 // department funding pays is stated, every division spending draws is filed
 // under a stated department, every stated department is paid, every stated
-// division draws, and every label is the one the membership states.
+// division draws, every label is the one the membership states, and every
+// spending link declares the kind its object end's role names.
 func vetDepartmentColumn(entries []departmentEntry, ofDivision map[string]string,
 	fundingStem string, funding departmentDocument, spendingStem string, spending departmentDocument,
 ) error {
@@ -357,8 +369,17 @@ func vetDepartmentColumn(entries []departmentEntry, ofDivision map[string]string
 		}
 		paid[l.Target] = true
 	}
+	roleOf := map[string]string{}
+	for _, n := range spending.Nodes {
+		roleOf[n.ID] = n.Role
+	}
 	spent := map[string]bool{}
 	for _, l := range spending.Links {
+		if want, ok := spendingKindOf[roleOf[l.Source]]; !ok || l.Kind != want {
+			return fmt.Errorf("%s draws %s -> %s as %q, and its object end's role %q declares %q; "+
+				"the page would say whether the row is an expenditure from a kind that is not its own",
+				spendingStem, l.Source, l.Target, l.Kind, roleOf[l.Source], want)
+		}
 		if _, ok := ofDivision[l.Target]; !ok {
 			return fmt.Errorf("%s draws %s, which no department's membership files; its rows "+
 				"would be left out of every department's cost", spendingStem, l.Target)

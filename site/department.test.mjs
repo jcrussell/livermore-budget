@@ -95,6 +95,84 @@ describe("a department's two sides are sums of the links the column draws into i
   }
 });
 
+// Whether a spending row is an expenditure is the kind Go declares on its
+// links, never its id: each case is a pinned column less or altering `kind`.
+//
+// Mutation: restore `transfer: !r.id.startsWith("expenditure/")` in
+// departmentFigures and the first two go red; drop the refusal with it and
+// all five do.
+describe("a spending row is a transfer because its links say so", () => {
+  const { config } = departmentPage();
+  const works = "department/public-works";
+  /** A pinned column with every spending link from `id` edited. */
+  const edited = (stem, id, edit) => {
+    const column = structuredClone(columnFixture(stem));
+    let n = 0;
+    for (const l of column.schedules[config.spending].links) {
+      if (column.nodes[l.from].id === id) { edit(l); n++; }
+    }
+    assert.ok(n > 0, `${stem} draws no spending link from ${id}`);
+    return column;
+  };
+  const rowOf = (column, dept, id) => mod.departmentFigures(column, config, dept).spending.rows.find((r) => r.id === id);
+
+  test("an expenditure/ row declared a transfer is drawn as not an expenditure", () => {
+    const id = "expenditure/wages-and-benefits";
+    assert.equal(rowOf(columnFixture("fy2026-adopted"), works, id).transfer, false);
+    const column = edited("fy2026-adopted", id, (l) => { l.kind = "internal_transfer"; });
+    assert.equal(rowOf(column, works, id).transfer, true, "the row read its id, not its kind");
+    const { document } = installBrowser({ html: departmentPage().html });
+    mod.render(document, config, column, { year: "fy2026-adopted.json", department: works });
+    const heads = rowsOf(document, "spending-table").map((r) => r[0]);
+    assert.ok(heads.includes("Wages & Benefits (not an expenditure)"), `no labelled row: ${heads.join(", ")}`);
+    assert.equal(document.getElementById("transfers-says").hidden, false);
+  });
+
+  test("a transfers/ row declared external is drawn as an expenditure", () => {
+    assert.equal(rowOf(columnFixture("fy2024-actual"), works, "transfers/out").transfer, true);
+    const column = edited("fy2024-actual", "transfers/out", (l) => { l.kind = "external"; });
+    assert.equal(rowOf(column, works, "transfers/out").transfer, false, "the row read its id, not its kind");
+  });
+
+  test("a spending row with no kind, or a kind the page does not name, is refused", () => {
+    for (const [what, edit] of [
+      ["no kind", (l) => { delete l.kind; }],
+      ["a fund balance kind", (l) => { l.kind = "fund_balance"; }],
+      ["an internal service kind", (l) => { l.kind = "internal_service"; }],
+    ]) {
+      const column = edited("fy2024-actual", "transfers/out", edit);
+      assert.throws(() => mod.departmentFigures(column, config, works), /draws transfers\/out as /, what);
+    }
+  });
+
+  test("a spending row whose links declare two kinds is refused", () => {
+    const column = structuredClone(columnFixture("fy2026-adopted"));
+    const links = column.schedules[config.spending].links;
+    const id = "expenditure/wages-and-benefits";
+    const divisions = config.departments.find((d) => d.id === works).divisions.map((d) => d.id);
+    const mine = links.filter((l) => column.nodes[l.from].id === id && divisions.includes(column.nodes[l.to].id));
+    assert.ok(mine.length > 1, "public works draws wages in fewer than two divisions");
+    mine[0].kind = "internal_transfer";
+    assert.throws(() => mod.departmentFigures(column, config, works), /draws expenditure\/wages-and-benefits as (external and internal_transfer|internal_transfer and external), /);
+  });
+
+  test("the reader is told the department could not be drawn", async () => {
+    const { html } = departmentPage();
+    const browser = installBrowser({ html });
+    browser.window.location.hash = "#y=fy2024-actual&d=department/public-works";
+    await settle();
+    const plan = {};
+    for (const stem of PINNED) plan[stem + ".json"] = { doc: columnFixture(stem) };
+    plan["fy2024-actual.json"] = { doc: edited("fy2024-actual", "transfers/out", (l) => { delete l.kind; }) };
+    browser.window.fetch = plannedFetch(plan, config.exported_by);
+    await mod.boot(browser.window);
+    await settle();
+    const refusal = browser.document.getElementById("department-refusal");
+    assert.ok(refusal, "no refusal was said");
+    assert.match(refusal.textContent, /could not be drawn: .*transfers\/out/);
+  });
+});
+
 describe("the page over the pinned columns", () => {
   test("the hash opens one department of one column, and the selects say which", async () => {
     const { document, window } = await booted("#y=fy2024-actual&d=department/public-works");
