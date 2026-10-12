@@ -19,7 +19,7 @@ import (
 // deptDocs are a department-funding and a department-spending document of
 // FY2026-27 adopted: two departments, police with two divisions and council
 // with one, each paid by the General Fund and police by an internal service
-// fund too.
+// fund too, and Horizons spending a Transfers Out row beside its wages.
 func deptDocs() map[string][]byte {
 	meta := func(scope string, pages string) string {
 		return fmt.Sprintf(`"metadata":{"generated_by":"fisc (test)","fiscal_year":2027,`+
@@ -45,11 +45,13 @@ func deptDocs() map[string][]byte {
 		meta("department-funding-sources", "85, 119, 120") + `}`
 	spending := `{"schema_version":1,"projection":"department-spending","nodes":[` +
 		`{"id":"expenditure/wages-and-benefits","label":"Wages & Benefits","tier":5,"role":"object_category"},` +
+		`{"id":"transfers/out","label":"Transfers Out","tier":5,"role":"transfer_out"},` +
 		`{"id":"dept/patrol","label":"Patrol","tier":4,"role":"department"},` +
 		`{"id":"dept/horizons","label":"Horizons","tier":4,"role":"department"},` +
 		`{"id":"dept/city-council","label":"City Council","tier":4,"role":"department"}],` +
 		`"links":[` + link("expenditure/wages-and-benefits", "dept/patrol", 400_00, "external", 119) + `,` +
 		link("expenditure/wages-and-benefits", "dept/horizons", 130_00, "external", 119) + `,` +
+		link("transfers/out", "dept/horizons", 10_00, "internal_transfer", 119) + `,` +
 		link("expenditure/wages-and-benefits", "dept/city-council", 20_00, "external", 85) + `],` +
 		meta("departmentwide-expenditures", "85, 119") + `}`
 	return map[string][]byte{"department-funding-2027": []byte(funding), "department-spending-2027": []byte(spending)}
@@ -192,6 +194,8 @@ func TestDepartmentPageCarriesItsMembershipAndItsTies(t *testing.T) {
 // Mutation: drop the arm requiring every filed division to draw, and "a
 // division the spending side draws nothing for" is refused only by the label
 // arm after it, which reads the undrawn division's label as empty.
+// Drop the arm holding a spending link's kind to its object end's role, and
+// the four kind cases export.
 func TestDepartmentPageRefusesASideLessThanTheDepartment(t *testing.T) {
 	police := func(m []export.Department) *export.Department { return &m[1] }
 	for _, tt := range []struct {
@@ -232,6 +236,22 @@ func TestDepartmentPageRefusesASideLessThanTheDepartment(t *testing.T) {
 		{"no membership at all", func(o *export.Options) {
 			o.Departments = nil
 		}, "the department page is given no departments"},
+		// site/department.js says a spending row is not an expenditure by its
+		// links' kind; these are the declarations it would read wrong.
+		{"a Transfers Out row declared external", func(o *export.Options) {
+			o.Projections["department-spending-2027"] = editSpendingKind(t, o, `"internal_transfer"`, `"external"`)
+		}, `draws transfers/out -> dept/horizons as "external", and its object end's role "transfer_out" declares "internal_transfer"`},
+		{"a Transfers Out row with no kind", func(o *export.Options) {
+			o.Projections["department-spending-2027"] = editSpendingKind(t, o, `"kind":"internal_transfer",`, ``)
+		}, `draws transfers/out -> dept/horizons as "", and its object end's role "transfer_out" declares "internal_transfer"`},
+		{"an expenditure row declared a transfer", func(o *export.Options) {
+			o.Projections["department-spending-2027"] = editSpendingKind(t, o,
+				`"target":"dept/city-council","value_cents":2000,"kind":"external"`,
+				`"target":"dept/city-council","value_cents":2000,"kind":"internal_transfer"`)
+		}, `draws expenditure/wages-and-benefits -> dept/city-council as "internal_transfer"`},
+		{"a spending row whose object end has no role the page draws", func(o *export.Options) {
+			o.Projections["department-spending-2027"] = editSpendingKind(t, o, `"role":"transfer_out"`, `"role":"fund"`)
+		}, `its object end's role "fund" declares ""`},
 		{"a page reading no spending schedule", func(o *export.Options) {
 			o.Views[1].Reads = nil
 		}, "the page reads department-spending and nothing else"},
@@ -245,6 +265,17 @@ func TestDepartmentPageRefusesASideLessThanTheDepartment(t *testing.T) {
 			}
 		})
 	}
+}
+
+// editSpendingKind is the options' department-spending document with old
+// replaced by new exactly once.
+func editSpendingKind(t *testing.T, o *export.Options, old, new string) []byte {
+	t.Helper()
+	doc := string(o.Projections["department-spending-2027"])
+	if strings.Count(doc, old) != 1 {
+		t.Fatalf("department-spending-2027 carries %q %d times, want once", old, strings.Count(doc, old))
+	}
+	return []byte(strings.Replace(doc, old, new, 1))
 }
 
 // TestOnlyTheDepartmentPageReadsASecondSchedule: a view reading a schedule
