@@ -541,6 +541,13 @@ type Link struct {
 	// is the printed figure, and any part of it is not. "" on every other
 	// link. expansion-opens-as-the-spine holds the set to the cell.
 	Completes string `json:"completes,omitempty"`
+	// Repeats is, on the expansion schedule alone, the [CellKey] of the one
+	// leaf link this link is drawn from, spelt at that leaf's own ends: on a
+	// hub leg from an extended node to its member, which carries the leaf's
+	// cents and facts again, and on the leaf itself, whose end the stitch may
+	// have moved onto that node. "" on every other link. [LinkCents] reads a
+	// link at these ends.
+	Repeats string `json:"repeats,omitempty"`
 }
 
 // sankey projects the citywide spine as a flow diagram.
@@ -1092,10 +1099,11 @@ func sortedNodes(nodes map[string]Node) []Node {
 	return out
 }
 
-// sortLinks orders links by (source, target, kind).
+// sortLinks orders links by (source, target, kind, repeats).
 //
-// The kind is in the order because sort.Slice is not stable and a pair may
-// carry one ribbon per kind.
+// The kind and the repeated leaf are in the order because sort.Slice is not
+// stable, a pair may carry one ribbon per kind, and on the expansion schedule
+// one per leaf it repeats.
 func sortLinks(links []Link) {
 	sort.Slice(links, func(i, j int) bool {
 		if links[i].Source != links[j].Source {
@@ -1104,7 +1112,10 @@ func sortLinks(links []Link) {
 		if links[i].Target != links[j].Target {
 			return links[i].Target < links[j].Target
 		}
-		return links[i].Kind < links[j].Kind
+		if links[i].Kind != links[j].Kind {
+			return links[i].Kind < links[j].Kind
+		}
+		return links[i].Repeats < links[j].Repeats
 	})
 }
 
@@ -1117,10 +1128,12 @@ func sortLinks(links []Link) {
 // is wrong upstream, so it is an error rather than a silent merge.
 //
 // One ribbon per kind is allowed, so a ribbon's kind is true of all of it.
+// On the expansion schedule one per repeated leaf is too: those are each one
+// cited leaf, and the client's fold merges them into the ribbon it draws.
 func checkDistinctLinks(links []Link) error {
 	for i := 1; i < len(links); i++ {
 		if links[i].Source == links[i-1].Source && links[i].Target == links[i-1].Target &&
-			links[i].Kind == links[i-1].Kind {
+			links[i].Kind == links[i-1].Kind && links[i].Repeats == links[i-1].Repeats {
 			return fmt.Errorf("sankey: two %s links from %q to %q (%s and %s)",
 				links[i].Kind, links[i].Source, links[i].Target,
 				strings.Join(links[i-1].FactIDs, ","), strings.Join(links[i].FactIDs, ","))

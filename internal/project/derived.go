@@ -2,6 +2,7 @@ package project
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/structure"
@@ -73,7 +74,15 @@ func EndpointCategories(id string) ([][]string, bool) {
 //
 // A link at a remainder node carries the difference of a printed cell and the
 // members it is not: the spine's facts it cites, read so, less the rest.
-func LinkCents(source, target string, facts []fact.Fact) int64 {
+//
+// A link repeating a leaf is read at that leaf's own ends, which repeats
+// spells: a hub leg runs from an extended node to its member, and a leaf
+// re-pointed onto that node no longer ends at a change endpoint or a
+// remainder it does.
+func LinkCents(source, target, repeats string, facts []fact.Fact) int64 {
+	if repeats != "" {
+		source, target = LeafEnds(repeats)
+	}
 	if IsRemainder(source) || IsRemainder(target) {
 		var printed, members []fact.Fact
 		for i := range facts {
@@ -86,6 +95,20 @@ func LinkCents(source, target string, facts []fact.Fact) int64 {
 		return endCents(source, target, printed) - endCents(source, target, members)
 	}
 	return endCents(source, target, facts)
+}
+
+// LeafEnds is the source and target a [CellKey] spells, or two empty ids for
+// a key it does not spell.
+func LeafEnds(key string) (source, target string) {
+	source, rest, ok := strings.Cut(key, " -> ")
+	if !ok {
+		return "", ""
+	}
+	i := strings.LastIndex(rest, " ")
+	if i < 0 {
+		return "", ""
+	}
+	return source, rest[:i]
 }
 
 // endCents is LinkCents' reading of one set of facts at a link's ends.

@@ -284,15 +284,23 @@ Transfers In into the funds that pay it, a fund group into its funds, the
 General Fund into its divisions, an object category into its object rows or,
 as the alternative a reader chooses instead, the divisions that spend it, and
 Transfers Out into the funds it pays. The fund-balance ends declare no split.
-A REFINE split draws the members where the node stood; an EXTEND split keeps
-the node and draws its members in a column of their own after it. Every node
-not split stays where it is, so expanding node by node reaches the finest
-grain the stitch carries without leaving the chart.
+Every split the stitch declares is EXTEND: the node stays drawn as a hub and
+its members stand in a column of their own after it. The General Fund's link
+to each division, and an object category's to each division of the
+alternative, cites that member's own total. Every other split's links to its
+members are legs carrying `repeats`: each repeats one leaf's cents and facts,
+a leaf arriving at the member -- re-pointed to end at the node, naming its own
+ends in `repeats` -- or, for a revenue category and Transfers In, which take
+nothing in, a leaf leaving it. A fund group's legs therefore carry each
+fund's inflow, and a fund that only spends is reached by none. Go publishes
+no sum for a hub ribbon; the client's fold adds the legs it draws. Every
+node not split stays where it is, so expanding node by node reaches the
+finest grain the stitch carries without leaving the chart.
 
 **Every node the expansion draws carries `slot`**, the order key of the column
-it stands in: a root at its tier's place in the overview's `tiers`, a refine
-member in its parent's slot, an extend member in the slot after its parent's
-(`expansionSlots` in `site/sankey.js`). A split's tail sits in its members'
+it stands in: a root at its tier's place in the overview's `tiers`, an extend
+member in the slot after its parent's (`expansionSlots` in
+`site/sankey.js`). A split's tail sits in its members'
 slot (`schema/mark.schema.json`). The slots present are ranked into columns,
 and the client refuses, with a banner and the chart unchanged, a layout in
 which d3-sankey would draw a node in any column but its slot's.

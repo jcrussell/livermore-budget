@@ -64,7 +64,7 @@ func TestEveryColumnLinkEqualsTheFactsItCites(t *testing.T) {
 					}
 					cited = append(cited, f)
 				}
-				sum := project.LinkCents(col.Nodes[l.From].ID, col.Nodes[l.To].ID, cited)
+				sum := project.LinkCents(col.Nodes[l.From].ID, col.Nodes[l.To].ID, l.Repeats, cited)
 				if len(missing) > 0 {
 					t.Errorf("%s %s link %d cites %v, which facts/facts.jsonl does not carry",
 						name, schedule, i, missing)

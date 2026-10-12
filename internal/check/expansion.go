@@ -92,6 +92,36 @@ func (x stitched) memberOf(id, node, alternative string) string {
 	return ""
 }
 
+// atLeaf is a link read at the ends of the leaf it repeats, which is where
+// its facts are printed. A hub leg -- a link from a node to its own primary
+// member -- is a copy of that leaf and is read at the leaf's ends whole; a
+// leaf is read at its own end only where it is drawn at that end's primary
+// parent, the one move the stitch makes, so an end drawn anywhere else is
+// read as drawn. A link repeating nothing is itself.
+func atLeaf(l project.Link, nodes map[string]project.Node) project.Link {
+	if l.Repeats == "" {
+		return l
+	}
+	parent := func(id string) string {
+		if n := nodes[id]; n.Alternative == "" {
+			return n.Parent
+		}
+		return ""
+	}
+	src, tgt := project.LeafEnds(l.Repeats)
+	if l.Alternative == "" && parent(l.Target) == l.Source {
+		l.Source, l.Target = src, tgt
+		return l
+	}
+	if l.Source != src && parent(src) == l.Source {
+		l.Source = src
+	}
+	if l.Target != tgt && parent(tgt) == l.Target {
+		l.Target = tgt
+	}
+	return l
+}
+
 // printedSide is the facts a link cites from the spine's own scope, and the
 // rest.
 func (x stitched) printedSide(l project.Link) (printed, rest []string) {
@@ -268,16 +298,21 @@ func (*expansionOpensAsTheSpine) Run(_ context.Context, s *Subject) (Result, err
 // expansionSplitsTie asserts every split of the expansion schedule ties to
 // its parent's printed cells, by facts and by cents: a root's against the
 // spine's cells it sits in, fund/100's divisions against p172's General Fund
-// by object, an extension against what its node takes in. Within a cell no
+// by object, an alternative against what its node takes in. Within a cell no
 // member cites a fact twice; a remainder cites its cell's own printed facts
 // and subtracts exactly the members it is the difference of; and a remainder
 // of a difference is worth what a declared structure.Exception holds that
-// cell apart by. An extended node reaches each member by one link and a
-// refined node carries none.
+// cell apart by. Every split extends. A split whose links to its members
+// cite totals of their own reaches each member by one; a hub split's legs
+// each repeat one leaf ([hubFindings]), and together carry what the node
+// takes in on the spine, or gives out where it takes nothing in.
 //
 // MUTATION: cite the 250,000 remainder's printed side from the enterprise
 // group's Services & Supplies and this check names the cell; make fund/100's
-// link to one division a cent short and it names that division.
+// link to one division a cent short and it names that division; drop one
+// revenue/taxes/sales leg and it names the line's leaf and the hub's
+// outflow; make one object category's leg a cent short and it names the
+// pairing; leave one line's leaf on its fund and it names a leg with no leaf.
 type expansionSplitsTie struct{}
 
 var _ Check = (*expansionSplitsTie)(nil)
@@ -288,7 +323,7 @@ func (*expansionSplitsTie) Full() bool { return false }
 func (*expansionSplitsTie) Description() string {
 	return "every split of the expansion schedule ties to its parent's printed cells by facts and " +
 		"cents, each remainder citing its cell's own figures and worth what a declared exception " +
-		"holds that cell apart by"
+		"holds that cell apart by, and each hub leg repeating exactly one leaf at its member"
 }
 
 // tieCell is one printed cell of a split's parent against its members.
@@ -343,39 +378,53 @@ func (c *expansionSplitsTie) split(s *Subject, x stitched, sp project.Split, sub
 	if len(members) == 0 {
 		return []Finding{finding(subject, "no node is a member of it")}
 	}
-	var findings []Finding
-	// The node's own links in this split's set: one to each member when it
-	// extends, none when it is replaced.
-	reached := map[string]int{}
-	for _, l := range x.doc.Links {
-		if l.Alternative != alt || (l.Source != sp.Node && l.Target != sp.Node) {
-			continue
-		}
-		if sp.Form == project.SplitRefine {
-			findings = append(findings, finding(subject, "the node is replaced by its members and carries %s -> %s itself",
-				l.Source, l.Target))
-			continue
-		}
-		reached[l.Target]++
+	if sp.Form != project.SplitExtend {
+		return []Finding{finding(subject, "no printed cell is declared for a %s split of a node at this place, "+
+			"so nothing holds its members", sp.Form)}
 	}
-	if sp.Form == project.SplitExtend {
+	var findings []Finding
+	// The node's links to its members in this split's set: a total of its
+	// own to each, or legs each repeating one leaf.
+	totals := map[string]int{}
+	var legs []project.Link
+	for _, l := range x.doc.Links {
+		if l.Alternative != alt || l.Source != sp.Node || !slices.Contains(members, l.Target) {
+			continue
+		}
+		if l.Repeats != "" {
+			legs = append(legs, l)
+			continue
+		}
+		totals[l.Target]++
+	}
+	hub := len(legs) > 0
+	if hub && len(totals) > 0 {
+		findings = append(findings, finding(subject, "the node reaches %d member(s) by a total of its own and others by %d legs repeating a leaf",
+			len(totals), len(legs)))
+	}
+	if !hub {
 		for _, m := range members {
-			if reached[m] != 1 {
+			if totals[m] != 1 {
 				findings = append(findings, finding(subject, "the node extends into %s and reaches it by %d links, want 1",
-					m, reached[m]))
+					m, totals[m]))
 			}
 		}
 	}
 
 	var cells map[string]*tieCell
 	switch {
-	// rootCells reads the primary members alone, so an alternative refine
-	// would be held to its node's primary split.
-	case node.Parent == "" && sp.Form == project.SplitRefine && !sp.Alternative:
+	// rootCells reads the primary members alone, so an alternative is held
+	// to what its node takes in.
+	case node.Parent == "" && !sp.Alternative:
+		if !hub {
+			return append(findings, finding(subject, "a root's primary split reaches its members by no leg, "+
+				"so nothing repeats the leaves at them"))
+		}
+		findings = append(findings, c.hubFindings(x, sp, members, legs, subject)...)
 		cells = c.rootCells(x, sp)
-	case node.Parent == "" && sp.Form == project.SplitExtend:
+	case node.Parent == "":
 		cells = c.extendedRootCells(x, sp, alt)
-	case strings.HasPrefix(sp.Node, project.PrefixFund) && sp.Form == project.SplitExtend:
+	case strings.HasPrefix(sp.Node, project.PrefixFund) && !sp.Alternative:
 		var f []Finding
 		cells, f = c.fundCells(s, x, sp, members, subject)
 		findings = append(findings, f...)
@@ -389,8 +438,9 @@ func (c *expansionSplitsTie) split(s *Subject, x stitched, sp project.Split, sub
 	return findings
 }
 
-// rootCells is a refined root's cells: each spine link it sits in, against
-// the primary leaves below its members folded at their other end to a root.
+// rootCells is a root's primary cells: each spine link it sits in, against
+// the primary leaves below its members and those re-pointed onto it, folded
+// at their other end to a root. Its legs are no leaf of a cell.
 func (*expansionSplitsTie) rootCells(x stitched, sp project.Split) map[string]*tieCell {
 	cells := map[string]*tieCell{}
 	at := func(k string) *tieCell {
@@ -414,11 +464,17 @@ func (*expansionSplitsTie) rootCells(x stitched, sp project.Split) map[string]*t
 		t.printedFacts = append(t.printedFacts, l.FactIDs...)
 	}
 	for _, l := range x.doc.Links {
-		if l.Alternative != "" {
+		if l.Alternative != "" || x.isLeg(l) {
 			continue
 		}
 		var k string
 		switch {
+		case l.Target == sp.Node:
+			other := x.rootOf(l.Source)
+			if other == sp.Node {
+				continue
+			}
+			k = other + " -> " + sp.Node + " " + string(l.Kind)
 		case x.memberOf(l.Source, sp.Node, "") != "":
 			other := x.rootOf(l.Target)
 			if other == sp.Node {
@@ -434,9 +490,113 @@ func (*expansionSplitsTie) rootCells(x stitched, sp project.Split) map[string]*t
 		default:
 			continue
 		}
-		at(k).add(l)
+		at(k).add(atLeaf(l, x.nodes))
 	}
 	return cells
+}
+
+// isLeg answers whether a link is a hub leg: it repeats a leaf and runs from
+// a node to its own primary member.
+func (x stitched) isLeg(l project.Link) bool {
+	m, ok := x.nodes[l.Target]
+	return l.Repeats != "" && l.Alternative == "" && ok && m.Parent == l.Source && m.Alternative == ""
+}
+
+// hubFindings holds a hub split's legs to the leaves they repeat. Where the
+// node takes money in on the spine, every primary leaf arriving at a member
+// is re-pointed onto the node, naming its own ends in repeats, and is
+// repeated by exactly one leg to that member; where it takes nothing in,
+// every primary leaf leaving a member is. A leg repeats exactly one leaf,
+// with its cents, facts, kind and derived flag, and the legs together carry
+// what the node takes in on the spine, or gives out where it takes nothing
+// in.
+func (*expansionSplitsTie) hubFindings(x stitched, sp project.Split, members []string, legs []project.Link,
+	subject string) []Finding {
+	var findings []Finding
+	inflow := false
+	var spineCents int64
+	for _, l := range x.spine.Links {
+		if l.Target == sp.Node {
+			inflow = true
+		}
+	}
+	for _, l := range x.spine.Links {
+		if (inflow && l.Target == sp.Node) || (!inflow && l.Source == sp.Node) {
+			spineCents += l.ValueCents
+		}
+	}
+	isMember := func(id string) bool { return slices.Contains(members, id) }
+	leaves := map[string][]project.Link{}
+	for _, l := range x.doc.Links {
+		if l.Alternative == "" && l.Repeats != "" && !x.isLeg(l) {
+			leaves[l.Repeats] = append(leaves[l.Repeats], l)
+		}
+	}
+	repeating := map[string]int{}
+	var legCents int64
+	for _, g := range legs {
+		repeating[g.Repeats]++
+		legCents += g.ValueCents
+		at := fmt.Sprintf("the leg %s -> %s repeating %s", g.Source, g.Target, g.Repeats)
+		src, tgt := project.LeafEnds(g.Repeats)
+		if (inflow && tgt != g.Target) || (!inflow && src != g.Target) {
+			findings = append(findings, finding(subject, "%s names a leaf that does not %s its member", at,
+				map[bool]string{true: "arrive at", false: "leave"}[inflow]))
+			continue
+		}
+		var found []project.Link
+		for _, l := range leaves[g.Repeats] {
+			if (inflow && l.Target == sp.Node) || (!inflow && l.Source == g.Target) {
+				found = append(found, l)
+			}
+		}
+		if len(found) != 1 {
+			findings = append(findings, finding(subject, "%s has %d leaves %s, want 1", at, len(found),
+				map[bool]string{true: "re-pointed onto the node", false: "leaving its member"}[inflow]))
+			continue
+		}
+		l := found[0]
+		if l.ValueCents != g.ValueCents || l.Kind != g.Kind || l.Derived != g.Derived ||
+			!slices.Equal(sortedCopy(l.FactIDs), sortedCopy(g.FactIDs)) {
+			findings = append(findings, finding(subject, "%s carries %s %s over %v (derived %v) and its leaf %s -> %s carries %s %s over %v (derived %v)",
+				at, amount.Cents(g.ValueCents), g.Kind, g.FactIDs, g.Derived,
+				l.Source, l.Target, amount.Cents(l.ValueCents), l.Kind, l.FactIDs, l.Derived))
+		}
+	}
+	// Every leaf the node owes a leg: each arriving at it or a member, or
+	// each leaving a member.
+	for _, l := range x.doc.Links {
+		if l.Alternative != "" || x.isLeg(l) {
+			continue
+		}
+		var owed bool
+		if inflow {
+			owed = l.Target == sp.Node || isMember(l.Target)
+		} else {
+			owed = isMember(l.Source)
+		}
+		if !owed {
+			continue
+		}
+		src, tgt := project.LeafEnds(l.Repeats)
+		switch {
+		case inflow && (l.Target != sp.Node || !isMember(tgt)):
+			findings = append(findings, finding(subject, "the leaf %s -> %s repeating %q arrives at a member and is not re-pointed onto the node",
+				l.Source, l.Target, l.Repeats))
+		case !inflow && src != l.Source:
+			findings = append(findings, finding(subject, "the leaf %s -> %s leaves a member and repeats %q", l.Source, l.Target, l.Repeats))
+		case repeating[l.Repeats] != 1:
+			findings = append(findings, finding(subject, "the leaf %s -> %s repeating %s is repeated by %d legs, want 1",
+				l.Source, l.Target, l.Repeats, repeating[l.Repeats]))
+		}
+	}
+	if legCents != spineCents {
+		way := map[bool]string{true: "takes in", false: "gives out"}[inflow]
+		findings = append(findings, finding(subject, "the legs carry %s and on the spine %s %s %s (off by %s)",
+			amount.Cents(legCents), sp.Node, way, amount.Cents(spineCents),
+			amount.Cents(legCents-spineCents)))
+	}
+	return findings
 }
 
 // extendedRootCells is an extended root's one cell: what it takes in on the
@@ -529,7 +689,7 @@ func (*expansionSplitsTie) fundCells(s *Subject, x stitched, sp project.Split, m
 					o.Source, o.Target, len(categories), categories))
 				continue
 			}
-			at(categories[0]).add(o)
+			at(categories[0]).add(atLeaf(o, x.nodes))
 		}
 	}
 	return cells, findings

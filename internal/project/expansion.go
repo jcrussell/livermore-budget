@@ -27,8 +27,8 @@ func ExpansionScopes() []string {
 
 // The two forms a split takes. A refined node is replaced by its members in
 // its own column; an extended node stays where it is and its members are
-// drawn in a column of their own after it, each reached by a leaf link from
-// the node.
+// drawn in a column of their own after it, each reached by links from the
+// node.
 const (
 	SplitRefine = "refine"
 	SplitExtend = "extend"
@@ -57,18 +57,22 @@ type splitDecl struct {
 	key         string
 	form        string
 	alternative bool
+	// hub is an extended split whose links to its members repeat the leaves
+	// at those members, one leg per leaf ([extendHubs]), rather than citing
+	// a total of their own.
+	hub bool
 }
 
 // expansionSplits is every split the stitch declares, by the role of the node
 // that splits. Each is declared once, here; the builder attaches the members.
 var expansionSplits = []splitDecl{
-	{RoleRevenueSource, "lines", SplitRefine, false},
-	{RoleTransferIn, "payers", SplitRefine, false},
-	{RoleFundGroup, "funds", SplitRefine, false},
-	{RoleGeneralFund, "divisions", SplitExtend, false},
-	{RoleObjectCategory, "object-rows", SplitRefine, false},
-	{RoleObjectCategory, "divisions", SplitExtend, true},
-	{RoleTransferOut, "receivers", SplitRefine, false},
+	{RoleRevenueSource, "lines", SplitExtend, false, true},
+	{RoleTransferIn, "payers", SplitExtend, false, true},
+	{RoleFundGroup, "funds", SplitExtend, false, true},
+	{RoleGeneralFund, "divisions", SplitExtend, false, false},
+	{RoleObjectCategory, "object-rows", SplitExtend, false, true},
+	{RoleObjectCategory, "divisions", SplitExtend, true, false},
+	{RoleTransferOut, "receivers", SplitExtend, false, true},
 }
 
 // SplitKeys is every split key the stitch declares, each once, in
@@ -126,22 +130,28 @@ func IsRemainder(id string) bool {
 // # The shape
 //
 //	roots     the spine's nodes, parent ""
-//	revenue/<category>    <- revenue-line/<line>            refine, lines
-//	transfers/in          <- transfer-from/<payer>          refine, payers
-//	fund-group/<type>     <- fund/<n>, fund-group-only/<type> refine, funds
-//	fund/100              <- dept/<division>                extend, divisions
+//	revenue/<category>    <- revenue-line/<line>            hub, lines
+//	transfers/in          <- transfer-from/<payer>          hub, payers
+//	fund-group/<type>     <- fund/<n>, fund-group-only/<type> hub, funds
+//	fund/100              <- dept/<division>                totals, divisions
 //	expenditure/<object>  <- expenditure/<division>/<object>,
 //	                         expenditure/fund/<n>/<object>,
 //	                         expenditure/fund-group/<type>/<object>
-//	                                                         refine, object rows
+//	                                                         hub, object rows
 //	                      <- dept/<division>/<object>, no-division/<object>
-//	                                                         extend, divisions (alternative)
-//	transfers/out         <- transfer-to/<receiver>         refine, receivers
+//	                                                         totals, divisions (alternative)
+//	transfers/out         <- transfer-to/<receiver>         hub, receivers
 //
-// Every primary link is a leaf link: both ends are nodes no primary split
-// opens further, except an extended node's link to its own member. The roots'
-// cells are the leaves summed, which expansion-opens-as-the-spine holds to the
-// spine, and each split's members are held to their parent's printed cells by
+// Every split extends: its node stays drawn and its members stand in a column
+// after it. A split marked totals reaches each member by one link citing that
+// member's own total. A hub split reaches its members by legs that repeat the
+// leaves at them ([extendHubs]): a revenue category's and transfers/in's the
+// leaves leaving each member, a fund group's, an object category's and
+// transfers/out's the leaves arriving at each, which are re-pointed to end at
+// the node. Every other primary link is a leaf link, whose facts a page
+// prints at its own ends. The roots' cells are the leaves summed, which
+// expansion-opens-as-the-spine holds to the spine, and each split's members
+// are held to their parent's printed cells, and each leg to its leaf, by
 // expansion-splits-tie.
 //
 // A remainder node carries money a parent's printed cell holds and no member's
@@ -423,6 +433,9 @@ func (e *expansion) Document(facts []fact.Fact, o Options) (*Document, error) {
 		return nil, err
 	}
 
+	if err := extendHubs(st, spine); err != nil {
+		return nil, err
+	}
 	declareCompleting(st, spine)
 
 	splits, splitErr := splitsOf(st.nodes, st.links)
@@ -475,6 +488,73 @@ func (e *expansion) Document(facts []fact.Fact, o Options) (*Document, error) {
 // Completes spells it.
 func CellKey(source, target string, kind LinkKind) string {
 	return source + " -> " + target + " " + string(kind)
+}
+
+// extendHubs draws every hub split's node beside its members. Where the node
+// takes money in on the spine, each primary leaf arriving at a member is
+// re-pointed to end at the node, and a leg from the node to the member
+// repeats it; where the node takes nothing in, as a source does, a leg from
+// the node to the member repeats each primary leaf leaving the member, which
+// stays where it is. Every leaf a leg repeats, and every leg, names that
+// leaf's own ends in Repeats. A leg is a copy of one cited leaf: its cents,
+// facts, kind, reduction words and derived flag are the leaf's, so the stitch
+// publishes no sum, and a member nothing arrives at is reached by no leg.
+//
+// A hub split is declared only on a root, so a re-pointed end is a root and
+// nothing above it opens.
+func extendHubs(st *stitch, spine *Document) error {
+	takesIn := map[string]bool{}
+	for _, l := range spine.Links {
+		takesIn[l.Target] = true
+	}
+	hubOf := func(id string) (string, bool) {
+		n := st.nodes[id]
+		if n.Parent == "" || n.Alternative != "" {
+			return "", false
+		}
+		d, ok := splitOf(st.nodes[n.Parent].Role, "", false)
+		return n.Parent, ok && d.hub
+	}
+	var legs []Link
+	for i := range st.links {
+		l := &st.links[i]
+		if l.Alternative != "" {
+			continue
+		}
+		key := CellKey(l.Source, l.Target, l.Kind)
+		leg := func(hub, member string) {
+			g := *l
+			g.Source, g.Target = hub, member
+			g.FactIDs = slices.Clone(l.FactIDs)
+			g.Locators = slices.Clone(l.Locators)
+			g.TransferID, g.Completes, g.Repeats = "", "", key
+			legs = append(legs, g)
+			l.Repeats = key
+		}
+		for _, end := range []string{l.Target, l.Source} {
+			hub, ok := hubOf(end)
+			if !ok {
+				continue
+			}
+			if st.nodes[hub].Parent != "" {
+				return fmt.Errorf("expansion: %s is a hub split's node and not a root", hub)
+			}
+			arriving := end == l.Target
+			if arriving != takesIn[hub] {
+				if arriving {
+					return fmt.Errorf("expansion: %s arrives at %s, a member of %s, which takes nothing in on the spine",
+						key, end, hub)
+				}
+				continue
+			}
+			leg(hub, end)
+			if arriving {
+				l.Target = hub
+			}
+		}
+	}
+	st.links = append(st.links, legs...)
+	return nil
 }
 
 // declareCompleting names, on every primary link of a printed spine cell a
@@ -1026,9 +1106,12 @@ func expansionCaveats(twice int, nodes []Node, apart []string) []Caveat {
 				"the divisions on pp.85-125, transfers from p76 and p222, and reserves and balances "+
 				"from pp.186-209. Summed to the citywide chart's cells they equal pp.66-67. A node "+
 				"marked derived carries money a page prints for a group or a category and no finer "+
-				"page attributes. An opened fund's link to each of its divisions totals the rows "+
-				"drawn beyond it, and a remainder cites the members it is the difference of, so "+
-				"%d fact(s) are behind more than one link and summing every link double-counts.", twice),
+				"page attributes. An opened node draws a link to each of its members: the General "+
+				"Fund's to each division totals the rows drawn beyond it, and every other node's "+
+				"repeats each link arriving at the member, or leaving it where the node takes "+
+				"nothing in, with the same figure and facts. A remainder cites the members it is "+
+				"the difference of. So %d fact(s) are behind more than one link and summing every "+
+				"link double-counts.", twice),
 			AppliesTo: []string{},
 		},
 	}

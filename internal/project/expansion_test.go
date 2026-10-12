@@ -367,6 +367,30 @@ func pinned(col Column, cell, category string, diff int64) string {
 // FY2026-27 alone, worth what the exception declaring the cell holds apart,
 // drawn from the group's remainder to a row of the group's own, and the
 // divisions alternative carries the same exception's sibling.
+// leavesOf is a stitch's links less its hub legs, each read at the ends of
+// the leaf it repeats: where a page prints it, wherever the stitch draws it.
+func leavesOf(d *Document) []Link {
+	parent := map[string]string{}
+	for _, n := range d.Nodes {
+		if n.Alternative == "" {
+			parent[n.ID] = n.Parent
+		}
+	}
+	var out []Link
+	for _, l := range d.Links {
+		if l.Repeats == "" {
+			out = append(out, l)
+			continue
+		}
+		if l.Alternative == "" && parent[l.Target] == l.Source {
+			continue
+		}
+		l.Source, l.Target = LeafEnds(l.Repeats)
+		out = append(out, l)
+	}
+	return out
+}
+
 func TestTheContestedRemainderIsTheExceptions(t *testing.T) {
 	byName := map[string]structure.Exception{}
 	for _, e := range structure.BudgetBookExceptions() {
@@ -386,7 +410,7 @@ func TestTheContestedRemainderIsTheExceptions(t *testing.T) {
 	} {
 		x := committedDocs(t, c.year)[ExpansionProjection]
 		got := map[string]int64{}
-		for _, l := range x.Links {
+		for _, l := range leavesOf(x) {
 			if (IsRemainder(l.Source) || IsRemainder(l.Target)) && len(l.FactIDs) > 1 {
 				if !l.Derived {
 					t.Errorf("FY%d %s -> %s carries a difference and is not derived", c.year, l.Source, l.Target)
@@ -426,7 +450,7 @@ func TestAFundDrawnApartFromItsChangeIsToldSo(t *testing.T) {
 		// no fund of it draws its own: a one-way group's remainder carries
 		// only what pp.66-67 print beyond its funds' changes.
 		whole, byFund := map[string]bool{}, map[string]bool{}
-		for _, l := range exp.Links {
+		for _, l := range leavesOf(exp) {
 			switch {
 			case l.Source == NodeFundBalanceDraw && strings.HasPrefix(l.Target, PrefixGroupOnly):
 				whole[PrefixFundGroup+strings.TrimPrefix(l.Target, PrefixGroupOnly)] = true
@@ -480,7 +504,7 @@ func TestAFundDrawnApartFromItsChangeIsToldSo(t *testing.T) {
 		}
 
 		flow := map[string]int64{}
-		for _, l := range exp.Links {
+		for _, l := range leavesOf(exp) {
 			if l.Alternative != "" {
 				continue
 			}
@@ -531,5 +555,50 @@ func TestAFundDrawnApartFromItsChangeIsToldSo(t *testing.T) {
 		}
 		t.Logf("FY%d: %d funds drawn apart from their change carry the caveat; %d drawn funds carry balances, %d a change",
 			year, len(want), balanced, changed)
+	}
+}
+
+// TestAFundGroupsLegsCarryEachFundsInflow holds a fund group's hub legs to
+// what each fund takes in: a fund nothing arrives at is reached by no leg,
+// and one that only takes in -- 211, 280 and 300 in both years -- is reached,
+// where legs repeating each fund's outflow would leave it out.
+func TestAFundGroupsLegsCarryEachFundsInflow(t *testing.T) {
+	for _, year := range []int{2026, 2027} {
+		x := committedDocs(t, year)[ExpansionProjection]
+		in, out := map[string]int64{}, map[string]int64{}
+		for _, l := range leavesOf(x) {
+			if l.Alternative == "" {
+				in[l.Target] += l.ValueCents
+				out[l.Source] += l.ValueCents
+			}
+		}
+		parent := map[string]string{}
+		for _, n := range x.Nodes {
+			parent[n.ID] = n.Parent
+		}
+		legs := map[string]int64{}
+		for _, l := range x.Links {
+			if l.Repeats != "" && strings.HasPrefix(l.Source, PrefixFundGroup) && parent[l.Target] == l.Source {
+				legs[l.Target] += l.ValueCents
+			}
+		}
+		var unreached []string
+		for _, n := range x.Nodes {
+			if !strings.HasPrefix(n.Parent, PrefixFundGroup) || n.Alternative != "" {
+				continue
+			}
+			if legs[n.ID] != in[n.ID] {
+				t.Errorf("FY%d %s: its group's legs carry %d and it takes in %d", year, n.ID, legs[n.ID], in[n.ID])
+			}
+			if in[n.ID] == 0 {
+				unreached = append(unreached, n.ID)
+			}
+		}
+		for _, id := range []string{"fund/211", "fund/280", "fund/300"} {
+			if out[id] != 0 || legs[id] == 0 {
+				t.Errorf("FY%d %s gives out %d and its group's legs carry %d, want an inflow-only fund reached", year, id, out[id], legs[id])
+			}
+		}
+		t.Logf("FY%d: members a fund group reaches by no leg, nothing arriving at them: %v", year, unreached)
 	}
 }

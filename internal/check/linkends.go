@@ -82,10 +82,20 @@ func (*linkEndsMatchTheirFacts) Run(_ context.Context, s *Subject) (Result, erro
 			return Result{}, err
 		}
 		selected := factIndex(slice)
+		nodes := make(map[string]project.Node, len(p.Nodes))
+		for _, n := range p.Nodes {
+			nodes[n.ID] = n
+		}
 		legs := map[string][]int{}
+		// A hub leg names no transfer: it is held as the leaf it repeats,
+		// whose transfer this is.
+		transferOf := map[string]string{}
 		for i, l := range p.Links {
 			if l.TransferID != "" {
 				legs[l.TransferID] = append(legs[l.TransferID], i)
+				if l.Repeats != "" {
+					transferOf[l.Repeats] = l.TransferID
+				}
 			}
 		}
 		for i, l := range p.Links {
@@ -99,16 +109,21 @@ func (*linkEndsMatchTheirFacts) Run(_ context.Context, s *Subject) (Result, erro
 			}
 			e := linkEnd{link: l, facts: facts, vocab: s.Vocabulary, tiers: tiers,
 				divisionExpenditure: p.Name == project.FundFlowsProjection || p.Name == project.ExpansionProjection}
-			for _, j := range legs[l.TransferID] {
-				if j != i {
-					e.others = append(e.others, p.Links[j])
+			leaf := atLeaf(l, nodes)
+			if leaf.TransferID == "" && leaf.Repeats != "" {
+				leaf.TransferID = transferOf[leaf.Repeats]
+			}
+			for _, j := range legs[leaf.TransferID] {
+				if j != i && (leaf.Repeats == "" || p.Links[j].Repeats != leaf.Repeats) {
+					e.others = append(e.others, atLeaf(p.Links[j], nodes))
 				}
 			}
+			e.link = leaf
 			checked := false
 			for _, end := range []struct {
 				id     string
 				source bool
-			}{{l.Source, true}, {l.Target, false}} {
+			}{{leaf.Source, true}, {leaf.Target, false}} {
 				msg, ok := e.mismatch(end.id, end.source)
 				checked = checked || ok
 				if msg != "" {

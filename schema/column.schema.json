@@ -278,6 +278,11 @@
                   "description": "On the expansion schedule alone: the spine cell this primary link re-forms with every other link naming it, spelt '<source> -> <target> <kind>', where a derived leg folds into a printed cell. Exactly that set of legs is the printed figure, and any part of it is not. Absent on every other link.",
                   "type": "string",
                   "pattern": "^\\S+ -> \\S+ \\S+$"
+                },
+                "repeats": {
+                  "description": "On the expansion schedule alone: the one leaf link this link is drawn from, spelt at that leaf's own ends as '<source> -> <target> <kind>'. A hub leg from an extended node to its member carries that leaf's cents and facts again; the leaf itself names its own ends, one of which may be moved onto the extended node. Absent on every other link.",
+                  "type": "string",
+                  "pattern": "^\\S+ -> \\S+ \\S+$"
                 }
               },
               "allOf": [

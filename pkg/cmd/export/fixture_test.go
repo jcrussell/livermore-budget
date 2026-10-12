@@ -345,7 +345,7 @@ func linkFactFaults(at string, l export.ColumnLink, src, dst string, column expo
 	if want, got := slices.Sorted(maps.Keys(pages)), slices.Sorted(maps.Keys(located)); !missing && !slices.Equal(want, got) {
 		faults = append(faults, fmt.Sprintf("%s locates %v and its facts are on %v", at, got, want))
 	}
-	sum := project.LinkCents(src, dst, cited)
+	sum := project.LinkCents(src, dst, l.Repeats, cited)
 	if !missing && sum != l.ValueCents {
 		faults = append(faults, fmt.Sprintf("%s carries %d and its facts come to %d", at, l.ValueCents, sum))
 	}

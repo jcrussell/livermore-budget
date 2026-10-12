@@ -16,19 +16,19 @@ describe("the columns are the slots the chart draws", () => {
     const handed = () => document.documentElement.style.getPropertyValue("--chart-max");
     const columns = () => app.layoutColumns(app.shown.doc);
     const root = { columns: columns(), handed: handed() };
-    // A refine split draws its members where the node stood; fund/100's
-    // divisions extend into a slot of their own.
+    // Every split extends: the group's funds take a slot of their own after
+    // it, and fund/100's divisions one after theirs.
     await split(app, "fund-group/general");
-    const refined = columns();
+    const funds = columns();
     await split(app, "fund/100");
     const extended = { columns: columns(), handed: handed() };
-    t.diagnostic(`the root lays ${root.columns} columns at ${root.handed}; refined, ${refined}; ` +
+    t.diagnostic(`the root lays ${root.columns} columns at ${root.handed}; with the funds, ${funds}; ` +
       `with fund/100's divisions, ${extended.columns} at ${extended.handed}`);
     assert.equal(root.columns, 3);
     assert.equal(root.handed, app.widthOf(3) + "px");
-    assert.equal(refined, 3);
-    assert.equal(extended.columns, 4);
-    assert.equal(extended.handed, app.widthOf(4) + "px");
+    assert.equal(funds, 4);
+    assert.equal(extended.columns, 5);
+    assert.equal(extended.handed, app.widthOf(5) + "px");
     app.collapseAll();
     await settle();
     assert.equal(handed(), root.handed, "folding everything back does not narrow the chart again");

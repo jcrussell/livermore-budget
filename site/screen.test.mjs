@@ -48,7 +48,8 @@ describe("full screen on the chart's card", () => {
     const button = document.getElementById("chart-fullscreen");
     assert.ok(!button.hasAttribute("hidden"), "the browser offers full screen and the button is hidden");
     assert.equal(button.textContent, config.wording.full_screen);
-    // A split that inserts a column: fund/100's divisions after the funds.
+    // Splits that insert two columns: the funds after their group, and
+    // fund/100's divisions after the funds.
     await split(app, "fund-group/general", "fund/100");
     const before = viewBoxWidth(document);
     const max = document.documentElement.style.getPropertyValue("--chart-max");
@@ -62,8 +63,8 @@ describe("full screen on the chart's card", () => {
     fire(button, "click");
     await settle();
     t.diagnostic(`fund/100 split: ${before}px laid, --chart-max ${max}; full screen ${full}px; after ${viewBoxWidth(document)}px`);
-    assert.equal(before, app.chartWidth(4));
-    assert.equal(max, app.chartWidth(4) + "px");
+    assert.equal(before, app.chartWidth(5));
+    assert.equal(max, app.chartWidth(5) + "px");
     assert.equal(full, before);
     assert.equal(viewBoxWidth(document), before);
     assert.equal(app.isFullscreen(), false);

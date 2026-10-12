@@ -540,13 +540,13 @@ describe("the expansion's drawing", () => {
     assert.equal(cells, ribbons.length);
   });
 
-  test("the legend is the fund groups the marks are in, in Go's order, and a swatch follows the group where no group node is drawn", async (t) => {
+  test("the legend is the fund groups the marks are in, in Go's order, and a swatch follows the group across its funds", async (t) => {
     const { app, document } = await bootedApp({ checkedStem: YEARS[0].stem });
     const chart = document.getElementById("chart");
     const swatches = () => [...document.querySelectorAll("#legend [data-group]")];
     const atRoot = swatches().map((b) => b.dataset.group);
-    // EVERY GROUP SPLIT INTO ITS FUNDS: funds of every group and no group
-    // node on screen, so the swatch is the only key to the hues.
+    // EVERY GROUP SPLIT INTO ITS FUNDS: funds of every group drawn beside
+    // their group's node, which the swatch keys the hues of.
     for (const sp of app.fetched.splits.filter((x) => x.key === "funds")) await split(app, sp.node);
     const marks = marksIn(chart);
     const ribbons = ribbonsIn(chart);
@@ -555,9 +555,9 @@ describe("the expansion's drawing", () => {
     const inMarks = new Set(marks.map((m) => app.fundGroupOf(m.__data__)).filter(Boolean));
     t.diagnostic(`at the root the legend is ${JSON.stringify(atRoot.map((id) => id.replace("fund-group/", "")))}; ` +
       `with every group split it is ${JSON.stringify(ids.map((id) => id.replace("fund-group/", "")))} over ` +
-      `${marks.length} mark(s), none of them a group node`);
+      `${marks.length} mark(s)`);
     assert.deepEqual(atRoot, app.fundGroups().map((g) => g.id).filter((id) => atRoot.includes(id)));
-    assert.ok(!marks.some((m) => app.isFundGroup(m.__data__)), "a group node is drawn, so a node toggle would do");
+    assert.ok(marks.some((m) => app.isFundGroup(m.__data__)), "no group node is drawn beside its funds");
     assert.ok(ids.length >= 2, `the chart spans ${ids.length} group(s), so it tells a group from a node apart nowhere`);
     assert.deepEqual(ids, app.fundGroups().map((g) => g.id).filter((id) => inMarks.has(id)));
     for (const b of legend) {
@@ -804,8 +804,11 @@ describe("the expansion's drawing", () => {
       const drawnOut = marksCarrying();
       t.diagnostic(`a caveat naming ${foldedID}, which the cap folds, is carried by ${JSON.stringify(cappedMarks)} ` +
         `on the capped chart and by ${JSON.stringify(drawnOut)} drawn out`);
-      assert.deepEqual(cappedMarks, [cappedTail.__data__.id]);
-      assert.deepEqual(drawnOut, [foldedID]);
+      // The split's node is drawn beside its members and carries every
+      // caveat of what it holds.
+      const hub = app.nodeOf(foldedID).parent;
+      assert.deepEqual(cappedMarks, [cappedTail.__data__.id, hub].sort());
+      assert.deepEqual(drawnOut, [foldedID, hub].sort());
     });
 
     test(`${year.label}: two chips the city prints in the same words are told apart by what each splits into`, async (t) => {
@@ -1221,7 +1224,7 @@ describe("two extend splits open together", () => {
       const columns = new Set(slots.values()).size;
       t.diagnostic(`${year.label}: ${app.laidNodes.length} node(s) in ${columns} column(s)`);
       assert.equal(refusals(document).length, 0);
-      assert.equal(columns, 5);
+      assert.equal(columns, 6);
       assert.deepEqual(misplaced(app), []);
     });
   }

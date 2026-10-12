@@ -616,8 +616,16 @@ const ALIKE = {
  * the canvas sankey.grow sizes, which counts marks and not lines.
  */
 const OVERLAPPED = {
-  "FY 2025-26": {},
-  "FY 2026-27": {},
+  "FY 2025-26": {
+    "everything by primary splits": [
+      "revenue-line/intergovernmental/grant-state over aggregate/tail/lines/revenue/licenses-and-permits",
+    ],
+  },
+  "FY 2026-27": {
+    "everything by primary splits": [
+      "revenue-line/charges-for-services/fire-plan-check-and-inspct-fee over aggregate/tail/lines/revenue/licenses-and-permits",
+    ],
+  },
 };
 
 for (const label of Object.keys(ALIKE)) {
@@ -774,25 +782,25 @@ const EXPANSION_CLAIMED = {
   "FY 2025-26": {
     "root": { slots: "12/6/7", figures: "25 nodes, 58 ribbons; 820px canvas, 9 under 1px",
       labels: "0 wider than their room" },
-    "fund-group/general by funds": { slots: "12/6/7", figures: "25 nodes, 58 ribbons; 820px canvas, 9 under 1px",
+    "fund-group/general by funds": { slots: "12/6/1/7", figures: "26 nodes, 61 ribbons; 820px canvas, 10 under 1px",
       labels: "0 wider than their room" },
-    "everything by primary splits": { slots: "74/36/23/45",
-      figures: "178 nodes, 290 ribbons; 2960px canvas, 54 under 1px",
+    "everything by primary splits": { slots: "12/73/6/36/23/7/43",
+      figures: "200 nodes, 400 ribbons; 2920px canvas, 62 under 1px",
       labels: "0 wider than their room" },
-    "everything by primary splits, every tail drawn out": { slots: "102/69/23/162",
-      figures: "356 nodes, 389 ribbons; 4800px canvas, 116 under 1px",
+    "everything by primary splits, every tail drawn out": { slots: "12/101/6/69/23/7/160",
+      figures: "378 nodes, 635 ribbons; 4800px canvas, 157 under 1px",
       labels: "0 wider than their room" },
   },
   "FY 2026-27": {
     "root": { slots: "12/6/7", figures: "25 nodes, 58 ribbons; 820px canvas, 11 under 1px",
       labels: "0 wider than their room" },
-    "fund-group/general by funds": { slots: "12/6/7", figures: "25 nodes, 58 ribbons; 820px canvas, 11 under 1px",
+    "fund-group/general by funds": { slots: "12/6/1/7", figures: "26 nodes, 60 ribbons; 820px canvas, 12 under 1px",
       labels: "0 wider than their room" },
-    "everything by primary splits": { slots: "74/37/23/44",
-      figures: "178 nodes, 286 ribbons; 2960px canvas, 55 under 1px",
+    "everything by primary splits": { slots: "12/73/6/37/23/7/42",
+      figures: "200 nodes, 399 ribbons; 2920px canvas, 70 under 1px",
       labels: "0 wider than their room" },
-    "everything by primary splits, every tail drawn out": { slots: "102/68/23/159",
-      figures: "352 nodes, 385 ribbons; 4800px canvas, 118 under 1px",
+    "everything by primary splits, every tail drawn out": { slots: "12/101/6/68/23/7/157",
+      figures: "374 nodes, 628 ribbons; 4800px canvas, 171 under 1px",
       labels: "0 wider than their room" },
   },
 };
@@ -901,12 +909,13 @@ describe("the expansion schedule laid out in slots, at the root, one group open 
           general: ["fund-group/general", "fund/100"].map((id) => `${id} ${slots.has(id) ? "in " + slots.get(id) : "not drawn"}`).join(", "),
         };
         // THE GENERAL FUND'S DIVISION-BY-OBJECT CELLS (fisc-yj4w.32): every
-        // link from one of fund/100's divisions to an object row, each a
-        // ribbon of its own at its cents and facts.
+        // link from one of fund/100's divisions to an object category, which
+        // its row's hub leg repeats, each a ribbon of its own at its cents
+        // and facts.
         if (f.whole.size || f.name === "everything by primary splits") {
           const divisions = new Set(core.splitsOf(doc, "fund/100").find((sp) => sp.key === "divisions").members);
           const cells = doc.links.filter((l) => divisions.has(l.source) && !index.get(l.target).alternative &&
-            index.get(index.get(l.target).parent || "") && index.get(index.get(l.target).parent).role === "object_category");
+            index.get(l.target).role === "object_category");
           const ribbons = new Map(drawn.links.map((l) => [`${l.source} > ${l.target} (${l.kind})`, l]));
           const missing = cells.filter((l) => {
             const r = ribbons.get(`${l.source} > ${l.target} (${l.kind})`);
@@ -929,13 +938,13 @@ describe("the expansion schedule laid out in slots, at the root, one group open 
     }
   });
 
-  // A refine member is drawn in its parent's slot: the group's one fund
-  // stands where the group stood.
-  test("the General Fund group opened by funds draws fund/100 in the group's slot, and the group not at all", (t) => {
+  // An extend member is drawn in the slot after its parent's: the group
+  // stays where it stood and its one fund stands after it.
+  test("the General Fund group opened by funds draws fund/100 in the slot after the group's", (t) => {
     for (const [label, m] of measured) {
       t.diagnostic(`${label}: at the root ${m.root.general}; opened ${m["fund-group/general by funds"].general}`);
       assert.equal(m.root.general, "fund-group/general in 1, fund/100 not drawn", label);
-      assert.equal(m["fund-group/general by funds"].general, "fund-group/general not drawn, fund/100 in 1", label);
+      assert.equal(m["fund-group/general by funds"].general, "fund-group/general in 1, fund/100 in 2", label);
     }
   });
 

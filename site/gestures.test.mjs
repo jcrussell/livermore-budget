@@ -446,17 +446,6 @@ describe("the search box", () => {
     assert.deepEqual(banners(document), []);
   });
 
-  test("a node its own refine split opens is revealed by folding that split back", async () => {
-    const { app, document } = await bootedApp();
-    await split(app, WORST);
-    assert.ok(!app.laidNodes.some((n) => n.id === WORST), `${WORST} is drawn while split`);
-    assert.ok(app.chooseSearch(WORST, true), `${WORST} was not revealed`);
-    await settle();
-    assert.deepEqual(app.expansions, []);
-    assert.ok(app.laidNodes.some((n) => n.id === WORST), `${WORST} is not drawn`);
-    assert.deepEqual(banners(document), []);
-  });
-
   test("a reveal of a node keeps its own extend split open", async () => {
     const { app } = await bootedApp();
     const entry = TWO_WAYS + app.ALTERNATIVE_MARK + "divisions";

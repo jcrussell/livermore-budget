@@ -233,7 +233,7 @@ func (*linkValuesTieToFacts) Run(_ context.Context, s *Subject) (Result, error) 
 			if unknown {
 				continue
 			}
-			want := project.LinkCents(l.Source, l.Target, cited)
+			want := project.LinkCents(l.Source, l.Target, l.Repeats, cited)
 			if l.ValueCents != want {
 				findings = append(findings, finding(subject,
 					"value_cents is %s but its %d facts come to %s (off by %s)",
@@ -723,13 +723,16 @@ func (*transferLegsPair) Run(_ context.Context, s *Subject) (Result, error) {
 	lone := map[string]int{}
 	for _, p := range s.linkedDocuments() {
 		role := map[string]string{}
+		byID := map[string]project.Node{}
 		for _, n := range p.Nodes {
 			role[n.ID] = n.Role
+			byID[n.ID] = n
 		}
 		// The two transfer networks draw every link as a leg, so one there with
 		// no transfer_id is half a movement the pairing would otherwise skip.
 		paired := p.Name == project.TransfersByFundProjection || p.Name == project.TransfersOutProjection
 		for _, l := range p.Links {
+			l = atLeaf(l, byID)
 			if l.TransferID == "" {
 				if paired {
 					findings = append(findings, finding(p.String(),
@@ -859,10 +862,11 @@ var sameTierContainers = map[string]string{project.NodeTransfersOut: project.Pre
 //
 // An endpoint touching no link is a container, and folding into it is
 // ordinary: transfers-by-fund draws transfers/in that way. Give it one link and
-// every child is a finding. One container may hold nodes at its own tier, the
-// ones sameTierContainers names: transfers-out parents every receiver's end to
-// transfers/out, and both are tier 5, where the spine draws the endpoint the
-// reader opens.
+// every child is a finding, unless the endpoint is the node of a split the
+// document declares extended, which draws it beside its members by design.
+// One container may hold nodes at its own tier, the ones sameTierContainers
+// names: transfers-out parents every receiver's end to transfers/out, and
+// both are tier 5, where the spine draws the endpoint the reader opens.
 //
 // SUBJECTS ARE THE PARENTED NODES, so this stays honestly vacuous over a
 // document with no hierarchy — the spine — and goes live over the first one that
@@ -891,7 +895,10 @@ func (*nodeHierarchyWellFormed) Run(_ context.Context, s *Subject) (Result, erro
 		}
 		// A split the document declares places its members, in the parent's
 		// column or one after it, whatever their id forms' tiers say.
+		// An extended split's node is drawn beside its members, so it may
+		// carry a flow of its own whatever it is.
 		declared := map[[2]string]bool{}
+		extended := map[[2]string]bool{}
 		if p.Graph != nil {
 			for _, sp := range p.Graph.Splits {
 				alt := ""
@@ -899,6 +906,7 @@ func (*nodeHierarchyWellFormed) Run(_ context.Context, s *Subject) (Result, erro
 					alt = sp.Key
 				}
 				declared[[2]string{sp.Node, alt}] = true
+				extended[[2]string{sp.Node, alt}] = sp.Form == project.SplitExtend
 			}
 		}
 		flowing := make(map[string]bool, 2*len(p.Links))
@@ -924,7 +932,7 @@ func (*nodeHierarchyWellFormed) Run(_ context.Context, s *Subject) (Result, erro
 			}
 			sameTier := false
 			if _, isEndpoint := project.EndpointCategories(n.Parent); isEndpoint {
-				if flowing[n.Parent] {
+				if flowing[n.Parent] && !extended[[2]string{n.Parent, n.Alternative}] {
 					findings = append(findings, finding(p.String(),
 						"node %q is parented to %q, a flow endpoint this document draws a "+
 							"flow at. An endpoint carrying its own flow sits outside the "+
