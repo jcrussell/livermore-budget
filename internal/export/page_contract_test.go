@@ -266,3 +266,35 @@ func TestTheTemplatesCountsHeadIsTheWordingsCounts(t *testing.T) {
 		t.Errorf("site/index.html.tmpl does not render the counts line as %q; the page's first sentence and its repaint would differ", served)
 	}
 }
+
+// TestEveryGestureSentenceSaysASecondClickFolds holds the three places the
+// page says how a split node folds back -- an open hub's accessible name, the
+// hint beside a chart with a split open and the gesture paragraph under it --
+// to the activation that opened the node folding it: a sentence naming only
+// ⊖ or the chip tells a reader the node's own click does something it does
+// not.
+func TestEveryGestureSentenceSaysASecondClickFolds(t *testing.T) {
+	tmpl, err := fs.ReadFile(site.FS(), "index.html.tmpl")
+	if err != nil {
+		t.Fatal(err)
+	}
+	w := defaultWording()
+	for name, s := range map[string]string{
+		"desc_folds":                      w.DescFolds,
+		"fold_back":                       w.FoldBack,
+		"site/index.html.tmpl's gestures": strings.Join(strings.Fields(string(tmpl)), " "),
+	} {
+		if !strings.Contains(s, "click") || !strings.Contains(s, "fold") {
+			t.Errorf("%s does not say a click folds a split node back: %q", name, s)
+		}
+	}
+	if !strings.Contains(strings.Join(strings.Fields(string(tmpl)), " "), "a second click on it, or ⊖ beside it, folds it back") {
+		t.Error("site/index.html.tmpl's gesture paragraph does not say a second click on a split node folds it back")
+	}
+	if !strings.Contains(w.FoldBack, "second click") {
+		t.Errorf("fold_back does not name the second click: %q", w.FoldBack)
+	}
+	if w.DescFolds == w.DescFollows || w.DescFolds == w.DescOpens {
+		t.Errorf("desc_folds %q says what another activation says", w.DescFolds)
+	}
+}

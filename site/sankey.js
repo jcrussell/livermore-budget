@@ -1230,9 +1230,9 @@ export const SANKEY = Object.freeze({
       .attr("tabindex", 0)
       .attr("role", "button")
       .attr("aria-hidden", null)
-      // aria-pressed is the isolation, on every node. SPLITTING IS NOT THE
-      // TOGGLE and must never be announced as one: the label announces what
-      // a node splits into, and ⊖ beside it, not the node, folds it back.
+      // aria-pressed is the isolation, on every node. SPLITTING IS NOT THAT
+      // TOGGLE and must never be announced as it: the label announces what
+      // an activation does, splitting a node or folding its hub back.
       .attr("aria-pressed", "false")
       .attr("aria-label", /** @param {LaidNode} d */ (d) => ctx.describe.node(d))
       // Both keys are the one activation a click is.
@@ -1242,22 +1242,22 @@ export const SANKEY = Object.freeze({
       .on("pointerleave", () => { on.hide(); on.untrace(); })
       .on("focus", /** @param {FocusEvent} e @param {LaidNode} d */ (e, d) => on.guarded("show this mark", () => { if (on.restoring()) return; on.tip(e, d); on.pin(d); }))
       .on("blur", on.hide)
-      // ONE ACTIVATION, by click, Enter or Space: it opens a node that opens
-      // and pins one that does not.
+      // ONE ACTIVATION, by click, Enter or Space: it opens a node that opens,
+      // folds an open hub back, and pins one that does neither.
       //
       // Both click and keydown, because an SVG g[role=button] synthesises no
       // click from Enter. A held key is ignored.
       .on("click", /** @param {MouseEvent} e @param {LaidNode} d */ (e, d) => {
         on.guarded("open this mark", () => {
           e.stopPropagation();
-          on.click(d);
+          on.click(d, e.timeStamp);
         });
       })
       .on("keydown", /** @param {KeyboardEvent} e @param {LaidNode} d */ (e, d) => {
         if (e.key !== "Enter" && e.key !== " ") return;
         if (e.repeat) return;
         e.preventDefault();
-        on.guarded("open this mark", () => on.key(d));
+        on.guarded("open this mark", () => on.key(d, e.timeStamp));
       });
     /** @param {any} sel the marks, or a transition of them */
     const placeNodes = (sel) => {

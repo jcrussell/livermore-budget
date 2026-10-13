@@ -57,11 +57,14 @@ type wording struct {
 	// inferred: the inferred flows it is listed with, their sum and their ends.
 	InferredFlows string `json:"inferred_flows"`
 	DescOpens     string `json:"desc_opens"`
-	DescExpands   string `json:"desc_expands"`
-	DescFollows   string `json:"desc_follows"`
-	FlowInferred  string `json:"flow_inferred"`
-	NoneInferred  string `json:"none_inferred"`
-	TablePointer  string `json:"table_pointer"`
+	// DescFolds is said of an open hub: the activation that opened it folds
+	// it back.
+	DescFolds    string `json:"desc_folds"`
+	DescExpands  string `json:"desc_expands"`
+	DescFollows  string `json:"desc_follows"`
+	FlowInferred string `json:"flow_inferred"`
+	NoneInferred string `json:"none_inferred"`
+	TablePointer string `json:"table_pointer"`
 	// The aggregate marks, schema/mark.schema.json: their
 	// labels, rationales and source notes are templates the constructors
 	// fill, so no sentence about what a mark IS is spelled in JavaScript.
@@ -182,7 +185,7 @@ func defaultWording() wording {
 		OpenInto: "Click a node marked \u2295, or tab to it and press Enter, to split it in place into its parts; " +
 			"every other node stays where it is.",
 		NothingOpens: "Nothing on this chart opens.",
-		FoldBack:     "\u2296 beside a split node, or its chip above the chart, folds it back, and Back undoes the last step.",
+		FoldBack:     "A second click on a split node, \u2296 beside it, or its chip above the chart folds it back, and Back undoes the last step.",
 		Follow: "Hover a node or a flow to trace its path; a click on one that does not split pins it in the drawer, " +
 			"whose Pin lets it go and whose Follow this money draws only its money. Escape unpins and puts the rest back.",
 		Expand:         "The folded mark is several of them drawn as one; click it, or tab to it and press Enter, to draw them separately.",
@@ -207,6 +210,7 @@ func defaultWording() wording {
 		CaveatChip:     "\u26a0 \u25c7 {n:caveat|caveats}",
 		InferredFlows:  "\u25c7 {flows:inferred flow|inferred flows} totalling {figure}: {ends}",
 		DescOpens:      ", splits in place into its parts on a click, Enter or Space, and is pinned in the drawer",
+		DescFolds:      ", folds back into one mark on a click, Enter or Space, and stays pinned in the drawer",
 		DescExpands:    ", draws all of them separately on a click, Enter or Space",
 		DescFollows:    ", a click, Enter or Space pins it in the drawer",
 		FlowInferred:   "This flow is inferred; both endpoints are printed by the city.",

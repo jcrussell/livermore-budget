@@ -290,6 +290,7 @@
         "caveat_chip",
         "inferred_flows",
         "desc_opens",
+        "desc_folds",
         "desc_expands",
         "desc_follows",
         "flow_inferred",
@@ -439,6 +440,11 @@
           "description": "Said under a mark of ours in the list of what we inferred: {flows}, how many inferred flows are listed with it; {figure}, their sum formatted; {ends}, each flow's ends joined."
         },
         "desc_opens": { "type": "string", "minLength": 1 },
+        "desc_folds": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Said in an open hub's accessible name: what a click, Enter or Space on it does, which is to fold it back and keep it pinned."
+        },
         "desc_expands": { "type": "string", "minLength": 1 },
         "desc_follows": { "type": "string", "minLength": 1 },
         "flow_inferred": { "type": "string", "minLength": 1 },

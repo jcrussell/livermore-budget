@@ -415,13 +415,14 @@ export let previewed = null;
 /** Whether the rail beside the chart is open; the page's, never the hash's. */
 export let railOpen = false;
 /**
- * How soon, in ms, a click on the glyph a key has just activated counts as
- * that key's own: the click assistive tech synthesises from Enter or Space.
+ * How soon, in ms, a click on the node or glyph a key has just activated
+ * counts as that key's own: the click assistive tech synthesises from Enter
+ * or Space.
  */
 export const ACTIVATION_WINDOW = 500;
 
 /**
- * The glyph and timestamp of the last Enter/Space activation of one, so that
+ * The node or glyph and timestamp of the last Enter/Space activation of one, so that
  * the click some assistive tech synthesises from that same key press does not
  * act twice.
  * @type {{id:string, at:number}}
@@ -887,22 +888,33 @@ export function guarded(gesture, run) {
 /**
  * A click on a node: its one activation (activate).
  *
- * NO ECHO GUARD: the click assistive tech synthesises from Enter or Space
- * lands on a node already opened, which then pins, or already pinned.
+ * The echo guard is the glyph's (keyActivation): the click assistive tech
+ * synthesises from Enter or Space lands on the hub the key just opened,
+ * which a second activation would fold.
  * @param {LaidNode} d
+ * @param {number} [at] the event's timestamp
  */
-export function clickNode(d) {
+export function clickNode(d, at = Infinity) {
+  if (keyActivation.id === d.id && at - keyActivation.at < ACTIVATION_WINDOW) return;
   activate(d);
 }
 
 /**
  * Opens what a node offers and pins the node opened, still drawn as its
- * split's hub; a tail drawn out is drawn no more and pins nothing. A node
- * offering nothing is pinned.
+ * split's hub, or folds a hub back (collapseNode) and pins it, or the node
+ * it folded into where it is drawn no more; a tail drawn out is drawn no
+ * more and pins nothing. A node offering nothing is pinned.
  * @param {LaidNode} d
  */
 function activate(d) {
   closeSplitMenu();
+  if (foldable(d) && fetched) {
+    const from = core.straightFrom(fetched, d.id);
+    if (!collapseNode(d.id)) return;
+    const kept = laidNodes.find((n) => n.id === d.id) || laidNodes.find((n) => n.id === from);
+    if (kept) pin(kept);
+    return;
+  }
   if (!openOffered(d)) {
     pin(d);
     return;
@@ -934,8 +946,10 @@ export function openOffered(d) {
 /**
  * Enter or Space on a node: the one activation a click is (activate).
  * @param {LaidNode} d
+ * @param {number} [at] the event's timestamp
  */
-export function keyNode(d) {
+export function keyNode(d, at = -Infinity) {
+  keyActivation = { id: d.id, at: at };
   activate(d);
 }
 
@@ -2121,8 +2135,9 @@ export function linkDescription(d) {
  */
 export function nodeDescription(d) {
   // WHAT AN ACTIVATION DOES, for a reader who cannot see the glyph: it opens
-  // a node that splits, draws out a tail, and otherwise pins.
-  const what = splittable(d) ? say("desc_opens") : expandable(d) ? say("desc_expands") : say("desc_follows");
+  // a node that splits, folds a hub, draws out a tail, and otherwise pins.
+  const what = splittable(d) ? say("desc_opens") : foldable(d) ? say("desc_folds") :
+    expandable(d) ? say("desc_expands") : say("desc_follows");
   const form = formOnScreen();
   const mark = markOfView(d);
   const note = form.reductionNote(mark);

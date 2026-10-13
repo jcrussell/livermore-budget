@@ -1,14 +1,14 @@
 // gestures.test.mjs -- the SEQUENCES a reader's gestures make on the drawn
 // chart: one activation -- a click, Enter or Space -- opening a node that
-// splits and pinning one that does not, the ⊕ menu and the chip chooser
+// splits, folding an open hub back and pinning one that does neither, the ⊕ menu and the chip chooser
 // between a node's two splits, ⊖ and the chip folding a split back, Escape
 // letting the pin and the isolation go and folding nothing, the trace a
 // hover draws, Expand all and Collapse all, a tail drawn out, and where
 // focus lands after a split has replaced the element it was on.
 //
 // Every gesture is a dispatched event with a planted timeStamp, because the
-// glyph's activation guard compares a click's stamp against the key that may
-// have synthesised it. Every assertion is over ids, counts and booleans: a
+// node's and the glyph's activation guard compares a click's stamp against
+// the key that may have synthesised it. Every assertion is over ids, counts and booleans: a
 // failing assertion over a laid mark formats the whole graph (fisc-yj4w.33).
 
 import { describe, test } from "node:test";
@@ -125,6 +125,62 @@ describe("one activation", () => {
       assert.deepEqual(seen[gesture], { split: OPENS, pinned: OPENS, isolated: "" }, gesture);
     }
     assert.equal(kept, 2, "splitting the General Fund group took another root off the chart");
+  });
+
+  // Mutation: drop activate's fold arm (a click on an open hub pinning only)
+  // and this goes red, the second activation leaving the split open.
+  test("a second click, Enter or Space on an open hub folds it back, and it stays pinned", async (t) => {
+    const { app, document, config } = await bootedApp();
+    const seen = {};
+    // Each stamp a second past the last, so no activation is another's echo.
+    let at = 0;
+    for (const [gesture, fireIt] of [
+      ["click", (m) => fire(m, "click", { timeStamp: (at += 1000) })],
+      ["Enter", (m) => fire(m, "keydown", { key: "Enter", timeStamp: (at += 1000) })],
+      ["Space", (m) => fire(m, "keydown", { key: " ", timeStamp: (at += 1000) })],
+    ]) {
+      app.collapseAll();
+      await settle();
+      fire(markOf(app, document, OPENS), "click", { timeStamp: (at += 1000) });
+      await settle();
+      const opened = { split: app.expansions.join(","), pinned: pinnedID(app) };
+      const named = markOf(app, document, OPENS).getAttribute("aria-label").endsWith(config.wording.desc_folds);
+      fireIt(markOf(app, document, OPENS));
+      await settle();
+      seen[gesture] = { opened, named, folded: { split: app.expansions.join(","), pinned: pinnedID(app), glyph: glyphKind(document, OPENS) } };
+    }
+    t.diagnostic(`two activations of ${OPENS}: ${JSON.stringify(seen)}`);
+    for (const gesture of ["click", "Enter", "Space"]) {
+      assert.deepEqual(seen[gesture], {
+        opened: { split: OPENS, pinned: OPENS }, named: true,
+        folded: { split: "", pinned: OPENS, glyph: "open" },
+      }, gesture);
+    }
+    assert.deepEqual(refusals(document).map((b) => b.textContent), []);
+  });
+
+  test("a click on a hub opened straight through from its parent folds the parent, and pins it", async () => {
+    const { app, document } = await bootedApp();
+    await split(app, OPENS, WORST);
+    assert.equal(glyphKind(document, "fund/100"), "fold");
+    fire(markOf(app, document, "fund/100"), "click", { timeStamp: 1000 });
+    await settle();
+    assert.deepEqual({ split: app.expansions.join(","), pinned: pinnedID(app) }, { split: WORST, pinned: OPENS });
+  });
+
+  // Mutation: drop clickNode's guard and this goes red, the synthesised
+  // click folding the hub the key just opened.
+  test("a node's key and the click it synthesises are one activation, and a later click folds", async () => {
+    const { app, document } = await bootedApp();
+    fire(markOf(app, document, OPENS), "keydown", { key: "Enter", timeStamp: 1000 });
+    await settle();
+    fire(markOf(app, document, OPENS), "click", { timeStamp: 1050 });
+    await settle();
+    const echoed = { split: app.expansions.join(","), pinned: pinnedID(app) };
+    fire(markOf(app, document, OPENS), "click", { timeStamp: 1000 + app.ACTIVATION_WINDOW });
+    await settle();
+    const later = { split: app.expansions.join(","), pinned: pinnedID(app) };
+    assert.deepEqual({ echoed, later }, { echoed: { split: OPENS, pinned: OPENS }, later: { split: "", pinned: OPENS } });
   });
 
   test("a click on a node that does not split pins it, and splits and follows nothing", async (t) => {
