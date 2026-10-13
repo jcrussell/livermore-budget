@@ -248,7 +248,9 @@ export async function split(app, ...entries) {
     const key = at < 0 ? undefined : entry.slice(at + 1);
     const drew = app.expandNode(id, key);
     await settle();
-    if (!drew || !app.expansions.includes(app.entryOf(id, key || app.splitsHere({ id })[0].key))) {
+    // Drawn split, by its own entry or straight through its parent's.
+    const want = key || app.splitsHere({ id })[0].key;
+    if (!drew || !app.frontier || app.openSplitOf(app.fetched, app.frontier, id) !== want) {
       const banner = [...globalThis.document.querySelectorAll("main .refusal")].map((b) => b.textContent).join(" | ");
       throw new Error(`expandNode(${entry}) left the chart split at [${app.expansions.join(", ")}]: ${banner}`);
     }

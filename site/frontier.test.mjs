@@ -232,7 +232,10 @@ describe("the expansion schedule, folded to a frontier", () => {
           assert.ok(members.length > 0, `${at} has no members`);
           assert.ok(members.some((m) => drawn.nodes.some((n) => n.id === m)), `${at}: no member drawn`);
           assert.equal(core.openSplitOf(doc, open, sp.node), sp.key, at);
-          assert.deepEqual(ids(core.collapse(doc, open, sp.node)), ids(from), `${at}: collapse does not invert expand`);
+          // A split opened straight through its parent's shuts with it.
+          const top = core.straightFrom(doc, sp.node);
+          const before = top === sp.node ? from : core.reveal(doc, root, top);
+          assert.deepEqual(ids(core.collapse(doc, open, top)), ids(before), `${at}: collapse does not invert expand`);
           checked++;
         }
         t.diagnostic(`${checked} splits opened one at a time`);

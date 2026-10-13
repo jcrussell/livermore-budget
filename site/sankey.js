@@ -14,7 +14,7 @@
  */
 
 import {
-  capColumn, fmt, fmtShortSigned, foldDocument, isExpansionSchedule, isFundGroup, isLink, openSplitOf, reducedOf, say, splitTailID, splitsOf, tailFigure, tierFrontier,
+  capColumn, fmt, fmtShortSigned, foldDocument, isExpansionSchedule, isFundGroup, isLink, labelledAsParent, openSplitOf, reducedOf, say, splitTailID, splitsOf, tailFigure, tierFrontier,
 } from "./core.js";
 
 export const NODE_WIDTH = 14;
@@ -530,6 +530,34 @@ export function labelQualifiers(doc, slots, nodes) {
 }
 
 /**
+ * The noun each mark is told apart from its parent by, on every mark the
+ * document prints in its parent's words; nothing elsewhere. An extended
+ * split draws its node and its members side by side, so a member labelled as
+ * its parent would read as the same thing twice.
+ *
+ * The parent is the one `doc` gives the mark, as labelQualifiers reads it.
+ * The noun is `nounOf`'s, the page's words for one member of the split the
+ * mark belongs to; a mark it names nothing for keeps its label alone.
+ *
+ * @param {{nodes: FiscNode[]} | null} doc the unfolded nodes the chart was
+ *   folded from
+ * @param {LaidNode[]} nodes
+ * @param {(id: string) => string} nounOf
+ * @returns {Map<string, string>}
+ */
+export function labelNouns(doc, nodes, nounOf) {
+  const byID = new Map((doc ? doc.nodes : []).map((n) => [n.id, n]));
+  /** @type {Map<string, string>} */
+  const out = new Map();
+  for (const n of nodes) {
+    if (!labelledAsParent(byID, n.id)) continue;
+    const noun = nounOf(n.id);
+    if (noun) out.set(n.id, noun);
+  }
+  return out;
+}
+
+/**
  * The advance a label's words are fitted at, in em: an over-estimate on
  * purpose, wider than any usual face sets `system-ui`, so the error runs
  * toward cutting a label that would have fitted.
@@ -553,15 +581,16 @@ export function textAdvance(text, px) {
 }
 
 /**
- * How wide a mark's label draws at most, by ADVANCE_EM: the qualifier and
- * label tspans at LABEL_PX on one line, and the value and flags after them.
- * @param {{qualifier: string, label: string}} words what labelWords draws
+ * How wide a mark's label draws at most, by ADVANCE_EM: the qualifier, label
+ * and noun tspans at LABEL_PX on one line, and the value and flags after them.
+ * @param {{qualifier: string, label: string, noun?: string}} words what labelWords draws
  * @param {string} value the value tspan's words
  * @param {string} flags the flag tspan's words
  * @returns {number}
  */
 export function labelAdvance(words, value, flags) {
-  return textAdvance(words.qualifier + words.label, LABEL_PX) + textAdvance(value, VALUE_PX) + textAdvance(flags, LABEL_PX);
+  return textAdvance(words.qualifier + words.label + (words.noun || ""), LABEL_PX) +
+    textAdvance(value, VALUE_PX) + textAdvance(flags, LABEL_PX);
 }
 
 /**
@@ -579,18 +608,19 @@ export function labelRoom(place, columns) {
 }
 
 /**
- * The words a mark's qualifier and label tspans draw, fitted to `room`.
+ * The words a mark's qualifier, label and noun tspans draw, fitted to `room`.
  *
- * EVERY LABEL IS ONE LINE, its qualifier inline as "Qualifier: ", because d3
- * holds only NODE_PADDING between two marks and canvasHeight counts marks,
- * not lines. Where it is wider than its room by `measure`, the middle of its
- * OWNER is cut for an ellipsis: the label's words before its last ": ", else
- * the qualifier, else the whole label. The ": Category" after it and the
- * value are kept, and so are the owner's first word and as much of its end
- * as fits, since funds that share a prefix differ at the end ("County Meas
- * BB-Bike/Pedestrian", "County Meas BB-Local St & Rd"). Where the owner cut
- * to two characters still does not fit, the whole line, qualifier and all, is
- * cut as one owner; a label too wide even then is drawn so, and the room
+ * EVERY LABEL IS ONE LINE, its qualifier inline as "Qualifier: " and its noun
+ * after it as " (noun)", because d3 holds only NODE_PADDING between two marks
+ * and canvasHeight counts marks, not lines. Where it is wider than its room
+ * by `measure`, the middle of its OWNER is cut for an ellipsis: the label's
+ * words before its last ": ", else the qualifier, else, beside a noun, the
+ * label. The ": Category" after it, the noun and the value are kept, and so
+ * are the owner's first word and as much of its end as fits, since funds that
+ * share a prefix differ at the end ("County Meas BB-Bike/Pedestrian", "County
+ * Meas BB-Local St & Rd"). Where the owner cut to two characters still does
+ * not fit, the whole line is cut as one owner, each tspan keeping what is
+ * left of its own words; a label too wide even then is drawn so, and the room
  * checks under site/ see it.
  *
  * The text stays Go's; this only fits it to the screen.
@@ -598,44 +628,80 @@ export function labelRoom(place, columns) {
  * @param {number} room labelRoom
  * @param {string} qualifier labelQualifiers' answer for the mark, or ""
  * @param {string} label
- * @param {(words: {qualifier: string, label: string}) => number} measure how
- *   wide the whole label draws in these words, value and flags included
- * @returns {{qualifier: string, label: string, cut: boolean}}
+ * @param {(words: {qualifier: string, label: string, noun: string}) => number} measure
+ *   how wide the whole label draws in these words, value and flags included
+ * @param {string} [noun] labelNouns' answer for the mark, or ""
+ * @returns {{qualifier: string, label: string, noun: string, cut: boolean}}
  */
-export function labelWords(room, qualifier, label, measure) {
+export function labelWords(room, qualifier, label, measure, noun = "") {
   const lead = qualifier ? qualifier + ": " : "";
-  if (measure({ qualifier: lead, label }) <= room) return { qualifier: lead, label, cut: false };
+  const after = noun ? " (" + noun + ")" : "";
+  if (measure({ qualifier: lead, label, noun: after }) <= room) return { qualifier: lead, label, noun: after, cut: false };
   const split = label.lastIndexOf(": ");
   const fitted = split > 0
-    ? cutOwner(label.slice(0, split), (owner) => ({ qualifier: lead, label: owner + label.slice(split) }), room, measure)
+    ? cutOwner(label.slice(0, split), (owner) => ({ qualifier: lead, label: owner + label.slice(split), noun: after }), room, measure)
     : qualifier
-      ? cutOwner(qualifier, (owner) => ({ qualifier: owner + ": ", label }), room, measure)
-      : null;
+      ? cutOwner(qualifier, (owner) => ({ qualifier: owner + ": ", label, noun: after }), room, measure)
+      : noun
+        ? cutOwner(label, (owner) => ({ qualifier: "", label: owner, noun: after }), room, measure)
+        : null;
   if (fitted && measure(fitted) <= room) return fitted;
-  return cutOwner(lead + label, (owner) => ({ qualifier: "", label: owner }), room, measure);
+  const parts = [lead, label, after];
+  return cutOwner(parts.join(""), (owner, head, tail) => {
+    const [q, l, n] = keptOf(parts, head, tail);
+    return { qualifier: q, label: l, noun: n };
+  }, room, measure);
+}
+
+/**
+ * What each of `parts` keeps of its own words where their join is cut to
+ * `head`, an ellipsis and `tail` (cutOwner), the ellipsis in the part the
+ * cut opens in; every part whole where `tail` is null.
+ * @param {string[]} parts
+ * @param {string} head a prefix of the join
+ * @param {string | null} tail a suffix of the join, or null where nothing is cut
+ * @returns {string[]}
+ */
+function keptOf(parts, head, tail) {
+  if (tail === null) return parts.slice();
+  const whole = parts.join("");
+  const from = whole.length - tail.length;
+  let at = 0;
+  return parts.map((p) => {
+    const a = at;
+    const b = at + p.length;
+    at = b;
+    const front = whole.slice(a, Math.max(a, Math.min(b, head.length)));
+    const back = whole.slice(Math.min(b, Math.max(a, from)), b);
+    return front + (head.length >= a && head.length < b ? "\u2026" : "") + back;
+  });
 }
 
 /**
  * The most of `owner`'s characters, at least two, that `words` draws within
  * `room`: its first word leads and its end takes the rest, since names here
  * share a prefix ("Grant - ", "County Meas BB-") more than an end.
+ * `words` is handed the owner as drawn, and what of its front and its end it
+ * keeps either side of the ellipsis; its end is null where nothing is cut.
  * @param {string} owner
- * @param {(owner: string) => {qualifier: string, label: string}} words
+ * @param {(owner: string, head: string, tail: string | null) => {qualifier: string, label: string, noun: string}} words
  * @param {number} room
- * @param {(words: {qualifier: string, label: string}) => number} measure
- * @returns {{qualifier: string, label: string, cut: boolean}}
+ * @param {(words: {qualifier: string, label: string, noun: string}) => number} measure
+ * @returns {{qualifier: string, label: string, noun: string, cut: boolean}}
  */
 function cutOwner(owner, words, room, measure) {
   const word = owner.search(/[\s-]/);
   /** @param {number} keep how many of the owner's characters stay */
   const cutTo = (keep) => {
     const front = Math.min(word > 0 ? word : keep, Math.ceil(keep / 2));
-    return words(owner.slice(0, front).trimEnd() + "\u2026" + owner.slice(owner.length - (keep - front)).trimStart());
+    const head = owner.slice(0, front).trimEnd();
+    const tail = owner.slice(owner.length - (keep - front)).trimStart();
+    return words(head + "\u2026" + tail, head, tail);
   };
   // The most of the owner's characters that fit, by halving.
   let lo = 2;
   let hi = owner.length - 1;
-  if (hi < lo) return Object.assign(words(owner), { cut: false });
+  if (hi < lo) return Object.assign(words(owner, owner, null), { cut: false });
   while (lo < hi) {
     const mid = Math.ceil((lo + hi) / 2);
     if (measure(cutTo(mid)) <= room) lo = mid;
@@ -1043,6 +1109,9 @@ export const SANKEY = Object.freeze({
     const qualified = labelQualifiers(ctx.doc, slots, graph.nodes);
     /** @param {LaidNode} d */
     const qualifierOf = (d) => qualified.get(d.id) || "";
+    const nouns = labelNouns(ctx.doc, graph.nodes, ctx.noun);
+    /** @param {LaidNode} d */
+    const nounOf = (d) => nouns.get(d.id) || "";
     const label = node.append("text")
       .attr("class", "halo")
       .attr("y", /** @param {LaidNode} d */ (d) => place(d).y)
@@ -1052,7 +1121,7 @@ export const SANKEY = Object.freeze({
 
     /** @param {LaidNode} d */
     const value = (d) => "  " + fmtShortSigned(ctx.figure(d));
-    /** @type {Map<string, {qualifier: string, label: string, cut: boolean}>} */
+    /** @type {Map<string, {qualifier: string, label: string, noun: string, cut: boolean}>} */
     const fitted = new Map();
     // Fitted at ADVANCE_EM, not read off the browser: the words drawn are the
     // words site/layout.test.mjs measures against their room.
@@ -1062,7 +1131,7 @@ export const SANKEY = Object.freeze({
       if (!w) {
         const p = place(d);
         w = labelWords(labelRoom(p, ctx.columns), qualifierOf(d), d.label,
-          (ws) => labelAdvance(ws, value(d), ctx.classes.flags(d)));
+          (ws) => labelAdvance(ws, value(d), ctx.classes.flags(d)), nounOf(d));
         fitted.set(d.id, w);
       }
       return w;
@@ -1072,6 +1141,11 @@ export const SANKEY = Object.freeze({
       .text(/** @param {LaidNode} d */ (d) => words(d).qualifier);
     label.append("tspan")
       .text(/** @param {LaidNode} d */ (d) => words(d).label);
+    // The noun is the page's words, not the city's, so it is drawn as the
+    // qualifier is.
+    label.append("tspan")
+      .attr("class", "qualifier")
+      .text(/** @param {LaidNode} d */ (d) => words(d).noun);
     label.append("tspan")
       .attr("class", "value")
       .text(value);
@@ -1082,7 +1156,7 @@ export const SANKEY = Object.freeze({
     node.each(/** @this {SVGGElement} @param {LaidNode} d */ function (d) {
       if (!words(d).cut) return;
       d3.select(this).insert("title", ":first-child")
-        .text((qualifierOf(d) ? qualifierOf(d) + ": " : "") + d.label + value(d));
+        .text((qualifierOf(d) ? qualifierOf(d) + ": " : "") + d.label + (nounOf(d) ? " (" + nounOf(d) + ")" : "") + value(d));
     });
   },
 

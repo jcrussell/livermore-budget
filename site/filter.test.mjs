@@ -170,6 +170,11 @@ describe("the tally states a leaf once, however many ribbons draw it", () => {
           changed = true;
         }
       }
+      // A split citing figures of its own that a group opened straight
+      // through is folded back, at the frontier and not by a gesture.
+      for (const sp of doc.splits.filter((x) => !hub(x))) {
+        if (open.has(sp.node) && app.openSplitOf(doc, open, sp.node) === sp.key) open = app.collapse(doc, open, sp.node);
+      }
       const shape = (frontier) => app.formOnScreen().shape(doc, { chart: CONFIG.overview, frontier, whole: new Set() });
       const root = shape(app.rootFrontier(doc));
       const hubs = shape(open);

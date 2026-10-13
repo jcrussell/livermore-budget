@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"io/fs"
 	"maps"
+	"os"
+	"path/filepath"
 	"reflect"
 	"regexp"
 	"slices"
@@ -153,6 +155,93 @@ func TestEverySplitKeyHasItsWords(t *testing.T) {
 		if strings.TrimSpace(w) == "" {
 			t.Errorf("split %q is said in no words", k)
 		}
+	}
+}
+
+// TestEverySplitKeyHasItsMemberNoun holds the page's noun for one member to
+// the split keys the expansion schedule declares, both ways, and to the one
+// variable the client fills it with.
+func TestEverySplitKeyHasItsMemberNoun(t *testing.T) {
+	nouns := memberNouns()
+	got := slices.Sorted(maps.Keys(nouns))
+	want := slices.Sorted(slices.Values(project.SplitKeys()))
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("the page's member nouns and project.SplitKeys differ (-keys +nouns):\n%s", diff)
+	}
+	for k, w := range nouns {
+		if strings.TrimSpace(w) == "" {
+			t.Errorf("a member of split %q is called nothing", k)
+		}
+		for _, m := range regexp.MustCompile(`\{(\w*)`).FindAllStringSubmatch(w, -1) {
+			if m[1] != "fund" {
+				t.Errorf("the member noun of split %q names {%s}; the client fills only {fund}", k, m[1])
+			}
+		}
+	}
+}
+
+// TestAMemberNounNamingAFundIsSaidOfAFund holds each split whose member noun
+// names {fund} to the committed column fixtures: every member of it the
+// client qualifies, one labelled as its parent, carries the fund number the
+// noun is filled with, so the client never meets a {fund} it has nothing for.
+func TestAMemberNounNamingAFundIsSaidOfAFund(t *testing.T) {
+	paths, err := filepath.Glob("../../testdata/*.column.json")
+	if err != nil || len(paths) == 0 {
+		t.Fatalf("no column fixture under testdata/ (%v), so this test reads nothing", err)
+	}
+	type colNode struct {
+		ID    string `json:"id"`
+		Label string `json:"label"`
+		Fund  int    `json:"fund"`
+	}
+	type col struct {
+		Nodes     []colNode `json:"nodes"`
+		Schedules map[string]struct {
+			Nodes []struct {
+				Node        int    `json:"node"`
+				Parent      string `json:"parent"`
+				Alternative string `json:"alternative"`
+			} `json:"nodes"`
+			Splits []struct {
+				Node        int    `json:"node"`
+				Key         string `json:"key"`
+				Alternative bool   `json:"alternative"`
+			} `json:"splits"`
+		} `json:"schedules"`
+	}
+	nouns := memberNouns()
+	members := 0
+	for _, p := range paths {
+		b, err := os.ReadFile(p) // #nosec G304 -- a committed fixture.
+		if err != nil {
+			t.Fatal(err)
+		}
+		var c col
+		if err := json.Unmarshal(b, &c); err != nil {
+			t.Fatalf("%s: %v", p, err)
+		}
+		for _, sched := range c.Schedules {
+			for _, sp := range sched.Splits {
+				if !strings.Contains(nouns[sp.Key], "{fund}") {
+					continue
+				}
+				node := c.Nodes[sp.Node].ID
+				for _, n := range sched.Nodes {
+					if n.Parent != node || (sp.Alternative && n.Alternative != sp.Key) || (!sp.Alternative && n.Alternative != "") ||
+						c.Nodes[n.Node].Label != c.Nodes[sp.Node].Label {
+						continue
+					}
+					members++
+					if c.Nodes[n.Node].Fund <= 0 {
+						t.Errorf("%s: %s, a member of %s's split %q, carries no fund number for %q",
+							filepath.Base(p), c.Nodes[n.Node].ID, node, sp.Key, nouns[sp.Key])
+					}
+				}
+			}
+		}
+	}
+	if members == 0 {
+		t.Fatal("no member of a split whose noun names {fund} is labelled as its parent in any fixture, so this test holds nothing")
 	}
 }
 

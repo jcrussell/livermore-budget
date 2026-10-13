@@ -185,9 +185,9 @@ describe("a node that splits two ways", () => {
 describe("folding a split back", () => {
   test("the node's chip folds it, and every split inside it, back into one mark", async (t) => {
     const { app, document } = await bootedApp();
-    await split(app, OPENS, "fund/100", WORST);
+    await split(app, OPENS, WORST);
     const chipWords = chips(document).map((c) => c.textContent);
-    assert.equal(chipWords.length, 3);
+    assert.equal(chipWords.length, 2);
     assert.ok(chipWords[0].includes(app.nodeOf(OPENS).label), chipWords[0]);
     chips(document)[0].click();
     await settle();
@@ -212,9 +212,9 @@ describe("folding a split back", () => {
     assert.deepEqual(app.expansions, []);
   });
 
-  test("Escape undoes the last split, innermost first, after a pin and an isolation", async (t) => {
+  test("Escape undoes the last split first, after a pin and an isolation", async (t) => {
     const { app, document } = await bootedApp();
-    await split(app, OPENS, "fund/100");
+    await split(app, OPENS, WORST);
     app.setIsolated("revenue/taxes/sales");
     escape(document);
     await settle();
@@ -227,11 +227,11 @@ describe("folding a split back", () => {
     const third = app.expansions.join(",");
     escape(document);
     await settle();
-    assert.deepEqual(first, { split: OPENS + ",fund/100", isolated: "" });
+    assert.deepEqual(first, { split: OPENS + "," + WORST, isolated: "" });
     assert.equal(second, OPENS);
     assert.equal(third, "");
     assert.deepEqual(refusals(document).map((b) => b.textContent), []);
-    t.diagnostic("Escape cleared the isolation, then undid fund/100, then the General Fund group, then did nothing");
+    t.diagnostic(`Escape cleared the isolation, then undid ${WORST}, then the General Fund group, then did nothing`);
   });
 
   test("Expand all splits every node to its finest grain by its first split, and Collapse all folds everything back", async (t) => {
@@ -298,6 +298,45 @@ for (const year of YEARS) {
     });
   });
 }
+
+describe("a split of one member", () => {
+  // fund-group/general's one member is fund/100, in both pinned years.
+  const ONLY = "fund/100";
+  /** The drawn marks fund/100's own split opens into. */
+  const divisionsDrawn = (app) => {
+    const members = new Set(app.splitsHere({ id: ONLY })[0].members);
+    return app.laidNodes.filter((n) => members.has(n.id)).length;
+  };
+
+  for (const year of YEARS) {
+    test(`${year.label}: opens straight through, in one gesture and one step, and folds back whole`, async (t) => {
+      const { app, document } = await onYear(year.stem);
+      assert.equal(app.splitsHere({ id: OPENS })[0].members.length, 1, `${OPENS} no longer splits into one member`);
+      fire(markOf(app, document, OPENS), "dblclick", { timeStamp: 0 });
+      await settle();
+      const opened = { x: app.expansions.slice(), divisions: divisionsDrawn(app), offers: app.splittable({ id: ONLY }) };
+      t.diagnostic(`${year.label}: a double click on ${OPENS} drew ${opened.divisions} of ${ONLY}'s divisions with [${opened.x}] split`);
+      assert.ok(opened.divisions > 0, `one activation of ${OPENS} drew none of ${ONLY}'s divisions`);
+      // Escape folds the two back as the one step they were made in.
+      escape(document);
+      await settle();
+      const escaped = { x: app.expansions.slice(), divisions: divisionsDrawn(app) };
+      // Alt with a double click on a division folds back what its parent
+      // opened straight through from.
+      fire(markOf(app, document, OPENS), "keydown", { key: "Enter", timeStamp: 5000 });
+      await settle();
+      const division = app.splitsHere({ id: ONLY })[0].members.find((m) => app.laidNodes.some((n) => n.id === m));
+      fire(markOf(app, document, division), "dblclick", { timeStamp: 9000, altKey: true });
+      await settle();
+      const folded = { x: app.expansions.slice(), divisions: divisionsDrawn(app) };
+      assert.deepEqual(opened.x, [OPENS]);
+      assert.equal(opened.offers, false, `${ONLY} still offers to split once its group is open`);
+      assert.deepEqual(escaped, { x: [], divisions: 0 });
+      assert.deepEqual(folded, { x: [], divisions: 0 });
+      assert.deepEqual(refusals(document).map((b) => b.textContent), []);
+    });
+  }
+});
 
 describe("focus after a split", () => {
   test("lands on the topmost new member, unpinned, and the next Enter acts on it", async (t) => {
@@ -417,7 +456,7 @@ describe("the search box", () => {
     await settle();
     const on = focusedID(document);
     t.diagnostic(`Enter on "${active.textContent}" split [${app.expansions.join(", ")}]; focus on ${on}`);
-    assert.deepEqual(app.expansions.slice(0, 2), ["fund-group/general", "fund/100"]);
+    assert.deepEqual(app.expansions.slice(0, 1), ["fund-group/general"]);
     assert.ok(app.laidNodes.some((n) => n.id === id), `${id} is not drawn`);
     assert.equal(on, id);
     assert.equal(input.value, "");

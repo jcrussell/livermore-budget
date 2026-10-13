@@ -1,5 +1,5 @@
 // columns.test.mjs -- the chart's columns are the expansion's slots: how wide
-// the page lays the chart out, that an extend split widens it by the slot it
+// the page lays the chart out, that an extend split widens it by the slots it
 // inserts, and that a split whose chart will not draw is refused with the
 // chart left as it was.
 
@@ -11,24 +11,22 @@ import { bootedApp, split, settle, pageFixture, columnFixture, refusals } from "
 const YEARS = pageFixture().config.years;
 
 describe("the columns are the slots the chart draws", () => {
-  test("the page hands the stylesheet the held width and the chart's stretch over it, and an extend split widens it by one slot", async (t) => {
+  test("the page hands the stylesheet the held width and the chart's stretch over it, and the General Fund group, opened straight through its one fund, widens it by two slots", async (t) => {
     const { app, document } = await bootedApp({ checkedStem: YEARS[0].stem });
     const handed = () => document.documentElement.style.getPropertyValue("--chart-max") + " x" +
       document.documentElement.style.getPropertyValue("--chart-stretch");
     const held = (n) => app.widthOf(app.HELD_COLUMNS) + "px x" + app.widthOf(n) / app.widthOf(app.HELD_COLUMNS);
     const columns = () => app.layoutColumns(app.shown.doc);
     const root = { columns: columns(), handed: handed() };
-    // Every split extends: the group's funds take a slot of their own after
-    // it, and fund/100's divisions one after theirs.
+    // Every split extends: the group's one fund takes a slot of its own
+    // after it, and, the group opening straight through it, fund/100's
+    // divisions one after that.
     await split(app, "fund-group/general");
-    const funds = columns();
-    await split(app, "fund/100");
     const extended = { columns: columns(), handed: handed() };
-    t.diagnostic(`the root lays ${root.columns} columns at ${root.handed}; with the funds, ${funds}; ` +
-      `with fund/100's divisions, ${extended.columns} at ${extended.handed}`);
+    t.diagnostic(`the root lays ${root.columns} columns at ${root.handed}; ` +
+      `with the group open, ${extended.columns} at ${extended.handed}`);
     assert.equal(root.columns, 3);
     assert.equal(root.handed, held(3));
-    assert.equal(funds, 4);
     assert.equal(extended.columns, 5);
     assert.equal(extended.handed, held(5));
     app.collapseAll();

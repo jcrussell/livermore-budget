@@ -559,14 +559,24 @@ describe("the view in the URL", () => {
       await settle();
       return app.expansions.join(",");
     };
-    await split(app, "fund-group/general", "fund/100");
+    const divisions = new Set(app.splitsHere({ id: "fund/100" })[0].members);
+    const drawn = () => app.laidNodes.filter((n) => divisions.has(n.id)).length;
+    await split(app, "fund-group/general", "fund-group/capital");
+    const opened = drawn();
     const back1 = await walk(() => window.history.back());
+    // The group opened straight through its one fund in one step, and one
+    // Back folds both.
     const back2 = await walk(() => window.history.back());
+    const atRoot = drawn();
     const forward = await walk(() => window.history.forward());
-    t.diagnostic(`split to fund/100; back ${back1}; back ${back2 || "(the root)"}; forward ${forward}`);
+    t.diagnostic(`split to fund-group/capital with ${opened} of fund/100's divisions drawn; back ${back1}; ` +
+      `back ${back2 || "(the root)"} with ${atRoot}; forward ${forward} with ${drawn()}`);
+    assert.ok(opened > 0, "opening the General Fund group drew none of fund/100's divisions");
     assert.equal(back1, "fund-group/general");
     assert.equal(back2, "");
+    assert.equal(atRoot, 0);
     assert.equal(forward, "fund-group/general");
+    assert.equal(drawn(), opened);
     assert.deepEqual(said(document), []);
   });
 
@@ -586,7 +596,7 @@ describe("the view in the URL", () => {
     assert.equal(app.shownYear.stem, NEWEST.stem);
     const line = document.getElementById("splits-line");
     assert.ok(line.hidden, "the line is shown before any switch");
-    await split(app, "fund-group/general", "fund-group/capital", "fund/100");
+    await split(app, "fund-group/general", "fund-group/capital");
     clickYear(document, OLDEST.stem);
     await settle();
     const there = { year: app.shownYear.stem, x: app.expansions.slice(), words: line.textContent, hidden: line.hidden };
@@ -595,10 +605,10 @@ describe("the view in the URL", () => {
     const back = { x: app.expansions.slice(), hidden: line.hidden };
     t.diagnostic(`on ${there.year}: kept [${there.x.join(", ")}]; "${there.words}"; back on ${NEWEST.label}: [${back.x.join(", ")}]`);
     assert.equal(there.year, OLDEST.stem);
-    assert.deepEqual(there.x, ["fund-group/general", "fund/100"]);
+    assert.deepEqual(there.x, ["fund-group/general"]);
     assert.equal(there.hidden, false);
     assert.equal(there.words, app.say("splits_dropped", { year: OLDEST.label, nodes: planted.nodes[capital].label, n: 1 }));
-    assert.deepEqual(back, { x: ["fund-group/general", "fund/100"], hidden: true });
+    assert.deepEqual(back, { x: ["fund-group/general"], hidden: true });
     assert.deepEqual(said(document), []);
   });
 

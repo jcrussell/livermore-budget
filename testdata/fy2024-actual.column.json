@@ -50,7 +50,8 @@
    "role": "general_fund",
    "constraint_tier": "discretionary",
    "rationale": "General revenues not levied or collected for another fund; available for any general city service.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 100
   },
   {
    "id": "fund/200",
@@ -59,7 +60,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "In-lieu housing fees collected from developers and other community housing projects; spendable only on housing.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 200
   },
   {
    "id": "fund/201",
@@ -68,7 +70,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "Assets and liabilities assumed from the former Redevelopment Agency Low-Moderate Income Fund; used for low and moderate income housing programs.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 201
   },
   {
    "id": "fund/202",
@@ -77,7 +80,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "Listed among local/state/federal assistance for community development, housing and human services activities.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 202
   },
   {
    "id": "fund/203",
@@ -86,7 +90,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "Housing and human services assistance funds; spendable only on the assisted housing program.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 203
   },
   {
    "id": "fund/210",
@@ -95,7 +100,8 @@
    "role": "fund",
    "constraint_tier": "unknown",
    "rationale": "Youth/community program fund. The description only lumps it with local assistance and grants, while the fund detail (p136) shows charges for services plus a General Fund transfer, so no legal restriction is established.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 210
   },
   {
    "id": "fund/211",
@@ -104,7 +110,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "County asset forfeiture proceeds; restricted to law enforcement use.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 211
   },
   {
    "id": "fund/220",
@@ -113,7 +120,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "Federal grants, including police program grants; spendable only per each grant agreement.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 220
   },
   {
    "id": "fund/222",
@@ -122,7 +130,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "Federal Treasury forfeiture proceeds; restricted to law enforcement use.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 222
   },
   {
    "id": "fund/223",
@@ -131,7 +140,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "HUD Economic Development Initiative special grant; spendable only per the grant award.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 223
   },
   {
    "id": "fund/224",
@@ -140,7 +150,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "Community Development Block Grant funds; restricted to HUD-eligible activities.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 224
   },
   {
    "id": "fund/225",
@@ -149,7 +160,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "HOME Investment Partnerships grant funds; restricted to eligible affordable-housing activities.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 225
   },
   {
    "id": "fund/240",
@@ -158,7 +170,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "State grants for streets, solid waste, safety and community programs; spendable only per each grant agreement.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 240
   },
   {
    "id": "fund/282",
@@ -167,7 +180,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "Host community impact fees from the Altamont and Vasco Road landfills; restricted to promoting the arts in Livermore.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 282
   },
   {
    "id": "fund/283",
@@ -176,7 +190,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "Ratepayer fee collected through solid waste collection charges; spent on street sweeping.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 283
   },
   {
    "id": "fund/284",
@@ -185,7 +200,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "Development fees under LMC 12.51 (Art in Public Places); restricted to public art.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 284
   },
   {
    "id": "fund/285",
@@ -194,7 +210,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "30% of vehicle impound fees; restricted to police programs that reduce vehicle collisions.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 285
   },
   {
    "id": "fund/286",
@@ -203,7 +220,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "State-mandated CASp fee collected with business licenses; restricted to the certified access specialist program.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 286
   },
   {
    "id": "fund/287",
@@ -212,7 +230,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "Public, Educational and Government access fees from cable TV franchises; restricted to PEG capital use.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 287
   },
   {
    "id": "fund/288",
@@ -221,7 +240,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "Waste import mitigation fee within the solid waste management group; restricted to source reduction and recycling programs.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 288
   },
   {
    "id": "fund/289",
@@ -230,7 +250,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "Solid waste and recycling fees; restricted to source reduction and beverage container recycling programs.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 289
   },
   {
    "id": "fund/300",
@@ -239,7 +260,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "Receipts under the Altamont Landfill Settlement Agreement; restricted to open space acquisition and management by that agreement.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 300
   },
   {
    "id": "fund/310",
@@ -248,7 +270,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "Landscape maintenance district assessments; spendable only within the benefited district.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 310
   },
   {
    "id": "fund/311",
@@ -257,7 +280,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "Landscape maintenance district assessments; spendable only within the benefited district.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 311
   },
   {
    "id": "fund/320",
@@ -266,7 +290,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "Community facilities district special taxes; spendable only within the benefited district.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 320
   },
   {
    "id": "fund/321",
@@ -275,7 +300,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "Community facilities district special taxes; spendable only within the benefited district.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 321
   },
   {
    "id": "fund/330",
@@ -284,7 +310,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "Donations to the Library; donor-designated to specific community programs.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 330
   },
   {
    "id": "fund/331",
@@ -293,7 +320,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "Donations to the Police Department; donor-designated to specific community programs.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 331
   },
   {
    "id": "fund/400",
@@ -302,7 +330,8 @@
    "role": "fund",
    "constraint_tier": "committed",
    "rationale": "Accumulates principal and interest payments for the 2020 COP Series A.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 400
   },
   {
    "id": "fund/401",
@@ -311,7 +340,8 @@
    "role": "fund",
    "constraint_tier": "committed",
    "rationale": "Accumulates principal and interest payments for the 2020 COP Series B.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 401
   },
   {
    "id": "fund/402",
@@ -320,7 +350,8 @@
    "role": "fund",
    "constraint_tier": "committed",
    "rationale": "Accumulates principal and interest payments for the 2022 COP.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 402
   },
   {
    "id": "fund/510",
@@ -329,7 +360,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "Traffic impact fees paid by developers; restricted to interchange and local street improvement projects.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 510
   },
   {
    "id": "fund/512",
@@ -338,7 +370,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "AB 1600 (Mitigation Fee Act) park impact fees; restricted to acquisition and construction of park improvements.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 512
   },
   {
    "id": "fund/550",
@@ -347,7 +380,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "Alameda County Measure D waste-management funds; restricted to recycling and source reduction purposes.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 550
   },
   {
    "id": "fund/552",
@@ -356,7 +390,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "Alameda County Measure BB local streets and roads pass-through; restricted to street construction and maintenance.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 552
   },
   {
    "id": "fund/560",
@@ -365,7 +400,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "State gasoline tax subventions; restricted by state law to street and road purposes.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 560
   },
   {
    "id": "fund/561",
@@ -374,7 +410,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "SB 1 Road Maintenance and Rehabilitation Account funds; restricted by state law to eligible road work.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 561
   },
   {
    "id": "fund/600",
@@ -383,7 +420,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "Airport operating revenues and FAA grants; restricted to airport operations, related 2020 COP Series B debt service, and airport capital.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 600
   },
   {
    "id": "fund/610",
@@ -392,7 +430,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "Self-supporting storm water operations funded by ratepayer charges; restricted to storm water service.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 610
   },
   {
    "id": "fund/620",
@@ -401,7 +440,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "Self-supporting wastewater disposal plant, export pipeline and urban run-off operations funded by ratepayer charges.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 620
   },
   {
    "id": "fund/622",
@@ -410,7 +450,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "Ratepayer-funded reserve for replacement of wastewater system assets.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 622
   },
   {
    "id": "fund/623",
@@ -419,7 +460,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "Wastewater connection (impact) fees; restricted to wastewater capacity and capital.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 623
   },
   {
    "id": "fund/640",
@@ -428,7 +470,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "Self-supporting municipal water service funded by user charges, including related 2020 COP Series B debt service.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 640
   },
   {
    "id": "fund/642",
@@ -437,7 +480,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "Ratepayer-funded reserve for replacement of water system assets.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 642
   },
   {
    "id": "fund/643",
@@ -446,7 +490,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "Water connection (impact) fees; restricted to future water storage and capacity.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 643
   },
   {
    "id": "fund/700",
@@ -455,7 +500,8 @@
    "role": "fund",
    "constraint_tier": "committed",
    "rationale": "Departmental charges funding the city's self-insured general liability risk management program.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 700
   },
   {
    "id": "fund/710",
@@ -464,7 +510,8 @@
    "role": "fund",
    "constraint_tier": "committed",
    "rationale": "Departmental charges funding the city's self-insured workers' compensation program.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 710
   },
   {
    "id": "fund/720",
@@ -473,7 +520,8 @@
    "role": "fund",
    "constraint_tier": "committed",
    "rationale": "Departmental charges funding city software, hardware, IT governance and cybersecurity.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 720
   },
   {
    "id": "fund/730",
@@ -482,7 +530,8 @@
    "role": "fund",
    "constraint_tier": "committed",
    "rationale": "Departmental charges funding maintenance and acquisition of the city fleet and small equipment.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 730
   },
   {
    "id": "fund/740",
@@ -491,7 +540,8 @@
    "role": "fund",
    "constraint_tier": "committed",
    "rationale": "Departmental charges funding repair and maintenance of city facilities.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 740
   },
   {
    "id": "department/administrative-services",
@@ -1418,7 +1468,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "Federal DOJ equitable sharing forfeiture proceeds; restricted to law enforcement use.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 221
   },
   {
    "id": "fund/241",
@@ -1427,7 +1478,8 @@
    "role": "fund",
    "constraint_tier": "unknown",
    "rationale": "No entry in the Description of Funds (pp258-261). Opioid settlement receipts are ordinarily restricted to remediation, but the budget document does not say so.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 241
   },
   {
    "id": "fund/260",
@@ -1436,7 +1488,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "Local and other grant awards for citywide programs; spendable only per each grant agreement.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 260
   },
   {
    "id": "fund/280",
@@ -1445,7 +1498,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "Developer fees for downtown revitalization; restricted to that purpose.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 280
   },
   {
    "id": "fund/290",
@@ -1454,7 +1508,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "Development fees restricted to capital improvements that provide human services facilities.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 290
   },
   {
    "id": "fund/511",
@@ -1463,7 +1518,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "Tri-Valley Transportation Council fees; restricted to the regional street and transportation projects they fund.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 511
   },
   {
    "id": "fund/513",
@@ -1472,7 +1528,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "Solid waste and recycling impact fees; restricted to the street capital work the fee is levied for.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 513
   },
   {
    "id": "fund/540",
@@ -1481,7 +1538,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "2022 Certificates of Participation proceeds; restricted by the debt documents to L Street Garage construction.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 540
   },
   {
    "id": "fund/551",
@@ -1490,7 +1548,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "Alameda County Measure BB bicycle/pedestrian pass-through; restricted to those street projects by the voter-approved measure.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 551
   },
   {
    "id": "fund/553",
@@ -1499,7 +1558,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "County Measure F vehicle registration fee; restricted to transportation projects.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 553
   },
   {
    "id": "fund/580",
@@ -1508,7 +1568,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "Refundable performance deposits held on behalf of developers; returned when the developer performs, so not city money to spend.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 580
   },
   {
    "id": "fund/582",
@@ -1517,7 +1578,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "In-lieu fees under LMC 3.27; restricted to open space acquisition in North Livermore.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 582
   },
   {
    "id": "fund/612",
@@ -1526,7 +1588,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "Storm drain impact fees; restricted to storm drain infrastructure.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 612
   },
   {
    "id": "expenditure/administrative-services/services-and-supplies",
@@ -2288,7 +2351,8 @@
    "role": "fund",
    "constraint_tier": "committed",
    "rationale": "General Fund resources set aside by the City for capital projects; constrained by City action, not by law.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 101
   },
   {
    "id": "fund/204",
@@ -2297,7 +2361,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "Housing and human services loan funds; repayments revolve back into the same program.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 204
   },
   {
    "id": "fund/205",
@@ -2306,7 +2371,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "State CalHome program reuse funds; restricted to the program's owner-occupied housing purposes.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 205
   },
   {
    "id": "fund/206",
@@ -2315,7 +2381,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "State BEGIN down-payment assistance program funds; restricted to that program.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 206
   },
   {
    "id": "fund/207",
@@ -2324,7 +2391,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "Local housing trust monies for affordable housing; restricted to housing use.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 207
   },
   {
    "id": "fund/226",
@@ -2333,7 +2401,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "Federal disaster/COVID-19 grant reimbursements; spendable only on the eligible costs claimed.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 226
   },
   {
    "id": "fund/242",
@@ -2342,7 +2411,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "Police COPS grant funds; restricted to the granted police programs. Classified from the fund name only — it has no Description of Funds entry.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 242
   },
   {
    "id": "fund/281",
@@ -2351,7 +2421,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "In-lieu parking fees from developers; restricted to downtown parking.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 281
   },
   {
    "id": "fund/291",
@@ -2360,7 +2431,8 @@
    "role": "fund",
    "constraint_tier": "committed",
    "rationale": "Funds economic, climate resilience and community programs and public spaces as set in the Citywide Strategic Plan; the constraint named in the document is the City's own plan, not a law.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 291
   },
   {
    "id": "fund/470",
@@ -2369,7 +2441,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "Endowment principal is legally unspendable; only earnings may be used, for burrowing owl habitat mitigation.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 470
   },
   {
    "id": "fund/471",
@@ -2378,7 +2451,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "Endowment resources restricted to burrowing owl habitat mitigation; principal may not be spent.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 471
   },
   {
    "id": "fund/581",
@@ -2387,7 +2461,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "PG\u0026E Rule 20A allocations; restricted to public utility undergrounding improvements.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 581
   },
   {
    "id": "fund/583",
@@ -2396,7 +2471,8 @@
    "role": "fund",
    "constraint_tier": "restricted-by-law",
    "rationale": "Surplus from the closeout of Assessment Districts 1993-4 and 2002; dedicated to maintenance and improvements within the district boundaries per the closeout report.",
-   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+   "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261",
+   "fund": 583
   },
   {
    "id": "expenditure/expenses",

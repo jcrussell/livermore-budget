@@ -90,7 +90,8 @@ function worstOf(app) {
 /**
  * The states driven in one column, each a list of expansions: the root, the
  * first node the root splits, the group whose fund column is widest, the
- * General Fund group and its one fund, an object category by its divisions,
+ * General Fund group, opened straight through its one fund, an object
+ * category by its divisions,
  * and everything by its first split (Expand all).
  * @param {any} app  booted and on the year
  * @returns {string[][]}
@@ -100,7 +101,7 @@ function statesFor(app) {
   const add = (entries) => { if (!chosen.some((p) => keyOf(p) === keyOf(entries))) chosen.push(entries); };
   add([app.projection.nodes.filter((n) => app.splittable(n)).map((n) => n.id).sort()[0]]);
   add([worstOf(app)]);
-  add(["fund-group/general", "fund/100"]);
+  add(["fund-group/general"]);
   add(["expenditure/services-and-supplies" + app.ALTERNATIVE_MARK + "divisions"]);
   app.collapseAll();
   app.expandAll();
@@ -816,7 +817,9 @@ describe("the expansion's drawing", () => {
 
     test(`${year.label}: two chips the city prints in the same words are told apart by what each splits into`, async (t) => {
       const { app, document } = await bootedApp({ checkedStem: year.stem });
-      await split(app, "fund-group/general", "fund/100");
+      // A list naming both, as a link made before the group opened straight
+      // through its one fund does.
+      await goTo(app, ["fund-group/general", "fund/100"]);
       const words = [app.nodeOf("fund-group/general").label, app.nodeOf("fund/100").label];
       const chips = [...document.querySelectorAll("#breadcrumb .crumb-expanded")].map((c) => c.textContent);
       t.diagnostic(`the column labels the two ${JSON.stringify(words)}, and the chips read ${JSON.stringify(chips)}`);
@@ -1240,6 +1243,46 @@ describe("two extend splits open together", () => {
       assert.equal(refusals(document).length, 0);
       assert.equal(columns, 6);
       assert.deepEqual(misplaced(app), []);
+    });
+  }
+});
+
+describe("a member printed in its parent's words", () => {
+  for (const year of YEARS) {
+    test(`${year.label}: is drawn with the page's noun for it in a qualifier tspan, and named by its printed words`, async (t) => {
+      const { app, document } = await bootedApp({ checkedStem: year.stem });
+      app.expandAll();
+      await settle();
+      expandAll(app);
+      await settle();
+      const chart = document.getElementById("chart");
+      const byID = new Map(app.fetched.nodes.map((n) => [n.id, n]));
+      const want = app.fetched.nodes.filter((n) => app.labelledAsParent(byID, n.id)).map((n) => n.id).sort();
+      const drawn = new Map(marksIn(chart).map((m) => [m.__data__.id, m]));
+      const wrong = [];
+      const said = [];
+      for (const id of want) {
+        const m = drawn.get(id);
+        if (!m) {
+          wrong.push(`${id} is not drawn with everything open`);
+          continue;
+        }
+        const noun = haloOf(m).children[2];
+        const words = " (" + app.memberNoun(app.fetched, id) + ")";
+        const name = m.getAttribute("aria-label");
+        if (noun.getAttribute("class") !== "qualifier" || noun.textContent !== words) {
+          wrong.push(`${id} draws ${JSON.stringify(tspansOf(m))}, not the qualifier ${JSON.stringify(words)}`);
+        }
+        if (!name.includes(byID.get(id).label) || name.includes(words)) wrong.push(`${id} is named "${name}"`);
+        said.push(tspansOf(m).slice(0, 3).join(""));
+      }
+      const stray = [...drawn].filter(([id, m]) => !want.includes(id) && haloOf(m).children[2].textContent !== "").map(([id]) => id);
+      t.diagnostic(`${year.label}: ${JSON.stringify(said)}`);
+      assert.ok(want.length > 0, "no member is printed in its parent's words, so this asserts nothing");
+      assert.deepEqual(wrong, []);
+      assert.deepEqual(stray, [], "a mark not printed in its parent's words draws a noun");
+      assert.equal(app.memberNoun(app.fetched, "fund/100"), "fund 100");
+      assert.equal(app.memberNoun(app.fetched, "revenue-line/intergovernmental/intergovernmental"), "line");
     });
   }
 });

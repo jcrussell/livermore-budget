@@ -1044,7 +1044,7 @@ func nodeLabel(l labels, id, slug string) string {
 	if l == nil {
 		return slugLabel(id)
 	}
-	if n, ok := transferFundNumber(id); ok {
+	if n, ok := FundNumber(id); ok {
 		if name, ok := l.FundName(n); ok && name != "" {
 			return name
 		}

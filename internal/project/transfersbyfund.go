@@ -428,9 +428,10 @@ func (t *transfersByFund) addNode(nodes map[string]Node, e endpoint) {
 // reader why.
 func (t *transfersByFund) label(e endpoint) string { return nodeLabel(t.Labels, e.id, e.slug) }
 
-// transferFundNumber is the fund a node id names, for the three forms that name
-// one. It returns false for transfers/in, which names no fund.
-func transferFundNumber(id string) (int, bool) {
+// FundNumber is the fund a node id names, the number the city prints for it,
+// for the three forms that name one. It returns false for any other id,
+// transfers/in included.
+func FundNumber(id string) (int, bool) {
 	for _, prefix := range []string{PrefixFund, PrefixTransferFrom, PrefixTransferTo} {
 		if len(id) > len(prefix) && id[:len(prefix)] == prefix {
 			n, err := strconv.Atoi(id[len(prefix):])

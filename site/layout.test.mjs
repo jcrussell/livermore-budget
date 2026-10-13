@@ -151,16 +151,16 @@ const usd = (n) => "$" + Math.round(n).toLocaleString();
  * render() draws. A copy of nodeFlags' markers here would under-measure every
  * label the day a marker is added.
  */
-function labelWidth(app, d, place, room, qualifier, drawn) {
+function labelWidth(app, d, place, room, qualifier, drawn, noun = "") {
   const value = "  " + app.fmtShortSigned(app.markCents(d));
   const flags = app.nodeFlags(d);
   const words = drawn && drawn.get(d.id) ||
-    app.labelWords(room, qualifier, d.label, (w) => app.labelAdvance(w, value, flags));
+    app.labelWords(room, qualifier, d.label, (w) => app.labelAdvance(w, value, flags), noun);
   return { words, width: app.labelAdvance(words, value, flags) };
 }
 
 /**
- * The words each drawn mark's qualifier and label tspans carry, by id.
+ * The words each drawn mark's qualifier, label and noun tspans carry, by id.
  * @param {Document} document
  */
 function drawnWords(document) {
@@ -168,8 +168,8 @@ function drawnWords(document) {
   for (const m of document.querySelectorAll("#chart g.node")) {
     const text = [...m.children].find((c) => c.tagName === "text" && c.getAttribute("class") === "halo");
     if (!text) continue;
-    const [qualifier, label] = [...text.children];
-    out.set(m.__data__.id, { qualifier: qualifier.textContent, label: label.textContent });
+    const [qualifier, label, noun] = [...text.children];
+    out.set(m.__data__.id, { qualifier: qualifier.textContent, label: label.textContent, noun: noun.textContent });
   }
   return out;
 }
@@ -237,15 +237,17 @@ function labelFit(app, graph, document) {
   const slots = app.slotsOf(graph.nodes, app.RENDER_TIERS);
   // The document render() hands labelQualifiers: the unfolded nodes.
   const qualifiers = app.labelQualifiers({ nodes: [...app.groupIndex.values()] }, slots, graph.nodes);
+  const nouns = app.labelNouns({ nodes: [...app.groupIndex.values()] }, graph.nodes, app.memberNounOf);
   return graph.nodes.map((n) => {
     const place = app.labelPlacement(slots, n, last);
     const qualifier = qualifiers.get(n.id) || "";
     const col = app.columnOf(slots, n);
     const room = roomFor(app, columns, col);
-    const { words, width } = labelWidth(app, n, place, app.labelRoom(place, columns.size), qualifier, drawn);
+    const noun = nouns.get(n.id) || "";
+    const { words, width } = labelWidth(app, n, place, app.labelRoom(place, columns.size), qualifier, drawn, noun);
     const box = boxAt(place.anchor, place.x, width);
-    return { node: n, id: n.id, col, last, place, width, box, room, qualifier,
-             words: words.qualifier + words.label,
+    return { node: n, id: n.id, col, last, place, width, box, room, qualifier, noun,
+             words: words.qualifier + words.label + (words.noun || ""),
              block: labelBlock(place),
              clearance: Math.min(box.left - room.from, room.to - box.right) };
   });
@@ -635,7 +637,8 @@ const OVERLAPPED = {
 
 /**
  * The fewest characters of its name a cut interior label keeps at
- * BAND_FLOOR: a word either side of the ellipsis.
+ * BAND_FLOOR: a word either side of the ellipsis. A member printed in its
+ * parent's words counts its noun's, which is what names it there.
  */
 const FLOOR_KEEPS = 10;
 
@@ -652,11 +655,11 @@ function atFloor(app, fits) {
   for (const f of inner) {
     const value = "  " + app.fmtShortSigned(app.markCents(f.node));
     const flags = app.nodeFlags(f.node);
-    const w = app.labelWords(room, f.qualifier, f.node.label, (ws) => app.labelAdvance(ws, value, flags));
+    const w = app.labelWords(room, f.qualifier, f.node.label, (ws) => app.labelAdvance(ws, value, flags), f.noun);
     if (!w.cut) continue;
     cut++;
-    const kept = (w.qualifier + w.label).length - 1;
-    if (!fewest || kept < fewest.kept) fewest = { kept, words: w.qualifier + w.label, id: f.id };
+    const kept = (w.qualifier + w.label).length - 1 + f.noun.length;
+    if (!fewest || kept < fewest.kept) fewest = { kept, words: w.qualifier + w.label + w.noun, id: f.id };
   }
   return { inner: inner.length, cut, fewest };
 }
@@ -828,7 +831,7 @@ const EXPANSION_CLAIMED = {
   "FY 2025-26": {
     "root": { slots: "12/6/7", figures: "25 nodes, 58 ribbons; 820px canvas, 9 under 1px",
       labels: "0 wider than their room" },
-    "fund-group/general by funds": { slots: "12/6/1/7", figures: "26 nodes, 61 ribbons; 820px canvas, 10 under 1px",
+    "fund-group/general by funds": { slots: "12/6/1/23/7", figures: "49 nodes, 126 ribbons; 920px canvas, 17 under 1px",
       labels: "0 wider than their room" },
     "everything by primary splits": { slots: "12/73/6/36/23/7/43",
       figures: "200 nodes, 400 ribbons; 2920px canvas, 62 under 1px",
@@ -840,7 +843,7 @@ const EXPANSION_CLAIMED = {
   "FY 2026-27": {
     "root": { slots: "12/6/7", figures: "25 nodes, 58 ribbons; 820px canvas, 11 under 1px",
       labels: "0 wider than their room" },
-    "fund-group/general by funds": { slots: "12/6/1/7", figures: "26 nodes, 60 ribbons; 820px canvas, 12 under 1px",
+    "fund-group/general by funds": { slots: "12/6/1/23/7", figures: "49 nodes, 125 ribbons; 920px canvas, 19 under 1px",
       labels: "0 wider than their room" },
     "everything by primary splits": { slots: "12/73/6/37/23/7/42",
       figures: "200 nodes, 399 ribbons; 2920px canvas, 70 under 1px",
@@ -877,20 +880,23 @@ function expansionFrontiers(doc) {
 /**
  * Each label of a laid expansion against its room, as labelFit measures the
  * page's: placed by labelPlacement over the same slots, anchored as drawn,
- * qualified by labelQualifiers over the unfolded `doc` and fitted by labelWords.
+ * qualified by labelQualifiers and labelNouns over the unfolded `doc` and
+ * fitted by labelWords.
  */
 function expansionLabels(doc, laid, slots, columns) {
   const xs = new Map();
   for (const n of laid.nodes) if (!xs.has(slots.get(n.id))) xs.set(slots.get(n.id), { x0: n.x0, x1: n.x1 });
   const last = Math.max(...xs.keys());
   const qualifiers = sankey.labelQualifiers(doc, slots, laid.nodes);
+  const nouns = sankey.labelNouns(doc, laid.nodes, (id) => core.memberNoun(doc, id));
   const width = sankey.chartWidth(columns);
   return laid.nodes.map((n) => {
     const col = sankey.columnOf(slots, n);
     const place = sankey.labelPlacement(slots, n, last);
     const value = "  " + core.fmtShortSigned(sankey.markCents(n));
     const measure = (w) => sankey.labelAdvance(w, value, "");
-    const words = sankey.labelWords(sankey.labelRoom(place, columns), qualifiers.get(n.id) || "", n.label, measure);
+    const words = sankey.labelWords(sankey.labelRoom(place, columns), qualifiers.get(n.id) || "", n.label, measure,
+      nouns.get(n.id) || "");
     const box = boxAt(place.anchor, place.x, measure(words));
     const me = xs.get(col);
     const before = xs.get(col - 1);
@@ -1153,9 +1159,37 @@ describe("an outward label fitted to its gutter", () => {
     t.diagnostic(`${JSON.stringify(roomy)} and ${JSON.stringify(tight)}`);
     assert.deepEqual({ roomy, cut: tight.cut, cutQualifier: tight.qualifier.endsWith(": ") && tight.qualifier.includes("\u2026"),
       label: tight.label }, {
-      roomy: { qualifier: "Licenses and Permits: ", label: "Lines", cut: false },
+      roomy: { qualifier: "Licenses and Permits: ", label: "Lines", noun: "", cut: false },
       cut: true, cutQualifier: true, label: "6 smaller lines",
     });
+  });
+
+  // Mutation: draw labelWords' noun as "" and this goes red.
+  test("a noun is drawn after the label, kept whole while the label is cut before it", (t) => {
+    const roomy = sankey.labelWords(room, "", "Intergovernmental", (w) => sankey.labelAdvance(w, "  $1.2M", ""), "line");
+    const tight = sankey.labelWords(150, "", "Intergovernmental", (w) => sankey.labelAdvance(w, "  $1.2M", ""), "line");
+    t.diagnostic(`${JSON.stringify(roomy)} and ${JSON.stringify(tight)}`);
+    assert.deepEqual({ roomy, noun: tight.noun, cut: tight.cut, ellipsis: tight.label.includes("\u2026") },
+      { roomy: { qualifier: "", label: "Intergovernmental", noun: " (line)", cut: false },
+        noun: " (line)", cut: true, ellipsis: true });
+  });
+
+  // fisc-ylxh.6. Mutation: hand the whole line to the label tspan, as one
+  // owner, and this goes red with the qualifier and the noun empty.
+  test("a label cut whole keeps each tspan's own words", (t) => {
+    const lead = "Licenses and Permits: ";
+    const label = "An Unusually Long Revenue Line Without Any Owner Named Before It";
+    const w = sankey.labelWords(200, "Licenses and Permits", label, (ws) => sankey.labelAdvance(ws, "  $1.2M", ""), "line");
+    const whole = lead + label + " (line)";
+    t.diagnostic(JSON.stringify(w));
+    const joined = w.qualifier + w.label + w.noun;
+    const at = joined.indexOf("\u2026");
+    assert.deepEqual({
+      cut: w.cut,
+      qualifier: w.qualifier !== "" && lead.startsWith(w.qualifier.replace("\u2026", "")),
+      noun: w.noun !== "" && " (line)".endsWith(w.noun.replace("\u2026", "")),
+      joined: whole.startsWith(joined.slice(0, at)) && whole.endsWith(joined.slice(at + 1)),
+    }, { cut: true, qualifier: true, noun: true, joined: true });
   });
 
   test("a label with no owner is cut in its middle and fits", (t) => {

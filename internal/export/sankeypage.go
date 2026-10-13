@@ -142,6 +142,9 @@ type clientConfig struct {
 	// SplitLabels is what each split key's members are called, in the page's
 	// words, keyed as the expansion schedule names a split.
 	SplitLabels map[string]string `json:"split_labels"`
+	// MemberNouns is what one member of each split key is called, in the
+	// page's words, keyed as SplitLabels.
+	MemberNouns map[string]string `json:"member_nouns"`
 	// Wording is every sentence the client composes, as templates it fills.
 	Wording wording `json:"wording"`
 	// Overview is the page's own chart: its form and that form's hints.
@@ -391,6 +394,7 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		Docs:          clientDocs,
 		KindLabels:    kindLabels(),
 		SplitLabels:   splitLabels(),
+		MemberNouns:   memberNouns(),
 		Wording:       defaultWording(),
 		Overview:      v.Overview,
 	}

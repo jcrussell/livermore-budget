@@ -60,6 +60,43 @@ export function kindLabel(kind) {
   return label;
 }
 
+/**
+ * Whether the node `id` names is printed in its parent's own words: what a
+ * member is told apart from its parent by a noun for (memberNoun).
+ * @param {Map<string, {label: string, parent?: string}>} byID the unfolded nodes, by id
+ * @param {string} id
+ * @returns {boolean}
+ */
+export function labelledAsParent(byID, id) {
+  const own = byID.get(id);
+  const parent = own && own.parent ? byID.get(own.parent) : undefined;
+  return Boolean(own && parent && parent.label === own.label);
+}
+
+/**
+ * What one member of the split it belongs to is called, in the page's
+ * member_nouns for that split's key, its `{fund}` filled with the member's
+ * fund number: "" for a node that is no split's member. Refused, not guessed,
+ * for a key the page publishes no noun for, and for a `{fund}` on a node
+ * carrying no fund number.
+ * @param {FiscProjection} doc the expansion schedule
+ * @param {string} id
+ * @returns {string}
+ */
+export function memberNoun(doc, id) {
+  const n = doc.nodes.find((x) => x.id === id);
+  if (!n || !n.parent) return "";
+  const split = (doc.splits || []).find((/** @type {any} */ sp) =>
+    sp.node === n.parent && (n.alternative ? sp.alternative && sp.key === n.alternative : !sp.alternative));
+  if (!split) return "";
+  const noun = (config().member_nouns || {})[split.key];
+  if (!noun) throw new Error("cannot qualify " + id + ": the page publishes no noun for a member of split " + split.key);
+  return noun.replace(/\{fund\}/g, () => {
+    if (!n.fund) throw new Error("cannot qualify " + id + ": its noun names a fund and the column gives it no fund number");
+    return String(n.fund);
+  });
+}
+
 export const money = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
@@ -314,6 +351,8 @@ function assembleSchedule(column, key) {
     // Not defaulted: an absent balance is a blank on the page, not a zero,
     // and an absent alternative is a member of its parent's primary split.
     if (n.alternative) Object.assign(node, { alternative: n.alternative });
+    // Not defaulted: a node naming no fund has no number.
+    if (base.fund) Object.assign(node, { fund: base.fund });
     return n.balances ? Object.assign(node, { balances: n.balances }) : node;
   });
   const links = sched.links.map((l) => {
@@ -842,8 +881,9 @@ export function collapse(doc, frontier, id) {
 
 /**
  * The frontier with one split of a drawn node open: its members drawn beside
- * it, the node kept as their hub. A node open another way is shut first, so a
- * frontier opens a node one way at a time.
+ * it, the node kept as their hub, and where the split has one member, that
+ * member opened by its first split too (straightFrom). A node open another
+ * way is shut first, so a frontier opens a node one way at a time.
  * FAILS CLOSED on a split the node does not have, on a split of a form other
  * than extend, and on a node the frontier does not draw.
  * @param {FiscProjection} doc the expansion schedule
@@ -864,7 +904,32 @@ export function expand(doc, frontier, id, key) {
   const out = open ? collapse(doc, frontier, id) : new Set(frontier);
   if (!out.has(id)) throw new Error("cannot open " + id + ": the frontier does not draw it");
   for (const m of split.members) out.add(m);
-  return out;
+  // A SPLIT OF ONE MEMBER OPENS STRAIGHT THROUGH: its member alone draws no
+  // money the node did not, so the member's first split opens with it.
+  if (split.members.length !== 1) return out;
+  const only = splitsOf(doc, split.members[0]).find((sp) => !sp.alternative);
+  return only ? expand(doc, out, split.members[0], only.key) : out;
+}
+
+/**
+ * The node whose opening opens `id`'s splits with it: `id`'s parent where
+ * `id` is the one member of the split it belongs to, and so on up (expand),
+ * else `id` itself. What folding `id` back folds.
+ * @param {FiscProjection} doc the expansion schedule
+ * @param {string} id
+ * @returns {string}
+ */
+export function straightFrom(doc, id) {
+  const byID = new Map(doc.nodes.map((n) => [n.id, n]));
+  let at = id;
+  for (let hops = 0; hops < 9; hops++) {
+    const n = byID.get(at);
+    if (!n || !n.parent) break;
+    const split = splitsOf(doc, n.parent).find((sp) => sp.members.includes(at));
+    if (!split || split.members.length !== 1) break;
+    at = n.parent;
+  }
+  return at;
 }
 
 /**

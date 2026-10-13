@@ -12,6 +12,7 @@
     "docs",
     "kind_labels",
     "split_labels",
+    "member_nouns",
     "wording"
   ,
     "overview"],
@@ -247,6 +248,12 @@
     },
     "split_labels": {
       "description": "What each split key's members are called, in the page's words; the chip row and the chooser name a split by it.",
+      "type": "object",
+      "propertyNames": { "$ref": "https://jcrussell.github.io/livermore-budget/schema/enums.schema.json#/$defs/split_key" },
+      "additionalProperties": { "type": "string", "minLength": 1 }
+    },
+    "member_nouns": {
+      "description": "What one member of each split key is called, in the page's words; a member drawn beside a parent printed in the same words is qualified by it. `{fund}` is the member's column node's fund number.",
       "type": "object",
       "propertyNames": { "$ref": "https://jcrussell.github.io/livermore-budget/schema/enums.schema.json#/$defs/split_key" },
       "additionalProperties": { "type": "string", "minLength": 1 }

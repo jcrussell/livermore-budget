@@ -123,6 +123,21 @@ func splitLabels() map[string]string {
 	}
 }
 
+// memberNouns is what one member of each split key is called, keyed by every
+// split key the expansion schedule declares ([project.SplitKeys]): the noun a
+// member drawn beside a parent the city prints in the same words is told
+// apart by. `{fund}` is the member's column node's fund number.
+func memberNouns() map[string]string {
+	return map[string]string{
+		"lines":       "line",
+		"payers":      "fund {fund}",
+		"funds":       "fund {fund}",
+		"divisions":   "division",
+		"object-rows": "object row",
+		"receivers":   "fund {fund}",
+	}
+}
+
 // kindLabels is project's words for every link kind, keyed as a link names it.
 func kindLabels() map[string]string {
 	out := make(map[string]string, len(project.LinkKinds()))

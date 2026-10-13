@@ -53,6 +53,10 @@ type ColumnNode struct {
 	ConstraintTier string `json:"constraint_tier,omitempty"`
 	Rationale      string `json:"rationale,omitempty"`
 	SourceNote     string `json:"source_note,omitempty"`
+	// Fund is the number the city prints for the fund the node's id names
+	// ([project.FundNumber]), absent on a node naming none, so a client never
+	// parses an id for it.
+	Fund int `json:"fund,omitempty"`
 }
 
 // ColumnSchedNode is one schedule's view of a node the column carries: its
@@ -338,6 +342,9 @@ func ColumnsOf(projections map[string][]byte, generatedBy string) (map[string]Co
 			node := ColumnNode{
 				ID: n.ID, Label: n.Label, Tier: n.Tier, Role: n.Role, Derived: n.Derived,
 				ConstraintTier: n.ConstraintTier, Rationale: n.Rationale, SourceNote: n.SourceNote,
+			}
+			if fund, ok := project.FundNumber(n.ID); ok {
+				node.Fund = fund
 			}
 			if !had {
 				i = len(col.Nodes)

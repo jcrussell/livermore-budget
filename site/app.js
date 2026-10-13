@@ -465,6 +465,18 @@ export function splitsHere(d) {
 }
 
 /**
+ * What one member of the split a node belongs to is called, in the page's
+ * words (core.memberNoun): "" for a node of any other document, and for one
+ * no split holds. A label the city prints for a member in its parent's own
+ * words is told apart by it.
+ * @param {string} id
+ * @returns {string}
+ */
+export function memberNounOf(id) {
+  return expanding() && fetched ? core.memberNoun(fetched, id) : "";
+}
+
+/**
  * The words a split's members are called in, from the page's split_labels.
  * Refused, not guessed, for a key the page publishes none for.
  * @param {string} key
@@ -592,7 +604,8 @@ export function focusInChart() {
 
 /**
  * Asks of every node of the chart on screen what the paints ask per mark --
- * whether it splits, and whether it draws out -- so a declaration those
+ * whether it splits, whether it draws out, and what a member printed in its
+ * parent's words is called -- so a declaration those
  * questions would throw on is met inside the caller's rollback rather than
  * thrown from paintChartHint or render over a page already half repainted.
  */
@@ -601,6 +614,7 @@ export function askAffordances() {
   for (const n of projection.nodes) {
     splittable(n);
     expandable(n);
+    if (core.labelledAsParent(groupIndex, n.id)) memberNounOf(n.id);
   }
 }
 
@@ -689,6 +703,9 @@ export function expandNode(id, key) {
   const splits = core.splitsOf(fetched, id);
   const split = key === undefined ? splits[0] : splits.find((sp) => sp.key === key);
   if (!split) return false;
+  // Open already, by its own entry or straight through its parent's: the
+  // list takes no entry that draws nothing.
+  if (frontier && frontier.has(id) && core.openSplitOf(fetched, frontier, id) === split.key) return true;
   const inside = core.withinNode(fetched, id);
   const next = expansions.filter((e) => !entryInside(e, inside)).concat([entryOf(id, split.key)]);
   const before = new Set(laidNodes.map((n) => n.id));
@@ -698,16 +715,19 @@ export function expandNode(id, key) {
 
 /**
  * Folds a split node back into one mark: its entry and every entry inside it
- * taken off the list. Focus goes back to the node.
+ * taken off the list, from the node it opened straight through
+ * (core.straightFrom), so a node opened with its parent folds with it. Focus
+ * goes back to that node.
  * @param {string} id
  * @returns {boolean} whether anything was folded
  */
 export function collapseNode(id) {
   if (!fetched) return false;
-  const inside = core.withinNode(fetched, id);
+  const from = core.straightFrom(fetched, id);
+  const inside = core.withinNode(fetched, from);
   const next = expansions.filter((e) => !entryInside(e, inside));
   if (next.length === expansions.length) return false;
-  return redraw(next, "That could not be folded back", () => id);
+  return redraw(next, "That could not be folded back", () => from);
 }
 
 /**
@@ -1373,6 +1393,7 @@ export function render(laid) {
     // The unfolded nodes the chart was folded from, which a same-word mark's
     // qualifier is read off (labelQualifiers).
     doc: { nodes: Array.from(groupIndex.values()) },
+    noun: memberNounOf,
     classes: { link: linkClass, node: nodeClass, flags: nodeFlags },
     describe: { link: linkDescription, node: nodeDescription },
     figure: markFigure,
