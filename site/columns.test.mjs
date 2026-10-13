@@ -11,11 +11,11 @@ import { bootedApp, split, settle, pageFixture, columnFixture, refusals } from "
 const YEARS = pageFixture().config.years;
 
 describe("the columns are the slots the chart draws", () => {
-  test("the page hands the stylesheet the held width and the chart's stretch over it, and the General Fund group, opened straight through its one fund, widens it by two slots", async (t) => {
+  test("the page hands the stylesheet the opening chart's width and the chart's stretch over it, and the General Fund group, opened straight through its one fund, widens it by two slots", async (t) => {
     const { app, document } = await bootedApp({ checkedStem: YEARS[0].stem });
     const handed = () => document.documentElement.style.getPropertyValue("--chart-max") + " x" +
       document.documentElement.style.getPropertyValue("--chart-stretch");
-    const held = (n) => app.widthOf(app.HELD_COLUMNS) + "px x" + app.widthOf(n) / app.widthOf(app.HELD_COLUMNS);
+    const held = (n) => app.widthOf(app.openingColumns()) + "px x" + app.widthOf(n) / app.widthOf(app.openingColumns());
     const columns = () => app.layoutColumns(app.shown.doc);
     const root = { columns: columns(), handed: handed() };
     // Every split extends: the group's one fund takes a slot of its own

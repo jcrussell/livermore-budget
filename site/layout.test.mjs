@@ -576,21 +576,22 @@ describe("where a label is anchored", () => {
       { drewNothing: false, read: drawn.marks * 4, wrong: [], interior: true }, detail);
   });
 
-  // THE CONTAINER AGAINST THE DRAWING: the card is capped at the held width,
-  // which the svg is stretched from, so a chart draws at its laid width
-  // wherever the viewport has room for the held one. AN EQUALITY, NOT A
-  // FLOOR: both are derived from the same declarations, so slack is the defect.
-  test("the stylesheet caps the chart's card at the held width every chart is scaled from", (t) => {
+  // THE CONTAINER AGAINST THE DRAWING: the card is capped at the opening
+  // chart's width, which the svg is stretched from, so a chart draws at its
+  // laid width wherever the viewport has room for the opening one. AN
+  // EQUALITY, NOT A FLOOR: both are derived from the same declarations, so
+  // slack is the defect.
+  test("the stylesheet caps the chart's card at the opening chart's width every chart is scaled from", (t) => {
     const detail = allowance.px === null
       ? allowance.why
       : `style.css caps the chart's card through --chart-max, which app.js set to ${allowance.px}px, ` +
-        `the held width, for the ${columns} columns it lays out at ${app.widthOf(columns)}px; the cushion is ` +
+        `the opening chart's width, for the ${columns} columns it lays out at ${app.widthOf(columns)}px; the cushion is ` +
         `${allowance.cushion}px in the stylesheet against app.js's ${app.CHART_CUSHION}px`;
     t.diagnostic(detail);
     assert.ok(columns > 3, "the chart split to its finest grain is no wider than the spine");
     assert.equal(app.chartWidth(3), NARROW_DESIGN_WIDTH);
     assert.deepEqual({ px: allowance.px, cushion: allowance.cushion },
-      { px: app.widthOf(app.HELD_COLUMNS), cushion: app.CHART_CUSHION }, detail);
+      { px: app.widthOf(app.openingColumns()), cushion: app.CHART_CUSHION }, detail);
   });
 });
 

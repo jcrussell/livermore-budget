@@ -29,7 +29,7 @@ import * as core from "./core.js";
 import {
   SCHEMA_VERSION, say, kindLabel, fmt, fmtSigned, el, maybeEl, cssVar, h, link, citations, balancesOf, PARTITION_NOTE, isFundGroup, scheduleOf, isLink, tableRows,
 } from "./core.js";
-import { HELD_COLUMNS, SANKEY } from "./sankey.js";
+import { SANKEY } from "./sankey.js";
 // Re-exported so the tests reach the shipped modules through the one file
 // they import; this file calls a form only through the renderer it registers.
 export * from "./core.js";
@@ -324,15 +324,25 @@ export function widthOf(n) {
 }
 
 /**
- * A chart of `n` columns' laid width over HELD_COLUMNS': what style.css's
- * --chart-stretch multiplies the card's room by to size the svg, so every
- * chart draws at the one scale the held width fits the card at, and a split
- * moves no column it leaves and rescales none.
+ * How many columns the chart opens on: one per tier it renders. Its width is
+ * the one every chart is drawn at the scale of.
+ * @returns {number}
+ */
+export function openingColumns() {
+  return Math.max(1, RENDER_TIERS.length);
+}
+
+/**
+ * A chart of `n` columns' laid width over the opening chart's: what
+ * style.css's --chart-stretch multiplies the card's room by to size the svg.
+ * So every chart draws at the one scale the opening chart fills its card at,
+ * full size wherever the viewport has room for it, a split moves no column it
+ * leaves and rescales none, and a wider chart runs past the card's right edge.
  * @param {number} n
  * @returns {number}
  */
 export function chartStretch(n) {
-  return widthOf(n) / widthOf(HELD_COLUMNS);
+  return widthOf(n) / widthOf(openingColumns());
 }
 
 /**
@@ -1380,9 +1390,9 @@ export function render(laid) {
   const layer = svg.append("g").attr("class", "zoom-layer");
   const columns = layoutColumns(doc);
   // style.css's --chart-room reads these: the card breaks out of main to the
-  // held width whatever the columns, so its left edge never moves, and the
-  // svg is that room stretched by the columns drawn.
-  document.documentElement.style.setProperty("--chart-max", widthOf(HELD_COLUMNS) + "px");
+  // opening chart's width whatever the columns, so its left edge never moves,
+  // and the svg is that room stretched by the columns drawn.
+  document.documentElement.style.setProperty("--chart-max", widthOf(openingColumns()) + "px");
   document.documentElement.style.setProperty("--chart-stretch", String(chartStretch(columns)));
   formOnScreen().render(graph, {
     svg: svg,
@@ -2529,20 +2539,73 @@ export function zoomOf() {
 }
 
 /**
- * Whether d3.zoom takes this event. A wheel zooms only with Ctrl or Cmd held
- * (a trackpad's pinch arrives as one) or in full screen, and one finger pans
- * only once zoomed or in full screen, so the page still scrolls past a chart
- * nobody asked to zoom. Two fingers always pinch. Otherwise d3's own rule: no
- * secondary button, no Ctrl-click.
+ * Whether d3.zoom takes this event. THE SAME RULE IN AND OUT OF FULL SCREEN:
+ * a wheel zooms only with Ctrl or Cmd held (a trackpad's pinch arrives as
+ * one), so a plain wheel or a trackpad scrolls the page and pans the chart's
+ * scroller sideways; two fingers always pinch; and one finger or the primary
+ * button pans the zoom only once zoomed in, so at the whole chart a drag pans
+ * the scroller (wirePan). No secondary button, no Ctrl-click.
  * @param {any} event
  * @returns {boolean}
  */
 export function zoomFilter(event) {
-  if (event.type === "wheel") return Boolean(event.ctrlKey || event.metaKey) || isFullscreen();
-  if (event.type === "touchstart") {
-    return (event.touches && event.touches.length > 1) || zoomOf().k > 1 || isFullscreen();
-  }
-  return !event.ctrlKey && !event.button;
+  if (event.type === "wheel") return Boolean(event.ctrlKey || event.metaKey);
+  if (event.type === "touchstart") return (event.touches && event.touches.length > 1) || zoomOf().k > 1;
+  return !event.ctrlKey && !event.button && zoomOf().k > 1;
+}
+
+/**
+ * How far, in screen px, a press moves before it is a drag that pans rather
+ * than a click.
+ */
+export const DRAG_SLOP = 4;
+
+/**
+ * Pans the chart's scroller sideways under a mouse or pen dragged across the
+ * chart, anywhere on it, while the zoom is at the whole chart; zoomed in, the
+ * zoom's own drag pans instead (zoomFilter). A press that moves less than
+ * DRAG_SLOP is left a click; one that moves further takes the pointer and
+ * swallows the click that ends it, so a drag ending on a mark neither follows
+ * nor pins it. Touch is the scroller's own.
+ * @param {HTMLElement} scroller the .chart-scroll the chart sits in
+ */
+export function wirePan(scroller) {
+  /** @type {{id: number, x: number, left: number, moved: boolean} | null} */
+  let drag = null;
+  let swallow = false;
+  scroller.addEventListener("pointerdown", (e) => {
+    swallow = false;
+    if (e.button !== 0 || e.pointerType === "touch" || zoomOf().k !== 1) return;
+    drag = { id: e.pointerId, x: e.clientX, left: scroller.scrollLeft, moved: false };
+  });
+  scroller.addEventListener("pointermove", (e) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const dx = e.clientX - drag.x;
+    if (!drag.moved) {
+      if (Math.abs(dx) < DRAG_SLOP) return;
+      drag.moved = true;
+      // Taken only once it is a drag: a captured press clicks the scroller,
+      // not the mark under it.
+      if (typeof scroller.setPointerCapture === "function") {
+        try { scroller.setPointerCapture(e.pointerId); } catch { /* a pointer already gone */ }
+      }
+    }
+    scroller.scrollLeft = drag.left - dx;
+  });
+  /** @param {PointerEvent} e */
+  const end = (e) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    swallow = drag.moved;
+    drag = null;
+  };
+  scroller.addEventListener("pointerup", end);
+  scroller.addEventListener("pointercancel", end);
+  scroller.addEventListener("click", (e) => {
+    if (!swallow) return;
+    swallow = false;
+    e.stopPropagation();
+    e.preventDefault();
+  }, true);
 }
 
 /**
@@ -2645,11 +2708,14 @@ function scrollToMark(svg, cx, laid) {
 /**
  * Wires what zooms the chart besides the pointer: + and - and 0 while focus
  * is in the chart, the Reset view button, and a mark the keyboard focuses
- * panned into sight. Once, at boot: the svg outlives every render.
+ * panned into sight; and the drag that pans the chart's scroller (wirePan).
+ * Once, at boot: the svg outlives every render.
  */
 export function wireZoom() {
   const svg = maybeEl("chart");
   if (!svg) return;
+  const scroller = svg.parentElement;
+  if (scroller && scroller.classList.contains("chart-scroll")) wirePan(scroller);
   svg.addEventListener("keydown", (e) => {
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.key === "+" || e.key === "=") zoomBy(ZOOM_STEP);

@@ -98,8 +98,7 @@ export const BAND = 319;
 export const HELD_COLUMNS = 4;
 
 /**
- * The narrowest band, in px. Past it the chart widens again and scrolls in
- * its card. site/layout.test.mjs prints what an interior label keeps of its
+ * The narrowest band, in px. Past it the chart widens again. site/layout.test.mjs prints what an interior label keeps of its
  * name at this floor.
  */
 export const BAND_FLOOR = 160;
@@ -109,7 +108,7 @@ export const BAND_FLOOR = 160;
  * HELD_COLUMNS, then held at that width while the bands narrow to
  * BAND_FLOOR, then at the floor. Labels do not reflow, so the chart is laid
  * out at a fixed width, and style.css draws every width at the one scale the
- * held width fits its card at.
+ * opening chart fits its card at.
  * @param {number} n
  * @returns {number}
  */

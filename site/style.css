@@ -712,7 +712,8 @@ button[aria-pressed="true"] {
    to draw another column. The negative margin centres the wider box on main;
    where the viewport is narrow, min() collapses both to the room there is.
 
-   The cap is app.js's --chart-max, the held width every chart is scaled to;
+   The cap is app.js's --chart-max, the opening chart's width every chart is
+   scaled to;
    100% is the no-script state. --chart-cushion must equal app.js's
    CHART_CUSHION (40px body padding plus 16px for a classic scrollbar). */
 .chart-wrap {
@@ -732,13 +733,21 @@ button[aria-pressed="true"] {
 }
 
 /* ONE SCALE FOR EVERY CHART: the card is --chart-room wide whatever the
-   columns (app.js hands --chart-max the held width, sankey.js's
-   HELD_COLUMNS), and the svg is that room times app.js's --chart-stretch,
-   the chart's laid width over the held one. So a split moves no column it
-   leaves and rescales nothing; a chart wider than the held one scrolls
-   sideways inside the card, and a narrower one sits at its left. */
+   columns (app.js hands --chart-max the opening chart's width, its
+   openingColumns), and the svg is that room times app.js's --chart-stretch,
+   the chart's laid width over the opening one. So the opening chart fills
+   the card, at full size wherever the viewport has room, a split moves no
+   column it leaves and rescales nothing, and a wider chart runs past the
+   card's right edge, panned by a drag (app.js's wirePan), a sideways wheel
+   or trackpad, or the scrollbar. No text is selected by a drag. */
 .chart-scroll > svg.sankey {
   width: calc(var(--chart-room) * var(--chart-stretch, 1));
+  cursor: grab;
+  user-select: none;
+}
+
+.chart-scroll > svg.sankey:active {
+  cursor: grabbing;
 }
 
 .chart-tools {

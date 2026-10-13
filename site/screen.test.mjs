@@ -64,7 +64,7 @@ describe("full screen on the chart's card", () => {
     await settle();
     t.diagnostic(`fund/100 split: ${before}px laid, --chart-max ${max}; full screen ${full}px; after ${viewBoxWidth(document)}px`);
     assert.equal(before, app.chartWidth(5));
-    assert.equal(max, app.widthOf(app.HELD_COLUMNS) + "px");
+    assert.equal(max, app.widthOf(app.openingColumns()) + "px");
     assert.equal(full, before);
     assert.equal(viewBoxWidth(document), before);
     assert.equal(app.isFullscreen(), false);
@@ -210,7 +210,90 @@ describe("zoom and pan on the chart", () => {
       stretched: Number(root.getPropertyValue("--chart-stretch")) > 1,
       atRoot: Number(atRoot),
       before, after: seen(), k: app.zoomOf().k,
-    }, { scroller: true, stretched: true, atRoot: app.widthOf(3) / app.widthOf(app.HELD_COLUMNS), before: false, after: true, k: 1 }, detail);
+    }, { scroller: true, stretched: true, atRoot: 1, before: false, after: true, k: 1 }, detail);
+  });
+
+  // Mutation: hand --chart-max widthOf(HELD_COLUMNS) and stretch over it, as
+  // one scale fitted to four columns, and this goes red at 0.81.
+  test("the opening chart draws at full size at a 1400px viewport, and a split keeps it so", async (t) => {
+    const viewport = 1400;
+    const { app, document, window } = await bootedApp({ viewport });
+    Object.defineProperty(window, "innerWidth", { value: viewport, configurable: true, writable: true });
+    // To a billionth: the stretch is a quotient of two widths.
+    const scale = () => { const s = drawnScale(document, window); return s.refused ? s : { scale: Number(s.scale.toFixed(9)) }; };
+    const root = scale();
+    await split(app, "fund-group/general");
+    const opened = scale();
+    const detail = `at a ${viewport}px viewport the root draws at ${JSON.stringify(root)}, ` +
+      `${app.layoutColumns(app.shown.doc)} columns at ${JSON.stringify(opened)}`;
+    t.diagnostic(detail);
+    assert.deepEqual({ root, opened }, { root: { scale: 1 }, opened: { scale: 1 } }, detail);
+  });
+
+  /**
+   * The chart split to its finest grain in a 1000px scroller, with jsdom's
+   * missing layout planted: the svg drawn at its laid width, the scroller's
+   * scrollLeft a plain number.
+   */
+  async function scrolling() {
+    const loaded = await bootedApp();
+    loaded.app.expandAll();
+    await settle();
+    const svg = loaded.document.getElementById("chart");
+    const scroller = svg.parentElement;
+    const laid = viewBoxWidth(loaded.document);
+    let left = 0;
+    Object.defineProperty(scroller, "clientWidth", { value: 1000, configurable: true });
+    Object.defineProperty(scroller, "scrollLeft", { get: () => left, set: (v) => { left = v; }, configurable: true });
+    svg.getBoundingClientRect = () => ({ x: 0, y: 0, left: 0, top: 0, right: laid, bottom: 0, width: laid, height: 0 });
+    return Object.assign(loaded, { svg, scroller, left: () => left });
+  }
+
+  /** A press, a move of `dx` and a release on `on`, as a mouse delivers them. */
+  function drag(on, dx) {
+    fire(on, "pointerdown", { button: 0, clientX: 500, clientY: 300 });
+    fire(on, "pointermove", { button: 0, clientX: 500 + dx, clientY: 300 });
+    fire(on, "pointerup", { button: 0, clientX: 500 + dx, clientY: 300 });
+  }
+
+  // Mutation: drop wirePan's call from wireZoom and this goes red, the
+  // scroller left at 0.
+  test("a drag across the chart pans its scroller, and swallows the click that ends it", async (t) => {
+    const { app, document, scroller, left } = await scrolling();
+    const ribbon = document.querySelector("#chart path.link");
+    const mark = markOf(document, "fund-group/general");
+    drag(ribbon, -300);
+    const panned = left();
+    fire(mark, "click", { timeStamp: 1000 });
+    const swallowed = app.filter.isolated;
+    drag(document.getElementById("chart"), 120);
+    t.diagnostic(`dragged 300px left from a ribbon: scrollLeft ${panned}; 120px back from the background: ${left()}`);
+    assert.deepEqual({ panned, swallowed, back: left(), scroller: scroller.classList.contains("chart-scroll") },
+      { panned: 300, swallowed: "", back: 180, scroller: true });
+  });
+
+  test("a click after a press that moves under DRAG_SLOP still follows the mark, and a double click still splits it", async (t) => {
+    const { app, document, left } = await scrolling();
+    app.collapseAll();
+    await settle();
+    const id = "fund-group/general";
+    drag(markOf(document, id), app.DRAG_SLOP - 1);
+    fire(markOf(document, id), "click", { timeStamp: 1000 });
+    const followed = app.filter.isolated;
+    drag(markOf(document, id), 1);
+    fire(markOf(document, id), "click", { timeStamp: 1050 });
+    fire(markOf(document, id), "dblclick", { timeStamp: 1060 });
+    await settle();
+    t.diagnostic(`moved ${app.DRAG_SLOP - 1}px then clicked: following "${followed}"; then split [${app.expansions}], scrollLeft ${left()}`);
+    assert.deepEqual({ followed, split: app.expansions.slice(), left: left() }, { followed: id, split: [id], left: 0 });
+  });
+
+  test("zoomed in, a drag is the zoom's to pan, and the scroller stays where it is", async (t) => {
+    const { app, document, left } = await scrolling();
+    app.zoomBy(2);
+    drag(document.querySelector("#chart path.link"), -300);
+    t.diagnostic(`at k ${app.zoomOf().k}, a 300px drag left scrollLeft at ${left()}`);
+    assert.equal(left(), 0);
   });
 
   // Mutation: hand --chart-max widthOf(columns) and --chart-stretch 1 again,
@@ -234,16 +317,29 @@ describe("zoom and pan on the chart", () => {
     assert.deepEqual({ after, drawn: typeof before.x === "number" }, { after: before, drawn: true }, detail);
   });
 
-  test("a wheel zooms only with Ctrl or Cmd or in full screen, and one finger pans only once zoomed", async () => {
-    const { app } = await bootedApp();
-    assert.equal(app.zoomFilter({ type: "wheel" }), false);
-    assert.equal(app.zoomFilter({ type: "wheel", ctrlKey: true }), true);
-    assert.equal(app.zoomFilter({ type: "wheel", metaKey: true }), true);
-    assert.equal(app.zoomFilter({ type: "touchstart", touches: [1] }), false);
-    assert.equal(app.zoomFilter({ type: "touchstart", touches: [1, 2] }), true);
-    assert.equal(app.zoomFilter({ type: "mousedown", button: 0 }), true);
-    assert.equal(app.zoomFilter({ type: "mousedown", button: 2 }), false);
+  // fisc-ylxh.7. Mutation: let a plain wheel zoom in full screen again and
+  // this goes red there.
+  test("a wheel zooms only with Ctrl or Cmd, in full screen too, and one finger or the mouse pans the zoom only once zoomed", async () => {
+    const loaded = await loadApp({ viewport: 1000 });
+    const { app, window, document } = loaded;
+    stubFullscreen(window, document, 4000);
+    await app.boot();
+    await settle();
+    /** What d3.zoom takes, as [plain wheel, sideways wheel, Ctrl wheel, Cmd wheel, one finger, two, mouse, right button]. */
+    const takes = () => [
+      app.zoomFilter({ type: "wheel" }), app.zoomFilter({ type: "wheel", deltaX: 40 }),
+      app.zoomFilter({ type: "wheel", ctrlKey: true }), app.zoomFilter({ type: "wheel", metaKey: true }),
+      app.zoomFilter({ type: "touchstart", touches: [1] }), app.zoomFilter({ type: "touchstart", touches: [1, 2] }),
+      app.zoomFilter({ type: "mousedown", button: 0 }), app.zoomFilter({ type: "mousedown", button: 2 }),
+    ];
+    const whole = takes();
+    fire(document.getElementById("chart-fullscreen"), "click");
+    await settle();
+    const full = { on: app.isFullscreen(), takes: takes() };
     app.zoomBy(2);
-    assert.equal(app.zoomFilter({ type: "touchstart", touches: [1] }), true);
+    const zoomed = takes();
+    const want = [false, false, true, true, false, true, false, false];
+    assert.deepEqual({ whole, full, zoomed },
+      { whole: want, full: { on: true, takes: want }, zoomed: [false, false, true, true, true, true, true, false] });
   });
 });
