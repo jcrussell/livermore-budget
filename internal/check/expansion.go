@@ -303,13 +303,17 @@ func (*expansionOpensAsTheSpine) Run(_ context.Context, s *Subject) (Result, err
 // and subtracts exactly the members it is the difference of; and a remainder
 // of a difference is worth what a declared structure.Exception holds that
 // cell apart by. Every split extends. A split whose links to its members
-// cite totals of their own reaches each member by one; a hub split's legs
-// each repeat one leaf ([hubFindings]), and together carry what the node
-// takes in on the spine, or gives out where it takes nothing in.
+// cite totals of their own reaches each member by one, and the totals naming
+// one list of leaves in Restates carry those leaves' cents
+// ([restatingFindings]); a hub split's legs each repeat one leaf
+// ([hubFindings]), and together carry what the node takes in on the spine,
+// or gives out where it takes nothing in.
 //
 // MUTATION: cite the 250,000 remainder's printed side from the enterprise
 // group's Services & Supplies and this check names the cell; make fund/100's
-// link to one division a cent short and it names that division; drop one
+// link to one division a cent short and it names that division; drop a leaf
+// from what one division's total restates and it names the list's cents;
+// name leaves on a hub leg and it names the leg; drop one
 // revenue/taxes/sales leg and it names the line's leaf and the hub's
 // outflow; make one object category's leg a cent short and it names the
 // pairing; leave one line's leaf on its fund and it names a leg with no leaf.
@@ -343,6 +347,15 @@ func (c *expansionSplitsTie) Run(_ context.Context, s *Subject) (Result, error) 
 	}
 	splits := 0
 	for _, x := range docs {
+		// Restates is a total's alone: a leaf or a leg naming leaves would be
+		// stated in their place by a sum over ribbons.
+		for _, l := range x.doc.Links {
+			if m := x.nodes[l.Target]; len(l.Restates) > 0 &&
+				(l.Repeats != "" || m.Parent != l.Source || m.Alternative != l.Alternative) {
+				findings = append(findings, finding(x.doc.String(), "%s -> %s names leaves it restates and is no split's total",
+					l.Source, l.Target))
+			}
+		}
 		for _, sp := range x.doc.Graph.Splits {
 			splits++
 			subject := fmt.Sprintf("%s split of %s by %s", x.doc, sp.Node, sp.Key)
@@ -409,6 +422,7 @@ func (c *expansionSplitsTie) split(s *Subject, x stitched, sp project.Split, sub
 					m, totals[m]))
 			}
 		}
+		findings = append(findings, c.restatingFindings(x, sp, members, alt, subject)...)
 	}
 
 	var cells map[string]*tieCell
@@ -493,6 +507,57 @@ func (*expansionSplitsTie) rootCells(x stitched, sp project.Split) map[string]*t
 		at(k).add(atLeaf(l, x.nodes))
 	}
 	return cells
+}
+
+// restatingFindings holds a totals split's links to the leaves they name in
+// Restates: every link names some, each a leaf's Repeats, and the links naming
+// one list together carry exactly those leaves' cents, so a sum stating the
+// list's leaves in their place states the same money.
+func (*expansionSplitsTie) restatingFindings(x stitched, sp project.Split, members []string, alt,
+	subject string) []Finding {
+	var findings []Finding
+	leaves := map[string]int64{}
+	for _, l := range x.doc.Links {
+		if l.Alternative == "" && l.Repeats != "" && !x.isLeg(l) {
+			leaves[l.Repeats] = l.ValueCents
+		}
+	}
+	type group struct {
+		keys  []string
+		cents int64
+	}
+	groups := map[string]*group{}
+	for _, l := range x.doc.Links {
+		if l.Alternative != alt || l.Source != sp.Node || !slices.Contains(members, l.Target) {
+			continue
+		}
+		if len(l.Restates) == 0 {
+			findings = append(findings, finding(subject, "%s -> %s is a total of its own and names no leaf it states again",
+				l.Source, l.Target))
+			continue
+		}
+		k := strings.Join(l.Restates, "\n")
+		if groups[k] == nil {
+			groups[k] = &group{keys: l.Restates}
+		}
+		groups[k].cents += l.ValueCents
+	}
+	for _, k := range sortedStrings(groups) {
+		g := groups[k]
+		var cents int64
+		for _, key := range g.keys {
+			c, ok := leaves[key]
+			if !ok {
+				findings = append(findings, finding(subject, "a total restates %q, which no leaf repeats", key))
+			}
+			cents += c
+		}
+		if cents != g.cents {
+			findings = append(findings, finding(subject, "the totals restating %d leaves carry %s and the leaves %s (off by %s)",
+				len(g.keys), amount.Cents(g.cents), amount.Cents(cents), amount.Cents(g.cents-cents)))
+		}
+	}
+	return findings
 }
 
 // isLeg answers whether a link is a hub leg: it repeats a leaf and runs from

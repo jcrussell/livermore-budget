@@ -61,18 +61,32 @@ type splitDecl struct {
 	// at those members, one leg per leaf ([extendHubs]), rather than citing
 	// a total of their own.
 	hub bool
+	// restates is, on a split citing totals of its own, which leaves those
+	// totals state again ([declareRestating]).
+	restates restating
 }
+
+// restating is which leaves a totals split's links to its members state
+// again: each member's onward leaves, or together every leaf arriving at the
+// node.
+type restating int
+
+const (
+	restatesNothing restating = iota
+	restatesOnward
+	restatesInflow
+)
 
 // expansionSplits is every split the stitch declares, by the role of the node
 // that splits. Each is declared once, here; the builder attaches the members.
 var expansionSplits = []splitDecl{
-	{RoleRevenueSource, "lines", SplitExtend, false, true},
-	{RoleTransferIn, "payers", SplitExtend, false, true},
-	{RoleFundGroup, "funds", SplitExtend, false, true},
-	{RoleGeneralFund, "divisions", SplitExtend, false, false},
-	{RoleObjectCategory, "object-rows", SplitExtend, false, true},
-	{RoleObjectCategory, "divisions", SplitExtend, true, false},
-	{RoleTransferOut, "receivers", SplitExtend, false, true},
+	{RoleRevenueSource, "lines", SplitExtend, false, true, restatesNothing},
+	{RoleTransferIn, "payers", SplitExtend, false, true, restatesNothing},
+	{RoleFundGroup, "funds", SplitExtend, false, true, restatesNothing},
+	{RoleGeneralFund, "divisions", SplitExtend, false, false, restatesOnward},
+	{RoleObjectCategory, "object-rows", SplitExtend, false, true, restatesNothing},
+	{RoleObjectCategory, "divisions", SplitExtend, true, false, restatesInflow},
+	{RoleTransferOut, "receivers", SplitExtend, false, true, restatesNothing},
 }
 
 // SplitKeys is every split key the stitch declares, each once, in
@@ -144,7 +158,8 @@ func IsRemainder(id string) bool {
 //
 // Every split extends: its node stays drawn and its members stand in a column
 // after it. A split marked totals reaches each member by one link citing that
-// member's own total. A hub split reaches its members by legs that repeat the
+// member's own total, naming the leaves it states again ([declareRestating]).
+// A hub split reaches its members by legs that repeat the
 // leaves at them ([extendHubs]): a revenue category's and transfers/in's the
 // leaves leaving each member, a fund group's, an object category's and
 // transfers/out's the leaves arriving at each, which are re-pointed to end at
@@ -436,6 +451,9 @@ func (e *expansion) Document(facts []fact.Fact, o Options) (*Document, error) {
 	if err := extendHubs(st, spine); err != nil {
 		return nil, err
 	}
+	if err := declareRestating(st); err != nil {
+		return nil, err
+	}
 	declareCompleting(st, spine)
 
 	splits, splitErr := splitsOf(st.nodes, st.links)
@@ -554,6 +572,39 @@ func extendHubs(st *stitch, spine *Document) error {
 		}
 	}
 	st.links = append(st.links, legs...)
+	return nil
+}
+
+// declareRestating names, on every link from a totals split's node to its
+// member, the leaves it states again ([Link.Restates]), so a sum over drawn
+// ribbons can state that money once. It runs after [extendHubs], whose
+// Repeats are the names, and refuses a total that states no leaf.
+func declareRestating(st *stitch) error {
+	for i := range st.links {
+		l := &st.links[i]
+		m, ok := st.nodes[l.Target]
+		if !ok || m.Parent != l.Source || m.Alternative != l.Alternative || l.Repeats != "" {
+			continue
+		}
+		d, ok := splitOf(st.nodes[l.Source].Role, m.Alternative, m.Alternative != "")
+		if !ok || d.restates == restatesNothing {
+			continue
+		}
+		var keys []string
+		for _, o := range st.links {
+			if o.Alternative != "" || o.Repeats == "" {
+				continue
+			}
+			if (d.restates == restatesOnward && o.Source == m.ID) || (d.restates == restatesInflow && o.Target == l.Source) {
+				keys = append(keys, o.Repeats)
+			}
+		}
+		if len(keys) == 0 {
+			return fmt.Errorf("expansion: %s -> %s is a total of its own and states no leaf again", l.Source, l.Target)
+		}
+		slices.Sort(keys)
+		l.Restates = slices.Compact(keys)
+	}
 	return nil
 }
 

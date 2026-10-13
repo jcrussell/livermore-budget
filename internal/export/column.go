@@ -150,6 +150,8 @@ type ColumnLink struct {
 	Completes string `json:"completes,omitempty"`
 	// Repeats is the expansion schedule's: project.Link's.
 	Repeats string `json:"repeats,omitempty"`
+	// Restates is the expansion schedule's: project.Link's.
+	Restates []string `json:"restates,omitempty"`
 }
 
 // decoded is a published document, read far enough to fold into a column.
@@ -183,6 +185,7 @@ type decoded struct {
 		Alternative string          `json:"alternative"`
 		Completes   string          `json:"completes"`
 		Repeats     string          `json:"repeats"`
+		Restates    []string        `json:"restates"`
 	} `json:"links"`
 	Splits []struct {
 		Node        string `json:"node"`
@@ -372,6 +375,7 @@ func ColumnsOf(projections map[string][]byte, generatedBy string) (map[string]Co
 				TransferID: l.TransferID, FactIDs: l.FactIDs, Locators: l.Locators,
 				Derived: l.Derived, Partition: l.Partition, Contra: l.Contra,
 				Alternative: l.Alternative, Completes: l.Completes, Repeats: l.Repeats,
+				Restates: l.Restates,
 			})
 		}
 		var splits []ColumnSplit

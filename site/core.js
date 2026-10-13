@@ -371,8 +371,10 @@ function assembleSchedule(column, key) {
     // Not defaulted: an absent alternative is a primary link, always read,
     // and an absent completes is a leg of no set Go declares.
     if (l.completes) Object.assign(link, { completes: l.completes });
-    // Not defaulted: an absent repeats is a link drawn once, as itself.
+    // Not defaulted: an absent repeats is a link drawn once, as itself, and
+    // an absent restates a link that states no leaf again.
     if (l.repeats) Object.assign(link, { repeats: l.repeats });
+    if (Array.isArray(l.restates)) Object.assign(link, { restates: l.restates.slice() });
     return l.alternative ? Object.assign(link, { alternative: l.alternative }) : link;
   });
   const splits = Array.isArray(sched.splits)
@@ -567,19 +569,37 @@ function readUnder(byID, n, alternatives) {
   return true;
 }
 
+/** The prefix of a cell standing for the leaves a total restates. */
+const RESTATING = "\u001frestates\u001f";
+
 /**
  * The cells one ribbon draws, at the signs printed, or null where none of its
- * legs repeats a leaf: each leaf at its `repeats` key, so a leaf drawn as
- * itself and again as a hub leg is one key on both ribbons, and each other
- * leg at a key of its own ends. A drawn ribbon's cells sum to its
- * value_cents as folded.
+ * legs repeats a leaf or restates leaves: each leaf at its `repeats` key, so
+ * a leaf drawn as itself and again as a hub leg is one key on both ribbons; a
+ * total at one key per list of leaves it `restates`, shared with every total
+ * naming that list (distinctCents reads it); and each other leg at a key of
+ * its own ends. A drawn ribbon's cells sum to its value_cents as folded.
  * @param {FiscLink} l
  * @returns {Record<string, number> | null}
  */
 export function cellsOf(l) {
   if (l.cells) return l.cells;
   if (l.repeats) return { [l.repeats]: l.value_cents };
+  if (l.restates) return { [RESTATING + l.restates.join("\u001e")]: l.value_cents };
   return null;
+}
+
+/**
+ * Each leaf of a schedule at its `repeats` key, by its cents: what a total
+ * restating it is read as by distinctCents.
+ * @param {FiscProjection | null} doc the schedule as fetched, before any fold
+ * @returns {Map<string, number>}
+ */
+export function leafCents(doc) {
+  /** @type {Map<string, number>} */
+  const out = new Map();
+  for (const l of doc ? doc.links : []) if (l.repeats) out.set(l.repeats, l.value_cents);
+  return out;
 }
 
 /**
@@ -592,6 +612,7 @@ export function cellsOf(l) {
  */
 function withCells(ribbon, legs) {
   delete ribbon.repeats;
+  delete ribbon.restates;
   delete ribbon.cells;
   if (!legs.some((l) => cellsOf(l))) return ribbon;
   /** @type {Record<string, number>} */
@@ -605,15 +626,26 @@ function withCells(ribbon, legs) {
 
 /**
  * A sum over ribbons at the signs printed, each cell once: a leaf drawn as
- * itself and again as a hub leg repeating it is one figure, not two. A ribbon
+ * itself and again as a hub leg repeating it is one figure, not two. The
+ * totals restating one list of leaves are read as those leaves where they
+ * carry all of the leaves' cents, so a division's total and the division's
+ * own rows are one figure, and as themselves where they carry part. A ribbon
  * carrying no cells is read whole by `cents`.
  * @param {FiscLink[]} links
  * @param {(l: FiscLink) => number} cents a ribbon's figure at its printed sign
+ * @param {Map<string, number>} [leaves] leafCents of the schedule folded
  * @returns {number}
  */
-export function distinctCents(links, cents) {
+export function distinctCents(links, cents, leaves = new Map()) {
   const seen = new Set();
+  /** @type {Map<string, number>} */
+  const restating = new Map();
   let sum = 0;
+  const once = (/** @type {string} */ k, /** @type {number} */ c) => {
+    if (seen.has(k)) return;
+    seen.add(k);
+    sum += c;
+  };
   for (const l of links) {
     const cells = cellsOf(l);
     if (!cells) {
@@ -621,10 +653,19 @@ export function distinctCents(links, cents) {
       continue;
     }
     for (const [k, c] of Object.entries(cells)) {
-      if (seen.has(k)) continue;
-      seen.add(k);
-      sum += c;
+      if (k.startsWith(RESTATING)) restating.set(k, (restating.get(k) || 0) + c);
+      else once(k, c);
     }
+  }
+  for (const [k, c] of restating) {
+    const keys = k.slice(RESTATING.length).split("\u001e");
+    const whole = keys.every((key) => leaves.has(key)) &&
+      keys.reduce((s, key) => s + /** @type {number} */ (leaves.get(key)), 0) === c;
+    if (!whole) {
+      sum += c;
+      continue;
+    }
+    for (const key of keys) once(key, /** @type {number} */ (leaves.get(key)));
   }
   return sum;
 }

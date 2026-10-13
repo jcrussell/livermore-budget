@@ -148,53 +148,68 @@ describe("drawn plus hidden is the chart", () => {
 });
 
 // A HUB DRAWS A LEAF TWICE -- arriving at the node and again from it to the
-// member -- and the tally states what the filters hid, each printed figure
+// member -- and a total of its own states leaves again (a General Fund
+// division's total, its own rows; an object category's divisions, what the
+// category takes in), and the tally states what the filters hid, each leaf
 // once. At the root no split is open, so every leaf is one ribbon and the
-// tally is the hidden ribbons' sum. With every split open whose links to its
-// members repeat leaves, and none citing a figure of its own (the General
-// Fund's divisions), the chart draws the root's leaves and no other figure,
-// so hiding the same group or kind states the same cents.
+// tally is the hidden ribbons' sum. With every primary split open, and again
+// with every alternative open in place of its node's primary split, the
+// chart draws the root's leaves and figures restating them, so hiding the
+// same group or kind states the same cents. An object category's divisions
+// are all of one kind and restate leaves of others (its internal service
+// charges), so hiding one kind hides part of what they restate and the
+// tally states those leaves too; that chart is held under a group, or every
+// kind at once, where no root state hides other figures.
 describe("the tally states a leaf once, however many ribbons draw it", () => {
   for (const year of YEARS) {
-    test(`${year.label}: hiding a group or a kind with every hub open tallies what it tallies at the root`, async (t) => {
+    test(`${year.label}: hiding a group or a kind with every split open tallies what it tallies at the root`, async (t) => {
       const { app } = await bootedApp({ checkedStem: year.stem });
       const doc = app.fetched;
-      const hub = (sp) => doc.links.some((l) => l.repeats && l.source === sp.node &&
-        app.splitsOf(doc, sp.node).find((x) => x.key === sp.key).members.includes(l.target));
-      let open = app.rootFrontier(doc);
-      for (let changed = true; changed;) {
-        changed = false;
-        for (const sp of doc.splits.filter((x) => !x.alternative && hub(x))) {
-          if (!open.has(sp.node) || app.openSplitOf(doc, open, sp.node) !== "") continue;
-          open = app.expand(doc, open, sp.node, sp.key);
-          changed = true;
+      const openAll = (alternative) => {
+        let open = app.rootFrontier(doc);
+        for (let changed = true; changed;) {
+          changed = false;
+          for (const sp of doc.splits) {
+            const others = app.splitsOf(doc, sp.node).some((x) => x.alternative);
+            if (sp.alternative !== (alternative && others)) continue;
+            if (!open.has(sp.node) || app.openSplitOf(doc, open, sp.node) !== "") continue;
+            open = app.expand(doc, open, sp.node, sp.key);
+            changed = true;
+          }
         }
-      }
-      // A split citing figures of its own that a group opened straight
-      // through is folded back, at the frontier and not by a gesture.
-      for (const sp of doc.splits.filter((x) => !hub(x))) {
-        if (open.has(sp.node) && app.openSplitOf(doc, open, sp.node) === sp.key) open = app.collapse(doc, open, sp.node);
-      }
+        return open;
+      };
       const shape = (frontier) => app.formOnScreen().shape(doc, { chart: CONFIG.overview, frontier, whole: new Set() });
       const root = shape(app.rootFrontier(doc));
-      const hubs = shape(open);
-      const states = samples(app, root).filter((st) => !(st.smallest > 0) && (st.groups.size || st.kinds.size));
+      const kinds = [...new Set(root.links.map((l) => l.kind))].filter((k) => k !== "");
+      const states = samples(app, root).filter((st) => !(st.smallest > 0) && (st.groups.size || st.kinds.size))
+        .concat([{ groups: new Set(), kinds: new Set(kinds), smallest: 0 }]);
       const wrong = [];
       let repeated = 0;
-      for (const st of states) {
-        const where = `[${[...st.groups, ...st.kinds].join(", ")}]`;
-        const r = app.filterFor(root, st);
-        const atRoot = app.hiddenTally(r).cents;
-        const h = app.filterFor(hubs, st);
-        const cents = app.hiddenTally(h).cents;
-        if (atRoot !== sum(app, r.hidden)) wrong.push(`${where}: at the root the tally is ${atRoot}, its ribbons ${sum(app, r.hidden)}`);
-        if (cents !== atRoot) wrong.push(`${where}: every hub open tallies ${cents}, the root ${atRoot}`);
-        if (sum(app, h.hidden) !== atRoot) repeated++;
+      let restated = 0;
+      for (const [name, open] of [["every primary split", openAll(false)], ["every alternative", openAll(true)]]) {
+        const drawn = shape(open);
+        const restating = drawn.links.filter((l) => Object.keys(app.cellsOf(l) || {}).some((k) => k.includes("restates")));
+        if (!restating.length) wrong.push(`${name} open draws no total restating leaves`);
+        for (const st of states) {
+          if (name === "every alternative" && st.kinds.size && st.kinds.size !== kinds.length) continue;
+          const where = `${name} open, [${[...st.groups, ...st.kinds].join(", ")}]`;
+          const r = app.filterFor(root, st);
+          const atRoot = app.hiddenTally(r).cents;
+          const h = app.filterFor(drawn, st);
+          const cents = app.hiddenTally(h).cents;
+          if (atRoot !== sum(app, r.hidden)) wrong.push(`${where}: at the root the tally is ${atRoot}, its ribbons ${sum(app, r.hidden)}`);
+          if (cents !== atRoot) wrong.push(`${where}: tallies ${cents}, the root ${atRoot}`);
+          if (sum(app, h.hidden) !== atRoot) repeated++;
+          if (h.hidden.some((l) => restating.includes(l))) restated++;
+        }
+        t.diagnostic(`${year.label}: ${open.size} nodes drawn with ${name} open, ${restating.length} ribbon(s) restating leaves`);
       }
-      t.diagnostic(`${year.label}: ${open.size} nodes drawn with every hub open, ${states.length} filter state(s), ` +
-        `${repeated} of them hiding a leaf and a ribbon repeating it`);
+      t.diagnostic(`${year.label}: ${states.length} filter state(s) per chart; ${repeated} hiding a leaf and a ribbon ` +
+        `drawing it again, ${restated} hiding a total restating leaves`);
       assert.deepEqual(wrong.slice(0, 5), []);
-      assert.ok(repeated > 0, "no state hides a leaf and a hub ribbon repeating it, so nothing here is tested");
+      assert.ok(repeated > 0, "no state hides a leaf and a ribbon drawing it again, so nothing here is tested");
+      assert.ok(restated > 0, "no state hides a total restating leaves, so the totals are not tested");
     });
   }
 });

@@ -1293,7 +1293,7 @@ export function hiddenTally(result = shown) {
   const hidden = result ? result.hidden : [];
   const form = formOnScreen();
   for (const l of hidden) for (const id of l.fact_ids) facts.add(id);
-  const cents = core.distinctCents(hidden, (l) => form.cents(/** @type {any} */ (l)));
+  const cents = core.distinctCents(hidden, (l) => form.cents(/** @type {any} */ (l)), core.leafCents(fetched));
   return { flows: hidden.length, cents: cents, facts: facts };
 }
 

@@ -288,6 +288,16 @@
                   "description": "On the expansion schedule alone: the one leaf link this link is drawn from, spelt at that leaf's own ends as '<source> -> <target> <kind>'. A hub leg from an extended node to its member carries that leaf's cents and facts again; the leaf itself names its own ends, one of which may be moved onto the extended node. Absent on every other link.",
                   "type": "string",
                   "pattern": "^\\S+ -> \\S+ \\S+$"
+                },
+                "restates": {
+                  "description": "On the expansion schedule alone: the leaves a link from a totals split's node to its member states again, each spelt as its repeats spells it, ascending. Fund/100's divisions name each division's onward leaves; an object category's divisions each name every leaf arriving at the category, since no one division is one leaf. The links naming one list carry those leaves' cents together. Absent on every other link.",
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "pattern": "^\\S+ -> \\S+ \\S+$"
+                  }
                 }
               },
               "allOf": [

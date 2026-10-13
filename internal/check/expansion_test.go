@@ -175,6 +175,40 @@ func TestTheExpansionChecksCanFail(t *testing.T) {
 			want: "fund/100 -> dept/police-administration",
 		},
 		{
+			name: "a division's total restating one leaf too few", check: &expansionSplitsTie{},
+			edit: func(t *testing.T, _ *Subject, d *project.Document) {
+				i := linkAt(t, d, "fund/100", "dept/patrol")
+				d.Links[i].Restates = d.Links[i].Restates[1:]
+			},
+			want: "the totals restating 1 leaves carry",
+		},
+		{
+			name: "a division's total naming no leaf it restates", check: &expansionSplitsTie{},
+			edit: func(t *testing.T, _ *Subject, d *project.Document) {
+				d.Links[linkAt(t, d, "fund/100", "dept/patrol")].Restates = nil
+			},
+			want: "fund/100 -> dept/patrol is a total of its own and names no leaf it states again",
+		},
+		{
+			name: "an object category's divisions restating a leaf no link repeats", check: &expansionSplitsTie{},
+			edit: func(t *testing.T, _ *Subject, d *project.Document) {
+				for i, l := range d.Links {
+					if l.Source == "expenditure/wages-and-benefits" && l.Alternative != "" {
+						d.Links[i].Restates = append(slices.Clone(l.Restates), "nowhere -> nothing external")
+					}
+				}
+			},
+			want: "a total restates \"nowhere -> nothing external\", which no leaf repeats",
+		},
+		{
+			name: "a hub leg naming leaves it restates", check: &expansionSplitsTie{},
+			edit: func(t *testing.T, _ *Subject, d *project.Document) {
+				i := legAt(t, d, salesHub, salesLine, "fund/100")
+				d.Links[i].Restates = []string{salesLeaf}
+			},
+			want: "names leaves it restates and is no split's total",
+		},
+		{
 			name: "the remainder citing another group's cell", check: &expansionSplitsTie{},
 			edit: func(t *testing.T, s *Subject, d *project.Document) {
 				i := leafAt(t, d, isRemainder, isRow)

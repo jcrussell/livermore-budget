@@ -548,6 +548,15 @@ type Link struct {
 	// have moved onto that node. "" on every other link. [LinkCents] reads a
 	// link at these ends.
 	Repeats string `json:"repeats,omitempty"`
+	// Restates is, on the expansion schedule alone, the leaves a link from a
+	// totals split's node to its member states again, each by the [CellKey]
+	// in its Repeats, ascending: the member's onward leaves for fund/100's
+	// divisions, and every leaf arriving at the category for an object
+	// category's divisions, which each link of that split names alike, since
+	// no one division of pp.85-125 is one leaf. The links naming one list
+	// carry those leaves' cents together, which expansion-splits-tie holds.
+	// nil on every other link.
+	Restates []string `json:"restates,omitempty"`
 }
 
 // sankey projects the citywide spine as a flow diagram.
