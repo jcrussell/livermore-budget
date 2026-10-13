@@ -20,7 +20,8 @@ export function stylesheet() {
 /**
  * How style.css lays the chart's body out at the window's innerWidth, from
  * what app.js hands it: whether the rail and drawer sit beside the chart, the
- * px they take, the chart's room, and the body's whole width. Nothing here
+ * px they take, the chart's room, the width the opening chart is drawn at,
+ * and the body's whole width. Nothing here
  * renders CSS, so each declaration is read by selector and held to its
  * shape; any other shape is a refusal, which no measured answer equals.
  */
@@ -37,11 +38,13 @@ export function drawnBody(document, window) {
     room: /--chart-room:\s*min\(var\(--chart-max, 100%\), calc\(100vw - var\(--chart-cushion\) - var\(--chart-panels\)\)\)/.test(body),
     width: /(^|[\s;])width:\s*calc\(var\(--chart-room\) \+ var\(--chart-panels\)\)/.test(body),
     stacked: /--chart-panels:\s*0px/.test(body),
+    drawnStacked: /--chart-drawn:\s*var\(--chart-room\)/.test(body),
+    drawnBeside: /--chart-drawn:\s*var\(--chart-max, 100%\)/.test(beside),
     panels: /--chart-panels:\s*calc\(var\(--rail-now\) \+ var\(--drawer-width\)\)/.test(beside),
     grid: /grid-template-columns:\s*var\(--rail-now\) var\(--chart-room\) var\(--drawer-width\)/.test(beside),
     open: /--rail-now:\s*var\(--rail-width\)/.test(beside),
     tab: /--rail-now:\s*var\(--rail-tab\)/.test(closed),
-    svg: /(^|[\s;])width:\s*calc\(var\(--chart-room\) \* var\(--chart-stretch, 1\)\)/.test(rule(".chart-scroll > svg.sankey")),
+    svg: /(^|[\s;])width:\s*calc\(var\(--chart-drawn\) \* var\(--chart-stretch, 1\)\)/.test(rule(".chart-scroll > svg.sankey")),
   };
   const px = (name) => {
     const m = new RegExp(`--${name}:\\s*(\\d+)px`).exec(body);
@@ -54,9 +57,10 @@ export function drawnBody(document, window) {
   const isBeside = element.hasAttribute("data-beside");
   const panels = isBeside ? (element.dataset.rail === "closed" ? sizes.tab : sizes.rail) + sizes.drawer : 0;
   const style = document.documentElement.style;
-  const room = Math.min(parseFloat(style.getPropertyValue("--chart-max")), window.innerWidth - sizes.cushion - panels);
+  const max = parseFloat(style.getPropertyValue("--chart-max"));
+  const room = Math.min(max, window.innerWidth - sizes.cushion - panels);
   return {
-    beside: isBeside, panels, room, width: room + panels, ...sizes,
+    beside: isBeside, panels, room, drawn: isBeside ? max : room, width: room + panels, ...sizes,
     stretch: Number(style.getPropertyValue("--chart-stretch")),
   };
 }

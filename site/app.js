@@ -5,7 +5,7 @@
  * Served exactly as committed; the page template boots it by importing [boot].
  * What the tests drive is exported, so they import the shipped file. At import
  * it reads its two globals once, d3 (D3) and window.FISC_CONFIG (CONFIG), and
- * derives RENDER_TIERS and BESIDE_QUERY from the config; it draws nothing and
+ * derives RENDER_TIERS from the config; it draws nothing and
  * binds no listener until [boot] runs. It holds the page's state, so the tests
  * load it fresh for each page they build (site/testlib.mjs). Nothing runs
  * tsc: `@ts-check` is for an editor.
@@ -359,11 +359,11 @@ export const DRAWER_WIDTH = 288;
 
 /**
  * The viewport the rail and the drawer sit beside the chart on, and the rail
- * opens by default on: room for the opening chart at full size with both
- * open beside it. Narrower, the three stack and the chart keeps the width.
+ * opens by default on: a laptop's, narrower than the opening chart with both
+ * panels beside it. The chart keeps the one scale (chartStretch) and pans in
+ * the room the panels leave; narrower than this, the three stack.
  */
-export const BESIDE_QUERY = "(min-width: " +
-  (widthOf(openingColumns()) + CHART_CUSHION + RAIL_WIDTH + DRAWER_WIDTH) + "px)";
+export const BESIDE_QUERY = "(min-width: 1280px)";
 
 /**
  * The year's document as fetched, before any fold: the schedule the page's

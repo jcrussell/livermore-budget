@@ -79,7 +79,7 @@ describe("full screen on the chart's card", () => {
 function drawnScale(document, window) {
   const body = drawnBody(document, window);
   if (body.refused) return body;
-  return { scale: body.room * body.stretch / viewBoxWidth(document) };
+  return { scale: body.drawn * body.stretch / viewBoxWidth(document) };
 }
 
 /** The drawn mark for one node id. */

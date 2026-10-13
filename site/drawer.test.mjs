@@ -7,13 +7,6 @@ import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { loadApp, bootedApp, split, settle, fire, drawnBody, stylesheet } from "./testlib.mjs";
 
-/** The px BESIDE_QUERY asks the viewport for. */
-function besideWidth(app) {
-  const m = /^\(min-width: (\d+)px\)$/.exec(app.BESIDE_QUERY);
-  if (!m) throw new Error("BESIDE_QUERY is not a min-width query: " + app.BESIDE_QUERY);
-  return Number(m[1]);
-}
-
 /** A page booted at `viewport`, its window's innerWidth that wide too. */
 async function at(viewport, o = {}) {
   const loaded = await bootedApp({ viewport, ...o });
@@ -177,16 +170,16 @@ describe("the rail", () => {
 });
 
 describe("the width arithmetic beside the chart", () => {
-  // Mutation: BESIDE_QUERY without RAIL_WIDTH and DRAWER_WIDTH, and this goes
-  // red: at the query's own width the panels take the chart's room.
-  test("at BESIDE_QUERY's own width the rail and the drawer fit beside the opening chart at full size, open or collapsed, and a split keeps it so", async (t) => {
-    const probe = await loadApp();
-    const px = besideWidth(probe.app);
+  // Mutation: restore BESIDE_QUERY to the opening chart's width plus
+  // CHART_CUSHION, RAIL_WIDTH and DRAWER_WIDTH, and this goes red: at 1440px
+  // the three stack.
+  test("at 1440px the rail and the drawer sit beside the chart at full size, open, split or collapsed, and the chart pans in the room they leave", async (t) => {
+    const px = 1440;
     const { app, document, window } = await at(px);
     const full = app.widthOf(app.openingColumns());
     const read = () => {
       const b = drawnBody(document, window);
-      return b.refused ? b : { beside: b.beside, scale: b.room / full, fits: b.width + b.cushion <= px };
+      return b.refused ? b : { beside: b.beside, scale: b.drawn / full, fits: b.width + b.cushion <= px, room: b.room };
     };
     const open = read();
     const x = (id) => app.laidNodes.find((n) => n.id === id).x0;
@@ -195,20 +188,29 @@ describe("the width arithmetic beside the chart", () => {
     const split1 = { ...read(), moved: x("revenue/taxes/sales") !== before };
     fire(document.getElementById("rail-toggle"), "click");
     const collapsed = read();
-    const b = drawnBody(document, window);
-    t.diagnostic(`BESIDE_QUERY ${app.BESIDE_QUERY}: the opening chart ${full}px + cushion ${app.CHART_CUSHION} + rail ` +
-      `${app.RAIL_WIDTH} + drawer ${app.DRAWER_WIDTH}; open ${JSON.stringify(open)}, split ${JSON.stringify(split1)}, ` +
-      `rail collapsed ${JSON.stringify(collapsed)} (body ${b.width}px)`);
+    t.diagnostic(`BESIDE_QUERY ${app.BESIDE_QUERY}: at ${px}px the opening chart ${full}px draws in a room of ` +
+      `${open.room}px with the rail open and ${collapsed.room}px with it collapsed (cushion ${app.CHART_CUSHION}, rail ` +
+      `${app.RAIL_WIDTH}, drawer ${app.DRAWER_WIDTH})`);
+    const room = px - app.CHART_CUSHION - app.DRAWER_WIDTH;
     const want = { beside: true, scale: 1, fits: true };
-    assert.deepEqual({ open, split1, collapsed }, { open: want, split1: { ...want, moved: false }, collapsed: want });
+    assert.deepEqual({ open, split1, collapsed }, {
+      open: { ...want, room: room - app.RAIL_WIDTH },
+      split1: { ...want, room: room - app.RAIL_WIDTH, moved: false },
+      collapsed: { ...want, room: room - drawnBody(document, window).tab },
+    });
+    assert.ok(collapsed.room > open.room, "collapsing the rail did not widen the chart's room");
   });
 
-  test("a pixel narrower the three stack, and the chart keeps its full size where the viewport has room for it alone", async () => {
-    const probe = await loadApp();
-    const px = besideWidth(probe.app) - 1;
-    const { app, document, window } = await at(px);
-    const b = drawnBody(document, window);
-    assert.deepEqual({ beside: b.beside, panels: b.panels, room: b.room }, { beside: false, panels: 0, room: app.widthOf(app.openingColumns()) });
+  test("from 1280px the three sit beside, at full size, and at 1279px they stack", async () => {
+    const said = (l) => {
+      const b = drawnBody(l.document, l.window);
+      return b.refused ? b : { beside: b.beside, panels: b.panels, scale: b.drawn / l.app.widthOf(l.app.openingColumns()) };
+    };
+    const beside = said(await at(1280));
+    const narrow = await at(1279);
+    const stacked = said(narrow);
+    assert.deepEqual({ query: narrow.app.BESIDE_QUERY, beside: { beside: beside.beside, scale: beside.scale }, stacked: { beside: stacked.beside, panels: stacked.panels } },
+      { query: "(min-width: 1280px)", beside: { beside: true, scale: 1 }, stacked: { beside: false, panels: 0 } });
   });
 });
 
