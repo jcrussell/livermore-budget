@@ -127,9 +127,9 @@ export function homeOf(l) {
  *   width(columns: number): number,
  *   columnsOf(drawn: FiscProjection, tiers: number[]): number,
  *   shape(doc: FiscProjection, view: ShapeView): FiscProjection,
- *   layOut(drawn: FiscProjection, ctx: {tiers: number[], columns: number, groupOf: (n: FiscNode | LaidNode) => string, placeOf: (id: string) => number, chart: FiscChart}): {nodes: LaidNode[], links: LaidLink[]},
+ *   layOut(drawn: FiscProjection, ctx: {tiers: number[], columns: number, groupOf: (n: FiscNode | LaidNode) => string, placeOf: (id: string) => number, chart: FiscChart, before?: Map<string, Box>, parentOf?: (id: string) => string}): {nodes: LaidNode[], links: LaidLink[]},
  *   hairlines(graph: {nodes: LaidNode[], links: LaidLink[]}, chart: FiscChart): number,
- *   render(graph: {nodes: LaidNode[], links: LaidLink[]}, ctx: Record<string, any>): void,
+ *   render(graph: {nodes: LaidNode[], links: LaidLink[]}, ctx: Record<string, any>): () => void,
  *   paint(ctx: {svg: any, colour: {link: (d: LaidLink) => string, node: (d: LaidNode) => string}}): void,
  *   cents(d: LaidLink | LaidNode): number,
  *   share(d: LaidNode, laid: LaidNode[]): string,
@@ -381,6 +381,19 @@ export let baseDescription = "";
  * @type {LaidNode[]}
  */
 export let laidNodes = [];
+/**
+ * What puts the chart's moving marks at their end now, as the form's render
+ * returned it (finishMotion).
+ * @type {() => void}
+ */
+let motionEnd = () => {};
+/**
+ * The tallest canvas this page has drawn the chart on, in its own units: a
+ * fold never shortens the canvas, so nothing below the chart jumps.
+ */
+export let heldHeight = 0;
+/** How long a redraw's marks move for, in ms, where the reader allows motion. */
+export const MOTION_MS = 350;
 /** @type {LaidNode | LaidLink | null} */
 export let pinned = null;
 /**
@@ -642,11 +655,16 @@ export function askAffordances() {
  * @param {string} [refused] the banner's opening words when the redraw is refused
  * @param {() => string} [landOn] the mark focus goes to on the redrawn chart,
  *   asked after it is laid out
+ * @param {string} [anchor] the node the reader acted on, kept where it is on
+ *   screen (keepInPlace)
  * @returns {boolean} whether `next` is on screen
  */
-export function redraw(next, refused = "That could not be drawn", landOn) {
+export function redraw(next, refused = "That could not be drawn", landOn, anchor) {
+  finishMotion();
   // Asked before the repaint removes the element focus is on.
   const hadFocus = focusInChart();
+  const prior = boxesOf(laidNodes);
+  const held = anchor ? screenBoxOf(anchor) : null;
   const was = { expansions, frontier, wholeSplits, laidNodes, groupIndex, projection, shown, whole };
   let laid;
   let rows;
@@ -661,7 +679,7 @@ export function redraw(next, refused = "That could not be drawn", landOn) {
     const drawn = shapeFor(fetched);
     const filtered = filterFor(drawn);
     const unfiltered = wholeOf(drawn, filtered);
-    laid = layOut(filtered.doc);
+    laid = layOut(filtered.doc, prior);
     // Inside the try: building a row is the last step of a draw that can
     // throw on a document. The table is the view's every flow, filtered or
     // not; the filter line says what the chart leaves out.
@@ -692,7 +710,8 @@ export function redraw(next, refused = "That could not be drawn", landOn) {
   paintChartHint();
   buildDerivedList();
   buildTable(rows);
-  render(laid);
+  render(laid, prior);
+  if (anchor && held) keepInPlace(anchor, held);
   restoreFocus(hadFocus, landOn ? landOn() : "");
   // A split and its undoing are steps a reader walks back with Back.
   recordView("push");
@@ -720,7 +739,7 @@ export function expandNode(id, key) {
   const next = expansions.filter((e) => !entryInside(e, inside)).concat([entryOf(id, split.key)]);
   const before = new Set(laidNodes.map((n) => n.id));
   const members = new Set(split.members.concat([core.splitTailID(id, split.key)]));
-  return redraw(next, "That could not be split", () => firstNewAt((n) => members.has(n.id), before));
+  return redraw(next, "That could not be split", () => firstNewAt((n) => members.has(n.id), before), id);
 }
 
 /**
@@ -737,7 +756,7 @@ export function collapseNode(id) {
   const inside = core.withinNode(fetched, from);
   const next = expansions.filter((e) => !entryInside(e, inside));
   if (next.length === expansions.length) return false;
-  return redraw(next, "That could not be folded back", () => from);
+  return redraw(next, "That could not be folded back", () => from, from);
 }
 
 /**
@@ -761,7 +780,7 @@ export function collapseParentOf(d) {
 export function undoLast() {
   if (!expansions.length || !fetched) return false;
   const last = parseEntry(fetched, expansions[expansions.length - 1]);
-  return redraw(expansions.slice(0, -1), "That could not be undone", () => last.id);
+  return redraw(expansions.slice(0, -1), "That could not be undone", () => last.id, last.id);
 }
 
 /**
@@ -1205,10 +1224,11 @@ export function nodeFlags(d) {
  * as a tail. Assigned only once the layout has not thrown, or the next paint()
  * would recolour the chart on screen against a document it was not drawn from.
  * @param {FiscProjection} doc
+ * @param {Map<string, Box>} [prior] the chart it replaces, whose columns it keeps the order of
  * @returns {{nodes:LaidNode[], links:LaidLink[]}}
  */
-export function layOut(doc) {
-  const { graph, index } = laidOf(doc);
+export function layOut(doc, prior) {
+  const { graph, index } = laidOf(doc, prior);
   groupIndex = index;
   // For shareOf: only the laid graph knows a mark's column.
   laidNodes = graph.nodes;
@@ -1219,9 +1239,10 @@ export function layOut(doc) {
  * layOut's layout, assigning nothing: the graph the form lays `doc` out as,
  * and the hue index it was laid against.
  * @param {FiscProjection} doc
+ * @param {Map<string, Box>} [prior] layOut's
  * @returns {{graph: {nodes:LaidNode[], links:LaidLink[]}, index: Map<string, FiscNode>}}
  */
-function laidOf(doc) {
+function laidOf(doc, prior) {
   const index = hueIndex(doc);
   // Nothing to lay out where the filters removed every ribbon; d3-sankey
   // throws on an empty graph.
@@ -1231,6 +1252,8 @@ function laidOf(doc) {
     groupOf: (/** @type {FiscNode | LaidNode} */ n) => core.fundGroupOf(index, n),
     placeOf: fundGroupPlace,
     chart: chartOnScreen(),
+    before: prior,
+    parentOf: parentOf,
   });
   return { graph, index };
 }
@@ -1377,26 +1400,35 @@ export function drawnAt(d) {
  * Draws the chart on screen through its form, then paints it and applies the
  * emphasis. The gestures, descriptions and classes are this file's: they read
  * the page's state, which a renderer never holds.
+ *
+ * The form draws into the one group the zoom moves, kept from chart to
+ * chart so a mark keeps its element; `prior`, the chart replaced, is what
+ * the marks move from, over MOTION_MS unless the reader asks for less motion.
  * @param {{nodes:LaidNode[], links:LaidLink[]}} [laid]
+ * @param {Map<string, Box>} [prior]
  */
-export function render(laid) {
+export function render(laid, prior) {
   const doc = chartDrawn();
   if (!doc) return;
+  finishMotion();
   const graph = laid || layOut(doc);
   const svg = D3.select("#chart");
-  // The form draws into a fresh group, which is what the zoom moves: never
-  // the svg, whose viewBox is the chart's own coordinates.
-  svg.selectAll("g").remove();
-  const layer = svg.append("g").attr("class", "zoom-layer");
+  // Never the svg, whose viewBox is the chart's own coordinates.
+  let layer = svg.select(":scope > g.zoom-layer");
+  if (layer.empty()) layer = svg.append("g").attr("class", "zoom-layer");
   const columns = layoutColumns(doc);
   // style.css's --chart-room reads these: the card breaks out of main to the
   // opening chart's width whatever the columns, so its left edge never moves,
   // and the svg is that room stretched by the columns drawn.
   document.documentElement.style.setProperty("--chart-max", widthOf(openingColumns()) + "px");
   document.documentElement.style.setProperty("--chart-stretch", String(chartStretch(columns)));
-  formOnScreen().render(graph, {
+  const ended = formOnScreen().render(graph, {
     svg: svg,
     layer: layer,
+    before: prior,
+    parentOf: parentOf,
+    motion: prior && prior.size ? motionMs() : 0,
+    held: heldHeight,
     tiers: RENDER_TIERS,
     columns: columns,
     chart: chartOnScreen(),
@@ -1413,6 +1445,9 @@ export function render(laid) {
       restoring: () => restoring,
     },
   });
+  motionEnd = typeof ended === "function" ? ended : () => {};
+  const box = String(svg.attr("viewBox") || "").split(/\s+/).map(Number);
+  if (box.length === 4 && box[3] > heldHeight) heldHeight = box[3];
   paintHairlines(graph);
   paint();
   applyEmphasis();
@@ -1420,6 +1455,106 @@ export function render(laid) {
   bindZoom();
   // The options name marks of the chart just replaced.
   closeSearch();
+}
+
+/**
+ * A laid node's box in the chart's own coordinates.
+ * @typedef {{x0: number, x1: number, y0: number, y1: number}} Box
+ */
+
+/**
+ * Laid nodes' boxes by id: what a redraw keeps the order of and moves from.
+ * @param {LaidNode[]} nodes
+ * @returns {Map<string, Box>}
+ */
+export function boxesOf(nodes) {
+  return new Map(nodes.map((n) => [n.id, { x0: n.x0, x1: n.x1, y0: n.y0, y1: n.y1 }]));
+}
+
+/**
+ * The node a mark hangs from in the schedule on screen: a tail's split node,
+ * else its parent, else "". What a new mark grows out of and a leaving one
+ * shrinks into.
+ * @param {string} id
+ * @returns {string}
+ */
+export function parentOf(id) {
+  const tail = core.splitTailOf(id);
+  if (tail) return tail.node;
+  const n = nodeOf(id);
+  return n && n.parent ? n.parent : "";
+}
+
+/**
+ * Whether the reader allows motion: false under prefers-reduced-motion.
+ * @returns {number} how long a redraw's marks move for, in ms
+ */
+export function motionMs() {
+  const reduced = typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  return reduced ? 0 : MOTION_MS;
+}
+
+/** Puts every moving mark of the chart at its end now. */
+export function finishMotion() {
+  const end = motionEnd;
+  motionEnd = () => {};
+  end();
+}
+
+/**
+ * Where a node's mark is on screen, in px, or null where none is drawn.
+ * @param {string} id
+ * @returns {{left: number, top: number} | null}
+ */
+function screenBoxOf(id) {
+  const svg = maybeEl("chart");
+  if (!svg) return null;
+  for (const g of svg.querySelectorAll("g.nodes > g")) {
+    const d = /** @type {any} */ (g).__data__;
+    if (!d || d.id !== id) continue;
+    const r = (g.querySelector("rect") || g).getBoundingClientRect();
+    // A mark with no size on screen is one the browser has not laid out.
+    return r.width || r.height ? { left: r.left, top: r.top } : null;
+  }
+  return null;
+}
+
+/**
+ * How far to scroll so a node laid at `d` in a viewBox `laid` wide, drawn in
+ * an svg at `svg` on screen with the zoom at the whole chart, is where it was
+ * on screen (`was`), in px: sideways in the chart's scroller, and down the
+ * page.
+ * @param {{left: number, top: number}} was
+ * @param {{left: number, top: number, width: number}} svg
+ * @param {number} laid the viewBox's width
+ * @param {{x0: number, y0: number}} d
+ * @returns {{dx: number, dy: number}}
+ */
+export function anchorShift(was, svg, laid, d) {
+  const k = laid > 0 ? svg.width / laid : 0;
+  if (!(k > 0)) return { dx: 0, dy: 0 };
+  return { dx: svg.left + d.x0 * k - was.left, dy: svg.top + d.y0 * k - was.top };
+}
+
+/**
+ * Scrolls the chart's scroller and the page so the node the reader acted on
+ * stays where it was on screen (anchorShift).
+ * @param {string} id
+ * @param {{left: number, top: number}} was
+ */
+function keepInPlace(id, was) {
+  const svg = maybeEl("chart");
+  const d = laidNodes.find((n) => n.id === id);
+  if (!svg || !d) return;
+  const box = String(svg.getAttribute("viewBox") || "").split(/\s+/).map(Number);
+  const r = svg.getBoundingClientRect();
+  const { dx, dy } = anchorShift(was, { left: r.left, top: r.top, width: r.width }, box[2], d);
+  const scroller = svg.parentElement;
+  if (dx && scroller && scroller.classList.contains("chart-scroll")) {
+    scroller.scrollLeft = Math.max(0, scroller.scrollLeft + dx);
+  }
+  if (dy && typeof window.scrollBy === "function") window.scrollBy(0, dy);
 }
 
 /**
@@ -1566,14 +1701,16 @@ export function setFilter(next) {
     syncFilterPanel();
     return true;
   }
+  finishMotion();
   const hadFocus = focusInChart();
+  const prior = boxesOf(laidNodes);
   let filtered;
   let unfiltered;
   let laid;
   try {
     filtered = filterFor(projection);
     unfiltered = wholeOf(projection, filtered);
-    laid = layOut(filtered.doc);
+    laid = layOut(filtered.doc, prior);
   } catch (e) {
     filter = was;
     syncFilterPanel();
@@ -1589,7 +1726,7 @@ export function setFilter(next) {
   paintFilterLine();
   syncFilterPanel();
   paintChartHint();
-  render(laid);
+  render(laid, prior);
   restoreFocus(hadFocus);
   recordView("replace");
   return true;

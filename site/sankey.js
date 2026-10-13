@@ -830,6 +830,40 @@ export function scaffoldOf(drawn, slots) {
 }
 
 /**
+ * Where each node of a redrawn chart sat in the chart it replaces, as a
+ * vertical place to order its column by: a node laid before at its own
+ * centre, a new one at the centre of its nearest ancestor laid before
+ * (parentOf, one step up), so a split's members take their parent's place.
+ * Only a column every node of which has a place is seated; any other, and
+ * every column of a chart with nothing before it, is ordered by nodeRank
+ * alone, so a fresh chart is laid exactly as it always was.
+ * @param {{id: string, tier: number, slot?: number}[]} nodes
+ * @param {Map<string, number>} slots slotsOf
+ * @param {Map<string, {y0: number, y1: number}>} [before] the replaced chart's laid nodes, by id
+ * @param {(id: string) => string} [parentOf]
+ * @returns {Map<string, number>} id to place, seated columns only
+ */
+export function seatsOf(nodes, slots, before, parentOf) {
+  /** @type {Map<string, number>} */
+  const out = new Map();
+  if (!before || !before.size) return out;
+  /** @type {Map<number, {id: string, at: number | undefined}[]>} */
+  const columns = new Map();
+  for (const n of nodes) {
+    let at = n.id;
+    for (let hops = 0; at && !before.has(at) && hops < 9; hops++) at = parentOf ? parentOf(at) : "";
+    const was = at ? before.get(at) : undefined;
+    const col = /** @type {number} */ (slots.get(n.id));
+    columns.set(col, (columns.get(col) || []).concat([{ id: n.id, at: was ? (was.y0 + was.y1) / 2 : undefined }]));
+  }
+  for (const seated of columns.values()) {
+    if (seated.some((x) => x.at === undefined)) continue;
+    for (const x of seated) out.set(x.id, /** @type {number} */ (x.at));
+  }
+  return out;
+}
+
+/**
  * SANKEY.layOut at a stated canvas height, in px: what the layout test
  * measures a chart at heights the chart does not declare with.
  *
@@ -841,21 +875,29 @@ export function scaffoldOf(drawn, slots) {
  * draw it a column early in silence. Only a ribbon that does not run forward
  * in the slots, which no scaffold is added beside, leaves that reachable.
  * @param {FiscProjection} drawn
- * @param {{tiers: number[], columns: number, groupOf: (n: any) => string, placeOf: (id: string) => number}} ctx
+ * @param {{tiers: number[], columns: number, groupOf: (n: any) => string, placeOf: (id: string) => number,
+ *   before?: Map<string, {y0: number, y1: number}>, parentOf?: (id: string) => string}} ctx before and
+ *   parentOf seat a redrawn chart's columns (seatsOf)
  * @param {number} height
  * @returns {{nodes: LaidNode[], links: LaidLink[]}}
  */
 export function layOutAt(drawn, ctx, height) {
   const d3 = /** @type {any} */ (globalThis).d3;
   const slots = slotsOf(drawn.nodes, ctx.tiers);
+  const seats = seatsOf(drawn.nodes, slots, ctx.before, ctx.parentOf);
+  const rank = (/** @type {LaidNode} */ a, /** @type {LaidNode} */ b) =>
+    nodeRank(ctx.groupOf, ctx.placeOf, a) - nodeRank(ctx.groupOf, ctx.placeOf, b) || b.value - a.value;
   const sankey = d3.sankey()
     .nodeId(/** @param {LaidNode} d */ (d) => d.id)
     .nodeWidth(NODE_WIDTH)
     .nodePadding(NODE_PADDING)
     .nodeAlign(alignFor(slots))
     // Supplying this switches d3's own ordering pass off.
-    .nodeSort(/** @param {LaidNode} a @param {LaidNode} b */ (a, b) =>
-      nodeRank(ctx.groupOf, ctx.placeOf, a) - nodeRank(ctx.groupOf, ctx.placeOf, b) || b.value - a.value)
+    .nodeSort(/** @param {LaidNode} a @param {LaidNode} b */ (a, b) => {
+      const sa = seats.get(a.id);
+      const sb = seats.get(b.id);
+      return (sa !== undefined && sb !== undefined ? sa - sb : 0) || rank(a, b);
+    })
     // The same column count render() sizes the viewBox from.
     .extent([[LABEL_GUTTER, 12],
       [chartWidth(ctx.columns) - LABEL_GUTTER, height - 12]]);
@@ -882,6 +924,44 @@ export function layOutAt(drawn, ctx, height) {
   }
   restackLinks(graph);
   return graph;
+}
+
+/** The transition a redraw moves its marks in, and the one its labels fade in after. */
+const MOVE = "chart-move";
+const FADE = "label-fade";
+
+/** A label's tspans in order, by class: qualifier, label, noun, value, flag. */
+const LABEL_TSPANS = ["qualifier", "", "qualifier", "value", "flag"];
+
+/**
+ * A laid ribbon's id: its ends, its kind, and whether it is a cross-tab
+ * slice, which is what one ribbon of a shaped chart is drawn per.
+ * @param {{source: any, target: any, kind: string, partition?: boolean}} d
+ * @returns {string}
+ */
+export function linkKey(d) {
+  const end = (/** @type {any} */ x) => (x && typeof x === "object" ? x.id : x);
+  return end(d.source) + "→" + end(d.target) + "\u001f" + d.kind + (d.partition ? "\u001fpartition" : "");
+}
+
+/**
+ * Each ribbon's id (linkKey), a second ribbon of one id numbered after it,
+ * so no two ribbons of a chart share an element.
+ * @param {any[]} links
+ * @returns {Map<any, string>}
+ */
+function linkKeys(links) {
+  /** @type {Map<string, number>} */
+  const seen = new Map();
+  /** @type {Map<any, string>} */
+  const out = new Map();
+  for (const l of links) {
+    const k = linkKey(l);
+    const n = seen.get(k) || 0;
+    seen.set(k, n + 1);
+    out.set(l, n ? k + "#" + n : k);
+  }
+  return out;
 }
 
 /**
@@ -978,37 +1058,96 @@ export const SANKEY = Object.freeze({
   },
 
   /**
-   * Draws a laid graph into ctx.layer, an empty group the page made inside
+   * Draws a laid graph into ctx.layer, the group the page keeps inside
    * ctx.svg and moves as the reader zooms: ribbons, marks, bands and labels, with
    * the classes, descriptions, gestures and the figure each label says
    * (ctx.figure) the page hands it. Paints nothing: the page paints after, so
    * a theme change repaints without redrawing.
+   *
+   * KEYED BY NODE AND RIBBON ID (linkKey), so a mark the chart it replaces
+   * drew keeps its element. Over ctx.motion ms, from ctx.before (the replaced
+   * chart's laid nodes by id), a surviving mark glides to its place, a new
+   * one grows out of the right edge of its nearest ancestor drawn before
+   * (parentOf), one leaving shrinks into the right edge of its nearest
+   * ancestor drawn now, and every label fades in after the move. With no
+   * motion everything is at its end at once. The viewBox is never shorter
+   * than ctx.held. Returns what puts every mark at its end now.
+   * @returns {() => void}
    */
   render(graph, ctx) {
     const d3 = /** @type {any} */ (globalThis).d3;
     const svg = ctx.svg;
     const width = chartWidth(ctx.columns);
-    const height = canvasHeight(ctx.chart, graph.nodes);
+    const height = Math.max(canvasHeight(ctx.chart, graph.nodes), ctx.held || 0);
     const on = ctx.on;
+    const motion = ctx.motion > 0 ? ctx.motion : 0;
+    /** @type {Map<string, {x0: number, x1: number, y0: number, y1: number}>} */
+    const before = ctx.before || new Map();
+    /** @type {(id: string) => string} */
+    const parentOf = ctx.parentOf || (() => "");
 
     // No width or height attributes: the viewBox makes the drawing scale.
     svg.attr("viewBox", "0 0 " + width + " " + height);
 
-    const gLinks = ctx.layer.append("g").attr("class", "links");
-    const gHits = ctx.layer.append("g").attr("class", "link-hits");
-    const gNodes = ctx.layer.append("g").attr("class", "nodes");
+    const layer = ctx.layer;
+    // What a replaced chart left moving is cut off where it stands.
+    layer.selectAll("*").interrupt(MOVE).interrupt(FADE);
+    layer.selectAll("[data-leaving]").remove();
+    /** @param {string} name */
+    const groupNamed = (name) => {
+      const g = layer.select(":scope > g." + name);
+      return g.empty() ? layer.append("g").attr("class", name) : g;
+    };
+    const gLinks = groupNamed("links");
+    const gHits = groupNamed("link-hits");
+    const gNodes = groupNamed("nodes");
     /** @param {LaidLink} d */
     const hairline = (d) => isHairline(ctx.chart, d);
+    const keys = linkKeys(graph.links);
+    /** @param {LaidLink} d */
+    const keyOf = (d) => keys.get(d) || linkKey(d);
+    const path = d3.sankeyLinkHorizontal();
 
-    gLinks.selectAll("path")
-      .data(graph.links)
-      .join("path")
+    const now = new Map(graph.nodes.map((n) => [n.id, n]));
+    /**
+     * The box of id's nearest ancestor among `boxes`, or null.
+     * @param {string} id
+     * @param {Map<string, {x0: number, x1: number, y0: number, y1: number}>} boxes
+     */
+    const above = (id, boxes) => {
+      let at = parentOf(id);
+      for (let hops = 0; at && hops < 9; hops++) {
+        const box = boxes.get(at);
+        if (box) return box;
+        at = parentOf(at);
+      }
+      return null;
+    };
+    /** Where a mark that enters grows from. @param {string} id */
+    const grownFrom = (id) => above(id, before) || above(id, now);
+    /** A ribbon at no width at a box's right edge, mid-height. */
+    const flatAt = (/** @type {{x1: number, y0: number, y1: number}} */ box) => {
+      const y = (box.y0 + box.y1) / 2;
+      return path({ source: { x1: box.x1 }, target: { x0: box.x1 }, y0: y, y1: y });
+    };
+    const t = motion ? d3.transition(MOVE).duration(motion) : null;
+    /** @param {any} sel */
+    const moving = (sel) => (t ? sel.transition(t) : sel);
+
+    /** @type {any} */
+    let enteredLinks = null;
+    /** @type {any} */
+    let leavingLinks = null;
+    const ribbons = gLinks.selectAll("path")
+      .data(graph.links, keyOf)
+      .join(
+        (/** @type {any} */ enter) => (enteredLinks = enter.append("path")),
+        (/** @type {any} */ update) => update,
+        (/** @type {any} */ exit) => (leavingLinks = exit))
       .attr("class", /** @param {LaidLink} d */ (d) => ctx.classes.link(d) + (hairline(d) ? " hairline" : ""))
-      .attr("d", d3.sankeyLinkHorizontal())
-      // The surface gap, not a stroke, separates stacked ribbons.
-      .attr("stroke-width", /** @param {LaidLink} d */ (d) => Math.max(1, d.width - RIBBON_GAP))
       .attr("tabindex", 0)
       .attr("role", "button")
+      .attr("aria-hidden", null)
       .attr("aria-label", /** @param {LaidLink} d */ (d) => ctx.describe.link(d))
       .on("pointerenter", /** @param {PointerEvent} e @param {LaidLink} d */ (e, d) => on.tip(e, d))
       .on("pointermove", /** @param {PointerEvent} e @param {LaidLink} d */ (e, d) => on.tip(e, d))
@@ -1016,27 +1155,50 @@ export const SANKEY = Object.freeze({
       .on("focus", /** @param {FocusEvent} e @param {LaidLink} d */ (e, d) => on.guarded("show this flow", () => { if (on.restoring()) return; on.tip(e, d); on.pin(d); }))
       .on("blur", on.hide)
       .on("click", /** @param {MouseEvent} e @param {LaidLink} d */ (e, d) => on.guarded("pin this flow", () => { e.stopPropagation(); on.pin(d); }));
+    /** @param {any} sel */
+    const placeLinks = (sel) => sel
+      .attr("d", path)
+      // The surface gap, not a stroke, separates stacked ribbons.
+      .attr("stroke-width", /** @param {LaidLink} d */ (d) => Math.max(1, d.width - RIBBON_GAP));
 
     // A HAIRLINE'S HIT TARGET IS WIDER THAN ITS STROKE: the ribbon keeps its
     // focus and its description, and this transparent stroke above it takes
-    // the pointer's hover and click.
+    // the pointer's hover and click. Drawn at its end: it is never seen.
     gHits.selectAll("path")
-      .data(graph.links.filter(hairline))
+      .data(graph.links.filter(hairline), keyOf)
       .join("path")
       .attr("class", "link-hit")
-      .attr("d", d3.sankeyLinkHorizontal())
+      .attr("d", path)
       .attr("aria-hidden", "true")
       .on("pointerenter", /** @param {PointerEvent} e @param {LaidLink} d */ (e, d) => on.tip(e, d))
       .on("pointermove", /** @param {PointerEvent} e @param {LaidLink} d */ (e, d) => on.tip(e, d))
       .on("pointerleave", on.hide)
       .on("click", /** @param {MouseEvent} e @param {LaidLink} d */ (e, d) => on.guarded("pin this flow", () => { e.stopPropagation(); on.pin(d); }));
 
+    /** @type {any} */
+    let enteredNodes = null;
+    /** @type {any} */
+    let leavingNodes = null;
     const node = gNodes.selectAll("g")
-      .data(graph.nodes)
-      .join("g")
+      .data(graph.nodes, /** @param {LaidNode} d */ (d) => d.id)
+      .join(
+        (/** @type {any} */ enter) => {
+          const g = enter.append("g");
+          g.append("rect").attr("rx", 2);
+          // On every mark, displayed on the ones that hang: the vendored d3
+          // selection has no filter(). pointer-events none, because the band
+          // is not the mark.
+          g.append("rect").attr("class", "contra-band").attr("pointer-events", "none");
+          const text = g.append("text").attr("class", "halo");
+          for (const cls of LABEL_TSPANS) text.append("tspan").attr("class", cls || null);
+          return (enteredNodes = g);
+        },
+        (/** @type {any} */ update) => update,
+        (/** @type {any} */ exit) => (leavingNodes = exit))
       .attr("class", /** @param {LaidNode} d */ (d) => ctx.classes.node(d))
       .attr("tabindex", 0)
       .attr("role", "button")
+      .attr("aria-hidden", null)
       // aria-pressed is the isolation, on every node. SPLITTING IS NOT THE
       // TOGGLE and must never be announced as one: it replaces the node with
       // its parts, leaving no pressed state to return to. The label announces
@@ -1081,24 +1243,21 @@ export const SANKEY = Object.freeze({
         e.preventDefault();
         on.guarded("act on this mark", () => on.key(d, e.key, e.timeStamp));
       });
-
-    node.append("rect")
-      .attr("x", /** @param {LaidNode} d */ (d) => d.x0)
-      .attr("y", /** @param {LaidNode} d */ (d) => d.y0)
-      .attr("width", /** @param {LaidNode} d */ (d) => d.x1 - d.x0)
-      .attr("height", /** @param {LaidNode} d */ (d) => Math.max(2, d.y1 - d.y0))
-      .attr("rx", 2);
-
-    // On every mark, displayed on the ones that hang: the vendored d3 selection
-    // has no filter(). pointer-events none, because the band is not the mark.
-    node.append("rect")
-      .attr("class", "contra-band")
-      .attr("display", /** @param {LaidNode} d */ (d) => (contraBand(d) ? null : "none"))
-      .attr("x", /** @param {LaidNode} d */ (d) => d.x0)
-      .attr("y", /** @param {LaidNode} d */ (d) => (contraBand(d) || { y: 0 }).y)
-      .attr("width", /** @param {LaidNode} d */ (d) => d.x1 - d.x0)
-      .attr("height", /** @param {LaidNode} d */ (d) => (contraBand(d) || { height: 0 }).height)
-      .attr("pointer-events", "none");
+    /** @param {any} sel the marks, or a transition of them */
+    const placeNodes = (sel) => {
+      sel.select("rect")
+        .attr("x", /** @param {LaidNode} d */ (d) => d.x0)
+        .attr("y", /** @param {LaidNode} d */ (d) => d.y0)
+        .attr("width", /** @param {LaidNode} d */ (d) => d.x1 - d.x0)
+        .attr("height", /** @param {LaidNode} d */ (d) => Math.max(2, d.y1 - d.y0));
+      sel.select("rect.contra-band")
+        .attr("x", /** @param {LaidNode} d */ (d) => d.x0)
+        .attr("y", /** @param {LaidNode} d */ (d) => (contraBand(d) || { y: 0 }).y)
+        .attr("width", /** @param {LaidNode} d */ (d) => d.x1 - d.x0)
+        .attr("height", /** @param {LaidNode} d */ (d) => (contraBand(d) || { height: 0 }).height);
+    };
+    node.select("rect.contra-band")
+      .attr("display", /** @param {LaidNode} d */ (d) => (contraBand(d) ? null : "none"));
 
     // Every node is directly labelled: the relief the palette's contrast check
     // requires.
@@ -1111,13 +1270,6 @@ export const SANKEY = Object.freeze({
     const nouns = labelNouns(ctx.doc, graph.nodes, ctx.noun);
     /** @param {LaidNode} d */
     const nounOf = (d) => nouns.get(d.id) || "";
-    const label = node.append("text")
-      .attr("class", "halo")
-      .attr("y", /** @param {LaidNode} d */ (d) => place(d).y)
-      .attr("dy", /** @param {LaidNode} d */ (d) => place(d).dy)
-      .attr("x", /** @param {LaidNode} d */ (d) => place(d).x)
-      .attr("text-anchor", /** @param {LaidNode} d */ (d) => place(d).anchor);
-
     /** @param {LaidNode} d */
     const value = (d) => "  " + fmtShortSigned(ctx.figure(d));
     /** @type {Map<string, {qualifier: string, label: string, noun: string, cut: boolean}>} */
@@ -1135,28 +1287,92 @@ export const SANKEY = Object.freeze({
       }
       return w;
     };
-    label.append("tspan")
-      .attr("class", "qualifier")
-      .text(/** @param {LaidNode} d */ (d) => words(d).qualifier);
-    label.append("tspan")
-      .text(/** @param {LaidNode} d */ (d) => words(d).label);
+    const label = node.select("text")
+      .attr("y", /** @param {LaidNode} d */ (d) => place(d).y)
+      .attr("dy", /** @param {LaidNode} d */ (d) => place(d).dy)
+      .attr("x", /** @param {LaidNode} d */ (d) => place(d).x)
+      .attr("text-anchor", /** @param {LaidNode} d */ (d) => place(d).anchor);
     // The noun is the page's words, not the city's, so it is drawn as the
     // qualifier is.
-    label.append("tspan")
-      .attr("class", "qualifier")
-      .text(/** @param {LaidNode} d */ (d) => words(d).noun);
-    label.append("tspan")
-      .attr("class", "value")
-      .text(value);
-    label.append("tspan")
-      .attr("class", "flag")
-      .text(/** @param {LaidNode} d */ (d) => ctx.classes.flags(d));
+    label.each(/** @this {SVGTextElement} @param {LaidNode} d */ function (d) {
+      const w = words(d);
+      const said = [w.qualifier, w.label, w.noun, value(d), ctx.classes.flags(d)];
+      this.querySelectorAll(":scope > tspan").forEach((span, i) => {
+        d3.select(span).datum(d).text(said[i]);
+      });
+    });
     // A cut label keeps its full words in a title.
     node.each(/** @this {SVGGElement} @param {LaidNode} d */ function (d) {
+      d3.select(this).select(":scope > title").remove();
       if (!words(d).cut) return;
       d3.select(this).insert("title", ":first-child")
         .text((qualifierOf(d) ? qualifierOf(d) + ": " : "") + d.label + (nounOf(d) ? " (" + nounOf(d) + ")" : "") + value(d));
     });
+
+    /** Marks leaving the chart: inert at once, gone at the end. @param {any} sel */
+    const inert = (sel) => sel.attr("data-leaving", "").attr("aria-hidden", "true").attr("pointer-events", "none")
+      .attr("tabindex", null).attr("role", null).on("click", null).on("dblclick", null).on("keydown", null)
+      .on("focus", null).on("pointerenter", null).on("pointermove", null);
+    const finish = () => {
+      layer.selectAll("*").interrupt(MOVE).interrupt(FADE);
+      placeLinks(ribbons);
+      placeNodes(node);
+      label.attr("opacity", null);
+      layer.selectAll("[data-leaving]").remove();
+    };
+    if (!t) {
+      if (leavingLinks) leavingLinks.remove();
+      if (leavingNodes) leavingNodes.remove();
+      finish();
+      return finish;
+    }
+
+    // THE START: a new mark at its ancestor's right edge, a surviving one
+    // where it stands, every label hidden until the move is over.
+    if (enteredNodes) {
+      enteredNodes.each(/** @this {SVGGElement} @param {LaidNode} d */ function (d) {
+        const from = grownFrom(d.id) || { x1: d.x0, y0: d.y0, y1: d.y1 };
+        const g = d3.select(this);
+        g.select("rect").attr("x", from.x1).attr("y", from.y0).attr("width", 0).attr("height", Math.max(2, from.y1 - from.y0));
+        g.select("rect.contra-band").attr("x", from.x1).attr("y", from.y0).attr("width", 0).attr("height", 0);
+      });
+    }
+    if (enteredLinks) {
+      enteredLinks.each(/** @this {SVGPathElement} @param {LaidLink} d */ function (d) {
+        const grown = !before.has(d.target.id) ? grownFrom(d.target.id) : !before.has(d.source.id) ? grownFrom(d.source.id) : null;
+        d3.select(this).attr("d", grown ? flatAt(grown) : path(d)).attr("stroke-width", 0);
+      });
+    }
+    label.attr("opacity", 0);
+    placeLinks(moving(ribbons));
+    placeNodes(moving(node));
+    label.transition(FADE).delay(motion).duration(motion / 2).attr("opacity", 1)
+      .on("end", /** @this {SVGTextElement} */ function () { this.removeAttribute("opacity"); });
+
+    // THE END OF A MARK LEAVING: into the right edge of its ancestor drawn now.
+    if (leavingNodes) {
+      inert(leavingNodes);
+      leavingNodes.select("text").attr("opacity", 0);
+      leavingNodes.each(/** @this {SVGGElement} @param {LaidNode} d */ function (d) {
+        const into = above(d.id, now) || d;
+        const g = d3.select(this).transition(t);
+        g.select("rect").attr("x", into.x1).attr("y", into.y0).attr("width", 0).attr("height", Math.max(2, into.y1 - into.y0));
+        g.select("rect.contra-band").attr("x", into.x1).attr("width", 0).attr("height", 0);
+        g.remove();
+      });
+    }
+    if (leavingLinks) {
+      inert(leavingLinks);
+      leavingLinks.each(/** @this {SVGPathElement} @param {LaidLink} d */ function (d) {
+        const ends = [d.target && d.target.id, d.source && d.source.id];
+        const gone = ends.find((id) => id && !now.has(id));
+        const into = gone ? above(gone, now) : null;
+        const p = d3.select(this).transition(t).attr("stroke-width", 0);
+        if (into) p.attr("d", flatAt(into));
+        p.remove();
+      });
+    }
+    return finish;
   },
 
   /** Colours the drawn ribbons and marks; the colours are the page's. */

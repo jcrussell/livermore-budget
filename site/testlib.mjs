@@ -83,12 +83,14 @@ export function goldenGraph() {
  * change listeners when an answer crosses. It THROWS on a query it was never
  * taught: answering false would silently stop testing.
  */
-function mediaStub(width, osDark) {
+function mediaStub(width, osDark, motion) {
   const OS_DARK = "(prefers-color-scheme: dark)";
-  const state = { width, osDark };
+  const REDUCED = "(prefers-reduced-motion: reduce)";
+  const state = { width, osDark, motion };
   const listeners = new Map();
   const answer = (q) => {
     if (q === OS_DARK) return state.osDark;
+    if (q === REDUCED) return !state.motion;
     const m = /^\(min-width:\s*(\d+)px\)$/.exec(q);
     if (!m) throw new Error("the matchMedia stub cannot answer " + JSON.stringify(q));
     return state.width >= Number(m[1]);
@@ -123,8 +125,12 @@ function mediaStub(width, osDark) {
  * stylesheet injected so custom properties resolve.
  *
  * THE URL MATTERS: an opaque origin makes localStorage throw.
+ *
+ * The reader asks for reduced motion unless `motion` is true, so a redraw is
+ * at its end when it returns: jsdom runs no d3 transition to its end on its
+ * own, and a test of the motion itself opts in.
  */
-export function installBrowser({ html, storage, viewport = 1000, osDark = false } = {}) {
+export function installBrowser({ html, storage, viewport = 1000, osDark = false, motion = false } = {}) {
   const dom = new JSDOM(html, { url: "http://localhost/", pretendToBeVisual: true });
   const { window } = dom;
   for (const k of ["window", "document", "HTMLElement", "Element", "Node", "SVGElement",
@@ -137,7 +143,7 @@ export function installBrowser({ html, storage, viewport = 1000, osDark = false 
   style.textContent = stylesheet();
   window.document.head.appendChild(style);
   for (const [k, v] of Object.entries(storage || {})) window.localStorage.setItem(k, v);
-  const media = mediaStub(viewport, osDark);
+  const media = mediaStub(viewport, osDark, motion);
   window.matchMedia = media.matchMedia;
   return { window, document: window.document, media };
 }
@@ -211,7 +217,7 @@ export async function loadApp(o = {}) {
   const config = o.config === undefined ? page.config : o.config;
   const browser = installBrowser({
     html: o.html === undefined ? page.html : o.html,
-    storage: o.storage, viewport: o.viewport, osDark: o.osDark,
+    storage: o.storage, viewport: o.viewport, osDark: o.osDark, motion: o.motion,
   });
   if (o.checkedStem) {
     for (const r of browser.document.querySelectorAll("#year-toggle input[type=radio]")) {

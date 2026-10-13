@@ -94,8 +94,8 @@ members, as `FormRenderer` in `site/app.js` types them:
  *  width(columns): number,                      // the px a chart of this many columns is laid out at
  *  columnsOf(drawn, tiers): number,             // how many columns a shaped chart is laid out in
  *  shape(doc, view): FiscProjection,            // fold to the frontier, cap the open splits, stamp slots, flip reductions; throws to refuse; view is {chart, frontier, whole}
- *  layOut(drawn, ctx): Laid,                    // pure of the page
- *  render(laid, ctx): void,                     // writes the DOM
+ *  layOut(drawn, ctx): Laid,                    // pure of the page; ctx.before seats a redrawn chart's columns
+ *  render(laid, ctx): () => void,               // writes the DOM, keyed, moving from ctx.before; returns what ends the motion now
  *  paint(ctx): void,                            // repaints on a theme change
  *  cents(d): number,                            // the figure a laid mark prints, signed
  *  share(d, laid): string,                      // a laid node's share of what it is drawn among, in words; "" where none
