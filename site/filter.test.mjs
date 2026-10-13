@@ -92,9 +92,11 @@ function faultsOf(app, doc, state, where) {
   for (const l of r.doc.links) {
     for (const leg of l.legs || [l]) if (hides(leg)) faults.push(`${where}: ${leg.source} -> ${leg.target} is drawn and the state hides it`);
   }
-  // Drawn plus hidden is the unfiltered chart, by cents and by fact ids.
-  if (sum(app, r.doc.links) + tally.cents !== sum(app, doc.links)) {
-    faults.push(`${where}: drawn ${sum(app, r.doc.links)} + hidden ${tally.cents} is not the chart's ${sum(app, doc.links)}`);
+  // Drawn plus hidden is the unfiltered chart, ribbon by ribbon and by fact
+  // ids. The ribbons' own figures, not the tally: a hub draws a leaf twice,
+  // and the tally states each once ("the tally states a leaf once" below).
+  if (sum(app, r.doc.links) + sum(app, r.hidden) !== sum(app, doc.links)) {
+    faults.push(`${where}: drawn ${sum(app, r.doc.links)} + hidden ${sum(app, r.hidden)} is not the chart's ${sum(app, doc.links)}`);
   }
   if (tally.flows !== r.hidden.length) faults.push(`${where}: the tally counts ${tally.flows} of ${r.hidden.length} hidden ribbons`);
   const union = new Set([...factsOf(r.doc.links), ...tally.facts]);
@@ -141,6 +143,53 @@ describe("drawn plus hidden is the chart", () => {
         `and ${merged} merged ribbon(s) drawn across them; ${faults.length} fault(s)`);
       assert.ok(hidden > 0 && merged > 0, "no state hid or merged a ribbon, so nothing here is tested");
       assert.deepEqual(faults.slice(0, 5), []);
+    });
+  }
+});
+
+// A HUB DRAWS A LEAF TWICE -- arriving at the node and again from it to the
+// member -- and the tally states what the filters hid, each printed figure
+// once. At the root no split is open, so every leaf is one ribbon and the
+// tally is the hidden ribbons' sum. With every split open whose links to its
+// members repeat leaves, and none citing a figure of its own (the General
+// Fund's divisions), the chart draws the root's leaves and no other figure,
+// so hiding the same group or kind states the same cents.
+describe("the tally states a leaf once, however many ribbons draw it", () => {
+  for (const year of YEARS) {
+    test(`${year.label}: hiding a group or a kind with every hub open tallies what it tallies at the root`, async (t) => {
+      const { app } = await bootedApp({ checkedStem: year.stem });
+      const doc = app.fetched;
+      const hub = (sp) => doc.links.some((l) => l.repeats && l.source === sp.node &&
+        app.splitsOf(doc, sp.node).find((x) => x.key === sp.key).members.includes(l.target));
+      let open = app.rootFrontier(doc);
+      for (let changed = true; changed;) {
+        changed = false;
+        for (const sp of doc.splits.filter((x) => !x.alternative && hub(x))) {
+          if (!open.has(sp.node) || app.openSplitOf(doc, open, sp.node) !== "") continue;
+          open = app.expand(doc, open, sp.node, sp.key);
+          changed = true;
+        }
+      }
+      const shape = (frontier) => app.formOnScreen().shape(doc, { chart: CONFIG.overview, frontier, whole: new Set() });
+      const root = shape(app.rootFrontier(doc));
+      const hubs = shape(open);
+      const states = samples(app, root).filter((st) => !(st.smallest > 0) && (st.groups.size || st.kinds.size));
+      const wrong = [];
+      let repeated = 0;
+      for (const st of states) {
+        const where = `[${[...st.groups, ...st.kinds].join(", ")}]`;
+        const r = app.filterFor(root, st);
+        const atRoot = app.hiddenTally(r).cents;
+        const h = app.filterFor(hubs, st);
+        const cents = app.hiddenTally(h).cents;
+        if (atRoot !== sum(app, r.hidden)) wrong.push(`${where}: at the root the tally is ${atRoot}, its ribbons ${sum(app, r.hidden)}`);
+        if (cents !== atRoot) wrong.push(`${where}: every hub open tallies ${cents}, the root ${atRoot}`);
+        if (sum(app, h.hidden) !== atRoot) repeated++;
+      }
+      t.diagnostic(`${year.label}: ${open.size} nodes drawn with every hub open, ${states.length} filter state(s), ` +
+        `${repeated} of them hiding a leaf and a ribbon repeating it`);
+      assert.deepEqual(wrong.slice(0, 5), []);
+      assert.ok(repeated > 0, "no state hides a leaf and a hub ribbon repeating it, so nothing here is tested");
     });
   }
 });

@@ -37,12 +37,15 @@ describe("the columns are the slots the chart draws", () => {
 
 describe("a split whose chart will not draw", () => {
   test("is refused with the banner, and the chart, the splits and the chip row stay as they were", async (t) => {
-    // A split of the sales tax with no member: the root never asks it, and
-    // drawing it leaves the category's ribbons ending at a node not drawn.
+    // A split of the sales tax in a form this page does not draw: the root
+    // never asks it, and opening it is refused rather than drawn as extend.
     const broken = structuredClone(columnFixture("fy2026-adopted"));
     const sales = broken.nodes.findIndex((n) => n.id === "revenue/taxes/sales");
     broken.schedules.expansion.splits.push({ node: sales, key: "lines-planted", form: "refine", alternative: true });
-    const { app, document } = await bootedApp({ checkedStem: YEARS[0].stem, plan: { [YEARS[0].path]: { doc: broken } } });
+    // Worded, so opening it reaches the form and not the missing words.
+    const config = structuredClone(pageFixture().config);
+    config.split_labels["lines-planted"] = "planted lines";
+    const { app, document } = await bootedApp({ config, checkedStem: YEARS[0].stem, plan: { [YEARS[0].path]: { doc: broken } } });
     assert.deepEqual(refusals(document).map((b) => b.textContent), [], "the root read a link it should not");
     await split(app, "fund-group/general");
     const laid = app.laidNodes.map((n) => n.id).sort().join(",");
@@ -57,5 +60,21 @@ describe("a split whose chart will not draw", () => {
     assert.deepEqual(app.expansions, ["fund-group/general"]);
     assert.equal(app.laidNodes.map((n) => n.id).sort().join(","), laid);
     assert.equal(document.getElementById("breadcrumb").textContent, chips);
+  });
+});
+
+describe("a schedule declaring a split in a form this page does not draw", () => {
+  test("is refused with the banner when the year is drawn, not drawn as extend", async (t) => {
+    const broken = structuredClone(columnFixture("fy2026-adopted"));
+    const general = broken.nodes.findIndex((n) => n.id === "fund-group/general");
+    const sp = broken.schedules.expansion.splits.find((x) => x.node === general);
+    assert.ok(sp, "the General Fund group declares no split");
+    sp.form = "refine";
+    const { app, document } = await bootedApp({ checkedStem: YEARS[0].stem, plan: { [YEARS[0].path]: { doc: broken } } });
+    const banners = refusals(document).map((b) => b.textContent);
+    t.diagnostic(`banners ${JSON.stringify(banners)}`);
+    assert.equal(banners.length, 1);
+    assert.ok(banners[0].includes('declared "refine", and this page draws a split only as extend'), banners[0]);
+    assert.equal(app.laidNodes.length, 0, "the year drew a chart");
   });
 });

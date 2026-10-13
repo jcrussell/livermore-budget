@@ -332,6 +332,8 @@ function assembleSchedule(column, key) {
     // Not defaulted: an absent alternative is a primary link, always read,
     // and an absent completes is a leg of no set Go declares.
     if (l.completes) Object.assign(link, { completes: l.completes });
+    // Not defaulted: an absent repeats is a link drawn once, as itself.
+    if (l.repeats) Object.assign(link, { repeats: l.repeats });
     return l.alternative ? Object.assign(link, { alternative: l.alternative }) : link;
   });
   const splits = Array.isArray(sched.splits)
@@ -527,6 +529,68 @@ function readUnder(byID, n, alternatives) {
 }
 
 /**
+ * The cells one ribbon draws, at the signs printed, or null where none of its
+ * legs repeats a leaf: each leaf at its `repeats` key, so a leaf drawn as
+ * itself and again as a hub leg is one key on both ribbons, and each other
+ * leg at a key of its own ends. A drawn ribbon's cells sum to its
+ * value_cents as folded.
+ * @param {FiscLink} l
+ * @returns {Record<string, number> | null}
+ */
+export function cellsOf(l) {
+  if (l.cells) return l.cells;
+  if (l.repeats) return { [l.repeats]: l.value_cents };
+  return null;
+}
+
+/**
+ * A merged ribbon with the cells of its legs, and no `repeats`, which names
+ * one leaf and a merged ribbon can draw many. Where no leg repeats a leaf the
+ * ribbon carries no cells.
+ * @param {FiscLink} ribbon
+ * @param {FiscLink[]} legs
+ * @returns {FiscLink}
+ */
+function withCells(ribbon, legs) {
+  delete ribbon.repeats;
+  delete ribbon.cells;
+  if (!legs.some((l) => cellsOf(l))) return ribbon;
+  /** @type {Record<string, number>} */
+  const cells = {};
+  for (const l of legs) {
+    const own = cellsOf(l) || { ["\u001f" + l.source + "\u001f" + l.target + "\u001f" + l.kind + "\u001f" + (l.alternative || "")]: l.value_cents };
+    for (const [k, c] of Object.entries(own)) cells[k] = (cells[k] || 0) + c;
+  }
+  return Object.assign(ribbon, { cells });
+}
+
+/**
+ * A sum over ribbons at the signs printed, each cell once: a leaf drawn as
+ * itself and again as a hub leg repeating it is one figure, not two. A ribbon
+ * carrying no cells is read whole by `cents`.
+ * @param {FiscLink[]} links
+ * @param {(l: FiscLink) => number} cents a ribbon's figure at its printed sign
+ * @returns {number}
+ */
+export function distinctCents(links, cents) {
+  const seen = new Set();
+  let sum = 0;
+  for (const l of links) {
+    const cells = cellsOf(l);
+    if (!cells) {
+      sum += cents(l);
+      continue;
+    }
+    for (const [k, c] of Object.entries(cells)) {
+      if (seen.has(k)) continue;
+      seen.add(k);
+      sum += c;
+    }
+  }
+  return sum;
+}
+
+/**
  * Folds a document to a frontier of node ids: each node to its nearest
  * ancestor-or-self in the frontier, links merged on the folded pair and kind
  * with values summed and fact ids and locators unioned. A link folding onto
@@ -588,6 +652,8 @@ export function foldDocument(doc, frontier) {
   const located = new Map();
   /** @type {Map<string, {completes: string, legs: number}>} */
   const legsOf = new Map();
+  /** @type {Map<string, FiscLink[]>} */
+  const ribbonLegs = new Map();
   for (const l of doc.links) {
     if (l.alternative && !alternatives.has(l.source + "\u001f" + l.alternative)) continue;
     const source = foldsTo.get(l.source);
@@ -611,6 +677,7 @@ export function foldDocument(doc, frontier) {
       cited.set(key, first);
       located.set(key, new Set(locatorKeys(l.locators)));
       legsOf.set(key, { completes: l.completes || "", legs: 1 });
+      ribbonLegs.set(key, [l]);
       continue;
     }
     // A PARTITION LEG AND ONE THAT IS NOT ARE NEVER ONE RIBBON: one mark
@@ -622,6 +689,7 @@ export function foldDocument(doc, frontier) {
     }
     const legs = /** @type {{completes: string, legs: number}} */ (legsOf.get(key));
     legs.legs++;
+    /** @type {FiscLink[]} */ (ribbonLegs.get(key)).push(l);
     if (legs.completes !== (l.completes || "")) legs.completes = "";
     at.derived = Boolean(at.derived) || Boolean(l.derived);
     // One leg's reduction words cannot name the sum; markContra names what
@@ -660,11 +728,11 @@ export function foldDocument(doc, frontier) {
   }
 
   const links = Array.from(merged.entries())
-    .map(([key, l]) => Object.assign(l, {
+    .map(([key, l]) => withCells(Object.assign(l, {
       fact_ids: Array.from(cited.get(key) || []).sort(),
       // The shape Go publishes, so citations() cannot tell a folded link.
       locators: regroupLocators(located.get(key)),
-    }))
+    }), ribbonLegs.get(key) || []))
     .sort((a, b) => (a.source < b.source ? -1 : a.source > b.source ? 1
       : a.target < b.target ? -1 : a.target > b.target ? 1
       : a.kind < b.kind ? -1 : a.kind > b.kind ? 1 : 0));
@@ -773,11 +841,11 @@ export function collapse(doc, frontier, id) {
 }
 
 /**
- * The frontier with one split of a drawn node open: a refine replaces the
- * node with its members, an extend draws them beside it. A node open another
- * way is shut first, so a frontier opens a node one way at a time.
- * FAILS CLOSED on a split the node does not have and on a node the frontier
- * does not draw.
+ * The frontier with one split of a drawn node open: its members drawn beside
+ * it, the node kept as their hub. A node open another way is shut first, so a
+ * frontier opens a node one way at a time.
+ * FAILS CLOSED on a split the node does not have, on a split of a form other
+ * than extend, and on a node the frontier does not draw.
  * @param {FiscProjection} doc the expansion schedule
  * @param {Iterable<string>} frontier
  * @param {string} id
@@ -787,11 +855,14 @@ export function collapse(doc, frontier, id) {
 export function expand(doc, frontier, id, key) {
   const split = splitsOf(doc, id).find((sp) => sp.key === key);
   if (!split) throw new Error("cannot open " + id + ": it has no split " + key);
+  if (split.form !== "extend") {
+    throw new Error("cannot open " + id + ": its split " + key + " is declared " + JSON.stringify(split.form) +
+      ", and this page draws a split only as extend");
+  }
   const open = openSplitOf(doc, frontier, id);
   if (open === key) return new Set(frontier);
   const out = open ? collapse(doc, frontier, id) : new Set(frontier);
   if (!out.has(id)) throw new Error("cannot open " + id + ": the frontier does not draw it");
-  if (split.form === "refine") out.delete(id);
   for (const m of split.members) out.add(m);
   return out;
 }
@@ -1252,12 +1323,12 @@ export function foldSmaller(links, byID, smallest) {
     mark.cents += cents;
     for (const k of pages) mark.pages.add(k);
     marks.set(markID, mark);
-    return Object.assign({}, m.legs[0], {
+    return withCells(Object.assign({}, m.legs[0], {
       source: m.source, target: m.target, value_cents: cents, transfer_id: transfer,
       fact_ids: Array.from(ids).sort(), locators: regroupLocators(pages),
       merged: say("smaller_flow", { flows: m.legs.length, threshold: fmt(smallest) }),
       legs: m.legs.slice(),
-    });
+    }), m.legs);
   });
   return {
     links: out,

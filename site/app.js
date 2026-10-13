@@ -664,11 +664,10 @@ export function redraw(next, refused = "That could not be drawn", landOn) {
 }
 
 /**
- * Splits a drawn node in place by one of its declared splits, its first by
- * default: the members drawn where the node stood (refine) or beside it
- * (extend), and every other node left as it is. A node split another way is
- * folded back first, so the list holds one way per node. Focus goes to the
- * topmost new member.
+ * Splits a drawn node by one of its declared splits, its first by default:
+ * the members drawn beside it, and every other node left as it is. A node
+ * split another way is folded back first, so the list holds one way per
+ * node. Focus goes to the topmost new member.
  * @param {string} id
  * @param {string} [key]
  * @returns {boolean} whether the split is on screen
@@ -1241,20 +1240,18 @@ export function chartDrawn() {
 
 /**
  * What the filters removed from the chart on screen: how many ribbons, their
- * figures summed as each is stated (a reduction negative), and every fact
- * they cite. A client sum over cited cents, and the only one the filter line
- * states.
+ * figures summed as each is stated (a reduction negative) with each cell
+ * once (core.distinctCents), and every fact they cite. A client sum over
+ * cited cents, and the only one the filter line states.
  * @param {{hidden: FiscLink[]} | null} [result]
  * @returns {{flows: number, cents: number, facts: Set<string>}}
  */
 export function hiddenTally(result = shown) {
   const facts = new Set();
-  let cents = 0;
   const hidden = result ? result.hidden : [];
-  for (const l of hidden) {
-    cents += formOnScreen().cents(/** @type {any} */ (l));
-    for (const id of l.fact_ids) facts.add(id);
-  }
+  const form = formOnScreen();
+  for (const l of hidden) for (const id of l.fact_ids) facts.add(id);
+  const cents = core.distinctCents(hidden, (l) => form.cents(/** @type {any} */ (l)));
   return { flows: hidden.length, cents: cents, facts: facts };
 }
 
@@ -2174,14 +2171,6 @@ export function revealEntries(id) {
     if (core.openSplitOf(doc, open, member.parent) === key) continue;
     const inside = core.withinNode(doc, member.parent);
     next = next.filter((e) => !entryInside(e, inside)).concat([entryOf(member.parent, key)]);
-  }
-  // A node a refine split opens is drawn as its members, so that split folds
-  // back first. An extend split leaves the node drawn and stays.
-  const opened = core.openSplitOf(doc, expansionState(doc, next).frontier, id);
-  const split = core.splitsOf(doc, id).find((sp) => sp.key === opened);
-  if (split && split.form === "refine") {
-    const self = core.withinNode(doc, id);
-    next = next.filter((e) => !entryInside(e, self));
   }
   const own = chain[chain.length - 1];
   if (own) {

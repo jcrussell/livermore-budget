@@ -292,14 +292,13 @@ export function slotsOf(nodes, tiers) {
 
 /**
  * The slot order key of every node of the expansion schedule, read off its
- * parent chain in the UNFOLDED schedule (the fold blanks a refine member's
- * parent, which is opened and not drawn): a root at its tier's place in the
- * spine's column order, a refine member in its parent's slot, and an extend
- * member in the slot directly after its parent's. Every extend from one slot
- * opens into the same next slot.
+ * parent chain in the UNFOLDED schedule: a root at its tier's place in the
+ * spine's column order, and a member in the slot directly after its
+ * parent's. Every split from one slot opens into the same next slot.
  *
  * FAILS CLOSED on a root at a tier the spine does not draw, a member of no
- * split the schedule declares, and an extend chain deeper than SLOT_DEPTH.
+ * split the schedule declares, a member of a split of any form but extend,
+ * and an extend chain deeper than SLOT_DEPTH.
  *
  * @param {FiscProjection} expansion
  * @param {number[]} tiers the spine's column order
@@ -339,11 +338,12 @@ export function expansionSlots(expansion, tiers) {
       const key = n.alternative || primary.get(up.id) || "";
       const form = formOf.get(up.id + "\u001f" + key);
       const above = slotOf(up, hops + 1);
-      if (form === "refine") slot = above;
-      else if (form === "extend" && (above % SLOT_DEPTH) + 1 < SLOT_DEPTH) slot = above + 1;
+      if (form === "extend" && (above % SLOT_DEPTH) + 1 < SLOT_DEPTH) slot = above + 1;
       else {
         throw new Error("cannot place " + n.id + ": it is a member of " + up.id + "'s split " +
-          JSON.stringify(key) + ", " + (form ? "extended past " + SLOT_DEPTH + " slots" : "which the schedule does not declare"));
+          JSON.stringify(key) + ", " + (!form ? "which the schedule does not declare"
+            : form !== "extend" ? "declared " + JSON.stringify(form) + ", and this page draws a split only as extend"
+              : "extended past " + SLOT_DEPTH + " slots"));
       }
     }
     out.set(n.id, slot);

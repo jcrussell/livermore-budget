@@ -727,3 +727,57 @@ describe("no capped tail of the expansion folds a line printed as a reduction", 
     assert.ok(after.reductions.every((l) => l.source === member || l.target === member), "the walk named a reduction the plant did not make");
   });
 });
+
+// A HUB IS DRAWN BY REPEATING LEAVES, and the fold is what adds them: over
+// every chart of the expansion the page offers on the pinned columns, each
+// open split whose links to its members repeat leaves is drawn with ribbons
+// from its node to its members (or their tail) that sum, in cents and in
+// facts, to the leaves those links repeat -- arriving at the node, or for a
+// node that takes nothing in, leaving its members. A leg lost reads short, a
+// leg drawn twice reads long, and a shut split draws no ribbon to a member.
+describe("an open hub's ribbons are the leaves it repeats", () => {
+  const CONFIG = pageFixture().config;
+
+  for (const stem of publishedColumns()) {
+    test(`${stem}: at every split the page offers, a hub draws its leaves once each`, async (t) => {
+      const app = (await loadApp({ config: CONFIG })).app;
+      const doc = app.scheduleOf(columnFixture(stem), "expansion");
+      const wrong = [];
+      let hubs = 0;
+      let shut = 0;
+      for (const st of expansionStates(app, doc)) {
+        const drawn = app.unmarkContra(app.expansionOf(doc, st.frontier, CONFIG.overview, st.whole));
+        // A ribbon's cells are what the tally reads it as: all of it, once.
+        for (const l of drawn.links) {
+          const cells = app.cellsOf(l);
+          const inCells = cells ? Object.values(cells).reduce((s, c) => s + c, 0) : l.value_cents;
+          if (inCells !== l.value_cents) wrong.push(`${st.where}: ${l.source} -> ${l.target} carries ${l.value_cents} and its cells ${inCells}`);
+        }
+        for (const sp of doc.splits) {
+          const members = new Set(app.splitsOf(doc, sp.node).find((x) => x.key === sp.key).members);
+          const tail = app.splitTailID(sp.node, sp.key);
+          const ribbons = drawn.links.filter((l) => l.source === sp.node && (members.has(l.target) || l.target === tail));
+          if (app.openSplitOf(doc, st.frontier, sp.node) !== sp.key) {
+            shut++;
+            if (ribbons.length) wrong.push(`${st.where}: ${sp.node} by ${sp.key} is shut and draws ${ribbons.length} ribbon(s) to its members`);
+            continue;
+          }
+          const legs = doc.links.filter((l) => l.repeats && l.source === sp.node && members.has(l.target));
+          if (!legs.length) continue;
+          hubs++;
+          const keys = new Set(legs.map((l) => l.repeats));
+          const leaves = doc.links.filter((l) => keys.has(l.repeats) && !legs.includes(l) &&
+            (l.target === sp.node || members.has(l.source)));
+          if (leaves.length !== keys.size) wrong.push(`${st.where}: ${keys.size} leaves repeated and ${leaves.length} read`);
+          const want = totals(leaves);
+          const got = totals(ribbons);
+          if (want.cents !== got.cents) wrong.push(`${st.where}: ${sp.node}'s ribbons to its members carry ${got.cents}, its leaves ${want.cents}`);
+          if (want.cited.join() !== got.cited.join()) wrong.push(`${st.where}: ${sp.node}'s ribbons to its members cite other than its leaves`);
+        }
+      }
+      t.diagnostic(`${stem}: ${hubs} open hubs held to their leaves, ${shut} shut splits drawing no member`);
+      assert.ok(hubs > 0, "no open split repeats a leaf, so this walk holds nothing");
+      assert.deepEqual(wrong.slice(0, 5), []);
+    });
+  }
+});
