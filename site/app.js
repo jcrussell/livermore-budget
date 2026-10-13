@@ -5,7 +5,7 @@
  * Served exactly as committed; the page template boots it by importing [boot].
  * What the tests drive is exported, so they import the shipped file. At import
  * it reads its two globals once, d3 (D3) and window.FISC_CONFIG (CONFIG), and
- * derives RENDER_TIERS and WIDE_QUERY from the config; it draws nothing and
+ * derives RENDER_TIERS and BESIDE_QUERY from the config; it draws nothing and
  * binds no listener until [boot] runs. It holds the page's state, so the tests
  * load it fresh for each page they build (site/testlib.mjs). Nothing runs
  * tsc: `@ts-check` is for an editor.
@@ -346,10 +346,24 @@ export function chartStretch(n) {
 }
 
 /**
- * The viewport the filter panel opens by default on: room for a chart one
- * column wider than the spine's three.
+ * The px the rail beside the chart takes when open, its gap to the chart
+ * included. style.css records it independently as --rail-width.
  */
-export const WIDE_QUERY = "(min-width: " + (widthOf(4) + CHART_CUSHION) + "px)";
+export const RAIL_WIDTH = 208;
+
+/**
+ * The px the provenance drawer beside the chart takes, its gap to the chart
+ * included. style.css records it independently as --drawer-width.
+ */
+export const DRAWER_WIDTH = 288;
+
+/**
+ * The viewport the rail and the drawer sit beside the chart on, and the rail
+ * opens by default on: room for the opening chart at full size with both
+ * open beside it. Narrower, the three stack and the chart keeps the width.
+ */
+export const BESIDE_QUERY = "(min-width: " +
+  (widthOf(openingColumns()) + CHART_CUSHION + RAIL_WIDTH + DRAWER_WIDTH) + "px)";
 
 /**
  * The year's document as fetched, before any fold: the schedule the page's
@@ -394,8 +408,12 @@ let motionEnd = () => {};
 export let heldHeight = 0;
 /** How long a redraw's marks move for, in ms, where the reader allows motion. */
 export const MOTION_MS = 350;
-/** @type {LaidNode | LaidLink | null} */
+/** What the drawer holds until the reader lets it go. @type {LaidNode | LaidLink | null} */
 export let pinned = null;
+/** What the drawer shows under the pointer while nothing is pinned. @type {LaidNode | LaidLink | null} */
+export let previewed = null;
+/** Whether the rail beside the chart is open; the page's, never the hash's. */
+export let railOpen = false;
 /**
  * How soon, in ms, a later event on the same node counts as part of one
  * activation: the click assistive tech synthesises from Enter/Space, and the
@@ -1440,7 +1458,7 @@ export function render(laid, prior) {
     describe: { link: linkDescription, node: nodeDescription },
     figure: markFigure,
     on: {
-      tip: showTip, hide: hideTip, pin: pin, guarded: guarded,
+      tip: hover, hide: hideTip, pin: pin, guarded: guarded,
       click: clickNode, dblclick: doubleClickNode, key: keyNode,
       restoring: () => restoring,
     },
@@ -1854,15 +1872,14 @@ export function syncFilterPanel() {
 /**
  * Wires the filter panel the template ships hidden: the flow kinds Go ships
  * labels for, the All and None buttons, the smallest-flow stops and the
- * Reset. Open by default on a viewport WIDE_QUERY matches; the reader's own
+ * Reset. Open by default where the rail is (BESIDE_QUERY); the reader's own
  * toggle wins after that.
  */
 export function wireFilters() {
   const panel = /** @type {HTMLDetailsElement | null} */ (maybeEl("filters"));
   if (!panel) return;
   panel.removeAttribute("hidden");
-  const wide = typeof window.matchMedia === "function" && window.matchMedia(WIDE_QUERY).matches;
-  if (wide) panel.open = true;
+  if (besideMatches()) panel.open = true;
   const kinds = maybeEl("filter-kind-list");
   if (kinds) {
     kinds.replaceChildren(...Object.keys(CONFIG.kind_labels || {}).map((k) => filterChoice(k, kindLabel(k), "",
@@ -2102,14 +2119,76 @@ export function hideTip() {
 }
 
 /**
- * Pins a flow or node into the detail panel, where the citations are
- * clickable.
+ * The pointer on a mark: its tooltip, and its provenance previewed in the
+ * drawer. Focus is not a hover: it pins.
+ * @param {Event} event
+ * @param {LaidLink | LaidNode} d
+ */
+export function hover(event, d) {
+  showTip(event, d);
+  if (typeof event.type === "string" && event.type.startsWith("pointer")) preview(d);
+}
+
+/**
+ * Shows a mark in the drawer while nothing is pinned. Nothing the pointer
+ * crosses replaces a pin, and the last mark previewed stays until another
+ * is, so the pointer can leave the chart for the drawer's links.
+ * @param {LaidLink | LaidNode} d
+ */
+export function preview(d) {
+  if (pinned || previewed === d) return;
+  previewed = d;
+  paintDetail(d);
+}
+
+/**
+ * Pins a flow or node into the drawer, where the citations are clickable,
+ * until the reader pins another or lets it go.
  * @param {LaidLink | LaidNode} d
  */
 export function pin(d) {
   pinned = d;
+  previewed = null;
+  paintDetail(d);
+  applyEmphasis();
+}
+
+/** Lets the drawer's pin go: the drawer and the marks return to their unpinned state. */
+export function unpin() {
+  pinned = null;
+  resetDetail();
+  applyEmphasis();
+}
+
+/**
+ * The drawer's button says whether what it shows is pinned, and is offered
+ * only while it shows a mark.
+ */
+export function syncPinButton() {
+  const button = maybeEl("detail-pin");
+  if (!button) return;
+  button.hidden = !(pinned || previewed);
+  button.setAttribute("aria-pressed", pinned ? "true" : "false");
+}
+
+/** Wires the drawer's button: it pins the mark previewed, or lets the pin go. */
+export function wireDrawer() {
+  const button = maybeEl("detail-pin");
+  if (!button) return;
+  button.addEventListener("click", () => guarded("pin this", () => {
+    if (pinned) unpin();
+    else if (previewed) pin(previewed);
+  }));
+}
+
+/**
+ * Writes a mark's provenance into the drawer.
+ * @param {LaidLink | LaidNode} d
+ */
+export function paintDetail(d) {
   const panel = el("detail");
   panel.replaceChildren();
+  syncPinButton();
   if (!projection) return;
 
   const asLink = isLink(d);
@@ -2185,7 +2264,6 @@ export function pin(d) {
     prov.append(link(c.label, c.href));
   }
   panel.append(prov);
-  applyEmphasis();
 }
 
 /* ------------------------------------------------------------------ *
@@ -2597,6 +2675,56 @@ export function wireTheme() {
     paint();
   });
   sync();
+}
+
+/* ------------------------------------------------------------------ *
+ * The rail and the drawer beside the chart
+ * ------------------------------------------------------------------ */
+
+/** Whether the viewport has room for the rail and the drawer beside the chart. */
+export function besideMatches() {
+  return typeof window.matchMedia === "function" && window.matchMedia(BESIDE_QUERY).matches;
+}
+
+/**
+ * Lays the rail and the drawer beside the chart where BESIDE_QUERY matches
+ * and stacks them where it does not, following the viewport in and out of
+ * full screen; and wires the rail's toggle, open by default where it is
+ * beside the chart. The reader's toggle wins after that.
+ */
+export function wireLayout() {
+  const body = maybeEl("chart-body");
+  if (!body) return;
+  const follow = () => { body.toggleAttribute("data-beside", besideMatches()); };
+  follow();
+  if (typeof window.matchMedia === "function") window.matchMedia(BESIDE_QUERY).addEventListener("change", follow);
+  railOpen = besideMatches();
+  const toggle = maybeEl("rail-toggle");
+  if (toggle) {
+    toggle.removeAttribute("hidden");
+    toggle.addEventListener("click", () => setRail(!railOpen));
+  }
+  paintRail();
+}
+
+/**
+ * Opens or collapses the rail. The rail is the page's, not the view's: the
+ * hash and the history do not move.
+ * @param {boolean} open
+ */
+export function setRail(open) {
+  railOpen = open;
+  paintRail();
+}
+
+/** Paints the rail as `railOpen` says: its toggle, its contents, and the column it takes. */
+export function paintRail() {
+  const body = maybeEl("chart-body");
+  if (body) body.dataset.rail = railOpen ? "open" : "closed";
+  const toggle = maybeEl("rail-toggle");
+  if (toggle) toggle.setAttribute("aria-expanded", String(railOpen));
+  const content = maybeEl("rail-content");
+  if (content) content.hidden = !railOpen;
 }
 
 /* ------------------------------------------------------------------ *
@@ -3112,23 +3240,29 @@ export async function restoreView(hash) {
  * Boot
  * ------------------------------------------------------------------ */
 
-/** Returns the provenance panel to its unpinned state. */
+/** Returns the drawer to its state with nothing previewed; the caller lets any pin go. */
 export function resetDetail() {
+  previewed = null;
   const panel = el("detail");
   panel.replaceChildren();
-  panel.append(h("p", "subtle", "Select a flow or a node to pin its provenance here."));
+  panel.append(h("p", "subtle", say("detail_empty")));
+  syncPinButton();
 }
 
 /**
- * Refuses to draw, visibly: in the panel and in a role="alert" banner at the
- * top, since the panel sits below a chart a reader may never scroll past.
+ * Refuses to draw, visibly: in the drawer and in a role="alert" banner at the
+ * top, since on a narrow viewport the drawer sits below a chart a reader may
+ * never scroll past.
  *
  * @param {string} message
  */
 export function fail(message) {
+  previewed = null;
   const panel = el("detail");
   panel.replaceChildren();
   panel.append(h("p", "", message));
+  const button = maybeEl("detail-pin");
+  if (button) button.hidden = true;
 
   const content = document.querySelector("main");
   if (content) {
@@ -3545,6 +3679,8 @@ export async function main() {
     return;
   }
   wireYears(years);
+  wireLayout();
+  wireDrawer();
   wireFilters();
   wireSearch();
   wireFullscreen();

@@ -318,6 +318,10 @@
         "full_screen",
         "full_screen_exit",
         "zoom_reset",
+        "rail",
+        "drawer",
+        "detail_empty",
+        "pin",
         "hairline",
         "splits_dropped"
       ],
@@ -550,6 +554,26 @@
           "type": "string",
           "minLength": 1,
           "description": "The control that puts a zoomed or panned chart back whole."
+        },
+        "rail": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The toggle that collapses and expands the rail beside the chart holding the legend, the filters and the key."
+        },
+        "drawer": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The accessible name of the provenance drawer beside the chart."
+        },
+        "detail_empty": {
+          "type": "string",
+          "minLength": 1,
+          "description": "What the drawer says with nothing previewed or pinned."
+        },
+        "pin": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The drawer's toggle that pins what it shows, or lets the pin go."
         },
         "hairline": {
           "type": "string",

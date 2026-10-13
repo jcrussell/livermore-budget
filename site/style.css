@@ -226,8 +226,8 @@ h3 {
 
 /* The banner app.js raises when it declines to draw: a schema_version it does
    not understand, or a projection it could not load. It is prepended to <main>
-   rather than written only into the provenance panel because that panel sits
-   below the chart, and an empty diagram with nothing above it reads as "still
+   rather than written only into the provenance drawer because on a narrow
+   viewport the drawer sits below the chart, and an empty diagram with nothing above it reads as "still
    loading". Deliberately not sticky and not full-bleed: .wip-banner is the
    permanent chrome, and a second bar in the same place would compete with it. */
 .refusal {
@@ -452,14 +452,6 @@ button[aria-pressed="true"] {
 .year-toggle input:focus-visible + label {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
-}
-
-.controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-  margin: 16px 0 8px;
 }
 
 /* ---------- figures ---------- */
@@ -707,21 +699,147 @@ button[aria-pressed="true"] {
   outline: 1px solid var(--rule);
 }
 
-/* THE CHART BREAKS OUT OF main's 1180px AND NOTHING ELSE DOES: a viewBox inside
-   a narrower box shrinks every label on the wide viewport that was the reason
-   to draw another column. The negative margin centres the wider box on main;
-   where the viewport is narrow, min() collapses both to the room there is.
+/* THE CHART BREAKS OUT OF main's 1180px AND NOTHING ELSE DOES, with the rail
+   and the drawer when they sit beside it: a viewBox inside a narrower box
+   shrinks every label on the wide viewport that was the reason to draw
+   another column. The negative margin centres the wider box on main; where
+   the viewport is narrow, min() collapses both to the room there is.
 
    The cap is app.js's --chart-max, the opening chart's width every chart is
-   scaled to;
-   100% is the no-script state. --chart-cushion must equal app.js's
-   CHART_CUSHION (40px body padding plus 16px for a classic scrollbar). */
+   scaled to; 100% is the no-script state. --chart-cushion must equal app.js's
+   CHART_CUSHION (40px body padding plus 16px for a classic scrollbar), and
+   --rail-width and --drawer-width its RAIL_WIDTH and DRAWER_WIDTH, which its
+   BESIDE_QUERY adds to the opening chart's width: so where app.js sets
+   data-beside the room is the cap and the chart is at full size, and below
+   it --chart-panels is 0 and the three stack. */
+.chart-body {
+  --chart-cushion: 56px;
+  --rail-width: 208px;
+  --drawer-width: 288px;
+  --rail-tab: 40px;
+  --chart-panels: 0px;
+  --chart-room: min(var(--chart-max, 100%), calc(100vw - var(--chart-cushion) - var(--chart-panels)));
+  width: calc(var(--chart-room) + var(--chart-panels));
+  margin-inline: calc(50% - (var(--chart-room) + var(--chart-panels)) / 2);
+}
+
+/* The rail left and the drawer right: once any split is open, the marks in
+   the card sit nearer its right edge, and an opened chart runs past it
+   (site/drawer.test.mjs measures both). Collapsed, the rail is a tab, and
+   the chart keeps its scale: the cap still binds. */
+.chart-body[data-beside] {
+  --rail-now: var(--rail-width);
+  --chart-panels: calc(var(--rail-now) + var(--drawer-width));
+  display: grid;
+  grid-template-columns: var(--rail-now) var(--chart-room) var(--drawer-width);
+  align-items: start;
+}
+
+.chart-body[data-beside][data-rail="closed"] {
+  --rail-now: var(--rail-tab);
+}
+
 .chart-wrap {
   position: relative;
-  --chart-cushion: 56px;
-  --chart-room: min(var(--chart-max, 100%), calc(100vw - var(--chart-cushion)));
   width: var(--chart-room);
-  margin-inline: calc(50% - var(--chart-room) / 2);
+}
+
+.rail {
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.chart-body[data-beside] > .rail {
+  margin: 0;
+  padding-right: 16px;
+}
+
+.rail-toggle {
+  font-size: 13px;
+  min-height: 28px;
+}
+
+.rail-toggle::before {
+  content: "\25B8\FE0E\2002";
+}
+
+.rail-toggle[aria-expanded="true"]::before {
+  content: "\25BE\FE0E\2002";
+}
+
+.rail-toggle[hidden],
+.rail-content[hidden] {
+  display: none;
+}
+
+.rail-toggle + .rail-content {
+  margin-top: 8px;
+}
+
+/* Collapsed beside the chart, the toggle is a tab the height of its words. */
+.chart-body[data-beside][data-rail="closed"] > .rail > .rail-toggle {
+  writing-mode: vertical-rl;
+  padding: 10px 4px;
+}
+
+.chart-body[data-beside] > .rail .legend {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.chart-body[data-beside] > .rail .filters[open] {
+  flex-direction: column;
+  flex-wrap: nowrap;
+}
+
+/* THE DRAWER STAYS IN SIGHT WHILE THE PAGE SCROLLS THE CHART, below the
+   sticky banner, and scrolls on its own when what it holds is taller. */
+.chart-body[data-beside] > .drawer {
+  position: sticky;
+  top: 40px;
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  padding-left: 16px;
+}
+
+.card:fullscreen .chart-body[data-beside] > .drawer {
+  top: 0;
+  max-height: 100vh;
+}
+
+.chart-body[data-beside] > .drawer .detail {
+  margin-top: 0;
+  border-top: 0;
+  padding-top: 0;
+}
+
+.drawer-head {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.drawer-head button[hidden] {
+  display: none;
+}
+
+/* One slim row above the chart: search, the chip row and the view's buttons. */
+.chart-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.chart-toolbar > .search,
+.chart-toolbar > .breadcrumb {
+  margin: 0;
+}
+
+.chart-toolbar > .chart-tools {
+  margin: 0 0 0 auto;
 }
 
 /* The padding is the ink an interior label on a top mark draws above the
@@ -754,7 +872,6 @@ button[aria-pressed="true"] {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  margin-bottom: 4px;
 }
 
 /* Full screen shows the whole card, scrolled, on its own surface. */
@@ -1179,9 +1296,9 @@ details > summary {
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
   margin-bottom: 8px;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .breadcrumb[hidden] {
@@ -1202,7 +1319,7 @@ details > summary {
   background: var(--surface-1);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 4px 10px;
+  padding: 2px 8px;
 }
 
 .crumb-expanded {
@@ -1439,8 +1556,10 @@ noscript p {
     padding: 0;
   }
 
-  .controls,
+  .chart-toolbar,
+  .rail-toggle,
   .filters,
+  .drawer-head,
   .tooltip {
     display: none;
   }

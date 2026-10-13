@@ -5,7 +5,7 @@
 
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { loadApp, bootedApp, split, settle, fire, stylesheet } from "./testlib.mjs";
+import { loadApp, bootedApp, split, settle, fire, drawnBody } from "./testlib.mjs";
 
 /**
  * Stubs the Fullscreen API on a loaded page, as a browser offering it does:
@@ -74,24 +74,12 @@ describe("full screen on the chart's card", () => {
 
 /**
  * How many screen px one viewBox unit of the chart draws at, as style.css
- * sizes the svg from what app.js hands it. Nothing here renders CSS, so the
- * two declarations are read by selector and held to their shape; any other
- * shape is a refusal, which no measured answer equals.
+ * sizes the svg from what app.js hands it (drawnBody).
  */
 function drawnScale(document, window) {
-  const css = stylesheet().replace(/\/\*[\s\S]*?\*\//g, "");
-  const rule = (selector) => {
-    const at = css.indexOf(selector + " {");
-    return at < 0 ? "" : css.slice(at + selector.length + 2, css.indexOf("}", at));
-  };
-  const room = /--chart-room:\s*min\(var\(--chart-max, 100%\), calc\(100vw - var\(--chart-cushion\)\)\)/.test(rule(".chart-wrap"));
-  const cushion = /--chart-cushion:\s*(\d+)px/.exec(rule(".chart-wrap"));
-  const width = /(^|[\s;])width:\s*calc\(var\(--chart-room\) \* var\(--chart-stretch, 1\)\)/.test(rule(".chart-scroll > svg.sankey"));
-  if (!room || !cushion || !width) return { refused: `room ${room}, cushion ${Boolean(cushion)}, svg width ${width}` };
-  const style = document.documentElement.style;
-  const drawn = Math.min(parseFloat(style.getPropertyValue("--chart-max")), window.innerWidth - Number(cushion[1])) *
-    Number(style.getPropertyValue("--chart-stretch"));
-  return { scale: drawn / viewBoxWidth(document) };
+  const body = drawnBody(document, window);
+  if (body.refused) return body;
+  return { scale: body.room * body.stretch / viewBoxWidth(document) };
 }
 
 /** The drawn mark for one node id. */

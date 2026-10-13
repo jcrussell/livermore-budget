@@ -100,6 +100,15 @@ type wording struct {
 	FullScreenExit string `json:"full_screen_exit"`
 	// ZoomReset is the control that puts a zoomed or panned chart back whole.
 	ZoomReset string `json:"zoom_reset"`
+	// Rail names the toggle that collapses and expands the rail beside the
+	// chart holding the legend, the filters and the key.
+	Rail string `json:"rail"`
+	// Drawer names the provenance drawer beside the chart; DetailEmpty is
+	// what it says with nothing previewed or pinned, and Pin its toggle
+	// that pins what it shows or lets it go.
+	Drawer      string `json:"drawer"`
+	DetailEmpty string `json:"detail_empty"`
+	Pin         string `json:"pin"`
 	// Hairline is said beside a chart drawing ribbons under a pixel of its
 	// canvas: they are drawn a screen pixel wide, which overstates them, and
 	// the sentence says so.
@@ -216,6 +225,10 @@ func defaultWording() wording {
 		FullScreen:        "Full screen",
 		FullScreenExit:    "Exit full screen",
 		ZoomReset:         "Reset view",
+		Rail:              "Legend and filters",
+		Drawer:            "Where a figure comes from",
+		DetailEmpty:       "Hover a flow or a node to preview where its figure comes from; click it to pin it here.",
+		Pin:               "Pin",
 		Hairline: "\u25c7 {n:flow is|flows are} under a pixel wide on this chart's canvas, and each is drawn as a " +
 			"hairline one screen pixel wide, which is wider than its share; every other flow is drawn to scale. " +
 			"Zoom in, go full screen, search, or open the table below to read them.",

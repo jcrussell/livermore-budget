@@ -17,6 +17,50 @@ export function stylesheet() {
   return readFileSync(join(here, "style.css"), "utf8");
 }
 
+/**
+ * How style.css lays the chart's body out at the window's innerWidth, from
+ * what app.js hands it: whether the rail and drawer sit beside the chart, the
+ * px they take, the chart's room, and the body's whole width. Nothing here
+ * renders CSS, so each declaration is read by selector and held to its
+ * shape; any other shape is a refusal, which no measured answer equals.
+ */
+export function drawnBody(document, window) {
+  const css = stylesheet().replace(/\/\*[\s\S]*?\*\//g, "");
+  const rule = (selector) => {
+    const at = css.indexOf(selector + " {");
+    return at < 0 ? "" : css.slice(at + selector.length + 2, css.indexOf("}", at));
+  };
+  const body = rule(".chart-body");
+  const beside = rule(".chart-body[data-beside]");
+  const closed = rule('.chart-body[data-beside][data-rail="closed"]');
+  const shapes = {
+    room: /--chart-room:\s*min\(var\(--chart-max, 100%\), calc\(100vw - var\(--chart-cushion\) - var\(--chart-panels\)\)\)/.test(body),
+    width: /(^|[\s;])width:\s*calc\(var\(--chart-room\) \+ var\(--chart-panels\)\)/.test(body),
+    stacked: /--chart-panels:\s*0px/.test(body),
+    panels: /--chart-panels:\s*calc\(var\(--rail-now\) \+ var\(--drawer-width\)\)/.test(beside),
+    grid: /grid-template-columns:\s*var\(--rail-now\) var\(--chart-room\) var\(--drawer-width\)/.test(beside),
+    open: /--rail-now:\s*var\(--rail-width\)/.test(beside),
+    tab: /--rail-now:\s*var\(--rail-tab\)/.test(closed),
+    svg: /(^|[\s;])width:\s*calc\(var\(--chart-room\) \* var\(--chart-stretch, 1\)\)/.test(rule(".chart-scroll > svg.sankey")),
+  };
+  const px = (name) => {
+    const m = new RegExp(`--${name}:\\s*(\\d+)px`).exec(body);
+    return m ? Number(m[1]) : null;
+  };
+  const sizes = { cushion: px("chart-cushion"), rail: px("rail-width"), drawer: px("drawer-width"), tab: px("rail-tab") };
+  const bad = Object.keys(shapes).filter((k) => !shapes[k]).concat(Object.keys(sizes).filter((k) => sizes[k] === null));
+  if (bad.length) return { refused: `style.css's chart body is not the shape read here: ${bad.join(", ")}` };
+  const element = document.getElementById("chart-body");
+  const isBeside = element.hasAttribute("data-beside");
+  const panels = isBeside ? (element.dataset.rail === "closed" ? sizes.tab : sizes.rail) + sizes.drawer : 0;
+  const style = document.documentElement.style;
+  const room = Math.min(parseFloat(style.getPropertyValue("--chart-max")), window.innerWidth - sizes.cushion - panels);
+  return {
+    beside: isBeside, panels, room, width: room + panels, ...sizes,
+    stretch: Number(style.getPropertyValue("--chart-stretch")),
+  };
+}
+
 let d3Loaded = false;
 
 /**

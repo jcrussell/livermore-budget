@@ -248,7 +248,7 @@ describe("the filter panel", () => {
     assert.ok(document.querySelector("#filters > summary"), "the panel has no summary to open it by keyboard");
   });
 
-  test("it opens by default where the viewport has room for a chart one column wider than the spine, and not on a narrow one", async () => {
+  test("it opens by default where the rail sits beside the chart, and not on a narrow viewport", async () => {
     const wide = await bootedApp({ viewport: 2400 });
     const narrow = await bootedApp({ viewport: 900 });
     assert.equal(wide.document.getElementById("filters").open, true);
