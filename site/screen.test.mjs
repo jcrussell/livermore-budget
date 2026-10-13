@@ -115,15 +115,13 @@ describe("zoom and pan on the chart", () => {
     assert.ok(svg.classList.contains("zoomed"));
     assert.ok(!reset.hasAttribute("disabled"));
 
-    // A tooltip and an isolation at the transform, then a double click splits.
+    // A tooltip at the transform, then a click splits.
     const mark = markOf(document, "fund-group/general");
     fire(mark, "pointerenter");
     assert.ok(!document.getElementById("tooltip").hasAttribute("hidden"), "no tooltip at the transform");
     fire(mark, "click", { timeStamp: 10000 });
-    assert.equal(app.filter.isolated, "fund-group/general");
-    fire(mark, "dblclick", { timeStamp: 10100 });
     await settle();
-    assert.deepEqual(app.expansions, ["fund-group/general"], "a double click at the transform did not split the mark");
+    assert.deepEqual(app.expansions, ["fund-group/general"], "a click at the transform did not split the mark");
     // The new chart is drawn whole.
     assert.equal(app.zoomOf().k, 1);
     assert.equal(layer().getAttribute("transform"), "translate(0,0) scale(1)");
@@ -252,28 +250,27 @@ describe("zoom and pan on the chart", () => {
     const mark = markOf(document, "fund-group/general");
     drag(ribbon, -300);
     const panned = left();
+    const was = app.expansions.length;
     fire(mark, "click", { timeStamp: 1000 });
-    const swallowed = app.filter.isolated;
+    await settle();
+    // What a click on the mark would have done: pinned it, splitting it where it was shut.
+    const swallowed = (app.expansions.length - was) + "|" + (app.pinned ? app.pinned.id : "");
     drag(document.getElementById("chart"), 120);
     t.diagnostic(`dragged 300px left from a ribbon: scrollLeft ${panned}; 120px back from the background: ${left()}`);
     assert.deepEqual({ panned, swallowed, back: left(), scroller: scroller.classList.contains("chart-scroll") },
-      { panned: 300, swallowed: "", back: 180, scroller: true });
+      { panned: 300, swallowed: "0|", back: 180, scroller: true });
   });
 
-  test("a click after a press that moves under DRAG_SLOP still follows the mark, and a double click still splits it", async (t) => {
+  test("a click after a press that moves under DRAG_SLOP still opens the mark", async (t) => {
     const { app, document, left } = await scrolling();
     app.collapseAll();
     await settle();
     const id = "fund-group/general";
     drag(markOf(document, id), app.DRAG_SLOP - 1);
     fire(markOf(document, id), "click", { timeStamp: 1000 });
-    const followed = app.filter.isolated;
-    drag(markOf(document, id), 1);
-    fire(markOf(document, id), "click", { timeStamp: 1050 });
-    fire(markOf(document, id), "dblclick", { timeStamp: 1060 });
     await settle();
-    t.diagnostic(`moved ${app.DRAG_SLOP - 1}px then clicked: following "${followed}"; then split [${app.expansions}], scrollLeft ${left()}`);
-    assert.deepEqual({ followed, split: app.expansions.slice(), left: left() }, { followed: id, split: [id], left: 0 });
+    t.diagnostic(`moved ${app.DRAG_SLOP - 1}px then clicked: split [${app.expansions}], scrollLeft ${left()}`);
+    assert.deepEqual({ split: app.expansions.slice(), left: left() }, { split: [id], left: 0 });
   });
 
   test("zoomed in, a drag is the zoom's to pan, and the scroller stays where it is", async (t) => {

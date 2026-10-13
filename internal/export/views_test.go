@@ -337,7 +337,7 @@ func TestAViewDrawsAnotherScheduleOfItsColumn(t *testing.T) {
 
 // TestTheLedeSaysANodeSplitsExactlyWhereTheChartIsTheExpansion renders a view
 // drawing the expansion schedule beside one drawing its own spine, and reads
-// the lede of each. The sentence telling a reader to double click a node is
+// the lede of each. The sentence telling a reader to click a node marked ⊕ is
 // server-rendered from the schedule the view draws, so it is held here rather
 // than by a client test.
 func TestTheLedeSaysANodeSplitsExactlyWhereTheChartIsTheExpansion(t *testing.T) {
@@ -368,7 +368,7 @@ func TestTheLedeSaysANodeSplitsExactlyWhereTheChartIsTheExpansion(t *testing.T) 
 	}); err != nil {
 		t.Fatalf("Write: %v", err)
 	}
-	const splits, follows = "Double click a node to split it in place", "Click a node or a fund swatch"
+	const splits, follows = "Click a node marked ⊕ to split it in place", "Click a node or a flow to pin it in the drawer"
 	for _, c := range []struct {
 		path      string
 		want, not string

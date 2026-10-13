@@ -22,9 +22,17 @@ type wording struct {
 	// FoldBack is said beside a chart with a node split open: the ways to
 	// fold one back.
 	FoldBack string `json:"fold_back"`
-	Follow   string `json:"follow"`
-	Expand   string `json:"expand"`
-	Swatch   string `json:"swatch"`
+	// Follow is said beside every chart: what the pointer's trace, a click on
+	// a node that does not open, the drawer's two buttons and Escape do.
+	Follow string `json:"follow"`
+	Expand string `json:"expand"`
+	Swatch string `json:"swatch"`
+	// The glyph beside a node: GlyphOpen names the ⊕ that splits a node one
+	// way, GlyphChoose the ⊕ that offers a node's ways, and GlyphFold the ⊖
+	// that folds a split node back.
+	GlyphOpen   string `json:"glyph_open"`
+	GlyphChoose string `json:"glyph_choose"`
+	GlyphFold   string `json:"glyph_fold"`
 	// The chip row above the chart: one chip per node split open, the chooser
 	// beside a node that splits more than one way, a tail drawn out, and the
 	// two controls over every split at once.
@@ -109,6 +117,9 @@ type wording struct {
 	Drawer      string `json:"drawer"`
 	DetailEmpty string `json:"detail_empty"`
 	Pin         string `json:"pin"`
+	// FollowMoney names the drawer's toggle that follows the money of the
+	// node it shows, and puts the rest back.
+	FollowMoney string `json:"follow_money"`
 	// Hairline is said beside a chart drawing ribbons under a pixel of its
 	// canvas: they are drawn a screen pixel wide, which overstates them, and
 	// the sentence says so.
@@ -168,14 +179,17 @@ func defaultWording() wording {
 	return wording{
 		Counts:        "\u25c7 our count: {links:flow|flows} between {nodes:node|nodes}, from {facts:fact|facts}",
 		CountsPartial: "\u25c7 our count: {links:flow|flows} between {nodes:node|nodes}, from {cited} of the document's {facts:fact|facts}",
-		OpenInto: "Double click a node, or tab to one and press Enter, to split it in place into its parts; " +
+		OpenInto: "Click a node marked \u2295, or tab to it and press Enter, to split it in place into its parts; " +
 			"every other node stays where it is.",
 		NothingOpens: "Nothing on this chart opens.",
-		FoldBack: "A chip above the chart folds a split node back, Escape undoes the last split, and a double " +
-			"click with Alt or Shift held folds back the node a mark was split out of.",
-		Follow:         "A single click, or Space, follows one node's money.",
-		Expand:         "The folded mark is several of them drawn as one; double click it, or tab to it and press Enter, to draw them separately.",
+		FoldBack:     "\u2296 beside a split node, or its chip above the chart, folds it back, and Back undoes the last step.",
+		Follow: "Hover a node or a flow to trace its path; a click on one that does not split pins it in the drawer, " +
+			"whose Pin lets it go and whose Follow this money draws only its money. Escape unpins and puts the rest back.",
+		Expand:         "The folded mark is several of them drawn as one; click it, or tab to it and press Enter, to draw them separately.",
 		Swatch:         "A fund swatch follows one group's money without opening anything.",
+		GlyphOpen:      "Split {label} into {split}",
+		GlyphChoose:    "Choose what to split {label} into",
+		GlyphFold:      "Fold {label} back into one mark",
 		ChipFold:       "{label} \u25be",
 		ChipFoldLabel:  "{label}, split into {split}: fold it back into one mark",
 		SplitChooser:   "Split {label} into",
@@ -192,9 +206,9 @@ func defaultWording() wording {
 		CarriedChip:    "◇ re-pointed by us",
 		CaveatChip:     "\u26a0 \u25c7 {n:caveat|caveats}",
 		InferredFlows:  "\u25c7 {flows:inferred flow|inferred flows} totalling {figure}: {ends}",
-		DescOpens:      ", splits in place into its parts on a double click or Enter; a single click or Space follows this money",
-		DescExpands:    ", draws all of them separately on a double click or Enter; a single click or Space follows this money",
-		DescFollows:    ", follow this money",
+		DescOpens:      ", splits in place into its parts on a click, Enter or Space, and is pinned in the drawer",
+		DescExpands:    ", draws all of them separately on a click, Enter or Space",
+		DescFollows:    ", a click, Enter or Space pins it in the drawer",
 		FlowInferred:   "This flow is inferred; both endpoints are printed by the city.",
 		NoneInferred:   "Nothing on this chart is inferred: every node and flow is printed by the city.",
 		TablePointer:   "The same figures are in the flow table below, which opens from the \"" + flowTableHeading + "\" heading.",
@@ -227,8 +241,9 @@ func defaultWording() wording {
 		ZoomReset:         "Reset view",
 		Rail:              "Legend and filters",
 		Drawer:            "Where a figure comes from",
-		DetailEmpty:       "Hover a flow or a node to preview where its figure comes from; click it to pin it here.",
+		DetailEmpty:       "Hover a flow or a node to trace its path and preview where its figure comes from; click it to pin it here.",
 		Pin:               "Pin",
+		FollowMoney:       "Follow this money",
 		Hairline: "\u25c7 {n:flow is|flows are} under a pixel wide on this chart's canvas, and each is drawn as a " +
 			"hairline one screen pixel wide, which is wider than its share; every other flow is drawn to scale. " +
 			"Zoom in, go full screen, search, or open the table below to read them.",

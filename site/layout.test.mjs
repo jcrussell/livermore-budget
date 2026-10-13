@@ -253,6 +253,28 @@ function labelFit(app, graph, document) {
   });
 }
 
+/**
+ * Every glyph drawn beside a node that overlaps a label, as "glyph's node on
+ * label's node": the glyph's box (glyphPlacement, GLYPH_R) against each
+ * label's line and block.
+ */
+function glyphsOnLabels(app, fits) {
+  const slots = app.slotsOf(fits.map((f) => f.node), app.RENDER_TIERS);
+  const last = fits.length ? fits[0].last : 0;
+  const out = [];
+  for (const f of fits) {
+    if (!app.glyphOf(f.node)) continue;
+    const at = app.glyphPlacement(slots, f.node, last, f.width);
+    const r = app.GLYPH_R;
+    for (const g of fits) {
+      const apart = at.x + r <= g.box.left || at.x - r >= g.box.right ||
+        at.y + r <= g.block.top || at.y - r >= g.block.bottom;
+      if (!apart) out.push(`${f.id} on ${g.id}`);
+    }
+  }
+  return out.sort();
+}
+
 /** Every pair of adjacent label blocks of one column that touch or overlap, as "above over below". */
 function touchingStacks(fits) {
   const out = [];
@@ -668,7 +690,7 @@ function atFloor(app, fits) {
 
 for (const label of Object.keys(ALIKE)) {
   describe(`${label}: the root and every split the page offers, measured for what a label does to its neighbours`, () => {
-    let walk, views, overlapped, alike, wider, floor;
+    let walk, views, overlapped, alike, wider, floor, glyphed, glyphs;
     before(async () => {
       // Found by label, so a year the page no longer ships fails by name.
       const year = pageFixture().config.years.find((y) => y.label === label);
@@ -678,6 +700,8 @@ for (const label of Object.keys(ALIKE)) {
       alike = {};
       wider = {};
       floor = {};
+      glyphed = {};
+      glyphs = 0;
       views = 0;
       const visit = (where) => {
         views++;
@@ -685,6 +709,9 @@ for (const label of Object.keys(ALIKE)) {
         if (where.startsWith("everything")) floor[where] = atFloor(app, fits);
         const touching = touchingStacks(fits);
         if (touching.length) overlapped[where] = touching;
+        glyphs += fits.filter((f) => app.glyphOf(f.node)).length;
+        const onLabels = glyphsOnLabels(app, fits);
+        if (onLabels.length) glyphed[where] = onLabels;
         const over = fits.filter((f) => f.clearance < 0);
         if (over.length) {
           const worst = tightest(over);
@@ -719,6 +746,15 @@ for (const label of Object.keys(ALIKE)) {
         (m.fewest ? `, fewest kept ${m.fewest.kept} in ${JSON.stringify(m.fewest.words)} (${m.fewest.id})` : "")).join("; ");
       t.diagnostic(detail);
       assert.deepEqual({ walked: Object.keys(floor).length, short }, { walked: 2, short: [] }, detail);
+    });
+
+    // Mutation: drop glyphPlacement's arm for a short interior rect and this
+    // goes red, expenditure/capital-outlay's ⊖ on its own label.
+    test("no ⊕ or ⊖ is drawn over a label", (t) => {
+      const detail = `${views} chart(s) walked, ${glyphs} glyph(s) drawn; ` + JSON.stringify(glyphed);
+      t.diagnostic(detail);
+      assert.deepEqual({ refused: walk.refused, drewGlyphs: glyphs > 0, glyphed },
+        { refused: "", drewGlyphs: true, glyphed: {} }, detail);
     });
 
     test("the labels stacked on one another are the ones pinned", (t) => {

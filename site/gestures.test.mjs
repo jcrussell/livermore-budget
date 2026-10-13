@@ -1,14 +1,15 @@
 // gestures.test.mjs -- the SEQUENCES a reader's gestures make on the drawn
-// chart: which key splits and which follows the money, an isolation surviving
-// the two clicks under a double click, the chooser between a node's two
-// splits, the chip, Alt or Shift with a double click and Escape folding a
-// split back, Expand all and Collapse all, a tail drawn out, and where focus
-// lands after a split has replaced the element it was on.
+// chart: one activation -- a click, Enter or Space -- opening a node that
+// splits and pinning one that does not, the ⊕ menu and the chip chooser
+// between a node's two splits, ⊖ and the chip folding a split back, Escape
+// letting the pin and the isolation go and folding nothing, the trace a
+// hover draws, Expand all and Collapse all, a tail drawn out, and where
+// focus lands after a split has replaced the element it was on.
 //
 // Every gesture is a dispatched event with a planted timeStamp, because the
-// activation guard compares a click's stamp against the key that may have
-// synthesised it. Every assertion is over ids, counts and booleans: a failing
-// assertion over a laid mark formats the whole graph (fisc-yj4w.33).
+// glyph's activation guard compares a click's stamp against the key that may
+// have synthesised it. Every assertion is over ids, counts and booleans: a
+// failing assertion over a laid mark formats the whole graph (fisc-yj4w.33).
 
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
@@ -45,11 +46,31 @@ function markOf(app, document, id) {
   return m;
 }
 
+/** The glyph drawn beside one node, or a throw naming what the chart has split. */
+function glyphOf(app, document, id) {
+  const g = [...document.querySelectorAll("#chart g.glyph")]
+    .find((x) => x.__data__ && x.__data__.id === id);
+  if (!g) throw new Error(`${id} draws no glyph with [${app.expansions.join(", ")}] split`);
+  return g;
+}
+
+/** The kind of glyph beside one node: "open", "fold" or "". */
+function glyphKind(document, id) {
+  const g = [...document.querySelectorAll("#chart g.glyph")].find((x) => x.__data__ && x.__data__.id === id);
+  if (!g) return "";
+  return g.classList.contains("glyph-open") ? "open" : g.classList.contains("glyph-fold") ? "fold" : "?";
+}
+
 /** The id of the mark focus is on, or what else it is on. */
 function focusedID(document) {
   const a = document.activeElement;
   if (!a) return "nothing";
   return a.__data__ && typeof a.__data__.id === "string" ? a.__data__.id : a.tagName + "." + a.getAttribute("class");
+}
+
+/** The id of the node pinned in the drawer, or "". */
+function pinnedID(app) {
+  return app.pinned && typeof app.pinned.id === "string" ? app.pinned.id : "";
 }
 
 /** The chip row's fold-back chips, as their words. */
@@ -80,85 +101,112 @@ function inertMember(app, id) {
   return n.id;
 }
 
-describe("the two keys", () => {
-  test("Enter splits and Space isolates, and neither does the other", async (t) => {
+describe("one activation", () => {
+  // Mutation: restore the double click as the only gesture that splits (a
+  // click pinning alone) and this goes red, the click splitting nothing.
+  test("a click, Enter or Space splits a node that splits, and pins it in the drawer", async (t) => {
     const { app, document } = await bootedApp();
-    const state = () => ({ split: app.expansions.join(","), isolated: app.filter.isolated });
-
-    fire(markOf(app, document, OPENS), "keydown", { key: "Enter", timeStamp: 1000 });
-    await settle();
-    const enter = state();
+    const state = () => ({ split: app.expansions.join(","), pinned: pinnedID(app), isolated: app.filter.isolated });
+    const seen = {};
+    for (const [gesture, fireIt] of [
+      ["click", (m) => fire(m, "click", { timeStamp: 1000 })],
+      ["Enter", (m) => fire(m, "keydown", { key: "Enter", timeStamp: 1000 })],
+      ["Space", (m) => fire(m, "keydown", { key: " ", timeStamp: 1000 })],
+    ]) {
+      app.collapseAll();
+      await settle();
+      fireIt(markOf(app, document, OPENS));
+      await settle();
+      seen[gesture] = state();
+    }
     const kept = app.laidNodes.filter((n) => n.id === "revenue/taxes/property" || n.id === "transfers/in").length;
-    app.collapseAll();
-    await settle();
-    fire(markOf(app, document, OPENS), "keydown", { key: " ", timeStamp: 5000 });
-    await settle();
-    const space = state();
-    app.setIsolated("");
-    app.collapseAll();
-    await split(app, WORST);
-    const inert = inertMember(app, WORST);
-    // Enter still activates a mark with nothing to split: a role="button"
-    // whose Enter does nothing is worse than one whose two keys agree.
-    fire(markOf(app, document, inert), "keydown", { key: "Enter", timeStamp: 9000 });
-    await settle();
-    const inertEnter = state();
-
-    assert.deepEqual(enter, { split: OPENS, isolated: "" });
+    t.diagnostic(`one activation of ${OPENS}: ${JSON.stringify(seen)}`);
+    for (const gesture of ["click", "Enter", "Space"]) {
+      assert.deepEqual(seen[gesture], { split: OPENS, pinned: OPENS, isolated: "" }, gesture);
+    }
     assert.equal(kept, 2, "splitting the General Fund group took another root off the chart");
-    assert.deepEqual(space, { split: "", isolated: OPENS });
-    assert.deepEqual(inertEnter, { split: WORST, isolated: inert });
-    t.diagnostic(`Enter on ${OPENS} split it in place; Space on it followed it; Enter on ${inert} followed it`);
   });
 
-  test("a double click splits, and leaves the isolation the reader had", async (t) => {
-    // THE SEED IS THE WHOLE TEST. A double click delivers click, click,
-    // dblclick, and on a chart following nothing those two clicks toggle an
-    // isolation on and off and land back on "" without any help. It starts
-    // from a mark the reader was already following, the only state in which
-    // the two answers differ.
+  test("a click on a node that does not split pins it, and splits and follows nothing", async (t) => {
     const { app, document } = await bootedApp();
     await split(app, WORST);
     const inert = inertMember(app, WORST);
-    const seed = "revenue/taxes/sales";
-    fire(markOf(app, document, seed), "click", { timeStamp: 0 });
-    const seeded = app.filter.isolated;
     fire(markOf(app, document, inert), "click", { timeStamp: 1000 });
-    const firstClick = app.filter.isolated;
-    fire(markOf(app, document, inert), "click", { timeStamp: 1050 });
-    const secondClick = app.filter.isolated;
-    fire(markOf(app, document, inert), "dblclick", { timeStamp: 1060 });
     await settle();
-    const inertDouble = { split: app.expansions.join(","), isolated: app.filter.isolated };
+    const clicked = { split: app.expansions.join(","), pinned: pinnedID(app), isolated: app.filter.isolated };
+    // The drawer names it, and offers to follow its money.
+    const follow = document.getElementById("detail-follow");
+    const offered = { hidden: follow.hidden, pressed: follow.getAttribute("aria-pressed") };
+    fire(follow, "click");
+    const followed = { isolated: app.filter.isolated, pressed: follow.getAttribute("aria-pressed") };
+    fire(follow, "click");
+    t.diagnostic(`a click on ${inert}: ${JSON.stringify(clicked)}; its Follow button ${JSON.stringify(offered)} then ${JSON.stringify(followed)}`);
+    assert.deepEqual(clicked, { split: WORST, pinned: inert, isolated: "" });
+    assert.deepEqual(offered, { hidden: false, pressed: "false" });
+    assert.deepEqual(followed, { isolated: inert, pressed: "true" });
+    assert.equal(app.filter.isolated, "");
+  });
 
-    // A SECOND PAGE AND NOT THE SAME ONE WOUND BACK: seeding the same mark
-    // again on a chart still following it clears the seed.
-    const second = await bootedApp();
-    const m2 = (id) => markOf(second.app, second.document, id);
-    fire(m2(seed), "click", { timeStamp: 0 });
-    fire(m2(OPENS), "click", { timeStamp: 1000 });
-    fire(m2(OPENS), "click", { timeStamp: 1050 });
-    fire(m2(OPENS), "dblclick", { timeStamp: 1060 });
+  test("an activation that splits leaves the isolation the reader had", async () => {
+    const { app, document } = await bootedApp();
+    const seed = "revenue/taxes/sales";
+    app.setIsolated(seed);
+    fire(markOf(app, document, OPENS), "click", { timeStamp: 1000 });
     await settle();
-    const opensDouble = { split: second.app.expansions.join(","), isolated: second.app.filter.isolated };
+    assert.deepEqual({ split: app.expansions.join(","), isolated: app.filter.isolated }, { split: OPENS, isolated: seed });
+  });
+});
 
-    assert.equal(seeded, seed);
-    assert.equal(firstClick, inert);
-    assert.equal(secondClick, "");
-    assert.deepEqual(inertDouble, { split: WORST, isolated: seed });
-    // The seed survives the split too: the sales tax is still drawn.
-    assert.deepEqual(opensDouble, { split: OPENS, isolated: seed });
-    t.diagnostic(`following "${seed}", a double click on ${inert} went "${firstClick}" then ` +
-      `"${secondClick}" under the reader and came back to "${inertDouble.isolated}"; the same gesture on ${OPENS} split it`);
+describe("the glyphs", () => {
+  test("⊖ beside an open hub folds it, and every split inside it, back; ⊕ beside it again", async (t) => {
+    const { app, document } = await bootedApp();
+    await split(app, OPENS, WORST);
+    const before = { opens: glyphKind(document, OPENS), worst: glyphKind(document, WORST) };
+    fire(glyphOf(app, document, WORST), "click", { timeStamp: 1000 });
+    await settle();
+    const folded = { split: app.expansions.join(","), worst: glyphKind(document, WORST) };
+    // Enter on fund/100's ⊖ folds what it opened straight through from.
+    fire(glyphOf(app, document, "fund/100"), "keydown", { key: "Enter", timeStamp: 5000 });
+    await settle();
+    const through = { split: app.expansions.join(","), opens: glyphKind(document, OPENS) };
+    t.diagnostic(`${JSON.stringify(before)}; ⊖ on ${WORST}: ${JSON.stringify(folded)}; Enter on fund/100's ⊖: ${JSON.stringify(through)}`);
+    assert.deepEqual(before, { opens: "fold", worst: "fold" });
+    assert.deepEqual(folded, { split: OPENS, worst: "open" });
+    assert.deepEqual(through, { split: "", opens: "open" });
+    assert.deepEqual(refusals(document).map((b) => b.textContent), []);
+  });
+
+  test("a glyph's key and the click it synthesises are one activation", async () => {
+    const { app, document } = await bootedApp();
+    const g = glyphOf(app, document, OPENS);
+    fire(g, "keydown", { key: "Enter", timeStamp: 1000 });
+    await settle();
+    // The same element, now ⊖: its synthesised click must not fold it.
+    fire(g, "click", { timeStamp: 1050 });
+    await settle();
+    assert.deepEqual(app.expansions, [OPENS]);
+  });
+
+  test("glyphs carry the page's words and are reached by the keyboard", async () => {
+    const { app, document, config } = await bootedApp();
+    const g = glyphOf(app, document, OPENS);
+    const label = app.nodeOf(OPENS).label;
+    const split0 = app.splitWords(app.splitsHere({ id: OPENS })[0].key);
+    assert.deepEqual({ role: g.getAttribute("role"), tab: g.getAttribute("tabindex"), label: g.getAttribute("aria-label") },
+      { role: "button", tab: "0", label: config.wording.glyph_open.replace("{label}", label).replace("{split}", split0) });
+    assert.equal(glyphOf(app, document, TWO_WAYS).getAttribute("aria-label"),
+      config.wording.glyph_choose.replace("{label}", app.nodeOf(TWO_WAYS).label));
+    await split(app, OPENS);
+    assert.equal(glyphOf(app, document, OPENS).getAttribute("aria-label"), config.wording.glyph_fold.replace("{label}", label));
   });
 });
 
 describe("a node that splits two ways", () => {
-  test("Enter and a double click take the first declared split, and the chooser in its chip draws the other", async (t) => {
+  test("an activation takes the first declared split, ⊕ offers both in a menu, and the chooser in its chip draws the other", async (t) => {
     const { app, document } = await bootedApp();
     const splits = app.splitsHere({ id: TWO_WAYS }).map((sp) => sp.key);
     assert.ok(splits.length === 2, `${TWO_WAYS} splits ${splits.length} way(s)`);
-    fire(markOf(app, document, TWO_WAYS), "dblclick", { timeStamp: 0 });
+    fire(markOf(app, document, TWO_WAYS), "click", { timeStamp: 0 });
     await settle();
     assert.deepEqual(app.expansions, [TWO_WAYS]);
     const group = document.querySelector("#breadcrumb .crumb-group");
@@ -176,8 +224,31 @@ describe("a node that splits two ways", () => {
     assert.deepEqual(app.expansions, [TWO_WAYS + app.ALTERNATIVE_MARK + splits[1]]);
     const after = choices();
     assert.deepEqual(after.map((c) => c.pressed), ["false", "true"]);
-    t.diagnostic(`${TWO_WAYS}: the chooser offers ${JSON.stringify(before.map((c) => c.words))}; ` +
-      `pressing the second split it ${splits[1]}`);
+
+    // ⊕ beside the node shut opens a menu of its ways; Escape there closes
+    // it and lets nothing else go.
+    app.collapseAll();
+    await settle();
+    const glyph = glyphOf(app, document, TWO_WAYS);
+    assert.equal(glyph.getAttribute("aria-haspopup"), "true");
+    fire(glyph, "click", { timeStamp: 2000 });
+    const menu = document.getElementById("split-menu");
+    assert.ok(menu, "⊕ on a node that splits two ways opened no menu");
+    const offered = [...menu.querySelectorAll("button")].map((b) => b.textContent);
+    const focused = document.activeElement === menu.querySelector("button");
+    fire(menu, "keydown", { key: "Escape" });
+    const closed = !document.getElementById("split-menu");
+    fire(glyph, "click", { timeStamp: 3000 });
+    [...document.querySelectorAll("#split-menu button")][1].click();
+    await settle();
+    t.diagnostic(`${TWO_WAYS}: the chooser offers ${JSON.stringify(before.map((c) => c.words))}; ⊕'s menu ${JSON.stringify(offered)}; ` +
+      `its second split drew [${app.expansions}]`);
+    assert.deepEqual(offered, splits.map((k) => app.splitWords(k)));
+    assert.ok(focused, "the menu opened without focus on its first way");
+    assert.ok(closed, "Escape in the menu left it open");
+    assert.deepEqual(app.expansions, [TWO_WAYS + app.ALTERNATIVE_MARK + splits[1]]);
+    assert.equal(pinnedID(app), TWO_WAYS);
+    assert.equal(document.getElementById("split-menu"), null);
     assert.deepEqual(refusals(document).map((b) => b.textContent), []);
   });
 });
@@ -196,42 +267,26 @@ describe("folding a split back", () => {
     assert.ok(app.laidNodes.some((n) => n.id === OPENS), "the folded node is not drawn again");
   });
 
-  test("Alt or Shift with a double click on a member folds back the node it was split out of", async () => {
-    const { app, document } = await bootedApp();
-    for (const held of ["altKey", "shiftKey"]) {
-      await split(app, WORST);
-      const member = inertMember(app, WORST);
-      fire(markOf(app, document, member), "dblclick", { timeStamp: 0, [held]: true });
-      await settle();
-      assert.deepEqual(app.expansions, [], `${held} with a double click on ${member}`);
-      assert.ok(app.laidNodes.some((n) => n.id === WORST), `${held}: ${WORST} is not drawn again`);
-    }
-    // On a root it folds nothing and splits nothing.
-    fire(markOf(app, document, OPENS), "dblclick", { timeStamp: 5000, altKey: true });
-    await settle();
-    assert.deepEqual(app.expansions, []);
-  });
-
-  test("Escape undoes the last split first, after a pin and an isolation", async (t) => {
+  // Mutation: restore Escape undoing the last split once nothing is pinned or
+  // followed, and this goes red at the second Escape.
+  test("Escape lets the pin and the isolation go, and folds no split", async (t) => {
     const { app, document } = await bootedApp();
     await split(app, OPENS, WORST);
-    app.setIsolated("revenue/taxes/sales");
+    const inert = inertMember(app, WORST);
+    fire(markOf(app, document, inert), "click", { timeStamp: 1000 });
+    app.setIsolated(inert);
+    const held = { split: app.expansions.join(","), pinned: pinnedID(app) };
     escape(document);
     await settle();
-    const first = { split: app.expansions.join(","), isolated: app.filter.isolated };
+    const first = { split: app.expansions.join(","), isolated: app.filter.isolated, pinned: pinnedID(app) };
     escape(document);
     await settle();
     const second = app.expansions.join(",");
-    escape(document);
-    await settle();
-    const third = app.expansions.join(",");
-    escape(document);
-    await settle();
-    assert.deepEqual(first, { split: OPENS + "," + WORST, isolated: "" });
-    assert.equal(second, OPENS);
-    assert.equal(third, "");
+    t.diagnostic(`Escape: ${JSON.stringify(first)}, then [${second}]`);
+    assert.deepEqual(held, { split: OPENS + "," + WORST, pinned: inert });
+    assert.deepEqual(first, { split: OPENS + "," + WORST, isolated: "", pinned: "" });
+    assert.equal(second, OPENS + "," + WORST, "Escape with nothing pinned folded a split");
     assert.deepEqual(refusals(document).map((b) => b.textContent), []);
-    t.diagnostic(`Escape cleared the isolation, then undid ${WORST}, then the General Fund group, then did nothing`);
   });
 
   test("Expand all splits every node to its finest grain by its first split, and Collapse all folds everything back", async (t) => {
@@ -257,9 +312,63 @@ describe("folding a split back", () => {
   });
 });
 
+describe("the trace", () => {
+  /** The ids of the ribbons and marks drawn on the path, and whether the chart is tracing. */
+  const lit = (document) => ({
+    tracing: document.getElementById("chart").classList.contains("tracing"),
+    ribbons: [...document.querySelectorAll("#chart path.link.on-path")].map((p) => p.__data__.source.id + ">" + p.__data__.target.id),
+    marks: [...document.querySelectorAll("#chart g.node.on-path")].map((g) => g.__data__.id),
+  });
+
+  // Mutation: drop the trace's call from the node's pointerenter and this
+  // goes red, nothing on the path.
+  test("hovering a node draws its path upstream and downstream over the rest, and leaving lets it go", async (t) => {
+    const { app, document } = await bootedApp();
+    await split(app, WORST);
+    app.setIsolated(OPENS);
+    const dimmed = document.querySelectorAll("#chart .dim").length;
+    const m = markOf(app, document, WORST);
+    const d = m.__data__;
+    fire(m, "pointerenter");
+    const on = lit(document);
+    // One ribbon in, one out, and one a hop further out: the path's own.
+    const inOf = d.targetLinks.map((l) => l.source.id + ">" + l.target.id);
+    const outOf = d.sourceLinks.map((l) => l.source.id + ">" + l.target.id);
+    const hop = d.sourceLinks.flatMap((l) => l.target.sourceLinks).map((l) => l.source.id + ">" + l.target.id);
+    const all = document.querySelectorAll("#chart path.link").length;
+    fire(m, "pointerleave");
+    const off = lit(document);
+    t.diagnostic(`hovering ${WORST}: ${on.ribbons.length} of ${all} ribbon(s) and ${on.marks.length} mark(s) on its path`);
+    assert.ok(on.tracing, "the chart is not tracing under the pointer");
+    assert.ok(on.marks.includes(WORST));
+    assert.deepEqual(inOf.concat(outOf, hop).filter((k) => !on.ribbons.includes(k)), [], "a ribbon on the path is not drawn on it");
+    assert.ok(hop.length > 0 && inOf.length > 0, "the planted node has no path to trace");
+    assert.ok(on.ribbons.length < all, "the trace drew every ribbon on its path");
+    assert.deepEqual(off, { tracing: false, ribbons: [], marks: [] });
+    assert.equal(document.querySelectorAll("#chart .dim").length, dimmed, "the trace's leave moved the isolation's dimming");
+  });
+
+  test("hovering a ribbon draws it, its source's path upstream and its target's downstream", async () => {
+    const { app, document } = await bootedApp();
+    const r = [...document.querySelectorAll("#chart path.link")].find((p) => p.__data__.target.id === OPENS);
+    assert.ok(r, `no ribbon into ${OPENS}`);
+    const l = r.__data__;
+    fire(r, "pointerenter");
+    const on = lit(document);
+    const key = (x) => x.source.id + ">" + x.target.id;
+    // A sibling ribbon into the same node is on neither path.
+    const sibling = l.target.targetLinks.find((x) => x.source.id !== l.source.id);
+    fire(r, "pointerleave");
+    assert.ok(on.ribbons.includes(key(l)));
+    assert.ok(l.target.sourceLinks.every((x) => on.ribbons.includes(key(x))), "the target's ribbons out are not on the path");
+    assert.ok(sibling && !on.ribbons.includes(key(sibling)), "a sibling ribbon is drawn on the path");
+    assert.deepEqual(lit(document), { tracing: false, ribbons: [], marks: [] });
+  });
+});
+
 for (const year of YEARS) {
   describe(`${year.label}: the folded tail`, () => {
-    test(`${year.label}: Enter on a split's tail draws its members out, Space still follows its money, and its chip folds them back`, async (t) => {
+    test(`${year.label}: Space or Enter on a split's tail draws its members out, and its chip folds them back`, async (t) => {
       const { app, document } = await onYear(year.stem);
       await split(app, WORST);
       const tail = app.projection.nodes.find((n) => app.isAggregate(n.id));
@@ -268,33 +377,28 @@ for (const year of YEARS) {
       assert.deepEqual(offered, [tail.id], "the tail is the one mark the chart offers to draw out");
       const capped = app.projection.nodes.length;
 
-      // SPACE GOES FIRST AND MUST NOT DRAW OUT: it is the key that follows the
-      // money on every other mark.
-      fire(markOf(app, document, tail.id), "keydown", { key: " ", timeStamp: 0 });
-      await settle();
-      const spaceFollowed = app.filter.isolated;
-      app.setIsolated("");
-      const m = markOf(app, document, tail.id);
-      m.focus();
-      const before = new Set(app.laidNodes.map((n) => n.id));
-      fire(m, "keydown", { key: "Enter", timeStamp: app.ACTIVATION_WINDOW * 10 });
-      await settle();
-      const drawnOut = app.projection.nodes.length;
-      const members = new Set(app.splitsHere({ id: WORST })[0].members);
-      const fresh = app.laidNodes.filter((n) => members.has(n.id) && !before.has(n.id)).sort((a, b) => a.y0 - b.y0);
-      const on = focusedID(document);
-      assert.equal(spaceFollowed, tail.id, "Space follows the tail's money");
-      assert.deepEqual(app.expansions, [WORST, tail.id]);
-      assert.ok(fresh.length > 0, "drawing the tail out drew no new member");
-      assert.equal(on, fresh[0].id, "focus is not on the topmost member the tail drew out");
-      assert.ok(app.pinned === null, "restoring focus pinned the mark");
-      const tailChip = chips(document).find((c) => c.textContent.includes(app.nodeOf(WORST).label) && c !== chips(document)[0]);
-      assert.ok(tailChip, "no chip for the tail drawn out");
-      tailChip.click();
-      await settle();
-      assert.deepEqual(app.expansions, [WORST]);
-      assert.equal(app.projection.nodes.length, capped);
-      t.diagnostic(`${WORST} capped draws ${capped} node(s); Enter on "${tail.label}" drew ${drawnOut}, focus on ${on}`);
+      for (const key of [" ", "Enter"]) {
+        const m = markOf(app, document, tail.id);
+        m.focus();
+        const before = new Set(app.laidNodes.map((n) => n.id));
+        fire(m, "keydown", { key, timeStamp: 0 });
+        await settle();
+        const drawnOut = app.projection.nodes.length;
+        const members = new Set(app.splitsHere({ id: WORST })[0].members);
+        const fresh = app.laidNodes.filter((n) => members.has(n.id) && !before.has(n.id)).sort((a, b) => a.y0 - b.y0);
+        const on = focusedID(document);
+        assert.deepEqual(app.expansions, [WORST, tail.id], JSON.stringify(key));
+        assert.ok(fresh.length > 0, "drawing the tail out drew no new member");
+        assert.equal(on, fresh[0].id, "focus is not on the topmost member the tail drew out");
+        assert.ok(app.pinned === null, "restoring focus pinned the mark");
+        const tailChip = chips(document).find((c) => c.textContent.includes(app.nodeOf(WORST).label) && c !== chips(document)[0]);
+        assert.ok(tailChip, "no chip for the tail drawn out");
+        tailChip.click();
+        await settle();
+        assert.deepEqual(app.expansions, [WORST]);
+        assert.equal(app.projection.nodes.length, capped);
+        t.diagnostic(`${WORST} capped draws ${capped} node(s); ${JSON.stringify(key)} on "${tail.label}" drew ${drawnOut}, focus on ${on}`);
+      }
     });
   });
 }
@@ -312,34 +416,31 @@ describe("a split of one member", () => {
     test(`${year.label}: opens straight through, in one gesture and one step, and folds back whole`, async (t) => {
       const { app, document } = await onYear(year.stem);
       assert.equal(app.splitsHere({ id: OPENS })[0].members.length, 1, `${OPENS} no longer splits into one member`);
-      fire(markOf(app, document, OPENS), "dblclick", { timeStamp: 0 });
+      fire(markOf(app, document, OPENS), "click", { timeStamp: 0 });
       await settle();
       const opened = { x: app.expansions.slice(), divisions: divisionsDrawn(app), offers: app.splittable({ id: ONLY }) };
-      t.diagnostic(`${year.label}: a double click on ${OPENS} drew ${opened.divisions} of ${ONLY}'s divisions with [${opened.x}] split`);
+      t.diagnostic(`${year.label}: a click on ${OPENS} drew ${opened.divisions} of ${ONLY}'s divisions with [${opened.x}] split`);
       assert.ok(opened.divisions > 0, `one activation of ${OPENS} drew none of ${ONLY}'s divisions`);
-      // Escape folds the two back as the one step they were made in.
-      escape(document);
-      await settle();
-      const escaped = { x: app.expansions.slice(), divisions: divisionsDrawn(app) };
-      // Alt with a double click on a division folds back what its parent
-      // opened straight through from.
-      fire(markOf(app, document, OPENS), "keydown", { key: "Enter", timeStamp: 5000 });
-      await settle();
-      const division = app.splitsHere({ id: ONLY })[0].members.find((m) => app.laidNodes.some((n) => n.id === m));
-      fire(markOf(app, document, division), "dblclick", { timeStamp: 9000, altKey: true });
+      // ⊖ on the member folds back what its parent opened straight through from.
+      fire(glyphOf(app, document, ONLY), "click", { timeStamp: 1000 });
       await settle();
       const folded = { x: app.expansions.slice(), divisions: divisionsDrawn(app) };
+      fire(markOf(app, document, OPENS), "keydown", { key: "Enter", timeStamp: 5000 });
+      await settle();
+      fire(glyphOf(app, document, OPENS), "click", { timeStamp: 9000 });
+      await settle();
+      const hub = { x: app.expansions.slice(), divisions: divisionsDrawn(app) };
       assert.deepEqual(opened.x, [OPENS]);
       assert.equal(opened.offers, false, `${ONLY} still offers to split once its group is open`);
-      assert.deepEqual(escaped, { x: [], divisions: 0 });
       assert.deepEqual(folded, { x: [], divisions: 0 });
+      assert.deepEqual(hub, { x: [], divisions: 0 });
       assert.deepEqual(refusals(document).map((b) => b.textContent), []);
     });
   }
 });
 
 describe("focus after a split", () => {
-  test("lands on the topmost new member, unpinned, and the next Enter acts on it", async (t) => {
+  test("lands on the topmost new member with the node opened pinned, and ⊖ puts it back on the node", async (t) => {
     const { app, document } = await bootedApp();
     const m = markOf(app, document, OPENS);
     m.focus();
@@ -348,11 +449,12 @@ describe("focus after a split", () => {
     const members = new Set(app.splitsHere({ id: OPENS })[0].members);
     const top = app.laidNodes.filter((n) => members.has(n.id)).sort((a, b) => a.y0 - b.y0)[0];
     const on = focusedID(document);
-    t.diagnostic(`after Enter on ${OPENS} focus is on ${on}`);
+    t.diagnostic(`after Enter on ${OPENS} focus is on ${on}, ${pinnedID(app)} pinned`);
     assert.equal(on, top.id);
-    assert.ok(app.pinned === null, "restoring focus pinned the mark");
-    // Escape undoes the split, and focus goes back to the node it split.
-    escape(document);
+    assert.equal(pinnedID(app), OPENS, "the drawer does not hold the node opened");
+    const g = glyphOf(app, document, OPENS);
+    g.focus();
+    fire(g, "keydown", { key: "Enter", timeStamp: 5000 });
     await settle();
     assert.deepEqual(app.expansions, []);
     assert.equal(focusedID(document), OPENS);

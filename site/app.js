@@ -415,27 +415,25 @@ export let previewed = null;
 /** Whether the rail beside the chart is open; the page's, never the hash's. */
 export let railOpen = false;
 /**
- * How soon, in ms, a later event on the same node counts as part of one
- * activation: the click assistive tech synthesises from Enter/Space, and the
- * two clicks a pointer delivers before their dblclick.
+ * How soon, in ms, a click on the glyph a key has just activated counts as
+ * that key's own: the click assistive tech synthesises from Enter or Space.
  */
 export const ACTIVATION_WINDOW = 500;
 
 /**
- * The node and timestamp of the last Enter/Space activation, so that the click
- * some assistive tech synthesises from that same key press does not undo it.
+ * The glyph and timestamp of the last Enter/Space activation of one, so that
+ * the click some assistive tech synthesises from that same key press does not
+ * act twice.
  * @type {{id:string, at:number}}
  */
 export let keyActivation = { id: "", at: -Infinity };
 
 /**
- * The node a click last isolated, when, and what was isolated before, so the
- * dblclick a pair of clicks composes into can put that back. Clicks are not
- * debounced. `was` is recorded once per window, not per click, or the second
- * click would record the state the first produced.
- * @type {{id:string, at:number, was:string}}
+ * What the pointer is tracing: the node or ribbon it is on, whose path
+ * upstream and downstream is drawn over the rest until it leaves, or null.
+ * @type {LaidNode | LaidLink | null}
  */
-export let clickIsolate = { id: "", at: -Infinity, was: "" };
+export let traced = null;
 
 /**
  * Every node of the document last laid out, by id, so fundGroupOf can walk
@@ -620,6 +618,28 @@ export function splittable(d) {
 }
 
 /**
+ * Whether a node is drawn as the hub of a split open: the chart draws it and
+ * one of its declared splits, by its own entry or straight through its
+ * parent's. ⊖ folds it back (collapseNode).
+ * @param {{id: string}} d
+ * @returns {boolean}
+ */
+export function foldable(d) {
+  if (!frontier || !fetched || !frontier.has(d.id) || !splitsHere(d).length) return false;
+  return core.openSplitOf(fetched, frontier, d.id) !== "";
+}
+
+/**
+ * The glyph a node carries: "open" (⊕) where activating it splits it,
+ * "fold" (⊖) where it is a split's hub, else "".
+ * @param {{id: string}} d
+ * @returns {"open" | "fold" | ""}
+ */
+export function glyphOf(d) {
+  return splittable(d) ? "open" : foldable(d) ? "fold" : "";
+}
+
+/**
  * Whether a mark is a folded tail this chart can draw out at full length: a
  * split's tail, on the expansion schedule.
  * @param {{id: string}} d
@@ -631,8 +651,8 @@ export function expandable(d) {
 
 /**
  * Whether focus is in the chart or its chip row, asked while its element
- * still exists. Not merely "not the body": Escape from the flow table or the
- * footer must not pull focus into the chart.
+ * still exists. Not merely "not the body": a redraw asked for from the flow
+ * table or the footer must not pull focus into the chart.
  * @returns {boolean}
  */
 export function focusInChart() {
@@ -654,6 +674,7 @@ export function askAffordances() {
   if (!projection) return;
   for (const n of projection.nodes) {
     splittable(n);
+    foldable(n);
     expandable(n);
     if (core.labelledAsParent(groupIndex, n.id)) memberNounOf(n.id);
   }
@@ -778,30 +799,6 @@ export function collapseNode(id) {
 }
 
 /**
- * Folds back the node a mark was split out of: its parent, or the node a
- * tail's split belongs to. The Alt or Shift double click.
- * @param {{id: string}} d
- * @returns {boolean} whether anything was folded
- */
-export function collapseParentOf(d) {
-  const tail = core.splitTailOf(d.id);
-  const own = nodeOf(d.id);
-  const parent = tail ? tail.node : own ? own.parent : "";
-  return Boolean(parent) && collapseNode(parent);
-}
-
-/**
- * Undoes the last expansion the reader made: Escape. Focus goes to the node
- * it split, or to the tail it drew out.
- * @returns {boolean} whether anything was undone
- */
-export function undoLast() {
-  if (!expansions.length || !fetched) return false;
-  const last = parseEntry(fetched, expansions[expansions.length - 1]);
-  return redraw(expansions.slice(0, -1), "That could not be undone", () => last.id, last.id);
-}
-
-/**
  * Splits every node the chart draws unsplit by its first declared split, and
  * every node that exposes, until none is left: the whole budget at its finest
  * grain, its tails still folded.
@@ -888,50 +885,37 @@ export function guarded(gesture, run) {
 }
 
 /**
- * One click on a node: it follows that node's money, whether or not it splits.
+ * A click on a node: its one activation (activate).
  *
- * THE ECHO GUARD IS ON THE ACTIVATION AND NOT ON THE DEVICE: a click on the
- * node a key has just activated is that key's own click, synthesised by
- * assistive tech, and would otherwise undo what the key did.
+ * NO ECHO GUARD: the click assistive tech synthesises from Enter or Space
+ * lands on a node already opened, which then pins, or already pinned.
  * @param {LaidNode} d
- * @param {number} at the event's timestamp
  */
-export function clickNode(d, at) {
-  pin(d);
-  if (d.id === keyActivation.id && at - keyActivation.at < ACTIVATION_WINDOW) return;
-  const within = d.id === clickIsolate.id && at - clickIsolate.at < ACTIVATION_WINDOW;
-  clickIsolate = { id: d.id, at: at, was: within ? clickIsolate.was : filter.isolated };
-  setIsolated(filter.isolated === d.id ? "" : d.id);
+export function clickNode(d) {
+  activate(d);
 }
 
 /**
- * A double click on a node: it splits the node, or with Alt or Shift held
- * folds back the node it was split out of, having first put back whatever the
- * two clicks underneath it isolated.
- *
- * THE RECORD IS SPENT WHETHER OR NOT ANYTHING SPLIT, so a later double click
- * cannot restore a state two gestures old.
+ * Opens what a node offers and pins the node opened, still drawn as its
+ * split's hub; a tail drawn out is drawn no more and pins nothing. A node
+ * offering nothing is pinned.
  * @param {LaidNode} d
- * @param {number} at the event's timestamp
- * @param {boolean} [fold] Alt or Shift was held
  */
-export function doubleClickNode(d, at, fold = false) {
-  if (d.id === clickIsolate.id && at - clickIsolate.at < ACTIVATION_WINDOW) {
-    setIsolated(clickIsolate.was);
-  }
-  clickIsolate = { id: "", at: -Infinity, was: "" };
-  if (fold) {
-    collapseParentOf(d);
+function activate(d) {
+  closeSplitMenu();
+  if (!openOffered(d)) {
+    pin(d);
     return;
   }
-  openOffered(d);
+  const kept = laidNodes.find((n) => n.id === d.id);
+  if (kept) pin(kept);
 }
 
 /**
  * Does what activating a node offers, and says whether it offered anything:
  * the node split by its first declared split (splittable), else the folded
- * tail drawn out (expandable). The one rule Enter on a mark, a double click
- * and the search's Enter share.
+ * tail drawn out (expandable). The one rule a node's activation and the
+ * search's Enter share.
  * @param {{id: string}} d
  * @returns {boolean}
  */
@@ -948,23 +932,201 @@ export function openOffered(d) {
 }
 
 /**
- * Enter or Space on a node: Enter splits a node that splits, and Space follows
- * the money.
- *
- * SPACE NEVER SPLITS, against the role="button" convention, so nodeDescription,
- * paintChartHint and aria-keyshortcuts all announce it. Enter falls back to
- * the isolate on a node that does not split, so no button has a dead Enter.
+ * Enter or Space on a node: the one activation a click is (activate).
  * @param {LaidNode} d
- * @param {string} key
- * @param {number} at the event's timestamp
  */
-export function keyNode(d, key, at) {
-  keyActivation = { id: d.id, at: at };
-  // Escape unpins while leaving focus where it was, so the panel can be
-  // empty here even though focus already pinned this node once.
-  pin(d);
-  if (key === "Enter" && openOffered(d)) return;
-  setIsolated(filter.isolated === d.id ? "" : d.id);
+export function keyNode(d) {
+  activate(d);
+}
+
+/**
+ * What the glyph beside a node says to a screen reader, in the page's words,
+ * and whether it opens a menu: ⊖ folds the node's split back; ⊕ splits a
+ * node that splits one way, and offers the ways of one that splits more.
+ * @param {{id: string, label: string}} d
+ * @param {"open" | "fold"} kind glyphOf's answer
+ * @returns {{label: string, menu: boolean}}
+ */
+export function glyphWords(d, kind) {
+  if (kind === "fold") return { label: say("glyph_fold", { label: d.label }), menu: false };
+  const splits = splitsHere(d);
+  if (splits.length > 1) return { label: say("glyph_choose", { label: d.label }), menu: true };
+  return { label: say("glyph_open", { label: d.label, split: splits.length ? splitWords(splits[0].key) : "" }), menu: false };
+}
+
+/**
+ * The glyph a node is drawn with, in the form's terms: its kind and its
+ * words, or null for none.
+ * @param {LaidNode} d
+ * @returns {{kind: "open" | "fold", label: string, menu: boolean} | null}
+ */
+export function glyphFor(d) {
+  const kind = glyphOf(d);
+  return kind ? Object.assign({ kind }, glyphWords(d, kind)) : null;
+}
+
+/**
+ * The glyph beside a node, activated by a click, Enter or Space: ⊖ folds
+ * the split the node is the hub of back (collapseNode); ⊕ opens the node as
+ * its own activation does, or, where it splits more than one way, opens the
+ * menu of its splits (openSplitMenu).
+ *
+ * The echo guard is the node's: a glyph's key and the click it synthesises
+ * are one activation, and the redraw between them turns ⊕ into ⊖.
+ * @param {LaidNode} d
+ * @param {"open" | "fold"} kind
+ * @param {number} at the event's timestamp
+ * @param {boolean} [byKey] Enter or Space, not a click
+ * @param {Element} [glyph] the glyph's element, which a menu is placed by
+ */
+export function glyphNode(d, kind, at, byKey = false, glyph) {
+  if (!byKey && keyActivation.id === d.id && at - keyActivation.at < ACTIVATION_WINDOW) return;
+  if (byKey) keyActivation = { id: d.id, at: at };
+  closeSplitMenu();
+  if (kind === "fold") {
+    collapseNode(d.id);
+    return;
+  }
+  if (glyphWords(d, kind).menu) {
+    openSplitMenu(d, glyph);
+    return;
+  }
+  activate(d);
+}
+
+/**
+ * The menu ⊕ opens beside a node that splits more than one way: the node's
+ * id and the menu's element, or null while none is open.
+ * @type {{id: string, menu: HTMLElement} | null}
+ */
+export let splitMenu = null;
+
+/**
+ * Opens the menu of a node's splits beside its glyph, one button per split
+ * in the chip row's words for it, focus on the first. Choosing one splits
+ * the node by it and pins it; Escape or focus leaving closes it.
+ * @param {LaidNode} d
+ * @param {Element} [glyph]
+ */
+export function openSplitMenu(d, glyph) {
+  closeSplitMenu();
+  const tip = maybeEl("tooltip");
+  const wrap = tip ? tip.parentElement : null;
+  if (!wrap) return;
+  const menu = h("div", "split-menu");
+  menu.id = "split-menu";
+  menu.setAttribute("role", "group");
+  menu.setAttribute("aria-label", say("split_chooser", { label: d.label }));
+  const id = d.id;
+  for (const sp of splitsHere(d)) {
+    const choice = h("button", "split-choice", splitWords(sp.key));
+    choice.setAttribute("type", "button");
+    choice.dataset.key = sp.key;
+    choice.addEventListener("click", (e) => {
+      e.stopPropagation();
+      guarded("split this mark", () => {
+        closeSplitMenu();
+        if (!expandNode(id, sp.key)) return;
+        const kept = laidNodes.find((n) => n.id === id);
+        if (kept) pin(kept);
+      });
+    });
+    menu.append(choice);
+  }
+  menu.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    e.stopPropagation();
+    closeSplitMenu(true);
+  });
+  menu.addEventListener("focusout", (e) => {
+    const to = /** @type {Node | null} */ (e.relatedTarget);
+    if (to && menu.contains(to)) return;
+    if (splitMenu && splitMenu.menu === menu) closeSplitMenu();
+  });
+  const box = wrap.getBoundingClientRect();
+  const at = glyph ? glyph.getBoundingClientRect() : null;
+  menu.style.left = Math.max(0, at ? at.right - box.left + 4 : 0) + "px";
+  menu.style.top = Math.max(0, at ? at.top - box.top : 0) + "px";
+  wrap.append(menu);
+  splitMenu = { id: id, menu: menu };
+  const first = menu.querySelector("button");
+  if (first) /** @type {HTMLElement} */ (first).focus();
+}
+
+/**
+ * Closes the menu of a node's splits, focus back on the node's glyph where
+ * `refocus` asks.
+ * @param {boolean} [refocus]
+ * @returns {boolean} whether a menu was open
+ */
+export function closeSplitMenu(refocus = false) {
+  if (!splitMenu) return false;
+  const { id, menu } = splitMenu;
+  splitMenu = null;
+  menu.remove();
+  if (refocus) {
+    const chart = maybeEl("chart");
+    const glyph = chart ? D3.select(chart).selectAll("g.glyph").filter(/** @param {LaidNode} n */ (n) => n.id === id).node() : null;
+    if (glyph && typeof glyph.focus === "function") glyph.focus();
+  }
+  return true;
+}
+
+/**
+ * Every ribbon and node on a mark's path: a node's ribbons in, and theirs,
+ * back to the sources, and its ribbons out, and theirs, on to the sinks; a
+ * ribbon's own, with its source's path upstream and its target's downstream.
+ * @param {LaidNode | LaidLink} d
+ * @returns {{links: Set<LaidLink>, nodes: Set<LaidNode>}}
+ */
+export function pathOf(d) {
+  /** @type {Set<LaidLink>} */
+  const links = new Set();
+  /** @type {Set<LaidNode>} */
+  const nodes = new Set();
+  /**
+   * @param {LaidNode} from
+   * @param {boolean} up
+   */
+  const walk = (from, up) => {
+    const stack = [from];
+    while (stack.length) {
+      const n = /** @type {LaidNode} */ (stack.pop());
+      nodes.add(n);
+      for (const l of up ? n.targetLinks : n.sourceLinks) {
+        if (links.has(l)) continue;
+        links.add(l);
+        stack.push(up ? l.source : l.target);
+      }
+    }
+  };
+  if (isLink(d)) {
+    const l = /** @type {LaidLink} */ (d);
+    links.add(l);
+    walk(l.source, true);
+    walk(l.target, false);
+  } else {
+    walk(/** @type {LaidNode} */ (d), true);
+    walk(/** @type {LaidNode} */ (d), false);
+  }
+  return { links, nodes };
+}
+
+/**
+ * The pointer on a mark: its path drawn over the rest until it leaves.
+ * @param {LaidNode | LaidLink} d
+ */
+export function trace(d) {
+  if (traced === d) return;
+  traced = d;
+  applyEmphasis();
+}
+
+/** The pointer off a mark: the path it traced let go. */
+export function untrace() {
+  if (!traced) return;
+  traced = null;
+  applyEmphasis();
 }
 
 /**
@@ -981,8 +1143,8 @@ export function keyNode(d, key, at) {
  */
 export function restoreFocus(hadFocus, onto = "") {
   if (!hadFocus) return;
-  // WITHOUT PINNING: otherwise the next Escape spends itself clearing that pin
-  // instead of undoing the next split. The focus handlers ask `restoring`.
+  // WITHOUT PINNING: the drawer keeps the node the reader opened, not the
+  // member focus lands on. The focus handlers ask `restoring`.
   restoring = true;
   try {
     restoreFocusTo(onto);
@@ -1040,8 +1202,8 @@ export function paintChartHint() {
   if (!expanding()) return;
   const chart = chartDrawn();
   const anyOpens = Boolean(chart) && chart.nodes.some(splittable);
-  // The isolate is named on every view, and Space with it, because Space
-  // never splits against the role="button" convention.
+  // The trace, the pin and Escape are named on every view: they are what an
+  // activation does where nothing opens.
   const follow = " " + say("follow");
   // A sentence of its own: the tail can be the only thing a chart offers.
   const tails = Boolean(chart) && chart.nodes.some(expandable);
@@ -1223,14 +1385,14 @@ export function nodeClass(d) {
 /**
  * The glyphs one node's label carries in its flag tspan: glyphs, not words,
  * because the label is at the edge of its gutter, and a glyph survives
- * forced-colors and greyscale. They compose, so a pair costs two glyph widths;
- * splittable and expandable are disjoint, so no mark carries three.
+ * forced-colors and greyscale. They compose, so a pair costs two glyph
+ * widths. A node that splits or folds carries its ⊕ or ⊖ beside its rect
+ * instead (glyphOf), where it is a control of its own.
  * @param {LaidNode} d
  * @returns {string}
  */
 export function nodeFlags(d) {
-  const marks = (d.derived ? "◇" : "") + (splittable(d) ? "▸" : "") +
-    (expandable(d) ? "⊞" : "");
+  const marks = (d.derived ? "◇" : "") + (expandable(d) ? "⊞" : "");
   return marks ? "  " + marks : "";
 }
 
@@ -1429,6 +1591,10 @@ export function render(laid, prior) {
   const doc = chartDrawn();
   if (!doc) return;
   finishMotion();
+  // The marks the pointer traced and the menu a glyph opened are the chart's
+  // replaced.
+  traced = null;
+  closeSplitMenu();
   const graph = laid || layOut(doc);
   const svg = D3.select("#chart");
   // Never the svg, whose viewBox is the chart's own coordinates.
@@ -1457,9 +1623,11 @@ export function render(laid, prior) {
     classes: { link: linkClass, node: nodeClass, flags: nodeFlags },
     describe: { link: linkDescription, node: nodeDescription },
     figure: markFigure,
+    glyph: glyphFor,
     on: {
       tip: hover, hide: hideTip, pin: pin, guarded: guarded,
-      click: clickNode, dblclick: doubleClickNode, key: keyNode,
+      click: clickNode, key: keyNode, glyph: glyphNode,
+      trace: trace, untrace: untrace,
       restoring: () => restoring,
     },
   });
@@ -1622,6 +1790,7 @@ export function setIsolated(id) {
     button.setAttribute("aria-pressed", String(pressed));
   }
   applyEmphasis();
+  syncPinButton();
   recordView("replace");
 }
 
@@ -1678,6 +1847,12 @@ export function applyEmphasis(state = filter) {
     on && !isolates(id, d) && !d.sourceLinks.concat(d.targetLinks).some((l) => follows(id, l)));
   svg.selectAll("g.node").attr("aria-pressed", /** @param {LaidNode} d */ (d) =>
     String(on && d.id === id));
+  // THE TRACE IS ITS OWN CLASS, never dim: it is let go on the pointer's
+  // leave, and the isolation under it must be there when it is.
+  const path = traced ? pathOf(traced) : null;
+  svg.classed("tracing", Boolean(path));
+  svg.selectAll("path.link").classed("on-path", /** @param {LaidLink} d */ (d) => Boolean(path) && path.links.has(d));
+  svg.selectAll("g.node").classed("on-path", /** @param {LaidNode} d */ (d) => Boolean(path) && path.nodes.has(d));
 }
 
 /**
@@ -1945,9 +2120,8 @@ export function linkDescription(d) {
  * @returns {string}
  */
 export function nodeDescription(d) {
-  // WHAT EACH GESTURE DOES, for a reader who cannot see the triangle. Space is
-  // named only where it differs from Enter; the folded tail's sentence uses the
-  // words of the chip that undoes it, since it splits nothing.
+  // WHAT AN ACTIVATION DOES, for a reader who cannot see the glyph: it opens
+  // a node that splits, draws out a tail, and otherwise pins.
   const what = splittable(d) ? say("desc_opens") : expandable(d) ? say("desc_expands") : say("desc_follows");
   const form = formOnScreen();
   const mark = markOfView(d);
@@ -2161,23 +2335,50 @@ export function unpin() {
 }
 
 /**
- * The drawer's button says whether what it shows is pinned, and is offered
- * only while it shows a mark.
+ * The drawer's buttons: Pin says whether what it shows is pinned, offered
+ * only while it shows a mark, and Follow whether the node it shows is the
+ * one followed, offered only while it shows a node.
  */
 export function syncPinButton() {
   const button = maybeEl("detail-pin");
-  if (!button) return;
-  button.hidden = !(pinned || previewed);
-  button.setAttribute("aria-pressed", pinned ? "true" : "false");
+  if (button) {
+    button.hidden = !(pinned || previewed);
+    button.setAttribute("aria-pressed", pinned ? "true" : "false");
+  }
+  const follow = maybeEl("detail-follow");
+  if (!follow) return;
+  const id = followable();
+  follow.hidden = id === "";
+  follow.setAttribute("aria-pressed", String(id !== "" && filter.isolated === id));
 }
 
-/** Wires the drawer's button: it pins the mark previewed, or lets the pin go. */
+/**
+ * The node the drawer shows, whose money its Follow button follows, or ""
+ * where it shows a ribbon or nothing.
+ * @returns {string}
+ */
+export function followable() {
+  const d = pinned || previewed;
+  return d && !isLink(d) ? d.id : "";
+}
+
+/**
+ * Wires the drawer's buttons: Pin pins the mark previewed or lets the pin
+ * go, and Follow follows the node shown's money or puts the rest back.
+ */
 export function wireDrawer() {
   const button = maybeEl("detail-pin");
-  if (!button) return;
-  button.addEventListener("click", () => guarded("pin this", () => {
-    if (pinned) unpin();
-    else if (previewed) pin(previewed);
+  if (button) {
+    button.addEventListener("click", () => guarded("pin this", () => {
+      if (pinned) unpin();
+      else if (previewed) pin(previewed);
+    }));
+  }
+  const follow = maybeEl("detail-follow");
+  if (!follow) return;
+  follow.addEventListener("click", () => guarded("follow this money", () => {
+    const id = followable();
+    if (id) setIsolated(filter.isolated === id ? "" : id);
   }));
 }
 
@@ -2548,8 +2749,8 @@ export function closeSearch() {
  * Takes the reader to one mark of the chart drawn, or to a node of the
  * expansion it does not draw, splitting the nodes above it until it is
  * (revealEntries). With `open`, the search's Enter, it does what activating
- * a drawn mark offers (openOffered), the rule the chart's own Enter and
- * double click use, and focuses a revealed node; otherwise, or where nothing
+ * a drawn mark offers (openOffered), the rule the chart's own activation
+ * uses, and focuses a revealed node; otherwise, or where nothing
  * splits, it follows the mark's money and focuses it, which scrolls it into
  * view and pins it. Says whether the mark is on the chart.
  * @param {string} id
@@ -2617,8 +2818,8 @@ export function wireSearch() {
       return;
     }
     if (e.key === "Escape") {
-      // The document's Escape undoes a split; in the search box it closes the
-      // list, then empties the box.
+      // The document's Escape unpins and follows everything again; in the
+      // search box it closes the list, then empties the box.
       e.stopPropagation();
       if (!list.hasAttribute("hidden")) closeSearch();
       else {
@@ -2898,7 +3099,7 @@ export function applyZoom(t) {
  * Binds d3.zoom to the chart just drawn, over its viewBox, and puts it at the
  * identity. The extent is stated, not d3's default, which reads the viewBox
  * through SVG geometry; the translate extent keeps the chart on the canvas.
- * A double click splits or follows a node, so it never zooms.
+ * A double click is two activations of a mark, so it never zooms.
  */
 export function bindZoom() {
   const svg = D3.select("#chart");
@@ -3261,8 +3462,10 @@ export function fail(message) {
   const panel = el("detail");
   panel.replaceChildren();
   panel.append(h("p", "", message));
-  const button = maybeEl("detail-pin");
-  if (button) button.hidden = true;
+  for (const id of ["detail-pin", "detail-follow"]) {
+    const button = maybeEl(id);
+    if (button) button.hidden = true;
+  }
 
   const content = document.querySelector("main");
   if (content) {
@@ -3690,15 +3893,12 @@ export async function main() {
   // year can still be followed by one that draws, and it needs these.
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
-      // Escape undoes one thing, innermost first: a pin or isolation, then the
-      // last split. The redraw clears the pin itself.
-      if (!pinned && !filter.isolated && expansions.length) {
-        guarded("undo the last split", undoLast);
-        return;
-      }
+      // ESCAPE UNDOES NO SPLIT: it lets the pin and the isolation go, and the
+      // chips, Back and ⊖ are what fold. A gesture that opened several
+      // splits at once has no single last one to undo.
+      if (closeSplitMenu(true)) return;
       hideTip();
-      pinned = null;
-      resetDetail();
+      unpin();
       setIsolated("");
     }
   });

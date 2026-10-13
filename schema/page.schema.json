@@ -277,6 +277,9 @@
         "follow",
         "expand",
         "swatch",
+        "glyph_open",
+        "glyph_choose",
+        "glyph_fold",
         "printed_by_city",
         "inferred_by_us",
         "our_inference",
@@ -322,6 +325,7 @@
         "drawer",
         "detail_empty",
         "pin",
+        "follow_money",
         "hairline",
         "splits_dropped"
       ],
@@ -390,7 +394,7 @@
         "follow": {
           "type": "string",
           "minLength": 1,
-          "description": "The hint's sentence about the isolating gesture."
+          "description": "The hint's sentence about the trace, the pin, the drawer's buttons and Escape, said beside every chart."
         },
         "expand": {
           "type": "string",
@@ -401,6 +405,21 @@
           "type": "string",
           "minLength": 1,
           "description": "The hint's sentence about the legend, where the overview draws one."
+        },
+        "glyph_open": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The name of the glyph beside a node that splits one way, which splits it: {label}, {split}."
+        },
+        "glyph_choose": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The name of the glyph beside a node that splits more than one way, which offers its ways: {label}."
+        },
+        "glyph_fold": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The name of the glyph beside a split node, which folds it back: {label}."
         },
         "printed_by_city": { "type": "string", "minLength": 1 },
         "inferred_by_us": { "type": "string", "minLength": 1 },
@@ -574,6 +593,11 @@
           "type": "string",
           "minLength": 1,
           "description": "The drawer's toggle that pins what it shows, or lets the pin go."
+        },
+        "follow_money": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The drawer's toggle that follows the money of the node it shows, or puts the rest back."
         },
         "hairline": {
           "type": "string",

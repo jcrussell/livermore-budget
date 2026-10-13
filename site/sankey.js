@@ -488,6 +488,36 @@ export function labelPlacement(slots, d, last) {
   return { anchor: "middle", x: (d.x0 + d.x1) / 2, y: d.y0 - 5, dy: null };
 }
 
+/** The radius of the ⊕ or ⊖ beside a node that splits or folds, in px. */
+export const GLYPH_R = 6;
+
+/** The gap between a node's rect and its glyph, in px. */
+export const GLYPH_GAP = 3;
+
+/**
+ * Where a node's ⊕ or ⊖ is centred: beside its rect, mid-height, on the side
+ * its label is not -- the ribbons' side, right of the rect, and left of it in
+ * the last column, whose labels run right into the gutter. An interior rect
+ * too short to hold it between its own label above and the next label below
+ * has it at the end of its label's line instead, past the label's width.
+ *
+ * @param {Map<string, number>} slots the placement (slotsOf)
+ * @param {LaidNode} d
+ * @param {number} last the largest column index this chart drew
+ * @param {number} width how wide the node's label draws (labelAdvance)
+ * @returns {{x: number, y: number}}
+ */
+export function glyphPlacement(slots, d, last, width) {
+  const col = columnOf(slots, d);
+  const y = (d.y0 + d.y1) / 2;
+  if (col !== 0 && col >= last) return { x: d.x0 - GLYPH_GAP - GLYPH_R, y };
+  if (col !== 0 && d.y1 - d.y0 < 2 * GLYPH_R) {
+    const place = labelPlacement(slots, d, last);
+    return { x: place.x + width / 2 + GLYPH_GAP + GLYPH_R, y: place.y - GLYPH_R };
+  }
+  return { x: d.x1 + GLYPH_GAP + GLYPH_R, y };
+}
+
 /**
  * Each mark's parent label, on every mark whose label another mark in the same
  * column also carries; nothing elsewhere.
@@ -1101,6 +1131,7 @@ export const SANKEY = Object.freeze({
     const gLinks = groupNamed("links");
     const gHits = groupNamed("link-hits");
     const gNodes = groupNamed("nodes");
+    const gGlyphs = groupNamed("glyphs");
     /** @param {LaidLink} d */
     const hairline = (d) => isHairline(ctx.chart, d);
     const keys = linkKeys(graph.links);
@@ -1149,9 +1180,9 @@ export const SANKEY = Object.freeze({
       .attr("role", "button")
       .attr("aria-hidden", null)
       .attr("aria-label", /** @param {LaidLink} d */ (d) => ctx.describe.link(d))
-      .on("pointerenter", /** @param {PointerEvent} e @param {LaidLink} d */ (e, d) => on.tip(e, d))
+      .on("pointerenter", /** @param {PointerEvent} e @param {LaidLink} d */ (e, d) => { on.tip(e, d); on.trace(d); })
       .on("pointermove", /** @param {PointerEvent} e @param {LaidLink} d */ (e, d) => on.tip(e, d))
-      .on("pointerleave", on.hide)
+      .on("pointerleave", () => { on.hide(); on.untrace(); })
       .on("focus", /** @param {FocusEvent} e @param {LaidLink} d */ (e, d) => on.guarded("show this flow", () => { if (on.restoring()) return; on.tip(e, d); on.pin(d); }))
       .on("blur", on.hide)
       .on("click", /** @param {MouseEvent} e @param {LaidLink} d */ (e, d) => on.guarded("pin this flow", () => { e.stopPropagation(); on.pin(d); }));
@@ -1170,9 +1201,9 @@ export const SANKEY = Object.freeze({
       .attr("class", "link-hit")
       .attr("d", path)
       .attr("aria-hidden", "true")
-      .on("pointerenter", /** @param {PointerEvent} e @param {LaidLink} d */ (e, d) => on.tip(e, d))
+      .on("pointerenter", /** @param {PointerEvent} e @param {LaidLink} d */ (e, d) => { on.tip(e, d); on.trace(d); })
       .on("pointermove", /** @param {PointerEvent} e @param {LaidLink} d */ (e, d) => on.tip(e, d))
-      .on("pointerleave", on.hide)
+      .on("pointerleave", () => { on.hide(); on.untrace(); })
       .on("click", /** @param {MouseEvent} e @param {LaidLink} d */ (e, d) => on.guarded("pin this flow", () => { e.stopPropagation(); on.pin(d); }));
 
     /** @type {any} */
@@ -1200,48 +1231,33 @@ export const SANKEY = Object.freeze({
       .attr("role", "button")
       .attr("aria-hidden", null)
       // aria-pressed is the isolation, on every node. SPLITTING IS NOT THE
-      // TOGGLE and must never be announced as one: it replaces the node with
-      // its parts, leaving no pressed state to return to. The label announces
-      // what a node splits into.
+      // TOGGLE and must never be announced as one: the label announces what
+      // a node splits into, and ⊖ beside it, not the node, folds it back.
       .attr("aria-pressed", "false")
       .attr("aria-label", /** @param {LaidNode} d */ (d) => ctx.describe.node(d))
-      // Both keys activate every node; which one opens is the description's to say.
+      // Both keys are the one activation a click is.
       .attr("aria-keyshortcuts", "Enter Space")
-      .on("pointerenter", /** @param {PointerEvent} e @param {LaidNode} d */ (e, d) => on.tip(e, d))
+      .on("pointerenter", /** @param {PointerEvent} e @param {LaidNode} d */ (e, d) => { on.tip(e, d); on.trace(d); })
       .on("pointermove", /** @param {PointerEvent} e @param {LaidNode} d */ (e, d) => on.tip(e, d))
-      .on("pointerleave", on.hide)
+      .on("pointerleave", () => { on.hide(); on.untrace(); })
       .on("focus", /** @param {FocusEvent} e @param {LaidNode} d */ (e, d) => on.guarded("show this mark", () => { if (on.restoring()) return; on.tip(e, d); on.pin(d); }))
       .on("blur", on.hide)
-      // TWO GESTURES, ONE MEANING EACH: a single click and Space isolate on every
-      // node; a double click and Enter split the nodes that split, and a double
-      // click with Alt or Shift folds back the node a mark was split out of.
+      // ONE ACTIVATION, by click, Enter or Space: it opens a node that opens
+      // and pins one that does not.
       //
-      // Both click and keydown, because an SVG g[role=button] synthesises no click
-      // from Enter, and some screen readers send both -- which would toggle twice.
-      // So the guard is on the activation: a click on the node a key just
-      // activated is that key's own click. Focus must not isolate, and a held key
-      // is ignored, or tabbing would strobe the chart.
+      // Both click and keydown, because an SVG g[role=button] synthesises no
+      // click from Enter. A held key is ignored.
       .on("click", /** @param {MouseEvent} e @param {LaidNode} d */ (e, d) => {
-        on.guarded("pin this mark", () => {
+        on.guarded("open this mark", () => {
           e.stopPropagation();
-          on.click(d, e.timeStamp);
-        });
-      })
-      // ON EVERY NODE, not only one that splits: its two clicks have already
-      // toggled the isolation twice, and this restores what was isolated before.
-      // preventDefault stops the double click selecting the label.
-      .on("dblclick", /** @param {MouseEvent} e @param {LaidNode} d */ (e, d) => {
-        on.guarded("split this mark", () => {
-          e.stopPropagation();
-          e.preventDefault();
-          on.dblclick(d, e.timeStamp, Boolean(e.altKey || e.shiftKey));
+          on.click(d);
         });
       })
       .on("keydown", /** @param {KeyboardEvent} e @param {LaidNode} d */ (e, d) => {
         if (e.key !== "Enter" && e.key !== " ") return;
         if (e.repeat) return;
         e.preventDefault();
-        on.guarded("act on this mark", () => on.key(d, e.key, e.timeStamp));
+        on.guarded("open this mark", () => on.key(d));
       });
     /** @param {any} sel the marks, or a transition of them */
     const placeNodes = (sel) => {
@@ -1309,15 +1325,65 @@ export const SANKEY = Object.freeze({
         .text((qualifierOf(d) ? qualifierOf(d) + ": " : "") + d.label + (nounOf(d) ? " (" + nounOf(d) + ")" : "") + value(d));
     });
 
+    // THE GLYPHS ARE CONTROLS OF THEIR OWN, beside the marks and not inside
+    // them, so no button is nested in another: ⊕ opens, ⊖ folds back, each
+    // in the words ctx.glyph gives it.
+    /** @type {Map<string, {kind: string, label: string, menu: boolean}>} */
+    const glyphWords = new Map();
+    for (const d of graph.nodes) {
+      const w = ctx.glyph ? ctx.glyph(d) : null;
+      if (w) glyphWords.set(d.id, w);
+    }
+    const glyphs = gGlyphs.selectAll(":scope > g")
+      .data(graph.nodes.filter((d) => glyphWords.has(d.id)), /** @param {LaidNode} d */ (d) => d.id)
+      .join((/** @type {any} */ enter) => {
+        const g = enter.append("g");
+        g.append("circle").attr("r", GLYPH_R);
+        g.append("path");
+        return g;
+      })
+      .attr("class", /** @param {LaidNode} d */ (d) => "glyph glyph-" + /** @type {any} */ (glyphWords.get(d.id)).kind)
+      .attr("role", "button")
+      .attr("tabindex", 0)
+      .attr("aria-label", /** @param {LaidNode} d */ (d) => /** @type {any} */ (glyphWords.get(d.id)).label)
+      .attr("aria-haspopup", /** @param {LaidNode} d */ (d) => (/** @type {any} */ (glyphWords.get(d.id)).menu ? "true" : null))
+      .attr("aria-keyshortcuts", "Enter Space")
+      .attr("transform", /** @param {LaidNode} d */ (d) => {
+        const w = words(d);
+        const at = glyphPlacement(slots, d, lastColumn, labelAdvance(w, value(d), ctx.classes.flags(d)));
+        return "translate(" + at.x + "," + at.y + ")";
+      })
+      .on("click", /** @this {SVGGElement} @param {MouseEvent} e @param {LaidNode} d */ function (e, d) {
+        const el = this;
+        on.guarded("open or fold this mark", () => {
+          e.stopPropagation();
+          on.glyph(d, /** @type {any} */ (glyphWords.get(d.id)).kind, e.timeStamp, false, el);
+        });
+      })
+      .on("keydown", /** @this {SVGGElement} @param {KeyboardEvent} e @param {LaidNode} d */ function (e, d) {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        if (e.repeat) return;
+        e.preventDefault();
+        const el = this;
+        on.guarded("open or fold this mark", () =>
+          on.glyph(d, /** @type {any} */ (glyphWords.get(d.id)).kind, e.timeStamp, true, el));
+      });
+    glyphs.select("path").attr("d", /** @param {LaidNode} d */ (d) => {
+      const arm = GLYPH_R - 2.5;
+      const across = "M" + -arm + ",0H" + arm;
+      return /** @type {any} */ (glyphWords.get(d.id)).kind === "open" ? across + "M0," + -arm + "V" + arm : across;
+    });
+
     /** Marks leaving the chart: inert at once, gone at the end. @param {any} sel */
     const inert = (sel) => sel.attr("data-leaving", "").attr("aria-hidden", "true").attr("pointer-events", "none")
-      .attr("tabindex", null).attr("role", null).on("click", null).on("dblclick", null).on("keydown", null)
+      .attr("tabindex", null).attr("role", null).on("click", null).on("keydown", null)
       .on("focus", null).on("pointerenter", null).on("pointermove", null);
     const finish = () => {
       layer.selectAll("*").interrupt(MOVE).interrupt(FADE);
       placeLinks(ribbons);
       placeNodes(node);
       label.attr("opacity", null);
+      glyphs.attr("opacity", null);
       layer.selectAll("[data-leaving]").remove();
     };
     if (!t) {
@@ -1344,10 +1410,13 @@ export const SANKEY = Object.freeze({
       });
     }
     label.attr("opacity", 0);
+    glyphs.attr("opacity", 0);
     placeLinks(moving(ribbons));
     placeNodes(moving(node));
     label.transition(FADE).delay(motion).duration(motion / 2).attr("opacity", 1)
       .on("end", /** @this {SVGTextElement} */ function () { this.removeAttribute("opacity"); });
+    glyphs.transition(FADE).delay(motion).duration(motion / 2).attr("opacity", 1)
+      .on("end", /** @this {SVGGElement} */ function () { this.removeAttribute("opacity"); });
 
     // THE END OF A MARK LEAVING: into the right edge of its ancestor drawn now.
     if (leavingNodes) {

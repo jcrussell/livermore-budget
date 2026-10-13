@@ -244,16 +244,23 @@ async function drive(year) {
       }
     }
 
-    // (d) what a gesture DOES, by dispatch: a click isolates and a second
-    // releases; Space isolates and the click it synthesises does not undo
-    // it; a held key does nothing; a double click and Enter each split.
+    // (d) what a gesture DOES, by dispatch: focus pins a mark, the drawer's
+    // Follow isolates it and a second releases it; a held key does nothing;
+    // a click pins a mark that does not split, and a click and Enter each
+    // split one that does, pinning it.
     const opener = marks.find((m) => app.splittable(m.__data__));
     const subject = opener || marks[0];
     if (subject) {
       const id = subject.__data__.id;
       const note = (what) => wrong.gestures.push(`${where}: ${id} ${what}`);
-      seen.gestures++; fire(subject, "click", { timeStamp: t0 + 1000 });
-      if (app.filter.isolated !== id) note(`does not isolate on a click (isolated is ${JSON.stringify(app.filter.isolated)})`);
+      const pinnedHere = () => Boolean(app.pinned) && app.pinned.id === id;
+      const follow = document.getElementById("detail-follow");
+      // Focus already on it (restoreFocus) would fire no focus to pin it.
+      subject.blur();
+      subject.focus();
+      if (!pinnedHere()) note("is not pinned by focus");
+      seen.gestures++; fire(follow, "click");
+      if (app.filter.isolated !== id) note(`does not isolate on the drawer's Follow (isolated is ${JSON.stringify(app.filter.isolated)})`);
       // The dimming, stated as invariants rather than recomputing the predicate.
       const lit = ribbonsIn(chart).filter((p) => p.__data__.source.id === id || p.__data__.target.id === id);
       const dimmedRibbons = ribbonsIn(chart).filter((p) => p.classList.contains("dim"));
@@ -266,18 +273,11 @@ async function drive(year) {
       }
       if (subject.classList.contains("dim")) note("dims itself while isolated");
 
-      seen.gestures++; fire(subject, "click", { timeStamp: t0 + 2000 });
-      if (app.filter.isolated !== "") note(`does not release on a second click (isolated is ${JSON.stringify(app.filter.isolated)})`);
+      seen.gestures++; fire(follow, "click");
+      if (app.filter.isolated !== "") note(`does not release on a second Follow (isolated is ${JSON.stringify(app.filter.isolated)})`);
       const stuck = ribbonsIn(chart).filter((p) => p.classList.contains("dim")).length +
         marksIn(chart).filter((m) => m.classList.contains("dim")).length;
       if (stuck > 0) note(`leaves ${stuck} mark(s) and ribbon(s) dimmed after the isolation is released`);
-
-      seen.gestures++; fire(subject, "keydown", { key: " ", timeStamp: t0 + 3000 });
-      if (app.filter.isolated !== id) note(`does not isolate on Space (isolated is ${JSON.stringify(app.filter.isolated)})`);
-      seen.gestures++; fire(subject, "click", { timeStamp: t0 + 3000 });
-      if (app.filter.isolated !== id) note("is un-isolated by the click its own Space synthesised");
-      seen.gestures++; fire(subject, "keydown", { key: " ", timeStamp: t0 + 9000 });
-      if (app.filter.isolated !== "") note(`does not release on a second Space (isolated is ${JSON.stringify(app.filter.isolated)})`);
 
       const before = app.expansions.length;
       seen.gestures++; fire(subject, "keydown", { key: "Enter", timeStamp: t0 + 9500, repeat: true });
@@ -286,10 +286,17 @@ async function drive(year) {
         note(`acts on a held key (isolated ${JSON.stringify(app.filter.isolated)}, ${app.expansions.length} split(s))`);
       }
 
+      if (!opener) {
+        app.unpin();
+        seen.gestures++; fire(subject, "click", { timeStamp: t0 + 9800 });
+        await settle();
+        if (!pinnedHere() || app.expansions.length !== before) note("is not pinned by a click, or a click split it");
+      }
+
       if (opener) {
         // A split replaces the mark, so restoreFocus must land focus somewhere real.
         subject.focus();
-        seen.gestures++; fire(subject, "dblclick", { timeStamp: t0 + 10000 });
+        seen.gestures++; fire(subject, "click", { timeStamp: t0 + 10000 });
         await settle();
         const landed = document.activeElement;
         seen.focus++;
@@ -297,8 +304,9 @@ async function drive(year) {
           note(`left focus on ${landed && landed !== document.body ? JSON.stringify(landed.getAttribute("class")) : "nothing"} after splitting`);
         }
         if (app.expansions.length !== before + 1) {
-          note(`does not split on a double click (${app.expansions.length} split(s), was ${before})`);
+          note(`does not split on a click (${app.expansions.length} split(s), was ${before})`);
         }
+        if (!pinnedHere()) note("is not pinned once a click split it");
         await goTo(app, entries);
         const again = marksIn(chart).find((m) => m.__data__.id === id);
         if (!again) note("is gone from the chart it was just split from");
@@ -405,9 +413,9 @@ for (const year of YEARS) {
     });
 
     test(`${year.label}: a gesture on a drawn mark does what the page says it does`, (t) => {
-      const detail = `${seen.gestures} event(s) fired over ${seen.states} state(s): a click isolates and ` +
-        "a second releases, Space isolates, the click that Space synthesises does not undo it, " +
-        "a held key does nothing, and a double click and Enter each split a node that splits; " +
+      const detail = `${seen.gestures} event(s) fired over ${seen.states} state(s): focus pins, the drawer's ` +
+        "Follow isolates and a second releases, a held key does nothing, a click pins a node that " +
+        "does not split, and a click and Enter each split a node that splits, pinning it; " +
         `the isolation dims ${seen.emphasis} mark(s) and ribbon(s), none of them the isolated node or ` +
         "a flow of its own, and none left dimmed once released; and from focus on a mark a split " +
         `moved it to a mark of the chart it drew ${seen.focus} time(s)`;
@@ -440,20 +448,24 @@ describe("the expansion's drawing", () => {
   const records = [];
   const walks = {};
   const hundreds = [];
-  const tally = { nodes: 0, opens: 0, derivedOnly: 0, expands: 0 };
+  const tally = { nodes: 0, opens: 0, folds: 0, derivedOnly: 0, expands: 0 };
 
   before(async () => {
     for (const year of YEARS) {
       const { app, document } = await bootedApp({ checkedStem: year.stem });
       const chart = document.getElementById("chart");
       const look = (where) => {
+        const glyphs = new Map([...chart.querySelectorAll("g.glyph")].map((g) =>
+          [g.__data__.id, g.classList.contains("glyph-open") ? "open" : g.classList.contains("glyph-fold") ? "fold" : "?"]));
         for (const m of marksIn(chart)) {
           const d = m.__data__;
           const flag = flagOf(m);
           const opens = app.splittable(d);
+          const folds = app.foldable(d);
           const expands = app.expandable(d);
           tally.nodes++;
           if (opens) tally.opens++;
+          if (folds) tally.folds++;
           if (d.derived && !opens) tally.derivedOnly++;
           if (expands) tally.expands++;
           records.push({
@@ -461,7 +473,7 @@ describe("the expansion's drawing", () => {
             classes: (m.getAttribute("class") || "").split(/\s+/).filter(Boolean),
             flag: flag ? flag.textContent : null,
             rule: app.nodeClass(d), flags: app.nodeFlags(d),
-            opens, expands, derived: Boolean(d.derived),
+            opens, folds, expands, derived: Boolean(d.derived), glyph: glyphs.get(d.id) || "",
           });
           const share = app.shareOf(d);
           if (share.includes("100.0%") || share.includes("100%")) hundreds.push(`${year.label} ${where} ${d.id}: ${share}`);
@@ -472,23 +484,26 @@ describe("the expansion's drawing", () => {
     }
   });
 
-  test("a node that splits is drawn as one, a tail that draws out is drawn as one, and a node that does neither is drawn as neither", (t) => {
+  // Mutation: draw the glyph beside every node the schedule splits, open or
+  // not, and this goes red, ⊕ beside a hub.
+  test("a node that splits is drawn as one with ⊕ beside it, a hub with ⊖, a tail that draws out as one, and a node that does none of these as none", (t) => {
     const wrong = records.filter((r) =>
       r.classes.includes("opens") !== r.opens ||
       r.classes.includes("expands") !== r.expands ||
       (r.flag || "").includes("⊞") !== r.expands ||
       (r.opens && r.expands) ||
-      (r.flag || "").includes("▸") !== r.opens ||
+      (r.glyph === "open") !== r.opens ||
+      (r.glyph === "fold") !== r.folds ||
       (r.flag || "").includes("◇") !== r.derived)
       .map((r) => `${r.where} > ${r.id} is drawn "${r.classes.join(" ")}" / "${r.flag}" but ` +
         `${r.opens ? "splits" : "does not split"}`);
     const visited = Object.values(walks).map((w) => w.visited).reduce((a, b) => a + b, 0);
     t.diagnostic(`over the root and ${visited} split chart(s) of both columns, ${tally.nodes} mark(s): ` +
-      `${tally.opens} carry "opens" and the triangle, ${tally.derivedOnly} the diamond alone, ` +
+      `${tally.opens} carry "opens" and ⊕, ${tally.folds} ⊖, ${tally.derivedOnly} the diamond alone, ` +
       `${tally.expands} carry "expands" and the plus`);
     for (const w of Object.values(walks)) assert.equal(w.refused, "");
     assert.deepEqual(wrong.slice(0, 5), [], `${wrong.length} of ${tally.nodes} mark(s) are drawn as something they are not`);
-    assert.ok(tally.opens > 0 && tally.expands > 0 && tally.derivedOnly > 0, "the corpus puts marks on both sides of each question");
+    assert.ok(tally.opens > 0 && tally.folds > 0 && tally.expands > 0 && tally.derivedOnly > 0, "the corpus puts marks on both sides of each question");
   });
 
   test("the flag tspan a mark draws carries exactly nodeFlags", (t) => {
@@ -953,7 +968,10 @@ describe("the classes the client sets and the rules the stylesheet carries", () 
     nodes: "the <g> the marks are drawn into",
     "zoom-layer": "the <g> the page makes for the form to draw into, which the zoom transforms",
     "link-hits": "the <g> a hairline's hit targets are drawn into",
-    opens: "the mark that splits; its affordance is the flag tspan, not a style",
+    glyphs: "the <g> the glyphs beside the marks are drawn into",
+    "glyph-open": "the ⊕ beside a mark that splits, drawn as a plus by its path",
+    "glyph-fold": "the ⊖ beside a split mark's hub, drawn as a minus by its path",
+    opens: "the mark that splits; its affordance is its ⊕, not a style",
     expands: "the folded tail, likewise",
     "tip-drawn": "the tooltip's drawn-part line, worn as a tip-meta",
   };
@@ -1002,7 +1020,12 @@ describe("the classes the client sets and the rules the stylesheet carries", () 
     app.showTip({ target: chart, clientX: 0, clientY: 0 }, ribbon.__data__); snap();
     app.pin(ribbon.__data__); snap();
     app.pin(mark.__data__); snap();
-    fire(mark, "keydown", { key: " " }); await settle(); snap();
+    // A trace under the pointer, and the menu ⊕ opens on a node that splits two ways.
+    fire(mark, "pointerenter"); snap(); fire(mark, "pointerleave");
+    const chooser = [...chart.querySelectorAll("g.glyph")].find((g) => g.getAttribute("aria-haspopup") === "true");
+    assert.ok(chooser, "no ⊕ offers a menu");
+    fire(chooser, "click", { timeStamp: 0 }); snap(); app.closeSplitMenu();
+    app.setIsolated(mark.__data__.id); await settle(); snap();
     // A search listing its options, and a filter leaving part of a mark drawn.
     const search = document.getElementById("search-input");
     search.value = String(mark.__data__.label).slice(0, 3);

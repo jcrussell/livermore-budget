@@ -105,6 +105,9 @@ func TestTheWordingFillsEveryPlaceholderTheClientHands(t *testing.T) {
 		"smaller_flow":        {"flows", "threshold"},
 		"search_count":        {"n"},
 		"search_none":         {"query"},
+		"glyph_open":          {"label", "split"},
+		"glyph_choose":        {"label"},
+		"glyph_fold":          {"label"},
 		"hairline":            {"n"},
 		"splits_dropped":      {"year", "nodes", "n"},
 	}

@@ -47,7 +47,7 @@
       The <span id="lede-year">{{.Lede}}</span> budget, all funds, gross — read out of the city's
       published schedule and traced back to it. Figures the city printed are drawn solid;
       the two things we inferred are drawn dashed and labelled.
-      {{- /* Empty until a year is drawn: what a node does on a double click or
+      {{- /* Empty until a year is drawn: what a node does on a click or
              Enter depends on the chart drawn, so paintChartHint owns the words. */}}
       <span id="chart-hint"></span>
     </p>
@@ -224,6 +224,7 @@
          pins it, and nothing hovered replaces a pin. */}}
   <aside class="drawer" id="drawer" aria-label="{{.Wording.Drawer}}">
     <div class="drawer-head">
+      <button type="button" id="detail-follow" aria-pressed="false" hidden>{{.Wording.FollowMoney}}</button>
       <button type="button" id="detail-pin" aria-pressed="false" hidden>{{.Wording.Pin}}</button>
     </div>
     <div class="detail" id="detail" aria-live="polite">
@@ -262,10 +263,13 @@
   Hover, tap or tab to a flow for its amount, fact ids and sources.
   {{- /* Says only what is true of every node; which nodes open is
          #chart-hint's, from the chart on screen. */}}
-  {{if .Expands}}Double click a node to split it in place into its parts, and every other node
-  stays; a single click on any node, or on a fund swatch, follows only that money. Escape
-  undoes the last split, or puts the rest back.{{else}}Click a node or a fund swatch to follow only that money; Escape puts the
-  rest back.{{end}}
+  {{if .Expands}}Click a node marked ⊕ to split it in place into its parts, and every other node
+  stays; ⊖ beside it folds it back, and Back undoes the last step. Hovering a node or a flow
+  traces its path; a click on one that does not split pins it in the drawer, whose Pin lets it
+  go, and {{.Wording.FollowMoney}} there, or a fund swatch, draws only that money. Escape unpins and
+  puts the rest back.{{else}}Click a node or a flow to pin it in the drawer, whose Pin lets it go;
+  {{.Wording.FollowMoney}} there, or a fund swatch, draws only that money, and Escape unpins and puts
+  the rest back.{{end}}
 </p>
 
 <!-- THE APPARATUS IS DISCLOSED, NOT DELETED. Three of the four panels below

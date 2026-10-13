@@ -817,6 +817,7 @@ button[aria-pressed="true"] {
 .drawer-head {
   display: flex;
   justify-content: flex-end;
+  gap: 6px;
 }
 
 .drawer-head button[hidden] {
@@ -1049,8 +1050,81 @@ svg.sankey .node.dim {
   opacity: 0.3;
 }
 
-/* EVERY NODE KEEPS THE POINTER: a single click does something on every node.
-   Which marks also open is the flag tspan's `opens` marker. */
+/* THE TRACE: while the pointer is on a mark, what is off its path fades as
+   an isolation dims, through the same 120ms transition, and comes back on
+   the pointer's leave. */
+svg.sankey.tracing .link:not(.on-path) {
+  stroke-opacity: 0.07;
+}
+
+svg.sankey.tracing .node:not(.on-path) {
+  opacity: 0.3;
+}
+
+/* ⊕ and ⊖ beside a node that splits or folds: a control of its own. */
+svg.sankey .glyph {
+  cursor: pointer;
+}
+
+svg.sankey .glyph circle {
+  fill: var(--surface-1);
+  stroke: var(--ink-2);
+  stroke-width: 1;
+}
+
+svg.sankey .glyph path {
+  fill: none;
+  stroke: var(--ink-1);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+svg.sankey .glyph:hover circle {
+  stroke: var(--ink-1);
+}
+
+svg.sankey .glyph:focus-visible {
+  outline: none;
+}
+
+svg.sankey .glyph:focus-visible circle {
+  stroke: var(--focus);
+  stroke-width: 2;
+}
+
+/* The menu ⊕ opens on a node that splits more than one way. */
+.split-menu {
+  position: absolute;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--surface-1);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+  padding: 6px;
+  font-size: 13px;
+}
+
+.split-choice {
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  color: var(--ink-1);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 2px 8px;
+}
+
+.split-choice:hover,
+.split-choice:focus {
+  border-color: var(--rule);
+}
+
+/* EVERY NODE KEEPS THE POINTER: a click does something on every node.
+   Which marks open is their ⊕. */
 svg.sankey .node {
   cursor: pointer;
 }
@@ -1288,10 +1362,8 @@ details > summary {
 /* ---------- the chip row of what the chart has split open ---------- */
 
 /* Above the chart rather than beside it, because it is the only always-visible
-   way to fold a split back: splitting a node can remove the mark the reader
-   double clicked, so there is nothing left to click again. Escape also undoes
-   one, but a reader who arrived by clicking has no reason to expect a
-   keystroke. */
+   way to fold a split back besides ⊖, which sits beside a mark the reader
+   may have scrolled away from. */
 .breadcrumb {
   display: flex;
   align-items: baseline;
@@ -1560,6 +1632,8 @@ noscript p {
   .rail-toggle,
   .filters,
   .drawer-head,
+  .split-menu,
+  svg.sankey .glyph,
   .tooltip {
     display: none;
   }
