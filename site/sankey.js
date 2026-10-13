@@ -86,21 +86,51 @@ export function isHairline(chart, d) {
 export const LABEL_GUTTER = 320;
 
 /**
- * The clear run between one column's rects and the next's, in px. Held fixed
- * as columns are added.
+ * The clear run between one column's rects and the next's, in px, up to
+ * HELD_COLUMNS columns.
  */
 export const BAND = 319;
 
 /**
- * How wide a chart of `n` columns is laid out, in px. Labels do not reflow, so
- * the chart is laid out at a fixed width and scaled by the viewBox.
+ * The column count whose width a wider chart is held to: past it the bands
+ * narrow (bandOf) rather than the chart widening.
+ */
+export const HELD_COLUMNS = 4;
+
+/**
+ * The narrowest band, in px. Past it the chart widens again and scrolls in
+ * its card. site/layout.test.mjs prints what an interior label keeps of its
+ * name at this floor.
+ */
+export const BAND_FLOOR = 160;
+
+/**
+ * How wide a chart of `n` columns is laid out, in px: at BAND up to
+ * HELD_COLUMNS, then held at that width while the bands narrow to
+ * BAND_FLOOR, then at the floor. Labels do not reflow, so the chart is laid
+ * out at a fixed width, and style.css draws every width at the one scale the
+ * held width fits its card at.
  * @param {number} n
  * @returns {number}
  */
 export function chartWidth(n) {
   // d3-sankey divides by (columns - 1); clamp so the width stays finite.
   const columns = Math.max(1, n);
-  return 2 * LABEL_GUTTER + BAND * (columns - 1) + NODE_WIDTH * columns;
+  /** @param {number} c @param {number} band */
+  const at = (c, band) => 2 * LABEL_GUTTER + band * (c - 1) + NODE_WIDTH * c;
+  if (columns <= HELD_COLUMNS) return at(columns, BAND);
+  return Math.max(at(HELD_COLUMNS, BAND), at(columns, BAND_FLOOR));
+}
+
+/**
+ * The clear run between one column's rects and the next's in a chart of `n`
+ * columns, in px, as chartWidth lays them out.
+ * @param {number} n
+ * @returns {number}
+ */
+export function bandOf(n) {
+  const columns = Math.max(2, n);
+  return (chartWidth(columns) - 2 * LABEL_GUTTER - NODE_WIDTH * columns) / (columns - 1);
 }
 
 /**
@@ -500,23 +530,6 @@ export function labelQualifiers(doc, slots, nodes) {
 }
 
 /**
- * The dy each of a qualified label's two lines is drawn at, relative to the
- * line before it, or null where the qualifier is drawn inline. Only an
- * interior label takes two lines: it has nowhere below to go, so the
- * qualifier is lifted a whole line and the label stays put. An outward label
- * is one line, "Qualifier: label", because d3 holds only NODE_PADDING between
- * two marks and canvasHeight counts marks, not lines.
- *
- * NO COMMITTED VIEW DRAWS THE INTERIOR BRANCH, so no check sees it; fisc-xhqt.
- *
- * @param {string} anchor
- * @returns {{qualifier: string, label: string} | null}
- */
-export function labelLineShift(anchor) {
-  return anchor === "middle" ? { qualifier: "-1.15em", label: "1.15em" } : null;
-}
-
-/**
  * The advance a label's words are fitted at, in em: an over-estimate on
  * purpose, wider than any usual face sets `system-ui`, so the error runs
  * toward cutting a label that would have fitted.
@@ -541,48 +554,47 @@ export function textAdvance(text, px) {
 
 /**
  * How wide a mark's label draws at most, by ADVANCE_EM: the qualifier and
- * label tspans at LABEL_PX on one line, or the wider of the two lines where
- * the qualifier is lifted above (labelLineShift), and the value and flags
- * after the label.
+ * label tspans at LABEL_PX on one line, and the value and flags after them.
  * @param {{qualifier: string, label: string}} words what labelWords draws
- * @param {string} anchor
  * @param {string} value the value tspan's words
  * @param {string} flags the flag tspan's words
  * @returns {number}
  */
-export function labelAdvance(words, anchor, value, flags) {
-  const after = textAdvance(value, VALUE_PX) + textAdvance(flags, LABEL_PX);
-  return labelLineShift(anchor) && words.qualifier
-    ? Math.max(textAdvance(words.label, LABEL_PX) + after, textAdvance(words.qualifier, LABEL_PX))
-    : textAdvance(words.qualifier + words.label, LABEL_PX) + after;
+export function labelAdvance(words, value, flags) {
+  return textAdvance(words.qualifier + words.label, LABEL_PX) + textAdvance(value, VALUE_PX) + textAdvance(flags, LABEL_PX);
 }
 
 /**
- * The run from a label's anchor to the edge of the chart, in px, for a label
- * anchored outward; an interior label is centred in its band and not fitted.
+ * The run a label may draw over, in px: from an outward label's anchor to
+ * the edge of the chart, and for an interior label, centred on its rect, its
+ * column's rect and half the band either side (bandOf).
  * @param {{anchor: string, x: number}} place labelPlacement's answer
- * @param {number} width the chart's width (chartWidth)
+ * @param {number} columns how many columns the chart is laid out in
  * @returns {number}
  */
-export function labelRoom(place, width) {
-  return place.anchor === "end" ? place.x : place.anchor === "start" ? width - place.x : Infinity;
+export function labelRoom(place, columns) {
+  if (place.anchor === "end") return place.x;
+  if (place.anchor === "start") return chartWidth(columns) - place.x;
+  return bandOf(columns) + NODE_WIDTH;
 }
 
 /**
  * The words a mark's qualifier and label tspans draw, fitted to `room`.
  *
- * AN OUTWARD LABEL IS ONE LINE, its qualifier inline as "Qualifier: ". Where
- * it is wider than its room by `measure`, the middle of its OWNER is cut for
- * an ellipsis: the label's words before its last ": ", else the qualifier,
- * else the whole label. The ": Category" after it and the value are kept,
- * and so are the owner's first word and as much of its end as fits, since
- * funds that share a prefix differ at the end ("County Meas BB-Bike/Pedestrian",
- * "County Meas BB-Local St & Rd"). A label still too wide with its owner cut
- * to two characters is drawn so; the gutter check under site/ sees it.
+ * EVERY LABEL IS ONE LINE, its qualifier inline as "Qualifier: ", because d3
+ * holds only NODE_PADDING between two marks and canvasHeight counts marks,
+ * not lines. Where it is wider than its room by `measure`, the middle of its
+ * OWNER is cut for an ellipsis: the label's words before its last ": ", else
+ * the qualifier, else the whole label. The ": Category" after it and the
+ * value are kept, and so are the owner's first word and as much of its end
+ * as fits, since funds that share a prefix differ at the end ("County Meas
+ * BB-Bike/Pedestrian", "County Meas BB-Local St & Rd"). Where the owner cut
+ * to two characters still does not fit, the whole line, qualifier and all, is
+ * cut as one owner; a label too wide even then is drawn so, and the room
+ * checks under site/ see it.
  *
  * The text stays Go's; this only fits it to the screen.
  *
- * @param {string} anchor labelPlacement's anchor
  * @param {number} room labelRoom
  * @param {string} qualifier labelQualifiers' answer for the mark, or ""
  * @param {string} label
@@ -590,20 +602,30 @@ export function labelRoom(place, width) {
  *   wide the whole label draws in these words, value and flags included
  * @returns {{qualifier: string, label: string, cut: boolean}}
  */
-export function labelWords(anchor, room, qualifier, label, measure) {
-  if (labelLineShift(anchor)) return { qualifier, label, cut: false };
+export function labelWords(room, qualifier, label, measure) {
   const lead = qualifier ? qualifier + ": " : "";
   if (measure({ qualifier: lead, label }) <= room) return { qualifier: lead, label, cut: false };
   const split = label.lastIndexOf(": ");
-  /** @type {(owner: string) => {qualifier: string, label: string}} */
-  const words = split > 0
-    ? (owner) => ({ qualifier: lead, label: owner + label.slice(split) })
+  const fitted = split > 0
+    ? cutOwner(label.slice(0, split), (owner) => ({ qualifier: lead, label: owner + label.slice(split) }), room, measure)
     : qualifier
-      ? (owner) => ({ qualifier: owner + ": ", label })
-      : (owner) => ({ qualifier: "", label: owner });
-  const owner = split > 0 ? label.slice(0, split) : qualifier || label;
-  // The owner's first word leads, and its end takes the rest: names here
-  // share a prefix ("Grant - ", "County Meas BB-") more than an end.
+      ? cutOwner(qualifier, (owner) => ({ qualifier: owner + ": ", label }), room, measure)
+      : null;
+  if (fitted && measure(fitted) <= room) return fitted;
+  return cutOwner(lead + label, (owner) => ({ qualifier: "", label: owner }), room, measure);
+}
+
+/**
+ * The most of `owner`'s characters, at least two, that `words` draws within
+ * `room`: its first word leads and its end takes the rest, since names here
+ * share a prefix ("Grant - ", "County Meas BB-") more than an end.
+ * @param {string} owner
+ * @param {(owner: string) => {qualifier: string, label: string}} words
+ * @param {number} room
+ * @param {(words: {qualifier: string, label: string}) => number} measure
+ * @returns {{qualifier: string, label: string, cut: boolean}}
+ */
+function cutOwner(owner, words, room, measure) {
   const word = owner.search(/[\s-]/);
   /** @param {number} keep how many of the owner's characters stay */
   const cutTo = (keep) => {
@@ -1028,35 +1050,27 @@ export const SANKEY = Object.freeze({
       .attr("x", /** @param {LaidNode} d */ (d) => place(d).x)
       .attr("text-anchor", /** @param {LaidNode} d */ (d) => place(d).anchor);
 
-    // On an unqualified mark the qualifier tspan is empty with no x or dy, so it
-    // starts no line; an outward qualifier is inline and starts none either.
-    /** @param {LaidNode} d */
-    const shift = (d) => (qualifierOf(d) ? labelLineShift(place(d).anchor) : null);
     /** @param {LaidNode} d */
     const value = (d) => "  " + fmtShortSigned(ctx.figure(d));
     /** @type {Map<string, {qualifier: string, label: string, cut: boolean}>} */
     const fitted = new Map();
     // Fitted at ADVANCE_EM, not read off the browser: the words drawn are the
-    // words site/layout.test.mjs measures against the gutter.
+    // words site/layout.test.mjs measures against their room.
     /** @param {LaidNode} d */
     const words = (d) => {
       let w = fitted.get(d.id);
       if (!w) {
         const p = place(d);
-        w = labelWords(p.anchor, labelRoom(p, width), qualifierOf(d), d.label,
-          (ws) => labelAdvance(ws, p.anchor, value(d), ctx.classes.flags(d)));
+        w = labelWords(labelRoom(p, ctx.columns), qualifierOf(d), d.label,
+          (ws) => labelAdvance(ws, value(d), ctx.classes.flags(d)));
         fitted.set(d.id, w);
       }
       return w;
     };
     label.append("tspan")
       .attr("class", "qualifier")
-      .attr("x", /** @param {LaidNode} d */ (d) => (shift(d) ? place(d).x : null))
-      .attr("dy", /** @param {LaidNode} d */ (d) => { const s = shift(d); return s ? s.qualifier : null; })
       .text(/** @param {LaidNode} d */ (d) => words(d).qualifier);
     label.append("tspan")
-      .attr("x", /** @param {LaidNode} d */ (d) => (shift(d) ? place(d).x : null))
-      .attr("dy", /** @param {LaidNode} d */ (d) => { const s = shift(d); return s ? s.label : null; })
       .text(/** @param {LaidNode} d */ (d) => words(d).label);
     label.append("tspan")
       .attr("class", "value")

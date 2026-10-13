@@ -5,7 +5,7 @@
 
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { loadApp, bootedApp, split, settle, fire } from "./testlib.mjs";
+import { loadApp, bootedApp, split, settle, fire, stylesheet } from "./testlib.mjs";
 
 /**
  * Stubs the Fullscreen API on a loaded page, as a browser offering it does:
@@ -64,13 +64,35 @@ describe("full screen on the chart's card", () => {
     await settle();
     t.diagnostic(`fund/100 split: ${before}px laid, --chart-max ${max}; full screen ${full}px; after ${viewBoxWidth(document)}px`);
     assert.equal(before, app.chartWidth(5));
-    assert.equal(max, app.chartWidth(5) + "px");
+    assert.equal(max, app.widthOf(app.HELD_COLUMNS) + "px");
     assert.equal(full, before);
     assert.equal(viewBoxWidth(document), before);
     assert.equal(app.isFullscreen(), false);
     assert.equal(button.textContent, config.wording.full_screen);
   });
 });
+
+/**
+ * How many screen px one viewBox unit of the chart draws at, as style.css
+ * sizes the svg from what app.js hands it. Nothing here renders CSS, so the
+ * two declarations are read by selector and held to their shape; any other
+ * shape is a refusal, which no measured answer equals.
+ */
+function drawnScale(document, window) {
+  const css = stylesheet().replace(/\/\*[\s\S]*?\*\//g, "");
+  const rule = (selector) => {
+    const at = css.indexOf(selector + " {");
+    return at < 0 ? "" : css.slice(at + selector.length + 2, css.indexOf("}", at));
+  };
+  const room = /--chart-room:\s*min\(var\(--chart-max, 100%\), calc\(100vw - var\(--chart-cushion\)\)\)/.test(rule(".chart-wrap"));
+  const cushion = /--chart-cushion:\s*(\d+)px/.exec(rule(".chart-wrap"));
+  const width = /(^|[\s;])width:\s*calc\(var\(--chart-room\) \* var\(--chart-stretch, 1\)\)/.test(rule(".chart-scroll > svg.sankey"));
+  if (!room || !cushion || !width) return { refused: `room ${room}, cushion ${Boolean(cushion)}, svg width ${width}` };
+  const style = document.documentElement.style;
+  const drawn = Math.min(parseFloat(style.getPropertyValue("--chart-max")), window.innerWidth - Number(cushion[1])) *
+    Number(style.getPropertyValue("--chart-stretch"));
+  return { scale: drawn / viewBoxWidth(document) };
+}
 
 /** The drawn mark for one node id. */
 function markOf(document, id) {
@@ -156,6 +178,60 @@ describe("zoom and pan on the chart", () => {
     assert.equal(before, false, "the planted zoom already shows the mark, so the pan is never asked");
     assert.ok(seen(after), "search went to a mark the zoom leaves out of sight");
     assert.equal(app.zoomOf().k, 4, "search changed the zoom rather than panning");
+  });
+
+  // Mutation: drop scrollToMark's call from revealMark and this goes red,
+  // the last column's mark left past the scroller's right edge.
+  test("a chart past BAND_FLOOR scrolls in its card, and a mark focused in its last column is scrolled into sight", async (t) => {
+    const { app, document } = await bootedApp();
+    const root = document.documentElement.style;
+    const atRoot = root.getPropertyValue("--chart-stretch");
+    app.expandAll();
+    await settle();
+    const svg = document.getElementById("chart");
+    const scroller = svg.parentElement;
+    const laid = viewBoxWidth(document);
+    const columns = app.layoutColumns(app.shown.doc);
+    // jsdom lays nothing out: the svg is drawn at its laid width, in a card 1000px wide.
+    let left = 0;
+    Object.defineProperty(scroller, "clientWidth", { value: 1000, configurable: true });
+    Object.defineProperty(scroller, "scrollLeft", { get: () => left, set: (v) => { left = v; }, configurable: true });
+    svg.getBoundingClientRect = () => ({ x: 0, y: 0, left: 0, top: 0, right: laid, bottom: 0, width: laid, height: 0 });
+    const last = app.laidNodes.reduce((a, b) => (b.x0 > a.x0 ? b : a));
+    const at = (last.x0 + last.x1) / 2;
+    const seen = () => at >= left && at <= left + 1000;
+    const before = seen();
+    markOf(document, last.id).focus();
+    const detail = `${columns} columns laid at ${laid}px, --chart-stretch ${root.getPropertyValue("--chart-stretch")} ` +
+      `(${atRoot} at the root); ${last.id} at x ${at.toFixed(0)}; in sight before ${before}, scrolled to ${left.toFixed(0)}`;
+    t.diagnostic(detail);
+    assert.deepEqual({
+      scroller: scroller.classList.contains("chart-scroll"),
+      stretched: Number(root.getPropertyValue("--chart-stretch")) > 1,
+      atRoot: Number(atRoot),
+      before, after: seen(), k: app.zoomOf().k,
+    }, { scroller: true, stretched: true, atRoot: app.widthOf(3) / app.widthOf(app.HELD_COLUMNS), before: false, after: true, k: 1 }, detail);
+  });
+
+  // Mutation: hand --chart-max widthOf(columns) and --chart-stretch 1 again,
+  // scaling the chart to fit its card, and this goes red: the split shrinks
+  // every mark and moves the revenue column left.
+  test("opening a split moves no column it leaves and rescales nothing", async (t) => {
+    const viewport = 1400;
+    const { app, document, window } = await bootedApp({ viewport });
+    Object.defineProperty(window, "innerWidth", { value: viewport, configurable: true, writable: true });
+    const where = (id) => {
+      const d = app.laidNodes.find((n) => n.id === id);
+      const s = drawnScale(document, window);
+      return s.refused ? s : { scale: s.scale, x: d ? d.x0 * s.scale : null };
+    };
+    const before = where("revenue/taxes/sales");
+    await split(app, "revenue/intergovernmental");
+    const after = where("revenue/taxes/sales");
+    const detail = `at a ${viewport}px viewport, revenue/taxes/sales before the split ${JSON.stringify(before)}, ` +
+      `after ${JSON.stringify(after)}; ${app.layoutColumns(app.shown.doc)} columns`;
+    t.diagnostic(detail);
+    assert.deepEqual({ after, drawn: typeof before.x === "number" }, { after: before, drawn: true }, detail);
   });
 
   test("a wheel zooms only with Ctrl or Cmd or in full screen, and one finger pans only once zoomed", async () => {

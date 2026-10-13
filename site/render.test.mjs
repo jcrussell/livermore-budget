@@ -63,7 +63,7 @@ const flagOf = (m) => {
 
 /**
  * The number a folded tail promises the reader, read off the words drawn in
- * it; -1 when nothing drawn in it reads as a count.
+ * it, or off its title where they are cut; -1 when neither reads as a count.
  * @param {Element} mark
  */
 function tailPromise(mark) {
@@ -71,7 +71,10 @@ function tailPromise(mark) {
     const found = /^(\d+) smaller /.exec(w);
     if (found) return Number(found[1]);
   }
-  return -1;
+  // A label cut to its room keeps its full words in the mark's title.
+  const title = [...mark.children].find((c) => c.tagName === "title");
+  const found = title && /(?:^|: )(\d+) smaller /.exec(title.textContent);
+  return found ? Number(found[1]) : -1;
 }
 
 /**
@@ -918,11 +921,22 @@ describe("arms no committed column reaches", () => {
     assert.ok(marks > 0);
     assert.ok(ids.every((id) => app.caveatsFor(id).length === 0));
   });
-  test("a label anchored at an end draws its qualifier inline, and one anchored in the middle lifts it a line", async () => {
-    const { app } = await bootedApp({ checkedStem: newest.stem });
-    assert.equal(app.labelLineShift("end"), null);
-    assert.equal(app.labelLineShift("start"), null);
-    assert.deepEqual(app.labelLineShift("middle"), { qualifier: "-1.15em", label: "1.15em" });
+  // Mutation: give the qualifier tspan of a middle-anchored label a dy of
+  // -1.15em again and this goes red, naming the lifted marks.
+  test("every qualified label is drawn on one line, an interior one included", async (t) => {
+    const { app, document } = await bootedApp({ checkedStem: newest.stem });
+    app.expandAll();
+    await settle();
+    const slots = app.slotsOf(app.laidNodes, app.RENDER_TIERS);
+    const qualified = app.labelQualifiers({ nodes: [...app.groupIndex.values()] }, slots, app.laidNodes);
+    const marks = [...document.querySelectorAll("#chart g.node")];
+    const text = (m) => [...m.children].find((c) => c.tagName === "text");
+    const interior = marks.filter((m) => qualified.has(m.__data__.id) && text(m).getAttribute("text-anchor") === "middle");
+    const lifted = marks.filter((m) => [...text(m).children].some((s) => s.hasAttribute("dy") || s.hasAttribute("x")))
+      .map((m) => m.__data__.id);
+    const detail = `${qualified.size} qualified mark(s), ${interior.length} interior; lifted: ${JSON.stringify(lifted)}`;
+    t.diagnostic(detail);
+    assert.deepEqual({ interior: interior.length > 0, lifted }, { interior: true, lifted: [] }, detail);
   });
 });
 

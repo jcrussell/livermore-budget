@@ -29,7 +29,7 @@ import * as core from "./core.js";
 import {
   SCHEMA_VERSION, say, kindLabel, fmt, fmtSigned, el, maybeEl, cssVar, h, link, citations, balancesOf, PARTITION_NOTE, isFundGroup, scheduleOf, isLink, tableRows,
 } from "./core.js";
-import { SANKEY } from "./sankey.js";
+import { HELD_COLUMNS, SANKEY } from "./sankey.js";
 // Re-exported so the tests reach the shipped modules through the one file
 // they import; this file calls a form only through the renderer it registers.
 export * from "./core.js";
@@ -321,6 +321,18 @@ export const CHART_CUSHION = 56;
  */
 export function widthOf(n) {
   return Math.max(...Array.from(FORMS.values(), (r) => r.width(n)));
+}
+
+/**
+ * A chart of `n` columns' laid width over HELD_COLUMNS': what style.css's
+ * --chart-stretch multiplies the card's room by to size the svg, so every
+ * chart draws at the one scale the held width fits the card at, and a split
+ * moves no column it leaves and rescales none.
+ * @param {number} n
+ * @returns {number}
+ */
+export function chartStretch(n) {
+  return widthOf(n) / widthOf(HELD_COLUMNS);
 }
 
 /**
@@ -1347,9 +1359,11 @@ export function render(laid) {
   svg.selectAll("g").remove();
   const layer = svg.append("g").attr("class", "zoom-layer");
   const columns = layoutColumns(doc);
-  // style.css's --chart-room reads this: the chart breaks out of main to the
-  // width it is laid out at, and no wider.
-  document.documentElement.style.setProperty("--chart-max", widthOf(columns) + "px");
+  // style.css's --chart-room reads these: the card breaks out of main to the
+  // held width whatever the columns, so its left edge never moves, and the
+  // svg is that room stretched by the columns drawn.
+  document.documentElement.style.setProperty("--chart-max", widthOf(HELD_COLUMNS) + "px");
+  document.documentElement.style.setProperty("--chart-stretch", String(chartStretch(columns)));
   formOnScreen().render(graph, {
     svg: svg,
     layer: layer,
@@ -1897,7 +1911,7 @@ export function showTip(event, d) {
   tip.append(h("div", "tip-meta", "Select for sources."));
 
   tip.hidden = false;
-  const wrap = el("chart").parentElement;
+  const wrap = tip.parentElement;
   if (!wrap) return;
   const box = wrap.getBoundingClientRect();
   const target = /** @type {Element} */ (event.target);
@@ -2567,8 +2581,9 @@ export function resetZoom() {
 
 /**
  * Pans a laid node to the centre of the view where the zoom has left it out
- * of sight, and leaves the view alone where it is in sight, so a click on a
- * visible mark never moves the chart under the pointer.
+ * of sight, then scrolls the chart's scroller to it where the chart is wider
+ * than its card, and leaves either alone where the mark is in sight, so a
+ * click on a visible mark never moves the chart under the pointer.
  * @param {LaidNode} d
  */
 export function revealMark(d) {
@@ -2576,14 +2591,34 @@ export function revealMark(d) {
   const svg = maybeEl("chart");
   if (!svg) return;
   const t = zoomOf();
-  if (t.k === 1 && t.x === 0 && t.y === 0) return;
   const extent = zoomer.extent().call(svg);
-  const [left, top] = t.invert(extent[0]);
-  const [right, bottom] = t.invert(extent[1]);
   const cx = (d.x0 + d.x1) / 2;
   const cy = (d.y0 + d.y1) / 2;
-  if (cx >= left && cx <= right && cy >= top && cy <= bottom) return;
-  zoomer.translateTo(D3.select(svg), cx, cy);
+  if (t.k !== 1 || t.x !== 0 || t.y !== 0) {
+    const [left, top] = t.invert(extent[0]);
+    const [right, bottom] = t.invert(extent[1]);
+    if (cx < left || cx > right || cy < top || cy > bottom) zoomer.translateTo(D3.select(svg), cx, cy);
+  }
+  scrollToMark(svg, cx, extent[1][0] - extent[0][0]);
+}
+
+/**
+ * Scrolls the scroller the svg sits in so the chart's x `cx`, under the zoom
+ * now, is in sight, centring it where it is not; a no-op where the svg sits
+ * in no .chart-scroll or draws no wider than it.
+ * @param {Element} svg
+ * @param {number} cx in the chart's own coordinates
+ * @param {number} laid the viewBox's width
+ */
+function scrollToMark(svg, cx, laid) {
+  const scroller = svg.parentElement;
+  if (!scroller || !scroller.classList.contains("chart-scroll") || !(laid > 0)) return;
+  const drawn = svg.getBoundingClientRect().width;
+  const at = zoomOf().apply([cx, 0])[0] * drawn / laid;
+  const from = scroller.scrollLeft;
+  const view = scroller.clientWidth;
+  if (drawn <= view || (at >= from && at <= from + view)) return;
+  scroller.scrollLeft = Math.max(0, Math.min(drawn - view, at - view / 2));
 }
 
 /**

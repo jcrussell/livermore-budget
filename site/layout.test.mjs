@@ -155,8 +155,8 @@ function labelWidth(app, d, place, room, qualifier, drawn) {
   const value = "  " + app.fmtShortSigned(app.markCents(d));
   const flags = app.nodeFlags(d);
   const words = drawn && drawn.get(d.id) ||
-    app.labelWords(place.anchor, room, qualifier, d.label, (w) => app.labelAdvance(w, place.anchor, value, flags));
-  return { words, width: app.labelAdvance(words, place.anchor, value, flags) };
+    app.labelWords(room, qualifier, d.label, (w) => app.labelAdvance(w, value, flags));
+  return { words, width: app.labelAdvance(words, value, flags) };
 }
 
 /**
@@ -181,17 +181,10 @@ const LABEL_PX = sankey.LABEL_PX;
 const ASCENT_PX = 9;
 const DESCENT_PX = 3;
 
-/**
- * The vertical run one mark's label draws over, one line or two. The shifts
- * come off the page's labelLineShift.
- */
-function labelBlock(app, place, qualifier) {
-  const em = (v) => (v ? parseFloat(v) * LABEL_PX : 0);
-  const first = place.y + em(place.dy);
-  const shift = app.labelLineShift(place.anchor);
-  if (!qualifier || !shift) return { top: first - ASCENT_PX, bottom: first + DESCENT_PX };
-  const top = first + em(shift.qualifier);
-  return { top: top - ASCENT_PX, bottom: top + em(shift.label) + DESCENT_PX };
+/** The vertical run one mark's label draws over: one line, at its dy. */
+function labelBlock(place) {
+  const baseline = place.y + (place.dy ? parseFloat(place.dy) * LABEL_PX : 0);
+  return { top: baseline - ASCENT_PX, bottom: baseline + DESCENT_PX };
 }
 
 /** The x-range a label of this width occupies, anchored this way at this x. */
@@ -249,11 +242,11 @@ function labelFit(app, graph, document) {
     const qualifier = qualifiers.get(n.id) || "";
     const col = app.columnOf(slots, n);
     const room = roomFor(app, columns, col);
-    const { words, width } = labelWidth(app, n, place, app.labelRoom(place, room.to), qualifier, drawn);
+    const { words, width } = labelWidth(app, n, place, app.labelRoom(place, columns.size), qualifier, drawn);
     const box = boxAt(place.anchor, place.x, width);
     return { node: n, id: n.id, col, last, place, width, box, room, qualifier,
-             words: words.qualifier + (app.labelLineShift(place.anchor) && words.qualifier ? " / " : "") + words.label,
-             block: labelBlock(app, place, qualifier),
+             words: words.qualifier + words.label,
+             block: labelBlock(place),
              clearance: Math.min(box.left - room.from, room.to - box.right) };
   });
 }
@@ -581,20 +574,40 @@ describe("where a label is anchored", () => {
       { drewNothing: false, read: drawn.marks * 4, wrong: [], interior: true }, detail);
   });
 
-  // THE CONTAINER AGAINST THE DRAWING: a viewBox'd <svg> in a narrower
-  // container draws smaller, not clipped. AN EQUALITY, NOT A FLOOR: both are
-  // derived from the same declarations, so slack is the defect.
-  test("the stylesheet lets the chart draw at the width it lays it out at", (t) => {
+  // THE CONTAINER AGAINST THE DRAWING: the card is capped at the held width,
+  // which the svg is stretched from, so a chart draws at its laid width
+  // wherever the viewport has room for the held one. AN EQUALITY, NOT A
+  // FLOOR: both are derived from the same declarations, so slack is the defect.
+  test("the stylesheet caps the chart's card at the held width every chart is scaled from", (t) => {
     const detail = allowance.px === null
       ? allowance.why
-      : `style.css caps the chart through --chart-max, which app.js set to ${allowance.px}px for ` +
-        `the ${columns} columns it lays out at ${app.widthOf(columns)}px; the cushion is ` +
+      : `style.css caps the chart's card through --chart-max, which app.js set to ${allowance.px}px, ` +
+        `the held width, for the ${columns} columns it lays out at ${app.widthOf(columns)}px; the cushion is ` +
         `${allowance.cushion}px in the stylesheet against app.js's ${app.CHART_CUSHION}px`;
     t.diagnostic(detail);
     assert.ok(columns > 3, "the chart split to its finest grain is no wider than the spine");
     assert.equal(app.chartWidth(3), NARROW_DESIGN_WIDTH);
     assert.deepEqual({ px: allowance.px, cushion: allowance.cushion },
-      { px: app.widthOf(columns), cushion: app.CHART_CUSHION }, detail);
+      { px: app.widthOf(app.HELD_COLUMNS), cushion: app.CHART_CUSHION }, detail);
+  });
+});
+
+// Mutation: restore chartWidth's single BAND formula and this goes red at
+// five columns, the chart wider than the four-column one.
+describe("the chart's width as columns open", () => {
+  test("the width is held at HELD_COLUMNS' while the bands narrow to BAND_FLOOR, then grows at the floor", (t) => {
+    const at = (n, band) => 2 * sankey.LABEL_GUTTER + band * (n - 1) + sankey.NODE_WIDTH * n;
+    const held = at(sankey.HELD_COLUMNS, sankey.BAND);
+    const rows = [];
+    for (let n = 1; n <= 10; n++) rows.push({ n, width: sankey.chartWidth(n), band: n > 1 ? sankey.bandOf(n) : null });
+    const detail = rows.map((r) => `${r.n}: ${r.width}px${r.band === null ? "" : ` band ${r.band.toFixed(1)}`}`).join(", ");
+    t.diagnostic(detail);
+    const wrong = rows.filter((r) => r.n > 1 && (
+      r.n <= sankey.HELD_COLUMNS ? r.width !== at(r.n, sankey.BAND) || r.band !== sankey.BAND
+        : r.band < sankey.BAND_FLOOR || r.width !== Math.max(held, at(r.n, sankey.BAND_FLOOR)) ||
+          Math.abs(at(r.n, r.band) - r.width) > 1e-9)).map((r) => r.n);
+    assert.deepEqual({ three: sankey.chartWidth(3), wrong, fiveHeld: sankey.chartWidth(5) === held },
+      { three: NARROW_DESIGN_WIDTH, wrong: [], fiveHeld: true }, detail);
   });
 });
 
@@ -616,21 +629,41 @@ const ALIKE = {
  * the canvas sankey.grow sizes, which counts marks and not lines.
  */
 const OVERLAPPED = {
-  "FY 2025-26": {
-    "everything by primary splits": [
-      "revenue-line/intergovernmental/grant-state over aggregate/tail/lines/revenue/licenses-and-permits",
-    ],
-  },
-  "FY 2026-27": {
-    "everything by primary splits": [
-      "revenue-line/charges-for-services/fire-plan-check-and-inspct-fee over aggregate/tail/lines/revenue/licenses-and-permits",
-    ],
-  },
+  "FY 2025-26": {},
+  "FY 2026-27": {},
 };
+
+/**
+ * The fewest characters of its name a cut interior label keeps at
+ * BAND_FLOOR: a word either side of the ellipsis.
+ */
+const FLOOR_KEEPS = 10;
+
+/**
+ * Every interior label of a chart fitted to the room BAND_FLOOR leaves it,
+ * in the words and flags the page draws it with: how many are cut, and the
+ * cut label that keeps fewest of its name's characters.
+ */
+function atFloor(app, fits) {
+  const room = app.BAND_FLOOR + app.NODE_WIDTH;
+  let cut = 0;
+  let fewest = null;
+  const inner = fits.filter((f) => f.place.anchor === "middle");
+  for (const f of inner) {
+    const value = "  " + app.fmtShortSigned(app.markCents(f.node));
+    const flags = app.nodeFlags(f.node);
+    const w = app.labelWords(room, f.qualifier, f.node.label, (ws) => app.labelAdvance(ws, value, flags));
+    if (!w.cut) continue;
+    cut++;
+    const kept = (w.qualifier + w.label).length - 1;
+    if (!fewest || kept < fewest.kept) fewest = { kept, words: w.qualifier + w.label, id: f.id };
+  }
+  return { inner: inner.length, cut, fewest };
+}
 
 for (const label of Object.keys(ALIKE)) {
   describe(`${label}: the root and every split the page offers, measured for what a label does to its neighbours`, () => {
-    let walk, views, overlapped, alike, wider;
+    let walk, views, overlapped, alike, wider, floor;
     before(async () => {
       // Found by label, so a year the page no longer ships fails by name.
       const year = pageFixture().config.years.find((y) => y.label === label);
@@ -639,10 +672,12 @@ for (const label of Object.keys(ALIKE)) {
       overlapped = {};
       alike = {};
       wider = {};
+      floor = {};
       views = 0;
       const visit = (where) => {
         views++;
         const fits = labelFit(app, { nodes: app.laidNodes }, document);
+        if (where.startsWith("everything")) floor[where] = atFloor(app, fits);
         const touching = touchingStacks(fits);
         if (touching.length) overlapped[where] = touching;
         const over = fits.filter((f) => f.clearance < 0);
@@ -668,6 +703,17 @@ for (const label of Object.keys(ALIKE)) {
       t.diagnostic(detail);
       assert.deepEqual({ refused: walk.refused, walkedNothing: views === 0, wider },
         { refused: "", walkedNothing: false, wider: {} }, detail);
+    });
+
+    // Mutation: set BAND_FLOOR to 0 and this goes red, every cut label
+    // keeping two characters of its name.
+    test(`at BAND_FLOOR every cut interior label keeps ${FLOOR_KEEPS} characters of its name, with every split open`, (t) => {
+      const short = Object.entries(floor).filter(([, m]) => m.fewest && m.fewest.kept < FLOOR_KEEPS).map(([w]) => w);
+      const detail = `BAND_FLOOR ${sankey.BAND_FLOOR}px: ` + Object.entries(floor).map(([w, m]) =>
+        `${w}: ${m.cut} of ${m.inner} interior labels cut` +
+        (m.fewest ? `, fewest kept ${m.fewest.kept} in ${JSON.stringify(m.fewest.words)} (${m.fewest.id})` : "")).join("; ");
+      t.diagnostic(detail);
+      assert.deepEqual({ walked: Object.keys(floor).length, short }, { walked: 2, short: [] }, detail);
     });
 
     test("the labels stacked on one another are the ones pinned", (t) => {
@@ -843,8 +889,8 @@ function expansionLabels(doc, laid, slots, columns) {
     const col = sankey.columnOf(slots, n);
     const place = sankey.labelPlacement(slots, n, last);
     const value = "  " + core.fmtShortSigned(sankey.markCents(n));
-    const measure = (w) => sankey.labelAdvance(w, place.anchor, value, "");
-    const words = sankey.labelWords(place.anchor, sankey.labelRoom(place, width), qualifiers.get(n.id) || "", n.label, measure);
+    const measure = (w) => sankey.labelAdvance(w, value, "");
+    const words = sankey.labelWords(sankey.labelRoom(place, columns), qualifiers.get(n.id) || "", n.label, measure);
     const box = boxAt(place.anchor, place.x, measure(words));
     const me = xs.get(col);
     const before = xs.get(col - 1);
@@ -1087,34 +1133,36 @@ describe("a slot no drawn path reaches is laid out in its own column", () => {
 // the walks above measure over the pinned columns, said of one label each.
 describe("an outward label fitted to its gutter", () => {
   const room = sankey.LABEL_GUTTER - 10;
-  const fit = (anchor, qualifier, label) => sankey.labelWords(anchor, room, qualifier, label,
-    (w) => sankey.labelAdvance(w, anchor, "  $1.2M", ""));
+  const fit = (qualifier, label) => sankey.labelWords(room, qualifier, label,
+    (w) => sankey.labelAdvance(w, "  $1.2M", ""));
   const drawn = (w) => w.qualifier + w.label;
 
   test("two owners that share a prefix are cut apart, each keeping its category", (t) => {
-    const a = fit("start", "", "County Meas BB-Bike/Pedestrian: Services & Supplies");
-    const b = fit("start", "", "County Meas BB-Local St & Rd: Services & Supplies");
+    const a = fit("", "County Meas BB-Bike/Pedestrian: Services & Supplies");
+    const b = fit("", "County Meas BB-Local St & Rd: Services & Supplies");
     t.diagnostic(`${JSON.stringify(drawn(a))} and ${JSON.stringify(drawn(b))}`);
     assert.deepEqual({ cut: [a.cut, b.cut], apart: drawn(a) !== drawn(b),
       kept: [drawn(a), drawn(b)].every((w) => w.endsWith(": Services & Supplies") && w.includes("…")) },
     { cut: [true, true], apart: true, kept: true });
   });
 
-  test("a qualifier is drawn inline on an end column and on its own line inside", (t) => {
-    const end = fit("end", "Licenses and Permits", "Lines");
-    const inside = fit("middle", "Licenses and Permits", "Lines");
-    t.diagnostic(`${JSON.stringify(end)} and ${JSON.stringify(inside)}`);
-    assert.deepEqual([end, inside], [
-      { qualifier: "Licenses and Permits: ", label: "Lines", cut: false },
-      { qualifier: "Licenses and Permits", label: "Lines", cut: false },
-    ]);
+  test("a qualifier is drawn inline, and is what is cut where the label has no owner of its own", (t) => {
+    const roomy = fit("Licenses and Permits", "Lines");
+    const tight = sankey.labelWords(240, "Licenses and Permits", "6 smaller lines",
+      (w) => sankey.labelAdvance(w, "  $1.2M", ""));
+    t.diagnostic(`${JSON.stringify(roomy)} and ${JSON.stringify(tight)}`);
+    assert.deepEqual({ roomy, cut: tight.cut, cutQualifier: tight.qualifier.endsWith(": ") && tight.qualifier.includes("\u2026"),
+      label: tight.label }, {
+      roomy: { qualifier: "Licenses and Permits: ", label: "Lines", cut: false },
+      cut: true, cutQualifier: true, label: "6 smaller lines",
+    });
   });
 
   test("a label with no owner is cut in its middle and fits", (t) => {
     const label = "An Unusually Long Revenue Line Without Any Owner Named Before It";
-    const w = fit("end", "", label);
+    const w = fit("", label);
     t.diagnostic(JSON.stringify(w));
     assert.deepEqual({ cut: w.cut, starts: w.label.startsWith("An"), ends: w.label.endsWith("It"),
-      fits: sankey.labelAdvance(w, "end", "  $1.2M", "") <= room }, { cut: true, starts: true, ends: true, fits: true });
+      fits: sankey.labelAdvance(w, "  $1.2M", "") <= room }, { cut: true, starts: true, ends: true, fits: true });
   });
 });

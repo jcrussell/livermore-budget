@@ -177,6 +177,7 @@
          hairline is drawn wider than its share, wherever the chart has one. */}}
   <p class="hairline-line" id="hairline-line" aria-live="polite" hidden></p>
   <div class="chart-wrap">
+    <div class="chart-scroll">
     <!-- role="group", not "img": an img is a leaf, and the marks inside carry
          tabindex and aria-label so a keyboard reader can walk the flows. Under
          role="img" they are reachable but announced as nothing, which the
@@ -202,6 +203,7 @@
         {{- end}}
       </desc>
     </svg>
+    </div>
     <div class="tooltip" id="tooltip" role="status" aria-live="polite" hidden></div>
   </div>
   <div class="detail" id="detail" aria-live="polite">

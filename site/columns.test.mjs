@@ -11,9 +11,11 @@ import { bootedApp, split, settle, pageFixture, columnFixture, refusals } from "
 const YEARS = pageFixture().config.years;
 
 describe("the columns are the slots the chart draws", () => {
-  test("the page hands the stylesheet the width the chart is laid out at, and an extend split widens it by one slot", async (t) => {
+  test("the page hands the stylesheet the held width and the chart's stretch over it, and an extend split widens it by one slot", async (t) => {
     const { app, document } = await bootedApp({ checkedStem: YEARS[0].stem });
-    const handed = () => document.documentElement.style.getPropertyValue("--chart-max");
+    const handed = () => document.documentElement.style.getPropertyValue("--chart-max") + " x" +
+      document.documentElement.style.getPropertyValue("--chart-stretch");
+    const held = (n) => app.widthOf(app.HELD_COLUMNS) + "px x" + app.widthOf(n) / app.widthOf(app.HELD_COLUMNS);
     const columns = () => app.layoutColumns(app.shown.doc);
     const root = { columns: columns(), handed: handed() };
     // Every split extends: the group's funds take a slot of their own after
@@ -25,10 +27,10 @@ describe("the columns are the slots the chart draws", () => {
     t.diagnostic(`the root lays ${root.columns} columns at ${root.handed}; with the funds, ${funds}; ` +
       `with fund/100's divisions, ${extended.columns} at ${extended.handed}`);
     assert.equal(root.columns, 3);
-    assert.equal(root.handed, app.widthOf(3) + "px");
+    assert.equal(root.handed, held(3));
     assert.equal(funds, 4);
     assert.equal(extended.columns, 5);
-    assert.equal(extended.handed, app.widthOf(5) + "px");
+    assert.equal(extended.handed, held(5));
     app.collapseAll();
     await settle();
     assert.equal(handed(), root.handed, "folding everything back does not narrow the chart again");
