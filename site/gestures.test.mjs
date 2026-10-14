@@ -333,6 +333,26 @@ describe("a node that splits two ways", () => {
   });
 });
 
+describe("the ⊕ menu under a mouse", () => {
+  // Mutation: let focusout close the menu during a press in it again and
+  // this goes red: the menu is gone before the click, and nothing splits.
+  test("a choice clicked after its press blurred the menu to nothing still splits the node by it", async (t) => {
+    const { app, document } = await bootedApp();
+    const splits = app.splitsHere({ id: TWO_WAYS }).map((sp) => sp.key);
+    fire(glyphOf(app, document, TWO_WAYS), "click", { timeStamp: 2000 });
+    const choice = [...document.querySelectorAll("#split-menu button")][1];
+    fire(choice, "pointerdown", { button: 0 });
+    document.activeElement.dispatchEvent(new document.defaultView.FocusEvent("focusout", { bubbles: true, relatedTarget: null }));
+    const open = Boolean(document.getElementById("split-menu"));
+    fire(choice, "pointerup", { button: 0 });
+    fire(choice, "click", { button: 0 });
+    await settle();
+    t.diagnostic(`the menu open after the press blurred it: ${open}; the click split [${app.expansions}]`);
+    assert.deepEqual({ open, split: app.expansions.slice(), menu: document.getElementById("split-menu") === null },
+      { open: true, split: [TWO_WAYS + app.ALTERNATIVE_MARK + splits[1]], menu: true });
+  });
+});
+
 describe("folding a split back", () => {
   test("the node's chip folds it, and every split inside it, back into one mark", async (t) => {
     const { app, document } = await bootedApp();

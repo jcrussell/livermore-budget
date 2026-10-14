@@ -625,6 +625,19 @@ function withCells(ribbon, legs) {
 }
 
 /**
+ * Whether totals carrying `c` cents restate all of a list of leaves: each
+ * key a leaf of `leaves`, their cents summing to `c`.
+ * @param {string[]} keys
+ * @param {number} c
+ * @param {Map<string, number>} leaves
+ * @returns {boolean}
+ */
+function restatesWhole(keys, c, leaves) {
+  return keys.every((key) => leaves.has(key)) &&
+    keys.reduce((s, key) => s + /** @type {number} */ (leaves.get(key)), 0) === c;
+}
+
+/**
  * A sum over ribbons at the signs printed, each cell once: a leaf drawn as
  * itself and again as a hub leg repeating it is one figure, not two. The
  * totals restating one list of leaves are read as those leaves where they
@@ -666,9 +679,7 @@ export function distinctCents(links, cents, leaves = new Map()) {
   const partial = [];
   for (const [k, c] of restating) {
     const keys = k.slice(RESTATING.length).split("\u001e");
-    const whole = keys.every((key) => leaves.has(key)) &&
-      keys.reduce((s, key) => s + /** @type {number} */ (leaves.get(key)), 0) === c;
-    if (!whole) {
+    if (!restatesWhole(keys, c, leaves)) {
       partial.push(keys);
       sum += c;
       continue;
@@ -1508,13 +1519,16 @@ export function homeOf(doc, l) {
  * derived node first, then one leaving one, then any, in drawn order, so a
  * leaf is listed under the mark it arrives at, as homeOf lists a flow, and a
  * leg whose leaf a derived node holds is no orphan. A ribbon left stating no
- * cell is not listed. Each figure is a sum of the cells it states, at the
- * signs printed (distinctCents); a ribbon with no cells is read by `cents`.
+ * cell is not listed. Totals restating all of a list state its leaves, so no
+ * ribbon drawing one of those leaves states it again. Each figure is a sum
+ * of the cells it states, at the signs printed (distinctCents); a ribbon
+ * with no cells is read by `cents`.
  * @param {FiscProjection | null} doc
  * @param {(l: FiscLink) => number} cents a ribbon's figure at its printed sign
+ * @param {Map<string, number>} [leaves] leafCents of the schedule folded
  * @returns {{homes: Map<string, {flows: FiscLink[], cents: number}>, orphans: {flow: FiscLink, cents: number}[]}}
  */
-export function inferredListing(doc, cents) {
+export function inferredListing(doc, cents, leaves = new Map()) {
   /** @type {Map<string, {flows: FiscLink[], cents: number}>} */
   const homes = new Map();
   /** @type {{flow: FiscLink, cents: number}[]} */
@@ -1523,10 +1537,24 @@ export function inferredListing(doc, cents) {
   const derived = new Set(doc.nodes.filter((n) => n.derived).map((n) => n.id));
   const links = doc.links.filter((l) => l.derived);
   const rank = (/** @type {FiscLink} */ l) => derived.has(l.target) ? 0 : derived.has(l.source) ? 1 : 2;
+  /** @type {Map<string, number>} */
+  const restating = new Map();
+  for (const l of links) {
+    for (const [k, c] of Object.entries(cellsOf(l) || {})) {
+      if (k.startsWith(RESTATING)) restating.set(k, (restating.get(k) || 0) + c);
+    }
+  }
+  const restated = new Set();
+  for (const [k, c] of restating) {
+    const keys = k.slice(RESTATING.length).split("\u001e");
+    if (restatesWhole(keys, c, leaves)) for (const key of keys) restated.add(key);
+  }
   /** @type {Map<string, FiscLink>} */
   const stater = new Map();
   for (const l of links.slice().sort((a, b) => rank(a) - rank(b))) {
-    for (const k of Object.keys(cellsOf(l) || {})) if (!k.startsWith(RESTATING) && !stater.has(k)) stater.set(k, l);
+    for (const k of Object.keys(cellsOf(l) || {})) {
+      if (!k.startsWith(RESTATING) && !restated.has(k) && !stater.has(k)) stater.set(k, l);
+    }
   }
   for (const l of links) {
     const cells = cellsOf(l);

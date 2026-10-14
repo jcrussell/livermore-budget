@@ -356,6 +356,19 @@ func (c *expansionSplitsTie) Run(_ context.Context, s *Subject) (Result, error) 
 					l.Source, l.Target))
 			}
 		}
+		// A leaf's repeats is its cell's one key: a second leaf at it would
+		// be read as the first wherever a sum states each cell once.
+		repeated := map[string]int{}
+		for _, l := range x.doc.Links {
+			if l.Repeats != "" && !x.isLeg(l) {
+				repeated[l.Repeats]++
+			}
+		}
+		for _, k := range sortedStrings(repeated) {
+			if repeated[k] > 1 {
+				findings = append(findings, finding(x.doc.String(), "%d leaves repeat %q, want 1", repeated[k], k))
+			}
+		}
 		for _, sp := range x.doc.Graph.Splits {
 			splits++
 			subject := fmt.Sprintf("%s split of %s by %s", x.doc, sp.Node, sp.Key)
@@ -655,7 +668,7 @@ func (*expansionSplitsTie) hubFindings(x stitched, sp project.Split, members []s
 		case inflow && src != l.Source:
 			findings = append(findings, finding(subject, "the leaf %s -> %s re-pointed onto the node repeats %q, which another node sends",
 				l.Source, l.Target, l.Repeats))
-		case !inflow && src != l.Source:
+		case !inflow && (src != l.Source || (tgt != l.Target && x.nodes[tgt].Parent != l.Target)):
 			findings = append(findings, finding(subject, "the leaf %s -> %s leaves a member and repeats %q", l.Source, l.Target, l.Repeats))
 		case repeating[l.Repeats] != 1:
 			findings = append(findings, finding(subject, "the leaf %s -> %s repeating %s is repeated by %d legs, want 1",

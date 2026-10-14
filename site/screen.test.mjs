@@ -297,6 +297,20 @@ describe("zoom and pan on the chart", () => {
     assert.deepEqual({ split: app.expansions.slice(), left: left() }, { split: [id], left: 0 });
   });
 
+  // Mutation: drop wirePan's mousedown listener and this goes red, the
+  // press left to move focus to the mark, which pins it.
+  test("a press the scroller may pan moves no focus, and a mark focused from the keyboard still pins", async (t) => {
+    const { app, document } = await scrolling();
+    const ribbon = document.querySelector("#chart path.link");
+    fire(ribbon, "pointerdown", { button: 0, clientX: 500, clientY: 300 });
+    const pressed = fire(ribbon, "mousedown", { button: 0, clientX: 500, clientY: 300 }).defaultPrevented;
+    fire(ribbon, "pointerup", { button: 0, clientX: 500, clientY: 300 });
+    ribbon.dispatchEvent(new document.defaultView.FocusEvent("focus"));
+    const focused = app.pinned !== null && app.pinned === ribbon.__data__;
+    t.diagnostic(`the press's mousedown cancelled ${pressed}; focus pinned the ribbon ${focused}`);
+    assert.deepEqual({ pressed, focused }, { pressed: true, focused: true });
+  });
+
   test("zoomed in, a drag is the zoom's to pan, and the scroller stays where it is", async (t) => {
     const { app, document, left } = await scrolling();
     app.zoomBy(2);

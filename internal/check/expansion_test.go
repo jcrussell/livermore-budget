@@ -289,6 +289,27 @@ func TestTheExpansionChecksCanFail(t *testing.T) {
 			want: "the leaf " + project.NodeFundBalanceDraw + " -> fund-group/capital re-pointed onto the node repeats",
 		},
 		{
+			name: "a leaf leaving a hub's member repeating a leaf to another node", check: &expansionSplitsTie{},
+			edit: func(t *testing.T, _ *Subject, d *project.Document) {
+				forged := salesLine + " -> fund/200 external"
+				d.Links[legAt(t, d, salesHub, salesLine, "fund/100")].Repeats = forged
+				i := leafAt(t, d, salesLine, "fund/100")
+				d.Links[i].Target, d.Links[i].Repeats = "fund/100", forged
+			},
+			want: "the leaf " + salesLine + " -> fund/100 leaves a member and repeats",
+		},
+		{
+			name: "two leaves repeating one leaf", check: &expansionSplitsTie{},
+			edit: func(t *testing.T, _ *Subject, d *project.Document) {
+				i := leafAt(t, d, salesLine, "fund/100")
+				half := d.Links[i]
+				half.ValueCents /= 2
+				d.Links[i].ValueCents -= half.ValueCents
+				d.Links = append(d.Links, half)
+			},
+			want: "2 leaves repeat \"" + salesLeaf + "\", want 1",
+		},
+		{
 			name: "a flow endpoint parenting the members of no split it declares", check: &nodeHierarchyWellFormed{},
 			edit: func(_ *testing.T, _ *Subject, d *project.Document) {
 				d.Splits = slices.DeleteFunc(slices.Clone(d.Splits), func(sp project.Split) bool {

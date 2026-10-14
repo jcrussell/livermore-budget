@@ -235,12 +235,15 @@ describe("the inferred list states each inferred figure once", () => {
       const { app, document } = await bootedApp({ checkedStem: year.stem });
       const wrong = [];
       let repeated = 0;
+      let restating = 0;
       const visit = (where) => {
         const cents = (l) => app.formOnScreen().cents(l);
         const derived = app.projection.links.filter((l) => l.derived);
-        const { homes, orphans } = app.inferredListing(app.projection, cents);
+        const leaves = app.leafCents(app.fetched);
+        const { homes, orphans } = app.inferredListing(app.projection, cents, leaves);
         const listed = [...homes.values()].reduce((s, e) => s + e.cents, 0) + orphans.reduce((s, o) => s + o.cents, 0);
-        const distinct = app.distinctCents(derived, cents);
+        const distinct = app.distinctCents(derived, cents, leaves);
+        if (derived.some((l) => l.restates || Object.keys(l.cells || {}).some((k) => k.includes("restates")))) restating++;
         if (derived.reduce((s, l) => s + cents(l), 0) !== distinct) repeated++;
         if (listed !== distinct) wrong.push(`${where}: the list states ${listed}, the inferred cells ${distinct}`);
         const items = [...document.querySelectorAll("#derived-list li")];
@@ -262,11 +265,31 @@ describe("the inferred list states each inferred figure once", () => {
         await split(app, app.entryOf(id, app.splitsOf(app.fetched, id)[0].key));
       }
       visit("Services & Supplies and the Internal Service group");
-      const { homes } = app.inferredListing(app.projection, (l) => app.formOnScreen().cents(l));
-      t.diagnostic(`${year.label}: ${walked.visited + 2} chart(s), ${repeated} drawing an inferred cell on more than one ribbon; ` +
+      const { homes } = app.inferredListing(app.projection, (l) => app.formOnScreen().cents(l), app.leafCents(app.fetched));
+      t.diagnostic(`${year.label}: ${walked.visited + 2} chart(s), ${repeated} drawing an inferred cell on more than one ribbon, ` +
+        `${restating} an inferred total restating leaves; ` +
         `with Services & Supplies and the Internal Service group open: ${[...homes].map(([id, e]) => `${id} ${e.flows.length} flow(s) ${e.cents}`).join("; ")}`);
       assert.deepEqual(wrong.slice(0, 5), []);
       assert.ok(repeated > 0, "no chart draws an inferred cell twice, so nothing here is tested");
     });
   }
+
+  // Mutation: let a ribbon state a leaf that inferred totals restating all of
+  // its list already state, and this goes red: the leaf is listed twice.
+  test("inferred totals restating all of a list and an inferred ribbon drawing one of its leaves state each leaf once", async (t) => {
+    const { app } = await bootedApp();
+    const doc = structuredClone(app.projection);
+    const home = doc.nodes.find((n) => n.derived);
+    assert.ok(home !== undefined, "the chart draws no derived node, so nothing here is tested");
+    const leaves = app.leafCents(app.fetched);
+    const [[a, ca], [b, cb]] = [...leaves].slice(0, 2);
+    const planted = (o) => Object.assign({ source: doc.nodes[0].id, target: home.id, kind: "external", derived: true, fact_ids: [], locators: [] }, o);
+    doc.links = [planted({ restates: [a, b], value_cents: ca }), planted({ restates: [a, b], value_cents: cb }), planted({ repeats: a, value_cents: ca })];
+    const cents = (l) => l.value_cents;
+    const { homes, orphans } = app.inferredListing(doc, cents, leaves);
+    const listed = [...homes.values()].reduce((s, e) => s + e.cents, 0) + orphans.reduce((s, o) => s + o.cents, 0);
+    const distinct = app.distinctCents(doc.links, cents, leaves);
+    t.diagnostic(`planted under ${home.id}: two totals restating [${a}, ${b}] and a ribbon repeating the first; listed ${listed}, the cells ${distinct}`);
+    assert.deepEqual({ listed, flows: homes.get(home.id).flows.length }, { listed: distinct, flows: 2 });
+  });
 });

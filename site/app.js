@@ -1086,10 +1086,29 @@ export function openSplitMenu(d, glyph) {
     e.stopPropagation();
     closeSplitMenu(true);
   });
+  // A PRESS IN THE MENU KEEPS IT OPEN until the click it ends in has landed:
+  // where a click focuses no button (Safari, Firefox on macOS) the press
+  // blurs the menu to nothing before its choice is clicked.
+  let pressing = false;
+  const open = () => splitMenu !== null && splitMenu.menu === menu;
+  menu.addEventListener("pointerdown", () => {
+    pressing = true;
+    const doc = menu.ownerDocument;
+    const released = () => {
+      doc.removeEventListener("pointerup", released, true);
+      doc.removeEventListener("pointercancel", released, true);
+      setTimeout(() => {
+        pressing = false;
+        if (open() && !menu.contains(doc.activeElement)) closeSplitMenu();
+      }, 0);
+    };
+    doc.addEventListener("pointerup", released, true);
+    doc.addEventListener("pointercancel", released, true);
+  });
   menu.addEventListener("focusout", (e) => {
     const to = /** @type {Node | null} */ (e.relatedTarget);
-    if (to && menu.contains(to)) return;
-    if (splitMenu && splitMenu.menu === menu) closeSplitMenu();
+    if (pressing || (to && menu.contains(to))) return;
+    if (open()) closeSplitMenu();
   });
   const box = wrap.getBoundingClientRect();
   const at = glyph ? glyph.getBoundingClientRect() : null;
@@ -2586,7 +2605,7 @@ export function buildDerivedList() {
   const nodes = projection.nodes.filter((n) => n.derived);
   const labels = new Map(projection.nodes.map((n) => [n.id, n.label]));
   const form = formOnScreen();
-  const { homes, orphans } = core.inferredListing(projection, (l) => form.cents(/** @type {any} */ (l)));
+  const { homes, orphans } = core.inferredListing(projection, (l) => form.cents(/** @type {any} */ (l)), core.leafCents(fetched));
 
   for (const n of nodes) {
     const li = document.createElement("li");
@@ -3085,7 +3104,9 @@ export const DRAG_SLOP = 4;
  * zoom's own drag pans instead (zoomFilter). A press that moves less than
  * DRAG_SLOP is left a click; one that moves further takes the pointer and
  * swallows the click that ends it, so a drag ending on a mark neither follows
- * nor pins it. Touch is the scroller's own.
+ * nor pins it. The press moves no focus, since a mark focused pins: its
+ * mousedown is cancelled, which a cancelled pointerdown would not dispatch.
+ * Touch is the scroller's own.
  * @param {HTMLElement} scroller the .chart-scroll the chart sits in
  */
 export function wirePan(scroller) {
@@ -3096,6 +3117,9 @@ export function wirePan(scroller) {
     swallow = false;
     if (e.button !== 0 || e.pointerType === "touch" || zoomOf().k !== 1) return;
     drag = { id: e.pointerId, x: e.clientX, left: scroller.scrollLeft, moved: false };
+  });
+  scroller.addEventListener("mousedown", (e) => {
+    if (drag && e.button === 0) e.preventDefault();
   });
   scroller.addEventListener("pointermove", (e) => {
     if (!drag || e.pointerId !== drag.id) return;
@@ -3509,11 +3533,15 @@ export function resetDetail() {
 /**
  * Refuses to draw, visibly: in the drawer and in a role="alert" banner at the
  * top, since on a narrow viewport the drawer sits below a chart a reader may
- * never scroll past.
+ * never scroll past. The drawer holds the refusal, so it holds no pin.
  *
  * @param {string} message
  */
 export function fail(message) {
+  if (pinned) {
+    pinned = null;
+    applyEmphasis();
+  }
   previewed = null;
   const panel = el("detail");
   panel.replaceChildren();

@@ -83,6 +83,29 @@ describe("a split whose chart will not draw", () => {
     assert.equal(panel, banners[0]);
     assert.equal(app.pinned, null);
   });
+
+  // Mutation: leave the pin set in fail() and this goes red: Pin is shown
+  // pressed over the refusal, and the hover previews nothing.
+  test("refused, lets the pin go: a swatch isolated after shows Pin unpressed over the refusal, and a hover previews", async (t) => {
+    const broken = structuredClone(columnFixture("fy2026-adopted"));
+    const sales = broken.nodes.findIndex((n) => n.id === "revenue/taxes/sales");
+    broken.schedules.expansion.splits.push({ node: sales, key: "lines-planted", form: "refine", alternative: true });
+    const config = structuredClone(pageFixture().config);
+    config.split_labels["lines-planted"] = "planted lines";
+    const { app, document } = await bootedApp({ config, checkedStem: YEARS[0].stem, plan: { [YEARS[0].path]: { doc: broken } } });
+    app.pin(app.laidNodes.find((n) => n.id === "fund-group/general"));
+    const drew = app.expandNode("revenue/taxes/sales", "lines-planted");
+    await settle();
+    document.querySelector("#legend [data-group]").click();
+    const button = document.getElementById("detail-pin");
+    const pressed = !button.hidden && button.getAttribute("aria-pressed") === "true";
+    const over = refusals(document).length === 1 && document.getElementById("detail").textContent === refusals(document)[0].textContent;
+    const hovered = app.laidNodes.find((n) => n.id === "revenue/taxes/sales");
+    app.preview(hovered);
+    const previewed = app.previewed ? app.previewed.id : "";
+    t.diagnostic(`refused ${!drew}; Pin pressed over the refusal ${pressed}; the hover previewed "${previewed}"`);
+    assert.deepEqual({ drew, over, pressed, previewed }, { drew: false, over: true, pressed: false, previewed: "revenue/taxes/sales" });
+  });
 });
 
 describe("a schedule declaring a split in a form this page does not draw", () => {
