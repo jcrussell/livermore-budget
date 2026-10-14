@@ -284,8 +284,9 @@ Transfers In into the funds that pay it, a fund group into its funds, the
 General Fund into its divisions, an object category into its object rows or,
 as the alternative a reader chooses instead, the divisions that spend it, and
 Transfers Out into the funds it pays. The fund-balance ends declare no split.
-Every split the stitch declares is EXTEND: the node stays drawn as a hub and
-its members stand in a column of their own after it. The General Fund's link
+Every split is EXTEND, the one form `split_form` admits, so a schedule
+declaring any other is refused at the write: the node stays drawn as a hub
+and its members stand in a column of their own after it. The General Fund's link
 to each division, and an object category's to each division of the
 alternative, cites that member's own total. Every other split's links to its
 members are legs carrying `repeats`: each repeats one leaf's cents and facts,

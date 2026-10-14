@@ -254,29 +254,26 @@ func TestTheExpansionChecksCanFail(t *testing.T) {
 			want: "the leg fund-group/general -> fund/100 repeating " + salesLeaf + " has 0 leaves re-pointed onto the node",
 		},
 		{
-			name: "a flow endpoint parenting the members of a split it does not extend", check: &nodeHierarchyWellFormed{},
+			name: "a flow endpoint parenting the members of no split it declares", check: &nodeHierarchyWellFormed{},
 			edit: func(_ *testing.T, _ *Subject, d *project.Document) {
-				d.Splits = slices.Clone(d.Splits)
-				for i := range d.Splits {
-					if d.Splits[i].Node == project.NodeTransfersIn {
-						d.Splits[i].Form = project.SplitRefine
-					}
-				}
+				d.Splits = slices.DeleteFunc(slices.Clone(d.Splits), func(sp project.Split) bool {
+					return sp.Node == project.NodeTransfersIn
+				})
 			},
 			want: "is parented to \"" + project.NodeTransfersIn + "\", a flow endpoint",
 		},
 		{
-			name: "an alternative refine of a root, held to nothing", check: &expansionSplitsTie{},
+			name: "an alternative split of a root in a form other than extend, held to nothing", check: &expansionSplitsTie{},
 			edit: func(t *testing.T, _ *Subject, d *project.Document) {
 				const group, member = "fund-group/internal-service", "fund/again"
 				d.Splits = append(slices.Clone(d.Splits),
-					project.Split{Node: group, Key: "again", Form: project.SplitRefine, Alternative: true})
+					project.Split{Node: group, Key: "again", Form: "sideways", Alternative: true})
 				d.Nodes = append(d.Nodes, project.Node{ID: member, Label: "Again", Tier: 1, Parent: group, Alternative: "again"})
 				l := d.Links[leafAt(t, d, isRemainder, isRow)]
 				l.Source, l.Alternative, l.ValueCents = member, "again", l.ValueCents+1
 				d.Links = append(d.Links, l)
 			},
-			want: "no printed cell is declared for a refine split",
+			want: "no printed cell is declared for a sideways split",
 		},
 		{
 			name: "two onward links each citing both categories, binned so they cancel", check: &expansionSplitsTie{},

@@ -35,9 +35,9 @@
       "enum": ["aggregate", "smaller"]
     },
     "split_form": {
-      "description": "How a node of the expansion schedule opens: in place of itself, or into a column after it; project.SplitForms.",
+      "description": "How a node of the expansion schedule opens: into a column after it, the node drawn as a hub; project.SplitForms.",
       "type": "string",
-      "enum": ["refine", "extend"]
+      "enum": ["extend"]
     },
     "split_key": {
       "description": "What a node of the expansion schedule splits into, a split's key; project.SplitKeys.",

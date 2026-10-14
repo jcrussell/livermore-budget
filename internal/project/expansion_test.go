@@ -13,6 +13,7 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/structure"
 	"github.com/jcrussell/livermore-budget/internal/vocab"
+	"github.com/jcrussell/livermore-budget/schema"
 )
 
 // committedDocs is every graph the committed store builds for one adopted
@@ -600,5 +601,31 @@ func TestAFundGroupsLegsCarryEachFundsInflow(t *testing.T) {
 			}
 		}
 		t.Logf("FY%d: members a fund group reaches by no leg, nothing arriving at them: %v", year, unreached)
+	}
+}
+
+// TestASplitInAnyFormButExtendIsRefusedAtTheWrite holds the expansion
+// schedule's write to its one split form: the committed schedule encodes, and
+// the same schedule with one split declared in another form is refused by
+// schema/enums.schema.json's split_form, naming the form.
+func TestASplitInAnyFormButExtendIsRefusedAtTheWrite(t *testing.T) {
+	d := committedDocs(t, 2026)[ExpansionProjection]
+	if d == nil || len(d.Splits) == 0 {
+		t.Fatal("the committed store builds no FY2026 expansion schedule with a split, so this test holds nothing")
+	}
+	if _, err := encode(d, ExpansionProjection, schema.Projection); err != nil {
+		t.Fatalf("the committed schedule is refused at the write: %v", err)
+	}
+	for _, form := range []string{"refine", "sideways", ""} {
+		bad := *d
+		bad.Splits = slices.Clone(d.Splits)
+		bad.Splits[0].Form = form
+		_, err := encode(&bad, ExpansionProjection, schema.Projection)
+		switch {
+		case err == nil:
+			t.Errorf("a split of %s declared %q was written", bad.Splits[0].Node, form)
+		case !strings.Contains(err.Error(), "form"):
+			t.Errorf("a split declared %q was refused, but not for its form: %v", form, err)
+		}
 	}
 }

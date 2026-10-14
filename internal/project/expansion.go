@@ -25,17 +25,13 @@ func ExpansionScopes() []string {
 	}
 }
 
-// The two forms a split takes. A refined node is replaced by its members in
-// its own column; an extended node stays where it is and its members are
-// drawn in a column of their own after it, each reached by links from the
-// node.
-const (
-	SplitRefine = "refine"
-	SplitExtend = "extend"
-)
+// SplitExtend is the one form a split takes: the node stays where it is and
+// its members are drawn in a column of their own after it, each reached by
+// links from the node.
+const SplitExtend = "extend"
 
 // SplitForms is the closed set of split forms.
-func SplitForms() []string { return []string{SplitRefine, SplitExtend} }
+func SplitForms() []string { return []string{SplitExtend} }
 
 // Split is one way a node of the expansion schedule opens. Its members are
 // the nodes whose Parent is Node and whose Alternative is Key on an
@@ -1084,8 +1080,8 @@ func drawnElsewhere(f *fact.Fact) bool {
 }
 
 // splitsOf is every split a node of the stitch has members in, in node order,
-// refusing members under a node whose role declares no such split, and an
-// extended node with no link to a member or a refined one with one.
+// refusing members under a node whose role declares no such split, or one
+// whose split is not extend, and a node with no link to a member.
 func splitsOf(nodes map[string]Node, links []Link) ([]Split, error) {
 	type key struct{ node, alternative string }
 	members := map[key][]string{}
@@ -1111,7 +1107,7 @@ func splitsOf(nodes map[string]Node, links []Link) ([]Split, error) {
 			return nil, fmt.Errorf("expansion: %q (role %s) has members %v and no split of its role declares them",
 				k.node, parent.Role, members[k])
 		}
-		if (d.form == SplitExtend) != reaches[k] {
+		if d.form != SplitExtend || !reaches[k] {
 			return nil, fmt.Errorf("expansion: %q splits by %s into %s and a link from it to a member is %v",
 				k.node, d.form, d.key, reaches[k])
 		}

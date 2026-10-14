@@ -893,12 +893,11 @@ func (*nodeHierarchyWellFormed) Run(_ context.Context, s *Subject) (Result, erro
 		for _, n := range p.Nodes {
 			byID[n.ID] = n
 		}
-		// A split the document declares places its members, in the parent's
-		// column or one after it, whatever their id forms' tiers say.
-		// An extended split's node is drawn beside its members, so it may
-		// carry a flow of its own whatever it is.
+		// A split the document declares places its members in a column
+		// after its node, whatever their id forms' tiers say, and its node
+		// is drawn beside them, so it may carry a flow of its own whatever
+		// it is.
 		declared := map[[2]string]bool{}
-		extended := map[[2]string]bool{}
 		if p.Graph != nil {
 			for _, sp := range p.Graph.Splits {
 				alt := ""
@@ -906,7 +905,6 @@ func (*nodeHierarchyWellFormed) Run(_ context.Context, s *Subject) (Result, erro
 					alt = sp.Key
 				}
 				declared[[2]string{sp.Node, alt}] = true
-				extended[[2]string{sp.Node, alt}] = sp.Form == project.SplitExtend
 			}
 		}
 		flowing := make(map[string]bool, 2*len(p.Links))
@@ -932,7 +930,7 @@ func (*nodeHierarchyWellFormed) Run(_ context.Context, s *Subject) (Result, erro
 			}
 			sameTier := false
 			if _, isEndpoint := project.EndpointCategories(n.Parent); isEndpoint {
-				if flowing[n.Parent] && !extended[[2]string{n.Parent, n.Alternative}] {
+				if flowing[n.Parent] && !declared[[2]string{n.Parent, n.Alternative}] {
 					findings = append(findings, finding(p.String(),
 						"node %q is parented to %q, a flow endpoint this document draws a "+
 							"flow at. An endpoint carrying its own flow sits outside the "+
