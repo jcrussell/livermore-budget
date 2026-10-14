@@ -8,7 +8,7 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  bootedApp, split, settle, clickYear, columnFixture, pageFixture, dollars, shortDollars,
+  bootedApp, split, settle, clickYear, columnFixture, pageFixture, dollars, shortDollars, everySplit, revealed,
 } from "./testlib.mjs";
 
 const PAGE = pageFixture();
@@ -223,4 +223,50 @@ describe("a figure whose words or pages the page does not carry", () => {
     delete config.kind_labels[kind];
     assert.throws(() => app.kindLabel(kind), new RegExp(`cannot name link kind ${kind}`));
   });
+});
+
+// A HUB DRAWS A LEAF TWICE, as itself and again as the leg repeating it, and
+// an inferred leaf is one inferred figure however many ribbons draw it: the
+// inferred list states it once, under the derived node it arrives at, and a
+// leg whose leaf a derived node lists is no orphan of its own.
+describe("the inferred list states each inferred figure once", () => {
+  for (const year of PAGE.config.years) {
+    test(`${year.label}: on every split the page offers, and with Services & Supplies and the Internal Service group open, the list totals each inferred cell once`, async (t) => {
+      const { app, document } = await bootedApp({ checkedStem: year.stem });
+      const wrong = [];
+      let repeated = 0;
+      const visit = (where) => {
+        const cents = (l) => app.formOnScreen().cents(l);
+        const derived = app.projection.links.filter((l) => l.derived);
+        const { homes, orphans } = app.inferredListing(app.projection, cents);
+        const listed = [...homes.values()].reduce((s, e) => s + e.cents, 0) + orphans.reduce((s, o) => s + o.cents, 0);
+        const distinct = app.distinctCents(derived, cents);
+        if (derived.reduce((s, l) => s + cents(l), 0) !== distinct) repeated++;
+        if (listed !== distinct) wrong.push(`${where}: the list states ${listed}, the inferred cells ${distinct}`);
+        const items = [...document.querySelectorAll("#derived-list li")];
+        for (const [id, e] of homes) {
+          const label = app.projection.nodes.find((n) => n.id === id).label;
+          const item = items.find((li) => li.querySelector(".what") && li.querySelector(".what").textContent === "◇ " + label);
+          const want = `${e.flows.length} inferred flow${e.flows.length === 1 ? "" : "s"} totalling ${dollars(e.cents)}:`;
+          if (!item || !item.textContent.includes(want)) wrong.push(`${where}: ${label} is not listed as ${want}`);
+        }
+        const said = items.filter((li) => li.querySelector(".why") && li.querySelector(".why").textContent === app.say("flow_inferred"));
+        const figures = said.map((li) => li.lastChild.textContent).join(" ");
+        if (figures !== orphans.map((o) => dollars(o.cents)).join(" ")) wrong.push(`${where}: orphans listed ${figures}, of ${orphans.length}`);
+      };
+      visit("(the root)");
+      const walked = await everySplit(app, async (where) => visit(where));
+      assert.equal(walked.refused, "", walked.refused);
+      for (const id of ["expenditure/services-and-supplies", "fund-group/internal-service"]) {
+        await revealed(app, id);
+        await split(app, app.entryOf(id, app.splitsOf(app.fetched, id)[0].key));
+      }
+      visit("Services & Supplies and the Internal Service group");
+      const { homes } = app.inferredListing(app.projection, (l) => app.formOnScreen().cents(l));
+      t.diagnostic(`${year.label}: ${walked.visited + 2} chart(s), ${repeated} drawing an inferred cell on more than one ribbon; ` +
+        `with Services & Supplies and the Internal Service group open: ${[...homes].map(([id, e]) => `${id} ${e.flows.length} flow(s) ${e.cents}`).join("; ")}`);
+      assert.deepEqual(wrong.slice(0, 5), []);
+      assert.ok(repeated > 0, "no chart draws an inferred cell twice, so nothing here is tested");
+    });
+  }
 });

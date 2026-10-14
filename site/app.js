@@ -903,7 +903,8 @@ export function clickNode(d, at = Infinity) {
  * Opens what a node offers and pins the node opened, still drawn as its
  * split's hub, or folds a hub back (collapseNode) and pins it, or the node
  * it folded into where it is drawn no more; a tail drawn out is drawn no
- * more and pins nothing. A node offering nothing is pinned.
+ * more and pins nothing. A node offering nothing is pinned. An open the
+ * chart refuses pins nothing, so the refusal fail() wrote stays in the panel.
  * @param {LaidNode} d
  */
 function activate(d) {
@@ -915,31 +916,37 @@ function activate(d) {
     if (kept) pin(kept);
     return;
   }
-  if (!openOffered(d)) {
+  if (!offers(d)) {
     pin(d);
     return;
   }
+  if (!openOffered(d)) return;
   const kept = laidNodes.find((n) => n.id === d.id);
   if (kept) pin(kept);
 }
 
 /**
- * Does what activating a node offers, and says whether it offered anything:
- * the node split by its first declared split (splittable), else the folded
- * tail drawn out (expandable). The one rule a node's activation and the
+ * Whether activating a node opens anything: it splits (splittable) or it is
+ * a folded tail to draw out (expandable).
+ * @param {{id: string}} d
+ * @returns {boolean}
+ */
+export function offers(d) {
+  return splittable(d) || expandable(d);
+}
+
+/**
+ * Does what activating a node offers (offers), and says whether it is on
+ * screen: the node split by its first declared split (splittable), else the
+ * folded tail drawn out (expandable). False where it offers nothing, and
+ * where the redraw was refused. The one rule a node's activation and the
  * search's Enter share.
  * @param {{id: string}} d
  * @returns {boolean}
  */
 export function openOffered(d) {
-  if (splittable(d)) {
-    expandNode(d.id);
-    return true;
-  }
-  if (expandable(d)) {
-    drawOutTail(d);
-    return true;
-  }
+  if (splittable(d)) return expandNode(d.id);
+  if (expandable(d)) return drawOutTail(d);
   return false;
 }
 
@@ -1479,13 +1486,18 @@ export function hueIndex(doc) {
 /**
  * A shaped chart under a filter state's removals: core.filterDocument with
  * each node's fund group read through the index the chart is coloured by.
+ * Throws where the filter line could not state what it removes once.
  * @param {FiscProjection} doc
  * @param {Readonly<FilterState>} [state]
  * @returns {{doc: FiscProjection, hidden: FiscLink[]}}
  */
 export function filterFor(doc, state = filter) {
   const index = hueIndex(doc);
-  return core.filterDocument(doc, (n) => core.fundGroupOf(index, n), state);
+  const out = core.filterDocument(doc, (n) => core.fundGroupOf(index, n), state);
+  // Asked here, inside every draw's try: a removal whose money the filter
+  // line cannot state once (core.distinctCents) is refused, not drawn.
+  hiddenTally(out);
+  return out;
 }
 
 /**
@@ -2545,34 +2557,33 @@ export function buildDerivedList() {
   const list = el("derived-list");
   list.replaceChildren();
   const nodes = projection.nodes.filter((n) => n.derived);
-  const links = projection.links.filter((l) => l.derived);
   const labels = new Map(projection.nodes.map((n) => [n.id, n.label]));
+  const form = formOnScreen();
+  const { homes, orphans } = core.inferredListing(projection, (l) => form.cents(/** @type {any} */ (l)));
 
   for (const n of nodes) {
     const li = document.createElement("li");
     li.append(h("div", "what", "◇ " + n.label));
     if (n.rationale) li.append(h("div", "why", n.rationale));
     if (n.source_note) li.append(h("div", "subtle", n.source_note));
-    const flows = links.filter((l) => homeOf(l) === n.id);
-    if (flows.length) {
-      const total = flows.reduce((sum, l) => sum + l.value_cents, 0);
+    const at = homes.get(n.id);
+    if (at) {
       // "inferred": a tail's own note counts the flows it FOLDS, a
       // different set, and an unqualified count would read as correcting it.
       li.append(h("div", "subtle", say("inferred_flows", {
-        flows: flows.length, figure: fmt(total),
-        ends: flows.map((l) => (labels.get(l.source) || l.source) + " → " + (labels.get(l.target) || l.target)).join("; "),
+        flows: at.flows.length, figure: fmtSigned(at.cents),
+        ends: at.flows.map((l) => (labels.get(l.source) || l.source) + " → " + (labels.get(l.target) || l.target)).join("; "),
       })));
     }
     list.append(li);
   }
   // A link can be derived while both its endpoints are printed.
-  const orphans = links.filter((l) => homeOf(l) === "");
-  for (const l of orphans) {
+  for (const { flow: l, cents } of orphans) {
     const li = document.createElement("li");
     li.append(h("div", "what", "◇ " +
       (labels.get(l.source) || l.source) + " → " + (labels.get(l.target) || l.target)));
     li.append(h("div", "why", say("flow_inferred")));
-    li.append(h("div", "subtle", fmt(l.value_cents)));
+    li.append(h("div", "subtle", fmtSigned(cents)));
     list.append(li);
   }
 
@@ -2789,8 +2800,8 @@ export function chooseSearch(id, open) {
   }
   if (!d) return false;
   if (input) input.value = d.label;
-  if (!revealed && open && openOffered(d)) {
-    if (input) input.value = "";
+  if (!revealed && open && offers(d)) {
+    if (openOffered(d) && input) input.value = "";
     return true;
   }
   if (revealed && open) {

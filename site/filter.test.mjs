@@ -214,6 +214,67 @@ describe("the tally states a leaf once, however many ribbons draw it", () => {
   }
 });
 
+// AN OBJECT CATEGORY'S DIVISIONS each restate every leaf arriving at the
+// category, and which leaves one division's total carries is not printed. So
+// totals carrying part of that list beside a leaf of it state no money once,
+// and the tally refuses them rather than add the same money twice. No kind or
+// group filter hides part of the list with the alternatives open (each
+// filter hides all of the category's divisions or none); a hidden set
+// planted at one division's total and the leaves arriving at its category is
+// what reaches the refusal.
+describe("the tally refuses totals restating leaves in part beside those leaves", () => {
+  for (const year of YEARS) {
+    test(`${year.label}: with every alternative open no kind or group filter is refused, and one division's total beside its category's leaves is`, async (t) => {
+      const { app } = await bootedApp({ checkedStem: year.stem });
+      const doc = app.fetched;
+      let open = app.rootFrontier(doc);
+      for (let changed = true; changed;) {
+        changed = false;
+        for (const sp of doc.splits) {
+          if (sp.alternative !== app.splitsOf(doc, sp.node).some((x) => x.alternative)) continue;
+          if (!open.has(sp.node) || app.openSplitOf(doc, open, sp.node) !== "") continue;
+          open = app.expand(doc, open, sp.node, sp.key);
+          changed = true;
+        }
+      }
+      const drawn = app.formOnScreen().shape(doc, { chart: CONFIG.overview, frontier: open, whole: new Set() });
+      const kinds = [...new Set(drawn.links.map((l) => l.kind))].filter((k) => k !== "");
+      const groups = [...new Set(drawn.nodes.map((n) => app.fundGroupOf(n)).filter(Boolean))];
+      const states = [];
+      for (const k of kinds) states.push({ kinds: new Set([k]), groups: new Set() });
+      for (const g of groups) {
+        states.push({ kinds: new Set(), groups: new Set([g]) });
+        for (const k of kinds) states.push({ kinds: new Set([k]), groups: new Set([g]) });
+      }
+      const refused = [];
+      for (const st of states) {
+        try {
+          app.filterFor(drawn, Object.assign({ smallest: 0 }, st));
+        } catch (e) {
+          refused.push(`[${[...st.kinds, ...st.groups].join(", ")}]: ${e.message}`);
+        }
+      }
+      assert.deepEqual(refused.slice(0, 5), []);
+      // The plant: one division's total and every ribbon drawing a leaf of the
+      // list it restates.
+      const restating = (l) => Object.keys(app.cellsOf(l) || {}).find((k) => k.includes("restates"));
+      const total = drawn.links.find((l) => restating(l) && drawn.nodes.find((n) => n.id === l.source).role === "object_category");
+      assert.ok(total !== undefined, "no object category's division is drawn, so nothing here is tested");
+      const list = new Set(restating(total).split("\u001f").pop().split("\u001e"));
+      const leaves = drawn.links.filter((l) => Object.keys(app.cellsOf(l) || {}).some((k) => list.has(k)));
+      const hidden = [total, ...leaves];
+      const sum = hidden.reduce((s, l) => s + app.formOnScreen().cents(l), 0);
+      const whole = [...list].reduce((s, k) => s + app.leafCents(doc).get(k), 0);
+      t.diagnostic(`${year.label}: ${states.length} filter state(s), none refused; ${total.source} -> ${total.target} carries ` +
+        `${total.value_cents} of the ${whole} its ${list.size} leaves carry, beside ${leaves.length} ribbon(s) drawing them; ` +
+        `their ribbons sum to ${sum}`);
+      assert.ok(leaves.length > 0 && total.value_cents < whole, "the planted total carries all of its list, or no leaf of it is drawn");
+      t.diagnostic(`the tally says ${(() => { try { return app.hiddenTally({ hidden }).cents; } catch (e) { return e.message; } })()}`);
+      assert.throws(() => app.hiddenTally({ hidden }), /cannot state these ribbons' money once/);
+    });
+  }
+});
+
 describe("the filter panel", () => {
   test("it lists Go's fund groups in order with the legend's hues, the hueless one last and muted, and every kind Go names", async (t) => {
     const { app, document } = await bootedApp({ checkedStem: YEARS[0].stem });

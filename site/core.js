@@ -631,6 +631,11 @@ function withCells(ribbon, legs) {
  * carry all of the leaves' cents, so a division's total and the division's
  * own rows are one figure, and as themselves where they carry part. A ribbon
  * carrying no cells is read whole by `cents`.
+ *
+ * FAILS CLOSED on totals carrying part of a list beside any leaf of that
+ * list, counted through its own cell or another list: which leaves part of
+ * the totals restate is not printed (no one division of pp.85-125 is one
+ * leaf), so no sum states that money once.
  * @param {FiscLink[]} links
  * @param {(l: FiscLink) => number} cents a ribbon's figure at its printed sign
  * @param {Map<string, number>} [leaves] leafCents of the schedule folded
@@ -657,15 +662,26 @@ export function distinctCents(links, cents, leaves = new Map()) {
       else once(k, c);
     }
   }
+  /** @type {string[][]} */
+  const partial = [];
   for (const [k, c] of restating) {
     const keys = k.slice(RESTATING.length).split("\u001e");
     const whole = keys.every((key) => leaves.has(key)) &&
       keys.reduce((s, key) => s + /** @type {number} */ (leaves.get(key)), 0) === c;
     if (!whole) {
+      partial.push(keys);
       sum += c;
       continue;
     }
     for (const key of keys) once(key, /** @type {number} */ (leaves.get(key)));
+  }
+  for (const keys of partial) {
+    const twice = keys.find((key) => seen.has(key));
+    if (twice !== undefined) {
+      throw new Error("cannot state these ribbons' money once: totals restating " + keys.length +
+        " leaves carry part of them, beside the leaf " + twice + " they may restate");
+    }
+    for (const key of keys) seen.add(key);
   }
   return sum;
 }
@@ -1482,6 +1498,58 @@ export function homeOf(doc, l) {
   if (derived.has(l.target)) return l.target;
   if (derived.has(l.source)) return l.source;
   return "";
+}
+
+/**
+ * The inferred flows of `doc` as the page lists them, each cell once: by the
+ * derived node each is listed under (homeOf), and those with no derived end
+ * apart. A cell drawn by several ribbons -- a leaf and the hub leg repeating
+ * it -- is one inferred figure, stated on one ribbon: one arriving at a
+ * derived node first, then one leaving one, then any, in drawn order, so a
+ * leaf is listed under the mark it arrives at, as homeOf lists a flow, and a
+ * leg whose leaf a derived node holds is no orphan. A ribbon left stating no
+ * cell is not listed. Each figure is a sum of the cells it states, at the
+ * signs printed (distinctCents); a ribbon with no cells is read by `cents`.
+ * @param {FiscProjection | null} doc
+ * @param {(l: FiscLink) => number} cents a ribbon's figure at its printed sign
+ * @returns {{homes: Map<string, {flows: FiscLink[], cents: number}>, orphans: {flow: FiscLink, cents: number}[]}}
+ */
+export function inferredListing(doc, cents) {
+  /** @type {Map<string, {flows: FiscLink[], cents: number}>} */
+  const homes = new Map();
+  /** @type {{flow: FiscLink, cents: number}[]} */
+  const orphans = [];
+  if (!doc) return { homes, orphans };
+  const derived = new Set(doc.nodes.filter((n) => n.derived).map((n) => n.id));
+  const links = doc.links.filter((l) => l.derived);
+  const rank = (/** @type {FiscLink} */ l) => derived.has(l.target) ? 0 : derived.has(l.source) ? 1 : 2;
+  /** @type {Map<string, FiscLink>} */
+  const stater = new Map();
+  for (const l of links.slice().sort((a, b) => rank(a) - rank(b))) {
+    for (const k of Object.keys(cellsOf(l) || {})) if (!k.startsWith(RESTATING) && !stater.has(k)) stater.set(k, l);
+  }
+  for (const l of links) {
+    const cells = cellsOf(l);
+    let stated = !cells;
+    let sum = cells ? 0 : cents(l);
+    for (const [k, c] of Object.entries(cells || {})) {
+      if (k.startsWith(RESTATING) || stater.get(k) === l) {
+        stated = true;
+        sum += c;
+      }
+    }
+    if (!stated) continue;
+    const home = homeOf(doc, l);
+    if (!home) {
+      orphans.push({ flow: l, cents: sum });
+      continue;
+    }
+    const at = homes.get(home) || { flows: [], cents: 0 };
+    at.flows.push(l);
+    at.cents += sum;
+    homes.set(home, at);
+  }
+  return { homes, orphans };
 }
 
 export function tableRows(doc) {
