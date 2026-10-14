@@ -311,6 +311,47 @@ describe("zoom and pan on the chart", () => {
     assert.deepEqual({ pressed, focused }, { pressed: true, focused: true });
   });
 
+  // Mutation: listen for the press's end on the scroller alone and this goes
+  // red: the release outside it leaves the press live, and the hover pans.
+  test("a press released outside the scroller ends there, and a hover after it pans nothing", async (t) => {
+    const { document, left } = await scrolling();
+    const ribbon = document.querySelector("#chart path.link");
+    fire(ribbon, "pointerdown", { button: 0, clientX: 500, clientY: 300 });
+    fire(ribbon, "pointermove", { button: 0, clientX: 501, clientY: 900 });
+    fire(document.body, "pointerup", { button: 0, clientX: 501, clientY: 900 });
+    fire(ribbon, "pointermove", { buttons: 0, clientX: 200, clientY: 300 });
+    t.diagnostic(`released below the scroller, then hovered 300px left: scrollLeft ${left()}`);
+    assert.equal(left(), 0);
+  });
+
+  // Mutation: drop the target test from wirePan's pointerdown and this goes
+  // red: the press on the scrollbar pans the scroller under the thumb.
+  test("a press on the scroller's own scrollbar is the scrollbar's", async (t) => {
+    const { scroller, left } = await scrolling();
+    drag(scroller, -300);
+    t.diagnostic(`dragged 300px on the scroller itself: scrollLeft ${left()}`);
+    assert.equal(left(), 0);
+  });
+
+  // Mutation: drop closeSplitMenu from wirePan's mousedown listener and this
+  // goes red: the cancelled press moves no focus, so the menu's focusout
+  // never fires and the menu stays open.
+  test("a press on the chart closes the ⊕ menu the press moves no focus out of", async (t) => {
+    const { app, document } = await bootedApp();
+    const id = "expenditure/capital-outlay";
+    const glyph = [...document.querySelectorAll("#chart g.glyph")].find((g) => g.__data__ && g.__data__.id === id);
+    assert.ok(glyph !== undefined, "no glyph beside " + id);
+    fire(glyph, "click", { timeStamp: 2000 });
+    const opened = Boolean(document.getElementById("split-menu"));
+    const ribbon = document.querySelector("#chart path.link");
+    fire(ribbon, "pointerdown", { button: 0, clientX: 500, clientY: 300 });
+    const pressed = fire(ribbon, "mousedown", { button: 0, clientX: 500, clientY: 300 }).defaultPrevented;
+    const open = Boolean(document.getElementById("split-menu"));
+    fire(ribbon, "pointerup", { button: 0, clientX: 500, clientY: 300 });
+    t.diagnostic(`menu opened ${opened}; the press's mousedown cancelled ${pressed}; menu open after it ${open}`);
+    assert.deepEqual({ opened, pressed, open, menu: app.splitMenu === null }, { opened: true, pressed: true, open: false, menu: true });
+  });
+
   test("zoomed in, a drag is the zoom's to pan, and the scroller stays where it is", async (t) => {
     const { app, document, left } = await scrolling();
     app.zoomBy(2);

@@ -280,6 +280,31 @@ describe("the expansion schedule, folded to a frontier", () => {
   }
 });
 
+// PLANTED: no pinned column has a lone member that splits by an alternative
+// of one member. P opens straight through to M by M's primary split; the
+// reader switches M to its alternative, whose one member Y opens straight
+// through. Mutation: let straightFrom climb through an alternative member and
+// this goes red: folding Y climbs to P and folds everything.
+describe("a fold climbs only through what expand opened straight through", () => {
+  const node = (id, parent = "", alternative = "") => Object.assign({ id, tier: 0, parent, label: id, role: "r" }, alternative ? { alternative } : {});
+  const split = (n, key, alternative = false) => ({ node: n, key, form: "extend", alternative });
+  const doc = {
+    projection: "synthetic",
+    nodes: [node("P"), node("M", "P"), node("A", "M"), node("B", "M"), node("Y", "M", "alt"), node("Y1", "Y"), node("Y2", "Y")],
+    links: [],
+    splits: [split("P", "one"), split("M", "rows"), split("M", "alt", true), split("Y", "rows")],
+  };
+
+  test("folding the alternative's lone member folds its parent's alternative, not the parent's parent", (t) => {
+    const opened = core.expand(doc, core.rootFrontier(doc), "P", "one");
+    const switched = core.expand(doc, opened, "M", "alt");
+    const top = core.straightFrom(doc, "Y");
+    t.diagnostic(`P open straight through: [${ids(opened)}]; M by alt: [${ids(switched)}]; folding Y folds ${top}`);
+    assert.deepEqual({ opened: ids(opened), switched: ids(switched), top, fromM: core.straightFrom(doc, "M"), fromA: core.straightFrom(doc, "A") },
+      { opened: ["A", "B", "M", "P"], switched: ["M", "P", "Y", "Y1", "Y2"], top: "M", fromM: "P", fromA: "A" });
+  });
+});
+
 // A completing set one fold breaks stays broken through the next: the
 // capped expansion folds a folded document again, and there the ribbons
 // left naming a set are all that set's count could see.

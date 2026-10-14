@@ -981,8 +981,9 @@ export function expand(doc, frontier, id, key) {
 
 /**
  * The node whose opening opens `id`'s splits with it: `id`'s parent where
- * `id` is the one member of the split it belongs to, and so on up (expand),
- * else `id` itself. What folding `id` back folds.
+ * `id` is the one member of the split it belongs to, and so on up while the
+ * node reached is open by its primary split, the only split expand opens
+ * straight through; else `id` itself. What folding `id` back folds.
  * @param {FiscProjection} doc the expansion schedule
  * @param {string} id
  * @returns {string}
@@ -990,12 +991,17 @@ export function expand(doc, frontier, id, key) {
 export function straightFrom(doc, id) {
   const byID = new Map(doc.nodes.map((n) => [n.id, n]));
   let at = id;
+  // Nine hops bounds the climb against a parent cycle; no schedule nests
+  // near so deep.
   for (let hops = 0; hops < 9; hops++) {
     const n = byID.get(at);
     if (!n || !n.parent) break;
     const split = splitsOf(doc, n.parent).find((sp) => sp.members.includes(at));
     if (!split || split.members.length !== 1) break;
     at = n.parent;
+    // Its parent is open by an alternative, the reader's choice and not
+    // expand's, so the parent folds alone.
+    if (n.alternative) break;
   }
   return at;
 }

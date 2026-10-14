@@ -313,6 +313,7 @@ func (*expansionOpensAsTheSpine) Run(_ context.Context, s *Subject) (Result, err
 // group's Services & Supplies and this check names the cell; make fund/100's
 // link to one division a cent short and it names that division; drop a leaf
 // from what one division's total restates and it names the list's cents;
+// name two divisions' leaves on each of their totals and it names the total;
 // name leaves on a hub leg and it names the leg; drop one
 // revenue/taxes/sales leg and it names the line's leaf and the hub's
 // outflow; make one object category's leg a cent short and it names the
@@ -527,17 +528,32 @@ func (*expansionSplitsTie) rootCells(x stitched, sp project.Split) map[string]*t
 }
 
 // restatingFindings holds a totals split's links to the leaves they name in
-// Restates: every link names some, each a leaf's Repeats, and the links naming
-// one list together carry exactly those leaves' cents, so a sum stating the
-// list's leaves in their place states the same money.
+// Restates: every link names exactly the leaves it states again -- its
+// member's onward leaves on a primary split, every leaf arriving at the node
+// on an alternative -- each a leaf's Repeats, and the links naming one list
+// together carry exactly those leaves' cents, so a sum stating the list's
+// leaves in their place states the same money.
 func (*expansionSplitsTie) restatingFindings(x stitched, sp project.Split, members []string, alt,
 	subject string) []Finding {
 	var findings []Finding
 	leaves := map[string]int64{}
+	var leafLinks []project.Link
 	for _, l := range x.doc.Links {
 		if l.Alternative == "" && l.Repeats != "" && !x.isLeg(l) {
 			leaves[l.Repeats] = l.ValueCents
+			leafLinks = append(leafLinks, l)
 		}
+	}
+	// stated is the leaves a total to member m states again.
+	stated := func(m string) []string {
+		var keys []string
+		for _, o := range leafLinks {
+			if (sp.Alternative && o.Target == sp.Node) || (!sp.Alternative && o.Source == m) {
+				keys = append(keys, o.Repeats)
+			}
+		}
+		slices.Sort(keys)
+		return slices.Compact(keys)
 	}
 	type group struct {
 		keys  []string
@@ -552,6 +568,23 @@ func (*expansionSplitsTie) restatingFindings(x stitched, sp project.Split, membe
 			findings = append(findings, finding(subject, "%s -> %s is a total of its own and names no leaf it states again",
 				l.Source, l.Target))
 			continue
+		}
+		want := stated(l.Target)
+		named := slices.Compact(slices.Sorted(slices.Values(l.Restates)))
+		if !slices.Equal(named, want) {
+			extra, missing := 0, 0
+			for _, k := range named {
+				if !slices.Contains(want, k) {
+					extra++
+				}
+			}
+			for _, k := range want {
+				if !slices.Contains(named, k) {
+					missing++
+				}
+			}
+			findings = append(findings, finding(subject, "%s -> %s restates %d leaf(s) it does not state again and leaves out %d it does",
+				l.Source, l.Target, extra, missing))
 		}
 		k := strings.Join(l.Restates, "\n")
 		if groups[k] == nil {

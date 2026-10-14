@@ -81,7 +81,7 @@ describe("a split whose chart will not draw", () => {
     assert.equal(banners.length, 1);
     assert.ok(banners[0].startsWith("That could not be split: "), banners[0]);
     assert.equal(panel, banners[0]);
-    assert.equal(app.pinned, null);
+    assert.ok(app.pinned === null, app.pinned && app.pinned.id);
   });
 
   // Mutation: leave the pin set in fail() and this goes red: Pin is shown

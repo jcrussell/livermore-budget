@@ -190,6 +190,17 @@ func TestTheExpansionChecksCanFail(t *testing.T) {
 			want: "fund/100 -> dept/patrol is a total of its own and names no leaf it states again",
 		},
 		{
+			// Each list's cents still tie: the two totals together carry
+			// what the two divisions' leaves do.
+			name: "two divisions' totals each naming both divisions' leaves", check: &expansionSplitsTie{},
+			edit: func(t *testing.T, _ *Subject, d *project.Document) {
+				a, b := linkAt(t, d, "fund/100", "dept/patrol"), linkAt(t, d, "fund/100", "dept/police-administration")
+				both := slices.Sorted(slices.Values(append(slices.Clone(d.Links[a].Restates), d.Links[b].Restates...)))
+				d.Links[a].Restates, d.Links[b].Restates = both, slices.Clone(both)
+			},
+			want: "fund/100 -> dept/patrol restates",
+		},
+		{
 			name: "an object category's divisions restating a leaf no link repeats", check: &expansionSplitsTie{},
 			edit: func(t *testing.T, _ *Subject, d *project.Document) {
 				for i, l := range d.Links {

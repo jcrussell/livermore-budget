@@ -3105,8 +3105,10 @@ export const DRAG_SLOP = 4;
  * DRAG_SLOP is left a click; one that moves further takes the pointer and
  * swallows the click that ends it, so a drag ending on a mark neither follows
  * nor pins it. The press moves no focus, since a mark focused pins: its
- * mousedown is cancelled, which a cancelled pointerdown would not dispatch.
- * Touch is the scroller's own.
+ * mousedown is cancelled, which a cancelled pointerdown would not dispatch,
+ * so the press closes the ⊕ menu itself. A press on the scroller's own
+ * scrollbar, whose target is the scroller, is the scrollbar's. A release
+ * anywhere on the page ends the press. Touch is the scroller's own.
  * @param {HTMLElement} scroller the .chart-scroll the chart sits in
  */
 export function wirePan(scroller) {
@@ -3115,11 +3117,14 @@ export function wirePan(scroller) {
   let swallow = false;
   scroller.addEventListener("pointerdown", (e) => {
     swallow = false;
-    if (e.button !== 0 || e.pointerType === "touch" || zoomOf().k !== 1) return;
+    drag = null;
+    if (e.button !== 0 || e.pointerType === "touch" || zoomOf().k !== 1 || e.target === scroller) return;
     drag = { id: e.pointerId, x: e.clientX, left: scroller.scrollLeft, moved: false };
   });
   scroller.addEventListener("mousedown", (e) => {
-    if (drag && e.button === 0) e.preventDefault();
+    if (!drag || e.button !== 0) return;
+    e.preventDefault();
+    closeSplitMenu();
   });
   scroller.addEventListener("pointermove", (e) => {
     if (!drag || e.pointerId !== drag.id) return;
@@ -3144,8 +3149,8 @@ export function wirePan(scroller) {
     drag = null;
     if (swallow) setTimeout(() => { swallow = false; }, 0);
   };
-  scroller.addEventListener("pointerup", end);
-  scroller.addEventListener("pointercancel", end);
+  scroller.ownerDocument.addEventListener("pointerup", end);
+  scroller.ownerDocument.addEventListener("pointercancel", end);
   scroller.addEventListener("click", (e) => {
     if (!swallow) return;
     swallow = false;
