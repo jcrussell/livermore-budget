@@ -183,6 +183,30 @@ describe("one activation", () => {
     assert.deepEqual({ echoed, later }, { echoed: { split: OPENS, pinned: OPENS }, later: { split: "", pinned: OPENS } });
   });
 
+  // Mutation: drop clickNode's and glyphNode's doubled guard and this goes
+  // red, the second click of a double click folding the hub the first opened.
+  test("a double click on a node or its glyph is one activation, and a click beyond the window folds", async (t) => {
+    const seen = {};
+    for (const [on, target] of [
+      ["node", (app, document) => markOf(app, document, OPENS)],
+      ["glyph", (app, document) => glyphOf(app, document, OPENS)],
+    ]) {
+      const { app, document } = await bootedApp();
+      const state = () => ({ split: app.expansions.join(","), glyph: glyphKind(document, OPENS) });
+      fire(target(app, document), "click", { timeStamp: 1000 });
+      await settle();
+      fire(target(app, document), "click", { timeStamp: 1300 });
+      await settle();
+      const doubled = state();
+      fire(target(app, document), "click", { timeStamp: 1000 + app.ACTIVATION_WINDOW });
+      await settle();
+      seen[on] = { doubled, later: state() };
+    }
+    t.diagnostic(`two clicks 300ms apart, then one at the window's edge: ${JSON.stringify(seen)}`);
+    const want = { doubled: { split: OPENS, glyph: "fold" }, later: { split: "", glyph: "open" } };
+    assert.deepEqual(seen, { node: want, glyph: want });
+  });
+
   test("a click on a node that does not split pins it, and splits and follows nothing", async (t) => {
     const { app, document } = await bootedApp();
     await split(app, WORST);

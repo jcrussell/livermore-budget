@@ -206,6 +206,14 @@ func (*linkValuesTieToFacts) Run(_ context.Context, s *Subject) (Result, error) 
 		for _, l := range p.Links {
 			links++
 			subject := fmt.Sprintf("%s %s -> %s", p, l.Source, l.Target)
+			// project.LinkCents reads a link repeating a leaf at the leaf's
+			// ends, and the readers of repeats and restates trust them
+			// wherever they are drawn.
+			if p.Name != project.ExpansionProjection && (l.Repeats != "" || len(l.Restates) > 0) {
+				findings = append(findings, finding(subject,
+					"repeats %q and restates %d leaves, which only the expansion schedule's links carry",
+					l.Repeats, len(l.Restates)))
+			}
 			if len(l.FactIDs) == 0 {
 				findings = append(findings, finding(subject,
 					"cites no fact, so the %s it draws rests on nothing",

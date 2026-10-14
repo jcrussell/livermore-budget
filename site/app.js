@@ -430,6 +430,27 @@ export const ACTIVATION_WINDOW = 500;
 export let keyActivation = { id: "", at: -Infinity };
 
 /**
+ * The node or glyph and timestamp of the last click that activated one, so
+ * that a double click, whose second click lands on the hub the first just
+ * opened, is one activation.
+ * @type {{id:string, at:number}}
+ */
+export let pointerActivation = { id: "", at: -Infinity };
+
+/**
+ * Whether a click at `at` on `id` is the second of a double click: within
+ * ACTIVATION_WINDOW after the last click that activated it. An unstamped
+ * click is no second one.
+ * @param {string} id
+ * @param {number} at
+ * @returns {boolean}
+ */
+function doubled(id, at) {
+  const since = at - pointerActivation.at;
+  return pointerActivation.id === id && since >= 0 && since < ACTIVATION_WINDOW;
+}
+
+/**
  * What the pointer is tracing: the node or ribbon it is on, whose path
  * upstream and downstream is drawn over the rest until it leaves, or null.
  * @type {LaidNode | LaidLink | null}
@@ -890,12 +911,15 @@ export function guarded(gesture, run) {
  *
  * The echo guard is the glyph's (keyActivation): the click assistive tech
  * synthesises from Enter or Space lands on the hub the key just opened,
- * which a second activation would fold.
+ * which a second activation would fold. The second click of a double click
+ * lands there too, and is no activation (pointerActivation).
  * @param {LaidNode} d
  * @param {number} [at] the event's timestamp
  */
 export function clickNode(d, at = Infinity) {
   if (keyActivation.id === d.id && at - keyActivation.at < ACTIVATION_WINDOW) return;
+  if (doubled(d.id, at)) return;
+  pointerActivation = { id: d.id, at: at };
   activate(d);
 }
 
@@ -993,7 +1017,8 @@ export function glyphFor(d) {
  * menu of its splits (openSplitMenu).
  *
  * The echo guard is the node's: a glyph's key and the click it synthesises
- * are one activation, and the redraw between them turns ⊕ into ⊖.
+ * are one activation, and so are a double click's two clicks, and the
+ * redraw between them turns ⊕ into ⊖.
  * @param {LaidNode} d
  * @param {"open" | "fold"} kind
  * @param {number} at the event's timestamp
@@ -1002,7 +1027,9 @@ export function glyphFor(d) {
  */
 export function glyphNode(d, kind, at, byKey = false, glyph) {
   if (!byKey && keyActivation.id === d.id && at - keyActivation.at < ACTIVATION_WINDOW) return;
+  if (!byKey && doubled(d.id, at)) return;
   if (byKey) keyActivation = { id: d.id, at: at };
+  else pointerActivation = { id: d.id, at: at };
   closeSplitMenu();
   if (kind === "fold") {
     collapseNode(d.id);
@@ -3084,11 +3111,14 @@ export function wirePan(scroller) {
     }
     scroller.scrollLeft = drag.left - dx;
   });
+  // A click ends a drag in the task its pointerup is dispatched in, and a
+  // cancelled pointer ends it with none; a click any later is another's.
   /** @param {PointerEvent} e */
   const end = (e) => {
     if (!drag || e.pointerId !== drag.id) return;
-    swallow = drag.moved;
+    swallow = drag.moved && e.type === "pointerup";
     drag = null;
+    if (swallow) setTimeout(() => { swallow = false; }, 0);
   };
   scroller.addEventListener("pointerup", end);
   scroller.addEventListener("pointercancel", end);

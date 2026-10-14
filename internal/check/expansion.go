@@ -425,6 +425,10 @@ func (c *expansionSplitsTie) split(s *Subject, x stitched, sp project.Split, sub
 		findings = append(findings, c.restatingFindings(x, sp, members, alt, subject)...)
 	}
 
+	if hub && (node.Parent != "" || sp.Alternative) {
+		return append(findings, finding(subject, "the node reaches its members by %d legs repeating a leaf, "+
+			"and only a root's primary split holds legs to the leaves they repeat", len(legs)))
+	}
 	var cells map[string]*tieCell
 	switch {
 	// rootCells reads the primary members alone, so an alternative is held
@@ -647,6 +651,9 @@ func (*expansionSplitsTie) hubFindings(x stitched, sp project.Split, members []s
 		switch {
 		case inflow && (l.Target != sp.Node || !isMember(tgt)):
 			findings = append(findings, finding(subject, "the leaf %s -> %s repeating %q arrives at a member and is not re-pointed onto the node",
+				l.Source, l.Target, l.Repeats))
+		case inflow && src != l.Source:
+			findings = append(findings, finding(subject, "the leaf %s -> %s re-pointed onto the node repeats %q, which another node sends",
 				l.Source, l.Target, l.Repeats))
 		case !inflow && src != l.Source:
 			findings = append(findings, finding(subject, "the leaf %s -> %s leaves a member and repeats %q", l.Source, l.Target, l.Repeats))

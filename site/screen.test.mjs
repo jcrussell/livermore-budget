@@ -261,6 +261,30 @@ describe("zoom and pan on the chart", () => {
       { panned: 300, swallowed: "0|", back: 180, scroller: true });
   });
 
+  // Mutation: set swallow at a drag's end whatever ended it, and clear it
+  // only at the next pointerdown or click, and this goes red: both later
+  // clicks are swallowed and pin nothing.
+  test("a drag swallows only its own click: not one a task later, and none after a cancelled pointer", async (t) => {
+    const { app, document } = await scrolling();
+    const ribbon = document.querySelector("#chart path.link");
+    const id = "fund-group/general";
+    const pinnedAfter = () => (app.pinned ? app.pinned.id : "");
+    drag(ribbon, -300);
+    await new Promise((r) => setTimeout(r, 5));
+    fire(markOf(document, id), "click", { timeStamp: 1000 });
+    await settle();
+    const later = pinnedAfter();
+    app.unpin();
+    fire(ribbon, "pointerdown", { button: 0, clientX: 500, clientY: 300 });
+    fire(ribbon, "pointermove", { button: 0, clientX: 200, clientY: 300 });
+    fire(ribbon, "pointercancel", { button: 0, clientX: 200, clientY: 300 });
+    fire(markOf(document, id), "click", { timeStamp: 5000 });
+    await settle();
+    const cancelled = pinnedAfter();
+    t.diagnostic(`a click a task after a drag pinned "${later}"; one after a cancelled drag "${cancelled}"`);
+    assert.deepEqual({ later, cancelled }, { later: id, cancelled: id });
+  });
+
   test("a click after a press that moves under DRAG_SLOP still opens the mark", async (t) => {
     const { app, document, left } = await scrolling();
     app.collapseAll();

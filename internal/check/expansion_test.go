@@ -254,6 +254,41 @@ func TestTheExpansionChecksCanFail(t *testing.T) {
 			want: "the leg fund-group/general -> fund/100 repeating " + salesLeaf + " has 0 leaves re-pointed onto the node",
 		},
 		{
+			name: "a fund's divisions reached by forged legs, restating nothing", check: &expansionSplitsTie{},
+			edit: func(t *testing.T, _ *Subject, d *project.Document) {
+				parent := map[string]string{}
+				for _, n := range d.Nodes {
+					if n.Alternative == "" {
+						parent[n.ID] = n.Parent
+					}
+				}
+				forged := 0
+				for i, l := range d.Links {
+					if l.Source == "fund/100" && l.Alternative == "" && parent[l.Target] == "fund/100" {
+						d.Links[i].Repeats, d.Links[i].Restates = l.Restates[0], nil
+						forged++
+					}
+				}
+				if forged == 0 {
+					t.Fatal("fund/100 reaches no division")
+				}
+			},
+			want: "split of fund/100 by divisions the node reaches its members by",
+		},
+		{
+			name: "a leaf re-pointed onto a hub repeating another node's leaf", check: &expansionSplitsTie{},
+			edit: func(t *testing.T, _ *Subject, d *project.Document) {
+				was := project.NodeFundBalanceDraw + " -> fund-group-only/capital fund_balance"
+				forged := project.NodeFundBalanceContribution + " -> fund-group-only/capital fund_balance"
+				for i, l := range d.Links {
+					if l.Repeats == was {
+						d.Links[i].Repeats = forged
+					}
+				}
+			},
+			want: "the leaf " + project.NodeFundBalanceDraw + " -> fund-group/capital re-pointed onto the node repeats",
+		},
+		{
 			name: "a flow endpoint parenting the members of no split it declares", check: &nodeHierarchyWellFormed{},
 			edit: func(_ *testing.T, _ *Subject, d *project.Document) {
 				d.Splits = slices.DeleteFunc(slices.Clone(d.Splits), func(sp project.Split) bool {
@@ -390,6 +425,47 @@ func TestTheExpansionChecksCanFail(t *testing.T) {
 			}
 			if red.Status != StatusFail || !named {
 				t.Errorf("%s is %s with findings %v, want a failure naming %q", c.check.ID(), red.Status, red.Findings, c.want)
+			}
+		})
+	}
+}
+
+// TestRepeatsAndRestatesAreTheExpansionsAlone plants each on a fund-flows
+// link, its value unmoved: project.LinkCents reads repeats wherever it is
+// drawn, and a link naming its own ends still ties to its facts.
+func TestRepeatsAndRestatesAreTheExpansionsAlone(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct {
+		name  string
+		plant func(l *project.Link)
+	}{
+		{"repeats", func(l *project.Link) { l.Repeats = l.Source + " -> " + l.Target + " " + string(l.Kind) }},
+		{"restates", func(l *project.Link) { l.Restates = []string{l.Source + " -> " + l.Target + " " + string(l.Kind)} }},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			s := isolated(t)
+			if res, err := (&linkValuesTieToFacts{}).Run(t.Context(), s); err != nil || res.Status != StatusPass {
+				t.Fatalf("link-values-tie-to-facts over the committed corpus is %v (%v): %v", res.Status, err, res.Findings)
+			}
+			planted := false
+			for _, p := range s.linkedDocuments() {
+				if p.Name == project.FundFlowsProjection && len(p.Links) > 0 {
+					c.plant(&p.Links[0])
+					planted = true
+					break
+				}
+			}
+			if !planted {
+				t.Fatal("no fund-flows document draws a link")
+			}
+			res, err := (&linkValuesTieToFacts{}).Run(t.Context(), s)
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := "which only the expansion schedule's links carry"
+			if res.Status != StatusFail || !strings.Contains(findingDetails(res), want) {
+				t.Errorf("link-values-tie-to-facts is %s with findings %v, want a failure naming %q", res.Status, res.Findings, want)
 			}
 		})
 	}
