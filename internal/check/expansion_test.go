@@ -183,6 +183,20 @@ func TestTheExpansionChecksCanFail(t *testing.T) {
 			want: "the totals restating 1 leaves carry",
 		},
 		{
+			// The same leaves, so a sorted comparison passes; the client keys
+			// a list by its join as written.
+			name: "a division's total naming its leaves in descending order", check: &expansionSplitsTie{},
+			edit: func(t *testing.T, _ *Subject, d *project.Document) {
+				i := linkAt(t, d, "fund/100", "dept/patrol")
+				if len(d.Links[i].Restates) < 2 {
+					t.Fatalf("fund/100 -> dept/patrol restates %d leaf, so no order can be reversed", len(d.Links[i].Restates))
+				}
+				d.Links[i].Restates = slices.Clone(d.Links[i].Restates)
+				slices.Reverse(d.Links[i].Restates)
+			},
+			want: "fund/100 -> dept/patrol names the leaves it restates out of ascending order",
+		},
+		{
 			name: "a division's total naming no leaf it restates", check: &expansionSplitsTie{},
 			edit: func(t *testing.T, _ *Subject, d *project.Document) {
 				d.Links[linkAt(t, d, "fund/100", "dept/patrol")].Restates = nil

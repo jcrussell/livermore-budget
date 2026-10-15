@@ -577,7 +577,8 @@ const RESTATING = "\u001frestates\u001f";
  * legs repeats a leaf or restates leaves: each leaf at its `repeats` key, so
  * a leaf drawn as itself and again as a hub leg is one key on both ribbons; a
  * total at one key per list of leaves it `restates`, shared with every total
- * naming that list (distinctCents reads it); and each other leg at a key of
+ * naming that list (distinctCents reads it), joined as written because
+ * expansion-splits-tie refuses a list not ascending; and each other leg at a key of
  * its own ends. A drawn ribbon's cells sum to its value_cents as folded.
  * @param {FiscLink} l
  * @returns {Record<string, number> | null}

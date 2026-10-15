@@ -571,6 +571,12 @@ func (*expansionSplitsTie) restatingFindings(x stitched, sp project.Split, membe
 		}
 		want := stated(l.Target)
 		named := slices.Compact(slices.Sorted(slices.Values(l.Restates)))
+		// Held as written: the client keys a list by its join, so one list
+		// in two orders is two keys.
+		if !slices.Equal(named, l.Restates) {
+			findings = append(findings, finding(subject, "%s -> %s names the leaves it restates out of ascending order",
+				l.Source, l.Target))
+		}
 		if !slices.Equal(named, want) {
 			extra, missing := 0, 0
 			for _, k := range named {
