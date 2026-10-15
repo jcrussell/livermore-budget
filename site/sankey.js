@@ -1183,7 +1183,7 @@ export const SANKEY = Object.freeze({
       .on("pointerenter", /** @param {PointerEvent} e @param {LaidLink} d */ (e, d) => { on.tip(e, d); on.trace(d); })
       .on("pointermove", /** @param {PointerEvent} e @param {LaidLink} d */ (e, d) => on.tip(e, d))
       .on("pointerleave", () => { on.hide(); on.untrace(); })
-      .on("focus", /** @param {FocusEvent} e @param {LaidLink} d */ (e, d) => on.guarded("show this flow", () => { if (on.restoring()) return; on.tip(e, d); on.pin(d); }))
+      .on("focus", /** @param {FocusEvent} e @param {LaidLink} d */ (e, d) => on.guarded("show this flow", () => { if (on.unasked()) return; on.tip(e, d); on.pin(d); }))
       .on("blur", on.hide)
       .on("click", /** @param {MouseEvent} e @param {LaidLink} d */ (e, d) => on.guarded("pin this flow", () => { e.stopPropagation(); on.pin(d); }));
     /** @param {any} sel */
@@ -1240,7 +1240,7 @@ export const SANKEY = Object.freeze({
       .on("pointerenter", /** @param {PointerEvent} e @param {LaidNode} d */ (e, d) => { on.tip(e, d); on.trace(d); })
       .on("pointermove", /** @param {PointerEvent} e @param {LaidNode} d */ (e, d) => on.tip(e, d))
       .on("pointerleave", () => { on.hide(); on.untrace(); })
-      .on("focus", /** @param {FocusEvent} e @param {LaidNode} d */ (e, d) => on.guarded("show this mark", () => { if (on.restoring()) return; on.tip(e, d); on.pin(d); }))
+      .on("focus", /** @param {FocusEvent} e @param {LaidNode} d */ (e, d) => on.guarded("show this mark", () => { if (on.unasked()) return; on.tip(e, d); on.pin(d); }))
       .on("blur", on.hide)
       // ONE ACTIVATION, by click, Enter or Space: it opens a node that opens,
       // folds an open hub back, and pins one that does neither.

@@ -297,18 +297,50 @@ describe("zoom and pan on the chart", () => {
     assert.deepEqual({ split: app.expansions.slice(), left: left() }, { split: [id], left: 0 });
   });
 
-  // Mutation: drop wirePan's mousedown listener and this goes red, the
-  // press left to move focus to the mark, which pins it.
-  test("a press the scroller may pan moves no focus, and a mark focused from the keyboard still pins", async (t) => {
+  /**
+   * A press on `on` as a browser delivers it: pointerdown, then mousedown,
+   * whose default, uncancelled, focuses the mark pressed.
+   */
+  function press(on) {
+    fire(on, "pointerdown", { button: 0, clientX: 500, clientY: 300 });
+    if (!fire(on, "mousedown", { button: 0, clientX: 500, clientY: 300 }).defaultPrevented) on.focus();
+  }
+
+  // Mutation: answer `unasked` from restoring alone, so a pointer's focus
+  // pins, and this goes red: the drag pins the ribbon it started on.
+  test("a drag that starts on a mark focuses it and leaves the pin as it was, and a mark focused from the keyboard still pins", async (t) => {
     const { app, document } = await scrolling();
+    const [ribbon, other] = document.querySelectorAll("#chart path.link");
+    press(ribbon);
+    fire(ribbon, "pointermove", { button: 0, clientX: 200, clientY: 300 });
+    fire(ribbon, "pointerup", { button: 0, clientX: 200, clientY: 300 });
+    fire(ribbon, "click", { timeStamp: 1000 });
+    const dragged = { focused: document.activeElement === ribbon, pinned: app.pinned !== null };
+    other.focus();
+    const keyed = app.pinned !== null && app.pinned === other.__data__;
+    t.diagnostic(`the drag focused its ribbon ${dragged.focused}, pinned ${dragged.pinned}; the keyboard's focus pinned ${keyed}`);
+    assert.deepEqual({ dragged, keyed }, { dragged: { focused: true, pinned: false }, keyed: true });
+  });
+
+  // Mutation: cancel the press's mousedown in wirePan again, and this goes
+  // red: focus stays in the search box, so its list stays open and the
+  // click leaves the ribbon unfocused.
+  test("a click on a mark moves focus to it, which closes the search list a reader typed into", async (t) => {
+    const { app, document } = await scrolling();
+    const input = document.getElementById("search-input");
+    input.focus();
+    input.value = "fund";
+    input.dispatchEvent(new globalThis.Event("input", { bubbles: true }));
+    const list = document.getElementById("search-list");
+    const opened = !list.hasAttribute("hidden");
     const ribbon = document.querySelector("#chart path.link");
-    fire(ribbon, "pointerdown", { button: 0, clientX: 500, clientY: 300 });
-    const pressed = fire(ribbon, "mousedown", { button: 0, clientX: 500, clientY: 300 }).defaultPrevented;
+    press(ribbon);
     fire(ribbon, "pointerup", { button: 0, clientX: 500, clientY: 300 });
-    ribbon.dispatchEvent(new document.defaultView.FocusEvent("focus"));
-    const focused = app.pinned !== null && app.pinned === ribbon.__data__;
-    t.diagnostic(`the press's mousedown cancelled ${pressed}; focus pinned the ribbon ${focused}`);
-    assert.deepEqual({ pressed, focused }, { pressed: true, focused: true });
+    fire(ribbon, "click", { timeStamp: 1000 });
+    const after = { focused: document.activeElement === ribbon, open: !list.hasAttribute("hidden"),
+      pinned: app.pinned !== null && app.pinned === ribbon.__data__ };
+    t.diagnostic(`list opened ${opened}; after the click: ${JSON.stringify(after)}`);
+    assert.deepEqual({ opened, after }, { opened: true, after: { focused: true, open: false, pinned: true } });
   });
 
   // Mutation: listen for the press's end on the scroller alone and this goes
@@ -333,10 +365,9 @@ describe("zoom and pan on the chart", () => {
     assert.equal(left(), 0);
   });
 
-  // Mutation: drop closeSplitMenu from wirePan's mousedown listener and this
-  // goes red: the cancelled press moves no focus, so the menu's focusout
-  // never fires and the menu stays open.
-  test("a press on the chart closes the ⊕ menu the press moves no focus out of", async (t) => {
+  // Mutation: cancel the press's mousedown in wirePan again, and this goes
+  // red: the press moves no focus out of the menu, which stays open.
+  test("a press on the chart closes the ⊕ menu, by moving focus out of it", async (t) => {
     const { app, document } = await bootedApp();
     const id = "expenditure/capital-outlay";
     const glyph = [...document.querySelectorAll("#chart g.glyph")].find((g) => g.__data__ && g.__data__.id === id);
@@ -344,12 +375,11 @@ describe("zoom and pan on the chart", () => {
     fire(glyph, "click", { timeStamp: 2000 });
     const opened = Boolean(document.getElementById("split-menu"));
     const ribbon = document.querySelector("#chart path.link");
-    fire(ribbon, "pointerdown", { button: 0, clientX: 500, clientY: 300 });
-    const pressed = fire(ribbon, "mousedown", { button: 0, clientX: 500, clientY: 300 }).defaultPrevented;
+    press(ribbon);
     const open = Boolean(document.getElementById("split-menu"));
     fire(ribbon, "pointerup", { button: 0, clientX: 500, clientY: 300 });
-    t.diagnostic(`menu opened ${opened}; the press's mousedown cancelled ${pressed}; menu open after it ${open}`);
-    assert.deepEqual({ opened, pressed, open, menu: app.splitMenu === null }, { opened: true, pressed: true, open: false, menu: true });
+    t.diagnostic(`menu opened ${opened}; menu open after the press ${open}`);
+    assert.deepEqual({ opened, open, menu: app.splitMenu === null }, { opened: true, open: false, menu: true });
   });
 
   test("zoomed in, a drag is the zoom's to pan, and the scroller stays where it is", async (t) => {

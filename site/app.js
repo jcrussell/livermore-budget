@@ -1211,7 +1211,7 @@ export function untrace() {
 export function restoreFocus(hadFocus, onto = "") {
   if (!hadFocus) return;
   // WITHOUT PINNING: the drawer keeps the node the reader opened, not the
-  // member focus lands on. The focus handlers ask `restoring`.
+  // member focus lands on. The focus handlers ask it through `unasked`.
   restoring = true;
   try {
     restoreFocusTo(onto);
@@ -1222,6 +1222,12 @@ export function restoreFocus(hadFocus, onto = "") {
 
 /** Whether focus is being restored by restoreFocus rather than moved by the reader. */
 let restoring = false;
+
+/**
+ * Whether a pointer is pressed on the chart: a mark it focuses is the
+ * press's, which a click or a drag ends, and not the keyboard's to pin.
+ */
+let pointing = false;
 
 /**
  * restoreFocus's choice of target, made while `restoring` is set.
@@ -1700,7 +1706,7 @@ export function render(laid, prior) {
       tip: hover, hide: hideTip, pin: pin, guarded: guarded,
       click: clickNode, key: keyNode, glyph: glyphNode,
       trace: trace, untrace: untrace,
-      restoring: () => restoring,
+      unasked: () => restoring || pointing,
     },
   });
   motionEnd = typeof ended === "function" ? ended : () => {};
@@ -3111,9 +3117,8 @@ export const DRAG_SLOP = 4;
  * zoom's own drag pans instead (zoomFilter). A press that moves less than
  * DRAG_SLOP is left a click; one that moves further takes the pointer and
  * swallows the click that ends it, so a drag ending on a mark neither follows
- * nor pins it. The press moves no focus, since a mark focused pins: its
- * mousedown is cancelled, which a cancelled pointerdown would not dispatch,
- * so the press closes the ⊕ menu itself. A press on the scroller's own
+ * nor pins it. The press moves focus as any press does; a mark a pointer
+ * focuses does not pin (`pointing`). A press on the scroller's own
  * scrollbar, whose target is the scroller, is the scrollbar's. A release
  * anywhere on the page ends the press. Touch is the scroller's own.
  * @param {HTMLElement} scroller the .chart-scroll the chart sits in
@@ -3127,11 +3132,6 @@ export function wirePan(scroller) {
     drag = null;
     if (e.button !== 0 || e.pointerType === "touch" || zoomOf().k !== 1 || e.target === scroller) return;
     drag = { id: e.pointerId, x: e.clientX, left: scroller.scrollLeft, moved: false };
-  });
-  scroller.addEventListener("mousedown", (e) => {
-    if (!drag || e.button !== 0) return;
-    e.preventDefault();
-    closeSplitMenu();
   });
   scroller.addEventListener("pointermove", (e) => {
     if (!drag || e.pointerId !== drag.id) return;
@@ -3274,6 +3274,8 @@ export function wireZoom() {
   if (!svg) return;
   const scroller = svg.parentElement;
   if (scroller && scroller.classList.contains("chart-scroll")) wirePan(scroller);
+  svg.addEventListener("pointerdown", () => { pointing = true; }, true);
+  for (const type of ["pointerup", "pointercancel"]) svg.ownerDocument.addEventListener(type, () => { pointing = false; }, true);
   svg.addEventListener("keydown", (e) => {
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.key === "+" || e.key === "=") zoomBy(ZOOM_STEP);
