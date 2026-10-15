@@ -316,6 +316,8 @@ describe("zoom and pan on the chart", () => {
     fire(ribbon, "pointerup", { button: 0, clientX: 200, clientY: 300 });
     fire(ribbon, "click", { timeStamp: 1000 });
     const dragged = { focused: document.activeElement === ribbon, pinned: app.pinned !== null };
+    // The keyboard moves focus by a key, which ends the press.
+    fire(other, "keydown", { key: "Tab" });
     other.focus();
     const keyed = app.pinned !== null && app.pinned === other.__data__;
     t.diagnostic(`the drag focused its ribbon ${dragged.focused}, pinned ${dragged.pinned}; the keyboard's focus pinned ${keyed}`);
@@ -341,6 +343,88 @@ describe("zoom and pan on the chart", () => {
       pinned: app.pinned !== null && app.pinned === ribbon.__data__ };
     t.diagnostic(`list opened ${opened}; after the click: ${JSON.stringify(after)}`);
     assert.deepEqual({ opened, after }, { opened: true, after: { focused: true, open: false, pinned: true } });
+  });
+
+  // Mutation: reveal every mark focused in the chart, `pointing` or not
+  // (wireZoom's focusin), and this goes red: the member the split focuses
+  // scrolls the chart away from the mark the click held in place.
+  test("a click that splits a mark leaves the scroller where the split held the mark", async (t) => {
+    const { app, document, svg, scroller, left } = await scrolling();
+    app.collapseAll();
+    await settle();
+    // The rightmost mark that splits, its members laid further right still,
+    // with the scroller put where the mark is in sight at its card's right edge.
+    const d = app.laidNodes.filter((n) => app.splittable(n)).reduce((a, b) => (b.x0 > a.x0 ? b : a));
+    const id = d.id;
+    const scale = svg.getBoundingClientRect().width / viewBoxWidth(document);
+    const from = Math.max(0, Math.round(d.x1 * scale) - 1000 + 20);
+    // Where the split alone holds the scroller: opened with focus outside the chart.
+    scroller.scrollLeft = from;
+    app.expandNode(id);
+    await settle();
+    const held = left();
+    app.collapseAll();
+    await settle();
+    scroller.scrollLeft = from;
+    const mark = markOf(document, id);
+    press(mark);
+    fire(mark, "pointerup", { button: 0, clientX: 500, clientY: 300 });
+    fire(mark, "click", { timeStamp: 1000 });
+    await settle();
+    const focused = document.activeElement && document.activeElement.__data__ ? document.activeElement.__data__.id : "";
+    t.diagnostic(`split ${id} from scrollLeft ${from} with no focus in the chart: scrollLeft ${held}; by a click: ${left()}, focus on ${focused}`);
+    assert.ok(focused !== "" && focused !== id, "the click's split moved focus to no member, so this asserts nothing");
+    assert.deepEqual({ split: app.expansions.slice(), left: left() }, { split: [id], left: held });
+  });
+
+  // Mutation: hide the tooltip on every mark's blur (the marks' hide hook
+  // hideTip again), and this goes red: the press on B blurs A and hides
+  // B's tooltip under the pointer.
+  test("a press moving focus from one mark to another keeps the pointer's tooltip, and a blur hides one the keyboard's focus showed", async (t) => {
+    const { document } = await scrolling();
+    const [a, b] = document.querySelectorAll("#chart path.link");
+    const tip = document.getElementById("tooltip");
+    const at = { button: 0, clientX: 500, clientY: 300 };
+    fire(a, "pointerenter", at);
+    press(a);
+    fire(a, "pointerup", at);
+    fire(a, "click", { timeStamp: 1000 });
+    fire(a, "pointerleave", at);
+    fire(b, "pointerenter", at);
+    press(b);
+    const pressed = !tip.hidden;
+    fire(b, "pointerup", at);
+    fire(b, "pointerleave", at);
+    fire(a, "keydown", { key: "Tab" });
+    a.focus();
+    const keyed = !tip.hidden;
+    document.getElementById("search-input").focus();
+    const blurred = !tip.hidden;
+    t.diagnostic(`tooltip shown after pressing B ${pressed}; on A's keyboard focus ${keyed}; after A's blur ${blurred}`);
+    assert.deepEqual({ pressed, keyed, blurred }, { pressed: true, keyed: true, blurred: false });
+  });
+
+  // Mutation: clear `pointing` on pointerup and pointercancel alone (no
+  // keydown arm in wireZoom), and this goes red: the keyboard's focus after
+  // a press whose release never came pins nothing.
+  test("a press whose release the page never hears leaves the keyboard's focus pinning", async (t) => {
+    const { app, document, window } = await scrolling();
+    const [ribbon, other, third, fourth] = document.querySelectorAll("#chart path.link");
+    const pins = (mark) => mark.__data__ === app.pinned;
+    fire(ribbon, "pointerdown", { button: 0, clientX: 500, clientY: 300 });
+    fire(other, "keydown", { key: "Tab" });
+    other.focus();
+    const afterKey = pins(other);
+    fire(ribbon, "pointerdown", { button: 0, clientX: 500, clientY: 300 });
+    window.dispatchEvent(new window.Event("blur"));
+    third.focus();
+    const afterBlur = pins(third);
+    // A right press opens the context menu, which takes its release.
+    fire(ribbon, "pointerdown", { button: 2, clientX: 500, clientY: 300 });
+    fourth.focus();
+    const afterRight = pins(fourth);
+    t.diagnostic(`focus pinned after a keydown ${afterKey}, after the window's blur ${afterBlur}, after a right press ${afterRight}`);
+    assert.deepEqual({ afterKey, afterBlur, afterRight }, { afterKey: true, afterBlur: true, afterRight: true });
   });
 
   // Mutation: listen for the press's end on the scroller alone and this goes

@@ -483,6 +483,43 @@ describe("the trace", () => {
     assert.deepEqual({ got, legsLit }, { got: want, legsLit: wantLegs });
   });
 
+  // Mutation: carry the leaves a walk came by on past the member (pathOf's
+  // `keys` taken as `came` at every node), and this goes red: the member's
+  // ribbons into the second hub go dark, and up from them its leg in does.
+  test("through two open hubs in a chain, a member's own ribbons on and back stay on the path, each hub narrowing by its own leaves", async (t) => {
+    const { app, document } = await bootedApp();
+    const hub = WORST;
+    const member = "fund/210";
+    const next = "expenditure/wages-and-benefits";
+    await split(app, hub, next);
+    const key = (x) => x.source.id + ">" + x.target.id;
+    const paths = [...document.querySelectorAll("#chart path.link")];
+    const ribbons = paths.map((p) => p.__data__);
+    const leaves = (l) => Object.keys(l.cells || {}).filter((k) => !k.startsWith("\u001f"));
+    const leg = paths.find((p) => key(p.__data__) === hub + ">" + member);
+    const on = paths.find((p) => key(p.__data__) === member + ">" + next);
+    assert.ok(leg && on, `${hub} -> ${member} or ${member} -> ${next} is not drawn`);
+    // Down from the leg: the member's ribbon into the second hub.
+    fire(leg, "pointerenter");
+    const down = lit(document).ribbons;
+    fire(leg, "pointerleave");
+    // Up from the member's ribbon on: its leg in, and through the first hub
+    // only the sources whose leaves the member repeats.
+    fire(on, "pointerenter");
+    const up = lit(document).ribbons;
+    fire(on, "pointerleave");
+    const mine = new Set(ribbons.filter((l) => key(l) === hub + ">" + member).flatMap(leaves));
+    const into = ribbons.filter((l) => l.target.id === hub);
+    const want = into.filter((l) => leaves(l).some((k) => mine.has(k))).map(key).sort();
+    const got = up.filter((k) => k.endsWith(">" + hub)).sort();
+    t.diagnostic(`hovering ${hub} -> ${member}: ${member} -> ${next} lit ${down.includes(key(on.__data__))}; ` +
+      `hovering ${member} -> ${next}: leg in lit ${up.includes(key(leg.__data__))}, ${got.length} of ${into.length} ribbon(s) into ${hub} lit, ${want.length} carry its leaves`);
+    assert.ok(want.length > 0 && want.length < into.length, "every source of the hub or none carries the member's leaves, so this asserts nothing");
+    assert.deepEqual(
+      { onward: down.includes(key(on.__data__)), upstream: up.includes(key(leg.__data__)), got },
+      { onward: true, upstream: true, got: want });
+  });
+
   test("hovering a ribbon draws it, its source's path upstream and its target's downstream", async () => {
     const { app, document } = await bootedApp();
     const r = [...document.querySelectorAll("#chart path.link")].find((p) => p.__data__.target.id === OPENS);

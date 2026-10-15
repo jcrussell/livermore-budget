@@ -1147,7 +1147,8 @@ export function closeSplitMenu(refocus = false) {
  * THROUGH AN OPEN HUB, BY THE LEAVES: a ribbon drawing a leaf another drawn
  * ribbon draws too is followed on from one only where the two share such a
  * leaf, so a member's path climbs only the sources whose leaves it repeats,
- * and a source's descends only to the members its own leaves reach.
+ * and a source's descends only to the members its own leaves reach. Past
+ * the member the narrowing ends: a second open hub narrows by its own.
  * @param {LaidNode | LaidLink} d
  * @returns {{links: Set<LaidLink>, nodes: Set<LaidNode>}}
  */
@@ -1170,9 +1171,14 @@ export function pathOf(d) {
     /** @type {Array<[LaidNode, string[] | null]>} */
     const stack = [[from, by]];
     while (stack.length) {
-      const [n, keys] = /** @type {[LaidNode, string[] | null]} */ (stack.pop());
+      const [n, came] = /** @type {[LaidNode, string[] | null]} */ (stack.pop());
       nodes.add(n);
-      for (const l of up ? n.targetLinks : n.sourceLinks) {
+      const onward = up ? n.targetLinks : n.sourceLinks;
+      // A node none of whose onward ribbons draws the leaves the walk came
+      // by is past the hub they repeat through, so the walk is whole again
+      // there and narrows only at the next hub's own leaves.
+      const keys = came && onward.some((l) => again(l).some((k) => came.includes(k))) ? came : null;
+      for (const l of onward) {
         const own = again(l);
         let next = own.length ? (keys ? own.filter((k) => keys.includes(k)) : own) : null;
         if (next && !next.length) continue;
@@ -1243,8 +1249,11 @@ export function restoreFocus(hadFocus, onto = "") {
 let restoring = false;
 
 /**
- * Whether a pointer is pressed on the chart: a mark it focuses is the
- * press's, which a click or a drag ends, and not the keyboard's to pin.
+ * Whether a primary pointer is pressed on the chart, or released in this
+ * task, so the click the release ends in is still the press's: a mark it
+ * focuses, and a mark a split it begins focuses, are the press's, neither
+ * pinned nor scrolled to. A keydown, the window's blur or a lost capture
+ * ends it too, so a release the page never hears leaves the keyboard pinning.
  */
 let pointing = false;
 
@@ -1258,7 +1267,7 @@ function restoreFocusTo(onto) {
   const focus = (/** @type {Element | null} */ target) => {
     const el = /** @type {any} */ (target);
     if (!el || typeof el.focus !== "function") return false;
-    el.focus();
+    el.focus({ preventScroll: pointing });
     return true;
   };
   const chart = maybeEl("chart");
@@ -1722,7 +1731,7 @@ export function render(laid, prior) {
     figure: markFigure,
     glyph: glyphFor,
     on: {
-      tip: hover, hide: hideTip, pin: pin, guarded: guarded,
+      tip: hover, hide: hideTipOf, pin: pin, guarded: guarded,
       click: clickNode, key: keyNode, glyph: glyphNode,
       trace: trace, untrace: untrace,
       unasked: () => restoring || pointing,
@@ -2393,17 +2402,35 @@ export function showTip(event, d) {
 }
 
 export function hideTip() {
+  tipFocused = false;
   el("tooltip").hidden = true;
 }
 
+/** Whether the tooltip on screen is one a mark's focus showed, which its blur hides. */
+let tipFocused = false;
+
 /**
- * The pointer on a mark: its tooltip, and its provenance previewed in the
- * drawer. Focus is not a hover: it pins.
+ * Hides the tooltip, or on a mark's blur only one its focus showed: a press
+ * moving focus between marks blurs one while the pointer's tooltip is on
+ * the other.
+ * @param {Event} [event]
+ */
+function hideTipOf(event) {
+  if (event && event.type === "blur" && !tipFocused) return;
+  hideTip();
+}
+
+/**
+ * The pointer on a mark, or the keyboard's focus: its tooltip, and, under
+ * the pointer, its provenance previewed in the drawer. The keyboard's focus
+ * pins by the form's own focus handler, which a pointer's does not
+ * (`unasked`).
  * @param {Event} event
  * @param {LaidLink | LaidNode} d
  */
 export function hover(event, d) {
   showTip(event, d);
+  tipFocused = event.type === "focus";
   if (typeof event.type === "string" && event.type.startsWith("pointer")) preview(d);
 }
 
@@ -3284,8 +3311,9 @@ function scrollToMark(svg, cx, laid) {
 
 /**
  * Wires what zooms the chart besides the pointer: + and - and 0 while focus
- * is in the chart, the Reset view button, and a mark the keyboard focuses
- * panned into sight; and the drag that pans the chart's scroller (wirePan).
+ * is in the chart, the Reset view button, and a mark focused while no
+ * pointer is pressed (`pointing`) panned into sight; and the drag that pans
+ * the chart's scroller (wirePan).
  * Once, at boot: the svg outlives every render.
  */
 export function wireZoom() {
@@ -3293,8 +3321,15 @@ export function wireZoom() {
   if (!svg) return;
   const scroller = svg.parentElement;
   if (scroller && scroller.classList.contains("chart-scroll")) wirePan(scroller);
-  svg.addEventListener("pointerdown", () => { pointing = true; }, true);
-  for (const type of ["pointerup", "pointercancel"]) svg.ownerDocument.addEventListener(type, () => { pointing = false; }, true);
+  const doc = svg.ownerDocument;
+  const released = () => { pointing = false; };
+  svg.addEventListener("pointerdown", (e) => { if (e.button === 0) pointing = true; }, true);
+  for (const type of ["pointerup", "pointercancel"]) doc.addEventListener(type, () => { if (pointing) setTimeout(released, 0); }, true);
+  doc.addEventListener("lostpointercapture", released, true);
+  const win = doc.defaultView;
+  if (win) win.addEventListener("keydown", released, true);
+  // Not in capture: an element's blur passes the window on its way down.
+  if (win) win.addEventListener("blur", released);
   svg.addEventListener("keydown", (e) => {
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.key === "+" || e.key === "=") zoomBy(ZOOM_STEP);
@@ -3305,7 +3340,7 @@ export function wireZoom() {
   });
   svg.addEventListener("focusin", (e) => {
     const d = /** @type {any} */ (e.target).__data__;
-    if (d && typeof d.x0 === "number" && d.sourceLinks) revealMark(d);
+    if (!pointing && d && typeof d.x0 === "number" && d.sourceLinks) revealMark(d);
   });
   const reset = maybeEl("chart-zoom-reset");
   if (reset) {
