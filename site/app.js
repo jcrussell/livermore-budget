@@ -27,7 +27,7 @@
 
 import * as core from "./core.js";
 import {
-  SCHEMA_VERSION, say, kindLabel, fmt, fmtSigned, el, maybeEl, cssVar, h, link, citations, balancesOf, PARTITION_NOTE, isFundGroup, scheduleOf, isLink, tableRows, leafDraws, drawsAgain,
+  SCHEMA_VERSION, say, kindLabel, fmt, fmtSigned, el, maybeEl, cssVar, h, link, citations, balancesOf, PARTITION_NOTE, isFundGroup, scheduleOf, isLink, tableRows, leafDraws, drawsAgain, cellsOf,
 } from "./core.js";
 import { SANKEY } from "./sankey.js";
 // Re-exported so the tests reach the shipped modules through the one file
@@ -1143,6 +1143,11 @@ export function closeSplitMenu(refocus = false) {
  * Every ribbon and node on a mark's path: a node's ribbons in, and theirs,
  * back to the sources, and its ribbons out, and theirs, on to the sinks; a
  * ribbon's own, with its source's path upstream and its target's downstream.
+ *
+ * THROUGH AN OPEN HUB, BY THE LEAVES: a ribbon drawing a leaf another drawn
+ * ribbon draws too is followed on from one only where the two share such a
+ * leaf, so a member's path climbs only the sources whose leaves it repeats,
+ * and a source's descends only to the members its own leaves reach.
  * @param {LaidNode | LaidLink} d
  * @returns {{links: Set<LaidLink>, nodes: Set<LaidNode>}}
  */
@@ -1151,30 +1156,44 @@ export function pathOf(d) {
   const links = new Set();
   /** @type {Set<LaidNode>} */
   const nodes = new Set();
+  const draws = leafDraws(shown ? shown.doc : null);
+  /** @param {LaidLink} l @returns {string[]} the leaves l draws that another ribbon draws too */
+  const again = (l) => Object.keys(cellsOf(l) || {}).filter((k) => (draws.get(k) || 0) > 1);
+  /** The leaves each ribbon was walked on by; "" for every one. @type {Map<LaidLink, Set<string>>} */
+  const walked = new Map();
   /**
    * @param {LaidNode} from
    * @param {boolean} up
+   * @param {string[] | null} by the leaves the walk follows, or null for every one
    */
-  const walk = (from, up) => {
-    const stack = [from];
+  const walk = (from, up, by) => {
+    /** @type {Array<[LaidNode, string[] | null]>} */
+    const stack = [[from, by]];
     while (stack.length) {
-      const n = /** @type {LaidNode} */ (stack.pop());
+      const [n, keys] = /** @type {[LaidNode, string[] | null]} */ (stack.pop());
       nodes.add(n);
       for (const l of up ? n.targetLinks : n.sourceLinks) {
-        if (links.has(l)) continue;
+        const own = again(l);
+        let next = own.length ? (keys ? own.filter((k) => keys.includes(k)) : own) : null;
+        if (next && !next.length) continue;
+        const had = walked.get(l) || new Set();
+        if (had.has("") || (next && next.every((k) => had.has(k)))) continue;
+        for (const k of next || [""]) had.add(k);
+        walked.set(l, had);
         links.add(l);
-        stack.push(up ? l.source : l.target);
+        stack.push([up ? l.source : l.target, next]);
       }
     }
   };
   if (isLink(d)) {
     const l = /** @type {LaidLink} */ (d);
+    const own = again(l);
     links.add(l);
-    walk(l.source, true);
-    walk(l.target, false);
+    walk(l.source, true, own.length ? own : null);
+    walk(l.target, false, own.length ? own : null);
   } else {
-    walk(/** @type {LaidNode} */ (d), true);
-    walk(/** @type {LaidNode} */ (d), false);
+    walk(/** @type {LaidNode} */ (d), true, null);
+    walk(/** @type {LaidNode} */ (d), false, null);
   }
   return { links, nodes };
 }

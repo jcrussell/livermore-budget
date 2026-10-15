@@ -448,6 +448,41 @@ describe("the trace", () => {
     assert.equal(document.querySelectorAll("#chart .dim").length, dimmed, "the trace's leave moved the isolation's dimming");
   });
 
+  // Mutation: walk the laid topology alone through the hub (pathOf with no
+  // leaf filter), and this goes red: every source of the split lights, and
+  // every leg out of it.
+  test("hovering a member of an open hub lights only the sources whose leaves it repeats, and a source only the legs its leaves reach", async (t) => {
+    const { app, document } = await bootedApp();
+    const hub = "fund-group/special-revenue";
+    const member = "fund/210";
+    await split(app, hub);
+    const m = markOf(app, document, member);
+    const key = (x) => x.source.id + ">" + x.target.id;
+    const ribbons = [...document.querySelectorAll("#chart path.link")].map((p) => p.__data__);
+    // The leaves a ribbon draws, read off its cells: a key not opening with the separator.
+    const leaves = (l) => Object.keys(l.cells || {}).filter((k) => !k.startsWith("\u001f"));
+    const legs = ribbons.filter((l) => l.source.id === hub && l.target.id === member);
+    const mine = new Set(legs.flatMap(leaves));
+    const into = ribbons.filter((l) => l.target.id === hub);
+    const want = into.filter((l) => leaves(l).some((k) => mine.has(k))).map(key).sort();
+    fire(m, "pointerenter");
+    const on = lit(document);
+    fire(m, "pointerleave");
+    const got = on.ribbons.filter((k) => k.endsWith(">" + hub)).sort();
+    // And down from one of those sources: only the legs its own leaves reach.
+    const source = into.find((l) => key(l) === want[0]);
+    const theirs = new Set(into.filter((l) => l.source === source.source).flatMap(leaves));
+    const outOf = ribbons.filter((l) => l.source.id === hub);
+    const wantLegs = outOf.filter((l) => leaves(l).some((k) => theirs.has(k))).map(key).sort();
+    fire(markOf(app, document, source.source.id), "pointerenter");
+    const legsLit = lit(document).ribbons.filter((k) => k.startsWith(hub + ">")).sort();
+    t.diagnostic(`hovering ${member}: ${got.length} of ${into.length} ribbon(s) into ${hub} lit, ${want.length} carry its leaves; ` +
+      `hovering ${source.source.id}: ${legsLit.length} of ${outOf.length} leg(s) lit, ${wantLegs.length} carry its leaves`);
+    assert.ok(want.length > 0 && want.length < into.length, "every source of the hub or none carries the member's leaves, so this asserts nothing");
+    assert.ok(wantLegs.length < outOf.length, "the source's leaves reach every member, so this asserts nothing");
+    assert.deepEqual({ got, legsLit }, { got: want, legsLit: wantLegs });
+  });
+
   test("hovering a ribbon draws it, its source's path upstream and its target's downstream", async () => {
     const { app, document } = await bootedApp();
     const r = [...document.querySelectorAll("#chart path.link")].find((p) => p.__data__.target.id === OPENS);
