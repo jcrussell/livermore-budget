@@ -590,6 +590,33 @@ export function cellsOf(l) {
 }
 
 /**
+ * How many links of a drawn document draw each leaf, by its `repeats` key.
+ * Every other cell's key opens with the separator a node id never does.
+ * @param {FiscProjection | null} doc
+ * @returns {Map<string, number>}
+ */
+export function leafDraws(doc) {
+  /** @type {Map<string, number>} */
+  const out = new Map();
+  for (const l of doc ? doc.links : []) {
+    for (const k of Object.keys(cellsOf(l) || {})) if (!k.startsWith("\u001f")) out.set(k, (out.get(k) || 0) + 1);
+  }
+  return out;
+}
+
+/**
+ * Whether a link draws a leaf another link of its document draws too: a
+ * figure the city printed once, between other ends, drawn again through a
+ * hub a split opened. No page prints it at either pair of ends drawn.
+ * @param {FiscLink} l
+ * @param {Map<string, number>} draws leafDraws of the document drawing it
+ * @returns {boolean}
+ */
+export function drawsAgain(l, draws) {
+  return Object.keys(cellsOf(l) || {}).some((k) => (draws.get(k) || 0) > 1);
+}
+
+/**
  * Each leaf of a schedule at its `repeats` key, by its cents: what a total
  * restating it is read as by distinctCents.
  * @param {FiscProjection | null} doc the schedule as fetched, before any fold
@@ -1591,6 +1618,7 @@ export function tableRows(doc) {
   if (!doc) return out;
   const labels = new Map(doc.nodes.map((n) => [n.id, n.label]));
   const ours = new Set(doc.nodes.filter((n) => n.derived).map((n) => n.id));
+  const draws = leafDraws(doc);
 
   for (const l of doc.links) {
     const tr = document.createElement("tr");
@@ -1603,7 +1631,8 @@ export function tableRows(doc) {
     tr.append(h("td", "", l.derived ? say("inferred_chip")
       : l.contra ? l.contra
         : l.partition ? PARTITION_NOTE
-          : ours.has(l.source) || ours.has(l.target) ? say("carried_chip") : say("printed_chip")));
+          : drawsAgain(l, draws) ? say("repeats_chip")
+            : ours.has(l.source) || ours.has(l.target) ? say("carried_chip") : say("printed_chip")));
     tr.append(h("td", "ids", l.fact_ids.join(" ")));
     // PER ROW, not per document: the pages this row's own figure was read from.
     const td = h("td", "");

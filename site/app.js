@@ -27,7 +27,7 @@
 
 import * as core from "./core.js";
 import {
-  SCHEMA_VERSION, say, kindLabel, fmt, fmtSigned, el, maybeEl, cssVar, h, link, citations, balancesOf, PARTITION_NOTE, isFundGroup, scheduleOf, isLink, tableRows,
+  SCHEMA_VERSION, say, kindLabel, fmt, fmtSigned, el, maybeEl, cssVar, h, link, citations, balancesOf, PARTITION_NOTE, isFundGroup, scheduleOf, isLink, tableRows, leafDraws, drawsAgain,
 } from "./core.js";
 import { SANKEY } from "./sankey.js";
 // Re-exported so the tests reach the shipped modules through the one file
@@ -2164,12 +2164,17 @@ export function wireFilters() {
  * cents and citation are the city's but the far end is not, so neither
  * "printed by the city" nor "inferred by us" is true of it.
  *
+ * A printed figure drawn again between other ends, through a split, gets a
+ * fourth: no page prints it at the ends it is drawn between.
+ *
  * @param {boolean} derived  the ribbon's own flag
  * @param {boolean} ontoOurs  whether either end is a mark we drew
+ * @param {boolean} [again]  whether another ribbon draws a leaf it draws
  * @returns {string}
  */
-export function provenanceOf(derived, ontoOurs) {
+export function provenanceOf(derived, ontoOurs, again = false) {
   if (derived) return say("inferred_by_us");
+  if (again) return say("repeats_note");
   return ontoOurs ? say("carried_note") : say("printed_by_city");
 }
 
@@ -2184,7 +2189,7 @@ export function linkDescription(d) {
     (d.contra ? ", " + d.contra : "") +
     (d.partition ? ", " + PARTITION_NOTE : "") +
     (d.merged ? ", " + d.merged : "") +
-    ", " + provenanceOf(d.derived, Boolean(d.source.derived || d.target.derived));
+    ", " + provenanceOf(d.derived, Boolean(d.source.derived || d.target.derived), drawsAgain(d, leafDraws(projection)));
 }
 
 /**
@@ -2290,8 +2295,9 @@ export function showTip(event, d) {
       meta.append(document.createTextNode(" "));
     }
     const lentTo = Boolean(l.source.derived || l.target.derived);
-    meta.append(h("span", l.derived || lentTo ? "chip derived" : "chip",
-      say(l.derived ? "inferred_chip" : lentTo ? "carried_chip" : "printed_chip")));
+    const again = drawsAgain(l, leafDraws(projection));
+    meta.append(h("span", l.derived || lentTo || again ? "chip derived" : "chip",
+      say(l.derived ? "inferred_chip" : again ? "repeats_chip" : lentTo ? "carried_chip" : "printed_chip")));
     if (l.contra) {
       meta.append(document.createTextNode(" "));
       meta.append(h("span", "chip contra", "reduction"));
@@ -2481,8 +2487,9 @@ export function paintDetail(d) {
     const kind = kindLabel(l.kind);
     if (kind) chips.append(h("span", "chip", kind));
     const lent = Boolean(l.source.derived || l.target.derived);
-    chips.append(h("span", l.derived || lent ? "chip derived" : "chip",
-      say(l.derived ? "our_inference" : lent ? "carried_chip" : "printed_by_city")));
+    const again = drawsAgain(l, leafDraws(projection));
+    chips.append(h("span", l.derived || lent || again ? "chip derived" : "chip",
+      say(l.derived ? "our_inference" : again ? "repeats_chip" : lent ? "carried_chip" : "printed_by_city")));
     if (l.contra) chips.append(h("span", "chip contra", "reduction"));
     if (l.partition) chips.append(h("span", "chip partition", "cross-tab"));
     panel.append(chips);

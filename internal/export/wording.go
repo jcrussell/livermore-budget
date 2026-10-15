@@ -50,6 +50,11 @@ type wording struct {
 	PrintedChip   string `json:"printed_chip"`
 	CarriedNote   string `json:"carried_note"`
 	CarriedChip   string `json:"carried_chip"`
+	// RepeatsNote and RepeatsChip are said of a link drawing a leaf another
+	// drawn link draws too: a figure the city printed between other ends,
+	// repeated through a hub a split opened.
+	RepeatsNote string `json:"repeats_note"`
+	RepeatsChip string `json:"repeats_chip"`
 	// CaveatChip is said beside a mark's figure: how many caveats are about
 	// the mark.
 	CaveatChip string `json:"caveat_chip"`
@@ -207,6 +212,8 @@ func defaultWording() wording {
 		PrintedChip:    "printed",
 		CarriedNote:    "figure printed by the city, re-pointed onto a mark of ours",
 		CarriedChip:    "◇ re-pointed by us",
+		RepeatsNote:    "figure printed by the city between other ends, repeated by us through a split",
+		RepeatsChip:    "◇ a printed figure, repeated through a split",
 		CaveatChip:     "\u26a0 \u25c7 {n:caveat|caveats}",
 		InferredFlows:  "\u25c7 {flows:inferred flow|inferred flows} totalling {figure}: {ends}",
 		DescOpens:      ", splits in place into its parts on a click, Enter or Space, and is pinned in the drawer",

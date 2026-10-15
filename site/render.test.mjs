@@ -1309,3 +1309,48 @@ describe("a member printed in its parent's words", () => {
     });
   }
 });
+
+describe("a link repeating a leaf through a split is not called printed", () => {
+  // A leaf drawn twice is one key in two drawn ribbons' cells: once
+  // re-pointed onto the hub, once as the hub's leg. Counted here off the
+  // cells, not asked of leafDraws.
+  // Mutation: label by derived ends only, dropping drawsAgain from the
+  // table, the tooltip, the drawer and provenanceOf, and this goes red: the
+  // re-pointed leaves and their hub legs read "printed".
+  for (const year of YEARS) {
+    test(`${year.label}: with the General Fund group open, no row, tooltip, drawer or description of a repeating link says printed`, async (t) => {
+      const { app, document } = await bootedApp({ checkedStem: year.stem });
+      const chart = document.getElementById("chart");
+      await split(app, "fund-group/general");
+      const words = CONFIG.wording;
+      const rows = [...document.querySelectorAll("#flow-table tbody tr")];
+      const links = app.projection.links;
+      assert.equal(rows.length, links.length);
+      const leaves = (l) => Object.keys(l.cells || {}).filter((k) => !k.startsWith("\u001f"));
+      const count = new Map();
+      for (const l of links) for (const k of leaves(l)) count.set(k, (count.get(k) || 0) + 1);
+      const again = (l) => leaves(l).some((k) => count.get(k) > 1);
+      const wrong = [];
+      let repeating = 0;
+      links.forEach((l, i) => {
+        if (!again(l)) return;
+        repeating++;
+        const chip = rows[i].children[4].textContent;
+        if (chip === words.printed_chip) wrong.push(`table: ${l.source} -> ${l.target}`);
+      });
+      const ribbons = [...chart.querySelectorAll("path.link")].map((p) => p.__data__).filter(again);
+      for (const d of ribbons.slice(0, 6)) {
+        app.showTip({ target: chart, clientX: 0, clientY: 0 }, d);
+        const tip = [...document.querySelectorAll("#tooltip .chip")].map((c) => c.textContent);
+        if (tip.includes(words.printed_chip)) wrong.push(`tooltip: ${d.source.id} -> ${d.target.id}`);
+        app.pin(d);
+        const panel = [...document.querySelectorAll("#detail .chip")].map((c) => c.textContent);
+        if (panel.includes(words.printed_by_city)) wrong.push(`drawer: ${d.source.id} -> ${d.target.id}`);
+        if (app.linkDescription(d).endsWith(words.printed_by_city)) wrong.push(`description: ${d.source.id} -> ${d.target.id}`);
+      }
+      t.diagnostic(`${year.label}: ${repeating} table row(s) repeat a leaf, ${ribbons.length} drawn ribbon(s); ${wrong.length} called printed`);
+      assert.ok(repeating > 0 && ribbons.length > 0, "nothing drawn repeats a leaf, so this asserts nothing");
+      assert.deepEqual(wrong, []);
+    });
+  }
+});

@@ -287,6 +287,8 @@
         "printed_chip",
         "carried_note",
         "carried_chip",
+        "repeats_note",
+        "repeats_chip",
         "caveat_chip",
         "inferred_flows",
         "desc_opens",
@@ -429,6 +431,8 @@
         "printed_chip": { "type": "string", "minLength": 1 },
         "carried_note": { "type": "string", "minLength": 1 },
         "carried_chip": { "type": "string", "minLength": 1 },
+        "repeats_note": { "type": "string", "minLength": 1 },
+        "repeats_chip": { "type": "string", "minLength": 1 },
         "caveat_chip": {
           "type": "string",
           "minLength": 1,
