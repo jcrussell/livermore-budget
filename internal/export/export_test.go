@@ -284,6 +284,35 @@ func TestTheIndexLeadsWithTheHeadlineAndTheTotalsPageArguesWithIt(t *testing.T) 
 	}
 }
 
+// TestTheIndexLinksOnlyItsOwnProjectionsTotals: a totals view of another
+// document listed first is not the totals behind this chart. Mutation: drop
+// totalsPathOf's projection match -- the index links other-totals.html and
+// this goes red.
+func TestTheIndexLinksOnlyItsOwnProjectionsTotals(t *testing.T) {
+	dir := t.TempDir()
+	if _, err := writeSite(export.Options{
+		Dir:         dir,
+		Projections: map[string][]byte{"sankey": goldenSankey(t), "other": reyeared(t, goldenSankey(t), 2027, "FY 2026-27")},
+		Views: []export.View{
+			{Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate,
+				Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "sankey"},
+			{Path: "other-totals.html", Nav: "Other totals", Template: export.TotalsTemplate, Projection: "other"},
+			{Path: "totals.html", Nav: "The totals", Template: export.TotalsTemplate, Projection: "sankey"},
+		},
+		Docs:        budgetDocs(),
+		GeneratedBy: "fisc test",
+	}); err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	index := readPage(t, dir)
+	if !strings.Contains(index, `<a href="totals.html">The totals behind it</a>`) {
+		t.Error("index.html does not link its own projection's totals page as the totals behind it")
+	}
+	if strings.Contains(index, `<a href="other-totals.html">The totals behind it</a>`) {
+		t.Error("index.html links another projection's totals page as the totals behind it")
+	}
+}
+
 // TestTheChartComesBeforeAnyApparatus pins the reading order: the headline in
 // the page head, then the chart card, then everything that explains them.
 // Every marker is Fatalf-guarded, because an absent one is -1 and before

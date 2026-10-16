@@ -102,7 +102,8 @@ type pageData struct {
 	// the same one app.js repaints on a year switch.
 	ChartTitle string
 	Hero       figure
-	// TotalsPath is the totals page, or "" when the site has none.
+	// TotalsPath is the totals page of this view's projection, or "" when
+	// the site has none.
 	TotalsPath string
 	// SourcesPath is the provenance index, or "" when the site has none: with
 	// one, the footer links there instead of listing every cited page.
@@ -427,7 +428,7 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		TableHeading: flowTableHeading,
 		ChartTitle:   open.ChartTitle,
 		Hero:         open.Hero,
-		TotalsPath:   templatePathOf(o, TotalsTemplate),
+		TotalsPath:   totalsPathOf(o, v.Projection),
 		SourcesPath:  sourcesPath,
 		Years:        years,
 		Opens:        open.Stem,
@@ -448,6 +449,18 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 func templatePathOf(o *Options, name string) string {
 	for _, v := range o.Views {
 		if v.Template == name {
+			return v.Path
+		}
+	}
+	return ""
+}
+
+// totalsPathOf is the path of the totals view of projection, or "" when the
+// site has none: a chart page's "The totals behind it" names its own
+// document's totals, never another projection's.
+func totalsPathOf(o *Options, projection string) string {
+	for _, v := range o.Views {
+		if v.Template == TotalsTemplate && v.Projection == projection {
 			return v.Path
 		}
 	}

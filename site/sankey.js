@@ -1114,9 +1114,9 @@ export const SANKEY = Object.freeze({
    * KEYED BY NODE AND RIBBON ID (linkKey), so a mark the chart it replaces
    * drew keeps its element. Over ctx.motion ms, from ctx.before (the replaced
    * chart's laid nodes by id), a surviving mark glides to its place, a new
-   * one grows out of the right edge of its nearest ancestor drawn before
-   * (parentOf), one leaving shrinks into the right edge of its nearest
-   * ancestor drawn now, and every label fades in after the move. With no
+   * one grows out of its nearest ancestor drawn before (parentOf), one
+   * leaving shrinks into its nearest ancestor drawn now, each at the edge
+   * facing the mark (edgeOf), and every label fades in after the move. With no
    * motion everything is at its end at once. The viewBox is never shorter
    * than ctx.held. Before any description is asked for, ctx.named, where
    * given, is handed every mark's name by id: its qualifier, label and noun

@@ -51,9 +51,9 @@ one on `totals.html`, because naively summing the expenditure column
 double-counts transfers by 23%, and showing the error you are avoiding is more
 useful than quietly avoiding it.
 
-The site publishes **six pages**. `index.html` is the fund-group spine as a
-Sankey, with a toggle between the two adopted years, and it is the one chart
-page: **click a fund group and it opens** into that group's own funds from
+The site's pages are the views `data/views.yaml` declares, in its nav order.
+`index.html` is the fund-group spine as a Sankey, with a toggle between the two
+adopted years: **click a fund group and it opens** into that group's own funds from
 pp.127-140, and where there is room on into what each fund spends on, from
 pp.167-170 and pp.173-183, drawn for the same fiscal year; click a General Fund
 division and it opens again into what that division spends on — each rescaled
@@ -64,7 +64,10 @@ link to the extracted text of the page it was read from, and a per-row mark
 whose scale is that row's own. `history.html` and `balances.html` are the ACFR's
 two ten-year schedules — p168's changes in fund balances and p167's balances
 themselves — a decade a column, in the section the ACFR heads "(Unaudited)" and
-each page says so. `provenance.html` is the record store itself: every fact, its
+each page says so. `department.html`, `capital.html` and `debt.html` are a
+page a subject: what a department spends and which funds pay for it, each
+capital project under the fund that pays for it, and what the city budgets and
+is scheduled to pay on each debt. `provenance.html` is the record store itself: every fact, its
 page, and the text it was read from. `caveats.html` is every published
 document's caveats in full. `index.html` links it and flags a caveat in the
 drawer on each mark it applies to, and `totals.html` and several schedule

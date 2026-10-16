@@ -211,6 +211,34 @@ describe("a node's context menu", () => {
     });
   });
 
+  // Mutation: drop wireDrawer's pressedOpen (read the menu as open at the
+  // click alone) and this goes red: the press's focus on More closes the
+  // menu and the click opens it again.
+  test("More pressed while its menu is open closes it, focus on More, where the press focuses More and where it does not", async () => {
+    const { app, document } = await bootedApp();
+    const more = document.getElementById("detail-menu");
+    const id = plainNode(app);
+    app.pin(app.laidNodes.find((n) => n.id === id));
+    const press = (focuses) => {
+      more.focus();
+      fire(more, "click");
+      const opened = document.getElementById("node-menu") !== null;
+      fire(more, "pointerdown", { button: 0 });
+      if (focuses) more.focus();
+      fire(document.body, "pointerup", { button: 0 });
+      fire(more, "click");
+      return { opened, menu: document.getElementById("node-menu") !== null,
+        expanded: more.getAttribute("aria-expanded"), back: document.activeElement === more };
+    };
+    const focusing = press(true);
+    await settle();
+    const not = press(false);
+    await settle();
+    const shut = { opened: true, menu: false, expanded: "false", back: true };
+    assert.deepEqual({ focusing, not }, { focusing: shut, not: shut });
+    assert.equal(refusals(document).length, 0);
+  });
+
   // Mutation: drop the restoreFocus after a choice in openMenu and this goes
   // red: the filter's redraw drops the pin, hides More, and focus falls to
   // the body.
@@ -529,6 +557,54 @@ describe("the menu and the pin", () => {
 });
 
 describe("the filter line's names", () => {
+  // Mutation: drop keepOutNames from setFilter and this goes red: the tail
+  // the link filters out again is named with the qualifier the earlier
+  // chart, split at property taxes too, drew it with.
+  test("a name kept for a node filtered out from the menu goes with Reset, so a link filtering it out of another chart names it as that chart does", async (t) => {
+    const { app, document } = await bootedApp();
+    await split(app, "revenue/licenses-and-permits", "revenue/taxes/property");
+    const id = "aggregate/tail/lines/revenue/licenses-and-permits";
+    const chosen = app.laidNodes.find((n) => n.id === id);
+    assert.ok(chosen !== undefined, `${id} is not drawn`);
+    const stale = app.nameOf(chosen);
+    app.filterOutNode(id);
+    app.resetFilters();
+    const view = Object.assign({}, app.viewState(), { x: ["revenue/licenses-and-permits"] });
+    const drawn = await app.restoreView(app.hashOf(view));
+    const node = app.laidNodes.find((n) => n.id === id);
+    const fresh = node ? app.nameOf(node) : "";
+    const got = await app.restoreView(app.hashOf(Object.assign({}, view, { out: [id] })));
+    const said = document.getElementById("filter-said").textContent;
+    t.diagnostic(`${id} drawn as ${JSON.stringify(stale)} when chosen, as ${JSON.stringify(fresh)} split at licenses alone; the line says: ${said}`);
+    assert.deepEqual([drawn, got], [app.DREW, app.DREW]);
+    assert.ok(fresh !== "" && fresh !== stale, "the second chart names the tail as the first did, so this asserts nothing");
+    assert.ok(said.startsWith(app.say("filter_out", { names: fresh })), said);
+  });
+
+  // Mutation: drop showYear's outNames.clear() and this goes red: the tail
+  // the link keeps filtered out in another year is named with the qualifier
+  // the first year's chart drew it with.
+  test("a name kept for a node filtered out from the menu goes with a year switch, so a link keeping it filtered out names it as the new chart does", async (t) => {
+    const { app, document } = await bootedApp();
+    await split(app, "revenue/licenses-and-permits", "revenue/taxes/property");
+    const id = "aggregate/tail/lines/revenue/licenses-and-permits";
+    const chosen = app.laidNodes.find((n) => n.id === id);
+    assert.ok(chosen !== undefined, `${id} is not drawn`);
+    const stale = app.nameOf(chosen);
+    const opening = app.yearKey(app.shownYear);
+    const other = app.CONFIG.years.map((y) => app.yearKey(y)).find((k) => k !== opening);
+    assert.ok(other, "the page publishes one year, so no link moves to another");
+    app.filterOutNode(id);
+    const got = await app.restoreView(app.hashOf(Object.assign({}, app.viewState(),
+      { year: other, x: ["revenue/licenses-and-permits"] })));
+    const node = app.projection.nodes.find((n) => n.id === id);
+    const said = document.getElementById("filter-said").textContent;
+    t.diagnostic(`${id} drawn as ${JSON.stringify(stale)} in ${opening}; in ${other} split at licenses alone the line says: ${said}`);
+    assert.deepEqual({ got, out: [...app.filter.nodes] }, { got: app.DREW, out: [id] });
+    assert.ok(node !== undefined && app.nameOf(node) !== stale, "the new chart's name is the stale one, so this asserts nothing");
+    assert.ok(said.startsWith(app.say("filter_out", { names: app.nameOf(node) })), said);
+  });
+
   // Mutation: paint the filter line before setFilter's render, as it was,
   // and this goes red: the line names the tail by the qualifier the chart
   // before the filter drew it with.

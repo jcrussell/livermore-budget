@@ -409,10 +409,16 @@ let drawnNames = new Map();
 /**
  * The name each node filtered out from the node's menu was drawn by when it
  * was chosen: a node filtered out is drawn no more, so no later render
- * names it (filterOutNode, paintFilterLine).
+ * names it (filterOutNode, paintFilterLine). An entry lives only while its
+ * node stays in `filter.nodes` within one year (keepOutNames, showYear).
  * @type {Map<string, string>}
  */
 const outNames = new Map();
+
+/** Drops every name in outNames whose node `filter.nodes` no longer holds. */
+function keepOutNames() {
+  for (const id of [...outNames.keys()]) if (!filter.nodes.has(id)) outNames.delete(id);
+}
 
 /**
  * What the page calls a mark in prose: the name the form draws it by, else
@@ -2201,6 +2207,7 @@ export function setFilter(next) {
   }
   filter = state;
   if (!projection) {
+    keepOutNames();
     syncFilterPanel();
     return true;
   }
@@ -2217,12 +2224,14 @@ export function setFilter(next) {
     laid = layOut(filtered.doc, prior);
   } catch (e) {
     filter = was;
+    keepOutNames();
     syncFilterPanel();
     refuseInPlace("The chart could not be filtered: " + (e instanceof Error ? e.message : String(e)));
     return false;
   }
   shown = filtered;
   whole = unfiltered;
+  keepOutNames();
   dropPin();
   if (filter.isolated && !laidNodes.some((n) => isolates(filter.isolated, n))) {
     filter = Object.freeze(Object.assign({}, filter, { isolated: "" }));
@@ -2745,13 +2754,35 @@ export function followable() {
  * Wires the drawer's buttons: Pin pins the mark previewed or lets the pin
  * go, Follow follows the node shown's money or puts the rest back, and More
  * opens the node shown's menu beside its mark (openNodeMenu): the one route
- * to it with no right button and no keyboard, as on a phone.
+ * to it with no right button and no keyboard, as on a phone. More pressed
+ * while its menu is open closes it, focus staying on More.
  */
 export function wireDrawer() {
   const more = maybeEl("detail-menu");
   if (more) {
+    // A PRESS ON MORE BLURS ITS MENU SHUT before the click lands (openMenu's
+    // focusout), so whether the click closes is read at the press.
+    let pressedOpen = false;
+    more.addEventListener("pointerdown", () => {
+      pressedOpen = chartMenu !== null && chartMenu.back === more;
+      const doc = more.ownerDocument;
+      const released = () => {
+        doc.removeEventListener("pointerup", released, true);
+        doc.removeEventListener("pointercancel", released, true);
+        setTimeout(() => { pressedOpen = false; }, 0);
+      };
+      doc.addEventListener("pointerup", released, true);
+      doc.addEventListener("pointercancel", released, true);
+    });
     more.addEventListener("click", (e) => guarded("open this mark's menu", () => {
       e.stopPropagation();
+      const wasOpen = pressedOpen || (chartMenu !== null && chartMenu.back === more);
+      pressedOpen = false;
+      if (wasOpen) {
+        closeChartMenu();
+        more.focus();
+        return;
+      }
       const id = followable();
       const d = laidNodes.find((n) => n.id === id);
       if (!d) return;
@@ -4189,6 +4220,8 @@ export async function showYear(year, carry = [], removals = null) {
   // A pin and an isolation belong to the year they were made in.
   pinned = null;
   filter = Object.freeze(Object.assign({}, removals || filter, { isolated: "" }));
+  // A name drawn in another year is not this year's.
+  outNames.clear();
   resetDetail();
   hideTip();
 
