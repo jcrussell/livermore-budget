@@ -91,6 +91,34 @@ describe("a node's context menu", () => {
     assert.deepEqual(byKey, ["follow", "out", "only"]);
   });
 
+  // Mutation: tell a key's contextmenu by 0, 0 alone (no keyedMenu) and
+  // this goes red: the keyed menu opens at the coordinates Chromium gives
+  // the event, where the pointer would have been.
+  test("a menu key's contextmenu at the mark's coordinates opens the menu beside the mark; a right-click opens it at the pointer", async (t) => {
+    const { app, document } = await bootedApp();
+    const m = markOf(document, plainNode(app));
+    const placed = () => {
+      const menu = document.getElementById("node-menu");
+      const at = menu ? menu.style.left + " " + menu.style.top : "";
+      app.closeChartMenu();
+      return at;
+    };
+    fire(m, "contextmenu", { button: 2, clientX: 100, clientY: 200 });
+    const pointer = placed();
+    fire(m, "keydown", { key: "ContextMenu" });
+    fire(m, "contextmenu", { button: 0, clientX: 100, clientY: 200 });
+    const contextMenuKey = placed();
+    fire(m, "keydown", { key: "F10", shiftKey: true });
+    fire(m, "contextmenu", { button: 0, clientX: 100, clientY: 200 });
+    const shiftF10 = placed();
+    fire(m, "contextmenu", { button: 2, clientX: 100, clientY: 200 });
+    const after = placed();
+    t.diagnostic(`pointer ${pointer}; ContextMenu ${contextMenuKey}; Shift+F10 ${shiftF10}; a right-click after ${after}`);
+    assert.deepEqual({ pointer, after }, { pointer: "100px 200px", after: "100px 200px" });
+    assert.ok(contextMenuKey !== "" && contextMenuKey !== pointer, contextMenuKey);
+    assert.ok(shiftF10 !== "" && shiftF10 !== pointer, shiftF10);
+  });
+
   test("a ribbon has no menu: a right-click on one leaves the browser's own", async () => {
     const { document } = await bootedApp();
     const ribbon = document.querySelector("#chart path.link");
@@ -216,6 +244,47 @@ describe("the node filters beside the others", () => {
     assert.ok(said.includes(app.say("filter_only", { label: app.nameOf(node) })), said);
   });
 
+  // Mutation: decide onlyKeeps against the shaped chart alone, before the
+  // other removals, and this goes red: `only` removes every ribbon the
+  // others leave, an empty chart or a refusal.
+  test("a node shown alone is inert where the other removals leave none of its ribbons: filtered out too, or in a hidden group", async (t) => {
+    const { app, document } = await bootedApp();
+    const id = plainNode(app);
+    const before = drawnRibbons(document).length;
+    const at = (x) => app.projection.links.filter((l) => l.source === x || l.target === x).length;
+    const label = (x) => app.say("filter_only", { label: app.nameOf(app.laidNodes.find((n) => n.id === x)) });
+    const outLabel = label(id);
+    const out = { ok: app.setFilter({ nodes: new Set([id]), only: id }), drawn: drawnRibbons(document).length,
+      said: document.getElementById("filter-said").textContent };
+    app.resetFilters();
+    const groupLabel = label(OPENS);
+    const group = { ok: app.setFilter({ groups: new Set([OPENS]), only: OPENS }), drawn: drawnRibbons(document).length,
+      said: document.getElementById("filter-said").textContent };
+    t.diagnostic(`${id} out and alone: ${out.drawn} of ${before}; ${OPENS} hidden and alone: ${group.drawn} of ${before}`);
+    assert.deepEqual({ ok: out.ok, drawn: out.drawn, named: out.said.includes(outLabel) },
+      { ok: true, drawn: before - at(id), named: false });
+    assert.deepEqual({ ok: group.ok, drawn: group.drawn, named: group.said.includes(groupLabel) },
+      { ok: true, drawn: before - at(OPENS), named: false });
+    assert.equal(refusals(document).length, 0);
+  });
+
+  // Mutation: drop setFilter's isolate after the redraw and this goes red:
+  // the isolation passed with a removal goes with the pin the redraw drops,
+  // and setFilter still says the state on screen is the one asked for.
+  test("an isolation passed with a removal follows the node and pins it", async () => {
+    const { app, document } = await bootedApp();
+    const id = plainNode(app);
+    const node = app.laidNodes.find((n) => n.id === id);
+    const near = new Set(node.sourceLinks.map((l) => l.target.id).concat(node.targetLinks.map((l) => l.source.id), [id]));
+    const far = app.laidNodes.find((n) => !near.has(n.id) && !app.isGroupID(n.id) && !app.isSmaller(n.id) &&
+      app.projection.nodes.some((p) => p.id === n.id));
+    assert.ok(far, `every node is ${id}'s neighbour`);
+    const ok = app.setFilter({ nodes: new Set([far.id]), isolated: id });
+    assert.deepEqual({ ok, isolated: app.filter.isolated, pinned: pinnedID(app),
+      pressed: document.getElementById("detail-follow").getAttribute("aria-pressed") },
+    { ok: true, isolated: id, pinned: id, pressed: "true" });
+  });
+
   test("a node filtered out stays out through a split, and one shown alone is inert where the chart draws none of it", async () => {
     const { app, document } = await bootedApp();
     const id = plainNode(app);
@@ -333,6 +402,23 @@ describe("the node filters in the URL", () => {
     assert.ok(hash.includes("only=") && hash.includes("out="), hash);
     assert.deepEqual({ out: [...again.app.filter.nodes], only: again.app.filter.only, links: again.app.shown.doc.links.length }, want);
     assert.deepEqual(refusals(again.document).map((b) => b.textContent), []);
+  });
+
+  // Mutation: restore moveTo's bare setIsolated for a node and this goes
+  // red: the chart follows a node with nothing pinned and Follow hidden.
+  test("a link following a node pins it, so the drawer shows it with Follow pressed; a group's is the swatch's", async () => {
+    const { app, document } = await bootedApp();
+    const id = plainNode(app);
+    const node = await app.restoreView(app.hashOf(Object.assign({}, app.viewState(), { iso: id })));
+    const follow = document.getElementById("detail-follow");
+    const followed = { got: node, isolated: app.filter.isolated, pinned: pinnedID(app), hidden: follow.hidden,
+      pressed: follow.getAttribute("aria-pressed") };
+    app.unpin();
+    const group = await app.restoreView(app.hashOf(Object.assign({}, app.viewState(), { iso: OPENS })));
+    assert.deepEqual({ followed, group: { got: group, isolated: app.filter.isolated, pinned: pinnedID(app) } }, {
+      followed: { got: app.DREW, isolated: id, pinned: id, hidden: false, pressed: "true" },
+      group: { got: app.DREW, isolated: OPENS, pinned: "" },
+    });
   });
 
   // Mutation: drop `out` and `only` from restoreView's fallback and this

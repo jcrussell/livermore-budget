@@ -881,6 +881,15 @@ button[aria-pressed="true"] {
   gap: 8px;
 }
 
+/* A toolbar button with nothing to do looks it: no pointer and no hover
+   wash, over button and button:hover. */
+.chart-tools button:disabled,
+.chart-tools button:disabled:hover {
+  cursor: default;
+  opacity: 0.5;
+  background: var(--surface-1);
+}
+
 /* Full screen shows the whole card, scrolled, on its own surface. */
 .card:fullscreen {
   overflow: auto;

@@ -320,7 +320,9 @@ func (*expansionOpensAsTheSpine) Run(_ context.Context, s *Subject) (Result, err
 // category's leg a cent short and it names the pairing; leave one line's
 // leaf on its fund and it names a leg with no leaf, or on its line and it
 // names the leaf; run one division's total into its fund and it names the
-// split as drawn both ways.
+// split as drawn both ways; re-point fund/620's capital outlay leaf off the
+// fund onto its group, a hub re-pointing only what arrives, and it names the
+// leaf.
 type expansionSplitsTie struct{}
 
 var _ Check = (*expansionSplitsTie)(nil)
@@ -414,9 +416,13 @@ func (c *expansionSplitsTie) split(s *Subject, x stitched, sp project.Split, sub
 	}
 	var findings []Finding
 	// One way between the node and its members, which side of the node they
-	// stand on: the client refuses a split drawn both ways at layout.
+	// stand on: the client refuses a split drawn both ways at layout. A leaf
+	// between two members re-pointed onto the node is neither way.
 	from, into := 0, 0
 	for _, l := range x.doc.Links {
+		if l.Repeats != "" && l.Alternative == "" && !x.isLeg(l) {
+			continue
+		}
 		if l.Source == sp.Node && slices.Contains(members, l.Target) {
 			from++
 		}
@@ -429,7 +435,8 @@ func (c *expansionSplitsTie) split(s *Subject, x stitched, sp project.Split, sub
 			from, into))
 	}
 	// The node's links to its members in this split's set: a total of its
-	// own to each, or legs each repeating one leaf, either way.
+	// own to each, or legs each repeating one leaf, either way; a leaf
+	// re-pointed onto the node is neither.
 	totals := map[string]int{}
 	var legs []project.Link
 	for _, l := range x.doc.Links {
@@ -438,6 +445,9 @@ func (c *expansionSplitsTie) split(s *Subject, x stitched, sp project.Split, sub
 		}
 		toMember := l.Source == sp.Node && slices.Contains(members, l.Target)
 		fromMember := l.Target == sp.Node && slices.Contains(members, l.Source)
+		if l.Repeats != "" && l.Alternative == "" && !x.isLeg(l) {
+			continue
+		}
 		if l.Repeats != "" && (toMember || fromMember) {
 			legs = append(legs, l)
 			continue
@@ -644,6 +654,18 @@ func (*expansionSplitsTie) restatingFindings(x stitched, sp project.Split, membe
 	return findings
 }
 
+// takesIn answers whether the spine draws a link into a node: a hub at such a
+// node re-points the leaves arriving at its members, and one at a node taking
+// nothing in the leaves leaving them.
+func (x stitched) takesIn(id string) bool {
+	for _, l := range x.spine.Links {
+		if l.Target == id {
+			return true
+		}
+	}
+	return false
+}
+
 // isHub answers whether a node is a hub split's node: a leg runs between it
 // and its own primary member.
 func (x stitched) isHub(id string) bool {
@@ -657,8 +679,11 @@ func (x stitched) isHub(id string) bool {
 }
 
 // isLeg answers whether a link is a hub leg: it repeats a leaf and runs
-// between a node and its own primary member, from the node to the member or,
-// on a node taking nothing in, from the member to the node.
+// between a node and its own primary member, and is not that leaf re-pointed
+// onto the node -- the node at the end its hub re-points, the far end the
+// leaf's own. So a flow between two members of a hub, re-pointed onto it, is
+// a leaf, while a leg run the wrong way stays a leg for the hub's findings to
+// name.
 func (x stitched) isLeg(l project.Link) bool {
 	if l.Repeats == "" || l.Alternative != "" {
 		return false
@@ -667,8 +692,27 @@ func (x stitched) isLeg(l project.Link) bool {
 		m, ok := x.nodes[id]
 		return ok && m.Parent == parent && m.Alternative == ""
 	}
-	return member(l.Target, l.Source) || member(l.Source, l.Target)
+	if !member(l.Target, l.Source) && !member(l.Source, l.Target) {
+		return false
+	}
+	src, tgt := project.LeafEnds(l.Repeats)
+	if member(l.Source, l.Target) && x.takesIn(l.Target) && l.Source == src {
+		return false
+	}
+	if member(l.Target, l.Source) && !x.takesIn(l.Source) && l.Target == tgt {
+		return false
+	}
+	return true
 }
+
+// Each word pair a hub's findings say a side of the flow by, keyed by
+// whether the hub takes money in on the spine.
+var (
+	hubArriveAt = map[bool]string{true: "arrive at", false: "leave"}
+	hubArrives  = map[bool]string{true: "arrives at", false: "leaves"}
+	hubInto     = map[bool]string{true: "into", false: "out of"}
+	hubTakesIn  = map[bool]string{true: "takes in", false: "gives out"}
+)
 
 // hubFindings holds a hub split's legs to the leaves they repeat. Where the
 // node takes money in on the spine, every primary leaf arriving at a member
@@ -677,19 +721,15 @@ func (x stitched) isLeg(l project.Link) bool {
 // nothing in, every primary leaf leaving a member is re-pointed to start at
 // the node and repeated by exactly one leg from that member to the node. A
 // re-pointed leaf's other end is the leaf's own, or that end's parent where
-// it too is a hub's primary member. A leg repeats exactly one leaf, with its cents,
+// it too is the primary member of a hub re-pointing that side of the flow. A
+// leg repeats exactly one leaf, with its cents,
 // facts, kind and derived flag, and the legs together carry what the node
 // takes in on the spine, or gives out where it takes nothing in.
 func (*expansionSplitsTie) hubFindings(x stitched, sp project.Split, members []string, legs []project.Link,
 	subject string) []Finding {
 	var findings []Finding
-	inflow := false
+	inflow := x.takesIn(sp.Node)
 	var spineCents int64
-	for _, l := range x.spine.Links {
-		if l.Target == sp.Node {
-			inflow = true
-		}
-	}
 	for _, l := range x.spine.Links {
 		if (inflow && l.Target == sp.Node) || (!inflow && l.Source == sp.Node) {
 			spineCents += l.ValueCents
@@ -702,7 +742,6 @@ func (*expansionSplitsTie) hubFindings(x stitched, sp project.Split, members []s
 		}
 		return source, target
 	}
-	way := map[bool]string{true: "arrive at", false: "leave"}[inflow]
 	isMember := func(id string) bool { return slices.Contains(members, id) }
 	leaves := map[string][]project.Link{}
 	for _, l := range x.doc.Links {
@@ -719,11 +758,11 @@ func (*expansionSplitsTie) hubFindings(x stitched, sp project.Split, members []s
 		member, hub := near(g.Source, g.Target)
 		if hub != sp.Node {
 			findings = append(findings, finding(subject, "%s runs %s the node, and a leaf %s its member the other way", at,
-				map[bool]string{true: "into", false: "out of"}[inflow], map[bool]string{true: "arrives at", false: "leaves"}[inflow]))
+				hubInto[inflow], hubArrives[inflow]))
 			continue
 		}
 		if leafNear, _ := near(project.LeafEnds(g.Repeats)); leafNear != member {
-			findings = append(findings, finding(subject, "%s names a leaf that does not %s its member", at, way))
+			findings = append(findings, finding(subject, "%s names a leaf that does not %s its member", at, hubArriveAt[inflow]))
 			continue
 		}
 		var found []project.Link
@@ -757,8 +796,9 @@ func (*expansionSplitsTie) hubFindings(x stitched, sp project.Split, members []s
 		switch {
 		case n != sp.Node || !isMember(leafNear):
 			findings = append(findings, finding(subject, "the leaf %s -> %s repeating %q %s a member and is not re-pointed onto the node",
-				l.Source, l.Target, l.Repeats, map[bool]string{true: "arrives at", false: "leaves"}[inflow]))
-		case leafFar != f && (x.nodes[leafFar].Parent != f || x.nodes[leafFar].Alternative != "" || !x.isHub(f)):
+				l.Source, l.Target, l.Repeats, hubArrives[inflow]))
+		case leafFar != f && (x.nodes[leafFar].Parent != f || x.nodes[leafFar].Alternative != "" || !x.isHub(f) ||
+			x.takesIn(f) == inflow):
 			findings = append(findings, finding(subject, "the leaf %s -> %s re-pointed onto the node repeats %q, whose other end is another node's",
 				l.Source, l.Target, l.Repeats))
 		case repeating[l.Repeats] != 1:
@@ -767,9 +807,8 @@ func (*expansionSplitsTie) hubFindings(x stitched, sp project.Split, members []s
 		}
 	}
 	if legCents != spineCents {
-		way := map[bool]string{true: "takes in", false: "gives out"}[inflow]
 		findings = append(findings, finding(subject, "the legs carry %s and on the spine %s %s %s (off by %s)",
-			amount.Cents(legCents), sp.Node, way, amount.Cents(spineCents),
+			amount.Cents(legCents), sp.Node, hubTakesIn[inflow], amount.Cents(spineCents),
 			amount.Cents(legCents-spineCents)))
 	}
 	return findings

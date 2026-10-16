@@ -85,6 +85,43 @@ describe("a split stands its members on the side its links run from", () => {
   });
 });
 
+describe("an extend chain has the slots its root has on its side", () => {
+  /**
+   * A root and a chain of `depth` extend splits below it, each member's link
+   * running from its parent (`after`) or into it.
+   */
+  const chain = (depth, after) => {
+    const root = after ? "fund-group/g" : "revenue/x";
+    const ids = [root];
+    for (let i = 1; i <= depth; i++) ids.push(root + "/" + i);
+    return {
+      projection: "expansion",
+      nodes: ids.map((id, i) => ({ id, label: id, tier: after ? 2 : 0, parent: i ? ids[i - 1] : "" })),
+      links: ids.slice(1).map((id, i) => {
+        const [source, target] = after ? [ids[i], id] : [id, ids[i]];
+        return { source, target, value_cents: 1, kind: "external", fact_ids: ["f"] };
+      }),
+      splits: ids.slice(0, -1).map((node) => ({ node, key: "k", form: "extend", alternative: false })),
+    };
+  };
+
+  // Mutation: say SLOT_DEPTH as the limit, as if a chain had every slot of
+  // its column on each side, and this goes red.
+  test("four slots after its root and five before, and a chain past them is refused saying so", async (t) => {
+    const { app } = await bootedApp();
+    assert.equal(app.expansionSlots(chain(4, true), [0, 2]).size, 5);
+    assert.equal(app.expansionSlots(chain(5, false), [0, 2]).size, 6);
+    let after = "";
+    let before = "";
+    try { app.expansionSlots(chain(5, true), [0, 2]); } catch (e) { after = String(e.message); }
+    try { app.expansionSlots(chain(6, false), [0, 2]); } catch (e) { before = String(e.message); }
+    t.diagnostic(after);
+    t.diagnostic(before);
+    assert.ok(after.endsWith("extended past the 4 slots after its root"), after);
+    assert.ok(before.endsWith("extended past the 5 slots before its root"), before);
+  });
+});
+
 describe("a split whose chart will not draw", () => {
   test("is refused with the banner, and the chart, the splits and the toolbar stay as they were", async (t) => {
     // A split of the sales tax in a form this page does not draw: the root

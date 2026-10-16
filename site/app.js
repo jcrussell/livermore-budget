@@ -264,8 +264,9 @@ export let projection = null;
  * followed, or "" for all of it (follows). Replaced whole, never mutated,
  * and moved only through setFilter and setIsolated. A group, kind or node
  * the chart on screen does not draw is kept and is inert, so a split or a
- * year change carries it to wherever it applies again; the isolation is
- * cleared where the redraw no longer draws what it names.
+ * year change carries it to wherever it applies again. A node's isolation
+ * goes whenever the pin does (dropPin), and a fund group's where a redraw no
+ * longer draws it.
  * @typedef {{groups: ReadonlySet<string>, kinds: ReadonlySet<string>, nodes: ReadonlySet<string>, only: string, smallest: number, isolated: string}} FilterState
  */
 /** The state that removes and follows nothing. @type {Readonly<FilterState>} */
@@ -735,7 +736,8 @@ export function askAffordances() {
  * shape, lay-out, table rows and what the paints ask (askAffordances) -- runs
  * in the try while the page is still the reader's, and the state is restored
  * whole on a throw. The pin is cleared because the panel holds a mark of the
- * chart replaced, and the isolation where the redraw draws nothing it names.
+ * chart replaced, and a node's isolation with it (dropPin); a fund group's
+ * isolation is cleared where the redraw draws nothing of it.
  *
  * @param {readonly string[]} next
  * @param {string} [refused] the banner's opening words when the redraw is refused
@@ -1666,8 +1668,8 @@ export function filterFor(doc, state = filter) {
  * The ribbons of a shaped chart a filter state's `only` keeps: those Follow
  * leaves undimmed for that node (follows), so showing a node alone removes
  * what following it dims. Null where nothing is shown alone, and where the
- * node is one the chart draws no ribbon of, which is inert as an undrawn
- * group is.
+ * node is one the state's other removals leave no ribbon of, which is inert
+ * as an undrawn group is: `only` never removes every ribbon.
  * @param {FiscProjection} doc
  * @param {Readonly<FilterState>} state
  * @param {Map<string, FiscNode>} index the hue index the chart is coloured by
@@ -1680,7 +1682,9 @@ export function onlyKeeps(doc, state, index) {
   const end = (/** @type {string} */ at) => byID.get(at) || /** @type {FiscNode} */ ({ id: at });
   const keeps = (/** @type {FiscLink} */ l) =>
     follows(id, /** @type {any} */ ({ source: end(l.source), target: end(l.target) }), index);
-  return doc.links.some(keeps) ? keeps : null;
+  const rest = core.filterDocument(doc, (n) => core.fundGroupOf(index, n),
+    { groups: state.groups, kinds: state.kinds, nodes: state.nodes, smallest: 0 });
+  return rest.doc.links.some(keeps) ? keeps : null;
 }
 
 /**
@@ -2086,7 +2090,10 @@ function sameSet(a, b) {
  * repaints the emphasis. A redraw the chart refuses -- a filter that cuts
  * every ribbon into a column the expansion placed after another, which
  * layOutAt refuses -- leaves the old state, chart and panel exactly as they
- * were and says why.
+ * were and says why. An isolation `next` names is applied as the drawer's
+ * Follow applies it: a drawn node's is followed and pinned (followNode), so
+ * the removal's redraw dropping the pin does not let it go; one carried over
+ * from the state now goes with the pin (dropPin).
  * @param {Partial<FilterState>} next
  * @returns {boolean} whether the state now on screen is `next`
  */
@@ -2101,9 +2108,14 @@ export function setFilter(next) {
     smallest: smallest,
     isolated: next.isolated === undefined ? was.isolated : next.isolated,
   });
+  const isolate = (/** @type {string} */ id) => {
+    if (id !== "" && !isGroupID(id) && laidNodes.some((n) => n.id === id)) followNode(id);
+    else setIsolated(id);
+  };
   if (sameSet(was.groups, state.groups) && sameSet(was.kinds, state.kinds) && sameSet(was.nodes, state.nodes) &&
     was.only === state.only && was.smallest === state.smallest) {
-    setIsolated(state.isolated);
+    if (next.isolated === undefined) setIsolated(state.isolated);
+    else isolate(next.isolated);
     return true;
   }
   filter = state;
@@ -2139,6 +2151,7 @@ export function setFilter(next) {
   paintChartHint();
   render(laid, prior);
   restoreFocus(hadFocus, focused && typeof focused.id === "string" ? focused.id : "");
+  if (next.isolated !== undefined && next.isolated !== filter.isolated) isolate(next.isolated);
   recordView("replace");
   return true;
 }
@@ -3679,7 +3692,7 @@ export function recordView(how) {
  * not draw. A group, kind or node the view does not draw is inert, as the
  * panel's are, and so is a node shown alone the view draws no ribbon of.
  * Expansions are applied before the isolation, which can name a member
- * only a split draws.
+ * only a split draws; a node followed is pinned (followNode).
  * @param {ViewState} st
  * @returns {Promise<{outcome: string, why?: string}>} DREW, SUPERSEDED, or FAILED with why
  */
@@ -3711,7 +3724,10 @@ async function moveTo(st) {
     if (!redraw(st.x)) return refuse("the chart could not be split as it names");
   }
   if (st.iso && !laidNodes.some((n) => isolates(st.iso, n))) return refuse("the chart draws no mark " + st.iso + " to follow");
-  setIsolated(st.iso);
+  // A node followed is pinned, so the drawer shows it with Follow pressed
+  // (pin's rule); a fund group's swatch is its own toggle.
+  if (st.iso && !isGroupID(st.iso)) followNode(st.iso);
+  else setIsolated(st.iso);
   return { outcome: DREW };
 }
 

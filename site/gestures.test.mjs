@@ -1,7 +1,7 @@
 // gestures.test.mjs -- the SEQUENCES a reader's gestures make on the drawn
 // chart: one activation -- a click, Enter or Space -- opening a node that
-// splits, folding an open hub back and pinning one that does neither, the ⊕ menu and the chip chooser
-// between a node's two splits, ⊖ and the chip folding a split back, Escape
+// splits, folding an open hub back and pinning one that does neither, the ⊕
+// menu choosing between a node's two splits, ⊖ folding a split back, Escape
 // letting the pin and the isolation go and folding nothing, the trace a
 // hover draws, Expand all and Collapse all, a tail drawn out, and where
 // focus lands after a split has replaced the element it was on.
@@ -614,7 +614,7 @@ describe("the trace", () => {
 
 for (const year of YEARS) {
   describe(`${year.label}: the folded tail`, () => {
-    test(`${year.label}: Space or Enter on a split's tail draws its members out, and its chip folds them back`, async (t) => {
+    test(`${year.label}: Space or Enter on a split's tail draws its members out, and folding the split and opening it again folds them back into the tail`, async (t) => {
       const { app, document } = await onYear(year.stem);
       await split(app, WORST);
       const tail = app.projection.nodes.find((n) => app.isAggregate(n.id));

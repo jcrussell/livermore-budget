@@ -291,7 +291,11 @@ export function restackLinks(graph) {
  */
 export const SLOT_DEPTH = 10;
 
-/** A root's slot within its spine column's SLOT_DEPTH: the room before it. */
+/**
+ * A root's slot within its spine column's SLOT_DEPTH: an extend chain stands
+ * at most ROOT_SLOT slots before its root and SLOT_DEPTH - ROOT_SLOT - 1
+ * after it.
+ */
 const ROOT_SLOT = SLOT_DEPTH / 2;
 
 /**
@@ -337,7 +341,8 @@ export function slotsOf(nodes, tiers) {
  * split the schedule declares, a member of a split of any form but extend, a
  * split whose links run both ways between its node and its members, a
  * member opening back the way its own parent opened, which would stand it in
- * its grandparent's slot, and an extend chain past its column's slots.
+ * its grandparent's slot, and an extend chain past the slots its root has
+ * on that side (ROOT_SLOT).
  *
  * @param {FiscProjection} expansion
  * @param {number[]} tiers the spine's column order
@@ -406,7 +411,8 @@ export function expansionSlots(expansion, tiers) {
             : form !== "extend" ? "declared " + JSON.stringify(form) + ", and this page draws a split only as extend"
               : step === 0 ? "whose links run both from and to its members"
                 : back ? "opening back toward " + up.parent + ", whose slot it would stand in"
-                  : "extended past " + SLOT_DEPTH + " slots"));
+                  : "extended past the " + (step > 0 ? SLOT_DEPTH - ROOT_SLOT - 1 + " slots after" : ROOT_SLOT + " slots before") +
+                    " its root"));
       }
     }
     out.set(n.id, slot);
@@ -1261,6 +1267,8 @@ export const SANKEY = Object.freeze({
     let enteredNodes = null;
     /** @type {any} */
     let leavingNodes = null;
+    /** The mark a menu key went down on, whose contextmenu is the key's. @type {Element | null} */
+    let keyedMenu = null;
     const node = gNodes.selectAll("g")
       .data(graph.nodes, /** @param {LaidNode} d */ (d) => d.id)
       .join(
@@ -1310,16 +1318,24 @@ export const SANKEY = Object.freeze({
       // Both keys reach it as this event on the focused mark, never as a
       // keydown arm: on Windows the ContextMenu key's contextmenu fires on
       // keyup, after a keydown arm has moved focus into the menu, and the
-      // browser's own menu opens over it.
+      // browser's own menu opens over it. The key's keydown marks the mark
+      // (keyedMenu) for the contextmenu that follows, since Chromium gives
+      // that event the mark's coordinates; 0, 0 is how other browsers say it.
       .on("contextmenu", /** @this {SVGGElement} @param {MouseEvent} e @param {LaidNode} d */ function (e, d) {
+        const keyed = keyedMenu === this || (e.clientX === 0 && e.clientY === 0);
+        keyedMenu = null;
         if (!on.menu) return;
         e.preventDefault();
         e.stopPropagation();
         const el = this;
-        const keyed = e.clientX === 0 && e.clientY === 0;
         on.guarded("open this mark's menu", () => on.menu(d, keyed ? null : { left: e.clientX, top: e.clientY }, el));
       })
-      .on("keydown", /** @param {KeyboardEvent} e @param {LaidNode} d */ (e, d) => {
+      .on("pointerdown.menu", () => { keyedMenu = null; })
+      .on("keydown", /** @this {SVGGElement} @param {KeyboardEvent} e @param {LaidNode} d */ function (e, d) {
+        if (e.key === "ContextMenu" || (e.key === "F10" && e.shiftKey)) {
+          keyedMenu = this;
+          return;
+        }
         if (e.key !== "Enter" && e.key !== " ") return;
         if (e.repeat) return;
         e.preventDefault();

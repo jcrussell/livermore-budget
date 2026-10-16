@@ -5,7 +5,7 @@
 
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { loadApp, bootedApp, split, settle, fire, drawnBody } from "./testlib.mjs";
+import { loadApp, bootedApp, split, settle, fire, drawnBody, stylesheet } from "./testlib.mjs";
 
 /**
  * Stubs the Fullscreen API on a loaded page, as a browser offering it does:
@@ -561,5 +561,23 @@ describe("zoom and pan on the chart", () => {
     const want = [false, false, true, true, false, true, false, false];
     assert.deepEqual({ whole, full, zoomed },
       { whole: want, full: { on: true, takes: want }, zoomed: [false, false, true, true, true, true, true, false] });
+  });
+});
+
+describe("the toolbar's buttons", () => {
+  // Mutation: drop the .chart-tools disabled rule and this goes red: a
+  // disabled button takes button's pointer and button:hover's wash.
+  test("disabled, show no pointer, no hover wash and a faded face", () => {
+    const css = stylesheet().replace(/\/\*[\s\S]*?\*\//g, "");
+    const rules = [...css.matchAll(/([^{}]+)\{([^}]*)\}/g)].map((m) => ({
+      selectors: m[1].split(",").map((x) => x.trim()), body: m[2],
+    }));
+    const of = (selector) => rules.filter((r) => r.selectors.includes(selector)).map((r) => r.body).join(";");
+    const disabled = of(".chart-tools button:disabled");
+    const hovered = of(".chart-tools button:disabled:hover");
+    assert.deepEqual({
+      cursor: /cursor:\s*default\s*;/.test(disabled), faded: /opacity:\s*0?\.5\s*;/.test(disabled),
+      unwashed: /background:\s*var\(--surface-1\)\s*;/.test(hovered),
+    }, { cursor: true, faded: true, unwashed: true });
   });
 });

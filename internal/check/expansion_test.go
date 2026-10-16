@@ -365,6 +365,15 @@ func TestTheExpansionChecksCanFail(t *testing.T) {
 				" -> dept/patrol external\", whose other end is another node's",
 		},
 		{
+			// An inflow hub re-points only the leaves arriving at its
+			// members, so a leaf leaving one stays on that member.
+			name: "a leaf onto an inflow hub re-pointed off a fund onto its group, also an inflow hub", check: &expansionSplitsTie{},
+			edit: func(t *testing.T, _ *Subject, d *project.Document) {
+				d.Links[leafAt(t, d, "fund/620", "expenditure/fund/620/capital-outlay")].Source = "fund-group/enterprise"
+			},
+			want: "the leaf fund-group/enterprise -> expenditure/capital-outlay re-pointed onto the node repeats",
+		},
+		{
 			name: "a division's link run back into its fund, the split drawn both ways", check: &expansionSplitsTie{},
 			edit: func(t *testing.T, _ *Subject, d *project.Document) {
 				back := d.Links[linkAt(t, d, "fund/100", "dept/patrol")]
@@ -523,6 +532,37 @@ func TestTheExpansionChecksCanFail(t *testing.T) {
 				t.Errorf("%s is %s with findings %v, want a failure naming %q", c.check.ID(), red.Status, red.Findings, c.want)
 			}
 		})
+	}
+}
+
+// TestAFlowBetweenAHubsMembersIsALeaf plants a flow from one enterprise fund
+// to another, re-pointed onto their group as an inflow hub re-points a leaf
+// arriving at a member, with the leg to its target repeating it. The
+// re-pointed link runs from a member into the node, which is no leg and
+// draws the split no second way. The plant takes its leaf from the line it
+// repeated, so other findings fire and are not what this reads.
+func TestAFlowBetweenAHubsMembersIsALeaf(t *testing.T) {
+	t.Parallel()
+	const (
+		group = "fund-group/enterprise"
+		line  = "revenue-line/charges-for-services/charges-for-services"
+		flow  = "fund/610 -> fund/600 external"
+	)
+	s := withExpansion(t, func(d *project.Document) {
+		d.Links[legAt(t, d, group, line, "fund/600")].Repeats = flow
+		i := leafAt(t, d, line, "fund/600")
+		d.Links[i].Source, d.Links[i].Target, d.Links[i].Repeats = "fund/610", group, flow
+	})
+	res, err := (&expansionSplitsTie{}).Run(t.Context(), s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range res.Findings {
+		if strings.Contains(f.Detail, "the leg fund/610 -> "+group) ||
+			(strings.Contains(f.Subject, "split of "+group+" ") && strings.Contains(f.Detail, "run both ways")) ||
+			strings.Contains(f.Detail, "the leaf fund/610 -> "+group) {
+			t.Errorf("%s: %s", f.Subject, f.Detail)
+		}
 	}
 }
 
