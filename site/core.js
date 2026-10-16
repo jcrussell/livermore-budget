@@ -643,9 +643,35 @@ export function leafCents(doc) {
 }
 
 /**
+ * What one cell of a drawn ribbon cites: its facts, its pages as
+ * locatorKeys, and whether a leg drawing it is inferred.
+ * @typedef {{fact_ids: string[], pages: string[], derived: boolean}} CellSource
+ */
+
+/**
+ * Each cell of a ribbon with what it cites (CellSource): a merged ribbon's
+ * as its fold kept them, one leg's its own.
+ * @param {FiscLink} l
+ * @returns {Record<string, CellSource> | null}
+ */
+export function cellSourcesOf(l) {
+  if (l.cell_sources) return l.cell_sources;
+  const cells = cellsOf(l);
+  if (!cells) return null;
+  /** @type {Record<string, CellSource>} */
+  const out = {};
+  for (const k of Object.keys(cells)) {
+    out[k] = { fact_ids: l.fact_ids.slice(), pages: locatorKeys(l.locators || []), derived: Boolean(l.derived) };
+  }
+  return out;
+}
+
+/**
  * A merged ribbon with the cells of its legs, and no `repeats`, which names
  * one leaf and a merged ribbon can draw many. Where no leg repeats a leaf the
- * ribbon carries no cells.
+ * ribbon carries no cells. Each cell keeps what its legs cite
+ * (cell_sources), so a node filter can draw part of the ribbon at the
+ * facts and pages of that part alone (filterDocument).
  * @param {FiscLink} ribbon
  * @param {FiscLink[]} legs
  * @returns {FiscLink}
@@ -654,14 +680,62 @@ function withCells(ribbon, legs) {
   delete ribbon.repeats;
   delete ribbon.restates;
   delete ribbon.cells;
+  delete ribbon.cell_sources;
   if (!legs.some((l) => cellsOf(l))) return ribbon;
   /** @type {Record<string, number>} */
   const cells = {};
+  /** @type {Record<string, {facts: Set<string>, pages: Set<string>, derived: boolean}>} */
+  const from = {};
   for (const l of legs) {
-    const own = cellsOf(l) || { ["\u001f" + l.source + "\u001f" + l.target + "\u001f" + l.kind + "\u001f" + (l.alternative || "")]: l.value_cents };
-    for (const [k, c] of Object.entries(own)) cells[k] = (cells[k] || 0) + c;
+    const ownKey = "\u001f" + l.source + "\u001f" + l.target + "\u001f" + l.kind + "\u001f" + (l.alternative || "");
+    const own = cellsOf(l) || { [ownKey]: l.value_cents };
+    const sources = cellSourcesOf(l) ||
+      { [ownKey]: { fact_ids: l.fact_ids, pages: locatorKeys(l.locators || []), derived: Boolean(l.derived) } };
+    for (const [k, c] of Object.entries(own)) {
+      cells[k] = (cells[k] || 0) + c;
+      const at = from[k] || (from[k] = { facts: new Set(), pages: new Set(), derived: false });
+      const src = sources[k];
+      for (const id of src.fact_ids) at.facts.add(id);
+      for (const p of src.pages) at.pages.add(p);
+      at.derived = at.derived || src.derived;
+    }
   }
-  return Object.assign(ribbon, { cells });
+  /** @type {Record<string, CellSource>} */
+  const cellSources = {};
+  for (const [k, at] of Object.entries(from)) {
+    cellSources[k] = { fact_ids: Array.from(at.facts).sort(), pages: Array.from(at.pages).sort(), derived: at.derived };
+  }
+  return Object.assign(ribbon, { cells, cell_sources: cellSources });
+}
+
+/**
+ * Whether a cell's leaf has an end among `inside`, the ids a node's money
+ * is drawn from: "all" where it does, "none" where it does not, and "part"
+ * for totals restating a list of leaves only some of which do, which no
+ * ribbon can be cut along. A cell of a leg's own ends is read at those ends.
+ * @param {string} key a key of cellsOf
+ * @param {ReadonlySet<string>} inside
+ * @returns {"all" | "none" | "part"}
+ */
+export function cellIn(key, inside) {
+  /** @param {string} leaf a repeats key, "source -> target kind" */
+  const named = (leaf) => {
+    const cut = leaf.indexOf(" -> ");
+    if (cut < 0) return false;
+    const rest = leaf.slice(cut + 4);
+    const sp = rest.lastIndexOf(" ");
+    return inside.has(leaf.slice(0, cut)) || (sp > 0 && inside.has(rest.slice(0, sp)));
+  };
+  if (key.startsWith(RESTATING)) {
+    const leaves = key.slice(RESTATING.length).split("\u001e");
+    const hit = leaves.filter(named).length;
+    return hit === 0 ? "none" : hit === leaves.length ? "all" : "part";
+  }
+  if (key.startsWith("\u001f")) {
+    const [, source, target] = key.split("\u001f");
+    return inside.has(source) || inside.has(target) ? "all" : "none";
+  }
+  return named(key) ? "all" : "none";
 }
 
 /**
@@ -1353,8 +1427,18 @@ export function smallerMark(side, tier, flows, smallest, cents, locators, slot) 
 /**
  * What the reader has asked the chart to leave out: the fund groups, link
  * kinds and nodes to hide, and the smallest flow drawn as itself, in cents.
+ * A fund group among the nodes is hidden as a group among the groups is.
  * app.js's FilterState is this plus the isolation and the node shown alone.
  * @typedef {{groups: ReadonlySet<string>, kinds: ReadonlySet<string>, nodes?: ReadonlySet<string>, smallest: number}} Removals
+ */
+
+/**
+ * The leaves a node filter names, read in the cells a ribbon draws: `out`,
+ * the ids the money of every node filtered out is drawn from, and `only`,
+ * the ids the node shown alone's is, or null where none is. Each is the
+ * schedule's ids (core.withinNode) and not the chart's, because a hub draws
+ * a member's leaves on ribbons with no end at the member.
+ * @typedef {{out: ReadonlySet<string>, only: ReadonlySet<string> | null}} LeafCut
  */
 
 /**
@@ -1364,35 +1448,76 @@ export function smallerMark(side, tier, flows, smallest, cents, locators, slot) 
  * the smallest flow folded onto a smaller-flows mark, then every node no
  * ribbon touches dropped. Figures are untouched: a ribbon is drawn as it
  * came, merged with others by summing cents and unioning facts and pages,
- * or listed in `hidden`, and exactly one of the three.
+ * or listed in `hidden`, and exactly one of the three -- or, under `leaves`,
+ * CUT IN TWO along its cells, one part drawn and the other hidden.
  *
  * A RIBBON IS IN A GROUP WHEN EITHER END IS, so hiding a group hides every
  * ribbon touching it, whatever the other end. A node keeps fixedValue only
  * while every ribbon arriving at it is drawn: the figure it fixes is the net
  * of those ribbons.
  *
+ * A NODE'S MONEY IS ITS LEAVES, where `leaves` is given: a ribbon kept is
+ * drawn without the cells whose leaf has an end among `leaves.out`, and a
+ * ribbon `keeps` does not keep is drawn with those among `leaves.only`
+ * alone, so the ribbons a hub draws a member's leaves on lose the member's
+ * money with it and the hub draws in what it draws out. Each part is the sum
+ * of its cells and cites what they cite (cellSourcesOf). FAILS CLOSED on a
+ * cell restating leaves only some of which are named: which part of a total
+ * the city printed is whose is not printed.
+ *
  * @param {FiscProjection} doc  a shaped chart, reductions already drawn forward
  * @param {(n: FiscNode) => string} groupOf  a node's fund group, "" for none
  * @param {Removals} state
  * @param {((l: FiscLink) => boolean) | null} [keeps] the ribbons a filter
- *   showing one node's money alone draws, or null for every one
+ *   showing one node's money alone draws whole, or null for every one
+ * @param {LeafCut | null} [leaves]
  * @returns {{doc: FiscProjection, hidden: FiscLink[]}} doc itself where the
  *   state removes and folds nothing; otherwise a new chart marked filtered
  */
-export function filterDocument(doc, groupOf, state, keeps = null) {
+export function filterDocument(doc, groupOf, state, keeps = null, leaves = null) {
   const byID = new Map(doc.nodes.map((n) => [n.id, n]));
+  const nodes = state.nodes || new Set();
   const inHidden = (/** @type {string} */ id) => {
     const n = byID.get(id);
     const g = n ? groupOf(n) : "";
-    return (g !== "" && state.groups.has(g)) || Boolean(state.nodes && state.nodes.has(id));
+    return (g !== "" && (state.groups.has(g) || nodes.has(g))) || nodes.has(id);
   };
   /** @type {FiscLink[]} */
   const hidden = [];
   /** @type {FiscLink[]} */
   const kept = [];
   for (const l of doc.links) {
-    if (state.kinds.has(l.kind) || inHidden(l.source) || inHidden(l.target) || (keeps && !keeps(l))) hidden.push(l);
-    else kept.push(l);
+    const whole = !keeps || keeps(l);
+    if (state.kinds.has(l.kind) || inHidden(l.source) || inHidden(l.target) || (!whole && !(leaves && leaves.only))) {
+      hidden.push(l);
+      continue;
+    }
+    const cells = leaves ? cellsOf(l) : null;
+    if (!leaves || !cells) {
+      if (whole) kept.push(l);
+      else hidden.push(l);
+      continue;
+    }
+    /** @type {string[]} */
+    const drawn = [];
+    /** @type {string[]} */
+    const gone = [];
+    for (const k of Object.keys(cells)) {
+      const out = leaves.out.size ? cellIn(k, leaves.out) : "none";
+      const alone = whole || !leaves.only ? "all" : cellIn(k, leaves.only);
+      if (out === "part" || alone === "part") {
+        throw new Error("cannot draw part of the ribbon from " + l.source + " to " + l.target +
+          ": it carries totals the city printed for several leaves together, and the node filtered names only some of them");
+      }
+      if (out === "none" && alone === "all") drawn.push(k);
+      else gone.push(k);
+    }
+    if (!gone.length) kept.push(l);
+    else if (!drawn.length) hidden.push(l);
+    else {
+      kept.push(partOf(l, drawn));
+      hidden.push(partOf(l, gone));
+    }
   }
   if (!hidden.length && !(state.smallest > 0)) return { doc: doc, hidden: hidden };
   const folded = foldSmaller(kept, byID, state.smallest);
@@ -1403,7 +1528,7 @@ export function filterDocument(doc, groupOf, state, keeps = null) {
     touched.add(l.source);
     touched.add(l.target);
   }
-  const nodes = doc.nodes.filter((n) => touched.has(n.id)).map((n) => {
+  const drawnNodes = doc.nodes.filter((n) => touched.has(n.id)).map((n) => {
     if (n.fixedValue === undefined || !arrivingChanged.has(n.id)) return n;
     const out = Object.assign({}, n);
     delete out.fixedValue;
@@ -1411,9 +1536,53 @@ export function filterDocument(doc, groupOf, state, keeps = null) {
   });
   return {
     // filtered: a column the shaped chart filled may be empty now.
-    doc: Object.assign({}, doc, { nodes: nodes.concat(folded.marks), links: folded.links, filtered: true }),
+    doc: Object.assign({}, doc, { nodes: drawnNodes.concat(folded.marks), links: folded.links, filtered: true }),
     hidden: hidden,
   };
+}
+
+/**
+ * Part of a ribbon: the cells `keys` names, at their sum and citing what
+ * they cite (cellSourcesOf), drawn the way the ribbon is -- forward where
+ * the shaping drew it forward as a reduction. A part claims no completing
+ * set, since it is not all of one. FAILS CLOSED on a part netting the other
+ * way from its ribbon, which the ribbon's drawing cannot say.
+ * @param {FiscLink} l
+ * @param {string[]} keys
+ * @returns {FiscLink}
+ */
+export function partOf(l, keys) {
+  const cells = /** @type {Record<string, number>} */ (cellsOf(l));
+  const sources = /** @type {Record<string, CellSource>} */ (cellSourcesOf(l));
+  const printed = Object.values(cells).reduce((s, c) => s + c, 0);
+  // markContra drew a ribbon printed negative forward, at its magnitude.
+  const sign = l.value_cents === printed ? 1 : l.value_cents === -printed ? -1 : 0;
+  if (!sign) throw new Error("cannot draw part of the ribbon from " + l.source + " to " + l.target + ": its cells are not its figure");
+  /** @type {Record<string, number>} */
+  const sub = {};
+  /** @type {Record<string, CellSource>} */
+  const from = {};
+  const facts = new Set();
+  const pages = new Set();
+  let cents = 0;
+  let derived = false;
+  for (const k of keys) {
+    sub[k] = cells[k];
+    from[k] = sources[k];
+    cents += cells[k];
+    for (const id of sources[k].fact_ids) facts.add(id);
+    for (const p of sources[k].pages) pages.add(p);
+    derived = derived || sources[k].derived;
+  }
+  if (sign * cents < 0) {
+    throw new Error("cannot draw part of the ribbon from " + l.source + " to " + l.target + ": the part nets the other way");
+  }
+  const part = Object.assign({}, l, {
+    value_cents: sign * cents, fact_ids: Array.from(facts).sort(), locators: regroupLocators(pages),
+    derived: derived, cells: sub, cell_sources: from,
+  });
+  delete part.completes;
+  return part;
 }
 
 /**

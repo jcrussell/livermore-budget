@@ -811,6 +811,24 @@ func (*expansionSplitsTie) hubFindings(x stitched, sp project.Split, members []s
 				l.Source, l.Target, l.Repeats, repeating[l.Repeats]))
 		}
 	}
+	// NOTHING ARRIVES AT A MEMBER STANDING BEFORE ITS NODE: the owed loop
+	// reads a before hub's links at their sources, so a leaf into one of its
+	// members is named here or nowhere.
+	if !inflow {
+		for _, l := range x.doc.Links {
+			if l.Alternative != "" || x.isLeg(l) {
+				continue
+			}
+			target := l.Target
+			if l.Repeats != "" {
+				_, target = project.LeafEnds(l.Repeats)
+			}
+			if isMember(l.Target) || isMember(target) {
+				findings = append(findings, finding(subject, "the leaf %s -> %s repeating %q arrives at a member, which stands before the node and takes nothing in",
+					l.Source, l.Target, l.Repeats))
+			}
+		}
+	}
 	if legCents != spineCents {
 		findings = append(findings, finding(subject, "the legs carry %s and on the spine %s %s %s (off by %s)",
 			amount.Cents(legCents), sp.Node, hubTakesIn[inflow], amount.Cents(spineCents),

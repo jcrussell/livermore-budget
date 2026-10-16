@@ -142,6 +142,37 @@ func TestTheWordingFillsEveryPlaceholderTheClientHands(t *testing.T) {
 	}
 }
 
+// TestTheFilterLineMarksItsCounts holds every sentence of the filter line
+// that states how many flows the client took to the mark the client's
+// arithmetic licence puts on a count of what is drawn (AGENTS.md, "Go vets,
+// JavaScript renders"). Mutation: drop the ◇ from filter_hidden and this
+// goes red.
+func TestTheFilterLineMarksItsCounts(t *testing.T) {
+	blob, err := json.Marshal(defaultWording())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var templates map[string]string
+	if err := json.Unmarshal(blob, &templates); err != nil {
+		t.Fatal(err)
+	}
+	count := regexp.MustCompile(`\{\w+:[^|}]*\|[^}]*\}`)
+	var counted []string
+	for key, template := range templates {
+		if !strings.HasPrefix(key, "filter_") || !count.MatchString(template) {
+			continue
+		}
+		counted = append(counted, key)
+		if !strings.Contains(template, "\u25c7") {
+			t.Errorf("wording %q states a count the client takes and carries no \u25c7: %q", key, template)
+		}
+	}
+	slices.Sort(counted)
+	if diff := cmp.Diff([]string{"filter_folded", "filter_hidden", "filter_hidden_at"}, counted); diff != "" {
+		t.Errorf("the filter line's counted sentences (-want +got):\n%s", diff)
+	}
+}
+
 // TestEverySplitKeyHasItsWords holds the page's words for what a node splits
 // into to the split keys the expansion schedule declares, both ways: a key
 // with no words is a chooser button the client cannot name, and words for no

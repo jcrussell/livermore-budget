@@ -1,6 +1,7 @@
 // nodemenu.test.mjs -- a node's context menu: a right-click, Shift+F10 or
 // the ContextMenu key on a node (the contextmenu event the browser fires on
-// the focused mark for either key) opens it, and its three choices follow the
+// the focused mark for either key), M on a focused node, or the drawer's
+// More for the node it shows opens it, and its three choices follow the
 // node's money, filter the node out, and show only its money. What the two
 // filters remove is said on the filter line by name, Reset puts it back, and
 // the hash carries it. Every assertion is over ids, strings and booleans.
@@ -121,6 +122,54 @@ describe("a node's context menu", () => {
     assert.deepEqual({ pointer, after, corner }, { pointer: "100px 200px", after: "100px 200px", corner: "0px 0px" });
     assert.ok(contextMenuKey !== "" && contextMenuKey !== pointer, contextMenuKey);
     assert.ok(shiftF10 !== "" && shiftF10 !== pointer, shiftF10);
+  });
+
+  // Mutation: drop the M arm of the node's keydown in sankey.js and this
+  // goes red: on macOS Safari, which fires no contextmenu for Shift+F10 or
+  // the ContextMenu key, no key opens the menu.
+  test("M on a focused node opens its menu beside the mark, focus on the first choice; M with a modifier opens nothing", async () => {
+    const { app, document } = await bootedApp();
+    const id = plainNode(app);
+    const mark = markOf(document, id);
+    mark.focus();
+    const ctrl = fire(mark, "keydown", { key: "m", ctrlKey: true });
+    const withCtrl = menuActs(document);
+    const plain = fire(mark, "keydown", { key: "m" });
+    const acts = menuActs(document);
+    const menu = document.getElementById("node-menu");
+    const focused = Boolean(menu) && document.activeElement === menu.querySelector("button");
+    const placed = menu ? menu.style.left + " " + menu.style.top : "";
+    app.closeChartMenu();
+    assert.deepEqual({ withCtrl, ctrl: ctrl.defaultPrevented, acts, plain: plain.defaultPrevented, focused },
+      { withCtrl: [], ctrl: false, acts: ["follow", "out", "only"], plain: true, focused: true });
+    assert.ok(placed !== "", "the menu M opened has no place");
+    assert.ok(mark.getAttribute("aria-keyshortcuts").split(" ").includes("M"), mark.getAttribute("aria-keyshortcuts"));
+  });
+
+  // Mutation: leave the drawer's More hidden (syncPinButton) or drop its
+  // click handler (wireDrawer) and this goes red: a phone, with no right
+  // button and no keyboard, cannot filter a node out or show it alone.
+  test("the drawer's More opens the menu of the node it shows, and its choices act on that node; it is hidden for a ribbon and for nothing", async () => {
+    const { app, document } = await bootedApp();
+    const more = document.getElementById("detail-menu");
+    const idle = more.hidden;
+    const ribbon = document.querySelector("#chart path.link");
+    fire(ribbon, "click");
+    const onRibbon = more.hidden;
+    app.unpin();
+    const id = plainNode(app);
+    const name = app.nameOf(app.laidNodes.find((n) => n.id === id));
+    app.pin(app.laidNodes.find((n) => n.id === id));
+    const onNode = more.hidden;
+    fire(more, "click");
+    const acts = menuActs(document);
+    const named = document.getElementById("node-menu") ? document.getElementById("node-menu").getAttribute("aria-label") : "";
+    choose(document, "out");
+    assert.deepEqual({ idle, onRibbon, onNode, acts, out: [...app.filter.nodes] },
+      { idle: true, onRibbon: true, onNode: false, acts: ["follow", "out", "only"], out: [id] });
+    assert.equal(named, app.say("node_menu", { label: name }));
+    assert.equal(more.textContent, app.say("node_menu_more"));
+    assert.equal(refusals(document).length, 0);
   });
 
   test("a ribbon has no menu: a right-click on one leaves the browser's own", async () => {
@@ -248,9 +297,9 @@ describe("the node filters beside the others", () => {
     assert.ok(said.includes(app.say("filter_only", { label: app.nameOf(node) })), said);
   });
 
-  // Mutation: let onlyKeeps lapse to null where the other removals leave
-  // none of the node's ribbons, and this goes red: each state is drawn, the
-  // whole chart less the node's ribbons, with `only` naming nothing drawn;
+  // Mutation: drop filterFor's throw where the other removals leave none of
+  // the node's ribbons, and this goes red: each state is drawn with `only`
+  // naming nothing drawn;
   // refuse setFilter's throw through fail() and the followed node's pin and
   // isolation go.
   test("a node shown alone whose ribbons the other removals all remove is refused, the chart, the state and the pin as they were", async (t) => {
@@ -291,9 +340,9 @@ describe("the node filters beside the others", () => {
     assert.equal(app.filter.only, lone.id);
   });
 
-  // Mutation: let onlyKeeps lapse where the other removals leave none of the
-  // node's ribbons and this goes red: the link draws the chart less the
-  // node, `only` and `out` both in the state, and no banner.
+  // Mutation: drop filterFor's throw where the other removals leave none of
+  // the node's ribbons and this goes red: the link draws, `only` and `out`
+  // both in the state, and no banner.
   test("a link showing a node alone and filtering it out falls back to the opening view, saying why", async () => {
     const { app, document } = await bootedApp();
     const id = plainNode(app);
@@ -479,6 +528,40 @@ describe("the node filters in the URL", () => {
     });
   });
 
+  // Mutation: drop moveTo's catch around showYear and this goes red: the
+  // link to another year rejects restoreView with the throw, the hash's `out`
+  // and `only` left in the state and no opening view; drop the filter's
+  // restore in that catch and the fallback is asked from the hash's state.
+  test("a link to another year whose node shown alone the other filters empty falls back to the opening view, at boot and on Back", async (t) => {
+    const { app, document, window } = await bootedApp();
+    const id = plainNode(app);
+    const opening = app.yearKey(app.shownYear);
+    const other = app.CONFIG.years.map((y) => app.yearKey(y)).find((k) => k !== opening);
+    assert.ok(other, "the page publishes one year, so no link moves to another");
+    const hash = app.hashOf({ year: other, hide: [], hidekind: [], out: [id], only: id, min: 0, iso: "", x: [] });
+    let got;
+    try {
+      got = await app.restoreView(hash);
+    } catch (e) {
+      got = "threw: " + e.message;
+    }
+    const popped = { got, year: app.yearKey(app.shownYear), only: app.filter.only, out: [...app.filter.nodes],
+      banners: refusals(document).length, drawn: drawnRibbons(document).length > 0 };
+    const again = await loadApp();
+    again.window.history.replaceState(null, "", hash);
+    await again.app.boot();
+    await settle();
+    const booted = { year: again.app.shownYear ? again.app.yearKey(again.app.shownYear) : "", only: again.app.filter.only,
+      out: [...again.app.filter.nodes], banners: refusals(again.document).length,
+      drawn: again.document.querySelectorAll("#chart path.link").length > 0 };
+    const said = refusals(again.document).map((b) => b.textContent).join(" | ");
+    t.diagnostic(`${hash}: on Back ${JSON.stringify(popped)}; at boot ${JSON.stringify(booted)}: ${said}`);
+    assert.deepEqual(popped, { got: app.FAILED, year: opening, only: "", out: [], banners: 1, drawn: true });
+    assert.deepEqual(booted, { year: opening, only: "", out: [], banners: 1, drawn: true });
+    assert.ok(said.includes("the other filters leave none of "), said);
+    assert.ok(window.location.hash === app.hashOf(app.viewState()), window.location.hash);
+  });
+
   // Mutation: drop `out` and `only` from restoreView's fallback and this
   // goes red: the refused link on the year on screen leaves the node shown
   // alone under a banner saying the opening view is shown.
@@ -494,5 +577,75 @@ describe("the node filters in the URL", () => {
     assert.equal(got, app.FAILED);
     assert.deepEqual({ only: app.filter.only, out: [...app.filter.nodes] }, { only: "", out: [] });
     assert.equal(refusals(document).length, 1);
+  });
+});
+
+describe("the node filters and an open hub", () => {
+  const HUB = "fund-group/enterprise";
+  /** What arrives at and leaves the hub on the chart drawn, in cents. */
+  const through = (app, links) => {
+    let arriving = 0;
+    let leaving = 0;
+    for (const l of links) {
+      if (l.target === HUB) arriving += l.value_cents;
+      if (l.source === HUB) leaving += l.value_cents;
+    }
+    return { arriving, leaving };
+  };
+  /** The hub's member drawn with the most money from it. */
+  const memberOf = (app) => app.shown.doc.links.filter((l) => l.source === HUB && !app.isMark(l.target))
+    .sort((a, b) => b.value_cents - a.value_cents)[0].target;
+
+  // Mutation: pass no leafCut to core.filterDocument from filterFor and this
+  // goes red: filtering out the member leaves its leaves on the ribbons
+  // arriving at the hub, which takes in more than it gives out, and showing
+  // it alone draws nothing arriving at the hub.
+  test("filtering out a member draws the hub balanced with none of its leaves; showing it alone draws its legs and the leaves feeding it, balanced", async (t) => {
+    const { app, document } = await bootedApp();
+    await split(app, HUB);
+    const member = memberOf(app);
+    const inside = app.withinNode(app.fetched, member);
+    const carries = (l) => Object.keys(app.cellsOf(l) || {}).some((k) => app.cellIn(k, inside) !== "none");
+    const before = through(app, app.shown.doc.links);
+    app.filterOutNode(member);
+    const out = { ...through(app, app.shown.doc.links), carrying: app.shown.doc.links.filter(carries).length,
+      drawn: app.laidNodes.some((n) => n.id === member) };
+    const said = document.getElementById("filter-said").textContent;
+    app.resetFilters();
+    app.showOnlyNode(member);
+    const links = app.shown.doc.links;
+    const astray = links.filter((l) => l.source !== member && l.target !== member &&
+      Object.keys(app.cellsOf(l) || { "": 0 }).some((k) => app.cellIn(k, inside) !== "all"));
+    const alone = { ...through(app, links), astray: astray.length, drawn: app.laidNodes.some((n) => n.id === member) };
+    t.diagnostic(`${member} of ${HUB}: ${JSON.stringify({ before, out, alone })}; filtered out, the line says: ${said}`);
+    assert.equal(before.arriving, before.leaving, "the hub is not balanced unfiltered, so balance says nothing");
+    assert.deepEqual({ balanced: out.arriving === out.leaving, carrying: out.carrying, drawn: out.drawn },
+      { balanced: true, carrying: 0, drawn: false });
+    assert.ok(out.arriving < before.arriving, "filtering the member out took nothing from the hub");
+    assert.deepEqual({ balanced: alone.arriving === alone.leaving, astray: alone.astray, drawn: alone.drawn },
+      { balanced: true, astray: 0, drawn: true });
+    assert.ok(alone.arriving > 0, "showing the member alone draws nothing arriving at the hub");
+    assert.equal(refusals(document).length, 0);
+  });
+
+  // Mutation: drop the fund group arm of core.filterDocument's inHidden
+  // (nodes.has(g)) and this goes red: filtering the open group out removes
+  // its leaves and its own ribbons, and leaves drawn its funds' fund balance
+  // ribbons, which repeat no leaf, that the legend's group filter removes by
+  // their ends' group.
+  test("filtering out an open fund group removes the group's money, as the legend's group filter does, and names it", async (t) => {
+    const { app, document } = await bootedApp();
+    await split(app, OPENS);
+    const name = app.nameOf(app.laidNodes.find((n) => n.id === OPENS));
+    const drawn = () => app.shown.doc.links.map((l) => `${l.source} -> ${l.target} ${l.kind} ${l.value_cents}`).sort();
+    app.setFilter({ groups: new Set([OPENS]) });
+    const byLegend = drawn();
+    app.resetFilters();
+    app.filterOutNode(OPENS);
+    const byNode = drawn();
+    const said = document.getElementById("filter-said").textContent;
+    t.diagnostic(`${OPENS}: ${byLegend.length} ribbon(s) drawn under the legend's filter, ${byNode.length} filtered out; the line says: ${said}`);
+    assert.deepEqual(byNode, byLegend);
+    assert.ok(said.startsWith(app.say("filter_out", { names: name })), said);
   });
 });

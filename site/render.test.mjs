@@ -207,7 +207,7 @@ async function drive(year) {
       const d = m.__data__;
       const rect = [...m.children].find((c) => c.tagName === "rect");
       const tspans = tspansOf(m);
-      const want = { role: "button", tabindex: "0", "aria-keyshortcuts": "Enter Space Shift+F10" };
+      const want = { role: "button", tabindex: "0", "aria-keyshortcuts": "Enter Space M Shift+F10" };
       const bad = Object.keys(want).filter((k) => m.getAttribute(k) !== want[k]);
       const drawnClass = (m.getAttribute("class") || "").split(/\s+/).filter(Boolean);
       const rule = app.nodeClass(d).split(/\s+/).filter(Boolean);

@@ -8,9 +8,9 @@ import "github.com/jcrussell/livermore-budget/internal/project"
 // `{name:one|many}` is the value followed by the singular or the plural word,
 // by whether the value is 1.
 //
-// A sentence carrying a count the client takes carries the mark ◇ with it,
-// or says the count is the reader's ("your filters"): a count of what is
-// drawn is the page's sentence, never a figure the city printed.
+// A sentence carrying a count the client takes carries the mark ◇ with it:
+// a count of what is drawn is the page's sentence, never a figure the city
+// printed.
 //
 // Declared here and formatted there, so the words are the packager's and the
 // numbers the chart's.
@@ -35,10 +35,11 @@ type wording struct {
 	GlyphChoose  string `json:"glyph_choose"`
 	GlyphFold    string `json:"glyph_fold"`
 	SplitChooser string `json:"split_chooser"`
-	// NodeMenu names a node's context menu, which a right-click, Shift+F10
-	// or the ContextMenu key opens; FollowMoney, FilterOutNode and
-	// ShowOnlyNode are its three choices.
+	// NodeMenu names a node's context menu, which a right-click, M,
+	// Shift+F10, the ContextMenu key or the drawer's NodeMenuMore opens;
+	// FollowMoney, FilterOutNode and ShowOnlyNode are its three choices.
 	NodeMenu      string `json:"node_menu"`
+	NodeMenuMore  string `json:"node_menu_more"`
 	FilterOutNode string `json:"filter_out_node"`
 	ShowOnlyNode  string `json:"show_only_node"`
 	// The toolbar's two buttons over every split at once.
@@ -199,7 +200,7 @@ func defaultWording() wording {
 			"every other node stays where it is.",
 		NothingOpens:   "Nothing on this chart opens.",
 		FoldBack:       "A second click on a split node, or \u2296 beside it, folds it back; Collapse all folds every split, and Back undoes the last step.",
-		Follow:         "Escape unpins and puts the rest back. Right-click a node, or press Shift+F10 on it, to follow its money, filter it out or show only it.",
+		Follow:         "Escape unpins and puts the rest back. Right-click a node, press M on it, or choose More\u2026 here, to follow its money, filter it out or show only it.",
 		Expand:         "The folded mark is several of them drawn as one; click it, or tab to it and press Enter, to draw them separately.",
 		Swatch:         "A fund swatch follows one group's money without opening anything.",
 		GlyphOpen:      "Split {label} into {split}",
@@ -207,6 +208,7 @@ func defaultWording() wording {
 		GlyphFold:      "Fold {label} back into one mark",
 		SplitChooser:   "Split {label} into",
 		NodeMenu:       "What to do with {label}",
+		NodeMenuMore:   "More\u2026",
 		FilterOutNode:  "Filter this out",
 		ShowOnlyNode:   "Show only this",
 		ExpandAll:      "Expand all",
@@ -238,9 +240,9 @@ func defaultWording() wording {
 		BalanceBeginning:  "Balance at the start of the year, as printed: {figure}",
 		BalanceEnding:     "Balance at the end of the year, as printed: {figure}",
 		BalanceChange:     "Change in balance, the end of the year's less the start's: {figure}",
-		FilterHidden:      "Hidden by your filters: {cents} in {flows:flow|flows}. Marks are sized to what is drawn, each mark's figure is still this view's, and the flow table still lists every flow of this view.",
+		FilterHidden:      "Hidden by your filters: {cents} in \u25c7 {flows:flow|flows}. Marks are sized to what is drawn, each mark's figure is still this view's, and the flow table still lists every flow of this view.",
 		FilterFolded:      "\u25c7 {flows:flow|flows} under {threshold} are drawn merged by this page into {ribbons:ribbon|ribbons} of smaller flows.",
-		FilterHiddenAt:    "Your filters hide {cents} of this mark's flows, in {flows:flow|flows}.",
+		FilterHiddenAt:    "Your filters hide {cents} of this mark's flows, in \u25c7 {flows:flow|flows}.",
 		FilterOnly:        "Showing only the money through {label}.",
 		FilterOut:         "Filtered out: {names}.",
 		FilterDrawnAt:     "{cents} of it drawn under your filters",

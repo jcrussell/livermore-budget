@@ -1243,8 +1243,9 @@ export function followNode(id) {
 }
 
 /**
- * Removes every ribbon with an end at a node, as a removed fund group's are;
- * the node shown alone is let go where it is this one. The redraw drops the
+ * Removes every ribbon with an end at a node and its leaves from every other
+ * ribbon (leafCut), and a fund group's money as the legend's group filter
+ * removes it; the node shown alone is let go where it is this one. The redraw drops the
  * pin, and a node's isolation with it (dropPin). The line names the node as
  * it was drawn when it was chosen (outNames).
  * @param {string} id
@@ -1258,8 +1259,9 @@ export function filterOutNode(id) {
 }
 
 /**
- * Removes every ribbon a node's Follow would dim (onlyKeeps), so only its
- * money is drawn; the node is put back where it was filtered out. A node's
+ * Draws only a node's money: the ribbons its Follow leaves undimmed
+ * (onlyKeeps), and of every other ribbon its leaves alone (leafCut); the
+ * node is put back where it was filtered out. A node's
  * isolation goes with the pin the redraw drops (dropPin).
  * @param {string} id
  */
@@ -1654,15 +1656,24 @@ export function hueIndex(doc) {
 
 /**
  * A shaped chart under a filter state's removals: core.filterDocument with
- * each node's fund group read through the index the chart is coloured by.
- * Throws where the filter line could not state what it removes once.
+ * each node's fund group read through the index the chart is coloured by,
+ * and a node's money read by its leaves (leafCut). Throws where the filter
+ * line could not state what it removes once, and where the other removals
+ * leave none of the ribbons of the node shown alone: `only` would then
+ * remove every ribbon, and it never lapses to drawing them all, so every
+ * draw under such a state is refused.
  * @param {FiscProjection} doc
  * @param {Readonly<FilterState>} [state]
  * @returns {{doc: FiscProjection, hidden: FiscLink[]}}
  */
 export function filterFor(doc, state = filter) {
   const index = hueIndex(doc);
-  const out = core.filterDocument(doc, (n) => core.fundGroupOf(index, n), state, onlyKeeps(doc, state, index));
+  const keeps = onlyKeeps(doc, state, index);
+  const out = core.filterDocument(doc, (n) => core.fundGroupOf(index, n), state, keeps, leafCut(doc, state, keeps));
+  if (keeps && !out.doc.links.some(keeps)) {
+    const n = doc.nodes.find((x) => x.id === state.only);
+    throw new Error("the other filters leave none of " + (n ? nameOf(n) : state.only) + "'s money to show alone");
+  }
   // Asked here, inside every draw's try: a removal whose money the filter
   // line cannot state once (core.distinctCents) is refused, not drawn.
   hiddenTally(out);
@@ -1670,15 +1681,42 @@ export function filterFor(doc, state = filter) {
 }
 
 /**
- * The ribbons of a shaped chart a filter state's `only` keeps: those Follow
- * leaves undimmed for that node (follows), so showing a node alone removes
- * what following it dims. Null where nothing is shown alone, and where the
+ * The leaves a filter state's node filters name (core.LeafCut): every id of
+ * the expansion schedule within a node filtered out, and within the node
+ * shown alone where `keeps` says one is. A node of the schedule is itself;
+ * a tail the shaping made is the members it folds. Null where nothing is
+ * filtered by node, and where the chart is drawn from no expansion
+ * schedule, whose ribbons repeat no leaf.
+ * @param {FiscProjection} doc the shaped chart
+ * @param {Readonly<FilterState>} state
+ * @param {((l: FiscLink) => boolean) | null} keeps onlyKeeps over doc
+ * @returns {{out: Set<string>, only: Set<string> | null} | null}
+ */
+export function leafCut(doc, state, keeps) {
+  const schedule = fetched;
+  const nodes = state.nodes || new Set();
+  if (!schedule || !core.isExpansionSchedule(schedule) || (!nodes.size && !keeps)) return null;
+  const raw = new Set(schedule.nodes.map((n) => n.id));
+  const byID = new Map(doc.nodes.map((n) => [n.id, n]));
+  const inside = (/** @type {string} */ id) => {
+    const n = byID.get(id);
+    const from = raw.has(id) ? [id] : (n && Array.isArray(n.folds) ? n.folds : []).filter((f) => raw.has(f));
+    const out = new Set();
+    for (const f of from) for (const x of core.withinNode(schedule, f)) out.add(x);
+    return out;
+  };
+  const out = new Set();
+  for (const id of nodes) for (const x of inside(id)) out.add(x);
+  return { out: out, only: keeps ? inside(state.only) : null };
+}
+
+/**
+ * The ribbons of a shaped chart a filter state's `only` keeps whole: those
+ * Follow leaves undimmed for that node (follows). filterFor draws the rest
+ * with the node's leaves alone (leafCut), so showing a node alone draws its
+ * money and nothing else. Null where nothing is shown alone, and where the
  * shaped chart draws no ribbon of the node, which is inert as an undrawn
  * group is.
- *
- * THROWS where the state's other removals leave none of the node's ribbons:
- * `only` would then remove every ribbon, and it never lapses to drawing them
- * all, so every draw under such a state is refused.
  * @param {FiscProjection} doc
  * @param {Readonly<FilterState>} state
  * @param {Map<string, FiscNode>} index the hue index the chart is coloured by
@@ -1691,14 +1729,7 @@ export function onlyKeeps(doc, state, index) {
   const end = (/** @type {string} */ at) => byID.get(at) || /** @type {FiscNode} */ ({ id: at });
   const keeps = (/** @type {FiscLink} */ l) =>
     follows(id, /** @type {any} */ ({ source: end(l.source), target: end(l.target) }), index);
-  if (!doc.links.some(keeps)) return null;
-  const rest = core.filterDocument(doc, (n) => core.fundGroupOf(index, n),
-    { groups: state.groups, kinds: state.kinds, nodes: state.nodes, smallest: 0 });
-  if (!rest.doc.links.some(keeps)) {
-    const n = byID.get(id);
-    throw new Error("the other filters leave none of " + (n ? nameOf(n) : id) + "'s money to show alone");
-  }
-  return keeps;
+  return doc.links.some(keeps) ? keeps : null;
 }
 
 /**
@@ -2655,9 +2686,11 @@ export function syncPinButton() {
     button.hidden = !(pinned || previewed);
     button.setAttribute("aria-pressed", pinned ? "true" : "false");
   }
+  const id = followable();
+  const more = maybeEl("detail-menu");
+  if (more) more.hidden = id === "" || !laidNodes.some((n) => n.id === id);
   const follow = maybeEl("detail-follow");
   if (!follow) return;
-  const id = followable();
   follow.hidden = id === "";
   follow.setAttribute("aria-pressed", String(id !== "" && filter.isolated === id));
 }
@@ -2674,9 +2707,23 @@ export function followable() {
 
 /**
  * Wires the drawer's buttons: Pin pins the mark previewed or lets the pin
- * go, and Follow follows the node shown's money or puts the rest back.
+ * go, Follow follows the node shown's money or puts the rest back, and More
+ * opens the node shown's menu beside its mark (openNodeMenu): the one route
+ * to it with no right button and no keyboard, as on a phone.
  */
 export function wireDrawer() {
+  const more = maybeEl("detail-menu");
+  if (more) {
+    more.addEventListener("click", (e) => guarded("open this mark's menu", () => {
+      e.stopPropagation();
+      const id = followable();
+      const d = laidNodes.find((n) => n.id === id);
+      if (!d) return;
+      const chart = maybeEl("chart");
+      const mark = chart ? D3.select(chart).selectAll("g.node").filter(/** @param {LaidNode} n */ (n) => n.id === id).node() : null;
+      openNodeMenu(d, null, mark || undefined);
+    }));
+  }
   const button = maybeEl("detail-pin");
   if (button) {
     button.addEventListener("click", () => guarded("pin this", () => {
@@ -3714,7 +3761,9 @@ export function recordView(how) {
  * Expansions are applied before the isolation, which can name a member
  * only a split draws; a node followed is pinned (followNode).
  * @param {ViewState} st
- * @returns {Promise<{outcome: string, why?: string}>} DREW, SUPERSEDED, or FAILED with why
+ * @returns {Promise<{outcome: string, why?: string, error?: string}>} DREW,
+ *   SUPERSEDED, or FAILED with why, and with `error` where drawing the year
+ *   threw
  */
 async function moveTo(st) {
   const refuse = (/** @type {string} */ why) => ({ outcome: FAILED, why });
@@ -3725,8 +3774,19 @@ async function moveTo(st) {
   if (kind !== undefined) return refuse("this page names no flow kind " + kind);
   const removals = { groups: new Set(st.hide), kinds: new Set(st.hidekind), nodes: new Set(st.out), only: st.only, smallest: st.min };
   if (!shownYear || shownYear !== year || !projection) {
+    const was = filter;
     filter = Object.freeze(Object.assign({}, removals, { isolated: "" }));
-    const got = await showYear(year);
+    let got;
+    try {
+      got = await showYear(year);
+    } catch (e) {
+      // showYear put its own state back; the filters go back with it, so the
+      // fallback starts from the page as it was.
+      filter = was;
+      const error = e instanceof Error ? e.message : String(e);
+      return { outcome: FAILED, why: year.label + " cannot be drawn as it names: " + error, error: error };
+    }
+    if (got === FAILED) filter = was;
     if (got !== DREW) return { outcome: got, why: "the year " + st.year + " could not be drawn" };
     syncYearControl();
   } else if (!setFilter(Object.assign({}, removals, { isolated: "" }))) {
@@ -3766,7 +3826,7 @@ export async function restoreView(hash) {
   /** @type {ViewState} */
   const fallback = { year: yearKey(opening), hide: [], hidekind: [], out: [], only: "", min: 0, iso: "", x: [] };
   const named = read.kind !== "none";
-  let moved = /** @type {{outcome: string, why?: string}} */ ({ outcome: FAILED, why: read.kind === "refused" ? read.why : "" });
+  let moved = /** @type {{outcome: string, why?: string, error?: string}} */ ({ outcome: FAILED, why: read.kind === "refused" ? read.why : "" });
   restoringView = true;
   try {
     if (read.kind !== "refused") moved = await moveTo(read.kind === "view" ? read.state : fallback);
@@ -3778,7 +3838,11 @@ export async function restoreView(hash) {
     if (named) recordView("replace");
     return DREW;
   }
-  if (!named) return FAILED;
+  // The opening view itself throwing is said as any draw that fails is.
+  if (!named) {
+    if (moved.error !== undefined) fail("The chart failed to draw: " + moved.error);
+    return FAILED;
+  }
   // REFUSED: the opening view, then the banner, since a year drawing clears it.
   restoringView = true;
   let back;
@@ -3788,6 +3852,11 @@ export async function restoreView(hash) {
     restoringView = false;
   }
   if (back.outcome === SUPERSEDED) return SUPERSEDED;
+  if (back.error !== undefined) {
+    fail("This link names a view this page does not draw: " + moved.why +
+      ", and the opening view failed to draw: " + back.error);
+    return FAILED;
+  }
   fail("This link names a view this page does not draw: " + moved.why +
     ". The page shows its opening view instead.");
   if (back.outcome === DREW) recordView("replace");
@@ -3839,7 +3908,7 @@ export function refuseInPlace(message) {
     const panel = el("detail");
     panel.replaceChildren();
     panel.append(h("p", "", message));
-    for (const id of ["detail-pin", "detail-follow"]) {
+    for (const id of ["detail-pin", "detail-follow", "detail-menu"]) {
       const button = maybeEl(id);
       if (button) button.hidden = true;
     }

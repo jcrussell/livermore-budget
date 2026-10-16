@@ -340,6 +340,19 @@ func TestTheExpansionChecksCanFail(t *testing.T) {
 				"\" leaves a member and is not re-pointed onto the node",
 		},
 		{
+			// A line stands before its source and takes nothing in; the
+			// owed loop reads a source hub's links at their sources.
+			name: "a leaf arriving at a sales tax line", check: &expansionSplitsTie{},
+			edit: func(t *testing.T, _ *Subject, d *project.Document) {
+				into := d.Links[leafAt(t, d, salesLine, "fund/100")]
+				into.Source, into.Target = "fund/100", salesLine
+				into.Repeats = "fund/100 -> " + salesLine + " external"
+				d.Links = append(d.Links, into)
+			},
+			want: "the leaf fund/100 -> " + salesLine + " repeating \"fund/100 -> " + salesLine +
+				" external\" arrives at a member, which stands before the node and takes nothing in",
+		},
+		{
 			name: "a leaf re-pointed off a source hub repeating a leaf to another node", check: &expansionSplitsTie{},
 			edit: func(t *testing.T, _ *Subject, d *project.Document) {
 				forged := salesLine + " -> fund/200 external"

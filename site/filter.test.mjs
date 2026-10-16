@@ -75,9 +75,25 @@ function faultsOf(app, doc, state, where) {
   const r = app.filterFor(doc, state);
   const tally = app.hiddenTally(r);
   const seen = new Map(doc.links.map((l) => [l, 0]));
+  // A NODE FILTER CUTS A RIBBON ALONG ITS CELLS: a ribbon a hub draws a
+  // node's leaves on is drawn without them and they are hidden, each part at
+  // its ribbon's ends and kind, which one ribbon of the chart holds.
+  const ribbonKey = (l) => `${l.source}\u001f${l.target}\u001f${l.kind}`;
+  const byKey = new Map(doc.links.map((l) => [ribbonKey(l), l]));
+  if (byKey.size !== doc.links.length) faults.push(`${where}: two ribbons of the chart share their ends and kind`);
+  const parts = new Map();
   const bump = (l, how) => {
-    if (!seen.has(l)) faults.push(`${where}: ${how} ${l.source} -> ${l.target} is no ribbon of the chart`);
-    else seen.set(l, seen.get(l) + 1);
+    if (seen.has(l)) {
+      seen.set(l, seen.get(l) + 1);
+      return;
+    }
+    const whole = byKey.get(ribbonKey(l));
+    if (!whole || !app.cellsOf(whole)) {
+      faults.push(`${where}: ${how} ${l.source} -> ${l.target} is no ribbon of the chart`);
+      return;
+    }
+    if (!parts.has(whole)) parts.set(whole, []);
+    parts.get(whole).push(l);
   };
   let merged = 0;
   for (const l of r.doc.links) {
@@ -99,17 +115,60 @@ function faultsOf(app, doc, state, where) {
     }
   }
   for (const l of r.hidden) bump(l, "hidden");
+  // A ribbon cut in parts: every cell in exactly one part at its cents, and
+  // the parts' figures its figure.
+  for (const [whole, ps] of parts) {
+    const at = `${where}: ${whole.source} -> ${whole.target}`;
+    if (seen.get(whole) !== 0) faults.push(`${at} is drawn whole and in parts`);
+    seen.set(whole, ps.length > 1 ? 1 : 0);
+    const cells = app.cellsOf(whole);
+    const got = {};
+    for (const p of ps) {
+      for (const [k, c] of Object.entries(app.cellsOf(p) || {})) {
+        if (k in got) faults.push(`${at}: the cell ${k} is in two parts`);
+        got[k] = c;
+      }
+    }
+    if (JSON.stringify(Object.entries(got).sort()) !== JSON.stringify(Object.entries(cells).sort())) faults.push(`${at}: its parts' cells are not its cells`);
+    if (ps.reduce((s, p) => s + p.value_cents, 0) !== whole.value_cents) faults.push(`${at}: its parts do not sum to it`);
+  }
   for (const [l, n] of seen) if (n !== 1) faults.push(`${where}: ${l.source} -> ${l.target} is accounted ${n} times`);
   // Removed exactly what the state names: nothing drawn that it hides, and
-  // nothing hidden that it does not.
-  // A node shown alone keeps the ribbons with an end at it: plainOf's
-  // nodes are no fund group's, so following one is no more than that.
-  const hides = (l) => state.kinds.has(l.kind) || state.groups.has(groupAt(app, doc, l.source)) ||
-    state.groups.has(groupAt(app, doc, l.target)) || state.nodes.has(l.source) || state.nodes.has(l.target) ||
-    (state.only !== "" && l.source !== state.only && l.target !== state.only);
-  for (const l of r.hidden) if (!hides(l)) faults.push(`${where}: ${l.source} -> ${l.target} is hidden and the state names nothing of it`);
+  // nothing hidden that it does not. A ribbon with an end at a node filtered
+  // out goes whole, and a ribbon with none is cut along its cells: a cell
+  // whose leaf has an end within a node filtered out goes, and where a node
+  // is shown alone, one whose leaf has none within it, on every ribbon with
+  // no end at that node. plainOf's nodes are no fund group's, so following
+  // one is no more than its own ribbons.
+  const within = (ids) => {
+    const out = new Set();
+    for (const id of ids) for (const x of app.withinNode(app.fetched, id)) out.add(x);
+    return out;
+  };
+  const out = within(state.nodes);
+  const alone = state.only !== "" ? within([state.only]) : null;
+  const goes = (k, atOnly) => (out.size > 0 && app.cellIn(k, out) !== "none") ||
+    (alone !== null && !atOnly && app.cellIn(k, alone) !== "all");
+  const wholeGoes = (l) => state.kinds.has(l.kind) || state.groups.has(groupAt(app, doc, l.source)) ||
+    state.groups.has(groupAt(app, doc, l.target)) || state.nodes.has(l.source) || state.nodes.has(l.target);
+  const atOnly = (l) => l.source === state.only || l.target === state.only;
+  const cellsGo = (l) => {
+    const cells = app.cellsOf(l);
+    if (!cells) return alone !== null && !atOnly(l);
+    return Object.keys(cells).every((k) => goes(k, atOnly(l)));
+  };
+  const anyCellGoes = (l) => {
+    const cells = app.cellsOf(l);
+    if (!cells) return alone !== null && !atOnly(l);
+    return Object.keys(cells).some((k) => goes(k, atOnly(l)));
+  };
+  for (const l of r.hidden) {
+    if (!wholeGoes(l) && !cellsGo(l)) faults.push(`${where}: ${l.source} -> ${l.target} is hidden and the state names nothing of it`);
+  }
   for (const l of r.doc.links) {
-    for (const leg of l.legs || [l]) if (hides(leg)) faults.push(`${where}: ${leg.source} -> ${leg.target} is drawn and the state hides it`);
+    for (const leg of l.legs || [l]) {
+      if (wholeGoes(leg) || anyCellGoes(leg)) faults.push(`${where}: ${leg.source} -> ${leg.target} is drawn and the state hides it`);
+    }
   }
   // Drawn plus hidden is the unfiltered chart, ribbon by ribbon and by fact
   // ids. The ribbons' own figures, not the tally: a hub draws a leaf twice,
@@ -133,7 +192,7 @@ function faultsOf(app, doc, state, where) {
   } catch (e) {
     faults.push(`${where}: the filtered chart does not lay out: ${e.message}`);
   }
-  return { faults, merged, hidden: r.hidden.length };
+  return { faults, merged, hidden: r.hidden.length, cut: parts.size };
 }
 
 describe("drawn plus hidden is the chart", () => {
@@ -144,6 +203,7 @@ describe("drawn plus hidden is the chart", () => {
       let states = 0;
       let merged = 0;
       let hidden = 0;
+      let cut = 0;
       // A NODE FILTER CAN HIDE PART OF THE LEAVES A TOTAL RESTATES beside
       // those leaves, which the tally refuses to state (core.distinctCents)
       // and filterFor refuses to draw; a group or kind filter never does.
@@ -168,6 +228,7 @@ describe("drawn plus hidden is the chart", () => {
           faults.push(...got.faults);
           merged += got.merged;
           hidden += got.hidden;
+          cut += got.cut;
           states++;
         }
       };
@@ -176,10 +237,11 @@ describe("drawn plus hidden is the chart", () => {
       assert.equal(walked.refused, "", walked.refused);
       t.diagnostic(`${year.label}: ${walked.visited + 1} chart(s), ${states} filter state(s); ${hidden} ribbon(s) hidden ` +
         `and ${merged} merged ribbon(s) drawn across them; ${faults.length} fault(s)`);
-      t.diagnostic(`${year.label}: ${drawnNode} node filter state(s) drawn, ${refusedNode.length} refused` +
+      t.diagnostic(`${year.label}: ${drawnNode} node filter state(s) drawn, ${cut} ribbon(s) cut along their cells, ${refusedNode.length} refused` +
         (refusedNode.length ? `, the first ${refusedNode[0]}` : ""));
       assert.ok(hidden > 0 && merged > 0, "no state hid or merged a ribbon, so nothing here is tested");
       assert.ok(drawnNode > 0, "no node filter state was drawn, so the node filters are not tested");
+      assert.ok(cut > 0, "no node filter cut a ribbon along its cells, so the parts are not tested");
       assert.deepEqual(faults.slice(0, 5), []);
     });
   }

@@ -239,6 +239,7 @@
         "fold_back",
         "split_chooser",
         "node_menu",
+        "node_menu_more",
         "filter_out_node",
         "show_only_node",
         "expand_all",
@@ -339,7 +340,12 @@
         "node_menu": {
           "type": "string",
           "minLength": 1,
-          "description": "The accessible name of a node's context menu, which a right-click, Shift+F10 or the ContextMenu key opens: {label}."
+          "description": "The accessible name of a node's context menu, which a right-click, M, Shift+F10, the ContextMenu key or the drawer's node_menu_more opens: {label}."
+        },
+        "node_menu_more": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The drawer's button that opens the context menu of the node it shows, for a reader with no right button and no keyboard."
         },
         "filter_out_node": {
           "type": "string",

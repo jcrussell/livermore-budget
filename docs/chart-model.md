@@ -19,8 +19,8 @@ are, what each may compute, and the measurements that fixed the seams.
 A figure the client shows is one Go cited, or a sum or union of such figures.
 A count of drawn members or a share of one drawn sum in another is a sentence
 about what is drawn, not a figure: the counts line, the search count, the
-filter line's merged flows, the caveat count, and the column share are of
-this kind, and each carries `◇`. A client
+filter line's hidden and merged flows, a mark's hidden flows, the caveat
+count, and the column share are of this kind, and each carries `◇`. A client
 mark is derived, says so, and carries its rationale and source note like any
 derived node.
 
