@@ -463,6 +463,36 @@ describe("folding a split back", () => {
     assert.deepEqual(refusals(document).map((b) => b.textContent), []);
   });
 
+  // Mutation: let Escape clear only what unpin clears and this goes red: a
+  // fund group's swatch stays pressed and the chart dimmed.
+  test("Escape lets a fund group's isolation go too", async () => {
+    const { app, document } = await bootedApp();
+    app.setIsolated(OPENS);
+    escape(document);
+    await settle();
+    assert.equal(app.filter.isolated, "");
+  });
+
+  // Mutation: hand focus over whenever the pressed button ends disabled,
+  // held or not, and this goes red: a click that never took focus (Safari's)
+  // leaves it on Collapse all, which a later Space or Enter presses.
+  test("a bulk button its own press disables hands focus to the other only where it held focus", async () => {
+    const keyedPage = await bootedApp();
+    const [all] = bulk(keyedPage.document);
+    all.focus();
+    all.click();
+    await settle();
+    const keyed = keyedPage.document.activeElement.id;
+    const { document } = await bootedApp();
+    const before = document.activeElement.id || document.activeElement.tagName;
+    const [all2] = bulk(document);
+    all2.click();
+    await settle();
+    const clicked = document.activeElement.id || document.activeElement.tagName;
+    assert.deepEqual({ keyed, before, clicked, disabled: all2.disabled },
+      { keyed: "chart-collapse-all", before: "BODY", clicked: "BODY", disabled: true });
+  });
+
   test("Expand all splits every node to its finest grain by its first split, and Collapse all folds everything back", async (t) => {
     const { app, document } = await bootedApp();
     const [all, none] = bulk(document);

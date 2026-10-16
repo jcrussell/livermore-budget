@@ -331,18 +331,16 @@ export function slotsOf(nodes, tiers) {
  * The slot order key of every node of the expansion schedule, read off its
  * parent chain in the UNFOLDED schedule: a root at its tier's place in the
  * spine's column order, and a member in the slot directly after its
- * parent's, or directly before it where the split's links run from its
- * members to the node -- a source's, whose members pay into it, so opening
- * it moves nothing to its right. A split no link runs between stands after
- * its node. Every split from one slot opens into the same next or previous
- * slot.
+ * parent's, or directly before it, on the side its split declares -- before
+ * a source's, whose members pay into it, so opening it moves nothing to its
+ * right. No link is read to infer a side. Every split from one slot opens
+ * into the same next or previous slot.
  *
  * FAILS CLOSED on a root at a tier the spine does not draw, a member of no
  * split the schedule declares, a member of a split of any form but extend, a
- * split whose links run both ways between its node and its members, a
- * member opening back the way its own parent opened, which would stand it in
- * its grandparent's slot, and an extend chain past the slots its root has
- * on that side (ROOT_SLOT).
+ * split declaring no side, a member opening back the way its own parent
+ * opened, which would stand it in its grandparent's slot, and an extend
+ * chain past the slots its root has on that side (ROOT_SLOT).
  *
  * @param {FiscProjection} expansion
  * @param {number[]} tiers the spine's column order
@@ -352,28 +350,18 @@ export function expansionSlots(expansion, tiers) {
   const byID = new Map(expansion.nodes.map((n) => [n.id, n]));
   /** @type {Map<string, string>} */
   const formOf = new Map();
+  /**
+   * The slot step each split's members take from its node, by node\u001fkey:
+   * +1 after it, -1 before it, 0 on a side Go did not declare.
+   * @type {Map<string, number>}
+   */
+  const stepOf = new Map();
   /** @type {Map<string, string>} */
   const primary = new Map();
   for (const sp of /** @type {any[]} */ ((/** @type {any} */ (expansion)).splits || [])) {
     formOf.set(sp.node + "\u001f" + sp.key, sp.form);
+    stepOf.set(sp.node + "\u001f" + sp.key, sp.side === "after" ? 1 : sp.side === "before" ? -1 : 0);
     if (!sp.alternative) primary.set(sp.node, sp.key);
-  }
-  /**
-   * Which way each split's links run between its node and its members, by
-   * node\u001fkey: -1 where they run from the members to the node, +1 from
-   * the node, 0 both ways.
-   * @type {Map<string, number>}
-   */
-  const way = new Map();
-  for (const l of expansion.links) {
-    const src = byID.get(l.source), tgt = byID.get(l.target);
-    let at, dir;
-    if (tgt && tgt.parent === l.source) [at, dir] = [tgt, 1];
-    else if (src && src.parent === l.target) [at, dir] = [src, -1];
-    else continue;
-    const k = at.parent + "\u001f" + (at.alternative || primary.get(at.parent) || "");
-    const was = way.get(k);
-    way.set(k, was === undefined || was === dir ? dir : 0);
   }
   /** @type {Map<string, number>} */
   const out = new Map();
@@ -399,7 +387,7 @@ export function expansionSlots(expansion, tiers) {
       const key = n.alternative || primary.get(up.id) || "";
       const form = formOf.get(up.id + "\u001f" + key);
       const above = slotOf(up, hops + 1);
-      const step = way.get(up.id + "\u001f" + key) ?? 1;
+      const step = stepOf.get(up.id + "\u001f" + key) ?? 0;
       const within = (above % SLOT_DEPTH) + step;
       // A member opening back the way its parent opened stands where its
       // grandparent does.
@@ -409,7 +397,7 @@ export function expansionSlots(expansion, tiers) {
         throw new Error("cannot place " + n.id + ": it is a member of " + up.id + "'s split " +
           JSON.stringify(key) + ", " + (!form ? "which the schedule does not declare"
             : form !== "extend" ? "declared " + JSON.stringify(form) + ", and this page draws a split only as extend"
-              : step === 0 ? "whose links run both from and to its members"
+              : step === 0 ? "which declares no side of " + up.id + " its members stand on"
                 : back ? "opening back toward " + up.parent + ", whose slot it would stand in"
                   : "extended past the " + (step > 0 ? SLOT_DEPTH - ROOT_SLOT - 1 + " slots after" : ROOT_SLOT + " slots before") +
                     " its root"));

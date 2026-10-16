@@ -26,6 +26,8 @@ type stitched struct {
 	spine *project.Document
 	nodes map[string]project.Node
 	facts map[string]fact.Fact
+	// sides is project.PrimarySides of the document's splits.
+	sides map[string]string
 }
 
 // stitchedDocuments pairs every expansion document with its column's spine,
@@ -55,7 +57,8 @@ func stitchedDocuments(s *Subject) ([]stitched, []Finding, error) {
 		for _, n := range p.Nodes {
 			nodes[n.ID] = n
 		}
-		out = append(out, stitched{doc: p, spine: spine, nodes: nodes, facts: factIndex(slice)})
+		out = append(out, stitched{doc: p, spine: spine, nodes: nodes, facts: factIndex(slice),
+			sides: project.PrimarySides(p.Graph.Splits)})
 	}
 	return out, findings, nil
 }
@@ -307,7 +310,8 @@ func (*expansionOpensAsTheSpine) Run(_ context.Context, s *Subject) (Result, err
 // one list of leaves in Restates carry those leaves' cents
 // ([restatingFindings]); a hub split's legs each repeat one leaf
 // ([hubFindings]), and together carry what the node takes in on the spine,
-// or gives out where it takes nothing in.
+// or gives out where it takes nothing in. Every split's declared side is held
+// to the spine and to its links ([stitched.sideFindings]).
 //
 // MUTATION: cite the 250,000 remainder's printed side from the enterprise
 // group's Services & Supplies and this check names the cell; make fund/100's
@@ -320,9 +324,11 @@ func (*expansionOpensAsTheSpine) Run(_ context.Context, s *Subject) (Result, err
 // category's leg a cent short and it names the pairing; leave one line's
 // leaf on its fund and it names a leg with no leaf, or on its line and it
 // names the leaf; run one division's total into its fund and it names the
-// split as drawn both ways; re-point fund/620's capital outlay leaf off the
-// fund onto its group, a hub re-pointing only what arrives, and it names the
-// leaf.
+// link run against the split's side; declare the enterprise group's funds
+// before it and it names the side; split a sales tax line after it and it
+// names the line opening back toward its source; re-point fund/620's capital
+// outlay leaf off the fund onto its group, a hub re-pointing only what
+// arrives, and it names the leaf.
 type expansionSplitsTie struct{}
 
 var _ Check = (*expansionSplitsTie)(nil)
@@ -415,25 +421,7 @@ func (c *expansionSplitsTie) split(s *Subject, x stitched, sp project.Split, sub
 			"so nothing holds its members", sp.Form)}
 	}
 	var findings []Finding
-	// One way between the node and its members, which side of the node they
-	// stand on: the client refuses a split drawn both ways at layout. A leaf
-	// between two members re-pointed onto the node is neither way.
-	from, into := 0, 0
-	for _, l := range x.doc.Links {
-		if l.Repeats != "" && l.Alternative == "" && !x.isLeg(l) {
-			continue
-		}
-		if l.Source == sp.Node && slices.Contains(members, l.Target) {
-			from++
-		}
-		if l.Target == sp.Node && slices.Contains(members, l.Source) {
-			into++
-		}
-	}
-	if from > 0 && into > 0 {
-		findings = append(findings, finding(subject, "the node's links to its members run both ways, %d from it and %d into it",
-			from, into))
-	}
+	findings = append(findings, x.sideFindings(sp, node, members, alt, subject)...)
 	// The node's links to its members in this split's set: a total of its
 	// own to each, or legs each repeating one leaf, either way; a leaf
 	// re-pointed onto the node is neither.
@@ -654,9 +642,51 @@ func (*expansionSplitsTie) restatingFindings(x stitched, sp project.Split, membe
 	return findings
 }
 
-// takesIn answers whether the spine draws a link into a node: a hub at such a
-// node re-points the leaves arriving at its members, and one at a node taking
-// nothing in the leaves leaving them.
+// sideFindings holds the side a split declares, which the client stands its
+// members on and reads no link to infer: a root's primary split, a hub, after
+// its node where the spine draws a link into the node and before it where
+// none, and every other split after; every link between the node and a
+// member of this split's set running that way, a leaf re-pointed onto the
+// node included, since one drawn from a member back into its own node is a
+// circular link to the client; and a member's split on its parent's side,
+// since one opening back would stand its members in its grandparent's
+// column.
+func (x stitched) sideFindings(sp project.Split, node project.Node, members []string, alt, subject string) []Finding {
+	var findings []Finding
+	want := project.SplitAfter
+	if node.Parent == "" && !sp.Alternative && !x.takesIn(sp.Node) {
+		want = project.SplitBefore
+	}
+	if sp.Side != want {
+		findings = append(findings, finding(subject, "the split declares its members %q its node, want %q", sp.Side, want))
+	}
+	against := 0
+	for _, l := range x.doc.Links {
+		if l.Alternative != alt {
+			continue
+		}
+		if (sp.Side == project.SplitAfter && l.Target == sp.Node && slices.Contains(members, l.Source)) ||
+			(sp.Side != project.SplitAfter && l.Source == sp.Node && slices.Contains(members, l.Target)) {
+			against++
+		}
+	}
+	if against > 0 {
+		findings = append(findings, finding(subject, "%d of the node's links to its members run against its declared side %q",
+			against, sp.Side))
+	}
+	if node.Parent != "" {
+		for _, up := range x.doc.Graph.Splits {
+			if up.Node == node.Parent && up.Alternative == (node.Alternative != "") &&
+				(!up.Alternative || up.Key == node.Alternative) && up.Side != sp.Side {
+				findings = append(findings, finding(subject, "the node stands %q %s and opens %q, back toward %s, whose column its members would stand in",
+					up.Side, node.Parent, sp.Side, node.Parent))
+			}
+		}
+	}
+	return findings
+}
+
+// takesIn answers whether the spine draws a link into a node.
 func (x stitched) takesIn(id string) bool {
 	for _, l := range x.spine.Links {
 		if l.Target == id {
@@ -678,35 +708,11 @@ func (x stitched) isHub(id string) bool {
 	return false
 }
 
-// isLeg answers whether a link is a hub leg: it repeats a leaf and runs
-// between a node and its own primary member, and is not that leaf re-pointed
-// onto the node -- the node at the end its hub re-points, the far end the
-// leaf's own. So a flow between two members of a hub, re-pointed onto it, is
-// a leaf, while a leg run the wrong way stays a leg for the hub's findings to
-// name.
-func (x stitched) isLeg(l project.Link) bool {
-	if l.Repeats == "" || l.Alternative != "" {
-		return false
-	}
-	member := func(id, parent string) bool {
-		m, ok := x.nodes[id]
-		return ok && m.Parent == parent && m.Alternative == ""
-	}
-	if !member(l.Target, l.Source) && !member(l.Source, l.Target) {
-		return false
-	}
-	src, tgt := project.LeafEnds(l.Repeats)
-	if member(l.Source, l.Target) && x.takesIn(l.Target) && l.Source == src {
-		return false
-	}
-	if member(l.Target, l.Source) && !x.takesIn(l.Source) && l.Target == tgt {
-		return false
-	}
-	return true
-}
+// isLeg is project.IsLeg over this document.
+func (x stitched) isLeg(l project.Link) bool { return project.IsLeg(l, x.nodes, x.sides) }
 
 // Each word pair a hub's findings say a side of the flow by, keyed by
-// whether the hub takes money in on the spine.
+// whether the hub's split stands its members after it.
 var (
 	hubArriveAt = map[bool]string{true: "arrive at", false: "leave"}
 	hubArrives  = map[bool]string{true: "arrives at", false: "leaves"}
@@ -714,21 +720,21 @@ var (
 	hubTakesIn  = map[bool]string{true: "takes in", false: "gives out"}
 )
 
-// hubFindings holds a hub split's legs to the leaves they repeat. Where the
-// node takes money in on the spine, every primary leaf arriving at a member
-// is re-pointed to end at the node, naming its own ends in repeats, and is
-// repeated by exactly one leg from the node to that member; where it takes
-// nothing in, every primary leaf leaving a member is re-pointed to start at
-// the node and repeated by exactly one leg from that member to the node. A
-// re-pointed leaf's other end is the leaf's own, or that end's parent where
-// it too is the primary member of a hub re-pointing that side of the flow. A
-// leg repeats exactly one leaf, with its cents,
-// facts, kind and derived flag, and the legs together carry what the node
-// takes in on the spine, or gives out where it takes nothing in.
+// hubFindings holds a hub split's legs to the leaves they repeat, by its
+// declared side, which sideFindings holds to the spine. After its node,
+// every primary leaf arriving at a member is re-pointed to end at the node,
+// naming its own ends in repeats, and is repeated by exactly one leg from the
+// node to that member; before it, every primary leaf leaving a member is
+// re-pointed to start at the node and repeated by exactly one leg from that
+// member to the node. A re-pointed leaf's other end is the leaf's own, or
+// that end's parent where it too is the primary member of a hub on the other
+// side. A leg repeats exactly one leaf, with its cents, facts, kind and
+// derived flag, and the legs together carry what the node takes in on the
+// spine, or gives out where its members stand before it.
 func (*expansionSplitsTie) hubFindings(x stitched, sp project.Split, members []string, legs []project.Link,
 	subject string) []Finding {
 	var findings []Finding
-	inflow := x.takesIn(sp.Node)
+	inflow := sp.Side == project.SplitAfter
 	var spineCents int64
 	for _, l := range x.spine.Links {
 		if (inflow && l.Target == sp.Node) || (!inflow && l.Source == sp.Node) {
@@ -798,7 +804,7 @@ func (*expansionSplitsTie) hubFindings(x stitched, sp project.Split, members []s
 			findings = append(findings, finding(subject, "the leaf %s -> %s repeating %q %s a member and is not re-pointed onto the node",
 				l.Source, l.Target, l.Repeats, hubArrives[inflow]))
 		case leafFar != f && (x.nodes[leafFar].Parent != f || x.nodes[leafFar].Alternative != "" || !x.isHub(f) ||
-			x.takesIn(f) == inflow):
+			x.sides[f] == sp.Side):
 			findings = append(findings, finding(subject, "the leaf %s -> %s re-pointed onto the node repeats %q, whose other end is another node's",
 				l.Source, l.Target, l.Repeats))
 		case repeating[l.Repeats] != 1:

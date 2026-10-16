@@ -457,7 +457,8 @@
                 "node",
                 "key",
                 "form",
-                "alternative"
+                "alternative",
+                "side"
               ],
               "additionalProperties": false,
               "properties": {
@@ -475,6 +476,9 @@
                 },
                 "alternative": {
                   "type": "boolean"
+                },
+                "side": {
+                  "$ref": "https://jcrussell.github.io/livermore-budget/schema/enums.schema.json#/$defs/split_side"
                 }
               }
             }

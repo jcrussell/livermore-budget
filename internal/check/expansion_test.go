@@ -43,23 +43,26 @@ func linkAt(t *testing.T, d *project.Document, source, target string) int {
 	return -1
 }
 
+// legsOf is project.IsLeg over d.
+func legsOf(d *project.Document) func(project.Link) bool {
+	nodes := map[string]project.Node{}
+	for _, n := range d.Nodes {
+		nodes[n.ID] = n
+	}
+	sides := project.PrimarySides(d.Splits)
+	return func(l project.Link) bool { return project.IsLeg(l, nodes, sides) }
+}
+
 // leafAt is the index of the leaf a page prints from source to target,
-// wherever the stitch draws it: a hub leg repeating it runs between a node
-// and its own member, and the leaf is the one link repeating it that does not.
+// wherever the stitch draws it: the one link repeating it that is no leg.
 func leafAt(t *testing.T, d *project.Document, source, target string) int {
 	t.Helper()
-	parent := map[string]string{}
-	for _, n := range d.Nodes {
-		if n.Alternative == "" {
-			parent[n.ID] = n.Parent
-		}
-	}
+	isLeg := legsOf(d)
 	for i, l := range d.Links {
 		if l.Repeats == "" && l.Source == source && l.Target == target {
 			return i
 		}
-		if s, tg := project.LeafEnds(l.Repeats); s == source && tg == target &&
-			parent[l.Target] != l.Source && parent[l.Source] != l.Target {
+		if s, tg := project.LeafEnds(l.Repeats); s == source && tg == target && !isLeg(l) {
 			return i
 		}
 	}
@@ -68,22 +71,16 @@ func leafAt(t *testing.T, d *project.Document, source, target string) int {
 }
 
 // legAt is the index of the hub leg at hub repeating the leaf from source to
-// target: from the hub to a member, or from a member to a hub taking nothing
-// in.
+// target.
 func legAt(t *testing.T, d *project.Document, hub, source, target string) int {
 	t.Helper()
-	parent := map[string]string{}
-	for _, n := range d.Nodes {
-		if n.Alternative == "" {
-			parent[n.ID] = n.Parent
-		}
-	}
+	isLeg := legsOf(d)
 	for i, l := range d.Links {
 		s, tg := project.LeafEnds(l.Repeats)
 		if s != source || tg != target {
 			continue
 		}
-		if (l.Source == hub && parent[l.Target] == hub) || (l.Target == hub && parent[l.Source] == hub) {
+		if isLeg(l) && (l.Source == hub || l.Target == hub) {
 			return i
 		}
 	}
@@ -374,13 +371,40 @@ func TestTheExpansionChecksCanFail(t *testing.T) {
 			want: "the leaf fund-group/enterprise -> expenditure/capital-outlay re-pointed onto the node repeats",
 		},
 		{
-			name: "a division's link run back into its fund, the split drawn both ways", check: &expansionSplitsTie{},
+			name: "a division's link run back into its fund, against its split's side", check: &expansionSplitsTie{},
 			edit: func(t *testing.T, _ *Subject, d *project.Document) {
 				back := d.Links[linkAt(t, d, "fund/100", "dept/patrol")]
 				back.Source, back.Target, back.Restates = back.Target, back.Source, nil
 				d.Links = append(d.Links, back)
 			},
-			want: "split of fund/100 by divisions the node's links to its members run both ways",
+			want: "split of fund/100 by divisions 1 of the node's links to its members run against its declared side \"after\"",
+		},
+		{
+			// The client stands members on the declared side and reads no
+			// link to infer it, so a side the spine contradicts is a chart
+			// drawn the wrong way round.
+			name: "an inflow hub declaring its members before it", check: &expansionSplitsTie{},
+			edit: func(_ *testing.T, _ *Subject, d *project.Document) {
+				d.Splits = slices.Clone(d.Splits)
+				for i := range d.Splits {
+					if d.Splits[i].Node == "fund-group/enterprise" {
+						d.Splits[i].Side = project.SplitBefore
+					}
+				}
+			},
+			want: "split of fund-group/enterprise by funds the split declares its members \"before\" its node, want \"after\"",
+		},
+		{
+			// A line of a source stands before it, so a split of the line
+			// opening after it would stand its members in the source's
+			// column, which the client refuses at layout.
+			name: "a member of a source opening back toward it", check: &expansionSplitsTie{},
+			edit: func(_ *testing.T, _ *Subject, d *project.Document) {
+				d.Splits = append(slices.Clone(d.Splits),
+					project.Split{Node: salesLine, Key: "lines", Form: project.SplitExtend, Side: project.SplitAfter})
+				d.Nodes = append(d.Nodes, project.Node{ID: salesLine + "/part", Label: "Part", Tier: 0, Parent: salesLine})
+			},
+			want: "split of " + salesLine + " by lines the node stands \"before\" " + salesHub + " and opens \"after\", back toward " + salesHub,
 		},
 		{
 			name: "two leaves repeating one leaf", check: &expansionSplitsTie{},
@@ -538,9 +562,13 @@ func TestTheExpansionChecksCanFail(t *testing.T) {
 // TestAFlowBetweenAHubsMembersIsALeaf plants a flow from one enterprise fund
 // to another, re-pointed onto their group as an inflow hub re-points a leaf
 // arriving at a member, with the leg to its target repeating it. The
-// re-pointed link runs from a member into the node, which is no leg and
-// draws the split no second way. The plant takes its leaf from the line it
+// re-pointed link runs from a member into the node, which is no leg, and
+// against the side the split declares, which the client draws as a circular
+// link and this check names. The plant takes its leaf from the line it
 // repeated, so other findings fire and are not what this reads.
+//
+// MUTATION: skip a leaf re-pointed onto the node in sideFindings' count and
+// the plant passes.
 func TestAFlowBetweenAHubsMembersIsALeaf(t *testing.T) {
 	t.Parallel()
 	const (
@@ -557,12 +585,16 @@ func TestAFlowBetweenAHubsMembersIsALeaf(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	against := false
 	for _, f := range res.Findings {
-		if strings.Contains(f.Detail, "the leg fund/610 -> "+group) ||
-			(strings.Contains(f.Subject, "split of "+group+" ") && strings.Contains(f.Detail, "run both ways")) ||
-			strings.Contains(f.Detail, "the leaf fund/610 -> "+group) {
+		if strings.Contains(f.Detail, "the leg fund/610 -> "+group) || strings.Contains(f.Detail, "the leaf fund/610 -> "+group) {
 			t.Errorf("%s: %s", f.Subject, f.Detail)
 		}
+		against = against || (strings.Contains(f.Subject, "split of "+group+" ") &&
+			f.Detail == "1 of the node's links to its members run against its declared side \"after\"")
+	}
+	if !against {
+		t.Errorf("expansion-splits-tie is %s and does not name the leaf drawn back into %s: %v", res.Status, group, res.Findings)
 	}
 }
 

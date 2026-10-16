@@ -379,7 +379,7 @@ function assembleSchedule(column, key) {
   });
   const splits = Array.isArray(sched.splits)
     ? sched.splits.map((sp) => ({
-      node: (table[sp.node] || {}).id, key: sp.key, form: sp.form, alternative: Boolean(sp.alternative),
+      node: (table[sp.node] || {}).id, key: sp.key, form: sp.form, alternative: Boolean(sp.alternative), side: sp.side,
     }))
     : null;
   const col = column.column || {};

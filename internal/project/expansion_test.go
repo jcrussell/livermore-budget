@@ -363,27 +363,22 @@ func pinned(col Column, cell, category string, diff int64) string {
 	return ex.Name
 }
 
-// TestTheContestedRemainderIsTheExceptions: the 250,000 FY2026-27's internal
-// service Services & Supplies carries over its funds' rows is a remainder in
-// FY2026-27 alone, worth what the exception declaring the cell holds apart,
-// drawn from the group's remainder to a row of the group's own, and the
-// divisions alternative carries the same exception's sibling.
-// leavesOf is a stitch's links less its hub legs, each read at the ends of
-// the leaf it repeats: where a page prints it, wherever the stitch draws it.
+// leavesOf is a stitch's links less its hub legs ([IsLeg]), each read at the
+// ends of the leaf it repeats: where a page prints it, wherever the stitch
+// draws it.
 func leavesOf(d *Document) []Link {
-	parent := map[string]string{}
+	nodes := map[string]Node{}
 	for _, n := range d.Nodes {
-		if n.Alternative == "" {
-			parent[n.ID] = n.Parent
-		}
+		nodes[n.ID] = n
 	}
+	sides := PrimarySides(d.Splits)
 	var out []Link
 	for _, l := range d.Links {
 		if l.Repeats == "" {
 			out = append(out, l)
 			continue
 		}
-		if l.Alternative == "" && (parent[l.Target] == l.Source || parent[l.Source] == l.Target) {
+		if IsLeg(l, nodes, sides) {
 			continue
 		}
 		l.Source, l.Target = LeafEnds(l.Repeats)
@@ -392,6 +387,11 @@ func leavesOf(d *Document) []Link {
 	return out
 }
 
+// TestTheContestedRemainderIsTheExceptions: the 250,000 FY2026-27's internal
+// service Services & Supplies carries over its funds' rows is a remainder in
+// FY2026-27 alone, worth what the exception declaring the cell holds apart,
+// drawn from the group's remainder to a row of the group's own, and the
+// divisions alternative carries the same exception's sibling.
 func TestTheContestedRemainderIsTheExceptions(t *testing.T) {
 	byName := map[string]structure.Exception{}
 	for _, e := range structure.BudgetBookExceptions() {
@@ -606,13 +606,15 @@ func TestAFundGroupsLegsCarryEachFundsInflow(t *testing.T) {
 
 // TestASourcesLegsRunFromItsMembers holds a hub split whose node takes
 // nothing in on the spine -- each revenue category and transfers/in -- to
-// legs running from its members into it, so the client stands its members
-// before it: every leg is member -> node repeating a leaf that leaves that
-// member, and every primary leaf leaving a member is re-pointed to start at
-// the node.
+// legs running from its members into it, and to declaring its members
+// before it, which the client stands them by: every leg is member -> node
+// repeating a leaf that leaves that member, every primary leaf leaving a
+// member is re-pointed to start at the node, and every other split stands
+// its members after its node.
 //
 // MUTATION: draw a source's legs node -> member and leave the leaf on its
-// member, as extendHubs does for no node, and this names every leg.
+// member, as extendHubs does for no node, and this names every leg; declare
+// every split after its node in sideOf and this names every source.
 func TestASourcesLegsRunFromItsMembers(t *testing.T) {
 	for _, year := range []int{2026, 2027} {
 		docs := committedDocs(t, year)
@@ -631,6 +633,15 @@ func TestASourcesLegsRunFromItsMembers(t *testing.T) {
 			return id != "" && parent[id] == "" && !takesIn[id] && slices.ContainsFunc(x.Splits, func(sp Split) bool {
 				return sp.Node == id && !sp.Alternative
 			})
+		}
+		for _, sp := range x.Splits {
+			want := SplitAfter
+			if !sp.Alternative && source(sp.Node) {
+				want = SplitBefore
+			}
+			if sp.Side != want {
+				t.Errorf("FY%d: the split of %s by %s stands its members %q it, want %q", year, sp.Node, sp.Key, sp.Side, want)
+			}
 		}
 		legs, leaves := 0, 0
 		for _, l := range x.Links {
@@ -684,5 +695,48 @@ func TestASplitInAnyFormButExtendIsRefusedAtTheWrite(t *testing.T) {
 		case !strings.Contains(err.Error(), "form"):
 			t.Errorf("a split declared %q was refused, but not for its form: %v", form, err)
 		}
+	}
+}
+
+// TestASplitOnNoSideIsRefusedAtTheWrite holds the expansion schedule's write
+// to its two split sides, which the client stands members by: the same
+// schedule with one split declaring another side, or none, is refused by
+// schema/enums.schema.json's split_side, naming the side.
+func TestASplitOnNoSideIsRefusedAtTheWrite(t *testing.T) {
+	d := committedDocs(t, 2026)[ExpansionProjection]
+	if d == nil || len(d.Splits) == 0 {
+		t.Fatal("the committed store builds no FY2026 expansion schedule with a split, so this test holds nothing")
+	}
+	for _, side := range []string{"left", ""} {
+		bad := *d
+		bad.Splits = slices.Clone(d.Splits)
+		bad.Splits[0].Side = side
+		_, err := encode(&bad, ExpansionProjection, schema.Projection)
+		switch {
+		case err == nil:
+			t.Errorf("a split of %s declared on side %q was written", bad.Splits[0].Node, side)
+		case !strings.Contains(err.Error(), "side"):
+			t.Errorf("a split on side %q was refused, but not for its side: %v", side, err)
+		}
+	}
+}
+
+// TestAFlowBetweenAHubsMembersIsRefused: no page prints a flow from one
+// enterprise fund to another today, and the stitch refuses to draw one,
+// since re-pointed onto the group it would run from a member back into its
+// own node, which the client lays out as a circular link.
+//
+// MUTATION: drop extendHubs' refusal and the stitch draws fund/610 ->
+// fund-group/enterprise beside the group's leg to fund/610.
+func TestAFlowBetweenAHubsMembersIsRefused(t *testing.T) {
+	const group = "fund-group/enterprise"
+	st := &stitch{nodes: map[string]Node{
+		group:      {ID: group, Role: RoleFundGroup},
+		"fund/600": {ID: "fund/600", Role: RoleFund, Parent: group},
+		"fund/610": {ID: "fund/610", Role: RoleFund, Parent: group},
+	}, links: []Link{{Source: "fund/610", Target: "fund/600", ValueCents: 1, Kind: KindExternal}}}
+	err := extendHubs(st, map[string]bool{group: true})
+	if err == nil || !strings.Contains(err.Error(), "runs between two members of "+group) {
+		t.Fatalf("extendHubs is %v over a flow between two of %s's funds, want it refused", err, group)
 	}
 }

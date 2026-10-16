@@ -71,6 +71,7 @@ func TestEverySharedEnumIsItsGoSet(t *testing.T) {
 		"role":       strs(project.Roles()),
 		"chart_form": strs(export.ChartForms()),
 		"split_form": strs(project.SplitForms()),
+		"split_side": strs(project.SplitSides()),
 		"split_key":  strs(project.SplitKeys()),
 		"mark_role":  strs(export.MarkRoles()),
 	} {

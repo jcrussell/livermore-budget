@@ -244,28 +244,60 @@ describe("the node filters beside the others", () => {
     assert.ok(said.includes(app.say("filter_only", { label: app.nameOf(node) })), said);
   });
 
-  // Mutation: decide onlyKeeps against the shaped chart alone, before the
-  // other removals, and this goes red: `only` removes every ribbon the
-  // others leave, an empty chart or a refusal.
-  test("a node shown alone is inert where the other removals leave none of its ribbons: filtered out too, or in a hidden group", async (t) => {
+  // Mutation: let onlyKeeps lapse to null where the other removals leave
+  // none of the node's ribbons, and this goes red: each state is drawn, the
+  // whole chart less the node's ribbons, with `only` naming nothing drawn;
+  // refuse setFilter's throw through fail() and the followed node's pin and
+  // isolation go.
+  test("a node shown alone whose ribbons the other removals all remove is refused, the chart, the state and the pin as they were", async (t) => {
     const { app, document } = await bootedApp();
     const id = plainNode(app);
     const before = drawnRibbons(document).length;
-    const at = (x) => app.projection.links.filter((l) => l.source === x || l.target === x).length;
-    const label = (x) => app.say("filter_only", { label: app.nameOf(app.laidNodes.find((n) => n.id === x)) });
-    const outLabel = label(id);
-    const out = { ok: app.setFilter({ nodes: new Set([id]), only: id }), drawn: drawnRibbons(document).length,
-      said: document.getElementById("filter-said").textContent };
-    app.resetFilters();
-    const groupLabel = label(OPENS);
-    const group = { ok: app.setFilter({ groups: new Set([OPENS]), only: OPENS }), drawn: drawnRibbons(document).length,
-      said: document.getElementById("filter-said").textContent };
-    t.diagnostic(`${id} out and alone: ${out.drawn} of ${before}; ${OPENS} hidden and alone: ${group.drawn} of ${before}`);
-    assert.deepEqual({ ok: out.ok, drawn: out.drawn, named: out.said.includes(outLabel) },
-      { ok: true, drawn: before - at(id), named: false });
-    assert.deepEqual({ ok: group.ok, drawn: group.drawn, named: group.said.includes(groupLabel) },
-      { ok: true, drawn: before - at(OPENS), named: false });
-    assert.equal(refusals(document).length, 0);
+    // A node with one ribbon, shown alone, then its one neighbour filtered out.
+    const lone = app.laidNodes.find((n) => !app.isGroupID(n.id) && !app.isSmaller(n.id) &&
+      app.projection.nodes.some((p) => p.id === n.id) && n.sourceLinks.length + n.targetLinks.length === 1);
+    assert.ok(lone, "no drawn node has one ribbon, so the neighbour case asserts nothing");
+    const neighbour = (lone.sourceLinks[0] || lone.targetLinks[0]);
+    const other = neighbour.source.id === lone.id ? neighbour.target.id : neighbour.source.id;
+    const tried = [];
+    /** Tries a state and reads what is on screen after. */
+    const attempt = (name, act) => {
+      const was = { only: app.filter.only, out: [...app.filter.nodes], hidden: [...app.filter.groups], drawn: drawnRibbons(document).length };
+      app.clearRefusal();
+      const ok = act();
+      const banners = refusals(document).map((b) => b.textContent);
+      tried.push({ name, ok, kept: JSON.stringify({ only: app.filter.only, out: [...app.filter.nodes], hidden: [...app.filter.groups],
+        drawn: drawnRibbons(document).length }) === JSON.stringify(was), said: banners.length === 1 &&
+        banners[0].startsWith("The chart could not be filtered: the other filters leave none of ") });
+    };
+    app.followNode(id);
+    attempt("out and alone", () => app.setFilter({ nodes: new Set([id]), only: id }));
+    const followed = { pinned: pinnedID(app), isolated: app.filter.isolated };
+    app.unpin();
+    attempt("its group hidden and alone", () => app.setFilter({ groups: new Set([OPENS]), only: OPENS }));
+    app.showOnlyNode(lone.id);
+    attempt("its one neighbour out", () => { app.filterOutNode(other); return null; });
+    t.diagnostic(`${before} ribbons; ${lone.id} alone, ${other} out: ${JSON.stringify(tried)}`);
+    assert.deepEqual(followed, { pinned: id, isolated: id });
+    assert.deepEqual(tried, [
+      { name: "out and alone", ok: false, kept: true, said: true },
+      { name: "its group hidden and alone", ok: false, kept: true, said: true },
+      { name: "its one neighbour out", ok: null, kept: true, said: true },
+    ]);
+    assert.equal(app.filter.only, lone.id);
+  });
+
+  // Mutation: let onlyKeeps lapse where the other removals leave none of the
+  // node's ribbons and this goes red: the link draws the chart less the
+  // node, `only` and `out` both in the state, and no banner.
+  test("a link showing a node alone and filtering it out falls back to the opening view, saying why", async () => {
+    const { app, document } = await bootedApp();
+    const id = plainNode(app);
+    const got = await app.restoreView(app.hashOf(Object.assign({}, app.viewState(), { only: id, out: [id] })));
+    const banners = refusals(document).map((b) => b.textContent);
+    assert.deepEqual({ got, only: app.filter.only, out: [...app.filter.nodes], banners: banners.length },
+      { got: app.FAILED, only: "", out: [], banners: 1 });
+    assert.ok(banners[0].includes("the chart could not be filtered as it names"), banners[0]);
   });
 
   // Mutation: drop setFilter's isolate after the redraw and this goes red:

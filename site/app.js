@@ -778,7 +778,7 @@ export function redraw(next, refused = "That could not be drawn", landOn, anchor
     askAffordances();
   } catch (e) {
     ({ expansions, frontier, wholeSplits, laidNodes, groupIndex, projection, shown, whole } = was);
-    fail(refused + ": " + (e instanceof Error ? e.message : String(e)));
+    refuseInPlace(refused + ": " + (e instanceof Error ? e.message : String(e)));
     return false;
   }
   clearRefusal();
@@ -955,7 +955,8 @@ export function clickNode(d, at = Infinity) {
  * split's hub, or folds a hub back (collapseNode) and pins it, or the node
  * it folded into where it is drawn no more; a tail drawn out is drawn no
  * more and pins nothing. A node offering nothing is pinned. An open the
- * chart refuses pins nothing, so the refusal fail() wrote stays in the panel.
+ * chart refuses pins nothing: a pin held before stays (refuseInPlace), and
+ * with none the refusal stays in the panel.
  * @param {LaidNode} d
  */
 function activate(d) {
@@ -1499,9 +1500,11 @@ export function paintBulk() {
 }
 
 /**
- * Wires Expand all and Collapse all. A button its own press disables hands
- * focus to the other, which a press can never leave disabled too, so the
- * keyboard is not dropped on the body.
+ * Wires Expand all and Collapse all. A button its own press disables, where
+ * it held focus, hands focus to the other, which a press can never leave
+ * disabled too, so the keyboard is not dropped on the body. A press that
+ * did not take focus -- a click in Safari -- hands nothing, so a later
+ * Space or Enter does not press the other.
  */
 export function wireBulk() {
   const all = maybeEl("chart-expand-all");
@@ -1511,8 +1514,9 @@ export function wireBulk() {
   for (const [b, other, act] of pairs) {
     if (!b) continue;
     b.addEventListener("click", () => {
+      const held = document.activeElement === b;
       guarded("redraw the chart", act);
-      if (b.hasAttribute("disabled") && other && !other.hasAttribute("disabled")) other.focus();
+      if (held && b.hasAttribute("disabled") && other && !other.hasAttribute("disabled")) other.focus();
     });
   }
 }
@@ -1668,8 +1672,12 @@ export function filterFor(doc, state = filter) {
  * The ribbons of a shaped chart a filter state's `only` keeps: those Follow
  * leaves undimmed for that node (follows), so showing a node alone removes
  * what following it dims. Null where nothing is shown alone, and where the
- * node is one the state's other removals leave no ribbon of, which is inert
- * as an undrawn group is: `only` never removes every ribbon.
+ * shaped chart draws no ribbon of the node, which is inert as an undrawn
+ * group is.
+ *
+ * THROWS where the state's other removals leave none of the node's ribbons:
+ * `only` would then remove every ribbon, and it never lapses to drawing them
+ * all, so every draw under such a state is refused.
  * @param {FiscProjection} doc
  * @param {Readonly<FilterState>} state
  * @param {Map<string, FiscNode>} index the hue index the chart is coloured by
@@ -1682,9 +1690,14 @@ export function onlyKeeps(doc, state, index) {
   const end = (/** @type {string} */ at) => byID.get(at) || /** @type {FiscNode} */ ({ id: at });
   const keeps = (/** @type {FiscLink} */ l) =>
     follows(id, /** @type {any} */ ({ source: end(l.source), target: end(l.target) }), index);
+  if (!doc.links.some(keeps)) return null;
   const rest = core.filterDocument(doc, (n) => core.fundGroupOf(index, n),
     { groups: state.groups, kinds: state.kinds, nodes: state.nodes, smallest: 0 });
-  return rest.doc.links.some(keeps) ? keeps : null;
+  if (!rest.doc.links.some(keeps)) {
+    const n = byID.get(id);
+    throw new Error("the other filters leave none of " + (n ? nameOf(n) : id) + "'s money to show alone");
+  }
+  return keeps;
 }
 
 /**
@@ -2137,12 +2150,15 @@ export function setFilter(next) {
   } catch (e) {
     filter = was;
     syncFilterPanel();
-    fail("The chart could not be filtered: " + (e instanceof Error ? e.message : String(e)));
+    refuseInPlace("The chart could not be filtered: " + (e instanceof Error ? e.message : String(e)));
     return false;
   }
   shown = filtered;
   whole = unfiltered;
   dropPin();
+  if (filter.isolated && !laidNodes.some((n) => isolates(filter.isolated, n))) {
+    filter = Object.freeze(Object.assign({}, filter, { isolated: "" }));
+  }
   resetDetail();
   hideTip();
   buildLegend();
@@ -3789,23 +3805,40 @@ export function resetDetail() {
 
 /**
  * Refuses to draw, visibly: in the drawer and in a role="alert" banner at the
- * top, since the drawer sits below a chart a reader may never scroll past. The drawer holds the refusal, so it holds no pin and
- * follows no node.
+ * top, since the drawer sits below a chart a reader may never scroll past.
+ * The drawer holds the refusal, so it holds no pin and follows no node. A
+ * redraw or a filter that put its state back says so by refuseInPlace
+ * instead.
  *
  * @param {string} message
  */
 export function fail(message) {
   const had = pinned;
   pinned = null;
-  previewed = null;
   if (followsNode()) setIsolated("");
   else if (had) applyEmphasis();
-  const panel = el("detail");
-  panel.replaceChildren();
-  panel.append(h("p", "", message));
-  for (const id of ["detail-pin", "detail-follow"]) {
-    const button = maybeEl(id);
-    if (button) button.hidden = true;
+  refuseInPlace(message);
+}
+
+/**
+ * Refuses a redraw or a filter that put the state back as it was: the
+ * banner says why, and the pin, the isolation and a pinned drawer stay
+ * exactly as they were, so the chart still follows the node the drawer
+ * shows. With nothing pinned the drawer holds the refusal too, as fail()'s
+ * does.
+ *
+ * @param {string} message
+ */
+export function refuseInPlace(message) {
+  if (!pinned) {
+    previewed = null;
+    const panel = el("detail");
+    panel.replaceChildren();
+    panel.append(h("p", "", message));
+    for (const id of ["detail-pin", "detail-follow"]) {
+      const button = maybeEl(id);
+      if (button) button.hidden = true;
+    }
   }
 
   const content = document.querySelector("main");
@@ -4240,8 +4273,9 @@ export async function main() {
       // splits at once has no single last one to undo.
       if (closeChartMenu(true)) return;
       hideTip();
+      // unpin lets a node's isolation go; a fund group's is the swatch's.
       unpin();
-      setIsolated("");
+      if (filter.isolated) setIsolated("");
     }
   });
   if (typeof window.matchMedia === "function") {

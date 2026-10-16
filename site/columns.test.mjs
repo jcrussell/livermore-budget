@@ -53,35 +53,76 @@ function sources() {
       link("fund-group/g", "fund/1", "revenue-line/x/a/b -> fund/1 external"),
     ],
     splits: [
-      { node: "revenue/x", key: "lines", form: "extend", alternative: false },
-      { node: "revenue-line/x/a", key: "parts", form: "extend", alternative: false },
-      { node: "fund-group/g", key: "funds", form: "extend", alternative: false },
+      { node: "revenue/x", key: "lines", form: "extend", alternative: false, side: "before" },
+      { node: "revenue-line/x/a", key: "parts", form: "extend", alternative: false, side: "before" },
+      { node: "fund-group/g", key: "funds", form: "extend", alternative: false, side: "after" },
     ],
   };
 }
 
-describe("a split stands its members on the side its links run from", () => {
+describe("a split stands its members on the side it declares", () => {
   // Mutation: expansionSlots placing every member at its parent's slot + 1
-  // and the source's line stands after it, in its group's way.
-  test("a source's members, and theirs, stand before it; a group's after it", async () => {
+  // and the source's line stands after it, in its group's way; infer a side
+  // from the links between a node and its members, a split none runs
+  // between standing after it, and the linkless copy's line stands after
+  // its source.
+  test("a source's members, and theirs, stand before it; a group's after it; whatever links run between them", async () => {
     const { app } = await bootedApp();
-    const slots = app.expansionSlots(sources(), [0, 2]);
-    const at = Object.fromEntries(slots);
-    assert.ok(at["revenue-line/x/a/b"] < at["revenue-line/x/a"] && at["revenue-line/x/a"] < at["revenue/x"] &&
-      at["revenue/x"] < at["fund-group/g"] && at["fund-group/g"] < at["fund/1"], JSON.stringify(at));
-    assert.ok([...slots.values()].every((k) => k >= 0), JSON.stringify(at));
+    for (const doc of [sources(), Object.assign(sources(), { links: [] })]) {
+      const slots = app.expansionSlots(doc, [0, 2]);
+      const at = Object.fromEntries(slots);
+      assert.ok(at["revenue-line/x/a/b"] < at["revenue-line/x/a"] && at["revenue-line/x/a"] < at["revenue/x"] &&
+        at["revenue/x"] < at["fund-group/g"] && at["fund-group/g"] < at["fund/1"], JSON.stringify(at));
+      assert.ok([...slots.values()].every((k) => k >= 0), JSON.stringify(at));
+    }
   });
 
-  // Mutation: drop the both-ways refusal and the line is placed after its
-  // source on the strength of one link.
-  test("a split whose links run both ways, or a member opening back toward its grandparent, is refused", async () => {
+  // Mutation: default an undeclared side to after, as the slots once did
+  // for a split no link runs between, and the line is placed after its
+  // source with nothing saying so; drop the back refusal and the line's part
+  // stands in its source's slot.
+  test("a split declaring no side, or a member opening back toward its grandparent, is refused", async () => {
     const { app } = await bootedApp();
-    const both = sources();
-    both.links.push({ source: "revenue/x", target: "revenue-line/x/a", value_cents: 1, kind: "external", fact_ids: ["g"] });
-    assert.throws(() => app.expansionSlots(both, [0, 2]), /whose links run both from and to its members/);
+    for (const side of [undefined, "left"]) {
+      const none = sources();
+      none.splits[0] = Object.assign({}, none.splits[0], { side });
+      assert.throws(() => app.expansionSlots(none, [0, 2]), /which declares no side of revenue\/x its members stand on/);
+    }
     const back = sources();
-    back.links[0] = Object.assign({}, back.links[0], { source: "revenue-line/x/a", target: "revenue-line/x/a/b" });
+    back.splits[1] = Object.assign({}, back.splits[1], { side: "after" });
     assert.throws(() => app.expansionSlots(back, [0, 2]), /opening back toward revenue\/x/);
+  });
+
+  // A flow between two members of an inflow hub, re-pointed onto it as
+  // expansion-splits-tie's own plant does (TestAFlowBetweenAHubsMembersIsALeaf),
+  // runs from a member back into its node beside the node's leg to that
+  // member: the slots place it on the declared side, and d3 refuses the
+  // circle. That is why the stitch and the check refuse it; this holds the
+  // page to a banner and the chart it had rather than a half-drawn one.
+  test("a leaf between two members of one hub, drawn back into it, is refused with the chart left as it was", async (t) => {
+    const year = YEARS.find((y) => y.year === 2027);
+    const planted = structuredClone(columnFixture(year.path.replace(/\.json$/, "")));
+    const at = (id) => planted.nodes.findIndex((n) => n.id === id);
+    const group = at("fund-group/enterprise"), from = at("fund/610"), to = at("fund/600");
+    const leaf = "revenue-line/charges-for-services/charges-for-services -> fund/600 external";
+    const flow = "fund/610 -> fund/600 external";
+    const links = planted.schedules.expansion.links;
+    const leg = links.find((l) => l.from === group && l.to === to && l.repeats === leaf);
+    const moved = links.find((l) => l.from === at("revenue/charges-for-services") && l.to === group && l.repeats === leaf);
+    assert.ok(leg !== undefined && moved !== undefined, "the fixture draws no leaf onto the group to plant from");
+    Object.assign(leg, { repeats: flow });
+    Object.assign(moved, { from, repeats: flow });
+    const { app, document } = await bootedApp({ checkedStem: year.stem, plan: { [year.path]: { doc: planted } } });
+    assert.deepEqual(refusals(document).map((b) => b.textContent), [], "the root drew the plant");
+    const laid = app.laidNodes.map((n) => n.id).sort().join(",");
+    const drew = app.expandNode("fund-group/enterprise");
+    await settle();
+    const banners = refusals(document).map((b) => b.textContent);
+    t.diagnostic(`opening the group drew ${drew}; banners ${JSON.stringify(banners)}`);
+    assert.equal(drew, false);
+    assert.deepEqual(banners, ["That could not be split: circular link"]);
+    assert.deepEqual(app.expansions, []);
+    assert.equal(app.laidNodes.map((n) => n.id).sort().join(","), laid);
   });
 });
 
@@ -101,7 +142,7 @@ describe("an extend chain has the slots its root has on its side", () => {
         const [source, target] = after ? [ids[i], id] : [id, ids[i]];
         return { source, target, value_cents: 1, kind: "external", fact_ids: ["f"] };
       }),
-      splits: ids.slice(0, -1).map((node) => ({ node, key: "k", form: "extend", alternative: false })),
+      splits: ids.slice(0, -1).map((node) => ({ node, key: "k", form: "extend", alternative: false, side: after ? "after" : "before" })),
     };
   };
 
@@ -171,27 +212,38 @@ describe("a split whose chart will not draw", () => {
     assert.ok(app.pinned === null, app.pinned && app.pinned.id);
   });
 
-  // Mutation: leave the pin set in fail() and this goes red: Pin is shown
-  // pressed over the refusal, and the hover previews nothing.
-  test("refused, lets the pin go: a swatch isolated after shows Pin unpressed over the refusal, and a hover previews", async (t) => {
+  // Mutation: refuse redraw's throw through fail() and this goes red: the
+  // pin and the isolation go, the drawer shows the refusal, and a split
+  // refused leaves the chart as it was with the reader's place lost.
+  test("refused, keeps the pin and the isolation: the drawer still shows the node followed, Follow pressed, under the banner", async (t) => {
     const broken = structuredClone(columnFixture("fy2026-adopted"));
-    const sales = broken.nodes.findIndex((n) => n.id === "revenue/taxes/sales");
-    broken.schedules.expansion.splits.push({ node: sales, key: "lines-planted", form: "refine", alternative: true });
+    const id = "revenue/taxes/sales";
+    broken.schedules.expansion.splits.push({ node: broken.nodes.findIndex((n) => n.id === id), key: "lines-planted", form: "refine", alternative: true });
     const config = structuredClone(pageFixture().config);
     config.split_labels["lines-planted"] = "planted lines";
     const { app, document } = await bootedApp({ config, checkedStem: YEARS[0].stem, plan: { [YEARS[0].path]: { doc: broken } } });
-    app.pin(app.laidNodes.find((n) => n.id === "fund-group/general"));
-    const drew = app.expandNode("revenue/taxes/sales", "lines-planted");
+    app.followNode(id);
+    const drew = app.expandNode(id, "lines-planted");
     await settle();
-    document.querySelector("#legend [data-group]").click();
-    const button = document.getElementById("detail-pin");
-    const pressed = !button.hidden && button.getAttribute("aria-pressed") === "true";
-    const over = refusals(document).length === 1 && document.getElementById("detail").textContent === refusals(document)[0].textContent;
-    const hovered = app.laidNodes.find((n) => n.id === "revenue/taxes/sales");
-    app.preview(hovered);
-    const previewed = app.previewed ? app.previewed.id : "";
-    t.diagnostic(`refused ${!drew}; Pin pressed over the refusal ${pressed}; the hover previewed "${previewed}"`);
-    assert.deepEqual({ drew, over, pressed, previewed }, { drew: false, over: true, pressed: false, previewed: "revenue/taxes/sales" });
+    const follow = document.getElementById("detail-follow");
+    const banners = refusals(document).map((b) => b.textContent);
+    const got = { drew, banners: banners.length, pinned: app.pinned ? app.pinned.id : "", isolated: app.filter.isolated,
+      follow: !follow.hidden && follow.getAttribute("aria-pressed") === "true",
+      drawer: document.getElementById("detail").textContent === banners[0] };
+    t.diagnostic(JSON.stringify(got));
+    assert.deepEqual(got, { drew: false, banners: 1, pinned: id, isolated: id, follow: true, drawer: false });
+  });
+
+  // Mutation: let fail() keep a followed node's isolation and this goes
+  // red: the chart follows a node the drawer, holding the refusal, no
+  // longer shows.
+  test("a refusal that is no rollback lets the pin go, and a followed node's isolation with it", async () => {
+    const { app, document } = await bootedApp({ checkedStem: YEARS[0].stem });
+    const id = "revenue/taxes/sales";
+    app.followNode(id);
+    app.fail("planted");
+    assert.deepEqual({ pinned: app.pinned ? app.pinned.id : "", isolated: app.filter.isolated,
+      drawer: document.getElementById("detail").textContent }, { pinned: "", isolated: "", drawer: "planted" });
   });
 });
 

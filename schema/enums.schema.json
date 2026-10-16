@@ -39,6 +39,11 @@
       "type": "string",
       "enum": ["extend"]
     },
+    "split_side": {
+      "description": "Which side of its node a split's members stand on, the way every link between the node and a member runs: after it, the links running from it, or before it, running into it; project.SplitSides.",
+      "type": "string",
+      "enum": ["after", "before"]
+    },
     "split_key": {
       "description": "What a node of the expansion schedule splits into, a split's key; project.SplitKeys.",
       "type": "string",

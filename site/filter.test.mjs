@@ -392,6 +392,20 @@ describe("the filter panel", () => {
     assert.equal(app.filter.groups.size, 0);
   });
 
+  // Mutation: drop setFilter's clearing of an isolation the filtered chart
+  // draws no mark of, and this goes red: the hash says iso= a group the
+  // chart does not draw, which moveTo refuses on reload.
+  test("hiding the fund group followed lets its isolation go, so the link says no group the chart does not draw", async () => {
+    const { app, window } = await bootedApp({ checkedStem: YEARS[0].stem });
+    const g = "fund-group/general";
+    app.setIsolated(g);
+    assert.ok(window.location.hash.includes("iso="), window.location.hash);
+    app.setFilter({ groups: new Set([g]) });
+    const got = { hidden: [...app.filter.groups], isolated: app.filter.isolated, drawn: app.laidNodes.some((n) => app.isolates(g, n)),
+      hash: window.location.hash.includes("iso=") };
+    assert.deepEqual(got, { hidden: [g], isolated: "", drawn: false, hash: false });
+  });
+
   test("a hidden kind's ribbons leave the chart, and None then All hides every group's and puts them back without a refusal", async (t) => {
     const { app, document } = await bootedApp({ checkedStem: YEARS[0].stem });
     const chart = document.getElementById("chart");

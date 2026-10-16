@@ -163,13 +163,14 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["node", "key", "form", "alternative"],
+        "required": ["node", "key", "form", "alternative", "side"],
         "additionalProperties": false,
         "properties": {
           "node": { "type": "string", "minLength": 1 },
           "key": { "type": "string", "minLength": 1 },
           "form": { "$ref": "https://jcrussell.github.io/livermore-budget/schema/enums.schema.json#/$defs/split_form" },
-          "alternative": { "type": "boolean" }
+          "alternative": { "type": "boolean" },
+          "side": { "$ref": "https://jcrussell.github.io/livermore-budget/schema/enums.schema.json#/$defs/split_side" }
         }
       }
     },

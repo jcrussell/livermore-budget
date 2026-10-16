@@ -126,6 +126,7 @@ type ColumnSplit struct {
 	Key         string `json:"key"`
 	Form        string `json:"form"`
 	Alternative bool   `json:"alternative"`
+	Side        string `json:"side"`
 }
 
 // ColumnLink references its ends by index into the node table, which is why
@@ -192,6 +193,7 @@ type decoded struct {
 		Key         string `json:"key"`
 		Form        string `json:"form"`
 		Alternative bool   `json:"alternative"`
+		Side        string `json:"side"`
 	} `json:"splits"`
 	Metadata struct {
 		FiscalYear      int             `json:"fiscal_year"`
@@ -385,7 +387,7 @@ func ColumnsOf(projections map[string][]byte, generatedBy string) (map[string]Co
 				return nil, ColumnIndex{}, fmt.Errorf("column %s, schedule %s: split of %s names a node the document does not carry",
 					key, schedule, sp.Node)
 			}
-			splits = append(splits, ColumnSplit{Node: i, Key: sp.Key, Form: sp.Form, Alternative: sp.Alternative})
+			splits = append(splits, ColumnSplit{Node: i, Key: sp.Key, Form: sp.Form, Alternative: sp.Alternative, Side: sp.Side})
 		}
 		col.Schedules[schedule] = ColumnSched{
 			Nodes:   drawn,

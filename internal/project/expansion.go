@@ -33,6 +33,18 @@ const SplitExtend = "extend"
 // SplitForms is the closed set of split forms.
 func SplitForms() []string { return []string{SplitExtend} }
 
+// SplitAfter and SplitBefore are the sides of its node a split's members
+// stand on: after it where the node's links to them run from it, before it
+// where they run from them into it, as a hub's do at a node taking nothing
+// in on the spine.
+const (
+	SplitAfter  = "after"
+	SplitBefore = "before"
+)
+
+// SplitSides is the closed set of split sides.
+func SplitSides() []string { return []string{SplitAfter, SplitBefore} }
+
 // Split is one way a node of the expansion schedule opens. Its members are
 // the nodes whose Parent is Node and whose Alternative is Key on an
 // alternative split, or "" on the primary one.
@@ -45,6 +57,58 @@ type Split struct {
 	// true on a split a reader chooses instead of it, whose members and
 	// links carry its Key.
 	Alternative bool `json:"alternative"`
+	// Side is SplitAfter or SplitBefore: which way every link between
+	// Node and a member of this split runs, and so the column its members
+	// stand in. [IsLeg] reads a hub's legs by it.
+	Side string `json:"side"`
+}
+
+// sideOf is the side a split of d stands its members on at a node that
+// does, or does not, take money in on the spine.
+func sideOf(d splitDecl, takesIn bool) string {
+	if d.hub && !takesIn {
+		return SplitBefore
+	}
+	return SplitAfter
+}
+
+// PrimarySides is each node's primary split's side, by node.
+func PrimarySides(splits []Split) map[string]string {
+	out := map[string]string{}
+	for _, sp := range splits {
+		if !sp.Alternative {
+			out[sp.Node] = sp.Side
+		}
+	}
+	return out
+}
+
+// IsLeg answers whether a link of the expansion schedule is a hub leg: it
+// repeats a leaf and runs between a node and its own primary member, and is
+// not that leaf re-pointed onto the node -- the node at the end its split's
+// side re-points (the target after, the source before), the far end the
+// leaf's own. So a flow between two members of a hub, re-pointed onto it, is
+// a leaf, while a leg run against its side stays a leg for
+// expansion-splits-tie to name. sides is [PrimarySides] of the schedule.
+func IsLeg(l Link, nodes map[string]Node, sides map[string]string) bool {
+	if l.Repeats == "" || l.Alternative != "" {
+		return false
+	}
+	member := func(id, parent string) bool {
+		m, ok := nodes[id]
+		return ok && m.Parent == parent && m.Alternative == ""
+	}
+	if !member(l.Target, l.Source) && !member(l.Source, l.Target) {
+		return false
+	}
+	src, tgt := LeafEnds(l.Repeats)
+	if member(l.Source, l.Target) && sides[l.Target] == SplitAfter && l.Source == src {
+		return false
+	}
+	if member(l.Target, l.Source) && sides[l.Source] == SplitBefore && l.Target == tgt {
+		return false
+	}
+	return true
 }
 
 // splitDecl is what a node of one role splits into.
@@ -444,7 +508,11 @@ func (e *expansion) Document(facts []fact.Fact, o Options) (*Document, error) {
 		return nil, err
 	}
 
-	if err := extendHubs(st, spine); err != nil {
+	takesIn := map[string]bool{}
+	for _, l := range spine.Links {
+		takesIn[l.Target] = true
+	}
+	if err := extendHubs(st, takesIn); err != nil {
 		return nil, err
 	}
 	if err := declareRestating(st); err != nil {
@@ -452,7 +520,7 @@ func (e *expansion) Document(facts []fact.Fact, o Options) (*Document, error) {
 	}
 	declareCompleting(st, spine)
 
-	splits, splitErr := splitsOf(st.nodes, st.links)
+	splits, splitErr := splitsOf(st.nodes, st.links, takesIn)
 	if splitErr != nil {
 		return nil, splitErr
 	}
@@ -504,25 +572,27 @@ func CellKey(source, target string, kind LinkKind) string {
 	return source + " -> " + target + " " + string(kind)
 }
 
-// extendHubs draws every hub split's node beside its members. Where the node
-// takes money in on the spine, each primary leaf arriving at a member is
+// extendHubs draws every hub split's node beside its members, by its side
+// ([sideOf]) at a node takesIn says does or does not take money in on the
+// spine. After its node, each primary leaf arriving at a member is
 // re-pointed to end at the node, and a leg from the node to the member
-// repeats it; where the node takes nothing in, as a source does, each primary
-// leaf leaving a member is re-pointed to start at the node, and a leg from the
-// member to the node repeats it. A leaf from one hub's member to another's is
-// re-pointed at both ends and repeated by a leg at each. Every leaf a leg
-// repeats, and every leg, names that leaf's own ends in Repeats. A leg is a
-// copy of one cited leaf: its cents, facts, kind, reduction words and derived
-// flag are the leaf's, so the stitch publishes no sum, and a member nothing
-// arrives at is reached by no leg.
+// repeats it; before it, as at a source, each primary leaf leaving a member
+// is re-pointed to start at the node, and a leg from the member to the node
+// repeats it, and a leaf arriving at a member is refused. A leaf from a
+// member of a hub before its node to a member of one after its node is
+// re-pointed at both ends and repeated by a leg at each; a leaf leaving a
+// member of a hub after its node keeps that end on its member. A leaf
+// between two members of one hub is refused: re-pointed, it would run from
+// a member back into its own node, against the split's side, which the
+// client cannot draw. Every leaf a leg repeats, and every leg, names that
+// leaf's own ends in Repeats. A leg is a copy of one cited leaf: its cents,
+// facts, kind, reduction words and derived flag are the leaf's, so the
+// stitch publishes no sum, and a member nothing arrives at is reached by no
+// leg.
 //
 // A hub split is declared only on a root, so a re-pointed end is a root and
 // nothing above it opens.
-func extendHubs(st *stitch, spine *Document) error {
-	takesIn := map[string]bool{}
-	for _, l := range spine.Links {
-		takesIn[l.Target] = true
-	}
+func extendHubs(st *stitch, takesIn map[string]bool) error {
 	hubOf := func(id string) (string, bool) {
 		n := st.nodes[id]
 		if n.Parent == "" || n.Alternative != "" {
@@ -530,6 +600,10 @@ func extendHubs(st *stitch, spine *Document) error {
 		}
 		d, ok := splitOf(st.nodes[n.Parent].Role, "", false)
 		return n.Parent, ok && d.hub
+	}
+	after := func(hub string) bool {
+		d, _ := splitOf(st.nodes[hub].Role, "", false)
+		return sideOf(d, takesIn[hub]) == SplitAfter
 	}
 	var legs []Link
 	for i := range st.links {
@@ -556,7 +630,7 @@ func extendHubs(st *stitch, spine *Document) error {
 				return fmt.Errorf("expansion: %s is a hub split's node and not a root", hub)
 			}
 			arriving := end == l.Target
-			if arriving != takesIn[hub] {
+			if arriving != after(hub) {
 				if arriving {
 					return fmt.Errorf("expansion: %s arrives at %s, a member of %s, which takes nothing in on the spine",
 						key, end, hub)
@@ -570,6 +644,10 @@ func extendHubs(st *stitch, spine *Document) error {
 				leg(end, hub)
 				l.Source = hub
 			}
+		}
+		if hub, ok := hubOf(l.Source); ok && hub == l.Target {
+			return fmt.Errorf("expansion: %s runs between two members of %s, and would be drawn from %s back into it",
+				key, hub, l.Source)
 		}
 	}
 	st.links = append(st.links, legs...)
@@ -1085,9 +1163,10 @@ func drawnElsewhere(f *fact.Fact) bool {
 }
 
 // splitsOf is every split a node of the stitch has members in, in node order,
+// each on its side at a node takesIn says does or does not take money in,
 // refusing members under a node whose role declares no such split, or one
 // whose split is not extend, and a node with no link to or from a member.
-func splitsOf(nodes map[string]Node, links []Link) ([]Split, error) {
+func splitsOf(nodes map[string]Node, links []Link, takesIn map[string]bool) ([]Split, error) {
 	type key struct{ node, alternative string }
 	members := map[key][]string{}
 	for _, n := range nodes {
@@ -1119,7 +1198,8 @@ func splitsOf(nodes map[string]Node, links []Link) ([]Split, error) {
 			return nil, fmt.Errorf("expansion: %q splits by %s into %s and a link between it and a member is %v",
 				k.node, d.form, d.key, reaches[k])
 		}
-		out = append(out, Split{Node: k.node, Key: d.key, Form: d.form, Alternative: d.alternative})
+		out = append(out, Split{Node: k.node, Key: d.key, Form: d.form, Alternative: d.alternative,
+			Side: sideOf(d, takesIn[k.node])})
 	}
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].Node != out[j].Node {
