@@ -1154,6 +1154,20 @@ svg.sankey .glyph:focus-visible circle {
   border-color: var(--rule);
 }
 
+.chart-menu-choice:disabled {
+  cursor: default;
+  color: var(--muted);
+  border-color: var(--border);
+}
+
+/* Why a choice under it is not offered. */
+.chart-menu-why {
+  max-width: 28em;
+  color: var(--ink-2);
+  font-size: 12px;
+  padding: 0 8px;
+}
+
 /* EVERY NODE KEEPS THE POINTER: a click does something on every node.
    Which marks open is their ⊕. */
 svg.sankey .node {

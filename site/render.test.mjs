@@ -1020,8 +1020,8 @@ describe("the classes the client sets and the rules the stylesheet carries", () 
       for (const el of document.querySelectorAll("*")) for (const c of classesIn(el.getAttribute("class"))) worn.add(c);
     };
     // The root, the tooltip on a mark and on a ribbon, the panel on a
-    // ribbon, a pin, an isolation, a zoom, every split the page offers, a
-    // tail drawn out, and a refusal.
+    // ribbon, a pin, an isolation, a node menu refusing a filter, a zoom,
+    // every split the page offers, a tail drawn out, and a refusal.
     snap();
     const mark = marksIn(chart)[0];
     const ribbon = ribbonsIn(chart)[0];
@@ -1044,6 +1044,13 @@ describe("the classes the client sets and the rules the stylesheet carries", () 
     assert.ok(part, "no mark is drawn at less than its figure under the filter");
     app.showTip({ target: chart, clientX: 0, clientY: 0 }, part.__data__); app.pin(part.__data__); snap();
     app.resetFilters();
+    // A node menu offering a filter the redraw would refuse, with why.
+    app.expandNode("fund-group/general"); await settle();
+    const refusing = app.laidNodes.find((n) => n.id === "expenditure/services-and-supplies");
+    assert.ok(refusing, "Services & Supplies is not drawn with the General Fund open");
+    app.openNodeMenu(refusing, { left: 0, top: 0 }); snap(); app.closeChartMenu();
+    assert.ok(worn.has("chart-menu-why"), "no node menu said why a filter is not offered");
+    app.collapseAll(); await settle();
     // A zoomed chart, for the class that clips it.
     app.zoomBy(2); snap(); app.resetZoom();
     let expandedAt = "";

@@ -8,7 +8,7 @@
 
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { bootedApp, loadApp, split, revealed, settle, fire, refusals, dollars } from "./testlib.mjs";
+import { bootedApp, loadApp, split, revealed, settle, fire, refusals, dollars, columnFixture } from "./testlib.mjs";
 
 const OPENS = "fund-group/general";
 
@@ -743,6 +743,26 @@ describe("the node filters in the URL", () => {
     assert.ok(window.location.hash === app.hashOf(app.viewState()), window.location.hash);
   });
 
+  // Mutation: keep the year on screen's drawnNames through showYear's draw
+  // (no clear) and this goes red: the refusal names the node shown alone by
+  // the name the year on screen drew it by, not the label of the year
+  // refused.
+  test("a link to another year refused for its node shown alone names the node in that year's words", async (t) => {
+    const other = columnFixture("fy2027-adopted");
+    const { app, document } = await bootedApp({ checkedStem: "sankey", plan: { "fy2027-adopted.json": { doc: other } } });
+    const id = plainNode(app);
+    const there = other.nodes.find((n) => n.id === id);
+    assert.ok(there, `${id} is not in the other year's schedule`);
+    there.label = "Renamed in the other year";
+    const drawnAs = app.nameOf(app.laidNodes.find((n) => n.id === id));
+    const year = app.CONFIG.years.find((y) => y.path.includes("fy2027-adopted"));
+    assert.ok(year && app.shownYear !== year, "the page does not open on another year than fy2027-adopted");
+    await app.restoreView(app.hashOf({ year: app.yearKey(year), hide: [], hidekind: [], out: [id], only: id, min: 0, iso: "", x: [] }));
+    const said = refusals(document).map((b) => b.textContent).join(" | ");
+    t.diagnostic(`${id}, drawn as "${drawnAs}": ${said}`);
+    assert.ok(said.includes("none of Renamed in the other year's money"), said);
+  });
+
   // Mutation: make the link's removals the page's filter before moveTo's
   // showYear (filter = removals; showYear(year)) and this goes red: the
   // reader's year switch overtaking the link draws the year they picked
@@ -933,6 +953,92 @@ describe("the node filters and an open hub", () => {
       out: { checked: false, offered: false, drawn: false, hash: true },
       back: { checked: true, offered: true, drawn: true, groups: 0, nodes: 0 },
     });
+    assert.equal(refusals(document).length, 0);
+  });
+
+  // Mutation: offer both filters whatever filterRefusal answers (no
+  // `refused` on the node menu's choices) and this goes red: Services &
+  // Supplies' choices are enabled with the General Fund open by divisions,
+  // and choosing one is refused with a banner.
+  test("with the General Fund open by divisions a filter the redraw would refuse is offered disabled, saying why; one it draws is offered", async (t) => {
+    const { app, document } = await bootedApp();
+    await split(app, OPENS);
+    const offered = (id) => {
+      fire(markOf(document, id), "contextmenu", { button: 2, clientX: 40, clientY: 40 });
+      const menu = document.getElementById("node-menu");
+      const seen = {};
+      for (const b of menu.querySelectorAll("button")) {
+        const why = b.getAttribute("aria-describedby");
+        const said = why ? document.getElementById(why) : null;
+        seen[b.dataset.act] = { disabled: b.disabled, why: said ? said.textContent : "" };
+      }
+      app.closeChartMenu();
+      return seen;
+    };
+    const S = "expenditure/services-and-supplies";
+    const refused = offered(S);
+    const works = offered("fund/100");
+    t.diagnostic(`${S}: ${JSON.stringify(refused)}; fund/100: ${JSON.stringify(works)}`);
+    for (const act of ["out", "only"]) {
+      assert.equal(refused[act].disabled, true, `${act} on ${S} is offered`);
+      assert.ok(refused[act].why.includes("several leaves together"), refused[act].why);
+      assert.deepEqual(works[act], { disabled: false, why: "" }, act);
+    }
+    assert.deepEqual(refused.follow, { disabled: false, why: "" });
+    // What the menu says before is what the redraw says after.
+    app.filterOutNode(S);
+    const banner = refusals(document).map((b) => b.textContent).join(" | ");
+    assert.ok(banner.includes(refused.out.why), banner);
+  });
+
+  // Mutation: exclude only the node filtered out's own id from the search's
+  // pool (no core.withinNode arm in searchMatches) and the first arm goes
+  // red: Police, a division of the General Fund filtered out, is offered;
+  // drop the `only` arm and the second does: an enterprise fund outside the
+  // General Fund's money is offered, and Enter refuses it.
+  test("search offers no node within a node filtered out, nor one outside the money of the node shown alone", async (t) => {
+    const { app, document } = await bootedApp();
+    await split(app, OPENS);
+    const within = app.withinNode(app.fetched, "fund/100");
+    app.filterOutNode("fund/100");
+    const police = app.searchMatches("Police").map((n) => n.id);
+    const inside = app.fetched.nodes.filter((n) => within.has(n.id) && n.id !== "fund/100" && /police/i.test(n.label)).map((n) => n.id);
+    app.resetFilters();
+    app.showOnlyNode("fund/100");
+    const g = "fund-group/enterprise";
+    const member = app.fetched.nodes.find((n) => n.id.startsWith("fund/") && app.fundGroupOf(n) === g && !app.laidNodes.some((d) => d.id === n.id));
+    assert.ok(member, `the schedule holds no undrawn member of ${g}`);
+    const offered = app.searchMatches(member.label).map((n) => n.id);
+    const kept = app.searchMatches("Police").filter((n) => !app.laidNodes.some((d) => d.id === n.id)).map((n) => n.id);
+    t.diagnostic(`fund/100 out: "Police" offers ${JSON.stringify(police)} of ${JSON.stringify(inside)} within; ` +
+      `fund/100 alone: "${member.label}" offers ${JSON.stringify(offered)}, "Police" undrawn ${JSON.stringify(kept)}`);
+    assert.ok(inside.length > 0, "no node within fund/100 is labelled Police, so nothing here is tested");
+    assert.deepEqual(police.filter((id) => within.has(id)), []);
+    assert.ok(!offered.includes(member.id), `${member.id} is offered under fund/100 alone`);
+    // What it does offer, Enter never says the filters leave out (a redraw
+    // it refuses for a part of a restated total is fisc-ylxh.124's).
+    for (const id of kept) {
+      app.chooseSearch(id, true);
+      const said = refusals(document).map((b) => b.textContent).join(" | ");
+      assert.ok(!said.includes("out of the chart"), `${id} is offered and Enter says: ${said}`);
+      app.showOnlyNode("fund/100");
+    }
+  });
+
+  // Mutation: drop moveTo's routing of a listed fund group out of `out` and
+  // this goes red: the link puts the group in filter.nodes, its box stays
+  // checked while the chart hides it, and the hash rewritten says out=.
+  test("a link naming a fund group the panel lists among out= hides it as its box does", async (t) => {
+    const { app, document } = await bootedApp();
+    const g = "fund-group/enterprise";
+    const got = await app.restoreView(app.hashOf(Object.assign({}, app.viewState(), { out: [g] })));
+    await settle();
+    const box = [...document.querySelectorAll("#filter-group-list input")].find((b) => b.value === g);
+    const st = app.viewState();
+    t.diagnostic(`#…&out=${g} drew ${got}; the hash now says hide=${JSON.stringify(st.hide)} out=${JSON.stringify(st.out)}`);
+    assert.deepEqual({ got, groups: [...app.filter.groups], nodes: [...app.filter.nodes], checked: box ? box.checked : null,
+      drawn: app.laidNodes.some((n) => n.id === g), hide: st.hide, out: st.out },
+    { got: "drew", groups: [g], nodes: [], checked: false, drawn: false, hide: [g], out: [] });
     assert.equal(refusals(document).length, 0);
   });
 });

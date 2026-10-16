@@ -311,6 +311,26 @@ describe("one activation", () => {
     });
   });
 
+  // Mutation: fold on ⊖ by collapseNode alone (glyphNode not through
+  // foldPinned) and the glyph arm goes red: the fold drops the pin and the
+  // node's Follow with it, where the second click keeps both. A node and
+  // not a fund group, whose isolation a redraw keeps without its pin.
+  test("folding the node followed keeps it pinned and followed, by a second click and by its ⊖ alike", async (t) => {
+    const seen = {};
+    for (const gesture of ["click", "glyph"]) {
+      const { app, document } = await bootedApp();
+      await split(app, TWO_WAYS);
+      app.followNode(TWO_WAYS);
+      const target = gesture === "click" ? markOf(app, document, TWO_WAYS) : glyphOf(app, document, TWO_WAYS);
+      fire(target, "click", { timeStamp: 1000 });
+      await settle();
+      seen[gesture] = { split: app.expansions.join(","), pinned: pinnedID(app), isolated: app.filter.isolated };
+    }
+    t.diagnostic(JSON.stringify(seen));
+    const want = { split: "", pinned: TWO_WAYS, isolated: TWO_WAYS };
+    assert.deepEqual(seen, { click: want, glyph: want });
+  });
+
   // Mutation: drop the clear in fail and the chart follows a node with no
   // Follow button on screen to let it go.
   test("a refusal lets a followed node go with the pin", async () => {

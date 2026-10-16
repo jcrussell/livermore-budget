@@ -1461,7 +1461,8 @@ export function smallerMark(side, tier, flows, smallest, cents, locators, slot) 
  * drawn without the cells whose leaf has an end among `leaves.out`, and a
  * ribbon `keeps` does not keep is drawn with those among `leaves.only`
  * alone, so the ribbons a hub draws a member's leaves on lose the member's
- * money with it and the hub draws in what it draws out. Each part is the sum
+ * money with it and the hub draws in what it draws out; a ribbon carrying
+ * no cells goes whole where an end is among `leaves.out`. Each part is the sum
  * of its cells and cites what they cite (cellSourcesOf). FAILS CLOSED on a
  * cell restating leaves only some of which are named: which part of a total
  * the city printed is whose is not printed. A cell whose leaf has an end
@@ -1499,7 +1500,7 @@ export function filterDocument(doc, groupOf, state, keeps = null, leaves = null)
     }
     const cells = leaves ? cellsOf(l) : null;
     if (!leaves || !cells) {
-      if (whole) kept.push(l);
+      if (whole && !(leaves && (leaves.out.has(l.source) || leaves.out.has(l.target)))) kept.push(l);
       else hidden.push(l);
       continue;
     }

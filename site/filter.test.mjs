@@ -693,3 +693,27 @@ describe("a node filter hiding a contra cell of a ribbon", () => {
       { drawn: l.value_cents + 30, hidden: -30, tally: -30 });
   });
 });
+
+describe("a node filter and a ribbon carrying no cells", () => {
+  // Mutation: keep a cell-less ribbon whatever leaves.out holds (no
+  // leaves.out arm in core.filterDocument) and this goes red: the ribbon at
+  // a drawn member of the node filtered out stays drawn.
+  test("removes one with an end within the node filtered out", async (t) => {
+    const { app } = await bootedApp();
+    await split(app, "fund-group/enterprise");
+    const doc = structuredClone(app.shown.doc);
+    const [l, other] = doc.links.filter((x) => x.value_cents > 0);
+    assert.ok(l && other, "the chart draws fewer than two ribbons");
+    // The plant: the ribbon carries no cells, and its target is a drawn
+    // member of a node filtered out that the chart does not draw.
+    delete l.cells;
+    delete l.cell_sources;
+    const state = { groups: new Set(), kinds: new Set(), nodes: new Set(["planted/parent"]), smallest: 0 };
+    const out = new Set(["planted/parent", l.target].filter((id) => id !== other.source && id !== other.target));
+    assert.ok(out.has(l.target), `${l.target} ends the other ribbon too, so nothing here is told apart`);
+    const r = app.filterDocument(doc, () => "", state, null, { out: out, only: null });
+    const drawn = (x) => r.doc.links.some((y) => y.source === x.source && y.target === x.target && y.kind === x.kind);
+    t.diagnostic(`${l.source} -> ${l.target} cell-less, ${l.target} within the node filtered out`);
+    assert.deepEqual({ planted: drawn(l), hidden: r.hidden.includes(l) }, { planted: false, hidden: true });
+  });
+});

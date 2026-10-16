@@ -970,10 +970,7 @@ function activate(d) {
   closeChartMenu();
   const followed = followsNode() ? filter.isolated : "";
   if (foldable(d) && fetched) {
-    const from = core.straightFrom(fetched, d.id);
-    if (!collapseNode(d.id)) return;
-    const kept = laidNodes.find((n) => n.id === d.id) || laidNodes.find((n) => n.id === from);
-    if (kept) pinKept(kept, followed);
+    foldPinned(d);
     return;
   }
   if (!offers(d)) {
@@ -982,6 +979,21 @@ function activate(d) {
   }
   if (!openOffered(d)) return;
   const kept = laidNodes.find((n) => n.id === d.id);
+  if (kept) pinKept(kept, followed);
+}
+
+/**
+ * Folds a hub back (collapseNode) and pins it, or the node it folded into
+ * where it is drawn no more, following it again where it was followed
+ * (pinKept): a second click on a hub and its ⊖ fold it alike.
+ * @param {LaidNode} d
+ */
+function foldPinned(d) {
+  if (!fetched) return;
+  const followed = followsNode() ? filter.isolated : "";
+  const from = core.straightFrom(fetched, d.id);
+  if (!collapseNode(d.id)) return;
+  const kept = laidNodes.find((n) => n.id === d.id) || laidNodes.find((n) => n.id === from);
   if (kept) pinKept(kept, followed);
 }
 
@@ -1061,7 +1073,8 @@ export function glyphFor(d) {
 
 /**
  * The glyph beside a node, activated by a click, Enter or Space: ⊖ folds
- * the split the node is the hub of back (collapseNode); ⊕ opens the node as
+ * the split the node is the hub of back as the node's own activation does
+ * (foldPinned); ⊕ opens the node as
  * its own activation does, or, where it splits more than one way, opens the
  * menu of its splits (openSplitMenu).
  *
@@ -1081,7 +1094,7 @@ export function glyphNode(d, kind, at, byKey = false, glyph) {
   else pointerActivation = { id: d.id, at: at };
   closeChartMenu();
   if (kind === "fold") {
-    collapseNode(d.id);
+    foldPinned(d);
     return;
   }
   if (glyphWords(d, kind).menu) {
@@ -1103,8 +1116,10 @@ export let chartMenu = null;
 
 /**
  * One button of a menu on the chart: its words, what it does, what a
- * refusal of that says it was doing (guarded), and the data it carries.
- * @typedef {{words: string, act: () => void, doing: string, data?: Record<string, string>}} MenuChoice
+ * refusal of that says it was doing (guarded), the data it carries, and,
+ * where it is not offered, why: the button is disabled and the reason said
+ * under it.
+ * @typedef {{words: string, act: () => void, doing: string, data?: Record<string, string>, refused?: string}} MenuChoice
  */
 
 /**
@@ -1142,6 +1157,13 @@ function openMenu(o) {
       });
     });
     menu.append(choice);
+    if (c.refused) {
+      choice.disabled = true;
+      const why = h("span", "chart-menu-why", c.refused);
+      why.id = o.element + "-why-" + menu.childElementCount;
+      choice.setAttribute("aria-describedby", why.id);
+      menu.append(why);
+    }
   }
   menu.addEventListener("keydown", (e) => {
     if (e.key !== "Escape") return;
@@ -1219,7 +1241,8 @@ export function openSplitMenu(d, glyph) {
  * Opens a node's context menu: Follow this money (followNode), Filter this
  * out (filterOutNode) and Show only this (showOnlyNode), the two filters only
  * on a node of the shaped chart, which is what they remove ribbons of: a
- * smaller-flows mark the filters draw has neither. At the pointer for a
+ * smaller-flows mark the filters draw has neither. A filter the redraw
+ * would refuse (filterRefusal) is offered disabled, saying why. At the pointer for a
  * right-click, else beside the node's mark.
  * @param {LaidNode} d
  * @param {{left: number, top: number} | null} [at] the pointer, in the viewport's px
@@ -1240,8 +1263,10 @@ export function openNodeMenu(d, at, mark, from) {
     choices: [
       { words: say("follow_money"), doing: "follow this money", data: { act: "follow" }, act: () => followNode(id) },
     ].concat(projection && projection.nodes.some((n) => n.id === id) ? [
-      { words: say("filter_out_node"), doing: "filter this out", data: { act: "out" }, act: () => filterOutNode(id) },
-      { words: say("show_only_node"), doing: "show only this", data: { act: "only" }, act: () => showOnlyNode(id) },
+      { words: say("filter_out_node"), doing: "filter this out", data: { act: "out" }, act: () => filterOutNode(id),
+        refused: filterRefusal(filterOutStep(id)) },
+      { words: say("show_only_node"), doing: "show only this", data: { act: "only" }, act: () => showOnlyNode(id),
+        refused: filterRefusal(showOnlyStep(id)) },
     ] : []),
   });
 }
@@ -1269,18 +1294,31 @@ export function followNode(id) {
  * @param {string} id
  */
 export function filterOutNode(id) {
-  const only = filter.only === id ? "" : filter.only;
-  if (isGroupID(id) && fundGroupPlace(id) >= 0) {
-    const groups = new Set(filter.groups);
-    groups.add(id);
-    setFilter({ groups: groups, only: only });
-    return;
-  }
+  const next = filterOutStep(id);
   const d = laidNodes.find((n) => n.id === id);
-  if (d) outNames.set(id, nameOf(d));
-  const nodes = new Set(filter.nodes);
-  nodes.add(id);
-  setFilter({ nodes: nodes, only: only });
+  if (d && next.nodes) outNames.set(id, nameOf(d));
+  setFilter(next);
+}
+
+/**
+ * The filter state filterOutNode moves to, over the state now.
+ * @param {string} id
+ * @returns {Partial<FilterState>}
+ */
+function filterOutStep(id) {
+  const only = filter.only === id ? "" : filter.only;
+  if (listedGroup(id)) return { groups: new Set(filter.groups).add(id), only: only };
+  return { nodes: new Set(filter.nodes).add(id), only: only };
+}
+
+/**
+ * Whether an id names a fund group the filter panel lists a box for: one
+ * of the chart on screen (isGroupID) the column carries (fundGroupPlace).
+ * @param {string} id
+ * @returns {boolean}
+ */
+function listedGroup(id) {
+  return isGroupID(id) && fundGroupPlace(id) >= 0;
 }
 
 /**
@@ -1291,9 +1329,18 @@ export function filterOutNode(id) {
  * @param {string} id
  */
 export function showOnlyNode(id) {
+  setFilter(showOnlyStep(id));
+}
+
+/**
+ * The filter state showOnlyNode moves to, over the state now.
+ * @param {string} id
+ * @returns {Partial<FilterState>}
+ */
+function showOnlyStep(id) {
   const nodes = new Set(filter.nodes);
   nodes.delete(id);
-  setFilter({ nodes: nodes, only: id });
+  return { nodes: nodes, only: id };
 }
 
 /**
@@ -2171,6 +2218,41 @@ function sameSet(a, b) {
 }
 
 /**
+ * The filter state `next` names, field by field over `was`.
+ * @param {Partial<FilterState>} next
+ * @param {Readonly<FilterState>} was
+ * @returns {Readonly<FilterState>}
+ */
+function filterStateOf(next, was) {
+  const smallest = next.smallest === undefined ? was.smallest : Math.max(0, Math.floor(Number(next.smallest)) || 0);
+  return Object.freeze({
+    groups: new Set(next.groups || was.groups),
+    kinds: new Set(next.kinds || was.kinds),
+    nodes: new Set(next.nodes || was.nodes),
+    only: next.only === undefined ? was.only : next.only,
+    smallest: smallest,
+    isolated: next.isolated === undefined ? was.isolated : next.isolated,
+  });
+}
+
+/**
+ * Why the chart on screen could not be drawn under `next`, as filterFor,
+ * the redraw's own filter, refuses it; "" where it could. What the node's
+ * menu says of a filter before it is chosen.
+ * @param {Partial<FilterState>} next
+ * @returns {string}
+ */
+export function filterRefusal(next) {
+  if (!projection) return "";
+  try {
+    filterFor(projection, filterStateOf(next, filter));
+    return "";
+  } catch (e) {
+    return e instanceof Error ? e.message : String(e);
+  }
+}
+
+/**
  * Moves the filter state to `next`, field by field over the state now: a
  * change of what is removed re-lays-out the chart on screen with nothing
  * fetched and nothing split or folded, and a change of the isolation alone
@@ -2186,15 +2268,7 @@ function sameSet(a, b) {
  */
 export function setFilter(next) {
   const was = filter;
-  const smallest = next.smallest === undefined ? was.smallest : Math.max(0, Math.floor(Number(next.smallest)) || 0);
-  const state = Object.freeze({
-    groups: new Set(next.groups || was.groups),
-    kinds: new Set(next.kinds || was.kinds),
-    nodes: new Set(next.nodes || was.nodes),
-    only: next.only === undefined ? was.only : next.only,
-    smallest: smallest,
-    isolated: next.isolated === undefined ? was.isolated : next.isolated,
-  });
+  const state = filterStateOf(next, was);
   const isolate = (/** @type {string} */ id) => {
     if (id !== "" && !isGroupID(id) && laidNodes.some((n) => n.id === id)) followNode(id);
     else setIsolated(id);
@@ -3027,8 +3101,11 @@ export function buildTable(rows) {
  * The marks and nodes whose label holds the query, case-folded, those that
  * start with it first: every mark drawn, and on the expansion every node of
  * the schedule the chart does not draw, which Enter reveals. A node in a
- * fund group the filters remove, or a node they filter out, is not offered; one the kind or smallest
- * filter would remove once revealed is, and Enter says so and draws nothing.
+ * fund group the filters remove, or within a node they filter out, is not
+ * offered, nor, while a node is shown alone, one the filters would leave
+ * out once revealed (revealedUnderFilter, Enter's own test); one the kind
+ * or smallest filter would remove once revealed is, and Enter says so and
+ * draws nothing.
  * @param {string} query
  * @returns {(LaidNode | FiscNode)[]}
  */
@@ -3039,10 +3116,19 @@ export function searchMatches(query) {
   /** @type {(LaidNode | FiscNode)[]} */
   const pool = laidNodes.slice();
   if (expanding() && fetched) {
+    const doc = fetched;
     const drawn = new Set(laidNodes.map((n) => n.id));
-    const index = new Map(fetched.nodes.map((n) => [n.id, n]));
-    for (const n of fetched.nodes) {
-      if (drawn.has(n.id) || filter.groups.has(core.fundGroupOf(index, n)) || filter.groups.has(n.id) || filter.nodes.has(n.id)) continue;
+    const index = new Map(doc.nodes.map((n) => [n.id, n]));
+    const out = new Set();
+    for (const id of filter.nodes) for (const x of core.withinNode(doc, id)) out.add(x);
+    /** @type {Map<string, Set<string> | null>} */
+    const memo = new Map();
+    /** @type {Map<string, FiscProjection>} */
+    const shaped = new Map();
+    for (const n of doc.nodes) {
+      if (drawn.has(n.id) || filter.groups.has(core.fundGroupOf(index, n)) || filter.groups.has(n.id) || out.has(n.id)) continue;
+      // Asked of a match alone: the reveal is a shape and a filter.
+      if (filter.only !== "" && folded(n).includes(q) && !revealedUnderFilter(revealEntries(n.id, shaped), n.id, memo)) continue;
       pool.push(n);
     }
   }
@@ -3058,9 +3144,11 @@ export function searchMatches(query) {
  * of its own split drawn out where the cap would fold it. core.reveal's
  * chain, as a list of expansions so Back can walk it.
  * @param {string} id
+ * @param {Map<string, FiscProjection>} [shaped] each chain's expansions
+ *   asked, by its entries, to the chart they shape
  * @returns {string[]}
  */
-export function revealEntries(id) {
+export function revealEntries(id, shaped = new Map()) {
   if (!fetched) return expansions.slice();
   const doc = fetched;
   const chain = [];
@@ -3076,8 +3164,13 @@ export function revealEntries(id) {
   }
   const own = chain[chain.length - 1];
   if (own) {
-    const state = expansionState(doc, next);
-    const drawn = formOnScreen().shape(doc, { chart: CONFIG.overview, frontier: state.frontier, whole: state.whole });
+    const at = next.join("\n");
+    let drawn = shaped.get(at);
+    if (!drawn) {
+      const state = expansionState(doc, next);
+      drawn = formOnScreen().shape(doc, { chart: CONFIG.overview, frontier: state.frontier, whole: state.whole });
+      shaped.set(at, drawn);
+    }
     const splits = core.splitsOf(doc, own.parent);
     const key = own.alternative || (splits.length ? splits[0].key : "");
     const tail = core.splitTailID(own.parent, key);
@@ -3092,15 +3185,26 @@ export function revealEntries(id) {
  * the shape throws: redraw is what reports that.
  * @param {string[]} next
  * @param {string} id
+ * @param {Map<string, Set<string> | null>} [memo] each `next` asked, by its
+ *   entries, to the ids its filtered ribbons end at, null where it threw
  * @returns {boolean}
  */
-function revealedUnderFilter(next, id) {
+function revealedUnderFilter(next, id, memo = new Map()) {
   if (!fetched) return false;
+  const key = next.join("\n");
+  if (memo.has(key)) {
+    const ends = memo.get(key);
+    return !ends || ends.has(id);
+  }
   try {
     const state = expansionState(fetched, next);
     const drawn = formOnScreen().shape(fetched, { chart: CONFIG.overview, frontier: state.frontier, whole: state.whole });
-    return filterFor(drawn).doc.links.some((l) => l.source === id || l.target === id);
+    const ends = new Set();
+    for (const l of filterFor(drawn).doc.links) ends.add(l.source).add(l.target);
+    memo.set(key, ends);
+    return ends.has(id);
   } catch {
+    memo.set(key, null);
     return true;
   }
 }
@@ -3858,6 +3962,15 @@ async function moveTo(st) {
   }
   const group = st.hide.find((g) => fundGroupPlace(g) < 0);
   if (group !== undefined) return refuse(year.label + " carries no fund group " + group);
+  // A fund group the panel lists, named among `out`, is hidden as its box
+  // hides it (filterOutNode), asked of the year drawn now.
+  const listed = Array.from(filter.nodes).filter(listedGroup);
+  if (listed.length) {
+    const groups = new Set(filter.groups);
+    for (const id of listed) groups.add(id);
+    const nodes = new Set(Array.from(filter.nodes).filter((id) => !groups.has(id)));
+    if (!setFilter({ groups: groups, nodes: nodes })) return refuse("the chart could not be filtered as it names");
+  }
   if (st.x.join("\n") !== expansions.join("\n")) {
     if (!expanding() || !fetched) return refuse("this chart splits nothing");
     try {
@@ -4180,9 +4293,12 @@ export async function showYear(year, carry = [], removals = null) {
   // Swapped because shapeFor and askAffordances read them; swapped back on a
   // throw, so nothing below writes a word of this year over the last one's
   // chart.
-  const was = { column, fetched, expansions, frontier, wholeSplits, laidNodes, groupIndex, projection, shown, whole };
+  const was = { column, fetched, expansions, frontier, wholeSplits, laidNodes, groupIndex, projection, shown, whole, drawnNames };
   const before = fetched;
   column = loaded;
+  // The names the last year drew are not this year's: a refusal names a
+  // node by this year's label (nameOf).
+  drawnNames = new Map();
   fetched = doc;
   expansions = [];
   frontier = core.isExpansionSchedule(doc) ? core.rootFrontier(doc) : null;
@@ -4212,7 +4328,7 @@ export async function showYear(year, carry = [], removals = null) {
     whole = unfiltered;
     askAffordances();
   } catch (e) {
-    ({ column, fetched, expansions, frontier, wholeSplits, laidNodes, groupIndex, projection, shown, whole } = was);
+    ({ column, fetched, expansions, frontier, wholeSplits, laidNodes, groupIndex, projection, shown, whole, drawnNames } = was);
     throw e;
   }
 
