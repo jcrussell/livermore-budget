@@ -1101,7 +1101,9 @@ export const SANKEY = Object.freeze({
    * (parentOf), one leaving shrinks into the right edge of its nearest
    * ancestor drawn now, and every label fades in after the move. With no
    * motion everything is at its end at once. The viewBox is never shorter
-   * than ctx.held. Returns what puts every mark at its end now.
+   * than ctx.held. Before any description is asked for, ctx.named, where
+   * given, is handed every mark's name by id: its qualifier, label and noun
+   * as drawn, never cut. Returns what puts every mark at its end now.
    * @returns {() => void}
    */
   render(graph, ctx) {
@@ -1140,6 +1142,19 @@ export const SANKEY = Object.freeze({
     const path = d3.sankeyLinkHorizontal();
 
     const now = new Map(graph.nodes.map((n) => [n.id, n]));
+
+    const slots = slotsOf(graph.nodes, ctx.tiers);
+    const qualified = labelQualifiers(ctx.doc, slots, graph.nodes);
+    /** @param {LaidNode} d */
+    const qualifierOf = (d) => qualified.get(d.id) || "";
+    const nouns = labelNouns(ctx.doc, graph.nodes, ctx.noun);
+    /** @param {LaidNode} d */
+    const nounOf = (d) => nouns.get(d.id) || "";
+    // A MARK'S NAME IS ITS DRAWN WORDS UNFITTED, and the page is handed every
+    // one before a description or a glyph's words are asked for.
+    /** @param {LaidNode} d */
+    const nameOf = (d) => (qualifierOf(d) ? qualifierOf(d) + ": " : "") + d.label + (nounOf(d) ? " (" + nounOf(d) + ")" : "");
+    if (ctx.named) ctx.named(new Map(graph.nodes.map((d) => [d.id, nameOf(d)])));
     /**
      * The box of id's nearest ancestor among `boxes`, or null.
      * @param {string} id
@@ -1277,15 +1292,8 @@ export const SANKEY = Object.freeze({
 
     // Every node is directly labelled: the relief the palette's contrast check
     // requires.
-    const slots = slotsOf(graph.nodes, ctx.tiers);
     const place = (/** @type {LaidNode} */ d) => labelPlacement(slots, d, lastColumn);
     const lastColumn = Math.max(...graph.nodes.map((d) => columnOf(slots, d)));
-    const qualified = labelQualifiers(ctx.doc, slots, graph.nodes);
-    /** @param {LaidNode} d */
-    const qualifierOf = (d) => qualified.get(d.id) || "";
-    const nouns = labelNouns(ctx.doc, graph.nodes, ctx.noun);
-    /** @param {LaidNode} d */
-    const nounOf = (d) => nouns.get(d.id) || "";
     /** @param {LaidNode} d */
     const value = (d) => "  " + fmtShortSigned(ctx.figure(d));
     /** @type {Map<string, {qualifier: string, label: string, noun: string, cut: boolean}>} */
@@ -1322,7 +1330,7 @@ export const SANKEY = Object.freeze({
       d3.select(this).select(":scope > title").remove();
       if (!words(d).cut) return;
       d3.select(this).insert("title", ":first-child")
-        .text((qualifierOf(d) ? qualifierOf(d) + ": " : "") + d.label + (nounOf(d) ? " (" + nounOf(d) + ")" : "") + value(d));
+        .text(nameOf(d) + value(d));
     });
 
     // THE GLYPHS ARE CONTROLS OF THEIR OWN, beside the marks and not inside

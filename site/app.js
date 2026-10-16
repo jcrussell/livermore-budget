@@ -396,6 +396,21 @@ export let baseDescription = "";
  */
 export let laidNodes = [];
 /**
+ * Each drawn mark's name by id, as the form handed it (ctx.named).
+ * @type {Map<string, string>}
+ */
+let drawnNames = new Map();
+
+/**
+ * What the page calls a mark in prose: the name the form draws it by, else
+ * its label.
+ * @param {{id: string, label: string}} d
+ * @returns {string}
+ */
+export function nameOf(d) {
+  return drawnNames.get(d.id) || d.label;
+}
+/**
  * What puts the chart's moving marks at their end now, as the form's render
  * returned it (finishMotion).
  * @type {() => void}
@@ -993,10 +1008,11 @@ export function keyNode(d, at = -Infinity) {
  * @returns {{label: string, menu: boolean}}
  */
 export function glyphWords(d, kind) {
-  if (kind === "fold") return { label: say("glyph_fold", { label: d.label }), menu: false };
+  const label = nameOf(d);
+  if (kind === "fold") return { label: say("glyph_fold", { label }), menu: false };
   const splits = splitsHere(d);
-  if (splits.length > 1) return { label: say("glyph_choose", { label: d.label }), menu: true };
-  return { label: say("glyph_open", { label: d.label, split: splits.length ? splitWords(splits[0].key) : "" }), menu: false };
+  if (splits.length > 1) return { label: say("glyph_choose", { label }), menu: true };
+  return { label: say("glyph_open", { label, split: splits.length ? splitWords(splits[0].key) : "" }), menu: false };
 }
 
 /**
@@ -1064,7 +1080,7 @@ export function openSplitMenu(d, glyph) {
   const menu = h("div", "split-menu");
   menu.id = "split-menu";
   menu.setAttribute("role", "group");
-  menu.setAttribute("aria-label", say("split_chooser", { label: d.label }));
+  menu.setAttribute("aria-label", say("split_chooser", { label: nameOf(d) }));
   const id = d.id;
   for (const sp of splitsHere(d)) {
     const choice = h("button", "split-choice", splitWords(sp.key));
@@ -1702,6 +1718,8 @@ export function render(laid, prior) {
   traced = null;
   closeSplitMenu();
   const graph = laid || layOut(doc);
+  // A form that names no mark leaves every mark its label.
+  drawnNames = new Map();
   const svg = D3.select("#chart");
   // Never the svg, whose viewBox is the chart's own coordinates.
   let layer = svg.select(":scope > g.zoom-layer");
@@ -1726,6 +1744,7 @@ export function render(laid, prior) {
     // qualifier is read off (labelQualifiers).
     doc: { nodes: Array.from(groupIndex.values()) },
     noun: memberNounOf,
+    named: (/** @type {Map<string, string>} */ names) => { drawnNames = names; },
     classes: { link: linkClass, node: nodeClass, flags: nodeFlags },
     describe: { link: linkDescription, node: nodeDescription },
     figure: markFigure,
@@ -2218,7 +2237,7 @@ export function provenanceOf(derived, ontoOurs, again = false) {
  */
 export function linkDescription(d) {
   const kind = kindLabel(d.kind);
-  return d.source.label + " to " + d.target.label + ", " + fmtSigned(formOnScreen().cents(d)) +
+  return nameOf(d.source) + " to " + nameOf(d.target) + ", " + fmtSigned(formOnScreen().cents(d)) +
     (kind ? ", " + kind : "") +
     (d.contra ? ", " + d.contra : "") +
     (d.partition ? ", " + PARTITION_NOTE : "") +
@@ -2241,7 +2260,7 @@ export function nodeDescription(d) {
   // The cross-tab qualification, for a reader who cannot see the ribbons.
   const drawn = drawnAt(d);
   const gone = hiddenAt(d.id);
-  return d.label + ", total " + fmtSigned(markFigure(d)) +
+  return nameOf(d) + ", total " + fmtSigned(markFigure(d)) +
     (drawn ? ", " + drawn : "") +
     ", " + say(d.derived ? "inferred_by_us" : "printed_by_city") +
     (form.crossTab(mark) ? ", " + PARTITION_NOTE : "") +
@@ -2316,8 +2335,8 @@ export function showTip(event, d) {
   label.append(key);
   label.append(document.createTextNode(
     asLink
-      ? /** @type {LaidLink} */ (d).source.label + " → " + /** @type {LaidLink} */ (d).target.label
-      : /** @type {LaidNode} */ (d).label));
+      ? nameOf(/** @type {LaidLink} */ (d).source) + " → " + nameOf(/** @type {LaidLink} */ (d).target)
+      : nameOf(/** @type {LaidNode} */ (d))));
   tip.append(label);
 
   const meta = h("div", "tip-meta");
@@ -2567,8 +2586,8 @@ export function paintDetail(d) {
   const drawn = drawnAt(d);
   if (drawn) panel.append(h("p", "subtle", drawn));
   panel.append(h("div", "", asLink
-    ? /** @type {LaidLink} */ (d).source.label + " → " + /** @type {LaidLink} */ (d).target.label
-    : /** @type {LaidNode} */ (d).label));
+    ? nameOf(/** @type {LaidLink} */ (d).source) + " → " + nameOf(/** @type {LaidLink} */ (d).target)
+    : nameOf(/** @type {LaidNode} */ (d))));
 
   const chips = h("div", "prov");
   if (asLink) {

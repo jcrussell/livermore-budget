@@ -956,6 +956,43 @@ describe("arms no committed column reaches", () => {
     t.diagnostic(detail);
     assert.deepEqual({ interior: interior.length > 0, lifted }, { interior: true, lifted: [] }, detail);
   });
+  // Mutation: have nameOf return d.label and this goes red, the tooltip,
+  // the drawer and the description naming two same-word marks alike.
+  test("a qualified mark is named by its drawn words in the tooltip, the drawer and its description, and so is a ribbon's end", async (t) => {
+    const { app, document } = await bootedApp({ checkedStem: newest.stem });
+    app.expandAll();
+    await settle();
+    const doc = { nodes: [...app.groupIndex.values()] };
+    const slots = app.slotsOf(app.laidNodes, app.RENDER_TIERS);
+    const qualified = app.labelQualifiers(doc, slots, app.laidNodes);
+    const nouns = app.labelNouns(doc, app.laidNodes, app.memberNounOf);
+    const named = (n) => (qualified.get(n.id) ? qualified.get(n.id) + ": " : "") + n.label + (nouns.has(n.id) ? " (" + nouns.get(n.id) + ")" : "");
+    const marks = [...document.querySelectorAll("#chart g.node")];
+    const twins = marks.filter((m) => qualified.get(m.__data__.id));
+    const [a, b] = twins.filter((m) => twins.some((o) => o !== m && o.__data__.label === m.__data__.label));
+    assert.ok(a && b, `no two qualified marks share a label among ${twins.length}`);
+    const said = (m) => {
+      app.hideTip();
+      fire(m, "pointerenter");
+      const tip = document.querySelector("#tooltip .tip-label").textContent;
+      app.pin(m.__data__);
+      const heading = document.querySelector("#detail .amount").nextElementSibling;
+      const drawer = (heading && heading.tagName === "P" ? heading.nextElementSibling : heading).textContent;
+      return { tip, drawer, described: m.getAttribute("aria-label").startsWith(named(m.__data__) + ", total ") };
+    };
+    const got = [a, b].map(said);
+    const want = [a, b].map((m) => ({ tip: named(m.__data__), drawer: named(m.__data__), described: true }));
+    const ribbon = [...document.querySelectorAll("#chart path.link")]
+      .find((p) => p.__data__ && (qualified.get(p.__data__.source.id) || qualified.get(p.__data__.target.id)));
+    assert.ok(ribbon, "no ribbon touches a qualified mark");
+    const l = ribbon.__data__;
+    const ends = named(l.source) + " \u2192 " + named(l.target);
+    app.hideTip();
+    fire(ribbon, "pointerenter");
+    const ribbonTip = document.querySelector("#tooltip .tip-label").textContent;
+    t.diagnostic(`${a.__data__.id}: ${JSON.stringify(got[0].tip)}; ${b.__data__.id}: ${JSON.stringify(got[1].tip)}; ribbon: ${JSON.stringify(ribbonTip)}`);
+    assert.deepEqual({ got, ribbonTip, apart: got[0].tip !== got[1].tip }, { got: want, ribbonTip: ends, apart: true });
+  });
 });
 
 // A class the client sets that no rule styles is a silent no-op, and a rule
@@ -1272,7 +1309,7 @@ describe("two extend splits open together", () => {
 
 describe("a member printed in its parent's words", () => {
   for (const year of YEARS) {
-    test(`${year.label}: is drawn with the page's noun for it in a qualifier tspan, and named by its printed words`, async (t) => {
+    test(`${year.label}: is drawn with the page's noun for it in a qualifier tspan, and named with it`, async (t) => {
       const { app, document } = await bootedApp({ checkedStem: year.stem });
       app.expandAll();
       await settle();
@@ -1296,7 +1333,7 @@ describe("a member printed in its parent's words", () => {
         if (noun.getAttribute("class") !== "qualifier" || noun.textContent !== words) {
           wrong.push(`${id} draws ${JSON.stringify(tspansOf(m))}, not the qualifier ${JSON.stringify(words)}`);
         }
-        if (!name.includes(byID.get(id).label) || name.includes(words)) wrong.push(`${id} is named "${name}"`);
+        if (!name.startsWith(byID.get(id).label + words + ", ")) wrong.push(`${id} is named "${name}"`);
         said.push(tspansOf(m).slice(0, 3).join(""));
       }
       const stray = [...drawn].filter(([id, m]) => !want.includes(id) && haloOf(m).children[2].textContent !== "").map(([id]) => id);
