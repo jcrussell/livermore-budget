@@ -2514,6 +2514,26 @@ export function wireDrawer() {
 }
 
 /**
+ * The pages the drawer cites for a mark, under the words it heads them with.
+ * A ribbon cites its own locators, and a mark carrying locators its own. A
+ * node cites every page the ribbons touching it cite on the chart its figure
+ * is read off (markOfView), so a filter hides no page the figure stands on.
+ * Only a node that draws no ribbon cites the document drawn, and the words
+ * say they are the chart's.
+ * @param {LaidLink | LaidNode} d
+ * @returns {{words: string, cited: FiscSource[]}}
+ */
+export function sourcesOf(d) {
+  if (isLink(d)) return { words: "Sources:", cited: /** @type {LaidLink} */ (d).locators };
+  const n = /** @type {LaidNode} */ (d);
+  if (n.locators) return { words: "Sources:", cited: n.locators };
+  const at = markOfView(n);
+  const ribbons = (at.sourceLinks || []).concat(at.targetLinks || []);
+  if (ribbons.length) return { words: "Sources:", cited: core.pagesCitedBy(ribbons) };
+  return { words: say("sources_chart"), cited: projection ? projection.metadata.sources : [] };
+}
+
+/**
  * Writes a mark's provenance into the drawer.
  * @param {LaidLink | LaidNode} d
  */
@@ -2587,13 +2607,10 @@ export function paintDetail(d) {
     }
   }
 
-  // THE CITATIONS ARE THE MARK'S OWN WHEN IT HAS ANY: a link's locators, else
-  // a mark's, else the sources of the document drawn.
   const prov = h("div", "prov");
-  prov.append(h("span", "subtle", "Sources:"));
-  const mark = asLink ? null : /** @type {LaidNode} */ (d);
-  const cited = asLink ? /** @type {LaidLink} */ (d).locators : (mark && mark.locators) || projection.metadata.sources;
-  for (const c of citations(cited)) {
+  const sources = sourcesOf(d);
+  prov.append(h("span", "subtle", sources.words));
+  for (const c of citations(sources.cited)) {
     prov.append(link(c.label, c.href));
   }
   panel.append(prov);

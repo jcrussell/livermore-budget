@@ -128,6 +128,9 @@ type wording struct {
 	// FollowMoney names the drawer's toggle that follows the money of the
 	// node it shows, and puts the rest back.
 	FollowMoney string `json:"follow_money"`
+	// SourcesChart heads the drawer's sources for a node that draws no
+	// ribbon: the pages of the whole chart drawn, not pages of its own.
+	SourcesChart string `json:"sources_chart"`
 	// Hairline is said beside a chart drawing ribbons under a pixel of its
 	// canvas: they are drawn a screen pixel wide, which overstates them, and
 	// the sentence says so.
@@ -255,6 +258,7 @@ func defaultWording() wording {
 		DetailEmpty:       "Hover a flow or a node to trace its path and preview where its figure comes from; click it to pin it here.",
 		Pin:               "Pin",
 		FollowMoney:       "Follow this money",
+		SourcesChart:      "This mark draws no flow, so these are the sources of the whole chart, not of it:",
 		Hairline: "\u25c7 {n:flow is|flows are} under a pixel wide on this chart's canvas, and each is drawn as a " +
 			"hairline one screen pixel wide, which is wider than its share; every other flow is drawn to scale. " +
 			"Zoom in, go full screen, search, or open the table below to read them.",

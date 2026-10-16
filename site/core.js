@@ -519,6 +519,18 @@ export function locatorKeys(ss) {
 }
 
 /**
+ * Every page a set of ribbons cites, each once, in regroupLocators' order: a
+ * union of cited ids, so a leaf two ribbons draw cites its pages once.
+ * @param {{locators?: FiscSource[]}[]} links
+ * @returns {FiscSource[]}
+ */
+export function pagesCitedBy(links) {
+  const keys = new Set();
+  for (const l of links) for (const k of locatorKeys(l.locators || [])) keys.add(k);
+  return regroupLocators(keys);
+}
+
+/**
  * The fold's refusal to merge two ribbons one mark cannot draw as one: a
  * cross-tab slice with a flow that is not one. A type and not a message, so
  * a caller that decides by it matches the refusal itself and never an error

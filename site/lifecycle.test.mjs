@@ -362,10 +362,15 @@ describe("a copy from another build", () => {
 
 describe("a gesture that throws", () => {
   test("a gesture that throws leaves a refusal a reader can read, not a half-built panel", async (t) => {
-    // The shape is served rather than simulated: a schedule with no sources
-    // draws, and the first mark a reader pins throws out of citations().
+    // The shape is served rather than simulated: a schedule whose every node
+    // prints a balance on a page the export built no links for draws, since
+    // only the drawer cites a balance, and the first mark a reader pins
+    // throws out of citations().
     const broken = structuredClone(columnFixture("fy2026-adopted"));
-    delete broken.schedules.expansion.sources;
+    const doc = broken.schedules.expansion.sources[0].doc_id;
+    for (const n of broken.schedules.expansion.nodes) {
+      n.balances = { beginning: { value_cents: 1, fact_id: "fisc-f-000000000000", locators: [{ doc_id: doc, pages: [999999] }] } };
+    }
     const { app, document, window } = await onFirstYear({ plan: { "fy2026-adopted.json": { doc: broken } } });
     const errors = listenerErrors(window);
     const drewFirst = (app.projection && app.projection.nodes || []).length;
@@ -379,7 +384,7 @@ describe("a gesture that throws", () => {
 
     const banners = said(document);
     t.diagnostic(!drewFirst
-      ? "the document with no sources drew nothing, so no gesture could reach the throw"
+      ? "the document with an uncitable balance drew nothing, so no gesture could reach the throw"
       : `the chart drew ${drewFirst} node(s) as ${drawnMarks.length} mark(s) with ${before} banner(s); ` +
         `clicking the first ${errors.length ? "THREW PAST THE GUARD (" + errors.join("; ") + ")" : "was caught"} ` +
         `and left ${banners.length} banner(s)` + (banners.length ? `: ${JSON.stringify(banners[0])}` : ""));

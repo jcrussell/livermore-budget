@@ -329,6 +329,7 @@
         "detail_empty",
         "pin",
         "follow_money",
+        "sources_chart",
         "hairline",
         "splits_dropped"
       ],
@@ -608,6 +609,11 @@
           "type": "string",
           "minLength": 1,
           "description": "The drawer's toggle that follows the money of the node it shows, or puts the rest back."
+        },
+        "sources_chart": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Heads the drawer's sources for a node that draws no ribbon: the whole chart's pages, not its own."
         },
         "hairline": {
           "type": "string",

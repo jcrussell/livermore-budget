@@ -118,6 +118,60 @@ describe("the provenance drawer", () => {
   });
 });
 
+describe("a node's Sources in the drawer", () => {
+  const FUND = "fund/100";
+  /** "doc pN" for every page a set of locators names, sorted and each once. */
+  const pagesOf = (locs) => [...new Set(locs.flatMap((s) => s.pages.map((p) => s.doc_id + " p" + p)))].sort();
+  /** The pages the drawer's Sources line cites, read off its PDF links. */
+  const listed = (document) => {
+    const line = [...document.querySelectorAll("#detail .prov")].find((p) => p.querySelector("a[href]"));
+    return line ? [...line.querySelectorAll("a")].filter((a) => a.textContent.startsWith("PDF p"))
+      .map((a) => a.textContent.slice("PDF ".length)) : [];
+  };
+  /** The locators of the ribbons drawn touching `id`, read off the chart's paths. */
+  const drawnTouching = (document, id) => [...document.querySelectorAll("#chart path.link")].map((p) => p.__data__)
+    .filter((l) => l.source.id === id || l.target.id === id);
+
+  // Mutation: cite projection.metadata.sources for every node in sourcesOf
+  // and this goes red: fund/100 lists every page of the view. Read the
+  // ribbons off the filtered node rather than markOfView's, and it goes red
+  // too: a hidden kind's pages leave the Sources while the figure keeps them.
+  test("a node cites the pages its own ribbons cite, fewer than the view's, and a filter leaves them as its figure", async (t) => {
+    const { app, document } = await bootedApp();
+    await split(app, "fund-group/general");
+    const ribbons = drawnTouching(document, FUND);
+    const want = pagesOf(ribbons.flatMap((l) => l.locators)).map((k) => k.slice(k.indexOf(" ") + 1));
+    app.pin(app.laidNodes.find((n) => n.id === FUND));
+    const got = listed(document);
+    const view = pagesOf(app.projection.metadata.sources);
+    // A leaf two ribbons draw is one cited page, so no page is listed twice.
+    const once = new Set(got).size === got.length;
+    // A kind whose ribbons alone cite some of the node's pages: hidden, the
+    // pages still drawn are fewer than the figure's.
+    const kind = [...new Set(ribbons.map((l) => l.kind))]
+      .find((k) => pagesOf(ribbons.filter((l) => l.kind !== k).flatMap((l) => l.locators)).length < want.length);
+    app.setFilter({ kinds: new Set([kind]) });
+    const stillDrawn = pagesOf(drawnTouching(document, FUND).flatMap((l) => l.locators)).length;
+    app.pin(app.laidNodes.find((n) => n.id === FUND));
+    const underFilter = listed(document);
+    t.diagnostic(`${FUND}: ${ribbons.length} ribbons cite ${got.length} pages (${got.join(" ")}); the view cites ${view.length}; ` +
+      `with ${kind} hidden its ribbons drawn cite ${stillDrawn}`);
+    assert.deepEqual({
+      got: [...got].sort(), once, fewer: got.length < view.length, filterHides: stillDrawn < want.length,
+      underFilter: [...underFilter].sort(),
+    }, { got: want, once: true, fewer: true, filterHides: true, underFilter: want });
+  });
+
+  test("a node that draws no ribbon cites the view's sources, and says they are the chart's", async () => {
+    const { app, config } = await bootedApp();
+    const bare = { id: "nowhere", label: "Nowhere", role: "fund", sourceLinks: [], targetLinks: [] };
+    const s = app.sourcesOf(bare);
+    const own = app.sourcesOf(app.laidNodes.find((n) => n.sourceLinks.length || n.targetLinks.length));
+    assert.deepEqual({ words: s.words, cited: s.cited === app.projection.metadata.sources, ownWords: own.words },
+      { words: config.wording.sources_chart, cited: true, ownWords: "Sources:" });
+  });
+});
+
 describe("the rail", () => {
   // Mutation: leave the rail's contents shown whatever railOpen says
   // (paintRail) and this goes red on the collapsed rail.
