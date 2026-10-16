@@ -47,7 +47,6 @@
           "basis",
           "title",
           "hero",
-          "figures",
           "caveats",
           "counts",
           "chart_title",
@@ -79,7 +78,7 @@
             "type": "string"
           },
           "hero": {
-            "description": "One headline figure, already formatted by the packager, so the server-rendered tile and the one a year switch paints cannot disagree.",
+            "description": "The headline figure, already formatted by the packager, so the server-rendered line and the one a year switch paints cannot disagree.",
             "type": "object",
             "required": [
               "label",
@@ -101,35 +100,6 @@
               "kind": {
                 "type": "string",
                 "description": "Which tile this is, so the page can style a hero differently from the rest without reading its position."
-              }
-            }
-          },
-          "figures": {
-            "type": "array",
-            "items": {
-              "description": "One headline figure, already formatted by the packager, so the server-rendered tile and the one a year switch paints cannot disagree.",
-              "type": "object",
-              "required": [
-                "label",
-                "value",
-                "note",
-                "kind"
-              ],
-              "additionalProperties": false,
-              "properties": {
-                "label": {
-                  "type": "string"
-                },
-                "value": {
-                  "type": "string"
-                },
-                "note": {
-                  "type": "string"
-                },
-                "kind": {
-                  "type": "string",
-                  "description": "Which tile this is, so the page can style a hero differently from the rest without reading its position."
-                }
               }
             }
           },
@@ -394,7 +364,7 @@
         "follow": {
           "type": "string",
           "minLength": 1,
-          "description": "The hint's sentence about the trace, the pin, the drawer's buttons and Escape, said beside every chart."
+          "description": "The hint's sentences about Escape and a node's menu, said in the drawer under detail_empty beside every chart."
         },
         "expand": {
           "type": "string",

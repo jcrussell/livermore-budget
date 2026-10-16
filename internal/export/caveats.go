@@ -62,14 +62,7 @@ func caveatAnchor(stem, id string) string { return "caveat-" + stem + "--" + id 
 // caveatsPathOf is the caveats view's path, or "" when the site has none.
 //
 // Derived from the view set, so it cannot drift out of step with it.
-func caveatsPathOf(o *Options) string {
-	for _, v := range o.Views {
-		if v.Template == CaveatsTemplate {
-			return v.Path
-		}
-	}
-	return ""
-}
+func caveatsPathOf(o *Options) string { return templatePathOf(o, CaveatsTemplate) }
 
 // caveatsPageData is every published document's caveats, in full.
 //

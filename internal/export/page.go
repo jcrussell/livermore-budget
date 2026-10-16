@@ -36,6 +36,9 @@ const (
 	DepartmentTemplate = "department.html.tmpl"
 	CapitalTemplate    = "capital.html.tmpl"
 	DebtTemplate       = "debt.html.tmpl"
+	// TotalsTemplate renders the spine's headline figures, every year of
+	// [View.YearStems] at once, server-side and with no script.
+	TotalsTemplate = "totals.html.tmpl"
 )
 
 // SchemaVersion is the projection schema this packager understands, the
@@ -213,6 +216,8 @@ func buildSite(o *Options, ix ColumnIndex, pageTextBase func(docID string) strin
 			data, err = buildCapitalPage(o, v, here, byID, ix, pageTextBase)
 		case DebtTemplate:
 			data, err = buildDebtPage(o, v, here, byID, ix, pageTextBase)
+		case TotalsTemplate:
+			data, err = buildTotalsPage(o, v, here, byID, ix, pageTextBase)
 		default:
 			return nil, nil, hint.With(
 				fmt.Errorf("view %q renders template %q, which this package has no builder for",

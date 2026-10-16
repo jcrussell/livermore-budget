@@ -173,22 +173,15 @@ for (const year of YEARS) {
     });
 
     test(`${year.column}: a ribbon's Sources are its own pages, at the file names Go wrote`, async (t) => {
-      const { app, document, window } = await onYear(year.stem);
+      const { app, document } = await onYear(year.stem);
       await split(app, PROPERTY);
       const [printed] = columnLinks(year.column, "expansion", (from) => from === ERAF);
       const doc = PAGE.config.docs[printed.locators[0].doc_id];
-      // The anchors Go rendered into the served page: a page's text link in
-      // the config is the one the page's own footer carries.
-      const served = new Set();
-      for (const a of new window.DOMParser().parseFromString(PAGE.html, "text/html").querySelectorAll("a[href]")) {
-        served.add(a.getAttribute("href"));
-      }
       const want = [];
       for (const loc of printed.locators) {
         for (const page of loc.pages) {
           const links = doc.pages[String(page)];
           assert.ok(links, `the config carries no links for p${page}`);
-          assert.ok(served.has(links.text), `p${page}'s text link ${links.text} is not the served page's`);
           want.push(links.pdf, links.text, links.records);
         }
       }

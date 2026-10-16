@@ -22,8 +22,8 @@ type wording struct {
 	// FoldBack is said beside a chart with a node split open: the ways to
 	// fold one back.
 	FoldBack string `json:"fold_back"`
-	// Follow is said beside every chart: what the pointer's trace, a click on
-	// a node that does not open, the drawer's two buttons and Escape do.
+	// Follow is said beside every chart, under DetailEmpty: what Escape and
+	// a node's menu do.
 	Follow string `json:"follow"`
 	Expand string `json:"expand"`
 	Swatch string `json:"swatch"`
@@ -197,11 +197,9 @@ func defaultWording() wording {
 		CountsPartial: "\u25c7 our count: {links:flow|flows} between {nodes:node|nodes}, from {cited} of the document's {facts:fact|facts}",
 		OpenInto: "Click a node marked \u2295, or tab to it and press Enter, to split it in place into its parts; " +
 			"every other node stays where it is.",
-		NothingOpens: "Nothing on this chart opens.",
-		FoldBack:     "A second click on a split node, or \u2296 beside it, folds it back; Collapse all folds every split, and Back undoes the last step.",
-		Follow: "Hover a node or a flow to trace its path; a click on one that does not split pins it in the drawer, " +
-			"whose Pin lets it go and whose Follow this money draws only its money. Escape unpins and puts the rest back. " +
-			"Right-click a node, or press Shift+F10 on it, to follow its money, filter it out or show only it.",
+		NothingOpens:   "Nothing on this chart opens.",
+		FoldBack:       "A second click on a split node, or \u2296 beside it, folds it back; Collapse all folds every split, and Back undoes the last step.",
+		Follow:         "Escape unpins and puts the rest back. Right-click a node, or press Shift+F10 on it, to follow its money, filter it out or show only it.",
 		Expand:         "The folded mark is several of them drawn as one; click it, or tab to it and press Enter, to draw them separately.",
 		Swatch:         "A fund swatch follows one group's money without opening anything.",
 		GlyphOpen:      "Split {label} into {split}",

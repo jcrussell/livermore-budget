@@ -358,8 +358,8 @@ func TestEveryCaveatSummaryLinksToAnAnchorThatExists(t *testing.T) {
 // page is fixture bytes: mutate transferCaveat and this test stays green.
 // TestSankeyReproducesGoldenFile is what fails then -- it rebuilds the document
 // from the facts and compares those same bytes -- so the caveat is pinned, one
-// package over. The tile note IS live code on this path and this test is its
-// only guard: reverting tilesFor's old wording reddens exactly
+// package over. The tile note, on totals.html, IS live code on this path and
+// this test is its only guard: reverting tilesFor's old wording reddens exactly
 // this test and nothing else. Proved both ways by mutation, 2026-08-27.
 //
 // WHICH PAGE IT READS CHANGED, AND IT HAD TO. The caveat's full text moved to
@@ -390,6 +390,7 @@ func TestTheSiteDoesNotSayThePSeventySixScheduleIsUnmapped(t *testing.T) {
 	}
 	pages := map[string]string{
 		"index.html":   read("index.html"),
+		"totals.html":  read("totals.html"),
 		"caveats.html": read("caveats.html"),
 	}
 
@@ -426,13 +427,71 @@ func TestTheSiteDoesNotSayThePSeventySixScheduleIsUnmapped(t *testing.T) {
 		}
 	}
 
-	// AND index.html STILL POINTS AT IT. Moving the text is only honest if the
-	// page a reader lands on offers a way to reach it; a summary with no link
-	// is a truncation.
-	if !strings.Contains(pages["index.html"], `href="caveats.html#caveat-`) {
-		t.Error("index.html links to no caveat anchor, so the paragraph it stopped " +
-			"printing is not reachable from the page that stopped printing it")
+	// AND THE PAGES THAT STOPPED PRINTING IT POINT AT IT: index.html at the
+	// caveats page, and the totals page, whose tile the caveat explains, at
+	// the paragraph.
+	if !strings.Contains(pages["index.html"], `<a href="caveats.html">`) {
+		t.Error("index.html does not link the caveats page")
 	}
+	if !strings.Contains(pages["totals.html"], `href="caveats.html#caveat-`) {
+		t.Error("totals.html links to no caveat anchor, so the paragraph behind its " +
+			"unmatched-transfers tile is not reachable from it")
+	}
+}
+
+// TestTheSourcesPageListsEveryPageTheIndexCites: index.html lists no cited
+// page of its own and links the sources page, so that page must list every
+// page the index's config cites, in every year. Mutation: render the footer's
+// source list unconditionally -- the first arm goes red; drop p66 from
+// provenance.html's table and footer -- the second does.
+func TestTheSourcesPageListsEveryPageTheIndexCites(t *testing.T) {
+	dir := clientExport(t)
+	read := func(name string) string {
+		t.Helper()
+		raw, err := os.ReadFile(filepath.Join(dir, name)) // #nosec G304 -- the temp site.
+		if err != nil {
+			t.Fatalf("read the exported %s: %v", name, err)
+		}
+		return string(raw)
+	}
+	index, sources := read("index.html"), read("provenance.html")
+	before, rest, ok := strings.Cut(index, configOpen)
+	if !ok {
+		t.Fatal("index.html carries no FISC_CONFIG")
+	}
+	blob, after, ok := strings.Cut(rest, configClose)
+	if !ok {
+		t.Fatal("index.html never closes FISC_CONFIG")
+	}
+	if visible := before + after; strings.Contains(visible, `id="sources-view"`) ||
+		strings.Contains(visible, "/pages/p0") {
+		t.Error("index.html lists the pages it cites beside the sources page")
+	} else if !strings.Contains(visible, `<a href="provenance.html">`) {
+		t.Error("index.html does not link the sources page")
+	}
+	var cfg struct {
+		Docs map[string]struct {
+			Pages map[string]struct {
+				Text string `json:"text"`
+			} `json:"pages"`
+		} `json:"docs"`
+	}
+	if err := json.Unmarshal([]byte(blob), &cfg); err != nil {
+		t.Fatal(err)
+	}
+	cited := 0
+	for id, doc := range cfg.Docs {
+		for n, p := range doc.Pages {
+			cited++
+			if !strings.Contains(sources, `href="`+p.Text+`"`) {
+				t.Errorf("provenance.html does not list %s p%s, which index.html cites", id, n)
+			}
+		}
+	}
+	if cited == 0 {
+		t.Fatal("index.html's config cites no page, so nothing above was checked")
+	}
+	t.Logf("%d page(s) index.html cites", cited)
 }
 
 // The acceptance test for fisc-ze7: the exported site resolves BOTH citation
@@ -1266,8 +1325,8 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItsCharts(t *testing.T) {
 	built := builtStemsForTest(t)
 	got := mustViews(t, result{Projections: built})
 
-	if len(got) != 8 {
-		t.Fatalf("got %d views over %v, want the spine, the revenue trends, "+
+	if len(got) != 9 {
+		t.Fatalf("got %d views over %v, want the spine, its totals, the revenue trends, "+
 			"the two ACFR history tables, the department, capital and debt pages "+
 			"and the caveats index", len(got), keys(built))
 	}
@@ -1306,7 +1365,7 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItsCharts(t *testing.T) {
 	}
 
 	// Titles and ledes are the caller's, not the packager's.
-	for _, path := range []string{"trends.html", "history.html", "balances.html",
+	for _, path := range []string{"totals.html", "trends.html", "history.html", "balances.html",
 		"department.html", "capital.html", "debt.html"} {
 		v, ok := byPath[path]
 		if !ok {

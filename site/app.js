@@ -4103,48 +4103,18 @@ export async function showYear(year, carry = []) {
 }
 
 /**
- * Replaces every word on the page that belongs to a year: the hero, the tiles,
- * the caveats, the caveat count in their summary, the lede, the flow count, the
- * chart's accessible name and description (through paintChartName), the
- * footer's basis and its data-file citation, and the document title.
+ * Replaces every word on the page that belongs to a year: the headline figure,
+ * the lede, the flow count, the chart's accessible name and description
+ * (through paintChartName), the footer's basis and its data-file citation, and
+ * the document title.
  *
  * The list is exhaustive: add any new per-year write to it. Every string is
  * the packager's except the counts line, which paintCounts composes.
  * @param {FiscYear} year
  */
 export function paintYearWords(year) {
-  const tile = (f) => {
-    const el = h("div", "tile" + (f.kind ? " " + f.kind : ""));
-    el.appendChild(h("div", "label", f.label));
-    el.appendChild(h("div", "value", f.value));
-    el.appendChild(h("div", "note", f.note));
-    return el;
-  };
-
   const hero = maybeEl("hero");
-  if (hero) hero.replaceChildren(tile(year.hero));
-
-  const figures = maybeEl("figures");
-  if (figures) figures.replaceChildren(...year.figures.map(tile));
-
-  const caveats = maybeEl("caveats");
-  // c.href is per year: one caveat id can carry different text in different
-  // documents. Empty when the export wrote no caveats page.
-  if (caveats) {
-    caveats.replaceChildren(...year.caveats.map((c) => {
-      const li = h("li");
-      if (!c.href) {
-        li.textContent = c.summary;
-        return li;
-      }
-      li.appendChild(link(c.summary, c.href));
-      return li;
-    }));
-  }
-
-  // The caveat count is per year.
-  const caveatCount = maybeEl("caveats-count");
-  if (caveatCount) caveatCount.textContent = String(year.caveats.length);
+  if (hero) hero.replaceChildren(h("span", "label", year.hero.label), ": ", h("strong", "value", year.hero.value));
 
   const lede = maybeEl("lede-year");
   if (lede) lede.textContent = year.lede;

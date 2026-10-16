@@ -228,10 +228,43 @@ func TestWriteCopiesAColumnlessProjectionVerbatim(t *testing.T) {
 	}
 }
 
-func TestPageShowsTheHeadlineAndTheErrorItAvoids(t *testing.T) {
-	dir, _ := writeGolden(t)
-	page := readPage(t, dir)
+// totalsSite writes the index beside the totals page and the caveats page,
+// over the golden spine.
+func totalsSite(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	if _, err := writeSite(export.Options{
+		Dir:         dir,
+		Projections: map[string][]byte{"sankey": goldenSankey(t)},
+		Views: []export.View{
+			{Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate,
+				Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "sankey"},
+			{Path: "totals.html", Nav: "The totals", Template: export.TotalsTemplate, Projection: "sankey"},
+			{Path: "caveats.html", Nav: "Caveats", Template: export.CaveatsTemplate},
+		},
+		Docs:        budgetDocs(),
+		GeneratedBy: "fisc test",
+	}); err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	return dir
+}
 
+// TestTheIndexLeadsWithTheHeadlineAndTheTotalsPageArguesWithIt: the index
+// states one figure and links the rest, which the totals page prints, the
+// wrong answer included. Mutation: render .Figures back into the index -- the
+// naive total turns up on it and this goes red.
+func TestTheIndexLeadsWithTheHeadlineAndTheTotalsPageArguesWithIt(t *testing.T) {
+	dir := totalsSite(t)
+	index := readerVisible(t, readPage(t, dir))
+	totals := readFile(t, dir, "totals.html")
+
+	if !strings.Contains(index, "$254,095,412") {
+		t.Error("index.html does not state what the city spends")
+	}
+	if !strings.Contains(index, `href="totals.html"`) {
+		t.Error("index.html does not link the totals page")
+	}
 	for _, want := range []string{
 		"$254,095,412", // what the city spends
 		"$313,708,146", // the naive column total, published so the page can argue with it
@@ -240,86 +273,26 @@ func TestPageShowsTheHeadlineAndTheErrorItAvoids(t *testing.T) {
 		"$38,086,737",  // the unmatched residual
 		"FY 2025-26",
 	} {
-		if !strings.Contains(page, want) {
-			t.Errorf("page does not contain %q", want)
+		if !strings.Contains(totals, want) {
+			t.Errorf("totals.html does not contain %q", want)
+		}
+	}
+	for _, not := range []string{"$313,708,146", "$38,086,737"} {
+		if strings.Contains(index, not) {
+			t.Errorf("index.html prints %s, which the totals page carries", not)
 		}
 	}
 }
 
-// TestTheHeroLeadsAndTheRestOfTheTileRowIsDisclosed pins WHICH SIDE of the
-// #figures-view disclosure each headline figure is on, which the test above
-// cannot see: it asks only whether the page contains a figure, and a page that
-// tiled all seven above the chart and a page that hid all seven behind a
-// summary both satisfy it.
-//
-// The slice is taken between the disclosure's own markers and every marker is
-// Fatalf-guarded. Without that guard a renamed marker yields an empty slice,
-// and "the naive total is not above the chart" is then true of nothing.
-func TestTheHeroLeadsAndTheRestOfTheTileRowIsDisclosed(t *testing.T) {
-	dir, _ := writeGolden(t)
-	page := readPage(t, dir)
-
-	// THE MARKER STOPS BEFORE THE CLOSING ANGLE BRACKET, and that is not
-	// tidiness. Spelled with the `>` on the end, an `open` attribute makes this
-	// Index miss the element altogether -- so the Fatalf below fires with
-	// "page renders no ..." and the ships-closed arm underneath can never be
-	// reached, let alone fail. Measured by mutation: the arm was dead.
-	const tag = `<details class="apparatus" id="figures-view"`
-	start := strings.Index(page, tag)
-	if start < 0 {
-		t.Fatalf("page renders no %s", tag)
-	}
-	shut := strings.Index(page[start:], ">")
-	if shut < 0 {
-		t.Fatalf("the %s tag is unterminated", tag)
-	}
-	end := strings.Index(page[start:], "</details>")
-	if end < 0 {
-		t.Fatalf("the %s disclosure is never closed", tag)
-	}
-	disclosed := page[start : start+end]
-	above := page[:start]
-
-	// The disclosure ships closed. `<details ... open>` and `<details ...>` are
-	// one attribute apart and render identically until a reader arrives.
-	if strings.Contains(page[start:start+shut], " open") {
-		t.Errorf("the tile row disclosure ships open")
-	}
-	if !strings.Contains(above, "$254,095,412") {
-		t.Errorf("the hero figure is not above the disclosure")
-	}
-	if strings.Contains(disclosed, "$254,095,412") {
-		t.Errorf("the hero figure is inside the disclosure as well as above it")
-	}
-	if !strings.Contains(disclosed, "$313,708,146") {
-		t.Errorf("the naive column total is not inside the disclosure")
-	}
-	if strings.Contains(above, "$313,708,146") {
-		t.Errorf("the naive column total is still above the chart")
-	}
-}
-
-// TestTheFigureLeadsAndTheApparatusFollows pins the reading order the owner
-// asked for: one number, the chart, then everything that explains them.
-//
-// EVERY MARKER IS Fatalf-GUARDED ON -1, because strings.Index returns -1 for
-// absent and -1 is less than every offset -- so a renamed marker turns each
-// comparison below into a true statement about a string that is not there.
-func TestTheFigureLeadsAndTheApparatusFollows(t *testing.T) {
-	dir, _ := writeGolden(t)
-	page := readPage(t, dir)
-
-	// Ordered as the reader meets them. The prose reading of the chart is in
-	// the list because moving it back above the card is the exact regression
-	// this test exists to catch, and the three structural markers around it
-	// would not notice.
-	markers := []string{
-		`id="hero"`,
-		"<h2>The flow</h2>",
-		`id="chart"`,
-		"Revenue categories on the left",
-		`class="apparatus"`,
-	}
+// TestTheChartComesBeforeAnyApparatus pins the reading order: the headline in
+// the page head, then the chart card, then everything that explains them.
+// Every marker is Fatalf-guarded, because an absent one is -1 and before
+// everything. Mutation: put an <h2> or a <details> back above the card --
+// red.
+func TestTheChartComesBeforeAnyApparatus(t *testing.T) {
+	page := readerVisible(t, readPage(t, totalsSite(t)))
+	card := strings.Index(page, `id="chart-card"`)
+	markers := []string{`id="hero"`, `id="chart-card"`, `id="chart"`, "Revenue on the left", `class="apparatus"`}
 	at := make([]int, len(markers))
 	for i, m := range markers {
 		at[i] = strings.Index(page, m)
@@ -329,22 +302,29 @@ func TestTheFigureLeadsAndTheApparatusFollows(t *testing.T) {
 	}
 	for i := 1; i < len(markers); i++ {
 		if at[i-1] >= at[i] {
-			t.Errorf("%s is at %d, which is not before %s at %d",
-				markers[i-1], at[i-1], markers[i], at[i])
+			t.Errorf("%s is at %d, which is not before %s at %d", markers[i-1], at[i-1], markers[i], at[i])
+		}
+	}
+	for _, tag := range []string{"<h2", "<details", "<section"} {
+		if i := strings.Index(page, tag); i >= 0 && i < card {
+			t.Errorf("%s at %d comes before the chart card at %d", tag, i, card)
 		}
 	}
 }
 
-func TestPageRendersCaveatsWithoutJavaScript(t *testing.T) {
-	dir, _ := writeGolden(t)
-	page := readPage(t, dir)
+// TestTheIndexLinksItsCaveatsAndPrintsNone: caveats.html carries every
+// caveat whole, and a chart mark carries its own, so the index prints none
+// of them and links the page. Mutation: drop the link -- red; render the
+// summaries back -- red.
+func TestTheIndexLinksItsCaveatsAndPrintsNone(t *testing.T) {
+	dir := totalsSite(t)
+	visible := readerVisible(t, readPage(t, dir))
 
 	var doc struct {
 		Metadata struct {
 			Caveats []struct {
 				ID      string `json:"id"`
 				Summary string `json:"summary"`
-				Text    string `json:"text"`
 			} `json:"caveats"`
 		} `json:"metadata"`
 	}
@@ -352,56 +332,15 @@ func TestPageRendersCaveatsWithoutJavaScript(t *testing.T) {
 		t.Fatalf("decode golden: %v", err)
 	}
 	if len(doc.Metadata.Caveats) == 0 {
-		t.Fatal("golden projection has no caveats to render")
+		t.Fatal("golden projection has no caveats, so nothing below is checked")
 	}
-	// THE CONFIG BLOB IS REMOVED BEFORE ANYTHING IS SEARCHED, and without that
-	// this test is vacuous. index.html ships the whole projection as JSON in
-	// window.FISC_CONFIG, so every caveat's text is in the file whatever the
-	// markup does -- measured: replace the entire <ul class="caveats"> range
-	// with an empty <ul> and the substring form of this test still PASSED.
-	// That is the same defect as the p76 guard's, one file over, and it is why
-	// "is the string in the page" is never the right question here.
-	visible := readerVisible(t, page)
-
-	for _, caveat := range doc.Metadata.Caveats {
-		// THE SUMMARY, because that is what this page renders without
-		// JavaScript. It used to be the text, which was right when the page
-		// printed the paragraph and became unfalsifiable when it stopped:
-		// the text is still in the file, in the blob just removed.
-		//
-		// ESCAPED AND COMPARED WHOLE. This inherited a truncate-at-the-first-
-		// escapable-character rule written when the subject was the text, and
-		// over summaries it was doing two wrong things: cutting
-		// transfer-legs-unpaired's assertion down to a 24-character prefix, and
-		// -- for any summary whose first such character falls before index 21 --
-		// comparing an unescaped string against escaped HTML, which fails for a
-		// reason that has nothing to do with the page. Escaping instead of
-		// truncating removes both, and asserts the whole sentence.
-		want := template.HTMLEscapeString(caveat.Summary)
-		if !strings.Contains(visible, want) {
-			t.Errorf("caveat %q's summary is missing from index.html: %q", caveat.ID, want)
+	for _, c := range doc.Metadata.Caveats {
+		if strings.Contains(visible, template.HTMLEscapeString(c.Summary)) {
+			t.Errorf("index.html prints caveat %q, which caveats.html carries", c.ID)
 		}
-		// AND THE PARAGRAPH IS NOT PRINTED HERE. Showing a summary is only
-		// honest as a pointer; a page that showed both would be the wall this
-		// change removed, with a link added to it.
-		//
-		// ESCAPED BEFORE COMPARING. html/template rewrites ' " & < > as it
-		// renders, so a raw comparison cannot fire for most of the corpus.
-		// Measured against the real export: on caveats.html, which DOES print
-		// every text, a raw Contains is False for transfer-legs-unpaired and
-		// internal-service-is-outside-the-external-headline and True only for
-		// the two texts with no escapable character.
-		//
-		// THIS ARM IS THE SECOND LINE AND NOT THE FIRST. index.html cannot
-		// print the text today whatever the template does, because caveatRef
-		// carries no such field -- so what it really guards is somebody putting
-		// one back. The structural form of that claim is
-		// TestTheSchemaStatesWhatThePageConfigCarries, which fails the moment the
-		// field exists on caveatRef.
-		if len(caveat.Text) > 80 && strings.Contains(visible, template.HTMLEscapeString(caveat.Text)) {
-			t.Errorf("caveat %q's full text is on index.html; the summary is meant to "+
-				"stand in for it, not to precede it", caveat.ID)
-		}
+	}
+	if !strings.Contains(visible, `<a href="caveats.html">`) {
+		t.Error("index.html does not link the caveats page")
 	}
 }
 

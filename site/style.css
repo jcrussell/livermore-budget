@@ -496,6 +496,21 @@ button[aria-pressed="true"] {
   line-height: 1.05;
 }
 
+/* The help under the drawer's empty text. */
+.chart-hint {
+  margin-top: 8px;
+}
+
+/* The index's headline figure, one line under its h1. */
+#hero .value {
+  font-size: 1.35em;
+  white-space: nowrap;
+}
+
+.totals-year + .totals-year {
+  margin-top: 32px;
+}
+
 .tile.error .value {
   color: var(--ink-1);
   text-decoration: line-through;

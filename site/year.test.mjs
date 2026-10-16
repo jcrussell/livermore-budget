@@ -1,6 +1,6 @@
 // year.test.mjs — the year toggle: that the client reads the fields the
-// packager writes, since a wrong field name renders an empty tile and throws
-// nothing.
+// packager writes, since a wrong field name renders an empty headline and
+// throws nothing.
 
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
@@ -15,25 +15,12 @@ function shippedYear(overrides) {
   return Object.assign(structuredClone(years[years.length - 1]), overrides);
 }
 
-/** n distinct caveat refs, whose ids differ so the anchors do too. */
-function fixtureCaveats(n) {
-  return Array.from({ length: n }, (_, i) => ({
-    id: "c" + i, summary: "summary " + i, href: "caveats.html#caveat-x--c" + i,
-  }));
-}
-
 /** Everything the page shows after paintYearWords, read off the real DOM. */
 function painted(app, document, year) {
   app.paintYearWords(year);
   const el = (id) => document.getElementById(id);
   return {
-    hero: el("hero") ? [...el("hero").children] : [],
-    tiles: el("figures") ? [...el("figures").children] : [],
-    caveats: el("caveats") ? [...el("caveats").children].map((li) => {
-      const a = li.querySelector("a");
-      return a ? { text: a.textContent, href: a.getAttribute("href") || "" } : { text: li.textContent, href: "" };
-    }) : [],
-    caveatsCount: el("caveats-count") ? el("caveats-count").textContent : "",
+    hero: el("hero") ? el("hero").textContent : "",
     lede: el("lede-year") ? el("lede-year").textContent : "",
     counts: el("counts-line") ? el("counts-line").textContent : "",
     basis: el("page-basis") ? el("page-basis").textContent : "",
@@ -50,53 +37,19 @@ function servedCountsHead(document) {
 }
 
 describe("a year's words are the packager's, painted whole", () => {
-  test("a year switch paints one tile per figure and no more", async (t) => {
+  // Mutation: paint year.hero.note in place of its value -- red.
+  test("the headline is the year's label and value, painted into #hero", async (t) => {
     const { app, document } = await loadApp();
-    const year = shippedYear();
+    const year = shippedYear({ hero: Object.assign(structuredClone(shippedYear().hero), { value: "$1,234" }) });
     const got = painted(app, document, year);
-    t.diagnostic(`${got.tiles.length} tiles in #figures for ${year.figures.length} figures`);
-    assert.equal(got.tiles.length, year.figures.length);
+    t.diagnostic(`#hero reads "${got.hero}"`);
+    assert.equal(got.hero, year.hero.label + ": " + year.hero.value);
   });
-  test("the hero is painted into #hero, alone, and not into the tile row", async (t) => {
-    const { app, document } = await loadApp();
-    const year = shippedYear();
-    const got = painted(app, document, year);
-    const text = (e) => [...e.children].map((c) => c.textContent).join("|");
-    t.diagnostic(`#hero holds ${got.hero.length} tile(s): ${got.hero.map(text).join(" / ") || "nothing"}`);
-    assert.equal(got.hero.length, 1);
-    assert.ok(text(got.hero[0]).startsWith(year.hero.label));
-    assert.ok(got.tiles.every((e) => !text(e).startsWith(year.hero.label)));
-  });
-  test("every tile carries the label, value and note the packager wrote", async (t) => {
-    const { app, document } = await loadApp();
-    const got = painted(app, document, shippedYear());
-    const text = (e) => [...e.children].map((c) => c.textContent);
-    const all = got.hero.concat(got.tiles).map(text);
-    t.diagnostic(all[0] ? all[0].join("|") : "no tiles were painted");
-    assert.ok(all.length > 0);
-    for (const parts of all) {
-      assert.equal(parts.length, 3);
-      for (const x of parts) assert.ok(x !== "" && x !== "undefined", parts.join("|"));
+  test("the page carries no tile row and no caveat list for a year switch to leave stale", async () => {
+    const { document } = await loadApp();
+    for (const id of ["figures", "caveats", "caveats-count"]) {
+      assert.equal(document.getElementById(id), null, `#${id} is on the page`);
     }
-  });
-  test("the caveats are the year's own summaries, linked to the year's own anchors", async (t) => {
-    const { app, document } = await loadApp();
-    const year = shippedYear();
-    const got = painted(app, document, year);
-    t.diagnostic(`${got.caveats.length} caveats; first links to "${got.caveats[0]?.href}"`);
-    assert.equal(got.caveats.length, year.caveats.length);
-    got.caveats.forEach((c, i) => {
-      assert.equal(c.text, year.caveats[i].summary);
-      assert.equal(c.href, year.caveats[i].href);
-    });
-  });
-  test("the caveat count in the summary follows the year, and agrees with the list", async (t) => {
-    const { app, document } = await loadApp();
-    painted(app, document, shippedYear());
-    const after = painted(app, document, shippedYear({ caveats: fixtureCaveats(5) }));
-    t.diagnostic(`after repainting with five caveats the summary reads "${after.caveatsCount}" over a list of ${after.caveats.length}`);
-    assert.equal(after.caveatsCount, "5");
-    assert.equal(after.caveatsCount, String(after.caveats.length));
   });
   test("the lede, the flow count and the document title follow the year", async (t) => {
     const { app, document } = await loadApp();
@@ -161,15 +114,12 @@ describe("a year's words are the packager's, painted whole", () => {
   test("painting a second year replaces the first year's words", async (t) => {
     const { app, document } = await loadApp();
     const years = pageFixture().config.years;
-    const first = painted(app, document, Object.assign(structuredClone(years[0]), { caveats: fixtureCaveats(2) }));
+    const first = painted(app, document, structuredClone(years[0]));
     const year = shippedYear();
     const second = painted(app, document, year);
-    t.diagnostic(`${first.tiles.length} then ${second.tiles.length} tiles; ${first.caveats.length} then ${second.caveats.length} caveats`);
-    assert.equal(second.tiles.length, first.tiles.length);
-    assert.equal(second.hero.length, 1);
-    assert.equal(first.hero.length, 1);
-    assert.equal(first.caveats.length, 2);
-    assert.deepEqual(second.caveats.map((c) => c.text), year.caveats.map((c) => c.summary));
+    t.diagnostic(`"${first.hero}" then "${second.hero}"`);
+    assert.equal(first.hero, years[0].hero.label + ": " + years[0].hero.value);
+    assert.equal(second.hero, year.hero.label + ": " + year.hero.value);
     assert.equal(second.lede, year.label + " " + year.basis);
     assert.ok(second.title.includes(year.label));
   });
@@ -403,20 +353,5 @@ describe("a year switch and the splits on screen", () => {
     assert.equal(after.x, 2);
     assert.equal(after.tail, "");
     assert.equal(after.funds, members);
-  });
-});
-
-// The arm a single-view export reaches, where there is no
-// caveats.html for a caveat to link into.
-describe("a caveat with no page to link to", () => {
-  test("a caveat without an href is painted as plain text and not as an anchor into a file never written", async (t) => {
-    const { app, document } = await loadApp();
-    const year = shippedYear({ caveats: [{ id: "plain", summary: "plain summary", href: "" }, ...fixtureCaveats(1)] });
-    const got = painted(app, document, year);
-    t.diagnostic(got.caveats.map((c) => `"${c.text}" -> ${c.href || "(no link)"}`).join("; "));
-    assert.equal(got.caveats.length, 2);
-    assert.deepEqual(got.caveats[0], { text: "plain summary", href: "" });
-    assert.equal(got.caveats[1].href, year.caveats[1].href);
-    assert.equal(document.querySelectorAll("#caveats li a").length, 1);
   });
 });

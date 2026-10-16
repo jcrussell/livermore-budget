@@ -42,6 +42,18 @@ views:
           - {split: lines, cap: 8, tail: lines}
           - {split: receivers, cap: 8, tail: funds}
 
+  # The headline figures behind the chart, every year at once.
+  - path: totals.html
+    nav: The totals
+    template: totals.html.tmpl
+    projection: sankey
+    year_control: true
+    title: The totals behind Livermore's budget flows
+    lede: >-
+      The figures the chart is the shape of, for each budget year: what the
+      city spends once transfers between its own funds are not counted twice,
+      and the column total that does count them.
+
   # The tables come after the charts they belong to.
   - path: trends.html
     nav: Revenue tables

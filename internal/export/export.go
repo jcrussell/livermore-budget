@@ -705,20 +705,21 @@ func (v View) validate(built map[string][]byte, ix ColumnIndex) error {
 func templateRendersLede(name string) bool {
 	switch name {
 	case TrendsTemplate, HistoryTemplate, ProvenanceTemplate, CaveatsTemplate,
-		DepartmentTemplate, CapitalTemplate, DebtTemplate:
+		DepartmentTemplate, CapitalTemplate, DebtTemplate, TotalsTemplate:
 		return true
 	default:
 		return false
 	}
 }
 
-// templateRendersAYearControl answers whether a template has a year control to
-// render [View.YearStems] in. Its own switch rather than templateDrawsAChart:
-// the two agree on every template today and guard different failures.
+// templateRendersAYearControl answers whether a template renders
+// [View.YearStems]: as a year control, or, on TotalsTemplate, as one section
+// per year. Its own switch rather than templateDrawsAChart: the two guard
+// different failures.
 func templateRendersAYearControl(name string) bool {
 	switch name {
 	case SankeyTemplate,
-		DepartmentTemplate:
+		DepartmentTemplate, TotalsTemplate:
 		return true
 	default:
 		return false
@@ -746,7 +747,7 @@ func templateRendersADocument(name string) bool {
 	case SankeyTemplate, TrendsTemplate, HistoryTemplate,
 		CapitalTemplate,
 		DebtTemplate,
-		DepartmentTemplate:
+		DepartmentTemplate, TotalsTemplate:
 		return true
 	default:
 		return false

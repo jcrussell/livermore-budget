@@ -21,10 +21,6 @@
 <div class="wip-banner" role="status">⚠️ Work in progress — early preview, coverage is incomplete.</div>
 
 {{- if gt (len .Nav) 1}}
-<!-- Every page carries the whole nav, which is what makes the set of views
-     visible from any one of them. Flat .html pages rather than hash routing:
-     each view renders its figures server-side, and under routing views 2..N
-     would have no server-rendered content at all. -->
 <nav class="site-nav" aria-label="Views">
   <ul>
     {{- range .Nav}}
@@ -37,44 +33,23 @@
 <header class="page-head">
   <div>
     <h1>Where Livermore's money comes from, and where it goes</h1>
+    {{- /* "all funds, gross" renders the slug the footer prints as Scope;
+           TestTheLedesProseNamesThePagesScope pins the pair. #hero and
+           #lede-year are repainted per year by paintYearWords. */}}
     <p class="lede">
-      <!-- "all funds, gross" is a HAND-WRITTEN RENDERING of one scope slug,
-           all-funds-gross, and the coupling is not visible from here. The
-           footer's "Scope {{.Scope}}" prints the slug; this prints English.
-           Nothing repaints either, so a view built on another scope would ship
-           a lede contradicting its own footer. TestTheLedesProseNamesThePages
-           Scope pins the pair. -->
-      The <span id="lede-year">{{.Lede}}</span> budget, all funds, gross — read out of the city's
-      published schedule and traced back to it. Figures the city printed are drawn solid;
-      the two things we inferred are drawn dashed and labelled.
-      {{- /* Empty until a year is drawn: what a node does on a click or
-             Enter depends on the chart drawn, so paintChartHint owns the words. */}}
-      <span id="chart-hint"></span>
+      <span id="hero"><span class="label">{{.Hero.Label}}</span>: <strong class="value">{{.Hero.Value}}</strong></span>
+      in the <span id="lede-year">{{.Lede}}</span> budget, all funds, gross, every figure traced to
+      the city's published schedule.{{if .TotalsPath}} <a href="{{.TotalsPath}}">The totals behind it</a>.{{end}}
     </p>
   </div>
   <div class="head-controls">
     {{- if gt (len .Years) 1}}
-    <!-- A radio group, not a <select>: two options that swap the whole page are
-         a choice between peers, and a radio group says which one you are
-         looking at without being opened.
-
-         IT SHIPS DISABLED and app.js enables it. Switching year is entirely a
-         client behaviour — it refetches a document and repaints — so with
-         JavaScript off the control could be moved and nothing would follow it:
-         the reader would select FY2026-27 and go on reading FY2025-26's
-         figures, with the styling agreeing with them. A control that lies is
-         worse than one that is absent, and the year on show is still stated in
-         the lede either way. -->
+    {{- /* Ships disabled; app.js enables it, since with JavaScript off moving
+           it would repaint nothing. */}}
     <fieldset class="year-toggle" id="year-toggle" disabled>
       <legend>Budget year</legend>
-      {{- /* The id is keyed on the STEM and not on the Year (fisc-rmx). A stem
-             is unique by construction -- buildProjections refuses two documents
-             at one -- while a year is not: two BASES for one fiscal year are two
-             documents, and keying on the year gave both radios the same id, so
-             every <label for=...> pointed at whichever parsed first and clicking
-             one year's label selected the other. */}}
-      {{- /* CHECKED IS THE OPENING YEAR, NOT THE FIRST ONE LISTED: the list
-             is oldest first, and the tiles above are the year checked. */}}
+      {{- /* Keyed on the stem, which is unique, where a year is not; checked
+             is the year the page opens on, the last listed. */}}
       {{- range $y := .Years}}
       <input type="radio" name="fisc-year" id="year-{{$y.Stem}}" value="{{$y.Stem}}"
              {{if eq $y.Stem $.Opens}}checked{{end}}>
@@ -88,27 +63,8 @@
 
 <main>
 
-{{- /* THE HERO IS ABOVE THE CHART AND THE REST OF THE TILE ROW IS NOT. One
-       number and one diagram is what this page is for; the six figures behind
-       it open from "The figures behind it" below, and #figures moved with them.
-
-       BOTH CONTAINERS ARE PAINTED, and that is why there are two ids rather
-       than one section split by CSS. paintYearWords owns each wholesale, so a
-       per-year figure rendered anywhere it does not write goes stale on the
-       first year switch -- the fisc-kwq / fisc-yi4 / fisc-iyt defect. */}}
-<section class="figures" id="hero" aria-label="What the city spends">
-  <div class="tile hero">
-    <div class="label">{{.Hero.Label}}</div>
-    <div class="value">{{.Hero.Value}}</div>
-    <div class="note">{{.Hero.Note}}</div>
-  </div>
-</section>
-
-<h2>The flow</h2>
-
-{{- /* THE CARD IS WHAT FULL SCREEN SHOWS, so the toolbar, the rail and the
-       provenance drawer come with the chart. */}}
-<div class="card" id="chart-card">
+{{- /* The card is what full screen shows: toolbar, rail, chart and drawer. */}}
+<div class="card" id="chart-card" role="region" aria-label="The flow">
   {{- /* ONE ROW ABOVE THE CHART: search and the view's own buttons. The year
          stays in the page head: it swaps every figure on the page, not only
          the chart. */}}
@@ -192,22 +148,11 @@
   </div>
   <div class="chart-wrap">
     <div class="chart-scroll">
-    <!-- role="group", not "img": an img is a leaf, and the marks inside carry
-         tabindex and aria-label so a keyboard reader can walk the flows. Under
-         role="img" they are reachable but announced as nothing, which the
-         "tab to a flow" instruction below would then be lying about. -->
+    <!-- role="group", not "img": the marks inside are focusable and named. -->
     <svg class="sankey" id="chart" role="group" aria-labelledby="chart-title chart-desc">
-      {{- /* THE PACKAGER'S ONE STRING, not a composition of this template's
-             own. app.js repaints this element from the same yearView field on
-             a year switch, so a second wording composed here is an accessible
-             name that silently reverts on the first toggle -- announced only
-             to the readers who cannot see the marks and check. */}}
+      {{- /* yearView's chart_title, which app.js repaints on a year switch. */}}
       <title id="chart-title">{{.ChartTitle}}</title>
-      {{- /* "OPENS FROM" AND NOT "IS LISTED BELOW". The flow table used to ship
-             open and now ships inside a closed <details>, which takes it out of
-             the accessibility tree until the reader expands it -- so a
-             screen-reader user told the figures were "listed below" would go
-             looking for a table that is not, from their position, there. */}}
+      {{- /* "Opens from", not "listed below": the table is in a closed <details>. */}}
       <desc id="chart-desc">
         {{- if .Description}}
         {{.Description}} {{.Wording.TablePointer}}
@@ -231,151 +176,42 @@
     <div class="detail" id="detail" aria-live="polite">
       <p class="subtle">{{.Wording.DetailEmpty}}</p>
     </div>
+    {{- /* Empty until a year is drawn: what a click does depends on the chart
+           drawn, so paintChartHint owns the words. */}}
+    <p class="subtle chart-hint" id="chart-hint"></p>
   </aside>
   </div>
   <noscript>
     <p>
       This page draws its chart in the browser from
-      <a href="{{.DataPath}}">{{.DataPath}}</a>. With JavaScript off, that file and the
-      figures on this page are still the whole story: every amount, fact id and source page
-      is in it. The panels below open without a script, but two of them are FILLED by one:
-      "{{.TableHeading}}" will be empty and "What we inferred" will still say it is
-      loading. The file has both.
+      <a href="{{.DataPath}}">{{.DataPath}}</a>, which holds every amount, fact id and source
+      page. "{{.TableHeading}}" and "What we inferred" below are filled by the script.
     </p>
   </noscript>
 </div>
 
-{{- /* THE READING OF THE CHART SITS UNDER THE CHART, and it is deliberately
-       NOT disclosed. "Counting them as spending is exactly the error the
-       headline avoids" is this page's central argument, and it is the only
-       place that argument is made above a disclosure now that the tile row
-       has moved below one. */}}
-<p class="lede">
+<p class="subtle">
   {{- if .Description}}
   {{.Description}}
   {{- else}}
-  Revenue categories on the left, the city's fund groups in the middle, what the money
-  is spent on at the right. Transfers between funds and movements of accumulated fund
-  balance are drawn as their own endpoints, because they are not money crossing the city's
-  boundary — counting them as spending is exactly the error the headline avoids.
+  Revenue on the left, fund groups in the middle, spending on the right; transfers between
+  funds and fund balance are their own endpoints, not spending.
   {{- end}}
-</p>
-<p class="lede subtle">
-  Hover, tap or tab to a flow for its amount, fact ids and sources.
-  {{- /* Says only what is true of every node; which nodes open is
-         #chart-hint's, from the chart on screen. */}}
-  {{if .Expands}}Click a node marked ⊕ to split it in place into its parts, and every other node
-  stays; a second click on it, or ⊖ beside it, folds it back, and Back undoes the last step. Hovering a node or a flow
-  traces its path; a click on one that does not split pins it in the drawer, whose Pin lets it
-  go, and {{.Wording.FollowMoney}} there, or a fund swatch, draws only that money. Escape unpins and
-  puts the rest back.{{else}}Click a node or a flow to pin it in the drawer, whose Pin lets it go;
-  {{.Wording.FollowMoney}} there, or a fund swatch, draws only that money, and Escape unpins and puts
-  the rest back.{{end}}
+  {{- if .CaveatsPath}} <a href="{{.CaveatsPath}}">What these figures do not say</a>.{{end}}
 </p>
 
-<!-- THE APPARATUS IS DISCLOSED, NOT DELETED. Three of the four panels below
-     were top-level <h2>s on an open page, so a reader met four caveats -- 254
-     words between them, the longest 174 -- and a 58-row table before reaching
-     the end of a page whose subject is the chart above. The fourth, the tile
-     row, had no heading at all and sat ABOVE that chart.
-
-     THE DISCLOSURE ITSELF NEEDS NO SCRIPT, which is why it is markup rather
-     than JavaScript: a closed <details> keeps its content in the DOM, so what
-     is server-rendered survives with JavaScript off and is there to be opened.
-
-     "IN THE DOM" IS NOT "AVAILABLE". A closed <details> is collapsed for
-     assistive technology as well as visually -- its content is out of the
-     accessibility tree and out of in-page find -- until the reader opens it.
-     That is the trade this section makes on purpose, and it is why the chart's
-     <desc> above says the figures "open from" a heading rather than that they
-     are listed below.
-
-     THAT IS A CLAIM ABOUT THE DISCLOSURE, NOT ABOUT EVERY PANEL BEHIND IT. The
-     caveat summaries below really are server-rendered. #derived-list ships a
-     "Loading..." placeholder and #flow-table an empty <tbody>; both are filled
-     by app.js, and the <noscript> above names those two panels so a reader who
-     opens an empty one knows why.
-
-     What is NOT here at all is the caveats' full text -- that moved to
-     caveats.html, and this page shows one-line summaries linking to it.
-
-     The <h2>s stay inside the <summary>, so the document outline a screen
-     reader walks is unchanged. -->
-<details class="apparatus" id="figures-view">
-  <summary>
-    <h2>The figures behind it</h2>
-    <span class="apparatus-hint">the working, including the column total that counts
-      transfers twice</span>
-  </summary>
-  {{- /* THE WRONG ANSWER IS STILL HERE, struck through, and it is first. A
-         figure a reader will otherwise compute for themselves is worth
-         printing beside its refutation; what it is not worth is a tile above
-         the chart. It stays inside .Figures rather than moving to a field of
-         its own so that a year switch repaints it with everything else --
-         headline-naive-expenditure checks the arithmetic behind it, and
-         data/sankey*.json carries the cents. */}}
-  <section class="figures" id="figures" aria-label="The figures behind the headline">
-    {{- range .Figures}}
-    <div class="tile{{if .Kind}} {{.Kind}}{{end}}">
-      <div class="label">{{.Label}}</div>
-      <div class="value">{{.Value}}</div>
-      <div class="note">{{.Note}}</div>
-    </div>
-    {{- end}}
-  </section>
-</details>
-
+{{- /* Closed, and filled by app.js from the chart's own data. */}}
 <details class="apparatus" id="derived-view">
   <summary>
     <h2>What we inferred</h2>
     <span class="apparatus-hint">the classifications that are ours, not the city's</span>
   </summary>
-  <p class="lede">
-    A figure the city printed and a classification we made are different things, so they are
-    never drawn alike. Everything listed here is ours, with the reasoning and the row it came
-    from.
-  </p>
   <ul class="derived-list" id="derived-list">
     <li class="subtle">Loading from {{.DataPath}}…</li>
   </ul>
 </details>
 
-{{- /* THE COUNT IN THIS SUMMARY IS PER-YEAR and paintYearWords repaints it.
-       FY2025-26 carries four caveats and FY2026-27 five -- the extra one is the
-       internal-service figure the city's own book contradicts -- so a count
-       rendered once would go stale the moment the reader switches year, which
-       is the fisc-kwq / fisc-yi4 / fisc-iyt defect in a new string. */}}
-<details class="apparatus" id="caveats-view">
-  <summary>
-    <h2>Caveats</h2>
-    <span class="apparatus-hint">◇ <span id="caveats-count">{{len .Caveats}}</span> reasons this
-      chart will not reconcile row-for-row against the printed schedule</span>
-  </summary>
-  <p class="lede">
-    Every one of these ships with the data rather than in a footnote, so a reader who
-    downloads <a href="{{.DataPath}}">{{.DataPath}}</a> gets them too.
-    {{- if .CaveatsPath}} The full text of each is on
-    <a href="{{.CaveatsPath}}">the caveats page</a>, beside every other document's.{{end}}
-  </p>
-  {{- /* SUMMARIES, NOT TEXTS, and the link is what makes that honest rather
-         than a truncation: the paragraph still exists, on a page of its own,
-         and the anchor names THIS document's copy of it. A caveat id can carry
-         different text in different documents, so a bare #<id> would land a
-         FY2026-27 reader on FY2025-26's sentence.
-
-         THE LINK IS CONDITIONAL ON THERE BEING A PAGE. A single-view export --
-         Options.views()'s default, and writeGolden -- writes index.html and
-         nothing else, so an unconditional href would ship a dead link and
-         TestEveryAssetThePageAsksForWasWritten would say so. */}}
-  <ul class="caveats" id="caveats">
-    {{- range .Caveats}}
-    <li>{{if .Href}}<a href="{{.Href}}">{{.Summary}}</a>{{else}}{{.Summary}}{{end}}</li>
-    {{- end}}
-  </ul>
-</details>
-
-{{- /* #counts-line sits in the summary, for the reader deciding whether to
-       open the table; app.js and the tests reach it by id. */}}
+{{- /* app.js repaints #counts-line. */}}
 <details class="apparatus" id="table-view">
   <summary>
     <h2>{{.TableHeading}}</h2>
@@ -402,37 +238,17 @@
 
 </main>
 
+{{- define "sources-heading"}}Sources for every year this page can show{{end}}
 <footer>
-  <!-- "every year this page can show", not "this chart's": the list below is
-       unioned across the view's year stems (fisc-yi4), so with two years
-       published it names pages the year on screen may not cite. Saying which
-       set it is beats leaving a reader to assume it is the narrower one. -->
-  {{- /* THE SOURCE LIST IS DISCLOSED AND THE SENTENCE BELOW IT IS NOT. The
-         list is two links per cited page and grows with the corpus; the
-         sentence under it names the scope, the basis and the document on
-         screen, and a reader must never have to open something to learn which
-         fiscal year they are reading. */}}
-  {{define "sources-heading"}}Sources for every year this page can show{{end}}{{template "sources" .}}
+  {{- /* With a sources page the cited pages are listed there, not here. */}}
+  {{- if not .SourcesPath}}
+  {{template "sources" .}}
+  {{- end}}
   <p class="subtle">
     Scope {{.Scope}}, basis <span id="page-basis">{{.Basis}}</span>. Projection: {{.ProjectionBy}}. Packaged by {{.ExportedBy}}.
-    <!-- The two sentences are separate because the claims are. The scope and
-         basis here are THIS PAGE'S, read out of the document it is drawn from;
-         the source list and the file list, both inside the disclosure that
-         closes above this paragraph, are every document and every file the SITE
-         ships, and since it gained a second schedule they are no longer the
-         same set. Running them together would say the revenue trends are
-         all-funds-gross adopted FY2025-26, which is four wrong things about one
-         file.
-
-         THE BASIS IS WRAPPED AND THE SCOPE IS NOT, and the asymmetry is the
-         point rather than an oversight. Basis is per-year -- yearView carries
-         it, and paintYearWords rewrites this span on every switch, or the
-         sentence would go on describing the year the reader left. Scope cannot
-         vary across this view's years (Sankey.Slices fixes it), buildSankeyPage
-         refuses a stem that disagrees, and the lede above says "all funds,
-         gross" in prose that is not repainted either -- so a span here would
-         repaint one of two copies of one claim. -->
+    {{- /* paintYearWords repaints the basis and the data path; the scope is one per view. */}}
     <span data-year-path>This chart is drawn from <a href="{{.DataPath}}">{{.DataPath}}</a>.</span>
+    {{- if .SourcesPath}} Every page it cites is listed on <a href="{{.SourcesPath}}">the sources page</a>.{{end}}
   </p>
 </footer>
 

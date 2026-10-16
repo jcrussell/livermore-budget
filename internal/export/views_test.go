@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -18,7 +19,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/jcrussell/livermore-budget/internal/export"
-	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/site"
 )
 
@@ -335,57 +335,6 @@ func TestAViewDrawsAnotherScheduleOfItsColumn(t *testing.T) {
 	}
 }
 
-// TestTheLedeSaysANodeSplitsExactlyWhereTheChartIsTheExpansion renders a view
-// drawing the expansion schedule beside one drawing its own spine, and reads
-// the lede of each. The sentence telling a reader to click a node marked ⊕ is
-// server-rendered from the schedule the view draws, so it is held here rather
-// than by a client test.
-func TestTheLedeSaysANodeSplitsExactlyWhereTheChartIsTheExpansion(t *testing.T) {
-	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
-	if err != nil {
-		t.Fatalf("read fund-flows golden: %v", err)
-	}
-	// The fund-flows golden under the expansion's name: the lede reads which
-	// schedule a view draws, not what is in it.
-	var doc map[string]any
-	if err = json.Unmarshal(builtLike(t, goldenSankey(t), fundFlows), &doc); err != nil {
-		t.Fatal(err)
-	}
-	doc["projection"] = project.ExpansionProjection
-	expansion, err := json.Marshal(doc)
-	if err != nil {
-		t.Fatal(err)
-	}
-	dir := t.TempDir()
-	v := chartView(func(v *export.View) { v.Nav, v.Draws = "Extra", project.ExpansionProjection })
-	if _, err := writeSite(export.Options{
-		Dir:         dir,
-		Projections: map[string][]byte{"sankey": goldenSankey(t), "expansion": expansion},
-		Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
-			Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "sankey"}, v},
-		Docs:        budgetDocs(),
-		GeneratedBy: "fisc test",
-	}); err != nil {
-		t.Fatalf("Write: %v", err)
-	}
-	const splits, follows = "Click a node marked ⊕ to split it in place", "Click a node or a flow to pin it in the drawer"
-	for _, c := range []struct {
-		path      string
-		want, not string
-	}{
-		{"extra.html", splits, follows},
-		{export.IndexPath, follows, splits},
-	} {
-		page := readFile(t, dir, c.path)
-		if !strings.Contains(page, c.want) {
-			t.Errorf("%s does not say %q", c.path, c.want)
-		}
-		if strings.Contains(page, c.not) {
-			t.Errorf("%s says %q", c.path, c.not)
-		}
-	}
-}
-
 func TestTheCaveatsPageRefusesWhatWouldRender(t *testing.T) {
 	// THE CAVEATS VIEW IS THE INDEX HERE, which is not how the site is
 	// configured and is the smallest thing that reaches the builder. Options
@@ -539,22 +488,9 @@ func TestTheCaveatsPagePromisesAChartFlagOnlyWhereThereIsAChart(t *testing.T) {
 	}
 }
 
-// TestASingleViewSiteShowsCaveatsWithNoLink is the configuration the caveat
-// summaries have to survive: a site of one view at IndexPath, which is
-// spineOnly, the fixture writeGolden exports.
-//
-// THE FAILURE IT PREVENTS IS A LINK INTO A FILE THAT WAS NEVER WRITTEN. If
-// index.html linked unconditionally, this site would ship
-// href="caveats.html#..." with no caveats.html beside it --
-// TestEveryAssetThePageAsksForWasWritten would say so, but only because that
-// walk strips the fragment before it stats. Asserting the intent directly means
-// the guard does not depend on another test's implementation detail staying
-// the way it is.
-//
-// AND THE SUMMARIES ARE STILL THERE. A page that dropped them when it could not
-// link them would be quietly worse than the wall it replaced: the caveats would
-// simply be gone.
-func TestASingleViewSiteShowsCaveatsWithNoLink(t *testing.T) {
+// TestASingleViewSiteLinksNoCaveatsPage: with no caveats page the index
+// links none, rather than a page that 404s.
+func TestASingleViewSiteLinksNoCaveatsPage(t *testing.T) {
 	dir, _ := writeGolden(t)
 	page := readFile(t, dir, "index.html")
 
@@ -563,25 +499,7 @@ func TestASingleViewSiteShowsCaveatsWithNoLink(t *testing.T) {
 			"that has none, and no longer describes one")
 	}
 	if strings.Contains(page, `href="caveats.html`) {
-		t.Error("index.html links to caveats.html, which this site does not carry; a " +
-			"summary that points at a missing page reads as though there is more to read")
-	}
-	// THE WHOLE SUMMARY, OUTSIDE THE CONFIG BLOB, and both qualifiers are
-	// load-bearing. This asserted the prefix "Permanent Funds are a seventh
-	// fund type", which is (a) in window.FISC_CONFIG whatever the markup does
-	// and (b) a prefix of the caveat's full TEXT as well as of its summary --
-	// so it passed with the summaries deleted, and would equally have passed on
-	// a page that reprinted the full paragraph this change removed.
-	visible := readerVisible(t, page)
-	const summary = "Permanent Funds are a seventh fund type, and this schedule prints no column for them."
-	if !strings.Contains(visible, summary) {
-		t.Error("index.html shows no caveat summaries; with no page to link to they are " +
-			"the whole of what a reader gets, and dropping them is worse than the wall")
-	}
-	const text = "Permanent Funds are a seventh fund type in data/funds.yaml"
-	if strings.Contains(visible, text) {
-		t.Error("index.html prints a caveat's full text; the summary stands in for it, and " +
-			"a site with no caveats page is not a reason to put the wall back")
+		t.Error("index.html links to caveats.html, which this site does not carry")
 	}
 }
 
@@ -1821,6 +1739,7 @@ func provenanceSite(t *testing.T, edit func(*export.Options)) (string, error) {
 	t.Helper()
 	dir := t.TempDir()
 	shard66 := []byte(`{"id":"a","doc_id":"` + budgetDocID + `","page":66}` + "\n")
+	shard67 := []byte(`{"id":"c","doc_id":"` + budgetDocID + `","page":67}` + "\n")
 	shard127 := []byte(`{"id":"b","doc_id":"` + budgetDocID + `","page":127}` + "\n")
 	base := export.Options{
 		Dir:         dir,
@@ -1833,12 +1752,15 @@ func provenanceSite(t *testing.T, edit func(*export.Options)) (string, error) {
 		},
 		Files: map[string][]byte{
 			"facts/d/pages/p0066.jsonl": shard66,
+			"facts/d/pages/p0067.jsonl": shard67,
 			"facts/d/pages/p0127.jsonl": shard127,
 			"facts/facts.csv":           []byte("id\na\n"),
 		},
 		PageIndex: []export.PageIndexEntry{
 			{Citation: export.Citation{DocID: budgetDocID, Page: 66}, Records: 1,
 				Data: "facts/d/pages/p0066.jsonl", Bytes: len(shard66), Note: "the spine"},
+			{Citation: export.Citation{DocID: budgetDocID, Page: 67}, Records: 1,
+				Data: "facts/d/pages/p0067.jsonl", Bytes: len(shard67), Note: "the spine, continued"},
 			{Citation: export.Citation{DocID: budgetDocID, Page: 127}, Records: 1,
 				Data: "facts/d/pages/p0127.jsonl", Bytes: len(shard127), Note: "property taxes"},
 		},
@@ -1848,7 +1770,7 @@ func provenanceSite(t *testing.T, edit func(*export.Options)) (string, error) {
 		RecordsBase: map[string]string{budgetDocID: "facts/d/pages/"},
 		Docs:        budgetDocs(),
 		GeneratedBy: "fisc test",
-		PageText:    twoViewPageText(66, 127),
+		PageText:    twoViewPageText(66, 67, 127),
 	}
 	if edit != nil {
 		edit(&base)
@@ -1892,6 +1814,42 @@ func TestTheProvenanceViewNeedsNoProjection(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "would be ignored") {
 		t.Errorf("got %v, want the refusal naming the ignored projection", err)
+	}
+}
+
+// TestTheIndexLinksTheSourcesPageInPlaceOfItsList: beside a provenance
+// index, the index page lists no cited page and links there, and Write
+// refuses a page the index cites and the provenance index does not list.
+// Mutation: drop listedBy's call in buildSankeyPage -- the second arm goes
+// red; render the footer list unconditionally -- the first goes red.
+func TestTheIndexLinksTheSourcesPageInPlaceOfItsList(t *testing.T) {
+	dir, err := provenanceSite(t, nil)
+	if err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	page := readerVisible(t, readPage(t, dir))
+	if strings.Contains(page, `id="sources-view"`) || strings.Contains(page, "extracted/") {
+		t.Error("index.html lists the pages it cites beside a sources page that lists them")
+	}
+	if !strings.Contains(page, `<a href="provenance.html">`) {
+		t.Error("index.html does not link the sources page")
+	}
+	listed := readFile(t, dir, "provenance.html")
+	for _, p := range []string{"p0066.txt", "p0067.txt"} {
+		if !strings.Contains(listed, "extracted/"+budgetDocID+"/pages/"+p) {
+			t.Errorf("provenance.html does not list %s, which index.html cites", p)
+		}
+	}
+
+	_, err = provenanceSite(t, func(o *export.Options) {
+		o.PageIndex = slices.DeleteFunc(o.PageIndex, func(e export.PageIndexEntry) bool { return e.Page == 67 })
+		delete(o.Files, "facts/d/pages/p0067.jsonl")
+	})
+	if err == nil {
+		t.Fatal("Write linked index.html's sources to a page that does not list p67")
+	}
+	if !strings.Contains(err.Error(), "p67") || !strings.Contains(err.Error(), "does not list it") {
+		t.Errorf("got %v, want the refusal naming p67", err)
 	}
 }
 
@@ -2075,8 +2033,8 @@ func TestAnAbsentRecordsBaseIsNotAnError(t *testing.T) {
 // a published locator whose page text is not in the extraction tree is an
 // error, not a dangling link.
 func TestTheProvenancePageShipsThePageTextOfEveryLocatorItPublishes(t *testing.T) {
-	// The page text carries 66 only; the index publishes 66 and 127.
-	_, err := provenanceSite(t, func(o *export.Options) { o.PageText = twoViewPageText(66) })
+	// The page text carries 66 and 67 only; the index publishes 127 too.
+	_, err := provenanceSite(t, func(o *export.Options) { o.PageText = twoViewPageText(66, 67) })
 	if err == nil {
 		t.Fatal("Write shipped a locator whose page text it does not carry")
 	}
@@ -2239,21 +2197,16 @@ func TestTheApparatusShipsClosedOnEveryChartPage(t *testing.T) {
 
 	for _, page := range []string{export.IndexPath} {
 		html := readFile(t, dir, page)
-		if n := strings.Count(html, "<details"); n < 3 {
+		if n := strings.Count(html, "<details"); n < 2 {
 			t.Errorf("%s renders %d <details>, want the apparatus folded", page, n)
 		}
 		if m := open.FindString(html); m != "" {
 			t.Errorf("%s ships a disclosure open: %s", page, m)
 		}
-		// EVERY DISCLOSURE THE PAGE RENDERS, not the three this lane folded.
-		// index.html carries #figures-view and both carry #sources-view; a list
-		// of three leaves those to the regex above alone, which says only that
-		// nothing is open and nothing at all about what exists.
-		want := []string{"derived-view", "caveats-view", "table-view", "sources-view"}
-		if page == export.IndexPath {
-			want = append(want, "figures-view")
-		}
-		for _, id := range want {
+		// Every disclosure the page renders: the regex above says only that
+		// nothing is open. #sources-view is here because this site has no
+		// sources page.
+		for _, id := range []string{"derived-view", "table-view", "sources-view"} {
 			if !strings.Contains(html, `<details class="apparatus" id="`+id+`">`) {
 				t.Errorf("%s does not fold #%s into an .apparatus disclosure", page, id)
 			}
@@ -2554,7 +2507,7 @@ func TestEveryFooterDisclosureKeepsItsHeadingInTheOutline(t *testing.T) {
 	}
 	if diff := cmp.Diff([]string{export.CapitalTemplate, export.DebtTemplate,
 		export.DepartmentTemplate, export.HistoryTemplate, export.SankeyTemplate,
-		export.ProvenanceTemplate, export.TrendsTemplate}, calling); diff != "" {
+		export.ProvenanceTemplate, export.TotalsTemplate, export.TrendsTemplate}, calling); diff != "" {
 		t.Errorf("templates executing the sources partial (-want +got):\n%s", diff)
 	}
 }
@@ -2696,7 +2649,7 @@ func TestTheSpineShipsItsBulkButtonsHiddenAndItsHintEmpty(t *testing.T) {
 	for _, want := range []string{
 		`<button type="button" id="chart-expand-all" disabled hidden>Expand all</button>`,
 		`<button type="button" id="chart-collapse-all" disabled hidden>Collapse all</button>`,
-		`<span id="chart-hint"></span>`,
+		`<p class="subtle chart-hint" id="chart-hint"></p>`,
 	} {
 		if !strings.Contains(visible, want) {
 			t.Errorf("the spine does not carry %s", want)

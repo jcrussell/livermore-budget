@@ -1160,7 +1160,6 @@ describe("a count the client takes is marked as its own", () => {
     /** @type {Record<string, string>} */
     const said = {};
     said.counts = text("counts-line");
-    said.caveats = document.getElementById("caveats-count").parentElement.textContent.replace(/\s+/g, " ").trim();
     said.hairline = text("hairline-line");
     const general = marksIn(chart).find((m) => m.__data__.id === "fund-group/general");
     assert.ok(general, "the root draws no fund-group/general");

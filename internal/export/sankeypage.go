@@ -41,12 +41,10 @@ type projectionMetadata struct {
 // the document's own order.
 func (m projectionMetadata) Scope() string { return strings.Join(m.Scopes, ", ") }
 
-// figure is one stat tile.
-// The JSON tags are load-bearing, not decoration: a figure is rendered by the
-// template AND shipped in window.FISC_CONFIG for the year toggle to swap in, and
-// without them it serialises as Label/Value/Note/Kind while the client reads
-// label/value/note/kind. That is a page of empty tiles, and it is silent — the
-// template keeps working, because the template never sees the JSON.
+// figure is one headline figure: a tile on the totals page, and the index's
+// headline. The JSON tags are load-bearing: the hero ships in
+// window.FISC_CONFIG for the year toggle to paint, which reads label and value,
+// and the template never sees the JSON to notice a missing tag.
 type figure struct {
 	Label string `json:"label"`
 	Value string `json:"value"`
@@ -72,7 +70,6 @@ type yearView struct {
 	// survive the switch.
 	Title   string      `json:"title"`
 	Hero    figure      `json:"hero"`
-	Figures []figure    `json:"figures"`
 	Caveats []caveatRef `json:"caveats"`
 	Counts  countsRef   `json:"counts"`
 	// ChartTitle is the <title> inside the SVG -- the chart's accessible name,
@@ -105,18 +102,19 @@ type pageData struct {
 	// the same one app.js repaints on a year switch.
 	ChartTitle string
 	Hero       figure
-	Figures    []figure
+	// TotalsPath is the totals page, or "" when the site has none.
+	TotalsPath string
+	// SourcesPath is the provenance index, or "" when the site has none: with
+	// one, the footer links there instead of listing every cited page.
+	SourcesPath string
 	// Years is every published year, oldest first. The template renders the
-	// Opens year's tiles and caveats and lists them all as a selector.
+	// Opens year's headline and lists them all as a selector.
 	Years []yearView
 	// Opens is the stem of the year the page opens on: the last of Years.
 	Opens string
 	Facts int
 	Nodes int
 	Links int
-	// Expands is whether this page's chart splits a node in place, which the
-	// lede's sentence about a click depends on.
-	Expands bool
 	// Description is [View.Description].
 	Description string
 	// ConfigJSON is window.FISC_CONFIG. json.Marshal escapes <, > and & to
@@ -350,7 +348,7 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 				v.Path, v.Projection, meta.GeneratedBy, stem, m.GeneratedBy)
 		}
 		cited = append(cited, m.Sources...)
-		hero, figures := tilesFor(m)
+		hero, _ := tilesFor(m)
 		counts := countsRef{Facts: m.Counts.Facts, Nodes: m.Counts.Nodes, Links: m.Counts.Links}
 		caveats := caveatRefs(m.Caveats, stem, caveatsPath)
 		if v.Draws != "" {
@@ -359,7 +357,7 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 				return pageData{}, chartErr
 			}
 			// The chart, its counts line and its caveats are the drawn
-			// schedule's; the tiles above it stay the spine's, whose caveats
+			// schedule's; the headline stays the spine's, whose caveats
 			// come first.
 			cited = append(cited, chart.doc.Metadata.Sources...)
 			counts = chart.doc.Metadata.Counts
@@ -375,7 +373,6 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			ChartTitle: "Sankey diagram of the " + ledeOf(m.FiscalYearLabel, m.Basis) + " budget",
 			Lede:       ledeOf(m.FiscalYearLabel, m.Basis),
 			Hero:       hero,
-			Figures:    figures,
 			Caveats:    caveats,
 			Counts:     counts,
 		})
@@ -384,7 +381,14 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	// per-year the page renders statically comes from this entry.
 	open := years[len(years)-1]
 
-	sources, clientDocs := sourcesFor(unionSources(cited), byID, pageTextBase, o.RecordsBase)
+	union := unionSources(cited)
+	sourcesPath := templatePathOf(o, ProvenanceTemplate)
+	if sourcesPath != "" {
+		if listErr := listedBy(o.PageIndex, union, v.Path, sourcesPath); listErr != nil {
+			return pageData{}, listErr
+		}
+	}
+	sources, clientDocs := sourcesFor(union, byID, pageTextBase, o.RecordsBase)
 
 	cfg := clientConfig{
 		SchemaVersion: doc.SchemaVersion,
@@ -423,13 +427,13 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		TableHeading: flowTableHeading,
 		ChartTitle:   open.ChartTitle,
 		Hero:         open.Hero,
-		Figures:      open.Figures,
+		TotalsPath:   templatePathOf(o, TotalsTemplate),
+		SourcesPath:  sourcesPath,
 		Years:        years,
 		Opens:        open.Stem,
 		Facts:        open.Counts.Facts,
 		Nodes:        open.Counts.Nodes,
 		Links:        open.Counts.Links,
-		Expands:      v.Draws == project.ExpansionProjection,
 		Description:  v.Description,
 		// #nosec G203 -- blob is encoding/json's output, which escapes <, >
 		// and & to their \u form, so it cannot terminate the script element
@@ -437,4 +441,34 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		// string, would corrupt the JSON.
 		ConfigJSON: template.JS(blob),
 	}, nil
+}
+
+// templatePathOf is the path of the view rendering template name, or "" when
+// the site has none.
+func templatePathOf(o *Options, name string) string {
+	for _, v := range o.Views {
+		if v.Template == name {
+			return v.Path
+		}
+	}
+	return ""
+}
+
+// listedBy refuses a page view cites that the provenance index at
+// sourcesPath does not list: view links there in place of its own source
+// list, so an unlisted page would be a citation no link reaches.
+func listedBy(index []PageIndexEntry, cited []sourceMeta, view, sourcesPath string) error {
+	listed := make(map[Citation]bool, len(index))
+	for _, e := range index {
+		listed[e.Citation] = true
+	}
+	for _, s := range cited {
+		for _, p := range s.Pages {
+			if !listed[Citation{DocID: s.DocID, Page: p}] {
+				return fmt.Errorf("view %q cites %s p%d and links its sources to %q, which does not list it",
+					view, s.DocID, p, sourcesPath)
+			}
+		}
+	}
+	return nil
 }
