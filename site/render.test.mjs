@@ -908,7 +908,13 @@ describe("arms no committed column reaches", () => {
   // Mutation: give the qualifier tspan of a middle-anchored label a dy of
   // -1.15em again and this goes red, naming the lifted marks.
   test("every qualified label is drawn on one line, an interior one included", async (t) => {
-    const { app, document } = await bootedApp({ checkedStem: newest.stem });
+    // Two funds of one group under one name, so a pair the funds' column,
+    // an interior one, qualifies is drawn: the columns no source's lines
+    // stand in carry no shared label of their own.
+    const col = structuredClone(columnFixture(newest.fixture));
+    const named = (id) => col.nodes.find((n) => n.id === id);
+    named("fund/640").label = named("fund/620").label;
+    const { app, document } = await bootedApp({ checkedStem: newest.stem, plan: { [newest.path]: { doc: col } } });
     app.expandAll();
     await settle();
     const slots = app.slotsOf(app.laidNodes, app.RENDER_TIERS);
@@ -1205,8 +1211,8 @@ describe("a count the client takes is marked as its own", () => {
 });
 
 // TWO EXTEND SPLITS DRAWN TOGETHER (fisc-yj4w.34.13): each opens its members
-// a slot after its parent's, so two open together can declare a slot further
-// right than any drawn ribbon reaches. Every node is still drawn in its slot.
+// a slot beside its parent's, so two open together can declare a slot further
+// out than any drawn ribbon reaches. Every node is still drawn in its slot.
 describe("two extend splits open together", () => {
   /** Each laid node whose d3 layer is not its slot's rank, by id. */
   const misplaced = (app) => {

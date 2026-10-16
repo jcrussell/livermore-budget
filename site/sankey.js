@@ -285,10 +285,14 @@ export function restackLinks(graph) {
 }
 
 /**
- * How many extend splits deep one spine column's slots may run: a slot's
- * order key is its spine column times this, plus its depth.
+ * How many slots one spine column's extend splits may run across: a slot's
+ * order key is its spine column times this, plus ROOT_SLOT, plus its depth
+ * after its root or less its depth before it.
  */
 export const SLOT_DEPTH = 10;
+
+/** A root's slot within its spine column's SLOT_DEPTH: the room before it. */
+const ROOT_SLOT = SLOT_DEPTH / 2;
 
 /**
  * THE PLACEMENT: the column each node is drawn in, by id, numbered from 0 with
@@ -323,11 +327,17 @@ export function slotsOf(nodes, tiers) {
  * The slot order key of every node of the expansion schedule, read off its
  * parent chain in the UNFOLDED schedule: a root at its tier's place in the
  * spine's column order, and a member in the slot directly after its
- * parent's. Every split from one slot opens into the same next slot.
+ * parent's, or directly before it where the split's links run from its
+ * members to the node -- a source's, whose members pay into it, so opening
+ * it moves nothing to its right. A split no link runs between stands after
+ * its node. Every split from one slot opens into the same next or previous
+ * slot.
  *
  * FAILS CLOSED on a root at a tier the spine does not draw, a member of no
- * split the schedule declares, a member of a split of any form but extend,
- * and an extend chain deeper than SLOT_DEPTH.
+ * split the schedule declares, a member of a split of any form but extend, a
+ * split whose links run both ways between its node and its members, a
+ * member opening back the way its own parent opened, which would stand it in
+ * its grandparent's slot, and an extend chain past its column's slots.
  *
  * @param {FiscProjection} expansion
  * @param {number[]} tiers the spine's column order
@@ -342,6 +352,23 @@ export function expansionSlots(expansion, tiers) {
   for (const sp of /** @type {any[]} */ ((/** @type {any} */ (expansion)).splits || [])) {
     formOf.set(sp.node + "\u001f" + sp.key, sp.form);
     if (!sp.alternative) primary.set(sp.node, sp.key);
+  }
+  /**
+   * Which way each split's links run between its node and its members, by
+   * node\u001fkey: -1 where they run from the members to the node, +1 from
+   * the node, 0 both ways.
+   * @type {Map<string, number>}
+   */
+  const way = new Map();
+  for (const l of expansion.links) {
+    const src = byID.get(l.source), tgt = byID.get(l.target);
+    let at, dir;
+    if (tgt && tgt.parent === l.source) [at, dir] = [tgt, 1];
+    else if (src && src.parent === l.target) [at, dir] = [src, -1];
+    else continue;
+    const k = at.parent + "\u001f" + (at.alternative || primary.get(at.parent) || "");
+    const was = way.get(k);
+    way.set(k, was === undefined || was === dir ? dir : 0);
   }
   /** @type {Map<string, number>} */
   const out = new Map();
@@ -360,19 +387,26 @@ export function expansionSlots(expansion, tiers) {
         throw new Error("cannot place " + n.id + ": it is a root of " + expansion.projection +
           " at tier " + n.tier + ", which the spine's columns " + tiers.join(", ") + " do not draw");
       }
-      slot = column * SLOT_DEPTH;
+      slot = column * SLOT_DEPTH + ROOT_SLOT;
     } else {
       const up = byID.get(n.parent);
       if (!up || hops > 8) throw new Error("cannot place " + n.id + ": its parent chain does not reach a root");
       const key = n.alternative || primary.get(up.id) || "";
       const form = formOf.get(up.id + "\u001f" + key);
       const above = slotOf(up, hops + 1);
-      if (form === "extend" && (above % SLOT_DEPTH) + 1 < SLOT_DEPTH) slot = above + 1;
+      const step = way.get(up.id + "\u001f" + key) ?? 1;
+      const within = (above % SLOT_DEPTH) + step;
+      // A member opening back the way its parent opened stands where its
+      // grandparent does.
+      const back = step !== 0 && Math.sign((above % SLOT_DEPTH) - ROOT_SLOT) === -step;
+      if (form === "extend" && step !== 0 && !back && within >= 0 && within < SLOT_DEPTH) slot = above + step;
       else {
         throw new Error("cannot place " + n.id + ": it is a member of " + up.id + "'s split " +
           JSON.stringify(key) + ", " + (!form ? "which the schedule does not declare"
             : form !== "extend" ? "declared " + JSON.stringify(form) + ", and this page draws a split only as extend"
-              : "extended past " + SLOT_DEPTH + " slots"));
+              : step === 0 ? "whose links run both from and to its members"
+                : back ? "opening back toward " + up.parent + ", whose slot it would stand in"
+                  : "extended past " + SLOT_DEPTH + " slots"));
       }
     }
     out.set(n.id, slot);
@@ -1160,10 +1194,23 @@ export const SANKEY = Object.freeze({
     };
     /** Where a mark that enters grows from. @param {string} id */
     const grownFrom = (id) => above(id, before) || above(id, now);
-    /** A ribbon at no width at a box's right edge, mid-height. */
-    const flatAt = (/** @type {{x1: number, y0: number, y1: number}} */ box) => {
+    /**
+     * The edge of its ancestor a mark grows out of or shrinks into: the left
+     * where the mark stands left of that ancestor among `boxes`, as a
+     * source's member does, the right otherwise.
+     * @param {string} id
+     * @param {Map<string, {x0: number, x1: number, y0: number, y1: number}>} boxes
+     * @param {{x0: number, x1: number}} box the ancestor's box the move starts or ends at
+     */
+    const edgeOf = (id, boxes, box) => {
+      const mark = boxes.get(id);
+      const up = above(id, boxes);
+      return mark && up && mark.x1 <= up.x0 ? box.x0 : box.x1;
+    };
+    /** A ribbon at no width at x, mid-height of a box. */
+    const flatAt = (/** @type {{y0: number, y1: number}} */ box, /** @type {number} */ x) => {
       const y = (box.y0 + box.y1) / 2;
-      return path({ source: { x1: box.x1 }, target: { x0: box.x1 }, y0: y, y1: y });
+      return path({ source: { x1: x }, target: { x0: x }, y0: y, y1: y });
     };
     const t = motion ? d3.transition(MOVE).duration(motion) : null;
     /** @param {any} sel */
@@ -1390,20 +1437,23 @@ export const SANKEY = Object.freeze({
       return finish;
     }
 
-    // THE START: a new mark at its ancestor's right edge, a surviving one
-    // where it stands, every label hidden until the move is over.
+    // THE START: a new mark at its ancestor's edge on its own side, a
+    // surviving one where it stands, every label hidden until the move is
+    // over.
     if (enteredNodes) {
       enteredNodes.each(/** @this {SVGGElement} @param {LaidNode} d */ function (d) {
-        const from = grownFrom(d.id) || { x1: d.x0, y0: d.y0, y1: d.y1 };
+        const from = grownFrom(d.id) || { x0: d.x0, x1: d.x0, y0: d.y0, y1: d.y1 };
+        const x = edgeOf(d.id, now, from);
         const g = d3.select(this);
-        g.select("rect").attr("x", from.x1).attr("y", from.y0).attr("width", 0).attr("height", Math.max(2, from.y1 - from.y0));
-        g.select("rect.contra-band").attr("x", from.x1).attr("y", from.y0).attr("width", 0).attr("height", 0);
+        g.select("rect").attr("x", x).attr("y", from.y0).attr("width", 0).attr("height", Math.max(2, from.y1 - from.y0));
+        g.select("rect.contra-band").attr("x", x).attr("y", from.y0).attr("width", 0).attr("height", 0);
       });
     }
     if (enteredLinks) {
       enteredLinks.each(/** @this {SVGPathElement} @param {LaidLink} d */ function (d) {
-        const grown = !before.has(d.target.id) ? grownFrom(d.target.id) : !before.has(d.source.id) ? grownFrom(d.source.id) : null;
-        d3.select(this).attr("d", grown ? flatAt(grown) : path(d)).attr("stroke-width", 0);
+        const id = !before.has(d.target.id) ? d.target.id : !before.has(d.source.id) ? d.source.id : "";
+        const grown = id ? grownFrom(id) : null;
+        d3.select(this).attr("d", grown ? flatAt(grown, edgeOf(id, now, grown)) : path(d)).attr("stroke-width", 0);
       });
     }
     label.attr("opacity", 0);
@@ -1415,15 +1465,17 @@ export const SANKEY = Object.freeze({
     glyphs.transition(FADE).delay(motion).duration(motion / 2).attr("opacity", 1)
       .on("end", /** @this {SVGGElement} */ function () { this.removeAttribute("opacity"); });
 
-    // THE END OF A MARK LEAVING: into the right edge of its ancestor drawn now.
+    // THE END OF A MARK LEAVING: into the edge on its own side of its
+    // ancestor drawn now.
     if (leavingNodes) {
       inert(leavingNodes);
       leavingNodes.select("text").attr("opacity", 0);
       leavingNodes.each(/** @this {SVGGElement} @param {LaidNode} d */ function (d) {
         const into = above(d.id, now) || d;
+        const x = edgeOf(d.id, before, into);
         const g = d3.select(this).transition(t);
-        g.select("rect").attr("x", into.x1).attr("y", into.y0).attr("width", 0).attr("height", Math.max(2, into.y1 - into.y0));
-        g.select("rect.contra-band").attr("x", into.x1).attr("width", 0).attr("height", 0);
+        g.select("rect").attr("x", x).attr("y", into.y0).attr("width", 0).attr("height", Math.max(2, into.y1 - into.y0));
+        g.select("rect.contra-band").attr("x", x).attr("width", 0).attr("height", 0);
         g.remove();
       });
     }
@@ -1434,7 +1486,7 @@ export const SANKEY = Object.freeze({
         const gone = ends.find((id) => id && !now.has(id));
         const into = gone ? above(gone, now) : null;
         const p = d3.select(this).transition(t).attr("stroke-width", 0);
-        if (into) p.attr("d", flatAt(into));
+        if (gone && into) p.attr("d", flatAt(into, edgeOf(gone, before, into)));
         p.remove();
       });
     }

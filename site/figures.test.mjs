@@ -13,9 +13,8 @@ import {
 
 const PAGE = pageFixture();
 const PROPERTY = "revenue/taxes/property";
+/** A line of Property Taxes printed as a reduction: split, its ribbon runs into its category. */
 const ERAF = "revenue-line/taxes/property/eraf";
-/** Where ERAF's ribbon runs with Property Taxes split and its fund group not. */
-const GENERAL = "fund-group/general";
 
 const YEARS = [
   { stem: "sankey", column: "fy2026-adopted", eraf: "−$15,175,000", property: "$69,459,414" },
@@ -80,7 +79,7 @@ for (const year of YEARS) {
       assert.ok(printed.value_cents < 0);
       assert.equal(dollars(printed.value_cents), year.eraf);
       const chart = document.getElementById("chart");
-      const ribbon = ribbonOf(chart, ERAF, GENERAL);
+      const ribbon = ribbonOf(chart, ERAF, PROPERTY);
       assert.ok(ribbon, "ERAF is not drawn as a ribbon");
       const onRibbon = shown(app, document, ribbon.__data__);
       assert.equal(onRibbon.tip, year.eraf);
@@ -193,7 +192,7 @@ for (const year of YEARS) {
           want.push(links.pdf, links.text, links.records);
         }
       }
-      app.pin(ribbonOf(document.getElementById("chart"), ERAF, GENERAL).__data__);
+      app.pin(ribbonOf(document.getElementById("chart"), ERAF, PROPERTY).__data__);
       const got = [...document.querySelectorAll("#detail .prov a")].map((a) => a.getAttribute("href"));
       t.diagnostic(`ERAF cites ${JSON.stringify(printed.locators)}: ${got.join(" ")}`);
       assert.deepEqual(got, want);

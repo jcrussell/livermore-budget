@@ -286,21 +286,27 @@ as the alternative a reader chooses instead, the divisions that spend it, and
 Transfers Out into the funds it pays. The fund-balance ends declare no split.
 Every split is EXTEND, the one form `split_form` admits, so a schedule
 declaring any other is refused at the write: the node stays drawn as a hub
-and its members stand in a column of their own after it. The General Fund's link
+and its members stand in a column of their own beside it -- before it where
+its legs run from the members to it, after it otherwise. The General Fund's link
 to each division, and an object category's to each division of the
 alternative, cites that member's own total. Every other split's links to its
-members are legs carrying `repeats`: each repeats one leaf's cents and facts,
-a leaf arriving at the member -- re-pointed to end at the node, naming its own
-ends in `repeats` -- or, for a revenue category and Transfers In, which take
-nothing in, a leaf leaving it. A fund group's legs therefore carry each
-fund's inflow, and a fund that only spends is reached by none. Go publishes
+members are legs carrying `repeats`: each repeats one leaf's cents and facts.
+Where the node takes money in, the leaf arrives at the member and is
+re-pointed to end at the node, naming its own ends in `repeats`, and the leg
+runs from the node to the member; for a revenue category and Transfers In,
+which take nothing in, the leaf leaves the member and is re-pointed to start
+at the node, and the leg runs from the member to the node, so opening one
+puts its members to its left and moves nothing to its right. A fund group's
+legs therefore carry each fund's inflow, and a fund that only spends is
+reached by none. Go publishes
 no sum for a hub ribbon; the client's fold adds the legs it draws. Every
 node not split stays where it is, so expanding node by node reaches the
 finest grain the stitch carries without leaving the chart.
 
 **Every node the expansion draws carries `slot`**, the order key of the column
 it stands in: a root at its tier's place in the overview's `tiers`, an extend
-member in the slot after its parent's (`expansionSlots` in
+member in the slot after its parent's, or before it where the member's leg
+runs to its parent (`expansionSlots` in
 `site/sankey.js`). A split's tail sits in its members'
 slot (`schema/mark.schema.json`). The slots present are ranked into columns,
 and the client refuses, with a banner and the chart unchanged, a layout in

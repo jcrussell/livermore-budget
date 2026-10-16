@@ -32,8 +32,8 @@ import (
 // axis. A document declares a partition on every link or none, and along one
 // pair of tiers, so the flag cannot exempt a single flow.
 //
-// A link repeating a leaf is held at that leaf's ends: a hub leg is drawn one
-// slot onward from its node to its member whatever their tiers.
+// A link repeating a leaf is held at that leaf's ends: a hub leg is drawn
+// between its node and its member, one slot apart, whatever their tiers.
 type nodeTiersAreDeclared struct{}
 
 var _ Check = (*nodeTiersAreDeclared)(nil)
@@ -85,8 +85,8 @@ func (*nodeTiersAreDeclared) Run(_ context.Context, s *Subject) (Result, error) 
 		axes := map[string]map[[2]int]bool{}
 		for _, l := range p.Links {
 			links++
-			// A repeating link is drawn from its node one slot onward to its
-			// member, and held as the leaf it repeats.
+			// A repeating link is drawn between a node and its member one
+			// slot apart, and held as the leaf it repeats.
 			l = atLeaf(l, byID)
 			src, sok := tierOf[l.Source]
 			dst, dok := tierOf[l.Target]

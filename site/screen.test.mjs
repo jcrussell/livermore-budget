@@ -513,23 +513,26 @@ describe("zoom and pan on the chart", () => {
 
   // Mutation: hand --chart-max widthOf(columns) and --chart-stretch 1 again,
   // scaling the chart to fit its card, and this goes red: the split shrinks
-  // every mark and moves the revenue column left.
+  // every mark and draws the fund groups nearer the revenue column.
   test("opening a split moves no column it leaves and rescales nothing", async (t) => {
     const viewport = 1400;
     const { app, document, window } = await bootedApp({ viewport });
     Object.defineProperty(window, "innerWidth", { value: viewport, configurable: true, writable: true });
+    // From the node opened: a source's members stand before it, and the
+    // scroller, not the canvas, takes up the column they add.
+    const opened = "revenue/intergovernmental";
     const where = (id) => {
-      const d = app.laidNodes.find((n) => n.id === id);
+      const x = (at) => app.laidNodes.find((n) => n.id === at).x0;
       const s = drawnScale(document, window);
-      return s.refused ? s : { scale: s.scale, x: d ? d.x0 * s.scale : null };
+      return s.refused ? s : { scale: s.scale, x: (x(id) - x(opened)) * s.scale };
     };
-    const before = where("revenue/taxes/sales");
-    await split(app, "revenue/intergovernmental");
-    const after = where("revenue/taxes/sales");
-    const detail = `at a ${viewport}px viewport, revenue/taxes/sales before the split ${JSON.stringify(before)}, ` +
+    const before = where("fund-group/general");
+    await split(app, opened);
+    const after = where("fund-group/general");
+    const detail = `at a ${viewport}px viewport, fund-group/general from ${opened} before the split ${JSON.stringify(before)}, ` +
       `after ${JSON.stringify(after)}; ${app.layoutColumns(app.shown.doc)} columns`;
     t.diagnostic(detail);
-    assert.deepEqual({ after, drawn: typeof before.x === "number" }, { after: before, drawn: true }, detail);
+    assert.deepEqual({ after, drawn: before.x > 0 }, { after: before, drawn: true }, detail);
   });
 
   // fisc-ylxh.7. Mutation: let a plain wheel zoom in full screen again and

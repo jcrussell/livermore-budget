@@ -44,8 +44,8 @@ func linkAt(t *testing.T, d *project.Document, source, target string) int {
 }
 
 // leafAt is the index of the leaf a page prints from source to target,
-// wherever the stitch draws it: a hub leg repeating it runs from a node to its
-// own member, and the leaf is the one link repeating it that does not.
+// wherever the stitch draws it: a hub leg repeating it runs between a node
+// and its own member, and the leaf is the one link repeating it that does not.
 func leafAt(t *testing.T, d *project.Document, source, target string) int {
 	t.Helper()
 	parent := map[string]string{}
@@ -58,7 +58,8 @@ func leafAt(t *testing.T, d *project.Document, source, target string) int {
 		if l.Repeats == "" && l.Source == source && l.Target == target {
 			return i
 		}
-		if s, tg := project.LeafEnds(l.Repeats); s == source && tg == target && parent[l.Target] != l.Source {
+		if s, tg := project.LeafEnds(l.Repeats); s == source && tg == target &&
+			parent[l.Target] != l.Source && parent[l.Source] != l.Target {
 			return i
 		}
 	}
@@ -66,16 +67,27 @@ func leafAt(t *testing.T, d *project.Document, source, target string) int {
 	return -1
 }
 
-// legAt is the index of the hub leg from hub repeating the leaf from source
-// to target.
+// legAt is the index of the hub leg at hub repeating the leaf from source to
+// target: from the hub to a member, or from a member to a hub taking nothing
+// in.
 func legAt(t *testing.T, d *project.Document, hub, source, target string) int {
 	t.Helper()
+	parent := map[string]string{}
+	for _, n := range d.Nodes {
+		if n.Alternative == "" {
+			parent[n.ID] = n.Parent
+		}
+	}
 	for i, l := range d.Links {
-		if s, tg := project.LeafEnds(l.Repeats); l.Source == hub && s == source && tg == target {
+		s, tg := project.LeafEnds(l.Repeats)
+		if s != source || tg != target {
+			continue
+		}
+		if (l.Source == hub && parent[l.Target] == hub) || (l.Target == hub && parent[l.Source] == hub) {
 			return i
 		}
 	}
-	t.Fatalf("no leg from %s repeating %s -> %s", hub, source, target)
+	t.Fatalf("no leg at %s repeating %s -> %s", hub, source, target)
 	return -1
 }
 
@@ -253,7 +265,7 @@ func TestTheExpansionChecksCanFail(t *testing.T) {
 				i := legAt(t, d, salesHub, salesLine, "fund/100")
 				d.Links = slices.Delete(d.Links, i, i+1)
 			},
-			want: "the leaf " + salesLine + " -> fund-group/general repeating " + salesLeaf + " is repeated by 0 legs",
+			want: "the leaf " + salesHub + " -> fund-group/general repeating " + salesLeaf + " is repeated by 0 legs",
 		},
 		{
 			name: "a sales tax line's leg dropped, the hub short of its outflow", check: &expansionSplitsTie{},
@@ -314,14 +326,31 @@ func TestTheExpansionChecksCanFail(t *testing.T) {
 			want: "the leaf " + project.NodeFundBalanceDraw + " -> fund-group/capital re-pointed onto the node repeats",
 		},
 		{
-			name: "a leaf leaving a hub's member repeating a leaf to another node", check: &expansionSplitsTie{},
+			name: "a sales tax line's leg run out of its hub", check: &expansionSplitsTie{},
+			edit: func(t *testing.T, _ *Subject, d *project.Document) {
+				l := &d.Links[legAt(t, d, salesHub, salesLine, "fund/100")]
+				l.Source, l.Target = l.Target, l.Source
+			},
+			want: "the leg " + salesHub + " -> " + salesLine + " repeating " + salesLeaf +
+				" runs out of the node, and a leaf leaves its member the other way",
+		},
+		{
+			name: "a line's leaf left on its line", check: &expansionSplitsTie{},
+			edit: func(t *testing.T, _ *Subject, d *project.Document) {
+				d.Links[leafAt(t, d, salesLine, "fund/100")].Source = salesLine
+			},
+			want: "the leaf " + salesLine + " -> fund-group/general repeating \"" + salesLeaf +
+				"\" leaves a member and is not re-pointed onto the node",
+		},
+		{
+			name: "a leaf re-pointed off a source hub repeating a leaf to another node", check: &expansionSplitsTie{},
 			edit: func(t *testing.T, _ *Subject, d *project.Document) {
 				forged := salesLine + " -> fund/200 external"
 				d.Links[legAt(t, d, salesHub, salesLine, "fund/100")].Repeats = forged
-				i := leafAt(t, d, salesLine, "fund/100")
-				d.Links[i].Target, d.Links[i].Repeats = "fund/100", forged
+				d.Links[leafAt(t, d, salesLine, "fund/100")].Repeats = forged
 			},
-			want: "the leaf " + salesLine + " -> fund/100 leaves a member and repeats",
+			want: "the leaf " + salesHub + " -> fund-group/general re-pointed onto the node repeats \"" + salesLine +
+				" -> fund/200 external\", whose other end is another node's",
 		},
 		{
 			name: "two leaves repeating one leaf", check: &expansionSplitsTie{},

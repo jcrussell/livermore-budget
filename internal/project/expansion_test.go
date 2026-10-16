@@ -383,7 +383,7 @@ func leavesOf(d *Document) []Link {
 			out = append(out, l)
 			continue
 		}
-		if l.Alternative == "" && parent[l.Target] == l.Source {
+		if l.Alternative == "" && (parent[l.Target] == l.Source || parent[l.Source] == l.Target) {
 			continue
 		}
 		l.Source, l.Target = LeafEnds(l.Repeats)
@@ -601,6 +601,63 @@ func TestAFundGroupsLegsCarryEachFundsInflow(t *testing.T) {
 			}
 		}
 		t.Logf("FY%d: members a fund group reaches by no leg, nothing arriving at them: %v", year, unreached)
+	}
+}
+
+// TestASourcesLegsRunFromItsMembers holds a hub split whose node takes
+// nothing in on the spine -- each revenue category and transfers/in -- to
+// legs running from its members into it, so the client stands its members
+// before it: every leg is member -> node repeating a leaf that leaves that
+// member, and every primary leaf leaving a member is re-pointed to start at
+// the node.
+//
+// MUTATION: draw a source's legs node -> member and leave the leaf on its
+// member, as extendHubs does for no node, and this names every leg.
+func TestASourcesLegsRunFromItsMembers(t *testing.T) {
+	for _, year := range []int{2026, 2027} {
+		docs := committedDocs(t, year)
+		x, spine := docs[ExpansionProjection], docs[PublishedProjection]
+		takesIn := map[string]bool{}
+		for _, l := range spine.Links {
+			takesIn[l.Target] = true
+		}
+		parent := map[string]string{}
+		for _, n := range x.Nodes {
+			if n.Alternative == "" {
+				parent[n.ID] = n.Parent
+			}
+		}
+		source := func(id string) bool {
+			return id != "" && parent[id] == "" && !takesIn[id] && slices.ContainsFunc(x.Splits, func(sp Split) bool {
+				return sp.Node == id && !sp.Alternative
+			})
+		}
+		legs, leaves := 0, 0
+		for _, l := range x.Links {
+			if l.Alternative != "" || l.Repeats == "" {
+				continue
+			}
+			from, _ := LeafEnds(l.Repeats)
+			switch {
+			case source(parent[l.Source]) && l.Target == parent[l.Source]:
+				legs++
+				if from != l.Source {
+					t.Errorf("FY%d: the leg %s -> %s repeats %q, which does not leave its member", year, l.Source, l.Target, l.Repeats)
+				}
+			case source(parent[l.Target]) && l.Source == parent[l.Target]:
+				t.Errorf("FY%d: the leg %s -> %s runs from a node that takes nothing in to its member", year, l.Source, l.Target)
+			case source(parent[from]) && parent[l.Target] != l.Source:
+				leaves++
+				if l.Source != parent[from] {
+					t.Errorf("FY%d: the leaf %s -> %s repeating %q leaves a member of %s and does not start at it",
+						year, l.Source, l.Target, l.Repeats, parent[from])
+				}
+			}
+		}
+		if legs == 0 || legs != leaves {
+			t.Errorf("FY%d: %d legs run into a source and %d leaves start at one, want the same, more than none", year, legs, leaves)
+		}
+		t.Logf("FY%d: %d legs run from a source's members into it, each repeating a leaf re-pointed to start at it", year, legs)
 	}
 }
 

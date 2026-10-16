@@ -35,6 +35,56 @@ describe("the columns are the slots the chart draws", () => {
   });
 });
 
+// A miniature expansion: a source whose lines pay into it, one line split
+// again the same way, and a group whose funds it pays into.
+function sources() {
+  const node = (id, tier, parent = "") => ({ id, label: id, tier, parent });
+  const link = (source, target, repeats) => ({ source, target, value_cents: 1, kind: "external", fact_ids: ["f"], repeats });
+  return {
+    projection: "expansion",
+    nodes: [
+      node("revenue/x", 0), node("revenue-line/x/a", 1, "revenue/x"), node("revenue-line/x/a/b", 1, "revenue-line/x/a"),
+      node("fund-group/g", 2), node("fund/1", 3, "fund-group/g"),
+    ],
+    links: [
+      link("revenue-line/x/a/b", "revenue-line/x/a", "revenue-line/x/a/b -> fund/1 external"),
+      link("revenue-line/x/a", "revenue/x", "revenue-line/x/a/b -> fund/1 external"),
+      link("revenue/x", "fund-group/g", "revenue-line/x/a/b -> fund/1 external"),
+      link("fund-group/g", "fund/1", "revenue-line/x/a/b -> fund/1 external"),
+    ],
+    splits: [
+      { node: "revenue/x", key: "lines", form: "extend", alternative: false },
+      { node: "revenue-line/x/a", key: "parts", form: "extend", alternative: false },
+      { node: "fund-group/g", key: "funds", form: "extend", alternative: false },
+    ],
+  };
+}
+
+describe("a split stands its members on the side its links run from", () => {
+  // Mutation: expansionSlots placing every member at its parent's slot + 1
+  // and the source's line stands after it, in its group's way.
+  test("a source's members, and theirs, stand before it; a group's after it", async () => {
+    const { app } = await bootedApp();
+    const slots = app.expansionSlots(sources(), [0, 2]);
+    const at = Object.fromEntries(slots);
+    assert.ok(at["revenue-line/x/a/b"] < at["revenue-line/x/a"] && at["revenue-line/x/a"] < at["revenue/x"] &&
+      at["revenue/x"] < at["fund-group/g"] && at["fund-group/g"] < at["fund/1"], JSON.stringify(at));
+    assert.ok([...slots.values()].every((k) => k >= 0), JSON.stringify(at));
+  });
+
+  // Mutation: drop the both-ways refusal and the line is placed after its
+  // source on the strength of one link.
+  test("a split whose links run both ways, or a member opening back toward its grandparent, is refused", async () => {
+    const { app } = await bootedApp();
+    const both = sources();
+    both.links.push({ source: "revenue/x", target: "revenue-line/x/a", value_cents: 1, kind: "external", fact_ids: ["g"] });
+    assert.throws(() => app.expansionSlots(both, [0, 2]), /whose links run both from and to its members/);
+    const back = sources();
+    back.links[0] = Object.assign({}, back.links[0], { source: "revenue-line/x/a", target: "revenue-line/x/a/b" });
+    assert.throws(() => app.expansionSlots(back, [0, 2]), /opening back toward revenue\/x/);
+  });
+});
+
 describe("a split whose chart will not draw", () => {
   test("is refused with the banner, and the chart, the splits and the toolbar stay as they were", async (t) => {
     // A split of the sales tax in a form this page does not draw: the root

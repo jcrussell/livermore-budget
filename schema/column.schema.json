@@ -285,7 +285,7 @@
                   "pattern": "^\\S+ -> \\S+ \\S+$"
                 },
                 "repeats": {
-                  "description": "On the expansion schedule alone: the one leaf link this link is drawn from, spelt at that leaf's own ends as '<source> -> <target> <kind>'. A hub leg from an extended node to its member carries that leaf's cents and facts again; the leaf itself names its own ends, one of which may be moved onto the extended node. Absent on every other link.",
+                  "description": "On the expansion schedule alone: the one leaf link this link is drawn from, spelt at that leaf's own ends as '<source> -> <target> <kind>'. A hub leg between an extended node and its member -- from the node where it takes money in, to it where it takes nothing in -- carries that leaf's cents and facts again; the leaf itself names its own ends, either of which may be moved onto an extended node. Absent on every other link.",
                   "type": "string",
                   "pattern": "^\\S+ -> \\S+ \\S+$"
                 },

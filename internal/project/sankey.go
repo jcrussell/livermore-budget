@@ -543,9 +543,9 @@ type Link struct {
 	Completes string `json:"completes,omitempty"`
 	// Repeats is, on the expansion schedule alone, the [CellKey] of the one
 	// leaf link this link is drawn from, spelt at that leaf's own ends: on a
-	// hub leg from an extended node to its member, which carries the leaf's
-	// cents and facts again, and on the leaf itself, whose end the stitch may
-	// have moved onto that node. "" on every other link. [LinkCents] reads a
+	// hub leg between an extended node and its member, which carries the leaf's
+	// cents and facts again, and on the leaf itself, either of whose ends the
+	// stitch may have moved onto such a node. "" on every other link. [LinkCents] reads a
 	// link at these ends.
 	Repeats string `json:"repeats,omitempty"`
 	// Restates is, on the expansion schedule alone, the leaves a link from a

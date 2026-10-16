@@ -230,10 +230,13 @@ describe("the width arithmetic beside the chart", () => {
       return b.refused ? b : { beside: b.beside, scale: b.drawn / full, fits: b.width + b.cushion <= px, room: b.room };
     };
     const open = read();
-    const x = (id) => app.laidNodes.find((n) => n.id === id).x0;
-    const before = x("revenue/taxes/sales");
+    // Read from the node opened: a source's members open a column before
+    // it, which the scroller takes up, so its column moves on the canvas and
+    // the next column does not move from it.
+    const x = (id) => app.laidNodes.find((n) => n.id === id).x0 - app.laidNodes.find((n) => n.id === "revenue/intergovernmental").x0;
+    const before = x("fund-group/general");
     await split(app, "revenue/intergovernmental");
-    const split1 = { ...read(), moved: x("revenue/taxes/sales") !== before };
+    const split1 = { ...read(), moved: x("fund-group/general") !== before };
     fire(document.getElementById("rail-toggle"), "click");
     const collapsed = read();
     t.diagnostic(`BESIDE_QUERY ${app.BESIDE_QUERY}: at ${px}px the opening chart ${full}px draws in a room of ` +

@@ -293,7 +293,9 @@ func TestAReversedRollupIsRefused(t *testing.T) {
 	for _, p := range s.linkedDocuments() {
 		for i := range p.Links {
 			l := &p.Links[i]
-			if strings.HasPrefix(l.Source, "revenue-line/") && strings.HasPrefix(l.Target, "revenue/") {
+			// A hub leg is read at the leaf it repeats, so a reversed one is
+			// expansion-splits-tie's to refuse.
+			if l.Repeats == "" && strings.HasPrefix(l.Source, "revenue-line/") && strings.HasPrefix(l.Target, "revenue/") {
 				l.Source, l.Target = l.Target, l.Source
 				reversed++
 				break

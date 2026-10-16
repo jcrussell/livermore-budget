@@ -76,7 +76,7 @@ func EndpointCategories(id string) ([][]string, bool) {
 // members it is not: the spine's facts it cites, read so, less the rest.
 //
 // A link repeating a leaf is read at that leaf's own ends, which repeats
-// spells: a hub leg runs from an extended node to its member, and a leaf
+// spells: a hub leg runs between an extended node and its member, and a leaf
 // re-pointed onto that node no longer ends at a change endpoint or a
 // remainder it does.
 func LinkCents(source, target, repeats string, facts []fact.Fact) int64 {

@@ -153,14 +153,14 @@ func IsRemainder(id string) bool {
 //	transfers/out         <- transfer-to/<receiver>         hub, receivers
 //
 // Every split extends: its node stays drawn and its members stand in a column
-// after it. A split marked totals reaches each member by one link citing that
-// member's own total, naming the leaves it states again ([declareRestating]).
-// A hub split reaches its members by legs that repeat the
-// leaves at them ([extendHubs]): a revenue category's and transfers/in's the
-// leaves leaving each member, a fund group's, an object category's and
-// transfers/out's the leaves arriving at each, which are re-pointed to end at
-// the node. Every other primary link is a leaf link, whose facts a page
-// prints at its own ends. The roots' cells are the leaves summed, which
+// beside it. A split marked totals reaches each member by one link citing
+// that member's own total, naming the leaves it states again
+// ([declareRestating]). A hub split reaches its members by legs that repeat
+// the leaves at them ([extendHubs]): a revenue category's and transfers/in's
+// the leaves leaving each member, which are re-pointed to start at the node,
+// a fund group's, an object category's and transfers/out's the leaves
+// arriving at each, which are re-pointed to end at it. Every other primary
+// link is a leaf link, whose facts a page prints at its own ends. The roots' cells are the leaves summed, which
 // expansion-opens-as-the-spine holds to the spine, and each split's members
 // are held to their parent's printed cells, and each leg to its leaf, by
 // expansion-splits-tie.
@@ -507,12 +507,14 @@ func CellKey(source, target string, kind LinkKind) string {
 // extendHubs draws every hub split's node beside its members. Where the node
 // takes money in on the spine, each primary leaf arriving at a member is
 // re-pointed to end at the node, and a leg from the node to the member
-// repeats it; where the node takes nothing in, as a source does, a leg from
-// the node to the member repeats each primary leaf leaving the member, which
-// stays where it is. Every leaf a leg repeats, and every leg, names that
-// leaf's own ends in Repeats. A leg is a copy of one cited leaf: its cents,
-// facts, kind, reduction words and derived flag are the leaf's, so the stitch
-// publishes no sum, and a member nothing arrives at is reached by no leg.
+// repeats it; where the node takes nothing in, as a source does, each primary
+// leaf leaving a member is re-pointed to start at the node, and a leg from the
+// member to the node repeats it. A leaf from one hub's member to another's is
+// re-pointed at both ends and repeated by a leg at each. Every leaf a leg
+// repeats, and every leg, names that leaf's own ends in Repeats. A leg is a
+// copy of one cited leaf: its cents, facts, kind, reduction words and derived
+// flag are the leaf's, so the stitch publishes no sum, and a member nothing
+// arrives at is reached by no leg.
 //
 // A hub split is declared only on a root, so a re-pointed end is a root and
 // nothing above it opens.
@@ -536,9 +538,9 @@ func extendHubs(st *stitch, spine *Document) error {
 			continue
 		}
 		key := CellKey(l.Source, l.Target, l.Kind)
-		leg := func(hub, member string) {
+		leg := func(source, target string) {
 			g := *l
-			g.Source, g.Target = hub, member
+			g.Source, g.Target = source, target
 			g.FactIDs = slices.Clone(l.FactIDs)
 			g.Locators = slices.Clone(l.Locators)
 			g.TransferID, g.Completes, g.Repeats = "", "", key
@@ -561,9 +563,12 @@ func extendHubs(st *stitch, spine *Document) error {
 				}
 				continue
 			}
-			leg(hub, end)
 			if arriving {
+				leg(hub, end)
 				l.Target = hub
+			} else {
+				leg(end, hub)
+				l.Source = hub
 			}
 		}
 	}
@@ -1081,7 +1086,7 @@ func drawnElsewhere(f *fact.Fact) bool {
 
 // splitsOf is every split a node of the stitch has members in, in node order,
 // refusing members under a node whose role declares no such split, or one
-// whose split is not extend, and a node with no link to a member.
+// whose split is not extend, and a node with no link to or from a member.
 func splitsOf(nodes map[string]Node, links []Link) ([]Split, error) {
 	type key struct{ node, alternative string }
 	members := map[key][]string{}
@@ -1094,6 +1099,9 @@ func splitsOf(nodes map[string]Node, links []Link) ([]Split, error) {
 	for _, l := range links {
 		if p, ok := nodes[l.Target]; ok && p.Parent == l.Source {
 			reaches[key{l.Source, p.Alternative}] = true
+		}
+		if p, ok := nodes[l.Source]; ok && p.Parent == l.Target {
+			reaches[key{l.Target, p.Alternative}] = true
 		}
 	}
 	var out []Split
@@ -1108,7 +1116,7 @@ func splitsOf(nodes map[string]Node, links []Link) ([]Split, error) {
 				k.node, parent.Role, members[k])
 		}
 		if d.form != SplitExtend || !reaches[k] {
-			return nil, fmt.Errorf("expansion: %q splits by %s into %s and a link from it to a member is %v",
+			return nil, fmt.Errorf("expansion: %q splits by %s into %s and a link between it and a member is %v",
 				k.node, d.form, d.key, reaches[k])
 		}
 		out = append(out, Split{Node: k.node, Key: d.key, Form: d.form, Alternative: d.alternative})

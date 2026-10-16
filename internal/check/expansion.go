@@ -93,11 +93,11 @@ func (x stitched) memberOf(id, node, alternative string) string {
 }
 
 // atLeaf is a link read at the ends of the leaf it repeats, which is where
-// its facts are printed. A hub leg -- a link from a node to its own primary
-// member -- is a copy of that leaf and is read at the leaf's ends whole; a
-// leaf is read at its own end only where it is drawn at that end's primary
-// parent, the one move the stitch makes, so an end drawn anywhere else is
-// read as drawn. A link repeating nothing is itself.
+// its facts are printed. A hub leg -- a link between a node and its own
+// primary member, either way -- is a copy of that leaf and is read at the
+// leaf's ends whole; a leaf is read at its own end only where it is drawn at
+// that end's primary parent, the one move the stitch makes, so an end drawn
+// anywhere else is read as drawn. A link repeating nothing is itself.
 func atLeaf(l project.Link, nodes map[string]project.Node) project.Link {
 	if l.Repeats == "" {
 		return l
@@ -109,7 +109,7 @@ func atLeaf(l project.Link, nodes map[string]project.Node) project.Link {
 		return ""
 	}
 	src, tgt := project.LeafEnds(l.Repeats)
-	if l.Alternative == "" && parent(l.Target) == l.Source {
+	if l.Alternative == "" && (parent(l.Target) == l.Source || parent(l.Source) == l.Target) {
 		l.Source, l.Target = src, tgt
 		return l
 	}
@@ -316,8 +316,10 @@ func (*expansionOpensAsTheSpine) Run(_ context.Context, s *Subject) (Result, err
 // name two divisions' leaves on each of their totals and it names the total;
 // name leaves on a hub leg and it names the leg; drop one
 // revenue/taxes/sales leg and it names the line's leaf and the hub's
-// outflow; make one object category's leg a cent short and it names the
-// pairing; leave one line's leaf on its fund and it names a leg with no leaf.
+// outflow; run that leg out of the hub and it names the leg; make one object
+// category's leg a cent short and it names the pairing; leave one line's
+// leaf on its fund and it names a leg with no leaf, or on its line and it
+// names the leaf.
 type expansionSplitsTie struct{}
 
 var _ Check = (*expansionSplitsTie)(nil)
@@ -411,18 +413,22 @@ func (c *expansionSplitsTie) split(s *Subject, x stitched, sp project.Split, sub
 	}
 	var findings []Finding
 	// The node's links to its members in this split's set: a total of its
-	// own to each, or legs each repeating one leaf.
+	// own to each, or legs each repeating one leaf, either way.
 	totals := map[string]int{}
 	var legs []project.Link
 	for _, l := range x.doc.Links {
-		if l.Alternative != alt || l.Source != sp.Node || !slices.Contains(members, l.Target) {
+		if l.Alternative != alt {
 			continue
 		}
-		if l.Repeats != "" {
+		toMember := l.Source == sp.Node && slices.Contains(members, l.Target)
+		fromMember := l.Target == sp.Node && slices.Contains(members, l.Source)
+		if l.Repeats != "" && (toMember || fromMember) {
 			legs = append(legs, l)
 			continue
 		}
-		totals[l.Target]++
+		if toMember {
+			totals[l.Target]++
+		}
 	}
 	hub := len(legs) > 0
 	if hub && len(totals) > 0 {
@@ -507,6 +513,12 @@ func (*expansionSplitsTie) rootCells(x stitched, sp project.Split) map[string]*t
 				continue
 			}
 			k = other + " -> " + sp.Node + " " + string(l.Kind)
+		case l.Source == sp.Node:
+			other := x.rootOf(l.Target)
+			if other == sp.Node {
+				continue
+			}
+			k = sp.Node + " -> " + other + " " + string(l.Kind)
 		case x.memberOf(l.Source, sp.Node, "") != "":
 			other := x.rootOf(l.Target)
 			if other == sp.Node {
@@ -616,21 +628,30 @@ func (*expansionSplitsTie) restatingFindings(x stitched, sp project.Split, membe
 	return findings
 }
 
-// isLeg answers whether a link is a hub leg: it repeats a leaf and runs from
-// a node to its own primary member.
+// isLeg answers whether a link is a hub leg: it repeats a leaf and runs
+// between a node and its own primary member, from the node to the member or,
+// on a node taking nothing in, from the member to the node.
 func (x stitched) isLeg(l project.Link) bool {
-	m, ok := x.nodes[l.Target]
-	return l.Repeats != "" && l.Alternative == "" && ok && m.Parent == l.Source && m.Alternative == ""
+	if l.Repeats == "" || l.Alternative != "" {
+		return false
+	}
+	member := func(id, parent string) bool {
+		m, ok := x.nodes[id]
+		return ok && m.Parent == parent && m.Alternative == ""
+	}
+	return member(l.Target, l.Source) || member(l.Source, l.Target)
 }
 
 // hubFindings holds a hub split's legs to the leaves they repeat. Where the
 // node takes money in on the spine, every primary leaf arriving at a member
-// is re-pointed onto the node, naming its own ends in repeats, and is
-// repeated by exactly one leg to that member; where it takes nothing in,
-// every primary leaf leaving a member is. A leg repeats exactly one leaf,
-// with its cents, facts, kind and derived flag, and the legs together carry
-// what the node takes in on the spine, or gives out where it takes nothing
-// in.
+// is re-pointed to end at the node, naming its own ends in repeats, and is
+// repeated by exactly one leg from the node to that member; where it takes
+// nothing in, every primary leaf leaving a member is re-pointed to start at
+// the node and repeated by exactly one leg from that member to the node. A
+// re-pointed leaf's other end is the leaf's own, or that end's parent where
+// it too is a hub's member. A leg repeats exactly one leaf, with its cents,
+// facts, kind and derived flag, and the legs together carry what the node
+// takes in on the spine, or gives out where it takes nothing in.
 func (*expansionSplitsTie) hubFindings(x stitched, sp project.Split, members []string, legs []project.Link,
 	subject string) []Finding {
 	var findings []Finding
@@ -646,6 +667,14 @@ func (*expansionSplitsTie) hubFindings(x stitched, sp project.Split, members []s
 			spineCents += l.ValueCents
 		}
 	}
+	// near is a link's end at the node's side of the flow, far its other.
+	near := func(source, target string) (string, string) {
+		if inflow {
+			return target, source
+		}
+		return source, target
+	}
+	way := map[bool]string{true: "arrive at", false: "leave"}[inflow]
 	isMember := func(id string) bool { return slices.Contains(members, id) }
 	leaves := map[string][]project.Link{}
 	for _, l := range x.doc.Links {
@@ -659,21 +688,24 @@ func (*expansionSplitsTie) hubFindings(x stitched, sp project.Split, members []s
 		repeating[g.Repeats]++
 		legCents += g.ValueCents
 		at := fmt.Sprintf("the leg %s -> %s repeating %s", g.Source, g.Target, g.Repeats)
-		src, tgt := project.LeafEnds(g.Repeats)
-		if (inflow && tgt != g.Target) || (!inflow && src != g.Target) {
-			findings = append(findings, finding(subject, "%s names a leaf that does not %s its member", at,
-				map[bool]string{true: "arrive at", false: "leave"}[inflow]))
+		member, hub := near(g.Source, g.Target)
+		if hub != sp.Node {
+			findings = append(findings, finding(subject, "%s runs %s the node, and a leaf %s its member the other way", at,
+				map[bool]string{true: "into", false: "out of"}[inflow], map[bool]string{true: "arrives at", false: "leaves"}[inflow]))
+			continue
+		}
+		if leafNear, _ := near(project.LeafEnds(g.Repeats)); leafNear != member {
+			findings = append(findings, finding(subject, "%s names a leaf that does not %s its member", at, way))
 			continue
 		}
 		var found []project.Link
 		for _, l := range leaves[g.Repeats] {
-			if (inflow && l.Target == sp.Node) || (!inflow && l.Source == g.Target) {
+			if n, _ := near(l.Source, l.Target); n == sp.Node {
 				found = append(found, l)
 			}
 		}
 		if len(found) != 1 {
-			findings = append(findings, finding(subject, "%s has %d leaves %s, want 1", at, len(found),
-				map[bool]string{true: "re-pointed onto the node", false: "leaving its member"}[inflow]))
+			findings = append(findings, finding(subject, "%s has %d leaves re-pointed onto the node, want 1", at, len(found)))
 			continue
 		}
 		l := found[0]
@@ -684,31 +716,23 @@ func (*expansionSplitsTie) hubFindings(x stitched, sp project.Split, members []s
 				l.Source, l.Target, amount.Cents(l.ValueCents), l.Kind, l.FactIDs, l.Derived))
 		}
 	}
-	// Every leaf the node owes a leg: each arriving at it or a member, or
-	// each leaving a member.
+	// Every leaf the node owes a leg: each at it or a member on its side.
 	for _, l := range x.doc.Links {
 		if l.Alternative != "" || x.isLeg(l) {
 			continue
 		}
-		var owed bool
-		if inflow {
-			owed = l.Target == sp.Node || isMember(l.Target)
-		} else {
-			owed = isMember(l.Source)
-		}
-		if !owed {
+		n, f := near(l.Source, l.Target)
+		if n != sp.Node && !isMember(n) {
 			continue
 		}
-		src, tgt := project.LeafEnds(l.Repeats)
+		leafNear, leafFar := near(project.LeafEnds(l.Repeats))
 		switch {
-		case inflow && (l.Target != sp.Node || !isMember(tgt)):
-			findings = append(findings, finding(subject, "the leaf %s -> %s repeating %q arrives at a member and is not re-pointed onto the node",
+		case n != sp.Node || !isMember(leafNear):
+			findings = append(findings, finding(subject, "the leaf %s -> %s repeating %q %s a member and is not re-pointed onto the node",
+				l.Source, l.Target, l.Repeats, map[bool]string{true: "arrives at", false: "leaves"}[inflow]))
+		case leafFar != f && x.nodes[leafFar].Parent != f:
+			findings = append(findings, finding(subject, "the leaf %s -> %s re-pointed onto the node repeats %q, whose other end is another node's",
 				l.Source, l.Target, l.Repeats))
-		case inflow && src != l.Source:
-			findings = append(findings, finding(subject, "the leaf %s -> %s re-pointed onto the node repeats %q, which another node sends",
-				l.Source, l.Target, l.Repeats))
-		case !inflow && (src != l.Source || (tgt != l.Target && x.nodes[tgt].Parent != l.Target)):
-			findings = append(findings, finding(subject, "the leaf %s -> %s leaves a member and repeats %q", l.Source, l.Target, l.Repeats))
 		case repeating[l.Repeats] != 1:
 			findings = append(findings, finding(subject, "the leaf %s -> %s repeating %s is repeated by %d legs, want 1",
 				l.Source, l.Target, l.Repeats, repeating[l.Repeats]))
