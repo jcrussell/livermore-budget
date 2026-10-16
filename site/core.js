@@ -1433,12 +1433,13 @@ export function smallerMark(side, tier, flows, smallest, cents, locators, slot) 
  */
 
 /**
- * The leaves a node filter names, read in the cells a ribbon draws: `out`,
- * the ids the money of every node filtered out is drawn from, and `only`,
- * the ids the node shown alone's is, or null where none is. Each is the
- * schedule's ids (core.withinNode) and not the chart's, because a hub draws
- * a member's leaves on ribbons with no end at the member.
- * @typedef {{out: ReadonlySet<string>, only: ReadonlySet<string> | null}} LeafCut
+ * The leaves a node or group filter names, read in the cells a ribbon draws: `out`,
+ * the ids the money of every node filtered out is drawn from; `groups`, the
+ * ids every fund group hidden's is; and `only`, the ids the node shown
+ * alone's is, or null where none is. Each is the schedule's ids
+ * (core.withinNode) and not the chart's, because a hub draws a member's
+ * leaves on ribbons with no end at the member.
+ * @typedef {{out: ReadonlySet<string>, groups?: ReadonlySet<string>, only: ReadonlySet<string> | null}} LeafCut
  */
 
 /**
@@ -1463,7 +1464,11 @@ export function smallerMark(side, tier, flows, smallest, cents, locators, slot) 
  * money with it and the hub draws in what it draws out. Each part is the sum
  * of its cells and cites what they cite (cellSourcesOf). FAILS CLOSED on a
  * cell restating leaves only some of which are named: which part of a total
- * the city printed is whose is not printed.
+ * the city printed is whose is not printed. A cell whose leaf has an end
+ * among `leaves.groups` goes as one among `leaves.out` does, but one
+ * restating leaves only some of which are in a hidden group is drawn whole,
+ * and the hub it reaches then draws out more than it draws in: a division's
+ * total spans fund groups, and no page prints one group's part of it.
  *
  * @param {FiscProjection} doc  a shaped chart, reductions already drawn forward
  * @param {(n: FiscNode) => string} groupOf  a node's fund group, "" for none
@@ -1504,19 +1509,20 @@ export function filterDocument(doc, groupOf, state, keeps = null, leaves = null)
     const gone = [];
     for (const k of Object.keys(cells)) {
       const out = leaves.out.size ? cellIn(k, leaves.out) : "none";
+      const grouped = leaves.groups && leaves.groups.size ? cellIn(k, leaves.groups) : "none";
       const alone = whole || !leaves.only ? "all" : cellIn(k, leaves.only);
       if (out === "part" || alone === "part") {
         throw new Error("cannot draw part of the ribbon from " + l.source + " to " + l.target +
           ": it carries totals the city printed for several leaves together, and the node filtered names only some of them");
       }
-      if (out === "none" && alone === "all") drawn.push(k);
+      if (out === "none" && grouped !== "all" && alone === "all") drawn.push(k);
       else gone.push(k);
     }
     if (!gone.length) kept.push(l);
     else if (!drawn.length) hidden.push(l);
     else {
       kept.push(partOf(l, drawn));
-      hidden.push(partOf(l, gone));
+      hidden.push(partOf(l, gone, false));
     }
   }
   if (!hidden.length && !(state.smallest > 0)) return { doc: doc, hidden: hidden };
@@ -1545,13 +1551,16 @@ export function filterDocument(doc, groupOf, state, keeps = null, leaves = null)
  * Part of a ribbon: the cells `keys` names, at their sum and citing what
  * they cite (cellSourcesOf), drawn the way the ribbon is -- forward where
  * the shaping drew it forward as a reduction. A part claims no completing
- * set, since it is not all of one. FAILS CLOSED on a part netting the other
- * way from its ribbon, which the ribbon's drawing cannot say.
+ * set, since it is not all of one. FAILS CLOSED on a part drawn netting the
+ * other way from its ribbon, which the ribbon's drawing cannot say; a part
+ * hidden is only tallied, by its cells at their printed signs
+ * (distinctCents), and may net either way.
  * @param {FiscLink} l
  * @param {string[]} keys
+ * @param {boolean} [drawn] false for a part the filters hide
  * @returns {FiscLink}
  */
-export function partOf(l, keys) {
+export function partOf(l, keys, drawn = true) {
   const cells = /** @type {Record<string, number>} */ (cellsOf(l));
   const sources = /** @type {Record<string, CellSource>} */ (cellSourcesOf(l));
   const printed = Object.values(cells).reduce((s, c) => s + c, 0);
@@ -1574,7 +1583,7 @@ export function partOf(l, keys) {
     for (const p of sources[k].pages) pages.add(p);
     derived = derived || sources[k].derived;
   }
-  if (sign * cents < 0) {
+  if (drawn && sign * cents < 0) {
     throw new Error("cannot draw part of the ribbon from " + l.source + " to " + l.target + ": the part nets the other way");
   }
   const part = Object.assign({}, l, {

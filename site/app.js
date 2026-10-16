@@ -1088,9 +1088,10 @@ export function glyphNode(d, kind, at, byKey = false, glyph) {
 /**
  * The menu open on the chart -- the ways ⊕ offers a node that splits more
  * than one way, or what a node's context menu offers -- as the node's id,
- * the menu's element and the mark focus goes back to, or null while none is
- * open. One at a time: opening either closes the other.
- * @type {{id: string, menu: HTMLElement, back: "g.glyph" | "g.node"} | null}
+ * the menu's element and the mark focus goes back to -- or the button it
+ * was opened from, which says it is expanded while it is open -- or null
+ * while none is open. One at a time: opening either closes the other.
+ * @type {{id: string, menu: HTMLElement, back: "g.glyph" | "g.node" | HTMLElement} | null}
  */
 export let chartMenu = null;
 
@@ -1105,7 +1106,7 @@ export let chartMenu = null;
  * Choosing one closes the menu, focus back on the node's `back` mark, and
  * does it; Escape closes it, focus back there too, and focus leaving it -- a
  * press anywhere else -- closes it.
- * @param {{id: string, element: string, label: string, back: "g.glyph" | "g.node", at: {left: number, top: number} | null, choices: MenuChoice[]}} o
+ * @param {{id: string, element: string, label: string, back: "g.glyph" | "g.node" | HTMLElement, at: {left: number, top: number} | null, choices: MenuChoice[]}} o
  *   `at`: where its top left goes, in the viewport's px, or null for the
  *   chart's top left
  */
@@ -1167,6 +1168,10 @@ function openMenu(o) {
   menu.style.top = Math.max(0, o.at ? o.at.top - box.top : 0) + "px";
   wrap.append(menu);
   chartMenu = { id: o.id, menu: menu, back: o.back };
+  if (typeof o.back !== "string") {
+    o.back.setAttribute("aria-expanded", "true");
+    o.back.setAttribute("aria-controls", o.element);
+  }
   const first = menu.querySelector("button");
   if (first) /** @type {HTMLElement} */ (first).focus();
 }
@@ -1210,8 +1215,10 @@ export function openSplitMenu(d, glyph) {
  * @param {LaidNode} d
  * @param {{left: number, top: number} | null} [at] the pointer, in the viewport's px
  * @param {Element} [mark] the node's element
+ * @param {HTMLElement} [from] the button it is opened from, focus's place
+ *   when it closes, else the node's mark
  */
-export function openNodeMenu(d, at, mark) {
+export function openNodeMenu(d, at, mark, from) {
   const id = d.id;
   hideTip();
   const box = !at && mark ? (mark.querySelector("rect") || mark).getBoundingClientRect() : null;
@@ -1219,7 +1226,7 @@ export function openNodeMenu(d, at, mark) {
     id: id,
     element: "node-menu",
     label: say("node_menu", { label: nameOf(d) }),
-    back: "g.node",
+    back: from || "g.node",
     at: at || (box ? { left: box.right + 4, top: box.top } : null),
     choices: [
       { words: say("follow_money"), doing: "follow this money", data: { act: "follow" }, act: () => followNode(id) },
@@ -1272,8 +1279,8 @@ export function showOnlyNode(id) {
 }
 
 /**
- * Closes the menu open on the chart, focus back on its node's mark where
- * `refocus` asks, pinning nothing.
+ * Closes the menu open on the chart, focus back on its node's mark, or the
+ * button it was opened from, where `refocus` asks, pinning nothing.
  * @param {boolean} [refocus]
  * @returns {boolean} whether a menu was open
  */
@@ -1282,6 +1289,12 @@ export function closeChartMenu(refocus = false) {
   const { id, menu, back } = chartMenu;
   chartMenu = null;
   menu.remove();
+  if (typeof back !== "string") {
+    back.setAttribute("aria-expanded", "false");
+    back.removeAttribute("aria-controls");
+    if (refocus && !back.hidden) back.focus();
+    return true;
+  }
   if (refocus) {
     const chart = maybeEl("chart");
     const mark = chart ? D3.select(chart).selectAll(back).filter(/** @param {LaidNode} n */ (n) => n.id === id).node() : null;
@@ -1661,18 +1674,22 @@ export function hueIndex(doc) {
  * line could not state what it removes once, and where the other removals
  * leave none of the ribbons of the node shown alone: `only` would then
  * remove every ribbon, and it never lapses to drawing them all, so every
- * draw under such a state is refused.
+ * draw under such a state is refused. A node filtered out that the shaped
+ * chart does not draw hides and cuts nothing, and the filter line names it
+ * nowhere.
  * @param {FiscProjection} doc
  * @param {Readonly<FilterState>} [state]
  * @returns {{doc: FiscProjection, hidden: FiscLink[]}}
  */
 export function filterFor(doc, state = filter) {
   const index = hueIndex(doc);
-  const keeps = onlyKeeps(doc, state, index);
-  const out = core.filterDocument(doc, (n) => core.fundGroupOf(index, n), state, keeps, leafCut(doc, state, keeps));
+  const drawn = new Set(doc.nodes.map((n) => n.id));
+  const st = Object.assign({}, state, { nodes: new Set(Array.from(state.nodes || []).filter((id) => drawn.has(id))) });
+  const keeps = onlyKeeps(doc, st, index);
+  const out = core.filterDocument(doc, (n) => core.fundGroupOf(index, n), st, keeps, leafCut(doc, st, keeps));
   if (keeps && !out.doc.links.some(keeps)) {
-    const n = doc.nodes.find((x) => x.id === state.only);
-    throw new Error("the other filters leave none of " + (n ? nameOf(n) : state.only) + "'s money to show alone");
+    const n = doc.nodes.find((x) => x.id === st.only);
+    throw new Error("the other filters leave none of " + (n ? nameOf(n) : st.only) + "'s money to show alone");
   }
   // Asked here, inside every draw's try: a removal whose money the filter
   // line cannot state once (core.distinctCents) is refused, not drawn.
@@ -1681,23 +1698,28 @@ export function filterFor(doc, state = filter) {
 }
 
 /**
- * The leaves a filter state's node filters name (core.LeafCut): every id of
- * the expansion schedule within a node filtered out, and within the node
- * shown alone where `keeps` says one is. A node of the schedule is itself;
- * a tail the shaping made is the members it folds. Null where nothing is
- * filtered by node, and where the chart is drawn from no expansion
+ * The leaves a filter state's node and fund group filters name
+ * (core.LeafCut): every id of the expansion schedule within a node filtered
+ * out, within a fund group hidden, and within the node shown alone where
+ * `keeps` says one is. A node of the schedule is itself; a tail the shaping
+ * made is the members it folds. A fund group filtered out as a node is in
+ * `groups` with the groups the legend hides, so the legend and the menu hide
+ * one group as one chart (core.filterDocument). Null where nothing is
+ * filtered by node or group, and where the chart is drawn from no expansion
  * schedule, whose ribbons repeat no leaf.
  * @param {FiscProjection} doc the shaped chart
  * @param {Readonly<FilterState>} state
  * @param {((l: FiscLink) => boolean) | null} keeps onlyKeeps over doc
- * @returns {{out: Set<string>, only: Set<string> | null} | null}
+ * @returns {{out: Set<string>, groups: Set<string>, only: Set<string> | null} | null}
  */
 export function leafCut(doc, state, keeps) {
   const schedule = fetched;
-  const nodes = state.nodes || new Set();
-  if (!schedule || !core.isExpansionSchedule(schedule) || (!nodes.size && !keeps)) return null;
-  const raw = new Set(schedule.nodes.map((n) => n.id));
   const byID = new Map(doc.nodes.map((n) => [n.id, n]));
+  const nodes = Array.from(state.nodes || []);
+  const groupIDs = Array.from(state.groups || []);
+  if (!schedule || !core.isExpansionSchedule(schedule) || (!nodes.length && !groupIDs.length && !keeps)) return null;
+  const index = hueIndex(doc);
+  const raw = new Set(schedule.nodes.map((n) => n.id));
   const inside = (/** @type {string} */ id) => {
     const n = byID.get(id);
     const from = raw.has(id) ? [id] : (n && Array.isArray(n.folds) ? n.folds : []).filter((f) => raw.has(f));
@@ -1706,8 +1728,10 @@ export function leafCut(doc, state, keeps) {
     return out;
   };
   const out = new Set();
-  for (const id of nodes) for (const x of inside(id)) out.add(x);
-  return { out: out, only: keeps ? inside(state.only) : null };
+  const groups = new Set();
+  for (const id of groupIDs) for (const x of inside(id)) groups.add(x);
+  for (const id of nodes) for (const x of inside(id)) (isGroupID(id, index) ? groups : out).add(x);
+  return { out: out, groups: groups, only: keeps ? inside(state.only) : null };
 }
 
 /**
@@ -2721,7 +2745,7 @@ export function wireDrawer() {
       if (!d) return;
       const chart = maybeEl("chart");
       const mark = chart ? D3.select(chart).selectAll("g.node").filter(/** @param {LaidNode} n */ (n) => n.id === id).node() : null;
-      openNodeMenu(d, null, mark || undefined);
+      openNodeMenu(d, null, mark || undefined, more);
     }));
   }
   const button = maybeEl("detail-pin");
@@ -3774,19 +3798,16 @@ async function moveTo(st) {
   if (kind !== undefined) return refuse("this page names no flow kind " + kind);
   const removals = { groups: new Set(st.hide), kinds: new Set(st.hidekind), nodes: new Set(st.out), only: st.only, smallest: st.min };
   if (!shownYear || shownYear !== year || !projection) {
-    const was = filter;
-    filter = Object.freeze(Object.assign({}, removals, { isolated: "" }));
     let got;
     try {
-      got = await showYear(year);
+      // The removals are the year's to draw under, and the page's filter
+      // only once it draws: a throw, a failure or a later switch leaves the
+      // filter the page had.
+      got = await showYear(year, [], Object.assign({}, removals, { isolated: "" }));
     } catch (e) {
-      // showYear put its own state back; the filters go back with it, so the
-      // fallback starts from the page as it was.
-      filter = was;
       const error = e instanceof Error ? e.message : String(e);
       return { outcome: FAILED, why: year.label + " cannot be drawn as it names: " + error, error: error };
     }
-    if (got === FAILED) filter = was;
     if (got !== DREW) return { outcome: got, why: "the year " + st.year + " could not be drawn" };
     syncYearControl();
   } else if (!setFilter(Object.assign({}, removals, { isolated: "" }))) {
@@ -4098,9 +4119,11 @@ export let switching = 0;
  * @param {readonly string[]} [carry] expansions made on the year on screen,
  *   kept where the new year's schedule can make them (carriedOver), the rest
  *   folded back and named in #splits-line
+ * @param {Readonly<FilterState> | null} [removals] the filter to draw the
+ *   year under, made the page's only where it draws; null for the page's own
  * @returns {Promise<string>} DREW, SUPERSEDED or FAILED
  */
-export async function showYear(year, carry = []) {
+export async function showYear(year, carry = [], removals = null) {
   // Without the token, the slower of two in-flight fetches wins.
   const token = ++switching;
   const superseded = () => token !== switching;
@@ -4137,7 +4160,7 @@ export async function showYear(year, carry = []) {
     // The folded document is the one the page describes; the fold unions the
     // fact ids it merges, so nothing is lost.
     const drawn = shapeFor(doc);
-    const filtered = filterFor(drawn);
+    const filtered = filterFor(drawn, removals || filter);
     const unfiltered = wholeOf(drawn, filtered);
     laid = layOut(filtered.doc);
     rows = tableRows(drawn);
@@ -4153,7 +4176,7 @@ export async function showYear(year, carry = []) {
   clearRefusal();
   // A pin and an isolation belong to the year they were made in.
   pinned = null;
-  filter = Object.freeze(Object.assign({}, filter, { isolated: "" }));
+  filter = Object.freeze(Object.assign({}, removals || filter, { isolated: "" }));
   resetDetail();
   hideTip();
 

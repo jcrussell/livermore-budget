@@ -344,6 +344,38 @@ func TestTheIndexLinksItsCaveatsAndPrintsNone(t *testing.T) {
 	}
 }
 
+// TestAnIndexWithNoCaveatsPageListsTheCaveats: a site with no caveats view
+// (writeGolden's views) links no caveats page, so the index lists every
+// caveat's summary itself, as the footer lists the cited pages with no
+// sources page. Mutation: drop the template's fallback list -- red.
+func TestAnIndexWithNoCaveatsPageListsTheCaveats(t *testing.T) {
+	dir, _ := writeGolden(t)
+	visible := readerVisible(t, readPage(t, dir))
+
+	var doc struct {
+		Metadata struct {
+			Caveats []struct {
+				ID      string `json:"id"`
+				Summary string `json:"summary"`
+			} `json:"caveats"`
+		} `json:"metadata"`
+	}
+	if err := json.Unmarshal(goldenSankey(t), &doc); err != nil {
+		t.Fatalf("decode golden: %v", err)
+	}
+	if len(doc.Metadata.Caveats) == 0 {
+		t.Fatal("golden projection has no caveats, so nothing below is checked")
+	}
+	for _, c := range doc.Metadata.Caveats {
+		if !strings.Contains(visible, template.HTMLEscapeString(c.Summary)) {
+			t.Errorf("index.html with no caveats page does not list caveat %q", c.ID)
+		}
+	}
+	if strings.Contains(visible, `href="caveats.html"`) {
+		t.Error("index.html links a caveats page the site does not write")
+	}
+}
+
 // The acceptance test for the whole change: a site exported with the extraction
 // tree in hand resolves BOTH classes of citation — the city's PDF and the
 // committed page text — and reaches github.com for neither.

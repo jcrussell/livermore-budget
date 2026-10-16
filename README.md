@@ -47,9 +47,9 @@ The spine gives the all-funds picture the chart draws:
   reconciles against exactly
 
 The site also publishes **$313,708,146** — the wrong answer — beside the right
-one, because naively summing the expenditure column double-counts transfers by
-23%, and showing the error you are avoiding is more useful than quietly avoiding
-it.
+one on `totals.html`, because naively summing the expenditure column
+double-counts transfers by 23%, and showing the error you are avoiding is more
+useful than quietly avoiding it.
 
 The site publishes **six pages**. `index.html` is the fund-group spine as a
 Sankey, with a toggle between the two adopted years, and it is the one chart
@@ -66,9 +66,10 @@ two ten-year schedules — p168's changes in fund balances and p167's balances
 themselves — a decade a column, in the section the ACFR heads "(Unaudited)" and
 each page says so. `provenance.html` is the record store itself: every fact, its
 page, and the text it was read from. `caveats.html` is every published
-document's caveats in full — the other pages show each as one line and link
-here, so a reader meets the chart before the apparatus rather than scrolling
-past 254 words of it.
+document's caveats in full. `index.html` links it and flags a caveat in the
+drawer on each mark it applies to, and `totals.html` and several schedule
+pages list each of theirs as one line linking to it, so a reader meets the
+chart before the apparatus.
 
 One schedule is mapped and checked but **drawn by no chart**: ACFR p.41. Its
 facts appear only in `provenance.html`. The CIP is extracted and entirely

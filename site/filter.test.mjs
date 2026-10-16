@@ -146,8 +146,12 @@ function faultsOf(app, doc, state, where) {
     return out;
   };
   const out = within(state.nodes);
+  // A hidden group's cell goes where all of it is the group's; a total only
+  // part of which is stays drawn, as its ribbon's ends say.
+  const grouped = within(state.groups);
   const alone = state.only !== "" ? within([state.only]) : null;
   const goes = (k, atOnly) => (out.size > 0 && app.cellIn(k, out) !== "none") ||
+    (grouped.size > 0 && app.cellIn(k, grouped) === "all") ||
     (alone !== null && !atOnly && app.cellIn(k, alone) !== "all");
   const wholeGoes = (l) => state.kinds.has(l.kind) || state.groups.has(groupAt(app, doc, l.source)) ||
     state.groups.has(groupAt(app, doc, l.target)) || state.nodes.has(l.source) || state.nodes.has(l.target);
@@ -566,34 +570,37 @@ describe("the filter panel", () => {
   });
 });
 
-describe("a filter that cuts every ribbon into an extend split's slot", () => {
+describe("a chart that draws no ribbon into an extend split's slot", () => {
   // THE SCAFFOLD (layOutAt): a division an object category is split into
-  // stands in a slot after the category's, and hiding every group that pays
-  // for the category leaves no drawn ribbon reaching that far. d3-sankey
+  // stands in a slot after the category's, and a chart drawing no ribbon
+  // into the category leaves no drawn path reaching that far. d3-sankey
   // alone would draw the divisions a column early; the scaffold keeps each
-  // node in its slot's column, so the page draws the filter.
-  test("lays out, each node in its slot's column, with no banner", async (t) => {
-    const { app, document } = await bootedApp({ checkedStem: YEARS[0].stem });
-    await split(app, "expenditure/capital-outlay~divisions");
-    const divisions = new Set(app.splitsHere({ id: "expenditure/capital-outlay" }).find((sp) => sp.key === "divisions").members);
+  // node in its slot's column. No filter draws it on this fixture, since
+  // hiding the groups that pay for the category cuts their leaves from the
+  // divisions too, so the chart is the split's shaped chart minus every
+  // ribbon arriving at the category.
+  test("lays out, each node in its slot's column", async (t) => {
+    const { app } = await bootedApp({ checkedStem: YEARS[0].stem });
+    const C = "expenditure/capital-outlay";
+    await split(app, C + "~divisions");
+    const divisions = new Set(app.splitsHere({ id: C }).find((sp) => sp.key === "divisions").members);
     const columns = new Set(app.slotsOf(app.laidNodes, app.RENDER_TIERS).values()).size;
-    const hide = new Set(app.fundGroups().map((g) => g.id).filter((g) => g !== "fund-group/capital" && g !== "fund-group/permanent"));
-    const drew = app.setFilter({ groups: hide });
-    const banners = refusals(document).map((b) => b.textContent);
-    const slots = app.slotsOf(app.laidNodes, app.RENDER_TIERS);
-    const misplaced = app.laidNodes.filter((n) => n.layer !== slots.get(n.id)).map((n) => n.id);
-    const last = app.laidNodes.filter((n) => divisions.has(n.id) && slots.get(n.id) === columns - 1).map((n) => n.id);
-    t.diagnostic(`hiding ${[...hide].join(", ")}: setFilter ${drew}; ${last.length} division(s) drawn in the last of ` +
-      `${columns} column(s); ${banners.length} banner(s)`);
-    assert.equal(drew, true);
-    assert.deepEqual(banners, []);
-    assert.equal(app.filter.groups.size, hide.size);
+    const doc = structuredClone(app.shown.doc);
+    doc.links = doc.links.filter((l) => l.target !== C);
+    const touched = new Set(doc.links.flatMap((l) => [l.source, l.target]));
+    doc.nodes = doc.nodes.filter((n) => touched.has(n.id));
+    doc.filtered = true;
+    const laid = app.layOut(doc);
+    const slots = app.slotsOf(laid.nodes, app.RENDER_TIERS);
+    const misplaced = laid.nodes.filter((n) => n.layer !== slots.get(n.id)).map((n) => n.id);
+    const last = laid.nodes.filter((n) => divisions.has(n.id) && slots.get(n.id) === columns - 1).map((n) => n.id);
+    t.diagnostic(`${last.length} division(s) drawn in the last of ${columns} column(s)`);
     assert.deepEqual(misplaced, []);
     assert.ok(last.length > 0, "no division is drawn in the last column, so nothing here is tested");
     // The case the clamp refused: the longest drawn path is too short to
     // reach the last column, so d3 counts fewer columns than the slots hold.
     const steps = new Map();
-    for (const n of [...app.laidNodes].sort((a, b) => slots.get(a.id) - slots.get(b.id))) {
+    for (const n of [...laid.nodes].sort((a, b) => slots.get(a.id) - slots.get(b.id))) {
       steps.set(n.id, Math.max(0, ...n.targetLinks.map((l) => steps.get(l.source.id) + 1)));
     }
     const longest = Math.max(...steps.values());
@@ -653,4 +660,36 @@ describe("a filter never restates a mark's figure", () => {
       assert.equal(refusals(document).length, 0);
     });
   }
+});
+
+// A PART HIDDEN IS ONLY TALLIED: core.partOf holds a part drawn to its
+// ribbon's sign, and the part a node filter hides is read by its cells at
+// their printed signs (core.distinctCents), so it may net the other way.
+describe("a node filter hiding a contra cell of a ribbon", () => {
+  // Mutation: pass partOf no `false` for the hidden part in
+  // core.filterDocument and this goes red: the filter is refused, "the part
+  // nets the other way".
+  test("draws the rest and tallies the contra at its printed sign", async (t) => {
+    const { app } = await bootedApp({ checkedStem: YEARS[0].stem });
+    await split(app, "fund-group/enterprise");
+    const doc = structuredClone(app.shown.doc);
+    const l = doc.links.find((x) => x.value_cents > 0 && x.cells && Object.keys(x.cells).length > 0);
+    assert.ok(l, "no ribbon carries cells, so nothing here is cut");
+    // The plant: one cell more on the ribbon, a contra from a node of its
+    // own netting -30 cents, the ribbon's figure its cells' sum still.
+    const contra = "\u001fplanted/contra\u001f" + l.target + "\u001fexternal\u001f";
+    const first = Object.keys(l.cells)[0];
+    l.cells[first] += 30;
+    l.cells[contra] = -30;
+    l.cell_sources[contra] = { fact_ids: l.cell_sources[first].fact_ids.slice(), pages: [], derived: false };
+    const state = { groups: new Set(), kinds: new Set(), nodes: new Set(["planted/contra"]), smallest: 0 };
+    const r = app.filterDocument(doc, () => "", state, null, { out: new Set(["planted/contra"]), only: null });
+    const drawnPart = r.doc.links.find((x) => x.source === l.source && x.target === l.target && x.kind === l.kind);
+    const hiddenPart = r.hidden.find((x) => x.source === l.source && x.target === l.target && x.kind === l.kind);
+    const tally = app.distinctCents(r.hidden, (x) => x.value_cents);
+    t.diagnostic(`${l.source} -> ${l.target} ${l.value_cents}: drawn ${drawnPart && drawnPart.value_cents}, ` +
+      `hidden ${hiddenPart && hiddenPart.value_cents}, tallied ${tally}`);
+    assert.deepEqual({ drawn: drawnPart && drawnPart.value_cents, hidden: hiddenPart && hiddenPart.value_cents, tally },
+      { drawn: l.value_cents + 30, hidden: -30, tally: -30 });
+  });
 });

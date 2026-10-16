@@ -8,7 +8,7 @@
 
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { bootedApp, loadApp, split, settle, fire, refusals, dollars } from "./testlib.mjs";
+import { bootedApp, loadApp, split, revealed, settle, fire, refusals, dollars } from "./testlib.mjs";
 
 const OPENS = "fund-group/general";
 
@@ -170,6 +170,29 @@ describe("a node's context menu", () => {
     assert.equal(named, app.say("node_menu", { label: name }));
     assert.equal(more.textContent, app.say("node_menu_more"));
     assert.equal(refusals(document).length, 0);
+  });
+
+  // Mutation: open the menu from More with back "g.node" (no `from` in
+  // wireDrawer's openNodeMenu) and this goes red: Escape puts focus on the
+  // chart mark, away from the drawer, and More never says it is expanded.
+  test("the drawer's More says the menu is expanded while it is open, and Escape puts focus back on More", async () => {
+    const { app, document } = await bootedApp();
+    const more = document.getElementById("detail-menu");
+    const id = plainNode(app);
+    app.pin(app.laidNodes.find((n) => n.id === id));
+    const shut = more.getAttribute("aria-expanded");
+    more.focus();
+    fire(more, "click");
+    const open = { expanded: more.getAttribute("aria-expanded"), controls: more.getAttribute("aria-controls"),
+      popup: more.getAttribute("aria-haspopup") };
+    fire(document.getElementById("node-menu"), "keydown", { key: "Escape" });
+    const closed = { menu: document.getElementById("node-menu") === null, expanded: more.getAttribute("aria-expanded"),
+      back: document.activeElement === more, pinned: pinnedID(app) };
+    assert.deepEqual({ shut, open, closed }, {
+      shut: "false",
+      open: { expanded: "true", controls: "node-menu", popup: null },
+      closed: { menu: true, expanded: "false", back: true, pinned: id },
+    });
   });
 
   test("a ribbon has no menu: a right-click on one leaves the browser's own", async () => {
@@ -530,8 +553,7 @@ describe("the node filters in the URL", () => {
 
   // Mutation: drop moveTo's catch around showYear and this goes red: the
   // link to another year rejects restoreView with the throw, the hash's `out`
-  // and `only` left in the state and no opening view; drop the filter's
-  // restore in that catch and the fallback is asked from the hash's state.
+  // and `only` left in the state and no opening view.
   test("a link to another year whose node shown alone the other filters empty falls back to the opening view, at boot and on Back", async (t) => {
     const { app, document, window } = await bootedApp();
     const id = plainNode(app);
@@ -560,6 +582,25 @@ describe("the node filters in the URL", () => {
     assert.deepEqual(booted, { year: opening, only: "", out: [], banners: 1, drawn: true });
     assert.ok(said.includes("the other filters leave none of "), said);
     assert.ok(window.location.hash === app.hashOf(app.viewState()), window.location.hash);
+  });
+
+  // Mutation: make the link's removals the page's filter before moveTo's
+  // showYear (filter = removals; showYear(year)) and this goes red: the
+  // reader's year switch overtaking the link draws the year they picked
+  // with the link's node filtered out, and the filter keeps it.
+  test("a link to another year that the reader's year switch overtakes leaves none of its removals on the year they picked", async (t) => {
+    const { app } = await bootedApp();
+    const id = plainNode(app);
+    const opening = app.shownYear;
+    const other = app.CONFIG.years.map((y) => app.yearKey(y)).find((k) => k !== app.yearKey(opening));
+    assert.ok(other, "the page publishes one year, so no link moves to another");
+    const link = app.restoreView(app.hashOf({ year: other, hide: [], hidekind: [], out: [id], only: "", min: 0, iso: "", x: [] }));
+    const click = app.showYear(opening);
+    const got = { link: await link, click: await click };
+    const after = { year: app.yearKey(app.shownYear), out: [...app.filter.nodes], hidden: app.shown.hidden.length };
+    t.diagnostic(`${JSON.stringify(got)}; ${JSON.stringify(after)}`);
+    assert.deepEqual({ got, after }, { got: { link: app.SUPERSEDED, click: app.DREW },
+      after: { year: app.yearKey(opening), out: [], hidden: 0 } });
   });
 
   // Mutation: drop `out` and `only` from restoreView's fallback and this
@@ -626,6 +667,64 @@ describe("the node filters and an open hub", () => {
       { balanced: true, astray: 0, drawn: true });
     assert.ok(alone.arriving > 0, "showing the member alone draws nothing arriving at the hub");
     assert.equal(refusals(document).length, 0);
+  });
+
+  // Mutation: drop state.groups from leafCut (groupIDs empty) and this goes
+  // red: the legend's group filter hides the ribbons from the before hub to
+  // the group's funds by their ends, and draws whole the lines' legs into
+  // the hub that carry the group's cells, so the hub takes in more than it
+  // gives out; the menu's route still cuts them.
+  test("a fund group hidden from the legend cuts its leaves from a before hub, drawing the hub balanced as the menu's route does", async (t) => {
+    const { app, document } = await bootedApp();
+    const BEFORE = "revenue/charges-for-services";
+    const G = "fund-group/enterprise";
+    await revealed(app, BEFORE);
+    await split(app, BEFORE);
+    const at = (links) => {
+      let arriving = 0;
+      let leaving = 0;
+      for (const l of links) {
+        if (l.target === BEFORE) arriving += l.value_cents;
+        if (l.source === BEFORE) leaving += l.value_cents;
+      }
+      return { arriving, leaving };
+    };
+    const drawn = () => app.shown.doc.links.map((l) => `${l.source} -> ${l.target} ${l.kind} ${l.value_cents}`).sort();
+    const before = at(app.shown.doc.links);
+    const legend = app.setFilter({ groups: new Set([G]) });
+    const byLegend = { ...at(app.shown.doc.links), ribbons: drawn() };
+    app.resetFilters();
+    assert.ok(app.laidNodes.some((n) => n.id === G), `${G} is not drawn, so the menu cannot filter it out`);
+    app.filterOutNode(G);
+    const byNode = drawn();
+    t.diagnostic(`${BEFORE} unfiltered ${JSON.stringify(before)}; ${G} hidden from the legend ` +
+      `${JSON.stringify({ arriving: byLegend.arriving, leaving: byLegend.leaving })}`);
+    assert.equal(before.arriving, before.leaving, "the hub is not balanced unfiltered, so balance says nothing");
+    assert.equal(legend, true);
+    assert.equal(byLegend.arriving, byLegend.leaving);
+    assert.ok(byLegend.leaving < before.leaving, `hiding ${G} took nothing from the hub`);
+    assert.deepEqual(byNode, byLegend.ribbons);
+    assert.equal(refusals(document).length, 0);
+  });
+
+  // Mutation: pass state as it came to core.filterDocument from filterFor
+  // (no `st` dropping the nodes the shaped chart does not draw) and this
+  // goes red: the fund folded away under Collapse all still cuts its leaves
+  // from the ribbons into its group, hiding money the filter line names no
+  // node for.
+  test("a node filtered out that a collapse folds away is inert: nothing hidden, nothing said", async (t) => {
+    const { app, document } = await bootedApp();
+    await split(app, HUB);
+    const member = memberOf(app);
+    app.filterOutNode(member);
+    const out = app.shown.hidden.length;
+    app.collapseAll();
+    await settle();
+    const after = { kept: [...app.filter.nodes], drawn: app.projection.nodes.some((n) => n.id === member),
+      hidden: app.shown.hidden.length, line: document.getElementById("filter-line").hasAttribute("hidden") };
+    t.diagnostic(`${member} filtered out of the open ${HUB} hides ${out} ribbon(s); collapsed, ${JSON.stringify(after)}`);
+    assert.ok(out > 0, `filtering ${member} out hid nothing, so inertness says nothing`);
+    assert.deepEqual(after, { kept: [member], drawn: false, hidden: 0, line: true });
   });
 
   // Mutation: drop the fund group arm of core.filterDocument's inHidden

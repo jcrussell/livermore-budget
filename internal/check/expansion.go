@@ -819,13 +819,19 @@ func (*expansionSplitsTie) hubFindings(x stitched, sp project.Split, members []s
 			if l.Alternative != "" || x.isLeg(l) {
 				continue
 			}
-			target := l.Target
-			if l.Repeats != "" {
-				_, target = project.LeafEnds(l.Repeats)
-			}
-			if isMember(l.Target) || isMember(target) {
-				findings = append(findings, finding(subject, "the leaf %s -> %s repeating %q arrives at a member, which stands before the node and takes nothing in",
-					l.Source, l.Target, l.Repeats))
+			const before = "which stands before the node and takes nothing in"
+			switch {
+			case isMember(l.Target) && l.Repeats == "":
+				findings = append(findings, finding(subject, "the link %s -> %s arrives at the member %s, %s",
+					l.Source, l.Target, l.Target, before))
+			case isMember(l.Target):
+				findings = append(findings, finding(subject, "the leaf %s -> %s repeating %q arrives at the member %s, %s",
+					l.Source, l.Target, l.Repeats, l.Target, before))
+			case l.Repeats != "":
+				if _, target := project.LeafEnds(l.Repeats); isMember(target) {
+					findings = append(findings, finding(subject, "the link %s -> %s repeats %q, a leaf into the member %s, %s",
+						l.Source, l.Target, l.Repeats, target, before))
+				}
 			}
 		}
 	}

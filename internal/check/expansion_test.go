@@ -350,7 +350,28 @@ func TestTheExpansionChecksCanFail(t *testing.T) {
 				d.Links = append(d.Links, into)
 			},
 			want: "the leaf fund/100 -> " + salesLine + " repeating \"fund/100 -> " + salesLine +
-				" external\" arrives at a member, which stands before the node and takes nothing in",
+				" external\" arrives at the member " + salesLine + ", which stands before the node and takes nothing in",
+		},
+		{
+			name: "a link repeating no leaf arriving at a sales tax line", check: &expansionSplitsTie{},
+			edit: func(t *testing.T, _ *Subject, d *project.Document) {
+				into := d.Links[leafAt(t, d, salesLine, "fund/100")]
+				into.Source, into.Target, into.Repeats = "fund/100", salesLine, ""
+				d.Links = append(d.Links, into)
+			},
+			want: "the link fund/100 -> " + salesLine + " arrives at the member " + salesLine +
+				", which stands before the node and takes nothing in",
+		},
+		{
+			name: "a link repeating a leaf into a sales tax line", check: &expansionSplitsTie{},
+			edit: func(t *testing.T, _ *Subject, d *project.Document) {
+				into := d.Links[leafAt(t, d, salesLine, "fund/100")]
+				into.Source, into.Target = "fund/100", "fund-group/general"
+				into.Repeats = "fund/100 -> " + salesLine + " external"
+				d.Links = append(d.Links, into)
+			},
+			want: "the link fund/100 -> fund-group/general repeats \"fund/100 -> " + salesLine +
+				" external\", a leaf into the member " + salesLine + ", which stands before the node and takes nothing in",
 		},
 		{
 			name: "a leaf re-pointed off a source hub repeating a leaf to another node", check: &expansionSplitsTie{},

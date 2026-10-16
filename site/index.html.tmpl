@@ -172,7 +172,7 @@
     <div class="drawer-head">
       <button type="button" id="detail-follow" aria-pressed="false" hidden>{{.Wording.FollowMoney}}</button>
       <button type="button" id="detail-pin" aria-pressed="false" hidden>{{.Wording.Pin}}</button>
-      <button type="button" id="detail-menu" aria-haspopup="true" hidden>{{.Wording.NodeMenuMore}}</button>
+      <button type="button" id="detail-menu" aria-expanded="false" hidden>{{.Wording.NodeMenuMore}}</button>
     </div>
     <div class="detail" id="detail" aria-live="polite">
       <p class="subtle">{{.Wording.DetailEmpty}}</p>
@@ -200,6 +200,20 @@
   {{- end}}
   {{- if .CaveatsPath}} <a href="{{.CaveatsPath}}">What these figures do not say</a>.{{end}}
 </p>
+{{- /* With no caveats page, every year's caveat summaries are listed here, as
+       the footer lists the cited pages with no sources page: a caveat with no
+       node to flag (an empty applies_to) is in no drawer chip. Every year's,
+       so a year switch leaves none stale. */}}
+{{- if not .CaveatsPath}}
+{{- $any := false}}{{range .Years}}{{if .Caveats}}{{$any = true}}{{end}}{{end}}
+{{- if $any}}
+<ul class="caveats" aria-label="What these figures do not say, for every year this page can show">
+  {{- range $y := .Years}}{{range $y.Caveats}}
+  <li>{{if gt (len $.Years) 1}}{{$y.Lede}}: {{end}}{{.Summary}}</li>
+  {{- end}}{{end}}
+</ul>
+{{- end}}
+{{- end}}
 
 {{- /* Closed, and filled by app.js from the chart's own data. */}}
 <details class="apparatus" id="derived-view">
