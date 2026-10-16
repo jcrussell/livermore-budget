@@ -227,13 +227,109 @@ describe("one activation", () => {
     assert.equal(app.filter.isolated, "");
   });
 
-  test("an activation that splits leaves the isolation the reader had", async () => {
+  // Mutation: drop the clear in pin and the second mark's pin leaves the
+  // chart following the first, the drawer's Follow unpressed.
+  test("pinning another mark lets a followed node go: a node's pin, a ribbon's, the Pin button's release", async (t) => {
     const { app, document } = await bootedApp();
-    const seed = "revenue/taxes/sales";
-    app.setIsolated(seed);
-    fire(markOf(app, document, OPENS), "click", { timeStamp: 1000 });
+    await split(app, WORST);
+    const members = app.splitsHere({ id: WORST })[0].members
+      .filter((id) => app.laidNodes.some((n) => n.id === id) && !app.splittable({ id }) && !app.expandable({ id }));
+    assert.ok(members.length >= 2, `${WORST} draws ${members.length} inert members`);
+    const [first, second] = members;
+    const follow = document.getElementById("detail-follow");
+    // Clicks far enough apart that none is the second of a double click.
+    let at = 1000;
+    const click = async (id) => {
+      fire(markOf(app, document, id), "click", { timeStamp: (at += 4000) });
+      await settle();
+    };
+    const followFirst = async () => {
+      await click(first);
+      fire(follow, "click");
+      return app.filter.isolated;
+    };
+    const state = () => ({
+      pinned: pinnedID(app), isolated: app.filter.isolated,
+      follow: follow.hidden ? "hidden" : follow.getAttribute("aria-pressed"),
+      firstPressed: markOf(app, document, first).getAttribute("aria-pressed"),
+    });
+    const seen = {};
+    seen.followed = await followFirst();
+    await click(second);
+    seen.node = state();
+    seen.again = await followFirst();
+    const ribbon = [...document.querySelectorAll("#chart path.link")].find((p) => p.__data__.target.id !== first && p.__data__.source.id !== first);
+    fire(ribbon, "click");
+    seen.ribbon = Object.assign(state(), { ribbonPinned: app.pinned === ribbon.__data__ });
+    seen.last = await followFirst();
+    fire(document.getElementById("detail-pin"), "click");
+    seen.unpinned = state();
+    t.diagnostic(`follow ${first}, then: ${JSON.stringify(seen)}`);
+    assert.deepEqual(seen, {
+      followed: first,
+      node: { pinned: second, isolated: "", follow: "false", firstPressed: "false" },
+      again: first,
+      ribbon: { pinned: "", isolated: "", follow: "hidden", firstPressed: "false", ribbonPinned: true },
+      last: first,
+      unpinned: { pinned: "", isolated: "", follow: "hidden", firstPressed: "false" },
+    });
+  });
+
+  // Mutation: let pin clear a group's isolation too and the swatch is let go.
+  test("a fund group a legend swatch follows survives a pin", async () => {
+    const { app, document } = await bootedApp();
+    const swatch = document.querySelector("#legend button");
+    const group = swatch.dataset.group;
+    fire(swatch, "click");
+    const inert = app.laidNodes.find((n) => !app.offers(n) && n.id !== group);
+    fire(markOf(app, document, inert.id), "click", { timeStamp: 1000 });
     await settle();
-    assert.deepEqual({ split: app.expansions.join(","), isolated: app.filter.isolated }, { split: OPENS, isolated: seed });
+    assert.deepEqual(
+      { pinned: pinnedID(app), isolated: app.filter.isolated, pressed: swatch.getAttribute("aria-pressed") },
+      { pinned: inert.id, isolated: group, pressed: "true" });
+  });
+
+  // Mutation: drop the clear in pin and the split of one node keeps another
+  // followed.
+  test("an activation that splits keeps the isolation only where the hub it pins is the node followed", async (t) => {
+    const { app, document } = await bootedApp();
+    const at = app.laidNodes.find((n) => app.splittable(n) && !app.isGroupID(n.id));
+    assert.ok(at, "the opening chart draws a node that splits and is no fund group");
+    const hub = at.id;
+    const other = app.laidNodes.find((n) => n.id !== hub && !app.isGroupID(n.id)).id;
+    const seen = {};
+    app.setIsolated(other);
+    fire(markOf(app, document, hub), "click", { timeStamp: 1000 });
+    await settle();
+    seen.another = { split: app.expansions.join(","), pinned: pinnedID(app), isolated: app.filter.isolated };
+    // Folded back, then followed and split again.
+    fire(markOf(app, document, hub), "click", { timeStamp: 5000 });
+    await settle();
+    app.setIsolated(hub);
+    fire(markOf(app, document, hub), "click", { timeStamp: 9000 });
+    await settle();
+    seen.itself = { split: app.expansions.join(","), pinned: pinnedID(app), isolated: app.filter.isolated };
+    t.diagnostic(`${hub} split while following ${other}, then itself: ${JSON.stringify(seen)}`);
+    assert.deepEqual(seen, {
+      another: { split: hub, pinned: hub, isolated: "" },
+      itself: { split: hub, pinned: hub, isolated: hub },
+    });
+  });
+
+  // Mutation: drop the clear in fail and the chart follows a node with no
+  // Follow button on screen to let it go.
+  test("a refusal lets a followed node go with the pin", async () => {
+    const { app, document } = await bootedApp();
+    await split(app, WORST);
+    const inert = inertMember(app, WORST);
+    fire(markOf(app, document, inert), "click", { timeStamp: 1000 });
+    await settle();
+    fire(document.getElementById("detail-follow"), "click");
+    const followed = app.filter.isolated;
+    app.fail("refused");
+    assert.deepEqual(
+      { followed, pinned: pinnedID(app), isolated: app.filter.isolated, pressed: markOf(app, document, inert).getAttribute("aria-pressed") },
+      { followed: inert, pinned: "", isolated: "", pressed: "false" });
   });
 });
 

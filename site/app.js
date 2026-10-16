@@ -2448,21 +2448,38 @@ export function preview(d) {
 
 /**
  * Pins a flow or node into the drawer, where the citations are clickable,
- * until the reader pins another or lets it go.
+ * until the reader pins another or lets it go. Pinning any mark but the
+ * followed node lets a node's isolation go (followsNode), so the chart never
+ * follows a node the drawer does not show; a fund group's stays.
  * @param {LaidLink | LaidNode} d
  */
 export function pin(d) {
   pinned = d;
   previewed = null;
   paintDetail(d);
-  applyEmphasis();
+  if (followsNode() && (isLink(d) || d.id !== filter.isolated)) setIsolated("");
+  else applyEmphasis();
 }
 
-/** Lets the drawer's pin go: the drawer and the marks return to their unpinned state. */
+/**
+ * Lets the drawer's pin go: the drawer and the marks return to their
+ * unpinned state, and a node's isolation goes with it, its Follow button
+ * having gone from the drawer.
+ */
 export function unpin() {
   pinned = null;
   resetDetail();
-  applyEmphasis();
+  if (followsNode()) setIsolated("");
+  else applyEmphasis();
+}
+
+/**
+ * Whether the isolation follows a node rather than a fund group: the one the
+ * drawer's Follow button sets, and the legend's swatches do not.
+ * @returns {boolean}
+ */
+function followsNode() {
+  return filter.isolated !== "" && !isGroupID(filter.isolated);
 }
 
 /**
@@ -3618,16 +3635,17 @@ export function resetDetail() {
 /**
  * Refuses to draw, visibly: in the drawer and in a role="alert" banner at the
  * top, since on a narrow viewport the drawer sits below a chart a reader may
- * never scroll past. The drawer holds the refusal, so it holds no pin.
+ * never scroll past. The drawer holds the refusal, so it holds no pin and
+ * follows no node.
  *
  * @param {string} message
  */
 export function fail(message) {
-  if (pinned) {
-    pinned = null;
-    applyEmphasis();
-  }
+  const had = pinned;
+  pinned = null;
   previewed = null;
+  if (followsNode()) setIsolated("");
+  else if (had) applyEmphasis();
   const panel = el("detail");
   panel.replaceChildren();
   panel.append(h("p", "", message));
