@@ -406,6 +406,14 @@ export let laidNodes = [];
 let drawnNames = new Map();
 
 /**
+ * The name each node filtered out from the node's menu was drawn by when it
+ * was chosen: a node filtered out is drawn no more, so no later render
+ * names it (filterOutNode, paintFilterLine).
+ * @type {Map<string, string>}
+ */
+const outNames = new Map();
+
+/**
  * What the page calls a mark in prose: the name the form draws it by, else
  * its label.
  * @param {{id: string, label: string}} d
@@ -774,7 +782,7 @@ export function redraw(next, refused = "That could not be drawn", landOn, anchor
   clearRefusal();
   // What the last year switch folded back is said until the reader moves.
   paintSplitsLine(null, [], null);
-  pinned = null;
+  dropPin();
   if (filter.isolated && !laidNodes.some((n) => isolates(filter.isolated, n))) {
     filter = Object.freeze(Object.assign({}, filter, { isolated: "" }));
   }
@@ -950,11 +958,12 @@ export function clickNode(d, at = Infinity) {
  */
 function activate(d) {
   closeChartMenu();
+  const followed = followsNode() ? filter.isolated : "";
   if (foldable(d) && fetched) {
     const from = core.straightFrom(fetched, d.id);
     if (!collapseNode(d.id)) return;
     const kept = laidNodes.find((n) => n.id === d.id) || laidNodes.find((n) => n.id === from);
-    if (kept) pin(kept);
+    if (kept) pinKept(kept, followed);
     return;
   }
   if (!offers(d)) {
@@ -963,7 +972,19 @@ function activate(d) {
   }
   if (!openOffered(d)) return;
   const kept = laidNodes.find((n) => n.id === d.id);
-  if (kept) pin(kept);
+  if (kept) pinKept(kept, followed);
+}
+
+/**
+ * Pins the node a redraw kept, following it again where it is the node
+ * followed before the redraw, which let that isolation go with the pin
+ * (dropPin): pin's rule keeps the isolation of the node it pins.
+ * @param {LaidNode} kept
+ * @param {string} followed the node followed before, or ""
+ */
+function pinKept(kept, followed) {
+  pin(kept);
+  if (followed !== "" && followed === kept.id) setIsolated(followed);
 }
 
 /**
@@ -1077,9 +1098,9 @@ export let chartMenu = null;
 
 /**
  * Opens a menu of buttons on the chart beside a node, focus on the first.
- * Choosing one closes the menu and does it; Escape closes it, focus back on
- * the node's `back` mark, and focus leaving it -- a press anywhere else --
- * closes it.
+ * Choosing one closes the menu, focus back on the node's `back` mark, and
+ * does it; Escape closes it, focus back there too, and focus leaving it -- a
+ * press anywhere else -- closes it.
  * @param {{id: string, element: string, label: string, back: "g.glyph" | "g.node", at: {left: number, top: number} | null, choices: MenuChoice[]}} o
  *   `at`: where its top left goes, in the viewport's px, or null for the
  *   chart's top left
@@ -1100,7 +1121,9 @@ function openMenu(o) {
     choice.addEventListener("click", (e) => {
       e.stopPropagation();
       guarded(c.doing, () => {
-        closeChartMenu();
+        // Focus back on the node's mark first, so a redraw the choice makes
+        // finds it in the chart and puts it back (restoreFocus).
+        closeChartMenu(true);
         c.act();
       });
     });
@@ -1165,9 +1188,10 @@ export function openSplitMenu(d, glyph) {
       doing: "split this mark",
       data: { key: sp.key },
       act: () => {
+        const followed = followsNode() ? filter.isolated : "";
         if (!expandNode(id, sp.key)) return;
         const kept = laidNodes.find((n) => n.id === id);
-        if (kept) pin(kept);
+        if (kept) pinKept(kept, followed);
       },
     })),
   });
@@ -1175,8 +1199,10 @@ export function openSplitMenu(d, glyph) {
 
 /**
  * Opens a node's context menu: Follow this money (followNode), Filter this
- * out (filterOutNode) and Show only this (showOnlyNode). At the pointer for
- * a right-click, else beside the node's mark.
+ * out (filterOutNode) and Show only this (showOnlyNode), the two filters only
+ * on a node of the shaped chart, which is what they remove ribbons of: a
+ * smaller-flows mark the filters draw has neither. At the pointer for a
+ * right-click, else beside the node's mark.
  * @param {LaidNode} d
  * @param {{left: number, top: number} | null} [at] the pointer, in the viewport's px
  * @param {Element} [mark] the node's element
@@ -1193,9 +1219,10 @@ export function openNodeMenu(d, at, mark) {
     at: at || (box ? { left: box.right + 4, top: box.top } : null),
     choices: [
       { words: say("follow_money"), doing: "follow this money", data: { act: "follow" }, act: () => followNode(id) },
+    ].concat(projection && projection.nodes.some((n) => n.id === id) ? [
       { words: say("filter_out_node"), doing: "filter this out", data: { act: "out" }, act: () => filterOutNode(id) },
       { words: say("show_only_node"), doing: "show only this", data: { act: "only" }, act: () => showOnlyNode(id) },
-    ],
+    ] : []),
   });
 }
 
@@ -1214,29 +1241,28 @@ export function followNode(id) {
 /**
  * Removes every ribbon with an end at a node, as a removed fund group's are;
  * the node shown alone is let go where it is this one. The redraw drops the
- * pin, so a node's isolation goes with it (pin's rule); a fund group's stays.
+ * pin, and a node's isolation with it (dropPin). The line names the node as
+ * it was drawn when it was chosen (outNames).
  * @param {string} id
  */
 export function filterOutNode(id) {
+  const d = laidNodes.find((n) => n.id === id);
+  if (d) outNames.set(id, nameOf(d));
   const nodes = new Set(filter.nodes);
   nodes.add(id);
-  setFilter({
-    nodes: nodes,
-    only: filter.only === id ? "" : filter.only,
-    isolated: followsNode() ? "" : filter.isolated,
-  });
+  setFilter({ nodes: nodes, only: filter.only === id ? "" : filter.only });
 }
 
 /**
  * Removes every ribbon a node's Follow would dim (onlyKeeps), so only its
  * money is drawn; the node is put back where it was filtered out. A node's
- * isolation goes with the pin the redraw drops, as filterOutNode's does.
+ * isolation goes with the pin the redraw drops (dropPin).
  * @param {string} id
  */
 export function showOnlyNode(id) {
   const nodes = new Set(filter.nodes);
   nodes.delete(id);
-  setFilter({ nodes: nodes, only: id, isolated: followsNode() ? "" : filter.isolated });
+  setFilter({ nodes: nodes, only: id });
 }
 
 /**
@@ -1376,11 +1402,12 @@ export function restoreFocus(hadFocus, onto = "") {
 let restoring = false;
 
 /**
- * Whether a primary pointer is pressed on the chart, or released in this
+ * Whether a pointer is pressed on the chart, by any button, or released in this
  * task, so the click the release ends in is still the press's: a mark it
  * focuses, and a mark a split it begins focuses, are the press's, neither
- * pinned nor scrolled to. A keydown, the window's blur or a lost capture
- * ends it too, so a release the page never hears leaves the keyboard pinning.
+ * pinned nor scrolled to. A context menu, a keydown, the window's blur or a
+ * lost capture ends it too, so a release the page never hears leaves the
+ * keyboard pinning.
  */
 let pointing = false;
 
@@ -2086,6 +2113,7 @@ export function setFilter(next) {
   }
   finishMotion();
   const hadFocus = focusInChart();
+  const focused = hadFocus ? /** @type {any} */ (document.activeElement).__data__ : null;
   const prior = boxesOf(laidNodes);
   let filtered;
   let unfiltered;
@@ -2102,7 +2130,7 @@ export function setFilter(next) {
   }
   shown = filtered;
   whole = unfiltered;
-  pinned = null;
+  dropPin();
   resetDetail();
   hideTip();
   buildLegend();
@@ -2110,7 +2138,7 @@ export function setFilter(next) {
   syncFilterPanel();
   paintChartHint();
   render(laid, prior);
-  restoreFocus(hadFocus);
+  restoreFocus(hadFocus, focused && typeof focused.id === "string" ? focused.id : "");
   recordView("replace");
   return true;
 }
@@ -2139,7 +2167,7 @@ export function paintFilterLine() {
     ? drawn.find((n) => n.id === filter.only) : undefined;
   if (alone) parts.push(say("filter_only", { label: nameOf(alone) }));
   const out = drawn.filter((n) => filter.nodes.has(n.id));
-  if (out.length) parts.push(say("filter_out", { names: out.map(nameOf).join("; ") }));
+  if (out.length) parts.push(say("filter_out", { names: out.map((n) => outNames.get(n.id) || nameOf(n)).join("; ") }));
   if (gone.flows) parts.push(say("filter_hidden", { cents: fmtSigned(gone.cents), flows: gone.flows }));
   if (merged.flows) {
     parts.push(say("filter_folded", { flows: merged.flows, ribbons: merged.ribbons, threshold: fmt(filter.smallest) }));
@@ -2563,6 +2591,15 @@ export function unpin() {
   resetDetail();
   if (followsNode()) setIsolated("");
   else applyEmphasis();
+}
+
+/**
+ * Lets the pin go where a redraw replaces the marks, before it repaints: a
+ * node's isolation goes with it (pin's rule), a fund group's stays.
+ */
+function dropPin() {
+  pinned = null;
+  if (followsNode()) filter = Object.freeze(Object.assign({}, filter, { isolated: "" }));
 }
 
 /**
@@ -3449,8 +3486,9 @@ export function wireZoom() {
   if (scroller && scroller.classList.contains("chart-scroll")) wirePan(scroller);
   const doc = svg.ownerDocument;
   const released = () => { pointing = false; };
-  svg.addEventListener("pointerdown", (e) => { if (e.button === 0) pointing = true; }, true);
-  for (const type of ["pointerup", "pointercancel"]) doc.addEventListener(type, () => { if (pointing) setTimeout(released, 0); }, true);
+  svg.addEventListener("pointerdown", () => { pointing = true; }, true);
+  // A context menu ends the press too: the browser's own takes its release.
+  for (const type of ["pointerup", "pointercancel", "contextmenu"]) doc.addEventListener(type, () => { if (pointing) setTimeout(released, 0); }, true);
   doc.addEventListener("lostpointercapture", released, true);
   const win = doc.defaultView;
   if (win) win.addEventListener("keydown", released, true);
@@ -3690,7 +3728,7 @@ export async function restoreView(hash) {
   const read = parseHash(hash);
   const opening = openingYear || (CONFIG.years || [])[(CONFIG.years || []).length - 1];
   /** @type {ViewState} */
-  const fallback = { year: yearKey(opening), hide: [], hidekind: [], min: 0, iso: "", x: [] };
+  const fallback = { year: yearKey(opening), hide: [], hidekind: [], out: [], only: "", min: 0, iso: "", x: [] };
   const named = read.kind !== "none";
   let moved = /** @type {{outcome: string, why?: string}} */ ({ outcome: FAILED, why: read.kind === "refused" ? read.why : "" });
   restoringView = true;

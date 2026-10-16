@@ -353,6 +353,27 @@ func TestTheExpansionChecksCanFail(t *testing.T) {
 				" -> fund/200 external\", whose other end is another node's",
 		},
 		{
+			name: "a leaf re-pointed off a source hub onto a fund repeating a leaf to one of its divisions", check: &expansionSplitsTie{},
+			edit: func(t *testing.T, _ *Subject, d *project.Document) {
+				forged := salesLine + " -> dept/patrol external"
+				d.Links[legAt(t, d, salesHub, salesLine, "fund/100")].Repeats = forged
+				i := leafAt(t, d, salesLine, "fund/100")
+				d.Links[i].Repeats = forged
+				d.Links[i].Target = "fund/100"
+			},
+			want: "the leaf " + salesHub + " -> fund/100 re-pointed onto the node repeats \"" + salesLine +
+				" -> dept/patrol external\", whose other end is another node's",
+		},
+		{
+			name: "a division's link run back into its fund, the split drawn both ways", check: &expansionSplitsTie{},
+			edit: func(t *testing.T, _ *Subject, d *project.Document) {
+				back := d.Links[linkAt(t, d, "fund/100", "dept/patrol")]
+				back.Source, back.Target, back.Restates = back.Target, back.Source, nil
+				d.Links = append(d.Links, back)
+			},
+			want: "split of fund/100 by divisions the node's links to its members run both ways",
+		},
+		{
 			name: "two leaves repeating one leaf", check: &expansionSplitsTie{},
 			edit: func(t *testing.T, _ *Subject, d *project.Document) {
 				i := leafAt(t, d, salesLine, "fund/100")

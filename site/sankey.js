@@ -1307,6 +1307,10 @@ export const SANKEY = Object.freeze({
       })
       // THE NODE'S MENU, where the form is handed one: a right-click opens it
       // at the pointer, and Shift+F10 or the ContextMenu key beside the mark.
+      // Both keys reach it as this event on the focused mark, never as a
+      // keydown arm: on Windows the ContextMenu key's contextmenu fires on
+      // keyup, after a keydown arm has moved focus into the menu, and the
+      // browser's own menu opens over it.
       .on("contextmenu", /** @this {SVGGElement} @param {MouseEvent} e @param {LaidNode} d */ function (e, d) {
         if (!on.menu) return;
         e.preventDefault();
@@ -1315,13 +1319,7 @@ export const SANKEY = Object.freeze({
         const keyed = e.clientX === 0 && e.clientY === 0;
         on.guarded("open this mark's menu", () => on.menu(d, keyed ? null : { left: e.clientX, top: e.clientY }, el));
       })
-      .on("keydown", /** @this {SVGGElement} @param {KeyboardEvent} e @param {LaidNode} d */ function (e, d) {
-        if (on.menu && (e.key === "ContextMenu" || (e.key === "F10" && e.shiftKey))) {
-          e.preventDefault();
-          const el = this;
-          on.guarded("open this mark's menu", () => on.menu(d, null, el));
-          return;
-        }
+      .on("keydown", /** @param {KeyboardEvent} e @param {LaidNode} d */ (e, d) => {
         if (e.key !== "Enter" && e.key !== " ") return;
         if (e.repeat) return;
         e.preventDefault();

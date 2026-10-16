@@ -1,5 +1,6 @@
 // nodemenu.test.mjs -- a node's context menu: a right-click, Shift+F10 or
-// the ContextMenu key on a node opens it, and its three choices follow the
+// the ContextMenu key on a node (the contextmenu event the browser fires on
+// the focused mark for either key) opens it, and its three choices follow the
 // node's money, filter the node out, and show only its money. What the two
 // filters remove is said on the filter line by name, Reset puts it back, and
 // the hash carries it. Every assertion is over ids, strings and booleans.
@@ -51,8 +52,10 @@ const pinnedID = (app) => (app.pinned && typeof app.pinned.id === "string" ? app
 
 describe("a node's context menu", () => {
   // Mutation: drop the contextmenu binding on g.node in sankey.js and the
-  // right-click opens nothing; drop the keydown arm and Shift+F10 does not.
-  test("opens on a right-click, Shift+F10 and the ContextMenu key with three choices, focus on the first; Escape closes it onto the node, pinning nothing", async (t) => {
+  // right-click and the keys open nothing; open the menu from a keydown arm
+  // for ContextMenu or Shift+F10 too, and the key's own keydown opens it,
+  // so on Windows the contextmenu its keyup fires opens the browser's over it.
+  test("opens on a right-click and on the keys' contextmenu with three choices, focus on the first; Escape closes it onto the node, pinning nothing; a keydown opens nothing", async (t) => {
     const { app, document } = await bootedApp();
     const id = plainNode(app);
     const mark = markOf(document, id);
@@ -67,9 +70,11 @@ describe("a node's context menu", () => {
     const back = document.activeElement === mark;
     const pinnedAfterEscape = pinnedID(app);
     fire(mark, "keydown", { key: "F10", shiftKey: true });
-    const byShift = menuActs(document);
-    app.closeChartMenu();
     fire(mark, "keydown", { key: "ContextMenu" });
+    const byKeydown = menuActs(document);
+    app.closeChartMenu();
+    // A key's contextmenu, as a browser fires it on the focused mark: at 0, 0.
+    const keyed = fire(mark, "contextmenu", { button: 0, clientX: 0, clientY: 0 });
     const byKey = menuActs(document);
     app.closeChartMenu();
     t.diagnostic(`${id}: the menu "${named}" offers ${JSON.stringify(words)}`);
@@ -81,7 +86,8 @@ describe("a node's context menu", () => {
     assert.ok(closed, "Escape in the menu left it open");
     assert.ok(back, "Escape did not put focus back on the node");
     assert.equal(pinnedAfterEscape, "", "focus going back to the node pinned it");
-    assert.deepEqual(byShift, ["follow", "out", "only"]);
+    assert.deepEqual(byKeydown, [], "a keydown opened the menu the key's contextmenu opens");
+    assert.equal(keyed.defaultPrevented, true);
     assert.deepEqual(byKey, ["follow", "out", "only"]);
   });
 
@@ -93,13 +99,15 @@ describe("a node's context menu", () => {
     assert.equal(document.getElementById("node-menu"), null);
   });
 
-  // Mutation: make the Follow choice do nothing and this goes red.
+  // Mutation: make the Follow choice do nothing and this goes red; close the
+  // menu on a choice without refocus and focus drops to the body.
   test("Follow this money follows the node and pins it, so the drawer's Follow is pressed", async () => {
     const { app, document } = await bootedApp();
     const id = plainNode(app);
     fire(markOf(document, id), "contextmenu", { button: 2, clientX: 40, clientY: 40 });
     choose(document, "follow");
     assert.equal(document.getElementById("node-menu"), null);
+    assert.ok(document.activeElement === markOf(document, id), "focus did not go back to the node followed");
     assert.equal(app.filter.isolated, id);
     assert.equal(pinnedID(app), id);
     assert.equal(document.getElementById("detail-follow").getAttribute("aria-pressed"), "true");
@@ -120,6 +128,8 @@ describe("a node's context menu", () => {
     const expected = app.projection.links.filter((l) => l.source === id || l.target === id);
     fire(markOf(document, id), "contextmenu", { button: 2, clientX: 40, clientY: 40 });
     choose(document, "out");
+    const on = document.activeElement;
+    assert.ok(on && on.matches && on.matches("#chart g.node"), "focus left the chart when its node was filtered out");
     const after = drawnRibbons(document);
     const said = document.getElementById("filter-said").textContent;
     const tally = app.hiddenTally();
@@ -148,6 +158,7 @@ describe("a node's context menu", () => {
     const before = drawnRibbons(document).length;
     fire(markOf(document, id), "contextmenu", { button: 2, clientX: 40, clientY: 40 });
     choose(document, "only");
+    assert.ok(document.activeElement === markOf(document, id), "focus did not go back to the node shown alone");
     const drawn = [...document.querySelectorAll("#chart path.link")].map((p) => p.__data__);
     const astray = drawn.filter((l) => !app.follows(id, l)).map((l) => l.source.id + " -> " + l.target.id);
     const said = document.getElementById("filter-said").textContent;
@@ -165,8 +176,8 @@ describe("a node's context menu", () => {
 });
 
 describe("the node filters beside the others", () => {
-  // Mutation: keep filter.isolated in filterOutNode and showOnlyNode and
-  // this goes red: the chart follows a node the drawer no longer shows.
+  // Mutation: let dropPin keep a node's isolation and this goes red: the
+  // chart follows a node the drawer no longer shows.
   test("filtering out or showing alone lets a followed node's pin and isolation go together; filtering out the node shown alone puts the rest back", async () => {
     const { app, document } = await bootedApp();
     const id = plainNode(app);
@@ -222,6 +233,84 @@ describe("the node filters beside the others", () => {
   });
 });
 
+describe("the menu and the pin", () => {
+  // Mutation: offer Filter out and Show only on every mark (openNodeMenu's
+  // concat unconditional) and this goes red: a smaller-flows mark offers two
+  // choices that change the hash and draw nothing new.
+  test("a smaller-flows mark offers Follow alone: the filters remove ribbons of the shaped chart's nodes", async (t) => {
+    const { app, document } = await bootedApp();
+    app.setFilter({ smallest: app.SMALLEST_STOPS[3] });
+    const smaller = app.laidNodes.find((n) => app.isSmaller(n.id));
+    assert.ok(smaller, "the smallest-flow filter drew no smaller-flows mark");
+    const id = smaller.id;
+    fire(markOf(document, id), "contextmenu", { button: 2, clientX: 40, clientY: 40 });
+    const acts = menuActs(document);
+    app.closeChartMenu();
+    t.diagnostic(`${id} offers ${JSON.stringify(acts)}`);
+    assert.deepEqual(acts, ["follow"]);
+  });
+
+  // Mutation: make redraw or setFilter null the pin alone (no dropPin) and
+  // this goes red: a split and a filter each leave the chart following a
+  // node the drawer no longer shows.
+  test("a split or a filter that drops the pin lets a followed node go with it, and a fund group's isolation stays", async () => {
+    const { app } = await bootedApp();
+    const id = plainNode(app);
+    app.followNode(id);
+    await split(app, OPENS);
+    assert.ok(app.laidNodes.some((n) => n.id === id), `${id} is not drawn after the split, so this asserts nothing`);
+    const split_ = { isolated: app.filter.isolated, pinned: pinnedID(app) };
+    app.followNode(id);
+    app.setFilter({ smallest: app.SMALLEST_STOPS[1] });
+    const filtered = { isolated: app.filter.isolated, pinned: pinnedID(app) };
+    app.setIsolated(OPENS);
+    app.setFilter({ smallest: 0 });
+    assert.deepEqual({ split_, filtered, group: app.filter.isolated },
+      { split_: { isolated: "", pinned: "" }, filtered: { isolated: "", pinned: "" }, group: OPENS });
+  });
+
+  // Mutation: set `pointing` on a primary press alone (wireZoom's
+  // pointerdown) and this goes red: the right press's focus pins the node,
+  // and pin's rule lets the node followed go before the menu opens.
+  test("a right press focuses a node without pinning it, so the node followed stays followed under its menu", async () => {
+    const { app, document } = await bootedApp();
+    const id = plainNode(app);
+    const other = app.laidNodes.find((n) => n.id !== id && !app.isGroupID(n.id) && !app.isSmaller(n.id)).id;
+    app.followNode(other);
+    const mark = markOf(document, id);
+    fire(mark, "pointerdown", { button: 2, clientX: 40, clientY: 40 });
+    mark.focus();
+    fire(mark, "contextmenu", { button: 2, clientX: 40, clientY: 40 });
+    const acts = menuActs(document);
+    const state = { pinned: pinnedID(app), isolated: app.filter.isolated };
+    app.closeChartMenu();
+    fire(document.body, "pointerup", { button: 2 });
+    await settle();
+    assert.deepEqual(acts, ["follow", "out", "only"]);
+    assert.deepEqual(state, { pinned: other, isolated: other });
+  });
+
+  // Mutation: name a node filtered out by nameOf alone (no outNames) and
+  // this goes red: after the next render the line names it by its bare label.
+  test("a node filtered out is named on the filter line as it was drawn, after later renders too", async (t) => {
+    const { app, document } = await bootedApp();
+    app.expandAll();
+    await settle();
+    const named = app.projection.nodes.map((n) => app.laidNodes.find((l) => l.id === n.id))
+      .find((n) => n && !app.isGroupID(n.id) && app.nameOf(n) !== n.label);
+    assert.ok(named, "no drawn node is named other than by its label");
+    const name = app.nameOf(named);
+    app.filterOutNode(named.id);
+    const next = app.laidNodes.find((n) => n.id !== named.id && !app.isGroupID(n.id) && !app.isSmaller(n.id) &&
+      app.projection.nodes.some((p) => p.id === n.id));
+    app.filterOutNode(next.id);
+    const said = document.getElementById("filter-said").textContent;
+    t.diagnostic(`${named.id} drawn as ${JSON.stringify(name)}, labelled ${JSON.stringify(named.label)}; the line says: ${said}`);
+    assert.ok(said.includes(name), said);
+    assert.equal(refusals(document).length, 0);
+  });
+});
+
 describe("the node filters in the URL", () => {
   // Mutation: drop `out` or `only` from viewState and the reloaded page
   // draws the whole chart.
@@ -244,5 +333,22 @@ describe("the node filters in the URL", () => {
     assert.ok(hash.includes("only=") && hash.includes("out="), hash);
     assert.deepEqual({ out: [...again.app.filter.nodes], only: again.app.filter.only, links: again.app.shown.doc.links.length }, want);
     assert.deepEqual(refusals(again.document).map((b) => b.textContent), []);
+  });
+
+  // Mutation: drop `out` and `only` from restoreView's fallback and this
+  // goes red: the refused link on the year on screen leaves the node shown
+  // alone under a banner saying the opening view is shown.
+  test("a refused link on the year on screen shows the opening view, no node filtered out or shown alone", async () => {
+    const { app, document } = await bootedApp();
+    const id = plainNode(app);
+    const node = app.laidNodes.find((n) => n.id === id);
+    const l = node.sourceLinks.concat(node.targetLinks)[0];
+    app.filterOutNode(l.source.id === id ? l.target.id : l.source.id);
+    app.showOnlyNode(id);
+    const hash = app.hashOf(Object.assign({}, app.viewState(), { hide: ["fund-group/bogus"] }));
+    const got = await app.restoreView(hash);
+    assert.equal(got, app.FAILED);
+    assert.deepEqual({ only: app.filter.only, out: [...app.filter.nodes] }, { only: "", out: [] });
+    assert.equal(refusals(document).length, 1);
   });
 });

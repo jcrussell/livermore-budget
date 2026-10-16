@@ -442,8 +442,8 @@ describe("zoom and pan on the chart", () => {
   });
 
   // Mutation: clear `pointing` on pointerup and pointercancel alone (no
-  // keydown arm in wireZoom), and this goes red: the keyboard's focus after
-  // a press whose release never came pins nothing.
+  // keydown or contextmenu arm in wireZoom), and this goes red: the
+  // keyboard's focus after a press whose release never came pins nothing.
   test("a press whose release the page never hears leaves the keyboard's focus pinning", async (t) => {
     const { app, document, window } = await scrolling();
     const [ribbon, other, third, fourth] = document.querySelectorAll("#chart path.link");
@@ -456,8 +456,10 @@ describe("zoom and pan on the chart", () => {
     window.dispatchEvent(new window.Event("blur"));
     third.focus();
     const afterBlur = pins(third);
-    // A right press opens the context menu, which takes its release.
+    // A right press opens the browser's context menu, which takes its release.
     fire(ribbon, "pointerdown", { button: 2, clientX: 500, clientY: 300 });
+    fire(ribbon, "contextmenu", { button: 2, clientX: 500, clientY: 300 });
+    await new Promise((r) => setTimeout(r, 0));
     fourth.focus();
     const afterRight = pins(fourth);
     t.diagnostic(`focus pinned after a keydown ${afterKey}, after the window's blur ${afterBlur}, after a right press ${afterRight}`);
