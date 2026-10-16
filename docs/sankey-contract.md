@@ -305,9 +305,9 @@ finest grain the stitch carries without leaving the chart.
 
 **Every node the expansion draws carries `slot`**, the order key of the column
 it stands in: a root at its tier's place in the overview's `tiers`, an extend
-member in the slot after its parent's, or before it where the member's leg
-runs to its parent (`expansionSlots` in
-`site/sankey.js`). A split's tail sits in its members'
+member in the slot after its parent's, or before it where the split declares
+`side` `before` (`expansionSlots` in `site/sankey.js` reads the declared side
+and no link; `fisc verify` holds every leg to run that way). A split's tail sits in its members'
 slot (`schema/mark.schema.json`). The slots present are ranked into columns,
 and the client refuses, with a banner and the chart unchanged, a layout in
 which d3-sankey would draw a node in any column but its slot's.

@@ -49,6 +49,22 @@ function drawnRibbons(document) {
   return [...document.querySelectorAll("#chart path.link")].map((p) => p.__data__.source.id + " -> " + p.__data__.target.id);
 }
 
+/**
+ * The drawn node, not a fund group, with the most ribbons to nodes that are
+ * none, and the first such neighbour by id: a fund group filtered out is the
+ * panel's, so a node filter's neighbour is tried on a node that is not one.
+ * The overview draws no such ribbon: every one has a fund group at an end.
+ */
+function plainPair(app) {
+  const end = (l, id) => (l.source.id === id ? l.target : l.source);
+  const plain = (n) => !app.isGroupID(n.id) && !app.isSmaller(n.id);
+  const others = (n) => n.sourceLinks.concat(n.targetLinks).map((l) => end(l, n.id)).filter(plain)
+    .sort((a, b) => (a.id < b.id ? -1 : 1));
+  const nodes = app.laidNodes.filter(plain).sort((a, b) => others(b).length - others(a).length || (a.id < b.id ? -1 : 1));
+  if (!nodes.length || !others(nodes[0]).length) throw new Error("no drawn node has a neighbour that is no fund group");
+  return { id: nodes[0].id, other: others(nodes[0])[0] };
+}
+
 const pinnedID = (app) => (app.pinned && typeof app.pinned.id === "string" ? app.pinned.id : "");
 
 describe("a node's context menu", () => {
@@ -195,6 +211,32 @@ describe("a node's context menu", () => {
     });
   });
 
+  // Mutation: drop the restoreFocus after a choice in openMenu and this goes
+  // red: the filter's redraw drops the pin, hides More, and focus falls to
+  // the body.
+  test("a filter chosen from the drawer's More puts focus on the chart, on the node where it is still drawn", async () => {
+    const { app, document } = await bootedApp();
+    const more = document.getElementById("detail-menu");
+    const id = plainNode(app);
+    const from = (act) => {
+      app.pin(app.laidNodes.find((n) => n.id === id));
+      more.focus();
+      fire(more, "click");
+      choose(document, act);
+      const on = document.activeElement;
+      return { hidden: more.hidden, chart: Boolean(on && on.matches && on.matches("#chart g.node")),
+        node: Boolean(on && on.__data__ && on.__data__.id === id) };
+    };
+    const only = from("only");
+    fire(document.getElementById("filter-reset"), "click");
+    const out = from("out");
+    assert.deepEqual({ only, out }, {
+      only: { hidden: true, chart: true, node: true },
+      out: { hidden: true, chart: true, node: false },
+    });
+    assert.equal(refusals(document).length, 0);
+  });
+
   test("a ribbon has no menu: a right-click on one leaves the browser's own", async () => {
     const { document } = await bootedApp();
     const ribbon = document.querySelector("#chart path.link");
@@ -304,14 +346,12 @@ describe("the node filters beside the others", () => {
 
   test("showing a node alone, then filtering out a neighbour, removes that neighbour's ribbon too and names both", async () => {
     const { app, document } = await bootedApp();
-    const id = plainNode(app);
+    await split(app, OPENS);
+    const { id, other } = plainPair(app);
     app.showOnlyNode(id);
     const node = app.laidNodes.find((n) => n.id === id);
-    const ribbons = node.sourceLinks.concat(node.targetLinks);
-    const l = ribbons[0];
-    const other = l.source.id === id ? l.target : l.source;
     const otherName = app.nameOf(other);
-    const before = ribbons.length;
+    const before = drawnRibbons(document).length;
     app.filterOutNode(other.id);
     const said = document.getElementById("filter-said").textContent;
     assert.equal(app.filter.only, id);
@@ -510,15 +550,58 @@ describe("the filter line's names", () => {
   });
 });
 
+describe("a node shown alone under the smallest-flow filter", () => {
+  // Mutation: drop the `keep` arm of core.foldSmaller's folds (or pass no
+  // keeps to it from filterDocument) and this goes red: a ribbon of the
+  // node shown alone is merged into a smaller-flows ribbon, one ribbon
+  // fewer drawn at the node. Where every one of them merged, keeps() would
+  // match none and every draw would be refused until Reset.
+  test("raising the smallest flow above every ribbon of the node shown alone draws them as themselves, by the slider and by the link", async (t) => {
+    const { app, document } = await bootedApp();
+    const at = (n) => n.sourceLinks.concat(n.targetLinks);
+    const big = (n) => Math.max(...at(n).map((l) => Math.abs(l.value)));
+    const plain = app.laidNodes.filter((n) => !app.isGroupID(n.id) && !app.isSmaller(n.id) && at(n).length &&
+      at(n).every((l) => !l.derived && !l.contra && !app.isSmaller(l.source.id) && !app.isSmaller(l.target.id)) &&
+      app.SMALLEST_STOPS.some((s) => s > big(n))).sort((a, b) => (a.id < b.id ? -1 : 1));
+    assert.ok(plain.length, "no drawn node's ribbons are all under a stop, so the fold asserts nothing");
+    const node = plain[0];
+    const k = app.SMALLEST_STOPS.findIndex((s) => s > big(node));
+    const stop = app.SMALLEST_STOPS[k];
+    const id = node.id;
+    const own = () => [...document.querySelectorAll("#chart path.link")].map((p) => p.__data__)
+      .filter((l) => l.source.id === id || l.target.id === id);
+    app.showOnlyNode(id);
+    const before = own().length;
+    const range = document.getElementById("filter-smallest");
+    range.value = String(k);
+    fire(range, "input");
+    const after = own();
+    const slid = { only: app.filter.only, smallest: app.filter.smallest, ribbons: after.length,
+      merged: after.filter((l) => l.merged).length, refused: refusals(document).length };
+    const hash = app.hashOf(app.viewState());
+    const again = await loadApp();
+    again.window.history.replaceState(null, "", hash);
+    await again.app.boot();
+    await settle();
+    const linked = { only: again.app.filter.only, smallest: again.app.filter.smallest, refused: refusals(again.document).length };
+    t.diagnostic(`${id} alone, its largest ribbon ${dollars(big(node))}, under ${dollars(stop)}: ${hash}`);
+    assert.deepEqual({ slid, linked }, {
+      slid: { only: id, smallest: stop, ribbons: before, merged: 0, refused: 0 },
+      linked: { only: id, smallest: stop, refused: 0 },
+    });
+  });
+});
+
 describe("the node filters in the URL", () => {
   // Mutation: drop `out` or `only` from viewState and the reloaded page
   // draws the whole chart.
   test("a node filtered out and a node shown alone round-trip through the hash", async (t) => {
     const { app, window } = await bootedApp();
-    const id = plainNode(app);
-    const node = app.laidNodes.find((n) => n.id === id);
-    const l = node.sourceLinks.concat(node.targetLinks)[0];
-    const other = l.source.id === id ? l.target.id : l.source.id;
+    await split(app, OPENS);
+    const pair = plainPair(app);
+    t.diagnostic(`${pair.id} alone, ${pair.other.id} filtered out`);
+    const id = pair.id;
+    const other = pair.other.id;
     app.showOnlyNode(id);
     app.filterOutNode(other);
     const hash = window.location.hash;
@@ -732,7 +815,7 @@ describe("the node filters and an open hub", () => {
   // its leaves and its own ribbons, and leaves drawn its funds' fund balance
   // ribbons, which repeat no leaf, that the legend's group filter removes by
   // their ends' group.
-  test("filtering out an open fund group removes the group's money, as the legend's group filter does, and names it", async (t) => {
+  test("filtering out an open fund group is the legend's group filter: the same money removed, and the same state", async (t) => {
     const { app, document } = await bootedApp();
     await split(app, OPENS);
     const name = app.nameOf(app.laidNodes.find((n) => n.id === OPENS));
@@ -745,6 +828,35 @@ describe("the node filters and an open hub", () => {
     const said = document.getElementById("filter-said").textContent;
     t.diagnostic(`${OPENS}: ${byLegend.length} ribbon(s) drawn under the legend's filter, ${byNode.length} filtered out; the line says: ${said}`);
     assert.deepEqual(byNode, byLegend);
-    assert.ok(said.startsWith(app.say("filter_out", { names: name })), said);
+    assert.deepEqual({ groups: [...app.filter.groups], nodes: [...app.filter.nodes] }, { groups: [OPENS], nodes: [] });
+    assert.ok(!said.includes(name), said);
+  });
+
+  // Mutation: put a fund group filtered out from the menu in filter.nodes
+  // (filterOutNode's group arm dropped) and this goes red: its box stays
+  // checked, rechecking it brings nothing back, and search offers its funds.
+  test("a fund group filtered out from the menu is the panel's: its box unchecks, search offers none of its funds, and rechecking the box brings it back", async (t) => {
+    const { app, document } = await bootedApp();
+    const g = "fund-group/enterprise";
+    const box = [...document.querySelectorAll("#filter-group-list input")].find((b) => b.value === g);
+    const member = app.fetched.nodes.find((n) => n.id.startsWith("fund/") && app.fundGroupOf(n) === g && !app.laidNodes.some((d) => d.id === n.id));
+    assert.ok(member, `the schedule holds no undrawn member of ${g}`);
+    const offered = () => app.searchMatches(member.label).some((n) => n.id === member.id);
+    const before = { checked: box.checked, offered: offered() };
+    fire(markOf(document, g), "contextmenu", { button: 2, clientX: 40, clientY: 40 });
+    choose(document, "out");
+    const out = { checked: box.checked, offered: offered(), drawn: app.laidNodes.some((n) => n.id === g),
+      hash: app.viewState().hide.includes(g) };
+    box.checked = true;
+    fire(box, "change");
+    const back = { checked: box.checked, offered: offered(), drawn: app.laidNodes.some((n) => n.id === g),
+      groups: app.filter.groups.size, nodes: app.filter.nodes.size };
+    t.diagnostic(`${g}, searched by its member ${member.id} ("${member.label}")`);
+    assert.deepEqual({ before, out, back }, {
+      before: { checked: true, offered: true },
+      out: { checked: false, offered: false, drawn: false, hash: true },
+      back: { checked: true, offered: true, drawn: true, groups: 0, nodes: 0 },
+    });
+    assert.equal(refusals(document).length, 0);
   });
 });

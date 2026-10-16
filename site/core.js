@@ -1446,8 +1446,8 @@ export function smallerMark(side, tier, flows, smallest, cents, locators, slot) 
  * A shaped chart with the reader's removals applied: ribbons in a hidden
  * fund group, of a hidden kind, with an end at a hidden node or, where
  * `keeps` is given, not kept by it, REMOVED, then every printed ribbon under
- * the smallest flow folded onto a smaller-flows mark, then every node no
- * ribbon touches dropped. Figures are untouched: a ribbon is drawn as it
+ * the smallest flow but those `keeps` keeps folded onto a smaller-flows
+ * mark, then every node no ribbon touches dropped. Figures are untouched: a ribbon is drawn as it
  * came, merged with others by summing cents and unioning facts and pages,
  * or listed in `hidden`, and exactly one of the three -- or, under `leaves`,
  * CUT IN TWO along its cells, one part drawn and the other hidden.
@@ -1526,7 +1526,7 @@ export function filterDocument(doc, groupOf, state, keeps = null, leaves = null)
     }
   }
   if (!hidden.length && !(state.smallest > 0)) return { doc: doc, hidden: hidden };
-  const folded = foldSmaller(kept, byID, state.smallest);
+  const folded = foldSmaller(kept, byID, state.smallest, keeps);
   /** @type {Set<string>} the nodes a ribbon that arrived at them no longer reaches as itself */
   const arrivingChanged = new Set(hidden.map((l) => l.target).concat(folded.cut));
   const touched = new Set();
@@ -1566,7 +1566,10 @@ export function partOf(l, keys, drawn = true) {
   const printed = Object.values(cells).reduce((s, c) => s + c, 0);
   // markContra drew a ribbon printed negative forward, at its magnitude.
   const sign = l.value_cents === printed ? 1 : l.value_cents === -printed ? -1 : 0;
-  if (!sign) throw new Error("cannot draw part of the ribbon from " + l.source + " to " + l.target + ": its cells are not its figure");
+  if (!sign) {
+    throw new Error("cannot draw part of the ribbon from " + l.source + " to " + l.target +
+      ": it is drawn at neither the sum of its cells at their printed signs nor that sum reversed");
+  }
   /** @type {Record<string, number>} */
   const sub = {};
   /** @type {Record<string, CellSource>} */
@@ -1605,15 +1608,17 @@ export function partOf(l, keys, drawn = true) {
  * ONLY A PRINTED RIBBON BETWEEN PRINTED NODES FOLDS: an inferred ribbon, a
  * reduction, and a ribbon touching a mark this client made are drawn
  * whatever their size, because one merged ribbon cannot be drawn as both a
- * printed flow and one of those.
+ * printed flow and one of those. So is a ribbon `keep` keeps: the node shown
+ * alone draws its own ribbons as themselves, or none would be left for it.
  *
  * @param {FiscLink[]} links
  * @param {Map<string, FiscNode>} byID
  * @param {number} smallest cents; 0 folds nothing
+ * @param {((l: FiscLink) => boolean) | null} [keep] filterDocument's keeps
  * @returns {{links: FiscLink[], marks: FiscMark[], cut: string[]}} cut: the
  *   ids a folded ribbon no longer arrives at
  */
-export function foldSmaller(links, byID, smallest) {
+export function foldSmaller(links, byID, smallest, keep = null) {
   if (!(smallest > 0)) return { links: links, marks: [], cut: [] };
   /** @type {Map<string, number>} */
   const inflow = new Map();
@@ -1625,7 +1630,7 @@ export function foldSmaller(links, byID, smallest) {
   }
   const size = (/** @type {string} */ id) => Math.max(inflow.get(id) || 0, outflow.get(id) || 0);
   const folds = (/** @type {FiscLink} */ l) => Math.abs(l.value_cents) < smallest && !l.derived && !l.contra &&
-    !isMark(l.source) && !isMark(l.target) && byID.has(l.source) && byID.has(l.target);
+    !isMark(l.source) && !isMark(l.target) && byID.has(l.source) && byID.has(l.target) && !(keep && keep(l));
   /** @type {Map<string, {source: string, target: string, far: string, legs: FiscLink[]}>} */
   const merges = new Map();
   /** @type {(FiscLink | string)[]} a link drawn as itself, or the key of a merge, in first-seen order */

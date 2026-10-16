@@ -1130,6 +1130,9 @@ function openMenu(o) {
         // finds it in the chart and puts it back (restoreFocus).
         closeChartMenu(true);
         c.act();
+        // A choice that hides the button the menu came from (a filter
+        // dropping the pin hides More) would leave focus on the body.
+        if (typeof o.back !== "string" && o.back.hidden) restoreFocus(true, o.id);
       });
     });
     menu.append(choice);
@@ -1251,18 +1254,27 @@ export function followNode(id) {
 
 /**
  * Removes every ribbon with an end at a node and its leaves from every other
- * ribbon (leafCut), and a fund group's money as the legend's group filter
- * removes it; the node shown alone is let go where it is this one. The redraw drops the
- * pin, and a node's isolation with it (dropPin). The line names the node as
- * it was drawn when it was chosen (outNames).
+ * ribbon (leafCut); the node shown alone is let go where it is this one. A
+ * fund group the panel lists is hidden as its box hides it, in
+ * `filter.groups`, so the box, the search, the line and the hash say one
+ * state. The redraw drops the pin, and a node's isolation with it
+ * (dropPin). The line names the node as it was drawn when it was chosen
+ * (outNames).
  * @param {string} id
  */
 export function filterOutNode(id) {
+  const only = filter.only === id ? "" : filter.only;
+  if (isGroupID(id) && fundGroupPlace(id) >= 0) {
+    const groups = new Set(filter.groups);
+    groups.add(id);
+    setFilter({ groups: groups, only: only });
+    return;
+  }
   const d = laidNodes.find((n) => n.id === id);
   if (d) outNames.set(id, nameOf(d));
   const nodes = new Set(filter.nodes);
   nodes.add(id);
-  setFilter({ nodes: nodes, only: filter.only === id ? "" : filter.only });
+  setFilter({ nodes: nodes, only: only });
 }
 
 /**
