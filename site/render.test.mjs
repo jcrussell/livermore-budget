@@ -207,7 +207,7 @@ async function drive(year) {
       const d = m.__data__;
       const rect = [...m.children].find((c) => c.tagName === "rect");
       const tspans = tspansOf(m);
-      const want = { role: "button", tabindex: "0", "aria-keyshortcuts": "Enter Space" };
+      const want = { role: "button", tabindex: "0", "aria-keyshortcuts": "Enter Space Shift+F10" };
       const bad = Object.keys(want).filter((k) => m.getAttribute(k) !== want[k]);
       const drawnClass = (m.getAttribute("class") || "").split(/\s+/).filter(Boolean);
       const rule = app.nodeClass(d).split(/\s+/).filter(Boolean);
@@ -1033,7 +1033,7 @@ describe("the classes the client sets and the rules the stylesheet carries", () 
     fire(mark, "pointerenter"); snap(); fire(mark, "pointerleave");
     const chooser = [...chart.querySelectorAll("g.glyph")].find((g) => g.getAttribute("aria-haspopup") === "true");
     assert.ok(chooser, "no ⊕ offers a menu");
-    fire(chooser, "click", { timeStamp: 0 }); snap(); app.closeSplitMenu();
+    fire(chooser, "click", { timeStamp: 0 }); snap(); app.closeChartMenu();
     app.setIsolated(mark.__data__.id); await settle(); snap();
     // A search listing its options, and a filter leaving part of a mark drawn.
     const search = document.getElementById("search-input");

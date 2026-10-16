@@ -1351,15 +1351,16 @@ export function smallerMark(side, tier, flows, smallest, cents, locators, slot) 
 }
 
 /**
- * What the reader has asked the chart to leave out: the fund groups and link
- * kinds to hide, and the smallest flow drawn as itself, in cents. app.js's
- * FilterState is this plus the isolation.
- * @typedef {{groups: ReadonlySet<string>, kinds: ReadonlySet<string>, smallest: number}} Removals
+ * What the reader has asked the chart to leave out: the fund groups, link
+ * kinds and nodes to hide, and the smallest flow drawn as itself, in cents.
+ * app.js's FilterState is this plus the isolation and the node shown alone.
+ * @typedef {{groups: ReadonlySet<string>, kinds: ReadonlySet<string>, nodes?: ReadonlySet<string>, smallest: number}} Removals
  */
 
 /**
  * A shaped chart with the reader's removals applied: ribbons in a hidden
- * fund group or of a hidden kind REMOVED, then every printed ribbon under
+ * fund group, of a hidden kind, with an end at a hidden node or, where
+ * `keeps` is given, not kept by it, REMOVED, then every printed ribbon under
  * the smallest flow folded onto a smaller-flows mark, then every node no
  * ribbon touches dropped. Figures are untouched: a ribbon is drawn as it
  * came, merged with others by summing cents and unioning facts and pages,
@@ -1373,22 +1374,24 @@ export function smallerMark(side, tier, flows, smallest, cents, locators, slot) 
  * @param {FiscProjection} doc  a shaped chart, reductions already drawn forward
  * @param {(n: FiscNode) => string} groupOf  a node's fund group, "" for none
  * @param {Removals} state
+ * @param {((l: FiscLink) => boolean) | null} [keeps] the ribbons a filter
+ *   showing one node's money alone draws, or null for every one
  * @returns {{doc: FiscProjection, hidden: FiscLink[]}} doc itself where the
  *   state removes and folds nothing; otherwise a new chart marked filtered
  */
-export function filterDocument(doc, groupOf, state) {
+export function filterDocument(doc, groupOf, state, keeps = null) {
   const byID = new Map(doc.nodes.map((n) => [n.id, n]));
   const inHidden = (/** @type {string} */ id) => {
     const n = byID.get(id);
     const g = n ? groupOf(n) : "";
-    return g !== "" && state.groups.has(g);
+    return (g !== "" && state.groups.has(g)) || Boolean(state.nodes && state.nodes.has(id));
   };
   /** @type {FiscLink[]} */
   const hidden = [];
   /** @type {FiscLink[]} */
   const kept = [];
   for (const l of doc.links) {
-    if (state.kinds.has(l.kind) || inHidden(l.source) || inHidden(l.target)) hidden.push(l);
+    if (state.kinds.has(l.kind) || inHidden(l.source) || inHidden(l.target) || (keeps && !keeps(l))) hidden.push(l);
     else kept.push(l);
   }
   if (!hidden.length && !(state.smallest > 0)) return { doc: doc, hidden: hidden };

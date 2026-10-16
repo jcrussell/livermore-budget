@@ -268,6 +268,9 @@
         "nothing_opens",
         "fold_back",
         "split_chooser",
+        "node_menu",
+        "filter_out_node",
+        "show_only_node",
         "expand_all",
         "collapse_all",
         "follow",
@@ -305,6 +308,8 @@
         "filter_hidden",
         "filter_folded",
         "filter_hidden_at",
+        "filter_only",
+        "filter_out",
         "filter_drawn_at",
         "smallest_all",
         "smaller_label",
@@ -360,6 +365,21 @@
           "type": "string",
           "minLength": 1,
           "description": "The accessible name of the menu of a node's splits that its ⊕ opens: {label}."
+        },
+        "node_menu": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The accessible name of a node's context menu, which a right-click, Shift+F10 or the ContextMenu key opens: {label}."
+        },
+        "filter_out_node": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A node's context menu's choice that removes every flow with an end at the node."
+        },
+        "show_only_node": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A node's context menu's choice that removes every flow following the node's money would dim."
         },
         "expand_all": {
           "type": "string",
@@ -485,6 +505,16 @@
           "type": "string",
           "minLength": 1,
           "description": "Said of one mark the filters removed ribbons of: {cents} formatted and {flows}, how many."
+        },
+        "filter_only": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The filter line's sentence naming the node whose money alone is drawn: {label}, its name as drawn."
+        },
+        "filter_out": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The filter line's sentence naming the nodes filtered out: {names}, their names as drawn, joined by the client."
         },
         "filter_drawn_at": {
           "type": "string",

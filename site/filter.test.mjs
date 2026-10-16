@@ -32,13 +32,15 @@ const groupAt = (app, doc, id) => {
 /**
  * The filter states sampled on one chart: none; each group present alone,
  * every one but the first, and all; each kind present; each smallest-flow
- * stop; one of each together; and a group the chart does not draw.
+ * stop; one of each together; a group the chart does not draw; and a node
+ * that is no fund group filtered out, shown alone, and shown alone beside a
+ * smallest flow.
  */
 function samples(app, doc) {
   const groups = [...new Set(doc.nodes.map((n) => app.fundGroupOf(n)).filter(Boolean))];
   const kinds = [...new Set(doc.links.map((l) => l.kind))].filter((k) => k !== "");
   const absent = app.fundGroups().map((g) => g.id).filter((g) => !groups.includes(g));
-  const of = (o) => Object.assign({ groups: new Set(), kinds: new Set(), smallest: 0 }, o);
+  const of = (o) => Object.assign({ groups: new Set(), kinds: new Set(), nodes: new Set(), only: "", smallest: 0 }, o);
   const out = [of({})];
   for (const g of groups) out.push(of({ groups: new Set([g]) }));
   if (groups.length > 1) out.push(of({ groups: new Set(groups.slice(1)) }));
@@ -47,7 +49,21 @@ function samples(app, doc) {
   for (const stop of app.SMALLEST_STOPS.slice(1)) out.push(of({ smallest: stop }));
   out.push(of({ groups: new Set(groups.slice(0, 1)), kinds: new Set(kinds.slice(0, 1)), smallest: app.SMALLEST_STOPS[2] }));
   if (absent.length) out.push(of({ groups: new Set(absent) }));
+  const node = plainOf(app, doc);
+  if (node) {
+    out.push(of({ nodes: new Set([node]) }));
+    out.push(of({ only: node }));
+    out.push(of({ only: node, smallest: app.SMALLEST_STOPS[2] }));
+  }
   return out;
+}
+
+/** The first node of a chart by id that a ribbon touches and is no fund group or mark of ours, or "". */
+function plainOf(app, doc) {
+  const touched = new Set(doc.links.flatMap((l) => [l.source, l.target]));
+  const ids = doc.nodes.map((n) => n.id).filter((id) => touched.has(id) && !app.isGroupID(id) && !app.isSmaller(id) &&
+    !app.isAggregate(id)).sort();
+  return ids.length ? ids[0] : "";
 }
 
 /**
@@ -86,8 +102,11 @@ function faultsOf(app, doc, state, where) {
   for (const [l, n] of seen) if (n !== 1) faults.push(`${where}: ${l.source} -> ${l.target} is accounted ${n} times`);
   // Removed exactly what the state names: nothing drawn that it hides, and
   // nothing hidden that it does not.
+  // A node shown alone keeps the ribbons with an end at it: plainOf's
+  // nodes are no fund group's, so following one is no more than that.
   const hides = (l) => state.kinds.has(l.kind) || state.groups.has(groupAt(app, doc, l.source)) ||
-    state.groups.has(groupAt(app, doc, l.target));
+    state.groups.has(groupAt(app, doc, l.target)) || state.nodes.has(l.source) || state.nodes.has(l.target) ||
+    (state.only !== "" && l.source !== state.only && l.target !== state.only);
   for (const l of r.hidden) if (!hides(l)) faults.push(`${where}: ${l.source} -> ${l.target} is hidden and the state names nothing of it`);
   for (const l of r.doc.links) {
     for (const leg of l.legs || [l]) if (hides(leg)) faults.push(`${where}: ${leg.source} -> ${leg.target} is drawn and the state hides it`);
@@ -125,11 +144,27 @@ describe("drawn plus hidden is the chart", () => {
       let states = 0;
       let merged = 0;
       let hidden = 0;
+      // A NODE FILTER CAN HIDE PART OF THE LEAVES A TOTAL RESTATES beside
+      // those leaves, which the tally refuses to state (core.distinctCents)
+      // and filterFor refuses to draw; a group or kind filter never does.
+      const refusedNode = [];
+      let drawnNode = 0;
       const visit = (where) => {
         const doc = app.projection;
         for (const state of samples(app, doc)) {
-          const got = faultsOf(app, doc, state, where +
-            ` [${[...state.groups, ...state.kinds].join(", ")}${state.smallest ? " <" + state.smallest : ""}]`);
+          const named = where +
+            ` [${[...state.groups, ...state.kinds, ...state.nodes].join(", ")}${state.only ? " only " + state.only : ""}` +
+            `${state.smallest ? " <" + state.smallest : ""}]`;
+          const byNode = state.nodes.size > 0 || state.only !== "";
+          let got;
+          try {
+            got = faultsOf(app, doc, state, named);
+          } catch (e) {
+            if (!byNode || !/cannot state these ribbons' money once/.test(e.message)) throw e;
+            refusedNode.push(`${named}: ${e.message}`);
+            continue;
+          }
+          if (byNode) drawnNode++;
           faults.push(...got.faults);
           merged += got.merged;
           hidden += got.hidden;
@@ -141,7 +176,10 @@ describe("drawn plus hidden is the chart", () => {
       assert.equal(walked.refused, "", walked.refused);
       t.diagnostic(`${year.label}: ${walked.visited + 1} chart(s), ${states} filter state(s); ${hidden} ribbon(s) hidden ` +
         `and ${merged} merged ribbon(s) drawn across them; ${faults.length} fault(s)`);
+      t.diagnostic(`${year.label}: ${drawnNode} node filter state(s) drawn, ${refusedNode.length} refused` +
+        (refusedNode.length ? `, the first ${refusedNode[0]}` : ""));
       assert.ok(hidden > 0 && merged > 0, "no state hid or merged a ribbon, so nothing here is tested");
+      assert.ok(drawnNode > 0, "no node filter state was drawn, so the node filters are not tested");
       assert.deepEqual(faults.slice(0, 5), []);
     });
   }

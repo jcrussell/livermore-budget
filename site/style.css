@@ -1098,8 +1098,9 @@ svg.sankey .glyph:focus-visible circle {
   stroke-width: 2;
 }
 
-/* The menu ⊕ opens on a node that splits more than one way. */
-.split-menu {
+/* The menu ⊕ opens on a node that splits more than one way, and a node's
+   context menu. */
+.chart-menu {
   position: absolute;
   z-index: 20;
   display: flex;
@@ -1113,7 +1114,7 @@ svg.sankey .glyph:focus-visible circle {
   font-size: 13px;
 }
 
-.split-choice {
+.chart-menu-choice {
   cursor: pointer;
   font: inherit;
   text-align: left;
@@ -1124,8 +1125,8 @@ svg.sankey .glyph:focus-visible circle {
   padding: 2px 8px;
 }
 
-.split-choice:hover,
-.split-choice:focus {
+.chart-menu-choice:hover,
+.chart-menu-choice:focus {
   border-color: var(--rule);
 }
 
@@ -1568,7 +1569,7 @@ noscript p {
   .rail-toggle,
   .filters,
   .drawer-head,
-  .split-menu,
+  .chart-menu,
   svg.sankey .glyph,
   .tooltip {
     display: none;

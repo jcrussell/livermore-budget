@@ -35,6 +35,12 @@ type wording struct {
 	GlyphChoose  string `json:"glyph_choose"`
 	GlyphFold    string `json:"glyph_fold"`
 	SplitChooser string `json:"split_chooser"`
+	// NodeMenu names a node's context menu, which a right-click, Shift+F10
+	// or the ContextMenu key opens; FollowMoney, FilterOutNode and
+	// ShowOnlyNode are its three choices.
+	NodeMenu      string `json:"node_menu"`
+	FilterOutNode string `json:"filter_out_node"`
+	ShowOnlyNode  string `json:"show_only_node"`
 	// The toolbar's two buttons over every split at once.
 	ExpandAll     string `json:"expand_all"`
 	CollapseAll   string `json:"collapse_all"`
@@ -88,6 +94,10 @@ type wording struct {
 	FilterHidden   string `json:"filter_hidden"`
 	FilterFolded   string `json:"filter_folded"`
 	FilterHiddenAt string `json:"filter_hidden_at"`
+	// FilterOnly and FilterOut name, on the filter line, the node shown
+	// alone and the nodes filtered out.
+	FilterOnly string `json:"filter_only"`
+	FilterOut  string `json:"filter_out"`
 	// FilterDrawnAt is said beside a node's figure, which is the view's
 	// whatever the filters leave drawn, where they leave part of it.
 	FilterDrawnAt    string `json:"filter_drawn_at"`
@@ -190,13 +200,17 @@ func defaultWording() wording {
 		NothingOpens: "Nothing on this chart opens.",
 		FoldBack:     "A second click on a split node, or \u2296 beside it, folds it back; Collapse all folds every split, and Back undoes the last step.",
 		Follow: "Hover a node or a flow to trace its path; a click on one that does not split pins it in the drawer, " +
-			"whose Pin lets it go and whose Follow this money draws only its money. Escape unpins and puts the rest back.",
+			"whose Pin lets it go and whose Follow this money draws only its money. Escape unpins and puts the rest back. " +
+			"Right-click a node, or press Shift+F10 on it, to follow its money, filter it out or show only it.",
 		Expand:         "The folded mark is several of them drawn as one; click it, or tab to it and press Enter, to draw them separately.",
 		Swatch:         "A fund swatch follows one group's money without opening anything.",
 		GlyphOpen:      "Split {label} into {split}",
 		GlyphChoose:    "Choose what to split {label} into",
 		GlyphFold:      "Fold {label} back into one mark",
 		SplitChooser:   "Split {label} into",
+		NodeMenu:       "What to do with {label}",
+		FilterOutNode:  "Filter this out",
+		ShowOnlyNode:   "Show only this",
 		ExpandAll:      "Expand all",
 		CollapseAll:    "Collapse all",
 		PrintedByCity:  "printed by the city",
@@ -229,6 +243,8 @@ func defaultWording() wording {
 		FilterHidden:      "Hidden by your filters: {cents} in {flows:flow|flows}. Marks are sized to what is drawn, each mark's figure is still this view's, and the flow table still lists every flow of this view.",
 		FilterFolded:      "\u25c7 {flows:flow|flows} under {threshold} are drawn merged by this page into {ribbons:ribbon|ribbons} of smaller flows.",
 		FilterHiddenAt:    "Your filters hide {cents} of this mark's flows, in {flows:flow|flows}.",
+		FilterOnly:        "Showing only the money through {label}.",
+		FilterOut:         "Filtered out: {names}.",
 		FilterDrawnAt:     "{cents} of it drawn under your filters",
 		SmallestAll:       "every flow",
 		SmallerLabel:      "{flows:flow|flows} under {threshold}",

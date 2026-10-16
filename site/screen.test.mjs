@@ -500,7 +500,7 @@ describe("zoom and pan on the chart", () => {
     const open = Boolean(document.getElementById("split-menu"));
     fire(ribbon, "pointerup", { button: 0, clientX: 500, clientY: 300 });
     t.diagnostic(`menu opened ${opened}; menu open after the press ${open}`);
-    assert.deepEqual({ opened, open, menu: app.splitMenu === null }, { opened: true, open: false, menu: true });
+    assert.deepEqual({ opened, open, menu: app.chartMenu === null }, { opened: true, open: false, menu: true });
   });
 
   test("zoomed in, a drag is the zoom's to pan, and the scroller stays where it is", async (t) => {

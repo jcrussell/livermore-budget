@@ -1286,8 +1286,9 @@ export const SANKEY = Object.freeze({
       // an activation does, splitting a node or folding its hub back.
       .attr("aria-pressed", "false")
       .attr("aria-label", /** @param {LaidNode} d */ (d) => ctx.describe.node(d))
-      // Both keys are the one activation a click is.
-      .attr("aria-keyshortcuts", "Enter Space")
+      // Both keys are the one activation a click is; Shift+F10 opens the
+      // node's menu, as the ContextMenu key and a right-click do.
+      .attr("aria-keyshortcuts", "Enter Space Shift+F10")
       .on("pointerenter", /** @param {PointerEvent} e @param {LaidNode} d */ (e, d) => { on.tip(e, d); on.trace(d); })
       .on("pointermove", /** @param {PointerEvent} e @param {LaidNode} d */ (e, d) => on.tip(e, d))
       .on("pointerleave", () => { on.hide(); on.untrace(); })
@@ -1304,7 +1305,23 @@ export const SANKEY = Object.freeze({
           on.click(d, e.timeStamp);
         });
       })
-      .on("keydown", /** @param {KeyboardEvent} e @param {LaidNode} d */ (e, d) => {
+      // THE NODE'S MENU, where the form is handed one: a right-click opens it
+      // at the pointer, and Shift+F10 or the ContextMenu key beside the mark.
+      .on("contextmenu", /** @this {SVGGElement} @param {MouseEvent} e @param {LaidNode} d */ function (e, d) {
+        if (!on.menu) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const el = this;
+        const keyed = e.clientX === 0 && e.clientY === 0;
+        on.guarded("open this mark's menu", () => on.menu(d, keyed ? null : { left: e.clientX, top: e.clientY }, el));
+      })
+      .on("keydown", /** @this {SVGGElement} @param {KeyboardEvent} e @param {LaidNode} d */ function (e, d) {
+        if (on.menu && (e.key === "ContextMenu" || (e.key === "F10" && e.shiftKey))) {
+          e.preventDefault();
+          const el = this;
+          on.guarded("open this mark's menu", () => on.menu(d, null, el));
+          return;
+        }
         if (e.key !== "Enter" && e.key !== " ") return;
         if (e.repeat) return;
         e.preventDefault();
@@ -1420,7 +1437,7 @@ export const SANKEY = Object.freeze({
 
     /** Marks leaving the chart: inert at once, gone at the end. @param {any} sel */
     const inert = (sel) => sel.attr("data-leaving", "").attr("aria-hidden", "true").attr("pointer-events", "none")
-      .attr("tabindex", null).attr("role", null).on("click", null).on("keydown", null)
+      .attr("tabindex", null).attr("role", null).on("click", null).on("keydown", null).on("contextmenu", null)
       .on("focus", null).on("pointerenter", null).on("pointermove", null);
     const finish = () => {
       layer.selectAll("*").interrupt(MOVE).interrupt(FADE);

@@ -206,11 +206,12 @@ export function fundGroupPlace(id) {
  * which group the money is in -- else "" (--muted) rather than picking one
  * of two.
  * @param {LaidLink} link
+ * @param {Map<string, FiscNode>} [index] the hue index, the drawn document's by default
  * @returns {string}
  */
-export function linkGroup(link) {
-  const source = fundGroupOf(link.source);
-  const target = fundGroupOf(link.target);
+export function linkGroup(link, index = groupIndex) {
+  const source = core.fundGroupOf(index, link.source);
+  const target = core.fundGroupOf(index, link.target);
   return isFundGroup(link.source) ? link.source.id
     : isFundGroup(link.target) ? link.target.id
     : source === target ? source
@@ -255,18 +256,20 @@ export function fundColorVar(id) {
 export let projection = null;
 /**
  * What the reader has asked the chart to show. groups: the fund groups whose
- * ribbons are removed; kinds: the link kinds removed; smallest: the smallest
- * flow drawn as itself, in cents, 0 for every one (core.filterDocument);
- * isolated: the node or fund group whose money is followed, or "" for all of
- * it (follows). Replaced whole, never mutated, and moved only through
- * setFilter and setIsolated. A group or kind the chart on screen does not
- * draw is kept and is inert, so a split or a year change carries it to
- * wherever it applies again; the isolation is cleared where the redraw no
- * longer draws what it names.
- * @typedef {{groups: ReadonlySet<string>, kinds: ReadonlySet<string>, smallest: number, isolated: string}} FilterState
+ * ribbons are removed; kinds: the link kinds removed; nodes: the nodes whose
+ * ribbons are removed; only: the node whose money alone is drawn, every
+ * ribbon it does not follow removed (onlyKeeps), or "" for all of it;
+ * smallest: the smallest flow drawn as itself, in cents, 0 for every one
+ * (core.filterDocument); isolated: the node or fund group whose money is
+ * followed, or "" for all of it (follows). Replaced whole, never mutated,
+ * and moved only through setFilter and setIsolated. A group, kind or node
+ * the chart on screen does not draw is kept and is inert, so a split or a
+ * year change carries it to wherever it applies again; the isolation is
+ * cleared where the redraw no longer draws what it names.
+ * @typedef {{groups: ReadonlySet<string>, kinds: ReadonlySet<string>, nodes: ReadonlySet<string>, only: string, smallest: number, isolated: string}} FilterState
  */
 /** The state that removes and follows nothing. @type {Readonly<FilterState>} */
-export const NO_FILTER = Object.freeze({ groups: new Set(), kinds: new Set(), smallest: 0, isolated: "" });
+export const NO_FILTER = Object.freeze({ groups: new Set(), kinds: new Set(), nodes: new Set(), only: "", smallest: 0, isolated: "" });
 /** @type {Readonly<FilterState>} */
 export let filter = NO_FILTER;
 /**
@@ -946,7 +949,7 @@ export function clickNode(d, at = Infinity) {
  * @param {LaidNode} d
  */
 function activate(d) {
-  closeSplitMenu();
+  closeChartMenu();
   if (foldable(d) && fetched) {
     const from = core.straightFrom(fetched, d.id);
     if (!collapseNode(d.id)) return;
@@ -1045,7 +1048,7 @@ export function glyphNode(d, kind, at, byKey = false, glyph) {
   if (!byKey && doubled(d.id, at)) return;
   if (byKey) keyActivation = { id: d.id, at: at };
   else pointerActivation = { id: d.id, at: at };
-  closeSplitMenu();
+  closeChartMenu();
   if (kind === "fold") {
     collapseNode(d.id);
     return;
@@ -1058,40 +1061,47 @@ export function glyphNode(d, kind, at, byKey = false, glyph) {
 }
 
 /**
- * The menu ⊕ opens beside a node that splits more than one way: the node's
- * id and the menu's element, or null while none is open.
- * @type {{id: string, menu: HTMLElement} | null}
+ * The menu open on the chart -- the ways ⊕ offers a node that splits more
+ * than one way, or what a node's context menu offers -- as the node's id,
+ * the menu's element and the mark focus goes back to, or null while none is
+ * open. One at a time: opening either closes the other.
+ * @type {{id: string, menu: HTMLElement, back: "g.glyph" | "g.node"} | null}
  */
-export let splitMenu = null;
+export let chartMenu = null;
 
 /**
- * Opens the menu of a node's splits beside its glyph, one button per split
- * in splitWords' words for it, focus on the first. Choosing one splits
- * the node by it and pins it; Escape or focus leaving closes it.
- * @param {LaidNode} d
- * @param {Element} [glyph]
+ * One button of a menu on the chart: its words, what it does, what a
+ * refusal of that says it was doing (guarded), and the data it carries.
+ * @typedef {{words: string, act: () => void, doing: string, data?: Record<string, string>}} MenuChoice
  */
-export function openSplitMenu(d, glyph) {
-  closeSplitMenu();
+
+/**
+ * Opens a menu of buttons on the chart beside a node, focus on the first.
+ * Choosing one closes the menu and does it; Escape closes it, focus back on
+ * the node's `back` mark, and focus leaving it -- a press anywhere else --
+ * closes it.
+ * @param {{id: string, element: string, label: string, back: "g.glyph" | "g.node", at: {left: number, top: number} | null, choices: MenuChoice[]}} o
+ *   `at`: where its top left goes, in the viewport's px, or null for the
+ *   chart's top left
+ */
+function openMenu(o) {
+  closeChartMenu();
   const tip = maybeEl("tooltip");
   const wrap = tip ? tip.parentElement : null;
   if (!wrap) return;
-  const menu = h("div", "split-menu");
-  menu.id = "split-menu";
+  const menu = h("div", "chart-menu");
+  menu.id = o.element;
   menu.setAttribute("role", "group");
-  menu.setAttribute("aria-label", say("split_chooser", { label: nameOf(d) }));
-  const id = d.id;
-  for (const sp of splitsHere(d)) {
-    const choice = h("button", "split-choice", splitWords(sp.key));
+  menu.setAttribute("aria-label", o.label);
+  for (const c of o.choices) {
+    const choice = h("button", "chart-menu-choice", c.words);
     choice.setAttribute("type", "button");
-    choice.dataset.key = sp.key;
+    Object.assign(choice.dataset, c.data || {});
     choice.addEventListener("click", (e) => {
       e.stopPropagation();
-      guarded("split this mark", () => {
-        closeSplitMenu();
-        if (!expandNode(id, sp.key)) return;
-        const kept = laidNodes.find((n) => n.id === id);
-        if (kept) pin(kept);
+      guarded(c.doing, () => {
+        closeChartMenu();
+        c.act();
       });
     });
     menu.append(choice);
@@ -1099,13 +1109,13 @@ export function openSplitMenu(d, glyph) {
   menu.addEventListener("keydown", (e) => {
     if (e.key !== "Escape") return;
     e.stopPropagation();
-    closeSplitMenu(true);
+    closeChartMenu(true);
   });
   // A PRESS IN THE MENU KEEPS IT OPEN until the click it ends in has landed:
   // where a click focuses no button (Safari, Firefox on macOS) the press
   // blurs the menu to nothing before its choice is clicked.
   let pressing = false;
-  const open = () => splitMenu !== null && splitMenu.menu === menu;
+  const open = () => chartMenu !== null && chartMenu.menu === menu;
   menu.addEventListener("pointerdown", () => {
     pressing = true;
     const doc = menu.ownerDocument;
@@ -1114,7 +1124,7 @@ export function openSplitMenu(d, glyph) {
       doc.removeEventListener("pointercancel", released, true);
       setTimeout(() => {
         pressing = false;
-        if (open() && !menu.contains(doc.activeElement)) closeSplitMenu();
+        if (open() && !menu.contains(doc.activeElement)) closeChartMenu();
       }, 0);
     };
     doc.addEventListener("pointerup", released, true);
@@ -1123,33 +1133,135 @@ export function openSplitMenu(d, glyph) {
   menu.addEventListener("focusout", (e) => {
     const to = /** @type {Node | null} */ (e.relatedTarget);
     if (pressing || (to && menu.contains(to))) return;
-    if (open()) closeSplitMenu();
+    if (open()) closeChartMenu();
   });
   const box = wrap.getBoundingClientRect();
-  const at = glyph ? glyph.getBoundingClientRect() : null;
-  menu.style.left = Math.max(0, at ? at.right - box.left + 4 : 0) + "px";
-  menu.style.top = Math.max(0, at ? at.top - box.top : 0) + "px";
+  menu.style.left = Math.max(0, o.at ? o.at.left - box.left : 0) + "px";
+  menu.style.top = Math.max(0, o.at ? o.at.top - box.top : 0) + "px";
   wrap.append(menu);
-  splitMenu = { id: id, menu: menu };
+  chartMenu = { id: o.id, menu: menu, back: o.back };
   const first = menu.querySelector("button");
   if (first) /** @type {HTMLElement} */ (first).focus();
 }
 
 /**
- * Closes the menu of a node's splits, focus back on the node's glyph where
- * `refocus` asks.
+ * Opens the menu of a node's splits beside its glyph, one button per split
+ * in splitWords' words for it. Choosing one splits the node by it and pins
+ * it.
+ * @param {LaidNode} d
+ * @param {Element} [glyph]
+ */
+export function openSplitMenu(d, glyph) {
+  const id = d.id;
+  const at = glyph ? glyph.getBoundingClientRect() : null;
+  openMenu({
+    id: id,
+    element: "split-menu",
+    label: say("split_chooser", { label: nameOf(d) }),
+    back: "g.glyph",
+    at: at ? { left: at.right + 4, top: at.top } : null,
+    choices: splitsHere(d).map((sp) => ({
+      words: splitWords(sp.key),
+      doing: "split this mark",
+      data: { key: sp.key },
+      act: () => {
+        if (!expandNode(id, sp.key)) return;
+        const kept = laidNodes.find((n) => n.id === id);
+        if (kept) pin(kept);
+      },
+    })),
+  });
+}
+
+/**
+ * Opens a node's context menu: Follow this money (followNode), Filter this
+ * out (filterOutNode) and Show only this (showOnlyNode). At the pointer for
+ * a right-click, else beside the node's mark.
+ * @param {LaidNode} d
+ * @param {{left: number, top: number} | null} [at] the pointer, in the viewport's px
+ * @param {Element} [mark] the node's element
+ */
+export function openNodeMenu(d, at, mark) {
+  const id = d.id;
+  hideTip();
+  const box = !at && mark ? (mark.querySelector("rect") || mark).getBoundingClientRect() : null;
+  openMenu({
+    id: id,
+    element: "node-menu",
+    label: say("node_menu", { label: nameOf(d) }),
+    back: "g.node",
+    at: at || (box ? { left: box.right + 4, top: box.top } : null),
+    choices: [
+      { words: say("follow_money"), doing: "follow this money", data: { act: "follow" }, act: () => followNode(id) },
+      { words: say("filter_out_node"), doing: "filter this out", data: { act: "out" }, act: () => filterOutNode(id) },
+      { words: say("show_only_node"), doing: "show only this", data: { act: "only" }, act: () => showOnlyNode(id) },
+    ],
+  });
+}
+
+/**
+ * Follows a drawn node's money and pins it, so the drawer shows the node
+ * followed and its Follow button is pressed (pin's rule).
+ * @param {string} id
+ */
+export function followNode(id) {
+  const d = laidNodes.find((n) => n.id === id);
+  if (!d) return;
+  pin(d);
+  setIsolated(id);
+}
+
+/**
+ * Removes every ribbon with an end at a node, as a removed fund group's are;
+ * the node shown alone is let go where it is this one. The redraw drops the
+ * pin, so a node's isolation goes with it (pin's rule); a fund group's stays.
+ * @param {string} id
+ */
+export function filterOutNode(id) {
+  const nodes = new Set(filter.nodes);
+  nodes.add(id);
+  setFilter({
+    nodes: nodes,
+    only: filter.only === id ? "" : filter.only,
+    isolated: followsNode() ? "" : filter.isolated,
+  });
+}
+
+/**
+ * Removes every ribbon a node's Follow would dim (onlyKeeps), so only its
+ * money is drawn; the node is put back where it was filtered out. A node's
+ * isolation goes with the pin the redraw drops, as filterOutNode's does.
+ * @param {string} id
+ */
+export function showOnlyNode(id) {
+  const nodes = new Set(filter.nodes);
+  nodes.delete(id);
+  setFilter({ nodes: nodes, only: id, isolated: followsNode() ? "" : filter.isolated });
+}
+
+/**
+ * Closes the menu open on the chart, focus back on its node's mark where
+ * `refocus` asks, pinning nothing.
  * @param {boolean} [refocus]
  * @returns {boolean} whether a menu was open
  */
-export function closeSplitMenu(refocus = false) {
-  if (!splitMenu) return false;
-  const { id, menu } = splitMenu;
-  splitMenu = null;
+export function closeChartMenu(refocus = false) {
+  if (!chartMenu) return false;
+  const { id, menu, back } = chartMenu;
+  chartMenu = null;
   menu.remove();
   if (refocus) {
     const chart = maybeEl("chart");
-    const glyph = chart ? D3.select(chart).selectAll("g.glyph").filter(/** @param {LaidNode} n */ (n) => n.id === id).node() : null;
-    if (glyph && typeof glyph.focus === "function") glyph.focus();
+    const mark = chart ? D3.select(chart).selectAll(back).filter(/** @param {LaidNode} n */ (n) => n.id === id).node() : null;
+    if (!mark || typeof mark.focus !== "function") return true;
+    // WITHOUT PINNING: focus going back where the menu took it from is not
+    // the reader moving it.
+    restoring = true;
+    try {
+      mark.focus();
+    } finally {
+      restoring = false;
+    }
   }
   return true;
 }
@@ -1516,11 +1628,32 @@ export function hueIndex(doc) {
  */
 export function filterFor(doc, state = filter) {
   const index = hueIndex(doc);
-  const out = core.filterDocument(doc, (n) => core.fundGroupOf(index, n), state);
+  const out = core.filterDocument(doc, (n) => core.fundGroupOf(index, n), state, onlyKeeps(doc, state, index));
   // Asked here, inside every draw's try: a removal whose money the filter
   // line cannot state once (core.distinctCents) is refused, not drawn.
   hiddenTally(out);
   return out;
+}
+
+/**
+ * The ribbons of a shaped chart a filter state's `only` keeps: those Follow
+ * leaves undimmed for that node (follows), so showing a node alone removes
+ * what following it dims. Null where nothing is shown alone, and where the
+ * node is one the chart draws no ribbon of, which is inert as an undrawn
+ * group is.
+ * @param {FiscProjection} doc
+ * @param {Readonly<FilterState>} state
+ * @param {Map<string, FiscNode>} index the hue index the chart is coloured by
+ * @returns {((l: FiscLink) => boolean) | null}
+ */
+export function onlyKeeps(doc, state, index) {
+  const id = state.only;
+  if (!id) return null;
+  const byID = new Map(doc.nodes.map((n) => [n.id, n]));
+  const end = (/** @type {string} */ at) => byID.get(at) || /** @type {FiscNode} */ ({ id: at });
+  const keeps = (/** @type {FiscLink} */ l) =>
+    follows(id, /** @type {any} */ ({ source: end(l.source), target: end(l.target) }), index);
+  return doc.links.some(keeps) ? keeps : null;
 }
 
 /**
@@ -1643,7 +1776,7 @@ export function render(laid, prior) {
   // The marks the pointer traced and the menu a glyph opened are the chart's
   // replaced.
   traced = null;
-  closeSplitMenu();
+  closeChartMenu();
   const graph = laid || layOut(doc);
   // A form that names no mark leaves every mark its label.
   drawnNames = new Map();
@@ -1678,7 +1811,7 @@ export function render(laid, prior) {
     glyph: glyphFor,
     on: {
       tip: hover, hide: hideTipOf, pin: pin, guarded: guarded,
-      click: clickNode, key: keyNode, glyph: glyphNode,
+      click: clickNode, key: keyNode, glyph: glyphNode, menu: openNodeMenu,
       trace: trace, untrace: untrace,
       unasked: () => restoring || pointing,
     },
@@ -1849,10 +1982,11 @@ export function setIsolated(id) {
 /**
  * Whether an id names a fund group of the chart on screen, by its role.
  * @param {string} id
+ * @param {Map<string, FiscNode>} [index] the hue index, the drawn document's by default
  * @returns {boolean}
  */
-export function isGroupID(id) {
-  const n = groupIndex.get(id);
+export function isGroupID(id, index = groupIndex) {
+  const n = index.get(id);
   return Boolean(n) && isFundGroup(n);
 }
 
@@ -1864,12 +1998,13 @@ export function isGroupID(id) {
  * than following its node.
  * @param {string} id
  * @param {LaidLink} l
+ * @param {Map<string, FiscNode>} [index] the hue index, the drawn document's by default
  * @returns {boolean}
  */
-export function follows(id, l) {
+export function follows(id, l, index = groupIndex) {
   if (l.source.id === id || l.target.id === id) return true;
-  if (!isGroupID(id)) return false;
-  return linkGroup(l) === id || fundGroupOf(l.source) === id || fundGroupOf(l.target) === id;
+  if (!isGroupID(id, index)) return false;
+  return linkGroup(l, index) === id || core.fundGroupOf(index, l.source) === id || core.fundGroupOf(index, l.target) === id;
 }
 
 /**
@@ -1934,10 +2069,13 @@ export function setFilter(next) {
   const state = Object.freeze({
     groups: new Set(next.groups || was.groups),
     kinds: new Set(next.kinds || was.kinds),
+    nodes: new Set(next.nodes || was.nodes),
+    only: next.only === undefined ? was.only : next.only,
     smallest: smallest,
     isolated: next.isolated === undefined ? was.isolated : next.isolated,
   });
-  if (sameSet(was.groups, state.groups) && sameSet(was.kinds, state.kinds) && was.smallest === state.smallest) {
+  if (sameSet(was.groups, state.groups) && sameSet(was.kinds, state.kinds) && sameSet(was.nodes, state.nodes) &&
+    was.only === state.only && was.smallest === state.smallest) {
     setIsolated(state.isolated);
     return true;
   }
@@ -1984,8 +2122,10 @@ export function resetFilters() {
 
 /**
  * Says what the filters leave out of the chart on screen, beside it: the
- * ribbons removed as a client sum over their cited cents, and the ribbons
- * merged by the smallest-flow filter. Hidden where they leave out nothing.
+ * node shown alone and the nodes filtered out, by name, where the shaped
+ * chart draws them; the ribbons removed as a client sum over their cited
+ * cents; and the ribbons merged by the smallest-flow filter. Hidden where
+ * they leave out nothing.
  */
 export function paintFilterLine() {
   const line = maybeEl("filter-line");
@@ -1994,6 +2134,12 @@ export function paintFilterLine() {
   const gone = hiddenTally();
   const merged = foldedTally();
   const parts = [];
+  const drawn = projection ? projection.nodes : [];
+  const alone = filter.only && projection && onlyKeeps(projection, filter, hueIndex(projection))
+    ? drawn.find((n) => n.id === filter.only) : undefined;
+  if (alone) parts.push(say("filter_only", { label: nameOf(alone) }));
+  const out = drawn.filter((n) => filter.nodes.has(n.id));
+  if (out.length) parts.push(say("filter_out", { names: out.map(nameOf).join("; ") }));
   if (gone.flows) parts.push(say("filter_hidden", { cents: fmtSigned(gone.cents), flows: gone.flows }));
   if (merged.flows) {
     parts.push(say("filter_folded", { flows: merged.flows, ribbons: merged.ribbons, threshold: fmt(filter.smallest) }));
@@ -2697,7 +2843,7 @@ export function buildTable(rows) {
  * The marks and nodes whose label holds the query, case-folded, those that
  * start with it first: every mark drawn, and on the expansion every node of
  * the schedule the chart does not draw, which Enter reveals. A node in a
- * fund group the filters remove is not offered; one the kind or smallest
+ * fund group the filters remove, or a node they filter out, is not offered; one the kind or smallest
  * filter would remove once revealed is, and Enter says so and draws nothing.
  * @param {string} query
  * @returns {(LaidNode | FiscNode)[]}
@@ -2712,7 +2858,7 @@ export function searchMatches(query) {
     const drawn = new Set(laidNodes.map((n) => n.id));
     const index = new Map(fetched.nodes.map((n) => [n.id, n]));
     for (const n of fetched.nodes) {
-      if (drawn.has(n.id) || filter.groups.has(core.fundGroupOf(index, n)) || filter.groups.has(n.id)) continue;
+      if (drawn.has(n.id) || filter.groups.has(core.fundGroupOf(index, n)) || filter.groups.has(n.id) || filter.nodes.has(n.id)) continue;
       pool.push(n);
     }
   }
@@ -3336,14 +3482,14 @@ export function wireZoom() {
 
 /**
  * The view on screen as location.hash says it: the year by its column's file
- * name, the fund groups and link kinds the filters remove, the smallest flow
- * drawn as itself in cents, the isolation, and the expansions in the order
- * the reader made them.
- * @typedef {{year: string, hide: string[], hidekind: string[], min: number, iso: string, x: string[]}} ViewState
+ * name, the fund groups, link kinds and nodes the filters remove, the node
+ * shown alone, the smallest flow drawn as itself in cents, the isolation, and
+ * the expansions in the order the reader made them.
+ * @typedef {{year: string, hide: string[], hidekind: string[], out: string[], only: string, min: number, iso: string, x: string[]}} ViewState
  */
 
 /** The hash's fields, in the order hashOf writes them. */
-export const HASH_FIELDS = Object.freeze(["y", "hide", "hidekind", "min", "iso", "x"]);
+export const HASH_FIELDS = Object.freeze(["y", "hide", "hidekind", "out", "only", "min", "iso", "x"]);
 
 /**
  * The year the page opens on where the URL names no view: the control's,
@@ -3376,6 +3522,8 @@ export function viewState() {
     year: yearKey(shownYear),
     hide: Array.from(filter.groups).sort(),
     hidekind: Array.from(filter.kinds).sort(),
+    out: Array.from(filter.nodes).sort(),
+    only: filter.only,
     min: filter.smallest,
     iso: filter.isolated,
     // In order and not sorted: each entry is applied to the frontier the
@@ -3396,8 +3544,8 @@ function hashValue(v) {
 
 /**
  * A view as a hash: `#y=<year>`, then each field not at its default --
- * `hide` and `hidekind` comma-separated, `min` in cents, `iso`, and `x`, the
- * expansions comma-separated in the order they were made.
+ * `hide`, `hidekind` and `out` comma-separated, `only`, `min` in cents,
+ * `iso`, and `x`, the expansions comma-separated in the order they were made.
  * @param {ViewState} st
  * @returns {string}
  */
@@ -3405,6 +3553,8 @@ export function hashOf(st) {
   const parts = ["y=" + hashValue(st.year)];
   if (st.hide.length) parts.push("hide=" + st.hide.map(hashValue).join(","));
   if (st.hidekind.length) parts.push("hidekind=" + st.hidekind.map(hashValue).join(","));
+  if (st.out.length) parts.push("out=" + st.out.map(hashValue).join(","));
+  if (st.only) parts.push("only=" + hashValue(st.only));
   if (st.min) parts.push("min=" + st.min);
   if (st.iso) parts.push("iso=" + hashValue(st.iso));
   if (st.x.length) parts.push("x=" + st.x.map(hashValue).join(","));
@@ -3448,15 +3598,19 @@ export function parseHash(hash) {
   if (!year) return { kind: "refused", why: "it names no year" };
   const hide = list("hide");
   const hidekind = list("hidekind");
+  const out = list("out");
   const x = list("x");
-  if ([...hide, ...hidekind, ...x].some((id) => !id)) return { kind: "refused", why: "it holds an empty name" };
+  if ([...hide, ...hidekind, ...out, ...x].some((id) => !id)) return { kind: "refused", why: "it holds an empty name" };
   const min = fields.has("min") ? fields.get("min") || "" : "0";
   if (!/^\d+$/.test(min) || !Number.isSafeInteger(Number(min))) {
     return { kind: "refused", why: "its smallest flow, " + min + ", is not a whole number of cents" };
   }
   return {
     kind: "view",
-    state: { year, hide: hide.sort(), hidekind: hidekind.sort(), min: Number(min), iso: text(fields.get("iso") || ""), x },
+    state: {
+      year, hide: hide.sort(), hidekind: hidekind.sort(), out: out.sort(), only: text(fields.get("only") || ""),
+      min: Number(min), iso: text(fields.get("iso") || ""), x,
+    },
   };
 }
 
@@ -3484,8 +3638,9 @@ export function recordView(how) {
  * year the page does not publish, a flow kind it names no label for, a fund
  * group the year's column does not carry, an expansion the year's schedule
  * cannot make (expansionState), or an isolation naming a mark the chart does
- * not draw. A group or kind the view does not draw is inert, as the panel's
- * are. Expansions are applied before the isolation, which can name a member
+ * not draw. A group, kind or node the view does not draw is inert, as the
+ * panel's are, and so is a node shown alone the view draws no ribbon of.
+ * Expansions are applied before the isolation, which can name a member
  * only a split draws.
  * @param {ViewState} st
  * @returns {Promise<{outcome: string, why?: string}>} DREW, SUPERSEDED, or FAILED with why
@@ -3497,7 +3652,7 @@ async function moveTo(st) {
   const kinds = CONFIG.kind_labels || {};
   const kind = st.hidekind.find((k) => !Object.prototype.hasOwnProperty.call(kinds, k));
   if (kind !== undefined) return refuse("this page names no flow kind " + kind);
-  const removals = { groups: new Set(st.hide), kinds: new Set(st.hidekind), smallest: st.min };
+  const removals = { groups: new Set(st.hide), kinds: new Set(st.hidekind), nodes: new Set(st.out), only: st.only, smallest: st.min };
   if (!shownYear || shownYear !== year || !projection) {
     filter = Object.freeze(Object.assign({}, removals, { isolated: "" }));
     const got = await showYear(year);
@@ -4029,7 +4184,7 @@ export async function main() {
       // ESCAPE UNDOES NO SPLIT: it lets the pin and the isolation go, and the
       // Collapse all, Back and ⊖ are what fold. A gesture that opened several
       // splits at once has no single last one to undo.
-      if (closeSplitMenu(true)) return;
+      if (closeChartMenu(true)) return;
       hideTip();
       unpin();
       setIsolated("");
