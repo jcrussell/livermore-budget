@@ -57,6 +57,7 @@ func (*nodeTiersAreDeclared) Run(_ context.Context, s *Subject) (Result, error) 
 		tierOf := map[string]int{}
 		parentOf := map[string]string{}
 		byID := map[string]project.Node{}
+		sides := project.PrimarySides(p.Graph.Splits)
 		for _, n := range p.Nodes {
 			byID[n.ID] = n
 			nodes++
@@ -87,7 +88,7 @@ func (*nodeTiersAreDeclared) Run(_ context.Context, s *Subject) (Result, error) 
 			links++
 			// A repeating link is drawn between a node and its member one
 			// slot apart, and held as the leaf it repeats.
-			l = atLeaf(l, byID)
+			l = atLeaf(l, byID, sides)
 			src, sok := tierOf[l.Source]
 			dst, dok := tierOf[l.Target]
 			// A dangling end is reported only here: graph-acyclic sees a leaf,

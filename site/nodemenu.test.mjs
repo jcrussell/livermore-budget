@@ -93,8 +93,10 @@ describe("a node's context menu", () => {
 
   // Mutation: tell a key's contextmenu by 0, 0 alone (no keyedMenu) and
   // this goes red: the keyed menu opens at the coordinates Chromium gives
-  // the event, where the pointer would have been.
-  test("a menu key's contextmenu at the mark's coordinates opens the menu beside the mark; a right-click opens it at the pointer", async (t) => {
+  // the event, where the pointer would have been. Tell it by 0, 0 as well
+  // as keyedMenu and a right-click at the viewport's corner opens beside
+  // the mark.
+  test("a menu key's contextmenu at the mark's coordinates opens the menu beside the mark; a right-click opens it at the pointer, at 0, 0 too", async (t) => {
     const { app, document } = await bootedApp();
     const m = markOf(document, plainNode(app));
     const placed = () => {
@@ -113,8 +115,10 @@ describe("a node's context menu", () => {
     const shiftF10 = placed();
     fire(m, "contextmenu", { button: 2, clientX: 100, clientY: 200 });
     const after = placed();
-    t.diagnostic(`pointer ${pointer}; ContextMenu ${contextMenuKey}; Shift+F10 ${shiftF10}; a right-click after ${after}`);
-    assert.deepEqual({ pointer, after }, { pointer: "100px 200px", after: "100px 200px" });
+    fire(m, "contextmenu", { button: 2, clientX: 0, clientY: 0 });
+    const corner = placed();
+    t.diagnostic(`pointer ${pointer}; ContextMenu ${contextMenuKey}; Shift+F10 ${shiftF10}; a right-click after ${after}; at 0, 0 ${corner}`);
+    assert.deepEqual({ pointer, after, corner }, { pointer: "100px 200px", after: "100px 200px", corner: "0px 0px" });
     assert.ok(contextMenuKey !== "" && contextMenuKey !== pointer, contextMenuKey);
     assert.ok(shiftF10 !== "" && shiftF10 !== pointer, shiftF10);
   });
@@ -409,6 +413,28 @@ describe("the menu and the pin", () => {
     t.diagnostic(`${named.id} drawn as ${JSON.stringify(name)}, labelled ${JSON.stringify(named.label)}; the line says: ${said}`);
     assert.ok(said.includes(name), said);
     assert.equal(refusals(document).length, 0);
+  });
+});
+
+describe("the filter line's names", () => {
+  // Mutation: paint the filter line before setFilter's render, as it was,
+  // and this goes red: the line names the tail by the qualifier the chart
+  // before the filter drew it with.
+  test("a node shown alone is named on the filter line as the filtered chart draws it, when what is drawn changes its qualifier", async (t) => {
+    const { app, document } = await bootedApp();
+    await split(app, "revenue/licenses-and-permits", "revenue/taxes/property");
+    const id = "aggregate/tail/lines/revenue/licenses-and-permits";
+    const name = () => {
+      const n = app.laidNodes.find((x) => x.id === id);
+      return n ? app.nameOf(n) : "";
+    };
+    const before = name();
+    app.showOnlyNode(id);
+    const after = name();
+    const said = document.getElementById("filter-said").textContent;
+    t.diagnostic(`${id} drawn as ${JSON.stringify(before)}, then alone as ${JSON.stringify(after)}; the line says: ${said}`);
+    assert.ok(before !== "" && after !== "" && before !== after, "showing the tail alone left its name as it was, so this asserts nothing");
+    assert.ok(said.startsWith(app.say("filter_only", { label: after })), said);
   });
 });
 

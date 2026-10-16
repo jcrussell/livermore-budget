@@ -406,6 +406,18 @@ describe("the filter panel", () => {
     assert.deepEqual(got, { hidden: [g], isolated: "", drawn: false, hash: false });
   });
 
+  // Mutation: let setFilter's isolate after the redraw put back an
+  // isolation of a group the redraw draws nothing of, and this goes red: the
+  // page follows the group it has just hidden.
+  test("hiding a fund group and isolating it in one state isolates nothing, so the page follows no group it does not draw", async () => {
+    const { app, window } = await bootedApp({ checkedStem: YEARS[0].stem });
+    const g = "fund-group/general";
+    const ok = app.setFilter({ groups: new Set([g]), isolated: g });
+    const got = { ok, hidden: [...app.filter.groups], isolated: app.filter.isolated, drawn: app.laidNodes.some((n) => app.isolates(g, n)),
+      hash: window.location.hash.includes("iso=") };
+    assert.deepEqual(got, { ok: true, hidden: [g], isolated: "", drawn: false, hash: false });
+  });
+
   test("a hidden kind's ribbons leave the chart, and None then All hides every group's and puts them back without a refusal", async (t) => {
     const { app, document } = await bootedApp({ checkedStem: YEARS[0].stem });
     const chart = document.getElementById("chart");

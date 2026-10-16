@@ -83,6 +83,7 @@ func (*linkEndsMatchTheirFacts) Run(_ context.Context, s *Subject) (Result, erro
 		}
 		selected := factIndex(slice)
 		nodes := make(map[string]project.Node, len(p.Nodes))
+		sides := project.PrimarySides(p.Graph.Splits)
 		for _, n := range p.Nodes {
 			nodes[n.ID] = n
 		}
@@ -109,13 +110,13 @@ func (*linkEndsMatchTheirFacts) Run(_ context.Context, s *Subject) (Result, erro
 			}
 			e := linkEnd{link: l, facts: facts, vocab: s.Vocabulary, tiers: tiers,
 				divisionExpenditure: p.Name == project.FundFlowsProjection || p.Name == project.ExpansionProjection}
-			leaf := atLeaf(l, nodes)
+			leaf := atLeaf(l, nodes, sides)
 			if leaf.TransferID == "" && leaf.Repeats != "" {
 				leaf.TransferID = transferOf[leaf.Repeats]
 			}
 			for _, j := range legs[leaf.TransferID] {
 				if j != i && (leaf.Repeats == "" || p.Links[j].Repeats != leaf.Repeats) {
-					e.others = append(e.others, atLeaf(p.Links[j], nodes))
+					e.others = append(e.others, atLeaf(p.Links[j], nodes, sides))
 				}
 			}
 			e.link = leaf

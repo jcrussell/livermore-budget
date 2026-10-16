@@ -794,11 +794,12 @@ export function redraw(next, refused = "That could not be drawn", landOn, anchor
   paintChartName();
   paintCounts();
   buildLegend();
-  paintFilterLine();
   paintChartHint();
   buildDerivedList();
   buildTable(rows);
   render(laid, prior);
+  // After the render: the line names nodes as the chart now draws them.
+  paintFilterLine();
   if (anchor && held) keepInPlace(anchor, held);
   restoreFocus(hadFocus, landOn ? landOn() : "");
   // A split and its undoing are steps a reader walks back with Back.
@@ -2162,12 +2163,15 @@ export function setFilter(next) {
   resetDetail();
   hideTip();
   buildLegend();
-  paintFilterLine();
   syncFilterPanel();
   paintChartHint();
   render(laid, prior);
+  paintFilterLine();
   restoreFocus(hadFocus, focused && typeof focused.id === "string" ? focused.id : "");
-  if (next.isolated !== undefined && next.isolated !== filter.isolated) isolate(next.isolated);
+  // An isolation of what the redraw draws nothing of is cleared above, not
+  // put back.
+  if (next.isolated !== undefined && next.isolated !== filter.isolated &&
+    (next.isolated === "" || laidNodes.some((n) => isolates(next.isolated || "", n)))) isolate(next.isolated);
   recordView("replace");
   return true;
 }
@@ -4089,11 +4093,11 @@ export async function showYear(year, carry = []) {
   paintBulk();
   buildLegend();
   buildFilterPanel();
-  paintFilterLine();
   paintChartHint();
   buildDerivedList();
   buildTable(rows);
   render(laid);
+  paintFilterLine();
   recordView("push");
   return DREW;
 }

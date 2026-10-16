@@ -1191,15 +1191,17 @@ export const SANKEY = Object.freeze({
     /**
      * The edge of its ancestor a mark grows out of or shrinks into: the left
      * where the mark stands left of that ancestor among `boxes`, as a
-     * source's member does, the right otherwise.
+     * source's member does, the right otherwise. Where `boxes` draws no
+     * ancestor of the mark, the side is read against `box` itself, the
+     * ancestor the move uses from the other chart.
      * @param {string} id
      * @param {Map<string, {x0: number, x1: number, y0: number, y1: number}>} boxes
      * @param {{x0: number, x1: number}} box the ancestor's box the move starts or ends at
      */
     const edgeOf = (id, boxes, box) => {
       const mark = boxes.get(id);
-      const up = above(id, boxes);
-      return mark && up && mark.x1 <= up.x0 ? box.x0 : box.x1;
+      const up = above(id, boxes) || box;
+      return mark && mark.x1 <= up.x0 ? box.x0 : box.x1;
     };
     /** A ribbon at no width at x, mid-height of a box. */
     const flatAt = (/** @type {{y0: number, y1: number}} */ box, /** @type {number} */ x) => {
@@ -1308,9 +1310,10 @@ export const SANKEY = Object.freeze({
       // keyup, after a keydown arm has moved focus into the menu, and the
       // browser's own menu opens over it. The key's keydown marks the mark
       // (keyedMenu) for the contextmenu that follows, since Chromium gives
-      // that event the mark's coordinates; 0, 0 is how other browsers say it.
+      // that event the mark's coordinates; a right-click at 0, 0 is still
+      // the pointer's.
       .on("contextmenu", /** @this {SVGGElement} @param {MouseEvent} e @param {LaidNode} d */ function (e, d) {
-        const keyed = keyedMenu === this || (e.clientX === 0 && e.clientY === 0);
+        const keyed = keyedMenu === this;
         keyedMenu = null;
         if (!on.menu) return;
         e.preventDefault();

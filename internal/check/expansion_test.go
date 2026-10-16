@@ -638,3 +638,61 @@ func TestRepeatsAndRestatesAreTheExpansionsAlone(t *testing.T) {
 		})
 	}
 }
+
+// TestASplitsSideIsTheStitchs holds sideFindings to the side the stitch
+// gives a split, at a root the spine draws nothing into: a hub stands its
+// members before it and a split citing totals of its own after it, so the
+// general fund's divisions declared after such a root are correct and a
+// fund group's funds declared after it are not.
+//
+// MUTATION: want before for every root primary split at a node taking
+// nothing in, hub or not, and this names the general fund's divisions.
+func TestASplitsSideIsTheStitchs(t *testing.T) {
+	t.Parallel()
+	x := stitched{spine: &project.Document{}}
+	for _, c := range []struct {
+		node   project.Node
+		key    string
+		naming bool
+	}{
+		{project.Node{ID: "fund/100", Role: project.RoleGeneralFund}, "divisions", false},
+		{project.Node{ID: "fund-group/enterprise", Role: project.RoleFundGroup}, "funds", true},
+	} {
+		sp := project.Split{Node: c.node.ID, Key: c.key, Form: project.SplitExtend, Side: project.SplitAfter}
+		got := x.sideFindings(sp, c.node, []string{c.node.ID + "/m"}, "", "subject")
+		if named := len(got) > 0; named != c.naming {
+			t.Errorf("the split of %s by %s declared after a root the spine draws nothing into: findings %v, want named %v",
+				c.node.ID, c.key, got, c.naming)
+		}
+	}
+}
+
+// TestALinkIsReadWholeAtItsLeafOnlyAsALeg holds atLeaf to project.IsLeg:
+// a link from a fund into its own group, an inflow hub, that leaves the fund
+// and repeats a leaf to another node is a leaf re-pointed onto the group,
+// not a leg, so it is read where it is drawn at the group rather than whole
+// at the leaf's ends, where it would hide the end it does not reach.
+//
+// MUTATION: read every link between a node and its own primary member whole
+// at its leaf, as a parent-only rule does, and this reads it as fund/600 ->
+// expenditure/capital-outlay.
+func TestALinkIsReadWholeAtItsLeafOnlyAsALeg(t *testing.T) {
+	t.Parallel()
+	const group = "fund-group/enterprise"
+	nodes := map[string]project.Node{
+		group:      {ID: group, Role: project.RoleFundGroup},
+		"fund/600": {ID: "fund/600", Role: project.RoleFund, Parent: group},
+	}
+	sides := map[string]string{group: project.SplitAfter}
+	l := project.Link{Source: "fund/600", Target: group, Kind: project.KindExternal,
+		Repeats: "fund/600 -> expenditure/capital-outlay external"}
+	if got := atLeaf(l, nodes, sides); got.Source != "fund/600" || got.Target != group {
+		t.Errorf("atLeaf reads %s -> %s repeating %q as %s -> %s, want it read where it is drawn",
+			l.Source, l.Target, l.Repeats, got.Source, got.Target)
+	}
+	leg := project.Link{Source: group, Target: "fund/600", Kind: project.KindExternal,
+		Repeats: "revenue-line/x -> fund/600 external"}
+	if got := atLeaf(leg, nodes, sides); got.Source != "revenue-line/x" || got.Target != "fund/600" {
+		t.Errorf("atLeaf reads the leg %s -> %s as %s -> %s, want it read at its leaf", leg.Source, leg.Target, got.Source, got.Target)
+	}
+}

@@ -605,7 +605,8 @@ func TestAFundGroupsLegsCarryEachFundsInflow(t *testing.T) {
 }
 
 // TestASourcesLegsRunFromItsMembers holds a hub split whose node takes
-// nothing in on the spine -- each revenue category and transfers/in -- to
+// nothing in on the spine -- each revenue category and transfers/in, a hub
+// being declared only on a root -- to
 // legs running from its members into it, and to declaring its members
 // before it, which the client stands them by: every leg is member -> node
 // repeating a leaf that leaves that member, every primary leaf leaving a
@@ -623,14 +624,16 @@ func TestASourcesLegsRunFromItsMembers(t *testing.T) {
 		for _, l := range spine.Links {
 			takesIn[l.Target] = true
 		}
-		parent := map[string]string{}
+		parent, role := map[string]string{}, map[string]string{}
 		for _, n := range x.Nodes {
 			if n.Alternative == "" {
 				parent[n.ID] = n.Parent
+				role[n.ID] = n.Role
 			}
 		}
 		source := func(id string) bool {
-			return id != "" && parent[id] == "" && !takesIn[id] && slices.ContainsFunc(x.Splits, func(sp Split) bool {
+			d, ok := splitOf(role[id], "", false)
+			return id != "" && ok && d.hub && !takesIn[id] && slices.ContainsFunc(x.Splits, func(sp Split) bool {
 				return sp.Node == id && !sp.Alternative
 			})
 		}
@@ -738,5 +741,34 @@ func TestAFlowBetweenAHubsMembersIsRefused(t *testing.T) {
 	err := extendHubs(st, map[string]bool{group: true})
 	if err == nil || !strings.Contains(err.Error(), "runs between two members of "+group) {
 		t.Fatalf("extendHubs is %v over a flow between two of %s's funds, want it refused", err, group)
+	}
+}
+
+// TestALeafBetweenAHubAndItsOwnMemberIsRefused: no page prints a flow
+// between a fund group and one of its own funds, and the stitch refuses to
+// draw one on either side of the hub, since re-pointed onto the hub it would
+// run from the hub into itself.
+//
+// MUTATION: drop extendHubs' refusal of a leaf between a hub's node and its
+// member and the stitch draws fund-group/enterprise -> fund-group/enterprise,
+// after the hub and before it.
+func TestALeafBetweenAHubAndItsOwnMemberIsRefused(t *testing.T) {
+	const group = "fund-group/enterprise"
+	for _, c := range []struct {
+		name           string
+		source, target string
+		takesIn        bool
+	}{
+		{"after the hub", group, "fund/600", true},
+		{"before the hub", "fund/600", group, false},
+	} {
+		st := &stitch{nodes: map[string]Node{
+			group:      {ID: group, Role: RoleFundGroup},
+			"fund/600": {ID: "fund/600", Role: RoleFund, Parent: group},
+		}, links: []Link{{Source: c.source, Target: c.target, ValueCents: 1, Kind: KindExternal}}}
+		err := extendHubs(st, map[string]bool{group: c.takesIn})
+		if err == nil || !strings.Contains(err.Error(), "would be drawn from it back into it") {
+			t.Errorf("%s: extendHubs is %v over %s -> %s, want it refused; links %+v", c.name, err, c.source, c.target, st.links)
+		}
 	}
 }

@@ -96,12 +96,13 @@ func (x stitched) memberOf(id, node, alternative string) string {
 }
 
 // atLeaf is a link read at the ends of the leaf it repeats, which is where
-// its facts are printed. A hub leg -- a link between a node and its own
-// primary member, either way -- is a copy of that leaf and is read at the
-// leaf's ends whole; a leaf is read at its own end only where it is drawn at
-// that end's primary parent, the one move the stitch makes, so an end drawn
-// anywhere else is read as drawn. A link repeating nothing is itself.
-func atLeaf(l project.Link, nodes map[string]project.Node) project.Link {
+// its facts are printed. A hub leg ([project.IsLeg] over sides, the
+// document's [project.PrimarySides]) is a copy of that leaf and is read at
+// the leaf's ends whole; a leaf is read at its own end only where it is
+// drawn at that end's primary parent, the one move the stitch makes, so an
+// end drawn anywhere else is read as drawn. A link repeating nothing is
+// itself.
+func atLeaf(l project.Link, nodes map[string]project.Node, sides map[string]string) project.Link {
 	if l.Repeats == "" {
 		return l
 	}
@@ -112,7 +113,7 @@ func atLeaf(l project.Link, nodes map[string]project.Node) project.Link {
 		return ""
 	}
 	src, tgt := project.LeafEnds(l.Repeats)
-	if l.Alternative == "" && (parent(l.Target) == l.Source || parent(l.Source) == l.Target) {
+	if project.IsLeg(l, nodes, sides) {
 		l.Source, l.Target = src, tgt
 		return l
 	}
@@ -548,7 +549,7 @@ func (*expansionSplitsTie) rootCells(x stitched, sp project.Split) map[string]*t
 		default:
 			continue
 		}
-		at(k).add(atLeaf(l, x.nodes))
+		at(k).add(atLeaf(l, x.nodes, x.sides))
 	}
 	return cells
 }
@@ -643,21 +644,19 @@ func (*expansionSplitsTie) restatingFindings(x stitched, sp project.Split, membe
 }
 
 // sideFindings holds the side a split declares, which the client stands its
-// members on and reads no link to infer: a root's primary split, a hub, after
-// its node where the spine draws a link into the node and before it where
-// none, and every other split after; every link between the node and a
-// member of this split's set running that way, a leaf re-pointed onto the
-// node included, since one drawn from a member back into its own node is a
-// circular link to the client; and a member's split on its parent's side,
-// since one opening back would stand its members in its grandparent's
-// column.
+// members on and reads no link to infer: to the side the stitch gives it
+// ([project.SideOf]) at a node the spine does or does not draw a link into;
+// every link between the node and a member of this split's set running that
+// way, a leaf re-pointed onto the node included, since one drawn from a
+// member back into its own node is a circular link to the client; and a
+// member's split on its parent's side, since one opening back would stand
+// its members in its grandparent's column.
 func (x stitched) sideFindings(sp project.Split, node project.Node, members []string, alt, subject string) []Finding {
 	var findings []Finding
-	want := project.SplitAfter
-	if node.Parent == "" && !sp.Alternative && !x.takesIn(sp.Node) {
-		want = project.SplitBefore
-	}
-	if sp.Side != want {
+	want, ok := project.SideOf(node.Role, sp.Key, sp.Alternative, x.takesIn(sp.Node))
+	if !ok {
+		findings = append(findings, finding(subject, "no split of role %s is declared by %s", node.Role, sp.Key))
+	} else if sp.Side != want {
 		findings = append(findings, finding(subject, "the split declares its members %q its node, want %q", sp.Side, want))
 	}
 	against := 0
@@ -910,7 +909,7 @@ func (*expansionSplitsTie) fundCells(s *Subject, x stitched, sp project.Split, m
 					o.Source, o.Target, len(categories), categories))
 				continue
 			}
-			at(categories[0]).add(atLeaf(o, x.nodes))
+			at(categories[0]).add(atLeaf(o, x.nodes, x.sides))
 		}
 	}
 	return cells, findings

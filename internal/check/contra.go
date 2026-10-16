@@ -33,6 +33,7 @@ func (*contraLinksNameTheirSchedule) Run(_ context.Context, s *Subject) (Result,
 
 	for _, p := range s.linkedDocuments() {
 		labels := map[string]project.Node{}
+		sides := project.PrimarySides(p.Graph.Splits)
 		for _, n := range p.Nodes {
 			labels[n.ID] = n
 		}
@@ -60,7 +61,7 @@ func (*contraLinksNameTheirSchedule) Run(_ context.Context, s *Subject) (Result,
 				continue
 			}
 
-			up, ok := labels[labels[atLeaf(l, labels).Source].Parent]
+			up, ok := labels[labels[atLeaf(l, labels, sides).Source].Parent]
 			want := project.ContraOrphan
 			if ok {
 				want = project.ContraPrefix + up.Label

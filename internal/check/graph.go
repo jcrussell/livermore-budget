@@ -732,6 +732,7 @@ func (*transferLegsPair) Run(_ context.Context, s *Subject) (Result, error) {
 	for _, p := range s.linkedDocuments() {
 		role := map[string]string{}
 		byID := map[string]project.Node{}
+		sides := project.PrimarySides(p.Graph.Splits)
 		for _, n := range p.Nodes {
 			role[n.ID] = n.Role
 			byID[n.ID] = n
@@ -740,7 +741,7 @@ func (*transferLegsPair) Run(_ context.Context, s *Subject) (Result, error) {
 		// no transfer_id is half a movement the pairing would otherwise skip.
 		paired := p.Name == project.TransfersByFundProjection || p.Name == project.TransfersOutProjection
 		for _, l := range p.Links {
-			l = atLeaf(l, byID)
+			l = atLeaf(l, byID, sides)
 			if l.TransferID == "" {
 				if paired {
 					findings = append(findings, finding(p.String(),

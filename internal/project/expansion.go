@@ -72,6 +72,18 @@ func sideOf(d splitDecl, takesIn bool) string {
 	return SplitAfter
 }
 
+// SideOf is the side the stitch stands the members of a node's split on: a
+// node of role, split by key (the primary split's whatever its key), at a
+// node that does or does not take money in on the spine. It is false for a
+// split no role declares.
+func SideOf(role, key string, alternative, takesIn bool) (string, bool) {
+	d, ok := splitOf(role, key, alternative)
+	if !ok {
+		return "", false
+	}
+	return sideOf(d, takesIn), true
+}
+
 // PrimarySides is each node's primary split's side, by node.
 func PrimarySides(splits []Split) map[string]string {
 	out := map[string]string{}
@@ -582,9 +594,10 @@ func CellKey(source, target string, kind LinkKind) string {
 // member of a hub before its node to a member of one after its node is
 // re-pointed at both ends and repeated by a leg at each; a leaf leaving a
 // member of a hub after its node keeps that end on its member. A leaf
-// between two members of one hub is refused: re-pointed, it would run from
-// a member back into its own node, against the split's side, which the
-// client cannot draw. Every leaf a leg repeats, and every leg, names that
+// between two members of one hub, or between a hub's node and its own
+// member, is refused: re-pointed, the first would run from a member back
+// into its own node, against the split's side, and the second from the
+// node into itself, neither of which the client can draw. Every leaf a leg repeats, and every leg, names that
 // leaf's own ends in Repeats. A leg is a copy of one cited leaf: its cents,
 // facts, kind, reduction words and derived flag are the leaf's, so the
 // stitch publishes no sum, and a member nothing arrives at is reached by no
@@ -612,6 +625,12 @@ func extendHubs(st *stitch, takesIn map[string]bool) error {
 			continue
 		}
 		key := CellKey(l.Source, l.Target, l.Kind)
+		if hub, ok := hubOf(l.Target); ok && hub == l.Source {
+			return fmt.Errorf("expansion: %s runs from %s into its own member, and would be drawn from it back into it", key, hub)
+		}
+		if hub, ok := hubOf(l.Source); ok && hub == l.Target {
+			return fmt.Errorf("expansion: %s runs from a member of %s into it, and would be drawn from it back into it", key, hub)
+		}
 		leg := func(source, target string) {
 			g := *l
 			g.Source, g.Target = source, target
