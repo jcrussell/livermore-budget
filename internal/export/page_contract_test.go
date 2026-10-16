@@ -81,11 +81,7 @@ func TestTheWordingFillsEveryPlaceholderTheClientHands(t *testing.T) {
 	hands := map[string][]string{
 		"counts":              {"links", "nodes", "facts"},
 		"counts_partial":      {"links", "nodes", "cited", "facts"},
-		"chip_fold":           {"label"},
-		"chip_fold_label":     {"label", "split"},
 		"split_chooser":       {"label"},
-		"tail_chip":           {"label", "n", "word"},
-		"tail_chip_label":     {"label", "n", "word"},
 		"caveat_chip":         {"n"},
 		"inferred_flows":      {"flows", "figure", "ends"},
 		"aggregate_label":     {"folded", "word"},

@@ -2668,10 +2668,11 @@ func TestTheTablePagesFoldTheirApparatusAndNotTheirWarnings(t *testing.T) {
 	}
 }
 
-// TestTheSpineShipsItsChipRowHiddenAndEmpty: the page config carries no steps
-// key, and the chip row and the hint are in the page, hidden and empty, for
-// app.js to fill with what the reader splits open.
-func TestTheSpineShipsItsChipRowHiddenAndEmpty(t *testing.T) {
+// TestTheSpineShipsItsBulkButtonsHiddenAndItsHintEmpty: the page config
+// carries no steps key, Expand all and Collapse all are in the toolbar hidden
+// and disabled for app.js to offer, the hint is empty for app.js to fill, and
+// no chip row is shipped.
+func TestTheSpineShipsItsBulkButtonsHiddenAndItsHintEmpty(t *testing.T) {
 	dir := t.TempDir()
 	if _, err := writeSite(export.Options{
 		Dir:         dir,
@@ -2693,13 +2694,16 @@ func TestTheSpineShipsItsChipRowHiddenAndEmpty(t *testing.T) {
 	}
 	visible := readerVisible(t, page)
 	for _, want := range []string{
-		`<div class="breadcrumb" id="breadcrumb" role="group" aria-label="What the chart has split open" hidden></div>`,
+		`<button type="button" id="chart-expand-all" disabled hidden>Expand all</button>`,
+		`<button type="button" id="chart-collapse-all" disabled hidden>Collapse all</button>`,
 		`<span id="chart-hint"></span>`,
 	} {
 		if !strings.Contains(visible, want) {
-			t.Errorf("the spine does not carry %s; a node split open would have "+
-				"nowhere to paint the way to fold it back", want)
+			t.Errorf("the spine does not carry %s", want)
 		}
+	}
+	if strings.Contains(page, `id="breadcrumb"`) {
+		t.Errorf("the spine ships a chip row above the chart")
 	}
 }
 

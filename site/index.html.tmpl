@@ -109,9 +109,9 @@
 {{- /* THE CARD IS WHAT FULL SCREEN SHOWS, so the toolbar, the rail and the
        provenance drawer come with the chart. */}}
 <div class="card" id="chart-card">
-  {{- /* ONE ROW ABOVE THE CHART: search, the chip row (Expand all, Collapse
-         all, one chip per split) and the view's own buttons. The year stays in
-         the page head: it swaps every figure on the page, not only the chart. */}}
+  {{- /* ONE ROW ABOVE THE CHART: search and the view's own buttons. The year
+         stays in the page head: it swaps every figure on the page, not only
+         the chart. */}}
   <div class="chart-toolbar" id="chart-toolbar">
     {{- /* SHIPPED HIDDEN AND EMPTY, as the filters are: what the chart draws
            is the client's, so app.js unhides the box and lists the marks. A
@@ -123,14 +123,14 @@
       <ul class="search-list" id="search-list" role="listbox" aria-labelledby="search-label" hidden></ul>
       <span id="search-status" role="status"></span>
     </div>
-    {{- /* Shipped empty and hidden on every page: what the reader has split
-           open is the client's, which the server cannot know. */}}
-    <div class="breadcrumb" id="breadcrumb" role="group" aria-label="What the chart has split open" hidden></div>
-    {{- /* SHIPPED HIDDEN: app.js unhides full screen where the browser offers
-           it, and Reset view wherever the zoom is wired, naming each in the
-           wording's words. Wheel with Ctrl or Cmd, a pinch, drag, and + - 0
-           with focus in the chart zoom and pan it. */}}
+    {{- /* SHIPPED HIDDEN: app.js unhides Expand all and Collapse all on the
+           expansion, full screen where the browser offers it, and Reset view
+           wherever the zoom is wired, naming each in the wording's words.
+           Wheel with Ctrl or Cmd, a pinch, drag, and + - 0 with focus in the
+           chart zoom and pan it. */}}
     <div class="chart-tools" id="chart-tools">
+      <button type="button" id="chart-expand-all" disabled hidden>{{.Wording.ExpandAll}}</button>
+      <button type="button" id="chart-collapse-all" disabled hidden>{{.Wording.CollapseAll}}</button>
       <button type="button" id="chart-zoom-reset" disabled hidden>{{.Wording.ZoomReset}}</button>
       <button type="button" id="chart-fullscreen" hidden>{{.Wording.FullScreen}}</button>
     </div>

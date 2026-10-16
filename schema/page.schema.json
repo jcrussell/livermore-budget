@@ -247,7 +247,7 @@
       "additionalProperties": { "type": "string", "minLength": 1 }
     },
     "split_labels": {
-      "description": "What each split key's members are called, in the page's words; the chip row and the chooser name a split by it.",
+      "description": "What each split key's members are called, in the page's words; the ⊕ glyph and its menu name a split by it.",
       "type": "object",
       "propertyNames": { "$ref": "https://jcrussell.github.io/livermore-budget/schema/enums.schema.json#/$defs/split_key" },
       "additionalProperties": { "type": "string", "minLength": 1 }
@@ -267,11 +267,7 @@
         "open_into",
         "nothing_opens",
         "fold_back",
-        "chip_fold",
-        "chip_fold_label",
         "split_chooser",
-        "tail_chip",
-        "tail_chip_label",
         "expand_all",
         "collapse_all",
         "follow",
@@ -360,30 +356,10 @@
           "minLength": 1,
           "description": "The hint's sentence on a chart with a node split open: the ways to fold one back."
         },
-        "chip_fold": {
-          "type": "string",
-          "minLength": 1,
-          "description": "One chip per node split open, which folds it back: {label}."
-        },
-        "chip_fold_label": {
-          "type": "string",
-          "minLength": 1,
-          "description": "That chip's accessible name: {label}, {split}."
-        },
         "split_chooser": {
           "type": "string",
           "minLength": 1,
-          "description": "The accessible name of the chooser beside a node that splits more than one way: {label}."
-        },
-        "tail_chip": {
-          "type": "string",
-          "minLength": 1,
-          "description": "One chip per tail drawn out, which folds it back: {label}, {n}, {word}."
-        },
-        "tail_chip_label": {
-          "type": "string",
-          "minLength": 1,
-          "description": "That chip's accessible name: {label}, {n}, {word}."
+          "description": "The accessible name of the menu of a node's splits that its ⊕ opens: {label}."
         },
         "expand_all": {
           "type": "string",

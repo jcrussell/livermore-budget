@@ -73,14 +73,9 @@ function pinnedID(app) {
   return app.pinned && typeof app.pinned.id === "string" ? app.pinned.id : "";
 }
 
-/** The chip row's fold-back chips, as their words. */
-function chips(document) {
-  return [...document.querySelectorAll("#breadcrumb button.crumb-expanded")];
-}
-
-/** The chip row's Expand all and Collapse all buttons, in that order. */
+/** The toolbar's Expand all and Collapse all buttons, in that order. */
 function bulk(document) {
-  return [...document.querySelectorAll("#breadcrumb button.crumb-bulk")];
+  return [document.getElementById("chart-expand-all"), document.getElementById("chart-collapse-all")];
 }
 
 /** Escape, dispatched on the document the way a keyboard delivers it. */
@@ -378,28 +373,13 @@ describe("the glyphs", () => {
 });
 
 describe("a node that splits two ways", () => {
-  test("an activation takes the first declared split, ⊕ offers both in a menu, and the chooser in its chip draws the other", async (t) => {
+  test("an activation takes the first declared split, and ⊕ offers both in a menu", async (t) => {
     const { app, document } = await bootedApp();
     const splits = app.splitsHere({ id: TWO_WAYS }).map((sp) => sp.key);
     assert.ok(splits.length === 2, `${TWO_WAYS} splits ${splits.length} way(s)`);
     fire(markOf(app, document, TWO_WAYS), "click", { timeStamp: 0 });
     await settle();
     assert.deepEqual(app.expansions, [TWO_WAYS]);
-    const group = document.querySelector("#breadcrumb .crumb-group");
-    assert.ok(group, "no chooser beside the chip of a node that splits two ways");
-    assert.equal(group.getAttribute("role"), "group");
-    assert.ok(group.getAttribute("aria-label").includes(app.nodeOf(TWO_WAYS).label), group.getAttribute("aria-label"));
-    const choices = () => [...group.ownerDocument.querySelectorAll("#breadcrumb .crumb-choice")]
-      .map((b) => ({ words: b.textContent, pressed: b.getAttribute("aria-pressed") }));
-    const before = choices();
-    assert.deepEqual(before, splits.map((k, i) => ({ words: app.splitWords(k), pressed: String(i === 0) })));
-    // The chooser's other split replaces the first: one way per node.
-    const other = [...document.querySelectorAll("#breadcrumb .crumb-choice")][1];
-    other.click();
-    await settle();
-    assert.deepEqual(app.expansions, [TWO_WAYS + app.ALTERNATIVE_MARK + splits[1]]);
-    const after = choices();
-    assert.deepEqual(after.map((c) => c.pressed), ["false", "true"]);
 
     // ⊕ beside the node shut opens a menu of its ways; Escape there closes
     // it and lets nothing else go.
@@ -417,7 +397,7 @@ describe("a node that splits two ways", () => {
     fire(glyph, "click", { timeStamp: 3000 });
     [...document.querySelectorAll("#split-menu button")][1].click();
     await settle();
-    t.diagnostic(`${TWO_WAYS}: the chooser offers ${JSON.stringify(before.map((c) => c.words))}; ⊕'s menu ${JSON.stringify(offered)}; ` +
+    t.diagnostic(`${TWO_WAYS}: ⊕'s menu ${JSON.stringify(offered)}; ` +
       `its second split drew [${app.expansions}]`);
     assert.deepEqual(offered, splits.map((k) => app.splitWords(k)));
     assert.ok(focused, "the menu opened without focus on its first way");
@@ -450,15 +430,13 @@ describe("the ⊕ menu under a mouse", () => {
 });
 
 describe("folding a split back", () => {
-  test("the node's chip folds it, and every split inside it, back into one mark", async (t) => {
-    const { app, document } = await bootedApp();
+  test("folding a node folds it, and every split inside it, back into one mark", async (t) => {
+    const { app } = await bootedApp();
     await split(app, OPENS, WORST);
-    const chipWords = chips(document).map((c) => c.textContent);
-    assert.equal(chipWords.length, 2);
-    assert.ok(chipWords[0].includes(app.nodeOf(OPENS).label), chipWords[0]);
-    chips(document)[0].click();
+    const opened = app.expansions.slice();
+    app.collapseNode(OPENS);
     await settle();
-    t.diagnostic(`chips ${JSON.stringify(chipWords)}; the first folded the General Fund group and fund/100 with it`);
+    t.diagnostic(`[${opened}] split; folding ${OPENS} folded fund/100 with it`);
     assert.deepEqual(app.expansions, [WORST]);
     assert.ok(app.laidNodes.some((n) => n.id === OPENS), "the folded node is not drawn again");
   });
@@ -488,8 +466,8 @@ describe("folding a split back", () => {
   test("Expand all splits every node to its finest grain by its first split, and Collapse all folds everything back", async (t) => {
     const { app, document } = await bootedApp();
     const [all, none] = bulk(document);
-    assert.ok(all && none, "the chip row carries no Expand all and Collapse all");
-    assert.equal(document.getElementById("breadcrumb").hasAttribute("hidden"), false);
+    assert.ok(all && none, "the toolbar carries no Expand all and Collapse all");
+    assert.deepEqual([all.hidden, none.hidden], [false, false]);
     assert.deepEqual([all.textContent, none.textContent], [app.say("expand_all"), app.say("collapse_all")]);
     assert.deepEqual([all.disabled, none.disabled], [false, true]);
     const roots = app.laidNodes.length;
@@ -659,10 +637,8 @@ for (const year of YEARS) {
         assert.ok(fresh.length > 0, "drawing the tail out drew no new member");
         assert.equal(on, fresh[0].id, "focus is not on the topmost member the tail drew out");
         assert.ok(app.pinned === null, "restoring focus pinned the mark");
-        const tailChip = chips(document).find((c) => c.textContent.includes(app.nodeOf(WORST).label) && c !== chips(document)[0]);
-        assert.ok(tailChip, "no chip for the tail drawn out");
-        tailChip.click();
-        await settle();
+        app.collapseNode(WORST);
+        await split(app, WORST);
         assert.deepEqual(app.expansions, [WORST]);
         assert.equal(app.projection.nodes.length, capped);
         t.diagnostic(`${WORST} capped draws ${capped} node(s); ${JSON.stringify(key)} on "${tail.label}" drew ${drawnOut}, focus on ${on}`);

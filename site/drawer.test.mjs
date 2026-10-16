@@ -263,6 +263,8 @@ describe("the width arithmetic beside the chart", () => {
 });
 
 describe("the toolbar", () => {
+  // Mutation: drop wireBulk's listener on Expand all and this goes red:
+  // expanded is false.
   test("search, Expand all, Collapse all, Reset view and Full screen sit in one row above the chart, and each still works", async () => {
     const loaded = await loadApp();
     const { app, window, document } = loaded;
@@ -277,15 +279,23 @@ describe("the toolbar", () => {
     await app.boot();
     await settle();
     const bar = document.getElementById("chart-toolbar");
-    const inBar = ["search", "breadcrumb", "chart-zoom-reset", "chart-fullscreen"].map((id) => bar.contains(document.getElementById(id)));
-    const bulk = [...bar.querySelectorAll("button.crumb-bulk")];
+    const inBar = ["search", "chart-zoom-reset", "chart-fullscreen"].map((id) => bar.contains(document.getElementById(id)));
+    const tools = document.getElementById("chart-tools");
+    const bulk = ["chart-expand-all", "chart-collapse-all"].map((id) => document.getElementById(id));
     const [expandAll, collapseAll] = bulk;
+    const state = () => bulk.map((b) => (b.hidden ? "hidden" : b.disabled ? "off" : "on")).join(",");
+    const opening = state();
+    expandAll.focus();
     fire(expandAll, "click");
     await settle();
     const expanded = app.expansions.length;
-    fire([...bar.querySelectorAll("button.crumb-bulk")][1], "click");
+    const afterExpand = state();
+    const focusAfterExpand = document.activeElement.id;
+    fire(collapseAll, "click");
     await settle();
     const collapsed = app.expansions.length;
+    const afterCollapse = state();
+    const focusAfterCollapse = document.activeElement.id;
     const input = document.getElementById("search-input");
     input.value = "general";
     input.dispatchEvent(new window.Event("input", { bubbles: true }));
@@ -296,12 +306,16 @@ describe("the toolbar", () => {
     fire(document.getElementById("chart-fullscreen"), "click");
     await settle();
     assert.deepEqual({
-      inBar, bulk: bulk.map((b) => b.textContent), collapseAll: Boolean(collapseAll), expanded: expanded > 0, collapsed,
+      inBar, inTools: bulk.map((b) => tools.contains(b)), bulk: bulk.map((b) => b.textContent),
+      states: [opening, afterExpand, afterCollapse], focus: [focusAfterExpand, focusAfterCollapse],
+      chipRow: document.getElementById("breadcrumb") === null && document.querySelector(".breadcrumb, .crumb-bulk") === null,
+      expanded: expanded > 0, collapsed,
       listed: listed > 0, k, full: app.isFullscreen(), drawerFull: shown.contains(document.getElementById("drawer")),
       railFull: shown.contains(document.getElementById("rail")),
     }, {
-      inBar: [true, true, true, true], bulk: [app.CONFIG.wording.expand_all, app.CONFIG.wording.collapse_all],
-      collapseAll: true, expanded: true, collapsed: 0, listed: true, k: 1, full: true, drawerFull: true, railFull: true,
+      inBar: [true, true, true], inTools: [true, true], bulk: [app.CONFIG.wording.expand_all, app.CONFIG.wording.collapse_all],
+      states: ["on,off", "off,on", "on,off"], focus: ["chart-collapse-all", "chart-expand-all"], chipRow: true,
+      expanded: true, collapsed: 0, listed: true, k: 1, full: true, drawerFull: true, railFull: true,
     });
   });
 });

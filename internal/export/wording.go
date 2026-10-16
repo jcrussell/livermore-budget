@@ -4,7 +4,7 @@ import "github.com/jcrussell/livermore-budget/internal/project"
 
 // wording is every sentence site/app.js composes about the chart on screen,
 // as templates the client fills in: the counts line, the chart hint and the
-// chip row above the chart. `{name}` is a variable's value and
+// toolbar's buttons over every split. `{name}` is a variable's value and
 // `{name:one|many}` is the value followed by the singular or the plural word,
 // by whether the value is 1.
 //
@@ -29,18 +29,13 @@ type wording struct {
 	Swatch string `json:"swatch"`
 	// The glyph beside a node: GlyphOpen names the ⊕ that splits a node one
 	// way, GlyphChoose the ⊕ that offers a node's ways, and GlyphFold the ⊖
-	// that folds a split node back.
-	GlyphOpen   string `json:"glyph_open"`
-	GlyphChoose string `json:"glyph_choose"`
-	GlyphFold   string `json:"glyph_fold"`
-	// The chip row above the chart: one chip per node split open, the chooser
-	// beside a node that splits more than one way, a tail drawn out, and the
-	// two controls over every split at once.
-	ChipFold      string `json:"chip_fold"`
-	ChipFoldLabel string `json:"chip_fold_label"`
-	SplitChooser  string `json:"split_chooser"`
-	TailChip      string `json:"tail_chip"`
-	TailChipLabel string `json:"tail_chip_label"`
+	// that folds a split node back. SplitChooser names the menu GlyphChoose
+	// opens.
+	GlyphOpen    string `json:"glyph_open"`
+	GlyphChoose  string `json:"glyph_choose"`
+	GlyphFold    string `json:"glyph_fold"`
+	SplitChooser string `json:"split_chooser"`
+	// The toolbar's two buttons over every split at once.
 	ExpandAll     string `json:"expand_all"`
 	CollapseAll   string `json:"collapse_all"`
 	PrintedByCity string `json:"printed_by_city"`
@@ -141,7 +136,7 @@ type wording struct {
 }
 
 // splitLabels is the words for what a node splits into, keyed by every split
-// key the expansion schedule declares ([project.SplitKeys]): what the chip row
+// key the expansion schedule declares ([project.SplitKeys]): what the glyph
 // and the chooser call a node's members.
 func splitLabels() map[string]string {
 	return map[string]string{
@@ -193,7 +188,7 @@ func defaultWording() wording {
 		OpenInto: "Click a node marked \u2295, or tab to it and press Enter, to split it in place into its parts; " +
 			"every other node stays where it is.",
 		NothingOpens: "Nothing on this chart opens.",
-		FoldBack:     "A second click on a split node, \u2296 beside it, or its chip above the chart folds it back, and Back undoes the last step.",
+		FoldBack:     "A second click on a split node, or \u2296 beside it, folds it back; Collapse all folds every split, and Back undoes the last step.",
 		Follow: "Hover a node or a flow to trace its path; a click on one that does not split pins it in the drawer, " +
 			"whose Pin lets it go and whose Follow this money draws only its money. Escape unpins and puts the rest back.",
 		Expand:         "The folded mark is several of them drawn as one; click it, or tab to it and press Enter, to draw them separately.",
@@ -201,11 +196,7 @@ func defaultWording() wording {
 		GlyphOpen:      "Split {label} into {split}",
 		GlyphChoose:    "Choose what to split {label} into",
 		GlyphFold:      "Fold {label} back into one mark",
-		ChipFold:       "{label} \u25be",
-		ChipFoldLabel:  "{label}, split into {split}: fold it back into one mark",
 		SplitChooser:   "Split {label} into",
-		TailChip:       "{label}: showing all \u25c7 {n} {word} \u00d7",
-		TailChipLabel:  "{label}: showing all {n} {word}, by our count; fold the smallest back into one mark",
 		ExpandAll:      "Expand all",
 		CollapseAll:    "Collapse all",
 		PrintedByCity:  "printed by the city",

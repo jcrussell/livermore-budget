@@ -116,10 +116,6 @@ async function goTo(app, entries) {
   await settle();
 }
 
-/** The chip row's children as class:text. */
-const crumbs = (document) =>
-  [...document.getElementById("breadcrumb").children].map((c) => `${c.className}:${c.textContent}`);
-
 /**
  * Drives every chosen state of one column and reads six things off each,
  * returning what disagreed and what was counted.
@@ -761,18 +757,17 @@ describe("the expansion's drawing", () => {
       assert.ok(agg.source_note.includes("together " + dollars(value)), `${agg.source_note} does not carry ${dollars(value)}`);
     });
 
-    test(`${year.label}: the chip row says how many marks a tail drew out, and folds them back`, async (t) => {
+    test(`${year.label}: a tail's note counts the rows drawing it out draws`, async (t) => {
       const { app, document } = await bootedApp({ checkedStem: year.stem });
       const chart = document.getElementById("chart");
       const worst = worstOf(app);
       await split(app, worst);
-      const capped = ribbonsIn(chart).length;
       const tail = marksIn(chart).find((m) => app.expandable(m.__data__));
       assert.ok(tail, "no drawn mark offers to draw out");
       const tier = tail.__data__.tier;
       const word = CONFIG.overview.sankey.split_caps.find((c) => c.split === "funds").tail;
       // A group's derived remainder is one of its rows: the capped column
-      // counts it, so the chip's count is the tail note's total.
+      // counts it, so the rows drawn are the tail note's total.
       const rows = () => marksIn(chart).filter((m) => m.__data__.tier === tier && !app.isAggregate(m.__data__.id) &&
         app.nodeOf(m.__data__.id).parent === worst).length;
       const cap = CONFIG.overview.sankey.split_caps.find((c) => c.split === "funds").cap;
@@ -781,21 +776,8 @@ describe("the expansion's drawing", () => {
       await settle();
       const drawn = rows();
       const stated = app.say("aggregate_note", { folded: drawn - cap, total: drawn, cap });
-      assert.ok(note.startsWith(stated), `the chip counts ${drawn} and the tail's note reads "${note}"`);
-      const chipCrumbs = crumbs(document);
-      const chip = [...document.getElementById("breadcrumb").querySelectorAll(".crumb-expanded")].at(-1);
-      const chipText = chip.textContent;
-      fire(chip, "click");
-      await settle();
-      const folded = ribbonsIn(chart).length;
-      const label = app.nodeOf(worst).label;
-      t.diagnostic(`drawn out, ${worst} draws ${drawn} ${word} and the chips read ${JSON.stringify(chipCrumbs)}; ` +
-        `pressing the last left ${folded} ribbon(s) (capped: ${capped}) under ${JSON.stringify(crumbs(document))}`);
-      assert.equal(chipText, app.say("tail_chip", { label, n: drawn, word }));
-      assert.equal(chipCrumbs.length, 4);
-      assert.ok(chipCrumbs[3].startsWith("crumb-expanded"), chipCrumbs[3]);
-      assert.equal(folded, capped);
-      assert.equal(crumbs(document).length, 3);
+      t.diagnostic(`drawn out, ${worst} draws ${drawn} ${word}; the tail's note read "${note}"`);
+      assert.ok(note.startsWith(stated), `${drawn} rows are drawn and the tail's note reads "${note}"`);
     });
 
     test(`${year.label}: a caveat about a folded row marks the tail while it stands for it, and the row itself once it is drawn`, async (t) => {
@@ -828,22 +810,6 @@ describe("the expansion's drawing", () => {
       const hub = app.nodeOf(foldedID).parent;
       assert.deepEqual(cappedMarks, [cappedTail.__data__.id, hub].sort());
       assert.deepEqual(drawnOut, [foldedID, hub].sort());
-    });
-
-    test(`${year.label}: two chips the city prints in the same words are told apart by what each splits into`, async (t) => {
-      const { app, document } = await bootedApp({ checkedStem: year.stem });
-      // A list naming both, as a link made before the group opened straight
-      // through its one fund does.
-      await goTo(app, ["fund-group/general", "fund/100"]);
-      const words = [app.nodeOf("fund-group/general").label, app.nodeOf("fund/100").label];
-      const chips = [...document.querySelectorAll("#breadcrumb .crumb-expanded")].map((c) => c.textContent);
-      t.diagnostic(`the column labels the two ${JSON.stringify(words)}, and the chips read ${JSON.stringify(chips)}`);
-      assert.equal(words[0], words[1], "the two labels no longer collide, so this asserts nothing");
-      assert.deepEqual(chips, [
-        app.say("chip_fold", { label: `${words[0]} (${app.splitWords("funds")})` }),
-        app.say("chip_fold", { label: `${words[1]} (${app.splitWords("divisions")})` }),
-      ]);
-      assert.equal(new Set(chips).size, chips.length);
     });
   }
 });
@@ -1048,8 +1014,8 @@ describe("the classes the client sets and the rules the stylesheet carries", () 
       for (const el of document.querySelectorAll("*")) for (const c of classesIn(el.getAttribute("class"))) worn.add(c);
     };
     // The root, the tooltip on a mark and on a ribbon, the panel on a
-    // ribbon, a pin, an isolation, a zoom, every split the page offers with
-    // the chooser and the chips, a tail drawn out, and a refusal.
+    // ribbon, a pin, an isolation, a zoom, every split the page offers, a
+    // tail drawn out, and a refusal.
     snap();
     const mark = marksIn(chart)[0];
     const ribbon = ribbonsIn(chart)[0];
@@ -1079,7 +1045,7 @@ describe("the classes the client sets and the rules the stylesheet carries", () 
       snap();
       const laidRibbon = ribbonsIn(chart)[0];
       if (laidRibbon) { app.showTip({ target: chart, clientX: 0, clientY: 0 }, laidRibbon.__data__); app.pin(laidRibbon.__data__); snap(); }
-      // The first chart that folds a split is drawn out once, for its chip.
+      // The first chart that folds a split is drawn out once, for its marks.
       if (!expandedAt && app.projection.nodes.some((n) => app.expandable(n))) {
         expandAll(app); await settle(); snap();
         expandedAt = where;
@@ -1116,7 +1082,7 @@ describe("the wording is the packager's", () => {
     assert.equal(app.say("counts", { links: 3, nodes: 1 }), "3 flows over 1 node; {unfilled} stays");
     assert.equal(app.say("fold_back"), config.wording.fold_back);
   });
-  test("a reworded config is followed by the counts line, the hint, the description and the chip row", async (t) => {
+  test("a reworded config is followed by the counts line, the hint, the toolbar and the ⊕ menu", async (t) => {
     const config = structuredClone(pageFixture().config);
     for (const key of Object.keys(config.wording)) config.wording[key] = `«${key}» ` + config.wording[key];
     const { app, document } = await bootedApp({ config, checkedStem: YEARS[0].stem });
@@ -1125,42 +1091,19 @@ describe("the wording is the packager's", () => {
     await split(app, "fund-group/general", "expenditure/services-and-supplies");
     const counts = text("counts-line");
     const hint = text("chart-hint");
-    const chips = [...document.querySelectorAll("#breadcrumb button")].map((b) => b.textContent);
-    const named = [...document.querySelectorAll("#breadcrumb [aria-label]")].map((b) => b.getAttribute("aria-label"));
-    t.diagnostic(`counts "${counts}"; hint "${hint.slice(0, 80)}…"; chips ${JSON.stringify(chips)}; named ${JSON.stringify(named)}`);
+    const bulk = ["chart-expand-all", "chart-collapse-all"].map((id) => document.getElementById(id).textContent);
+    const chooser = [...document.querySelectorAll("#chart g.glyph")].find((g) => g.getAttribute("aria-haspopup") === "true");
+    assert.ok(chooser, "no ⊕ offers a menu");
+    fire(chooser, "click", { timeStamp: 0 });
+    const menu = document.getElementById("split-menu");
+    const named = menu ? menu.getAttribute("aria-label") : "";
+    t.diagnostic(`counts "${counts}"; hint "${hint.slice(0, 80)}…"; toolbar ${JSON.stringify(bulk)}; menu "${named}"`);
     assert.ok(hintRoot.startsWith("«open_into» ") && hintRoot.includes(" «follow» ") && !hintRoot.includes("«fold_back»"), hintRoot);
     assert.ok(counts.startsWith("«counts_partial» "), counts);
     assert.match(counts, /\d+ (flow|flows) between \d+ (node|nodes)/);
     assert.ok(hint.includes(" «fold_back» "), hint);
-    assert.deepEqual(chips.slice(0, 2), ["«expand_all» Expand all", "«collapse_all» Collapse all"]);
-    assert.ok(chips[2].startsWith("«chip_fold» General Fund"), chips[2]);
-    assert.ok(chips.includes("«split_labels» object rows") || chips.some((c) => c === app.splitWords("object-rows")), JSON.stringify(chips));
-    assert.ok(named.some((n) => n.startsWith("«chip_fold_label» General Fund")), JSON.stringify(named));
-    assert.ok(named.some((n) => n.startsWith("«split_chooser» Split Services")), JSON.stringify(named));
-  });
-});
-
-// The words a tail chip counts in are the chart's declared tail, which the
-// form answers: app.js reads no hint.
-describe("the tail chip counts in the declared tail's words", () => {
-  test("each split's tail word is the one its split cap declares, on the chip a drawn-out tail leaves", async (t) => {
-    const config = structuredClone(CONFIG);
-    for (const c of config.overview.sankey.split_caps) c.tail = `tail-of-${c.split}`;
-    const { app, document } = await bootedApp({ config, checkedStem: YEARS[0].stem });
-    const chart = document.getElementById("chart");
-    const worst = worstOf(app);
-    await split(app, worst);
-    const tail = marksIn(chart).find((m) => app.expandable(m.__data__));
-    assert.ok(tail, "no drawn mark offers to draw out");
-    app.drawOutTail(tail.__data__);
-    await settle();
-    const chip = [...document.querySelectorAll("#breadcrumb .crumb-expanded")].at(-1);
-    const words = { text: chip.textContent, label: chip.getAttribute("aria-label") };
-    t.diagnostic(`the chip reads "${words.text}", named "${words.label}"`);
-    assert.ok(words.text.includes(" tail-of-funds "), words.text);
-    assert.ok(words.label.includes(" tail-of-funds"), words.label);
-    assert.equal(app.SANKEY.tailWord(config.overview, "lines"), "tail-of-lines");
-    assert.equal(app.SANKEY.tailWord(config.overview, "payers"), null);
+    assert.deepEqual(bulk, ["«expand_all» Expand all", "«collapse_all» Collapse all"]);
+    assert.ok(named.startsWith("«split_chooser» Split "), named);
   });
 });
 
@@ -1223,11 +1166,6 @@ describe("a count the client takes is marked as its own", () => {
     said.search = text("search-status");
     const worst = worstOf(app);
     await split(app, worst);
-    const tail = marksIn(chart).find((m) => app.expandable(m.__data__));
-    assert.ok(tail, "no drawn mark offers to draw out");
-    app.drawOutTail(tail.__data__);
-    await settle();
-    said.tailChip = [...document.querySelectorAll("#breadcrumb .crumb-expanded")].at(-1).textContent;
     app.expandAll();
     await settle();
     said.inferred = [...document.querySelectorAll("#derived-list li")]

@@ -90,7 +90,6 @@ members, as `FormRenderer` in `site/app.js` types them:
 /** @typedef {{
  *  form: string,
  *  tiersOf(chart): number[],                    // the declared tiers, from its own hints: the spine's columns, which a root of the expansion is placed by
- *  tailWord(chart, key): string | null,         // the words a split's tail counts its members in, where the chart caps that split
  *  width(columns): number,                      // the px a chart of this many columns is laid out at
  *  columnsOf(drawn, tiers): number,             // how many columns a shaped chart is laid out in
  *  shape(doc, view): FiscProjection,            // fold to the frontier, cap the open splits, stamp slots, flip reductions; throws to refuse; view is {chart, frontier, whole}

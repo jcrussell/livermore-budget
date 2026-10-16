@@ -123,7 +123,6 @@ export function homeOf(l) {
  * @typedef {{
  *   form: string,
  *   tiersOf(chart: FiscChart): number[],
- *   tailWord(chart: FiscChart, key: string): string | null,
  *   width(columns: number): number,
  *   columnsOf(drawn: FiscProjection, tiers: number[]): number,
  *   shape(doc: FiscProjection, view: ShapeView): FiscProjection,
@@ -689,8 +688,7 @@ export function expandable(d) {
 }
 
 /**
- * Whether focus is in the chart or its chip row, asked while its element
- * still exists. Not merely "not the body": a redraw asked for from the flow
+ * Whether focus is in the chart, asked while its element still exists. Not merely "not the body": a redraw asked for from the flow
  * table or the footer must not pull focus into the chart.
  * @returns {boolean}
  */
@@ -698,8 +696,7 @@ export function focusInChart() {
   const active = document.activeElement;
   const chart = maybeEl("chart");
   return Boolean(active) && Boolean(chart) &&
-    (active === chart || (typeof chart.contains === "function" && chart.contains(active)) ||
-      (typeof active.closest === "function" && active.closest(".breadcrumb") !== null));
+    (active === chart || (typeof chart.contains === "function" && chart.contains(active)));
 }
 
 /**
@@ -780,7 +777,7 @@ export function redraw(next, refused = "That could not be drawn", landOn, anchor
   }
   resetDetail();
   hideTip();
-  paintChips();
+  paintBulk();
   paintChartName();
   paintCounts();
   buildLegend();
@@ -1069,7 +1066,7 @@ export let splitMenu = null;
 
 /**
  * Opens the menu of a node's splits beside its glyph, one button per split
- * in the chip row's words for it, focus on the first. Choosing one splits
+ * in splitWords' words for it, focus on the first. Choosing one splits
  * the node by it and pins it; Escape or focus leaving closes it.
  * @param {LaidNode} d
  * @param {Element} [glyph]
@@ -1339,116 +1336,44 @@ export function buildLegendCount() {
 }
 
 /**
- * Draws the chip row above the chart: on the expansion, Expand all and
- * Collapse all, then one chip per node split open, in the order the reader
- * split them, each folding its node back, with a chooser beside a node that
- * splits more than one way, and one chip per tail drawn out; on any other
- * document, nothing. The only always-visible way to fold a split back, since
- * splitting can remove the node that was clicked.
+ * Offers Expand all and Collapse all in the toolbar on the expansion, each
+ * live only where it would move the chart: Expand all while a node drawn
+ * still splits, Collapse all while anything is split. On any other document
+ * both stay hidden, as the template ships them.
  */
-export function paintChips() {
-  const bar = maybeEl("breadcrumb");
-  if (!bar) return;
-  /** @type {HTMLElement[]} */
-  const items = [];
-  if (expanding() && fetched) {
-    const bulk = (/** @type {string} */ words, /** @type {boolean} */ live, /** @type {() => void} */ act) => {
-      const b = h("button", "crumb-bulk", words);
-      b.setAttribute("type", "button");
-      if (!live) b.setAttribute("disabled", "");
-      b.addEventListener("click", () => guarded("redraw the chart", act));
-      return b;
-    };
-    const shut = Boolean(projection) && /** @type {FiscProjection} */ (projection).nodes.some(splittable);
-    items.push(bulk(say("expand_all"), shut, expandAll), bulk(say("collapse_all"), expansions.length > 0, collapseAll));
-    const doc = fetched;
-    const entries = expansions.map((entry) => parseEntry(doc, entry));
-    const labelOf = (/** @type {string} */ id) => {
-      const n = nodeOf(id);
-      return n ? n.label : id;
-    };
-    // THE COLLISION IS THE CITY'S: two nodes split open that it prints in the
-    // same words -- a fund group and its one fund -- are each told apart by
-    // what they split into.
-    const splitLabels = entries.filter((e) => e.kind === "split").map((e) => labelOf(e.id));
-    for (const e of entries) {
-      if (e.kind === "tail") {
-        items.push(tailChip(e.node, e.key));
-        continue;
-      }
-      const label = labelOf(e.id);
-      const twice = splitLabels.filter((l) => l === label).length > 1;
-      items.push(splitChip(e.id, e.key, twice ? label + " (" + splitWords(e.key) + ")" : label));
-    }
+export function paintBulk() {
+  const on = expanding() && Boolean(fetched);
+  const shut = on && Boolean(projection) && /** @type {FiscProjection} */ (projection).nodes.some(splittable);
+  /** @type {[string, string, boolean][]} */
+  const buttons = [["chart-expand-all", "expand_all", shut], ["chart-collapse-all", "collapse_all", on && expansions.length > 0]];
+  for (const [id, words, live] of buttons) {
+    const b = maybeEl(id);
+    if (!b) continue;
+    b.textContent = say(words);
+    if (on) b.removeAttribute("hidden");
+    else b.setAttribute("hidden", "");
+    if (live) b.removeAttribute("disabled");
+    else b.setAttribute("disabled", "");
   }
-  bar.replaceChildren(...items);
-  if (items.length) bar.removeAttribute("hidden");
-  else bar.setAttribute("hidden", "");
 }
 
 /**
- * One chip of the chip row: a button saying `text`, named `label` for a
- * screen reader since the glyph is not the label, doing `act`.
- * @param {string} text
- * @param {string} label
- * @param {() => void} act
- * @returns {HTMLElement}
+ * Wires Expand all and Collapse all. A button its own press disables hands
+ * focus to the other, which a press can never leave disabled too, so the
+ * keyboard is not dropped on the body.
  */
-export function foldBackChip(text, label, act) {
-  const chip = h("button", "crumb-expanded", text);
-  chip.setAttribute("type", "button");
-  chip.setAttribute("aria-label", label);
-  chip.addEventListener("click", () => guarded("fold this back", act));
-  return chip;
-}
-
-/**
- * A node split open's chip, which folds it back, and beside a node that
- * splits more than one way the chooser between its splits, each a button
- * pressed for the split drawn.
- * @param {string} id
- * @param {string} key
- * @param {string} label what the chip calls the node
- * @returns {HTMLElement}
- */
-function splitChip(id, key, label) {
-  const chip = foldBackChip(say("chip_fold", { label }),
-    say("chip_fold_label", { label, split: splitWords(key) }), () => collapseNode(id));
-  const splits = fetched ? core.splitsOf(fetched, id) : [];
-  if (splits.length < 2) return chip;
-  const group = h("span", "crumb-group");
-  group.setAttribute("role", "group");
-  group.setAttribute("aria-label", say("split_chooser", { label }));
-  group.append(chip, ...splits.map((sp) => {
-    const choice = h("button", "crumb-choice", splitWords(sp.key));
-    choice.setAttribute("type", "button");
-    choice.setAttribute("aria-pressed", String(sp.key === key));
-    choice.addEventListener("click", () => guarded("split this mark", () => {
-      if (sp.key !== key) expandNode(id, sp.key);
-    }));
-    return choice;
-  }));
-  return group;
-}
-
-/**
- * A split drawn out of its tail's chip, which folds the smallest back into
- * the tail. Its count is the members drawn, read off the chart, less a
- * derived remainder, which is not one of the split's word.
- * @param {string} node
- * @param {string} key
- * @returns {HTMLElement}
- */
-function tailChip(node, key) {
-  const n = nodeOf(node);
-  const label = n ? n.label : node;
-  const split = fetched ? core.splitsOf(fetched, node).find((sp) => sp.key === key) : undefined;
-  const drawn = new Set(projection ? projection.nodes.map((x) => x.id) : []);
-  const count = split ? split.members.filter((m) => drawn.has(m)).length : 0;
-  const word = formOnScreen().tailWord(chartOnScreen(), key) || splitWords(key);
-  const id = core.splitTailID(node, key);
-  return foldBackChip(say("tail_chip", { label, n: count, word }), say("tail_chip_label", { label, n: count, word }),
-    () => redraw(expansions.filter((e) => e !== id), "That could not be folded back", () => id));
+export function wireBulk() {
+  const all = maybeEl("chart-expand-all");
+  const none = maybeEl("chart-collapse-all");
+  /** @type {[HTMLElement | null, HTMLElement | null, () => boolean][]} */
+  const pairs = [[all, none, expandAll], [none, all, collapseAll]];
+  for (const [b, other, act] of pairs) {
+    if (!b) continue;
+    b.addEventListener("click", () => {
+      guarded("redraw the chart", act);
+      if (b.hasAttribute("disabled") && other && !other.hasAttribute("disabled")) other.focus();
+    });
+  }
 }
 
 /**
@@ -3919,7 +3844,7 @@ export async function showYear(year, carry = []) {
 
   paintYearWords(year);
   paintSplitsLine(year, dropped, before);
-  paintChips();
+  paintBulk();
   buildLegend();
   buildFilterPanel();
   paintFilterLine();
@@ -4093,6 +4018,7 @@ export async function main() {
   wireDrawer();
   wireFilters();
   wireSearch();
+  wireBulk();
   wireFullscreen();
   wireZoom();
 
@@ -4101,7 +4027,7 @@ export async function main() {
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
       // ESCAPE UNDOES NO SPLIT: it lets the pin and the isolation go, and the
-      // chips, Back and ⊖ are what fold. A gesture that opened several
+      // Collapse all, Back and ⊖ are what fold. A gesture that opened several
       // splits at once has no single last one to undo.
       if (closeSplitMenu(true)) return;
       hideTip();

@@ -1044,17 +1044,6 @@ export const SANKEY = Object.freeze({
   },
 
   /**
-   * The words a split's tail counts its members in, as the chart's
-   * sankey.split_caps declares them for that split key, or null where it
-   * caps no such split.
-   */
-  tailWord(chart, key) {
-    const caps = (chart.sankey && chart.sankey.split_caps) || [];
-    const cap = caps.find((/** @type {{split: string, tail: string}} */ c) => c.split === key);
-    return cap ? cap.tail : null;
-  },
-
-  /**
    * How many columns a shaped chart is laid out in: its distinct slots
    * (slotsOf), at least one.
    */

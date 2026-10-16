@@ -282,14 +282,14 @@ describe("a year switch and the splits on screen", () => {
     const before = app.expansions.slice();
     clickYear(document, "sankey-2027");
     await settle();
-    const chips = [...document.querySelectorAll("#breadcrumb .crumb-expanded")].length;
+    const collapsible = !document.getElementById("chart-collapse-all").disabled;
     const after = app.expansions.slice();
     const lede = document.getElementById("lede-year").textContent;
     await split(app, "fund/100");
-    t.diagnostic(`split [${before.join(", ")}], switched year and read "${lede}" with [${after.join(", ")}] split and ${chips} chip(s)`);
+    t.diagnostic(`split [${before.join(", ")}], switched year and read "${lede}" with [${after.join(", ")}] split; Collapse all live: ${collapsible}`);
     assert.deepEqual(before, ["fund-group/general"]);
     assert.deepEqual(after, ["fund-group/general"]);
-    assert.equal(chips, 1);
+    assert.equal(collapsible, true);
     assert.equal(lede, "FY 2026-27 adopted");
     assert.equal(app.fetched.metadata.fiscal_year, 2027);
     assert.ok(document.getElementById("splits-line").hidden, "a switch that dropped nothing says it did");
@@ -326,17 +326,17 @@ describe("a year switch and the splits on screen", () => {
     await settle();
     const after = {
       splits: app.expansions.join(" > "), title: document.title,
-      year: app.column.column.fiscal_year, chips: [...document.querySelectorAll("#breadcrumb .crumb-expanded")].length,
+      year: app.column.column.fiscal_year, collapsible: !document.getElementById("chart-collapse-all").disabled,
       banners: refusals(document).map((b) => b.textContent),
     };
-    document.querySelector("#breadcrumb .crumb-expanded").click();
+    document.getElementById("chart-collapse-all").click();
     await settle();
-    t.diagnostic(`after the refused switch: splits "${after.splits}", title "${after.title}", column FY${after.year}, ${after.chips} chip(s), banners ${JSON.stringify(after.banners)}; folded back, the chart draws ${cents()} cents against ${root} at boot`);
+    t.diagnostic(`after the refused switch: splits "${after.splits}", title "${after.title}", column FY${after.year}, Collapse all live: ${after.collapsible}, banners ${JSON.stringify(after.banners)}; folded back, the chart draws ${cents()} cents against ${root} at boot`);
     assert.equal(after.banners.length, 1);
     assert.equal(after.splits, "fund-group/general");
     assert.equal(after.title, title);
     assert.equal(after.year, 2026);
-    assert.equal(after.chips, 1);
+    assert.equal(after.collapsible, true);
     assert.equal(app.expansions.length, 0);
     assert.equal(cents(), root);
   });

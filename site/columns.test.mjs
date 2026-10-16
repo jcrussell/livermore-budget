@@ -36,7 +36,7 @@ describe("the columns are the slots the chart draws", () => {
 });
 
 describe("a split whose chart will not draw", () => {
-  test("is refused with the banner, and the chart, the splits and the chip row stay as they were", async (t) => {
+  test("is refused with the banner, and the chart, the splits and the toolbar stay as they were", async (t) => {
     // A split of the sales tax in a form this page does not draw: the root
     // never asks it, and opening it is refused rather than drawn as extend.
     const broken = structuredClone(columnFixture("fy2026-adopted"));
@@ -49,7 +49,7 @@ describe("a split whose chart will not draw", () => {
     assert.deepEqual(refusals(document).map((b) => b.textContent), [], "the root read a link it should not");
     await split(app, "fund-group/general");
     const laid = app.laidNodes.map((n) => n.id).sort().join(",");
-    const chips = document.getElementById("breadcrumb").textContent;
+    const bulk = ["chart-expand-all", "chart-collapse-all"].map((id) => document.getElementById(id).disabled).join(",");
     const drew = app.expandNode("revenue/taxes/sales", "lines-planted");
     await settle();
     const banners = refusals(document).map((b) => b.textContent);
@@ -59,7 +59,7 @@ describe("a split whose chart will not draw", () => {
     assert.ok(banners[0].startsWith("That could not be split: "), banners[0]);
     assert.deepEqual(app.expansions, ["fund-group/general"]);
     assert.equal(app.laidNodes.map((n) => n.id).sort().join(","), laid);
-    assert.equal(document.getElementById("breadcrumb").textContent, chips);
+    assert.equal(["chart-expand-all", "chart-collapse-all"].map((id) => document.getElementById(id).disabled).join(","), bulk);
   });
 
   test("opened by a click, leaves the refusal in the panel rather than pinning the node over it", async (t) => {

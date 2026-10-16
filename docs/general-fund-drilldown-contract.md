@@ -365,8 +365,7 @@ declares, per split key, how many members are drawn before the rest fold into
 one tail inside the node they split; `capColumn` decides which, by value. The
 tail is `derived: true`, with a rationale and a source note: its *value* is
 every cent a printed figure, summed exactly as the fold sums a merged ribbon;
-what is inferred is the *grouping*. A reader draws a tail out at full length,
-and the chip row folds it back.
+what is inferred is the *grouping*. A reader draws a tail out at full length.
 
 **The order is fold, cap, fold, and it is not interchangeable.** The first
 fold draws the frontier, so the cap ranks a split's members by what they carry

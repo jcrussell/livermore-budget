@@ -831,7 +831,7 @@ button[aria-pressed="true"] {
   display: none;
 }
 
-/* One slim row above the chart: search, the chip row and the view's buttons. */
+/* One slim row above the chart: search and the view's buttons. */
 .chart-toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -841,8 +841,7 @@ button[aria-pressed="true"] {
   font-size: 13px;
 }
 
-.chart-toolbar > .search,
-.chart-toolbar > .breadcrumb {
+.chart-toolbar > .search {
   margin: 0;
 }
 
@@ -1364,76 +1363,6 @@ details > summary {
   color: var(--ink-2);
   font-size: 14px;
   padding: 6px 0;
-}
-
-/* ---------- the chip row of what the chart has split open ---------- */
-
-/* Above the chart rather than beside it, because it is the only always-visible
-   way to fold a split back besides ⊖, which sits beside a mark the reader
-   may have scrolled away from. */
-.breadcrumb {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 8px;
-  font-size: 13px;
-}
-
-.breadcrumb[hidden] {
-  display: none;
-}
-
-/* Real <button>s: they do something on this page rather than going somewhere,
-   and have to be reachable by keyboard without any of the tabindex and role
-   work the SVG marks need. Expand all and Collapse all are solid; a chip that
-   folds one split back is dashed, because it undoes our grouping, not a
-   printed figure. */
-.crumb-bulk,
-.crumb-expanded,
-.crumb-choice {
-  cursor: pointer;
-  font: inherit;
-  color: var(--ink-2);
-  background: var(--surface-1);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 2px 8px;
-}
-
-.crumb-expanded {
-  border-style: dashed;
-}
-
-.crumb-bulk:hover,
-.crumb-bulk:focus,
-.crumb-expanded:hover,
-.crumb-expanded:focus,
-.crumb-choice:hover,
-.crumb-choice:focus {
-  color: var(--ink-1);
-  border-color: var(--rule);
-}
-
-.crumb-bulk[disabled] {
-  cursor: default;
-  opacity: 0.5;
-}
-
-/* A node that splits more than one way: its chip and the chooser between its
-   splits, kept together when the row wraps. */
-.crumb-group {
-  display: inline-flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-
-/* The split drawn, which the button's aria-pressed already says. */
-.crumb-choice[aria-pressed="true"] {
-  color: var(--ink-1);
-  font-weight: 600;
-  border-color: var(--rule);
 }
 
 /* ---------- the caveats page ---------- */
