@@ -261,9 +261,7 @@ Why, measured: [`docs/prose-claims-evidence.md`](docs/prose-claims-evidence.md).
   `.gitignore` fix, a docs typo. Everywhere else a single pass is not the gate.
 - Run `/code-review` over the **range**, not the last commit. A lane's goldens,
   its check, its export seam and its client are one claim.
-- **Pass `--max-findings all` on every pass.** The default cap returns at most
-  ten findings, so a pass that reports exactly ten has not looked at
-  everything.
+- **Pass `--max-findings all` on every pass.**
 - **On a branch of several lanes, run the loop once at the merge**, not once per
   lane. Same triage, same three-to-five passes, over the whole branch. A later
   lane reshapes the declarations an earlier one wrote, so a per-lane pass spends
