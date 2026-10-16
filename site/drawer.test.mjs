@@ -1,7 +1,7 @@
 // drawer.test.mjs -- the chart first: one toolbar above it, the legend,
-// filters and key in a rail beside it, and the provenance drawer beside it
-// on the other side, previewing what is hovered and holding what is pinned;
-// and the width arithmetic that puts all three side by side at full size.
+// filters and key in a rail beside it, and the provenance drawer below it,
+// previewing what is hovered and holding what is pinned; and the width
+// arithmetic that puts the rail and the chart side by side at full size.
 
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
@@ -18,9 +18,9 @@ async function at(viewport, o = {}) {
 const ends = (d) => (d ? d.source.id + " -> " + d.target.id : "");
 
 describe("the provenance drawer", () => {
-  // Mutation: leave #detail where it was, below the chart and outside the
-  // drawer, and this goes red: no #drawer #detail sits beside the chart.
-  test("it sits beside the chart, after it, in the chart's body, and the card full screen takes it along", async () => {
+  // Mutation: leave #detail outside the drawer and this goes red: no
+  // #drawer #detail sits in the chart's body.
+  test("it sits after the chart, in the chart's body, and the card full screen takes it along", async () => {
     const { document } = await bootedApp();
     const body = document.getElementById("chart-body");
     const order = [...body.children].map((c) => c.id || c.className);
@@ -82,39 +82,32 @@ describe("the provenance drawer", () => {
     });
   });
 
-  // Mutation: drop position: sticky from the drawer's rule and this goes red.
-  test("beside the chart the drawer is sticky, so it stays in sight while the page scrolls the chart", () => {
+  // Mutations: restore the drawer's own column to the grid, or drop its
+  // grid-column, and this goes red: the drawer is not under the chart.
+  test("beside the rail, the drawer sits under the chart in the chart's column, and is not sticky", () => {
     const css = stylesheet().replace(/\/\*[\s\S]*?\*\//g, "");
-    const at = css.indexOf(".chart-body[data-beside] > .drawer {");
-    const rule = at < 0 ? "" : css.slice(at, css.indexOf("}", at));
-    const grid = css.slice(css.indexOf(".chart-body[data-beside] {"), css.indexOf("}", css.indexOf(".chart-body[data-beside] {")));
-    assert.deepEqual({
-      sticky: /position:\s*sticky/.test(rule), top: /\btop:\s*\d+px/.test(rule),
-      fits: /max-height:\s*calc\(100vh - \d+px\)/.test(rule), scrolls: /overflow-y:\s*auto/.test(rule),
-      // A stretched grid item is as tall as its row, and sticks to nothing.
-      start: /align-items:\s*start/.test(grid),
-    }, { sticky: true, top: true, fits: true, scrolls: true, start: true });
-  });
-
-  // The measurement the drawer's side is chosen by: the marks drawn inside
-  // the card at the opening chart and once a split is open, and how far each
-  // sits from the card's left and right edges on average.
-  test("once a split is open the marks in the card sit nearer its right edge, the drawer's side, and an opened chart runs past it", async (t) => {
-    const { app, document } = await bootedApp();
-    const card = app.widthOf(app.openingColumns());
-    const measure = () => {
-      const xs = app.laidNodes.map((n) => (n.x0 + n.x1) / 2).concat([...document.querySelectorAll("#chart path.link")]
-        .map((p) => (p.__data__.source.x1 + p.__data__.target.x0) / 2));
-      const inCard = xs.filter((x) => x <= card);
-      const mean = (f) => inCard.reduce((s, x) => s + f(x), 0) / inCard.length;
-      return { left: Math.round(mean((x) => x)), right: Math.round(mean((x) => card - x)), past: xs.length - inCard.length };
+    const rule = (selector) => {
+      const at = css.indexOf("\n" + selector + " {");
+      return at < 0 ? "" : css.slice(at, css.indexOf("}", at));
     };
-    const root = measure();
-    await split(app, "fund-group/general");
-    const opened = measure();
-    t.diagnostic(`in a ${card}px card, mean px to the left and right edges: at the root ${root.left} and ${root.right}, ` +
-      `${root.past} past the right edge; with fund-group/general open ${opened.left} and ${opened.right}, ${opened.past} past it`);
-    assert.deepEqual({ nearerRight: opened.right < opened.left, runsPast: opened.past > 0 }, { nearerRight: true, runsPast: true });
+    const grid = rule(".chart-body[data-beside]");
+    const columns = /grid-template-columns:\s*([^;]*);/.exec(grid);
+    const at = (selector) => {
+      const r = rule(selector);
+      const col = /grid-column:\s*([^;]*);/.exec(r);
+      const row = /grid-row:\s*([^;]*);/.exec(r);
+      return { column: col ? col[1].trim() : "", row: row ? row[1].trim() : "" };
+    };
+    assert.deepEqual({
+      columns: columns ? columns[1].trim() : "", rows: /grid-template-rows:\s*auto 1fr\s*;/.test(grid),
+      rail: at(".chart-body[data-beside] > .rail"), chart: at(".chart-body[data-beside] > .chart-wrap"),
+      drawer: at(".chart-body[data-beside] > .drawer"),
+      sticky: [...css.matchAll(/([^{}]+)\{([^}]*)\}/g)].filter((m) => /\.drawer\b|#drawer\b/.test(m[1]) && /position:\s*sticky/.test(m[2])).map((m) => m[1].trim()),
+    }, {
+      columns: "var(--rail-now) var(--chart-room)", rows: true,
+      rail: { column: "1", row: "1 / 3" }, chart: { column: "2", row: "1" }, drawer: { column: "2", row: "2" },
+      sticky: [],
+    });
   });
 });
 
@@ -224,10 +217,11 @@ describe("the rail", () => {
 });
 
 describe("the width arithmetic beside the chart", () => {
-  // Mutation: restore BESIDE_QUERY to the opening chart's width plus
-  // CHART_CUSHION, RAIL_WIDTH and DRAWER_WIDTH, and this goes red: at 1440px
-  // the three stack.
-  test("at 1440px the rail and the drawer sit beside the chart at full size, open, split or collapsed, and the chart pans in the room they leave", async (t) => {
+  // Mutations: restore BESIDE_QUERY to the opening chart's width plus
+  // CHART_CUSHION and RAIL_WIDTH, and this goes red: at 1440px the rail
+  // stacks; add the drawer's width back to --chart-panels, and the room
+  // read is refused.
+  test("at 1440px the rail sits beside the chart at full size, open, split or collapsed, and the chart pans in the room it leaves", async (t) => {
     const px = 1440;
     const { app, document, window } = await at(px);
     const full = app.widthOf(app.openingColumns());
@@ -244,18 +238,18 @@ describe("the width arithmetic beside the chart", () => {
     const collapsed = read();
     t.diagnostic(`BESIDE_QUERY ${app.BESIDE_QUERY}: at ${px}px the opening chart ${full}px draws in a room of ` +
       `${open.room}px with the rail open and ${collapsed.room}px with it collapsed (cushion ${app.CHART_CUSHION}, rail ` +
-      `${app.RAIL_WIDTH}, drawer ${app.DRAWER_WIDTH})`);
-    const room = px - app.CHART_CUSHION - app.DRAWER_WIDTH;
+      `${app.RAIL_WIDTH})`);
+    const room = px - app.CHART_CUSHION;
     const want = { beside: true, scale: 1, fits: true };
     assert.deepEqual({ open, split1, collapsed }, {
       open: { ...want, room: room - app.RAIL_WIDTH },
       split1: { ...want, room: room - app.RAIL_WIDTH, moved: false },
-      collapsed: { ...want, room: room - drawnBody(document, window).tab },
+      collapsed: { ...want, room: Math.min(full, room - drawnBody(document, window).tab) },
     });
     assert.ok(collapsed.room > open.room, "collapsing the rail did not widen the chart's room");
   });
 
-  test("from 1280px the three sit beside, at full size, and at 1279px they stack", async () => {
+  test("from 1280px the rail sits beside the chart, at full size, and at 1279px it stacks", async () => {
     const said = (l) => {
       const b = drawnBody(l.document, l.window);
       return b.refused ? b : { beside: b.beside, panels: b.panels, scale: b.drawn / l.app.widthOf(l.app.openingColumns()) };

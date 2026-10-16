@@ -149,9 +149,10 @@
          hairline is drawn wider than its share, wherever the chart has one. */}}
   <p class="hairline-line" id="hairline-line" aria-live="polite" hidden></p>
   {{- /* The rail, the chart and the drawer, in reading order. app.js sets
-         data-beside where the viewport has room for all three at the opening
-         chart's full size, and data-rail as the reader leaves the rail; with
-         neither the three stack. */}}
+         data-beside where the viewport has room for the rail beside the
+         chart, and data-rail as the reader leaves the rail; without
+         data-beside the three stack. The drawer is under the chart either
+         way. */}}
   <div class="chart-body" id="chart-body">
   <div class="rail" id="rail">
     {{- /* SHIPPED HIDDEN: with JavaScript off there is nothing to collapse,

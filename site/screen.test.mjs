@@ -11,9 +11,10 @@ import { loadApp, bootedApp, split, settle, fire, drawnBody } from "./testlib.mj
  * Stubs the Fullscreen API on a loaded page, as a browser offering it does:
  * requestFullscreen makes the element the document's fullscreenElement and
  * fires fullscreenchange, and exitFullscreen undoes both. `width` is the
- * window's innerWidth once full screen.
+ * window's innerWidth once full screen; `media`, when given, is the page's
+ * matchMedia stub, moved to the same width as a browser's viewport is.
  */
-function stubFullscreen(window, document, width) {
+function stubFullscreen(window, document, width, media) {
   let shown = null;
   const was = window.innerWidth;
   Object.defineProperty(document, "fullscreenEnabled", { value: true, configurable: true });
@@ -21,6 +22,7 @@ function stubFullscreen(window, document, width) {
   const change = (to, px) => {
     shown = to;
     Object.defineProperty(window, "innerWidth", { value: px, configurable: true, writable: true });
+    if (media) media.setViewport(px);
     document.dispatchEvent(new window.Event("fullscreenchange"));
     return Promise.resolve();
   };
@@ -69,6 +71,41 @@ describe("full screen on the chart's card", () => {
     assert.equal(viewBoxWidth(document), before);
     assert.equal(app.isFullscreen(), false);
     assert.equal(button.textContent, config.wording.full_screen);
+  });
+
+  // Mutations: delete the .card:fullscreen .chart-body rule, or cap its
+  // --chart-room with --chart-max again, and this goes red: the room read
+  // is refused.
+  test("full screen on a wide screen gives the chart the screen's width less the rail, so a split that panned fits, at the one scale, its viewBox unchanged", async (t) => {
+    const screen = 4000;
+    const loaded = await loadApp({ viewport: 1400 });
+    const { app, window, document } = loaded;
+    Object.defineProperty(window, "innerWidth", { value: 1400, configurable: true, writable: true });
+    stubFullscreen(window, document, screen, loaded.media);
+    await app.boot();
+    await settle();
+    await split(app, "fund-group/general");
+    const read = () => {
+      const b = drawnBody(document, window);
+      return b.refused ? b : { full: b.full, beside: b.beside, room: b.room, drawn: b.drawn, stretch: b.stretch, rail: b.rail };
+    };
+    const before = { body: read(), viewBox: viewBoxWidth(document), scale: drawnScale(document, window).scale };
+    fire(document.getElementById("chart-fullscreen"), "click");
+    await settle();
+    const full = { body: read(), viewBox: viewBoxWidth(document), scale: drawnScale(document, window).scale };
+    const max = app.widthOf(app.openingColumns());
+    t.diagnostic(`at 1400px the room is ${before.body.room}px; full screen at ${screen}px it is ${full.body.room}px ` +
+      `(cushion ${app.SCREEN_CUSHION}, rail ${app.RAIL_WIDTH}) against --chart-max ${max}px; the split chart draws ` +
+      `${full.body.drawn * full.body.stretch}px wide, viewBox ${full.viewBox}`);
+    assert.deepEqual({
+      full: full.body.full, beside: full.body.beside, room: full.body.room, wider: full.body.room > max,
+      fits: full.body.drawn * full.body.stretch <= full.body.room, panned: before.body.drawn * before.body.stretch > before.body.room,
+      scale: Number(full.scale.toFixed(9)), viewBox: full.viewBox,
+    }, {
+      full: true, beside: true, room: screen - app.SCREEN_CUSHION - app.RAIL_WIDTH, wider: true, fits: true, panned: true,
+      scale: Number(before.scale.toFixed(9)), viewBox: before.viewBox,
+    });
+    assert.equal(Number(full.scale.toFixed(9)), 1);
   });
 });
 

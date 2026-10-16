@@ -315,6 +315,13 @@ export const ALTERNATIVE_MARK = "~";
 export const CHART_CUSHION = 56;
 
 /**
+ * The px `100vw` counts that the chart's card full screen does not: its own
+ * padding plus a classic scrollbar, with no body padding around it.
+ * style.css records it independently as --screen-cushion.
+ */
+export const SCREEN_CUSHION = 48;
+
+/**
  * How wide the widest form here lays `n` columns out, in px.
  * @param {number} n
  * @returns {number}
@@ -352,16 +359,11 @@ export function chartStretch(n) {
 export const RAIL_WIDTH = 208;
 
 /**
- * The px the provenance drawer beside the chart takes, its gap to the chart
- * included. style.css records it independently as --drawer-width.
- */
-export const DRAWER_WIDTH = 288;
-
-/**
- * The viewport the rail and the drawer sit beside the chart on, and the rail
- * opens by default on: a laptop's, narrower than the opening chart with both
- * panels beside it. The chart keeps the one scale (chartStretch) and pans in
- * the room the panels leave; narrower than this, the three stack.
+ * The viewport the rail sits beside the chart on, and opens by default on: a
+ * laptop's, narrower than the opening chart with the rail beside it. The
+ * chart keeps the one scale (chartStretch) and pans in the room the rail
+ * leaves; narrower than this, the rail stacks above the chart. The
+ * provenance drawer is below the chart at every width.
  */
 export const BESIDE_QUERY = "(min-width: 1280px)";
 
@@ -3063,19 +3065,19 @@ export function wireTheme() {
 }
 
 /* ------------------------------------------------------------------ *
- * The rail and the drawer beside the chart
+ * The rail beside the chart
  * ------------------------------------------------------------------ */
 
-/** Whether the viewport has room for the rail and the drawer beside the chart. */
+/** Whether the viewport has room for the rail beside the chart. */
 export function besideMatches() {
   return typeof window.matchMedia === "function" && window.matchMedia(BESIDE_QUERY).matches;
 }
 
 /**
- * Lays the rail and the drawer beside the chart where BESIDE_QUERY matches
- * and stacks them where it does not, following the viewport in and out of
- * full screen; and wires the rail's toggle, open by default where it is
- * beside the chart. The reader's toggle wins after that.
+ * Lays the rail beside the chart where BESIDE_QUERY matches and above it
+ * where it does not, following the viewport in and out of full screen; and
+ * wires the rail's toggle, open by default where it is beside the chart. The
+ * reader's toggle wins after that.
  */
 export function wireLayout() {
   const body = maybeEl("chart-body");
@@ -3653,8 +3655,7 @@ export function resetDetail() {
 
 /**
  * Refuses to draw, visibly: in the drawer and in a role="alert" banner at the
- * top, since on a narrow viewport the drawer sits below a chart a reader may
- * never scroll past. The drawer holds the refusal, so it holds no pin and
+ * top, since the drawer sits below a chart a reader may never scroll past. The drawer holds the refusal, so it holds no pin and
  * follows no node.
  *
  * @param {string} message

@@ -1,7 +1,7 @@
 // pins.test.mjs — every literal the client shares with Go or with the
 // stylesheet is held to the other party's copy, so neither can move alone:
-// the fund-group role, the mark prefixes, the viewport cushion, the rail's
-// and the drawer's widths, and the hue slots a column's fund groups are
+// the fund-group role, the mark prefixes, the viewport's and full screen's
+// cushions, the rail's width, and the hue slots a column's fund groups are
 // numbered into.
 
 import { describe, test } from "node:test";
@@ -38,14 +38,18 @@ describe("the literals the client shares", () => {
     assert.deepEqual(found, [app.CHART_CUSHION]);
   });
 
-  test("RAIL_WIDTH and DRAWER_WIDTH are the stylesheet's --rail-width and --drawer-width", async (t) => {
+  test("SCREEN_CUSHION is the stylesheet's --screen-cushion", async (t) => {
     const { app } = await loadApp();
-    const css = stylesheet();
-    const found = (name) => [...css.matchAll(new RegExp(`--${name}:\\s*(\\d+)px`, "g"))].map((m) => Number(m[1]));
-    const got = { rail: found("rail-width"), drawer: found("drawer-width") };
-    t.diagnostic(`style.css sets --rail-width ${got.rail.join(", ")}px and --drawer-width ${got.drawer.join(", ")}px; ` +
-      `the client's are ${app.RAIL_WIDTH} and ${app.DRAWER_WIDTH}`);
-    assert.deepEqual(got, { rail: [app.RAIL_WIDTH], drawer: [app.DRAWER_WIDTH] });
+    const found = [...stylesheet().matchAll(/--screen-cushion:\s*(\d+)px/g)].map((m) => Number(m[1]));
+    t.diagnostic(`style.css sets --screen-cushion ${found.join(", ")}px; the client's SCREEN_CUSHION is ${app.SCREEN_CUSHION}`);
+    assert.deepEqual(found, [app.SCREEN_CUSHION]);
+  });
+
+  test("RAIL_WIDTH is the stylesheet's --rail-width", async (t) => {
+    const { app } = await loadApp();
+    const found = [...stylesheet().matchAll(/--rail-width:\s*(\d+)px/g)].map((m) => Number(m[1]));
+    t.diagnostic(`style.css sets --rail-width ${found.join(", ")}px; the client's RAIL_WIDTH is ${app.RAIL_WIDTH}`);
+    assert.deepEqual(found, [app.RAIL_WIDTH]);
   });
 
   test("every hue slot a published column numbers its fund groups into has a --fund-slot in the stylesheet", (t) => {

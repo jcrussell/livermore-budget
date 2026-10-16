@@ -19,48 +19,51 @@ export function stylesheet() {
 
 /**
  * How style.css lays the chart's body out at the window's innerWidth, from
- * what app.js hands it: whether the rail and drawer sit beside the chart, the
- * px they take, the chart's room, the width the opening chart is drawn at,
- * and the body's whole width. Nothing here
- * renders CSS, so each declaration is read by selector and held to its
+ * what app.js hands it: whether the rail sits beside the chart, the px it
+ * takes, the chart's room, the width the opening chart is drawn at, and the
+ * body's whole width, in or out of the chart's card full screen. Nothing
+ * here renders CSS, so each declaration is read by selector and held to its
  * shape; any other shape is a refusal, which no measured answer equals.
  */
 export function drawnBody(document, window) {
   const css = stylesheet().replace(/\/\*[\s\S]*?\*\//g, "");
   const rule = (selector) => {
-    const at = css.indexOf(selector + " {");
-    return at < 0 ? "" : css.slice(at + selector.length + 2, css.indexOf("}", at));
+    const m = new RegExp(`(?:^|[\\n}])\\s*${selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} \\{([^}]*)\\}`).exec(css);
+    return m ? m[1] : "";
   };
   const body = rule(".chart-body");
   const beside = rule(".chart-body[data-beside]");
   const closed = rule('.chart-body[data-beside][data-rail="closed"]');
+  const screen = rule(".card:fullscreen .chart-body");
   const shapes = {
     room: /--chart-room:\s*min\(var\(--chart-max, 100%\), calc\(100vw - var\(--chart-cushion\) - var\(--chart-panels\)\)\)/.test(body),
     width: /(^|[\s;])width:\s*calc\(var\(--chart-room\) \+ var\(--chart-panels\)\)/.test(body),
     stacked: /--chart-panels:\s*0px/.test(body),
-    drawnStacked: /--chart-drawn:\s*var\(--chart-room\)/.test(body),
+    drawnStacked: /--chart-drawn:\s*min\(var\(--chart-max, 100%\), var\(--chart-room\)\)/.test(body),
     drawnBeside: /--chart-drawn:\s*var\(--chart-max, 100%\)/.test(beside),
-    panels: /--chart-panels:\s*calc\(var\(--rail-now\) \+ var\(--drawer-width\)\)/.test(beside),
-    grid: /grid-template-columns:\s*var\(--rail-now\) var\(--chart-room\) var\(--drawer-width\)/.test(beside),
+    panels: /--chart-panels:\s*var\(--rail-now\)\s*;/.test(beside),
+    grid: /grid-template-columns:\s*var\(--rail-now\) var\(--chart-room\)\s*;/.test(beside),
     open: /--rail-now:\s*var\(--rail-width\)/.test(beside),
     tab: /--rail-now:\s*var\(--rail-tab\)/.test(closed),
+    screen: /--chart-room:\s*calc\(100vw - var\(--screen-cushion\) - var\(--chart-panels\)\)/.test(screen),
     svg: /(^|[\s;])width:\s*calc\(var\(--chart-drawn\) \* var\(--chart-stretch, 1\)\)/.test(rule(".chart-scroll > svg.sankey")),
   };
   const px = (name) => {
     const m = new RegExp(`--${name}:\\s*(\\d+)px`).exec(body);
     return m ? Number(m[1]) : null;
   };
-  const sizes = { cushion: px("chart-cushion"), rail: px("rail-width"), drawer: px("drawer-width"), tab: px("rail-tab") };
+  const sizes = { cushion: px("chart-cushion"), screenCushion: px("screen-cushion"), rail: px("rail-width"), tab: px("rail-tab") };
   const bad = Object.keys(shapes).filter((k) => !shapes[k]).concat(Object.keys(sizes).filter((k) => sizes[k] === null));
   if (bad.length) return { refused: `style.css's chart body is not the shape read here: ${bad.join(", ")}` };
   const element = document.getElementById("chart-body");
   const isBeside = element.hasAttribute("data-beside");
-  const panels = isBeside ? (element.dataset.rail === "closed" ? sizes.tab : sizes.rail) + sizes.drawer : 0;
+  const full = Boolean(document.fullscreenElement) && document.fullscreenElement === document.getElementById("chart-card");
+  const panels = isBeside ? (element.dataset.rail === "closed" ? sizes.tab : sizes.rail) : 0;
   const style = document.documentElement.style;
   const max = parseFloat(style.getPropertyValue("--chart-max"));
-  const room = Math.min(max, window.innerWidth - sizes.cushion - panels);
+  const room = full ? window.innerWidth - sizes.screenCushion - panels : Math.min(max, window.innerWidth - sizes.cushion - panels);
   return {
-    beside: isBeside, panels, room, drawn: isBeside ? max : room, width: room + panels, ...sizes,
+    beside: isBeside, full, panels, room, drawn: isBeside ? max : Math.min(max, room), width: room + panels, ...sizes,
     stretch: Number(style.getPropertyValue("--chart-stretch")),
   };
 }

@@ -119,7 +119,7 @@ type wording struct {
 	// Rail names the toggle that collapses and expands the rail beside the
 	// chart holding the legend, the filters and the key.
 	Rail string `json:"rail"`
-	// Drawer names the provenance drawer beside the chart; DetailEmpty is
+	// Drawer names the provenance drawer below the chart; DetailEmpty is
 	// what it says with nothing previewed or pinned, and Pin its toggle
 	// that pins what it shows or lets it go.
 	Drawer      string `json:"drawer"`
