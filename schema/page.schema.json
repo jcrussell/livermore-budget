@@ -245,6 +245,8 @@
         "refused_part",
         "refused_alone_empty",
         "refused_other",
+        "redraw_part",
+        "redraw_alone_empty",
         "expand_all",
         "collapse_all",
         "follow",
@@ -374,6 +376,16 @@
           "type": "string",
           "minLength": 1,
           "description": "Said under a node menu's choice the redraw would refuse for any other reason."
+        },
+        "redraw_part": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Follows a redraw's refusal, a search reveal's among them, where the filters would draw part of a flow the city printed as one total over several parts: {source} and {target}, the ends of the flow."
+        },
+        "redraw_alone_empty": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Follows a redraw's refusal, a search reveal's among them, where the other filters would leave none of the money of the node shown alone: {label}."
         },
         "expand_all": {
           "type": "string",

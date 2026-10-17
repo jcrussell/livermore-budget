@@ -746,7 +746,8 @@ export function askAffordances() {
  * isolation is cleared where the redraw draws nothing of it.
  *
  * @param {readonly string[]} next
- * @param {string} [refused] the banner's opening words when the redraw is refused
+ * @param {string} [refused] the banner's opening words when the redraw is refused;
+ *   a refusal by the filters follows them in the reader's words (refusalWords)
  * @param {() => string} [landOn] the mark focus goes to on the redrawn chart,
  *   asked after it is laid out
  * @param {string} [anchor] the node the reader acted on, kept where it is on
@@ -762,6 +763,8 @@ export function redraw(next, refused = "That could not be drawn", landOn, anchor
   const was = { expansions, frontier, wholeSplits, laidNodes, groupIndex, projection, shown, whole };
   let laid;
   let rows;
+  /** @type {FiscProjection | undefined} */
+  let drawn;
   try {
     if (!fetched) throw new Error("there is no chart on screen");
     if (expanding()) {
@@ -770,7 +773,7 @@ export function redraw(next, refused = "That could not be drawn", landOn, anchor
       wholeSplits = state.whole;
     }
     expansions = next;
-    const drawn = shapeFor(fetched);
+    drawn = shapeFor(fetched);
     const filtered = filterFor(drawn);
     const unfiltered = wholeOf(drawn, filtered);
     laid = layOut(filtered.doc, prior);
@@ -784,7 +787,8 @@ export function redraw(next, refused = "That could not be drawn", landOn, anchor
     askAffordances();
   } catch (e) {
     ({ expansions, frontier, wholeSplits, laidNodes, groupIndex, projection, shown, whole } = was);
-    refuseInPlace(refused + ": " + (e instanceof Error ? e.message : String(e)));
+    const words = drawn ? refusalWords(e, drawn, "redraw_part", "redraw_alone_empty") : "";
+    refuseInPlace(refused + ": " + (words || (e instanceof Error ? e.message : String(e))));
     return false;
   }
   clearRefusal();
@@ -928,8 +932,8 @@ export function firstNewAt(among, before) {
  * @param {string} gesture  what the reader did, for the sentence
  * @param {() => T} run
  * @param {(message: string) => void} [refuse] fail, or refuseInPlace for a
- *   gesture that changes no pin, isolation or drawer, which a throw from it
- *   then leaves as they were
+ *   gesture whose refusal leaves the pin, the isolation and the drawer as
+ *   they are
  * @returns {T | undefined}
  */
 export function guarded(gesture, run, refuse = fail) {
@@ -2299,18 +2303,33 @@ export function filterRefusal(next) {
     filterFor(doc, filterStateOf(next, filter));
     return "";
   } catch (e) {
-    const node = (/** @type {string} */ id) => doc.nodes.find((n) => n.id === id);
-    if (e instanceof core.PartialCut) {
-      const from = node(e.source);
-      const to = node(e.target);
-      if (from && to) return say("refused_part", { source: nameOf(from), target: nameOf(to) });
-    }
-    if (e instanceof AloneEmpty) {
-      const alone = node(e.node);
-      if (alone) return say("refused_alone_empty", { label: nameOf(alone) });
-    }
-    return say("refused_other");
+    return refusalWords(e, doc, "refused_part", "refused_alone_empty") || say("refused_other");
   }
+}
+
+/**
+ * filterFor's refusal `e` of `doc` in the reader's words: told by its type,
+ * a core.PartialCut said by `part` and an AloneEmpty by `alone`, its nodes
+ * named as `doc` names them and never by its message, which names ids. ""
+ * for any other throw, or one naming a node `doc` does not hold.
+ * @param {unknown} e
+ * @param {FiscProjection} doc
+ * @param {string} part
+ * @param {string} alone
+ * @returns {string}
+ */
+function refusalWords(e, doc, part, alone) {
+  const node = (/** @type {string} */ id) => doc.nodes.find((n) => n.id === id);
+  if (e instanceof core.PartialCut) {
+    const from = node(e.source);
+    const to = node(e.target);
+    if (from && to) return say(part, { source: nameOf(from), target: nameOf(to) });
+  }
+  if (e instanceof AloneEmpty) {
+    const shown = node(e.node);
+    if (shown) return say(alone, { label: nameOf(shown) });
+  }
+  return "";
 }
 
 /**
@@ -3352,7 +3371,7 @@ export function paintSearch() {
     option.setAttribute("role", "option");
     option.setAttribute("aria-selected", "false");
     option.dataset.id = n.id;
-    option.addEventListener("click", () => guarded("find this mark", () => chooseSearch(n.id, false)));
+    option.addEventListener("click", () => guarded("find this mark", () => chooseSearch(n.id, false), refuseInPlace));
     return option;
   }));
   const open = hits.length > 0;
@@ -3406,7 +3425,9 @@ export function closeSearch() {
  * a drawn mark offers (openOffered), the rule the chart's own activation
  * uses, and focuses a revealed node; otherwise, or where nothing
  * splits, it follows the mark's money and focuses it, which scrolls it into
- * view and pins it. Says whether the mark is on the chart.
+ * view and pins it. Says whether the mark is on the chart. A reveal refused,
+ * or one whose redraw is, leaves the pin, the isolation and the drawer as
+ * they were (refuseInPlace).
  * @param {string} id
  * @param {boolean} open
  * @returns {boolean}
@@ -3420,7 +3441,7 @@ export function chooseSearch(id, open) {
     /** @type {Map<string, FiscProjection>} */
     const shaped = new Map();
     if (filteredOutWithin().has(id) || !revealedUnderFilter(id, { shaped })) {
-      fail("The filters leave " + /** @type {FiscNode} */ (nodeOf(id)).label + " out of the chart");
+      refuseInPlace("The filters leave " + /** @type {FiscNode} */ (nodeOf(id)).label + " out of the chart");
       return false;
     }
     const next = revealEntries(id, shaped);
@@ -3473,7 +3494,7 @@ export function wireSearch() {
       const chosen = searchState.hits[searchState.active];
       if (!chosen) return;
       e.preventDefault();
-      guarded("open this mark", () => chooseSearch(chosen.id, true));
+      guarded("open this mark", () => chooseSearch(chosen.id, true), refuseInPlace);
       return;
     }
     if (e.key === "Escape") {

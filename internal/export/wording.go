@@ -49,6 +49,11 @@ type wording struct {
 	RefusedPart       string `json:"refused_part"`
 	RefusedAloneEmpty string `json:"refused_alone_empty"`
 	RefusedOther      string `json:"refused_other"`
+	// RedrawPart and RedrawAloneEmpty follow a redraw's refusal, the search
+	// reveal's among them, where the filters refuse it as the menu's
+	// RefusedPart and RefusedAloneEmpty would.
+	RedrawPart       string `json:"redraw_part"`
+	RedrawAloneEmpty string `json:"redraw_alone_empty"`
 	// The toolbar's two buttons over every split at once.
 	ExpandAll     string `json:"expand_all"`
 	CollapseAll   string `json:"collapse_all"`
@@ -281,5 +286,8 @@ func defaultWording() wording {
 			"as one total over several parts together, and this is only some of them.",
 		RefusedAloneEmpty: "Not offered: the other filters would leave none of the money through {label} to show.",
 		RefusedOther:      "Not offered: the chart cannot be drawn that way.",
+		RedrawPart: "the filters would draw part of the money from {source} to {target}, which the city printed " +
+			"as one total over several parts together.",
+		RedrawAloneEmpty: "the other filters would leave none of the money through {label} to show.",
 	}
 }

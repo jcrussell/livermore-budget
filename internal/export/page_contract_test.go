@@ -85,6 +85,8 @@ func TestTheWordingFillsEveryPlaceholderTheClientHands(t *testing.T) {
 		"node_menu":           {"label"},
 		"refused_part":        {"source", "target"},
 		"refused_alone_empty": {"label"},
+		"redraw_part":         {"source", "target"},
+		"redraw_alone_empty":  {"label"},
 		"filter_only":         {"label"},
 		"filter_out":          {"names"},
 		"caveat_chip":         {"n"},

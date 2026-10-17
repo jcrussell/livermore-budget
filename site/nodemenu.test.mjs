@@ -1218,6 +1218,92 @@ describe("the node filters and an open hub", () => {
     assert.deepEqual({ said, errors }, { said: { input: kept, ArrowDown: kept, Escape: kept }, errors: [] });
   });
 
+  // Mutations: chooseSearch's "The filters leave" refusal back to fail, and
+  // Enter and a click on the hit the smallest filter folds lose the pin, the
+  // node followed and the drawer with the banner; Enter's or the option's
+  // guard back to fail, and a choice whose closing of the list throws loses
+  // them too.
+  test("a search choice refused or throwing says so once and leaves the pin, the node followed and the drawer", async (t) => {
+    const { app, document, window } = await bootedApp();
+    const errors = listenerErrors(window);
+    app.setFilter({ smallest: app.SMALLEST_STOPS[1] });
+    const id = plainNode(app);
+    app.followNode(id);
+    const drawer = document.getElementById("detail").textContent;
+    const before = app.expansions.slice();
+    const input = document.getElementById("search-input");
+    // Folded into the smaller flows once revealed under this filter, so
+    // listed (the smallest filter is no node filter) and refused by Enter.
+    const hit = app.fetched.nodes.find((n) => n.label === "Animal Shelter Fees & Charges");
+    assert.ok(hit !== undefined && !app.laidNodes.some((d) => d.id === hit.id),
+      "Animal Shelter Fees & Charges is no undrawn node, so nothing here is tested");
+    const said = {};
+    const tryChoice = (name, how, plant) => {
+      app.clearRefusal();
+      input.value = hit.label;
+      fire(input, "input");
+      const options = [...document.querySelectorAll("#search-list li")];
+      const at = options.findIndex((li) => li.dataset.id === hit.id);
+      const list = document.getElementById("search-list");
+      if (plant) list.replaceChildren = () => { throw new Error("planted: the list cannot be closed"); };
+      try {
+        if (at < 0) said[name] = "not listed";
+        else if (how === "click") options[at].click();
+        else {
+          for (let k = 0; k <= at; k++) fire(input, "keydown", { key: "ArrowDown" });
+          fire(input, "keydown", { key: "Enter" });
+        }
+      } finally {
+        if (plant) delete list.replaceChildren;
+      }
+      if (at < 0) return;
+      const banners = refusals(document);
+      said[name] = { banners: banners.length, refused: banners.length === 1 && (plant ? banners[0].textContent.includes("planted")
+        : banners[0].textContent === "The filters leave " + hit.label + " out of the chart"),
+      pinned: pinnedID(app), isolated: app.filter.isolated, drawer: document.getElementById("detail").textContent === drawer,
+      expansions: app.expansions.join() === before.join() };
+    };
+    tryChoice("Enter", "key", false);
+    tryChoice("click", "click", false);
+    tryChoice("Enter throwing", "key", true);
+    tryChoice("click throwing", "click", true);
+    t.diagnostic(`${id} followed under the smallest filter at ${app.SMALLEST_STOPS[1]}; ${hit.id} chosen: ${JSON.stringify(said)}; ${errors.length} listener error(s)`);
+    const kept = { banners: 1, refused: true, pinned: id, isolated: id, drawer: true, expansions: true };
+    assert.deepEqual({ said, errors }, { said: { "Enter": kept, "click": kept, "Enter throwing": kept, "click throwing": kept }, errors: [] });
+  });
+
+  // Mutation: redraw's refusal saying the filter's message, and this goes
+  // red: the banner names fund/100 and the department by id.
+  test("a search reveal the filters refuse to draw says why in names, and leaves the chart", async (t) => {
+    const { app, document } = await bootedApp();
+    const S = "expenditure/services-and-supplies";
+    // Filtering S out cuts nothing with the General Fund folded; revealing
+    // the fund draws it open, where filtering S out cuts part of a ribbon.
+    app.filterOutNode(S);
+    await settle();
+    const id = "fund/100";
+    assert.ok(!app.laidNodes.some((d) => d.id === id), `${id} is drawn, so nothing here is revealed`);
+    const st = app.expansionState(app.fetched, app.revealEntries(id));
+    const after = app.formOnScreen().shape(app.fetched, { chart: app.CONFIG.overview, frontier: st.frontier, whole: st.whole });
+    const byID = new Map(after.nodes.map((n) => [n.id, n]));
+    let want = "(the reveal is drawn)";
+    try {
+      app.filterFor(after);
+    } catch (e) {
+      if (byID.has(e.source) && byID.has(e.target)) {
+        want = "That could not be found: " + app.say("redraw_part", { source: app.nameOf(byID.get(e.source)), target: app.nameOf(byID.get(e.target)) });
+      }
+    }
+    const before = app.expansions.slice();
+    const drew = app.chooseSearch(id, true);
+    await settle();
+    const banners = refusals(document).map((b) => b.textContent);
+    t.diagnostic(`${S} out; Enter on ${id} says ${JSON.stringify(banners)}`);
+    assert.deepEqual({ drew, banners, expansions: app.expansions, out: [...app.filter.nodes] },
+      { drew: false, banners: [want], expansions: before, out: [S] });
+    assert.ok(!app.fetched.nodes.some((n) => banners[0].includes(n.id)), banners[0]);
+  });
+
   // Mutation: drop moveTo's routing of a listed fund group out of `out` and
   // this goes red: the link puts the group in filter.nodes, its box stays
   // checked while the chart hides it, and the hash rewritten says out=.
