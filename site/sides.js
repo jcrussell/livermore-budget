@@ -331,8 +331,19 @@ export function showTip(doc, e, tile, side) {
   tip.append(label, value, meta, facts);
   tip.hidden = false;
   const win = doc.defaultView;
-  const x = typeof e.clientX === "number" ? e.clientX : 0;
-  const y = typeof e.clientY === "number" ? e.clientY : 0;
+  // Beside the pointer, or under the mark itself on a focus event, which
+  // carries no pointer: a keyboard user's tip must be seen beside the bar
+  // they reached.
+  let x = 0;
+  let y = 0;
+  if (typeof e.clientX === "number" && typeof e.clientY === "number") {
+    x = e.clientX;
+    y = e.clientY;
+  } else if (e.target && typeof (/** @type {any} */ (e.target)).getBoundingClientRect === "function") {
+    const r = (/** @type {Element} */ (e.target)).getBoundingClientRect();
+    x = r.left;
+    y = r.bottom;
+  }
   tip.style.left = (x + (win ? win.scrollX : 0) + 14) + "px";
   tip.style.top = (y + (win ? win.scrollY : 0) + 14) + "px";
 }
@@ -472,7 +483,12 @@ export async function boot(win, renderer) {
       // entry the next load would refuse again.
       const kept = frontierOf(schedule, st.opened).kept;
       state = { year: st.year, opened: kept };
-      if (drawn.refused.length) say(doc, "Some of what the address opens could not be drawn: " + drawn.refused.join("; "));
+      if (drawn.refused.length) {
+        // After what restore() said of the year, so a hash wrong in both is
+        // answered for both.
+        const prior = doc.getElementById("sides-refusal");
+        say(doc, (prior ? prior.textContent + " " : "") + "Some of what the address opens could not be drawn: " + drawn.refused.join("; "));
+      }
       const hash = hashOf(state);
       if (win.location.hash !== hash) {
         if (push) win.history.pushState(null, "", hash);
@@ -489,7 +505,11 @@ export async function boot(win, renderer) {
     const primary = tile.splits.find((sp) => !sp.alternative);
     const want = key || (primary ? primary.key : "");
     const opened = schedule ? closing(schedule, state.opened, tile.id) : [];
-    if (!tile.children || (want && tile.open !== want)) {
+    // A click on an opened tile closes it, whichever way it is open, as the
+    // key and the tooltip say; a keyed gesture on a tile open another way
+    // switches it, and on a tile open that way closes it.
+    const open = tile.children ? tile.open : "";
+    if (!open || (key && open !== key)) {
       if (!want) return;
       opened.push(want === (primary ? primary.key : "") ? tile.id : tile.id + KEY_MARK + want);
     }

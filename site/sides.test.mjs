@@ -295,6 +295,51 @@ test("shift-click opens the alternative split, and the hash names it", async () 
   const members = [...document.querySelectorAll('li.bar-row[data-depth="1"]')];
   assert.equal(members.length, alt.members.length);
   assert.equal(members.reduce((a, m) => a + Number(m.dataset.cents), 0), two.cents);
+  // A plain click on a tile open its other way closes it, as the key says,
+  // rather than reopening it the primary way; Shift-click on a tile open
+  // the primary way switches it. Mutation: compare tile.open to the primary
+  // key on a plain click in toggle and the first click below reopens.
+  const rows = () => document.querySelectorAll("li.bar-row").length;
+  const before = rows();
+  await click(browser, document.querySelector(`li.bar-row[data-id="${two.id}"]`));
+  assert.equal(window.location.hash, "#y=fy2027-adopted");
+  assert.ok(rows() < before, "the plain click did not close the tile");
+  await click(browser, document.querySelector(`li.bar-row[data-id="${two.id}"]`));
+  assert.equal(window.location.hash, `#y=fy2027-adopted&o=${two.id}`);
+  await click(browser, document.querySelector(`li.bar-row[data-id="${two.id}"]`), { shiftKey: true });
+  assert.equal(window.location.hash, `#y=fy2027-adopted&o=${two.id}~${alt.key}`);
+  await click(browser, document.querySelector(`li.bar-row[data-id="${two.id}"]`), { shiftKey: true });
+  assert.equal(window.location.hash, "#y=fy2027-adopted");
+});
+
+// A hash wrong in its year and in an entry is answered for both. Mutation:
+// say the entry refusal alone in show() and the year's sentence is lost.
+test("a hash naming no such year and no such node is refused for both", async () => {
+  const browser = await booted("ledger", "#y=nope&o=no/such/node");
+  const text = refusal(browser.document);
+  assert.match(text, /No budget column is called nope/);
+  assert.match(text, /no\/such\/node/);
+  assert.equal(browser.window.location.hash, "#y=fy2027-adopted");
+});
+
+// A focus event carries no pointer; the tip goes under the mark reached.
+// Mutation: drop the getBoundingClientRect branch in showTip and the tip
+// stands at the viewport's corner.
+test("the tooltip stands under a focused mark", async () => {
+  const browser = await booted("ledger");
+  const { document, config } = browser;
+  const doc = expansionOf("fy2027-adopted", config);
+  const side = core.sideTree(doc, core.rootFrontier(doc), 5);
+  const tile = side.roots[0];
+  const target = { getBoundingClientRect: () => ({ left: 120, bottom: 340, top: 320, right: 400 }) };
+  sides.showTip(document, /** @type {any} */ ({ target }), tile, { heading: "Where the money goes", tree: side, tier: 5 });
+  const tip = document.getElementById("tooltip");
+  assert.equal(tip.hidden, false);
+  assert.equal(tip.style.left, "134px");
+  assert.equal(tip.style.top, "354px");
+  sides.showTip(document, /** @type {any} */ ({ clientX: 10, clientY: 20, target }), tile, { heading: "Where the money goes", tree: side, tier: 5 });
+  assert.equal(tip.style.left, "24px");
+  assert.equal(tip.style.top, "34px");
 });
 
 // The tooltip says the tile's figure, its share of its side marked ours, and

@@ -73,6 +73,35 @@ func changeOptions(t *testing.T, dir string, extra bool) export.Options {
 
 var changeCell = regexp.MustCompile(`<tr data-category="([^"]+)">\s*<th scope="row">([^<]+)</th>[\s\S]*?</tr>`)
 
+// TestChangePagePrintsADocumentsCaveatsOnce holds the page to one list of
+// a document's caveats, under the first figure drawn from it, where three
+// figures are drawn from the audited document.
+//
+// Mutation: give every figure its document's caveats and the audited
+// caveat is printed three times.
+func TestChangePagePrintsADocumentsCaveatsOnce(t *testing.T) {
+	dir := t.TempDir()
+	o := changeOptions(t, dir, false)
+	changes := string(o.Projections[project.ChangesProjection])
+	const bare = `"caveats":[]},"series"`
+	if strings.Count(changes, bare) != 1 {
+		t.Fatal("the changes document's caveats are not where this test expects them")
+	}
+	o.Projections[project.ChangesProjection] = []byte(strings.Replace(changes, bare,
+		`"caveats":[{"id":"ten-years-unaudited","summary":"Ten unaudited years.","text":"A text.","applies_to":[]}]},"series"`, 1))
+	if _, err := writeSite(o); err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	page := readFile(t, dir, "change.html")
+	if got := strings.Count(page, "Ten unaudited years."); got != 1 {
+		t.Errorf("the audited document's caveat is printed %d times, want once", got)
+	}
+	first, rest, _ := strings.Cut(page, `data-figure="audited-spending"`)
+	if !strings.Contains(first, "Ten unaudited years.") || strings.Contains(rest, "Ten unaudited years.") {
+		t.Errorf("the caveat is not under the first audited figure")
+	}
+}
+
 // TestChangePageRendersEachKindAsItsOwnFigure holds the page to four figures
 // in order, each the rows of one kind of one document with every printed
 // cell on it, and the budget's transfers in left out.

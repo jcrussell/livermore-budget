@@ -175,11 +175,18 @@ func buildChangePage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		if err != nil {
 			return changePageData{}, fmt.Errorf("view %q, %s: %w", v.Path, s.id, err)
 		}
+		// A document's caveats are printed once, under the first figure
+		// drawn from it: three figures of one document are not three
+		// documents, and a reader met the same four sentences three times.
+		var caveats []caveatRef
+		if _, seen := placed[s.doc.stem]; !seen {
+			caveats = caveatRefs(s.doc.meta.Caveats, s.doc.stem, caveatsPath)
+		}
 		placed[s.doc.stem] += n
 		figures = append(figures, changeFigure{
 			ID: s.id, Heading: s.heading, Lede: s.lede, Chart: s.chart,
 			Columns: s.doc.cols, Rows: rows,
-			Caveats:  caveatRefs(s.doc.meta.Caveats, s.doc.stem, caveatsPath),
+			Caveats:  caveats,
 			Document: ix.PublishedPath(s.doc.stem),
 		})
 	}
