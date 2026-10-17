@@ -539,6 +539,25 @@ export function pagesCitedBy(links) {
 export class FoldRefusal extends Error {}
 
 /**
+ * The filter's refusal to cut part of a ribbon one of whose cells restates
+ * leaves only some of which the filter names (filterDocument). A type, as
+ * FoldRefusal is, carrying the ribbon's two ends, so a caller names them in
+ * its own words and never reads the message.
+ */
+export class PartialCut extends Error {
+  /**
+   * @param {string} message
+   * @param {string} source
+   * @param {string} target
+   */
+  constructor(message, source, target) {
+    super(message);
+    this.source = source;
+    this.target = target;
+  }
+}
+
+/**
  * The alternatives a frontier opens and the nodes it opens, both read off the
  * parent chains of the nodes in it: an alternative of a node is open while a
  * member of it, or a node inside one, is in the frontier, and a node is open
@@ -1513,8 +1532,9 @@ export function filterDocument(doc, groupOf, state, keeps = null, leaves = null)
       const grouped = leaves.groups && leaves.groups.size ? cellIn(k, leaves.groups) : "none";
       const alone = whole || !leaves.only ? "all" : cellIn(k, leaves.only);
       if (out === "part" || alone === "part") {
-        throw new Error("cannot draw part of the ribbon from " + l.source + " to " + l.target +
-          ": it carries totals the city printed for several leaves together, and the node filtered names only some of them");
+        throw new PartialCut("cannot draw part of the ribbon from " + l.source + " to " + l.target +
+          ": it carries totals the city printed for several leaves together, and the node filtered names only some of them",
+        l.source, l.target);
       }
       if (out === "none" && grouped !== "all" && alone === "all") drawn.push(k);
       else gone.push(k);

@@ -42,6 +42,13 @@ type wording struct {
 	NodeMenuMore  string `json:"node_menu_more"`
 	FilterOutNode string `json:"filter_out_node"`
 	ShowOnlyNode  string `json:"show_only_node"`
+	// RefusedPart, RefusedAloneEmpty and RefusedOther are said under a
+	// choice of the node menu the redraw would refuse: a cut of part of a
+	// flow the city printed as one total, the other filters leaving none of
+	// the money of the node shown alone, and any other refusal.
+	RefusedPart       string `json:"refused_part"`
+	RefusedAloneEmpty string `json:"refused_alone_empty"`
+	RefusedOther      string `json:"refused_other"`
 	// The toolbar's two buttons over every split at once.
 	ExpandAll     string `json:"expand_all"`
 	CollapseAll   string `json:"collapse_all"`
@@ -270,5 +277,9 @@ func defaultWording() wording {
 			"hairline one screen pixel wide, which is wider than its share; every other flow is drawn to scale. " +
 			"Zoom in, go full screen, search, or open the table below to read them.",
 		SplitsDropped: "{year} has no {nodes} to split, so \u25c7 {n:split was|splits were} folded back.",
+		RefusedPart: "Not offered while the flow from {source} to {target} is drawn: the city printed it as one total " +
+			"over several parts together, and this is only some of them.",
+		RefusedAloneEmpty: "Not offered: the other filters would leave none of the money through {label} to show.",
+		RefusedOther:      "Not offered: the chart cannot be drawn that way.",
 	}
 }

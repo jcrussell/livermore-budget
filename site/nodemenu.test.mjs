@@ -959,8 +959,9 @@ describe("the node filters and an open hub", () => {
   // Mutation: offer both filters whatever filterRefusal answers (no
   // `refused` on the node menu's choices) and this goes red: Services &
   // Supplies' choices are enabled with the General Fund open by divisions,
-  // and choosing one is refused with a banner.
-  test("with the General Fund open by divisions a filter the redraw would refuse is offered disabled, saying why; one it draws is offered", async (t) => {
+  // and choosing one is refused with a banner. Say the refusal's message
+  // under the choice and it goes red too: the message names ids.
+  test("with the General Fund open by divisions a filter the redraw would refuse is offered disabled, saying why in names; one it draws is offered", async (t) => {
     const { app, document } = await bootedApp();
     await split(app, OPENS);
     const offered = (id) => {
@@ -979,16 +980,39 @@ describe("the node filters and an open hub", () => {
     const refused = offered(S);
     const works = offered("fund/100");
     t.diagnostic(`${S}: ${JSON.stringify(refused)}; fund/100: ${JSON.stringify(works)}`);
+    const byID = new Map(app.projection.nodes.map((n) => [n.id, n]));
+    const said = new Set(app.projection.links.filter((l) => byID.has(l.source) && byID.has(l.target)).map((l) =>
+      app.say("refused_part", { source: app.nameOf(byID.get(l.source)), target: app.nameOf(byID.get(l.target)) })));
     for (const act of ["out", "only"]) {
       assert.equal(refused[act].disabled, true, `${act} on ${S} is offered`);
-      assert.ok(refused[act].why.includes("several leaves together"), refused[act].why);
+      assert.ok(said.has(refused[act].why), refused[act].why);
+      assert.ok(!app.projection.nodes.some((n) => refused[act].why.includes(n.id)), refused[act].why);
       assert.deepEqual(works[act], { disabled: false, why: "" }, act);
     }
     assert.deepEqual(refused.follow, { disabled: false, why: "" });
-    // What the menu says before is what the redraw says after.
+    // What the menu refuses, the redraw refuses.
     app.filterOutNode(S);
-    const banner = refusals(document).map((b) => b.textContent).join(" | ");
-    assert.ok(banner.includes(refused.out.why), banner);
+    assert.equal(refusals(document).length, 1);
+  });
+
+  // Mutation: filterRefusal's AloneEmpty arm dropped and this goes red: the
+  // menu says refused_other, naming no node.
+  test("a filter out leaving none of the money of the node shown alone is offered disabled, naming that node", async (t) => {
+    const { app, document } = await bootedApp();
+    const lone = app.laidNodes.find((n) => !app.isGroupID(n.id) && !app.isSmaller(n.id) &&
+      app.projection.nodes.some((p) => p.id === n.id) && n.sourceLinks.length + n.targetLinks.length === 1);
+    assert.ok(lone, "no drawn node has one ribbon, so nothing here is tested");
+    const neighbour = (lone.sourceLinks[0] || lone.targetLinks[0]);
+    const other = neighbour.source.id === lone.id ? neighbour.target.id : neighbour.source.id;
+    const name = app.nameOf(lone);
+    app.showOnlyNode(lone.id);
+    await settle();
+    fire(markOf(document, other), "contextmenu", { button: 2, clientX: 40, clientY: 40 });
+    const b = [...document.querySelectorAll("#node-menu button")].find((x) => x.dataset.act === "out");
+    const why = b && b.getAttribute("aria-describedby") ? document.getElementById(b.getAttribute("aria-describedby")).textContent : "";
+    t.diagnostic(`${lone.id} alone, ${other}'s Filter this out: ${why}`);
+    assert.deepEqual({ disabled: b ? b.disabled : null, why }, { disabled: true, why: app.say("refused_alone_empty", { label: name }) });
+    assert.equal(refusals(document).length, 0);
   });
 
   // Mutation: exclude only the node filtered out's own id from the search's
@@ -1023,6 +1047,61 @@ describe("the node filters and an open hub", () => {
       assert.ok(!said.includes("out of the chart"), `${id} is offered and Enter says: ${said}`);
       app.showOnlyNode("fund/100");
     }
+  });
+
+  // Mutation: read a node filtered out through core.withinNode alone in
+  // filteredOutWithin, which knows no tail, and this goes red: a member of
+  // the tail filtered out is offered, and Enter draws the tail out, so the
+  // filter on it is inert and its money is drawn again.
+  test("search offers no member of a tail filtered out, and Enter on one draws nothing", async (t) => {
+    const { app, document } = await bootedApp();
+    await split(app, "fund-group/special-revenue");
+    const tail = app.projection.nodes.find((n) => app.expandable(n) && app.laidNodes.some((d) => d.id === n.id));
+    assert.ok(tail, "the split draws no tail, so nothing here is tested");
+    fire(markOf(document, tail.id), "contextmenu", { button: 2, clientX: 40, clientY: 40 });
+    choose(document, "out");
+    await settle();
+    const member = app.nodeOf(tail.folds[0]);
+    const offered = app.searchMatches(member.label).map((n) => n.id);
+    const before = app.expansions.slice();
+    const drew = app.chooseSearch(member.id, true);
+    await settle();
+    t.diagnostic(`${tail.id} folds ${JSON.stringify(tail.folds)} and is filtered out; "${member.label}" offers ${JSON.stringify(offered)}`);
+    assert.deepEqual({ offered: offered.includes(member.id), drew, expansions: app.expansions, out: [...app.filter.nodes],
+      drawn: app.laidNodes.some((d) => d.id === member.id) },
+    { offered: false, drew: false, expansions: before, out: [tail.id], drawn: false });
+  });
+
+  // Mutation: drop the catch around a match's reveal in searchMatches and
+  // this goes red: the reveal's shape throws, so typing paints no list and
+  // the input's guard says so in a banner.
+  test("a match whose reveal throws while a node is shown alone is offered, and the search still lists every other", async (t) => {
+    const { app, document } = await bootedApp();
+    await split(app, OPENS);
+    app.showOnlyNode("fund/100");
+    const undrawn = () => app.searchMatches("Police").filter((n) => !app.laidNodes.some((d) => d.id === n.id)).map((n) => n.id);
+    const kept = undrawn();
+    assert.ok(kept.length > 1, `"Police" offers ${kept.length} undrawn match(es) under fund/100 alone, so nothing here is tested`);
+    const throws = kept[0];
+    const sankey = app.FORMS.get("sankey");
+    app.FORMS.set("sankey", Object.assign({}, sankey, {
+      shape: (doc, o) => {
+        if (o.frontier.has(throws)) throw new Error("planted: " + throws + " cannot be shaped");
+        return sankey.shape(doc, o);
+      },
+    }));
+    let listed;
+    try {
+      const input = document.getElementById("search-input");
+      input.value = "Police";
+      fire(input, "input");
+      listed = [...document.querySelectorAll("#search-list li")].map((li) => li.dataset.id);
+    } finally {
+      app.FORMS.set("sankey", sankey);
+    }
+    t.diagnostic(`${throws}'s reveal throws; "Police" lists ${listed.length}`);
+    assert.deepEqual({ missing: kept.filter((id) => !listed.includes(id)), banners: refusals(document).length },
+      { missing: [], banners: 0 });
   });
 
   // Mutation: drop moveTo's routing of a listed fund group out of `out` and

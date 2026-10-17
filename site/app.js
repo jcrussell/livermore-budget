@@ -1733,6 +1733,22 @@ export function hueIndex(doc) {
 }
 
 /**
+ * filterFor's refusal of a state whose other removals leave none of the
+ * ribbons of the node shown alone. A type carrying that node's id, as
+ * core.PartialCut is, so the node's menu names it in its own words.
+ */
+export class AloneEmpty extends Error {
+  /**
+   * @param {string} message
+   * @param {string} node
+   */
+  constructor(message, node) {
+    super(message);
+    this.node = node;
+  }
+}
+
+/**
  * A shaped chart under a filter state's removals: core.filterDocument with
  * each node's fund group read through the index the chart is coloured by,
  * and a node's money read by its leaves (leafCut). Throws where the filter
@@ -1754,7 +1770,7 @@ export function filterFor(doc, state = filter) {
   const out = core.filterDocument(doc, (n) => core.fundGroupOf(index, n), st, keeps, leafCut(doc, st, keeps));
   if (keeps && !out.doc.links.some(keeps)) {
     const n = doc.nodes.find((x) => x.id === st.only);
-    throw new Error("the other filters leave none of " + (n ? nameOf(n) : st.only) + "'s money to show alone");
+    throw new AloneEmpty("the other filters leave none of " + (n ? nameOf(n) : st.only) + "'s money to show alone", st.only);
   }
   // Asked here, inside every draw's try: a removal whose money the filter
   // line cannot state once (core.distinctCents) is refused, not drawn.
@@ -1785,18 +1801,46 @@ export function leafCut(doc, state, keeps) {
   if (!schedule || !core.isExpansionSchedule(schedule) || (!nodes.length && !groupIDs.length && !keeps)) return null;
   const index = hueIndex(doc);
   const raw = new Set(schedule.nodes.map((n) => n.id));
-  const inside = (/** @type {string} */ id) => {
-    const n = byID.get(id);
-    const from = raw.has(id) ? [id] : (n && Array.isArray(n.folds) ? n.folds : []).filter((f) => raw.has(f));
-    const out = new Set();
-    for (const f of from) for (const x of core.withinNode(schedule, f)) out.add(x);
-    return out;
-  };
+  const inside = (/** @type {string} */ id) => scheduleWithin(schedule, raw, byID, id);
   const out = new Set();
   const groups = new Set();
   for (const id of groupIDs) for (const x of inside(id)) groups.add(x);
   for (const id of nodes) for (const x of inside(id)) (isGroupID(id, index) ? groups : out).add(x);
   return { out: out, groups: groups, only: keeps ? inside(state.only) : null };
+}
+
+/**
+ * The ids of the expansion schedule within a node of a shaped chart
+ * (core.withinNode): a node of the schedule is itself, and a tail the
+ * shaping made is the members it folds. What a node filtered out cuts
+ * (leafCut) and what the search leaves out with it (filteredOutWithin).
+ * @param {FiscProjection} schedule
+ * @param {Set<string>} raw the ids of the schedule's nodes
+ * @param {Map<string, FiscNode>} byID the shaped chart's nodes, by id
+ * @param {string} id
+ * @returns {Set<string>}
+ */
+function scheduleWithin(schedule, raw, byID, id) {
+  const n = byID.get(id);
+  const from = raw.has(id) ? [id] : (n && Array.isArray(n.folds) ? n.folds : []).filter((f) => raw.has(f));
+  const out = new Set();
+  for (const f of from) for (const x of core.withinNode(schedule, f)) out.add(x);
+  return out;
+}
+
+/**
+ * Every id of the expansion schedule within a node `filter.nodes` names, a
+ * tail of the shaped chart on screen read by its folds (scheduleWithin):
+ * what neither the search offers nor its Enter draws.
+ * @returns {Set<string>}
+ */
+function filteredOutWithin() {
+  const out = new Set();
+  if (!fetched) return out;
+  const raw = new Set(fetched.nodes.map((n) => n.id));
+  const byID = new Map((projection ? projection.nodes : []).map((n) => [n.id, n]));
+  for (const id of filter.nodes) for (const x of scheduleWithin(fetched, raw, byID, id)) out.add(x);
+  return out;
 }
 
 /**
@@ -2237,18 +2281,31 @@ function filterStateOf(next, was) {
 
 /**
  * Why the chart on screen could not be drawn under `next`, as filterFor,
- * the redraw's own filter, refuses it; "" where it could. What the node's
- * menu says of a filter before it is chosen.
+ * the redraw's own filter, refuses it, in the reader's words; "" where it
+ * could. What the node's menu says of a filter before it is chosen: a
+ * refusal is told by its type (core.PartialCut, AloneEmpty), its nodes
+ * named as the chart names them, and never by its message, which names ids.
  * @param {Partial<FilterState>} next
  * @returns {string}
  */
 export function filterRefusal(next) {
   if (!projection) return "";
+  const doc = projection;
   try {
-    filterFor(projection, filterStateOf(next, filter));
+    filterFor(doc, filterStateOf(next, filter));
     return "";
   } catch (e) {
-    return e instanceof Error ? e.message : String(e);
+    const node = (/** @type {string} */ id) => doc.nodes.find((n) => n.id === id);
+    if (e instanceof core.PartialCut) {
+      const from = node(e.source);
+      const to = node(e.target);
+      if (from && to) return say("refused_part", { source: nameOf(from), target: nameOf(to) });
+    }
+    if (e instanceof AloneEmpty) {
+      const alone = node(e.node);
+      if (alone) return say("refused_alone_empty", { label: nameOf(alone) });
+    }
+    return say("refused_other");
   }
 }
 
@@ -3101,7 +3158,8 @@ export function buildTable(rows) {
  * The marks and nodes whose label holds the query, case-folded, those that
  * start with it first: every mark drawn, and on the expansion every node of
  * the schedule the chart does not draw, which Enter reveals. A node in a
- * fund group the filters remove, or within a node they filter out, is not
+ * fund group the filters remove, or within a node they filter out, a tail
+ * by its folds (filteredOutWithin), is not
  * offered, nor, while a node is shown alone, one the filters would leave
  * out once revealed (revealedUnderFilter, Enter's own test); one the kind
  * or smallest filter would remove once revealed is, and Enter says so and
@@ -3119,16 +3177,24 @@ export function searchMatches(query) {
     const doc = fetched;
     const drawn = new Set(laidNodes.map((n) => n.id));
     const index = new Map(doc.nodes.map((n) => [n.id, n]));
-    const out = new Set();
-    for (const id of filter.nodes) for (const x of core.withinNode(doc, id)) out.add(x);
+    const out = filteredOutWithin();
     /** @type {Map<string, Set<string> | null>} */
     const memo = new Map();
     /** @type {Map<string, FiscProjection>} */
     const shaped = new Map();
+    // A reveal whose shape throws is offered, as revealedUnderFilter offers
+    // one whose filter does: Enter's redraw is what reports it.
+    const kept = (/** @type {string} */ id) => {
+      try {
+        return revealedUnderFilter(revealEntries(id, shaped), id, memo);
+      } catch {
+        return true;
+      }
+    };
     for (const n of doc.nodes) {
       if (drawn.has(n.id) || filter.groups.has(core.fundGroupOf(index, n)) || filter.groups.has(n.id) || out.has(n.id)) continue;
       // Asked of a match alone: the reveal is a shape and a filter.
-      if (filter.only !== "" && folded(n).includes(q) && !revealedUnderFilter(revealEntries(n.id, shaped), n.id, memo)) continue;
+      if (filter.only !== "" && folded(n).includes(q) && !kept(n.id)) continue;
       pool.push(n);
     }
   }
@@ -3309,7 +3375,7 @@ export function chooseSearch(id, open) {
   let revealed = false;
   if (!d && expanding() && nodeOf(id)) {
     const next = revealEntries(id);
-    if (!revealedUnderFilter(next, id)) {
+    if (filteredOutWithin().has(id) || !revealedUnderFilter(next, id)) {
       fail("The filters leave " + /** @type {FiscNode} */ (nodeOf(id)).label + " out of the chart");
       return false;
     }
@@ -3348,7 +3414,7 @@ export function wireSearch() {
   const list = maybeEl("search-list");
   if (!box || !input || !list) return;
   box.removeAttribute("hidden");
-  input.addEventListener("input", () => paintSearch());
+  input.addEventListener("input", () => guarded("find a mark", paintSearch));
   input.addEventListener("keydown", (e) => {
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
       e.preventDefault();

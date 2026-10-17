@@ -242,6 +242,9 @@
         "node_menu_more",
         "filter_out_node",
         "show_only_node",
+        "refused_part",
+        "refused_alone_empty",
+        "refused_other",
         "expand_all",
         "collapse_all",
         "follow",
@@ -356,6 +359,21 @@
           "type": "string",
           "minLength": 1,
           "description": "A node's context menu's choice that removes every flow following the node's money would dim."
+        },
+        "refused_part": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Said under a node menu's choice the redraw would refuse because it cuts part of a flow the city printed as one total over several parts: {source} and {target}, the flow's ends."
+        },
+        "refused_alone_empty": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Said under a node menu's choice the redraw would refuse because the other filters leave none of the money of the node shown alone: {label}."
+        },
+        "refused_other": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Said under a node menu's choice the redraw would refuse for any other reason."
         },
         "expand_all": {
           "type": "string",
