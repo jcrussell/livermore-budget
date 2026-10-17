@@ -1,0 +1,174 @@
+// What site/change.js does for change.html, over testdata/change.golden.html:
+// the page Go writes over the client subset. Every cell is one printed point
+// Go cited; what is tested is the client's grouping by kind, its sums per
+// column, its fold of the tail, the rank a kind keeps across columns, and
+// that the audited revenue and spending sums differ by the excess the city
+// prints.
+import { test, describe } from "node:test";
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { JSDOM } from "jsdom";
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const MODULE = pathToFileURL(path.join(HERE, "change.js")).href;
+const PAGE = readFileSync(path.join(HERE, "..", "testdata", "change.golden.html"), "utf8");
+
+/** A fresh document over the pinned page, booted. */
+async function booted() {
+  const dom = new JSDOM(PAGE);
+  const mod = await import(MODULE);
+  const doc = dom.window.document;
+  mod.boot(doc);
+  return { mod, doc };
+}
+
+/** The figure sections, by id. */
+function figures(doc) {
+  const out = new Map();
+  for (const s of doc.querySelectorAll("section.change-figure")) out.set(s.dataset.figure, s);
+  return out;
+}
+
+/** Each column's sum of the table's cents, by column index. */
+function columnSums(section) {
+  const sums = new Map();
+  for (const td of section.querySelectorAll("tbody td[data-cents]")) {
+    const c = Number(td.getAttribute("data-column"));
+    sums.set(c, (sums.get(c) || 0) + Number(td.getAttribute("data-cents")));
+  }
+  return sums;
+}
+
+test("change.js imports with no page config, no d3 and no DOM, and runs nothing", async () => {
+  delete globalThis.FISC_CONFIG;
+  delete globalThis.d3;
+  assert.equal(typeof globalThis.document, "undefined", "nothing installed a DOM before the import");
+  const mod = await import(MODULE);
+  assert.deepEqual(Object.keys(mod).sort(),
+    ["HEIGHT", "NAMED", "TAIL_LABEL", "boot", "dollars", "draw", "groupRows", "millions", "rank", "readRows", "totals"]);
+});
+
+test("the page carries four figures, three charted, and boot fills each chart", async () => {
+  const { doc } = await booted();
+  const figs = figures(doc);
+  assert.deepEqual([...figs.keys()], ["audited-revenue", "audited-spending", "audited-excess", "budget-revenue"]);
+  for (const [id, s] of figs) {
+    const chart = s.querySelector("figure.change-chart");
+    if (s.dataset.chart === "true") {
+      assert.ok(chart && !chart.hidden, `${id}'s chart stays hidden`);
+      assert.ok(chart.querySelectorAll(".change-column").length > 0, `${id} draws no column`);
+    } else {
+      assert.equal(chart, null, `${id} carries a chart it should not`);
+      assert.equal(s.querySelector("details").open, true, "the excess table is folded");
+    }
+  }
+});
+
+// Each drawn column is the sum of the printed rows under it, band by band
+// and in all. Mutation: add a row's first column only in groupRows and every
+// later column goes red.
+describe("each column's bands sum to its printed rows, and every kind is in one band", async () => {
+  const { mod, doc } = await booted();
+  for (const [id, s] of figures(doc)) {
+    if (s.dataset.chart !== "true") continue;
+    test(id, (t) => {
+      const sums = columnSums(s);
+      const cols = [...s.querySelectorAll(".change-column")];
+      assert.equal(cols.length, sums.size);
+      for (const col of cols) {
+        const i = Number(col.dataset.column);
+        const segs = [...col.querySelectorAll(".change-seg")];
+        const drawn = segs.reduce((a, x) => a + Number(x.dataset.cents), 0);
+        assert.equal(drawn, sums.get(i), `${id} column ${i}: bands sum to ${drawn}, rows to ${sums.get(i)}`);
+        assert.equal(Number(col.dataset.cents), sums.get(i));
+        for (const x of segs) {
+          const below = x.parentElement.classList.contains("change-below");
+          assert.equal(Number(x.dataset.cents) < 0, below, `${id} column ${i}: a band is on the wrong side of the baseline`);
+        }
+      }
+      const { rows, columns } = mod.readRows(s.querySelector("table"));
+      const bands = mod.rank(mod.groupRows(rows, columns));
+      const kinds = new Set(rows.map((r) => r.category));
+      assert.deepEqual(bands.flatMap((b) => b.members).sort(), [...kinds].sort(), "a kind is lost or doubled");
+      const named = bands.filter((b) => b.rank);
+      if (kinds.size > mod.NAMED + 1) {
+        assert.equal(named.length, mod.NAMED);
+        assert.equal(bands[bands.length - 1].label, mod.TAIL_LABEL);
+      } else assert.equal(named.length, kinds.size);
+      // A rank is a kind's and holds in every column: the band of rank r
+      // in each column names the same kind.
+      for (const b of named) {
+        for (const col of cols) {
+          const seg = col.querySelector(`.change-seg[data-rank="${b.rank}"]`);
+          if (seg) assert.ok(seg.title.startsWith(b.label + ","), `${id}: rank ${b.rank} is ${seg.title} in column ${col.dataset.column}, not ${b.label}`);
+        }
+      }
+      t.diagnostic(`${id}: ${rows.length} rows in ${kinds.size} kinds over ${cols.length} columns, ${named.length} named`);
+    });
+  }
+});
+
+// The audited revenue and spending sums differ, in every year, by exactly the
+// excess of revenues over expenditures the report prints: the client's two
+// sums against a figure the city printed, with no difference computed on the
+// page. Mutation: drop the fund_balance rows from the excess figure and this
+// has nothing to hold the sums to.
+test("ten years: our revenue sum less our spending sum is the printed excess, to the cent", async (t) => {
+  const { doc } = await booted();
+  const figs = figures(doc);
+  const revenue = columnSums(figs.get("audited-revenue"));
+  const spending = columnSums(figs.get("audited-spending"));
+  const excess = columnSums(figs.get("audited-excess"));
+  assert.equal(excess.size, 10);
+  assert.equal(figs.get("audited-excess").querySelectorAll("tbody tr").length, 1);
+  for (const [i, printed] of excess) {
+    assert.equal(revenue.get(i) - spending.get(i), printed, `column ${i}`);
+  }
+  const years = [...figs.get("audited-excess").querySelectorAll("thead th[data-column]")].map((th) => th.textContent.trim().split(/\s/)[0]);
+  t.diagnostic(`${years[0]}..${years[years.length - 1]}: revenue less spending equals the printed excess in all ${excess.size} years`);
+});
+
+// A rule stands between two columns that are not one measurement, and
+// nowhere else. Mutation: set data-new on every column and the audited
+// figures grow rules between audited years.
+test("the budget's columns carry rules at its two measurement boundaries and the audited years carry none", async () => {
+  const { doc } = await booted();
+  const figs = figures(doc);
+  const rules = (id) => [...figs.get(id).querySelectorAll(".change-column")].filter((c) => c.dataset.new).map((c) => c.dataset.column);
+  assert.deepEqual(rules("budget-revenue"), ["1", "2"]);
+  assert.deepEqual(rules("audited-revenue"), []);
+  assert.deepEqual(rules("audited-spending"), []);
+});
+
+// The one audited year of negative investment income hangs below the baseline.
+test("FY2021-22's use of money and property hangs below the baseline, and nothing else does on the audited side", async () => {
+  const { doc } = await booted();
+  const figs = figures(doc);
+  const below = [...figs.get("audited-revenue").querySelectorAll(".change-below .change-seg")];
+  assert.equal(below.length, 1);
+  assert.match(below[0].title, /^Use of Money And Property, FY 2021-22/);
+  assert.ok(Number(below[0].dataset.cents) < 0);
+  assert.equal(figs.get("audited-spending").querySelectorAll(".change-below .change-seg").length, 0);
+});
+
+// A cell the page cannot place is refused, not stacked. Mutation: default a
+// missing category to "other" in readRows and the first case draws a band
+// for no kind.
+test("readRows refuses a row with no category and a cell that is not integer cents", async () => {
+  const { mod, doc } = await booted();
+  const table = figures(doc).get("audited-revenue").querySelector("table");
+  let t = table.cloneNode(true);
+  t.querySelector("tbody tr").removeAttribute("data-category");
+  assert.throws(() => mod.readRows(t), /carries no category/);
+  t = table.cloneNode(true);
+  t.querySelector("tbody td[data-cents]").setAttribute("data-cents", "1.5");
+  assert.throws(() => mod.readRows(t), /carries 1.5 cents/);
+  const { rows, columns } = mod.readRows(table.cloneNode(true));
+  assert.equal(columns, 10);
+  assert.equal(rows.length, 9);
+  assert.equal(mod.millions(14952609600), "$149.5M");
+  assert.equal(mod.millions(-126150980), "-$1.3M");
+  assert.equal(mod.dollars(123456), "$1,234.56");
+});

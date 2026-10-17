@@ -105,6 +105,21 @@ views:
       city spends once transfers between its own funds are not counted twice,
       and the column total that does count them.
 
+  # Over time: the ACFR's ten audited years and the Budget Book's four
+  # columns, each a table of printed points change.js stacks by kind. Its
+  # own document is the ten-year schedule; the budget columns are read from
+  # revenue-trends, which the builder refuses to do without.
+  - path: change.html
+    nav: Over time
+    template: change.html.tmpl
+    projection: changes-in-fund-balances
+    title: Livermore's budget over time
+    lede: >-
+      Ten years of what the city's governmental funds took in and spent, as
+      its annual financial report states them, and the four printed columns
+      of the current budget's revenue, each column a sum of rows the city
+      printed.
+
   # The tables come after the charts they belong to.
   - path: trends.html
     nav: Revenue tables

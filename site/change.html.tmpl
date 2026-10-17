@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.Title}}</title>
+<meta name="description" content="Ten audited years of what the City of Livermore took in and spent, and the budget's four printed columns of revenue, each column a sum of figures the city printed.">
+<meta name="color-scheme" content="light dark">
+<link rel="stylesheet" href="style.css">
+<script>
+  // Stamp the saved theme before first paint, the same way index.html does, so
+  // a reader who chose dark there does not get a white flash here.
+  try {
+    var t = localStorage.getItem("fisc-theme");
+    if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+  } catch (e) { /* private mode: fall back to the OS setting */ }
+</script>
+<!-- A module is deferred, so it runs once the tables below are parsed;
+     importing change.js runs nothing, so boot() is called here. -->
+<script type="module">import { boot } from "./change.js"; boot(document);</script>
+</head>
+<body>
+
+<div class="wip-banner" role="status">⚠️ Work in progress — early preview, coverage is incomplete.</div>
+
+{{- if gt (len .Nav) 1}}
+<nav class="site-nav" aria-label="Views">
+  <ul>
+    {{- range .Nav}}
+    <li>{{if .Current}}<span aria-current="page">{{.Label}}</span>{{else}}<a href="{{.Path}}">{{.Label}}</a>{{end}}</li>
+    {{- end}}
+  </ul>
+</nav>
+{{- end}}
+
+<header class="page-head">
+  <div>
+    <h1>{{.Title}}</h1>
+    {{- if .Lede}}
+    <p class="lede">{{.Lede}}</p>
+    {{- end}}
+  </div>
+</header>
+
+<main>
+<ul class="change-key" aria-label="Key">
+  <li><span class="change-swatch" aria-hidden="true"></span> a kind, coloured by its size in the last column and the same colour in every column</li>
+  <li><span class="change-swatch negative" aria-hidden="true"></span> a kind whose rows sum below zero in a column, hung below the baseline</li>
+</ul>
+{{- range .Figures}}
+<section class="change-figure" data-figure="{{.ID}}" data-chart="{{.Chart}}" aria-labelledby="figure-{{.ID}}">
+  <h2 id="figure-{{.ID}}">{{.Heading}}</h2>
+  <p class="change-lede">{{.Lede}}</p>
+  {{- if .Chart}}
+  {{- /* Hidden until change.js fills it from the templates at the foot of
+         main: with no script the table below is the whole of this figure. */}}
+  <figure class="change-chart" hidden>
+    <div class="change-columns"></div>
+    <ol class="change-legend"></ol>
+    <figcaption class="change-sum"></figcaption>
+  </figure>
+  {{- end}}
+  <details class="change-cells"{{if not .Chart}} open{{end}}>
+    <summary>The printed rows behind this {{if .Chart}}chart{{else}}figure{{end}}</summary>
+    <div class="table-scroll">
+    <table class="series-table change-table">
+      <thead>
+        <tr>
+          <th scope="col">Row</th>
+          <th scope="col">Kind</th>
+          {{- if eq .ID "budget-revenue"}}
+          <th scope="col">Fund</th>
+          {{- end}}
+          {{- range $i, $c := .Columns}}
+          <th scope="col" class="num{{if $c.New}} group-start{{end}}" data-column="{{$i}}" data-comparable-group="{{$c.Group}}">
+            {{$c.Label}}<span class="basis">{{$c.Basis}}</span>
+          </th>
+          {{- end}}
+        </tr>
+      </thead>
+      <tbody>
+        {{- $id := .ID}}
+        {{- range .Rows}}
+        <tr data-category="{{.Category}}">
+          <th scope="row">{{.Label}}</th>
+          <td class="subtle">{{.Category}}</td>
+          {{- if eq $id "budget-revenue"}}
+          <td class="subtle">{{.Under}}</td>
+          {{- end}}
+          {{- range $i, $c := .Cells}}
+          <td class="num{{if $c.New}} group-start{{end}}{{if $c.Negative}} contra{{end}}{{if $c.Missing}} missing{{end}}" data-column="{{$i}}"{{if not $c.Missing}} data-cents="{{$c.Cents}}"{{end}}>
+            {{- if $c.Missing}}
+            <span title="This row is not printed in this column">{{$c.Value}}</span>
+            {{- else}}
+            <a href="{{$c.Href}}" title="Read on page {{$c.Page}}">{{$c.Value}}</a>
+            {{- end}}
+          </td>
+          {{- end}}
+        </tr>
+        {{- end}}
+      </tbody>
+    </table>
+    </div>
+    <p class="subtle">Read from <a href="{{.Document}}">{{.Document}}</a>.</p>
+  </details>
+  {{- if .Caveats}}
+  <ul class="caveats">
+    {{- range .Caveats}}
+    <li>{{if .Href}}<a href="{{.Href}}">{{.Summary}}</a>{{else}}{{.Summary}}{{end}}</li>
+    {{- end}}
+  </ul>
+  {{- end}}
+</section>
+{{- end}}
+{{- if .CaveatsPath}}
+<p class="subtle">Every page's caveats are collected on <a href="{{.CaveatsPath}}">the caveats page</a>.</p>
+{{- end}}
+
+<!-- What change.js clones per drawn column, segment and legend entry, so the
+     chart's markup and words live here and the script fills figures in. -->
+<template id="change-column"><div class="change-column"><div class="change-total subtle"></div><div class="change-stack"><div class="change-above"></div><div class="change-below"></div></div><div class="change-year"></div></div></template>
+<template id="change-segment"><div class="change-seg"></div></template>
+<template id="change-entry"><li><span class="change-swatch" aria-hidden="true"></span><span class="change-name"></span> <span class="subtle change-detail"></span></li></template>
+</main>
+
+<footer>
+  {{template "sources" .}}
+  <p class="subtle">
+    Scope {{.Scope}}. Projection: {{.ProjectionBy}}. Packaged by {{.ExportedBy}}.
+  </p>
+</footer>
+
+</body>
+</html>

@@ -99,7 +99,7 @@ const DefaultSourceBrowseURL = "https://github.com/jcrussell/livermore-budget/bl
 // page template is not in this list: it is rendered, and vendor/ is walked.
 var verbatimAssets = []string{"app.js", "core.js", "sankey.js",
 	"department.js", "capital.js", "debt.js", "glance.js", "sides.js", "treemap.js", "ledger.js",
-	"style.css", ".nojekyll"}
+	"change.js", "style.css", ".nojekyll"}
 
 // View is one HTML page of the site: one document, rendered by one template.
 //
@@ -773,7 +773,7 @@ func templateRendersLede(name string) bool {
 	switch name {
 	case TrendsTemplate, HistoryTemplate, ProvenanceTemplate, CaveatsTemplate,
 		DepartmentTemplate, CapitalTemplate, DebtTemplate, TotalsTemplate, GlanceTemplate,
-		TreemapTemplate, LedgerTemplate:
+		TreemapTemplate, LedgerTemplate, ChangeTemplate:
 		return true
 	default:
 		return false
@@ -815,7 +815,7 @@ func templateRendersADocument(name string) bool {
 	case SankeyTemplate, TrendsTemplate, HistoryTemplate,
 		CapitalTemplate,
 		DebtTemplate,
-		DepartmentTemplate, TotalsTemplate, GlanceTemplate, TreemapTemplate, LedgerTemplate:
+		DepartmentTemplate, TotalsTemplate, GlanceTemplate, TreemapTemplate, LedgerTemplate, ChangeTemplate:
 		return true
 	default:
 		return false

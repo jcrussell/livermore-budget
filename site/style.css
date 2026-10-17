@@ -2331,6 +2331,150 @@ noscript p {
 
 /* end treemap.html and ledger.html */
 
+/* change.html. Only that page's rules go in this block. The bands wear the
+   glance page's ordinal ramp by rank. */
+.change-figure {
+  margin-top: 32px;
+}
+.change-figure h2 {
+  margin-bottom: 4px;
+}
+.change-lede {
+  max-width: var(--measure);
+  color: var(--ink-2);
+  margin: 4px 0 12px;
+}
+.change-chart {
+  margin: 0 0 8px;
+}
+.change-columns {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.change-column {
+  flex: 1 1 56px;
+  min-width: 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+.change-column[data-new="true"] {
+  border-left: 1px solid var(--rule);
+  padding-left: 10px;
+}
+.change-total {
+  font-size: 11px;
+  text-align: center;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.change-stack {
+  display: flex;
+  flex-direction: column;
+}
+.change-above {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 2px;
+  min-height: 240px;
+  border-bottom: 1px solid var(--rule);
+}
+.change-below {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.change-seg {
+  display: block;
+  width: 100%;
+  min-height: 1px;
+  background: var(--glance-tail);
+}
+.change-above .change-seg:first-child {
+  border-radius: 4px 4px 0 0;
+}
+.change-below .change-seg:last-child {
+  border-radius: 0 0 4px 4px;
+}
+.change-seg[data-rank="1"], .change-legend li[data-rank="1"] .change-swatch { background: var(--glance-1); }
+.change-seg[data-rank="2"], .change-legend li[data-rank="2"] .change-swatch { background: var(--glance-2); }
+.change-seg[data-rank="3"], .change-legend li[data-rank="3"] .change-swatch { background: var(--glance-3); }
+.change-seg[data-rank="4"], .change-legend li[data-rank="4"] .change-swatch { background: var(--glance-4); }
+.change-seg[data-rank="5"], .change-legend li[data-rank="5"] .change-swatch { background: var(--glance-5); }
+.change-seg.negative {
+  background-image: repeating-linear-gradient(45deg, transparent 0 2px, var(--surface-1) 2px 5px);
+}
+.change-year {
+  font-size: 11px;
+  color: var(--ink-2);
+  text-align: center;
+  margin-top: 4px;
+  line-height: 1.2;
+}
+.change-year .basis {
+  display: block;
+  color: var(--muted);
+}
+.change-legend {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+}
+.change-legend li {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  max-width: var(--measure);
+}
+.change-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  background: var(--glance-tail);
+  align-self: center;
+  flex: none;
+}
+.change-detail {
+  font-size: 12px;
+}
+.change-key {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+.change-key li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.change-swatch.negative {
+  background-color: var(--glance-3);
+  background-image: repeating-linear-gradient(45deg, transparent 0 2px, var(--surface-1) 2px 5px);
+}
+.change-sum {
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 13px;
+  max-width: var(--measure);
+}
+.change-cells {
+  margin-top: 10px;
+}
+
+/* end change.html */
+
 /* debt.html. Only that page's rules go in this block. */
 .debt-table td.debt-unprinted { color: var(--muted, #777); font-style: italic; font-size: 0.85em; }
 .debt-band th[scope="row"], .debt-band td { border-top: 1px dashed var(--rule, #bbb); }

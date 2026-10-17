@@ -48,6 +48,10 @@ const (
 	// loading its own form module over site/sides.js.
 	TreemapTemplate = "treemap.html.tmpl"
 	LedgerTemplate  = "ledger.html.tmpl"
+	// ChangeTemplate renders the ACFR's ten reported years and the Budget
+	// Book's four columns as tables of printed points, which site/change.js
+	// stacks by category.
+	ChangeTemplate = "change.html.tmpl"
 )
 
 // SchemaVersion is the projection schema this packager understands, the
@@ -231,6 +235,8 @@ func buildSite(o *Options, ix ColumnIndex, pageTextBase func(docID string) strin
 			data, err = buildGlancePage(o, v, here, byID, ix, pageTextBase)
 		case TreemapTemplate, LedgerTemplate:
 			data, err = buildSidesPage(o, v, here, byID, ix, pageTextBase)
+		case ChangeTemplate:
+			data, err = buildChangePage(o, v, here, byID, ix, pageTextBase)
 		default:
 			return nil, nil, hint.With(
 				fmt.Errorf("view %q renders template %q, which this package has no builder for",

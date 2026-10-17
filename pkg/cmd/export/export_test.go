@@ -1325,8 +1325,8 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItsCharts(t *testing.T) {
 	built := builtStemsForTest(t)
 	got := mustViews(t, result{Projections: built})
 
-	if len(got) != 12 {
-		t.Fatalf("got %d views over %v, want the spine, its glance, its tiles and bars, its totals, the revenue trends, "+
+	if len(got) != 13 {
+		t.Fatalf("got %d views over %v, want the spine, its glance, its tiles and bars, its totals, the change page, the revenue trends, "+
 			"the two ACFR history tables, the department, capital and debt pages "+
 			"and the caveats index", len(got), keys(built))
 	}
@@ -1365,7 +1365,7 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItsCharts(t *testing.T) {
 	}
 
 	// Titles and ledes are the caller's, not the packager's.
-	for _, path := range []string{"glance.html", "treemap.html", "ledger.html", "totals.html", "trends.html", "history.html", "balances.html",
+	for _, path := range []string{"glance.html", "treemap.html", "ledger.html", "totals.html", "change.html", "trends.html", "history.html", "balances.html",
 		"department.html", "capital.html", "debt.html"} {
 		v, ok := byPath[path]
 		if !ok {
@@ -1664,6 +1664,10 @@ func TestAPageDoesNotLabelAColumnWithAWordItsCaveatWithdraws(t *testing.T) {
 	}
 
 	scanned := 0
+	// Each surface must be read on some scanned page, or that half of the
+	// refusal checks nothing; not every page renders both (change.html
+	// stacks its cells and draws no mark).
+	read := map[string]int{}
 	for _, v := range mustViews(t, result{Projections: built}) {
 		if v.Projection == "" {
 			continue
@@ -1706,11 +1710,7 @@ func TestAPageDoesNotLabelAColumnWithAWordItsCaveatWithdraws(t *testing.T) {
 			{what: "cell tooltip", re: markTitlePattern},
 		} {
 			hits := surface.re.FindAllStringSubmatch(page, -1)
-			if len(hits) == 0 {
-				t.Errorf("%s renders no %s this scan can read; the surface moved and "+
-					"this half of the refusal is checking nothing", v.Path, surface.what)
-				continue
-			}
+			read[surface.what] += len(hits)
 			for _, h := range hits {
 				// "unaudited" contains "audited", so it is removed before the
 				// question is asked rather than special-cased after it.
@@ -1726,9 +1726,15 @@ func TestAPageDoesNotLabelAColumnWithAWordItsCaveatWithdraws(t *testing.T) {
 	}
 	// The anchor, for the prose scan's reason: if no page ships the caveat the
 	// loop above never runs, and a scan over nothing passes.
-	if scanned != 2 {
-		t.Errorf("scanned %d pages shipping the %s caveat, want 2 (history.html and "+
-			"balances.html); this refusal has lost its subject", scanned, project.UnauditedCaveatID)
+	if scanned != 3 {
+		t.Errorf("scanned %d pages shipping the %s caveat, want 3 (history.html, "+
+			"balances.html and change.html); this refusal has lost its subject", scanned, project.UnauditedCaveatID)
+	}
+	for _, what := range []string{"column chip", "cell tooltip"} {
+		if read[what] == 0 {
+			t.Errorf("no scanned page renders a %s this scan can read; the surface moved and "+
+				"that half of the refusal is checking nothing", what)
+		}
 	}
 }
 
