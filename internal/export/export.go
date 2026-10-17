@@ -98,7 +98,7 @@ const DefaultSourceBrowseURL = "https://github.com/jcrussell/livermore-budget/bl
 // verbatimAssets are copied from the embedded site tree byte for byte. The
 // page template is not in this list: it is rendered, and vendor/ is walked.
 var verbatimAssets = []string{"app.js", "core.js", "sankey.js",
-	"department.js", "capital.js", "debt.js", "style.css", ".nojekyll"}
+	"department.js", "capital.js", "debt.js", "glance.js", "style.css", ".nojekyll"}
 
 // View is one HTML page of the site: one document, rendered by one template.
 //
@@ -305,6 +305,12 @@ type Options struct {
 	// the declared reason. Every other cell of a department the page shows is
 	// one `fisc verify` holds to tie to the cent.
 	DepartmentsHeldApart []HeldApart
+
+	// DepartmentsApartFromSpine are the columns where the caller's checks
+	// declare pp.85-125's department rows apart from pp.66-67's citywide
+	// figure, each with the declared residual and reason. Only
+	// [GlanceTemplate] reads it.
+	DepartmentsApartFromSpine []ApartFromSpine
 
 	// Gate is the caller's own refusal of a site this package would accept,
 	// handed the ColumnIndex validation folded. Prepare runs it once the fold
@@ -705,7 +711,7 @@ func (v View) validate(built map[string][]byte, ix ColumnIndex) error {
 func templateRendersLede(name string) bool {
 	switch name {
 	case TrendsTemplate, HistoryTemplate, ProvenanceTemplate, CaveatsTemplate,
-		DepartmentTemplate, CapitalTemplate, DebtTemplate, TotalsTemplate:
+		DepartmentTemplate, CapitalTemplate, DebtTemplate, TotalsTemplate, GlanceTemplate:
 		return true
 	default:
 		return false
@@ -719,7 +725,7 @@ func templateRendersLede(name string) bool {
 func templateRendersAYearControl(name string) bool {
 	switch name {
 	case SankeyTemplate,
-		DepartmentTemplate, TotalsTemplate:
+		DepartmentTemplate, TotalsTemplate, GlanceTemplate:
 		return true
 	default:
 		return false
@@ -747,7 +753,7 @@ func templateRendersADocument(name string) bool {
 	case SankeyTemplate, TrendsTemplate, HistoryTemplate,
 		CapitalTemplate,
 		DebtTemplate,
-		DepartmentTemplate, TotalsTemplate:
+		DepartmentTemplate, TotalsTemplate, GlanceTemplate:
 		return true
 	default:
 		return false
@@ -767,7 +773,7 @@ func templateIsKnown(name string) bool {
 // templateReadsBeside answers whether a template reads [View.Reads], a
 // schedule beside its own out of each year's column.
 func templateReadsBeside(name string) bool {
-	return name == DepartmentTemplate
+	return name == DepartmentTemplate || name == GlanceTemplate
 }
 
 // templateRendersSections answers whether a template groups its rows under

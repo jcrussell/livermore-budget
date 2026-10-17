@@ -63,6 +63,15 @@
   --fund-slot-5: #e87ba4;
   --fund-slot-6: #008300;
 
+  /* The glance page's ordinal ramp, one hue light->dark by rank, and the
+     gray its folded tail wears. Validated against --surface-1. */
+  --glance-1: #104281;
+  --glance-2: #1c5cab;
+  --glance-3: #2a78d6;
+  --glance-4: #5598e7;
+  --glance-5: #86b6ef;
+  --glance-tail: #c3c2b7;
+
   --link-opacity: 0.42;
   --link-opacity-derived: 0.24;
   --radius: 8px;
@@ -112,6 +121,13 @@
     --fund-slot-5: #d55181;
     --fund-slot-6: #008300;
 
+    --glance-1: #9ec5f4;
+    --glance-2: #6da7ec;
+    --glance-3: #3987e5;
+    --glance-4: #256abf;
+    --glance-5: #184f95;
+    --glance-tail: #52514e;
+
     --link-opacity: 0.5;
     --link-opacity-derived: 0.3;
   }
@@ -142,6 +158,13 @@
   --fund-slot-4: #c98500;
   --fund-slot-5: #d55181;
   --fund-slot-6: #008300;
+
+  --glance-1: #9ec5f4;
+  --glance-2: #6da7ec;
+  --glance-3: #3987e5;
+  --glance-4: #256abf;
+  --glance-5: #184f95;
+  --glance-tail: #52514e;
 
   --link-opacity: 0.5;
   --link-opacity-derived: 0.3;
@@ -1997,6 +2020,104 @@ noscript p {
 }
 
 /* end capital.html */
+
+/* glance.html. Only that page's rules go in this block. */
+.glance-year + .glance-year {
+  margin-top: 40px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+.glance-totals {
+  max-width: var(--measure);
+}
+.glance-bar {
+  margin-top: 28px;
+}
+.glance-bar h3 {
+  margin-bottom: 4px;
+}
+.glance-lede,
+.glance-whole,
+.glance-apart {
+  max-width: var(--measure);
+  color: var(--ink-2);
+  margin: 4px 0;
+}
+.glance-apart {
+  color: var(--ink-1);
+}
+.glance-figure {
+  margin: 12px 0 8px;
+}
+/* A 24px track of segments, each grown by its cents, parted by 2px of surface. */
+.glance-track {
+  display: flex;
+  gap: 2px;
+  height: 24px;
+  width: 100%;
+}
+.glance-seg {
+  display: block;
+  flex: 0 1 0;
+  min-width: 1px;
+  background: var(--glance-tail);
+}
+.glance-seg:first-child {
+  border-radius: 4px 0 0 4px;
+}
+.glance-seg:last-child {
+  border-radius: 0 4px 4px 0;
+}
+.glance-seg[data-rank="1"], .glance-swatch[data-rank="1"], .glance-legend li[data-rank="1"] .glance-swatch { background: var(--glance-1); }
+.glance-seg[data-rank="2"], .glance-legend li[data-rank="2"] .glance-swatch { background: var(--glance-2); }
+.glance-seg[data-rank="3"], .glance-legend li[data-rank="3"] .glance-swatch { background: var(--glance-3); }
+.glance-seg[data-rank="4"], .glance-legend li[data-rank="4"] .glance-swatch { background: var(--glance-4); }
+.glance-seg[data-rank="5"], .glance-legend li[data-rank="5"] .glance-swatch { background: var(--glance-5); }
+.glance-legend {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+  display: grid;
+  gap: 6px;
+}
+.glance-legend li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 6px;
+  max-width: var(--measure);
+}
+.glance-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  background: var(--glance-tail);
+  align-self: center;
+}
+.glance-per {
+  font-size: 1.15em;
+  font-variant-numeric: tabular-nums;
+}
+.glance-detail {
+  flex-basis: 100%;
+  padding-left: 18px;
+  font-size: 13px;
+}
+.glance-sum {
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 13px;
+  max-width: var(--measure);
+}
+.glance-cells {
+  margin-top: 10px;
+}
+.glance-table td.pages {
+  white-space: nowrap;
+}
+
+/* end glance.html */
 
 /* debt.html. Only that page's rules go in this block. */
 .debt-table td.debt-unprinted { color: var(--muted, #777); font-style: italic; font-size: 0.85em; }

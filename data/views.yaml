@@ -42,6 +42,21 @@ views:
           - {split: lines, cap: 8, tail: lines}
           - {split: receivers, cap: 8, tail: funds}
 
+  # The same money with no gesture: three "of every $100" bars per year, each
+  # a table of printed cells glance.js groups and sums, the spine's figure
+  # beside each. Reads department-funding beside the spine for the third bar.
+  - path: glance.html
+    nav: At a glance
+    template: glance.html.tmpl
+    projection: sankey
+    year_control: true
+    reads: [department-funding]
+    title: Livermore's budget at a glance
+    lede: >-
+      Of every $100 the city budgets, where it comes from, what it buys and
+      which department spends it. Each bar is a sum of cells the city printed,
+      and the city's own total is printed beside it.
+
   # The headline figures behind the chart, every year at once.
   - path: totals.html
     nav: The totals

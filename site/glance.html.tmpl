@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.Title}}</title>
+<meta name="description" content="Of every $100 the City of Livermore budgets, where it comes from, what it buys and which department spends it, each figure a sum of cells the city printed.">
+<meta name="color-scheme" content="light dark">
+<link rel="stylesheet" href="style.css">
+<script>
+  // Stamp the saved theme before first paint, the same way index.html does, so
+  // a reader who chose dark there does not get a white flash here.
+  try {
+    var t = localStorage.getItem("fisc-theme");
+    if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+  } catch (e) { /* private mode: fall back to the OS setting */ }
+</script>
+<!-- A module is deferred, so it runs once the tables below are parsed;
+     importing glance.js runs nothing, so boot() is called here. -->
+<script type="module">import { boot } from "./glance.js"; boot(document);</script>
+</head>
+<body>
+
+<div class="wip-banner" role="status">⚠️ Work in progress — early preview, coverage is incomplete.</div>
+
+{{- if gt (len .Nav) 1}}
+<nav class="site-nav" aria-label="Views">
+  <ul>
+    {{- range .Nav}}
+    <li>{{if .Current}}<span aria-current="page">{{.Label}}</span>{{else}}<a href="{{.Path}}">{{.Label}}</a>{{end}}</li>
+    {{- end}}
+  </ul>
+</nav>
+{{- end}}
+
+<header class="page-head">
+  <div>
+    <h1>{{.Title}}</h1>
+    {{- if .Lede}}
+    <p class="lede">{{.Lede}}</p>
+    {{- end}}
+  </div>
+</header>
+
+<main>
+{{- range .Years}}
+<section class="glance-year">
+  <h2>{{.Label}}</h2>
+  <p class="glance-totals">
+    The city budgets to take in <strong>{{.Revenue.Value}}</strong> and to spend
+    <strong>{{.Spent.Value}}</strong>, all funds, counting what its departments bill each other.
+  </p>
+  {{- range .Bars}}
+  <section class="glance-bar" data-bar="{{.ID}}" data-ties="{{.Ties}}">
+    <h3>{{.Heading}}</h3>
+    <p class="glance-lede">{{.Lede}}</p>
+    {{- /* Hidden until glance.js fills it from the templates at the foot of
+           main: with no script the table below is the whole of this bar, and
+           an empty figure is not shown. */}}
+    <figure class="glance-figure" hidden>
+      <div class="glance-track" role="img"></div>
+      <ol class="glance-legend"></ol>
+      <figcaption class="glance-sum"></figcaption>
+    </figure>
+    <p class="glance-whole">
+      <span class="label">{{.Whole.Label}}</span>: <strong class="value" data-whole-cents>{{.Whole.Value}}</strong>
+    </p>
+    {{- range .Apart}}
+    <p class="glance-apart">
+      The rows below sum to <strong>{{.Residual}}</strong> less than that figure. {{.Reason}}.{{if .Bead}} <span class="subtle">({{.Bead}})</span>{{end}}
+    </p>
+    {{- end}}
+    <details class="glance-cells">
+      <summary>The printed cells behind this bar</summary>
+      <div class="table-scroll">
+      <table class="series-table glance-table">
+        <thead>
+          <tr>
+            <th scope="col">{{.GroupHead}}</th>
+            <th scope="col">{{.OtherHead}}</th>
+            <th scope="col" class="num">Amount</th>
+            <th scope="col">Page</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{- range .Rows}}
+          <tr data-group="{{.Group}}" data-facts="{{.Facts}}">
+            <th scope="row">{{.GroupLabel}}</th>
+            <td>{{.OtherLabel}}</td>
+            <td class="num" data-cents="{{.Cents}}">{{.Dollars}}</td>
+            <td class="pages">
+              {{- range $i, $p := .Pages}}{{if $i}}, {{end}}
+              <a href="{{$p.PDFURL}}">p{{$p.Number}}</a> / <a href="{{$p.TextURL}}">text</a>
+              {{- end}}
+            </td>
+          </tr>
+          {{- end}}
+        </tbody>
+      </table>
+      </div>
+    </details>
+    {{- if .Caveats}}
+    <ul class="caveats">
+      {{- range .Caveats}}
+      <li>{{if .Href}}<a href="{{.Href}}">{{.Summary}}</a>{{else}}{{.Summary}}{{end}}</li>
+      {{- end}}
+    </ul>
+    {{- end}}
+  </section>
+  {{- end}}
+  {{- if .Caveats}}
+  <ul class="caveats">
+    {{- range .Caveats}}
+    <li>{{if .Href}}<a href="{{.Href}}">{{.Summary}}</a>{{else}}{{.Summary}}{{end}}</li>
+    {{- end}}
+  </ul>
+  {{- end}}
+</section>
+{{- end}}
+{{- if .CaveatsPath}}
+<p class="subtle">Every page's caveats are collected on <a href="{{.CaveatsPath}}">the caveats page</a>.</p>
+{{- end}}
+
+<!-- What glance.js clones per drawn segment and per legend entry, so the
+     figure's markup and words live here and the script fills figures in. -->
+<template id="glance-segment"><span class="glance-seg"></span></template>
+<template id="glance-entry"><li><span class="glance-swatch" aria-hidden="true"></span><b class="glance-per"></b> of every $100 is <span class="glance-name"></span> <span class="subtle glance-detail"></span></li></template>
+</main>
+
+<footer>
+  {{template "sources" .}}
+  <p class="subtle">
+    Scope {{.Scope}}. Projection: {{.ProjectionBy}}. Packaged by {{.ExportedBy}}.
+  </p>
+</footer>
+
+</body>
+</html>

@@ -243,6 +243,10 @@ func exportRun(o *Options) error {
 	if err != nil {
 		return err
 	}
+	apartFromSpine, err := departmentsApartFromSpine()
+	if err != nil {
+		return err
+	}
 	site := export.Options{
 		Dir:         o.OutputDir,
 		Projections: projections,
@@ -273,6 +277,9 @@ func exportRun(o *Options) error {
 		// blocks are declared not to tie in: both this command's to state.
 		Departments:          departments,
 		DepartmentsHeldApart: departmentsHeldApart(),
+		// And the columns where the department rows are declared apart from
+		// the spine's citywide figure, which the glance page prints.
+		DepartmentsApartFromSpine: apartFromSpine,
 		// EVERY PUBLISHED DOCUMENT IS EITHER RENDERED OR DECLARED UNRENDERED.
 		// It is this command's gate rather than internal/export's because what
 		// the site publishes, project.PublishedDocuments, is this command's to

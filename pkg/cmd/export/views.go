@@ -224,6 +224,9 @@ func views(repoRoot string, built result) ([]export.View, error) {
 		if d.Overview != nil {
 			v.Draws = d.Overview.Projection
 		}
+		if !readsBuilt(v, projections) {
+			continue
+		}
 		if !drawsBuilt(v, projections) {
 			// THE SITE OPENS ON EXACTLY ONE INDEX, so where the schedule its
 			// chart draws was not built it draws the view's own document, the
@@ -260,6 +263,20 @@ func drawsBuilt(v export.View, projections map[string][]byte) bool {
 	}
 	for _, year := range years {
 		if len(publishedInto(year, v.Draws)) > 0 && !opensInto(year, v.Draws, projections) {
+			return false
+		}
+	}
+	return true
+}
+
+// readsBuilt is drawsBuilt for the schedules a view reads beside its own
+// document: a view reading one that was not built for its opening column is
+// dropped, as the department page is when department-funding is not built,
+// and one never published for that column is kept for the write to refuse by
+// name.
+func readsBuilt(v export.View, projections map[string][]byte) bool {
+	for _, read := range v.Reads {
+		if len(publishedInto(v.Projection, read)) > 0 && !opensInto(v.Projection, read, projections) {
 			return false
 		}
 	}

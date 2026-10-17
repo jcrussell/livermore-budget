@@ -1,6 +1,8 @@
 package export
 
 import (
+	"fmt"
+
 	"github.com/jcrussell/livermore-budget/internal/export"
 	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/internal/structure"
@@ -47,4 +49,35 @@ func departmentsHeldApart() []export.HeldApart {
 		}
 	}
 	return out
+}
+
+// departmentsApartFromSpine is every column where structure.BudgetBookExceptions
+// declares pp.85-125's department rows apart from pp.66-67's citywide figure,
+// with the declaration's residual and reason, which the glance page prints
+// beside its departments bar in place of saying the rows tie. One entry per
+// exception and column, so an exception pinning several cells of one column
+// is one residual and not several.
+func departmentsApartFromSpine() ([]export.ApartFromSpine, error) {
+	var out []export.ApartFromSpine
+	for _, e := range structure.BudgetBookExceptions() {
+		if e.Cut != structure.CutFundingSources || e.Against != structure.CutSpine {
+			continue
+		}
+		seen := map[string]bool{}
+		for _, c := range e.Cells {
+			key := export.ColumnPath(c.Year, c.Basis)
+			if seen[key] {
+				continue
+			}
+			seen[key] = true
+			out = append(out, export.ApartFromSpine{
+				FiscalYear: c.Year, Basis: c.Basis, ResidualCents: e.Residual, Reason: e.Reason, Bead: e.Bead,
+			})
+		}
+		if len(seen) > 1 {
+			return nil, fmt.Errorf("exception %q pins cells of %d columns; one residual belongs to one column",
+				e.Name, len(seen))
+		}
+	}
+	return out, nil
 }

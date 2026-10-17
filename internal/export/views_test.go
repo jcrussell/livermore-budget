@@ -2506,7 +2506,7 @@ func TestEveryFooterDisclosureKeepsItsHeadingInTheOutline(t *testing.T) {
 		t.Errorf("templates folding a footer list (-want +got):\n%s", diff)
 	}
 	if diff := cmp.Diff([]string{export.CapitalTemplate, export.DebtTemplate,
-		export.DepartmentTemplate, export.HistoryTemplate, export.SankeyTemplate,
+		export.DepartmentTemplate, export.GlanceTemplate, export.HistoryTemplate, export.SankeyTemplate,
 		export.ProvenanceTemplate, export.TotalsTemplate, export.TrendsTemplate}, calling); diff != "" {
 		t.Errorf("templates executing the sources partial (-want +got):\n%s", diff)
 	}

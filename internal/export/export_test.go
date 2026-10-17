@@ -109,6 +109,7 @@ func TestWriteProducesTheSiteLayout(t *testing.T) {
 		"department.js",
 		"capital.js",
 		"debt.js",
+		"glance.js",
 		// One document per published column, not also one per schedule.
 		"fy2026-adopted.json",
 		"index.html",
