@@ -277,8 +277,8 @@ func defaultWording() wording {
 			"hairline one screen pixel wide, which is wider than its share; every other flow is drawn to scale. " +
 			"Zoom in, go full screen, search, or open the table below to read them.",
 		SplitsDropped: "{year} has no {nodes} to split, so \u25c7 {n:split was|splits were} folded back.",
-		RefusedPart: "Not offered while the flow from {source} to {target} is drawn: the city printed it as one total " +
-			"over several parts together, and this is only some of them.",
+		RefusedPart: "Not offered with the chart open as it is: the city printed the money from {source} to {target} " +
+			"as one total over several parts together, and this is only some of them.",
 		RefusedAloneEmpty: "Not offered: the other filters would leave none of the money through {label} to show.",
 		RefusedOther:      "Not offered: the chart cannot be drawn that way.",
 	}

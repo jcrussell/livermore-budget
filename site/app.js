@@ -927,13 +927,16 @@ export function firstNewAt(among, before) {
  * @template T
  * @param {string} gesture  what the reader did, for the sentence
  * @param {() => T} run
+ * @param {(message: string) => void} [refuse] fail, or refuseInPlace for a
+ *   gesture that changes no pin, isolation or drawer, which a throw from it
+ *   then leaves as they were
  * @returns {T | undefined}
  */
-export function guarded(gesture, run) {
+export function guarded(gesture, run, refuse = fail) {
   try {
     return run();
   } catch (e) {
-    fail("This page could not " + gesture + ": " + String(e) +
+    refuse("This page could not " + gesture + ": " + String(e) +
       ". The chart on screen is unchanged; the file it was drawn from is most likely " +
       "not one this site published.");
     return undefined;
@@ -1782,12 +1785,11 @@ export function filterFor(doc, state = filter) {
  * The leaves a filter state's node and fund group filters name
  * (core.LeafCut): every id of the expansion schedule within a node filtered
  * out, within a fund group hidden, and within the node shown alone where
- * `keeps` says one is. A node of the schedule is itself; a tail the shaping
- * made is the members it folds. A fund group filtered out as a node is in
- * `groups` with the groups the legend hides, so the legend and the menu hide
- * one group as one chart (core.filterDocument). Null where nothing is
- * filtered by node or group, and where the chart is drawn from no expansion
- * schedule, whose ribbons repeat no leaf.
+ * `keeps` says one is, each read through scheduleWithin. A fund group
+ * filtered out as a node is in `groups` with the groups the legend hides, so
+ * the legend and the menu hide one group as one chart (core.filterDocument).
+ * Null where nothing is filtered by node or group, and where the chart is
+ * drawn from no expansion schedule, whose ribbons repeat no leaf.
  * @param {FiscProjection} doc the shaped chart
  * @param {Readonly<FilterState>} state
  * @param {((l: FiscLink) => boolean) | null} keeps onlyKeeps over doc
@@ -1831,7 +1833,9 @@ function scheduleWithin(schedule, raw, byID, id) {
 /**
  * Every id of the expansion schedule within a node `filter.nodes` names, a
  * tail of the shaped chart on screen read by its folds (scheduleWithin):
- * what neither the search offers nor its Enter draws.
+ * what neither the search offers nor its Enter draws. An id the shaped
+ * chart does not draw counts too: the reveal of a node within it draws it
+ * again, as the hub of its split, and its filter then cuts that node.
  * @returns {Set<string>}
  */
 function filteredOutWithin() {
@@ -3159,11 +3163,11 @@ export function buildTable(rows) {
  * start with it first: every mark drawn, and on the expansion every node of
  * the schedule the chart does not draw, which Enter reveals. A node in a
  * fund group the filters remove, or within a node they filter out, a tail
- * by its folds (filteredOutWithin), is not
- * offered, nor, while a node is shown alone, one the filters would leave
- * out once revealed (revealedUnderFilter, Enter's own test); one the kind
- * or smallest filter would remove once revealed is, and Enter says so and
- * draws nothing.
+ * by its folds (filteredOutWithin), is not offered, nor one whose reveal
+ * would let a node filter lapse, nor, while a node is shown alone, one the
+ * filters would leave out once revealed (revealedUnderFilter, Enter's own
+ * test); one the kind or smallest filter would remove once revealed is, and
+ * Enter says so and draws nothing.
  * @param {string} query
  * @returns {(LaidNode | FiscNode)[]}
  */
@@ -3178,23 +3182,15 @@ export function searchMatches(query) {
     const drawn = new Set(laidNodes.map((n) => n.id));
     const index = new Map(doc.nodes.map((n) => [n.id, n]));
     const out = filteredOutWithin();
-    /** @type {Map<string, Set<string> | null>} */
+    const asks = filter.only !== "" || (projection !== null && liveFilters(projection).size > 0);
+    /** @type {Map<string, RevealAsked>} */
     const memo = new Map();
     /** @type {Map<string, FiscProjection>} */
     const shaped = new Map();
-    // A reveal whose shape throws is offered, as revealedUnderFilter offers
-    // one whose filter does: Enter's redraw is what reports it.
-    const kept = (/** @type {string} */ id) => {
-      try {
-        return revealedUnderFilter(revealEntries(id, shaped), id, memo);
-      } catch {
-        return true;
-      }
-    };
     for (const n of doc.nodes) {
       if (drawn.has(n.id) || filter.groups.has(core.fundGroupOf(index, n)) || filter.groups.has(n.id) || out.has(n.id)) continue;
       // Asked of a match alone: the reveal is a shape and a filter.
-      if (filter.only !== "" && folded(n).includes(q) && !kept(n.id)) continue;
+      if (asks && folded(n).includes(q) && !revealedUnderFilter(n.id, { shaped, memo, drawn: filter.only !== "" })) continue;
       pool.push(n);
     }
   }
@@ -3246,32 +3242,79 @@ export function revealEntries(id, shaped = new Map()) {
 }
 
 /**
- * Whether the chart drawn at `next` under the filters on screen draws `id`,
- * so a reveal the filters would undo leaves the chart as it is. True where
- * the shape throws: redraw is what reports that.
- * @param {string[]} next
+ * The node filters a shaped chart leaves biting, as filterFor reads them:
+ * "out:" and each node filtered out it draws, and "only:" and the node shown
+ * alone where onlyKeeps finds a ribbon of it.
+ * @param {FiscProjection} doc
+ * @returns {Set<string>}
+ */
+function liveFilters(doc) {
+  const ids = new Set(doc.nodes.map((n) => n.id));
+  const live = new Set(Array.from(filter.nodes).filter((id) => ids.has(id)).map((id) => "out:" + id));
+  if (filter.only !== "" && onlyKeeps(doc, filter, hueIndex(doc))) live.add("only:" + filter.only);
+  return live;
+}
+
+/**
+ * One reveal asked under the filters on screen: whether a node filter live
+ * before it lapses, and the ids its filtered ribbons end at, null where the
+ * filter threw. Null whole where the shape threw.
+ * @typedef {{lapses: boolean, ends: Set<string> | null} | null} RevealAsked
+ */
+
+/**
+ * Whether revealing `id` (revealEntries) leaves the filters on screen as
+ * they bite: every node filter live before it still live after it
+ * (liveFilters), and, unless `drawn` is false, `id` drawn under them. A
+ * reveal the filters would undo, or one that would let a filter lapse and
+ * its money return, leaves the chart as it is. True where the reveal, its
+ * shape or its filter throws: redraw is what reports that.
  * @param {string} id
- * @param {Map<string, Set<string> | null>} [memo] each `next` asked, by its
- *   entries, to the ids its filtered ribbons end at, null where it threw
+ * @param {{shaped?: Map<string, FiscProjection>, memo?: Map<string, RevealAsked>, drawn?: boolean}} [o]
+ *   shaped: revealEntries' own; memo: each reveal asked, by its entries
  * @returns {boolean}
  */
-function revealedUnderFilter(next, id, memo = new Map()) {
+function revealedUnderFilter(id, o = {}) {
   if (!fetched) return false;
-  const key = next.join("\n");
-  if (memo.has(key)) {
-    const ends = memo.get(key);
-    return !ends || ends.has(id);
-  }
+  const doc = fetched;
+  const memo = o.memo || new Map();
+  let asked;
   try {
-    const state = expansionState(fetched, next);
-    const drawn = formOnScreen().shape(fetched, { chart: CONFIG.overview, frontier: state.frontier, whole: state.whole });
+    const next = revealEntries(id, o.shaped);
+    const key = next.join("\n");
+    if (!memo.has(key)) memo.set(key, askReveal(doc, next));
+    asked = memo.get(key);
+  } catch {
+    return true;
+  }
+  if (!asked) return true;
+  if (asked.lapses) return false;
+  return o.drawn === false || !asked.ends || asked.ends.has(id);
+}
+
+/**
+ * One reveal's RevealAsked: the chart at `next` shaped and filtered.
+ * @param {FiscProjection} doc the expansion schedule
+ * @param {string[]} next
+ * @returns {RevealAsked}
+ */
+function askReveal(doc, next) {
+  let drawn;
+  try {
+    const state = expansionState(doc, next);
+    drawn = formOnScreen().shape(doc, { chart: CONFIG.overview, frontier: state.frontier, whole: state.whole });
+  } catch {
+    return null;
+  }
+  const after = liveFilters(drawn);
+  const lapses = projection !== null && Array.from(liveFilters(projection)).some((f) => !after.has(f));
+  if (lapses) return { lapses: true, ends: null };
+  try {
     const ends = new Set();
     for (const l of filterFor(drawn).doc.links) ends.add(l.source).add(l.target);
-    memo.set(key, ends);
-    return ends.has(id);
+    return { lapses: false, ends: ends };
   } catch {
-    memo.set(key, null);
-    return true;
+    return { lapses: false, ends: null };
   }
 }
 
@@ -3374,11 +3417,13 @@ export function chooseSearch(id, open) {
   closeSearch();
   let revealed = false;
   if (!d && expanding() && nodeOf(id)) {
-    const next = revealEntries(id);
-    if (filteredOutWithin().has(id) || !revealedUnderFilter(next, id)) {
+    /** @type {Map<string, FiscProjection>} */
+    const shaped = new Map();
+    if (filteredOutWithin().has(id) || !revealedUnderFilter(id, { shaped })) {
       fail("The filters leave " + /** @type {FiscNode} */ (nodeOf(id)).label + " out of the chart");
       return false;
     }
+    const next = revealEntries(id, shaped);
     if (!redraw(next, "That could not be found")) return false;
     d = laidNodes.find((n) => n.id === id);
     revealed = true;
@@ -3414,11 +3459,14 @@ export function wireSearch() {
   const list = maybeEl("search-list");
   if (!box || !input || !list) return;
   box.removeAttribute("hidden");
-  input.addEventListener("input", () => guarded("find a mark", paintSearch));
+  // Listing changes nothing on screen, so a throw from it leaves the pin,
+  // the isolation and the drawer as they were.
+  input.addEventListener("input", () => guarded("find a mark", paintSearch, refuseInPlace));
   input.addEventListener("keydown", (e) => {
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
       e.preventDefault();
-      moveSearch(e.key === "ArrowDown" ? 1 : -1);
+      const delta = e.key === "ArrowDown" ? 1 : -1;
+      guarded("find a mark", () => moveSearch(delta), refuseInPlace);
       return;
     }
     if (e.key === "Enter") {
@@ -3435,7 +3483,7 @@ export function wireSearch() {
       if (!list.hasAttribute("hidden")) closeSearch();
       else {
         input.value = "";
-        paintSearch();
+        guarded("find a mark", paintSearch, refuseInPlace);
       }
     }
   });

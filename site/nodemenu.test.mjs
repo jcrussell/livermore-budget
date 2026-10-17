@@ -8,7 +8,7 @@
 
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { bootedApp, loadApp, split, revealed, settle, fire, refusals, dollars, columnFixture } from "./testlib.mjs";
+import { bootedApp, loadApp, split, revealed, settle, fire, refusals, dollars, columnFixture, listenerErrors } from "./testlib.mjs";
 
 const OPENS = "fund-group/general";
 
@@ -960,7 +960,9 @@ describe("the node filters and an open hub", () => {
   // `refused` on the node menu's choices) and this goes red: Services &
   // Supplies' choices are enabled with the General Fund open by divisions,
   // and choosing one is refused with a banner. Say the refusal's message
-  // under the choice and it goes red too: the message names ids.
+  // under the choice and it goes red too: the message names ids. So does
+  // refused_part handed the ends of another ribbon the chart draws: the
+  // sentence names a ribbon other than the one that blocks the cut.
   test("with the General Fund open by divisions a filter the redraw would refuse is offered disabled, saying why in names; one it draws is offered", async (t) => {
     const { app, document } = await bootedApp();
     await split(app, OPENS);
@@ -981,11 +983,21 @@ describe("the node filters and an open hub", () => {
     const works = offered("fund/100");
     t.diagnostic(`${S}: ${JSON.stringify(refused)}; fund/100: ${JSON.stringify(works)}`);
     const byID = new Map(app.projection.nodes.map((n) => [n.id, n]));
-    const said = new Set(app.projection.links.filter((l) => byID.has(l.source) && byID.has(l.target)).map((l) =>
-      app.say("refused_part", { source: app.nameOf(byID.get(l.source)), target: app.nameOf(byID.get(l.target)) })));
+    // The ribbon the redraw's own filter refuses to cut, by its ends.
+    const blocks = (next) => {
+      try {
+        app.filterFor(app.projection, Object.assign({}, app.filter, next));
+      } catch (e) {
+        if (byID.has(e.source) && byID.has(e.target)) {
+          return app.say("refused_part", { source: app.nameOf(byID.get(e.source)), target: app.nameOf(byID.get(e.target)) });
+        }
+      }
+      return "(no ribbon blocks it)";
+    };
+    const want = { out: blocks({ nodes: new Set([S]) }), only: blocks({ only: S }) };
     for (const act of ["out", "only"]) {
       assert.equal(refused[act].disabled, true, `${act} on ${S} is offered`);
-      assert.ok(said.has(refused[act].why), refused[act].why);
+      assert.equal(refused[act].why, want[act], act);
       assert.ok(!app.projection.nodes.some((n) => refused[act].why.includes(n.id)), refused[act].why);
       assert.deepEqual(works[act], { disabled: false, why: "" }, act);
     }
@@ -1001,7 +1013,7 @@ describe("the node filters and an open hub", () => {
     const { app, document } = await bootedApp();
     const lone = app.laidNodes.find((n) => !app.isGroupID(n.id) && !app.isSmaller(n.id) &&
       app.projection.nodes.some((p) => p.id === n.id) && n.sourceLinks.length + n.targetLinks.length === 1);
-    assert.ok(lone, "no drawn node has one ribbon, so nothing here is tested");
+    assert.ok(lone !== undefined, "no drawn node has one ribbon, so nothing here is tested");
     const neighbour = (lone.sourceLinks[0] || lone.targetLinks[0]);
     const other = neighbour.source.id === lone.id ? neighbour.target.id : neighbour.source.id;
     const name = app.nameOf(lone);
@@ -1072,6 +1084,75 @@ describe("the node filters and an open hub", () => {
     { offered: false, drew: false, expansions: before, out: [tail.id], drawn: false });
   });
 
+  // Mutation: filteredOutWithin reading only the nodes filtered out the
+  // shaped chart draws and this goes red: Police Administration, within the
+  // General Fund filtered out and then folded, is offered, and Enter
+  // refuses it, since its reveal draws the General Fund again as a hub.
+  test("search offers no node within a node filtered out the chart folds away", async (t) => {
+    const { app } = await bootedApp();
+    await split(app, OPENS);
+    app.filterOutNode("fund/100");
+    await settle();
+    app.collapseNode(OPENS);
+    await settle();
+    const id = "dept/police-administration";
+    const inert = !app.projection.nodes.some((n) => n.id === "fund/100");
+    const offered = app.searchMatches("Police Administration").map((n) => n.id);
+    t.diagnostic(`fund/100 out and ${inert ? "folded" : "drawn"}; "Police Administration" offers ${JSON.stringify(offered)}`);
+    assert.deepEqual({ inert, offered: offered.includes(id) }, { inert: true, offered: false });
+  });
+
+  // Mutation: liveFilters' "only:" arm dropped and this goes red: the
+  // member is offered, and Enter draws the tail out, so `only` finds no
+  // ribbon of it, goes inert and the whole chart is drawn.
+  test("search offers no member of the tail shown alone, and Enter on one draws nothing", async (t) => {
+    const { app, document } = await bootedApp();
+    await split(app, "fund-group/special-revenue");
+    const tail = app.projection.nodes.find((n) => app.expandable(n) && app.laidNodes.some((d) => d.id === n.id));
+    assert.ok(tail !== undefined, "the split draws no tail, so nothing here is tested");
+    fire(markOf(document, tail.id), "contextmenu", { button: 2, clientX: 40, clientY: 40 });
+    choose(document, "only");
+    await settle();
+    const member = app.nodeOf(tail.folds[0]);
+    const offered = app.searchMatches(member.label).map((n) => n.id);
+    const before = app.expansions.slice();
+    const drew = app.chooseSearch(member.id, true);
+    await settle();
+    t.diagnostic(`${tail.id} folds ${JSON.stringify(tail.folds)} and is shown alone; "${member.label}" offers ${JSON.stringify(offered)}`);
+    assert.deepEqual({ offered: offered.includes(member.id), drew, expansions: app.expansions, only: app.filter.only,
+      drawn: app.laidNodes.some((d) => d.id === tail.id) },
+    { offered: false, drew: false, expansions: before, only: tail.id, drawn: true });
+  });
+
+  // Mutation: liveFilters' "out:" arm dropped and this goes red: the
+  // member of the alternative is offered, and Enter opens its parent that
+  // way, folding the node filtered out, whose money is drawn again.
+  test("search offers no node whose reveal folds a node filtered out, and Enter on one draws nothing", async (t) => {
+    const { app, document } = await bootedApp();
+    const alt = app.fetched.splits.find((sp) => sp.alternative);
+    assert.ok(alt !== undefined, "the schedule declares no alternative, so nothing here is tested");
+    const parent = alt.node;
+    await revealed(app, parent);
+    await split(app, parent);
+    const x = app.laidNodes.find((n) => { const m = app.nodeOf(n.id); return m && m.parent === parent && !m.alternative &&
+      !app.isGroupID(n.id) && !app.isSmaller(n.id) && app.filterRefusal({ nodes: new Set([n.id]) }) === ""; });
+    assert.ok(x !== undefined, `${parent}'s split draws no member a filter out is offered on, so nothing here is tested`);
+    const out = x.id;
+    app.filterOutNode(out);
+    await settle();
+    const member = app.fetched.nodes.find((n) => n.parent === parent && n.alternative === alt.key &&
+      !app.laidNodes.some((d) => d.id === n.id));
+    assert.ok(member !== undefined, `${parent}'s ${alt.key} has no undrawn member, so nothing here is tested`);
+    const offered = app.searchMatches(member.label).map((n) => n.id);
+    const before = app.expansions.slice();
+    const drew = app.chooseSearch(member.id, true);
+    await settle();
+    t.diagnostic(`${parent} open by its first split, ${out} out; "${member.label}" (${alt.key}) offers ${JSON.stringify(offered)}`);
+    assert.deepEqual({ offered: offered.includes(member.id), drew, expansions: app.expansions, out: [...app.filter.nodes],
+      drawn: app.laidNodes.some((d) => d.id === out) },
+    { offered: false, drew: false, expansions: before, out: [out], drawn: false });
+  });
+
   // Mutation: drop the catch around a match's reveal in searchMatches and
   // this goes red: the reveal's shape throws, so typing paints no list and
   // the input's guard says so in a banner.
@@ -1102,6 +1183,39 @@ describe("the node filters and an open hub", () => {
     t.diagnostic(`${throws}'s reveal throws; "Police" lists ${listed.length}`);
     assert.deepEqual({ missing: kept.filter((id) => !listed.includes(id)), banners: refusals(document).length },
       { missing: [], banners: 0 });
+  });
+
+  // Mutations: the input's guard back to fail, and the pin, the node
+  // followed and the drawer go with the banner; the arrows' or Escape's
+  // guard dropped, and that key's throw reaches the window, raising no
+  // banner.
+  test("a search that throws says so for typing, the arrows and Escape, and leaves the pin, the node followed and the drawer", async (t) => {
+    const { app, document, window } = await bootedApp();
+    const errors = listenerErrors(window);
+    const id = plainNode(app);
+    app.followNode(id);
+    const drawer = document.getElementById("detail").textContent;
+    const input = document.getElementById("search-input");
+    const list = document.getElementById("search-list");
+    const said = {};
+    const tryKey = (name, act) => {
+      app.clearRefusal();
+      app.closeSearch();
+      list.replaceChildren = () => { throw new Error("planted: the list cannot be painted"); };
+      try {
+        act();
+      } finally {
+        delete list.replaceChildren;
+      }
+      said[name] = { banners: refusals(document).length, pinned: pinnedID(app), isolated: app.filter.isolated,
+        drawer: document.getElementById("detail").textContent === drawer };
+    };
+    tryKey("input", () => { input.value = "a"; fire(input, "input"); });
+    tryKey("ArrowDown", () => fire(input, "keydown", { key: "ArrowDown" }));
+    tryKey("Escape", () => fire(input, "keydown", { key: "Escape" }));
+    t.diagnostic(`${id} followed; the list planted to throw on painting: ${JSON.stringify(said)}; ${errors.length} listener error(s)`);
+    const kept = { banners: 1, pinned: id, isolated: id, drawer: true };
+    assert.deepEqual({ said, errors }, { said: { input: kept, ArrowDown: kept, Escape: kept }, errors: [] });
   });
 
   // Mutation: drop moveTo's routing of a listed fund group out of `out` and
