@@ -721,6 +721,10 @@ func (v View) validate(built map[string][]byte, ix ColumnIndex) error {
 		return fmt.Errorf(
 			"view %q declares chart form %q, which is not one of %v",
 			v.Path, v.Overview.Form, ChartForms())
+	case v.Overview.Form != "" && formOfTemplate(v.Template) != v.Overview.Form:
+		return fmt.Errorf(
+			"view %q declares a %q chart and renders template %q, whose module draws a %q; "+
+				"the page would refuse itself at boot", v.Path, v.Overview.Form, v.Template, formOfTemplate(v.Template))
 	case v.Overview.foreignHints() != "":
 		return fmt.Errorf(
 			"view %q carries %s hints and declares a %q chart; the hints "+
@@ -794,16 +798,27 @@ func templateRendersAYearControl(name string) bool {
 	}
 }
 
-// templateDrawsAChart answers whether a template ships app.js and an SVG for it
-// to draw into, and with it [View.Overview]. Not the same
+// templateDrawsAChart answers whether a template ships a client module and a
+// figure for it to draw into, and with it [View.Overview]. Not the same
 // as rendering a document: trends.html renders one as a server-side table with
-// no app.js.
+// no module.
 func templateDrawsAChart(name string) bool {
+	return formOfTemplate(name) != ""
+}
+
+// formOfTemplate is the one chart form a template's module draws, or "" for
+// a template that draws none. Each module refuses a page declaring another
+// form at boot, after the write; this is the write's own refusal of it.
+func formOfTemplate(name string) string {
 	switch name {
-	case SankeyTemplate, TreemapTemplate, LedgerTemplate:
-		return true
+	case SankeyTemplate:
+		return SankeyForm
+	case TreemapTemplate:
+		return TreemapForm
+	case LedgerTemplate:
+		return LedgerForm
 	default:
-		return false
+		return ""
 	}
 }
 

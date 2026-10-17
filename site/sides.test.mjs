@@ -332,6 +332,37 @@ test("a config declaring another form is refused, and a missing config is said",
   assert.match(refusal(bare.document), /carries no sides config/);
 });
 
+// An opened tile's box is its own size, not its members' gross: the property
+// tax root has two reduction members, and summing leaves would lay it out
+// half again as large as its figure and shrink every other root. Mutation:
+// sum leaf sizes in layOut (hierarchy.sum) and the opened root's value is its
+// members' gross, not its size.
+test("the treemap lays an opened tile out at its own size, its members dividing its box", (t) => {
+  const { config } = sidesPage("treemap");
+  loadD3();
+  const col = columnFixture("fy2027-adopted");
+  const doc = core.scheduleOf(col, config.primary);
+  let frontier = core.rootFrontier(doc);
+  const id = "revenue/taxes/property";
+  frontier = core.expand(doc, frontier, id, core.splitsOf(doc, id).find((sp) => !sp.alternative).key);
+  const { sides: ss } = sides.sidesAt(config, col, frontier);
+  const side = ss.find((s) => s.tree.roots.some((r) => r.id === id));
+  const opened = side.tree.roots.find((r) => r.id === id);
+  const reductions = opened.children.filter((c) => c.cents < 0);
+  assert.ok(reductions.length >= 1, "the property tax root has no reduction member in this column");
+  const gross = opened.children.reduce((a, c) => a + c.size, 0);
+  assert.ok(gross > opened.size, "the members' gross does not exceed the root; this case proves nothing");
+  const laid = forms.treemap.layOut(side.tree, 900);
+  for (const d of laid.descendants()) {
+    if (!d.children) continue;
+    const sum = d.children.reduce((a, c) => a + c.value, 0);
+    assert.ok(Math.abs(sum - d.value) < 1e-6 * Math.max(1, d.value), `${d.data.id || "the side"}: members lay out to ${sum} in a box of ${d.value}`);
+  }
+  for (const d of laid.children) assert.equal(d.value, d.data.size, `${d.data.id} is laid out at ${d.value}, its size is ${d.data.size}`);
+  const total = laid.children.reduce((a, c) => a + c.value, 0);
+  t.diagnostic(`${id}: size ${opened.size}, members' gross ${gross} (${reductions.length} reductions); laid at ${laid.children.find((d) => d.data.id === id).value} of ${total}`);
+});
+
 // The treemap's labels are drawn only where they fit; the layout's boxes are
 // the tree's sizes. Mutation: return true from fits and a 20px tile carries
 // a label wider than itself.

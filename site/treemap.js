@@ -24,19 +24,28 @@ export const GAP = 2;
 export const RANKED = 5;
 
 /**
- * Lays one side out: d3.hierarchy over the side's roots, summing each
- * leaf's size so an opened tile's box is its members' gross, then
- * d3.treemap at the width given. The layout is pixels; every figure stays
- * the tree's.
+ * Lays one side out: d3.hierarchy over the side's roots, every tile's box
+ * its own size, then d3.treemap at the width given. A tile's area is its
+ * share of the side whether or not it is open: its members divide ITS box
+ * by their sizes, so a reduction among them takes room from its siblings
+ * and never grows the parent past its own figure. Summing the leaves
+ * instead would give an opened tile its members' gross, which is larger
+ * than the tile wherever a member counts against it. The layout is pixels;
+ * every figure stays the tree's.
  * @param {ReturnType<typeof core.sideTree>} tree
  * @param {number} width
  * @param {any} [d3lib] d3, or the global
  */
 export function layOut(tree, width, d3lib = /** @type {any} */ (globalThis).d3) {
   if (!d3lib || typeof d3lib.treemap !== "function") throw new Error("d3.treemap is not loaded");
-  const root = d3lib.hierarchy({ id: "", label: "", children: tree.roots, cents: tree.cents, size: tree.size }, (/** @type {any} */ t) => t.children)
-    .sum((/** @type {any} */ t) => (t.children ? 0 : t.size))
-    .sort((/** @type {any} */ a, /** @type {any} */ b) => b.value - a.value);
+  const root = d3lib.hierarchy({ id: "", label: "", children: tree.roots, cents: tree.cents, size: tree.size }, (/** @type {any} */ t) => t.children);
+  root.value = tree.roots.reduce((a, r) => a + r.size, 0);
+  root.eachBefore((/** @type {any} */ d) => {
+    if (!d.children) return;
+    const gross = d.children.reduce((/** @type {number} */ a, /** @type {any} */ c) => a + c.data.size, 0);
+    for (const c of d.children) c.value = gross ? (d.value * c.data.size) / gross : 0;
+  });
+  root.sort((/** @type {any} */ a, /** @type {any} */ b) => b.value - a.value);
   d3lib.treemap()
     .size([Math.max(width, 200), HEIGHT])
     .paddingInner(GAP)

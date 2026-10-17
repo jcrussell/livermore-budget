@@ -105,6 +105,23 @@ export function rank(groups) {
 }
 
 /**
+ * A column header's words, apart: the year label Go printed as the header's
+ * text, and the basis it printed in the header's `span.basis`, or "" where
+ * it printed none. The two are typeset separately, so they are never joined
+ * into one word.
+ * @param {Element} th
+ * @returns {{label: string, basis: string}}
+ */
+export function headWords(th) {
+  const basis = th.querySelector(".basis");
+  const label = Array.from(th.childNodes)
+    .filter((n) => n.nodeType === 3)
+    .map((n) => n.textContent || "")
+    .join(" ").trim().replace(/\s+/g, " ");
+  return { label, basis: basis ? (basis.textContent || "").trim() : "" };
+}
+
+/**
  * Whole dollars, signed, cents only where a figure has them.
  * @param {number} cents
  */
@@ -186,16 +203,19 @@ export function draw(section) {
     const total = col.querySelector(".change-total");
     const year = col.querySelector(".change-year");
     if (!above || !below || !total || !year) throw new Error("the column template lacks a stack, a total or a year");
-    // Largest at the bottom, so the baseline band is the same category in
-    // every column and the eye reads one band across them.
-    for (const b of [...bands].reverse()) {
+    // Largest nearest the baseline on either side, so the baseline band is
+    // the same category in every column and the eye reads one band across
+    // them: bands are ranked largest first, prepended above the baseline
+    // and appended below it.
+    const head = headWords(th);
+    for (const b of bands) {
       const c = b.cents[i];
       if (!c) continue;
       const seg = clone("change-segment");
       seg.dataset.rank = String(b.rank);
       seg.dataset.cents = String(c);
       seg.style.height = px(c).toFixed(2) + "px";
-      seg.title = `${b.label}, ${(th.textContent || "").trim().replace(/\s+/g, " ")}: ${dollars(c)}`;
+      seg.title = `${b.label}, ${head.label}${head.basis ? " " + head.basis : ""}: ${dollars(c)}`;
       if (c < 0) {
         seg.classList.add("negative");
         below.appendChild(seg);
@@ -204,7 +224,13 @@ export function draw(section) {
       }
     }
     total.textContent = "◇ " + millions(sums[i]);
-    year.textContent = (th.textContent || "").trim().replace(/\s+/g, " ");
+    year.textContent = head.label;
+    if (head.basis) {
+      const basis = doc.createElement("span");
+      basis.className = "basis";
+      basis.textContent = head.basis;
+      year.appendChild(basis);
+    }
     holder.appendChild(col);
   });
 

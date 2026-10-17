@@ -47,7 +47,7 @@ test("change.js imports with no page config, no d3 and no DOM, and runs nothing"
   assert.equal(typeof globalThis.document, "undefined", "nothing installed a DOM before the import");
   const mod = await import(MODULE);
   assert.deepEqual(Object.keys(mod).sort(),
-    ["HEIGHT", "NAMED", "TAIL_LABEL", "boot", "dollars", "draw", "groupRows", "millions", "rank", "readRows", "totals"]);
+    ["HEIGHT", "NAMED", "TAIL_LABEL", "boot", "dollars", "draw", "groupRows", "headWords", "millions", "rank", "readRows", "totals"]);
 });
 
 test("the page carries four figures, three charted, and boot fills each chart", async () => {
@@ -140,6 +140,34 @@ test("the budget's columns carry rules at its two measurement boundaries and the
   assert.deepEqual(rules("budget-revenue"), ["1", "2"]);
   assert.deepEqual(rules("audited-revenue"), []);
   assert.deepEqual(rules("audited-spending"), []);
+});
+
+// The largest band stands nearest the baseline on either side of it, in
+// every column, and the header's year and basis stay two words. Mutation:
+// iterate the bands reversed in draw and rank 1 lands at the top of every
+// column; take th.textContent for the caption and "FY 2015-16unaudited" is
+// one word.
+test("rank 1 touches the baseline in every column, and a column's year and basis are two words", async () => {
+  const { doc } = await booted();
+  for (const [id, s] of figures(doc)) {
+    if (s.dataset.chart !== "true") continue;
+    for (const col of s.querySelectorAll(".change-column")) {
+      const ranks = (sel) => [...col.querySelectorAll(sel)].map((x) => Number(x.dataset.rank) || Infinity);
+      const above = ranks(".change-above .change-seg");
+      const below = ranks(".change-below .change-seg");
+      assert.deepEqual(above, [...above].sort((a, b) => b - a), `${id} column ${col.dataset.column}: ranks above the baseline run ${above}`);
+      assert.deepEqual(below, [...below].sort((a, b) => a - b), `${id} column ${col.dataset.column}: ranks below the baseline run ${below}`);
+      const year = col.querySelector(".change-year");
+      const basis = year.querySelector(".basis");
+      const th = s.querySelector(`thead th[data-column="${col.dataset.column}"]`);
+      const thBasis = th.querySelector(".basis");
+      assert.match(year.firstChild.textContent, /^FY \d{4}-\d{2}$/, `${id}: the year reads ${year.textContent}`);
+      assert.equal(basis ? basis.textContent : "", thBasis ? thBasis.textContent.trim() : "");
+      for (const seg of col.querySelectorAll(".change-seg")) {
+        assert.ok(seg.title.includes(`, ${year.firstChild.textContent}${basis ? " " + basis.textContent : ""}: `), `${id}: ${seg.title}`);
+      }
+    }
+  }
 });
 
 // The one audited year of negative investment income hangs below the baseline.
