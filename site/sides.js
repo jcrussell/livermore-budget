@@ -68,7 +68,7 @@ export function sidesOf(config) {
  * @param {SidesState} st
  */
 export function hashOf(st) {
-  const esc = (/** @type {string} */ v) => encodeURIComponent(v).replace(/%2F/g, "/").replace(/%7E/g, KEY_MARK);
+  const esc = (/** @type {string} */ v) => encodeURIComponent(v).replace(/%2F/g, "/");
   const o = st.opened.map(esc).join(",");
   return "#y=" + esc(st.year.replace(/\.json$/, "")) + (o ? "&o=" + o : "");
 }
@@ -151,7 +151,21 @@ export function frontierOf(doc, opened) {
  * @returns {string[]}
  */
 export function closing(doc, opened, id) {
-  const inside = core.withinNode(doc, core.straightFrom(doc, id));
+  return outside(doc, opened, core.straightFrom(doc, id));
+}
+
+/**
+ * The opened entries not inside one node: what survives opening or closing
+ * it. Opening filters from the tile itself, so a tile opened straight
+ * through its parent's one-member split can be switched to its other split
+ * with the parent's entry kept, where closing() would fold the parent too.
+ * @param {FiscProjection} doc the expansion schedule
+ * @param {string[]} opened
+ * @param {string} id
+ * @returns {string[]}
+ */
+export function outside(doc, opened, id) {
+  const inside = core.withinNode(doc, id);
   return opened.filter((entry) => {
     const at = entry.indexOf(KEY_MARK);
     return !inside.has(at < 0 ? entry : entry.slice(0, at));
@@ -502,14 +516,16 @@ export async function boot(win, renderer) {
   const toggle = (tile, key) => {
     say(doc, "");
     hideTip(doc);
+    if (!schedule) return;
     const primary = tile.splits.find((sp) => !sp.alternative);
     const want = key || (primary ? primary.key : "");
-    const opened = schedule ? closing(schedule, state.opened, tile.id) : [];
     // A click on an opened tile closes it, whichever way it is open, as the
     // key and the tooltip say; a keyed gesture on a tile open another way
     // switches it, and on a tile open that way closes it.
     const open = tile.children ? tile.open : "";
-    if (!open || (key && open !== key)) {
+    const opens = !open || (key && open !== key);
+    const opened = opens ? outside(schedule, state.opened, tile.id) : closing(schedule, state.opened, tile.id);
+    if (opens) {
       if (!want) return;
       opened.push(want === (primary ? primary.key : "") ? tile.id : tile.id + KEY_MARK + want);
     }

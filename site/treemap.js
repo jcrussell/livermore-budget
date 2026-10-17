@@ -120,7 +120,11 @@ export const TREEMAP = Object.freeze({
       const w = Math.max(d.x1 - d.x0, 0);
       const h = Math.max(d.y1 - d.y0, 0);
       rect.setAttribute("width", String(w));
-      rect.setAttribute("height", String(tile.children ? HEAD - GAP : h));
+      // An opened tile's header band is HEAD - GAP tall, or the tile's own
+      // height where that is less: a 14px tile opened must not paint over
+      // the tiles below it.
+      const bandH = tile.children ? Math.min(HEAD - GAP, h) : h;
+      rect.setAttribute("height", String(bandH));
       if (tile.children) {
         const box = g.querySelector("rect.tile-box");
         if (box) {
@@ -135,7 +139,6 @@ export const TREEMAP = Object.freeze({
       const value = g.querySelector("text.tile-value");
       const words = (tile.contra ? "− " : "") + tile.label;
       const money = core.fmtShortSigned(tile.cents);
-      const bandH = tile.children ? HEAD - GAP : h;
       if (label) {
         if (fits(words, w, bandH)) {
           label.textContent = words;

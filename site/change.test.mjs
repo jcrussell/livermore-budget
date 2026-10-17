@@ -143,12 +143,16 @@ test("the budget's columns carry rules at its two measurement boundaries and the
 });
 
 // The largest band stands nearest the baseline on either side of it, in
-// every column, and the header's year and basis stay two words. Mutation:
+// every column, the stack above the baseline is HEIGHT tall in every
+// column so one baseline runs across them whatever hangs below (jsdom lays
+// nothing out, so the height is held here and the alignment is CSS's), and
+// the header's year and basis stay two words. Mutation: drop the
+// above.style.height line and the first assertion fails in every column;
 // iterate the bands reversed in draw and rank 1 lands at the top of every
 // column; take th.textContent for the caption and "FY 2015-16unaudited" is
 // one word.
 test("rank 1 touches the baseline in every column, and a column's year and basis are two words", async () => {
-  const { doc } = await booted();
+  const { mod, doc } = await booted();
   for (const [id, s] of figures(doc)) {
     if (s.dataset.chart !== "true") continue;
     for (const col of s.querySelectorAll(".change-column")) {
@@ -157,6 +161,7 @@ test("rank 1 touches the baseline in every column, and a column's year and basis
       const below = ranks(".change-below .change-seg");
       assert.deepEqual(above, [...above].sort((a, b) => b - a), `${id} column ${col.dataset.column}: ranks above the baseline run ${above}`);
       assert.deepEqual(below, [...below].sort((a, b) => a - b), `${id} column ${col.dataset.column}: ranks below the baseline run ${below}`);
+      assert.equal(col.querySelector(".change-above").style.height, `${mod.HEIGHT}px`, `${id}: the stack above the baseline is not HEIGHT tall`);
       const year = col.querySelector(".change-year");
       const basis = year.querySelector(".basis");
       const th = s.querySelector(`thead th[data-column="${col.dataset.column}"]`);
@@ -192,7 +197,12 @@ test("readRows refuses a row with no category and a cell that is not integer cen
   assert.throws(() => mod.readRows(t), /carries no category/);
   t = table.cloneNode(true);
   t.querySelector("tbody td[data-cents]").setAttribute("data-cents", "1.5");
-  assert.throws(() => mod.readRows(t), /carries 1.5 cents/);
+  assert.throws(() => mod.readRows(t), /carries "1.5" cents/);
+  // Absent is not zero: an empty attribute is refused, not read as 0.
+  // Mutation: Number(raw) without the integer test and the row reads 0.
+  t = table.cloneNode(true);
+  t.querySelector("tbody td[data-cents]").setAttribute("data-cents", "");
+  assert.throws(() => mod.readRows(t), /carries "" cents/);
   const { rows, columns } = mod.readRows(table.cloneNode(true));
   assert.equal(columns, 10);
   assert.equal(rows.length, 9);

@@ -2040,11 +2040,8 @@ noscript p {
 .glance-whole,
 .glance-apart {
   max-width: var(--measure);
-  color: var(--ink-2);
-  margin: 4px 0;
-}
-.glance-apart {
   color: var(--ink-1);
+  margin: 4px 0;
 }
 .glance-figure {
   margin: 12px 0 8px;
@@ -2349,7 +2346,7 @@ noscript p {
 }
 .change-columns {
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   gap: 10px;
   overflow-x: auto;
   padding-bottom: 4px;
@@ -2380,7 +2377,6 @@ noscript p {
   flex-direction: column;
   justify-content: flex-end;
   gap: 2px;
-  min-height: 240px;
   border-bottom: 1px solid var(--rule);
 }
 .change-below {

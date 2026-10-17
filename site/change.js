@@ -48,9 +48,10 @@ export function readRows(table) {
         const at = Number(td.getAttribute("data-column"));
         const raw = td.getAttribute("data-cents");
         if (raw === null) continue;
-        const v = Number(raw);
+        // Number("") is 0, and an empty attribute is not a printed zero.
+        const v = /^-?\d+$/.test(raw) ? Number(raw) : NaN;
         if (!Number.isSafeInteger(v) || !(at >= 0 && at < columns)) {
-          throw new Error(`${label} carries ${raw} cents in column ${at}`);
+          throw new Error(`${label} carries ${JSON.stringify(raw)} cents in column ${at}`);
         }
         cents[at] = v;
       }
@@ -203,6 +204,9 @@ export function draw(section) {
     const total = col.querySelector(".change-total");
     const year = col.querySelector(".change-year");
     if (!above || !below || !total || !year) throw new Error("the column template lacks a stack, a total or a year");
+    // One baseline across the columns: the stack above it is HEIGHT tall in
+    // every column, whatever hangs below, and the columns align at the top.
+    above.style.height = HEIGHT + "px";
     // Largest nearest the baseline on either side, so the baseline band is
     // the same category in every column and the eye reads one band across
     // them: bands are ranked largest first, prepended above the baseline

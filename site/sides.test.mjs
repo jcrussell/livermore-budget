@@ -73,7 +73,7 @@ function refusal(document) {
 test("the three modules import with no page config, no d3 and no DOM, and run nothing", () => {
   assert.ok(domless, "nothing installed a DOM before the import");
   assert.deepEqual(Object.keys(sides).sort(), ["KEY_MARK", "boot", "citationsOf", "clone", "closing", "dollars", "fillTable",
-    "frontierOf", "hashOf", "hideTip", "opensAs", "parseHash", "readConfig", "render", "say", "share", "showTip", "sidesAt", "sidesOf"]);
+    "frontierOf", "hashOf", "hideTip", "opensAs", "outside", "parseHash", "readConfig", "render", "say", "share", "showTip", "sidesAt", "sidesOf"]);
   assert.deepEqual(Object.keys(forms.treemap).sort(), ["GAP", "HEAD", "HEIGHT", "RANKED", "TREEMAP", "boot", "fits", "layOut"]);
   assert.deepEqual(Object.keys(forms.ledger).sort(), ["LEDGER", "RANKED", "boot", "widthOf"]);
 });
@@ -224,6 +224,10 @@ test("closing a tile drops the entries inside it, and a member opened straight t
   assert.ok(one, "the pinned schedule declares no one-member split");
   const [member] = core.splitsOf(doc, one.node).find((x) => x.key === one.key).members;
   assert.deepEqual(sides.closing(doc, [one.node], member), [], "closing the member did not close the parent that opened it");
+  // Opening the member another way keeps the parent that opened it; the
+  // member's own entries go. Mutation: filter from straightFrom in
+  // outside() and the parent's entry is dropped.
+  assert.deepEqual(sides.outside(doc, [one.node, member + sides.KEY_MARK + "x"], member), [one.node]);
   // A parent with several members: its own entry and a member's go; a
   // sibling root's stays.
   const wide = doc.splits.find((sp) => core.splitsOf(doc, sp.node).find((x) => x.key === sp.key).members.length > 1);
@@ -406,6 +410,26 @@ test("the treemap lays an opened tile out at its own size, its members dividing 
   for (const d of laid.children) assert.equal(d.value, d.data.size, `${d.data.id} is laid out at ${d.value}, its size is ${d.data.size}`);
   const total = laid.children.reduce((a, c) => a + c.value, 0);
   t.diagnostic(`${id}: size ${opened.size}, members' gross ${gross} (${reductions.length} reductions); laid at ${laid.children.find((d) => d.data.id === id).value} of ${total}`);
+});
+
+// An opened tile's header band never outgrows the tile: fines and
+// forfeitures lays out 14px tall in FY2026-27 at the test's width and opens.
+// Mutation: set the face's height to HEAD - GAP for every opened tile and
+// its band is 18px in a 14px box.
+test("an opened treemap tile's header band is no taller than the tile", async (t) => {
+  const id = "revenue/fines-and-forfeitures";
+  const { document } = await booted("treemap", `#y=fy2027-adopted&o=${id}`);
+  const opened = [...document.querySelectorAll("g.tile.opened")];
+  assert.ok(opened.some((g) => g.dataset.id === id), `${id} is not drawn opened`);
+  for (const g of opened) {
+    const face = Number(g.querySelector("rect.tile-face").getAttribute("height"));
+    const box = Number(g.querySelector("rect.tile-box").getAttribute("height"));
+    assert.ok(face <= box, `${g.dataset.id}: a ${face}px band in a ${box}px tile`);
+    if (g.dataset.id === id) {
+      assert.ok(box < forms.treemap.HEAD - forms.treemap.GAP, `${id} lays out ${box}px tall, taller than the band; this case proves nothing`);
+      t.diagnostic(`${id}: ${box}px tall, band ${face}px`);
+    }
+  }
 });
 
 // The treemap's labels are drawn only where they fit; the layout's boxes are
