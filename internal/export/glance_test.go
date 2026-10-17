@@ -36,7 +36,7 @@ func glanceFunding(short int64) []byte {
 		`"links":[` + link("fund/100", "department/police-department", police, "external", 119) + `,` +
 		link("fund/730", "department/police-department", fleet, "internal_service", 120) + `,` +
 		link("fund/100", "department/city-council", council, "external", 85) + `],` +
-		`"metadata":{"generated_by":"fisc (test)","fiscal_year":2026,"fiscal_year_label":"FY 2025-26",` +
+		`"metadata":{"generated_by":"testdata/sankey.golden.json (hand-derived, Wave 0)","fiscal_year":2026,"fiscal_year_label":"FY 2025-26",` +
 		`"basis":"adopted","scopes":["department-funding-sources"],"currency":"USD","units":"cents",` +
 		`"sources":[{"doc_id":"livermore-budget-fy2026-2027","pages":[85, 119, 120]}],` +
 		`"counts":{"facts":3,"nodes":6,"links":3},` +

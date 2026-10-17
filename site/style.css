@@ -2119,6 +2119,218 @@ noscript p {
 
 /* end glance.html */
 
+/* treemap.html and ledger.html, the two sides pages. Only their rules go in
+   this block. The ranks wear the glance page's ordinal ramp. */
+.sides-year {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.sides-how {
+  max-width: var(--measure);
+  color: var(--ink-2);
+}
+.sides {
+  display: grid;
+  gap: 28px;
+  margin-top: 20px;
+}
+.sides-side h2 {
+  margin-bottom: 2px;
+}
+.sides-total {
+  margin: 0 0 8px;
+}
+.sides-figure {
+  margin: 0;
+}
+.treemap {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+.treemap .tile {
+  cursor: default;
+}
+.treemap .tile.can-open {
+  cursor: pointer;
+}
+.treemap .tile:focus-visible .tile-face,
+.treemap .tile:focus-visible .tile-box {
+  outline: 2px solid var(--focus);
+}
+.treemap .tile-box {
+  fill: var(--wash);
+  stroke: var(--rule);
+  stroke-width: 1;
+}
+.treemap .tile-face {
+  fill: var(--glance-tail);
+}
+.treemap .tile[data-rank="1"] .tile-face { fill: var(--glance-1); }
+.treemap .tile[data-rank="2"] .tile-face { fill: var(--glance-2); }
+.treemap .tile[data-rank="3"] .tile-face { fill: var(--glance-3); }
+.treemap .tile[data-rank="4"] .tile-face { fill: var(--glance-4); }
+.treemap .tile[data-rank="5"] .tile-face { fill: var(--glance-5); }
+.treemap .tile[data-depth="2"] .tile-face { fill-opacity: 0.78; }
+.treemap .tile[data-depth="3"] .tile-face { fill-opacity: 0.6; }
+.treemap .tile.reduction .tile-face {
+  fill: url(#sides-hatch);
+}
+.treemap .hatch-ground {
+  fill: var(--surface-1);
+}
+.treemap .hatch-line {
+  stroke: var(--critical);
+  stroke-width: 2;
+}
+.treemap .tile.derived .tile-face {
+  stroke: var(--ink-2);
+  stroke-dasharray: 3 2;
+}
+.treemap text {
+  font-size: 12px;
+  pointer-events: none;
+  fill: var(--ink-1);
+}
+.treemap .tile[data-rank="1"]:not(.reduction) text,
+.treemap .tile[data-rank="2"]:not(.reduction) text,
+.treemap .tile[data-rank="3"]:not(.reduction) text {
+  fill: #ffffff;
+}
+.treemap .tile.opened > text {
+  fill: var(--ink-1);
+}
+.treemap .tile-value {
+  font-variant-numeric: tabular-nums;
+}
+.ledger-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 4px;
+}
+.bar-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 260px) 1fr auto auto;
+  gap: 0 10px;
+  align-items: center;
+  padding: 2px 4px 2px calc(4px + 18px * var(--depth, 0));
+  border-radius: 4px;
+}
+.bar-row.can-open {
+  cursor: pointer;
+}
+.bar-row:hover,
+.bar-row:focus-visible {
+  background: var(--wash);
+  outline: none;
+}
+.bar-row:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--focus);
+}
+.bar-label {
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bar-row[data-depth="0"] .bar-label {
+  font-weight: 600;
+}
+.bar-track {
+  display: block;
+  height: 16px;
+  position: relative;
+}
+.bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 0 4px 4px 0;
+  background: var(--glance-tail);
+  min-width: 1px;
+}
+.bar-row[data-rank="1"] .bar-fill { background: var(--glance-1); }
+.bar-row[data-rank="2"] .bar-fill { background: var(--glance-2); }
+.bar-row[data-rank="3"] .bar-fill { background: var(--glance-3); }
+.bar-row[data-rank="4"] .bar-fill { background: var(--glance-4); }
+.bar-row[data-rank="5"] .bar-fill { background: var(--glance-5); }
+.bar-row[data-depth="1"] .bar-fill { opacity: 0.78; }
+.bar-row[data-depth="2"] .bar-fill { opacity: 0.6; }
+.bar-row.reduction .bar-fill {
+  background: repeating-linear-gradient(45deg, var(--critical) 0 2px, var(--surface-1) 2px 6px);
+}
+.bar-row.derived .bar-fill {
+  outline: 1px dashed var(--ink-2);
+  outline-offset: -1px;
+}
+.bar-value {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.bar-share {
+  font-size: 12px;
+  white-space: nowrap;
+}
+.sides-key {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+.sides-key li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.key-swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  background: var(--glance-3);
+}
+.key-swatch.can-open {
+  box-shadow: inset 0 0 0 2px var(--surface-1), 0 0 0 1px var(--ink-2);
+}
+.key-swatch.opened {
+  background: var(--wash);
+  border: 1px solid var(--rule);
+}
+.key-swatch.reduction {
+  background: repeating-linear-gradient(45deg, var(--critical) 0 2px, var(--surface-1) 2px 6px);
+}
+.key-swatch.derived {
+  outline: 1px dashed var(--ink-2);
+  outline-offset: -1px;
+}
+.sides-table tr.contra td,
+.sides-table tr.contra th {
+  color: var(--ink-2);
+}
+@media (max-width: 640px) {
+  .bar-row {
+    grid-template-columns: 1fr auto;
+  }
+  .bar-label {
+    grid-column: 1 / -1;
+    white-space: normal;
+  }
+  .bar-share {
+    display: none;
+  }
+}
+
+/* end treemap.html and ledger.html */
+
 /* debt.html. Only that page's rules go in this block. */
 .debt-table td.debt-unprinted { color: var(--muted, #777); font-style: italic; font-size: 0.85em; }
 .debt-band th[scope="row"], .debt-band td { border-top: 1px dashed var(--rule, #bbb); }

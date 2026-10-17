@@ -240,6 +240,10 @@ func buildGlancePage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			return glancePageData{}, fmt.Errorf("view %q reads %s beside %s and they state different columns",
 				v.Path, reads[0], stem)
 		}
+		if funding.Metadata.GeneratedBy != meta.GeneratedBy {
+			return glancePageData{}, fmt.Errorf("view %q reads documents built by %q and %q; the footer credits one projection",
+				v.Path, meta.GeneratedBy, funding.Metadata.GeneratedBy)
+		}
 		cited = append(cited, m.Sources...)
 		cited = append(cited, funding.Metadata.Sources...)
 

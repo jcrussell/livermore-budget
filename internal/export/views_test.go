@@ -643,7 +643,7 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 		{"sankey hints on a chart declaring no form", []export.View{ok,
 			{Path: "trends.html", Nav: "Revenue tables", Template: export.TrendsTemplate,
 				Projection: "sankey", Overview: export.Chart{Sankey: &export.SankeyHints{Tiers: []int{0, 2, 4}}}}},
-			"declares no sankey chart"},
+			"carries sankey hints and declares a \"\" chart"},
 		// The sections family, both directions: headings dropped in silence
 		// lose the only thing telling p167's two same-labelled blocks apart,
 		// and a history table with none puts every row under no heading.
@@ -2507,7 +2507,8 @@ func TestEveryFooterDisclosureKeepsItsHeadingInTheOutline(t *testing.T) {
 	}
 	if diff := cmp.Diff([]string{export.CapitalTemplate, export.DebtTemplate,
 		export.DepartmentTemplate, export.GlanceTemplate, export.HistoryTemplate, export.SankeyTemplate,
-		export.ProvenanceTemplate, export.TotalsTemplate, export.TrendsTemplate}, calling); diff != "" {
+		export.LedgerTemplate, export.ProvenanceTemplate, export.TotalsTemplate, export.TreemapTemplate,
+		export.TrendsTemplate}, calling); diff != "" {
 		t.Errorf("templates executing the sources partial (-want +got):\n%s", diff)
 	}
 }

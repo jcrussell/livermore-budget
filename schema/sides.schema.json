@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jcrussell.github.io/livermore-budget/schema/sides.schema.json",
+  "title": "fisc sides page config",
+  "description": "What site/sides.js reads from treemap.html and ledger.html before it fetches a column: which schedule to fold, the chart's form with that form's sides, and the years. It carries no figure; every figure is a link of the column the year names, folded by the client to the frontier it opens. Every object is closed.",
+  "type": "object",
+  "required": ["schema_version", "exported_by", "primary", "overview", "years", "docs"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"type": "integer", "minimum": 1},
+    "exported_by": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The export that wrote this page; each column it fetches carries the same string as generated_by."
+    },
+    "primary": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The column schedule the page folds: the expansion schedule, whose splits say how a tile opens."
+    },
+    "overview": {"$ref": "https://jcrussell.github.io/livermore-budget/schema/page.schema.json#/properties/overview"},
+    "years": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Every column the page opens, oldest first; the page opens on the last.",
+      "items": {
+        "type": "object",
+        "required": ["path", "label", "basis", "lede"],
+        "additionalProperties": false,
+        "properties": {
+          "path": {"type": "string", "pattern": "^fy[0-9]{4}-[a-z]+\\.json$"},
+          "label": {"type": "string", "minLength": 1},
+          "basis": {"type": "string", "minLength": 1},
+          "lede": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "docs": {"$ref": "https://jcrussell.github.io/livermore-budget/schema/page.schema.json#/properties/docs"}
+  }
+}

@@ -98,7 +98,8 @@ const DefaultSourceBrowseURL = "https://github.com/jcrussell/livermore-budget/bl
 // verbatimAssets are copied from the embedded site tree byte for byte. The
 // page template is not in this list: it is rendered, and vendor/ is walked.
 var verbatimAssets = []string{"app.js", "core.js", "sankey.js",
-	"department.js", "capital.js", "debt.js", "glance.js", "style.css", ".nojekyll"}
+	"department.js", "capital.js", "debt.js", "glance.js", "sides.js", "treemap.js", "ledger.js",
+	"style.css", ".nojekyll"}
 
 // View is one HTML page of the site: one document, rendered by one template.
 //
@@ -386,15 +387,64 @@ type Chart struct {
 	// Sankey is the Sankey form's hints, present exactly when Form is
 	// [SankeyForm].
 	Sankey *SankeyHints `json:"sankey,omitempty"`
+	// Treemap and Ledger are the two sides forms' hints, each present
+	// exactly when Form is its form.
+	Treemap *SidesHints `json:"treemap,omitempty"`
+	Ledger  *SidesHints `json:"ledger,omitempty"`
 }
 
 // SankeyForm is the form site/sankey.js draws: columns of tiers joined by
 // ribbons.
 const SankeyForm = "sankey"
 
+// TreemapForm and LedgerForm are the forms site/treemap.js and site/ledger.js
+// draw: each declared side of the expansion schedule as nested tiles, or as
+// ranked bars on one scale, opening in place.
+const (
+	TreemapForm = "treemap"
+	LedgerForm  = "ledger"
+)
+
 // ChartForms is the declared set of forms, which schema/enums.schema.json
 // states as chart_form and schema/enums_test.go holds to this.
-func ChartForms() []string { return []string{SankeyForm} }
+func ChartForms() []string { return []string{SankeyForm, TreemapForm, LedgerForm} }
+
+// SidesHints is a treemap's or a ledger's hints: the sides it draws.
+type SidesHints struct {
+	Sides []Side `json:"sides" yaml:"sides"`
+}
+
+// Side is one side of a sides chart: a spine tier whose roots open in place,
+// and the heading it stands under.
+type Side struct {
+	Tier    int    `json:"tier" yaml:"tier"`
+	Heading string `json:"heading" yaml:"heading"`
+}
+
+// sides is the sides hints of a chart of a sides form, or nil.
+func (c Chart) sides() *SidesHints {
+	switch c.Form {
+	case TreemapForm:
+		return c.Treemap
+	case LedgerForm:
+		return c.Ledger
+	}
+	return nil
+}
+
+// foreignHints names a hint object the chart carries that is not its form's,
+// or "" when it carries none.
+func (c Chart) foreignHints() string {
+	switch {
+	case c.Sankey != nil && c.Form != SankeyForm:
+		return SankeyForm
+	case c.Treemap != nil && c.Form != TreemapForm:
+		return TreemapForm
+	case c.Ledger != nil && c.Form != LedgerForm:
+		return LedgerForm
+	}
+	return ""
+}
 
 // MarkRoles is the declared set of roles a node the CLIENT makes may wear:
 // the aggregate a split cap folds a split's tail into, and the smaller-flows
@@ -456,6 +506,13 @@ type SplitCap struct {
 func (c Chart) drawnTiers() []int {
 	if c.Form == SankeyForm && c.Sankey != nil {
 		return c.Sankey.Tiers
+	}
+	if h := c.sides(); h != nil {
+		out := make([]int, 0, len(h.Sides))
+		for _, s := range h.Sides {
+			out = append(out, s.Tier)
+		}
+		return out
 	}
 	return nil
 }
@@ -664,10 +721,14 @@ func (v View) validate(built map[string][]byte, ix ColumnIndex) error {
 		return fmt.Errorf(
 			"view %q declares chart form %q, which is not one of %v",
 			v.Path, v.Overview.Form, ChartForms())
-	case v.Overview.Form != SankeyForm && v.Overview.Sankey != nil:
+	case v.Overview.foreignHints() != "":
 		return fmt.Errorf(
-			"view %q carries sankey hints and declares no sankey chart; the hints "+
-				"would be dropped in silence", v.Path)
+			"view %q carries %s hints and declares a %q chart; the hints "+
+				"would be dropped in silence", v.Path, v.Overview.foreignHints(), v.Overview.Form)
+	case (v.Overview.Form == TreemapForm || v.Overview.Form == LedgerForm) && v.Overview.sides() == nil:
+		return fmt.Errorf(
+			"view %q declares a %s chart with no %s hints; which tiers are its sides is a declaration",
+			v.Path, v.Overview.Form, v.Overview.Form)
 	case v.Overview.Form == SankeyForm && v.Overview.Sankey == nil:
 		return fmt.Errorf(
 			"view %q declares a sankey chart with no sankey hints; the column order "+
@@ -711,7 +772,8 @@ func (v View) validate(built map[string][]byte, ix ColumnIndex) error {
 func templateRendersLede(name string) bool {
 	switch name {
 	case TrendsTemplate, HistoryTemplate, ProvenanceTemplate, CaveatsTemplate,
-		DepartmentTemplate, CapitalTemplate, DebtTemplate, TotalsTemplate, GlanceTemplate:
+		DepartmentTemplate, CapitalTemplate, DebtTemplate, TotalsTemplate, GlanceTemplate,
+		TreemapTemplate, LedgerTemplate:
 		return true
 	default:
 		return false
@@ -724,7 +786,7 @@ func templateRendersLede(name string) bool {
 // different failures.
 func templateRendersAYearControl(name string) bool {
 	switch name {
-	case SankeyTemplate,
+	case SankeyTemplate, TreemapTemplate, LedgerTemplate,
 		DepartmentTemplate, TotalsTemplate, GlanceTemplate:
 		return true
 	default:
@@ -738,7 +800,7 @@ func templateRendersAYearControl(name string) bool {
 // no app.js.
 func templateDrawsAChart(name string) bool {
 	switch name {
-	case SankeyTemplate:
+	case SankeyTemplate, TreemapTemplate, LedgerTemplate:
 		return true
 	default:
 		return false
@@ -753,7 +815,7 @@ func templateRendersADocument(name string) bool {
 	case SankeyTemplate, TrendsTemplate, HistoryTemplate,
 		CapitalTemplate,
 		DebtTemplate,
-		DepartmentTemplate, TotalsTemplate, GlanceTemplate:
+		DepartmentTemplate, TotalsTemplate, GlanceTemplate, TreemapTemplate, LedgerTemplate:
 		return true
 	default:
 		return false

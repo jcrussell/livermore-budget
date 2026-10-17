@@ -1,6 +1,7 @@
 package export
 
 import (
+	"encoding/json"
 	"fmt"
 	"slices"
 
@@ -44,8 +45,12 @@ func (v View) validateOverview(built map[string][]byte, ix ColumnIndex) error {
 			"view %q describes its chart and renders template %q, which draws none; "+
 				"the sentence would be dropped in silence", v.Path, v.Template)
 	}
-	if _, err := v.drawnStems(ix); err != nil {
+	drawn, err := v.drawnStems(ix)
+	if err != nil {
 		return err
+	}
+	if v.Overview.sides() != nil {
+		return v.validateSides(drawn, built)
 	}
 	h := v.Overview.Sankey
 	if v.Overview.Form != SankeyForm || h == nil {
@@ -94,6 +99,75 @@ func (v View) validateSplitCaps() error {
 				"the cap would fold nothing, in silence", v.Path, c.Split, keys)
 		case slices.ContainsFunc(caps[:j], func(o SplitCap) bool { return o.Split == c.Split }):
 			return fmt.Errorf("view %q caps split %q twice", v.Path, c.Split)
+		}
+	}
+	return nil
+}
+
+// validateSides refuses a sides chart the client could not draw as sides: a
+// side with no heading, a tier declared twice, a tier no root of the drawn
+// schedule stands at, and a root whose ribbons to what is outside it both
+// arrive and leave, since no one figure is then its size. Each is read off
+// the drawn document of every year, so a declaration is held against the
+// schedule and not against a reading of it.
+func (v View) validateSides(drawn []string, built map[string][]byte) error {
+	h := v.Overview.sides()
+	for j, s := range h.Sides {
+		switch {
+		case s.Heading == "":
+			return fmt.Errorf("view %q draws tier %d as a side with no heading", v.Path, s.Tier)
+		case s.Tier < 0:
+			return fmt.Errorf("view %q draws tier %d as a side; a tier is not negative", v.Path, s.Tier)
+		case slices.ContainsFunc(h.Sides[:j], func(o Side) bool { return o.Tier == s.Tier }):
+			return fmt.Errorf("view %q draws tier %d as a side twice", v.Path, s.Tier)
+		}
+	}
+	for _, stem := range drawn {
+		var d decoded
+		if err := json.Unmarshal(built[stem], &d); err != nil {
+			return fmt.Errorf("decode %s for view %q's sides: %w", stem, v.Path, err)
+		}
+		if len(d.Splits) == 0 {
+			return fmt.Errorf("view %q draws %s as sides, and it declares no splits, so nothing would open", v.Path, stem)
+		}
+		parent := make(map[string]string, len(d.Nodes))
+		for _, n := range d.Nodes {
+			parent[n.ID] = n.Parent
+		}
+		inside := func(root, id string) bool {
+			for hops := 0; id != "" && hops < 12; hops++ {
+				if id == root {
+					return true
+				}
+				id = parent[id]
+			}
+			return false
+		}
+		for _, s := range h.Sides {
+			roots := 0
+			for _, n := range d.Nodes {
+				if n.Parent != "" || n.Tier != s.Tier {
+					continue
+				}
+				roots++
+				var leaving, arriving bool
+				for _, l := range d.Links {
+					if l.Source == n.ID && !inside(n.ID, l.Target) {
+						leaving = true
+					}
+					if l.Target == n.ID && !inside(n.ID, l.Source) {
+						arriving = true
+					}
+				}
+				if leaving && arriving {
+					return fmt.Errorf("view %q draws tier %d as a side, and in %s its root %s both takes in and pays out, "+
+						"so no one figure is its size", v.Path, s.Tier, stem, n.ID)
+				}
+			}
+			if roots == 0 {
+				return fmt.Errorf("view %q draws tier %d as a side, and %s has no root at it; every node there hangs under another",
+					v.Path, s.Tier, stem)
+			}
 		}
 	}
 	return nil

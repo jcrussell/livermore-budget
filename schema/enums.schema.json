@@ -52,7 +52,7 @@
     "chart_form": {
       "description": "Which renderer draws a chart; export.ChartForms.",
       "type": "string",
-      "enum": ["sankey"]
+      "enum": ["sankey", "treemap", "ledger"]
     },
     "role": {
       "description": "What a node is for, so a client never parses its id; project.Roles.",

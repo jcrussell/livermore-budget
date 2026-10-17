@@ -1865,3 +1865,124 @@ export function tableRows(doc) {
   }
   return out;
 }
+
+/**
+ * One drawn node of a side's tree: its signed figure in cents, the size it
+ * is laid out at, what it cites, and the members a frontier draws under it.
+ * @typedef {{
+ *   id: string, label: string, tier: number, parent: string, derived: boolean, contra: string,
+ *   cents: number, size: number, fact_ids: string[], locators: FiscSource[],
+ *   splits: {key: string, form: string, alternative: boolean, members: string[]}[], open: string,
+ *   children: SideTile[] | null,
+ * }} SideTile
+ */
+
+/**
+ * The tree one side of the expansion schedule draws at a frontier: every root
+ * at `tier`, each with the members the frontier opens under it, and so on
+ * down. A root's figure is the sum of the folded ribbons joining it to what
+ * is outside it, signed as the fold sums them, so a printed reduction counts
+ * against it; a member's is the sum of the ribbons joining it to its parent
+ * hub. Both are sums of figures Go cited, at memberships Go declared, and
+ * `size` is the magnitude a tile or bar is laid out at.
+ *
+ * FAILS CLOSED on a root whose outside ribbons both arrive and leave, since
+ * no one figure is its size, and on a drawn member joined to its parent by
+ * no ribbon, which would draw a tile for no money.
+ *
+ * @param {FiscProjection} doc the expansion schedule
+ * @param {Iterable<string>} frontier the node ids drawn, hubs included
+ * @param {number} tier the roots drawn: a spine column
+ * @returns {{roots: SideTile[], cents: number, size: number}}
+ */
+export function sideTree(doc, frontier, tier) {
+  const open = new Set(frontier);
+  const folded = foldDocument(doc, open);
+  const byID = new Map(folded.nodes.map((n) => [n.id, n]));
+  const raw = new Map(doc.nodes.map((n) => [n.id, n]));
+  /** @type {Map<string, FiscLink[]>} ribbons at each drawn node */
+  const at = new Map();
+  for (const l of folded.links) {
+    for (const end of [l.source, l.target]) {
+      const list = at.get(end) || [];
+      list.push(l);
+      at.set(end, list);
+    }
+  }
+  /** @param {FiscLink[]} ribbons */
+  const figure = (ribbons) => {
+    const ids = new Set();
+    const keys = new Set();
+    let cents = 0;
+    for (const l of ribbons) {
+      cents += l.value_cents;
+      for (const id of l.fact_ids) ids.add(id);
+      for (const k of locatorKeys(l.locators || [])) keys.add(k);
+    }
+    return { cents, fact_ids: Array.from(ids).sort(), locators: regroupLocators(keys) };
+  };
+  /**
+   * @param {FiscNode} n
+   * @param {FiscLink[]} ribbons
+   * @returns {SideTile}
+   */
+  const tile = (n, ribbons) => {
+    const f = figure(ribbons);
+    const splits = splitsOf(doc, n.id);
+    const members = folded.nodes.filter((m) => m.parent === n.id && (raw.get(m.id) || { parent: "" }).parent === n.id);
+    const children = members.length ? members.map((m) => {
+      const joining = (at.get(m.id) || []).filter((l) => l.source === n.id || l.target === n.id);
+      if (!joining.length) {
+        throw new Error("cannot draw " + doc.projection + ": " + m.id + " is drawn under " + n.id +
+          " and no ribbon joins the two, so it has no figure here");
+      }
+      return tile(m, joining);
+    }) : null;
+    return {
+      id: n.id, label: String(n.label), tier: n.tier, parent: n.parent || "",
+      derived: Boolean(n.derived), contra: ribbons.length === 1 ? (ribbons[0].contra || "") : "",
+      cents: f.cents, size: Math.abs(f.cents), fact_ids: f.fact_ids, locators: f.locators,
+      splits, open: splits.length ? openSplitOf(doc, open, n.id) : "",
+      children,
+    };
+  };
+  const roots = [];
+  let cents = 0;
+  let size = 0;
+  for (const n of folded.nodes) {
+    if (n.parent || n.tier !== tier) continue;
+    const inside = withinNode(doc, n.id);
+    const outside = (at.get(n.id) || []).filter((l) => !inside.has(l.source === n.id ? l.target : l.source));
+    const leaving = outside.some((l) => l.source === n.id);
+    const arriving = outside.some((l) => l.target === n.id);
+    if (leaving && arriving) {
+      throw new Error("cannot draw tier " + tier + " as a side: " + n.id + " both takes in and pays out, " +
+        "so no one figure is its size");
+    }
+    const t = tile(n, outside);
+    roots.push(t);
+    cents += t.cents;
+    size += t.size;
+  }
+  if (!roots.length) throw new Error("cannot draw tier " + tier + " as a side: " + doc.projection + " draws no root at it");
+  roots.sort((a, b) => b.size - a.size || a.label.localeCompare(b.label));
+  return { roots, cents, size };
+}
+
+/**
+ * Every tile of a side's tree, parents before children, each with its depth.
+ * @param {SideTile[]} roots
+ * @returns {{tile: SideTile, depth: number}[]}
+ */
+export function sideTiles(roots) {
+  /** @type {{tile: SideTile, depth: number}[]} */
+  const out = [];
+  const walk = (/** @type {SideTile[]} */ tiles, /** @type {number} */ depth) => {
+    for (const t of tiles) {
+      out.push({ tile: t, depth });
+      if (t.children) walk(t.children, depth + 1);
+    }
+  };
+  walk(roots, 0);
+  return out;
+}

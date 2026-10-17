@@ -39,6 +39,20 @@ func TestTheSchemaHoldsAChartToItsForm(t *testing.T) {
 			func(cfg map[string]any) { overview(cfg)["bars"] = map[string]any{"tier": 3.0} }},
 		{"a bars chart, which no renderer draws", "form",
 			func(cfg map[string]any) { overview(cfg)["form"] = "bars"; delete(overview(cfg), "sankey") }},
+		{"a sankey chart carrying treemap hints", "treemap", func(cfg map[string]any) {
+			overview(cfg)["treemap"] = map[string]any{"sides": []any{map[string]any{"tier": 0.0, "heading": "In"}}}
+		}},
+		{"a treemap chart with no treemap hints", "treemap",
+			func(cfg map[string]any) { overview(cfg)["form"] = "treemap"; delete(overview(cfg), "sankey") }},
+		{"a ledger chart carrying sankey hints", "sankey", func(cfg map[string]any) {
+			overview(cfg)["form"] = "ledger"
+			overview(cfg)["ledger"] = map[string]any{"sides": []any{map[string]any{"tier": 0.0, "heading": "In"}}}
+		}},
+		{"a side with no heading", "heading", func(cfg map[string]any) {
+			overview(cfg)["form"] = "ledger"
+			delete(overview(cfg), "sankey")
+			overview(cfg)["ledger"] = map[string]any{"sides": []any{map[string]any{"tier": 0.0}}}
+		}},
 		{"a dropped tier, which no chart declares", "drop",
 			func(cfg map[string]any) { hints(cfg)["drop"] = []any{2.0} }},
 		{"a tier cap, which no chart declares", "caps", func(cfg map[string]any) {

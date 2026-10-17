@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.Title}}</title>
+<meta name="description" content="{{.Description}}">
+<meta name="color-scheme" content="light dark">
+<link rel="stylesheet" href="style.css">
+<script>
+  // Stamp the saved theme before first paint, the same way index.html does, so
+  // a reader who chose dark there does not get a white flash here.
+  try {
+    var t = localStorage.getItem("fisc-theme");
+    if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+  } catch (e) { /* private mode: fall back to the OS setting */ }
+</script>
+<script type="application/json" id="sides-config">{{.ConfigJSON}}</script>
+<!-- A module is deferred, so it runs once the sections below are parsed;
+     importing ledger.js runs nothing, so boot() is called here. -->
+<script type="module">import { boot } from "./ledger.js"; boot(window);</script>
+</head>
+<body>
+
+<div class="wip-banner" role="status">⚠️ Work in progress — early preview, coverage is incomplete.</div>
+
+{{- if gt (len .Nav) 1}}
+<nav class="site-nav" aria-label="Views">
+  <ul>
+    {{- range .Nav}}
+    <li>{{if .Current}}<span aria-current="page">{{.Label}}</span>{{else}}<a href="{{.Path}}">{{.Label}}</a>{{end}}</li>
+    {{- end}}
+  </ul>
+</nav>
+{{- end}}
+
+<header class="page-head">
+  <div>
+    <h1>{{.Title}}</h1>
+    <p class="lede">
+      {{.Lede}} Drawn from the <span id="lede-year">{{.OpensLede}}</span> budget.
+    </p>
+  </div>
+  <div class="head-controls">
+    <label class="sides-year">Budget column
+      <select id="year-select">
+        {{- range .Years}}
+        <option value="{{.Path}}"{{if eq .Path $.Opens}} selected{{end}}>{{.Lede}}</option>
+        {{- end}}
+      </select>
+    </label>
+  </div>
+</header>
+
+<main id="sides-main">
+
+<p class="sides-how">
+  Each side is a list of bars, largest first, every bar on the one scale the page's largest bar sets. Click a bar that opens to see its parts under it, indented; click it again to close it. Shift-click opens a bar its other way where the budget prints one. A tile marked <em>inferred</em> is a figure the city prints only
+  as a difference; one drawn hatched is printed as a reduction and counts
+  against its parent. Every figure is a sum of cells the city printed, and the
+  table below lists each with the page it was read from. A share marked ◇ is
+  ours: one tile as a percentage of its side.
+</p>
+
+<ul class="sides-key" aria-label="Key">
+  <li><span class="key-swatch can-open" aria-hidden="true"></span> opens with a click</li>
+  <li><span class="key-swatch opened" aria-hidden="true"></span> opened; a click closes it</li>
+  <li><span class="key-swatch reduction" aria-hidden="true"></span> printed as a reduction, drawn at its size</li>
+  <li><span class="key-swatch derived" aria-hidden="true"></span> inferred: printed only as a difference</li>
+</ul>
+
+<div class="sides">
+{{- range .Sides}}
+<section class="sides-side" data-tier="{{.Tier}}" aria-labelledby="side-{{.Tier}}">
+  <h2 id="side-{{.Tier}}">{{.Heading}}</h2>
+  <p class="sides-total subtle"></p>
+  {{- /* Hidden until the script fills it from the templates at the foot of
+         main; with no script the table below carries nothing either, so
+         the page says so. */}}
+  <figure class="sides-figure" hidden></figure>
+</section>
+{{- end}}
+</div>
+
+<noscript><p class="refusal">This page draws its chart in the browser and lists every tile under it; with scripts off it shows neither. The same figures are on <a href="glance.html">the glance page</a>, which needs no script.</p></noscript>
+
+<div class="tooltip" id="tooltip" role="status" aria-live="polite" hidden></div>
+
+<details class="apparatus" id="table-view">
+  <summary>
+    <h3>Every tile as a table</h3>
+    <span class="apparatus-hint"><span id="sides-count"></span></span>
+  </summary>
+  <div class="table-scroll">
+  <table class="series-table sides-table" id="sides-table">
+    <thead>
+      <tr>
+        <th scope="col">Side</th>
+        <th scope="col">Tile</th>
+        <th scope="col">Under</th>
+        <th scope="col" class="num">Amount</th>
+        <th scope="col" class="num">Share ◇</th>
+        <th scope="col">Pages</th>
+        <th scope="col">Note</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+  </div>
+  <p class="subtle">The column drawn: <a id="sides-data-path" href="{{.Opens}}">{{.Opens}}</a>.</p>
+</details>
+
+{{- if .Caveats}}
+<ul class="caveats">
+  {{- range .Caveats}}
+  <li>{{if .Href}}<a href="{{.Href}}">{{.Summary}}</a>{{else}}{{.Summary}}{{end}}</li>
+  {{- end}}
+</ul>
+{{- end}}
+{{- if .CaveatsPath}}
+<p class="subtle">Every page's caveats are collected on <a href="{{.CaveatsPath}}">the caveats page</a>.</p>
+{{- end}}
+
+<!-- What the script clones per drawn piece, so the figure's markup lives
+     here and the script fills figures in. -->
+<template id="ledger-list"><ol class="ledger-list"></ol></template>
+<template id="ledger-row"><li class="bar-row" tabindex="0" role="button"><span class="bar-label"></span><span class="bar-track"><span class="bar-fill"></span></span><span class="bar-value"></span><span class="bar-share subtle"></span></li></template>
+</main>
+
+<footer>
+  {{template "sources" .}}
+  <p class="subtle">
+    Scope {{.Scope}}. Projection: {{.ProjectionBy}}. Packaged by {{.ExportedBy}}.
+  </p>
+</footer>
+
+</body>
+</html>

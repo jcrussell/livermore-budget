@@ -57,6 +57,42 @@ views:
       which department spends it. Each bar is a sum of cells the city printed,
       and the city's own total is printed beside it.
 
+  # The same expansion schedule as two more forms, each side a spine column
+  # whose roots open in place. The middle column is no side: a fund group
+  # both takes in and pays out, and validateSides refuses it.
+  - path: treemap.html
+    nav: Tiles
+    template: treemap.html.tmpl
+    projection: sankey
+    year_control: true
+    title: Livermore's budget as tiles
+    lede: >-
+      Where the money comes from and where it goes, each a box of tiles sized
+      by their share, opening in place into the parts the budget prints.
+    overview:
+      form: treemap
+      projection: expansion
+      treemap:
+        sides:
+          - {tier: 0, heading: Where the money comes from}
+          - {tier: 5, heading: Where the money goes}
+  - path: ledger.html
+    nav: Bars
+    template: ledger.html.tmpl
+    projection: sankey
+    year_control: true
+    title: Livermore's budget as bars
+    lede: >-
+      Where the money comes from and where it goes, each a list of bars on one
+      scale, largest first, opening in place into the parts the budget prints.
+    overview:
+      form: ledger
+      projection: expansion
+      ledger:
+        sides:
+          - {tier: 0, heading: Where the money comes from}
+          - {tier: 5, heading: Where the money goes}
+
   # The headline figures behind the chart, every year at once.
   - path: totals.html
     nav: The totals
