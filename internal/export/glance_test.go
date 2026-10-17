@@ -225,6 +225,18 @@ func TestGlancePagePrintsADeclaredResidualInsteadOfATie(t *testing.T) {
 		}
 	}
 
+	// A residual is signed: rows above the whole say "more", with the
+	// magnitude, never "-$250,000 less".
+	above := []export.ApartFromSpine{{FiscalYear: 2026, Basis: "adopted", ResidualCents: -25000000,
+		Reason: "a reason", Bead: "fisc-av0w"}}
+	dir = t.TempDir()
+	if _, err := writeSite(glanceOptions(t, dir, glanceFunding(-25000000), above)); err != nil {
+		t.Fatalf("Write with rows above the whole: %v", err)
+	}
+	if body := barsOf(t, readFile(t, dir, "glance.html"))["departments"]; !strings.Contains(body, "sum to <strong>$250,000</strong> more than that figure") {
+		t.Errorf("the departments bar does not say the rows sum to $250,000 more than the whole")
+	}
+
 	// The declaration applies to its own column only: the same page over a
 	// funding document that ties is refused, because the residual would then
 	// be unaccounted for.

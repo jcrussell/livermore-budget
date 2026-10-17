@@ -39,21 +39,26 @@ type glanceRow struct {
 
 // glanceApart is one ApartFromSpine as the page prints it.
 type glanceApart struct {
-	Residual string
-	Reason   string
-	Bead     string
+	// Residual is the magnitude; Direction is "less" or "more", read off
+	// the sign of ApartFromSpine.ResidualCents, which is what the rows
+	// miss the whole by, either way.
+	Residual  string
+	Direction string
+	Reason    string
+	Bead      string
 }
 
 // glanceBar is one "of every $100" bar: which cells it is drawn from and the
-// cited figure printed beside the client's sum of them.
+// projection's total printed beside the client's sum of them.
 type glanceBar struct {
 	ID        string
 	Heading   string
 	Lede      string
 	GroupHead string
 	OtherHead string
-	// Whole is the figure the city prints for this bar's total. Rows plus
-	// Apart's residuals sum to it, or buildGlancePage refuses the page.
+	// Whole is the projection's headline for this bar's total, its sum over
+	// every cell of the bar's kind, and not a printed cell. Rows plus Apart's
+	// residuals sum to it, or buildGlancePage refuses the page.
 	Whole figure
 	Rows  []glanceRow
 	// Ties is whether Apart is empty: the rows sum to Whole with no declared
@@ -256,8 +261,11 @@ func buildGlancePage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		}
 		spineRole, fundingRole := role(spine), role(funding)
 		h := m.Headline
-		revenue := figure{Label: "Total revenues the city prints, all funds", Value: amount.Cents(h.AllFundsGrossRevenueCents).Dollars()}
-		spent := figure{Label: "Total expenditures the city prints, all funds", Value: amount.Cents(h.AllFundsGrossExpenditureCents).Dollars()}
+		// The projection's headline, a sum over every revenue or expenditure
+		// cell the city prints (headline-ties-to-facts), and not a cell itself:
+		// the page says so, and cites no page for it.
+		revenue := figure{Label: "Total revenues, all funds, summed from every revenue cell the city prints", Value: amount.Cents(h.AllFundsGrossRevenueCents).Dollars()}
+		spent := figure{Label: "Total expenditures, all funds, summed from every expenditure cell the city prints", Value: amount.Cents(h.AllFundsGrossExpenditureCents).Dollars()}
 
 		var apart []ApartFromSpine
 		for _, a := range o.DepartmentsApartFromSpine {
@@ -325,8 +333,12 @@ func buildGlancePage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			}
 			bar.Ties = len(b.residuals) == 0
 			for _, a := range b.residuals {
+				direction, magnitude := "less", a.ResidualCents
+				if magnitude < 0 {
+					direction, magnitude = "more", -magnitude
+				}
 				bar.Apart = append(bar.Apart, glanceApart{
-					Residual: amount.Cents(a.ResidualCents).Dollars(), Reason: a.Reason, Bead: a.Bead})
+					Residual: amount.Cents(magnitude).Dollars(), Direction: direction, Reason: a.Reason, Bead: a.Bead})
 			}
 			if bar.ID == "departments" {
 				bar.Caveats = caveatRefs(funding.Metadata.Caveats, reads[0], caveatsPath)

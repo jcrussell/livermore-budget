@@ -140,6 +140,25 @@ export function frontierOf(doc, opened) {
 }
 
 /**
+ * The opened entries with a tile shut: its own entry and every entry inside
+ * it taken off, from the node whose opening opened it (core.straightFrom), so
+ * a member opened straight through its parent's one-member split closes with
+ * its parent. A member's own entry left behind would be replayed on a
+ * frontier that no longer draws it, and refused.
+ * @param {FiscProjection} doc the expansion schedule
+ * @param {string[]} opened
+ * @param {string} id
+ * @returns {string[]}
+ */
+export function closing(doc, opened, id) {
+  const inside = core.withinNode(doc, core.straightFrom(doc, id));
+  return opened.filter((entry) => {
+    const at = entry.indexOf(KEY_MARK);
+    return !inside.has(at < 0 ? entry : entry.slice(0, at));
+  });
+}
+
+/**
  * Whole dollars, signed, cents only where a figure has them.
  * @param {number} cents
  */
@@ -436,6 +455,9 @@ export async function boot(win, renderer) {
 
   /** @type {SidesState} */
   let state = { year: config.years[config.years.length - 1].path, opened: [] };
+  /** The schedule of the column drawn, which a gesture closes against. */
+  /** @type {FiscProjection | undefined} */
+  let schedule;
   let shown = 0;
   /** @param {SidesState} st @param {boolean} push */
   const show = async (st, push) => {
@@ -444,10 +466,11 @@ export async function boot(win, renderer) {
     try {
       const col = await column(st.year);
       if (ticket !== shown) return;
+      schedule = core.scheduleOf(col, config.primary);
       const drawn = render(win, config, col, st, renderer, toggle);
       // The state keeps what the schedule drew, so the hash never names an
       // entry the next load would refuse again.
-      const kept = frontierOf(core.scheduleOf(col, config.primary), st.opened).kept;
+      const kept = frontierOf(schedule, st.opened).kept;
       state = { year: st.year, opened: kept };
       if (drawn.refused.length) say(doc, "Some of what the address opens could not be drawn: " + drawn.refused.join("; "));
       const hash = hashOf(state);
@@ -465,7 +488,7 @@ export async function boot(win, renderer) {
     hideTip(doc);
     const primary = tile.splits.find((sp) => !sp.alternative);
     const want = key || (primary ? primary.key : "");
-    const opened = state.opened.filter((entry) => entry !== tile.id && !entry.startsWith(tile.id + KEY_MARK));
+    const opened = schedule ? closing(schedule, state.opened, tile.id) : [];
     if (!tile.children || (want && tile.open !== want)) {
       if (!want) return;
       opened.push(want === (primary ? primary.key : "") ? tile.id : tile.id + KEY_MARK + want);

@@ -55,7 +55,7 @@ views:
     lede: >-
       Of every $100 the city budgets, where it comes from, what it buys and
       which department spends it. Each bar is a sum of cells the city printed,
-      and the city's own total is printed beside it.
+      and the sum of every such cell in the budget is printed beside it.
 
   # The same expansion schedule as two more forms, each side a spine column
   # whose roots open in place. The middle column is no side: a fund group

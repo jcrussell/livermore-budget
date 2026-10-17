@@ -84,7 +84,7 @@ func decodeChangeDocument(stem string, raw []byte) (changeDocument, error) {
 // a chart of nothing under a heading.
 func changeRows(d changeDocument, kind string, pageTextBase func(string) string) ([]changeRow, int, error) {
 	var rows []changeRow
-	placed := 0
+	placed, published := 0, 0
 	for _, s := range d.body.Series {
 		if s.Kind != kind {
 			continue
@@ -97,10 +97,18 @@ func changeRows(d changeDocument, kind string, pageTextBase func(string) string)
 			return nil, 0, fmt.Errorf("%s series %q: %w", d.stem, s.Label, err)
 		}
 		placed += n
+		published += len(s.Points)
 		rows = append(rows, changeRow{Label: s.Label, Category: s.CategoryLabel, Under: s.FundName, Cells: cells})
 	}
 	if len(rows) == 0 {
 		return nil, 0, fmt.Errorf("%s publishes no series of kind %q", d.stem, kind)
+	}
+	// buildCells places a point only into a declared column and says nothing
+	// of one it finds no column for, so a kind's figure is held to every
+	// point of that kind here, whether or not the document as a whole is.
+	if placed != published {
+		return nil, 0, fmt.Errorf("%s publishes %d points of kind %q and %d of them fall in a declared column",
+			d.stem, published, kind, placed)
 	}
 	return rows, placed, nil
 }

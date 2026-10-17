@@ -1664,10 +1664,8 @@ func TestAPageDoesNotLabelAColumnWithAWordItsCaveatWithdraws(t *testing.T) {
 	}
 
 	scanned := 0
-	// Each surface must be read on some scanned page, or that half of the
-	// refusal checks nothing; not every page renders both (change.html
-	// stacks its cells and draws no mark).
-	read := map[string]int{}
+	// Each page is held to the surfaces its template renders, or that half
+	// of the refusal checks nothing there.
 	for _, v := range mustViews(t, result{Projections: built}) {
 		if v.Projection == "" {
 			continue
@@ -1710,7 +1708,14 @@ func TestAPageDoesNotLabelAColumnWithAWordItsCaveatWithdraws(t *testing.T) {
 			{what: "cell tooltip", re: markTitlePattern},
 		} {
 			hits := surface.re.FindAllStringSubmatch(page, -1)
-			read[surface.what] += len(hits)
+			// change.html.tmpl draws its columns as bars with no mark, so it
+			// has no cell tooltip to read; every other scanned page renders
+			// both surfaces, and one that stops has moved the refusal's subject.
+			if len(hits) == 0 && (surface.what != "cell tooltip" || v.Template != export.ChangeTemplate) {
+				t.Errorf("%s renders no %s this scan can read; the surface moved and "+
+					"this half of the refusal is checking nothing", v.Path, surface.what)
+				continue
+			}
 			for _, h := range hits {
 				// "unaudited" contains "audited", so it is removed before the
 				// question is asked rather than special-cased after it.
@@ -1729,12 +1734,6 @@ func TestAPageDoesNotLabelAColumnWithAWordItsCaveatWithdraws(t *testing.T) {
 	if scanned != 3 {
 		t.Errorf("scanned %d pages shipping the %s caveat, want 3 (history.html, "+
 			"balances.html and change.html); this refusal has lost its subject", scanned, project.UnauditedCaveatID)
-	}
-	for _, what := range []string{"column chip", "cell tooltip"} {
-		if read[what] == 0 {
-			t.Errorf("no scanned page renders a %s this scan can read; the surface moved and "+
-				"that half of the refusal is checking nothing", what)
-		}
 	}
 }
 

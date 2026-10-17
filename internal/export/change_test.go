@@ -139,4 +139,19 @@ func TestChangePageRefusesWhatItCannotDraw(t *testing.T) {
 	if _, err := writeSite(changeOptions(t, t.TempDir(), true)); err == nil || !strings.Contains(err.Error(), "a kind of its series is drawn nowhere") {
 		t.Errorf("a kind drawn nowhere: got %v, want a refusal", err)
 	}
+	// A budget point in a column the document does not declare has no cell
+	// to land in, and the budget document is reconciled against nothing else.
+	// Mutation: drop the placed-against-published refusal in changeRows and
+	// the page renders with the point gone.
+	o = changeOptions(t, t.TempDir(), false)
+	budget := string(o.Projections[project.TrendsProjection])
+	stray := `"points":[{"fiscal_year":2025,"basis":"adopted","amount_cents":100,"fact_id":"fisc-f-000000000bad",` +
+		`"doc_id":"livermore-budget-fy2026-2027","page":127,"offset":1,"token":"1","derived":false},{"fiscal_year":2026,"basis":"adopted","amount_cents":50000`
+	if strings.Count(budget, `"points":[{"fiscal_year":2026,"basis":"adopted","amount_cents":50000`) != 1 {
+		t.Fatal("the budget revenue series is not where this test expects it")
+	}
+	o.Projections[project.TrendsProjection] = []byte(strings.Replace(budget, `"points":[{"fiscal_year":2026,"basis":"adopted","amount_cents":50000`, stray, 1))
+	if _, err := writeSite(o); err == nil || !strings.Contains(err.Error(), "fall in a declared column") {
+		t.Errorf("a budget point in no declared column: got %v, want a refusal", err)
+	}
 }

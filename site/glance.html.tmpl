@@ -67,7 +67,7 @@
     </p>
     {{- range .Apart}}
     <p class="glance-apart">
-      The rows below sum to <strong>{{.Residual}}</strong> less than that figure. {{.Reason}}.{{if .Bead}} <span class="subtle">({{.Bead}})</span>{{end}}
+      The rows below sum to <strong>{{.Residual}}</strong> {{.Direction}} than that figure. {{.Reason}}.{{if .Bead}} <span class="subtle">({{.Bead}})</span>{{end}}
     </p>
     {{- end}}
     <details class="glance-cells">

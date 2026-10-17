@@ -4,8 +4,8 @@
  * server-rendered with every cell Go cited; this module groups the rows,
  * sums each group, states each group's share of the sum as dollars of every
  * $100, and draws one bar per table. Every sum and share is ours, marked ◇;
- * the figure the city prints is beside the bar, written by Go. Importing it
- * runs nothing; the template calls boot().
+ * the projection's total over every cell of the kind is beside the bar,
+ * written by Go. Importing it runs nothing; the template calls boot().
  */
 
 /** How many groups a bar names before the rest fold into one tail. */

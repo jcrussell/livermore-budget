@@ -72,7 +72,7 @@ function refusal(document) {
 
 test("the three modules import with no page config, no d3 and no DOM, and run nothing", () => {
   assert.ok(domless, "nothing installed a DOM before the import");
-  assert.deepEqual(Object.keys(sides).sort(), ["KEY_MARK", "boot", "citationsOf", "clone", "dollars", "fillTable",
+  assert.deepEqual(Object.keys(sides).sort(), ["KEY_MARK", "boot", "citationsOf", "clone", "closing", "dollars", "fillTable",
     "frontierOf", "hashOf", "hideTip", "opensAs", "parseHash", "readConfig", "render", "say", "share", "showTip", "sidesAt", "sidesOf"]);
   assert.deepEqual(Object.keys(forms.treemap).sort(), ["GAP", "HEAD", "HEIGHT", "RANKED", "TREEMAP", "boot", "fits", "layOut"]);
   assert.deepEqual(Object.keys(forms.ledger).sort(), ["LEDGER", "RANKED", "boot", "widthOf"]);
@@ -207,6 +207,32 @@ describe("a click opens a tile, a click closes it, and the hash says which", () 
       t.diagnostic(`${form}: ${id} opened into ${split.members.length} members and closed`);
     });
   }
+});
+
+// Closing a tile drops every entry inside it, from the node whose opening
+// opened it: an entry left behind is replayed on a frontier that no longer
+// draws it and refused, so an ordinary close would say the address could not
+// be drawn. Over the pinned schedule, which nests no opener under a drawn
+// root; the shapes are the schedule's own. Mutation: filter `opened` by the
+// tile's own id and `id~` prefix instead of closing() and both cases fail.
+test("closing a tile drops the entries inside it, and a member opened straight through closes with its parent", () => {
+  const { config } = sidesPage("treemap");
+  const doc = expansionOf("fy2027-adopted", config);
+  // fund-group/general's one split has one member, fund/100, which
+  // core.expand opens straight through; the schedule has no other.
+  const [one] = doc.splits.filter((sp) => core.splitsOf(doc, sp.node).find((x) => x.key === sp.key).members.length === 1);
+  assert.ok(one, "the pinned schedule declares no one-member split");
+  const [member] = core.splitsOf(doc, one.node).find((x) => x.key === one.key).members;
+  assert.deepEqual(sides.closing(doc, [one.node], member), [], "closing the member did not close the parent that opened it");
+  // A parent with several members: its own entry and a member's go; a
+  // sibling root's stays.
+  const wide = doc.splits.find((sp) => core.splitsOf(doc, sp.node).find((x) => x.key === sp.key).members.length > 1);
+  const wideMembers = core.splitsOf(doc, wide.node).find((x) => x.key === wide.key).members;
+  const other = doc.nodes.find((n) => !n.parent && n.id !== wide.node && n.id !== one.node).id;
+  assert.deepEqual(
+    sides.closing(doc, [other, wide.node, wideMembers[0], wideMembers[1] + sides.KEY_MARK + "x"], wide.node),
+    [other]);
+  assert.deepEqual(sides.closing(doc, [other, wide.node, wideMembers[0]], wideMembers[0]), [other, wide.node]);
 });
 
 // The hash is a view: a column and opened entries, replayed through
