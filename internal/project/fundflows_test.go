@@ -996,6 +996,33 @@ func TestARevenueLineSpelledAsItsCategoryInAnotherCaseIsRelabelled(t *testing.T)
 	}
 }
 
+// TestTwoRevenueLinesReadingAlikeInAnotherCaseAreRefused: two lines under
+// one category whose labels differ only in case and trailing space read
+// alike to a reader, as a line reading as its category in another case does.
+//
+// Mutation: key the collision refusal on the exact label again, and the two
+// lines are returned reading "Grant State" and "grant state ".
+func TestTwoRevenueLinesReadingAlikeInAnotherCaseAreRefused(t *testing.T) {
+	f := &fundFlows{Labels: termsLabels{stubFundFlows: stubFundFlows{stubLabels: stubLabels{"intergov": "Intergovernmental"}}}}
+	parent := PrefixRevenue + "intergov"
+	a, b := PrefixRevenueLine+"intergov/grant-a", PrefixRevenueLine+"intergov/grant-b"
+	nodes := map[string]Node{
+		parent: {ID: parent, Label: "Intergovernmental"},
+		a:      {ID: a, Label: "Grant State", Parent: parent},
+		b:      {ID: b, Label: "grant state ", Parent: parent},
+	}
+	rev := map[revKey]*cellSum{
+		{kind: vocab.KindRevenue, category: "intergov", line: "intergov/grant-a", fund: 100}: {cents: 1},
+		{kind: vocab.KindRevenue, category: "intergov", line: "intergov/grant-b", fund: 100}: {cents: 1},
+	}
+	err := f.labelCategoryNamedLines(nodes, rev)
+	want := `revenue lines revenue-line/intergov/grant-a and revenue-line/intergov/grant-b under revenue/intergov ` +
+		`read "Grant State" and "grant state "`
+	if err == nil || !strings.Contains(err.Error(), want) {
+		t.Fatalf("got %v, want an error containing %q", err, want)
+	}
+}
+
 // termsLabels is stubFundFlows answering Terms from its own map, so a fixture
 // can print a line under its category's name.
 type termsLabels struct {
@@ -1032,7 +1059,7 @@ func TestTwoRevenueLinesReadingAlikeAreRefused(t *testing.T) {
 	}
 	err := f.labelCategoryNamedLines(nodes, rev)
 	want := `revenue lines revenue-line/charges/charges-a and revenue-line/charges/charges-b under revenue/charges ` +
-		`both read "Charges for Services, not itemized"`
+		`read "Charges for Services, not itemized" and "Charges for Services, not itemized"`
 	if err == nil || !strings.Contains(err.Error(), want) {
 		t.Fatalf("got %v, want an error containing %q", err, want)
 	}

@@ -15,7 +15,7 @@
  * and never computed here.
  */
 
-import { NAMED, rank } from "./glance.js";
+import { rank } from "./glance.js";
 
 /** @typedef {{doc_id: string, pages: number[]}} Locator */
 /** @typedef {{id: string, label: string, cents: number, factIds: string[], locators: Locator[]}} Row */
@@ -659,7 +659,10 @@ export async function boot(win = globalThis.window) {
   // the selects and the open bar show. Closing the open bar hides its detail
   // and keeps the department; any other choice opens what it chooses.
   let shown = 0;
+  // The view drawn, and the one asked for and not yet drawn or refused.
   let current = { year: "", department: "" };
+  /** @type {{year: string, department: string} | null} */
+  let asked = null;
   let barsOf = "";
   // The view whose tables are drawn, as hashOf names it: the open bar toggles
   // over its own department's tables only.
@@ -673,8 +676,7 @@ export async function boot(win = globalThis.window) {
    */
   const show = async (st) => {
     const ticket = ++shown;
-    current = { year: st.year, department: st.department };
-    open = true;
+    asked = { year: st.year, department: st.department };
     if (deptSelect && st.department) deptSelect.value = st.department;
     if (yearSelect) yearSelect.value = st.year;
     try {
@@ -687,15 +689,23 @@ export async function boot(win = globalThis.window) {
         barsOf = st.year;
       }
       const view = { year: st.year, department: st.department || longest };
-      current = view;
       if (deptSelect) deptSelect.value = view.department;
       tablesOf = "";
       render(doc, config, col, view);
       tablesOf = hashOf(view);
+      current = view;
+      asked = null;
+      open = true;
       openBar(doc, view.department, open);
       return view;
     } catch (e) {
-      if (ticket === shown) say(doc, "This department could not be drawn: " + String(e));
+      if (ticket !== shown) return undefined;
+      asked = null;
+      // The bars drawn are barsOf's year's, whichever view asked for them.
+      if (barsOf) current = { year: barsOf, department: current.department };
+      if (yearSelect && current.year) yearSelect.value = current.year;
+      if (deptSelect && current.department) deptSelect.value = current.department;
+      say(doc, "This department could not be drawn: " + String(e));
       return undefined;
     }
   };
@@ -755,9 +765,12 @@ export async function boot(win = globalThis.window) {
   // config's first department, which nobody chose, so a year chosen then
   // keeps the view's department, "" where none was named: the longest bar.
   /** @param {HTMLSelectElement | null} el */
-  const fromControl = (el) => el === yearSelect
-    ? { year: yearSelect.value, department: current.department }
-    : { year: current.year, department: deptSelect ? deptSelect.value : current.department };
+  const fromControl = (el) => {
+    const view = asked || current;
+    return el === yearSelect
+      ? { year: yearSelect.value, department: view.department }
+      : { year: view.year, department: deptSelect ? deptSelect.value : view.department };
+  };
   const restore = async () => {
     const st = parseHash(win.location.hash, config);
     say(doc, st.refused);

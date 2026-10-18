@@ -1743,11 +1743,11 @@ export function nodeFlags(d) {
  * would recolour the chart on screen against a document it was not drawn from.
  * @param {FiscProjection} doc
  * @param {Map<string, Box>} [prior] the chart it replaces, whose columns it keeps the order of
- * @param {number} [room] the room it is laid out at, roomHeight's by default:
+ * @param {number} [room] the room it is laid out at, layRoom's by default:
  *   a draw that lays out its whole (wholeOf) too measures it once for both
  * @returns {{nodes:LaidNode[], links:LaidLink[]}}
  */
-export function layOut(doc, prior, room = roomHeight()) {
+export function layOut(doc, prior, room = layRoom()) {
   const { graph, index } = laidOf(doc, prior, room);
   groupIndex = index;
   laidRoom = room;
@@ -3732,7 +3732,7 @@ export function fitRoom() {
   // layOut assigns nothing until its layout has returned.
   let laid;
   try {
-    laid = layOut(doc, undefined, room);
+    laid = layOut(doc, boxesOf(laidNodes), room);
   } catch (e) {
     refuseInPlace("The chart could not be fitted to the window: " + (e instanceof Error ? e.message : String(e)));
     return false;

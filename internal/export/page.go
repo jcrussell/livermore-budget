@@ -21,8 +21,9 @@ import (
 const (
 	SankeyTemplate = "flows.html.tmpl"
 	// HistoryTemplate is a server-rendered series table, with the rows grouped
-	// under the printed block headings a [View.Sections] declares. It ships no
-	// script beyond the theme stamp.
+	// under the printed block headings a [View.Sections] declares. It loads no
+	// client module of its own: its only scripts are the theme stamp and the
+	// shared top bar's theme toggle.
 	HistoryTemplate = "history.html.tmpl"
 	// ProvenanceTemplate renders the fact store's index, and CaveatsTemplate
 	// every document's caveats in one place. They render no projection

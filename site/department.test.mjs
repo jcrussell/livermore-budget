@@ -29,8 +29,8 @@ function departmentPage() {
 /** The columns pinned under testdata/, by served path less .json. */
 const PINNED = ["fy2024-actual", "fy2026-adopted", "fy2027-adopted"];
 
-/** Boots the pinned page at a hash, every pinned column planned. */
-async function booted(hash) {
+/** Boots the pinned page at a hash, every pinned column planned, `over` replacing a stem's plan entry. */
+async function booted(hash, over = {}) {
   const { html, config } = departmentPage();
   const browser = installBrowser({ html });
   // A fragment navigation fires popstate in its own task; settled before
@@ -38,7 +38,7 @@ async function booted(hash) {
   if (hash) browser.window.location.hash = hash;
   await settle();
   const plan = {};
-  for (const stem of PINNED) plan[stem + ".json"] = { doc: columnFixture(stem) };
+  for (const stem of PINNED) plan[stem + ".json"] = stem in over ? over[stem] : { doc: columnFixture(stem) };
   browser.window.fetch = plannedFetch(plan, config.exported_by);
   await mod.boot(browser.window);
   await settle();
@@ -199,6 +199,23 @@ describe("a spending row is a transfer because its links say so", () => {
     const refusal = browser.document.getElementById("department-refusal");
     assert.ok(refusal, "no refusal was said");
     assert.match(refusal.textContent, /could not be drawn: .*transfers\/out/);
+  });
+
+  // Mutation: drop the catch's move of the view to barsOf's year in show,
+  // and the click on a bar drawn from FY 2023-24 opens it in FY 2026-27.
+  test("after a year switch draws the bars and refuses the tables, a click on a bar opens it in the bars' year", async () => {
+    const { document, window } = await booted("#y=fy2027-adopted&d=" + works,
+      { "fy2024-actual": { doc: edited("fy2024-actual", "transfers/out", (l) => { delete l.kind; }) } });
+    const year = document.getElementById("year-select");
+    year.value = "fy2024-actual.json";
+    year.dispatchEvent(new window.Event("change"));
+    await settle();
+    const refused = document.getElementById("department-refusal") !== null;
+    document.querySelector('#department-list > li[data-department="department/police-department"] .department-row')
+      .dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+    await settle();
+    assert.deepEqual({ refused, hash: window.location.hash, heading: document.getElementById("department-heading").textContent },
+      { refused: true, hash: "#y=fy2024-actual&d=department/police-department", heading: "Police Department, FY 2023-24 actual" });
   });
 });
 
@@ -552,6 +569,28 @@ describe("opening a bar chooses its department for the tables and the hash", () 
     assert.equal(window.location.hash, "#y=fy2024-actual&d=department/library-department");
     assert.match(document.getElementById("bars-heading").textContent, /FY 2023-24 actual$/);
     assert.equal(document.getElementById("department-heading").textContent, "Library Department, FY 2023-24 actual");
+  });
+
+  // Mutation: name the asked-for view current before its column resolves,
+  // and the click on a bar drawn from FY 2026-27 asks for the failed year
+  // again: the refusal again, and no bar opens.
+  test("after a year switch fails, a click on a bar on screen opens it in the year on screen", async () => {
+    const { document, window } = await booted("#y=fy2027-adopted&d=department/library-department", { "fy2024-actual": null });
+    const year = document.getElementById("year-select");
+    year.value = "fy2024-actual.json";
+    year.dispatchEvent(new window.Event("change"));
+    await settle();
+    const refused = (document.getElementById("department-refusal") || {}).textContent || "";
+    rowOf(document, "department/police-department").dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+    await settle();
+    assert.deepEqual({
+      refused: /could not be drawn: .*fy2024-actual/.test(refused), open: openIds(document), year: year.value,
+      hash: window.location.hash, heading: document.getElementById("department-heading").textContent,
+      still: document.getElementById("department-refusal") !== null,
+    }, {
+      refused: true, open: ["department/police-department"], year: "fy2027-adopted.json",
+      hash: "#y=fy2027-adopted&d=department/police-department", heading: "Police Department, FY 2026-27 adopted", still: false,
+    });
   });
 });
 

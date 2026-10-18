@@ -297,6 +297,40 @@ describe("the chart laid out to the window's height", () => {
     assert.deepEqual({ held: folded === all && all > opened, ...moved }, { held: true, viewBox: all, menu: true });
   });
 
+  // Mutation: lay fitRoom out with no prior (layOut(doc, undefined, room)),
+  // and the split's columns are ordered by nodeRank at the new room.
+  test("a resize that moves the canvas keeps every column's nodes in the order the reader's splits seated them", async (t) => {
+    const at = { height: 1080, top: 100, full: 0, width: 1320 };
+    const loaded = await loadApp();
+    const { app, window, document } = loaded;
+    stubRoom(window, document, at);
+    await app.boot();
+    await frame(window);
+    for (let i = 0; i < 4; i++) {
+      const n = app.laidNodes.find((d) => app.splittable(d) && !app.expansions.includes(d.id));
+      if (n) await split(app, n.id);
+    }
+    const order = () => [...new Set(app.laidNodes.map((n) => n.x0))].sort((a, b) => a - b)
+      .map((x) => app.laidNodes.filter((n) => n.x0 === x).sort((a, b) => a.y0 - b.y0).map((n) => n.id).join(" "));
+    const seated = order();
+    const fresh = app.formOnScreen().layOut(app.shown.doc, {
+      tiers: app.RENDER_TIERS, columns: app.layoutColumns(app.shown.doc),
+      groupOf: (n) => app.fundGroupOf(app.hueIndex(app.shown.doc), n), placeOf: app.fundGroupPlace,
+      chart: app.chartOnScreen(), parentOf: app.parentOf, room: app.laidRoom,
+    }).nodes;
+    const ranked = [...new Set(fresh.map((n) => n.x0))].sort((a, b) => a - b)
+      .map((x) => fresh.filter((n) => n.x0 === x).sort((a, b) => a.y0 - b.y0).map((n) => n.id).join(" "));
+    const viewBox = viewBoxHeight(document);
+    at.height = 1480;
+    window.dispatchEvent(new window.Event("resize"));
+    await frame(window);
+    const resized = { order: order(), redrawn: viewBoxHeight(document) !== viewBox };
+    t.diagnostic(`split at [${app.expansions.join(", ")}]: ${seated.filter((c, i) => c !== ranked[i]).length} column(s) ` +
+      `seated otherwise than nodeRank; redrawn at a 1480px window ${resized.redrawn}`);
+    assert.ok(seated.some((c, i) => c !== ranked[i]), "the splits seat every column as nodeRank does, so this proves less than it says");
+    assert.deepEqual(resized, { order: seated, redrawn: true });
+  });
+
   // Mutation: drop the CHROME_SLACK arm from fitRoom, and the phone's address
   // bar hiding draws the chart again: the viewBox moves and the menu closes.
   // Make the arm ignore the width, and the turned phone's arm goes red; make
@@ -347,7 +381,8 @@ describe("the chart laid out to the window's height", () => {
   // and lay redraw out at roomHeight in place of layRoom, and the split with
   // the bar hidden is laid out at the taller room: the bar shown again, the
   // next split keeps that taller canvas over nodes laid at the shorter one,
-  // a blank band under them.
+  // a blank band under them. Default layOut's room to roomHeight, and a
+  // layOut handed no room with the bar hidden lays out at the taller one.
   test("on a phone, splits as the address bar hides and shows lay out at the room the chart was drawn at, the nodes filling the canvas", async (t) => {
     const at = { height: 800, top: 100, full: 0, width: 360 };
     const loaded = await loadApp();
@@ -373,10 +408,13 @@ describe("the chart laid out to the window's height", () => {
     const hidden = await splitOne();
     await resize(800);
     const shown = await splitOne();
+    await resize(800 + app.CHROME_SLACK - 1);
+    app.layOut(app.shown.doc);
+    const bare = app.laidRoom;
     t.diagnostic(`a 360px phone drawn at room ${drawn}; the bar hidden, split ${JSON.stringify(hidden)}; ` +
-      `shown again, split ${JSON.stringify(shown)}`);
-    assert.deepEqual({ hidden: [hidden.room, hidden.viewBox - hidden.bottom], shown: [shown.room, shown.viewBox - shown.bottom] },
-      { hidden: [drawn, 12], shown: [drawn, 12] });
+      `shown again, split ${JSON.stringify(shown)}; hidden again, layOut with no room at ${bare}`);
+    assert.deepEqual({ hidden: [hidden.room, hidden.viewBox - hidden.bottom], shown: [shown.room, shown.viewBox - shown.bottom], bare },
+      { hidden: [drawn, 12], shown: [drawn, 12], bare: drawn });
   });
 
   // Mutation: call render() bare from fitRoom again, and the planted throw

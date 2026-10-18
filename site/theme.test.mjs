@@ -90,6 +90,35 @@ describe("the theme toggle in every pinned page's top bar", () => {
     assert.equal(read(button), "Light mode / aria-pressed=null / hidden=false");
   });
 
+  // Mutation: call addEventListener unguarded before the toggle is unhidden,
+  // and boot throws: the toggle stays hidden and follows no OS switch.
+  test("a MediaQueryList with only addListener still shows a working toggle that follows the OS", async (t) => {
+    const { installBrowser } = await import("./testlib.mjs");
+    const { window, document, media } = installBrowser({ html: readFileSync(path.join(TESTDATA, "index.golden.html"), "utf8") });
+    const modern = window.matchMedia;
+    window.matchMedia = (q) => {
+      const m = modern(q);
+      return { get matches() { return m.matches; }, media: q, addListener: (fn) => m.addEventListener("change", fn) };
+    };
+    const mod = await import(MODULE);
+    let threw = "";
+    try {
+      mod.boot(window);
+    } catch (e) {
+      threw = String(e);
+    }
+    const button = /** @type {HTMLButtonElement} */ (document.getElementById("theme-toggle"));
+    const opened = read(button);
+    media.setOSDark(true);
+    const followed = read(button);
+    button.click();
+    t.diagnostic(`boot ${threw ? "threw " + threw : "returned"}; "${opened}", then on a dark OS "${followed}"`);
+    assert.deepEqual({ threw, opened, followed, theme: document.documentElement.dataset.theme }, {
+      threw: "", opened: "Dark mode / aria-pressed=null / hidden=false",
+      followed: "Light mode / aria-pressed=null / hidden=false", theme: "light",
+    });
+  });
+
   test("the toggle ships hidden, for a page with JavaScript off", () => {
     for (const page of PAGES) {
       const html = readFileSync(path.join(TESTDATA, page), "utf8");

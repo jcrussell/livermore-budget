@@ -61,9 +61,13 @@ export function boot(win = globalThis.window) {
     syncTheme(win);
     doc.dispatchEvent(new win.CustomEvent(THEME_EVENT, { detail: { dark } }));
   });
-  if (typeof win.matchMedia === "function") {
-    win.matchMedia(OS_DARK).addEventListener("change", () => syncTheme(win));
-  }
   syncTheme(win);
   button.removeAttribute("hidden");
+  if (typeof win.matchMedia === "function") {
+    // Safari before 14 offers only addListener.
+    const os = win.matchMedia(OS_DARK);
+    const follow = () => syncTheme(win);
+    if (typeof os.addEventListener === "function") os.addEventListener("change", follow);
+    else if (typeof os.addListener === "function") os.addListener(follow);
+  }
 }
