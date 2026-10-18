@@ -2378,6 +2378,7 @@ noscript p {
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
+  box-sizing: content-box;
   border-bottom: 1px solid var(--rule);
 }
 .change-below {

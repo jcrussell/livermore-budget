@@ -195,7 +195,9 @@ export function draw(section) {
   const bands = rank(groupRows(rows, columns));
   const { sums, tallest } = totals(bands, columns);
   const heads = Array.from(table.querySelectorAll("thead th[data-column]"));
-  const px = (/** @type {number} */ cents) => Math.max(LEAST, tallest ? (HEIGHT * Math.abs(cents)) / tallest : 0);
+  // Rounded once, here, so the stack's height is the sum of the heights drawn.
+  const px = (/** @type {number} */ cents) =>
+    Math.round(100 * Math.max(LEAST, tallest ? (HEIGHT * Math.abs(cents)) / tallest : 0)) / 100;
   // The stack above the baseline is as tall as the tallest one drawn there,
   // gaps and least heights included, in every column: bands that overflow it
   // are shrunk by the flexbox and leave the one scale.
@@ -218,7 +220,7 @@ export function draw(section) {
     if (!above || !below || !total || !year) throw new Error("the column template lacks a stack, a total or a year");
     // One baseline across the columns: the stack above it is room tall in
     // every column, whatever hangs below, and the columns align at the top.
-    above.style.height = room.toFixed(2) + "px";
+    above.style.height = (Math.ceil(100 * room) / 100) + "px";
     above.style.gap = below.style.gap = GAP + "px";
     // Largest nearest the baseline on either side, so the baseline band is
     // the same category in every column and the eye reads one band across
@@ -231,7 +233,7 @@ export function draw(section) {
       const seg = clone("change-segment");
       seg.dataset.rank = String(b.rank);
       seg.dataset.cents = String(c);
-      seg.style.height = px(c).toFixed(2) + "px";
+      seg.style.height = px(c) + "px";
       seg.title = `${b.label}, ${head.label}${head.basis ? " " + head.basis : ""}: ${dollars(c)}`;
       if (c < 0) {
         seg.classList.add("negative");

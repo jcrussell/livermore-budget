@@ -170,7 +170,7 @@ test("rank 1 touches the baseline in every column, and a column's year and basis
       heights.add(stack.style.height);
       const segs = [...stack.querySelectorAll(".change-seg")];
       const need = segs.reduce((a, x) => a + parseFloat(x.style.height), 0) + mod.GAP * Math.max(segs.length - 1, 0);
-      assert.ok(need <= parseFloat(stack.style.height) + 0.05, `${id} column ${col.dataset.column}: ${need}px of bands in a ${stack.style.height} stack`);
+      assert.ok(need <= parseFloat(stack.style.height) + 1e-9, `${id} column ${col.dataset.column}: ${need}px of bands in a ${stack.style.height} stack`);
       assert.equal(stack.style.gap, `${mod.GAP}px`);
       for (const x of segs) assert.ok(parseFloat(x.style.height) >= mod.LEAST, `${id}: a band under ${mod.LEAST}px`);
       fullest = Math.max(fullest, need);
@@ -185,7 +185,7 @@ test("rank 1 touches the baseline in every column, and a column's year and basis
       }
     }
     assert.equal(heights.size, 1, `${id}: the stacks above the baseline are ${[...heights]}`);
-    assert.ok(Math.abs(fullest - parseFloat([...heights][0])) < 0.05, `${id}: the fullest stack is ${fullest}px in ${[...heights][0]}`);
+    assert.ok(Math.abs(fullest - parseFloat([...heights][0])) < 0.011, `${id}: the fullest stack is ${fullest}px in ${[...heights][0]}`);
   }
 });
 
