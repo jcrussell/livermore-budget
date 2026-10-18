@@ -99,7 +99,7 @@ reorder anything.
 
 `fisc export` asserts it on every run, in `buildFactAssets`, not only in a test.
 That is a deliberate exception to "the packager runs no checks", and the same one
-`buildTrendsPage` already makes: a published artifact that silently disagrees
+`reconcileSeriesCounts` already makes: a published artifact that silently disagrees
 with the file it claims to be is the failure this project exists to refuse.
 
 `LC_ALL=C` in the command above is not decoration. With more than one document

@@ -8,8 +8,8 @@ import (
 	"strings"
 )
 
-// historyPageData is the history template's input. Like trendsPageData it
-// carries no ConfigJSON and its page loads no app.js: every figure is rendered
+// historyPageData is the history template's input. It carries no ConfigJSON
+// and its page loads no app.js: every figure is rendered
 // server-side, so the table works with JavaScript off.
 type historyPageData struct {
 	chrome
@@ -32,9 +32,9 @@ type historySection struct {
 
 // buildHistoryPage renders one ACFR ten-year view.
 //
-// buildTrendsPage's rules apply whole: every figure is read out of the
-// document, none is computed here, and the counts must reconcile. What is new
-// is the grouping — each series lands in the [View.Sections] entry matching
+// Every figure is read out of the document, none is computed here, and the
+// counts must reconcile (reconcileSeriesCounts). The rows are grouped: each
+// series lands in the [View.Sections] entry matching
 // its (kind, fund_group) exactly, and both a series no section claims and a
 // section claiming no series are refused, because either one is a heading
 // telling a reader something the document does not say. A section that closes

@@ -200,9 +200,6 @@
         "sankey": {
           "$ref": "https://jcrussell.github.io/livermore-budget/schema/page.schema.json#/$defs/sankey_hints"
         },
-        "treemap": {
-          "$ref": "https://jcrussell.github.io/livermore-budget/schema/page.schema.json#/$defs/sides_hints"
-        },
         "ledger": {
           "$ref": "https://jcrussell.github.io/livermore-budget/schema/page.schema.json#/$defs/sides_hints"
         }
@@ -213,12 +210,6 @@
           "if": { "properties": { "form": { "const": "sankey" } } },
           "then": { "required": ["sankey"] },
           "else": { "properties": { "sankey": false } }
-        },
-        {
-          "description": "A chart of form treemap carries its treemap hints, and no other form does.",
-          "if": { "properties": { "form": { "const": "treemap" } } },
-          "then": { "required": ["treemap"] },
-          "else": { "properties": { "treemap": false } }
         },
         {
           "description": "A chart of form ledger carries its ledger hints, and no other form does.",
@@ -660,7 +651,7 @@
   },
   "$defs": {
     "sides_hints": {
-      "description": "What a treemap or ledger draws: each side a spine tier whose roots open in place, with the heading it stands under. The form's own key carries it.",
+      "description": "What a ledger draws: each side a spine tier whose roots open in place, with the heading it stands under. The form's own key carries it.",
       "type": "object",
       "required": ["sides"],
       "additionalProperties": false,

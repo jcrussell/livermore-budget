@@ -124,6 +124,6 @@ const (
 	Mark = "mark.schema.json"
 	// Department is the department page's config.
 	Department = "department.schema.json"
-	// Sides is what site/sides.js reads from treemap.html and ledger.html.
+	// Sides is what site/sides.js reads from ledger.html.
 	Sides = "sides.schema.json"
 )

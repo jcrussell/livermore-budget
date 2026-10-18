@@ -195,7 +195,7 @@ where a reader who gets that far will look.
 **One more caveat is about neither.** `the-revenue-schedule-is-published-twice`
 is carried by this document and by every `fund-flows` document, because the site
 publishes pp.127-140 in two places: a chart of one adopted column at a time, and
-these tables of all four. A row found in both is one printed figure shown once
+the Over time page's revenue lines in all four. A row found in both is one printed figure shown once
 in each, and the sentence is shared rather than written twice.
 
 **One fund group is not on the spine at all.** `permanent` carries a single

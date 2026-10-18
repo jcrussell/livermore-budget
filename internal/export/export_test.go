@@ -111,7 +111,6 @@ func TestWriteProducesTheSiteLayout(t *testing.T) {
 		"debt.js",
 		"glance.js",
 		"sides.js",
-		"treemap.js",
 		"ledger.js",
 		"change.js",
 		"theme.js",
@@ -234,9 +233,8 @@ func TestWriteCopiesAColumnlessProjectionVerbatim(t *testing.T) {
 	}
 }
 
-// totalsSite writes the index beside the totals page and the caveats page,
-// over the golden spine.
-func totalsSite(t *testing.T) string {
+// indexSite writes the index beside the caveats page, over the golden spine.
+func indexSite(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
 	if _, err := writeSite(export.Options{
@@ -245,7 +243,6 @@ func totalsSite(t *testing.T) string {
 		Views: []export.View{
 			{Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate,
 				Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "sankey"},
-			{Path: "totals.html", Nav: "The totals", Template: export.TotalsTemplate, Projection: "sankey"},
 			{Path: "caveats.html", Nav: "Caveats", Template: export.CaveatsTemplate},
 		},
 		Docs:        budgetDocs(),
@@ -256,66 +253,18 @@ func totalsSite(t *testing.T) string {
 	return dir
 }
 
-// TestTheIndexLeadsWithTheHeadlineAndTheTotalsPageArguesWithIt: the index
-// states one figure and links the rest, which the totals page prints, the
-// wrong answer included. Mutation: render .Figures back into the index -- the
-// naive total turns up on it and this goes red.
-func TestTheIndexLeadsWithTheHeadlineAndTheTotalsPageArguesWithIt(t *testing.T) {
-	dir := totalsSite(t)
-	index := readerVisible(t, readPage(t, dir))
-	totals := readFile(t, dir, "totals.html")
-
-	if !strings.Contains(index, "$254,095,412") {
-		t.Error("index.html does not state what the city spends")
+// TestTheIndexLeadsWithWhatTheCitySpends: the index's one headline figure is
+// the golden spine's all-funds gross expenditure, in the hero. Mutation: drop
+// {{.Hero.Value}} from site/index.html.tmpl, and this goes red.
+func TestTheIndexLeadsWithWhatTheCitySpends(t *testing.T) {
+	index := readerVisible(t, readPage(t, indexSite(t)))
+	hero := strings.Index(index, `id="hero"`)
+	if hero < 0 {
+		t.Fatal("index.html renders no hero")
 	}
-	if !strings.Contains(index, `href="totals.html"`) {
-		t.Error("index.html does not link the totals page")
-	}
-	for _, want := range []string{
-		"$254,095,412", // what the city spends
-		"$313,708,146", // the naive column total, published so the page can argue with it
-		"$59,612,734",  // out
-		"$21,525,997",  // in
-		"$38,086,737",  // the unmatched residual
-		"FY 2025-26",
-	} {
-		if !strings.Contains(totals, want) {
-			t.Errorf("totals.html does not contain %q", want)
-		}
-	}
-	for _, not := range []string{"$313,708,146", "$38,086,737"} {
-		if strings.Contains(index, not) {
-			t.Errorf("index.html prints %s, which the totals page carries", not)
-		}
-	}
-}
-
-// TestTheIndexLinksOnlyItsOwnProjectionsTotals: a totals view of another
-// document listed first is not the totals behind this chart. Mutation: drop
-// totalsPathOf's projection match -- the index links other-totals.html and
-// this goes red.
-func TestTheIndexLinksOnlyItsOwnProjectionsTotals(t *testing.T) {
-	dir := t.TempDir()
-	if _, err := writeSite(export.Options{
-		Dir:         dir,
-		Projections: map[string][]byte{"sankey": goldenSankey(t), "other": reyeared(t, goldenSankey(t), 2027, "FY 2026-27")},
-		Views: []export.View{
-			{Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate,
-				Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "sankey"},
-			{Path: "other-totals.html", Nav: "Other totals", Template: export.TotalsTemplate, Projection: "other"},
-			{Path: "totals.html", Nav: "The totals", Template: export.TotalsTemplate, Projection: "sankey"},
-		},
-		Docs:        budgetDocs(),
-		GeneratedBy: "fisc test",
-	}); err != nil {
-		t.Fatalf("Write: %v", err)
-	}
-	index := readPage(t, dir)
-	if !strings.Contains(index, `<a href="totals.html">The totals behind it</a>`) {
-		t.Error("index.html does not link its own projection's totals page as the totals behind it")
-	}
-	if strings.Contains(index, `<a href="other-totals.html">The totals behind it</a>`) {
-		t.Error("index.html links another projection's totals page as the totals behind it")
+	span, _, _ := strings.Cut(index[hero:], "</strong>")
+	if !strings.Contains(span, "$254,095,412") {
+		t.Error("index.html's hero does not state what the city spends")
 	}
 }
 
@@ -325,7 +274,7 @@ func TestTheIndexLinksOnlyItsOwnProjectionsTotals(t *testing.T) {
 // everything. Mutation: put an <h2> or a <details> back above the card --
 // red.
 func TestTheChartComesBeforeAnyApparatus(t *testing.T) {
-	page := readerVisible(t, readPage(t, totalsSite(t)))
+	page := readerVisible(t, readPage(t, indexSite(t)))
 	card := strings.Index(page, `id="chart-card"`)
 	markers := []string{`id="hero"`, `id="chart-card"`, `id="chart"`, "Revenue on the left", `class="apparatus"`}
 	at := make([]int, len(markers))
@@ -352,7 +301,7 @@ func TestTheChartComesBeforeAnyApparatus(t *testing.T) {
 // of them and links the page. Mutation: drop the link -- red; render the
 // summaries back -- red.
 func TestTheIndexLinksItsCaveatsAndPrintsNone(t *testing.T) {
-	dir := totalsSite(t)
+	dir := indexSite(t)
 	visible := readerVisible(t, readPage(t, dir))
 
 	var doc struct {
@@ -729,7 +678,7 @@ func TestConfigCannotCloseItsScriptElement(t *testing.T) {
 func TestWriteRefusesAProjectionSetWithoutTheSankey(t *testing.T) {
 	_, err := writeSite(export.Options{
 		Dir:         t.TempDir(),
-		Projections: map[string][]byte{"treemap": []byte(`{}`)},
+		Projections: map[string][]byte{"not-the-spine": []byte(`{}`)},
 	})
 	if err == nil {
 		t.Fatal("got nil error, want a refusal")

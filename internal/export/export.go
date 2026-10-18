@@ -98,7 +98,7 @@ const DefaultSourceBrowseURL = "https://github.com/jcrussell/livermore-budget/bl
 // verbatimAssets are copied from the embedded site tree byte for byte. The
 // page template is not in this list: it is rendered, and vendor/ is walked.
 var verbatimAssets = []string{"app.js", "core.js", "sankey.js",
-	"department.js", "capital.js", "debt.js", "glance.js", "sides.js", "treemap.js", "ledger.js",
+	"department.js", "capital.js", "debt.js", "glance.js", "sides.js", "ledger.js",
 	"change.js", "theme.js", "style.css", ".nojekyll"}
 
 // View is one HTML page of the site: one document, rendered by one template.
@@ -131,7 +131,7 @@ type View struct {
 	// Title is the <title>, and on a template that renders one, the page
 	// heading. Lede is the sentence under it. Both are the caller's words.
 	//
-	// Only the trends template renders a Lede: the spine's lede wraps a live
+	// The spine's template renders no Lede: its lede wraps a live
 	// <span id="lede-year"> that app.js rewrites on every year switch. A Lede
 	// on a template that renders none is refused rather than dropped.
 	Title string
@@ -387,29 +387,24 @@ type Chart struct {
 	// Sankey is the Sankey form's hints, present exactly when Form is
 	// [SankeyForm].
 	Sankey *SankeyHints `json:"sankey,omitempty"`
-	// Treemap and Ledger are the two sides forms' hints, each present
-	// exactly when Form is its form.
-	Treemap *SidesHints `json:"treemap,omitempty"`
-	Ledger  *SidesHints `json:"ledger,omitempty"`
+	// Ledger is the sides form's hints, present exactly when Form is
+	// [LedgerForm].
+	Ledger *SidesHints `json:"ledger,omitempty"`
 }
 
 // SankeyForm is the form site/sankey.js draws: columns of tiers joined by
 // ribbons.
 const SankeyForm = "sankey"
 
-// TreemapForm and LedgerForm are the forms site/treemap.js and site/ledger.js
-// draw: each declared side of the expansion schedule as nested tiles, or as
-// ranked bars on one scale, opening in place.
-const (
-	TreemapForm = "treemap"
-	LedgerForm  = "ledger"
-)
+// LedgerForm is the form site/ledger.js draws: each declared side of the
+// expansion schedule as ranked bars on one scale, opening in place.
+const LedgerForm = "ledger"
 
 // ChartForms is the declared set of forms, which schema/enums.schema.json
 // states as chart_form and schema/enums_test.go holds to this.
-func ChartForms() []string { return []string{SankeyForm, TreemapForm, LedgerForm} }
+func ChartForms() []string { return []string{SankeyForm, LedgerForm} }
 
-// SidesHints is a treemap's or a ledger's hints: the sides it draws.
+// SidesHints is a ledger's hints: the sides it draws.
 type SidesHints struct {
 	Sides []Side `json:"sides" yaml:"sides"`
 }
@@ -423,10 +418,7 @@ type Side struct {
 
 // sides is the sides hints of a chart of a sides form, or nil.
 func (c Chart) sides() *SidesHints {
-	switch c.Form {
-	case TreemapForm:
-		return c.Treemap
-	case LedgerForm:
+	if c.Form == LedgerForm {
 		return c.Ledger
 	}
 	return nil
@@ -438,8 +430,6 @@ func (c Chart) foreignHints() string {
 	switch {
 	case c.Sankey != nil && c.Form != SankeyForm:
 		return SankeyForm
-	case c.Treemap != nil && c.Form != TreemapForm:
-		return TreemapForm
 	case c.Ledger != nil && c.Form != LedgerForm:
 		return LedgerForm
 	}
@@ -729,7 +719,7 @@ func (v View) validate(built map[string][]byte, ix ColumnIndex) error {
 		return fmt.Errorf(
 			"view %q carries %s hints and declares a %q chart; the hints "+
 				"would be dropped in silence", v.Path, v.Overview.foreignHints(), v.Overview.Form)
-	case (v.Overview.Form == TreemapForm || v.Overview.Form == LedgerForm) && v.Overview.sides() == nil:
+	case v.Overview.Form == LedgerForm && v.Overview.sides() == nil:
 		return fmt.Errorf(
 			"view %q declares a %s chart with no %s hints; which tiers are its sides is a declaration",
 			v.Path, v.Overview.Form, v.Overview.Form)
@@ -775,9 +765,9 @@ func (v View) validate(built map[string][]byte, ix ColumnIndex) error {
 // An allow-list: a template absent from it is refused a lede.
 func templateRendersLede(name string) bool {
 	switch name {
-	case TrendsTemplate, HistoryTemplate, ProvenanceTemplate, CaveatsTemplate,
-		DepartmentTemplate, CapitalTemplate, DebtTemplate, TotalsTemplate, GlanceTemplate,
-		TreemapTemplate, LedgerTemplate, ChangeTemplate:
+	case HistoryTemplate, ProvenanceTemplate, CaveatsTemplate,
+		DepartmentTemplate, CapitalTemplate, DebtTemplate, GlanceTemplate,
+		LedgerTemplate, ChangeTemplate:
 		return true
 	default:
 		return false
@@ -785,13 +775,12 @@ func templateRendersLede(name string) bool {
 }
 
 // templateRendersAYearControl answers whether a template renders
-// [View.YearStems]: as a year control, or, on TotalsTemplate, as one section
-// per year. Its own switch rather than templateDrawsAChart: the two guard
+// [View.YearStems], as a year control. Its own switch rather than templateDrawsAChart: the two guard
 // different failures.
 func templateRendersAYearControl(name string) bool {
 	switch name {
-	case SankeyTemplate, TreemapTemplate, LedgerTemplate,
-		DepartmentTemplate, TotalsTemplate, GlanceTemplate:
+	case SankeyTemplate, LedgerTemplate,
+		DepartmentTemplate, GlanceTemplate:
 		return true
 	default:
 		return false
@@ -800,8 +789,8 @@ func templateRendersAYearControl(name string) bool {
 
 // templateDrawsAChart answers whether a template ships a client module and a
 // figure for it to draw into, and with it [View.Overview]. Not the same
-// as rendering a document: trends.html renders one as a server-side table with
-// no module.
+// as rendering a document: balances.html renders one as a server-side table
+// with no module.
 func templateDrawsAChart(name string) bool {
 	return formOfTemplate(name) != ""
 }
@@ -813,8 +802,6 @@ func formOfTemplate(name string) string {
 	switch name {
 	case SankeyTemplate:
 		return SankeyForm
-	case TreemapTemplate:
-		return TreemapForm
 	case LedgerTemplate:
 		return LedgerForm
 	default:
@@ -827,10 +814,10 @@ func formOfTemplate(name string) string {
 // because the negated form fails open for a new document-less template.
 func templateRendersADocument(name string) bool {
 	switch name {
-	case SankeyTemplate, TrendsTemplate, HistoryTemplate,
+	case SankeyTemplate, HistoryTemplate,
 		CapitalTemplate,
 		DebtTemplate,
-		DepartmentTemplate, TotalsTemplate, GlanceTemplate, TreemapTemplate, LedgerTemplate, ChangeTemplate:
+		DepartmentTemplate, GlanceTemplate, LedgerTemplate, ChangeTemplate:
 		return true
 	default:
 		return false

@@ -186,9 +186,9 @@ on the `fund-balances` document. The two ties that do hold in the Statistical Se
 
 ## The reader surface
 
-`history.html` renders `changes-in-fund-balances` and `balances.html` renders
-`fund-balances`, both through `site/history.html.tmpl`: server-rendered tables
-in the trends page's mould, no `app.js`, no d3, and therefore no
-client test owed. The printed block headings arrive as
-`export.View.Sections` — the caller's words, validated against the document in
-both directions. A chart over these series is a separate, later change.
+`balances.html` renders `fund-balances` through `site/history.html.tmpl`: a
+server-rendered table, no `app.js`, no d3, and therefore no client test owed.
+The printed block headings arrive as `export.View.Sections` — the caller's
+words, validated against the document in both directions.
+`changes-in-fund-balances` is `change.html`'s own document, drawn by
+`site/change.js` as a stack per year over a table of its printed rows.

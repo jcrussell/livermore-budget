@@ -43,20 +43,19 @@ one closed hint object under its own key in `schema/page.schema.json`, and one
 renderer module, which `site/embed.go` embeds and the export ships as a
 verbatim asset. The column document does not change.
 
-## Two forms that are pages of their own, measured
+## A form that is a page of its own, measured
 
-`treemap.html` and `ledger.html` draw the expansion schedule as nested tiles
-and as ranked bars. Each is a `chart_form` with a closed hint object under
-its own key (`sides_hints`: the spine tiers drawn as sides, each with its
-heading) and a renderer module, as the section above prices a second form.
-They are not registered in `app.js`'s `FORMS`, and `index.html.tmpl` does not
-draw them: measured at 6d46fd6, `site/app.js` reads a laid node's ribbons on
+`ledger.html` draws the expansion schedule as ranked bars. It is a
+`chart_form` with a closed hint object under its own key (`sides_hints`: the
+spine tiers drawn as sides, each with its heading) and a renderer module, as
+the section above prices a second form. It is not registered in `app.js`'s `FORMS`, and `index.html.tmpl` does not
+draw it: measured at 6d46fd6, `site/app.js` reads a laid node's ribbons on
 four paths (following the money, emphasis under a hover, the drawer's ribbon
 list and a search reveal), and its chrome is ribbon vocabulary (the flow
 table, the hairline line, the smaller-flows filter, "Follow the money"). A
 form with no ribbons under that shell is a chart in another chart's clothes.
-So the two forms share `site/sides.js`, a page module in the department
-page's pattern, and compute every figure through one core function,
+So the form's page module is `site/sides.js`, in the department page's
+pattern, and it computes every figure through one core function,
 `sideTree`: a root's figure is the sum of the folded ribbons joining it to
 what is outside it, a member's the sum of those joining it to its parent hub,
 each signed as the fold sums them. Measured over both pinned columns, the two

@@ -8,7 +8,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
-	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/site"
 )
 
@@ -317,12 +316,12 @@ func TestTheMarkPublishesItsOwnHeight(t *testing.T) {
 // TestTheShapeSentenceAndTheMarkAgreeOnWhatTallestMeans couples the captions'
 // superlative to the scaling it describes, which nothing else couples.
 //
-// history.html.tmpl and trends.html.tmpl each promise that the tallest bar in
+// history.html.tmpl promises that the tallest bar in
 // every row is the figure furthest from zero. That sentence is buildMark's
 // magnitude scaling said in English: two spellings of one claim, one in a
 // template a copy editor owns and one in Go, with no seam between them. The
-// templates are read through site.FS() so the assertion is about the shipped
-// files, not a copy (AGENTS.md, "The node boundary" makes the same argument
+// template is read through site.FS() so the assertion is about the shipped
+// file, not a copy (AGENTS.md, "The node boundary" makes the same argument
 // for app.js).
 //
 // A PIN RATHER THAN A GUARD, for TestTheLedesProseNamesThePagesScope's reason:
@@ -335,7 +334,7 @@ func TestTheMarkPublishesItsOwnHeight(t *testing.T) {
 // exact geometry; this half asserts only the superlative the sentence states.
 func TestTheShapeSentenceAndTheMarkAgreeOnWhatTallestMeans(t *testing.T) {
 	const promise = "the tallest bar in every row is the figure furthest from zero"
-	for _, name := range []string{"history.html.tmpl", "trends.html.tmpl"} {
+	for _, name := range []string{"history.html.tmpl"} {
 		b, err := fs.ReadFile(site.FS(), name)
 		if err != nil {
 			t.Fatalf("read shipped %s: %v", name, err)
@@ -356,38 +355,19 @@ func TestTheShapeSentenceAndTheMarkAgreeOnWhatTallestMeans(t *testing.T) {
 	}
 	if tallest != 3 {
 		t.Errorf("the tallest bar belongs to cell %d, want cell 3: the figure furthest "+
-			"from zero no longer takes the tallest bar, so the promise both templates "+
-			"print is false as published", tallest)
+			"from zero no longer takes the tallest bar, so the promise the template "+
+			"prints is false as published", tallest)
 	}
 }
 
-// TestTheHeroNoteNamesItsColumnAsTheLedeDoes holds the hero tile's note to
+// TestTheHeroNoteNamesItsColumnAsTheLedeDoes holds the hero's note to
 // ledeOf, the one spelling of a column the chart title and the lede use.
 // Mutation: spell the note's column by hand with a comma, and it goes red.
 func TestTheHeroNoteNamesItsColumnAsTheLedeDoes(t *testing.T) {
 	meta := projectionMetadata{FiscalYear: 2026, FiscalYearLabel: "FY 2025-26", Basis: "adopted"}
-	hero, _ := tilesFor(meta)
+	hero := heroFor(meta)
 	if want := ledeOf(meta.FiscalYearLabel, meta.Basis); !strings.Contains(hero.Note, want) {
 		t.Errorf("hero note %q does not name its column as the lede does, %q", hero.Note, want)
-	}
-}
-
-// TestTheNaiveNoteCitesTheTransfersOut holds the naive tile's inflation to the
-// published internal_transfer_out_cents rather than to a difference export
-// computes: given a headline whose naive total is not gross plus transfers out,
-// the note still quotes the transfers out. headline-naive-expenditure holds the
-// identity on published documents. Mutation: print naive minus gross, and it
-// goes red.
-func TestTheNaiveNoteCitesTheTransfersOut(t *testing.T) {
-	meta := projectionMetadata{FiscalYear: 2026, FiscalYearLabel: "FY 2025-26", Basis: "adopted",
-		Headline: project.Headline{
-			AllFundsGrossExpenditureCents: 100_00,
-			InternalTransferOutCents:      7_00,
-			NaiveExpenditureCents:         150_00,
-		}}
-	_, tiles := tilesFor(meta)
-	if want := amount.Cents(7_00).Dollars(); !strings.HasSuffix(tiles[0].Note, "by "+want+".") {
-		t.Errorf("naive note = %q, want it to end by quoting the transfers out, %s", tiles[0].Note, want)
 	}
 }
 

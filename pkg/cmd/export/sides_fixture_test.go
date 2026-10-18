@@ -10,15 +10,14 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-// TestTheSidesFixturesAreWhatGoWrites holds testdata/treemap.golden.html and
-// testdata/ledger.golden.html, which site/sides.test.mjs runs the two form
-// modules over, to the pages Go writes over clientSubset, the build stamp
-// aside. The pages carry no figure: each fetches the pinned columns, so the
-// fixtures pin the config and the markup the client fills.
+// TestTheSidesFixturesAreWhatGoWrites holds testdata/ledger.golden.html,
+// which site/sides.test.mjs runs the form module over, to the page Go writes
+// over clientSubset, the build stamp aside. The page carries no figure: it fetches the pinned columns, so the
+// fixture pins the config and the markup the client fills.
 func TestTheSidesFixturesAreWhatGoWrites(t *testing.T) {
 	dir := clientExport(t)
 	root := repoRootForTest(t)
-	for _, name := range []string{"treemap", "ledger"} {
+	for _, name := range []string{"ledger"} {
 		served, err := os.ReadFile(filepath.Join(dir, name+".html"))
 		if err != nil {
 			t.Fatal(err)

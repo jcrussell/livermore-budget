@@ -79,8 +79,8 @@ func decodeChangeDocument(stem string, raw []byte) (changeDocument, error) {
 	return d, nil
 }
 
-// changeRows is every series of doc of one kind as rows, each cell built as
-// the trends page builds it. It refuses a figure with no row, which would be
+// changeRows is every series of doc of one kind as rows, each cell built by
+// buildCells. It refuses a figure with no row, which would be
 // a chart of nothing under a heading.
 func changeRows(d changeDocument, kind string, pageTextBase func(string) string) ([]changeRow, int, error) {
 	var rows []changeRow

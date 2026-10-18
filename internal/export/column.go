@@ -489,11 +489,17 @@ func encodeColumn(doc ColumnDoc) ([]byte, error) {
 // refuses a projection outside the year stems, as validate does, since it
 // runs on views validate has not seen. The caveats page's drawn set and
 // `fisc export`'s reachability gate both read it, so the two cannot disagree.
+//
+// A [ChangeTemplate] view also reaches [project.TrendsProjection], whose
+// columns buildChangePage renders beside the view's own document.
 func (v View) ReachedStems(ix ColumnIndex) ([]string, error) {
 	if err := v.projectionAmongYears(); err != nil {
 		return nil, err
 	}
 	var out []string
+	if v.Template == ChangeTemplate {
+		out = append(out, project.TrendsProjection)
+	}
 	for _, year := range v.yearStems() {
 		reached := []string{year}
 		if column, folded := ix.Column(year); folded && v.Overview.Form == SankeyForm {

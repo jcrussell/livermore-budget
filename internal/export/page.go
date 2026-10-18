@@ -20,10 +20,9 @@ import (
 // which, by name.
 const (
 	SankeyTemplate = "index.html.tmpl"
-	TrendsTemplate = "trends.html.tmpl"
-	// HistoryTemplate is a server-rendered series table like TrendsTemplate,
-	// with the rows grouped under the printed block headings a [View.Sections]
-	// declares. It ships no script beyond the theme stamp.
+	// HistoryTemplate is a server-rendered series table, with the rows grouped
+	// under the printed block headings a [View.Sections] declares. It ships no
+	// script beyond the theme stamp.
 	HistoryTemplate = "history.html.tmpl"
 	// ProvenanceTemplate renders the fact store's index, and CaveatsTemplate
 	// every document's caveats in one place. They render no projection
@@ -36,18 +35,13 @@ const (
 	DepartmentTemplate = "department.html.tmpl"
 	CapitalTemplate    = "capital.html.tmpl"
 	DebtTemplate       = "debt.html.tmpl"
-	// TotalsTemplate renders the spine's headline figures, every year of
-	// [View.YearStems] at once, server-side and with no script.
-	TotalsTemplate = "totals.html.tmpl"
 	// GlanceTemplate renders three "of every $100" bars per published year
 	// out of the spine and department-funding, server-side as tables of
 	// printed cells; site/glance.js groups and sums them.
 	GlanceTemplate = "glance.html.tmpl"
-	// TreemapTemplate and LedgerTemplate draw each declared side of the
-	// expansion schedule in place, as nested tiles and as ranked bars, each
-	// loading its own form module over site/sides.js.
-	TreemapTemplate = "treemap.html.tmpl"
-	LedgerTemplate  = "ledger.html.tmpl"
+	// LedgerTemplate draws each declared side of the expansion schedule in
+	// place as ranked bars, loading site/ledger.js over site/sides.js.
+	LedgerTemplate = "ledger.html.tmpl"
 	// ChangeTemplate renders the ACFR's ten reported years and the Budget
 	// Book's four columns as tables of printed points, which site/change.js
 	// stacks by category.
@@ -213,8 +207,6 @@ func buildSite(o *Options, ix ColumnIndex, pageTextBase func(docID string) strin
 		// Every template is an explicit arm and the unknown one is refused: a
 		// template handed data it does not read renders blanks in silence.
 		switch v.Template {
-		case TrendsTemplate:
-			data, err = buildTrendsPage(o, v, here, byID, ix, pageTextBase)
 		case HistoryTemplate:
 			data, err = buildHistoryPage(o, v, here, byID, ix, pageTextBase)
 		case SankeyTemplate:
@@ -229,11 +221,9 @@ func buildSite(o *Options, ix ColumnIndex, pageTextBase func(docID string) strin
 			data, err = buildCapitalPage(o, v, here, byID, ix, pageTextBase)
 		case DebtTemplate:
 			data, err = buildDebtPage(o, v, here, byID, ix, pageTextBase)
-		case TotalsTemplate:
-			data, err = buildTotalsPage(o, v, here, byID, ix, pageTextBase)
 		case GlanceTemplate:
 			data, err = buildGlancePage(o, v, here, byID, ix, pageTextBase)
-		case TreemapTemplate, LedgerTemplate:
+		case LedgerTemplate:
 			data, err = buildSidesPage(o, v, here, byID, ix, pageTextBase)
 		case ChangeTemplate:
 			data, err = buildChangePage(o, v, here, byID, ix, pageTextBase)

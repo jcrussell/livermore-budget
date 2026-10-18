@@ -59,7 +59,7 @@ type capitalBody struct {
 
 // buildCapitalPage renders the capital view over its series document.
 //
-// buildTrendsPage's rules apply: every figure is read out of the document and
+// buildHistoryPage's rules apply: every figure is read out of the document and
 // the counts must reconcile. A zero renders as the token the page printed, a
 // dash, rather than as "$0", which the city did not print.
 func buildCapitalPage(o *Options, v View, nav []navItem, byID map[string]Doc,

@@ -49,16 +49,10 @@ func sidesExpansion(both bool) []byte {
 func sidesOptions(t *testing.T, dir, form string, hints *export.SidesHints, both bool) export.Options {
 	t.Helper()
 	chart := export.Chart{Form: form}
-	switch form {
-	case export.TreemapForm:
-		chart.Treemap = hints
-	case export.LedgerForm:
+	if form == export.LedgerForm {
 		chart.Ledger = hints
 	}
-	tmpl := export.TreemapTemplate
-	if form == export.LedgerForm {
-		tmpl = export.LedgerTemplate
-	}
+	tmpl := export.LedgerTemplate
 	return export.Options{
 		Dir: dir,
 		Projections: map[string][]byte{
@@ -80,7 +74,7 @@ func twoSides() *export.SidesHints {
 // per declared side, the config the client folds by with the form's own
 // hints and no other's, and the year the page opens on.
 func TestSidesPagesCarryTheirSidesAndConfig(t *testing.T) {
-	for _, form := range []string{export.TreemapForm, export.LedgerForm} {
+	for _, form := range []string{export.LedgerForm} {
 		dir := t.TempDir()
 		if _, err := writeSite(sidesOptions(t, dir, form, twoSides(), false)); err != nil {
 			t.Fatalf("%s: Write: %v", form, err)
@@ -98,7 +92,7 @@ func TestSidesPagesCarryTheirSidesAndConfig(t *testing.T) {
 				t.Errorf("%s.html does not contain %q", form, want)
 			}
 		}
-		for _, other := range []string{export.SankeyForm, export.TreemapForm, export.LedgerForm} {
+		for _, other := range export.ChartForms() {
 			if other != form && strings.Contains(html, `"`+other+`":{`) {
 				t.Errorf("%s.html carries %s hints", form, other)
 			}
@@ -121,19 +115,16 @@ func TestSidesPagesRefuseWhatTheyCouldNotDraw(t *testing.T) {
 		edit  func(*export.Options)
 		want  string
 	}{
-		{"no heading", export.TreemapForm, &export.SidesHints{Sides: []export.Side{{Tier: 0}}}, false, nil, "with no heading"},
+		{"no heading", export.LedgerForm, &export.SidesHints{Sides: []export.Side{{Tier: 0}}}, false, nil, "with no heading"},
 		{"a tier twice", export.LedgerForm, &export.SidesHints{Sides: []export.Side{{Tier: 0, Heading: "In"}, {Tier: 0, Heading: "Again"}}}, false, nil, "as a side twice"},
-		{"a tier with no root", export.TreemapForm, &export.SidesHints{Sides: []export.Side{{Tier: 1, Heading: "Lines"}}}, false, nil, "has no root at it"},
-		{"a tier the document lacks", export.TreemapForm, &export.SidesHints{Sides: []export.Side{{Tier: 7, Heading: "Nowhere"}}}, false, nil, "draws tier 7"},
+		{"a tier with no root", export.LedgerForm, &export.SidesHints{Sides: []export.Side{{Tier: 1, Heading: "Lines"}}}, false, nil, "has no root at it"},
+		{"a tier the document lacks", export.LedgerForm, &export.SidesHints{Sides: []export.Side{{Tier: 7, Heading: "Nowhere"}}}, false, nil, "draws tier 7"},
 		{"the middle tier", export.LedgerForm, &export.SidesHints{Sides: []export.Side{{Tier: 2, Heading: "Funds"}}}, false, nil, "both takes in and pays out"},
-		{"a root flowing both ways", export.TreemapForm, twoSides(), true, nil, "revenue/b both takes in and pays out"},
-		{"no hints", export.TreemapForm, nil, false, nil, "with no treemap hints"},
+		{"a root flowing both ways", export.LedgerForm, twoSides(), true, nil, "revenue/b both takes in and pays out"},
+		{"no hints", export.LedgerForm, nil, false, nil, "with no ledger hints"},
 		{"another form's hints", export.LedgerForm, twoSides(), false, func(o *export.Options) {
-			o.Views[1].Overview.Treemap = twoSides()
-		}, "carries treemap hints and declares a \"ledger\" chart"},
-		{"sankey hints on a treemap", export.TreemapForm, twoSides(), false, func(o *export.Options) {
 			o.Views[1].Overview.Sankey = &export.SankeyHints{}
-		}, "carries sankey hints and declares a \"treemap\" chart"},
+		}, "carries sankey hints and declares a \"ledger\" chart"},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			o := sidesOptions(t, t.TempDir(), c.form, c.hints, c.both)

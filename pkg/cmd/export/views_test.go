@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+
 	"github.com/jcrussell/livermore-budget/internal/export"
 	"github.com/jcrussell/livermore-budget/internal/registry"
 )
@@ -42,10 +44,11 @@ func TestLoadViewsRefusesWhatItCannotResolve(t *testing.T) {
 	}{
 		{"an overview's projection", "projection: expansion\n", "projection: expansio\n",
 			[]string{`view "index.html"`, "overview.projection", `"expansio" is not one of`}},
-		{"a view's projection", "projection: revenue-trends\n", "projection: revenue-trend\n",
-			[]string{`view "trends.html"`, "projection", `"revenue-trend" is not one of`}},
-		{"a row's category", "fund-balance/excess-of-revenues\n", "fund-balance/excess\n",
-			[]string{`view "history.html"`, `section "Excess of revenues over (under) expenditures"`,
+		{"a view's projection", "projection: changes-in-fund-balances\n", "projection: changes-in-fund-balance\n",
+			[]string{`view "change.html"`, "projection", `"changes-in-fund-balance" is not one of`}},
+		{"a row's category", "        fund_group: general\n",
+			"        fund_group: general\n        rows:\n          \"over (under) expenditures\": fund-balance/excess\n",
+			[]string{`view "balances.html"`, `section "General Fund"`,
 				`row "over (under) expenditures"`, `"fund-balance/excess" names no category`}},
 		{"an unknown key", "grow: {node_px", "grwo: {node_px", []string{"grwo"}},
 		{"a schema version this command does not read", "schema_version: 1\n", "schema_version: 2\n",
@@ -115,42 +118,27 @@ func TestExportRefusesAViewsFileItCannotLoad(t *testing.T) {
 	}
 }
 
-// TestTheHistoryRowLabelIsTheRegistrys holds the one closed row of the
-// history view to data/taxonomy.yaml: data/views.yaml names the category, and
-// the label the Line cell displays is that category's document term, read
-// from the registry rather than spelled a second time.
-func TestTheHistoryRowLabelIsTheRegistrys(t *testing.T) {
-	b, reg := committedViews(t)
+// TestASectionRowLabelIsTheRegistrys holds a section's closed row to
+// data/taxonomy.yaml: the view names the category, and the label the Line
+// cell displays is that category's document term, read from the registry
+// rather than spelled a second time; a row naming no category displays its
+// printed label. No committed view closes a section, so the declaration is
+// built here.
+//
+// Mutation: have sectionDecl.section store the slug in place of
+// c.DocumentTerm, and the first row goes red.
+func TestASectionRowLabelIsTheRegistrys(t *testing.T) {
+	_, reg := committedViews(t)
 	const slug = "fund-balance/excess-of-revenues"
-	if !strings.Contains(string(b), slug) {
-		t.Fatalf("%s does not name %s, so the label below is not resolved from it", viewsFile, slug)
-	}
 	c, ok := reg.Category(slug)
 	if !ok || c.DocumentTerm == "" {
 		t.Fatalf("the registry has no document term for %s", slug)
 	}
-	var history export.View
-	for _, v := range mustViews(t, result{Projections: builtStemsForTest(t)}) {
-		if v.Path == "history.html" {
-			history = v
-		}
-	}
-	if history.Path == "" {
-		t.Fatal("no history.html view")
-	}
-	labels := map[string]string{}
-	for _, s := range history.Sections {
-		for printed, label := range s.Rows {
-			labels[printed] = label
-		}
-	}
-	if len(labels) == 0 {
-		t.Fatal("the history view closes no section, so there is no row label to hold")
-	}
-	for printed, label := range labels {
-		if label != c.DocumentTerm {
-			t.Errorf("row %q displays %q, want the registry's %q", printed, label, c.DocumentTerm)
-		}
+	got := sectionDecl{Heading: "Excess of revenues over (under) expenditures", Kind: "fund_balance",
+		Rows: map[string]string{"over (under) expenditures": slug, "printed as is": ""}}.section(reg)
+	want := map[string]string{"over (under) expenditures": c.DocumentTerm, "printed as is": ""}
+	if diff := cmp.Diff(want, got.Rows); diff != "" {
+		t.Errorf("the section's row labels (-want +got):\n%s", diff)
 	}
 }
 

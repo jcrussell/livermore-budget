@@ -1,16 +1,15 @@
-// What site/sides.js, site/treemap.js and site/ledger.js do for treemap.html
-// and ledger.html, over the pages Go pins (testdata/treemap.golden.html,
-// testdata/ledger.golden.html) and the columns they fetch
+// What site/sides.js and site/ledger.js do for ledger.html, over the page Go
+// pins (testdata/ledger.golden.html) and the columns it fetches
 // (testdata/<stem>.column.json). Every figure is core.sideTree's, a sum of
 // cited cents at a membership Go declared; what is tested is that the fold
-// keeps every sum, that each form draws every tile of it once, and that the
+// keeps every sum, that the form draws every tile of it once, and that the
 // page's state, gestures and table say what is drawn.
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { columnFixture, installBrowser, loadD3, plannedFetch, repoRoot, settle } from "./testlib.mjs";
+import { columnFixture, installBrowser, plannedFetch, repoRoot, settle } from "./testlib.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -20,7 +19,6 @@ const domless = typeof globalThis.document === "undefined";
 const core = await import(pathToFileURL(path.join(HERE, "core.js")).href);
 const sides = await import(pathToFileURL(path.join(HERE, "sides.js")).href);
 const forms = {
-  treemap: await import(pathToFileURL(path.join(HERE, "treemap.js")).href),
   ledger: await import(pathToFileURL(path.join(HERE, "ledger.js")).href),
 };
 
@@ -38,13 +36,12 @@ function sidesPage(form) {
 const PINNED = ["fy2026-adopted", "fy2027-adopted"];
 
 /** The mark selector of each form. */
-const MARK = { treemap: "g.tile", ledger: "li.bar-row" };
+const MARK = { ledger: "li.bar-row" };
 
 /** Boots one form's pinned page at a hash, every pinned column planned. */
 async function booted(form, hash) {
   const { html, config } = sidesPage(form);
   const browser = installBrowser({ html });
-  if (form === "treemap") loadD3();
   if (hash) browser.window.location.hash = hash;
   await settle();
   browser.window.fetch = plannedFetch({}, config.exported_by);
@@ -70,11 +67,10 @@ function refusal(document) {
   return el ? el.textContent : "";
 }
 
-test("the three modules import with no page config, no d3 and no DOM, and run nothing", () => {
+test("the modules import with no page config, no d3 and no DOM, and run nothing", () => {
   assert.ok(domless, "nothing installed a DOM before the import");
   assert.deepEqual(Object.keys(sides).sort(), ["KEY_MARK", "boot", "citationsOf", "clone", "closing", "dollars", "fillTable",
     "frontierOf", "hashOf", "hideTip", "opensAs", "outside", "parseHash", "readConfig", "render", "say", "share", "showTip", "sidesAt", "sidesOf", "tileShare"]);
-  assert.deepEqual(Object.keys(forms.treemap).sort(), ["GAP", "HEAD", "HEIGHT", "RANKED", "TREEMAP", "boot", "fits", "layOut"]);
   assert.deepEqual(Object.keys(forms.ledger).sort(), ["LEDGER", "RANKED", "boot", "widthOf"]);
 });
 
@@ -84,7 +80,7 @@ test("the three modules import with no page config, no d3 and no DOM, and run no
 // n.id || target === n.id` filter in core.sideTree's member join and a member
 // is credited with every ribbon at it.
 describe("core.sideTree keeps every sum through every split", () => {
-  const { config } = sidesPage("treemap");
+  const { config } = sidesPage("ledger");
   for (const stem of PINNED) {
     test(stem, (t) => {
       const doc = expansionOf(stem, config);
@@ -144,8 +140,8 @@ describe("core.sideTree keeps every sum through every split", () => {
 });
 
 // Each form draws every tile of every side once, with the tree's cents on it,
-// and the table lists the same. Mutation: skip depth-1 descendants in
-// TREEMAP.draw, or members in LEDGER's row, and the roots' marks go missing.
+// and the table lists the same. Mutation: skip members in LEDGER's row, and
+// the roots' marks go missing.
 describe("each form draws every tile once and the table lists them", () => {
   for (const form of Object.keys(forms)) {
     test(form, async (t) => {
@@ -166,7 +162,8 @@ describe("each form draws every tile once and the table lists them", () => {
           assert.equal(m.getAttribute("tabindex"), "0");
           assert.equal(m.getAttribute("role"), "button");
           // An img's children are presentational, so a button inside one
-          // is no button. Mutation: role="img" on the treemap canvas.
+          // is no button. Mutation: role="img" on ledger.html.tmpl's
+          // ledger-list.
           assert.ok(!m.parentElement.closest('[role="img"]'), `${m.dataset.id} is a button inside an image`);
         }
         assert.ok(section.querySelector(".sides-total").textContent.includes(sides.dollars(tree.cents)));
@@ -201,7 +198,7 @@ describe("a click opens a tile, a click closes it, and the hash says which", () 
       assert.equal(after, before + split.members.length, "the members are not all drawn");
       const opened = document.querySelector(`${MARK[form]}[data-id="${id}"]`);
       assert.ok(opened.classList.contains("opened"));
-      const members = [...document.querySelectorAll(`${MARK[form]}[data-depth="${form === "treemap" ? 2 : 1}"]`)];
+      const members = [...document.querySelectorAll(`${MARK[form]}[data-depth="1"]`)];
       assert.equal(members.length, split.members.length);
       const sum = members.reduce((a, m) => a + Number(m.dataset.cents), 0);
       assert.equal(sum, Number(opened.dataset.cents), "the drawn members do not sum to the opened tile");
@@ -234,7 +231,7 @@ describe("a click opens a tile, a click closes it, and the hash says which", () 
 // root; the shapes are the schedule's own. Mutation: filter `opened` by the
 // tile's own id and `id~` prefix instead of closing() and both cases fail.
 test("closing a tile drops the entries inside it, and a member opened straight through closes with its parent", () => {
-  const { config } = sidesPage("treemap");
+  const { config } = sidesPage("ledger");
   const doc = expansionOf("fy2027-adopted", config);
   // fund-group/general's one split has one member, fund/100, which
   // core.expand opens straight through; the schedule has no other.
@@ -299,16 +296,16 @@ test("a hash naming the other year and an opened node is restored, and a bad ent
 // figures. Mutation: pass `opened: []` on the year change in boot and the
 // opened node shuts on a switch.
 test("a year switch keeps the opened node and redraws the other year's figures", async () => {
-  const browser = await booted("treemap", "#o=revenue/taxes/sales");
+  const browser = await booted("ledger", "#o=revenue/taxes/sales");
   const { document, window, config } = browser;
-  const was = document.querySelector('g.tile[data-id="revenue/taxes/sales"]');
+  const was = document.querySelector('li.bar-row[data-id="revenue/taxes/sales"]');
   assert.ok(was.classList.contains("opened"));
   const select = document.getElementById("year-select");
   select.value = "fy2026-adopted.json";
   select.dispatchEvent(new window.Event("change"));
   await settle();
   assert.equal(window.location.hash, "#y=fy2026-adopted&o=revenue/taxes/sales");
-  const now = document.querySelector('g.tile[data-id="revenue/taxes/sales"]');
+  const now = document.querySelector('li.bar-row[data-id="revenue/taxes/sales"]');
   assert.ok(now.classList.contains("opened"));
   const tree = core.sideTree(expansionOf("fy2026-adopted", config), core.expand(expansionOf("fy2026-adopted", config),
     core.rootFrontier(expansionOf("fy2026-adopted", config)), "revenue/taxes/sales", "lines"), 0);
@@ -382,9 +379,9 @@ test("the tooltip stands under a focused mark", async () => {
 // The tooltip says the tile's figure, its share of its side marked ours, and
 // the pages it cites; it hides on leave.
 test("hover shows a tile's figure, share and pages, and leaving hides it", async () => {
-  const browser = await booted("treemap");
+  const browser = await booted("ledger");
   const { document, window } = browser;
-  const mark = document.querySelector('g.tile[data-id="revenue/taxes/property"]');
+  const mark = document.querySelector('li.bar-row[data-id="revenue/taxes/property"]');
   mark.dispatchEvent(new window.Event("pointerenter", { bubbles: true }));
   const tip = document.getElementById("tooltip");
   assert.equal(tip.hidden, false);
@@ -401,85 +398,14 @@ test("hover shows a tile's figure, share and pages, and leaving hides it", async
 // A page declaring a form its script does not draw is refused before a fetch.
 test("a config declaring another form is refused, and a missing config is said", async () => {
   const { html, config } = sidesPage("ledger");
-  const browser = installBrowser({ html: html.replace('"form":"ledger"', '"form":"treemap"').replace('"ledger":{"sides"', '"treemap":{"sides"') });
-  loadD3();
+  const browser = installBrowser({ html: html.replace('"form":"ledger"', '"form":"sankey"').replace('"ledger":{"sides"', '"sankey":{"sides"') });
   const fetch = plannedFetch({}, config.exported_by);
   browser.window.fetch = fetch;
   await forms.ledger.boot(browser.window);
   await settle();
-  assert.match(refusal(browser.document), /declares a treemap chart and this script draws a ledger/);
+  assert.match(refusal(browser.document), /declares a sankey chart and this script draws a ledger/);
   assert.equal(fetch.asked.length, 0, "a refused page still fetched a column");
   const bare = installBrowser({ html: html.replace('id="sides-config"', 'id="nothing"') });
   await forms.ledger.boot(bare.window);
   assert.match(refusal(bare.document), /carries no sides config/);
-});
-
-// An opened tile's box is its own size, not its members' gross: the property
-// tax root has two reduction members, and summing leaves would lay it out
-// half again as large as its figure and shrink every other root. Mutation:
-// sum leaf sizes in layOut (hierarchy.sum) and the opened root's value is its
-// members' gross, not its size.
-test("the treemap lays an opened tile out at its own size, its members dividing its box", (t) => {
-  const { config } = sidesPage("treemap");
-  loadD3();
-  const col = columnFixture("fy2027-adopted");
-  const doc = core.scheduleOf(col, config.primary);
-  let frontier = core.rootFrontier(doc);
-  const id = "revenue/taxes/property";
-  frontier = core.expand(doc, frontier, id, core.splitsOf(doc, id).find((sp) => !sp.alternative).key);
-  const { sides: ss } = sides.sidesAt(config, col, frontier);
-  const side = ss.find((s) => s.tree.roots.some((r) => r.id === id));
-  const opened = side.tree.roots.find((r) => r.id === id);
-  const reductions = opened.children.filter((c) => c.cents < 0);
-  assert.ok(reductions.length >= 1, "the property tax root has no reduction member in this column");
-  const gross = opened.children.reduce((a, c) => a + c.size, 0);
-  assert.ok(gross > opened.size, "the members' gross does not exceed the root; this case proves nothing");
-  const laid = forms.treemap.layOut(side.tree, 900);
-  for (const d of laid.descendants()) {
-    if (!d.children) continue;
-    const sum = d.children.reduce((a, c) => a + c.value, 0);
-    assert.ok(Math.abs(sum - d.value) < 1e-6 * Math.max(1, d.value), `${d.data.id || "the side"}: members lay out to ${sum} in a box of ${d.value}`);
-  }
-  for (const d of laid.children) assert.equal(d.value, d.data.size, `${d.data.id} is laid out at ${d.value}, its size is ${d.data.size}`);
-  const total = laid.children.reduce((a, c) => a + c.value, 0);
-  t.diagnostic(`${id}: size ${opened.size}, members' gross ${gross} (${reductions.length} reductions); laid at ${laid.children.find((d) => d.data.id === id).value} of ${total}`);
-});
-
-// An opened tile's header band never outgrows the tile: fines and
-// forfeitures lays out 14px tall in FY2026-27 at the test's width and opens.
-// Mutation: set the face's height to HEAD - GAP for every opened tile and
-// its band is 18px in a 14px box.
-test("an opened treemap tile's header band is no taller than the tile", async (t) => {
-  const id = "revenue/fines-and-forfeitures";
-  const { document } = await booted("treemap", `#y=fy2027-adopted&o=${id}`);
-  const opened = [...document.querySelectorAll("g.tile.opened")];
-  assert.ok(opened.some((g) => g.dataset.id === id), `${id} is not drawn opened`);
-  for (const g of opened) {
-    const face = Number(g.querySelector("rect.tile-face").getAttribute("height"));
-    const box = Number(g.querySelector("rect.tile-box").getAttribute("height"));
-    assert.ok(face <= box, `${g.dataset.id}: a ${face}px band in a ${box}px tile`);
-    if (g.dataset.id === id) {
-      assert.ok(box < forms.treemap.HEAD - forms.treemap.GAP, `${id} lays out ${box}px tall, taller than the band; this case proves nothing`);
-      t.diagnostic(`${id}: ${box}px tall, band ${face}px`);
-    }
-  }
-});
-
-// The treemap's labels are drawn only where they fit; the layout's boxes are
-// the tree's sizes. Mutation: return true from fits and a 20px tile carries
-// a label wider than itself.
-test("the treemap labels only the tiles its words fit, and lays out by size", async () => {
-  const { document } = await booted("treemap");
-  for (const g of document.querySelectorAll("g.tile")) {
-    const label = g.querySelector("text.tile-label");
-    const face = g.querySelector("rect.tile-face");
-    if (!label) continue;
-    assert.ok(forms.treemap.fits(label.textContent, Number(face.getAttribute("width")), Number(face.getAttribute("height"))),
-      `${g.dataset.id} carries a label wider than its tile`);
-  }
-  assert.equal(forms.treemap.fits("Property Taxes", 60, 20), false);
-  assert.equal(forms.treemap.fits("Property Taxes", 120, 20), true);
-  assert.equal(forms.treemap.fits("Property Taxes", 120, 12), false);
-  const labelled = document.querySelectorAll("g.tile text.tile-label").length;
-  assert.ok(labelled >= 8, `only ${labelled} tiles labelled at the root`);
 });

@@ -267,7 +267,7 @@ h3 {
 
 .refusal::before {
   /* Text presentation selector: the bare glyph, not an emoji, so it takes the
-     surrounding colour like .tile.error's does. */
+     surrounding colour. */
   content: "\26A0\FE0E";
   color: var(--critical);
   font-weight: 700;
@@ -477,48 +477,6 @@ button[aria-pressed="true"] {
   outline-offset: 2px;
 }
 
-/* ---------- figures ---------- */
-
-.figures {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 12px;
-  margin-top: 20px;
-}
-
-.tile {
-  background: var(--surface-1);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 14px 16px;
-}
-
-.tile .label {
-  font-size: 13px;
-  color: var(--ink-2);
-}
-
-.tile .value {
-  font-size: 26px;
-  font-weight: 600;
-  margin: 2px 0 4px;
-}
-
-.tile .note {
-  font-size: 12px;
-  color: var(--muted);
-}
-
-.tile.hero {
-  grid-column: 1 / -1;
-}
-
-.tile.hero .value {
-  font-size: 52px;
-  letter-spacing: -0.02em;
-  line-height: 1.05;
-}
-
 /* The help under the drawer's empty text. */
 .chart-hint {
   margin-top: 8px;
@@ -528,23 +486,6 @@ button[aria-pressed="true"] {
 #hero .value {
   font-size: 1.35em;
   white-space: nowrap;
-}
-
-.totals-year + .totals-year {
-  margin-top: 32px;
-}
-
-.tile.error .value {
-  color: var(--ink-1);
-  text-decoration: line-through;
-  text-decoration-color: var(--critical);
-  text-decoration-thickness: 2px;
-}
-
-.tile.error .label::before {
-  content: "\26A0\FE0E";
-  color: var(--critical);
-  margin-right: 6px;
 }
 
 /* ---------- chart ---------- */
@@ -1346,8 +1287,7 @@ svg.sankey .node {
    do the right thing, so a `color: inherit` here would be a duplicate of that
    rule pretending to be a decision. Only the hover state is stated.
 
-   SCOPED TO .caveats li, the caveat lists index.html, trends.html and
-   history.html fold. */
+   SCOPED TO .caveats li, the caveat lists the schedule pages fold. */
 .caveats li a:hover,
 .caveats li a:focus {
   color: var(--ink-1);
@@ -1494,7 +1434,7 @@ details > summary {
 
    WHAT IS DELIBERATELY NOT HERE, because these are figures rather than prose
    and clamping them would be the defect this rule is meant to fix: main and
-   .page-head keep 1180px, .figures keeps its auto-fit grid, and .card,
+   .page-head keep 1180px, and .card,
    .table-scroll and table keep the full container; .chart-wrap takes more. A chart or a
    seven-column table narrowed to a reading measure is unreadable in a
    different way.
@@ -1614,10 +1554,6 @@ noscript p {
 
   svg.sankey .link.derived {
     stroke: GrayText;
-  }
-
-  .tile.error .value {
-    text-decoration-color: CanvasText;
   }
 }
 
@@ -2126,8 +2062,8 @@ noscript p {
 
 /* end glance.html */
 
-/* treemap.html and ledger.html, the two sides pages. Only their rules go in
-   this block. The ranks wear the glance page's ordinal ramp. */
+/* ledger.html, the sides page. Only its rules go in this block. The ranks
+   wear the glance page's ordinal ramp. */
 .sides-year {
   display: flex;
   flex-direction: column;
@@ -2152,66 +2088,6 @@ noscript p {
 }
 .sides-figure {
   margin: 0;
-}
-.treemap {
-  display: block;
-  max-width: 100%;
-  height: auto;
-}
-.treemap .tile {
-  cursor: default;
-}
-.treemap .tile.can-open {
-  cursor: pointer;
-}
-.treemap .tile:focus-visible .tile-face,
-.treemap .tile:focus-visible .tile-box {
-  outline: 2px solid var(--focus);
-}
-.treemap .tile-box {
-  fill: var(--wash);
-  stroke: var(--rule);
-  stroke-width: 1;
-}
-.treemap .tile-face {
-  fill: var(--glance-tail);
-}
-.treemap .tile[data-rank="1"] .tile-face { fill: var(--glance-1); }
-.treemap .tile[data-rank="2"] .tile-face { fill: var(--glance-2); }
-.treemap .tile[data-rank="3"] .tile-face { fill: var(--glance-3); }
-.treemap .tile[data-rank="4"] .tile-face { fill: var(--glance-4); }
-.treemap .tile[data-rank="5"] .tile-face { fill: var(--glance-5); }
-.treemap .tile[data-depth="2"] .tile-face { fill-opacity: 0.78; }
-.treemap .tile[data-depth="3"] .tile-face { fill-opacity: 0.6; }
-.treemap .tile.reduction .tile-face {
-  fill: url(#sides-hatch);
-}
-.treemap .hatch-ground {
-  fill: var(--surface-1);
-}
-.treemap .hatch-line {
-  stroke: var(--critical);
-  stroke-width: 2;
-}
-.treemap .tile.derived .tile-face {
-  stroke: var(--ink-2);
-  stroke-dasharray: 3 2;
-}
-.treemap text {
-  font-size: 12px;
-  pointer-events: none;
-  fill: var(--ink-1);
-}
-.treemap .tile[data-rank="1"]:not(.reduction) text,
-.treemap .tile[data-rank="2"]:not(.reduction) text,
-.treemap .tile[data-rank="3"]:not(.reduction) text {
-  fill: #ffffff;
-}
-.treemap .tile.opened > text {
-  fill: var(--ink-1);
-}
-.treemap .tile-value {
-  font-variant-numeric: tabular-nums;
 }
 .ledger-list {
   list-style: none;
@@ -2336,7 +2212,7 @@ noscript p {
   }
 }
 
-/* end treemap.html and ledger.html */
+/* end ledger.html */
 
 /* change.html. Only that page's rules go in this block. The bands wear the
    glance page's ordinal ramp by rank. */

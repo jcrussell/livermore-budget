@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://jcrussell.github.io/livermore-budget/schema/sides.schema.json",
   "title": "fisc sides page config",
-  "description": "What site/sides.js reads from treemap.html and ledger.html before it fetches a column: which schedule to fold, the chart's form with that form's sides, and the years. It carries no figure; every figure is a link of the column the year names, folded by the client to the frontier it opens. Every object is closed.",
+  "description": "What site/sides.js reads from ledger.html before it fetches a column: which schedule to fold, the chart's form with that form's sides, and the years. It carries no figure; every figure is a link of the column the year names, folded by the client to the frontier it opens. Every object is closed.",
   "type": "object",
   "required": ["schema_version", "exported_by", "primary", "overview", "years", "docs"],
   "additionalProperties": false,

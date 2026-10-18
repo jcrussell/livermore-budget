@@ -57,25 +57,9 @@ views:
       which department spends it. Each bar is a sum of cells the city printed,
       and the sum of every such cell in the budget is printed beside it.
 
-  # The same expansion schedule as two more forms, each side a spine column
+  # The same expansion schedule as ranked bars, each side a spine column
   # whose roots open in place. The middle column is no side: a fund group
   # both takes in and pays out, and validateSides refuses it.
-  - path: treemap.html
-    nav: Tiles
-    template: treemap.html.tmpl
-    projection: sankey
-    year_control: true
-    title: Livermore's budget as tiles
-    lede: >-
-      Where the money comes from and where it goes, each a box of tiles sized
-      by their share, opening in place into the parts the budget prints.
-    overview:
-      form: treemap
-      projection: expansion
-      treemap:
-        sides:
-          - {tier: 0, heading: Where the money comes from}
-          - {tier: 5, heading: Where the money goes}
   - path: ledger.html
     nav: Bars
     template: ledger.html.tmpl
@@ -93,18 +77,6 @@ views:
           - {tier: 0, heading: Where the money comes from}
           - {tier: 5, heading: Where the money goes}
 
-  # The headline figures behind the chart, every year at once.
-  - path: totals.html
-    nav: The totals
-    template: totals.html.tmpl
-    projection: sankey
-    year_control: true
-    title: The totals behind Livermore's budget flows
-    lede: >-
-      The figures the chart is the shape of, for each budget year: what the
-      city spends once transfers between its own funds are not counted twice,
-      and the column total that does count them.
-
   # Over time: the ACFR's ten audited years and the Budget Book's four
   # columns, each a table of printed points change.js stacks by kind. Its
   # own document is the ten-year schedule; the budget columns are read from
@@ -120,47 +92,10 @@ views:
       of the current budget's revenue, each column a sum of rows the city
       printed.
 
-  # The tables come after the charts they belong to.
-  - path: trends.html
-    nav: Revenue tables
-    template: trends.html.tmpl
-    projection: revenue-trends
-    title: Where Livermore's revenue comes from, fund by fund
-    lede: >-
-      Every revenue line the city prints for each of its funds, across four
-      budget columns. The columns are not one measurement: FY 2023-24 is money
-      that moved, FY 2024-25 is a mid-year re-forecast, and the two later years
-      are intentions adopted together.
-
-  # The two ACFR ten-year tables, server-rendered like the trends page. The
-  # section headings are the blocks the schedules print, and each entry's
-  # kind/fund_group pair is what the document's own series carry;
-  # buildHistoryPage refuses a mismatch in either direction.
-  - path: history.html
-    nav: Ten-year history
-    template: history.html.tmpl
-    projection: changes-in-fund-balances
-    sections:
-      - heading: Revenues
-        kind: revenue
-      - heading: Expenditures
-        kind: expenditure
-      # Closed, unlike the two blocks above, because this heading names one
-      # printed row rather than a category: any other fund_balance series with
-      # no fund group reaching this projection must be refused, not absorbed
-      # under it. Each row maps the printed tail a fact's row_label carries to
-      # the taxonomy.yaml category whose document_term the Line cell displays
-      # (p168 wraps this label over three lines), or to nothing to display the
-      # printed label unchanged.
-      - heading: Excess of revenues over (under) expenditures
-        kind: fund_balance
-        rows:
-          "over (under) expenditures": fund-balance/excess-of-revenues
-    title: Ten years of Livermore's money, as the city reports it
-    lede: >-
-      What the city's governmental funds actually took in and spent, FY2015-16
-      through FY2024-25, from the ten-year schedules in the city's annual
-      financial report — not budgets or intentions, but the money that moved.
+  # The ACFR's fund balance table, server-rendered. The section headings are
+  # the blocks the schedule prints, and each entry's kind/fund_group pair is
+  # what the document's own series carry; buildHistoryPage refuses a mismatch
+  # in either direction.
   - path: balances.html
     nav: Fund balances
     template: history.html.tmpl

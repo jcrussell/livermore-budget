@@ -1,7 +1,6 @@
 package export
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
@@ -9,14 +8,6 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
-
-type trendsPageData struct {
-	chrome
-	Columns []columnRef
-	Series  []seriesRef
-	Facts   int
-	Count   int
-}
 
 // columnRef is one printed column as the table heads it.
 type columnRef struct {
@@ -35,7 +26,6 @@ type columnRef struct {
 // seriesRef is one printed row as the table renders it.
 type seriesRef struct {
 	Label    string
-	Fund     string
 	Group    string
 	Category string
 	Cells    []cellRef
@@ -160,110 +150,6 @@ type trendsBody struct {
 		CategoryLabel string       `json:"category_label"`
 		Points        []trendPoint `json:"points"`
 	} `json:"series"`
-}
-
-// buildTrendsPage renders the revenue-trends view.
-//
-// EVERY FIGURE IS READ OUT OF THE DOCUMENT AND NONE IS COMPUTED HERE. The
-// packager's standing rule (see the package doc) is that it does not recompute
-// what a projection published, and a table is the case where that is most
-// tempting to break: a total column, a growth percentage, a per-fund subtotal
-// would each be one line. None of them is published, and the contract says why —
-// growth from an actual to an adopted figure is not a quantity this project can
-// compute, and a total this document does not carry is a total the city did not
-// print on the page these series came from.
-func buildTrendsPage(o *Options, v View, nav []navItem, byID map[string]Doc,
-	ix ColumnIndex, pageTextBase func(string) string,
-) (trendsPageData, error) {
-	caveatsPath := caveatsPathOf(o)
-	raw := o.Projections[v.Projection]
-	doc, err := decodeDocument(v.Projection, raw)
-	if err != nil {
-		return trendsPageData{}, err
-	}
-	var meta trendsMetadata
-	if err := json.Unmarshal(doc.Metadata, &meta); err != nil {
-		return trendsPageData{}, fmt.Errorf("decode %s metadata: %w", v.Projection, err)
-	}
-	if len(meta.Columns) == 0 {
-		return trendsPageData{}, fmt.Errorf("%s metadata publishes no columns", v.Projection)
-	}
-	var body trendsBody
-	if err := json.Unmarshal(raw, &body); err != nil {
-		return trendsPageData{}, fmt.Errorf("decode %s series: %w", v.Projection, err)
-	}
-
-	columns := make([]columnRef, 0, len(meta.Columns))
-	for i, c := range meta.Columns {
-		columns = append(columns, columnRef{
-			Label: c.FiscalYearLabel,
-			Basis: basisLabelFor(meta.Caveats, c.Basis),
-			Group: c.ComparableGroup,
-			// The FIRST column of a group does not start a boundary a reader
-			// could carry a comparison across; every later one does.
-			New: i > 0 && c.ComparableGroup != meta.Columns[i-1].ComparableGroup,
-		})
-	}
-
-	series := make([]seriesRef, 0, len(body.Series))
-	rendered := 0
-	for _, s := range body.Series {
-		fund := s.FundName
-		if fund == "" {
-			// A fund the registry does not name renders as its number, which is
-			// what the document's own fallback intends: the number is on the
-			// page and is never nothing. A series under no fund at all has no
-			// row header in this view, and is refused rather than headed "".
-			if s.Fund == nil {
-				return trendsPageData{}, fmt.Errorf("%s series %q names no fund and no "+
-					"fund name; this view's row header is the fund", v.Projection, s.Label)
-			}
-			fund = fmt.Sprintf("Fund %d", *s.Fund)
-		}
-		cells, placed, err := buildCells(s.Points, columns, meta.Columns, pageTextBase)
-		if err != nil {
-			return trendsPageData{}, fmt.Errorf("%s series %q: %w", v.Projection, s.Label, err)
-		}
-		rendered += placed
-		series = append(series, seriesRef{
-			Label:    s.Label,
-			Fund:     fund,
-			Group:    s.FundGroup,
-			Category: s.CategoryLabel,
-			Cells:    cells,
-			Mark:     buildMark(cells, columns),
-		})
-	}
-
-	if err := reconcileSeriesCounts(v.Projection, rendered, len(body.Series), meta.Counts); err != nil {
-		return trendsPageData{}, err
-	}
-
-	sources, _ := sourcesFor(meta.Sources, byID, pageTextBase, o.RecordsBase)
-	refs := projectionRefs(o, ix)
-	title := v.Title
-	if title == "" {
-		title = "City of Livermore revenue by fund"
-	}
-	return trendsPageData{
-		chrome: chrome{
-			Title:        title,
-			Lede:         v.Lede,
-			Nav:          nav,
-			Sources:      sources,
-			ProjectionBy: meta.GeneratedBy,
-			ExportedBy:   o.GeneratedBy,
-			Projections:  refs,
-			DataPath:     ix.PublishedPath(v.Projection),
-			Scope:        meta.Scope,
-			Caveats:      caveatRefs(meta.Caveats, v.Projection, caveatsPath),
-			CaveatsPath:  caveatsPath,
-		},
-		Columns: columns,
-		Series:  series,
-		Facts:   meta.Counts.Facts,
-		Count:   meta.Counts.Series,
-	}, nil
 }
 
 // reconcileSeriesCounts refuses a series document whose own counts disagree

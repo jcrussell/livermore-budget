@@ -1,12 +1,12 @@
 // @ts-check
 /**
- * fisc — the page plumbing treemap.html and ledger.html share. Importing it
+ * fisc — the page plumbing ledger.html runs on. Importing it
  * runs nothing; a form module's boot() hands this its renderer. It reads the
  * page's sides config, fetches the column the year control names, folds the
  * expansion schedule to the frontier the hash opens (core.sideTree), and
  * hands each declared side's tree to the renderer, which draws it. The
  * tooltip, the table view, the hash and the gestures that open and shut a
- * tile are here, so the two forms differ in what they draw and nothing else.
+ * tile are here, so a form module holds what it draws and nothing else.
  *
  * Every figure here is core.js's: a sum of cited cents at a membership Go
  * declared. A share is this page's sentence about what is drawn, marked ◇.

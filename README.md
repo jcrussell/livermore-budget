@@ -46,11 +46,6 @@ The spine gives the all-funds picture the chart draws:
 - six fund groups, whose printed `TOTAL SOURCES` and `TOTAL USES` the chart
   reconciles against exactly
 
-The site also publishes **$313,708,146** — the wrong answer — beside the right
-one on `totals.html`, because naively summing the expenditure column
-double-counts transfers by 23%, and showing the error you are avoiding is more
-useful than quietly avoiding it.
-
 The site's pages are the views `data/views.yaml` declares, in its nav order.
 `index.html` is the fund-group spine as a Sankey, with a toggle between the two
 adopted years: **click a fund group and it opens** into that group's own funds from
@@ -58,20 +53,18 @@ pp.127-140, and where there is room on into what each fund spends on, from
 pp.167-170 and pp.173-183, drawn for the same fiscal year; click a General Fund
 division and it opens again into what that division spends on — each rescaled
 to the opened node's own total, because the citywide chart cannot show them at
-all. `trends.html` draws all
-**924** of pp.127-140 — 231 printed rows across four columns, every figure a
-link to the extracted text of the page it was read from, and a per-row mark
-whose scale is that row's own. `history.html` and `balances.html` are the ACFR's
-two ten-year schedules — p168's changes in fund balances and p167's balances
-themselves — a decade a column, in the section the ACFR heads "(Unaudited)" and
-each page says so. `department.html`, `capital.html` and `debt.html` are a
+all. `change.html` stacks p168's ten years of what the governmental funds took
+in and spent, and the revenue lines of pp.127-140 across the budget's four
+columns, every printed row in a table beneath with each figure a link to the
+extracted text of the page it was read from. `balances.html` is p167's ten
+years of fund balances, a decade a column. Both ACFR schedules are in the
+section the ACFR heads "(Unaudited)", and each page says so. `department.html`, `capital.html` and `debt.html` are a
 page a subject: what a department spends and which funds pay for it, each
 capital project under the fund that pays for it, and what the city budgets and
 is scheduled to pay on each debt. `provenance.html` is the record store itself: every fact, its
 page, and the text it was read from. `caveats.html` is every published
 document's caveats in full. `index.html` links it and flags a caveat in the
-drawer on each mark it applies to, and `totals.html` and several schedule
-pages list each of theirs as one line linking to it, so a reader meets the
+drawer on each mark it applies to, and several schedule pages list each of theirs as one line linking to it, so a reader meets the
 chart before the apparatus.
 
 One schedule is mapped and checked but **drawn by no chart**: ACFR p.41. Its

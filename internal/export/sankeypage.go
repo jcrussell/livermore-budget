@@ -41,17 +41,17 @@ type projectionMetadata struct {
 // the document's own order.
 func (m projectionMetadata) Scope() string { return strings.Join(m.Scopes, ", ") }
 
-// figure is one headline figure: a tile on the totals page, and the index's
-// headline. The JSON tags are load-bearing: the hero ships in
+// figure is one headline figure: the index's headline, and a glance bar's
+// printed total. The JSON tags are load-bearing: the hero ships in
 // window.FISC_CONFIG for the year toggle to paint, which reads label and value,
 // and the template never sees the JSON to notice a missing tag.
 type figure struct {
 	Label string `json:"label"`
 	Value string `json:"value"`
 	Note  string `json:"note"`
-	// Kind selects the tile's treatment: "hero" for the headline, "error" for
-	// the figure the page exists to argue against, "" for the rest. It is a
-	// class name, not a colour: the stylesheet owns the palette.
+	// Kind selects the figure's treatment: "hero" for the headline, "" for
+	// the rest. It is a class name, not a colour: the stylesheet owns the
+	// palette.
 	Kind string `json:"kind"`
 }
 
@@ -102,9 +102,6 @@ type pageData struct {
 	// the same one app.js repaints on a year switch.
 	ChartTitle string
 	Hero       figure
-	// TotalsPath is the totals page of this view's projection, or "" when
-	// the site has none.
-	TotalsPath string
 	// SourcesPath is the provenance index, or "" when the site has none: with
 	// one, the footer links there instead of listing every cited page.
 	SourcesPath string
@@ -175,51 +172,20 @@ func encodeConfig(cfg clientConfig) ([]byte, error) {
 	return blob, nil
 }
 
-// tilesFor renders one year's headline figures.
+// heroFor renders one year's headline figure.
 //
-// The prose lives here and nowhere else. Each note is a claim about what the
+// The prose lives here and nowhere else. The note is a claim about what the
 // number means, and a second implementation of it — in the client, for a year
 // switch — is the way two figures on one page come to disagree about the same
 // schedule.
-func tilesFor(meta projectionMetadata) (figure, []figure) {
+func heroFor(meta projectionMetadata) figure {
 	h := meta.Headline
-	hero := figure{
+	return figure{
 		Label: "What the city actually spends",
 		Value: amount.Cents(h.AllFundsGrossExpenditureCents).Dollars(),
 		Note:  "All funds, gross, " + ledeOf(meta.FiscalYearLabel, meta.Basis) + " budget",
 		Kind:  "hero",
 	}
-	return hero, []figure{{
-		Label: "Naive column total",
-		Value: amount.Cents(h.NaiveExpenditureCents).Dollars(),
-		// The inflation is the transfers out the naive total counts a second time,
-		// cited from the field rather than recomputed as naive minus gross.
-		Note: "The wrong answer: summing the expenditure column counts transfers between funds twice, inflating the total by " +
-			amount.Cents(h.InternalTransferOutCents).Dollars() + ".",
-		Kind: "error",
-	}, {
-		Label: "All-funds gross revenue",
-		Value: amount.Cents(h.AllFundsGrossRevenueCents).Dollars(),
-		Note:  "Ties to the printed schedule; includes internal service charges.",
-	}, {
-		Label: "External revenue",
-		Value: amount.Cents(h.ExternalRevenueCents).Dollars(),
-		Note:  "Net of internal service charges billed between city departments.",
-	}, {
-		Label: "External spending",
-		Value: amount.Cents(h.ExternalExpenditureCents).Dollars(),
-		Note:  "Net of internal service charges.",
-	}, {
-		Label: "Transfers in / out",
-		Value: amount.Cents(h.InternalTransferInCents).Dollars() + " / " + amount.Cents(h.InternalTransferOutCents).Dollars(),
-		Note:  "Money moving between the city's own funds.",
-	}, {
-		Label: "Unmatched transfers",
-		Value: amount.Cents(h.TransferResidualCents).Dollars(),
-		// Says what the number is and defers why to internal/project's
-		// transfer caveat, and promises no caveat: that one is conditional.
-		Note: "Transfers out minus transfers in. No link in this chart pairs a transfer's two legs.",
-	}}
 }
 
 // decodeSankey reads a document as a SPINE document, and refuses one that is not.
@@ -349,7 +315,7 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 				v.Path, v.Projection, meta.GeneratedBy, stem, m.GeneratedBy)
 		}
 		cited = append(cited, m.Sources...)
-		hero, _ := tilesFor(m)
+		hero := heroFor(m)
 		counts := countsRef{Facts: m.Counts.Facts, Nodes: m.Counts.Nodes, Links: m.Counts.Links}
 		caveats := caveatRefs(m.Caveats, stem, caveatsPath)
 		if v.Draws != "" {
@@ -428,7 +394,6 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		TableHeading: flowTableHeading,
 		ChartTitle:   open.ChartTitle,
 		Hero:         open.Hero,
-		TotalsPath:   totalsPathOf(o, v.Projection),
 		SourcesPath:  sourcesPath,
 		Years:        years,
 		Opens:        open.Stem,
@@ -449,18 +414,6 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 func templatePathOf(o *Options, name string) string {
 	for _, v := range o.Views {
 		if v.Template == name {
-			return v.Path
-		}
-	}
-	return ""
-}
-
-// totalsPathOf is the path of the totals view of projection, or "" when the
-// site has none: a chart page's "The totals behind it" names its own
-// document's totals, never another projection's.
-func totalsPathOf(o *Options, projection string) string {
-	for _, v := range o.Views {
-		if v.Template == TotalsTemplate && v.Projection == projection {
 			return v.Path
 		}
 	}

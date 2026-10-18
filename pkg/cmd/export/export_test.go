@@ -260,8 +260,16 @@ func TestExportRunWritesASiteAndSaysHowToServeIt(t *testing.T) {
 // consumed in another, and the page is where the two meet. The anchors are read
 // out of caveats.html's own markup rather than recomposed with caveatAnchor,
 // because recomposing them would assert that one function agrees with itself.
+// Over the committed corpus, so every view that links a caveat is written.
 func TestEveryCaveatSummaryLinksToAnAnchorThatExists(t *testing.T) {
-	opts, _, _, _ := testOptions(t)
+	built := builtStemsForTest(t)
+	io, _, _, _ := iostreams.Test()
+	opts := &Options{
+		IO:        io,
+		RepoRoot:  func() (string, error) { return repoRootForTest(t), nil },
+		OutputDir: filepath.Join(t.TempDir(), "dist"),
+		Build:     func(string) (result, error) { return result{Projections: built}, nil },
+	}
 	if err := exportRun(opts); err != nil {
 		t.Fatalf("exportRun: %v", err)
 	}
@@ -337,44 +345,16 @@ func TestEveryCaveatSummaryLinksToAnAnchorThatExists(t *testing.T) {
 	}
 }
 
-// TestTheSiteDoesNotSayThePSeventySixScheduleIsUnmapped is a cross-package
-// guard, and it lives HERE because here is the only place the two copies of
-// that claim meet.
+// TestTheSiteDoesNotSayThePSeventySixScheduleIsUnmapped asserts over the
+// rendered pages, where a reader meets internal/project's transferCaveat, that
+// no page says Budget Book p76 is unmapped in either word order, and that
+// caveats.html carries the correction.
 //
-// WHAT WENT WRONG. The same claim was written twice, in two packages, about the
-// same difference: internal/project's transferCaveat, built from the facts, and
-// internal/export's "Unmatched transfers" tile note, typed into the packager.
-// Both said the p76 transfer schedule was unmapped. Both stopped being true at
-// ced45b4, when p76 was published. And neither was findable from the other,
-// because one said "not yet mapped" and the other said "not mapped yet" -- a
-// grep for either went green with the other still shipping to readers.
-//
-// So this asserts over the RENDERED PAGE rather than over either source. The
-// page is where a reader meets both, and no word-order variant survives it.
-//
-// WHAT THIS TEST OBSERVES, EXACTLY, because the two halves reach the page by
-// different routes and only one of them is live here. testOptions stubs Build
-// to return the COMMITTED testdata/sankey.golden.json, so the caveat on this
-// page is fixture bytes: mutate transferCaveat and this test stays green.
-// TestSankeyReproducesGoldenFile is what fails then -- it rebuilds the document
-// from the facts and compares those same bytes -- so the caveat is pinned, one
-// package over. The tile note, on totals.html, IS live code on this path and
-// this test is its only guard: reverting tilesFor's old wording reddens exactly
-// this test and nothing else. Proved both ways by mutation, 2026-08-27.
-//
-// WHICH PAGE IT READS CHANGED, AND IT HAD TO. The caveat's full text moved to
-// caveats.html when index.html started showing one-line summaries -- and this
-// test went on passing, because index.html still ships the whole document as
-// JSON inside window.FISC_CONFIG and "Transfers Out to CIP" was in that blob.
-// Measured: strip the config script from the exported index.html and neither
-// string is left anywhere a reader could see. So the test was green on a string
-// no reader reads, which is the exact "green because the gate fired" shape --
-// its own premise above says the page is where a reader MEETS the claim, and
-// that had silently stopped being index.html.
-//
-// The two halves are therefore read from two pages now, each where a reader
-// actually meets it: the correction on caveats.html, which carries the text,
-// and the stale wording refused on BOTH, since either could carry it.
+// testOptions stubs Build to return the committed testdata/sankey.golden.json,
+// so the caveat here is fixture bytes: TestSankeyReproducesGoldenFile is what
+// fails when transferCaveat changes. The correction is read on caveats.html
+// because index.html carries only the caveat's summary, and the whole document
+// inside window.FISC_CONFIG, which no reader reads.
 func TestTheSiteDoesNotSayThePSeventySixScheduleIsUnmapped(t *testing.T) {
 	opts, _, _, _ := testOptions(t)
 	if err := exportRun(opts); err != nil {
@@ -390,7 +370,6 @@ func TestTheSiteDoesNotSayThePSeventySixScheduleIsUnmapped(t *testing.T) {
 	}
 	pages := map[string]string{
 		"index.html":   read("index.html"),
-		"totals.html":  read("totals.html"),
 		"caveats.html": read("caveats.html"),
 	}
 
@@ -427,15 +406,10 @@ func TestTheSiteDoesNotSayThePSeventySixScheduleIsUnmapped(t *testing.T) {
 		}
 	}
 
-	// AND THE PAGES THAT STOPPED PRINTING IT POINT AT IT: index.html at the
-	// caveats page, and the totals page, whose tile the caveat explains, at
-	// the paragraph.
+	// And index.html, which prints only the summary, points at the page that
+	// carries the text.
 	if !strings.Contains(pages["index.html"], `<a href="caveats.html">`) {
 		t.Error("index.html does not link the caveats page")
-	}
-	if !strings.Contains(pages["totals.html"], `href="caveats.html#caveat-`) {
-		t.Error("totals.html links to no caveat anchor, so the paragraph behind its " +
-			"unmatched-transfers tile is not reachable from it")
 	}
 }
 
@@ -1302,6 +1276,61 @@ func TestEveryPublishedDocumentIsRenderedOrDeclaredUnrendered(t *testing.T) {
 	}
 }
 
+// TestTheRevenueScheduleCaveatNamesThePageThatPrintsItsFourColumns holds the
+// caveat every document drawing Budget Book pp.127-140 carries to the site it
+// ships on: the page it says prints all four columns is the nav label of the
+// view that reaches revenue-trends.
+//
+// Mutation: restore "the Revenue tables print all four" in
+// revenueSchedulePublishedTwiceCaveat, and this goes red on every document
+// carrying it.
+func TestTheRevenueScheduleCaveatNamesThePageThatPrintsItsFourColumns(t *testing.T) {
+	built := builtStemsForTest(t)
+	_, ix, err := export.ColumnsOf(built, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var navs []string
+	for _, v := range mustViews(t, result{Projections: built}) {
+		reached, err := v.ReachedStems(ix)
+		if err != nil {
+			t.Fatalf("%s: %v", v.Path, err)
+		}
+		if slices.Contains(reached, project.TrendsProjection) {
+			navs = append(navs, v.Nav)
+		}
+	}
+	if len(navs) != 1 {
+		t.Fatalf("views reaching %s are listed as %q, want exactly one", project.TrendsProjection, navs)
+	}
+	page := "the " + navs[0] + " page prints"
+	carried := 0
+	for _, stem := range keys(built) {
+		var doc struct {
+			Metadata struct {
+				Caveats []project.Caveat `json:"caveats"`
+			} `json:"metadata"`
+		}
+		if err := json.Unmarshal(built[stem], &doc); err != nil {
+			t.Fatalf("decode %s: %v", stem, err)
+		}
+		for _, c := range doc.Metadata.Caveats {
+			if c.ID != "the-revenue-schedule-is-published-twice" {
+				continue
+			}
+			carried++
+			for field, text := range map[string]string{"summary": c.Summary, "text": c.Text} {
+				if !strings.Contains(text, page) {
+					t.Errorf("%s's caveat %s %s names no %q: %q", stem, c.ID, field, page, text)
+				}
+			}
+		}
+	}
+	if carried == 0 {
+		t.Fatal("no built document carries the-revenue-schedule-is-published-twice, so this asserts nothing")
+	}
+}
+
 // builtStemsForTest is the real corpus's projections, for the tests that assert
 // over what the repository actually publishes rather than over a fixture.
 func builtStemsForTest(t *testing.T) map[string][]byte {
@@ -1325,9 +1354,9 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItsCharts(t *testing.T) {
 	built := builtStemsForTest(t)
 	got := mustViews(t, result{Projections: built})
 
-	if len(got) != 13 {
-		t.Fatalf("got %d views over %v, want the spine, its glance, its tiles and bars, its totals, the change page, the revenue trends, "+
-			"the two ACFR history tables, the department, capital and debt pages "+
+	if len(got) != 9 {
+		t.Fatalf("got %d views over %v, want the spine, its glance, its bars, the change page, "+
+			"the fund balances table, the department, capital and debt pages "+
 			"and the caveats index", len(got), keys(built))
 	}
 	spine := got[0]
@@ -1365,7 +1394,7 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItsCharts(t *testing.T) {
 	}
 
 	// Titles and ledes are the caller's, not the packager's.
-	for _, path := range []string{"glance.html", "treemap.html", "ledger.html", "totals.html", "change.html", "trends.html", "history.html", "balances.html",
+	for _, path := range []string{"glance.html", "ledger.html", "change.html", "balances.html",
 		"department.html", "capital.html", "debt.html"} {
 		v, ok := byPath[path]
 		if !ok {
@@ -1406,7 +1435,6 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItsCharts(t *testing.T) {
 	}
 	if diff := cmp.Diff(map[string]string{
 		export.IndexPath: project.ExpansionProjection,
-		"treemap.html":   project.ExpansionProjection,
 		"ledger.html":    project.ExpansionProjection,
 	}, draws); diff != "" {
 		t.Errorf("the schedules the views draw out of their columns (-want +got):\n%s", diff)
@@ -1607,10 +1635,10 @@ func TestAPageThatDisclaimsAuditAssuranceDoesNotClaimItInItsProse(t *testing.T) 
 			}
 		}
 	}
-	// The anchor: the two ACFR tables' documents still declare themselves
+	// The anchor: the ACFR pages' documents still declare themselves
 	// unaudited. If this half fails, the scan above has lost its subject --
 	// decide whether the prose may now claim assurance before deleting it.
-	for _, path := range []string{"history.html", "balances.html"} {
+	for _, path := range []string{"change.html", "balances.html"} {
 		if !shipping[path] {
 			t.Errorf("%s's document no longer ships the %s caveat; the prose scan above "+
 				"and TestAPageDoesNotLabelAColumnWithAWordItsCaveatWithdraws are both "+
@@ -1629,15 +1657,10 @@ var (
 )
 
 // TestAPageDoesNotLabelAColumnWithAWordItsCaveatWithdraws is the second half of
-// the audit-claim refusal, and it exists because the first half could not see
-// the defect it was written for.
-//
-// TestAPageThatDisclaimsAuditAssuranceDoesNotClaimItInItsProse reads each view's
-// Title and Lede. Both ACFR ten-year pages passed it while heading all ten
-// columns `audited` and repeating the word in every cell tooltip, because those
-// are rendered from the document's column data and not from the view's prose --
-// a page making two contradictory claims about the same ten columns, with the
-// caveat quoting p161's "(Unaudited)" a few paragraphs below (fisc-97n8).
+// the audit-claim refusal: TestAPageThatDisclaimsAuditAssuranceDoesNotClaimItInItsProse
+// reads each view's Title and Lede, and a column's basis word is rendered from
+// the document's column data instead, in the column chip and every cell
+// tooltip, with the caveat quoting p161's "(Unaudited)" on the same page.
 //
 // IT WALKS THE RENDERED PAGES, for TestEveryCaveatSummaryLinksToAnAnchorThatExists'
 // reason: the word is chosen in internal/export and printed by a template, and
@@ -1731,9 +1754,9 @@ func TestAPageDoesNotLabelAColumnWithAWordItsCaveatWithdraws(t *testing.T) {
 	}
 	// The anchor, for the prose scan's reason: if no page ships the caveat the
 	// loop above never runs, and a scan over nothing passes.
-	if scanned != 3 {
-		t.Errorf("scanned %d pages shipping the %s caveat, want 3 (history.html, "+
-			"balances.html and change.html); this refusal has lost its subject", scanned, project.UnauditedCaveatID)
+	if scanned != 2 {
+		t.Errorf("scanned %d pages shipping the %s caveat, want 2 (balances.html "+
+			"and change.html); this refusal has lost its subject", scanned, project.UnauditedCaveatID)
 	}
 }
 

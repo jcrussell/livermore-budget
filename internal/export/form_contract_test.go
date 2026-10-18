@@ -39,10 +39,12 @@ func TestTheSchemaHoldsAChartToItsForm(t *testing.T) {
 			func(cfg map[string]any) { overview(cfg)["bars"] = map[string]any{"tier": 3.0} }},
 		{"a bars chart, which no renderer draws", "form",
 			func(cfg map[string]any) { overview(cfg)["form"] = "bars"; delete(overview(cfg), "sankey") }},
-		{"a sankey chart carrying treemap hints", "treemap", func(cfg map[string]any) {
-			overview(cfg)["treemap"] = map[string]any{"sides": []any{map[string]any{"tier": 0.0, "heading": "In"}}}
+		{"a sankey chart carrying ledger hints", "ledger", func(cfg map[string]any) {
+			overview(cfg)["ledger"] = map[string]any{"sides": []any{map[string]any{"tier": 0.0, "heading": "In"}}}
 		}},
-		{"a treemap chart with no treemap hints", "treemap",
+		{"a ledger chart with no ledger hints", "ledger",
+			func(cfg map[string]any) { overview(cfg)["form"] = "ledger"; delete(overview(cfg), "sankey") }},
+		{"a treemap chart, which no renderer draws", "form",
 			func(cfg map[string]any) { overview(cfg)["form"] = "treemap"; delete(overview(cfg), "sankey") }},
 		{"a ledger chart carrying sankey hints", "sankey", func(cfg map[string]any) {
 			overview(cfg)["form"] = "ledger"

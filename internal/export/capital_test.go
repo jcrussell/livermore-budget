@@ -199,7 +199,7 @@ func TestCapitalPageRendersEveryProjectCitedToItsPage(t *testing.T) {
 }
 
 // TestCapitalPageRefusesADocumentThatLostAFigure: counts that disagree with
-// the cells laid out are refused, as on the trends page.
+// the cells laid out are refused, as on the history template's pages.
 //
 // Mutation: drop the reconcileSeriesCounts call from buildCapitalPage and
 // this goes green on a page claiming 16 figures over 15.

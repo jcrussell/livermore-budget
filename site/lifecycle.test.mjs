@@ -82,13 +82,13 @@ describe("the form handshake", () => {
       await settle();
       return { fetched: fetch.asked.length, banners: said(document), forms: Array.from(app.FORMS.keys()) };
     };
-    const overview = await asked((c) => { c.overview.form = "treemap"; });
+    const overview = await asked((c) => { c.overview.form = "ledger"; });
     const good = await asked(() => {});
     // THE REFUSED PAGE STILL HAS A THEME TOGGLE, wired before the refusal; its
     // repaint must not reach for the renderer the page has none of.
     const toggled = await (async () => {
       const config = structuredClone(pageFixture().config);
-      config.overview.form = "treemap";
+      config.overview.form = "ledger";
       const loaded = await loadApp({ config });
       const errors = listenerErrors(loaded.window);
       await loaded.app.boot();
@@ -98,7 +98,7 @@ describe("the form handshake", () => {
       await settle();
       return { errors, was, now: loaded.document.documentElement.dataset.theme };
     })();
-    t.diagnostic(`this script draws ${overview.forms.join(", ")}; a treemap overview fetches ${overview.fetched} file(s) ` +
+    t.diagnostic(`this script draws ${overview.forms.join(", ")}; a ledger overview fetches ${overview.fetched} file(s) ` +
       `and says ${JSON.stringify(overview.banners)}; ` +
       `the theme toggle on the refused page went ${toggled.was} -> ${toggled.now} with ${toggled.errors.length} listener error(s)`);
     assert.deepEqual(toggled.errors, []);
@@ -106,7 +106,7 @@ describe("the form handshake", () => {
     assert.ok(good.fetched > 0 && good.banners.length === 0);
     assert.equal(overview.fetched, 0);
     assert.equal(overview.banners.length, 1);
-    assert.match(overview.banners[0], /declares a treemap chart/);
+    assert.match(overview.banners[0], /declares a ledger chart/);
   });
 });
 

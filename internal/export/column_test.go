@@ -208,7 +208,7 @@ func TestReachedStemsIsTheYearsAndWhatTheirExpansionIsStitchedFrom(t *testing.T)
 		t.Errorf("ReachedStems (-want +got):\n%s", diff)
 	}
 	// A view drawing no chart reaches no expansion.
-	got, err = View{Path: "trends.html", Projection: "year", YearStems: years}.ReachedStems(ix)
+	got, err = View{Path: "table.html", Projection: "year", YearStems: years}.ReachedStems(ix)
 	if err != nil {
 		t.Fatal(err)
 	}

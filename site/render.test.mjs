@@ -983,6 +983,7 @@ describe("the classes the client sets and the rules the stylesheet carries", () 
     opens: "the mark that splits; its affordance is its ⊕, not a style",
     expands: "the folded tail, likewise",
     "tip-drawn": "the tooltip's drawn-part line, worn as a tip-meta",
+    label: "the hero's words, which paintYearWords repaints beside the .value #hero styles",
   };
   /** Styled, set by nothing anywhere: dead ink, declared with its bead until it goes. */
   const DEAD = {};
