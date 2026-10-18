@@ -835,7 +835,7 @@ export function redraw(next, refused = "That could not be drawn", landOn, anchor
     expansions = next;
     drawn = shapeFor(fetched);
     const filtered = filterFor(drawn);
-    const room = roomHeight();
+    const room = layRoom();
     const unfiltered = wholeOf(drawn, filtered, room);
     laid = layOut(filtered.doc, prior, room);
     // Inside the try: building a row is the last step of a draw that can
@@ -2448,7 +2448,7 @@ export function setFilter(next) {
   let laid;
   try {
     filtered = filterFor(projection);
-    const room = roomHeight();
+    const room = layRoom();
     unfiltered = wholeOf(projection, filtered, room);
     laid = layOut(filtered.doc, prior, room);
   } catch (e) {
@@ -3708,20 +3708,19 @@ function windowNow() {
  * else does nothing, and the new room becomes the room the chart holds its
  * height within, so the canvas a fold held stays held. A window whose height
  * alone moved by less than CHROME_SLACK since the chart was drawn is the same
- * window: a phone's address bar showing or hiding moves the room in the
- * chart's units well past any floor, and redrawing for it would close what
- * the reader opened on the chart as they scroll.
+ * window (sameWindow), and nothing about the room the chart is laid out at
+ * moves in it (layRoom): a phone's address bar showing or hiding moves the
+ * room in the chart's units well past any floor, and redrawing for it would
+ * close what the reader opened on the chart as they scroll. A layout that
+ * throws leaves the chart as drawn and says why, as redraw's does.
  * @returns {boolean} whether it was drawn again
  */
 export function fitRoom() {
-  if (!chartDrawn()) return false;
+  const doc = chartDrawn();
+  if (!doc) return false;
   const now = windowNow();
+  if (sameWindow(now)) return false;
   const room = roomHeight();
-  if (now.width === drawnWindow.width && now.full === drawnWindow.full && now.top === drawnWindow.top &&
-      Math.abs(now.height - drawnWindow.height) < CHROME_SLACK) {
-    heldRoom = room;
-    return false;
-  }
   if (room === heldRoom) return false;
   const form = formOnScreen();
   const chart = chartOnScreen();
@@ -3730,8 +3729,39 @@ export function fitRoom() {
     drawnWindow = now;
     return false;
   }
-  render();
+  // layOut assigns nothing until its layout has returned.
+  let laid;
+  try {
+    laid = layOut(doc, undefined, room);
+  } catch (e) {
+    refuseInPlace("The chart could not be fitted to the window: " + (e instanceof Error ? e.message : String(e)));
+    return false;
+  }
+  render(laid);
   return true;
+}
+
+/**
+ * Whether `now` (windowNow) is the window the chart on screen was drawn in:
+ * its width, full screen and the chart's top unmoved, and its height moved by
+ * less than CHROME_SLACK (fitRoom).
+ * @param {{width: number, height: number, full: boolean, top: number}} now
+ * @returns {boolean}
+ */
+function sameWindow(now) {
+  return now.width === drawnWindow.width && now.full === drawnWindow.full && now.top === drawnWindow.top &&
+    Math.abs(now.height - drawnWindow.height) < CHROME_SLACK;
+}
+
+/**
+ * The room a draw lays the chart out at: the room the chart on screen holds
+ * its canvas within (heldRoom) while the window is the one it was drawn in
+ * (sameWindow), so a fold as the address bar shows or hides lays out on the
+ * canvas held; else the room now (roomHeight).
+ * @returns {number}
+ */
+function layRoom() {
+  return chartDrawn() && sameWindow(windowNow()) ? heldRoom : roomHeight();
 }
 
 /** Follows the window's size with the chart's room (askRoom). */
@@ -4562,7 +4592,7 @@ export async function showYear(year, carry = [], removals = null) {
     // fact ids it merges, so nothing is lost.
     const drawn = shapeFor(doc);
     const filtered = filterFor(drawn, removals || filter);
-    const room = roomHeight();
+    const room = layRoom();
     const unfiltered = wholeOf(drawn, filtered, room);
     laid = layOut(filtered.doc, undefined, room);
     rows = tableRows(drawn);

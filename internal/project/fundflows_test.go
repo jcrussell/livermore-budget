@@ -964,6 +964,38 @@ func TestARevenueLineReadingAsItsCategoryIsRefused(t *testing.T) {
 	}
 }
 
+// TestARevenueLineSpelledAsItsCategoryInAnotherCaseIsRelabelled: a line
+// whose term is its category's in another case shares that term, so it is
+// relabelled as the category not itemized rather than refused for reading as
+// its category.
+//
+// Mutation: compare terms byte for byte in sharesTerm, and the line is
+// refused for reading "Charges For Services" under "Charges for Services".
+func TestARevenueLineSpelledAsItsCategoryInAnotherCaseIsRelabelled(t *testing.T) {
+	f := &fundFlows{Labels: termsLabels{
+		stubFundFlows: stubFundFlows{stubLabels: stubLabels{"charges": "Charges for Services"}},
+		terms: map[string][]string{
+			"charges":         {"Charges for Services"},
+			"charges/charges": {"Charges For Services"},
+		},
+	}}
+	parent := PrefixRevenue + "charges"
+	line := PrefixRevenueLine + "charges/charges"
+	nodes := map[string]Node{
+		parent: {ID: parent, Label: "Charges for Services"},
+		line:   {ID: line, Label: "Charges For Services", Parent: parent},
+	}
+	rev := map[revKey]*cellSum{
+		{kind: vocab.KindRevenue, category: "charges", line: "charges/charges", fund: 100}: {cents: 1},
+	}
+	if err := f.labelCategoryNamedLines(nodes, rev); err != nil {
+		t.Fatalf("got %v, want the line relabelled", err)
+	}
+	if diff := cmp.Diff("Charges for Services"+NotItemized, nodes[line].Label); diff != "" {
+		t.Errorf("label (-want +got):\n%s", diff)
+	}
+}
+
 // termsLabels is stubFundFlows answering Terms from its own map, so a fixture
 // can print a line under its category's name.
 type termsLabels struct {

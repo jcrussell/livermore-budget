@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { columnFixture, installBrowser, plannedFetch, repoRoot, settle } from "./testlib.mjs";
+import { columnFixture, installBrowser, plannedFetch, repoRoot, settle, stylesheet } from "./testlib.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -415,7 +415,10 @@ describe("every department is a bar of the funds that pay for it", () => {
     }
   });
 
-  test("the drawn bars carry the figures, their tracks scaled to the longest, and every share is marked ours", async () => {
+  // Mutations: grow each segment by its cents again (style.flexGrow) and the
+  // widths arm goes red; put a gap back in .department-track, or a min-width
+  // on .department-seg, and the stylesheet arm does.
+  test("the drawn bars carry the figures, their tracks scaled to the longest, each segment its cents' share of its track, and every share is marked ours", async () => {
     const { document } = await booted("#y=fy2027-adopted");
     const { groups, bars } = mod.departmentBars(columnFixture("fy2027-adopted"), departmentPage().config);
     const drawn = barsOf(document);
@@ -428,6 +431,30 @@ describe("every department is a bar of the funds that pay for it", () => {
     }
     const tracks = [...document.querySelectorAll("#department-list .department-track")].map((el) => parseFloat(el.style.width));
     assert.equal(tracks[0], 100);
+    // Each segment's width is its cents' part of its track, so the segments
+    // fill the track and none takes a px the others lose.
+    const off = [...document.querySelectorAll("#department-list .department-track")].flatMap((track) => {
+      const segs = [...track.querySelectorAll(".department-seg")];
+      const sum = segs.reduce((a, s) => a + Number(s.dataset.cents), 0);
+      const widths = segs.map((s) => (s.style.width.endsWith("%") ? parseFloat(s.style.width) : NaN));
+      const total = widths.reduce((a, w) => a + w, 0);
+      return [
+        ...(Math.abs(total - 100) < 1e-9 ? [] : [`${track.parentElement.parentElement.dataset.department}: widths sum to ${total}%`]),
+        ...segs.flatMap((s, i) => Math.abs(widths[i] - 100 * Number(s.dataset.cents) / sum) < 1e-9 ? [] :
+          [`${track.parentElement.parentElement.dataset.department} segment ${i}: ${s.style.width} for ${s.dataset.cents} of ${sum}`]),
+      ];
+    });
+    assert.deepEqual(off, []);
+    const css = stylesheet().replace(/\/\*[\s\S]*?\*\//g, "");
+    const rule = (sel) => {
+      const m = css.match(new RegExp(`(?:^|\\})\\s*${sel.replace(".", "\\.")}\\s*\\{([^}]*)\\}`));
+      return m ? m[1] : null;
+    };
+    const track = rule(".department-track");
+    const seg = rule(".department-seg");
+    assert.ok(track !== null && seg !== null, "style.css has no .department-track or .department-seg rule to read");
+    assert.deepEqual({ gap: /\bgap\s*:/.test(track), minWidth: /min-width/.test(seg), flex: /\bflex\s*:\s*none\s*;/.test(seg) },
+      { gap: false, minWidth: false, flex: true }, "a gap, a min-width or a flex grow takes px no segment's cents were given");
     assert.equal(tracks.at(-1), Number((100 * bars.at(-1).cents / bars[0].cents).toFixed(2)));
     const legend = [...document.querySelectorAll("#department-legend li")].map((li) => li.dataset.rank);
     assert.deepEqual(legend, groups.map((g) => String(g.rank)));

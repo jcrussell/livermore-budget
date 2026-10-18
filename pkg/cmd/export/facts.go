@@ -112,8 +112,8 @@ func shardFile(page int) string { return export.RecordsFile(page) }
 // to CSV, and describes both.
 //
 // IT RECONCILES IN THE BUILDER RATHER THAN IN A TEST, which is a deliberate
-// exception to "fisc export runs no checks". The precedent is internal/export's
-// series counts reconciliation and the argument is the same: a published artifact that
+// exception to "fisc export runs no checks". The precedent is
+// reconcileSeriesCounts and the argument is the same: a published artifact that
 // silently disagrees with the file it claims to be is the one failure this
 // project exists to refuse, and a test proves it about the store as committed
 // today while this proves it about the store as shipped, every run.

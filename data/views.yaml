@@ -2,8 +2,8 @@
 # loads this file through the export command's loadViews, which refuses an
 # unknown key, a projection or role it cannot resolve against Go's constants,
 # and a row naming no taxonomy.yaml category. What a declared chart must
-# satisfy is validateOverview's (internal/export) and
-# schema/page.schema.json's, not this file's.
+# satisfy is validateOverview's and schema/page.schema.json's, not this
+# file's.
 #
 # Only what is authored is written here. A view's year control is filled by
 # Go from the documents actually built, and what a node of the expansion
@@ -27,8 +27,8 @@ views:
       which department spends it. Each bar is a sum of cells the city printed,
       and the sum of every such cell in the budget is printed beside it.
 
-  # The same money as a Sankey. No title: sankeyTitle (internal/export)
-  # names the year in each year's <title>, which a declared one would drop.
+  # The same money as a Sankey. No title: sankeyTitle names the year in each
+  # year's <title>, which a declared one would drop.
   - path: flows.html
     nav: Flows
     template: flows.html.tmpl

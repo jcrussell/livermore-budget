@@ -554,7 +554,7 @@ export function drawBars(doc, config, column, yearPath) {
       seg.dataset.rank = String(s.rank);
       seg.dataset.cents = String(s.cents);
       seg.dataset.factIds = s.factIds.join(" ");
-      seg.style.flexGrow = String(s.cents);
+      seg.style.width = `${100 * s.cents / b.cents}%`;
       seg.title = `${named}: ${dollars(s.cents)}, ◇ our ${share(s.cents, b.cents)} of ${b.label}`;
       track.append(seg);
 

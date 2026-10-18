@@ -993,11 +993,15 @@ func (f *fundFlows) labelCategoryNamedLines(nodes map[string]Node, rev map[revKe
 	return nil
 }
 
-// sharesTerm reports whether two spelling lists have one spelling in common.
+// sharesTerm reports whether two spelling lists have one spelling in common,
+// compared case-insensitively and trimmed, as labelCategoryNamedLines' refusal
+// of a line reading as its category compares.
 func sharesTerm(a, b []string) bool {
 	for _, t := range a {
-		if slices.Contains(b, t) {
-			return true
+		for _, u := range b {
+			if strings.EqualFold(strings.TrimSpace(t), strings.TrimSpace(u)) {
+				return true
+			}
 		}
 	}
 	return false

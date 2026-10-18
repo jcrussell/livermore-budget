@@ -5,7 +5,7 @@
 
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { loadApp, bootedApp, split, settle, fire, drawnBody, stylesheet, pageFixture } from "./testlib.mjs";
+import { loadApp, bootedApp, split, settle, fire, drawnBody, stylesheet, pageFixture, refusals, listenerErrors } from "./testlib.mjs";
 
 /**
  * Stubs the Fullscreen API on a loaded page, as a browser offering it does:
@@ -341,6 +341,72 @@ describe("the chart laid out to the window's height", () => {
     assert.deepEqual({ bar, back, taller: taller.viewBox < opened && !taller.menu, turned: !turned.menu, pushed },
       { bar: { viewBox: opened, menu: true }, back: { viewBox: opened, menu: true }, taller: true, turned: true,
         pushed: { drawn: true, menu: false } });
+  });
+
+  // Mutation: move heldRoom to the room now in fitRoom's CHROME_SLACK arm
+  // and lay redraw out at roomHeight in place of layRoom, and the split with
+  // the bar hidden is laid out at the taller room: the bar shown again, the
+  // next split keeps that taller canvas over nodes laid at the shorter one,
+  // a blank band under them.
+  test("on a phone, splits as the address bar hides and shows lay out at the room the chart was drawn at, the nodes filling the canvas", async (t) => {
+    const at = { height: 800, top: 100, full: 0, width: 360 };
+    const loaded = await loadApp();
+    const { app, window, document } = loaded;
+    Object.defineProperty(window, "innerWidth", { value: 360, configurable: true, writable: true });
+    stubRoom(window, document, at);
+    await app.boot();
+    await frame(window);
+    const drawn = app.laidRoom;
+    const resize = async (height) => {
+      at.height = height;
+      window.dispatchEvent(new window.Event("resize"));
+      await frame(window);
+    };
+    const splitOne = async () => {
+      const n = app.laidNodes.find((d) => app.splittable(d) && !app.expansions.includes(d.id));
+      assert.ok(n !== undefined, "no node left to split, so this proves less than it says");
+      await split(app, n.id);
+      return { id: n.id, room: app.laidRoom, viewBox: viewBoxHeight(document), bottom: laidBottom(app) };
+    };
+    await resize(800 + app.CHROME_SLACK - 1);
+    assert.ok(app.roomHeight() > drawn, "the bar hidden moved no room, so this proves less than it says");
+    const hidden = await splitOne();
+    await resize(800);
+    const shown = await splitOne();
+    t.diagnostic(`a 360px phone drawn at room ${drawn}; the bar hidden, split ${JSON.stringify(hidden)}; ` +
+      `shown again, split ${JSON.stringify(shown)}`);
+    assert.deepEqual({ hidden: [hidden.room, hidden.viewBox - hidden.bottom], shown: [shown.room, shown.viewBox - shown.bottom] },
+      { hidden: [drawn, 12], shown: [drawn, 12] });
+  });
+
+  // Mutation: call render() bare from fitRoom again, and the planted throw
+  // escapes the frame to the window with no banner.
+  test("a room redraw whose layout throws leaves the chart as drawn and says so", async (t) => {
+    const at = { height: 900, top: 100, full: 0, width: 1320 };
+    const loaded = await loadApp();
+    const { app, window, document } = loaded;
+    const errors = listenerErrors(window);
+    stubRoom(window, document, at);
+    await app.boot();
+    await frame(window);
+    const before = { viewBox: viewBoxHeight(document), nodes: app.laidNodes.map((n) => n.id).join(" ") };
+    const sankey = app.FORMS.get("sankey");
+    app.FORMS.set("sankey", Object.assign({}, sankey, {
+      layOut: () => { throw new Error("planted: no layout"); },
+    }));
+    try {
+      at.height = 1480;
+      window.dispatchEvent(new window.Event("resize"));
+      await frame(window);
+    } finally {
+      app.FORMS.set("sankey", sankey);
+    }
+    const refused = {
+      viewBox: viewBoxHeight(document), nodes: app.laidNodes.map((n) => n.id).join(" "),
+      banner: refusals(document).map((b) => b.textContent).join(" | "), errors: errors.length,
+    };
+    t.diagnostic(`a layout that throws at a 1480px window: ${refused.banner}; ${refused.errors} error(s) to the window`);
+    assert.deepEqual(refused, { ...before, banner: "The chart could not be fitted to the window: planted: no layout", errors: 0 });
   });
 
   // Mutation: let wholeOf measure the room again (roomHeight) in place of the

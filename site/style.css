@@ -2045,18 +2045,21 @@ noscript p {
 .department-row[aria-expanded="false"] .department-name::before {
   content: "\25b8\00a0";
 }
-/* A track as long as its sum against the longest's, of segments grown by their cents. */
+/* A track as long as its sum against the longest's, each segment its share of
+   the track (department.js); the separator is drawn inside a segment, so it
+   adds no width. */
 .department-track {
   display: flex;
-  gap: 1px;
   height: 18px;
   min-width: 2px;
 }
 .department-seg {
   display: block;
-  flex: 0 1 0;
-  min-width: 1px;
+  flex: none;
   background: var(--glance-tail);
+}
+.department-seg + .department-seg {
+  box-shadow: inset 1px 0 0 var(--plane);
 }
 .department-seg:first-child {
   border-radius: 3px 0 0 3px;

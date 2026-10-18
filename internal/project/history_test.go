@@ -473,8 +473,8 @@ func TestP167ComponentsTieToP54NotP41(t *testing.T) {
 // ships on the changes document alone, because balances.html publishes p167
 // and this is a claim about a table that page does not show; and the shared
 // unaudited caveat may name neither schedule's corroboration, which is the
-// split this test guards -- history.html once shipped p167 arithmetic its own
-// pages nowhere print.
+// split this test guards: a corroboration in it would ship p167 arithmetic on
+// change.html, whose pages nowhere print it.
 func TestChanges2025ColumnTiesToP54(t *testing.T) {
 	c := caveatChangesTieToP54
 	ties := []struct{ row, page, label, p54Label string }{
@@ -503,7 +503,7 @@ func TestChanges2025ColumnTiesToP54(t *testing.T) {
 		}
 	}
 	if !found {
-		t.Errorf("changesCaveats does not carry %q; history.html's 2025 column would go uncorroborated", c.ID)
+		t.Errorf("changesCaveats does not carry %q; change.html's 2025 column would go uncorroborated", c.ID)
 	}
 	for _, cv := range fundBalancesCaveats() {
 		if cv.ID == c.ID {
@@ -511,7 +511,7 @@ func TestChanges2025ColumnTiesToP54(t *testing.T) {
 		}
 	}
 	if strings.Contains(caveatStatisticalSectionIsUnaudited.Text, "p167") {
-		t.Error("the shared unaudited caveat names p167; it ships on history.html, whose " +
+		t.Error("the shared unaudited caveat names p167; it ships on change.html too, whose " +
 			"pages are pp.168-169, so a corroboration must live per document")
 	}
 }
