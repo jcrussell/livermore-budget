@@ -255,7 +255,7 @@ func indexSite(t *testing.T) string {
 
 // TestTheIndexLeadsWithWhatTheCitySpends: the index's one headline figure is
 // the golden spine's all-funds gross expenditure, in the hero. Mutation: drop
-// {{.Hero.Value}} from site/index.html.tmpl, and this goes red.
+// {{.Hero.Value}} from site/flows.html.tmpl, and this goes red.
 func TestTheIndexLeadsWithWhatTheCitySpends(t *testing.T) {
 	index := readerVisible(t, readPage(t, indexSite(t)))
 	hero := strings.Index(index, `id="hero"`)
@@ -840,7 +840,7 @@ func TestWriteReportsAMissingAsset(t *testing.T) {
 	// A hand-built asset tree missing app.js stands in for a botched embed:
 	// the failure has to be an error, not a site that 404s in the browser.
 	assets := fstest.MapFS{
-		"index.html.tmpl":     {Data: []byte(`<!doctype html><title>{{.Title}}</title>`)},
+		"flows.html.tmpl":     {Data: []byte(`<!doctype html><title>{{.Title}}</title>`)},
 		export.SourcesPartial: {Data: []byte(`{{define "sources"}}{{end}}`)},
 		export.ChromePartial:  {Data: []byte(`{{define "theme-stamp"}}{{end}}{{define "topbar"}}{{end}}`)},
 		"style.css":           {Data: []byte(`body{}`)},

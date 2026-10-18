@@ -10,7 +10,8 @@
 //
 // The output layout is fixed:
 //
-//	<dir>/index.html          rendered from site/index.html.tmpl
+//	<dir>/<view>.html         each view, rendered from its own site/ template;
+//	                          the view the site opens on is at index.html
 //	<dir>/app.js              copied verbatim from site/
 //	<dir>/style.css           copied verbatim from site/
 //	<dir>/vendor/*            vendored d3 and d3-sankey, with licences

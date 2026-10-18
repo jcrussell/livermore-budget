@@ -14,10 +14,10 @@ import (
 // TestTheSchemaHoldsAChartToItsForm is the arm Go's validate does not spell: a
 // hint foreign to the declared form, and a form's hints on a chart of another
 // form, are refused by schema/page.schema.json at the write. Over the config
-// of testdata/index.golden.html, the page this build writes over the client
+// of testdata/flows.golden.html, the Sankey page this build writes over the client
 // subset, so the control is a shape this build produces.
 func TestTheSchemaHoldsAChartToItsForm(t *testing.T) {
-	page, err := os.ReadFile("../../testdata/index.golden.html")
+	page, err := os.ReadFile("../../testdata/flows.golden.html")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,7 +84,7 @@ func TestTheSchemaHoldsAChartToItsForm(t *testing.T) {
 // grows its canvas and caps the expansion's splits, and schema/page.schema.json
 // refuses each hint broken one way, and a growth beside a fixed height.
 func TestTheSchemaHoldsTheExpansionsCanvasAndCaps(t *testing.T) {
-	page, err := os.ReadFile("../../testdata/index.golden.html")
+	page, err := os.ReadFile("../../testdata/flows.golden.html")
 	if err != nil {
 		t.Fatal(err)
 	}

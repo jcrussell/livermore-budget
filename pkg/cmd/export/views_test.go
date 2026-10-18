@@ -43,7 +43,7 @@ func TestLoadViewsRefusesWhatItCannotResolve(t *testing.T) {
 		want            []string
 	}{
 		{"an overview's projection", "projection: expansion\n", "projection: expansio\n",
-			[]string{`view "index.html"`, "overview.projection", `"expansio" is not one of`}},
+			[]string{`view "flows.html"`, "overview.projection", `"expansio" is not one of`}},
 		{"a view's projection", "projection: changes-in-fund-balances\n", "projection: changes-in-fund-balance\n",
 			[]string{`view "change.html"`, "projection", `"changes-in-fund-balance" is not one of`}},
 		{"a row's category", "        fund_group: general\n",
@@ -108,7 +108,7 @@ func TestExportRefusesAViewsFileItCannotLoad(t *testing.T) {
 	if err == nil {
 		t.Fatal("exportRun wrote a site from a views file naming a projection that does not exist")
 	}
-	for _, w := range []string{viewsFile, `view "index.html"`, `"expansio"`} {
+	for _, w := range []string{viewsFile, `view "flows.html"`, `"expansio"`} {
 		if !strings.Contains(err.Error(), w) {
 			t.Errorf("got %v, want it to say %q", err, w)
 		}

@@ -10,9 +10,28 @@
 # schedule splits into is internal/project's, never this file's.
 schema_version: 1
 views:
+  # The page the site opens on: the spine's money with no gesture, three "of
+  # every $100" bars per year, each a table of printed cells glance.js groups
+  # and sums, the spine's figure beside each. Reads department-funding beside
+  # the spine for the third bar, and the export refuses rather than open on
+  # no page when that is not built.
   - path: index.html
-    nav: Budget flows
-    template: index.html.tmpl
+    nav: At a glance
+    template: glance.html.tmpl
+    projection: sankey
+    year_control: true
+    reads: [department-funding]
+    title: Livermore's budget at a glance
+    lede: >-
+      Of every $100 the city budgets, where it comes from, what it buys and
+      which department spends it. Each bar is a sum of cells the city printed,
+      and the sum of every such cell in the budget is printed beside it.
+
+  # The same money as a Sankey. No title: sankeyTitle (internal/export)
+  # names the year in each year's <title>, which a declared one would drop.
+  - path: flows.html
+    nav: Flows
+    template: flows.html.tmpl
     projection: sankey
     # The year control lists every built document of this projection, oldest
     # first; the page opens on the last of them.
@@ -41,21 +60,6 @@ views:
           - {split: object-rows, cap: 8, tail: object rows}
           - {split: lines, cap: 8, tail: lines}
           - {split: receivers, cap: 8, tail: funds}
-
-  # The same money with no gesture: three "of every $100" bars per year, each
-  # a table of printed cells glance.js groups and sums, the spine's figure
-  # beside each. Reads department-funding beside the spine for the third bar.
-  - path: glance.html
-    nav: At a glance
-    template: glance.html.tmpl
-    projection: sankey
-    year_control: true
-    reads: [department-funding]
-    title: Livermore's budget at a glance
-    lede: >-
-      Of every $100 the city budgets, where it comes from, what it buys and
-      which department spends it. Each bar is a sum of cells the city printed,
-      and the sum of every such cell in the budget is printed beside it.
 
   # The same expansion schedule as ranked bars, each side a spine column
   # whose roots open in place. The middle column is no side: a fund group

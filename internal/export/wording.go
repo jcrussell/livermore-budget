@@ -202,7 +202,7 @@ func kindLabels() map[string]string {
 const flowTableHeading = "Every flow, as a table"
 
 // defaultWording is the site's English. The counts sentence's head is also
-// rendered server-side by site/index.html.tmpl for the page before app.js
+// rendered server-side by site/flows.html.tmpl for the page before app.js
 // runs, and a test holds that line to Counts.
 func defaultWording() wording {
 	return wording{

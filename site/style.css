@@ -1583,8 +1583,8 @@ noscript p {
 
   /* AND THE DISCLOSURES OPEN, for the banner's own reason one paragraph up. A
      reader holding a sheet of paper cannot click, so a closed <details> takes
-     the sources, the caveats, the derived list, the flow table, index.html's
-     tile row and provenance.html's page table off the copy without saying it
+     the sources, the caveats, the derived list, the flow table and
+     provenance.html's page table off the copy without saying it
      did.
 
      TWO RULES BECAUSE ENGINES USE TWO MECHANISMS: one hides the non-summary
@@ -1967,7 +1967,7 @@ noscript p {
 
 /* end capital.html */
 
-/* glance.html. Only that page's rules go in this block. */
+/* The glance page, at index.html. Only that page's rules go in this block. */
 .glance-year + .glance-year {
   margin-top: 40px;
   padding-top: 24px;
@@ -2060,7 +2060,7 @@ noscript p {
   white-space: nowrap;
 }
 
-/* end glance.html */
+/* end the glance page */
 
 /* ledger.html, the sides page. Only its rules go in this block. The ranks
    wear the glance page's ordinal ramp. */

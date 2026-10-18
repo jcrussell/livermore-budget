@@ -66,7 +66,7 @@ describe("the theme toggle in every pinned page's top bar", () => {
   }
 
   test("an OS that prefers dark opens the toggle on Light mode, and a click stores light", async (t) => {
-    const { document, window } = await booted("index.golden.html", { osDark: true });
+    const { document, window } = await booted("flows.golden.html", { osDark: true });
     const button = /** @type {HTMLButtonElement} */ (document.getElementById("theme-toggle"));
     const before = read(button);
     button.click();
@@ -77,7 +77,7 @@ describe("the theme toggle in every pinned page's top bar", () => {
   });
 
   test("the toggle follows an OS switch while nothing is stored", async () => {
-    const { document, media } = await booted("glance.golden.html");
+    const { document, media } = await booted("index.golden.html");
     const button = /** @type {HTMLButtonElement} */ (document.getElementById("theme-toggle"));
     media.setOSDark(true);
     assert.equal(read(button), "Light mode / aria-pressed=true / hidden=false");

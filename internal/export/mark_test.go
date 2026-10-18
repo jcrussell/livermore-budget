@@ -374,7 +374,7 @@ func TestTheHeroNoteNamesItsColumnAsTheLedeDoes(t *testing.T) {
 // TestTheTablePointerQuotesTheHeadingThePagePrints holds the chart
 // description's pointer to the flow table's heading as the page renders it, so
 // a screen reader is never sent to a heading that is not there. Mutation: spell
-// the <h2> in site/index.html.tmpl as a literal other than the pointer's, and
+// the <h2> in site/flows.html.tmpl as a literal other than the pointer's, and
 // it goes red.
 func TestTheTablePointerQuotesTheHeadingThePagePrints(t *testing.T) {
 	data := pageData{Wording: defaultWording(), TableHeading: flowTableHeading}

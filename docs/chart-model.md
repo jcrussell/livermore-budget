@@ -48,7 +48,7 @@ verbatim asset. The column document does not change.
 `ledger.html` draws the expansion schedule as ranked bars. It is a
 `chart_form` with a closed hint object under its own key (`sides_hints`: the
 spine tiers drawn as sides, each with its heading) and a renderer module, as
-the section above prices a second form. It is not registered in `app.js`'s `FORMS`, and `index.html.tmpl` does not
+the section above prices a second form. It is not registered in `app.js`'s `FORMS`, and `flows.html.tmpl` does not
 draw it: measured at 6d46fd6, `site/app.js` reads a laid node's ribbons on
 four paths (following the money, emphasis under a hover, the drawer's ribbon
 list and a search reveal), and its chrome is ribbon vocabulary (the flow

@@ -283,11 +283,11 @@ func TestAMemberNounNamingAFundIsSaidOfAFund(t *testing.T) {
 }
 
 // TestTheTemplatesCountsHeadIsTheWordingsCounts holds the counts line
-// site/index.html.tmpl renders before app.js runs to the wording app.js
+// site/flows.html.tmpl renders before app.js runs to the wording app.js
 // repaints it with: the same sentence, the plural fixed as the template
 // prints it, so a reworded default reaches both or neither.
 func TestTheTemplatesCountsHeadIsTheWordingsCounts(t *testing.T) {
-	tmpl, err := fs.ReadFile(site.FS(), "index.html.tmpl")
+	tmpl, err := fs.ReadFile(site.FS(), "flows.html.tmpl")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -297,7 +297,7 @@ func TestTheTemplatesCountsHeadIsTheWordingsCounts(t *testing.T) {
 		"{facts:fact|facts}", "{{.Facts}} facts",
 	).Replace(defaultWording().Counts)
 	if !strings.Contains(string(tmpl), `<span id="counts-line">`+served+`</span>`) {
-		t.Errorf("site/index.html.tmpl does not render the counts line as %q; the page's first sentence and its repaint would differ", served)
+		t.Errorf("site/flows.html.tmpl does not render the counts line as %q; the page's first sentence and its repaint would differ", served)
 	}
 }
 

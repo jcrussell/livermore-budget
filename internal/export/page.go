@@ -19,7 +19,7 @@ import (
 // into a directory it does not own. What the caller chooses is which view uses
 // which, by name.
 const (
-	SankeyTemplate = "index.html.tmpl"
+	SankeyTemplate = "flows.html.tmpl"
 	// HistoryTemplate is a server-rendered series table, with the rows grouped
 	// under the printed block headings a [View.Sections] declares. It ships no
 	// script beyond the theme stamp.

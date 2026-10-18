@@ -1,8 +1,9 @@
 # fisc — the Livermore budget, with its sources attached
 
 `fisc` turns the City of Livermore's published budget PDFs into a verified fact
-store, and that fact store into a static site whose headline view is a Sankey of
-where city money comes from and where it goes.
+store, and that fact store into a static site that opens on a glance page of
+where city money comes from and where it goes, each bar a sum of printed cells,
+with a Sankey of the same money on its Flows page.
 
 The distinguishing constraint: **every figure published carries a provenance
 pointer back to a page and cell of a source PDF**, and `fisc verify` fails if any
@@ -47,8 +48,10 @@ The spine gives the all-funds picture the chart draws:
   reconciles against exactly
 
 The site's pages are the views `data/views.yaml` declares, in its nav order.
-`index.html` is the fund-group spine as a Sankey, with a toggle between the two
-adopted years: **click a fund group and it opens** into that group's own funds from
+`index.html` is the glance page: of every $100 the city budgets, where it comes
+from, what it buys and which department spends it, each bar a sum of the printed
+cells listed beneath it. `flows.html` is the fund-group spine as a Sankey, with a
+toggle between the two adopted years: **click a fund group and it opens** into that group's own funds from
 pp.127-140, and where there is room on into what each fund spends on, from
 pp.167-170 and pp.173-183, drawn for the same fiscal year; click a General Fund
 division and it opens again into what that division spends on — each rescaled
@@ -63,7 +66,7 @@ page a subject: what a department spends and which funds pay for it, each
 capital project under the fund that pays for it, and what the city budgets and
 is scheduled to pay on each debt. `provenance.html` is the record store itself: every fact, its
 page, and the text it was read from. `caveats.html` is every published
-document's caveats in full. `index.html` links it and flags a caveat in the
+document's caveats in full. `flows.html` links it and flags a caveat in the
 drawer on each mark it applies to, and several schedule pages list each of theirs as one line linking to it, so a reader meets the
 chart before the apparatus.
 

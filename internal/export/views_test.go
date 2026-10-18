@@ -1600,7 +1600,7 @@ func TestAYearStemBuiltByAnotherProjectionIsRefused(t *testing.T) {
 // TestTheLedesProseNamesThePagesScope couples two statements of one claim that
 // nothing else couples.
 //
-// index.html.tmpl's lede says the budget is "all funds, gross" in English; the
+// flows.html.tmpl's lede says the budget is "all funds, gross" in English; the
 // footer prints "Scope {{.Scope}}", the slug, three screens down. Neither is
 // repainted and the scope guard in buildSankeyPage only makes a view's YEARS
 // agree with each other -- so a view built entirely on some other scope ships a
@@ -1622,7 +1622,7 @@ func TestTheLedesProseNamesThePagesScope(t *testing.T) {
 	)
 	if !strings.Contains(page, "Scope "+slug) {
 		t.Fatalf("the footer no longer prints scope %q; if the published scope changed, "+
-			"the lede's prose at index.html.tmpl:41 has to change with it", slug)
+			"the lede's prose at flows.html.tmpl:41 has to change with it", slug)
 	}
 	if !strings.Contains(page, prose) {
 		t.Errorf("the lede no longer says %q while the footer says scope %q; "+
@@ -1654,7 +1654,7 @@ func TestATemplateWithNoArmIsRefusedRatherThanRenderedAsASpine(t *testing.T) {
 	// worthless the moment its template is handled.
 	const orphan = "unclaimed.html.tmpl"
 	assets := fstest.MapFS{
-		"index.html.tmpl":     {Data: []byte(`<!doctype html><title>{{.Title}}</title>`)},
+		"flows.html.tmpl":     {Data: []byte(`<!doctype html><title>{{.Title}}</title>`)},
 		"history.html.tmpl":   {Data: []byte(`<!doctype html><title>{{.Title}}</title>`)},
 		export.SourcesPartial: {Data: []byte(`{{define "sources"}}{{end}}`)},
 		export.ChromePartial:  {Data: []byte(`{{define "theme-stamp"}}{{end}}{{define "topbar"}}{{end}}`)},
@@ -2224,7 +2224,7 @@ func TestTheApparatusShipsClosedOnEveryChartPage(t *testing.T) {
 }
 
 // TestAClosedFlowTableIsNotDescribedAsListedBelow is the a11y claim
-// index.html.tmpl's disclosure comment argues, enforced rather than restated: a
+// flows.html.tmpl's disclosure comment argues, enforced rather than restated: a
 // closed <details> is collapsed for assistive technology as well as visually,
 // so its content is out of the accessibility tree and out of in-page find until
 // the reader opens it. A <desc> telling a screen-reader user that the figures
@@ -2515,13 +2515,13 @@ func TestEveryFooterDisclosureKeepsItsHeadingInTheOutline(t *testing.T) {
 		t.Errorf("templates folding a footer list (-want +got):\n%s", diff)
 	}
 	if diff := cmp.Diff([]string{export.CapitalTemplate, export.ChangeTemplate, export.DebtTemplate,
-		export.DepartmentTemplate, export.GlanceTemplate, export.HistoryTemplate, export.SankeyTemplate,
+		export.DepartmentTemplate, export.SankeyTemplate, export.GlanceTemplate, export.HistoryTemplate,
 		export.LedgerTemplate, export.ProvenanceTemplate}, calling); diff != "" {
 		t.Errorf("templates executing the sources partial (-want +got):\n%s", diff)
 	}
 }
 
-// TestTheSankeyPageNamesItsSourcesForEveryYear: index.html.tmpl's
+// TestTheSankeyPageNamesItsSourcesForEveryYear: flows.html.tmpl's
 // "sources-heading" replaces the partial's default only because renderPage
 // parses the partial first. Parsed the other way round, the partial's block
 // replaces the page's and every page reads "Sources" with no error.

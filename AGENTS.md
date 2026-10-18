@@ -9,8 +9,9 @@ paragraph to keep true for nobody.
 
 **The purpose of this project is to let a reader explore the City of Livermore's
 budget.** `fisc` turns the city's published budget PDFs into a verified fact
-store, and that store into a static site whose headline view is a Sankey of
-where city money comes from and where it goes.
+store, and that store into a static site that opens on a glance page of
+where city money comes from and where it goes, each bar a sum of printed cells,
+with a Sankey of the same money on its Flows page.
 
 **Every figure published carries a provenance pointer back to a page and cell of
 a source PDF, and `fisc verify` fails if any link in that chain breaks.** That is

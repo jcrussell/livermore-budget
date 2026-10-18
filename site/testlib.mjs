@@ -90,10 +90,10 @@ export function loadD3() {
 
 /**
  * The served page and the config cut out of it, from
- * testdata/index.golden.html, so there is one copy of the config.
+ * testdata/flows.golden.html, the Sankey page, so there is one copy of the config.
  */
 export function pageFixture() {
-  return servedPage("index.golden.html");
+  return servedPage("flows.golden.html");
 }
 
 /**

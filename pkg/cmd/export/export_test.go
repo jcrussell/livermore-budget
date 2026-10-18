@@ -37,6 +37,70 @@ func goldenSankey(t *testing.T) []byte {
 	return b
 }
 
+// goldenFunding is a department-funding document of the golden spine's
+// column, the stem it is published at and its bytes: what the glance page at
+// index.html reads beside the spine, with no site to open on without it. Its
+// two departments, paid by the General Fund and read off p67, sum to the
+// spine's all-funds gross expenditure less every residual departmentsApartFromSpine
+// declares for that column, so the departments bar ties as glanceTies holds it.
+func goldenFunding(t *testing.T) (string, []byte) {
+	t.Helper()
+	var spine struct {
+		Metadata struct {
+			GeneratedBy string `json:"generated_by"`
+			FiscalYear  int    `json:"fiscal_year"`
+			Label       string `json:"fiscal_year_label"`
+			Basis       string `json:"basis"`
+			Headline    struct {
+				Spent int64 `json:"all_funds_gross_expenditure_cents"`
+			} `json:"headline"`
+		} `json:"metadata"`
+	}
+	if err := json.Unmarshal(goldenSankey(t), &spine); err != nil {
+		t.Fatal(err)
+	}
+	m := spine.Metadata
+	stems := publishedInto(export.PrimaryProjection, project.DepartmentFundingProjection)
+	if len(stems) != 1 {
+		t.Fatalf("department-funding is published %d times over the spine's column, want once", len(stems))
+	}
+	apart, err := departmentsApartFromSpine()
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows := m.Headline.Spent
+	for _, a := range apart {
+		if a.FiscalYear == m.FiscalYear && a.Basis == m.Basis {
+			rows -= a.ResidualCents
+		}
+	}
+	police := rows * 4 / 5
+	link := func(to string, cents int64, id string) string {
+		return fmt.Sprintf(`{"source":"fund-group/general","target":%q,"value_cents":%d,"kind":"external",`+
+			`"fact_ids":[%q],"locators":[{"doc_id":%q,"pages":[67]}]}`, to, cents, id, budgetDocID)
+	}
+	doc := fmt.Sprintf(`{"schema_version":1,"projection":%q,"nodes":[`+
+		`{"id":"fund-group/general","label":"General Fund","tier":2,"role":"fund_group"},`+
+		`{"id":"department/police-department","label":"Police Department","tier":4,"role":"whole_department"},`+
+		`{"id":"department/city-council","label":"City Council","tier":4,"role":"whole_department"}],`+
+		`"links":[%s,%s],"metadata":{"generated_by":%q,"fiscal_year":%d,"fiscal_year_label":%q,"basis":%q,`+
+		`"scopes":["department-funding-sources"],"currency":"USD","units":"cents",`+
+		`"sources":[{"doc_id":%q,"pages":[67]}],"counts":{"facts":2,"nodes":3,"links":2},"caveats":[]}}`,
+		project.DepartmentFundingProjection,
+		link("department/police-department", police, "fisc-f-000000000001"),
+		link("department/city-council", rows-police, "fisc-f-000000000002"),
+		m.GeneratedBy, m.FiscalYear, m.Label, m.Basis, budgetDocID)
+	return stems[0], []byte(doc)
+}
+
+// goldenProjections is the golden spine and goldenFunding beside it, the
+// fewest documents the committed views open a site on.
+func goldenProjections(t *testing.T) map[string][]byte {
+	t.Helper()
+	stem, funding := goldenFunding(t)
+	return map[string][]byte{"sankey": goldenSankey(t), stem: funding}
+}
+
 // fakeRepo is a repository root with only the file the export reads out of it:
 // the source registry. Pointing the test at the real tree would make it fail
 // for reasons that have nothing to do with the command.
@@ -110,7 +174,7 @@ func testOptions(t *testing.T) (*Options, *iostreams.IOStreams, func() string, f
 		RepoRoot:  func() (string, error) { return root, nil },
 		OutputDir: filepath.Join(t.TempDir(), "dist"),
 		Build: func(string) (result, error) {
-			return result{Projections: map[string][]byte{"sankey": goldenSankey(t)}}, nil
+			return result{Projections: goldenProjections(t)}, nil
 		},
 	}
 	return opts, io, out.String, errOut.String
@@ -353,7 +417,7 @@ func TestEveryCaveatSummaryLinksToAnAnchorThatExists(t *testing.T) {
 // testOptions stubs Build to return the committed testdata/sankey.golden.json,
 // so the caveat here is fixture bytes: TestSankeyReproducesGoldenFile is what
 // fails when transferCaveat changes. The correction is read on caveats.html
-// because index.html carries only the caveat's summary, and the whole document
+// because flows.html carries only the caveat's summary, and the whole document
 // inside window.FISC_CONFIG, which no reader reads.
 func TestTheSiteDoesNotSayThePSeventySixScheduleIsUnmapped(t *testing.T) {
 	opts, _, _, _ := testOptions(t)
@@ -369,7 +433,7 @@ func TestTheSiteDoesNotSayThePSeventySixScheduleIsUnmapped(t *testing.T) {
 		return string(raw)
 	}
 	pages := map[string]string{
-		"index.html":   read("index.html"),
+		"flows.html":   read("flows.html"),
 		"caveats.html": read("caveats.html"),
 	}
 
@@ -406,19 +470,19 @@ func TestTheSiteDoesNotSayThePSeventySixScheduleIsUnmapped(t *testing.T) {
 		}
 	}
 
-	// And index.html, which prints only the summary, points at the page that
+	// And flows.html, which prints only the summary, points at the page that
 	// carries the text.
-	if !strings.Contains(pages["index.html"], `<a href="caveats.html">`) {
-		t.Error("index.html does not link the caveats page")
+	if !strings.Contains(pages["flows.html"], `<a href="caveats.html">`) {
+		t.Error("flows.html does not link the caveats page")
 	}
 }
 
-// TestTheSourcesPageListsEveryPageTheIndexCites: index.html lists no cited
+// TestTheSourcesPageListsEveryPageTheSankeyCites: flows.html lists no cited
 // page of its own and links the sources page, so that page must list every
-// page the index's config cites, in every year. Mutation: render the footer's
+// page the Sankey's config cites, in every year. Mutation: render the footer's
 // source list unconditionally -- the first arm goes red; drop p66 from
 // provenance.html's table and footer -- the second does.
-func TestTheSourcesPageListsEveryPageTheIndexCites(t *testing.T) {
+func TestTheSourcesPageListsEveryPageTheSankeyCites(t *testing.T) {
 	dir := clientExport(t)
 	read := func(name string) string {
 		t.Helper()
@@ -428,20 +492,20 @@ func TestTheSourcesPageListsEveryPageTheIndexCites(t *testing.T) {
 		}
 		return string(raw)
 	}
-	index, sources := read("index.html"), read("provenance.html")
-	before, rest, ok := strings.Cut(index, configOpen)
+	flows, sources := read("flows.html"), read("provenance.html")
+	before, rest, ok := strings.Cut(flows, configOpen)
 	if !ok {
-		t.Fatal("index.html carries no FISC_CONFIG")
+		t.Fatal("flows.html carries no FISC_CONFIG")
 	}
 	blob, after, ok := strings.Cut(rest, configClose)
 	if !ok {
-		t.Fatal("index.html never closes FISC_CONFIG")
+		t.Fatal("flows.html never closes FISC_CONFIG")
 	}
 	if visible := before + after; strings.Contains(visible, `id="sources-view"`) ||
 		strings.Contains(visible, "/pages/p0") {
-		t.Error("index.html lists the pages it cites beside the sources page")
+		t.Error("flows.html lists the pages it cites beside the sources page")
 	} else if !strings.Contains(visible, `<a href="provenance.html">`) {
-		t.Error("index.html does not link the sources page")
+		t.Error("flows.html does not link the sources page")
 	}
 	var cfg struct {
 		Docs map[string]struct {
@@ -458,14 +522,14 @@ func TestTheSourcesPageListsEveryPageTheIndexCites(t *testing.T) {
 		for n, p := range doc.Pages {
 			cited++
 			if !strings.Contains(sources, `href="`+p.Text+`"`) {
-				t.Errorf("provenance.html does not list %s p%s, which index.html cites", id, n)
+				t.Errorf("provenance.html does not list %s p%s, which flows.html cites", id, n)
 			}
 		}
 	}
 	if cited == 0 {
-		t.Fatal("index.html's config cites no page, so nothing above was checked")
+		t.Fatal("flows.html's config cites no page, so nothing above was checked")
 	}
-	t.Logf("%d page(s) index.html cites", cited)
+	t.Logf("%d page(s) flows.html cites", cited)
 }
 
 // The acceptance test for fisc-ze7: the exported site resolves BOTH citation
@@ -612,9 +676,9 @@ func pageRefs(page string) []string {
 
 func readPage(t *testing.T, dir string) string {
 	t.Helper()
-	b, err := os.ReadFile(filepath.Join(dir, "index.html"))
+	b, err := os.ReadFile(filepath.Join(dir, "flows.html"))
 	if err != nil {
-		t.Fatalf("read index.html: %v", err)
+		t.Fatalf("read flows.html: %v", err)
 	}
 	return string(b)
 }
@@ -697,8 +761,9 @@ func TestExportRunRefusesBeforeCleanDestroysTheSite(t *testing.T) {
 	}
 	doc := bytes.Replace(goldenSankey(t), []byte(`"projection": "sankey"`), []byte(`"projection": "`+projection+`"`), 1)
 	opts.Build = func(string) (result, error) {
-		return result{Projections: map[string][]byte{
-			"sankey": goldenSankey(t), stem: doc}}, nil
+		built := goldenProjections(t)
+		built[stem] = doc
+		return result{Projections: built}, nil
 	}
 
 	opts.Clean = true
@@ -758,7 +823,7 @@ func TestExportRunShipsTheBuildersFiles(t *testing.T) {
 	shard := []byte(`{"id":"fisc-f-000000000000","doc_id":"d","page":66}` + "\n")
 	opts.Build = func(string) (result, error) {
 		return result{
-			Projections: map[string][]byte{"sankey": goldenSankey(t)},
+			Projections: goldenProjections(t),
 			Files:       map[string][]byte{"facts/d/pages/p0066.jsonl": shard},
 		}, nil
 	}
@@ -817,7 +882,7 @@ func TestExportRunRefusesAnAssetThatEscapesTheSite(t *testing.T) {
 
 			opts.Build = func(string) (result, error) {
 				return result{
-					Projections: map[string][]byte{"sankey": goldenSankey(t)},
+					Projections: goldenProjections(t),
 					Files:       map[string][]byte{"../escaped.jsonl": []byte("{}")},
 				}, nil
 			}
@@ -1347,21 +1412,33 @@ func builtStemsForTest(t *testing.T) map[string][]byte {
 }
 
 // TestViewsOpensOnTheSpineAndGivesYearsToItsCharts pins the shape of the view
-// list: which page the site opens on, that the year control belongs to the
-// spine's documents and to no other view's, and that the spine is the one
-// chart page.
+// list: that the site opens on the glance page over the spine, that the year
+// control belongs to the spine's documents and to no other view's, and that
+// the spine's Sankey is at flows.html. Mutation: swap the two views' paths in
+// data/views.yaml and the opening and flows arms go red.
 func TestViewsOpensOnTheSpineAndGivesYearsToItsCharts(t *testing.T) {
 	built := builtStemsForTest(t)
 	got := mustViews(t, result{Projections: built})
 
 	if len(got) != 9 {
-		t.Fatalf("got %d views over %v, want the spine, its glance, its bars, the change page, "+
+		t.Fatalf("got %d views over %v, want the glance, the spine's Sankey, its bars, the change page, "+
 			"the fund balances table, the department, capital and debt pages "+
 			"and the caveats index", len(got), keys(built))
 	}
-	spine := got[0]
-	if spine.Path != export.IndexPath || spine.Projection != export.PrimaryProjection {
-		t.Errorf("the site opens on %+v, want the spine at %s", spine, export.IndexPath)
+	var spine export.View
+	for _, v := range got {
+		if v.Template == export.SankeyTemplate {
+			spine = v
+		}
+	}
+	if spine.Path != "flows.html" || spine.Nav != "Flows" || spine.Projection != export.PrimaryProjection {
+		t.Errorf("the Sankey is %q (%q) over %q, want the spine at flows.html under Flows",
+			spine.Path, spine.Nav, spine.Projection)
+	}
+	if opens := got[0]; opens.Path != export.IndexPath || opens.Template != export.GlanceTemplate ||
+		opens.Projection != export.PrimaryProjection {
+		t.Errorf("the nav opens with %q (%s over %q), want the glance page over the spine at %s",
+			opens.Path, opens.Template, opens.Projection, export.IndexPath)
 	}
 	if len(spine.YearStems) != 2 {
 		t.Errorf("the spine view lists %d year stems, want both adopted years", len(spine.YearStems))
@@ -1394,7 +1471,7 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItsCharts(t *testing.T) {
 	}
 
 	// Titles and ledes are the caller's, not the packager's.
-	for _, path := range []string{"glance.html", "ledger.html", "change.html", "balances.html",
+	for _, path := range []string{export.IndexPath, "ledger.html", "change.html", "balances.html",
 		"department.html", "capital.html", "debt.html"} {
 		v, ok := byPath[path]
 		if !ok {
@@ -1434,8 +1511,8 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItsCharts(t *testing.T) {
 		}
 	}
 	if diff := cmp.Diff(map[string]string{
-		export.IndexPath: project.ExpansionProjection,
-		"ledger.html":    project.ExpansionProjection,
+		"flows.html":  project.ExpansionProjection,
+		"ledger.html": project.ExpansionProjection,
 	}, draws); diff != "" {
 		t.Errorf("the schedules the views draw out of their columns (-want +got):\n%s", diff)
 	}
@@ -1503,7 +1580,7 @@ func TestOpensIntoJoinsOnColumnNotOnDeclaredOrder(t *testing.T) {
 		}
 	}
 	if !opensInto(export.PrimaryProjection, project.ExpansionProjection, short) {
-		t.Error("dropping the SECOND year's expansion must not undeclare the index's chart")
+		t.Error("dropping the SECOND year's expansion must not undeclare the Sankey's chart")
 	}
 	opts, _, _, _ := testOptions(t)
 	opts.Build = func(string) (result, error) { return result{Projections: short}, nil }
@@ -1513,8 +1590,10 @@ func TestOpensIntoJoinsOnColumnNotOnDeclaredOrder(t *testing.T) {
 		t.Errorf("got %v, want the refusal naming the year's column", err)
 	}
 
-	// No chart draws a document that was not built: the index draws its own
-	// document where its expansion is gone.
+	// No chart draws a document that was not built: the Sankey, at
+	// flows.html, draws its own document where its expansion is gone.
+	// Mutation: key views' fallback on export.IndexPath and "no expansion"
+	// goes red, the Sankey dropped.
 	without := func(prefixes ...string) map[string][]byte {
 		out := map[string][]byte{}
 		for k, v := range built {
@@ -1530,9 +1609,9 @@ func TestOpensIntoJoinsOnColumnNotOnDeclaredOrder(t *testing.T) {
 		want map[string]string
 	}{
 		{"everything built", nil,
-			map[string]string{export.IndexPath: project.ExpansionProjection}},
+			map[string]string{"flows.html": project.ExpansionProjection}},
 		{"no expansion", []string{project.ExpansionProjection},
-			map[string]string{export.IndexPath: ""}},
+			map[string]string{"flows.html": ""}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			got := map[string]string{}
@@ -1552,7 +1631,7 @@ func TestOpensIntoJoinsOnColumnNotOnDeclaredOrder(t *testing.T) {
 // on PublishedDocuments' columns and export.ColumnIndex on each built
 // document's own metadata. Where the two disagree, drawsBuilt keeps the view's
 // chart, because a document it promised was built, and the write refuses it
-// by the column's name rather than shipping the index drawing something else.
+// by the column's name rather than shipping the Sankey drawing something else.
 func TestADocumentOutsideTheColumnItIsPublishedForIsRefused(t *testing.T) {
 	built := builtStemsForTest(t)
 	var doc map[string]any
@@ -1567,7 +1646,7 @@ func TestADocumentOutsideTheColumnItIsPublishedForIsRefused(t *testing.T) {
 	elsewhere := maps.Clone(built)
 	elsewhere[project.ExpansionProjection] = moved
 	if !opensInto(export.PrimaryProjection, project.ExpansionProjection, elsewhere) {
-		t.Fatal("opensInto drops the index's chart, so the refusal below is no evidence")
+		t.Fatal("opensInto drops the Sankey's chart, so the refusal below is no evidence")
 	}
 	opts, _, _, _ := testOptions(t)
 	opts.Build = func(string) (result, error) { return result{Projections: elsewhere}, nil }
@@ -1763,9 +1842,11 @@ func TestAPageDoesNotLabelAColumnWithAWordItsCaveatWithdraws(t *testing.T) {
 // TestAViewWhoseDocumentWasNotBuiltIsDropped: a nav entry pointing at a page
 // that was not written is a 404 a reader can click, and it is the one failure
 // this function must never produce. Dropping the view is what prevents it;
-// `fisc verify` is what says the document is missing.
+// `fisc verify` is what says the document is missing. The spine is built
+// with the one schedule the index reads beside it, which
+// TestTheIndexIsRefusedByNameWithoutItsRead holds the export to refuse without.
 func TestAViewWhoseDocumentWasNotBuiltIsDropped(t *testing.T) {
-	only := map[string][]byte{export.PrimaryProjection: {}}
+	only := map[string][]byte{export.PrimaryProjection: {}, project.DepartmentFundingProjection: {}}
 	got := mustViews(t, result{Projections: only})
 
 	// EVERY VIEW THAT NAMES A PROJECTION IS THE SPINE'S, and that is the
@@ -1779,7 +1860,7 @@ func TestAViewWhoseDocumentWasNotBuiltIsDropped(t *testing.T) {
 			continue
 		}
 		if v.Projection != export.PrimaryProjection {
-			t.Errorf("view %q renders %q, which was not built", v.Path, v.Projection)
+			t.Errorf("view %q renders %q, and only the spine and the index's read were built", v.Path, v.Projection)
 		}
 		for _, stem := range v.YearStems {
 			if _, ok := only[stem]; !ok {
@@ -1799,12 +1880,13 @@ func TestAViewWhoseDocumentWasNotBuiltIsDropped(t *testing.T) {
 	// typed out.
 	dropped := map[string]bool{}
 	for _, v := range mustViews(t, result{Projections: map[string][]byte{
-		export.PrimaryProjection:       {},
-		project.TrendsProjection:       {},
-		project.FundFlowsProjection:    {},
-		project.ChangesProjection:      {},
-		project.FundBalancesProjection: {},
-		project.CIPProjectsProjection:  {},
+		export.PrimaryProjection:            {},
+		project.DepartmentFundingProjection: {},
+		project.TrendsProjection:            {},
+		project.FundFlowsProjection:         {},
+		project.ChangesProjection:           {},
+		project.FundBalancesProjection:      {},
+		project.CIPProjectsProjection:       {},
 	}}) {
 		if v.Projection != "" && v.Projection != export.PrimaryProjection {
 			dropped[v.Path] = true
@@ -1818,6 +1900,38 @@ func TestAViewWhoseDocumentWasNotBuiltIsDropped(t *testing.T) {
 			t.Errorf("view %q survived with its document unbuilt; a nav entry pointing at "+
 				"a page that was not written is a 404 a reader can click", v.Path)
 		}
+	}
+}
+
+// TestTheIndexIsRefusedByNameWithoutItsRead: the glance page at index.html
+// reads department-funding beside the spine, and dropping it for that, as
+// any other view is dropped, leaves a site with no page to open on. The
+// export refuses by the view and the read it lacks, before writing anything.
+// Mutation: drop the index arm of views' unbuilt-read branch, so the index
+// is dropped as any other view is, and the export refuses with the
+// packager's "0 views are at index.html" instead; both arms go red.
+func TestTheIndexIsRefusedByNameWithoutItsRead(t *testing.T) {
+	_, err := views(repoRootForTest(t), result{Projections: map[string][]byte{export.PrimaryProjection: {}}})
+	if err == nil {
+		t.Fatal("views accepted a spine with no department-funding beside it")
+	}
+	for _, want := range []string{`index.html ("At a glance")`, "reads " + project.DepartmentFundingProjection,
+		project.DepartmentFundingProjection + " was not built"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("views refused with %q, want it to name %q", err, want)
+		}
+	}
+
+	opts, _, _, _ := testOptions(t)
+	opts.Build = func(string) (result, error) {
+		return result{Projections: map[string][]byte{"sankey": goldenSankey(t)}}, nil
+	}
+	err = exportRun(opts)
+	if err == nil || !strings.Contains(err.Error(), project.DepartmentFundingProjection+" was not built") {
+		t.Errorf("exportRun over the spine alone returned %v, want the index's named refusal", err)
+	}
+	if _, serr := os.Stat(filepath.Join(opts.OutputDir, export.IndexPath)); serr == nil {
+		t.Error("the refused export wrote index.html")
 	}
 }
 
@@ -2153,15 +2267,15 @@ func TestEveryServedStampIsTheExportsOwn(t *testing.T) {
 	if walkErr != nil {
 		t.Fatal(walkErr)
 	}
-	want := stamps["index.html exported_by"]
-	for _, must := range []string{"index.html exported_by", "fy2026-adopted.json generated_by"} {
+	want := stamps["flows.html exported_by"]
+	for _, must := range []string{"flows.html exported_by", "fy2026-adopted.json generated_by"} {
 		if _, ok := stamps[must]; !ok {
 			t.Fatalf("the export wrote no %s, so the comparison below is missing the stamp it exists for", must)
 		}
 	}
 	for where, got := range stamps {
 		if got != want {
-			t.Errorf("%s is %q and index.html's exported_by is %q", where, got, want)
+			t.Errorf("%s is %q and flows.html's exported_by is %q", where, got, want)
 		}
 	}
 }
@@ -2207,7 +2321,7 @@ func TestEveryPageALinkCitesHasItsLinksInTheConfig(t *testing.T) {
 	}
 	// Each page that shows a column's figures, and where its config sits.
 	configs := map[string][2]string{
-		export.IndexPath:  {"window.FISC_CONFIG = ", ";</script>"},
+		"flows.html":      {"window.FISC_CONFIG = ", ";</script>"},
 		"department.html": {`<script type="application/json" id="department-config">`, "</script>"},
 	}
 	cited := map[string]int{}

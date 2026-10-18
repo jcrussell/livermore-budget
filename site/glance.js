@@ -1,6 +1,6 @@
 // @ts-check
 /**
- * fisc — the client module glance.html loads. Each bar's table is
+ * fisc — the client module the glance page, index.html, loads. Each bar's table is
  * server-rendered with every cell Go cited; this module groups the rows,
  * sums each group, states each group's share of the sum as dollars of every
  * $100, and draws one bar per table. Every sum and share is ours, marked ◇;

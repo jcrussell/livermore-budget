@@ -21,7 +21,7 @@ import (
 	"github.com/jcrussell/livermore-budget/schema"
 )
 
-// The client fixtures are testdata/index.golden.html and the column files
+// The client fixtures are testdata/flows.golden.html and the column files
 // the page fetches: what `fisc export` writes over clientSubset rather than over
 // the whole store, held decoded rather than byte for byte. The page's markup
 // and config and each column are the ones Go writes over the subset, build
@@ -459,7 +459,7 @@ func TestTheClientFixturesHoldWhatTheClientReads(t *testing.T) {
 			t.Error(err)
 			return
 		}
-		files := map[string]string{"index.html": "index.golden.html"}
+		files := map[string]string{"flows.html": "flows.golden.html"}
 		for _, stem := range clientFixtureColumns {
 			files[stem+".json"] = stem + ".column.json"
 		}
@@ -486,8 +486,8 @@ func TestTheClientFixturesHoldWhatTheClientReads(t *testing.T) {
 		}
 		return b
 	}
-	servedPage := read(filepath.Join(dir, "index.html"))
-	fixturePage := read(filepath.Join(root, "testdata", "index.golden.html"))
+	servedPage := read(filepath.Join(dir, "flows.html"))
+	fixturePage := read(filepath.Join(root, "testdata", "flows.golden.html"))
 	faults := pageFixtureFaults(servedPage, fixturePage)
 
 	if got := pageColumns(t, fixturePage); !slices.Equal(got, clientFixtureColumns) {
@@ -511,11 +511,11 @@ func TestTheClientFixturesHoldWhatTheClientReads(t *testing.T) {
 func TestTheClientFixtureChecksCanFail(t *testing.T) {
 	dir := clientExport(t)
 	root := repoRootForTest(t)
-	servedPage, err := os.ReadFile(filepath.Join(dir, "index.html"))
+	servedPage, err := os.ReadFile(filepath.Join(dir, "flows.html"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	fixturePage, err := os.ReadFile(filepath.Join(root, "testdata", "index.golden.html"))
+	fixturePage, err := os.ReadFile(filepath.Join(root, "testdata", "flows.golden.html"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -787,7 +787,7 @@ func TestTheClientSubsetServesThePageConfigTheStoreDoes(t *testing.T) {
 	full, subset := exportedSite(t), clientExport(t)
 	config := func(dir string) map[string]any {
 		t.Helper()
-		page, err := os.ReadFile(filepath.Join(dir, "index.html")) // #nosec G304 -- a temp dir this test wrote.
+		page, err := os.ReadFile(filepath.Join(dir, "flows.html")) // #nosec G304 -- a temp dir this test wrote.
 		if err != nil {
 			t.Fatal(err)
 		}

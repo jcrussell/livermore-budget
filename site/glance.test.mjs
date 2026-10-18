@@ -1,4 +1,4 @@
-// What site/glance.js does for glance.html, over testdata/glance.golden.html:
+// What site/glance.js does for the glance page, over testdata/index.golden.html:
 // the page Go writes over the client subset, which keeps every fund group of
 // a budget year whole. Every cell here is one Go cited; what is tested is the
 // client's grouping, its sums, its shares and its fold of the tail, and that
@@ -12,7 +12,7 @@ import { JSDOM } from "jsdom";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const MODULE = pathToFileURL(path.join(HERE, "glance.js")).href;
-const PAGE = readFileSync(path.join(HERE, "..", "testdata", "glance.golden.html"), "utf8");
+const PAGE = readFileSync(path.join(HERE, "..", "testdata", "index.golden.html"), "utf8");
 
 /** A fresh document over the pinned page, booted. */
 async function booted() {

@@ -350,7 +350,7 @@ So the client folds. The rule, in full:
 
 ### The page draws it through the expansion
 
-No view draws this document. `index.html` draws the expansion schedule, which
+No view draws this document. `flows.html` draws the expansion schedule, which
 is stitched per spine column out of this document's lines-into-funds links,
 its object rows and the schedules beside it (`docs/sankey-contract.md`), and
 a reader reaches this document's grain by splitting nodes in place: a revenue

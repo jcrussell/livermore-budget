@@ -289,7 +289,7 @@ func TestScannableCoversWhatTheSiteAndTheToolingAreWrittenIn(t *testing.T) {
 	// AGENTS.md calls the least-defended files in the repo; tools/extract.py is
 	// the only Python. Every one was outside the first version of this filter.
 	for _, p := range []string{
-		"site/app.js", "site/index.html.tmpl", "site/style.css", "tools/extract.py",
+		"site/app.js", "site/flows.html.tmpl", "site/style.css", "tools/extract.py",
 		"AGENTS.md", "internal/x.go", "site/x.test.mjs", "data/funds.yaml", "ci.yml",
 	} {
 		if !scannable(p) {

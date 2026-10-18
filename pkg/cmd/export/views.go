@@ -191,6 +191,8 @@ func publishedProjections() []string {
 // verify` already fails a missing published document, and a nav entry to an
 // unwritten page is what must never ship. The provenance index names no
 // document and is dropped when there is no page index, for the same reason.
+// The one refusal is the view at the index whose read was not built, since
+// dropping it leaves a site with nothing to open on.
 func views(repoRoot string, built result) ([]export.View, error) {
 	reg, err := loadRegistry(repoRoot)
 	if err != nil {
@@ -225,14 +227,21 @@ func views(repoRoot string, built result) ([]export.View, error) {
 		if d.Overview != nil {
 			v.Draws = d.Overview.Projection
 		}
-		if !readsBuilt(v, projections) {
+		if read := unbuiltRead(v, projections); read != "" {
+			// THE SITE OPENS ON EXACTLY ONE INDEX, so the view there is never
+			// dropped: the export refuses by its name and the read it lacks.
+			if v.Path == export.IndexPath {
+				return nil, fmt.Errorf("the site opens on %s (%q), which reads %s beside %s, "+
+					"and %s was not built for that column; refusing to export a site with no page to open on",
+					v.Path, v.Nav, read, v.Projection, read)
+			}
 			continue
 		}
 		if !drawsBuilt(v, projections) {
-			// THE SITE OPENS ON EXACTLY ONE INDEX, so where the schedule its
-			// chart draws was not built it draws the view's own document, the
-			// spine, with nothing to split; any other view is dropped.
-			if v.Path != export.IndexPath {
+			// The Sankey's own document is the spine, so where the schedule its
+			// chart draws was not built it draws that, with nothing to split;
+			// any other such view is dropped.
+			if v.Template != export.SankeyTemplate {
 				continue
 			}
 			v.Draws = ""
@@ -251,7 +260,7 @@ func views(repoRoot string, built result) ([]export.View, error) {
 // drawsBuilt reports whether the schedule a view's own chart draws was built
 // for every year the view lists, where it is published for that year's
 // column at all. A view drawing a schedule that was not built is dropped, as
-// one whose own document was not built is, but for the index, which draws its
+// one whose own document was not built is, but for the Sankey, which draws its
 // own document instead; one never published for a year's column is kept for
 // the write to refuse by name.
 func drawsBuilt(v export.View, projections map[string][]byte) bool {
@@ -270,18 +279,18 @@ func drawsBuilt(v export.View, projections map[string][]byte) bool {
 	return true
 }
 
-// readsBuilt is drawsBuilt for the schedules a view reads beside its own
-// document: a view reading one that was not built for its opening column is
-// dropped, as the department page is when department-funding is not built,
-// and one never published for that column is kept for the write to refuse by
-// name.
-func readsBuilt(v export.View, projections map[string][]byte) bool {
+// unbuiltRead is the first schedule a view reads beside its own document
+// that was not built for its opening column, or "" when there is none: such
+// a view is dropped, as the department page is when department-spending is
+// not built, and the export refuses when it is the index. A read never
+// published for that column is kept for the write to refuse by name.
+func unbuiltRead(v export.View, projections map[string][]byte) string {
 	for _, read := range v.Reads {
 		if len(publishedInto(v.Projection, read)) > 0 && !opensInto(v.Projection, read, projections) {
-			return false
+			return read
 		}
 	}
-	return true
+	return ""
 }
 
 // chart is the declaration as [export.Chart]; a nil declaration is a view
