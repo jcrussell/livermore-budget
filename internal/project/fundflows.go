@@ -354,6 +354,7 @@ func (f *fundFlows) Document(facts []fact.Fact, o Options) (*Document, error) {
 	if err := f.addParents(nodes); err != nil {
 		return nil, err
 	}
+	f.labelCategoryNamedLines(nodes, rev)
 	nameContraLinks(links, nodes)
 
 	sortLinks(links)
@@ -898,6 +899,77 @@ func (f *fundFlows) addParents(nodes map[string]Node) error {
 		}
 	}
 	return nil
+}
+
+// NotItemized and SoNamed end the label of a revenue line the city prints
+// under its own category's name, which would otherwise read as the category
+// listed inside itself.
+const (
+	NotItemized = ", not itemized"
+	SoNamed     = ", the line so named"
+)
+
+// labelCategoryNamedLines relabels every revenue line sharing a printed term
+// with its category: pp.131-140 print a fund's whole category as one row named
+// for it ("Charges for Services", "Use of Money & Prop"), and p130 prints a
+// General Fund row "Miscellaneous Revenue" among twelve other rows of that
+// category.
+//
+// The words are chosen per line from this column's cells, so they are true of
+// what the line sums: "<category>, not itemized" when no fund printing the line
+// prints another line of the category, and "<line>, the line so named" when
+// one does. The id is untouched.
+func (f *fundFlows) labelCategoryNamedLines(nodes map[string]Node, rev map[revKey]*cellSum) {
+	type catFund struct {
+		category string
+		fund     int
+	}
+	fundsOf := map[string][]int{}
+	linesOf := map[catFund]map[string]bool{}
+	for k := range rev {
+		if k.kind != vocab.KindRevenue || k.line == "" {
+			continue
+		}
+		fundsOf[k.line] = append(fundsOf[k.line], k.fund)
+		cf := catFund{k.category, k.fund}
+		if linesOf[cf] == nil {
+			linesOf[cf] = map[string]bool{}
+		}
+		linesOf[cf][k.line] = true
+	}
+	for id, n := range nodes {
+		line, ok := strings.CutPrefix(id, PrefixRevenueLine)
+		if !ok {
+			continue
+		}
+		category, ok := strings.CutPrefix(n.Parent, PrefixRevenue)
+		if !ok || !sharesTerm(f.Labels.Terms(line), f.Labels.Terms(category)) {
+			continue
+		}
+		itemized := false
+		for _, fund := range fundsOf[line] {
+			if len(linesOf[catFund{category, fund}]) > 1 {
+				itemized = true
+				break
+			}
+		}
+		if itemized {
+			n.Label += SoNamed
+		} else {
+			n.Label = f.label(endpoint{id: n.Parent, slug: category}) + NotItemized
+		}
+		nodes[id] = n
+	}
+}
+
+// sharesTerm reports whether two spelling lists have one spelling in common.
+func sharesTerm(a, b []string) bool {
+	for _, t := range a {
+		if slices.Contains(b, t) {
+			return true
+		}
+	}
+	return false
 }
 
 // label is nodeLabel over this document's registry.

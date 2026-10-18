@@ -905,7 +905,7 @@
   },
   {
    "id": "revenue-line/charges-for-services/charges-for-services",
-   "label": "Charges for Services",
+   "label": "Charges for Services, not itemized",
    "tier": 1,
    "role": "revenue_line"
   },
@@ -1007,7 +1007,7 @@
   },
   {
    "id": "revenue-line/contributions-outsourced/contributionsoutsrce",
-   "label": "ContributionsOutSrce",
+   "label": "Contributions Outsourced, not itemized",
    "tier": 1,
    "role": "revenue_line"
   },
@@ -1019,7 +1019,7 @@
   },
   {
    "id": "revenue-line/fines-and-forfeitures/fines-and-forfeitures",
-   "label": "Fines \u0026 Forfeitures",
+   "label": "Fines \u0026 Forfeitures, not itemized",
    "tier": 1,
    "role": "revenue_line"
   },
@@ -1049,7 +1049,7 @@
   },
   {
    "id": "revenue-line/intergovernmental/intergovernmental",
-   "label": "Intergovernmental",
+   "label": "Intergovernmental, not itemized",
    "tier": 1,
    "role": "revenue_line"
   },
@@ -1205,13 +1205,13 @@
   },
   {
    "id": "revenue-line/miscellaneous-revenue/miscellaneous-rev",
-   "label": "Miscellaneous Rev",
+   "label": "Miscellaneous Revenue, not itemized",
    "tier": 1,
    "role": "revenue_line"
   },
   {
    "id": "revenue-line/miscellaneous-revenue/miscellaneous-revenue",
-   "label": "Miscellaneous Revenue",
+   "label": "Miscellaneous Revenue, the line so named",
    "tier": 1,
    "role": "revenue_line"
   },
@@ -1295,7 +1295,7 @@
   },
   {
    "id": "revenue-line/taxes/other/other-taxes",
-   "label": "Other Taxes",
+   "label": "Other Taxes, not itemized",
    "tier": 1,
    "role": "revenue_line"
   },
@@ -1367,7 +1367,7 @@
   },
   {
    "id": "revenue-line/taxes/property/property-taxes",
-   "label": "Property Taxes",
+   "label": "Property Taxes, not itemized",
    "tier": 1,
    "role": "revenue_line"
   },
@@ -1457,7 +1457,7 @@
   },
   {
    "id": "revenue-line/use-of-money-and-property/use-of-money-and-prop",
-   "label": "Use of Money \u0026 Prop",
+   "label": "Use of Money And Property, not itemized",
    "tier": 1,
    "role": "revenue_line"
   },

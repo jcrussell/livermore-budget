@@ -304,6 +304,9 @@ type labels interface {
 	// category, for the fact's kind. Any answer but exactly one slug is an
 	// error to the caller.
 	LinesPrintedAs(parent, printed, kind string) []string
+	// Terms is every spelling the city prints a slug as, document_term first,
+	// and nil for a slug the registry does not know.
+	Terms(slug string) []string
 }
 
 // derived carries the two fields fisc verify requires on anything we inferred.

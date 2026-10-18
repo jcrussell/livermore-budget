@@ -239,6 +239,9 @@ func (stubLabels) DepartmentLabel(string) (string, bool) { return "", false }
 // stubLines supplies real answers where a test needs them.
 func (stubLabels) LinesPrintedAs(string, string, string) []string { return nil }
 
+// Terms answers no spelling, so no stub line is its category printed whole.
+func (stubLabels) Terms(string) []string { return nil }
+
 // stubFunds is stubLabels with fund names attached, for the documents that key
 // on funds rather than on categories.
 type stubFunds struct {

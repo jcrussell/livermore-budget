@@ -870,3 +870,65 @@ func TestAFundsObjectCellIsNamedForItsFund(t *testing.T) {
 		t.Errorf("tier-5 labels (-want +got):\n%s", diff)
 	}
 }
+
+// TestNoRevenueLineReadsAsItsCategory: pp.131-140 print a fund's whole
+// category as one row named for it, so a line labelled with the printed row
+// lists the category inside itself, and p130's General Fund row "Miscellaneous
+// Revenue" sits beside the funds' "Miscellaneous Rev" under one category.
+// Mutation: dropping the labelCategoryNamedLines call fails every column.
+func TestNoRevenueLineReadsAsItsCategory(t *testing.T) {
+	store, err := committedStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]string{
+		"revenue-line/charges-for-services/charges-for-services":         "Charges for Services, not itemized",
+		"revenue-line/taxes/property/property-taxes":                     "Property Taxes, not itemized",
+		"revenue-line/use-of-money-and-property/use-of-money-and-prop":   "Use of Money And Property, not itemized",
+		"revenue-line/miscellaneous-revenue/miscellaneous-rev":           "Miscellaneous Revenue, not itemized",
+		"revenue-line/miscellaneous-revenue/miscellaneous-revenue":       "Miscellaneous Revenue, the line so named",
+		"revenue-line/charges-for-services/administrative-cost-recovery": "Administrative Cost Recovery",
+	}
+	met := map[string]bool{}
+	for _, p := range []interface {
+		Sliced
+		Name() string
+		Document([]fact.Fact, Options) (*Document, error)
+	}{&fundFlows{Labels: store.reg}, &expansion{Labels: store.reg}} {
+		for _, o := range p.Slices(store.facts, "revenue-line label test") {
+			d, err := p.Document(store.facts, o)
+			if err != nil {
+				t.Fatalf("%s %v: %v", p.Name(), o.Columns, err)
+			}
+			byID := map[string]Node{}
+			for _, n := range d.Nodes {
+				byID[n.ID] = n
+			}
+			seen := map[[2]string]string{}
+			for _, n := range d.Nodes {
+				if !strings.HasPrefix(n.ID, PrefixRevenueLine) {
+					continue
+				}
+				if up, ok := byID[n.Parent]; ok && up.Label == n.Label {
+					t.Errorf("%s %v: %s reads %q, its category's own label", p.Name(), o.Columns, n.ID, n.Label)
+				}
+				k := [2]string{n.Parent, n.Label}
+				if other, ok := seen[k]; ok {
+					t.Errorf("%s %v: %s and %s both read %q under %s", p.Name(), o.Columns, other, n.ID, n.Label, n.Parent)
+				}
+				seen[k] = n.ID
+				if w, ok := want[n.ID]; ok {
+					met[p.Name()+" "+n.ID] = true
+					if n.Label != w {
+						t.Errorf("%s %v: %s reads %q, want %q", p.Name(), o.Columns, n.ID, n.Label, w)
+					}
+				}
+			}
+		}
+		for id := range want {
+			if !met[p.Name()+" "+id] {
+				t.Errorf("%s draws %s in no column, so its wording is held by nothing", p.Name(), id)
+			}
+		}
+	}
+}

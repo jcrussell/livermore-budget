@@ -259,7 +259,7 @@
     },
     {
       "id": "revenue-line/charges-for-services/charges-for-services",
-      "label": "Charges for Services",
+      "label": "Charges for Services, not itemized",
       "tier": 1,
       "parent": "revenue/charges-for-services",
       "constraint_tier": "",
@@ -435,7 +435,7 @@
     },
     {
       "id": "revenue-line/contributions-outsourced/contributionsoutsrce",
-      "label": "ContributionsOutSrce",
+      "label": "Contributions Outsourced, not itemized",
       "tier": 1,
       "parent": "revenue/contributions-outsourced",
       "constraint_tier": "",
@@ -501,7 +501,7 @@
     },
     {
       "id": "revenue-line/intergovernmental/intergovernmental",
-      "label": "Intergovernmental",
+      "label": "Intergovernmental, not itemized",
       "tier": 1,
       "parent": "revenue/intergovernmental",
       "constraint_tier": "",
@@ -765,7 +765,7 @@
     },
     {
       "id": "revenue-line/miscellaneous-revenue/miscellaneous-rev",
-      "label": "Miscellaneous Rev",
+      "label": "Miscellaneous Revenue, not itemized",
       "tier": 1,
       "parent": "revenue/miscellaneous-revenue",
       "constraint_tier": "",
@@ -776,7 +776,7 @@
     },
     {
       "id": "revenue-line/miscellaneous-revenue/miscellaneous-revenue",
-      "label": "Miscellaneous Revenue",
+      "label": "Miscellaneous Revenue, the line so named",
       "tier": 1,
       "parent": "revenue/miscellaneous-revenue",
       "constraint_tier": "",
@@ -930,7 +930,7 @@
     },
     {
       "id": "revenue-line/taxes/other/other-taxes",
-      "label": "Other Taxes",
+      "label": "Other Taxes, not itemized",
       "tier": 1,
       "parent": "revenue/taxes/other",
       "constraint_tier": "",
@@ -1062,7 +1062,7 @@
     },
     {
       "id": "revenue-line/taxes/property/property-taxes",
-      "label": "Property Taxes",
+      "label": "Property Taxes, not itemized",
       "tier": 1,
       "parent": "revenue/taxes/property",
       "constraint_tier": "",
@@ -1227,7 +1227,7 @@
     },
     {
       "id": "revenue-line/use-of-money-and-property/use-of-money-and-prop",
-      "label": "Use of Money & Prop",
+      "label": "Use of Money And Property, not itemized",
       "tier": 1,
       "parent": "revenue/use-of-money-and-property",
       "constraint_tier": "",

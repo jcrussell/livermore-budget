@@ -407,6 +407,25 @@ func (r *Registry) LinesPrintedAs(parent, printed, kind string) []string {
 	return out
 }
 
+// Terms is every spelling the city prints entry slug as: its document_term,
+// then its aliases in declared order, and nil for a slug the registry does not
+// know. A revenue line sharing one with its category is the category printed
+// whole under its own name, which is how the projection tells it from a row.
+func (r *Registry) Terms(slug string) []string {
+	c, ok := r.categories[slug]
+	if !ok {
+		return nil
+	}
+	var out []string
+	if c.DocumentTerm != "" {
+		out = append(out, c.DocumentTerm)
+	}
+	for _, a := range c.Aliases {
+		out = append(out, a.Term)
+	}
+	return out
+}
+
 // Fund returns the registry entry for a fund number.
 func (r *Registry) Fund(number int) (Fund, bool) {
 	f, ok := r.funds[number]
