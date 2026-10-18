@@ -2372,22 +2372,22 @@ noscript p {
   display: flex;
   flex-direction: column;
 }
+/* The gaps and the stack's height are change.js's, so the bands fit it at
+   their own heights and none is shrunk. */
 .change-above {
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  gap: 2px;
   border-bottom: 1px solid var(--rule);
 }
 .change-below {
   display: flex;
   flex-direction: column;
-  gap: 2px;
 }
 .change-seg {
   display: block;
   width: 100%;
-  min-height: 1px;
+  flex: none;
   background: var(--glance-tail);
 }
 .change-above .change-seg:first-child {

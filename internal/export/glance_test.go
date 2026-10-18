@@ -187,6 +187,14 @@ func TestGlancePageRefusesRowsThatDoNotSumToTheCitedWhole(t *testing.T) {
 		t.Errorf("a residual of the wrong size: got %v, want a refusal", err)
 	}
 
+	// An inferred link is refused, since every row is listed as printed.
+	// Mutation: drop the Derived test in glanceRows and the page writes.
+	inferred := strings.Replace(string(glanceFunding(0)), `"kind":"internal_service"`, `"kind":"internal_service","derived":true`, 1)
+	_, err = writeSite(glanceOptions(t, t.TempDir(), []byte(inferred), nil))
+	if err == nil || !strings.Contains(err.Error(), "fund/730 -> department/police-department inferred") {
+		t.Errorf("an inferred row: got %v, want a refusal naming it", err)
+	}
+
 	// And a view reading anything but department-funding is refused before
 	// a row is read.
 	o := glanceOptions(t, t.TempDir(), glanceFunding(0), nil)

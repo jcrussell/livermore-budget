@@ -73,7 +73,7 @@ function refusal(document) {
 test("the three modules import with no page config, no d3 and no DOM, and run nothing", () => {
   assert.ok(domless, "nothing installed a DOM before the import");
   assert.deepEqual(Object.keys(sides).sort(), ["KEY_MARK", "boot", "citationsOf", "clone", "closing", "dollars", "fillTable",
-    "frontierOf", "hashOf", "hideTip", "opensAs", "outside", "parseHash", "readConfig", "render", "say", "share", "showTip", "sidesAt", "sidesOf"]);
+    "frontierOf", "hashOf", "hideTip", "opensAs", "outside", "parseHash", "readConfig", "render", "say", "share", "showTip", "sidesAt", "sidesOf", "tileShare"]);
   assert.deepEqual(Object.keys(forms.treemap).sort(), ["GAP", "HEAD", "HEIGHT", "RANKED", "TREEMAP", "boot", "fits", "layOut"]);
   assert.deepEqual(Object.keys(forms.ledger).sort(), ["LEDGER", "RANKED", "boot", "widthOf"]);
 });
@@ -122,6 +122,21 @@ describe("core.sideTree keeps every sum through every split", () => {
       t.diagnostic(`${stem}: ${splits} splits opened to depth ${deepest}, every member sum its parent's; ${reductions} reductions counted against their parent`);
     });
   }
+  // Mutation: set a tile's derived from its node alone and the member whose
+  // every ribbon is inferred reads as printed.
+  test("a member whose every ribbon is inferred is drawn inferred", () => {
+    const doc = structuredClone(expansionOf("fy2026-adopted", config));
+    const roots = core.rootFrontier(doc);
+    const parent = "revenue/taxes/property";
+    const key = core.splitsOf(doc, parent)[0].key;
+    const opened = core.sideTiles(core.sideTree(doc, core.expand(doc, roots, parent, key), 0).roots)
+      .find((x) => x.tile.id === parent).tile;
+    const [marked, other] = opened.children.filter((c) => !c.derived);
+    for (const l of doc.links) if (l.source === marked.id || l.target === marked.id) l.derived = true;
+    const again = core.sideTiles(core.sideTree(doc, core.expand(doc, roots, parent, key), 0).roots);
+    assert.ok(again.find((x) => x.tile.id === marked.id).tile.derived, `${marked.id} reads as printed`);
+    assert.ok(!again.find((x) => x.tile.id === other.id).tile.derived, `${other.id} reads as inferred`);
+  });
   test("a tier whose roots both take in and pay out is refused", () => {
     const doc = expansionOf("fy2026-adopted", config);
     assert.throws(() => core.sideTree(doc, core.rootFrontier(doc), 2), /both takes in and pays out/);
@@ -150,6 +165,9 @@ describe("each form draws every tile once and the table lists them", () => {
           assert.equal(Number(m.dataset.cents), tile.cents, `${m.dataset.id} carries other cents`);
           assert.equal(m.getAttribute("tabindex"), "0");
           assert.equal(m.getAttribute("role"), "button");
+          // An img's children are presentational, so a button inside one
+          // is no button. Mutation: role="img" on the treemap canvas.
+          assert.ok(!m.parentElement.closest('[role="img"]'), `${m.dataset.id} is a button inside an image`);
         }
         assert.ok(section.querySelector(".sides-total").textContent.includes(sides.dollars(tree.cents)));
         expected += marks.length;
@@ -253,10 +271,25 @@ test("a hash naming the other year and an opened node is restored, and a bad ent
   assert.ok(opened.classList.contains("opened"));
   const reductions = [...document.querySelectorAll("li.bar-row.reduction")];
   assert.equal(reductions.length, 2, "the two printed reductions under Property Taxes are not drawn as reductions");
+  // A printed reduction takes no share: not on its bar, in its label, in its
+  // table row or in its tooltip. Mutation: drop the contra test in
+  // tileShare and each reads "◇ x%".
   for (const r of reductions) {
     assert.ok(Number(r.dataset.cents) < 0);
     assert.ok(r.querySelector(".bar-label").textContent.startsWith("− "));
+    assert.equal(r.querySelector(".bar-share").textContent, "", `${r.dataset.id} states a share`);
+    assert.ok(!r.getAttribute("aria-label").includes("◇"), `${r.dataset.id}'s label states a share`);
+    const row = document.querySelector(`#sides-table tr[data-id="${r.dataset.id}"]`);
+    assert.ok(!row.textContent.includes("◇"), `${r.dataset.id}'s table row states a share`);
+    r.dispatchEvent(new window.Event("pointerenter", { bubbles: true }));
+    assert.ok(!document.querySelector("#tooltip .tip-meta").textContent.includes("◇"), `${r.dataset.id}'s tooltip states a share`);
   }
+  // Nor is a reduction root in any share's total. Mutation: divide by
+  // side.tree.cents and this reads 62.5%.
+  const side = { tree: { cents: 80, roots: [{ contra: "", cents: 100 }, { contra: "a reduction", cents: -20 }] } };
+  assert.equal(sides.tileShare(/** @type {any} */ ({ contra: "", cents: 50 }), /** @type {any} */ (side)), "◇ 50.0%");
+  const plain = document.querySelector('li.bar-row[data-id="revenue/taxes/property"]');
+  assert.match(plain.querySelector(".bar-share").textContent, /^◇ \d+\.\d%$/);
   assert.deepEqual(sides.parseHash("#y=nope&o=a,b~k", browser.config),
     { year: "fy2027-adopted.json", opened: ["a", "b~k"], refused: "No budget column is called nope, so this shows the newest." });
   assert.equal(sides.hashOf({ year: "fy2026-adopted.json", opened: ["a", "b~k"] }), "#y=fy2026-adopted&o=a,b~k");

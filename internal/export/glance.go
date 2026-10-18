@@ -97,6 +97,7 @@ type glanceDocument struct {
 		Source     string       `json:"source"`
 		Target     string       `json:"target"`
 		ValueCents int64        `json:"value_cents"`
+		Derived    bool         `json:"derived"`
 		FactIDs    []string     `json:"fact_ids"`
 		Locators   []sourceMeta `json:"locators"`
 	} `json:"links"`
@@ -131,7 +132,8 @@ func decodeGlanceDocument(stem, want string, raw []byte) (glanceDocument, error)
 // glanceRows is every link of doc whose ends pick picks, as rows grouped by
 // the end pick names. It refuses a link naming a node the table lacks and a
 // node with no label, because a row with no words is a cell a reader cannot
-// name.
+// name, and an inferred link, because the page lists every row as a printed
+// cell and marks none inferred.
 func glanceRows(doc glanceDocument, pick func(src, dst string) (group, other string, ok bool),
 	pages func([]sourceMeta) []pageRef,
 ) ([]glanceRow, error) {
@@ -154,6 +156,10 @@ func glanceRows(doc glanceDocument, pick func(src, dst string) (group, other str
 		}
 		if g.label == "" || o.label == "" {
 			return nil, fmt.Errorf("%s draws %s -> %s and one end has no label",
+				doc.Projection, l.Source, l.Target)
+		}
+		if l.Derived {
+			return nil, fmt.Errorf("%s draws %s -> %s inferred, and the glance page lists every row as a printed cell",
 				doc.Projection, l.Source, l.Target)
 		}
 		if l.ValueCents <= 0 {

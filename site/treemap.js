@@ -113,7 +113,7 @@ export const TREEMAP = Object.freeze({
       if (tile.children) g.classList.add("opened");
       if (tile.splits.length) g.classList.add("can-open");
       g.setAttribute("transform", `translate(${d.x0},${d.y0})`);
-      g.setAttribute("aria-label", `${tile.label}: ${dollars(tile.cents)}, ◇ ${ctx.share(tile, side)} of ${side.heading}` +
+      g.setAttribute("aria-label", `${tile.label}: ${dollars(tile.cents)}` + (ctx.share(tile, side) ? `, ${ctx.share(tile, side)} of ${side.heading}` : "") +
         (tile.splits.length ? (tile.children ? "; opened" : "; opens") : ""));
       const rect = g.querySelector("rect.tile-face");
       if (!rect) throw new Error("the tile template has no face");

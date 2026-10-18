@@ -14,8 +14,12 @@ export const NAMED = 5;
 /** What the folded tail is called. */
 export const TAIL_LABEL = "Everything else";
 
-/** How tall the tallest column is drawn, in px. */
+/** How tall the tallest column's bands are drawn, in px, gaps aside. */
 export const HEIGHT = 240;
+
+/** The px between two stacked bands, and the least a band is drawn. */
+export const GAP = 2;
+export const LEAST = 1;
 
 /**
  * @typedef {{category: string, label: string, cents: (number | null)[]}} Row
@@ -191,7 +195,15 @@ export function draw(section) {
   const bands = rank(groupRows(rows, columns));
   const { sums, tallest } = totals(bands, columns);
   const heads = Array.from(table.querySelectorAll("thead th[data-column]"));
-  const px = (/** @type {number} */ cents) => (tallest ? (HEIGHT * Math.abs(cents)) / tallest : 0);
+  const px = (/** @type {number} */ cents) => Math.max(LEAST, tallest ? (HEIGHT * Math.abs(cents)) / tallest : 0);
+  // The stack above the baseline is as tall as the tallest one drawn there,
+  // gaps and least heights included, in every column: bands that overflow it
+  // are shrunk by the flexbox and leave the one scale.
+  let room = 0;
+  for (let i = 0; i < heads.length; i++) {
+    const up = bands.map((b) => b.cents[i]).filter((c) => c > 0);
+    room = Math.max(room, up.reduce((a, c) => a + px(c), 0) + GAP * Math.max(up.length - 1, 0));
+  }
 
   holder.replaceChildren();
   heads.forEach((th, i) => {
@@ -204,9 +216,10 @@ export function draw(section) {
     const total = col.querySelector(".change-total");
     const year = col.querySelector(".change-year");
     if (!above || !below || !total || !year) throw new Error("the column template lacks a stack, a total or a year");
-    // One baseline across the columns: the stack above it is HEIGHT tall in
+    // One baseline across the columns: the stack above it is room tall in
     // every column, whatever hangs below, and the columns align at the top.
-    above.style.height = HEIGHT + "px";
+    above.style.height = room.toFixed(2) + "px";
+    above.style.gap = below.style.gap = GAP + "px";
     // Largest nearest the baseline on either side, so the baseline band is
     // the same category in every column and the eye reads one band across
     // them: bands are ranked largest first, prepended above the baseline

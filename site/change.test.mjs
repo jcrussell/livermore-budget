@@ -47,7 +47,7 @@ test("change.js imports with no page config, no d3 and no DOM, and runs nothing"
   assert.equal(typeof globalThis.document, "undefined", "nothing installed a DOM before the import");
   const mod = await import(MODULE);
   assert.deepEqual(Object.keys(mod).sort(),
-    ["HEIGHT", "NAMED", "TAIL_LABEL", "boot", "dollars", "draw", "groupRows", "headWords", "millions", "rank", "readRows", "totals"]);
+    ["GAP", "HEIGHT", "LEAST", "NAMED", "TAIL_LABEL", "boot", "dollars", "draw", "groupRows", "headWords", "millions", "rank", "readRows", "totals"]);
 });
 
 test("the page carries four figures, three charted, and boot fills each chart", async () => {
@@ -143,11 +143,13 @@ test("the budget's columns carry rules at its two measurement boundaries and the
 });
 
 // The largest band stands nearest the baseline on either side of it, in
-// every column, the stack above the baseline is HEIGHT tall in every
-// column so one baseline runs across them whatever hangs below (jsdom lays
-// nothing out, so the height is held here and the alignment is CSS's), and
-// the header's year and basis stay two words. Mutation: drop the
-// above.style.height line and the first assertion fails in every column;
+// every column, the stack above the baseline is one height in every column
+// and holds every band above it at its own height, gaps included, so one
+// baseline runs across them whatever hangs below (jsdom lays nothing out, so
+// the heights are held here and the alignment is CSS's), and the header's
+// year and basis stay two words. Mutation: drop the above.style.height line
+// and the first assertion fails in every column; drop the GAP term from
+// room and the tallest column's bands overflow its stack;
 // iterate the bands reversed in draw and rank 1 lands at the top of every
 // column; take th.textContent for the caption and "FY 2015-16unaudited" is
 // one word.
@@ -155,13 +157,23 @@ test("rank 1 touches the baseline in every column, and a column's year and basis
   const { mod, doc } = await booted();
   for (const [id, s] of figures(doc)) {
     if (s.dataset.chart !== "true") continue;
+    const heights = new Set();
+    let fullest = 0;
     for (const col of s.querySelectorAll(".change-column")) {
       const ranks = (sel) => [...col.querySelectorAll(sel)].map((x) => Number(x.dataset.rank) || Infinity);
       const above = ranks(".change-above .change-seg");
       const below = ranks(".change-below .change-seg");
       assert.deepEqual(above, [...above].sort((a, b) => b - a), `${id} column ${col.dataset.column}: ranks above the baseline run ${above}`);
       assert.deepEqual(below, [...below].sort((a, b) => a - b), `${id} column ${col.dataset.column}: ranks below the baseline run ${below}`);
-      assert.equal(col.querySelector(".change-above").style.height, `${mod.HEIGHT}px`, `${id}: the stack above the baseline is not HEIGHT tall`);
+      const stack = col.querySelector(".change-above");
+      assert.match(stack.style.height, /px$/, `${id}: the stack above the baseline has no height`);
+      heights.add(stack.style.height);
+      const segs = [...stack.querySelectorAll(".change-seg")];
+      const need = segs.reduce((a, x) => a + parseFloat(x.style.height), 0) + mod.GAP * Math.max(segs.length - 1, 0);
+      assert.ok(need <= parseFloat(stack.style.height) + 0.05, `${id} column ${col.dataset.column}: ${need}px of bands in a ${stack.style.height} stack`);
+      assert.equal(stack.style.gap, `${mod.GAP}px`);
+      for (const x of segs) assert.ok(parseFloat(x.style.height) >= mod.LEAST, `${id}: a band under ${mod.LEAST}px`);
+      fullest = Math.max(fullest, need);
       const year = col.querySelector(".change-year");
       const basis = year.querySelector(".basis");
       const th = s.querySelector(`thead th[data-column="${col.dataset.column}"]`);
@@ -172,6 +184,8 @@ test("rank 1 touches the baseline in every column, and a column's year and basis
         assert.ok(seg.title.includes(`, ${year.firstChild.textContent}${basis ? " " + basis.textContent : ""}: `), `${id}: ${seg.title}`);
       }
     }
+    assert.equal(heights.size, 1, `${id}: the stacks above the baseline are ${[...heights]}`);
+    assert.ok(Math.abs(fullest - parseFloat([...heights][0])) < 0.05, `${id}: the fullest stack is ${fullest}px in ${[...heights][0]}`);
   }
 });
 

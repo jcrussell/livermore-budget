@@ -56,7 +56,7 @@ export const LEDGER = Object.freeze({
       if (tile.derived) li.classList.add("derived");
       if (tile.children) li.classList.add("opened");
       if (tile.splits.length) li.classList.add("can-open");
-      li.setAttribute("aria-label", `${tile.label}: ${dollars(tile.cents)}, ◇ ${ctx.share(tile, side)} of ${side.heading}` +
+      li.setAttribute("aria-label", `${tile.label}: ${dollars(tile.cents)}` + (ctx.share(tile, side) ? `, ${ctx.share(tile, side)} of ${side.heading}` : "") +
         (tile.splits.length ? (tile.children ? "; opened" : "; opens") : ""));
       const label = li.querySelector(".bar-label");
       const fill = /** @type {HTMLElement | null} */ (li.querySelector(".bar-fill"));
@@ -66,7 +66,7 @@ export const LEDGER = Object.freeze({
       label.textContent = (tile.contra ? "− " : "") + tile.label + (tile.derived ? " (inferred)" : "");
       fill.style.width = widthOf(tile.size, ctx.scale).toFixed(3) + "%";
       value.textContent = core.fmtShortSigned(tile.cents);
-      shareEl.textContent = "◇ " + ctx.share(tile, side);
+      shareEl.textContent = ctx.share(tile, side);
       li.addEventListener("pointerenter", (e) => ctx.tip(e, tile, side));
       li.addEventListener("pointermove", (e) => ctx.tip(e, tile, side));
       li.addEventListener("pointerleave", () => ctx.hide());

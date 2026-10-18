@@ -1884,7 +1884,8 @@ export function tableRows(doc) {
  * is outside it, signed as the fold sums them, so a printed reduction counts
  * against it; a member's is the sum of the ribbons joining it to its parent
  * hub. Both are sums of figures Go cited, at memberships Go declared, and
- * `size` is the magnitude a tile or bar is laid out at.
+ * `size` is the magnitude a tile or bar is laid out at. A tile is inferred
+ * where its node is, or where every ribbon it sums is.
  *
  * FAILS CLOSED on a root whose outside ribbons both arrive and leave, since
  * no one figure is its size, and on a drawn member joined to its parent by
@@ -1940,7 +1941,8 @@ export function sideTree(doc, frontier, tier) {
     }) : null;
     return {
       id: n.id, label: String(n.label), tier: n.tier, parent: n.parent || "",
-      derived: Boolean(n.derived), contra: ribbons.length === 1 ? (ribbons[0].contra || "") : "",
+      derived: Boolean(n.derived) || (ribbons.length > 0 && ribbons.every((l) => l.derived)),
+      contra: ribbons.length === 1 ? (ribbons[0].contra || "") : "",
       cents: f.cents, size: Math.abs(f.cents), fact_ids: f.fact_ids, locators: f.locators,
       splits, open: splits.length ? openSplitOf(doc, open, n.id) : "",
       children,

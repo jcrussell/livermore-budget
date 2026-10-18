@@ -194,6 +194,20 @@ export function share(part, whole) {
 }
 
 /**
+ * A tile's share of its side marked ours, or "" for a printed reduction:
+ * a reduction takes no share and its side's total leaves out every root
+ * that is one.
+ * @param {core.SideTile} tile
+ * @param {Side} side
+ */
+export function tileShare(tile, side) {
+  if (tile.contra) return "";
+  const whole = side.tree.roots.reduce((a, r) => (r.contra ? a : a + r.cents), 0);
+  const pct = share(tile.cents, whole);
+  return pct ? "◇ " + pct : "";
+}
+
+/**
  * The words a tile's tooltip and table row say of how it opens: its primary
  * split's member count, and each alternative's.
  * @param {core.SideTile} tile
@@ -274,7 +288,7 @@ export function fillTable(doc, sides, config) {
       tr.dataset.depth = String(depth);
       if (tile.contra) tr.className = "contra";
       const cells = [side.heading, tile.label, tile.parent ? (labelOf(side, tile.parent) || tile.parent) : "",
-        dollars(tile.cents), "◇ " + share(tile.cents, side.tree.cents)];
+        dollars(tile.cents), tileShare(tile, side)];
       cells.forEach((text, i) => {
         const td = doc.createElement(i === 1 ? "th" : "td");
         if (i === 1) td.setAttribute("scope", "row");
@@ -335,7 +349,8 @@ export function showTip(doc, e, tile, side) {
   value.textContent = dollars(tile.cents);
   const meta = doc.createElement("div");
   meta.className = "tip-meta";
-  const parts = [`◇ ${share(tile.cents, side.tree.cents)} of ${side.heading.toLowerCase()}`];
+  const own = tileShare(tile, side);
+  const parts = own ? [`${own} of ${side.heading.toLowerCase()}`] : [];
   if (tile.contra) parts.push(tile.contra);
   if (tile.splits.length) parts.push((tile.children ? "Opened; click to close. " : "Click to open: ") + opensAs(tile));
   meta.textContent = parts.join(". ");
@@ -415,7 +430,7 @@ export function render(win, config, column, st, renderer, toggle) {
     toggle,
     tip: (e, tile, side) => showTip(doc, e, tile, side),
     hide: () => hideTip(doc),
-    share: (tile, side) => share(tile.cents, side.tree.cents),
+    share: tileShare,
     clone: (id) => clone(doc, id),
   };
   for (const side of sides) {
