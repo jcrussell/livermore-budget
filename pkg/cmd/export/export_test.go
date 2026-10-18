@@ -1573,6 +1573,8 @@ func TestOpensIntoJoinsOnColumnNotOnDeclaredOrder(t *testing.T) {
 	}
 
 	// A year whose drawn schedule was not built is refused by name, not dropped.
+	// Mutation: have drawsBuilt check every year the view lists, and the
+	// Sankey falls back to its own document and the export ships.
 	short := map[string][]byte{}
 	for k, v := range built {
 		if k != "expansion-2027" {

@@ -1367,17 +1367,12 @@ func twoYearSankey(t *testing.T, view export.View, edit func(meta map[string]any
 }
 
 // TestBothChartTemplatesAcceptYearStems pins the OTHER half of
-// templateRendersAYearControl, and the reason is the failure the helper it
-// mirrors was written to document.
+// templateRendersAYearControl.
 //
-// A refusal test alone pins only that the set is non-empty. templateRendersLede
-// exists because its predecessor was spelled `v.Template != TrendsTemplate`
-// while exactly one template rendered a lede, and that spelling went stale in
-// silence the next time a template landed -- refusing a lede on a page that
-// would have rendered one perfectly well (fisc-5miz.5). A year-control guard
-// spelled `v.Template == SankeyTemplate` would have been born with that defect
-// already in it: the bead naming this trap was filed BEFORE the drill-down grew
-// a year control, so the obvious reading of it is wrong.
+// A refusal test alone pins only that the set is non-empty. A guard spelled
+// as one template's name, `v.Template == SankeyTemplate`, goes stale in
+// silence the next time a template that renders a year control lands, and
+// refuses a year list on a page that would render one perfectly well.
 //
 // So both arms are asserted, and by rendering rather than by calling the
 // unexported helper: what matters is that a caller can hand either chart

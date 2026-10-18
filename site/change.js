@@ -27,7 +27,8 @@ export const LEAST = 1;
  * @typedef {{id: string, label: string, cents: number[], members: string[], rank: number}} Band
  *   One drawn category, or the tail: its cents per column, the categories
  *   folded into it (itself alone where named), and its rank by the last
- *   column, 1..NAMED, or 0 for the tail.
+ *   column, 1..NAMED+1 (rank names a sixth rather than fold it alone), or 0
+ *   for the tail.
  */
 
 /**

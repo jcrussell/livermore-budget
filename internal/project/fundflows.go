@@ -924,7 +924,10 @@ const (
 //
 // It refuses two revenue lines under one category left reading alike, which
 // two lines each its fund's whole category would: the reader would meet one
-// label twice and be unable to tell which figure is which.
+// label twice and be unable to tell which figure is which. And it refuses a
+// line left reading as its own category, compared case-insensitively and
+// trimmed, which a printed spelling the registry does not list as the
+// category's term would slip past the relabelling with.
 func (f *fundFlows) labelCategoryNamedLines(nodes map[string]Node, rev map[revKey]*cellSum) error {
 	type catFund struct {
 		category string
@@ -976,6 +979,10 @@ func (f *fundFlows) labelCategoryNamedLines(nodes map[string]Node, rev map[revKe
 	seen := map[[2]string]string{}
 	for _, id := range ids {
 		n := nodes[id]
+		if p, ok := nodes[n.Parent]; ok && strings.EqualFold(strings.TrimSpace(p.Label), strings.TrimSpace(n.Label)) {
+			return fmt.Errorf("revenue line %s reads %q under %s, which reads %q; "+
+				"a reader would meet the category listed inside itself", id, n.Label, n.Parent, p.Label)
+		}
 		k := [2]string{n.Parent, n.Label}
 		if other, ok := seen[k]; ok {
 			return fmt.Errorf("revenue lines %s and %s under %s both read %q; "+

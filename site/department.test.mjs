@@ -157,6 +157,34 @@ describe("a spending row is a transfer because its links say so", () => {
     assert.throws(() => mod.departmentFigures(column, config, works), /draws expenditure\/wages-and-benefits as (external and internal_transfer|internal_transfer and external), /);
   });
 
+  // Mutation: drop the tables check from activate's toggle, and the second
+  // and third clicks on the refused department close and then open its bar
+  // over police's tables.
+  test("a department whose tables are refused opens no bar over another's tables, however often it is clicked", async () => {
+    const { html } = departmentPage();
+    const browser = installBrowser({ html });
+    browser.window.location.hash = "#y=fy2024-actual&d=department/police-department";
+    await settle();
+    const plan = {};
+    for (const stem of PINNED) plan[stem + ".json"] = { doc: columnFixture(stem) };
+    plan["fy2024-actual.json"] = { doc: edited("fy2024-actual", "transfers/out", (l) => { delete l.kind; }) };
+    browser.window.fetch = plannedFetch(plan, config.exported_by);
+    await mod.boot(browser.window);
+    await settle();
+    const doc = browser.document;
+    assert.match(doc.getElementById("department-heading").textContent, /^Police Department, /);
+    const row = () => doc.querySelector(`#department-list > li[data-department="${works}"] .department-row`);
+    const seen = [];
+    for (let i = 0; i < 3; i++) {
+      row().dispatchEvent(new browser.window.MouseEvent("click", { bubbles: true }));
+      await settle();
+      const open = row().getAttribute("aria-expanded") === "true";
+      seen.push({ open, heading: doc.getElementById("department-heading").textContent.split(",")[0] });
+    }
+    assert.ok(doc.getElementById("department-refusal"), "the refused department was never said refused");
+    assert.deepEqual(seen.filter((s) => s.open && s.heading !== "Public Works"), [], JSON.stringify(seen));
+  });
+
   test("the reader is told the department could not be drawn", async () => {
     const { html } = departmentPage();
     const browser = installBrowser({ html });
@@ -308,10 +336,10 @@ describe("every department is a bar of the funds that pay for it", () => {
         assert.deepEqual(keys, [...new Set(keys)].sort((x, y) => x - y), `${stem} ${b.id}: segments out of the legend's order`);
         for (const s of b.segments) assert.equal(s.rank, groups[s.key].rank, `${stem} ${b.id}: ${s.label}'s rank`);
       }
-      // The legend: groups by their sum over every department, the five
-      // largest wearing a hue and the rest none.
+      // The legend: groups by their sum over every department, each group it
+      // names wearing a hue of its own and only a tail none.
       for (let i = 1; i < groups.length; i++) assert.ok(groups[i - 1].cents >= groups[i].cents || !groups[i].id, `${stem}: legend order`);
-      assert.deepEqual(groups.map((g) => g.rank), groups.map((g, i) => (g.id && i < 5 ? i + 1 : 0)));
+      assert.deepEqual(groups.map((g) => g.rank), groups.map((g, i) => (g.id ? i + 1 : 0)));
       assert.equal(groups.reduce((a, g) => a + g.cents, 0), bars.reduce((a, b) => a + b.cents, 0), `${stem}: the legend's sum`);
       // Each group's sum is its funds' links, as the schedule's parent edges file them.
       const sched = column.schedules[config.funding];
@@ -324,6 +352,23 @@ describe("every department is a bar of the funds that pay for it", () => {
         groups.map((g) => `${g.rank}:${g.label}`).join(", "));
     });
   }
+
+  // Every pinned column pays from six groups, which rank() names rather than
+  // fold the sixth alone. Mutation: give a group past NAMED rank 0 again, and
+  // the sixth group's legend entry is drawn in the tail's grey: red, naming it.
+  test("in every pinned column each legend entry naming a group wears a hue of its own", async (t) => {
+    for (const stem of PINNED) {
+      const { document } = await booted(`#y=${stem}`);
+      const entries = [...document.querySelectorAll("#department-legend li")]
+        .map((li) => ({ rank: li.dataset.rank, label: li.textContent.trim() }));
+      const { groups } = mod.departmentBars(columnFixture(stem), departmentPage().config);
+      const named = entries.filter((_, i) => groups[i].id);
+      t.diagnostic(`${stem}: ${named.length} named groups, ranks ${named.map((e) => e.rank).join(", ")}`);
+      assert.ok(named.length > 5, `${stem} names ${named.length} groups, so no sixth is ranked and this proves less than it says`);
+      assert.deepEqual(named.filter((e) => e.rank === "0").map((e) => e.label), [], `${stem}: a named group in the tail's grey`);
+      assert.equal(new Set(named.map((e) => e.rank)).size, named.length, `${stem}: two named groups share a hue`);
+    }
+  });
 
   // Mutation: name every group in departmentBars, folding none, and the
   // tail's members are drawn under hues the legend has five of.
@@ -536,6 +581,38 @@ describe("the opening view writes the hash only for a view it shows", () => {
     assert.equal(browser.window.location.hash, `#y=${newest.replace(/\.json$/, "")}&d=${chosen}`);
     assert.equal(select.value, chosen);
     assert.match(browser.document.getElementById("department-heading").textContent, /^Police Department, /);
+  });
+
+  // Mutation: read the department select in a year's change, as one
+  // fromControls did for both selects, and the year chosen during the first
+  // fetch opens the config's first department.
+  test("a year chosen while the opening column is fetched opens that year's longest bar", async () => {
+    const { html, config } = departmentPage();
+    const browser = installBrowser({ html });
+    await settle();
+    const newest = config.years.at(-1).path;
+    let release;
+    const plan = {};
+    for (const stem of PINNED) plan[stem + ".json"] = { doc: columnFixture(stem) };
+    const doc = plan[newest].doc;
+    plan[newest] = { settle: (h) => { release = () => h.resolve(doc); } };
+    browser.window.fetch = plannedFetch(plan, config.exported_by);
+    doc.generated_by = config.exported_by;
+    const booting = mod.boot(browser.window);
+    await settle();
+    assert.equal(typeof release, "function", "the opening column was never fetched");
+    const year = browser.document.getElementById("year-select");
+    year.value = "fy2024-actual.json";
+    year.dispatchEvent(new browser.window.Event("change"));
+    await settle();
+    release();
+    await booting;
+    await settle();
+    const longest = mod.departmentBars(columnFixture("fy2024-actual"), config).bars[0].id;
+    assert.notEqual(longest, config.departments[0].id, "the config's first department is the longest, so the arm is never drawn");
+    const open = barsOf(browser.document).filter((b) => b.expanded === "true").map((b) => b.id);
+    assert.deepEqual({ open, hash: browser.window.location.hash },
+      { open: [longest], hash: `#y=fy2024-actual&d=${longest}` });
   });
 
   test("a refused opening column leaves the hash as the reader wrote it", async () => {

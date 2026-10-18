@@ -1,14 +1,16 @@
 // pins.test.mjs — every literal the client shares with Go or with the
 // stylesheet is held to the other party's copy, so neither can move alone:
 // the fund-group role, the mark prefixes, the viewport's and full screen's
-// cushions, the rail's width, and the hue slots a column's fund groups are
-// numbered into.
+// cushions, the rail's width, the hue slots a column's fund groups are
+// numbered into, and the ramp steps a ranked page's groups are drawn in.
 
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { loadApp, stylesheet, columnFixture, publishedColumns, repoRoot } from "./testlib.mjs";
+import { NAMED as GLANCE_NAMED } from "./glance.js";
+import { NAMED as CHANGE_NAMED } from "./change.js";
 
 const read = (name) => JSON.parse(fs.readFileSync(path.join(repoRoot, "schema", name), "utf8"));
 
@@ -63,5 +65,32 @@ describe("the literals the client shares", () => {
     t.diagnostic(`style.css defines slots ${[...slots].sort((a, b) => a - b).join(", ")}; the published columns use ${[...needed.keys()].sort((a, b) => a - b).join(", ")}`);
     assert.ok(needed.size > 0, "no published column numbers a fund group, so this proves nothing");
     assert.deepEqual([...needed.keys()].filter((n) => !slots.has(n)), []);
+  });
+
+  // rank() names a sixth group rather than fold it alone, so a page ranking
+  // by it reaches NAMED + 1. Mutation: drop the data-rank="6" rule of one
+  // page, or --glance-6 from one theme's block, and this goes red naming it.
+  test("every rank a ranked page can give a named group has a ramp step in each theme and a rule on that page", (t) => {
+    const css = stylesheet().replace(/\/\*[\s\S]*?\*\//g, "");
+    const pages = [
+      ["department", GLANCE_NAMED + 1, '.department-seg[data-rank="N"]'],
+      ["glance", GLANCE_NAMED + 1, '.glance-seg[data-rank="N"]'],
+      ["change", CHANGE_NAMED + 1, '.change-seg[data-rank="N"]'],
+    ];
+    const missing = [];
+    let top = 0;
+    for (const [page, most, selector] of pages) {
+      top = Math.max(top, most);
+      for (let n = 1; n <= most; n++) {
+        const rule = new RegExp(`${selector.replace("N", n).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}[^{]*\\{\\s*background: var\\(--glance-${n}\\);`);
+        if (!rule.test(css)) missing.push(`${page} rank ${n}`);
+      }
+    }
+    for (let n = 1; n <= top; n++) {
+      const found = [...css.matchAll(new RegExp(`--glance-${n}:\\s*#[0-9a-f]{6};`, "g"))].length;
+      if (found !== 3) missing.push(`--glance-${n} set ${found} times, not once per theme block`);
+    }
+    t.diagnostic(`ranks reached: department and glance ${GLANCE_NAMED + 1}, change ${CHANGE_NAMED + 1}`);
+    assert.deepEqual(missing, []);
   });
 });

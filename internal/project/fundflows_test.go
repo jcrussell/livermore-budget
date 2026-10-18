@@ -933,6 +933,37 @@ func TestNoRevenueLineReadsAsItsCategory(t *testing.T) {
 	}
 }
 
+// TestARevenueLineReadingAsItsCategoryIsRefused: a line whose printed label
+// is its category's, in another case and with a stray space, and whose terms
+// share none with the category's, is not relabelled, and must not ship
+// reading as the category inside itself.
+//
+// Mutation: drop the refusal of a line reading as its parent, and the node is
+// returned reading "charges for services ".
+func TestARevenueLineReadingAsItsCategoryIsRefused(t *testing.T) {
+	f := &fundFlows{Labels: termsLabels{
+		stubFundFlows: stubFundFlows{stubLabels: stubLabels{"charges": "Charges for Services"}},
+		terms: map[string][]string{
+			"charges":         {"charges for services"},
+			"charges/charges": {"chgs for svcs"},
+		},
+	}}
+	parent := PrefixRevenue + "charges"
+	line := PrefixRevenueLine + "charges/charges"
+	nodes := map[string]Node{
+		parent: {ID: parent, Label: "Charges for Services"},
+		line:   {ID: line, Label: "charges for services ", Parent: parent},
+	}
+	rev := map[revKey]*cellSum{
+		{kind: vocab.KindRevenue, category: "charges", line: "charges/charges", fund: 100}: {cents: 1},
+	}
+	err := f.labelCategoryNamedLines(nodes, rev)
+	want := `revenue line revenue-line/charges/charges reads "charges for services " under revenue/charges`
+	if err == nil || !strings.Contains(err.Error(), want) {
+		t.Fatalf("got %v (label %q), want an error containing %q", err, nodes[line].Label, want)
+	}
+}
+
 // termsLabels is stubFundFlows answering Terms from its own map, so a fixture
 // can print a line under its category's name.
 type termsLabels struct {

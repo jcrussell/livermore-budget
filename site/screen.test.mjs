@@ -219,12 +219,13 @@ describe("the chart laid out to the window's height", () => {
   // closed by a room under the floor, and by every room on a chart that
   // declares no grow. Leave heldRoom where it was when fitRoom draws nothing,
   // and the next fold, laid out at the new room, lets the held canvas go and
-  // Collapse all shortens it under the reader.
+  // Collapse all shortens it under the reader. Every move here is past
+  // CHROME_SLACK, so none is left alone for being small.
   for (const declared of [true, false]) {
     test(`a new room that moves no canvas draws nothing again, and the menu a reader opened stays open (${declared ? "grow declared" : "no grow"})`, async (t) => {
       const config = structuredClone(pageFixture().config);
       if (!declared) delete config.overview.sankey.grow;
-      const at = { height: 768, top: 100, full: 0, width: 1320 };
+      const at = { height: 900, top: 100, full: 0, width: 1320 };
       const loaded = await loadApp({ config });
       const { app, window, document } = loaded;
       stubRoom(window, document, at);
@@ -239,7 +240,7 @@ describe("the chart laid out to the window's height", () => {
       window.dispatchEvent(new window.Event("resize"));
       await frame(window);
       const moved = { viewBox: viewBoxHeight(document), menu: document.getElementById("node-menu") !== null };
-      t.diagnostic(`viewBox ${opened} at a 768px window (room ${768 - at.top - app.ROOM_CUSHION}), ${moved.viewBox} at ` +
+      t.diagnostic(`viewBox ${opened} at a 900px window (room ${900 - at.top - app.ROOM_CUSHION}), ${moved.viewBox} at ` +
         `${at.height}px (room ${app.roomHeight()}); menu open after: ${moved.menu}`);
       assert.deepEqual(moved, { viewBox: opened, menu: true });
       if (!declared) return;
@@ -249,14 +250,14 @@ describe("the chart laid out to the window's height", () => {
       app.expandAll();
       await settle();
       const all = viewBoxHeight(document);
-      at.height = 650;
+      at.height = 500;
       window.dispatchEvent(new window.Event("resize"));
       await frame(window);
       const still = viewBoxHeight(document);
       app.collapseAll();
       await settle();
       const folded = viewBoxHeight(document);
-      t.diagnostic(`viewBox ${all} everything split, ${still} at a 650px window, ${folded} folded back`);
+      t.diagnostic(`viewBox ${all} everything split, ${still} at a 500px window, ${folded} folded back`);
       assert.deepEqual({ past: all > opened, still, folded }, { past: true, still: all, folded: all });
       // A room that does move the canvas still draws it again.
       at.height = 1480;
@@ -266,6 +267,103 @@ describe("the chart laid out to the window's height", () => {
         { viewBox: 1480 - at.top - app.ROOM_CUSHION, menu: false });
     });
   }
+
+  // Mutation: compare the canvas at the new room with the viewBox on screen
+  // rather than with the canvas the nodes were laid on, and the held canvas
+  // (the viewBox) never equals a collapsed chart's: the resize draws the chart
+  // again, the viewBox goes to the floor and the menu closes.
+  test("after Expand all and Collapse all hold the canvas, a room that moves no canvas keeps it and the open menu", async (t) => {
+    const at = { height: 900, top: 100, full: 0, width: 1320 };
+    const loaded = await loadApp();
+    const { app, window, document } = loaded;
+    stubRoom(window, document, at);
+    await app.boot();
+    await frame(window);
+    const opened = viewBoxHeight(document);
+    app.expandAll();
+    await settle();
+    const all = viewBoxHeight(document);
+    app.collapseAll();
+    await settle();
+    const folded = viewBoxHeight(document);
+    app.openNodeMenu(app.laidNodes.find((n) => n.sourceLinks.length > 0), { left: 0, top: 0 });
+    assert.ok(document.getElementById("node-menu") !== null, "no menu opened, so this proves less than it says");
+    at.height = 700;
+    window.dispatchEvent(new window.Event("resize"));
+    await frame(window);
+    const moved = { viewBox: viewBoxHeight(document), menu: document.getElementById("node-menu") !== null };
+    t.diagnostic(`viewBox ${opened} opened, ${all} everything split, ${folded} folded back, ${moved.viewBox} at a ` +
+      `${at.height}px window; menu open after: ${moved.menu}`);
+    assert.deepEqual({ held: folded === all && all > opened, ...moved }, { held: true, viewBox: all, menu: true });
+  });
+
+  // Mutation: drop the CHROME_SLACK arm from fitRoom, and the phone's address
+  // bar hiding draws the chart again: the viewBox moves and the menu closes.
+  // Make the arm ignore the width, and the turned phone's arm goes red; make
+  // it ignore the chart's top, and the pushed arm does.
+  test("on a phone the address bar showing or hiding leaves the chart as drawn; a taller move, or a new width, draws it again", async (t) => {
+    const at = { height: 800, top: 100, full: 0, width: 360 };
+    const loaded = await loadApp();
+    const { app, window, document } = loaded;
+    Object.defineProperty(window, "innerWidth", { value: 360, configurable: true, writable: true });
+    stubRoom(window, document, at);
+    await app.boot();
+    await frame(window);
+    const opened = viewBoxHeight(document);
+    assert.ok(opened > app.CONFIG.overview.sankey.grow.floor, "the room is under the floor, so a room change moves no canvas anyway");
+    const menu = () => document.getElementById("node-menu") !== null;
+    const openMenu = () => app.openNodeMenu(app.laidNodes.find((n) => n.sourceLinks.length > 0), { left: 0, top: 0 });
+    const resize = async (height, width) => {
+      at.height = height;
+      if (width) {
+        Object.defineProperty(window, "innerWidth", { value: width, configurable: true, writable: true });
+        at.width = width;
+      }
+      window.dispatchEvent(new window.Event("resize"));
+      await frame(window);
+      return { viewBox: viewBoxHeight(document), menu: menu() };
+    };
+    openMenu();
+    const bar = await resize(800 - app.CHROME_SLACK + 1);
+    const back = await resize(800);
+    const taller = await resize(800 - app.CHROME_SLACK);
+    openMenu();
+    // The window drawn at 680px, 10px taller and turned to a new width.
+    const turned = await resize(690, 480);
+    // What the page paints above the chart moves its top in a window that
+    // has not moved, as boot's last fitRoom finds it.
+    openMenu();
+    at.top += 40;
+    const pushed = { drawn: app.fitRoom(), menu: menu() };
+    t.diagnostic(`a 360px phone, 800px tall: viewBox ${opened}; the bar hidden ${JSON.stringify(bar)}, shown again ` +
+      `${JSON.stringify(back)}; ${app.CHROME_SLACK}px shorter ${JSON.stringify(taller)}; a new width ${JSON.stringify(turned)}; ` +
+      `the top 40px lower ${JSON.stringify(pushed)}`);
+    assert.deepEqual({ bar, back, taller: taller.viewBox < opened && !taller.menu, turned: !turned.menu, pushed },
+      { bar: { viewBox: opened, menu: true }, back: { viewBox: opened, menu: true }, taller: true, turned: true,
+        pushed: { drawn: true, menu: false } });
+  });
+
+  // Mutation: let wholeOf measure the room again (roomHeight) in place of the
+  // one layOut is handed, and the whole is laid out on a taller canvas than
+  // the chart drawn from the same draw.
+  test("a filtered draw lays the chart and its whole out at one room, measured once", async (t) => {
+    const at = { height: 1080, top: 100, full: 0, width: 1320 };
+    const loaded = await loadApp();
+    const { app, window, document } = loaded;
+    stubRoom(window, document, at);
+    await app.boot();
+    await frame(window);
+    // Every read of the window's height finds it taller than the last.
+    Object.defineProperty(window, "innerHeight", { get: () => (at.height += 100), configurable: true });
+    const node = app.laidNodes.find((n) => n.targetLinks.length > 0 && n.sourceLinks.length === 0);
+    app.filterOutNode(node.id);
+    await settle();
+    assert.ok(app.whole !== null, "the filter changed nothing drawn, so there is no whole to compare");
+    const bottom = (nodes) => Number(Math.max(...nodes.map((n) => n.y1)).toFixed(6));
+    t.diagnostic(`filtered out ${node.id}: the drawn chart to ${bottom(app.laidNodes)}, its whole to ${bottom(app.whole.nodes)}, ` +
+      `laid at room ${app.laidRoom}`);
+    assert.equal(bottom(app.whole.nodes), bottom(app.laidNodes));
+  });
 
   // Mutation: drop askRoom from onFullscreenChange, and full screen draws
   // the chart at the room the page had (the stub fires no resize).

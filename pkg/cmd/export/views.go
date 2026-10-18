@@ -258,25 +258,16 @@ func views(repoRoot string, built result) ([]export.View, error) {
 }
 
 // drawsBuilt reports whether the schedule a view's own chart draws was built
-// for every year the view lists, where it is published for that year's
-// column at all. A view drawing a schedule that was not built is dropped, as
-// one whose own document was not built is, but for the Sankey, which draws its
-// own document instead; one never published for a year's column is kept for
-// the write to refuse by name.
+// for its opening column, where it is published for that column at all. A
+// view drawing a schedule that was not built is dropped, as one whose own
+// document was not built is, but for the Sankey, which draws its own document
+// instead. One never published for the opening column, and one published and
+// not built for any other year the view lists, is kept for the write to
+// refuse by that year's column: the chart a reader opens is the one a missing
+// opening schedule would empty, and a later year's is a broken build.
 func drawsBuilt(v export.View, projections map[string][]byte) bool {
-	if v.Draws == "" {
-		return true
-	}
-	years := v.YearStems
-	if len(years) == 0 {
-		years = []string{v.Projection}
-	}
-	for _, year := range years {
-		if len(publishedInto(year, v.Draws)) > 0 && !opensInto(year, v.Draws, projections) {
-			return false
-		}
-	}
-	return true
+	return v.Draws == "" || len(publishedInto(v.Projection, v.Draws)) == 0 ||
+		opensInto(v.Projection, v.Draws, projections)
 }
 
 // unbuiltRead is the first schedule a view reads beside its own document

@@ -348,9 +348,18 @@ export function roomHeight() {
   if (!(r.width > 0)) return 0;
   const box = String(svg.getAttribute("viewBox") || "").split(/\s+/).map(Number);
   const laid = box.length === 4 && box[2] > 0 ? box[2] : widthOf(openingColumns());
+  return Math.max(0, Math.floor((window.innerHeight - chartTop(r) - ROOM_CUSHION) * laid / r.width));
+}
+
+/**
+ * Where the page lays the chart's top out unscrolled, in CSS px: in the
+ * document, or in the card while it is full screen (roomHeight).
+ * @param {{top: number}} r the svg's bounding rect
+ * @returns {number}
+ */
+function chartTop(r) {
   const card = isFullscreen() ? maybeEl("chart-card") : null;
-  const top = card ? r.top - card.getBoundingClientRect().top + card.scrollTop : r.top + window.scrollY;
-  return Math.max(0, Math.floor((window.innerHeight - top - ROOM_CUSHION) * laid / r.width));
+  return card ? r.top - card.getBoundingClientRect().top + card.scrollTop : r.top + window.scrollY;
 }
 
 /**
@@ -477,6 +486,20 @@ export let heldRoom = 0;
 export let laidRoom = 0;
 /** Whether a redraw at the room is asked for and not yet drawn (askRoom). */
 let roomAsked = false;
+/**
+ * The window the chart on screen was drawn in: its innerWidth and
+ * innerHeight, in CSS px, whether the card was full screen, and the chart's
+ * top (chartTop), which what the page paints above it moves (fitRoom).
+ */
+let drawnWindow = { width: 0, height: 0, full: false, top: 0 };
+/**
+ * The CSS px a window's height may move by, its width, full screen and the
+ * chart's top unmoved, and leave the chart as drawn (fitRoom): more than a phone
+ * browser's address bar and toolbar together, which show and hide as the
+ * reader scrolls, and less than a window a reader resizes or a phone turned
+ * on its side, which moves the width too.
+ */
+export const CHROME_SLACK = 120;
 /** How long a redraw's marks move for, in ms, where the reader allows motion. */
 export const MOTION_MS = 350;
 /** What the drawer holds until the reader lets it go. @type {LaidNode | LaidLink | null} */
@@ -812,8 +835,9 @@ export function redraw(next, refused = "That could not be drawn", landOn, anchor
     expansions = next;
     drawn = shapeFor(fetched);
     const filtered = filterFor(drawn);
-    const unfiltered = wholeOf(drawn, filtered);
-    laid = layOut(filtered.doc, prior);
+    const room = roomHeight();
+    const unfiltered = wholeOf(drawn, filtered, room);
+    laid = layOut(filtered.doc, prior, room);
     // Inside the try: building a row is the last step of a draw that can
     // throw on a document. The table is the view's every flow, filtered or
     // not; the filter line says what the chart leaves out.
@@ -1719,10 +1743,11 @@ export function nodeFlags(d) {
  * would recolour the chart on screen against a document it was not drawn from.
  * @param {FiscProjection} doc
  * @param {Map<string, Box>} [prior] the chart it replaces, whose columns it keeps the order of
+ * @param {number} [room] the room it is laid out at, roomHeight's by default:
+ *   a draw that lays out its whole (wholeOf) too measures it once for both
  * @returns {{nodes:LaidNode[], links:LaidLink[]}}
  */
-export function layOut(doc, prior) {
-  const room = roomHeight();
+export function layOut(doc, prior, room = roomHeight()) {
   const { graph, index } = laidOf(doc, prior, room);
   groupIndex = index;
   laidRoom = room;
@@ -1736,10 +1761,10 @@ export function layOut(doc, prior) {
  * and the hue index it was laid against.
  * @param {FiscProjection} doc
  * @param {Map<string, Box>} [prior] layOut's
- * @param {number} [room] the room it is laid out at, roomHeight's by default
+ * @param {number} room the room it is laid out at
  * @returns {{graph: {nodes:LaidNode[], links:LaidLink[]}, index: Map<string, FiscNode>}}
  */
-function laidOf(doc, prior, room = roomHeight()) {
+function laidOf(doc, prior, room) {
   const index = hueIndex(doc);
   // Nothing to lay out where the filters removed every ribbon; d3-sankey
   // throws on an empty graph.
@@ -1974,10 +1999,11 @@ export function hiddenAt(id) {
  * filters change what is drawn of it, else null: `whole` for that chart.
  * @param {FiscProjection} drawn the shaped chart
  * @param {{doc: FiscProjection}} filtered filterFor's answer over it
+ * @param {number} room the room the drawn chart is laid out at (layOut's)
  * @returns {{nodes: LaidNode[], links: LaidLink[]} | null}
  */
-export function wholeOf(drawn, filtered) {
-  return filtered.doc === drawn ? null : laidOf(drawn).graph;
+export function wholeOf(drawn, filtered, room) {
+  return filtered.doc === drawn ? null : laidOf(drawn, undefined, room).graph;
 }
 
 /**
@@ -2083,6 +2109,7 @@ export function render(laid, prior) {
   motionEnd = typeof ended === "function" ? ended : () => {};
   const box = String(svg.attr("viewBox") || "").split(/\s+/).map(Number);
   if (box.length === 4 && box[3] > heldHeight) heldHeight = box[3];
+  drawnWindow = windowNow();
   paintHairlines(graph);
   paint();
   applyEmphasis();
@@ -2421,8 +2448,9 @@ export function setFilter(next) {
   let laid;
   try {
     filtered = filterFor(projection);
-    unfiltered = wholeOf(projection, filtered);
-    laid = layOut(filtered.doc, prior);
+    const room = roomHeight();
+    unfiltered = wholeOf(projection, filtered, room);
+    laid = layOut(filtered.doc, prior, room);
   } catch (e) {
     filter = was;
     keepOutNames();
@@ -3655,29 +3683,51 @@ export function onFullscreenChange() {
 export function askRoom() {
   if (roomAsked) return;
   roomAsked = true;
-  window.requestAnimationFrame(() => {
+  const draw = () => {
     roomAsked = false;
     fitRoom();
-  });
+  };
+  if (typeof window.requestAnimationFrame === "function") window.requestAnimationFrame(draw);
+  else window.setTimeout(draw, 0);
+}
+
+/**
+ * The window as drawnWindow records it, read now.
+ * @returns {{width: number, height: number, full: boolean, top: number}}
+ */
+function windowNow() {
+  const svg = maybeEl("chart");
+  const top = svg ? chartTop(svg.getBoundingClientRect()) : 0;
+  return { width: window.innerWidth, height: window.innerHeight, full: isFullscreen(), top };
 }
 
 /**
  * Draws the chart on screen again, unmoved and in place, where its room
- * (roomHeight) is not the one it was drawn at and the form would draw its
- * canvas at that room another height than the one on screen; else does
- * nothing, and a new room that moves no canvas becomes the room the chart
- * holds its height within. So a phone's address bar, or a chart whose canvas
- * no room moves, leaves the chart and what the reader opened on it alone.
+ * (roomHeight) is not the one it was drawn at and the form would lay its
+ * nodes out at that room on another canvas than the one they were laid on;
+ * else does nothing, and the new room becomes the room the chart holds its
+ * height within, so the canvas a fold held stays held. A window whose height
+ * alone moved by less than CHROME_SLACK since the chart was drawn is the same
+ * window: a phone's address bar showing or hiding moves the room in the
+ * chart's units well past any floor, and redrawing for it would close what
+ * the reader opened on the chart as they scroll.
  * @returns {boolean} whether it was drawn again
  */
 export function fitRoom() {
   if (!chartDrawn()) return false;
+  const now = windowNow();
   const room = roomHeight();
-  if (room === heldRoom) return false;
-  const svg = maybeEl("chart");
-  const box = String(svg ? svg.getAttribute("viewBox") || "" : "").split(/\s+/).map(Number);
-  if (box.length === 4 && formOnScreen().canvas(laidNodes, { chart: chartOnScreen(), room }) === box[3]) {
+  if (now.width === drawnWindow.width && now.full === drawnWindow.full && now.top === drawnWindow.top &&
+      Math.abs(now.height - drawnWindow.height) < CHROME_SLACK) {
     heldRoom = room;
+    return false;
+  }
+  if (room === heldRoom) return false;
+  const form = formOnScreen();
+  const chart = chartOnScreen();
+  if (form.canvas(laidNodes, { chart, room }) === form.canvas(laidNodes, { chart, room: laidRoom })) {
+    heldRoom = room;
+    drawnWindow = now;
     return false;
   }
   render();
@@ -4512,8 +4562,9 @@ export async function showYear(year, carry = [], removals = null) {
     // fact ids it merges, so nothing is lost.
     const drawn = shapeFor(doc);
     const filtered = filterFor(drawn, removals || filter);
-    const unfiltered = wholeOf(drawn, filtered);
-    laid = layOut(filtered.doc);
+    const room = roomHeight();
+    const unfiltered = wholeOf(drawn, filtered, room);
+    laid = layOut(filtered.doc, undefined, room);
     rows = tableRows(drawn);
     projection = drawn;
     shown = filtered;

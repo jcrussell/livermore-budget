@@ -41,12 +41,13 @@ export function readConfig(doc) {
 }
 
 /**
- * A view as a hash: `#y=<column file less .json>&d=<department id>`.
+ * A view as a hash: `#y=<column file less .json>&d=<department id>`, with no
+ * `d` where it names no department, which parseHash reads as the longest bar.
  * @param {{year: string, department: string}} st
  */
 export function hashOf(st) {
   const esc = (/** @type {string} */ v) => encodeURIComponent(v).replace(/%2F/g, "/");
-  return "#y=" + esc(st.year.replace(/\.json$/, "")) + "&d=" + esc(st.department);
+  return "#y=" + esc(st.year.replace(/\.json$/, "")) + (st.department ? "&d=" + esc(st.department) : "");
 }
 
 /**
@@ -202,7 +203,8 @@ export function departmentFigures(column, config, departmentId) {
 /**
  * @typedef {{id: string, label: string, cents: number, members: string[], rank: number}} Group
  *   One entry of the legend: a fund group, or the tail folding several, with
- *   its sum over every department; rank is 1..NAMED for a hue, 0 for none.
+ *   its sum over every department; rank is its place for a hue, 1..NAMED+1
+ *   (rank names a sixth group rather than fold it alone), 0 for the tail.
  * @typedef {{key: number, label: string, members: string[], rank: number, cents: number, factIds: string[]}} Segment
  *   One department's part paid by one legend entry; key is the entry's index.
  * @typedef {{id: string, label: string, cents: number, factIds: string[], segments: Segment[]}} Bar
@@ -246,7 +248,7 @@ export function departmentBars(column, config) {
   }
   const { segments } = rank([...sums.values()]);
   /** @type {Group[]} */
-  const groups = segments.map((s, i) => ({ ...s, rank: s.id && i < NAMED ? i + 1 : 0 }));
+  const groups = segments.map((s, i) => ({ ...s, rank: s.id ? i + 1 : 0 }));
   const named = new Map(groups.map((g, i) => [g.id, i]));
   const tail = groups.findIndex((g) => !g.id);
   /** @param {number} g */
@@ -659,6 +661,9 @@ export async function boot(win = globalThis.window) {
   let shown = 0;
   let current = { year: "", department: "" };
   let barsOf = "";
+  // The view whose tables are drawn, as hashOf names it: the open bar toggles
+  // over its own department's tables only.
+  let tablesOf = "";
   let longest = "";
   let open = true;
   /**
@@ -684,7 +689,9 @@ export async function boot(win = globalThis.window) {
       const view = { year: st.year, department: st.department || longest };
       current = view;
       if (deptSelect) deptSelect.value = view.department;
+      tablesOf = "";
       render(doc, config, col, view);
+      tablesOf = hashOf(view);
       openBar(doc, view.department, open);
       return view;
     } catch (e) {
@@ -697,7 +704,11 @@ export async function boot(win = globalThis.window) {
     say(doc, "");
     const hash = hashOf(st);
     if (win.location.hash !== hash) win.history.pushState(null, "", hash);
-    void show(st);
+    void show(st).then((view) => {
+      // A choice naming no department shows the longest bar, which the hash
+      // names once its column has said which; a later choice keeps its own.
+      if (view && win.location.hash === hash && hashOf(view) !== hash) win.history.replaceState(null, "", hashOf(view));
+    });
   };
   const list = doc.getElementById("department-list");
   // The open bar's link to its tables scrolls by script: followed as a
@@ -719,7 +730,7 @@ export async function boot(win = globalThis.window) {
     const row = target && target.closest ? target.closest(".department-row") : null;
     const li = row && row.parentElement;
     if (!li || !li.dataset.department || li.parentElement !== list) return;
-    if (li.dataset.department === current.department && barsOf === current.year) {
+    if (li.dataset.department === current.department && barsOf === current.year && tablesOf === hashOf(current)) {
       open = !open;
       openBar(doc, current.department, open);
       return;
@@ -739,10 +750,14 @@ export async function boot(win = globalThis.window) {
       activate(ke);
     });
   }
-  const fromControls = () => ({
-    year: yearSelect ? yearSelect.value : config.years[config.years.length - 1].path,
-    department: deptSelect ? deptSelect.value : config.departments[0].id,
-  });
+  // A select names one half of the view and the other half is the view's
+  // own: until the opening column resolves the department select shows the
+  // config's first department, which nobody chose, so a year chosen then
+  // keeps the view's department, "" where none was named: the longest bar.
+  /** @param {HTMLSelectElement | null} el */
+  const fromControl = (el) => el === yearSelect
+    ? { year: yearSelect.value, department: current.department }
+    : { year: current.year, department: deptSelect ? deptSelect.value : current.department };
   const restore = async () => {
     const st = parseHash(win.location.hash, config);
     say(doc, st.refused);
@@ -755,7 +770,7 @@ export async function boot(win = globalThis.window) {
   };
   for (const el of [deptSelect, yearSelect]) {
     if (!el) continue;
-    el.addEventListener("change", () => choose(fromControls()));
+    el.addEventListener("change", () => choose(fromControl(el)));
   }
   win.addEventListener("popstate", () => void restore());
   await restore();

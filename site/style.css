@@ -63,13 +63,16 @@
   --fund-slot-5: #e87ba4;
   --fund-slot-6: #008300;
 
-  /* The glance page's ordinal ramp, one hue light->dark by rank, and the
-     gray its folded tail wears. Validated against --surface-1. */
+  /* The glance page's ordinal ramp, one hue light->dark by rank, six steps
+     for the five groups rank() names and the sixth it names rather than
+     fold alone, and the gray its folded tail wears. Validated against
+     --surface-1 as an ordinal ramp. */
   --glance-1: #104281;
-  --glance-2: #1c5cab;
-  --glance-3: #2a78d6;
-  --glance-4: #5598e7;
-  --glance-5: #86b6ef;
+  --glance-2: #1a57a2;
+  --glance-3: #266dc3;
+  --glance-4: #3684e2;
+  --glance-5: #5e9ee9;
+  --glance-6: #86b6ef;
   --glance-tail: #c3c2b7;
 
   --link-opacity: 0.42;
@@ -121,11 +124,12 @@
     --fund-slot-5: #d55181;
     --fund-slot-6: #008300;
 
-    --glance-1: #9ec5f4;
-    --glance-2: #6da7ec;
-    --glance-3: #3987e5;
-    --glance-4: #256abf;
-    --glance-5: #184f95;
+    --glance-1: #cde2fb;
+    --glance-2: #9ec5f4;
+    --glance-3: #6da7ec;
+    --glance-4: #3987e5;
+    --glance-5: #256abf;
+    --glance-6: #184f95;
     --glance-tail: #52514e;
 
     --link-opacity: 0.5;
@@ -159,11 +163,12 @@
   --fund-slot-5: #d55181;
   --fund-slot-6: #008300;
 
-  --glance-1: #9ec5f4;
-  --glance-2: #6da7ec;
-  --glance-3: #3987e5;
-  --glance-4: #256abf;
-  --glance-5: #184f95;
+  --glance-1: #cde2fb;
+  --glance-2: #9ec5f4;
+  --glance-3: #6da7ec;
+  --glance-4: #3987e5;
+  --glance-5: #256abf;
+  --glance-6: #184f95;
   --glance-tail: #52514e;
 
   --link-opacity: 0.5;
@@ -2004,6 +2009,7 @@ noscript p {
 .department-legend li[data-rank="3"] .department-swatch, .department-groups li[data-rank="3"] .department-swatch, .department-seg[data-rank="3"] { background: var(--glance-3); }
 .department-legend li[data-rank="4"] .department-swatch, .department-groups li[data-rank="4"] .department-swatch, .department-seg[data-rank="4"] { background: var(--glance-4); }
 .department-legend li[data-rank="5"] .department-swatch, .department-groups li[data-rank="5"] .department-swatch, .department-seg[data-rank="5"] { background: var(--glance-5); }
+.department-legend li[data-rank="6"] .department-swatch, .department-groups li[data-rank="6"] .department-swatch, .department-seg[data-rank="6"] { background: var(--glance-6); }
 .department-list {
   list-style: none;
   padding: 0;
@@ -2198,6 +2204,7 @@ noscript p {
 .glance-seg[data-rank="3"], .glance-legend li[data-rank="3"] .glance-swatch { background: var(--glance-3); }
 .glance-seg[data-rank="4"], .glance-legend li[data-rank="4"] .glance-swatch { background: var(--glance-4); }
 .glance-seg[data-rank="5"], .glance-legend li[data-rank="5"] .glance-swatch { background: var(--glance-5); }
+.glance-seg[data-rank="6"], .glance-legend li[data-rank="6"] .glance-swatch { background: var(--glance-6); }
 .glance-legend {
   list-style: none;
   padding: 0;
@@ -2470,6 +2477,7 @@ noscript p {
 .change-seg[data-rank="3"], .change-legend li[data-rank="3"] .change-swatch { background: var(--glance-3); }
 .change-seg[data-rank="4"], .change-legend li[data-rank="4"] .change-swatch { background: var(--glance-4); }
 .change-seg[data-rank="5"], .change-legend li[data-rank="5"] .change-swatch { background: var(--glance-5); }
+.change-seg[data-rank="6"], .change-legend li[data-rank="6"] .change-swatch { background: var(--glance-6); }
 .change-seg.negative {
   background-image: repeating-linear-gradient(45deg, transparent 0 2px, var(--surface-1) 2px 5px);
 }
