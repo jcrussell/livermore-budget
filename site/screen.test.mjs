@@ -5,7 +5,7 @@
 
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { loadApp, bootedApp, split, settle, fire, drawnBody, stylesheet } from "./testlib.mjs";
+import { loadApp, bootedApp, split, settle, fire, drawnBody, stylesheet, pageFixture } from "./testlib.mjs";
 
 /**
  * Stubs the Fullscreen API on a loaded page, as a browser offering it does:
@@ -213,6 +213,59 @@ describe("the chart laid out to the window's height", () => {
       shrunk: grow().floor,
     });
   });
+
+  // Mutations: drop the canvas comparison from fitRoom, so any new room draws
+  // the chart again, and both arms go red: the menu the reader opened is
+  // closed by a room under the floor, and by every room on a chart that
+  // declares no grow. Leave heldRoom where it was when fitRoom draws nothing,
+  // and the next fold, laid out at the new room, lets the held canvas go and
+  // Collapse all shortens it under the reader.
+  for (const declared of [true, false]) {
+    test(`a new room that moves no canvas draws nothing again, and the menu a reader opened stays open (${declared ? "grow declared" : "no grow"})`, async (t) => {
+      const config = structuredClone(pageFixture().config);
+      if (!declared) delete config.overview.sankey.grow;
+      const at = { height: 768, top: 100, full: 0, width: 1320 };
+      const loaded = await loadApp({ config });
+      const { app, window, document } = loaded;
+      stubRoom(window, document, at);
+      await app.boot();
+      await frame(window);
+      const opened = viewBoxHeight(document);
+      const node = app.laidNodes.find((n) => n.sourceLinks.length > 0);
+      app.openNodeMenu(node, { left: 0, top: 0 });
+      assert.ok(document.getElementById("node-menu") !== null, "no menu opened, so this proves less than it says");
+      // Under the floor with grow declared; anywhere without it.
+      at.height = declared ? 700 : 1480;
+      window.dispatchEvent(new window.Event("resize"));
+      await frame(window);
+      const moved = { viewBox: viewBoxHeight(document), menu: document.getElementById("node-menu") !== null };
+      t.diagnostic(`viewBox ${opened} at a 768px window (room ${768 - at.top - app.ROOM_CUSHION}), ${moved.viewBox} at ` +
+        `${at.height}px (room ${app.roomHeight()}); menu open after: ${moved.menu}`);
+      assert.deepEqual(moved, { viewBox: opened, menu: true });
+      if (!declared) return;
+      assert.equal(opened, app.CONFIG.overview.sankey.grow.floor);
+      // Everything split runs past the floor, so a room under it moves no
+      // canvas; the fold after it holds the canvas it had.
+      app.expandAll();
+      await settle();
+      const all = viewBoxHeight(document);
+      at.height = 650;
+      window.dispatchEvent(new window.Event("resize"));
+      await frame(window);
+      const still = viewBoxHeight(document);
+      app.collapseAll();
+      await settle();
+      const folded = viewBoxHeight(document);
+      t.diagnostic(`viewBox ${all} everything split, ${still} at a 650px window, ${folded} folded back`);
+      assert.deepEqual({ past: all > opened, still, folded }, { past: true, still: all, folded: all });
+      // A room that does move the canvas still draws it again.
+      at.height = 1480;
+      window.dispatchEvent(new window.Event("resize"));
+      await frame(window);
+      assert.deepEqual({ viewBox: viewBoxHeight(document), menu: document.getElementById("node-menu") !== null },
+        { viewBox: 1480 - at.top - app.ROOM_CUSHION, menu: false });
+    });
+  }
 
   // Mutation: drop askRoom from onFullscreenChange, and full screen draws
   // the chart at the room the page had (the stub fires no resize).

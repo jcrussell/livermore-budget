@@ -932,3 +932,59 @@ func TestNoRevenueLineReadsAsItsCategory(t *testing.T) {
 		}
 	}
 }
+
+// termsLabels is stubFundFlows answering Terms from its own map, so a fixture
+// can print a line under its category's name.
+type termsLabels struct {
+	stubFundFlows
+	terms map[string][]string
+}
+
+func (s termsLabels) Terms(slug string) []string { return s.terms[slug] }
+
+// TestTwoRevenueLinesReadingAlikeAreRefused: two lines under one category,
+// each the only line of it its fund prints and each sharing a term with the
+// category, would both read "<category>, not itemized".
+//
+// Mutation: drop the collision refusal from labelCategoryNamedLines and the
+// two nodes are returned reading alike.
+func TestTwoRevenueLinesReadingAlikeAreRefused(t *testing.T) {
+	f := &fundFlows{Labels: termsLabels{
+		stubFundFlows: stubFundFlows{stubLabels: stubLabels{"charges": "Charges for Services"}},
+		terms: map[string][]string{
+			"charges":           {"charges for services"},
+			"charges/charges-a": {"charges for services"},
+			"charges/charges-b": {"charges for services"},
+		},
+	}}
+	parent := PrefixRevenue + "charges"
+	nodes := map[string]Node{
+		parent:                                  {ID: parent, Label: "Charges for Services"},
+		PrefixRevenueLine + "charges/charges-a": {ID: PrefixRevenueLine + "charges/charges-a", Label: "Charges for Services", Parent: parent},
+		PrefixRevenueLine + "charges/charges-b": {ID: PrefixRevenueLine + "charges/charges-b", Label: "Charges for Svcs", Parent: parent},
+	}
+	rev := map[revKey]*cellSum{
+		{kind: vocab.KindRevenue, category: "charges", line: "charges/charges-a", fund: 100}: {cents: 1},
+		{kind: vocab.KindRevenue, category: "charges", line: "charges/charges-b", fund: 500}: {cents: 1},
+	}
+	err := f.labelCategoryNamedLines(nodes, rev)
+	want := `revenue lines revenue-line/charges/charges-a and revenue-line/charges/charges-b under revenue/charges ` +
+		`both read "Charges for Services, not itemized"`
+	if err == nil || !strings.Contains(err.Error(), want) {
+		t.Fatalf("got %v, want an error containing %q", err, want)
+	}
+
+	// One fund printing both lines itemizes them, and the two read apart.
+	for k := range rev {
+		if k.fund == 500 {
+			delete(rev, k)
+			k.fund = 100
+			rev[k] = &cellSum{cents: 1}
+		}
+	}
+	nodes[PrefixRevenueLine+"charges/charges-a"] = Node{ID: PrefixRevenueLine + "charges/charges-a", Label: "Charges for Services", Parent: parent}
+	nodes[PrefixRevenueLine+"charges/charges-b"] = Node{ID: PrefixRevenueLine + "charges/charges-b", Label: "Charges for Svcs", Parent: parent}
+	if err := f.labelCategoryNamedLines(nodes, rev); err != nil {
+		t.Fatalf("two itemized lines: %v", err)
+	}
+}

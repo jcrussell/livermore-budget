@@ -190,12 +190,23 @@ func buildChangePage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			Document: ix.PublishedPath(s.doc.stem),
 		})
 	}
-	// The audited document is drawn whole across its three figures, so its
-	// own count holds the page to every point; the budget document's
-	// transfers are left out by design, so only its revenue rows are placed.
-	if placed[audited.stem] != audited.meta.Counts.Points {
-		return changePageData{}, fmt.Errorf("view %q places %d of %s's %d points; a kind of its series is drawn nowhere",
-			v.Path, placed[audited.stem], audited.stem, audited.meta.Counts.Points)
+	// Each document's own count holds the page to every point it publishes:
+	// a point is placed in a figure or is of a kind leftOut declares the page
+	// leaves out. The budget document's transfers in are money moved between
+	// the city's own funds, which the budget figure's lede says it does not
+	// count.
+	leftOut := map[string]map[string]bool{budget.stem: {"transfer_in": true}}
+	for _, d := range []changeDocument{audited, budget} {
+		left := 0
+		for _, s := range d.body.Series {
+			if leftOut[d.stem][s.Kind] {
+				left += len(s.Points)
+			}
+		}
+		if placed[d.stem]+left != d.meta.Counts.Points {
+			return changePageData{}, fmt.Errorf("view %q places %d of %s's %d points and leaves out %d; "+
+				"a kind of its series is drawn nowhere", v.Path, placed[d.stem], d.stem, d.meta.Counts.Points, left)
+		}
 	}
 
 	cited := append(append([]sourceMeta{}, audited.meta.Sources...), budget.meta.Sources...)

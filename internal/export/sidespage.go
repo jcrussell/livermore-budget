@@ -13,10 +13,10 @@ import (
 // sidesConfigVersion is the version a sides config declares.
 const sidesConfigVersion = 1
 
-// sidesConfig is what site/sides.js reads from treemap.html and ledger.html
-// before it fetches a column, shaped by schema/sides.schema.json. It carries
-// no figure: every figure is a link of the column a year names, folded by
-// the client to the frontier it opens.
+// sidesConfig is what site/sides.js reads from ledger.html before it fetches
+// a column, shaped by schema/sides.schema.json. It carries no figure: every
+// figure is a link of the column a year names, folded by the client to the
+// frontier it opens.
 type sidesConfig struct {
 	SchemaVersion int                  `json:"schema_version"`
 	ExportedBy    string               `json:"exported_by"`
@@ -34,7 +34,7 @@ type sidesYear struct {
 	Lede  string `json:"lede"`
 }
 
-// sidesPageData is the treemap and ledger templates' input.
+// sidesPageData is the ledger template's input.
 type sidesPageData struct {
 	chrome
 	Description string
@@ -64,9 +64,9 @@ func encodeSidesConfig(cfg sidesConfig) ([]byte, error) {
 	return blob, nil
 }
 
-// buildSidesPage renders a treemap or ledger view: the spine's years as the
-// year control, the drawn schedule's declared sides as sections the client
-// fills, and the config the client folds by. The chart's figures are the
+// buildSidesPage renders a ledger view: the spine's years as the year
+// control, the drawn schedule's declared sides as sections the client fills,
+// and the config the client folds by. The chart's figures are the
 // drawn schedule's; the footer and the year control are the spine's.
 func buildSidesPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	ix ColumnIndex, pageTextBase func(string) string,

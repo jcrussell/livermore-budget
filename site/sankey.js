@@ -1103,6 +1103,14 @@ export const SANKEY = Object.freeze({
     return layOutAt(drawn, ctx, canvasHeight(ctx.chart, drawn.nodes, ctx.room));
   },
 
+  /**
+   * The canvas render draws laid nodes on at ctx.room with nothing held, so
+   * the page can tell whether a new room would move it.
+   */
+  canvas(nodes, ctx) {
+    return canvasHeight(ctx.chart, nodes, ctx.room);
+  },
+
   /** How many laid ribbons of this chart are drawn as hairlines: isHairline. */
   hairlines(graph, chart) {
     return graph.links.filter((l) => isHairline(chart, l)).length;

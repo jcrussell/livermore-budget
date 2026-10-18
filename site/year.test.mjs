@@ -193,8 +193,8 @@ describe("the theme control", () => {
     await settle();
     const after = read();
     t.diagnostic(`the button read "${before}" on a light page and "${after}" after the OS switched to dark`);
-    assert.equal(before, "Dark mode / aria-pressed=false");
-    assert.equal(after, "Light mode / aria-pressed=true");
+    assert.equal(before, "Dark mode / aria-pressed=null");
+    assert.equal(after, "Light mode / aria-pressed=null");
   });
   test("a click on the theme button switches the page, stores the choice and repaints the chart", async (t) => {
     const { document, window } = await bootedApp();
@@ -213,7 +213,8 @@ describe("the theme control", () => {
       `first ribbon stroke ${painted.split(" ")[0]} -> ${repainted.split(" ")[0]}`);
     assert.notEqual(after, before);
     assert.equal(stored, after);
-    assert.equal(button.getAttribute("aria-pressed"), after === "dark" ? "true" : "false");
+    assert.equal(button.textContent, after === "dark" ? "Light mode" : "Dark mode");
+    assert.equal(button.getAttribute("aria-pressed"), null);
     assert.ok(painted !== "", "the chart drew no ribbon to repaint");
     assert.ok(repainted !== painted, "the ribbons kept the hues of the theme the page left");
   });

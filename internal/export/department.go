@@ -109,9 +109,10 @@ type departmentDocument struct {
 		Parent string `json:"parent"`
 	} `json:"nodes"`
 	Links []struct {
-		Source string           `json:"source"`
-		Target string           `json:"target"`
-		Kind   project.LinkKind `json:"kind"`
+		Source     string           `json:"source"`
+		Target     string           `json:"target"`
+		ValueCents int64            `json:"value_cents"`
+		Kind       project.LinkKind `json:"kind"`
 	} `json:"links"`
 	Metadata struct {
 		GeneratedBy     string       `json:"generated_by"`
@@ -335,6 +336,10 @@ func departmentEntries(ds []Department) ([]departmentEntry, map[string]string, e
 	return out, ofDivision, nil
 }
 
+// maxSafeCents is JavaScript's Number.MAX_SAFE_INTEGER, the widest cell
+// site/department.js's Number.isSafeInteger admits.
+const maxSafeCents = 1<<53 - 1
+
 // spendingKindOf is the kind a spending link must declare, by its object
 // end's role. site/department.js labels a spending row by its links' kind, so
 // a Transfers Out row declared external would be drawn as an expenditure.
@@ -347,11 +352,15 @@ var spendingKindOf = map[string]project.LinkKind{
 // department funding pays is stated, every fund paying one hangs from a fund
 // group the funding document draws, every division spending draws is filed
 // under a stated department, every stated department is paid, every stated
-// division draws, every label is the one the membership states, and every
-// spending link declares the kind its object end's role names.
+// division draws, every label is the one the membership states, every
+// funding cell is a positive integer of cents no wider than a JavaScript safe
+// integer, and every spending link declares the kind its object end's role
+// names.
 //
 // A fund's group is the one membership site/department.js splits a
 // department's bar by; a fund with none would be drawn in no segment.
+// site/department.js refuses a funding cell that is not a positive safe
+// integer, so one would pass here and the reader be refused the page.
 func vetDepartmentColumn(entries []departmentEntry, ofDivision map[string]string,
 	fundingStem string, funding departmentDocument, spendingStem string, spending departmentDocument,
 ) error {
@@ -382,6 +391,10 @@ func vetDepartmentColumn(entries []departmentEntry, ofDivision map[string]string
 			return fmt.Errorf("%s draws %s paying %s, parented to %q, which is not a fund group the "+
 				"document draws; the department's bar would split it into no fund group",
 				fundingStem, l.Source, l.Target, g)
+		}
+		if l.ValueCents <= 0 || l.ValueCents > maxSafeCents {
+			return fmt.Errorf("%s draws %s paying %s as %d cents, which is not a positive safe integer; "+
+				"the department's bar would be refused in the browser", fundingStem, l.Source, l.Target, l.ValueCents)
 		}
 		paid[l.Target] = true
 	}

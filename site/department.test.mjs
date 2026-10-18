@@ -482,3 +482,77 @@ describe("opening a bar chooses its department for the tables and the hash", () 
     assert.equal(document.getElementById("department-heading").textContent, "Library Department, FY 2023-24 actual");
   });
 });
+
+// Mutation: list.addEventListener("click", activate) in place of the
+// toTables branch and the link is followed as a fragment, whose popstate
+// reopens the newest year's longest bar.
+describe("the open bar's link to its tables keeps the view", () => {
+  test("from an older year and a chosen department, the link changes neither the year, the department nor the hash", async () => {
+    const { document, window } = await booted("#y=fy2024-actual&d=department/public-works");
+    const hash = window.location.hash;
+    const link = document.querySelector('#department-list > li[data-department="department/public-works"] a.department-to-tables');
+    assert.ok(link !== null, "the open bar carries no link to its tables");
+    const e = new window.MouseEvent("click", { bubbles: true, cancelable: true });
+    link.dispatchEvent(e);
+    await settle();
+    assert.ok(e.defaultPrevented, "the link was followed as a fragment");
+    assert.equal(window.location.hash, hash);
+    assert.equal(document.getElementById("year-select").value, "fy2024-actual.json");
+    assert.equal(document.getElementById("department-select").value, "department/public-works");
+    assert.equal(document.getElementById("department-heading").textContent, "Public Works, FY 2023-24 actual");
+    const open = [...document.querySelectorAll('#department-list > li .department-row[aria-expanded="true"]')]
+      .map((r) => r.parentElement.dataset.department);
+    assert.deepEqual(open, ["department/public-works"]);
+  });
+});
+
+// Mutation: write hashOf(view || {year, department: config.departments[0].id})
+// after show() resolves, as though a refused or overtaken view were shown,
+// and both arms go red naming the config's first department.
+describe("the opening view writes the hash only for a view it shows", () => {
+  test("a choice made while the opening column is fetched keeps its own hash", async () => {
+    const { html, config } = departmentPage();
+    const browser = installBrowser({ html });
+    await settle();
+    const newest = config.years.at(-1).path;
+    let release;
+    const plan = {};
+    for (const stem of PINNED) plan[stem + ".json"] = { doc: columnFixture(stem) };
+    const doc = plan[newest].doc;
+    plan[newest] = { settle: (h) => { release = () => h.resolve(doc); } };
+    browser.window.fetch = plannedFetch(plan, config.exported_by);
+    doc.generated_by = config.exported_by;
+    const booting = mod.boot(browser.window);
+    await settle();
+    assert.equal(typeof release, "function", "the opening column was never fetched");
+    const select = browser.document.getElementById("department-select");
+    const chosen = "department/police-department";
+    assert.notEqual(chosen, config.departments[0].id, "the chosen department is the config's first, so the arm is never drawn");
+    select.value = chosen;
+    select.dispatchEvent(new browser.window.Event("change"));
+    release();
+    await booting;
+    await settle();
+    assert.equal(browser.window.location.hash, `#y=${newest.replace(/\.json$/, "")}&d=${chosen}`);
+    assert.equal(select.value, chosen);
+    assert.match(browser.document.getElementById("department-heading").textContent, /^Police Department, /);
+  });
+
+  test("a refused opening column leaves the hash as the reader wrote it", async () => {
+    const { html, config } = departmentPage();
+    for (const hash of ["", "#y=fy2024-actual"]) {
+      const browser = installBrowser({ html });
+      if (hash) browser.window.location.hash = hash;
+      await settle();
+      const plan = {};
+      for (const stem of PINNED) plan[stem + ".json"] = null;
+      browser.window.fetch = plannedFetch(plan, config.exported_by);
+      await mod.boot(browser.window);
+      await settle();
+      const refusal = browser.document.getElementById("department-refusal");
+      assert.ok(refusal, `${hash || "no hash"}: no refusal was said`);
+      assert.match(refusal.textContent, /could not be drawn/);
+      assert.equal(browser.window.location.hash, hash, `${hash || "no hash"}: the hash was rewritten`);
+    }
+  });
+});

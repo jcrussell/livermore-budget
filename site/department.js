@@ -700,6 +700,19 @@ export async function boot(win = globalThis.window) {
     void show(st);
   };
   const list = doc.getElementById("department-list");
+  // The open bar's link to its tables scrolls by script: followed as a
+  // fragment it would fire popstate, and restore() would read a hash naming
+  // no view and open the newest year's longest bar in place of this one.
+  /** @param {Event} e */
+  const toTables = (e) => {
+    const target = /** @type {any} */ (e.target);
+    const link = target && target.closest ? target.closest(".department-to-tables") : null;
+    if (!link || !list || !list.contains(link)) return false;
+    e.preventDefault();
+    const heading = doc.getElementById("department-heading");
+    if (heading && typeof heading.scrollIntoView === "function") heading.scrollIntoView();
+    return true;
+  };
   /** @param {Event} e */
   const activate = (e) => {
     const target = /** @type {any} */ (e.target);
@@ -714,7 +727,9 @@ export async function boot(win = globalThis.window) {
     choose({ year: current.year, department: li.dataset.department });
   };
   if (list) {
-    list.addEventListener("click", activate);
+    list.addEventListener("click", (e) => {
+      if (!toTables(e)) activate(e);
+    });
     list.addEventListener("keydown", (e) => {
       const ke = /** @type {KeyboardEvent} */ (e);
       if (ke.key !== "Enter" && ke.key !== " ") return;
@@ -731,8 +746,11 @@ export async function boot(win = globalThis.window) {
   const restore = async () => {
     const st = parseHash(win.location.hash, config);
     say(doc, st.refused);
+    // A view refused or overtaken by a later choice is not on screen, so the
+    // hash is left naming what the reader or that choice named.
     const view = await show(st);
-    const hash = hashOf(view || { year: st.year, department: st.department || config.departments[0].id });
+    if (!view) return;
+    const hash = hashOf(view);
     if (win.location.hash !== hash) win.history.replaceState(null, "", hash);
   };
   for (const el of [deptSelect, yearSelect]) {

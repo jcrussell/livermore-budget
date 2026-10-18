@@ -29,7 +29,14 @@ async function booted(page, o = {}) {
   return { ...browser, mod, events };
 }
 
-/** The toggle's state as a reader meets it, as one string. */
+/**
+ * The toggle's state as a reader meets it, as one string. Its label is the
+ * action a click takes, so it carries no aria-pressed, which would announce
+ * "Light mode, pressed" on a dark page.
+ *
+ * Mutation: set aria-pressed in syncTheme again and every arm reading the
+ * toggle goes red.
+ */
 const read = (button) =>
   `${button.textContent} / aria-pressed=${button.getAttribute("aria-pressed")} / hidden=${button.hidden}`;
 
@@ -55,10 +62,10 @@ describe("the theme toggle in every pinned page's top bar", () => {
       button.click();
       const back = document.documentElement.dataset.theme || "";
       t.diagnostic(`${page}: "${before}" -> "${after}"; data-theme "${theme}" then "${back}", stored "${stored}", events ${JSON.stringify(events)}`);
-      assert.equal(before, "Dark mode / aria-pressed=false / hidden=false");
+      assert.equal(before, "Dark mode / aria-pressed=null / hidden=false");
       assert.equal(theme, "dark");
       assert.equal(stored, "dark");
-      assert.equal(after, "Light mode / aria-pressed=true / hidden=false");
+      assert.equal(after, "Light mode / aria-pressed=null / hidden=false");
       assert.equal(back, "light");
       assert.equal(window.localStorage.getItem("fisc-theme"), "light");
       assert.deepEqual(events, [true, false]);
@@ -71,7 +78,7 @@ describe("the theme toggle in every pinned page's top bar", () => {
     const before = read(button);
     button.click();
     t.diagnostic(`on a dark OS with nothing stored the toggle read "${before}"; a click stored "${window.localStorage.getItem("fisc-theme")}"`);
-    assert.equal(before, "Light mode / aria-pressed=true / hidden=false");
+    assert.equal(before, "Light mode / aria-pressed=null / hidden=false");
     assert.equal(document.documentElement.dataset.theme, "light");
     assert.equal(window.localStorage.getItem("fisc-theme"), "light");
   });
@@ -80,13 +87,13 @@ describe("the theme toggle in every pinned page's top bar", () => {
     const { document, media } = await booted("index.golden.html");
     const button = /** @type {HTMLButtonElement} */ (document.getElementById("theme-toggle"));
     media.setOSDark(true);
-    assert.equal(read(button), "Light mode / aria-pressed=true / hidden=false");
+    assert.equal(read(button), "Light mode / aria-pressed=null / hidden=false");
   });
 
   test("the toggle ships hidden, for a page with JavaScript off", () => {
     for (const page of PAGES) {
       const html = readFileSync(path.join(TESTDATA, page), "utf8");
-      assert.ok(html.includes('<button type="button" id="theme-toggle" aria-pressed="false" hidden>'),
+      assert.ok(html.includes('<button type="button" id="theme-toggle" hidden>'),
         `${page} ships a theme toggle that is not hidden`);
     }
   });

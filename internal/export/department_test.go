@@ -264,6 +264,17 @@ func TestDepartmentPageRefusesASideLessThanTheDepartment(t *testing.T) {
 			o.Projections["department-funding-2027"] = editFunding(t, o, `"parent":"fund-group/internal-service"`,
 				`"parent":"department/city-council"`)
 		}, `parented to "department/city-council", which is not a fund group the document draws`},
+		// site/department.js refuses a funding cell that is not a positive
+		// safe integer of cents.
+		{"a zero funding cell", func(o *export.Options) {
+			o.Projections["department-funding-2027"] = editFunding(t, o, `"value_cents":3000,`, `"value_cents":0,`)
+		}, "draws fund/730 paying department/police-department as 0 cents, which is not a positive safe integer"},
+		{"a negative funding cell", func(o *export.Options) {
+			o.Projections["department-funding-2027"] = editFunding(t, o, `"value_cents":3000,`, `"value_cents":-3000,`)
+		}, "as -3000 cents, which is not a positive safe integer"},
+		{"a funding cell wider than a safe integer", func(o *export.Options) {
+			o.Projections["department-funding-2027"] = editFunding(t, o, `"value_cents":3000,`, `"value_cents":9007199254740992,`)
+		}, "as 9007199254740992 cents, which is not a positive safe integer"},
 		{"a page reading no spending schedule", func(o *export.Options) {
 			o.Views[1].Reads = nil
 		}, "the page reads department-spending and nothing else"},

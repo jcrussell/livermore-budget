@@ -30,15 +30,15 @@ export function prefersDark(win) {
 }
 
 /**
- * Brings the button's label and aria-pressed back into agreement with the
- * page.
+ * Brings the button's label back into agreement with the page. The label is
+ * the action a click takes, so the button carries no aria-pressed: "Light
+ * mode, pressed" on a dark page would announce the state it is not in.
  * @param {Window} win
  */
 export function syncTheme(win) {
   const button = win.document.getElementById("theme-toggle");
   if (!button) return;
   const dark = prefersDark(win);
-  button.setAttribute("aria-pressed", String(dark));
   button.textContent = dark ? "Light mode" : "Dark mode";
 }
 

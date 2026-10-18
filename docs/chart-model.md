@@ -117,6 +117,7 @@ members, as `FormRenderer` in `site/app.js` types them:
  *  shape(doc, view): FiscProjection,            // fold to the frontier, cap the open splits, stamp slots, flip reductions; throws to refuse; view is {chart, frontier, whole}
  *  layOut(drawn, ctx): Laid,                    // pure of the page; ctx.before seats a redrawn chart's columns
  *  render(laid, ctx): () => void,               // writes the DOM, keyed, moving from ctx.before; returns what ends the motion now
+ *  canvas(nodes, ctx): number,                  // the canvas height render draws laid nodes on at ctx.room, nothing held
  *  paint(ctx): void,                            // repaints on a theme change
  *  cents(d): number,                            // the figure a laid mark prints, signed
  *  share(d, laid): string,                      // a laid node's share of what it is drawn among, in words; "" where none

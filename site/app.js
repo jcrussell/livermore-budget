@@ -128,6 +128,7 @@ export function homeOf(l) {
  *   columnsOf(drawn: FiscProjection, tiers: number[]): number,
  *   shape(doc: FiscProjection, view: ShapeView): FiscProjection,
  *   layOut(drawn: FiscProjection, ctx: {tiers: number[], columns: number, groupOf: (n: FiscNode | LaidNode) => string, placeOf: (id: string) => number, chart: FiscChart, before?: Map<string, Box>, parentOf?: (id: string) => string, room?: number}): {nodes: LaidNode[], links: LaidLink[]},
+ *   canvas(nodes: LaidNode[], ctx: {chart: FiscChart, room: number}): number,
  *   hairlines(graph: {nodes: LaidNode[], links: LaidLink[]}, chart: FiscChart): number,
  *   render(graph: {nodes: LaidNode[], links: LaidLink[]}, ctx: Record<string, any>): () => void,
  *   paint(ctx: {svg: any, colour: {link: (d: LaidLink) => string, node: (d: LaidNode) => string}}): void,
@@ -3662,11 +3663,23 @@ export function askRoom() {
 
 /**
  * Draws the chart on screen again, unmoved and in place, where its room
- * (roomHeight) is not the one it was drawn at; else does nothing.
+ * (roomHeight) is not the one it was drawn at and the form would draw its
+ * canvas at that room another height than the one on screen; else does
+ * nothing, and a new room that moves no canvas becomes the room the chart
+ * holds its height within. So a phone's address bar, or a chart whose canvas
+ * no room moves, leaves the chart and what the reader opened on it alone.
  * @returns {boolean} whether it was drawn again
  */
 export function fitRoom() {
-  if (!chartDrawn() || roomHeight() === heldRoom) return false;
+  if (!chartDrawn()) return false;
+  const room = roomHeight();
+  if (room === heldRoom) return false;
+  const svg = maybeEl("chart");
+  const box = String(svg ? svg.getAttribute("viewBox") || "" : "").split(/\s+/).map(Number);
+  if (box.length === 4 && formOnScreen().canvas(laidNodes, { chart: chartOnScreen(), room }) === box[3]) {
+    heldRoom = room;
+    return false;
+  }
   render();
   return true;
 }

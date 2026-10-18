@@ -354,7 +354,9 @@ func (f *fundFlows) Document(facts []fact.Fact, o Options) (*Document, error) {
 	if err := f.addParents(nodes); err != nil {
 		return nil, err
 	}
-	f.labelCategoryNamedLines(nodes, rev)
+	if err := f.labelCategoryNamedLines(nodes, rev); err != nil {
+		return nil, err
+	}
 	nameContraLinks(links, nodes)
 
 	sortLinks(links)
@@ -919,7 +921,11 @@ const (
 // what the line sums: "<category>, not itemized" when no fund printing the line
 // prints another line of the category, and "<line>, the line so named" when
 // one does. The id is untouched.
-func (f *fundFlows) labelCategoryNamedLines(nodes map[string]Node, rev map[revKey]*cellSum) {
+//
+// It refuses two revenue lines under one category left reading alike, which
+// two lines each its fund's whole category would: the reader would meet one
+// label twice and be unable to tell which figure is which.
+func (f *fundFlows) labelCategoryNamedLines(nodes map[string]Node, rev map[revKey]*cellSum) error {
 	type catFund struct {
 		category string
 		fund     int
@@ -960,6 +966,24 @@ func (f *fundFlows) labelCategoryNamedLines(nodes map[string]Node, rev map[revKe
 		}
 		nodes[id] = n
 	}
+	ids := make([]string, 0, len(nodes))
+	for id := range nodes {
+		if strings.HasPrefix(id, PrefixRevenueLine) {
+			ids = append(ids, id)
+		}
+	}
+	sort.Strings(ids)
+	seen := map[[2]string]string{}
+	for _, id := range ids {
+		n := nodes[id]
+		k := [2]string{n.Parent, n.Label}
+		if other, ok := seen[k]; ok {
+			return fmt.Errorf("revenue lines %s and %s under %s both read %q; "+
+				"a reader could not tell the two figures apart", other, id, n.Parent, n.Label)
+		}
+		seen[k] = id
+	}
+	return nil
 }
 
 // sharesTerm reports whether two spelling lists have one spelling in common.

@@ -168,12 +168,32 @@ func TestChangePageRefusesWhatItCannotDraw(t *testing.T) {
 	if _, err := writeSite(changeOptions(t, t.TempDir(), true)); err == nil || !strings.Contains(err.Error(), "a kind of its series is drawn nowhere") {
 		t.Errorf("a kind drawn nowhere: got %v, want a refusal", err)
 	}
+	// The budget document's transfers in are left out by declaration and its
+	// revenue placed; a series of any other kind is drawn nowhere.
+	// Mutation: drop the budget document from the reconciliation and the
+	// page renders with the series gone.
+	o = changeOptions(t, t.TempDir(), false)
+	budget := string(o.Projections[project.TrendsProjection])
+	for _, edit := range []struct{ name, old, new string }{
+		{"a budget series of a kind drawn nowhere", `"kind":"transfer_in"`, `"kind":"expenditure"`},
+		{"a budget document counting a point it does not carry", `"counts":{"facts":4,"series":2,"points":4}`,
+			`"counts":{"facts":4,"series":2,"points":5}`},
+	} {
+		if strings.Count(budget, edit.old) != 1 {
+			t.Fatalf("%s: the budget document carries %q %d times, want once", edit.name, edit.old, strings.Count(budget, edit.old))
+		}
+		o = changeOptions(t, t.TempDir(), false)
+		o.Projections[project.TrendsProjection] = []byte(strings.Replace(budget, edit.old, edit.new, 1))
+		if _, err := writeSite(o); err == nil || !strings.Contains(err.Error(), "of revenue-trends's") ||
+			!strings.Contains(err.Error(), "a kind of its series is drawn nowhere") {
+			t.Errorf("%s: got %v, want a refusal", edit.name, err)
+		}
+	}
 	// A budget point in a column the document does not declare has no cell
 	// to land in, and the budget document is reconciled against nothing else.
 	// Mutation: drop the placed-against-published refusal in changeRows and
 	// the page renders with the point gone.
 	o = changeOptions(t, t.TempDir(), false)
-	budget := string(o.Projections[project.TrendsProjection])
 	stray := `"points":[{"fiscal_year":2025,"basis":"adopted","amount_cents":100,"fact_id":"fisc-f-000000000bad",` +
 		`"doc_id":"livermore-budget-fy2026-2027","page":127,"offset":1,"token":"1","derived":false},{"fiscal_year":2026,"basis":"adopted","amount_cents":50000`
 	if strings.Count(budget, `"points":[{"fiscal_year":2026,"basis":"adopted","amount_cents":50000`) != 1 {
