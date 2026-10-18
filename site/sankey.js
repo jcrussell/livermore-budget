@@ -28,17 +28,20 @@ export const CHART_HEIGHT = 820;
 
 /**
  * The canvas a chart is laid out on, in px: under a declared sankey.grow,
- * node_px for each node of the busiest slot of `nodes`, held between its
- * floor and its ceiling; else CHART_HEIGHT.
+ * node_px for each node of the busiest slot of `nodes`, never shorter than
+ * its floor or than `room`, and never taller than its ceiling; else
+ * CHART_HEIGHT, which no room moves, since nothing caps it.
  * @param {FiscChart | null | undefined} chart
  * @param {{id: string, tier: number, slot?: number}[]} [nodes] what is drawn on it
+ * @param {number} [room] the screen's height for the chart, in its own units;
+ *   0 or absent where the page has measured none
  * @returns {number}
  */
-export function canvasHeight(chart, nodes) {
+export function canvasHeight(chart, nodes, room) {
   const hints = chart && chart.sankey;
   if (hints && hints.grow) {
     const g = hints.grow;
-    return Math.min(g.ceiling, Math.max(g.floor, g.node_px * busiestSlot(nodes || [], hints.tiers || [])));
+    return Math.min(g.ceiling, Math.max(g.floor, room || 0, g.node_px * busiestSlot(nodes || [], hints.tiers || [])));
   }
   return CHART_HEIGHT;
 }
@@ -1092,11 +1095,12 @@ export const SANKEY = Object.freeze({
   /**
    * Lays a shaped document out with d3-sankey, pure of the page: the columns
    * on screen, the group and place lookups and the constants are all it
-   * reads. d3-sankey mutates its input, so it gets a copy and the document
-   * stays the thing the table and the detail panel read from.
+   * reads, and ctx.room, the screen's height the canvas is never shorter
+   * than (canvasHeight). d3-sankey mutates its input, so it gets a copy and
+   * the document stays the thing the table and the detail panel read from.
    */
   layOut(drawn, ctx) {
-    return layOutAt(drawn, ctx, canvasHeight(ctx.chart, drawn.nodes));
+    return layOutAt(drawn, ctx, canvasHeight(ctx.chart, drawn.nodes, ctx.room));
   },
 
   /** How many laid ribbons of this chart are drawn as hairlines: isHairline. */
@@ -1117,8 +1121,9 @@ export const SANKEY = Object.freeze({
    * one grows out of its nearest ancestor drawn before (parentOf), one
    * leaving shrinks into its nearest ancestor drawn now, each at the edge
    * facing the mark (edgeOf), and every label fades in after the move. With no
-   * motion everything is at its end at once. The viewBox is never shorter
-   * than ctx.held. Before any description is asked for, ctx.named, where
+   * motion everything is at its end at once. The viewBox is the canvas at
+   * ctx.room, the room the graph was laid out at, and never shorter than
+   * ctx.held. Before any description is asked for, ctx.named, where
    * given, is handed every mark's name by id: its qualifier, label and noun
    * as drawn, never cut. Returns what puts every mark at its end now.
    * @returns {() => void}
@@ -1127,7 +1132,7 @@ export const SANKEY = Object.freeze({
     const d3 = /** @type {any} */ (globalThis).d3;
     const svg = ctx.svg;
     const width = chartWidth(ctx.columns);
-    const height = Math.max(canvasHeight(ctx.chart, graph.nodes), ctx.held || 0);
+    const height = Math.max(canvasHeight(ctx.chart, graph.nodes, ctx.room), ctx.held || 0);
     const on = ctx.on;
     const motion = ctx.motion > 0 ? ctx.motion : 0;
     /** @type {Map<string, {x0: number, x1: number, y0: number, y1: number}>} */

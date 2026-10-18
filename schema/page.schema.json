@@ -686,7 +686,7 @@
           }
         },
         "grow": {
-          "description": "A canvas sized by the busiest column drawn: node_px px for each of its nodes, held between floor and ceiling. The overview's only.",
+          "description": "A canvas sized by the busiest column drawn: node_px px for each of its nodes, never shorter than floor or than the room the client measures on screen, and never taller than ceiling. The overview's only.",
           "type": "object",
           "required": ["node_px", "floor", "ceiling"],
           "additionalProperties": false,

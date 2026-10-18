@@ -313,8 +313,9 @@ and the client refuses, with a banner and the chart unchanged, a layout in
 which d3-sankey would draw a node in any column but its slot's.
 
 **Two hints fit it to a screen.** `sankey.grow` sizes the canvas: `node_px`
-for each node of the busiest column drawn, held between `floor` and
-`ceiling`. `sankey.split_caps` is per split key: how many members a split
+for each node of the busiest column drawn, never shorter than `floor` or
+than the window's room for the chart, which only the client measures, and
+never taller than `ceiling`. `sankey.split_caps` is per split key: how many members a split
 draws (`cap`) before the rest fold into one tail inside the node they split,
 and the word the tail counts them in (`tail`). Which members fold is the
 client's; a reader draws a tail out at full length, and the hash carries that

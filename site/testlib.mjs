@@ -172,6 +172,9 @@ function mediaStub(width, osDark, motion) {
   };
 }
 
+/** The page installBrowser installed last, closed when it installs the next. */
+let lastWindow = null;
+
 /**
  * Installs jsdom over one page as the globals app.js reads, with the shipped
  * stylesheet injected so custom properties resolve.
@@ -183,8 +186,12 @@ function mediaStub(width, osDark, motion) {
  * own, and a test of the motion itself opts in.
  */
 export function installBrowser({ html, storage, viewport = 1000, osDark = false, motion = false } = {}) {
+  // A frame the last page asked for (app.js's askRoom) would otherwise run
+  // its module against this page's globals.
+  if (lastWindow) lastWindow.close();
   const dom = new JSDOM(html, { url: "http://localhost/", pretendToBeVisual: true });
   const { window } = dom;
+  lastWindow = window;
   for (const k of ["window", "document", "HTMLElement", "Element", "Node", "SVGElement",
     "Event", "KeyboardEvent", "MouseEvent", "CustomEvent", "navigator", "localStorage",
     "getComputedStyle", "requestAnimationFrame"]) {

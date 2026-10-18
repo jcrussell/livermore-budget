@@ -127,7 +127,7 @@ export function homeOf(l) {
  *   width(columns: number): number,
  *   columnsOf(drawn: FiscProjection, tiers: number[]): number,
  *   shape(doc: FiscProjection, view: ShapeView): FiscProjection,
- *   layOut(drawn: FiscProjection, ctx: {tiers: number[], columns: number, groupOf: (n: FiscNode | LaidNode) => string, placeOf: (id: string) => number, chart: FiscChart, before?: Map<string, Box>, parentOf?: (id: string) => string}): {nodes: LaidNode[], links: LaidLink[]},
+ *   layOut(drawn: FiscProjection, ctx: {tiers: number[], columns: number, groupOf: (n: FiscNode | LaidNode) => string, placeOf: (id: string) => number, chart: FiscChart, before?: Map<string, Box>, parentOf?: (id: string) => string, room?: number}): {nodes: LaidNode[], links: LaidLink[]},
  *   hairlines(graph: {nodes: LaidNode[], links: LaidLink[]}, chart: FiscChart): number,
  *   render(graph: {nodes: LaidNode[], links: LaidLink[]}, ctx: Record<string, any>): () => void,
  *   paint(ctx: {svg: any, colour: {link: (d: LaidLink) => string, node: (d: LaidNode) => string}}): void,
@@ -326,6 +326,33 @@ export const CHART_CUSHION = 56;
 export const SCREEN_CUSHION = 48;
 
 /**
+ * The px under the chart its room keeps clear (roomHeight): the classic
+ * scrollbar under a chart wider than its card, which pans.
+ */
+export const ROOM_CUSHION = 16;
+
+/**
+ * The chart's room, in its own units: the window's height below the chart's
+ * top, less ROOM_CUSHION, at the scale the chart on screen is drawn at. The
+ * top is where the page lays the chart out unscrolled: in the document, or
+ * in the card while it is full screen, so scrolling never moves the room. 0
+ * where nothing is laid out (a chart drawn no width, or no chart), so the
+ * canvas is the form's own. The window is read when asked.
+ * @returns {number}
+ */
+export function roomHeight() {
+  const svg = maybeEl("chart");
+  if (!svg) return 0;
+  const r = svg.getBoundingClientRect();
+  if (!(r.width > 0)) return 0;
+  const box = String(svg.getAttribute("viewBox") || "").split(/\s+/).map(Number);
+  const laid = box.length === 4 && box[2] > 0 ? box[2] : widthOf(openingColumns());
+  const card = isFullscreen() ? maybeEl("chart-card") : null;
+  const top = card ? r.top - card.getBoundingClientRect().top + card.scrollTop : r.top + window.scrollY;
+  return Math.max(0, Math.floor((window.innerHeight - top - ROOM_CUSHION) * laid / r.width));
+}
+
+/**
  * How wide the widest form here lays `n` columns out, in px.
  * @param {number} n
  * @returns {number}
@@ -437,10 +464,18 @@ export function nameOf(d) {
  */
 let motionEnd = () => {};
 /**
- * The tallest canvas this page has drawn the chart on, in its own units: a
- * fold never shortens the canvas, so nothing below the chart jumps.
+ * The tallest canvas this page has drawn the chart on at heldRoom, in its own
+ * units: a fold never shortens the canvas, so nothing below the chart jumps.
+ * A chart drawn at another room lets it go, so leaving full screen or a
+ * shorter window shortens the canvas.
  */
 export let heldHeight = 0;
+/** The room (roomHeight) the chart on screen was drawn at, which heldHeight holds within. */
+export let heldRoom = 0;
+/** The room the last graph layOut returned was laid out at, which render draws its viewBox at. */
+export let laidRoom = 0;
+/** Whether a redraw at the room is asked for and not yet drawn (askRoom). */
+let roomAsked = false;
 /** How long a redraw's marks move for, in ms, where the reader allows motion. */
 export const MOTION_MS = 350;
 /** What the drawer holds until the reader lets it go. @type {LaidNode | LaidLink | null} */
@@ -761,7 +796,7 @@ export function redraw(next, refused = "That could not be drawn", landOn, anchor
   const hadFocus = focusInChart();
   const prior = boxesOf(laidNodes);
   const held = anchor ? screenBoxOf(anchor) : null;
-  const was = { expansions, frontier, wholeSplits, laidNodes, groupIndex, projection, shown, whole };
+  const was = { expansions, frontier, wholeSplits, laidNodes, laidRoom, groupIndex, projection, shown, whole };
   let laid;
   let rows;
   /** @type {FiscProjection | undefined} */
@@ -787,7 +822,7 @@ export function redraw(next, refused = "That could not be drawn", landOn, anchor
     whole = unfiltered;
     askAffordances();
   } catch (e) {
-    ({ expansions, frontier, wholeSplits, laidNodes, groupIndex, projection, shown, whole } = was);
+    ({ expansions, frontier, wholeSplits, laidNodes, laidRoom, groupIndex, projection, shown, whole } = was);
     const words = drawn ? refusalWords(e, drawn, "redraw_part", "redraw_alone_empty") : "";
     refuseInPlace(refused + ": " + (words || (e instanceof Error ? e.message : String(e))));
     return false;
@@ -1686,8 +1721,10 @@ export function nodeFlags(d) {
  * @returns {{nodes:LaidNode[], links:LaidLink[]}}
  */
 export function layOut(doc, prior) {
-  const { graph, index } = laidOf(doc, prior);
+  const room = roomHeight();
+  const { graph, index } = laidOf(doc, prior, room);
   groupIndex = index;
+  laidRoom = room;
   // For shareOf: only the laid graph knows a mark's column.
   laidNodes = graph.nodes;
   return graph;
@@ -1698,9 +1735,10 @@ export function layOut(doc, prior) {
  * and the hue index it was laid against.
  * @param {FiscProjection} doc
  * @param {Map<string, Box>} [prior] layOut's
+ * @param {number} [room] the room it is laid out at, roomHeight's by default
  * @returns {{graph: {nodes:LaidNode[], links:LaidLink[]}, index: Map<string, FiscNode>}}
  */
-function laidOf(doc, prior) {
+function laidOf(doc, prior, room = roomHeight()) {
   const index = hueIndex(doc);
   // Nothing to lay out where the filters removed every ribbon; d3-sankey
   // throws on an empty graph.
@@ -1712,6 +1750,7 @@ function laidOf(doc, prior) {
     chart: chartOnScreen(),
     before: prior,
     parentOf: parentOf,
+    room: room,
   });
   return { graph, index };
 }
@@ -1996,6 +2035,11 @@ export function render(laid, prior) {
   traced = null;
   closeChartMenu();
   const graph = laid || layOut(doc);
+  // A chart at another room holds nothing of the canvas the last one held.
+  if (laidRoom !== heldRoom) {
+    heldHeight = 0;
+    heldRoom = laidRoom;
+  }
   // A form that names no mark leaves every mark its label.
   drawnNames = new Map();
   const svg = D3.select("#chart");
@@ -2015,6 +2059,7 @@ export function render(laid, prior) {
     parentOf: parentOf,
     motion: prior && prior.size ? motionMs() : 0,
     held: heldHeight,
+    room: laidRoom,
     tiers: RENDER_TIERS,
     columns: columns,
     chart: chartOnScreen(),
@@ -3598,6 +3643,37 @@ export function isFullscreen() {
 export function onFullscreenChange() {
   const button = maybeEl("chart-fullscreen");
   if (button) button.textContent = say(isFullscreen() ? "full_screen_exit" : "full_screen");
+  askRoom();
+}
+
+/**
+ * Asks for the chart to be drawn at its room on the next frame, once however
+ * often it is asked before then: a window resized or full screen entered or
+ * left (wireRoom).
+ */
+export function askRoom() {
+  if (roomAsked) return;
+  roomAsked = true;
+  window.requestAnimationFrame(() => {
+    roomAsked = false;
+    fitRoom();
+  });
+}
+
+/**
+ * Draws the chart on screen again, unmoved and in place, where its room
+ * (roomHeight) is not the one it was drawn at; else does nothing.
+ * @returns {boolean} whether it was drawn again
+ */
+export function fitRoom() {
+  if (!chartDrawn() || roomHeight() === heldRoom) return false;
+  render();
+  return true;
+}
+
+/** Follows the window's size with the chart's room (askRoom). */
+export function wireRoom() {
+  window.addEventListener("resize", askRoom);
 }
 
 /**
@@ -4396,7 +4472,7 @@ export async function showYear(year, carry = [], removals = null) {
   // Swapped because shapeFor and askAffordances read them; swapped back on a
   // throw, so nothing below writes a word of this year over the last one's
   // chart.
-  const was = { column, fetched, expansions, frontier, wholeSplits, laidNodes, groupIndex, projection, shown, whole, drawnNames };
+  const was = { column, fetched, expansions, frontier, wholeSplits, laidNodes, laidRoom, groupIndex, projection, shown, whole, drawnNames };
   const before = fetched;
   column = loaded;
   // The names the last year drew are not this year's: a refusal names a
@@ -4431,7 +4507,7 @@ export async function showYear(year, carry = [], removals = null) {
     whole = unfiltered;
     askAffordances();
   } catch (e) {
-    ({ column, fetched, expansions, frontier, wholeSplits, laidNodes, groupIndex, projection, shown, whole, drawnNames } = was);
+    ({ column, fetched, expansions, frontier, wholeSplits, laidNodes, laidRoom, groupIndex, projection, shown, whole, drawnNames } = was);
     throw e;
   }
 
@@ -4592,6 +4668,7 @@ export async function main() {
   wireSearch();
   wireBulk();
   wireFullscreen();
+  wireRoom();
   wireZoom();
 
   // Wired before the first fetch (fisc-8cg): a superseded or failed opening
@@ -4622,6 +4699,10 @@ export async function main() {
   // The outcome is deliberately ignored: restoreView and showYear have told
   // the reader.
   await restoreView(window.location.hash);
+  // What the page paints above the chart after its first draw can move its
+  // top, so it is fitted once more to the room it settles in. Now, not on a
+  // frame: nothing is left pending once the page has booted.
+  fitRoom();
 }
 
 /**

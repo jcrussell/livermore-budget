@@ -110,6 +110,151 @@ describe("full screen on the chart's card", () => {
 });
 
 /**
+ * Lays the chart out where jsdom lays nothing out: the window `height` px
+ * tall, and the svg `width` px wide times app.js's --chart-stretch, as
+ * style.css draws it, with its top `top` px down the document,
+ * or `full` px down the card while the card is full screen (the card at the
+ * screen's top, unscrolled). Each is read when roomHeight asks, so a test
+ * moves the window by reassigning `at`.
+ */
+function stubRoom(window, document, at) {
+  Object.defineProperty(window, "innerHeight", { get: () => at.height, configurable: true });
+  const svg = document.getElementById("chart");
+  svg.getBoundingClientRect = () => {
+    const top = document.fullscreenElement ? at.full : at.top;
+    const width = at.width * Number(document.documentElement.style.getPropertyValue("--chart-stretch") || 1);
+    return { top, left: 0, width, height: 0, right: width, bottom: top, x: 0, y: top };
+  };
+  document.getElementById("chart-card").getBoundingClientRect = () =>
+    ({ top: 0, left: 0, width: 0, height: at.height, right: 0, bottom: at.height, x: 0, y: 0 });
+  return at;
+}
+
+/** The canvas the chart on screen is drawn on: its viewBox's height. */
+function viewBoxHeight(document) {
+  return Number(document.getElementById("chart").getAttribute("viewBox").split(" ")[3]);
+}
+
+/** The lowest laid node's bottom, to 1e-6: where d3-sankey's extent ended. */
+function laidBottom(app) {
+  return Number(Math.max(...app.laidNodes.map((n) => n.y1)).toFixed(6));
+}
+
+/** The next frame, where askRoom draws, and what it settles. */
+async function frame(window) {
+  await new Promise((r) => window.requestAnimationFrame(() => r()));
+  await settle();
+}
+
+describe("the chart laid out to the window's height", () => {
+  // Mutations: drop ctx.room from sankey.js's layOut, and the viewBox is the
+  // room while the nodes stop at the floor; drop the `* laid / r.width` from
+  // roomHeight, and the room is in screen px, half the units it should be;
+  // drop ctx.room from its render, and the viewBox stays on the floor while
+  // the nodes run past it. Drop testlib.mjs's close of the last page, and a
+  // frame the full-screen tests above asked for draws their chart here.
+  test("a window taller than the floor lays the chart out to the room, in the chart's own units; a shorter one leaves it on the floor", async (t) => {
+    const grow = () => app.CONFIG.overview.sankey.grow;
+    const at = { height: 1080, top: 100, full: 0, width: 660 };
+    const loaded = await loadApp();
+    const { app, window, document } = loaded;
+    stubRoom(window, document, at);
+    await app.boot();
+    await frame(window);
+    // The svg drawn 660px wide over a 1320-wide viewBox: a px is two units.
+    const room = Math.floor((at.height - at.top - app.ROOM_CUSHION) * app.chartWidth(app.openingColumns()) / at.width);
+    const tall = { room: app.roomHeight(), viewBox: viewBoxHeight(document), bottom: laidBottom(app) };
+    t.diagnostic(`a ${at.height}px window, the chart ${at.top}px down drawn ${at.width}px wide: room ${tall.room} units, ` +
+      `viewBox ${tall.viewBox}, nodes to ${tall.bottom} (floor ${grow().floor})`);
+    assert.deepEqual(tall, { room, viewBox: room, bottom: room - 12 });
+    assert.ok(room > grow().floor, "the room is no taller than the floor, so this proves less than it says");
+
+    at.height = 768;
+    at.width = 1320;
+    window.dispatchEvent(new window.Event("resize"));
+    await frame(window);
+    const short = { room: app.roomHeight(), viewBox: viewBoxHeight(document), bottom: laidBottom(app) };
+    t.diagnostic(`a ${at.height}px window, the chart drawn at scale 1: room ${short.room}, viewBox ${short.viewBox}`);
+    assert.deepEqual(short, { room: at.height - at.top - app.ROOM_CUSHION, viewBox: grow().floor, bottom: grow().floor - 12 });
+  });
+
+  // Mutations: drop wireRoom's resize listener, and the window's growing
+  // leaves the canvas where it was; reset heldHeight on every render rather
+  // than at a new room, and Collapse all shortens the canvas under the
+  // reader; drop that reset, and a shorter window keeps the taller canvas.
+  test("a resize draws the chart again at the new room, a fold within one room never shortens the canvas, and a shorter window does", async (t) => {
+    const grow = () => app.CONFIG.overview.sankey.grow;
+    const at = { height: 1080, top: 100, full: 0, width: 1320 };
+    const loaded = await loadApp();
+    const { app, window, document } = loaded;
+    stubRoom(window, document, at);
+    await app.boot();
+    await frame(window);
+    const opened = viewBoxHeight(document);
+    at.height = 1480;
+    window.dispatchEvent(new window.Event("resize"));
+    window.dispatchEvent(new window.Event("resize"));
+    await frame(window);
+    const grown = viewBoxHeight(document);
+    app.expandAll();
+    await settle();
+    const all = viewBoxHeight(document);
+    app.collapseAll();
+    await settle();
+    const folded = viewBoxHeight(document);
+    at.height = 900;
+    window.dispatchEvent(new window.Event("resize"));
+    await frame(window);
+    const shrunk = viewBoxHeight(document);
+    t.diagnostic(`viewBox height: ${opened} at a 1080px window, ${grown} at 1480, ${all} everything split, ` +
+      `${folded} folded back, ${shrunk} at 900`);
+    assert.deepEqual({ opened, grown, all: all > grown, folded, shrunk }, {
+      opened: 1080 - at.top - app.ROOM_CUSHION, grown: 1480 - at.top - app.ROOM_CUSHION, all: true, folded: all,
+      shrunk: grow().floor,
+    });
+  });
+
+  // Mutation: drop askRoom from onFullscreenChange, and full screen draws
+  // the chart at the room the page had (the stub fires no resize).
+  test("entering full screen draws the chart to the card's room, and leaving it shortens it again", async (t) => {
+    const grow = () => app.CONFIG.overview.sankey.grow;
+    const at = { height: 1080, top: 400, full: 60, width: 1320 };
+    const loaded = await loadApp({ viewport: 1920 });
+    const { app, window, document } = loaded;
+    stubFullscreen(window, document, 1920, loaded.media);
+    stubRoom(window, document, at);
+    await app.boot();
+    await frame(window);
+    const page = viewBoxHeight(document);
+    fire(document.getElementById("chart-fullscreen"), "click");
+    await frame(window);
+    const full = viewBoxHeight(document);
+    fire(document.getElementById("chart-fullscreen"), "click");
+    await frame(window);
+    const left = viewBoxHeight(document);
+    t.diagnostic(`viewBox height: ${page} on the page (room ${at.height - at.top - app.ROOM_CUSHION}), ` +
+      `${full} full screen, ${left} after`);
+    assert.deepEqual({ page, full, left },
+      { page: grow().floor, full: at.height - at.full - app.ROOM_CUSHION, left: grow().floor });
+  });
+
+  // Mutation: drop Math.min(g.ceiling, ...) from canvasHeight, and the canvas
+  // is the whole room.
+  test("the ceiling still caps a canvas the room would make taller", async (t) => {
+    const grow = () => app.CONFIG.overview.sankey.grow;
+    const at = { height: 100000, top: 100, full: 0, width: 1320 };
+    const loaded = await loadApp();
+    const { app, window, document } = loaded;
+    stubRoom(window, document, at);
+    await app.boot();
+    await frame(window);
+    t.diagnostic(`room ${app.roomHeight()}, viewBox ${viewBoxHeight(document)}, ceiling ${grow().ceiling}`);
+    assert.equal(viewBoxHeight(document), grow().ceiling);
+    assert.equal(laidBottom(app), grow().ceiling - 12);
+  });
+});
+
+/**
  * How many screen px one viewBox unit of the chart draws at, as style.css
  * sizes the svg from what app.js hands it (drawnBody).
  */

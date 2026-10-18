@@ -14,8 +14,11 @@ describe("hairlines", () => {
     const { app, document } = await bootedApp();
     const chart = document.getElementById("chart");
     const line = document.getElementById("hairline-line");
+    // jsdom lays nothing out, so the chart has no room and is on its hint's
+    // own canvas; screen.test.mjs lays it out to a stubbed room.
+    assert.equal(app.roomHeight(), 0, "the chart has a room, so this measures a canvas the hint alone does not size");
     const check = (state) => {
-      assert.equal(chart.getAttribute("viewBox").split(" ")[3], String(app.canvasHeight(app.CONFIG.overview, app.shown.doc.nodes)),
+      assert.equal(chart.getAttribute("viewBox").split(" ")[3], String(app.canvasHeight(app.CONFIG.overview, app.shown.doc.nodes, 0)),
         `${state}: the chart is not laid out on the canvas its hint grows to`);
       const laid = [...chart.querySelectorAll("path.link")].map((p) => p.__data__);
       const thin = laid.filter((d) => d.width < app.HAIRLINE);
@@ -61,7 +64,8 @@ describe("hairlines", () => {
     const links = [...document.querySelectorAll("#chart path.link")];
     const thin = links.filter((p) => p.__data__.width < 1).map((p) => key(p.__data__));
     const height = document.getElementById("chart").getAttribute("viewBox").split(" ")[3];
-    t.diagnostic(`the spine draws ${thin.length} of ${links.length} ribbons under a pixel on a ${height}px canvas`);
+    t.diagnostic(`the spine draws ${thin.length} of ${links.length} ribbons under a pixel on a ${height}px canvas, at room ${app.roomHeight()}`);
+    assert.equal(app.roomHeight(), 0, "the chart has a room, so the floor below is not what sized it");
     assert.ok(thin.length > 0, "the spine draws no ribbon under a pixel, so this proves less than it says");
     assert.deepEqual([...document.querySelectorAll("#chart path.link.hairline")].map((p) => key(p.__data__)), thin);
     assert.deepEqual([...document.querySelectorAll("#chart path.link-hit")].map((p) => key(p.__data__)), thin);

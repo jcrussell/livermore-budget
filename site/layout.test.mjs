@@ -968,7 +968,8 @@ describe("the expansion schedule laid out in slots, at the root, one group open 
         const slots = sankey.slotsOf(drawn.nodes, chart.sankey.tiers);
         const held = [];
         for (const at of slots.values()) held[at] = (held[at] || 0) + 1;
-        const height = sankey.canvasHeight(chart, drawn.nodes);
+        // At no room: the canvas the hint alone sizes, which grow is read off.
+        const height = sankey.canvasHeight(chart, drawn.nodes, 0);
         // A layout d3 refuses is a measurement here, so the slots are still
         // read against their pin rather than lost to the hook.
         let laid = { nodes: [], links: [] };
