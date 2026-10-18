@@ -73,7 +73,7 @@ type departmentSide struct {
 	Reason     string `json:"reason,omitempty"`
 }
 
-// departmentEntry is one department the dropdown offers.
+// departmentEntry is one department the bars and the dropdown offer.
 type departmentEntry struct {
 	ID        string             `json:"id"`
 	Label     string             `json:"label"`
@@ -103,9 +103,10 @@ type departmentPageData struct {
 type departmentDocument struct {
 	Projection string `json:"projection"`
 	Nodes      []struct {
-		ID    string `json:"id"`
-		Label string `json:"label"`
-		Role  string `json:"role"`
+		ID     string `json:"id"`
+		Label  string `json:"label"`
+		Role   string `json:"role"`
+		Parent string `json:"parent"`
 	} `json:"nodes"`
 	Links []struct {
 		Source string           `json:"source"`
@@ -139,14 +140,16 @@ func decodeDepartmentDocument(stem, want string, raw []byte) (departmentDocument
 	return d, nil
 }
 
-// buildDepartmentPage renders the department view: a dropdown of departments,
-// each read out of every year's column on two sides -- department-funding's
-// links into the department, and department-spending's into its divisions.
+// buildDepartmentPage renders the department view: every department as a bar
+// of the fund groups paying it, and a dropdown of departments, each read out
+// of every year's column on two sides -- department-funding's links into the
+// department, and department-spending's into its divisions.
 //
 // It refuses what would make a side less than the department, in any year:
 // a drawn department or division the membership does not file exactly once,
 // a department with nothing on either side, a division of the membership the
-// spending side draws nothing for, and a label the two disagree on.
+// spending side draws nothing for, a paying fund under no fund group, and a
+// label the two disagree on.
 func buildDepartmentPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	ix ColumnIndex, pageTextBase func(string) string,
 ) (departmentPageData, error) {
@@ -341,10 +344,14 @@ var spendingKindOf = map[string]project.LinkKind{
 }
 
 // vetDepartmentColumn holds one year's two documents to the membership: every
-// department funding pays is stated, every division spending draws is filed
+// department funding pays is stated, every fund paying one hangs from a fund
+// group the funding document draws, every division spending draws is filed
 // under a stated department, every stated department is paid, every stated
 // division draws, every label is the one the membership states, and every
 // spending link declares the kind its object end's role names.
+//
+// A fund's group is the one membership site/department.js splits a
+// department's bar by; a fund with none would be drawn in no segment.
 func vetDepartmentColumn(entries []departmentEntry, ofDivision map[string]string,
 	fundingStem string, funding departmentDocument, spendingStem string, spending departmentDocument,
 ) error {
@@ -361,11 +368,20 @@ func vetDepartmentColumn(entries []departmentEntry, ofDivision map[string]string
 		stated[e.ID] = true
 	}
 
+	fundingParent, fundingRole := map[string]string{}, map[string]string{}
+	for _, n := range funding.Nodes {
+		fundingParent[n.ID], fundingRole[n.ID] = n.Parent, n.Role
+	}
 	paid := map[string]bool{}
 	for _, l := range funding.Links {
 		if !stated[l.Target] {
 			return fmt.Errorf("%s pays %s, which the department page states no membership for; "+
 				"its rows would be offered under no department", fundingStem, l.Target)
+		}
+		if g := fundingParent[l.Source]; fundingRole[g] != project.RoleFundGroup {
+			return fmt.Errorf("%s draws %s paying %s, parented to %q, which is not a fund group the "+
+				"document draws; the department's bar would split it into no fund group",
+				fundingStem, l.Source, l.Target, g)
 		}
 		paid[l.Target] = true
 	}

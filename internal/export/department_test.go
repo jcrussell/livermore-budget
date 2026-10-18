@@ -252,6 +252,18 @@ func TestDepartmentPageRefusesASideLessThanTheDepartment(t *testing.T) {
 		{"a spending row whose object end has no role the page draws", func(o *export.Options) {
 			o.Projections["department-spending-2027"] = editSpendingKind(t, o, `"role":"transfer_out"`, `"role":"fund"`)
 		}, `its object end's role "fund" declares ""`},
+		// site/department.js splits a department's bar by its funds' groups.
+		{"a paying fund with no fund group", func(o *export.Options) {
+			o.Projections["department-funding-2027"] = editFunding(t, o, `,"parent":"fund-group/internal-service"`, ``)
+		}, `draws fund/730 paying department/police-department, parented to "", which is not a fund group`},
+		{"a paying fund parented to a group the document does not draw", func(o *export.Options) {
+			o.Projections["department-funding-2027"] = editFunding(t, o, `"parent":"fund-group/internal-service"`,
+				`"parent":"fund-group/enterprise"`)
+		}, `parented to "fund-group/enterprise", which is not a fund group the document draws`},
+		{"a paying fund parented to a node that is not a fund group", func(o *export.Options) {
+			o.Projections["department-funding-2027"] = editFunding(t, o, `"parent":"fund-group/internal-service"`,
+				`"parent":"department/city-council"`)
+		}, `parented to "department/city-council", which is not a fund group the document draws`},
 		{"a page reading no spending schedule", func(o *export.Options) {
 			o.Views[1].Reads = nil
 		}, "the page reads department-spending and nothing else"},
@@ -274,6 +286,17 @@ func editSpendingKind(t *testing.T, o *export.Options, old, new string) []byte {
 	doc := string(o.Projections["department-spending-2027"])
 	if strings.Count(doc, old) != 1 {
 		t.Fatalf("department-spending-2027 carries %q %d times, want once", old, strings.Count(doc, old))
+	}
+	return []byte(strings.Replace(doc, old, new, 1))
+}
+
+// editFunding is the options' department-funding document with old replaced
+// by new exactly once.
+func editFunding(t *testing.T, o *export.Options, old, new string) []byte {
+	t.Helper()
+	doc := string(o.Projections["department-funding-2027"])
+	if strings.Count(doc, old) != 1 {
+		t.Fatalf("department-funding-2027 carries %q %d times, want once", old, strings.Count(doc, old))
 	}
 	return []byte(strings.Replace(doc, old, new, 1))
 }

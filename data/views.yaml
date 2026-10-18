@@ -129,9 +129,10 @@ views:
     reads: [department-spending]
     title: What each Livermore department spends, and who pays for it
     lede: >-
-      Pick one of the city's departments to see what it spends, every
-      fund together, and which funds pay for it, each read from the
-      department's own two-block page in the Budget Book.
+      Every one of the city's departments as a bar of the funds that pay
+      for it. Open one to see what it spends, every fund together, and
+      which funds pay for it, each read from the department's own
+      two-block page in the Budget Book.
   # The capital page renders its document as a table and loads capital.js
   # to filter it, so it is dropped when cip-projects is not built.
   - path: capital.html

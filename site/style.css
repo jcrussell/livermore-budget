@@ -1959,6 +1959,160 @@ noscript p {
   font-weight: 600;
 }
 
+/* The bars wear the glance page's ordinal ramp by their fund group's rank. */
+.department-bars {
+  margin: 8px 0 24px;
+}
+.department-bars h2 {
+  margin-bottom: 4px;
+}
+.department-bars-how,
+.department-bars-sum {
+  max-width: var(--measure);
+  color: var(--ink-2);
+}
+.department-bars-sum {
+  font-size: 13px;
+  margin-top: 12px;
+}
+.department-legend {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.department-legend li,
+.department-groups li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.department-swatch {
+  display: inline-block;
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  background: var(--glance-tail);
+}
+.department-legend li[data-rank="1"] .department-swatch, .department-groups li[data-rank="1"] .department-swatch, .department-seg[data-rank="1"] { background: var(--glance-1); }
+.department-legend li[data-rank="2"] .department-swatch, .department-groups li[data-rank="2"] .department-swatch, .department-seg[data-rank="2"] { background: var(--glance-2); }
+.department-legend li[data-rank="3"] .department-swatch, .department-groups li[data-rank="3"] .department-swatch, .department-seg[data-rank="3"] { background: var(--glance-3); }
+.department-legend li[data-rank="4"] .department-swatch, .department-groups li[data-rank="4"] .department-swatch, .department-seg[data-rank="4"] { background: var(--glance-4); }
+.department-legend li[data-rank="5"] .department-swatch, .department-groups li[data-rank="5"] .department-swatch, .department-seg[data-rank="5"] { background: var(--glance-5); }
+.department-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 2px;
+}
+.department-row {
+  display: grid;
+  grid-template-columns: minmax(0, 15em) minmax(0, 1fr) 8.5em;
+  gap: 4px 12px;
+  align-items: center;
+  padding: 6px 4px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.department-row:hover,
+.department-row:focus-visible,
+.department-bar[data-selected] > .department-row {
+  background: var(--wash);
+  outline: none;
+}
+.department-row:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--focus);
+}
+.department-name {
+  font-weight: 600;
+  min-width: 0;
+}
+.department-row[aria-expanded="true"] .department-name::before {
+  content: "\25be\00a0";
+}
+.department-row[aria-expanded="false"] .department-name::before {
+  content: "\25b8\00a0";
+}
+/* A track as long as its sum against the longest's, of segments grown by their cents. */
+.department-track {
+  display: flex;
+  gap: 1px;
+  height: 18px;
+  min-width: 2px;
+}
+.department-seg {
+  display: block;
+  flex: 0 1 0;
+  min-width: 1px;
+  background: var(--glance-tail);
+}
+.department-seg:first-child {
+  border-radius: 3px 0 0 3px;
+}
+.department-seg:last-child {
+  border-radius: 0 3px 3px 0;
+}
+.department-seg:only-child {
+  border-radius: 3px;
+}
+.department-value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.department-detail {
+  padding: 6px 4px 24px;
+}
+.department-groups {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 6px calc(15em + 12px);
+  display: grid;
+  gap: 2px;
+  max-width: 34em;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.department-to-tables {
+  display: inline-block;
+  margin-left: calc(15em + 12px);
+  font-size: 14px;
+}
+.department-group-name {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.department-group-value,
+.department-group-share {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.department-group-share {
+  min-width: 5.5em;
+  text-align: right;
+}
+.department-view h3 {
+  margin-top: 0;
+}
+@media (max-width: 640px) {
+  .department-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .department-track {
+    grid-column: 1 / -1;
+    order: 3;
+  }
+  .department-groups,
+  .department-to-tables {
+    margin-left: 0;
+  }
+}
+
 /* end department.html */
 
 /* capital.html. Only that page's rules go in this block. */

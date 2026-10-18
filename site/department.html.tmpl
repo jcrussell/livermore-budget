@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{.Title}}</title>
-<meta name="description" content="One City of Livermore department at a time: what it spends under each object heading, every fund together, and which funds pay for it, each figure linked to the Budget Book page it was read from.">
+<meta name="description" content="Every City of Livermore department as a bar, longest first, split by the fund groups that pay for it; open one for what it spends under each object heading, every fund together, and which funds pay for it, each figure linked to the Budget Book page it was read from.">
 <meta name="color-scheme" content="light dark">
 <link rel="stylesheet" href="style.css">
 {{template "theme-stamp"}}
@@ -42,7 +42,26 @@
   </label>
 </form>
 
-<h2 id="department-heading">Choose a department</h2>
+<section class="department-bars" aria-labelledby="bars-heading">
+  <h2 id="bars-heading">Every department</h2>
+  <p class="department-bars-how">
+    Each bar is a department, longest first, on the one scale the longest sets,
+    split by the group of funds that pays for it. Click a department, or press
+    Enter or Space on it, to open its fund groups and to show its two blocks
+    of the Budget Book below the bars, with the page each cell was read from.
+  </p>
+  <ul class="department-legend" id="department-legend" aria-label="Fund groups, largest across every department first"></ul>
+  <ol class="department-list" id="department-list"></ol>
+  <p class="department-bars-sum" id="department-bars-sum">
+    ◇ A bar's figure is our sum of the department's funding rows in the column,
+    not a total the city prints, and each share is ours too: a fund group's part
+    of that sum, rounded to a tenth.
+  </p>
+</section>
+
+<div class="department-view" id="department-view">
+
+<h3 id="department-heading">Choose a department</h3>
 
 {{- /* The two sentences the client chooses between, worded here. Whether a
        department's two blocks tie in a column is Go's declaration, carried
@@ -54,7 +73,7 @@
 <div class="department-sides">
 
 <section class="department-side" aria-labelledby="funding-heading">
-  <h3 id="funding-heading">Who pays for it</h3>
+  <h4 id="funding-heading">Who pays for it</h4>
   <p id="funding-says">
     Read from the department's <strong>Department Funding Sources</strong> block,
     the lower half of its page in the Budget Book (pp.85-125): one row per fund.
@@ -76,7 +95,7 @@
 </section>
 
 <section class="department-side" aria-labelledby="spending-heading">
-  <h3 id="spending-heading">What it spends, every fund together</h3>
+  <h4 id="spending-heading">What it spends, every fund together</h4>
   <p id="spending-says">
     Read from the department's <strong>Expenditures by Category</strong> block, the
     upper half of the same page: what each of its divisions spends under each object
@@ -95,7 +114,7 @@
       <tbody></tbody>
     </table>
   </div>
-  <h4>By division, as printed</h4>
+  <h5>By division, as printed</h5>
   <div class="table-scroll">
     <table class="department-table" id="division-table">
       <thead><tr><th scope="col">Division</th><th scope="col">Object heading</th><th scope="col" class="num">Amount</th><th scope="col">Page</th></tr></thead>
@@ -103,6 +122,8 @@
     </table>
   </div>
 </section>
+
+</div>
 
 </div>
 
@@ -139,6 +160,11 @@
     which holds both blocks.
   </p>
 </footer>
+
+<template id="department-bar"><li class="department-bar"><div class="department-row" role="button" tabindex="0" aria-expanded="false"><span class="department-name"></span><span class="department-track"></span><span class="department-value"></span></div><div class="department-detail" hidden><ul class="department-groups"></ul><a class="department-to-tables" href="#department-heading">Its two blocks, cell by cell, below the bars</a></div></li></template>
+<template id="department-seg"><span class="department-seg"></span></template>
+<template id="department-key"><li><span class="department-swatch" aria-hidden="true"></span><span class="department-key-name"></span></li></template>
+<template id="department-group"><li><span class="department-swatch" aria-hidden="true"></span><span class="department-group-name"></span><span class="department-group-value"></span><span class="department-group-share"></span></li></template>
 
 <!-- department.js runs nothing on import, so boot() is called here. -->
 <script type="module">import { boot } from "./department.js"; boot();</script>

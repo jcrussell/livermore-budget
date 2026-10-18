@@ -2,14 +2,20 @@
 /**
  * fisc — the client module department.html loads. Importing it does nothing;
  * the template calls boot(). It reads the page's department config, fetches
- * the column the year control names, and fits one department's two blocks of
- * pp.85-125 to tables: the funds that pay it, and what it spends under each
- * object heading over every division the config files under it.
+ * the column the year control names, and draws every department as a bar of
+ * its funding rows, split by the fund group each row's fund hangs from, and
+ * the chosen department's two blocks of pp.85-125 as tables under the bars:
+ * the funds that pay it, and what it spends under each object heading over
+ * every division the config files under it.
  *
  * Its arithmetic is sums of cited cents, unions of cited ids, and one row's
- * share of its side's sum. Whether a department's two sides tie is the
- * config's declaration, printed and never computed here.
+ * share of its side's sum. A fund's group is the funding schedule's parent
+ * edge, which Go vets; the groups are ranked and folded by glance.js's rule.
+ * Whether a department's two sides tie is the config's declaration, printed
+ * and never computed here.
  */
+
+import { NAMED, rank } from "./glance.js";
 
 /** @typedef {{doc_id: string, pages: number[]}} Locator */
 /** @typedef {{id: string, label: string, cents: number, factIds: string[], locators: Locator[]}} Row */
@@ -45,8 +51,9 @@ export function hashOf(st) {
 
 /**
  * A hash read back into a view over the config: the year and department it
- * names, or the opening ones where it names none, with `refused` saying what
- * it named that the config does not offer.
+ * names, or the newest year and no department where it names none, with
+ * `refused` saying what it named that the config does not offer. No
+ * department opens the column's longest bar, which only its column can say.
  * @param {string} hash
  * @param {any} config
  */
@@ -66,7 +73,7 @@ export function parseHash(hash, config) {
   }
   const years = config.years.map((/** @type {any} */ y) => y.path);
   const departments = config.departments.map((/** @type {any} */ d) => d.id);
-  const out = { year: years[years.length - 1], department: departments[0], refused: "" };
+  const out = { year: years[years.length - 1], department: "", refused: "" };
   const y = fields.get("y");
   if (y !== undefined) {
     if (years.includes(y + ".json")) out.year = y + ".json";
@@ -75,7 +82,7 @@ export function parseHash(hash, config) {
   const d = fields.get("d");
   if (d !== undefined) {
     if (departments.includes(d)) out.department = d;
-    else out.refused = (out.refused ? out.refused + " " : "") + `No department is called ${d}, so this shows the first.`;
+    else out.refused = (out.refused ? out.refused + " " : "") + `No department is called ${d}, so this shows the longest.`;
   }
   return out;
 }
@@ -190,6 +197,85 @@ export function departmentFigures(column, config, departmentId) {
     funding: { rows: fundRows, sum: sumOf(fundRows) },
     spending: { rows: objectRows, sum: sumOf(objectRows), cells },
   };
+}
+
+/**
+ * @typedef {{id: string, label: string, cents: number, members: string[], rank: number}} Group
+ *   One entry of the legend: a fund group, or the tail folding several, with
+ *   its sum over every department; rank is 1..NAMED for a hue, 0 for none.
+ * @typedef {{key: number, label: string, members: string[], rank: number, cents: number, factIds: string[]}} Segment
+ *   One department's part paid by one legend entry; key is the entry's index.
+ * @typedef {{id: string, label: string, cents: number, factIds: string[], segments: Segment[]}} Bar
+ */
+
+/**
+ * Every department of one column as a bar: the funding schedule's links into
+ * it, summed per fund group and the groups ranked by their sum over every
+ * department, largest first, past NAMED folded into one tail as the glance
+ * page folds. A fund the schedule hangs from no fund group it draws, and a
+ * cell that is not a positive integer of cents, is refused rather than drawn
+ * in no segment.
+ * @param {any} column
+ * @param {any} config
+ * @returns {{groups: Group[], bars: Bar[]}}
+ */
+export function departmentBars(column, config) {
+  const funding = column.schedules[config.funding];
+  if (!funding) throw new Error(`the column carries no ${config.funding} schedule`);
+  const nodes = column.nodes;
+  const drawn = new Map(funding.nodes.map((/** @type {any} */ n) => [nodes[n.node].id, n.node]));
+  /** @type {Map<number, number>} */
+  const groupOf = new Map();
+  for (const n of funding.nodes) {
+    const g = n.parent === undefined ? undefined : drawn.get(n.parent);
+    if (g !== undefined && nodes[g].role === "fund_group") groupOf.set(n.node, g);
+  }
+  /** @type {Map<number, {id: string, label: string, cents: number, members: string[]}>} */
+  const sums = new Map();
+  for (const l of funding.links) {
+    const g = groupOf.get(l.from);
+    if (g === undefined) {
+      throw new Error(`${config.funding} draws ${nodes[l.from].id} under no fund group it draws`);
+    }
+    if (!Number.isSafeInteger(l.value_cents) || l.value_cents <= 0) {
+      throw new Error(`${config.funding} draws ${nodes[l.from].id} -> ${nodes[l.to].id} as ${l.value_cents} cents`);
+    }
+    const s = sums.get(g);
+    if (s) s.cents += l.value_cents;
+    else sums.set(g, { id: String(nodes[g].id), label: String(nodes[g].label), cents: l.value_cents, members: [String(nodes[g].label)] });
+  }
+  const { segments } = rank([...sums.values()]);
+  /** @type {Group[]} */
+  const groups = segments.map((s, i) => ({ ...s, rank: s.id && i < NAMED ? i + 1 : 0 }));
+  const named = new Map(groups.map((g, i) => [g.id, i]));
+  const tail = groups.findIndex((g) => !g.id);
+  /** @param {number} g */
+  const keyOf = (g) => named.get(String(nodes[g].id)) ?? tail;
+
+  /** @type {Bar[]} */
+  const bars = config.departments.map((/** @type {any} */ d) => {
+    /** @type {Map<number, Segment>} */
+    const by = new Map();
+    for (const l of funding.links) {
+      if (nodes[l.to].id !== d.id) continue;
+      const key = keyOf(/** @type {number} */ (groupOf.get(l.from)));
+      let s = by.get(key);
+      if (!s) {
+        const g = groups[key];
+        s = { key, label: g.label, members: [], rank: g.rank, cents: 0, factIds: [] };
+        by.set(key, s);
+      }
+      const member = String(nodes[/** @type {number} */ (groupOf.get(l.from))].label);
+      if (!s.members.includes(member)) s.members.push(member);
+      s.cents += l.value_cents;
+      for (const id of l.fact_ids) if (!s.factIds.includes(id)) s.factIds.push(id);
+    }
+    const segs = [...by.values()].sort((a, b) => a.key - b.key);
+    const sum = sumOf(segs);
+    return { id: String(d.id), label: String(d.label), cents: sum.cents, factIds: sum.factIds, segments: segs };
+  });
+  bars.sort((/** @type {Bar} */ a, /** @type {Bar} */ b) => b.cents - a.cents || a.label.localeCompare(b.label));
+  return { groups, bars };
 }
 
 /**
@@ -392,6 +478,122 @@ export function render(doc, config, column, st) {
 }
 
 /**
+ * Clones one of the page's templates.
+ * @param {Document} doc
+ * @param {string} id
+ * @returns {HTMLElement}
+ */
+function clone(doc, id) {
+  const tmpl = doc.getElementById(id);
+  const el = tmpl && "content" in tmpl ? /** @type {HTMLTemplateElement} */ (tmpl).content.firstElementChild : null;
+  if (!el) throw new Error(`the page carries no <template id="${id}"> to clone`);
+  return /** @type {HTMLElement} */ (el.cloneNode(true));
+}
+
+/**
+ * One part of a cloned template, refused where the template lacks it.
+ * @param {HTMLElement} el
+ * @param {string} sel
+ * @returns {HTMLElement}
+ */
+function part(el, sel) {
+  const p = el.querySelector(sel);
+  if (!p) throw new Error(`a department template has no ${sel}`);
+  return /** @type {HTMLElement} */ (p);
+}
+
+/**
+ * Draws one column's bars and legend into the page, every bar closed, and
+ * returns what it drew. A bar's track is as long against the list as its
+ * sum is against the longest's.
+ * @param {Document} doc
+ * @param {any} config
+ * @param {any} column
+ * @param {string} yearPath
+ */
+export function drawBars(doc, config, column, yearPath) {
+  const drawn = departmentBars(column, config);
+  const year = config.years.find((/** @type {any} */ y) => y.path === yearPath);
+  const heading = doc.getElementById("bars-heading");
+  if (heading) heading.textContent = `Every department, ${year ? year.lede : yearPath}`;
+  const legend = doc.getElementById("department-legend");
+  const list = doc.getElementById("department-list");
+  if (!legend || !list) throw new Error("the page carries no department legend or list to draw into");
+  legend.replaceChildren();
+  for (const g of drawn.groups) {
+    const li = clone(doc, "department-key");
+    li.dataset.rank = String(g.rank);
+    li.dataset.cents = String(g.cents);
+    part(li, ".department-key-name").textContent = g.id ? g.label : `${g.label}: ${g.members.join(", ")}`;
+    li.title = `${g.label}: ${dollars(g.cents)} across every department`;
+    legend.append(li);
+  }
+  list.replaceChildren();
+  const longest = drawn.bars.length ? drawn.bars[0].cents : 0;
+  drawn.bars.forEach((b, i) => {
+    const li = clone(doc, "department-bar");
+    li.dataset.department = b.id;
+    const row = part(li, ".department-row");
+    const detail = part(li, ".department-detail");
+    detail.id = `department-detail-${i}`;
+    row.setAttribute("aria-controls", detail.id);
+    part(li, ".department-name").textContent = b.label;
+    const value = part(li, ".department-value");
+    value.textContent = dollars(b.cents);
+    value.dataset.cents = String(b.cents);
+    value.dataset.factIds = b.factIds.join(" ");
+    const track = part(li, ".department-track");
+    track.style.width = `${(100 * b.cents / longest).toFixed(2)}%`;
+    const groups = part(li, ".department-groups");
+    groups.setAttribute("aria-label", `Who pays for ${b.label}, by fund group`);
+    for (const s of b.segments) {
+      const named = drawn.groups[s.key].id ? s.label : `${s.label}: ${s.members.join(", ")}`;
+      const seg = clone(doc, "department-seg");
+      seg.dataset.rank = String(s.rank);
+      seg.dataset.cents = String(s.cents);
+      seg.dataset.factIds = s.factIds.join(" ");
+      seg.style.flexGrow = String(s.cents);
+      seg.title = `${named}: ${dollars(s.cents)}, ◇ our ${share(s.cents, b.cents)} of ${b.label}`;
+      track.append(seg);
+
+      const g = clone(doc, "department-group");
+      g.dataset.rank = String(s.rank);
+      part(g, ".department-group-name").textContent = named;
+      const v = part(g, ".department-group-value");
+      v.textContent = dollars(s.cents);
+      v.dataset.cents = String(s.cents);
+      v.dataset.factIds = s.factIds.join(" ");
+      const sh = part(g, ".department-group-share");
+      sh.textContent = `◇ ${share(s.cents, b.cents)}`;
+      sh.title = `Our share: ${named}'s part of our sum for ${b.label}`;
+      groups.append(g);
+    }
+    list.append(li);
+  });
+  return drawn;
+}
+
+/**
+ * Opens one department's bar, or closes it where `open` is false, and closes
+ * every other.
+ * @param {Document} doc
+ * @param {string} department
+ * @param {boolean} open
+ */
+export function openBar(doc, department, open) {
+  for (const li of Array.from(doc.querySelectorAll("#department-list > li"))) {
+    const el = /** @type {HTMLElement} */ (li);
+    const mine = el.dataset.department === department;
+    const row = part(el, ".department-row");
+    const detail = part(el, ".department-detail");
+    row.setAttribute("aria-expanded", String(mine && open));
+    detail.hidden = !(mine && open);
+    if (mine) el.dataset.selected = "true";
+    else delete el.dataset.selected;
+  }
+}
+
+/**
  * Says a refusal at the top of the page, or clears it.
  * @param {Document} doc
  * @param {string} text
@@ -451,19 +653,77 @@ export async function boot(win = globalThis.window) {
     return c;
   };
 
+  // The page's one view: the year and the department the hash names, which
+  // the selects and the open bar show. Closing the open bar hides its detail
+  // and keeps the department; any other choice opens what it chooses.
   let shown = 0;
-  /** @param {{year: string, department: string}} st */
+  let current = { year: "", department: "" };
+  let barsOf = "";
+  let longest = "";
+  let open = true;
+  /**
+   * Shows a view, no department being the column's longest bar's, and
+   * resolves to the view shown, or undefined where it was refused or overtaken.
+   * @param {{year: string, department: string}} st
+   */
   const show = async (st) => {
     const ticket = ++shown;
-    if (deptSelect) deptSelect.value = st.department;
+    current = { year: st.year, department: st.department };
+    open = true;
+    if (deptSelect && st.department) deptSelect.value = st.department;
     if (yearSelect) yearSelect.value = st.year;
     try {
       const col = await column(st.year);
-      if (ticket === shown) render(doc, config, col, st);
+      if (ticket !== shown) return undefined;
+      if (barsOf !== st.year) {
+        barsOf = "";
+        const { bars } = drawBars(doc, config, col, st.year);
+        longest = bars.length ? bars[0].id : config.departments[0].id;
+        barsOf = st.year;
+      }
+      const view = { year: st.year, department: st.department || longest };
+      current = view;
+      if (deptSelect) deptSelect.value = view.department;
+      render(doc, config, col, view);
+      openBar(doc, view.department, open);
+      return view;
     } catch (e) {
       if (ticket === shown) say(doc, "This department could not be drawn: " + String(e));
+      return undefined;
     }
   };
+  /** @param {{year: string, department: string}} st */
+  const choose = (st) => {
+    say(doc, "");
+    const hash = hashOf(st);
+    if (win.location.hash !== hash) win.history.pushState(null, "", hash);
+    void show(st);
+  };
+  const list = doc.getElementById("department-list");
+  /** @param {Event} e */
+  const activate = (e) => {
+    const target = /** @type {any} */ (e.target);
+    const row = target && target.closest ? target.closest(".department-row") : null;
+    const li = row && row.parentElement;
+    if (!li || !li.dataset.department || li.parentElement !== list) return;
+    if (li.dataset.department === current.department && barsOf === current.year) {
+      open = !open;
+      openBar(doc, current.department, open);
+      return;
+    }
+    choose({ year: current.year, department: li.dataset.department });
+  };
+  if (list) {
+    list.addEventListener("click", activate);
+    list.addEventListener("keydown", (e) => {
+      const ke = /** @type {KeyboardEvent} */ (e);
+      if (ke.key !== "Enter" && ke.key !== " ") return;
+      const target = /** @type {any} */ (ke.target);
+      if (!target || !target.classList || !target.classList.contains("department-row")) return;
+      ke.preventDefault();
+      activate(ke);
+    });
+  }
   const fromControls = () => ({
     year: yearSelect ? yearSelect.value : config.years[config.years.length - 1].path,
     department: deptSelect ? deptSelect.value : config.departments[0].id,
@@ -471,19 +731,13 @@ export async function boot(win = globalThis.window) {
   const restore = async () => {
     const st = parseHash(win.location.hash, config);
     say(doc, st.refused);
-    await show(st);
-    const hash = hashOf(st);
+    const view = await show(st);
+    const hash = hashOf(view || { year: st.year, department: st.department || config.departments[0].id });
     if (win.location.hash !== hash) win.history.replaceState(null, "", hash);
   };
   for (const el of [deptSelect, yearSelect]) {
     if (!el) continue;
-    el.addEventListener("change", () => {
-      say(doc, "");
-      const st = fromControls();
-      const hash = hashOf(st);
-      if (win.location.hash !== hash) win.history.pushState(null, "", hash);
-      void show(st);
-    });
+    el.addEventListener("change", () => choose(fromControls()));
   }
   win.addEventListener("popstate", () => void restore());
   await restore();

@@ -62,7 +62,7 @@ columns, every printed row in a table beneath with each figure a link to the
 extracted text of the page it was read from. `balances.html` is p167's ten
 years of fund balances, a decade a column. Both ACFR schedules are in the
 section the ACFR heads "(Unaudited)", and each page says so. `department.html`, `capital.html` and `debt.html` are a
-page a subject: what a department spends and which funds pay for it, each
+page a subject: every department as a bar of the fund groups that pay for it, and what each spends and which funds pay for it, each
 capital project under the fund that pays for it, and what the city budgets and
 is scheduled to pay on each debt. `provenance.html` is the record store itself: every fact, its
 page, and the text it was read from. `caveats.html` is every published
