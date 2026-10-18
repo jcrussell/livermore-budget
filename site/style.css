@@ -223,6 +223,11 @@ h3 {
   margin: 0 0 4px;
 }
 
+/* The Flows page's lede follows the chart's card. */
+.card + .lede {
+  margin-top: 16px;
+}
+
 /* Sticky rather than fixed: the page has no other fixed element, so staying in
    flow keeps the banner visible without a height custom property that every
    rule below would have to offset against. The sticky `th` at the flow table
@@ -280,6 +285,26 @@ h3 {
   align-items: flex-start;
   justify-content: space-between;
   padding: 32px 0 8px;
+}
+
+/* The Flows page's head is one row, title and year, so the chart under it
+   starts high enough for its opening height to fit the window (app.js
+   roomHeight). The year control keeps its width, and goes under the title
+   where the two do not fit on one row. */
+.chart-head {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 24px;
+  padding: 16px 0 4px;
+}
+
+.chart-head h1 {
+  font-size: 22px;
+  margin: 0;
+}
+
+.chart-head .head-controls {
+  flex: none;
 }
 
 .subtle {
@@ -974,8 +999,11 @@ svg.sankey .link-hit {
   cursor: pointer;
 }
 
+/* The chart's captions, under its scroller, at the reading measure: the
+   chart's room runs wider than the card. */
 .hairline-line {
-  margin: 0 0 6px;
+  max-width: var(--measure);
+  margin: 6px 0 0;
   font-size: 0.9em;
   color: var(--ink-2);
 }

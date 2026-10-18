@@ -2192,7 +2192,7 @@ function keepInPlace(id, was) {
 }
 
 /**
- * Says beside the chart how many of its ribbons the form draws as hairlines,
+ * Says under the chart how many of its ribbons the form draws as hairlines,
  * wider than their share, and hides the sentence where it draws none.
  * @param {{nodes: LaidNode[], links: LaidLink[]}} graph
  */

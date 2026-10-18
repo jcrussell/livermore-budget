@@ -1622,7 +1622,7 @@ func TestTheLedesProseNamesThePagesScope(t *testing.T) {
 	)
 	if !strings.Contains(page, "Scope "+slug) {
 		t.Fatalf("the footer no longer prints scope %q; if the published scope changed, "+
-			"the lede's prose at flows.html.tmpl:41 has to change with it", slug)
+			"the lede's prose in flows.html.tmpl has to change with it", slug)
 	}
 	if !strings.Contains(page, prose) {
 		t.Errorf("the lede no longer says %q while the footer says scope %q; "+

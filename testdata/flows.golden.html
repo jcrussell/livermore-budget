@@ -34,16 +34,8 @@
   <button type="button" id="theme-toggle" aria-pressed="false" hidden>Dark mode</button>
 </nav>
 <script type="module">import { boot } from "./theme.js"; boot(window);</script>
-
-<header class="page-head">
-  <div>
-    <h1>Where Livermore's money comes from, and where it goes</h1>
-    <p class="lede">
-      <span id="hero"><span class="label">What the city actually spends</span>: <strong class="value">$252,854,896</strong></span>
-      in the <span id="lede-year">FY 2026-27 adopted</span> budget, all funds, gross, every figure traced to
-      the city's published schedule.
-    </p>
-  </div>
+<header class="page-head chart-head">
+  <h1>Where Livermore's money comes from, and where it goes</h1>
   <div class="head-controls">
     <fieldset class="year-toggle" id="year-toggle" disabled>
       <legend>Budget year</legend>
@@ -78,8 +70,6 @@
     <span id="filter-said"></span>
     <button type="button" id="filter-reset">Reset</button>
   </p>
-  <p class="hairline-line" id="splits-line" aria-live="polite" hidden></p>
-  <p class="hairline-line" id="hairline-line" aria-live="polite" hidden></p>
   <div class="chart-body" id="chart-body">
   <div class="rail" id="rail">
     <button type="button" class="rail-toggle" id="rail-toggle" aria-controls="rail-content" aria-expanded="true" hidden>Legend and filters</button>
@@ -122,6 +112,8 @@
       </desc>
     </svg>
     </div>
+    <p class="hairline-line" id="splits-line" aria-live="polite" hidden></p>
+    <p class="hairline-line" id="hairline-line" aria-live="polite" hidden></p>
     <div class="tooltip" id="tooltip" role="status" aria-live="polite" hidden></div>
   </div>
   <aside class="drawer" id="drawer" aria-label="Where a figure comes from">
@@ -144,6 +136,11 @@
     </p>
   </noscript>
 </div>
+<p class="lede">
+  <span id="hero"><span class="label">What the city actually spends</span>: <strong class="value">$252,854,896</strong></span>
+  in the <span id="lede-year">FY 2026-27 adopted</span> budget, all funds, gross, every figure traced to
+  the city's published schedule.
+</p>
 
 <p class="subtle">
   Revenue on the left, fund groups in the middle, spending on the right; transfers between

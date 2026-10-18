@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -268,15 +269,18 @@ func TestTheIndexLeadsWithWhatTheCitySpends(t *testing.T) {
 	}
 }
 
-// TestTheChartComesBeforeAnyApparatus pins the reading order: the headline in
-// the page head, then the chart card, then everything that explains them.
-// Every marker is Fatalf-guarded, because an absent one is -1 and before
-// everything. Mutation: put an <h2> or a <details> back above the card --
-// red.
+// TestTheChartComesBeforeAnyApparatus pins the reading order: the title in
+// the page head, then the chart card, the chart and its captions, then the
+// lede and everything that explains them. Above the chart is only what
+// operates it, so the opening chart fits the window app.js's roomHeight lays
+// it out to: no paragraph but the filter line, which carries its Reset. Every marker is Fatalf-guarded, because an absent one is -1 and
+// before everything. Mutation: put the lede back in the page head -- red;
+// a hint paragraph under the title -- red; put an <h2> or a <details> back
+// above the card -- red.
 func TestTheChartComesBeforeAnyApparatus(t *testing.T) {
 	page := readerVisible(t, readPage(t, indexSite(t)))
-	card := strings.Index(page, `id="chart-card"`)
-	markers := []string{`id="hero"`, `id="chart-card"`, `id="chart"`, "Revenue on the left", `class="apparatus"`}
+	markers := []string{`<h1`, `id="chart-card"`, `id="chart"`,
+		`id="splits-line"`, `id="hairline-line"`, `id="hero"`, "Revenue on the left", `class="apparatus"`}
 	at := make([]int, len(markers))
 	for i, m := range markers {
 		at[i] = strings.Index(page, m)
@@ -289,9 +293,15 @@ func TestTheChartComesBeforeAnyApparatus(t *testing.T) {
 			t.Errorf("%s is at %d, which is not before %s at %d", markers[i-1], at[i-1], markers[i], at[i])
 		}
 	}
+	card, chart := at[1], at[2]
 	for _, tag := range []string{"<h2", "<details", "<section"} {
 		if i := strings.Index(page, tag); i >= 0 && i < card {
 			t.Errorf("%s at %d comes before the chart card at %d", tag, i, card)
+		}
+	}
+	for _, p := range regexp.MustCompile(`<p[ >][^\n]{0,60}`).FindAllString(page[:chart], -1) {
+		if !strings.HasPrefix(p, `<p class="filter-line"`) {
+			t.Errorf("a paragraph comes before the chart: %q", p)
 		}
 	}
 }

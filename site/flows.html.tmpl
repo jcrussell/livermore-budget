@@ -15,18 +15,12 @@
 
 {{template "topbar" .}}
 
-<header class="page-head">
-  <div>
-    <h1>Where Livermore's money comes from, and where it goes</h1>
-    {{- /* "all funds, gross" renders the slug the footer prints as Scope;
-           TestTheLedesProseNamesThePagesScope pins the pair. #hero and
-           #lede-year are repainted per year by paintYearWords. */}}
-    <p class="lede">
-      <span id="hero"><span class="label">{{.Hero.Label}}</span>: <strong class="value">{{.Hero.Value}}</strong></span>
-      in the <span id="lede-year">{{.Lede}}</span> budget, all funds, gross, every figure traced to
-      the city's published schedule.
-    </p>
-  </div>
+{{- /* ABOVE THE CHART ONLY WHAT OPERATES IT: the title, the year control, and
+       in the card the toolbar and the filter line. The lede, the hairline and
+       splits sentences and the description follow the chart, so the opening
+       chart fits the window it is laid out to (app.js roomHeight). */}}
+<header class="page-head chart-head">
+  <h1>Where Livermore's money comes from, and where it goes</h1>
   <div class="head-controls">
     {{- if gt (len .Years) 1}}
     {{- /* Ships disabled; app.js enables it, since with JavaScript off moving
@@ -81,13 +75,6 @@
     <span id="filter-said"></span>
     <button type="button" id="filter-reset">Reset</button>
   </p>
-  {{- /* SHIPPED HIDDEN AND EMPTY: which splits a year switch folds back is
-         the client's, since only it knows what the reader had split. */}}
-  <p class="hairline-line" id="splits-line" aria-live="polite" hidden></p>
-  {{- /* SHIPPED HIDDEN AND EMPTY: which ribbons are under a pixel is the
-         layout's, so app.js says how many are drawn as hairlines, and that a
-         hairline is drawn wider than its share, wherever the chart has one. */}}
-  <p class="hairline-line" id="hairline-line" aria-live="polite" hidden></p>
   {{- /* The rail, the chart and the drawer, in reading order. app.js sets
          data-beside where the viewport has room for the rail beside the
          chart, and data-rail as the reader leaves the rail; without
@@ -147,6 +134,14 @@
       </desc>
     </svg>
     </div>
+    {{- /* THE CHART'S CAPTIONS, UNDER IT, SHIPPED HIDDEN AND EMPTY. Which
+           splits a year switch folds back is the client's, since only it
+           knows what the reader had split. */}}
+    <p class="hairline-line" id="splits-line" aria-live="polite" hidden></p>
+    {{- /* Which ribbons are under a pixel is the layout's, so app.js says
+           how many are drawn as hairlines, and that a hairline is drawn wider
+           than its share, wherever the chart has one. */}}
+    <p class="hairline-line" id="hairline-line" aria-live="polite" hidden></p>
     <div class="tooltip" id="tooltip" role="status" aria-live="polite" hidden></div>
   </div>
   {{- /* THE DRAWER PREVIEWS WHAT IS HOVERED AND HOLDS WHAT IS PINNED: a
@@ -174,6 +169,15 @@
     </p>
   </noscript>
 </div>
+
+{{- /* "all funds, gross" renders the slug the footer prints as Scope;
+       TestTheLedesProseNamesThePagesScope pins the pair. #hero and
+       #lede-year are repainted per year by paintYearWords. */}}
+<p class="lede">
+  <span id="hero"><span class="label">{{.Hero.Label}}</span>: <strong class="value">{{.Hero.Value}}</strong></span>
+  in the <span id="lede-year">{{.Lede}}</span> budget, all funds, gross, every figure traced to
+  the city's published schedule.
+</p>
 
 <p class="subtle">
   {{- if .Description}}
