@@ -196,18 +196,26 @@ describe("the theme control", () => {
     assert.equal(before, "Dark mode / aria-pressed=false");
     assert.equal(after, "Light mode / aria-pressed=true");
   });
-  test("a click on the theme button switches the page and stores the choice", async (t) => {
+  test("a click on the theme button switches the page, stores the choice and repaints the chart", async (t) => {
     const { document, window } = await bootedApp();
     const button = document.getElementById("theme-toggle");
+    // d3 wrote resolved hues onto the ribbons, so a theme that only moved the
+    // stylesheet would leave them in the old one.
+    const hues = () => Array.from(document.querySelectorAll("#chart path.link"), (p) => p.getAttribute("stroke")).join(" ");
     const before = document.documentElement.dataset.theme || "";
+    const painted = hues();
     button.click();
     await settle();
     const after = document.documentElement.dataset.theme || "";
     const stored = window.localStorage.getItem("fisc-theme");
-    t.diagnostic(`data-theme "${before}" -> "${after}", stored "${stored}", button reads "${button.textContent}"`);
+    const repainted = hues();
+    t.diagnostic(`data-theme "${before}" -> "${after}", stored "${stored}", button reads "${button.textContent}"; ` +
+      `first ribbon stroke ${painted.split(" ")[0]} -> ${repainted.split(" ")[0]}`);
     assert.notEqual(after, before);
     assert.equal(stored, after);
     assert.equal(button.getAttribute("aria-pressed"), after === "dark" ? "true" : "false");
+    assert.ok(painted !== "", "the chart drew no ribbon to repaint");
+    assert.ok(repainted !== painted, "the ribbons kept the hues of the theme the page left");
   });
 });
 

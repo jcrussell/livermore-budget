@@ -70,7 +70,7 @@ var exempt = map[string]string{
 // token must have been seen there, from outside this file (the declaration
 // below is itself scanned, so it would satisfy its own staleness test).
 var exemptIDs = map[string]exemptID{
-	"fisc-theme": {file: "site/app.js", what: "the localStorage key holding the reader's light/dark choice; also inlined in every site/*.html.tmpl"},
+	"fisc-theme": {file: "site/theme.js", what: "the localStorage key holding the reader's light/dark choice, and the event a switch dispatches; also read by the head script in site/chrome.html.tmpl"},
 	"fisc-year":  {file: "site/index.html.tmpl", what: "the radio-group name for the fiscal-year control"},
 }
 

@@ -7,29 +7,13 @@
 <meta name="description" content="Every figure this site publishes, as records you can download, indexed by the page of the city's own document it was read from.">
 <meta name="color-scheme" content="light dark">
 <link rel="stylesheet" href="style.css">
-<script>
-  // Stamp the saved theme before first paint, the same way index.html does, so
-  // a reader who chose dark there does not get a white flash here. This page
-  // ships no app.js, so this is the whole of its scripting.
-  try {
-    var t = localStorage.getItem("fisc-theme");
-    if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
-  } catch (e) { /* private mode: fall back to the OS setting */ }
-</script>
+{{template "theme-stamp"}}
 </head>
 <body>
 
 <div class="wip-banner" role="status">⚠️ Work in progress — early preview, coverage is incomplete.</div>
 
-{{- if gt (len .Nav) 1}}
-<nav class="site-nav" aria-label="Views">
-  <ul>
-    {{- range .Nav}}
-    <li>{{if .Current}}<span aria-current="page">{{.Label}}</span>{{else}}<a href="{{.Path}}">{{.Label}}</a>{{end}}</li>
-    {{- end}}
-  </ul>
-</nav>
-{{- end}}
+{{template "topbar" .}}
 
 <header class="page-head">
   <div>

@@ -7,14 +7,7 @@
 <meta name="description" content="{{.Description}}">
 <meta name="color-scheme" content="light dark">
 <link rel="stylesheet" href="style.css">
-<script>
-  // Stamp the saved theme before first paint, the same way index.html does, so
-  // a reader who chose dark there does not get a white flash here.
-  try {
-    var t = localStorage.getItem("fisc-theme");
-    if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
-  } catch (e) { /* private mode: fall back to the OS setting */ }
-</script>
+{{template "theme-stamp"}}
 <script type="application/json" id="sides-config">{{.ConfigJSON}}</script>
 <script src="vendor/d3.min.js"></script>
 <!-- A module is deferred, so it runs once the sections below are parsed;
@@ -25,15 +18,7 @@
 
 <div class="wip-banner" role="status">⚠️ Work in progress — early preview, coverage is incomplete.</div>
 
-{{- if gt (len .Nav) 1}}
-<nav class="site-nav" aria-label="Views">
-  <ul>
-    {{- range .Nav}}
-    <li>{{if .Current}}<span aria-current="page">{{.Label}}</span>{{else}}<a href="{{.Path}}">{{.Label}}</a>{{end}}</li>
-    {{- end}}
-  </ul>
-</nav>
-{{- end}}
+{{template "topbar" .}}
 
 <header class="page-head">
   <div>

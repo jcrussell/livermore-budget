@@ -1672,17 +1672,27 @@ noscript p {
    view's whole body, and it ships no JavaScript, so everything below has to
    work from the markup alone. */
 
+/* The rule is the nav's, not the list's, so it runs under the theme toggle
+   too and is still there on a one-view site, which lists no views. */
 .site-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin: 0 0 14px;
+  border-bottom: 1px solid var(--border);
 }
 .site-nav ul {
   display: flex;
   flex-wrap: wrap;
+  align-self: flex-end;
   gap: 4px;
   list-style: none;
   margin: 0;
   padding: 0;
-  border-bottom: 1px solid var(--border);
+}
+.site-nav #theme-toggle {
+  margin: 4px 0 4px auto;
+  flex: none;
 }
 .site-nav li {
   margin: 0;

@@ -8,8 +8,6 @@
 <meta name="color-scheme" content="light dark">
 <link rel="stylesheet" href="style.css">
 <script>
-  
-  
   try {
     var t = localStorage.getItem("fisc-theme");
     if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
@@ -19,6 +17,7 @@
 <body>
 
 <div class="wip-banner" role="status">⚠️ Work in progress — early preview, coverage is incomplete.</div>
+
 <nav class="site-nav" aria-label="Views">
   <ul>
     <li><span aria-current="page">Budget flows</span></li>
@@ -36,7 +35,9 @@
     <li><a href="caveats.html">Caveats</a></li>
     <li><a href="provenance.html">Sources and data</a></li>
   </ul>
+  <button type="button" id="theme-toggle" aria-pressed="false" hidden>Dark mode</button>
 </nav>
+<script type="module">import { boot } from "./theme.js"; boot(window);</script>
 
 <header class="page-head">
   <div>
@@ -57,7 +58,6 @@
              checked>
       <label for="year-sankey-2027">FY 2026-27</label>
     </fieldset>
-    <button type="button" id="theme-toggle" aria-pressed="false">Dark mode</button>
   </div>
 </header>
 

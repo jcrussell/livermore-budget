@@ -30,6 +30,7 @@ import {
   SCHEMA_VERSION, say, kindLabel, fmt, fmtSigned, el, maybeEl, cssVar, h, link, citations, balancesOf, PARTITION_NOTE, isFundGroup, scheduleOf, isLink, tableRows, leafDraws, drawsAgain, cellsOf,
 } from "./core.js";
 import { SANKEY } from "./sankey.js";
+import { THEME_EVENT } from "./theme.js";
 // Re-exported so the tests reach the shipped modules through the one file
 // they import; this file calls a form only through the renderer it registers.
 export * from "./core.js";
@@ -2160,7 +2161,7 @@ export function paintHairlines(graph) {
 
 /**
  * Colours the chart through its form, and the legend's swatches here. Nothing
- * on a page main() refused for its form: the theme toggle is wired before
+ * on a page main() refused for its form: wireTheme is wired before
  * that refusal and repaints through here.
  */
 export function paint() {
@@ -3518,44 +3519,11 @@ export function wireSearch() {
  * ------------------------------------------------------------------ */
 
 /**
- * Whether the page is dark: the stamped theme wins, then the OS setting.
- * matchMedia is missing in some headless renderers, hence the check.
- * @returns {boolean}
+ * Repaints the chart when the top bar's toggle switches the theme, since d3
+ * wrote resolved hues onto the marks. site/theme.js owns the toggle.
  */
-export function prefersDark() {
-  const stamped = document.documentElement.dataset.theme;
-  if (stamped === "dark") return true;
-  if (stamped === "light") return false;
-  return typeof window.matchMedia === "function" &&
-    window.matchMedia("(prefers-color-scheme: dark)").matches;
-}
-
-/**
- * Brings the theme button's label and aria-pressed back into agreement with the
- * page. File-scope so main()'s OS-theme listener can call it too; without that
- * an OS switch leaves the button announcing the opposite of what it does.
- */
-export function syncTheme() {
-  const button = maybeEl("theme-toggle");
-  if (!button) return;
-  const dark = prefersDark();
-  button.setAttribute("aria-pressed", String(dark));
-  button.textContent = dark ? "Light mode" : "Dark mode";
-}
-
 export function wireTheme() {
-  const button = /** @type {HTMLButtonElement} */ (el("theme-toggle"));
-  const sync = syncTheme;
-  button.addEventListener("click", () => {
-    const dark = !prefersDark();
-    document.documentElement.dataset.theme = dark ? "dark" : "light";
-    try {
-      localStorage.setItem("fisc-theme", dark ? "dark" : "light");
-    } catch (e) { /* private mode: the toggle still works for this visit */ }
-    sync();
-    paint();
-  });
-  sync();
+  document.addEventListener(THEME_EVENT, () => paint());
 }
 
 /* ------------------------------------------------------------------ *
@@ -4641,12 +4609,9 @@ export async function main() {
     }
   });
   if (typeof window.matchMedia === "function") {
-    // d3 wrote resolved hues onto the marks, so an OS switch re-paints; and
-    // prefersDark() has changed underneath the button.
-    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
-      syncTheme();
-      paint();
-    });
+    // d3 wrote resolved hues onto the marks, so an OS switch re-paints;
+    // site/theme.js follows it on the button.
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => paint());
   }
 
   openingYear = checkedYear(years);

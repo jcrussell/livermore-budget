@@ -114,6 +114,7 @@ func TestWriteProducesTheSiteLayout(t *testing.T) {
 		"treemap.js",
 		"ledger.js",
 		"change.js",
+		"theme.js",
 		// One document per published column, not also one per schedule.
 		"fy2026-adopted.json",
 		"index.html",
@@ -892,6 +893,7 @@ func TestWriteReportsAMissingAsset(t *testing.T) {
 	assets := fstest.MapFS{
 		"index.html.tmpl":     {Data: []byte(`<!doctype html><title>{{.Title}}</title>`)},
 		export.SourcesPartial: {Data: []byte(`{{define "sources"}}{{end}}`)},
+		export.ChromePartial:  {Data: []byte(`{{define "theme-stamp"}}{{end}}{{define "topbar"}}{{end}}`)},
 		"style.css":           {Data: []byte(`body{}`)},
 		".nojekyll":           {Data: []byte{}},
 		"vendor/d3.min.js":    {Data: []byte(`/* d3 */`)},

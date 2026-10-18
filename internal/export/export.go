@@ -99,7 +99,7 @@ const DefaultSourceBrowseURL = "https://github.com/jcrussell/livermore-budget/bl
 // page template is not in this list: it is rendered, and vendor/ is walked.
 var verbatimAssets = []string{"app.js", "core.js", "sankey.js",
 	"department.js", "capital.js", "debt.js", "glance.js", "sides.js", "treemap.js", "ledger.js",
-	"change.js", "style.css", ".nojekyll"}
+	"change.js", "theme.js", "style.css", ".nojekyll"}
 
 // View is one HTML page of the site: one document, rendered by one template.
 //

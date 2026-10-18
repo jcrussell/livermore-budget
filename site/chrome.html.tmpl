@@ -1,0 +1,30 @@
+{{- /* The parts every page shares above its own content. renderPage parses
+       this file before the page.
+
+       "theme-stamp" goes in the head. Inline and tiny on purpose: it stamps
+       the saved theme before first paint, which a deferred script cannot do
+       without painting the page in the wrong mode first.
+
+       "topbar" goes at the top of the body, executed against the page's own
+       data, of which it reads .Nav and nothing else. The view list is drawn
+       only when there is more than one view; the theme toggle is on every
+       page. The toggle SHIPS HIDDEN, because with JavaScript off it would
+       switch nothing: site/theme.js shows it as it wires it, booted by the
+       module script beside it. */ -}}
+{{define "theme-stamp"}}<script>
+  try {
+    var t = localStorage.getItem("fisc-theme");
+    if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+  } catch (e) { /* private mode: fall back to the OS setting */ }
+</script>{{end}}
+{{define "topbar"}}<nav class="site-nav" aria-label="Views">
+  {{- if gt (len .Nav) 1}}
+  <ul>
+    {{- range .Nav}}
+    <li>{{if .Current}}<span aria-current="page">{{.Label}}</span>{{else}}<a href="{{.Path}}">{{.Label}}</a>{{end}}</li>
+    {{- end}}
+  </ul>
+  {{- end}}
+  <button type="button" id="theme-toggle" aria-pressed="false" hidden>Dark mode</button>
+</nav>
+<script type="module">import { boot } from "./theme.js"; boot(window);</script>{{end}}

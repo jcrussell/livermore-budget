@@ -296,9 +296,13 @@ type chrome struct {
 // replaces the partial's default rather than being replaced by it.
 const SourcesPartial = "sources.html.tmpl"
 
+// ChromePartial defines the "theme-stamp" head script and the "topbar" nav
+// every page template executes.
+const ChromePartial = "chrome.html.tmpl"
+
 // renderPage executes one view's template against its assembled data.
 func renderPage(assets fs.FS, name string, data any) ([]byte, error) {
-	tmpl, err := template.New(name).ParseFS(assets, SourcesPartial, name)
+	tmpl, err := template.New(name).ParseFS(assets, ChromePartial, SourcesPartial, name)
 	if err != nil {
 		return nil, fmt.Errorf("parse page template %q: %w", name, err)
 	}

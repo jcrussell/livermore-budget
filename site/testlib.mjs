@@ -11,6 +11,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const here = dirname(fileURLToPath(import.meta.url));
 export const repoRoot = join(here, "..");
 const APP = join(here, "app.js");
+const THEME = join(here, "theme.js");
 
 /** The shipped stylesheet, as text, for a test about a rule jsdom cannot evaluate. */
 export function stylesheet() {
@@ -278,6 +279,8 @@ export async function loadApp(o = {}) {
   const fetch = o.fetch || plannedFetch(o.plan, config ? config.exported_by : undefined);
   globalThis.FISC_CONFIG = config;
   globalThis.fetch = fetch;
+  // The page's top bar boots site/theme.js before app.js; jsdom runs neither.
+  (await import(pathToFileURL(THEME).href)).boot(browser.window);
   const app = await import(pathToFileURL(APP).href + "?load=" + (++loads));
   return { app, ...browser, fetch, config };
 }

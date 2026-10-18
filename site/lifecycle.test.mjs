@@ -139,7 +139,8 @@ describe("a click during the opening fetch", () => {
     // test never entered.
     assert.ok(opened, `the opening fetch was never issued (asked for ${JSON.stringify(fetch.asked)})`);
     assert.equal(keydown.length, 1);
-    assert.equal(theme, 1);
+    // theme.js's, which follows the button, and app.js's, which repaints.
+    assert.equal(theme, 2);
     assert.ok(drew, "the clicked year did not draw");
   });
 

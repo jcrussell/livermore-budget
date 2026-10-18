@@ -553,13 +553,17 @@ func TestTheNavIsOnEveryPageAndMarksTheCurrentOne(t *testing.T) {
 	}
 }
 
-// TestASingleViewSiteRendersNoNav: one view is not a set to navigate, and a nav
-// listing one page is furniture. This is also what keeps the pre-views output
-// unchanged for a caller that named no views at all.
-func TestASingleViewSiteRendersNoNav(t *testing.T) {
+// TestASingleViewSiteListsNoViews: one view is not a set to navigate, and a
+// list of one page is furniture. The top bar still carries the theme toggle.
+func TestASingleViewSiteListsNoViews(t *testing.T) {
 	dir, _ := writeGolden(t)
-	if strings.Contains(readPage(t, dir), "site-nav") {
-		t.Error("a one-view site rendered a nav")
+	page := readPage(t, dir)
+	nav := between(t, page, `<nav class="site-nav" aria-label="Views">`, "</nav>")
+	if strings.Contains(nav, "<ul>") || strings.Contains(nav, "aria-current") {
+		t.Errorf("a one-view site listed its views: %s", nav)
+	}
+	if !strings.Contains(nav, `id="theme-toggle"`) {
+		t.Errorf("a one-view site's top bar has no theme toggle: %s", nav)
 	}
 	if _, err := os.Stat(filepath.Join(dir, "trends.html")); err == nil {
 		t.Error("a one-view site wrote a second page")
@@ -1653,6 +1657,7 @@ func TestATemplateWithNoArmIsRefusedRatherThanRenderedAsASpine(t *testing.T) {
 		"index.html.tmpl":     {Data: []byte(`<!doctype html><title>{{.Title}}</title>`)},
 		"trends.html.tmpl":    {Data: []byte(`<!doctype html><title>{{.Title}}</title>`)},
 		export.SourcesPartial: {Data: []byte(`{{define "sources"}}{{end}}`)},
+		export.ChromePartial:  {Data: []byte(`{{define "theme-stamp"}}{{end}}{{define "topbar"}}{{end}}`)},
 		// Reads nothing. That is the point: it is what a page of blanks is.
 		orphan:             {Data: []byte(`<!doctype html><title>unclaimed</title>`)},
 		"app.js":           {Data: []byte(`/* app */`)},
@@ -2823,5 +2828,44 @@ func TestThePageOpensOnTheYearItDeclaresWhileListingThemOldestFirst(t *testing.T
 	}
 	if !strings.Contains(page, "<title>City of Livermore budget flows — FY 2026-27</title>") {
 		t.Error("the document title is not the opening year's")
+	}
+}
+
+// TestEveryPageExecutesTheSharedTopBarAndHoldsNoCopy: the top bar and the
+// head's theme stamp are chrome.html.tmpl's, once. A page template that
+// stops executing either loses the theme toggle or paints in the wrong mode
+// first; one that spells the nav, the toggle or the stamp itself is a copy
+// that drifts from the partial.
+func TestEveryPageExecutesTheSharedTopBarAndHoldsNoCopy(t *testing.T) {
+	entries, err := fs.ReadDir(site.FS(), ".")
+	if err != nil {
+		t.Fatalf("read embedded site: %v", err)
+	}
+	pages := 0
+	for _, e := range entries {
+		name := e.Name()
+		if !strings.HasSuffix(name, ".html.tmpl") || name == export.ChromePartial || name == export.SourcesPartial {
+			continue
+		}
+		pages++
+		b, err := fs.ReadFile(site.FS(), name)
+		if err != nil {
+			t.Fatalf("read %s: %v", name, err)
+		}
+		src := string(b)
+		for _, call := range []string{`{{template "theme-stamp"}}`, `{{template "topbar" .}}`} {
+			if strings.Count(src, call) != 1 {
+				t.Errorf("%s executes %s %d times, want once", name, call, strings.Count(src, call))
+			}
+		}
+		for _, copied := range []string{`class="site-nav"`, `id="theme-toggle"`, `"fisc-theme"`, `./theme.js`} {
+			if strings.Contains(src, copied) {
+				t.Errorf("%s spells %s itself rather than through %s", name, copied, export.ChromePartial)
+			}
+		}
+	}
+	// Anti-vacuity: a walk that matched no page would pass every check above.
+	if pages < 2 {
+		t.Fatalf("walked %d page templates, want every page", pages)
 	}
 }
