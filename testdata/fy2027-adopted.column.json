@@ -6363,6 +6363,21 @@
      "applies_to": []
     },
     {
+     "id": "not-itemized-is-one-printed-line",
+     "summary": "A revenue line marked \"not itemized\" is one the city prints as a single row for its whole category, so there is no finer breakdown to show.",
+     "text": "Budget Book pp.127-140 print some funds' revenue under a category as one row named for the category itself, such as Charges for Services. Where no fund printing that row prints another row of the category, this site labels the line \"\u003ccategory\u003e, not itemized\": the city prints no finer breakdown of it, so the figure is the printed row and not a gap in this site's reading. Where a fund prints the row beside other rows of the category, the line is labelled \"\u003crow\u003e, the line so named\", and its figure is that one row, not the category's total.",
+     "applies_to": [
+      "revenue-line/charges-for-services/charges-for-services",
+      "revenue-line/contributions-outsourced/contributionsoutsrce",
+      "revenue-line/intergovernmental/intergovernmental",
+      "revenue-line/miscellaneous-revenue/miscellaneous-rev",
+      "revenue-line/miscellaneous-revenue/miscellaneous-revenue",
+      "revenue-line/taxes/other/other-taxes",
+      "revenue-line/taxes/property/property-taxes",
+      "revenue-line/use-of-money-and-property/use-of-money-and-prop"
+     ]
+    },
+    {
      "id": "some-fund-group-money-is-not-by-fund",
      "summary": "4 fund groups' money pp.66-67 print that no fund's own page carries, drawn on a node of the group's own. A fund of such a group is drawn with what it takes in and spends, so its in and out differ by its own change in balance.",
      "text": "Budget Book pp.66-67 print each fund group's change in working capital as one figure. Where some of the group's funds draw on their balances and others add to them, pp.186-209 print each fund's own beginning and ending balance and the group's change is the net of the funds' changes, which no single fund carries; it is drawn on a node of the group's own. Each fund of such a group is drawn with what it takes in and spends and not its own change, so its in and out differ by that change: the fund states its two printed balances from pp.186-209 and our subtraction of them. Where pp.66-67 print more for a group than its funds' pages do, the difference is on the same node, with the exception declaring it named in the node's note.",
@@ -33106,6 +33121,21 @@
       "fund-group/internal-service",
       "fund-group/special-revenue",
       "fund/100"
+     ]
+    },
+    {
+     "id": "not-itemized-is-one-printed-line",
+     "summary": "A revenue line marked \"not itemized\" is one the city prints as a single row for its whole category, so there is no finer breakdown to show.",
+     "text": "Budget Book pp.127-140 print some funds' revenue under a category as one row named for the category itself, such as Charges for Services. Where no fund printing that row prints another row of the category, this site labels the line \"\u003ccategory\u003e, not itemized\": the city prints no finer breakdown of it, so the figure is the printed row and not a gap in this site's reading. Where a fund prints the row beside other rows of the category, the line is labelled \"\u003crow\u003e, the line so named\", and its figure is that one row, not the category's total.",
+     "applies_to": [
+      "revenue-line/charges-for-services/charges-for-services",
+      "revenue-line/contributions-outsourced/contributionsoutsrce",
+      "revenue-line/intergovernmental/intergovernmental",
+      "revenue-line/miscellaneous-revenue/miscellaneous-rev",
+      "revenue-line/miscellaneous-revenue/miscellaneous-revenue",
+      "revenue-line/taxes/other/other-taxes",
+      "revenue-line/taxes/property/property-taxes",
+      "revenue-line/use-of-money-and-property/use-of-money-and-prop"
      ]
     }
    ],

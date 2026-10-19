@@ -1078,3 +1078,30 @@ func TestTwoRevenueLinesReadingAlikeAreRefused(t *testing.T) {
 		t.Fatalf("two itemized lines: %v", err)
 	}
 }
+
+// TestNotItemizedCaveatIsAboutEveryLineSoLabelled: the caveat names each
+// revenue line carrying either label and no other node, and is absent from
+// a document with none.
+//
+// Mutation: drop the SoNamed arm and revenue-line/b goes unmarked.
+func TestNotItemizedCaveatIsAboutEveryLineSoLabelled(t *testing.T) {
+	nodes := []Node{
+		{ID: PrefixRevenueLine + "b", Label: "Miscellaneous Revenue" + SoNamed},
+		{ID: PrefixRevenueLine + "a", Label: "Charges for Services" + NotItemized},
+		{ID: PrefixRevenueLine + "c", Label: "Current Year - Secured"},
+		{ID: PrefixRevenue + "d", Label: "A category" + NotItemized},
+	}
+	c, ok := notItemizedCaveat(nodes)
+	if !ok {
+		t.Fatal("no caveat over two relabelled lines")
+	}
+	if diff := cmp.Diff([]string{PrefixRevenueLine + "a", PrefixRevenueLine + "b"}, c.AppliesTo); diff != "" {
+		t.Errorf("applies_to (-want +got):\n%s", diff)
+	}
+	if err := validateCaveats([]Caveat{c}, nodeIDs(nodes)); err != nil {
+		t.Errorf("the caveat does not validate against its own nodes: %v", err)
+	}
+	if _, ok := notItemizedCaveat(nodes[2:3]); ok {
+		t.Error("a document with no relabelled line carries the caveat")
+	}
+}
