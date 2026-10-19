@@ -28,7 +28,7 @@ import (
 // prefix — a silently missing sentinel would only show up as a 404 on the
 // published site.
 //
-//go:embed flows.html.tmpl history.html.tmpl provenance.html.tmpl caveats.html.tmpl department.html.tmpl capital.html.tmpl debt.html.tmpl glance.html.tmpl ledger.html.tmpl change.html.tmpl sources.html.tmpl chrome.html.tmpl app.js core.js sankey.js department.js capital.js debt.js glance.js sides.js ledger.js change.js theme.js style.css
+//go:embed flows.html.tmpl history.html.tmpl provenance.html.tmpl caveats.html.tmpl department.html.tmpl capital.html.tmpl debt.html.tmpl glance.html.tmpl ledger.html.tmpl change.html.tmpl sources.html.tmpl chrome.html.tmpl app.js core.js sankey.js department.js capital.js debt.js glance.js sides.js ledger.js change.js format.js theme.js style.css
 //go:embed all:vendor
 //go:embed .nojekyll
 var assets embed.FS

@@ -7,6 +7,8 @@
  * it so. Importing it runs nothing; the template calls boot().
  */
 
+import { dollars } from "./format.js";
+
 /**
  * @typedef {{ fund: string, column: string, query: string }} Filter
  *   fund is a fund number or "" for every fund, column a column index or ""
@@ -84,17 +86,6 @@ export function sumShown(rows, columns, filter) {
 }
 
 /**
- * Whole cents as dollars, the way the table prints them.
- * @param {number} cents
- */
-export function formatCents(cents) {
-  const abs = Math.abs(cents);
-  const dollars = Math.floor(abs / 100).toLocaleString("en-US");
-  const rest = abs % 100;
-  return (cents < 0 ? "-$" : "$") + dollars + (rest ? "." + String(rest).padStart(2, "0") : "");
-}
-
-/**
  * Applies a filter to the table: hides the rows and columns it excludes,
  * writes the sum of the rows shown into the footer and the count into status.
  * @param {HTMLTableElement} table
@@ -118,7 +109,7 @@ export function apply(table, status, filter) {
   if (foot) {
     for (const td of Array.from(foot.querySelectorAll("td[data-column]"))) {
       const s = sums[Number(td.getAttribute("data-column"))];
-      td.textContent = s === null || s === undefined ? "—" : formatCents(s);
+      td.textContent = s === null || s === undefined ? "—" : dollars(s);
     }
     foot.hidden = shown === 0;
   }

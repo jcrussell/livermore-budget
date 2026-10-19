@@ -29,6 +29,7 @@ import * as core from "./core.js";
 import {
   SCHEMA_VERSION, say, kindLabel, fmt, fmtSigned, el, maybeEl, cssVar, h, link, citations, balancesOf, PARTITION_NOTE, isFundGroup, scheduleOf, isLink, tableRows, leafDraws, drawsAgain, cellsOf,
 } from "./core.js";
+import { hashValue } from "./format.js";
 import { SANKEY } from "./sankey.js";
 import { THEME_EVENT } from "./theme.js";
 // Re-exported so the tests reach the shipped modules through the one file
@@ -4091,16 +4092,6 @@ export function viewState() {
     // ones before it leave (expansionState).
     x: expansions.slice(),
   };
-}
-
-/**
- * One value of the hash, escaped except for the slashes every id holds, so
- * the hash stays readable.
- * @param {string} v
- * @returns {string}
- */
-function hashValue(v) {
-  return encodeURIComponent(v).replace(/%2F/g, "/");
 }
 
 /**

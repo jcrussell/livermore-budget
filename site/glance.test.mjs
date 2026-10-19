@@ -57,7 +57,7 @@ test("glance.js imports with no page config, no d3 and no DOM, and runs nothing"
   assert.equal(typeof globalThis.document, "undefined", "nothing installed a DOM before the import");
   const mod = await import(MODULE);
   assert.deepEqual(Object.keys(mod).sort(),
-    ["NAMED", "TAIL_LABEL", "boot", "dollars", "draw", "groupRows", "perHundred", "rank", "readRows", "share"]);
+    ["NAMED", "TAIL_LABEL", "boot", "draw", "groupRows", "perHundred", "rank", "readRows"]);
 });
 
 test("the page carries two years of three bars, and boot fills every figure", async () => {
@@ -164,9 +164,6 @@ test("the legend's dollars of every $100 sum to 100 within the rounding of the s
     for (const p of pers) assert.match(String(p.toFixed(2)), /^\d+\.\d\d$/);
   }
   assert.equal(mod.perHundred(1, 3), "$33.33");
-  assert.equal(mod.share(1, 3), "33.3%");
-  assert.equal(mod.dollars(25409541200), "$254,095,412");
-  assert.equal(mod.dollars(123456), "$1,234.56");
 });
 
 // A cell the page cannot name is refused, not drawn as part of a bar.

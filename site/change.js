@@ -8,6 +8,8 @@
  * runs nothing; the template calls boot().
  */
 
+import { dollars } from "./format.js";
+
 /** How many categories a figure names before the rest fold into one tail. */
 export const NAMED = 5;
 
@@ -125,16 +127,6 @@ export function headWords(th) {
     .map((n) => n.textContent || "")
     .join(" ").trim().replace(/\s+/g, " ");
   return { label, basis: basis ? (basis.textContent || "").trim() : "" };
-}
-
-/**
- * Whole dollars, signed, cents only where a figure has them.
- * @param {number} cents
- */
-export function dollars(cents) {
-  const whole = cents % 100 === 0;
-  return (cents < 0 ? "-$" : "$") + (Math.abs(cents) / 100).toLocaleString("en-US",
-    { minimumFractionDigits: whole ? 0 : 2, maximumFractionDigits: 2 });
 }
 
 /**

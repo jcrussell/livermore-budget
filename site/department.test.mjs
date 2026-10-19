@@ -53,8 +53,8 @@ function rowsOf(document, id) {
 test("department.js imports with no page config, no d3 and no DOM, and exports only its functions", () => {
   assert.ok(domless, "nothing installed a DOM before the import");
   assert.deepEqual(Object.keys(mod).sort(),
-    ["boot", "departmentBars", "departmentFigures", "dollars", "drawBars", "hashOf", "openBar", "parseHash",
-      "readConfig", "render", "share"]);
+    ["boot", "departmentBars", "departmentFigures", "drawBars", "hashOf", "openBar", "parseHash",
+      "readConfig", "render"]);
 });
 
 // The client's arithmetic is sums: every link of a department's two sides

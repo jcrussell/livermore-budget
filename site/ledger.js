@@ -9,7 +9,8 @@
  */
 
 import * as core from "./core.js";
-import { boot as bootSides, dollars } from "./sides.js";
+import { dollars } from "./format.js";
+import { boot as bootSides } from "./sides.js";
 
 /** How many roots wear a hue of their own before the rest wear the tail's gray. */
 export const RANKED = 5;

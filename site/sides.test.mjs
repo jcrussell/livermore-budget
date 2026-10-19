@@ -18,6 +18,7 @@ delete globalThis.d3;
 const domless = typeof globalThis.document === "undefined";
 const core = await import(pathToFileURL(path.join(HERE, "core.js")).href);
 const sides = await import(pathToFileURL(path.join(HERE, "sides.js")).href);
+const format = await import(pathToFileURL(path.join(HERE, "format.js")).href);
 const forms = {
   ledger: await import(pathToFileURL(path.join(HERE, "ledger.js")).href),
 };
@@ -69,7 +70,7 @@ function refusal(document) {
 
 test("the modules import with no page config, no d3 and no DOM, and run nothing", () => {
   assert.ok(domless, "nothing installed a DOM before the import");
-  assert.deepEqual(Object.keys(sides).sort(), ["KEY_MARK", "boot", "citationsOf", "clone", "closing", "dollars", "fillTable",
+  assert.deepEqual(Object.keys(sides).sort(), ["KEY_MARK", "boot", "citationsOf", "clone", "closing", "fillTable",
     "frontierOf", "hashOf", "hideTip", "opensAs", "outside", "parseHash", "readConfig", "render", "say", "share", "showTip", "sidesAt", "sidesOf", "tileShare"]);
   assert.deepEqual(Object.keys(forms.ledger).sort(), ["LEDGER", "RANKED", "boot", "widthOf"]);
 });
@@ -166,7 +167,7 @@ describe("each form draws every tile once and the table lists them", () => {
           // ledger-list.
           assert.ok(!m.parentElement.closest('[role="img"]'), `${m.dataset.id} is a button inside an image`);
         }
-        assert.ok(section.querySelector(".sides-total").textContent.includes(sides.dollars(tree.cents)));
+        assert.ok(section.querySelector(".sides-total").textContent.includes(format.dollars(tree.cents)));
         expected += marks.length;
       }
       const rows = [...document.querySelectorAll("#sides-table tbody tr")];
@@ -386,7 +387,7 @@ test("hover shows a tile's figure, share and pages, and leaving hides it", async
   const tip = document.getElementById("tooltip");
   assert.equal(tip.hidden, false);
   assert.equal(tip.querySelector(".tip-label").textContent, "Property Taxes");
-  assert.equal(tip.querySelector(".tip-value").textContent, sides.dollars(Number(mark.dataset.cents)));
+  assert.equal(tip.querySelector(".tip-value").textContent, format.dollars(Number(mark.dataset.cents)));
   assert.match(tip.querySelector(".tip-meta").textContent, /^◇ \d+\.\d% of where the money comes from\. Click to open: \d+ lines/);
   // The root's ribbons are the fund-flows leaves folded, so it cites the
   // revenue-by-fund pages, pp.127-140, and not p66.

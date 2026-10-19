@@ -13,6 +13,7 @@
  */
 
 import * as core from "./core.js";
+import { configOf, dollars, hashFields, hashValue } from "./format.js";
 
 /** The hash's fields: the column and the opened nodes, in order. */
 const HASH_FIELDS = ["y", "o"];
@@ -44,9 +45,7 @@ export const KEY_MARK = "~";
  * @param {Document} doc
  */
 export function readConfig(doc) {
-  const el = doc.getElementById("sides-config");
-  if (!el) throw new Error("the page carries no sides config");
-  const config = JSON.parse(el.textContent || "");
+  const config = configOf(doc, "sides-config", "sides");
   const hints = config.overview && config.overview[config.overview.form];
   if (!hints || !Array.isArray(hints.sides) || !hints.sides.length) {
     throw new Error("the config declares no sides for its " + (config.overview ? config.overview.form : "") + " chart");
@@ -68,9 +67,8 @@ export function sidesOf(config) {
  * @param {SidesState} st
  */
 export function hashOf(st) {
-  const esc = (/** @type {string} */ v) => encodeURIComponent(v).replace(/%2F/g, "/");
-  const o = st.opened.map(esc).join(",");
-  return "#y=" + esc(st.year.replace(/\.json$/, "")) + (o ? "&o=" + o : "");
+  const o = st.opened.map(hashValue).join(",");
+  return "#y=" + hashValue(st.year.replace(/\.json$/, "")) + (o ? "&o=" + o : "");
 }
 
 /**
@@ -82,19 +80,7 @@ export function hashOf(st) {
  * @returns {SidesState & {refused: string}}
  */
 export function parseHash(hash, config) {
-  /** @type {Map<string, string>} */
-  const fields = new Map();
-  for (const part of String(hash || "").replace(/^#/, "").split("&")) {
-    const eq = part.indexOf("=");
-    if (eq < 0) continue;
-    const key = part.slice(0, eq);
-    if (!HASH_FIELDS.includes(key)) continue;
-    try {
-      fields.set(key, decodeURIComponent(part.slice(eq + 1)));
-    } catch {
-      fields.set(key, part.slice(eq + 1));
-    }
-  }
+  const fields = hashFields(hash, HASH_FIELDS);
   const years = config.years.map((/** @type {any} */ y) => y.path);
   const out = { year: years[years.length - 1], opened: /** @type {string[]} */ ([]), refused: "" };
   const y = fields.get("y");
@@ -170,16 +156,6 @@ export function outside(doc, opened, id) {
     const at = entry.indexOf(KEY_MARK);
     return !inside.has(at < 0 ? entry : entry.slice(0, at));
   });
-}
-
-/**
- * Whole dollars, signed, cents only where a figure has them.
- * @param {number} cents
- */
-export function dollars(cents) {
-  const whole = cents % 100 === 0;
-  return (cents < 0 ? "-$" : "$") + (Math.abs(cents) / 100).toLocaleString("en-US",
-    { minimumFractionDigits: whole ? 0 : 2, maximumFractionDigits: 2 });
 }
 
 /**

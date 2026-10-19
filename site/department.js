@@ -16,6 +16,7 @@
  */
 
 import { rank } from "./glance.js";
+import { configOf, dollars, hashFields, hashValue, share } from "./format.js";
 
 /** @typedef {{doc_id: string, pages: number[]}} Locator */
 /** @typedef {{id: string, label: string, cents: number, factIds: string[], locators: Locator[]}} Row */
@@ -35,9 +36,7 @@ const HASH_FIELDS = ["y", "d"];
  * @param {Document} doc
  */
 export function readConfig(doc) {
-  const el = doc.getElementById("department-config");
-  if (!el) throw new Error("the page carries no department config");
-  return JSON.parse(el.textContent || "");
+  return configOf(doc, "department-config", "department");
 }
 
 /**
@@ -46,8 +45,7 @@ export function readConfig(doc) {
  * @param {{year: string, department: string}} st
  */
 export function hashOf(st) {
-  const esc = (/** @type {string} */ v) => encodeURIComponent(v).replace(/%2F/g, "/");
-  return "#y=" + esc(st.year.replace(/\.json$/, "")) + (st.department ? "&d=" + esc(st.department) : "");
+  return "#y=" + hashValue(st.year.replace(/\.json$/, "")) + (st.department ? "&d=" + hashValue(st.department) : "");
 }
 
 /**
@@ -59,19 +57,7 @@ export function hashOf(st) {
  * @param {any} config
  */
 export function parseHash(hash, config) {
-  /** @type {Map<string, string>} */
-  const fields = new Map();
-  for (const part of String(hash || "").replace(/^#/, "").split("&")) {
-    const eq = part.indexOf("=");
-    if (eq < 0) continue;
-    const key = part.slice(0, eq);
-    if (!HASH_FIELDS.includes(key)) continue;
-    try {
-      fields.set(key, decodeURIComponent(part.slice(eq + 1)));
-    } catch {
-      fields.set(key, part.slice(eq + 1));
-    }
-  }
+  const fields = hashFields(hash, HASH_FIELDS);
   const years = config.years.map((/** @type {any} */ y) => y.path);
   const departments = config.departments.map((/** @type {any} */ d) => d.id);
   const out = { year: years[years.length - 1], department: "", refused: "" };
@@ -278,25 +264,6 @@ export function departmentBars(column, config) {
   });
   bars.sort((/** @type {Bar} */ a, /** @type {Bar} */ b) => b.cents - a.cents || a.label.localeCompare(b.label));
   return { groups, bars };
-}
-
-/**
- * Whole dollars, as the pages print them; cents only where a figure has them.
- * @param {number} cents
- */
-export function dollars(cents) {
-  const whole = cents % 100 === 0;
-  return (cents < 0 ? "-$" : "$") + (Math.abs(cents) / 100).toLocaleString("en-US",
-    { minimumFractionDigits: whole ? 0 : 2, maximumFractionDigits: 2 });
-}
-
-/**
- * One row's share of its side's sum, as our percentage.
- * @param {number} part
- * @param {number} whole
- */
-export function share(part, whole) {
-  return whole === 0 ? "" : (100 * part / whole).toFixed(1) + "%";
 }
 
 /**

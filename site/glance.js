@@ -8,6 +8,8 @@
  * written by Go. Importing it runs nothing; the template calls boot().
  */
 
+import { dollars, share } from "./format.js";
+
 /** How many groups a bar names before the rest fold into one tail. */
 export const NAMED = 5;
 
@@ -90,31 +92,12 @@ export function rank(groups) {
 }
 
 /**
- * Whole dollars with thousands separators, cents only where a figure has them.
- * @param {number} cents
- */
-export function dollars(cents) {
-  const whole = cents % 100 === 0;
-  return (cents < 0 ? "-$" : "$") + (Math.abs(cents) / 100).toLocaleString("en-US",
-    { minimumFractionDigits: whole ? 0 : 2, maximumFractionDigits: 2 });
-}
-
-/**
  * A part's share of the whole as dollars of every $100, to the cent.
  * @param {number} part
  * @param {number} whole
  */
 export function perHundred(part, whole) {
   return "$" + (100 * part / whole).toFixed(2);
-}
-
-/**
- * A part's share of the whole as a percentage, to a tenth.
- * @param {number} part
- * @param {number} whole
- */
-export function share(part, whole) {
-  return (100 * part / whole).toFixed(1) + "%";
 }
 
 /**

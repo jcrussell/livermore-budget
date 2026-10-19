@@ -47,7 +47,7 @@ test("change.js imports with no page config, no d3 and no DOM, and runs nothing"
   assert.equal(typeof globalThis.document, "undefined", "nothing installed a DOM before the import");
   const mod = await import(MODULE);
   assert.deepEqual(Object.keys(mod).sort(),
-    ["GAP", "HEIGHT", "LEAST", "NAMED", "TAIL_LABEL", "boot", "dollars", "draw", "groupRows", "headWords", "millions", "rank", "readRows", "totals"]);
+    ["GAP", "HEIGHT", "LEAST", "NAMED", "TAIL_LABEL", "boot", "draw", "groupRows", "headWords", "millions", "rank", "readRows", "totals"]);
 });
 
 test("the page carries four figures, three charted, and boot fills each chart", async () => {
@@ -222,5 +222,4 @@ test("readRows refuses a row with no category and a cell that is not integer cen
   assert.equal(rows.length, 9);
   assert.equal(mod.millions(14952609600), "$149.5M");
   assert.equal(mod.millions(-126150980), "-$1.3M");
-  assert.equal(mod.dollars(123456), "$1,234.56");
 });

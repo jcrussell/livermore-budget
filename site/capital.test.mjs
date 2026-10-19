@@ -11,6 +11,7 @@ import { JSDOM } from "jsdom";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const MODULE = pathToFileURL(path.join(HERE, "capital.js")).href;
+const { dollars } = await import(pathToFileURL(path.join(HERE, "format.js")).href);
 const PAGE = readFileSync(path.join(HERE, "..", "testdata", "capital.golden.html"), "utf8");
 
 /** A fresh document over the pinned page, booted. */
@@ -61,7 +62,7 @@ test("capital.js imports with no page config, no d3 and no DOM, and runs nothing
   delete globalThis.d3;
   assert.equal(typeof globalThis.document, "undefined", "nothing installed a DOM before the import");
   const mod = await import(MODULE);
-  assert.deepEqual(Object.keys(mod).sort(), ["apply", "boot", "formatCents", "isShown", "readTable", "sumShown"]);
+  assert.deepEqual(Object.keys(mod).sort(), ["apply", "boot", "isShown", "readTable", "sumShown"]);
 });
 
 test("boot offers the controls and labels the footer as our sum, never as a Total", async () => {
@@ -81,14 +82,14 @@ test("boot offers the controls and labels the footer as our sum, never as a Tota
 // Mutation: make sumShown add every row rather than the shown ones, and the
 // fund-filtered footer no longer equals the visible rows' cents.
 test("the footer is the sum of the rows shown, whatever the fund", async () => {
-  const { mod, doc } = await booted();
+  const { doc } = await booted();
   const funds = [...doc.querySelectorAll("#capital-fund option")].map((o) => o.value);
   for (const fund of funds) {
     set(doc, "capital-fund", fund, "change");
     const want = visibleSums(doc);
     for (const [col, text] of footer(doc)) {
       const cents = want.get(col);
-      assert.equal(text, cents === undefined ? "—" : mod.formatCents(cents),
+      assert.equal(text, cents === undefined ? "—" : dollars(cents),
         `fund ${fund || "every"} column ${col}`);
     }
   }
@@ -143,9 +144,3 @@ test("one year shows only its column, and a projected year still says so", async
   assert.ok(bodyRows(doc).every((tr) => !tr.hidden), "a year filter hid a row");
 });
 
-test("formatCents prints whole dollars as the table does", async () => {
-  const mod = await import(MODULE);
-  assert.equal(mod.formatCents(7076545000), "$70,765,450");
-  assert.equal(mod.formatCents(0), "$0");
-  assert.equal(mod.formatCents(-150), "-$1.50");
-});
