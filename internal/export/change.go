@@ -20,7 +20,6 @@ type changeFigure struct {
 	Chart   bool
 	Columns []columnRef
 	Rows    []changeRow
-	Caveats []caveatRef
 	// Document is the series document the rows are read from, for the
 	// figure's own data link.
 	Document string
@@ -119,7 +118,7 @@ func changeRows(d changeDocument, kind string, pageTextBase func(string) string)
 // category. The view's own document is the ten-year schedule; the budget
 // columns are read from the revenue-trends document, which must be built.
 func buildChangePage(o *Options, v View, nav []navItem, byID map[string]Doc,
-	ix ColumnIndex, pageTextBase func(string) string,
+	ix ColumnIndex, pageTextBase func(string) string, cx *caveatIndex,
 ) (changePageData, error) {
 	if v.Projection != project.ChangesProjection {
 		return changePageData{}, fmt.Errorf("view %q renders the change page over %q; the page's own document is %s",
@@ -130,7 +129,6 @@ func buildChangePage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		return changePageData{}, fmt.Errorf("view %q draws the budget's columns from %s, which was not built",
 			v.Path, project.TrendsProjection)
 	}
-	caveatsPath := caveatsPathOf(o)
 	audited, err := decodeChangeDocument(v.Projection, o.Projections[v.Projection])
 	if err != nil {
 		return changePageData{}, err
@@ -175,18 +173,10 @@ func buildChangePage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		if err != nil {
 			return changePageData{}, fmt.Errorf("view %q, %s: %w", v.Path, s.id, err)
 		}
-		// A document's caveats are printed once, under the first figure
-		// drawn from it: three figures of one document are not three
-		// documents, and a reader met the same four sentences three times.
-		var caveats []caveatRef
-		if _, seen := placed[s.doc.stem]; !seen {
-			caveats = caveatRefs(s.doc.meta.Caveats, s.doc.stem, caveatsPath)
-		}
 		placed[s.doc.stem] += n
 		figures = append(figures, changeFigure{
 			ID: s.id, Heading: s.heading, Lede: s.lede, Chart: s.chart,
 			Columns: s.doc.cols, Rows: rows,
-			Caveats:  caveats,
 			Document: ix.PublishedPath(s.doc.stem),
 		})
 	}
@@ -226,7 +216,7 @@ func buildChangePage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			Projections:  projectionRefs(o, ix),
 			DataPath:     ix.PublishedPath(v.Projection),
 			Scope:        audited.meta.Scope + ", " + budget.meta.Scope,
-			CaveatsPath:  caveatsPath,
+			CaveatsHere:  cx.here(v.Path),
 		},
 		Figures: figures,
 	}, nil

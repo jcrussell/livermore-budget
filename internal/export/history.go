@@ -41,9 +41,8 @@ type historySection struct {
 // itself with [Section.Rows] adds the refusal the key match cannot make: a
 // series its key claims but its rows do not name.
 func buildHistoryPage(o *Options, v View, nav []navItem, byID map[string]Doc,
-	ix ColumnIndex, pageTextBase func(string) string,
+	ix ColumnIndex, pageTextBase func(string) string, cx *caveatIndex,
 ) (historyPageData, error) {
-	caveatsPath := caveatsPathOf(o)
 	raw := o.Projections[v.Projection]
 	doc, err := decodeDocument(v.Projection, raw)
 	if err != nil {
@@ -184,8 +183,7 @@ func buildHistoryPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			Projections:  refs,
 			DataPath:     ix.PublishedPath(v.Projection),
 			Scope:        meta.Scope,
-			Caveats:      caveatRefs(meta.Caveats, v.Projection, caveatsPath),
-			CaveatsPath:  caveatsPath,
+			CaveatsHere:  cx.here(v.Path),
 		},
 		Columns:  columns,
 		Sections: sections,

@@ -71,7 +71,7 @@ func departmentsApartFromSpine() ([]export.ApartFromSpine, error) {
 			}
 			seen[key] = true
 			out = append(out, export.ApartFromSpine{
-				FiscalYear: c.Year, Basis: c.Basis, ResidualCents: e.Residual, Reason: e.Reason, Bead: e.Bead,
+				FiscalYear: c.Year, Basis: c.Basis, ResidualCents: e.Residual, Reason: e.Reason,
 			})
 		}
 		if len(seen) > 1 {

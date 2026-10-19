@@ -392,16 +392,20 @@ func TestTheCaveatsPageRefusesWhatWouldRender(t *testing.T) {
 			"has no text",
 		},
 		{
-			// TWO DOCUMENTS, ONE ANCHOR. Not two entries in one document --
-			// that is ValidateCaveats' case, one package over, and it cannot
-			// see across documents at all. The anchor embeds the stem, so this
-			// needs two documents whose stems collide, which the map cannot
-			// express; what it CAN express is the same document twice under
-			// one stem, so the collision is forced by giving one document two
-			// entries the decoder will hand over as-is.
-			"two caveats claiming one anchor",
+			"one document carrying an id twice",
 			doc(`[{"id":"a","summary":"s","text":"t","applies_to":[]},` +
 				`{"id":"a","summary":"s2","text":"t2","applies_to":[]}]`),
+			"twice",
+		},
+		{
+			// TWO TEXTS OF ONE ID take "caveat-a--<stem>", which a third
+			// caveat whose id is "a--other" composes alike.
+			"two caveats claiming one anchor",
+			map[string][]byte{
+				export.PrimaryProjection: doc(`[{"id":"a","summary":"s","text":"t","applies_to":[]},` +
+					`{"id":"a--other","summary":"s3","text":"t3","applies_to":[]}]`)[export.PrimaryProjection],
+				"other": doc(`[{"id":"a","summary":"s","text":"another t","applies_to":[]}]`)[export.PrimaryProjection],
+			},
 			"is claimed by both",
 		},
 	} {
@@ -427,19 +431,17 @@ func TestTheCaveatsPageRefusesWhatWouldRender(t *testing.T) {
 	}
 }
 
-// TestTheCaveatsPagePromisesAChartFlagOnlyWhereThereIsAChart pins caveatDocument
-// .Drawn, which had no test at all.
+// TestTheCaveatsPagePromisesAChartFlagOnlyWhereThereIsAChart pins
+// caveatAbout.Flagged.
 //
-// THE PAGE SAYS "the charts flag these marks where they draw them" under each
-// document, and three of the seven the site publishes have no page -- the
-// fund-flows columns unviewedDocuments declares. Flipping Drawn to !drawn[stem]
-// publishes that promise on exactly those three and left `go test ./...`
-// entirely green.
+// THE PAGE SAYS "the chart flags these marks where it draws them" of the
+// documents a caveat is about nodes of, and only a Sankey page's drawn
+// schedule is chipped. table.html names revenue-trends and ships no app.js,
+// and "unviewed" carries the spine's very caveats while no view renders it,
+// so its line must not inherit the spine's promise through the dedup.
 //
-// "A VIEW NAMES THIS STEM" IS ALSO THE WRONG TEST, and this pins the right one.
-// table.html names revenue-trends as its projection and ships no app.js: its
-// figures are a server-rendered table, so a caveat on that document can be
-// listed and can never be chipped on a mark.
+// Mutation: set Flagged true for every file and the unviewed document's
+// line promises a flag.
 func TestTheCaveatsPagePromisesAChartFlagOnlyWhereThereIsAChart(t *testing.T) {
 	dir := t.TempDir()
 	_, err := writeSite(export.Options{
@@ -467,28 +469,35 @@ func TestTheCaveatsPagePromisesAChartFlagOnlyWhereThereIsAChart(t *testing.T) {
 	}
 	page := readFile(t, dir, "caveats.html")
 
-	const promise = "the charts flag these marks"
-	section := func(stem string) string {
-		t.Helper()
-		i := strings.Index(page, "<h2>"+stem)
-		if i < 0 {
-			t.Fatalf("caveats.html carries no section for %q", stem)
+	const promise = "the chart flags these marks"
+	// Each "About ... in <files>" line, keyed by the stems it names.
+	lines := map[string][]string{}
+	for _, chunk := range strings.Split(page, `<p class="subtle">`)[1:] {
+		line, _, _ := strings.Cut(chunk, "</p>")
+		if !strings.Contains(line, "About") {
+			continue
 		}
-		rest := page[i+1:]
-		if j := strings.Index(rest, "<section"); j >= 0 {
-			return rest[:j]
+		for _, stem := range []string{export.PrimaryProjection, "revenue-trends", "unviewed"} {
+			if strings.Contains(line, "<code>"+stem+"</code>)") {
+				lines[stem] = append(lines[stem], line)
+			}
 		}
-		return rest
 	}
-	if !strings.Contains(section(export.PrimaryProjection), promise) {
-		t.Errorf("the spine's section does not promise a chart flag, and index.html draws it")
+	if len(lines[export.PrimaryProjection]) == 0 || len(lines["unviewed"]) == 0 {
+		t.Fatalf("caveats.html names nodes of the spine on %d lines and of the unviewed copy on %d; "+
+			"both carry the golden's caveats, so this asserts nothing", len(lines[export.PrimaryProjection]), len(lines["unviewed"]))
 	}
-	if strings.Contains(section("revenue-trends"), promise) {
-		t.Error("the revenue-trends section promises a chart flag; table.html renders that " +
-			"document as a table and ships no app.js, so nothing on it can be flagged")
+	for _, l := range lines[export.PrimaryProjection] {
+		if !strings.Contains(l, promise) {
+			t.Errorf("the spine's line does not promise a chart flag, and index.html draws it: %s", l)
+		}
 	}
-	if strings.Contains(section("unviewed"), promise) {
-		t.Error("a document no view renders promises a chart flag; there is no chart")
+	for _, stem := range []string{"revenue-trends", "unviewed"} {
+		for _, l := range lines[stem] {
+			if strings.Contains(l, promise) {
+				t.Errorf("%s's line promises a chart flag and no chart chips its caveats: %s", stem, l)
+			}
+		}
 	}
 }
 
@@ -2544,8 +2553,8 @@ func detailsDepth(page string, i int) int {
 // TestTheTablePagesFoldTheirApparatusAndNotTheirWarnings holds balances.html
 // and provenance.html to fisc-yj4w.16's line: each page's
 // apparatus ships in a CLOSED disclosure whose heading stays in the <summary>
-// and whose content is inside it, the caveats sit below the table they
-// qualify, and the text a reader needs before the first mark -- the Shape
+// and whose content is inside it, the caveats line sits below the table it
+// qualifies, and the text a reader needs before the first mark -- the Shape
 // paragraph, the locator rule, the downloads -- is inside no <details> at all.
 func TestTheTablePagesFoldTheirApparatusAndNotTheirWarnings(t *testing.T) {
 	var hdoc map[string]any
@@ -2578,9 +2587,6 @@ func TestTheTablePagesFoldTheirApparatusAndNotTheirWarnings(t *testing.T) {
 		below string
 		open  []string
 	}{
-		{"balances.html", history, "caveats-view", "What this table does not say",
-			"a caveat the balances carry", "</table>",
-			[]string{"<strong>Shape</strong> column"}},
 		{"provenance.html", provenance, "pages-view", "By page",
 			"property taxes", "",
 			[]string{"<strong>locator</strong>", "<h2>Download</h2>", "Every figure as CSV"}},
@@ -2617,6 +2623,18 @@ func TestTheTablePagesFoldTheirApparatusAndNotTheirWarnings(t *testing.T) {
 					tc.page, want)
 			}
 		}
+	}
+	// With no caveats page, balances.html's line lists the summary itself.
+	for _, want := range []string{"a caveat the balances carry", "<strong>Shape</strong> column"} {
+		if n := strings.Count(history, want); n != 1 {
+			t.Errorf("balances.html prints %q %d times, want once", want, n)
+		}
+		if i := strings.Index(history, want); i >= 0 && detailsDepth(history, i) != 0 {
+			t.Errorf("balances.html folds %q behind a <details>", want)
+		}
+	}
+	if strings.Index(history, "a caveat the balances carry") < strings.Index(history, "</table>") {
+		t.Error("balances.html states its caveats above the table they qualify")
 	}
 }
 

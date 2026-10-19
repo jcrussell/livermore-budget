@@ -658,12 +658,18 @@ describe("the expansion's drawing", () => {
       const panel = document.getElementById("detail").textContent;
       const caveat = app.caveatsFor(laid.id)[0].id;
       const href = app.caveatHref(caveat);
-      const wantHref = `caveats.html#caveat-${stem}--${caveat}`;
+      // The caveats page states each caveat once: under its id, or under its
+      // id and the first document carrying its text where one id carries
+      // several.
+      const wantHrefs = [`caveats.html#caveat-${caveat}`, `caveats.html#caveat-${caveat}--${stem}`];
+      const read = [...document.querySelectorAll("#detail a")].find((a) => a.textContent === "Read it in full");
+      const drawn = read ? read.getAttribute("href") : "";
       t.diagnostic(`${laid.id}: tooltip mentions ${tip.includes("caveat") ? "a caveat" : "NO caveat"}; ` +
-        `panel ${panel.includes("Read it in full") ? "links to the full text" : "does NOT link"}; href "${href}"`);
+        `panel ${panel.includes("Read it in full") ? "links to the full text" : "does NOT link"}; href "${href}", drawer "${drawn}"`);
       assert.ok(tip.includes("caveat"), tip);
       assert.ok(panel.includes("Read it in full"), panel);
-      assert.equal(href, wantHref);
+      assert.ok(wantHrefs.includes(href), href);
+      assert.equal(drawn, href);
     });
   }
 

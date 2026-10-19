@@ -271,9 +271,8 @@ func drawnDocument(v View, year, builtBy string, projections map[string][]byte, 
 }
 
 func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
-	ix ColumnIndex, pageTextBase func(string) string,
+	ix ColumnIndex, pageTextBase func(string) string, cx *caveatIndex,
 ) (pageData, error) {
-	caveatsPath := caveatsPathOf(o)
 	doc, meta, err := decodeSankey(v.Projection, o.Projections[v.Projection])
 	if err != nil {
 		return pageData{}, err
@@ -317,7 +316,10 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		cited = append(cited, m.Sources...)
 		hero := heroFor(m)
 		counts := countsRef{Facts: m.Counts.Facts, Nodes: m.Counts.Nodes, Links: m.Counts.Links}
-		caveats := caveatRefs(m.Caveats, stem, caveatsPath)
+		caveats, refErr := cx.refs(m.Caveats, stem)
+		if refErr != nil {
+			return pageData{}, refErr
+		}
 		if v.Draws != "" {
 			chart, chartErr := drawnDocument(v, stem, meta.GeneratedBy, o.Projections, ix)
 			if chartErr != nil {
@@ -328,7 +330,11 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			// come first.
 			cited = append(cited, chart.doc.Metadata.Sources...)
 			counts = chart.doc.Metadata.Counts
-			caveats = append(caveats, caveatRefs(chart.doc.Metadata.Caveats, chart.stem, caveatsPath)...)
+			drawnRefs, drawnErr := cx.refs(chart.doc.Metadata.Caveats, chart.stem)
+			if drawnErr != nil {
+				return pageData{}, drawnErr
+			}
+			caveats = append(caveats, drawnRefs...)
 		}
 		years = append(years, yearView{
 			Year:       m.FiscalYear,
@@ -385,8 +391,7 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			Projections:  projectionRefs(o, ix),
 			DataPath:     open.Path,
 			Scope:        meta.Scope(),
-			Caveats:      open.Caveats,
-			CaveatsPath:  caveatsPath,
+			CaveatsHere:  cx.here(v.Path),
 		},
 		Lede:         open.Lede,
 		Basis:        open.Basis,

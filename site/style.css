@@ -1311,16 +1311,10 @@ svg.sankey .node {
 /* A summary is a link to its own paragraph on caveats.html. The whole row is
    the target rather than a word in it, because the row IS the sentence.
 
-   THE REST OF THE STYLING IS THE DEFAULT ON PURPOSE. The first version of this
-   rule set `text-decoration: none` over the same --ink-2 the <li> already uses,
-   making a caveat summary pixel-identical to plain text -- so a reader had no
-   way to learn that the paragraph had moved rather than been deleted, which is
-   the truncation the link exists to prevent. The fix was to stop overriding:
-   `a { color: inherit }` at the top of this file and the UA's underline already
-   do the right thing, so a `color: inherit` here would be a duplicate of that
-   rule pretending to be a decision. Only the hover state is stated.
-
-   SCOPED TO .caveats li, the caveat lists the schedule pages fold. */
+   THE REST OF THE STYLING IS THE DEFAULT ON PURPOSE: an undecorated summary
+   over the <li>'s own --ink-2 reads as plain text, and a reader could not tell
+   the paragraph had moved rather than been deleted. Only the hover state is
+   stated. */
 .caveats li a:hover,
 .caveats li a:focus {
   color: var(--ink-1);
@@ -1400,15 +1394,23 @@ details > summary {
   padding: 6px 0;
 }
 
+/* A page's caveats in one line, linking to its section of caveats.html. */
+.caveats-line {
+  margin: 12px 0;
+  font-size: 14px;
+}
+
 /* ---------- the caveats page ---------- */
 
-/* One document's section. The rule above each is what separates a schedule's
-   caveats from the next schedule's without a box around either. */
+/* One page's list, and the caveats in full. The rule above each is what
+   separates one from the next without a box around either. */
+.caveat-page,
 .caveat-doc {
   margin-top: 32px;
   border-top: 1px solid var(--grid);
 }
 
+.caveat-page > h2,
 .caveat-doc > h2 {
   font-size: 18px;
   margin-bottom: 4px;
@@ -1478,7 +1480,7 @@ details > summary {
 .caveats li,
 .derived-list li,
 .downloads li,
-.caveat-doc > p,
+.caveat-page > p,
 .detail p,
 .apparatus > p,
 .apparatus > ul,
@@ -2125,12 +2127,6 @@ noscript p {
 /* end department.html */
 
 /* capital.html. Only that page's rules go in this block. */
-.capital-notes ul {
-  padding-left: 1.2em;
-}
-.capital-notes li {
-  margin-bottom: 0.5em;
-}
 .capital-filters {
   display: flex;
   flex-wrap: wrap;

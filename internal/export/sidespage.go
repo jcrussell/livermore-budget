@@ -69,7 +69,7 @@ func encodeSidesConfig(cfg sidesConfig) ([]byte, error) {
 // and the config the client folds by. The chart's figures are the
 // drawn schedule's; the footer and the year control are the spine's.
 func buildSidesPage(o *Options, v View, nav []navItem, byID map[string]Doc,
-	ix ColumnIndex, pageTextBase func(string) string,
+	ix ColumnIndex, pageTextBase func(string) string, cx *caveatIndex,
 ) (sidesPageData, error) {
 	hints := v.Overview.sides()
 	if hints == nil {
@@ -82,11 +82,9 @@ func buildSidesPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	if err != nil {
 		return sidesPageData{}, err
 	}
-	caveatsPath := caveatsPathOf(o)
 	var (
-		years   []sidesYear
-		cited   []sourceMeta
-		caveats []caveatRef
+		years []sidesYear
+		cited []sourceMeta
 	)
 	for _, stem := range v.yearStems() {
 		m := meta
@@ -113,9 +111,6 @@ func buildSidesPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			Basis: m.Basis,
 			Lede:  ledeOf(m.FiscalYearLabel, m.Basis),
 		})
-		// The footer lists the opening year's caveats, which is the last.
-		caveats = append(caveatRefs(m.Caveats, stem, caveatsPath),
-			caveatRefs(chart.doc.Metadata.Caveats, chart.stem, caveatsPath)...)
 	}
 	if len(years) == 0 {
 		return sidesPageData{}, fmt.Errorf("view %q opens no year", v.Path)
@@ -157,8 +152,7 @@ func buildSidesPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			Projections:  projectionRefs(o, ix),
 			DataPath:     open.Path,
 			Scope:        meta.Scope(),
-			Caveats:      caveats,
-			CaveatsPath:  caveatsPath,
+			CaveatsHere:  cx.here(v.Path),
 		},
 		Description: description,
 		Years:       years,

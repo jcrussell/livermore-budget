@@ -152,7 +152,7 @@ func decodeDepartmentDocument(stem, want string, raw []byte) (departmentDocument
 // spending side draws nothing for, a paying fund under no fund group, and a
 // label the two disagree on.
 func buildDepartmentPage(o *Options, v View, nav []navItem, byID map[string]Doc,
-	ix ColumnIndex, pageTextBase func(string) string,
+	ix ColumnIndex, pageTextBase func(string) string, cx *caveatIndex,
 ) (departmentPageData, error) {
 	if !slices.Equal(v.Reads, []string{project.DepartmentSpendingProjection}) {
 		return departmentPageData{}, fmt.Errorf("view %q renders the department page and reads %v "+
@@ -177,11 +177,9 @@ func buildDepartmentPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		held[key] = h
 	}
 
-	caveatsPath := caveatsPathOf(o)
 	var (
 		years    []departmentYear
 		cited    []sourceMeta
-		caveats  []caveatRef
 		builtBy  string
 		scope    string
 		consumed = map[string]bool{}
@@ -234,9 +232,6 @@ func buildDepartmentPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		})
 		cited = append(cited, fm.Sources...)
 		cited = append(cited, sm.Sources...)
-		// The footer lists the opening year's caveats, which is the last.
-		caveats = append(caveatRefs(fm.Caveats, stem, caveatsPath),
-			caveatRefs(sm.Caveats, spendStem, caveatsPath)...)
 		scope = strings.Join(append(slices.Clone(fm.Scopes), sm.Scopes...), ", ")
 	}
 	if len(years) == 0 {
@@ -281,8 +276,7 @@ func buildDepartmentPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			Projections:  projectionRefs(o, ix),
 			DataPath:     open.Path,
 			Scope:        scope,
-			Caveats:      caveats,
-			CaveatsPath:  caveatsPath,
+			CaveatsHere:  cx.here(v.Path),
 		},
 		Years:       years,
 		Departments: entries,

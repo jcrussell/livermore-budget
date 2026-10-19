@@ -158,10 +158,12 @@ func TestGlancePageRendersEveryCellAndTheCitedWhole(t *testing.T) {
 		if !strings.Contains(body, `data-ties="true"`) || strings.Contains(body, "glance-apart") {
 			t.Errorf("%s bar says its rows do not tie, and no residual is declared", id)
 		}
-		if id == "departments" && !strings.Contains(body, "Departments, not divisions.") {
-			t.Error("the departments bar does not carry its schedule's caveat")
-		}
 		t.Logf("%s: %d rows summing to %d", id, len(got), sum)
+	}
+	// The schedule a bar reads beside the spine states its caveats on the
+	// page's one line, once whatever the years.
+	if got := strings.Count(html, "Departments, not divisions."); got != 1 {
+		t.Errorf("the page states department-funding's caveat %d times, want once", got)
 	}
 	if !strings.Contains(html, `href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=119"`) {
 		t.Error("a department row does not link the PDF page it was read from")
@@ -215,14 +217,14 @@ func TestGlancePageRefusesRowsThatDoNotSumToTheCitedWhole(t *testing.T) {
 func TestGlancePagePrintsADeclaredResidualInsteadOfATie(t *testing.T) {
 	dir := t.TempDir()
 	apart := []export.ApartFromSpine{{FiscalYear: 2026, Basis: "adopted", ResidualCents: 25000000,
-		Reason: "p0067 prints a figure the funds' own rows do not reach", Bead: "fisc-av0w"}}
+		Reason: "p0067 prints a figure the funds' own rows do not reach"}}
 	if _, err := writeSite(glanceOptions(t, dir, glanceFunding(25000000), apart)); err != nil {
 		t.Fatalf("Write: %v", err)
 	}
 	bars := barsOf(t, readFile(t, dir, "glance.html"))
 	body := bars["departments"]
 	for _, want := range []string{`data-ties="false"`, "sum to <strong>$250,000</strong> less than that figure",
-		"p0067 prints a figure the funds&#39; own rows do not reach.", "(fisc-av0w)", `data-whole-cents>$254,095,412<`} {
+		"p0067 prints a figure the funds&#39; own rows do not reach.", `data-whole-cents>$254,095,412<`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the departments bar does not say %q", want)
 		}
@@ -236,7 +238,7 @@ func TestGlancePagePrintsADeclaredResidualInsteadOfATie(t *testing.T) {
 	// A residual is signed: rows above the whole say "more", with the
 	// magnitude, never "-$250,000 less".
 	above := []export.ApartFromSpine{{FiscalYear: 2026, Basis: "adopted", ResidualCents: -25000000,
-		Reason: "a reason", Bead: "fisc-av0w"}}
+		Reason: "a reason"}}
 	dir = t.TempDir()
 	if _, err := writeSite(glanceOptions(t, dir, glanceFunding(-25000000), above)); err != nil {
 		t.Fatalf("Write with rows above the whole: %v", err)

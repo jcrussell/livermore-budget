@@ -155,6 +155,11 @@ func buildSite(o *Options, ix ColumnIndex, pageTextBase func(docID string) strin
 		nav = append(nav, navItem{Label: label, Path: v.Path})
 	}
 
+	cx, err := buildCaveatIndex(o, ix, nav)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	byID := make(map[string]Doc, len(o.Docs))
 	for _, d := range o.Docs {
 		byID[d.ID] = d
@@ -209,25 +214,25 @@ func buildSite(o *Options, ix ColumnIndex, pageTextBase func(docID string) strin
 		// template handed data it does not read renders blanks in silence.
 		switch v.Template {
 		case HistoryTemplate:
-			data, err = buildHistoryPage(o, v, here, byID, ix, pageTextBase)
+			data, err = buildHistoryPage(o, v, here, byID, ix, pageTextBase, cx)
 		case SankeyTemplate:
-			data, err = buildSankeyPage(o, v, here, byID, ix, pageTextBase)
+			data, err = buildSankeyPage(o, v, here, byID, ix, pageTextBase, cx)
 		case ProvenanceTemplate:
 			data, err = buildProvenancePage(o, v, here, byID, ix, pageTextBase)
 		case CaveatsTemplate:
-			data, err = buildCaveatsPage(o, v, here, byID, ix, pageTextBase)
+			data, err = buildCaveatsPage(o, v, here, cx, ix)
 		case DepartmentTemplate:
-			data, err = buildDepartmentPage(o, v, here, byID, ix, pageTextBase)
+			data, err = buildDepartmentPage(o, v, here, byID, ix, pageTextBase, cx)
 		case CapitalTemplate:
-			data, err = buildCapitalPage(o, v, here, byID, ix, pageTextBase)
+			data, err = buildCapitalPage(o, v, here, byID, ix, pageTextBase, cx)
 		case DebtTemplate:
-			data, err = buildDebtPage(o, v, here, byID, ix, pageTextBase)
+			data, err = buildDebtPage(o, v, here, byID, ix, pageTextBase, cx)
 		case GlanceTemplate:
-			data, err = buildGlancePage(o, v, here, byID, ix, pageTextBase)
+			data, err = buildGlancePage(o, v, here, byID, ix, pageTextBase, cx)
 		case LedgerTemplate:
-			data, err = buildSidesPage(o, v, here, byID, ix, pageTextBase)
+			data, err = buildSidesPage(o, v, here, byID, ix, pageTextBase, cx)
 		case ChangeTemplate:
-			data, err = buildChangePage(o, v, here, byID, ix, pageTextBase)
+			data, err = buildChangePage(o, v, here, byID, ix, pageTextBase, cx)
 		default:
 			return nil, nil, hint.With(
 				fmt.Errorf("view %q renders template %q, which this package has no builder for",
@@ -275,11 +280,9 @@ type chrome struct {
 	Projections  []projectionRef
 	DataPath     string
 	Scope        string
-	Caveats      []caveatRef
-	// CaveatsPath is the caveats page, or "" when the site has none. Separate
-	// from each ref's Href because the templates use it for a "read them all"
-	// link that belongs to no single caveat.
-	CaveatsPath string
+	// CaveatsHere is the page's one caveats line, which the "caveats-line"
+	// template renders.
+	CaveatsHere caveatsHere
 }
 
 // SourcesPartial defines the "sources" footer the page templates execute.

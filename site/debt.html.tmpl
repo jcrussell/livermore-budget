@@ -73,12 +73,6 @@
 </div>
 
 <h2 id="requirements">Debt service requirements through 2055</h2>
-<p class="subtle">
-  What the city's debt agreements schedule it to pay, by year ending June 30 and by fund type.
-  These are <strong>projected</strong>, not adopted: no council appropriates them. From 2031
-  each row is a <strong>five-year band</strong>, one figure for five years, and is never a
-  single year's payment.
-</p>
 <div class="table-scroll">
 <table class="series-table debt-table">
   <caption>Debt service requirements, principal and interest, by fund type</caption>
@@ -118,20 +112,7 @@
   beneath the column.
 </p>
 
-{{- if .Caveats}}
-<details class="apparatus" id="caveats-view">
-  <summary>
-    <h2>What these tables do not say</h2>
-    <span class="apparatus-hint">{{len .Caveats}} caveat{{if ne (len .Caveats) 1}}s{{end}}
-      the document ships with these figures</span>
-  </summary>
-  <ul class="caveats">
-    {{- range .Caveats}}
-    <li>{{if .Href}}<a href="{{.Href}}">{{.Summary}}</a>{{else}}{{.Summary}}{{end}}</li>
-    {{- end}}
-  </ul>
-</details>
-{{- end}}
+{{- template "caveats-line" .CaveatsHere}}
 
 </main>
 

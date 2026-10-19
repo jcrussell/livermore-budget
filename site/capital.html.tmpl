@@ -34,17 +34,7 @@
   as a dash.
 </p>
 
-<section class="capital-notes" aria-labelledby="capital-notes-heading">
-  <h2 id="capital-notes-heading">Read these before the table</h2>
-  <ul>
-    {{- range .Notes}}
-    <li><strong>{{.Summary}}</strong> {{.Text}}</li>
-    {{- end}}
-  </ul>
-  {{- if .CaveatsPath}}
-  <p class="subtle">Every page's caveats are collected on <a href="{{.CaveatsPath}}">the caveats page</a>.</p>
-  {{- end}}
-</section>
+{{- template "caveats-line" .CaveatsHere}}
 
 <!-- Hidden until capital.js binds it: with no script the whole table shows,
      and a control that does nothing is not offered. -->

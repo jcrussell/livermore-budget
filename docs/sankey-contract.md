@@ -90,19 +90,18 @@ the other two fields, so a bookmark or a citation survives an edit to a
 sentence. A document repeating an id is refused at build time by
 `project.ValidateCaveats`.
 
-**The fragment is `caveats.html#caveat-<stem>--<id>`, not `#<id>`**, because the
-id alone does not identify a caveat: it identifies a caveat *in a document*, and
-the same id carries different text in different documents (see below). The site
-has one spelling of that composition, `caveatAnchor` in
-`internal/export/caveats.go`, and `buildCaveatsPage` refuses two entries claiming
-one anchor. An anchor collision fails silently — the page renders, the anchor
-resolves, and the reader is shown a sentence about something else — which is why
-it is refused rather than left to a reader to notice.
-
-Note what that arm can and cannot reach: stems are map keys, so **two different
-documents cannot collide on one**. It catches a repeated id inside a document,
-and a stem/id pair whose `--` composes ambiguously (`a--b` + `c` against `a` +
-`b--c`), because the separator is not an escape. Neither shape occurs today.
+**caveats.html states each distinct caveat once**, distinct being the triple
+(`id`, `summary`, `text`): the same id carries different text in different
+documents (see below), and one text carries different summaries. The fragment is
+`caveats.html#caveat-<id>` when the id has one such triple across the site, and
+`caveats.html#caveat-<id>--<stem>` for each of several, `<stem>` being the first
+document, in sorted order, carrying that triple. `buildCaveatIndex` in
+`internal/export/caveats.go` composes both and refuses two fragments the page
+would emit alike, a repeated id inside a document among them. An anchor
+collision fails silently — the page renders, the anchor resolves, and the reader
+is shown a sentence about something else — which is why it is refused rather
+than left to a reader to notice. Each page links its own section,
+`caveats.html#caveats-on-<view>`, in one line.
 
 `applies_to` is **empty for a caveat about the schedule rather than about a
 mark**, and empty means document-wide rather than not-yet-filled-in. Where it is
@@ -115,8 +114,8 @@ from having nothing to mark.
 picked by whether the legs balance and whether the residual meets the printed
 to-CIP column; which sentence a document gets is a fact about that document's
 own arithmetic, not three different caveats. A page listing more than one
-document's caveats must therefore key on `(id, document)` and must not assume
-one text per id.
+document's caveats must therefore key on the whole caveat, or on
+`(id, document)`, and must not assume one text per id.
 
 Determinism: nodes sorted by `(tier, id)`, links by `(source, target, kind)`,
 `fact_ids` ascending, `locators` by `doc_id` with `pages` ascending inside each

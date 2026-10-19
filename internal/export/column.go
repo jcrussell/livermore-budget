@@ -468,12 +468,14 @@ func encodeColumn(doc ColumnDoc) ([]byte, error) {
 }
 
 // ReachedStems is every document a reader of this view can reach, once each:
-// its projection, its year stems, and the expansion schedule of each year's
-// column with every document of that column the expansion is stitched from
-// ([project.ExpansionStitches]), whose links are the expansion's leaves. It
+// its projection, its year stems, and, for a Sankey or ledger chart, the
+// expansion schedule of each year's column with every document of that column
+// the expansion is stitched from ([project.ExpansionStitches]), whose links
+// are the expansion's leaves. It
 // refuses a projection outside the year stems, as validate does, since it
-// runs on views validate has not seen. The caveats page's drawn set and
-// `fisc export`'s reachability gate both read it, so the two cannot disagree.
+// runs on views validate has not seen. The caveats a page states
+// (caveatsOfView) and `fisc export`'s reachability gate both read it, so the
+// two cannot disagree.
 //
 // A [ChangeTemplate] view also reaches [project.TrendsProjection], whose
 // columns buildChangePage renders beside the view's own document.
@@ -487,7 +489,7 @@ func (v View) ReachedStems(ix ColumnIndex) ([]string, error) {
 	}
 	for _, year := range v.yearStems() {
 		reached := []string{year}
-		if column, folded := ix.Column(year); folded && v.Overview.Form == SankeyForm {
+		if column, folded := ix.Column(year); folded && (v.Overview.Form == SankeyForm || v.Overview.Form == LedgerForm) {
 			if stem, ok := ix.Stem(column, project.ExpansionProjection); ok {
 				reached = append(reached, stem)
 				for _, p := range project.ExpansionStitches() {

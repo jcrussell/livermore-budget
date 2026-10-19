@@ -135,20 +135,7 @@
   is ours too: one row as a percentage of its side's sum.
 </p>
 
-{{- if .Caveats}}
-<details class="apparatus" id="caveats-view">
-  <summary>
-    <h2>What these figures do not say</h2>
-    <span class="apparatus-hint">{{len .Caveats}} caveat{{if ne (len .Caveats) 1}}s{{end}}
-      the two documents ship with these figures</span>
-  </summary>
-  <ul class="caveats">
-    {{- range .Caveats}}
-    <li>{{if .Href}}<a href="{{.Href}}">{{.Summary}}</a>{{else}}{{.Summary}}{{end}}</li>
-    {{- end}}
-  </ul>
-</details>
-{{- end}}
+{{- template "caveats-line" .CaveatsHere}}
 
 </main>
 

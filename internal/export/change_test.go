@@ -73,12 +73,12 @@ func changeOptions(t *testing.T, dir string, extra bool) export.Options {
 
 var changeCell = regexp.MustCompile(`<tr data-category="([^"]+)">\s*<th scope="row">([^<]+)</th>[\s\S]*?</tr>`)
 
-// TestChangePagePrintsADocumentsCaveatsOnce holds the page to one list of
-// a document's caveats, under the first figure drawn from it, where three
+// TestChangePagePrintsADocumentsCaveatsOnce holds the page to one statement
+// of a document's caveats, on the page's line below every figure, where three
 // figures are drawn from the audited document.
 //
-// Mutation: give every figure its document's caveats and the audited
-// caveat is printed three times.
+// Mutation: render the "caveats-line" template inside each figure and the
+// audited caveat is printed five times.
 func TestChangePagePrintsADocumentsCaveatsOnce(t *testing.T) {
 	dir := t.TempDir()
 	o := changeOptions(t, dir, false)
@@ -96,9 +96,9 @@ func TestChangePagePrintsADocumentsCaveatsOnce(t *testing.T) {
 	if got := strings.Count(page, "Ten unaudited years."); got != 1 {
 		t.Errorf("the audited document's caveat is printed %d times, want once", got)
 	}
-	first, rest, _ := strings.Cut(page, `data-figure="audited-spending"`)
-	if !strings.Contains(first, "Ten unaudited years.") || strings.Contains(rest, "Ten unaudited years.") {
-		t.Errorf("the caveat is not under the first audited figure")
+	figures := strings.LastIndex(page, `<section class="change-figure"`)
+	if at := strings.Index(page, "Ten unaudited years."); at < figures {
+		t.Errorf("the caveat is printed at %d, inside the figures that end after %d", at, figures)
 	}
 }
 

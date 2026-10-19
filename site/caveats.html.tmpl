@@ -24,65 +24,71 @@
 
 <main>
 
-<!-- "THE DOCUMENTS THAT HAVE A PAGE" IS NOT ALL OF THEM: three of the seven
-     documents listed below ship as data no page draws and so have no inbound
-     link at all. Their caveats are still owed to anyone who fetches
-     those files, which is why they are here; saying so is cheaper than a
-     reader noticing the asymmetry and wondering what else is unstated. -->
 <p class="lede">
-  {{.Count}} caveat{{if ne .Count 1}}s{{end}} across {{len .Documents}} published document{{if ne (len .Documents) 1}}s{{end}}.
-  Most pages that draw a document link here: the chart flags a caveat on each mark it applies to,
-  and several schedule pages list theirs as one line each; this is each in full.
-  Documents the site publishes as data but does not yet draw are
-  listed too, with no page pointing at them — their caveats are owed to whoever fetches the
-  file, and repeat what a drawn year of the same schedule says.
+  {{len .Entries}} caveat{{if ne (len .Entries) 1}}s{{end}}, each stated once, across {{.Documents}}
+  published document{{if ne .Documents 1}}s{{end}}. Every page that shows figures links here in one
+  line, to its own list below; each list links to the caveats in full further down.
 </p>
 
-<!-- GROUPED BY DOCUMENT, and the reason is not tidiness. One caveat id can
-     carry different text in different documents: the transfer-legs caveat has
-     three sentences, chosen by whether that column's legs balance and whether
-     its residual meets the figure the city prints, and the FY2026-27 spine
-     carries a contested-total caveat FY2025-26 does not. A page keyed on the id
-     alone would have to pick one of those texts and would be wrong about the
-     others, so the anchor is per (document, caveat) and so is this heading. -->
-{{- range $doc := .Documents}}
-<section class="caveat-doc">
-  <h2>{{.Stem}}{{if .Label}} <span class="subtle">— {{.Label}}</span>{{end}}</h2>
+{{- /* A view's section lists the caveats of every document it reaches
+       (caveatsOfView), which is what that view's own line counts. */}}
+{{- range .Views}}
+<section class="caveat-page" id="{{.Anchor}}">
+  <h2>On <a href="{{.Path}}">{{.Label}}</a></h2>
+  <p class="subtle">{{len .Entries}} caveat{{if eq (len .Entries) 1}} applies{{else}}s apply{{end}} to this page.</p>
+  <ul class="caveats">
+    {{- range .Entries}}
+    <li><a href="#{{.Anchor}}">{{.Summary}}</a></li>
+    {{- end}}
+  </ul>
+</section>
+{{- end}}
+
+{{- if .Unviewed}}
+<section class="caveat-page" id="caveats-in-data-no-page-draws">
+  <h2>In data no page draws</h2>
   <p class="subtle">
-    {{len .Entries}} caveat{{if ne (len .Entries) 1}}s{{end}}, shipped inside
-    <a href="{{.DataPath}}">{{.DataPath}}</a> rather than only stated here.
+    The site publishes some documents as data that no page draws yet. Their caveats are owed to
+    whoever fetches the file, and repeat what a drawn year of the same schedule says.
   </p>
+  <ul class="caveats">
+    {{- range .Unviewed}}
+    <li><a href="#{{.Anchor}}">{{.Summary}}</a></li>
+    {{- end}}
+  </ul>
+</section>
+{{- end}}
+
+<section class="caveat-doc" aria-labelledby="caveats-in-full">
+  <h2 id="caveats-in-full">In full</h2>
   {{- range .Entries}}
   <article class="caveat" id="{{.Anchor}}">
     <h3><a href="#{{.Anchor}}" class="anchor-link">{{.Summary}}</a></h3>
     <p>{{.Text}}</p>
-    {{- if .AppliesTo}}
-    {{- /* THE CHARTS DO MARK THESE NOW (fisc-yj4w.8), which an earlier version
-           of this comment said they did not: app.js's caveatsFor resolves each
-           id through the hierarchy, so a caveat about fund/100 chips that node
-           where it is drawn and fund-group/general where it folds.
-
-           CONDITIONAL ON THE DOCUMENT HAVING A PAGE, because three of the four
-           fund-flows columns do not -- unviewedDocuments declares them as data
-           no page draws, and this page's own lede says so twelve lines above.
-           Promising a flag on a chart that does not exist is the same class as
-           the sentence this hunk replaced.
-
-           The wording stays "is about" rather than "marks" either way, because
-           it is true of a reader who never opens a chart -- and because the ids
-           are checked against the document by project.ValidateCaveats, which is
-           what makes the sentence trustworthy whether or not any page draws
-           them. */}}
+    {{- range .About}}
     <p class="subtle">
+      {{- if .AppliesTo}}
       About
-      {{- range $i, $n := .AppliesTo}}{{if $i}},{{end}} <code>{{$n}}</code>{{end}}
-      in this document{{if $doc.Drawn}} — the charts flag these marks where they draw them{{end}}.
+      {{- range $i, $n := .AppliesTo}}{{if $i}},{{end}} <code>{{$n}}</code>{{end}} in
+      {{- else}}
+      Shipped inside
+      {{- end}}
+      {{- range $i, $f := .Files}}{{if $i}},{{end}} <a href="{{$f.DataPath}}">{{$f.DataPath}}</a> (<code>{{$f.Stem}}</code>)
+      {{- end}}
+      {{- if and .AppliesTo .Flagged}} — the chart flags these marks where it draws them{{end}}.
     </p>
     {{- end}}
+    <p class="subtle">
+      {{- if .Pages}}
+      Stated on
+      {{- range $i, $p := .Pages}}{{if $i}},{{end}} <a href="{{$p.Path}}">{{$p.Label}}</a>{{end}}.
+      {{- else}}
+      No page draws a document that carries it.
+      {{- end}}
+    </p>
   </article>
   {{- end}}
 </section>
-{{- end}}
 
 </main>
 

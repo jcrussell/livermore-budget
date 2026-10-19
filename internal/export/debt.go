@@ -121,7 +121,7 @@ type debtFigure struct {
 // cells do not match its table's width, because either would drop a figure
 // from the page in silence.
 func buildDebtPage(o *Options, v View, nav []navItem, byID map[string]Doc,
-	ix ColumnIndex, pageTextBase func(string) string,
+	ix ColumnIndex, pageTextBase func(string) string, cx *caveatIndex,
 ) (debtPageData, error) {
 	raw := o.Projections[v.Projection]
 	if _, err := decodeDocument(v.Projection, raw); err != nil {
@@ -206,7 +206,6 @@ func buildDebtPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		}
 	}
 
-	caveatsPath := caveatsPathOf(o)
 	sources, _ := sourcesFor(d.Metadata.Sources, byID, pageTextBase, o.RecordsBase)
 	title := v.Title
 	if title == "" {
@@ -222,8 +221,7 @@ func buildDebtPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			ExportedBy:   o.GeneratedBy,
 			Projections:  projectionRefs(o, ix),
 			DataPath:     ix.PublishedPath(v.Projection),
-			Caveats:      caveatRefs(d.Metadata.Caveats, v.Projection, caveatsPath),
-			CaveatsPath:  caveatsPath,
+			CaveatsHere:  cx.here(v.Path),
 		},
 		Columns:    columns,
 		HeadSpan:   1 + 2*len(columns),

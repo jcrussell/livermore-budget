@@ -16,11 +16,8 @@ type capitalPageData struct {
 	Columns []columnRef
 	Funds   []capitalFund
 	Rows    []capitalRow
-	// Notes are the document's caveats in full, rendered open above the
-	// table: what they say qualifies every figure in it.
-	Notes []caveatMeta
-	Facts int
-	Count int
+	Facts   int
+	Count   int
 }
 
 // capitalFund is one option of the fund filter.
@@ -63,9 +60,8 @@ type capitalBody struct {
 // the counts must reconcile. A zero renders as the token the page printed, a
 // dash, rather than as "$0", which the city did not print.
 func buildCapitalPage(o *Options, v View, nav []navItem, byID map[string]Doc,
-	ix ColumnIndex, pageTextBase func(string) string,
+	ix ColumnIndex, pageTextBase func(string) string, cx *caveatIndex,
 ) (capitalPageData, error) {
-	caveatsPath := caveatsPathOf(o)
 	raw := o.Projections[v.Projection]
 	doc, err := decodeDocument(v.Projection, raw)
 	if err != nil {
@@ -162,13 +158,11 @@ func buildCapitalPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			Projections:  projectionRefs(o, ix),
 			DataPath:     ix.PublishedPath(v.Projection),
 			Scope:        meta.Scope,
-			Caveats:      caveatRefs(meta.Caveats, v.Projection, caveatsPath),
-			CaveatsPath:  caveatsPath,
+			CaveatsHere:  cx.here(v.Path),
 		},
 		Columns: columns,
 		Funds:   funds,
 		Rows:    rows,
-		Notes:   meta.Caveats,
 		Facts:   meta.Counts.Facts,
 		Count:   meta.Counts.Series,
 	}, nil

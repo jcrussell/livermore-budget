@@ -107,24 +107,7 @@
 </table>
 </div>
 
-{{- /* BELOW THE TABLE AND FOLDED, because the table is this page's figure
-       and these caveats qualify the whole of it rather than a mark the reader
-       meets first; the one that does, the Shape paragraph's, stays open above
-       the table. The <h2> stays in the <summary>, so the outline keeps it. */}}
-{{- if .Caveats}}
-<details class="apparatus" id="caveats-view">
-  <summary>
-    <h2>What this table does not say</h2>
-    <span class="apparatus-hint">{{len .Caveats}} caveat{{if ne (len .Caveats) 1}}s{{end}}
-      the document ships with these figures</span>
-  </summary>
-  <ul class="caveats">
-    {{- range .Caveats}}
-    <li>{{if .Href}}<a href="{{.Href}}">{{.Summary}}</a>{{else}}{{.Summary}}{{end}}</li>
-    {{- end}}
-  </ul>
-</details>
-{{- end}}
+{{- template "caveats-line" .CaveatsHere}}
 
 </main>
 

@@ -65,10 +65,11 @@ section the ACFR heads "(Unaudited)", and each page says so. `department.html`, 
 page a subject: every department as a bar of the fund groups that pay for it, and what each spends and which funds pay for it, each
 capital project under the fund that pays for it, and what the city budgets and
 is scheduled to pay on each debt. `provenance.html` is the record store itself: every fact, its
-page, and the text it was read from. `caveats.html` is every published
-document's caveats in full. `flows.html` links it and flags a caveat in the
-drawer on each mark it applies to, and several schedule pages list each of theirs as one line linking to it, so a reader meets the
-chart before the apparatus.
+page, and the text it was read from. `caveats.html` states every
+published caveat once, in full, with a list per page of the caveats that apply
+to it. Every other page says in one line how many apply and links its list, and
+`flows.html` also flags a caveat in the drawer on each mark it applies to, so a
+reader meets the chart before the apparatus.
 
 One schedule is mapped and checked but **drawn by no chart**: ACFR p.41. Its
 facts appear only in `provenance.html`. The CIP is extracted and entirely

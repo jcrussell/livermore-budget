@@ -346,17 +346,43 @@ func TestEveryCaveatSummaryLinksToAnAnchorThatExists(t *testing.T) {
 		return string(raw)
 	}
 
+	caveatsPage := read("caveats.html")
 	ids := map[string]bool{}
-	for _, m := range regexp.MustCompile(`id="(caveat-[^"]+)"`).FindAllStringSubmatch(read("caveats.html"), -1) {
+	for _, m := range regexp.MustCompile(`id="([^"]+)"`).FindAllStringSubmatch(caveatsPage, -1) {
 		if ids[m[1]] {
 			t.Errorf("caveats.html carries the anchor %q twice; a link to it lands on "+
 				"whichever the browser finds first", m[1])
 		}
 		ids[m[1]] = true
 	}
-	if len(ids) == 0 {
+	if !slices.ContainsFunc(slices.Collect(maps.Keys(ids)), func(id string) bool { return strings.HasPrefix(id, "caveat-") }) {
 		t.Fatal("caveats.html carries no caveat anchors, so this test asserts nothing")
 	}
+
+	// EACH CAVEAT ONCE: no two entries in full state one summary over one text.
+	entry := regexp.MustCompile(`(?s)<article class="caveat" id="[^"]+">\s*<h3><a [^>]*>([^<]*)</a></h3>\s*<p>([^<]*)</p>`)
+	stated := map[string]bool{}
+	for _, m := range entry.FindAllStringSubmatch(caveatsPage, -1) {
+		if stated[m[1]+"\x00"+m[2]] {
+			t.Errorf("caveats.html states %q in full twice", m[1])
+		}
+		stated[m[1]+"\x00"+m[2]] = true
+	}
+	if len(stated) == 0 {
+		t.Fatal("caveats.html states no caveat in full that this test can read")
+	}
+	t.Logf("caveats.html states %d caveats in full", len(stated))
+
+	// A page's section on caveats.html, as the number of caveats it lists.
+	sectionCount := func(anchor string) int {
+		_, rest, ok := strings.Cut(caveatsPage, `id="`+anchor+`"`)
+		if !ok {
+			return -1
+		}
+		body, _, _ := strings.Cut(rest, "</section>")
+		return strings.Count(body, "<li>")
+	}
+	line := regexp.MustCompile(`<p class="caveats-line"><a href="caveats\.html#([^"]+)">(\d+) caveats? appl`)
 
 	// TWO SPELLINGS, AND THE SECOND ONE IS THE LARGER SET. A page carries its
 	// opening year's links as markup, href="caveats.html#...", and every OTHER
@@ -384,6 +410,23 @@ func TestEveryCaveatSummaryLinksToAnAnchorThatExists(t *testing.T) {
 			continue
 		}
 		page := read(e.Name())
+		// ONE LINE PER PAGE, whose count is its own section's.
+		if e.Name() != "caveats.html" {
+			lines := line.FindAllStringSubmatch(page, -1)
+			if len(lines) > 1 {
+				t.Errorf("%s carries %d caveats lines, want one", e.Name(), len(lines))
+			}
+			for _, m := range lines {
+				if got := sectionCount(m[1]); strconv.Itoa(got) != m[2] {
+					t.Errorf("%s says %s caveats apply and its section #%s on caveats.html lists %d",
+						e.Name(), m[2], m[1], got)
+				}
+				t.Logf("%s: %s caveats, #%s", e.Name(), m[2], m[1])
+			}
+			if len(lines) == 0 && strings.Contains(page, `class="caveats"`) {
+				t.Errorf("%s lists caveats in place of its one line", e.Name())
+			}
+		}
 		for i, re := range spellings {
 			for _, m := range re.FindAllStringSubmatch(page, -1) {
 				if i == 0 {
@@ -470,10 +513,10 @@ func TestTheSiteDoesNotSayThePSeventySixScheduleIsUnmapped(t *testing.T) {
 		}
 	}
 
-	// And flows.html, which prints only the summary, points at the page that
+	// And flows.html, which prints only a count, points at the page that
 	// carries the text.
-	if !strings.Contains(pages["flows.html"], `<a href="caveats.html">`) {
-		t.Error("flows.html does not link the caveats page")
+	if !strings.Contains(pages["flows.html"], `<p class="caveats-line"><a href="caveats.html#caveats-on-flows">`) {
+		t.Error("flows.html does not link its section of the caveats page")
 	}
 }
 

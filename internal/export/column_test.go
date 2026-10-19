@@ -163,8 +163,8 @@ func keysOf(m map[string]ColumnDoc) []string {
 	return out
 }
 
-// TestReachedStemsIsTheYearsAndWhatTheirExpansionIsStitchedFrom: a chart
-// view reaches each year the view lists, and in each year's column the
+// TestReachedStemsIsTheYearsAndWhatTheirExpansionIsStitchedFrom: a Sankey or
+// ledger view reaches each year the view lists, and in each year's column the
 // expansion schedule and every document it is stitched from; a view whose
 // column carries no expansion reaches its years alone, the second only
 // through the year control; and a projection outside the year stems is
@@ -206,6 +206,15 @@ func TestReachedStemsIsTheYearsAndWhatTheirExpansionIsStitchedFrom(t *testing.T)
 	}
 	if diff := cmp.Diff([]string{"year", "expansion", "fund-flows", "year-2027"}, got); diff != "" {
 		t.Errorf("ReachedStems (-want +got):\n%s", diff)
+	}
+	// A ledger draws the same expansion, so it reaches what a Sankey does.
+	got, err = View{Path: "ledger.html", Projection: "year", YearStems: years,
+		Overview: Chart{Form: LedgerForm}}.ReachedStems(ix)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if diff := cmp.Diff([]string{"year", "expansion", "fund-flows", "year-2027"}, got); diff != "" {
+		t.Errorf("ReachedStems of a ledger (-want +got):\n%s", diff)
 	}
 	// A view drawing no chart reaches no expansion.
 	got, err = View{Path: "table.html", Projection: "year", YearStems: years}.ReachedStems(ix)

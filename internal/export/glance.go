@@ -20,7 +20,6 @@ type ApartFromSpine struct {
 	Basis         string
 	ResidualCents int64
 	Reason        string
-	Bead          string
 }
 
 // glanceRow is one printed cell behind a bar, as the schedule draws it: the
@@ -45,7 +44,6 @@ type glanceApart struct {
 	Residual  string
 	Direction string
 	Reason    string
-	Bead      string
 }
 
 // glanceBar is one "of every $100" bar: which cells it is drawn from and the
@@ -63,9 +61,8 @@ type glanceBar struct {
 	Rows  []glanceRow
 	// Ties is whether Apart is empty: the rows sum to Whole with no declared
 	// residual.
-	Ties    bool
-	Apart   []glanceApart
-	Caveats []caveatRef
+	Ties  bool
+	Apart []glanceApart
 }
 
 // glanceYear is one published year's bars.
@@ -74,7 +71,6 @@ type glanceYear struct {
 	Revenue figure
 	Spent   figure
 	Bars    []glanceBar
-	Caveats []caveatRef
 }
 
 // glancePageData is the glance template's input.
@@ -200,7 +196,7 @@ func glanceTies(bar glanceBar, whole int64, residuals []ApartFromSpine) error {
 // three bars of printed cells with the cited figure each sums to, and the
 // declaration where one does not.
 func buildGlancePage(o *Options, v View, nav []navItem, byID map[string]Doc,
-	ix ColumnIndex, pageTextBase func(string) string,
+	ix ColumnIndex, pageTextBase func(string) string, cx *caveatIndex,
 ) (glancePageData, error) {
 	if !slices.Equal(v.Reads, []string{project.DepartmentFundingProjection}) {
 		return glancePageData{}, fmt.Errorf("view %q renders the glance page and reads %v "+
@@ -211,7 +207,6 @@ func buildGlancePage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	if err != nil {
 		return glancePageData{}, err
 	}
-	caveatsPath := caveatsPathOf(o)
 	pages := func(locs []sourceMeta) []pageRef {
 		var out []pageRef
 		for _, s := range unionSources(locs) {
@@ -323,7 +318,6 @@ func buildGlancePage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			Label:   ledeOf(m.FiscalYearLabel, m.Basis),
 			Revenue: revenue,
 			Spent:   spent,
-			Caveats: caveatRefs(m.Caveats, stem, caveatsPath),
 		}
 		for _, b := range bars {
 			bar := b.bar
@@ -344,10 +338,7 @@ func buildGlancePage(o *Options, v View, nav []navItem, byID map[string]Doc,
 					direction, magnitude = "more", -magnitude
 				}
 				bar.Apart = append(bar.Apart, glanceApart{
-					Residual: amount.Cents(magnitude).Dollars(), Direction: direction, Reason: a.Reason, Bead: a.Bead})
-			}
-			if bar.ID == "departments" {
-				bar.Caveats = caveatRefs(funding.Metadata.Caveats, reads[0], caveatsPath)
+					Residual: amount.Cents(magnitude).Dollars(), Direction: direction, Reason: a.Reason})
 			}
 			year.Bars = append(year.Bars, bar)
 		}
@@ -369,7 +360,7 @@ func buildGlancePage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			ExportedBy:   o.GeneratedBy,
 			Projections:  projectionRefs(o, ix),
 			Scope:        meta.Scope(),
-			CaveatsPath:  caveatsPath,
+			CaveatsHere:  cx.here(v.Path),
 		},
 		Years: years,
 	}, nil

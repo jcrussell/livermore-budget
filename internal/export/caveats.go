@@ -3,6 +3,9 @@ package export
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
+	"slices"
+	"strings"
 )
 
 // documentCaveats is as much of ANY document as the caveats page needs.
@@ -38,161 +41,369 @@ type caveatRef struct {
 	Href    string `json:"href"`
 }
 
-// caveatRefs composes the page-facing form. base is the caveats view's path, or
-// "" when the site has no such page.
+// caveatsHere is the one line a page states its caveats in: how many, and
+// the caveats page's section for this page. With no caveats page Href is ""
+// and the "caveats-line" template lists Refs' summaries instead, so a site
+// without the page still states them.
 //
-// The anchor is per (caveat, document), not per caveat: one id can carry
-// different text in different documents, so stem is required.
-func caveatRefs(metas []caveatMeta, stem, base string) []caveatRef {
-	out := make([]caveatRef, 0, len(metas))
-	for _, m := range metas {
-		ref := caveatRef{ID: m.ID, Summary: m.Summary}
-		if base != "" {
-			ref.Href = base + "#" + caveatAnchor(stem, m.ID)
-		}
-		out = append(out, ref)
-	}
-	return out
+// Count is len(Refs), and Refs is the caveats page's own section for this
+// view (caveatIndex.views), so the line and the section cannot disagree.
+type caveatsHere struct {
+	Count int
+	Href  string
+	Refs  []caveatRef
 }
 
-// caveatAnchor is the one spelling of the fragment, so the page that emits the
-// id and the pages that link to it cannot disagree about its form.
-func caveatAnchor(stem, id string) string { return "caveat-" + stem + "--" + id }
+// caveatKey is one caveat of one document. An id is unique within a
+// document (caveatIndex refuses a repeat), so the pair names one caveat.
+type caveatKey struct{ stem, id string }
+
+// caveatIndex is every distinct caveat the published documents carry, each
+// once, and every view's share of them.
+//
+// DISTINCT IS (id, summary, text), NOT id: one id carries different text in
+// different columns (transfer-legs-unpaired's sentence turns on whether that
+// column's legs balance), and one text under different summaries
+// (some-fund-group-money-is-not-by-fund counts the groups in its summary).
+// Merging either would publish one column's sentence as another's.
+type caveatIndex struct {
+	// base is the caveats view's path, or "" when the site has none.
+	base    string
+	entries []*caveatEntry
+	byRef   map[caveatKey]*caveatEntry
+	// views is every view's section, in nav order, empty ones included.
+	views []*caveatView
+	// unviewed are the entries some document no view reaches carries.
+	unviewed []*caveatEntry
+}
+
+// caveatEntry is one distinct caveat, rendered whole. Anchor is what every
+// other page's link lands on.
+type caveatEntry struct {
+	ID      string
+	Anchor  string
+	Summary string
+	Text    string
+	// About groups the documents that ship this caveat by what it is about
+	// in each of them, in the order the documents sort.
+	About []caveatAbout
+	// Pages are the views that state it, in nav order.
+	Pages []navItem
+}
+
+// caveatAbout is the documents that ship one caveat about one set of nodes.
+type caveatAbout struct {
+	AppliesTo []string
+	Files     []caveatFile
+	// Flagged is whether a chart flags these marks: every file of the group
+	// is a schedule a Sankey page draws, whose caveats site/app.js chips on
+	// the marks they name. A document only read beside the chart (the spine
+	// a Flows page opens on) is not flagged, and neither is any ledger or
+	// table.
+	Flagged bool
+}
+
+// caveatFile is one published document carrying a caveat.
+type caveatFile struct {
+	Stem     string
+	Label    string
+	DataPath string
+}
+
+// caveatView is one view's section of the caveats page.
+type caveatView struct {
+	Label   string
+	Path    string
+	Anchor  string
+	Entries []*caveatEntry
+}
 
 // caveatsPathOf is the caveats view's path, or "" when the site has none.
 //
 // Derived from the view set, so it cannot drift out of step with it.
 func caveatsPathOf(o *Options) string { return templatePathOf(o, CaveatsTemplate) }
 
-// caveatsPageData is every published document's caveats, in full.
-//
-// GROUPED BY DOCUMENT AND NOT BY CAVEAT, which is forced rather than chosen.
-// One id can carry different text in different documents -- transfer-legs-
-// unpaired has three sentences and the FY2027 spine carries a contested-total
-// entry FY2026 does not -- so a page keyed on id alone would have to pick one
-// text and would be wrong about the others.
-type caveatsPageData struct {
-	chrome
-	Documents []caveatDocument
-	// Count is every caveat on the page, across documents, so the lede can say
-	// how many without the template summing a nested range.
-	Count int
+// caveatSectionPrefix and caveatEntryPrefix are the two fragment spellings
+// the caveats page emits, so a view's section and a caveat's entry cannot
+// claim one id.
+const (
+	caveatSectionPrefix = "caveats-on-"
+	caveatEntryPrefix   = "caveat-"
+)
+
+// slugUnsafe is everything a view path holds that a fragment slug does not.
+var slugUnsafe = regexp.MustCompile(`[^a-z0-9-]+`)
+
+// viewSlug is a view's path as a fragment: "index.html" is "index",
+// "a/b.html" is "a-b".
+func viewSlug(path string) string {
+	s := strings.ToLower(strings.TrimSuffix(path, ".html"))
+	return strings.Trim(slugUnsafe.ReplaceAllString(s, "-"), "-")
 }
 
-// caveatDocument is one published document's section of the caveats page.
-type caveatDocument struct {
-	Stem     string
-	Label    string
-	DataPath string
-	Entries  []caveatEntry
-	// Drawn is whether a view that DRAWS A CHART (templateDrawsAChart)
-	// renders this document, so the page can promise a chart flag only where
-	// there is a chart.
-	//
-	// False for every document no view renders (the fund-flows columns
-	// unviewedDocuments declares) and for every one rendered by a template
-	// with no chart form — revenue-trends and the two ACFR documents, which
-	// change.html and balances.html render with no mark a caveat chips. This
-	// page lists all
-	// of their caveats anyway, because a caveat is owed to whoever fetches the
-	// file. What it must not do is tell that reader the charts flag these
-	// marks.
-	Drawn bool
+// caveatsOfView is the documents whose caveats a view states:
+// [View.ReachedStems] for a view that renders a document, none otherwise.
+// The one place this is decided, so the caveats page's section and the
+// view's own line count the same documents.
+func caveatsOfView(v View, ix ColumnIndex) ([]string, error) {
+	if !templateRendersADocument(v.Template) {
+		return nil, nil
+	}
+	return v.ReachedStems(ix)
 }
 
-// caveatEntry is one caveat, rendered whole. Anchor is what every other page's
-// summary links to.
-type caveatEntry struct {
-	ID        string
-	Anchor    string
-	Summary   string
-	Text      string
-	AppliesTo []string
-}
-
-// buildCaveatsPage lists every published document's caveats, in full, with an
-// anchor per (document, caveat) that every other page's summary links to.
-//
-// It names no projection: it is an index across documents. It refuses an
-// empty page, a caveat with no id, summary or text, and two entries claiming
-// one anchor -- a repeated id in one document, or the "--" separator making
-// two compositions ambiguous. project.ValidateCaveats never sees a document
-// decoded from bytes, which is every document here.
-func buildCaveatsPage(o *Options, v View, nav []navItem, byID map[string]Doc,
-	ix ColumnIndex, pageTextBase func(string) string,
-) (caveatsPageData, error) {
-	caveatsPath := caveatsPathOf(o)
-	// Which documents a chart actually draws: every one a view drawing a
-	// chart reaches.
-	drawn := map[string]bool{}
+// flaggedStems are the documents whose caveats a chart chips on its marks:
+// the schedule each year of a Sankey view draws (site/app.js's caveatsFor
+// reads the drawn schedule's caveats and no other's).
+func flaggedStems(o *Options, ix ColumnIndex) map[string]bool {
+	out := map[string]bool{}
 	for _, v := range o.Views {
-		// A view that draws no chart flags nothing, whatever it renders.
-		if !templateDrawsAChart(v.Template) {
+		if v.Template != SankeyTemplate {
 			continue
 		}
-		stems, err := v.ReachedStems(ix)
-		if err != nil {
-			return caveatsPageData{}, err
-		}
-		for _, stem := range stems {
-			drawn[stem] = true
+		for _, year := range v.yearStems() {
+			if v.Draws == "" {
+				out[year] = true
+				continue
+			}
+			if col, folded := ix.Column(year); folded {
+				if stem, ok := ix.Stem(col, v.Draws); ok {
+					out[stem] = true
+				}
+			}
 		}
 	}
-	anchors := map[string]string{}
-	docs := make([]caveatDocument, 0, len(o.Projections))
-	count := 0
+	return out
+}
+
+// buildCaveatIndex reads every published document's caveats once.
+//
+// It refuses a caveat with no id, summary or text, a document carrying one id
+// twice, two fragments the caveats page would emit alike, and a view's
+// document carrying a caveat the index lacks. project.ValidateCaveats never
+// sees a document decoded from bytes, which is every document here.
+func buildCaveatIndex(o *Options, ix ColumnIndex, nav []navItem) (*caveatIndex, error) {
+	cx := &caveatIndex{base: caveatsPathOf(o), byRef: map[caveatKey]*caveatEntry{}}
+	flagged := flaggedStems(o, ix)
+
+	type variant struct {
+		id, summary, text string
+	}
+	byVariant := map[variant]*caveatEntry{}
+	// firstStem is the first document carrying each entry, for its anchor.
+	firstStem := map[*caveatEntry]string{}
+	variants := map[string][]*caveatEntry{}
+	appliesOf := map[*caveatEntry]map[string][]string{}
+	carriers := map[*caveatEntry][]string{}
 	for _, stem := range sortedKeys(o.Projections) {
 		var dc documentCaveats
 		if err := json.Unmarshal(o.Projections[stem], &dc); err != nil {
-			return caveatsPageData{}, fmt.Errorf("decode %s caveats: %w", stem, err)
+			return nil, fmt.Errorf("decode %s caveats: %w", stem, err)
 		}
-		if len(dc.Metadata.Caveats) == 0 {
-			continue
-		}
-		entries := make([]caveatEntry, 0, len(dc.Metadata.Caveats))
 		for _, c := range dc.Metadata.Caveats {
 			switch {
 			case c.ID == "":
-				return caveatsPageData{}, fmt.Errorf(
+				return nil, fmt.Errorf(
 					"%s carries a caveat with no id, and the id is the anchor every other page links to", stem)
 			case c.Summary == "":
-				return caveatsPageData{}, fmt.Errorf(
+				return nil, fmt.Errorf(
 					"%s caveat %q has no summary, and the summary is what the other pages show in its place", stem, c.ID)
 			case c.Text == "":
-				return caveatsPageData{}, fmt.Errorf(
-					"%s caveat %q has no text, so this page would publish a heading over nothing", stem, c.ID)
+				return nil, fmt.Errorf(
+					"%s caveat %q has no text, so the caveats page would publish a heading over nothing", stem, c.ID)
 			}
-			a := caveatAnchor(stem, c.ID)
-			if prev, dup := anchors[a]; dup {
-				return caveatsPageData{}, fmt.Errorf(
-					"caveat anchor %q is claimed by both %s and %s; an anchor is a published "+
-						"URL fragment and a link to a repeated one lands on whichever the browser finds first",
-					a, prev, stem)
+			key := caveatKey{stem, c.ID}
+			if _, dup := cx.byRef[key]; dup {
+				return nil, fmt.Errorf(
+					"%s carries caveat %q twice, so a link to it could land on either", stem, c.ID)
 			}
-			anchors[a] = stem
-			entries = append(entries, caveatEntry{
-				ID: c.ID, Anchor: a, Summary: c.Summary, Text: c.Text, AppliesTo: c.AppliesTo,
-			})
+			vk := variant{c.ID, c.Summary, c.Text}
+			e, seen := byVariant[vk]
+			if !seen {
+				e = &caveatEntry{ID: c.ID, Summary: c.Summary, Text: c.Text}
+				byVariant[vk] = e
+				firstStem[e] = stem
+				variants[c.ID] = append(variants[c.ID], e)
+				appliesOf[e] = map[string][]string{}
+				cx.entries = append(cx.entries, e)
+			}
+			cx.byRef[key] = e
+			appliesOf[e][stem] = c.AppliesTo
+			carriers[e] = append(carriers[e], stem)
 		}
-		count += len(entries)
-		label := dc.Metadata.FiscalYearLabel
-		if label != "" && dc.Metadata.Basis != "" {
-			label += " " + dc.Metadata.Basis
-		}
-		docs = append(docs, caveatDocument{
-			Stem:     stem,
-			Label:    label,
-			DataPath: ix.PublishedPath(stem),
-			Entries:  entries,
-			Drawn:    drawn[stem],
-		})
 	}
-	if count == 0 {
+
+	// Anchors, and every fragment the page emits, refused when two collide.
+	fragments := map[string]string{}
+	claim := func(fragment, by string) error {
+		if prev, dup := fragments[fragment]; dup {
+			return fmt.Errorf(
+				"the caveats page fragment %q is claimed by both %s and %s; a fragment is a published "+
+					"URL and a link to a repeated one lands on whichever the browser finds first",
+				fragment, prev, by)
+		}
+		fragments[fragment] = by
+		return nil
+	}
+	for _, e := range cx.entries {
+		e.Anchor = caveatEntryPrefix + e.ID
+		if len(variants[e.ID]) > 1 {
+			e.Anchor += "--" + firstStem[e]
+		}
+		if err := claim(e.Anchor, fmt.Sprintf("caveat %q of %s", e.ID, firstStem[e])); err != nil {
+			return nil, err
+		}
+		for _, stem := range carriers[e] {
+			f := caveatFile{Stem: stem, Label: documentLabel(o, stem), DataPath: ix.PublishedPath(stem)}
+			applies := appliesOf[e][stem]
+			at := slices.IndexFunc(e.About, func(a caveatAbout) bool {
+				return slices.Equal(a.AppliesTo, applies) && a.Flagged == flagged[stem]
+			})
+			if at < 0 {
+				e.About = append(e.About, caveatAbout{AppliesTo: applies, Flagged: flagged[stem]})
+				at = len(e.About) - 1
+			}
+			e.About[at].Files = append(e.About[at].Files, f)
+		}
+	}
+
+	reached := map[string]bool{}
+	for i, v := range o.Views {
+		stems, err := caveatsOfView(v, ix)
+		if err != nil {
+			return nil, err
+		}
+		cv := &caveatView{Label: nav[i].Label, Path: v.Path, Anchor: caveatSectionPrefix + viewSlug(v.Path)}
+		for _, stem := range stems {
+			// An unbuilt document is the view's builder's to refuse, in
+			// its own words; nothing of it can be stated here.
+			if _, built := o.Projections[stem]; !built {
+				continue
+			}
+			reached[stem] = true
+			var dc documentCaveats
+			if err := json.Unmarshal(o.Projections[stem], &dc); err != nil {
+				return nil, fmt.Errorf("decode %s caveats: %w", stem, err)
+			}
+			for _, c := range dc.Metadata.Caveats {
+				e, ok := cx.byRef[caveatKey{stem, c.ID}]
+				if !ok {
+					return nil, fmt.Errorf("view %q states caveat %q of %s, which the caveats index does not carry",
+						v.Path, c.ID, stem)
+				}
+				if !slices.Contains(cv.Entries, e) {
+					cv.Entries = append(cv.Entries, e)
+					e.Pages = append(e.Pages, navItem{Label: cv.Label, Path: v.Path})
+				}
+			}
+		}
+		if len(cv.Entries) > 0 {
+			if err := claim(cv.Anchor, fmt.Sprintf("view %q", v.Path)); err != nil {
+				return nil, err
+			}
+		}
+		cx.views = append(cx.views, cv)
+	}
+	for _, e := range cx.entries {
+		if slices.ContainsFunc(carriers[e], func(s string) bool { return !reached[s] }) {
+			cx.unviewed = append(cx.unviewed, e)
+		}
+	}
+	return cx, nil
+}
+
+// documentLabel is a document's fiscal year and basis as the caveats page
+// names it, or "" for a document stating neither.
+func documentLabel(o *Options, stem string) string {
+	var dc documentCaveats
+	if json.Unmarshal(o.Projections[stem], &dc) != nil {
+		return ""
+	}
+	label := dc.Metadata.FiscalYearLabel
+	if label != "" && dc.Metadata.Basis != "" {
+		label += " " + dc.Metadata.Basis
+	}
+	return label
+}
+
+// href is where a page links one entry, or "" with no caveats page.
+func (cx *caveatIndex) href(e *caveatEntry) string {
+	if cx.base == "" {
+		return ""
+	}
+	return cx.base + "#" + e.Anchor
+}
+
+// refs is one document's caveats as a page links them, each to its deduped
+// entry. A caveat the index does not carry is refused rather than linked
+// nowhere.
+func (cx *caveatIndex) refs(metas []caveatMeta, stem string) ([]caveatRef, error) {
+	out := make([]caveatRef, 0, len(metas))
+	for _, m := range metas {
+		e, ok := cx.byRef[caveatKey{stem, m.ID}]
+		if !ok {
+			return nil, fmt.Errorf("%s caveat %q is in no published document the caveats index read", stem, m.ID)
+		}
+		out = append(out, caveatRef{ID: e.ID, Summary: e.Summary, Href: cx.href(e)})
+	}
+	return out, nil
+}
+
+// here is one view's line: its section's entries, counted, and the section.
+func (cx *caveatIndex) here(path string) caveatsHere {
+	for _, cv := range cx.views {
+		if cv.Path != path {
+			continue
+		}
+		out := caveatsHere{Count: len(cv.Entries)}
+		if cx.base != "" && len(cv.Entries) > 0 {
+			out.Href = cx.base + "#" + cv.Anchor
+		}
+		for _, e := range cv.Entries {
+			out.Refs = append(out.Refs, caveatRef{ID: e.ID, Summary: e.Summary, Href: cx.href(e)})
+		}
+		return out
+	}
+	return caveatsHere{}
+}
+
+// caveatsPageData is every distinct caveat, once, and each view's share.
+type caveatsPageData struct {
+	chrome
+	// Views are the sections of the views that state a caveat, in nav order.
+	Views []*caveatView
+	// Unviewed are the caveats a document no page draws carries, owed to
+	// whoever fetches the file.
+	Unviewed []*caveatEntry
+	Entries  []*caveatEntry
+	// Documents is how many published documents carry a caveat.
+	Documents int
+}
+
+// buildCaveatsPage lists every distinct caveat once, under an anchor every
+// other page's link lands on, and a section per view listing that view's.
+// It names no projection: it is an index across documents. It refuses an
+// empty page; buildCaveatIndex refuses the rest.
+func buildCaveatsPage(o *Options, v View, nav []navItem, cx *caveatIndex, ix ColumnIndex) (caveatsPageData, error) {
+	if len(cx.entries) == 0 {
 		return caveatsPageData{}, fmt.Errorf(
 			"view %q renders the caveats index and no published document carries a caveat, "+
 				"so the site would ship a nav entry to a page with nothing on it", v.Path)
 	}
-
+	var views []*caveatView
+	for _, cv := range cx.views {
+		if len(cv.Entries) > 0 {
+			views = append(views, cv)
+		}
+	}
+	carrying := map[string]bool{}
+	for _, e := range cx.entries {
+		for _, a := range e.About {
+			for _, f := range a.Files {
+				carrying[f.Stem] = true
+			}
+		}
+	}
 	title := v.Title
 	if title == "" {
 		title = "What this site's figures do not say"
@@ -204,19 +415,14 @@ func buildCaveatsPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			Nav:         nav,
 			ExportedBy:  o.GeneratedBy,
 			Projections: projectionRefs(o, ix),
-			CaveatsPath: caveatsPath,
-			// NO Sources, AND THAT IS THE POINT rather than an omission.
-			// TestEachViewsFooterCitesItsOwnSources enforces that a page must
-			// not advertise pages it never showed a figure from, and this page
-			// shows no figures at all -- it publishes sentences about
-			// documents, each of which links to the document itself. Naming
-			// the union of every document's pages here would be this site's
-			// broadest false provenance claim.
-			//
+			// NO Sources: TestEachViewsFooterCitesItsOwnSources holds a page
+			// to the pages it showed a figure from, and this page shows none.
 			// NO DataPath either, for buildProvenancePage's reason: this page
 			// draws no projection.
 		},
-		Documents: docs,
-		Count:     count,
+		Views:     views,
+		Unviewed:  cx.unviewed,
+		Entries:   cx.entries,
+		Documents: len(carrying),
 	}, nil
 }

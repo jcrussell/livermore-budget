@@ -52,7 +52,7 @@
     </p>
     {{- range .Apart}}
     <p class="glance-apart">
-      The rows below sum to <strong>{{.Residual}}</strong> {{.Direction}} than that figure. {{.Reason}}.{{if .Bead}} <span class="subtle">({{.Bead}})</span>{{end}}
+      The rows below sum to <strong>{{.Residual}}</strong> {{.Direction}} than that figure. {{.Reason}}.
     </p>
     {{- end}}
     <details class="glance-cells">
@@ -84,27 +84,11 @@
       </table>
       </div>
     </details>
-    {{- if .Caveats}}
-    <ul class="caveats">
-      {{- range .Caveats}}
-      <li>{{if .Href}}<a href="{{.Href}}">{{.Summary}}</a>{{else}}{{.Summary}}{{end}}</li>
-      {{- end}}
-    </ul>
-    {{- end}}
   </section>
-  {{- end}}
-  {{- if .Caveats}}
-  <ul class="caveats">
-    {{- range .Caveats}}
-    <li>{{if .Href}}<a href="{{.Href}}">{{.Summary}}</a>{{else}}{{.Summary}}{{end}}</li>
-    {{- end}}
-  </ul>
   {{- end}}
 </section>
 {{- end}}
-{{- if .CaveatsPath}}
-<p class="subtle">Every page's caveats are collected on <a href="{{.CaveatsPath}}">the caveats page</a>.</p>
-{{- end}}
+{{- template "caveats-line" .CaveatsHere}}
 
 <!-- What glance.js clones per drawn segment and per legend entry, so the
      figure's markup and words live here and the script fills figures in. -->

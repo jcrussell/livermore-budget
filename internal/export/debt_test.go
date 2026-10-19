@@ -124,7 +124,6 @@ func TestDebtPageRendersEveryFigureOfItsDocument(t *testing.T) {
 		`Banc of America Equipment Lease/Purchase Loan <span class="subtle">· Airport</span>`,
 		"$16,576,159",
 		"A band is not a year.",
-		"projected</strong>, not adopted",
 		"debt-service.json",
 	} {
 		if !strings.Contains(html, want) {

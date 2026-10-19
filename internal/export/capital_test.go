@@ -150,7 +150,7 @@ func TestCapitalPageRendersEveryProjectCitedToItsPage(t *testing.T) {
 		`<option value="101">101 Fund name 101</option>`,
 		`<option value="510">510 Fund name 510</option>`,
 		`<th scope="row">BL201518 Carpet Replacement</th>`,
-		"<strong>A caveat summary.</strong> A caveat&#39;s whole text.",
+		"<li>A caveat summary.</li>",
 		"◇ Our sum of the rows shown",
 	} {
 		if !strings.Contains(html, want) {
