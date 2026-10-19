@@ -85,9 +85,11 @@ dropped.
 It carries an **`id`**, a one-line **`summary`**, the **`text`** of the caveat
 itself, and **`applies_to`**: the node ids the caveat is about.
 
-The id goes into a **published URL fragment** and is stable across rewordings of
-the other two fields, so a bookmark or a citation survives an edit to a
-sentence. A document repeating an id is refused at build time by
+The id goes into a **published URL fragment**, spelled as the next paragraph
+says. That spelling survives an edit to a sentence only while the id has one
+(`id`, `summary`, `text`) triple across the site: rewording one document's copy
+of a shared id adds a variant, and moves every fragment of that id onto its
+`--<stem>` spelling. A document repeating an id is refused at build time by
 `project.ValidateCaveats`.
 
 **caveats.html states each distinct caveat once**, distinct being the triple

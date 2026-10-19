@@ -70,7 +70,6 @@ type debtDoc struct {
 			Facts   int `json:"facts"`
 			Figures int `json:"figures"`
 		} `json:"counts"`
-		Caveats []caveatMeta `json:"caveats"`
 	} `json:"metadata"`
 	IssueColumns []debtColumn `json:"issue_columns"`
 	Issues       []struct {

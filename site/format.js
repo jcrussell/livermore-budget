@@ -8,13 +8,18 @@
 
 /**
  * Whole dollars with thousands separators, signed, cents only where a
- * figure has them.
+ * figure has them. Integer arithmetic throughout: the dollars and the cents
+ * are split by remainder, so no float stands between a cited figure and its
+ * printed digits, and anything but a safe integer of cents is refused.
  * @param {number} cents
  */
 export function dollars(cents) {
-  const whole = cents % 100 === 0;
-  return (cents < 0 ? "-$" : "$") + (Math.abs(cents) / 100).toLocaleString("en-US",
-    { minimumFractionDigits: whole ? 0 : 2, maximumFractionDigits: 2 });
+  if (!Number.isSafeInteger(cents)) throw new Error(`dollars: ${cents} is not a safe integer of cents`);
+  const abs = Math.abs(cents);
+  const rem = abs % 100;
+  const whole = (abs - rem) / 100;
+  return (cents < 0 ? "-$" : "$") + whole.toLocaleString("en-US", { maximumFractionDigits: 0 }) +
+    (rem === 0 ? "" : "." + String(rem).padStart(2, "0"));
 }
 
 /**

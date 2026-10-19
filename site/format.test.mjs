@@ -38,11 +38,23 @@ test("dollars signs, groups and prints cents only where a figure has them", asyn
     [7076545000, "$70,765,450"],
     [25409541200, "$254,095,412"],
     [-126150980, "-$1,261,509.80"],
-    // Past every sum a page draws, and still to the cent: the float divide
-    // by 100 is within half a cent below 2^52 cents.
     [2 ** 52 - 1, "$45,035,996,273,704.95"],
+    // Past 2^53/100 dollars a float divide by 100 misprints the cents
+    // (.90, .88, .84); the integer split prints them as cited.
+    [2 ** 53 - 1, "$90,071,992,547,409.91"],
+    [2 ** 53 - 5, "$90,071,992,547,409.87"],
+    [-(2 ** 53 - 7), "-$90,071,992,547,409.85"],
   ];
   assert.deepEqual(cases.map(([c]) => dollars(c)), cases.map(([, want]) => want));
+});
+
+// Mutation: drop the safe-integer guard and dollars(1.5) prints a figure
+// no page cites.
+test("dollars refuses anything but a safe integer of cents", async () => {
+  const { dollars } = await import(MODULE);
+  for (const bad of [1.5, 0.1 + 0.2, 2 ** 53, NaN, Infinity, "100", undefined]) {
+    assert.throws(() => dollars(/** @type {any} */ (bad)), /not a safe integer of cents/, String(bad));
+  }
 });
 
 // Mutation: drop the zero guard and share(1, 0) reads "Infinity%".

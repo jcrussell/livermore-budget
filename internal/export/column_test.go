@@ -163,12 +163,18 @@ func keysOf(m map[string]ColumnDoc) []string {
 	return out
 }
 
-// TestReachedStemsIsTheYearsAndWhatTheirExpansionIsStitchedFrom: a Sankey or
-// ledger view reaches each year the view lists, and in each year's column the
-// expansion schedule and every document it is stitched from; a view whose
-// column carries no expansion reaches its years alone, the second only
-// through the year control; and a projection outside the year stems is
-// refused rather than read as reaching nothing.
+// TestReachedStemsIsTheYearsAndWhatTheirExpansionIsStitchedFrom: a view
+// drawing the expansion reaches each year the view lists, and in each year's
+// column the expansion schedule and every document it is stitched from; a
+// view whose column carries no expansion reaches its years alone, the second
+// only through the year control; a Sankey view drawing its own document
+// reaches no expansion though another year's column carries one; and a
+// projection outside the year stems is refused rather than read as reaching
+// nothing.
+//
+// Mutation: gate the expansion on the Sankey or ledger form rather than on
+// Draws and the Sankey drawing its own document reaches expansion and
+// fund-flows.
 func TestReachedStemsIsTheYearsAndWhatTheirExpansionIsStitchedFrom(t *testing.T) {
 	doc := func(schedule string, year int) []byte {
 		return []byte(fmt.Sprintf(`{"projection":%q,"nodes":[{"id":"n","label":"N","tier":0}],"links":[],`+
@@ -199,7 +205,8 @@ func TestReachedStemsIsTheYearsAndWhatTheirExpansionIsStitchedFrom(t *testing.T)
 		slices.Contains(project.ExpansionStitches(), project.DepartmentFundingProjection) {
 		t.Fatalf("the expansion is stitched from %v, so the stems below prove nothing", project.ExpansionStitches())
 	}
-	v := View{Path: "index.html", Projection: "year", YearStems: years, Overview: chart}
+	v := View{Path: "index.html", Projection: "year", YearStems: years, Overview: chart,
+		Draws: project.ExpansionProjection}
 	got, err = v.ReachedStems(ix)
 	if err != nil {
 		t.Fatal(err)
@@ -209,12 +216,33 @@ func TestReachedStemsIsTheYearsAndWhatTheirExpansionIsStitchedFrom(t *testing.T)
 	}
 	// A ledger draws the same expansion, so it reaches what a Sankey does.
 	got, err = View{Path: "ledger.html", Projection: "year", YearStems: years,
-		Overview: Chart{Form: LedgerForm}}.ReachedStems(ix)
+		Overview: Chart{Form: LedgerForm}, Draws: project.ExpansionProjection}.ReachedStems(ix)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if diff := cmp.Diff([]string{"year", "expansion", "fund-flows", "year-2027"}, got); diff != "" {
 		t.Errorf("ReachedStems of a ledger (-want +got):\n%s", diff)
+	}
+	// A Sankey whose opening column's expansion was not built draws its own
+	// document in every year, so a later column's expansion is no document
+	// its page states.
+	got, err = View{Path: "flows.html", Template: SankeyTemplate, Projection: "year",
+		YearStems: years, Overview: chart}.ReachedStems(ix)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if diff := cmp.Diff(years, got); diff != "" {
+		t.Errorf("ReachedStems of a Sankey drawing its own document (-want +got):\n%s", diff)
+	}
+	// A view drawing a schedule other than the expansion reaches that
+	// schedule and nothing the expansion is stitched from.
+	got, err = View{Path: "flows.html", Template: SankeyTemplate, Projection: "year",
+		YearStems: years, Overview: chart, Draws: project.DepartmentFundingProjection}.ReachedStems(ix)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if diff := cmp.Diff([]string{"year", "department-funding", "year-2027"}, got); diff != "" {
+		t.Errorf("ReachedStems of a view drawing department-funding (-want +got):\n%s", diff)
 	}
 	// A view drawing no chart reaches no expansion.
 	got, err = View{Path: "table.html", Projection: "year", YearStems: years}.ReachedStems(ix)

@@ -468,10 +468,11 @@ func encodeColumn(doc ColumnDoc) ([]byte, error) {
 }
 
 // ReachedStems is every document a reader of this view can reach, once each:
-// its projection, its year stems, and, for a Sankey or ledger chart, the
-// expansion schedule of each year's column with every document of that column
-// the expansion is stitched from ([project.ExpansionStitches]), whose links
-// are the expansion's leaves. It
+// its projection, its year stems, and the [View.Draws] schedule of each
+// year's column, with, where that schedule is the expansion, every document
+// of that column the expansion is stitched from ([project.ExpansionStitches]),
+// whose links are the expansion's leaves. A view drawing its own document
+// reaches no expansion whatever its form, since its page draws none. It
 // refuses a projection outside the year stems, as validate does, since it
 // runs on views validate has not seen. The caveats a page states
 // (caveatsOfView) and `fisc export`'s reachability gate both read it, so the
@@ -489,12 +490,14 @@ func (v View) ReachedStems(ix ColumnIndex) ([]string, error) {
 	}
 	for _, year := range v.yearStems() {
 		reached := []string{year}
-		if column, folded := ix.Column(year); folded && (v.Overview.Form == SankeyForm || v.Overview.Form == LedgerForm) {
-			if stem, ok := ix.Stem(column, project.ExpansionProjection); ok {
+		if column, folded := ix.Column(year); folded && v.Draws != "" {
+			if stem, ok := ix.Stem(column, v.Draws); ok {
 				reached = append(reached, stem)
-				for _, p := range project.ExpansionStitches() {
-					if stitched, ok := ix.Stem(column, p); ok {
-						reached = append(reached, stitched)
+				if v.Draws == project.ExpansionProjection {
+					for _, p := range project.ExpansionStitches() {
+						if stitched, ok := ix.Stem(column, p); ok {
+							reached = append(reached, stitched)
+						}
 					}
 				}
 			}

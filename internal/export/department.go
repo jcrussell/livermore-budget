@@ -121,7 +121,6 @@ type departmentDocument struct {
 		Basis           string       `json:"basis"`
 		Scopes          []string     `json:"scopes"`
 		Sources         []sourceMeta `json:"sources"`
-		Caveats         []caveatMeta `json:"caveats"`
 	} `json:"metadata"`
 }
 

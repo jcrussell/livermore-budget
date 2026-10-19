@@ -105,7 +105,6 @@ type glanceDocument struct {
 		Scopes          []string         `json:"scopes"`
 		Sources         []sourceMeta     `json:"sources"`
 		Headline        project.Headline `json:"headline"`
-		Caveats         []caveatMeta     `json:"caveats"`
 	} `json:"metadata"`
 }
 
