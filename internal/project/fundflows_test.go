@@ -1079,29 +1079,44 @@ func TestTwoRevenueLinesReadingAlikeAreRefused(t *testing.T) {
 	}
 }
 
-// TestNotItemizedCaveatIsAboutEveryLineSoLabelled: the caveat names each
-// revenue line carrying either label and no other node, and is absent from
-// a document with none.
+// TestNotItemizedCaveatIsAboutEveryLineSoLabelled: each label's caveat names
+// the revenue lines carrying that label and no other node, so a line one row
+// of several is never told it is its category's only row; a document with
+// one label carries only its caveat, and one with neither carries none.
 //
-// Mutation: drop the SoNamed arm and revenue-line/b goes unmarked.
+// Mutation: put the SoNamed lines in the NotItemized caveat's applies_to and
+// revenue-line/b is told it is its whole category.
 func TestNotItemizedCaveatIsAboutEveryLineSoLabelled(t *testing.T) {
 	nodes := []Node{
 		{ID: PrefixRevenueLine + "b", Label: "Miscellaneous Revenue" + SoNamed},
 		{ID: PrefixRevenueLine + "a", Label: "Charges for Services" + NotItemized},
 		{ID: PrefixRevenueLine + "c", Label: "Current Year - Secured"},
 		{ID: PrefixRevenue + "d", Label: "A category" + NotItemized},
+		{ID: PrefixRevenueLine + "e", Label: "Property Taxes" + NotItemized},
 	}
-	c, ok := notItemizedCaveat(nodes)
-	if !ok {
-		t.Fatal("no caveat over two relabelled lines")
+	about := func(cs []Caveat) map[string][]string {
+		out := map[string][]string{}
+		for _, c := range cs {
+			out[c.ID] = c.AppliesTo
+		}
+		return out
 	}
-	if diff := cmp.Diff([]string{PrefixRevenueLine + "a", PrefixRevenueLine + "b"}, c.AppliesTo); diff != "" {
-		t.Errorf("applies_to (-want +got):\n%s", diff)
+	cs := notItemizedCaveats(nodes)
+	want := map[string][]string{
+		NotItemizedCaveatID: {PrefixRevenueLine + "a", PrefixRevenueLine + "e"},
+		SoNamedCaveatID:     {PrefixRevenueLine + "b"},
 	}
-	if err := validateCaveats([]Caveat{c}, nodeIDs(nodes)); err != nil {
-		t.Errorf("the caveat does not validate against its own nodes: %v", err)
+	if diff := cmp.Diff(want, about(cs)); diff != "" {
+		t.Errorf("applies_to by caveat (-want +got):\n%s", diff)
 	}
-	if _, ok := notItemizedCaveat(nodes[2:3]); ok {
-		t.Error("a document with no relabelled line carries the caveat")
+	if err := validateCaveats(cs, nodeIDs(nodes)); err != nil {
+		t.Errorf("the caveats do not validate against their own nodes: %v", err)
+	}
+	if diff := cmp.Diff(map[string][]string{SoNamedCaveatID: {PrefixRevenueLine + "b"}},
+		about(notItemizedCaveats(nodes[:1]))); diff != "" {
+		t.Errorf("a document with only a line so named (-want +got):\n%s", diff)
+	}
+	if cs := notItemizedCaveats(nodes[2:4]); len(cs) != 0 {
+		t.Errorf("a document with no relabelled line carries %d caveats", len(cs))
 	}
 }

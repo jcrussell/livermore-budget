@@ -6467,16 +6467,23 @@
     {
      "id": "not-itemized-is-one-printed-line",
      "summary": "A revenue line marked \"not itemized\" is one the city prints as a single row for its whole category, so there is no finer breakdown to show.",
-     "text": "Budget Book pp.127-140 print some funds' revenue under a category as one row named for the category itself, such as Charges for Services. Where no fund printing that row prints another row of the category, this site labels the line \"\u003ccategory\u003e, not itemized\": the city prints no finer breakdown of it, so the figure is the printed row and not a gap in this site's reading. Where a fund prints the row beside other rows of the category, the line is labelled \"\u003crow\u003e, the line so named\", and its figure is that one row, not the category's total.",
+     "text": "Budget Book pp.127-140 print some funds' revenue under a category as one row named for the category itself, such as Charges for Services. Where no fund printing that row prints another row of the category, this site labels the line \"\u003ccategory\u003e, not itemized\": the city prints no finer breakdown of it, so the figure is the printed row and not a gap in this site's reading.",
      "applies_to": [
       "revenue-line/charges-for-services/charges-for-services",
       "revenue-line/contributions-outsourced/contributionsoutsrce",
       "revenue-line/intergovernmental/intergovernmental",
       "revenue-line/miscellaneous-revenue/miscellaneous-rev",
-      "revenue-line/miscellaneous-revenue/miscellaneous-revenue",
       "revenue-line/taxes/other/other-taxes",
       "revenue-line/taxes/property/property-taxes",
       "revenue-line/use-of-money-and-property/use-of-money-and-prop"
+     ]
+    },
+    {
+     "id": "the-line-so-named-is-one-row-of-several",
+     "summary": "A revenue line marked \"the line so named\" is one printed row that shares its category's name, not the category's total.",
+     "text": "Budget Book pp.127-140 print some funds' revenue under a category as one row named for the category itself. Where a fund prints that row beside other rows of the category, this site labels the line \"\u003crow\u003e, the line so named\": its figure is that one row, and the category's other rows are drawn beside it rather than inside it.",
+     "applies_to": [
+      "revenue-line/miscellaneous-revenue/miscellaneous-revenue"
      ]
     },
     {
@@ -33414,16 +33421,23 @@
     {
      "id": "not-itemized-is-one-printed-line",
      "summary": "A revenue line marked \"not itemized\" is one the city prints as a single row for its whole category, so there is no finer breakdown to show.",
-     "text": "Budget Book pp.127-140 print some funds' revenue under a category as one row named for the category itself, such as Charges for Services. Where no fund printing that row prints another row of the category, this site labels the line \"\u003ccategory\u003e, not itemized\": the city prints no finer breakdown of it, so the figure is the printed row and not a gap in this site's reading. Where a fund prints the row beside other rows of the category, the line is labelled \"\u003crow\u003e, the line so named\", and its figure is that one row, not the category's total.",
+     "text": "Budget Book pp.127-140 print some funds' revenue under a category as one row named for the category itself, such as Charges for Services. Where no fund printing that row prints another row of the category, this site labels the line \"\u003ccategory\u003e, not itemized\": the city prints no finer breakdown of it, so the figure is the printed row and not a gap in this site's reading.",
      "applies_to": [
       "revenue-line/charges-for-services/charges-for-services",
       "revenue-line/contributions-outsourced/contributionsoutsrce",
       "revenue-line/intergovernmental/intergovernmental",
       "revenue-line/miscellaneous-revenue/miscellaneous-rev",
-      "revenue-line/miscellaneous-revenue/miscellaneous-revenue",
       "revenue-line/taxes/other/other-taxes",
       "revenue-line/taxes/property/property-taxes",
       "revenue-line/use-of-money-and-property/use-of-money-and-prop"
+     ]
+    },
+    {
+     "id": "the-line-so-named-is-one-row-of-several",
+     "summary": "A revenue line marked \"the line so named\" is one printed row that shares its category's name, not the category's total.",
+     "text": "Budget Book pp.127-140 print some funds' revenue under a category as one row named for the category itself. Where a fund prints that row beside other rows of the category, this site labels the line \"\u003crow\u003e, the line so named\": its figure is that one row, and the category's other rows are drawn beside it rather than inside it.",
+     "applies_to": [
+      "revenue-line/miscellaneous-revenue/miscellaneous-revenue"
      ]
     }
    ],

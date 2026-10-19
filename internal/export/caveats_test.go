@@ -156,3 +156,39 @@ func TestASiteWithNoCaveatsPageLinksNoCaveat(t *testing.T) {
 		t.Errorf("a.html's line = %+v, want one unlinked summary", here)
 	}
 }
+
+// TestTheHeadingsRefusalNamesOnePairEveryRun: with two summaries each over
+// two caveats headed alike, the refusal names the pair under the summary
+// that sorts first, on every run.
+//
+// Mutation: range over bySummary itself and the refusal names "S." or "T."
+// by map order, so twenty runs disagree.
+func TestTheHeadingsRefusalNamesOnePairEveryRun(t *testing.T) {
+	o, nav := caveatSite(
+		`[{"id":"x","summary":"S.","text":"One.","applies_to":[]},{"id":"y","summary":"S.","text":"Two.","applies_to":[]},`+
+			`{"id":"v","summary":"T.","text":"One.","applies_to":[]},{"id":"w","summary":"T.","text":"Two.","applies_to":[]}]`,
+		`[]`, `[]`,
+	)
+	for range 20 {
+		_, err := buildCaveatIndex(o, ColumnIndex{}, nav)
+		if err == nil || !strings.Contains(err.Error(), `caveats "x" and "y"`) {
+			t.Fatalf("buildCaveatIndex = %v, want the pair under \"S.\" named", err)
+		}
+	}
+}
+
+// TestASankeyViewWhoseYearDrawsNoScheduleIsRefused: a Sankey view drawing a
+// schedule a year's column does not carry has no drawn document to flag, and
+// the caveat index refuses it as [View.drawnStems] does rather than flagging
+// nothing.
+//
+// Mutation: have flaggedStems skip a view drawnStems refuses and the index
+// builds, flagging no document.
+func TestASankeyViewWhoseYearDrawsNoScheduleIsRefused(t *testing.T) {
+	o, nav := caveatSite(`[{"id":"x","summary":"X.","text":"T.","applies_to":[]}]`, `[]`, `[]`)
+	o.Views[0].Template, o.Views[0].Draws = SankeyTemplate, "fund-flows"
+	_, err := buildCaveatIndex(o, ColumnIndex{}, nav)
+	if err == nil || !strings.Contains(err.Error(), "carries none") {
+		t.Errorf("buildCaveatIndex = %v, want the year with no fund-flows refused", err)
+	}
+}

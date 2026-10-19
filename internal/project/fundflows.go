@@ -437,9 +437,7 @@ func fundFlowsCaveats(twice int, nodes []Node) []Caveat {
 			AppliesTo: append(sortedKeys(direct), PrefixFund+strconv.Itoa(generalFund)),
 		})
 	}
-	if c, ok := notItemizedCaveat(nodes); ok {
-		out = append(out, c)
-	}
+	out = append(out, notItemizedCaveats(nodes)...)
 	if stopped := truncatedGroups(nodes); len(stopped) > 0 {
 		out = append(out, Caveat{
 			ID: "some-funds-show-no-spending",
@@ -914,39 +912,60 @@ const (
 	SoNamed     = ", the line so named"
 )
 
-// NotItemizedCaveatID is the caveat explaining NotItemized and SoNamed.
-const NotItemizedCaveatID = "not-itemized-is-one-printed-line"
+// NotItemizedCaveatID and SoNamedCaveatID are the caveats explaining
+// NotItemized and SoNamed, one each.
+const (
+	NotItemizedCaveatID = "not-itemized-is-one-printed-line"
+	SoNamedCaveatID     = "the-line-so-named-is-one-row-of-several"
+)
 
-// notItemizedCaveat explains the labels labelCategoryNamedLines writes, about
-// every node carrying one, or reports false when no node does.
+// notItemizedCaveats explains the labels labelCategoryNamedLines writes: a
+// caveat per label some node carries, about every node carrying that one.
 //
-// Read off the labels rather than recomputed, so it marks exactly the lines a
-// reader sees so named, in whichever document carries them.
-func notItemizedCaveat(nodes []Node) (Caveat, bool) {
-	var relabelled []string
+// Read off the labels rather than recomputed, so each marks exactly the lines
+// a reader sees so named, in whichever document carries them.
+func notItemizedCaveats(nodes []Node) []Caveat {
+	var notItemized, soNamed []string
 	for _, n := range nodes {
-		if strings.HasPrefix(n.ID, PrefixRevenueLine) &&
-			(strings.HasSuffix(n.Label, NotItemized) || strings.HasSuffix(n.Label, SoNamed)) {
-			relabelled = append(relabelled, n.ID)
+		if !strings.HasPrefix(n.ID, PrefixRevenueLine) {
+			continue
+		}
+		switch {
+		case strings.HasSuffix(n.Label, NotItemized):
+			notItemized = append(notItemized, n.ID)
+		case strings.HasSuffix(n.Label, SoNamed):
+			soNamed = append(soNamed, n.ID)
 		}
 	}
-	if len(relabelled) == 0 {
-		return Caveat{}, false
+	var out []Caveat
+	if len(notItemized) > 0 {
+		sort.Strings(notItemized)
+		out = append(out, Caveat{
+			ID: NotItemizedCaveatID,
+			Summary: "A revenue line marked \"not itemized\" is one the city prints as a single row for its " +
+				"whole category, so there is no finer breakdown to show.",
+			Text: "Budget Book pp.127-140 print some funds' revenue under a category as one row named for " +
+				"the category itself, such as Charges for Services. Where no fund printing that row prints " +
+				"another row of the category, this site labels the line \"<category>, not itemized\": the " +
+				"city prints no finer breakdown of it, so the figure is the printed row and not a gap in " +
+				"this site's reading.",
+			AppliesTo: notItemized,
+		})
 	}
-	sort.Strings(relabelled)
-	return Caveat{
-		ID: NotItemizedCaveatID,
-		Summary: "A revenue line marked \"not itemized\" is one the city prints as a single row for its " +
-			"whole category, so there is no finer breakdown to show.",
-		Text: "Budget Book pp.127-140 print some funds' revenue under a category as one row named for " +
-			"the category itself, such as Charges for Services. Where no fund printing that row prints " +
-			"another row of the category, this site labels the line \"<category>, not itemized\": the " +
-			"city prints no finer breakdown of it, so the figure is the printed row and not a gap in " +
-			"this site's reading. Where a fund prints the row beside other rows of the category, the " +
-			"line is labelled \"<row>, the line so named\", and its figure is that one row, not the " +
-			"category's total.",
-		AppliesTo: relabelled,
-	}, true
+	if len(soNamed) > 0 {
+		sort.Strings(soNamed)
+		out = append(out, Caveat{
+			ID: SoNamedCaveatID,
+			Summary: "A revenue line marked \"the line so named\" is one printed row that shares its " +
+				"category's name, not the category's total.",
+			Text: "Budget Book pp.127-140 print some funds' revenue under a category as one row named for " +
+				"the category itself. Where a fund prints that row beside other rows of the category, this " +
+				"site labels the line \"<row>, the line so named\": its figure is that one row, and the " +
+				"category's other rows are drawn beside it rather than inside it.",
+			AppliesTo: soNamed,
+		})
+	}
+	return out
 }
 
 // labelCategoryNamedLines relabels every revenue line sharing a printed term

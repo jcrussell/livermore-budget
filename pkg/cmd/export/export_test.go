@@ -308,23 +308,23 @@ func TestExportRunWritesASiteAndSaysHowToServeIt(t *testing.T) {
 	}
 }
 
-// TestEveryCaveatSummaryLinksToAnAnchorThatExists is the check that makes the
-// caveats page a feature rather than a hope.
+// TestEveryCaveatSummaryLinksToAnAnchorThatExists holds every link into
+// caveats.html, on every page the site writes, to a fragment the caveats page
+// carries once, and holds the caveats page to each caveat stated once.
 //
-// EVERY OTHER GUARD STOPS AT THE FILE. The asset walks stat "caveats.html" and
-// are satisfied; they cut the fragment off before asking, because the
-// filesystem has no opinion about it. So a summary linking to
-// #caveat-sankey--typo would pass every existing check, render as a working
-// link, and drop the reader at the top of a long page with no indication that
-// anything went wrong -- which is the quietest failure this change can produce
-// and the only one a reader would blame themselves for.
+// The asset walks stat "caveats.html" and stop there, because the filesystem
+// has no opinion about a fragment; a link to one the page lacks renders as a
+// working link and drops the reader at the top of the page.
 //
-// IT WALKS THE RENDERED PAGES, not the view list or the Go structs, for the
-// reason the asset walk does: the failure is a string composed in one place and
-// consumed in another, and the page is where the two meet. The anchors are read
-// out of caveats.html's own markup rather than recomposed with caveatAnchor,
-// because recomposing them would assert that one function agrees with itself.
-// Over the committed corpus, so every view that links a caveat is written.
+// IT WALKS THE RENDERED PAGES, and reads the anchors out of caveats.html's
+// own markup, so the fragment a page links and the id the caveats page
+// carries are compared where they meet rather than recomposed. Over the
+// committed corpus, so every view that links a caveat is written.
+//
+// Mutation: append "-typo" to the fragment caveatIndex.href returns and every
+// caveat link in a FISC_CONFIG blob names no anchor. Mutation: append it to
+// the section fragment caveatIndex.here returns and every page's caveats line
+// names none.
 func TestEveryCaveatSummaryLinksToAnAnchorThatExists(t *testing.T) {
 	built := builtStemsForTest(t)
 	io, _, _, _ := iostreams.Test()
@@ -391,15 +391,10 @@ func TestEveryCaveatSummaryLinksToAnAnchorThatExists(t *testing.T) {
 	}
 	line := regexp.MustCompile(`<p class="caveats-line"><a href="caveats\.html#([^"]+)">(\d+) caveats? appl`)
 
-	// TWO SPELLINGS, AND THE SECOND ONE IS THE LARGER SET. A page carries its
-	// opening year's links as markup, href="caveats.html#...", and every OTHER
-	// year's inside the FISC_CONFIG blob as JSON, "href":"caveats.html#...",
-	// which app.js injects on a year switch. Matching markup alone left the
-	// blob unchecked -- and the blob is where the anchors that differ live,
-	// since FY2026-27 carries a contested-total caveat FY2025-26 does not.
-	// Mutation-proved: appending "-typo" to the stem in buildSankeyPage's years
-	// loop leaves every other test in both packages green while breaking every
-	// caveat link a reader reaches by switching year.
+	// TWO SPELLINGS. A page's caveats line links its own section as markup,
+	// href="caveats.html#caveats-on-...", and the FISC_CONFIG blob carries
+	// every year's caveats as JSON, "href":"caveats.html#caveat-...", each
+	// linking its own entry, which app.js reads on a year switch.
 	spellings := []*regexp.Regexp{
 		regexp.MustCompile(`href="caveats\.html#([^"]+)"`),
 		regexp.MustCompile(`"href":"caveats\.html#([^"]+)"`),
@@ -450,8 +445,8 @@ func TestEveryCaveatSummaryLinksToAnAnchorThatExists(t *testing.T) {
 		}
 	}
 	if linked == 0 {
-		t.Error("no page links to a caveat anchor in its markup, so the summaries are " +
-			"truncations rather than pointers")
+		t.Error("no page links to caveats.html in its markup, so this test's first " +
+			"spelling checks nothing")
 	}
 	if injected == 0 {
 		t.Error("no page carries a caveat anchor in its FISC_CONFIG blob, so the year " +

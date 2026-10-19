@@ -74,11 +74,12 @@ func changeOptions(t *testing.T, dir string, extra bool) export.Options {
 var changeCell = regexp.MustCompile(`<tr data-category="([^"]+)">\s*<th scope="row">([^<]+)</th>[\s\S]*?</tr>`)
 
 // TestChangePagePrintsADocumentsCaveatsOnce holds the page to one statement
-// of a document's caveats, on the page's line below every figure, where three
-// figures are drawn from the audited document.
+// of a document's caveats, on the page's line below every figure and inside
+// none, where three figures are drawn from the audited document.
 //
 // Mutation: render the "caveats-line" template inside each figure and the
-// audited caveat is printed five times.
+// audited caveat is printed five times. Mutation: move the line inside the
+// last figure, before its closing tag, and it is printed once but inside it.
 func TestChangePagePrintsADocumentsCaveatsOnce(t *testing.T) {
 	dir := t.TempDir()
 	o := changeOptions(t, dir, false)
@@ -96,9 +97,25 @@ func TestChangePagePrintsADocumentsCaveatsOnce(t *testing.T) {
 	if got := strings.Count(page, "Ten unaudited years."); got != 1 {
 		t.Errorf("the audited document's caveat is printed %d times, want once", got)
 	}
-	figures := strings.LastIndex(page, `<section class="change-figure"`)
-	if at := strings.Index(page, "Ten unaudited years."); at < figures {
-		t.Errorf("the caveat is printed at %d, inside the figures that end after %d", at, figures)
+	at := strings.Index(page, "Ten unaudited years.")
+	rest, end := page, 0
+	for {
+		open := strings.Index(rest, `<section class="change-figure"`)
+		if open < 0 {
+			break
+		}
+		closing := strings.Index(rest[open:], "</section>")
+		if closing < 0 {
+			t.Fatalf("the change figure opening at %d is never closed", end+open)
+		}
+		closing += open + len("</section>")
+		if at >= end+open && at < end+closing {
+			t.Errorf("the caveat is printed at %d, inside the figure spanning %d-%d", at, end+open, end+closing)
+		}
+		rest, end = rest[closing:], end+closing
+	}
+	if end == 0 || at < end {
+		t.Errorf("the caveat is printed at %d, not below the last figure, which closes at %d", at, end)
 	}
 }
 

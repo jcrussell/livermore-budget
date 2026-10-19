@@ -160,26 +160,23 @@ func caveatsOfView(v View, ix ColumnIndex) ([]string, error) {
 
 // flaggedStems are the documents whose caveats a chart chips on its marks:
 // the schedule each year of a Sankey view draws (site/app.js's caveatsFor
-// reads the drawn schedule's caveats and no other's).
-func flaggedStems(o *Options, ix ColumnIndex) map[string]bool {
+// reads the drawn schedule's caveats and no other's), as [View.drawnStems]
+// names it and refusing where it refuses.
+func flaggedStems(o *Options, ix ColumnIndex) (map[string]bool, error) {
 	out := map[string]bool{}
 	for _, v := range o.Views {
 		if v.Template != SankeyTemplate {
 			continue
 		}
-		for _, year := range v.yearStems() {
-			if v.Draws == "" {
-				out[year] = true
-				continue
-			}
-			if col, folded := ix.Column(year); folded {
-				if stem, ok := ix.Stem(col, v.Draws); ok {
-					out[stem] = true
-				}
-			}
+		drawn, err := v.drawnStems(ix)
+		if err != nil {
+			return nil, err
+		}
+		for _, stem := range drawn {
+			out[stem] = true
 		}
 	}
-	return out
+	return out, nil
 }
 
 // buildCaveatIndex reads every published document's caveats once.
@@ -190,7 +187,10 @@ func flaggedStems(o *Options, ix ColumnIndex) map[string]bool {
 // never sees a document decoded from bytes, which is every document here.
 func buildCaveatIndex(o *Options, ix ColumnIndex, nav []navItem) (*caveatIndex, error) {
 	cx := &caveatIndex{base: caveatsPathOf(o), byRef: map[caveatKey]*caveatEntry{}}
-	flagged := flaggedStems(o, ix)
+	flagged, err := flaggedStems(o, ix)
+	if err != nil {
+		return nil, err
+	}
 
 	type variant struct {
 		id, summary, text string
@@ -282,7 +282,8 @@ func buildCaveatIndex(o *Options, ix ColumnIndex, nav []navItem) (*caveatIndex, 
 	for _, e := range cx.entries {
 		bySummary[e.Summary] = append(bySummary[e.Summary], e)
 	}
-	for _, alike := range bySummary {
+	for _, summary := range sortedKeys(bySummary) {
+		alike := bySummary[summary]
 		if len(alike) < 2 {
 			continue
 		}
