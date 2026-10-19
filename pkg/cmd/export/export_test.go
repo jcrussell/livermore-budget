@@ -347,6 +347,15 @@ func TestEveryCaveatSummaryLinksToAnAnchorThatExists(t *testing.T) {
 	}
 
 	caveatsPage := read("caveats.html")
+	// A caveat about no node in each document says where it ships once: the
+	// chart-flag split names nodes, and two such lines would read alike.
+	// Mutation: split About on Flagged for an empty applies_to and
+	// caveat-constraint-tier-is-our-reading says it twice.
+	for _, a := range regexp.MustCompile(`(?s)<article class="caveat" id="([^"]+)">(.*?)</article>`).FindAllStringSubmatch(caveatsPage, -1) {
+		if n := strings.Count(a[2], "Shipped inside"); n > 1 {
+			t.Errorf("caveats.html says where %s ships %d times", a[1], n)
+		}
+	}
 	ids := map[string]bool{}
 	for _, m := range regexp.MustCompile(`id="([^"]+)"`).FindAllStringSubmatch(caveatsPage, -1) {
 		if ids[m[1]] {

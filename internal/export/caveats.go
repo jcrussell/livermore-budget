@@ -86,8 +86,9 @@ type caveatEntry struct {
 	Anchor  string
 	Summary string
 	// Of tells apart entries sharing one summary: the fiscal years of the
-	// documents carrying this one, or their stems for documents stating no
-	// year. "" when no other entry shares the summary.
+	// documents carrying this one (its stem for one stating no year), or,
+	// when two entries under the summary would name the same years, every
+	// entry's carrying stems. "" when no other entry shares the summary.
 	Of   string
 	Text string
 	// About groups the documents that ship this caveat by what it is about
@@ -265,11 +266,14 @@ func buildCaveatIndex(o *Options, ix ColumnIndex, nav []navItem) (*caveatIndex, 
 		for _, stem := range carriers[e] {
 			f := caveatFile{Stem: stem, Label: documentLabel(o, stem), DataPath: ix.PublishedPath(stem)}
 			applies := appliesOf[e][stem]
+			// Flagged only splits a group that names nodes: the page says
+			// nothing of it otherwise, and two groups would read alike.
+			flags := len(applies) > 0 && flagged[stem]
 			at := slices.IndexFunc(e.About, func(a caveatAbout) bool {
-				return slices.Equal(a.AppliesTo, applies) && a.Flagged == flagged[stem]
+				return slices.Equal(a.AppliesTo, applies) && a.Flagged == flags
 			})
 			if at < 0 {
-				e.About = append(e.About, caveatAbout{AppliesTo: applies, Flagged: flagged[stem]})
+				e.About = append(e.About, caveatAbout{AppliesTo: applies, Flagged: flags})
 				at = len(e.About) - 1
 			}
 			e.About[at].Files = append(e.About[at].Files, f)
