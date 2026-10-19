@@ -26,8 +26,9 @@
 
 <p class="lede">
   {{len .Entries}} caveat{{if ne (len .Entries) 1}}s{{end}}, each stated once, across {{.Documents}}
-  published document{{if ne .Documents 1}}s{{end}}. Every page that shows figures links here in one
-  line, to its own list below; each list links to the caveats in full further down.
+  published document{{if ne .Documents 1}}s{{end}}. Every page that draws a schedule carrying a caveat
+  links here in one line, to its own list below; each list links to the caveats in full further
+  down.
 </p>
 
 {{- /* A view's section lists the caveats of every document it reaches
@@ -48,8 +49,8 @@
 <section class="caveat-page" id="caveats-in-data-no-page-draws">
   <h2>In data no page draws</h2>
   <p class="subtle">
-    The site publishes some documents as data that no page draws yet. Their caveats are owed to
-    whoever fetches the file, and repeat what a drawn year of the same schedule says.
+    The site publishes some documents as data that no page draws yet. These caveats are carried
+    only by those files, so no page above states them; they are owed to whoever fetches the file.
   </p>
   <ul class="caveats">
     {{- range .Unviewed}}

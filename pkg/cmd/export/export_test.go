@@ -459,6 +459,65 @@ func TestEveryCaveatSummaryLinksToAnAnchorThatExists(t *testing.T) {
 	}
 }
 
+// TestASiteWithNoCaveatsPageStatesEachCaveatOnceInItsList: with the caveats
+// view dropped, every page lists its caveats' headings in place of its one
+// line, and no page lists one twice. flows.html reaches two years of the
+// schedules whose caveats share a summary across years, so its list is
+// where two lines alike would show.
+//
+// Mutation: print each fallback line's summary without its Of in the
+// "caveats-line" template and flows.html lists one summary twice.
+func TestASiteWithNoCaveatsPageStatesEachCaveatOnceInItsList(t *testing.T) {
+	root := repoRootForTest(t)
+	built := builtStemsForTest(t)
+	io, _, _, _ := iostreams.Test()
+	opts := &Options{IO: io, OutputDir: filepath.Join(t.TempDir(), "dist")}
+	site, err := opts.siteOptions(root, result{Projections: built})
+	if err != nil {
+		t.Fatalf("siteOptions: %v", err)
+	}
+	site.Views = slices.DeleteFunc(site.Views, func(v export.View) bool { return v.Template == export.CaveatsTemplate })
+	plan, err := export.Prepare(site)
+	if err != nil {
+		t.Fatalf("Prepare without the caveats view: %v", err)
+	}
+	if _, wErr := plan.Write(); wErr != nil {
+		t.Fatalf("Write: %v", wErr)
+	}
+	if _, statErr := os.Stat(filepath.Join(opts.OutputDir, "caveats.html")); statErr == nil {
+		t.Fatal("caveats.html was written with no caveats view, so this asserts nothing")
+	}
+
+	list := regexp.MustCompile(`(?s)<ul class="caveats" aria-label="What these figures do not say">(.*?)</ul>`)
+	item := regexp.MustCompile(`<li>(.*?)</li>`)
+	listed := map[string]int{}
+	pages, err := filepath.Glob(filepath.Join(opts.OutputDir, "*.html"))
+	if err != nil {
+		t.Fatalf("list the exported pages: %v", err)
+	}
+	for _, path := range pages {
+		page := filepath.Base(path)
+		raw, readErr := os.ReadFile(path)
+		if readErr != nil {
+			t.Fatalf("read %s: %v", page, readErr)
+		}
+		seen := map[string]bool{}
+		for _, l := range list.FindAllStringSubmatch(string(raw), -1) {
+			for _, m := range item.FindAllStringSubmatch(l[1], -1) {
+				if seen[m[1]] {
+					t.Errorf("%s lists %q twice", page, m[1])
+				}
+				seen[m[1]] = true
+				listed[page]++
+			}
+		}
+	}
+	t.Logf("fallback lines: %v", listed)
+	if listed["flows.html"] == 0 {
+		t.Fatal("flows.html lists no caveat in place of its line, so this asserts nothing")
+	}
+}
+
 // TestTheSiteDoesNotSayThePSeventySixScheduleIsUnmapped asserts over the
 // rendered pages, where a reader meets internal/project's transferCaveat, that
 // no page says Budget Book p76 is unmapped in either word order, and that

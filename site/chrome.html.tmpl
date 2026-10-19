@@ -31,16 +31,17 @@
 {{- /* "caveats-line" is a page's caveats in one line, executed against the
        page's .CaveatsHere: how many apply, linking to this page's section of
        the caveats page. With no caveats page (an empty .Href) it lists each
-       caveat's summary instead, so a site without that page still states
-       them. */}}
+       caveat's heading instead, its summary and the documents it is of where
+       another shares the summary, so a site without that page still states
+       them and no two lines read alike. */}}
 {{define "caveats-line"}}
 {{- if .Count}}
 {{- if .Href}}
 <p class="caveats-line"><a href="{{.Href}}">{{.Count}} caveat{{if eq .Count 1}} applies{{else}}s apply{{end}} to this page &rarr;</a></p>
 {{- else}}
 <ul class="caveats" aria-label="What these figures do not say">
-  {{- range .Refs}}
-  <li>{{.Summary}}</li>
+  {{- range .Entries}}
+  <li>{{.Summary}}{{if .Of}} <span class="subtle">({{.Of}})</span>{{end}}</li>
   {{- end}}
 </ul>
 {{- end}}

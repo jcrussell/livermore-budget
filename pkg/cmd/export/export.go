@@ -206,48 +206,29 @@ the repository instead.`,
 	return cmd
 }
 
-// extractionTree is where the committed page text is read from.
-func (o *Options) extractionTree(repoRoot string) string {
-	if o.extractedDir != "" {
-		return o.extractedDir
-	}
-	return filepath.Join(repoRoot, filepath.FromSlash(repo.ExtractedDir))
-}
-
-func exportRun(o *Options) error {
-	root, err := o.RepoRoot()
-	if err != nil {
-		return err
-	}
-
-	build := o.Build
-	if build == nil {
-		build = buildAll
-	}
-	built, err := build(root)
-	if err != nil {
-		return err
-	}
+// siteOptions is the site exportRun writes from built: the views
+// data/views.yaml declares, and everything the packager reads beside them.
+func (o *Options) siteOptions(root string, built result) (export.Options, error) {
 	projections := built.Projections
 
 	docs, err := loadDocs(root)
 	if err != nil {
-		return err
+		return export.Options{}, err
 	}
 
 	siteViews, err := views(root, built)
 	if err != nil {
-		return err
+		return export.Options{}, err
 	}
 	departments, err := departmentMembership(root)
 	if err != nil {
-		return err
+		return export.Options{}, err
 	}
 	apartFromSpine, err := departmentsApartFromSpine()
 	if err != nil {
-		return err
+		return export.Options{}, err
 	}
-	site := export.Options{
+	return export.Options{
 		Dir:         o.OutputDir,
 		Projections: projections,
 		// WHICH VIEWS THE SITE HAS IS STATED HERE, in the composition root, and
@@ -293,10 +274,38 @@ func exportRun(o *Options) error {
 		Gate: func(ix export.ColumnIndex) error {
 			return assertPublishedReachable(siteViews, projections, ix)
 		},
+	}, nil
+}
+
+// extractionTree is where the committed page text is read from.
+func (o *Options) extractionTree(repoRoot string) string {
+	if o.extractedDir != "" {
+		return o.extractedDir
+	}
+	return filepath.Join(repoRoot, filepath.FromSlash(repo.ExtractedDir))
+}
+
+func exportRun(o *Options) error {
+	root, err := o.RepoRoot()
+	if err != nil {
+		return err
+	}
+
+	build := o.Build
+	if build == nil {
+		build = buildAll
+	}
+	built, err := build(root)
+	if err != nil {
+		return err
+	}
+	site, err := o.siteOptions(root, built)
+	if err != nil {
+		return err
 	}
 
 	// THE WHOLE SITE IS RESOLVED BEFORE --clean. Prepare validates, runs the
-	// gate above, renders every page, and resolves the cited page text out of
+	// siteOptions gate, renders every page, and resolves the cited page text out of
 	// the extraction tree, this command's PageIndex seeding included; after it
 	// returns, only I/O can fail. A caller that learns any of that from Write
 	// has already emptied the reader's site to find out -- `fisc export

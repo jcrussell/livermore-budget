@@ -1465,7 +1465,7 @@ func toCIP(facts []fact.Fact, col Column) cipTransfers {
 func transferCaveat(h Headline, links []Link, cip cipTransfers) Caveat {
 	// One id over three texts: which one a document gets depends on its own
 	// arithmetic, so a page listing several documents' caveats keys on
-	// (id, document).
+	// (id, summary, text).
 	const id = "transfer-legs-unpaired"
 	const unpaired = "Transfer legs are unpaired IN THIS DOCUMENT: no link here carries a " +
 		"transfer_id. Budget Book p76's transfers are published one document over, in " +

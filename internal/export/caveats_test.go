@@ -1,6 +1,7 @@
 package export
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -34,14 +35,17 @@ func caveatSite(a, b, c string) (*Options, []navItem) {
 // TestTheCaveatIndexStatesEachCaveatOnce: one (id, summary, text) carried by
 // two documents is one entry both link to, one id carrying two texts is two
 // entries under two anchors, and each view's line counts its own section.
+// "In data no page draws" holds only what no view states: c, which no view
+// reaches, carries x as well as z, and a and b state x.
 //
 // Mutation: key byVariant on the id alone and "y" is one entry, whose text is
-// a's and which b's link lands on.
+// a's and which b's link lands on. Mutation: list as unviewed every entry an
+// unreached document carries and x is in it beside a's and b's sections.
 func TestTheCaveatIndexStatesEachCaveatOnce(t *testing.T) {
 	o, nav := caveatSite(
 		`[{"id":"x","summary":"X.","text":"Same.","applies_to":[]},{"id":"y","summary":"Y.","text":"In a.","applies_to":[]}]`,
 		`[{"id":"x","summary":"X.","text":"Same.","applies_to":[]},{"id":"y","summary":"Y.","text":"In b.","applies_to":[]}]`,
-		`[{"id":"z","summary":"Z.","text":"Only c.","applies_to":[]}]`,
+		`[{"id":"x","summary":"X.","text":"Same.","applies_to":[]},{"id":"z","summary":"Z.","text":"Only c.","applies_to":[]}]`,
 	)
 	cx, err := buildCaveatIndex(o, ColumnIndex{}, nav)
 	if err != nil {
@@ -83,14 +87,40 @@ func TestTheCaveatIndexStatesEachCaveatOnce(t *testing.T) {
 	}
 
 	here := cx.here("a.html")
-	if here.Count != 2 || here.Href != "caveats.html#caveats-on-a" || len(here.Refs) != here.Count {
+	if here.Count != 2 || here.Href != "caveats.html#caveats-on-a" || len(here.Entries) != here.Count {
 		t.Errorf("a.html's line = %+v, want 2 caveats linking to caveats.html#caveats-on-a", here)
 	}
 	if got := cx.here("caveats.html"); got.Count != 0 || got.Href != "" {
 		t.Errorf("the caveats page's own line = %+v, want none", got)
 	}
-	if len(cx.unviewed) != 1 || cx.unviewed[0].ID != "z" {
-		t.Errorf("unviewed = %v, want z alone: c is the one document no view reaches", cx.unviewed)
+	var unviewed []string
+	for _, e := range cx.unviewed {
+		unviewed = append(unviewed, e.Anchor)
+		for _, cv := range cx.views {
+			if slices.Contains(cv.Entries, e) {
+				t.Errorf("%s is listed in data no page draws and in %s's section", e.Anchor, cv.Path)
+			}
+		}
+	}
+	if diff := cmp.Diff([]string{"caveat-z"}, unviewed); diff != "" {
+		t.Errorf("unviewed (-want +got):\n%s", diff)
+	}
+}
+
+// TestTwoCaveatsTheIndexWouldHeadAlikeAreRefused: two ids under one summary,
+// carried by the same documents, take one Of whether it is read off the
+// years or the stems, so their headings and fallback lines read alike.
+//
+// Mutation: drop the headings refusal in buildCaveatIndex and both build,
+// headed "S. (a)".
+func TestTwoCaveatsTheIndexWouldHeadAlikeAreRefused(t *testing.T) {
+	o, nav := caveatSite(
+		`[{"id":"x","summary":"S.","text":"One.","applies_to":[]},{"id":"y","summary":"S.","text":"Two.","applies_to":[]}]`,
+		`[]`, `[]`,
+	)
+	_, err := buildCaveatIndex(o, ColumnIndex{}, nav)
+	if err == nil || !strings.Contains(err.Error(), "head two different caveats alike") {
+		t.Errorf("buildCaveatIndex = %v, want two headings alike refused", err)
 	}
 }
 
@@ -113,7 +143,7 @@ func TestOneTextUnderTwoSummariesIsTwoEntries(t *testing.T) {
 }
 
 // TestASiteWithNoCaveatsPageLinksNoCaveat: with no caveats view every href
-// is empty and the line carries the summaries the fallback list prints.
+// is empty and the line carries the headings the fallback list prints.
 func TestASiteWithNoCaveatsPageLinksNoCaveat(t *testing.T) {
 	o, nav := caveatSite(`[{"id":"x","summary":"X.","text":"T.","applies_to":[]}]`, `[]`, `[]`)
 	o.Views, nav = o.Views[:2], nav[:2]
@@ -122,7 +152,7 @@ func TestASiteWithNoCaveatsPageLinksNoCaveat(t *testing.T) {
 		t.Fatalf("buildCaveatIndex: %v", err)
 	}
 	here := cx.here("a.html")
-	if here.Count != 1 || here.Href != "" || len(here.Refs) != 1 || here.Refs[0].Summary != "X." || here.Refs[0].Href != "" {
+	if here.Count != 1 || here.Href != "" || len(here.Entries) != 1 || here.Entries[0].Summary != "X." || cx.href(here.Entries[0]) != "" {
 		t.Errorf("a.html's line = %+v, want one unlinked summary", here)
 	}
 }

@@ -640,36 +640,38 @@ describe("the expansion's drawing", () => {
     assert.equal(app.linkColor({ source: funds[0], target: other }), muted);
   });
 
-  for (const [entries, stem] of [[[], "expansion"], [["fund-group/capital"], "expansion"]]) {
+  /** The href Go emitted for a caveat id in one year's refs, or "". */
+  const emittedHref = (year, id) => (year.config.caveats.find((c) => c.id === id) || {}).href || "";
+  /** Whether the pinned years link one id to several anchors: its variants. */
+  const hasVariants = (id) => new Set(YEARS.map((y) => emittedHref(y, id)).filter(Boolean)).size > 1;
+
+  for (const entries of [[], ["fund-group/capital"]]) {
     const name = entries.length ? "with " + entries.join(" > ") + " split" : "at the root";
-    test(`${name}: a marked node reaches the tooltip and the panel, and links to its own document's caveat`, async (t) => {
+    test(`${name}: a marked node reaches the tooltip and the panel, and links each caveat where Go linked it`, async (t) => {
       const { app, document } = await bootedApp({ checkedStem: YEARS[0].stem });
       const chart = document.getElementById("chart");
       await split(app, ...entries);
-      const marked = marksIn(chart).find((m) => app.caveatsFor(m.__data__.id).length > 0);
-      // At the root a fund group carries the caveat its own remainder node
-      // is named in: the remainder is folded inside it, as a tail's members
-      // are inside the tail.
-      assert.ok(marked, "no drawn node carries a caveat, so this asserts nothing");
+      // A mark one of whose caveats has several variants, so a bare anchor
+      // would land on none of them. At the root a fund group carries the
+      // caveat its own remainder node is named in: the remainder is folded
+      // inside it, as a tail's members are inside the tail.
+      const marked = marksIn(chart).find((m) => app.caveatsFor(m.__data__.id).some((c) => hasVariants(c.id)));
+      assert.ok(marked, "no drawn node carries a caveat with several variants, so this asserts nothing");
       const laid = marked.__data__;
       app.showTip({ target: chart, clientX: 0, clientY: 0 }, laid);
       const tip = document.getElementById("tooltip").textContent;
       app.pin(laid);
       const panel = document.getElementById("detail").textContent;
-      const caveat = app.caveatsFor(laid.id)[0].id;
-      const href = app.caveatHref(caveat);
-      // The caveats page states each caveat once: under its id, or under its
-      // id and the first document carrying its text where one id carries
-      // several.
-      const wantHrefs = [`caveats.html#caveat-${caveat}`, `caveats.html#caveat-${caveat}--${stem}`];
-      const read = [...document.querySelectorAll("#detail a")].find((a) => a.textContent === "Read it in full");
-      const drawn = read ? read.getAttribute("href") : "";
+      const ids = app.caveatsFor(laid.id).map((c) => c.id);
+      const want = ids.map((id) => emittedHref(YEARS[0], id));
+      const drawn = [...document.querySelectorAll("#detail a")]
+        .filter((a) => a.textContent === "Read it in full").map((a) => a.getAttribute("href"));
       t.diagnostic(`${laid.id}: tooltip mentions ${tip.includes("caveat") ? "a caveat" : "NO caveat"}; ` +
-        `panel ${panel.includes("Read it in full") ? "links to the full text" : "does NOT link"}; href "${href}", drawer "${drawn}"`);
+        `drawer links ${JSON.stringify(drawn)}; ${ids.filter(hasVariants).join(", ")} with several variants`);
       assert.ok(tip.includes("caveat"), tip);
       assert.ok(panel.includes("Read it in full"), panel);
-      assert.ok(wantHrefs.includes(href), href);
-      assert.equal(drawn, href);
+      assert.ok(want.every(Boolean), `Go emitted no href for one of ${ids.join(", ")}`);
+      assert.deepEqual(drawn, want);
     });
   }
 

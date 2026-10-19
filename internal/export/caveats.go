@@ -43,15 +43,16 @@ type caveatRef struct {
 
 // caveatsHere is the one line a page states its caveats in: how many, and
 // the caveats page's section for this page. With no caveats page Href is ""
-// and the "caveats-line" template lists Refs' summaries instead, so a site
-// without the page still states them.
+// and the "caveats-line" template lists Entries' headings instead, each
+// summary with its Of, so a site without the page still states them and
+// tells apart two that share a summary.
 //
-// Count is len(Refs), and Refs is the caveats page's own section for this
-// view (caveatIndex.views), so the line and the section cannot disagree.
+// Count is len(Entries), and Entries is the caveats page's own section for
+// this view (caveatIndex.views), so the line and the section cannot disagree.
 type caveatsHere struct {
-	Count int
-	Href  string
-	Refs  []caveatRef
+	Count   int
+	Href    string
+	Entries []*caveatEntry
 }
 
 // caveatKey is one caveat of one document. An id is unique within a
@@ -73,7 +74,8 @@ type caveatIndex struct {
 	byRef   map[caveatKey]*caveatEntry
 	// views is every view's section, in nav order, empty ones included.
 	views []*caveatView
-	// unviewed are the entries some document no view reaches carries.
+	// unviewed are the entries no view states: every document carrying one
+	// is a document no view reaches.
 	unviewed []*caveatEntry
 }
 
@@ -183,9 +185,9 @@ func flaggedStems(o *Options, ix ColumnIndex) map[string]bool {
 // buildCaveatIndex reads every published document's caveats once.
 //
 // It refuses a caveat with no id, summary or text, a document carrying one id
-// twice, two fragments the caveats page would emit alike, and a view's
-// document carrying a caveat the index lacks. project.ValidateCaveats never
-// sees a document decoded from bytes, which is every document here.
+// twice, two fragments the caveats page would emit alike, and two entries
+// whose headings (Summary and Of) would read alike. project.ValidateCaveats
+// never sees a document decoded from bytes, which is every document here.
 func buildCaveatIndex(o *Options, ix ColumnIndex, nav []navItem) (*caveatIndex, error) {
 	cx := &caveatIndex{base: caveatsPathOf(o), byRef: map[caveatKey]*caveatEntry{}}
 	flagged := flaggedStems(o, ix)
@@ -199,6 +201,8 @@ func buildCaveatIndex(o *Options, ix ColumnIndex, nav []navItem) (*caveatIndex, 
 	variants := map[string][]*caveatEntry{}
 	appliesOf := map[*caveatEntry]map[string][]string{}
 	carriers := map[*caveatEntry][]string{}
+	// carried is each document's entries, in the order it states them.
+	carried := map[string][]*caveatEntry{}
 	for _, stem := range sortedKeys(o.Projections) {
 		var dc documentCaveats
 		if err := json.Unmarshal(o.Projections[stem], &dc); err != nil {
@@ -232,6 +236,7 @@ func buildCaveatIndex(o *Options, ix ColumnIndex, nav []navItem) (*caveatIndex, 
 				cx.entries = append(cx.entries, e)
 			}
 			cx.byRef[key] = e
+			carried[stem] = append(carried[stem], e)
 			appliesOf[e][stem] = c.AppliesTo
 			carriers[e] = append(carriers[e], stem)
 		}
@@ -303,9 +308,20 @@ func buildCaveatIndex(o *Options, ix ColumnIndex, nav []navItem) (*caveatIndex, 
 				e.Of = strings.Join(carriers[e], ", ")
 			}
 		}
+		// Two entries under one summary carried by the same documents have
+		// one Of either way, and would head two texts alike.
+		headings := map[string]*caveatEntry{}
+		for _, e := range alike {
+			if prev, dup := headings[e.Of]; dup {
+				return nil, fmt.Errorf(
+					"caveats %q and %q of %s share the summary %q, so the caveats page would head "+
+						"two different caveats alike and a reader could not tell which a link means",
+					prev.ID, e.ID, e.Of, e.Summary)
+			}
+			headings[e.Of] = e
+		}
 	}
 
-	reached := map[string]bool{}
 	for i, v := range o.Views {
 		stems, err := caveatsOfView(v, ix)
 		if err != nil {
@@ -318,17 +334,7 @@ func buildCaveatIndex(o *Options, ix ColumnIndex, nav []navItem) (*caveatIndex, 
 			if _, built := o.Projections[stem]; !built {
 				continue
 			}
-			reached[stem] = true
-			var dc documentCaveats
-			if err := json.Unmarshal(o.Projections[stem], &dc); err != nil {
-				return nil, fmt.Errorf("decode %s caveats: %w", stem, err)
-			}
-			for _, c := range dc.Metadata.Caveats {
-				e, ok := cx.byRef[caveatKey{stem, c.ID}]
-				if !ok {
-					return nil, fmt.Errorf("view %q states caveat %q of %s, which the caveats index does not carry",
-						v.Path, c.ID, stem)
-				}
+			for _, e := range carried[stem] {
 				if !slices.Contains(cv.Entries, e) {
 					cv.Entries = append(cv.Entries, e)
 					e.Pages = append(e.Pages, navItem{Label: cv.Label, Path: v.Path})
@@ -343,7 +349,7 @@ func buildCaveatIndex(o *Options, ix ColumnIndex, nav []navItem) (*caveatIndex, 
 		cx.views = append(cx.views, cv)
 	}
 	for _, e := range cx.entries {
-		if slices.ContainsFunc(carriers[e], func(s string) bool { return !reached[s] }) {
+		if len(e.Pages) == 0 {
 			cx.unviewed = append(cx.unviewed, e)
 		}
 	}
@@ -393,12 +399,9 @@ func (cx *caveatIndex) here(path string) caveatsHere {
 		if cv.Path != path {
 			continue
 		}
-		out := caveatsHere{Count: len(cv.Entries)}
+		out := caveatsHere{Count: len(cv.Entries), Entries: cv.Entries}
 		if cx.base != "" && len(cv.Entries) > 0 {
 			out.Href = cx.base + "#" + cv.Anchor
-		}
-		for _, e := range cv.Entries {
-			out.Refs = append(out.Refs, caveatRef{ID: e.ID, Summary: e.Summary, Href: cx.href(e)})
 		}
 		return out
 	}
@@ -410,8 +413,8 @@ type caveatsPageData struct {
 	chrome
 	// Views are the sections of the views that state a caveat, in nav order.
 	Views []*caveatView
-	// Unviewed are the caveats a document no page draws carries, owed to
-	// whoever fetches the file.
+	// Unviewed are the caveats no page states, carried only by documents no
+	// page draws and owed to whoever fetches the file.
 	Unviewed []*caveatEntry
 	Entries  []*caveatEntry
 	// Documents is how many published documents carry a caveat.

@@ -95,9 +95,9 @@ sentence. A document repeating an id is refused at build time by
 documents (see below), and one text carries different summaries. The fragment is
 `caveats.html#caveat-<id>` when the id has one such triple across the site, and
 `caveats.html#caveat-<id>--<stem>` for each of several, `<stem>` being the first
-document, in sorted order, carrying that triple. `buildCaveatIndex` in
-`internal/export/caveats.go` composes both and refuses two fragments the page
-would emit alike, a repeated id inside a document among them. An anchor
+document, in sorted order, carrying that triple. `buildCaveatIndex` composes both and
+refuses two fragments the page would emit alike, a repeated id inside a document
+among them, and two entries it would head alike. An anchor
 collision fails silently — the page renders, the anchor resolves, and the reader
 is shown a sentence about something else — which is why it is refused rather
 than left to a reader to notice. Each page links its own section,
