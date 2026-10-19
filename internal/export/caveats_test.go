@@ -47,20 +47,22 @@ func TestTheCaveatIndexStatesEachCaveatOnce(t *testing.T) {
 	if err != nil {
 		t.Fatalf("buildCaveatIndex: %v", err)
 	}
-	type stated struct{ Anchor, Text, Pages string }
+	type stated struct{ Anchor, Of, Text, Pages string }
 	var got []stated
 	for _, e := range cx.entries {
 		var pages []string
 		for _, p := range e.Pages {
 			pages = append(pages, p.Path)
 		}
-		got = append(got, stated{e.Anchor, e.Text, strings.Join(pages, " ")})
+		got = append(got, stated{e.Anchor, e.Of, e.Text, strings.Join(pages, " ")})
 	}
 	want := []stated{
-		{"caveat-x", "Same.", "a.html b.html"},
-		{"caveat-y--a", "In a.", "a.html"},
-		{"caveat-y--b", "In b.", "b.html"},
-		{"caveat-z", "Only c.", ""},
+		{"caveat-x", "", "Same.", "a.html b.html"},
+		// One summary over two texts, of documents stating one year: told
+		// apart by stem.
+		{"caveat-y--a", "a", "In a.", "a.html"},
+		{"caveat-y--b", "b", "In b.", "b.html"},
+		{"caveat-z", "", "Only c.", ""},
 	}
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("entries (-want +got):\n%s", diff)

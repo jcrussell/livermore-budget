@@ -38,7 +38,7 @@
   <p class="subtle">{{len .Entries}} caveat{{if eq (len .Entries) 1}} applies{{else}}s apply{{end}} to this page.</p>
   <ul class="caveats">
     {{- range .Entries}}
-    <li><a href="#{{.Anchor}}">{{.Summary}}</a></li>
+    <li><a href="#{{.Anchor}}">{{.Summary}}</a>{{if .Of}} <span class="subtle">({{.Of}})</span>{{end}}</li>
     {{- end}}
   </ul>
 </section>
@@ -53,7 +53,7 @@
   </p>
   <ul class="caveats">
     {{- range .Unviewed}}
-    <li><a href="#{{.Anchor}}">{{.Summary}}</a></li>
+    <li><a href="#{{.Anchor}}">{{.Summary}}</a>{{if .Of}} <span class="subtle">({{.Of}})</span>{{end}}</li>
     {{- end}}
   </ul>
 </section>
@@ -63,7 +63,7 @@
   <h2 id="caveats-in-full">In full</h2>
   {{- range .Entries}}
   <article class="caveat" id="{{.Anchor}}">
-    <h3><a href="#{{.Anchor}}" class="anchor-link">{{.Summary}}</a></h3>
+    <h3><a href="#{{.Anchor}}" class="anchor-link">{{.Summary}}</a>{{if .Of}} <span class="subtle">({{.Of}})</span>{{end}}</h3>
     <p>{{.Text}}</p>
     {{- range .About}}
     <p class="subtle">

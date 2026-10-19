@@ -359,17 +359,24 @@ func TestEveryCaveatSummaryLinksToAnAnchorThatExists(t *testing.T) {
 		t.Fatal("caveats.html carries no caveat anchors, so this test asserts nothing")
 	}
 
-	// EACH CAVEAT ONCE: no two entries in full state one summary over one text.
-	entry := regexp.MustCompile(`(?s)<article class="caveat" id="[^"]+">\s*<h3><a [^>]*>([^<]*)</a></h3>\s*<p>([^<]*)</p>`)
-	stated := map[string]bool{}
+	// EACH CAVEAT ONCE: no two entries in full state one summary over one
+	// text, and no two read alike as headings, which a reader could not tell
+	// apart in a page's list.
+	entry := regexp.MustCompile(`(?s)<article class="caveat" id="[^"]+">\s*<h3><a [^>]*>([^<]*)</a>(?: <span class="subtle">\(([^<]*)\)</span>)?</h3>\s*<p>([^<]*)</p>`)
+	stated, headed := map[string]bool{}, map[string]bool{}
 	for _, m := range entry.FindAllStringSubmatch(caveatsPage, -1) {
-		if stated[m[1]+"\x00"+m[2]] {
+		if stated[m[1]+"\x00"+m[3]] {
 			t.Errorf("caveats.html states %q in full twice", m[1])
 		}
-		stated[m[1]+"\x00"+m[2]] = true
+		stated[m[1]+"\x00"+m[3]] = true
+		if headed[m[1]+"\x00"+m[2]] {
+			t.Errorf("caveats.html heads two caveats %q (%s)", m[1], m[2])
+		}
+		headed[m[1]+"\x00"+m[2]] = true
 	}
-	if len(stated) == 0 {
-		t.Fatal("caveats.html states no caveat in full that this test can read")
+	if len(stated) == 0 || len(stated) != strings.Count(caveatsPage, `<article class="caveat"`) {
+		t.Fatalf("caveats.html states %d caveats in full that this test can read, of %d",
+			len(stated), strings.Count(caveatsPage, `<article class="caveat"`))
 	}
 	t.Logf("caveats.html states %d caveats in full", len(stated))
 

@@ -83,7 +83,11 @@ type caveatEntry struct {
 	ID      string
 	Anchor  string
 	Summary string
-	Text    string
+	// Of tells apart entries sharing one summary: the fiscal years of the
+	// documents carrying this one, or their stems for documents stating no
+	// year. "" when no other entry shares the summary.
+	Of   string
+	Text string
 	// About groups the documents that ship this caveat by what it is about
 	// in each of them, in the order the documents sort.
 	About []caveatAbout
@@ -264,6 +268,40 @@ func buildCaveatIndex(o *Options, ix ColumnIndex, nav []navItem) (*caveatIndex, 
 				at = len(e.About) - 1
 			}
 			e.About[at].Files = append(e.About[at].Files, f)
+		}
+	}
+
+	// One summary over several texts (a count in the text differs by column)
+	// would read as one link listed twice.
+	bySummary := map[string][]*caveatEntry{}
+	for _, e := range cx.entries {
+		bySummary[e.Summary] = append(bySummary[e.Summary], e)
+	}
+	for _, alike := range bySummary {
+		if len(alike) < 2 {
+			continue
+		}
+		// The years, unless two entries share them; then the stems, which
+		// no two entries share.
+		ofs := map[string]bool{}
+		for _, e := range alike {
+			var of []string
+			for _, stem := range carriers[e] {
+				label := documentLabel(o, stem)
+				if label == "" {
+					label = stem
+				}
+				if !slices.Contains(of, label) {
+					of = append(of, label)
+				}
+			}
+			e.Of = strings.Join(of, ", ")
+			ofs[e.Of] = true
+		}
+		if len(ofs) < len(alike) {
+			for _, e := range alike {
+				e.Of = strings.Join(carriers[e], ", ")
+			}
 		}
 	}
 
