@@ -713,13 +713,12 @@ func TestTransferCaveatNamesThePrintedColumn(t *testing.T) {
 // residual is named as the transfers to the CIP only when p222's published
 // legs in the same column sum to it, with the sign of an outflow.
 func TestTransferCaveatNamesTheCIPOnlyWhenP222IsTheResidual(t *testing.T) {
-	col := Column{FiscalYear: testYear, Basis: testBasis}
 	// The claiming summary, which only a residual equal to p222's legs earns.
 	const cip = ", the transfers to the Capital Improvement Program."
 	real := Headline{InternalTransferInCents: 2152599700, InternalTransferOutCents: 5961273400}
 	printed := cipTransfers{Cents: 3808673700, Printed: true}
 
-	if got := transferCaveat(real, col, nil, printed).Text; !strings.Contains(got, "p222") {
+	if got := transferCaveat(real, nil, printed).Text; !strings.Contains(got, "p222") {
 		t.Errorf("a residual equal to p222's legs did not name them:\n%s", got)
 	}
 	for _, tc := range []struct {
@@ -733,12 +732,12 @@ func TestTransferCaveatNamesTheCIPOnlyWhenP222IsTheResidual(t *testing.T) {
 		{"the sign inverted", Headline{InternalTransferInCents: real.InternalTransferOutCents,
 			InternalTransferOutCents: real.InternalTransferInCents}, printed},
 	} {
-		if got := transferCaveat(tc.h, col, nil, tc.cip).Summary; strings.Contains(got, cip) {
+		if got := transferCaveat(tc.h, nil, tc.cip).Summary; strings.Contains(got, cip) {
 			t.Errorf("%s: the caveat named the CIP:\n%s", tc.name, got)
 		}
 	}
 	// p222 mapped and not tying is this project's disagreement, never the city's.
-	off := transferCaveat(real, col, nil, cipTransfers{Cents: 3808673600, Printed: true})
+	off := transferCaveat(real, nil, cipTransfers{Cents: 3808673600, Printed: true})
 	if strings.Contains(off.Text, "the city's rather than this project's") ||
 		!strings.Contains(off.Text, "do not reconcile") {
 		t.Errorf("p222's legs a dollar off:\n%s", off.Text)
@@ -759,7 +758,6 @@ func TestTransferCaveatNamesTheCIPOnlyWhenP222IsTheResidual(t *testing.T) {
 // node id. It is not a shape the corpus produces today -- which is exactly why
 // it needs a test rather than a reader's confidence.
 func TestTheTransferCaveatMarksTheLegsTheGraphDRAWS(t *testing.T) {
-	col := Column{FiscalYear: testYear, Basis: testBasis}
 	h := Headline{InternalTransferInCents: 100, InternalTransferOutCents: 500}
 
 	both := []Link{
@@ -769,7 +767,7 @@ func TestTheTransferCaveatMarksTheLegsTheGraphDRAWS(t *testing.T) {
 			ValueCents: 500, Kind: KindInternalTransfer},
 	}
 	if diff := cmp.Diff([]string{NodeTransfersIn, NodeTransfersOut},
-		transferCaveat(h, col, both, cipTransfers{}).AppliesTo); diff != "" {
+		transferCaveat(h, both, cipTransfers{}).AppliesTo); diff != "" {
 		t.Errorf("both legs drawn (-want +got):\n%s", diff)
 	}
 
@@ -778,7 +776,7 @@ func TestTheTransferCaveatMarksTheLegsTheGraphDRAWS(t *testing.T) {
 	// is there, or ValidateCaveats aborts the build.
 	inOnly := both[:1]
 	if diff := cmp.Diff([]string{NodeTransfersIn},
-		transferCaveat(h, col, inOnly, cipTransfers{}).AppliesTo); diff != "" {
+		transferCaveat(h, inOnly, cipTransfers{}).AppliesTo); diff != "" {
 		t.Errorf("only the in leg drawn (-want +got):\n%s", diff)
 	}
 
@@ -789,7 +787,7 @@ func TestTheTransferCaveatMarksTheLegsTheGraphDRAWS(t *testing.T) {
 			ValueCents: 500, Kind: KindInternalTransfer},
 	}
 	if diff := cmp.Diff([]string{PrefixTransfers + "out-to-cip"},
-		transferCaveat(h, col, odd, cipTransfers{}).AppliesTo); diff != "" {
+		transferCaveat(h, odd, cipTransfers{}).AppliesTo); diff != "" {
 		t.Errorf("an endpoint named otherwise (-want +got):\n%s", diff)
 	}
 
@@ -799,7 +797,7 @@ func TestTheTransferCaveatMarksTheLegsTheGraphDRAWS(t *testing.T) {
 		{Source: "fund-balance/draw", Target: PrefixFundGroup + "general",
 			ValueCents: 100, Kind: KindFundBalance},
 	}
-	if got := transferCaveat(h, col, none, cipTransfers{}).AppliesTo; len(got) != 0 {
+	if got := transferCaveat(h, none, cipTransfers{}).AppliesTo; len(got) != 0 {
 		t.Errorf("a graph with no transfer link marked %v", got)
 	}
 }
@@ -809,8 +807,7 @@ func hasCaveat(g *Document, substr string) bool {
 	return strings.Contains(caveatText(g), substr)
 }
 
-// caveatText joins the caveats' TEXT, which is the field that used to be the
-// whole caveat. Summaries are deliberately not searched: a substring assertion
+// caveatText joins the caveats' TEXT. Summaries are deliberately not searched: a substring assertion
 // that matched either would pass on a document whose text had been emptied.
 func caveatText(g *Document) string {
 	texts := make([]string, 0, len(g.Metadata.Caveats))

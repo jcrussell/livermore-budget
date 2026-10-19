@@ -252,20 +252,6 @@ export function balancesOf(node) {
 }
 
 /**
- * A drawn document's column, named as the page's lede names that year: the
- * published year the export shipped the name for.
- * @param {any} meta
- * @returns {string}
- */
-export function ledeOf(meta) {
-  const year = config().years.find((y) => y.year === meta.fiscal_year && y.basis === meta.basis);
-  if (!year) {
-    throw new Error("cannot name FY" + meta.fiscal_year + " " + meta.basis + ": the page publishes no such year");
-  }
-  return year.lede;
-}
-
-/**
  * What a partition ribbon is: the one sentence every mark showing it uses.
  * The direction drawn is not one the city printed; the ribbon is never
  * reversed, and the class and this sentence carry what it means.

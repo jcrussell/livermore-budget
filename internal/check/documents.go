@@ -33,13 +33,9 @@ var uncheckedDocuments = map[string]string{}
 // is not available: nothing in Go lets this ask "which checks read this
 // projection".
 //
-// It used to ask only "does this carry a graph", and that was sound while the
-// graph checks were all the structural checks there were -- its own doc comment
-// said "the day that stops being true is the day a second document shape gets
-// its own checks and its own arm here". That day arrived with the revenue
-// trends (fisc-5ep). What makes the widened test still sound is that each arm
-// below names the checks that read the shape, so adding a shape without adding
-// checks does not silently widen the exemption -- it fails here.
+// What keeps the test sound is that each arm below names the checks that read
+// the shape, so adding a shape without adding checks does not silently widen
+// the exemption -- it fails here.
 //
 // The arm is NOT an uncheckedDocuments entry, and the difference matters. That
 // map is for a shape nothing checks YET, and its own doc comment calls an entry
@@ -82,17 +78,13 @@ func (*documentsAreChecked) Run(_ context.Context, s *Subject) (Result, error) {
 				"publish a document that verify has not looked at"))
 	}
 
-	// A REGISTERED PROJECTION THAT PRODUCED NOTHING WAS REPORTED HERE AND IS NOT
-	// ANY MORE, because the premise it rested on has gone. The finding read
-	// "nothing built and nothing failed -- `fisc export` would still publish
-	// it", and that was true of the export command's old build loop: it ran the
-	// cartesian product of the published years and the registry and called
-	// Build on every projection whatever slices it declared. It now loops the
-	// slices each projection says it is of (fisc-neh), so a projection
-	// declaring none writes no file, and there is no document to be wrong.
+	// A REGISTERED PROJECTION THAT PRODUCED NOTHING IS NOT REPORTED HERE. The
+	// export command loops the slices each projection says it is of (fisc-neh),
+	// so a projection declaring none writes no file, and there is no document
+	// to be wrong.
 	//
-	// Keeping the arm would have made every projection of a schedule a FIXTURE
-	// does not carry into a defect -- internal/check/fixture_test.go is
+	// Reporting it would make every projection of a schedule a FIXTURE does
+	// not carry into a defect -- internal/check/fixture_test.go is
 	// spine-only, so the trends projection declares nothing there and 70-odd
 	// test call sites would report a corpus finding about a test's own scope.
 	// project.Sliced's doc comment already settles what that state means: "an

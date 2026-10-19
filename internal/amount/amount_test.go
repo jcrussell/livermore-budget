@@ -42,7 +42,7 @@ func TestParseAccepts(t *testing.T) {
 
 		// The currency symbol bleeds a cell to the right during extraction and
 		// lands on either side of a parenthesized negative. 23 such cells sit in
-		// the committed corpus and were previously all rejected.
+		// the committed corpus.
 		{"negative with leading dollar sign", "$(1,234)", Dollars, -123_400},
 		{"negative with trailing dollar sign", "(1,234) $", Dollars, -123_400},
 		{"negative with spaced dollar sign", "$ (95,830,768)", Dollars, -9_583_076_800},
@@ -322,7 +322,7 @@ func TestNormalizeUnifiesDashes(t *testing.T) {
 	if got, want := normalize("– — − -"), "- - - -"; got != want {
 		t.Errorf("Normalize(en/em/minus/hyphen) = %q, want %q", got, want)
 	}
-	// A backslash is no longer stripped from anything: there is no markdown in
+	// A backslash is not stripped from anything: there is no markdown in
 	// the corpus, so `\-` is an unrecognized token rather than a zero.
 	if _, err := Parse(`\-`, Dollars); err == nil {
 		t.Error(`Parse("\\-") = nil error; an unknown token must fail closed`)

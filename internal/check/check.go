@@ -106,11 +106,6 @@ type Check interface {
 	// is greped for, what a declaration in vacuity.go names, and what a reader
 	// cites. Kebab-case, and it says what is claimed rather than what is done:
 	// "facts-sorted", not "check-sort".
-	//
-	// This used to justify itself by "a future data/reconciliations.yaml entry
-	// names a check by this string". That file was never created and will not
-	// be -- see the note on the retired fields in Result below -- so the reason
-	// is now the plainer one above, which was always the load-bearing half.
 	ID() string
 	// Tier is the tier of the check: 1 exact and zero-tolerance, 2
 	// reconciliation against a document-derived tolerance, 3 cross-document, 4
@@ -259,27 +254,14 @@ type Result struct {
 	// non-nil and empty rather than null on a result that found nothing wrong.
 	Findings []Finding `json:"findings"`
 
-	// TWO FIELDS WERE RETIRED FROM HERE WHEN TIER 2 LANDED, and the reason is
-	// recorded because the shape of the published report changed with them.
-	// They were `reconciliation_id` and `delta_cents`, reserved for tier 2
-	// (fisc-1wr.2) under the comment "not built yet: today every result carries
-	// "" and 0 ... published now, empty, so that landing tier 2 changes values
-	// in this report rather than its shape."
-	//
-	// Tier 2 landed and changed no value here, because it landed where the
-	// comparison already was: internal/mapping's compareTotals, at BUILD time,
-	// where a total that does not tie already fails the build. A verify-time
-	// re-run would have been two functions over identical input in one process
-	// -- the distinction this package's own doc comment draws -- so it would
-	// have added availability and not independence, and CI already rebuilds
-	// facts.jsonl and diffs it byte for byte (fisc-1wr.6). The slack a
-	// tolerance allowed is reported by `fisc build` as columns_tied_by_tolerance
-	// and tolerance_slack.
-	//
-	// data/reconciliations.yaml was never created and now will not be. Keeping
-	// two always-empty keys pointing at a file that does not exist would be a
-	// reservation for work that has been done somewhere else, which is worse
-	// than an absent key: it reads as pending.
+	// A RESULT CARRIES NO RECONCILIATION ID AND NO DELTA. Tier 2's comparison
+	// is internal/mapping's compareTotals, at BUILD time, where a total that
+	// does not tie fails the build. A verify-time re-run would be two
+	// functions over identical input in one process -- the distinction this
+	// package's own doc comment draws -- so it would add availability and not
+	// independence, and CI already rebuilds facts.jsonl and diffs it byte for
+	// byte (fisc-1wr.6). The slack a tolerance allowed is reported by `fisc
+	// build` as columns_tied_by_tolerance and tolerance_slack.
 }
 
 // Finding is one subject that did not hold.

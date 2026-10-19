@@ -251,21 +251,6 @@ func (ix ColumnIndex) Column(stem string) (string, bool) {
 	return col, ok
 }
 
-// ColumnKeyOf is the column a built document states itself of, refusing one
-// that states no fiscal year, basis or label.
-func ColumnKeyOf(raw []byte) (ColumnKey, error) {
-	var d decoded
-	if err := json.Unmarshal(raw, &d); err != nil {
-		return ColumnKey{}, fmt.Errorf("decode column: %w", err)
-	}
-	m := d.Metadata
-	if m.FiscalYear == 0 || m.Basis == "" || m.FiscalYearLabel == "" {
-		return ColumnKey{}, fmt.Errorf("the document states no whole column: fiscal year %d, basis %q, label %q",
-			m.FiscalYear, m.Basis, m.FiscalYearLabel)
-	}
-	return ColumnKey{FiscalYear: m.FiscalYear, Basis: m.Basis, Label: m.FiscalYearLabel}, nil
-}
-
 // ColumnsOf folds every published document into one document per column.
 //
 // A document stating no fiscal year or basis is skipped, not refused:

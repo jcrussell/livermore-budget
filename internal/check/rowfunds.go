@@ -244,9 +244,8 @@ func (*rowFundsMatchTheirAnchors) Run(_ context.Context, s *Subject) (Result, er
 				// declaration says the label IS a fund name; a label carrying a
 				// verb phrase is a different shape and the rule author has said
 				// something untrue about their own page. Failing closed here
-				// also does what fisc-mjdw was filed to do -- a declaration that
-				// asserts nothing can no longer be written -- so that bead is
-				// retired by this rather than left open on a wrong premise.
+				// also means a declaration that asserts nothing cannot be
+				// written.
 				phrasedLabel := anchorHasVerbPhrase(row.Label) ||
 					anchorHasVerbPhrase(row.LabelTail)
 				if ru.RowLabelsNameFunds && phrasedLabel {

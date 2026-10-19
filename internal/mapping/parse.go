@@ -278,18 +278,17 @@ func validateRollups(f *File, errf errFunc) error {
 			continue
 		}
 
-		// A ROLLUP MAY COVER ONE RULE. This used to be refused, on the
-		// reasoning that "a total covering a single rule is that rule's
-		// total_row wearing a different name". Budget Book pp.167-170 show
-		// that is false: six of the eleven <DEPARTMENT> TOTAL rows sit over a
+		// A ROLLUP MAY COVER ONE RULE. A total covering a single rule is not
+		// that rule's total_row wearing a different name: on Budget Book
+		// pp.167-170 six of the eleven <DEPARTMENT> TOTAL rows sit over a
 		// department with exactly one division, and each is a SECOND PRINTED
 		// LINE with its own figures -- CITY COUNCIL TOTAL on p0167:15, three
-		// lines below City Council's own Total on :13. Refusing them left six
-		// printed totals asserted by nothing, which is the one answer fisc-3bl
-		// calls unacceptable.
+		// lines below City Council's own Total on :13. Refusing them would leave
+		// six printed totals asserted by nothing, which is the one answer
+		// fisc-3bl calls unacceptable.
 		//
-		// What the old rule was reaching for is the guard below: a rollup may
-		// not name the same printed line as a covered rule's total. That is a
+		// The guard below is what holds instead: a rollup may not name the
+		// same printed line as a covered rule's total. That is a
 		// claim about the LINE and not about the number of rules, and the
 		// string half of it is checked here. The page half -- same page, same
 		// line -- needs the pages and is checked in CheckRollup, for the reason
@@ -1182,16 +1181,14 @@ func checkColumnGrids(files []*File) error {
 
 // unitsValid reports whether u is one this project supports, reusing the
 // amount package's own table so the two cannot drift.
-func unitsValid(u amount.Units) (int64, int, bool) {
+func unitsValid(u amount.Units) bool {
 	switch u {
 	case amount.Dollars, amount.Thousands, amount.Millions:
 		// Parse a zero to confirm the unit is wired up on the amount side too.
-		if _, err := amount.Parse("0", u); err != nil {
-			return 0, 0, false
-		}
-		return 0, 0, true
+		_, err := amount.Parse("0", u)
+		return err == nil
 	}
-	return 0, 0, false
+	return false
 }
 
 // checkCounterpart refuses a far leg that could not be told apart from its own

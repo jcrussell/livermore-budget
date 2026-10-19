@@ -212,11 +212,7 @@ func TestASeriesShortAColumnIsCaught(t *testing.T) {
 	series.Points = series.Points[:1]
 
 	// THE TWO CHECKS OVERLAP HERE, AND THAT IS WRITTEN DOWN RATHER THAN WISHED
-	// AWAY. This block used to say the values check "must stay QUIET, or this
-	// test proves nothing about the division of labour between the two", and it
-	// was wrong three times over (fisc-ewt): the premise was false, the
-	// condition was inverted against its own comment, and the body was t.Logf so
-	// it could not fail in either direction.
+	// AWAY.
 	//
 	// What actually happens, reproduced rather than reasoned about: dropping a
 	// point reddens BOTH checks. trend-points-tie-to-facts fails through its
@@ -225,7 +221,7 @@ func TestASeriesShortAColumnIsCaught(t *testing.T) {
 	// fails because the series is short a column. That is redundancy, not a
 	// division of labour, and it is very likely the right answer -- two
 	// independent statements about one corruption is what makes a check set
-	// hard to fool. It simply was not what the file claimed.
+	// hard to fool.
 	points := runTrendPoints(t, s)
 	if points.Status != StatusFail {
 		t.Errorf("trend-points-tie-to-facts = %s on a dropped point, want fail: %s",

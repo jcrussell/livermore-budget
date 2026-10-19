@@ -34,7 +34,7 @@ func (c Cents) Dollars() string { return strings.TrimSuffix(c.String(), ".00") }
 func (c Cents) String() string {
 	if c == Cents(math.MinInt64) {
 		// Negating MinInt64 stays negative, which would corrupt the digit
-		// grouping below. Parse can no longer produce this, but Cents is a
+		// grouping below. Parse cannot produce this, but Cents is a
 		// public type and arithmetic on it can.
 		return "-$92,233,720,368,547,758.08"
 	}

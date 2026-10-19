@@ -14,13 +14,12 @@ import (
 // projectionsBuild asserts every slice of the fact store that a projection was
 // asked for actually produced a graph.
 //
-// THIS CHECK EXISTS BECAUSE ITS ABSENCE WAS SILENT IN BOTH DIRECTIONS. A
-// projection that refuses to build used to abort check.Load, so `fisc verify`
-// exited 1 having printed no report — every other finding in the run lost, and
-// the reason wrapped inside a load error. Recording the refusal instead fixes
-// that, and opens the opposite hole: a slice missing from Subject.Projections is
-// not a failure anywhere, it is silence, and ten checks below read nothing but
-// the graph. So this one must FAIL on a recorded refusal and must never be
+// THIS CHECK EXISTS BECAUSE ITS ABSENCE IS SILENT. check.Load records a
+// projection that refuses to build rather than aborting -- an abort would exit
+// `fisc verify` 1 having printed no report, every other finding in the run
+// lost -- and recording opens the opposite hole: a slice missing from
+// Subject.Projections is not a failure anywhere, it is silence, and ten checks
+// below read nothing but the graph. So this one must FAIL on a recorded refusal and must never be
 // vacuous while one is recorded.
 //
 // The refusal it exists for today is internal/project's: netCells rejects a fact
@@ -91,10 +90,9 @@ type sliceKey struct {
 
 // keysOf is every slice one Options covers: one per column PER SCOPE.
 //
-// IT RETURNS A LIST BECAUSE ONE DOCUMENT NEED NOT BE ONE SLICE. While every
-// projection was of a single (year, basis) this was a one-to-one map and was
-// spelled as one; a trends document is of four columns of one schedule, so an
-// Options that maps to a single key can no longer be assumed. Anything keying a
+// IT RETURNS A LIST BECAUSE ONE DOCUMENT NEED NOT BE ONE SLICE: a trends
+// document is of four columns of one schedule, so an Options that maps to a
+// single key cannot be assumed. Anything keying a
 // map on a projection has to iterate this rather than call it once.
 //
 // THE PRODUCT OVER SCOPES IS LOAD-BEARING AND NOT TIDINESS. A sliceKey is the

@@ -168,6 +168,11 @@ func TestParseRejects(t *testing.T) {
 			want: "units",
 		},
 		{
+			name: "bad units names every unit",
+			yaml: strings.Replace(base(""), "units: dollars", "units: furlongs", 1),
+			want: "want one of dollars, thousands, millions",
+		},
+		{
 			name: "bad kind names every kind",
 			yaml: strings.Replace(base(""), "kind: revenue", "kind: income", 1),
 			want: "want one of revenue, expenditure, transfer_in, transfer_out, fund_balance",

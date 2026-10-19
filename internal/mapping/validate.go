@@ -79,7 +79,7 @@ func validateRuleShape(r *Rule, errf errFunc) error {
 			"units come from the table's caption, not the token: \"71.8\" is "+
 				"meaningless until you know the schedule is printed in millions")
 	}
-	if _, _, ok := unitsValid(r.Units); !ok {
+	if !unitsValid(r.Units) {
 		return errf(r.ID, "units", "got %q, want one of dollars, thousands, millions", r.Units)
 	}
 	if len(r.Parts) == 0 {

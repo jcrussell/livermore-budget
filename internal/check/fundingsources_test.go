@@ -66,10 +66,9 @@ var spineExpenditureByGroup = map[string][2]amount.Cents{
 // is handed to amount.Parse -- which is stricter than any pattern this file
 // could spell and is the same parser the pipeline uses. These pages carry no
 // standalone "$" token, which is what makes a whitespace split safe here and
-// would not make it safe on a page that does. This used to cite fisc-yun, which
-// is CLOSED -- mapping.dropCurrencyMarks handles a lone mark in the labelled
-// read. What that fix does not do is make a hand-rolled split in a TEST safe,
-// which is the claim this comment is actually making.
+// would not make it safe on a page that does. mapping.dropCurrencyMarks handles
+// a lone mark in the labelled read; it does not make a hand-rolled split in a
+// TEST safe.
 var fundingRowRE = regexp.MustCompile(`^(.*?)\s\s+([$\-\d].*)$`)
 
 // readFundingRows scans one page's Department Funding Sources block and returns

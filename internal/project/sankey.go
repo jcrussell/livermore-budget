@@ -387,10 +387,10 @@ var builtinLabels = map[string]string{
 // Headline is the set of figures a reader quotes without reading the chart.
 //
 // Both a gross and an external number are published for revenue and for
-// expenditure, under names that say which is which. An earlier draft called
-// the gross figure external_revenue_cents; it is not external, because the
-// scope is literally all-funds-gross and that figure includes internal service
-// charges. Never name a key for a concept the code does not compute.
+// expenditure, under names that say which is which. The gross figure is not
+// external, because the scope is literally all-funds-gross and that figure
+// includes internal service charges. Never name a key for a concept the code
+// does not compute.
 type Headline struct {
 	AllFundsGrossRevenueCents     int64 `json:"all_funds_gross_revenue_cents"`
 	AllFundsGrossExpenditureCents int64 `json:"all_funds_gross_expenditure_cents"`
@@ -1324,7 +1324,7 @@ func caveats(h Headline, col Column, links []Link, cip cipTransfers) ([]Caveat, 
 	out := make([]Caveat, 0, 5)
 
 	if h.InternalTransferInCents != 0 || h.InternalTransferOutCents != 0 {
-		out = append(out, transferCaveat(h, col, links, cip))
+		out = append(out, transferCaveat(h, links, cip))
 	}
 	for _, l := range links {
 		if l.Kind == KindInternalService {
@@ -1462,7 +1462,7 @@ func toCIP(facts []fact.Fact, col Column) cipTransfers {
 // The legs are unpaired because p76's facts are at scope transfers-by-fund,
 // not because p76 is unmapped. The residual is named as p222's transfers to
 // the CIP only when it is their sum in this column.
-func transferCaveat(h Headline, col Column, links []Link, cip cipTransfers) Caveat {
+func transferCaveat(h Headline, links []Link, cip cipTransfers) Caveat {
 	// One id over three texts: which one a document gets depends on its own
 	// arithmetic, so a page listing several documents' caveats keys on
 	// (id, document).

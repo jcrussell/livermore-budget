@@ -279,15 +279,12 @@ func TestKindMatchesCategorySummariesArePinned(t *testing.T) {
 	})
 }
 
-// TestAnUnassignableCategoryReddensOneVocabularyCheck is fisc-9nw part 3, and
-// it is the condition that was wrong rather than the comment.
+// TestAnUnassignableCategoryReddensOneVocabularyCheck is fisc-9nw part 3.
 //
 // `taxes` is a rollup: assignable: false, so no rule may write it as a
-// category. factVocabulary reports that precisely, with the fix. Until
-// 2026-08-29 fact-kind-matches-category excluded only categories the taxonomy
-// does not DEFINE, so it reddened as well -- and its finding said the kind was
-// not among the category's declared kinds, which sends a reader to fix a
-// `kinds:` list that is not the problem.
+// category. factVocabulary reports that precisely, with the fix, and
+// fact-kind-matches-category must not redden as well: its finding would send
+// a reader to fix a `kinds:` list that is not the problem.
 //
 // The surviving check must PASS over the remaining facts rather than go
 // vacuous: this package distinguishes "checked and held" from "had nothing to
@@ -523,13 +520,9 @@ func TestEveryKindIsWrongSomewhere(t *testing.T) {
 }
 
 // TestTheCommittedTaxonomyTellsTheTransferDirectionsApart reads data/taxonomy.yaml
-// itself rather than the fixture, because the two used to disagree and the
-// disagreement was the defect. Every transfer category declared `kinds: [transfer]`
-// — a string that is not one of the five vocab.Kind values — and the `transfers`
-// rationale asserted that 'a transfer\'s `kind` is only "transfer"'. That was false
-// when it was written: transfer_in and transfer_out predate the file (2e514fb
-// against 0c43404). The check had been widened to accept the family; the file is
-// corrected instead, and the fixture taxonomy was already the corrected model.
+// itself rather than the fixture, because a disagreement between the two is
+// the defect: a transfer category declaring `kinds: [transfer]` names no
+// vocab.Kind value.
 //
 // So both transfer errors are one literal comparison over the committed file:
 // a transfer counted as revenue (fisc-f0k) and a transfer pointing the wrong way
@@ -588,11 +581,7 @@ func TestTheCommittedTaxonomyTellsTheTransferDirectionsApart(t *testing.T) {
 	}
 }
 
-// TestDepartmentsResolveAgainstTheRegistry is what replaced this check's
-// unconditional error once data/departments.yaml existed (fisc-o15).
-//
-// It is the clause the other three used to stand in for, and it is the one that
-// makes the axis a controlled vocabulary rather than a set of free strings the
+// TestDepartmentsResolveAgainstTheRegistry pins the clause that makes the axis a controlled vocabulary rather than a set of free strings the
 // check happens to like the shape of: a well-formed, consistently spelled,
 // non-colliding department that names neither a division nor a department still
 // joins to nothing.
@@ -1238,9 +1227,7 @@ func TestNodeHierarchyWellFormedIsFailable(t *testing.T) {
 			want: "strictly coarser",
 		},
 		{
-			// Node.Parent is one string, so a cycle needs two nodes -- which is
-			// exactly why the old doc comment's "double-parented node" could
-			// never have been the thing this caught.
+			// Node.Parent is one string, so a cycle needs two nodes.
 			name: "a node that is its own ancestor",
 			damage: func(t *testing.T, s *Subject) {
 				g := s.Projections[0].Graph
@@ -1827,11 +1814,9 @@ func TestRuleFundsMatchTheirHeadings(t *testing.T) {
 
 	// A MAPPED SECTION MUST NOT BE REPORTED AS UNCLAIMED (fisc-948).
 	//
-	// Claiming a printed total says SOME rule reads that heading. It used to
-	// happen after two guards, so a rule that maps a fund section without
-	// declaring one fund -- fund_group-only columns, which is what p76 does --
-	// never claimed its own total, and clause 2 reported the section it maps as
-	// one no rule declares.
+	// Claiming a printed total says SOME rule reads that heading, so a rule
+	// that maps a fund section without declaring one fund -- fund_group-only
+	// columns, which is what p76 does -- still claims its own total.
 	t.Run("a rule with no fund of its own still claims its printed total", func(t *testing.T) {
 		noFund := fundRule("it", 700, "internal-service", "Total Information Technology Fund")
 		noFund.Parts[0].Columns[0].Fund = 0 // the group is declared, the fund is not
