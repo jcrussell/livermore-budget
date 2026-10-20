@@ -81,7 +81,7 @@ func decodeChangeDocument(stem string, raw []byte) (changeDocument, error) {
 // changeRows is every series of doc of one kind as rows, each cell built by
 // buildCells. It refuses a figure with no row, which would be
 // a chart of nothing under a heading.
-func changeRows(d changeDocument, kind string, pageTextBase func(string) string) ([]changeRow, int, error) {
+func changeRows(d changeDocument, kind string, pageTextBase func(string) string, byID map[string]Doc) ([]changeRow, int, error) {
 	var rows []changeRow
 	placed, published := 0, 0
 	for _, s := range d.body.Series {
@@ -91,7 +91,7 @@ func changeRows(d changeDocument, kind string, pageTextBase func(string) string)
 		if s.CategoryLabel == "" {
 			return nil, 0, fmt.Errorf("%s series %q carries no category label, and the chart groups by it", d.stem, s.Label)
 		}
-		cells, n, err := buildCells(s.Points, d.cols, d.meta.Columns, pageTextBase)
+		cells, n, err := buildCells(s.Points, d.cols, d.meta.Columns, pageTextBase, byID)
 		if err != nil {
 			return nil, 0, fmt.Errorf("%s series %q: %w", d.stem, s.Label, err)
 		}
@@ -169,7 +169,7 @@ func buildChangePage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	placed := map[string]int{}
 	figures := make([]changeFigure, 0, len(specs))
 	for _, s := range specs {
-		rows, n, err := changeRows(s.doc, s.kind, pageTextBase)
+		rows, n, err := changeRows(s.doc, s.kind, pageTextBase, byID)
 		if err != nil {
 			return changePageData{}, fmt.Errorf("view %q, %s: %w", v.Path, s.id, err)
 		}

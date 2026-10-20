@@ -211,10 +211,11 @@ function factPages() {
 // A click on a segment pins its tip, and the tip links the page text of
 // every page its rows' facts were printed on, read off the fact store and
 // not off the table the client reads. Mutation: drop pageLinks from the
-// segment's fill in glance.js and every segment's links are missing; make
+// segment's fill in glance.js and every segment's links are missing; drop
+// the PDF link from format.js's pageLinks and every PDF arm goes red; make
 // tipper's show paint over a pinned tip and pinGestures' hover arm goes red.
-test("a click pins a segment's tip, linking the page text of every fact its rows cite", async (t) => {
-  const { installBrowser, pinGestures, tipState, pageTextExists, fire } = await import("./testlib.mjs");
+test("a click pins a segment's tip, linking the page text and the PDF page of every fact its rows cite", async (t) => {
+  const { installBrowser, pinGestures, tipState, pageTextExists, pdfFaults, fire } = await import("./testlib.mjs");
   const { window, document } = installBrowser({ html: PAGE });
   const mod = await import(MODULE);
   mod.boot(document);
@@ -240,6 +241,7 @@ test("a click pins a segment's tip, linking the page text of every fact its rows
       assert.equal(tip.label, s.label);
       assert.deepEqual([...new Set(tip.hrefs)].sort(), [...want].sort(), `${b.label} ${b.id} ${s.label}: the tip links other pages`);
       for (const href of tip.hrefs) assert.ok(pageTextExists(href), `${href} names no committed page text`);
+      assert.deepEqual(pdfFaults(tip), [], `${b.label} ${b.id} ${s.label}: the tip's PDF links are not its pages'`);
       pinned++;
     });
     fire(document.body, "click");

@@ -165,7 +165,8 @@ export function totals(bands, columns) {
  * positive bands stacked above a baseline and negative ones hung below, the
  * legend naming each band, and the sentence stating the sums as ours. Each
  * band's tip pins on a click and links the pages its cells in that column
- * cite, each to the page text the table's own link names (`a[data-page]`).
+ * cite, each to the page text the table's own link names (`a[data-page]`)
+ * and to the PDF page its `data-pdf` names.
  * @param {HTMLElement} section
  * @param {ReturnType<typeof tipper>} [tips] the page's tooltip
  * @returns {{bands: Band[], sums: number[]}}
@@ -191,11 +192,11 @@ export function draw(section, tips = tipper(section.ownerDocument)) {
   const bands = rank(groupRows(rows, columns));
   const { sums, tallest } = totals(bands, columns);
   const heads = Array.from(table.querySelectorAll("thead th[data-column]"));
-  /** @param {Band} b @param {number} i @returns {{page: number, href: string}[]} */
+  /** @param {Band} b @param {number} i @returns {import("./format.js").CitedPage[]} */
   const pagesOf = (b, i) => Array.from(table.tBodies).flatMap((body) => Array.from(body.rows))
     .filter((tr) => b.members.includes(tr.dataset.category || ""))
     .flatMap((tr) => Array.from(tr.querySelectorAll(`td[data-column="${i}"] a[data-page]`)).map((a) => ({
-      page: Number(a.getAttribute("data-page")), href: a.getAttribute("href") || "",
+      page: Number(a.getAttribute("data-page")), text: a.getAttribute("href") || "", pdf: a.getAttribute("data-pdf") || "",
     })));
   // Rounded once, here, so the stack's height is the sum of the heights drawn.
   const px = (/** @type {number} */ cents) =>

@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/corpus"
 )
 
@@ -235,7 +236,8 @@ type provenancePageData struct {
 }
 
 // inferredColumn is one published column's derived nodes, each with its
-// rationale and source note, and its derived flows between printed nodes.
+// rationale, its source note and the derived flows into or out of it, and its
+// derived flows between printed nodes.
 type inferredColumn struct {
 	Label string
 	Path  string
@@ -245,10 +247,15 @@ type inferredColumn struct {
 
 type inferredNode struct {
 	Label, Rationale, SourceNote string
+	Flows                        []inferredFlow
 }
 
+// inferredFlow is one derived flow with the cents its projection link carries
+// and the pages that link's locators cite, each composed by sourcesFor.
 type inferredFlow struct {
 	From, To string
+	Dollars  string
+	Pages    []pageRef
 }
 
 // inferredDocument is as much of a graph document as inferredColumns reads.
@@ -261,9 +268,12 @@ type inferredDocument struct {
 		SourceNote string `json:"source_note"`
 	} `json:"nodes"`
 	Links []struct {
-		Source  string `json:"source"`
-		Target  string `json:"target"`
-		Derived bool   `json:"derived"`
+		Source     string       `json:"source"`
+		Target     string       `json:"target"`
+		ValueCents int64        `json:"value_cents"`
+		FactIDs    []string     `json:"fact_ids"`
+		Locators   []sourceMeta `json:"locators"`
+		Derived    bool         `json:"derived"`
 	} `json:"links"`
 	Metadata struct {
 		FiscalYearLabel string `json:"fiscal_year_label"`
@@ -271,14 +281,19 @@ type inferredDocument struct {
 	} `json:"metadata"`
 }
 
-// inferredColumns gathers every derived node and every derived flow between
-// two printed nodes out of the documents folded into a column, one entry per
-// column in path order, each node and flow once however many of the column's
-// schedules carry it. A column inferring nothing is listed with nothing.
-func inferredColumns(o *Options, ix ColumnIndex) ([]inferredColumn, error) {
+// inferredColumns gathers every derived node and every derived flow out of
+// the documents folded into a column, one entry per column in path order. A
+// flow with a derived end is listed under that node, its source where both
+// are; a flow between printed nodes under the column. Each node and flow is
+// listed once however many of the column's schedules carry it, a flow being
+// its ends and the facts it cites, and two schedules stating one flow at two
+// values refuse the export. A column inferring nothing is listed with
+// nothing. refs is the sources page's composed citations, and a flow citing
+// a page it does not list is refused.
+func inferredColumns(o *Options, ix ColumnIndex, refs map[Citation]pageRef) ([]inferredColumn, error) {
 	byPath := map[string]*inferredColumn{}
-	seenNode := map[string]map[string]bool{}
-	seenFlow := map[string]map[[2]string]bool{}
+	nodeAt := map[string]map[string]int{}
+	seenFlow := map[string]map[string]int64{}
 	for _, stem := range sortedKeys(o.Projections) {
 		path, folded := ix.Column(stem)
 		if !folded {
@@ -292,32 +307,61 @@ func inferredColumns(o *Options, ix ColumnIndex) ([]inferredColumn, error) {
 		if col == nil {
 			col = &inferredColumn{Label: ledeOf(d.Metadata.FiscalYearLabel, d.Metadata.Basis), Path: path}
 			byPath[path] = col
-			seenNode[path] = map[string]bool{}
-			seenFlow[path] = map[[2]string]bool{}
+			nodeAt[path] = map[string]int{}
+			seenFlow[path] = map[string]int64{}
 		}
 		labels := make(map[string]string, len(d.Nodes))
-		derived := map[string]bool{}
 		for _, n := range d.Nodes {
 			labels[n.ID] = n.Label
 			if !n.Derived {
 				continue
 			}
-			derived[n.ID] = true
-			if !seenNode[path][n.ID] {
-				seenNode[path][n.ID] = true
+			if _, ok := nodeAt[path][n.ID]; !ok {
+				nodeAt[path][n.ID] = len(col.Nodes)
 				col.Nodes = append(col.Nodes, inferredNode{Label: n.Label, Rationale: n.Rationale, SourceNote: n.SourceNote})
 			}
 		}
 		for _, l := range d.Links {
-			if !l.Derived || derived[l.Source] || derived[l.Target] {
+			if !l.Derived {
 				continue
 			}
-			// Once per pair of ends by id: two flows whose ends share labels
-			// are still two flows.
-			ends := [2]string{l.Source, l.Target}
-			if !seenFlow[path][ends] {
-				seenFlow[path][ends] = true
-				col.Flows = append(col.Flows, inferredFlow{From: cmp.Or(labels[l.Source], l.Source), To: cmp.Or(labels[l.Target], l.Target)})
+			ids := slices.Clone(l.FactIDs)
+			slices.Sort(ids)
+			id := l.Source + "\x00" + l.Target + "\x00" + strings.Join(ids, " ")
+			if was, ok := seenFlow[path][id]; ok {
+				if was != l.ValueCents {
+					return nil, fmt.Errorf("%s states the derived flow %s -> %s at %s, and another schedule of %s at %s",
+						stem, l.Source, l.Target, amount.Cents(l.ValueCents).Dollars(), path, amount.Cents(was).Dollars())
+				}
+				continue
+			}
+			seenFlow[path][id] = l.ValueCents
+			var pages []pageRef
+			for _, s := range unionSources(l.Locators) {
+				for _, p := range s.Pages {
+					ref, ok := refs[Citation{DocID: s.DocID, Page: p}]
+					if !ok {
+						return nil, fmt.Errorf("%s's derived flow %s -> %s cites %s p%d, which the sources page does not list",
+							stem, l.Source, l.Target, s.DocID, p)
+					}
+					pages = append(pages, ref)
+				}
+			}
+			if len(pages) == 0 {
+				return nil, fmt.Errorf("%s's derived flow %s -> %s cites no page", stem, l.Source, l.Target)
+			}
+			flow := inferredFlow{From: cmp.Or(labels[l.Source], l.Source), To: cmp.Or(labels[l.Target], l.Target),
+				Dollars: amount.Cents(l.ValueCents).Dollars(), Pages: pages}
+			end, under := l.Source, true
+			if _, ok := nodeAt[path][end]; !ok {
+				end = l.Target
+				_, under = nodeAt[path][end]
+			}
+			if under {
+				i := nodeAt[path][end]
+				col.Nodes[i].Flows = append(col.Nodes[i].Flows, flow)
+			} else {
+				col.Flows = append(col.Flows, flow)
 			}
 		}
 	}
@@ -395,23 +439,19 @@ func buildProvenancePage(o *Options, v View, nav []navItem, byID map[string]Doc,
 
 	// Index the composed refs so each row can take its own, rather than
 	// recomposing them.
-	type key struct {
-		doc  string
-		page int
-	}
-	refs := map[key]pageRef{}
+	refs := map[Citation]pageRef{}
 	titles := map[string]string{}
 	for _, s := range sources {
 		titles[s.DocID] = s.Title
 		for _, p := range s.Pages {
-			refs[key{s.DocID, p.Number}] = p
+			refs[Citation{DocID: s.DocID, Page: p.Number}] = p
 		}
 	}
 
 	rows := make([]provenanceRow, 0, len(o.PageIndex))
 	records := 0
 	for _, e := range o.PageIndex {
-		ref, ok := refs[key{e.DocID, e.Page}]
+		ref, ok := refs[Citation{DocID: e.DocID, Page: e.Page}]
 		if !ok {
 			return provenancePageData{}, fmt.Errorf(
 				"page index entry %s p%d composed no citation", e.DocID, e.Page)
@@ -433,7 +473,7 @@ func buildProvenancePage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		downloads = append(downloads, downloadRef(d))
 	}
 
-	inferred, err := inferredColumns(o, ix)
+	inferred, err := inferredColumns(o, ix, refs)
 	if err != nil {
 		return provenancePageData{}, err
 	}
@@ -449,6 +489,7 @@ func buildProvenancePage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			Nav:   nav,
 			// The index is its own sources page: its rows list every page.
 			SourcesPath: v.Path,
+			SourcesPage: true,
 			ExportedBy:  o.GeneratedBy,
 			Projections: projectionRefs(o, ix),
 			// NO DataPath. Every other page names the projection it draws;

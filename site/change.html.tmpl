@@ -47,7 +47,8 @@
   {{- end}}
   {{- /* The figure's data: change.js reads it, then hides it under the
          drawn chart, and a band's pinned tip links each page-text link
-         marked data-page. A figure with no chart is its table. */}}
+         marked data-page and the PDF page its data-pdf names. A figure with
+         no chart is its table. */}}
   <div class="change-cells">
     <div class="table-scroll">
     <table class="series-table change-table">
@@ -79,7 +80,7 @@
             {{- if $c.Missing}}
             <span title="This row is not printed in this column">{{$c.Value}}</span>
             {{- else}}
-            <a href="{{$c.Href}}" title="Read on page {{$c.Page}}" data-page="{{$c.Page}}">{{$c.Value}}</a>
+            <a href="{{$c.Href}}" title="Read on page {{$c.Page}}" data-page="{{$c.Page}}"{{if $c.PDF}} data-pdf="{{$c.PDF}}"{{end}}>{{$c.Value}}</a>
             {{- end}}
           </td>
           {{- end}}

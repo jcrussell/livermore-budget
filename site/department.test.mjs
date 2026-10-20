@@ -306,7 +306,7 @@ describe("the page over the pinned columns", () => {
       const pages = tip.querySelector(".facts").textContent;
       const id = li.dataset.id;
       assert.ok(want.get(id).length > 0, `${id} cites no page`);
-      assert.deepEqual(pages.split(/[,;] /), want.get(id), `${id}: the tip names other pages`);
+      assert.deepEqual(pages.split(/[,;] /).map((p) => p.replace(/ PDF$/, "")), want.get(id), `${id}: the tip names other pages`);
       assert.equal(tip.hidden, false);
       li.dispatchEvent(new window.Event("pointerleave"));
     }
@@ -317,11 +317,14 @@ describe("the page over the pinned columns", () => {
   });
 
   // A click on a bar pins its tip, whose page numbers link the page text
-  // the config's docs name for the row's locators. Mutation: drop pageLinks
-  // from sides.js's fillTip, and every bar's links are missing; drop
-  // fillTip's call from department.js's fill, and the tip is empty.
-  test("a click pins a bar's tip, linking the page text of every page its row cites", async (t) => {
-    const { pinGestures, tipState, pageTextExists, fire } = await import("./testlib.mjs");
+  // and the PDF page the config's docs name for the row's locators.
+  // Mutation: drop pageLinks from sides.js's fillTip, and every bar's links
+  // are missing; drop the PDF link from format.js's pageLinks and the PDF
+  // arm goes red; drop the ledger row template's role and pinGestures'
+  // button arm goes red; drop fillTip's call from department.js's fill, and
+  // the tip is empty.
+  test("a click pins a bar's tip, linking the page text and the PDF page of every page its row cites", async (t) => {
+    const { pinGestures, tipState, pageTextExists, pdfFaults, fire } = await import("./testlib.mjs");
     const { document, window, config } = await booted("#y=fy2026-adopted&d=department/administrative-services");
     const f = mod.departmentFigures(columnFixture("fy2026-adopted"), config, "department/administrative-services");
     const want = new Map([...f.funding.rows, ...f.spending.rows].map((r) => [r.id,
@@ -335,6 +338,7 @@ describe("the page over the pinned columns", () => {
       assert.ok(want.get(li.dataset.id).length > 0, `${li.dataset.id} cites no page`);
       assert.deepEqual(tip.hrefs, want.get(li.dataset.id), `${li.dataset.id}: the tip links other pages`);
       for (const href of tip.hrefs) assert.ok(pageTextExists(href), `${href} names no committed page text`);
+      assert.deepEqual(pdfFaults(tip), [], `${li.dataset.id}: the tip's PDF links are not its pages'`);
     }
     fire(document.body, "click");
     pinGestures(window, rows[0], rows[1]);

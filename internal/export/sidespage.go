@@ -105,7 +105,7 @@ func buildSidesPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		}
 		cited = append(cited, m.Sources...)
 		cited = append(cited, chart.doc.Metadata.Sources...)
-		sel.newest(m.FiscalYear, m.Basis, ledeOf(m.FiscalYearLabel, m.Basis))
+		sel.newest(m.FiscalYear, m.FiscalYearLabel, m.Basis)
 		years = append(years, sidesYear{
 			Path:  ColumnPath(m.FiscalYear, m.Basis),
 			Label: m.FiscalYearLabel,

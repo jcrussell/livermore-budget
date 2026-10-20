@@ -66,10 +66,18 @@
   <h3>{{.Label}} <span class="subtle">(<a href="{{.Path}}">{{.Path}}</a>)</span></h3>
   <ul class="derived-list">
     {{- range .Nodes}}
-    <li><div class="what">◇ {{.Label}}</div>{{if .Rationale}}<div class="why">{{.Rationale}}</div>{{end}}{{if .SourceNote}}<div class="subtle">{{.SourceNote}}</div>{{end}}</li>
+    <li><div class="what">◇ {{.Label}}</div>{{if .Rationale}}<div class="why">{{.Rationale}}</div>{{end}}{{if .SourceNote}}<div class="subtle">{{.SourceNote}}</div>{{end}}
+      {{- if .Flows}}
+      <ul class="inferred-flows">
+        {{- range .Flows}}
+        <li>{{template "inferred-flow" .}}</li>
+        {{- end}}
+      </ul>
+      {{- end}}
+    </li>
     {{- end}}
     {{- range .Flows}}
-    <li><div class="what">◇ {{.From}} → {{.To}}</div><div class="why">{{$.Wording.FlowInferred}}</div></li>
+    <li><div class="what">{{template "inferred-flow" .}}</div><div class="why">{{$.Wording.FlowInferred}}</div></li>
     {{- end}}
     {{- if and (not .Nodes) (not .Flows)}}
     <li class="subtle">Nothing in this column is inferred: every node and flow is printed by the city.</li>
@@ -123,3 +131,8 @@
 
 </body>
 </html>
+{{- /* "inferred-flow" is one derived flow: its ends, the cents its link
+       carries and the pages that link cites, each to its text and its PDF. */}}
+{{define "inferred-flow"}}◇ {{.From}} → {{.To}}: {{.Dollars}} <span class="subtle">(
+  {{- range $i, $p := .Pages}}{{if $i}}, {{end}}<a href="{{$p.TextURL}}">p{{$p.Number}}</a>{{if $p.PDFURL}} <a href="{{$p.PDFURL}}">PDF</a>{{end}}{{end -}}
+  )</span>{{end}}

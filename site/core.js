@@ -38,10 +38,11 @@ export function config() {
 export const SCHEMA_VERSION = 2;
 
 /**
- * The projection schema scheduleOf stamps on the document it assembles. A
+ * The projection schema scheduleOf stamps on the document it assembles, and
+ * the projection_version a page must declare to be drawn by this script. A
  * test in internal/export pins this literal to project.SchemaVersion.
  */
-const PROJECTION_VERSION = 1;
+export const PROJECTION_VERSION = 1;
 
 /**
  * One sentence of the page's wording, filled in. `{name:one|many}` appends the

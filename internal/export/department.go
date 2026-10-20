@@ -221,7 +221,7 @@ func buildDepartmentPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			}
 			sides = append(sides, side)
 		}
-		sel.newest(fm.FiscalYear, fm.Basis, ledeOf(fm.FiscalYearLabel, fm.Basis))
+		sel.newest(fm.FiscalYear, fm.FiscalYearLabel, fm.Basis)
 		years = append(years, departmentYear{
 			Path:  ColumnPath(fm.FiscalYear, fm.Basis),
 			Label: fm.FiscalYearLabel,

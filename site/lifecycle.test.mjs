@@ -70,6 +70,32 @@ describe("the version handshake", () => {
     assert.match(older.banners[0], new RegExp(`packaged for schema_version ${ok - 1} `));
     assert.match(older.banners[0], /older than this script/);
   });
+
+  // The page's own version unchanged and the projection's moved: a script
+  // cached across a projection change alone. Mutation: drop the
+  // projection_version check from main() and the stale script fetches and
+  // draws.
+  test("a page whose columns assemble to another projection_version is refused before anything is fetched", async (t) => {
+    const asked = async (v) => {
+      const config = structuredClone(pageFixture().config);
+      config.projection_version = v;
+      const { app, document, fetch } = await loadApp({ config });
+      await app.boot();
+      await settle();
+      return { fetched: fetch.asked.length, banners: said(document) };
+    };
+    const ok = (await loadApp()).app.PROJECTION_VERSION;
+    assert.equal(pageFixture().config.projection_version, ok, "the pinned page carries the script's projection_version");
+    const good = await asked(ok);
+    const newer = await asked(ok + 1);
+    t.diagnostic(`projection_version ${ok} fetches ${good.fetched} file(s); ${ok + 1} fetches ${newer.fetched}`);
+    assert.ok(good.fetched > 0);
+    assert.equal(good.banners.length, 0);
+    assert.equal(newer.fetched, 0);
+    assert.equal(newer.banners.length, 1);
+    assert.match(newer.banners[0], new RegExp(`assemble to projection_version ${ok + 1} `));
+    assert.match(newer.banners[0], /reload/);
+  });
 });
 
 describe("the form handshake", () => {

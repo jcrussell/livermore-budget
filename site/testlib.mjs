@@ -511,9 +511,28 @@ export function tipState(document) {
     shown: !tip.hidden,
     pinned: tip.dataset.pinned === "true",
     label: label ? label.textContent : "",
-    hrefs: [...tip.querySelectorAll(".facts a[href]")].map((a) => a.getAttribute("href")),
+    hrefs: [...tip.querySelectorAll(".facts a.page-text[href]")].map((a) => a.getAttribute("href")),
+    pdfs: [...tip.querySelectorAll(".facts a.page-pdf[href]")].map((a) => a.getAttribute("href")),
+    unlinked: [...tip.querySelectorAll(".facts [data-unlinked]")].map((x) => x.textContent),
     focused: tip.contains(document.activeElement) && document.activeElement !== document.body,
   };
+}
+
+/**
+ * A tip's PDF links held to its page-text links: one PDF per page-text link,
+ * in order, each the city's document at the page the text is of. Returns the
+ * faults, empty when every page links both.
+ * @param {{hrefs: string[], pdfs: string[]}} tip a tipState
+ * @returns {string[]}
+ */
+export function pdfFaults(tip) {
+  if (!tip.hrefs.length) return ["the tip links no page"];
+  if (tip.pdfs.length !== tip.hrefs.length) return [`${tip.hrefs.length} page texts and ${tip.pdfs.length} PDF links`];
+  return tip.hrefs.flatMap((h, i) => {
+    const m = /\/p(\d{4})\.txt$/.exec(h);
+    const want = m ? "#page=" + Number(m[1]) : "";
+    return want && tip.pdfs[i].startsWith("https://") && tip.pdfs[i].endsWith(want) ? [] : [`${h} beside ${tip.pdfs[i]}`];
+  });
 }
 
 /** Whether a page-text link names a page text committed under data/. */
@@ -526,10 +545,15 @@ export function pageTextExists(href) {
  * a click on `a` pins its tip with the focus in it; hovering `b` and leaving
  * `a` keep it; Escape unpins it and hands the focus back to `a`; Enter on
  * `a` pins it again; a click outside every mark unpins it; Space pins it.
+ * Every mark on the page that pins (`[data-pins]`) is named a button.
  * Returns `a`'s pinned label.
  */
 export function pinGestures(window, a, b) {
   const { document } = window;
+  const marks = [...document.querySelectorAll("[data-pins]")];
+  assert.ok(marks.length >= 2, "fewer than two marks pin a tip");
+  const roleless = marks.filter((m) => m.getAttribute("role") !== "button").map((m) => m.dataset.id || m.className);
+  assert.deepEqual(roleless, [], "a mark that pins a tip is not named a button");
   fire(a, "click");
   const pinned = tipState(document);
   assert.ok(pinned.shown && pinned.pinned, "a click pinned no tip");
@@ -540,8 +564,10 @@ export function pinGestures(window, a, b) {
   assert.equal(tipState(document).label, pinned.label, "hovering another mark replaced the pinned tip");
   assert.ok(tipState(document).pinned && tipState(document).shown, "hovering elsewhere unpinned the tip");
   fire(document.activeElement, "keydown", { key: "Escape" });
-  // The focus is back on the mark, whose focus shows its tip unpinned.
+  // The focus is back on the mark, and no tip shows until the next hover or
+  // focus.
   assert.ok(!tipState(document).pinned, "Escape left the tip pinned");
+  assert.ok(!tipState(document).shown, "Escape left a tip showing");
   assert.ok(document.activeElement === a, "Escape did not hand the focus back to the mark");
   fire(a, "keydown", { key: "Enter" });
   assert.ok(tipState(document).pinned, "Enter pinned no tip");

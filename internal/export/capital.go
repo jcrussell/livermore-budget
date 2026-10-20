@@ -92,7 +92,7 @@ func buildCapitalPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			New:   i > 0 && c.ComparableGroup != meta.Columns[i-1].ComparableGroup,
 			Key:   YearKey(c.FiscalYear, c.Basis),
 		})
-		sel.Options = append(sel.Options, yearOption{Key: YearKey(c.FiscalYear, c.Basis), Label: ledeOf(c.FiscalYearLabel, basis)})
+		sel.Options = append(sel.Options, yearOptionOf(c.FiscalYear, c.FiscalYearLabel, c.Basis))
 	}
 
 	var funds []capitalFund
@@ -122,7 +122,7 @@ func buildCapitalPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		for _, p := range s.Points {
 			points = append(points, p.trendPoint)
 		}
-		cells, placed, err := buildCells(points, columns, meta.Columns, pageTextBase)
+		cells, placed, err := buildCells(points, columns, meta.Columns, pageTextBase, byID)
 		if err != nil {
 			return capitalPageData{}, fmt.Errorf("%s series %q: %w", v.Projection, s.Label, err)
 		}

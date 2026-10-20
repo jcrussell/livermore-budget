@@ -120,7 +120,7 @@ func buildHistoryPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			}
 			named[i][s.Label] = true
 		}
-		cells, placed, err := buildCells(s.Points, columns, meta.Columns, pageTextBase)
+		cells, placed, err := buildCells(s.Points, columns, meta.Columns, pageTextBase, byID)
 		if err != nil {
 			return historyPageData{}, fmt.Errorf("%s series %q: %w", v.Projection, s.Label, err)
 		}

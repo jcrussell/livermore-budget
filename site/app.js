@@ -27,7 +27,7 @@
 
 import * as core from "./core.js";
 import {
-  SCHEMA_VERSION, say, kindLabel, fmt, fmtSigned, el, maybeEl, cssVar, h, link, citations, balancesOf, PARTITION_NOTE, isFundGroup, scheduleOf, isLink, leafDraws, drawsAgain, cellsOf,
+  SCHEMA_VERSION, PROJECTION_VERSION, say, kindLabel, fmt, fmtSigned, el, maybeEl, cssVar, h, link, citations, balancesOf, PARTITION_NOTE, isFundGroup, scheduleOf, isLink, leafDraws, drawsAgain, cellsOf,
 } from "./core.js";
 import { hashValue, selectYear, wireYearSelect, yearKey as columnKey } from "./format.js";
 import { SANKEY } from "./sankey.js";
@@ -3934,7 +3934,7 @@ export function zoomBy(factor) {
   if (zoomer) zoomer.scaleBy(D3.select("#chart"), factor);
 }
 
-/** Puts the chart back whole: Reset view, and the 0 key. */
+/** Puts the chart back whole: the 0 key while the chart has the focus, and Reset view once it has redrawn the year. */
 export function resetZoom() {
   if (zoomer) zoomer.transform(D3.select("#chart"), D3.zoomIdentity);
 }
@@ -4686,6 +4686,16 @@ export async function main() {
         : "The page is older than this script.") +
       " Drawing it anyway would produce a chart that is wrong rather than one " +
       "that fails.");
+    return;
+  }
+  // The projection the columns assemble to is versioned apart from the page,
+  // so a change to it alone is refused here too.
+  if (CONFIG.projection_version !== PROJECTION_VERSION) {
+    fail("This page will not draw: its columns assemble to projection_version " +
+      CONFIG.projection_version + " and this script reads projection_version " +
+      PROJECTION_VERSION + ". A cached copy of the script is the likely cause, so " +
+      "reload to pick up the current one. Drawing it anyway would produce a chart " +
+      "that is wrong rather than one that fails.");
     return;
   }
 

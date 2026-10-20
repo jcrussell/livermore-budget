@@ -149,42 +149,71 @@ export function pageOf(docs, docId, page) {
 }
 
 /**
- * The pages a set of locators cites, each with its extracted page text's
- * link from pageOf, in the locators' order.
+ * The pages a set of locators cites, each with the links the export built
+ * for it in the config's `docs`, in the locators' order. A page the config
+ * built no links for is kept with both links empty, so pageLinks names it
+ * unlinked rather than a tip throwing inside a pointer or key handler.
  * @param {Parameters<typeof pageOf>[0]} docs
  * @param {{doc_id: string, pages: number[]}[]} locators
- * @returns {{page: number, href: string}[]}
+ * @returns {CitedPage[]}
  */
-export function pageTexts(docs, locators) {
-  return locators.flatMap((l) => l.pages.map((p) => ({ page: p, href: pageOf(docs, l.doc_id, p).text || "" })));
+export function citedPages(docs, locators) {
+  return locators.flatMap((l) => l.pages.map((p) => {
+    const d = docs[l.doc_id];
+    const links = d && d.pages && d.pages[String(p)];
+    return { page: p, text: (links && links.text) || "", pdf: (links && links.pdf) || "" };
+  }));
 }
 
 /**
- * A tip's line of cited pages, `p97, p98`, each a link to that page's text,
- * once per link however many cells cite it. A page with no link is named
- * and not linked.
+ * One cited page as a tip links it: its extracted text and the city's PDF
+ * at the page, either "" where none was built.
+ * @typedef {{page: number, text: string, pdf: string}} CitedPage
+ */
+
+/**
+ * A tip's line of cited pages, `p97 PDF, p98 PDF`: each page number links
+ * its extracted text and the PDF link beside it the city's document at that
+ * page, once per pair of links however many cells cite it. A page with
+ * neither link is named, marked `data-unlinked`, and not linked.
  * @param {Document} doc
- * @param {{page: number, href: string}[]} pages
+ * @param {CitedPage[]} pages
  * @returns {HTMLElement}
  */
 export function pageLinks(doc, pages) {
   const line = doc.createElement("div");
   line.className = "facts";
   const seen = new Set();
-  for (const { page, href } of pages) {
-    const key = href || "p" + page;
+  for (const { page, text, pdf } of pages) {
+    const key = text || pdf ? text + " " + pdf : "p" + page;
     if (seen.has(key)) continue;
     seen.add(key);
     if (line.childNodes.length) line.append(", ");
-    if (!href) {
-      line.append(`p${page}`);
-      continue;
+    if (text) {
+      const a = doc.createElement("a");
+      a.className = "page-text";
+      a.href = text;
+      a.title = `Read on page ${page}`;
+      a.textContent = `p${page}`;
+      line.append(a);
+    } else {
+      const span = doc.createElement("span");
+      span.textContent = `p${page}`;
+      if (!pdf) {
+        span.dataset.unlinked = "";
+        span.title = `This page publishes no link for page ${page}`;
+      }
+      line.append(span);
     }
-    const a = doc.createElement("a");
-    a.href = href;
-    a.title = `Read on page ${page}`;
-    a.textContent = `p${page}`;
-    line.append(a);
+    if (pdf) {
+      const a = doc.createElement("a");
+      a.className = "page-pdf";
+      a.href = pdf;
+      a.title = `The city's PDF at page ${page}`;
+      a.rel = "noopener";
+      a.textContent = "PDF";
+      line.append(" ", a);
+    }
   }
   return line;
 }
@@ -218,7 +247,8 @@ export function placeTip(doc, tip, e) {
  * Space on a mark. A pinned tip takes the pointer and the focus, so its
  * links can be clicked and tabbed to; hovering or leaving a mark leaves it
  * as it is, and Escape or a click outside it and outside every mark
- * (`[data-pins]`) unpins it, Escape handing the focus back to its mark.
+ * (`[data-pins]`) unpins it, Escape handing the focus back to its mark
+ * with no tip showing until the next hover or focus.
  * `fill` writes the tip's content into the emptied tip, told whether it is
  * being pinned. The pinned mark is held in this call's closure, one per
  * page booted.
@@ -227,6 +257,8 @@ export function placeTip(doc, tip, e) {
 export function tipper(doc) {
   /** @type {HTMLElement | null} the mark the pinned tip is of */
   let mark = null;
+  /** Whether unpin is handing the focus back, whose focus shows no tip. */
+  let refocusing = false;
   const tipEl = () => /** @type {HTMLElement | null} */ (doc.getElementById("tooltip"));
   /**
    * @param {{clientX?: number, clientY?: number, target?: any}} e
@@ -251,7 +283,7 @@ export function tipper(doc) {
      * @param {(tip: HTMLElement, pinned: boolean) => void} fill
      */
     show(e, fill) {
-      if (!mark) paint(e, fill, false);
+      if (!mark && !refocusing) paint(e, fill, false);
     },
     /** Hides the tip, unless it is pinned. */
     hide() {
@@ -293,7 +325,13 @@ export function tipper(doc) {
         tip.removeAttribute("tabindex");
         tip.hidden = true;
       }
-      if (refocus && was.isConnected) was.focus();
+      if (!refocus || !was.isConnected) return;
+      refocusing = true;
+      try {
+        was.focus();
+      } finally {
+        refocusing = false;
+      }
     },
   };
   doc.addEventListener("keydown", (e) => {

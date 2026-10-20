@@ -13,7 +13,7 @@
  */
 
 import * as core from "./core.js";
-import { configOf, dollars, hashFields, hashValue, pageLinks, pageTexts, selectYear, tipHint, tipper, wireYearSelect, yearKey } from "./format.js";
+import { configOf, dollars, hashFields, hashValue, citedPages, pageLinks, selectYear, tipHint, tipper, wireYearSelect, yearKey } from "./format.js";
 
 /** The hash's fields: the column and the opened nodes, in order. */
 const HASH_FIELDS = ["y", "o"];
@@ -230,12 +230,12 @@ export function sidesAt(config, column, frontier) {
 /**
  * Writes a tile's tip into the emptied tooltip: its label, figure, share,
  * how it opens, and the pages it cites, each linked to its extracted text
- * by the config's `docs`.
+ * and its PDF page by the config's `docs`.
  * @param {Document} doc
  * @param {HTMLElement} tip
  * @param {core.SideTile} tile
  * @param {Side} side
- * @param {Parameters<typeof pageTexts>[0]} docs
+ * @param {Parameters<typeof citedPages>[0]} docs
  * @param {boolean} pinned
  */
 export function fillTip(doc, tip, tile, side, docs, pinned) {
@@ -252,7 +252,7 @@ export function fillTip(doc, tip, tile, side, docs, pinned) {
   if (tile.contra) parts.push(tile.contra);
   if (tile.splits.length) parts.push((tile.children ? "Opened; click to close. " : "Click to open: ") + opensAs(tile));
   meta.textContent = parts.join(". ");
-  tip.append(label, value, meta, pageLinks(doc, pageTexts(docs, tile.locators)));
+  tip.append(label, value, meta, pageLinks(doc, citedPages(docs, tile.locators)));
   // A tile that opens says so in its meta, and a click opens it.
   if (pinned || !tile.splits.length) tip.append(tipHint(doc, pinned));
 }
@@ -326,7 +326,7 @@ export function render(win, config, column, st, renderer, toggle, tips) {
  * @param {Document} doc
  * @param {Side[]} sides
  * @param {string} id
- * @param {Parameters<typeof pageTexts>[0]} docs the config's `docs`
+ * @param {Parameters<typeof citedPages>[0]} docs the config's `docs`
  * @param {ReturnType<typeof tipper>} tips
  */
 function pinDrawn(doc, sides, id, docs, tips) {

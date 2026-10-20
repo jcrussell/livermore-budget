@@ -15,7 +15,7 @@ test("format.js imports with no DOM and no global, and exports only functions", 
   delete globalThis.d3;
   assert.equal(typeof globalThis.document, "undefined", "nothing installed a DOM before the import");
   const mod = await import(MODULE);
-  assert.deepEqual(Object.keys(mod).sort(), ["carryYear", "configOf", "dollars", "hashFields", "hashValue", "pageLinks", "pageOf", "pageTexts", "pinnable", "placeTip", "selectYear", "share", "tipHint", "tipper", "wireYearSelect", "yearKey"]);
+  assert.deepEqual(Object.keys(mod).sort(), ["carryYear", "citedPages", "configOf", "dollars", "hashFields", "hashValue", "pageLinks", "pageOf", "pinnable", "placeTip", "selectYear", "share", "tipHint", "tipper", "wireYearSelect", "yearKey"]);
   assert.ok(Object.values(mod).every((v) => typeof v === "function"));
 });
 
@@ -128,4 +128,26 @@ test("the top bar's year select is enabled, says the year, and carries it only t
   assert.equal(href("department"), "department.html");
   assert.equal(yearKey("fy2026-adopted.json"), "fy2026-adopted");
   assert.equal(wireYearSelect(new JSDOM("").window.document, () => {}), undefined);
+});
+
+// A cited page the config built no links for is named, marked unlinked, and
+// does not throw out of the hover, focus or click handler filling the tip.
+// Mutation: read each page through pageOf in citedPages, as the tips once
+// did, and the call throws; drop the data-unlinked mark and the unlinked
+// arm goes red.
+test("a tip names a cited page the config publishes no links for, unlinked, beside the linked ones", async () => {
+  const { citedPages, pageLinks } = await import(MODULE);
+  const doc = new JSDOM("").window.document;
+  const docs = { d: { pages: { "66": { pdf: "https://x/d.pdf#page=66", text: "extracted/d/pages/p0066.txt", records: "" } } } };
+  const pages = citedPages(docs, [{ doc_id: "d", pages: [66, 67] }, { doc_id: "gone", pages: [5] }]);
+  assert.deepEqual(pages, [
+    { page: 66, text: "extracted/d/pages/p0066.txt", pdf: "https://x/d.pdf#page=66" },
+    { page: 67, text: "", pdf: "" },
+    { page: 5, text: "", pdf: "" },
+  ]);
+  const line = pageLinks(doc, pages);
+  assert.equal(line.textContent, "p66 PDF, p67, p5");
+  assert.deepEqual([...line.querySelectorAll("a")].map((a) => a.getAttribute("href")),
+    ["extracted/d/pages/p0066.txt", "https://x/d.pdf#page=66"]);
+  assert.deepEqual([...line.querySelectorAll("[data-unlinked]")].map((x) => x.textContent), ["p67", "p5"]);
 });

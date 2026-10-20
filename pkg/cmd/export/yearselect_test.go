@@ -15,7 +15,53 @@ var (
 	navLink    = regexp.MustCompile(`<li><a href="([^"#]+)"( data-years="([^"]*)")?>`)
 	yearSelect = regexp.MustCompile(`(?s)<select id="year-select" disabled>(.*?)</select>`)
 	yearOption = regexp.MustCompile(`<option value="([^"]+)"`)
+	yearLabel  = regexp.MustCompile(`<option value="([^"]+)"[^>]*>([^<]*)</option>`)
 )
+
+// TestEveryPageLabelsAYearAlike holds the year selects of the site Go writes
+// to one label per key: a year carried from one page to another reads the
+// same in both. Flows, Ledger, Departments and Capital each offer a year.
+//
+// Mutation: label capital's options with the fiscal year label alone rather
+// than through yearOptionOf -- capital.html's arms go red.
+func TestEveryPageLabelsAYearAlike(t *testing.T) {
+	dir := clientExport(t)
+	pages, err := filepath.Glob(filepath.Join(dir, "*.html"))
+	if err != nil || len(pages) == 0 {
+		t.Fatalf("the export wrote no pages: %v", err)
+	}
+	type seen struct{ label, page string }
+	byKey := map[string]seen{}
+	offering := map[string]int{}
+	for _, p := range pages {
+		raw, err := os.ReadFile(p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		m := yearSelect.FindSubmatch(raw)
+		if m == nil {
+			continue
+		}
+		page := filepath.Base(p)
+		for _, o := range yearLabel.FindAllSubmatch(m[1], -1) {
+			key, label := string(o[1]), string(o[2])
+			offering[page]++
+			first, ok := byKey[key]
+			if !ok {
+				byKey[key] = seen{label, page}
+				continue
+			}
+			if first.label != label {
+				t.Errorf("%s labels %s %q and %s labels it %q", first.page, key, first.label, page, label)
+			}
+		}
+	}
+	for _, page := range []string{"flows.html", "ledger.html", "department.html", "capital.html"} {
+		if offering[page] == 0 {
+			t.Errorf("%s offers no year, so this test does not hold it", page)
+		}
+	}
+}
 
 // TestEachNavLinkListsTheYearsItsViewOffers holds every top-bar link of the
 // site Go writes to the page it opens: a link's data-years is that page's

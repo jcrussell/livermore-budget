@@ -65,14 +65,15 @@
 {{- end}}
 {{- end}}
 {{- /* "footer" closes every page, executed against the page's own data. With
-       a sources page (.SourcesPath) it links there, and every page this view
-       cites is listed on it; with none, it folds the "sources" list in its
+       a sources page (.SourcesPath) it links there, but not from that page
+       itself (.SourcesPage), and every page this view cites is listed on it;
+       with none, it folds the "sources" list in its
        place, so a cited page is always listed somewhere. */}}
 {{define "footer"}}<footer>
   {{- if and .Sources (not .SourcesPath)}}
   {{template "sources" .}}
   {{- end}}
   <p>Built from the City of Livermore's published budget PDFs
-    {{- if .SourcesPath}} · <a href="{{.SourcesPath}}">Sources and data</a>{{end}}
+    {{- if and .SourcesPath (not .SourcesPage)}} · <a href="{{.SourcesPath}}">Sources and data</a>{{end}}
     · <a href="{{.Repository}}">Code on GitHub</a></p>
 </footer>{{end}}

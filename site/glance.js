@@ -121,7 +121,8 @@ function clone(doc, id) {
  * naming each with its dollars of every $100, and the sentence stating the
  * sum as ours. The figure's markup is the template's; this fills it in.
  * Each segment's tip pins on a click and links the pages its rows cite,
- * each to the page text the table's own link names (`a[data-page]`).
+ * each to the page text the table's own link names (`a[data-page]`) and
+ * to the PDF page its `data-pdf` names.
  * Returns what it drew.
  * @param {HTMLElement} section
  * @param {ReturnType<typeof tipper>} [tips] the page's tooltip
@@ -141,11 +142,11 @@ export function draw(section, tips = tipper(section.ownerDocument)) {
   const groups = groupRows(rows);
   const { segments, whole } = rank(groups);
   const named = new Set(segments.filter((s) => s.id).map((s) => s.id));
-  /** @param {Segment} s @returns {{page: number, href: string}[]} */
+  /** @param {Segment} s @returns {import("./format.js").CitedPage[]} */
   const pagesOf = (s) => Array.from(table.tBodies).flatMap((b) => Array.from(b.rows))
     .filter((tr) => (s.id ? tr.dataset.group === s.id : !named.has(tr.dataset.group || "")))
     .flatMap((tr) => Array.from(tr.querySelectorAll("a[data-page]")).map((a) => ({
-      page: Number(a.getAttribute("data-page")), href: a.getAttribute("href") || "",
+      page: Number(a.getAttribute("data-page")), text: a.getAttribute("href") || "", pdf: a.getAttribute("data-pdf") || "",
     })));
   const heading = section.querySelector("h3");
   const title = heading ? (heading.textContent || "").trim() : "";

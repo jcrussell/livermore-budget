@@ -229,10 +229,11 @@ test("readRows refuses a row with no category and a cell that is not integer cen
 // A click on a band pins its tip, and the tip links the page text of each
 // of the band's cells in that column, a page that prints the cell's figure.
 // Mutation: drop pageLinks from the band's fill in change.js and every
-// band's links are missing; match a band's rows by its id in place of its
+// band's links are missing; drop the PDF link from format.js's pageLinks
+// and every PDF arm goes red; match a band's rows by its id in place of its
 // members, and the tail links no page.
-test("a click pins a band's tip, linking the page text that prints each of its cells", async (t) => {
-  const { installBrowser, pinGestures, tipState, pageTextExists, fire, repoRoot } = await import("./testlib.mjs");
+test("a click pins a band's tip, linking the page text and the PDF page that print each of its cells", async (t) => {
+  const { installBrowser, pinGestures, tipState, pageTextExists, pdfFaults, fire, repoRoot } = await import("./testlib.mjs");
   const { window, document } = installBrowser({ html: PAGE });
   const mod = await import(MODULE);
   mod.boot(document);
@@ -253,6 +254,7 @@ test("a click pins a band's tip, linking the page text that prints each of its c
         const want = new Set(cells.map((td) => td.querySelector("a").getAttribute("href")));
         assert.deepEqual([...new Set(tip.hrefs)].sort(), [...want].sort(), `${id} column ${i} rank ${seg.dataset.rank}: the tip links other pages`);
         for (const href of tip.hrefs) assert.ok(pageTextExists(href), `${href} names no committed page text`);
+        assert.deepEqual(pdfFaults(tip), [], `${id} column ${i} rank ${seg.dataset.rank}: the tip's PDF links are not its pages'`);
         const texts = tip.hrefs.map((h) => readFileSync(path.join(repoRoot, "data", h), "utf8"));
         for (const td of cells) {
           const printed = whole.format(Math.abs(Number(td.getAttribute("data-cents"))) / 100);

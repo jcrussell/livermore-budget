@@ -171,7 +171,7 @@ describe("each form draws every tile once and its tip names its pages", () => {
           const pages = tile.locators.flatMap((l) => l.pages.map((p) => `p${p}`));
           const facts = document.querySelector("#tooltip .facts").textContent;
           assert.ok(pages.length > 0, `${m.dataset.id} cites no page`);
-          for (const p of pages) assert.ok(facts.split(/[,;] /).includes(p), `${m.dataset.id}'s tip does not name ${p}`);
+          for (const p of pages) assert.ok(facts.split(/[,;] /).map((x) => x.replace(/ PDF$/, "")).includes(p), `${m.dataset.id}'s tip does not name ${p}`);
         }
         assert.ok(section.querySelector(".sides-total").textContent.includes(format.dollars(tree.cents)));
         expected += marks.length;
@@ -406,7 +406,7 @@ test("hover shows a tile's figure, share and pages, and leaving hides it", async
   assert.match(tip.querySelector(".tip-meta").textContent, /^◇ \d+\.\d% of where the money comes from\. Click to open: \d+ lines/);
   // The root's ribbons are the fund-flows leaves folded, so it cites the
   // revenue-by-fund pages, pp.127-140, and not p66.
-  assert.match(tip.querySelector(".facts").textContent, /^p1[2-4]\d(, p1[2-4]\d)*$/);
+  assert.match(tip.querySelector(".facts").textContent, /^p1[2-4]\d PDF(, p1[2-4]\d PDF)*$/);
   mark.dispatchEvent(new window.Event("pointerleave", { bubbles: true }));
   assert.equal(tip.hidden, true);
 });
@@ -433,11 +433,13 @@ function textsOf(config, tile) {
 
 // A click on a tile pins its tip, whose page numbers link the page text the
 // config's docs name for the tile's locators; a tile that opens is opened by
-// the click and its tip pinned once it is drawn again. Mutation: drop
-// pageLinks from sides.js's fillTip, and every tip's links are missing;
+// the click and its tip pinned once it is drawn again, each page beside its
+// PDF page. Mutation: drop pageLinks from sides.js's fillTip, and every
+// tip's links are missing; drop the PDF link from format.js's pageLinks and
+// the PDF arm goes red;
 // drop the pinDrawn call in show, and an opening tile's click pins nothing.
-test("a click pins a tile's tip, linking the page text of every page it cites", async (t) => {
-  const { pinGestures, tipState, pageTextExists, fire } = await import("./testlib.mjs");
+test("a click pins a tile's tip, linking the page text and the PDF page of every page it cites", async (t) => {
+  const { pinGestures, tipState, pageTextExists, pdfFaults, fire } = await import("./testlib.mjs");
   const browser = await booted("ledger");
   const { window, document, config } = browser;
   const doc = expansionOf("fy2027-adopted", config);
@@ -469,6 +471,7 @@ test("a click pins a tile's tip, linking the page text of every page it cites", 
     assert.ok(want.length > 0, `${m.dataset.id} cites no page`);
     assert.deepEqual(tip.hrefs, want, `${m.dataset.id}: the tip links other pages`);
     for (const href of tip.hrefs) assert.ok(pageTextExists(href), `${href} names no committed page text`);
+    assert.deepEqual(pdfFaults(tip), [], `${m.dataset.id}: the tip's PDF links are not its pages'`);
   }
   fire(document.body, "click");
   pinGestures(window, leaves[0], leaves[1]);

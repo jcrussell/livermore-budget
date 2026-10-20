@@ -6,6 +6,7 @@
   "type": "object",
   "required": [
     "schema_version",
+    "projection_version",
     "exported_by",
     "primary",
     "years",
@@ -20,6 +21,11 @@
   "properties": {
     "schema_version": {
       "description": "The page's own version (export.PageConfigVersion), apart from the projection's: site/app.js compares it against core.js's SCHEMA_VERSION before it draws, so a script cached across a change to the page refuses it.",
+      "type": "integer",
+      "minimum": 1
+    },
+    "projection_version": {
+      "description": "The projection schema the page's columns assemble to (project.SchemaVersion): site/app.js compares it against core.js's PROJECTION_VERSION before it draws, so a script cached across a change to the projection refuses it.",
       "type": "integer",
       "minimum": 1
     },

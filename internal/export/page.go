@@ -159,13 +159,21 @@ type yearOption struct {
 	Selected bool
 }
 
+// yearOptionOf is one column as every page's year select offers it, so a
+// [YearKey] reads alike on every page that offers it.
+func yearOptionOf(year int, fiscalYearLabel, basis string) yearOption {
+	return yearOption{Key: YearKey(year, basis), Label: ledeOf(fiscalYearLabel, basis)}
+}
+
 // newest appends one column and opens on it: a page lists its columns
 // oldest first and opens on the newest.
-func (y *yearSelect) newest(year int, basis, lede string) {
+func (y *yearSelect) newest(year int, fiscalYearLabel, basis string) {
 	for i := range y.Options {
 		y.Options[i].Selected = false
 	}
-	y.Options = append(y.Options, yearOption{Key: YearKey(year, basis), Label: lede, Selected: true})
+	o := yearOptionOf(year, fiscalYearLabel, basis)
+	o.Selected = true
+	y.Options = append(y.Options, o)
 }
 
 // keys is the options' column keys, every-year left out.
@@ -346,6 +354,9 @@ type chrome struct {
 	// one, the "footer" template links there and lists no cited page, and
 	// citedSources has held every page this view cites to that index.
 	SourcesPath string
+	// SourcesPage is set on the provenance index itself, whose footer does
+	// not link the page it is on.
+	SourcesPage bool
 	// YearSelect is the top bar's year control, drawn where it offers more
 	// than one option; empty on a page that draws every year at once.
 	YearSelect yearSelect

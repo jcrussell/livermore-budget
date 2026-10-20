@@ -18,6 +18,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
+	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/export"
 	"github.com/jcrussell/livermore-budget/site"
 )
@@ -1798,9 +1799,11 @@ func sourcesPageSite(t *testing.T, edit func(*export.Options)) (string, error) {
 
 // TestEveryViewLinksTheSourcesPageInPlaceOfItsList: beside a provenance
 // index, every page lists no cited page, and its footer links the sources page
-// and the repository; the sources page lists every data file written; and Write refuses a page any view cites that the
-// provenance index does not list, naming the view.
+// and the repository, the sources page's own footer the repository alone; the
+// sources page lists every data file written; and Write refuses a page any view
+// cites that the provenance index does not list, naming the view.
 // Mutation: drop listedBy's call in citedSources -- both refusal arms go red;
+// drop .SourcesPage from the footer's condition -- the self-link arm goes red;
 // render the footer's sources list whatever .SourcesPath -- the first goes red;
 // render provenance.html.tmpl's #data-files empty -- the data-file arm goes red.
 func TestEveryViewLinksTheSourcesPageInPlaceOfItsList(t *testing.T) {
@@ -1819,11 +1822,13 @@ func TestEveryViewLinksTheSourcesPageInPlaceOfItsList(t *testing.T) {
 		if strings.Contains(foot, `id="sources-view"`) || strings.Contains(foot, "extracted/") {
 			t.Errorf("%s's footer lists cited pages beside a sources page that lists them", path)
 		}
-		for _, want := range []string{`<a href="provenance.html">Sources and data</a>`,
-			`<a href="` + export.RepositoryURL + `">Code on GitHub</a>`} {
-			if !strings.Contains(foot, want) {
-				t.Errorf("%s's footer does not carry %s", path, want)
-			}
+		if !strings.Contains(foot, `<a href="`+export.RepositoryURL+`">Code on GitHub</a>`) {
+			t.Errorf("%s's footer does not link the repository", path)
+		}
+		// The sources page's footer does not link the page it is on.
+		self := `<a href="provenance.html">Sources and data</a>`
+		if got, want := strings.Contains(foot, self), path != "provenance.html"; got != want {
+			t.Errorf("%s's footer links the sources page: %v, want %v", path, got, want)
 		}
 	}
 	listed := readFile(t, dir, "provenance.html")
@@ -1892,7 +1897,7 @@ func TestOnlyTheProsePagesDrawAtTheMeasure(t *testing.T) {
 
 // TestTheSourcesPageStatesEveryInference: provenance.html lists every derived
 // node of every column with its rationale and source note, and every derived
-// flow between two printed nodes, now that no chart page lists them.
+// flow with the cents its link carries, now that no chart page lists them.
 // Mutation: skip derived nodes in inferredColumns -- the node arm goes red;
 // skip derived links -- the flow arm goes red.
 func TestTheSourcesPageStatesEveryInference(t *testing.T) {
@@ -1959,6 +1964,24 @@ func TestTheSourcesPageStatesEveryInference(t *testing.T) {
 	}
 	if flow == "" || !strings.Contains(inferred, flow) {
 		t.Errorf("provenance.html does not list the derived flow %q", flow)
+	}
+	// And every derived flow the golden carries, with a derived end or none,
+	// with the cents its link carries.
+	listed := 0
+	for _, l := range generic["links"].([]any) {
+		m := l.(map[string]any)
+		if d, _ := m["derived"].(bool); !d {
+			continue
+		}
+		src, dst := m["source"].(string), m["target"].(string)
+		want := "◇ " + labels[src] + " → " + labels[dst] + ": " + amount.Cents(int64(m["value_cents"].(float64))).Dollars()
+		if !strings.Contains(inferred, want) {
+			t.Errorf("provenance.html does not list the derived flow %q", want)
+		}
+		listed++
+	}
+	if listed < 2 {
+		t.Fatalf("the golden carries %d derived flows, so the flow arm covers little", listed)
 	}
 }
 

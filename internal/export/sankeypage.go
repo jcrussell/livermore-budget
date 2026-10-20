@@ -127,9 +127,13 @@ const PageConfigVersion = 2
 // clientConfig is window.FISC_CONFIG: the metadata the page needs before it
 // has fetched anything, plus where to fetch the bulk from.
 type clientConfig struct {
-	SchemaVersion int    `json:"schema_version"`
-	ExportedBy    string `json:"exported_by"`
-	Primary       string `json:"primary"`
+	SchemaVersion int `json:"schema_version"`
+	// ProjectionVersion is project.SchemaVersion, the projection site/core.js
+	// assembles from a column; the script refuses a page whose projection is
+	// not its PROJECTION_VERSION, as it refuses a SchemaVersion not its own.
+	ProjectionVersion int    `json:"projection_version"`
+	ExportedBy        string `json:"exported_by"`
+	Primary           string `json:"primary"`
 	// Years is every published year with the words that belong to it, built by
 	// the packager so the client never composes a figure or a caveat itself.
 	Years []yearView           `json:"years"`
@@ -336,7 +340,7 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			}
 			caveats = append(caveats, drawnRefs...)
 		}
-		sel.newest(m.FiscalYear, m.Basis, ledeOf(m.FiscalYearLabel, m.Basis))
+		sel.newest(m.FiscalYear, m.FiscalYearLabel, m.Basis)
 		years = append(years, yearView{
 			Year:       m.FiscalYear,
 			Label:      m.FiscalYearLabel,
@@ -361,16 +365,17 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	}
 
 	cfg := clientConfig{
-		SchemaVersion: PageConfigVersion,
-		ExportedBy:    o.GeneratedBy,
-		Primary:       cmp.Or(v.Draws, v.Projection),
-		Years:         years,
-		Docs:          clientDocs,
-		KindLabels:    kindLabels(),
-		SplitLabels:   splitLabels(),
-		MemberNouns:   memberNouns(),
-		Wording:       defaultWording(),
-		Overview:      v.Overview,
+		SchemaVersion:     PageConfigVersion,
+		ProjectionVersion: SchemaVersion,
+		ExportedBy:        o.GeneratedBy,
+		Primary:           cmp.Or(v.Draws, v.Projection),
+		Years:             years,
+		Docs:              clientDocs,
+		KindLabels:        kindLabels(),
+		SplitLabels:       splitLabels(),
+		MemberNouns:       memberNouns(),
+		Wording:           defaultWording(),
+		Overview:          v.Overview,
 	}
 	blob, err := encodeConfig(cfg)
 	if err != nil {

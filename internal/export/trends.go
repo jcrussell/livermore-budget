@@ -70,9 +70,11 @@ type cellRef struct {
 	// recomputed, and it is integer cents like every other amount here.
 	Cents int64
 	// Page and Href cite the figure itself. Every point carries its own page in
-	// the document, which is what makes a single cell citable.
+	// the document, which is what makes a single cell citable. PDF is the
+	// city's document at that page, "" where the registry names no PDF.
 	Page int
 	Href string
+	PDF  string
 }
 
 // basisLabelFor is the word a column chip and a cell tooltip print for a basis.
@@ -217,7 +219,7 @@ func reconcileSeriesCounts(projection string, rendered, series int, counts trend
 // successfully, rendered one cell, lost the other figure silently, and printed
 // a lede saying "2 figures in all" (fisc-4j5).
 func buildCells(points []trendPoint, columns []columnRef, meta []trendColumnMeta,
-	pageTextBase func(string) string,
+	pageTextBase func(string) string, byID map[string]Doc,
 ) ([]cellRef, int, error) {
 	type key struct {
 		year  int
@@ -259,6 +261,7 @@ func buildCells(points []trendPoint, columns []columnRef, meta []trendColumnMeta
 		cell.Negative = p.AmountCents < 0
 		cell.Page = p.Page
 		cell.Href = pageTextBase(p.DocID) + pageTextFile(p.Page)
+		cell.PDF = pdfPageURL(byID[p.DocID].PDFURL, p.Page)
 		out = append(out, cell)
 		placed++
 	}
