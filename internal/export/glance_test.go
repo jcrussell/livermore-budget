@@ -197,6 +197,15 @@ func TestGlancePageRefusesRowsThatDoNotSumToTheCitedWhole(t *testing.T) {
 		t.Errorf("an inferred row: got %v, want a refusal naming it", err)
 	}
 
+	// A row citing a document the registry does not describe is refused.
+	// Mutation: compose the row's pages with sourcesFor in place of
+	// cellCites.locators and the page writes.
+	gone := strings.Replace(string(glanceFunding(0)), `"doc_id":"livermore-budget-fy2026-2027","pages":[120]`, `"doc_id":"gone","pages":[120]`, 1)
+	_, err = writeSite(glanceOptions(t, t.TempDir(), []byte(gone), nil))
+	if err == nil || !strings.Contains(err.Error(), "gone p120") {
+		t.Errorf("a row of an undescribed document: got %v, want a refusal naming gone p120", err)
+	}
+
 	// And a view reading anything but department-funding is refused before
 	// a row is read.
 	o := glanceOptions(t, t.TempDir(), glanceFunding(0), nil)

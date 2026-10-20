@@ -359,7 +359,7 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	// per-year the page renders statically comes from this entry.
 	open := years[len(years)-1]
 
-	sources, sourcesPath, clientDocs, err := citedSources(o, v.Path, cited, byID, pageTextBase)
+	sources, sourcesPath, clientDocs, err := citedSources(o, v.Path, cited, nil, byID, pageTextBase)
 	if err != nil {
 		return pageData{}, err
 	}

@@ -218,8 +218,7 @@ func reconcileSeriesCounts(projection string, rendered, series int, counts trend
 // and read nowhere, so a 1-column document carrying a 2-point series exported
 // successfully, rendered one cell, lost the other figure silently, and printed
 // a lede saying "2 figures in all" (fisc-4j5).
-func buildCells(points []trendPoint, columns []columnRef, meta []trendColumnMeta,
-	pageTextBase func(string) string, byID map[string]Doc,
+func buildCells(points []trendPoint, columns []columnRef, meta []trendColumnMeta, cite *cellCites,
 ) ([]cellRef, int, error) {
 	type key struct {
 		year  int
@@ -259,7 +258,7 @@ func buildCells(points []trendPoint, columns []columnRef, meta []trendColumnMeta
 		cell.Value = amount.Cents(p.AmountCents).Dollars()
 		cell.Cents = p.AmountCents
 		cell.Negative = p.AmountCents < 0
-		ref, err := citedPage(byID, pageTextBase, p.DocID, p.Page)
+		ref, err := cite.page(p.DocID, p.Page)
 		if err != nil {
 			return nil, 0, fmt.Errorf("%s: %w", fact.ColumnLabel(p.FiscalYear, p.Basis), err)
 		}

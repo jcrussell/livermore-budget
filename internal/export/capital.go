@@ -62,6 +62,7 @@ type capitalBody struct {
 func buildCapitalPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	ix ColumnIndex, pageTextBase func(string) string, cx *caveatIndex,
 ) (capitalPageData, error) {
+	cite := newCellCites(byID, pageTextBase)
 	raw := o.Projections[v.Projection]
 	doc, err := decodeDocument(v.Projection, raw)
 	if err != nil {
@@ -122,7 +123,7 @@ func buildCapitalPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		for _, p := range s.Points {
 			points = append(points, p.trendPoint)
 		}
-		cells, placed, err := buildCells(points, columns, meta.Columns, pageTextBase, byID)
+		cells, placed, err := buildCells(points, columns, meta.Columns, cite)
 		if err != nil {
 			return capitalPageData{}, fmt.Errorf("%s series %q: %w", v.Projection, s.Label, err)
 		}
@@ -148,7 +149,7 @@ func buildCapitalPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		return capitalPageData{}, err
 	}
 
-	sources, sourcesPath, _, serr := citedSources(o, v.Path, meta.Sources, byID, pageTextBase)
+	sources, sourcesPath, _, serr := citedSources(o, v.Path, meta.Sources, cite, byID, pageTextBase)
 	if serr != nil {
 		return capitalPageData{}, serr
 	}

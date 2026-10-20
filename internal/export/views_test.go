@@ -1877,6 +1877,33 @@ func TestEveryViewLinksTheSourcesPageInPlaceOfItsList(t *testing.T) {
 	}
 }
 
+// TestAFigureCitingAPageItsMetadataOmitsRefuses: a trend cell citing a page
+// its document's metadata does not list is held to the sources page by its
+// own citation, and refuses the export naming the view when that page is not
+// indexed.
+// Mutation: drop the cells arm in citedSources -- the metadata's p66 is
+// listed, the cell's p127 drops out of every list on the site, and the export
+// writes.
+func TestAFigureCitingAPageItsMetadataOmitsRefuses(t *testing.T) {
+	_, err := sourcesPageSite(t, func(o *export.Options) {
+		var doc map[string]any
+		if err := json.Unmarshal(o.Projections["revenue-trends"], &doc); err != nil {
+			t.Fatal(err)
+		}
+		doc["metadata"].(map[string]any)["sources"] = []map[string]any{{"doc_id": budgetDocID, "pages": []int{66}}}
+		b, err := json.Marshal(doc)
+		if err != nil {
+			t.Fatal(err)
+		}
+		o.Projections["revenue-trends"] = b
+		o.PageIndex = slices.DeleteFunc(o.PageIndex, func(e export.PageIndexEntry) bool { return e.Page == 127 })
+		delete(o.Files, "facts/d/pages/p0127.jsonl")
+	})
+	if want := fmt.Sprintf("view %q cites %s p127", "table.html", budgetDocID); err == nil || !strings.Contains(err.Error(), want) {
+		t.Errorf("got %v, want the refusal %q", err, want)
+	}
+}
+
 // TestOnlyTheProsePagesDrawAtTheMeasure: caveats.html and provenance.html
 // wear .prose-page, whose rule draws main at the reading measure, and no
 // chart or table page does, since clamping theirs squeezes the figure.

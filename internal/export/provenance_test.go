@@ -154,7 +154,7 @@ func TestBuildCellsCitesThroughSourcesFor(t *testing.T) {
 	meta := []trendColumnMeta{{FiscalYear: 2025, Basis: "actual"}}
 	columns := []columnRef{{Label: "FY 2024-25"}}
 	cells, placed, err := buildCells([]trendPoint{{FiscalYear: 2025, Basis: "actual", AmountCents: 100, DocID: "d", Page: 67}},
-		columns, meta, base, byID)
+		columns, meta, newCellCites(byID, base))
 	if err != nil {
 		t.Fatalf("buildCells: %v", err)
 	}
@@ -164,7 +164,7 @@ func TestBuildCellsCitesThroughSourcesFor(t *testing.T) {
 		t.Errorf("cell cites %q and %q (placed %d), want sourcesFor's %q and %q", cells[0].Href, cells[0].PDF, placed, want.TextURL, want.PDFURL)
 	}
 	_, _, err = buildCells([]trendPoint{{FiscalYear: 2025, Basis: "actual", AmountCents: 100, DocID: "gone", Page: 67}},
-		columns, meta, base, byID)
+		columns, meta, newCellCites(byID, base))
 	if err == nil || !strings.Contains(err.Error(), "gone p67") {
 		t.Errorf("buildCells over an undescribed document: err = %v, want a refusal naming gone p67", err)
 	}

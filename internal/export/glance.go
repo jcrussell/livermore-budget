@@ -130,7 +130,7 @@ func decodeGlanceDocument(stem, want string, raw []byte) (glanceDocument, error)
 // name, and an inferred link, because the page lists every row as a printed
 // cell and marks none inferred.
 func glanceRows(doc glanceDocument, pick func(src, dst string) (group, other string, ok bool),
-	pages func([]sourceMeta) []pageRef,
+	cite *cellCites,
 ) ([]glanceRow, error) {
 	type node struct{ label, role string }
 	table := make(map[string]node, len(doc.Nodes))
@@ -161,13 +161,17 @@ func glanceRows(doc glanceDocument, pick func(src, dst string) (group, other str
 			return nil, fmt.Errorf("%s draws %s -> %s at %d cents; a bar segment is positive",
 				doc.Projection, l.Source, l.Target, l.ValueCents)
 		}
+		pages, err := cite.locators(l.Locators)
+		if err != nil {
+			return nil, fmt.Errorf("%s draws %s -> %s: %w", doc.Projection, l.Source, l.Target, err)
+		}
 		rows = append(rows, glanceRow{
 			Group: group, GroupLabel: g.label,
 			Other: other, OtherLabel: o.label,
 			Cents:   l.ValueCents,
 			Dollars: amount.Cents(l.ValueCents).Dollars(),
 			Facts:   strings.Join(l.FactIDs, " "),
-			Pages:   pages(l.Locators),
+			Pages:   pages,
 		})
 	}
 	return rows, nil
@@ -206,14 +210,7 @@ func buildGlancePage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	if err != nil {
 		return glancePageData{}, err
 	}
-	pages := func(locs []sourceMeta) []pageRef {
-		var out []pageRef
-		refs, _ := sourcesFor(unionSources(locs), byID, pageTextBase, nil)
-		for _, s := range refs {
-			out = append(out, s.Pages...)
-		}
-		return out
-	}
+	cite := newCellCites(byID, pageTextBase)
 	var (
 		years []glanceYear
 		cited []sourceMeta
@@ -317,7 +314,7 @@ func buildGlancePage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		}
 		for _, b := range bars {
 			bar := b.bar
-			bar.Rows, err = glanceRows(b.doc, b.pick, pages)
+			bar.Rows, err = glanceRows(b.doc, b.pick, cite)
 			if err != nil {
 				return glancePageData{}, fmt.Errorf("view %q, %s bar: %w", v.Path, bar.ID, err)
 			}
@@ -341,7 +338,7 @@ func buildGlancePage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		// Newest first: the stems are oldest first.
 		years = append([]glanceYear{year}, years...)
 	}
-	sources, sourcesPath, _, serr := citedSources(o, v.Path, cited, byID, pageTextBase)
+	sources, sourcesPath, _, serr := citedSources(o, v.Path, cited, cite, byID, pageTextBase)
 	if serr != nil {
 		return glancePageData{}, serr
 	}

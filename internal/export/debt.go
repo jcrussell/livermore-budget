@@ -1,6 +1,7 @@
 package export
 
 import (
+	"cmp"
 	"encoding/json"
 	"fmt"
 
@@ -132,14 +133,19 @@ func buildDebtPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	}
 
 	shown := 0
+	cite := newCellCites(byID, pageTextBase)
+	var citeErr error
 	fig := func(f *debtFigure) debtFigRef {
 		if f == nil {
 			return debtFigRef{Missing: true}
 		}
 		shown++
-		cited, _ := sourcesFor([]sourceMeta{{DocID: f.DocID, Pages: []int{f.Page}}}, byID, pageTextBase, nil)
-		ref := debtFigRef{Value: amount.Cents(f.AmountCents).Dollars(), Page: f.Page,
-			Href: cited[0].Pages[0].TextURL}
+		cited, err := cite.page(f.DocID, f.Page)
+		if err != nil {
+			citeErr = cmp.Or(citeErr, err)
+			return debtFigRef{}
+		}
+		ref := debtFigRef{Value: amount.Cents(f.AmountCents).Dollars(), Page: f.Page, Href: cited.TextURL}
 		if f.Token == "-" {
 			ref.Value, ref.Dash = "–", true
 		}
@@ -188,6 +194,9 @@ func buildDebtPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		}
 		periods = append(periods, row)
 	}
+	if citeErr != nil {
+		return debtPageData{}, fmt.Errorf("%s: %w", v.Projection, citeErr)
+	}
 	if shown != d.Metadata.Counts.Figures {
 		return debtPageData{}, fmt.Errorf("%s publishes %d figures and the page shows %d",
 			v.Projection, d.Metadata.Counts.Figures, shown)
@@ -206,7 +215,7 @@ func buildDebtPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		}
 	}
 
-	sources, sourcesPath, _, serr := citedSources(o, v.Path, d.Metadata.Sources, byID, pageTextBase)
+	sources, sourcesPath, _, serr := citedSources(o, v.Path, d.Metadata.Sources, cite, byID, pageTextBase)
 	if serr != nil {
 		return debtPageData{}, serr
 	}

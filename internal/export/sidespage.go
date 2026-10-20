@@ -116,7 +116,7 @@ func buildSidesPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	if len(years) == 0 {
 		return sidesPageData{}, fmt.Errorf("view %q opens no year", v.Path)
 	}
-	sources, sourcesPath, docs, err := citedSources(o, v.Path, cited, byID, pageTextBase)
+	sources, sourcesPath, docs, err := citedSources(o, v.Path, cited, nil, byID, pageTextBase)
 	if err != nil {
 		return sidesPageData{}, err
 	}

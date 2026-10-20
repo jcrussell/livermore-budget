@@ -245,7 +245,7 @@ func buildDepartmentPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		}
 	}
 
-	sources, sourcesPath, docs, err := citedSources(o, v.Path, cited, byID, pageTextBase)
+	sources, sourcesPath, docs, err := citedSources(o, v.Path, cited, nil, byID, pageTextBase)
 	if err != nil {
 		return departmentPageData{}, err
 	}

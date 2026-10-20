@@ -43,6 +43,7 @@ type historySection struct {
 func buildHistoryPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	ix ColumnIndex, pageTextBase func(string) string, cx *caveatIndex,
 ) (historyPageData, error) {
+	cite := newCellCites(byID, pageTextBase)
 	raw := o.Projections[v.Projection]
 	doc, err := decodeDocument(v.Projection, raw)
 	if err != nil {
@@ -120,7 +121,7 @@ func buildHistoryPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			}
 			named[i][s.Label] = true
 		}
-		cells, placed, err := buildCells(s.Points, columns, meta.Columns, pageTextBase, byID)
+		cells, placed, err := buildCells(s.Points, columns, meta.Columns, cite)
 		if err != nil {
 			return historyPageData{}, fmt.Errorf("%s series %q: %w", v.Projection, s.Label, err)
 		}
@@ -166,7 +167,7 @@ func buildHistoryPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		}
 	}
 
-	sources, sourcesPath, _, serr := citedSources(o, v.Path, meta.Sources, byID, pageTextBase)
+	sources, sourcesPath, _, serr := citedSources(o, v.Path, meta.Sources, cite, byID, pageTextBase)
 	if serr != nil {
 		return historyPageData{}, serr
 	}

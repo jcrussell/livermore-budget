@@ -158,3 +158,27 @@ func TestDebtPageRefusesADocumentThatDoesNotReconcile(t *testing.T) {
 		t.Fatalf("got %v, want the count refusal", err)
 	}
 }
+
+// TestDebtPageRefusesAFigureOfAnUndescribedDocument: a figure citing a
+// document the registry does not describe refuses, rather than publishing a
+// cell whose link names no PDF.
+//
+// Mutation: compose the figure's link with sourcesFor in place of
+// cellCites.page, and the page writes.
+func TestDebtPageRefusesAFigureOfAnUndescribedDocument(t *testing.T) {
+	cited := `"doc_id":"` + budgetDocID + `","fact_id"`
+	raw := strings.Replace(string(debtDoc(t, -1)), cited, `"doc_id":"gone","fact_id"`, 1)
+	if raw == string(debtDoc(t, -1)) {
+		t.Fatal("the fixture carries no figure to re-cite")
+	}
+	_, err := writeSite(export.Options{
+		Dir: t.TempDir(),
+		Projections: map[string][]byte{export.PrimaryProjection: goldenSankey(t),
+			"debt-service": []byte(raw)},
+		Views: append(spineOnly(), debtView()),
+		Docs:  budgetDocs(),
+	})
+	if err == nil || !strings.Contains(err.Error(), "gone p81") {
+		t.Fatalf("got %v, want a refusal naming gone p81", err)
+	}
+}

@@ -81,7 +81,7 @@ func decodeChangeDocument(stem string, raw []byte) (changeDocument, error) {
 // changeRows is every series of doc of one kind as rows, each cell built by
 // buildCells. It refuses a figure with no row, which would be
 // a chart of nothing under a heading.
-func changeRows(d changeDocument, kind string, pageTextBase func(string) string, byID map[string]Doc) ([]changeRow, int, error) {
+func changeRows(d changeDocument, kind string, cite *cellCites) ([]changeRow, int, error) {
 	var rows []changeRow
 	placed, published := 0, 0
 	for _, s := range d.body.Series {
@@ -91,7 +91,7 @@ func changeRows(d changeDocument, kind string, pageTextBase func(string) string,
 		if s.CategoryLabel == "" {
 			return nil, 0, fmt.Errorf("%s series %q carries no category label, and the chart groups by it", d.stem, s.Label)
 		}
-		cells, n, err := buildCells(s.Points, d.cols, d.meta.Columns, pageTextBase, byID)
+		cells, n, err := buildCells(s.Points, d.cols, d.meta.Columns, cite)
 		if err != nil {
 			return nil, 0, fmt.Errorf("%s series %q: %w", d.stem, s.Label, err)
 		}
@@ -120,6 +120,7 @@ func changeRows(d changeDocument, kind string, pageTextBase func(string) string,
 func buildChangePage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	ix ColumnIndex, pageTextBase func(string) string, cx *caveatIndex,
 ) (changePageData, error) {
+	cite := newCellCites(byID, pageTextBase)
 	if v.Projection != project.ChangesProjection {
 		return changePageData{}, fmt.Errorf("view %q renders the change page over %q; the page's own document is %s",
 			v.Path, v.Projection, project.ChangesProjection)
@@ -169,7 +170,7 @@ func buildChangePage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	placed := map[string]int{}
 	figures := make([]changeFigure, 0, len(specs))
 	for _, s := range specs {
-		rows, n, err := changeRows(s.doc, s.kind, pageTextBase, byID)
+		rows, n, err := changeRows(s.doc, s.kind, cite)
 		if err != nil {
 			return changePageData{}, fmt.Errorf("view %q, %s: %w", v.Path, s.id, err)
 		}
@@ -200,7 +201,7 @@ func buildChangePage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	}
 
 	cited := append(append([]sourceMeta{}, audited.meta.Sources...), budget.meta.Sources...)
-	sources, sourcesPath, _, serr := citedSources(o, v.Path, cited, byID, pageTextBase)
+	sources, sourcesPath, _, serr := citedSources(o, v.Path, cited, cite, byID, pageTextBase)
 	if serr != nil {
 		return changePageData{}, serr
 	}

@@ -129,14 +129,19 @@ func sourcesFor(srcs []sourceMeta, byID map[string]Doc, pageTextBase func(string
 
 // citedSources is what a view's footer and client take of the pages it cites:
 // the footer's list and the client's documents, and the sources page the
-// footer links instead of a list when the site has one.
+// footer links instead of a list when the site has one. cells is every page
+// a figure on the view cites by itself, and nil for a view citing none.
 //
 // WITH A SOURCES PAGE THE LIST IS NIL, and only because listedBy has held
-// every cited page to that page's index; a page it does not list refuses the
-// export rather than dropping out of every list on the site.
-func citedSources(o *Options, view string, cited []sourceMeta, byID map[string]Doc,
+// every cited page -- its metadata's and each figure's own -- to that page's
+// index; a page it does not list refuses the export rather than dropping out
+// of every list on the site.
+func citedSources(o *Options, view string, cited []sourceMeta, cells *cellCites, byID map[string]Doc,
 	pageTextBase func(string) string,
 ) (sources []sourceRef, sourcesPath string, docs map[string]clientDoc, err error) {
+	if cells != nil {
+		cited = append(slices.Clone(cited), cells.pages...)
+	}
 	union := unionSources(cited)
 	sourcesPath = templatePathOf(o, ProvenanceTemplate)
 	if sourcesPath != "" {
@@ -210,6 +215,43 @@ func citedPage(byID map[string]Doc, pageTextBase func(string) string, docID stri
 	}
 	refs, _ := sourcesFor([]sourceMeta{{DocID: docID, Pages: []int{page}}}, byID, pageTextBase, nil)
 	return refs[0].Pages[0], nil
+}
+
+// cellCites composes each figure's own page through citedPage and keeps
+// every page it composed, for citedSources to hold to the sources page.
+type cellCites struct {
+	byID         map[string]Doc
+	pageTextBase func(string) string
+	pages        []sourceMeta
+}
+
+func newCellCites(byID map[string]Doc, pageTextBase func(string) string) *cellCites {
+	return &cellCites{byID: byID, pageTextBase: pageTextBase}
+}
+
+// page is one figure's citation of one page.
+func (c *cellCites) page(docID string, page int) (pageRef, error) {
+	ref, err := citedPage(c.byID, c.pageTextBase, docID, page)
+	if err != nil {
+		return pageRef{}, err
+	}
+	c.pages = append(c.pages, sourceMeta{DocID: docID, Pages: []int{page}})
+	return ref, nil
+}
+
+// locators is one figure's citation of every page its locators name.
+func (c *cellCites) locators(locs []sourceMeta) ([]pageRef, error) {
+	var out []pageRef
+	for _, s := range unionSources(locs) {
+		for _, p := range s.Pages {
+			ref, err := c.page(s.DocID, p)
+			if err != nil {
+				return nil, err
+			}
+			out = append(out, ref)
+		}
+	}
+	return out, nil
 }
 
 // pdfPageURL points at a page of the published PDF. The city's CMS serves the
