@@ -47,38 +47,41 @@ func TestInferredColumnsListsEachCellOnce(t *testing.T) {
 	}
 }
 
-// TestInferredColumnsFilesAHubLegUnderItsDerivedNode: a hub leg between
-// printed nodes repeating the cells of a flow out of a derived node is listed
-// once, under that node and not among the flows between printed nodes, and
-// the listing is the same whichever schedule's stem sorts first. A contra
-// flow prints at its printed sign.
-// Mutation: list the first ribbon met for a set of cells rather than the
-// best-ranked one -- with the hub's stem first the cell lands among the
-// printed nodes' flows and the first arm goes red.
+// TestInferredColumnsFilesAHubLegUnderItsDerivedNode: a hub leg and a
+// re-pointed leaf repeating one cell, and a coarser schedule drawing the same
+// cell between other ends, are listed once, named at the ends the Repeats
+// spells in the labels of the schedule naming it, under the derived node and
+// not among the flows between printed nodes, whichever schedule's stem sorts
+// first. A contra flow prints at its printed sign.
+// Mutation: drop the preference for a ribbon naming its Repeats -- with the
+// coarser stem first the cell reads "General Fund group"; label every row
+// from the first stem to name a node -- with the coarser stem first the leaf
+// reads "General Fund (spine)". Both go red on the coarse-first arm.
 func TestInferredColumnsFilesAHubLegUnderItsDerivedNode(t *testing.T) {
 	const meta = `{"schema_version":1,"projection":"p","metadata":{"fiscal_year_label":"FY 2026-27","basis":"adopted"},`
-	hub := meta + `"nodes":[{"id":"draw","label":"Fund Balance Draw","derived":true,"rationale":"why","source_note":"note"},` +
-		`{"id":"group/general","label":"General Fund"},{"id":"fund/100","label":"General Fund"}],"links":[` +
-		`{"source":"group/general","target":"fund/100","value_cents":150,"fact_ids":["f2","f1"],"locators":[{"doc_id":"d","pages":[66]}],"derived":true},` +
-		`{"source":"draw","target":"group/general","value_cents":150,"fact_ids":["f1","f2"],"locators":[{"doc_id":"d","pages":[66]}],"derived":true}]}`
-	leaf := meta + `"nodes":[{"id":"draw","label":"Fund Balance Draw","derived":true,"rationale":"why","source_note":"note"},` +
-		`{"id":"fund/100","label":"General Fund"},{"id":"fund/900","label":"Utility"}],"links":[` +
-		`{"source":"draw","target":"fund/100","value_cents":150,"fact_ids":["f1","f2"],"locators":[{"doc_id":"d","pages":[66]}],"derived":true},` +
-		`{"source":"draw","target":"fund/900","value_cents":-250,"fact_ids":["f3"],"locators":[{"doc_id":"d","pages":[67]}],"derived":true}]}`
+	const draw = `{"id":"draw","label":"Fund Balance Draw","derived":true,"rationale":"why","source_note":"note"},`
+	const repeats = `,"repeats":"draw -> fund/100 fund_balance"`
+	hub := meta + `"nodes":[` + draw +
+		`{"id":"group/general","label":"General Fund group"},{"id":"fund/100","label":"General Fund","parent":"group/general"},` +
+		`{"id":"fund/900","label":"Utility"}],"links":[` +
+		`{"source":"group/general","target":"fund/100","kind":"fund_balance","value_cents":150,"fact_ids":["f2","f1"],"locators":[{"doc_id":"d","pages":[66]}],"derived":true` + repeats + `},` +
+		`{"source":"draw","target":"group/general","kind":"fund_balance","value_cents":150,"fact_ids":["f1","f2"],"locators":[{"doc_id":"d","pages":[66]}],"derived":true` + repeats + `},` +
+		`{"source":"draw","target":"fund/900","kind":"fund_balance","value_cents":-250,"fact_ids":["f3"],"locators":[{"doc_id":"d","pages":[67]}],"derived":true}]}`
+	coarse := meta + `"nodes":[` + draw +
+		`{"id":"group/general","label":"General Fund group"},{"id":"fund/100","label":"General Fund (spine)"}],"links":[` +
+		`{"source":"draw","target":"group/general","kind":"fund_balance","value_cents":150,"fact_ids":["f1","f2"],"locators":[{"doc_id":"d","pages":[66]}],"derived":true}]}`
 	ix := ColumnIndex{columns: map[string]string{"a": "fy2027-adopted.json", "b": "fy2027-adopted.json"}}
 	refs := inferredRefs()
 	p66, p67 := refs[Citation{DocID: "d", Page: 66}], refs[Citation{DocID: "d", Page: 67}]
+	want := []inferredFlow{
+		{From: "Fund Balance Draw", To: "General Fund", Dollars: "$1.50", Facts: "f1 f2", Pages: []pageRef{p66}},
+		{From: "Fund Balance Draw", To: "Utility", Dollars: "-$2.50", Facts: "f3", Pages: []pageRef{p67}}}
 	for _, tc := range []struct {
 		name string
 		a, b string
-		want []inferredFlow
 	}{
-		{"hub first", hub, leaf, []inferredFlow{
-			{From: "Fund Balance Draw", To: "General Fund", Dollars: "$1.50", Facts: "f1 f2", Pages: []pageRef{p66}},
-			{From: "Fund Balance Draw", To: "Utility", Dollars: "-$2.50", Facts: "f3", Pages: []pageRef{p67}}}},
-		{"leaf first", leaf, hub, []inferredFlow{
-			{From: "Fund Balance Draw", To: "General Fund", Dollars: "$1.50", Facts: "f1 f2", Pages: []pageRef{p66}},
-			{From: "Fund Balance Draw", To: "Utility", Dollars: "-$2.50", Facts: "f3", Pages: []pageRef{p67}}}},
+		{"coarse first", coarse, hub},
+		{"hub first", hub, coarse},
 	} {
 		o := &Options{Projections: map[string][]byte{"a": []byte(tc.a), "b": []byte(tc.b)}}
 		got, err := inferredColumns(o, ix, refs)
@@ -86,7 +89,7 @@ func TestInferredColumnsFilesAHubLegUnderItsDerivedNode(t *testing.T) {
 			t.Fatalf("%s: inferredColumns: %v", tc.name, err)
 		}
 		want := []inferredColumn{{Label: "FY 2026-27 adopted", Path: "fy2027-adopted.json",
-			Nodes: []inferredNode{{Label: "Fund Balance Draw", Rationale: "why", SourceNote: "note", Flows: tc.want}}}}
+			Nodes: []inferredNode{{Label: "Fund Balance Draw", Rationale: "why", SourceNote: "note", Flows: want}}}}
 		if diff := cmp.Diff(want, got); diff != "" {
 			t.Errorf("%s: inferredColumns (-want +got):\n%s", tc.name, diff)
 		}
@@ -173,36 +176,39 @@ func TestBuildCellsCitesThroughSourcesFor(t *testing.T) {
 	}
 }
 
-// TestInferredColumnsListsATotalAsTheFinerFlowsRestatingIt: a derived flow
-// whose ends' members carry flows summing to its cents is not listed, its
-// cells cited by those flows -- already, or added to the one of them -- and
-// one restated by several flows not citing its cells stays listed beside
-// them.
-// Mutation: never drop a restated total -- g's draw and h's contribution are
-// listed beside the flows restating them; drop the citation added to the one
-// finer flow -- h's cell is cited by no flow listed.
-func TestInferredColumnsListsATotalAsTheFinerFlowsRestatingIt(t *testing.T) {
+// TestInferredColumnsDropsARowOnlyWhereCompletesSaysSo: a derived cell the
+// column's derived ribbons declare they complete is not listed where each of
+// its facts is cited by a listed completing row citing all its pages; one
+// they complete without citing its page stays listed, and so does one whose
+// cents other flows merely sum to.
+// Mutation: drop a completed row without holding its pages to the completing
+// row's -- k's row and its p66 go; drop a row whose cents the flows under its
+// ends' members sum to -- h's row goes, folded into h1's; ignore Completes --
+// g's row is listed beside its legs.
+func TestInferredColumnsDropsARowOnlyWhereCompletesSaysSo(t *testing.T) {
 	const meta = `{"schema_version":1,"projection":"p","metadata":{"fiscal_year_label":"FY 2026-27","basis":"adopted"},`
-	link := func(src, dst string, cents int, page int, facts ...string) string {
-		return `{"source":"` + src + `","target":"` + dst + `","value_cents":` + strconv.Itoa(cents) +
-			`,"fact_ids":["` + strings.Join(facts, `","`) + `"],"locators":[{"doc_id":"d","pages":[` + strconv.Itoa(page) + `]}],"derived":true}`
+	link := func(src, dst string, cents int, completes string, pages string, facts ...string) string {
+		s := `{"source":"` + src + `","target":"` + dst + `","kind":"fund_balance","value_cents":` + strconv.Itoa(cents) +
+			`,"fact_ids":["` + strings.Join(facts, `","`) + `"],"locators":[{"doc_id":"d","pages":[` + pages + `]}],"derived":true`
+		if completes != "" {
+			s += `,"completes":"` + completes + `"`
+		}
+		return s + `}`
 	}
 	nodes := `"nodes":[{"id":"draw","label":"draw","derived":true},{"id":"in","label":"in","derived":true},` +
 		`{"id":"g","label":"g"},{"id":"h","label":"h"},{"id":"k","label":"k"},` +
-		`{"id":"g1","label":"g1","parent":"g"},{"id":"g2","label":"g2","parent":"g"},{"id":"g-only","label":"g-only","parent":"g"},` +
-		`{"id":"h1","label":"h1","parent":"h"},{"id":"k1","label":"k1","parent":"k"},{"id":"k2","label":"k2","parent":"k"}],"links":[`
+		`{"id":"g1","label":"g1","parent":"g"},{"id":"g-only","label":"g-only","parent":"g"},` +
+		`{"id":"h1","label":"h1","parent":"h"},{"id":"k1","label":"k1","parent":"k"}],"links":[`
 	spine := meta + nodes + strings.Join([]string{
-		link("draw", "g", 300, 66, "G"),
-		link("h", "in", 50, 66, "H"),
-		link("k", "in", 70, 66, "K"),
+		link("draw", "g", 300, "", "66", "G"),
+		link("h", "in", 50, "", "66", "H"),
+		link("k", "in", 70, "", "66", "K"),
 	}, ",") + `]}`
 	expansion := meta + nodes + strings.Join([]string{
-		link("draw", "g1", 100, 67, "a1"),
-		link("draw", "g2", 150, 67, "a2"),
-		link("draw", "g-only", 50, 67, "G", "a1"),
-		link("h1", "in", 50, 67, "c1", "c2"),
-		link("k1", "in", 30, 67, "x"),
-		link("k2", "in", 40, 67, "y"),
+		link("draw", "g1", 100, "draw -> g fund_balance", "67", "a1"),
+		link("draw", "g-only", 200, "draw -> g fund_balance", "66,67", "G", "a1"),
+		link("h1", "in", 50, "", "67", "c1"),
+		link("k1", "in", 70, "k -> in fund_balance", "67", "K", "x"),
 	}, ",") + `]}`
 	ix := ColumnIndex{columns: map[string]string{"a": "fy2027-adopted.json", "b": "fy2027-adopted.json"}}
 	refs := inferredRefs()
@@ -215,14 +221,13 @@ func TestInferredColumnsListsATotalAsTheFinerFlowsRestatingIt(t *testing.T) {
 	want := []inferredColumn{{Label: "FY 2026-27 adopted", Path: "fy2027-adopted.json", Nodes: []inferredNode{
 		{Label: "draw", Flows: []inferredFlow{
 			{From: "draw", To: "g1", Dollars: "$1", Facts: "a1", Pages: []pageRef{p67}},
-			{From: "draw", To: "g2", Dollars: "$1.50", Facts: "a2", Pages: []pageRef{p67}},
-			{From: "draw", To: "g-only", Dollars: "$0.50", Facts: "G a1", Pages: []pageRef{p67}},
+			{From: "draw", To: "g-only", Dollars: "$2", Facts: "G a1", Pages: []pageRef{p66, p67}},
 		}},
 		{Label: "in", Flows: []inferredFlow{
+			{From: "h", To: "in", Dollars: "$0.50", Facts: "H", Pages: []pageRef{p66}},
 			{From: "k", To: "in", Dollars: "$0.70", Facts: "K", Pages: []pageRef{p66}},
-			{From: "h1", To: "in", Dollars: "$0.50", Facts: "H c1 c2", Pages: []pageRef{p66, p67}},
-			{From: "k1", To: "in", Dollars: "$0.30", Facts: "x", Pages: []pageRef{p67}},
-			{From: "k2", To: "in", Dollars: "$0.40", Facts: "y", Pages: []pageRef{p67}},
+			{From: "h1", To: "in", Dollars: "$0.50", Facts: "c1", Pages: []pageRef{p67}},
+			{From: "k1", To: "in", Dollars: "$0.70", Facts: "K x", Pages: []pageRef{p67}},
 		}},
 	}}}
 	if diff := cmp.Diff(want, got); diff != "" {
