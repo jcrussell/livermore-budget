@@ -137,8 +137,9 @@ func buildDebtPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			return debtFigRef{Missing: true}
 		}
 		shown++
+		cited, _ := sourcesFor([]sourceMeta{{DocID: f.DocID, Pages: []int{f.Page}}}, byID, pageTextBase, nil)
 		ref := debtFigRef{Value: amount.Cents(f.AmountCents).Dollars(), Page: f.Page,
-			Href: pageTextBase(f.DocID) + pageTextFile(f.Page)}
+			Href: cited[0].Pages[0].TextURL}
 		if f.Token == "-" {
 			ref.Value, ref.Dash = "–", true
 		}

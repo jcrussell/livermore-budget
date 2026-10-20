@@ -259,9 +259,13 @@ func buildCells(points []trendPoint, columns []columnRef, meta []trendColumnMeta
 		cell.Value = amount.Cents(p.AmountCents).Dollars()
 		cell.Cents = p.AmountCents
 		cell.Negative = p.AmountCents < 0
+		ref, err := citedPage(byID, pageTextBase, p.DocID, p.Page)
+		if err != nil {
+			return nil, 0, fmt.Errorf("%s: %w", fact.ColumnLabel(p.FiscalYear, p.Basis), err)
+		}
 		cell.Page = p.Page
-		cell.Href = pageTextBase(p.DocID) + pageTextFile(p.Page)
-		cell.PDF = pdfPageURL(byID[p.DocID].PDFURL, p.Page)
+		cell.Href = ref.TextURL
+		cell.PDF = ref.PDFURL
 		out = append(out, cell)
 		placed++
 	}

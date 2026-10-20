@@ -208,12 +208,9 @@ func buildGlancePage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	}
 	pages := func(locs []sourceMeta) []pageRef {
 		var out []pageRef
-		for _, s := range unionSources(locs) {
-			d := byID[s.DocID]
-			base := pageTextBase(s.DocID)
-			for _, p := range s.Pages {
-				out = append(out, pageRef{Number: p, PDFURL: pdfPageURL(d.PDFURL, p), TextURL: base + pageTextFile(p)})
-			}
+		refs, _ := sourcesFor(unionSources(locs), byID, pageTextBase, nil)
+		for _, s := range refs {
+			out = append(out, s.Pages...)
 		}
 		return out
 	}

@@ -141,3 +141,31 @@ func TestInferredColumnsListsAFlowIntoADerivedNodeUnderIt(t *testing.T) {
 		t.Errorf("a flow restated at another value: got %v, want a refusal", err)
 	}
 }
+
+// TestBuildCellsCitesThroughSourcesFor: a trend cell's links are the ones
+// sourcesFor composes for its page, and a point citing a document the
+// registry does not describe refuses rather than publishing a cell with no
+// PDF link.
+// Mutation: drop citedPage's registry check -- the missing document's cell
+// exports with an empty PDF link and the refusal arm goes red.
+func TestBuildCellsCitesThroughSourcesFor(t *testing.T) {
+	base := func(id string) string { return "extracted/" + id + "/pages/" }
+	byID := map[string]Doc{"d": {ID: "d", PDFURL: "d.pdf"}}
+	meta := []trendColumnMeta{{FiscalYear: 2025, Basis: "actual"}}
+	columns := []columnRef{{Label: "FY 2024-25"}}
+	cells, placed, err := buildCells([]trendPoint{{FiscalYear: 2025, Basis: "actual", AmountCents: 100, DocID: "d", Page: 67}},
+		columns, meta, base, byID)
+	if err != nil {
+		t.Fatalf("buildCells: %v", err)
+	}
+	refs, _ := sourcesFor([]sourceMeta{{DocID: "d", Pages: []int{67}}}, byID, base, nil)
+	want := refs[0].Pages[0]
+	if placed != 1 || cells[0].Href != want.TextURL || cells[0].PDF != want.PDFURL {
+		t.Errorf("cell cites %q and %q (placed %d), want sourcesFor's %q and %q", cells[0].Href, cells[0].PDF, placed, want.TextURL, want.PDFURL)
+	}
+	_, _, err = buildCells([]trendPoint{{FiscalYear: 2025, Basis: "actual", AmountCents: 100, DocID: "gone", Page: 67}},
+		columns, meta, base, byID)
+	if err == nil || !strings.Contains(err.Error(), "gone p67") {
+		t.Errorf("buildCells over an undescribed document: err = %v, want a refusal naming gone p67", err)
+	}
+}

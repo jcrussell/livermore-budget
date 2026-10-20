@@ -201,6 +201,17 @@ func projectionRefs(o *Options, ix ColumnIndex) []projectionRef {
 	return refs
 }
 
+// citedPage is one page's citation, composed by sourcesFor, for a caller
+// citing a figure by its own document and page. It refuses a document the
+// registry does not describe, which sourcesFor cites by id with no PDF link.
+func citedPage(byID map[string]Doc, pageTextBase func(string) string, docID string, page int) (pageRef, error) {
+	if _, ok := byID[docID]; !ok {
+		return pageRef{}, fmt.Errorf("%s p%d cites a document the registry does not describe", docID, page)
+	}
+	refs, _ := sourcesFor([]sourceMeta{{DocID: docID, Pages: []int{page}}}, byID, pageTextBase, nil)
+	return refs[0].Pages[0], nil
+}
+
 // pdfPageURL points at a page of the published PDF. The city's CMS serves the
 // document from a numeric id and viewers honour the #page fragment, so the
 // citation lands on the page rather than the cover.
@@ -436,10 +447,11 @@ type downloadRef struct {
 //
 // IT COMPOSES NO URL ITSELF, and that is the one thing worth guarding here.
 // Every PDF and page-text link comes back out of sourcesFor, the same function
-// every other page's citations go through, so pdfPageURL and pageTextFile are
-// reached by exactly one path in this package. It matters beyond tidiness: the
-// PDF link must target the city's canonical URL with #page=N and never a forge's
-// raw host, which serves LFS pointer text rather than the document. A second
+// every other page's citations go through, so a citation's pdfPageURL and
+// pageTextFile are reached by exactly one path in this package. It matters
+// beyond tidiness: the PDF link must target the city's canonical URL with
+// #page=N and never a forge's raw host, which serves LFS pointer text rather
+// than the document. A second
 // composition here would be a second place for that to go wrong, on the one
 // page whose entire purpose is that its links resolve.
 //
