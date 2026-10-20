@@ -1867,6 +1867,8 @@ noscript p {
    bar wears its fund group's hue, the legend's sixth among them, and a
    transfer's is hatched as not an expenditure. */
 .department-side .bar-row[data-rank="6"] .bar-fill { background: var(--glance-6); }
+/* A bar no legend entry holds wears no group's hue, not the tail's grey. */
+:where(.department-side) .bar-row:not([data-rank]) .bar-fill { background: var(--ink-2); }
 .department-side .bar-row[data-transfer] .bar-fill {
   background: repeating-linear-gradient(45deg, var(--ink-2) 0 2px, var(--surface-1) 2px 6px);
 }

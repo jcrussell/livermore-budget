@@ -327,13 +327,14 @@ export function endWidth(l, end) {
  * ribbons keep their width (d3's, the figure's) at their far end and narrow
  * by the same ratio at the cut face, recorded as w0 (at the source) and w1
  * (at the target), which restackLinks stacks by. A cut mark carries that
- * ratio as `clamped`. Pixels only: no figure moves.
+ * ratio as `clamped`. Pixels only: no figure moves. A canvas whose bottom
+ * stands above its top cuts a mark to nothing, never to a negative height.
  * @param {{nodes: LaidNode[], links: LaidLink[]}} graph laid by d3-sankey
  * @param {number} top
  * @param {number} bottom
  */
 export function clampFunds(graph, top, bottom) {
-  const most = Math.round(FUND_MAX_SHARE * (bottom - top));
+  const most = Math.max(0, Math.round(FUND_MAX_SHARE * (bottom - top)));
   for (const l of graph.links) {
     l.w0 = l.width;
     l.w1 = l.width;

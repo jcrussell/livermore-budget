@@ -185,10 +185,12 @@ export function departmentFigures(column, config, departmentId) {
 }
 
 /**
- * @typedef {{id: string, label: string, cents: number, members: string[], rank: number}} Group
+ * @typedef {{id: string, label: string, cents: number, members: string[], memberIds: string[], rank: number}} Group
  *   One entry of the legend: a fund group, or the tail folding several, with
- *   its sum over every department; rank is its place for a hue, 1..NAMED+1
- *   (rank names a sixth group rather than fold it alone), 0 for the tail.
+ *   its sum over every department; members are the labels it names and
+ *   memberIds the fund-group ids it holds; rank is its place for a hue,
+ *   1..NAMED+1 (rank names a sixth group rather than fold it alone), 0 for
+ *   the tail.
  * @typedef {{key: number, label: string, members: string[], rank: number, cents: number, factIds: string[]}} Segment
  *   One department's part paid by one legend entry; key is the entry's index.
  * @typedef {{id: string, label: string, cents: number, factIds: string[], segments: Segment[]}} Bar
@@ -231,8 +233,10 @@ export function departmentBars(column, config) {
     else sums.set(g, { id: String(nodes[g].id), label: String(nodes[g].label), cents: l.value_cents, members: [String(nodes[g].label)] });
   }
   const { segments } = rank([...sums.values()]);
+  const namedIds = new Set(segments.map((s) => s.id).filter((id) => id));
+  const folded = [...sums.values()].map((s) => s.id).filter((id) => !namedIds.has(id));
   /** @type {Group[]} */
-  const groups = segments.map((s, i) => ({ ...s, rank: s.id ? i + 1 : 0 }));
+  const groups = segments.map((s, i) => ({ ...s, memberIds: s.id ? [s.id] : folded, rank: s.id ? i + 1 : 0 }));
   const named = new Map(groups.map((g, i) => [g.id, i]));
   const tail = groups.findIndex((g) => !g.id);
   /** @param {number} g */
@@ -309,9 +313,10 @@ export function departmentSides(f) {
 /**
  * Draws one department of one column into the page: its two sides through
  * LEDGER on one scale, the longest bar of either filling its track, each
- * side's ◇ sum under its heading. A fund's bar wears its fund group's hue
- * from the legend `groups` names; a heading's bar wears none, and a
- * transfer's is marked as not an expenditure. Returns the figures and the
+ * side's ◇ sum under its heading. A fund's bar wears the hue of the legend
+ * entry in `groups` holding its fund group's id, the tail's only where the
+ * tail holds it; a bar no entry holds, and every spending bar, wears none,
+ * and a transfer's is marked as not an expenditure. Returns the figures and the
  * sides drawn.
  * @param {Document} doc
  * @param {any} config
@@ -337,8 +342,8 @@ export function render(doc, config, column, st, groups = [], tips = tipper(doc))
   const hue = new Map();
   for (const r of f.funding.rows) {
     if (r.group) notes.set(r.id, `Fund group: ${r.group}`);
-    const g = groups.find((x) => (x.id ? x.id === r.groupId : x.members.includes(r.group)));
-    hue.set(r.id, g ? g.rank : 0);
+    const g = groups.find((x) => x.memberIds.includes(r.groupId));
+    if (g) hue.set(r.id, g.rank);
   }
   const transfer = new Set(f.spending.rows.filter((r) => r.transfer).map((r) => r.id));
   for (const id of transfer) {
@@ -380,7 +385,9 @@ export function render(doc, config, column, st, groups = [], tips = tipper(doc))
     for (const li of Array.from(section.querySelectorAll("li.bar-row"))) {
       const el = /** @type {HTMLElement} */ (li);
       const id = el.dataset.id || "";
-      el.dataset.rank = String(key === "funding" ? hue.get(id) || 0 : 0);
+      const rank = key === "funding" ? hue.get(id) : undefined;
+      if (rank === undefined) delete el.dataset.rank;
+      else el.dataset.rank = String(rank);
       if (key === "spending" && transfer.has(id)) el.dataset.transfer = "true";
     }
   }

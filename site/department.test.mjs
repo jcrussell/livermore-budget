@@ -364,7 +364,7 @@ describe("the page over the pinned columns", () => {
     const { document, window } = await booted("#y=fy2024-actual&d=department/public-works");
     const bars = drawnOf(document, "spending");
     assert.deepEqual(bars.filter((x) => x.transfer).map((x) => [x.id, x.label, x.rank]),
-      [["transfers/out", "Transfers Out (not an expenditure)", "0"]]);
+      [["transfers/out", "Transfers Out (not an expenditure)", undefined]]);
     assert.ok(bars.filter((x) => !x.transfer).every((x) => !/not an expenditure/.test(x.label)));
     assert.equal(document.getElementById("transfers-says").hidden, false);
     const li = document.querySelector('section.department-side[data-side="spending"] li.bar-row[data-id="transfers/out"]');
@@ -377,7 +377,8 @@ describe("the page over the pinned columns", () => {
     assert.deepEqual(drawnOf(later.document, "spending").filter((x) => x.transfer), []);
   });
 
-  // Mutation: give every fund bar rank 0 in render, and the hue arm goes red.
+  // Mutation: give every fund bar rank 0 in render, and the hue arm goes red;
+  // give every spending bar rank 0 -- the tail's grey -- and the spending arm does.
   test("a fund the schedule calls internal service is marked so, and each fund's bar wears its group's hue", async () => {
     const { document, config } = await booted("#y=fy2026-adopted&d=department/administrative-services");
     const bars = drawnOf(document, "funding");
@@ -386,15 +387,40 @@ describe("the page over the pinned columns", () => {
     const rows = mod.departmentFigures(columnFixture("fy2026-adopted"), config, "department/administrative-services").funding.rows;
     for (const x of bars) {
       const r = rows.find((y) => y.id === x.id);
-      const g = groups.find((y) => (y.id ? y.id === r.groupId : y.members.includes(r.group)));
+      const g = groups.find((y) => y.memberIds.includes(r.groupId));
       assert.equal(x.rank, String(g.rank), `${x.id} wears another group's hue`);
     }
     assert.ok(bars.some((x) => x.rank !== "0"), "no fund bar wears a hue");
-    assert.ok(drawnOf(document, "spending").every((x) => x.rank === "0"), "a spending bar wears a fund group's hue");
+    assert.deepEqual(drawnOf(document, "spending").filter((x) => x.rank !== undefined).map((x) => `${x.id}: ${x.rank}`), [],
+      "a spending bar wears a fund group's hue or the tail's");
     assert.match(document.getElementById("internal-service-says").textContent, /charging its own\s+departments/);
     assert.match(document.getElementById("funding-says").textContent, /General Fund bar is the General Fund's share alone/);
     assert.match(document.getElementById("spending-says").textContent, /whole department's\s+cost/);
   });
+});
+
+// A fund bar wears the tail's grey only where the legend's tail holds its
+// group's id: a group no entry holds wears no hue, and neither does a group
+// sharing a label with one the tail holds.
+// Mutation: fall back to rank 0 for a bar no entry holds
+// -- the unheld arm goes red; match the tail by label -- the namesake arm does.
+test("a fund bar wears the tail's grey only where the tail holds its group", async () => {
+  const { document, config } = await booted("#y=fy2026-adopted&d=department/administrative-services");
+  const column = columnFixture("fy2026-adopted");
+  const st = { year: "fy2026-adopted.json", department: "department/administrative-services" };
+  const rows = mod.departmentFigures(column, config, st.department).funding.rows;
+  const [first, ...rest] = [...new Set(rows.map((r) => r.groupId))];
+  assert.ok(first && rest.length > 0, "the department is paid from fewer than two groups, so this proves less than it says");
+  const label = rows.find((r) => r.groupId === first).group;
+  const ranks = () => Object.fromEntries(drawnOf(document, "funding").map((x) => [x.id, x.rank]));
+  const groups = [{ id: "", label: "Other fund groups", cents: 1, members: [label], memberIds: rest, rank: 0 }];
+  mod.render(document, config, column, st, groups);
+  for (const r of rows) {
+    const want = r.groupId === first ? undefined : "0";
+    assert.equal(ranks()[r.id], want, `${r.id} (${r.groupId}): the tail holds ${rest.join(", ")} and names ${label}`);
+  }
+  mod.render(document, config, column, st, []);
+  assert.deepEqual(Object.values(ranks()).filter((x) => x !== undefined), [], "a bar no legend entry holds wears a hue");
 });
 
 /** The drawn bars, in page order, as ids, cents and their segments. */

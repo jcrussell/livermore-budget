@@ -200,6 +200,20 @@ test("a mark cut to nothing on a canvas too short for any is still drawn and sai
   assert.equal(sankey.clampNote(whole), "");
 });
 
+// layOut clamps between 12 and height - 12, so a canvas under 24px hands
+// clampFunds a bottom above its top.
+// Mutation: drop the floor on clampFunds' most -- the mark's height and its
+// ribbon's cut width go negative and the test goes red.
+test("a canvas shorter than its margins cuts a mark to nothing, never below", () => {
+  const link = { width: 30 };
+  const mark = { id: "fund-group/general", role: "fund_group", layer: 1, x0: 10, x1: 20, y0: 5, y1: 45, sourceLinks: [link], targetLinks: [] };
+  sankey.clampFunds({ nodes: [mark], links: [link] }, 12, 20 - 12);
+  assert.equal(mark.y1 - mark.y0, 0, "the mark's drawn height");
+  assert.equal(mark.clamped, 0, "the mark's cut ratio");
+  assert.equal(link.w0, 0, "the ribbon's width at the cut face");
+  assert.equal(link.w1, 30, "the ribbon's width at its far end");
+});
+
 /**
  * The marks cut over the pinned columns, measured: the General Fund's group,
  * and fund/100 where the group opens into it. Everything open grows the
