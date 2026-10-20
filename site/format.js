@@ -165,7 +165,7 @@ export function citedPages(docs, locators) {
   return locators.flatMap((l) => l.pages.map((p) => {
     const d = docs[l.doc_id];
     const links = d && d.pages && d.pages[String(p)];
-    return { page: p, text: (links && links.text) || "", pdf: (links && links.pdf) || "" };
+    return { doc: l.doc_id, page: p, text: (links && links.text) || "", pdf: (links && links.pdf) || "" };
   }));
 }
 
@@ -182,15 +182,17 @@ export function linkedPage(a) {
 
 /**
  * One cited page as a tip links it: its extracted text and the city's PDF
- * at the page, either "" where none was built.
- * @typedef {{page: number, text: string, pdf: string}} CitedPage
+ * at the page, either "" where none was built, and the document it is a
+ * page of where the citation names one.
+ * @typedef {{doc?: string, page: number, text: string, pdf: string}} CitedPage
  */
 
 /**
  * A tip's line of cited pages, `p97 PDF, p98 PDF`: each page number links
  * its extracted text and the PDF link beside it the city's document at that
  * page, once per pair of links however many cells cite it. A page with
- * neither link is named, marked `data-unlinked`, and not linked.
+ * neither link is named, marked `data-unlinked`, and not linked, once per
+ * document and page.
  * @param {Document} doc
  * @param {CitedPage[]} pages
  * @returns {HTMLElement}
@@ -199,8 +201,8 @@ export function pageLinks(doc, pages) {
   const line = doc.createElement("div");
   line.className = "facts";
   const seen = new Set();
-  for (const { page, text, pdf } of pages) {
-    const key = text || pdf ? text + " " + pdf : "p" + page;
+  for (const { doc: id, page, text, pdf } of pages) {
+    const key = text || pdf ? text + " " + pdf : (id || "") + "\u001f" + page;
     if (seen.has(key)) continue;
     seen.add(key);
     if (line.childNodes.length) line.append(", ");
@@ -272,7 +274,7 @@ export function placeTip(doc, tip, e) {
 export function tipper(doc) {
   /** @type {HTMLElement | null} the mark the pinned tip is of */
   let mark = null;
-  /** Whether unpin is handing the focus back, whose focus shows no tip. */
+  /** Whether tips.focus is handing a mark the focus, whose focus shows no tip. */
   let refocusing = false;
   const tipEl = () => /** @type {HTMLElement | null} */ (doc.getElementById("tooltip"));
   /**
@@ -340,10 +342,17 @@ export function tipper(doc) {
         tip.removeAttribute("tabindex");
         tip.hidden = true;
       }
-      if (!refocus || !was.isConnected) return;
+      if (refocus && was.isConnected) tips.focus(was);
+    },
+    /**
+     * Hands the focus to a mark with no tip shown for it, as unpin does and
+     * as a redraw does to the row it was asked on.
+     * @param {HTMLElement} at
+     */
+    focus(at) {
       refocusing = true;
       try {
-        was.focus();
+        at.focus();
       } finally {
         refocusing = false;
       }

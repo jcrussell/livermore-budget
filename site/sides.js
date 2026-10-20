@@ -253,8 +253,15 @@ export function fillTip(doc, tip, tile, side, docs, pinned) {
   if (tile.splits.length) parts.push((tile.children ? "Opened; click to close. " : "Click to open: ") + opensAs(tile));
   meta.textContent = parts.join(". ");
   tip.append(label, value, meta, pageLinks(doc, citedPages(docs, tile.locators)));
-  // A tile that opens says so in its meta, and a click opens it.
+  // A tile that opens says so in its meta, and a click opens it, so its
+  // figure or P keeps its tip.
   if (pinned || !tile.splits.length) tip.append(tipHint(doc, pinned));
+  else {
+    const hint = doc.createElement("div");
+    hint.className = "tip-meta";
+    hint.textContent = "Click its figure, or press P, to keep this open and follow its pages.";
+    tip.append(hint);
+  }
 }
 
 /**
@@ -322,17 +329,18 @@ export function render(win, config, column, st, renderer, toggle, tips) {
 /**
  * Hands the focus back to the mark of the tile of this id where a side draws
  * it again, as an open or close redraws the row it was asked on: the next
- * Enter lands on that row, and no tip is pinned over its members.
+ * Enter lands on that row, and no tip is pinned or shown over its members.
  * @param {Document} doc
  * @param {Side[]} sides
  * @param {string} id
+ * @param {ReturnType<typeof tipper>} tips
  */
-function focusDrawn(doc, sides, id) {
+function focusDrawn(doc, sides, id, tips) {
   for (const side of sides) {
     const section = doc.querySelector(`section.sides-side[data-tier="${side.tier}"]`);
     const mark = section && Array.from(section.querySelectorAll("[data-id]")).find((m) => /** @type {HTMLElement} */ (m).dataset.id === id);
     if (!mark) continue;
-    /** @type {HTMLElement} */ (mark).focus();
+    tips.focus(/** @type {HTMLElement} */ (mark));
     return;
   }
 }
@@ -396,7 +404,7 @@ export async function boot(win, renderer) {
       schedule = core.scheduleOf(col, config.primary);
       tips.unpin(false);
       const drawn = render(win, config, col, st, renderer, toggle, tips);
-      if (refocus.ticket === ticket) focusDrawn(doc, drawn.sides, refocus.id);
+      if (refocus.ticket === ticket) focusDrawn(doc, drawn.sides, refocus.id, tips);
       // The state keeps what the schedule drew, so the hash never names an
       // entry the next load would refuse again.
       const kept = frontierOf(schedule, st.opened).kept;

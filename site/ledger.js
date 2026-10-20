@@ -39,7 +39,8 @@ export const LEDGER = Object.freeze({
    * root's members indented under it, every bar on the page's one scale. A
    * row that opens takes a click or Enter, which opens or closes it and pins
    * nothing; Shift opens its next alternative. A row that does not open pins
-   * its tip on a click or Enter.
+   * its tip on a click or Enter. Every row pins its tip on P, and a row that
+   * opens on a click on its figure.
    */
   draw(section, side, ctx) {
     const figure = section.querySelector("figure.sides-figure");
@@ -92,10 +93,21 @@ export const LEDGER = Object.freeze({
         press(e);
       });
       li.addEventListener("keydown", (e) => {
+        if ((e.key === "p" || e.key === "P") && !e.ctrlKey && !e.metaKey && !e.altKey) {
+          e.preventDefault();
+          ctx.pin(li, tile, side, e);
+          return;
+        }
         if (e.key !== "Enter" && e.key !== " ") return;
         e.preventDefault();
         press(e);
       });
+      if (tile.splits.length) {
+        value.addEventListener("click", (e) => {
+          e.stopPropagation();
+          ctx.pin(li, tile, side, e);
+        });
+      }
       list.appendChild(li);
       if (tile.children) {
         const members = [...tile.children].sort((a, b) => b.size - a.size || a.label.localeCompare(b.label));

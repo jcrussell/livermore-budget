@@ -132,24 +132,27 @@ test("the top bar's year select is enabled, says the year, and carries it only t
 
 // A cited page the config built no links for is named, marked unlinked, and
 // does not throw out of the hover, focus or click handler filling the tip.
-// Mutation: read each page through pageOf in citedPages, as the tips once
-// did, and the call throws; drop the data-unlinked mark and the unlinked
-// arm goes red.
+// Two documents' unlinked pages of one number are two pages.
+// Mutation: read each page through pageOf in citedPages and the call
+// throws; drop the data-unlinked mark and the unlinked arm goes red; key an
+// unlinked page by its number alone and gone's p66 folds into d's.
 test("a tip names a cited page the config publishes no links for, unlinked, beside the linked ones", async () => {
   const { citedPages, pageLinks } = await import(MODULE);
   const doc = new JSDOM("").window.document;
   const docs = { d: { pages: { "66": { pdf: "https://x/d.pdf#page=66", text: "extracted/d/pages/p0066.txt", records: "" } } } };
-  const pages = citedPages(docs, [{ doc_id: "d", pages: [66, 67] }, { doc_id: "gone", pages: [5] }]);
+  const pages = citedPages(docs, [{ doc_id: "d", pages: [66, 67] }, { doc_id: "gone", pages: [5, 67, 67] }]);
   assert.deepEqual(pages, [
-    { page: 66, text: "extracted/d/pages/p0066.txt", pdf: "https://x/d.pdf#page=66" },
-    { page: 67, text: "", pdf: "" },
-    { page: 5, text: "", pdf: "" },
+    { doc: "d", page: 66, text: "extracted/d/pages/p0066.txt", pdf: "https://x/d.pdf#page=66" },
+    { doc: "d", page: 67, text: "", pdf: "" },
+    { doc: "gone", page: 5, text: "", pdf: "" },
+    { doc: "gone", page: 67, text: "", pdf: "" },
+    { doc: "gone", page: 67, text: "", pdf: "" },
   ]);
   const line = pageLinks(doc, pages);
-  assert.equal(line.textContent, "p66 PDF, p67, p5");
+  assert.equal(line.textContent, "p66 PDF, p67, p5, p67");
   assert.deepEqual([...line.querySelectorAll("a")].map((a) => a.getAttribute("href")),
     ["extracted/d/pages/p0066.txt", "https://x/d.pdf#page=66"]);
-  assert.deepEqual([...line.querySelectorAll("[data-unlinked]")].map((x) => x.textContent), ["p67", "p5"]);
+  assert.deepEqual([...line.querySelectorAll("[data-unlinked]")].map((x) => x.textContent), ["p67", "p5", "p67"]);
 });
 
 // A table's own page link is read as the page it names, its text and its

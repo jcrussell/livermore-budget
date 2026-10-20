@@ -186,7 +186,8 @@ describe("the page marks a cut mark and says so", () => {
 });
 
 // Mutation: test `!d.clamped` in cutMark and clampNote again and a mark cut
-// to a ratio of 0 draws no strokes and says nothing of its cut.
+// to a ratio of 0 draws no strokes and says nothing of its cut; say the cut
+// is "so its column fits" and the wording arm goes red.
 test("a mark cut to nothing on a canvas too short for any is still drawn and said as cut", () => {
   const mark = { id: "fund-group/general", role: "fund_group", layer: 1, x0: 10, x1: 20, y0: 0, y1: 40, sourceLinks: [], targetLinks: [] };
   sankey.clampFunds({ nodes: [mark], links: [] }, 0, 1);
@@ -194,6 +195,8 @@ test("a mark cut to nothing on a canvas too short for any is still drawn and sai
   assert.ok(sankey.isClamped(mark));
   assert.notEqual(sankey.cutMark(mark), "");
   assert.match(sankey.clampNote(mark), /cut to <1% of its full height/);
+  assert.match(sankey.clampNote(mark), /not drawn to scale/, "the cut only shortens the mark; the note says it is off scale");
+  assert.doesNotMatch(sankey.clampNote(mark), /fits/, "the column fits uncut; the cut keeps one mark from swamping it");
   const whole = { id: "fund-group/other", role: "fund_group", layer: 1, x0: 0, x1: 0, y0: 0, y1: 0 };
   assert.ok(!sankey.isClamped(whole));
   assert.equal(sankey.cutMark(whole), "");

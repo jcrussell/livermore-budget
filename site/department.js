@@ -15,12 +15,12 @@
  * and never computed here.
  */
 
-import * as core from "./core.js";
 import { rank } from "./glance.js";
 import { configOf, dollars, hashFields, hashValue, selectYear, share, tipper, wireYearSelect, yearKey } from "./format.js";
 import { LEDGER } from "./ledger.js";
 import { clone, fillTip, tileShare } from "./sides.js";
 
+/** @typedef {import("./core.js").SideTile} SideTile */
 /** @typedef {{doc_id: string, pages: number[]}} Locator */
 /** @typedef {{id: string, label: string, cents: number, factIds: string[], locators: Locator[]}} Row */
 
@@ -269,7 +269,7 @@ export function departmentBars(column, config) {
 }
 
 /**
- * @typedef {{tier: number, heading: string, tree: {roots: core.SideTile[], cents: number, size: number}}} DeptSide
+ * @typedef {{tier: number, heading: string, tree: {roots: SideTile[], cents: number, size: number}}} DeptSide
  */
 
 /**
@@ -277,7 +277,7 @@ export function departmentBars(column, config) {
  * it and nothing to open, its figure and citations the row's.
  * @param {Row} r
  * @param {string} label
- * @returns {core.SideTile}
+ * @returns {SideTile}
  */
 function tileOf(r, label) {
   return {
@@ -297,7 +297,7 @@ function tileOf(r, label) {
  * @returns {{funding: DeptSide, spending: DeptSide}}
  */
 export function departmentSides(f) {
-  /** @param {string} heading @param {core.SideTile[]} roots @returns {DeptSide} */
+  /** @param {string} heading @param {SideTile[]} roots @returns {DeptSide} */
   const side = (heading, roots) => ({
     tier: 0, heading,
     tree: { roots, cents: roots.reduce((a, t) => a + t.cents, 0), size: roots.reduce((a, t) => a + t.size, 0) },
@@ -352,7 +352,7 @@ export function render(doc, config, column, st, groups = [], tips = tipper(doc))
   /**
    * A bar's tip: sides.js's, with the bar's fund group or transfer note
    * over its pages.
-   * @param {core.SideTile} tile
+   * @param {SideTile} tile
    * @param {any} side
    */
   const fill = (tile, side) => (/** @type {HTMLElement} */ tip, /** @type {boolean} */ pinned) => {

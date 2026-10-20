@@ -424,8 +424,8 @@ export function clampNote(d) {
   if (!isClamped(d)) return "";
   const pct = /** @type {number} */ (d.clamped) * 100;
   const shown = pct >= 99.5 ? ">99" : pct < 1 ? "<1" : String(Math.round(pct));
-  return "\u25c7 our drawing: this mark is cut to " + shown + "% of its full height so its column fits; " +
-    "its ribbons narrow into the cut, and its figure is unchanged";
+  return "\u25c7 our drawing: this mark is cut to " + shown + "% of its full height to keep it from " +
+    "swamping the chart, so it is not drawn to scale; its ribbons narrow into the cut, and its figure is unchanged";
 }
 
 /**

@@ -475,10 +475,13 @@ test("a click pins a tile's tip, linking the page text and the PDF page of every
 });
 
 // Enter on a row that opens opens it, and Enter again closes it: neither
-// pins a tip, and the focus stays on the row, drawn again each time.
+// pins or shows a tip over the members, and the focus stays on the row,
+// drawn again each time.
 // Mutation: pin the toggled tile's tip once it is drawn again, as a click on
 // a leaf does -- the first Enter pins a tip and the test goes red; drop the
-// focusDrawn call in show -- the focus falls off the row.
+// focusDrawn call in show -- the focus falls off the row; focus the row in
+// focusDrawn with a bare focus() rather than tips.focus -- its focus
+// listener shows a tip and the shown arm goes red.
 test("Enter opens a row and Enter again closes it, the focus kept on the row", async () => {
   const { tipState, fire } = await import("./testlib.mjs");
   const browser = await booted("ledger");
@@ -492,6 +495,54 @@ test("Enter opens a row and Enter again closes it, the focus kept on the row", a
     await settle();
     assert.equal(row().classList.contains("opened"), want, `${id}: Enter left it ${want ? "closed" : "open"}`);
     assert.ok(!tipState(document).pinned, `${id}: Enter pinned a tip`);
+    assert.ok(!tipState(document).shown, `${id}: Enter left a tip shown over the row's members`);
     assert.ok(document.activeElement === row(), `${id}: the focus left the row`);
   }
+});
+
+// Every row drawn, whether it opens or not, reaches a pinned tip linking the
+// pages it cites: P pins any row's tip, and a click on a row's figure pins
+// the tip of a row that opens, which neither opens nor closes it.
+// Mutation: drop the P arm of ledger.js's keydown -- no row that opens pins
+// a tip from the keyboard and the test goes red; drop the figure's click
+// listener -- the click opens the row and pins nothing.
+test("every drawn row on Bars pins a tip linking its pages, by P or by a click on its figure", async (t) => {
+  const { tipState, fire } = await import("./testlib.mjs");
+  const browser = await booted("ledger");
+  const { document, config } = browser;
+  const doc = expansionOf("fy2027-adopted", config);
+  const opener = [...document.querySelectorAll(MARK.ledger)].find((m) => m.classList.contains("can-open"));
+  const id = opener.dataset.id;
+  await click(browser, opener);
+  const frontier = core.expand(doc, core.rootFrontier(doc), id, core.splitsOf(doc, id).find((sp) => !sp.alternative).key);
+  const tiles = new Map();
+  for (const side of sides.sidesOf(config)) {
+    for (const x of core.sideTiles(core.sideTree(doc, frontier, side.tier).roots)) tiles.set(x.tile.id, x.tile);
+  }
+  const rows = [...document.querySelectorAll(MARK.ledger)];
+  assert.deepEqual(rows.map((m) => m.dataset.id).sort(), [...tiles.keys()].sort());
+  let openers = 0;
+  for (const m of rows) {
+    const want = textsOf(config, tiles.get(m.dataset.id));
+    assert.ok(want.length > 0, `${m.dataset.id} cites no page`);
+    m.focus();
+    fire(m, "keydown", { key: "p" });
+    await settle();
+    let tip = tipState(document);
+    assert.ok(tip.pinned && tip.shown, `${m.dataset.id}: P pinned no tip`);
+    assert.deepEqual(tip.hrefs, want, `${m.dataset.id}: P's tip links other pages`);
+    fire(document.body, "click");
+    if (!m.classList.contains("can-open")) continue;
+    openers++;
+    const was = m.classList.contains("opened");
+    await click(browser, m.querySelector(".bar-value"));
+    tip = tipState(document);
+    assert.ok(tip.pinned && tip.shown, `${m.dataset.id}: a click on its figure pinned no tip`);
+    assert.deepEqual(tip.hrefs, want, `${m.dataset.id}: the figure's tip links other pages`);
+    const now = document.querySelector(`${MARK.ledger}[data-id="${m.dataset.id}"]`);
+    assert.ok(now === m && now.classList.contains("opened") === was, `${m.dataset.id}: a click on its figure opened or closed it`);
+    fire(document.body, "click");
+  }
+  assert.ok(openers >= 2, "fewer than two rows that open, so the figure arm covers little");
+  t.diagnostic(`${rows.length} rows pinned by P; ${openers} that open pinned by their figure`);
 });
