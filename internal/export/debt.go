@@ -205,22 +205,25 @@ func buildDebtPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		}
 	}
 
-	sources, _ := sourcesFor(d.Metadata.Sources, byID, pageTextBase, o.RecordsBase)
+	sources, sourcesPath, _, serr := citedSources(o, v.Path, d.Metadata.Sources, byID, pageTextBase)
+	if serr != nil {
+		return debtPageData{}, serr
+	}
 	title := v.Title
 	if title == "" {
 		title = "What Livermore owes"
 	}
 	return debtPageData{
 		chrome: chrome{
-			Title:        title,
-			Lede:         v.Lede,
-			Nav:          nav,
-			Sources:      sources,
-			ProjectionBy: d.Metadata.GeneratedBy,
-			ExportedBy:   o.GeneratedBy,
-			Projections:  projectionRefs(o, ix),
-			DataPath:     ix.PublishedPath(v.Projection),
-			CaveatsHere:  cx.here(v.Path),
+			Title:       title,
+			Lede:        v.Lede,
+			Nav:         nav,
+			Sources:     sources,
+			SourcesPath: sourcesPath,
+			ExportedBy:  o.GeneratedBy,
+			Projections: projectionRefs(o, ix),
+			DataPath:    ix.PublishedPath(v.Projection),
+			CaveatsHere: cx.here(v.Path),
 		},
 		Columns:    columns,
 		HeadSpan:   1 + 2*len(columns),

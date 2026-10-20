@@ -170,9 +170,7 @@
   </noscript>
 </div>
 
-{{- /* "all funds, gross" renders the slug the footer prints as Scope;
-       TestTheLedesProseNamesThePagesScope pins the pair. #hero and
-       #lede-year are repainted per year by paintYearWords. */}}
+{{- /* #hero and #lede-year are repainted per year by paintYearWords. */}}
 <p class="lede">
   <span id="hero"><span class="label">{{.Hero.Label}}</span>: <strong class="value">{{.Hero.Value}}</strong></span>
   in the <span id="lede-year">{{.Lede}}</span> budget, all funds, gross, every figure traced to
@@ -230,18 +228,7 @@
 </main>
 
 {{- define "sources-heading"}}Sources for every year this page can show{{end}}
-<footer>
-  {{- /* With a sources page the cited pages are listed there, not here. */}}
-  {{- if not .SourcesPath}}
-  {{template "sources" .}}
-  {{- end}}
-  <p class="subtle">
-    Scope {{.Scope}}, basis <span id="page-basis">{{.Basis}}</span>. Projection: {{.ProjectionBy}}. Packaged by {{.ExportedBy}}.
-    {{- /* paintYearWords repaints the basis and the data path; the scope is one per view. */}}
-    <span data-year-path>This chart is drawn from <a href="{{.DataPath}}">{{.DataPath}}</a>.</span>
-    {{- if .SourcesPath}} Every page it cites is listed on <a href="{{.SourcesPath}}">the sources page</a>.{{end}}
-  </p>
-</footer>
+{{template "footer" .}}
 
 <script src="vendor/d3.min.js"></script>
 <script src="vendor/d3-sankey.min.js"></script>

@@ -437,12 +437,6 @@ export function render(doc, config, column, st) {
       divisions.append(tr);
     }
   }
-
-  const data = doc.getElementById("department-data-path");
-  if (data) {
-    data.setAttribute("href", st.year);
-    data.textContent = st.year;
-  }
   return f;
 }
 

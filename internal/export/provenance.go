@@ -125,6 +125,30 @@ func sourcesFor(srcs []sourceMeta, byID map[string]Doc, pageTextBase func(string
 	return sources, clientDocs
 }
 
+// citedSources is what a view's footer and client take of the pages it cites:
+// the footer's list and the client's documents, and the sources page the
+// footer links instead of a list when the site has one.
+//
+// WITH A SOURCES PAGE THE LIST IS NIL, and only because listedBy has held
+// every cited page to that page's index; a page it does not list refuses the
+// export rather than dropping out of every list on the site.
+func citedSources(o *Options, view string, cited []sourceMeta, byID map[string]Doc,
+	pageTextBase func(string) string,
+) (sources []sourceRef, sourcesPath string, docs map[string]clientDoc, err error) {
+	union := unionSources(cited)
+	sourcesPath = templatePathOf(o, ProvenanceTemplate)
+	if sourcesPath != "" {
+		if err := listedBy(o.PageIndex, union, view, sourcesPath); err != nil {
+			return nil, "", nil, err
+		}
+	}
+	sources, docs = sourcesFor(union, byID, pageTextBase, o.RecordsBase)
+	if sourcesPath != "" {
+		sources = nil
+	}
+	return sources, sourcesPath, docs, nil
+}
+
 // unionSources merges the sources of every year a view publishes into one list,
 // deduplicated and ordered.
 //
@@ -231,7 +255,7 @@ type downloadRef struct {
 //
 // IT COMPOSES NO URL ITSELF, and that is the one thing worth guarding here.
 // Every PDF and page-text link comes back out of sourcesFor, the same function
-// the other three pages' footers go through, so pdfPageURL and pageTextFile are
+// every other page's citations go through, so pdfPageURL and pageTextFile are
 // reached by exactly one path in this package. It matters beyond tidiness: the
 // PDF link must target the city's canonical URL with #page=N and never a forge's
 // raw host, which serves LFS pointer text rather than the document. A second
@@ -316,10 +340,11 @@ func buildProvenancePage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	}
 	return provenancePageData{
 		chrome: chrome{
-			Title:       title,
-			Lede:        v.Lede,
-			Nav:         nav,
-			Sources:     sources,
+			Title: title,
+			Lede:  v.Lede,
+			Nav:   nav,
+			// The index is its own sources page: its rows list every page.
+			SourcesPath: v.Path,
 			ExportedBy:  o.GeneratedBy,
 			Projections: projectionRefs(o, ix),
 			// NO DataPath. Every other page names the projection it draws;

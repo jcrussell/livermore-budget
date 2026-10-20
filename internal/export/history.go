@@ -166,7 +166,10 @@ func buildHistoryPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		}
 	}
 
-	sources, _ := sourcesFor(meta.Sources, byID, pageTextBase, o.RecordsBase)
+	sources, sourcesPath, _, serr := citedSources(o, v.Path, meta.Sources, byID, pageTextBase)
+	if serr != nil {
+		return historyPageData{}, serr
+	}
 	refs := projectionRefs(o, ix)
 	title := v.Title
 	if title == "" {
@@ -174,16 +177,16 @@ func buildHistoryPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	}
 	return historyPageData{
 		chrome: chrome{
-			Title:        title,
-			Lede:         v.Lede,
-			Nav:          nav,
-			Sources:      sources,
-			ProjectionBy: meta.GeneratedBy,
-			ExportedBy:   o.GeneratedBy,
-			Projections:  refs,
-			DataPath:     ix.PublishedPath(v.Projection),
-			Scope:        meta.Scope,
-			CaveatsHere:  cx.here(v.Path),
+			Title:       title,
+			Lede:        v.Lede,
+			Nav:         nav,
+			Sources:     sources,
+			SourcesPath: sourcesPath,
+			ExportedBy:  o.GeneratedBy,
+			Projections: refs,
+			DataPath:    ix.PublishedPath(v.Projection),
+			Scope:       meta.Scope,
+			CaveatsHere: cx.here(v.Path),
 		},
 		Columns:  columns,
 		Sections: sections,

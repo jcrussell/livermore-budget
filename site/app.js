@@ -4622,8 +4622,7 @@ export async function showYear(year, carry = [], removals = null) {
 /**
  * Replaces every word on the page that belongs to a year: the headline figure,
  * the lede, the flow count, the chart's accessible name and description
- * (through paintChartName), the footer's basis and its data-file citation, and
- * the document title.
+ * (through paintChartName), and the document title.
  *
  * The list is exhaustive: add any new per-year write to it. Every string is
  * the packager's except the counts line, which paintCounts composes.
@@ -4641,20 +4640,6 @@ export function paintYearWords(year) {
 
   // Shared with every redraw, so the two cannot name the chart differently.
   paintChartName();
-
-  // The footer's basis is per year; its scope is not repainted (see the
-  // template).
-  const basis = maybeEl("page-basis");
-  if (basis) basis.textContent = year.basis;
-
-  // The footer's "drawn from" link names a year-specific file.
-  for (const el of document.querySelectorAll("[data-year-path]")) {
-    const a = el.querySelector("a");
-    if (a) {
-      a.setAttribute("href", year.path);
-      a.textContent = year.path;
-    }
-  }
 
   document.title = year.title;
 }

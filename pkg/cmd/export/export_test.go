@@ -664,6 +664,8 @@ func TestExportRunResolvesBothCitationClassesWithoutGitHub(t *testing.T) {
 	var pdfCitations, textCitations int
 	for _, ref := range pageRefs(page) {
 		switch {
+		case ref == export.RepositoryURL:
+			// The footer's link to the code, which cites no figure.
 		case strings.HasPrefix(ref, "https://www.livermoreca.gov/"):
 			// The city's own document: the source heading links the document,
 			// each cited page links it again with a #page fragment.
@@ -695,7 +697,8 @@ func TestExportRunResolvesBothCitationClassesWithoutGitHub(t *testing.T) {
 	if textCitations < 2 {
 		t.Errorf("got %d extracted-text citations resolving inside the site, want one per cited page", textCitations)
 	}
-	if strings.Contains(page, "github.com") {
+	// The footer's repository link is not a citation.
+	if strings.Contains(strings.ReplaceAll(page, `href="`+export.RepositoryURL+`"`, ""), "github.com") {
 		t.Error("the page cites github.com; the site is supposed to carry its own provenance")
 	}
 
@@ -1782,9 +1785,8 @@ func TestADocumentOutsideTheColumnItIsPublishedForIsRefused(t *testing.T) {
 // are composed here, out of any document's sight -- nothing else stops them
 // asserting the assurance the caveat, further down the same page, disclaims.
 //
-// A PIN RATHER THAN A BANNED-WORD LIST, for
-// TestTheLedesProseNamesThePagesScope's reason (internal/export/views_test.go).
-// The scan is conditional on the document's own declaration: a view whose
+// A PIN RATHER THAN A BANNED-WORD LIST: what a sentence claims cannot be
+// checked mechanically, so the pin makes drift fail. The scan is conditional on the document's own declaration: a view whose
 // document ships no such caveat may say "audited" freely, and "unaudited" is
 // the caveat's own word, so it is lifted out before the scan. The anchor half
 // fails first if the caveat itself disappears, so the scan cannot rot into a

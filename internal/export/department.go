@@ -205,7 +205,7 @@ func buildDepartmentPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		for _, by := range []string{fm.GeneratedBy, sm.GeneratedBy} {
 			if by != builtBy {
 				return departmentPageData{}, fmt.Errorf("view %q reads documents built by %q and %q; "+
-					"the footer credits one projection", v.Path, builtBy, by)
+					"one view is one build", v.Path, builtBy, by)
 			}
 		}
 		if vetErr := vetDepartmentColumn(entries, ofDivision, stem, funding, spendStem, spending); vetErr != nil {
@@ -245,7 +245,10 @@ func buildDepartmentPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		}
 	}
 
-	sources, docs := sourcesFor(unionSources(cited), byID, pageTextBase, o.RecordsBase)
+	sources, sourcesPath, docs, err := citedSources(o, v.Path, cited, byID, pageTextBase)
+	if err != nil {
+		return departmentPageData{}, err
+	}
 	blob, err := encodeDepartmentConfig(departmentConfig{
 		SchemaVersion: departmentConfigVersion,
 		ExportedBy:    o.GeneratedBy,
@@ -266,16 +269,16 @@ func buildDepartmentPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	}
 	return departmentPageData{
 		chrome: chrome{
-			Title:        title,
-			Lede:         v.Lede,
-			Nav:          nav,
-			Sources:      sources,
-			ProjectionBy: builtBy,
-			ExportedBy:   o.GeneratedBy,
-			Projections:  projectionRefs(o, ix),
-			DataPath:     open.Path,
-			Scope:        scope,
-			CaveatsHere:  cx.here(v.Path),
+			Title:       title,
+			Lede:        v.Lede,
+			Nav:         nav,
+			Sources:     sources,
+			SourcesPath: sourcesPath,
+			ExportedBy:  o.GeneratedBy,
+			Projections: projectionRefs(o, ix),
+			DataPath:    open.Path,
+			Scope:       scope,
+			CaveatsHere: cx.here(v.Path),
 		},
 		Years:       years,
 		Departments: entries,

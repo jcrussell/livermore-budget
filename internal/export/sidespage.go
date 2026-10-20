@@ -67,7 +67,7 @@ func encodeSidesConfig(cfg sidesConfig) ([]byte, error) {
 // buildSidesPage renders a ledger view: the spine's years as the year
 // control, the drawn schedule's declared sides as sections the client fills,
 // and the config the client folds by. The chart's figures are the
-// drawn schedule's; the footer and the year control are the spine's.
+// drawn schedule's; the year control is the spine's.
 func buildSidesPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	ix ColumnIndex, pageTextBase func(string) string, cx *caveatIndex,
 ) (sidesPageData, error) {
@@ -96,7 +96,7 @@ func buildSidesPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		if m.Scope() != meta.Scope() || m.GeneratedBy != meta.GeneratedBy {
 			return sidesPageData{}, fmt.Errorf(
 				"view %q opens on %q (scope %q, built by %q) and its year stem %q is scope %q, built by %q; "+
-					"the footer states one of each", v.Path, v.Projection, meta.Scope(), meta.GeneratedBy,
+					"one view is one scope and one build", v.Path, v.Projection, meta.Scope(), meta.GeneratedBy,
 				stem, m.Scope(), m.GeneratedBy)
 		}
 		chart, chartErr := drawnDocument(v, stem, meta.GeneratedBy, o.Projections, ix)
@@ -115,7 +115,10 @@ func buildSidesPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	if len(years) == 0 {
 		return sidesPageData{}, fmt.Errorf("view %q opens no year", v.Path)
 	}
-	sources, docs := sourcesFor(unionSources(cited), byID, pageTextBase, o.RecordsBase)
+	sources, sourcesPath, docs, err := citedSources(o, v.Path, cited, byID, pageTextBase)
+	if err != nil {
+		return sidesPageData{}, err
+	}
 	blob, err := encodeSidesConfig(sidesConfig{
 		SchemaVersion: sidesConfigVersion,
 		ExportedBy:    o.GeneratedBy,
@@ -143,16 +146,16 @@ func buildSidesPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	}
 	return sidesPageData{
 		chrome: chrome{
-			Title:        title,
-			Lede:         v.Lede,
-			Nav:          nav,
-			Sources:      sources,
-			ProjectionBy: meta.GeneratedBy,
-			ExportedBy:   o.GeneratedBy,
-			Projections:  projectionRefs(o, ix),
-			DataPath:     open.Path,
-			Scope:        meta.Scope(),
-			CaveatsHere:  cx.here(v.Path),
+			Title:       title,
+			Lede:        v.Lede,
+			Nav:         nav,
+			Sources:     sources,
+			SourcesPath: sourcesPath,
+			ExportedBy:  o.GeneratedBy,
+			Projections: projectionRefs(o, ix),
+			DataPath:    open.Path,
+			Scope:       meta.Scope(),
+			CaveatsHere: cx.here(v.Path),
 		},
 		Description: description,
 		Years:       years,

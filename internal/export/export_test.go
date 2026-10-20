@@ -399,7 +399,8 @@ func TestPageCitesThePDFPageAndTheTextTheSiteShips(t *testing.T) {
 	// the client composes its own links from. A citation that needs github.com
 	// to be up, reachable and still hosting this repository is the defect this
 	// change removes (fisc-ze7).
-	if strings.Contains(page, "github.com") {
+	// The footer's repository link is not a citation.
+	if strings.Contains(strings.ReplaceAll(page, `href="`+export.RepositoryURL+`"`, ""), "github.com") {
 		t.Error("the page still cites github.com; the shipped page text should have replaced it")
 	}
 

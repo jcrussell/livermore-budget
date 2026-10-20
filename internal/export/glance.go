@@ -81,7 +81,7 @@ type glancePageData struct {
 
 // glanceDocument is as much of the spine or of department-funding as the
 // glance page reads: the node table for roles and labels, every link with
-// its figure and provenance, and the metadata the footer and caveats state.
+// its figure and provenance, and the metadata its caveats and year words state.
 type glanceDocument struct {
 	Projection string `json:"projection"`
 	Nodes      []struct {
@@ -230,7 +230,7 @@ func buildGlancePage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		if strings.Join(m.Scopes, ", ") != meta.Scope() || m.GeneratedBy != meta.GeneratedBy {
 			return glancePageData{}, fmt.Errorf(
 				"view %q opens on %q (scope %q, built by %q) and its year stem %q is scope %q, built by %q; "+
-					"the footer states one of each", v.Path, v.Projection, meta.Scope(), meta.GeneratedBy,
+					"one view is one scope and one build", v.Path, v.Projection, meta.Scope(), meta.GeneratedBy,
 				stem, strings.Join(m.Scopes, ", "), m.GeneratedBy)
 		}
 		reads, err := v.readStems(stem, ix)
@@ -246,7 +246,7 @@ func buildGlancePage(o *Options, v View, nav []navItem, byID map[string]Doc,
 				v.Path, reads[0], stem)
 		}
 		if funding.Metadata.GeneratedBy != meta.GeneratedBy {
-			return glancePageData{}, fmt.Errorf("view %q reads documents built by %q and %q; the footer credits one projection",
+			return glancePageData{}, fmt.Errorf("view %q reads documents built by %q and %q; one view is one build",
 				v.Path, meta.GeneratedBy, funding.Metadata.GeneratedBy)
 		}
 		cited = append(cited, m.Sources...)
@@ -344,22 +344,25 @@ func buildGlancePage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		// Newest first: the stems are oldest first.
 		years = append([]glanceYear{year}, years...)
 	}
-	sources, _ := sourcesFor(unionSources(cited), byID, pageTextBase, o.RecordsBase)
+	sources, sourcesPath, _, serr := citedSources(o, v.Path, cited, byID, pageTextBase)
+	if serr != nil {
+		return glancePageData{}, serr
+	}
 	title := v.Title
 	if title == "" {
 		title = "Livermore's budget at a glance"
 	}
 	return glancePageData{
 		chrome: chrome{
-			Title:        title,
-			Lede:         v.Lede,
-			Nav:          nav,
-			Sources:      sources,
-			ProjectionBy: meta.GeneratedBy,
-			ExportedBy:   o.GeneratedBy,
-			Projections:  projectionRefs(o, ix),
-			Scope:        meta.Scope(),
-			CaveatsHere:  cx.here(v.Path),
+			Title:       title,
+			Lede:        v.Lede,
+			Nav:         nav,
+			Sources:     sources,
+			SourcesPath: sourcesPath,
+			ExportedBy:  o.GeneratedBy,
+			Projections: projectionRefs(o, ix),
+			Scope:       meta.Scope(),
+			CaveatsHere: cx.here(v.Path),
 		},
 		Years: years,
 	}, nil

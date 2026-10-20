@@ -99,12 +99,7 @@
 <template id="change-entry"><li><span class="change-swatch" aria-hidden="true"></span><span class="change-name"></span> <span class="subtle change-detail"></span></li></template>
 </main>
 
-<footer>
-  {{template "sources" .}}
-  <p class="subtle">
-    Scope {{.Scope}}. Projection: {{.ProjectionBy}}. Packaged by {{.ExportedBy}}.
-  </p>
-</footer>
+{{template "footer" .}}
 
 </body>
 </html>

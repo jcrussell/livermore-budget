@@ -49,6 +49,13 @@
   <li><a href="{{.Path}}">{{.Label}}</a> <span class="subtle">— {{.Path}}, {{.Bytes}} bytes{{if .Note}}. {{.Note}}{{end}}</span></li>
   {{- end}}
 </ul>
+<p>Every data file the site's pages are drawn from, each fetchable on its own:</p>
+<ul class="downloads" id="data-files">
+  {{- range .Projections}}
+  <li><a href="{{.Path}}">{{.Path}}</a></li>
+  {{- end}}
+</ul>
+<p class="subtle">Packaged by {{.ExportedBy}}.</p>
 
 {{- /* THE PAGE TABLE FOLDS AND THE DOWNLOADS DO NOT: the downloads are what
        this page is for, and the locator paragraph above is what makes every
@@ -91,18 +98,7 @@
 
 </main>
 
-<footer>
-  {{- /* THE SOURCE LIST IS DISCLOSED AND THE SENTENCE BELOW IT IS NOT. The
-         list is two links per cited page and grows with the corpus; the
-         sentence under it names the scope, the basis and the document on
-         screen, and a reader must never have to open something to learn which
-         fiscal year they are reading. */}}
-  {{template "sources" .}}
-  <p class="subtle">
-    Packaged by {{.ExportedBy}}. This page draws no projection: it indexes the record store
-    the other pages are built from.
-  </p>
-</footer>
+{{template "footer" .}}
 
 </body>
 </html>

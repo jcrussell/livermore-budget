@@ -1487,22 +1487,12 @@ func yearsIn(t *testing.T, page string) []struct {
 // TestEachYearCarriesItsOwnBasisAndTitle is the packager half of fisc-iyt and
 // fisc-rn0: the words a year switch paints have to differ per year, or
 // repainting them changes nothing.
-//
-// THE FOOTER'S BASIS IS ASSERTED IN THE MARKUP TOO, and that is not redundant
-// with the client test that paints it. If the span is dropped, maybeEl returns
-// null, the guard swallows it, and the footer silently stops following the
-// year. Only a Go assertion on the shipped markup closes that.
 func TestEachYearCarriesItsOwnBasisAndTitle(t *testing.T) {
 	page, err := twoYearSankey(t, export.View{}, func(meta map[string]any) {
 		meta["basis"] = "revised"
 	})
 	if err != nil {
 		t.Fatalf("Write: %v", err)
-	}
-
-	if !strings.Contains(page, `<span id="page-basis">`) {
-		t.Error("the footer's basis is not wrapped in #page-basis, so paintYearWords " +
-			"has nothing to repaint and the sentence keeps the opening year's basis")
 	}
 
 	years := yearsIn(t, page)
@@ -1555,9 +1545,9 @@ func TestACallersOwnTitleSurvivesEveryYear(t *testing.T) {
 
 // TestAYearStemOnAnotherScopeIsRefused is the fail-closed half of fisc-iyt.
 //
-// The footer states one scope and the lede states the same claim again in prose
-// ("all funds, gross") that is not repainted, so a view whose years disagreed
-// about scope would have to repaint one of two copies. It cannot happen today --
+// The lede states the scope in prose ("all funds, gross") that is not
+// repainted, so a view whose years disagreed about scope would state the
+// opening year's under every year. It cannot happen today --
 // Sankey.Slices fixes the scope -- and the answer to a state nothing can emit is
 // to refuse it, not to build a repaint and a test that can never go red.
 func TestAYearStemOnAnotherScopeIsRefused(t *testing.T) {
@@ -1566,7 +1556,7 @@ func TestAYearStemOnAnotherScopeIsRefused(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("a year stem on another scope was exported; the page would state " +
-			"one scope in its footer and another in its lede")
+			"the opening year's scope under every year")
 	}
 	for _, want := range []string{"sankey-2027", "revenue-by-fund", "all-funds-gross"} {
 		if !strings.Contains(err.Error(), want) {
@@ -1575,62 +1565,20 @@ func TestAYearStemOnAnotherScopeIsRefused(t *testing.T) {
 	}
 }
 
-// TestAYearStemBuiltByAnotherProjectionIsRefused covers the footer sentence's
-// third value.
-//
-// "Scope X, basis Y. Projection: Z." is one sentence and all three come from
-// the opening year. Basis is repainted; scope and Z fail closed. Z is
-// meta.GeneratedBy, a claim about the tool that built the document -- a page
-// crediting one builder for figures drawn from two is not a wording problem a
-// repaint fixes, because the documents disagree about their own provenance.
-//
-// The basis fix left its two sentence-mates unguarded, and fixing one value of
-// three while leaving the others is how the original defect got in.
+// TestAYearStemBuiltByAnotherProjectionIsRefused: a view's years that
+// disagree about the tool that built them are refused rather than drawn as one
+// view, because the documents disagree about their own provenance.
 func TestAYearStemBuiltByAnotherProjectionIsRefused(t *testing.T) {
 	_, err := twoYearSankey(t, export.View{}, func(meta map[string]any) {
 		meta["generated_by"] = "fisc some-other-build"
 	})
 	if err == nil {
-		t.Fatal("a year stem built by another projection was exported; the footer " +
-			"credits one builder for figures drawn from two documents")
+		t.Fatal("a year stem built by another projection was exported as one view")
 	}
 	for _, want := range []string{"sankey-2027", "fisc some-other-build"} {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("the refusal does not name %q: %v", want, err)
 		}
-	}
-}
-
-// TestTheLedesProseNamesThePagesScope couples two statements of one claim that
-// nothing else couples.
-//
-// flows.html.tmpl's lede says the budget is "all funds, gross" in English; the
-// footer prints "Scope {{.Scope}}", the slug, three screens down. Neither is
-// repainted and the scope guard in buildSankeyPage only makes a view's YEARS
-// agree with each other -- so a view built entirely on some other scope ships a
-// lede contradicting its own footer, with every guard green.
-//
-// A PIN RATHER THAN A GUARD, deliberately. Refusing a scope in internal/export
-// would mean this package holding an opinion about which scopes exist, which is
-// internal/project's to hold; and rendering {{.Scope}} into the lede would put
-// "all-funds-gross" in a sentence a reader reads aloud. What is wrong today is
-// that the coupling is invisible, so the fix is to make it fail when it breaks.
-func TestTheLedesProseNamesThePagesScope(t *testing.T) {
-	page, err := twoYearSankey(t, export.View{}, func(map[string]any) {})
-	if err != nil {
-		t.Fatalf("Write: %v", err)
-	}
-	const (
-		slug  = "all-funds-gross"
-		prose = "all funds, gross"
-	)
-	if !strings.Contains(page, "Scope "+slug) {
-		t.Fatalf("the footer no longer prints scope %q; if the published scope changed, "+
-			"the lede's prose in flows.html.tmpl has to change with it", slug)
-	}
-	if !strings.Contains(page, prose) {
-		t.Errorf("the lede no longer says %q while the footer says scope %q; "+
-			"one page, one claim, two spellings that have drifted", prose, slug)
 	}
 }
 
@@ -1830,39 +1778,97 @@ func TestTheProvenanceViewNeedsNoProjection(t *testing.T) {
 	}
 }
 
-// TestTheIndexLinksTheSourcesPageInPlaceOfItsList: beside a provenance
-// index, the index page lists no cited page and links there, and Write
-// refuses a page the index cites and the provenance index does not list.
-// Mutation: drop listedBy's call in buildSankeyPage -- the second arm goes
-// red; render the footer list unconditionally -- the first goes red.
-func TestTheIndexLinksTheSourcesPageInPlaceOfItsList(t *testing.T) {
-	dir, err := provenanceSite(t, nil)
+// sourcesPageSite is provenanceSite with a history view citing p127 and a
+// caveats page beside the index, so three builders reach citedSources.
+func sourcesPageSite(t *testing.T, edit func(*export.Options)) (string, error) {
+	t.Helper()
+	return provenanceSite(t, func(o *export.Options) {
+		o.Projections["revenue-trends"] = trendsDoc(127)
+		o.Views = append(o.Views,
+			export.View{Path: "table.html", Nav: "Revenue table",
+				Template: export.HistoryTemplate, Sections: tableSections, Projection: "revenue-trends",
+				Title: "Revenue tables", Lede: "A lede."},
+			export.View{Path: "caveats.html", Nav: "Caveats", Template: export.CaveatsTemplate,
+				Title: "Caveats", Lede: "A lede."})
+		if edit != nil {
+			edit(o)
+		}
+	})
+}
+
+// TestEveryViewLinksTheSourcesPageInPlaceOfItsList: beside a provenance
+// index, every page lists no cited page, and its footer links the sources page
+// and the repository; the sources page lists every data file written; and Write refuses a page any view cites that the
+// provenance index does not list, naming the view.
+// Mutation: drop listedBy's call in citedSources -- both refusal arms go red;
+// render the footer's sources list whatever .SourcesPath -- the first goes red;
+// render provenance.html.tmpl's #data-files empty -- the data-file arm goes red.
+func TestEveryViewLinksTheSourcesPageInPlaceOfItsList(t *testing.T) {
+	dir, err := sourcesPageSite(t, nil)
 	if err != nil {
 		t.Fatalf("Write: %v", err)
 	}
-	page := readerVisible(t, readPage(t, dir))
-	if strings.Contains(page, `id="sources-view"`) || strings.Contains(page, "extracted/") {
-		t.Error("index.html lists the pages it cites beside a sources page that lists them")
-	}
-	if !strings.Contains(page, `<a href="provenance.html">`) {
-		t.Error("index.html does not link the sources page")
+	for _, path := range []string{export.IndexPath, "table.html", "caveats.html", "provenance.html"} {
+		html := readFile(t, dir, path)
+		_, foot, ok := strings.Cut(html, "<footer>")
+		foot, _, closed := strings.Cut(foot, "</footer>")
+		if !ok || !closed {
+			t.Errorf("%s renders no footer", path)
+			continue
+		}
+		if strings.Contains(foot, `id="sources-view"`) || strings.Contains(foot, "extracted/") {
+			t.Errorf("%s's footer lists cited pages beside a sources page that lists them", path)
+		}
+		for _, want := range []string{`<a href="provenance.html">Sources and data</a>`,
+			`<a href="` + export.RepositoryURL + `">Code on GitHub</a>`} {
+			if !strings.Contains(foot, want) {
+				t.Errorf("%s's footer does not carry %s", path, want)
+			}
+		}
 	}
 	listed := readFile(t, dir, "provenance.html")
-	for _, p := range []string{"p0066.txt", "p0067.txt"} {
+	for _, p := range []string{"p0066.txt", "p0067.txt", "p0127.txt"} {
 		if !strings.Contains(listed, "extracted/"+budgetDocID+"/pages/"+p) {
-			t.Errorf("provenance.html does not list %s, which index.html cites", p)
+			t.Errorf("provenance.html does not list %s, which a view cites", p)
+		}
+	}
+	// And every data file the site writes, which no footer lists any more.
+	var data []string
+	if werr := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+		if err == nil && !d.IsDir() && strings.HasSuffix(path, ".json") {
+			rel, _ := filepath.Rel(dir, path)
+			data = append(data, filepath.ToSlash(rel))
+		}
+		return err
+	}); werr != nil {
+		t.Fatal(werr)
+	}
+	if len(data) == 0 {
+		t.Fatal("the site writes no data file, so the check below covers nothing")
+	}
+	_, files, _ := strings.Cut(listed, `id="data-files"`)
+	files, _, _ = strings.Cut(files, "</ul>")
+	for _, f := range data {
+		if !strings.Contains(files, `<a href="`+f+`">`) {
+			t.Errorf("provenance.html's data files do not list %s", f)
 		}
 	}
 
-	_, err = provenanceSite(t, func(o *export.Options) {
-		o.PageIndex = slices.DeleteFunc(o.PageIndex, func(e export.PageIndexEntry) bool { return e.Page == 67 })
-		delete(o.Files, "facts/d/pages/p0067.jsonl")
-	})
-	if err == nil {
-		t.Fatal("Write linked index.html's sources to a page that does not list p67")
-	}
-	if !strings.Contains(err.Error(), "p67") || !strings.Contains(err.Error(), "does not list it") {
-		t.Errorf("got %v, want the refusal naming p67", err)
+	for _, c := range []struct {
+		page int
+		view string
+	}{{67, export.IndexPath}, {127, "table.html"}} {
+		_, err = sourcesPageSite(t, func(o *export.Options) {
+			o.PageIndex = slices.DeleteFunc(o.PageIndex, func(e export.PageIndexEntry) bool { return e.Page == c.page })
+			delete(o.Files, fmt.Sprintf("facts/d/pages/p%04d.jsonl", c.page))
+		})
+		if err == nil {
+			t.Errorf("Write linked %s's sources to a page that does not list p%d", c.view, c.page)
+			continue
+		}
+		if want := fmt.Sprintf("view %q cites %s p%d", c.view, budgetDocID, c.page); !strings.Contains(err.Error(), want) {
+			t.Errorf("got %v, want the refusal %q", err, want)
+		}
 	}
 }
 
@@ -2302,20 +2308,9 @@ func TestAClosedFlowTableIsNotDescribedAsListedBelow(t *testing.T) {
 	}
 }
 
-// TestTheFooterSourcesFoldWithoutTakingTheDocumentOnScreenWithThem covers the
-// footer's two halves, which are two different claims and belong on two
-// different sides of the disclosure.
-//
-// The source list is two links per cited page and grows with the corpus, so it
-// folds. The sentence under it names the scope, the basis and the file the page
-// is drawn from -- which is to say WHICH DOCUMENT THE READER IS LOOKING AT --
-// and a reader must not have to open anything to learn that. On index.html and
-// the chart pages the basis half of it is repainted per year, so folding it
-// would hide a string the client is still writing.
-//
-// TestEachViewsFooterCitesItsOwnSources stays green through the fold, which is
-// why this exists beside it rather than inside it: it asks what the footer
-// names, not what a reader arrives to.
+// TestTheFooterSourcesFoldWithoutTakingTheDocumentOnScreenWithThem: on a site
+// with no sources page the footer folds the cited-page list, closed, with its
+// heading in the <summary>, and the footer's own line stays outside the fold.
 func TestTheFooterSourcesFoldWithoutTakingTheDocumentOnScreenWithThem(t *testing.T) {
 	dir := twoViews(t, 127, 128)
 	// Three spellings, as above.
@@ -2331,11 +2326,11 @@ func TestTheFooterSourcesFoldWithoutTakingTheDocumentOnScreenWithThem(t *testing
 		summary := strings.Index(foot, "<summary>")
 		summaryEnd := strings.Index(foot, "</summary>")
 		heading := strings.Index(foot, "<h3>Sources")
-		basis := strings.Index(foot, "Projection:")
+		basis := strings.Index(foot, "Code on GitHub")
 		closed := strings.Index(foot, "</details>")
 		for name, at := range map[string]int{
 			"<summary>": summary, "</summary>": summaryEnd, "<h3>Sources": heading,
-			"Projection:": basis, "</details>": closed,
+			"Code on GitHub": basis, "</details>": closed,
 		} {
 			if at < 0 {
 				t.Fatalf("%s's footer renders no %s", page, name)
@@ -2373,104 +2368,21 @@ func TestTheFooterSourcesFoldWithoutTakingTheDocumentOnScreenWithThem(t *testing
 			t.Errorf("%s's Sources heading is at %d, not between <summary> at %d and "+
 				"</summary> at %d", page, heading, summary, summaryEnd)
 		}
-		// The disclosure closes BEFORE the scope sentence, which is what puts
-		// that sentence on the reader's side of the fold.
 		if closed > basis {
-			t.Errorf("%s's scope-and-basis sentence is inside the folded source list", page)
+			t.Errorf("%s's footer line is inside the folded source list", page)
 		}
 	}
 }
 
-// TestTheCaveatsPageFoldsItsFileListAndNotItsReason. caveats.html is the one
-// page whose footer holds no source list -- it shows no figures, so a union of
-// every document's pages would be the broadest false provenance claim on the
-// site -- so its disclosure holds only the data files and carries a different
-// id saying so.
-//
-// THE PARAGRAPH BELOW IT MUST STAY OUT. It says this page draws no projection
-// and publishes no figure, which is the sentence that makes the missing source
-// list read as deliberate rather than as an omission.
-func TestTheCaveatsPageFoldsItsFileListAndNotItsReason(t *testing.T) {
-	dir := t.TempDir()
-	if _, err := writeSite(export.Options{
-		Dir: dir,
-		Projections: map[string][]byte{
-			export.PrimaryProjection: goldenSankey(t),
-			"revenue-trends":         trendsDoc(127),
-		},
-		Views: []export.View{
-			{Path: export.IndexPath, Nav: "Budget flows",
-				Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: export.PrimaryProjection},
-			{Path: "caveats.html", Nav: "Caveats", Template: export.CaveatsTemplate,
-				Title: "Caveats", Lede: "A lede."},
-		},
-		Docs:        budgetDocs(),
-		GeneratedBy: "fisc test",
-		PageText:    twoViewPageText(127),
-	}); err != nil {
-		t.Fatalf("Write: %v", err)
-	}
-	html := readFile(t, dir, "caveats.html")
-
-	start := strings.Index(html, "<footer>")
-	if start < 0 {
-		t.Fatal("caveats.html renders no footer")
-	}
-	foot := html[start:]
-
-	if !strings.Contains(foot, `<details class="apparatus" id="data-view">`) {
-		t.Error("caveats.html does not fold its data-file list into an .apparatus " +
-			"disclosure")
-	}
-	if regexp.MustCompile(`<details[^>]*\sopen(?:[\s>]|="")`).MatchString(foot) {
-		t.Error("caveats.html ships its footer disclosure open")
-	}
-	// The id is the claim: this one holds no sources, and naming it sources-view
-	// would say it does.
-	if strings.Contains(foot, `id="sources-view"`) {
-		t.Error("caveats.html's footer claims a sources-view; that page cites no pages, " +
-			"which is what the comment above its footer is about")
-	}
-	if !strings.Contains(foot, "Every data file the site publishes") {
-		t.Error("caveats.html's disclosure holds no data-file list, so it folds nothing")
-	}
-	// The heading is in the outline here for the same reason it is on every
-	// other page: it is what makes a folded panel findable without opening it.
-	head := strings.Index(foot, "<summary>")
-	headEnd := strings.Index(foot, "</summary>")
-	title := strings.Index(foot, "<h3>The data</h3>")
-	if head < 0 || headEnd < 0 || title < 0 {
-		t.Fatalf("caveats.html's footer is missing its summary (%d, %d) or its "+
-			"heading (%d)", head, headEnd, title)
-	}
-	if title < head || title > headEnd {
-		t.Errorf("caveats.html's data heading is at %d, not between <summary> at %d "+
-			"and </summary> at %d", title, head, headEnd)
-	}
-	shut := strings.Index(foot, "</details>")
-	reason := strings.Index(foot, "publishes no figure")
-	if shut < 0 || reason < 0 {
-		t.Fatalf("caveats.html's footer is missing its disclosure (%d) or its "+
-			"reason (%d)", shut, reason)
-	}
-	if shut > reason {
-		t.Error("caveats.html folded the sentence saying it publishes no figure, which " +
-			"is what makes the absent source list read as deliberate")
-	}
-}
-
 // TestEveryFooterDisclosureKeepsItsHeadingInTheOutline asserts the rule on the
-// TEMPLATES rather than on rendered pages: the pages that cite a figure
-// execute one sources partial, and caveats.html.tmpl folds its own file list,
-// so two files hold every footer disclosure the site renders. A page that
-// grows its own copy of the footer again is refused here, because a copy is
-// one this walk would have to find to hold to the rule.
+// TEMPLATES rather than on rendered pages: every page executes the one
+// "footer", which alone executes the sources partial, so one file holds every
+// footer disclosure the site renders. A page that grows its own footer again
+// is refused here.
 //
-// WHY IT MATTERS AT ALL. A <summary> stays in the accessibility tree when the
-// panel is closed and its content does not, so a heading inside the summary is
-// the only thing that keeps a folded list findable by heading navigation
-// without opening it. Below the summary it is inside the fold with everything
-// else.
+// A <summary> stays in the accessibility tree when the panel is closed and its
+// content does not, so a heading inside the summary is the only thing that
+// keeps a folded list findable by heading navigation without opening it.
 func TestEveryFooterDisclosureKeepsItsHeadingInTheOutline(t *testing.T) {
 	entries, err := fs.ReadDir(site.FS(), ".")
 	if err != nil {
@@ -2490,10 +2402,12 @@ func TestEveryFooterDisclosureKeepsItsHeadingInTheOutline(t *testing.T) {
 		if strings.Contains(src, `{{template "sources" .}}`) {
 			calling = append(calling, name)
 		}
-		disclosure := strings.Index(src, `<details class="apparatus" id="sources-view">`)
-		if disclosure < 0 {
-			disclosure = strings.Index(src, `<details class="apparatus" id="data-view">`)
+		if name != export.ChromePartial && name != export.SourcesPartial {
+			if strings.Contains(src, "<footer") || strings.Count(src, `{{template "footer" .}}`) != 1 {
+				t.Errorf("%s renders a footer of its own rather than the shared one", name)
+			}
 		}
+		disclosure := strings.Index(src, `<details class="apparatus" id="sources-view">`)
 		if disclosure < 0 {
 			continue
 		}
@@ -2512,15 +2426,11 @@ func TestEveryFooterDisclosureKeepsItsHeadingInTheOutline(t *testing.T) {
 				"out of the outline while the panel is closed", name)
 		}
 	}
-	// Anti-vacuity, and the one-copy rule: the partial and caveats.html.tmpl
-	// hold the only disclosures, and every page that cites a figure reaches
-	// the partial's.
-	if diff := cmp.Diff([]string{export.CaveatsTemplate, export.SourcesPartial}, folding); diff != "" {
+	// Anti-vacuity, and the one-copy rule.
+	if diff := cmp.Diff([]string{export.SourcesPartial}, folding); diff != "" {
 		t.Errorf("templates folding a footer list (-want +got):\n%s", diff)
 	}
-	if diff := cmp.Diff([]string{export.CapitalTemplate, export.ChangeTemplate, export.DebtTemplate,
-		export.DepartmentTemplate, export.SankeyTemplate, export.GlanceTemplate, export.HistoryTemplate,
-		export.LedgerTemplate, export.ProvenanceTemplate}, calling); diff != "" {
+	if diff := cmp.Diff([]string{export.ChromePartial}, calling); diff != "" {
 		t.Errorf("templates executing the sources partial (-want +got):\n%s", diff)
 	}
 }

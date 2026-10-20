@@ -324,8 +324,7 @@ func TestTheMarkPublishesItsOwnHeight(t *testing.T) {
 // file, not a copy (AGENTS.md, "The node boundary" makes the same argument
 // for app.js).
 //
-// A PIN RATHER THAN A GUARD, for TestTheLedesProseNamesThePagesScope's reason:
-// the sentence's meaning cannot be checked mechanically, so both halves are
+// A PIN RATHER THAN A GUARD: the sentence's meaning cannot be checked mechanically, so both halves are
 // pinned and either drifting alone reddens a test named for the coupling. The
 // behaviour half re-derives the promise on the shipped witness row --
 // balances.html's All Other Governmental Funds / Unassigned, whose largest

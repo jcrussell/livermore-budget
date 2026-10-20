@@ -23,10 +23,8 @@ function painted(app, document, year) {
     hero: el("hero") ? el("hero").textContent : "",
     lede: el("lede-year") ? el("lede-year").textContent : "",
     counts: el("counts-line") ? el("counts-line").textContent : "",
-    basis: el("page-basis") ? el("page-basis").textContent : "",
     chartTitle: el("chart-title") ? el("chart-title").textContent : "",
     title: document.title,
-    dataPath: document.querySelector("[data-year-path] a"),
   };
 }
 
@@ -87,12 +85,6 @@ describe("a year's words are the packager's, painted whole", () => {
     t.diagnostic(`#chart-title reads "${got.chartTitle}"`);
     assert.equal(got.chartTitle, year.chart_title);
   });
-  test("the footer's basis follows the year", async (t) => {
-    const { app, document } = await loadApp();
-    const got = painted(app, document, shippedYear({ basis: "proposed" }));
-    t.diagnostic(`#page-basis reads "${got.basis}"`);
-    assert.equal(got.basis, "proposed");
-  });
   test("a caller's own title is not overwritten by the year switch", async () => {
     const { app, document } = await loadApp();
     assert.equal(painted(app, document, shippedYear({ title: "A title the caller chose" })).title, "A title the caller chose");
@@ -102,14 +94,6 @@ describe("a year's words are the packager's, painted whole", () => {
     document.getElementById("year-toggle").remove();
     app.wireYears([shippedYear()]);
     assert.equal(app.maybeEl("year-toggle"), null);
-  });
-  test("the footer's data-file citation follows the year", async (t) => {
-    const { app, document } = await loadApp();
-    const year = shippedYear();
-    const got = painted(app, document, year);
-    t.diagnostic(`href ${got.dataPath?.getAttribute("href")}, text "${got.dataPath?.textContent}"`);
-    assert.equal(got.dataPath.getAttribute("href"), year.path);
-    assert.equal(got.dataPath.textContent, year.path);
   });
   test("painting a second year replaces the first year's words", async (t) => {
     const { app, document } = await loadApp();

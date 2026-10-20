@@ -94,7 +94,10 @@ const PageTextDir = "extracted"
 // document beside it, and that the artifacts are .txt precisely so that view
 // renders them verbatim rather than collapsing the runs of spaces that are the
 // column grid (see corpus.PagePath).
-const DefaultSourceBrowseURL = "https://github.com/jcrussell/livermore-budget/blob/main"
+const DefaultSourceBrowseURL = RepositoryURL + "/blob/main"
+
+// RepositoryURL is this project's repository, which every page's footer links.
+const RepositoryURL = "https://github.com/jcrussell/livermore-budget"
 
 // verbatimAssets are copied from the embedded site tree byte for byte. The
 // page template is not in this list: it is rendered, and vendor/ is walked.
@@ -162,7 +165,7 @@ type View struct {
 
 	// Draws is the schedule the view's own chart draws out of each year's
 	// column, or "" for Projection's own. The page's figures, year control
-	// and footer stay Projection's; the chart, its counts line and its
+	// and sources stay Projection's; the chart, its counts line and its
 	// caveats are this schedule's, shipped as FISC_CONFIG.primary.
 	Draws string
 	// Description is the view's own chart said in words: the SVG's <desc>
@@ -289,8 +292,8 @@ type Options struct {
 	// a base pointing at nothing.
 	RecordsBase map[string]string
 
-	// GeneratedBy names the tool and version that wrote the output. It is
-	// shown in the page footer beside the projection's own generated_by.
+	// GeneratedBy names the tool and version that wrote the output. The
+	// sources page states it, and every client config carries it.
 	GeneratedBy string
 
 	// Assets is the site source tree. Empty means the embedded one; a test

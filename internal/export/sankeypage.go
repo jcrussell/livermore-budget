@@ -37,7 +37,7 @@ type projectionMetadata struct {
 	Caveats []caveatMeta `json:"caveats"`
 }
 
-// Scope is the schedule set as the footer prints it: the scopes joined, in
+// Scope is the schedule set as a page prints it: the scopes joined, in
 // the document's own order.
 func (m projectionMetadata) Scope() string { return strings.Join(m.Scopes, ", ") }
 
@@ -102,9 +102,6 @@ type pageData struct {
 	// the same one app.js repaints on a year switch.
 	ChartTitle string
 	Hero       figure
-	// SourcesPath is the provenance index, or "" when the site has none: with
-	// one, the footer links there instead of listing every cited page.
-	SourcesPath string
 	// Years is every published year, oldest first. The template renders the
 	// Opens year's headline and lists them all as a selector.
 	Years []yearView
@@ -262,8 +259,7 @@ func drawnDocument(v View, year, builtBy string, projections map[string][]byte, 
 	}
 	if out.doc.Metadata.GeneratedBy != builtBy {
 		return out, fmt.Errorf(
-			"view %q opens on %q built by %q and draws %q, built by %q; the footer credits "+
-				"one projection for figures drawn from both", v.Path, v.Projection, builtBy, stem,
+			"view %q opens on %q built by %q and draws %q, built by %q; one view is one build", v.Path, v.Projection, builtBy, stem,
 			out.doc.Metadata.GeneratedBy)
 	}
 	out.stem = stem
@@ -298,9 +294,8 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 				return pageData{}, err
 			}
 		}
-		// The footer's "Scope X, basis Y. Projection: Z." is rendered from the
-		// opening year; basis travels per year in yearView, and scope and
-		// builder fail closed here instead of being repainted.
+		// Basis travels per year in yearView; scope and builder fail closed
+		// here instead of being repainted.
 		if m.Scope() != meta.Scope() {
 			return pageData{}, fmt.Errorf(
 				"view %q opens on %q with scope %q but its year stem %q has scope %q; "+
@@ -310,7 +305,7 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		if m.GeneratedBy != meta.GeneratedBy {
 			return pageData{}, fmt.Errorf(
 				"view %q opens on %q built by %q but its year stem %q was built by %q; "+
-					"the footer credits one projection for figures drawn from both",
+					"one view is one build",
 				v.Path, v.Projection, meta.GeneratedBy, stem, m.GeneratedBy)
 		}
 		cited = append(cited, m.Sources...)
@@ -354,14 +349,10 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	// per-year the page renders statically comes from this entry.
 	open := years[len(years)-1]
 
-	union := unionSources(cited)
-	sourcesPath := templatePathOf(o, ProvenanceTemplate)
-	if sourcesPath != "" {
-		if listErr := listedBy(o.PageIndex, union, v.Path, sourcesPath); listErr != nil {
-			return pageData{}, listErr
-		}
+	sources, sourcesPath, clientDocs, err := citedSources(o, v.Path, cited, byID, pageTextBase)
+	if err != nil {
+		return pageData{}, err
 	}
-	sources, clientDocs := sourcesFor(union, byID, pageTextBase, o.RecordsBase)
 
 	cfg := clientConfig{
 		SchemaVersion: doc.SchemaVersion,
@@ -382,16 +373,16 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 
 	return pageData{
 		chrome: chrome{
-			Title:        open.Title,
-			Lede:         v.Lede,
-			Nav:          nav,
-			Sources:      sources,
-			ProjectionBy: meta.GeneratedBy,
-			ExportedBy:   o.GeneratedBy,
-			Projections:  projectionRefs(o, ix),
-			DataPath:     open.Path,
-			Scope:        meta.Scope(),
-			CaveatsHere:  cx.here(v.Path),
+			Title:       open.Title,
+			Lede:        v.Lede,
+			Nav:         nav,
+			Sources:     sources,
+			SourcesPath: sourcesPath,
+			ExportedBy:  o.GeneratedBy,
+			Projections: projectionRefs(o, ix),
+			DataPath:    open.Path,
+			Scope:       meta.Scope(),
+			CaveatsHere: cx.here(v.Path),
 		},
 		Lede:         open.Lede,
 		Basis:        open.Basis,
@@ -399,7 +390,6 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		TableHeading: flowTableHeading,
 		ChartTitle:   open.ChartTitle,
 		Hero:         open.Hero,
-		SourcesPath:  sourcesPath,
 		Years:        years,
 		Opens:        open.Stem,
 		Facts:        open.Counts.Facts,

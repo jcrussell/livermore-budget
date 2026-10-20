@@ -461,8 +461,8 @@ func buildCaveatsPage(o *Options, v View, nav []navItem, cx *caveatIndex, ix Col
 			Nav:         nav,
 			ExportedBy:  o.GeneratedBy,
 			Projections: projectionRefs(o, ix),
-			// NO Sources: TestEachViewsFooterCitesItsOwnSources holds a page
-			// to the pages it showed a figure from, and this page shows none.
+			SourcesPath: templatePathOf(o, ProvenanceTemplate),
+			// NO Sources: this page shows no figure, so it cites no page.
 			// NO DataPath either, for buildProvenancePage's reason: this page
 			// draws no projection.
 		},

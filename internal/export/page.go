@@ -271,27 +271,34 @@ func buildSite(o *Options, ix ColumnIndex, pageTextBase func(docID string) strin
 
 // chrome is what every view renders whatever its document is.
 type chrome struct {
-	Title        string
-	Lede         string
-	Nav          []navItem
-	Sources      []sourceRef
-	ProjectionBy string
-	ExportedBy   string
-	Projections  []projectionRef
-	DataPath     string
-	Scope        string
+	Title       string
+	Lede        string
+	Nav         []navItem
+	Sources     []sourceRef
+	ExportedBy  string
+	Projections []projectionRef
+	DataPath    string
+	Scope       string
 	// CaveatsHere is the page's one caveats line, which the "caveats-line"
 	// template renders.
 	CaveatsHere caveatsHere
+	// SourcesPath is the provenance index, or "" when the site has none. With
+	// one, the "footer" template links there and lists no cited page, and
+	// citedSources has held every page this view cites to that index.
+	SourcesPath string
 }
 
-// SourcesPartial defines the "sources" footer the page templates execute.
-// renderPage parses it BEFORE the page, so a page's own "sources-heading"
-// replaces the partial's default rather than being replaced by it.
+// Repository is the source repository the "footer" template links.
+func (chrome) Repository() string { return RepositoryURL }
+
+// SourcesPartial defines the "sources" list the "footer" template folds on a
+// site with no sources page. renderPage parses it BEFORE the page, so a page's
+// own "sources-heading" replaces the partial's default rather than being
+// replaced by it.
 const SourcesPartial = "sources.html.tmpl"
 
-// ChromePartial defines the "theme-stamp" head script and the "topbar" nav
-// every page template executes.
+// ChromePartial defines the "theme-stamp" head script, the "topbar" nav and
+// the "footer" every page template executes.
 const ChromePartial = "chrome.html.tmpl"
 
 // renderPage executes one view's template against its assembled data.

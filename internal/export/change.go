@@ -138,7 +138,7 @@ func buildChangePage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		return changePageData{}, err
 	}
 	if audited.meta.GeneratedBy != budget.meta.GeneratedBy {
-		return changePageData{}, fmt.Errorf("view %q reads documents built by %q and %q; the footer credits one projection",
+		return changePageData{}, fmt.Errorf("view %q reads documents built by %q and %q; one view is one build",
 			v.Path, audited.meta.GeneratedBy, budget.meta.GeneratedBy)
 	}
 
@@ -200,23 +200,26 @@ func buildChangePage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	}
 
 	cited := append(append([]sourceMeta{}, audited.meta.Sources...), budget.meta.Sources...)
-	sources, _ := sourcesFor(unionSources(cited), byID, pageTextBase, o.RecordsBase)
+	sources, sourcesPath, _, serr := citedSources(o, v.Path, cited, byID, pageTextBase)
+	if serr != nil {
+		return changePageData{}, serr
+	}
 	title := v.Title
 	if title == "" {
 		title = "Livermore's budget over time"
 	}
 	return changePageData{
 		chrome: chrome{
-			Title:        title,
-			Lede:         v.Lede,
-			Nav:          nav,
-			Sources:      sources,
-			ProjectionBy: audited.meta.GeneratedBy,
-			ExportedBy:   o.GeneratedBy,
-			Projections:  projectionRefs(o, ix),
-			DataPath:     ix.PublishedPath(v.Projection),
-			Scope:        audited.meta.Scope + ", " + budget.meta.Scope,
-			CaveatsHere:  cx.here(v.Path),
+			Title:       title,
+			Lede:        v.Lede,
+			Nav:         nav,
+			Sources:     sources,
+			SourcesPath: sourcesPath,
+			ExportedBy:  o.GeneratedBy,
+			Projections: projectionRefs(o, ix),
+			DataPath:    ix.PublishedPath(v.Projection),
+			Scope:       audited.meta.Scope + ", " + budget.meta.Scope,
+			CaveatsHere: cx.here(v.Path),
 		},
 		Figures: figures,
 	}, nil

@@ -96,12 +96,7 @@
 <template id="glance-entry"><li><span class="glance-swatch" aria-hidden="true"></span><b class="glance-per"></b> of every $100 is <span class="glance-name"></span> <span class="subtle glance-detail"></span></li></template>
 </main>
 
-<footer>
-  {{template "sources" .}}
-  <p class="subtle">
-    Scope {{.Scope}}. Projection: {{.ProjectionBy}}. Packaged by {{.ExportedBy}}.
-  </p>
-</footer>
+{{template "footer" .}}
 
 </body>
 </html>

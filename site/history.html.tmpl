@@ -111,18 +111,7 @@
 
 </main>
 
-<footer>
-  {{- /* THE SOURCE LIST IS DISCLOSED AND THE SENTENCE BELOW IT IS NOT. The
-         list is two links per cited page and grows with the corpus; the
-         sentence under it names the scope, the basis and the document on
-         screen, and a reader must never have to open something to learn which
-         fiscal year they are reading. */}}
-  {{template "sources" .}}
-  <p class="subtle">
-    Scope {{.Scope}}. Projection: {{.ProjectionBy}}. Packaged by {{.ExportedBy}}.
-    This table is drawn from <a href="{{.DataPath}}">{{.DataPath}}</a>.
-  </p>
-</footer>
+{{template "footer" .}}
 
 </body>
 </html>

@@ -116,13 +116,7 @@
 
 </main>
 
-<footer>
-  {{template "sources" .}}
-  <p class="subtle">
-    Projection: {{.ProjectionBy}}. Packaged by {{.ExportedBy}}.
-    These tables are drawn from <a href="{{.DataPath}}">{{.DataPath}}</a>.
-  </p>
-</footer>
+{{template "footer" .}}
 
 </body>
 </html>

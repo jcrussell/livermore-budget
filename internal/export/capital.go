@@ -142,23 +142,26 @@ func buildCapitalPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		return capitalPageData{}, err
 	}
 
-	sources, _ := sourcesFor(meta.Sources, byID, pageTextBase, o.RecordsBase)
+	sources, sourcesPath, _, serr := citedSources(o, v.Path, meta.Sources, byID, pageTextBase)
+	if serr != nil {
+		return capitalPageData{}, serr
+	}
 	title := v.Title
 	if title == "" {
 		title = "Livermore's capital projects"
 	}
 	return capitalPageData{
 		chrome: chrome{
-			Title:        title,
-			Lede:         v.Lede,
-			Nav:          nav,
-			Sources:      sources,
-			ProjectionBy: meta.GeneratedBy,
-			ExportedBy:   o.GeneratedBy,
-			Projections:  projectionRefs(o, ix),
-			DataPath:     ix.PublishedPath(v.Projection),
-			Scope:        meta.Scope,
-			CaveatsHere:  cx.here(v.Path),
+			Title:       title,
+			Lede:        v.Lede,
+			Nav:         nav,
+			Sources:     sources,
+			SourcesPath: sourcesPath,
+			ExportedBy:  o.GeneratedBy,
+			Projections: projectionRefs(o, ix),
+			DataPath:    ix.PublishedPath(v.Projection),
+			Scope:       meta.Scope,
+			CaveatsHere: cx.here(v.Path),
 		},
 		Columns: columns,
 		Funds:   funds,

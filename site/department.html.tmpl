@@ -139,14 +139,7 @@
 
 </main>
 
-<footer>
-  {{template "sources" .}}
-  <p class="subtle">
-    Scope {{.Scope}}. Projection: {{.ProjectionBy}}. Packaged by {{.ExportedBy}}.
-    The column on screen is drawn from <a id="department-data-path" href="{{.DataPath}}">{{.DataPath}}</a>,
-    which holds both blocks.
-  </p>
-</footer>
+{{template "footer" .}}
 
 <template id="department-bar"><li class="department-bar"><div class="department-row" role="button" tabindex="0" aria-expanded="false"><span class="department-name"></span><span class="department-track"></span><span class="department-value"></span></div><div class="department-detail" hidden><ul class="department-groups"></ul><a class="department-to-tables" href="#department-heading">Its two blocks, cell by cell, below the bars</a></div></li></template>
 <template id="department-seg"><span class="department-seg"></span></template>

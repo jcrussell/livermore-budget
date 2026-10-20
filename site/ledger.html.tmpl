@@ -103,12 +103,7 @@
 <template id="ledger-row"><li class="bar-row" tabindex="0" role="button"><span class="bar-label"></span><span class="bar-track"><span class="bar-fill"></span></span><span class="bar-value"></span><span class="bar-share subtle"></span></li></template>
 </main>
 
-<footer>
-  {{template "sources" .}}
-  <p class="subtle">
-    Scope {{.Scope}}. Projection: {{.ProjectionBy}}. Packaged by {{.ExportedBy}}.
-  </p>
-</footer>
+{{template "footer" .}}
 
 </body>
 </html>
