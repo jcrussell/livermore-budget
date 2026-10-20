@@ -2,8 +2,12 @@
 /**
  * fisc — the text the page modules read and write alike: a figure in
  * dollars, a part's share of a whole, a page's JSON config, the fields of
- * its hash, and the top bar's year select. Every export is a function of its
- * arguments; importing it runs nothing.
+ * its hash, the top bar's year select, cited pages and the tip. Importing it
+ * runs nothing, and no export reads a global. Most exports are functions of
+ * their arguments; tipper keeps the pinned mark in the object it returns and
+ * adds listeners to the document it is handed, and pinnable and
+ * wireYearSelect add listeners to the elements they are handed, so each
+ * call wires another set.
  */
 
 /**
@@ -163,6 +167,17 @@ export function citedPages(docs, locators) {
     const links = d && d.pages && d.pages[String(p)];
     return { page: p, text: (links && links.text) || "", pdf: (links && links.pdf) || "" };
   }));
+}
+
+/**
+ * The cited page a table's own page link names: its `data-page` number, its
+ * href to the extracted text and its `data-pdf` to the city's PDF page,
+ * either "" where the link carries none.
+ * @param {Element} a
+ * @returns {CitedPage}
+ */
+export function linkedPage(a) {
+  return { page: Number(a.getAttribute("data-page")), text: a.getAttribute("href") || "", pdf: a.getAttribute("data-pdf") || "" };
 }
 
 /**

@@ -15,7 +15,7 @@ test("format.js imports with no DOM and no global, and exports only functions", 
   delete globalThis.d3;
   assert.equal(typeof globalThis.document, "undefined", "nothing installed a DOM before the import");
   const mod = await import(MODULE);
-  assert.deepEqual(Object.keys(mod).sort(), ["carryYear", "citedPages", "configOf", "dollars", "hashFields", "hashValue", "pageLinks", "pageOf", "pinnable", "placeTip", "selectYear", "share", "tipHint", "tipper", "wireYearSelect", "yearKey"]);
+  assert.deepEqual(Object.keys(mod).sort(), ["carryYear", "citedPages", "configOf", "dollars", "hashFields", "hashValue", "linkedPage", "pageLinks", "pageOf", "pinnable", "placeTip", "selectYear", "share", "tipHint", "tipper", "wireYearSelect", "yearKey"]);
   assert.ok(Object.values(mod).every((v) => typeof v === "function"));
 });
 
@@ -150,4 +150,16 @@ test("a tip names a cited page the config publishes no links for, unlinked, besi
   assert.deepEqual([...line.querySelectorAll("a")].map((a) => a.getAttribute("href")),
     ["extracted/d/pages/p0066.txt", "https://x/d.pdf#page=66"]);
   assert.deepEqual([...line.querySelectorAll("[data-unlinked]")].map((x) => x.textContent), ["p67", "p5"]);
+});
+
+// A table's own page link is read as the page it names, its text and its
+// PDF, and a link carrying no PDF reads "" for it.
+// Mutation: read the PDF from href in linkedPage -- the first arm goes red;
+// drop its `|| ""` -- the second does.
+test("linkedPage reads the page, text and PDF a table's page link names", async () => {
+  const { linkedPage } = await import(MODULE);
+  const doc = new JSDOM(`<a data-page="97" href="extracted/d/pages/p0097.txt" data-pdf="d.pdf#page=97">p97</a><a data-page="98" href="extracted/d/pages/p0098.txt">p98</a>`).window.document;
+  const [both, bare] = Array.from(doc.querySelectorAll("a[data-page]")).map(linkedPage);
+  assert.deepEqual(both, { page: 97, text: "extracted/d/pages/p0097.txt", pdf: "d.pdf#page=97" });
+  assert.deepEqual(bare, { page: 98, text: "extracted/d/pages/p0098.txt", pdf: "" });
 });

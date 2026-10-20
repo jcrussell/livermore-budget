@@ -8,7 +8,7 @@
  * runs nothing; the template calls boot().
  */
 
-import { dollars, pageLinks, pinnable, tipHint, tipper } from "./format.js";
+import { dollars, linkedPage, pageLinks, pinnable, tipHint, tipper } from "./format.js";
 
 /** How many categories a figure names before the rest fold into one tail. */
 export const NAMED = 5;
@@ -195,9 +195,7 @@ export function draw(section, tips = tipper(section.ownerDocument)) {
   /** @param {Band} b @param {number} i @returns {import("./format.js").CitedPage[]} */
   const pagesOf = (b, i) => Array.from(table.tBodies).flatMap((body) => Array.from(body.rows))
     .filter((tr) => b.members.includes(tr.dataset.category || ""))
-    .flatMap((tr) => Array.from(tr.querySelectorAll(`td[data-column="${i}"] a[data-page]`)).map((a) => ({
-      page: Number(a.getAttribute("data-page")), text: a.getAttribute("href") || "", pdf: a.getAttribute("data-pdf") || "",
-    })));
+    .flatMap((tr) => Array.from(tr.querySelectorAll(`td[data-column="${i}"] a[data-page]`)).map(linkedPage));
   // Rounded once, here, so the stack's height is the sum of the heights drawn.
   const px = (/** @type {number} */ cents) =>
     Math.round(100 * Math.max(LEAST, tallest ? (HEIGHT * Math.abs(cents)) / tallest : 0)) / 100;

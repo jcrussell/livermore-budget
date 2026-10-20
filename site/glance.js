@@ -8,7 +8,7 @@
  * written by Go. Importing it runs nothing; the template calls boot().
  */
 
-import { dollars, pageLinks, pinnable, share, tipHint, tipper } from "./format.js";
+import { dollars, linkedPage, pageLinks, pinnable, share, tipHint, tipper } from "./format.js";
 
 /** How many groups a bar names before the rest fold into one tail. */
 export const NAMED = 5;
@@ -145,9 +145,7 @@ export function draw(section, tips = tipper(section.ownerDocument)) {
   /** @param {Segment} s @returns {import("./format.js").CitedPage[]} */
   const pagesOf = (s) => Array.from(table.tBodies).flatMap((b) => Array.from(b.rows))
     .filter((tr) => (s.id ? tr.dataset.group === s.id : !named.has(tr.dataset.group || "")))
-    .flatMap((tr) => Array.from(tr.querySelectorAll("a[data-page]")).map((a) => ({
-      page: Number(a.getAttribute("data-page")), text: a.getAttribute("href") || "", pdf: a.getAttribute("data-pdf") || "",
-    })));
+    .flatMap((tr) => Array.from(tr.querySelectorAll("a[data-page]")).map(linkedPage));
   const heading = section.querySelector("h3");
   const title = heading ? (heading.textContent || "").trim() : "";
 
