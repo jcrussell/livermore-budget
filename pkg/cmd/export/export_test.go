@@ -2521,9 +2521,11 @@ func TestEveryPageALinkCitesHasItsLinksInTheConfig(t *testing.T) {
 
 // TestTheSourcesPageListsEachInferredCellOnce: over the exported client
 // subset, each column's "What we inferred" lists every set of cells its
-// derived ribbons cite exactly once, under a derived node when any ribbon
-// drawing those cells has a derived end and among the flows between printed
-// nodes only when none does, each at its printed sign.
+// derived ribbons cite exactly once -- as a flow citing exactly those cells,
+// or, for a total finer flows restate, inside one flow citing more -- under a
+// derived node when any ribbon drawing those cells has a derived end and
+// among the flows between printed nodes only when none does, each at its
+// printed sign.
 // Mutation: key inferredColumns' listing by a flow's ends and fact ids --
 // every hub leg repeating a leaf's cells is listed again, among the printed
 // nodes' flows, and both count arms go red.
@@ -2622,12 +2624,30 @@ func TestTheSourcesPageListsEachInferredCellOnce(t *testing.T) {
 			continue
 		}
 		section, _, _ := strings.Cut(rest, "</section>")
-		underNodes, between := 0, 0
-		for _, s := range sets {
+		var listed [][]string
+		for _, m := range regexp.MustCompile(`<li data-facts="([^"]*)">`).FindAllStringSubmatch(section, -1) {
+			listed = append(listed, strings.Fields(m[1]))
+		}
+		// Each set is stated by the fewest-celled flow citing all of it: its
+		// own, or the one finer flow a total it is folded into.
+		underNodes, between := map[int]bool{}, map[int]bool{}
+		for key, s := range sets {
+			ids := strings.Fields(key)
+			at := -1
+			for i, f := range listed {
+				if !slices.ContainsFunc(ids, func(id string) bool { return !slices.Contains(f, id) }) &&
+					(at < 0 || len(f) < len(listed[at])) {
+					at = i
+				}
+			}
+			if at < 0 {
+				t.Errorf("%s lists no flow citing the cells %s", path, key)
+				continue
+			}
 			if s.derivedEnd {
-				underNodes++
+				underNodes[at] = true
 			} else {
-				between++
+				between[at] = true
 			}
 			if s.cents < 0 {
 				contra++
@@ -2636,11 +2656,11 @@ func TestTheSourcesPageListsEachInferredCellOnce(t *testing.T) {
 				}
 			}
 		}
-		if got := strings.Count(section, "<li>◇ "); got != underNodes {
-			t.Errorf("%s lists %d flows under derived nodes, want %d: one per set of cells with a derived end", path, got, underNodes)
+		if got := len(regexp.MustCompile(`<li data-facts="[^"]*">◇ `).FindAllString(section, -1)); got != len(underNodes) {
+			t.Errorf("%s lists %d flows under derived nodes, want %d: one per set of cells with a derived end", path, got, len(underNodes))
 		}
-		if got := strings.Count(section, "both endpoints are printed by the city"); got != between {
-			t.Errorf("%s lists %d flows between printed nodes, want %d: one per set of cells no derived end draws", path, got, between)
+		if got := strings.Count(section, "both endpoints are printed by the city"); got != len(between) {
+			t.Errorf("%s lists %d flows between printed nodes, want %d: one per set of cells no derived end draws", path, got, len(between))
 		}
 	}
 	if repeated == 0 {

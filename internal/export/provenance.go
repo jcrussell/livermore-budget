@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"path"
 	"slices"
 	"strconv"
@@ -303,11 +304,13 @@ type inferredNode struct {
 	Flows                        []inferredFlow
 }
 
-// inferredFlow is one derived flow with the cents its projection link carries
-// and the pages that link's locators cite, each composed by sourcesFor.
+// inferredFlow is one derived flow with the cents its projection link
+// carries, the facts it states, and the pages its locators cite, each
+// composed by sourcesFor.
 type inferredFlow struct {
 	From, To string
 	Dollars  string
+	Facts    string
 	Pages    []pageRef
 }
 
@@ -316,6 +319,7 @@ type inferredDocument struct {
 	Nodes []struct {
 		ID         string `json:"id"`
 		Label      string `json:"label"`
+		Parent     string `json:"parent"`
 		Derived    bool   `json:"derived"`
 		Rationale  string `json:"rationale"`
 		SourceNote string `json:"source_note"`
@@ -327,11 +331,22 @@ type inferredDocument struct {
 		FactIDs    []string     `json:"fact_ids"`
 		Locators   []sourceMeta `json:"locators"`
 		Derived    bool         `json:"derived"`
+		Repeats    string       `json:"repeats"`
 	} `json:"links"`
 	Metadata struct {
 		FiscalYearLabel string `json:"fiscal_year_label"`
 		Basis           string `json:"basis"`
 	} `json:"metadata"`
+}
+
+// cellEnds is the source and target a project.CellKey spells.
+func cellEnds(key string) (source, target string, ok bool) {
+	source, rest, ok := strings.Cut(key, " -> ")
+	kind := strings.LastIndexByte(rest, ' ')
+	if !ok || source == "" || kind <= 0 {
+		return "", "", false
+	}
+	return source, rest[:kind], true
 }
 
 // inferredColumns gathers every derived node and every derived flow out of
@@ -340,26 +355,42 @@ type inferredDocument struct {
 // A flow is the cells it cites: each set of fact ids is listed once however
 // many ribbons draw it -- the leaf, a hub leg repeating it, another schedule
 // stating it -- and two ribbons stating one set at two values refuse the
-// export. Of the ribbons drawing a set, the listed one is the first whose
-// target is derived, else the first whose source is, else the first; it is
-// listed under that derived end, and under the column only when no ribbon
-// drawing its cells has a derived end. The derived nodes are the column's
-// across all its schedules, gathered before any flow is filed, so the result
-// does not depend on the order the stems sort in. A column inferring nothing
-// is listed with nothing. refs is the sources page's composed citations, and
-// a flow citing a page it does not list is refused.
+// export. A flow is named at its leaf's ends, which a hub leg's Repeats
+// spells, so a fund's draw reads as that fund's whichever ribbon is listed.
+// Of the ribbons drawing a set, the listed one is the first whose target is
+// derived, else the first whose source is, else the first, the finer ends
+// first among equals; it is listed under that derived end, and under the
+// column when no ribbon drawing its cells has a derived end.
+//
+// A TOTAL IS LISTED AS THE FINER FLOWS RESTATING IT. A flow is a total where
+// the column's other listed flows whose ends are its own or members of them,
+// by the Parent its schedules declare, and not both its own, sum to its
+// cents: the spine's draw on a fund group, and the expansion's draws on the
+// group's funds. The total is not listed and its cells stay cited: by the
+// finer flows already, where their facts include its own, or by the one
+// finer flow, which then cites the total's pages as well. A total restated
+// by several flows that do not cite its cells stays listed beside them. The
+// finest flows are taken first, so a total over totals is held to them.
+//
+// The derived nodes are the column's across all its schedules, gathered
+// before any flow is filed, so the result does not depend on the order the
+// stems sort in. A column inferring nothing is listed with nothing. refs is
+// the sources page's composed citations, and a flow citing a page it does
+// not list is refused.
 func inferredColumns(o *Options, ix ColumnIndex, refs map[Citation]pageRef) ([]inferredColumn, error) {
 	type ribbon struct {
 		stem   string
-		labels map[string]string
 		source string
 		target string
 		cents  int64
+		facts  []string
 		locs   []sourceMeta
 	}
 	type column struct {
 		inferredColumn
 		nodeAt  map[string]int
+		labels  map[string]string
+		parents map[string][]string
 		order   []string
 		ribbons map[string][]ribbon
 	}
@@ -376,12 +407,16 @@ func inferredColumns(o *Options, ix ColumnIndex, refs map[Citation]pageRef) ([]i
 		col := byPath[path]
 		if col == nil {
 			col = &column{inferredColumn: inferredColumn{Label: ledeOf(d.Metadata.FiscalYearLabel, d.Metadata.Basis), Path: path},
-				nodeAt: map[string]int{}, ribbons: map[string][]ribbon{}}
+				nodeAt: map[string]int{}, labels: map[string]string{}, parents: map[string][]string{}, ribbons: map[string][]ribbon{}}
 			byPath[path] = col
 		}
-		labels := make(map[string]string, len(d.Nodes))
 		for _, n := range d.Nodes {
-			labels[n.ID] = n.Label
+			if _, ok := col.labels[n.ID]; !ok {
+				col.labels[n.ID] = n.Label
+			}
+			if n.Parent != "" && !slices.Contains(col.parents[n.ID], n.Parent) {
+				col.parents[n.ID] = append(col.parents[n.ID], n.Parent)
+			}
 			if !n.Derived {
 				continue
 			}
@@ -394,11 +429,19 @@ func inferredColumns(o *Options, ix ColumnIndex, refs map[Citation]pageRef) ([]i
 			if !l.Derived {
 				continue
 			}
+			source, target := l.Source, l.Target
+			if l.Repeats != "" {
+				var ok bool
+				if source, target, ok = cellEnds(l.Repeats); !ok {
+					return nil, fmt.Errorf("%s draws %s -> %s repeating %q, which spells no leaf's ends",
+						stem, l.Source, l.Target, l.Repeats)
+				}
+			}
 			ids := slices.Clone(l.FactIDs)
 			slices.Sort(ids)
 			key := strings.Join(ids, " ")
 			if len(ids) == 0 {
-				key = "\x00" + l.Source + "\x00" + l.Target
+				key = "\x00" + source + "\x00" + target
 			}
 			if was := col.ribbons[key]; len(was) > 0 && was[0].cents != l.ValueCents {
 				return nil, fmt.Errorf("%s states the derived flow %s -> %s at %s, and another ribbon of %s citing its cells at %s",
@@ -407,13 +450,49 @@ func inferredColumns(o *Options, ix ColumnIndex, refs map[Citation]pageRef) ([]i
 			if _, ok := col.ribbons[key]; !ok {
 				col.order = append(col.order, key)
 			}
-			col.ribbons[key] = append(col.ribbons[key], ribbon{stem: stem, labels: labels,
-				source: l.Source, target: l.Target, cents: l.ValueCents, locs: l.Locators})
+			col.ribbons[key] = append(col.ribbons[key], ribbon{stem: stem, source: source, target: target,
+				cents: l.ValueCents, facts: ids, locs: l.Locators})
 		}
 	}
 	out := make([]inferredColumn, 0, len(byPath))
 	for _, path := range sortedKeys(byPath) {
 		col := byPath[path]
+		// within is whether node fine is coarse or a member of it, at any
+		// depth, under any schedule's Parent: one node is a member of a
+		// department in one schedule and of an object category in another.
+		within := func(fine, coarse string) bool {
+			seen := map[string]bool{}
+			for next := []string{fine}; len(next) > 0; {
+				id := next[0]
+				next = next[1:]
+				if id == coarse {
+					return true
+				}
+				if !seen[id] {
+					seen[id] = true
+					next = append(next, col.parents[id]...)
+				}
+			}
+			return false
+		}
+		// levels is how many members deep a node is at most, and depth a
+		// ribbon's ends' together. A cycle stops where it closes.
+		var levels func(id string, seen map[string]bool) int
+		levels = func(id string, seen map[string]bool) int {
+			if seen[id] {
+				return 0
+			}
+			seen[id] = true
+			n := 0
+			for _, p := range col.parents[id] {
+				n = max(n, 1+levels(p, seen))
+			}
+			delete(seen, id)
+			return n
+		}
+		depth := func(r ribbon) int {
+			return levels(r.source, map[string]bool{}) + levels(r.target, map[string]bool{})
+		}
 		rank := func(r ribbon) int {
 			if _, ok := col.nodeAt[r.target]; ok {
 				return 0
@@ -423,13 +502,67 @@ func inferredColumns(o *Options, ix ColumnIndex, refs map[Citation]pageRef) ([]i
 			}
 			return 2
 		}
+		type row struct {
+			ribbon
+			cited map[string]bool
+			gone  bool
+		}
+		rows := make([]*row, 0, len(col.order))
 		for _, key := range col.order {
 			rs := col.ribbons[key]
 			r := rs[0]
 			for _, c := range rs[1:] {
-				if rank(c) < rank(r) {
+				if cmp.Or(cmp.Compare(rank(c), rank(r)), cmp.Compare(depth(r), depth(c))) < 0 {
 					r = c
 				}
+			}
+			cited := make(map[string]bool, len(r.facts))
+			for _, id := range r.facts {
+				cited[id] = true
+			}
+			r.locs = slices.Clone(r.locs)
+			rows = append(rows, &row{ribbon: r, cited: cited})
+		}
+		finest := slices.Clone(rows)
+		slices.SortStableFunc(finest, func(a, b *row) int { return cmp.Compare(depth(b.ribbon), depth(a.ribbon)) })
+		for _, total := range finest {
+			var (
+				finer []*row
+				sum   int64
+			)
+			for _, f := range rows {
+				if f == total || f.gone || f.source == total.source && f.target == total.target {
+					continue
+				}
+				if within(f.source, total.source) && within(f.target, total.target) {
+					finer = append(finer, f)
+					sum += f.cents
+				}
+			}
+			if len(finer) == 0 || sum != total.cents {
+				continue
+			}
+			covered := len(total.facts) > 0
+			for _, id := range total.facts {
+				if !slices.ContainsFunc(finer, func(f *row) bool { return f.cited[id] }) {
+					covered = false
+				}
+			}
+			switch {
+			case covered:
+			case len(finer) == 1:
+				for _, id := range total.facts {
+					finer[0].cited[id] = true
+				}
+				finer[0].locs = append(finer[0].locs, total.locs...)
+			default:
+				continue
+			}
+			total.gone = true
+		}
+		for _, r := range rows {
+			if r.gone {
+				continue
 			}
 			var pages []pageRef
 			for _, s := range unionSources(r.locs) {
@@ -445,9 +578,9 @@ func inferredColumns(o *Options, ix ColumnIndex, refs map[Citation]pageRef) ([]i
 			if len(pages) == 0 {
 				return nil, fmt.Errorf("%s's derived flow %s -> %s cites no page", r.stem, r.source, r.target)
 			}
-			flow := inferredFlow{From: cmp.Or(r.labels[r.source], r.source), To: cmp.Or(r.labels[r.target], r.target),
-				Dollars: amount.Cents(r.cents).Dollars(), Pages: pages}
-			switch rank(r) {
+			flow := inferredFlow{From: cmp.Or(col.labels[r.source], r.source), To: cmp.Or(col.labels[r.target], r.target),
+				Dollars: amount.Cents(r.cents).Dollars(), Facts: strings.Join(slices.Sorted(maps.Keys(r.cited)), " "), Pages: pages}
+			switch rank(r.ribbon) {
 			case 0:
 				i := col.nodeAt[r.target]
 				col.Nodes[i].Flows = append(col.Nodes[i].Flows, flow)

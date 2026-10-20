@@ -36,9 +36,12 @@ func TestInferredColumnsListsEachCellOnce(t *testing.T) {
 	if err != nil {
 		t.Fatalf("inferredColumns: %v", err)
 	}
-	flow := inferredFlow{From: "General Fund", To: "Police", Dollars: "$1", Pages: []pageRef{inferredRefs()[Citation{DocID: "d", Page: 66}]}}
+	flow := func(fact string) inferredFlow {
+		return inferredFlow{From: "General Fund", To: "Police", Dollars: "$1", Facts: fact,
+			Pages: []pageRef{inferredRefs()[Citation{DocID: "d", Page: 66}]}}
+	}
 	want := []inferredColumn{{Label: "FY 2025-26 adopted", Path: "fy2026-adopted.json",
-		Flows: []inferredFlow{flow, flow}}}
+		Flows: []inferredFlow{flow("f1"), flow("f2")}}}
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("inferredColumns (-want +got):\n%s", diff)
 	}
@@ -71,11 +74,11 @@ func TestInferredColumnsFilesAHubLegUnderItsDerivedNode(t *testing.T) {
 		want []inferredFlow
 	}{
 		{"hub first", hub, leaf, []inferredFlow{
-			{From: "Fund Balance Draw", To: "General Fund", Dollars: "$1.50", Pages: []pageRef{p66}},
-			{From: "Fund Balance Draw", To: "Utility", Dollars: "-$2.50", Pages: []pageRef{p67}}}},
+			{From: "Fund Balance Draw", To: "General Fund", Dollars: "$1.50", Facts: "f1 f2", Pages: []pageRef{p66}},
+			{From: "Fund Balance Draw", To: "Utility", Dollars: "-$2.50", Facts: "f3", Pages: []pageRef{p67}}}},
 		{"leaf first", leaf, hub, []inferredFlow{
-			{From: "Fund Balance Draw", To: "General Fund", Dollars: "$1.50", Pages: []pageRef{p66}},
-			{From: "Fund Balance Draw", To: "Utility", Dollars: "-$2.50", Pages: []pageRef{p67}}}},
+			{From: "Fund Balance Draw", To: "General Fund", Dollars: "$1.50", Facts: "f1 f2", Pages: []pageRef{p66}},
+			{From: "Fund Balance Draw", To: "Utility", Dollars: "-$2.50", Facts: "f3", Pages: []pageRef{p67}}}},
 	} {
 		o := &Options{Projections: map[string][]byte{"a": []byte(tc.a), "b": []byte(tc.b)}}
 		got, err := inferredColumns(o, ix, refs)
@@ -121,9 +124,9 @@ func TestInferredColumnsListsAFlowIntoADerivedNodeUnderIt(t *testing.T) {
 	p66, p67 := refs[Citation{DocID: "d", Page: 66}], refs[Citation{DocID: "d", Page: 67}]
 	want := []inferredColumn{{Label: "FY 2026-27 adopted", Path: "fy2027-adopted.json",
 		Nodes: []inferredNode{{Label: "Fund balance drawn", Rationale: "why", SourceNote: "note", Flows: []inferredFlow{
-			{From: "Fund balance drawn", To: "General Fund", Dollars: "$1.50", Pages: []pageRef{p66}},
-			{From: "Fund balance drawn", To: "General Fund", Dollars: "$2.50", Pages: []pageRef{p67}},
-			{From: "Capital", To: "Fund balance drawn", Dollars: "$3", Pages: []pageRef{p67}},
+			{From: "Fund balance drawn", To: "General Fund", Dollars: "$1.50", Facts: "f1", Pages: []pageRef{p66}},
+			{From: "Fund balance drawn", To: "General Fund", Dollars: "$2.50", Facts: "f2", Pages: []pageRef{p67}},
+			{From: "Capital", To: "Fund balance drawn", Dollars: "$3", Facts: "f3", Pages: []pageRef{p67}},
 		}}}}}
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("inferredColumns (-want +got):\n%s", diff)
@@ -167,5 +170,62 @@ func TestBuildCellsCitesThroughSourcesFor(t *testing.T) {
 		columns, meta, newCellCites(byID, base))
 	if err == nil || !strings.Contains(err.Error(), "gone p67") {
 		t.Errorf("buildCells over an undescribed document: err = %v, want a refusal naming gone p67", err)
+	}
+}
+
+// TestInferredColumnsListsATotalAsTheFinerFlowsRestatingIt: a derived flow
+// whose ends' members carry flows summing to its cents is not listed, its
+// cells cited by those flows -- already, or added to the one of them -- and
+// one restated by several flows not citing its cells stays listed beside
+// them.
+// Mutation: never drop a restated total -- g's draw and h's contribution are
+// listed beside the flows restating them; drop the citation added to the one
+// finer flow -- h's cell is cited by no flow listed.
+func TestInferredColumnsListsATotalAsTheFinerFlowsRestatingIt(t *testing.T) {
+	const meta = `{"schema_version":1,"projection":"p","metadata":{"fiscal_year_label":"FY 2026-27","basis":"adopted"},`
+	link := func(src, dst string, cents int, page int, facts ...string) string {
+		return `{"source":"` + src + `","target":"` + dst + `","value_cents":` + strconv.Itoa(cents) +
+			`,"fact_ids":["` + strings.Join(facts, `","`) + `"],"locators":[{"doc_id":"d","pages":[` + strconv.Itoa(page) + `]}],"derived":true}`
+	}
+	nodes := `"nodes":[{"id":"draw","label":"draw","derived":true},{"id":"in","label":"in","derived":true},` +
+		`{"id":"g","label":"g"},{"id":"h","label":"h"},{"id":"k","label":"k"},` +
+		`{"id":"g1","label":"g1","parent":"g"},{"id":"g2","label":"g2","parent":"g"},{"id":"g-only","label":"g-only","parent":"g"},` +
+		`{"id":"h1","label":"h1","parent":"h"},{"id":"k1","label":"k1","parent":"k"},{"id":"k2","label":"k2","parent":"k"}],"links":[`
+	spine := meta + nodes + strings.Join([]string{
+		link("draw", "g", 300, 66, "G"),
+		link("h", "in", 50, 66, "H"),
+		link("k", "in", 70, 66, "K"),
+	}, ",") + `]}`
+	expansion := meta + nodes + strings.Join([]string{
+		link("draw", "g1", 100, 67, "a1"),
+		link("draw", "g2", 150, 67, "a2"),
+		link("draw", "g-only", 50, 67, "G", "a1"),
+		link("h1", "in", 50, 67, "c1", "c2"),
+		link("k1", "in", 30, 67, "x"),
+		link("k2", "in", 40, 67, "y"),
+	}, ",") + `]}`
+	ix := ColumnIndex{columns: map[string]string{"a": "fy2027-adopted.json", "b": "fy2027-adopted.json"}}
+	refs := inferredRefs()
+	p66, p67 := refs[Citation{DocID: "d", Page: 66}], refs[Citation{DocID: "d", Page: 67}]
+	o := &Options{Projections: map[string][]byte{"a": []byte(spine), "b": []byte(expansion)}}
+	got, err := inferredColumns(o, ix, refs)
+	if err != nil {
+		t.Fatalf("inferredColumns: %v", err)
+	}
+	want := []inferredColumn{{Label: "FY 2026-27 adopted", Path: "fy2027-adopted.json", Nodes: []inferredNode{
+		{Label: "draw", Flows: []inferredFlow{
+			{From: "draw", To: "g1", Dollars: "$1", Facts: "a1", Pages: []pageRef{p67}},
+			{From: "draw", To: "g2", Dollars: "$1.50", Facts: "a2", Pages: []pageRef{p67}},
+			{From: "draw", To: "g-only", Dollars: "$0.50", Facts: "G a1", Pages: []pageRef{p67}},
+		}},
+		{Label: "in", Flows: []inferredFlow{
+			{From: "k", To: "in", Dollars: "$0.70", Facts: "K", Pages: []pageRef{p66}},
+			{From: "h1", To: "in", Dollars: "$0.50", Facts: "H c1 c2", Pages: []pageRef{p66, p67}},
+			{From: "k1", To: "in", Dollars: "$0.30", Facts: "x", Pages: []pageRef{p67}},
+			{From: "k2", To: "in", Dollars: "$0.40", Facts: "y", Pages: []pageRef{p67}},
+		}},
+	}}}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("inferredColumns (-want +got):\n%s", diff)
 	}
 }

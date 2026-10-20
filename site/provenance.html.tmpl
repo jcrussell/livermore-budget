@@ -70,14 +70,14 @@
       {{- if .Flows}}
       <ul class="inferred-flows">
         {{- range .Flows}}
-        <li>{{template "inferred-flow" .}}</li>
+        <li data-facts="{{.Facts}}">{{template "inferred-flow" .}}</li>
         {{- end}}
       </ul>
       {{- end}}
     </li>
     {{- end}}
     {{- range .Flows}}
-    <li><div class="what">{{template "inferred-flow" .}}</div><div class="why">{{$.Wording.FlowInferred}}</div></li>
+    <li data-facts="{{.Facts}}"><div class="what">{{template "inferred-flow" .}}</div><div class="why">{{$.Wording.FlowInferred}}</div></li>
     {{- end}}
     {{- if and (not .Nodes) (not .Flows)}}
     <li class="subtle">Nothing in this column is inferred: every node and flow is printed by the city.</li>
