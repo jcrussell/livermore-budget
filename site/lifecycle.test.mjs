@@ -14,7 +14,7 @@ const FIRST_LEDE = "FY 2025-26 adopted";
 
 const lede = (document) => document.getElementById("lede-year").textContent;
 const marks = (document) => document.querySelectorAll("#chart g.node").length;
-const rows = (document) => document.querySelector("#flow-table tbody").children.length;
+const counts = (document) => document.getElementById("counts-line").textContent;
 const said = (document) => refusals(document).map((b) => b.textContent);
 
 /**
@@ -278,26 +278,26 @@ describe("a switch that fails", () => {
     const drewAnyway = [];
     for (const bad of fixtures) {
       const { document } = await onFirstYear({ plan: { "fy2027-adopted.json": { doc: secondColumn(bad.mutate) } } });
-      const rowsFirst = rows(document);
+      const countsFirst = counts(document);
       // The first year drew, so there IS a year for the words to disagree
       // with; without this a page that never drew at all classifies as
       // "drew anyway" and the test passes over nothing.
       assert.equal(lede(document), FIRST_LEDE, `${bad.key}: the first year did not draw`);
-      assert.ok(rowsFirst > 0, `${bad.key}: the first year drew no table rows`);
+      assert.ok(marks(document) > 0, `${bad.key}: the first year drew no marks`);
       clickYear(document, SECOND);
       await settle();
 
       const banners = said(document);
       const onFirst = lede(document) === FIRST_LEDE;
-      const tableFrozen = rows(document) === rowsFirst;
+      const countsFrozen = counts(document) === countsFirst;
       // Two consistent outcomes and one that is not. Refused: a banner, the
-      // old year's words, the old year's table. Drew: no banner, the new
+      // old year's words, the old year's counts. Drew: no banner, the new
       // year's words. Anything else is the words and the chart disagreeing.
-      if (banners.length && onFirst && tableFrozen) refused.push(bad.key);
+      if (banners.length && onFirst && countsFrozen) refused.push(bad.key);
       else if (!banners.length && !onFirst) drewAnyway.push(bad.key);
       else {
         halves.push(`${bad.key} (${banners.length} banner(s), lede "${lede(document)}", ` +
-          `${rows(document)} rows against ${rowsFirst})`);
+          `counts "${counts(document)}" against "${countsFirst}")`);
       }
     }
     t.diagnostic(halves.length

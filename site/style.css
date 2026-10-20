@@ -1250,10 +1250,6 @@ svg.sankey .node {
   border-style: dotted;
 }
 
-#flow-table tr.contra td.num {
-  color: var(--critical);
-}
-
 .chip.derived {
   border-style: dashed;
 }
@@ -1371,12 +1367,6 @@ td.num {
   text-align: right;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
-}
-
-td.ids {
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--ink-2);
 }
 
 .table-scroll {
@@ -2382,10 +2372,6 @@ noscript p {
 .key-swatch.derived {
   outline: 1px dashed var(--ink-2);
   outline-offset: -1px;
-}
-.sides-table tr.contra td,
-.sides-table tr.contra th {
-  color: var(--ink-2);
 }
 @media (max-width: 640px) {
   .bar-row {

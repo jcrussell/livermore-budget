@@ -90,7 +90,6 @@ func TestTheWordingFillsEveryPlaceholderTheClientHands(t *testing.T) {
 		"filter_only":         {"label"},
 		"filter_out":          {"names"},
 		"caveat_chip":         {"n"},
-		"inferred_flows":      {"flows", "figure", "ends"},
 		"aggregate_label":     {"folded", "word"},
 		"aggregate_rationale": {"folded", "word"},
 		"aggregate_note":      {"folded", "total", "cap"},

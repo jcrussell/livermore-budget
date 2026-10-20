@@ -110,19 +110,7 @@ describe("a year's words are the packager's, painted whole", () => {
 });
 
 describe("a year switch repaints the drawn page", () => {
-  test("a year switch replaces the flow table's rows rather than appending them", async (t) => {
-    const { app, document } = await bootedApp({ checkedStem: "sankey" });
-    const body = document.querySelector("#flow-table tbody");
-    const links = app.projection.links.length;
-    const afterFirst = body.children.length;
-    clickYear(document, "sankey-2027");
-    await settle();
-    const afterSecond = body.children.length;
-    t.diagnostic(`${afterFirst} rows for ${links} links, ${afterSecond} after switching year`);
-    assert.equal(afterFirst, links);
-    assert.equal(afterSecond, app.projection.links.length);
-    assert.ok(afterSecond < afterFirst * 2);
-  });
+
   test("paint() rewrites every legend swatch's background", async (t) => {
     const { app, document } = await bootedApp({ checkedStem: "sankey" });
     const swatches = [...document.querySelectorAll("#legend button .key")];
@@ -296,35 +284,7 @@ describe("a year switch and the splits on screen", () => {
       assert.equal(refusals(document).length, 1, how);
     }
   });
-  test("a year whose table will not build leaves the lay-out of the year it was", async (t) => {
-    // Only citations reads CONFIG.docs unguarded, so the throw is the table's.
-    const config = structuredClone(pageFixture().config);
-    const { app, document } = await bootedApp({ checkedStem: "sankey", config });
-    const g = [...document.querySelectorAll("#chart g.node")].find((m) => m.__data__.id === "fund-group/general");
-    app.pin(g.__data__);
-    const read = () => ({
-      share: app.shareOf(g.__data__), laid: app.laidNodes, groups: app.groupIndex,
-      table: document.querySelector("#flow-table tbody").innerHTML, projection: app.projection,
-      year: app.column.column.fiscal_year,
-    });
-    const before = read();
-    delete config.docs;
-    clickYear(document, "sankey-2027");
-    await settle();
-    const after = read();
-    const banners = refusals(document).map((b) => b.textContent);
-    t.diagnostic(`after the refused switch: FY${after.year}, share "${after.share}" against "${before.share}", banners ${JSON.stringify(banners)}`);
-    assert.equal(banners.length, 1);
-    assert.ok(before.share !== "");
-    assert.equal(after.year, before.year);
-    assert.equal(after.share, before.share);
-    // Identity, by ===: a failing assert.equal formats both operands, and a
-    // laid node reaches the whole laid graph.
-    assert.ok(after.laid === before.laid, "the refusal left another lay-out bound");
-    assert.ok(after.groups === before.groups, "the refusal left another hue index bound");
-    assert.equal(after.table, before.table);
-    assert.equal(after.projection, before.projection);
-  });
+
   test("a year switch keeps a tail drawn out, drawing the new year's members whole", async (t) => {
     const { app, document } = await bootedApp({ checkedStem: "sankey" });
     const group = "fund-group/special-revenue";

@@ -60,40 +60,15 @@
   <h2 id="side-{{.Tier}}">{{.Heading}}</h2>
   <p class="sides-total subtle"></p>
   {{- /* Hidden until the script fills it from the templates at the foot of
-         main; with no script the table below carries nothing either, so
-         the page says so. */}}
+         main; with no script the page says so. */}}
   <figure class="sides-figure" hidden></figure>
 </section>
 {{- end}}
 </div>
 
-<noscript><p class="refusal">This page draws its bars in the browser and lists every bar in a table under them; with scripts off it shows neither. <a href="index.html">The glance page</a> needs none: it lists, for each year, the printed cells behind where the money comes from, what it buys and which department spends it.</p></noscript>
+<noscript><p class="refusal">This page draws its bars in the browser; with scripts off it shows none. <a href="index.html">The glance page</a> needs none: it lists, for each year, the printed cells behind where the money comes from, what it buys and which department spends it.</p></noscript>
 
 <div class="tooltip" id="tooltip" role="status" aria-live="polite" hidden></div>
-
-<details class="apparatus" id="table-view">
-  <summary>
-    <h3>Every bar as a table</h3>
-    <span class="apparatus-hint"><span id="sides-count"></span></span>
-  </summary>
-  <div class="table-scroll">
-  <table class="series-table sides-table" id="sides-table">
-    <thead>
-      <tr>
-        <th scope="col">Side</th>
-        <th scope="col">Tile</th>
-        <th scope="col">Under</th>
-        <th scope="col" class="num">Amount</th>
-        <th scope="col" class="num">Share ◇</th>
-        <th scope="col">Pages</th>
-        <th scope="col">Note</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-  </div>
-  <p class="subtle">The column drawn: <a id="sides-data-path" href="{{.Opens}}">{{.Opens}}</a>.</p>
-</details>
 
 {{- template "caveats-line" .CaveatsHere}}
 

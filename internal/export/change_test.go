@@ -133,7 +133,7 @@ func TestChangePageRendersEachKindAsItsOwnFigure(t *testing.T) {
 	html := readFile(t, dir, "change.html")
 	for _, want := range []string{"<h1>A change title</h1>", "A change lede.", `import { boot } from "./change.js"`,
 		`href="index.html"`, `data-figure="audited-revenue" data-chart="true"`, `data-figure="audited-excess" data-chart="false"`,
-		`data-figure="budget-revenue" data-chart="true"`, `<details class="change-cells" open>`,
+		`data-figure="budget-revenue" data-chart="true"`, `<div class="change-cells">`,
 		`data-column="1" data-cents="12000">`, `href="https://example.test/acfr.pdf#page=168"`} {
 		if !strings.Contains(html, want) {
 			t.Errorf("change.html does not contain %q", want)

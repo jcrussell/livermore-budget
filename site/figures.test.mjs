@@ -90,10 +90,6 @@ for (const year of YEARS) {
       assert.equal(shown(app, document, mark.__data__).tip, year.eraf);
       const tspans = [...mark.querySelectorAll("tspan")].map((s) => s.textContent);
       assert.ok(tspans.includes("  " + shortDollars(printed.value_cents)), JSON.stringify(tspans));
-      const row = [...document.querySelectorAll("#flow-table tbody tr")]
-        .find((tr) => tr.children[0].textContent === "ERAF");
-      assert.ok(row, "the flow table has no ERAF row");
-      assert.equal(row.children[2].textContent, year.eraf);
     });
 
     test(`${year.column}: a node's share of its column is its cited cents over the column's, and each mark is laid at its cents`, async (t) => {
@@ -155,23 +151,6 @@ for (const year of YEARS) {
       }
     });
 
-    test(`${year.column}: the inferred list totals every inferred flow it lists`, async (t) => {
-      const { document } = await onYear(year.stem);
-      const items = [...document.querySelectorAll("#derived-list li")];
-      let checked = 0;
-      for (const [id, label] of [["fund-balance/draw", "Fund Balance Draw"], ["fund-balance/contribution", "Fund Balance Contribution"]]) {
-        const flows = columnLinks(year.column, "sankey", (from, to) => from === id || to === id).filter((l) => l.derived);
-        const cents = flows.reduce((s, l) => s + l.value_cents, 0);
-        const item = items.find((li) => li.querySelector(".what").textContent === "◇ " + label);
-        assert.ok(item, `the inferred list has no entry for ${label}`);
-        const want = `${flows.length} inferred flow${flows.length === 1 ? "" : "s"} totalling ${dollars(cents)}:`;
-        t.diagnostic(`${label}: ${want}`);
-        assert.ok(item.textContent.includes(want), item.textContent);
-        if (flows.length > 1) checked++;
-      }
-      assert.ok(checked > 0, "no entry lists more than one flow, so a total of the first alone would pass");
-    });
-
     test(`${year.column}: a ribbon's Sources are its own pages, at the file names Go wrote`, async (t) => {
       const { app, document } = await onYear(year.stem);
       await split(app, PROPERTY);
@@ -217,71 +196,3 @@ describe("a figure whose words or pages the page does not carry", () => {
   });
 });
 
-// A HUB DRAWS A LEAF TWICE, as itself and again as the leg repeating it, and
-// an inferred leaf is one inferred figure however many ribbons draw it: the
-// inferred list states it once, under the derived node it arrives at, and a
-// leg whose leaf a derived node lists is no orphan of its own.
-describe("the inferred list states each inferred figure once", () => {
-  for (const year of PAGE.config.years) {
-    test(`${year.label}: on every split the page offers, and with Services & Supplies and the Internal Service group open, the list totals each inferred cell once`, async (t) => {
-      const { app, document } = await bootedApp({ checkedStem: year.stem });
-      const wrong = [];
-      let repeated = 0;
-      let restating = 0;
-      const visit = (where) => {
-        const cents = (l) => app.formOnScreen().cents(l);
-        const derived = app.projection.links.filter((l) => l.derived);
-        const leaves = app.leafCents(app.fetched);
-        const { homes, orphans } = app.inferredListing(app.projection, cents, leaves);
-        const listed = [...homes.values()].reduce((s, e) => s + e.cents, 0) + orphans.reduce((s, o) => s + o.cents, 0);
-        const distinct = app.distinctCents(derived, cents, leaves);
-        if (derived.some((l) => l.restates || Object.keys(l.cells || {}).some((k) => k.includes("restates")))) restating++;
-        if (derived.reduce((s, l) => s + cents(l), 0) !== distinct) repeated++;
-        if (listed !== distinct) wrong.push(`${where}: the list states ${listed}, the inferred cells ${distinct}`);
-        const items = [...document.querySelectorAll("#derived-list li")];
-        for (const [id, e] of homes) {
-          const label = app.projection.nodes.find((n) => n.id === id).label;
-          const item = items.find((li) => li.querySelector(".what") && li.querySelector(".what").textContent === "◇ " + label);
-          const want = `${e.flows.length} inferred flow${e.flows.length === 1 ? "" : "s"} totalling ${dollars(e.cents)}:`;
-          if (!item || !item.textContent.includes(want)) wrong.push(`${where}: ${label} is not listed as ${want}`);
-        }
-        const said = items.filter((li) => li.querySelector(".why") && li.querySelector(".why").textContent === app.say("flow_inferred"));
-        const figures = said.map((li) => li.lastChild.textContent).join(" ");
-        if (figures !== orphans.map((o) => dollars(o.cents)).join(" ")) wrong.push(`${where}: orphans listed ${figures}, of ${orphans.length}`);
-      };
-      visit("(the root)");
-      const walked = await everySplit(app, async (where) => visit(where));
-      assert.equal(walked.refused, "", walked.refused);
-      for (const id of ["expenditure/services-and-supplies", "fund-group/internal-service"]) {
-        await revealed(app, id);
-        await split(app, app.entryOf(id, app.splitsOf(app.fetched, id)[0].key));
-      }
-      visit("Services & Supplies and the Internal Service group");
-      const { homes } = app.inferredListing(app.projection, (l) => app.formOnScreen().cents(l), app.leafCents(app.fetched));
-      t.diagnostic(`${year.label}: ${walked.visited + 2} chart(s), ${repeated} drawing an inferred cell on more than one ribbon, ` +
-        `${restating} an inferred total restating leaves; ` +
-        `with Services & Supplies and the Internal Service group open: ${[...homes].map(([id, e]) => `${id} ${e.flows.length} flow(s) ${e.cents}`).join("; ")}`);
-      assert.deepEqual(wrong.slice(0, 5), []);
-      assert.ok(repeated > 0, "no chart draws an inferred cell twice, so nothing here is tested");
-    });
-  }
-
-  // Mutation: let a ribbon state a leaf that inferred totals restating all of
-  // its list already state, and this goes red: the leaf is listed twice.
-  test("inferred totals restating all of a list and an inferred ribbon drawing one of its leaves state each leaf once", async (t) => {
-    const { app } = await bootedApp();
-    const doc = structuredClone(app.projection);
-    const home = doc.nodes.find((n) => n.derived);
-    assert.ok(home !== undefined, "the chart draws no derived node, so nothing here is tested");
-    const leaves = app.leafCents(app.fetched);
-    const [[a, ca], [b, cb]] = [...leaves].slice(0, 2);
-    const planted = (o) => Object.assign({ source: doc.nodes[0].id, target: home.id, kind: "external", derived: true, fact_ids: [], locators: [] }, o);
-    doc.links = [planted({ restates: [a, b], value_cents: ca }), planted({ restates: [a, b], value_cents: cb }), planted({ repeats: a, value_cents: ca })];
-    const cents = (l) => l.value_cents;
-    const { homes, orphans } = app.inferredListing(doc, cents, leaves);
-    const listed = [...homes.values()].reduce((s, e) => s + e.cents, 0) + orphans.reduce((s, o) => s + o.cents, 0);
-    const distinct = app.distinctCents(doc.links, cents, leaves);
-    t.diagnostic(`planted under ${home.id}: two totals restating [${a}, ${b}] and a ribbon repeating the first; listed ${listed}, the cells ${distinct}`);
-    assert.deepEqual({ listed, flows: homes.get(home.id).flows.length }, { listed: distinct, flows: 2 });
-  });
-});

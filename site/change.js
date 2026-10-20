@@ -258,10 +258,13 @@ export function draw(section) {
     detail.textContent = (b.rank ? "" : b.members.join(", ") + "; ") + `${dollars(lastCents)} in the last column`;
     legend.appendChild(li);
   }
-  caption.textContent = `◇ Each column is our sum of the ${rows.length} printed rows below it, by kind, ` +
+  caption.textContent = `◇ Each column is our sum of the ${rows.length} printed rows, by kind, ` +
     "and its cap says that sum in millions; a band below the baseline is a kind whose rows sum below zero " +
     "in that column, and it counts against the column.";
   figure.hidden = false;
+  // The table was the chart's data; the chart now says what it held.
+  const cells = section.querySelector(".change-cells");
+  if (cells instanceof doc.defaultView.HTMLElement) cells.hidden = true;
   return { bands, sums };
 }
 

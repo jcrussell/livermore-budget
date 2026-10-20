@@ -59,9 +59,11 @@ test("the page carries four figures, three charted, and boot fills each chart", 
     if (s.dataset.chart === "true") {
       assert.ok(chart && !chart.hidden, `${id}'s chart stays hidden`);
       assert.ok(chart.querySelectorAll(".change-column").length > 0, `${id} draws no column`);
+      // Mutation: drop the hiding in change.js's draw, and this goes red.
+      assert.equal(s.querySelector(".change-cells").hidden, true, `${id}'s table still shows under its chart`);
     } else {
       assert.equal(chart, null, `${id} carries a chart it should not`);
-      assert.equal(s.querySelector("details").open, true, "the excess table is folded");
+      assert.equal(s.querySelector(".change-cells").hidden, false, "the excess table, its only figure, is hidden");
     }
   }
 });

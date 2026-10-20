@@ -209,27 +209,6 @@ export function clone(doc, id) {
 }
 
 /**
- * One link per page a tile cites, each to that page's text as the config
- * names it, or the page number alone where the config names none. Read off
- * this page's config, never a global: these pages ship no FISC_CONFIG.
- * @param {any} config
- * @param {FiscSource[]} locators
- * @returns {{label: string, href: string}[]}
- */
-export function citationsOf(config, locators) {
-  /** @type {{label: string, href: string}[]} */
-  const out = [];
-  for (const loc of locators) {
-    const d = config.docs && config.docs[loc.doc_id];
-    for (const p of loc.pages) {
-      const page = d && d.pages && d.pages[String(p)];
-      out.push({ label: `p${p}`, href: page && page.text ? String(page.text) : "" });
-    }
-  }
-  return out;
-}
-
-/**
  * The sides of one column at one frontier, each its declared tier's tree.
  * @param {any} config
  * @param {any} column
@@ -242,68 +221,6 @@ export function sidesAt(config, column, frontier) {
   if (!core.isExpansionSchedule(doc)) throw new Error(`${config.primary} declares no splits, so nothing here opens`);
   const sides = sidesOf(config).map((s) => ({ tier: s.tier, heading: s.heading, tree: core.sideTree(doc, frontier, s.tier) }));
   return { doc, sides };
-}
-
-/**
- * Fills the table view: one row per drawn tile of every side, parents before
- * their members, with the tile's share of its side marked ours.
- * @param {Document} doc
- * @param {Side[]} sides
- * @param {any} config
- */
-export function fillTable(doc, sides, config) {
-  const body = doc.querySelector("#sides-table tbody");
-  if (!body) return;
-  body.replaceChildren();
-  for (const side of sides) {
-    for (const { tile, depth } of core.sideTiles(side.tree.roots)) {
-      const tr = doc.createElement("tr");
-      tr.dataset.side = String(side.tier);
-      tr.dataset.id = tile.id;
-      tr.dataset.cents = String(tile.cents);
-      tr.dataset.depth = String(depth);
-      if (tile.contra) tr.className = "contra";
-      const cells = [side.heading, tile.label, tile.parent ? (labelOf(side, tile.parent) || tile.parent) : "",
-        dollars(tile.cents), tileShare(tile, side)];
-      cells.forEach((text, i) => {
-        const td = doc.createElement(i === 1 ? "th" : "td");
-        if (i === 1) td.setAttribute("scope", "row");
-        if (i >= 3) td.className = "num";
-        td.textContent = text;
-        tr.append(td);
-      });
-      const pages = doc.createElement("td");
-      for (const c of citationsOf(config, tile.locators)) {
-        if (c.href) {
-          const a = doc.createElement("a");
-          a.href = c.href;
-          a.textContent = c.label;
-          pages.append(a);
-        } else pages.append(c.label);
-        pages.append(doc.createTextNode(" "));
-      }
-      tr.append(pages);
-      const note = doc.createElement("td");
-      note.textContent = tile.derived ? "inferred" : tile.contra ? tile.contra : "";
-      tr.append(note);
-      body.append(tr);
-    }
-  }
-  const count = doc.getElementById("sides-count");
-  if (count) {
-    const n = sides.reduce((a, s) => a + core.sideTiles(s.tree.roots).length, 0);
-    count.textContent = `◇ our count: ${n} tiles drawn across ${sides.length} sides`;
-  }
-}
-
-/**
- * The label of a drawn tile of a side, or "" where none has that id.
- * @param {Side} side
- * @param {string} id
- */
-function labelOf(side, id) {
-  const found = core.sideTiles(side.tree.roots).find((t) => t.tile.id === id);
-  return found ? found.tile.label : "";
 }
 
 /**
@@ -415,12 +332,6 @@ export function render(win, config, column, st, renderer, toggle) {
     const total = section.querySelector(".sides-total");
     if (total) total.textContent = `◇ our sum of the ${side.tree.roots.length} drawn at this tier: ${dollars(side.tree.cents)}`;
     renderer.draw(section, side, ctx);
-  }
-  fillTable(doc, sides, config);
-  const data = doc.getElementById("sides-data-path");
-  if (data) {
-    data.setAttribute("href", st.year);
-    data.textContent = st.year;
   }
   const year = config.years.find((/** @type {any} */ y) => y.path === st.year);
   const lede = doc.getElementById("lede-year");

@@ -3,7 +3,7 @@
 // (testdata/<stem>.column.json). Every figure is core.sideTree's, a sum of
 // cited cents at a membership Go declared; what is tested is that the fold
 // keeps every sum, that the form draws every tile of it once, and that the
-// page's state, gestures and table say what is drawn.
+// page's state, gestures and tooltips say what is drawn.
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -70,7 +70,7 @@ function refusal(document) {
 
 test("the modules import with no page config, no d3 and no DOM, and run nothing", () => {
   assert.ok(domless, "nothing installed a DOM before the import");
-  assert.deepEqual(Object.keys(sides).sort(), ["KEY_MARK", "boot", "citationsOf", "clone", "closing", "fillTable",
+  assert.deepEqual(Object.keys(sides).sort(), ["KEY_MARK", "boot", "clone", "closing",
     "frontierOf", "hashOf", "hideTip", "opensAs", "outside", "parseHash", "readConfig", "render", "say", "share", "showTip", "sidesAt", "sidesOf", "tileShare"]);
   assert.deepEqual(Object.keys(forms.ledger).sort(), ["LEDGER", "RANKED", "boot", "widthOf"]);
 });
@@ -141,9 +141,10 @@ describe("core.sideTree keeps every sum through every split", () => {
 });
 
 // Each form draws every tile of every side once, with the tree's cents on it,
-// and the table lists the same. Mutation: skip members in LEDGER's row, and
-// the roots' marks go missing.
-describe("each form draws every tile once and the table lists them", () => {
+// and each tile's tooltip names the pages it cites. Mutation: skip members in
+// LEDGER's row, and the roots' marks go missing; drop the facts line in
+// showTip, and the pages arm goes red.
+describe("each form draws every tile once and its tip names its pages", () => {
   for (const form of Object.keys(forms)) {
     test(form, async (t) => {
       const { document, config } = await booted(form);
@@ -166,13 +167,15 @@ describe("each form draws every tile once and the table lists them", () => {
           // is no button. Mutation: role="img" on ledger.html.tmpl's
           // ledger-list.
           assert.ok(!m.parentElement.closest('[role="img"]'), `${m.dataset.id} is a button inside an image`);
+          m.dispatchEvent(new document.defaultView.Event("pointerenter", { bubbles: true }));
+          const pages = tile.locators.flatMap((l) => l.pages.map((p) => `p${p}`));
+          const facts = document.querySelector("#tooltip .facts").textContent;
+          assert.ok(pages.length > 0, `${m.dataset.id} cites no page`);
+          for (const p of pages) assert.ok(facts.split(/[,;] /).includes(p), `${m.dataset.id}'s tip does not name ${p}`);
         }
         assert.ok(section.querySelector(".sides-total").textContent.includes(format.dollars(tree.cents)));
         expected += marks.length;
       }
-      const rows = [...document.querySelectorAll("#sides-table tbody tr")];
-      assert.equal(rows.length, expected);
-      assert.ok(document.getElementById("sides-count").textContent.startsWith("◇ our count: " + expected));
       t.diagnostic(`${form}: ${expected} marks across ${sides.sidesOf(config).length} sides at the root`);
     });
   }
@@ -269,16 +272,14 @@ test("a hash naming the other year and an opened node is restored, and a bad ent
   assert.ok(opened.classList.contains("opened"));
   const reductions = [...document.querySelectorAll("li.bar-row.reduction")];
   assert.equal(reductions.length, 2, "the two printed reductions under Property Taxes are not drawn as reductions");
-  // A printed reduction takes no share: not on its bar, in its label, in its
-  // table row or in its tooltip. Mutation: drop the contra test in
+  // A printed reduction takes no share: not on its bar, in its label or in
+  // its tooltip. Mutation: drop the contra test in
   // tileShare and each reads "◇ x%".
   for (const r of reductions) {
     assert.ok(Number(r.dataset.cents) < 0);
     assert.ok(r.querySelector(".bar-label").textContent.startsWith("− "));
     assert.equal(r.querySelector(".bar-share").textContent, "", `${r.dataset.id} states a share`);
     assert.ok(!r.getAttribute("aria-label").includes("◇"), `${r.dataset.id}'s label states a share`);
-    const row = document.querySelector(`#sides-table tr[data-id="${r.dataset.id}"]`);
-    assert.ok(!row.textContent.includes("◇"), `${r.dataset.id}'s table row states a share`);
     r.dispatchEvent(new window.Event("pointerenter", { bubbles: true }));
     assert.ok(!document.querySelector("#tooltip .tip-meta").textContent.includes("◇"), `${r.dataset.id}'s tooltip states a share`);
   }

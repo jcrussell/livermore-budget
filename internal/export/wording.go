@@ -72,18 +72,13 @@ type wording struct {
 	// CaveatChip is said beside a mark's figure: how many caveats are about
 	// the mark.
 	CaveatChip string `json:"caveat_chip"`
-	// InferredFlows is said under a mark of ours in the list of what we
-	// inferred: the inferred flows it is listed with, their sum and their ends.
-	InferredFlows string `json:"inferred_flows"`
-	DescOpens     string `json:"desc_opens"`
+	DescOpens  string `json:"desc_opens"`
 	// DescFolds is said of an open hub: the activation that opened it folds
 	// it back.
 	DescFolds    string `json:"desc_folds"`
 	DescExpands  string `json:"desc_expands"`
 	DescFollows  string `json:"desc_follows"`
 	FlowInferred string `json:"flow_inferred"`
-	NoneInferred string `json:"none_inferred"`
-	TablePointer string `json:"table_pointer"`
 	// The aggregate marks, schema/mark.schema.json: their
 	// labels, rationales and source notes are templates the constructors
 	// fill, so no sentence about what a mark IS is spelled in JavaScript.
@@ -196,11 +191,6 @@ func kindLabels() map[string]string {
 	return out
 }
 
-// flowTableHeading is the flow table's heading. The template renders it and
-// TablePointer quotes it, so a chart's description cannot point a screen
-// reader at a heading the page no longer prints.
-const flowTableHeading = "Every flow, as a table"
-
 // defaultWording is the site's English. The counts sentence's head is also
 // rendered server-side by site/flows.html.tmpl for the page before app.js
 // runs, and a test holds that line to Counts.
@@ -235,14 +225,11 @@ func defaultWording() wording {
 		RepeatsNote:    "figure printed by the city between other ends, repeated by us through a split",
 		RepeatsChip:    "◇ a printed figure, repeated through a split",
 		CaveatChip:     "\u26a0 \u25c7 {n:caveat|caveats}",
-		InferredFlows:  "\u25c7 {flows:inferred flow|inferred flows} totalling {figure}: {ends}",
 		DescOpens:      ", splits in place into its parts on a click, Enter or Space, and is pinned in the drawer",
 		DescFolds:      ", folds back into one mark on a click, Enter or Space, and stays pinned in the drawer",
 		DescExpands:    ", draws all of them separately on a click, Enter or Space",
 		DescFollows:    ", a click, Enter or Space pins it in the drawer",
 		FlowInferred:   "This flow is inferred; both endpoints are printed by the city.",
-		NoneInferred:   "Nothing on this chart is inferred: every node and flow is printed by the city.",
-		TablePointer:   "The same figures are in the flow table below, which opens from the \"" + flowTableHeading + "\" heading.",
 		AggregateLabel: "{folded} smaller {word}",
 		AggregateRationale: "Our grouping, not a line the city printed: the {folded} smallest {word} in this column are drawn as one " +
 			"mark because they cannot be drawn separately. Every figure inside it is printed; the box around them is ours.",

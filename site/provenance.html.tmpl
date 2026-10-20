@@ -57,6 +57,27 @@
 </ul>
 <p class="subtle">Packaged by {{.ExportedBy}}.</p>
 
+{{- /* Every column's derived nodes with their rationale and source note:
+       the one place the site states what is ours rather than the city's. */}}
+<h2 id="inferred">What we inferred</h2>
+<p class="lede subtle">Each entry marked ◇ is ours, not a line the city printed, and says why.</p>
+{{- range .Inferred}}
+<section class="inferred-column" data-column="{{.Path}}">
+  <h3>{{.Label}} <span class="subtle">(<a href="{{.Path}}">{{.Path}}</a>)</span></h3>
+  <ul class="derived-list">
+    {{- range .Nodes}}
+    <li><div class="what">◇ {{.Label}}</div>{{if .Rationale}}<div class="why">{{.Rationale}}</div>{{end}}{{if .SourceNote}}<div class="subtle">{{.SourceNote}}</div>{{end}}</li>
+    {{- end}}
+    {{- range .Flows}}
+    <li><div class="what">◇ {{.From}} → {{.To}}</div><div class="why">{{$.Wording.FlowInferred}}</div></li>
+    {{- end}}
+    {{- if and (not .Nodes) (not .Flows)}}
+    <li class="subtle">Nothing in this column is inferred: every node and flow is printed by the city.</li>
+    {{- end}}
+  </ul>
+</section>
+{{- end}}
+
 {{- /* THE PAGE TABLE FOLDS AND THE DOWNLOADS DO NOT: the downloads are what
        this page is for, and the locator paragraph above is what makes every
        link in the table citable. The table is an index a reader opens to find

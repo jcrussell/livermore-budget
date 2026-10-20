@@ -1,6 +1,7 @@
 package export
 
 import (
+	"cmp"
 	"encoding/json"
 	"fmt"
 	"path"
@@ -227,6 +228,102 @@ type provenancePageData struct {
 	Documents int
 	Pages     int
 	Records   int
+	// Inferred is every column's derived nodes and flows, the site's one
+	// statement of what is ours rather than the city's.
+	Inferred []inferredColumn
+	Wording  wording
+}
+
+// inferredColumn is one published column's derived nodes, each with its
+// rationale and source note, and its derived flows between printed nodes.
+type inferredColumn struct {
+	Label string
+	Path  string
+	Nodes []inferredNode
+	Flows []inferredFlow
+}
+
+type inferredNode struct {
+	Label, Rationale, SourceNote string
+}
+
+type inferredFlow struct {
+	From, To string
+}
+
+// inferredDocument is as much of a graph document as inferredColumns reads.
+type inferredDocument struct {
+	Nodes []struct {
+		ID         string `json:"id"`
+		Label      string `json:"label"`
+		Derived    bool   `json:"derived"`
+		Rationale  string `json:"rationale"`
+		SourceNote string `json:"source_note"`
+	} `json:"nodes"`
+	Links []struct {
+		Source  string `json:"source"`
+		Target  string `json:"target"`
+		Derived bool   `json:"derived"`
+	} `json:"links"`
+	Metadata struct {
+		FiscalYearLabel string `json:"fiscal_year_label"`
+		Basis           string `json:"basis"`
+	} `json:"metadata"`
+}
+
+// inferredColumns gathers every derived node and every derived flow between
+// two printed nodes out of the documents folded into a column, one entry per
+// column in path order, each node and flow once however many of the column's
+// schedules carry it. A column inferring nothing is listed with nothing.
+func inferredColumns(o *Options, ix ColumnIndex) ([]inferredColumn, error) {
+	byPath := map[string]*inferredColumn{}
+	seenNode := map[string]map[string]bool{}
+	seenFlow := map[string]map[inferredFlow]bool{}
+	for _, stem := range sortedKeys(o.Projections) {
+		path, folded := ix.Column(stem)
+		if !folded {
+			continue
+		}
+		var d inferredDocument
+		if err := json.Unmarshal(o.Projections[stem], &d); err != nil {
+			return nil, fmt.Errorf("decode %s nodes: %w", stem, err)
+		}
+		col := byPath[path]
+		if col == nil {
+			col = &inferredColumn{Label: ledeOf(d.Metadata.FiscalYearLabel, d.Metadata.Basis), Path: path}
+			byPath[path] = col
+			seenNode[path] = map[string]bool{}
+			seenFlow[path] = map[inferredFlow]bool{}
+		}
+		labels := make(map[string]string, len(d.Nodes))
+		derived := map[string]bool{}
+		for _, n := range d.Nodes {
+			labels[n.ID] = n.Label
+			if !n.Derived {
+				continue
+			}
+			derived[n.ID] = true
+			if !seenNode[path][n.ID] {
+				seenNode[path][n.ID] = true
+				col.Nodes = append(col.Nodes, inferredNode{Label: n.Label, Rationale: n.Rationale, SourceNote: n.SourceNote})
+			}
+		}
+		for _, l := range d.Links {
+			if !l.Derived || derived[l.Source] || derived[l.Target] {
+				continue
+			}
+			f := inferredFlow{From: cmp.Or(labels[l.Source], l.Source), To: cmp.Or(labels[l.Target], l.Target)}
+			if !seenFlow[path][f] {
+				seenFlow[path][f] = true
+				col.Flows = append(col.Flows, f)
+			}
+		}
+	}
+	out := make([]inferredColumn, 0, len(byPath))
+	for _, path := range sortedKeys(byPath) {
+		out = append(out, *byPath[path])
+	}
+	return out, nil
 }
 
 // provenanceRow is one published locator, with both halves of its citation
@@ -334,6 +431,11 @@ func buildProvenancePage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		downloads = append(downloads, downloadRef(d))
 	}
 
+	inferred, err := inferredColumns(o, ix)
+	if err != nil {
+		return provenancePageData{}, err
+	}
+
 	title := v.Title
 	if title == "" {
 		title = "City of Livermore budget: every published figure"
@@ -356,5 +458,7 @@ func buildProvenancePage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		Documents: len(order),
 		Pages:     len(rows),
 		Records:   records,
+		Inferred:  inferred,
+		Wording:   defaultWording(),
 	}, nil
 }

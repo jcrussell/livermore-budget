@@ -123,13 +123,12 @@
     <svg class="sankey" id="chart" role="group" aria-labelledby="chart-title chart-desc">
       {{- /* yearView's chart_title, which app.js repaints on a year switch. */}}
       <title id="chart-title">{{.ChartTitle}}</title>
-      {{- /* "Opens from", not "listed below": the table is in a closed <details>. */}}
       <desc id="chart-desc">
         {{- if .Description}}
-        {{.Description}} {{.Wording.TablePointer}}
+        {{.Description}}
         {{- else}}
         Revenue categories flow into fund groups, which flow into object categories,
-        transfers out and fund balance. {{.Wording.TablePointer}}
+        transfers out and fund balance.
         {{- end}}
       </desc>
     </svg>
@@ -165,7 +164,7 @@
     <p>
       This page draws its chart in the browser from
       <a href="{{.DataPath}}">{{.DataPath}}</a>, which holds every amount, fact id and source
-      page. "{{.TableHeading}}" and "What we inferred" below are filled by the script.
+      page.
     </p>
   </noscript>
 </div>
@@ -189,41 +188,8 @@
        with no node to flag (an empty applies_to) is in no drawer chip. */}}
 {{- template "caveats-line" .CaveatsHere}}
 
-{{- /* Closed, and filled by app.js from the chart's own data. */}}
-<details class="apparatus" id="derived-view">
-  <summary>
-    <h2>What we inferred</h2>
-    <span class="apparatus-hint">the classifications that are ours, not the city's</span>
-  </summary>
-  <ul class="derived-list" id="derived-list">
-    <li class="subtle">Loading from {{.DataPath}}…</li>
-  </ul>
-</details>
-
 {{- /* app.js repaints #counts-line. */}}
-<details class="apparatus" id="table-view">
-  <summary>
-    <h2>{{.TableHeading}}</h2>
-    <span class="apparatus-hint">the chart's twin, same numbers —
-      <span id="counts-line">◇ our count: {{.Links}} flows between {{.Nodes}} nodes, from {{.Facts}} facts</span></span>
-  </summary>
-  <div class="table-scroll">
-    <table id="flow-table">
-      <thead>
-        <tr>
-          <th scope="col">From</th>
-          <th scope="col">To</th>
-          <th scope="col">Amount</th>
-          <th scope="col">Kind</th>
-          <th scope="col">Basis</th>
-          <th scope="col">Fact ids</th>
-          <th scope="col">Source</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  </div>
-</details>
+<p class="subtle"><span id="counts-line">◇ our count: {{.Links}} flows between {{.Nodes}} nodes, from {{.Facts}} facts</span></p>
 
 </main>
 

@@ -68,6 +68,8 @@ test("the page carries two years of three bars, and boot fills every figure", as
   for (const b of all) {
     const figure = b.section.querySelector("figure.glance-figure");
     assert.equal(figure.hidden, false, `${b.label} ${b.id} figure stays hidden`);
+    // Mutation: drop the hiding in glance.js's draw, and this goes red.
+    assert.equal(b.section.querySelector(".glance-cells").hidden, true, `${b.label} ${b.id}'s cells still show under its bar`);
     assert.ok(figure.querySelector(".glance-track"), `${b.label} ${b.id} has no track`);
     assert.ok(figure.querySelector(".glance-legend"), `${b.label} ${b.id} has no legend`);
   }

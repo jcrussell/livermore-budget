@@ -167,9 +167,12 @@ export function draw(section) {
     legend.appendChild(li);
   });
 
-  caption.textContent = `◇ Our sum of the ${rows.length} printed cells below: ${dollars(whole)}. ` +
+  caption.textContent = `◇ Our sum of the ${rows.length} printed cells: ${dollars(whole)}. ` +
     "The shares are ours too, rounded to the cent, so they may not add to $100.00 exactly.";
   figure.hidden = false;
+  // The table was the bar's data; the figure now says what it held.
+  const cells = section.querySelector(".glance-cells");
+  if (cells instanceof doc.defaultView.HTMLElement) cells.hidden = true;
   return { segments, whole, rows: rows.length };
 }
 

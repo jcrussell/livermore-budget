@@ -317,7 +317,7 @@ func TestAViewDrawsAnotherScheduleOfItsColumn(t *testing.T) {
 	for _, want := range []string{
 		`"primary":"fund-flows"`,
 		`"overview":{"form":"sankey","sankey":{"tiers":[0,3,4,5]}}`,
-		`<desc id="chart-desc">` + "\n        Every flow at once. ",
+		`<desc id="chart-desc">` + "\n        Every flow at once.",
 	} {
 		if !strings.Contains(page, want) {
 			t.Errorf("the page carries no %s", want)
@@ -1872,6 +1872,78 @@ func TestEveryViewLinksTheSourcesPageInPlaceOfItsList(t *testing.T) {
 	}
 }
 
+// TestTheSourcesPageStatesEveryInference: provenance.html lists every derived
+// node of every column with its rationale and source note, and every derived
+// flow between two printed nodes, now that no chart page lists them.
+// Mutation: skip derived nodes in inferredColumns -- the node arm goes red;
+// skip derived links -- the flow arm goes red.
+func TestTheSourcesPageStatesEveryInference(t *testing.T) {
+	var doc struct {
+		Nodes []struct {
+			ID, Label, Rationale string
+			SourceNote           string `json:"source_note"`
+			Derived              bool
+		}
+		Links []map[string]any
+	}
+	raw := goldenSankey(t)
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		t.Fatal(err)
+	}
+	// One printed-to-printed link marked derived, so the flow arm has a case.
+	var generic map[string]any
+	if err := json.Unmarshal(raw, &generic); err != nil {
+		t.Fatal(err)
+	}
+	derived := map[string]bool{}
+	labels := map[string]string{}
+	for _, n := range doc.Nodes {
+		derived[n.ID] = n.Derived
+		labels[n.ID] = n.Label
+	}
+	var flow string
+	for _, l := range generic["links"].([]any) {
+		m := l.(map[string]any)
+		src, dst := m["source"].(string), m["target"].(string)
+		if !derived[src] && !derived[dst] {
+			m["derived"] = true
+			flow = "◇ " + labels[src] + " → " + labels[dst]
+			break
+		}
+	}
+	edited, err := json.Marshal(generic)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir, err := provenanceSite(t, func(o *export.Options) { o.Projections["sankey"] = edited })
+	if err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	page := stdhtml.UnescapeString(readFile(t, dir, "provenance.html"))
+	_, inferred, ok := strings.Cut(page, `<h2 id="inferred">`)
+	if !ok {
+		t.Fatal("provenance.html has no What we inferred section")
+	}
+	nodes := 0
+	for _, n := range doc.Nodes {
+		if !n.Derived {
+			continue
+		}
+		nodes++
+		for _, want := range []string{"◇ " + n.Label, n.Rationale, n.SourceNote} {
+			if want == "" || !strings.Contains(inferred, want) {
+				t.Errorf("provenance.html does not state %s's %q", n.ID, want)
+			}
+		}
+	}
+	if nodes == 0 {
+		t.Fatal("the golden spine derives no node, so the node arm covers nothing")
+	}
+	if flow == "" || !strings.Contains(inferred, flow) {
+		t.Errorf("provenance.html does not list the derived flow %q", flow)
+	}
+}
+
 // TestWriteRefusesAProvenanceRowWithNoShard: the page's whole claim is that its
 // citations resolve, so an entry naming a file the caller did not supply would
 // publish a link that 404s -- worse than publishing nothing. And nothing is
@@ -2216,7 +2288,7 @@ func TestTheApparatusShipsClosedOnEveryChartPage(t *testing.T) {
 
 	for _, page := range []string{export.IndexPath} {
 		html := readFile(t, dir, page)
-		if n := strings.Count(html, "<details"); n < 2 {
+		if n := strings.Count(html, "<details"); n < 1 {
 			t.Errorf("%s renders %d <details>, want the apparatus folded", page, n)
 		}
 		if m := open.FindString(html); m != "" {
@@ -2225,86 +2297,11 @@ func TestTheApparatusShipsClosedOnEveryChartPage(t *testing.T) {
 		// Every disclosure the page renders: the regex above says only that
 		// nothing is open. #sources-view is here because this site has no
 		// sources page.
-		for _, id := range []string{"derived-view", "table-view", "sources-view"} {
+		for _, id := range []string{"sources-view"} {
 			if !strings.Contains(html, `<details class="apparatus" id="`+id+`">`) {
 				t.Errorf("%s does not fold #%s into an .apparatus disclosure", page, id)
 			}
 		}
-	}
-}
-
-// TestAClosedFlowTableIsNotDescribedAsListedBelow is the a11y claim
-// flows.html.tmpl's disclosure comment argues, enforced rather than restated: a
-// closed <details> is collapsed for assistive technology as well as visually,
-// so its content is out of the accessibility tree and out of in-page find until
-// the reader opens it. A <desc> telling a screen-reader user that the figures
-// are "listed below" then sends them looking for a table that is not, from
-// their position, there.
-//
-// WRITTEN AS A RULE OVER THE PAGES THAT HAVE BOTH, so it covers whichever
-// template folds its table next rather than the two that already have. The
-// condition is the fold: a page whose #table-view ships open may say "below",
-// because there it is true.
-func TestAClosedFlowTableIsNotDescribedAsListedBelow(t *testing.T) {
-	dir := chartAndSpine(t)
-	desc := regexp.MustCompile(`(?s)<desc id="chart-desc">(.*?)</desc>`)
-	closedTable := regexp.MustCompile(`<details[^>]*id="table-view"[^>]*>`)
-
-	checked := 0
-	var withTable []string
-	for _, page := range []string{export.IndexPath} {
-		html := readFile(t, dir, page)
-		tag := closedTable.FindString(html)
-		if tag == "" {
-			continue
-		}
-		withTable = append(withTable, page)
-		if strings.Contains(tag, " open") {
-			continue
-		}
-		m := desc.FindStringSubmatch(html)
-		if m == nil {
-			t.Errorf("%s folds its flow table but renders no chart <desc>", page)
-			continue
-		}
-		// The template writes the whole <desc> itself, so there is no caller-supplied
-		// half to strip. Read as a browser does: entities decoded, whitespace
-		// collapsed because the template wraps it.
-		suffix := strings.TrimSpace(strings.Join(strings.Fields(stdhtml.UnescapeString(m[1])), " "))
-		if suffix == "" {
-			t.Errorf("%s renders an empty <desc>, so it says nothing about where "+
-				"the table is", page)
-			continue
-		}
-		checked++
-		if strings.Contains(suffix, "below") && !strings.Contains(suffix, "opens from") {
-			t.Errorf("%s folds its flow table and its <desc> still says the figures are "+
-				"below without saying what opens them:\n%s", page, suffix)
-			continue
-		}
-		// AND THE HEADING IT NAMES HAS TO EXIST. The sentence navigates a
-		// screen-reader user by quoting the table's own <h2> verbatim, and two
-		// copies of one string in one file is how a renamed heading ships a
-		// pointer to nothing -- green, because "opens from" is still there.
-		_, afterQuote, opened := strings.Cut(suffix, `"`)
-		quoted, _, shut := strings.Cut(afterQuote, `"`)
-		if !opened || !shut || quoted == "" {
-			t.Errorf("%s's <desc> promises a heading without naming one: %s", page, suffix)
-			continue
-		}
-		if !strings.Contains(html, "<h2>"+quoted+"</h2>") {
-			t.Errorf("%s's <desc> sends a reader to a heading %q that the page does not "+
-				"render", page, quoted)
-		}
-	}
-	// Anti-vacuity, without contradicting the skip above: the page must render a
-	// #table-view at all, or the loop is green over nothing.
-	if len(withTable) != 1 {
-		t.Errorf("%d of 1 page renders a #table-view: %v; the assertion above is about "+
-			"the pages that have one", len(withTable), withTable)
-	}
-	if checked == 0 {
-		t.Error("no page folds its flow table, so nothing above was checked")
 	}
 }
 

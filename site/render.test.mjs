@@ -531,7 +531,7 @@ describe("the expansion's drawing", () => {
     assert.ok(rounded.includes("of this column") && !rounded.includes("100"), rounded);
   });
 
-  test("a partition ribbon says it is a cross-tab in its class, its two labels and the flow table", async (t) => {
+  test("a partition ribbon says it is a cross-tab in its class and its two labels", async (t) => {
     const { app, document } = await bootedApp({ checkedStem: YEARS[0].stem });
     const chart = document.getElementById("chart");
     const category = app.fetched.splits.find((sp) => sp.key === "divisions" && sp.alternative).node;
@@ -542,17 +542,13 @@ describe("the expansion's drawing", () => {
     const noted = marks.filter((m) => (m.getAttribute("aria-label") || "").includes(app.PARTITION_NOTE));
     const misnoted = marks.filter((m) => app.isPartitionNode(m.__data__) !==
       (m.getAttribute("aria-label") || "").includes(app.PARTITION_NOTE)).map((m) => m.__data__.id);
-    const rows = [...document.getElementById("flow-table").querySelector("tbody").children];
-    const cells = rows.filter((tr) => tr.children[4].textContent === app.PARTITION_NOTE).length;
     t.diagnostic(`${category} split by its divisions: ${ribbons.length} of ${ribbonsIn(chart).length} ribbon(s) ` +
-      `carry "partition"; ${noted.length} of ${marks.length} mark(s) carry the sentence in their label; ` +
-      `${cells} of ${rows.length} table row(s) read it in the provenance column`);
+      `carry "partition"; ${noted.length} of ${marks.length} mark(s) carry the sentence in their label`);
     assert.ok(ribbon, "no drawn ribbon carries the partition class");
     assert.ok(ribbon.getAttribute("aria-label").includes(app.PARTITION_NOTE), ribbon.getAttribute("aria-label"));
     assert.ok(!ribbon.classList.contains("derived"));
     assert.ok(noted.length > 0, "no mark's label carries the sentence");
     assert.deepEqual(misnoted, []);
-    assert.equal(cells, ribbons.length);
   });
 
   test("the legend is the fund groups the marks are in, in Go's order, and a swatch follows the group across its funds", async (t) => {
@@ -715,14 +711,13 @@ describe("the expansion's drawing", () => {
   }
 
   for (const year of YEARS) {
-    test(`${year.label}: a remainder Go derives is marked as ours, says why in Go's words, and reaches the inferred list, the tooltip and the panel; it splits nothing`, async (t) => {
+    test(`${year.label}: a remainder Go derives is marked as ours, says why in Go's words, and reaches the tooltip and the panel; it splits nothing`, async (t) => {
       const { app, document } = await bootedApp({ checkedStem: year.stem });
       const chart = document.getElementById("chart");
       await split(app, "fund-group/capital");
       const mark = marksIn(chart).find((m) => m.__data__.id === "fund-group-only/capital");
       assert.ok(mark, "the capital group split draws no remainder of its own");
       const node = mark.__data__;
-      const listed = document.getElementById("derived-list").textContent;
       app.showTip({ target: chart, clientX: 0, clientY: 0 }, node);
       const tip = document.getElementById("tooltip").textContent;
       app.pin(node);
@@ -733,7 +728,6 @@ describe("the expansion's drawing", () => {
       assert.ok(mark.classList.contains("derived"), mark.getAttribute("class"));
       assert.notEqual(node.rationale, "");
       assert.notEqual(node.source_note, "");
-      assert.ok(listed.includes(node.label) && listed.includes(node.rationale), listed);
       assert.ok(tip.includes("◇ inferred") && tip.includes(node.rationale), tip);
       assert.ok(panel.includes("◇ our inference") && panel.includes(node.rationale) && panel.includes(node.source_note), panel);
       assert.equal(app.splittable(node), false);
@@ -859,16 +853,6 @@ describe("arms no committed column reaches", () => {
     const label = (id) => col.nodes.find((n) => n.id === id).label;
     return { col, cell: ends, other: other.split(":")[0], from: label(from), to: label(to) };
   };
-  test("a derived flow between two published nodes is listed as inferred on its own, with both ends named", async (t) => {
-    const { col, from, to } = derivedCell();
-    const { document } = await bootedApp({ checkedStem: newest.stem, plan: { [newest.path]: { doc: col } } });
-    assert.equal(refusals(document).length, 0);
-    const items = [...document.querySelectorAll("#derived-list li")];
-    const orphan = items.find((li) => li.textContent.includes("both endpoints are printed by the city"));
-    t.diagnostic(`${items.length} inferred entries; the orphan reads "${orphan ? orphan.textContent : "(none)"}"`);
-    assert.ok(orphan, "the inferred list does not mention the flow");
-    assert.ok(orphan.textContent.includes(from + " → " + to), orphan.textContent);
-  });
   test("a derived flow between two published nodes wears the inference chip in its panel, and a published one does not", async (t) => {
     const { col, cell, other } = derivedCell();
     const { app, document } = await bootedApp({ checkedStem: newest.stem, plan: { [newest.path]: { doc: col } } });
@@ -1189,9 +1173,6 @@ describe("a count the client takes is marked as its own", () => {
     await split(app, worst);
     app.expandAll();
     await settle();
-    said.inferred = [...document.querySelectorAll("#derived-list li")]
-      .filter((li) => li.querySelector(".what").textContent.startsWith(MARK) && li.querySelectorAll(".subtle").length)
-      .map((li) => [...li.querySelectorAll(".subtle")].at(-1).textContent).find((w) => / totalling /.test(w)) || "";
     const range = document.getElementById("filter-smallest");
     range.value = "3";
     fire(range, "input");
@@ -1311,29 +1292,22 @@ describe("a link repeating a leaf through a split is not called printed", () => 
   // re-pointed onto the hub, once as the hub's leg. Counted here off the
   // cells, not asked of leafDraws.
   // Mutation: label by derived ends only, dropping drawsAgain from the
-  // table, the tooltip, the drawer and provenanceOf, and this goes red: the
-  // re-pointed leaves and their hub legs read "printed".
+  // tooltip, the drawer and provenanceOf, and this goes red: the re-pointed
+  // leaves and their hub legs read "printed".
   for (const year of YEARS) {
-    test(`${year.label}: with the General Fund group open, no row, tooltip, drawer or description of a repeating link says printed`, async (t) => {
+    test(`${year.label}: with the General Fund group open, no tooltip, drawer or description of a repeating link says printed`, async (t) => {
       const { app, document } = await bootedApp({ checkedStem: year.stem });
       const chart = document.getElementById("chart");
       await split(app, "fund-group/general");
       const words = CONFIG.wording;
-      const rows = [...document.querySelectorAll("#flow-table tbody tr")];
       const links = app.projection.links;
-      assert.equal(rows.length, links.length);
       const leaves = (l) => Object.keys(l.cells || {}).filter((k) => !k.startsWith("\u001f"));
       const count = new Map();
       for (const l of links) for (const k of leaves(l)) count.set(k, (count.get(k) || 0) + 1);
       const again = (l) => leaves(l).some((k) => count.get(k) > 1);
       const wrong = [];
       let repeating = 0;
-      links.forEach((l, i) => {
-        if (!again(l)) return;
-        repeating++;
-        const chip = rows[i].children[4].textContent;
-        if (chip === words.printed_chip) wrong.push(`table: ${l.source} -> ${l.target}`);
-      });
+      for (const l of links) if (again(l)) repeating++;
       const ribbons = [...chart.querySelectorAll("path.link")].map((p) => p.__data__).filter(again);
       for (const d of ribbons.slice(0, 6)) {
         app.showTip({ target: chart, clientX: 0, clientY: 0 }, d);
@@ -1344,7 +1318,7 @@ describe("a link repeating a leaf through a split is not called printed", () => 
         if (panel.includes(words.printed_by_city)) wrong.push(`drawer: ${d.source.id} -> ${d.target.id}`);
         if (app.linkDescription(d).endsWith(words.printed_by_city)) wrong.push(`description: ${d.source.id} -> ${d.target.id}`);
       }
-      t.diagnostic(`${year.label}: ${repeating} table row(s) repeat a leaf, ${ribbons.length} drawn ribbon(s); ${wrong.length} called printed`);
+      t.diagnostic(`${year.label}: ${repeating} link(s) repeat a leaf, ${ribbons.length} drawn ribbon(s); ${wrong.length} called printed`);
       assert.ok(repeating > 0 && ribbons.length > 0, "nothing drawn repeats a leaf, so this asserts nothing");
       assert.deepEqual(wrong, []);
     });

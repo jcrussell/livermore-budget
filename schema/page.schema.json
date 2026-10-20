@@ -274,14 +274,11 @@
         "repeats_note",
         "repeats_chip",
         "caveat_chip",
-        "inferred_flows",
         "desc_opens",
         "desc_folds",
         "desc_expands",
         "desc_follows",
         "flow_inferred",
-        "none_inferred",
-        "table_pointer",
         "aggregate_label",
         "aggregate_rationale",
         "aggregate_note",
@@ -450,11 +447,6 @@
           "minLength": 1,
           "description": "Said beside a mark's figure where caveats are about the mark: {n}, how many."
         },
-        "inferred_flows": {
-          "type": "string",
-          "minLength": 1,
-          "description": "Said under a mark of ours in the list of what we inferred: {flows}, how many inferred flows are listed with it; {figure}, their sum formatted; {ends}, each flow's ends joined."
-        },
         "desc_opens": { "type": "string", "minLength": 1 },
         "desc_folds": {
           "type": "string",
@@ -464,8 +456,6 @@
         "desc_expands": { "type": "string", "minLength": 1 },
         "desc_follows": { "type": "string", "minLength": 1 },
         "flow_inferred": { "type": "string", "minLength": 1 },
-        "none_inferred": { "type": "string", "minLength": 1 },
-        "table_pointer": { "type": "string", "minLength": 1 },
         "aggregate_label": {
           "type": "string",
           "minLength": 1,

@@ -45,8 +45,9 @@
     <figcaption class="change-sum"></figcaption>
   </figure>
   {{- end}}
-  <details class="change-cells"{{if not .Chart}} open{{end}}>
-    <summary>The printed rows behind this {{if .Chart}}chart{{else}}figure{{end}}</summary>
+  {{- /* The figure's data: change.js reads it, then hides it under the
+         drawn chart. A figure with no chart is its table. */}}
+  <div class="change-cells">
     <div class="table-scroll">
     <table class="series-table change-table">
       <thead>
@@ -86,8 +87,8 @@
       </tbody>
     </table>
     </div>
-    <p class="subtle">Read from <a href="{{.Document}}">{{.Document}}</a>.</p>
-  </details>
+  </div>
+  <p class="subtle">Read from <a href="{{.Document}}">{{.Document}}</a>.</p>
 </section>
 {{- end}}
 {{- template "caveats-line" .CaveatsHere}}

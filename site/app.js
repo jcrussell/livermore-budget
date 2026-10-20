@@ -27,7 +27,7 @@
 
 import * as core from "./core.js";
 import {
-  SCHEMA_VERSION, say, kindLabel, fmt, fmtSigned, el, maybeEl, cssVar, h, link, citations, balancesOf, PARTITION_NOTE, isFundGroup, scheduleOf, isLink, tableRows, leafDraws, drawsAgain, cellsOf,
+  SCHEMA_VERSION, say, kindLabel, fmt, fmtSigned, el, maybeEl, cssVar, h, link, citations, balancesOf, PARTITION_NOTE, isFundGroup, scheduleOf, isLink, leafDraws, drawsAgain, cellsOf,
 } from "./core.js";
 import { hashValue } from "./format.js";
 import { SANKEY } from "./sankey.js";
@@ -96,15 +96,6 @@ export function fundGroupOf(node) {
  */
 export function shareOf(d) {
   return formOnScreen().share(d, laidNodes);
-}
-
-/**
- * core.homeOf over the document on screen.
- * @param {FiscLink} l
- * @returns {string}
- */
-export function homeOf(l) {
-  return core.homeOf(projection, l);
 }
 
 /**
@@ -823,7 +814,6 @@ export function redraw(next, refused = "That could not be drawn", landOn, anchor
   const held = anchor ? screenBoxOf(anchor) : null;
   const was = { expansions, frontier, wholeSplits, laidNodes, laidRoom, groupIndex, projection, shown, whole };
   let laid;
-  let rows;
   /** @type {FiscProjection | undefined} */
   let drawn;
   try {
@@ -839,10 +829,6 @@ export function redraw(next, refused = "That could not be drawn", landOn, anchor
     const room = layRoom();
     const unfiltered = wholeOf(drawn, filtered, room);
     laid = layOut(filtered.doc, prior, room);
-    // Inside the try: building a row is the last step of a draw that can
-    // throw on a document. The table is the view's every flow, filtered or
-    // not; the filter line says what the chart leaves out.
-    rows = tableRows(drawn);
     projection = drawn;
     shown = filtered;
     whole = unfiltered;
@@ -867,8 +853,6 @@ export function redraw(next, refused = "That could not be drawn", landOn, anchor
   paintCounts();
   buildLegend();
   paintChartHint();
-  buildDerivedList();
-  buildTable(rows);
   render(laid, prior);
   // After the render: the line names nodes as the chart now draws them.
   paintFilterLine();
@@ -3197,58 +3181,6 @@ export function buildLegend() {
   }
 }
 
-export function buildDerivedList() {
-  if (!projection) return;
-  const list = el("derived-list");
-  list.replaceChildren();
-  const nodes = projection.nodes.filter((n) => n.derived);
-  const labels = new Map(projection.nodes.map((n) => [n.id, n.label]));
-  const form = formOnScreen();
-  const { homes, orphans } = core.inferredListing(projection, (l) => form.cents(/** @type {any} */ (l)), core.leafCents(fetched));
-
-  for (const n of nodes) {
-    const li = document.createElement("li");
-    li.append(h("div", "what", "◇ " + n.label));
-    if (n.rationale) li.append(h("div", "why", n.rationale));
-    if (n.source_note) li.append(h("div", "subtle", n.source_note));
-    const at = homes.get(n.id);
-    if (at) {
-      // "inferred": a tail's own note counts the flows it FOLDS, a
-      // different set, and an unqualified count would read as correcting it.
-      li.append(h("div", "subtle", say("inferred_flows", {
-        flows: at.flows.length, figure: fmtSigned(at.cents),
-        ends: at.flows.map((l) => (labels.get(l.source) || l.source) + " → " + (labels.get(l.target) || l.target)).join("; "),
-      })));
-    }
-    list.append(li);
-  }
-  // A link can be derived while both its endpoints are printed.
-  for (const { flow: l, cents } of orphans) {
-    const li = document.createElement("li");
-    li.append(h("div", "what", "◇ " +
-      (labels.get(l.source) || l.source) + " → " + (labels.get(l.target) || l.target)));
-    li.append(h("div", "why", say("flow_inferred")));
-    li.append(h("div", "subtle", fmtSigned(cents)));
-    list.append(li);
-  }
-
-  if (!nodes.length && !orphans.length) {
-    list.append(h("li", "subtle", say("none_inferred")));
-  }
-}
-
-/**
- * Writes rows tableRows already built, in one swap.
- *
- * Kept apart from building them so a throw while building leaves the old table
- * whole rather than half-built under another year's heading (fisc-bsg).
- */
-export function buildTable(rows) {
-  const body = el("flow-table").querySelector("tbody");
-  if (!body) return;
-  body.replaceChildren(...rows);
-}
-
 /* ------------------------------------------------------------------ *
  * Search
  * ------------------------------------------------------------------ */
@@ -4569,7 +4501,6 @@ export async function showYear(year, carry = [], removals = null) {
   /** @type {string[]} */
   let dropped = [];
   let laid;
-  let rows;
   try {
     if (frontier && carry.length) {
       const over = carriedOver(doc, carry);
@@ -4586,7 +4517,6 @@ export async function showYear(year, carry = [], removals = null) {
     const room = layRoom();
     const unfiltered = wholeOf(drawn, filtered, room);
     laid = layOut(filtered.doc, undefined, room);
-    rows = tableRows(drawn);
     projection = drawn;
     shown = filtered;
     whole = unfiltered;
@@ -4611,8 +4541,6 @@ export async function showYear(year, carry = [], removals = null) {
   buildLegend();
   buildFilterPanel();
   paintChartHint();
-  buildDerivedList();
-  buildTable(rows);
   render(laid);
   paintFilterLine();
   recordView("push");

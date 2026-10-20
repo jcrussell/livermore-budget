@@ -52,12 +52,12 @@
     </p>
     {{- range .Apart}}
     <p class="glance-apart">
-      The rows below sum to <strong>{{.Residual}}</strong> {{.Direction}} than that figure. {{.Reason}}.
+      The printed cells sum to <strong>{{.Residual}}</strong> {{.Direction}} than that figure. {{.Reason}}.
     </p>
     {{- end}}
-    <details class="glance-cells">
-      <summary>The printed cells behind this bar</summary>
-      <div class="table-scroll">
+    {{- /* The bar's data: glance.js reads it, then hides it under the
+           drawn figure. With no script it is the whole of this bar. */}}
+    <div class="table-scroll glance-cells">
       <table class="series-table glance-table">
         <thead>
           <tr>
@@ -82,8 +82,7 @@
           {{- end}}
         </tbody>
       </table>
-      </div>
-    </details>
+    </div>
   </section>
   {{- end}}
 </section>

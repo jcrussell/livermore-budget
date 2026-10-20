@@ -96,8 +96,6 @@ type pageData struct {
 	Basis string
 	// Wording is the client's words, which the template's legend shares.
 	Wording wording
-	// TableHeading is flowTableHeading.
-	TableHeading string
 	// ChartTitle is the SVG's accessible name: the opening yearView's string,
 	// the same one app.js repaints on a year switch.
 	ChartTitle string
@@ -384,18 +382,17 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			Scope:       meta.Scope(),
 			CaveatsHere: cx.here(v.Path),
 		},
-		Lede:         open.Lede,
-		Basis:        open.Basis,
-		Wording:      defaultWording(),
-		TableHeading: flowTableHeading,
-		ChartTitle:   open.ChartTitle,
-		Hero:         open.Hero,
-		Years:        years,
-		Opens:        open.Stem,
-		Facts:        open.Counts.Facts,
-		Nodes:        open.Counts.Nodes,
-		Links:        open.Counts.Links,
-		Description:  v.Description,
+		Lede:        open.Lede,
+		Basis:       open.Basis,
+		Wording:     defaultWording(),
+		ChartTitle:  open.ChartTitle,
+		Hero:        open.Hero,
+		Years:       years,
+		Opens:       open.Stem,
+		Facts:       open.Counts.Facts,
+		Nodes:       open.Counts.Nodes,
+		Links:       open.Counts.Links,
+		Description: v.Description,
 		// #nosec G203 -- blob is encoding/json's output, which escapes <, >
 		// and & to their \u form, so it cannot terminate the script element
 		// or inject markup. The alternative, letting html/template escape a
