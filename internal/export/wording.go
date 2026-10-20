@@ -240,7 +240,7 @@ func defaultWording() wording {
 		BalanceBeginning:  "Balance at the start of the year, as printed: {figure}",
 		BalanceEnding:     "Balance at the end of the year, as printed: {figure}",
 		BalanceChange:     "Change in balance, the end of the year's less the start's: {figure}",
-		FilterHidden:      "Hidden by your filters: {cents} in \u25c7 {flows:flow|flows}. Marks are sized to what is drawn, each mark's figure is still this view's, and the flow table still lists every flow of this view.",
+		FilterHidden:      "Hidden by your filters: {cents} in \u25c7 {flows:flow|flows}. Marks are sized to what is drawn, and each mark's figure is still this view's.",
 		FilterFolded:      "\u25c7 {flows:flow|flows} under {threshold} are drawn merged by this page into {ribbons:ribbon|ribbons} of smaller flows.",
 		FilterHiddenAt:    "Your filters hide {cents} of this mark's flows, in \u25c7 {flows:flow|flows}.",
 		FilterOnly:        "Showing only the money through {label}.",
@@ -268,7 +268,7 @@ func defaultWording() wording {
 		SourcesChart:      "This mark draws no flow, so these are the sources of the whole chart, not of it:",
 		Hairline: "\u25c7 {n:flow is|flows are} under a pixel wide on this chart's canvas, and each is drawn as a " +
 			"hairline one screen pixel wide, which is wider than its share; every other flow is drawn to scale. " +
-			"Zoom in, go full screen, search, or open the table below to read them.",
+			"Zoom in, go full screen, or search to read them.",
 		SplitsDropped: "{year} has no {nodes} to split, so \u25c7 {n:split was|splits were} folded back.",
 		RefusedPart: "Not offered with the chart open as it is: the city printed the money from {source} to {target} " +
 			"as one total over several parts together, and this is only some of them.",

@@ -23,8 +23,9 @@
  *
  * Three light-mode slots sit below 3:1 against the light surface, which the
  * validator reports as a relief obligation rather than a pass: every node
- * carries a visible direct label and every value is in the table view, which
- * is the relief.
+ * on Flows carries a visible direct label with its figure, and every mark and
+ * ribbon states its name and figure in its tooltip and the detail panel,
+ * which is the relief.
  *
  * One exception to the first paragraph: --warn-bg/-fg/-edge are chrome, not a
  * data encoding, so the categorical palette does not govern them. The light
@@ -247,7 +248,7 @@ h3 {
 
 /* Sticky rather than fixed: the page has no other fixed element, so staying in
    flow keeps the banner visible without a height custom property that every
-   rule below would have to offset against. The sticky `th` at the flow table
+   rule below would have to offset against. The sticky `th` of a table
    lives inside .table-scroll, which is `overflow: auto` and therefore its own
    containing block, so the two never compete. */
 .wip-banner {
@@ -1457,7 +1458,7 @@ noscript p {
 }
 
 /* Forced-colors: hue is gone, so identity falls back to the direct labels and
-   the table view, and the derived/published distinction falls back to GrayText
+   the tooltips, and the derived/published distinction falls back to GrayText
    plus the dash pattern, which forced-colors preserves. A partition ribbon is
    published and keeps CanvasText. */
 @media (forced-colors: active) {
@@ -1497,9 +1498,8 @@ noscript p {
 
   /* AND THE DISCLOSURES OPEN, for the banner's own reason one paragraph up. A
      reader holding a sheet of paper cannot click, so a closed <details> takes
-     the sources, the caveats, the derived list, the flow table and
-     provenance.html's page table off the copy without saying it
-     did.
+     the footer's sources and provenance.html's page table off the copy
+     without saying it did.
 
      TWO RULES BECAUSE ENGINES USE TWO MECHANISMS: one hides the non-summary
      children with a UA display:none, the other hides a ::details-content slot

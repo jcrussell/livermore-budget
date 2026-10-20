@@ -110,8 +110,9 @@
 
 <p class="subtle">
   Both sides are drawn on one scale, the longest bar of either filling its track.
-  Point at a bar, or focus it, for the pages its figure was read from; the
-  <a href="provenance.html">Sources and data</a> page lists every cited page.
+  Point at a bar, or focus it, for the pages its figure was read from;
+  {{- if .SourcesPath}} the <a href="{{.SourcesPath}}">Sources and data</a> page lists every cited page.
+  {{- else}} the Sources list at the foot of this page names every cited page.{{end}}
   A sum marked ◇ adds the cited bars of its side and is ours, not the city's:
   the page prints a department total of its own, which this site has not read as
   a figure, so neither sum is presented as the department's total. A share

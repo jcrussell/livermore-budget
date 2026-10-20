@@ -156,7 +156,10 @@ documents: every link resolves to 1 or 2 pairs.
 `locators` was added without bumping `schema_version`. The project is
 pre-release, so the number is not yet a promise to any reader outside this
 tree, and the three constants that must agree — `project.SchemaVersion`,
-`export.SchemaVersion` and `app.js`'s `SCHEMA_VERSION` — stay at 1 together.
+`export.SchemaVersion` and `site/core.js`'s `PROJECTION_VERSION` — stay at 1
+together. The page's `window.FISC_CONFIG` carries its own version,
+`export.PageConfigVersion`, which `site/core.js`'s `SCHEMA_VERSION` equals and
+`site/app.js` refuses a page on; it moves with the page, not the projection.
 Recorded as a decision on fisc-5hxr rather than assumed, because
 [`revenue-trends-contract.md`](revenue-trends-contract.md) says a bump is a
 decision and not a number someone increments. The next additive key is

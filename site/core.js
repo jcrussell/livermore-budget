@@ -27,11 +27,19 @@ export function config() {
 }
 
 /**
- * The projection schema this client draws. A test in internal/export pins
- * this literal to the producer's constant. A newer schema would draw a wrong
- * chart rather than fail, so the page refuses it.
+ * The page this client draws: window.FISC_CONFIG's schema_version, which
+ * versions its keys, its wording keys and the elements app.js paints into. A
+ * test in internal/export pins this literal to export.PageConfigVersion. A
+ * page of another version would draw a wrong chart or throw rather than
+ * fail, so the page refuses it.
  */
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
+
+/**
+ * The projection schema scheduleOf stamps on the document it assembles. A
+ * test in internal/export pins this literal to project.SchemaVersion.
+ */
+const PROJECTION_VERSION = 1;
 
 /**
  * One sentence of the page's wording, filled in. `{name:one|many}` appends the
@@ -370,7 +378,7 @@ function assembleSchedule(column, key) {
     : null;
   const col = column.column || {};
   const doc = {
-    schema_version: SCHEMA_VERSION,
+    schema_version: PROJECTION_VERSION,
     projection: key,
     nodes, links,
     metadata: {

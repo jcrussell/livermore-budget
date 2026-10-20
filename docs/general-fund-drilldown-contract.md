@@ -324,7 +324,7 @@ So the client folds. The rule, in full:
   `{0,2,4}` set: 52 folded rows carried 79 locators, at most
   5 on any one row.
 
-  This is what makes the flow table's `Source` column true. Without it, at that
+  This is what makes the pages a ribbon cites true. Without it, at that
   set, every row printed the document's own 18 pages — 1,872 anchors saying
   nothing about the row they sat in; with it, 237, each naming the pages that
   row's figure came from.
@@ -373,10 +373,10 @@ on the chart drawn. The cap produces several ribbons from one source to the
 tail, and the second fold is what merges them, summing the values and unioning
 the fact ids and locators.
 
-**The page describes the folded document, not the fetched one.** The legend, the
-flow table, the inferred list and the flow count are all statements about what
-the reader is looking at. The footer still links the unfolded file, and the
-merged links still name every fact behind every ribbon.
+**The page describes the folded document, not the fetched one.** The legend and
+the flow count are statements about what the reader is looking at. The Sources
+and data page still lists the unfolded file, and the merged links still name
+every fact behind every ribbon.
 
 ## Go's half: the declarations
 

@@ -134,7 +134,7 @@ node with `x0, x1, y0, y1, value, layer, depth, sourceLinks, targetLinks`, a
 link with its `source` and `target` resolved to nodes, a `width`, and the
 widths `w0` and `w1` it is drawn at where it meets its source and its target. The page
 reads a laid mark's geometry and its ribbons itself, for emphasis, focus and
-the table; what a laid mark's figure and ribbons MEAN -- its signed cents
+panning a mark into sight; what a laid mark's figure and ribbons MEAN -- its signed cents
 after the form has flipped a reduction to draw it, its share of a column, a
 note on what is printed as reductions -- it asks of the form that laid it,
 through the readings of a laid mark above, because only that layout knows. What is the

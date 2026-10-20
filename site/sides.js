@@ -5,7 +5,7 @@
  * page's sides config, fetches the column the year control names, folds the
  * expansion schedule to the frontier the hash opens (core.sideTree), and
  * hands each declared side's tree to the renderer, which draws it. The
- * tooltip, the table view, the hash and the gestures that open and shut a
+ * tooltip, the hash and the gestures that open and shut a
  * tile are here, so a form module holds what it draws and nothing else.
  *
  * Every figure here is core.js's: a sum of cited cents at a membership Go
@@ -185,7 +185,7 @@ export function tileShare(tile, side) {
 }
 
 /**
- * The words a tile's tooltip and table row say of how it opens: its primary
+ * The words a tile's tooltip says of how it opens: its primary
  * split's member count, and each alternative's.
  * @param {core.SideTile} tile
  */
@@ -303,8 +303,8 @@ export function say(doc, text) {
 }
 
 /**
- * Draws every side of a column at a state through the renderer, fills the
- * table, and returns what was drawn with the entries the schedule refused.
+ * Draws every side of a column at a state through the renderer and returns
+ * what was drawn with the entries the schedule refused.
  * @param {Window} win
  * @param {any} config
  * @param {any} column

@@ -624,8 +624,8 @@ func TestPageConfigCarriesTheProjectionMetadataVerbatim(t *testing.T) {
 	}
 	// No projections map: a year names its document by its column, and the
 	// page's chart names its schedule as primary.
-	if got.SchemaVersion != 1 {
-		t.Errorf("got schema_version %d, want 1", got.SchemaVersion)
+	if got.SchemaVersion != export.PageConfigVersion {
+		t.Errorf("got schema_version %d, want %d", got.SchemaVersion, export.PageConfigVersion)
 	}
 
 	doc, ok := got.Docs["livermore-budget-fy2026-2027"]
@@ -720,19 +720,28 @@ func TestWriteRefusesBadInput(t *testing.T) {
 	}
 }
 
-// The client's copy is the one nothing compiles against, so it is the one that
-// would drift in silence. Read it out of the same embedded asset tree the
-// packager ships and pin the literal.
+// The client's copies are the ones nothing compiles against, so they are the
+// ones that would drift in silence. Read them out of the same embedded asset
+// tree the packager ships and pin each literal to its producer's constant.
+// Mutation: set PageConfigVersion back to 1 and the page arm goes red; set
+// PROJECTION_VERSION to 2 and the projection arm does.
 func TestClientSchemaVersionIsPinnedToTheProducer(t *testing.T) {
 	b, err := fs.ReadFile(site.FS(), "core.js")
 	if err != nil {
 		t.Fatalf("read embedded core.js: %v", err)
 	}
-	want := fmt.Sprintf("const SCHEMA_VERSION = %d;", project.SchemaVersion)
-	if !bytes.Contains(b, []byte(want)) {
-		t.Errorf("site/core.js does not declare %q; the browser gate has drifted from "+
-			"project.SchemaVersion %d, so the page would draw a document it does not understand",
-			want, project.SchemaVersion)
+	for _, c := range []struct {
+		want, producer string
+		version        int
+	}{
+		{"const SCHEMA_VERSION = %d;", "export.PageConfigVersion", export.PageConfigVersion},
+		{"const PROJECTION_VERSION = %d;", "project.SchemaVersion", project.SchemaVersion},
+	} {
+		want := fmt.Sprintf(c.want, c.version)
+		if !bytes.Contains(b, []byte(want)) {
+			t.Errorf("site/core.js does not declare %q; the client has drifted from %s %d",
+				want, c.producer, c.version)
+		}
 	}
 }
 

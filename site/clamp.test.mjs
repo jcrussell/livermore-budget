@@ -185,6 +185,21 @@ describe("the page marks a cut mark and says so", () => {
   });
 });
 
+// Mutation: test `!d.clamped` in cutMark and clampNote again and a mark cut
+// to a ratio of 0 draws no strokes and says nothing of its cut.
+test("a mark cut to nothing on a canvas too short for any is still drawn and said as cut", () => {
+  const mark = { id: "fund-group/general", role: "fund_group", layer: 1, x0: 10, x1: 20, y0: 0, y1: 40, sourceLinks: [], targetLinks: [] };
+  sankey.clampFunds({ nodes: [mark], links: [] }, 0, 1);
+  assert.equal(mark.clamped, 0, "the canvas leaves the mark no height, so its ratio is 0");
+  assert.ok(sankey.isClamped(mark));
+  assert.notEqual(sankey.cutMark(mark), "");
+  assert.match(sankey.clampNote(mark), /cut to <1% of its full height/);
+  const whole = { id: "fund-group/other", role: "fund_group", layer: 1, x0: 0, x1: 0, y0: 0, y1: 0 };
+  assert.ok(!sankey.isClamped(whole));
+  assert.equal(sankey.cutMark(whole), "");
+  assert.equal(sankey.clampNote(whole), "");
+});
+
 /**
  * The marks cut over the pinned columns, measured: the General Fund's group,
  * and fund/100 where the group opens into it. Everything open grows the

@@ -601,6 +601,36 @@ describe("zoom and pan on the chart", () => {
     assert.equal(refusals(document).length, 0);
   });
 
+  // Mutation: in resetView, unpin and resetZoom before moveTo, and the pin
+  // and the zoom arms go red.
+  test("a Reset view that cannot draw lets nothing go and adds no history step, and says it was not made", async () => {
+    const { app, document, window } = await bootedApp();
+    const reset = document.getElementById("chart-zoom-reset");
+    const box = [...document.querySelectorAll("#filter-group-list input")].find((b) => b.value === "fund-group/general");
+    box.checked = false;
+    fire(box, "change");
+    const node = app.laidNodes.find((n) => n.id !== "fund-group/general");
+    app.pin(node);
+    app.zoomBy(2);
+    const was = { hash: window.location.hash, steps: window.history.length, zoom: app.zoomOf().k, pinned: app.pinned && app.pinned.id };
+    const d3 = globalThis.d3;
+    const sankey = d3.sankey;
+    d3.sankey = () => { throw new Error("the layout refused"); };
+    try {
+      fire(reset, "click");
+      await settle();
+    } finally {
+      d3.sankey = sankey;
+    }
+    const after = { hash: window.location.hash, steps: window.history.length, zoom: app.zoomOf().k, pinned: app.pinned && app.pinned.id };
+    assert.deepEqual(after, was);
+    assert.equal(app.filter.groups.size, 1, "the filter the reset could not lay out is kept");
+    const said = refusals(document).map((b) => b.textContent);
+    assert.equal(said.length, 1);
+    assert.match(said[0], /^The view was not wholly reset: /);
+    assert.ok(!reset.hasAttribute("disabled"), "a view still to reset offers Reset view");
+  });
+
   test("+ - and 0 zoom while focus is in the chart, and Reset view puts it back whole", async () => {
     const { app, document } = await bootedApp();
     const mark = markOf(document, "fund-group/general");
@@ -617,6 +647,7 @@ describe("zoom and pan on the chart", () => {
     assert.equal(app.zoomOf().k, 1);
     app.zoomBy(4);
     fire(document.getElementById("chart-zoom-reset"), "click");
+    await settle();
     const z = app.zoomOf();
     assert.deepEqual([z.k, z.x, z.y], [1, 0, 0]);
   });

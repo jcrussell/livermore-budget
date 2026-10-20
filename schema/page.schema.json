@@ -19,7 +19,7 @@
   "additionalProperties": false,
   "properties": {
     "schema_version": {
-      "description": "The projection's own version, which site/app.js compares against its SCHEMA_VERSION before it draws.",
+      "description": "The page's own version (export.PageConfigVersion), apart from the projection's: site/app.js compares it against core.js's SCHEMA_VERSION before it draws, so a script cached across a change to the page refuses it.",
       "type": "integer",
       "minimum": 1
     },

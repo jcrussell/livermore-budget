@@ -364,6 +364,16 @@ export function clampFunds(graph, top, bottom) {
 }
 
 /**
+ * Whether clampFunds cut a laid mark. A ratio of 0, a mark cut to nothing on
+ * a canvas too short for any, is still a cut.
+ * @param {LaidNode} d
+ * @returns {boolean}
+ */
+export function isClamped(d) {
+  return typeof d.clamped === "number";
+}
+
+/**
  * Whether a laid ribbon is drawn as a band narrowing from one end to the
  * other (taperPath) rather than as a stroke of one width.
  * @param {LaidLink} d
@@ -397,7 +407,7 @@ export function taperPath(d) {
  * @returns {string}
  */
 export function cutMark(d) {
-  if (!d.clamped) return "";
+  if (!isClamped(d)) return "";
   const y = d.y1 - 8;
   return "M" + (d.x0 - 3) + "," + (y + 3) + "L" + (d.x1 + 3) + "," + (y - 3) +
     "M" + (d.x0 - 3) + "," + (y + 7) + "L" + (d.x1 + 3) + "," + (y + 1);
@@ -410,8 +420,8 @@ export function cutMark(d) {
  * @returns {string}
  */
 export function clampNote(d) {
-  if (!d.clamped) return "";
-  const pct = d.clamped * 100;
+  if (!isClamped(d)) return "";
+  const pct = /** @type {number} */ (d.clamped) * 100;
   const shown = pct >= 99.5 ? ">99" : pct < 1 ? "<1" : String(Math.round(pct));
   return "\u25c7 our drawing: this mark is cut to " + shown + "% of its full height so its column fits; " +
     "its ribbons narrow into the cut, and its figure is unchanged";
@@ -1233,7 +1243,7 @@ export const SANKEY = Object.freeze({
    * on screen, the group and place lookups and the constants are all it
    * reads, and ctx.room, the screen's height the canvas is never shorter
    * than (canvasHeight). d3-sankey mutates its input, so it gets a copy and
-   * the document stays the thing the table and the detail panel read from.
+   * the document stays the thing the detail panel reads from.
    */
   layOut(drawn, ctx) {
     return layOutAt(drawn, ctx, canvasHeight(ctx.chart, drawn.nodes, ctx.room));
@@ -1515,7 +1525,7 @@ export const SANKEY = Object.freeze({
     node.select("rect.contra-band")
       .attr("display", /** @param {LaidNode} d */ (d) => (contraBand(d) ? null : "none"));
     node.select("path.cut")
-      .attr("display", /** @param {LaidNode} d */ (d) => (d.clamped ? null : "none"));
+      .attr("display", /** @param {LaidNode} d */ (d) => (isClamped(d) ? null : "none"));
 
     // Every node is directly labelled: the relief the palette's contrast check
     // requires.

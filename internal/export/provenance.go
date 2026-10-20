@@ -278,7 +278,7 @@ type inferredDocument struct {
 func inferredColumns(o *Options, ix ColumnIndex) ([]inferredColumn, error) {
 	byPath := map[string]*inferredColumn{}
 	seenNode := map[string]map[string]bool{}
-	seenFlow := map[string]map[inferredFlow]bool{}
+	seenFlow := map[string]map[[2]string]bool{}
 	for _, stem := range sortedKeys(o.Projections) {
 		path, folded := ix.Column(stem)
 		if !folded {
@@ -293,7 +293,7 @@ func inferredColumns(o *Options, ix ColumnIndex) ([]inferredColumn, error) {
 			col = &inferredColumn{Label: ledeOf(d.Metadata.FiscalYearLabel, d.Metadata.Basis), Path: path}
 			byPath[path] = col
 			seenNode[path] = map[string]bool{}
-			seenFlow[path] = map[inferredFlow]bool{}
+			seenFlow[path] = map[[2]string]bool{}
 		}
 		labels := make(map[string]string, len(d.Nodes))
 		derived := map[string]bool{}
@@ -312,10 +312,12 @@ func inferredColumns(o *Options, ix ColumnIndex) ([]inferredColumn, error) {
 			if !l.Derived || derived[l.Source] || derived[l.Target] {
 				continue
 			}
-			f := inferredFlow{From: cmp.Or(labels[l.Source], l.Source), To: cmp.Or(labels[l.Target], l.Target)}
-			if !seenFlow[path][f] {
-				seenFlow[path][f] = true
-				col.Flows = append(col.Flows, f)
+			// Once per pair of ends by id: two flows whose ends share labels
+			// are still two flows.
+			ends := [2]string{l.Source, l.Target}
+			if !seenFlow[path][ends] {
+				seenFlow[path][ends] = true
+				col.Flows = append(col.Flows, inferredFlow{From: cmp.Or(labels[l.Source], l.Source), To: cmp.Or(labels[l.Target], l.Target)})
 			}
 		}
 	}

@@ -759,8 +759,8 @@ export function expandable(d) {
 }
 
 /**
- * Whether focus is in the chart, asked while its element still exists. Not merely "not the body": a redraw asked for from the flow
- * table or the footer must not pull focus into the chart.
+ * Whether focus is in the chart, asked while its element still exists. Not merely "not the body": a redraw asked for from the filter
+ * panel or the drawer must not pull focus into the chart.
  * @returns {boolean}
  */
 export function focusInChart() {
@@ -792,7 +792,7 @@ export function askAffordances() {
  * decides, or leaves the page exactly as it was and tells the reader why.
  *
  * Everything that can throw on a served document -- the expansions read back,
- * shape, lay-out, table rows and what the paints ask (askAffordances) -- runs
+ * shape, lay-out and what the paints ask (askAffordances) -- runs
  * in the try while the page is still the reader's, and the state is restored
  * whole on a throw. The pin is cleared because the panel holds a mark of the
  * chart replaced, and a node's isolation with it (dropPin); a fund group's
@@ -3130,7 +3130,7 @@ export function paintDetail(d) {
 }
 
 /* ------------------------------------------------------------------ *
- * Legend, derived list, table
+ * Legend and search
  * ------------------------------------------------------------------ */
 
 /**
@@ -3878,12 +3878,14 @@ export function paintReset() {
  * Reset view: the year on screen as the page opens it, `#y=<year>` and
  * nothing else -- the pin let go, the filters and the isolation cleared, the
  * splits folded back and the zoom put back whole -- in one history step.
+ * The pin and the zoom go only once the chart has drawn the opening view; a
+ * reset that fails partway adds no history step, keeps the pin and the zoom,
+ * rewrites the URL to the view it left on screen and says it was not wholly
+ * made.
  * @returns {Promise<string>} DREW, SUPERSEDED or FAILED
  */
 export async function resetView() {
   if (!shownYear) return FAILED;
-  unpin();
-  resetZoom();
   restoringView = true;
   let moved;
   try {
@@ -3891,8 +3893,14 @@ export async function resetView() {
   } finally {
     restoringView = false;
   }
-  if (moved.outcome === FAILED && moved.why) fail("The view could not be reset: " + moved.why);
-  if (moved.outcome !== SUPERSEDED) recordView("push");
+  if (moved.outcome === DREW) {
+    unpin();
+    resetZoom();
+    recordView("push");
+  } else if (moved.outcome === FAILED) {
+    refuseInPlace("The view was not wholly reset: " + (moved.why || "the chart could not be drawn"));
+    recordView("replace");
+  }
   paintReset();
   return moved.outcome;
 }

@@ -189,6 +189,28 @@ func TestDepartmentPageCarriesItsMembershipAndItsTies(t *testing.T) {
 	}
 }
 
+// TestTheDepartmentPageLinksNoSourcesPageWhereTheSiteHasNone: on a site
+// with no provenance view the body's sentence points at the footer's Sources
+// list, which the footer then carries, and links no page the site does not
+// write. The arm with a sources page is held by department.golden.html.
+// Mutation: hard-code href="provenance.html" in department.html.tmpl again
+// and the first arm goes red.
+func TestTheDepartmentPageLinksNoSourcesPageWhereTheSiteHasNone(t *testing.T) {
+	dir := t.TempDir()
+	if _, err := writeSite(deptOptions(t, dir)); err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	html := readFile(t, dir, "department.html")
+	if strings.Contains(html, `href="provenance.html"`) {
+		t.Error("department.html links provenance.html on a site that writes no such page")
+	}
+	for _, want := range []string{"the Sources list at the foot of this page names every cited page", `id="sources-view"`} {
+		if !strings.Contains(html, want) {
+			t.Errorf("department.html does not carry %q", want)
+		}
+	}
+}
+
 // TestDepartmentPageRefusesASideLessThanTheDepartment: every way a side of a
 // department could be summed over less than the department, or a page offer a
 // department or a declaration the documents do not bear out, refuses the

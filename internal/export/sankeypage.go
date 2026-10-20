@@ -116,6 +116,14 @@ type pageData struct {
 // ledeOf is a column named the way the lede names it.
 func ledeOf(label, basis string) string { return label + " " + basis }
 
+// PageConfigVersion is the version window.FISC_CONFIG declares, and
+// site/core.js's SCHEMA_VERSION must equal it. It versions the page as
+// site/app.js reads it -- the config's keys, its wording keys and the elements
+// the script paints into -- apart from the projection's own SchemaVersion, so
+// a script cached across a change to the page refuses it and asks for a
+// reload rather than throwing on an element or a key the page no longer has.
+const PageConfigVersion = 2
+
 // clientConfig is window.FISC_CONFIG: the metadata the page needs before it
 // has fetched anything, plus where to fetch the bulk from.
 type clientConfig struct {
@@ -265,7 +273,7 @@ func drawnDocument(v View, year, builtBy string, projections map[string][]byte, 
 func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	ix ColumnIndex, pageTextBase func(string) string, cx *caveatIndex,
 ) (pageData, error) {
-	doc, meta, err := decodeSankey(v.Projection, o.Projections[v.Projection])
+	_, meta, err := decodeSankey(v.Projection, o.Projections[v.Projection])
 	if err != nil {
 		return pageData{}, err
 	}
@@ -353,7 +361,7 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	}
 
 	cfg := clientConfig{
-		SchemaVersion: doc.SchemaVersion,
+		SchemaVersion: PageConfigVersion,
 		ExportedBy:    o.GeneratedBy,
 		Primary:       cmp.Or(v.Draws, v.Projection),
 		Years:         years,

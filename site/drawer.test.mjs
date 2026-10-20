@@ -305,6 +305,7 @@ describe("the toolbar", () => {
     const listed = document.querySelectorAll("#search-list [role=option]").length;
     app.zoomBy(2);
     fire(document.getElementById("chart-zoom-reset"), "click");
+    await settle();
     const k = app.zoomOf().k;
     fire(document.getElementById("chart-fullscreen"), "click");
     await settle();
