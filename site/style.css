@@ -189,10 +189,22 @@ body {
   line-height: 1.5;
 }
 
+/* One frame for every page: the top bar, the head, main and the footer share
+   a width, so their edges line up whatever the window. */
 main,
-.page-head {
+.page-head,
+.site-nav,
+footer {
   max-width: 1180px;
   margin: 0 auto;
+}
+
+/* A page of prose alone, the caveats and the sources, draws its column at
+   the reading measure and centred in the frame, not as a measure-wide column
+   at the left of a 1180px box. */
+.prose-page main,
+.prose-page .page-head {
+  max-width: var(--measure);
 }
 
 a {
@@ -1542,7 +1554,7 @@ footer > .apparatus > summary h3 {
 }
 
 footer {
-  margin-top: 48px;
+  margin: 48px auto 0;
   border-top: 1px solid var(--grid);
   padding-top: 16px;
   color: var(--ink-2);
@@ -1639,7 +1651,7 @@ noscript p {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: 0 0 14px;
+  margin: 0 auto 14px;
   border-bottom: 1px solid var(--border);
 }
 .site-nav ul {

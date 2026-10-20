@@ -1872,6 +1872,24 @@ func TestEveryViewLinksTheSourcesPageInPlaceOfItsList(t *testing.T) {
 	}
 }
 
+// TestOnlyTheProsePagesDrawAtTheMeasure: caveats.html and provenance.html
+// wear .prose-page, whose rule draws main at the reading measure, and no
+// chart or table page does, since clamping theirs squeezes the figure.
+// Mutation: drop the class from caveats.html.tmpl, and the first arm goes red;
+// add it to history.html.tmpl, and the second does.
+func TestOnlyTheProsePagesDrawAtTheMeasure(t *testing.T) {
+	dir, err := sourcesPageSite(t, nil)
+	if err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	for path, prose := range map[string]bool{"caveats.html": true, "provenance.html": true,
+		export.IndexPath: false, "table.html": false} {
+		if got := strings.Contains(readFile(t, dir, path), `<body class="prose-page">`); got != prose {
+			t.Errorf("%s wears .prose-page: %v, want %v", path, got, prose)
+		}
+	}
+}
+
 // TestTheSourcesPageStatesEveryInference: provenance.html lists every derived
 // node of every column with its rationale and source note, and every derived
 // flow between two printed nodes, now that no chart page lists them.

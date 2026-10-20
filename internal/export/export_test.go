@@ -1119,7 +1119,7 @@ func TestTheStylesheetHasOneTextMeasure(t *testing.T) {
 	// two and clamped `main` to the reading measure while leaving .page-head at
 	// 1180px -- which squeezes the page's tiles and tables.
 	// Mutation-measured: that split was green.
-	const container = "main,\n.page-head {\n  max-width: 1180px;"
+	const container = "main,\n.page-head,\n.site-nav,\nfooter {\n  max-width: 1180px;\n  margin: 0 auto;"
 	// THE PRINT BLOCK OPENS WHAT THE PAGE FOLDS. Declared only -- this cannot
 	// say a folded panel prints, which is fisc-yj4w.18 -- but a fold added
 	// without it silently drops the caveats from a printed copy, and the print
@@ -1131,9 +1131,20 @@ func TestTheStylesheetHasOneTextMeasure(t *testing.T) {
 		}
 	}
 	if !strings.Contains(css, container) {
-		t.Error("style.css no longer sets main and .page-head together to 1180px, so the " +
-			"measure has been applied to the page's own column rather than to the " +
-			"prose in it")
+		t.Error("style.css no longer sets main, .page-head, the top bar and the footer " +
+			"together to one centred 1180px frame, so the measure has been applied to the " +
+			"page's own column rather than to the prose in it, or the bar and footer run " +
+			"past the page's edges")
+	}
+	// A later rule's margin would undo the frame's auto margins.
+	for _, rule := range []string{".site-nav {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  margin: 0 auto 14px;",
+		"footer {\n  margin: 48px auto 0;"} {
+		if !strings.Contains(css, rule) {
+			t.Errorf("style.css's own rule for the bar or the footer no longer centres it: want %q", rule)
+		}
+	}
+	if !strings.Contains(css, ".prose-page main,\n.prose-page .page-head {\n  max-width: var(--measure);") {
+		t.Error("style.css no longer draws a prose page's column at the reading measure")
 	}
 }
 
