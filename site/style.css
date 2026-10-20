@@ -843,6 +843,47 @@ svg.sankey .link.hairline {
   vector-effect: non-scaling-stroke;
 }
 
+/* A ribbon narrowing into a clamped fund's mark (sankey.js taperPath) is a
+   filled band: its fill takes the opacities a stroked ribbon's stroke does,
+   in the colour paint() hands it as --ribbon, and its stroke is drawn only
+   where a derived or partition ribbon's dash needs an outline to dash. */
+svg.sankey .link.taper {
+  fill: var(--ribbon, none);
+  fill-opacity: var(--link-opacity);
+  stroke-width: 0;
+}
+
+svg.sankey .link.taper.derived {
+  fill-opacity: var(--link-opacity-derived);
+}
+
+svg.sankey .link.taper.derived,
+svg.sankey .link.taper.partition {
+  stroke-width: 1px;
+}
+
+svg.sankey .link.taper.contra {
+  fill: var(--critical);
+}
+
+svg.sankey .link.taper.dim,
+svg.sankey.tracing .link.taper:not(.on-path) {
+  fill-opacity: 0.07;
+}
+
+svg.sankey .link.taper.hot,
+svg.sankey .link.taper:focus-visible {
+  fill-opacity: 0.78;
+}
+
+/* The two strokes across a clamped mark (sankey.js cutMark): a break in the
+   bar, in the surface's colour, as an axis break is drawn. */
+svg.sankey .node path.cut {
+  fill: none;
+  stroke: var(--surface-1);
+  stroke-width: 2;
+}
+
 svg.sankey .link-hit {
   fill: none;
   stroke: transparent;

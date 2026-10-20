@@ -231,7 +231,7 @@ export function markCents(d) {
  */
 export function contraBand(d) {
   if (!d.targetLinks.some((l) => l.contra)) return null;
-  const arriving = d.targetLinks.reduce((sum, l) => sum + l.width, 0);
+  const arriving = d.targetLinks.reduce((sum, l) => sum + endWidth(l, "target"), 0);
   const excess = arriving - (d.y1 - d.y0);
   // Half a pixel, not zero: no hairline band for reductions that round away.
   return excess > 0.5 ? { y: d.y1, height: excess } : null;
@@ -276,15 +276,145 @@ export function restackLinks(graph) {
   for (const node of graph.nodes) {
     let leaving = node.y0;
     for (const l of node.sourceLinks) {
-      l.y0 = leaving + l.width / 2;
-      leaving += l.width;
+      const w = endWidth(l, "source");
+      l.y0 = leaving + w / 2;
+      leaving += w;
     }
     let arriving = node.y0;
     for (const l of node.targetLinks) {
-      l.y1 = arriving + l.width / 2;
-      arriving += l.width;
+      const w = endWidth(l, "target");
+      l.y1 = arriving + w / 2;
+      arriving += w;
     }
   }
+}
+
+/**
+ * The tallest a fund's mark is drawn, as a share of the canvas inside its
+ * margins: a page's own constant and not a Go hint, since it is about the
+ * screen.
+ */
+export const FUND_MAX_SHARE = 0.35;
+
+/**
+ * Whether a laid node is a fund's mark: a fund group, or a fund drawn as one
+ * of its members.
+ * @param {FiscNode | LaidNode} d
+ * @returns {boolean}
+ */
+export function isFundMark(d) {
+  return isFundGroup(d) || (d.tier === 3 && (d.role === "fund" || d.role === "general_fund"));
+}
+
+/**
+ * How wide a laid ribbon is drawn where it meets its source or its target, in
+ * px: its width, except at a clamped mark's face (clampFunds).
+ * @param {LaidLink} l
+ * @param {"source" | "target"} end
+ * @returns {number}
+ */
+export function endWidth(l, end) {
+  const w = end === "source" ? l.w0 : l.w1;
+  return typeof w === "number" ? w : l.width;
+}
+
+/**
+ * Cuts every fund's mark taller than FUND_MAX_SHARE of the canvas between
+ * `top` and `bottom` to that height, so one fund cannot swamp its column.
+ *
+ * The mark keeps its top; every mark below it in its column moves up by the
+ * height freed, and the column is moved back to centre on where it stood. Its
+ * ribbons keep their width (d3's, the figure's) at their far end and narrow
+ * by the same ratio at the cut face, recorded as w0 (at the source) and w1
+ * (at the target), which restackLinks stacks by. A cut mark carries that
+ * ratio as `clamped`. Pixels only: no figure moves.
+ * @param {{nodes: LaidNode[], links: LaidLink[]}} graph laid by d3-sankey
+ * @param {number} top
+ * @param {number} bottom
+ */
+export function clampFunds(graph, top, bottom) {
+  const most = Math.round(FUND_MAX_SHARE * (bottom - top));
+  for (const l of graph.links) {
+    l.w0 = l.width;
+    l.w1 = l.width;
+  }
+  for (const n of graph.nodes) {
+    const h = n.y1 - n.y0;
+    if (!isFundMark(n) || !(h > most)) continue;
+    const column = graph.nodes.filter((m) => m.layer === n.layer);
+    const centre = (Math.min(...column.map((m) => m.y0)) + Math.max(...column.map((m) => m.y1))) / 2;
+    const freed = h - most;
+    for (const m of column) {
+      if (m !== n && m.y0 >= n.y1 - 1e-9) {
+        m.y0 -= freed;
+        m.y1 -= freed;
+      }
+    }
+    n.y1 = n.y0 + most;
+    const k = most / h;
+    n.clamped = k;
+    const shift = centre - (Math.min(...column.map((m) => m.y0)) + Math.max(...column.map((m) => m.y1))) / 2;
+    for (const m of column) {
+      m.y0 += shift;
+      m.y1 += shift;
+    }
+    for (const l of n.sourceLinks) l.w0 = l.width * k;
+    for (const l of n.targetLinks) l.w1 = l.width * k;
+  }
+}
+
+/**
+ * Whether a laid ribbon is drawn as a band narrowing from one end to the
+ * other (taperPath) rather than as a stroke of one width.
+ * @param {LaidLink} d
+ * @returns {boolean}
+ */
+export function isTapered(d) {
+  return endWidth(d, "source") !== endWidth(d, "target");
+}
+
+/**
+ * A tapered ribbon's outline: d3.sankeyLinkHorizontal's curve at each edge,
+ * each end its own width less the RIBBON_GAP a stroked ribbon gives up, and
+ * never under the 1px a stroke is floored at.
+ * @param {LaidLink} d
+ * @returns {string}
+ */
+export function taperPath(d) {
+  const x0 = d.source.x1;
+  const x1 = d.target.x0;
+  const xm = (x0 + x1) / 2;
+  const a = Math.max(1, endWidth(d, "source") - RIBBON_GAP) / 2;
+  const b = Math.max(1, endWidth(d, "target") - RIBBON_GAP) / 2;
+  return "M" + x0 + "," + (d.y0 - a) + "C" + xm + "," + (d.y0 - a) + " " + xm + "," + (d.y1 - b) + " " + x1 + "," + (d.y1 - b) +
+    "L" + x1 + "," + (d.y1 + b) + "C" + xm + "," + (d.y1 + b) + " " + xm + "," + (d.y0 + a) + " " + x0 + "," + (d.y0 + a) + "Z";
+}
+
+/**
+ * Two short strokes across a cut mark near its foot, where its height was
+ * taken off; "" for a mark drawn whole.
+ * @param {LaidNode} d
+ * @returns {string}
+ */
+export function cutMark(d) {
+  if (!d.clamped) return "";
+  const y = d.y1 - 8;
+  return "M" + (d.x0 - 3) + "," + (y + 3) + "L" + (d.x1 + 3) + "," + (y - 3) +
+    "M" + (d.x0 - 3) + "," + (y + 7) + "L" + (d.x1 + 3) + "," + (y + 1);
+}
+
+/**
+ * What the page says of a mark drawn shorter than its figure (clampFunds),
+ * and "" of every other mark: a sentence about the drawing, carrying no cents.
+ * @param {LaidNode} d
+ * @returns {string}
+ */
+export function clampNote(d) {
+  if (!d.clamped) return "";
+  const pct = d.clamped * 100;
+  const shown = pct >= 99.5 ? ">99" : pct < 1 ? "<1" : String(Math.round(pct));
+  return "\u25c7 our drawing: this mark is cut to " + shown + "% of its full height so its column fits; " +
+    "its ribbons narrow into the cut, and its figure is unchanged";
 }
 
 /**
@@ -983,6 +1113,7 @@ export function layOutAt(drawn, ctx, height) {
         " and no ribbon drawn reaches that far, so d3-sankey would draw it in column " + n.layer);
     }
   }
+  clampFunds(graph, 12, height - 12);
   restackLinks(graph);
   return graph;
 }
@@ -1072,6 +1203,11 @@ export const SANKEY = Object.freeze({
   /** How much of a laid node's figure is printed as reductions, in words: contraNote. */
   reductionNote(d) {
     return contraNote(d);
+  },
+
+  /** What the drawing does to a laid node's height, in words: clampNote. */
+  drawnNote(d) {
+    return clampNote(d);
   },
 
   /**
@@ -1166,6 +1302,10 @@ export const SANKEY = Object.freeze({
     const gGlyphs = groupNamed("glyphs");
     /** @param {LaidLink} d */
     const hairline = (d) => isHairline(ctx.chart, d);
+    // A HAIRLINE IS NEVER A BAND: it is drawn a screen pixel wide whatever
+    // its ends are.
+    /** @param {LaidLink} d */
+    const taper = (d) => !hairline(d) && isTapered(d);
     const keys = linkKeys(graph.links);
     /** @param {LaidLink} d */
     const keyOf = (d) => keys.get(d) || linkKey(d);
@@ -1235,7 +1375,7 @@ export const SANKEY = Object.freeze({
         (/** @type {any} */ enter) => (enteredLinks = enter.append("path")),
         (/** @type {any} */ update) => update,
         (/** @type {any} */ exit) => (leavingLinks = exit))
-      .attr("class", /** @param {LaidLink} d */ (d) => ctx.classes.link(d) + (hairline(d) ? " hairline" : ""))
+      .attr("class", /** @param {LaidLink} d */ (d) => ctx.classes.link(d) + (hairline(d) ? " hairline" : taper(d) ? " taper" : ""))
       .attr("tabindex", 0)
       .attr("role", "button")
       .attr("aria-hidden", null)
@@ -1248,9 +1388,10 @@ export const SANKEY = Object.freeze({
       .on("click", /** @param {MouseEvent} e @param {LaidLink} d */ (e, d) => on.guarded("pin this flow", () => { e.stopPropagation(); on.pin(d); }));
     /** @param {any} sel */
     const placeLinks = (sel) => sel
-      .attr("d", path)
-      // The surface gap, not a stroke, separates stacked ribbons.
-      .attr("stroke-width", /** @param {LaidLink} d */ (d) => Math.max(1, d.width - RIBBON_GAP));
+      .attr("d", /** @param {LaidLink} d */ (d) => (taper(d) ? taperPath(d) : path(d)))
+      // The surface gap, not a stroke, separates stacked ribbons. A band is
+      // filled, and its stroke is only the outline style.css dashes.
+      .attr("stroke-width", /** @param {LaidLink} d */ (d) => (taper(d) ? 1 : Math.max(1, endWidth(d, "source") - RIBBON_GAP)));
 
     // A HAIRLINE'S HIT TARGET IS WIDER THAN ITS STROKE: the ribbon keeps its
     // focus and its description, and this transparent stroke above it takes
@@ -1282,6 +1423,8 @@ export const SANKEY = Object.freeze({
           // selection has no filter(). pointer-events none, because the band
           // is not the mark.
           g.append("rect").attr("class", "contra-band").attr("pointer-events", "none");
+          // The cut a clamped mark is drawn with (cutMark), likewise on every mark.
+          g.append("path").attr("class", "cut").attr("pointer-events", "none").attr("aria-hidden", "true");
           const text = g.append("text").attr("class", "halo");
           for (const cls of LABEL_TSPANS) text.append("tspan").attr("class", cls || null);
           return (enteredNodes = g);
@@ -1367,9 +1510,12 @@ export const SANKEY = Object.freeze({
         .attr("y", /** @param {LaidNode} d */ (d) => (contraBand(d) || { y: 0 }).y)
         .attr("width", /** @param {LaidNode} d */ (d) => d.x1 - d.x0)
         .attr("height", /** @param {LaidNode} d */ (d) => (contraBand(d) || { height: 0 }).height);
+      sel.select("path.cut").attr("d", /** @param {LaidNode} d */ (d) => cutMark(d) || "M0,0");
     };
     node.select("rect.contra-band")
       .attr("display", /** @param {LaidNode} d */ (d) => (contraBand(d) ? null : "none"));
+    node.select("path.cut")
+      .attr("display", /** @param {LaidNode} d */ (d) => (d.clamped ? null : "none"));
 
     // Every node is directly labelled: the relief the palette's contrast check
     // requires.
@@ -1498,7 +1644,7 @@ export const SANKEY = Object.freeze({
       enteredLinks.each(/** @this {SVGPathElement} @param {LaidLink} d */ function (d) {
         const id = !before.has(d.target.id) ? d.target.id : !before.has(d.source.id) ? d.source.id : "";
         const grown = id ? grownFrom(id) : null;
-        d3.select(this).attr("d", grown ? flatAt(grown, edgeOf(id, now, grown)) : path(d)).attr("stroke-width", 0);
+        d3.select(this).attr("d", grown ? flatAt(grown, edgeOf(id, now, grown)) : taper(d) ? taperPath(d) : path(d)).attr("stroke-width", 0);
       });
     }
     label.attr("opacity", 0);
@@ -1541,7 +1687,10 @@ export const SANKEY = Object.freeze({
   /** Colours the drawn ribbons and marks; the colours are the page's. */
   paint(ctx) {
     ctx.svg.selectAll("path.link")
-      .attr("stroke", /** @param {LaidLink} d */ (d) => ctx.colour.link(d));
+      .attr("stroke", /** @param {LaidLink} d */ (d) => ctx.colour.link(d))
+      // A band's fill is style.css's, which reads its colour from here: a
+      // fill attribute loses to the rule every ribbon is unfilled by.
+      .style("--ribbon", /** @param {LaidLink} d */ (d) => ctx.colour.link(d));
     ctx.svg.selectAll("g.node rect")
       .attr("fill", /** @param {LaidNode} d */ (d) => ctx.colour.node(d));
   },

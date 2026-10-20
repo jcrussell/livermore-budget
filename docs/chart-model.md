@@ -124,13 +124,15 @@ members, as `FormRenderer` in `site/app.js` types them:
  *  reduction(d): boolean,                       // whether a laid node's every ribbon is a printed reduction
  *  crossTab(d): boolean,                        // whether a laid node's whole figure is a cross-tab total
  *  reductionNote(d): string,                    // how much of a laid node's figure is printed as reductions, in words; ""
+ *  drawnNote(d): string,                        // what the drawing does to a laid node's height, in words; "" where nothing
  *  hairlines(laid, chart): number,              // how many laid ribbons it draws as hairlines, wider than their share
  * }} FormRenderer */
 ```
 
 `Laid` is `{nodes: LaidNode[], links: LaidLink[]}` as `app.js` types them: a
 node with `x0, x1, y0, y1, value, layer, depth, sourceLinks, targetLinks`, a
-link with its `source` and `target` resolved to nodes and a `width`. The page
+link with its `source` and `target` resolved to nodes, a `width`, and the
+widths `w0` and `w1` it is drawn at where it meets its source and its target. The page
 reads a laid mark's geometry and its ribbons itself, for emphasis, focus and
 the table; what a laid mark's figure and ribbons MEAN -- its signed cents
 after the form has flipped a reduction to draw it, its share of a column, a

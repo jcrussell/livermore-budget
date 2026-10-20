@@ -64,13 +64,13 @@ export * from "./sankey.js";
  * layer is the column d3 put it in, which is not depth; the form's share reads layer.
  * @typedef {FiscNode & {x0:number, x1:number, y0:number, y1:number, value:number,
  *   sourceLinks:LaidLink[], targetLinks:LaidLink[], depth:number,
- *   layer:number}} LaidNode
+ *   layer:number, clamped?:number}} LaidNode
  */
 
 /**
  * A link after layout: source and target are node objects, not ids.
  * @typedef {Omit<FiscLink,"source"|"target"> & {source:LaidNode, target:LaidNode,
- *   value:number, width:number, y0:number, y1:number, index:number}} LaidLink
+ *   value:number, width:number, y0:number, y1:number, index:number, w0?:number, w1?:number}} LaidLink
  */
 
 /** d3 and d3-sankey are vendored UMD bundles with no type declarations. */
@@ -110,7 +110,7 @@ export function shareOf(d) {
  * form to, and the only way this file reaches a form. A renderer reads of a
  * chart its own hints, calls core.js for every figure, and computes none of
  * its own. Each member is set out in docs/chart-model.md; the readings over a
- * laid mark (cents, share, reduction, crossTab, reductionNote) are the form's
+ * laid mark (cents, share, reduction, crossTab, reductionNote, drawnNote) are the form's
  * because only the layout that drew the mark knows what its drawn figure and
  * ribbons mean.
  * @typedef {{
@@ -129,6 +129,7 @@ export function shareOf(d) {
  *   reduction(d: LaidNode): boolean,
  *   crossTab(d: LaidNode): boolean,
  *   reductionNote(d: LaidNode): string,
+ *   drawnNote(d: LaidNode): string,
  * }} FormRenderer
  */
 
@@ -2821,6 +2822,9 @@ export function showTip(event, d) {
     if (n.rationale) tip.append(h("div", "tip-meta", n.rationale));
     const note = form.reductionNote(markOfView(n));
     if (note) tip.append(h("div", "tip-meta", note));
+    // The laid mark and not the view's: the drawing is what is cut.
+    const cut = form.drawnNote(n);
+    if (cut) tip.append(h("div", "tip-meta tip-cut", cut));
     for (const c of cavs) tip.append(h("div", "tip-meta", "\u26a0 " + c.summary));
     const gone = hiddenAt(n.id);
     if (gone) tip.append(h("div", "tip-meta", gone));
