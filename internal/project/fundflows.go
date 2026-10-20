@@ -437,7 +437,7 @@ func fundFlowsCaveats(twice int, nodes []Node) []Caveat {
 			AppliesTo: append(sortedKeys(direct), PrefixFund+strconv.Itoa(generalFund)),
 		})
 	}
-	out = append(out, notItemizedCaveats(nodes)...)
+	out = append(out, categoryNamedCaveats(nodes)...)
 	if stopped := truncatedGroups(nodes); len(stopped) > 0 {
 		out = append(out, Caveat{
 			ID: "some-funds-show-no-spending",
@@ -904,52 +904,52 @@ func (f *fundFlows) addParents(nodes map[string]Node) error {
 	return nil
 }
 
-// NotItemized and SoNamed end the label of a revenue line the city prints
-// under its own category's name, which would otherwise read as the category
-// listed inside itself.
+// OneRow and SoNamed end the label of a revenue line the city prints under
+// its own category's name, which would otherwise read as the category listed
+// inside itself.
 const (
-	NotItemized = ", not itemized"
-	SoNamed     = ", the line so named"
+	OneRow  = ", one row"
+	SoNamed = ", the line so named"
 )
 
-// NotItemizedCaveatID and SoNamedCaveatID are the caveats explaining
-// NotItemized and SoNamed, one each.
+// OneRowCaveatID and SoNamedCaveatID are the caveats explaining OneRow and
+// SoNamed, one each.
 const (
-	NotItemizedCaveatID = "not-itemized-is-one-printed-line"
-	SoNamedCaveatID     = "the-line-so-named-is-one-row-of-several"
+	OneRowCaveatID  = "one-row-is-one-printed-line"
+	SoNamedCaveatID = "the-line-so-named-is-one-row-of-several"
 )
 
-// notItemizedCaveats explains the labels labelCategoryNamedLines writes: a
+// categoryNamedCaveats explains the labels labelCategoryNamedLines writes: a
 // caveat per label some node carries, about every node carrying that one.
 //
 // Read off the labels rather than recomputed, so each marks exactly the lines
 // a reader sees so named, in whichever document carries them.
-func notItemizedCaveats(nodes []Node) []Caveat {
-	var notItemized, soNamed []string
+func categoryNamedCaveats(nodes []Node) []Caveat {
+	var oneRow, soNamed []string
 	for _, n := range nodes {
 		if !strings.HasPrefix(n.ID, PrefixRevenueLine) {
 			continue
 		}
 		switch {
-		case strings.HasSuffix(n.Label, NotItemized):
-			notItemized = append(notItemized, n.ID)
+		case strings.HasSuffix(n.Label, OneRow):
+			oneRow = append(oneRow, n.ID)
 		case strings.HasSuffix(n.Label, SoNamed):
 			soNamed = append(soNamed, n.ID)
 		}
 	}
 	var out []Caveat
-	if len(notItemized) > 0 {
-		sort.Strings(notItemized)
+	if len(oneRow) > 0 {
+		sort.Strings(oneRow)
 		out = append(out, Caveat{
-			ID: NotItemizedCaveatID,
-			Summary: "A revenue line marked \"not itemized\" is one the city prints as a single row for its " +
-				"whole category, so there is no finer breakdown to show.",
+			ID: OneRowCaveatID,
+			Summary: "A revenue line marked \"one row\" is one Budget Book pp.127-140 print as a single row " +
+				"for its whole category.",
 			Text: "Budget Book pp.127-140 print some funds' revenue under a category as one row named for " +
 				"the category itself, such as Charges for Services. Where no fund printing that row prints " +
-				"another row of the category, this site labels the line \"<category>, not itemized\": the " +
-				"city prints no finer breakdown of it, so the figure is the printed row and not a gap in " +
-				"this site's reading.",
-			AppliesTo: notItemized,
+				"another row of the category on those pages, this site labels the line \"<category>, one " +
+				"row\": pp.127-140 print it as a single row for its category, so the figure is that printed " +
+				"row and not a gap in this site's reading of them.",
+			AppliesTo: oneRow,
 		})
 	}
 	if len(soNamed) > 0 {
@@ -975,7 +975,7 @@ func notItemizedCaveats(nodes []Node) []Caveat {
 // category.
 //
 // The words are chosen per line from this column's cells, so they are true of
-// what the line sums: "<category>, not itemized" when no fund printing the line
+// what the line sums: "<category>, one row" when no fund printing the line
 // prints another line of the category, and "<line>, the line so named" when
 // one does. The id is untouched.
 //
@@ -1022,7 +1022,7 @@ func (f *fundFlows) labelCategoryNamedLines(nodes map[string]Node, rev map[revKe
 		if itemized {
 			n.Label += SoNamed
 		} else {
-			n.Label = f.label(endpoint{id: n.Parent, slug: category}) + NotItemized
+			n.Label = f.label(endpoint{id: n.Parent, slug: category}) + OneRow
 		}
 		nodes[id] = n
 	}

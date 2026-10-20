@@ -90,9 +90,9 @@
         ]
       },
       {
-        "id": "not-itemized-is-one-printed-line",
-        "summary": "A revenue line marked \"not itemized\" is one the city prints as a single row for its whole category, so there is no finer breakdown to show.",
-        "text": "Budget Book pp.127-140 print some funds' revenue under a category as one row named for the category itself, such as Charges for Services. Where no fund printing that row prints another row of the category, this site labels the line \"<category>, not itemized\": the city prints no finer breakdown of it, so the figure is the printed row and not a gap in this site's reading.",
+        "id": "one-row-is-one-printed-line",
+        "summary": "A revenue line marked \"one row\" is one Budget Book pp.127-140 print as a single row for its whole category.",
+        "text": "Budget Book pp.127-140 print some funds' revenue under a category as one row named for the category itself, such as Charges for Services. Where no fund printing that row prints another row of the category on those pages, this site labels the line \"<category>, one row\": pp.127-140 print it as a single row for its category, so the figure is that printed row and not a gap in this site's reading of them.",
         "applies_to": [
           "revenue-line/charges-for-services/charges-for-services",
           "revenue-line/contributions-outsourced/contributionsoutsrce",
@@ -281,7 +281,7 @@
     },
     {
       "id": "revenue-line/charges-for-services/charges-for-services",
-      "label": "Charges for Services, not itemized",
+      "label": "Charges for Services, one row",
       "tier": 1,
       "parent": "revenue/charges-for-services",
       "constraint_tier": "",
@@ -457,7 +457,7 @@
     },
     {
       "id": "revenue-line/contributions-outsourced/contributionsoutsrce",
-      "label": "Contributions Outsourced, not itemized",
+      "label": "Contributions Outsourced, one row",
       "tier": 1,
       "parent": "revenue/contributions-outsourced",
       "constraint_tier": "",
@@ -523,7 +523,7 @@
     },
     {
       "id": "revenue-line/intergovernmental/intergovernmental",
-      "label": "Intergovernmental, not itemized",
+      "label": "Intergovernmental, one row",
       "tier": 1,
       "parent": "revenue/intergovernmental",
       "constraint_tier": "",
@@ -787,7 +787,7 @@
     },
     {
       "id": "revenue-line/miscellaneous-revenue/miscellaneous-rev",
-      "label": "Miscellaneous Revenue, not itemized",
+      "label": "Miscellaneous Revenue, one row",
       "tier": 1,
       "parent": "revenue/miscellaneous-revenue",
       "constraint_tier": "",
@@ -952,7 +952,7 @@
     },
     {
       "id": "revenue-line/taxes/other/other-taxes",
-      "label": "Other Taxes, not itemized",
+      "label": "Other Taxes, one row",
       "tier": 1,
       "parent": "revenue/taxes/other",
       "constraint_tier": "",
@@ -1084,7 +1084,7 @@
     },
     {
       "id": "revenue-line/taxes/property/property-taxes",
-      "label": "Property Taxes, not itemized",
+      "label": "Property Taxes, one row",
       "tier": 1,
       "parent": "revenue/taxes/property",
       "constraint_tier": "",
@@ -1249,7 +1249,7 @@
     },
     {
       "id": "revenue-line/use-of-money-and-property/use-of-money-and-prop",
-      "label": "Use of Money And Property, not itemized",
+      "label": "Use of Money And Property, one row",
       "tier": 1,
       "parent": "revenue/use-of-money-and-property",
       "constraint_tier": "",

@@ -1269,7 +1269,7 @@ func expansionCaveats(twice int, nodes []Node, apart []string) []Caveat {
 			AppliesTo: []string{},
 		},
 	}
-	out = append(out, notItemizedCaveats(nodes)...)
+	out = append(out, categoryNamedCaveats(nodes)...)
 	var netted []string
 	for _, n := range nodes {
 		if strings.HasPrefix(n.ID, PrefixGroupOnly) {

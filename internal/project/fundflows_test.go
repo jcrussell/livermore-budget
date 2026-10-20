@@ -882,10 +882,10 @@ func TestNoRevenueLineReadsAsItsCategory(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := map[string]string{
-		"revenue-line/charges-for-services/charges-for-services":         "Charges for Services, not itemized",
-		"revenue-line/taxes/property/property-taxes":                     "Property Taxes, not itemized",
-		"revenue-line/use-of-money-and-property/use-of-money-and-prop":   "Use of Money And Property, not itemized",
-		"revenue-line/miscellaneous-revenue/miscellaneous-rev":           "Miscellaneous Revenue, not itemized",
+		"revenue-line/charges-for-services/charges-for-services":         "Charges for Services, one row",
+		"revenue-line/taxes/property/property-taxes":                     "Property Taxes, one row",
+		"revenue-line/use-of-money-and-property/use-of-money-and-prop":   "Use of Money And Property, one row",
+		"revenue-line/miscellaneous-revenue/miscellaneous-rev":           "Miscellaneous Revenue, one row",
 		"revenue-line/miscellaneous-revenue/miscellaneous-revenue":       "Miscellaneous Revenue, the line so named",
 		"revenue-line/charges-for-services/administrative-cost-recovery": "Administrative Cost Recovery",
 	}
@@ -966,7 +966,7 @@ func TestARevenueLineReadingAsItsCategoryIsRefused(t *testing.T) {
 
 // TestARevenueLineSpelledAsItsCategoryInAnotherCaseIsRelabelled: a line
 // whose term is its category's in another case shares that term, so it is
-// relabelled as the category not itemized rather than refused for reading as
+// relabelled as the category's one row rather than refused for reading as
 // its category.
 //
 // Mutation: compare terms byte for byte in sharesTerm, and the line is
@@ -991,7 +991,7 @@ func TestARevenueLineSpelledAsItsCategoryInAnotherCaseIsRelabelled(t *testing.T)
 	if err := f.labelCategoryNamedLines(nodes, rev); err != nil {
 		t.Fatalf("got %v, want the line relabelled", err)
 	}
-	if diff := cmp.Diff("Charges for Services"+NotItemized, nodes[line].Label); diff != "" {
+	if diff := cmp.Diff("Charges for Services"+OneRow, nodes[line].Label); diff != "" {
 		t.Errorf("label (-want +got):\n%s", diff)
 	}
 }
@@ -1034,7 +1034,7 @@ func (s termsLabels) Terms(slug string) []string { return s.terms[slug] }
 
 // TestTwoRevenueLinesReadingAlikeAreRefused: two lines under one category,
 // each the only line of it its fund prints and each sharing a term with the
-// category, would both read "<category>, not itemized".
+// category, would both read "<category>, one row".
 //
 // Mutation: drop the collision refusal from labelCategoryNamedLines and the
 // two nodes are returned reading alike.
@@ -1059,7 +1059,7 @@ func TestTwoRevenueLinesReadingAlikeAreRefused(t *testing.T) {
 	}
 	err := f.labelCategoryNamedLines(nodes, rev)
 	want := `revenue lines revenue-line/charges/charges-a and revenue-line/charges/charges-b under revenue/charges ` +
-		`read "Charges for Services, not itemized" and "Charges for Services, not itemized"`
+		`read "Charges for Services, one row" and "Charges for Services, one row"`
 	if err == nil || !strings.Contains(err.Error(), want) {
 		t.Fatalf("got %v, want an error containing %q", err, want)
 	}
@@ -1079,20 +1079,21 @@ func TestTwoRevenueLinesReadingAlikeAreRefused(t *testing.T) {
 	}
 }
 
-// TestNotItemizedCaveatIsAboutEveryLineSoLabelled: each label's caveat names
+// TestOneRowCaveatIsAboutEveryLineSoLabelled: each label's caveat names
 // the revenue lines carrying that label and no other node, so a line one row
 // of several is never told it is its category's only row; a document with
 // one label carries only its caveat, and one with neither carries none.
 //
-// Mutation: put the SoNamed lines in the NotItemized caveat's applies_to and
-// revenue-line/b is told it is its whole category.
-func TestNotItemizedCaveatIsAboutEveryLineSoLabelled(t *testing.T) {
+// Mutation: put the SoNamed lines in the OneRow caveat's applies_to and
+// revenue-line/b is told it is its whole category. Restore the summary's "the city
+// prints no finer breakdown" and the pages arm goes red.
+func TestOneRowCaveatIsAboutEveryLineSoLabelled(t *testing.T) {
 	nodes := []Node{
 		{ID: PrefixRevenueLine + "b", Label: "Miscellaneous Revenue" + SoNamed},
-		{ID: PrefixRevenueLine + "a", Label: "Charges for Services" + NotItemized},
+		{ID: PrefixRevenueLine + "a", Label: "Charges for Services" + OneRow},
 		{ID: PrefixRevenueLine + "c", Label: "Current Year - Secured"},
-		{ID: PrefixRevenue + "d", Label: "A category" + NotItemized},
-		{ID: PrefixRevenueLine + "e", Label: "Property Taxes" + NotItemized},
+		{ID: PrefixRevenue + "d", Label: "A category" + OneRow},
+		{ID: PrefixRevenueLine + "e", Label: "Property Taxes" + OneRow},
 	}
 	about := func(cs []Caveat) map[string][]string {
 		out := map[string][]string{}
@@ -1101,10 +1102,10 @@ func TestNotItemizedCaveatIsAboutEveryLineSoLabelled(t *testing.T) {
 		}
 		return out
 	}
-	cs := notItemizedCaveats(nodes)
+	cs := categoryNamedCaveats(nodes)
 	want := map[string][]string{
-		NotItemizedCaveatID: {PrefixRevenueLine + "a", PrefixRevenueLine + "e"},
-		SoNamedCaveatID:     {PrefixRevenueLine + "b"},
+		OneRowCaveatID:  {PrefixRevenueLine + "a", PrefixRevenueLine + "e"},
+		SoNamedCaveatID: {PrefixRevenueLine + "b"},
 	}
 	if diff := cmp.Diff(want, about(cs)); diff != "" {
 		t.Errorf("applies_to by caveat (-want +got):\n%s", diff)
@@ -1112,11 +1113,18 @@ func TestNotItemizedCaveatIsAboutEveryLineSoLabelled(t *testing.T) {
 	if err := validateCaveats(cs, nodeIDs(nodes)); err != nil {
 		t.Errorf("the caveats do not validate against their own nodes: %v", err)
 	}
+	// The code reads only pp.127-140, so the caveat names those pages in
+	// both its sentences.
+	for _, c := range cs {
+		if c.ID == OneRowCaveatID && (!strings.Contains(c.Summary, "pp.127-140") || !strings.Contains(c.Text, "pp.127-140 print it as a single row")) {
+			t.Errorf("%s claims beyond the pages read: %q / %q", c.ID, c.Summary, c.Text)
+		}
+	}
 	if diff := cmp.Diff(map[string][]string{SoNamedCaveatID: {PrefixRevenueLine + "b"}},
-		about(notItemizedCaveats(nodes[:1]))); diff != "" {
+		about(categoryNamedCaveats(nodes[:1]))); diff != "" {
 		t.Errorf("a document with only a line so named (-want +got):\n%s", diff)
 	}
-	if cs := notItemizedCaveats(nodes[2:4]); len(cs) != 0 {
+	if cs := categoryNamedCaveats(nodes[2:4]); len(cs) != 0 {
 		t.Errorf("a document with no relabelled line carries %d caveats", len(cs))
 	}
 }
