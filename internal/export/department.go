@@ -91,8 +91,6 @@ type departmentPageData struct {
 	chrome
 	Years       []departmentYear
 	Departments []departmentEntry
-	// Opens is the path of the year the page opens on, the last of Years.
-	Opens string
 	// ConfigJSON is the page's config. json.Marshal escapes <, > and &, so the
 	// blob cannot close the script element it sits in.
 	ConfigJSON template.JS
@@ -178,6 +176,7 @@ func buildDepartmentPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 
 	var (
 		years    []departmentYear
+		sel      yearSelect
 		cited    []sourceMeta
 		builtBy  string
 		scope    string
@@ -222,6 +221,7 @@ func buildDepartmentPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			}
 			sides = append(sides, side)
 		}
+		sel.newest(fm.FiscalYear, fm.Basis, ledeOf(fm.FiscalYearLabel, fm.Basis))
 		years = append(years, departmentYear{
 			Path:  ColumnPath(fm.FiscalYear, fm.Basis),
 			Label: fm.FiscalYearLabel,
@@ -279,10 +279,10 @@ func buildDepartmentPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			DataPath:    open.Path,
 			Scope:       scope,
 			CaveatsHere: cx.here(v.Path),
+			YearSelect:  sel,
 		},
 		Years:       years,
 		Departments: entries,
-		Opens:       open.Path,
 		// #nosec G203 -- blob is encoding/json's output, which escapes <, >
 		// and &, so it cannot terminate the script element it sits in.
 		ConfigJSON: template.JS(blob),

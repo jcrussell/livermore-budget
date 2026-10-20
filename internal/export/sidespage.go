@@ -40,7 +40,6 @@ type sidesPageData struct {
 	Description string
 	Years       []sidesYear
 	Sides       []Side
-	Opens       string
 	OpensLede   string
 	// ConfigJSON is the page's config. json.Marshal escapes <, > and &, so the
 	// blob cannot close the script element it sits in.
@@ -84,6 +83,7 @@ func buildSidesPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	}
 	var (
 		years []sidesYear
+		sel   yearSelect
 		cited []sourceMeta
 	)
 	for _, stem := range v.yearStems() {
@@ -105,6 +105,7 @@ func buildSidesPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		}
 		cited = append(cited, m.Sources...)
 		cited = append(cited, chart.doc.Metadata.Sources...)
+		sel.newest(m.FiscalYear, m.Basis, ledeOf(m.FiscalYearLabel, m.Basis))
 		years = append(years, sidesYear{
 			Path:  ColumnPath(m.FiscalYear, m.Basis),
 			Label: m.FiscalYearLabel,
@@ -156,11 +157,11 @@ func buildSidesPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			DataPath:    open.Path,
 			Scope:       meta.Scope(),
 			CaveatsHere: cx.here(v.Path),
+			YearSelect:  sel,
 		},
 		Description: description,
 		Years:       years,
 		Sides:       slices.Clone(hints.Sides),
-		Opens:       open.Path,
 		OpensLede:   open.Lede,
 		// #nosec G203 -- blob is encoding/json's output, which escapes <, >
 		// and &, so it cannot terminate the script element it sits in.

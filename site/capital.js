@@ -2,12 +2,13 @@
 /**
  * fisc — the client module capital.html loads. The table is server-rendered
  * with every figure Go cited; this module filters its rows by fund and by
- * project name, narrows it to one year, and sums the rows left shown. The sum
+ * project name, narrows it to the year the top bar's select names, and sums
+ * the rows left shown. The sum
  * is ours, not the listing's printed TOTAL, and the template's footer labels
  * it so. Importing it runs nothing; the template calls boot().
  */
 
-import { dollars } from "./format.js";
+import { dollars, hashFields, hashValue, selectYear, wireYearSelect } from "./format.js";
 
 /**
  * @typedef {{ fund: string, column: string, query: string }} Filter
@@ -119,24 +120,53 @@ export function apply(table, status, filter) {
 }
 
 /**
- * Binds the page's controls. The template calls this with its document.
+ * The index of the column whose header carries a year's key, or "" for every
+ * column: "" itself, or a key no header carries.
+ * @param {HTMLTableElement} table
+ * @param {string} key
+ */
+export function columnOf(table, key) {
+  if (!key || !table.tHead) return "";
+  for (const th of Array.from(table.tHead.querySelectorAll("th[data-year]"))) {
+    if (th.getAttribute("data-year") === key) return th.getAttribute("data-column") || "";
+  }
+  return "";
+}
+
+/**
+ * Binds the page's controls. The template calls this with its document. The
+ * year opens on the hash's `#y=`, or every year where it names no column, and
+ * a year chosen is written back there.
  * @param {Document} doc
  */
 export function boot(doc) {
   const table = /** @type {HTMLTableElement | null} */ (doc.getElementById("capital-table"));
   const form = doc.getElementById("capital-filters");
   const fund = /** @type {HTMLSelectElement | null} */ (doc.getElementById("capital-fund"));
-  const year = /** @type {HTMLSelectElement | null} */ (doc.getElementById("capital-year"));
   const search = /** @type {HTMLInputElement | null} */ (doc.getElementById("capital-search"));
-  if (!table || !form || !fund || !year || !search) {
+  if (!table || !form || !fund || !search) {
     throw new Error("capital.html is missing its table or one of its controls");
   }
   const status = doc.getElementById("capital-shown");
-  const update = () => apply(table, status, { fund: fund.value, column: year.value, query: search.value });
+  let year = "";
+  const update = () => apply(table, status, { fund: fund.value, column: columnOf(table, year), query: search.value });
+  /** @param {string} key */
+  const choose = (key) => {
+    year = columnOf(table, key) === "" ? "" : key;
+    selectYear(doc, year);
+    update();
+    const win = doc.defaultView;
+    const hash = year ? "#y=" + hashValue(year) : "";
+    if (win && win.location.hash !== hash) {
+      try {
+        win.history.replaceState(null, "", hash || win.location.pathname + win.location.search);
+      } catch { /* a sandboxed frame refuses history; the table still narrows */ }
+    }
+  };
   form.addEventListener("submit", (e) => e.preventDefault());
   fund.addEventListener("change", update);
-  year.addEventListener("change", update);
   search.addEventListener("input", update);
+  const restored = wireYearSelect(doc, choose);
   form.hidden = false;
-  update();
+  choose(hashFields(doc.location.hash, ["y"]).get("y") ?? restored ?? "");
 }

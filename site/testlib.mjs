@@ -267,7 +267,7 @@ let loads = 0;
  *
  * A NEW MODULE INSTANCE PER CALL, by a cache-busting query, because app.js
  * reads FISC_CONFIG and d3 at import and keeps module-level state.
- * `checkedStem` moves the radio as a restored form would; `config: null`
+ * `checkedStem` moves the year select as a restored form would; `config: null`
  * hands the module no config.
  */
 export async function loadApp(o = {}) {
@@ -279,9 +279,8 @@ export async function loadApp(o = {}) {
     storage: o.storage, viewport: o.viewport, osDark: o.osDark, motion: o.motion,
   });
   if (o.checkedStem) {
-    for (const r of browser.document.querySelectorAll("#year-toggle input[type=radio]")) {
-      r.checked = r.value === o.checkedStem;
-    }
+    const select = browser.document.getElementById("year-select");
+    if (select) select.value = keyOfStem(o.checkedStem, page.config);
   }
   const fetch = o.fetch || plannedFetch(o.plan, config ? config.exported_by : undefined);
   globalThis.FISC_CONFIG = config;
@@ -429,19 +428,23 @@ export function refusals(document) {
 }
 
 /**
- * Checks one year's radio and fires change ON THE INPUT, bubbling: dispatched
- * on the fieldset, e.target has no value and the handler does nothing.
+ * The top bar's key for a year the Sankey config names by its stem: the
+ * select is keyed on the column, which every page shares, and these tests
+ * name years as the config does.
  */
+export function keyOfStem(stem, config = globalThis.FISC_CONFIG || pageFixture().config) {
+  const year = (config.years || []).find((y) => y.stem === stem);
+  return year ? year.path.replace(/\.json$/, "") : stem;
+}
+
+/** Picks one year in the top bar's select by its stem and fires change. */
 export function clickYear(document, stem) {
-  const group = document.getElementById("year-toggle");
-  if (!group) throw new Error("the page rendered no year-toggle to click");
-  let picked = null;
-  for (const r of group.querySelectorAll("input[type=radio]")) {
-    r.checked = r.value === stem;
-    if (r.checked) picked = r;
-  }
-  if (!picked) throw new Error("the year control offers no radio for " + stem);
-  picked.dispatchEvent(new globalThis.Event("change", { bubbles: true }));
+  const select = document.getElementById("year-select");
+  if (!select) throw new Error("the page rendered no year select to pick from");
+  const key = keyOfStem(stem);
+  if (![...select.options].some((o) => o.value === key)) throw new Error("the year select offers no option for " + stem);
+  select.value = key;
+  select.dispatchEvent(new globalThis.Event("change", { bubbles: true }));
 }
 
 /**

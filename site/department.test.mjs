@@ -207,7 +207,7 @@ describe("a spending row is a transfer because its links say so", () => {
     const { document, window } = await booted("#y=fy2027-adopted&d=" + works,
       { "fy2024-actual": { doc: edited("fy2024-actual", "transfers/out", (l) => { delete l.kind; }) } });
     const year = document.getElementById("year-select");
-    year.value = "fy2024-actual.json";
+    year.value = "fy2024-actual";
     year.dispatchEvent(new window.Event("change"));
     await settle();
     const refused = document.getElementById("department-refusal") !== null;
@@ -223,7 +223,7 @@ describe("the page over the pinned columns", () => {
   test("the hash opens one department of one column, and the selects say which", async () => {
     const { document, window } = await booted("#y=fy2024-actual&d=department/public-works");
     assert.equal(document.getElementById("department-select").value, "department/public-works");
-    assert.equal(document.getElementById("year-select").value, "fy2024-actual.json");
+    assert.equal(document.getElementById("year-select").value, "fy2024-actual");
     assert.equal(window.location.hash, "#y=fy2024-actual&d=department/public-works");
     assert.equal(document.getElementById("department-heading").textContent, "Public Works, FY 2023-24 actual");
     assert.equal(document.getElementById("department-refusal"), null);
@@ -246,7 +246,7 @@ describe("the page over the pinned columns", () => {
     assert.ok(refusal, "no refusal was said");
     assert.match(refusal.textContent, /fy1999-adopted/);
     assert.match(refusal.textContent, /department\/nope/);
-    assert.equal(document.getElementById("year-select").value, config.years.at(-1).path);
+    assert.equal(document.getElementById("year-select").value, config.years.at(-1).path.replace(/\.json$/, ""));
     const longest = mod.departmentBars(columnFixture(config.years.at(-1).path.replace(/\.json$/, "")), config).bars[0].id;
     assert.equal(document.getElementById("department-select").value, longest);
   });
@@ -558,7 +558,7 @@ describe("opening a bar chooses its department for the tables and the hash", () 
     const { document, window, config } = await booted("#y=fy2027-adopted&d=department/library-department");
     const before = barsOf(document).map((b) => b.cents);
     const year = document.getElementById("year-select");
-    year.value = "fy2024-actual.json";
+    year.value = "fy2024-actual";
     year.dispatchEvent(new window.Event("change"));
     await settle();
     const want = mod.departmentBars(columnFixture("fy2024-actual"), config).bars;
@@ -569,6 +569,15 @@ describe("opening a bar chooses its department for the tables and the hash", () 
     assert.equal(window.location.hash, "#y=fy2024-actual&d=department/library-department");
     assert.match(document.getElementById("bars-heading").textContent, /FY 2023-24 actual$/);
     assert.equal(document.getElementById("department-heading").textContent, "Library Department, FY 2023-24 actual");
+    // A year the other views do not publish is carried to none of them, so
+    // no link opens on a refusal; one they publish is carried to each.
+    const href = (path) => document.querySelector(`nav.site-nav a[href^="${path}"]`).getAttribute("href");
+    assert.deepEqual([href("flows.html"), href("ledger.html"), href("capital.html")], ["flows.html", "ledger.html", "capital.html"]);
+    year.value = "fy2026-adopted";
+    year.dispatchEvent(new window.Event("change"));
+    await settle();
+    assert.deepEqual([href("flows.html"), href("ledger.html"), href("capital.html")],
+      ["flows.html#y=fy2026-adopted", "ledger.html#y=fy2026-adopted", "capital.html#y=fy2026-adopted"]);
   });
 
   // Mutation: name the asked-for view current before its column resolves,
@@ -577,7 +586,7 @@ describe("opening a bar chooses its department for the tables and the hash", () 
   test("after a year switch fails, a click on a bar on screen opens it in the year on screen", async () => {
     const { document, window } = await booted("#y=fy2027-adopted&d=department/library-department", { "fy2024-actual": null });
     const year = document.getElementById("year-select");
-    year.value = "fy2024-actual.json";
+    year.value = "fy2024-actual";
     year.dispatchEvent(new window.Event("change"));
     await settle();
     const refused = (document.getElementById("department-refusal") || {}).textContent || "";
@@ -588,7 +597,7 @@ describe("opening a bar chooses its department for the tables and the hash", () 
       hash: window.location.hash, heading: document.getElementById("department-heading").textContent,
       still: document.getElementById("department-refusal") !== null,
     }, {
-      refused: true, open: ["department/police-department"], year: "fy2027-adopted.json",
+      refused: true, open: ["department/police-department"], year: "fy2027-adopted",
       hash: "#y=fy2027-adopted&d=department/police-department", heading: "Police Department, FY 2026-27 adopted", still: false,
     });
   });
@@ -608,7 +617,7 @@ describe("the open bar's link to its tables keeps the view", () => {
     await settle();
     assert.ok(e.defaultPrevented, "the link was followed as a fragment");
     assert.equal(window.location.hash, hash);
-    assert.equal(document.getElementById("year-select").value, "fy2024-actual.json");
+    assert.equal(document.getElementById("year-select").value, "fy2024-actual");
     assert.equal(document.getElementById("department-select").value, "department/public-works");
     assert.equal(document.getElementById("department-heading").textContent, "Public Works, FY 2023-24 actual");
     const open = [...document.querySelectorAll('#department-list > li .department-row[aria-expanded="true"]')]
@@ -668,7 +677,7 @@ describe("the opening view writes the hash only for a view it shows", () => {
     await settle();
     assert.equal(typeof release, "function", "the opening column was never fetched");
     const year = browser.document.getElementById("year-select");
-    year.value = "fy2024-actual.json";
+    year.value = "fy2024-actual";
     year.dispatchEvent(new browser.window.Event("change"));
     await settle();
     release();

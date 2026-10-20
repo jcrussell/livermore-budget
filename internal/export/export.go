@@ -519,9 +519,16 @@ type Download struct {
 	Bytes int
 }
 
+// YearKey names one column the same way on every page: the value of the
+// top bar's year select and of a page's #y=, so a year chosen on one page is
+// the year another opens on.
+func YearKey(year int, basis string) string {
+	return fmt.Sprintf("fy%d-%s", year, basis)
+}
+
 // ColumnPath is the file one published column ships at, at the site root.
 func ColumnPath(year int, basis string) string {
-	return fmt.Sprintf("fy%d-%s.json", year, basis)
+	return YearKey(year, basis) + ".json"
 }
 
 // ErrNoPrimary reports a projection set with no PrimaryProjection in it.
@@ -779,8 +786,9 @@ func templateRendersLede(name string) bool {
 }
 
 // templateRendersAYearControl answers whether a template renders
-// [View.YearStems], as a year control. Its own switch rather than templateDrawsAChart: the two guard
-// different failures.
+// [View.YearStems]: as the top bar's year select, or on GlanceTemplate as one
+// section per year. Its own switch rather than templateDrawsAChart: the two
+// guard different failures.
 func templateRendersAYearControl(name string) bool {
 	switch name {
 	case SankeyTemplate, LedgerTemplate,

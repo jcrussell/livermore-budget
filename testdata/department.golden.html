@@ -22,16 +22,24 @@
 <nav class="site-nav" aria-label="Views">
   <ul>
     <li><a href="index.html">At a glance</a></li>
-    <li><a href="flows.html">Flows</a></li>
-    <li><a href="ledger.html">Bars</a></li>
+    <li><a href="flows.html" data-years="fy2026-adopted fy2027-adopted">Flows</a></li>
+    <li><a href="ledger.html" data-years="fy2026-adopted fy2027-adopted">Bars</a></li>
     <li><a href="change.html">Over time</a></li>
     <li><a href="balances.html">Fund balances</a></li>
     <li><span aria-current="page">Departments</span></li>
-    <li><a href="capital.html">Capital projects</a></li>
+    <li><a href="capital.html" data-years="fy2026-adopted fy2027-adopted fy2028-projected fy2029-projected fy2030-projected">Capital projects</a></li>
     <li><a href="debt.html">Debt</a></li>
     <li><a href="caveats.html">Caveats</a></li>
     <li><a href="provenance.html">Sources and data</a></li>
   </ul>
+  <label class="year-select">Budget year
+    <select id="year-select" disabled>
+      <option value="fy2024-actual">FY 2023-24 actual</option>
+      <option value="fy2025-revised">FY 2024-25 revised</option>
+      <option value="fy2026-adopted">FY 2025-26 adopted</option>
+      <option value="fy2027-adopted" selected>FY 2026-27 adopted</option>
+    </select>
+  </label>
   <button type="button" id="theme-toggle" hidden>Dark mode</button>
 </nav>
 <script type="module">import { boot } from "./theme.js"; boot(window);</script>
@@ -59,14 +67,6 @@
       <option value="department/library-department">Library Department</option>
       <option value="department/police-department">Police Department</option>
       <option value="department/public-works">Public Works</option>
-    </select>
-  </label>
-  <label>Budget column
-    <select id="year-select">
-      <option value="fy2024-actual.json">FY 2023-24 actual</option>
-      <option value="fy2025-revised.json">FY 2024-25 revised</option>
-      <option value="fy2026-adopted.json">FY 2025-26 adopted</option>
-      <option value="fy2027-adopted.json" selected>FY 2026-27 adopted</option>
     </select>
   </label>
 </form>

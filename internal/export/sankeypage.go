@@ -43,7 +43,7 @@ func (m projectionMetadata) Scope() string { return strings.Join(m.Scopes, ", ")
 
 // figure is one headline figure: the index's headline, and a glance bar's
 // printed total. The JSON tags are load-bearing: the hero ships in
-// window.FISC_CONFIG for the year toggle to paint, which reads label and value,
+// window.FISC_CONFIG for a year switch to paint, which reads label and value,
 // and the template never sees the JSON to notice a missing tag.
 type figure struct {
 	Label string `json:"label"`
@@ -100,11 +100,9 @@ type pageData struct {
 	// the same one app.js repaints on a year switch.
 	ChartTitle string
 	Hero       figure
-	// Years is every published year, oldest first. The template renders the
-	// Opens year's headline and lists them all as a selector.
+	// Years is every published year, oldest first, the newest the one the
+	// page opens on.
 	Years []yearView
-	// Opens is the stem of the year the page opens on: the last of Years.
-	Opens string
 	Facts int
 	Nodes int
 	Links int
@@ -281,6 +279,7 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		stems = []string{v.Projection}
 	}
 	years := make([]yearView, 0, len(stems))
+	var sel yearSelect
 	// THE FOOTER AND THE CLIENT'S DOC MAP ARE THE UNION OVER EVERY YEAR, not the
 	// opening year's. See unionSources for what breaks otherwise; the union is
 	// accumulated here because this loop already decodes every year.
@@ -329,6 +328,7 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			}
 			caveats = append(caveats, drawnRefs...)
 		}
+		sel.newest(m.FiscalYear, m.Basis, ledeOf(m.FiscalYearLabel, m.Basis))
 		years = append(years, yearView{
 			Year:       m.FiscalYear,
 			Label:      m.FiscalYearLabel,
@@ -381,6 +381,7 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			DataPath:    open.Path,
 			Scope:       meta.Scope(),
 			CaveatsHere: cx.here(v.Path),
+			YearSelect:  sel,
 		},
 		Lede:        open.Lede,
 		Basis:       open.Basis,
@@ -388,7 +389,6 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		ChartTitle:  open.ChartTitle,
 		Hero:        open.Hero,
 		Years:       years,
-		Opens:       open.Stem,
 		Facts:       open.Counts.Facts,
 		Nodes:       open.Counts.Nodes,
 		Links:       open.Counts.Links,

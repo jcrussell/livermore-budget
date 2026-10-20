@@ -31,7 +31,7 @@ whenever it is not the published one: `sankey` and `sankey-2027` for the spine's
 two published years, `fund-flows-2024-actual` for a detail schedule's actual
 column. Every published stem is pinned as a literal string by
 `TestTheCommittedStemsAreUnchanged`, because these are the paths this document
-promises and the values the year radio carries. The browser `fetch`es it; it is never inlined into
+promises and the names the page's config gives its years. The browser `fetch`es it; it is never inlined into
 the page, because a provenance file you cannot curl on its own is not much of
 an audit trail.
 

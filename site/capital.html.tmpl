@@ -47,14 +47,6 @@
       {{- end}}
     </select>
   </label>
-  <label>Year
-    <select id="capital-year">
-      <option value="">Every year</option>
-      {{- range $i, $c := .Columns}}
-      <option value="{{$i}}">{{$c.Label}} ({{$c.Basis}})</option>
-      {{- end}}
-    </select>
-  </label>
   <label>Project
     <input type="search" id="capital-search" placeholder="Search project names" autocomplete="off">
   </label>
@@ -69,7 +61,7 @@
       <th scope="col">Fund</th>
       <th scope="col">Project</th>
       {{- range $i, $c := .Columns}}
-      <th scope="col" class="num{{if $c.New}} group-start{{end}}" data-column="{{$i}}" data-comparable-group="{{$c.Group}}">
+      <th scope="col" class="num{{if $c.New}} group-start{{end}}" data-column="{{$i}}" data-year="{{$c.Key}}" data-comparable-group="{{$c.Group}}">
         {{$c.Label}}<span class="basis">{{$c.Basis}}</span>
       </th>
       {{- end}}

@@ -1,5 +1,5 @@
 // What site/format.js does for every page module that imports it: dollars,
-// shares, a page's config and its hash's fields. Imported with nothing on
+// shares, a page's config, its hash's fields and the top bar's year select. Imported with nothing on
 // the global, so a module that read one or held state at import fails first.
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -15,7 +15,7 @@ test("format.js imports with no DOM and no global, and exports only functions", 
   delete globalThis.d3;
   assert.equal(typeof globalThis.document, "undefined", "nothing installed a DOM before the import");
   const mod = await import(MODULE);
-  assert.deepEqual(Object.keys(mod).sort(), ["configOf", "dollars", "hashFields", "hashValue", "share"]);
+  assert.deepEqual(Object.keys(mod).sort(), ["carryYear", "configOf", "dollars", "hashFields", "hashValue", "selectYear", "share", "wireYearSelect", "yearKey"]);
   assert.ok(Object.values(mod).every((v) => typeof v === "function"));
 });
 
@@ -99,4 +99,33 @@ test("hashFields reads the named fields, decoded, and skips the rest", async () 
   assert.deepEqual(read(/** @type {any} */ (undefined)), {});
   const id = "a&b/c d";
   assert.deepEqual(read("#d=" + hashValue(id)), { d: id });
+});
+
+// Mutation: drop `offers` from carryYear's test and the link to a view that
+// does not publish the year is handed it; drop the strip of the old fragment
+// and a second year appends a second `#y=`.
+test("the top bar's year select is enabled, says the year, and carries it only to the views that offer it", async () => {
+  const { wireYearSelect, selectYear, yearKey } = await import(MODULE);
+  const { window } = new JSDOM(`<nav class="site-nav"><ul>
+    <li><a href="flows.html" data-years="fy2026-adopted fy2027-adopted">Flows</a></li>
+    <li><a href="department.html" data-years="fy2024-actual fy2026-adopted">Departments</a></li>
+    <li><a href="change.html">Over time</a></li></ul>
+    <select id="year-select" disabled><option value="fy2024-actual">a</option><option value="fy2026-adopted" selected>b</option></select></nav>`);
+  const doc = window.document;
+  const href = (p) => doc.querySelector(`a[href^="${p}"]`).getAttribute("href");
+  const chosen = [];
+  const restored = wireYearSelect(doc, (k) => chosen.push(k));
+  const select = doc.getElementById("year-select");
+  assert.deepEqual({ restored, disabled: select.disabled }, { restored: "fy2026-adopted", disabled: false });
+  select.value = "fy2024-actual";
+  select.dispatchEvent(new window.Event("change"));
+  assert.deepEqual(chosen, ["fy2024-actual"]);
+  selectYear(doc, "fy2026-adopted");
+  selectYear(doc, "fy2024-actual");
+  assert.deepEqual([select.value, href("flows"), href("department"), href("change")],
+    ["fy2024-actual", "flows.html", "department.html#y=fy2024-actual", "change.html"]);
+  selectYear(doc, "");
+  assert.equal(href("department"), "department.html");
+  assert.equal(yearKey("fy2026-adopted.json"), "fy2026-adopted");
+  assert.equal(wireYearSelect(new JSDOM("").window.document, () => {}), undefined);
 });

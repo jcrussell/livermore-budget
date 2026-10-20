@@ -790,7 +790,6 @@ describe("the focus indicator is painted as focus and not as text", () => {
     const indicators = [
       ":focus-visible",
       "svg.sankey .node:focus-visible rect",
-      ".year-toggle input:focus-visible + label",
     ];
     for (const sel of indicators) {
       const rule = ruleFor(sel);

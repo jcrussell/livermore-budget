@@ -4,7 +4,7 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  loadApp, settle, refusals, pageFixture, columnFixture, clickYear, keydownListeners, listenerErrors, split,
+  loadApp, settle, refusals, pageFixture, columnFixture, clickYear, keyOfStem, keydownListeners, listenerErrors, split,
 } from "./testlib.mjs";
 
 const FIRST = "sankey";
@@ -499,7 +499,7 @@ describe("the view in the URL", () => {
     t.diagnostic(`year ${switched.year}; back ${unswitched.year}`);
     assert.equal(switched.year, OLDEST.stem);
     assert.equal(unswitched.year, NEWEST.stem);
-    assert.equal(document.querySelector("#year-toggle input:checked").value, NEWEST.stem);
+    assert.equal(document.getElementById("year-select").value, keyOfStem(NEWEST.stem));
     assert.deepEqual(said(document), []);
   });
 

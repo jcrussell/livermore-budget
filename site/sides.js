@@ -13,7 +13,7 @@
  */
 
 import * as core from "./core.js";
-import { configOf, dollars, hashFields, hashValue } from "./format.js";
+import { configOf, dollars, hashFields, hashValue, selectYear, wireYearSelect, yearKey } from "./format.js";
 
 /** The hash's fields: the column and the opened nodes, in order. */
 const HASH_FIELDS = ["y", "o"];
@@ -68,7 +68,7 @@ export function sidesOf(config) {
  */
 export function hashOf(st) {
   const o = st.opened.map(hashValue).join(",");
-  return "#y=" + hashValue(st.year.replace(/\.json$/, "")) + (o ? "&o=" + o : "");
+  return "#y=" + hashValue(yearKey(st.year)) + (o ? "&o=" + o : "");
 }
 
 /**
@@ -85,7 +85,8 @@ export function parseHash(hash, config) {
   const out = { year: years[years.length - 1], opened: /** @type {string[]} */ ([]), refused: "" };
   const y = fields.get("y");
   if (y !== undefined) {
-    if (years.includes(y + ".json")) out.year = y + ".json";
+    const named = years.find((/** @type {string} */ p) => yearKey(p) === y);
+    if (named) out.year = named;
     else out.refused = `No budget column is called ${y}, so this shows the newest.`;
   }
   const o = fields.get("o");
@@ -359,7 +360,6 @@ export async function boot(win, renderer) {
     say(doc, "This page could not read its config: " + String(e));
     return;
   }
-  const yearSelect = /** @type {HTMLSelectElement | null} */ (doc.getElementById("year-select"));
   /** @type {Map<string, Promise<any>>} */
   const columns = new Map();
   const column = (/** @type {string} */ path) => {
@@ -389,7 +389,7 @@ export async function boot(win, renderer) {
   /** @param {SidesState} st @param {boolean} push */
   const show = async (st, push) => {
     const ticket = ++shown;
-    if (yearSelect) yearSelect.value = st.year;
+    selectYear(doc, yearKey(st.year));
     try {
       const col = await column(st.year);
       if (ticket !== shown) return;
@@ -411,7 +411,10 @@ export async function boot(win, renderer) {
         else win.history.replaceState(null, "", hash);
       }
     } catch (e) {
-      if (ticket === shown) say(doc, "The chart could not be drawn: " + String(e));
+      if (ticket !== shown) return;
+      // The control and the top bar's links go back to the column on screen.
+      selectYear(doc, yearKey(state.year));
+      say(doc, "The chart could not be drawn: " + String(e));
     }
   };
   /** @type {(tile: core.SideTile, key?: string) => void} */
@@ -438,12 +441,12 @@ export async function boot(win, renderer) {
     say(doc, st.refused);
     await show({ year: st.year, opened: st.opened }, false);
   };
-  if (yearSelect) {
-    yearSelect.addEventListener("change", () => {
-      say(doc, "");
-      void show({ year: yearSelect.value, opened: state.opened }, true);
-    });
-  }
+  wireYearSelect(doc, (key) => {
+    const year = config.years.find((/** @type {any} */ y) => yearKey(y.path) === key);
+    if (!year) return;
+    say(doc, "");
+    void show({ year: year.path, opened: state.opened }, true);
+  });
   win.addEventListener("popstate", () => void restore());
   await restore();
 }

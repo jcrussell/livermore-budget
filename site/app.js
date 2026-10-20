@@ -29,7 +29,7 @@ import * as core from "./core.js";
 import {
   SCHEMA_VERSION, say, kindLabel, fmt, fmtSigned, el, maybeEl, cssVar, h, link, citations, balancesOf, PARTITION_NOTE, isFundGroup, scheduleOf, isLink, leafDraws, drawsAgain, cellsOf,
 } from "./core.js";
-import { hashValue } from "./format.js";
+import { hashValue, selectYear, wireYearSelect, yearKey as columnKey } from "./format.js";
 import { SANKEY } from "./sankey.js";
 import { THEME_EVENT } from "./theme.js";
 // Re-exported so the tests reach the shipped modules through the one file
@@ -3996,13 +3996,13 @@ export let openingYear = null;
 let restoringView = false;
 
 /**
- * A year's name in the hash: its column's file name less .json, unique per
+ * A year's name in the hash and the top bar: its column's key, unique per
  * year because each year is one column file.
  * @param {FiscYear} year
  * @returns {string}
  */
 export function yearKey(year) {
-  return String(year.path).replace(/\.json$/, "");
+  return columnKey(year.path);
 }
 
 /**
@@ -4564,6 +4564,7 @@ export function paintYearWords(year) {
   if (lede) lede.textContent = year.lede;
 
   shownYear = year;
+  syncYearControl();
   paintCounts();
 
   // Shared with every redraw, so the two cannot name the chart differently.
@@ -4573,49 +4574,36 @@ export function paintYearWords(year) {
 }
 
 /**
- * The year the CONTROL is showing. Browsers restore a radio selection across
+ * The year the CONTROL is showing. Browsers restore a select's choice across
  * reload and Back without firing change, so the page opens on the restored
  * year. The fallback is the newest: CONFIG.years is oldest first.
  *
  * @param {FiscYear[]} years
- * @returns {FiscYear} always one of `years`; the newest when nothing is checked
+ * @returns {FiscYear} always one of `years`; the newest when the select names none
  */
 export function checkedYear(years) {
-  const group = maybeEl("year-toggle");
-  if (group) {
-    for (const input of group.children) {
-      if (!input.checked) continue;
-      const year = years.find((y) => y.stem === input.value);
-      // A stem this config does not publish is a stale restore.
-      if (year) return year;
-    }
-  }
-  return years[years.length - 1];
-}
-
-/** Moves the year control to the year on screen. */
-export function syncYearControl() {
-  const group = maybeEl("year-toggle");
-  if (!group || !shownYear) return;
-  for (const r of group.querySelectorAll("input[type=radio]")) {
-    const radio = /** @type {HTMLInputElement} */ (r);
-    radio.checked = radio.value === shownYear.stem;
-  }
+  const select = /** @type {HTMLSelectElement | null} */ (maybeEl("year-select"));
+  // A key this config does not publish is a stale restore.
+  const year = select ? years.find((y) => yearKey(y) === select.value) : undefined;
+  return year || years[years.length - 1];
 }
 
 /**
- * Wires the server-rendered year radio group. A year that fails to load moves
- * the radio back to the year still on screen.
+ * Moves the top bar's year select to the year on screen, and carries it onto
+ * the top bar's links.
+ */
+export function syncYearControl() {
+  if (shownYear) selectYear(document, yearKey(shownYear));
+}
+
+/**
+ * Wires the top bar's year select. A year that fails to load moves the
+ * select back to the year still on screen.
  * @param {FiscYear[]} years
  */
 export function wireYears(years) {
-  const group = maybeEl("year-toggle");
-  if (!group || years.length < 2) return;
-  // The template ships it disabled for the no-script page.
-  group.removeAttribute("disabled");
-  group.addEventListener("change", (e) => {
-    const target = /** @type {HTMLInputElement} */ (e.target);
-    const year = years.find((y) => y.stem === target.value);
+  wireYearSelect(document, (key) => {
+    const year = years.find((y) => yearKey(y) === key);
     if (!year) return;
     // A refused switch leaves the page on the year it was, so the control goes
     // back to it; the banner says what failed.

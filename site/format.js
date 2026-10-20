@@ -1,9 +1,9 @@
 // @ts-check
 /**
  * fisc — the text the page modules read and write alike: a figure in
- * dollars, a part's share of a whole, a page's JSON config, and the fields
- * of its hash. Every export is a function of its arguments; importing it
- * runs nothing.
+ * dollars, a part's share of a whole, a page's JSON config, the fields of
+ * its hash, and the top bar's year select. Every export is a function of its
+ * arguments; importing it runs nothing.
  */
 
 /**
@@ -76,4 +76,58 @@ export function hashFields(hash, names) {
     }
   }
   return fields;
+}
+
+/**
+ * A column's key, the same on every page: its file name less .json. It is
+ * the top bar's option value and a page's `#y=`.
+ * @param {string} path
+ */
+export function yearKey(path) {
+  return String(path).replace(/\.json$/, "");
+}
+
+/**
+ * Points each top-bar link whose view offers the year (its `data-years`) at
+ * that year, `#y=<key>`, and every other at its view as it opens: a year a
+ * view does not publish is not carried there to be refused. "" carries none.
+ * @param {Document} doc
+ * @param {string} key
+ */
+export function carryYear(doc, key) {
+  for (const a of Array.from(doc.querySelectorAll("nav.site-nav a[data-years]"))) {
+    const base = (a.getAttribute("href") || "").replace(/#.*$/, "");
+    const offers = (a.getAttribute("data-years") || "").split(" ").includes(key);
+    a.setAttribute("href", key && offers ? base + "#y=" + hashValue(key) : base);
+  }
+}
+
+/**
+ * Moves the top bar's year select to the year on screen and carries that year
+ * onto the top bar's links (carryYear). A page with one year has no select
+ * and still carries.
+ * @param {Document} doc
+ * @param {string} key
+ */
+export function selectYear(doc, key) {
+  const select = /** @type {HTMLSelectElement | null} */ (doc.getElementById("year-select"));
+  if (select) select.value = key;
+  carryYear(doc, key);
+}
+
+/**
+ * Wires the top bar's year select, which the template ships disabled:
+ * enables it and hands each key chosen to `onChange`, which shows the year
+ * and calls selectYear once it is on screen. Returns the key the select
+ * shows, which a browser may have restored, or undefined with no select.
+ * @param {Document} doc
+ * @param {(key: string) => void} onChange
+ * @returns {string | undefined}
+ */
+export function wireYearSelect(doc, onChange) {
+  const select = /** @type {HTMLSelectElement | null} */ (doc.getElementById("year-select"));
+  if (!select) return undefined;
+  select.disabled = false;
+  select.addEventListener("change", () => onChange(select.value));
+  return select.value;
 }

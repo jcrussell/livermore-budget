@@ -1136,7 +1136,7 @@ func keys(m map[string][]byte) []string {
 
 // TestTheCommittedStemsAreUnchanged pins the document stems as typed literals
 // (fisc-rmx): a list derived from the naming rule would agree with a rename.
-// A stem is the schedule key and the year radio's value in site/app.js, so a
+// A stem is the schedule key and a year's name in window.FISC_CONFIG, so a
 // rename moves both silently. Published paths are
 // TestTheSitePublishesOneFilePerColumnAndNothingTwice's.
 func TestTheCommittedStemsAreUnchanged(t *testing.T) {

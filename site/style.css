@@ -320,10 +320,6 @@ h3 {
   margin: 0;
 }
 
-.chart-head .head-controls {
-  flex: none;
-}
-
 .subtle {
   color: var(--muted);
   font-size: 13px;
@@ -355,166 +351,6 @@ button[aria-pressed="true"] {
 /* FOCUS HAS ITS OWN TOKEN AND IS NOT THE TEXT COLOUR: a pure-white ring reads
    as a border the click put there. It takes --ink-2's measured value. */
 :focus-visible {
-  outline: 2px solid var(--focus);
-  outline-offset: 2px;
-}
-
-/* ---------- year toggle ---------- */
-
-.head-controls {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-/* A radio group styled as a segmented control. It stays a fieldset of radios
-   rather than becoming buttons, because that is what it IS: one choice from a
-   short list of peers, which screen readers and keyboards already know how to
-   drive. The inputs are hidden visually and never with display:none, which
-   would take them out of the tab order along with the styling. */
-.year-toggle {
-  display: flex;
-  align-items: center;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 2px;
-  margin: 0;
-  background: var(--surface-1);
-}
-
-.year-toggle legend {
-  /* Announced, not shown: the labels beside it already read as years, and a
-     visible "Budget year" caption would repeat them. */
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
-.year-toggle input {
-  position: absolute;
-  opacity: 0;
-  width: 1px;
-  height: 1px;
-}
-
-.year-toggle label {
-  font-size: 13px;
-  color: var(--ink-2);
-  border-radius: 999px;
-  padding: 5px 14px;
-  min-height: 32px;
-  display: inline-flex;
-  align-items: center;
-  cursor: pointer;
-}
-
-.year-toggle label:hover {
-  background: var(--wash);
-}
-
-/* Disabled is the shipped state: app.js enables the group. Say so visually
-   rather than leaving a control that looks live and is not.
-
-   IT DIMS EVERYTHING EXCEPT THE PILL THAT IS SELECTED, and that exception is
-   the whole point rather than a refinement. The opacity used to sit on the
-   FIELDSET itself, which composited the entire group -- and
-   the fieldset ships disabled, so that is the state a reader without
-   JavaScript sees for the WHOLE VISIT, not a flicker during boot.
-
-   What it silently invalidated is the measured table below. Those ratios are
-   for opaque elements: at 0.55 over --plane the ring falls to about 2.51:1 in
-   light, under WCAG 1.4.11's 3:1, and the selected label's text to about
-   4.17:1, under 1.4.3's 4.5:1. And the ring is not one signal among several --
-   the rule below establishes that the fill is IDENTICAL between checked and
-   unchecked (1.000:1, the same colour), so for a no-JS reader in light mode
-   that ring is the only thing left saying which year is on screen.
-
-   THE FIX IS NOT A NEW NUMBER. Re-deriving a ring token for the 0.55 case
-   would mean publishing a second hand-computed ratio beside the first, and
-   nothing in this tree parses or renders CSS to check either of them
-   (fisc-6at). Dimming the UNCHECKED pills costs no measurement at all: the
-   selected pill keeps its ring, its fill and its text at full strength, so
-   every figure in the table below stays a true statement about what ships,
-   while the group still reads differently from its enabled state.
-
-   NOT THE LEGEND, and that is worth saying because it was the obvious second
-   selector to reach for. `.year-toggle legend` above is a screen-reader
-   caption: absolutely positioned, 1x1, clip-path inset(50%). Dimming it changes
-   nothing a sighted reader can see, so listing it here would have been a rule
-   that looks like a signal and is not -- and a test pinning it would have said
-   the control carried a signal it did not. */
-.year-toggle:disabled input:not(:checked) + label {
-  opacity: 0.55;
-}
-
-.year-toggle:disabled label {
-  cursor: default;
-}
-
-/* NARROWED TO THE UNCHECKED PILLS, and the narrowing is the fix rather than a
-   tidy-up. As `.year-toggle:disabled label:hover` this had specificity (0,3,1)
-   and outranked `.year-toggle input:checked + label` at (0,2,2) -- so with
-   JavaScript off, or during the opening fetch before wireYears removes the
-   attribute, hovering the year you are looking at ERASED the fill that says you
-   are looking at it. The fieldset ships disabled, so that is the state a reader
-   without JavaScript sees for the whole visit.
-
-   What survived was the box-shadow ring, and the rule below says in as many
-   words that it deliberately does not rely on the ring alone.
-
-   `input:not(:checked) +` rather than !important on the checked rule: the aim
-   was only ever to cancel `.year-toggle label:hover`, and it over-reached by one
-   class. Raising the other rule would leave the same over-reach in place for
-   whatever is added next. */
-.year-toggle:disabled input:not(:checked) + label:hover {
-  background: none;
-}
-
-/* THE RING CARRIES THE SELECTION, because the fill cannot: `label:hover` above
-   and this rule both resolve to var(--wash), so hovering an UNCHECKED pill gave
-   it the checked background exactly. Composited against --surface-1 the two are
-   #f2f2f1 in light and #282827 in dark -- 1.000:1, the same colour -- leaving a
-   1px ring and one step of text colour to say which year is on screen. On a
-   two-option toggle that reads as two selected years under the pointer.
-
-   MEASURED, against WCAG 1.4.11's 3:1 for a non-text state indicator -- which is
-   the right threshold for a ring and a different one from 1.4.3's 4.5:1 for the
-   label text beside it:
-
-                                vs the fill   vs the track
-     ring --rule    (before)  light  1.60:1        1.75:1
-                              dark   1.26:1        1.48:1
-     ring --ink-2   (now)     light  7.11:1        7.73:1
-                              dark   8.26:1        9.72:1
-
-   So the ring was BELOW the threshold in both themes before this, which is why
-   it could not do the work the fill had stopped doing. --ink-2 is an existing
-   token -- the colour the unchecked labels' text already takes -- so no palette
-   entry has to be hand-duplicated into the three blocks at the top of this file.
-
-   A WEAKER HOVER WAS THE OTHER FIX AND IS WORSE. Halving --wash's alpha buys
-   1.045:1 light / 1.092:1 dark against the checked pill while HALVING the hover
-   affordance's own visibility (1.091 -> 1.044): one indistinguishable pair
-   traded for an invisible one.
-
-   NOTHING IN THE TREE CHECKS THESE SIX NUMBERS, or that this rule still differs
-   from the hover rule. No Go test and no client test renders CSS; the export
-   test that pins the disabled-hover fix matches SELECTORS, which survives any
-   change to a declaration. Re-derive by hand before touching a colour here.
-   Same hazard as the table further down this file, and the same bead: fisc-6at. */
-.year-toggle input:checked + label {
-  color: var(--ink-1);
-  background: var(--wash);
-  box-shadow: inset 0 0 0 1px var(--ink-2);
-}
-
-/* The outline follows the hidden input onto its label, or keyboard focus would
-   be invisible. */
-.year-toggle input:focus-visible + label {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
@@ -1652,6 +1488,7 @@ noscript p {
   align-items: center;
   gap: 8px;
   margin: 0 auto 14px;
+  flex-wrap: wrap;
   border-bottom: 1px solid var(--border);
 }
 .site-nav ul {
@@ -1666,6 +1503,24 @@ noscript p {
 .site-nav #theme-toggle {
   margin: 4px 0 4px auto;
   flex: none;
+}
+/* The year select sits at the right with the theme toggle, which it pushes
+   along rather than sharing the auto margin. */
+.site-nav .year-select {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0 4px auto;
+  flex: none;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.site-nav .year-select + #theme-toggle {
+  margin-left: 0;
+}
+.site-nav .year-select select {
+  font: inherit;
+  color: var(--ink-1);
 }
 .site-nav li {
   margin: 0;
@@ -2254,13 +2109,6 @@ noscript p {
 
 /* ledger.html, the sides page. Only its rules go in this block. The ranks
    wear the glance page's ordinal ramp. */
-.sides-year {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 13px;
-  color: var(--ink-2);
-}
 .sides-how {
   max-width: var(--measure);
   color: var(--ink-2);

@@ -16,7 +16,7 @@
  */
 
 import { rank } from "./glance.js";
-import { configOf, dollars, hashFields, hashValue, share } from "./format.js";
+import { configOf, dollars, hashFields, hashValue, selectYear, share, wireYearSelect, yearKey } from "./format.js";
 
 /** @typedef {{doc_id: string, pages: number[]}} Locator */
 /** @typedef {{id: string, label: string, cents: number, factIds: string[], locators: Locator[]}} Row */
@@ -45,7 +45,7 @@ export function readConfig(doc) {
  * @param {{year: string, department: string}} st
  */
 export function hashOf(st) {
-  return "#y=" + hashValue(st.year.replace(/\.json$/, "")) + (st.department ? "&d=" + hashValue(st.department) : "");
+  return "#y=" + hashValue(yearKey(st.year)) + (st.department ? "&d=" + hashValue(st.department) : "");
 }
 
 /**
@@ -63,7 +63,8 @@ export function parseHash(hash, config) {
   const out = { year: years[years.length - 1], department: "", refused: "" };
   const y = fields.get("y");
   if (y !== undefined) {
-    if (years.includes(y + ".json")) out.year = y + ".json";
+    const named = years.find((/** @type {string} */ p) => yearKey(p) === y);
+    if (named) out.year = named;
     else out.refused = `No budget column is called ${y}, so this shows the newest.`;
   }
   const d = fields.get("d");
@@ -595,7 +596,6 @@ export async function boot(win = globalThis.window) {
     return;
   }
   const deptSelect = /** @type {HTMLSelectElement | null} */ (doc.getElementById("department-select"));
-  const yearSelect = /** @type {HTMLSelectElement | null} */ (doc.getElementById("year-select"));
   /** @type {Map<string, Promise<any>>} */
   const columns = new Map();
   const column = (/** @type {string} */ path) => {
@@ -639,7 +639,7 @@ export async function boot(win = globalThis.window) {
     const ticket = ++shown;
     asked = { year: st.year, department: st.department };
     if (deptSelect && st.department) deptSelect.value = st.department;
-    if (yearSelect) yearSelect.value = st.year;
+    selectYear(doc, yearKey(st.year));
     try {
       const col = await column(st.year);
       if (ticket !== shown) return undefined;
@@ -664,7 +664,7 @@ export async function boot(win = globalThis.window) {
       asked = null;
       // The bars drawn are barsOf's year's, whichever view asked for them.
       if (barsOf) current = { year: barsOf, department: current.department };
-      if (yearSelect && current.year) yearSelect.value = current.year;
+      if (current.year) selectYear(doc, yearKey(current.year));
       if (deptSelect && current.department) deptSelect.value = current.department;
       say(doc, "This department could not be drawn: " + String(e));
       return undefined;
@@ -725,13 +725,7 @@ export async function boot(win = globalThis.window) {
   // own: until the opening column resolves the department select shows the
   // config's first department, which nobody chose, so a year chosen then
   // keeps the view's department, "" where none was named: the longest bar.
-  /** @param {HTMLSelectElement | null} el */
-  const fromControl = (el) => {
-    const view = asked || current;
-    return el === yearSelect
-      ? { year: yearSelect.value, department: view.department }
-      : { year: view.year, department: deptSelect ? deptSelect.value : view.department };
-  };
+  const asking = () => asked || current;
   const restore = async () => {
     const st = parseHash(win.location.hash, config);
     say(doc, st.refused);
@@ -742,10 +736,13 @@ export async function boot(win = globalThis.window) {
     const hash = hashOf(view);
     if (win.location.hash !== hash) win.history.replaceState(null, "", hash);
   };
-  for (const el of [deptSelect, yearSelect]) {
-    if (!el) continue;
-    el.addEventListener("change", () => choose(fromControl(el)));
+  if (deptSelect) {
+    deptSelect.addEventListener("change", () => choose({ year: asking().year, department: deptSelect.value }));
   }
+  wireYearSelect(doc, (key) => {
+    const year = config.years.find((/** @type {any} */ y) => yearKey(y.path) === key);
+    if (year) choose({ year: year.path, department: asking().department });
+  });
   win.addEventListener("popstate", () => void restore());
   await restore();
 }

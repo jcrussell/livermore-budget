@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"html/template"
 	"io/fs"
+	"strings"
 
 	"github.com/jcrussell/livermore-budget/internal/hint"
 	"github.com/jcrussell/livermore-budget/internal/project"
@@ -129,6 +130,53 @@ type navItem struct {
 	Label   string
 	Path    string
 	Current bool
+	// years is the view's year select's keys, shared by every page's copy of
+	// the item and filled once every view is built, so a link knows the years
+	// its view opens before any page renders.
+	years *[]string
+}
+
+// YearKeys is the years the view's top bar offers, space-separated, or ""
+// for a view that draws every year at once. A page's year select carries its
+// year onto the links whose view offers it, and onto no other.
+func (n navItem) YearKeys() string {
+	if n.years == nil {
+		return ""
+	}
+	return strings.Join(*n.years, " ")
+}
+
+// yearSelect is the top bar's year control, on a page that draws one year at
+// a time. Each option's Key is a [YearKey]; "" is every year at once.
+type yearSelect struct {
+	Options []yearOption
+}
+
+// yearOption is one year the select offers.
+type yearOption struct {
+	Key      string
+	Label    string
+	Selected bool
+}
+
+// newest appends one column and opens on it: a page lists its columns
+// oldest first and opens on the newest.
+func (y *yearSelect) newest(year int, basis, lede string) {
+	for i := range y.Options {
+		y.Options[i].Selected = false
+	}
+	y.Options = append(y.Options, yearOption{Key: YearKey(year, basis), Label: lede, Selected: true})
+}
+
+// keys is the options' column keys, every-year left out.
+func (y yearSelect) keys() []string {
+	var out []string
+	for _, o := range y.Options {
+		if o.Key != "" {
+			out = append(out, o.Key)
+		}
+	}
+	return out
 }
 
 // buildSite renders every view and returns the pages plus the union of the
@@ -147,12 +195,13 @@ type navItem struct {
 func buildSite(o *Options, ix ColumnIndex, pageTextBase func(docID string) string) ([]sitePage, []Citation, error) {
 	views := o.Views
 	nav := make([]navItem, 0, len(views))
-	for _, v := range views {
+	keys := make([][]string, len(views))
+	for i, v := range views {
 		label := v.Nav
 		if label == "" {
 			label = v.Title
 		}
-		nav = append(nav, navItem{Label: label, Path: v.Path})
+		nav = append(nav, navItem{Label: label, Path: v.Path, years: &keys[i]})
 	}
 
 	cx, err := buildCaveatIndex(o, ix, nav)
@@ -186,7 +235,7 @@ func buildSite(o *Options, ix ColumnIndex, pageTextBase func(docID string) strin
 		return nil
 	}
 
-	pages := make([]sitePage, 0, len(views))
+	built := make([]any, 0, len(views))
 	for i, v := range views {
 		// Every document this view renders contributes citations: the one it
 		// opens on and every year of it.
@@ -242,7 +291,18 @@ func buildSite(o *Options, ix ColumnIndex, pageTextBase func(docID string) strin
 		if err != nil {
 			return nil, nil, err
 		}
-		html, err := renderPage(o.assetTree(), v.Template, data)
+		c, ok := data.(chromed)
+		if !ok {
+			return nil, nil, fmt.Errorf("view %q builds %T, which embeds no chrome", v.Path, data)
+		}
+		keys[i] = c.yearSelect().keys()
+		built = append(built, data)
+	}
+	// Rendered only once every view is built, so each nav link carries the
+	// years its own view offers.
+	pages := make([]sitePage, 0, len(views))
+	for i, v := range views {
+		html, err := renderPage(o.assetTree(), v.Template, built[i])
 		if err != nil {
 			return nil, nil, err
 		}
@@ -286,7 +346,15 @@ type chrome struct {
 	// one, the "footer" template links there and lists no cited page, and
 	// citedSources has held every page this view cites to that index.
 	SourcesPath string
+	// YearSelect is the top bar's year control, drawn where it offers more
+	// than one option; empty on a page that draws every year at once.
+	YearSelect yearSelect
 }
+
+// chromed is every page's data, whose top bar is the embedded chrome's.
+type chromed interface{ yearSelect() yearSelect }
+
+func (c chrome) yearSelect() yearSelect { return c.YearSelect }
 
 // Repository is the source repository the "footer" template links.
 func (chrome) Repository() string { return RepositoryURL }

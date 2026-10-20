@@ -790,7 +790,7 @@ func TestTheTableViewRendersWhatTheDocumentPublishes(t *testing.T) {
 	}
 	// No headline, no year control, no chart: this document has none of those
 	// and a page inventing them would be publishing figures nobody built.
-	for _, unwanted := range []string{"FISC_CONFIG", "app.js", "year-toggle", "d3"} {
+	for _, unwanted := range []string{"FISC_CONFIG", "app.js", "year-select", "d3"} {
 		if strings.Contains(html, unwanted) {
 			t.Errorf("the revenue page carries %q, which belongs to the Sankey view", unwanted)
 		}
@@ -2218,7 +2218,7 @@ func TestTheProvenancePageLinksBothHalvesOfEveryCitation(t *testing.T) {
 //
 // THE ELEMENT IS AN ACCESSIBILITY LABEL, so drift here is the one wording
 // defect no sighted reader can see: a template composing its own copy of the
-// sentence renders one wording, and the first year toggle repaints the other,
+// sentence renders one wording, and the first year switch repaints the other,
 // announced only through a screen reader (fisc-rn0; this element is
 // fisc-m1uu). Comparing the markup against the blob fails whichever side
 // moves, including a template that regrows a hand-composed literal.
@@ -2735,28 +2735,23 @@ func TestThePageOpensOnTheYearItDeclaresWhileListingThemOldestFirst(t *testing.T
 	page := string(markup)
 
 	// The list keeps its ascending order: the control is a time axis.
-	iFirst := strings.Index(page, `id="year-sankey"`)
-	iSecond := strings.Index(page, `id="year-sankey-2027"`)
+	iFirst := strings.Index(page, `<option value="fy2026-adopted">`)
+	iSecond := strings.Index(page, `<option value="fy2027-adopted" selected>`)
 	if iFirst < 0 || iSecond < 0 {
-		t.Fatalf("index.html is missing a year radio: sankey at %d, sankey-2027 at %d", iFirst, iSecond)
+		t.Fatalf("index.html's year select does not open on the newest of two: fy2026 at %d, "+
+			"fy2027 selected at %d", iFirst, iSecond)
 	}
 	if iSecond < iFirst {
-		t.Error("the year radios render newest first; the list is the order a reader " +
-			"meets them in and must stay ascending, which is what Opens exists to allow")
+		t.Error("the year select lists newest first; the list is the order a reader " +
+			"meets them in and must stay ascending")
 	}
-
-	// And the newest is already selected, with the page's words agreeing.
-	if !strings.Contains(page, `value="sankey-2027"`+"\n             checked") {
-		t.Error("index.html does not mark sankey-2027 checked, so the page opens on " +
-			"the year it lists first rather than the year it declares")
-	}
-	if strings.Contains(page, `value="sankey"`+"\n             checked") {
-		t.Error("index.html marks sankey checked as well; two checked radios in one " +
-			"group is a page that cannot say which year it is showing")
+	if strings.Count(page, " selected>") != 1 {
+		t.Error("index.html selects more than one year; a page that selects two cannot " +
+			"say which year it is showing")
 	}
 	if !strings.Contains(page, ">FY 2026-27 adopted<") {
 		t.Error("index.html's lede does not name FY 2026-27, so its tiles and its " +
-			"checked radio describe different years")
+			"selected year describe different years")
 	}
 	if !strings.Contains(page, "<title>City of Livermore budget flows — FY 2026-27</title>") {
 		t.Error("the document title is not the opening year's")

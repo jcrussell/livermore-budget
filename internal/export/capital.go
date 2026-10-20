@@ -80,13 +80,19 @@ func buildCapitalPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	}
 
 	columns := make([]columnRef, 0, len(meta.Columns))
+	// The top bar opens on every year, which is the table whole; a year
+	// narrows it to the column whose header carries the year's key.
+	sel := yearSelect{Options: []yearOption{{Label: "Every year", Selected: true}}}
 	for i, c := range meta.Columns {
+		basis := basisLabelFor(meta.Caveats, c.Basis)
 		columns = append(columns, columnRef{
 			Label: c.FiscalYearLabel,
-			Basis: basisLabelFor(meta.Caveats, c.Basis),
+			Basis: basis,
 			Group: c.ComparableGroup,
 			New:   i > 0 && c.ComparableGroup != meta.Columns[i-1].ComparableGroup,
+			Key:   YearKey(c.FiscalYear, c.Basis),
 		})
+		sel.Options = append(sel.Options, yearOption{Key: YearKey(c.FiscalYear, c.Basis), Label: ledeOf(c.FiscalYearLabel, basis)})
 	}
 
 	var funds []capitalFund
@@ -162,6 +168,7 @@ func buildCapitalPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			DataPath:    ix.PublishedPath(v.Projection),
 			Scope:       meta.Scope,
 			CaveatsHere: cx.here(v.Path),
+			YearSelect:  sel,
 		},
 		Columns: columns,
 		Funds:   funds,

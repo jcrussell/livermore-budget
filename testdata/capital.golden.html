@@ -23,16 +23,26 @@
 <nav class="site-nav" aria-label="Views">
   <ul>
     <li><a href="index.html">At a glance</a></li>
-    <li><a href="flows.html">Flows</a></li>
-    <li><a href="ledger.html">Bars</a></li>
+    <li><a href="flows.html" data-years="fy2026-adopted fy2027-adopted">Flows</a></li>
+    <li><a href="ledger.html" data-years="fy2026-adopted fy2027-adopted">Bars</a></li>
     <li><a href="change.html">Over time</a></li>
     <li><a href="balances.html">Fund balances</a></li>
-    <li><a href="department.html">Departments</a></li>
+    <li><a href="department.html" data-years="fy2024-actual fy2025-revised fy2026-adopted fy2027-adopted">Departments</a></li>
     <li><span aria-current="page">Capital projects</span></li>
     <li><a href="debt.html">Debt</a></li>
     <li><a href="caveats.html">Caveats</a></li>
     <li><a href="provenance.html">Sources and data</a></li>
   </ul>
+  <label class="year-select">Budget year
+    <select id="year-select" disabled>
+      <option value="" selected>Every year</option>
+      <option value="fy2026-adopted">FY 2025-26 adopted</option>
+      <option value="fy2027-adopted">FY 2026-27 adopted</option>
+      <option value="fy2028-projected">FY 2027-28 projected</option>
+      <option value="fy2029-projected">FY 2028-29 projected</option>
+      <option value="fy2030-projected">FY 2029-30 projected</option>
+    </select>
+  </label>
   <button type="button" id="theme-toggle" hidden>Dark mode</button>
 </nav>
 <script type="module">import { boot } from "./theme.js"; boot(window);</script>
@@ -92,16 +102,6 @@
       <option value="832">832 CIP County Measure B-Street</option>
     </select>
   </label>
-  <label>Year
-    <select id="capital-year">
-      <option value="">Every year</option>
-      <option value="0">FY 2025-26 (adopted)</option>
-      <option value="1">FY 2026-27 (adopted)</option>
-      <option value="2">FY 2027-28 (projected)</option>
-      <option value="3">FY 2028-29 (projected)</option>
-      <option value="4">FY 2029-30 (projected)</option>
-    </select>
-  </label>
   <label>Project
     <input type="search" id="capital-search" placeholder="Search project names" autocomplete="off">
   </label>
@@ -115,19 +115,19 @@
     <tr>
       <th scope="col">Fund</th>
       <th scope="col">Project</th>
-      <th scope="col" class="num" data-column="0" data-comparable-group="adopted">
+      <th scope="col" class="num" data-column="0" data-year="fy2026-adopted" data-comparable-group="adopted">
         FY 2025-26<span class="basis">adopted</span>
       </th>
-      <th scope="col" class="num" data-column="1" data-comparable-group="adopted">
+      <th scope="col" class="num" data-column="1" data-year="fy2027-adopted" data-comparable-group="adopted">
         FY 2026-27<span class="basis">adopted</span>
       </th>
-      <th scope="col" class="num group-start" data-column="2" data-comparable-group="projected">
+      <th scope="col" class="num group-start" data-column="2" data-year="fy2028-projected" data-comparable-group="projected">
         FY 2027-28<span class="basis">projected</span>
       </th>
-      <th scope="col" class="num" data-column="3" data-comparable-group="projected">
+      <th scope="col" class="num" data-column="3" data-year="fy2029-projected" data-comparable-group="projected">
         FY 2028-29<span class="basis">projected</span>
       </th>
-      <th scope="col" class="num" data-column="4" data-comparable-group="projected">
+      <th scope="col" class="num" data-column="4" data-year="fy2030-projected" data-comparable-group="projected">
         FY 2029-30<span class="basis">projected</span>
       </th>
     </tr>

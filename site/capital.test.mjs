@@ -14,9 +14,9 @@ const MODULE = pathToFileURL(path.join(HERE, "capital.js")).href;
 const { dollars } = await import(pathToFileURL(path.join(HERE, "format.js")).href);
 const PAGE = readFileSync(path.join(HERE, "..", "testdata", "capital.golden.html"), "utf8");
 
-/** A fresh document over the pinned page, booted. */
-async function booted() {
-  const dom = new JSDOM(PAGE);
+/** A fresh document over the pinned page at `hash`, booted. */
+async function booted(hash = "") {
+  const dom = new JSDOM(PAGE, { url: "https://capital.test/capital.html" + hash });
   const mod = await import(MODULE);
   const doc = dom.window.document;
   mod.boot(doc);
@@ -62,7 +62,7 @@ test("capital.js imports with no page config, no d3 and no DOM, and runs nothing
   delete globalThis.d3;
   assert.equal(typeof globalThis.document, "undefined", "nothing installed a DOM before the import");
   const mod = await import(MODULE);
-  assert.deepEqual(Object.keys(mod).sort(), ["apply", "boot", "isShown", "readTable", "sumShown"]);
+  assert.deepEqual(Object.keys(mod).sort(), ["apply", "boot", "columnOf", "isShown", "readTable", "sumShown"]);
 });
 
 test("boot offers the controls and labels the footer as our sum, never as a Total", async () => {
@@ -134,7 +134,7 @@ test("search narrows to the names that contain it, ignoring case and edge spaces
 // other years' headers stay shown.
 test("one year shows only its column, and a projected year still says so", async () => {
   const { doc } = await booted();
-  set(doc, "capital-year", "2", "change");
+  set(doc, "year-select", "fy2028-projected", "change");
   for (const el of doc.querySelectorAll("#capital-table [data-column]")) {
     assert.equal(el.hidden, el.getAttribute("data-column") !== "2", el.getAttribute("data-column"));
   }
@@ -144,3 +144,32 @@ test("one year shows only its column, and a projected year still says so", async
   assert.ok(bodyRows(doc).every((tr) => !tr.hidden), "a year filter hid a row");
 });
 
+
+// The top bar's year is the column whose header carries its key, read from
+// the hash and written back, and carried onto the links whose view offers it.
+// Mutation: skip carryYear in format.js selectYear and the links keep their
+// bare hrefs.
+test("the top bar's year opens from the hash, narrows the table, and is carried to the views that offer it", async () => {
+  const { doc } = await booted("#y=fy2026-adopted");
+  const win = doc.defaultView;
+  const href = (path) => doc.querySelector(`nav.site-nav a[href^="${path}"]`).getAttribute("href");
+  const select = doc.getElementById("year-select");
+  const shown = () => [...doc.querySelectorAll("#capital-table thead th[data-column]")].filter((th) => !th.hidden)
+    .map((th) => th.getAttribute("data-year"));
+  const opened = { value: select.value, disabled: select.disabled, shown: shown(), flows: href("flows.html"), change: href("change.html") };
+  set(doc, "year-select", "fy2028-projected", "change");
+  const projected = { hash: win.location.hash, shown: shown(), flows: href("flows.html") };
+  set(doc, "year-select", "", "change");
+  const every = { hash: win.location.hash, shown: shown().length, flows: href("flows.html") };
+  assert.deepEqual(opened, { value: "fy2026-adopted", disabled: false, shown: ["fy2026-adopted"],
+    flows: "flows.html#y=fy2026-adopted", change: "change.html" });
+  assert.deepEqual(projected, { hash: "#y=fy2028-projected", shown: ["fy2028-projected"], flows: "flows.html" });
+  assert.deepEqual(every, { hash: "", shown: select.options.length - 1, flows: "flows.html" });
+});
+
+test("a hash naming no column opens every year", async () => {
+  const { doc } = await booted("#y=fy1999-adopted");
+  assert.equal(doc.getElementById("year-select").value, "");
+  assert.equal(doc.defaultView.location.hash, "");
+  assert.ok([...doc.querySelectorAll("#capital-table [data-column]")].every((el) => !el.hidden));
+});

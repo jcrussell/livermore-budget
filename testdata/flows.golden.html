@@ -22,31 +22,26 @@
   <ul>
     <li><a href="index.html">At a glance</a></li>
     <li><span aria-current="page">Flows</span></li>
-    <li><a href="ledger.html">Bars</a></li>
+    <li><a href="ledger.html" data-years="fy2026-adopted fy2027-adopted">Bars</a></li>
     <li><a href="change.html">Over time</a></li>
     <li><a href="balances.html">Fund balances</a></li>
-    <li><a href="department.html">Departments</a></li>
-    <li><a href="capital.html">Capital projects</a></li>
+    <li><a href="department.html" data-years="fy2024-actual fy2025-revised fy2026-adopted fy2027-adopted">Departments</a></li>
+    <li><a href="capital.html" data-years="fy2026-adopted fy2027-adopted fy2028-projected fy2029-projected fy2030-projected">Capital projects</a></li>
     <li><a href="debt.html">Debt</a></li>
     <li><a href="caveats.html">Caveats</a></li>
     <li><a href="provenance.html">Sources and data</a></li>
   </ul>
+  <label class="year-select">Budget year
+    <select id="year-select" disabled>
+      <option value="fy2026-adopted">FY 2025-26 adopted</option>
+      <option value="fy2027-adopted" selected>FY 2026-27 adopted</option>
+    </select>
+  </label>
   <button type="button" id="theme-toggle" hidden>Dark mode</button>
 </nav>
 <script type="module">import { boot } from "./theme.js"; boot(window);</script>
 <header class="page-head chart-head">
   <h1>Where Livermore's money comes from, and where it goes</h1>
-  <div class="head-controls">
-    <fieldset class="year-toggle" id="year-toggle" disabled>
-      <legend>Budget year</legend>
-      <input type="radio" name="fisc-year" id="year-sankey" value="sankey"
-             >
-      <label for="year-sankey">FY 2025-26</label>
-      <input type="radio" name="fisc-year" id="year-sankey-2027" value="sankey-2027"
-             checked>
-      <label for="year-sankey-2027">FY 2026-27</label>
-    </fieldset>
-  </div>
 </header>
 
 <main>

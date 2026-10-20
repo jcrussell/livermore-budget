@@ -156,7 +156,7 @@ export function el(id) {
 
 /**
  * The element with this id, or null. For conditional elements such as the
- * year toggle: el() throws, so `if (!el(id))` is no guard.
+ * year select: el() throws, so `if (!el(id))` is no guard.
  * @param {string} id
  * @returns {HTMLElement | null}
  */

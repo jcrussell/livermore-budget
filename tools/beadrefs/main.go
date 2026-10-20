@@ -71,7 +71,6 @@ var exempt = map[string]string{
 // below is itself scanned, so it would satisfy its own staleness test).
 var exemptIDs = map[string]exemptID{
 	"fisc-theme": {file: "site/theme.js", what: "the localStorage key holding the reader's light/dark choice, and the event a switch dispatches; also read by the head script in site/chrome.html.tmpl"},
-	"fisc-year":  {file: "site/flows.html.tmpl", what: "the radio-group name for the fiscal-year control"},
 }
 
 type exemptID struct {

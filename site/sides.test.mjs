@@ -39,13 +39,13 @@ const PINNED = ["fy2026-adopted", "fy2027-adopted"];
 /** The mark selector of each form. */
 const MARK = { ledger: "li.bar-row" };
 
-/** Boots one form's pinned page at a hash, every pinned column planned. */
-async function booted(form, hash) {
+/** Boots one form's pinned page at a hash, every pinned column planned or as `plan` says. */
+async function booted(form, hash, plan = {}) {
   const { html, config } = sidesPage(form);
   const browser = installBrowser({ html });
   if (hash) browser.window.location.hash = hash;
   await settle();
-  browser.window.fetch = plannedFetch({}, config.exported_by);
+  browser.window.fetch = plannedFetch(plan, config.exported_by);
   await forms[form].boot(browser.window);
   await settle();
   return { ...browser, config };
@@ -267,7 +267,7 @@ test("a hash naming the other year and an opened node is restored, and a bad ent
   const { document, window } = browser;
   assert.match(refusal(document), /no\/such\/node/);
   assert.equal(window.location.hash, "#y=fy2026-adopted&o=revenue/taxes/property");
-  assert.equal(document.getElementById("year-select").value, "fy2026-adopted.json");
+  assert.equal(document.getElementById("year-select").value, "fy2026-adopted");
   const opened = document.querySelector('li.bar-row[data-id="revenue/taxes/property"]');
   assert.ok(opened.classList.contains("opened"));
   const reductions = [...document.querySelectorAll("li.bar-row.reduction")];
@@ -295,18 +295,23 @@ test("a hash naming the other year and an opened node is restored, and a bad ent
 });
 
 // A year switch keeps what is open and redraws it over the other column's
-// figures. Mutation: pass `opened: []` on the year change in boot and the
-// opened node shuts on a switch.
+// figures, and carries the year onto the top bar. Mutation: pass `opened: []`
+// on the year change in boot and the opened node shuts on a switch; drop
+// carryYear's call in format.js selectYear and the links keep the newest.
 test("a year switch keeps the opened node and redraws the other year's figures", async () => {
   const browser = await booted("ledger", "#o=revenue/taxes/sales");
   const { document, window, config } = browser;
   const was = document.querySelector('li.bar-row[data-id="revenue/taxes/sales"]');
   assert.ok(was.classList.contains("opened"));
   const select = document.getElementById("year-select");
-  select.value = "fy2026-adopted.json";
+  const flows = () => document.querySelector('nav.site-nav a[href^="flows.html"]').getAttribute("href");
+  assert.equal(select.disabled, false, "the select ships disabled and the page never enabled it");
+  assert.equal(flows(), "flows.html#y=fy2027-adopted");
+  select.value = "fy2026-adopted";
   select.dispatchEvent(new window.Event("change"));
   await settle();
   assert.equal(window.location.hash, "#y=fy2026-adopted&o=revenue/taxes/sales");
+  assert.equal(flows(), "flows.html#y=fy2026-adopted");
   const now = document.querySelector('li.bar-row[data-id="revenue/taxes/sales"]');
   assert.ok(now.classList.contains("opened"));
   const tree = core.sideTree(expansionOf("fy2026-adopted", config), core.expand(expansionOf("fy2026-adopted", config),
@@ -315,6 +320,20 @@ test("a year switch keeps the opened node and redraws the other year's figures",
   assert.equal(Number(now.dataset.cents), tile.cents);
   assert.notEqual(Number(now.dataset.cents), Number(was.dataset.cents), "the two years print the same sales tax");
   assert.equal(document.getElementById("lede-year").textContent, "FY 2025-26 adopted");
+});
+
+// A switch to a column that fails leaves the select, the top bar's links
+// and the hash on the column still drawn. Mutation: drop the selectYear in
+// show's catch and the select names the year that failed.
+test("a year switch whose column fails puts the select back on the year still drawn", async () => {
+  const { document, window } = await booted("ledger", "", { "fy2026-adopted.json": null });
+  const select = document.getElementById("year-select");
+  select.value = "fy2026-adopted";
+  select.dispatchEvent(new window.Event("change"));
+  await settle();
+  const flows = document.querySelector('nav.site-nav a[href^="flows.html"]').getAttribute("href");
+  assert.deepEqual({ value: select.value, flows, hash: window.location.hash, refused: /could not be drawn/.test(refusal(document)) },
+    { value: "fy2027-adopted", flows: "flows.html#y=fy2027-adopted", hash: "#y=fy2027-adopted", refused: true });
 });
 
 // Shift opens a node its alternative way where one is declared.

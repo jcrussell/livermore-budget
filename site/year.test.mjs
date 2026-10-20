@@ -1,4 +1,4 @@
-// year.test.mjs — the year toggle: that the client reads the fields the
+// year.test.mjs — the top bar's year select: that the client reads the fields the
 // packager writes, since a wrong field name renders an empty headline and
 // throws nothing.
 
@@ -6,7 +6,7 @@ import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  loadApp, bootedApp, settle, split, pageFixture, columnFixture, refusals, clickYear,
+  loadApp, bootedApp, settle, split, pageFixture, columnFixture, refusals, clickYear, keyOfStem,
 } from "./testlib.mjs";
 
 /** The pinned page's newer year, which the tests below paint and repaint. */
@@ -91,9 +91,9 @@ describe("a year's words are the packager's, painted whole", () => {
   });
   test("a single-year build has no year control, and that is not an error", async () => {
     const { app, document } = await loadApp();
-    document.getElementById("year-toggle").remove();
+    document.getElementById("year-select").closest("label").remove();
     app.wireYears([shippedYear()]);
-    assert.equal(app.maybeEl("year-toggle"), null);
+    assert.equal(app.maybeEl("year-select"), null);
   });
   test("painting a second year replaces the first year's words", async (t) => {
     const { app, document } = await loadApp();
@@ -274,15 +274,33 @@ describe("a year switch and the splits on screen", () => {
   test("a refused year switch puts the year control back on the year still shown", async (t) => {
     const broken = structuredClone(columnFixture("fy2027-adopted"));
     broken.schedules.expansion.links[0].to = broken.nodes.length;
-    const checked = (document) => document.querySelector("#year-toggle input[type=radio]:checked").value;
+    const checked = (document) => document.getElementById("year-select").value;
     for (const [how, entry] of [["a 404", null], ["a lay-out that throws", { doc: broken }]]) {
       const { document } = await bootedApp({ checkedStem: "sankey", plan: { "fy2027-adopted.json": entry } });
       clickYear(document, "sankey-2027");
       await settle();
       t.diagnostic(`after ${how}: the control reads "${checked(document)}", ${refusals(document).length} banner(s)`);
-      assert.equal(checked(document), "sankey", how);
+      assert.equal(checked(document), keyOfStem("sankey"), how);
       assert.equal(refusals(document).length, 1, how);
     }
+  });
+
+  test("a year drawn is carried onto the top bar's links whose view offers it, and onto no other", async (t) => {
+    const { document } = await bootedApp({ checkedStem: "sankey" });
+    const href = (path) => document.querySelector(`nav.site-nav a[href^="${path}"]`).getAttribute("href");
+    const select = document.getElementById("year-select");
+    const opened = { ledger: href("ledger.html"), capital: href("capital.html"), change: href("change.html"), disabled: select.disabled };
+    clickYear(document, "sankey-2027");
+    await settle();
+    const switched = { ledger: href("ledger.html"), department: href("department.html"), change: href("change.html") };
+    t.diagnostic(`opened: ${JSON.stringify(opened)}; switched: ${JSON.stringify(switched)}`);
+    assert.equal(opened.disabled, false, "the select ships disabled and the page never enabled it");
+    assert.equal(opened.ledger, "ledger.html#y=" + keyOfStem("sankey"));
+    assert.equal(opened.capital, "capital.html#y=" + keyOfStem("sankey"));
+    assert.equal(opened.change, "change.html", "a view drawing every year was handed one");
+    assert.equal(switched.ledger, "ledger.html#y=" + keyOfStem("sankey-2027"));
+    assert.equal(switched.department, "department.html#y=" + keyOfStem("sankey-2027"));
+    assert.equal(switched.change, "change.html");
   });
 
   test("a year switch keeps a tail drawn out, drawing the new year's members whole", async (t) => {

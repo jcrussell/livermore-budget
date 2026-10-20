@@ -559,7 +559,7 @@ func TestTheClientFixtureChecksCanFail(t *testing.T) {
 		page       func(t *testing.T) []byte
 	}{
 		{"one byte of markup", "markup outside FISC_CONFIG", func(*testing.T) []byte {
-			return bytes.Replace(fixturePage, []byte(`id="year-toggle"`), []byte(`id="year-toggl"`), 1)
+			return bytes.Replace(fixturePage, []byte(`id="year-select"`), []byte(`id="year-selec"`), 1)
 		}},
 		{"a wording key dropped", "not the one Go writes", func(t *testing.T) []byte {
 			return reconfigured(t, func(cfg map[string]any) { delete(cfg["wording"].(map[string]any), "open_into") })

@@ -121,10 +121,9 @@ func TestDepartmentPageCarriesItsMembershipAndItsTies(t *testing.T) {
 		"A department lede.",
 		`<script type="module">import { boot } from "./department.js"; boot();</script>`,
 		`<span aria-current="page">Department</span>`,
-		`<a href="index.html">`,
+		`<a href="index.html"`,
 		`id="sources-view"`,
 		`<option value="department/police-department">Police Department</option>`,
-		`<option value="fy2027-adopted.json" selected>FY 2026-27 adopted</option>`,
 		// The two sentences a reader is owed in the page body.
 		"The General Fund row is the General Fund's share alone",
 		"A fund marked <em>internal service</em> is one the city fills by charging its own\n    departments",
@@ -135,6 +134,10 @@ func TestDepartmentPageCarriesItsMembershipAndItsTies(t *testing.T) {
 		if !strings.Contains(html, want) {
 			t.Errorf("department.html does not carry %q", want)
 		}
+	}
+	// One year offers no choice, so the top bar draws no select.
+	if strings.Contains(html, `id="year-select"`) {
+		t.Error("department.html draws a year select over its one year")
 	}
 	if _, err := os.Stat(filepath.Join(dir, "department.js")); err != nil {
 		t.Errorf("department.html loads ./department.js and the site does not carry it: %v", err)

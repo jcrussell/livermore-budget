@@ -15,28 +15,12 @@
 
 {{template "topbar" .}}
 
-{{- /* ABOVE THE CHART ONLY WHAT OPERATES IT: the title, the year control, and
-       in the card the toolbar and the filter line. The lede, the hairline and
+{{- /* ABOVE THE CHART ONLY WHAT OPERATES IT: the title, and in the card the
+       toolbar and the filter line; the year is the top bar's. The lede, the hairline and
        splits sentences and the description follow the chart, so the opening
        chart fits the window it is laid out to (app.js roomHeight). */}}
 <header class="page-head chart-head">
   <h1>Where Livermore's money comes from, and where it goes</h1>
-  <div class="head-controls">
-    {{- if gt (len .Years) 1}}
-    {{- /* Ships disabled; app.js enables it, since with JavaScript off moving
-           it would repaint nothing. */}}
-    <fieldset class="year-toggle" id="year-toggle" disabled>
-      <legend>Budget year</legend>
-      {{- /* Keyed on the stem, which is unique, where a year is not; checked
-             is the year the page opens on, the last listed. */}}
-      {{- range $y := .Years}}
-      <input type="radio" name="fisc-year" id="year-{{$y.Stem}}" value="{{$y.Stem}}"
-             {{if eq $y.Stem $.Opens}}checked{{end}}>
-      <label for="year-{{$y.Stem}}">{{$y.Label}}</label>
-      {{- end}}
-    </fieldset>
-    {{- end}}
-  </div>
 </header>
 
 <main>

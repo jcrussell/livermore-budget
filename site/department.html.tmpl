@@ -33,13 +33,6 @@
       {{- end}}
     </select>
   </label>
-  <label>Budget column
-    <select id="year-select">
-      {{- range .Years}}
-      <option value="{{.Path}}"{{if eq .Path $.Opens}} selected{{end}}>{{.Lede}}</option>
-      {{- end}}
-    </select>
-  </label>
 </form>
 
 <section class="department-bars" aria-labelledby="bars-heading">

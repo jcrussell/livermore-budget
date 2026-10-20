@@ -21,6 +21,9 @@ type columnRef struct {
 	// should not carry a comparison across.
 	Group string
 	New   bool
+	// Key is the column's [YearKey], which the capital page's year select
+	// names it by; "" where no page selects by it.
+	Key string
 }
 
 // seriesRef is one printed row as the table renders it.

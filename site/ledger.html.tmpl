@@ -26,15 +26,6 @@
       {{.Lede}} Drawn from the <span id="lede-year">{{.OpensLede}}</span> budget.
     </p>
   </div>
-  <div class="head-controls">
-    <label class="sides-year">Budget column
-      <select id="year-select">
-        {{- range .Years}}
-        <option value="{{.Path}}"{{if eq .Path $.Opens}} selected{{end}}>{{.Lede}}</option>
-        {{- end}}
-      </select>
-    </label>
-  </div>
 </header>
 
 <main id="sides-main">

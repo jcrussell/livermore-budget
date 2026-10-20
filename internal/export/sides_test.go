@@ -85,7 +85,7 @@ func TestSidesPagesCarryTheirSidesAndConfig(t *testing.T) {
 			`<section class="sides-side" data-tier="0" aria-labelledby="side-0">`, `<h2 id="side-0">In</h2>`,
 			`<section class="sides-side" data-tier="5" aria-labelledby="side-5">`, `<h2 id="side-5">Out</h2>`,
 			`"primary":"expansion"`, `"form":"` + form + `"`, `"` + form + `":{"sides":[{"tier":0,"heading":"In"},{"tier":5,"heading":"Out"}]}`,
-			`"path":"fy2026-adopted.json"`, `<option value="fy2026-adopted.json" selected>FY 2025-26 adopted</option>`,
+			`"path":"fy2026-adopted.json"`, `<span id="lede-year">FY 2025-26 adopted</span>`,
 			`<template id="` + form + `-`,
 		} {
 			if !strings.Contains(html, want) {
