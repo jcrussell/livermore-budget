@@ -18,6 +18,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
+	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/export"
 	"github.com/jcrussell/livermore-budget/internal/hint"
 	"github.com/jcrussell/livermore-budget/internal/project"
@@ -2516,4 +2517,134 @@ func TestEveryPageALinkCitesHasItsLinksInTheConfig(t *testing.T) {
 		}
 	}
 	t.Logf("cited pages, each with its links in its page's config: %v", cited)
+}
+
+// TestTheSourcesPageListsEachInferredCellOnce: over the exported client
+// subset, each column's "What we inferred" lists every set of cells its
+// derived ribbons cite exactly once, under a derived node when any ribbon
+// drawing those cells has a derived end and among the flows between printed
+// nodes only when none does, each at its printed sign.
+// Mutation: key inferredColumns' listing by a flow's ends and fact ids --
+// every hub leg repeating a leaf's cells is listed again, among the printed
+// nodes' flows, and both count arms go red.
+func TestTheSourcesPageListsEachInferredCellOnce(t *testing.T) {
+	built, err := buildClientSubset(repoRootForTest(t))
+	if err != nil {
+		t.Fatalf("buildClientSubset: %v", err)
+	}
+	opts, _, _, _ := testOptions(t)
+	root := repoRootForTest(t)
+	opts.RepoRoot = func() (string, error) { return root, nil }
+	opts.Build = func(string) (result, error) { return built, nil }
+	if err = exportRun(opts); err != nil {
+		t.Fatalf("exportRun: %v", err)
+	}
+	raw, err := os.ReadFile(filepath.Join(opts.OutputDir, "provenance.html")) // #nosec G304 -- the temp site.
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, ix, err := export.ColumnsOf(built.Projections, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	type cells struct {
+		derivedEnd bool
+		cents      int64
+	}
+	type column struct {
+		derived map[string]bool
+		links   []struct {
+			Source, Target string
+			ValueCents     int64    `json:"value_cents"`
+			FactIDs        []string `json:"fact_ids"`
+		}
+	}
+	columns := map[string]*column{}
+	for _, stem := range slices.Sorted(maps.Keys(built.Projections)) {
+		path, folded := ix.Column(stem)
+		if !folded {
+			continue
+		}
+		var d struct {
+			Nodes []struct {
+				ID      string
+				Derived bool
+			}
+			Links []struct {
+				Source, Target string
+				ValueCents     int64    `json:"value_cents"`
+				FactIDs        []string `json:"fact_ids"`
+				Derived        bool
+			}
+		}
+		if err := json.Unmarshal(built.Projections[stem], &d); err != nil {
+			t.Fatalf("decode %s: %v", stem, err)
+		}
+		c := columns[path]
+		if c == nil {
+			c = &column{derived: map[string]bool{}}
+			columns[path] = c
+		}
+		for _, n := range d.Nodes {
+			if n.Derived {
+				c.derived[n.ID] = true
+			}
+		}
+		for _, l := range d.Links {
+			if l.Derived {
+				c.links = append(c.links, struct {
+					Source, Target string
+					ValueCents     int64    `json:"value_cents"`
+					FactIDs        []string `json:"fact_ids"`
+				}{l.Source, l.Target, l.ValueCents, l.FactIDs})
+			}
+		}
+	}
+	page := string(raw)
+	repeated, contra := 0, 0
+	for path, c := range columns {
+		sets := map[string]*cells{}
+		for _, l := range c.links {
+			ids := slices.Sorted(slices.Values(l.FactIDs))
+			key := strings.Join(ids, " ")
+			s := sets[key]
+			if s == nil {
+				s = &cells{cents: l.ValueCents}
+				sets[key] = s
+			} else {
+				repeated++
+			}
+			s.derivedEnd = s.derivedEnd || c.derived[l.Source] || c.derived[l.Target]
+		}
+		_, rest, ok := strings.Cut(page, `<section class="inferred-column" data-column="`+path+`">`)
+		if !ok {
+			t.Errorf("provenance.html has no inferred section for %s", path)
+			continue
+		}
+		section, _, _ := strings.Cut(rest, "</section>")
+		underNodes, between := 0, 0
+		for _, s := range sets {
+			if s.derivedEnd {
+				underNodes++
+			} else {
+				between++
+			}
+			if s.cents < 0 {
+				contra++
+				if !strings.Contains(section, ": "+amount.Cents(s.cents).Dollars()+" ") {
+					t.Errorf("%s does not list a contra cell at its printed %s", path, amount.Cents(s.cents).Dollars())
+				}
+			}
+		}
+		if got := strings.Count(section, "<li>◇ "); got != underNodes {
+			t.Errorf("%s lists %d flows under derived nodes, want %d: one per set of cells with a derived end", path, got, underNodes)
+		}
+		if got := strings.Count(section, "both endpoints are printed by the city"); got != between {
+			t.Errorf("%s lists %d flows between printed nodes, want %d: one per set of cells no derived end draws", path, got, between)
+		}
+	}
+	if repeated == 0 {
+		t.Fatal("no derived ribbon in the subset repeats another's cells, so the count arm covers nothing")
+	}
+	t.Logf("%d ribbon(s) repeat cells another draws; %d contra cell(s)", repeated, contra)
 }
