@@ -104,7 +104,7 @@ describe("each column's bands sum to its printed rows, and every kind is in one 
       for (const b of named) {
         for (const col of cols) {
           const seg = col.querySelector(`.change-seg[data-rank="${b.rank}"]`);
-          if (seg) assert.ok(seg.title.startsWith(b.label + ","), `${id}: rank ${b.rank} is ${seg.title} in column ${col.dataset.column}, not ${b.label}`);
+          if (seg) assert.ok(seg.getAttribute("aria-label").startsWith(b.label + ","), `${id}: rank ${b.rank} is ${seg.getAttribute("aria-label")} in column ${col.dataset.column}, not ${b.label}`);
         }
       }
       t.diagnostic(`${id}: ${rows.length} rows in ${kinds.size} kinds over ${cols.length} columns, ${named.length} named`);
@@ -183,7 +183,7 @@ test("rank 1 touches the baseline in every column, and a column's year and basis
       assert.match(year.firstChild.textContent, /^FY \d{4}-\d{2}$/, `${id}: the year reads ${year.textContent}`);
       assert.equal(basis ? basis.textContent : "", thBasis ? thBasis.textContent.trim() : "");
       for (const seg of col.querySelectorAll(".change-seg")) {
-        assert.ok(seg.title.includes(`, ${year.firstChild.textContent}${basis ? " " + basis.textContent : ""}: `), `${id}: ${seg.title}`);
+        assert.ok(seg.getAttribute("aria-label").includes(`, ${year.firstChild.textContent}${basis ? " " + basis.textContent : ""}: `), `${id}: ${seg.getAttribute("aria-label")}`);
       }
     }
     assert.equal(heights.size, 1, `${id}: the stacks above the baseline are ${[...heights]}`);
@@ -197,7 +197,7 @@ test("FY2021-22's use of money and property hangs below the baseline, and nothin
   const figs = figures(doc);
   const below = [...figs.get("audited-revenue").querySelectorAll(".change-below .change-seg")];
   assert.equal(below.length, 1);
-  assert.match(below[0].title, /^Use of Money And Property, FY 2021-22/);
+  assert.match(below[0].getAttribute("aria-label"), /^Use of Money And Property, FY 2021-22/);
   assert.ok(Number(below[0].dataset.cents) < 0);
   assert.equal(figs.get("audited-spending").querySelectorAll(".change-below .change-seg").length, 0);
 });
@@ -224,4 +224,46 @@ test("readRows refuses a row with no category and a cell that is not integer cen
   assert.equal(rows.length, 9);
   assert.equal(mod.millions(14952609600), "$149.5M");
   assert.equal(mod.millions(-126150980), "-$1.3M");
+});
+
+// A click on a band pins its tip, and the tip links the page text of each
+// of the band's cells in that column, a page that prints the cell's figure.
+// Mutation: drop pageLinks from the band's fill in change.js and every
+// band's links are missing; match a band's rows by its id in place of its
+// members, and the tail links no page.
+test("a click pins a band's tip, linking the page text that prints each of its cells", async (t) => {
+  const { installBrowser, pinGestures, tipState, pageTextExists, fire, repoRoot } = await import("./testlib.mjs");
+  const { window, document } = installBrowser({ html: PAGE });
+  const mod = await import(MODULE);
+  mod.boot(document);
+  const whole = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
+  let pinned = 0;
+  for (const [id, s] of figures(document)) {
+    if (s.dataset.chart !== "true") continue;
+    const bands = mod.rank(mod.groupRows(mod.readRows(s.querySelector("table")).rows, mod.readRows(s.querySelector("table")).columns));
+    for (const col of s.querySelectorAll(".change-column")) {
+      const i = col.dataset.column;
+      for (const seg of col.querySelectorAll(".change-seg")) {
+        const band = bands.find((b) => String(b.rank) === seg.dataset.rank);
+        const cells = [...s.querySelectorAll("tbody tr")].filter((tr) => band.members.includes(tr.dataset.category))
+          .map((tr) => tr.querySelector(`td[data-column="${i}"][data-cents]`)).filter(Boolean);
+        fire(seg, "click");
+        const tip = tipState(document);
+        assert.ok(tip.pinned && tip.shown, `${id} column ${i} rank ${seg.dataset.rank}: no pinned tip`);
+        const want = new Set(cells.map((td) => td.querySelector("a").getAttribute("href")));
+        assert.deepEqual([...new Set(tip.hrefs)].sort(), [...want].sort(), `${id} column ${i} rank ${seg.dataset.rank}: the tip links other pages`);
+        for (const href of tip.hrefs) assert.ok(pageTextExists(href), `${href} names no committed page text`);
+        const texts = tip.hrefs.map((h) => readFileSync(path.join(repoRoot, "data", h), "utf8"));
+        for (const td of cells) {
+          const printed = whole.format(Math.abs(Number(td.getAttribute("data-cents"))) / 100);
+          assert.ok(texts.some((x) => x.includes(printed)), `${id} column ${i}: no linked page prints ${printed}`);
+        }
+        pinned++;
+      }
+    }
+  }
+  fire(document.body, "click");
+  const [a, b] = figures(document).get("audited-revenue").querySelectorAll(".change-seg");
+  pinGestures(window, a, b);
+  t.diagnostic(`${pinned} bands pinned, each linking pages that print its cells`);
 });

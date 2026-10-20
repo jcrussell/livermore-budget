@@ -38,6 +38,7 @@ export const LEDGER = Object.freeze({
    * `li.bar-row` per tile, roots ranked largest first and each opened
    * root's members indented under it, every bar on the page's one scale. A
    * row that opens takes a click or Enter; Shift opens its next alternative.
+   * Any row's click or Enter pins its tip.
    */
   draw(section, side, ctx) {
     const figure = section.querySelector("figure.sides-figure");
@@ -73,18 +74,26 @@ export const LEDGER = Object.freeze({
       li.addEventListener("pointerleave", () => ctx.hide());
       li.addEventListener("focus", (e) => ctx.tip(e, tile, side));
       li.addEventListener("blur", () => ctx.hide());
-      li.addEventListener("click", (e) => {
-        e.stopPropagation();
-        if (!tile.splits.length) return;
+      // A row that opens is opened or closed, and sides.js pins its tip
+      // once it is drawn again; any other row pins its tip here.
+      /** @param {MouseEvent | KeyboardEvent} e */
+      const press = (e) => {
+        if (!tile.splits.length) {
+          ctx.pin(li, tile, side, e);
+          return;
+        }
         const alt = tile.splits.find((sp) => sp.alternative);
         ctx.toggle(tile, e.shiftKey && alt ? alt.key : undefined);
+      };
+      li.dataset.pins = "";
+      li.addEventListener("click", (e) => {
+        e.stopPropagation();
+        press(e);
       });
       li.addEventListener("keydown", (e) => {
         if (e.key !== "Enter" && e.key !== " ") return;
         e.preventDefault();
-        if (!tile.splits.length) return;
-        const alt = tile.splits.find((sp) => sp.alternative);
-        ctx.toggle(tile, e.shiftKey && alt ? alt.key : undefined);
+        press(e);
       });
       list.appendChild(li);
       if (tile.children) {

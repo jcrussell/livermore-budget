@@ -15,7 +15,7 @@ test("format.js imports with no DOM and no global, and exports only functions", 
   delete globalThis.d3;
   assert.equal(typeof globalThis.document, "undefined", "nothing installed a DOM before the import");
   const mod = await import(MODULE);
-  assert.deepEqual(Object.keys(mod).sort(), ["carryYear", "configOf", "dollars", "hashFields", "hashValue", "selectYear", "share", "wireYearSelect", "yearKey"]);
+  assert.deepEqual(Object.keys(mod).sort(), ["carryYear", "configOf", "dollars", "hashFields", "hashValue", "pageLinks", "pageOf", "pageTexts", "pinnable", "placeTip", "selectYear", "share", "tipHint", "tipper", "wireYearSelect", "yearKey"]);
   assert.ok(Object.values(mod).every((v) => typeof v === "function"));
 });
 

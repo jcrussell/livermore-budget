@@ -8,7 +8,7 @@
  * written by Go. Importing it runs nothing; the template calls boot().
  */
 
-import { dollars, share } from "./format.js";
+import { dollars, pageLinks, pinnable, share, tipHint, tipper } from "./format.js";
 
 /** How many groups a bar names before the rest fold into one tail. */
 export const NAMED = 5;
@@ -120,11 +120,14 @@ function clone(doc, id) {
  * Fills one bar's figure from its table: the track of segments, the legend
  * naming each with its dollars of every $100, and the sentence stating the
  * sum as ours. The figure's markup is the template's; this fills it in.
+ * Each segment's tip pins on a click and links the pages its rows cite,
+ * each to the page text the table's own link names (`a[data-page]`).
  * Returns what it drew.
  * @param {HTMLElement} section
+ * @param {ReturnType<typeof tipper>} [tips] the page's tooltip
  * @returns {{ segments: Segment[], whole: number, rows: number }}
  */
-export function draw(section) {
+export function draw(section, tips = tipper(section.ownerDocument)) {
   const doc = section.ownerDocument;
   const table = section.querySelector("table");
   const figure = section.querySelector("figure.glance-figure");
@@ -135,7 +138,15 @@ export function draw(section) {
     throw new Error("a glance bar has no table, or no figure with a track, a legend and a caption to fill");
   }
   const rows = readRows(table);
-  const { segments, whole } = rank(groupRows(rows));
+  const groups = groupRows(rows);
+  const { segments, whole } = rank(groups);
+  const named = new Set(segments.filter((s) => s.id).map((s) => s.id));
+  /** @param {Segment} s @returns {{page: number, href: string}[]} */
+  const pagesOf = (s) => Array.from(table.tBodies).flatMap((b) => Array.from(b.rows))
+    .filter((tr) => (s.id ? tr.dataset.group === s.id : !named.has(tr.dataset.group || "")))
+    .flatMap((tr) => Array.from(tr.querySelectorAll("a[data-page]")).map((a) => ({
+      page: Number(a.getAttribute("data-page")), href: a.getAttribute("href") || "",
+    })));
   const heading = section.querySelector("h3");
   const title = heading ? (heading.textContent || "").trim() : "";
 
@@ -147,7 +158,20 @@ export function draw(section) {
     const seg = clone(doc, "glance-segment");
     seg.dataset.rank = rank;
     seg.style.flexGrow = String(s.cents);
-    seg.title = `${s.label}: ${dollars(s.cents)}, ${share(s.cents, whole)}`;
+    seg.setAttribute("aria-label", `${s.label}: ${dollars(s.cents)}, ${share(s.cents, whole)}`);
+    pinnable(seg, tips, (tip, pinned) => {
+      const label = doc.createElement("div");
+      label.className = "tip-label";
+      label.textContent = s.label;
+      const value = doc.createElement("div");
+      value.className = "tip-value";
+      value.textContent = dollars(s.cents);
+      const meta = doc.createElement("div");
+      meta.className = "tip-meta";
+      meta.textContent = `◇ ${perHundred(s.cents, whole)} of every $100 of ${title}, our share` +
+        (s.id ? "" : `: ${s.members.join(", ")}`);
+      tip.append(label, value, meta, pageLinks(doc, pagesOf(s)), tipHint(doc, pinned));
+    });
     track.appendChild(seg);
 
     const li = clone(doc, "glance-entry");
@@ -181,7 +205,8 @@ export function draw(section) {
  * @param {Document} doc
  */
 export function boot(doc) {
+  const tips = tipper(doc);
   for (const section of Array.from(doc.querySelectorAll("section.glance-bar"))) {
-    draw(/** @type {HTMLElement} */ (section));
+    draw(/** @type {HTMLElement} */ (section), tips);
   }
 }

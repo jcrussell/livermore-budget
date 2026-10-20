@@ -71,7 +71,7 @@ function refusal(document) {
 test("the modules import with no page config, no d3 and no DOM, and run nothing", () => {
   assert.ok(domless, "nothing installed a DOM before the import");
   assert.deepEqual(Object.keys(sides).sort(), ["KEY_MARK", "boot", "clone", "closing",
-    "frontierOf", "hashOf", "hideTip", "opensAs", "outside", "parseHash", "readConfig", "render", "say", "share", "showTip", "sidesAt", "sidesOf", "tileShare"]);
+    "fillTip", "frontierOf", "hashOf", "opensAs", "outside", "parseHash", "readConfig", "render", "say", "share", "sidesAt", "sidesOf", "tileShare"]);
   assert.deepEqual(Object.keys(forms.ledger).sort(), ["LEDGER", "RANKED", "boot", "widthOf"]);
 });
 
@@ -142,8 +142,8 @@ describe("core.sideTree keeps every sum through every split", () => {
 
 // Each form draws every tile of every side once, with the tree's cents on it,
 // and each tile's tooltip names the pages it cites. Mutation: skip members in
-// LEDGER's row, and the roots' marks go missing; drop the facts line in
-// showTip, and the pages arm goes red.
+// LEDGER's row, and the roots' marks go missing; drop the pageLinks line in
+// fillTip, and the pages arm goes red.
 describe("each form draws every tile once and its tip names its pages", () => {
   for (const form of Object.keys(forms)) {
     test(form, async (t) => {
@@ -378,21 +378,16 @@ test("a hash naming no such year and no such node is refused for both", async ()
 });
 
 // A focus event carries no pointer; the tip goes under the mark reached.
-// Mutation: drop the getBoundingClientRect branch in showTip and the tip
-// stands at the viewport's corner.
+// Mutation: drop the getBoundingClientRect branch in format.js's placeTip
+// and the tip stands at the viewport's corner.
 test("the tooltip stands under a focused mark", async () => {
-  const browser = await booted("ledger");
-  const { document, config } = browser;
-  const doc = expansionOf("fy2027-adopted", config);
-  const side = core.sideTree(doc, core.rootFrontier(doc), 5);
-  const tile = side.roots[0];
-  const target = { getBoundingClientRect: () => ({ left: 120, bottom: 340, top: 320, right: 400 }) };
-  sides.showTip(document, /** @type {any} */ ({ target }), tile, { heading: "Where the money goes", tree: side, tier: 5 });
+  const { document } = await booted("ledger");
   const tip = document.getElementById("tooltip");
-  assert.equal(tip.hidden, false);
+  const target = { getBoundingClientRect: () => ({ left: 120, bottom: 340, top: 320, right: 400 }) };
+  format.placeTip(document, tip, /** @type {any} */ ({ target }));
   assert.equal(tip.style.left, "134px");
   assert.equal(tip.style.top, "354px");
-  sides.showTip(document, /** @type {any} */ ({ clientX: 10, clientY: 20, target }), tile, { heading: "Where the money goes", tree: side, tier: 5 });
+  format.placeTip(document, tip, /** @type {any} */ ({ clientX: 10, clientY: 20, target }));
   assert.equal(tip.style.left, "24px");
   assert.equal(tip.style.top, "34px");
 });
@@ -429,4 +424,53 @@ test("a config declaring another form is refused, and a missing config is said",
   const bare = installBrowser({ html: html.replace('id="sides-config"', 'id="nothing"') });
   await forms.ledger.boot(bare.window);
   assert.match(refusal(bare.document), /carries no sides config/);
+});
+
+/** The page-text links the config's docs name for a tile's locators, in order and once each. */
+function textsOf(config, tile) {
+  return [...new Set(tile.locators.flatMap((l) => l.pages.map((p) => config.docs[l.doc_id].pages[String(p)].text)))];
+}
+
+// A click on a tile pins its tip, whose page numbers link the page text the
+// config's docs name for the tile's locators; a tile that opens is opened by
+// the click and its tip pinned once it is drawn again. Mutation: drop
+// pageLinks from sides.js's fillTip, and every tip's links are missing;
+// drop the pinDrawn call in show, and an opening tile's click pins nothing.
+test("a click pins a tile's tip, linking the page text of every page it cites", async (t) => {
+  const { pinGestures, tipState, pageTextExists, fire } = await import("./testlib.mjs");
+  const browser = await booted("ledger");
+  const { window, document, config } = browser;
+  const doc = expansionOf("fy2027-adopted", config);
+  const tiles = new Map();
+  for (const side of sides.sidesOf(config)) {
+    for (const x of core.sideTiles(core.sideTree(doc, core.rootFrontier(doc), side.tier).roots)) tiles.set(x.tile.id, x.tile);
+  }
+  const opener = [...document.querySelectorAll(MARK.ledger)].find((m) => m.classList.contains("can-open"));
+  const id = opener.dataset.id;
+  await click(browser, opener);
+  const opened = tipState(document);
+  assert.ok(opened.pinned && opened.focused, `${id}'s click pinned no tip once it opened`);
+  assert.equal(opened.label, tiles.get(id).label);
+  assert.ok(document.querySelector(`${MARK.ledger}[data-id="${id}"]`).classList.contains("opened"), `${id} did not open`);
+  assert.deepEqual(opened.hrefs, textsOf(config, tiles.get(id)));
+  fire(document.activeElement, "keydown", { key: "Escape" });
+  // Every leaf now drawn, the opened tile's members among them.
+  const frontier = core.expand(doc, core.rootFrontier(doc), id, core.splitsOf(doc, id).find((sp) => !sp.alternative).key);
+  for (const side of sides.sidesOf(config)) {
+    for (const x of core.sideTiles(core.sideTree(doc, frontier, side.tier).roots)) tiles.set(x.tile.id, x.tile);
+  }
+  const leaves = [...document.querySelectorAll(MARK.ledger)].filter((m) => !m.classList.contains("can-open"));
+  assert.ok(leaves.length >= 2, "fewer than two tiles that do not open");
+  for (const m of leaves) {
+    await click(browser, m);
+    const tip = tipState(document);
+    assert.ok(tip.pinned && tip.shown, `${m.dataset.id}: no pinned tip`);
+    const want = textsOf(config, tiles.get(m.dataset.id));
+    assert.ok(want.length > 0, `${m.dataset.id} cites no page`);
+    assert.deepEqual(tip.hrefs, want, `${m.dataset.id}: the tip links other pages`);
+    for (const href of tip.hrefs) assert.ok(pageTextExists(href), `${href} names no committed page text`);
+  }
+  fire(document.body, "click");
+  pinGestures(window, leaves[0], leaves[1]);
+  t.diagnostic(`${id} opened with its tip pinned; ${leaves.length} tiles that do not open pinned`);
 });

@@ -3,7 +3,8 @@
 // read from testdata/, never assembled here.
 
 import { JSDOM } from "jsdom";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
+import assert from "node:assert/strict";
 import { runInThisContext } from "node:vm";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -497,4 +498,58 @@ export function dollars(cents) {
 /** The short form a mark's own label carries, formatted here for the same reason. */
 export function shortDollars(cents) {
   return (cents < 0 ? "−" : "") + compactDollars.format(Math.abs(cents) / 100);
+}
+
+/**
+ * The tooltip as plain values: shown, pinned, its label, the hrefs of its
+ * page links, and whether the focus is inside it.
+ */
+export function tipState(document) {
+  const tip = document.getElementById("tooltip");
+  const label = tip.querySelector(".tip-label");
+  return {
+    shown: !tip.hidden,
+    pinned: tip.dataset.pinned === "true",
+    label: label ? label.textContent : "",
+    hrefs: [...tip.querySelectorAll(".facts a[href]")].map((a) => a.getAttribute("href")),
+    focused: tip.contains(document.activeElement) && document.activeElement !== document.body,
+  };
+}
+
+/** Whether a page-text link names a page text committed under data/. */
+export function pageTextExists(href) {
+  return /^extracted\/[^/]+\/pages\/p\d{4}\.txt$/.test(href) && existsSync(join(repoRoot, "data", href));
+}
+
+/**
+ * The pinned tip's gestures over two marks of one page, asserted in order:
+ * a click on `a` pins its tip with the focus in it; hovering `b` and leaving
+ * `a` keep it; Escape unpins it and hands the focus back to `a`; Enter on
+ * `a` pins it again; a click outside every mark unpins it; Space pins it.
+ * Returns `a`'s pinned label.
+ */
+export function pinGestures(window, a, b) {
+  const { document } = window;
+  fire(a, "click");
+  const pinned = tipState(document);
+  assert.ok(pinned.shown && pinned.pinned, "a click pinned no tip");
+  assert.ok(pinned.focused, "the focus did not move into the pinned tip");
+  fire(b, "pointerenter");
+  fire(b, "pointermove");
+  fire(a, "pointerleave");
+  assert.equal(tipState(document).label, pinned.label, "hovering another mark replaced the pinned tip");
+  assert.ok(tipState(document).pinned && tipState(document).shown, "hovering elsewhere unpinned the tip");
+  fire(document.activeElement, "keydown", { key: "Escape" });
+  // The focus is back on the mark, whose focus shows its tip unpinned.
+  assert.ok(!tipState(document).pinned, "Escape left the tip pinned");
+  assert.ok(document.activeElement === a, "Escape did not hand the focus back to the mark");
+  fire(a, "keydown", { key: "Enter" });
+  assert.ok(tipState(document).pinned, "Enter pinned no tip");
+  assert.equal(tipState(document).label, pinned.label);
+  fire(document.body, "click");
+  assert.ok(!tipState(document).shown && !tipState(document).pinned, "a click outside left the tip pinned");
+  fire(a, "keydown", { key: " " });
+  assert.ok(tipState(document).pinned, "Space pinned no tip");
+  fire(document.activeElement, "keydown", { key: "Escape" });
+  return pinned.label;
 }

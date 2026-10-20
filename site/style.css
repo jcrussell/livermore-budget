@@ -1111,6 +1111,16 @@ svg.sankey .node {
   margin-top: 4px;
 }
 
+/* A pinned tip takes the pointer, so its page links can be followed. */
+.tooltip[data-pinned] {
+  pointer-events: auto;
+}
+
+.glance-seg[data-pins],
+.change-seg[data-pins] {
+  cursor: pointer;
+}
+
 .line-key {
   display: inline-block;
   width: 14px;

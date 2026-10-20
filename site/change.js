@@ -8,7 +8,7 @@
  * runs nothing; the template calls boot().
  */
 
-import { dollars } from "./format.js";
+import { dollars, pageLinks, pinnable, tipHint, tipper } from "./format.js";
 
 /** How many categories a figure names before the rest fold into one tail. */
 export const NAMED = 5;
@@ -163,11 +163,14 @@ export function totals(bands, columns) {
 /**
  * Fills one figure's chart from its table: one column per printed column,
  * positive bands stacked above a baseline and negative ones hung below, the
- * legend naming each band, and the sentence stating the sums as ours.
+ * legend naming each band, and the sentence stating the sums as ours. Each
+ * band's tip pins on a click and links the pages its cells in that column
+ * cite, each to the page text the table's own link names (`a[data-page]`).
  * @param {HTMLElement} section
+ * @param {ReturnType<typeof tipper>} [tips] the page's tooltip
  * @returns {{bands: Band[], sums: number[]}}
  */
-export function draw(section) {
+export function draw(section, tips = tipper(section.ownerDocument)) {
   const doc = section.ownerDocument;
   const table = section.querySelector("table");
   const figure = section.querySelector("figure.change-chart");
@@ -188,6 +191,12 @@ export function draw(section) {
   const bands = rank(groupRows(rows, columns));
   const { sums, tallest } = totals(bands, columns);
   const heads = Array.from(table.querySelectorAll("thead th[data-column]"));
+  /** @param {Band} b @param {number} i @returns {{page: number, href: string}[]} */
+  const pagesOf = (b, i) => Array.from(table.tBodies).flatMap((body) => Array.from(body.rows))
+    .filter((tr) => b.members.includes(tr.dataset.category || ""))
+    .flatMap((tr) => Array.from(tr.querySelectorAll(`td[data-column="${i}"] a[data-page]`)).map((a) => ({
+      page: Number(a.getAttribute("data-page")), href: a.getAttribute("href") || "",
+    })));
   // Rounded once, here, so the stack's height is the sum of the heights drawn.
   const px = (/** @type {number} */ cents) =>
     Math.round(100 * Math.max(LEAST, tallest ? (HEIGHT * Math.abs(cents)) / tallest : 0)) / 100;
@@ -227,7 +236,20 @@ export function draw(section) {
       seg.dataset.rank = String(b.rank);
       seg.dataset.cents = String(c);
       seg.style.height = px(c) + "px";
-      seg.title = `${b.label}, ${head.label}${head.basis ? " " + head.basis : ""}: ${dollars(c)}`;
+      const named = `${b.label}, ${head.label}${head.basis ? " " + head.basis : ""}`;
+      seg.setAttribute("aria-label", `${named}: ${dollars(c)}`);
+      pinnable(seg, tips, (tip, pinned) => {
+        const label = doc.createElement("div");
+        label.className = "tip-label";
+        label.textContent = named;
+        const value = doc.createElement("div");
+        value.className = "tip-value";
+        value.textContent = dollars(c);
+        const meta = doc.createElement("div");
+        meta.className = "tip-meta";
+        meta.textContent = "◇ our sum of its printed rows" + (b.rank ? "" : `: ${b.members.join(", ")}`);
+        tip.append(label, value, meta, pageLinks(doc, pagesOf(b, i)), tipHint(doc, pinned));
+      });
       if (c < 0) {
         seg.classList.add("negative");
         below.appendChild(seg);
@@ -273,7 +295,8 @@ export function draw(section) {
  * @param {Document} doc
  */
 export function boot(doc) {
+  const tips = tipper(doc);
   for (const section of Array.from(doc.querySelectorAll('section.change-figure[data-chart="true"]'))) {
-    draw(/** @type {HTMLElement} */ (section));
+    draw(/** @type {HTMLElement} */ (section), tips);
   }
 }

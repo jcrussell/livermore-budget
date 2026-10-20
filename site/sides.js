@@ -13,7 +13,7 @@
  */
 
 import * as core from "./core.js";
-import { configOf, dollars, hashFields, hashValue, selectYear, wireYearSelect, yearKey } from "./format.js";
+import { configOf, dollars, hashFields, hashValue, pageLinks, pageTexts, selectYear, tipHint, tipper, wireYearSelect, yearKey } from "./format.js";
 
 /** The hash's fields: the column and the opened nodes, in order. */
 const HASH_FIELDS = ["y", "o"];
@@ -31,12 +31,15 @@ export const KEY_MARK = "~";
  *   scale: number,
  *   toggle: (tile: core.SideTile, key?: string) => void,
  *   tip: (e: {clientX?: number, clientY?: number, target?: any}, tile: core.SideTile, side: Side) => void,
+ *   pin: (mark: HTMLElement, tile: core.SideTile, side: Side, e?: {clientX?: number, clientY?: number, target?: any}) => void,
  *   hide: () => void,
  *   share: (tile: core.SideTile, side: Side) => string,
  *   clone: (id: string) => HTMLElement | SVGElement,
  * }} DrawContext
  *   scale is px per cent, one for every side on the page, from the largest
  *   root drawn.
+ *   tip shows a tile's tip unless one is pinned; pin pins it under its mark
+ *   (format.js's tipper).
  * @typedef {{form: string, draw: (section: HTMLElement, side: Side, ctx: DrawContext) => void}} SidesRenderer
  */
 
@@ -225,16 +228,17 @@ export function sidesAt(config, column, frontier) {
 }
 
 /**
- * Shows the tooltip for a tile beside the pointer, or under a focused mark.
+ * Writes a tile's tip into the emptied tooltip: its label, figure, share,
+ * how it opens, and the pages it cites, each linked to its extracted text
+ * by the config's `docs`.
  * @param {Document} doc
- * @param {{clientX?: number, clientY?: number, target?: any}} e
+ * @param {HTMLElement} tip
  * @param {core.SideTile} tile
  * @param {Side} side
+ * @param {Parameters<typeof pageTexts>[0]} docs
+ * @param {boolean} pinned
  */
-export function showTip(doc, e, tile, side) {
-  const tip = doc.getElementById("tooltip");
-  if (!tip) return;
-  tip.replaceChildren();
+export function fillTip(doc, tip, tile, side, docs, pinned) {
   const label = doc.createElement("div");
   label.className = "tip-label";
   label.textContent = tile.label + (tile.derived ? " (inferred)" : "");
@@ -248,36 +252,9 @@ export function showTip(doc, e, tile, side) {
   if (tile.contra) parts.push(tile.contra);
   if (tile.splits.length) parts.push((tile.children ? "Opened; click to close. " : "Click to open: ") + opensAs(tile));
   meta.textContent = parts.join(". ");
-  const facts = doc.createElement("div");
-  facts.className = "facts";
-  facts.textContent = tile.locators.map((l) => l.pages.map((p) => `p${p}`).join(", ")).join("; ");
-  tip.append(label, value, meta, facts);
-  tip.hidden = false;
-  const win = doc.defaultView;
-  // Beside the pointer, or under the mark itself on a focus event, which
-  // carries no pointer: a keyboard user's tip must be seen beside the bar
-  // they reached.
-  let x = 0;
-  let y = 0;
-  if (typeof e.clientX === "number" && typeof e.clientY === "number") {
-    x = e.clientX;
-    y = e.clientY;
-  } else if (e.target && typeof (/** @type {any} */ (e.target)).getBoundingClientRect === "function") {
-    const r = (/** @type {Element} */ (e.target)).getBoundingClientRect();
-    x = r.left;
-    y = r.bottom;
-  }
-  tip.style.left = (x + (win ? win.scrollX : 0) + 14) + "px";
-  tip.style.top = (y + (win ? win.scrollY : 0) + 14) + "px";
-}
-
-/**
- * Hides the tooltip.
- * @param {Document} doc
- */
-export function hideTip(doc) {
-  const tip = doc.getElementById("tooltip");
-  if (tip) tip.hidden = true;
+  tip.append(label, value, meta, pageLinks(doc, pageTexts(docs, tile.locators)));
+  // A tile that opens says so in its meta, and a click opens it.
+  if (pinned || !tile.splits.length) tip.append(tipHint(doc, pinned));
 }
 
 /**
@@ -311,8 +288,9 @@ export function say(doc, text) {
  * @param {SidesState} st
  * @param {SidesRenderer} renderer
  * @param {(tile: core.SideTile, key?: string) => void} toggle
+ * @param {ReturnType<typeof tipper>} tips the page's tooltip
  */
-export function render(win, config, column, st, renderer, toggle) {
+export function render(win, config, column, st, renderer, toggle, tips) {
   const doc = win.document;
   const { frontier, refused } = frontierOf(core.scheduleOf(column, config.primary) || { nodes: [], links: [], projection: config.primary }, st.opened);
   const { sides } = sidesAt(config, column, frontier);
@@ -322,8 +300,9 @@ export function render(win, config, column, st, renderer, toggle) {
     doc,
     scale: 1 / largest,
     toggle,
-    tip: (e, tile, side) => showTip(doc, e, tile, side),
-    hide: () => hideTip(doc),
+    tip: (e, tile, side) => tips.show(e, (tip, pinned) => fillTip(doc, tip, tile, side, config.docs, pinned)),
+    pin: (mark, tile, side, e) => tips.pin(mark, (tip, pinned) => fillTip(doc, tip, tile, side, config.docs, pinned), e),
+    hide: () => tips.hide(),
     share: tileShare,
     clone: (id) => clone(doc, id),
   };
@@ -338,6 +317,27 @@ export function render(win, config, column, st, renderer, toggle) {
   const lede = doc.getElementById("lede-year");
   if (lede && year) lede.textContent = year.lede;
   return { sides, frontier, refused };
+}
+
+/**
+ * Pins the tip of the tile of this id where a side draws it, under its
+ * mark, as a click on a tile that opens leaves it once the opened view is
+ * drawn: the click opens it and pins its tip.
+ * @param {Document} doc
+ * @param {Side[]} sides
+ * @param {string} id
+ * @param {Parameters<typeof pageTexts>[0]} docs the config's `docs`
+ * @param {ReturnType<typeof tipper>} tips
+ */
+function pinDrawn(doc, sides, id, docs, tips) {
+  for (const side of sides) {
+    const found = core.sideTiles(side.tree.roots).find((x) => x.tile.id === id);
+    const section = doc.querySelector(`section.sides-side[data-tier="${side.tier}"]`);
+    const mark = found && section && Array.from(section.querySelectorAll("[data-id]")).find((m) => /** @type {HTMLElement} */ (m).dataset.id === id);
+    if (!found || !mark) continue;
+    tips.pin(/** @type {HTMLElement} */ (mark), (tip, pinned) => fillTip(doc, tip, found.tile, side, docs, pinned));
+    return;
+  }
 }
 
 /**
@@ -380,6 +380,9 @@ export async function boot(win, renderer) {
     return c;
   };
 
+  const tips = tipper(doc);
+  /** The tile whose tip a toggle pins once the view it asked for is drawn, and that view's ticket. */
+  let repin = { id: "", ticket: 0 };
   /** @type {SidesState} */
   let state = { year: config.years[config.years.length - 1].path, opened: [] };
   /** The schedule of the column drawn, which a gesture closes against. */
@@ -394,7 +397,9 @@ export async function boot(win, renderer) {
       const col = await column(st.year);
       if (ticket !== shown) return;
       schedule = core.scheduleOf(col, config.primary);
-      const drawn = render(win, config, col, st, renderer, toggle);
+      tips.unpin(false);
+      const drawn = render(win, config, col, st, renderer, toggle, tips);
+      if (repin.ticket === ticket) pinDrawn(doc, drawn.sides, repin.id, config.docs, tips);
       // The state keeps what the schedule drew, so the hash never names an
       // entry the next load would refuse again.
       const kept = frontierOf(schedule, st.opened).kept;
@@ -420,7 +425,8 @@ export async function boot(win, renderer) {
   /** @type {(tile: core.SideTile, key?: string) => void} */
   const toggle = (tile, key) => {
     say(doc, "");
-    hideTip(doc);
+    tips.unpin(false);
+    tips.hide();
     if (!schedule) return;
     const primary = tile.splits.find((sp) => !sp.alternative);
     const want = key || (primary ? primary.key : "");
@@ -434,6 +440,7 @@ export async function boot(win, renderer) {
       if (!want) return;
       opened.push(want === (primary ? primary.key : "") ? tile.id : tile.id + KEY_MARK + want);
     }
+    repin = { id: tile.id, ticket: shown + 1 };
     void show({ year: state.year, opened }, true);
   };
   const restore = async () => {

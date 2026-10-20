@@ -195,3 +195,56 @@ test("a group labelled two ways is refused", async () => {
   assert.throws(() => mod.groupRows([{ group: "a", label: "A", cents: 1 }, { group: "a", label: "B", cents: 1 }]),
     /labelled A and B/);
 });
+
+/** The page each fact cites, by fact id, read off facts/facts.jsonl. */
+function factPages() {
+  const out = new Map();
+  const text = readFileSync(path.join(HERE, "..", "facts", "facts.jsonl"), "utf8");
+  for (const line of text.split("\n")) {
+    if (!line) continue;
+    const f = JSON.parse(line);
+    out.set(f.id, `extracted/${f.doc_id}/pages/p${String(f.page).padStart(4, "0")}.txt`);
+  }
+  return out;
+}
+
+// A click on a segment pins its tip, and the tip links the page text of
+// every page its rows' facts were printed on, read off the fact store and
+// not off the table the client reads. Mutation: drop pageLinks from the
+// segment's fill in glance.js and every segment's links are missing; make
+// tipper's show paint over a pinned tip and pinGestures' hover arm goes red.
+test("a click pins a segment's tip, linking the page text of every fact its rows cite", async (t) => {
+  const { installBrowser, pinGestures, tipState, pageTextExists, fire } = await import("./testlib.mjs");
+  const { window, document } = installBrowser({ html: PAGE });
+  const mod = await import(MODULE);
+  mod.boot(document);
+  const pages = factPages();
+  let pinned = 0;
+  for (const b of bars(document)) {
+    const { segments } = mod.rank(mod.groupRows(mod.readRows(b.section.querySelector("table"))));
+    const named = new Set(segments.filter((s) => s.id).map((s) => s.id));
+    const segs = [...b.section.querySelectorAll(".glance-seg")];
+    assert.equal(segs.length, segments.length);
+    segments.forEach((s, i) => {
+      const want = new Set();
+      for (const tr of b.section.querySelectorAll("tbody tr")) {
+        if (s.id ? tr.dataset.group !== s.id : named.has(tr.dataset.group)) continue;
+        for (const id of tr.dataset.facts.split(" ").filter(Boolean)) {
+          assert.ok(pages.has(id), `${id} is in no fact`);
+          want.add(pages.get(id));
+        }
+      }
+      fire(segs[i], "click");
+      const tip = tipState(document);
+      assert.ok(tip.pinned && tip.shown, `${b.label} ${b.id} ${s.label}: no pinned tip`);
+      assert.equal(tip.label, s.label);
+      assert.deepEqual([...new Set(tip.hrefs)].sort(), [...want].sort(), `${b.label} ${b.id} ${s.label}: the tip links other pages`);
+      for (const href of tip.hrefs) assert.ok(pageTextExists(href), `${href} names no committed page text`);
+      pinned++;
+    });
+    fire(document.body, "click");
+  }
+  const [a, b] = bars(document)[0].section.querySelectorAll(".glance-seg");
+  pinGestures(window, a, b);
+  t.diagnostic(`${pinned} segments pinned, each linking its rows' facts' pages`);
+});

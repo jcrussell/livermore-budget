@@ -316,6 +316,31 @@ describe("the page over the pinned columns", () => {
     assert.match(document.getElementById("tooltip").textContent, /Fund group: /);
   });
 
+  // A click on a bar pins its tip, whose page numbers link the page text
+  // the config's docs name for the row's locators. Mutation: drop pageLinks
+  // from sides.js's fillTip, and every bar's links are missing; drop
+  // fillTip's call from department.js's fill, and the tip is empty.
+  test("a click pins a bar's tip, linking the page text of every page its row cites", async (t) => {
+    const { pinGestures, tipState, pageTextExists, fire } = await import("./testlib.mjs");
+    const { document, window, config } = await booted("#y=fy2026-adopted&d=department/administrative-services");
+    const f = mod.departmentFigures(columnFixture("fy2026-adopted"), config, "department/administrative-services");
+    const want = new Map([...f.funding.rows, ...f.spending.rows].map((r) => [r.id,
+      [...new Set(r.locators.flatMap((l) => l.pages.map((p) => config.docs[l.doc_id].pages[String(p)].text)))]]));
+    const rows = [...document.querySelectorAll("section.department-side li.bar-row")];
+    assert.ok(rows.length >= 2);
+    for (const li of rows) {
+      fire(li, "click");
+      const tip = tipState(document);
+      assert.ok(tip.pinned && tip.shown && tip.focused, `${li.dataset.id}: no pinned tip with the focus in it`);
+      assert.ok(want.get(li.dataset.id).length > 0, `${li.dataset.id} cites no page`);
+      assert.deepEqual(tip.hrefs, want.get(li.dataset.id), `${li.dataset.id}: the tip links other pages`);
+      for (const href of tip.hrefs) assert.ok(pageTextExists(href), `${href} names no committed page text`);
+    }
+    fire(document.body, "click");
+    pinGestures(window, rows[0], rows[1]);
+    t.diagnostic(`${rows.length} bars pinned`);
+  });
+
   test("whether the two sides tie is the config's declaration, printed and not computed", async () => {
     const held = await booted("#y=fy2024-actual&d=department/public-works");
     const tie = held.document.getElementById("department-tie");

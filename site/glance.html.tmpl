@@ -43,7 +43,7 @@
            main: with no script the table below is the whole of this bar, and
            an empty figure is not shown. */}}
     <figure class="glance-figure" hidden>
-      <div class="glance-track" role="img"></div>
+      <div class="glance-track" role="group"></div>
       <ol class="glance-legend"></ol>
       <figcaption class="glance-sum"></figcaption>
     </figure>
@@ -56,7 +56,8 @@
     </p>
     {{- end}}
     {{- /* The bar's data: glance.js reads it, then hides it under the
-           drawn figure. With no script it is the whole of this bar. */}}
+           drawn figure, and a segment's pinned tip links each page-text link
+           marked data-page. With no script it is the whole of this bar. */}}
     <div class="table-scroll glance-cells">
       <table class="series-table glance-table">
         <thead>
@@ -75,7 +76,7 @@
             <td class="num" data-cents="{{.Cents}}">{{.Dollars}}</td>
             <td class="pages">
               {{- range $i, $p := .Pages}}{{if $i}}, {{end}}
-              <a href="{{$p.PDFURL}}">p{{$p.Number}}</a> / <a href="{{$p.TextURL}}">text</a>
+              <a href="{{$p.PDFURL}}">p{{$p.Number}}</a> / <a href="{{$p.TextURL}}" data-page="{{$p.Number}}">text</a>
               {{- end}}
             </td>
           </tr>
@@ -93,6 +94,7 @@
      figure's markup and words live here and the script fills figures in. -->
 <template id="glance-segment"><span class="glance-seg"></span></template>
 <template id="glance-entry"><li><span class="glance-swatch" aria-hidden="true"></span><b class="glance-per"></b> of every $100 is <span class="glance-name"></span> <span class="subtle glance-detail"></span></li></template>
+<div class="tooltip" id="tooltip" role="status" aria-live="polite" hidden></div>
 </main>
 
 {{template "footer" .}}

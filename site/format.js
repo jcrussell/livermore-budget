@@ -131,3 +131,220 @@ export function wireYearSelect(doc, onChange) {
   select.addEventListener("change", () => onChange(select.value));
   return select.value;
 }
+
+/**
+ * The links the export built for one cited page of one document, refused
+ * where it built none, so a cited page cannot vanish from what cites it.
+ * @param {Record<string, {pages?: Record<string, {pdf?: string, text?: string, records?: string}>}>} docs
+ *   the page config's `docs`
+ * @param {string} docId
+ * @param {number} page
+ * @returns {{pdf?: string, text?: string, records?: string}}
+ */
+export function pageOf(docs, docId, page) {
+  const doc = docs[docId];
+  const links = doc && doc.pages && doc.pages[String(page)];
+  if (!links) throw new Error("cannot cite " + docId + " p" + page + ": the page publishes no links for it");
+  return links;
+}
+
+/**
+ * The pages a set of locators cites, each with its extracted page text's
+ * link from pageOf, in the locators' order.
+ * @param {Parameters<typeof pageOf>[0]} docs
+ * @param {{doc_id: string, pages: number[]}[]} locators
+ * @returns {{page: number, href: string}[]}
+ */
+export function pageTexts(docs, locators) {
+  return locators.flatMap((l) => l.pages.map((p) => ({ page: p, href: pageOf(docs, l.doc_id, p).text || "" })));
+}
+
+/**
+ * A tip's line of cited pages, `p97, p98`, each a link to that page's text,
+ * once per link however many cells cite it. A page with no link is named
+ * and not linked.
+ * @param {Document} doc
+ * @param {{page: number, href: string}[]} pages
+ * @returns {HTMLElement}
+ */
+export function pageLinks(doc, pages) {
+  const line = doc.createElement("div");
+  line.className = "facts";
+  const seen = new Set();
+  for (const { page, href } of pages) {
+    const key = href || "p" + page;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    if (line.childNodes.length) line.append(", ");
+    if (!href) {
+      line.append(`p${page}`);
+      continue;
+    }
+    const a = doc.createElement("a");
+    a.href = href;
+    a.title = `Read on page ${page}`;
+    a.textContent = `p${page}`;
+    line.append(a);
+  }
+  return line;
+}
+
+/**
+ * Stands a tip beside the pointer, or under the mark itself on an event
+ * carrying no pointer, as a focus or a key does: a keyboard user's tip is
+ * seen beside the mark they reached.
+ * @param {Document} doc
+ * @param {HTMLElement} tip
+ * @param {{clientX?: number, clientY?: number, target?: any}} e
+ */
+export function placeTip(doc, tip, e) {
+  const win = doc.defaultView;
+  let x = 0;
+  let y = 0;
+  if (typeof e.clientX === "number" && typeof e.clientY === "number") {
+    x = e.clientX;
+    y = e.clientY;
+  } else if (e.target && typeof e.target.getBoundingClientRect === "function") {
+    const r = e.target.getBoundingClientRect();
+    x = r.left;
+    y = r.bottom;
+  }
+  tip.style.left = (x + (win ? win.scrollX : 0) + 14) + "px";
+  tip.style.top = (y + (win ? win.scrollY : 0) + 14) + "px";
+}
+
+/**
+ * The page's `#tooltip`, shown on hover and pinned by a click, Enter or
+ * Space on a mark. A pinned tip takes the pointer and the focus, so its
+ * links can be clicked and tabbed to; hovering or leaving a mark leaves it
+ * as it is, and Escape or a click outside it and outside every mark
+ * (`[data-pins]`) unpins it, Escape handing the focus back to its mark.
+ * `fill` writes the tip's content into the emptied tip, told whether it is
+ * being pinned. The pinned mark is held in this call's closure, one per
+ * page booted.
+ * @param {Document} doc
+ */
+export function tipper(doc) {
+  /** @type {HTMLElement | null} the mark the pinned tip is of */
+  let mark = null;
+  const tipEl = () => /** @type {HTMLElement | null} */ (doc.getElementById("tooltip"));
+  /**
+   * @param {{clientX?: number, clientY?: number, target?: any}} e
+   * @param {(tip: HTMLElement, pinned: boolean) => void} fill
+   * @param {boolean} pinned
+   */
+  const paint = (e, fill, pinned) => {
+    const tip = tipEl();
+    if (!tip) return null;
+    tip.replaceChildren();
+    fill(tip, pinned);
+    placeTip(doc, tip, e);
+    tip.hidden = false;
+    return tip;
+  };
+  const tips = {
+    /** Whether a tip is pinned. */
+    pinned: () => mark !== null,
+    /**
+     * Shows a mark's tip, unless one is pinned.
+     * @param {{clientX?: number, clientY?: number, target?: any}} e
+     * @param {(tip: HTMLElement, pinned: boolean) => void} fill
+     */
+    show(e, fill) {
+      if (!mark) paint(e, fill, false);
+    },
+    /** Hides the tip, unless it is pinned. */
+    hide() {
+      const tip = tipEl();
+      if (!mark && tip) tip.hidden = true;
+    },
+    /**
+     * Pins a mark's tip under the mark and moves the focus into it.
+     * @param {HTMLElement} at the mark
+     * @param {(tip: HTMLElement, pinned: boolean) => void} fill
+     * @param {{clientX?: number, clientY?: number, target?: any}} [e]
+     */
+    pin(at, fill, e = { target: at }) {
+      mark = null;
+      const tip = paint(e, fill, true);
+      if (!tip) return;
+      mark = at;
+      tip.dataset.pinned = "true";
+      tip.setAttribute("role", "dialog");
+      tip.setAttribute("aria-label", at.getAttribute("aria-label") || "Details");
+      tip.tabIndex = -1;
+      const first = /** @type {HTMLElement | null} */ (tip.querySelector("a[href]"));
+      (first || tip).focus();
+    },
+    /**
+     * Unpins and hides the tip, handing the focus back to its mark where
+     * `refocus` asks and the mark is still drawn.
+     * @param {boolean} refocus
+     */
+    unpin(refocus) {
+      const was = mark;
+      if (!was) return;
+      mark = null;
+      const tip = tipEl();
+      if (tip) {
+        delete tip.dataset.pinned;
+        tip.setAttribute("role", "status");
+        tip.removeAttribute("aria-label");
+        tip.removeAttribute("tabindex");
+        tip.hidden = true;
+      }
+      if (refocus && was.isConnected) was.focus();
+    },
+  };
+  doc.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape" || !mark) return;
+    e.preventDefault();
+    tips.unpin(true);
+  });
+  doc.addEventListener("click", (e) => {
+    if (!mark) return;
+    const target = /** @type {any} */ (e.target);
+    const tip = tipEl();
+    if (tip && target && tip.contains(target)) return;
+    if (target && typeof target.closest === "function" && target.closest("[data-pins]")) return;
+    tips.unpin(false);
+  });
+  return tips;
+}
+
+/**
+ * The tip's last line: how to keep it, or how to let it go.
+ * @param {Document} doc
+ * @param {boolean} pinned
+ */
+export function tipHint(doc, pinned) {
+  const hint = doc.createElement("div");
+  hint.className = "tip-meta";
+  hint.textContent = pinned ? "Escape or a click elsewhere closes this." : "Click to keep this open and follow its pages.";
+  return hint;
+}
+
+/**
+ * Wires a mark to a page's tip: hover and focus show it, leaving and blur
+ * hide it, and a click, Enter or Space pins it. `fill` is the mark's
+ * tipper fill.
+ * @param {HTMLElement} mark
+ * @param {ReturnType<typeof tipper>} tips
+ * @param {(tip: HTMLElement, pinned: boolean) => void} fill
+ */
+export function pinnable(mark, tips, fill) {
+  mark.dataset.pins = "";
+  mark.tabIndex = 0;
+  if (!mark.getAttribute("role")) mark.setAttribute("role", "button");
+  mark.addEventListener("pointerenter", (e) => tips.show(e, fill));
+  mark.addEventListener("pointermove", (e) => tips.show(e, fill));
+  mark.addEventListener("pointerleave", () => tips.hide());
+  mark.addEventListener("focus", (e) => tips.show(e, fill));
+  mark.addEventListener("blur", () => tips.hide());
+  mark.addEventListener("click", (e) => tips.pin(mark, fill, e));
+  mark.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    e.preventDefault();
+    tips.pin(mark, fill);
+  });
+}

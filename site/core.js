@@ -18,6 +18,8 @@
  * A type named here is one of app.js's typedefs, generated from schema/.
  */
 
+import { pageOf } from "./format.js";
+
 /**
  * The page's window.FISC_CONFIG, read when asked for and never at import.
  * @returns {FiscConfig}
@@ -215,8 +217,8 @@ export function link(label, href) {
 /**
  * Citations for a set of source documents: the city's PDF at the page, the
  * committed page text, and the fact-store shard for the page, each the link
- * the export built for that page. A link it left empty is not rendered; a
- * page it built no entry for is refused, so a cited page cannot vanish.
+ * the export built for that page (pageOf, which refuses a page it built no
+ * entry for). A link it left empty is not rendered.
  * @param {FiscSource[]} sources
  * @returns {{label:string, href:string}[]}
  */
@@ -224,12 +226,8 @@ export function citations(sources) {
   /** @type {{label:string, href:string}[]} */
   const out = [];
   for (const source of sources) {
-    const doc = config().docs[source.doc_id];
     for (const page of source.pages) {
-      const links = doc && doc.pages && doc.pages[String(page)];
-      if (!links) {
-        throw new Error("cannot cite " + source.doc_id + " p" + page + ": the page publishes no links for it");
-      }
+      const links = pageOf(config().docs, source.doc_id, page);
       if (links.pdf) out.push({ label: "PDF p" + page, href: links.pdf });
       if (links.text) out.push({ label: "extracted p" + page, href: links.text });
       if (links.records) out.push({ label: "records p" + page, href: links.records });

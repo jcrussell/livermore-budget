@@ -17,9 +17,9 @@
 
 import * as core from "./core.js";
 import { rank } from "./glance.js";
-import { configOf, dollars, hashFields, hashValue, selectYear, share, wireYearSelect, yearKey } from "./format.js";
+import { configOf, dollars, hashFields, hashValue, selectYear, share, tipper, wireYearSelect, yearKey } from "./format.js";
 import { LEDGER } from "./ledger.js";
-import { clone, hideTip, showTip, tileShare } from "./sides.js";
+import { clone, fillTip, tileShare } from "./sides.js";
 
 /** @typedef {{doc_id: string, pages: number[]}} Locator */
 /** @typedef {{id: string, label: string, cents: number, factIds: string[], locators: Locator[]}} Row */
@@ -318,8 +318,9 @@ export function departmentSides(f) {
  * @param {any} column
  * @param {{year: string, department: string}} st
  * @param {Group[]} [groups] the legend departmentBars ranked over the column
+ * @param {ReturnType<typeof tipper>} [tips] the page's tooltip
  */
-export function render(doc, config, column, st, groups = []) {
+export function render(doc, config, column, st, groups = [], tips = tipper(doc)) {
   const f = departmentFigures(column, config, st.department);
   const sides = departmentSides(f);
   const year = config.years.find((/** @type {any} */ y) => y.path === st.year);
@@ -343,23 +344,30 @@ export function render(doc, config, column, st, groups = []) {
   for (const id of transfer) {
     notes.set(id, "Not an expenditure: money moved to another of the city's own funds. The page prints it inside the division's sum, so it is inside this side's.");
   }
+  /**
+   * A bar's tip: sides.js's, with the bar's fund group or transfer note
+   * over its pages.
+   * @param {core.SideTile} tile
+   * @param {any} side
+   */
+  const fill = (tile, side) => (/** @type {HTMLElement} */ tip, /** @type {boolean} */ pinned) => {
+    fillTip(doc, tip, tile, side, config.docs, pinned);
+    const note = notes.get(tile.id);
+    if (!note) return;
+    const el = doc.createElement("div");
+    el.className = "tip-meta";
+    el.textContent = note;
+    tip.insertBefore(el, tip.querySelector(".facts"));
+  };
   const largest = Math.max(1, ...[sides.funding, sides.spending].flatMap((s) => s.tree.roots.map((r) => r.size)));
   /** @type {import("./sides.js").DrawContext} */
   const ctx = {
     doc,
     scale: 1 / largest,
     toggle: () => {},
-    tip: (e, tile, side) => {
-      showTip(doc, e, /** @type {core.SideTile} */ (tile), /** @type {any} */ (side));
-      const note = notes.get(tile.id);
-      const tip = doc.getElementById("tooltip");
-      if (!note || !tip) return;
-      const el = doc.createElement("div");
-      el.className = "tip-meta";
-      el.textContent = note;
-      tip.insertBefore(el, tip.querySelector(".facts"));
-    },
-    hide: () => hideTip(doc),
+    tip: (e, tile, side) => tips.show(e, fill(tile, side)),
+    pin: (mark, tile, side, e) => tips.pin(mark, fill(tile, side), e),
+    hide: () => tips.hide(),
     share: tileShare,
     clone: (id) => clone(doc, id),
   };
@@ -580,6 +588,7 @@ export async function boot(win = globalThis.window) {
   let groups = [];
   let longest = "";
   let open = true;
+  const tips = tipper(doc);
   /**
    * Shows a view, no department being the column's longest bar's, and
    * resolves to the view shown, or undefined where it was refused or overtaken.
@@ -604,7 +613,8 @@ export async function boot(win = globalThis.window) {
       const view = { year: st.year, department: st.department || longest };
       if (deptSelect) deptSelect.value = view.department;
       sidesOf = "";
-      render(doc, config, col, view, groups);
+      tips.unpin(false);
+      render(doc, config, col, view, groups, tips);
       sidesOf = hashOf(view);
       current = view;
       asked = null;

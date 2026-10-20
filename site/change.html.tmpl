@@ -46,7 +46,8 @@
   </figure>
   {{- end}}
   {{- /* The figure's data: change.js reads it, then hides it under the
-         drawn chart. A figure with no chart is its table. */}}
+         drawn chart, and a band's pinned tip links each page-text link
+         marked data-page. A figure with no chart is its table. */}}
   <div class="change-cells">
     <div class="table-scroll">
     <table class="series-table change-table">
@@ -78,7 +79,7 @@
             {{- if $c.Missing}}
             <span title="This row is not printed in this column">{{$c.Value}}</span>
             {{- else}}
-            <a href="{{$c.Href}}" title="Read on page {{$c.Page}}">{{$c.Value}}</a>
+            <a href="{{$c.Href}}" title="Read on page {{$c.Page}}" data-page="{{$c.Page}}">{{$c.Value}}</a>
             {{- end}}
           </td>
           {{- end}}
@@ -98,6 +99,7 @@
 <template id="change-column"><div class="change-column"><div class="change-total subtle"></div><div class="change-stack"><div class="change-above"></div><div class="change-below"></div></div><div class="change-year"></div></div></template>
 <template id="change-segment"><div class="change-seg"></div></template>
 <template id="change-entry"><li><span class="change-swatch" aria-hidden="true"></span><span class="change-name"></span> <span class="subtle change-detail"></span></li></template>
+<div class="tooltip" id="tooltip" role="status" aria-live="polite" hidden></div>
 </main>
 
 {{template "footer" .}}
