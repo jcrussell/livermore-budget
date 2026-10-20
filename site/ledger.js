@@ -37,8 +37,9 @@ export const LEDGER = Object.freeze({
    * Draws a side's tree into its section's figure: an ordered list, one
    * `li.bar-row` per tile, roots ranked largest first and each opened
    * root's members indented under it, every bar on the page's one scale. A
-   * row that opens takes a click or Enter; Shift opens its next alternative.
-   * Any row's click or Enter pins its tip.
+   * row that opens takes a click or Enter, which opens or closes it and pins
+   * nothing; Shift opens its next alternative. A row that does not open pins
+   * its tip on a click or Enter.
    */
   draw(section, side, ctx) {
     const figure = section.querySelector("figure.sides-figure");
@@ -74,8 +75,8 @@ export const LEDGER = Object.freeze({
       li.addEventListener("pointerleave", () => ctx.hide());
       li.addEventListener("focus", (e) => ctx.tip(e, tile, side));
       li.addEventListener("blur", () => ctx.hide());
-      // A row that opens is opened or closed, and sides.js pins its tip
-      // once it is drawn again; any other row pins its tip here.
+      // A row that opens is opened or closed, and sides.js hands it the
+      // focus once it is drawn again; any other row pins its tip here.
       /** @param {MouseEvent | KeyboardEvent} e */
       const press = (e) => {
         if (!tile.splits.length) {

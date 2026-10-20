@@ -320,22 +320,19 @@ export function render(win, config, column, st, renderer, toggle, tips) {
 }
 
 /**
- * Pins the tip of the tile of this id where a side draws it, under its
- * mark, as a click on a tile that opens leaves it once the opened view is
- * drawn: the click opens it and pins its tip.
+ * Hands the focus back to the mark of the tile of this id where a side draws
+ * it again, as an open or close redraws the row it was asked on: the next
+ * Enter lands on that row, and no tip is pinned over its members.
  * @param {Document} doc
  * @param {Side[]} sides
  * @param {string} id
- * @param {Parameters<typeof citedPages>[0]} docs the config's `docs`
- * @param {ReturnType<typeof tipper>} tips
  */
-function pinDrawn(doc, sides, id, docs, tips) {
+function focusDrawn(doc, sides, id) {
   for (const side of sides) {
-    const found = core.sideTiles(side.tree.roots).find((x) => x.tile.id === id);
     const section = doc.querySelector(`section.sides-side[data-tier="${side.tier}"]`);
-    const mark = found && section && Array.from(section.querySelectorAll("[data-id]")).find((m) => /** @type {HTMLElement} */ (m).dataset.id === id);
-    if (!found || !mark) continue;
-    tips.pin(/** @type {HTMLElement} */ (mark), (tip, pinned) => fillTip(doc, tip, found.tile, side, docs, pinned));
+    const mark = section && Array.from(section.querySelectorAll("[data-id]")).find((m) => /** @type {HTMLElement} */ (m).dataset.id === id);
+    if (!mark) continue;
+    /** @type {HTMLElement} */ (mark).focus();
     return;
   }
 }
@@ -381,8 +378,8 @@ export async function boot(win, renderer) {
   };
 
   const tips = tipper(doc);
-  /** The tile whose tip a toggle pins once the view it asked for is drawn, and that view's ticket. */
-  let repin = { id: "", ticket: 0 };
+  /** The tile a toggle hands the focus back to once the view it asked for is drawn, and that view's ticket. */
+  let refocus = { id: "", ticket: 0 };
   /** @type {SidesState} */
   let state = { year: config.years[config.years.length - 1].path, opened: [] };
   /** The schedule of the column drawn, which a gesture closes against. */
@@ -399,7 +396,7 @@ export async function boot(win, renderer) {
       schedule = core.scheduleOf(col, config.primary);
       tips.unpin(false);
       const drawn = render(win, config, col, st, renderer, toggle, tips);
-      if (repin.ticket === ticket) pinDrawn(doc, drawn.sides, repin.id, config.docs, tips);
+      if (refocus.ticket === ticket) focusDrawn(doc, drawn.sides, refocus.id);
       // The state keeps what the schedule drew, so the hash never names an
       // entry the next load would refuse again.
       const kept = frontierOf(schedule, st.opened).kept;
@@ -440,7 +437,7 @@ export async function boot(win, renderer) {
       if (!want) return;
       opened.push(want === (primary ? primary.key : "") ? tile.id : tile.id + KEY_MARK + want);
     }
-    repin = { id: tile.id, ticket: shown + 1 };
+    refocus = { id: tile.id, ticket: shown + 1 };
     void show({ year: state.year, opened }, true);
   };
   const restore = async () => {

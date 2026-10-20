@@ -431,13 +431,13 @@ function textsOf(config, tile) {
   return [...new Set(tile.locators.flatMap((l) => l.pages.map((p) => config.docs[l.doc_id].pages[String(p)].text)))];
 }
 
-// A click on a tile pins its tip, whose page numbers link the page text the
-// config's docs name for the tile's locators; a tile that opens is opened by
-// the click and its tip pinned once it is drawn again, each page beside its
-// PDF page. Mutation: drop pageLinks from sides.js's fillTip, and every
-// tip's links are missing; drop the PDF link from format.js's pageLinks and
-// the PDF arm goes red;
-// drop the pinDrawn call in show, and an opening tile's click pins nothing.
+// A click on a tile that does not open pins its tip, whose page numbers link
+// the page text the config's docs name for the tile's locators, each page
+// beside its PDF page; a tile that opens is opened by the click and pins
+// nothing. Mutation: drop pageLinks from sides.js's fillTip, and every tip's
+// links are missing; drop the PDF link from format.js's pageLinks and the PDF
+// arm goes red; pin the toggled tile's tip once it is drawn again, and the
+// opener arm goes red.
 test("a click pins a tile's tip, linking the page text and the PDF page of every page it cites", async (t) => {
   const { pinGestures, tipState, pageTextExists, pdfFaults, fire } = await import("./testlib.mjs");
   const browser = await booted("ledger");
@@ -450,12 +450,8 @@ test("a click pins a tile's tip, linking the page text and the PDF page of every
   const opener = [...document.querySelectorAll(MARK.ledger)].find((m) => m.classList.contains("can-open"));
   const id = opener.dataset.id;
   await click(browser, opener);
-  const opened = tipState(document);
-  assert.ok(opened.pinned && opened.focused, `${id}'s click pinned no tip once it opened`);
-  assert.equal(opened.label, tiles.get(id).label);
+  assert.ok(!tipState(document).pinned, `${id}'s click pinned a tip over the members it opened`);
   assert.ok(document.querySelector(`${MARK.ledger}[data-id="${id}"]`).classList.contains("opened"), `${id} did not open`);
-  assert.deepEqual(opened.hrefs, textsOf(config, tiles.get(id)));
-  fire(document.activeElement, "keydown", { key: "Escape" });
   // Every leaf now drawn, the opened tile's members among them.
   const frontier = core.expand(doc, core.rootFrontier(doc), id, core.splitsOf(doc, id).find((sp) => !sp.alternative).key);
   for (const side of sides.sidesOf(config)) {
@@ -475,5 +471,27 @@ test("a click pins a tile's tip, linking the page text and the PDF page of every
   }
   fire(document.body, "click");
   pinGestures(window, leaves[0], leaves[1]);
-  t.diagnostic(`${id} opened with its tip pinned; ${leaves.length} tiles that do not open pinned`);
+  t.diagnostic(`${id} opened with no tip pinned; ${leaves.length} tiles that do not open pinned`);
+});
+
+// Enter on a row that opens opens it, and Enter again closes it: neither
+// pins a tip, and the focus stays on the row, drawn again each time.
+// Mutation: pin the toggled tile's tip once it is drawn again, as a click on
+// a leaf does -- the first Enter pins a tip and the test goes red; drop the
+// focusDrawn call in show -- the focus falls off the row.
+test("Enter opens a row and Enter again closes it, the focus kept on the row", async () => {
+  const { tipState, fire } = await import("./testlib.mjs");
+  const browser = await booted("ledger");
+  const { document } = browser;
+  const opener = [...document.querySelectorAll(MARK.ledger)].find((m) => m.classList.contains("can-open"));
+  const id = opener.dataset.id;
+  const row = () => document.querySelector(`${MARK.ledger}[data-id="${id}"]`);
+  opener.focus();
+  for (const want of [true, false]) {
+    fire(document.activeElement, "keydown", { key: "Enter" });
+    await settle();
+    assert.equal(row().classList.contains("opened"), want, `${id}: Enter left it ${want ? "closed" : "open"}`);
+    assert.ok(!tipState(document).pinned, `${id}: Enter pinned a tip`);
+    assert.ok(document.activeElement === row(), `${id}: the focus left the row`);
+  }
 });
