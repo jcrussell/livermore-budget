@@ -559,11 +559,46 @@ describe("zoom and pan on the chart", () => {
     fire(mark, "click", { timeStamp: 10000 });
     await settle();
     assert.deepEqual(app.expansions, ["fund-group/general"], "a click at the transform did not split the mark");
-    // The new chart is drawn whole.
+    // The new chart is drawn whole, and its split is still something to reset.
     assert.equal(app.zoomOf().k, 1);
     assert.equal(layer().getAttribute("transform"), "translate(0,0) scale(1)");
     assert.ok(!svg.classList.contains("zoomed"));
-    assert.ok(reset.hasAttribute("disabled"));
+    assert.ok(!reset.hasAttribute("disabled"), "a split chart offers no Reset view");
+  });
+
+  // Mutation: drop the filter terms from atOpeningView and a filter alone
+  // leaves Reset view disabled; drop the expansions term and a split does.
+  test("a filter alone enables Reset view, and clicking it clears the filter and the hash", async (t) => {
+    const { app, document, window } = await bootedApp();
+    const reset = document.getElementById("chart-zoom-reset");
+    const opened = { disabled: reset.hasAttribute("disabled"), hash: "#y=" + app.yearKey(app.shownYear) };
+    const box = [...document.querySelectorAll("#filter-group-list input")].find((b) => b.value === "fund-group/general");
+    box.checked = false;
+    fire(box, "change");
+    const filtered = { disabled: reset.hasAttribute("disabled"), hash: window.location.hash, zoom: app.zoomOf().k };
+    fire(reset, "click");
+    await settle();
+    const after = { disabled: reset.hasAttribute("disabled"), hash: window.location.hash, groups: app.filter.groups.size, checked: box.checked };
+    t.diagnostic(`opened ${JSON.stringify(opened)}; filtered ${JSON.stringify(filtered)}; reset ${JSON.stringify(after)}`);
+    assert.deepEqual(filtered, { disabled: false, hash: opened.hash + "&hide=fund-group/general", zoom: 1 });
+    assert.deepEqual(after, { disabled: true, hash: opened.hash, groups: 0, checked: true });
+    assert.equal(opened.disabled, true);
+  });
+
+  test("a split, a pin and a zoom together are all undone by one Reset view", async () => {
+    const { app, document, window } = await bootedApp();
+    const reset = document.getElementById("chart-zoom-reset");
+    const hash = "#y=" + app.yearKey(app.shownYear);
+    await split(app, "fund-group/general");
+    const split1 = !reset.hasAttribute("disabled");
+    app.pin(app.laidNodes.find((n) => n.id !== "fund-group/general"));
+    app.zoomBy(2);
+    fire(reset, "click");
+    await settle();
+    const z = app.zoomOf();
+    assert.deepEqual({ split1, x: app.expansions.length, pinned: app.pinned === null, zoom: [z.k, z.x, z.y], hash: window.location.hash, disabled: reset.hasAttribute("disabled") },
+      { split1: true, x: 0, pinned: true, zoom: [1, 0, 0], hash, disabled: true });
+    assert.equal(refusals(document).length, 0);
   });
 
   test("+ - and 0 zoom while focus is in the chart, and Reset view puts it back whole", async () => {

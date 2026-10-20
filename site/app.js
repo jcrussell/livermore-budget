@@ -2310,6 +2310,7 @@ export function applyEmphasis(state = filter) {
     on && !isolates(id, d) && !d.sourceLinks.concat(d.targetLinks).some((l) => follows(id, l)));
   svg.selectAll("g.node").attr("aria-pressed", /** @param {LaidNode} d */ (d) =>
     String(on && d.id === id));
+  paintReset();
   // THE TRACE IS ITS OWN CLASS, never dim: it is let go on the pointer's
   // leave, and the isolation under it must be there when it is.
   const path = traced ? pathOf(traced) : null;
@@ -2498,6 +2499,7 @@ export function paintFilterLine() {
   said.textContent = parts.join(" ");
   if (parts.length) line.removeAttribute("hidden");
   else line.setAttribute("hidden", "");
+  paintReset();
 }
 
 /**
@@ -3833,10 +3835,9 @@ export function wirePan(scroller) {
 
 /**
  * Moves the chart's layer to a transform: the marks scale and pan, the labels
- * counter-scale through --label-scale so they stay their own size, the svg
- * clips what the zoom pushes past its edge, and Reset view is offered only
- * where there is something to reset.
- * @param {{k: number, toString: () => string}} t
+ * counter-scale through --label-scale so they stay their own size, and the
+ * svg clips what the zoom pushes past its edge.
+ * @param {{k: number, x: number, y: number, toString: () => string}} t
  */
 export function applyZoom(t) {
   const svg = D3.select("#chart");
@@ -3845,11 +3846,51 @@ export function applyZoom(t) {
   if (!node) return;
   node.style.setProperty("--label-scale", String(1 / t.k));
   node.classList.toggle("zoomed", t.k !== 1 || t.x !== 0 || t.y !== 0);
+  paintReset();
+}
+
+/**
+ * Whether the view on screen is the page's opening view of its year: not
+ * zoomed or panned, nothing filtered out or shown alone, nothing isolated or
+ * pinned, and nothing split. The year is not part of it.
+ * @returns {boolean}
+ */
+export function atOpeningView() {
+  const t = zoomOf();
+  return t.k === 1 && t.x === 0 && t.y === 0 && pinned === null && expansions.length === 0 &&
+    filter.groups.size === 0 && filter.kinds.size === 0 && filter.nodes.size === 0 &&
+    filter.only === "" && filter.smallest === 0 && filter.isolated === "";
+}
+
+/** Offers Reset view wherever there is something to reset (atOpeningView). */
+export function paintReset() {
   const reset = maybeEl("chart-zoom-reset");
-  if (reset) {
-    if (t.k === 1 && t.x === 0 && t.y === 0) reset.setAttribute("disabled", "");
-    else reset.removeAttribute("disabled");
+  if (!reset) return;
+  if (atOpeningView()) reset.setAttribute("disabled", "");
+  else reset.removeAttribute("disabled");
+}
+
+/**
+ * Reset view: the year on screen as the page opens it, `#y=<year>` and
+ * nothing else -- the pin let go, the filters and the isolation cleared, the
+ * splits folded back and the zoom put back whole -- in one history step.
+ * @returns {Promise<string>} DREW, SUPERSEDED or FAILED
+ */
+export async function resetView() {
+  if (!shownYear) return FAILED;
+  unpin();
+  resetZoom();
+  restoringView = true;
+  let moved;
+  try {
+    moved = await moveTo({ year: yearKey(shownYear), hide: [], hidekind: [], out: [], only: "", min: 0, iso: "", x: [] });
+  } finally {
+    restoringView = false;
   }
+  if (moved.outcome === FAILED && moved.why) fail("The view could not be reset: " + moved.why);
+  if (moved.outcome !== SUPERSEDED) recordView("push");
+  paintReset();
+  return moved.outcome;
 }
 
 /**
@@ -3966,7 +4007,9 @@ export function wireZoom() {
   if (reset) {
     reset.textContent = say("zoom_reset");
     reset.removeAttribute("hidden");
-    reset.addEventListener("click", resetZoom);
+    reset.addEventListener("click", () => {
+      void resetView().catch((e) => fail("The chart failed to draw: " + String(e)));
+    });
   }
 }
 

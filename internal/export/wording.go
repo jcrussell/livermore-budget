@@ -127,7 +127,8 @@ type wording struct {
 	// The full-screen control on the chart's card, in each of its two states.
 	FullScreen     string `json:"full_screen"`
 	FullScreenExit string `json:"full_screen_exit"`
-	// ZoomReset is the control that puts a zoomed or panned chart back whole.
+	// ZoomReset is the control that puts the chart back as its year opens:
+	// whole, unfiltered, unsplit and with nothing pinned.
 	ZoomReset string `json:"zoom_reset"`
 	// Rail names the toggle that collapses and expands the rail beside the
 	// chart holding the legend, the filters and the key.
